@@ -1,5 +1,5 @@
 ---
-name: connect-existing-feature-documentation-writer
+name: kramme:connect-existing-feature-documentation-writer
 description: Use this skill when you are creating documentation for an existing Connect feature or updating existing docs
 ---
 

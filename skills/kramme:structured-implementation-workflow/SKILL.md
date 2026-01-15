@@ -1,5 +1,5 @@
 ---
-name: structured-implementation-workflow
+name: kramme:structured-implementation-workflow
 description: Use a structured workflow with three interconnected documents (main specification, open issues, and log) to plan, track, and document complex implementations, ensuring clarity and continuity. Use when you detect the presence of LOG.md and OPEN_ISSUES.md files.
 ---
 

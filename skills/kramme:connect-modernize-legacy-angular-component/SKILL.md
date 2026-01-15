@@ -1,5 +1,5 @@
 ---
-name: connect-modernize-legacy-angular-component
+name: kramme:connect-modernize-legacy-angular-component
 description: Use this Skill when working in the Connect monorepo and needing to modernize legacy Angular components.
 ---
 

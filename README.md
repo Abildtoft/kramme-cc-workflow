@@ -21,16 +21,16 @@ Skills are auto-triggered based on context. Claude will invoke these automatical
 
 | Skill | Trigger Condition |
 |-------|-------------------|
-| `changelog-generator` | Generate user-facing changelogs from git commits, transforming technical commits into clear release notes |
-| `connect-existing-feature-documentation-writer` | Creating or updating documentation for Connect features |
-| `connect-migrate-legacy-store-to-ngrx-component-store` | Migrating legacy CustomStore/FeatureStore to NgRx ComponentStore in Connect monorepo |
-| `connect-modernize-legacy-angular-component` | Modernizing legacy Angular components in Connect monorepo |
-| `markdown-converter` | Converting documents (PDF, Word, Excel, images, audio, etc.) to Markdown using markitdown |
-| `mr-pr-description-generator` | Generating MR/PR descriptions by analyzing git changes, commit history, and Linear issues |
-| `recreate-commits` | Creating a clean branch with narrative-quality commits from the current branch |
-| `reimplement-in-clean-branch` | Recreating a branch with narrative-quality commits in a clean branch |
-| `structured-implementation-workflow` | Detecting LOG.md and OPEN_ISSUES.md files to track complex implementations |
-| `verification-before-completion` | About to claim work is complete/fixed/passing - requires evidence before assertions |
+| `kramme:changelog-generator` | Generate user-facing changelogs from git commits, transforming technical commits into clear release notes |
+| `kramme:connect-existing-feature-documentation-writer` | Creating or updating documentation for Connect features |
+| `kramme:connect-migrate-legacy-store-to-ngrx-component-store` | Migrating legacy CustomStore/FeatureStore to NgRx ComponentStore in Connect monorepo |
+| `kramme:connect-modernize-legacy-angular-component` | Modernizing legacy Angular components in Connect monorepo |
+| `kramme:markdown-converter` | Converting documents (PDF, Word, Excel, images, audio, etc.) to Markdown using markitdown |
+| `kramme:mr-pr-description-generator` | Generating MR/PR descriptions by analyzing git changes, commit history, and Linear issues |
+| `kramme:recreate-commits` | Creating a clean branch with narrative-quality commits from the current branch |
+| `kramme:reimplement-in-clean-branch` | Recreating a branch with narrative-quality commits in a clean branch |
+| `kramme:structured-implementation-workflow` | Detecting LOG.md and OPEN_ISSUES.md files to track complex implementations |
+| `kramme:verification-before-completion` | About to claim work is complete/fixed/passing - requires evidence before assertions |
 
 ## Installation
 

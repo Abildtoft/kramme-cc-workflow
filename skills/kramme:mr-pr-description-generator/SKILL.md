@@ -1,5 +1,5 @@
 ---
-name: mr-pr-description-generator
+name: kramme:mr-pr-description-generator
 description: Generate comprehensive Merge Request or Pull Request descriptions by analyzing git changes, commit history, Linear issues, and code structure for both GitLab and GitHub
 ---
 
