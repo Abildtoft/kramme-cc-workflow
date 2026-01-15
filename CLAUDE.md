@@ -1,0 +1,61 @@
+# CLAUDE.md
+
+This is a Claude Code plugin providing workflow automation tools for daily development tasks.
+
+## Project Structure
+
+```
+.claude-plugin/plugin.json   # Plugin manifest (name, version, author)
+commands/                    # Slash commands (markdown files)
+agents/                      # Specialized subagents (markdown files)
+skills/                      # Auto-triggered skills (subdirectories with SKILL.md)
+hooks/hooks.json             # Event handlers configuration
+```
+
+## Adding Components
+
+### Commands
+Create `commands/<command-name>.md`:
+```yaml
+---
+allowed-tools: [Read, Grep, Glob]
+---
+# Command instructions here
+```
+
+### Agents
+Create `agents/<agent-name>.md`:
+```yaml
+---
+model: sonnet
+color: blue
+allowed-tools: [Read, Grep, Glob, Edit, Write]
+---
+# Agent mission and expected output
+```
+
+### Skills
+Create `skills/<skill-name>/SKILL.md`:
+```yaml
+---
+name: skill-name
+description: When to auto-trigger this skill
+---
+# Skill instructions
+```
+
+### Hooks
+Edit `hooks/hooks.json` to add event handlers (PreToolUse, PostToolUse, SessionStart, Stop).
+
+## Conventions
+
+- Use kebab-case for file and directory names
+- Components are markdown files with YAML frontmatter
+- Keep instructions concise and actionable
+
+## Development
+
+Install locally for testing:
+```bash
+claude /plugin install /path/to/this/repo
+```
