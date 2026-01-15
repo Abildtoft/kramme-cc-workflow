@@ -52,6 +52,7 @@ Edit `hooks/hooks.json` to add event handlers (PreToolUse, PostToolUse, SessionS
 - Use kebab-case for file and directory names
 - Components are markdown files with YAML frontmatter
 - Keep instructions concise and actionable
+- **Document all components in README.md** - Every command, skill, agent, and hook must be documented in the README with a description of what it does and when to use it
 
 ## Development
 

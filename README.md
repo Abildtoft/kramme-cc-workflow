@@ -1,6 +1,19 @@
 # kramme-cc-workflow
 
-A Claude Code plugin providing tooling for daily workflow tasks.
+A Claude Code plugin providing tooling for daily workflow tasks. These are the personal workflow commands I've been using in my day-to-day development, now consolidated into a plugin.
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `/kramme:find-bugs` | Find bugs, security vulnerabilities, and code quality issues in branch changes. Performs systematic security review with attack surface mapping and checklist-based analysis. |
+| `/kramme:create-pr` | Create a clean PR/MR with narrative-quality commits and comprehensive description. Orchestrates branch setup, commit restructuring, and PR creation. |
+| `/kramme:fixup-review-changes` | Intelligently fixup unstaged changes into existing commits. Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
+| `/kramme:deslop` | Remove AI-generated code slop from a branch. Cleans up unnecessary comments, defensive checks, `any` casts, and style inconsistencies. |
+| `/kramme:verify` | Run verification checks (tests, formatting, builds, linting, type checking) for affected code. Automatically detects project type and runs appropriate commands. |
+| `/kramme:iterate-pr` | Iterate on a PR/MR until CI passes. Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
+| `/kramme:resolve-review-findings` | Resolve findings from code reviews. Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
+| `/kramme:explore-interview` | Conduct an in-depth interview about a topic/proposal to uncover requirements. Uses structured questioning to explore features, processes, or architecture decisions. |
 
 ## Installation
 
