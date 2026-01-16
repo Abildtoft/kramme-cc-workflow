@@ -14,6 +14,7 @@ setup() {
     export MOCK_GH_PR_NUMBER=""
     export MOCK_GLAB_MR_EXISTS=""
     export MOCK_GLAB_MR_NUMBER=""
+    export MOCK_GLAB_JSON_PRETTY=""
 }
 
 # ============================================================================
@@ -213,6 +214,17 @@ setup() {
     run bash "$HOOK"
     [ "$status" -eq 0 ]
     [[ "$output" == *"MR !55"* ]]
+}
+
+@test "detects GitLab MR with pretty JSON output" {
+    export MOCK_GIT_BRANCH="feature/WAN-123-test"
+    export MOCK_GIT_REMOTE="https://gitlab.com/user/repo.git"
+    export MOCK_GLAB_MR_EXISTS="true"
+    export MOCK_GLAB_MR_NUMBER="56"
+    export MOCK_GLAB_JSON_PRETTY="true"
+    run bash "$HOOK"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"MR !56"* ]]
 }
 
 @test "detects GitLab MR via consensusaps domain" {

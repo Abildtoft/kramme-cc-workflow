@@ -3,12 +3,25 @@
 # Control behavior via environment variables:
 #   MOCK_GLAB_MR_EXISTS - set to any value to indicate MR exists
 #   MOCK_GLAB_MR_NUMBER - MR number to return
+#   MOCK_GLAB_JSON_PRETTY - set to any value to output pretty JSON
 
 case "$*" in
     "mr view --output json")
         if [ -n "$MOCK_GLAB_MR_EXISTS" ]; then
             MR_NUM="${MOCK_GLAB_MR_NUMBER:-1}"
-            echo "{\"iid\":${MR_NUM},\"web_url\":\"https://gitlab.com/user/repo/-/merge_requests/${MR_NUM}\"}"
+            if [ -n "$MOCK_GLAB_JSON_PRETTY" ]; then
+                cat <<EOF
+{
+  "iid": ${MR_NUM},
+  "web_url": "https://gitlab.com/user/repo/-/merge_requests/${MR_NUM}",
+  "author": {
+    "web_url": "https://gitlab.com/user"
+  }
+}
+EOF
+            else
+                echo "{\"iid\":${MR_NUM},\"web_url\":\"https://gitlab.com/user/repo/-/merge_requests/${MR_NUM}\"}"
+            fi
             exit 0
         else
             exit 1

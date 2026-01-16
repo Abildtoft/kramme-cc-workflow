@@ -41,10 +41,69 @@ elif echo "$REMOTE_URL" | grep -qE "(gitlab.com|consensusaps)"; then
     # GitLab - check for MR
     MR_JSON=$(glab mr view --output json 2>/dev/null)
     if [ $? -eq 0 ] && [ -n "$MR_JSON" ]; then
-        MR_URL=$(echo "$MR_JSON" | grep -o '"web_url":"[^"]*"' | cut -d'"' -f4)
-        MR_NUM=$(echo "$MR_JSON" | grep -o '"iid":[0-9]*' | cut -d':' -f2)
-        if [ -n "$MR_URL" ]; then
+        MR_URL=""
+        MR_NUM=""
+        if command -v python3 >/dev/null 2>&1; then
+            MR_FIELDS=$(printf '%s' "$MR_JSON" | python3 - <<'PY'
+import json
+import sys
+
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+
+if isinstance(data, list):
+    data = data[0] if data else {}
+
+if not isinstance(data, dict):
+    sys.exit(1)
+
+web_url = data.get("web_url", "")
+iid = data.get("iid", "")
+if web_url:
+    sys.stdout.write("{}\t{}".format(web_url, iid))
+PY
+)
+            if [ $? -eq 0 ] && [ -n "$MR_FIELDS" ]; then
+                IFS=$'\t' read -r MR_URL MR_NUM <<< "$MR_FIELDS"
+            fi
+        elif command -v python >/dev/null 2>&1; then
+            MR_FIELDS=$(printf '%s' "$MR_JSON" | python - <<'PY'
+import json
+import sys
+
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+
+if isinstance(data, list):
+    data = data[0] if data else {}
+
+if not isinstance(data, dict):
+    sys.exit(1)
+
+web_url = data.get("web_url", "")
+iid = data.get("iid", "")
+if web_url:
+    sys.stdout.write("{}\t{}".format(web_url, iid))
+PY
+)
+            if [ $? -eq 0 ] && [ -n "$MR_FIELDS" ]; then
+                IFS=$'\t' read -r MR_URL MR_NUM <<< "$MR_FIELDS"
+            fi
+        fi
+
+        if [ -z "$MR_URL" ]; then
+            MR_URL=$(echo "$MR_JSON" | tr '\n' ' ' | grep -o '"web_url"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)
+            MR_NUM=$(echo "$MR_JSON" | tr '\n' ' ' | grep -o '"iid"[[:space:]]*:[[:space:]]*[0-9]*' | head -1 | sed 's/[^0-9]*//g')
+        fi
+
+        if [ -n "$MR_URL" ] && [ -n "$MR_NUM" ]; then
             PR_LINK="[MR !${MR_NUM}](${MR_URL})"
+        elif [ -n "$MR_URL" ]; then
+            PR_LINK="[MR](${MR_URL})"
         fi
     fi
 fi
