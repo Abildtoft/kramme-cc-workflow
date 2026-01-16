@@ -5,7 +5,9 @@ description: Start implementing a Linear issue with branch setup, context gather
 
 # Implement Linear Issue
 
-Start implementing a Linear issue by fetching details, exploring the codebase for context, asking clarifying questions, and setting up the branch.
+Start implementing a Linear issue through an extensive planning phase before any code changes.
+
+**IMPORTANT:** Linear issues are typically written for product teams and may be light on technical implementation details. This command emphasizes thorough planning and codebase exploration to translate product requirements into a concrete technical approach before starting implementation.
 
 ## Process Overview
 
@@ -19,10 +21,22 @@ Start implementing a Linear issue by fetching details, exploring the codebase fo
 [Parse Requirements] -> Extract acceptance criteria from description
     |
     v
-[Codebase Exploration] -> If vague, search for patterns/implementations
+=============== PLANNING PHASE (extensive) ===============
+    |
+    v
+[Codebase Exploration] -> ALWAYS search for patterns/implementations
+    |
+    v
+[Technical Analysis] -> Map product requirements to technical approach
     |
     v
 [Upfront Questions] -> Clarify ambiguities before proceeding
+    |
+    v
+[Create Technical Plan] -> Document approach, files, patterns to follow
+    |
+    v
+=================== SETUP PHASE ===================
     |
     v
 [Branch Setup] -> Use Linear's branchName field, handle uncommitted changes
@@ -179,29 +193,28 @@ Acceptance Criteria:
 
 ---
 
-## Step 3: Codebase Exploration
+## Step 3: Codebase Exploration (PLANNING PHASE)
 
-**CRITICAL:** If the Linear issue lacks technical specifics, explore the codebase before proceeding.
+**CRITICAL:** Linear issues are typically product-focused and lack technical implementation details. **ALWAYS** perform extensive codebase exploration to understand how to implement the feature, regardless of how the issue is written.
 
-### 3.1 Assess Technical Clarity
+### 3.1 Why This Phase Is Essential
 
-Determine if the issue provides sufficient technical guidance:
+Linear issues often describe:
+- **What** the user should be able to do (user stories)
+- **Why** it matters (business value)
+- **Acceptance criteria** (verification conditions)
 
-**Issue is technically clear if it specifies:**
+They typically do NOT describe:
+- Which files/modules to modify
+- What patterns to follow
+- How existing similar features are implemented
+- Technical constraints or dependencies
 
-- Specific files or components to modify
-- API endpoints or database schemas
-- Clear technical approach
+**Your job is to bridge this gap through thorough exploration.**
 
-**Issue is vague if it only provides:**
+### 3.2 Mandatory Exploration Steps
 
-- High-level feature description
-- User-facing requirements without technical details
-- No mention of implementation approach
-
-### 3.2 Explore When Vague
-
-**If the issue is technically vague, ALWAYS:**
+**ALWAYS perform these steps, even if the issue seems straightforward:**
 
 1. **Search for similar features/patterns:**
 
@@ -245,9 +258,9 @@ Suggested Approach:
 
 ---
 
-## Step 4: Upfront Questions
+## Step 4: Upfront Questions (PLANNING PHASE)
 
-**CRITICAL:** Tend towards asking questions rather than plunging into implementation.
+**CRITICAL:** Tend towards asking questions rather than plunging into implementation. The goal is to fully understand requirements before writing any code.
 
 ### 4.1 Identify Ambiguities
 
@@ -297,27 +310,50 @@ options:
     description: "Complete test suite"
 ```
 
-### 4.3 Confirm Understanding
+### 4.3 Create Technical Plan
 
-After gathering answers, summarize the confirmed requirements:
+After gathering answers, create a comprehensive technical plan that translates the product requirements into a concrete implementation approach:
 
 ```
-Confirmed Requirements:
+Technical Implementation Plan for {identifier}
 
-Scope: {confirmed scope}
-Approach: {confirmed technical approach}
-Testing: {confirmed testing expectations}
+## Summary
+{One paragraph describing what will be built}
 
-Files to Modify:
-- {file 1}
-- {file 2}
+## Product Requirements -> Technical Approach
+| Requirement | Technical Implementation |
+|-------------|-------------------------|
+| {user story 1} | {how it will be implemented} |
+| {user story 2} | {how it will be implemented} |
 
-Proceeding with branch setup...
+## Files to Modify/Create
+- {file 1} - {what changes}
+- {file 2} - {what changes}
+- {new file if needed} - {purpose}
+
+## Patterns to Follow
+Based on exploration of {similar feature}, follow these patterns:
+- {pattern 1}
+- {pattern 2}
+
+## Implementation Steps
+1. {step 1}
+2. {step 2}
+3. {step 3}
+...
+
+## Testing Approach
+- {test type}: {what to test}
+
+## Open Questions (if any)
+- {any remaining uncertainties}
 ```
+
+**Present this plan to the user and get confirmation before proceeding to branch setup.**
 
 ---
 
-## Step 5: Branch Setup
+## Step 5: Branch Setup (SETUP PHASE)
 
 ### 5.1 Check Current Git State
 
