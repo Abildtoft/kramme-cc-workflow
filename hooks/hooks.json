@@ -1,6 +1,17 @@
 {
   "description": "Workflow hooks for kramme-cc-workflow plugin",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/block-rm-rf.sh"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [

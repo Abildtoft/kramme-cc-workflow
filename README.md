@@ -56,7 +56,46 @@ Event handlers that run automatically at specific points in the Claude Code life
 
 | Hook | Event | Description |
 |------|-------|-------------|
+| `block-rm-rf` | PreToolUse (Bash) | Blocks destructive file deletion commands and recommends using `trash` CLI instead. |
 | `context-links` | Stop | Displays active PR/MR and Linear issue links at the end of messages. Extracts Linear issue ID from branch name (pattern: `{prefix}/{TEAM-ID}-description`) and detects open PRs/MRs for the current branch. |
+
+### block-rm-rf: Blocked Patterns
+
+**Direct commands:**
+- `rm -rf` (and variants: `-fr`, `-r -f`, `--recursive --force`)
+- `shred`, `unlink`
+
+**Path variants:**
+- `/bin/rm -rf`, `/usr/bin/rm -rf`, `./rm -rf`
+
+**Bypass attempts:**
+- `command rm -rf`, `env rm -rf`, `\rm -rf`
+- `sudo rm -rf`, `xargs rm -rf`
+
+**Subshell execution:**
+- `sh -c "rm -rf ..."`, `bash -c "rm -rf ..."`, `zsh -c "rm -rf ..."`
+
+**Find commands:**
+- `find . -delete`
+- `find . -exec rm -rf {} \;`
+
+### block-rm-rf: Allowed Commands
+
+- `git rm` (tracked by git, recoverable)
+- `echo "rm -rf"` (quoted strings are safe)
+- `rm file.txt` (no recursive+force)
+- `rm -r dir/` (recursive but no force)
+
+### Why use `trash` instead of `rm -rf`?
+
+The `trash` command moves files to the system Trash instead of permanently deleting them:
+- **Recoverable**: Files can be restored from Trash if deleted accidentally
+- **Safe**: No risk of catastrophic data loss from typos or glob expansion errors
+- **Familiar**: Works just like `rm` but with a safety net
+
+Install: `brew install trash`
+
+> **Note:** This is a best-effort defense, not a comprehensive security barrier. There will always be edge cases that aren't covered.
 
 ## Installation
 
