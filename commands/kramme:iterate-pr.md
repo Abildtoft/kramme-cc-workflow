@@ -266,6 +266,15 @@ fi
 BASE_REF="origin/$BASE"
 ```
 
+Before using `BASE_REF`, ensure the remote ref exists and is up to date:
+
+```bash
+git fetch origin $BASE
+git show-ref --verify --quiet refs/remotes/origin/$BASE
+```
+
+If the ref is missing, re-run base detection or `git fetch origin` and try again.
+
 #### 7b.2: Map Changed Files to Commits
 
 For each changed file (from `git diff --name-only`, `git diff --cached --name-only`, and untracked files from `git ls-files --others --exclude-standard`), find which branch commit last touched it:
@@ -319,7 +328,7 @@ After successful rebase (or fallback), push with force:
 git push --force-with-lease origin $(git branch --show-current)
 ```
 
-**Note:** `--force-with-lease` is required because the rebase rewrites history. This is safe because it only overwrites your own commits and fails if someone else pushed to the branch.
+**Note:** `--force-with-lease` is required because the rebase rewrites history. It refuses to overwrite remote commits you haven't fetched, but you should still coordinate with other contributors before forcing.
 
 ### Step 9: Repeat
 
@@ -365,4 +374,4 @@ Continue until all checks pass and no unaddressed feedback remains.
 - Use when you want to keep commit history clean during PR iteration
 - Orphan files (files not touched by any existing branch commit, including files last modified on the base branch) become new commits automatically
 - If rebase conflicts occur, the iteration continues with a regular commit
-- Uses `--force-with-lease` for safe force push after rebase
+- Uses `--force-with-lease` for a safer force push after rebase (still requires coordination and an up-to-date fetch)
