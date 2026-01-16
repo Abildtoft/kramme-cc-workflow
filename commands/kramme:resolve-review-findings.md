@@ -27,13 +27,13 @@ If no review content was provided in Step 0:
 
 1. **Check chat context first** — Scan recent messages for:
    - Code review content from the agent → **internal review**
-   - A PR/MR URL provided by the user → **external review** (fetch from that URL)
-2. **If no review in chat, fetch from current branch's PR/MR:**
+   - A PR URL provided by the user → **external review** (fetch from that URL)
+2. **If no review in chat, fetch from current branch's PR:**
    - Detect hosting platform: check for `.gitlab-ci.yml` (GitLab) or `.github/` directory (GitHub)
    - For **GitHub**: Use `gh pr view --json reviews,comments` and `gh api repos/{owner}/{repo}/pulls/{number}/comments` to fetch unresolved review comments
    - For **GitLab**: Use the GitLab MCP tools or API to fetch unresolved discussions
    - Note that this is an **external review**
-3. **If no review found anywhere** — Ask the user to either provide review content, a PR/MR URL, or confirm there's nothing to resolve
+3. **If no review found anywhere** — Ask the user to either provide review content, a PR URL, or confirm there's nothing to resolve
 4. **List all findings** — Present each comment with its file location, line number, and content
 
 ### Step 2: Evaluate findings
@@ -43,7 +43,7 @@ For each finding, before implementing any fix:
 #### 2a. Check for scope creep
 
 First, determine the **PR's intended scope** by examining:
-- The PR/MR title and description
+- The PR title and description
 - The types of files changed (feature code, tests, configs, etc.)
 - The commit messages on the branch
 - Any linked issues or tickets

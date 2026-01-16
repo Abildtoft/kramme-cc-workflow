@@ -486,7 +486,7 @@ stateDiagram-v2
 
 - **NOTE**: Connect uses GitLab, not GitHub
 - **ALWAYS** reference GitLab CI/CD patterns if documenting deployment
-- **ALWAYS** use GitLab-specific terminology (merge requests, not pull requests)
+- **ALWAYS** use Pull Request (PR) terminology, not Merge Request (MR)
 
 ---
 

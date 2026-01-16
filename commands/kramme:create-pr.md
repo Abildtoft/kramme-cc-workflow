@@ -1,16 +1,16 @@
 ---
 name: kramme:create-pr
-description: Create a clean PR/MR with narrative commits and comprehensive description
+description: Create a clean PR with narrative commits and comprehensive description
 ---
 
-# Create Pull Request / Merge Request
+# Create Pull Request
 
-Orchestrate the creation of a clean, well-documented draft PR (GitHub) or MR (GitLab) by:
+Orchestrate the creation of a clean, well-documented draft PR by:
 1. Validating git state and detecting platform
 2. Setting up the branch (if on main)
 3. Creating clean, narrative-quality commits
 4. Generating a comprehensive description
-5. Pushing and creating the draft PR/MR
+5. Pushing and creating the draft PR
 
 ## Process Overview
 
@@ -36,13 +36,13 @@ Orchestrate the creation of a clean, well-documented draft PR (GitHub) or MR (Gi
 [recreate-commits Skill] -> Failure? -> Rollback
     |
     v
-[mr-pr-description-generator Skill]
+[pr-description-generator Skill]
     |
     v
 [Confirmation] -> Abort? -> Rollback
     |
     v
-[Push & Create Draft PR/MR]
+[Push & Create Draft PR]
     |
     v
 [Success Output]
@@ -137,11 +137,11 @@ REMOTE_URL=$(git remote get-url origin)
 
 **Detection logic:**
 
-| URL Contains | Platform | Terminology | CLI Tool |
-|--------------|----------|-------------|----------|
-| `github.com` | GitHub | Pull Request | `gh` |
-| `gitlab.com` | GitLab | Merge Request | `glab` or MCP |
-| `consensusaps` | GitLab | Merge Request | `glab` or MCP |
+| URL Contains | Platform | CLI Tool |
+|--------------|----------|----------|
+| `github.com` | GitHub | `gh` |
+| `gitlab.com` | GitLab | `glab` or MCP |
+| `consensusaps` | GitLab | `glab` or MCP |
 
 **If platform cannot be determined:**
 
@@ -153,7 +153,7 @@ options:
   - label: "GitHub"
     description: "Will create a Pull Request using the gh CLI"
   - label: "GitLab"
-    description: "Will create a Merge Request using glab CLI or MCP tools"
+    description: "Will create a Pull Request using glab CLI or MCP tools"
 multiSelect: false
 ```
 
@@ -321,7 +321,7 @@ This skill will:
 - Create narrative-quality commits
 - **NEVER include AI attribution** (no "Generated with Claude Code" or Co-Authored-By)
 
-**IMPORTANT: After the skill completes, immediately continue to Step 7.** Do not pause or wait for user input. The skill will handle commit creation; once it finishes, proceed directly to invoking the mr-pr-description-generator skill.
+**IMPORTANT: After the skill completes, immediately continue to Step 7.** Do not pause or wait for user input. The skill will handle commit creation; once it finishes, proceed directly to invoking the pr-description-generator skill.
 
 ### 6.3 Handle Skill Failure
 
@@ -346,14 +346,14 @@ Recovery:
 
 ---
 
-## Step 7: Invoke mr-pr-description-generator Skill
+## Step 7: Invoke pr-description-generator Skill
 
 ### 7.1 Invoke the Skill
 
-**IMPORTANT:** Use the Skill tool to invoke `mr-pr-description-generator`:
+**IMPORTANT:** Use the Skill tool to invoke `pr-description-generator`:
 
 ```
-skill: "mr-pr-description-generator"
+skill: "pr-description-generator"
 ```
 
 This skill will:
@@ -402,7 +402,7 @@ None
 
 Show the user what will be created:
 ```
-Draft [PR/MR] Ready to Create
+Draft [PR] Ready to Create
 
 Platform: [GitHub/GitLab]
 Title: [First commit message or extracted title]
@@ -420,14 +420,14 @@ Description Preview:
 Use AskUserQuestion:
 ```yaml
 header: "Confirm"
-question: "Ready to create the Draft PR/MR?"
+question: "Ready to create the Draft PR?"
 options:
-  - label: "Create Draft PR/MR"
-    description: "Push branch and create draft PR/MR with the generated description"
+  - label: "Create Draft PR"
+    description: "Push branch and create draft PR with the generated description"
   - label: "Edit description first"
     description: "Review and modify the description before creating"
   - label: "Abort"
-    description: "Cancel and keep local changes without creating PR/MR"
+    description: "Cancel and keep local changes without creating PR"
 multiSelect: false
 ```
 
@@ -438,7 +438,7 @@ Operation cancelled.
 Your changes remain local:
   - Branch: {current-branch}
   - Commits: {number} commits ready
-  - Status: Not pushed, no PR/MR created
+  - Status: Not pushed, no PR created
 
 You can run /create-pr again when ready.
 ```
@@ -468,11 +468,11 @@ Manual push command:
 If branch exists remotely:
   git push -u origin {branch-name} --force-with-lease
 
-The generated description is saved. You can create the PR/MR manually.
+The generated description is saved. You can create the PR manually.
 ```
 **Action:** Show the full description for copy/paste, then abort.
 
-### 8.4 Create Draft PR/MR
+### 8.4 Create Draft PR
 
 **For GitHub:**
 ```bash
@@ -497,11 +497,11 @@ EOF
 **For GitLab (using MCP tools, if available):**
 Use `mcp__gitlab__create_merge_request` with `draft: true` or prefix title with `Draft: `.
 
-### 8.5 Handle PR/MR Creation Failure
+### 8.5 Handle PR Creation Failure
 
 **If creation fails:**
 ```
-Warning: Failed to create [PR/MR] automatically.
+Warning: Failed to create [PR] automatically.
 
 Error: {error message}
 
@@ -525,7 +525,7 @@ Remember to mark it as Draft before creating.
 
 On successful creation:
 ```
-Draft [PR/MR] created successfully!
+Draft [PR] created successfully!
 
 URL: {pr-url}
 Branch: {branch} -> main
@@ -537,7 +537,7 @@ Commits included:
   - ...
 
 Next steps:
-  1. Review the PR/MR description for accuracy
+  1. Review the PR description for accuracy
   2. Add screenshots or videos if applicable
   3. Run tests and ensure CI passes
   4. Mark as ready for review when complete
@@ -597,11 +597,11 @@ Your work is exactly as it was before running /create-pr.
 Per the recreate-commits skill requirements, this would cause issues.
 
 ### Always Draft
-**ALWAYS** create PRs/MRs as Draft:
+**ALWAYS** create PRs as Draft:
 - GitHub: Use `--draft` flag
 - GitLab: Use `--draft` flag or `Draft:` title prefix
 
-Never create a ready-for-review PR/MR directly.
+Never create a ready-for-review PR directly.
 
 ### Preserve Authorship
 **NEVER** modify git config or add AI as author. All commits should reflect the user's authorship.
@@ -609,6 +609,6 @@ Never create a ready-for-review PR/MR directly.
 ### Complete All Steps
 Even for simple changes, invoke both skills:
 1. `recreate-commits` for clean commit history
-2. `mr-pr-description-generator` for comprehensive description
+2. `pr-description-generator` for comprehensive description
 
-This ensures consistency across all PRs/MRs.
+This ensures consistency across all PRs.

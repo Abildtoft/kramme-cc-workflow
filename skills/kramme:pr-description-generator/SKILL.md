@@ -1,9 +1,9 @@
 ---
-name: kramme:mr-pr-description-generator
-description: Generate comprehensive Merge Request or Pull Request descriptions by analyzing git changes, commit history, Linear issues, and code structure for both GitLab and GitHub
+name: kramme:pr-description-generator
+description: Generate comprehensive Pull Request descriptions by analyzing git changes, commit history, Linear issues, and code structure for both GitLab and GitHub
 ---
 
-# MR/PR Description Generator
+# PR Description Generator
 
 ## Instructions
 
@@ -11,27 +11,27 @@ description: Generate comprehensive Merge Request or Pull Request descriptions b
 
 **Use this skill when:**
 
-- You're ready to create a Merge Request (GitLab) or Pull Request (GitHub)
+- You're ready to create a Pull Request
 - You want a well-structured, comprehensive description for your changes
 - You need to document what changed, why it changed, and how to test it
 - You want to analyze multiple sources (git diff, commits, Linear issues) to create complete context
 
 **When NOT to use this skill:**
 
-- The MR/PR already has a description and you just need to update it
-- You're creating a draft MR/PR that doesn't need a full description yet
+- The PR already has a description and you just need to update it
+- You're creating a draft PR that doesn't need a full description yet
 - The changes are trivial (typo fixes, formatting) and don't warrant detailed documentation
 
 ### Context
 
-High-quality MR/PR descriptions are essential for:
+High-quality PR descriptions are essential for:
 
 - Code reviewers to understand the context and intent of changes
 - Future developers investigating the history of a feature
 - Product/project managers tracking feature delivery
 - Creating an audit trail of technical decisions
 
-This skill automates the process of gathering context from multiple sources (git history, Linear issues, code changes) and generating a structured, comprehensive description following best practices for both GitLab Merge Requests and GitHub Pull Requests.
+This skill automates the process of gathering context from multiple sources (git history, Linear issues, code changes) and generating a structured, comprehensive description following best practices for Pull Requests.
 
 ### Guideline Keywords
 
@@ -80,7 +80,7 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 
 **ALWAYS** gather comprehensive context from all available sources:
 
-**IMPORTANT**: Spec files and conversation history are for YOUR analysis only to understand implementation decisions. The final MR description should ONLY reference Linear issues as the source of original requirements, since reviewers have access to Linear but not to spec files or conversation history.
+**IMPORTANT**: Spec files and conversation history are for YOUR analysis only to understand implementation decisions. The final PR description should ONLY reference Linear issues as the source of original requirements, since reviewers have access to Linear but not to spec files or conversation history.
 
 #### 2.1 Git Changes Analysis
 
@@ -235,7 +235,7 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
    - **EXAMPLE**: "Linear issue requested email notifications, but implemented push notifications instead after discovering email delivery was unreliable in testing"
    - **NEVER** include trivial decisions or over-explain obvious choices
    - **IMPORTANT**: Spec files (SPEC.md, LOG.md, etc.) and conversation history are for YOUR analysis only
-   - **NEVER** reference spec files or conversation history in the MR description (reviewers don't have access to them)
+   - **NEVER** reference spec files or conversation history in the PR description (reviewers don't have access to them)
    - **ALWAYS** reference only Linear issues as the source of original requirements when documenting divergences
 
 ### Phase 2.5: Analysis and Clarification
@@ -304,7 +304,7 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 3. **Link to Linear issue** (if available):
 
    - **ALWAYS** use a "magic word" + issue ID for automatic linking
-   - **Magic words**: `Fixes`, `Closes`, `Resolves` (marks issue as done when MR/PR merges)
+   - **Magic words**: `Fixes`, `Closes`, `Resolves` (marks issue as done when PR merges)
    - **Alternative**: `Related to`, `Refs`, `References` (links without auto-closing)
    - **CAN** use either issue ID or full Linear URL
 
@@ -321,8 +321,8 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
    Related to WAN-521
    ```
 
-   - **PREFER** `Fixes` or `Closes` when the MR/PR completes the work for the issue
-   - **PREFER** `Related to` when the MR/PR is partial work or tangentially related
+   - **PREFER** `Fixes` or `Closes` when the PR completes the work for the issue
+   - **PREFER** `Related to` when the PR is partial work or tangentially related
 
 **EXAMPLE Summary:**
 
@@ -608,7 +608,7 @@ dotnet ef database update -c ConnectContext
 <!-- - Mobile/responsive views -->
 ```
 
-**NOTE**: This is a placeholder section for the MR/PR creator to populate with relevant visuals
+**NOTE**: This is a placeholder section for the PR creator to populate with relevant visuals
 
 ### Phase 4: Output Formatting
 
@@ -623,7 +623,7 @@ dotnet ef database update -c ConnectContext
 **ALWAYS** present the final description in a clear, copy-paste-ready format:
 
 ```markdown
-Here is your generated MR/PR description:
+Here is your generated PR description:
 
 ---
 
@@ -635,7 +635,7 @@ Here is your generated MR/PR description:
 6. **ALWAYS** ask if the description should be saved to a markdown file:
 
    - After presenting the description, ask: "Would you like me to save this description to a markdown file?"
-   - If yes, save to a file named `MR_DESCRIPTION.md` (or `PR_DESCRIPTION.md` for GitHub) in the repository root
+   - If yes, save to a file named `PR_DESCRIPTION.md` (or `PR_DESCRIPTION.md` for GitHub) in the repository root
    - Confirm the file location after saving
 
 ### Phase 5: Final Checklist
@@ -1066,19 +1066,18 @@ dotnet ef migrations remove -c ConnectContext
 
 - `AGENTS.md` - Authoritative development guidelines for this codebase
 - `CLAUDE.md` - AI-specific instructions, including GitLab vs GitHub guidance
-- Existing MR/PR descriptions in the repository for style reference
+- Existing PR descriptions in the repository for style reference
 
 ## Platform-Specific Notes
 
 ### GitLab
 
-- **ALWAYS** use "Merge Request" terminology, not "Pull Request"
 - **PREFER** using GitLab MCP server tools when available:
   - `mcp__gitlab__get_branch_diffs` for diff analysis
   - `mcp__gitlab__list_commits` for commit history
-  - `mcp__gitlab__get_merge_request` if MR already exists
+  - `mcp__gitlab__get_merge_request` if PR already exists
 - **ALWAYS** link Linear issues using magic words for automatic linking:
-  - **Magic words that auto-close**: `Fixes`, `Closes`, `Resolves` (use when MR completes the issue)
+  - **Magic words that auto-close**: `Fixes`, `Closes`, `Resolves` (use when PR completes the issue)
   - **Magic words that link only**: `Related to`, `Refs`, `References` (use for partial/related work)
   - **Format**: `{magic word} {TEAM}-{number}` or `{magic word} {full Linear URL}`
   - **EXAMPLE**: `Fixes WAN-123`, `Closes HEA-456`, `Related to MEL-789`
@@ -1086,19 +1085,18 @@ dotnet ef migrations remove -c ConnectContext
 
 ### GitHub
 
-- **ALWAYS** use "Pull Request" terminology, not "Merge Request"
 - **PREFER** using `gh` CLI via Bash for GitHub operations
 - **ALWAYS** link issues using: `Fixes #123` or `Closes #123` or `Related to #123`
 
 ## Notes
 
-- **NOTE**: This skill generates the description text only - it does NOT create the MR/PR
+- **NOTE**: This skill generates the description text only - it does NOT create the PR
 - **NOTE**: After generation, review the description and adjust as needed before using it
 - **NOTE**: The skill follows Connect project conventions (AGENTS.md) but may need customization for other projects
 - **NOTE**: If Linear issue lookup fails, continue anyway and note the issue ID in the summary without detailed context
 - **NOTE**: Spec files (SPEC.md, LOG.md, OPEN_ISSUES.md, etc.) and conversation history are for context gathering ONLY
   - Use them to understand what happened during implementation
-  - **NEVER** reference them in the MR description - reviewers don't have access to them
+  - **NEVER** reference them in the PR description - reviewers don't have access to them
   - Only reference Linear issues when documenting divergences or original requirements
   - **WRONG**: "As mentioned in LOG.md..." or "Based on our earlier discussion..."
   - **RIGHT**: "Linear issue WAN-123 requested X, but implemented Y because..."

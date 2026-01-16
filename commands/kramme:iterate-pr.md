@@ -1,9 +1,9 @@
 ---
 name: kramme:iterate-pr
-description: Iterate on a PR/MR until CI passes. Use when you need to fix CI failures, address review feedback, or continuously push fixes until all checks are green. Automates the feedback-fix-push-wait cycle. Works with both GitHub and GitLab.
+description: Iterate on a PR until CI passes. Use when you need to fix CI failures, address review feedback, or continuously push fixes until all checks are green. Automates the feedback-fix-push-wait cycle. Works with both GitHub and GitLab.
 ---
 
-# Iterate on PR/MR Until CI Passes
+# Iterate on PR Until CI Passes
 
 Continuously iterate on the current branch until all CI checks pass and review feedback is addressed.
 
@@ -93,7 +93,7 @@ This waits until all checks complete. Exit code 0 means all passed, exit code 1 
 
 ## GitLab Flow
 
-### Step 1: Identify the MR
+### Step 1: Identify the PR
 
 **Using GitLab MCP server (preferred if available):**
 ```
@@ -105,12 +105,12 @@ mcp__gitlab__get_merge_request with source_branch: <current-branch>
 glab mr view --web=false
 ```
 
-**Using glab to list MRs for current branch:**
+**Using glab to list PRs for current branch:**
 ```bash
 glab mr list --source-branch=$(git branch --show-current)
 ```
 
-If no MR exists for the current branch, stop and inform the user.
+If no PR exists for the current branch, stop and inform the user.
 
 ### Step 2: Check CI Status First
 
@@ -147,10 +147,10 @@ mcp__gitlab__mr_discussions with merge_request_iid: <iid>
 
 **Using glab CLI:**
 ```bash
-# View MR details including approval status
+# View PR details including approval status
 glab mr view <mr-iid>
 
-# View MR notes/comments
+# View PR notes/comments
 glab mr note list <mr-iid>
 ```
 
@@ -238,7 +238,7 @@ Continue until all checks pass and no unaddressed feedback remains.
 - CI failure is unrelated to branch changes (infrastructure issue)
 
 **Stop Immediately:**
-- No PR/MR exists for the current branch
+- No PR exists for the current branch
 - Branch is out of sync and needs rebase (inform user)
 
 ---

@@ -7,13 +7,13 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the p
 | Command | Description |
 |---------|-------------|
 | `/kramme:find-bugs` | Find bugs, security vulnerabilities, and code quality issues in branch changes. Performs systematic security review with attack surface mapping and checklist-based analysis. |
-| `/kramme:create-pr` | Create a clean PR/MR with narrative-quality commits and comprehensive description. Orchestrates branch setup, commit restructuring, and PR creation. |
+| `/kramme:create-pr` | Create a clean PR with narrative-quality commits and comprehensive description. Orchestrates branch setup, commit restructuring, and PR creation. |
 | `/kramme:fixup-review-changes` | Intelligently fixup unstaged changes into existing commits. Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
 | `/kramme:define-linear-issue` | Create a well-structured Linear issue through exhaustive guided refinement. Supports file references for context and proactively explores the codebase. |
 | `/kramme:implement-linear-issue` | Start implementing a Linear issue with branch setup, context gathering, and guided workflow. Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
 | `/kramme:deslop` | Remove AI-generated code slop from a branch. Uses `kramme:deslop-reviewer` agent to identify slop, then fixes the issues. |
 | `/kramme:verify` | Run verification checks (tests, formatting, builds, linting, type checking) for affected code. Automatically detects project type and runs appropriate commands. |
-| `/kramme:iterate-pr` | Iterate on a PR/MR until CI passes. Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
+| `/kramme:iterate-pr` | Iterate on a PR until CI passes. Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
 | `/kramme:resolve-review-findings` | Resolve findings from code reviews. Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
 | `/kramme:explore-interview` | Conduct an in-depth interview about a topic/proposal to uncover requirements. Uses structured questioning to explore features, processes, or architecture decisions. |
 | `/kramme:review-pr` | Run comprehensive PR review using specialized agents. Supports reviewing comments, tests, errors, types, and code quality. Can run agents sequentially or in parallel. |
@@ -44,7 +44,7 @@ Skills are auto-triggered based on context. Claude will invoke these automatical
 | `kramme:connect-migrate-legacy-store-to-ngrx-component-store` | Migrating legacy CustomStore/FeatureStore to NgRx ComponentStore in Connect monorepo |
 | `kramme:connect-modernize-legacy-angular-component` | Modernizing legacy Angular components in Connect monorepo |
 | `kramme:markdown-converter` | Converting documents (PDF, Word, Excel, images, audio, etc.) to Markdown using markitdown |
-| `kramme:mr-pr-description-generator` | Generating MR/PR descriptions by analyzing git changes, commit history, and Linear issues |
+| `kramme:pr-description-generator` | Generating PR descriptions by analyzing git changes, commit history, and Linear issues |
 | `kramme:recreate-commits` | Creating a clean branch with narrative-quality commits from the current branch |
 | `kramme:reimplement-in-clean-branch` | Recreating a branch with narrative-quality commits in a clean branch |
 | `kramme:structured-implementation-workflow` | Detecting LOG.md and OPEN_ISSUES.md files to track complex implementations |
