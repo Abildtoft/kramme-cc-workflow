@@ -635,7 +635,7 @@ Here is your generated PR description:
 6. **ALWAYS** ask if the description should be saved to a markdown file:
 
    - After presenting the description, ask: "Would you like me to save this description to a markdown file?"
-   - If yes, save to a file named `PR_DESCRIPTION.md` (or `PR_DESCRIPTION.md` for GitHub) in the repository root
+   - If yes, save to a file named `PR_DESCRIPTION.md` in the repository root
    - Confirm the file location after saving
 
 ### Phase 5: Final Checklist
