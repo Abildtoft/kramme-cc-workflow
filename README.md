@@ -97,6 +97,45 @@ Install: `brew install trash`
 
 > **Note:** This is a best-effort defense, not a comprehensive security barrier. There will always be edge cases that aren't covered.
 
+## Testing
+
+The hooks are tested using [BATS](https://github.com/bats-core/bats-core) (Bash Automated Testing System).
+
+### Setup
+
+```bash
+# Install BATS
+make install-test-deps
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+make test
+
+# Run with verbose output (show test names)
+make test-verbose
+
+# Run only block-rm-rf tests
+make test-block
+
+# Run only context-links tests
+make test-context
+```
+
+### Test Structure
+
+```
+tests/
+├── run-tests.sh              # Main test runner
+├── test_helper/
+│   ├── common.bash           # Shared utilities
+│   └── mocks/                # Mock git, gh, glab commands
+├── block-rm-rf.bats          # Tests for block-rm-rf hook
+└── context-links.bats        # Tests for context-links hook
+```
+
 ## Installation
 
 ### From Git URL

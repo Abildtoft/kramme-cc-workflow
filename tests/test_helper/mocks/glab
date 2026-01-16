@@ -1,0 +1,19 @@
+#!/bin/bash
+# Mock GitLab CLI for testing context-links.sh
+# Control behavior via environment variables:
+#   MOCK_GLAB_MR_EXISTS - set to any value to indicate MR exists
+#   MOCK_GLAB_MR_NUMBER - MR number to return
+
+case "$*" in
+    "mr view --web")
+        if [ -n "$MOCK_GLAB_MR_EXISTS" ]; then
+            echo "Opening https://gitlab.com/user/repo/-/merge_requests/${MOCK_GLAB_MR_NUMBER:-1} in your browser."
+            exit 0
+        else
+            exit 1
+        fi
+        ;;
+    *)
+        exit 1
+        ;;
+esac

@@ -1,0 +1,19 @@
+#!/bin/bash
+# Mock GitHub CLI for testing context-links.sh
+# Control behavior via environment variables:
+#   MOCK_GH_PR_EXISTS - set to any value to indicate PR exists
+#   MOCK_GH_PR_NUMBER - PR number to return
+
+case "$*" in
+    "pr view --json url,number")
+        if [ -n "$MOCK_GH_PR_EXISTS" ]; then
+            echo '{"url":"https://github.com/user/repo/pull/'"${MOCK_GH_PR_NUMBER:-1}"'","number":'"${MOCK_GH_PR_NUMBER:-1}"'}'
+            exit 0
+        else
+            exit 1
+        fi
+        ;;
+    *)
+        exit 1
+        ;;
+esac

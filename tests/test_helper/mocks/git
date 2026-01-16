@@ -1,0 +1,28 @@
+#!/bin/bash
+# Mock git for testing context-links.sh
+# Control behavior via environment variables:
+#   MOCK_GIT_BRANCH - branch name to return (empty = not in repo)
+#   MOCK_GIT_REMOTE - remote URL to return
+
+case "$*" in
+    "branch --show-current")
+        if [ -n "$MOCK_GIT_BRANCH" ]; then
+            echo "$MOCK_GIT_BRANCH"
+            exit 0
+        else
+            exit 1
+        fi
+        ;;
+    "remote get-url origin")
+        if [ -n "$MOCK_GIT_REMOTE" ]; then
+            echo "$MOCK_GIT_REMOTE"
+            exit 0
+        else
+            exit 1
+        fi
+        ;;
+    *)
+        # Pass through to real git for unhandled cases
+        /usr/bin/git "$@"
+        ;;
+esac
