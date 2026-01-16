@@ -24,7 +24,7 @@ Orchestrate the creation of a clean, well-documented draft PR (GitHub) or MR (Gi
 [Platform Detection] -> Ambiguous? -> Ask user
     |
     v
-[Branch Handling] -> On main? -> Ask for branch name
+[Branch Handling] -> On main? -> Linear issue? -> Use Linear branch name / Ask for branch name
     |
     v
 [Changes Check] -> No changes? -> Abort
@@ -180,6 +180,68 @@ If this fails, try `main` then `master`.
 ### 3.3 Branch Decision
 
 **If current branch is `main` or `master`:**
+
+#### 3.3.1 Check for Linear Issue
+
+First, ask if working on a Linear issue:
+
+```yaml
+header: "Branch source"
+question: "Are you working on a Linear issue?"
+options:
+  - label: "Yes, I have a Linear issue ID"
+    description: "Will use Linear's branch naming convention (e.g., initials/wan-521-description)"
+  - label: "No, generate from file changes"
+    description: "Will suggest branch names based on changed files"
+multiSelect: false
+```
+
+#### 3.3.2 If "Yes, I have a Linear issue ID":
+
+1. Ask for the issue ID (user enters via "Other" free-text option):
+   ```yaml
+   header: "Linear issue"
+   question: "Enter the Linear issue ID (e.g., WAN-521):"
+   options: []
+   ```
+
+2. Fetch issue details using Linear MCP:
+   ```
+   mcp__linear__get_issue with id: {issue-id}
+   ```
+
+3. **If fetch succeeds and `branchName` is available:**
+   - Use the `branchName` directly from the Linear response
+   - Create and switch to branch:
+     ```bash
+     git checkout -b {branchName}
+     ```
+
+4. **If fetch succeeds but `branchName` is empty/missing:**
+   - Ask for user initials:
+     ```yaml
+     header: "Initials"
+     question: "Enter your initials for the branch name (e.g., 'jd'):"
+     options: []
+     ```
+   - Generate branch name: `{initials}/{issue-id-lowercase}-{sanitized-title}`
+   - Sanitize title: lowercase, replace spaces/special chars with hyphens, max 50 chars
+   - Create and switch to branch:
+     ```bash
+     git checkout -b {generated-branch-name}
+     ```
+
+5. **If fetch fails (MCP unavailable or issue not found):**
+   ```
+   Warning: Could not fetch Linear issue {issue-id}.
+
+   Error: {error message}
+
+   Falling back to file-based branch naming.
+   ```
+   Continue with file-based naming (Step 3.3.3).
+
+#### 3.3.3 If "No, generate from file changes" (or fallback):
 
 1. Analyze changed files to suggest branch names:
    ```bash
