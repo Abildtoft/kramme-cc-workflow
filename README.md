@@ -9,6 +9,7 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the p
 | `/kramme:find-bugs` | Find bugs, security vulnerabilities, and code quality issues in branch changes. Performs systematic security review with attack surface mapping and checklist-based analysis. |
 | `/kramme:create-pr` | Create a clean PR/MR with narrative-quality commits and comprehensive description. Orchestrates branch setup, commit restructuring, and PR creation. |
 | `/kramme:fixup-review-changes` | Intelligently fixup unstaged changes into existing commits. Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
+| `/kramme:implement-linear-issue` | Start implementing a Linear issue with branch setup, context gathering, and guided workflow. Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
 | `/kramme:deslop` | Remove AI-generated code slop from a branch. Uses `kramme:deslop-reviewer` agent to identify slop, then fixes the issues. |
 | `/kramme:verify` | Run verification checks (tests, formatting, builds, linting, type checking) for affected code. Automatically detects project type and runs appropriate commands. |
 | `/kramme:iterate-pr` | Iterate on a PR/MR until CI passes. Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
