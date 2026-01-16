@@ -9,6 +9,13 @@ Continuously iterate on the current branch until all CI checks pass and review f
 
 **Requires**: GitHub CLI (`gh`) or GitLab CLI (`glab`) authenticated and available.
 
+## Options
+
+**Flags:**
+- `--fixup` - Use fixup commits to amend existing branch commits instead of creating new commits. Requires force push. Orphan files (not touched by any branch commit, including files last modified on the base branch) are committed as new.
+
+---
+
 ## Step 0: Detect Platform
 
 Determine whether this is a GitHub or GitLab repository:
@@ -210,11 +217,109 @@ Make minimal, targeted code changes. Only fix what is actually broken.
 
 ### Step 7: Commit and Push
 
+**If `--fixup` mode is enabled:** See Step 7b (Fixup Commit Flow) below.
+
+**Default (no flag):**
+
 ```bash
 git add -A
 git commit -m "<descriptive message of what was fixed>"
 git push origin $(git branch --show-current)
 ```
+
+### Step 7b: Fixup Commit Flow (when `--fixup` is enabled)
+
+**Goal:** Amend existing branch commits instead of adding new commits, keeping history clean during iteration.
+
+#### 7b.1: Determine Base Branch (from PR)
+
+Use the PR's base branch from Step 1 so fixups stay scoped to the actual target branch.
+
+```bash
+# GitHub
+BASE=$(gh pr view --json baseRefName --jq .baseRefName)
+```
+
+```bash
+# GitLab (glab CLI — preferred)
+BASE=$(glab mr view --json target_branch --jq .target_branch)
+```
+
+```bash
+# GitLab MCP (alternative if glab is unavailable)
+# Use target_branch from mcp__gitlab__get_merge_request
+```
+
+If the PR base branch can't be determined, fall back to `origin/HEAD`, then `main`, then `master`.
+
+```bash
+if [ -z "$BASE" ]; then
+  BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+fi
+if [ -z "$BASE" ]; then
+  if git show-ref --verify --quiet refs/remotes/origin/main; then
+    BASE=main
+  else
+    BASE=master
+  fi
+fi
+BASE_REF="origin/$BASE"
+```
+
+#### 7b.2: Map Changed Files to Commits
+
+For each changed file (from `git diff --name-only`, `git diff --cached --name-only`, and untracked files from `git ls-files --others --exclude-standard`), find which branch commit last touched it:
+
+```bash
+git log $BASE_REF..HEAD -n 1 --format=%H -- <file_path>
+```
+
+Combine and de-dupe those file lists before mapping. Group files by their target commit SHA. Files with no matching commit are "orphans" (files not touched by any branch commit, including files last modified on the base branch).
+
+#### 7b.3: Create Fixup Commits
+
+For each target commit (from the mapping):
+
+```bash
+git add -A -- <matched_files...>
+git commit --fixup=<commit_sha>
+```
+
+#### 7b.4: Handle Orphan Files
+
+If any files were not touched by branch commits (orphans), create a regular commit for them:
+
+```bash
+git add -A -- <orphan_files...>
+git commit -m "<descriptive message of what was fixed>"
+```
+
+#### 7b.5: Autosquash Rebase
+
+```bash
+GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash $BASE_REF
+```
+
+**If rebase fails (conflicts):**
+
+1. Abort the rebase:
+   ```bash
+   git rebase --abort
+   ```
+2. Log a warning:
+   > "Autosquash rebase failed due to conflicts. Falling back to regular commit mode for this iteration. The fixup commits remain on the branch and can be manually squashed later."
+3. Fall back to regular commit (Step 7 default behavior) for any remaining uncommitted changes
+4. Continue to push step
+
+#### 7b.6: Push with Force
+
+After successful rebase (or fallback), push with force:
+
+```bash
+git push --force-with-lease origin $(git branch --show-current)
+```
+
+**Note:** `--force-with-lease` is required because the rebase rewrites history. This is safe because it only overwrites your own commits and fails if someone else pushed to the branch.
 
 ### Step 9: Repeat
 
@@ -255,3 +360,9 @@ Continue until all checks pass and no unaddressed feedback remains.
 - Use `glab ci run` to trigger a new pipeline manually
 - Check for `allow_failure: true` jobs that don't block the pipeline
 - Use the GitLab MCP server tools when available for richer data access
+
+**Fixup Mode (`--fixup`):**
+- Use when you want to keep commit history clean during PR iteration
+- Orphan files (files not touched by any existing branch commit, including files last modified on the base branch) become new commits automatically
+- If rebase conflicts occur, the iteration continues with a regular commit
+- Uses `--force-with-lease` for safe force push after rebase
