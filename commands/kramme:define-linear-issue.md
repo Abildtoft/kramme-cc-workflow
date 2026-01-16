@@ -1,12 +1,12 @@
 ---
 name: kramme:define-linear-issue
-description: Create a well-structured Linear issue from a description or idea through exhaustive guided refinement
-argument-hint: [description and/or file paths for context]
+description: Create or improve a well-structured Linear issue through exhaustive guided refinement
+argument-hint: [issue-id] or [description and/or file paths for context]
 ---
 
 # Define Linear Issue
 
-Create a well-structured Linear issue through exhaustive interactive refinement. Supports file references for technical context and proactively explores the codebase to inform issue definition.
+Create or improve a Linear issue through exhaustive interactive refinement. Can start from scratch with a description, or improve an existing issue by providing its identifier. Supports file references for technical context and proactively explores the codebase to inform issue definition.
 
 ## Audience Priority
 
@@ -34,20 +34,38 @@ Create a well-structured Linear issue through exhaustive interactive refinement.
 
 ## Process Overview
 
-1. **Input Parsing**: Extract description and file paths from arguments
+1. **Input Parsing & Mode Detection**: Detect if improving existing issue or creating new
 2. **Linear Context Discovery**: Fetch available teams, labels, and projects
-3. **Existing Issue Search**: Check for duplicate or related Linear issues
+3. **Existing Issue Handling**: For improve mode, fetch issue; for create mode, check duplicates
 4. **Codebase Exploration**: Search for related implementations and patterns
-5. **Exhaustive Interview**: Multi-round questioning to gather requirements
+5. **Exhaustive Interview**: Multi-round questioning (adapted for improve vs create mode)
 6. **Issue Composition**: Draft issue following the template
-7. **Review & Create**: User approval, then create in Linear
+7. **Review & Create/Update**: User approval, then create or update in Linear
 
-## Phase 1: Input Parsing
+## Phase 1: Input Parsing & Mode Detection
 
 **Handling `$ARGUMENTS`:**
-- Parse for file paths (anything that looks like a path: contains `/`, ends in common extensions)
-- Remaining text is the description/idea
-- If empty, use `AskUserQuestion` to gather the initial concept
+
+### Step 1: Detect Mode
+
+Check if input matches an existing Linear issue:
+- **Issue identifier pattern**: `TEAM-123` (uppercase letters, hyphen, numbers)
+- **Linear URL**: Contains `linear.app` with issue path
+- **UUID**: 36-character UUID format
+
+**If existing issue detected → IMPROVE MODE:**
+1. Extract the issue identifier
+2. Fetch issue details using `mcp__linear__get_issue` with `id` parameter
+3. Store the existing issue content (title, description, labels, etc.)
+4. Set mode flag to "improve"
+
+**If no issue detected → CREATE MODE:**
+1. Parse for file paths (anything that looks like a path: contains `/`, ends in common extensions)
+2. Remaining text is the description/idea
+3. If empty, use `AskUserQuestion` to gather the initial concept
+4. Set mode flag to "create"
+
+### Step 2: Process File References (Both Modes)
 
 **If file paths provided:**
 1. Read each file using the `Read` tool
@@ -67,7 +85,36 @@ Fetch Linear workspace context to enable informed metadata selection:
 
 Store this context for use in Phase 5 (Metadata & Classification round).
 
-## Phase 3: Existing Issue Search
+## Phase 3: Existing Issue Handling
+
+This phase differs based on mode:
+
+### IMPROVE MODE
+
+The target issue was already fetched in Phase 1. Now present it to the user:
+
+1. **Present Current Issue**
+   - Show the issue title, description, labels, and metadata
+   - Format clearly for review
+
+2. **Identify Improvement Areas**
+   - Use `AskUserQuestion` to ask what aspects to improve:
+     - Problem statement clarity
+     - Value proposition
+     - Scope definition
+     - Acceptance criteria
+     - Technical context
+     - Metadata (labels, priority, etc.)
+     - All of the above (full refinement)
+   - Store selected areas for focused interview in Phase 5
+
+3. **Search for Related Issues**
+   - Use `mcp__linear__list_issues` with keywords from the existing issue
+   - Identify issues to link as related or blockers
+
+**Output**: Improvement areas selected, related issues identified.
+
+### CREATE MODE
 
 Before creating a new issue, check for existing Linear issues that may already cover this topic:
 
@@ -83,17 +130,17 @@ Before creating a new issue, check for existing Linear issues that may already c
 3. **Present Findings to User**
    - If potential duplicates found, show them to the user via `AskUserQuestion`:
      - Option to proceed with new issue (if not truly a duplicate)
-     - Option to update/comment on existing issue instead
+     - Option to improve an existing issue instead → **Switch to IMPROVE MODE**
      - Option to link as related issue
    - If related issues found, note them for the Dependencies section
 
 4. **Decision Point**
    - If user confirms this is a duplicate → Stop and direct to existing issue
-   - If user wants to update existing issue → Pivot to updating that issue
+   - If user wants to improve existing issue → Fetch that issue with `mcp__linear__get_issue`, switch to IMPROVE MODE, and restart from Phase 3
    - If user confirms new issue is needed → Continue to Phase 4
    - Store any related issues for later linking
 
-**Output**: List of related issues to reference, confirmation to proceed with new issue creation.
+**Output**: List of related issues to reference, confirmation to proceed.
 
 ## Phase 4: Codebase Exploration
 
@@ -127,6 +174,19 @@ Proactively search the repository to inform the issue definition:
 ## Phase 5: Exhaustive Interview
 
 Conduct a thorough, multi-round interview using `AskUserQuestion`. Provide context before each question explaining why it matters and your recommendation if you have one.
+
+### Mode-Specific Behavior
+
+**IMPROVE MODE:**
+- Focus on the improvement areas selected in Phase 3
+- For each round, show the current content from the existing issue first
+- Ask if the user wants to: keep as-is, modify, or expand the current content
+- Skip rounds not selected for improvement (but allow user to request them)
+- Track what has changed vs. original
+
+**CREATE MODE:**
+- Follow the standard interview flow below
+- Start from blank for each section
 
 ### Round 1: Problem & Value (Most Important)
 
@@ -217,6 +277,20 @@ Coverage: [Problem: X%] [Scope: X%] [Technical: X%] [Acceptance: X%] [Metadata: 
 Continue until all dimensions show adequate coverage for a well-defined issue.
 
 ## Phase 6: Issue Composition
+
+### Mode-Specific Behavior
+
+**IMPROVE MODE:**
+- Merge interview findings with existing issue content
+- For unchanged sections, preserve the original text
+- For modified sections, use the new content from the interview
+- When presenting the draft, indicate what changed vs. original:
+  - `[UNCHANGED]` for preserved sections
+  - `[MODIFIED]` for updated sections
+  - `[ADDED]` for new sections
+
+**CREATE MODE:**
+- Compose the issue from scratch using interview findings
 
 Draft the issue following this template:
 
@@ -310,28 +384,53 @@ Draft the issue following this template:
 - **Priority**: From Round 5 selection (if determined)
 - **Related Issues**: From Phase 3 findings (if any)
 
-## Phase 7: Review & Create
+## Phase 7: Review & Create/Update
 
-1. **Present Draft**
-   - Show the complete issue (title, description, metadata) to the user
-   - Format clearly for review
+### 1. Present Draft
 
-2. **Allow Refinements**
-   - Ask if any changes are needed
-   - Iterate on feedback until user is satisfied
+**IMPROVE MODE:**
+- Show the updated issue with change indicators
+- Highlight what changed vs. original content
+- Show before/after for significant modifications
 
-3. **Create Issue**
-   - Use `mcp__linear__create_issue` with:
-     - `title`: The composed title
-     - `description`: The full markdown description
-     - `team`: Selected team ID or name
-     - `labels`: Array of selected label names
-     - `project`: Selected project (if any)
-     - `priority`: Selected priority (if any)
+**CREATE MODE:**
+- Show the complete issue (title, description, metadata)
+- Format clearly for review
 
-4. **Return Result**
-   - Provide the created issue URL
-   - Confirm successful creation
+### 2. Allow Refinements
+
+- Ask if any changes are needed
+- Iterate on feedback until user is satisfied
+
+### 3. Create or Update Issue
+
+**IMPROVE MODE:**
+- Use `mcp__linear__update_issue` with:
+  - `id`: The existing issue ID
+  - `title`: Updated title (if changed)
+  - `description`: The updated markdown description
+  - `labels`: Updated labels (if changed)
+  - `priority`: Updated priority (if changed)
+  - Other metadata as applicable
+
+**CREATE MODE:**
+- Use `mcp__linear__create_issue` with:
+  - `title`: The composed title
+  - `description`: The full markdown description
+  - `team`: Selected team ID or name
+  - `labels`: Array of selected label names
+  - `project`: Selected project (if any)
+  - `priority`: Selected priority (if any)
+
+### 4. Return Result
+
+**IMPROVE MODE:**
+- Provide the updated issue URL
+- Summarize what was changed
+
+**CREATE MODE:**
+- Provide the created issue URL
+- Confirm successful creation
 
 ## Important Guidelines
 
@@ -349,9 +448,10 @@ Draft the issue following this template:
 
 ## Starting the Process
 
-1. Parse `$ARGUMENTS` for file paths and description
-2. If no input provided, ask what issue they want to define
-3. Begin Phase 2 (Linear Context Discovery)
-4. Check for existing issues in Phase 3 before proceeding
-5. Proceed through remaining phases sequentially
-6. End with the created issue URL
+1. Parse `$ARGUMENTS` and detect mode (issue ID → improve, otherwise → create)
+2. If improve mode: fetch the existing issue details
+3. If create mode with no input: ask what issue they want to define
+4. Begin Phase 2 (Linear Context Discovery)
+5. Phase 3: For improve mode, present issue and select areas to improve; for create mode, check for duplicates
+6. Proceed through remaining phases (adapted for mode)
+7. End with the created or updated issue URL
