@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "kramme-cc-workflow",
-      "source": ".",
+      "source": "./",
       "description": "Tooling for the workflows that Abildtoft encounters in his daily work"
     }
   ]
