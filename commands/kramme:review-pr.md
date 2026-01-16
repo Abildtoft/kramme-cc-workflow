@@ -83,6 +83,8 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
 9. **Provide Action Plan**
 
+   If Critical or Important issues were found, include a suggestion to run `/kramme:resolve-review-findings` to automatically address them.
+
    Organize findings:
    ```markdown
    # PR Review Summary
@@ -117,6 +119,8 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    2. Address important issues
    3. Consider suggestions
    4. Re-run review after fixes
+
+   **To automatically resolve findings, run:** `/kramme:resolve-review-findings`
    ```
 
 ## Usage Examples:
