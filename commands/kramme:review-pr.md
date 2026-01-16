@@ -23,6 +23,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **errors** - Check error handling for silent failures
    - **types** - Analyze type design and invariants (if new types added)
    - **code** - General code review for project guidelines
+   - **slop** - Detect AI-generated code patterns (unnecessary comments, defensive overkill, type workarounds)
    - **simplify** - Simplify code for clarity and maintainability
    - **all** - Run all applicable reviews (default)
 
@@ -35,6 +36,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
    Based on changes:
    - **Always applicable**: kramme:code-reviewer (general quality)
+   - **Always applicable**: kramme:deslop-reviewer (detect AI slop patterns)
    - **If test files changed**: kramme:pr-test-analyzer
    - **If comments/docs added**: kramme:comment-analyzer
    - **If error handling changed**: kramme:silent-failure-hunter
@@ -61,16 +63,25 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Filters out pre-existing issues and out-of-scope problems
    - Returns only findings caused by this PR
 
-7. **Aggregate Results**
+7. **Slop Meta-Review**
 
-   After validation, summarize:
+   After relevance validation, review agent suggestions for slop:
+   - Launch **kramme:deslop-reviewer** in meta-review mode
+   - Pass all validated findings/suggestions from other agents
+   - Flags suggestions that would introduce slop if implemented
+   - Adds slop warnings to flagged suggestions (does not remove them)
+
+8. **Aggregate Results**
+
+   After validation and slop meta-review, summarize:
    - **Critical Issues** (must fix before merge) - only validated findings
    - **Important Issues** (should fix) - only validated findings
    - **Suggestions** (nice to have) - only validated findings
+   - **Slop Warnings** - suggestions flagged as potentially introducing slop
    - **Positive Observations** (what's good)
    - **Filtered Issues** (pre-existing or out-of-scope) - shown separately
 
-8. **Provide Action Plan**
+9. **Provide Action Plan**
 
    Organize findings:
    ```markdown
@@ -88,6 +99,10 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
    ## Suggestions (X found)
    - [agent-name]: Suggestion [file:line]
+
+   ## Slop Warnings (X found)
+   - [agent-name]: Suggestion [file:line]
+     Warning: Would introduce [slop-type] - [explanation]
 
    ## Filtered (Pre-existing/Out-of-scope)
    <collapsed>
@@ -155,6 +170,11 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 - Checks CLAUDE.md compliance
 - Detects bugs and issues
 - Reviews general code quality
+
+**kramme:deslop-reviewer**:
+- Detects AI-generated code patterns
+- Flags unnecessary comments, defensive overkill, type workarounds
+- Meta-reviews other agents' suggestions for slop potential
 
 **kramme:code-simplifier**:
 - Simplifies complex code
