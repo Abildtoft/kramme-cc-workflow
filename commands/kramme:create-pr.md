@@ -210,28 +210,7 @@ multiSelect: false
    mcp__linear__get_issue with id: {issue-id}
    ```
 
-3. **If fetch succeeds and `branchName` is available:**
-   - Use the `branchName` directly from the Linear response
-   - Create and switch to branch:
-     ```bash
-     git checkout -b {branchName}
-     ```
-
-4. **If fetch succeeds but `branchName` is empty/missing:**
-   - Ask for user initials:
-     ```yaml
-     header: "Initials"
-     question: "Enter your initials for the branch name (e.g., 'jd'):"
-     options: []
-     ```
-   - Generate branch name: `{initials}/{issue-id-lowercase}-{sanitized-title}`
-   - Sanitize title: lowercase, replace spaces/special chars with hyphens, max 50 chars
-   - Create and switch to branch:
-     ```bash
-     git checkout -b {generated-branch-name}
-     ```
-
-5. **If fetch fails (MCP unavailable or issue not found):**
+3. **If fetch fails (MCP unavailable or issue not found):**
    ```
    Warning: Could not fetch Linear issue {issue-id}.
 
@@ -240,6 +219,64 @@ multiSelect: false
    Falling back to file-based branch naming.
    ```
    Continue with file-based naming (Step 3.3.3).
+
+4. **If fetch succeeds and `branchName` is available:**
+   - Use the `branchName` directly from the Linear response as `{branchName}`
+
+5. **If fetch succeeds but `branchName` is empty/missing:**
+   - Ask for user initials:
+     ```yaml
+     header: "Initials"
+     question: "Enter your initials for the branch name (e.g., 'jd'):"
+     options: []
+     ```
+   - Generate branch name: `{initials}/{issue-id-lowercase}-{sanitized-title}`
+   - Sanitize title: lowercase, replace spaces/special chars with hyphens, max 50 chars
+   - Use the generated name as `{branchName}`
+
+6. **Check if branch exists (local or remote):**
+   ```bash
+   # Check if branch exists locally
+   git rev-parse --verify {branchName} 2>/dev/null
+
+   # Check if branch exists on remote
+   git ls-remote --heads origin {branchName}
+   ```
+
+   **If branch exists locally:**
+
+   Use AskUserQuestion:
+
+   ```yaml
+   header: "Branch Exists"
+   question: "Branch '{branchName}' already exists locally. What should I do?"
+   options:
+     - label: "Switch to existing branch"
+       description: "Continue work on the existing branch"
+     - label: "Delete and recreate"
+       description: "Start fresh from main/master"
+     - label: "Use different name"
+       description: "Create branch with '-v2' suffix"
+   ```
+
+   **If branch exists only on remote:**
+
+   ```bash
+   git checkout -b {branchName} origin/{branchName}
+   ```
+
+7. **If branch doesn't exist:**
+
+   ```bash
+   # Determine base branch
+   BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||') || BASE="main"
+
+   # Fetch latest
+   git fetch origin $BASE
+
+   # Create branch from latest base
+   git checkout -b {branchName} origin/$BASE
+   ```
 
 #### 3.3.3 If "No, generate from file changes" (or fallback):
 
