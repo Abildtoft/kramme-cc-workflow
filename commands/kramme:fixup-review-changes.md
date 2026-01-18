@@ -186,7 +186,14 @@ If the rebase succeeds, proceed to Step 6.
 
 If the rebase fails (conflicts), see Error Handling below.
 
-### Step 6: Report Results
+### Step 6: Update REVIEW_RESPONSES.md (if present)
+
+If `REVIEW_RESPONSES.md` exists in the project root:
+
+1. **Update commit hashes** — For each finding that was addressed, update its `**Commit:**` field with the short hash of the commit containing the fix
+2. **Do not commit this file** — `REVIEW_RESPONSES.md` is a working document for tracking review responses; it should never be committed
+
+### Step 7: Report Results
 
 Show the final commit log:
 
