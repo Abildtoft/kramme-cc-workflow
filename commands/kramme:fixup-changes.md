@@ -1,9 +1,9 @@
 ---
-name: kramme:fixup-review-changes
+name: kramme:fixup-changes
 description: Intelligently fixup unstaged changes into existing commits on the current branch. Maps each changed file to its most recent commit, validates (build/test/lint), creates fixup commits, and autosquashes.
 ---
 
-# Fixup Review Changes
+# Fixup Changes
 
 Intelligently fixup unstaged changes into existing commits on the current branch, with validation.
 
@@ -13,7 +13,7 @@ Intelligently fixup unstaged changes into existing commits on the current branch
 
 Before proceeding with the workflow, check if the user provided additional instructions after the command:
 
-1. **Parse arguments and instructions** — If the user wrote `/kramme:fixup-review-changes <something>`:
+1. **Parse arguments and instructions** — If the user wrote `/kramme:fixup-changes <something>`:
    - Extract known flags (`--skip-tests`, `--skip-build`, `--skip-lint`, `--skip-all`, `--no-confirm`, `--base=<branch>`)
    - Any remaining text after flags is treated as **custom instructions**
 
@@ -258,24 +258,24 @@ Any text after the command (and flags) is treated as custom instructions that in
 
 ```bash
 # Standard usage - auto-detect base, validate and fixup
-/fixup-review-changes
+/fixup-changes
 
 # Skip all validations (already tested manually)
-/fixup-review-changes --skip-all
+/fixup-changes --skip-all
 
 # Skip only tests
-/fixup-review-changes --skip-tests
+/fixup-changes --skip-tests
 
 # Explicit base branch
-/fixup-review-changes --base=develop
+/fixup-changes --base=develop
 
 # Non-interactive (for scripting)
-/fixup-review-changes --skip-all --no-confirm
+/fixup-changes --skip-all --no-confirm
 
 # With custom instructions
-/fixup-review-changes Only process the API controller changes
-/fixup-review-changes --skip-tests Focus on the frontend, ignore backend files
-/fixup-review-changes Group related changes together even if they touched different commits
+/fixup-changes Only process the API controller changes
+/fixup-changes --skip-tests Focus on the frontend, ignore backend files
+/fixup-changes Group related changes together even if they touched different commits
 ```
 
 ## Notes
