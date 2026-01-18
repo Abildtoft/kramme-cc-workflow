@@ -5,7 +5,7 @@
 # - Linear issue ID from branch name (pattern: {prefix}/{TEAM-ID}-description)
 # - Open PR/MR for the current branch (GitHub or GitLab)
 #
-# Outputs JSON with systemMessage containing clickable links.
+# Outputs JSON with systemMessage containing plain URLs (markdown not rendered in CLI).
 
 # Get current branch
 BRANCH=$(git branch --show-current 2>/dev/null)
@@ -22,7 +22,7 @@ PR_LINK=""
 # Pattern: {prefix}/{TEAM-ID}-description where TEAM is WAN|HEA|MEL|POT|FIR|FEG
 ISSUE_ID=$(echo "$BRANCH" | grep -oiE '(wan|hea|mel|pot|fir|feg)-[0-9]+' | head -1 | tr '[:lower:]' '[:upper:]')
 if [ -n "$ISSUE_ID" ]; then
-    LINEAR_LINK="[${ISSUE_ID}](https://linear.app/consensusaps/issue/${ISSUE_ID})"
+    LINEAR_LINK="https://linear.app/consensusaps/issue/${ISSUE_ID}"
 fi
 
 # Detect platform and check for open PR/MR
@@ -32,9 +32,8 @@ if echo "$REMOTE_URL" | grep -q "github.com"; then
     PR_JSON=$(gh pr view --json url,number 2>/dev/null)
     if [ $? -eq 0 ] && [ -n "$PR_JSON" ]; then
         PR_URL=$(echo "$PR_JSON" | grep -o '"url":"[^"]*"' | cut -d'"' -f4)
-        PR_NUM=$(echo "$PR_JSON" | grep -o '"number":[0-9]*' | cut -d':' -f2)
         if [ -n "$PR_URL" ]; then
-            PR_LINK="[PR #${PR_NUM}](${PR_URL})"
+            PR_LINK="GitHub: ${PR_URL}"
         fi
     fi
 elif echo "$REMOTE_URL" | grep -qE "(gitlab.com|consensusaps)"; then
@@ -96,14 +95,13 @@ PY
         fi
 
         if [ -z "$MR_URL" ]; then
-            MR_URL=$(echo "$MR_JSON" | tr '\n' ' ' | grep -o '"web_url"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)
+            # Match only the MR's web_url (contains /-/merge_requests/), not author/assignee URLs
+            MR_URL=$(echo "$MR_JSON" | tr '\n' ' ' | grep -oE '"web_url"[[:space:]]*:[[:space:]]*"[^"]*/-/merge_requests/[0-9]+"' | head -1 | grep -oE 'https://[^"]+')
             MR_NUM=$(echo "$MR_JSON" | tr '\n' ' ' | grep -o '"iid"[[:space:]]*:[[:space:]]*[0-9]*' | head -1 | sed 's/[^0-9]*//g')
         fi
 
-        if [ -n "$MR_URL" ] && [ -n "$MR_NUM" ]; then
-            PR_LINK="[MR !${MR_NUM}](${MR_URL})"
-        elif [ -n "$MR_URL" ]; then
-            PR_LINK="[MR](${MR_URL})"
+        if [ -n "$MR_URL" ]; then
+            PR_LINK="GitLab: ${MR_URL}"
         fi
     fi
 fi

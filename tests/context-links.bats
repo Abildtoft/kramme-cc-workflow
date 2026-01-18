@@ -164,7 +164,7 @@ setup() {
     export MOCK_GH_PR_NUMBER="42"
     run bash "$HOOK"
     [ "$status" -eq 0 ]
-    [[ "$output" == *"PR #42"* ]]
+    [[ "$output" == *"GitHub:"* ]]
     [[ "$output" == *"github.com"* ]]
 }
 
@@ -176,9 +176,9 @@ setup() {
     run bash "$HOOK"
     [ "$status" -eq 0 ]
     [[ "$output" == *"Linear:"* ]]
-    [[ "$output" == *"WAN-123"* ]]
+    [[ "$output" == *"linear.app"* ]]
     [[ "$output" == *"|"* ]]
-    [[ "$output" == *"PR #42"* ]]
+    [[ "$output" == *"GitHub:"* ]]
 }
 
 @test "shows only PR when no Linear issue in branch" {
@@ -188,7 +188,7 @@ setup() {
     export MOCK_GH_PR_NUMBER="99"
     run bash "$HOOK"
     [ "$status" -eq 0 ]
-    [[ "$output" == *"PR #99"* ]]
+    [[ "$output" == *"GitHub:"* ]]
     [[ "$output" != *"Linear:"* ]]
 }
 
@@ -198,8 +198,8 @@ setup() {
     export MOCK_GH_PR_EXISTS=""
     run bash "$HOOK"
     [ "$status" -eq 0 ]
-    [[ "$output" == *"WAN-123"* ]]
-    [[ "$output" != *"PR #"* ]]
+    [[ "$output" == *"linear.app"* ]]
+    [[ "$output" != *"GitHub:"* ]]
 }
 
 # ============================================================================
@@ -213,7 +213,8 @@ setup() {
     export MOCK_GLAB_MR_NUMBER="55"
     run bash "$HOOK"
     [ "$status" -eq 0 ]
-    [[ "$output" == *"MR !55"* ]]
+    [[ "$output" == *"GitLab:"* ]]
+    [[ "$output" == *"merge_requests/55"* ]]
 }
 
 @test "detects GitLab MR with pretty JSON output" {
@@ -224,7 +225,8 @@ setup() {
     export MOCK_GLAB_JSON_PRETTY="true"
     run bash "$HOOK"
     [ "$status" -eq 0 ]
-    [[ "$output" == *"MR !56"* ]]
+    [[ "$output" == *"GitLab:"* ]]
+    [[ "$output" == *"merge_requests/56"* ]]
 }
 
 @test "detects GitLab MR via consensusaps domain" {
@@ -234,7 +236,8 @@ setup() {
     export MOCK_GLAB_MR_NUMBER="77"
     run bash "$HOOK"
     [ "$status" -eq 0 ]
-    [[ "$output" == *"MR !77"* ]]
+    [[ "$output" == *"GitLab:"* ]]
+    [[ "$output" == *"merge_requests/77"* ]]
 }
 
 @test "combines Linear and GitLab MR" {
@@ -245,8 +248,23 @@ setup() {
     run bash "$HOOK"
     [ "$status" -eq 0 ]
     [[ "$output" == *"Linear:"* ]]
-    [[ "$output" == *"HEA-500"* ]]
-    [[ "$output" == *"MR !88"* ]]
+    [[ "$output" == *"linear.app"* ]]
+    [[ "$output" == *"GitLab:"* ]]
+}
+
+@test "extracts MR URL not author URL from nested JSON" {
+    export MOCK_GIT_BRANCH="feature/WAN-123-test"
+    export MOCK_GIT_REMOTE="https://gitlab.com/user/repo.git"
+    export MOCK_GLAB_MR_EXISTS="true"
+    export MOCK_GLAB_MR_NUMBER="10013"
+    export MOCK_GLAB_JSON_PRETTY="true"
+    run bash "$HOOK"
+    [ "$status" -eq 0 ]
+    # Should contain the MR URL with merge_requests path
+    [[ "$output" == *"merge_requests/10013"* ]]
+    # Should NOT contain author profile URL
+    [[ "$output" != *"gitlab.com/authoruser"* ]]
+    [[ "$output" != *"gitlab.com/assigneeuser"* ]]
 }
 
 # ============================================================================

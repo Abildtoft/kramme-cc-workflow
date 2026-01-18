@@ -10,17 +10,22 @@ case "$*" in
         if [ -n "$MOCK_GLAB_MR_EXISTS" ]; then
             MR_NUM="${MOCK_GLAB_MR_NUMBER:-1}"
             if [ -n "$MOCK_GLAB_JSON_PRETTY" ]; then
+                # Matches real glab output: author.web_url appears BEFORE MR's web_url
                 cat <<EOF
 {
   "iid": ${MR_NUM},
-  "web_url": "https://gitlab.com/user/repo/-/merge_requests/${MR_NUM}",
   "author": {
-    "web_url": "https://gitlab.com/user"
-  }
+    "web_url": "https://gitlab.com/authoruser"
+  },
+  "assignee": {
+    "web_url": "https://gitlab.com/assigneeuser"
+  },
+  "web_url": "https://gitlab.com/user/repo/-/merge_requests/${MR_NUM}"
 }
 EOF
             else
-                echo "{\"iid\":${MR_NUM},\"web_url\":\"https://gitlab.com/user/repo/-/merge_requests/${MR_NUM}\"}"
+                # Compact JSON with author.web_url appearing first (like real glab output)
+                echo "{\"iid\":${MR_NUM},\"author\":{\"web_url\":\"https://gitlab.com/authoruser\"},\"web_url\":\"https://gitlab.com/user/repo/-/merge_requests/${MR_NUM}\"}"
             fi
             exit 0
         else
