@@ -14,6 +14,7 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the p
 | `/kramme:deslop` | Remove AI-generated code slop from a branch. Uses `kramme:deslop-reviewer` agent to identify slop, then fixes the issues. |
 | `/kramme:verify` | Run verification checks (tests, formatting, builds, linting, type checking) for affected code. Automatically detects project type and runs appropriate commands. |
 | `/kramme:iterate-pr` | Iterate on a PR until CI passes. Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
+| `/kramme:recreate-commits` | Recreate current branch with narrative-quality commits. Creates a clean branch with logical, reviewer-friendly commit history. |
 | `/kramme:resolve-review-findings` | Resolve findings from code reviews. Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
 | `/kramme:explore-interview` | Conduct an in-depth interview about a topic/proposal to uncover requirements. Uses structured questioning to explore features, processes, or architecture decisions. |
 | `/kramme:review-pr` | Run comprehensive PR review using specialized agents. Supports reviewing comments, tests, errors, types, and code quality. Can run agents sequentially or in parallel. |
