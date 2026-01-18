@@ -94,11 +94,24 @@ def git_commit_and_push_branch(
     branch_name = f"release/v{version}"
 
     if dry_run:
+        print(f"  Would clean up existing branch: {branch_name} (if exists)")
         print(f"  Would run: git checkout -b {branch_name}")
         print(f"  Would run: git add .claude-plugin/plugin.json")
         print(f'  Would run: git commit -m "Release v{version}"')
         print(f"  Would run: git push origin {branch_name}")
     else:
+        # Clean up any existing release branch (from failed previous attempts)
+        subprocess.run(
+            ["git", "branch", "-D", branch_name],
+            cwd=repo_root,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "push", "origin", "--delete", branch_name],
+            cwd=repo_root,
+            capture_output=True,
+        )
+
         # Create release branch
         subprocess.run(
             ["git", "checkout", "-b", branch_name], cwd=repo_root, check=True
