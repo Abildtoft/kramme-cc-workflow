@@ -54,6 +54,7 @@ Edit `hooks/hooks.json` to add event handlers (PreToolUse, PostToolUse, SessionS
 - Keep instructions concise and actionable
 - **Document all components in README.md** - Every command, skill, agent, and hook must be documented in the README with a description of what it does and when to use it
 - Use "Pull Request" (PR) terminology, not "Merge Request" (MR) — even when supporting GitLab
+- **Use conventional commits** - Commit messages should follow [Conventional Commits](https://www.conventionalcommits.org/) format (`feat:`, `fix:`, `docs:`, etc.) for automatic CHANGELOG generation
 
 ## Development
 

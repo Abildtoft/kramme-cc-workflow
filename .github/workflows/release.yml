@@ -58,8 +58,29 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          VERSION="${{ steps.release.outputs.version }}"
+
+          # Extract changelog section for this version
+          CHANGELOG_SECTION=$(python3 -c "
+          import re, sys
+          version = sys.argv[1]
+          content = open('CHANGELOG.md').read()
+          pattern = rf'## \[{re.escape(version)}\].*?(?=## \[|\Z)'
+          match = re.search(pattern, content, re.DOTALL)
+          print(match.group(0).strip() if match else '')
+          " "$VERSION" 2>/dev/null || echo "")
+
+          # Create PR with changelog in body
           gh pr create \
-            --title "Release v${{ steps.release.outputs.version }}" \
-            --body "Automated release PR for v${{ steps.release.outputs.version }}" \
+            --title "Release v${VERSION}" \
+            --body "$(cat <<EOF
+          ## Release v${VERSION}
+
+          ${CHANGELOG_SECTION}
+
+          ---
+          Automated release PR
+          EOF
+          )" \
             --base main \
-            --head "release/v${{ steps.release.outputs.version }}"
+            --head "release/v${VERSION}"

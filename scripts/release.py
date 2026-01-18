@@ -21,6 +21,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from changelog import generate_changelog
+
 
 def get_repo_root() -> Path:
     """Get the repository root directory."""
@@ -96,7 +98,7 @@ def git_commit_and_push_branch(
     if dry_run:
         print(f"  Would clean up existing branch: {branch_name} (if exists)")
         print(f"  Would run: git checkout -b {branch_name}")
-        print(f"  Would run: git add .claude-plugin/plugin.json")
+        print(f"  Would run: git add .claude-plugin/plugin.json CHANGELOG.md")
         print(f'  Would run: git commit -m "Release v{version}"')
         print(f"  Would run: git push origin {branch_name}")
     else:
@@ -119,7 +121,9 @@ def git_commit_and_push_branch(
 
         # Stage and commit
         subprocess.run(
-            ["git", "add", ".claude-plugin/plugin.json"], cwd=repo_root, check=True
+            ["git", "add", ".claude-plugin/plugin.json", "CHANGELOG.md"],
+            cwd=repo_root,
+            check=True,
         )
         subprocess.run(
             ["git", "commit", "-m", f"Release v{version}"], cwd=repo_root, check=True
@@ -187,8 +191,14 @@ def main() -> int:
     print("1. Updating version...")
     update_plugin_json(repo_root, new_version, args.dry_run)
 
-    # 2. Git commit and push branch
-    print("2. Creating release branch...")
+    # 2. Generate changelog
+    print("2. Generating changelog...")
+    changelog_updated = generate_changelog(repo_root, new_version, dry_run=args.dry_run)
+    if not changelog_updated and not args.dry_run:
+        print("  Changelog already up to date or no changes found")
+
+    # 3. Git commit and push branch
+    print("3. Creating release branch...")
     branch_name = git_commit_and_push_branch(repo_root, new_version, args.dry_run, args.ci)
 
     if args.ci:
