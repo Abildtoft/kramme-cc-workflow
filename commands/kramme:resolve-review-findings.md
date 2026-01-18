@@ -93,7 +93,7 @@ Work through each finding in priority order, applying the guidelines below.
 
 - **Validate** — Check for and fix any new linting, formatting, and testing issues
 - **Do NOT resolve or reply to comments** — Never mark review comments as resolved or post replies on the platform
-- **Generate summary** — Create `REVIEW_RESPONSE.md` in the project root (see Output format below)
+- **Generate summary** — Create `REVIEW_RESPONSES.md` in the project root (see Output format below)
 
 ## Guidelines
 
@@ -118,7 +118,7 @@ Work through each finding in priority order, applying the guidelines below.
 
 ## Output format
 
-Create `REVIEW_RESPONSE.md` in the project root.
+Create `REVIEW_RESPONSES.md` in the project root.
 
 ### For external reviews
 
