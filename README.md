@@ -162,7 +162,7 @@ claude /plugin install /path/to/kramme-cc-workflow
 For marketplace installs:
 
 ```bash
-claude plugin update kramme-cc-workflow@kramme-cc-workflow
+claude /plugin marketplace update kramme-cc-workflow
 ```
 
 For Git or local installs, re-run the install command to pull the latest version:
