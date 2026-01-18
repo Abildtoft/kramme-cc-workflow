@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,17 +48,18 @@ jobs:
 
       - name: Run release script
         id: release
-        env:
-          DRY_RUN: ${{ inputs.dry_run }}
         run: |
           python3 scripts/release.py ${{ inputs.version_type }} --ci
+          VERSION=$(python3 -c "import json; print(json.load(open('.claude-plugin/plugin.json'))['version'])")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release
+      - name: Create Pull Request
         if: ${{ !inputs.dry_run }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION=$(python3 -c "import json; print(json.load(open('.claude-plugin/plugin.json'))['version'])")
-          gh release create "v${VERSION}" \
-            --title "v${VERSION}" \
-            --generate-notes
+          gh pr create \
+            --title "Release v${{ steps.release.outputs.version }}" \
+            --body "Automated release PR for v${{ steps.release.outputs.version }}" \
+            --base main \
+            --head "release/v${{ steps.release.outputs.version }}"

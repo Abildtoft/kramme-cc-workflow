@@ -87,55 +87,41 @@ def run_tests(repo_root: Path) -> bool:
     return result.returncode == 0
 
 
-def git_commit_and_tag(
+def git_commit_and_push_branch(
     repo_root: Path, version: str, dry_run: bool, ci_mode: bool
-) -> None:
-    """Create git commit and tag."""
-    tag = f"v{version}"
+) -> str:
+    """Create release branch with version bump commit. Returns branch name."""
+    branch_name = f"release/v{version}"
 
     if dry_run:
+        print(f"  Would run: git checkout -b {branch_name}")
         print(f"  Would run: git add .claude-plugin/plugin.json")
-        print(f'  Would run: git commit -m "Release {tag}"')
-        print(f"  Would run: git tag {tag}")
-        print(f"  Would run: git push origin main --tags")
+        print(f'  Would run: git commit -m "Release v{version}"')
+        print(f"  Would run: git push origin {branch_name}")
     else:
+        # Create release branch
+        subprocess.run(
+            ["git", "checkout", "-b", branch_name], cwd=repo_root, check=True
+        )
+
+        # Stage and commit
         subprocess.run(
             ["git", "add", ".claude-plugin/plugin.json"], cwd=repo_root, check=True
         )
         subprocess.run(
-            ["git", "commit", "-m", f"Release {tag}"], cwd=repo_root, check=True
+            ["git", "commit", "-m", f"Release v{version}"], cwd=repo_root, check=True
         )
-        subprocess.run(["git", "tag", tag], cwd=repo_root, check=True)
 
         if ci_mode:
-            # In CI, push changes
             subprocess.run(
-                ["git", "push", "origin", "HEAD", "--tags"], cwd=repo_root, check=True
+                ["git", "push", "origin", branch_name], cwd=repo_root, check=True
             )
-            print(f"  Pushed commit and tag {tag}")
+            print(f"  Pushed branch {branch_name}")
         else:
-            print(f"  Created commit and tag {tag}")
-            print(f"  Run: git push origin main --tags")
+            print(f"  Created branch {branch_name}")
+            print(f"  Run: git push origin {branch_name}")
 
-
-def create_github_release(version: str, dry_run: bool) -> None:
-    """Create GitHub release using gh CLI."""
-    tag = f"v{version}"
-
-    if dry_run:
-        print(f'  Would run: gh release create {tag} --title "{tag}" --generate-notes')
-    else:
-        result = subprocess.run(
-            ["gh", "release", "create", tag, "--title", tag, "--generate-notes"],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0:
-            print(f"  Created GitHub release: {result.stdout.strip()}")
-        else:
-            print(f"  Failed to create release: {result.stderr}")
-            print("  You can create it manually or run:")
-            print(f'    gh release create {tag} --title "{tag}" --generate-notes')
+    return branch_name
 
 
 def main() -> int:
@@ -188,16 +174,19 @@ def main() -> int:
     print("1. Updating version...")
     update_plugin_json(repo_root, new_version, args.dry_run)
 
-    # 2. Git commit and tag
-    print("2. Creating git commit and tag...")
-    git_commit_and_tag(repo_root, new_version, args.dry_run, args.ci)
+    # 2. Git commit and push branch
+    print("2. Creating release branch...")
+    branch_name = git_commit_and_push_branch(repo_root, new_version, args.dry_run, args.ci)
 
-    # 3. Create GitHub release (only in interactive mode)
-    if not args.ci:
-        print("3. Creating GitHub release...")
-        create_github_release(new_version, args.dry_run)
+    if args.ci:
+        print(f"\nRelease branch {branch_name} pushed. PR will be created by workflow.")
+    else:
+        print(f"\nRelease branch {branch_name} created.")
+        print("\nNext steps:")
+        print(f"  1. Push branch: git push origin {branch_name}")
+        print(f"  2. Create PR to main")
+        print(f"  3. After PR merge, tag and release will be created automatically")
 
-    print(f"\nRelease v{new_version} complete!")
     return 0
 
 

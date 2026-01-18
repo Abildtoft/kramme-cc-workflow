@@ -23,9 +23,9 @@ Trigger a release from the GitHub UI:
 The workflow will:
 - Run tests
 - Bump version in `plugin.json`
-- Create git tag
-- Push changes
-- Create GitHub Release with auto-generated notes
+- Create a release branch and commit
+- Create a Pull Request to main
+- After PR merge, automatically create git tag and GitHub Release
 
 ### Option 2: Local Script
 
@@ -52,13 +52,15 @@ The script will:
 - Run tests
 - Prompt for confirmation
 - Bump version in `plugin.json`
-- Create git commit and tag
-- Create GitHub Release (requires `gh` CLI)
+- Create a release branch and commit
 
-After running, push the changes:
+After running, push the branch and create a PR:
 ```bash
-git push origin main --tags
+git push origin release/vX.Y.Z
+gh pr create --base main --head release/vX.Y.Z
 ```
+
+After the PR is merged, the tag and GitHub Release will be created automatically.
 
 ## Manual Release
 
@@ -79,7 +81,13 @@ Use the changelog-generator skill:
 Create a changelog for commits since the last release tag
 ```
 
-### 3. Bump Version
+### 3. Create Release Branch
+
+```bash
+git checkout -b release/vX.Y.Z
+```
+
+### 4. Bump Version
 
 Update `.claude-plugin/plugin.json`:
 ```json
@@ -88,18 +96,30 @@ Update `.claude-plugin/plugin.json`:
 }
 ```
 
-### 4. Commit and Tag
+### 5. Commit and Push
 
 ```bash
 git add .claude-plugin/plugin.json CHANGELOG.md
 git commit -m "Release vX.Y.Z"
-git tag vX.Y.Z
-git push origin main --tags
+git push origin release/vX.Y.Z
 ```
 
-### 5. Create GitHub Release
+### 6. Create Pull Request
 
 ```bash
+gh pr create --base main --head release/vX.Y.Z --title "Release vX.Y.Z"
+```
+
+### 7. After PR Merge
+
+The tag and GitHub Release will be created automatically by the `release-tag.yml` workflow.
+
+To create manually:
+```bash
+git checkout main
+git pull
+git tag vX.Y.Z
+git push origin vX.Y.Z
 gh release create vX.Y.Z --title "vX.Y.Z" --generate-notes
 ```
 
