@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.2] - 2026-01-19
+
+### Added
+- Retain original Dev Ask content in Linear issues (#43)
+- Enforce conventional commits for PR titles (#42)
+
+### Changed
+- Clarify recreate-commits works in-place, not on clean branch (#41)
+
 ## [0.3.1] - 2026-01-19
 
 ### Added
@@ -103,6 +112,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.3.2]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/Abildtoft/kramme-cc-workflow/releases/tag/v0.3.1
 [0.3.0]: https://github.com/Abildtoft/kramme-cc-workflow/releases/tag/v0.3.0
 [0.2.0]: https://github.com/Abildtoft/kramme-cc-workflow/releases/tag/v0.2.0
