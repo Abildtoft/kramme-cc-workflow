@@ -14,7 +14,7 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the p
 | `/kramme:deslop` | Remove AI-generated code slop from a branch. Uses `kramme:deslop-reviewer` agent to identify slop, then fixes the issues. |
 | `/kramme:verify` | Run verification checks (tests, formatting, builds, linting, type checking) for affected code. Automatically detects project type and runs appropriate commands. |
 | `/kramme:iterate-pr` | Iterate on a PR until CI passes. Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
-| `/kramme:recreate-commits` | Recreate current branch with narrative-quality commits. Creates a clean branch with logical, reviewer-friendly commit history. |
+| `/kramme:recreate-commits` | Recreate current branch in-place with narrative-quality commits and logical, reviewer-friendly commit history. |
 | `/kramme:resolve-review-findings` | Resolve findings from code reviews. Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
 | `/kramme:explore-interview` | Conduct an in-depth interview about a topic/proposal to uncover requirements. Uses structured questioning to explore features, processes, or architecture decisions. |
 | `/kramme:review-pr` | Run comprehensive PR review using specialized agents. Supports reviewing comments, tests, errors, types, and code quality. Can run agents sequentially or in parallel. |
@@ -46,8 +46,7 @@ Skills are auto-triggered based on context. Claude will invoke these automatical
 | `kramme:connect-modernize-legacy-angular-component` | Modernizing legacy Angular components in Connect monorepo |
 | `kramme:markdown-converter` | Converting documents (PDF, Word, Excel, images, audio, etc.) to Markdown using markitdown |
 | `kramme:pr-description-generator` | Generating PR descriptions by analyzing git changes, commit history, and Linear issues |
-| `kramme:recreate-commits` | Creating a clean branch with narrative-quality commits from the current branch |
-| `kramme:reimplement-in-clean-branch` | Recreating a branch with narrative-quality commits in a clean branch |
+| `kramme:recreate-commits` | Recreating the current branch in-place with narrative-quality commits |
 | `kramme:structured-implementation-workflow` | Detecting LOG.md and OPEN_ISSUES.md files to track complex implementations |
 | `kramme:verification-before-completion` | About to claim work is complete/fixed/passing - requires evidence before assertions |
 
