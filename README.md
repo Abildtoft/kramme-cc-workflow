@@ -1,5 +1,3 @@
-Hi Patrick
-
 # kramme-cc-workflow
 
 A Claude Code plugin providing tooling for daily workflow tasks. These are the personal workflow commands I've been using in my day-to-day development, now consolidated into a plugin.
