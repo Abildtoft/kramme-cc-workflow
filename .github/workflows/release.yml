@@ -72,7 +72,7 @@ jobs:
 
           # Create PR with changelog in body
           gh pr create \
-            --title "Release v${VERSION}" \
+            --title "chore: release v${VERSION}" \
             --body "$(cat <<EOF
           ## Release v${VERSION}
 

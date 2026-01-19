@@ -1,0 +1,30 @@
+name: PR Title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  validate:
+    name: Validate PR title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check conventional commit format
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          # Match scripts/changelog.py pattern (case-insensitive)
+          TITLE_LOWER=$(echo "$PR_TITLE" | tr '[:upper:]' '[:lower:]')
+          PATTERN='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]+\))?!?:[[:space:]].+$'
+
+          if [[ ! "$TITLE_LOWER" =~ $PATTERN ]]; then
+            echo "::error::PR title must follow conventional commits: <type>(<scope>)?: <description>"
+            echo ""
+            echo "Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+            echo "Examples: feat: add feature | fix(auth): resolve bug | docs: update README"
+            echo ""
+            echo "Your title: $PR_TITLE"
+            exit 1
+          fi
+
+          echo "Valid: $PR_TITLE"

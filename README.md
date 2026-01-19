@@ -98,6 +98,25 @@ Install: `brew install trash`
 
 > **Note:** This is a best-effort defense, not a comprehensive security barrier. There will always be edge cases that aren't covered.
 
+## Contributing
+
+### PR Title Format
+
+PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>(<scope>)?: <description>
+```
+
+**Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+
+**Examples:**
+- `feat: add new skill for code review`
+- `fix(hooks): resolve context detection issue`
+- `docs: update installation instructions`
+
+The PR title becomes the merge commit message and is used for automatic changelog generation.
+
 ## Testing
 
 The hooks are tested using [BATS](https://github.com/bats-core/bats-core) (Bash Automated Testing System). The test suite also requires `jq` for JSON parsing in hooks.
