@@ -32,7 +32,19 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Check if PR already exists: `gh pr view`
    - Identify file types and what reviews apply
 
-4. **Determine Applicable Reviews**
+4. **Check for Previous Review Responses**
+
+   If `REVIEW_RESPONSES.md` exists in the project root:
+   - Parse the file to extract previously addressed findings
+   - Extract for each finding: file path, line number, issue description, action taken
+   - Store this context for filtering in Step 9
+
+   Previously addressed findings have the format:
+   - **File:** `path/to/file.ts:123`
+   - **Issue/Finding:** [description]
+   - **Action taken:** [what was done]
+
+5. **Determine Applicable Reviews**
 
    Based on changes:
    - **Always applicable**: kramme:code-reviewer (general quality)
@@ -43,7 +55,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **If types added/modified**: kramme:type-design-analyzer
    - **After passing review**: kramme:code-simplifier (polish and refine)
 
-5. **Launch Review Agents**
+6. **Launch Review Agents**
 
    **Sequential approach** (one at a time):
    - Easier to understand and act on
@@ -55,7 +67,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Faster for comprehensive review
    - Results come back together
 
-6. **Validate Relevance**
+7. **Validate Relevance**
 
    After collecting findings from all agents:
    - Launch **kramme:pr-relevance-validator** with all findings
@@ -63,7 +75,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Filters out pre-existing issues and out-of-scope problems
    - Returns only findings caused by this PR
 
-7. **Slop Meta-Review**
+8. **Slop Meta-Review**
 
    After relevance validation, review agent suggestions for slop:
    - Launch **kramme:deslop-reviewer** in meta-review mode
@@ -71,17 +83,34 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Flags suggestions that would introduce slop if implemented
    - Adds slop warnings to flagged suggestions (does not remove them)
 
-8. **Aggregate Results**
+9. **Filter Previously Addressed Findings**
 
-   After validation and slop meta-review, summarize:
+   If `REVIEW_RESPONSES.md` was found in Step 4:
+   - Cross-reference validated findings against previously addressed findings
+   - **Only filter** if the finding is essentially the same issue:
+     - Same file
+     - Similar line number (within ~10 lines, accounting for code shifts)
+     - Same underlying issue (semantic match on root cause)
+   - **Do NOT filter** (keep as active finding) if:
+     - The issue description is substantively different (different root cause)
+     - The severity escalated (was suggestion, now critical)
+     - The finding identifies a problem with the fix itself
+     - The previous action was "No action" or a deferral
+   - When uncertain, err on the side of keeping the finding active
+   - Add filtered findings to "Previously Addressed" section
+
+10. **Aggregate Results**
+
+   After validation, slop meta-review, and previous-response filtering, summarize:
    - **Critical Issues** (must fix before merge) - only validated findings
    - **Important Issues** (should fix) - only validated findings
    - **Suggestions** (nice to have) - only validated findings
    - **Slop Warnings** - suggestions flagged as potentially introducing slop
    - **Positive Observations** (what's good)
    - **Filtered Issues** (pre-existing or out-of-scope) - shown separately
+   - **Previously Addressed** (findings matching REVIEW_RESPONSES.md) - shown separately
 
-9. **Provide Action Plan**
+11. **Provide Action Plan**
 
    If Critical or Important issues were found, include a suggestion to run `/kramme:resolve-review-findings` to automatically address them.
 
@@ -92,6 +121,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    ## Relevance Filter
    - X findings validated as PR-caused
    - X findings filtered (pre-existing or out-of-scope)
+   - X findings filtered (previously addressed in REVIEW_RESPONSES.md)
 
    ## Critical Issues (X found)
    - [agent-name]: Issue description [file:line]
@@ -109,6 +139,12 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    ## Filtered (Pre-existing/Out-of-scope)
    <collapsed>
    - [file:line]: Brief description - Reason filtered
+   </collapsed>
+
+   ## Filtered (Previously Addressed)
+   <collapsed>
+   - [file:line]: Brief description
+     Matched: REVIEW_RESPONSES.md - [action taken summary]
    </collapsed>
 
    ## Strengths
