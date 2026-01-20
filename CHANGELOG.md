@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0] - 2026-01-20
+
+### Added
+- Add humanize-text skill and command (#48)
+- Detect vacuous tests in test-analyzer agent (#49)
+- Check REVIEW_RESPONSES.md to avoid re-reporting addressed findings (#47)
+- Retain original Dev Ask content in Linear issues (#43)
+- Enforce conventional commits for PR titles (#42)
+
+### Changed
+- Remove greeting from README (#46)
+- Add greeting to README (#45)
+- Clarify recreate-commits works in-place, not on clean branch (#41)
+
 ## [0.3.1] - 2026-01-19
 
 ### Added
@@ -103,6 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.4.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/Abildtoft/kramme-cc-workflow/releases/tag/v0.3.1
 [0.3.0]: https://github.com/Abildtoft/kramme-cc-workflow/releases/tag/v0.3.0
 [0.2.0]: https://github.com/Abildtoft/kramme-cc-workflow/releases/tag/v0.2.0
