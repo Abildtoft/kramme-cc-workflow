@@ -388,7 +388,7 @@ fi
 
 ---
 
-## Step 6: Invoke recreate-commits Skill
+## Step 6: Invoke recreate-commits Skill (Step 6 of 9 - DO NOT STOP AFTER THIS STEP)
 
 ### 6.1 Confirm Commit Restructuring Approach
 
@@ -420,7 +420,14 @@ This skill will:
 - Create narrative-quality commits
 - **NEVER include AI attribution** (no "Generated with Claude Code" or Co-Authored-By)
 
-**IMPORTANT: After the skill completes, immediately continue to Step 7.** Do not pause or wait for user input. The skill will handle commit creation; once it finishes, proceed directly to invoking the pr-description-generator skill.
+### ⚠️ MANDATORY CONTINUATION - DO NOT STOP HERE
+
+After the recreate-commits skill completes:
+1. **DO NOT** end your turn or wait for user input
+2. **DO NOT** summarize what was done and ask "what next?"
+3. **IMMEDIATELY** invoke the pr-description-generator skill (Step 7)
+
+This is Step 6 of 9. The PR creation workflow is not complete until Step 9.
 
 ### 6.3 Handle Skill Failure
 
@@ -445,7 +452,7 @@ Recovery:
 
 ---
 
-## Step 7: Invoke pr-description-generator Skill
+## Step 7: Invoke pr-description-generator Skill (Step 7 of 9 - DO NOT STOP AFTER THIS STEP)
 
 ### 7.1 Invoke the Skill
 
@@ -461,7 +468,14 @@ This skill will:
 - Ask clarifying questions about the changes
 - Generate comprehensive description with all sections
 
-**IMPORTANT: After the skill completes, immediately continue to Step 8.** Do not pause or wait for user input. The skill will generate the description and may ask its own clarifying questions; once it produces the final description, proceed directly to the Confirmation and Creation step.
+### ⚠️ MANDATORY CONTINUATION - DO NOT STOP HERE
+
+After the pr-description-generator skill completes:
+1. **DO NOT** end your turn or wait for user input
+2. **DO NOT** just show the description and stop
+3. **IMMEDIATELY** proceed to Step 8 (Confirmation and Creation)
+
+This is Step 7 of 9. The PR creation workflow is not complete until Step 9. The skill may ask its own clarifying questions; once it produces the final description, proceed directly to the Confirmation and Creation step.
 
 ### 7.2 Capture the Description
 
@@ -495,7 +509,7 @@ None
 
 ---
 
-## Step 8: Confirmation and Creation
+## Step 8: Confirmation and Creation (Step 8 of 9)
 
 ### 8.1 Preview Summary
 
