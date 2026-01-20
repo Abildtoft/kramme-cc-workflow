@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0] - 2026-01-20
+
+### Added
+- Add PostToolUse auto-format hook (#52)
+
+### Changed
+- Add suggested permissions section to README (#53)
+
+### Fixed
+- Prevent create-pr workflow from stopping after commits (#51)
+
 ## [0.4.0] - 2026-01-20
 
 ### Added
@@ -117,6 +128,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.5.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/Abildtoft/kramme-cc-workflow/releases/tag/v0.3.1
 [0.3.0]: https://github.com/Abildtoft/kramme-cc-workflow/releases/tag/v0.3.0
