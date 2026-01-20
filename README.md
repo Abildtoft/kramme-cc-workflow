@@ -178,6 +178,128 @@ For local development:
 claude /plugin install /path/to/kramme-cc-workflow
 ```
 
+## Suggested Permissions
+
+For the best experience with this plugin, add these permissions to your Claude Code `settings.json`. This reduces approval prompts for common operations.
+
+### Minimal (Read-Only)
+
+Safe permissions for status checks and analysis only:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git show:*)",
+      "Bash(git show-ref:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git ls-remote:*)",
+      "Bash(git remote:*)",
+      "Bash(git symbolic-ref:*)",
+      "Bash(git merge-base:*)",
+      "Bash(git rev-list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(glab mr view:*)",
+      "Bash(glab mr list:*)",
+      "Bash(glab ci status:*)",
+      "Bash(glab ci list:*)",
+      "Bash(glab ci view:*)"
+    ]
+  }
+}
+```
+
+### Recommended (Full Workflow)
+
+Enables all plugin workflows including PR creation, commit management, and verification:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git show:*)",
+      "Bash(git show-ref:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git ls-remote:*)",
+      "Bash(git remote:*)",
+      "Bash(git symbolic-ref:*)",
+      "Bash(git merge-base:*)",
+      "Bash(git rev-list:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)",
+      "Bash(git fetch:*)",
+      "Bash(git push:*)",
+      "Bash(git reset:*)",
+      "Bash(git rebase:*)",
+      "Bash(git branch -D:*)",
+      "Bash(GIT_SEQUENCE_EDITOR=true git rebase:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh api:*)",
+      "Bash(glab mr create:*)",
+      "Bash(glab mr view:*)",
+      "Bash(glab mr list:*)",
+      "Bash(glab mr note:*)",
+      "Bash(glab ci status:*)",
+      "Bash(glab ci list:*)",
+      "Bash(glab ci view:*)",
+      "Bash(glab ci trace:*)",
+      "Bash(glab ci retry:*)",
+      "Bash(glab ci run:*)",
+      "Bash(glab api:*)",
+      "Bash(nx show:*)",
+      "Bash(nx affected:*)",
+      "Bash(nx format:*)",
+      "Bash(nx lint:*)",
+      "Bash(nx build:*)",
+      "Bash(nx test:*)",
+      "Bash(nx typecheck:*)",
+      "Bash(nx e2e:*)",
+      "Bash(nx run:*)",
+      "Bash(yarn exec nx:*)",
+      "Bash(corepack yarn nx:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(dotnet format:*)",
+      "Bash(dotnet ef:*)",
+      "Bash(npm run test:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run format:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run build:*)",
+      "Bash(prettier:*)",
+      "Bash(eslint:*)",
+      "Bash(tsc:*)",
+      "Bash(cat package.json:*)",
+      "Bash(find:*)"
+    ]
+  }
+}
+```
+
+> **Note:** The recommended set includes write operations like `git push`, `git reset`, and `git rebase`. Review the list and remove any you'd prefer to approve manually.
+
 ## Updating
 
 For marketplace installs:
