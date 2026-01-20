@@ -1,12 +1,12 @@
 ---
-name: kramme:humanize
-description: Humanize provided text or file content using the kramme:humanizer skill
+name: kramme:humanize-text
+description: Humanize provided text or file content using the kramme:humanize-text skill
 argument-hint: [file-path or text]
 ---
 
 # Humanize Text
 
-Use the `kramme:humanizer` skill to rewrite text so it reads more natural and human.
+Use the `kramme:humanize-text` skill to rewrite text so it reads more natural and human.
 
 ## Input Handling
 
@@ -21,7 +21,7 @@ Use the `kramme:humanizer` skill to rewrite text so it reads more natural and hu
 2. For each chunk, invoke the skill with the text:
 
 ```
-skill: "kramme:humanizer"
+skill: "kramme:humanize-text"
 ```
 
 3. Return the rewritten text, keeping the original meaning and tone.

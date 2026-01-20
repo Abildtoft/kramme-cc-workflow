@@ -1,5 +1,5 @@
 ---
-name: kramme:humanizer
+name: kramme:humanize-text
 description: Remove signs of AI-generated writing from text. Use when editing or reviewing text to make it sound more natural and human-written.
 ---
 
