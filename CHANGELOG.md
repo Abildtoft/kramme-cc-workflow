@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.6.0] - 2026-01-21
+
+### Added
+- Add kramme:rebase-pr command (#60)
+- Add noninteractive-git hook to block editor-opening git commands (#61)
+- Add confirmation hook for REVIEW_RESPONSES.md commits (#58)
+
+### Changed
+- Fix component frontmatter examples and typo (#59)
+- Add recommended MCP servers with installation instructions (#57)
+- Add Linear MCP permissions to suggested permissions section (#55)
+
+### Fixed
+- Move branch creation to immediately after issue fetch (#56)
+
 ## [0.5.0] - 2026-01-20
 
 ### Added
@@ -128,6 +143,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.6.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/Abildtoft/kramme-cc-workflow/releases/tag/v0.3.1
