@@ -310,7 +310,7 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 
 ### Mermaid Diagram Types
 
-###3 System Architecture
+#### System Architecture
 
 - **ALWAYS** use `graph TB` (top-bottom) or `graph LR` (left-right)
 - **ALWAYS** use subgraphs to organize components

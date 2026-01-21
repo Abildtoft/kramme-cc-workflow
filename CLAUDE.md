@@ -18,7 +18,9 @@ hooks/hooks.json             # Event handlers configuration
 Create `commands/<command-name>.md`:
 ```yaml
 ---
-allowed-tools: [Read, Grep, Glob]
+name: kramme:command-name
+description: Brief description shown in command list
+argument-hint: [optional-argument]
 ---
 # Command instructions here
 ```
@@ -27,9 +29,10 @@ allowed-tools: [Read, Grep, Glob]
 Create `agents/<agent-name>.md`:
 ```yaml
 ---
+name: kramme:agent-name
+description: When and how to use this agent (shown in Task tool)
 model: sonnet
 color: blue
-allowed-tools: [Read, Grep, Glob, Edit, Write]
 ---
 # Agent mission and expected output
 ```
