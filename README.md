@@ -579,14 +579,11 @@ Create markdown files in `commands/` with this format:
 
 ```markdown
 ---
-allowed-tools:
-  - Bash(git add:*)
-  - Bash(git status:*)
+name: kramme:command-name
+description: Brief description shown in command list
+argument-hint: [optional-argument]
 ---
 # Command Name
-
-## Context
-- Current directory: $PWD
 
 ## Your Task
 Describe what the command should do.
@@ -598,12 +595,10 @@ Create markdown files in `agents/` with this format:
 
 ```markdown
 ---
+name: kramme:agent-name
+description: When and how to use this agent (shown in Task tool)
 model: sonnet
 color: blue
-tools:
-  - Glob
-  - Grep
-  - Read
 ---
 # Agent Name
 
