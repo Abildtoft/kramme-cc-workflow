@@ -384,6 +384,142 @@ Enables all plugin workflows including PR creation, commit management, and verif
 
 > **Note:** The recommended set includes write operations like `git push`, `git reset`, and `git rebase`. Review the list and remove any you'd prefer to approve manually.
 
+## Recommended MCP Servers
+
+These MCP servers enhance the plugin's capabilities.
+
+| Server | Purpose |
+|--------|---------|
+| **Linear** | Issue tracking for `/kramme:implement-linear-issue` and `/kramme:define-linear-issue` |
+| **Context7** | Up-to-date library documentation retrieval |
+| **Nx MCP** | Nx monorepo tools for `/kramme:verify` in Nx workspaces |
+| **Chrome DevTools** | Browser automation and debugging |
+| **Claude in Chrome** | Browser automation via Chrome extension |
+| **Playwright** | Browser automation for testing |
+
+### Linear
+
+Official [Linear MCP server](https://linear.app/docs/mcp) for issue tracking integration.
+
+**Claude Code:**
+```bash
+claude mcp add-json linear '{"command": "npx", "args": ["-y","mcp-remote","https://mcp.linear.app/sse"]}'
+```
+
+**Claude Desktop / Cursor:**
+```json
+{
+  "mcpServers": {
+    "linear": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.linear.app/mcp"]
+    }
+  }
+}
+```
+
+Run `/mcp` in Claude Code to authenticate.
+
+### Context7
+
+[Context7](https://github.com/upstash/context7) provides up-to-date library documentation.
+
+**Claude Code:**
+```bash
+claude mcp add context7 -s user -- npx -y @upstash/context7-mcp@latest
+```
+
+**Claude Desktop / Cursor:**
+```json
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"]
+    }
+  }
+}
+```
+
+### Nx MCP
+
+[Nx MCP](https://www.npmjs.com/package/nx-mcp) provides deep access to Nx monorepo structure.
+
+**Claude Code:**
+```bash
+claude mcp add nx -s user -- npx nx-mcp@latest
+```
+
+**Claude Desktop / Cursor:**
+```json
+{
+  "mcpServers": {
+    "nx": {
+      "command": "npx",
+      "args": ["nx-mcp@latest"]
+    }
+  }
+}
+```
+
+**Tip:** Run `nx init` in your workspace to auto-configure Nx MCP and generate AI agent config files.
+
+### Chrome DevTools
+
+[Chrome DevTools MCP](https://github.com/AiDotNet/chrome-devtools-mcp) for browser debugging and automation.
+
+**Claude Code:**
+```bash
+claude mcp add chrome-devtools -s user -- npx chrome-devtools-mcp@latest
+```
+
+**Claude Desktop / Cursor:**
+```json
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["chrome-devtools-mcp@latest"]
+    }
+  }
+}
+```
+
+### Claude in Chrome
+
+Official [Chrome extension](https://claude.com/chrome) for browser automation via Claude Code.
+
+**Installation:**
+1. Install the [Claude in Chrome extension](https://chromewebstore.google.com/detail/claude-in-chrome) from Chrome Web Store
+2. Restart Chrome after installation
+3. Start Claude Code with `claude --chrome`
+4. Run `/chrome` and select "Enabled by default" to skip the flag
+
+**Requirements:** Chrome extension v1.0.36+, Claude Code v2.0.73+
+
+### Playwright
+
+[Playwright MCP](https://github.com/AiDotNet/playwright-mcp) for browser automation and testing.
+
+**Claude Code:**
+```bash
+claude mcp add playwright -s user -- npx -y @playwright/mcp@latest
+```
+
+**Claude Desktop / Cursor:**
+```json
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
+    }
+  }
+}
+```
+
+Browser binaries are installed automatically on first use.
+
 ## Updating
 
 For marketplace installs:
