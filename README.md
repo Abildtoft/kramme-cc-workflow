@@ -59,6 +59,7 @@ Event handlers that run automatically at specific points in the Claude Code life
 | Hook | Event | Description |
 |------|-------|-------------|
 | `block-rm-rf` | PreToolUse (Bash) | Blocks destructive file deletion commands and recommends using `trash` CLI instead. |
+| `noninteractive-git` | PreToolUse (Bash) | Blocks git commands that would open an interactive editor, guiding the agent to use non-interactive alternatives. |
 | `context-links` | Stop | Displays active PR/MR and Linear issue links at the end of messages. Extracts Linear issue ID from branch name (pattern: `{prefix}/{TEAM-ID}-description`) and detects open PRs/MRs for the current branch. |
 | `auto-format` | PostToolUse (Write\|Edit) | Auto-formats code after file modifications. Detects project formatter from CLAUDE.md or auto-detects from project files (package.json, pyproject.toml, etc.). |
 
@@ -99,6 +100,19 @@ The `trash` command moves files to the system Trash instead of permanently delet
 Install: `brew install trash`
 
 > **Note:** This is a best-effort defense, not a comprehensive security barrier. There will always be edge cases that aren't covered.
+
+### noninteractive-git: Blocked Commands
+
+Blocks git commands that would open an interactive editor, forcing the agent to use non-interactive alternatives:
+
+| Command | Blocked When | Non-Interactive Alternative |
+|---------|--------------|----------------------------|
+| `git commit` | Missing `-m`/`--message`/`-C`/`-F` | `git commit -m "message"` |
+| `git rebase -i` | Missing `GIT_SEQUENCE_EDITOR=` | `GIT_SEQUENCE_EDITOR=true git rebase -i ...` |
+| `git rebase --continue` | Missing `GIT_EDITOR=` | `GIT_EDITOR=true git rebase --continue` |
+| `git add -p` / `-i` | Always | `git add <explicit-files>` |
+| `git merge` | Missing `--no-edit`/`--squash`/`--ff` | `git merge --no-edit <branch>` |
+| `git cherry-pick` | Missing `--no-edit`/`-n` | `git cherry-pick --no-edit <commit>` |
 
 ### auto-format: Supported Formatters
 
