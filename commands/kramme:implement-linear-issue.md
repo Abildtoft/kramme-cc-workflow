@@ -18,6 +18,9 @@ Start implementing a Linear issue through an extensive planning phase before any
 [Validate & Fetch Issue] -> Not found? -> Show error, abort
     |
     v
+[Branch Setup] -> IMMEDIATELY create/switch to Linear's branchName
+    |
+    v
 [Parse Requirements] -> Extract acceptance criteria from description
     |
     v
@@ -36,10 +39,7 @@ Start implementing a Linear issue through an extensive planning phase before any
 [Create Technical Plan] -> Document approach, files, patterns to follow
     |
     v
-=================== SETUP PHASE ===================
-    |
-    v
-[Branch Setup] -> Use Linear's branchName field, handle uncommitted changes
+=================== EXECUTION PHASE ===================
     |
     v
 [Approach Selection] -> AskUserQuestion with 3 options
@@ -130,9 +130,102 @@ Try again with /kramme:implement-linear-issue <correct-issue-id>
 
 ---
 
-## Step 2: Parse and Present Issue Context
+## Step 2: Branch Setup (MANDATORY - DO IMMEDIATELY)
 
-### 2.1 Parse Issue Description
+**CRITICAL:** This step MUST be completed before any other actions. Do NOT proceed to issue parsing, planning, or any other step until you are on the correct branch.
+
+### 2.1 Extract Branch Name from Linear
+
+The `mcp__linear__get_issue` response includes a `branchName` field - this is Linear's recommended branch name.
+
+**Priority:**
+1. **FIRST**: Use `branchName` from Linear if present and non-empty
+2. **FALLBACK ONLY**: If `branchName` is empty/missing, generate one using pattern: `{user-initials}/{ISSUE_ID}-{sanitized-title}`
+
+**If generating fallback:**
+- Ask user for their initials if not known
+- Sanitize title: lowercase, replace spaces with hyphens, max 50 chars for description
+
+### 2.2 Check Current Git State
+
+```bash
+git status --porcelain
+git branch --show-current
+```
+
+**If uncommitted changes exist:**
+
+Use AskUserQuestion:
+
+```yaml
+header: "Uncommitted Changes"
+question: "You have uncommitted changes. How should I handle them?"
+options:
+  - label: "Stash changes"
+    description: "Save changes to stash, can be restored later"
+  - label: "Commit changes"
+    description: "Commit current changes before switching branches"
+  - label: "Discard changes"
+    description: "Warning: This will lose your uncommitted work"
+  - label: "Abort"
+    description: "Cancel and let me handle it manually"
+```
+
+### 2.3 Create and Switch to Branch
+
+**If branch doesn't exist locally or remotely:**
+
+```bash
+# Determine base branch
+BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||') || BASE="main"
+
+# Fetch latest
+git fetch origin $BASE
+
+# Create branch from latest base
+git checkout -b {branchName} origin/$BASE
+```
+
+**If branch exists locally:**
+
+```bash
+git checkout {branchName}
+```
+
+**If branch exists only on remote:**
+
+```bash
+git checkout -b {branchName} origin/{branchName}
+```
+
+### 2.4 Verify Branch Creation (REQUIRED)
+
+**ALWAYS run this verification:**
+
+```bash
+git branch --show-current
+```
+
+**The output MUST match the target `branchName`.** If not, something failed - report to user and abort.
+
+### 2.5 Confirm Branch to User
+
+Display confirmation:
+
+```
+✓ Branch: {branchName}
+  Source: {Linear's suggested name | Generated from issue}
+
+Proceeding with issue analysis...
+```
+
+**Only after this confirmation may you proceed to the next step.**
+
+---
+
+## Step 3: Parse and Present Issue Context
+
+### 3.1 Parse Issue Description
 
 Analyze the issue description to extract:
 
@@ -155,7 +248,7 @@ Analyze the issue description to extract:
 - Database changes mentioned
 - Related files or components
 
-### 2.2 Present Issue Summary
+### 3.2 Present Issue Summary
 
 Show the user what was found:
 
@@ -193,11 +286,11 @@ Acceptance Criteria:
 
 ---
 
-## Step 3: Codebase Exploration (PLANNING PHASE)
+## Step 4: Codebase Exploration (PLANNING PHASE)
 
 **CRITICAL:** Linear issues are typically product-focused and lack technical implementation details. **ALWAYS** perform extensive codebase exploration to understand how to implement the feature, regardless of how the issue is written.
 
-### 3.1 Why This Phase Is Essential
+### 4.1 Why This Phase Is Essential
 
 Linear issues often describe:
 - **What** the user should be able to do (user stories)
@@ -212,7 +305,7 @@ They typically do NOT describe:
 
 **Your job is to bridge this gap through thorough exploration.**
 
-### 3.2 Mandatory Exploration Steps
+### 4.2 Mandatory Exploration Steps
 
 **ALWAYS perform these steps, even if the issue seems straightforward:**
 
@@ -235,7 +328,7 @@ They typically do NOT describe:
    - Note existing patterns to follow
    - Find test patterns for similar features
 
-### 3.3 Present Findings
+### 4.3 Present Findings
 
 After exploration, present findings to the user:
 
@@ -258,11 +351,11 @@ Suggested Approach:
 
 ---
 
-## Step 4: Upfront Questions (PLANNING PHASE)
+## Step 5: Upfront Questions (PLANNING PHASE)
 
 **CRITICAL:** Tend towards asking questions rather than plunging into implementation. The goal is to fully understand requirements before writing any code.
 
-### 4.1 Identify Ambiguities
+### 5.1 Identify Ambiguities
 
 Review the issue and exploration results to identify:
 
@@ -272,7 +365,7 @@ Review the issue and exploration results to identify:
 - Dependencies on other work
 - Testing expectations
 
-### 4.2 Ask Clarifying Questions
+### 5.2 Ask Clarifying Questions
 
 **ALWAYS** use AskUserQuestion for each unclear aspect before proceeding.
 
@@ -310,7 +403,7 @@ options:
     description: "Complete test suite"
 ```
 
-### 4.3 Create Technical Plan
+### 5.3 Create Technical Plan
 
 After gathering answers, create a comprehensive technical plan that translates the product requirements into a concrete implementation approach:
 
@@ -349,105 +442,7 @@ Based on exploration of {similar feature}, follow these patterns:
 - {any remaining uncertainties}
 ```
 
-**Present this plan to the user and get confirmation before proceeding to branch setup.**
-
----
-
-## Step 5: Branch Setup (SETUP PHASE)
-
-### 5.1 Check Current Git State
-
-**ALWAYS** verify git state before branch operations:
-
-```bash
-# Check for uncommitted changes
-git status --porcelain
-
-# Check current branch
-git branch --show-current
-
-# Check for merge conflicts
-git ls-files -u
-```
-
-**If uncommitted changes exist:**
-
-Use AskUserQuestion:
-
-```yaml
-header: "Uncommitted Changes"
-question: "You have uncommitted changes. How should I handle them?"
-options:
-  - label: "Stash changes"
-    description: "Save changes to stash, can be restored later"
-  - label: "Commit changes"
-    description: "Commit current changes before switching branches"
-  - label: "Discard changes"
-    description: "Warning: This will lose your uncommitted work"
-  - label: "Abort"
-    description: "Cancel and let me handle it manually"
-```
-
-### 5.2 Determine Target Branch
-
-Use the `branchName` field from Linear issue response.
-
-**Format typically:** `{initials}/{TEAM-number}-{description}`
-
-Example: `mab/wan-521-ensure-that-platform-picker-page-is-only-shown-if-the-user`
-
-**If branchName is empty/missing, generate one:**
-
-- Use pattern: `{user-initials}/{ISSUE_ID}-{sanitized-title}`
-- Sanitize: lowercase, replace spaces with hyphens, max 50 chars for description part
-- Ask user for their initials if not known
-
-### 5.3 Check if Branch Exists
-
-```bash
-# Check if branch exists locally
-git rev-parse --verify {branchName} 2>/dev/null
-
-# Check if branch exists on remote
-git ls-remote --heads origin {branchName}
-```
-
-**If branch exists locally:**
-
-Use AskUserQuestion:
-
-```yaml
-header: "Branch Exists"
-question: "Branch '{branchName}' already exists locally. What should I do?"
-options:
-  - label: "Switch to existing branch"
-    description: "Continue work on the existing branch"
-  - label: "Delete and recreate"
-    description: "Start fresh from main/master"
-  - label: "Use different name"
-    description: "Create branch with '-v2' suffix"
-```
-
-**If branch exists only on remote:**
-
-```bash
-git checkout -b {branchName} origin/{branchName}
-```
-
-### 5.4 Create New Branch
-
-**If branch doesn't exist:**
-
-```bash
-# Determine base branch
-BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||') || BASE="main"
-
-# Fetch latest
-git fetch origin $BASE
-
-# Create branch from latest base
-git checkout -b {branchName} origin/$BASE
-```
+**Present this plan to the user and get confirmation before proceeding to implementation approach selection.**
 
 ---
 
@@ -507,7 +502,7 @@ options:
 
 1. **Create Minimal Context**
 
-   - Branch is already created (Step 5)
+   - Branch is already created (Step 2)
    - Create todo list from extracted requirements
 
 2. **Use TodoWrite for Requirements**
@@ -605,7 +600,7 @@ After setup is complete:
 Linear Issue Implementation Started
 
 Issue: {identifier} - {title}
-Branch: {branchName}
+Branch: {branchName} ✓ (already active)
 Approach: {selected approach}
 
 {Approach-specific next steps from Step 7}
