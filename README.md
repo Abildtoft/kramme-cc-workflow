@@ -24,6 +24,7 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the p
 
 | Command | Description |
 |---------|-------------|
+| `/kramme:clean-up-artifacts` | Delete workflow artifacts (REVIEW_RESPONSES.md, LOG.md, OPEN_ISSUES.md, specification files). |
 | `/kramme:find-bugs` | Find bugs, security vulnerabilities, and code quality issues in branch changes. Performs systematic security review with attack surface mapping and checklist-based analysis. |
 | `/kramme:create-pr` | Create a clean PR with narrative-quality commits and comprehensive description. Orchestrates branch setup, commit restructuring, and PR creation. |
 | `/kramme:fixup-changes` | Intelligently fixup unstaged changes into existing commits. Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
