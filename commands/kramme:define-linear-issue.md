@@ -35,12 +35,13 @@ Create or improve a Linear issue through exhaustive interactive refinement. Can 
 ## Process Overview
 
 1. **Input Parsing & Mode Detection**: Detect if improving existing issue or creating new
-2. **Linear Context Discovery**: Fetch available teams, labels, and projects
-3. **Existing Issue Handling**: For improve mode, fetch issue; for create mode, check duplicates
-4. **Codebase Exploration**: Search for related implementations and patterns
-5. **Exhaustive Interview**: Multi-round questioning (adapted for improve vs create mode)
-6. **Issue Composition**: Draft issue following the template
-7. **Review & Create/Update**: User approval, then create or update in Linear
+2. **File References & Issue Type**: Read provided files (if any) and classify the issue type
+3. **Linear Context Discovery**: Fetch available teams, labels, and projects
+4. **Existing Issue Handling**: For improve mode, fetch issue; for create mode, check duplicates
+5. **Codebase Exploration**: Search for related implementations and patterns
+6. **Interview**: Multi-round questioning (adapted for issue type and mode)
+7. **Issue Composition**: Draft issue following the template
+8. **Review & Create/Update**: User approval, then create or update in Linear
 
 ## Phase 1: Input Parsing & Mode Detection
 
@@ -66,14 +67,24 @@ Check if input matches an existing Linear issue:
      - This content will be preserved in the final issue regardless of refinements
 
 **If no issue detected → CREATE MODE:**
-1. Parse for file paths (anything that looks like a path: contains `/`, ends in common extensions)
+1. Parse for file paths (anything that looks like a path: contains `/`, ends in common extensions) and store them for Step 2
 2. Remaining text is the description/idea
 3. If empty, use `AskUserQuestion` to gather the initial concept
 4. Set mode flag to "create"
 
-### Step 2: Issue Type Classification
+### Step 2: Process File References (Both Modes)
 
-After determining the mode, classify the issue type. Auto-detect from context and suggest to the user (they can override):
+**If file paths provided:**
+1. Read each file using the `Read` tool
+2. Extract relevant context:
+   - What functionality does this code provide?
+   - What patterns or conventions does it follow?
+   - What dependencies or integrations exist?
+3. Store findings for use in interview and issue composition
+
+### Step 3: Issue Type Classification
+
+After determining the mode (and any file context, if provided), classify the issue type. Auto-detect from context and suggest to the user (they can override):
 
 **Issue Types:**
 - **Bug (Simple)**: Root cause is known or easily identified, fix is localized, no architectural decisions needed
@@ -96,16 +107,6 @@ After determining the mode, classify the issue type. Auto-detect from context an
 **For Bug (Simple), store these flags:**
 - `is_simple_bug = true`
 - This enables the streamlined interview and simple template
-
-### Step 3: Process File References (Both Modes)
-
-**If file paths provided:**
-1. Read each file using the `Read` tool
-2. Extract relevant context:
-   - What functionality does this code provide?
-   - What patterns or conventions does it follow?
-   - What dependencies or integrations exist?
-3. Store findings for use in interview and issue composition
 
 ## Phase 2: Linear Context Discovery
 
@@ -209,7 +210,7 @@ Before creating a new issue, check for existing Linear issues that may already c
 
 ## Phase 5: Interview
 
-The interview process adapts based on the issue type detected in Phase 1.
+The interview process adapts based on the issue type detected in Step 3.
 
 ### Simple Bug Interview (if `is_simple_bug = true`)
 
@@ -228,6 +229,11 @@ Questions to cover:
 - What's causing the bug? (if known - 1-2 sentences)
 - What needs to change to fix it? (1-2 sentences)
 - Which file(s) are affected?
+
+**If root cause is unknown or unclear after Round 2:**
+- Reclassify as **Bug (Complex)** and set `is_simple_bug = false`
+- Switch to the **Standard Interview** starting at Round 1
+- Use the **Comprehensive Template** in Phase 6
 
 After these 2 rounds, skip to **Round 5: Metadata & Classification** (streamlined - just team and labels, skip project/priority unless user wants them).
 
@@ -387,7 +393,7 @@ For simple bugs, use this concise format:
 
 **Notes:**
 - If multiple files are affected, list each on its own line with `**File:**` prefix
-- If root cause is unknown, write "Root cause needs investigation" and the issue becomes Bug (Complex)
+- If root cause is unknown, reclassify to Bug (Complex), set `is_simple_bug = false`, and switch to the comprehensive interview/template
 - Keep each section brief - this template is intentionally minimal
 
 ---
@@ -597,10 +603,11 @@ Draft the issue following this template:
 1. Parse `$ARGUMENTS` and detect mode (issue ID → improve, otherwise → create)
 2. If improve mode: fetch the existing issue details
 3. If create mode with no input: ask what issue they want to define
-4. Classify issue type (auto-detect and confirm with user)
-5. Begin Phase 2 (Linear Context Discovery)
-6. Phase 3: For improve mode, present issue and select areas to improve; for create mode, check for duplicates
-7. Phase 4: Codebase exploration (skip for simple bugs if root cause known)
-8. Phase 5: Interview (simple 2-round for simple bugs, full 5-round for others)
-9. Phase 6: Compose issue using appropriate template
-10. Phase 7: Review, refine, and create/update issue
+4. Process file references (if any)
+5. Classify issue type (auto-detect and confirm with user)
+6. Begin Phase 2 (Linear Context Discovery)
+7. Phase 3: For improve mode, present issue and select areas to improve; for create mode, check for duplicates
+8. Phase 4: Codebase exploration (skip for simple bugs if root cause known)
+9. Phase 5: Interview (simple 2-round for simple bugs, full 5-round for others)
+10. Phase 6: Compose issue using appropriate template
+11. Phase 7: Review, refine, and create/update issue
