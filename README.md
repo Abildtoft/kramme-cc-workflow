@@ -346,7 +346,7 @@ Safe permissions for status checks and analysis only:
 }
 ```
 
-### Recommended (Full Workflow)
+### Full
 
 Enables all plugin workflows including PR creation, commit management, and verification:
 
@@ -435,13 +435,22 @@ Enables all plugin workflows including PR creation, commit management, and verif
       "mcp__linear__get_user",
       "mcp__linear__get_document",
       "mcp__linear__list_documents",
-      "mcp__linear__search_documentation"
+      "mcp__linear__search_documentation",
+      "mcp__gitlab__get_merge_request",
+      "mcp__gitlab__create_merge_request",
+      "mcp__gitlab__list_pipelines",
+      "mcp__gitlab__get_pipeline",
+      "mcp__gitlab__list_pipeline_jobs",
+      "mcp__gitlab__get_pipeline_job_output",
+      "mcp__gitlab__mr_discussions",
+      "mcp__gitlab__get_branch_diffs",
+      "mcp__gitlab__list_commits"
     ]
   }
 }
 ```
 
-> **Note:** The recommended set includes write operations like `git push`, `git reset`, and `git rebase`. Review the list and remove any you'd prefer to approve manually.
+> **Warning:** This permission set gives Claude Code significant autonomy, including destructive git operations (`git push`, `git reset`, `git rebase`). Only use these permissions on projects where you have full control, or scope them to specific projects in your settings. Review the list and remove any you'd prefer to approve manually.
 
 ## Recommended MCP Servers
 
