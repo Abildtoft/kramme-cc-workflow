@@ -50,6 +50,13 @@ description: When to auto-trigger this skill
 ### Hooks
 Edit `hooks/hooks.json` to add event handlers (PreToolUse, PostToolUse, SessionStart, Stop).
 
+**Important:** All hooks must support the toggle system. Add this at the start of each hook script:
+```bash
+source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
+exit_if_hook_disabled "hook-name"        # For PreToolUse hooks
+exit_if_hook_disabled "hook-name" "json" # For PostToolUse/Stop hooks
+```
+
 ## Conventions
 
 - Use kebab-case for file and directory names
