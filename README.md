@@ -312,6 +312,7 @@ Safe permissions for status checks and analysis only:
       "Bash(git rev-parse:*)",
       "Bash(git show:*)",
       "Bash(git show-ref:*)",
+      "Bash(git show-branch:*)",
       "Bash(git ls-files:*)",
       "Bash(git ls-remote:*)",
       "Bash(git remote:*)",
