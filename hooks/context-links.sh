@@ -1,6 +1,10 @@
 #!/bin/bash
 # Context Links Hook - displays active PR/MR and Linear issue links at end of messages
 #
+# Check if hook is enabled
+source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
+exit_if_hook_disabled "context-links" "json"
+#
 # This Stop hook detects:
 # - Linear issue ID from branch name (pattern: {prefix}/{TEAM-ID}-description)
 # - Open PR/MR for the current branch (GitHub or GitLab)

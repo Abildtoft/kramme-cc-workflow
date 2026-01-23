@@ -3,6 +3,7 @@
 
 # Make hooks path available
 export HOOKS_DIR="${BATS_TEST_DIRNAME}/../hooks"
+export CLAUDE_PLUGIN_ROOT="${BATS_TEST_DIRNAME}/.."
 
 # Helper: Create JSON input for block-rm-rf hook
 make_bash_input() {

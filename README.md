@@ -1,6 +1,6 @@
 # kramme-cc-workflow
 
-A Claude Code plugin providing tooling for daily workflow tasks. These are the personal workflow commands I've been using in my day-to-day development, now consolidated into a plugin.
+A Claude Code plugin providing tooling for daily workflow tasks. These are the Claude Code components I use in my daily workflow, developed for my personal use and shared here for inspiration. They may not suit everyone's needs or preferences — feel free to adapt them to your own workflow, or use them as a starting point for your own components.
 
 ## Table of Contents
 
@@ -42,6 +42,7 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the p
 | `/kramme:review-pr` | Run comprehensive PR review using specialized agents. Supports reviewing comments, tests, errors, types, and code quality. Can run agents sequentially or in parallel. |
 | `/kramme:granola-meeting-notes` | Query meeting notes from Granola (macOS, Windows; Windows is untested). Supports fuzzy search, pattern analysis, transcript stats, and markdown export. |
 | `/kramme:learn` | Extract reusable knowledge from the current session. Identifies patterns, commands, debugging insights, and project-specific knowledge for future reference. |
+| `/kramme:toggle-hook` | Enable or disable a plugin hook. Use `status` to list all hooks, or specify a hook name to toggle. |
 
 ## Agents
 
@@ -68,6 +69,7 @@ Skills are auto-triggered based on context. Claude will invoke these automatical
 | `kramme:granola-meeting-notes` | Query Granola meetings (macOS, Windows; Windows is untested) with fuzzy search, pattern analysis, transcript stats, and export. Triggers on "meetings", "who do I meet with", "meeting patterns" |
 | `kramme:connect-existing-feature-documentation-writer` | Creating or updating documentation for Connect features |
 | `kramme:connect-migrate-legacy-store-to-ngrx-component-store` | Migrating legacy CustomStore/FeatureStore to NgRx ComponentStore in Connect monorepo |
+| `kramme:connect-extract-to-nx-libraries` | Extracting app code from `apps/connect/` into proper Nx libraries |
 | `kramme:connect-modernize-legacy-angular-component` | Modernizing legacy Angular components in Connect monorepo |
 | `kramme:humanize-text` | Remove signs of AI-generated writing from text to make it sound more natural and human-written |
 | `kramme:markdown-converter` | Converting documents (PDF, Word, Excel, images, audio, etc.) to Markdown using markitdown |
@@ -84,6 +86,7 @@ Event handlers that run automatically at specific points in the Claude Code life
 | Hook | Event | Description |
 |------|-------|-------------|
 | `block-rm-rf` | PreToolUse (Bash) | Blocks destructive file deletion commands and recommends using `trash` CLI instead. |
+| `confirm-review-responses` | PreToolUse (Bash) | Confirms before committing REVIEW_RESPONSES.md to prevent accidental inclusion in commits. |
 | `noninteractive-git` | PreToolUse (Bash) | Blocks git commands that would open an interactive editor, guiding the agent to use non-interactive alternatives. |
 | `suggest-compact` | PreToolUse (*) | Suggests `/compact` every 50 tool calls to manage context window. Strategic compacting preserves context through logical phases. |
 | `context-links` | Stop | Displays active PR/MR and Linear issue links at the end of messages. Extracts Linear issue ID from branch name (pattern: `{prefix}/{TEAM-ID}-description`) and detects open PRs/MRs for the current branch. |
@@ -92,6 +95,30 @@ Event handlers that run automatically at specific points in the Claude Code life
 | `session-restore` | SessionStart | Loads saved session state from `.claude-session/session.md` on startup, providing context from previous sessions. |
 | `session-save` | Stop | Saves session state including branch, modified files, and progress summary to `.claude-session/`. |
 | `extract-learnings` | Stop | Prompts for `/kramme:learn` if session had substantial changes (>10 logged changes). |
+
+### Toggling Hooks
+
+Use `/kramme:toggle-hook` to enable or disable hooks:
+
+```bash
+# List all hooks and their status
+/kramme:toggle-hook status
+
+# Disable a hook
+/kramme:toggle-hook auto-format disable
+
+# Enable a hook
+/kramme:toggle-hook auto-format enable
+
+# Toggle a hook (enable if disabled, disable if enabled)
+/kramme:toggle-hook auto-format
+
+# Reset all hooks to enabled
+/kramme:toggle-hook reset
+```
+
+State is stored in `hooks/hook-state.json` (gitignored) and persists across sessions.
+When a hook is disabled, the hook script drains stdin before exiting to avoid broken-pipe errors if the runner is piping JSON input.
 
 ### block-rm-rf: Blocked Patterns
 
@@ -359,6 +386,7 @@ Safe permissions for status checks and analysis only:
       "Bash(git rev-parse:*)",
       "Bash(git show:*)",
       "Bash(git show-ref:*)",
+      "Bash(git show-branch:*)",
       "Bash(git ls-files:*)",
       "Bash(git ls-remote:*)",
       "Bash(git remote:*)",

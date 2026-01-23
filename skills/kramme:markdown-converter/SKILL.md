@@ -19,6 +19,9 @@ uvx markitdown input.docx > output.md
 
 # From stdin
 cat input.pdf | uvx markitdown
+
+# From stdin with file type hint
+cat input.pdf | uvx markitdown -x .pdf > output.md
 ```
 
 ## Supported Formats
@@ -53,9 +56,6 @@ uvx markitdown data.xlsx > data.md
 # Convert PowerPoint presentation
 uvx markitdown slides.pptx -o slides.md
 
-# Convert with file type hint (for stdin)
-cat document | uvx markitdown -x .pdf > output.md
-
 # Use Azure Document Intelligence for better PDF extraction
 uvx markitdown scan.pdf -d -e "https://your-resource.cognitiveservices.azure.com/"
 ```
@@ -65,3 +65,4 @@ uvx markitdown scan.pdf -d -e "https://your-resource.cognitiveservices.azure.com
 - Output preserves document structure: headings, tables, lists, links
 - First run caches dependencies; subsequent runs are faster
 - For complex PDFs with poor extraction, use `-d` with Azure Document Intelligence
+- When piping via stdin, prefer `-x` (and optionally `-m`/`-c`) for better detection
