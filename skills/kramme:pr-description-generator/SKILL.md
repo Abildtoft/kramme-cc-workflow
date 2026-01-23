@@ -627,6 +627,11 @@ dotnet ef database update -c ConnectContext
 3. **ALWAYS** use bullet points and numbered lists for readability
 4. **PREFER** using tables for structured data (if applicable)
 5. **NEVER** include meta-commentary or placeholders like `[TODO]` or `[Fill this in]`
+6. **NEVER** include AI attribution or badges such as:
+   - `🤖 Generated with [Claude Code](https://claude.ai/code)`
+   - `Generated with Claude Code`
+   - `Co-Authored-By: Claude` or similar
+   - Any mention of AI assistance in the description
 
 **ALWAYS** present the final description in a clear, copy-paste-ready format:
 
@@ -663,6 +668,7 @@ Here is your generated PR description:
 - [ ] No placeholders or TODOs in the output (except Screenshots section)
 - [ ] Description is ready to copy-paste
 - [ ] No listing of the amount of lines changed
+- [ ] No AI attribution or "Generated with Claude Code" badges included
 - [ ] Asked user if they want to save to markdown file
 
 ## Best Practices
@@ -859,6 +865,26 @@ this.http.get("/api/platforms", { params: { userId } });
 - 2 external services (audit-log, analytics)
 
 ````
+
+---
+
+### ❌ WRONG: AI Attribution in Description
+
+```markdown
+## Summary
+
+Added the new feature to improve user experience.
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+```
+
+### ✅ CORRECT: Clean Description Without Attribution
+
+```markdown
+## Summary
+
+Added the new feature to improve user experience.
+```
 
 ## Examples
 
