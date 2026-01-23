@@ -1,5 +1,7 @@
 # kramme-cc-workflow
 
+> **Note:** These are the Claude Code components I use in my daily workflow. They've been developed for my personal use and are shared here for inspiration. They may not suit everyone's needs or preferences — feel free to adapt them to your own workflow, or use them as a starting point for your own components.
+
 A Claude Code plugin providing tooling for daily workflow tasks. These are the personal workflow commands I've been using in my day-to-day development, now consolidated into a plugin.
 
 ## Table of Contents
