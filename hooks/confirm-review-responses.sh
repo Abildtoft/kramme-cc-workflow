@@ -1,6 +1,10 @@
 #!/bin/bash
 # Hook: Confirm before committing REVIEW_RESPONSES.md
 # Blocks git commit when REVIEW_RESPONSES.md is staged, asking for confirmation
+#
+# Check if hook is enabled
+source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
+exit_if_hook_disabled "confirm-review-responses"
 
 input=$(cat)
 command=$(echo "$input" | jq -r '.tool_input.command // empty')

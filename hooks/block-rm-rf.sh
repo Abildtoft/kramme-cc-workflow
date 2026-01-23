@@ -2,6 +2,10 @@
 # Hook: Block destructive file deletion commands
 # Recommends using 'trash' CLI instead for safer file deletion
 #
+# Check if hook is enabled
+source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
+exit_if_hook_disabled "block-rm-rf"
+#
 # Blocked patterns:
 # - rm -rf (and variants: /bin/rm, sudo rm, command rm, env rm, \rm, xargs rm)
 # - find -delete

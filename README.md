@@ -41,6 +41,7 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the C
 | `/kramme:explore-interview` | Conduct an in-depth interview about a topic/proposal to uncover requirements. Uses structured questioning to explore features, processes, or architecture decisions. |
 | `/kramme:review-pr` | Run comprehensive PR review using specialized agents. Supports reviewing comments, tests, errors, types, and code quality. Can run agents sequentially or in parallel. |
 | `/kramme:granola-meeting-notes` | Query meeting notes from Granola (macOS, Windows; Windows is untested). Supports fuzzy search, pattern analysis, transcript stats, and markdown export. |
+| `/kramme:toggle-hook` | Enable or disable a plugin hook. Use `status` to list all hooks, or specify a hook name to toggle. |
 
 ## Agents
 
@@ -82,9 +83,34 @@ Event handlers that run automatically at specific points in the Claude Code life
 | Hook | Event | Description |
 |------|-------|-------------|
 | `block-rm-rf` | PreToolUse (Bash) | Blocks destructive file deletion commands and recommends using `trash` CLI instead. |
+| `confirm-review-responses` | PreToolUse (Bash) | Confirms before committing REVIEW_RESPONSES.md to prevent accidental inclusion in commits. |
 | `noninteractive-git` | PreToolUse (Bash) | Blocks git commands that would open an interactive editor, guiding the agent to use non-interactive alternatives. |
 | `context-links` | Stop | Displays active PR/MR and Linear issue links at the end of messages. Extracts Linear issue ID from branch name (pattern: `{prefix}/{TEAM-ID}-description`) and detects open PRs/MRs for the current branch. |
 | `auto-format` | PostToolUse (Write\|Edit) | Auto-formats code after file modifications. Detects project formatter from CLAUDE.md or auto-detects from project files (package.json, pyproject.toml, etc.). |
+
+### Toggling Hooks
+
+Use `/kramme:toggle-hook` to enable or disable hooks:
+
+```bash
+# List all hooks and their status
+/kramme:toggle-hook status
+
+# Disable a hook
+/kramme:toggle-hook auto-format disable
+
+# Enable a hook
+/kramme:toggle-hook auto-format enable
+
+# Toggle a hook (enable if disabled, disable if enabled)
+/kramme:toggle-hook auto-format
+
+# Reset all hooks to enabled
+/kramme:toggle-hook reset
+```
+
+State is stored in `hooks/hook-state.json` (gitignored) and persists across sessions.
+When a hook is disabled, the hook script drains stdin before exiting to avoid broken-pipe errors if the runner is piping JSON input.
 
 ### block-rm-rf: Blocked Patterns
 

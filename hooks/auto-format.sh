@@ -1,6 +1,10 @@
 #!/bin/bash
 # Hook: Auto-format code after Write/Edit operations
 #
+# Check if hook is enabled
+source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
+exit_if_hook_disabled "auto-format" "json"
+#
 # This PostToolUse hook:
 # 1. Extracts file_path from stdin JSON
 # 2. Skips binary/generated files

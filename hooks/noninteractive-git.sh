@@ -1,6 +1,10 @@
 #!/bin/bash
 # Hook: Block git commands that open interactive editors
 # Forces non-interactive alternatives for rebase, commit, merge, and add
+#
+# Check if hook is enabled
+source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
+exit_if_hook_disabled "noninteractive-git"
 
 input=$(cat)
 command=$(echo "$input" | jq -r '.tool_input.command // empty')
