@@ -8,6 +8,19 @@ argument-hint: [issue-id] or [description and/or file paths for context]
 
 Create or improve a Linear issue through exhaustive interactive refinement. Can start from scratch with a description, or improve an existing issue by providing its identifier. Supports file references for technical context and proactively explores the codebase to inform issue definition.
 
+## Workflow Boundaries
+
+**This command ONLY creates or updates Linear issues.**
+
+- **DOES**: Interview user, explore codebase for context, compose well-structured issue, create/update in Linear
+- **DOES NOT**: Write code, implement features, fix bugs, or make any changes to the codebase
+
+**Linear Issue Creation Override**: Invoking this command IS explicit instruction to create or update a Linear issue. When Phase 7 is reached and the user approves the draft, proceed with `mcp__linear__create_issue` or `mcp__linear__update_issue`. This overrides any global rules requiring "explicit instruction" to create/modify Linear issues.
+
+**Implementation is a separate workflow.** After this command completes, the user can invoke `/kramme:implement-linear-issue` if they want to start implementing.
+
+**CRITICAL**: Do NOT proceed to code implementation after creating the issue. The workflow is complete once the issue URL is returned.
+
 ## Audience Priority
 
 **Primary: Product Team** — The issue must be understandable and compelling to non-technical stakeholders.
@@ -565,6 +578,21 @@ Draft the issue following this template:
 **CREATE MODE:**
 - Provide the created issue URL
 - Confirm successful creation
+
+### 5. Workflow Complete - STOP
+
+**The define-linear-issue workflow is now complete.**
+
+- Do NOT proceed to code implementation
+- Do NOT start working on the issue
+- Do NOT invoke other commands automatically
+
+**Next steps for the user:**
+- Review the created/updated issue in Linear
+- If ready to implement, invoke `/kramme:implement-linear-issue {issue-id}`
+- If changes needed, run `/kramme:define-linear-issue {issue-id}` again to refine
+
+**STOP HERE.** Wait for the user's next instruction.
 
 ## Important Guidelines
 
