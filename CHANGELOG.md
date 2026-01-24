@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.8.0] - 2026-01-24
+
+### Added
+- Add connect-extract-to-nx-libraries skill (#78)
+- Add reset command and improve hook toggle system (#76)
+- Add consolidation rebase mode prompt to iterate-pr (#75)
+
+### Changed
+- Add git show-branch to core permissions (#77)
+- Update README intro (#74)
+- Update markdown converter stdin guidance (#72)
+- Add Recommended CLIs section to README (#70)
+
+### Fixed
+- Ensure define-linear-issue creates Linear issues and stops after completion (#80)
+- Add explicit prohibition of AI attribution in PR descriptions (#79)
+
 ## [0.7.0] - 2026-01-22
 
 ### Added
@@ -157,6 +174,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.8.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.4.0...v0.5.0
