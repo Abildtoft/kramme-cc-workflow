@@ -293,7 +293,23 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 
 ### Phase 3: Description Generation
 
-**ALWAYS** generate a structured description with the following sections:
+**ALWAYS** generate a structured PR title and description.
+
+#### 3.0 Title Generation
+
+Generate a PR title using [Conventional Commits](https://www.conventionalcommits.org/) format: `<type>(<scope>): <description>`
+
+**NOTE**: Check the project's CLAUDE.md for any project-specific conventional commit rules.
+
+**Types** (based on Phase 2.4 analysis):
+
+| `feat` | `fix` | `refactor` | `docs` | `test` | `build`/`ci` | `chore` | `perf` | `style` | `revert` |
+
+**Rules**:
+- **Scope**: Optional. Use component/module name, lowercase, hyphenated (e.g., `auth`, `platform-picker`). Omit if changes span multiple areas.
+- **Description**: Imperative mood ("add", not "added"), specific, under 50 chars. Total title under 72 chars. No trailing period.
+
+**Examples**: `feat(auth): add OAuth2 support` · `fix: resolve null pointer in user lookup` · `refactor(api): extract validation utilities`
 
 #### 3.1 Summary Section
 
@@ -633,17 +649,21 @@ dotnet ef database update -c ConnectContext
    - `Co-Authored-By: Claude` or similar
    - Any mention of AI assistance in the description
 
-**ALWAYS** present the final description in a clear, copy-paste-ready format:
+**ALWAYS** present the final PR title and description in a clear, copy-paste-ready format:
 
 ```markdown
-Here is your generated PR description:
+Here is your generated PR:
+
+**Title:** `<type>(<scope>): <description>`
 
 ---
 
 [DESCRIPTION CONTENT HERE]
 
 ---
-````
+```
+
+**NOTE**: The title is formatted with backticks for easy copying. The description follows the standard markdown format.
 
 6. **ALWAYS** ask if the description should be saved to a markdown file:
 
@@ -653,8 +673,12 @@ Here is your generated PR description:
 
 ### Phase 5: Final Checklist
 
-**ALWAYS** verify before presenting the description:
+**ALWAYS** verify before presenting the PR:
 
+- [ ] **Title** follows conventional commit format (`<type>(<scope>): <description>`)
+- [ ] **Title** uses correct type (feat, fix, refactor, docs, test, chore, etc.)
+- [ ] **Title** is concise (under 72 characters total)
+- [ ] **Title** uses imperative mood ("add", not "added")
 - [ ] Summary clearly explains what and why (objective tone, no excessive praise)
 - [ ] Linear issue is linked with appropriate magic word (Fixes/Closes vs. Related to)
 - [ ] Technical details cover implementation approach and key decisions from conversation/spec files
@@ -712,6 +736,17 @@ Here is your generated PR description:
 - **ALWAYS** include edge cases and error scenarios, not just happy paths
 
 ## Anti-Patterns
+
+### Title Anti-Patterns
+
+| ❌ Wrong | ✅ Correct | Issue |
+|----------|-----------|-------|
+| `Update platform picker` | `feat(platform-picker): add redirect` | Missing type |
+| `feat(auth): fixed login bug` | `feat(auth): fix login bug` | Past tense |
+| `fix: bug fix` | `fix(checkout): resolve race condition` | Vague |
+| `feat(user-auth-service): add comprehensive OAuth2...` | `feat(auth): add OAuth2 support` | Too long |
+
+---
 
 ### ❌ WRONG: Vague Summary
 
@@ -896,8 +931,14 @@ Added the new feature to improve user experience.
 - Commits: 4 commits with incremental implementation
 - Linear issue: WAN-521 (feature request)
 
-**Generated Description:**
+**Generated PR:**
 ```markdown
+Here is your generated PR:
+
+**Title:** `feat(platform-picker): add automatic redirect for single-platform users`
+
+---
+
 ## Summary
 
 Added automatic redirect logic that skips the platform picker page when users have access to only one platform. This eliminates an unnecessary navigation step and improves user experience for single-platform users.
@@ -967,9 +1008,15 @@ None
 - Database migration: Add `user_preferences` table
 - Linear issue: CON-789
 
-**Generated Description:**
+**Generated PR:**
 
 ````markdown
+Here is your generated PR:
+
+**Title:** `feat(preferences): add user preferences storage and API`
+
+---
+
 ## Summary
 
 Added user preferences storage and API endpoints to enable users to save and retrieve their application settings (theme, notification preferences, default views). This provides a foundation for future personalization features.
