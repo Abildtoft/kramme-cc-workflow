@@ -466,6 +466,7 @@ This skill will:
 - Analyze git diff and commit history
 - Check for Linear issue references in branch name
 - Ask clarifying questions about the changes
+- Generate a conventional commit-style **title** (`<type>(<scope>): <description>`)
 - Generate comprehensive description with all sections
 
 ### ⚠️ MANDATORY CONTINUATION - DO NOT STOP HERE
@@ -477,9 +478,13 @@ After the pr-description-generator skill completes:
 
 This is Step 7 of 9. The PR creation workflow is not complete until Step 9. The skill may ask its own clarifying questions; once it produces the final description, proceed directly to the Confirmation and Creation step.
 
-### 7.2 Capture the Description
+### 7.2 Capture the Title and Description
 
-The skill produces a complete markdown description. Capture this for use in Step 8.
+The skill produces:
+1. A conventional commit-style **title** (e.g., `feat(auth): add OAuth2 support`)
+2. A complete markdown **description**
+
+Capture both for use in Step 8.
 
 ### 7.3 Handle Skill Failure
 
@@ -518,7 +523,7 @@ Show the user what will be created:
 Draft [PR] Ready to Create
 
 Platform: [GitHub/GitLab]
-Title: [First commit message or extracted title]
+Title: [Generated conventional commit title from pr-description-generator]
 Branch: {feature-branch} -> main
 Status: Draft
 
@@ -527,6 +532,8 @@ Description Preview:
 {first 300 characters of description}...
 ---
 ```
+
+**NOTE**: The title comes from the pr-description-generator skill output and follows conventional commit format (`<type>(<scope>): <description>`).
 
 ### 8.2 Confirm Creation
 
