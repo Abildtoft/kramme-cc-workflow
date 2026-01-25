@@ -1,7 +1,7 @@
 {
   "name": "kramme-cc-workflow",
   "description": "Tooling for the workflows that Abildtoft encounters in his daily work",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "author": {
     "name": "Abildtoft",
     "email": ""

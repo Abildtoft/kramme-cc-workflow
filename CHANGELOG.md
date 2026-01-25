@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.9.0] - 2026-01-25
+
+### Added
+- Add conventional commit title generation (#82)
+
 ## [0.8.0] - 2026-01-24
 
 ### Added
@@ -174,6 +179,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.9.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.5.0...v0.6.0
