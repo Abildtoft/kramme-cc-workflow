@@ -51,6 +51,7 @@ Specialized subagents for PR review tasks. These are invoked by the `/kramme:rev
 |-------|-------------|
 | `kramme:code-reviewer` | Reviews code for bugs, style violations, and CLAUDE.md compliance. Uses confidence scoring (0-100) to filter issues. |
 | `kramme:code-simplifier` | Simplifies code for clarity and maintainability while preserving functionality. Applies project standards automatically. |
+| `kramme:design-iterator` | Iterative UI/UX design refinement. Takes screenshots, analyzes issues, implements improvements, and repeats N times. Use proactively when design changes don't come together on the first attempt. |
 | `kramme:comment-analyzer` | Analyzes code comments for accuracy, completeness, and long-term maintainability. Guards against comment rot. |
 | `kramme:deslop-reviewer` | Detects AI-generated code patterns ("slop"). Operates in two modes: code review (scans PR diff) and meta-review (validates other agents' suggestions won't introduce slop). |
 | `kramme:pr-relevance-validator` | Validates that review findings are actually caused by the PR. Filters pre-existing issues and out-of-scope problems to prevent scope creep. |
