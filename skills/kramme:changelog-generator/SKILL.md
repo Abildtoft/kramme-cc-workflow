@@ -21,7 +21,7 @@ Analyze the provided GitHub changes and related issues. Look for:
 3. Any other significant changes or improvements
 4. References to specific issues and their details
 5. Names of contributors who made the changes
-6. Use gh cli to lookup the PRs as well and the description of the PRs
+6. Use GitHub or GitLab CLI/API to lookup PRs/MRs and their descriptions
 7. Check PR labels to identify feature type (feature, bug, chore, etc.)
 8. Look for breaking changes and highlight them prominently
 9. Include PR numbers for traceability
@@ -94,7 +94,7 @@ Your final output should be formatted as follows:
 
 ## Style Guide Review
 
-Now review the changelog using the EVERY_WRITE_STYLE.md file and go one by one to make sure you are following the style guide. Use multiple agents, run in parallel to make it faster.
+Now review the changelog using the Humanizer command and go one by one to make sure you are following the style guide. If multi-agent execution is available, parallelize the style review; otherwise do it inline.
 
 Remember, your final output should only include the content within the <change_log> tags. Do not include any of your thought process or the original data in the output.
 
