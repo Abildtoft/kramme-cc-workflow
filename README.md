@@ -300,15 +300,15 @@ claude /plugin install /path/to/kramme-cc-workflow
 
 ### OpenCode + Codex (experimental)
 
-This plugin can be converted into OpenCode or Codex formats using the Compound plugin converter.
-Requires Bun (for `bunx`).
+This repo includes a converter CLI (Node.js) that installs the plugin into OpenCode or Codex.
+Requires Node.js 18+.
 
 ```bash
 # OpenCode
-bunx @every-env/compound-plugin install /path/to/kramme-cc-workflow --to opencode
+node scripts/convert-plugin.js install /path/to/kramme-cc-workflow --to opencode
 
 # Codex
-bunx @every-env/compound-plugin install /path/to/kramme-cc-workflow --to codex
+node scripts/convert-plugin.js install /path/to/kramme-cc-workflow --to codex
 ```
 
 Local dev from this repo:
@@ -318,7 +318,7 @@ Local dev from this repo:
 ./scripts/install-codex.sh
 ```
 
-Helper scripts forward additional args to the converter (e.g., `--output`, `--codex-home`).
+Helper scripts forward additional args to the converter (e.g., `--output`, `--codex-home`, `--also codex`).
 
 OpenCode output defaults to `~/.config/opencode` (XDG). Codex output defaults to `~/.codex` (`prompts/` and `skills/`).
 Both targets are experimental and may change as the formats evolve.
