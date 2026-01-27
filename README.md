@@ -51,6 +51,7 @@ Specialized subagents for PR review tasks. These are invoked by the `/kramme:rev
 |-------|-------------|
 | `kramme:code-reviewer` | Reviews code for bugs, style violations, and CLAUDE.md compliance. Uses confidence scoring (0-100) to filter issues. |
 | `kramme:code-simplifier` | Simplifies code for clarity and maintainability while preserving functionality. Applies project standards automatically. |
+| `kramme:design-iterator` | Iterative UI/UX design refinement. Takes screenshots, analyzes issues, implements improvements, and repeats N times. Use proactively when design changes don't come together on the first attempt. |
 | `kramme:comment-analyzer` | Analyzes code comments for accuracy, completeness, and long-term maintainability. Guards against comment rot. |
 | `kramme:deslop-reviewer` | Detects AI-generated code patterns ("slop"). Operates in two modes: code review (scans PR diff) and meta-review (validates other agents' suggestions won't introduce slop). |
 | `kramme:pr-relevance-validator` | Validates that review findings are actually caused by the PR. Filters pre-existing issues and out-of-scope problems to prevent scope creep. |
@@ -742,6 +743,7 @@ For maintainers: see [RELEASE.md](RELEASE.md) for the release process.
 ## Attribution
 
 - `kramme:architecture-strategist`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
+- `kramme:design-iterator`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - `kramme:humanize-text`: Based on Wikipedia: Signs of AI writing (maintained by WikiProject AI Cleanup) and heavily inspired by [blader/humanizer](https://github.com/blader/humanizer).
 - `kramme:granola-meeting-notes`: Inspired by [varadhjain/granola-claude-plugin](https://github.com/varadhjain/granola-claude-plugin) and [nehiljain/granola-ai-mcp-server](https://github.com/nehiljain/granola-ai-mcp-server).
 
