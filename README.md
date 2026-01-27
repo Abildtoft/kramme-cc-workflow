@@ -298,6 +298,31 @@ For local development:
 claude /plugin install /path/to/kramme-cc-workflow
 ```
 
+### OpenCode + Codex (experimental)
+
+This plugin can be converted into OpenCode or Codex formats using the Compound plugin converter.
+Requires Bun (for `bunx`).
+
+```bash
+# OpenCode
+bunx @every-env/compound-plugin install /path/to/kramme-cc-workflow --to opencode
+
+# Codex
+bunx @every-env/compound-plugin install /path/to/kramme-cc-workflow --to codex
+```
+
+Local dev from this repo:
+
+```bash
+./scripts/install-opencode.sh
+./scripts/install-codex.sh
+```
+
+Helper scripts forward additional args to the converter (e.g., `--output`, `--codex-home`).
+
+OpenCode output defaults to `~/.config/opencode` (XDG). Codex output defaults to `~/.codex` (`prompts/` and `skills/`).
+Both targets are experimental and may change as the formats evolve.
+
 ### Updating
 
 For marketplace installs:
