@@ -64,7 +64,7 @@ Skills are auto-triggered based on context. Claude will invoke these automatical
 
 | Skill | Trigger Condition |
 |-------|-------------------|
-| `kramme:changelog-generator` | Generate user-facing changelogs from git commits, transforming technical commits into clear release notes |
+| `kramme:changelog-generator` | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and Discord posting support |
 | `kramme:granola-meeting-notes` | Query Granola meetings (macOS, Windows; Windows is untested) with fuzzy search, pattern analysis, transcript stats, and export. Triggers on "meetings", "who do I meet with", "meeting patterns" |
 | `kramme:connect-existing-feature-documentation-writer` | Creating or updating documentation for Connect features |
 | `kramme:connect-migrate-legacy-store-to-ngrx-component-store` | Migrating legacy CustomStore/FeatureStore to NgRx ComponentStore in Connect monorepo |
