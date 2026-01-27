@@ -1,0 +1,10 @@
+{
+  "name": "kramme-cc-workflow",
+  "version": "0.9.0",
+  "private": true,
+  "description": "Converter CLI for kramme-cc-workflow",
+  "license": "MIT",
+  "bin": {
+    "kramme-cc-workflow": "scripts/convert-plugin.js"
+  }
+}

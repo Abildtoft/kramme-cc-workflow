@@ -311,6 +311,16 @@ node scripts/convert-plugin.js install /path/to/kramme-cc-workflow --to opencode
 node scripts/convert-plugin.js install /path/to/kramme-cc-workflow --to codex
 ```
 
+Run with npx (no clone):
+
+```bash
+# OpenCode
+npx --yes github:Abildtoft/kramme-cc-workflow install . --to opencode
+
+# Codex
+npx --yes github:Abildtoft/kramme-cc-workflow install . --to codex
+```
+
 Local dev from this repo:
 
 ```bash
