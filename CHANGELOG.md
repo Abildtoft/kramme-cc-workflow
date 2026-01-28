@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.10.0] - 2026-01-28
+
+### Added
+- Add agents-md skill (#90)
+- Add commit message skill (#91)
+- Add opencode/codex converter (#84)
+- Add performance-oracle agent (#85)
+- Update changelog-generator skill for engaging internal changelogs (#88)
+- Add design-iterator agent for iterative UI/UX refinement (#87)
+- Add architecture-strategist agent (#86)
+
+### Changed
+- Add extract-learnings command (#89)
+
 ## [0.9.0] - 2026-01-25
 
 ### Added
@@ -179,6 +193,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.10.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.6.0...v0.7.0
