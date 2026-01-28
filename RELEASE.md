@@ -22,7 +22,7 @@ Trigger a release from the GitHub UI:
 
 The workflow will:
 - Run tests
-- Bump version in `plugin.json`
+- Bump version in `.claude-plugin/plugin.json` and `package.json`
 - Create a release branch and commit
 - Create a Pull Request to main
 - After PR merge, automatically create git tag and GitHub Release
@@ -51,7 +51,7 @@ python scripts/release.py patch --dry-run
 The script will:
 - Run tests
 - Prompt for confirmation
-- Bump version in `plugin.json`
+- Bump version in `.claude-plugin/plugin.json` and `package.json`
 - Create a release branch and commit
 
 After running, push the branch and create a PR:
@@ -89,7 +89,7 @@ git checkout -b release/vX.Y.Z
 
 ### 4. Bump Version
 
-Update `.claude-plugin/plugin.json`:
+Update `.claude-plugin/plugin.json` and `package.json`:
 ```json
 {
   "version": "X.Y.Z"
@@ -99,7 +99,7 @@ Update `.claude-plugin/plugin.json`:
 ### 5. Commit and Push
 
 ```bash
-git add .claude-plugin/plugin.json CHANGELOG.md
+git add .claude-plugin/plugin.json package.json CHANGELOG.md
 git commit -m "Release vX.Y.Z"
 git push origin release/vX.Y.Z
 ```

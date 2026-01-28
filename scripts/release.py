@@ -35,12 +35,32 @@ def get_repo_root() -> Path:
     return Path(result.stdout.strip())
 
 
-def get_current_version(repo_root: Path) -> str:
-    """Read current version from plugin.json."""
-    plugin_json = repo_root / ".claude-plugin" / "plugin.json"
-    with open(plugin_json) as f:
+def get_version_files(repo_root: Path) -> list[Path]:
+    """Return versioned JSON files to keep in sync."""
+    files = [repo_root / ".claude-plugin" / "plugin.json"]
+    package_json = repo_root / "package.json"
+    if package_json.exists():
+        files.append(package_json)
+    return files
+
+
+def read_version(path: Path) -> str:
+    """Read version from a JSON file."""
+    with open(path) as f:
         data = json.load(f)
     return data["version"]
+
+
+def get_current_version(repo_root: Path) -> str:
+    """Read current version, ensuring all version files match."""
+    files = get_version_files(repo_root)
+    versions = {path: read_version(path) for path in files}
+    base_version = next(iter(versions.values()))
+    mismatched = {path: version for path, version in versions.items() if version != base_version}
+    if mismatched:
+        details = ", ".join(f"{path}: {version}" for path, version in mismatched.items())
+        raise ValueError(f"Version mismatch detected ({details}).")
+    return base_version
 
 
 def bump_version(current: str, bump_type: str) -> str:
@@ -65,21 +85,20 @@ def bump_version(current: str, bump_type: str) -> str:
         raise ValueError(f"Invalid bump type: {bump_type}")
 
 
-def update_plugin_json(repo_root: Path, new_version: str, dry_run: bool) -> None:
-    """Update version in plugin.json."""
-    plugin_json = repo_root / ".claude-plugin" / "plugin.json"
-    with open(plugin_json) as f:
-        data = json.load(f)
+def update_version_files(repo_root: Path, new_version: str, dry_run: bool) -> None:
+    """Update version in all version files."""
+    for path in get_version_files(repo_root):
+        with open(path) as f:
+            data = json.load(f)
+        data["version"] = new_version
 
-    data["version"] = new_version
-
-    if dry_run:
-        print(f"  Would update {plugin_json} to version {new_version}")
-    else:
-        with open(plugin_json, "w") as f:
-            json.dump(data, f, indent=2)
-            f.write("\n")
-        print(f"  Updated {plugin_json}")
+        if dry_run:
+            print(f"  Would update {path} to version {new_version}")
+        else:
+            with open(path, "w") as f:
+                json.dump(data, f, indent=2)
+                f.write("\n")
+            print(f"  Updated {path}")
 
 
 def run_tests(repo_root: Path) -> bool:
@@ -98,7 +117,7 @@ def git_commit_and_push_branch(
     if dry_run:
         print(f"  Would clean up existing branch: {branch_name} (if exists)")
         print(f"  Would run: git checkout -b {branch_name}")
-        print(f"  Would run: git add .claude-plugin/plugin.json CHANGELOG.md")
+        print(f"  Would run: git add .claude-plugin/plugin.json package.json CHANGELOG.md")
         print(f'  Would run: git commit -m "Release v{version}"')
         print(f"  Would run: git push origin {branch_name}")
     else:
@@ -121,7 +140,7 @@ def git_commit_and_push_branch(
 
         # Stage and commit
         subprocess.run(
-            ["git", "add", ".claude-plugin/plugin.json", "CHANGELOG.md"],
+            ["git", "add", ".claude-plugin/plugin.json", "package.json", "CHANGELOG.md"],
             cwd=repo_root,
             check=True,
         )
@@ -189,7 +208,7 @@ def main() -> int:
 
     # 1. Update version
     print("1. Updating version...")
-    update_plugin_json(repo_root, new_version, args.dry_run)
+    update_version_files(repo_root, new_version, args.dry_run)
 
     # 2. Generate changelog
     print("2. Generating changelog...")
