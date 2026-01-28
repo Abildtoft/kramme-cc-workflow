@@ -388,6 +388,8 @@ claude /plugin install git+https://github.com/Abildtoft/kramme-cc-workflow
 claude /plugin install /path/to/kramme-cc-workflow
 ```
 
+For OpenCode/Codex installs, updating is the same as installing: re-run the converter to regenerate the output (use the commands in the OpenCode + Codex section). This overwrites the generated files in `~/.config/opencode` or `~/.codex`.
+
 Restart Claude Code after updating for changes to take effect.
 
 **Auto-update:** Since Claude Code v2.0.70, auto-update can be enabled per-marketplace.
