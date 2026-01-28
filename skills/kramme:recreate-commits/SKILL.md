@@ -8,10 +8,18 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
 ### Steps
 
 1. **Validate the source branch**
-   - Identify the current branch name.
+   - Identify the current branch name and the base branch (`master` or `main`).
    - If on `main` or `master`, stop and ask the user to switch to a feature branch first.
+   - **Fetch and update the local base branch** to ensure it matches the remote:
+     ```bash
+     git fetch origin <base-branch>
+     git checkout <base-branch>
+     git merge --ff-only origin/<base-branch>
+     git checkout -  # return to feature branch
+     ```
+     If the fast-forward merge fails (local base branch has diverged from remote), abort and ask the user to resolve manually before retrying.
    - Ensure the current branch has no merge conflicts, uncommitted changes, or other issues.
-   - Confirm it is up to date with `master` (or `main` depending on your repository).
+   - Confirm it is up to date with the base branch.
 
 2. **Analyze the diff**
    - Study all changes between the current branch and `master` (or `main` depending on your repository).
