@@ -1,16 +1,11 @@
 ---
 name: agents-md
-description: This skill should be used when the user asks to "create AGENTS.md", "update AGENTS.md", "maintain agent docs", "set up CLAUDE.md", or needs to keep agent instructions concise. Guides discovery of local skills and enforces minimal documentation style.
+description: This skill should be used when the user asks to "update AGENTS.md", "add to AGENTS.md", "maintain agent docs", or needs to add guidelines to agent instructions. Guides discovery of local skills and enforces structured, keyword-based documentation style.
 ---
 
-# Maintaining AGENTS.md
+# Adding to AGENTS.md
 
-AGENTS.md is the canonical agent-facing documentation. Keep it minimal—agents are capable and don't need hand-holding.
-
-## File Setup
-
-1. Create `AGENTS.md` at project root
-2. Create symlink: `ln -s AGENTS.md CLAUDE.md`
+AGENTS.md is the canonical agent-facing documentation. Each rule should be minimal, but many rules are OK.
 
 ## Before Writing
 
@@ -23,89 +18,75 @@ ls plugins/*/skills/*/SKILL.md 2>/dev/null
 
 Read each skill's frontmatter to understand when to reference it.
 
+## Guideline Keywords
+
+Use these keywords to indicate requirement strength:
+
+- **ALWAYS** — Mandatory requirement
+- **NEVER** — Strong prohibition
+- **PREFER** — Strong recommendation, exceptions allowed
+- **CAN** — Optional, developer's discretion
+- **NOTE** — Context or clarification
+- **EXAMPLE** — Illustrative example
+
+Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
+
 ## Writing Rules
 
+- **One rule per bullet** - Keep each guideline minimal and atomic
+- **Start with keyword** - Every rule begins with ALWAYS/NEVER/PREFER/CAN/NOTE
 - **Headers + bullets** - No paragraphs
 - **Code blocks** - For commands and templates
-- **Reference, don't duplicate** - Point to skills: "Use `db-migrate` skill. See `.claude/skills/db-migrate/SKILL.md`"
+- **Reference, don't duplicate** - Point to skills: "See `.claude/skills/db-migrate/SKILL.md`"
 - **No filler** - No intros, conclusions, or pleasantries
-- **Trust capabilities** - Omit obvious context
 
-## Required Sections
+## Common Sections
+
+Add sections as needed for the project:
+
+### When Stuck
+```markdown
+## When Stuck
+- **ALWAYS** ask a clarifying question or propose alternatives
+- **NEVER** initiate large speculative changes without confirmation
+```
+
+### Git Commits
+```markdown
+## Git Commits
+- **ALWAYS** write succinct commit messages in imperative mood
+- **ALWAYS** keep the first line short
+- **NEVER** mention that you are an AI
+```
+
+### Issue Management
+```markdown
+## Linear Issues
+- **NEVER** change issue status without explicit instruction
+- **NEVER** create issues without explicit instruction
+```
 
 ### Package Manager
-Which tool and key commands only:
 ```markdown
 ## Package Manager
 Use **pnpm**: `pnpm install`, `pnpm dev`, `pnpm test`
 ```
 
-### Commit Attribution
-Always include this section. Agents should use their own identity:
-```markdown
-## Commit Attribution
-AI commits MUST include:
-```
-Co-Authored-By: (the agent model's name and attribution byline)
-```
-Example: `Co-Authored-By: Claude Sonnet 4 <noreply@example.com>`
-```
-
-### Key Conventions
-Project-specific patterns agents must follow. Keep brief.
-
 ### Local Skills
 Reference each discovered skill:
 ```markdown
 ## Database
-Use `db-migrate` skill for schema changes. See `.claude/skills/db-migrate/SKILL.md`
-
-## Testing
-Use `write-tests` skill. See `.claude/skills/write-tests/SKILL.md`
+Use `db-migrate` skill. See `.claude/skills/db-migrate/SKILL.md`
 ```
 
-## Optional Sections
-
-Add only if truly needed:
-- API route patterns (show template, not explanation)
-- CLI commands (table format)
-- File naming conventions
+### Domain-Specific Sections
+Add sections for each tech stack (Frontend, Backend, etc.) with domain-specific guidelines.
 
 ## Anti-Patterns
 
 Omit these:
 - "Welcome to..." or "This document explains..."
-- "You should..." or "Remember to..."
-- Content duplicated from skills (reference instead)
 - Obvious instructions ("run tests", "write clean code")
 - Explanations of why (just say what)
 - Long prose paragraphs
-
-## Example Structure
-
-```markdown
-# Agent Instructions
-
-## Package Manager
-Use **pnpm**: `pnpm install`, `pnpm dev`
-
-## Commit Attribution
-AI commits MUST include:
-```
-Co-Authored-By: (the agent model's name and attribution byline)
-```
-
-## API Routes
-[Template code block]
-
-## Database
-Use `db-migrate` skill. See `.claude/skills/db-migrate/SKILL.md`
-
-## Testing
-Use `write-tests` skill. See `.claude/skills/write-tests/SKILL.md`
-
-## CLI
-| Command | Description |
-|---------|-------------|
-| `pnpm cli sync` | Sync data |
-```
+- Content duplicated from skills (reference instead)

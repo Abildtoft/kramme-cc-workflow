@@ -68,7 +68,7 @@ Skills are auto-triggered based on context. Claude will invoke these automatical
 
 | Skill | Trigger Condition |
 |-------|-------------------|
-| `kramme:agents-md` | Create or update AGENTS.md/CLAUDE.md with minimal, agent-friendly documentation. Triggers on "create AGENTS.md", "update AGENTS.md", "maintain agent docs", "set up CLAUDE.md" |
+| `kramme:agents-md` | Add guidelines to AGENTS.md with structured, keyword-based documentation. Triggers on "update AGENTS.md", "add to AGENTS.md", "maintain agent docs" |
 | `kramme:changelog-generator` | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
 | `kramme:granola-meeting-notes` | Query Granola meetings (macOS, Windows; Windows is untested) with fuzzy search, pattern analysis, transcript stats, and export. Triggers on "meetings", "who do I meet with", "meeting patterns" |
 | `kramme:connect-existing-feature-documentation-writer` | Creating or updating documentation for Connect features |
