@@ -68,6 +68,7 @@ Skills are auto-triggered based on context. Claude will invoke these automatical
 
 | Skill | Trigger Condition |
 |-------|-------------------|
+| `kramme:agents-md` | Create or update AGENTS.md/CLAUDE.md with minimal, agent-friendly documentation. Triggers on "create AGENTS.md", "update AGENTS.md", "maintain agent docs", "set up CLAUDE.md" |
 | `kramme:changelog-generator` | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
 | `kramme:granola-meeting-notes` | Query Granola meetings (macOS, Windows; Windows is untested) with fuzzy search, pattern analysis, transcript stats, and export. Triggers on "meetings", "who do I meet with", "meeting patterns" |
 | `kramme:connect-existing-feature-documentation-writer` | Creating or updating documentation for Connect features |
@@ -744,6 +745,7 @@ For maintainers: see [RELEASE.md](RELEASE.md) for the release process.
 
 ## Attribution
 
+- `kramme:agents-md`: Based on [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/agents-md/SKILL.md).
 - `kramme:architecture-strategist`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - `kramme:design-iterator`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - `kramme:humanize-text`: Based on Wikipedia: Signs of AI writing (maintained by WikiProject AI Cleanup) and heavily inspired by [blader/humanizer](https://github.com/blader/humanizer).
