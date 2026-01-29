@@ -111,7 +111,7 @@ Skills are auto-triggered based on context. Claude will invoke these automatical
 | `kramme:markdown-converter` | Converting documents (PDF, Word, Excel, images, audio, etc.) to Markdown using markitdown |
 | `kramme:pr-description-generator` | Generating PR descriptions by analyzing git changes, commit history, and Linear issues |
 | `kramme:recreate-commits` | Recreating the current branch in-place with narrative-quality commits |
-| `kramme:structured-implementation-workflow` | Detecting LOG.md and OPEN_ISSUES.md files to track complex implementations |
+| `kramme:structured-implementation-workflow` | Detecting LOG.md and OPEN_ISSUES.md files to track complex implementations. Uses progressive disclosure - loads lean core (~120 lines) with phase-specific resources read on-demand |
 | `kramme:verification-before-completion` | About to claim work is complete/fixed/passing - requires evidence before assertions |
 
 ## Hooks
