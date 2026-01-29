@@ -418,6 +418,7 @@ Safe permissions for status checks and analysis only:
       "Bash(git ls-remote *)",
       "Bash(git remote *)",
       "Bash(git symbolic-ref *)",
+      "Bash(git symbolic-ref * | sed *)",
       "Bash(git merge-base *)",
       "Bash(git rev-list *)",
       "Bash(gh pr view *)",
