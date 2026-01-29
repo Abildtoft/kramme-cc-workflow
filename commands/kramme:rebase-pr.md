@@ -83,21 +83,61 @@ git rebase --autostash origin/<base-branch>
 
 **If rebase fails (conflicts):**
 
-1. Abort the rebase:
+1. **Attempt automatic resolution (up to 10 conflict rounds):**
+
+   Track all conflicts and resolutions for the summary.
+
+   For each round:
+
+   a. Get list of conflicting files:
+      ```bash
+      git diff --name-only --diff-filter=U
+      ```
+
+   b. For each conflicting file:
+      - Read the file content
+      - Resolve conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) by analyzing both versions and choosing the best resolution
+      - **Record the conflict and resolution** (file path, what conflicted, how it was resolved)
+      - Write the resolved content back
+      - Stage the file: `git add <file>`
+
+   c. Continue the rebase:
+      ```bash
+      GIT_EDITOR=true git rebase --continue
+      ```
+
+   d. If rebase completes, proceed to **Step 4: Conflict Summary**
+
+   e. If new conflicts arise, repeat from (a)
+
+2. **If resolution fails** (after 10 rounds or unresolvable conflict):
+
+   Abort the rebase:
    ```bash
    git rebase --abort
    ```
 
-2. Inform user clearly:
-   > "Rebase failed due to conflicts. The branch has been restored to its pre-rebase state."
+   Inform user:
+   > "Automatic conflict resolution failed after X attempts. The branch has been restored to its pre-rebase state."
    >
-   > "Conflicting files: `<list files from error output>`"
+   > "Conflicting files that could not be resolved: `<list files>`"
    >
-   > "To resolve, run `git rebase origin/<base-branch>`, fix conflicts, then `git rebase --continue`."
+   > "To resolve manually, run `git rebase origin/<base-branch>`, fix conflicts, then `git rebase --continue`."
 
-3. Stop execution. Do not attempt to resolve conflicts automatically.
+### Step 4: Conflict Summary
 
-### Step 4: Force Push
+If any conflicts were resolved during rebase, present a summary before proceeding:
+
+> **Conflicts resolved during rebase:**
+>
+> For each resolved conflict, show:
+> - **File:** `<file path>`
+> - **Conflict:** Brief description of what conflicted (e.g., "Both branches modified the `calculateTotal` function")
+> - **Resolution:** How it was resolved (e.g., "Combined changes: kept the new parameter from base branch and the validation logic from feature branch")
+
+This allows the user to review what was automatically resolved before force pushing.
+
+### Step 5: Force Push
 
 Before pushing, use `AskUserQuestion` to confirm:
 
@@ -115,7 +155,7 @@ git push --force-with-lease origin $(git branch --show-current)
 
 **Note:** `--force-with-lease` refuses to overwrite remote commits you haven't fetched, providing safety against overwriting others' work.
 
-### Step 5: Report Results
+### Step 6: Report Results
 
 Show the commit log relative to base:
 
