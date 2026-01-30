@@ -42,8 +42,8 @@ has_rf_flags() {
 # Helper: Output block message and exit
 block() {
     local reason="$1"
-    echo "{\"decision\":\"block\",\"reason\":\"$reason\"}"
-    exit 0
+    echo "$reason" >&2
+    exit 2
 }
 
 # ============================================================================
