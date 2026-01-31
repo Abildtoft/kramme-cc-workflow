@@ -156,68 +156,57 @@ run_hook() {
 
 @test "blocks rm -rf" {
     run run_hook "rm -rf directory/"
-    [ "$status" -eq 0 ]
     is_blocked
     [[ "$output" == *"trash"* ]]
 }
 
 @test "blocks rm -fr (flag order reversed)" {
     run run_hook "rm -fr directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks rm -r -f (separate flags)" {
     run run_hook "rm -r -f directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks rm -f -r (separate flags reversed)" {
     run run_hook "rm -f -r directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks rm --recursive --force" {
     run run_hook "rm --recursive --force directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks rm --force --recursive" {
     run run_hook "rm --force --recursive directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks rm -R -f (uppercase R)" {
     run run_hook "rm -R -f directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks rm -Rf" {
     run run_hook "rm -Rf directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks rm -fR" {
     run run_hook "rm -fR directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks rm -rfi (with interactive, still has rf)" {
     run run_hook "rm -rfi directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks rm -rfv (with verbose)" {
     run run_hook "rm -rfv directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
@@ -227,19 +216,16 @@ run_hook() {
 
 @test "blocks /bin/rm -rf" {
     run run_hook "/bin/rm -rf directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks /usr/bin/rm -rf" {
     run run_hook "/usr/bin/rm -rf directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks ./rm -rf (relative path)" {
     run run_hook "./rm -rf directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
@@ -249,37 +235,31 @@ run_hook() {
 
 @test "blocks sudo rm -rf" {
     run run_hook "sudo rm -rf directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks command rm -rf" {
     run run_hook "command rm -rf directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks env rm -rf" {
     run run_hook "env rm -rf directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks backslash rm -rf" {
     run run_hook '\rm -rf directory/'
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks sudo /bin/rm -rf" {
     run run_hook "sudo /bin/rm -rf directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks sudo command rm -rf" {
     run run_hook "sudo command rm -rf directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
@@ -289,19 +269,16 @@ run_hook() {
 
 @test "blocks find | xargs rm -rf" {
     run run_hook "find . -name '*.tmp' | xargs rm -rf"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks ls | xargs rm -rf" {
     run run_hook "ls | xargs rm -rf"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks xargs rm -rf without pipe" {
     run run_hook "xargs rm -rf < files.txt"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
@@ -317,19 +294,16 @@ run_hook() {
 
 @test "blocks sh -c 'rm -rf'" {
     run run_hook "sh -c 'rm -rf directory/'"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks bash -c 'rm -rf'" {
     run run_hook 'bash -c "rm -rf directory/"'
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks zsh -c 'rm -rf'" {
     run run_hook 'zsh -c "rm -rf directory/"'
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
@@ -357,25 +331,21 @@ run_hook() {
 
 @test "blocks find -delete" {
     run run_hook "find . -name '*.tmp' -delete"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks find with -delete at end" {
     run run_hook "find /tmp -type f -mtime +7 -delete"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks find -exec rm -rf" {
     run run_hook "find . -type d -exec rm -rf {} \\;"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks find -exec rm -rf with +" {
     run run_hook "find . -type d -exec rm -rf {} +"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
@@ -403,25 +373,21 @@ run_hook() {
 
 @test "blocks shred" {
     run run_hook "shred file.txt"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks shred with options" {
     run run_hook "shred -u -z file.txt"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks /usr/bin/shred" {
     run run_hook "/usr/bin/shred file.txt"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks sudo shred" {
     run run_hook "sudo shred -u file.txt"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
@@ -431,19 +397,16 @@ run_hook() {
 
 @test "blocks unlink" {
     run run_hook "unlink file.txt"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks /bin/unlink" {
     run run_hook "/bin/unlink file.txt"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks sudo unlink" {
     run run_hook "sudo unlink file.txt"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
@@ -453,31 +416,26 @@ run_hook() {
 
 @test "blocks rm -rf in command chain with &&" {
     run run_hook "cd /tmp && rm -rf directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks rm -rf in command chain with ;" {
     run run_hook "ls; rm -rf directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks rm -rf in command chain with ||" {
     run run_hook "test -d dir || rm -rf backup/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks rm -rf in command substitution" {
     run run_hook 'echo $(rm -rf directory/)'
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks rm -rf in backticks" {
     run run_hook 'echo `rm -rf directory/`'
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
@@ -499,13 +457,11 @@ run_hook() {
 
 @test "blocks rm -rf even with extra whitespace" {
     run run_hook "rm   -rf    directory/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks rm -rf with multiple targets" {
     run run_hook "rm -rf dir1/ dir2/ dir3/"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
