@@ -47,6 +47,7 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the C
   - [Agents](#agents-1)
   - [Skills](#skills-1)
   - [Hooks](#hooks-1)
+- [Other Claude Code Plugins](#other-claude-code-plugins)
 - [Documentation](#documentation)
 - [Releases](#releases)
 - [Attribution](#attribution)
@@ -799,6 +800,13 @@ Available hook events:
 - `PostToolUse` - After a tool is executed
 - `SessionStart` - When Claude Code session begins
 - `Stop` - When Claude attempts to stop
+
+## Other Claude Code Plugins
+
+| Plugin | Description |
+|--------|-------------|
+| [Agent Skills for Context Engineering](https://github.com/muratcankoylan/Agent-Skills-for-Context-Engineering) | A comprehensive collection of Agent Skills focused on context engineering principles for building production-grade AI agent systems. Covers multi-agent architecture, memory systems, tool design, and evaluation frameworks. |
+| [adversarial-spec](https://github.com/zscole/adversarial-spec) | Automates specification refinement through multi-model debate. Orchestrates critiques from multiple LLMs until consensus is reached, catching gaps and edge cases that a single model would miss. |
 
 ## Documentation
 
