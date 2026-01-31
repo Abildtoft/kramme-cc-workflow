@@ -112,20 +112,17 @@ run_hook() {
 
 @test "blocks git commit without message flag" {
     run run_hook "git commit"
-    [ "$status" -eq 0 ]
     is_blocked
     [[ "$output" == *"git commit -m"* ]]
 }
 
 @test "blocks git commit --amend without message" {
     run run_hook "git commit --amend"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks git commit -a without message" {
     run run_hook "git commit -a"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
@@ -159,14 +156,12 @@ run_hook() {
 
 @test "blocks git rebase -i without GIT_SEQUENCE_EDITOR" {
     run run_hook "git rebase -i HEAD~3"
-    [ "$status" -eq 0 ]
     is_blocked
     [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
 }
 
 @test "blocks git rebase --interactive without GIT_SEQUENCE_EDITOR" {
     run run_hook "git rebase --interactive HEAD~3"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
@@ -178,7 +173,6 @@ run_hook() {
 
 @test "blocks git rebase --continue without GIT_EDITOR" {
     run run_hook "git rebase --continue"
-    [ "$status" -eq 0 ]
     is_blocked
     [[ "$output" == *"GIT_EDITOR"* ]]
 }
@@ -213,26 +207,22 @@ run_hook() {
 
 @test "blocks git add -p" {
     run run_hook "git add -p"
-    [ "$status" -eq 0 ]
     is_blocked
     [[ "$output" == *"explicit paths"* ]]
 }
 
 @test "blocks git add --patch" {
     run run_hook "git add --patch"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks git add -i" {
     run run_hook "git add -i"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks git add --interactive" {
     run run_hook "git add --interactive"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
@@ -272,14 +262,12 @@ run_hook() {
 
 @test "blocks git merge without --no-edit" {
     run run_hook "git merge feature-branch"
-    [ "$status" -eq 0 ]
     is_blocked
     [[ "$output" == *"--no-edit"* ]]
 }
 
 @test "blocks git merge origin/main without --no-edit" {
     run run_hook "git merge origin/main"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
@@ -307,14 +295,12 @@ run_hook() {
 
 @test "blocks git cherry-pick without --no-edit" {
     run run_hook "git cherry-pick abc123"
-    [ "$status" -eq 0 ]
     is_blocked
     [[ "$output" == *"--no-edit"* ]]
 }
 
 @test "blocks git cherry-pick with multiple commits" {
     run run_hook "git cherry-pick abc123 def456"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
@@ -324,7 +310,6 @@ run_hook() {
 
 @test "handles command with extra whitespace" {
     run run_hook "  git   commit  "
-    [ "$status" -eq 0 ]
     is_blocked
 }
 

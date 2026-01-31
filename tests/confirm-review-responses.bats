@@ -116,7 +116,6 @@ REVIEW_RESPONSES.markdown"
 @test "blocks git commit when REVIEW_RESPONSES.md is staged" {
     mock_git_staged "REVIEW_RESPONSES.md"
     run run_hook "git commit -m 'test commit'"
-    [ "$status" -eq 0 ]
     is_blocked
     [[ "$output" == *"REVIEW_RESPONSES.md"* ]]
     [[ "$output" == *"confirm"* ]]
@@ -127,21 +126,18 @@ REVIEW_RESPONSES.markdown"
 REVIEW_RESPONSES.md
 file2.js"
     run run_hook "git commit -m 'multiple files'"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks git commit when REVIEW_RESPONSES.md is in subdirectory" {
     mock_git_staged "src/REVIEW_RESPONSES.md"
     run run_hook "git commit -m 'subdir file'"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks git commit when REVIEW_RESPONSES.md is in deep path" {
     mock_git_staged "path/to/deep/REVIEW_RESPONSES.md"
     run run_hook "git commit -m 'deep path'"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
@@ -152,27 +148,23 @@ file2.js"
 @test "blocks git commit without message flag" {
     mock_git_staged "REVIEW_RESPONSES.md"
     run run_hook "git commit"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks git commit with --amend" {
     mock_git_staged "REVIEW_RESPONSES.md"
     run run_hook "git commit --amend"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks git commit with -a flag" {
     mock_git_staged "REVIEW_RESPONSES.md"
     run run_hook "git commit -a -m 'auto stage'"
-    [ "$status" -eq 0 ]
     is_blocked
 }
 
 @test "blocks git commit with multiple flags" {
     mock_git_staged "REVIEW_RESPONSES.md"
     run run_hook "git commit -v --no-verify -m 'test'"
-    [ "$status" -eq 0 ]
     is_blocked
 }

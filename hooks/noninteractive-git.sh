@@ -15,8 +15,8 @@ command=$(echo "$input" | jq -r '.tool_input.command // empty')
 # Helper to output block decision
 block() {
     local reason="$1"
-    echo "{\"decision\":\"block\",\"reason\":\"$reason\"}"
-    exit 0
+    echo "$reason" >&2
+    exit 2
 }
 
 # Strip quoted strings to avoid false positives (e.g., echo "git commit")

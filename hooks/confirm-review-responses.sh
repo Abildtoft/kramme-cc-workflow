@@ -19,8 +19,8 @@ fi
 
 # Check if REVIEW_RESPONSES.md is staged
 if git diff --cached --name-only 2>/dev/null | grep -qE '(^|/)REVIEW_RESPONSES\.md$'; then
-    echo '{"decision":"block","reason":"REVIEW_RESPONSES.md is staged for commit. Please confirm you want to include this file in the commit."}'
-    exit 0
+    echo "REVIEW_RESPONSES.md is staged for commit. Please confirm you want to include this file in the commit." >&2
+    exit 2
 fi
 
 exit 0

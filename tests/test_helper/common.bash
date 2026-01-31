@@ -19,9 +19,9 @@ run_block_hook() {
     make_bash_input "$cmd" | bash "$HOOKS_DIR/block-rm-rf.sh"
 }
 
-# Helper: Check if output indicates a block decision
+# Helper: Check if output indicates a block decision (exit 2 + stderr message)
 is_blocked() {
-    [[ "$output" == *'"decision":"block"'* ]]
+    [ "$status" -eq 2 ] && [ -n "$output" ]
 }
 
 # Helper: Check if output is empty (allowed)
