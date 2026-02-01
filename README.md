@@ -532,6 +532,7 @@ These MCP servers enhance the plugin's capabilities.
 | **Chrome DevTools** | Browser automation and debugging |
 | **Claude in Chrome** | Browser automation via Chrome extension |
 | **Playwright** | Browser automation for testing |
+| **Magic Patterns** | Design-to-code integration for Magic Patterns designs |
 
 ### Linear
 
@@ -655,6 +656,29 @@ claude mcp add playwright -s user -- npx -y @playwright/mcp@latest
 ```
 
 Browser binaries are installed automatically on first use.
+
+### Magic Patterns
+
+[Magic Patterns MCP](https://www.magicpatterns.com/docs/documentation/features/mcp-server/overview) integrates designs with AI tools, providing design context and code.
+
+**Claude Code:**
+```bash
+claude mcp add --transport http magic-patterns https://mcp.magicpatterns.com/mcp
+```
+
+**Claude Desktop / Cursor:**
+```json
+{
+  "mcpServers": {
+    "magic-patterns": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.magicpatterns.com/mcp"]
+    }
+  }
+}
+```
+
+Run `/mcp` in Claude Code to authenticate.
 
 ## Recommended CLIs
 
