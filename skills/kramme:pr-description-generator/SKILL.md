@@ -202,17 +202,17 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 
 **ALWAYS** check for implementation decisions and context from the development process:
 
-1. **Specification Files** (commonly created by structured-implementation-workflow Skill):
+1. **Specification Files** (commonly created by Structured Implementation Workflow/SIW):
 
-   - **ALWAYS** search for these files in the repository root or feature directories:
-     - `SPEC.md` - Main specification document
-     - `LOG.md` - Implementation log/journal
-     - `OPEN_ISSUES.md` - Known issues and decisions
-     - `IMPLEMENTATION.md` - Implementation notes
+   - **ALWAYS** search for these files in the `siw/` directory:
+     - `siw/SPEC.md` - Main specification document
+     - `siw/LOG.md` - Implementation log/journal
+     - `siw/OPEN_ISSUES_OVERVIEW.md` - Known issues and decisions
+     - `siw/IMPLEMENTATION.md` - Implementation notes
 
    ```bash
    # Search for specification files
-   find . -maxdepth 3 -name "SPEC.md" -o -name "LOG.md" -o -name "OPEN_ISSUES.md" -o -name "IMPLEMENTATION.md"
+   find siw -maxdepth 3 -name "SPEC.md" -o -name "LOG.md" -o -name "OPEN_ISSUES_OVERVIEW.md" -o -name "IMPLEMENTATION.md"
    ```
 
 2. **Read specification files if found**:
@@ -1177,7 +1177,7 @@ dotnet ef migrations remove -c ConnectContext
 - **NOTE**: After generation, review the description and adjust as needed before using it
 - **NOTE**: The skill follows Connect project conventions (AGENTS.md) but may need customization for other projects
 - **NOTE**: If Linear issue lookup fails, continue anyway and note the issue ID in the summary without detailed context
-- **NOTE**: Spec files (SPEC.md, LOG.md, OPEN_ISSUES.md, etc.) and conversation history are for context gathering ONLY
+- **NOTE**: Spec files (siw/SPEC.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, etc.) and conversation history are for context gathering ONLY
   - Use them to understand what happened during implementation
   - **NEVER** reference them in the PR description - reviewers don't have access to them
   - Only reference Linear issues when documenting divergences or original requirements

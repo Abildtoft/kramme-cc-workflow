@@ -13,7 +13,9 @@ Choose a permanent name based on project type:
 
 This is the only document that persists after completion.
 
-## Step 1: Create [YOUR_SPEC].md (Always Required)
+## Step 1: Create siw/[YOUR_SPEC].md (Always Required)
+
+Create the `siw/` directory first if it doesn't exist.
 
 Read `templates/spec-guidance.md` for structure details.
 
@@ -38,13 +40,13 @@ Read `templates/spec-guidance.md` for structure details.
 Read `templates/issues-template.md` for the full structure.
 
 **When first issue arises:**
-1. Create `issues/` directory
-2. Create `OPEN_ISSUES_OVERVIEW.md` with the overview table
-3. Create `issues/ISSUE-001-short-title.md` for the first issue
+1. Create `siw/issues/` directory
+2. Create `siw/OPEN_ISSUES_OVERVIEW.md` with the overview table
+3. Create `siw/issues/ISSUE-001-short-title.md` for the first issue
 
-**When resolved:** Delete issue file, remove from overview, document decision in LOG.md
+**When resolved:** Delete issue file, remove from overview, document decision in siw/LOG.md
 
-## Step 3: Create LOG.md (On Demand)
+## Step 3: Create siw/LOG.md (On Demand)
 
 **Only create when first decision is made OR first task is completed.**
 

@@ -1,4 +1,4 @@
-# LOG.md Template
+# siw/LOG.md Template
 
 **Purpose:** Session continuity + decision rationale (temporary - deleted at completion)
 
@@ -20,7 +20,7 @@ This document is designed for **progressive reading**:
 
 3. **Use search, not full reads:**
    ```bash
-   grep -n "Decision.*keyword" LOG.md
+   grep -n "Decision.*keyword" siw/LOG.md
    ```
    Then read just that section (~10 lines per decision).
 
@@ -129,7 +129,7 @@ This document is designed for **progressive reading**:
 ```markdown
 ## References
 
-- Spec: `FEATURE_SPECIFICATION.md`
+- Spec: `siw/FEATURE_SPECIFICATION.md`
 - Similar: ActionAt pattern
 - AGENTS.md: EF nullable guidelines
 ```

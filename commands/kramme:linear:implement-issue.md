@@ -1,5 +1,5 @@
 ---
-name: kramme:implement-linear-issue
+name: kramme:linear:implement-issue
 description: Start implementing a Linear issue with branch setup, context gathering, and guided workflow
 ---
 
@@ -12,7 +12,7 @@ Start implementing a Linear issue through an extensive planning phase before any
 ## Process Overview
 
 ```
-/kramme:implement-linear-issue ABC-123
+/kramme:linear:implement-issue ABC-123
     |
     v
 [Validate & Fetch Issue] -> Not found? -> Show error, abort
@@ -67,8 +67,8 @@ Start implementing a Linear issue through an extensive planning phase before any
 ```
 Error: Please provide a Linear issue ID.
 
-Usage: /kramme:implement-linear-issue <ISSUE-ID>
-Example: /kramme:implement-linear-issue ABC-123
+Usage: /kramme:linear:implement-issue <ISSUE-ID>
+Example: /kramme:linear:implement-issue ABC-123
 
 The issue ID should be in the format TEAM-NUMBER (e.g., WAN-521, HEA-456).
 ```
@@ -123,7 +123,7 @@ Please verify:
   - You have access to the issue's team
   - The issue exists in Linear
 
-Try again with /kramme:implement-linear-issue <correct-issue-id>
+Try again with /kramme:linear:implement-issue <correct-issue-id>
 ```
 
 **Action:** Abort.
@@ -476,7 +476,7 @@ options:
 
    - Break requirements into discrete tasks
    - Identify dependencies between tasks
-   - Consider using `kramme:structured-implementation-workflow` for complex issues
+   - Consider using Structured Implementation Workflow (SIW) for complex issues - use `/kramme:siw:init` to set up
 
 2. **Create Todo List**
 
