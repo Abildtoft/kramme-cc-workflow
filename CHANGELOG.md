@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.12.0] - 2026-02-03
+
+### Added
+- Overhaul of the Structured Implementation Workflow (SIW) (#106)
+- Add kramme:elegant-refactor command (#104)
+- Add automatic conflict resolution to rebase-pr command (#101)
+
+### Changed
+- Add Magic Patterns MCP to recommended servers (#105)
+- Add Other Claude Code Plugins section (#103)
+- Fix command patterns from colon to space syntax (#100)
+
+### Fixed
+- PreToolUse hooks now use exit 2 to communicate with Claude (#102)
+
 ## [0.11.0] - 2026-01-29
 
 ### Changed
@@ -205,6 +220,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.12.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.8.0...v0.9.0
