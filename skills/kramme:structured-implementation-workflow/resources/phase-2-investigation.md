@@ -59,6 +59,8 @@ Then read only that specific decision section (~10 lines per decision) using Rea
 - Add code/doc references
 - Reference the original issue number if helpful
 
+**Use standard categories:** Architecture | Data Model | API | UI/UX | Testing | Performance | Security | Infrastructure
+
 ### 5. Update siw/[YOUR_SPEC].md
 
 - Modify affected tasks based on decision

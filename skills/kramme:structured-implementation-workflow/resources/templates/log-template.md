@@ -2,9 +2,15 @@
 
 **Purpose:** Session continuity + decision rationale (temporary - deleted at completion)
 
-**Create on demand** when first decision made OR first task completed.
+**Create:** Automatically by `/kramme:siw:init`, or manually when first decision is made.
 
 **Update:** After completing tasks, before ending sessions, when making decisions.
+
+**DO NOT update after:**
+- Every file edit (only after completing logical units of work)
+- Minor refactoring within a task
+- Reading/exploring code
+- Running tests (unless they reveal a decision point)
 
 ---
 
@@ -34,6 +40,14 @@ This document is designed for **progressive reading**:
 4. **Guiding Principles** - Project principles
 5. **References** - Links to materials
 
+### Decision Numbering
+
+Decisions are numbered **sequentially across the entire project** (not per-phase):
+- Start at #1 for the first decision
+- Increment by 1 for each new decision
+- Never reuse numbers, even if a decision is later revised
+- Reference format: "Decision #5" or "per Decision #5"
+
 ---
 
 ## Section Details
@@ -48,7 +62,7 @@ This document is designed for **progressive reading**:
 ## Current Progress
 
 **Last Updated:** YYYY-MM-DD HH:MM
-**Quick Summary:** [One-line description of project state, e.g., "Implementing user tracking on MyEntity, 5/12 tasks done, working on API endpoint"]
+**Quick Summary:** [MUST be one line - e.g., "Implementing user tracking, 5/12 tasks done, working on API endpoint"]
 
 ### 📍 Project Status
 

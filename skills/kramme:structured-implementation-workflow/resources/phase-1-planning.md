@@ -46,12 +46,12 @@ Read `templates/issues-template.md` for the full structure.
 
 **When resolved:** Delete issue file, remove from overview, document decision in siw/LOG.md
 
-## Step 3: Create siw/LOG.md (On Demand)
+## Step 3: siw/LOG.md
 
-**Only create when first decision is made OR first task is completed.**
+**Note:** If you used `/kramme:siw:init`, LOG.md was already created with the initial structure.
 
-Read `templates/log-template.md` when creating.
-
+**If creating manually** (when first decision is made OR first task is completed):
+- Read `templates/log-template.md` for structure
 - Add "Current Progress" section at the very top
 - Add Decision Template
 - Document first decision with full rationale (if applicable)

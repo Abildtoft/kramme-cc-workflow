@@ -576,17 +576,20 @@ options:
 
 ### 10.4 Update Specification File(s)
 
-For selected decisions, update the appropriate spec file (main spec or supporting spec):
+For selected decisions, update the appropriate spec file (main spec or supporting spec).
 
-**Add to `## Design Decisions` section:**
+**Migration format for spec's `## Design Decisions` section:**
+
 ```markdown
-### Decision #{n}: {title}
-**Date:** {date} | **Source:** Implementation of ISSUE-{number}
+### Decision #5: Make ActionByUserId Nullable
+**Date:** 2025-11-05 | **Source:** ISSUE-003 implementation
 
-**Context:** {why this decision was needed}
-**Decision:** {what was decided}
-**Rationale:** {why this approach was chosen}
+**Context:** Not all entities undergo this action, so the field shouldn't be required at the database level.
+**Decision:** Nullable at storage; required parameter when calling PerformAction().
+**Rationale:** Matches existing ActionAt pattern; semantically correct representation.
 ```
+
+**Note:** The spec version is more concise than LOG.md - omit alternatives and detailed impact (those stay in LOG.md for historical reference).
 
 **Update affected sections:**
 - If decision changes scope → update `## Scope` in main spec

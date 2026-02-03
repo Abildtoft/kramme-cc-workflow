@@ -195,6 +195,8 @@ See `resources/templates/spec-guidance.md` for detailed guidance on supporting s
 
 ### 4.2 Create siw/LOG.md
 
+**Note:** Creating LOG.md during init ensures consistent structure. The file will be populated as work progresses.
+
 Create `siw/LOG.md` with initial structure:
 
 ```markdown

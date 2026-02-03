@@ -86,3 +86,4 @@ If the task references a supporting spec (e.g., "See `siw/supporting-specs/02-ap
 - Explain choices made during work
 - Document why certain approaches were taken
 - Note impact on final deliverable
+- Use standard categories: Architecture | Data Model | API | UI/UX | Testing | Performance | Security | Infrastructure
