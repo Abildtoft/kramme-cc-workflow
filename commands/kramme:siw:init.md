@@ -258,7 +258,7 @@ Create `siw/OPEN_ISSUES_OVERVIEW.md`:
 |---|-------|--------|----------|---------|
 | _None_ | _Use `/kramme:siw:define-issue` to create first issue_ | | | |
 
-**Status Legend:** Blocked (waiting) | Investigating (researching) | Ready (needs decision) | In Progress (being implemented)
+**Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
 
 **Details:** See `siw/issues/ISSUE-XXX-*.md` files.
 ```
