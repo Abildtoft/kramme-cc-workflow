@@ -578,7 +578,24 @@ options:
 
 For selected decisions, update the appropriate spec file (main spec or supporting spec).
 
-**Migration format for spec's `## Design Decisions` section:**
+**CRITICAL for supporting specs:** Don't just add to a "Design Decisions" section - **update the actual spec content** to reflect the decision. Supporting specs should always reflect current reality.
+
+**Example:** If a decision changes an API endpoint from POST to PUT:
+- **Wrong:** Add "Decision #5: Changed to PUT" to Design Decisions section
+- **Right:** Update the endpoint definition in the API spec to show PUT, add brief note about why
+
+**When to update supporting spec content directly:**
+- Data model changes → Update entity definitions in `*-data-model*.md`
+- API changes → Update endpoint contracts in `*-api*.md`
+- UI changes → Update component specs in `*-ui*.md`
+- Architecture changes → Update diagrams/descriptions in architecture specs
+
+**When to use Design Decisions section (main spec only):**
+- Cross-cutting decisions that affect multiple areas
+- High-level architectural choices
+- Decisions that don't map to a specific spec section
+
+**Migration format for main spec's `## Design Decisions` section:**
 
 ```markdown
 ### Decision #5: Make ActionByUserId Nullable
@@ -590,14 +607,6 @@ For selected decisions, update the appropriate spec file (main spec or supportin
 ```
 
 **Note:** The spec version is more concise than LOG.md - omit alternatives and detailed impact (those stay in LOG.md for historical reference).
-
-**Update affected sections:**
-- If decision changes scope → update `## Scope` in main spec
-- If decision adds constraints → update `## Constraints` in main spec
-- If decision affects architecture → update `## Technical Notes` in main spec
-- If decision affects data model → update relevant section in `*-data-model*.md`
-- If decision affects API → update relevant section in `*-api*.md`
-- If decision affects UI → update relevant section in `*-ui*.md`
 
 ### 10.5 Confirm Sync Complete
 

@@ -136,6 +136,34 @@ Tasks can reference supporting specs for details:
    ```
 4. Read from that line with `limit: 50`
 
+### Keeping Supporting Specs Current
+
+**CRITICAL:** Supporting specs must reflect current implementation, not original plans.
+
+When implementation decisions are made during Step 10 (Spec Sync):
+- **Update the actual content** of the supporting spec, not just add to a "Design Decisions" section
+- Supporting specs should always be the source of truth for their domain
+
+**Example - API endpoint change:**
+```markdown
+# Before (original plan)
+## User Endpoints
+POST /api/users - Create new user
+
+# After (decision made during implementation)
+## User Endpoints
+PUT /api/users/{id} - Create or update user
+> Changed from POST to PUT for idempotency (Decision #5)
+```
+
+**Don't do this:**
+```markdown
+## Design Decisions
+Decision #5: Changed POST to PUT
+```
+
+The goal is that anyone reading the supporting spec sees the **current** design, with brief notes explaining why if the decision was non-obvious.
+
 ## Task Example
 
 ```markdown
