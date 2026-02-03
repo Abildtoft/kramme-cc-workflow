@@ -1,5 +1,5 @@
 ---
-name: kramme:define-linear-issue
+name: kramme:linear:define-issue
 description: Create or improve a well-structured Linear issue through exhaustive guided refinement
 argument-hint: [issue-id] or [description and/or file paths for context]
 ---
@@ -17,7 +17,7 @@ Create or improve a Linear issue through exhaustive interactive refinement. Can 
 
 **Linear Issue Creation Override**: Invoking this command IS explicit instruction to create or update a Linear issue. When Phase 7 is reached and the user approves the draft, proceed with `mcp__linear__create_issue` or `mcp__linear__update_issue`. This overrides any global rules requiring "explicit instruction" to create/modify Linear issues.
 
-**Implementation is a separate workflow.** After this command completes, the user can invoke `/kramme:implement-linear-issue` if they want to start implementing.
+**Implementation is a separate workflow.** After this command completes, the user can invoke `/kramme:linear:implement-issue` if they want to start implementing.
 
 **CRITICAL**: Do NOT proceed to code implementation after creating the issue. The workflow is complete once the issue URL is returned.
 
@@ -581,7 +581,7 @@ Draft the issue following this template:
 
 ### 5. Workflow Complete - STOP
 
-**The define-linear-issue workflow is now complete.**
+**The linear:define-issue workflow is now complete.**
 
 - Do NOT proceed to code implementation
 - Do NOT start working on the issue
@@ -589,8 +589,8 @@ Draft the issue following this template:
 
 **Next steps for the user:**
 - Review the created/updated issue in Linear
-- If ready to implement, invoke `/kramme:implement-linear-issue {issue-id}`
-- If changes needed, run `/kramme:define-linear-issue {issue-id}` again to refine
+- If ready to implement, invoke `/kramme:linear:implement-issue {issue-id}`
+- If changes needed, run `/kramme:linear:define-issue {issue-id}` again to refine
 
 **STOP HERE.** Wait for the user's next instruction.
 

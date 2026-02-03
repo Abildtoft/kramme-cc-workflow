@@ -4,17 +4,17 @@
 
 Verify all items before finalizing:
 
-### [YOUR_SPEC].md is up-to-date
+### siw/[YOUR_SPEC].md is up-to-date
 
 - [ ] All tasks marked complete
 - [ ] Verification checklist fully checked off
 - [ ] All success criteria met
 - [ ] Spec reflects actual execution (not original plan if it changed)
-- [ ] No references to OPEN_ISSUES_OVERVIEW.md, issues/*.md, or LOG.md
+- [ ] No references to siw/OPEN_ISSUES_OVERVIEW.md, siw/issues/*.md, or siw/LOG.md
 
 ### No deliverable references to temporary documents
 
-- [ ] Searched deliverables for references to spec, OPEN_ISSUES, LOG
+- [ ] Searched deliverables for references to spec, siw/OPEN_ISSUES_OVERVIEW, siw/LOG
 - [ ] **For code:** No references in comments, documentation, error messages, logs
 - [ ] **For documentation:** No references in published content
 - [ ] **For any deliverable:** All content is self-contained
@@ -22,12 +22,12 @@ Verify all items before finalizing:
 ### Issues are resolved and cleaned up
 
 - [ ] No active issues remain (all resolved)
-- [ ] All resolved issues moved to LOG.md
-- [ ] All issue files deleted from `issues/` directory
-- [ ] `OPEN_ISSUES_OVERVIEW.md` deleted
-- [ ] `issues/` directory deleted
+- [ ] All resolved issues moved to siw/LOG.md
+- [ ] All issue files deleted from `siw/issues/` directory
+- [ ] `siw/OPEN_ISSUES_OVERVIEW.md` deleted
+- [ ] `siw/issues/` directory deleted
 
-### LOG.md is complete
+### siw/LOG.md is complete
 
 Will be deleted at completion, but should be complete for review:
 

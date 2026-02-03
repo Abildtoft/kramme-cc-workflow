@@ -57,12 +57,18 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the C
 
 | Command | Description |
 |---------|-------------|
-| `/kramme:clean-up-artifacts` | Delete workflow artifacts (REVIEW_RESPONSES.md, LOG.md, OPEN_ISSUES.md, specification files). |
+| `/kramme:clean-up-artifacts` | Delete workflow artifacts (REVIEW_RESPONSES.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files). For SIW-specific cleanup, use `/kramme:siw:remove`. |
 | `/kramme:find-bugs` | Find bugs, security vulnerabilities, and code quality issues in branch changes. Performs systematic security review with attack surface mapping and checklist-based analysis. |
 | `/kramme:create-pr` | Create a clean PR with narrative-quality commits and comprehensive description. Orchestrates branch setup, commit restructuring, and PR creation. |
 | `/kramme:fixup-changes` | Intelligently fixup unstaged changes into existing commits. Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
-| `/kramme:define-linear-issue` | Create or improve a Linear issue through exhaustive guided refinement. Can start from scratch or refine an existing issue by ID. Supports file references for context. |
-| `/kramme:implement-linear-issue` | Start implementing a Linear issue with branch setup, context gathering, and guided workflow. Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
+| `/kramme:linear:define-issue` | Create or improve a Linear issue through exhaustive guided refinement. Can start from scratch or refine an existing issue by ID. Supports file references for context. |
+| `/kramme:linear:implement-issue` | Start implementing a Linear issue with branch setup, context gathering, and guided workflow. Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
+| `/kramme:siw:init` | Initialize structured implementation workflow documents in `siw/` (spec, siw/LOG.md, siw/issues). Sets up local issue tracking without requiring Linear. |
+| `/kramme:siw:define-issue` | Define a new local issue with guided interview process. Creates issue files in the `issues/` directory. |
+| `/kramme:siw:implement-issue` | Start implementing a defined local issue with codebase exploration and planning. Works on current branch. |
+| `/kramme:siw:remove` | Remove all Structured Implementation Workflow (SIW) files from current directory. Cleans up temporary workflow documents. |
+| `/kramme:siw:reset` | Reset SIW workflow state while preserving the spec. Migrates log decisions to spec, then clears issues and log for fresh start. |
+| `/kramme:siw:restart-issues` | Remove all DONE issues and renumber remaining issues from 001. Cleans up completed work and provides fresh numbering sequence. |
 | `/kramme:deslop` | Remove AI-generated code slop from a branch. Uses `kramme:deslop-reviewer` agent to identify slop, then fixes the issues. |
 | `/kramme:elegant-refactor` | Scrap a working-but-mediocre fix and reimplement elegantly. Extracts learnings from the initial attempt, then starts fresh with the elegant solution. |
 | `/kramme:humanize-text` | Humanize provided text or file content using the `kramme:humanize-text` skill. |
@@ -113,7 +119,7 @@ Skills are auto-triggered based on context. Claude will invoke these automatical
 | `kramme:markdown-converter` | Converting documents (PDF, Word, Excel, images, audio, etc.) to Markdown using markitdown |
 | `kramme:pr-description-generator` | Generating PR descriptions by analyzing git changes, commit history, and Linear issues |
 | `kramme:recreate-commits` | Recreating the current branch in-place with narrative-quality commits |
-| `kramme:structured-implementation-workflow` | Detecting LOG.md and OPEN_ISSUES.md files to track complex implementations. Uses progressive disclosure - loads lean core (~120 lines) with phase-specific resources read on-demand |
+| `kramme:structured-implementation-workflow` | Structured Implementation Workflow (SIW) - Triggers on "SIW", "structured workflow", or when siw/LOG.md and siw/OPEN_ISSUES_OVERVIEW.md files are detected. Uses progressive disclosure with phase-specific resources. Use `/kramme:siw:init` to set up. |
 | `kramme:verification-before-completion` | About to claim work is complete/fixed/passing - requires evidence before assertions |
 
 ## Hooks
@@ -527,7 +533,7 @@ These MCP servers enhance the plugin's capabilities.
 
 | Server | Purpose |
 |--------|---------|
-| **Linear** | Issue tracking for `/kramme:implement-linear-issue` and `/kramme:define-linear-issue` |
+| **Linear** | Issue tracking for `/kramme:linear:implement-issue` and `/kramme:linear:define-issue` |
 | **Context7** | Up-to-date library documentation retrieval |
 | **Nx MCP** | Nx monorepo tools for `/kramme:verify` in Nx workspaces |
 | **Chrome DevTools** | Browser automation and debugging |

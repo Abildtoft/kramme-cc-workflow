@@ -1,11 +1,13 @@
 ---
 name: kramme:clean-up-artifacts
-description: Delete workflow artifacts (REVIEW_RESPONSES.md, LOG.md, OPEN_ISSUES.md, specification files)
+description: Delete workflow artifacts (REVIEW_RESPONSES.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files)
 ---
 
 # Clean Up Artifacts
 
 Delete workflow artifact files from the current working directory.
+
+**Note:** For SIW-specific cleanup, consider using `/kramme:siw:remove` instead.
 
 ## Target Files
 
@@ -14,22 +16,26 @@ Delete the following files if they exist:
 **Review artifacts:**
 - `REVIEW_RESPONSES.md`
 
-**Structured implementation workflow artifacts:**
-- `LOG.md`
-- `OPEN_ISSUES.md`
+**Structured Implementation Workflow (SIW) artifacts (in `siw/`):**
+- `siw/LOG.md`
+- `siw/OPEN_ISSUES_OVERVIEW.md`
+- `siw/issues/` directory (only if SIW marker files are present)
 
-**Specification files:**
-- `FEATURE_SPECIFICATION.md`
-- `PROJECT_PLAN.md`
-- `API_DESIGN.md`
-- `DOCUMENTATION_SPEC.md`
-- `SYSTEM_DESIGN.md`
-- `TUTORIAL_PLAN.md`
+**Specification files (in `siw/`):**
+- `siw/FEATURE_SPECIFICATION.md`
+- `siw/PROJECT_PLAN.md`
+- `siw/API_DESIGN.md`
+- `siw/DOCUMENTATION_SPEC.md`
+- `siw/SYSTEM_DESIGN.md`
+- `siw/TUTORIAL_PLAN.md`
 
 ## Workflow
 
 1. Check which target files exist in the working directory
-2. Delete each file that exists using `trash` (files can be restored from system Trash if needed)
-3. Report results:
+2. If `siw/issues/` exists:
+   - Only delete it if `siw/OPEN_ISSUES_OVERVIEW.md` exists
+   - If `siw/issues/` contains non-`ISSUE-*.md` files, ask before deleting or skip and report
+3. Delete each remaining file that exists using `trash` (files can be restored from system Trash if needed)
+4. Report results:
    - List files that were deleted
    - Note if no artifact files were found

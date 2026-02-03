@@ -1,10 +1,16 @@
-# LOG.md Template
+# siw/LOG.md Template
 
 **Purpose:** Session continuity + decision rationale (temporary - deleted at completion)
 
-**Create on demand** when first decision made OR first task completed.
+**Create:** Automatically by `/kramme:siw:init`, or manually when first decision is made.
 
 **Update:** After completing tasks, before ending sessions, when making decisions.
+
+**DO NOT update after:**
+- Every file edit (only after completing logical units of work)
+- Minor refactoring within a task
+- Reading/exploring code
+- Running tests (unless they reveal a decision point)
 
 ---
 
@@ -20,7 +26,7 @@ This document is designed for **progressive reading**:
 
 3. **Use search, not full reads:**
    ```bash
-   grep -n "Decision.*keyword" LOG.md
+   grep -n "Decision.*keyword" siw/LOG.md
    ```
    Then read just that section (~10 lines per decision).
 
@@ -33,6 +39,14 @@ This document is designed for **progressive reading**:
 3. **Rejected Alternatives Summary** - Table of rejected options
 4. **Guiding Principles** - Project principles
 5. **References** - Links to materials
+
+### Decision Numbering
+
+Decisions are numbered **sequentially across the entire project** (not per-phase):
+- Start at #1 for the first decision
+- Increment by 1 for each new decision
+- Never reuse numbers, even if a decision is later revised
+- Reference format: "Decision #5" or "per Decision #5"
 
 ---
 
@@ -48,7 +62,7 @@ This document is designed for **progressive reading**:
 ## Current Progress
 
 **Last Updated:** YYYY-MM-DD HH:MM
-**Quick Summary:** [One-line description of project state, e.g., "Implementing user tracking on MyEntity, 5/12 tasks done, working on API endpoint"]
+**Quick Summary:** [MUST be one line - e.g., "Implementing user tracking, 5/12 tasks done, working on API endpoint"]
 
 ### 📍 Project Status
 
@@ -129,7 +143,7 @@ This document is designed for **progressive reading**:
 ```markdown
 ## References
 
-- Spec: `FEATURE_SPECIFICATION.md`
+- Spec: `siw/FEATURE_SPECIFICATION.md`
 - Similar: ActionAt pattern
 - AGENTS.md: EF nullable guidelines
 ```
