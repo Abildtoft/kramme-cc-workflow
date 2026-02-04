@@ -81,7 +81,6 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the C
 | `/kramme:explore-interview` | Conduct an in-depth interview about a topic/proposal to uncover requirements. Uses structured questioning to explore features, processes, or architecture decisions. |
 | `/kramme:extract-learnings` | Extract non-obvious learnings from session to AGENTS.md files. Presents suggestions for approval before making changes. |
 | `/kramme:review-pr` | Run comprehensive PR review using specialized agents. Supports reviewing comments, tests, errors, types, and code quality. Can run agents sequentially or in parallel. |
-| `/kramme:granola-meeting-notes` | Query meeting notes from Granola (macOS, Windows; Windows is untested). Supports fuzzy search, pattern analysis, transcript stats, and markdown export. |
 | `/kramme:toggle-hook` | Enable or disable a plugin hook. Use `status` to list all hooks, or specify a hook name to toggle. |
 
 ## Agents
@@ -111,7 +110,6 @@ Skills are auto-triggered based on context. Claude will invoke these automatical
 | `kramme:agents-md` | Add guidelines to AGENTS.md with structured, keyword-based documentation. Triggers on "update AGENTS.md", "add to AGENTS.md", "maintain agent docs" |
 | `kramme:changelog-generator` | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
 | `kramme:commit` | Creating commits or writing commit messages (plain English, no conventional commits) |
-| `kramme:granola-meeting-notes` | Query Granola meetings (macOS, Windows; Windows is untested) with fuzzy search, pattern analysis, transcript stats, and export. Triggers on "meetings", "who do I meet with", "meeting patterns" |
 | `kramme:connect-existing-feature-documentation-writer` | Creating or updating documentation for Connect features |
 | `kramme:connect-migrate-legacy-store-to-ngrx-component-store` | Migrating legacy CustomStore/FeatureStore to NgRx ComponentStore in Connect monorepo |
 | `kramme:connect-extract-to-nx-libraries` | Extracting app code from `apps/connect/` into proper Nx libraries |
@@ -541,6 +539,7 @@ These MCP servers enhance the plugin's capabilities.
 | **Claude in Chrome** | Browser automation via Chrome extension |
 | **Playwright** | Browser automation for testing |
 | **Magic Patterns** | Design-to-code integration for Magic Patterns designs |
+| **Granola** | Query meeting notes from Granola |
 
 ### Linear
 
@@ -664,6 +663,31 @@ claude mcp add playwright -s user -- npx -y @playwright/mcp@latest
 ```
 
 Browser binaries are installed automatically on first use.
+
+### Granola
+
+[Granola MCP](https://www.granola.ai/blog/granola-mcp) for querying meeting notes.
+
+**Claude Code:**
+```bash
+claude mcp add --transport http granola https://mcp.granola.ai/mcp
+```
+
+**Claude Desktop / Cursor:**
+```json
+{
+  "mcpServers": {
+    "granola": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.granola.ai/mcp"]
+    }
+  }
+}
+```
+
+Run `/mcp` in Claude Code to authenticate.
+
+> **Note:** For Granola Enterprise users, MCP is in early access beta and disabled by default. Workspace administrators can enable it in Settings > Security.
 
 ### Magic Patterns
 
@@ -860,7 +884,6 @@ For maintainers: see [RELEASE.md](RELEASE.md) for the release process.
 - `kramme:commit`: From [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/commit/SKILL.md).
 - `kramme:design-iterator`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - `kramme:humanize-text`: Based on Wikipedia: Signs of AI writing (maintained by WikiProject AI Cleanup) and heavily inspired by [blader/humanizer](https://github.com/blader/humanizer).
-- `kramme:granola-meeting-notes`: Inspired by [varadhjain/granola-claude-plugin](https://github.com/varadhjain/granola-claude-plugin) and [nehiljain/granola-ai-mcp-server](https://github.com/nehiljain/granola-ai-mcp-server).
 - `kramme:performance-oracle`: From [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - OpenCode/Codex converter: Inspired by [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 
