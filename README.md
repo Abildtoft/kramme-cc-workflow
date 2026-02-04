@@ -63,7 +63,7 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the C
 | `/kramme:fixup-changes` | Intelligently fixup unstaged changes into existing commits. Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
 | `/kramme:linear:define-issue` | Create or improve a Linear issue through exhaustive guided refinement. Can start from scratch or refine an existing issue by ID. Supports file references for context. |
 | `/kramme:linear:implement-issue` | Start implementing a Linear issue with branch setup, context gathering, and guided workflow. Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
-| `/kramme:siw:init` | Initialize structured implementation workflow documents in `siw/` (spec, siw/LOG.md, siw/issues). Sets up local issue tracking without requiring Linear. |
+| `/kramme:siw:init` | Initialize structured implementation workflow documents in `siw/` (spec, siw/LOG.md, siw/issues). Accepts optional arguments: file path(s) or folder to link existing specs (references them, doesn't duplicate content), or `discover` to run an in-depth interview. Offers to move or keep linked files in place. Sets up local issue tracking without requiring Linear. |
 | `/kramme:siw:define-issue` | Define a new local issue with guided interview process. Creates issue files in the `issues/` directory. |
 | `/kramme:siw:implement-issue` | Start implementing a defined local issue with codebase exploration and planning. Works on current branch. |
 | `/kramme:siw:remove` | Remove all Structured Implementation Workflow (SIW) files from current directory. Cleans up temporary workflow documents. |
