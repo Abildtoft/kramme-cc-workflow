@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.13.0] - 2026-02-04
+
+### Added
+- Automatically update LOG.md when renumbering issues (#112)
+- Add /kramme:siw:generate-phases command (#110)
+
 ## [0.12.1] - 2026-02-04
 
 ### Added
@@ -225,6 +231,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.13.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.10.0...v0.11.0
