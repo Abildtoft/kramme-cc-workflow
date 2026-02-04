@@ -44,7 +44,7 @@ Adapt to your context (code/docs/API/etc.):
 - Success criteria
 - Requirements and constraints
 - Design decisions (key ones made during planning)
-- Implementation tasks (2-4 hour chunks, self-contained)
+- Implementation tasks (focused, self-contained chunks)
 - Testing/verification checklist
 - Edge cases and considerations
 - Out of scope (explicit exclusions)

@@ -563,13 +563,17 @@ Create `siw/OPEN_ISSUES_OVERVIEW.md`:
 ```markdown
 # Open Issues Overview
 
+## General
+
 | # | Title | Status | Priority | Related |
 |---|-------|--------|----------|---------|
-| _None_ | _Use `/kramme:siw:define-issue` to create first issue_ | | | |
+| _None_ | _Use `/kramme:siw:define-issue` to create first issue (G-001)_ | | | |
 
 **Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
 
-**Details:** See `siw/issues/ISSUE-XXX-*.md` files.
+**Issue Naming:** `G-XXX` for general issues, `P1-XXX`, `P2-XXX` for phase-specific issues.
+
+**Details:** See `siw/issues/ISSUE-{prefix}-XXX-*.md` files.
 ```
 
 ### 4.4 Create siw/issues/ Directory
@@ -609,7 +613,7 @@ Created:
 
 Next Steps:
   1. Run /kramme:siw:define-issue to create your first issue
-  2. Run /kramme:siw:implement-issue <ISSUE-XXX> to start implementing
+  2. Run /kramme:siw:implement-issue <G-XXX or P1-XXX> to start implementing
 
 Tips:
   - The spec file is permanent; keep it updated as your source of truth

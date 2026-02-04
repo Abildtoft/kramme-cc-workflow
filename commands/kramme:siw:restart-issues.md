@@ -1,17 +1,19 @@
 ---
 name: kramme:siw:restart-issues
-description: Remove all DONE issues and renumber remaining issues from 001
+description: Remove all DONE issues and renumber remaining issues within each prefix group
 ---
 
 # Restart Issues
 
-Remove all DONE issues and renumber remaining issues starting from 001. This command:
+Remove all DONE issues and renumber remaining issues **within each prefix group**. This command:
 1. Identifies all issues with status DONE
 2. Deletes DONE issue files
-3. Renumbers remaining issues sequentially from 001
+3. Renumbers remaining issues sequentially **within each prefix group** (G-, P1-, P2-, etc.)
 4. Updates siw/OPEN_ISSUES_OVERVIEW.md with new numbers
 
-Use this when you want to clean up completed issues and have a fresh numbering sequence.
+Use this when you want to clean up completed issues and have fresh numbering sequences within each group.
+
+**Important:** Issues are renumbered within their own prefix group. Phase groupings remain intact.
 
 ## Workflow
 
@@ -28,7 +30,7 @@ Use this when you want to clean up completed issues and have a fresh numbering s
 [Identify DONE issues] -> List for deletion
     |
     v
-[Identify remaining issues] -> Calculate new numbers
+[Identify remaining issues] -> Calculate new numbers per prefix group
     |
     v
 [Confirm with user] -> Show what will happen
@@ -37,7 +39,7 @@ Use this when you want to clean up completed issues and have a fresh numbering s
 [Delete DONE issue files]
     |
     v
-[Rename remaining issue files] -> ISSUE-XXX -> ISSUE-00Y
+[Rename remaining issue files] -> Renumber within each prefix (G-003 -> G-001, P1-004 -> P1-002)
     |
     v
 [Update siw/OPEN_ISSUES_OVERVIEW.md] -> New numbers, remove DONE rows
@@ -79,15 +81,19 @@ To create issues, run /kramme:siw:define-issue
 Read siw/OPEN_ISSUES_OVERVIEW.md and extract all issues from the table:
 
 For each row, extract:
-- Issue number (###)
+- Issue prefix and number (e.g., `G-001`, `P1-002`)
 - Title
 - Status (READY, IN PROGRESS, IN REVIEW, DONE)
 - Priority
 - Related tasks
 
-Categorize issues:
-- **DONE issues:** Will be deleted
-- **Active issues:** Will be renumbered (READY, IN PROGRESS, IN REVIEW)
+Categorize issues **by prefix group**:
+- **DONE issues per group:** Will be deleted
+- **Active issues per group:** Will be renumbered within their prefix (READY, IN PROGRESS, IN REVIEW)
+
+**Example grouping:**
+- G-001 (DONE), G-002 (READY), G-003 (READY) → Delete G-001, renumber G-002→G-001, G-003→G-002
+- P1-001 (READY), P1-002 (DONE) → Delete P1-002, P1-001 stays as P1-001
 
 ---
 
@@ -99,16 +105,23 @@ Present the plan to the user:
 Issues Restart Plan
 
 DONE issues to delete (X):
-- ISSUE-002: {title}
-- ISSUE-005: {title}
+- G-002: {title}
+- P1-003: {title}
 ...
 
-Active issues to renumber (Y):
-- ISSUE-001 -> ISSUE-001 (no change)
-- ISSUE-003 -> ISSUE-002
-- ISSUE-004 -> ISSUE-003
-- ISSUE-006 -> ISSUE-004
-...
+Active issues to renumber (by prefix group):
+
+General (G-):
+- G-001 -> G-001 (no change)
+- G-003 -> G-002
+
+Phase 1 (P1-):
+- P1-001 -> P1-001 (no change)
+- P1-002 -> P1-002 (no change)
+- P1-004 -> P1-003
+
+Phase 2 (P2-):
+- P2-001 -> P2-001 (no change)
 
 Proceed with restart?
 ```
@@ -134,9 +147,9 @@ For each DONE issue:
 ```bash
 # Delete using trash if available
 if command -v trash &> /dev/null; then
-    trash siw/issues/ISSUE-XXX-*.md
+    trash siw/issues/ISSUE-{prefix}-{number}-*.md
 else
-    rm -f siw/issues/ISSUE-XXX-*.md
+    rm -f siw/issues/ISSUE-{prefix}-{number}-*.md
 fi
 ```
 
@@ -144,51 +157,71 @@ fi
 
 ## Step 5: Rename Remaining Issue Files
 
-For each active issue that needs renumbering:
+For each active issue that needs renumbering **within its prefix group**:
 
 1. Read the issue file content
-2. Update the issue number in the file header (e.g., `# ISSUE-003:` -> `# ISSUE-002:`)
+2. Update the issue number in the file header (e.g., `# ISSUE-G-003:` -> `# ISSUE-G-002:`)
 3. Update the `**Status:**` line if it references the issue number
 4. Write to new filename
 5. Delete old file
 
 **Example:**
 ```bash
-# ISSUE-003-api-design.md -> ISSUE-002-api-design.md
-# Update content: "# ISSUE-003:" -> "# ISSUE-002:"
-mv siw/issues/ISSUE-003-api-design.md siw/issues/ISSUE-002-api-design.md
+# ISSUE-G-003-api-design.md -> ISSUE-G-002-api-design.md
+# Update content: "# ISSUE-G-003:" -> "# ISSUE-G-002:"
+mv siw/issues/ISSUE-G-003-api-design.md siw/issues/ISSUE-G-002-api-design.md
 ```
 
-**Important:** Process in reverse order (highest number first) to avoid conflicts when renaming.
+**Important:**
+- Process each prefix group separately
+- Process in reverse order within each group (highest number first) to avoid conflicts when renaming
+- Do NOT merge issues between prefix groups
 
 ---
 
 ## Step 6: Update siw/OPEN_ISSUES_OVERVIEW.md
 
-Rebuild the issues table:
+Rebuild the issues table **maintaining section groupings**:
 
-1. Remove all DONE rows
-2. Update issue numbers for remaining rows
+1. Remove all DONE rows from each section
+2. Update issue numbers for remaining rows within each prefix group
 3. Keep all other columns (Title, Status, Priority, Related) unchanged
+4. Preserve section headers (General, Phase 1, Phase 2, etc.) exactly as written (including any ` (DONE)` marker on phase headers)
 
 **Before:**
 ```markdown
+## General
+
 | # | Title | Status | Priority | Related |
 |---|-------|--------|----------|---------|
-| 001 | Feature A | DONE | High | Task 1.0 |
-| 002 | Feature B | IN PROGRESS | High | Task 2.0 |
-| 003 | Bug Fix | READY | Medium | Task 3.0 |
-| 004 | Feature C | DONE | Low | Task 4.0 |
-| 005 | Refactor | IN REVIEW | High | Task 5.0 |
+| G-001 | Setup | DONE | High | |
+| G-002 | Docs | READY | Low | |
+| G-003 | Config | READY | Medium | |
+
+## Phase 1: Foundation
+
+| # | Title | Status | Priority | Related |
+|---|-------|--------|----------|---------|
+| P1-001 | Feature A | IN PROGRESS | High | Task 1.0 |
+| P1-002 | Feature B | DONE | High | Task 2.0 |
+| P1-003 | Bug Fix | READY | Medium | Task 3.0 |
 ```
 
 **After:**
 ```markdown
+## General
+
 | # | Title | Status | Priority | Related |
 |---|-------|--------|----------|---------|
-| 001 | Feature B | IN PROGRESS | High | Task 2.0 |
-| 002 | Bug Fix | READY | Medium | Task 3.0 |
-| 003 | Refactor | IN REVIEW | High | Task 5.0 |
+| G-001 | Docs | READY | Low | |
+| G-002 | Config | READY | Medium | |
+
+## Phase 1: Foundation
+
+| # | Title | Status | Priority | Related |
+|---|-------|--------|----------|---------|
+| P1-001 | Feature A | IN PROGRESS | High | Task 1.0 |
+| P1-002 | Bug Fix | READY | Medium | Task 3.0 |
 ```
 
 ---
@@ -199,20 +232,25 @@ Rebuild the issues table:
 Issues Restart Complete
 
 Deleted (X DONE issues):
-- ISSUE-002: {title}
-- ISSUE-005: {title}
+- G-001: {title}
+- P1-002: {title}
 
 Renumbered (Y active issues):
-- ISSUE-003 -> ISSUE-002: {title}
-- ISSUE-004 -> ISSUE-003: {title}
-...
+
+General:
+- G-002 -> G-001: {title}
+- G-003 -> G-002: {title}
+
+Phase 1:
+- P1-003 -> P1-002: {title}
 
 Updated:
 - siw/OPEN_ISSUES_OVERVIEW.md
 
 Next Steps:
 - Continue working on active issues
-- Use /kramme:siw:define-issue to add new issues (will start at ISSUE-00{next})
+- Use /kramme:siw:define-issue to add new general issues (will start at G-00{next})
+- Phase issues maintain their numbering within their group
 ```
 
 ---
@@ -223,11 +261,12 @@ Next Steps:
 ```
 No DONE issues found. Nothing to delete.
 
-Active issues (X):
-- ISSUE-001: {title}
-- ISSUE-002: {title}
+Active issues:
+- G-001: {title}
+- G-002: {title}
+- P1-001: {title}
 
-No renumbering needed since there are no gaps.
+No renumbering needed since there are no gaps in any group.
 ```
 **Action:** Report and exit (no changes needed).
 
@@ -235,27 +274,29 @@ No renumbering needed since there are no gaps.
 ```
 All issues are DONE. This will clear all issues.
 
-After restart, use /kramme:siw:define-issue to create new issues starting from ISSUE-001.
+After restart, use /kramme:siw:define-issue to create new issues starting from G-001.
 ```
 Use AskUserQuestion to confirm clearing all issues.
 
 ### No gaps in numbering
-If DONE issues are at the end of the sequence, only deletion is needed (no renumbering):
+If DONE issues are at the end of each sequence, only deletion is needed (no renumbering):
 ```
 DONE issues to delete:
-- ISSUE-004: {title}
-- ISSUE-005: {title}
+- G-003: {title}
+- P1-004: {title}
 
 Active issues (no renumbering needed):
-- ISSUE-001: {title}
-- ISSUE-002: {title}
-- ISSUE-003: {title}
+- G-001: {title}
+- G-002: {title}
+- P1-001: {title}
+- P1-002: {title}
+- P1-003: {title}
 ```
 
 ### Issue file missing
 If an issue is in the overview but the file doesn't exist:
 ```
-Warning: ISSUE-003 listed in overview but file not found.
+Warning: G-002 listed in overview but file not found.
 Will remove from overview table.
 ```
 
@@ -263,5 +304,12 @@ Will remove from overview table.
 After renumbering, warn about potential stale references:
 ```
 Note: If siw/LOG.md references old issue numbers, those references are now stale.
-Consider updating any ISSUE-XXX references in siw/LOG.md manually.
+Consider updating any {prefix}-XXX references in siw/LOG.md manually.
+```
+
+### Mixed prefix groups
+Each prefix group is handled independently. Issues never move between groups:
+```
+G-001 (DONE), G-002 (READY), G-003 (READY)  →  G-001, G-002 (renumbered within G-)
+P1-001 (READY), P1-002 (DONE), P1-003 (READY)  →  P1-001, P1-002 (renumbered within P1-)
 ```

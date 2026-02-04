@@ -73,10 +73,12 @@ If the task references a supporting spec (e.g., "See `siw/supporting-specs/02-ap
 
 ### 4. Handle New Issues
 
-- Create `siw/issues/ISSUE-XXX-*.md` when blocked
+- Create `siw/issues/ISSUE-{prefix}-XXX-*.md` when blocked
 - Add row to `siw/OPEN_ISSUES_OVERVIEW.md`
+  - If you added a non-DONE issue to a phase section currently marked ` (DONE)`, ask the user whether to remove the marker
 - Investigate using the template structure
-- Once resolved, delete issue file and remove from overview
+- Once resolved, mark the issue `DONE` in the overview (keep the row for history) and optionally delete the issue file
+  - If this was a phase issue (`P1-*`, `P2-*`, etc.) and it was the last open issue in that phase, ask the user whether to mark the phase as DONE by appending ` (DONE)` to the phase section header
 - Document resolution as a decision in siw/LOG.md
 - Update "Current Progress" section with any blockers
 

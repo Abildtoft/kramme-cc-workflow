@@ -23,7 +23,7 @@ Read `templates/spec-guidance.md` for structure details.
 - Overview and objectives
 - Scope, audience, and success criteria
 - Guiding principles and constraints
-- Work breakdown into phases and tasks (2-4 hour chunks)
+- Work breakdown into phases and tasks (focused, self-contained chunks)
 - Verification/testing checklist
 - What's explicitly out of scope
 - Initial key decisions
@@ -42,9 +42,9 @@ Read `templates/issues-template.md` for the full structure.
 **When first issue arises:**
 1. Create `siw/issues/` directory
 2. Create `siw/OPEN_ISSUES_OVERVIEW.md` with the overview table
-3. Create `siw/issues/ISSUE-001-short-title.md` for the first issue
+3. Create `siw/issues/ISSUE-G-001-short-title.md` for the first issue
 
-**When resolved:** Delete issue file, remove from overview, document decision in siw/LOG.md
+**When resolved:** Mark the issue `DONE` in the overview (keep the row for history), document the decision in siw/LOG.md, and optionally delete the issue file after it's captured. If it was the last open issue in a phase (`P1-*`, `P2-*`, etc.), ask the user whether to mark the phase as DONE by appending ` (DONE)` to the phase section header.
 
 ## Step 3: siw/LOG.md
 

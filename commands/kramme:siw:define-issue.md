@@ -1,12 +1,14 @@
 ---
 name: kramme:siw:define-issue
 description: Define a new local issue with guided interview process
-argument-hint: [ISSUE-XXX] or [description and/or file paths for context]
+argument-hint: [ISSUE-G-XXX or ISSUE-P1-XXX] or [description and/or file paths for context]
 ---
 
 # Define Local Issue
 
 Create or improve a local issue through guided interactive refinement. Can start from scratch with a description, or improve an existing issue by providing its identifier. Supports file references for technical context and proactively explores the codebase to inform issue definition.
+
+**Issue Naming:** New issues default to `G-XXX` (General). Use `P1-`, `P2-`, etc. for phase-specific issues. When creating a new issue, recommend a phase prefix if the issue fits an active (not completed) phase.
 
 ## Workflow Boundaries
 
@@ -40,12 +42,14 @@ Create or improve a local issue through guided interactive refinement. Can start
 ## Process Overview
 
 1. **Input Parsing & Mode Detection**: Detect if improving existing issue or creating new
-2. **File References & Issue Type**: Read provided files (if any) and classify the issue type
-3. **Existing Issue Handling**: For improve mode, fetch issue; for create mode, check for similar issues
-4. **Codebase Exploration**: Search for related implementations and patterns
-5. **Interview**: Multi-round questioning (adapted for issue type and mode)
-6. **Issue Composition**: Draft issue following the template
-7. **Review & Create/Update**: User approval, then create or update issue file
+2. **File References**: Read provided files (if any) to gather technical context
+3. **Issue Type Classification**: Classify the issue type (bug/feature/improvement)
+4. **Phase Recommendation (Create Mode)**: Suggest a phase prefix if the issue fits an active phase
+5. **Existing Issue Handling**: For improve mode, fetch issue; for create mode, check for similar issues
+6. **Codebase Exploration**: Search for related implementations and patterns
+7. **Interview**: Multi-round questioning (adapted for issue type and mode)
+8. **Issue Composition**: Draft issue following the template
+9. **Review & Create/Update**: User approval, then create or update issue file
 
 ## Phase 1: Input Parsing & Mode Detection
 
@@ -54,19 +58,33 @@ Create or improve a local issue through guided interactive refinement. Can start
 ### Step 1: Detect Mode
 
 Check if input matches an existing issue:
-- **Issue identifier pattern**: `ISSUE-XXX` or just `XXX` (3-digit number)
+- **Issue identifier patterns**:
+  - Full format: `ISSUE-G-001`, `ISSUE-P1-001`, `ISSUE-P2-001`, etc.
+  - Short format: `G-001`, `P1-001`, `P2-001`, etc.
+  - Legacy format: `ISSUE-001` or `001` (treated as `G-001`)
+
+**Detection rule:** Only treat it as an existing issue if a matching file exists in `siw/issues/ISSUE-{prefix}-{number}-*.md`.
 
 **If existing issue detected → IMPROVE MODE:**
-1. Extract the issue number (e.g., `001` from `ISSUE-001`)
-2. Find and read the issue file from `siw/issues/ISSUE-XXX-*.md`
+1. Extract the prefix and number (e.g., `G` and `001` from `ISSUE-G-001`, or `P1` and `002` from `P1-002`)
+2. Find and read the issue file from `siw/issues/ISSUE-{prefix}-{number}-*.md`
 3. Store the existing issue content
 4. Set mode flag to "improve"
 
+**If an identifier-like argument was provided but no file exists:**
+1. Use `AskUserQuestion` to confirm whether they want to create a new issue instead
+2. If creating: treat the provided prefix as `requested_prefix` and ignore the provided number
+3. If the identifier was followed by additional text, treat that remainder as the initial description; otherwise ask for a description
+4. Continue in CREATE MODE
+
 **If no issue detected → CREATE MODE:**
-1. Parse for file paths (anything containing `/` or ending in common extensions) and store for Step 2
-2. Remaining text is the description/idea
-3. If empty, use `AskUserQuestion` to gather the initial concept
-4. Set mode flag to "create"
+1. Parse optional **prefix hint** at the start of `$ARGUMENTS`:
+   - Accepted: `G`, `G-`, `P1`, `P1-`, `P2`, `P2-`, etc.
+   - Store as `requested_prefix` (without trailing `-`) and strip it from the description
+2. Parse for file paths (anything containing `/` or ending in common extensions) and store for Step 2
+3. Remaining text is the description/idea
+4. If empty, use `AskUserQuestion` to gather the initial concept
+5. Set mode flag to "create"
 
 ### Step 2: Process File References (Both Modes)
 
@@ -104,6 +122,44 @@ Auto-detect from context and suggest to the user (they can override):
 - `is_simple_bug = true`
 - This enables streamlined interview and simple template
 
+### Step 4: Phase Recommendation (Create Mode)
+
+Only for CREATE MODE. Skip for IMPROVE MODE.
+
+Goal: recommend a phase prefix (`P1-`, `P2-`, etc.) when the issue clearly fits an **active** (not completed) phase. If the issue doesn't suit a phase well, or the relevant phase is completed, recommend `G` (General, i.e., IDs like `G-001`).
+
+**Inputs to check:**
+1. `siw/` spec file created by `/kramme:siw:init` (phase breakdown and tasks).
+2. `siw/LOG.md` for phase completion notes (e.g., "Phase 1 complete", "Status: DONE").
+3. `siw/OPEN_ISSUES_OVERVIEW.md` for existing phase sections and active work.
+
+If multiple candidate spec files exist under `siw/`, ask the user which one is the main spec (exclude `siw/LOG.md` and `siw/OPEN_ISSUES_OVERVIEW.md`).
+
+**Heuristics:**
+- Map the issue description and any referenced tasks to the most relevant phase in the spec.
+- If the phase is explicitly marked complete in the spec or log, do **not** recommend that phase.
+- If the phase section header in `siw/OPEN_ISSUES_OVERVIEW.md` is marked with ` (DONE)`, treat the phase as completed.
+- If `siw/OPEN_ISSUES_OVERVIEW.md` has a Phase N section and all issues in that phase are `DONE`, treat the phase as completed.
+- If no phase info exists or mapping is unclear (or the issue doesn't suit a phase well), default to `G`.
+- If the user explicitly supplied a prefix (`requested_prefix`), treat it as preferred, but warn if the phase appears completed and offer alternatives.
+
+**AskUserQuestion (recommendation + confirmation):**
+```
+header: "Choose Issue Prefix"
+question: "Which prefix should we use? Recommendation: {recommended_prefix}- ({reason})."
+options:
+  - label: "Use {recommended_prefix}- (recommended)"
+    description: "Matches the spec/tasks and the phase isn't completed"
+  - label: "Use a different phase prefix"
+    description: "Pick P1-, P2-, P3-, etc."
+  - label: "Use G- (General)"
+    description: "Standalone or doesn't fit a phase well"
+```
+
+If `{recommended_prefix}` is `G`, omit the separate "Use G-" option to avoid duplicates.
+
+Store `issue_prefix` based on the selection **without the trailing dash** (e.g., `P1`, `P2`, `G`).
+
 ## Phase 2: Existing Issue Handling
 
 ### IMPROVE MODE
@@ -140,9 +196,12 @@ Before creating a new issue, check for existing similar issues:
      - Abort
 
 3. **Generate Next Issue Number**
-   - Parse `siw/OPEN_ISSUES_OVERVIEW.md` table to find highest issue number
-   - Next issue = highest + 1 (or 001 if no issues exist)
+   - Determine `issue_prefix` (from Step 4; fallback to `requested_prefix` if present; otherwise default `G`)
+   - Parse `siw/OPEN_ISSUES_OVERVIEW.md` table to find highest issue number **within that prefix group**
+   - Next issue = highest + 1 within group (or 001 if no issues with that prefix exist)
+   - Pad number to 3 digits (1 → 001, 12 → 012)
    - Store as `issue_number`
+   - Full ID: `{issue_prefix}-{issue_number}` (e.g., `G-001`, `P1-002`)
 
 ## Phase 3: Codebase Exploration
 
@@ -261,12 +320,12 @@ Multi-round interview using `AskUserQuestion`.
 
 ### Simple Bug Template
 
-**File naming:** `siw/issues/ISSUE-{number}-{short-description}.md`
+**File naming:** `siw/issues/ISSUE-{prefix}-{number}-{short-description}.md`
 
 ```markdown
-# ISSUE-{number}: Fix {what's broken}
+# ISSUE-{prefix}-{number}: Fix {what's broken}
 
-**Status:** Ready | **Priority:** {priority} | **Related:** {tasks if any}
+**Status:** Ready | **Priority:** {priority} | **Phase:** {N or General} | **Related:** {tasks if any}
 
 ## Problem
 
@@ -290,12 +349,12 @@ Multi-round interview using `AskUserQuestion`.
 
 ### Comprehensive Template
 
-**File naming:** `siw/issues/ISSUE-{number}-{short-description}.md`
+**File naming:** `siw/issues/ISSUE-{prefix}-{number}-{short-description}.md`
 
 ```markdown
-# ISSUE-{number}: {Title}
+# ISSUE-{prefix}-{number}: {Title}
 
-**Status:** Ready | **Priority:** {priority} | **Related:** {tasks if any}
+**Status:** Ready | **Priority:** {priority} | **Phase:** {N or General} | **Related:** {tasks if any}
 
 ## Problem
 
@@ -359,7 +418,7 @@ Multi-round interview using `AskUserQuestion`.
 
 **Create/Update issue file:**
 ```
-siw/issues/ISSUE-{number}-{sanitized-title}.md
+siw/issues/ISSUE-{prefix}-{number}-{sanitized-title}.md
 ```
 
 **Sanitize title:**
@@ -370,12 +429,21 @@ siw/issues/ISSUE-{number}-{sanitized-title}.md
 
 ### 4. Update siw/OPEN_ISSUES_OVERVIEW.md
 
-**For new issues:** Add row to table:
+**For new issues:** Add row to the appropriate section (General, Phase 1, Phase 2, etc.). If the section doesn't exist yet, create the section header and table first.
 ```markdown
-| {number} | {Title} | Ready | {Priority} | {Related} |
+| {prefix}-{number} | {Title} | Ready | {Priority} | {Related} |
 ```
 
 **For updated issues:** Update existing row if title/priority/status changed.
+
+**Section organization:** Issues are grouped by prefix (General, Phase 1, Phase 2, etc.).
+
+**If updating a phase issue to `DONE`:**
+- Check whether this was the last open issue in that phase section (no READY / IN PROGRESS / IN REVIEW remaining).
+- If so, ask the user whether to mark the entire phase as DONE by appending ` (DONE)` to the phase section header in `siw/OPEN_ISSUES_OVERVIEW.md`.
+
+**If creating or updating a phase issue that is not `DONE`:**
+- If the phase section header is currently marked ` (DONE)`, ask the user whether to remove the marker because there is now open work in that phase.
 
 ### 5. Return Result
 
@@ -396,8 +464,8 @@ siw/issues/ISSUE-{number}-{sanitized-title}.md
 
 **Next steps for the user:**
 - Review the created issue file
-- If ready to implement, invoke `/kramme:siw:implement-issue {ISSUE-XXX}`
-- If changes needed, run `/kramme:siw:define-issue {ISSUE-XXX}` again
+- If ready to implement, invoke `/kramme:siw:implement-issue {prefix}-{number}` (e.g., `G-001`, `P1-001`)
+- If changes needed, run `/kramme:siw:define-issue {prefix}-{number}` again
 
 **STOP HERE.** Wait for the user's next instruction.
 

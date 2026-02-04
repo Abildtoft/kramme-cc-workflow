@@ -20,12 +20,19 @@ A local issue tracking system using markdown files to plan, track, and document 
 
 ```
 /kramme:siw:init                    # Initialize workflow documents
-/kramme:siw:define-issue "feature"  # Create a work item
-/kramme:siw:implement-issue 001     # Start implementing
-/kramme:siw:restart-issues          # Remove DONE issues, renumber from 001
+/kramme:siw:define-issue "feature"  # Create a work item (G-001 format)
+/kramme:siw:generate-phases         # Break spec into phase-based issues (P1-001, P2-001)
+/kramme:siw:implement-issue G-001   # Start implementing
+/kramme:siw:restart-issues          # Remove DONE issues, renumber within groups
 /kramme:siw:reset                   # Reset for next iteration (keeps spec)
 /kramme:siw:remove                  # Clean up when done
 ```
+
+## Issue Naming
+
+Issues use prefix-based numbering:
+- `G-XXX` — General issues (standalone, non-phase)
+- `P1-XXX`, `P2-XXX`, etc. — Phase-specific issues
 
 ## Three-Document System
 
@@ -64,8 +71,9 @@ A local issue tracking system using markdown files to plan, track, and document 
 
 ```
 ┌──────────────────────────────────┐
-│  /kramme:siw:define-issue        │  Create work items
-│  → siw/issues/ISSUE-XXX-*.md     │
+│  /kramme:siw:define-issue        │  Create general work items (G-XXX)
+│  /kramme:siw:generate-phases     │  Create phase-based issues (P1-XXX, P2-XXX)
+│  → siw/issues/ISSUE-{prefix}-XXX-*.md │
 └──────────────┬───────────────────┘
                │ Implementation
                ↓
@@ -95,9 +103,10 @@ A local issue tracking system using markdown files to plan, track, and document 
 | Command | Purpose |
 |---------|---------|
 | `/kramme:siw:init` | Initialize SIW documents (spec, siw/LOG.md, siw/issues) |
-| `/kramme:siw:define-issue` | Define a new work item with guided interview |
-| `/kramme:siw:implement-issue` | Start implementing a defined issue |
-| `/kramme:siw:restart-issues` | Remove DONE issues and renumber remaining from 001 |
+| `/kramme:siw:define-issue` | Define a new work item with guided interview (creates `G-XXX` issues) |
+| `/kramme:siw:generate-phases` | Break spec into atomic phase-based issues (`P1-XXX`, `P2-XXX`, `G-XXX`) |
+| `/kramme:siw:implement-issue` | Start implementing a defined issue (accepts `G-001`, `P1-001`, etc.) |
+| `/kramme:siw:restart-issues` | Remove DONE issues and renumber remaining within each prefix group |
 | `/kramme:siw:reset` | Reset workflow state (migrate log to spec, clear issues) |
 | `/kramme:siw:remove` | Clean up all SIW files after completion |
 
@@ -183,8 +192,11 @@ All workflow files live in the `siw/` folder in the project root:
 │   │   └── 03-ui-specification.md
 │   ├── OPEN_ISSUES_OVERVIEW.md     ⏳ Temporary
 │   ├── issues/                     ⏳ Temporary directory
-│   │   ├── ISSUE-001-feature-a.md
-│   │   └── ISSUE-002-bug-fix.md
+│   │   ├── ISSUE-G-001-setup.md        # General issues
+│   │   ├── ISSUE-G-002-docs.md
+│   │   ├── ISSUE-P1-001-feature-a.md   # Phase 1 issues
+│   │   ├── ISSUE-P1-002-feature-b.md
+│   │   └── ISSUE-P2-001-bug-fix.md     # Phase 2 issues
 │   └── LOG.md                      ⏳ Temporary
 ├── AGENTS.md                       (optional)
 └── CLAUDE.md                       (optional)
