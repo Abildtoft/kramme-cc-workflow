@@ -612,7 +612,8 @@ Created:
   siw/issues/                  - Individual issue files (temporary)
 
 Next Steps:
-  1. Run /kramme:siw:define-issue to create your first issue
+  1. Run /kramme:siw:generate-phases to decompose spec into phase-based issues
+     OR /kramme:siw:define-issue to create issues one at a time
   2. Run /kramme:siw:implement-issue <G-XXX or P1-XXX> to start implementing
 
 Tips:
