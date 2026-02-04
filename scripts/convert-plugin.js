@@ -4,6 +4,7 @@
 const fs = require("fs/promises")
 const path = require("path")
 const os = require("os")
+const readline = require("readline")
 
 const PERMISSION_MODES = ["none", "broad", "from-commands"]
 
@@ -953,6 +954,9 @@ async function writeOpenCodeBundle(outputRoot, bundle) {
   await writeJson(paths.configPath, bundle.config)
 
   const agentsDir = paths.agentsDir
+  if (bundle.agents.length > 0) {
+    await cleanupKrammeAgents(agentsDir)
+  }
   for (const agent of bundle.agents) {
     await writeText(path.join(agentsDir, `${agent.name}.md`), agent.content + "\n")
   }
@@ -966,6 +970,7 @@ async function writeOpenCodeBundle(outputRoot, bundle) {
 
   if (bundle.skillDirs.length > 0) {
     const skillsRoot = paths.skillsDir
+    await cleanupKrammeSkills(skillsRoot)
     for (const skill of bundle.skillDirs) {
       await copyDir(skill.sourceDir, path.join(skillsRoot, skill.name))
     }
@@ -1004,18 +1009,17 @@ async function writeCodexBundle(outputRoot, bundle) {
     }
   }
 
-  if (bundle.skillDirs.length > 0) {
-    const skillsRoot = path.join(codexRoot, "skills")
-    for (const skill of bundle.skillDirs) {
-      await copyDir(skill.sourceDir, path.join(skillsRoot, skill.name))
-    }
+  const skillsRoot = path.join(codexRoot, "skills")
+  if (bundle.skillDirs.length > 0 || bundle.generatedSkills.length > 0) {
+    await cleanupKrammeSkills(skillsRoot)
   }
 
-  if (bundle.generatedSkills.length > 0) {
-    const skillsRoot = path.join(codexRoot, "skills")
-    for (const skill of bundle.generatedSkills) {
-      await writeText(path.join(skillsRoot, skill.name, "SKILL.md"), skill.content + "\n")
-    }
+  for (const skill of bundle.skillDirs) {
+    await copyDir(skill.sourceDir, path.join(skillsRoot, skill.name))
+  }
+
+  for (const skill of bundle.generatedSkills) {
+    await writeText(path.join(skillsRoot, skill.name, "SKILL.md"), skill.content + "\n")
   }
 
   const config = renderCodexConfig(bundle.mcpServers)
@@ -1304,6 +1308,72 @@ async function copyDir(sourceDir, targetDir) {
       await fs.copyFile(sourcePath, targetPath)
     }
   }
+}
+
+async function cleanupKrammeAgents(agentsDir) {
+  if (!(await pathExists(agentsDir))) return
+  const entries = await fs.readdir(agentsDir, { withFileTypes: true })
+  const krammeAgents = entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+    .filter((entry) => entry.name.startsWith("kramme:") || entry.name.startsWith("kramme-"))
+    .map((entry) => entry.name)
+
+  if (krammeAgents.length === 0) return
+
+  console.log(`\nFound ${krammeAgents.length} existing kramme agent(s) in ${agentsDir}:`)
+  for (const name of krammeAgents) {
+    console.log(`  - ${name}`)
+  }
+
+  const confirmed = await confirm("Delete these agents before installing?")
+  if (!confirmed) {
+    console.log("Skipping agent cleanup.")
+    return
+  }
+
+  for (const name of krammeAgents) {
+    const targetPath = path.join(agentsDir, name)
+    await fs.rm(targetPath, { force: true })
+  }
+  console.log(`Deleted ${krammeAgents.length} agent(s).`)
+}
+
+async function cleanupKrammeSkills(skillsDir) {
+  if (!(await pathExists(skillsDir))) return
+  const entries = await fs.readdir(skillsDir, { withFileTypes: true })
+  const krammeSkills = entries
+    .filter((entry) => entry.isDirectory())
+    .filter((entry) => entry.name.startsWith("kramme:") || entry.name.startsWith("kramme-"))
+    .map((entry) => entry.name)
+
+  if (krammeSkills.length === 0) return
+
+  console.log(`\nFound ${krammeSkills.length} existing kramme skill(s) in ${skillsDir}:`)
+  for (const name of krammeSkills) {
+    console.log(`  - ${name}`)
+  }
+
+  const confirmed = await confirm("Delete these skills before installing?")
+  if (!confirmed) {
+    console.log("Skipping skill cleanup.")
+    return
+  }
+
+  for (const name of krammeSkills) {
+    const targetPath = path.join(skillsDir, name)
+    await fs.rm(targetPath, { recursive: true, force: true })
+  }
+  console.log(`Deleted ${krammeSkills.length} skill(s).`)
+}
+
+async function confirm(message) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+  return new Promise((resolve) => {
+    rl.question(`${message} [y/N] `, (answer) => {
+      rl.close()
+      resolve(answer.toLowerCase() === "y" || answer.toLowerCase() === "yes")
+    })
+  })
 }
 
 main().catch((error) => {
