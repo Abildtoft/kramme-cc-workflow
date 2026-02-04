@@ -37,7 +37,7 @@ You're resuming work. Follow this reading order:
 - IN REVIEW (awaiting review/approval)
 - DONE (completed)
 
-**Only read individual issue files** (`siw/issues/ISSUE-XXX-*.md`) when you're about to work on that specific issue.
+**Only read individual issue files** (`siw/issues/ISSUE-{prefix}-XXX-*.md`) when you're about to work on that specific issue.
 
 ### 3. siw/[YOUR_SPEC].md → Read ONLY the relevant task section
 

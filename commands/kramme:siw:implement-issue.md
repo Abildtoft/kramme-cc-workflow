@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:implement-issue
 description: Start implementing a defined local issue with codebase exploration and planning
-argument-hint: <ISSUE-XXX>
+argument-hint: <G-001 | P1-001 | ISSUE-G-XXX>
 ---
 
 # Implement Local Issue
@@ -13,7 +13,7 @@ Start implementing a local issue through an extensive planning phase before any 
 ## Process Overview
 
 ```
-/kramme:siw:implement-issue 001
+/kramme:siw:implement-issue G-001
     |
     v
 [Validate & Read Issue] -> Not found? -> Show error, abort
@@ -53,28 +53,32 @@ Start implementing a local issue through an extensive planning phase before any 
 
 ## Step 1: Parse Arguments and Read Issue
 
-### 1.1 Extract Issue Number from Arguments
+### 1.1 Extract Issue Identifier from Arguments
 
 `$ARGUMENTS` contains the issue identifier provided by the user.
 
 **Accepted formats:**
-- `ISSUE-001` or `issue-001` (full format)
-- `001` (number only)
-- `1` (number without leading zeros)
+- Full format: `ISSUE-G-001`, `ISSUE-P1-001`, `ISSUE-P2-001`, etc.
+- Short format: `G-001`, `P1-001`, `P2-001`, etc.
+- Legacy format: `ISSUE-001` or `001` (treated as `G-001`)
 
 **Validation:**
-- Extract the numeric portion
-- Pad to 3 digits (1 → 001, 12 → 012)
+- Extract the prefix (`G`, `P1`, `P2`, etc.) and numeric portion
+- Pad number to 3 digits (1 → 001, 12 → 012)
+- Default prefix is `G` if none provided (IDs like `G-001`)
 
 **If no argument provided or invalid:**
 
 ```
-Error: Please provide an issue number.
+Error: Please provide an issue identifier.
 
-Usage: /kramme:siw:implement-issue <ISSUE-XXX>
-Example: /kramme:siw:implement-issue 001
+Usage: /kramme:siw:implement-issue <prefix-number>
+Examples:
+  /kramme:siw:implement-issue G-001      # General issue
+  /kramme:siw:implement-issue P1-001     # Phase 1 issue
+  /kramme:siw:implement-issue ISSUE-G-001
 
-The issue number can be the full ID (ISSUE-001) or just the number (1, 01, 001).
+The issue can be specified as G-001, P1-001, ISSUE-G-001, etc.
 ```
 
 **Action:** Abort.
@@ -84,14 +88,14 @@ The issue number can be the full ID (ISSUE-001) or just the number (1, 01, 001).
 Search for issue file in `siw/issues/` directory:
 
 ```bash
-ls siw/issues/ISSUE-{padded_number}-*.md 2>/dev/null
+ls siw/issues/ISSUE-{prefix}-{padded_number}-*.md 2>/dev/null
 ```
 
 **If found:**
 - Read the full issue file
 - Extract:
-  - Title (from `# ISSUE-XXX:` header)
-  - Status, Priority, Related tasks (from frontmatter line)
+  - Title (from `# ISSUE-{prefix}-{number}:` header)
+  - Status, Priority, Phase, Related tasks (from frontmatter line)
   - Problem description
   - Context (if present)
   - Scope (in/out)
@@ -101,11 +105,11 @@ ls siw/issues/ISSUE-{padded_number}-*.md 2>/dev/null
 **If not found:**
 
 ```
-Error: Issue ISSUE-{number} not found.
+Error: Issue {prefix}-{number} not found.
 
 Please verify:
   - The issue exists in the siw/issues/ directory
-  - You have the correct issue number
+  - You have the correct issue identifier (e.g., G-001, P1-001)
 
 Available issues:
 {list files in siw/issues/ directory}
@@ -157,7 +161,7 @@ Working on branch: {branch_name}
 Show the user what was found:
 
 ```
-Issue: ISSUE-{number}
+Issue: {prefix}-{number}
 
 Title: {title}
 
@@ -300,7 +304,7 @@ options:
 After gathering answers, create a comprehensive plan:
 
 ```
-Technical Implementation Plan for ISSUE-{number}
+Technical Implementation Plan for {prefix}-{number}
 
 ## Summary
 {One paragraph describing what will be built}
@@ -389,7 +393,7 @@ options:
    ```
    Context set up. Here's where to start:
 
-   Issue: ISSUE-{number}
+   Issue: {prefix}-{number}
    Branch: {current_branch}
 
    Likely affected areas:
@@ -436,7 +440,7 @@ options:
    ```
    Implementation Complete
 
-   Issue: ISSUE-{number}
+   Issue: {prefix}-{number}
    Branch: {branch}
 
    Changes Made:
@@ -468,13 +472,13 @@ After starting implementation:
 ## Current Progress
 
 **Last Updated:** {date}
-**Quick Summary:** Implementing ISSUE-{number}: {title}
+**Quick Summary:** Implementing {prefix}-{number}: {title}
 
 ### Project Status
-- **Status:** In Progress | **Current Issue:** ISSUE-{number}
+- **Status:** In Progress | **Current Issue:** {prefix}-{number}
 
 ### Last Completed
-- Started implementation of ISSUE-{number}
+- Started implementation of {prefix}-{number}
 
 ### Next Steps
 1. {next task from plan}
@@ -498,7 +502,7 @@ Update the issue's row status to "In Progress".
 ```
 Issue Implementation Started
 
-Issue: ISSUE-{number} - {title}
+Issue: {prefix}-{number} - {title}
 Branch: {branch}
 Approach: {selected approach}
 
@@ -599,7 +603,7 @@ For selected decisions, update the appropriate spec file (main spec or supportin
 
 ```markdown
 ### Decision #5: Make ActionByUserId Nullable
-**Date:** 2025-11-05 | **Source:** ISSUE-003 implementation
+**Date:** 2025-11-05 | **Source:** ISSUE-G-003 implementation
 
 **Context:** Not all entities undergo this action, so the field shouldn't be required at the database level.
 **Decision:** Nullable at storage; required parameter when calling PerformAction().
@@ -632,6 +636,47 @@ Specs and siw/LOG.md are now aligned.
 Spec Sync Check: All implementation decisions align with the specifications.
 No updates needed.
 ```
+
+---
+
+## Step 11: Close Issue and Check Phase Completion (COMPLETION PHASE)
+
+After verification passes and the implementation is complete, close out tracking for the issue.
+
+### 11.1 Mark Issue as DONE
+
+1. Update the issue file status line to `DONE`.
+2. Update the issue row in `siw/OPEN_ISSUES_OVERVIEW.md` to `DONE`.
+
+### 11.2 If This Was the Last Open Issue in a Phase, Confirm Phase Completion
+
+Only applies to phase-prefixed issues (`P1-*`, `P2-*`, etc.). Skip for `G-*`.
+
+1. Determine the phase number from the prefix (`P1` → Phase 1, `P2` → Phase 2, etc.)
+2. In `siw/OPEN_ISSUES_OVERVIEW.md`, find that phase section and check whether any issues in that section are still **not** `DONE` (READY / IN PROGRESS / IN REVIEW).
+
+**If no open issues remain in that phase:** Ask the user:
+
+```yaml
+header: "Mark Phase Complete?"
+question: "All issues in Phase {N} are now DONE. Should I mark the entire phase as DONE?"
+options:
+  - label: "Yes, mark Phase {N} as DONE"
+    description: "Update the Phase {N} section header in OPEN_ISSUES_OVERVIEW.md"
+  - label: "No, leave phase unmarked"
+    description: "Keep the current phase header as-is"
+```
+
+**If user selects "Yes":**
+- Update the phase section header in `siw/OPEN_ISSUES_OVERVIEW.md` by appending ` (DONE)` (e.g., `## Phase 2: Core Features (DONE)`)
+- Do not double-append if it is already marked
+
+### 11.3 Update siw/LOG.md Current Progress
+
+Update `siw/LOG.md` to reflect completion:
+- Move the completed issue into "Last Completed"
+- Set "Next Steps" to the next READY issue (or the next planned task)
+- If a phase was marked DONE, note that in the summary/last-completed entry
 
 ---
 
