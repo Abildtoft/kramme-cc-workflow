@@ -10,6 +10,7 @@ Remove all DONE issues and renumber remaining issues **within each prefix group*
 2. Deletes DONE issue files
 3. Renumbers remaining issues sequentially **within each prefix group** (G-, P1-, P2-, etc.)
 4. Updates siw/OPEN_ISSUES_OVERVIEW.md with new numbers
+5. Updates siw/LOG.md issue references to match new numbers
 
 Use this when you want to clean up completed issues and have fresh numbering sequences within each group.
 
@@ -43,6 +44,9 @@ Use this when you want to clean up completed issues and have fresh numbering seq
     |
     v
 [Update siw/OPEN_ISSUES_OVERVIEW.md] -> New numbers, remove DONE rows
+    |
+    v
+[Update siw/LOG.md] -> Update issue references to new numbers
     |
     v
 [Report results]
@@ -97,16 +101,44 @@ Categorize issues **by prefix group**:
 
 ---
 
-## Step 3: Confirm with User
+## Step 3: Determine Scope and Confirm
 
-Present the plan to the user:
+### 3.1 Ask About Scope (if phase issues exist)
+
+**If any phase issues (P1-, P2-, etc.) exist**, ask which issues to include:
+
+Use AskUserQuestion:
+
+```yaml
+header: "Restart Scope"
+question: "Phase issues detected. Which issues should be included in the restart?"
+options:
+  - label: "All issues"
+    description: "Reset both general (G-) and phase (P1-, P2-, etc.) issues"
+  - label: "General issues only"
+    description: "Reset only general (G-) issues, leave phase issues unchanged"
+  - label: "Cancel"
+    description: "Abort the restart"
+```
+
+**If "Cancel":** Abort.
+
+**If "General issues only":** Filter the plan to only include G- prefixed issues. Skip all P1-, P2-, etc. issues.
+
+**If "All issues":** Continue with the full plan.
+
+**If no phase issues exist:** Skip this question and proceed directly to confirmation.
+
+### 3.2 Present the Plan
+
+Present the plan to the user (filtered by scope if applicable):
 
 ```
 Issues Restart Plan
 
 DONE issues to delete (X):
 - G-002: {title}
-- P1-003: {title}
+- P1-003: {title}  # Only shown if "All issues" selected
 ...
 
 Active issues to renumber (by prefix group):
@@ -115,6 +147,7 @@ General (G-):
 - G-001 -> G-001 (no change)
 - G-003 -> G-002
 
+# Phase sections only shown if "All issues" selected:
 Phase 1 (P1-):
 - P1-001 -> P1-001 (no change)
 - P1-002 -> P1-002 (no change)
@@ -125,6 +158,8 @@ Phase 2 (P2-):
 
 Proceed with restart?
 ```
+
+### 3.3 Confirm
 
 Use AskUserQuestion:
 
@@ -226,7 +261,59 @@ Rebuild the issues table **maintaining section groupings**:
 
 ---
 
-## Step 7: Report Results
+## Step 7: Update siw/LOG.md
+
+If `siw/LOG.md` exists, update issue number references to match the new numbering.
+
+**Process:**
+
+1. **Read siw/LOG.md content** - Skip this step if file doesn't exist
+
+2. **Use the issue number mapping** from Step 5:
+   - Map old numbers to new numbers within each prefix group (e.g., `G-003` → `G-002`, `P1-004` → `P1-002`)
+
+3. **Update issue references:**
+   - Patterns to match (both forms):
+     - Short form: `{prefix}-(\d{3})` (e.g., `G-002`, `P1-003`)
+     - Full form: `ISSUE-{prefix}-(\d{3})` (e.g., `ISSUE-G-002`, `ISSUE-P1-003`)
+   - Where prefix is `G`, `P1`, `P2`, etc.
+   - For renumbered issues: Replace with new number, preserving the form used
+   - For deleted (DONE) issue references: Leave unchanged - they're valid historical references
+
+4. **Write updated LOG.md**
+
+**Example mapping:**
+```
+Renumber mapping:
+- G-002 -> G-001
+- G-003 -> G-002
+- P1-003 -> P1-002
+
+Deleted (no replacement):
+- G-001
+- P1-002
+```
+
+**Example LOG.md updates:**
+```markdown
+# Before:
+- **Task:** G-002 - Feature B
+- **Task:** P1-003 - Bug Fix
+- **Impact:** Updated ISSUE-G-003 validation
+
+# After:
+- **Task:** G-001 - Feature B
+- **Task:** P1-002 - Bug Fix
+- **Impact:** Updated ISSUE-G-002 validation
+```
+
+**Important:**
+- Do NOT change Decision numbers (#1, #2, etc.) - these are permanent
+- Do NOT change references to deleted (DONE) issues - they're historical and valid
+
+---
+
+## Step 8: Report Results
 
 ```
 Issues Restart Complete
@@ -244,14 +331,20 @@ General:
 Phase 1:
 - P1-003 -> P1-002: {title}
 
-Updated:
+Updated files:
 - siw/OPEN_ISSUES_OVERVIEW.md
+- siw/LOG.md (N issue references updated)
 
 Next Steps:
 - Continue working on active issues
 - Use /kramme:siw:define-issue to add new general issues (will start at G-00{next})
 - Phase issues maintain their numbering within their group
 ```
+
+**LOG.md reporting variations:**
+- If LOG.md was updated: `siw/LOG.md (N issue references updated)`
+- If LOG.md exists but no references found: `siw/LOG.md (no issue references)`
+- If LOG.md doesn't exist: Omit from the list
 
 ---
 
@@ -300,11 +393,13 @@ Warning: G-002 listed in overview but file not found.
 Will remove from overview table.
 ```
 
-### References in siw/LOG.md
-After renumbering, warn about potential stale references:
+### LOG.md not found
+If siw/LOG.md doesn't exist, skip the update step silently. Do not report an error.
+
+### No issue references in LOG.md
+If LOG.md exists but contains no issue reference patterns:
 ```
-Note: If siw/LOG.md references old issue numbers, those references are now stale.
-Consider updating any {prefix}-XXX references in siw/LOG.md manually.
+siw/LOG.md: No issue references found
 ```
 
 ### Mixed prefix groups
@@ -312,4 +407,33 @@ Each prefix group is handled independently. Issues never move between groups:
 ```
 G-001 (DONE), G-002 (READY), G-003 (READY)  →  G-001, G-002 (renumbered within G-)
 P1-001 (READY), P1-002 (DONE), P1-003 (READY)  →  P1-001, P1-002 (renumbered within P1-)
+```
+
+### References to deleted issues in LOG.md
+Leave references to DONE (deleted) issues unchanged - they are valid historical references to completed work. Only update references to issues that were renumbered.
+
+### General issues only (scope selection)
+When user selects "General issues only":
+- Only process G- prefixed issues
+- Leave all P1-, P2-, etc. issues completely unchanged
+- LOG.md updates only apply to G- references
+- Report shows only general issues in results
+
+```
+Issues Restart Complete (General Issues Only)
+
+Deleted (X DONE general issues):
+- G-001: {title}
+
+Renumbered (Y active general issues):
+- G-002 -> G-001: {title}
+- G-003 -> G-002: {title}
+
+Unchanged (phase issues not included):
+- P1-001, P1-002, P1-003
+- P2-001, P2-002
+
+Updated files:
+- siw/OPEN_ISSUES_OVERVIEW.md (general section only)
+- siw/LOG.md (N general issue references updated)
 ```
