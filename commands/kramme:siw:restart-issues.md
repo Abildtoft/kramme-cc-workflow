@@ -101,16 +101,44 @@ Categorize issues **by prefix group**:
 
 ---
 
-## Step 3: Confirm with User
+## Step 3: Determine Scope and Confirm
 
-Present the plan to the user:
+### 3.1 Ask About Scope (if phase issues exist)
+
+**If any phase issues (P1-, P2-, etc.) exist**, ask which issues to include:
+
+Use AskUserQuestion:
+
+```yaml
+header: "Restart Scope"
+question: "Phase issues detected. Which issues should be included in the restart?"
+options:
+  - label: "All issues"
+    description: "Reset both general (G-) and phase (P1-, P2-, etc.) issues"
+  - label: "General issues only"
+    description: "Reset only general (G-) issues, leave phase issues unchanged"
+  - label: "Cancel"
+    description: "Abort the restart"
+```
+
+**If "Cancel":** Abort.
+
+**If "General issues only":** Filter the plan to only include G- prefixed issues. Skip all P1-, P2-, etc. issues.
+
+**If "All issues":** Continue with the full plan.
+
+**If no phase issues exist:** Skip this question and proceed directly to confirmation.
+
+### 3.2 Present the Plan
+
+Present the plan to the user (filtered by scope if applicable):
 
 ```
 Issues Restart Plan
 
 DONE issues to delete (X):
 - G-002: {title}
-- P1-003: {title}
+- P1-003: {title}  # Only shown if "All issues" selected
 ...
 
 Active issues to renumber (by prefix group):
@@ -119,6 +147,7 @@ General (G-):
 - G-001 -> G-001 (no change)
 - G-003 -> G-002
 
+# Phase sections only shown if "All issues" selected:
 Phase 1 (P1-):
 - P1-001 -> P1-001 (no change)
 - P1-002 -> P1-002 (no change)
@@ -129,6 +158,8 @@ Phase 2 (P2-):
 
 Proceed with restart?
 ```
+
+### 3.3 Confirm
 
 Use AskUserQuestion:
 
@@ -380,3 +411,29 @@ P1-001 (READY), P1-002 (DONE), P1-003 (READY)  →  P1-001, P1-002 (renumbered w
 
 ### References to deleted issues in LOG.md
 Leave references to DONE (deleted) issues unchanged - they are valid historical references to completed work. Only update references to issues that were renumbered.
+
+### General issues only (scope selection)
+When user selects "General issues only":
+- Only process G- prefixed issues
+- Leave all P1-, P2-, etc. issues completely unchanged
+- LOG.md updates only apply to G- references
+- Report shows only general issues in results
+
+```
+Issues Restart Complete (General Issues Only)
+
+Deleted (X DONE general issues):
+- G-001: {title}
+
+Renumbered (Y active general issues):
+- G-002 -> G-001: {title}
+- G-003 -> G-002: {title}
+
+Unchanged (phase issues not included):
+- P1-001, P1-002, P1-003
+- P2-001, P2-002
+
+Updated files:
+- siw/OPEN_ISSUES_OVERVIEW.md (general section only)
+- siw/LOG.md (N general issue references updated)
+```
