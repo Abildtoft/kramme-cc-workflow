@@ -87,6 +87,7 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the C
 | `/kramme:delete-learning` | Delete a learning from the database by ID. Supports bulk deletion by category, project, or age. |
 | `/kramme:review-pr` | Run comprehensive PR review using specialized agents. Supports reviewing comments, tests, errors, types, and code quality. Can run agents sequentially or in parallel. |
 | `/kramme:toggle-hook` | Enable or disable a plugin hook. Use `status` to list all hooks, or specify a hook name to toggle. |
+| `/kramme:wrap-up-session` | End-of-session checklist to capture progress, ensure quality, and document next steps. Audits uncommitted changes, runs quality checks, prompts for session summary and next steps, and optionally extracts learnings. |
 
 ## Agents
 
