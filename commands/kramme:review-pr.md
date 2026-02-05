@@ -16,33 +16,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Parse arguments to see if user requested specific review aspects
    - Default: Run all applicable reviews
 
-2. **Handle Large Diffs (>500 lines)**
-
-   If the diff exceeds 500 lines:
-   - First summarize changes by file before detailed analysis
-   - Group files by change type (new, modified, deleted)
-   - Show line counts per file
-   - Recommend high-impact files to focus on
-
-   ```
-   Large PR detected (1,247 lines across 23 files)
-
-   New files (3):
-     src/services/auth.ts (+245)
-     src/types/user.ts (+45)
-
-   Modified (18):
-     src/api/routes.ts (+120, -45)
-     src/components/Login.tsx (+89, -12)
-     ...
-
-   Deleted (2):
-     src/legacy/oldAuth.ts (-180)
-
-   Recommend focusing on: auth.ts, routes.ts, Login.tsx
-   ```
-
-3. **Available Review Aspects:**
+2. **Available Review Aspects:**
 
    - **comments** - Analyze code comment accuracy and maintainability
    - **tests** - Review test coverage quality and completeness
@@ -54,24 +28,24 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **simplify** - Simplify code for clarity and maintainability
    - **all** - Run all applicable reviews (default)
 
-4. **Identify Changed Files**
+3. **Identify Changed Files**
    - Run `git diff --name-only` to see modified files
    - Check if PR already exists: `gh pr view`
    - Identify file types and what reviews apply
 
-5. **Check for Previous Review Responses**
+4. **Check for Previous Review Responses**
 
    If `REVIEW_RESPONSES.md` exists in the project root:
    - Parse the file to extract previously addressed findings
    - Extract for each finding: file path, line number, issue description, action taken
-   - Store this context for filtering in Step 10
+   - Store this context for filtering in Step 9
 
    Previously addressed findings have the format:
    - **File:** `path/to/file.ts:123`
    - **Issue/Finding:** [description]
    - **Action taken:** [what was done]
 
-6. **Determine Applicable Reviews**
+5. **Determine Applicable Reviews**
 
    Based on changes:
    - **Always applicable**: kramme:code-reviewer (general quality)
@@ -83,7 +57,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **If code deleted/refactored**: kramme:removal-planner (safe removal verification)
    - **After passing review**: kramme:code-simplifier (polish and refine)
 
-7. **Launch Review Agents**
+6. **Launch Review Agents**
 
    **Sequential approach** (one at a time):
    - Easier to understand and act on
@@ -95,7 +69,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Faster for comprehensive review
    - Results come back together
 
-8. **Validate Relevance**
+7. **Validate Relevance**
 
    After collecting findings from all agents:
    - Launch **kramme:pr-relevance-validator** with all findings
@@ -103,7 +77,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Filters out pre-existing issues and out-of-scope problems
    - Returns only findings caused by this PR
 
-9. **Slop Meta-Review**
+8. **Slop Meta-Review**
 
    After relevance validation, review agent suggestions for slop:
    - Launch **kramme:deslop-reviewer** in meta-review mode
@@ -111,9 +85,9 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Flags suggestions that would introduce slop if implemented
    - Adds slop warnings to flagged suggestions (does not remove them)
 
-10. **Filter Previously Addressed Findings**
+9. **Filter Previously Addressed Findings**
 
-   If `REVIEW_RESPONSES.md` was found in Step 5:
+   If `REVIEW_RESPONSES.md` was found in Step 4:
    - Cross-reference validated findings against previously addressed findings
    - **Only filter** if the finding is essentially the same issue:
      - Same file
@@ -127,7 +101,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - When uncertain, err on the side of keeping the finding active
    - Add filtered findings to "Previously Addressed" section
 
-11. **Aggregate Results**
+10. **Aggregate Results**
 
    After validation, slop meta-review, and previous-response filtering, summarize:
    - **Critical Issues** (must fix before merge) - only validated findings
@@ -138,7 +112,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **Filtered Issues** (pre-existing or out-of-scope) - shown separately
    - **Previously Addressed** (findings matching REVIEW_RESPONSES.md) - shown separately
 
-12. **Provide Action Plan**
+11. **Provide Action Plan**
 
    If Critical or Important issues were found, include a suggestion to run `/kramme:resolve-review-findings` to automatically address them.
 
