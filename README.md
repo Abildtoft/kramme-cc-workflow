@@ -42,6 +42,7 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the C
   - [Verification & Build](#verification--build)
   - [Utilities](#utilities)
 - [Plugin Structure](#plugin-structure)
+  - [Reference Checklists](#reference-checklists)
 - [Adding Components](#adding-components)
   - [Commands](#commands-1)
   - [Agents](#agents-1)
@@ -100,6 +101,7 @@ Specialized subagents for PR review tasks. These are invoked by the `/kramme:rev
 | `kramme:type-design-analyzer` | Analyzes type design for encapsulation, invariant expression, usefulness, and enforcement. Rates each dimension 1-10. |
 | `kramme:architecture-strategist` | Analyzes code changes from an architectural perspective. Reviews system design decisions, evaluates component boundaries, and ensures alignment with established patterns. |
 | `kramme:performance-oracle` | Analyzes code for performance issues, bottlenecks, and scalability. Covers algorithmic complexity, database queries, memory management, caching, and network optimization. |
+| `kramme:removal-planner` | Identifies dead code, unused dependencies, and deprecated features. Creates structured removal plans with verification steps, distinguishing safe vs deferred removals. |
 
 ## Skills
 
@@ -754,8 +756,28 @@ kramme-cc-workflow/
 ├── skills/              # Auto-triggered skills
 ├── hooks/               # Event handlers
 │   └── hooks.json
+├── references/          # Review checklists
+│   ├── solid-checklist.md
+│   ├── security-checklist.md
+│   ├── code-quality-checklist.md
+│   ├── slop-patterns.md
+│   └── removal-plan.md
 └── README.md
 ```
+
+### Reference Checklists
+
+The `references/` directory contains checklists used by review agents:
+
+| Reference | Purpose |
+|-----------|---------|
+| `solid-checklist.md` | SOLID principles, code smells, and refactoring heuristics |
+| `security-checklist.md` | Security vulnerabilities across 10 categories (input safety, auth, JWT, secrets, etc.) |
+| `code-quality-checklist.md` | Error handling, performance/caching, and boundary conditions |
+| `slop-patterns.md` | AI-generated code patterns to detect and avoid |
+| `removal-plan.md` | Templates for safe code removal and dead code cleanup |
+
+These can be customized per-project or used as reference during manual reviews.
 
 ## Adding Components
 
@@ -885,6 +907,7 @@ For maintainers: see [RELEASE.md](RELEASE.md) for the release process.
 - `kramme:design-iterator`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - `kramme:humanize-text`: Based on Wikipedia: Signs of AI writing (maintained by WikiProject AI Cleanup) and heavily inspired by [blader/humanizer](https://github.com/blader/humanizer).
 - `kramme:performance-oracle`: From [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
+- Reference checklists: Inspired by [sanyuan0704/code-review-expert](https://github.com/sanyuan0704/code-review-expert).
 - OpenCode/Codex converter: Inspired by [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 
 ## License
