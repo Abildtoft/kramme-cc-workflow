@@ -116,10 +116,19 @@ If user accepts, format the learning for AGENTS.md:
 | "The config loader reads from ~/.config first, then falls back to /etc" | `- Config precedence: ~/.config → /etc` |
 | "FeatureFlags.ts must be updated whenever adding a new feature" | `- Update FeatureFlags.ts when adding features` |
 
-**Determine placement:**
-1. Check if AGENTS.md exists in project root
-2. If yes, read it and find the appropriate section
-3. If no, create it with a simple format
+**Determine target file:**
+1. Check if `AGENTS.md` exists in project root → use it
+2. Otherwise, check if `CLAUDE.md` exists → use it
+3. If neither exists, prefer `AGENTS.md` (it's designed for learnings)
+
+**Determine placement within file:**
+1. Read the file and identify existing sections
+2. Find the most appropriate section based on category:
+   - Testing learnings → after "## Testing" or "## Tests" section
+   - Architecture learnings → after "## Architecture" or "## Structure" section
+   - Git learnings → after "## Git" or "## Workflow" section
+   - Otherwise → at end of file, or create a "## Learnings" section
+3. If no sections exist, append at end of file
 
 Present the proposed addition:
 
