@@ -1,6 +1,6 @@
 ---
 name: kramme:extract-learnings
-description: Extract non-obvious learnings from session to AGENTS.md files and the searchable database. Presents suggestions for approval before making changes.
+description: Extract non-obvious learnings from session to AGENTS.md files. Presents suggestions for approval before making changes.
 ---
 
 # Extract Session Learnings
@@ -133,32 +133,6 @@ After collecting all approvals:
    - Insert learnings at their specified locations
    - Preserve all existing content and formatting
 3. Use the Edit tool for existing files, Write tool for new files
-4. **Also save to learnings database** for cross-session search:
-
-```bash
-# Ensure database exists
-DB_FILE="$HOME/.kramme-cc-workflow/learnings.db"
-if [ ! -f "$DB_FILE" ]; then
-    bash "${CLAUDE_PLUGIN_ROOT}/scripts/init-learnings-db.sh"
-fi
-
-# For each approved learning, insert into database
-# Map the learning type to a category:
-# - Hidden relationships → Architecture
-# - Execution paths → Navigation
-# - Configuration/env vars → Tooling
-# - Debugging breakthroughs → Quality
-# - API/tool quirks → Tooling
-# - Build/test commands → Testing
-# - Architectural decisions → Architecture
-# - Files that must change together → Architecture
-
-sqlite3 "$DB_FILE" \
-  "INSERT INTO learnings (category, rule, project)
-   VALUES ('$CATEGORY', '$RULE', '$PROJECT_NAME')"
-```
-
-The project name should be derived from the git repository name or directory name.
 
 ## Phase 7: Summary
 
@@ -171,11 +145,8 @@ Report the outcome:
 **Files created:** N
 **Learnings added:** N
 **Learnings rejected:** N
-**Saved to database:** N (searchable via /kramme:search-learnings)
 
 ### Changes by file:
 - `path/to/AGENTS.md`: Added N learnings
 - `path/to/other/AGENTS.md`: Created with N learnings
 ```
-
-**Tip:** Use `/kramme:search-learnings` to find learnings across all projects.

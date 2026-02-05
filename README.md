@@ -79,8 +79,8 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the C
 | `/kramme:recreate-commits` | Recreate current branch in-place with narrative-quality commits and logical, reviewer-friendly commit history. |
 | `/kramme:resolve-review-findings` | Resolve findings from code reviews. Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
 | `/kramme:explore-interview` | Conduct an in-depth interview about a topic/proposal to uncover requirements. Uses structured questioning to explore features, processes, or architecture decisions. |
-| `/kramme:extract-learnings` | Extract non-obvious learnings from session to AGENTS.md files and the searchable database. Presents suggestions for approval before making changes. |
-| `/kramme:learn` | Add a learning to the persistent database for cross-session retrieval. Supports interactive or quick mode with arguments. |
+| `/kramme:extract-learnings` | Extract non-obvious learnings from session to AGENTS.md files. Presents suggestions for approval before making changes. |
+| `/kramme:learn` | Add a learning to the persistent database. Proposes adding to AGENTS.md if project-relevant. |
 | `/kramme:search-learnings` | Search learnings database using BM25 full-text search. Filter by category or project. |
 | `/kramme:list-learnings` | List all learnings, optionally filtered by category or project. Use `--categories` for summary or `--stats` for database statistics. |
 | `/kramme:delete-learning` | Delete a learning from the database by ID. Supports bulk deletion by category, project, or age. |
