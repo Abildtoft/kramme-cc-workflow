@@ -118,6 +118,7 @@ Skills are auto-triggered based on context. Claude will invoke these automatical
 | `kramme:markdown-converter` | Converting documents (PDF, Word, Excel, images, audio, etc.) to Markdown using markitdown |
 | `kramme:pr-description-generator` | Generating PR descriptions by analyzing git changes, commit history, and Linear issues |
 | `kramme:recreate-commits` | Recreating the current branch in-place with narrative-quality commits |
+| `kramme:connect:rive` | Official Rive documentation covering editor, scripting, runtimes, data binding, and feature support (iOS/mobile focus) |
 | `kramme:structured-implementation-workflow` | Structured Implementation Workflow (SIW) - Triggers on "SIW", "structured workflow", or when siw/LOG.md and siw/OPEN_ISSUES_OVERVIEW.md files are detected. Uses progressive disclosure with phase-specific resources. Use `/kramme:siw:init` to set up. |
 | `kramme:verification-before-completion` | About to claim work is complete/fixed/passing - requires evidence before assertions |
 
@@ -885,6 +886,7 @@ For maintainers: see [RELEASE.md](RELEASE.md) for the release process.
 - `kramme:design-iterator`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - `kramme:humanize-text`: Based on Wikipedia: Signs of AI writing (maintained by WikiProject AI Cleanup) and heavily inspired by [blader/humanizer](https://github.com/blader/humanizer).
 - `kramme:performance-oracle`: From [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
+- `kramme:connect:rive`: Inspired by [Lonka-Pardhu/rive-agent-skill](https://github.com/Lonka-Pardhu/rive-agent-skill).
 - OpenCode/Codex converter: Inspired by [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 
 ## License
