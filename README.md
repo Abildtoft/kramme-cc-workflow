@@ -80,6 +80,10 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the C
 | `/kramme:resolve-review-findings` | Resolve findings from code reviews. Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
 | `/kramme:explore-interview` | Conduct an in-depth interview about a topic/proposal to uncover requirements. Uses structured questioning to explore features, processes, or architecture decisions. |
 | `/kramme:extract-learnings` | Extract non-obvious learnings from session to AGENTS.md files. Presents suggestions for approval before making changes. |
+| `/kramme:learn` | Add a learning to the persistent database for cross-session retrieval. Supports interactive or quick mode with arguments. |
+| `/kramme:search-learnings` | Search learnings database using BM25 full-text search. Filter by category or project. |
+| `/kramme:list-learnings` | List all learnings, optionally filtered by category or project. Use `--categories` for summary or `--stats` for database statistics. |
+| `/kramme:delete-learning` | Delete a learning from the database by ID. Supports bulk deletion by category, project, or age. |
 | `/kramme:review-pr` | Run comprehensive PR review using specialized agents. Supports reviewing comments, tests, errors, types, and code quality. Can run agents sequentially or in parallel. |
 | `/kramme:toggle-hook` | Enable or disable a plugin hook. Use `status` to list all hooks, or specify a hook name to toggle. |
 
@@ -741,6 +745,26 @@ CLI tools that enhance the plugin experience. Some are required for specific com
 | `trash` | Safe file deletion (used by block-rm-rf hook) | `brew install trash` |
 | `jq` | JSON parsing (internal use) | `brew install jq` |
 | `markitdown` | Document conversion skill | `uvx markitdown` or `pip install markitdown` |
+| `sqlite3` | Learnings database (pre-installed on macOS) | Pre-installed |
+
+### Learnings Database
+
+The plugin includes a persistent SQLite database for storing learnings across sessions:
+
+**Location:** `~/.kramme-cc-workflow/learnings.db`
+
+**Commands:**
+- `/kramme:learn` - Add new learnings
+- `/kramme:search-learnings` - Full-text search with BM25 ranking
+- `/kramme:list-learnings` - Browse and filter learnings
+- `/kramme:delete-learning` - Remove learnings
+
+**Categories:** Navigation, Editing, Testing, Git, Quality, Context, Architecture, Performance, Prompting, Tooling
+
+The database is initialized automatically on first use. To manually initialize:
+```bash
+bash ~/.claude/plugins/kramme-cc-workflow/scripts/init-learnings-db.sh
+```
 
 ## Plugin Structure
 
