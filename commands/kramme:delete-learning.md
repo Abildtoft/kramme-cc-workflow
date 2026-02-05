@@ -29,6 +29,19 @@ question: "Which learning do you want to delete? Enter the ID number."
 type: text
 ```
 
+## Validate Inputs
+
+Ensure IDs are numeric and escape strings used in bulk deletes:
+
+```bash
+source "${CLAUDE_PLUGIN_ROOT}/scripts/learnings-sql.sh"
+
+require_numeric "ID" "$ID"
+
+CATEGORY_SAFE=$(sql_escape "$CATEGORY")
+PROJECT_SAFE=$(sql_escape "$PROJECT")
+```
+
 ## Fetch Learning Details
 
 Before deleting, show what will be deleted:
@@ -100,19 +113,21 @@ options:
 
 ```bash
 sqlite3 "$HOME/.kramme-cc-workflow/learnings.db" \
-  "DELETE FROM learnings WHERE category = '$CATEGORY'"
+  "DELETE FROM learnings WHERE category = '$CATEGORY_SAFE'"
 ```
 
 ### Delete by Project
 
 ```bash
 sqlite3 "$HOME/.kramme-cc-workflow/learnings.db" \
-  "DELETE FROM learnings WHERE project = '$PROJECT'"
+  "DELETE FROM learnings WHERE project = '$PROJECT_SAFE'"
 ```
 
 ### Delete by Age
 
 ```bash
+require_numeric "age (days)" "$DAYS"
+
 sqlite3 "$HOME/.kramme-cc-workflow/learnings.db" \
   "DELETE FROM learnings WHERE created_at < datetime('now', '-$DAYS days')"
 ```

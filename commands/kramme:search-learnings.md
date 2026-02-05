@@ -29,6 +29,21 @@ fi
 - `--project` or `-p`: filter by project
 - `--limit` or `-l`: max results (default: 10)
 
+## Sanitize Inputs
+
+Validate numeric inputs and escape single quotes for SQL strings:
+
+```bash
+source "${CLAUDE_PLUGIN_ROOT}/scripts/learnings-sql.sh"
+
+LIMIT=${LIMIT:-10}
+require_numeric "limit" "$LIMIT"
+
+QUERY_SAFE=$(sql_escape "$QUERY")
+CATEGORY_SAFE=$(sql_escape "$CATEGORY")
+PROJECT_SAFE=$(sql_escape "$PROJECT")
+```
+
 ## Search Query Construction
 
 ### Full-Text Search (default)
@@ -45,8 +60,8 @@ SELECT
     l.times_applied
 FROM learnings l
 JOIN learnings_fts fts ON l.id = fts.rowid
-WHERE learnings_fts MATCH '$QUERY'
-ORDER BY bm25(learnings_fts)
+WHERE fts MATCH '$QUERY_SAFE'
+ORDER BY bm25(fts)
 LIMIT $LIMIT;
 SQL
 ```
@@ -63,16 +78,16 @@ SELECT
     l.times_applied
 FROM learnings l
 JOIN learnings_fts fts ON l.id = fts.rowid
-WHERE learnings_fts MATCH '$QUERY'
-  AND l.category = '$CATEGORY'
-ORDER BY bm25(learnings_fts)
+WHERE fts MATCH '$QUERY_SAFE'
+  AND l.category = '$CATEGORY_SAFE'
+ORDER BY bm25(fts)
 LIMIT $LIMIT;
 SQL
 ```
 
 ### With Project Filter
 
-Add `AND l.project = '$PROJECT'` to the WHERE clause.
+Add `AND l.project = '$PROJECT_SAFE'` to the WHERE clause.
 
 ## Search Syntax Tips
 
@@ -124,6 +139,8 @@ Tips:
 When a learning is particularly helpful and the user acts on it, you can increment its usage counter:
 
 ```bash
+require_numeric "ID" "$ID"
+
 sqlite3 "$HOME/.kramme-cc-workflow/learnings.db" \
   "UPDATE learnings SET times_applied = times_applied + 1 WHERE id = $ID"
 ```

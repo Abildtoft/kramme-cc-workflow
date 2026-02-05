@@ -28,6 +28,21 @@ fi
 - `--categories`: show category summary instead of learnings
 - `--stats`: show database statistics
 
+## Sanitize Inputs
+
+Validate numeric inputs and escape single quotes for SQL strings:
+
+```bash
+source "${CLAUDE_PLUGIN_ROOT}/scripts/learnings-sql.sh"
+
+LIMIT=${LIMIT:-20}
+require_numeric "limit" "$LIMIT"
+require_optional_numeric "ID" "$ID"
+
+CATEGORY_SAFE=$(sql_escape "$CATEGORY")
+PROJECT_SAFE=$(sql_escape "$PROJECT")
+```
+
 ## Show Category Summary
 
 If `--categories` flag is provided:
@@ -103,7 +118,7 @@ SELECT
     times_applied,
     date(created_at) as added
 FROM learnings
-WHERE category = '$CATEGORY'
+WHERE category = '$CATEGORY_SAFE'
 ORDER BY times_applied DESC, created_at DESC
 LIMIT $LIMIT;
 SQL
@@ -111,7 +126,7 @@ SQL
 
 ## With Project Filter
 
-Add `WHERE project = '$PROJECT'` or `AND project = '$PROJECT'`.
+Add `WHERE project = '$PROJECT_SAFE'` or `AND project = '$PROJECT_SAFE'`.
 
 ## Output Format
 

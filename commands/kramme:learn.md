@@ -56,15 +56,28 @@ Ask the user:
 2. "Which category?" (show options)
 3. "What mistake led to this?" (optional)
 
+## Sanitize Inputs
+
+Before inserting, escape single quotes to avoid breaking SQL strings:
+
+```bash
+source "${CLAUDE_PLUGIN_ROOT}/scripts/learnings-sql.sh"
+
+RULE_SAFE=$(sql_escape "$RULE")
+CATEGORY_SAFE=$(sql_escape "$CATEGORY")
+PROJECT_SAFE=$(sql_escape "$PROJECT")
+MISTAKE_SAFE=$(sql_escape "$MISTAKE")
+```
+
 ## Insert Learning
 
 ```bash
 sqlite3 "$HOME/.kramme-cc-workflow/learnings.db" \
   "INSERT INTO learnings (category, rule, mistake, project)
-   VALUES ('$CATEGORY', '$RULE', '$MISTAKE', '$PROJECT')"
+   VALUES ('$CATEGORY_SAFE', '$RULE_SAFE', '$MISTAKE_SAFE', '$PROJECT_SAFE')"
 ```
 
-Escape single quotes by doubling them (`'` → `''`).
+Use the `*_SAFE` variables in SQL strings.
 
 Confirm:
 ```
