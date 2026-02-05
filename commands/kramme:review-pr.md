@@ -24,6 +24,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **types** - Analyze type design and invariants (if new types added)
    - **code** - General code review for project guidelines
    - **slop** - Detect AI-generated code patterns (unnecessary comments, defensive overkill, type workarounds)
+   - **removal** - Identify dead code and create safe removal plans
    - **simplify** - Simplify code for clarity and maintainability
    - **all** - Run all applicable reviews (default)
 
@@ -53,6 +54,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **If comments/docs added**: kramme:comment-analyzer
    - **If error handling changed**: kramme:silent-failure-hunter
    - **If types added/modified**: kramme:type-design-analyzer
+   - **If code deleted/refactored**: kramme:removal-planner (safe removal verification)
    - **After passing review**: kramme:code-simplifier (polish and refine)
 
 6. **Launch Review Agents**
@@ -227,6 +229,12 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 - Filters pre-existing issues
 - Filters out-of-scope problems
 - Ensures review focuses on PR changes
+
+**kramme:removal-planner**:
+- Identifies dead code and unused dependencies
+- Verifies safe removal with reference searches
+- Creates structured removal plans
+- Distinguishes safe vs deferred removals
 
 ## Tips:
 

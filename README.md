@@ -106,6 +106,7 @@ Specialized subagents for PR review tasks. These are invoked by the `/kramme:rev
 | `kramme:type-design-analyzer` | Analyzes type design for encapsulation, invariant expression, usefulness, and enforcement. Rates each dimension 1-10. |
 | `kramme:architecture-strategist` | Analyzes code changes from an architectural perspective. Reviews system design decisions, evaluates component boundaries, and ensures alignment with established patterns. |
 | `kramme:performance-oracle` | Analyzes code for performance issues, bottlenecks, and scalability. Covers algorithmic complexity, database queries, memory management, caching, and network optimization. |
+| `kramme:removal-planner` | Identifies dead code, unused dependencies, and deprecated features. Creates structured removal plans with verification steps, distinguishing safe vs deferred removals. |
 
 ## Skills
 
