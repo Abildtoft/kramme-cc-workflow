@@ -43,20 +43,91 @@ Rate each finding from 0-100:
 
 This threshold ensures we flag clear issues while avoiding noise from borderline cases. When in doubt, lean toward not flagging.
 
-## Reference Checklist
+## Slop Patterns to Detect
 
-**Before reviewing, read the slop patterns checklist:**
-- Read `references/slop-patterns.md`
+### 1. Unnecessary Comments
 
-This checklist contains all 8 slop patterns with examples:
-1. Unnecessary Comments
-2. Defensive Overkill
-3. Type Workarounds
-4. Style Inconsistencies
-5. Over-Engineering
-6. Verbose Alternatives
-7. Excessive Logging
-8. Copy-Paste Artifacts
+- Comments describing obvious code (`// increment counter`, `// return the result`)
+- Over-documentation of self-explanatory functions
+- Comments that repeat the code instead of explaining intent
+- Inconsistent comment style compared to the rest of the file
+- JSDoc/docstrings with trivial descriptions that add no value
+
+**Example slop:**
+```typescript
+// Get the user by ID from the database
+const user = await db.getUserById(id);
+// Check if user exists
+if (!user) {
+  // Throw error if not found
+  throw new NotFoundError('User not found');
+}
+```
+
+### 2. Defensive Overkill
+
+- Try-catch blocks around code that cannot throw
+- Null checks on values that are guaranteed to exist
+- Type guards on values already typed correctly
+- Validation on internal/trusted code paths
+- Multiple layers of the same defensive check
+
+**Example slop:**
+```typescript
+function processValidatedInput(input: ValidatedInput) {
+  // Input is already validated by the caller
+  if (!input) throw new Error('Input required');
+  if (typeof input.value !== 'string') throw new Error('Invalid type');
+  // ... proceed with trusted input
+}
+```
+
+### 3. Type Workarounds
+
+- `any` casts to silence type errors instead of fixing them
+- `// @ts-ignore` or `// @ts-expect-error` without good justification
+- Type assertions that circumvent safety (`as unknown as X`)
+- Overly broad types when specific types are available
+
+**Example slop:**
+```typescript
+const data = response.body as any;
+const items = (data as unknown as ItemList).items;
+```
+
+### 4. Style Inconsistencies
+
+- Naming conventions different from the rest of the file
+- Different error handling patterns than surrounding code
+- Inconsistent use of async/await vs promises
+- Different formatting or structure than established patterns
+
+### 5. Over-Engineering
+
+- Unnecessary abstractions for one-time operations
+- Generic solutions for specific problems
+- Configuration for things that will never change
+- Wrapper functions that add no value
+
+### 6. Verbose Alternatives
+
+- Using multiple lines where the codebase uses concise patterns
+- Explicit type annotations where inference is standard
+- Long-form syntax when shorthand is idiomatic
+
+### 7. Excessive Logging
+
+- Console.log statements left in production code
+- Verbose logging that clutters output
+- Debug statements that should have been removed
+- Logging sensitive data or large objects
+
+### 8. Copy-Paste Artifacts
+
+- Nearly identical code blocks with minor variations
+- Inconsistent variable names from copy-paste errors
+- Commented-out alternative implementations
+- TODO comments that reference the AI interaction ("as discussed", "per your request")
 
 ## Analysis Process
 
