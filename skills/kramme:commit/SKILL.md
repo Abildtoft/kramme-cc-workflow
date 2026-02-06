@@ -1,6 +1,7 @@
 ---
 name: kramme:commit
 description: Create commit messages. Use when committing code changes or writing commit messages. Provides issue reference patterns and commit message guidelines.
+user-invocable: false
 ---
 
 # Commit Messages

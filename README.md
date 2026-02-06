@@ -4,9 +4,10 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the C
 
 ## Table of Contents
 
-- [Commands](#commands)
-- [Agents](#agents)
 - [Skills](#skills)
+  - [User-Invocable Skills](#user-invocable-skills)
+  - [Background Skills](#background-skills)
+- [Agents](#agents)
 - [Hooks](#hooks)
   - [Toggling Hooks](#toggling-hooks)
   - [block-rm-rf: Blocked Patterns](#block-rm-rf-blocked-patterns)
@@ -43,7 +44,6 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the C
   - [Utilities](#utilities)
 - [Plugin Structure](#plugin-structure)
 - [Adding Components](#adding-components)
-  - [Commands](#commands-1)
   - [Agents](#agents-1)
   - [Skills](#skills-1)
   - [Hooks](#hooks-1)
@@ -53,45 +53,72 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the C
 - [Attribution](#attribution)
 - [License](#license)
 
-## Commands
+## Skills
 
-| Command | Description |
-|---------|-------------|
+All plugin functionality is delivered through skills. Skills can be user-invoked via the `/` menu, auto-triggered by Claude based on context, or both.
+
+- **User-invocable**: Trigger with `/kramme:skill-name`. Skills with side effects use `disable-model-invocation: true` to prevent auto-invocation.
+- **Auto-triggered**: Claude invokes automatically when context matches the skill description.
+- **Background**: Skills with `user-invocable: false` are auto-triggered only and don't appear in the `/` menu.
+
+### User-Invocable Skills
+
+| Skill | Description |
+|-------|-------------|
+| `/kramme:changelog-generator` | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
 | `/kramme:clean-up-artifacts` | Delete workflow artifacts (REVIEW_RESPONSES.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files). For SIW-specific cleanup, use `/kramme:siw:remove`. |
-| `/kramme:find-bugs` | Find bugs, security vulnerabilities, and code quality issues in branch changes. Performs systematic security review with attack surface mapping and checklist-based analysis. |
+| `/kramme:connect-existing-feature-documentation-writer` | Create or update documentation for Connect features |
+| `/kramme:connect-extract-to-nx-libraries` | Extract app code from `apps/connect/` into proper Nx libraries |
+| `/kramme:connect-migrate-legacy-store-to-ngrx-component-store` | Migrate legacy CustomStore/FeatureStore to NgRx ComponentStore in Connect monorepo |
+| `/kramme:connect-modernize-legacy-angular-component` | Modernize legacy Angular components in Connect monorepo |
 | `/kramme:create-pr` | Create a clean PR with narrative-quality commits and comprehensive description. Orchestrates branch setup, commit restructuring, and PR creation. |
-| `/kramme:fixup-changes` | Intelligently fixup unstaged changes into existing commits. Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
-| `/kramme:linear:define-issue` | Create or improve a Linear issue through exhaustive guided refinement. Can start from scratch or refine an existing issue by ID. Supports file references for context. |
-| `/kramme:linear:implement-issue` | Start implementing a Linear issue with branch setup, context gathering, and guided workflow. Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
-| `/kramme:siw:init` | Initialize structured implementation workflow documents in `siw/` (spec, siw/LOG.md, siw/issues). Accepts optional arguments: file path(s) or folder to link existing specs (references them, doesn't duplicate content), or `discover` to run an in-depth interview. Offers to move or keep linked files in place. Sets up local issue tracking without requiring Linear. |
-| `/kramme:siw:define-issue` | Define a new local issue with guided interview process. Creates issue files in the `issues/` directory. |
-| `/kramme:siw:generate-phases` | Break spec into atomic, phase-based issues with tests and validation. Uses `P1-001`, `P2-001`, `G-001` numbering. Reviews breakdown with subagent before creating files. |
-| `/kramme:siw:implement-issue` | Start implementing a defined local issue with codebase exploration and planning. Works on current branch. |
-| `/kramme:siw:remove` | Remove all Structured Implementation Workflow (SIW) files from current directory. Cleans up temporary workflow documents. |
-| `/kramme:siw:reset` | Reset SIW workflow state while preserving the spec. Migrates log decisions to spec, then clears issues and log for fresh start. |
-| `/kramme:siw:restart-issues` | Remove all DONE issues and renumber remaining issues from 001. Cleans up completed work and provides fresh numbering sequence. |
+| `/kramme:delete-learning` | Delete a learning from the database by ID. Supports bulk deletion by category, project, or age. |
 | `/kramme:deslop` | Remove AI-generated code slop from a branch. Uses `kramme:deslop-reviewer` agent to identify slop, then fixes the issues. |
 | `/kramme:elegant-refactor` | Scrap a working-but-mediocre fix and reimplement elegantly. Extracts learnings from the initial attempt, then starts fresh with the elegant solution. |
-| `/kramme:humanize-text` | Humanize provided text or file content using the `kramme:humanize-text` skill. |
-| `/kramme:verify` | Run verification checks (tests, formatting, builds, linting, type checking) for affected code. Automatically detects project type and runs appropriate commands. |
+| `/kramme:explore-interview` | Conduct an in-depth interview about a topic/proposal to uncover requirements. Uses structured questioning to explore features, processes, or architecture decisions. |
+| `/kramme:extract-learnings` | Extract non-obvious learnings from session to AGENTS.md files. Presents suggestions for approval before making changes. |
+| `/kramme:find-bugs` | Find bugs, security vulnerabilities, and code quality issues in branch changes. Performs systematic security review with attack surface mapping and checklist-based analysis. |
+| `/kramme:fixup-changes` | Intelligently fixup unstaged changes into existing commits. Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
+| `/kramme:humanize-text` | Remove signs of AI-generated writing from text to make it sound more natural and human-written. Accepts file paths or raw text. |
 | `/kramme:iterate-pr` | Iterate on a PR until CI passes. Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
+| `/kramme:learn` | Add a learning to the persistent database. Proposes adding to AGENTS.md if project-relevant. |
+| `/kramme:linear:define-issue` | Create or improve a Linear issue through exhaustive guided refinement. Can start from scratch or refine an existing issue by ID. Supports file references for context. |
+| `/kramme:linear:implement-issue` | Start implementing a Linear issue with branch setup, context gathering, and guided workflow. Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
+| `/kramme:list-learnings` | List all learnings, optionally filtered by category or project. Use `--categories` for summary or `--stats` for database statistics. |
+| `/kramme:markdown-converter` | Convert documents (PDF, Word, Excel, images, audio, etc.) to Markdown using markitdown |
+| `/kramme:pr-description-generator` | Generate PR descriptions by analyzing git changes, commit history, and Linear issues |
 | `/kramme:rebase-pr` | Rebase current branch onto latest main/master, then force push. Use when your PR is behind the base branch. |
 | `/kramme:recreate-commits` | Recreate current branch in-place with narrative-quality commits and logical, reviewer-friendly commit history. |
 | `/kramme:resolve-review-findings` | Resolve findings from code reviews. Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
-| `/kramme:explore-interview` | Conduct an in-depth interview about a topic/proposal to uncover requirements. Uses structured questioning to explore features, processes, or architecture decisions. |
-| `/kramme:extract-learnings` | Extract non-obvious learnings from session to AGENTS.md files. Presents suggestions for approval before making changes. |
-| `/kramme:setup-learn` | Initialize or verify the learnings database (and optionally rebuild FTS). |
-| `/kramme:learn` | Add a learning to the persistent database. Proposes adding to AGENTS.md if project-relevant. |
-| `/kramme:search-learnings` | Search learnings database using BM25 full-text search. Filter by category or project. |
-| `/kramme:list-learnings` | List all learnings, optionally filtered by category or project. Use `--categories` for summary or `--stats` for database statistics. |
-| `/kramme:delete-learning` | Delete a learning from the database by ID. Supports bulk deletion by category, project, or age. |
 | `/kramme:review-pr` | Run comprehensive PR review using specialized agents. Supports reviewing comments, tests, errors, types, and code quality. Can run agents sequentially or in parallel. |
+| `/kramme:search-learnings` | Search learnings database using BM25 full-text search. Filter by category or project. |
+| `/kramme:setup-learn` | Initialize or verify the learnings database (and optionally rebuild FTS). |
+| `/kramme:siw:define-issue` | Define a new local issue with guided interview process. Creates issue files in the `issues/` directory. |
+| `/kramme:siw:generate-phases` | Break spec into atomic, phase-based issues with tests and validation. Uses `P1-001`, `P2-001`, `G-001` numbering. Reviews breakdown with subagent before creating files. |
+| `/kramme:siw:implement-issue` | Start implementing a defined local issue with codebase exploration and planning. Works on current branch. |
+| `/kramme:siw:init` | Initialize structured implementation workflow documents in `siw/` (spec, siw/LOG.md, siw/issues). Accepts optional arguments: file path(s) or folder to link existing specs (references them, doesn't duplicate content), or `discover` to run an in-depth interview. Offers to move or keep linked files in place. Sets up local issue tracking without requiring Linear. |
+| `/kramme:siw:remove` | Remove all Structured Implementation Workflow (SIW) files from current directory. Cleans up temporary workflow documents. |
+| `/kramme:siw:reset` | Reset SIW workflow state while preserving the spec. Migrates log decisions to spec, then clears issues and log for fresh start. |
+| `/kramme:siw:restart-issues` | Remove all DONE issues and renumber remaining issues from 001. Cleans up completed work and provides fresh numbering sequence. |
+| `/kramme:structured-implementation-workflow` | Structured Implementation Workflow (SIW) entry point. Triggers on "SIW", "structured workflow", or when siw/LOG.md and siw/OPEN_ISSUES_OVERVIEW.md files are detected. Use `/kramme:siw:init` to set up. |
 | `/kramme:toggle-hook` | Enable or disable a plugin hook. Use `status` to list all hooks, or specify a hook name to toggle. |
+| `/kramme:verify` | Run verification checks (tests, formatting, builds, linting, type checking) for affected code. Automatically detects project type and runs appropriate commands. |
 | `/kramme:wrap-up-session` | End-of-session checklist to capture progress, ensure quality, and document next steps. Audits uncommitted changes, runs quality checks, prompts for session summary and next steps, and optionally extracts learnings. |
+
+### Background Skills
+
+Auto-triggered by Claude based on context. These don't appear in the `/` menu.
+
+| Skill | Trigger Condition |
+|-------|-------------------|
+| `kramme:agents-md` | Add guidelines to AGENTS.md with structured, keyword-based documentation. Triggers on "update AGENTS.md", "add to AGENTS.md", "maintain agent docs" |
+| `kramme:commit` | Creating commits or writing commit messages (plain English, no conventional commits) |
+| `kramme:connect:rive` | Official Rive documentation covering editor, scripting, runtimes, data binding, and feature support (iOS/mobile focus) |
+| `kramme:verification-before-completion` | About to claim work is complete/fixed/passing — requires evidence before assertions |
 
 ## Agents
 
-Specialized subagents for PR review tasks. These are invoked by the `/kramme:review-pr` command or can be used directly via the Task tool.
+Specialized subagents for PR review tasks. These are invoked by the `/kramme:review-pr` skill or can be used directly via the Task tool.
 
 | Agent | Description |
 |-------|-------------|
@@ -107,27 +134,6 @@ Specialized subagents for PR review tasks. These are invoked by the `/kramme:rev
 | `kramme:architecture-strategist` | Analyzes code changes from an architectural perspective. Reviews system design decisions, evaluates component boundaries, and ensures alignment with established patterns. |
 | `kramme:performance-oracle` | Analyzes code for performance issues, bottlenecks, and scalability. Covers algorithmic complexity, database queries, memory management, caching, and network optimization. |
 | `kramme:removal-planner` | Identifies dead code, unused dependencies, and deprecated features. Creates structured removal plans with verification steps, distinguishing safe vs deferred removals. |
-
-## Skills
-
-Skills are auto-triggered based on context. Claude will invoke these automatically when the described conditions are met.
-
-| Skill | Trigger Condition |
-|-------|-------------------|
-| `kramme:agents-md` | Add guidelines to AGENTS.md with structured, keyword-based documentation. Triggers on "update AGENTS.md", "add to AGENTS.md", "maintain agent docs" |
-| `kramme:changelog-generator` | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
-| `kramme:commit` | Creating commits or writing commit messages (plain English, no conventional commits) |
-| `kramme:connect-existing-feature-documentation-writer` | Creating or updating documentation for Connect features |
-| `kramme:connect-migrate-legacy-store-to-ngrx-component-store` | Migrating legacy CustomStore/FeatureStore to NgRx ComponentStore in Connect monorepo |
-| `kramme:connect-extract-to-nx-libraries` | Extracting app code from `apps/connect/` into proper Nx libraries |
-| `kramme:connect-modernize-legacy-angular-component` | Modernizing legacy Angular components in Connect monorepo |
-| `kramme:humanize-text` | Remove signs of AI-generated writing from text to make it sound more natural and human-written |
-| `kramme:markdown-converter` | Converting documents (PDF, Word, Excel, images, audio, etc.) to Markdown using markitdown |
-| `kramme:pr-description-generator` | Generating PR descriptions by analyzing git changes, commit history, and Linear issues |
-| `kramme:recreate-commits` | Recreating the current branch in-place with narrative-quality commits |
-| `kramme:connect:rive` | Official Rive documentation covering editor, scripting, runtimes, data binding, and feature support (iOS/mobile focus) |
-| `kramme:structured-implementation-workflow` | Structured Implementation Workflow (SIW) - Triggers on "SIW", "structured workflow", or when siw/LOG.md and siw/OPEN_ISSUES_OVERVIEW.md files are detected. Uses progressive disclosure with phase-specific resources. Use `/kramme:siw:init` to set up. |
-| `kramme:verification-before-completion` | About to claim work is complete/fixed/passing - requires evidence before assertions |
 
 ## Hooks
 
@@ -778,31 +784,14 @@ kramme-cc-workflow/
 ├── .claude-plugin/
 │   ├── plugin.json      # Plugin metadata
 │   └── marketplace.json # Marketplace definition
-├── commands/            # Slash commands
 ├── agents/              # Specialized subagents
-├── skills/              # Auto-triggered skills
+├── skills/              # Skills (subdirectories with SKILL.md)
 ├── hooks/               # Event handlers
 │   └── hooks.json
 └── README.md
 ```
 
 ## Adding Components
-
-### Commands
-
-Create markdown files in `commands/` with this format:
-
-```markdown
----
-name: kramme:command-name
-description: Brief description shown in command list
-argument-hint: [optional-argument]
----
-# Command Name
-
-## Your Task
-Describe what the command should do.
-```
 
 ### Agents
 
@@ -839,12 +828,21 @@ SKILL.md format:
 ```markdown
 ---
 name: my-skill
-description: When to use this skill (this triggers auto-invocation)
+description: When to use this skill (triggers auto-invocation matching)
+argument-hint: [optional-argument]
+disable-model-invocation: true   # Prevents auto-invocation (user must use /skill-name)
+user-invocable: false            # Hides from / menu (auto-invocation only)
 ---
 # My Skill
 
 Instructions for Claude when this skill is active.
 ```
+
+**Frontmatter fields:**
+- `name` / `description` — Required. Description triggers auto-invocation matching.
+- `argument-hint` — Placeholder text shown in `/` menu for expected arguments.
+- `disable-model-invocation: true` — Prevents Claude from auto-invoking; user must trigger via `/` menu. Use for skills with side effects.
+- `user-invocable: false` — Hides from `/` menu; Claude auto-invokes based on context. Use for background conventions.
 
 ### Hooks
 

@@ -1,6 +1,7 @@
 ---
 name: kramme:agents-md
 description: This skill should be used when the user asks to "update AGENTS.md", "add to AGENTS.md", "maintain agent docs", or needs to add guidelines to agent instructions. Guides discovery of local skills and enforces structured, keyword-based documentation style.
+user-invocable: false
 ---
 
 # Adding to AGENTS.md
