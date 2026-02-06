@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.16.0] - 2026-02-06
+
+### Added
+- Install agents to ~/.agents/skills (#125)
+
 ## [0.15.0] - 2026-02-06
 
 ### Changed
@@ -251,6 +256,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.16.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.13.0...v0.13.1
