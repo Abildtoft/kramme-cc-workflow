@@ -2,6 +2,7 @@
 name: kramme:extract-learnings
 description: Extract non-obvious learnings from session to AGENTS.md files. Presents suggestions for approval before making changes.
 disable-model-invocation: true
+user-invocable: true
 ---
 
 # Extract Session Learnings

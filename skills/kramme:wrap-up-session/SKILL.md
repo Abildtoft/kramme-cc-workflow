@@ -2,6 +2,7 @@
 name: kramme:wrap-up-session
 description: End-of-session checklist to capture progress, ensure quality, and document next steps
 disable-model-invocation: true
+user-invocable: true
 ---
 
 # Wrap Up Session

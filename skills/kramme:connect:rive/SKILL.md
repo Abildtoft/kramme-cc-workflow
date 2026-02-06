@@ -2,6 +2,7 @@
 name: kramme:connect:rive
 description: Official Rive documentation covering editor, scripting, runtimes, data binding, and feature support. Primary focus on iOS/mobile integration.
 user-invocable: false
+disable-model-invocation: false
 ---
 
 # Rive Documentation

@@ -3,6 +3,7 @@ name: kramme:siw:implement-issue
 description: Start implementing a defined local issue with codebase exploration and planning
 argument-hint: <G-001 | P1-001 | ISSUE-G-XXX>
 disable-model-invocation: true
+user-invocable: true
 ---
 
 # Implement Local Issue

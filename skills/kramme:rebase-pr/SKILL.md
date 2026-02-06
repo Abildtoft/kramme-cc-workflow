@@ -2,6 +2,7 @@
 name: kramme:rebase-pr
 description: Rebase current branch onto latest main/master, then force push. Use when your PR is behind the base branch.
 disable-model-invocation: true
+user-invocable: true
 ---
 
 # Rebase PR

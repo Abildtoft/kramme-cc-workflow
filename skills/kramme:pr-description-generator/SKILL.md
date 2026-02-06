@@ -1,6 +1,8 @@
 ---
 name: kramme:pr-description-generator
 description: Generate comprehensive Pull Request descriptions by analyzing git changes, commit history, Linear issues, and code structure for both GitLab and GitHub
+disable-model-invocation: false
+user-invocable: true
 ---
 
 # PR Description Generator

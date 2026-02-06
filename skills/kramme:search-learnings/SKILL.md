@@ -2,6 +2,8 @@
 name: kramme:search-learnings
 description: Search learnings database using full-text search (BM25)
 argument-hint: <query> [--category CAT] [--project PRJ] [--limit N]
+disable-model-invocation: false
+user-invocable: true
 ---
 
 # Search Learnings Database

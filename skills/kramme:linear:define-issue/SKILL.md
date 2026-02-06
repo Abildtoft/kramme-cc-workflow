@@ -3,6 +3,7 @@ name: kramme:linear:define-issue
 description: Create or improve a well-structured Linear issue through exhaustive guided refinement
 argument-hint: [issue-id] or [description and/or file paths for context]
 disable-model-invocation: true
+user-invocable: true
 ---
 
 # Define Linear Issue

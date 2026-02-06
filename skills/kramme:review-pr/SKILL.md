@@ -2,6 +2,7 @@
 name: kramme:review-pr
 description: Run a comprehensive pull request review using multiple specialized agents, each focusing on a different aspect of code quality.
 disable-model-invocation: true
+user-invocable: true
 ---
 
 # Comprehensive PR Review

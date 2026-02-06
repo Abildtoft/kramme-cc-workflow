@@ -3,6 +3,7 @@ name: kramme:delete-learning
 description: Delete a learning from the database by ID
 argument-hint: <id>
 disable-model-invocation: true
+user-invocable: true
 ---
 
 # Delete Learning

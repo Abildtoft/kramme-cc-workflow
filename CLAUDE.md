@@ -32,17 +32,17 @@ Create `skills/<skill-name>/SKILL.md`:
 name: skill-name
 description: When to auto-trigger this skill
 argument-hint: [optional-argument]
-disable-model-invocation: true   # Prevents auto-invocation (user must use /skill-name)
-user-invocable: false            # Hides from / menu (auto-invocation only)
+disable-model-invocation: false
+user-invocable: true
 ---
 # Skill instructions
 ```
 
-**Frontmatter fields:**
-- `name` / `description` — Required. Description triggers auto-invocation matching.
-- `argument-hint` — Placeholder text shown in `/` menu for expected arguments.
-- `disable-model-invocation: true` — Prevents Claude from auto-invoking; user must trigger via `/` menu. Use for skills with side effects (git operations, file deletion, PR creation).
-- `user-invocable: false` — Hides from `/` menu; Claude auto-invokes based on context. Use for background conventions (commit style, verification rules).
+**Frontmatter fields (all required except `argument-hint`):**
+- `name` / `description` — Description triggers auto-invocation matching.
+- `argument-hint` — Placeholder text shown in `/` menu for expected arguments. Only include when the skill accepts arguments.
+- `disable-model-invocation` — `true` prevents Claude from auto-invoking; user must trigger via `/` menu. Use for skills with side effects (git operations, file deletion, PR creation). Set to `false` to allow auto-invocation.
+- `user-invocable` — `false` hides from `/` menu; Claude auto-invokes based on context. Use for background conventions (commit style, verification rules). Set to `true` to show in `/` menu.
 
 ### Hooks
 Edit `hooks/hooks.json` to add event handlers (PreToolUse, PostToolUse, SessionStart, Stop).
@@ -62,6 +62,7 @@ exit_if_hook_disabled "hook-name" "json" # For PostToolUse/Stop hooks
 - **Document all components in README.md** - Every command, skill, agent, and hook must be documented in the README with a description of what it does and when to use it
 - Use "Pull Request" (PR) terminology, not "Merge Request" (MR) — even when supporting GitLab
 - **Use conventional commits** - Commit messages and PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/) format (`feat:`, `fix:`, `docs:`, etc.) for automatic CHANGELOG generation. PR titles are validated by CI and become merge commit messages.
+- **Explicit skill frontmatter** - Every skill SKILL.md must declare all frontmatter fields explicitly (`name`, `description`, `disable-model-invocation`, `user-invocable`). Never rely on defaults.
 
 ## Development
 

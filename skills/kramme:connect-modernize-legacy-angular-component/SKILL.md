@@ -1,6 +1,8 @@
 ---
 name: kramme:connect-modernize-legacy-angular-component
 description: Use this Skill when working in the Connect monorepo and needing to modernize legacy Angular components.
+disable-model-invocation: false
+user-invocable: true
 ---
 
 # Connect - Modernize Legacy Angular Component
