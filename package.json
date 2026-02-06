@@ -1,6 +1,6 @@
 {
   "name": "kramme-cc-workflow",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "private": true,
   "description": "Converter CLI for kramme-cc-workflow",
   "license": "MIT",
