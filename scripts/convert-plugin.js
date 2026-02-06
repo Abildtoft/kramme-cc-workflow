@@ -85,6 +85,7 @@ async function main() {
   const plugin = await loadClaudePlugin(resolvedPluginPath)
   const outputRoot = resolveOutputRoot(parsed.output ?? parsed.o)
   const codexHome = resolveCodexRoot(parsed["codex-home"] ?? parsed.codexHome)
+  const agentsHome = resolveAgentsRoot(parsed["agents-home"] ?? parsed.agentsHome)
   const options = {
     agentMode: String(parsed["agent-mode"] ?? parsed.agentMode ?? "subagent") === "primary" ? "primary" : "subagent",
     inferTemperature: parseBoolean(parsed["infer-temperature"] ?? parsed.inferTemperature, true),
@@ -97,7 +98,7 @@ async function main() {
   }
 
   const primaryOutput = targetName === "codex" ? codexHome : outputRoot
-  await target.write(primaryOutput, bundle)
+  await target.write(primaryOutput, bundle, { agentsHome })
   console.log(`Installed ${plugin.manifest.name} to ${primaryOutput}`)
 
   const extraTargets = parseExtraTargets(parsed.also)
@@ -114,7 +115,7 @@ async function main() {
       continue
     }
     const extraRoot = extra === "codex" ? codexHome : path.join(outputRoot, extra)
-    await handler.write(extraRoot, extraBundle)
+    await handler.write(extraRoot, extraBundle, { agentsHome })
     console.log(`Installed ${plugin.manifest.name} to ${extraRoot}`)
   }
 
@@ -130,6 +131,7 @@ Options:
   --to <target>           Target format: opencode | codex (default: opencode)
   --output, -o <dir>      Output directory (OpenCode root; default: ~/.config/opencode)
   --codex-home <dir>      Codex root (default: ~/.codex)
+  --agents-home <dir>     Agents root (default: ~/.agents)
   --also <targets>        Comma-separated extra targets to generate
   --permissions <mode>    none | broad | from-commands (default: broad)
   --agent-mode <mode>     primary | subagent (default: subagent)
@@ -212,6 +214,14 @@ function resolveCodexRoot(value) {
     return path.resolve(expanded)
   }
   return path.join(os.homedir(), ".codex")
+}
+
+function resolveAgentsRoot(value) {
+  if (value && String(value).trim()) {
+    const expanded = expandHome(String(value).trim())
+    return path.resolve(expanded)
+  }
+  return path.join(os.homedir(), ".agents")
 }
 
 function expandHome(value) {
@@ -865,12 +875,12 @@ function convertClaudeToCodex(plugin, options) {
   })
 
   const agentSkills = plugin.agents.map((agent) => convertAgentSkill(agent, usedSkillNames))
-  const generatedSkills = [...commandSkills, ...agentSkills]
 
   return {
     prompts,
     skillDirs,
-    generatedSkills,
+    generatedSkills: commandSkills,
+    agentSkills,
     mcpServers: plugin.mcpServers,
   }
 }
@@ -1043,7 +1053,7 @@ function resolveOpenCodePaths(outputRoot) {
   }
 }
 
-async function writeCodexBundle(outputRoot, bundle) {
+async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   const codexRoot = resolveCodexOutputRoot(outputRoot)
   await ensureDir(codexRoot)
 
@@ -1065,6 +1075,15 @@ async function writeCodexBundle(outputRoot, bundle) {
 
   for (const skill of bundle.generatedSkills) {
     await writeText(path.join(skillsRoot, skill.name, "SKILL.md"), skill.content + "\n")
+  }
+
+  if (bundle.agentSkills && bundle.agentSkills.length > 0) {
+    const agentsHome = extraOpts.agentsHome ?? path.join(os.homedir(), ".agents")
+    const agentSkillsRoot = path.join(agentsHome, "skills")
+    await cleanupKrammeSkills(agentSkillsRoot)
+    for (const skill of bundle.agentSkills) {
+      await writeText(path.join(agentSkillsRoot, skill.name, "SKILL.md"), skill.content + "\n")
+    }
   }
 
   const config = renderCodexConfig(bundle.mcpServers)
