@@ -1,6 +1,6 @@
 ---
 name: kramme:clean-up-artifacts
-description: Delete workflow artifacts (REVIEW_RESPONSES.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files)
+description: Delete workflow artifacts (REVIEW_OVERVIEW.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files)
 disable-model-invocation: true
 ---
 
@@ -15,7 +15,7 @@ Delete workflow artifact files from the current working directory.
 Delete the following files if they exist:
 
 **Review artifacts:**
-- `REVIEW_RESPONSES.md`
+- `REVIEW_OVERVIEW.md`
 
 **Structured Implementation Workflow (SIW) artifacts (in `siw/`):**
 - `siw/LOG.md`

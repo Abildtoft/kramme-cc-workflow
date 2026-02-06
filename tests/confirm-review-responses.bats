@@ -81,10 +81,10 @@ run_hook() {
 }
 
 # ============================================================================
-# GIT COMMIT WITHOUT REVIEW_RESPONSES.MD
+# GIT COMMIT WITHOUT REVIEW_OVERVIEW.MD
 # ============================================================================
 
-@test "allows git commit when REVIEW_RESPONSES.md is not staged" {
+@test "allows git commit when REVIEW_OVERVIEW.md is not staged" {
     mock_git_staged "file1.txt
 file2.js
 src/component.tsx"
@@ -101,43 +101,63 @@ src/component.tsx"
 }
 
 @test "allows git commit with similar but different filename" {
-    mock_git_staged "REVIEW_RESPONSES.md.bak
-MY_REVIEW_RESPONSES.md
-REVIEW_RESPONSES.markdown"
+    mock_git_staged "REVIEW_OVERVIEW.md.bak
+MY_REVIEW_OVERVIEW.md
+REVIEW_OVERVIEW.markdown"
     run run_hook "git commit -m 'test'"
     [ "$status" -eq 0 ]
     [ -z "$output" ]
 }
 
 # ============================================================================
-# BLOCK CASES: REVIEW_RESPONSES.MD STAGED
+# ALLOW CASES: LEGACY REVIEW FILES STAGED
 # ============================================================================
 
-@test "blocks git commit when REVIEW_RESPONSES.md is staged" {
-    mock_git_staged "REVIEW_RESPONSES.md"
+@test "allows git commit when other review markdown files are staged" {
+    mock_git_staged "REVIEW_NOTES.md
+REVIEW_SUMMARY.md"
+    run run_hook "git commit -m 'test commit'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+# ============================================================================
+# BLOCK CASES: REVIEW_OVERVIEW.MD STAGED
+# ============================================================================
+
+@test "blocks git commit when REVIEW_OVERVIEW.md is staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook "git commit -m 'test commit'"
     is_blocked
-    [[ "$output" == *"REVIEW_RESPONSES.md"* ]]
+    [[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
     [[ "$output" == *"confirm"* ]]
 }
 
-@test "blocks git commit when REVIEW_RESPONSES.md is staged with other files" {
+@test "blocks git commit when REVIEW_OVERVIEW.md is staged with other files" {
     mock_git_staged "file1.txt
-REVIEW_RESPONSES.md
+REVIEW_OVERVIEW.md
 file2.js"
     run run_hook "git commit -m 'multiple files'"
     is_blocked
 }
 
-@test "blocks git commit when REVIEW_RESPONSES.md is in subdirectory" {
-    mock_git_staged "src/REVIEW_RESPONSES.md"
+@test "blocks git commit when REVIEW_OVERVIEW.md is in subdirectory" {
+    mock_git_staged "src/REVIEW_OVERVIEW.md"
     run run_hook "git commit -m 'subdir file'"
     is_blocked
 }
 
-@test "blocks git commit when REVIEW_RESPONSES.md is in deep path" {
-    mock_git_staged "path/to/deep/REVIEW_RESPONSES.md"
+@test "blocks git commit when REVIEW_OVERVIEW.md is in deep path" {
+    mock_git_staged "path/to/deep/REVIEW_OVERVIEW.md"
     run run_hook "git commit -m 'deep path'"
+    is_blocked
+}
+
+@test "blocks git commit when overview and other markdown files are all staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md
+REVIEW_NOTES.md
+REVIEW_SUMMARY.md"
+    run run_hook "git commit -m 'both files'"
     is_blocked
 }
 
@@ -146,25 +166,25 @@ file2.js"
 # ============================================================================
 
 @test "blocks git commit without message flag" {
-    mock_git_staged "REVIEW_RESPONSES.md"
+    mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook "git commit"
     is_blocked
 }
 
 @test "blocks git commit with --amend" {
-    mock_git_staged "REVIEW_RESPONSES.md"
+    mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook "git commit --amend"
     is_blocked
 }
 
 @test "blocks git commit with -a flag" {
-    mock_git_staged "REVIEW_RESPONSES.md"
+    mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook "git commit -a -m 'auto stage'"
     is_blocked
 }
 
 @test "blocks git commit with multiple flags" {
-    mock_git_staged "REVIEW_RESPONSES.md"
+    mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook "git commit -v --no-verify -m 'test'"
     is_blocked
 }
