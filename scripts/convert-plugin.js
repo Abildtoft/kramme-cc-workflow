@@ -264,8 +264,9 @@ async function loadClaudePlugin(inputPath) {
   const manifest = await readJson(manifestPath)
 
   const agents = await loadAgents(resolveComponentDirs(root, "agents", manifest.agents))
-  const commands = await loadCommands(resolveComponentDirs(root, "commands", manifest.commands))
+  const legacyCommands = await loadCommands(resolveComponentDirs(root, "commands", manifest.commands))
   const skills = await loadSkills(resolveComponentDirs(root, "skills", manifest.skills))
+  const commands = deriveInvocableCommands(legacyCommands, skills)
   const hooks = await loadHooks(root, manifest.hooks)
   const mcpServers = await loadMcpServers(root, manifest)
 
@@ -344,16 +345,53 @@ async function loadSkills(skillsDirs) {
   const skills = []
   for (const file of skillFiles) {
     const raw = await readText(file)
-    const { data } = parseFrontmatter(raw)
+    const { data, body } = parseFrontmatter(raw)
     const name = data.name ?? path.basename(path.dirname(file))
+    const allowedTools = parseAllowedTools(data["allowed-tools"])
     skills.push({
       name,
       description: data.description,
+      argumentHint: data["argument-hint"],
+      model: data.model,
+      allowedTools,
+      disableModelInvocation: data["disable-model-invocation"],
+      userInvocable: data["user-invocable"],
+      body: body.trim(),
       sourceDir: path.dirname(file),
       skillPath: file,
     })
   }
   return skills
+}
+
+function deriveInvocableCommands(legacyCommands, skills) {
+  const commands = []
+  const seen = new Set()
+
+  for (const command of legacyCommands) {
+    const normalizedName = normalizeName(command.name)
+    if (seen.has(normalizedName)) continue
+    commands.push(command)
+    seen.add(normalizedName)
+  }
+
+  for (const skill of skills) {
+    if (skill.userInvocable === false) continue
+    const normalizedName = normalizeName(skill.name)
+    if (seen.has(normalizedName)) continue
+    commands.push({
+      name: skill.name,
+      description: skill.description,
+      argumentHint: skill.argumentHint,
+      model: skill.model,
+      allowedTools: skill.allowedTools,
+      body: skill.body,
+      sourcePath: skill.skillPath,
+    })
+    seen.add(normalizedName)
+  }
+
+  return commands
 }
 
 async function loadHooks(root, hooksField) {
@@ -712,12 +750,14 @@ function applyPermissions(config, commands, mode) {
   ]
   let enabled = new Set()
   const patterns = {}
+  let hasAllowedToolsDeclaration = false
 
   if (mode === "broad") {
     enabled = new Set(sourceTools)
   } else {
     for (const command of commands) {
       if (!command.allowedTools) continue
+      hasAllowedToolsDeclaration = true
       for (const tool of command.allowedTools) {
         const parsed = parseToolSpec(tool)
         if (!parsed.tool) continue
@@ -728,6 +768,11 @@ function applyPermissions(config, commands, mode) {
           patterns[parsed.tool].add(normalizedPattern)
         }
       }
+    }
+
+    // Keep the legacy behavior usable for repos that define no per-command tool metadata.
+    if (!hasAllowedToolsDeclaration) {
+      enabled = new Set(sourceTools)
     }
   }
 
