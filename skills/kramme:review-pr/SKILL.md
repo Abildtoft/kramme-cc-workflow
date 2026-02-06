@@ -37,7 +37,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
 4. **Check for Previous Review Responses**
 
-   If `REVIEW_RESPONSES.md` exists in the project root:
+   If `REVIEW_OVERVIEW.md` exists in the project root:
    - Parse the file to extract previously addressed findings
    - Extract for each finding: file path, line number, issue description, action taken
    - Store this context for filtering in Step 9
@@ -89,7 +89,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
 9. **Filter Previously Addressed Findings**
 
-   If `REVIEW_RESPONSES.md` was found in Step 4:
+   If `REVIEW_OVERVIEW.md` was found in Step 4:
    - Cross-reference validated findings against previously addressed findings
    - **Only filter** if the finding is essentially the same issue:
      - Same file
@@ -112,11 +112,17 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **Slop Warnings** - suggestions flagged as potentially introducing slop
    - **Positive Observations** (what's good)
    - **Filtered Issues** (pre-existing or out-of-scope) - shown separately
-   - **Previously Addressed** (findings matching REVIEW_RESPONSES.md) - shown separately
+   - **Previously Addressed** (findings matching REVIEW_OVERVIEW.md) - shown separately
 
-11. **Provide Action Plan**
+11. **Write Findings to File**
 
-   If Critical or Important issues were found, include a suggestion to run `/kramme:resolve-review-findings` to automatically address them.
+   Write the aggregated review summary from Step 10 to `REVIEW_OVERVIEW.md` in the project root, using the format from the template below. Include all sections even if empty (with count of 0).
+
+   This file is a working artifact — it should NOT be committed. It will be cleaned up by `/kramme:clean-up-artifacts`.
+
+12. **Provide Action Plan**
+
+   If Critical or Important issues were found, include a suggestion to run `/kramme:resolve-review` to automatically address them.
 
    Organize findings:
    ```markdown
@@ -125,7 +131,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    ## Relevance Filter
    - X findings validated as PR-caused
    - X findings filtered (pre-existing or out-of-scope)
-   - X findings filtered (previously addressed in REVIEW_RESPONSES.md)
+   - X findings filtered (previously addressed in REVIEW_OVERVIEW.md)
 
    ## Critical Issues (X found)
    - [agent-name]: Issue description [file:line]
@@ -148,7 +154,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    ## Filtered (Previously Addressed)
    <collapsed>
    - [file:line]: Brief description
-     Matched: REVIEW_RESPONSES.md - [action taken summary]
+     Matched: REVIEW_OVERVIEW.md - [action taken summary]
    </collapsed>
 
    ## Strengths
@@ -160,7 +166,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    3. Consider suggestions
    4. Re-run review after fixes
 
-   **To automatically resolve findings, run:** `/kramme:resolve-review-findings`
+   **To automatically resolve findings, run:** `/kramme:resolve-review`
    ```
 
 ## Usage Examples:
