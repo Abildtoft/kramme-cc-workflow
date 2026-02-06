@@ -1,7 +1,7 @@
 ---
 name: kramme:explore-interview
 description: Conduct an in-depth interview about a topic/proposal to uncover requirements and create a comprehensive plan
-argument-hint: [file-path or topic description]
+argument-hint: "[file-path or topic description]"
 disable-model-invocation: true
 user-invocable: true
 ---

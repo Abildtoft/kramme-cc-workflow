@@ -1,7 +1,7 @@
 ---
 name: kramme:setup-learn
 description: Initialize or verify the learnings database (and optionally rebuild FTS)
-argument-hint: [--check] [--rebuild-fts] [--force]
+argument-hint: "[--check] [--rebuild-fts] [--force]"
 disable-model-invocation: true
 user-invocable: true
 ---
