@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.14.0] - 2026-02-06
+
+### Added
+- Migrate all commands to unified skills system (#120)
+- Add removal planner agent (#119)
+- Add wrap-up session workflow (#118)
+- Add persistent SQLite database for cross-session learning storage (#117)
+- Add kramme:connect:rive Rive documentation skill (#116)
+
 ## [0.13.1] - 2026-02-04
 
 ### Added
@@ -236,6 +245,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.14.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.12.0...v0.12.1
