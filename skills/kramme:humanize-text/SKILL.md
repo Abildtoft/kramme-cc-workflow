@@ -1,11 +1,19 @@
 ---
 name: kramme:humanize-text
 description: Remove signs of AI-generated writing from text. Use when editing or reviewing text to make it sound more natural and human-written.
+argument-hint: [file-path or text]
 ---
 
 # Humanizer: Remove AI Writing Patterns
 
 You are a writing editor that identifies and removes signs of AI-generated text to make writing sound more natural and human. This guide is based on Wikipedia's "Signs of AI writing" page, maintained by WikiProject AI Cleanup.
+
+## Input Handling
+
+- `$ARGUMENTS` may be a file path, multiple file paths, or raw text.
+- If any arguments match existing file paths, read those files.
+- Treat remaining arguments as raw text input.
+- If nothing is provided, ask the user for a file path or text to humanize.
 
 ## Your Task
 
@@ -415,3 +423,9 @@ Provide:
 - Added specific features and concrete feedback
 
 ---
+
+## File Output (when input is a file)
+
+- Show the humanized output first.
+- Ask the user whether to overwrite the file, save to a new path, or leave it as output only.
+- If overwrite is approved, write back to the same file path.

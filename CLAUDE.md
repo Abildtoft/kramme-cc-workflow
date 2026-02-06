@@ -6,24 +6,12 @@ This is a Claude Code plugin providing workflow automation tools for daily devel
 
 ```
 .claude-plugin/plugin.json   # Plugin manifest (name, version, author)
-commands/                    # Slash commands (markdown files)
 agents/                      # Specialized subagents (markdown files)
-skills/                      # Auto-triggered skills (subdirectories with SKILL.md)
+skills/                      # Skills (subdirectories with SKILL.md)
 hooks/hooks.json             # Event handlers configuration
 ```
 
 ## Adding Components
-
-### Commands
-Create `commands/<command-name>.md`:
-```yaml
----
-name: kramme:command-name
-description: Brief description shown in command list
-argument-hint: [optional-argument]
----
-# Command instructions here
-```
 
 ### Agents
 Create `agents/<agent-name>.md`:
@@ -43,9 +31,18 @@ Create `skills/<skill-name>/SKILL.md`:
 ---
 name: skill-name
 description: When to auto-trigger this skill
+argument-hint: [optional-argument]
+disable-model-invocation: true   # Prevents auto-invocation (user must use /skill-name)
+user-invocable: false            # Hides from / menu (auto-invocation only)
 ---
 # Skill instructions
 ```
+
+**Frontmatter fields:**
+- `name` / `description` — Required. Description triggers auto-invocation matching.
+- `argument-hint` — Placeholder text shown in `/` menu for expected arguments.
+- `disable-model-invocation: true` — Prevents Claude from auto-invoking; user must trigger via `/` menu. Use for skills with side effects (git operations, file deletion, PR creation).
+- `user-invocable: false` — Hides from `/` menu; Claude auto-invokes based on context. Use for background conventions (commit style, verification rules).
 
 ### Hooks
 Edit `hooks/hooks.json` to add event handlers (PreToolUse, PostToolUse, SessionStart, Stop).
