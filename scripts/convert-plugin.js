@@ -366,6 +366,7 @@ async function loadSkills(skillsDirs) {
       allowedTools,
       disableModelInvocation: data["disable-model-invocation"],
       userInvocable: data["user-invocable"],
+      platforms: parsePlatforms(data["kramme-platforms"]),
       body: body.trim(),
       sourceDir: path.dirname(file),
       skillPath: file,
@@ -540,9 +541,36 @@ function parseAllowedTools(value) {
   return undefined
 }
 
+function parsePlatforms(value) {
+  if (!value) return undefined
+  if (Array.isArray(value)) return value.map((item) => String(item).toLowerCase())
+  if (typeof value === "string") {
+    return value
+      .split(/,/)
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean)
+  }
+  return undefined
+}
+
+function filterByPlatform(skills, commands, platform) {
+  const excluded = new Set()
+  for (const skill of skills) {
+    if (skill.platforms && !skill.platforms.includes(platform)) {
+      excluded.add(normalizeName(skill.name))
+    }
+  }
+  if (excluded.size === 0) return { skills, commands }
+  return {
+    skills: skills.filter((skill) => !excluded.has(normalizeName(skill.name))),
+    commands: commands.filter((command) => !excluded.has(normalizeName(command.name))),
+  }
+}
+
 function convertClaudeToOpenCode(plugin, options) {
+  const { skills, commands } = filterByPlatform(plugin.skills, plugin.commands, "opencode")
   const agentFiles = plugin.agents.map((agent) => convertAgent(agent, options))
-  const commandMap = convertCommands(plugin.commands)
+  const commandMap = convertCommands(commands)
   const mcp = plugin.mcpServers ? convertMcp(plugin.mcpServers) : undefined
   const plugins = plugin.hooks ? [convertHooks(plugin.hooks)] : []
 
@@ -552,13 +580,13 @@ function convertClaudeToOpenCode(plugin, options) {
     mcp: mcp && Object.keys(mcp).length > 0 ? mcp : undefined,
   }
 
-  applyPermissions(config, plugin.commands, options.permissions)
+  applyPermissions(config, commands, options.permissions)
 
   return {
     config,
     agents: agentFiles,
     plugins,
-    skillDirs: plugin.skills.map((skill) => ({ sourceDir: skill.sourceDir, name: skill.name })),
+    skillDirs: skills.map((skill) => ({ sourceDir: skill.sourceDir, name: skill.name })),
   }
 }
 
@@ -857,16 +885,17 @@ function escapeTemplateLiteral(value) {
 }
 
 function convertClaudeToCodex(plugin, options) {
+  const { skills, commands } = filterByPlatform(plugin.skills, plugin.commands, "codex")
   const promptNames = new Set()
-  const skillDirs = plugin.skills.map((skill) => ({
+  const skillDirs = skills.map((skill) => ({
     name: skill.name,
     sourceDir: skill.sourceDir,
   }))
 
   const usedSkillNames = new Set(skillDirs.map((skill) => normalizeName(skill.name)))
-  const knownCommands = new Set(plugin.commands.map((command) => normalizeName(command.name)))
+  const knownCommands = new Set(commands.map((command) => normalizeName(command.name)))
   const commandSkills = []
-  const prompts = plugin.commands.map((command) => {
+  const prompts = commands.map((command) => {
     const promptName = uniqueName(normalizeName(command.name), promptNames)
     const commandSkill = convertCommandSkill(command, usedSkillNames, knownCommands)
     commandSkills.push(commandSkill)

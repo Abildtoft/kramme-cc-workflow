@@ -78,6 +78,7 @@ All plugin functionality is delivered through skills. Skills can be user-invoked
 | `/kramme:explore-interview` | Conduct an in-depth interview about a topic/proposal to uncover requirements. Uses structured questioning to explore features, processes, or architecture decisions. |
 | `/kramme:extract-learnings` | Extract non-obvious learnings from session to AGENTS.md files. Presents suggestions for approval before making changes. |
 | `/kramme:find-bugs` | Find bugs, security vulnerabilities, and code quality issues in branch changes. Performs systematic security review with attack surface mapping and checklist-based analysis. |
+| `/kramme:find-bugs:team` | Team-based bug and security review using Agent Teams. Specialized reviewers (injection, auth, data, logic) work in parallel and cross-validate findings like a red team exercise. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
 | `/kramme:fixup-changes` | Intelligently fixup unstaged changes into existing commits. Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
 | `/kramme:humanize-text` | Remove signs of AI-generated writing from text to make it sound more natural and human-written. Accepts file paths or raw text. |
 | `/kramme:iterate-pr` | Iterate on a PR until CI passes. Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
@@ -90,12 +91,15 @@ All plugin functionality is delivered through skills. Skills can be user-invoked
 | `/kramme:rebase-pr` | Rebase current branch onto latest main/master, then force push. Use when your PR is behind the base branch. |
 | `/kramme:recreate-commits` | Recreate current branch in-place with narrative-quality commits and logical, reviewer-friendly commit history. |
 | `/kramme:resolve-review` | Resolve findings from code reviews. Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
+| `/kramme:resolve-review:team` | Resolve review findings in parallel using Agent Teams. Groups findings by file area and assigns to separate teammates for faster resolution. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
 | `/kramme:review-pr` | Run comprehensive PR review using specialized agents. Supports reviewing comments, tests, errors, types, and code quality. Can run agents sequentially or in parallel. |
+| `/kramme:review-pr:team` | Team-based PR review using Agent Teams where specialized reviewers collaborate, cross-validate findings, and challenge each other's suggestions. Higher quality, higher token cost. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
 | `/kramme:search-learnings` | Search learnings database using BM25 full-text search. Filter by category or project. |
 | `/kramme:setup-learn` | Initialize or verify the learnings database (and optionally rebuild FTS). |
 | `/kramme:siw:define-issue` | Define a new local issue with guided interview process. Creates issue files in the `issues/` directory. |
 | `/kramme:siw:generate-phases` | Break spec into atomic, phase-based issues with tests and validation. Uses `P1-001`, `P2-001`, `G-001` numbering. Reviews breakdown with subagent before creating files. |
 | `/kramme:siw:implement-issue` | Start implementing a defined local issue with codebase exploration and planning. Works on current branch. |
+| `/kramme:siw:implement-parallel` | Implement multiple SIW issues simultaneously using Agent Teams. Each teammate implements one issue with a full context window. Handles file ownership and batching. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
 | `/kramme:siw:init` | Initialize structured implementation workflow documents in `siw/` (spec, siw/LOG.md, siw/issues). Accepts optional arguments: file path(s) or folder to link existing specs (references them, doesn't duplicate content), or `discover` to run an in-depth interview. Offers to move or keep linked files in place. Sets up local issue tracking without requiring Linear. |
 | `/kramme:siw:remove` | Remove all Structured Implementation Workflow (SIW) files from current directory. Cleans up temporary workflow documents. |
 | `/kramme:siw:reset` | Reset SIW workflow state while preserving the spec. Migrates log decisions to spec, then clears issues and log for fresh start. |
@@ -843,6 +847,7 @@ Instructions for Claude when this skill is active.
 - `argument-hint` — Placeholder text shown in `/` menu for expected arguments.
 - `disable-model-invocation: true` — Prevents Claude from auto-invoking; user must trigger via `/` menu. Use for skills with side effects.
 - `user-invocable: false` — Hides from `/` menu; Claude auto-invokes based on context. Use for background conventions.
+- `kramme-platforms` — Optional. Restrict to specific platforms: `[claude-code]`, `[opencode]`, `[codex]`, or combinations. Omit to include on all. Skills using Claude Code-only features (e.g. Agent Teams) should set `kramme-platforms: [claude-code]`.
 
 ### Hooks
 
