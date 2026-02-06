@@ -38,11 +38,12 @@ user-invocable: true
 # Skill instructions
 ```
 
-**Frontmatter fields (all required except `argument-hint`):**
+**Frontmatter fields (all required except `argument-hint` and `kramme-platforms`):**
 - `name` / `description` — Description triggers auto-invocation matching.
 - `argument-hint` — Placeholder text shown in `/` menu for expected arguments. Only include when the skill accepts arguments.
 - `disable-model-invocation` — `true` prevents Claude from auto-invoking; user must trigger via `/` menu. Use for skills with side effects (git operations, file deletion, PR creation). Set to `false` to allow auto-invocation.
 - `user-invocable` — `false` hides from `/` menu; Claude auto-invokes based on context. Use for background conventions (commit style, verification rules). Set to `true` to show in `/` menu.
+- `kramme-platforms` — Restrict skill to specific platforms: `[claude-code]`, `[opencode]`, `[codex]`, or combinations. Omit to include on all platforms. Skills using Claude Code-only features (e.g. Agent Teams) should set `kramme-platforms: [claude-code]`.
 
 ### Hooks
 Edit `hooks/hooks.json` to add event handlers (PreToolUse, PostToolUse, SessionStart, Stop).
