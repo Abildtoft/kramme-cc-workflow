@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:generate-phases
 description: Break spec into atomic, phase-based issues with tests and validation
-argument-hint: [spec-file-path]
+argument-hint: "[spec-file-path]"
 disable-model-invocation: true
 user-invocable: true
 ---

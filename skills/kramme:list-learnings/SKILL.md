@@ -1,7 +1,7 @@
 ---
 name: kramme:list-learnings
 description: List all learnings, optionally filtered by category or project
-argument-hint: [--category CAT] [--project PRJ] [--limit N] [--categories]
+argument-hint: "[--category CAT] [--project PRJ] [--limit N] [--categories]"
 disable-model-invocation: false
 user-invocable: true
 ---

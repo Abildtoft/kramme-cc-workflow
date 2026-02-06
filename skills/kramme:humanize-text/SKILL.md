@@ -1,7 +1,7 @@
 ---
 name: kramme:humanize-text
 description: Remove signs of AI-generated writing from text. Use when editing or reviewing text to make it sound more natural and human-written.
-argument-hint: [file-path or text]
+argument-hint: "[file-path or text]"
 disable-model-invocation: false
 user-invocable: true
 ---

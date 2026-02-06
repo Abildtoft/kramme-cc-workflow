@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:define-issue
 description: Define a new local issue with guided interview process
-argument-hint: [ISSUE-G-XXX or ISSUE-P1-XXX] or [description and/or file paths for context]
+argument-hint: "[ISSUE-G-XXX or ISSUE-P1-XXX] or [description and/or file paths for context]"
 disable-model-invocation: true
 user-invocable: true
 ---
