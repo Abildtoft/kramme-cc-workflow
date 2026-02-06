@@ -66,7 +66,7 @@ All plugin functionality is delivered through skills. Skills can be user-invoked
 | Skill | Description |
 |-------|-------------|
 | `/kramme:changelog-generator` | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
-| `/kramme:clean-up-artifacts` | Delete workflow artifacts (REVIEW_RESPONSES.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files). For SIW-specific cleanup, use `/kramme:siw:remove`. |
+| `/kramme:clean-up-artifacts` | Delete workflow artifacts (REVIEW_OVERVIEW.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files). For SIW-specific cleanup, use `/kramme:siw:remove`. |
 | `/kramme:connect-existing-feature-documentation-writer` | Create or update documentation for Connect features |
 | `/kramme:connect-extract-to-nx-libraries` | Extract app code from `apps/connect/` into proper Nx libraries |
 | `/kramme:connect-migrate-legacy-store-to-ngrx-component-store` | Migrate legacy CustomStore/FeatureStore to NgRx ComponentStore in Connect monorepo |
@@ -89,7 +89,7 @@ All plugin functionality is delivered through skills. Skills can be user-invoked
 | `/kramme:pr-description-generator` | Generate PR descriptions by analyzing git changes, commit history, and Linear issues |
 | `/kramme:rebase-pr` | Rebase current branch onto latest main/master, then force push. Use when your PR is behind the base branch. |
 | `/kramme:recreate-commits` | Recreate current branch in-place with narrative-quality commits and logical, reviewer-friendly commit history. |
-| `/kramme:resolve-review-findings` | Resolve findings from code reviews. Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
+| `/kramme:resolve-review` | Resolve findings from code reviews. Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
 | `/kramme:review-pr` | Run comprehensive PR review using specialized agents. Supports reviewing comments, tests, errors, types, and code quality. Can run agents sequentially or in parallel. |
 | `/kramme:search-learnings` | Search learnings database using BM25 full-text search. Filter by category or project. |
 | `/kramme:setup-learn` | Initialize or verify the learnings database (and optionally rebuild FTS). |
@@ -142,7 +142,7 @@ Event handlers that run automatically at specific points in the Claude Code life
 | Hook | Event | Description |
 |------|-------|-------------|
 | `block-rm-rf` | PreToolUse (Bash) | Blocks destructive file deletion commands and recommends using `trash` CLI instead. |
-| `confirm-review-responses` | PreToolUse (Bash) | Confirms before committing REVIEW_RESPONSES.md to prevent accidental inclusion in commits. |
+| `confirm-review-responses` | PreToolUse (Bash) | Confirms before committing review artifact files (REVIEW_OVERVIEW.md) to prevent accidental inclusion in commits. |
 | `noninteractive-git` | PreToolUse (Bash) | Blocks git commands that would open an interactive editor, guiding the agent to use non-interactive alternatives. |
 | `context-links` | Stop | Displays active PR/MR and Linear issue links at the end of messages. Extracts Linear issue ID from branch name (pattern: `{prefix}/{TEAM-ID}-description`) and detects open PRs/MRs for the current branch. |
 | `auto-format` | PostToolUse (Write\|Edit) | Auto-formats code after file modifications. Detects project formatter from CLAUDE.md or auto-detects from project files (package.json, pyproject.toml, etc.). |

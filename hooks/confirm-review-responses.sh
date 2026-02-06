@@ -1,6 +1,6 @@
 #!/bin/bash
-# Hook: Confirm before committing REVIEW_RESPONSES.md
-# Blocks git commit when REVIEW_RESPONSES.md is staged, asking for confirmation
+# Hook: Confirm before committing review artifact files
+# Blocks git commit when REVIEW_OVERVIEW.md is staged, asking for confirmation
 #
 # Check if hook is enabled
 source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
@@ -17,9 +17,9 @@ if ! echo "$command" | grep -qE '^\s*git\s+commit\b'; then
     exit 0
 fi
 
-# Check if REVIEW_RESPONSES.md is staged
-if git diff --cached --name-only 2>/dev/null | grep -qE '(^|/)REVIEW_RESPONSES\.md$'; then
-    echo "REVIEW_RESPONSES.md is staged for commit. Please confirm you want to include this file in the commit." >&2
+# Check if review overview file is staged
+if git diff --cached --name-only 2>/dev/null | grep -qE '(^|/)REVIEW_OVERVIEW\.md$'; then
+    echo "Review artifact file (REVIEW_OVERVIEW.md) is staged for commit. Please confirm you want to include this file in the commit." >&2
     exit 2
 fi
 
