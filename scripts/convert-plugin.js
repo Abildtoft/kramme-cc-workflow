@@ -1077,7 +1077,7 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
     await writeText(path.join(skillsRoot, skill.name, "SKILL.md"), skill.content + "\n")
   }
 
-  if (bundle.agentSkills && bundle.agentSkills.length > 0) {
+  if (bundle.agentSkills) {
     const agentsHome = extraOpts.agentsHome ?? path.join(os.homedir(), ".agents")
     const agentSkillsRoot = path.join(agentsHome, "skills")
     await cleanupKrammeSkills(agentSkillsRoot)

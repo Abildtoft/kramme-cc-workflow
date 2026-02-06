@@ -45,6 +45,33 @@ teardown() {
   [ ! -d "$TMP_DIR/.codex/skills/kramme-silent-failure-hunter" ]
 }
 
+@test "codex conversion cleans stale agent skills when plugin has no agents" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/.agents/skills/kramme-architecture-strategist/SKILL.md" ]
+
+  EMPTY_PLUGIN_DIR="$TMP_DIR/empty-plugin"
+  mkdir -p "$EMPTY_PLUGIN_DIR/.claude-plugin"
+  cat > "$EMPTY_PLUGIN_DIR/.claude-plugin/plugin.json" <<'JSON'
+{
+  "name": "empty-plugin",
+  "version": "1.0.0",
+  "agents": [],
+  "commands": [],
+  "skills": []
+}
+JSON
+
+  run bash -c "printf 'y\\n' | node \"$SCRIPT\" install \"$EMPTY_PLUGIN_DIR\" --to codex --codex-home \"$TMP_DIR\" --agents-home \"$TMP_DIR/.agents\""
+  [ "$status" -eq 0 ]
+  [ ! -d "$TMP_DIR/.agents/skills/kramme-architecture-strategist" ]
+  [ ! -d "$TMP_DIR/.agents/skills/kramme-silent-failure-hunter" ]
+}
+
 @test "opencode conversion includes command entries from skills" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
