@@ -3,6 +3,7 @@ name: kramme:siw:init
 description: Initialize structured implementation workflow documents in siw/ (spec, LOG.md, issues)
 argument-hint: [spec-file(s) | folder | discover]
 disable-model-invocation: true
+user-invocable: true
 ---
 
 # Initialize Structured Implementation Workflow

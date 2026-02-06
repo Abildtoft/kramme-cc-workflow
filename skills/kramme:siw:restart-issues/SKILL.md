@@ -2,6 +2,7 @@
 name: kramme:siw:restart-issues
 description: Remove all DONE issues and renumber remaining issues within each prefix group
 disable-model-invocation: true
+user-invocable: true
 ---
 
 # Restart Issues

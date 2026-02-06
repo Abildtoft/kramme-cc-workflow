@@ -2,6 +2,7 @@
 name: kramme:create-pr
 description: Create a clean PR with narrative commits and comprehensive description
 disable-model-invocation: true
+user-invocable: true
 ---
 
 # Create Pull Request

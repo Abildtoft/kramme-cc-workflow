@@ -1,6 +1,8 @@
 ---
 name: kramme:connect-extract-to-nx-libraries
 description: Use this Skill when working in the Connect monorepo and needing to extract app code into proper Nx libraries.
+disable-model-invocation: false
+user-invocable: true
 ---
 
 # Extract Connect App Code to Nx Libraries

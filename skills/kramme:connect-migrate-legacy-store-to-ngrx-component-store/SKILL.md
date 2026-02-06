@@ -1,6 +1,8 @@
 ---
 name: kramme:connect-migrate-legacy-store-to-ngrx-component-store
 description: Use this Skill when working in the Connect monorepo and needing to migrate legacy CustomStore or FeatureStore implementations to NgRx ComponentStore.
+disable-model-invocation: false
+user-invocable: true
 ---
 
 # Connect - Migrate Legacy Store to NgRx ComponentStore

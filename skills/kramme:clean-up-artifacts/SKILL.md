@@ -2,6 +2,7 @@
 name: kramme:clean-up-artifacts
 description: Delete workflow artifacts (REVIEW_OVERVIEW.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files)
 disable-model-invocation: true
+user-invocable: true
 ---
 
 # Clean Up Artifacts

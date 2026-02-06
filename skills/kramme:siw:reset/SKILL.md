@@ -2,6 +2,7 @@
 name: kramme:siw:reset
 description: Reset SIW workflow state while preserving the spec - migrates log decisions to spec, clears issues and log
 disable-model-invocation: true
+user-invocable: true
 ---
 
 # Reset Structured Implementation Workflow

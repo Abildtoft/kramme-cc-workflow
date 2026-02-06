@@ -1,6 +1,8 @@
 ---
 name: kramme:verify
 description: Run verification checks (tests, formatting, builds, linting, type checking) for affected code based on the project's configuration.
+disable-model-invocation: false
+user-invocable: true
 ---
 
 # Verify Affected Code

@@ -1,6 +1,8 @@
 ---
 name: kramme:structured-implementation-workflow
 description: Structured Implementation Workflow (SIW) - Use a structured workflow with three interconnected documents (main specification, open issues, and log) to plan, track, and implement work items. Triggers on "SIW", "structured workflow", or when siw/LOG.md and siw/OPEN_ISSUES_OVERVIEW.md files are detected.
+disable-model-invocation: false
+user-invocable: true
 ---
 
 # Structured Implementation Workflow (SIW)

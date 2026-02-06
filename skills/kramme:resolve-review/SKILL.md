@@ -2,6 +2,7 @@
 name: kramme:resolve-review
 description: Resolve findings from code reviews by implementing fixes and documenting changes
 disable-model-invocation: true
+user-invocable: true
 ---
 
 # Resolve Review Findings

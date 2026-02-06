@@ -2,6 +2,7 @@
 name: kramme:fixup-changes
 description: Intelligently fixup unstaged changes into existing commits on the current branch. Maps each changed file to its most recent commit, validates (build/test/lint), creates fixup commits, and autosquashes.
 disable-model-invocation: true
+user-invocable: true
 ---
 
 # Fixup Changes

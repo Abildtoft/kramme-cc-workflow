@@ -3,6 +3,7 @@ name: kramme:learn
 description: Add a learning to the persistent database. Proposes adding to AGENTS.md if project-relevant.
 argument-hint: [rule] [--category CAT] [--project PRJ] [--mistake MSG]
 disable-model-invocation: true
+user-invocable: true
 ---
 
 # Add Learning

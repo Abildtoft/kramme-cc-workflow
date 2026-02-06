@@ -2,6 +2,7 @@
 name: kramme:siw:remove
 description: Remove all Structured Implementation Workflow (SIW) files from current directory
 disable-model-invocation: true
+user-invocable: true
 ---
 
 # Remove Structured Implementation Workflow Files

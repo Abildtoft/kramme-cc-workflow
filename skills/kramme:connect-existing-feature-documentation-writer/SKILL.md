@@ -1,6 +1,8 @@
 ---
 name: kramme:connect-existing-feature-documentation-writer
 description: Use this skill when you are creating documentation for an existing Connect feature or updating existing docs
+disable-model-invocation: false
+user-invocable: true
 ---
 
 # Connect Existing Feature Documentation Writer
