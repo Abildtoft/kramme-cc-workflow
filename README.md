@@ -74,7 +74,6 @@ All plugin functionality is delivered through skills. Skills can be user-invoked
 | `/kramme:create-pr` | Create a clean PR with narrative-quality commits and comprehensive description. Orchestrates branch setup, commit restructuring, and PR creation. |
 | `/kramme:delete-learning` | Delete a learning from the database by ID. Supports bulk deletion by category, project, or age. |
 | `/kramme:deslop` | Remove AI-generated code slop from a branch. Uses `kramme:deslop-reviewer` agent to identify slop, then fixes the issues. |
-| `/kramme:elegant-refactor` | Scrap a working-but-mediocre fix and reimplement elegantly. Extracts learnings from the initial attempt, then starts fresh with the elegant solution. |
 | `/kramme:explore-interview` | Conduct an in-depth interview about a topic/proposal to uncover requirements. Uses structured questioning to explore features, processes, or architecture decisions. |
 | `/kramme:extract-learnings` | Extract non-obvious learnings from session to AGENTS.md files. Presents suggestions for approval before making changes. |
 | `/kramme:find-bugs` | Find bugs, security vulnerabilities, and code quality issues in branch changes. Performs systematic security review with attack surface mapping and checklist-based analysis. |
@@ -90,6 +89,8 @@ All plugin functionality is delivered through skills. Skills can be user-invoked
 | `/kramme:pr-description-generator` | Generate PR descriptions by analyzing git changes, commit history, and Linear issues |
 | `/kramme:rebase-pr` | Rebase current branch onto latest main/master, then force push. Use when your PR is behind the base branch. |
 | `/kramme:recreate-commits` | Recreate current branch in-place with narrative-quality commits and logical, reviewer-friendly commit history. |
+| `/kramme:redo-elegantly` | Scrap a working-but-mediocre fix and reimplement elegantly. Extracts learnings from the initial attempt, then starts fresh with the elegant solution. |
+| `/kramme:refactor-pass` | Lightweight simplification pass on recent changes — removes dead code, straightens logic, removes excessive parameters, and verifies with build/tests. Unlike `redo-elegantly` which scraps and redoes from scratch, this incrementally cleans up working code. |
 | `/kramme:resolve-review` | Resolve findings from code reviews. Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
 | `/kramme:resolve-review:team` | Resolve review findings in parallel using Agent Teams. Groups findings by file area and assigns to separate teammates for faster resolution. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
 | `/kramme:review-pr` | Run comprehensive PR review using specialized agents. Supports reviewing comments, tests, errors, types, and code quality. Can run agents sequentially or in parallel. |
