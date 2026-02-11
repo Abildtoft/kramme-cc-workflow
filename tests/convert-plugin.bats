@@ -113,6 +113,122 @@ JSON
   [[ "$output" == *"non-interactive mode"* ]]
 }
 
+@test "codex conversion cleans stale prompts when commands change" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PROMPT_PLUGIN_DIR="$TMP_DIR/prompt-plugin"
+  mkdir -p "$PROMPT_PLUGIN_DIR/.claude-plugin" "$PROMPT_PLUGIN_DIR/commands"
+  cat > "$PROMPT_PLUGIN_DIR/.claude-plugin/plugin.json" <<'JSON'
+{
+  "name": "prompt-plugin",
+  "version": "1.0.0",
+  "agents": [],
+  "commands": [],
+  "skills": []
+}
+JSON
+  cat > "$PROMPT_PLUGIN_DIR/commands/kramme-temp-command.md" <<'MD'
+---
+name: kramme:temp-command
+description: Temporary command for prompt cleanup test
+---
+
+Execute temporary command.
+MD
+
+  run node "$SCRIPT" install "$PROMPT_PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/.codex/prompts/kramme-temp-command.md" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme-temp-command/SKILL.md" ]
+
+  rm "$PROMPT_PLUGIN_DIR/commands/kramme-temp-command.md"
+  cat > "$PROMPT_PLUGIN_DIR/commands/kramme-next-command.md" <<'MD'
+---
+name: kramme:next-command
+description: Replacement command for prompt cleanup test
+---
+
+Execute replacement command.
+MD
+
+  run node "$SCRIPT" install "$PROMPT_PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+  [ ! -f "$TMP_DIR/.codex/prompts/kramme-temp-command.md" ]
+  [ -f "$TMP_DIR/.codex/prompts/kramme-next-command.md" ]
+  [ ! -f "$TMP_DIR/.codex/skills/kramme-temp-command/SKILL.md" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme-next-command/SKILL.md" ]
+}
+
+@test "codex conversion cleans stale prompts when commands are removed" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PROMPT_PLUGIN_DIR="$TMP_DIR/prompt-plugin-empty"
+  mkdir -p "$PROMPT_PLUGIN_DIR/.claude-plugin" "$PROMPT_PLUGIN_DIR/commands"
+  cat > "$PROMPT_PLUGIN_DIR/.claude-plugin/plugin.json" <<'JSON'
+{
+  "name": "prompt-plugin-empty",
+  "version": "1.0.0",
+  "agents": [],
+  "commands": [],
+  "skills": []
+}
+JSON
+  cat > "$PROMPT_PLUGIN_DIR/commands/kramme-temp-command.md" <<'MD'
+---
+name: kramme:temp-command
+description: Temporary command for prompt cleanup test
+---
+
+Execute temporary command.
+MD
+
+  run node "$SCRIPT" install "$PROMPT_PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/.codex/prompts/kramme-temp-command.md" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme-temp-command/SKILL.md" ]
+
+  rm "$PROMPT_PLUGIN_DIR/commands/kramme-temp-command.md"
+  run bash -c "printf 'y\\n' | node \"$SCRIPT\" install \"$PROMPT_PLUGIN_DIR\" --to codex --codex-home \"$TMP_DIR\" --agents-home \"$TMP_DIR/.agents\""
+  [ "$status" -eq 0 ]
+  [ ! -f "$TMP_DIR/.codex/prompts/kramme-temp-command.md" ]
+  [ ! -f "$TMP_DIR/.codex/skills/kramme-temp-command/SKILL.md" ]
+}
+
+@test "codex conversion accepts streaming yes input for non-interactive confirmations" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+  if ! command -v yes >/dev/null 2>&1; then
+    skip "yes is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/.codex/prompts/kramme-create-pr.md" ]
+  [ -f "$TMP_DIR/.agents/skills/kramme-architecture-strategist/SKILL.md" ]
+
+  EMPTY_PLUGIN_DIR="$TMP_DIR/empty-plugin-yes"
+  mkdir -p "$EMPTY_PLUGIN_DIR/.claude-plugin"
+  cat > "$EMPTY_PLUGIN_DIR/.claude-plugin/plugin.json" <<'JSON'
+{
+  "name": "empty-plugin-yes",
+  "version": "1.0.0",
+  "agents": [],
+  "commands": [],
+  "skills": []
+}
+JSON
+
+  run bash -c "set +e; set +o pipefail; yes | node \"$SCRIPT\" install \"$EMPTY_PLUGIN_DIR\" --to codex --codex-home \"$TMP_DIR\" --agents-home \"$TMP_DIR/.agents\"; exit \${PIPESTATUS[1]}"
+  [ "$status" -eq 0 ]
+  [ ! -f "$TMP_DIR/.codex/prompts/kramme-create-pr.md" ]
+  [ ! -d "$TMP_DIR/.agents/skills/kramme-architecture-strategist" ]
+}
+
 @test "opencode conversion includes command entries from skills" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
