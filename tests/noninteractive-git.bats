@@ -110,6 +110,22 @@ run_hook() {
     is_allowed
 }
 
+@test "allows git commit --amend --no-edit" {
+    run run_hook "git commit --amend --no-edit"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git commit with -c flag (reedit message)" {
+    run run_hook "git commit -c HEAD"
+    is_blocked
+}
+
+@test "blocks git commit with --reedit-message flag" {
+    run run_hook "git commit --reedit-message=HEAD"
+    is_blocked
+}
+
 @test "blocks git commit without message flag" {
     run run_hook "git commit"
     is_blocked
@@ -154,6 +170,12 @@ run_hook() {
     is_allowed
 }
 
+@test "allows env-wrapped rebase with GIT_SEQUENCE_EDITOR" {
+    run run_hook "env GIT_SEQUENCE_EDITOR=true git rebase -i HEAD~3"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
 @test "blocks git rebase -i without GIT_SEQUENCE_EDITOR" {
     run run_hook "git rebase -i HEAD~3"
     is_blocked
@@ -175,6 +197,11 @@ run_hook() {
     run run_hook "git rebase --continue"
     is_blocked
     [[ "$output" == *"GIT_EDITOR"* ]]
+}
+
+@test "blocks env-wrapped rebase --continue without GIT_EDITOR" {
+    run run_hook "env -u GIT_EDITOR git rebase --continue"
+    is_blocked
 }
 
 @test "allows git rebase --abort" {
@@ -260,6 +287,18 @@ run_hook() {
     is_allowed
 }
 
+@test "allows git merge --abort" {
+    run run_hook "git merge --abort"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows git merge --quit" {
+    run run_hook "git merge --quit"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
 @test "blocks git merge without --no-edit" {
     run run_hook "git merge feature-branch"
     is_blocked
@@ -289,6 +328,30 @@ run_hook() {
 
 @test "allows git cherry-pick with -n flag" {
     run run_hook "git cherry-pick -n abc123"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows git cherry-pick --continue" {
+    run run_hook "git cherry-pick --continue"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows git cherry-pick --abort" {
+    run run_hook "git cherry-pick --abort"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows git cherry-pick --skip" {
+    run run_hook "git cherry-pick --skip"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows git cherry-pick --quit" {
+    run run_hook "git cherry-pick --quit"
     [ "$status" -eq 0 ]
     is_allowed
 }
@@ -326,4 +389,83 @@ EOF"
     [ "$status" -eq 0 ]
     # This might match, but the heredoc content is in quotes effectively
     # The behavior here depends on implementation - this tests current behavior
+}
+
+@test "blocks git commit inside if condition" {
+    run run_hook "if git commit; then echo ok; fi"
+    is_blocked
+}
+
+@test "blocks /usr/bin/env git commit" {
+    run run_hook "/usr/bin/env git commit"
+    is_blocked
+}
+
+@test "blocks /usr/bin/sudo git commit" {
+    run run_hook "/usr/bin/sudo git commit"
+    is_blocked
+}
+
+@test "allows command -- git commit with message" {
+    run run_hook "command -- git commit -m 'test message'"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks command -p git commit" {
+    run run_hook "command -p git commit"
+    is_blocked
+}
+
+@test "allows sudo -u root git commit with message" {
+    run run_hook "sudo -u root git commit -m 'test message'"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks xargs git commit" {
+    run run_hook "xargs git commit"
+    is_blocked
+}
+
+@test "blocks find -exec git commit" {
+    run run_hook "find . -exec git commit \\;"
+    is_blocked
+}
+
+@test "blocks sh -c git commit" {
+    run run_hook "sh -c 'git commit'"
+    is_blocked
+}
+
+@test "allows sh -c git commit with message" {
+    run run_hook "sh -c 'git commit -m \"test message\"'"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks chained git commit without message" {
+    run run_hook "git status && git commit"
+    is_blocked
+}
+
+@test "blocks piped git commit without message" {
+    run run_hook "echo ok | git commit"
+    is_blocked
+}
+
+@test "allows piped git commit with message" {
+    run run_hook "git commit -m 'test message' | cat"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks newline-separated git commit without message" {
+    run run_hook $'echo ok\ngit commit'
+    is_blocked
+}
+
+@test "blocks malformed command if parser fails" {
+    run run_hook "git commit \"unterminated"
+    is_blocked
 }
