@@ -1,5 +1,5 @@
 ---
-name: kramme:elegant-refactor
+name: kramme:redo-elegantly
 description: Scrap a working-but-mediocre fix and reimplement elegantly. Use after making a fix that works but feels hacky.
 disable-model-invocation: true
 user-invocable: true
