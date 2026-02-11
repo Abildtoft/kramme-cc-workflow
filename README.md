@@ -57,7 +57,7 @@ A Claude Code plugin providing tooling for daily workflow tasks. These are the C
 
 All plugin functionality is delivered through skills. Skills can be user-invoked via the `/` menu, auto-triggered by Claude based on context, or both.
 
-- **User-invocable**: Trigger with `/kramme:skill-name`. Skills with side effects use `disable-model-invocation: true` to prevent auto-invocation.
+- **User-invocable**: Trigger with `/kramme:skill-name`. Skills that should never auto-run set `disable-model-invocation: true`.
 - **Auto-triggered**: Claude invokes automatically when context matches the skill description.
 - **Background**: Skills with `user-invocable: false` are auto-triggered only and don't appear in the `/` menu.
 
@@ -293,7 +293,7 @@ Detection results are cached in `/tmp/claude-format-cache/` to avoid re-scanning
 
 - `CLAUDE.md`, `package.json`, `pyproject.toml`, `nx.json`, `go.mod`, `Cargo.toml`
 
-To clear the cache manually: `rm -rf /tmp/claude-format-cache/`
+To clear the cache manually: `trash /tmp/claude-format-cache`
 
 ### auto-format: Skipped Files
 
@@ -362,10 +362,12 @@ tests/
 ├── test_helper/
 │   ├── common.bash           # Shared utilities
 │   └── mocks/                # Mock git, gh, glab commands
+├── auto-format.bats          # Tests for auto-format hook
 ├── block-rm-rf.bats          # Tests for block-rm-rf hook
 ├── confirm-review-responses.bats # Tests for confirm-review-responses hook
+├── convert-plugin.bats       # Tests for plugin conversion script
 ├── context-links.bats        # Tests for context-links hook
-└── auto-format.bats          # Tests for auto-format hook
+└── noninteractive-git.bats   # Tests for noninteractive-git hook
 ```
 
 ## Installation & Updating
