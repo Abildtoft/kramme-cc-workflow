@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.18.0] - 2026-02-11
+
+### Added
+- Add audit and resolve workflow commands (#133)
+- Rename elegant-refactor to redo-elegantly and add refactor-pass skill (#132)
+
+### Fixed
+- Disambiguate deleted issue references in LOG.md during restart (#131)
+
 ## [0.17.0] - 2026-02-06
 
 ### Added
@@ -264,6 +273,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.18.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.14.0...v0.15.0
