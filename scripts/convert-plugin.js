@@ -90,6 +90,8 @@ async function main() {
     agentMode: String(parsed["agent-mode"] ?? parsed.agentMode ?? "subagent") === "primary" ? "primary" : "subagent",
     inferTemperature: parseBoolean(parsed["infer-temperature"] ?? parsed.inferTemperature, true),
     permissions,
+    yes: parseBoolean(parsed.yes ?? parsed.y, false),
+    nonInteractive: parseBoolean(parsed["non-interactive"] ?? parsed.nonInteractive, false) || !process.stdin.isTTY,
   }
 
   const bundle = target.convert(plugin, options)
@@ -98,7 +100,15 @@ async function main() {
   }
 
   const primaryOutput = targetName === "codex" ? codexHome : outputRoot
-  await target.write(primaryOutput, bundle, { agentsHome })
+  const writeOptions = {
+    agentsHome,
+    confirm: {
+      yes: options.yes,
+      nonInteractive: options.nonInteractive,
+    },
+  }
+
+  await target.write(primaryOutput, bundle, writeOptions)
   console.log(`Installed ${plugin.manifest.name} to ${primaryOutput}`)
 
   const extraTargets = parseExtraTargets(parsed.also)
@@ -115,7 +125,7 @@ async function main() {
       continue
     }
     const extraRoot = extra === "codex" ? codexHome : path.join(outputRoot, extra)
-    await handler.write(extraRoot, extraBundle, { agentsHome })
+    await handler.write(extraRoot, extraBundle, writeOptions)
     console.log(`Installed ${plugin.manifest.name} to ${extraRoot}`)
   }
 
@@ -136,6 +146,8 @@ Options:
   --permissions <mode>    none | broad | from-commands (default: broad)
   --agent-mode <mode>     primary | subagent (default: subagent)
   --infer-temperature     true | false (default: true)
+  --yes, -y               Assume "yes" for all cleanup confirmations
+  --non-interactive       Never prompt; use default answers for confirmations
 `
   console.log(help)
   if (exitCode) process.exit(exitCode)
@@ -1032,14 +1044,14 @@ function uniqueName(base, used) {
   return name
 }
 
-async function writeOpenCodeBundle(outputRoot, bundle) {
+async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
   const paths = resolveOpenCodePaths(outputRoot)
   await ensureDir(paths.root)
   await writeJson(paths.configPath, bundle.config)
 
   const agentsDir = paths.agentsDir
   if (bundle.agents.length > 0) {
-    await cleanupKrammeAgents(agentsDir)
+    await cleanupKrammeAgents(agentsDir, extraOpts.confirm)
   }
   for (const agent of bundle.agents) {
     await writeText(path.join(agentsDir, `${agent.name}.md`), agent.content + "\n")
@@ -1054,7 +1066,7 @@ async function writeOpenCodeBundle(outputRoot, bundle) {
 
   if (bundle.skillDirs.length > 0) {
     const skillsRoot = paths.skillsDir
-    await cleanupKrammeSkills(skillsRoot)
+    await cleanupKrammeSkills(skillsRoot, extraOpts.confirm)
     for (const skill of bundle.skillDirs) {
       await copyDir(skill.sourceDir, path.join(skillsRoot, skill.name))
     }
@@ -1095,7 +1107,7 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
 
   const skillsRoot = path.join(codexRoot, "skills")
   if (bundle.skillDirs.length > 0 || bundle.generatedSkills.length > 0) {
-    await cleanupKrammeSkills(skillsRoot)
+    await cleanupKrammeSkills(skillsRoot, extraOpts.confirm)
   }
 
   for (const skill of bundle.skillDirs) {
@@ -1109,7 +1121,7 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   if (bundle.agentSkills) {
     const agentsHome = extraOpts.agentsHome ?? path.join(os.homedir(), ".agents")
     const agentSkillsRoot = path.join(agentsHome, "skills")
-    await cleanupKrammeSkills(agentSkillsRoot)
+    await cleanupKrammeSkills(agentSkillsRoot, extraOpts.confirm)
     for (const skill of bundle.agentSkills) {
       await writeText(path.join(agentSkillsRoot, skill.name, "SKILL.md"), skill.content + "\n")
     }
@@ -1403,7 +1415,7 @@ async function copyDir(sourceDir, targetDir) {
   }
 }
 
-async function cleanupKrammeAgents(agentsDir) {
+async function cleanupKrammeAgents(agentsDir, confirmOptions = {}) {
   if (!(await pathExists(agentsDir))) return
   const entries = await fs.readdir(agentsDir, { withFileTypes: true })
   const krammeAgents = entries
@@ -1418,7 +1430,7 @@ async function cleanupKrammeAgents(agentsDir) {
     console.log(`  - ${name}`)
   }
 
-  const confirmed = await confirm("Delete these agents before installing?")
+  const confirmed = await confirm("Delete these agents before installing?", confirmOptions)
   if (!confirmed) {
     console.log("Skipping agent cleanup.")
     return
@@ -1431,7 +1443,7 @@ async function cleanupKrammeAgents(agentsDir) {
   console.log(`Deleted ${krammeAgents.length} agent(s).`)
 }
 
-async function cleanupKrammeSkills(skillsDir) {
+async function cleanupKrammeSkills(skillsDir, confirmOptions = {}) {
   if (!(await pathExists(skillsDir))) return
   const entries = await fs.readdir(skillsDir, { withFileTypes: true })
   const krammeSkills = entries
@@ -1446,7 +1458,7 @@ async function cleanupKrammeSkills(skillsDir) {
     console.log(`  - ${name}`)
   }
 
-  const confirmed = await confirm("Delete these skills before installing?")
+  const confirmed = await confirm("Delete these skills before installing?", confirmOptions)
   if (!confirmed) {
     console.log("Skipping skill cleanup.")
     return
@@ -1459,7 +1471,16 @@ async function cleanupKrammeSkills(skillsDir) {
   console.log(`Deleted ${krammeSkills.length} skill(s).`)
 }
 
-async function confirm(message) {
+async function confirm(message, options = {}) {
+  if (options.yes) {
+    return true
+  }
+
+  if (options.nonInteractive || !process.stdin.isTTY) {
+    console.log(`${message} [y/N] (non-interactive mode: defaulting to No)`)
+    return false
+  }
+
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
   return new Promise((resolve) => {
     rl.question(`${message} [y/N] `, (answer) => {
