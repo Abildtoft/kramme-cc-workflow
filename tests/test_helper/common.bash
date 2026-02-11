@@ -8,9 +8,7 @@ export CLAUDE_PLUGIN_ROOT="${BATS_TEST_DIRNAME}/.."
 # Helper: Create JSON input for block-rm-rf hook
 make_bash_input() {
     local cmd="$1"
-    # Escape double quotes and backslashes for JSON
-    cmd=$(echo "$cmd" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
-    printf '{"tool_input":{"command":"%s"}}' "$cmd"
+    jq -n --arg cmd "$cmd" '{tool_input:{command:$cmd}}'
 }
 
 # Helper: Run block-rm-rf hook with a command
@@ -32,9 +30,7 @@ is_allowed() {
 # Helper: Create JSON input for auto-format hook
 make_format_input() {
     local path="$1"
-    # Escape double quotes and backslashes for JSON
-    path=$(echo "$path" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
-    printf '{"tool_input":{"file_path":"%s"}}' "$path"
+    jq -n --arg path "$path" '{tool_input:{file_path:$path}}'
 }
 
 # Helper: Check if output contains systemMessage

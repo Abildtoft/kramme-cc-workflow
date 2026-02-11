@@ -224,12 +224,12 @@ Blocks git commands that would open an interactive editor, forcing the agent to 
 
 | Command | Blocked When | Non-Interactive Alternative |
 |---------|--------------|----------------------------|
-| `git commit` | Missing `-m`/`--message`/`-C`/`-F` | `git commit -m "message"` |
+| `git commit` | Missing message source (`-m`/`--message`/`-C`/`--reuse-message`/`-F`/`--file`) and no `--no-edit` (`-c`/`--reedit-message` still block) | `git commit -m "message"` or `git commit --amend --no-edit` |
 | `git rebase -i` | Missing `GIT_SEQUENCE_EDITOR=` | `GIT_SEQUENCE_EDITOR=true git rebase -i ...` |
 | `git rebase --continue` | Missing `GIT_EDITOR=` | `GIT_EDITOR=true git rebase --continue` |
 | `git add -p` / `-i` | Always | `git add <explicit-files>` |
-| `git merge` | Missing `--no-edit`/`--squash`/`--ff` | `git merge --no-edit <branch>` |
-| `git cherry-pick` | Missing `--no-edit`/`-n` | `git cherry-pick --no-edit <commit>` |
+| `git merge` | Missing `--no-edit`/`--no-commit`/`--squash`/`--ff`/`--ff-only` and not a control flow (`--abort`/`--quit`) | `git merge --no-edit <branch>` or `git merge --abort` |
+| `git cherry-pick` | Missing `--no-edit`/`--no-commit`/`-n` and not a control flow (`--continue`/`--abort`/`--skip`/`--quit`) | `git cherry-pick --no-edit <commit>` or `git cherry-pick --continue` |
 
 ### auto-format: Supported Formatters
 
