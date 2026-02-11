@@ -280,7 +280,7 @@ If `siw/LOG.md` exists, update issue number references to match the new numberin
      - Full form: `ISSUE-{prefix}-(\d{3})` (e.g., `ISSUE-G-002`, `ISSUE-P1-003`)
    - Where prefix is `G`, `P1`, `P2`, etc.
    - For renumbered issues: Replace with new number, preserving the form used
-   - For deleted (DONE) issue references: Leave unchanged - they're valid historical references
+   - For deleted (DONE) issue references: Annotate with `(deleted: "{title}")` using the issue title from Step 2, to prevent collision with renumbered issues that now reuse the same number. E.g., `G-001` → `G-001 (deleted: "Setup")`, `ISSUE-G-001` → `ISSUE-G-001 (deleted: "Setup")`
 
 4. **Write updated LOG.md**
 
@@ -291,19 +291,21 @@ Renumber mapping:
 - G-003 -> G-002
 - P1-003 -> P1-002
 
-Deleted (no replacement):
-- G-001
-- P1-002
+Deleted (annotated):
+- G-001 ("Setup") -> G-001 (deleted: "Setup")
+- P1-002 ("Feature B") -> P1-002 (deleted: "Feature B")
 ```
 
 **Example LOG.md updates:**
 ```markdown
 # Before:
+- **Task:** G-001 - Setup environment
 - **Task:** G-002 - Feature B
 - **Task:** P1-003 - Bug Fix
 - **Impact:** Updated ISSUE-G-003 validation
 
 # After:
+- **Task:** G-001 (deleted: "Setup") - Setup environment
 - **Task:** G-001 - Feature B
 - **Task:** P1-002 - Bug Fix
 - **Impact:** Updated ISSUE-G-002 validation
@@ -311,7 +313,7 @@ Deleted (no replacement):
 
 **Important:**
 - Do NOT change Decision numbers (#1, #2, etc.) - these are permanent
-- Do NOT change references to deleted (DONE) issues - they're historical and valid
+- Annotate references to deleted (DONE) issues with `(deleted: "{title}")` to prevent collision with renumbered issues that now reuse the same number
 
 ---
 
@@ -412,7 +414,7 @@ P1-001 (READY), P1-002 (DONE), P1-003 (READY)  →  P1-001, P1-002 (renumbered w
 ```
 
 ### References to deleted issues in LOG.md
-Leave references to DONE (deleted) issues unchanged - they are valid historical references to completed work. Only update references to issues that were renumbered.
+Annotate references to deleted (DONE) issues with `(deleted: "{title}")` to disambiguate them from renumbered issues that now reuse the same number. For renumbered issues, replace with the new number as usual.
 
 ### General issues only (scope selection)
 When user selects "General issues only":
