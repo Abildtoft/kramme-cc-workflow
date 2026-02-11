@@ -67,6 +67,7 @@ All plugin functionality is delivered through skills. Skills can be user-invoked
 |-------|-------------|
 | `/kramme:changelog-generator` | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
 | `/kramme:clean-up-artifacts` | Delete workflow artifacts (REVIEW_OVERVIEW.md, AUDIT_REPORT.md, siw/AUDIT_REPORT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files). For SIW-specific cleanup, use `/kramme:siw:remove`. |
+| `/kramme:configure-context-links` | Configure `context-links` hook settings by writing local overrides to `hooks/context-links.config` (workspace slug, team keys, regexes). |
 | `/kramme:connect-existing-feature-documentation-writer` | Create or update documentation for Connect features |
 | `/kramme:connect-extract-to-nx-libraries` | Extract app code from `apps/connect/` into proper Nx libraries |
 | `/kramme:connect-migrate-legacy-store-to-ngrx-component-store` | Migrate legacy CustomStore/FeatureStore to NgRx ComponentStore in Connect monorepo |
@@ -179,6 +180,30 @@ State is stored in `hooks/hook-state.json` (gitignored) and persists across sess
 When a hook is disabled, the hook script drains stdin before exiting to avoid broken-pipe errors if the runner is piping JSON input.
 
 For `confirm-review-responses`, edit `hooks/confirm-review-artifacts.txt` to configure which staged files should trigger confirmation.
+
+### context-links Configuration
+
+`context-links` now supports org-specific configuration via environment variables or an optional config file.
+
+```bash
+# Optional: create local hook config overrides
+cp hooks/context-links.config.example hooks/context-links.config
+```
+
+You can also configure this via skill:
+
+```bash
+/kramme:configure-context-links show
+/kramme:configure-context-links CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG=acme
+/kramme:configure-context-links CONTEXT_LINKS_LINEAR_TEAM_KEYS=ENG,OPS,PLAT
+```
+
+Supported variables:
+- `CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG` - Linear workspace slug used in issue URLs (default: `consensusaps`)
+- `CONTEXT_LINKS_LINEAR_TEAM_KEYS` - Comma/space separated team keys used for branch parsing (default: `WAN,HEA,MEL,POT,FIR,FEG`)
+- `CONTEXT_LINKS_LINEAR_ISSUE_REGEX` - Optional regex override for issue extraction (takes precedence over team keys)
+- `CONTEXT_LINKS_GITLAB_REMOTE_REGEX` - Regex used to identify GitLab remotes (default: `(gitlab\\.com|consensusaps)`)
+- `CONTEXT_LINKS_CONFIG_FILE` - Optional path to a config file (default: `${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config`)
 
 ### block-rm-rf: Blocked Patterns
 
