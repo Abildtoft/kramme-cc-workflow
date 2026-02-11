@@ -91,7 +91,7 @@ async function main() {
     inferTemperature: parseBoolean(parsed["infer-temperature"] ?? parsed.inferTemperature, true),
     permissions,
     yes: parseBoolean(parsed.yes ?? parsed.y, false),
-    nonInteractive: parseBoolean(parsed["non-interactive"] ?? parsed.nonInteractive, false) || !process.stdin.isTTY,
+    nonInteractive: parseBoolean(parsed["non-interactive"] ?? parsed.nonInteractive, false),
   }
 
   const bundle = target.convert(plugin, options)
@@ -1098,17 +1098,14 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   const codexRoot = resolveCodexOutputRoot(outputRoot)
   await ensureDir(codexRoot)
 
-  if (bundle.prompts.length > 0) {
-    const promptsDir = path.join(codexRoot, "prompts")
-    for (const prompt of bundle.prompts) {
-      await writeText(path.join(promptsDir, `${prompt.name}.md`), prompt.content + "\n")
-    }
+  const promptsDir = path.join(codexRoot, "prompts")
+  await cleanupKrammePrompts(promptsDir, extraOpts.confirm)
+  for (const prompt of bundle.prompts) {
+    await writeText(path.join(promptsDir, `${prompt.name}.md`), prompt.content + "\n")
   }
 
   const skillsRoot = path.join(codexRoot, "skills")
-  if (bundle.skillDirs.length > 0 || bundle.generatedSkills.length > 0) {
-    await cleanupKrammeSkills(skillsRoot, extraOpts.confirm)
-  }
+  await cleanupKrammeSkills(skillsRoot, extraOpts.confirm)
 
   for (const skill of bundle.skillDirs) {
     await copyDir(skill.sourceDir, path.join(skillsRoot, skill.name))
@@ -1443,6 +1440,34 @@ async function cleanupKrammeAgents(agentsDir, confirmOptions = {}) {
   console.log(`Deleted ${krammeAgents.length} agent(s).`)
 }
 
+async function cleanupKrammePrompts(promptsDir, confirmOptions = {}) {
+  if (!(await pathExists(promptsDir))) return
+  const entries = await fs.readdir(promptsDir, { withFileTypes: true })
+  const krammePrompts = entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+    .filter((entry) => entry.name.startsWith("kramme:") || entry.name.startsWith("kramme-"))
+    .map((entry) => entry.name)
+
+  if (krammePrompts.length === 0) return
+
+  console.log(`\nFound ${krammePrompts.length} existing kramme prompt(s) in ${promptsDir}:`)
+  for (const name of krammePrompts) {
+    console.log(`  - ${name}`)
+  }
+
+  const confirmed = await confirm("Delete these prompts before installing?", confirmOptions)
+  if (!confirmed) {
+    console.log("Skipping prompt cleanup.")
+    return
+  }
+
+  for (const name of krammePrompts) {
+    const targetPath = path.join(promptsDir, name)
+    await fs.rm(targetPath, { force: true })
+  }
+  console.log(`Deleted ${krammePrompts.length} prompt(s).`)
+}
+
 async function cleanupKrammeSkills(skillsDir, confirmOptions = {}) {
   if (!(await pathExists(skillsDir))) return
   const entries = await fs.readdir(skillsDir, { withFileTypes: true })
@@ -1471,21 +1496,118 @@ async function cleanupKrammeSkills(skillsDir, confirmOptions = {}) {
   console.log(`Deleted ${krammeSkills.length} skill(s).`)
 }
 
+let nonInteractiveReaderInitialized = false
+let nonInteractiveInputBuffer = ""
+let nonInteractiveStreamEnded = false
+let nonInteractiveAnswerWaiter = null
+let nonInteractiveFallbackAnswer
+
+function parseConfirmationAnswer(answer) {
+  const normalized = String(answer ?? "").trim().toLowerCase()
+  return normalized === "y" || normalized === "yes"
+}
+
+function readLineFromNonInteractiveBuffer() {
+  const newlineIndex = nonInteractiveInputBuffer.indexOf("\n")
+  if (newlineIndex < 0) return null
+  const rawLine = nonInteractiveInputBuffer.slice(0, newlineIndex)
+  nonInteractiveInputBuffer = nonInteractiveInputBuffer.slice(newlineIndex + 1)
+  return rawLine.endsWith("\r") ? rawLine.slice(0, -1) : rawLine
+}
+
+function setupNonInteractiveReader() {
+  if (nonInteractiveReaderInitialized) return
+  nonInteractiveReaderInitialized = true
+  process.stdin.setEncoding("utf8")
+  process.stdin.on("data", (chunk) => {
+    nonInteractiveInputBuffer += chunk
+
+    if (!nonInteractiveAnswerWaiter) {
+      if (nonInteractiveInputBuffer.includes("\n")) {
+        process.stdin.pause()
+      }
+      return
+    }
+
+    const line = readLineFromNonInteractiveBuffer()
+    if (line === null) return
+
+    const resolve = nonInteractiveAnswerWaiter
+    nonInteractiveAnswerWaiter = null
+    process.stdin.pause()
+    resolve(line)
+  })
+
+  process.stdin.on("end", () => {
+    nonInteractiveStreamEnded = true
+    if (!nonInteractiveAnswerWaiter) return
+    const resolve = nonInteractiveAnswerWaiter
+    nonInteractiveAnswerWaiter = null
+    const line = readLineFromNonInteractiveBuffer()
+    if (line !== null) {
+      resolve(line)
+      return
+    }
+    const trailing = nonInteractiveInputBuffer
+    nonInteractiveInputBuffer = ""
+    if (trailing.length > 0) {
+      resolve(trailing)
+      return
+    }
+    resolve(undefined)
+  })
+
+  process.stdin.pause()
+}
+
+function readNonInteractiveConfirmationAnswer() {
+  setupNonInteractiveReader()
+  const queued = readLineFromNonInteractiveBuffer()
+  if (queued !== null) {
+    return Promise.resolve(queued)
+  }
+  if (nonInteractiveStreamEnded) {
+    const trailing = nonInteractiveInputBuffer
+    nonInteractiveInputBuffer = ""
+    if (trailing.length > 0) {
+      return Promise.resolve(trailing)
+    }
+    return Promise.resolve(undefined)
+  }
+  if (nonInteractiveAnswerWaiter) {
+    throw new Error("Concurrent non-interactive confirmations are not supported.")
+  }
+  return new Promise((resolve) => {
+    nonInteractiveAnswerWaiter = resolve
+    process.stdin.resume()
+  })
+}
+
 async function confirm(message, options = {}) {
   if (options.yes) {
     return true
   }
 
-  if (options.nonInteractive || !process.stdin.isTTY) {
+  if (options.nonInteractive) {
     console.log(`${message} [y/N] (non-interactive mode: defaulting to No)`)
     return false
+  }
+
+  if (!process.stdin.isTTY) {
+    process.stdout.write(`${message} [y/N] `)
+    const answer = await readNonInteractiveConfirmationAnswer()
+    if (answer !== undefined) {
+      nonInteractiveFallbackAnswer = answer
+      return parseConfirmationAnswer(answer)
+    }
+    return parseConfirmationAnswer(nonInteractiveFallbackAnswer)
   }
 
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
   return new Promise((resolve) => {
     rl.question(`${message} [y/N] `, (answer) => {
       rl.close()
-      resolve(answer.toLowerCase() === "y" || answer.toLowerCase() === "yes")
+      resolve(parseConfirmationAnswer(answer))
     })
   })
 }
