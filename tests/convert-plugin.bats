@@ -66,10 +66,37 @@ teardown() {
 }
 JSON
 
-  run bash -c "printf 'y\\n' | node \"$SCRIPT\" install \"$EMPTY_PLUGIN_DIR\" --to codex --codex-home \"$TMP_DIR\" --agents-home \"$TMP_DIR/.agents\""
+  run node "$SCRIPT" install "$EMPTY_PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
   [ "$status" -eq 0 ]
   [ ! -d "$TMP_DIR/.agents/skills/kramme-architecture-strategist" ]
   [ ! -d "$TMP_DIR/.agents/skills/kramme-silent-failure-hunter" ]
+}
+
+@test "codex conversion skips cleanup in non-interactive mode without --yes" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/.agents/skills/kramme-architecture-strategist/SKILL.md" ]
+
+  EMPTY_PLUGIN_DIR="$TMP_DIR/empty-plugin"
+  mkdir -p "$EMPTY_PLUGIN_DIR/.claude-plugin"
+  cat > "$EMPTY_PLUGIN_DIR/.claude-plugin/plugin.json" <<'JSON'
+{
+  "name": "empty-plugin",
+  "version": "1.0.0",
+  "agents": [],
+  "commands": [],
+  "skills": []
+}
+JSON
+
+  run node "$SCRIPT" install "$EMPTY_PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --non-interactive
+  [ "$status" -eq 0 ]
+  [ -d "$TMP_DIR/.agents/skills/kramme-architecture-strategist" ]
+  [[ "$output" == *"non-interactive mode"* ]]
 }
 
 @test "opencode conversion includes command entries from skills" {
