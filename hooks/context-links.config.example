@@ -1,0 +1,15 @@
+# Optional overrides for hooks/context-links.sh.
+# Copy this file to hooks/context-links.config and uncomment/edit values as needed.
+
+# Linear workspace slug used in generated issue links.
+# CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG="your-workspace"
+
+# Comma or space separated team keys used to extract issue IDs from branch names.
+# Example branch matches with this setting: feature/ENG-123-my-change
+# CONTEXT_LINKS_LINEAR_TEAM_KEYS="ENG,OPS,PLAT"
+
+# Optional explicit issue regex override. When set, this takes precedence over team keys.
+# CONTEXT_LINKS_LINEAR_ISSUE_REGEX="(ENG|OPS|PLAT)-[0-9]+"
+
+# Regex used to decide whether a remote is GitLab.
+# CONTEXT_LINKS_GITLAB_REMOTE_REGEX="(gitlab\\.com|git\\.example\\.com)"

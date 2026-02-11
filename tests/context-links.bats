@@ -7,6 +7,9 @@ setup() {
     HOOK="$BATS_TEST_DIRNAME/../hooks/context-links.sh"
     # Prepend mocks to PATH
     export PATH="$BATS_TEST_DIRNAME/test_helper/mocks:$PATH"
+    # Prevent accidental pickup of a developer's local hooks/context-links.config.
+    export CONTEXT_LINKS_CONFIG_FILE="${BATS_TEST_TMPDIR}/context-links.test.config"
+    rm -f "$CONTEXT_LINKS_CONFIG_FILE"
     # Reset mock state
     export MOCK_GIT_BRANCH=""
     export MOCK_GIT_REMOTE=""
@@ -15,6 +18,11 @@ setup() {
     export MOCK_GLAB_MR_EXISTS=""
     export MOCK_GLAB_MR_NUMBER=""
     export MOCK_GLAB_JSON_PRETTY=""
+    export CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG=""
+    export CONTEXT_LINKS_LINEAR_TEAM_KEYS=""
+    export CONTEXT_LINKS_LINEAR_ISSUE_REGEX=""
+    export CONTEXT_LINKS_GITLAB_REMOTE_REGEX=""
+    unset LINEAR_WORKSPACE_SLUG LINEAR_TEAM_KEYS LINEAR_ISSUE_REGEX GITLAB_REMOTE_REGEX
 }
 
 # ============================================================================
@@ -277,6 +285,114 @@ setup() {
     run bash "$HOOK"
     [ "$status" -eq 0 ]
     [[ "$output" == *"https://linear.app/consensusaps/issue/WAN-123"* ]]
+}
+
+@test "Linear workspace slug can be overridden via env var" {
+    export MOCK_GIT_BRANCH="feature/WAN-123-test"
+    export MOCK_GIT_REMOTE="https://github.com/user/repo.git"
+    export CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG="acme"
+    run bash "$HOOK"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"https://linear.app/acme/issue/WAN-123"* ]]
+}
+
+@test "Linear team keys can be overridden via env var" {
+    export MOCK_GIT_BRANCH="feature/ABC-321-test"
+    export MOCK_GIT_REMOTE="https://github.com/user/repo.git"
+    export CONTEXT_LINKS_LINEAR_TEAM_KEYS="ABC,XYZ"
+    run bash "$HOOK"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"ABC-321"* ]]
+}
+
+@test "GitLab remote regex can be overridden via env var" {
+    export MOCK_GIT_BRANCH="feature/WAN-123-test"
+    export MOCK_GIT_REMOTE="https://git.example.com/user/repo.git"
+    export CONTEXT_LINKS_GITLAB_REMOTE_REGEX="git\\.example\\.com"
+    export MOCK_GLAB_MR_EXISTS="true"
+    export MOCK_GLAB_MR_NUMBER="314"
+    run bash "$HOOK"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"GitLab:"* ]]
+    [[ "$output" == *"merge_requests/314"* ]]
+}
+
+@test "invalid GitLab remote regex does not emit errors" {
+    export MOCK_GIT_BRANCH="main"
+    export MOCK_GIT_REMOTE="https://git.example.com/user/repo.git"
+    export CONTEXT_LINKS_GITLAB_REMOTE_REGEX="("
+    run bash "$HOOK"
+    [ "$status" -eq 0 ]
+    [ "$output" = "{}" ]
+}
+
+@test "context-links config file can override defaults" {
+    local config_file
+    config_file="$(mktemp)"
+    cat >"$config_file" <<'EOF'
+CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG="custom-workspace"
+CONTEXT_LINKS_LINEAR_TEAM_KEYS="XYZ"
+EOF
+
+    export CONTEXT_LINKS_CONFIG_FILE="$config_file"
+    export MOCK_GIT_BRANCH="feature/XYZ-77-test"
+    export MOCK_GIT_REMOTE="https://github.com/user/repo.git"
+    run bash "$HOOK"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"https://linear.app/custom-workspace/issue/XYZ-77"* ]]
+}
+
+@test "env vars take precedence over context-links config file" {
+    local config_file
+    config_file="$(mktemp)"
+    cat >"$config_file" <<'EOF'
+CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG="from-config"
+EOF
+
+    export CONTEXT_LINKS_CONFIG_FILE="$config_file"
+    export CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG="from-env"
+    export MOCK_GIT_BRANCH="feature/WAN-77-test"
+    export MOCK_GIT_REMOTE="https://github.com/user/repo.git"
+    run bash "$HOOK"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"https://linear.app/from-env/issue/WAN-77"* ]]
+}
+
+@test "context-links config file ignores executable lines" {
+    local config_file
+    local marker
+    config_file="$(mktemp)"
+    marker="${BATS_TEST_TMPDIR}/context-links-config-marker"
+    cat >"$config_file" <<EOF
+echo hacked > "$marker"
+CONTEXT_LINKS_LINEAR_TEAM_KEYS="XYZ"
+EOF
+
+    export CONTEXT_LINKS_CONFIG_FILE="$config_file"
+    export MOCK_GIT_BRANCH="feature/XYZ-77-test"
+    export MOCK_GIT_REMOTE="https://github.com/user/repo.git"
+    run bash "$HOOK"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"XYZ-77"* ]]
+    [ ! -f "$marker" ]
+}
+
+@test "team keys are treated as literals when building regex" {
+    export MOCK_GIT_BRANCH="feature/AXB-321-test"
+    export MOCK_GIT_REMOTE="https://github.com/user/repo.git"
+    export CONTEXT_LINKS_LINEAR_TEAM_KEYS="A.B"
+    run bash "$HOOK"
+    [ "$status" -eq 0 ]
+    [ "$output" = "{}" ]
+}
+
+@test "team keys with regex characters still match literal key" {
+    export MOCK_GIT_BRANCH="feature/A.B-321-test"
+    export MOCK_GIT_REMOTE="https://github.com/user/repo.git"
+    export CONTEXT_LINKS_LINEAR_TEAM_KEYS="A.B"
+    run bash "$HOOK"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"A.B-321"* ]]
 }
 
 @test "outputs valid JSON with systemMessage" {
