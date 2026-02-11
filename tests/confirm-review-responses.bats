@@ -11,6 +11,7 @@ setup() {
 }
 
 teardown() {
+    unset CONFIRM_REVIEW_ARTIFACT_LIST_FILE
     rm -rf "$MOCK_DIR"
 }
 
@@ -81,10 +82,10 @@ run_hook() {
 }
 
 # ============================================================================
-# GIT COMMIT WITHOUT REVIEW_OVERVIEW.MD
+# GIT COMMIT WITHOUT GUARDED ARTIFACTS
 # ============================================================================
 
-@test "allows git commit when REVIEW_OVERVIEW.md is not staged" {
+@test "allows git commit when configured artifacts are not staged" {
     mock_git_staged "file1.txt
 file2.js
 src/component.tsx"
@@ -103,7 +104,8 @@ src/component.tsx"
 @test "allows git commit with similar but different filename" {
     mock_git_staged "REVIEW_OVERVIEW.md.bak
 MY_REVIEW_OVERVIEW.md
-REVIEW_OVERVIEW.markdown"
+REVIEW_OVERVIEW.markdown
+AUDIT_REPORT.md.bak"
     run run_hook "git commit -m 'test'"
     [ "$status" -eq 0 ]
     [ -z "$output" ]
@@ -122,7 +124,7 @@ REVIEW_SUMMARY.md"
 }
 
 # ============================================================================
-# BLOCK CASES: REVIEW_OVERVIEW.MD STAGED
+# BLOCK CASES: CONFIGURED ARTIFACTS STAGED
 # ============================================================================
 
 @test "blocks git commit when REVIEW_OVERVIEW.md is staged" {
@@ -133,7 +135,42 @@ REVIEW_SUMMARY.md"
     [[ "$output" == *"confirm"* ]]
 }
 
-@test "blocks git commit when REVIEW_OVERVIEW.md is staged with other files" {
+@test "blocks git commit when AUDIT_REPORT.md is staged" {
+    mock_git_staged "AUDIT_REPORT.md"
+    run run_hook "git commit -m 'audit report staged'"
+    is_blocked
+    [[ "$output" == *"AUDIT_REPORT.md"* ]]
+}
+
+@test "blocks git commit when AUDIT_REPORT.md is staged in subdirectory" {
+    mock_git_staged "siw/AUDIT_REPORT.md"
+    run run_hook "git commit -m 'audit report in siw'"
+    is_blocked
+    [[ "$output" == *"siw/AUDIT_REPORT.md"* ]]
+}
+
+@test "blocks git commit when siw/LOG.md is staged" {
+    mock_git_staged "siw/LOG.md"
+    run run_hook "git commit -m 'log staged'"
+    is_blocked
+    [[ "$output" == *"siw/LOG.md"* ]]
+}
+
+@test "blocks git commit when siw/OPEN_ISSUES_OVERVIEW.md is staged" {
+    mock_git_staged "siw/OPEN_ISSUES_OVERVIEW.md"
+    run run_hook "git commit -m 'overview staged'"
+    is_blocked
+    [[ "$output" == *"siw/OPEN_ISSUES_OVERVIEW.md"* ]]
+}
+
+@test "blocks git commit when configured specification files are staged" {
+    mock_git_staged "siw/PROJECT_PLAN.md"
+    run run_hook "git commit -m 'plan staged'"
+    is_blocked
+    [[ "$output" == *"siw/PROJECT_PLAN.md"* ]]
+}
+
+@test "blocks git commit when configured artifact is staged with other files" {
     mock_git_staged "file1.txt
 REVIEW_OVERVIEW.md
 file2.js"
@@ -153,7 +190,7 @@ file2.js"
     is_blocked
 }
 
-@test "blocks git commit when overview and other markdown files are all staged" {
+@test "blocks git commit when artifact and other markdown files are all staged" {
     mock_git_staged "REVIEW_OVERVIEW.md
 REVIEW_NOTES.md
 REVIEW_SUMMARY.md"
@@ -187,4 +224,32 @@ REVIEW_SUMMARY.md"
     mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook "git commit -v --no-verify -m 'test'"
     is_blocked
+}
+
+# ============================================================================
+# CONFIGURABLE ARTIFACT LIST
+# ============================================================================
+
+@test "uses custom artifact list from CONFIRM_REVIEW_ARTIFACT_LIST_FILE" {
+    custom_list="$MOCK_DIR/custom-artifacts.txt"
+    cat > "$custom_list" << 'EOF'
+# Custom artifact list for this test
+CUSTOM_REVIEW.md
+siw/CUSTOM_LOG.md
+EOF
+    export CONFIRM_REVIEW_ARTIFACT_LIST_FILE="$custom_list"
+    mock_git_staged "siw/CUSTOM_LOG.md"
+
+    run run_hook "git commit -m 'custom artifact'"
+    is_blocked
+    [[ "$output" == *"siw/CUSTOM_LOG.md"* ]]
+}
+
+@test "falls back to REVIEW_OVERVIEW.md when configured list file is missing" {
+    export CONFIRM_REVIEW_ARTIFACT_LIST_FILE="$MOCK_DIR/does-not-exist.txt"
+    mock_git_staged "REVIEW_OVERVIEW.md"
+
+    run run_hook "git commit -m 'fallback list'"
+    is_blocked
+    [[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
 }
