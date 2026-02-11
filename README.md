@@ -149,7 +149,7 @@ Event handlers that run automatically at specific points in the Claude Code life
 | Hook | Event | Description |
 |------|-------|-------------|
 | `block-rm-rf` | PreToolUse (Bash) | Blocks destructive file deletion commands and recommends using `trash` CLI instead. |
-| `confirm-review-responses` | PreToolUse (Bash) | Confirms before committing review artifact files (REVIEW_OVERVIEW.md) to prevent accidental inclusion in commits. |
+| `confirm-review-responses` | PreToolUse (Bash) | Confirms before committing configured review artifact files to prevent accidental inclusion in commits. Guarded files are configured in `hooks/confirm-review-artifacts.txt`. |
 | `noninteractive-git` | PreToolUse (Bash) | Blocks git commands that would open an interactive editor, guiding the agent to use non-interactive alternatives. |
 | `context-links` | Stop | Displays active PR/MR and Linear issue links at the end of messages. Extracts Linear issue ID from branch name (pattern: `{prefix}/{TEAM-ID}-description`) and detects open PRs/MRs for the current branch. |
 | `auto-format` | PostToolUse (Write\|Edit) | Auto-formats code after file modifications. Detects project formatter from CLAUDE.md or auto-detects from project files (package.json, pyproject.toml, etc.). |
@@ -177,6 +177,8 @@ Use `/kramme:toggle-hook` to enable or disable hooks:
 
 State is stored in `hooks/hook-state.json` (gitignored) and persists across sessions.
 When a hook is disabled, the hook script drains stdin before exiting to avoid broken-pipe errors if the runner is piping JSON input.
+
+For `confirm-review-responses`, edit `hooks/confirm-review-artifacts.txt` to configure which staged files should trigger confirmation.
 
 ### block-rm-rf: Blocked Patterns
 
@@ -336,6 +338,7 @@ tests/
 │   ├── common.bash           # Shared utilities
 │   └── mocks/                # Mock git, gh, glab commands
 ├── block-rm-rf.bats          # Tests for block-rm-rf hook
+├── confirm-review-responses.bats # Tests for confirm-review-responses hook
 ├── context-links.bats        # Tests for context-links hook
 └── auto-format.bats          # Tests for auto-format hook
 ```
