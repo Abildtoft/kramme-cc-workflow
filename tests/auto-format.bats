@@ -202,7 +202,7 @@ run_format_hook() {
     run run_format_hook "$TEST_DIR/test.js"
     [ "$status" -eq 0 ]
     has_system_message
-    [[ "$output" == *'CLAUDE.md'* ]]
+    [[ "$output" == *'Formatted (CLAUDE.md:'* ]]
 }
 
 @test "uses CLAUDE.md formatter directive" {
@@ -211,7 +211,7 @@ run_format_hook() {
     run run_format_hook "$TEST_DIR/test.ts"
     [ "$status" -eq 0 ]
     has_system_message
-    [[ "$output" == *'CLAUDE.md'* ]]
+    [[ "$output" == *'Formatted (CLAUDE.md:'* ]]
 }
 
 @test "reports CLAUDE.md command failure" {
@@ -221,6 +221,43 @@ run_format_hook() {
     [ "$status" -eq 0 ]
     has_system_message
     [[ "$output" == *'failed'* ]]
+}
+
+@test "blocks CLAUDE.md formatter with shell metacharacters" {
+    echo 'format: echo formatted | cat' > CLAUDE.md
+    touch test.js
+    run run_format_hook "$TEST_DIR/test.js"
+    [ "$status" -eq 0 ]
+    has_system_message
+    [[ "$output" == *'Format command failed (CLAUDE.md:'* ]]
+}
+
+@test "allows CLAUDE.md formatter with brace expansion" {
+    echo 'format: printf "%s\n" test.{js,ts}' > CLAUDE.md
+    touch test.js
+    run run_format_hook "$TEST_DIR/test.js"
+    [ "$status" -eq 0 ]
+    has_system_message
+    [[ "$output" == *'Formatted (CLAUDE.md:'* ]]
+}
+
+@test "allows CLAUDE.md formatter with environment variable expansion" {
+    export FORMAT_TEST_VALUE="formatted"
+    echo 'format: test "$FORMAT_TEST_VALUE" = "formatted"' > CLAUDE.md
+    touch test.js
+    run run_format_hook "$TEST_DIR/test.js"
+    [ "$status" -eq 0 ]
+    has_system_message
+    [[ "$output" == *'Formatted (CLAUDE.md:'* ]]
+}
+
+@test "blocks CLAUDE.md formatter with command substitution" {
+    echo 'format: echo $(pwd)' > CLAUDE.md
+    touch test.js
+    run run_format_hook "$TEST_DIR/test.js"
+    [ "$status" -eq 0 ]
+    has_system_message
+    [[ "$output" == *'Format command failed (CLAUDE.md:'* ]]
 }
 
 # ============================================================================
@@ -417,13 +454,21 @@ EOF
 # ============================================================================
 
 @test "creates cache file after detection" {
+    if command -v md5 &>/dev/null; then
+        cache_key=$(echo "$TEST_DIR" | md5)
+    elif command -v md5sum &>/dev/null; then
+        cache_key=$(echo "$TEST_DIR" | md5sum | cut -d' ' -f1)
+    else
+        cache_key=$(echo "$TEST_DIR" | tr '/' '_' | tail -c 64)
+    fi
+    cache_file="/tmp/claude-format-cache/$cache_key.cache.json"
+    rm -f "$cache_file"
+
     echo '{"devDependencies": {"prettier": "^3.0.0"}}' > package.json
     touch test.js
     run run_format_hook "$TEST_DIR/test.js"
     [ "$status" -eq 0 ]
-    # Check that cache was created
-    cache_count=$(ls /tmp/claude-format-cache/*.cache 2>/dev/null | wc -l)
-    [ "$cache_count" -gt 0 ]
+    [ -f "$cache_file" ]
 }
 
 @test "cache is invalidated when package.json changes" {
@@ -441,6 +486,31 @@ EOF
     run run_format_hook "$TEST_DIR/test.js"
     [ "$status" -eq 0 ]
     has_system_message
+}
+
+@test "invalid cache booleans are ignored without executing commands" {
+    if command -v md5 &>/dev/null; then
+        cache_key=$(echo "$TEST_DIR" | md5)
+    elif command -v md5sum &>/dev/null; then
+        cache_key=$(echo "$TEST_DIR" | md5sum | cut -d' ' -f1)
+    else
+        cache_key=$(echo "$TEST_DIR" | tr '/' '_' | tail -c 64)
+    fi
+    cache_file="/tmp/claude-format-cache/$cache_key.cache.json"
+    marker_file="$TEST_DIR/cache-command-executed.marker"
+
+    cat > "$cache_file" <<EOF
+{"HAS_PRETTIER":false,"HAS_BIOME":"touch $marker_file","HAS_ESLINT":false,"HAS_BLACK":false,"HAS_RUFF":false,"HAS_NX":false,"FORMAT_SCRIPT_NAME":"","CLAUDE_FORMATTER":""}
+EOF
+
+    touch test.js
+    run run_format_hook "$TEST_DIR/test.js"
+    [ "$status" -eq 0 ]
+    has_system_message
+    [ ! -f "$marker_file" ]
+
+    cache_biome_type=$(jq -r '.HAS_BIOME | type' "$cache_file")
+    [ "$cache_biome_type" = "boolean" ]
 }
 
 # ============================================================================
