@@ -13,6 +13,20 @@ teardown() {
   fi
 }
 
+create_fixture_plugin() {
+  local plugin_dir="$1"
+  mkdir -p "$plugin_dir/.claude-plugin"
+  cat > "$plugin_dir/.claude-plugin/plugin.json" <<'JSON'
+{
+  "name": "fixture-plugin",
+  "version": "1.0.0",
+  "agents": [],
+  "commands": [],
+  "skills": []
+}
+JSON
+}
+
 @test "codex conversion creates prompts from user-invocable skills" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
@@ -129,4 +143,204 @@ JSON
   run jq -r '.permission.read' "$TMP_DIR/opencode.json"
   [ "$status" -eq 0 ]
   [ "$output" = "allow" ]
+}
+
+@test "from-commands permissions stay strict when command allowed-tools are declared" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/strict-command-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/commands"
+  cat > "$FIXTURE_PLUGIN/commands/strict-command.md" <<'MD'
+---
+name: strict-command
+allowed-tools:
+  - Read
+  - Bash(npm:test)
+---
+Run strict permission checks.
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to opencode --output "$TMP_DIR" --permissions from-commands
+  [ "$status" -eq 0 ]
+
+  run jq -r '.tools.read' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.permission.read' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "allow" ]
+
+  run jq -r '.tools.bash' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.tools.write' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+
+  run jq -r '.permission.bash["*"]' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "deny" ]
+
+  run jq -r '.permission.bash["npm test"]' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "allow" ]
+
+  run jq -r '.permission.write' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "deny" ]
+}
+
+@test "from-commands uses only user-invocable skills for allowed-tools" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/skill-permission-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/skills/invocable" "$FIXTURE_PLUGIN/skills/non-invocable"
+  cat > "$FIXTURE_PLUGIN/skills/invocable/SKILL.md" <<'MD'
+---
+name: invocable-skill
+user-invocable: true
+allowed-tools:
+  - Grep
+---
+User invocable skill.
+MD
+  cat > "$FIXTURE_PLUGIN/skills/non-invocable/SKILL.md" <<'MD'
+---
+name: internal-skill
+user-invocable: false
+allowed-tools:
+  - Read
+---
+Internal skill.
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to opencode --output "$TMP_DIR" --permissions from-commands
+  [ "$status" -eq 0 ]
+
+  run jq -r '.tools.grep' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.tools.read' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+
+  run jq -r '.permission.read' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "deny" ]
+}
+
+@test "from-commands does not fall back when allowed-tools are unrecognized" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/unknown-tool-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/commands"
+  cat > "$FIXTURE_PLUGIN/commands/unknown-tool.md" <<'MD'
+---
+name: unknown-tool
+allowed-tools:
+  - UnknownTool
+---
+Unknown tool declaration.
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to opencode --output "$TMP_DIR" --permissions from-commands
+  [ "$status" -eq 0 ]
+
+  run jq -r '.tools.read' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+
+  run jq -r '.tools.bash' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+
+  run jq -r '.tools.write' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+
+  run jq -r '.tools.edit' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+
+  run jq -r '.permission.read' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "deny" ]
+
+  run jq -r '.permission.bash' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "deny" ]
+
+  run jq -r '.permission.write' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "deny" ]
+
+  run jq -r '.permission.edit' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "deny" ]
+}
+
+@test "from-commands merges write and edit pattern permissions" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/write-edit-patterns-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/commands"
+  cat > "$FIXTURE_PLUGIN/commands/write-edit.md" <<'MD'
+---
+name: write-edit
+allowed-tools:
+  - Write(src/**)
+  - Edit(docs/**)
+---
+Write and edit pattern constraints.
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to opencode --output "$TMP_DIR" --permissions from-commands
+  [ "$status" -eq 0 ]
+
+  run jq -r '.tools.write' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.tools.edit' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.permission.write["*"]' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "deny" ]
+
+  run jq -r '.permission.write["src/**"]' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "allow" ]
+
+  run jq -r '.permission.write["docs/**"]' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "allow" ]
+
+  run jq -r '.permission.edit["src/**"]' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "allow" ]
+
+  run jq -r '.permission.edit["docs/**"]' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "allow" ]
+
+  run jq -r '.permission.edit["*"]' "$TMP_DIR/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "deny" ]
 }
