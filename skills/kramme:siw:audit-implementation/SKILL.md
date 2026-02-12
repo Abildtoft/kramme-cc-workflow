@@ -10,7 +10,7 @@ user-invocable: true
 
 Exhaustively compare the codebase implementation against specification documents to find discrepancies, missing implementations, naming misalignments, and spec drift.
 
-**IMPORTANT:** This command emphasizes thoroughness. Do not return early. Check every requirement in the specification against the codebase before compiling results.
+**IMPORTANT:** This is a thorough, exhaustive audit. Do not return early. Do not conclude anything is "implemented" without reading the actual code. Check every requirement in the specification against the codebase before compiling results. The goal is to find ALL discrepancies — a clean report is suspicious, not reassuring.
 
 ## Process Overview
 
@@ -21,31 +21,28 @@ Exhaustively compare the codebase implementation against specification documents
 [Step 1: Resolve Spec Files] -> Parse args or auto-detect from siw/
     |
     v
-[Step 2: Read and Parse Specs] -> Extract every requirement
+[Step 2: Read Specs and Extract Requirements] -> Read fully, extract checklist
     |
     v
-[Step 3: Categorize into Review Domains] -> Group by domain
+[Step 3: Plan Codebase Exploration] -> Map spec sections to code areas
     |
     v
-[Step 4: Configure Review Scope] -> Ask user about depth
+[Step 4: Deep Codebase Comparison] -> Explore agents per spec section
     |
     v
-[Step 5: Systematic Codebase Search] -> Explore agents per domain
+[Step 5: Analyze Findings] -> Classify discrepancies
     |
     v
-[Step 6: Analyze Findings] -> Classify discrepancies
+[Step 6: Compile Discrepancy Report] -> Structured markdown
     |
     v
-[Step 7: Compile Discrepancy Report] -> Structured markdown
+[Step 7: Write Report File] -> siw/AUDIT_REPORT.md
     |
     v
-[Step 8: Write Report File] -> siw/AUDIT_REPORT.md
+[Step 8: Optionally Create SIW Issues] -> Convert findings to issues
     |
     v
-[Step 9: Optionally Create SIW Issues] -> Convert findings to issues
-    |
-    v
-[Step 10: Report Summary] -> Stats and next steps
+[Step 9: Report Summary] -> Stats and next steps
 ```
 
 ---
@@ -106,22 +103,9 @@ Auto-detect spec files from the `siw/` directory:
    - Look for a "Linked Specifications" section with a table containing file paths.
    - Add any linked external paths to the candidate file list (verify each exists).
 
-5. If multiple spec files found, present them to the user:
+5. **Use all found spec files by default.** Only ask the user to select if there are files that look unrelated to each other (e.g., specs for entirely different features). Do NOT ask when the files are clearly parts of the same specification (main spec + supporting specs).
 
-   ```yaml
-   header: "Specification Files"
-   question: "Found these spec files. Which should I audit against?"
-   multiSelect: true
-   options:
-     - label: "All files"
-       description: "Audit against all found specifications"
-     - label: "{file1}"
-       description: "{first heading from file1}"
-     - label: "{file2}"
-       description: "{first heading from file2}"
-   ```
-
-6. Store selected files as `spec_files`.
+6. Store files as `spec_files`.
 
 ### 1.4 If No Spec Files Found
 
@@ -143,37 +127,38 @@ To initialize a workflow with a spec, run /kramme:siw:init
 
 ---
 
-## Step 2: Read and Parse Specs
+## Step 2: Read Specs and Extract Requirements
 
-Read every file in `spec_files` and extract structured requirements.
+Read every file in `spec_files` fully and extract a requirements checklist.
 
-### 2.1 Extraction Categories
+### 2.1 Read Every Spec File End-to-End
 
-For each spec file, extract requirements across these categories:
+Read each spec file completely. Do not skim. Understand the full picture before extracting requirements.
 
-| Category | What to Look For |
-|---|---|
-| **Named entities** | Class names, component names, service names, table/collection names |
-| **API contracts** | Endpoint URLs, HTTP methods, request/response schemas, status codes |
-| **Data model** | Entity names, field names, types, nullability, constraints, relationships |
-| **Behavior requirements** | "MUST", "SHOULD", "SHALL", acceptance criteria, "when X then Y" patterns |
-| **Naming conventions** | Specific names for files, variables, classes, routes, database columns |
-| **UI/UX requirements** | Component names, user flows, states (loading, error, empty), labels |
-| **Integration points** | External services, events, hooks, middleware, pipelines |
-| **Validation rules** | Input validation, business rules, constraints (max length, format, ranges) |
-| **Error handling** | Error scenarios, fallback behavior, error messages |
-| **Configuration** | Feature flags, environment variables, settings |
+### 2.2 Extract Requirements
 
-### 2.2 Requirement Structure
+Everything in the spec is a requirement — names, structures, behaviors, contracts, constraints. If the spec describes it, the code must match it. Extract checkable items across all of these areas:
 
-For each extracted requirement, capture:
+- Named entities (class names, component names, service names, table names)
+- API contracts (endpoints, methods, request/response shapes, status codes)
+- Data model details (entity names, field names, types, constraints, relationships)
+- Behavior ("when X then Y", business rules, acceptance criteria)
+- Specific names (file names, variable names, route paths, database columns)
+- UI elements (component names, user flows, states, labels)
+- Integration points (external services, events, middleware)
+- Validation rules (input constraints, formats, ranges)
+- Error handling (error scenarios, fallback behavior, messages)
+- Configuration (feature flags, environment variables)
 
-- **id**: Auto-generated sequential ID (e.g., `REQ-001`, `REQ-002`)
-- **source_file**: Which spec file it came from
-- **source_section**: Heading hierarchy (e.g., "API Specification > User Endpoints > POST /users")
-- **category**: One of the extraction categories above
-- **description**: The requirement text
-- **key_terms**: Named identifiers to search for in code (class names, route paths, field names, etc.)
+For each item, capture:
+
+- **id**: Sequential ID (e.g., `REQ-001`)
+- **source_file**: Which spec file
+- **source_section**: Heading hierarchy
+- **description**: What the spec describes
+- **key_terms**: Named identifiers to search for in code
+
+**If the spec describes it, extract it.** Do not limit extraction to things explicitly labeled as requirements — descriptions of behavior, naming, structure, data shapes, and workflows are all checkable against the code.
 
 ### 2.3 Respect Scope Boundaries
 
@@ -188,18 +173,11 @@ When parsing specs:
 Spec Analysis Complete
 
 Sources:
-  - siw/FEATURE_SPECIFICATION.md
-  - siw/supporting-specs/01-data-model.md
-  - siw/supporting-specs/02-api-specification.md
+  - {spec_file_1}
+  - {spec_file_2}
 
-Requirements Extracted: 47
-  - API contracts: 12
-  - Data model: 8
-  - Behavior requirements: 15
-  - Naming conventions: 5
-  - Validation rules: 7
-
-Key search terms identified: 23 unique names/identifiers
+Requirements Extracted: {total}
+Key search terms identified: {count} unique names/identifiers
 ```
 
 **If no extractable requirements found:**
@@ -223,121 +201,95 @@ options:
 
 ---
 
-## Step 3: Categorize into Review Domains
+## Step 3: Plan Codebase Exploration
 
-Group requirements into review domains. Each domain will be assigned to a separate Explore agent.
+Group requirements by **spec file or major spec section** (not by abstract domain). Each group will be assigned to an Explore agent that receives the full context of that spec section.
 
-| Domain | Requirements Included | Search Strategy |
-|---|---|---|
-| **Data Model** | Entity/field names, types, relationships, constraints | Grep for entity names, field names; Glob for model/entity files |
-| **API Surface** | Endpoints, methods, request/response shapes, status codes | Grep for route definitions, controller methods, DTOs |
-| **Business Logic** | Behavior rules, validation, error handling, workflows | Grep for function/method names, conditional patterns |
-| **Naming & Structure** | File names, class names, variable names, route paths | Glob for expected file patterns, Grep for class/interface declarations |
-| **UI/Frontend** | Components, labels, states, user flows | Glob for component files, Grep for component names and text content |
-| **Configuration** | Feature flags, environment variables, settings | Grep for config keys, Glob for config files |
+### 3.1 Determine Grouping
 
-**Skip domains with zero requirements.**
+- If there are **1-2 spec files**: One Explore agent per spec file.
+- If there are **3+ spec files**: Group related files (e.g., main spec + its supporting specs) and assign one agent per group. Aim for 2-4 agents total.
+- If a single spec file has **clearly distinct major sections** (e.g., "Data Model", "API Endpoints", "Authentication"): Split into one agent per major section.
 
----
+### 3.2 For Each Group, Identify Code Areas
 
-## Step 4: Configure Review Scope
+For each group of requirements, identify:
+- Which directories/files likely implement these requirements
+- Key file patterns to search (e.g., `**/*controller*`, `**/*model*`)
+- Named identifiers that should appear in code
 
-Use AskUserQuestion:
-
-```yaml
-header: "Review Scope"
-question: "How thorough should this audit be?"
-options:
-  - label: "Full exhaustive audit"
-    description: "Check every requirement against the codebase (recommended)"
-  - label: "Critical domains only"
-    description: "Audit API contracts, data model, and business logic only"
-  - label: "Quick scan"
-    description: "Check for completely missing implementations only"
-```
-
-**If "Critical domains only":** Filter to Data Model, API Surface, and Business Logic domains.
-
-**If "Quick scan":** Only check requirements where key_terms produce zero search results.
-
-### 4.1 Optional: Scope to Specific Code Paths
-
-Use AskUserQuestion:
-
-```yaml
-header: "Code Scope"
-question: "Should I search the entire codebase or focus on specific directories?"
-options:
-  - label: "Entire codebase"
-    description: "Search all project files"
-  - label: "Specific directories"
-    description: "I'll specify which directories to search"
-```
-
-If "Specific directories": Use AskUserQuestion with freeform to get directory paths. Store as `search_scope`.
+This information will be passed to the Explore agents to direct their search.
 
 ---
 
-## Step 5: Systematic Codebase Search
+## Step 4: Deep Codebase Comparison
 
-**CRITICAL:** This is the core of the audit. Be exhaustive. Do not skip requirements. Do not assume implementation without finding concrete evidence.
+**CRITICAL:** This is the core of the audit. You are comparing what the spec says against what the code actually does. A grep hit is NOT sufficient evidence of implementation — you must read and understand the code.
 
-### 5.1 Launch Explore Agents
+### 4.1 Launch Explore Agents
 
-For each active review domain, launch an Explore agent using the Task tool (`subagent_type=Explore`).
+For each group from Step 3, launch an Explore agent using the Task tool (`subagent_type=Explore`).
 
 **All agents run in parallel** — launch them in a single message with multiple Task tool calls.
 
-### 5.2 Explore Agent Prompt Template
+### 4.2 Explore Agent Prompt
 
-Each agent receives:
+Each agent receives this prompt structure:
 
 ```
-Audit the codebase against these specification requirements for the [{domain}] domain.
+You are auditing whether the codebase matches a specification. Everything in the spec is a requirement — names, behaviors, data shapes, contracts, constraints. Your job is to find EVERY discrepancy — naming mismatches, missing features, behavioral differences, incomplete implementations.
 
-For EACH requirement below, search the codebase thoroughly:
-1. Use Grep to find occurrences of key terms
-2. Use Glob to find files matching expected patterns
-3. Read relevant files to verify implementation details match the spec
-4. Note any discrepancy in naming, behavior, structure, or completeness
+## Your Spec Section
 
-{If search_scope: "Search scope: {directories}"}
-{If no search_scope: "Search scope: entire codebase"}
+{Paste the FULL raw text of the spec section/file assigned to this agent}
 
-Requirements to verify:
+## Requirements Checklist
 
-{For each requirement in this domain:}
----
-REQ-{id}: {description}
-Source: {source_file} > {source_section}
-Key terms to search: {key_terms}
----
+{For each requirement in this group:}
+- REQ-{id}: {description} [Key terms: {key_terms}]
+{End for each}
 
-For each requirement, report ALL of the following:
-- **REQ ID**: The requirement identifier
-- **Status**: One of: IMPLEMENTED | PARTIAL | MISSING | NAMING_MISMATCH | BEHAVIOR_MISMATCH
-- **Evidence**: File paths and line numbers where implementation was found (or where it was expected but not found)
-- **Discrepancy details**: If not IMPLEMENTED, describe exactly what differs between spec and code
-- **Confidence**: HIGH | MEDIUM | LOW
+## Instructions
 
-IMPORTANT:
-- Report on EVERY requirement. Do not skip any.
-- For MISSING status, describe what you searched for and where you looked.
-- For PARTIAL status, describe what IS implemented and what is NOT.
-- Do not assume something is implemented without finding concrete evidence in code.
+For each requirement, follow this exact process:
+
+1. **Search for the implementation.** Use Grep for key terms and Glob for expected file patterns. Look for the specific names, routes, fields, and classes mentioned in the spec.
+
+2. **Read the implementation files end-to-end.** Do NOT just check that a grep hit exists. Open the file, read the relevant code, and understand what it actually does. Compare the code's behavior against what the spec requires.
+
+3. **Check for naming alignment.** Does the code use the exact names specified in the spec? Field names, route paths, class names, method names, error messages — all must match.
+
+4. **Check for behavioral alignment.** Does the code do what the spec says? Check edge cases, validation rules, error handling, response shapes, status codes.
+
+5. **Report your finding.** For each requirement:
+   - **REQ ID**: The requirement identifier
+   - **Status**: IMPLEMENTED | PARTIAL | MISSING | NAMING_MISMATCH | BEHAVIOR_MISMATCH
+   - **Evidence**: File paths and line numbers. For IMPLEMENTED, quote the specific code. For MISSING, list everywhere you searched.
+   - **Discrepancy details**: If not IMPLEMENTED, describe exactly what differs
+   - **Confidence**: HIGH | MEDIUM | LOW
+
+## Rules — Read These Carefully
+
+- **Report on EVERY requirement.** Do not skip any, even if they seem trivial.
+- **Do not return early.** Continue until you have checked every single requirement.
+- **Grep hits are not evidence of implementation.** A function named `createUser` existing does not mean it implements the spec's `createUser` behavior. Read the function body.
+- **Absence of grep hits does NOT mean the feature is implemented under a different name.** It likely means it's MISSING. Only mark as implemented-with-different-name if you find concrete evidence.
+- **No evidence = MISSING.** If you cannot find positive evidence that a requirement is implemented, mark it MISSING. Do not give the benefit of the doubt.
+- **For PARTIAL status**, describe what IS implemented and what is NOT.
+- **Read the actual code.** For every requirement you mark as IMPLEMENTED, you must have read the implementation code, not just found a filename or grep match.
 ```
 
 ---
 
-## Step 6: Analyze Findings
+## Step 5: Analyze Findings
 
 After all Explore agents complete:
 
-### 6.1 Collect Results
+### 5.1 Collect Results
 
 Gather all per-requirement assessments from every agent.
 
-### 6.2 Classify Findings
+### 5.2 Classify Findings
 
 | Classification | Criteria |
 |---|---|
@@ -346,7 +298,7 @@ Gather all per-requirement assessments from every agent.
 | **Missing** | Status = MISSING |
 | **Uncertain** | Confidence = LOW (needs manual verification) |
 
-### 6.3 Assign Severity
+### 5.3 Assign Severity
 
 For each discrepancy or missing item:
 
@@ -354,7 +306,7 @@ For each discrepancy or missing item:
 - **Major**: Behavior differs from spec, wrong types, incorrect validation rules
 - **Minor**: Naming mismatch, cosmetic differences, documentation gaps
 
-### 6.4 Cross-reference Existing Issues
+### 5.4 Cross-reference Existing Issues
 
 **Only if SIW workflow is active:**
 
@@ -362,7 +314,7 @@ Read `siw/OPEN_ISSUES_OVERVIEW.md` and `siw/issues/*.md` to check if any found d
 
 ---
 
-## Step 7: Compile Discrepancy Report
+## Step 6: Compile Discrepancy Report
 
 Generate a structured markdown report:
 
@@ -371,8 +323,6 @@ Generate a structured markdown report:
 
 **Date:** {current date}
 **Spec Files Reviewed:** {list of spec files with paths}
-**Review Scope:** {Full exhaustive / Critical domains / Quick scan}
-**Code Scope:** {Entire codebase / specific directories}
 
 ## Summary
 
@@ -443,14 +393,14 @@ Items that could not be confidently verified. Manual review recommended.
 
 ---
 
-## Step 8: Write Report File
+## Step 7: Write Report File
 
-### 8.1 Determine File Location
+### 7.1 Determine File Location
 
 - If `siw/` directory exists: `siw/AUDIT_REPORT.md`
 - If no `siw/` directory: `AUDIT_REPORT.md` in project root
 
-### 8.2 Handle Existing Report
+### 7.2 Handle Existing Report
 
 If a previous report exists at the target path:
 
@@ -466,7 +416,7 @@ options:
     description: "Cancel — keep existing report"
 ```
 
-### 8.3 Write the Report
+### 7.3 Write the Report
 
 Write the compiled report to the target path.
 
@@ -476,7 +426,7 @@ Audit report written to: {path}
 
 ---
 
-## Step 9: Optionally Create SIW Issues
+## Step 8: Optionally Create SIW Issues
 
 **Only if ALL of these conditions are met:**
 - `siw/OPEN_ISSUES_OVERVIEW.md` exists (SIW workflow is active)
@@ -484,7 +434,7 @@ Audit report written to: {path}
 - `siw/LOG.md` exists or can be created
 - Discrepancies or missing implementations were found (Critical + Major + Missing > 0)
 
-### 9.1 Ask User
+### 8.1 Ask User
 
 ```yaml
 header: "Create SIW Issues"
@@ -500,18 +450,18 @@ options:
     description: "Keep the report only"
 ```
 
-### 9.2 Preflight SIW Paths
+### 8.2 Preflight SIW Paths
 
 Before creating any issues:
 
 1. Ensure `siw/issues/` exists.
    - If missing, create it.
-   - If creation fails, warn and skip Step 9 (report-only mode).
+   - If creation fails, warn and skip Step 8 (report-only mode).
 2. Ensure `siw/LOG.md` exists.
    - If missing, create it with a minimal "Current Progress" section so updates can be appended safely.
-   - If creation fails, warn and skip Step 9 (report-only mode).
+   - If creation fails, warn and skip Step 8 (report-only mode).
 
-### 9.3 Create Issue Files
+### 8.3 Create Issue Files
 
 For each selected discrepancy:
 
@@ -571,7 +521,7 @@ Audit found that the implementation does not match the specification.
 
 ---
 
-## Step 10: Report Summary
+## Step 9: Report Summary
 
 ```
 Audit Complete
@@ -615,13 +565,13 @@ Next Steps:
 
 ### No Requirements Extracted
 - If spec has no clear structure: Offer best-effort scan or abort.
-- If all requirements fall into a single domain: Proceed with one agent instead of many.
+- If all requirements fall into a single group: Proceed with one agent instead of many.
 
 ### Explore Agent Failures
 - If an agent returns incomplete results: Note affected requirements as "Uncertain" in the report.
-- If an agent times out: Report which domain was affected, suggest re-running with narrower scope.
+- If an agent times out: Report which spec section was affected, suggest re-running with narrower scope.
 
 ### SIW Workflow Not Active
-- Skip issue creation (Step 9).
+- Skip issue creation (Step 8).
 - Report file goes to project root instead of `siw/`.
 - All other steps work the same.
