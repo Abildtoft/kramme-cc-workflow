@@ -898,34 +898,24 @@ function escapeTemplateLiteral(value) {
   return String(value).replace(/[`\\]/g, "\\$&").replace(/\$\{/g, "\\${")
 }
 
-const CODEX_COMMAND_SKILL_PREFIX = "impl-"
-
 function convertClaudeToCodex(plugin, options) {
   const { skills, commands } = filterByPlatform(plugin.skills, plugin.commands, "codex")
   const skillDirs = skills
     .filter((skill) => skill.userInvocable === false)
     .map((skill) => ({ name: skill.name, sourceDir: skill.sourceDir }))
 
-  const promptNames = new Set()
-  const commandEntries = commands.map((command) => ({
-    command,
-    promptName: uniqueName(normalizeName(command.name), promptNames),
-  }))
-
-  const usedSkillNames = new Set(skillDirs.map((skill) => normalizeName(skill.name)))
-  const commandNames = new Set(commandEntries.map((entry) => entry.promptName))
-  const commandSkills = commandEntries.map(({ command, promptName }) =>
-    convertCommandSkill(command, usedSkillNames, commandNames, promptName),
-  )
-  const prompts = commandEntries.map(({ command, promptName }, index) => ({
-    name: promptName,
-    content: renderPrompt(command, promptName, commandSkills[index].name),
-  }))
+  const usedSkillNames = new Set(skillDirs.map((skill) => codexName(skill.name)))
+  const knownCommandNames = new Set()
+  const commandSkills = commands.map((command) => {
+    const skillName = uniqueName(codexName(command.name), usedSkillNames)
+    knownCommandNames.add(skillName)
+    return convertCommandSkill(command, knownCommandNames, skillName)
+  })
 
   const agentSkills = plugin.agents.map((agent) => convertAgentSkill(agent, usedSkillNames))
 
   return {
-    prompts,
+    prompts: [],
     skillDirs,
     generatedSkills: commandSkills,
     agentSkills,
@@ -936,7 +926,7 @@ function convertClaudeToCodex(plugin, options) {
 const CODEX_DESCRIPTION_MAX_LENGTH = 1024
 
 function convertAgentSkill(agent, usedNames) {
-  const name = uniqueName(normalizeName(agent.name), usedNames)
+  const name = uniqueName(codexName(agent.name), usedNames)
   const description = sanitizeDescription(
     agent.description ?? `Converted from Claude agent ${agent.name}`,
   )
@@ -955,16 +945,13 @@ function convertAgentSkill(agent, usedNames) {
   return { name, content }
 }
 
-function convertCommandSkill(command, usedNames, knownCommands, promptName) {
-  const baseName = `${CODEX_COMMAND_SKILL_PREFIX}${promptName ?? normalizeName(command.name)}`
-  const name = uniqueName(baseName, usedNames)
+function convertCommandSkill(command, knownCommands, name) {
   const frontmatter = {
     name,
     description: sanitizeDescription(
       command.description ?? `Converted from Claude command ${command.name}`,
     ),
     "argument-hint": command.argumentHint,
-    "user-invocable": false,
     "disable-model-invocation": command.disableModelInvocation,
   }
   const sections = []
@@ -978,25 +965,13 @@ function convertCommandSkill(command, usedNames, knownCommands, promptName) {
   return { name, content }
 }
 
-function renderPrompt(command, promptName, backingSkillName) {
-  const frontmatter = {
-    name: promptName,
-    description: sanitizeDescription(
-      command.description ?? `Converted from Claude command ${command.name}`,
-    ),
-    "argument-hint": command.argumentHint,
-  }
-  const body = `Use the $${backingSkillName} skill and follow its instructions.`
-  return formatFrontmatter(frontmatter, body)
-}
-
 function transformContentForCodex(body, options = {}) {
   let result = body
   const knownCommands = options.knownCommands
 
   const taskPattern = /^(\s*-?\s*)Task\s+([a-z][a-z0-9-]*)\(([^)]+)\)/gm
   result = result.replace(taskPattern, (_match, prefix, agentName, args) => {
-    const skillName = normalizeName(agentName)
+    const skillName = codexName(agentName)
     const trimmedArgs = args.trim()
     return `${prefix}Use the $${skillName} skill to: ${trimmedArgs}`
   })
@@ -1005,14 +980,14 @@ function transformContentForCodex(body, options = {}) {
   result = result.replace(slashCommandPattern, (match, commandName) => {
     if (commandName.includes("/")) return match
     if (["dev", "tmp", "etc", "usr", "var", "bin", "home"].includes(commandName)) return match
-    const normalizedName = normalizeName(commandName)
-    if (knownCommands && !knownCommands.has(normalizedName)) return match
-    return `$${normalizedName}`
+    const codexified = codexName(commandName)
+    if (knownCommands && !knownCommands.has(codexified)) return match
+    return `$${codexified}`
   })
 
   const agentRefPattern = /@([a-z][a-z0-9-]*-(?:agent|reviewer|researcher|analyst|specialist|oracle|sentinel|guardian|strategist))/gi
   result = result.replace(agentRefPattern, (_match, agentName) => {
-    const skillName = normalizeName(agentName)
+    const skillName = codexName(agentName)
     return `$${skillName} skill`
   })
 
@@ -1027,6 +1002,19 @@ function normalizeName(value) {
     .replace(/[\\/]+/g, "-")
     .replace(/[:\s]+/g, "-")
     .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+  return normalized || "item"
+}
+
+function codexName(value) {
+  const trimmed = String(value ?? "").trim()
+  if (!trimmed) return "item"
+  const normalized = trimmed
+    .toLowerCase()
+    .replace(/[\\/]+/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9_:-]+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "")
   return normalized || "item"
@@ -1114,7 +1102,7 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   }
 
   const skillsRoot = path.join(codexRoot, "skills")
-  await cleanupKrammeSkills(skillsRoot, extraOpts.confirm, ["kramme:", "kramme-", CODEX_COMMAND_SKILL_PREFIX])
+  await cleanupKrammeSkills(skillsRoot, extraOpts.confirm, ["kramme:", "kramme-", "impl-"])
 
   for (const skill of bundle.skillDirs) {
     await copyDir(skill.sourceDir, path.join(skillsRoot, skill.name))
