@@ -27,20 +27,15 @@ create_fixture_plugin() {
 JSON
 }
 
-@test "codex conversion creates prompts from user-invocable skills" {
+@test "codex conversion creates skills from user-invocable skills" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
   fi
 
   run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
   [ "$status" -eq 0 ]
-  [ -f "$TMP_DIR/.codex/prompts/kramme-create-pr.md" ]
-  [ -f "$TMP_DIR/.codex/skills/impl-kramme-create-pr/SKILL.md" ]
-  [ ! -d "$TMP_DIR/.codex/skills/kramme-create-pr" ]
-
-  run find "$TMP_DIR/.codex/prompts" -type f
-  [ "$status" -eq 0 ]
-  [ -n "$output" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:create-pr/SKILL.md" ]
+  [ ! -d "$TMP_DIR/.codex/prompts" ] || [ -z "$(ls -A "$TMP_DIR/.codex/prompts" 2>/dev/null)" ]
 }
 
 @test "codex conversion places agents in agents-home/skills" {
@@ -53,12 +48,12 @@ JSON
 
   # Agent skills should be in ~/.agents/skills/, not ~/.codex/skills/
   [ -d "$TMP_DIR/.agents/skills" ]
-  [ -f "$TMP_DIR/.agents/skills/kramme-architecture-strategist/SKILL.md" ]
-  [ -f "$TMP_DIR/.agents/skills/kramme-silent-failure-hunter/SKILL.md" ]
+  [ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
+  [ -f "$TMP_DIR/.agents/skills/kramme:silent-failure-hunter/SKILL.md" ]
 
   # Agent skills should NOT be in codex skills
-  [ ! -d "$TMP_DIR/.codex/skills/kramme-architecture-strategist" ]
-  [ ! -d "$TMP_DIR/.codex/skills/kramme-silent-failure-hunter" ]
+  [ ! -d "$TMP_DIR/.codex/skills/kramme:architecture-strategist" ]
+  [ ! -d "$TMP_DIR/.codex/skills/kramme:silent-failure-hunter" ]
 }
 
 @test "codex conversion cleans stale agent skills when plugin has no agents" {
@@ -68,7 +63,7 @@ JSON
 
   run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
   [ "$status" -eq 0 ]
-  [ -f "$TMP_DIR/.agents/skills/kramme-architecture-strategist/SKILL.md" ]
+  [ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
 
   EMPTY_PLUGIN_DIR="$TMP_DIR/empty-plugin"
   mkdir -p "$EMPTY_PLUGIN_DIR/.claude-plugin"
@@ -84,8 +79,8 @@ JSON
 
   run node "$SCRIPT" install "$EMPTY_PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
   [ "$status" -eq 0 ]
-  [ ! -d "$TMP_DIR/.agents/skills/kramme-architecture-strategist" ]
-  [ ! -d "$TMP_DIR/.agents/skills/kramme-silent-failure-hunter" ]
+  [ ! -d "$TMP_DIR/.agents/skills/kramme:architecture-strategist" ]
+  [ ! -d "$TMP_DIR/.agents/skills/kramme:silent-failure-hunter" ]
 }
 
 @test "codex conversion skips cleanup in non-interactive mode without --yes" {
@@ -95,7 +90,7 @@ JSON
 
   run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
   [ "$status" -eq 0 ]
-  [ -f "$TMP_DIR/.agents/skills/kramme-architecture-strategist/SKILL.md" ]
+  [ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
 
   EMPTY_PLUGIN_DIR="$TMP_DIR/empty-plugin"
   mkdir -p "$EMPTY_PLUGIN_DIR/.claude-plugin"
@@ -111,95 +106,88 @@ JSON
 
   run node "$SCRIPT" install "$EMPTY_PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --non-interactive
   [ "$status" -eq 0 ]
-  [ -d "$TMP_DIR/.agents/skills/kramme-architecture-strategist" ]
+  [ -d "$TMP_DIR/.agents/skills/kramme:architecture-strategist" ]
   [[ "$output" == *"non-interactive mode"* ]]
 }
 
-@test "codex conversion cleans stale prompts when commands change" {
+@test "codex conversion cleans stale skills when commands change" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
   fi
 
-  PROMPT_PLUGIN_DIR="$TMP_DIR/prompt-plugin"
-  mkdir -p "$PROMPT_PLUGIN_DIR/.claude-plugin" "$PROMPT_PLUGIN_DIR/commands"
-  cat > "$PROMPT_PLUGIN_DIR/.claude-plugin/plugin.json" <<'JSON'
+  PLUGIN_DIR="$TMP_DIR/skill-plugin"
+  mkdir -p "$PLUGIN_DIR/.claude-plugin" "$PLUGIN_DIR/commands"
+  cat > "$PLUGIN_DIR/.claude-plugin/plugin.json" <<'JSON'
 {
-  "name": "prompt-plugin",
+  "name": "skill-plugin",
   "version": "1.0.0",
   "agents": [],
   "commands": [],
   "skills": []
 }
 JSON
-  cat > "$PROMPT_PLUGIN_DIR/commands/kramme-temp-command.md" <<'MD'
+  cat > "$PLUGIN_DIR/commands/kramme-temp-command.md" <<'MD'
 ---
 name: kramme:temp-command
-description: Temporary command for prompt cleanup test
+description: Temporary command for skill cleanup test
 ---
 
 Execute temporary command.
 MD
 
-  run node "$SCRIPT" install "$PROMPT_PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+  run node "$SCRIPT" install "$PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
   [ "$status" -eq 0 ]
-  [ -f "$TMP_DIR/.codex/prompts/kramme-temp-command.md" ]
-  [ -f "$TMP_DIR/.codex/skills/impl-kramme-temp-command/SKILL.md" ]
-  [ ! -d "$TMP_DIR/.codex/skills/kramme-temp-command" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:temp-command/SKILL.md" ]
 
-  rm "$PROMPT_PLUGIN_DIR/commands/kramme-temp-command.md"
-  cat > "$PROMPT_PLUGIN_DIR/commands/kramme-next-command.md" <<'MD'
+  rm "$PLUGIN_DIR/commands/kramme-temp-command.md"
+  cat > "$PLUGIN_DIR/commands/kramme-next-command.md" <<'MD'
 ---
 name: kramme:next-command
-description: Replacement command for prompt cleanup test
+description: Replacement command for skill cleanup test
 ---
 
 Execute replacement command.
 MD
 
-  run node "$SCRIPT" install "$PROMPT_PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  run node "$SCRIPT" install "$PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
   [ "$status" -eq 0 ]
-  [ ! -f "$TMP_DIR/.codex/prompts/kramme-temp-command.md" ]
-  [ -f "$TMP_DIR/.codex/prompts/kramme-next-command.md" ]
-  [ ! -f "$TMP_DIR/.codex/skills/impl-kramme-temp-command/SKILL.md" ]
-  [ -f "$TMP_DIR/.codex/skills/impl-kramme-next-command/SKILL.md" ]
-  [ ! -d "$TMP_DIR/.codex/skills/kramme-next-command" ]
+  [ ! -f "$TMP_DIR/.codex/skills/kramme:temp-command/SKILL.md" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:next-command/SKILL.md" ]
 }
 
-@test "codex conversion cleans stale prompts when commands are removed" {
+@test "codex conversion cleans stale skills when commands are removed" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
   fi
 
-  PROMPT_PLUGIN_DIR="$TMP_DIR/prompt-plugin-empty"
-  mkdir -p "$PROMPT_PLUGIN_DIR/.claude-plugin" "$PROMPT_PLUGIN_DIR/commands"
-  cat > "$PROMPT_PLUGIN_DIR/.claude-plugin/plugin.json" <<'JSON'
+  PLUGIN_DIR="$TMP_DIR/skill-plugin-empty"
+  mkdir -p "$PLUGIN_DIR/.claude-plugin" "$PLUGIN_DIR/commands"
+  cat > "$PLUGIN_DIR/.claude-plugin/plugin.json" <<'JSON'
 {
-  "name": "prompt-plugin-empty",
+  "name": "skill-plugin-empty",
   "version": "1.0.0",
   "agents": [],
   "commands": [],
   "skills": []
 }
 JSON
-  cat > "$PROMPT_PLUGIN_DIR/commands/kramme-temp-command.md" <<'MD'
+  cat > "$PLUGIN_DIR/commands/kramme-temp-command.md" <<'MD'
 ---
 name: kramme:temp-command
-description: Temporary command for prompt cleanup test
+description: Temporary command for skill cleanup test
 ---
 
 Execute temporary command.
 MD
 
-  run node "$SCRIPT" install "$PROMPT_PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+  run node "$SCRIPT" install "$PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
   [ "$status" -eq 0 ]
-  [ -f "$TMP_DIR/.codex/prompts/kramme-temp-command.md" ]
-  [ -f "$TMP_DIR/.codex/skills/impl-kramme-temp-command/SKILL.md" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:temp-command/SKILL.md" ]
 
-  rm "$PROMPT_PLUGIN_DIR/commands/kramme-temp-command.md"
-  run bash -c "printf 'y\\n' | node \"$SCRIPT\" install \"$PROMPT_PLUGIN_DIR\" --to codex --codex-home \"$TMP_DIR\" --agents-home \"$TMP_DIR/.agents\""
+  rm "$PLUGIN_DIR/commands/kramme-temp-command.md"
+  run bash -c "printf 'y\\n' | node \"$SCRIPT\" install \"$PLUGIN_DIR\" --to codex --codex-home \"$TMP_DIR\" --agents-home \"$TMP_DIR/.agents\""
   [ "$status" -eq 0 ]
-  [ ! -f "$TMP_DIR/.codex/prompts/kramme-temp-command.md" ]
-  [ ! -f "$TMP_DIR/.codex/skills/impl-kramme-temp-command/SKILL.md" ]
+  [ ! -f "$TMP_DIR/.codex/skills/kramme:temp-command/SKILL.md" ]
 }
 
 @test "codex conversion accepts streaming yes input for non-interactive confirmations" {
@@ -212,9 +200,8 @@ MD
 
   run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
   [ "$status" -eq 0 ]
-  [ -f "$TMP_DIR/.codex/prompts/kramme-create-pr.md" ]
-  [ -f "$TMP_DIR/.codex/skills/impl-kramme-create-pr/SKILL.md" ]
-  [ -f "$TMP_DIR/.agents/skills/kramme-architecture-strategist/SKILL.md" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:create-pr/SKILL.md" ]
+  [ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
 
   EMPTY_PLUGIN_DIR="$TMP_DIR/empty-plugin-yes"
   mkdir -p "$EMPTY_PLUGIN_DIR/.claude-plugin"
@@ -230,9 +217,22 @@ JSON
 
   run bash -c "set +e; set +o pipefail; yes | node \"$SCRIPT\" install \"$EMPTY_PLUGIN_DIR\" --to codex --codex-home \"$TMP_DIR\" --agents-home \"$TMP_DIR/.agents\"; exit \${PIPESTATUS[1]}"
   [ "$status" -eq 0 ]
-  [ ! -f "$TMP_DIR/.codex/prompts/kramme-create-pr.md" ]
-  [ ! -f "$TMP_DIR/.codex/skills/impl-kramme-create-pr/SKILL.md" ]
-  [ ! -d "$TMP_DIR/.agents/skills/kramme-architecture-strategist" ]
+  [ ! -f "$TMP_DIR/.codex/skills/kramme:create-pr/SKILL.md" ]
+  [ ! -d "$TMP_DIR/.agents/skills/kramme:architecture-strategist" ]
+}
+
+@test "codex conversion cleans old impl- prefixed skills on upgrade" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  mkdir -p "$TMP_DIR/.codex/skills/impl-kramme-create-pr"
+  echo "old" > "$TMP_DIR/.codex/skills/impl-kramme-create-pr/SKILL.md"
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+  [ ! -d "$TMP_DIR/.codex/skills/impl-kramme-create-pr" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:create-pr/SKILL.md" ]
 }
 
 @test "opencode conversion includes command entries from skills" {
