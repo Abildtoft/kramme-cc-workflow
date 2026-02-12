@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.21.0] - 2026-02-12
+
+### Added
+- Preserve colon-based skill names and remove prompt duplication (#146)
+
+### Fixed
+- Strengthen siw audit workflow guidance (#148)
+
 ## [0.20.0] - 2026-02-12
 
 ### Added
@@ -290,6 +298,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.21.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.17.0...v0.18.0
