@@ -35,6 +35,8 @@ JSON
   run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
   [ "$status" -eq 0 ]
   [ -f "$TMP_DIR/.codex/prompts/kramme-create-pr.md" ]
+  [ -f "$TMP_DIR/.codex/skills/impl-kramme-create-pr/SKILL.md" ]
+  [ ! -d "$TMP_DIR/.codex/skills/kramme-create-pr" ]
 
   run find "$TMP_DIR/.codex/prompts" -type f
   [ "$status" -eq 0 ]
@@ -141,7 +143,8 @@ MD
   run node "$SCRIPT" install "$PROMPT_PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
   [ "$status" -eq 0 ]
   [ -f "$TMP_DIR/.codex/prompts/kramme-temp-command.md" ]
-  [ -f "$TMP_DIR/.codex/skills/kramme-temp-command/SKILL.md" ]
+  [ -f "$TMP_DIR/.codex/skills/impl-kramme-temp-command/SKILL.md" ]
+  [ ! -d "$TMP_DIR/.codex/skills/kramme-temp-command" ]
 
   rm "$PROMPT_PLUGIN_DIR/commands/kramme-temp-command.md"
   cat > "$PROMPT_PLUGIN_DIR/commands/kramme-next-command.md" <<'MD'
@@ -157,8 +160,9 @@ MD
   [ "$status" -eq 0 ]
   [ ! -f "$TMP_DIR/.codex/prompts/kramme-temp-command.md" ]
   [ -f "$TMP_DIR/.codex/prompts/kramme-next-command.md" ]
-  [ ! -f "$TMP_DIR/.codex/skills/kramme-temp-command/SKILL.md" ]
-  [ -f "$TMP_DIR/.codex/skills/kramme-next-command/SKILL.md" ]
+  [ ! -f "$TMP_DIR/.codex/skills/impl-kramme-temp-command/SKILL.md" ]
+  [ -f "$TMP_DIR/.codex/skills/impl-kramme-next-command/SKILL.md" ]
+  [ ! -d "$TMP_DIR/.codex/skills/kramme-next-command" ]
 }
 
 @test "codex conversion cleans stale prompts when commands are removed" {
@@ -189,13 +193,13 @@ MD
   run node "$SCRIPT" install "$PROMPT_PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
   [ "$status" -eq 0 ]
   [ -f "$TMP_DIR/.codex/prompts/kramme-temp-command.md" ]
-  [ -f "$TMP_DIR/.codex/skills/kramme-temp-command/SKILL.md" ]
+  [ -f "$TMP_DIR/.codex/skills/impl-kramme-temp-command/SKILL.md" ]
 
   rm "$PROMPT_PLUGIN_DIR/commands/kramme-temp-command.md"
   run bash -c "printf 'y\\n' | node \"$SCRIPT\" install \"$PROMPT_PLUGIN_DIR\" --to codex --codex-home \"$TMP_DIR\" --agents-home \"$TMP_DIR/.agents\""
   [ "$status" -eq 0 ]
   [ ! -f "$TMP_DIR/.codex/prompts/kramme-temp-command.md" ]
-  [ ! -f "$TMP_DIR/.codex/skills/kramme-temp-command/SKILL.md" ]
+  [ ! -f "$TMP_DIR/.codex/skills/impl-kramme-temp-command/SKILL.md" ]
 }
 
 @test "codex conversion accepts streaming yes input for non-interactive confirmations" {
@@ -209,6 +213,7 @@ MD
   run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
   [ "$status" -eq 0 ]
   [ -f "$TMP_DIR/.codex/prompts/kramme-create-pr.md" ]
+  [ -f "$TMP_DIR/.codex/skills/impl-kramme-create-pr/SKILL.md" ]
   [ -f "$TMP_DIR/.agents/skills/kramme-architecture-strategist/SKILL.md" ]
 
   EMPTY_PLUGIN_DIR="$TMP_DIR/empty-plugin-yes"
@@ -226,6 +231,7 @@ JSON
   run bash -c "set +e; set +o pipefail; yes | node \"$SCRIPT\" install \"$EMPTY_PLUGIN_DIR\" --to codex --codex-home \"$TMP_DIR\" --agents-home \"$TMP_DIR/.agents\"; exit \${PIPESTATUS[1]}"
   [ "$status" -eq 0 ]
   [ ! -f "$TMP_DIR/.codex/prompts/kramme-create-pr.md" ]
+  [ ! -f "$TMP_DIR/.codex/skills/impl-kramme-create-pr/SKILL.md" ]
   [ ! -d "$TMP_DIR/.agents/skills/kramme-architecture-strategist" ]
 }
 
