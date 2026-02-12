@@ -354,6 +354,7 @@ async function loadCommands(commandsDirs) {
       argumentHint: data["argument-hint"],
       model: data.model,
       allowedTools,
+      disableModelInvocation: data["disable-model-invocation"],
       body: body.trim(),
       sourcePath: file,
     })
@@ -408,6 +409,7 @@ function deriveInvocableCommands(legacyCommands, skills) {
       argumentHint: skill.argumentHint,
       model: skill.model,
       allowedTools: skill.allowedTools,
+      disableModelInvocation: skill.disableModelInvocation,
       body: skill.body,
       sourcePath: skill.skillPath,
     })
@@ -896,24 +898,29 @@ function escapeTemplateLiteral(value) {
   return String(value).replace(/[`\\]/g, "\\$&").replace(/\$\{/g, "\\${")
 }
 
+const CODEX_COMMAND_SKILL_PREFIX = "impl-"
+
 function convertClaudeToCodex(plugin, options) {
   const { skills, commands } = filterByPlatform(plugin.skills, plugin.commands, "codex")
+  const skillDirs = skills
+    .filter((skill) => skill.userInvocable === false)
+    .map((skill) => ({ name: skill.name, sourceDir: skill.sourceDir }))
+
   const promptNames = new Set()
-  const skillDirs = skills.map((skill) => ({
-    name: skill.name,
-    sourceDir: skill.sourceDir,
+  const commandEntries = commands.map((command) => ({
+    command,
+    promptName: uniqueName(normalizeName(command.name), promptNames),
   }))
 
   const usedSkillNames = new Set(skillDirs.map((skill) => normalizeName(skill.name)))
-  const knownCommands = new Set(commands.map((command) => normalizeName(command.name)))
-  const commandSkills = []
-  const prompts = commands.map((command) => {
-    const promptName = uniqueName(normalizeName(command.name), promptNames)
-    const commandSkill = convertCommandSkill(command, usedSkillNames, knownCommands)
-    commandSkills.push(commandSkill)
-    const content = renderPrompt(command, commandSkill.name, knownCommands)
-    return { name: promptName, content }
-  })
+  const commandNames = new Set(commandEntries.map((entry) => entry.promptName))
+  const commandSkills = commandEntries.map(({ command, promptName }) =>
+    convertCommandSkill(command, usedSkillNames, commandNames, promptName),
+  )
+  const prompts = commandEntries.map(({ command, promptName }, index) => ({
+    name: promptName,
+    content: renderPrompt(command, promptName, commandSkills[index].name),
+  }))
 
   const agentSkills = plugin.agents.map((agent) => convertAgentSkill(agent, usedSkillNames))
 
@@ -948,18 +955,19 @@ function convertAgentSkill(agent, usedNames) {
   return { name, content }
 }
 
-function convertCommandSkill(command, usedNames, knownCommands) {
-  const name = uniqueName(normalizeName(command.name), usedNames)
+function convertCommandSkill(command, usedNames, knownCommands, promptName) {
+  const baseName = `${CODEX_COMMAND_SKILL_PREFIX}${promptName ?? normalizeName(command.name)}`
+  const name = uniqueName(baseName, usedNames)
   const frontmatter = {
     name,
     description: sanitizeDescription(
       command.description ?? `Converted from Claude command ${command.name}`,
     ),
+    "argument-hint": command.argumentHint,
+    "user-invocable": false,
+    "disable-model-invocation": command.disableModelInvocation,
   }
   const sections = []
-  if (command.argumentHint) {
-    sections.push(`## Arguments\n${command.argumentHint}`)
-  }
   if (command.allowedTools && command.allowedTools.length > 0) {
     sections.push(`## Allowed tools\n${command.allowedTools.map((tool) => `- ${tool}`).join("\n")}`)
   }
@@ -968,6 +976,18 @@ function convertCommandSkill(command, usedNames, knownCommands) {
   const body = sections.filter(Boolean).join("\n\n").trim()
   const content = formatFrontmatter(frontmatter, body.length > 0 ? body : command.body)
   return { name, content }
+}
+
+function renderPrompt(command, promptName, backingSkillName) {
+  const frontmatter = {
+    name: promptName,
+    description: sanitizeDescription(
+      command.description ?? `Converted from Claude command ${command.name}`,
+    ),
+    "argument-hint": command.argumentHint,
+  }
+  const body = `Use the $${backingSkillName} skill and follow its instructions.`
+  return formatFrontmatter(frontmatter, body)
 }
 
 function transformContentForCodex(body, options = {}) {
@@ -987,7 +1007,7 @@ function transformContentForCodex(body, options = {}) {
     if (["dev", "tmp", "etc", "usr", "var", "bin", "home"].includes(commandName)) return match
     const normalizedName = normalizeName(commandName)
     if (knownCommands && !knownCommands.has(normalizedName)) return match
-    return `/prompts:${normalizedName}`
+    return `$${normalizedName}`
   })
 
   const agentRefPattern = /@([a-z][a-z0-9-]*-(?:agent|reviewer|researcher|analyst|specialist|oracle|sentinel|guardian|strategist))/gi
@@ -997,17 +1017,6 @@ function transformContentForCodex(body, options = {}) {
   })
 
   return result
-}
-
-function renderPrompt(command, skillName, knownCommands) {
-  const frontmatter = {
-    description: command.description,
-    "argument-hint": command.argumentHint,
-  }
-  const instructions = `Use the $${skillName} skill for this command and follow its instructions.`
-  const transformedBody = transformContentForCodex(command.body, { knownCommands })
-  const body = [instructions, "", transformedBody].join("\n").trim()
-  return formatFrontmatter(frontmatter, body)
 }
 
 function normalizeName(value) {
@@ -1105,7 +1114,7 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   }
 
   const skillsRoot = path.join(codexRoot, "skills")
-  await cleanupKrammeSkills(skillsRoot, extraOpts.confirm)
+  await cleanupKrammeSkills(skillsRoot, extraOpts.confirm, ["kramme:", "kramme-", CODEX_COMMAND_SKILL_PREFIX])
 
   for (const skill of bundle.skillDirs) {
     await copyDir(skill.sourceDir, path.join(skillsRoot, skill.name))
@@ -1468,12 +1477,16 @@ async function cleanupKrammePrompts(promptsDir, confirmOptions = {}) {
   console.log(`Deleted ${krammePrompts.length} prompt(s).`)
 }
 
-async function cleanupKrammeSkills(skillsDir, confirmOptions = {}) {
+async function cleanupKrammeSkills(
+  skillsDir,
+  confirmOptions = {},
+  managedPrefixes = ["kramme:", "kramme-"],
+) {
   if (!(await pathExists(skillsDir))) return
   const entries = await fs.readdir(skillsDir, { withFileTypes: true })
   const krammeSkills = entries
     .filter((entry) => entry.isDirectory())
-    .filter((entry) => entry.name.startsWith("kramme:") || entry.name.startsWith("kramme-"))
+    .filter((entry) => managedPrefixes.some((prefix) => entry.name.startsWith(prefix)))
     .map((entry) => entry.name)
 
   if (krammeSkills.length === 0) return
