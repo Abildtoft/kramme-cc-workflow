@@ -1,7 +1,7 @@
 {
   "name": "kramme-connect-workflow",
   "description": "Claude Code plugin for Consensus ApS's Connect product monorepo — Angular modernization, Nx library extraction, and NgRx migration",
-  "version": "0.1.0",
+  "version": "0.21.0",
   "author": {
     "name": "Abildtoft",
     "email": ""
