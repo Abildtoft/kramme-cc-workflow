@@ -17,7 +17,7 @@ Set up the three-document system for tracking complex implementations locally, w
 - **DOES**: Create siw/ folder, spec file, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, siw/issues/, and optionally siw/supporting-specs/
 - **DOES NOT**: Define issues, implement features, or make code changes
 
-**Issue definition is a separate workflow.** After this command completes, invoke `/kramme:siw:define-issue` to create your first issue.
+**Issue definition is a separate workflow.** After this command completes, invoke `/kramme:siw:issue-define` to create your first issue.
 **Spec hardening is a separate workflow.** To strengthen an existing SIW spec, use `/kramme:siw:discovery`.
 
 ## Process Overview
@@ -28,7 +28,7 @@ Set up the three-document system for tracking complex implementations locally, w
 [Check for existing files] -> Found? -> Ask: resume or start fresh
     ↓
 [Handle arguments] -> file/folder: import content
-                   -> discover: run explore-interview
+                   -> discover: run kramme:discovery:interview
                    -> empty: continue to brief interview
     ↓
 [Brief interview OR Confirm imported content]
@@ -39,7 +39,7 @@ Set up the three-document system for tracking complex implementations locally, w
     ↓
 [Create documents] -> siw/spec, siw/LOG.md, siw/issues/, (supporting-specs/)
     ↓
-[Report success] -> Suggest /kramme:siw:define-issue
+[Report success] -> Suggest /kramme:siw:issue-define
 ```
 
 ## Phase 1: Check for Existing Workflow Files
@@ -59,7 +59,7 @@ header: "Existing Workflow Files Found"
 question: "Workflow files already exist in this directory. How would you like to proceed?"
 options:
   - label: "Resume existing workflow"
-    description: "Continue with current files (invokes structured-implementation-workflow skill)"
+    description: "Continue with current files (invokes kramme:siw:next skill)"
   - label: "Start fresh"
     description: "Delete existing workflow files and create new ones"
   - label: "Abort"
@@ -68,7 +68,7 @@ options:
 
 **If "Resume existing workflow":**
 - Stop this command
-- Inform user that the `kramme:structured-implementation-workflow` skill will auto-trigger when they start working
+- Inform user that the `kramme:siw:next` skill will auto-trigger when they start working
 - Suggest reading siw/LOG.md for current progress
 
 **If "Start fresh":**
@@ -143,7 +143,7 @@ If `$ARGUMENTS` starts with "discover" or "interview":
    freeform: true
    ```
 
-3. **Execute explore-interview workflow inline:**
+3. **Execute discovery interview workflow inline:**
 
    Classify the topic into one of these categories:
    - **Software Feature**: New functionality, UI changes, API additions
@@ -422,7 +422,7 @@ Tasks will be tracked in individual issue files. See `siw/OPEN_ISSUES_OVERVIEW.m
   Add note: "Suggested task breakdown from discovery:
   - {phase/step 1}
   - {phase/step 2}
-  Use /kramme:siw:define-issue to create formal issues."}
+  Use /kramme:siw:issue-define to create formal issues."}
 
 ## Design Decisions
 
@@ -529,8 +529,8 @@ Create `siw/LOG.md` with initial structure:
 
 ### Next Steps
 
-1. Define first issue with `/kramme:siw:define-issue`
-2. Begin implementation with `/kramme:siw:implement-issue`
+1. Define first issue with `/kramme:siw:issue-define`
+2. Begin implementation with `/kramme:siw:issue-implement`
 3. **Blockers:** None
 
 ---
@@ -570,7 +570,7 @@ Create `siw/OPEN_ISSUES_OVERVIEW.md`:
 
 | # | Title | Status | Priority | Related |
 |---|-------|--------|----------|---------|
-| _None_ | _Use `/kramme:siw:define-issue` to create first issue (G-001)_ | | | |
+| _None_ | _Use `/kramme:siw:issue-define` to create first issue (G-001)_ | | | |
 
 **Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
 
@@ -615,14 +615,14 @@ Created:
   siw/issues/                  - Individual issue files (temporary)
 
 Next Steps:
-  1. Run /kramme:siw:generate-phases to decompose spec into phase-based issues
-     OR /kramme:siw:define-issue to create issues one at a time
-  2. Run /kramme:siw:implement-issue <G-XXX or P1-XXX> to start implementing
+  1. Run /kramme:siw:phases-generate to decompose spec into phase-based issues
+     OR /kramme:siw:issue-define to create issues one at a time
+  2. Run /kramme:siw:issue-implement <G-XXX or P1-XXX> to start implementing
 
 Tips:
   - The spec file is permanent; keep it updated as your source of truth
   - siw/LOG.md and siw/issues are temporary; delete them when work is complete
-  - Use /kramme:clean-up-artifacts to remove temporary files when done
+  - Use /kramme:artifacts:cleanup to remove temporary files when done
 ```
 
 **If external files were linked, also show:**
@@ -667,5 +667,5 @@ Supporting Specs:
 3. **Offer file relocation** - Ask if linked files should be moved into siw/ or kept in place
 4. **Thorough discovery** - When using discover mode, conduct comprehensive interview before creating spec
 5. **Smart defaults** - Auto-detect spec type but always confirm
-6. **Clear next steps** - Always point user to `/kramme:siw:define-issue`
+6. **Clear next steps** - Always point user to `/kramme:siw:issue-define`
 7. **Respect existing work** - Never overwrite without explicit confirmation

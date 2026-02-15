@@ -63,53 +63,106 @@ All plugin functionality is delivered through skills. Skills can be user-invoked
 
 ### User-Invocable Skills
 
-| Skill | Description |
-|-------|-------------|
-| `/kramme:changelog-generator` | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
-| `/kramme:clean-up-artifacts` | Delete workflow artifacts (REVIEW_OVERVIEW.md, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files). For SIW-specific cleanup, use `/kramme:siw:remove`. |
-| `/kramme:configure-context-links` | Configure `context-links` hook settings by writing local overrides to `hooks/context-links.config` (workspace slug, team keys, regexes). |
-| `/kramme:create-pr` | Create a clean PR with narrative-quality commits and comprehensive description. Orchestrates branch setup, commit restructuring, and PR creation. |
-| `/kramme:delete-learning` | Delete a learning from the database by ID. Supports bulk deletion by category, project, or age. |
-| `/kramme:deslop` | Remove AI-generated code slop from a branch. Uses `kramme:deslop-reviewer` agent to identify slop, then fixes the issues. |
-| `/kramme:explore-interview` | Conduct an in-depth interview about a topic/proposal to uncover requirements. Uses structured questioning to explore features, processes, or architecture decisions. |
-| `/kramme:extract-learnings` | Extract non-obvious learnings from session to AGENTS.md files. Presents suggestions for approval before making changes. |
-| `/kramme:find-bugs` | Find bugs, security vulnerabilities, and code quality issues in branch changes. Performs systematic security review with attack surface mapping and checklist-based analysis. |
-| `/kramme:find-bugs:team` | Team-based bug and security review using Agent Teams. Specialized reviewers (injection, auth, data, logic) work in parallel and cross-validate findings like a red team exercise. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
-| `/kramme:fixup-changes` | Intelligently fixup unstaged changes into existing commits. Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
-| `/kramme:humanize-text` | Remove signs of AI-generated writing from text to make it sound more natural and human-written. Accepts file paths or raw text. |
-| `/kramme:iterate-pr` | Iterate on a PR until CI passes. Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
-| `/kramme:learn` | Add a learning to the persistent database. Proposes adding to AGENTS.md if project-relevant. |
-| `/kramme:linear:define-issue` | Create or improve a Linear issue through exhaustive guided refinement. Can start from scratch or refine an existing issue by ID. Supports file references for context. |
-| `/kramme:linear:implement-issue` | Start implementing a Linear issue with branch setup, context gathering, and guided workflow. Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
-| `/kramme:list-learnings` | List all learnings, optionally filtered by category or project. Use `--categories` for summary or `--stats` for database statistics. |
-| `/kramme:markdown-converter` | Convert documents (PDF, Word, Excel, images, audio, etc.) to Markdown using markitdown |
-| `/kramme:pr-description-generator` | Generate PR descriptions by analyzing git changes, commit history, and Linear issues |
-| `/kramme:rebase-pr` | Rebase current branch onto latest main/master, then force push. Use when your PR is behind the base branch. |
-| `/kramme:recreate-commits` | Recreate current branch in-place with narrative-quality commits and logical, reviewer-friendly commit history. |
-| `/kramme:redo-elegantly` | Scrap a working-but-mediocre fix and reimplement elegantly. Extracts learnings from the initial attempt, then starts fresh with the elegant solution. |
-| `/kramme:refactor-pass` | Lightweight simplification pass on recent changes — removes dead code, straightens logic, removes excessive parameters, and verifies with build/tests. Unlike `redo-elegantly` which scraps and redoes from scratch, this incrementally cleans up working code. |
-| `/kramme:resolve-review` | Resolve findings from code reviews. Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
-| `/kramme:resolve-review:team` | Resolve review findings in parallel using Agent Teams. Groups findings by file area and assigns to separate teammates for faster resolution. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
-| `/kramme:review-pr` | Run comprehensive PR review using specialized agents. Supports reviewing comments, tests, errors, types, and code quality. Can run agents sequentially or in parallel. |
-| `/kramme:review-pr:team` | Team-based PR review using Agent Teams where specialized reviewers collaborate, cross-validate findings, and challenge each other's suggestions. Higher quality, higher token cost. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
-| `/kramme:search-learnings` | Search learnings database using BM25 full-text search. Filter by category or project. |
-| `/kramme:setup-learn` | Initialize or verify the learnings database (and optionally rebuild FTS). |
-| `/kramme:siw:audit-spec` | Audit spec quality (coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design) before implementation. Produces a structured report and optionally creates SIW issues. |
-| `/kramme:siw:audit-implementation` | Exhaustively audit codebase against specification files. Finds naming misalignments, missing implementations, and spec drift. Produces a structured report and optionally creates SIW issues. |
-| `/kramme:siw:resolve-audit` | Resolve audit findings one-by-one with executive summaries, alternatives, a recommended option, and SIW issue creation based on user preference. |
-| `/kramme:siw:define-issue` | Define a new local issue with guided interview process. Creates issue files in the `issues/` directory. |
-| `/kramme:siw:discovery` | Run a focused SIW spec-strengthening interview. Identifies quality gaps and produces concrete spec improvements (optionally applies them). |
-| `/kramme:siw:generate-phases` | Break spec into atomic, phase-based issues with tests and validation. Uses `P1-001`, `P2-001`, `G-001` numbering. Reviews breakdown with subagent before creating files. |
-| `/kramme:siw:implement-issue` | Start implementing a defined local issue with codebase exploration and planning. Works on current branch. |
-| `/kramme:siw:implement-parallel` | Implement multiple SIW issues simultaneously using Agent Teams. Each teammate implements one issue with a full context window. Handles file ownership and batching. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
-| `/kramme:siw:init` | Initialize structured implementation workflow documents in `siw/` (spec, siw/LOG.md, siw/issues). Accepts optional arguments: file path(s) or folder to link existing specs (references them, doesn't duplicate content), or `discover` to run an in-depth interview. Offers to move or keep linked files in place. Sets up local issue tracking without requiring Linear. |
-| `/kramme:siw:remove` | Remove all Structured Implementation Workflow (SIW) files from current directory. Cleans up temporary workflow documents. |
-| `/kramme:siw:reset` | Reset SIW workflow state while preserving the spec. Migrates log decisions to spec, then clears issues and log for fresh start. |
-| `/kramme:siw:restart-issues` | Remove all DONE issues and renumber remaining issues from 001. Cleans up completed work and provides fresh numbering sequence. |
-| `/kramme:structured-implementation-workflow` | Structured Implementation Workflow (SIW) entry point. Triggers on "SIW", "structured workflow", or when siw/LOG.md and siw/OPEN_ISSUES_OVERVIEW.md files are detected. Use `/kramme:siw:init` to set up. |
-| `/kramme:toggle-hook` | Enable or disable a plugin hook. Use `status` to list all hooks, or specify a hook name to toggle. |
-| `/kramme:verify` | Run verification checks (tests, formatting, builds, linting, type checking) for affected code. Automatically detects project type and runs appropriate commands. |
-| `/kramme:wrap-up-session` | End-of-session checklist to capture progress, ensure quality, and document next steps. Audits uncommitted changes, runs quality checks, prompts for session summary and next steps, and optionally extracts learnings. |
+#### Structured Implementation Workflow (SIW)
+
+Local issue tracking and structured implementation planning using markdown files.
+
+| Skill | Invocation | Description |
+|-------|------------|-------------|
+| `/kramme:siw:init` | User | Initialize structured implementation workflow documents in `siw/` (spec, siw/LOG.md, siw/issues). Accepts optional arguments: file path(s) or folder to link existing specs (references them, doesn't duplicate content), or `discover` to run an in-depth interview. Offers to move or keep linked files in place. Sets up local issue tracking without requiring Linear. |
+| `/kramme:siw:next` | User, Auto | Structured Implementation Workflow (SIW) entry point. Triggers on "SIW", "structured workflow", or when siw/LOG.md and siw/OPEN_ISSUES_OVERVIEW.md files are detected. Use `/kramme:siw:init` to set up. |
+| `/kramme:siw:discovery` | User | Run a focused SIW spec-strengthening interview. Identifies quality gaps and produces concrete spec improvements (optionally applies them). |
+| `/kramme:siw:issue-define` | User | Define a new local issue with guided interview process. Creates issue files in the `issues/` directory. |
+| `/kramme:siw:phases-generate` | User | Break spec into atomic, phase-based issues with tests and validation. Uses `P1-001`, `P2-001`, `G-001` numbering. Reviews breakdown with subagent before creating files. |
+| `/kramme:siw:issue-implement` | User | Start implementing a defined local issue with codebase exploration and planning. Works on current branch. |
+| `/kramme:siw:issue-implement:team` | User | Implement multiple SIW issues simultaneously using Agent Teams. Each teammate implements one issue with a full context window. Handles file ownership and batching. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
+| `/kramme:siw:spec-audit` | User | Audit spec quality (coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design) before implementation. Produces a structured report and optionally creates SIW issues. |
+| `/kramme:siw:implementation-audit` | User | Exhaustively audit codebase against specification files. Finds naming misalignments, missing implementations, and spec drift. Produces a structured report and optionally creates SIW issues. |
+| `/kramme:siw:audit-resolve` | User | Resolve audit findings one-by-one with executive summaries, alternatives, a recommended option, and SIW issue creation based on user preference. |
+| `/kramme:siw:issues-reindex` | User | Remove all DONE issues and renumber remaining issues from 001. Cleans up completed work and provides fresh numbering sequence. |
+| `/kramme:siw:reset` | User | Reset SIW workflow state while preserving the spec. Migrates log decisions to spec, then clears issues and log for fresh start. |
+| `/kramme:siw:remove` | User | Remove all Structured Implementation Workflow (SIW) files from current directory. Cleans up temporary workflow documents. |
+
+#### Pull Requests
+
+PR creation, review, iteration, and resolution.
+
+| Skill | Invocation | Description |
+|-------|------------|-------------|
+| `/kramme:pr:create` | User | Create a clean PR with narrative-quality commits and comprehensive description. Orchestrates branch setup, commit restructuring, and PR creation. |
+| `/kramme:pr:review` | User | Run comprehensive PR review using specialized agents. Supports reviewing comments, tests, errors, types, and code quality. Can run agents sequentially or in parallel. |
+| `/kramme:pr:review:team` | User | Team-based PR review using Agent Teams where specialized reviewers collaborate, cross-validate findings, and challenge each other's suggestions. Higher quality, higher token cost. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
+| `/kramme:pr:resolve-review` | User | Resolve findings from code reviews. Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
+| `/kramme:pr:resolve-review:team` | User | Resolve review findings in parallel using Agent Teams. Groups findings by file area and assigns to separate teammates for faster resolution. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
+| `/kramme:pr:fix-ci` | User | Iterate on a PR until CI passes. Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
+| `/kramme:pr:generate-description` | User, Auto | Generate PR descriptions by analyzing git changes, commit history, and Linear issues |
+| `/kramme:pr:rebase` | User | Rebase current branch onto latest main/master, then force push. Use when your PR is behind the base branch. |
+
+#### Learnings
+
+Persistent knowledge management across sessions using a SQLite database.
+
+| Skill | Invocation | Description |
+|-------|------------|-------------|
+| `/kramme:learnings:add` | User | Add a learning to the persistent database. Proposes adding to AGENTS.md if project-relevant. |
+| `/kramme:learnings:extract` | User | Extract non-obvious learnings from session to AGENTS.md files. Presents suggestions for approval before making changes. |
+| `/kramme:learnings:search` | User, Auto | Search learnings database using BM25 full-text search. Filter by category or project. |
+| `/kramme:learnings:list` | User, Auto | List all learnings, optionally filtered by category or project. Use `--categories` for summary or `--stats` for database statistics. |
+| `/kramme:learnings:delete` | User | Delete a learning from the database by ID. Supports bulk deletion by category, project, or age. |
+| `/kramme:learnings:setup` | User | Initialize or verify the learnings database (and optionally rebuild FTS). |
+
+#### Code Quality & Review
+
+Code cleanup, refactoring, and bug/security review.
+
+| Skill | Invocation | Description |
+|-------|------------|-------------|
+| `/kramme:code:cleanup-ai` | User | Remove AI-generated code slop from a branch. Uses `kramme:deslop-reviewer` agent to identify slop, then fixes the issues. |
+| `/kramme:code:rewrite-clean` | User | Scrap a working-but-mediocre fix and reimplement elegantly. Extracts learnings from the initial attempt, then starts fresh with the elegant solution. |
+| `/kramme:code:refactor-pass` | User, Auto | Lightweight simplification pass on recent changes — removes dead code, straightens logic, removes excessive parameters, and verifies with build/tests. Unlike `kramme:code:rewrite-clean` which scraps and redoes from scratch, this incrementally cleans up working code. |
+| `/kramme:review:find-bugs` | User, Auto | Find bugs, security vulnerabilities, and code quality issues in branch changes. Performs systematic security review with attack surface mapping and checklist-based analysis. |
+| `/kramme:review:find-bugs:team` | User | Team-based bug and security review using Agent Teams. Specialized reviewers (injection, auth, data, logic) work in parallel and cross-validate findings like a red team exercise. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
+
+#### Git
+
+Git history management and commit operations.
+
+| Skill | Invocation | Description |
+|-------|------------|-------------|
+| `/kramme:git:fixup` | User | Intelligently fixup unstaged changes into existing commits. Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
+| `/kramme:git:recreate-commits` | User | Recreate current branch in-place with narrative-quality commits and logical, reviewer-friendly commit history. |
+
+#### Linear
+
+Linear issue tracking integration.
+
+| Skill | Invocation | Description |
+|-------|------------|-------------|
+| `/kramme:linear:issue-define` | User | Create or improve a Linear issue through exhaustive guided refinement. Can start from scratch or refine an existing issue by ID. Supports file references for context. |
+| `/kramme:linear:issue-implement` | User | Start implementing a Linear issue with branch setup, context gathering, and guided workflow. Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
+
+#### Discovery & Documentation
+
+Requirements discovery, document conversion, and text processing.
+
+| Skill | Invocation | Description |
+|-------|------------|-------------|
+| `/kramme:discovery:interview` | User | Conduct an in-depth interview about a topic/proposal to uncover requirements. Uses structured questioning to explore features, processes, or architecture decisions. |
+| `/kramme:docs:to-markdown` | User, Auto | Convert documents (PDF, Word, Excel, images, audio, etc.) to Markdown using markitdown |
+| `/kramme:text:humanize` | User, Auto | Remove signs of AI-generated writing from text to make it sound more natural and human-written. Accepts file paths or raw text. |
+
+#### Workflow & Configuration
+
+Session management, verification, artifact cleanup, and hook configuration.
+
+| Skill | Invocation | Description |
+|-------|------------|-------------|
+| `/kramme:artifacts:cleanup` | User | Delete workflow artifacts (REVIEW_OVERVIEW.md, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files). For SIW-specific cleanup, use `/kramme:siw:remove`. |
+| `/kramme:changelog:generate` | User | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
+| `/kramme:hooks:configure-links` | User | Configure `context-links` hook settings by writing local overrides to `hooks/context-links.config` (workspace slug, team keys, regexes). |
+| `/kramme:hooks:toggle` | User | Enable or disable a plugin hook. Use `status` to list all hooks, or specify a hook name to toggle. |
+| `/kramme:session:wrap-up` | User | End-of-session checklist to capture progress, ensure quality, and document next steps. Audits uncommitted changes, runs quality checks, prompts for session summary and next steps, and optionally extracts learnings. |
+| `/kramme:verify:run` | User, Auto | Run verification checks (tests, formatting, builds, linting, type checking) for affected code. Automatically detects project type and runs appropriate commands. |
 
 ### Background Skills
 
@@ -117,13 +170,13 @@ Auto-triggered by Claude based on context. These don't appear in the `/` menu.
 
 | Skill | Trigger Condition |
 |-------|-------------------|
-| `kramme:agents-md` | Add guidelines to AGENTS.md with structured, keyword-based documentation. Triggers on "update AGENTS.md", "add to AGENTS.md", "maintain agent docs" |
-| `kramme:commit` | Creating commits or writing commit messages (plain English, no conventional commits) |
-| `kramme:verification-before-completion` | About to claim work is complete/fixed/passing — requires evidence before assertions |
+| `kramme:docs:update-agents-md` | Add guidelines to AGENTS.md with structured, keyword-based documentation. Triggers on "update AGENTS.md", "add to AGENTS.md", "maintain agent docs" |
+| `kramme:git:commit-message` | Creating commits or writing commit messages (plain English, no conventional commits) |
+| `kramme:verify:before-completion` | About to claim work is complete/fixed/passing — requires evidence before assertions |
 
 ## Agents
 
-Specialized subagents for PR review tasks. These are invoked by the `/kramme:review-pr` skill or can be used directly via the Task tool.
+Specialized subagents for PR review tasks. These are invoked by the `/kramme:pr:review` skill or can be used directly via the Task tool.
 
 | Agent | Description |
 |-------|-------------|
@@ -154,23 +207,23 @@ Event handlers that run automatically at specific points in the Claude Code life
 
 ### Toggling Hooks
 
-Use `/kramme:toggle-hook` to enable or disable hooks:
+Use `/kramme:hooks:toggle` to enable or disable hooks:
 
 ```bash
 # List all hooks and their status
-/kramme:toggle-hook status
+/kramme:hooks:toggle status
 
 # Disable a hook
-/kramme:toggle-hook auto-format disable
+/kramme:hooks:toggle auto-format disable
 
 # Enable a hook
-/kramme:toggle-hook auto-format enable
+/kramme:hooks:toggle auto-format enable
 
 # Toggle a hook (enable if disabled, disable if enabled)
-/kramme:toggle-hook auto-format
+/kramme:hooks:toggle auto-format
 
 # Reset all hooks to enabled
-/kramme:toggle-hook reset
+/kramme:hooks:toggle reset
 ```
 
 State is stored in `hooks/hook-state.json` (gitignored) and persists across sessions.
@@ -190,9 +243,9 @@ cp hooks/context-links.config.example hooks/context-links.config
 You can also configure this via skill:
 
 ```bash
-/kramme:configure-context-links show
-/kramme:configure-context-links CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG=acme
-/kramme:configure-context-links CONTEXT_LINKS_LINEAR_TEAM_KEYS=ENG,OPS,PLAT
+/kramme:hooks:configure-links show
+/kramme:hooks:configure-links CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG=acme
+/kramme:hooks:configure-links CONTEXT_LINKS_LINEAR_TEAM_KEYS=ENG,OPS,PLAT
 ```
 
 Supported variables:
@@ -580,9 +633,9 @@ These MCP servers enhance the plugin's capabilities.
 
 | Server | Purpose |
 |--------|---------|
-| **Linear** | Issue tracking for `/kramme:linear:implement-issue` and `/kramme:linear:define-issue` |
+| **Linear** | Issue tracking for `/kramme:linear:issue-implement` and `/kramme:linear:issue-define` |
 | **Context7** | Up-to-date library documentation retrieval |
-| **Nx MCP** | Nx monorepo tools for `/kramme:verify` in Nx workspaces |
+| **Nx MCP** | Nx monorepo tools for `/kramme:verify:run` in Nx workspaces |
 | **Chrome DevTools** | Browser automation and debugging |
 | **Claude in Chrome** | Browser automation via Chrome extension |
 | **Playwright** | Browser automation for testing |
@@ -798,15 +851,15 @@ The plugin includes a persistent SQLite database for storing learnings across se
 **Location:** `~/.kramme-cc-workflow/learnings.db`
 
 **Commands:**
-- `/kramme:setup-learn` - Initialize or verify the learnings database
-- `/kramme:learn` - Add new learnings
-- `/kramme:search-learnings` - Full-text search with BM25 ranking
-- `/kramme:list-learnings` - Browse and filter learnings
-- `/kramme:delete-learning` - Remove learnings
+- `/kramme:learnings:setup` - Initialize or verify the learnings database
+- `/kramme:learnings:add` - Add new learnings
+- `/kramme:learnings:search` - Full-text search with BM25 ranking
+- `/kramme:learnings:list` - Browse and filter learnings
+- `/kramme:learnings:delete` - Remove learnings
 
 **Categories:** Navigation, Editing, Testing, Git, Quality, Context, Architecture, Performance, Prompting, Tooling
 
-The database is initialized automatically on first use. To manually initialize or repair, run `/kramme:setup-learn` or:
+The database is initialized automatically on first use. To manually initialize or repair, run `/kramme:learnings:setup` or:
 ```bash
 bash ~/.claude/plugins/kramme-cc-workflow/scripts/init-learnings-db.sh
 ```
@@ -947,11 +1000,11 @@ For maintainers: see [RELEASE.md](RELEASE.md) for the release process.
 
 ## Attribution
 
-- `kramme:agents-md`: Inspired by [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/agents-md/SKILL.md).
+- `kramme:docs:update-agents-md`: Inspired by [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/agents-md/SKILL.md).
 - `kramme:architecture-strategist`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
-- `kramme:commit`: From [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/commit/SKILL.md).
+- `kramme:git:commit-message`: From [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/commit/SKILL.md).
 - `kramme:design-iterator`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
-- `kramme:humanize-text`: Based on Wikipedia: Signs of AI writing (maintained by WikiProject AI Cleanup) and heavily inspired by [blader/humanizer](https://github.com/blader/humanizer).
+- `kramme:text:humanize`: Based on Wikipedia: Signs of AI writing (maintained by WikiProject AI Cleanup) and heavily inspired by [blader/humanizer](https://github.com/blader/humanizer).
 - `kramme:performance-oracle`: From [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - OpenCode/Codex converter: Inspired by [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 
