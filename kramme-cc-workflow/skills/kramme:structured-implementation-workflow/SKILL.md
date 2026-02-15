@@ -22,6 +22,7 @@ A local issue tracking system using markdown files to plan, track, and document 
 
 ```
 /kramme:siw:init                    # Initialize workflow documents
+/kramme:siw:discovery               # Strengthen spec quality before planning
 /kramme:siw:define-issue "feature"  # Create a work item (G-001 format)
 /kramme:siw:generate-phases         # Break spec into phase-based issues (P1-001, P2-001)
 /kramme:siw:implement-issue G-001   # Start implementing
@@ -110,6 +111,7 @@ Issues use prefix-based numbering:
 | Command | Purpose |
 |---------|---------|
 | `/kramme:siw:init` | Initialize SIW documents (spec, siw/LOG.md, siw/issues) |
+| `/kramme:siw:discovery` | Strengthen SIW spec quality with a targeted discovery interview and concrete patch plan (optional apply) |
 | `/kramme:siw:define-issue` | Define a new work item with guided interview (creates `G-XXX` issues) |
 | `/kramme:siw:generate-phases` | Break spec into atomic phase-based issues (`P1-XXX`, `P2-XXX`, `G-XXX`) |
 | `/kramme:siw:implement-issue` | Start implementing a defined issue (accepts `G-001`, `P1-001`, etc.) |
@@ -136,6 +138,7 @@ ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw
 |-------|--------|
 | **No files exist** | Run `/kramme:siw:init` to set up |
 | **Files exist, resuming** | Read siw/LOG.md "Current Progress" section first |
+| **Spec feels weak or underspecified** | Run `/kramme:siw:discovery` to strengthen spec quality before creating/implementing issues |
 | **Need new work item** | Run `/kramme:siw:define-issue` |
 | **Ready to implement** | Run `/kramme:siw:implement-issue {number}` |
 | **Spec written, not yet validated** | Run `/kramme:siw:audit-spec` to check spec quality before implementing |

@@ -92,7 +92,7 @@ Auto-detect spec files from the `siw/` directory:
 
 2. Find spec files (exclude workflow files):
    - Use Glob to find `siw/*.md`
-   - Exclude: `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `AUDIT_IMPLEMENTATION_REPORT.md`, `AUDIT_SPEC_REPORT.md`
+   - Exclude: `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `AUDIT_IMPLEMENTATION_REPORT.md`, `AUDIT_SPEC_REPORT.md`, `SPEC_STRENGTHENING_PLAN.md`
 
 3. Find supporting specs:
    - Use Glob to find `siw/supporting-specs/*.md`
