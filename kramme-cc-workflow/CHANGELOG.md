@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 ### Changed
+## [0.23.0] - 2026-02-15
+
+### Added
+- Add discovery workflow and spec-scan exclusions (#153)
+
+### Changed
+- Rename to hierarchical naming convention kramme:<domain>:<action> (#154)
+
 ## [0.22.0] - 2026-02-15
 
 ### Added
@@ -311,6 +319,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.23.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.19.0...v0.20.0
