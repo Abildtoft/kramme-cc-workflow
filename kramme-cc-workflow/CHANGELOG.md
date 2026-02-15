@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- Extract Connect-specific skills to separate `kramme-connect-workflow` plugin
+
 ## [0.21.0] - 2026-02-12
 
 ### Added

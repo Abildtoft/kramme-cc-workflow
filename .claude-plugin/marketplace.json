@@ -6,8 +6,13 @@
   "plugins": [
     {
       "name": "kramme-cc-workflow",
-      "source": "./",
+      "source": "./kramme-cc-workflow",
       "description": "Tooling for the workflows that Abildtoft encounters in his daily work"
+    },
+    {
+      "name": "kramme-connect-workflow",
+      "source": "./kramme-connect-workflow",
+      "description": "Claude Code plugin for Consensus ApS's Connect product monorepo — Angular modernization, Nx library extraction, and NgRx migration"
     }
   ]
 }

@@ -25,14 +25,8 @@ from changelog import generate_changelog
 
 
 def get_repo_root() -> Path:
-    """Get the repository root directory."""
-    result = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return Path(result.stdout.strip())
+    """Get the plugin root directory (parent of scripts/)."""
+    return Path(__file__).resolve().parent.parent
 
 
 def get_version_files(repo_root: Path) -> list[Path]:
