@@ -98,6 +98,7 @@ All plugin functionality is delivered through skills. Skills can be user-invoked
 | `/kramme:siw:audit-implementation` | Exhaustively audit codebase against specification files. Finds naming misalignments, missing implementations, and spec drift. Produces a structured report and optionally creates SIW issues. |
 | `/kramme:siw:resolve-audit` | Resolve audit findings one-by-one with executive summaries, alternatives, a recommended option, and SIW issue creation based on user preference. |
 | `/kramme:siw:define-issue` | Define a new local issue with guided interview process. Creates issue files in the `issues/` directory. |
+| `/kramme:siw:discovery` | Run a focused SIW spec-strengthening interview. Identifies quality gaps and produces concrete spec improvements (optionally applies them). |
 | `/kramme:siw:generate-phases` | Break spec into atomic, phase-based issues with tests and validation. Uses `P1-001`, `P2-001`, `G-001` numbering. Reviews breakdown with subagent before creating files. |
 | `/kramme:siw:implement-issue` | Start implementing a defined local issue with codebase exploration and planning. Works on current branch. |
 | `/kramme:siw:implement-parallel` | Implement multiple SIW issues simultaneously using Agent Teams. Each teammate implements one issue with a full context window. Handles file ownership and batching. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |

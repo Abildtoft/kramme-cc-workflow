@@ -18,6 +18,7 @@ Set up the three-document system for tracking complex implementations locally, w
 - **DOES NOT**: Define issues, implement features, or make code changes
 
 **Issue definition is a separate workflow.** After this command completes, invoke `/kramme:siw:define-issue` to create your first issue.
+**Spec hardening is a separate workflow.** To strengthen an existing SIW spec, use `/kramme:siw:discovery`.
 
 ## Process Overview
 
