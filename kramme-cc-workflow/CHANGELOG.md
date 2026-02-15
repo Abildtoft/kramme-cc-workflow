@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 ### Changed
+## [0.22.0] - 2026-02-15
+
+### Added
+- Add spec audit workflow and split audit reports (#150)
+
+### Changed
+- Extract Connect-specific skills to separate plugin (#151)
+
 - Extract Connect-specific skills to separate `kramme-connect-workflow` plugin
 
 ## [0.21.0] - 2026-02-12
@@ -303,6 +311,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.22.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.18.0...v0.19.0
