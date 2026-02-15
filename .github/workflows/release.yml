@@ -39,7 +39,7 @@ jobs:
       - name: Run tests
         run: |
           sudo apt-get update && sudo apt-get install -y bats jq
-          make test
+          make -C kramme-cc-workflow test
 
       - name: Configure Git
         run: |
@@ -49,8 +49,8 @@ jobs:
       - name: Run release script
         id: release
         run: |
-          python3 scripts/release.py ${{ inputs.version_type }} --ci
-          VERSION=$(python3 -c "import json; print(json.load(open('.claude-plugin/plugin.json'))['version'])")
+          python3 kramme-cc-workflow/scripts/release.py ${{ inputs.version_type }} --ci
+          VERSION=$(python3 -c "import json; print(json.load(open('kramme-cc-workflow/.claude-plugin/plugin.json'))['version'])")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Create Pull Request
@@ -64,7 +64,7 @@ jobs:
           CHANGELOG_SECTION=$(python3 -c "
           import re, sys
           version = sys.argv[1]
-          content = open('CHANGELOG.md').read()
+          content = open('kramme-cc-workflow/CHANGELOG.md').read()
           pattern = rf'## \[{re.escape(version)}\].*?(?=## \[|\Z)'
           match = re.search(pattern, content, re.DOTALL)
           print(match.group(0).strip() if match else '')

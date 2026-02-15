@@ -25,23 +25,42 @@ from changelog import generate_changelog
 
 
 def get_repo_root() -> Path:
-    """Get the repository root directory."""
-    result = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return Path(result.stdout.strip())
+    """Get the plugin root directory (parent of scripts/)."""
+    return Path(__file__).resolve().parent.parent
+
+
+def get_git_root() -> Path:
+    """Get the git repository root (parent of plugin root)."""
+    return get_repo_root().parent
 
 
 def get_version_files(repo_root: Path) -> list[Path]:
-    """Return versioned JSON files to keep in sync."""
+    """Return versioned JSON files for the main plugin."""
     files = [repo_root / ".claude-plugin" / "plugin.json"]
     package_json = repo_root / "package.json"
     if package_json.exists():
         files.append(package_json)
     return files
+
+
+def get_sibling_version_files() -> list[Path]:
+    """Discover sibling plugin version files from marketplace.json."""
+    git_root = get_git_root()
+    marketplace_path = git_root / ".claude-plugin" / "marketplace.json"
+    if not marketplace_path.exists():
+        return []
+
+    with open(marketplace_path) as f:
+        marketplace = json.load(f)
+
+    main_plugin_json = get_repo_root() / ".claude-plugin" / "plugin.json"
+    sibling_files = []
+    for plugin in marketplace.get("plugins", []):
+        source = plugin.get("source", ".")
+        plugin_json = (git_root / source / ".claude-plugin" / "plugin.json").resolve()
+        if plugin_json.exists() and plugin_json.resolve() != main_plugin_json.resolve():
+            sibling_files.append(plugin_json)
+    return sibling_files
 
 
 def read_version(path: Path) -> str:
@@ -86,8 +105,9 @@ def bump_version(current: str, bump_type: str) -> str:
 
 
 def update_version_files(repo_root: Path, new_version: str, dry_run: bool) -> None:
-    """Update version in all version files."""
-    for path in get_version_files(repo_root):
+    """Update version in all version files (main plugin + siblings)."""
+    all_files = get_version_files(repo_root) + get_sibling_version_files()
+    for path in all_files:
         with open(path) as f:
             data = json.load(f)
         data["version"] = new_version
@@ -113,44 +133,54 @@ def git_commit_and_push_branch(
 ) -> str:
     """Create release branch with version bump commit. Returns branch name."""
     branch_name = f"release/v{version}"
+    git_root = get_git_root()
+
+    # Collect all files to stage
+    stage_files = [
+        str(repo_root / ".claude-plugin" / "plugin.json"),
+        str(repo_root / "package.json"),
+        str(repo_root / "CHANGELOG.md"),
+    ]
+    for sibling_file in get_sibling_version_files():
+        stage_files.append(str(sibling_file))
 
     if dry_run:
         print(f"  Would clean up existing branch: {branch_name} (if exists)")
         print(f"  Would run: git checkout -b {branch_name}")
-        print(f"  Would run: git add .claude-plugin/plugin.json package.json CHANGELOG.md")
+        print(f"  Would stage: {', '.join(stage_files)}")
         print(f'  Would run: git commit -m "Release v{version}"')
         print(f"  Would run: git push origin {branch_name}")
     else:
         # Clean up any existing release branch (from failed previous attempts)
         subprocess.run(
             ["git", "branch", "-D", branch_name],
-            cwd=repo_root,
+            cwd=git_root,
             capture_output=True,
         )
         subprocess.run(
             ["git", "push", "origin", "--delete", branch_name],
-            cwd=repo_root,
+            cwd=git_root,
             capture_output=True,
         )
 
         # Create release branch
         subprocess.run(
-            ["git", "checkout", "-b", branch_name], cwd=repo_root, check=True
+            ["git", "checkout", "-b", branch_name], cwd=git_root, check=True
         )
 
         # Stage and commit
         subprocess.run(
-            ["git", "add", ".claude-plugin/plugin.json", "package.json", "CHANGELOG.md"],
-            cwd=repo_root,
+            ["git", "add", *stage_files],
+            cwd=git_root,
             check=True,
         )
         subprocess.run(
-            ["git", "commit", "-m", f"Release v{version}"], cwd=repo_root, check=True
+            ["git", "commit", "-m", f"Release v{version}"], cwd=git_root, check=True
         )
 
         if ci_mode:
             subprocess.run(
-                ["git", "push", "origin", branch_name], cwd=repo_root, check=True
+                ["git", "push", "origin", branch_name], cwd=git_root, check=True
             )
             print(f"  Pushed branch {branch_name}")
         else:
