@@ -30,7 +30,7 @@ Then stop.
 Same as `/kramme:pr:review` Steps 1-5:
 
 1. Check git status to identify changed files
-2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, removal, simplify, all)
+2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, security, removal, simplify, all)
 3. Run `git diff --name-only` to see modified files
 4. Check for previous `REVIEW_OVERVIEW.md` and extract previously addressed findings
 5. Determine applicable reviews based on changes
@@ -54,6 +54,10 @@ Spawn teammates based on applicable review aspects. Each teammate receives:
 - **pr-test-analyzer** -- If test files changed or new functionality added (mission from `agents/kramme:pr-test-analyzer.md`)
 - **type-design-analyzer** -- If new types added or modified (mission from `agents/kramme:type-design-analyzer.md`)
 - **comment-analyzer** -- If significant comments or docs added (mission from `agents/kramme:comment-analyzer.md`)
+- **injection-reviewer** -- If security-relevant changes detected (mission from `agents/kramme:injection-reviewer.md`)
+- **auth-reviewer** -- If security-relevant changes detected (mission from `agents/kramme:auth-reviewer.md`)
+- **data-reviewer** -- If security-relevant changes detected (mission from `agents/kramme:data-reviewer.md`)
+- **logic-reviewer** -- If security-relevant changes detected (mission from `agents/kramme:logic-reviewer.md`)
 
 ### Step 3: Create and Assign Tasks
 
