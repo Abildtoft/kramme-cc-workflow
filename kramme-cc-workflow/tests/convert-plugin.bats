@@ -34,7 +34,7 @@ JSON
 
   run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
   [ "$status" -eq 0 ]
-  [ -f "$TMP_DIR/.codex/skills/kramme:create-pr/SKILL.md" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
   [ ! -d "$TMP_DIR/.codex/prompts" ] || [ -z "$(ls -A "$TMP_DIR/.codex/prompts" 2>/dev/null)" ]
 }
 
@@ -200,7 +200,7 @@ MD
 
   run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
   [ "$status" -eq 0 ]
-  [ -f "$TMP_DIR/.codex/skills/kramme:create-pr/SKILL.md" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
   [ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
 
   EMPTY_PLUGIN_DIR="$TMP_DIR/empty-plugin-yes"
@@ -217,7 +217,7 @@ JSON
 
   run bash -c "set +e; set +o pipefail; yes | node \"$SCRIPT\" install \"$EMPTY_PLUGIN_DIR\" --to codex --codex-home \"$TMP_DIR\" --agents-home \"$TMP_DIR/.agents\"; exit \${PIPESTATUS[1]}"
   [ "$status" -eq 0 ]
-  [ ! -f "$TMP_DIR/.codex/skills/kramme:create-pr/SKILL.md" ]
+  [ ! -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
   [ ! -d "$TMP_DIR/.agents/skills/kramme:architecture-strategist" ]
 }
 
@@ -232,7 +232,7 @@ JSON
   run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
   [ "$status" -eq 0 ]
   [ ! -d "$TMP_DIR/.codex/skills/impl-kramme-create-pr" ]
-  [ -f "$TMP_DIR/.codex/skills/kramme:create-pr/SKILL.md" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
 }
 
 @test "opencode conversion includes command entries from skills" {
@@ -244,7 +244,7 @@ JSON
   [ "$status" -eq 0 ]
   [ -f "$TMP_DIR/opencode.json" ]
 
-  run jq -r '.command | has("kramme:create-pr")' "$TMP_DIR/opencode.json"
+  run jq -r '.command | has("kramme:pr:create")' "$TMP_DIR/opencode.json"
   [ "$status" -eq 0 ]
   [ "$output" = "true" ]
 }

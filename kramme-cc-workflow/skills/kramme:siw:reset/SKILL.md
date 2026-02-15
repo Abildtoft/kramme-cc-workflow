@@ -239,7 +239,7 @@ Replace content with empty table:
 
 | # | Title | Status | Priority | Related |
 |---|-------|--------|----------|---------|
-| _None_ | _Use `/kramme:siw:define-issue` to create first issue (G-001)_ | | | |
+| _None_ | _Use `/kramme:siw:issue-define` to create first issue (G-001)_ | | | |
 
 **Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
 
@@ -273,8 +273,8 @@ Replace siw/LOG.md with fresh initial state:
 
 ### Next Steps
 
-1. Define new issues with `/kramme:siw:define-issue`
-2. Begin implementation with `/kramme:siw:implement-issue`
+1. Define new issues with `/kramme:siw:issue-define`
+2. Begin implementation with `/kramme:siw:issue-implement`
 3. **Blockers:** None
 
 ---
@@ -327,7 +327,7 @@ Preserved:
 - {spec_filename} (with migrated content)
 
 Next Steps:
-- Run /kramme:siw:define-issue to create new issues
+- Run /kramme:siw:issue-define to create new issues
 - Previous decisions are preserved in the spec for reference
 ```
 
