@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:audit-implementation
 description: Exhaustively audit codebase implementation against specification. Finds naming misalignments, missing implementations, contract violations, and spec drift.
-argument-hint: "[spec-file-path(s) | 'siw' to auto-detect]"
+argument-hint: "[spec-file-path(s) | 'siw'] [--model opus|sonnet|haiku]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -15,7 +15,7 @@ Exhaustively compare the codebase implementation against specification documents
 ## Process Overview
 
 ```
-/kramme:siw:audit-implementation [spec-file-path(s) | 'siw']
+/kramme:siw:audit-implementation [spec-file-path(s) | 'siw'] [--model opus|sonnet|haiku]
     |
     v
 [Step 1: Resolve Spec Files] -> Parse args or auto-detect from siw/
@@ -36,7 +36,7 @@ Exhaustively compare the codebase implementation against specification documents
 [Step 6: Compile Discrepancy Report] -> Structured markdown
     |
     v
-[Step 7: Write Report File] -> siw/AUDIT_REPORT.md
+[Step 7: Write Report File] -> siw/AUDIT_IMPLEMENTATION_REPORT.md
     |
     v
 [Step 8: Optionally Create SIW Issues] -> Convert findings to issues
@@ -51,9 +51,14 @@ Exhaustively compare the codebase implementation against specification documents
 
 ### 1.1 Parse Arguments
 
-`$ARGUMENTS` contains the spec file path(s) or keyword provided by the user.
+`$ARGUMENTS` contains the spec file path(s), keyword, and optional flags.
 
-**Detection rules:**
+**Extract `--model` flag first (Claude Code only — ignored on other platforms):**
+- If `$ARGUMENTS` contains `--model opus`, `--model sonnet`, or `--model haiku`, extract it and store as `agent_model`.
+- **Default:** `opus`
+- Remove the flag from `$ARGUMENTS` before processing remaining arguments.
+
+**Detection rules for remaining arguments:**
 1. **File path(s)**: Contains `/` or ends in `.md`, `.txt`
 2. **Keyword `siw`**: Explicitly requests auto-detection
 3. **Empty**: Default to auto-detection
@@ -93,7 +98,7 @@ Auto-detect spec files from the `siw/` directory:
 
 2. Find spec files (exclude workflow files):
    - Use Glob to find `siw/*.md`
-   - Exclude: `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `AUDIT_REPORT.md`
+   - Exclude: `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `AUDIT_IMPLEMENTATION_REPORT.md`, `AUDIT_SPEC_REPORT.md`
 
 3. Find supporting specs:
    - Use Glob to find `siw/supporting-specs/*.md`
@@ -228,7 +233,9 @@ This information will be passed to the Explore agents to direct their search.
 
 ### 4.1 Launch Explore Agents
 
-For each group from Step 3, launch an Explore agent using the Task tool (`subagent_type=Explore`).
+For each group from Step 3, launch an Explore agent using the Task tool (`subagent_type=Explore`, `model={agent_model}`).
+
+**Default model:** `opus`. Override with `--model sonnet` or `--model haiku` for faster/cheaper runs.
 
 **All agents run in parallel** — launch them in a single message with multiple Task tool calls.
 
@@ -397,8 +404,8 @@ Items that could not be confidently verified. Manual review recommended.
 
 ### 7.1 Determine File Location
 
-- If `siw/` directory exists: `siw/AUDIT_REPORT.md`
-- If no `siw/` directory: `AUDIT_REPORT.md` in project root
+- If `siw/` directory exists: `siw/AUDIT_IMPLEMENTATION_REPORT.md`
+- If no `siw/` directory: `AUDIT_IMPLEMENTATION_REPORT.md` in project root
 
 ### 7.2 Handle Existing Report
 

@@ -4,8 +4,10 @@
 # - Path entry (with slash): matches exact/suffix relative paths.
 
 REVIEW_OVERVIEW.md
-AUDIT_REPORT.md
-siw/AUDIT_REPORT.md
+AUDIT_IMPLEMENTATION_REPORT.md
+AUDIT_SPEC_REPORT.md
+siw/AUDIT_IMPLEMENTATION_REPORT.md
+siw/AUDIT_SPEC_REPORT.md
 siw/LOG.md
 siw/OPEN_ISSUES_OVERVIEW.md
 siw/FEATURE_SPECIFICATION.md

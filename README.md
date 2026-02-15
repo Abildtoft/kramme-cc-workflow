@@ -66,7 +66,7 @@ All plugin functionality is delivered through skills. Skills can be user-invoked
 | Skill | Description |
 |-------|-------------|
 | `/kramme:changelog-generator` | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
-| `/kramme:clean-up-artifacts` | Delete workflow artifacts (REVIEW_OVERVIEW.md, AUDIT_REPORT.md, siw/AUDIT_REPORT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files). For SIW-specific cleanup, use `/kramme:siw:remove`. |
+| `/kramme:clean-up-artifacts` | Delete workflow artifacts (REVIEW_OVERVIEW.md, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files). For SIW-specific cleanup, use `/kramme:siw:remove`. |
 | `/kramme:configure-context-links` | Configure `context-links` hook settings by writing local overrides to `hooks/context-links.config` (workspace slug, team keys, regexes). |
 | `/kramme:connect-existing-feature-documentation-writer` | Create or update documentation for Connect features |
 | `/kramme:connect-extract-to-nx-libraries` | Extract app code from `apps/connect/` into proper Nx libraries |
@@ -98,6 +98,7 @@ All plugin functionality is delivered through skills. Skills can be user-invoked
 | `/kramme:review-pr:team` | Team-based PR review using Agent Teams where specialized reviewers collaborate, cross-validate findings, and challenge each other's suggestions. Higher quality, higher token cost. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
 | `/kramme:search-learnings` | Search learnings database using BM25 full-text search. Filter by category or project. |
 | `/kramme:setup-learn` | Initialize or verify the learnings database (and optionally rebuild FTS). |
+| `/kramme:siw:audit-spec` | Audit spec quality (coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design) before implementation. Produces a structured report and optionally creates SIW issues. |
 | `/kramme:siw:audit-implementation` | Exhaustively audit codebase against specification files. Finds naming misalignments, missing implementations, and spec drift. Produces a structured report and optionally creates SIW issues. |
 | `/kramme:siw:resolve-audit` | Resolve audit findings one-by-one with executive summaries, alternatives, a recommended option, and SIW issue creation based on user preference. |
 | `/kramme:siw:define-issue` | Define a new local issue with guided interview process. Creates issue files in the `issues/` directory. |
