@@ -14,7 +14,8 @@ Delete all SIW-related files from the `siw/` folder in the current working direc
 **Temporary files (always deleted):**
 - `siw/LOG.md` - Session progress and decisions
 - `siw/OPEN_ISSUES_OVERVIEW.md` - Issue tracking table
-- `siw/AUDIT_REPORT.md` - Spec compliance audit report
+- `siw/AUDIT_IMPLEMENTATION_REPORT.md` - Spec compliance audit report
+- `siw/AUDIT_SPEC_REPORT.md` - Spec quality audit report
 - `siw/issues/` - Directory containing individual issue files
 
 **Permanent files (optional, requires confirmation):**
@@ -27,7 +28,7 @@ Delete all SIW-related files from the `siw/` folder in the current working direc
 Check which SIW files exist:
 
 ```bash
-ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_REPORT.md siw/issues/ 2>/dev/null
+ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/issues/ 2>/dev/null
 ls siw/*SPEC*.md siw/*SPECIFICATION*.md siw/*PLAN*.md siw/*DESIGN*.md 2>/dev/null
 ```
 
@@ -38,7 +39,8 @@ No SIW workflow files found in this directory.
 Expected files:
 - siw/LOG.md
 - siw/OPEN_ISSUES_OVERVIEW.md
-- siw/AUDIT_REPORT.md
+- siw/AUDIT_IMPLEMENTATION_REPORT.md
+- siw/AUDIT_SPEC_REPORT.md
 - siw/issues/ directory
 - Specification files in siw/ (e.g., siw/FEATURE_SPECIFICATION.md)
 ```
@@ -54,7 +56,8 @@ SIW Workflow Files Found:
 Temporary (will be deleted):
 - siw/LOG.md
 - siw/OPEN_ISSUES_OVERVIEW.md
-- siw/AUDIT_REPORT.md
+- siw/AUDIT_IMPLEMENTATION_REPORT.md
+- siw/AUDIT_SPEC_REPORT.md
 - siw/issues/ ({count} issue files)
 
 Permanent (optional):
@@ -70,7 +73,7 @@ header: "Delete SIW Files"
 question: "Which files should I delete?"
 options:
   - label: "Temporary files only"
-    description: "Delete siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, siw/AUDIT_REPORT.md, and siw/issues/ directory. Keep spec file."
+    description: "Delete siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, and siw/issues/ directory. Keep spec file."
   - label: "All SIW files"
     description: "Delete everything including the specification file"
   - label: "Abort"
@@ -83,7 +86,7 @@ Use `trash` command to move files to system Trash (recoverable):
 
 ```bash
 # Temporary files
-trash siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_REPORT.md 2>/dev/null
+trash siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md 2>/dev/null
 trash -r siw/issues/ 2>/dev/null
 
 # If "All SIW files" selected
@@ -98,7 +101,7 @@ Consider installing: brew install trash
 ```
 
 ```bash
-rm -f siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_REPORT.md
+rm -f siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md
 rm -rf siw/issues/
 # If all files: rm -f siw/{spec_filename}
 ```
@@ -111,7 +114,8 @@ SIW Cleanup Complete
 Deleted:
 - siw/LOG.md
 - siw/OPEN_ISSUES_OVERVIEW.md
-- siw/AUDIT_REPORT.md
+- siw/AUDIT_IMPLEMENTATION_REPORT.md
+- siw/AUDIT_SPEC_REPORT.md
 - siw/issues/ ({count} files)
 {- siw/{spec_filename} (if selected)}
 

@@ -25,6 +25,7 @@ A local issue tracking system using markdown files to plan, track, and document 
 /kramme:siw:define-issue "feature"  # Create a work item (G-001 format)
 /kramme:siw:generate-phases         # Break spec into phase-based issues (P1-001, P2-001)
 /kramme:siw:implement-issue G-001   # Start implementing
+/kramme:siw:audit-spec               # Audit spec quality before implementation
 /kramme:siw:audit-implementation    # Audit code against spec for discrepancies
 /kramme:siw:resolve-audit           # Walk audit findings one-by-one and create SIW issues
 /kramme:siw:restart-issues          # Remove DONE issues, renumber within groups
@@ -44,7 +45,8 @@ Issues use prefix-based numbering:
 |----------|---------|-------------|
 | **siw/[YOUR_SPEC].md** | Main specification (single source of truth) | **PERMANENT** |
 | **siw/supporting-specs/*.md** | Detailed specifications by domain | **PERMANENT** |
-| **siw/AUDIT_REPORT.md** | Spec compliance audit findings from `/kramme:siw:audit-implementation` | Temporary |
+| **siw/AUDIT_IMPLEMENTATION_REPORT.md** | Spec compliance audit findings from `/kramme:siw:audit-implementation` | Temporary |
+| **siw/AUDIT_SPEC_REPORT.md** | Spec quality audit findings from `/kramme:siw:audit-spec` | Temporary |
 | **siw/OPEN_ISSUES_OVERVIEW.md** + **siw/issues/*.md** | Work items to implement | Temporary |
 | **siw/LOG.md** | Session progress + decision rationale | Temporary |
 
@@ -111,6 +113,7 @@ Issues use prefix-based numbering:
 | `/kramme:siw:define-issue` | Define a new work item with guided interview (creates `G-XXX` issues) |
 | `/kramme:siw:generate-phases` | Break spec into atomic phase-based issues (`P1-XXX`, `P2-XXX`, `G-XXX`) |
 | `/kramme:siw:implement-issue` | Start implementing a defined issue (accepts `G-001`, `P1-001`, etc.) |
+| `/kramme:siw:audit-spec` | Audit spec quality (coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design) before implementation |
 | `/kramme:siw:audit-implementation` | Audit codebase against spec for discrepancies, naming misalignments, and missing implementations |
 | `/kramme:siw:resolve-audit` | Resolve audit findings one-by-one with executive summaries, alternatives, and SIW issue creation |
 | `/kramme:siw:restart-issues` | Remove DONE issues and renumber remaining within each prefix group |
@@ -124,7 +127,7 @@ Issues use prefix-based numbering:
 When SIW files already exist, check the current state:
 
 ```bash
-ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_REPORT.md siw/*SPEC*.md siw/*SPECIFICATION*.md siw/issues/ 2>/dev/null
+ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/*SPEC*.md siw/*SPECIFICATION*.md siw/issues/ 2>/dev/null
 ```
 
 ### Entry Point Decision
@@ -135,6 +138,7 @@ ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_REPORT.md siw/*SPEC*.md siw/
 | **Files exist, resuming** | Read siw/LOG.md "Current Progress" section first |
 | **Need new work item** | Run `/kramme:siw:define-issue` |
 | **Ready to implement** | Run `/kramme:siw:implement-issue {number}` |
+| **Spec written, not yet validated** | Run `/kramme:siw:audit-spec` to check spec quality before implementing |
 | **Implementation done** | Run `/kramme:siw:audit-implementation` to verify spec compliance |
 | **Audit report ready** | Run `/kramme:siw:resolve-audit` to triage findings and create issues one-by-one |
 | **Iteration complete** | Run `/kramme:siw:reset` to start fresh |
@@ -199,7 +203,8 @@ All workflow files live in the `siw/` folder in the project root:
 │   │   ├── 01-data-model.md
 │   │   ├── 02-api-specification.md
 │   │   └── 03-ui-specification.md
-│   ├── AUDIT_REPORT.md            ⏳ Temporary (audit output)
+│   ├── AUDIT_IMPLEMENTATION_REPORT.md            ⏳ Temporary (audit output)
+│   ├── AUDIT_SPEC_REPORT.md            ⏳ Temporary (audit output)
 │   ├── OPEN_ISSUES_OVERVIEW.md     ⏳ Temporary
 │   ├── issues/                     ⏳ Temporary directory
 │   │   ├── ISSUE-G-001-setup.md        # General issues

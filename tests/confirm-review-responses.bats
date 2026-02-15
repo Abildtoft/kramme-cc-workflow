@@ -105,7 +105,8 @@ src/component.tsx"
     mock_git_staged "REVIEW_OVERVIEW.md.bak
 MY_REVIEW_OVERVIEW.md
 REVIEW_OVERVIEW.markdown
-AUDIT_REPORT.md.bak"
+AUDIT_IMPLEMENTATION_REPORT.md.bak
+AUDIT_SPEC_REPORT.md.bak"
     run run_hook "git commit -m 'test'"
     [ "$status" -eq 0 ]
     [ -z "$output" ]
@@ -135,18 +136,32 @@ REVIEW_SUMMARY.md"
     [[ "$output" == *"confirm"* ]]
 }
 
-@test "blocks git commit when AUDIT_REPORT.md is staged" {
-    mock_git_staged "AUDIT_REPORT.md"
+@test "blocks git commit when AUDIT_IMPLEMENTATION_REPORT.md is staged" {
+    mock_git_staged "AUDIT_IMPLEMENTATION_REPORT.md"
     run run_hook "git commit -m 'audit report staged'"
     is_blocked
-    [[ "$output" == *"AUDIT_REPORT.md"* ]]
+    [[ "$output" == *"AUDIT_IMPLEMENTATION_REPORT.md"* ]]
 }
 
-@test "blocks git commit when AUDIT_REPORT.md is staged in subdirectory" {
-    mock_git_staged "siw/AUDIT_REPORT.md"
+@test "blocks git commit when AUDIT_IMPLEMENTATION_REPORT.md is staged in subdirectory" {
+    mock_git_staged "siw/AUDIT_IMPLEMENTATION_REPORT.md"
     run run_hook "git commit -m 'audit report in siw'"
     is_blocked
-    [[ "$output" == *"siw/AUDIT_REPORT.md"* ]]
+    [[ "$output" == *"siw/AUDIT_IMPLEMENTATION_REPORT.md"* ]]
+}
+
+@test "blocks git commit when AUDIT_SPEC_REPORT.md is staged" {
+    mock_git_staged "AUDIT_SPEC_REPORT.md"
+    run run_hook "git commit -m 'spec audit report staged'"
+    is_blocked
+    [[ "$output" == *"AUDIT_SPEC_REPORT.md"* ]]
+}
+
+@test "blocks git commit when AUDIT_SPEC_REPORT.md is staged in subdirectory" {
+    mock_git_staged "siw/AUDIT_SPEC_REPORT.md"
+    run run_hook "git commit -m 'spec audit report in siw'"
+    is_blocked
+    [[ "$output" == *"siw/AUDIT_SPEC_REPORT.md"* ]]
 }
 
 @test "blocks git commit when siw/LOG.md is staged" {
