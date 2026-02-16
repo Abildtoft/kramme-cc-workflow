@@ -26,6 +26,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **types** - Analyze type design and invariants (if new types added)
    - **code** - General code review for project guidelines
    - **slop** - Detect AI-generated code patterns (unnecessary comments, defensive overkill, type workarounds)
+   - **security** - Security review: injection, auth, data protection, business logic (4 specialized agents)
    - **removal** - Identify dead code and create safe removal plans
    - **simplify** - Simplify code for clarity and maintainability
    - **all** - Run all applicable reviews (default)
@@ -57,6 +58,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **If error handling changed**: kramme:silent-failure-hunter
    - **If types added/modified**: kramme:type-design-analyzer
    - **If code deleted/refactored**: kramme:removal-planner (safe removal verification)
+   - **If security-relevant changes** (API routes, auth logic, DB queries, external calls, user input handling, crypto): kramme:injection-reviewer, kramme:auth-reviewer, kramme:data-reviewer, kramme:logic-reviewer (launch all 4 in parallel)
    - **After passing review**: kramme:code-simplifier (polish and refine)
 
 6. **Launch Review Agents**
@@ -243,6 +245,26 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 - Verifies safe removal with reference searches
 - Creates structured removal plans
 - Distinguishes safe vs deferred removals
+
+**kramme:injection-reviewer**:
+- SQL, command, template, header injection
+- XSS and output escaping
+- Input sanitization verification
+
+**kramme:auth-reviewer**:
+- Authentication and authorization checks
+- IDOR and privilege escalation
+- CSRF protection and session management
+
+**kramme:data-reviewer**:
+- Cryptographic misuse and secret exposure
+- Information disclosure in errors and logs
+- DoS vectors and resource exhaustion
+
+**kramme:logic-reviewer**:
+- Business logic flaws and edge cases
+- Race conditions and TOCTOU bugs
+- Numeric overflow and state machine violations
 
 ## Tips:
 

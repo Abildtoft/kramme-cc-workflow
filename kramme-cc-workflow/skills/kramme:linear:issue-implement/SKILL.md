@@ -610,7 +610,7 @@ Approach: {selected approach}
 Quick Commands:
 - `/kramme:verify:run` - Run verification checks
 - `/kramme:pr:create` - Create PR when ready
-- `/kramme:review:find-bugs` - Review changes for issues
+- `/kramme:pr:review` - Review changes for issues
 ```
 
 ---

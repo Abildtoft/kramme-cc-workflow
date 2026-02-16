@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+- Add 4 specialized security review agents: injection, auth, data, logic (#156)
+
+### Removed
+- Remove monolithic find-bugs and find-bugs:team skills (replaced by security agents in pr:review)
+
 ### Changed
 ## [0.23.0] - 2026-02-15
 

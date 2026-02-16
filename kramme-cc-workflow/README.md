@@ -120,8 +120,6 @@ Code cleanup, refactoring, and bug/security review.
 | `/kramme:code:cleanup-ai` | User | Remove AI-generated code slop from a branch. Uses `kramme:deslop-reviewer` agent to identify slop, then fixes the issues. |
 | `/kramme:code:rewrite-clean` | User | Scrap a working-but-mediocre fix and reimplement elegantly. Extracts learnings from the initial attempt, then starts fresh with the elegant solution. |
 | `/kramme:code:refactor-pass` | User, Auto | Lightweight simplification pass on recent changes — removes dead code, straightens logic, removes excessive parameters, and verifies with build/tests. Unlike `kramme:code:rewrite-clean` which scraps and redoes from scratch, this incrementally cleans up working code. |
-| `/kramme:review:find-bugs` | User, Auto | Find bugs, security vulnerabilities, and code quality issues in branch changes. Performs systematic security review with attack surface mapping and checklist-based analysis. |
-| `/kramme:review:find-bugs:team` | User | Team-based bug and security review using Agent Teams. Specialized reviewers (injection, auth, data, logic) work in parallel and cross-validate findings like a red team exercise. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
 
 #### Git
 
@@ -192,6 +190,10 @@ Specialized subagents for PR review tasks. These are invoked by the `/kramme:pr:
 | `kramme:architecture-strategist` | Analyzes code changes from an architectural perspective. Reviews system design decisions, evaluates component boundaries, and ensures alignment with established patterns. |
 | `kramme:performance-oracle` | Analyzes code for performance issues, bottlenecks, and scalability. Covers algorithmic complexity, database queries, memory management, caching, and network optimization. |
 | `kramme:removal-planner` | Identifies dead code, unused dependencies, and deprecated features. Creates structured removal plans with verification steps, distinguishing safe vs deferred removals. |
+| `kramme:injection-reviewer` | Reviews code for injection vulnerabilities (SQL, command, template, header) and cross-site scripting (XSS). Traces user inputs to dangerous sinks. |
+| `kramme:auth-reviewer` | Reviews code for authentication, authorization, CSRF, and session management vulnerabilities. Maps endpoint protection status. |
+| `kramme:data-reviewer` | Reviews code for cryptographic misuse, information disclosure, and denial-of-service vulnerabilities. Tracks secret lifecycle and resource bounds. |
+| `kramme:logic-reviewer` | Reviews code for business logic flaws, race conditions, TOCTOU bugs, and state machine violations. Analyzes concurrency and numeric edge cases. |
 
 ## Hooks
 
