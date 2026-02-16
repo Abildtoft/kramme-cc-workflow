@@ -54,7 +54,7 @@ Spawn teammates based on applicable review aspects. Each teammate receives:
 - **pr-test-analyzer** -- If test files changed or new functionality added (mission from `agents/kramme:pr-test-analyzer.md`)
 - **type-design-analyzer** -- If new types added or modified (mission from `agents/kramme:type-design-analyzer.md`)
 - **comment-analyzer** -- If significant comments or docs added (mission from `agents/kramme:comment-analyzer.md`)
-- **injection-reviewer** -- If security-relevant changes detected (mission from `agents/kramme:injection-reviewer.md`)
+- **injection-reviewer** -- If security-relevant changes detected (API routes, auth logic, DB queries, external calls, user input handling, crypto) (mission from `agents/kramme:injection-reviewer.md`)
 - **auth-reviewer** -- If security-relevant changes detected (mission from `agents/kramme:auth-reviewer.md`)
 - **data-reviewer** -- If security-relevant changes detected (mission from `agents/kramme:data-reviewer.md`)
 - **logic-reviewer** -- If security-relevant changes detected (mission from `agents/kramme:logic-reviewer.md`)
