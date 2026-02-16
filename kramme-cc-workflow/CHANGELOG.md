@@ -3,6 +3,17 @@
 ## [Unreleased]
 
 ### Added
+## [0.25.0] - 2026-02-16
+
+### Added
+- Add reverse-engineer-spec skill for bootstrapping specs from code (#160)
+- Add commit granularity control to recreate-commits (#161)
+
+### Changed
+- Move CLAUDE.md to repo root (#162)
+- Restructure README for improved readability (#159)
+- Consolidate path resolution and cleanup functions (#158)
+
 ## [0.24.0] - 2026-02-16
 
 ### Added
@@ -330,6 +341,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.25.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.21.0...v0.22.0
