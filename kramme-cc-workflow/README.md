@@ -154,7 +154,7 @@ Persistent knowledge management across sessions using a SQLite database. See [Le
 | `/kramme:learnings:add` | Add a learning to the database. |
 | `/kramme:learnings:extract` | Extract learnings from session to AGENTS.md files. |
 | `/kramme:learnings:search` \* | Search learnings with BM25 full-text search. |
-| `/kramme:learnings:list` \* | List all learnings, optionally filtered by category or project. |
+| `/kramme:learnings:list` \* | List all learnings, optionally filtered by category or project. Use `--categories` for summary or `--stats` for database statistics. |
 | `/kramme:learnings:delete` | Delete learnings by ID, category, project, or age. |
 | `/kramme:learnings:setup` | Initialize or verify the learnings database. |
 
