@@ -334,6 +334,12 @@ Write `siw/{spec_filename}` with this structure:
 ### Out of Scope
 {What the code explicitly does NOT handle, inferred from boundaries and missing test coverage}
 
+## Success Criteria
+
+{Inferred from test assertions and observable behavior, formatted as checkbox list}
+- [ ] {criterion 1 — a verifiable condition that must hold}
+- [ ] {criterion 2}
+
 ## Architecture
 
 {ASCII diagram showing component relationships and data flow, synthesized from agent analysis}
@@ -387,6 +393,10 @@ Write `siw/{spec_filename}` with this structure:
 
 ### Coverage Gaps
 {Missing test coverage identified by Agent C}
+
+## Tasks
+
+Tasks will be tracked in individual issue files. See `siw/OPEN_ISSUES_OVERVIEW.md` for active work.
 
 ## Design Decisions
 
