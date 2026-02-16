@@ -1,14 +1,18 @@
 # CLAUDE.md
 
-This is a Claude Code plugin providing workflow automation tools for daily development tasks.
+This repo contains Claude Code plugins providing workflow automation for daily development tasks.
 
 ## Project Structure
 
 ```
-.claude-plugin/plugin.json   # Plugin manifest (name, version, author)
-agents/                      # Specialized subagents (markdown files)
-skills/                      # Skills (subdirectories with SKILL.md)
-hooks/hooks.json             # Event handlers configuration
+kramme-cc-workflow/            # General workflow plugin
+  .claude-plugin/plugin.json   # Plugin manifest
+  agents/                      # Specialized subagents (markdown files)
+  skills/                      # Skills (subdirectories with SKILL.md)
+  hooks/hooks.json             # Event handlers configuration
+kramme-connect-workflow/       # Connect monorepo plugin
+  .claude-plugin/plugin.json   # Plugin manifest
+  skills/                      # Skills (subdirectories with SKILL.md)
 ```
 
 ## Adding Components
