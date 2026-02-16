@@ -36,7 +36,7 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
    **Assess diff size and ask about granularity.** After analyzing the diff, assess whether the PR is large (many files changed, significant lines added/removed, multiple distinct features or areas touched). If the diff is large, ask the user which granularity level they want before planning:
 
    - **Coarse** — One commit per major grouping (~5-15 commits)
-   - **Medium** — Break each major grouping into several commits (~15-30 commits)
+   - **Medium (recommended)** — Break each major grouping into several commits (~15-30 commits)
    - **Fine** — Recursively break down until each commit is a significant, self-standing change (~30-60+ commits)
 
    For normal-sized PRs, skip this question and plan as usual.
