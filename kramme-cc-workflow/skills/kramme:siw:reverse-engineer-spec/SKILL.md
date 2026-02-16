@@ -89,6 +89,7 @@ If `$ARGUMENTS` is a directory:
 # Scan for source files (exclude common generated/vendor directories)
 find {folder} -maxdepth 4 -type f \
   \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" \
+  -o -name "*.vue" -o -name "*.svelte" \
   -o -name "*.py" -o -name "*.go" -o -name "*.rs" -o -name "*.cs" \
   -o -name "*.java" -o -name "*.rb" -o -name "*.swift" -o -name "*.kt" \) \
   ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/build/*" \
@@ -96,7 +97,7 @@ find {folder} -maxdepth 4 -type f \
   2>/dev/null
 ```
 
-If zero files are found, stop: "No source files found in `{folder}`. Verify the path is correct and contains supported file types (.ts, .tsx, .js, .jsx, .py, .go, .rs, .cs, .java, .rb, .swift, .kt)."
+If zero files are found, stop: "No source files found in `{folder}`. Verify the path is correct and contains supported file types (.ts, .tsx, .js, .jsx, .vue, .svelte, .py, .go, .rs, .cs, .java, .rb, .swift, .kt)."
 
 ### Case 3: Explicit File Paths
 
@@ -391,13 +392,7 @@ Write `siw/{spec_filename}` with this structure:
 
 ## Architecture
 
-{ASCII diagram showing component relationships and data flow, synthesized from agent analysis}
-
-```
-┌─────────────┐     ┌─────────────┐
-│ Component A  │────▶│ Component B  │
-└─────────────┘     └─────────────┘
-```
+{If component relationships are clear from analysis, include an ASCII diagram showing data flow. Otherwise, use a bullet-point list of components and their dependencies.}
 
 ### Data Lifecycle
 {Step-by-step flow from initial state through steady state}
@@ -604,3 +599,4 @@ Next Steps:
 5. **Use tables liberally** — File inventories, feature flags, risks — tables are scannable and compact.
 6. **Flag uncertainty** — When intent is unclear from code alone, add it to Open Questions rather than guessing. That's what `/kramme:siw:discovery` is for.
 7. **SIW compatibility** — The output spec must work with existing SIW tools. Follow the same section naming and structure conventions as `kramme:siw:init`.
+8. **Agent output quality** — Agents may return shallow or generic analysis for complex files. If an agent's synthesis lacks specifics (e.g., vague "Problem being solved" without concrete details), supplement it by reading the key files directly during the Phase 3 cross-check rather than using the low-quality output verbatim.
