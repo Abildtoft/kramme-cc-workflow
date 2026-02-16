@@ -32,8 +32,22 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
    - If explicitly asked to use a clean branch, create `{branch_name}-clean` from the merge base with main/master.
 
 4. **Plan the commit storyline**
-   - Break the implementation down into a sequence of self-contained steps.
-   - Each step should reflect a logical stage of development—as if writing a tutorial.
+
+   **Assess diff size and ask about granularity.** After analyzing the diff, assess whether the PR is large (many files changed, significant lines added/removed, multiple distinct features or areas touched). If the diff is large, ask the user which granularity level they want before planning:
+
+   - **Coarse** — One commit per major grouping (~5-15 commits)
+   - **Medium** — Break each major grouping into several commits (~15-30 commits)
+   - **Fine** — Recursively break down until each commit is a significant, self-standing change (~30-60+ commits)
+
+   For normal-sized PRs, skip this question and plan as usual.
+
+   **Use recursive decomposition to plan commits:**
+
+   1. **First pass:** Identify the major groupings of work (e.g., "add auth middleware", "implement user API", "add tests"). For **coarse** granularity, stop here — each grouping becomes one commit.
+   2. **Second pass:** Break each major grouping into sub-steps (e.g., "add auth middleware" becomes: add dependencies, implement token validation, add middleware registration, add config). For **medium** granularity, stop here.
+   3. **Third pass (fine only):** Selectively break sub-steps further, but only where a piece is a significant, self-standing addition (e.g., a substantial new function or module). Do not split trivial one-liner changes or tightly coupled changes that belong together.
+
+   Flatten the tree into a linear commit sequence that tells a coherent narrative — each step should reflect a logical stage of development, as if writing a tutorial.
 
 5. **Reimplement the work**
    - Reset the branch to the merge base with main/master.
