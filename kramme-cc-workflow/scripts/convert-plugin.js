@@ -83,9 +83,9 @@ async function main() {
 
   const resolvedPluginPath = await resolvePluginInput(pluginInput)
   const plugin = await loadClaudePlugin(resolvedPluginPath)
-  const outputRoot = resolveOutputRoot(parsed.output ?? parsed.o)
-  const codexHome = resolveCodexRoot(parsed["codex-home"] ?? parsed.codexHome)
-  const agentsHome = resolveAgentsRoot(parsed["agents-home"] ?? parsed.agentsHome)
+  const outputRoot = resolveRoot(parsed.output ?? parsed.o, ".config", "opencode")
+  const codexHome = resolveRoot(parsed["codex-home"] ?? parsed.codexHome, ".codex")
+  const agentsHome = resolveRoot(parsed["agents-home"] ?? parsed.agentsHome, ".agents")
   const options = {
     agentMode: String(parsed["agent-mode"] ?? parsed.agentMode ?? "subagent") === "primary" ? "primary" : "subagent",
     inferTemperature: parseBoolean(parsed["infer-temperature"] ?? parsed.inferTemperature, true),
@@ -212,28 +212,11 @@ function parseExtraTargets(value) {
     .filter(Boolean)
 }
 
-function resolveOutputRoot(value) {
+function resolveRoot(value, ...defaultSegments) {
   if (value && String(value).trim()) {
-    const expanded = expandHome(String(value).trim())
-    return path.resolve(expanded)
+    return path.resolve(expandHome(String(value).trim()))
   }
-  return path.join(os.homedir(), ".config", "opencode")
-}
-
-function resolveCodexRoot(value) {
-  if (value && String(value).trim()) {
-    const expanded = expandHome(String(value).trim())
-    return path.resolve(expanded)
-  }
-  return path.join(os.homedir(), ".codex")
-}
-
-function resolveAgentsRoot(value) {
-  if (value && String(value).trim()) {
-    const expanded = expandHome(String(value).trim())
-    return path.resolve(expanded)
-  }
-  return path.join(os.homedir(), ".agents")
+  return path.join(os.homedir(), ...defaultSegments)
 }
 
 function expandHome(value) {
@@ -1048,7 +1031,11 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
 
   const agentsDir = paths.agentsDir
   if (bundle.agents.length > 0) {
-    await cleanupKrammeAgents(agentsDir, extraOpts.confirm)
+    await cleanupKrammeComponents(agentsDir, {
+      label: "agent",
+      filter: (e) => e.isFile() && e.name.endsWith(".md"),
+      confirmOptions: extraOpts.confirm,
+    })
   }
   for (const agent of bundle.agents) {
     await writeText(path.join(agentsDir, `${agent.name}.md`), agent.content + "\n")
@@ -1063,7 +1050,12 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
 
   if (bundle.skillDirs.length > 0) {
     const skillsRoot = paths.skillsDir
-    await cleanupKrammeSkills(skillsRoot, extraOpts.confirm)
+    await cleanupKrammeComponents(skillsRoot, {
+      label: "skill",
+      filter: (e) => e.isDirectory(),
+      recursive: true,
+      confirmOptions: extraOpts.confirm,
+    })
     for (const skill of bundle.skillDirs) {
       await copyDir(skill.sourceDir, path.join(skillsRoot, skill.name))
     }
@@ -1096,13 +1088,23 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   await ensureDir(codexRoot)
 
   const promptsDir = path.join(codexRoot, "prompts")
-  await cleanupKrammePrompts(promptsDir, extraOpts.confirm)
+  await cleanupKrammeComponents(promptsDir, {
+    label: "prompt",
+    filter: (e) => e.isFile() && e.name.endsWith(".md"),
+    confirmOptions: extraOpts.confirm,
+  })
   for (const prompt of bundle.prompts) {
     await writeText(path.join(promptsDir, `${prompt.name}.md`), prompt.content + "\n")
   }
 
   const skillsRoot = path.join(codexRoot, "skills")
-  await cleanupKrammeSkills(skillsRoot, extraOpts.confirm, ["kramme:", "kramme-", "impl-"])
+  await cleanupKrammeComponents(skillsRoot, {
+    label: "skill",
+    filter: (e) => e.isDirectory(),
+    recursive: true,
+    prefixes: ["kramme:", "kramme-", "impl-"],
+    confirmOptions: extraOpts.confirm,
+  })
 
   for (const skill of bundle.skillDirs) {
     await copyDir(skill.sourceDir, path.join(skillsRoot, skill.name))
@@ -1115,7 +1117,12 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   if (bundle.agentSkills) {
     const agentsHome = extraOpts.agentsHome ?? path.join(os.homedir(), ".agents")
     const agentSkillsRoot = path.join(agentsHome, "skills")
-    await cleanupKrammeSkills(agentSkillsRoot, extraOpts.confirm)
+    await cleanupKrammeComponents(agentSkillsRoot, {
+      label: "skill",
+      filter: (e) => e.isDirectory(),
+      recursive: true,
+      confirmOptions: extraOpts.confirm,
+    })
     for (const skill of bundle.agentSkills) {
       await writeText(path.join(agentSkillsRoot, skill.name, "SKILL.md"), skill.content + "\n")
     }
@@ -1409,92 +1416,34 @@ async function copyDir(sourceDir, targetDir) {
   }
 }
 
-async function cleanupKrammeAgents(agentsDir, confirmOptions = {}) {
-  if (!(await pathExists(agentsDir))) return
-  const entries = await fs.readdir(agentsDir, { withFileTypes: true })
-  const krammeAgents = entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
-    .filter((entry) => entry.name.startsWith("kramme:") || entry.name.startsWith("kramme-"))
-    .map((entry) => entry.name)
-
-  if (krammeAgents.length === 0) return
-
-  console.log(`\nFound ${krammeAgents.length} existing kramme agent(s) in ${agentsDir}:`)
-  for (const name of krammeAgents) {
-    console.log(`  - ${name}`)
-  }
-
-  const confirmed = await confirm("Delete these agents before installing?", confirmOptions)
-  if (!confirmed) {
-    console.log("Skipping agent cleanup.")
-    return
-  }
-
-  for (const name of krammeAgents) {
-    const targetPath = path.join(agentsDir, name)
-    await fs.rm(targetPath, { force: true })
-  }
-  console.log(`Deleted ${krammeAgents.length} agent(s).`)
-}
-
-async function cleanupKrammePrompts(promptsDir, confirmOptions = {}) {
-  if (!(await pathExists(promptsDir))) return
-  const entries = await fs.readdir(promptsDir, { withFileTypes: true })
-  const krammePrompts = entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
-    .filter((entry) => entry.name.startsWith("kramme:") || entry.name.startsWith("kramme-"))
-    .map((entry) => entry.name)
-
-  if (krammePrompts.length === 0) return
-
-  console.log(`\nFound ${krammePrompts.length} existing kramme prompt(s) in ${promptsDir}:`)
-  for (const name of krammePrompts) {
-    console.log(`  - ${name}`)
-  }
-
-  const confirmed = await confirm("Delete these prompts before installing?", confirmOptions)
-  if (!confirmed) {
-    console.log("Skipping prompt cleanup.")
-    return
-  }
-
-  for (const name of krammePrompts) {
-    const targetPath = path.join(promptsDir, name)
-    await fs.rm(targetPath, { force: true })
-  }
-  console.log(`Deleted ${krammePrompts.length} prompt(s).`)
-}
-
-async function cleanupKrammeSkills(
-  skillsDir,
-  confirmOptions = {},
-  managedPrefixes = ["kramme:", "kramme-"],
+async function cleanupKrammeComponents(
+  dir,
+  { label, filter, recursive = false, prefixes = ["kramme:", "kramme-"], confirmOptions = {} } = {},
 ) {
-  if (!(await pathExists(skillsDir))) return
-  const entries = await fs.readdir(skillsDir, { withFileTypes: true })
-  const krammeSkills = entries
-    .filter((entry) => entry.isDirectory())
-    .filter((entry) => managedPrefixes.some((prefix) => entry.name.startsWith(prefix)))
+  if (!(await pathExists(dir))) return
+  const entries = await fs.readdir(dir, { withFileTypes: true })
+  const matched = entries
+    .filter(filter)
+    .filter((entry) => prefixes.some((prefix) => entry.name.startsWith(prefix)))
     .map((entry) => entry.name)
 
-  if (krammeSkills.length === 0) return
+  if (matched.length === 0) return
 
-  console.log(`\nFound ${krammeSkills.length} existing kramme skill(s) in ${skillsDir}:`)
-  for (const name of krammeSkills) {
+  console.log(`\nFound ${matched.length} existing kramme ${label}(s) in ${dir}:`)
+  for (const name of matched) {
     console.log(`  - ${name}`)
   }
 
-  const confirmed = await confirm("Delete these skills before installing?", confirmOptions)
+  const confirmed = await confirm(`Delete these ${label}s before installing?`, confirmOptions)
   if (!confirmed) {
-    console.log("Skipping skill cleanup.")
+    console.log(`Skipping ${label} cleanup.`)
     return
   }
 
-  for (const name of krammeSkills) {
-    const targetPath = path.join(skillsDir, name)
-    await fs.rm(targetPath, { recursive: true, force: true })
+  for (const name of matched) {
+    await fs.rm(path.join(dir, name), { recursive, force: true })
   }
-  console.log(`Deleted ${krammeSkills.length} skill(s).`)
+  console.log(`Deleted ${matched.length} ${label}(s).`)
 }
 
 let nonInteractiveReaderInitialized = false
