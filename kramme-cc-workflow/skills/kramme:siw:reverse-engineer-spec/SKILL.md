@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:reverse-engineer-spec
 description: Reverse engineer an SIW specification from existing code. Analyzes a git branch diff, folder, or file set to produce a structured spec compatible with the SIW workflow. Use when code exists without documentation, onboarding to unfamiliar code, or bootstrapping SIW from an existing implementation.
-argument-hint: "[branch | folder | file(s)] [--base main]"
+argument-hint: "[branch | folder | file(s)] [--base main] [--model opus|sonnet|haiku]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -42,6 +42,7 @@ Analyze existing code to produce a structured SIW-compatible specification. Work
 Parse `$ARGUMENTS` as shell-style arguments so quoted paths stay intact.
 
 - If `--base <branch>` is present, set `base_branch` to the value and remove the flag pair from the argument list. Default: `main`.
+- If `--model <model>` is present, set `agent_model` to the value (`opus`, `sonnet`, or `haiku`) and remove the flag pair. Default: `sonnet`.
 - Treat remaining arguments as one of: explicit file paths, a folder path, or empty (branch diff mode).
 
 ### 1.2 Detect Input Type
@@ -55,16 +56,9 @@ Parse `$ARGUMENTS` as shell-style arguments so quoted paths stay intact.
 If no file/folder arguments, analyze the current branch against `base_branch`:
 
 ```bash
-# Identify base
 git merge-base $base_branch HEAD
-
-# Get file-level diff stats
 git diff --stat $(git merge-base $base_branch HEAD)...HEAD
-
-# Count scale
 git diff --stat $(git merge-base $base_branch HEAD)...HEAD | tail -1
-
-# Get commit history for "why" context
 git log --oneline $(git merge-base $base_branch HEAD)..HEAD
 ```
 
@@ -117,7 +111,9 @@ options:
 
 ## Phase 2: Parallel Deep Exploration
 
-Launch parallel Explore agents based on scope size. This is critical for efficiency — reading many files sequentially is too slow.
+For each file group, launch an Explore agent using the Task tool (`subagent_type=Explore`, `model={agent_model}`).
+
+**All agents run in parallel** — launch them in a single message with multiple Task tool calls.
 
 ### 2.1 Determine Agent Count
 
@@ -281,8 +277,9 @@ Use the same heuristics as `kramme:siw:init`:
 
 - Keywords like "feature", "add", "implement", "new" → `FEATURE_SPECIFICATION.md`
 - Keywords like "api", "endpoint", "service" → `API_DESIGN.md`
+- Keywords like "doc", "documentation", "guide" → `DOCUMENTATION_SPEC.md`
+- Keywords like "tutorial", "learn", "teach" → `TUTORIAL_PLAN.md`
 - Keywords like "system", "architecture", "design" → `SYSTEM_DESIGN.md`
-- Keywords like "plugin", "extension", "addon" → `PLUGIN_SPECIFICATION.md`
 - Default fallback → `PROJECT_PLAN.md`
 
 Base detection on the synthesized problem statement and solution approach from Phase 2 agents.
@@ -296,12 +293,16 @@ options:
   - label: "{detected_name}"
     description: "Recommended based on analysis"
   - label: "FEATURE_SPECIFICATION.md"
+    description: "For feature implementations"
   - label: "API_DESIGN.md"
-  - label: "SYSTEM_DESIGN.md"
+    description: "For API design work"
   - label: "PROJECT_PLAN.md"
+    description: "For general projects"
   - label: "Custom name"
     description: "Enter your own filename"
 ```
+
+If "Custom name" selected, use AskUserQuestion to get the filename.
 
 ### 4.3 Write Spec Document
 
