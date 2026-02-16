@@ -4,6 +4,7 @@ description: Reverse engineer an SIW specification from existing code. Analyzes 
 argument-hint: "[branch | folder | file(s)] [--base main] [--model opus|sonnet|haiku]"
 disable-model-invocation: true
 user-invocable: true
+kramme-platforms: [claude-code]
 ---
 
 # Reverse Engineer SIW Spec from Code
