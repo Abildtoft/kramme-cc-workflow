@@ -81,6 +81,7 @@ Local issue tracking and structured implementation planning using markdown files
 | `/kramme:siw:audit-resolve` | User | Resolve audit findings one-by-one with executive summaries, alternatives, a recommended option, and SIW issue creation based on user preference. |
 | `/kramme:siw:issues-reindex` | User | Remove all DONE issues and renumber remaining issues from 001. Cleans up completed work and provides fresh numbering sequence. |
 | `/kramme:siw:reset` | User | Reset SIW workflow state while preserving the spec. Migrates log decisions to spec, then clears issues and log for fresh start. |
+| `/kramme:siw:reverse-engineer-spec` | User | Reverse engineer an SIW specification from existing code. Analyzes a git branch diff, folder, or file set using parallel exploration agents. Produces a structured spec compatible with the SIW workflow. Use for documenting shipped features, onboarding to unfamiliar code, or bootstrapping SIW from an existing implementation. |
 | `/kramme:siw:remove` | User | Remove all Structured Implementation Workflow (SIW) files from current directory. Cleans up temporary workflow documents. |
 
 #### Pull Requests
@@ -1008,6 +1009,7 @@ For maintainers: see [RELEASE.md](RELEASE.md) for the release process.
 - `kramme:design-iterator`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - `kramme:text:humanize`: Based on Wikipedia: Signs of AI writing (maintained by WikiProject AI Cleanup) and heavily inspired by [blader/humanizer](https://github.com/blader/humanizer).
 - `kramme:performance-oracle`: From [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
+- `kramme:siw:reverse-engineer-spec`: Inspired by [blader/schematic](https://github.com/blader/schematic).
 - OpenCode/Codex converter: Inspired by [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 
 ## License
