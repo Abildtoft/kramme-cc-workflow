@@ -4,7 +4,6 @@ description: Reverse engineer an SIW specification from existing code. Analyzes 
 argument-hint: "[branch | folder | file(s)] [--base main] [--model opus|sonnet|haiku]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
 ---
 
 # Reverse Engineer SIW Spec from Code
@@ -43,18 +42,33 @@ Analyze existing code to produce a structured SIW-compatible specification. Work
 Parse `$ARGUMENTS` as shell-style arguments so quoted paths stay intact.
 
 - If `--base <branch>` is present, set `base_branch` to the value and remove the flag pair from the argument list. Default: `main`.
-- If `--model <model>` is present, set `agent_model` to the value (`opus`, `sonnet`, or `haiku`) and remove the flag pair. Default: `sonnet`.
+- If `--model <model>` is present, set `agent_model` to the value and remove the flag pair. Default: `sonnet`. Validate immediately: if the value is not one of `opus`, `sonnet`, or `haiku`, stop with: "Invalid model `{value}`. Valid options: opus, sonnet, haiku."
 - Treat remaining arguments as one of: explicit file paths, a folder path, or empty (branch diff mode).
 
 ### 1.2 Detect Input Type
 
-1. **File path(s)**: Contains file extensions (`.ts`, `.py`, `.md`, etc.) — verify each exists
-2. **Folder path**: A single directory (verify with `ls -d {path}`)
-3. **Empty / branch name**: Use git branch diff mode (default)
+Try each detection in order. Stop at the first match:
+
+1. **No remaining arguments** → Branch diff mode (Case 1)
+2. **All arguments exist as files on disk** → Explicit file paths (Case 3)
+3. **Single argument is a directory** (`ls -d {path}` succeeds) → Folder path (Case 2)
+4. **Single argument resolves as a git ref** (`git rev-parse --verify {arg}` succeeds) → Branch diff mode with `base_branch` set to the argument (Case 1)
+5. **None of the above** → Stop with: "Could not interpret `{argument}` as file paths, a folder, or a branch name. Please check the input."
 
 ### Case 1: Branch Diff (default)
 
-If no file/folder arguments, analyze the current branch against `base_branch`:
+If no file/folder arguments, analyze the current branch against `base_branch`.
+
+**Pre-validation (required before any git commands):**
+
+1. Verify inside a git repository: `git rev-parse --is-inside-work-tree`
+   - If this fails, stop: "Not inside a git repository. Use a folder or file path instead."
+2. Verify `base_branch` exists: `git rev-parse --verify $base_branch`
+   - If this fails, attempt auto-detection: `git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'`
+   - If auto-detection succeeds, use the detected branch and inform the user: "Branch `{base_branch}` not found. Using detected default branch `{detected}`."
+   - If auto-detection also fails, stop: "Branch `{base_branch}` not found and could not auto-detect the default branch. Specify a base with `--base <branch>`."
+
+**Analyze the diff:**
 
 ```bash
 git merge-base $base_branch HEAD
@@ -62,6 +76,8 @@ git diff --stat $(git merge-base $base_branch HEAD)...HEAD
 git diff --stat $(git merge-base $base_branch HEAD)...HEAD | tail -1
 git log --oneline $(git merge-base $base_branch HEAD)..HEAD
 ```
+
+If `merge-base` fails (e.g., no common ancestor), stop: "Could not find a common ancestor between `{base_branch}` and HEAD. Specify a different base with `--base <branch>`."
 
 If the diff is empty (no changes vs base), stop and inform the user.
 
@@ -80,9 +96,11 @@ find {folder} -maxdepth 4 -type f \
   2>/dev/null
 ```
 
+If zero files are found, stop: "No source files found in `{folder}`. Verify the path is correct and contains supported file types (.ts, .tsx, .js, .jsx, .py, .go, .rs, .cs, .java, .rb, .swift, .kt)."
+
 ### Case 3: Explicit File Paths
 
-Split arguments by spaces, verify each file exists. Skip non-existent files with a warning.
+Using the shell-style parsed arguments from Section 1.1, verify each file exists. Skip non-existent files with a warning. If no files remain after filtering, stop: "None of the specified files exist. Verify the file paths and current directory."
 
 ### 1.3 Categorize Files
 
@@ -110,6 +128,8 @@ options:
     description: "Focus on new code and test files ({n} files)"
 ```
 
+After applying the scope filter, validate that the remaining file count is greater than zero. If zero files remain, stop: "No files remain after applying the scope filter. Consider a broader scope."
+
 ## Phase 2: Parallel Deep Exploration
 
 For each file group, launch an Explore agent using the Task tool (`subagent_type=Explore`, `model={agent_model}`).
@@ -123,6 +143,8 @@ For each file group, launch an Explore agent using the Task tool (`subagent_type
 | <15 files | 2 | A: Core + Integration; B: Tests + Config |
 | 15-40 files | 3 | A: Core implementation; B: Integration + Config; C: Tests |
 | 40+ files | 4 | A: Core implementation; B: Integration points; C: Tests; D: Config + Infrastructure |
+
+Skip any agent whose file group is empty. Note the absence in the generated spec (e.g., "No test files were found in this changeset").
 
 ### 2.2 Agent Prompts
 
@@ -209,9 +231,30 @@ Synthesize:
 - **Environment matrix**: What varies across environments?
 ```
 
+### 2.3 Validate Agent Results
+
+After all agents return, check each agent's output:
+
+1. Is the output non-empty?
+2. Does it contain the expected synthesis sections (e.g., "Problem being solved" for Agent A, "Integration strategy" for Agent B)?
+
+If an agent failed, returned empty output, or returned an error message instead of analysis, inform the user: "Agent {role} failed to complete its analysis. {n} files were not analyzed by a dedicated agent." Then use AskUserQuestion:
+
+```yaml
+header: "Agent Failure"
+question: "How should I proceed?"
+options:
+  - label: "Continue with reduced analysis"
+    description: "Unanalyzed files will be read directly (shallower analysis)"
+  - label: "Abort"
+    description: "Cancel the reverse-engineering process"
+```
+
+If continuing with reduced analysis, note in the generated spec's Open Questions section that certain analysis areas may be incomplete.
+
 ## Phase 3: Cross-Check for Gaps
 
-After agents return, verify completeness.
+After agents return and results are validated, verify completeness.
 
 ### 3.1 File Coverage Check
 
@@ -227,7 +270,9 @@ For uncovered files, read the diffs or file contents directly. These often conta
 
 ### 3.3 Commit Message Context
 
-In branch diff mode, use commit messages for additional "why" context:
+**Skip this section entirely if not in branch diff mode.**
+
+Use commit messages for additional "why" context:
 
 ```bash
 git log --format="%s%n%b" $(git merge-base $base_branch HEAD)..HEAD
@@ -270,6 +315,8 @@ options:
     description: "Create siw/ with spec, LOG.md, OPEN_ISSUES_OVERVIEW.md, and issues/ directory"
   - label: "Spec only"
     description: "Create just the spec file in siw/"
+  - label: "Abort"
+    description: "Cancel without writing"
 ```
 
 ### 4.2 Auto-detect Spec Filename
@@ -303,7 +350,7 @@ options:
     description: "Enter your own filename"
 ```
 
-If "Custom name" selected, use AskUserQuestion to get the filename.
+If "Custom name" selected, use AskUserQuestion to get the filename. Validate: must be non-empty and end with `.md` (append if missing).
 
 ### 4.3 Write Spec Document
 
@@ -430,16 +477,83 @@ Tasks will be tracked in individual issue files. See `siw/OPEN_ISSUES_OVERVIEW.m
 
 ### 4.4 Create SIW Scaffolding (if "Full SIW setup" selected)
 
-Create the same scaffolding as `kramme:siw:init`:
+Create SIW-compatible scaffolding matching the structure from `kramme:siw:init`.
 
-- `siw/LOG.md` with initial structure (same template as `kramme:siw:init` Phase 4.2)
-- `siw/OPEN_ISSUES_OVERVIEW.md` (same template as `kramme:siw:init` Phase 4.3)
-- `siw/issues/` directory with `.gitkeep`
+#### 4.4.1 Create siw/LOG.md
 
-In LOG.md, set:
-- **Quick Summary:** Spec reverse-engineered from {source description}
-- **Last Completed:** Reverse-engineered specification from existing code
-- **Next Steps:** `/kramme:siw:discovery` to fill open questions, `/kramme:siw:spec-audit` to validate spec quality
+```markdown
+# LOG.md
+
+## Current Progress
+
+**Last Updated:** {current date}
+**Quick Summary:** Spec reverse-engineered from {source description}
+
+### Project Status
+
+- **Status:** Planning | **Current Phase:** Specification | **Overall Progress:** 0 tasks
+
+### Last Completed
+
+- Reverse-engineered specification from existing code
+
+### Next Steps
+
+1. Run `/kramme:siw:discovery` to fill open questions
+2. Run `/kramme:siw:spec-audit` to validate spec quality
+3. Run `/kramme:siw:phases-generate` to create issues
+4. **Blockers:** None
+
+---
+
+## Decision Log
+
+_Decisions will be documented here as they are made._
+
+---
+
+## Rejected Alternatives Summary
+
+| Alternative | For | Why Rejected | Decision # |
+|------------|-----|--------------|------------|
+| _None yet_ | | | |
+
+---
+
+## Guiding Principles
+
+1. {To be defined during implementation}
+
+## References
+
+- Spec: `siw/{spec_filename}`
+- Issues: `siw/OPEN_ISSUES_OVERVIEW.md`
+```
+
+#### 4.4.2 Create siw/OPEN_ISSUES_OVERVIEW.md
+
+```markdown
+# Open Issues Overview
+
+## General
+
+| # | Title | Status | Priority | Related |
+|---|-------|--------|----------|---------|
+| _None_ | _Use `/kramme:siw:issue-define` to create first issue (G-001)_ | | | |
+
+**Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
+
+**Issue Naming:** `G-XXX` for general issues, `P1-XXX`, `P2-XXX` for phase-specific issues.
+
+**Details:** See `siw/issues/ISSUE-{prefix}-XXX-*.md` files.
+```
+
+#### 4.4.3 Create siw/issues/ directory
+
+```bash
+mkdir -p siw/issues
+touch siw/issues/.gitkeep
+```
 
 ## Phase 5: Verify Completeness & Report
 
