@@ -1,0 +1,79 @@
+name: Installer Tests
+
+on:
+  pull_request:
+
+jobs:
+  install:
+    name: "${{ matrix.plugin }} -> ${{ matrix.target }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        plugin: [kramme-cc-workflow, kramme-connect-workflow]
+        target: [opencode, codex]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run installer
+        run: |
+          export OPENCODE_OUT="$RUNNER_TEMP/opencode"
+          export CODEX_HOME="$RUNNER_TEMP/.codex"
+          export AGENTS_HOME="$RUNNER_TEMP/.agents"
+          mkdir -p "$OPENCODE_OUT" "$CODEX_HOME" "$AGENTS_HOME"
+
+          ./${{ matrix.plugin }}/scripts/install-${{ matrix.target }}.sh \
+            --non-interactive \
+            --output "$OPENCODE_OUT" \
+            --codex-home "$CODEX_HOME" \
+            --agents-home "$AGENTS_HOME"
+
+      - name: Verify opencode output
+        if: matrix.target == 'opencode'
+        run: |
+          OUT="$RUNNER_TEMP/opencode"
+
+          test -f "$OUT/opencode.json"
+          node -e "JSON.parse(require('fs').readFileSync('$OUT/opencode.json', 'utf8'))"
+
+          SKILL_COUNT=$(find "$OUT/skills" -name "SKILL.md" | wc -l)
+          echo "Skills: $SKILL_COUNT"
+          test "$SKILL_COUNT" -gt 0
+
+          if [ "${{ matrix.plugin }}" = "kramme-cc-workflow" ]; then
+            AGENT_COUNT=$(find "$OUT/agents" -name "*.md" | wc -l)
+            echo "Agents: $AGENT_COUNT"
+            test "$AGENT_COUNT" -gt 0
+          fi
+
+          echo "--- Output tree ---"
+          find "$OUT" -type f | sort
+
+      - name: Verify codex output
+        if: matrix.target == 'codex'
+        run: |
+          CODEX="$RUNNER_TEMP/.codex"
+          AGENTS="$RUNNER_TEMP/.agents"
+
+          CODEX_SKILLS=$(find "$CODEX/skills" -name "SKILL.md" 2>/dev/null | wc -l)
+          AGENT_SKILLS=$(find "$AGENTS/skills" -name "SKILL.md" 2>/dev/null | wc -l)
+          echo "Codex skills: $CODEX_SKILLS"
+          echo "Agent skills: $AGENT_SKILLS"
+          test $((CODEX_SKILLS + AGENT_SKILLS)) -gt 0
+
+          if [ "${{ matrix.plugin }}" = "kramme-cc-workflow" ]; then
+            test "$AGENT_SKILLS" -gt 0
+            test -f "$CODEX/AGENTS.md"
+          fi
+
+          echo "--- Codex tree ---"
+          find "$CODEX" -type f | sort
+          echo "--- Agents tree ---"
+          find "$AGENTS" -type f 2>/dev/null | sort
