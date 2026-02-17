@@ -3,6 +3,7 @@ name: kramme:connect:document-feature
 description: Use this skill when you are creating documentation for an existing Connect feature or updating existing docs
 disable-model-invocation: false
 user-invocable: true
+kramme-platforms: [claude-code]
 ---
 
 # Connect Existing Feature Documentation Writer
