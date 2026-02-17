@@ -1,0 +1,109 @@
+name: Codex and OpenCode Installer Tests
+
+on:
+  pull_request:
+
+jobs:
+  install:
+    name: Validate installers
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate all installers
+        run: |
+          set -euo pipefail
+
+          plugins=(kramme-cc-workflow kramme-connect-workflow)
+          targets=(opencode codex)
+
+          for plugin in "${plugins[@]}"; do
+            eval "$(node ./kramme-cc-workflow/scripts/convert-plugin.js stats "$plugin" | sed 's/^/EXPECTED_/')"
+
+            for target in "${targets[@]}"; do
+              echo "::group::${plugin} -> ${target}"
+
+              WORK_DIR="$RUNNER_TEMP/${plugin}-${target}"
+              OPENCODE_OUT="$WORK_DIR/opencode"
+              CODEX_HOME="$WORK_DIR/.codex"
+              AGENTS_HOME="$WORK_DIR/.agents"
+              rm -rf "$WORK_DIR"
+              mkdir -p "$OPENCODE_OUT" "$CODEX_HOME" "$AGENTS_HOME"
+
+              ./$plugin/scripts/install-${target}.sh \
+                --non-interactive \
+                --output "$OPENCODE_OUT" \
+                --codex-home "$CODEX_HOME" \
+                --agents-home "$AGENTS_HOME"
+
+              if [ "$target" = "opencode" ]; then
+                test -f "$OPENCODE_OUT/opencode.json"
+                node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" "$OPENCODE_OUT/opencode.json"
+
+                if [ -d "$OPENCODE_OUT/skills" ]; then
+                  SKILL_COUNT=$(find "$OPENCODE_OUT/skills" -name "SKILL.md" | wc -l)
+                else
+                  SKILL_COUNT=0
+                fi
+
+                if [ -d "$OPENCODE_OUT/agents" ]; then
+                  AGENT_COUNT=$(find "$OPENCODE_OUT/agents" -name "*.md" | wc -l)
+                else
+                  AGENT_COUNT=0
+                fi
+
+                SKILL_COUNT=$(echo "$SKILL_COUNT" | tr -d '[:space:]')
+                AGENT_COUNT=$(echo "$AGENT_COUNT" | tr -d '[:space:]')
+
+                echo "Expected skills: $EXPECTED_opencode_skills"
+                echo "Installed skills: $SKILL_COUNT"
+                test "$SKILL_COUNT" -eq "$EXPECTED_opencode_skills"
+
+                echo "Expected agents: $EXPECTED_agent_skills"
+                echo "Installed agents: $AGENT_COUNT"
+                test "$AGENT_COUNT" -eq "$EXPECTED_agent_skills"
+
+                echo "--- Output tree ---"
+                find "$OPENCODE_OUT" -type f | sort
+              else
+                if [ -d "$CODEX_HOME/skills" ]; then
+                  CODEX_SKILLS=$(find "$CODEX_HOME/skills" -name "SKILL.md" | wc -l)
+                else
+                  CODEX_SKILLS=0
+                fi
+
+                if [ -d "$AGENTS_HOME/skills" ]; then
+                  AGENT_SKILLS=$(find "$AGENTS_HOME/skills" -name "SKILL.md" | wc -l)
+                else
+                  AGENT_SKILLS=0
+                fi
+
+                CODEX_SKILLS=$(echo "$CODEX_SKILLS" | tr -d '[:space:]')
+                AGENT_SKILLS=$(echo "$AGENT_SKILLS" | tr -d '[:space:]')
+
+                echo "Expected codex skills: $EXPECTED_codex_skills"
+                echo "Installed codex skills: $CODEX_SKILLS"
+                test "$CODEX_SKILLS" -eq "$EXPECTED_codex_skills"
+
+                echo "Expected agent skills: $EXPECTED_agent_skills"
+                echo "Installed agent skills: $AGENT_SKILLS"
+                test "$AGENT_SKILLS" -eq "$EXPECTED_agent_skills"
+
+                test -f "$CODEX_HOME/AGENTS.md"
+
+                echo "--- Codex tree ---"
+                find "$CODEX_HOME" -type f | sort
+                echo "--- Agents tree ---"
+                find "$AGENTS_HOME" -type f 2>/dev/null | sort
+              fi
+
+              echo "::endgroup::"
+            done
+          done

@@ -62,13 +62,25 @@ async function main() {
   }
 
   const command = argv[0]
-  if (command !== "install") {
-    console.error(`Unknown command: ${command}`)
-    printHelp(1)
+  if (command === "install") {
+    const parsed = parseArgs(argv.slice(1))
+    await runInstall(parsed)
     return
   }
 
-  const parsed = parseArgs(argv.slice(1))
+  if (command === "stats") {
+    const parsed = parseArgs(argv.slice(1))
+    await runStats(parsed)
+    return
+  }
+
+  if (command !== "install" && command !== "stats") {
+    console.error(`Unknown command: ${command}`)
+    printHelp(1)
+  }
+}
+
+async function runInstall(parsed) {
   const pluginInput = parsed._[0] ?? process.cwd()
   const targetName = String(parsed.to ?? "opencode")
   const target = targets[targetName]
@@ -134,8 +146,42 @@ async function main() {
   }
 }
 
+async function runStats(parsed) {
+  const pluginInput = parsed._[0] ?? process.cwd()
+  const resolvedPluginPath = await resolvePluginInput(pluginInput)
+  const plugin = await loadClaudePlugin(resolvedPluginPath)
+
+  const options = {
+    agentMode: "subagent",
+    inferTemperature: true,
+    permissions: "broad",
+    yes: true,
+    nonInteractive: true,
+  }
+
+  const opencodeBundle = convertClaudeToOpenCode(plugin, options)
+  const codexBundle = convertClaudeToCodex(plugin, options)
+  const stats = {
+    opencode_skills: opencodeBundle.skillDirs.length,
+    codex_skills: codexBundle.skillDirs.length + codexBundle.generatedSkills.length,
+    agent_skills: codexBundle.agentSkills?.length ?? 0,
+  }
+
+  const outputAsJson = parseBoolean(parsed.json, false)
+  if (outputAsJson) {
+    console.log(JSON.stringify(stats))
+    return
+  }
+
+  for (const [key, value] of Object.entries(stats)) {
+    console.log(`${key}=${value}`)
+  }
+}
+
 function printHelp(exitCode) {
-  const help = `Usage: scripts/convert-plugin.js install <plugin-name|path> [options]
+  const help = `Usage:
+  scripts/convert-plugin.js install <plugin-name|path> [options]
+  scripts/convert-plugin.js stats <plugin-name|path> [options]
 
 Options:
   --to <target>           Target format: opencode | codex (default: opencode)
@@ -148,6 +194,7 @@ Options:
   --infer-temperature     true | false (default: true)
   --yes, -y               Assume "yes" for all cleanup confirmations
   --non-interactive       Never prompt; use default answers for confirmations
+  --json                  (stats only) print a JSON object instead of key=value lines
 `
   console.log(help)
   if (exitCode) process.exit(exitCode)
