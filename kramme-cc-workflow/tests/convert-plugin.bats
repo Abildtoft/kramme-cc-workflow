@@ -56,6 +56,16 @@ JSON
   [ ! -d "$TMP_DIR/.codex/skills/kramme:silent-failure-hunter" ]
 }
 
+@test "converter resolves marketplace slug from parent repo root" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run bash -c "cd \"$TMP_DIR\" && node \"$SCRIPT\" install kramme-cc-workflow --to codex --codex-home \"$TMP_DIR/output\" --agents-home \"$TMP_DIR/.agents\" --non-interactive"
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/output/.codex/skills/kramme:pr:create/SKILL.md" ]
+}
+
 @test "codex conversion cleans stale agent skills when plugin has no agents" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
