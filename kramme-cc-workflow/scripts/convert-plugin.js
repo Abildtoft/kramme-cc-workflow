@@ -236,7 +236,14 @@ async function resolvePluginInput(input) {
     throw new Error("Plugin name or path is required.")
   }
 
-  const rootCandidates = [process.cwd(), resolveScriptRoot()]
+  const scriptRoot = resolveScriptRoot()
+  const rootCandidates = [process.cwd(), scriptRoot]
+  const parentRoot = path.resolve(scriptRoot, "..")
+  const parentMarketplacePath = path.join(parentRoot, ".claude-plugin", "marketplace.json")
+  if (parentRoot !== scriptRoot && (await pathExists(parentMarketplacePath))) {
+    rootCandidates.push(parentRoot)
+  }
+
   for (const root of rootCandidates) {
     const marketplaceResolved = await resolveMarketplacePlugin(root, slug)
     if (marketplaceResolved) return marketplaceResolved

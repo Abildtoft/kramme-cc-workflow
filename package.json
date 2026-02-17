@@ -1,0 +1,10 @@
+{
+  "name": "kramme-cc-workflow-installer",
+  "version": "0.25.0",
+  "private": true,
+  "description": "Root entrypoint for npx GitHub installs",
+  "license": "MIT",
+  "bin": {
+    "kramme-cc-workflow": "kramme-cc-workflow/scripts/convert-plugin.js"
+  }
+}
