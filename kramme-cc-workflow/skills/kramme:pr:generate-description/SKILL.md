@@ -1,11 +1,20 @@
 ---
 name: kramme:pr:generate-description
 description: Generate comprehensive Pull Request descriptions by analyzing git changes, commit history, Linear issues, and code structure for both GitLab and GitHub
+argument-hint: "[--non-interactive]"
 disable-model-invocation: false
 user-invocable: true
 ---
 
 # PR Description Generator
+
+## Parse Arguments
+
+Parse `$ARGUMENTS` for flags:
+
+- `--non-interactive`: Skip clarification prompts (Phase 2.5) and save-to-file prompt (Phase 4). Generate the description directly from gathered context without pausing for user input.
+
+If `--non-interactive` is present, set `NON_INTERACTIVE=true` and remove the flag from remaining arguments.
 
 ## Instructions
 
@@ -249,6 +258,8 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
    - **ALWAYS** reference only Linear issues as the source of original requirements when documenting divergences
 
 ### Phase 2.5: Analysis and Clarification
+
+**Skip this phase entirely if `NON_INTERACTIVE=true`.** Proceed directly to Phase 3.
 
 **ALWAYS** pause after gathering context and before generating the description:
 
@@ -667,7 +678,7 @@ Here is your generated PR:
 
 **NOTE**: The title is formatted with backticks for easy copying. The description follows the standard markdown format.
 
-6. **ALWAYS** ask if the description should be saved to a markdown file:
+6. **ALWAYS** ask if the description should be saved to a markdown file (**skip if `NON_INTERACTIVE=true`**):
 
    - After presenting the description, ask: "Would you like me to save this description to a markdown file?"
    - If yes, save to a file named `PR_DESCRIPTION.md` in the repository root

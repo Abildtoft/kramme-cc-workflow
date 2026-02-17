@@ -458,16 +458,15 @@ Recovery:
 
 ### 7.1 Invoke the Skill
 
-**IMPORTANT:** Use the Skill tool to invoke `pr-description-generator`:
+**IMPORTANT:** Use the Skill tool to invoke `pr-description-generator` with `--non-interactive` to skip clarification prompts (the pr:create flow has its own confirmation at Step 8):
 
 ```
-skill: "kramme:pr:generate-description"
+skill: "kramme:pr:generate-description", args: "--non-interactive"
 ```
 
 This skill will:
 - Analyze git diff and commit history
 - Check for Linear issue references in branch name
-- Ask clarifying questions about the changes
 - Generate a conventional commit-style **title** (`<type>(<scope>): <description>`)
 - Generate comprehensive description with all sections
 
@@ -478,7 +477,7 @@ After the pr-description-generator skill completes:
 2. **DO NOT** just show the description and stop
 3. **IMMEDIATELY** proceed to Step 8 (Confirmation and Creation)
 
-This is Step 7 of 9. The PR creation workflow is not complete until Step 9. The skill may ask its own clarifying questions; once it produces the final description, proceed directly to the Confirmation and Creation step.
+This is Step 7 of 9. The PR creation workflow is not complete until Step 9. Once the skill produces the final description, proceed directly to the Confirmation and Creation step.
 
 ### 7.2 Capture the Title and Description
 
