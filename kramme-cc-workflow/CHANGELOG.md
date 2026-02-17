@@ -3,6 +3,11 @@
 ## [Unreleased]
 
 ### Added
+## [0.25.1] - 2026-02-17
+
+### Fixed
+- Support npx from repo root (#164)
+
 ## [0.25.0] - 2026-02-16
 
 ### Added
@@ -341,6 +346,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.25.1]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.25.0...v0.25.1
 [0.25.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.22.0...v0.23.0
