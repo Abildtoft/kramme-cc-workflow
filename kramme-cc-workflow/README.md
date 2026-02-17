@@ -150,6 +150,7 @@ PR creation, review, iteration, and resolution.
 | `/kramme:pr:resolve-review:team` | User | Resolve review findings in parallel using Agent Teams. Groups findings by file area and assigns to separate teammates for faster resolution. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
 | `/kramme:pr:fix-ci` | User | Iterate on a PR until CI passes. Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
 | `/kramme:pr:generate-description` | User, Auto | Generate PR descriptions by analyzing git changes, commit history, and Linear issues |
+| `/kramme:pr:ux-audit` | User | Audit UI, UX, and product experience of PR changes using specialized agents for accessibility, usability heuristics, product thinking, and visual consistency. Optionally uses browser automation for visual review. |
 | `/kramme:pr:rebase` | User | Rebase current branch onto latest main/master, then force push. Use when your PR is behind the base branch. |
 
 #### Learnings
@@ -209,7 +210,7 @@ Session management, verification, artifact cleanup, and hook configuration.
 
 | Skill | Invocation | Description |
 |-------|------------|-------------|
-| `/kramme:artifacts:cleanup` | User | Delete workflow artifacts (REVIEW_OVERVIEW.md, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files). For SIW-specific cleanup, use `/kramme:siw:remove`. |
+| `/kramme:artifacts:cleanup` | User | Delete workflow artifacts (REVIEW_OVERVIEW.md, UX_AUDIT_OVERVIEW.md, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files). For SIW-specific cleanup, use `/kramme:siw:remove`. |
 | `/kramme:changelog:generate` | User | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
 | `/kramme:hooks:configure-links` | User | Configure `context-links` hook settings by writing local overrides to `hooks/context-links.config` (workspace slug, team keys, regexes). |
 | `/kramme:hooks:toggle` | User | Enable or disable a plugin hook. Use `status` to list all hooks, or specify a hook name to toggle. |
@@ -228,7 +229,7 @@ Auto-triggered by Claude based on context. These don't appear in the `/` menu.
 
 ## Agents
 
-Specialized subagents for PR review tasks. Invoked by `/kramme:pr:review` or directly via the Task tool.
+Specialized subagents for PR review and UX audit tasks. Invoked by `/kramme:pr:review`, `/kramme:pr:ux-audit`, or directly via the Task tool.
 
 | Agent | Description |
 |-------|-------------|
@@ -248,6 +249,10 @@ Specialized subagents for PR review tasks. Invoked by `/kramme:pr:review` or dir
 | `kramme:auth-reviewer` | Reviews authentication, authorization, CSRF, and session management. |
 | `kramme:data-reviewer` | Reviews for cryptographic misuse, information disclosure, and DoS vulnerabilities. |
 | `kramme:logic-reviewer` | Reviews for business logic flaws, race conditions, and TOCTOU bugs. |
+| `kramme:a11y-auditor` | Audits accessibility (WCAG 2.1 AA): ARIA, semantic HTML, color contrast, keyboard nav, focus management. |
+| `kramme:ux-reviewer` | Reviews usability (Nielsen's 10 heuristics) and interaction states (loading, error, empty, feedback). |
+| `kramme:product-reviewer` | Reviews product experience: feature discoverability, user flow completeness, edge cases, copy quality. |
+| `kramme:visual-reviewer` | Reviews visual consistency (design tokens, spacing, typography, color) and responsive design. |
 
 ## Hooks
 
