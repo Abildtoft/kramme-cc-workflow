@@ -8,7 +8,7 @@ A Claude Code plugin for [Consensus ApS](https://consensus.dk)'s **Connect** pro
 
 | Skill | Description |
 |-------|-------------|
-| `/kramme:connect:document-feature` | Create or update documentation for Connect features |
+| `/kramme:connect:document-feature` | Create or update documentation for Connect features *(Claude Code only)* |
 | `/kramme:connect:extract-nx-libs` | Extract app code from `apps/connect/` into proper Nx libraries |
 | `/kramme:connect:migrate-store-ngrx` | Migrate legacy CustomStore/FeatureStore to NgRx ComponentStore in Connect monorepo |
 | `/kramme:connect:modernize-angular` | Modernize legacy Angular components in Connect monorepo |
@@ -25,6 +25,35 @@ Auto-triggered by Claude based on context. These don't appear in the `/` menu.
 
 ```bash
 claude /plugin install /path/to/kramme-connect-workflow
+```
+
+### OpenCode + Codex (experimental)
+
+From a local clone of the repo:
+
+```bash
+# OpenCode
+./scripts/install-opencode.sh
+
+# Codex
+./scripts/install-codex.sh
+```
+
+Run with npx (no clone):
+
+```bash
+# OpenCode
+npx --yes github:Abildtoft/kramme-cc-workflow install kramme-connect-workflow --to opencode
+
+# Codex
+npx --yes github:Abildtoft/kramme-cc-workflow install kramme-connect-workflow --to codex
+```
+
+Or via the converter directly from a local clone:
+
+```bash
+node kramme-cc-workflow/scripts/convert-plugin.js install kramme-connect-workflow --to opencode
+node kramme-cc-workflow/scripts/convert-plugin.js install kramme-connect-workflow --to codex
 ```
 
 ## Attribution
