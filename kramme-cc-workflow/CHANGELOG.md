@@ -3,6 +3,11 @@
 ## [Unreleased]
 
 ### Added
+## [0.27.0] - 2026-02-17
+
+### Added
+- Add ux audit workflow and specialized reviewers (#171)
+
 ## [0.26.0] - 2026-02-17
 
 ### Added
@@ -355,6 +360,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.27.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.25.1...v0.26.0
 [0.25.1]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.25.0...v0.25.1
 [0.25.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.24.0...v0.25.0
