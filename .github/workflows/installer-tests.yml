@@ -25,85 +25,7 @@ jobs:
       - name: Compute expected counts
         id: expected
         run: |
-          node - "${{ matrix.plugin }}" >> "$GITHUB_OUTPUT" <<'NODE'
-          const fs = require("fs")
-          const path = require("path")
-
-          const pluginRoot = process.argv[2]
-
-          function walkFiles(dir) {
-            if (!fs.existsSync(dir)) return []
-            const entries = fs.readdirSync(dir, { withFileTypes: true })
-            const files = []
-            for (const entry of entries) {
-              const fullPath = path.join(dir, entry.name)
-              if (entry.isDirectory()) {
-                files.push(...walkFiles(fullPath))
-              } else if (entry.isFile()) {
-                files.push(fullPath)
-              }
-            }
-            return files
-          }
-
-          function parsePlatforms(content) {
-            const frontmatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)
-            if (!frontmatterMatch) return null
-
-            const lines = frontmatterMatch[1].split(/\r?\n/)
-            for (let i = 0; i < lines.length; i += 1) {
-              const line = lines[i]
-
-              const inline = line.match(/^kramme-platforms:\s*\[(.*)\]\s*$/i)
-              if (inline) {
-                return inline[1]
-                  .split(",")
-                  .map((token) => token.trim().replace(/^['"]|['"]$/g, "").toLowerCase())
-                  .filter(Boolean)
-              }
-
-              const scalar = line.match(/^kramme-platforms:\s*([^\s#].*)$/i)
-              if (scalar) {
-                return scalar[1]
-                  .split(",")
-                  .map((token) => token.trim().replace(/^['"]|['"]$/g, "").toLowerCase())
-                  .filter(Boolean)
-              }
-
-              if (/^kramme-platforms:\s*$/i.test(line)) {
-                const values = []
-                for (let j = i + 1; j < lines.length; j += 1) {
-                  const candidate = lines[j]
-                  const item = candidate.match(/^\s*-\s*(.+)\s*$/)
-                  if (!item) break
-                  values.push(item[1].trim().replace(/^['"]|['"]$/g, "").toLowerCase())
-                }
-                return values.length > 0 ? values : null
-              }
-            }
-
-            return null
-          }
-
-          function countSkillsForTarget(target) {
-            const skillFiles = walkFiles(path.join(pluginRoot, "skills"))
-              .filter((file) => path.basename(file) === "SKILL.md")
-
-            return skillFiles.filter((file) => {
-              const content = fs.readFileSync(file, "utf8")
-              const platforms = parsePlatforms(content)
-              return !platforms || platforms.includes(target)
-            }).length
-          }
-
-          const agentCount = walkFiles(path.join(pluginRoot, "agents"))
-            .filter((file) => file.endsWith(".md"))
-            .length
-
-          console.log(`opencode_skills=${countSkillsForTarget("opencode")}`)
-          console.log(`codex_skills=${countSkillsForTarget("codex")}`)
-          console.log(`agent_skills=${agentCount}`)
-          NODE
+          node ./kramme-cc-workflow/scripts/convert-plugin.js stats "${{ matrix.plugin }}" >> "$GITHUB_OUTPUT"
 
       - name: Run installer
         run: |
@@ -179,9 +101,7 @@ jobs:
           echo "Installed agent skills: $AGENT_SKILLS"
           test "$AGENT_SKILLS" -eq "$EXPECTED_AGENT_SKILLS"
 
-          if [ "$EXPECTED_AGENT_SKILLS" -gt 0 ]; then
-            test -f "$CODEX/AGENTS.md"
-          fi
+          test -f "$CODEX/AGENTS.md"
 
           echo "--- Codex tree ---"
           find "$CODEX" -type f | sort
