@@ -736,8 +736,8 @@ Next Steps:
   - Address major findings to reduce implementation risk
   - Resolve findings with executive summaries and issue creation: /kramme:siw:audit-resolve {report_path}
   - Re-run after spec revisions to verify quality: /kramme:siw:spec-audit
-  - When spec is ready, begin implementation: /kramme:siw:phases-generate or /kramme:siw:issue-implement
-  - Clean up report when done: /kramme:artifacts:cleanup
+  - When spec is ready, begin implementation: /kramme:siw:generate-phases or /kramme:siw:issue-implement
+  - Clean up report when done: /kramme:workflow-artifacts:cleanup
 ```
 
 **STOP HERE.** Wait for the user's next instruction.

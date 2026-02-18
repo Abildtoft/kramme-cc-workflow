@@ -123,10 +123,10 @@ Local issue tracking and structured implementation planning using markdown files
 | Skill | Invocation | Description |
 |-------|------------|-------------|
 | `/kramme:siw:init` | User | Initialize structured implementation workflow documents in `siw/` (spec, siw/LOG.md, siw/issues). Accepts optional arguments: file path(s) or folder to link existing specs (references them, doesn't duplicate content), or `discover` to run an in-depth interview. Offers to move or keep linked files in place. Sets up local issue tracking without requiring Linear. |
-| `/kramme:siw:next` | User, Auto | Structured Implementation Workflow (SIW) entry point. Triggers on "SIW", "structured workflow", or when siw/LOG.md and siw/OPEN_ISSUES_OVERVIEW.md files are detected. Use `/kramme:siw:init` to set up. |
+| `/kramme:siw:continue` | User, Auto | Structured Implementation Workflow (SIW) entry point. Triggers on "SIW", "structured workflow", or when siw/LOG.md and siw/OPEN_ISSUES_OVERVIEW.md files are detected. Use `/kramme:siw:init` to set up. |
 | `/kramme:siw:discovery` | User | Run a focused SIW spec-strengthening interview. Identifies quality gaps and produces concrete spec improvements (optionally applies them). |
 | `/kramme:siw:issue-define` | User | Define a new local issue with guided interview process. Creates issue files in the `issues/` directory. |
-| `/kramme:siw:phases-generate` | User | Break spec into atomic, phase-based issues with tests and validation. Uses `P1-001`, `P2-001`, `G-001` numbering. Reviews breakdown with subagent before creating files. |
+| `/kramme:siw:generate-phases` | User | Break spec into atomic, phase-based issues with tests and validation. Uses `P1-001`, `P2-001`, `G-001` numbering. Reviews breakdown with subagent before creating files. |
 | `/kramme:siw:issue-implement` | User | Start implementing a defined local issue with codebase exploration and planning. Works on current branch. |
 | `/kramme:siw:issue-implement:team` | User | Implement multiple SIW issues simultaneously using Agent Teams. Each teammate implements one issue with a full context window. Handles file ownership and batching. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
 | `/kramme:siw:spec-audit` | User | Audit spec quality (coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design) before implementation. Produces a structured report and optionally creates SIW issues. |
@@ -144,13 +144,13 @@ PR creation, review, iteration, and resolution.
 | Skill | Invocation | Description |
 |-------|------------|-------------|
 | `/kramme:pr:create` | User | Create a clean PR with narrative-quality commits and comprehensive description. Orchestrates branch setup, commit restructuring, and PR creation. |
-| `/kramme:pr:review` | User | Run comprehensive PR review using specialized agents. Supports reviewing comments, tests, errors, types, and code quality. Can run agents sequentially or in parallel. |
-| `/kramme:pr:review:team` | User | Team-based PR review using Agent Teams where specialized reviewers collaborate, cross-validate findings, and challenge each other's suggestions. Higher quality, higher token cost. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
+| `/kramme:pr:code-review` | User | Run comprehensive PR review using specialized agents. Supports reviewing comments, tests, errors, types, and code quality. Can run agents sequentially or in parallel. |
+| `/kramme:pr:code-review:team` | User | Team-based PR review using Agent Teams where specialized reviewers collaborate, cross-validate findings, and challenge each other's suggestions. Higher quality, higher token cost. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
 | `/kramme:pr:resolve-review` | User | Resolve findings from code reviews. Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
 | `/kramme:pr:resolve-review:team` | User | Resolve review findings in parallel using Agent Teams. Groups findings by file area and assigns to separate teammates for faster resolution. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
 | `/kramme:pr:fix-ci` | User | Iterate on a PR until CI passes. Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
 | `/kramme:pr:generate-description` | User, Auto | Generate PR descriptions by analyzing git changes, commit history, and Linear issues |
-| `/kramme:pr:ux-audit` | User | Audit UI, UX, and product experience of PR changes using specialized agents for accessibility, usability heuristics, product thinking, and visual consistency. Optionally uses browser automation for visual review. |
+| `/kramme:pr:ux-review` | User | Audit UI, UX, and product experience of PR changes using specialized agents for accessibility, usability heuristics, product thinking, and visual consistency. Optionally uses browser automation for visual review. |
 | `/kramme:pr:rebase` | User | Rebase current branch onto latest main/master, then force push. Use when your PR is behind the base branch. |
 
 #### Learnings
@@ -210,7 +210,7 @@ Session management, verification, artifact cleanup, and hook configuration.
 
 | Skill | Invocation | Description |
 |-------|------------|-------------|
-| `/kramme:artifacts:cleanup` | User | Delete workflow artifacts (REVIEW_OVERVIEW.md, UX_AUDIT_OVERVIEW.md, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files). For SIW-specific cleanup, use `/kramme:siw:remove`. |
+| `/kramme:workflow-artifacts:cleanup` | User | Delete workflow artifacts (REVIEW_OVERVIEW.md, UX_REVIEW_OVERVIEW.md, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files). For SIW-specific cleanup, use `/kramme:siw:remove`. |
 | `/kramme:changelog:generate` | User | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
 | `/kramme:hooks:configure-links` | User | Configure `context-links` hook settings by writing local overrides to `hooks/context-links.config` (workspace slug, team keys, regexes). |
 | `/kramme:hooks:toggle` | User | Enable or disable a plugin hook. Use `status` to list all hooks, or specify a hook name to toggle. |
@@ -229,7 +229,7 @@ Auto-triggered by Claude based on context. These don't appear in the `/` menu.
 
 ## Agents
 
-Specialized subagents for PR review and UX audit tasks. Invoked by `/kramme:pr:review`, `/kramme:pr:ux-audit`, or directly via the Task tool.
+Specialized subagents for PR review and UX audit tasks. Invoked by `/kramme:pr:code-review`, `/kramme:pr:ux-review`, or directly via the Task tool.
 
 | Agent | Description |
 |-------|-------------|

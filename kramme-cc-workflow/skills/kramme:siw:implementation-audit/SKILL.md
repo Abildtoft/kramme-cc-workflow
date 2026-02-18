@@ -557,7 +557,7 @@ Next Steps:
   - Review the report for accuracy (especially "Uncertain" items)
   - Fix critical discrepancies first: /kramme:siw:issue-implement G-{first}
   - Re-run after fixes to verify compliance: /kramme:siw:implementation-audit
-  - Clean up report when done: /kramme:artifacts:cleanup
+  - Clean up report when done: /kramme:workflow-artifacts:cleanup
 ```
 
 **STOP HERE.** Wait for the user's next instruction.

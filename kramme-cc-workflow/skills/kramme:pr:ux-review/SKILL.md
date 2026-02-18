@@ -1,5 +1,5 @@
 ---
-name: kramme:pr:ux-audit
+name: kramme:pr:ux-review
 description: Audit UI, UX, and product experience of PR and local changes using specialized agents for usability heuristics, product thinking, visual consistency, and accessibility.
 argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [parallel]"
 disable-model-invocation: true
@@ -71,7 +71,7 @@ No UI/UX changes detected to audit.
 
 ### Step 4: Check for Previous Audit
 
-If `UX_AUDIT_OVERVIEW.md` exists in the project root:
+If `UX_REVIEW_OVERVIEW.md` exists in the project root:
 - Parse previously addressed findings (file path, line number, issue description, action taken)
 - Store for filtering in Step 9
 
@@ -151,7 +151,7 @@ After collecting findings from all agents:
 
 ### Step 9: Filter Previously Addressed Findings
 
-If `UX_AUDIT_OVERVIEW.md` was found in Step 4:
+If `UX_REVIEW_OVERVIEW.md` was found in Step 4:
 - Cross-reference validated findings against previously addressed findings
 - **Only filter** if the finding is the same issue:
   - Same file
@@ -178,7 +178,7 @@ After validation and filtering, organize findings:
 
 ### Step 11: Write Findings
 
-Write to `UX_AUDIT_OVERVIEW.md` in the project root:
+Write to `UX_REVIEW_OVERVIEW.md` in the project root:
 
 ```markdown
 # UX Audit Summary
@@ -224,7 +224,7 @@ Write to `UX_AUDIT_OVERVIEW.md` in the project root:
 ## Filtered (Previously Addressed)
 <collapsed>
 - [file:line]: Brief description
-  Matched: UX_AUDIT_OVERVIEW.md - [action taken summary]
+  Matched: UX_REVIEW_OVERVIEW.md - [action taken summary]
 </collapsed>
 
 ## UX Strengths
@@ -239,7 +239,7 @@ Write to `UX_AUDIT_OVERVIEW.md` in the project root:
 **To resolve findings, run:** `/kramme:pr:resolve-review`
 ```
 
-This file is a working artifact — it should NOT be committed. It will be cleaned up by `/kramme:artifacts:cleanup`.
+This file is a working artifact — it should NOT be committed. It will be cleaned up by `/kramme:workflow-artifacts:cleanup`.
 
 ### Step 12: Provide Action Plan
 
@@ -249,44 +249,44 @@ If Critical or Important issues found, suggest running `/kramme:pr:resolve-revie
 
 **Full UX audit (code-only):**
 ```
-/kramme:pr:ux-audit
+/kramme:pr:ux-review
 ```
 
 **UX audit with visual review:**
 ```
-/kramme:pr:ux-audit http://localhost:3000
+/kramme:pr:ux-review http://localhost:3000
 ```
 
 **Specific categories:**
 ```
-/kramme:pr:ux-audit --categories ux,product
+/kramme:pr:ux-review --categories ux,product
 # Only usability and product review
 
-/kramme:pr:ux-audit --categories a11y
+/kramme:pr:ux-review --categories a11y
 # Accessibility only (runs regardless of project detection)
 
-/kramme:pr:ux-audit --categories visual
+/kramme:pr:ux-review --categories visual
 # Visual consistency and responsive only
 ```
 
 **Custom threshold (only report high-confidence findings):**
 ```
-/kramme:pr:ux-audit --threshold 90
+/kramme:pr:ux-review --threshold 90
 # Only findings with confidence >= 90 are reported
 
-/kramme:pr:ux-audit --threshold 50
+/kramme:pr:ux-review --threshold 50
 # Lower bar — more findings, including lower-confidence suggestions
 ```
 
 **Parallel execution:**
 ```
-/kramme:pr:ux-audit parallel
+/kramme:pr:ux-review parallel
 # All applicable agents run simultaneously
 ```
 
 **Combined:**
 ```
-/kramme:pr:ux-audit http://localhost:4200 --categories ux,visual --threshold 85 parallel
+/kramme:pr:ux-review http://localhost:4200 --categories ux,visual --threshold 85 parallel
 ```
 
 ## Agent Descriptions

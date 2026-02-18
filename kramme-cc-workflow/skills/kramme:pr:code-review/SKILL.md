@@ -1,5 +1,5 @@
 ---
-name: kramme:pr:review
+name: kramme:pr:code-review
 description: Run a comprehensive pull request review using multiple specialized agents, each focusing on a different aspect of code quality.
 disable-model-invocation: true
 user-invocable: true
@@ -120,7 +120,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
    Write the aggregated review summary from Step 10 to `REVIEW_OVERVIEW.md` in the project root, using the format from the template below. Include all sections even if empty (with count of 0).
 
-   This file is a working artifact — it should NOT be committed. It will be cleaned up by `/kramme:artifacts:cleanup`.
+   This file is a working artifact — it should NOT be committed. It will be cleaned up by `/kramme:workflow-artifacts:cleanup`.
 
 12. **Provide Action Plan**
 
@@ -175,24 +175,24 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
 **Full review (default):**
 ```
-/kramme:pr:review
+/kramme:pr:code-review
 ```
 
 **Specific aspects:**
 ```
-/kramme:pr:review tests errors
+/kramme:pr:code-review tests errors
 # Reviews only test coverage and error handling
 
-/kramme:pr:review comments
+/kramme:pr:code-review comments
 # Reviews only code comments
 
-/kramme:pr:review simplify
+/kramme:pr:code-review simplify
 # Simplifies code after passing review
 ```
 
 **Parallel review:**
 ```
-/kramme:pr:review all parallel
+/kramme:pr:code-review all parallel
 # Launches all agents in parallel
 ```
 
@@ -279,7 +279,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 **Before committing:**
 ```
 1. Write code
-2. Run: /kramme:pr:review code errors
+2. Run: /kramme:pr:code-review code errors
 3. Fix any critical issues
 4. Commit
 ```
@@ -287,7 +287,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 **Before creating PR:**
 ```
 1. Stage all changes
-2. Run: /kramme:pr:review all
+2. Run: /kramme:pr:code-review all
 3. Address all critical and important issues
 4. Run specific reviews again to verify
 5. Create PR
