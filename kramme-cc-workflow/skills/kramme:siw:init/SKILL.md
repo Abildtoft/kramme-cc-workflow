@@ -59,7 +59,7 @@ header: "Existing Workflow Files Found"
 question: "Workflow files already exist in this directory. How would you like to proceed?"
 options:
   - label: "Resume existing workflow"
-    description: "Continue with current files (invokes kramme:siw:next skill)"
+    description: "Continue with current files (invokes kramme:siw:continue skill)"
   - label: "Start fresh"
     description: "Delete existing workflow files and create new ones"
   - label: "Abort"
@@ -68,7 +68,7 @@ options:
 
 **If "Resume existing workflow":**
 - Stop this command
-- Inform user that the `kramme:siw:next` skill will auto-trigger when they start working
+- Inform user that the `kramme:siw:continue` skill will auto-trigger when they start working
 - Suggest reading siw/LOG.md for current progress
 
 **If "Start fresh":**
@@ -615,14 +615,14 @@ Created:
   siw/issues/                  - Individual issue files (temporary)
 
 Next Steps:
-  1. Run /kramme:siw:phases-generate to decompose spec into phase-based issues
+  1. Run /kramme:siw:generate-phases to decompose spec into phase-based issues
      OR /kramme:siw:issue-define to create issues one at a time
   2. Run /kramme:siw:issue-implement <G-XXX or P1-XXX> to start implementing
 
 Tips:
   - The spec file is permanent; keep it updated as your source of truth
   - siw/LOG.md and siw/issues are temporary; delete them when work is complete
-  - Use /kramme:artifacts:cleanup to remove temporary files when done
+  - Use /kramme:workflow-artifacts:cleanup to remove temporary files when done
 ```
 
 **If external files were linked, also show:**

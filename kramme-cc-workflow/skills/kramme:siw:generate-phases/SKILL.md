@@ -1,5 +1,5 @@
 ---
-name: kramme:siw:phases-generate
+name: kramme:siw:generate-phases
 description: Break spec into atomic, phase-based issues with tests and validation
 argument-hint: "[spec-file-path]"
 disable-model-invocation: true
@@ -29,7 +29,7 @@ Use **phase-prefixed numbering** for clear organization:
 ## Process Overview
 
 ```
-/kramme:siw:phases-generate [spec-file-path]
+/kramme:siw:generate-phases [spec-file-path]
     ↓
 [Validate SIW workflow exists]
     ↓

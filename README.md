@@ -35,7 +35,7 @@ Common SIW command flow:
 
 ```bash
 /kramme:siw:init               # create or link spec + initialize siw/
-/kramme:siw:phases-generate    # break spec into phase-based issues
+/kramme:siw:generate-phases    # break spec into phase-based issues
 /kramme:siw:issue-implement    # implement one issue
 /kramme:siw:implementation-audit
 /kramme:siw:issues-reindex
@@ -82,7 +82,7 @@ After installation, common entry points are:
 
 ```bash
 /kramme:siw:init
-/kramme:pr:review
+/kramme:pr:code-review
 /kramme:pr:fix-ci
 /kramme:verify:run
 ```

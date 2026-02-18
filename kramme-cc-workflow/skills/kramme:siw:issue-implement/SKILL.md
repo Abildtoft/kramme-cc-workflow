@@ -513,7 +513,7 @@ Approach: {selected approach}
 Quick Commands:
 - /kramme:verify:run - Run verification checks
 - /kramme:pr:create - Create PR when ready
-- /kramme:pr:review - Review changes for issues
+- /kramme:pr:code-review - Review changes for issues
 ```
 
 ---

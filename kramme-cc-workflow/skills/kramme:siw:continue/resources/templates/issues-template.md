@@ -15,7 +15,7 @@ Issues use a **prefix-based numbering** scheme:
 | `P2-` | Phase 2 issues | `ISSUE-P2-001-api.md` |
 | `P3-` | Phase 3 issues (etc.) | `ISSUE-P3-001-frontend.md` |
 
-**Default:** `/kramme:siw:issue-define` defaults to `G-` but can use `P1-`, `P2-`, etc. when the issue fits an active (not completed) phase. `/kramme:siw:phases-generate` typically creates `P1-`, `P2-`, etc. issues (and `G-` for cross-cutting tasks).
+**Default:** `/kramme:siw:issue-define` defaults to `G-` but can use `P1-`, `P2-`, etc. when the issue fits an active (not completed) phase. `/kramme:siw:generate-phases` typically creates `P1-`, `P2-`, etc. issues (and `G-` for cross-cutting tasks).
 
 ## File Structure
 

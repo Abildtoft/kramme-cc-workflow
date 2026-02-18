@@ -1,5 +1,5 @@
 ---
-name: kramme:siw:next
+name: kramme:siw:continue
 description: Structured Implementation Workflow (SIW) - Use a structured workflow with core specification, planning, and audit documents to plan, track, and implement work items. Triggers on "SIW", "structured workflow", or when siw/LOG.md and siw/OPEN_ISSUES_OVERVIEW.md files are detected.
 disable-model-invocation: false
 user-invocable: true
@@ -24,7 +24,7 @@ A local issue tracking system using markdown files to plan, track, and document 
 /kramme:siw:init                    # Initialize workflow documents
 /kramme:siw:discovery               # Strengthen spec quality before planning
 /kramme:siw:issue-define "feature"  # Create a work item (G-001 format)
-/kramme:siw:phases-generate         # Break spec into phase-based issues (P1-001, P2-001)
+/kramme:siw:generate-phases         # Break spec into phase-based issues (P1-001, P2-001)
 /kramme:siw:issue-implement G-001   # Start implementing
 /kramme:siw:spec-audit               # Audit spec quality before implementation
 /kramme:siw:implementation-audit    # Audit code against spec for discrepancies
@@ -80,7 +80,7 @@ Issues use prefix-based numbering:
 ```
 ┌──────────────────────────────────┐
 │  /kramme:siw:issue-define        │  Create general work items (G-XXX)
-│  /kramme:siw:phases-generate     │  Create phase-based issues (P1-XXX, P2-XXX)
+│  /kramme:siw:generate-phases     │  Create phase-based issues (P1-XXX, P2-XXX)
 │  → siw/issues/ISSUE-{prefix}-XXX-*.md │
 └──────────────┬───────────────────┘
                │ Implementation
@@ -113,7 +113,7 @@ Issues use prefix-based numbering:
 | `/kramme:siw:init` | Initialize SIW documents (spec, siw/LOG.md, siw/issues) |
 | `/kramme:siw:discovery` | Strengthen SIW spec quality with a targeted discovery interview and concrete patch plan (optional apply) |
 | `/kramme:siw:issue-define` | Define a new work item with guided interview (creates `G-XXX` issues) |
-| `/kramme:siw:phases-generate` | Break spec into atomic phase-based issues (`P1-XXX`, `P2-XXX`, `G-XXX`) |
+| `/kramme:siw:generate-phases` | Break spec into atomic phase-based issues (`P1-XXX`, `P2-XXX`, `G-XXX`) |
 | `/kramme:siw:issue-implement` | Start implementing a defined issue (accepts `G-001`, `P1-001`, etc.) |
 | `/kramme:siw:spec-audit` | Audit spec quality (coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design) before implementation |
 | `/kramme:siw:implementation-audit` | Audit codebase against spec for discrepancies, naming misalignments, and missing implementations |
@@ -235,7 +235,7 @@ Use `siw/supporting-specs/` when:
 ## Templates Reference
 
 When manually creating documents, use these templates from:
-`skills/kramme:siw:next/resources/templates/`
+`skills/kramme:siw:continue/resources/templates/`
 
 | Document | Template |
 |----------|----------|

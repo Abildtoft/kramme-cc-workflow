@@ -1,5 +1,5 @@
 ---
-name: kramme:pr:review:team
+name: kramme:pr:code-review:team
 description: Run comprehensive PR review using an Agent Team where specialized reviewers collaborate, cross-validate findings, and challenge each other. Higher quality than standard review but uses more tokens.
 disable-model-invocation: true
 user-invocable: true
@@ -17,7 +17,7 @@ Run a comprehensive PR review using Agent Teams. Each reviewer runs as a full te
 This skill requires Agent Teams to be enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`). If teams are not available, print:
 
 ```
-Agent Teams are not enabled. Run /kramme:pr:review instead, or enable teams:
+Agent Teams are not enabled. Run /kramme:pr:code-review instead, or enable teams:
   Add CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 to settings.json
 ```
 
@@ -27,7 +27,7 @@ Then stop.
 
 ### Step 1: Determine Review Scope
 
-Same as `/kramme:pr:review` Steps 1-5:
+Same as `/kramme:pr:code-review` Steps 1-5:
 
 1. Check git status to identify changed files
 2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, security, removal, simplify, all)
@@ -92,11 +92,11 @@ After all tasks complete:
 1. Gather findings from all teammates
 2. Apply the deslop-reviewer's meta-review annotations
 3. Apply the relevance-validator's filtering
-4. Filter previously addressed findings (same logic as `/kramme:pr:review` Step 9)
+4. Filter previously addressed findings (same logic as `/kramme:pr:code-review` Step 9)
 
 ### Step 6: Write REVIEW_OVERVIEW.md
 
-Write the aggregated review to `REVIEW_OVERVIEW.md` using the same format as `/kramme:pr:review` Step 10-12:
+Write the aggregated review to `REVIEW_OVERVIEW.md` using the same format as `/kramme:pr:code-review` Step 10-12:
 
 ```markdown
 # PR Review Summary (Team Review)
@@ -158,14 +158,14 @@ Write the aggregated review to `REVIEW_OVERVIEW.md` using the same format as `/k
 ## Usage Examples
 
 ```
-/kramme:pr:review:team
+/kramme:pr:code-review:team
 # Full team review with all applicable reviewers
 
-/kramme:pr:review:team code errors tests
+/kramme:pr:code-review:team code errors tests
 # Team review focused on specific aspects
 ```
 
-## When to Use This vs `/kramme:pr:review`
+## When to Use This vs `/kramme:pr:code-review`
 
 Use **this skill** when:
 - The PR is large or touches many areas
@@ -173,7 +173,7 @@ Use **this skill** when:
 - The PR has security-sensitive changes that benefit from multiple perspectives
 - You want higher-quality findings with fewer false positives
 
-Use **`/kramme:pr:review`** when:
+Use **`/kramme:pr:code-review`** when:
 - The PR is small or focused
 - You want faster, lower-cost review
 - You only need one or two review aspects

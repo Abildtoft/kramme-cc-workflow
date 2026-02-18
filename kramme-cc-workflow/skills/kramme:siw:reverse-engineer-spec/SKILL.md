@@ -8,7 +8,7 @@ user-invocable: true
 
 # Reverse Engineer SIW Spec from Code
 
-Analyze existing code to produce a structured SIW-compatible specification. Works backward from implementation to documentation, producing specs that plug directly into the SIW workflow (`/kramme:siw:discovery`, `/kramme:siw:spec-audit`, `/kramme:siw:phases-generate`, etc.).
+Analyze existing code to produce a structured SIW-compatible specification. Works backward from implementation to documentation, producing specs that plug directly into the SIW workflow (`/kramme:siw:discovery`, `/kramme:siw:spec-audit`, `/kramme:siw:generate-phases`, etc.).
 
 ## Workflow Boundaries
 
@@ -496,7 +496,7 @@ Create SIW-compatible scaffolding matching the structure from `kramme:siw:init`.
 
 1. Run `/kramme:siw:discovery` to fill open questions
 2. Run `/kramme:siw:spec-audit` to validate spec quality
-3. Run `/kramme:siw:phases-generate` to create issues
+3. Run `/kramme:siw:generate-phases` to create issues
 4. **Blockers:** None
 
 ---
@@ -585,7 +585,7 @@ Next Steps:
   1. Review the spec for accuracy — reverse-engineering infers intent, verify it
   2. Run /kramme:siw:discovery to fill open questions through interview
   3. Run /kramme:siw:spec-audit to validate spec quality
-  4. Run /kramme:siw:phases-generate to create issues for remaining work
+  4. Run /kramme:siw:generate-phases to create issues for remaining work
 ```
 
 **STOP HERE.** Wait for the user's next instruction.
