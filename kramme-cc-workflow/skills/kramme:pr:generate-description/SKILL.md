@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:generate-description
 description: Generate comprehensive Pull Request descriptions by analyzing git changes, commit history, Linear issues, and code structure for both GitLab and GitHub
-argument-hint: "[--non-interactive]"
+argument-hint: "[--non-interactive] [--direct]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -13,8 +13,10 @@ user-invocable: true
 Parse `$ARGUMENTS` for flags:
 
 - `--non-interactive`: Skip clarification prompts (Phase 2.5) and save-to-file prompt (Phase 4). Generate the description directly from gathered context without pausing for user input.
+- `--direct`: Find the existing PR for the current branch and update its title and description directly. Skips copy-paste output and save-to-file prompt. Implies `--non-interactive`.
 
 If `--non-interactive` is present, set `NON_INTERACTIVE=true` and remove the flag from remaining arguments.
+If `--direct` is present, set `DIRECT_UPDATE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments.
 
 ## Instructions
 
@@ -91,6 +93,27 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
    ```
    - **NOTE**: This detects `main`, `master`, or any custom default branch
    - **CAN** ask user if unclear or override needed
+
+5. **If `DIRECT_UPDATE=true`**, verify a PR exists for the current branch:
+
+   **GitHub:**
+   ```bash
+   gh pr view --json number,url
+   ```
+
+   **GitLab:**
+   ```bash
+   glab mr view
+   ```
+   Or use MCP: `mcp__gitlab__list_merge_requests` filtered to the current branch.
+
+   **If no PR exists**, abort:
+   ```
+   Error: No PR found for the current branch.
+
+   The --direct flag requires an existing PR to update.
+   Either create a PR first, or run without --direct to generate a description for copy-paste.
+   ```
 
 ### Phase 2: Context Gathering
 
@@ -662,6 +685,41 @@ dotnet ef database update -c ConnectContext
    - `Co-Authored-By: Claude` or similar
    - Any mention of AI assistance in the description
 
+#### If `DIRECT_UPDATE=true`: Update PR directly
+
+**Skip copy-paste output and save-to-file prompt.** Update the existing PR's title and description using platform tools:
+
+**GitHub:**
+```bash
+gh pr edit --title "<title>" --body "$(cat <<'EOF'
+<description>
+EOF
+)"
+```
+
+**GitLab (using glab CLI):**
+```bash
+glab mr update --title "<title>" --description "$(cat <<'EOF'
+<description>
+EOF
+)"
+```
+
+**GitLab (using MCP tools, if available):**
+Use `mcp__gitlab__update_merge_request` with the new title and description.
+
+**After updating**, confirm success:
+```
+PR updated successfully.
+
+URL: {pr-url}
+Title: {title}
+```
+
+**If the update fails**, fall back to presenting the description for copy-paste (same as the default flow below) and show the error.
+
+#### Default: Present for copy-paste
+
 **ALWAYS** present the final PR title and description in a clear, copy-paste-ready format:
 
 ```markdown
@@ -678,7 +736,7 @@ Here is your generated PR:
 
 **NOTE**: The title is formatted with backticks for easy copying. The description follows the standard markdown format.
 
-6. **ALWAYS** ask if the description should be saved to a markdown file (**skip if `NON_INTERACTIVE=true`**):
+7. **ALWAYS** ask if the description should be saved to a markdown file (**skip if `NON_INTERACTIVE=true`**):
 
    - After presenting the description, ask: "Would you like me to save this description to a markdown file?"
    - If yes, save to a file named `PR_DESCRIPTION.md` in the repository root
@@ -706,7 +764,7 @@ Here is your generated PR:
 - [ ] Description is ready to copy-paste
 - [ ] No listing of the amount of lines changed
 - [ ] No AI attribution or "Generated with Claude Code" badges included
-- [ ] Asked user if they want to save to markdown file
+- [ ] Updated PR directly (if `--direct`) OR asked user if they want to save to markdown file
 
 ## Best Practices
 
