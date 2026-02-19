@@ -99,21 +99,7 @@ If SIW is active (`siw/LOG.md` exists), update it with:
 
 If no SIW is active, skip this phase.
 
-## Phase 5: Optional Learning Extraction
-
-If corrections were made during the session:
-
-```yaml
-question: "Extract learnings from this session?"
-options:
-  - label: "Yes, run /kramme:learnings:extract"
-    description: "Review and save non-obvious discoveries to AGENTS.md"
-  - label: "No, skip"
-```
-
-If selected, invoke `/kramme:learnings:extract`.
-
-## Phase 6: Final Report
+## Phase 5: Final Report
 
 Present a summary:
 
@@ -128,7 +114,6 @@ Present a summary:
 
 ### Documentation
 - Session notes: Saved to [location] / Not saved
-- Learnings: Extracted / Skipped
 
 ### Reminders
 [List any uncommitted work, failing tests, or blockers]
