@@ -184,6 +184,17 @@ Linear issue tracking integration.
 | `/kramme:linear:issue-define` | User | `[issue-id] or [description and/or file paths]` | Create or improve a Linear issue through exhaustive guided refinement. Can start from scratch or refine an existing issue by ID. |
 | `/kramme:linear:issue-implement` | User | — | Start implementing a Linear issue with branch setup, context gathering, and guided workflow. Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
 
+#### Visual
+
+Generate styled, self-contained HTML pages with diagrams, data tables, and interactive visualizations. Output opens in the browser.
+
+| Skill | Invocation | Description |
+|-------|------------|-------------|
+| `/kramme:visual:diagram` | User, Auto | Generate beautiful HTML diagrams for architecture overviews, flowcharts, schemas, data tables, and any visual explanation. Also auto-triggers for complex ASCII tables (4+ rows or 3+ columns). |
+| `/kramme:visual:diff-review` | User | Visual HTML diff review with executive summary, KPI dashboard, Mermaid architecture graphs, before/after panels, code review analysis, and decision log. |
+| `/kramme:visual:plan-review` | User | Visual plan review comparing current codebase against a proposed implementation plan, with blast radius analysis, current/planned architecture Mermaid diagrams, and risk assessment. |
+| `/kramme:visual:project-recap` | User | Mental model recap for context-switching back to a project. Architecture snapshot, recent activity timeline, decision log, and cognitive debt hotspots. |
+
 #### Discovery & Documentation
 
 Requirements discovery, document conversion, and text processing.
@@ -200,10 +211,10 @@ Session management, verification, artifact cleanup, and hook configuration.
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:workflow-artifacts:cleanup` | User | — | Delete workflow artifacts (REVIEW_OVERVIEW.md, UX_REVIEW_OVERVIEW.md, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files). For SIW-specific cleanup, use `/kramme:siw:remove`. |
+| `/kramme:workflow-artifacts:cleanup` | User | — | Delete workflow artifacts (REVIEW_OVERVIEW.md, UX_REVIEW_OVERVIEW.md, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files, visual diagram HTML files). For SIW-specific cleanup, use `/kramme:siw:remove`. |
 | `/kramme:changelog:generate` | User | — | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
 | `/kramme:hooks:configure-links` | User | `[show\|reset\|KEY=VALUE ...]` | Configure `context-links` hook settings by writing local overrides to `hooks/context-links.config` (workspace slug, team keys, regexes). |
-| `/kramme:hooks:toggle` | User | `<hook-name\|status> [enable\|disable]` | Enable or disable a plugin hook. |
+| `/kramme:hooks:toggle` | User | `<hook-name\|status> [enable\|disable]` | Enable or disable a plugin hook. Use `status` to list all hooks, or specify a hook name to toggle. |
 | `/kramme:session:wrap-up` | User | — | End-of-session checklist to capture progress, ensure quality, and document next steps. Audits uncommitted changes, runs quality checks, and prompts for session summary and next steps. |
 | `/kramme:verify:run` | User, Auto | — | Run verification checks (tests, formatting, builds, linting, type checking) for affected code. Automatically detects project type and runs appropriate commands. |
 
@@ -321,6 +332,7 @@ CLI tools that enhance the plugin experience. Some are required for specific com
 | `trash` | Safe file deletion (used by block-rm-rf hook) | `brew install trash` |
 | `jq` | JSON parsing (internal use) | `brew install jq` |
 | `markitdown` | Document conversion skill | `uvx markitdown` or `pip install markitdown` |
+| `surf` | AI-generated illustrations in visual diagrams (optional) | [surf-cli](https://github.com/nicobailon/surf-cli) |
 
 ## Contributing
 
@@ -440,6 +452,7 @@ For maintainers: see [RELEASE.md](RELEASE.md) for the release process.
 - `kramme:performance-oracle`: From [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - `kramme:siw:reverse-engineer-spec`: Inspired by [blader/schematic](https://github.com/blader/schematic).
 - OpenCode/Codex converter: Inspired by [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
+- `kramme:visual:*` skills: Adapted from [nicobailon/visual-explainer](https://github.com/nicobailon/visual-explainer).
 
 ## License
 
