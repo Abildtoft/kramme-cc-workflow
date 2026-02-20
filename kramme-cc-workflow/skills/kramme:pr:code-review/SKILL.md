@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:code-review
-description: Run a comprehensive pull request review using multiple specialized agents, each focusing on a different aspect of code quality.
+description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop). Outputs REVIEW_OVERVIEW.md with actionable findings.
 disable-model-invocation: true
 user-invocable: true
 ---

@@ -143,12 +143,12 @@ PR creation, review, iteration, and resolution.
 | Skill | Invocation | Description |
 |-------|------------|-------------|
 | `/kramme:pr:create` | User | Create a clean PR with narrative-quality commits and comprehensive description. Orchestrates branch setup, commit restructuring, and PR creation. |
-| `/kramme:pr:code-review` | User | Run comprehensive PR review using specialized agents. Supports reviewing comments, tests, errors, types, and code quality. Can run agents sequentially or in parallel. |
+| `/kramme:pr:code-review` | User | Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop). Outputs REVIEW_OVERVIEW.md with actionable findings. |
 | `/kramme:pr:code-review:team` | User | Team-based PR review using Agent Teams where specialized reviewers collaborate, cross-validate findings, and challenge each other's suggestions. Higher quality, higher token cost. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
 | `/kramme:pr:resolve-review` | User | Resolve findings from code reviews. Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
 | `/kramme:pr:resolve-review:team` | User | Resolve review findings in parallel using Agent Teams. Groups findings by file area and assigns to separate teammates for faster resolution. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
 | `/kramme:pr:fix-ci` | User | Iterate on a PR until CI passes. Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
-| `/kramme:pr:generate-description` | User, Auto | Generate PR descriptions by analyzing git changes, commit history, and Linear issues. Use `--direct` to update an existing PR in-place. |
+| `/kramme:pr:generate-description` | User | Write a structured PR title and body from git diff, commit log, and Linear context. Use `--direct` to update an existing PR in-place. |
 | `/kramme:pr:ux-review` | User | Audit UI, UX, and product experience of PR changes using specialized agents for accessibility, usability heuristics, product thinking, and visual consistency. Optionally uses browser automation for visual review. |
 | `/kramme:pr:rebase` | User | Rebase current branch onto latest main/master, then force push. Use when your PR is behind the base branch. |
 
