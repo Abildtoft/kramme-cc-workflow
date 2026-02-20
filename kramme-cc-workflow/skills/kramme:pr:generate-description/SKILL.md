@@ -1,8 +1,8 @@
 ---
 name: kramme:pr:generate-description
-description: Generate comprehensive Pull Request descriptions by analyzing git changes, commit history, Linear issues, and code structure for both GitLab and GitHub
+description: Write a structured PR title and body from git diff, commit log, and Linear context. Outputs markdown for copy-paste or updates the PR directly with --direct.
 argument-hint: "[--non-interactive] [--direct]"
-disable-model-invocation: false
+disable-model-invocation: true
 user-invocable: true
 ---
 
