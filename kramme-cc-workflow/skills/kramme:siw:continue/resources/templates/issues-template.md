@@ -35,7 +35,7 @@ siw/issues/
 2. **Only read individual issue files when:**
    - You're investigating that specific issue
    - You need the full context/options for a decision
-3. **When resolved:** Mark the issue `DONE` in the overview (keep the row for history) and optionally delete the issue file after recording the decision
+3. **When resolved:** Document the resolution in the issue file's `## Resolution` section, set status to `IN REVIEW` or `DONE` based on confidence, and update the overview row
    - If this was a phase issue (`P1-*`, `P2-*`, etc.) and it was the last open issue in that phase, ask the user whether to mark the phase as DONE in the overview header (append ` (DONE)`).
    - If you later add a new non-DONE issue to a phase marked ` (DONE)`, remove the marker (or ask the user) so the header stays accurate.
 
@@ -121,7 +121,7 @@ Need tracking strategy for user actions on MyEntity.
 
 ## Decision
 
-_To be filled when decision is made, then move to siw/LOG.md and delete this file._
+_To be filled when decision is made, then document in siw/LOG.md._
 ```
 
 ---
@@ -150,7 +150,7 @@ _To be filled when decision is made, then move to siw/LOG.md and delete this fil
 2. Copy decision details to siw/LOG.md Decision Log
 3. Mark the issue `DONE` in `siw/OPEN_ISSUES_OVERVIEW.md`
 4. If this was the last open issue in a phase, ask the user if the phase should be marked as DONE by appending ` (DONE)` to the phase section header
-5. Optionally delete the issue file after the decision is captured
+5. Document the resolution in the issue file's `## Resolution` section
 
 ### Cleanup at Project Completion
 

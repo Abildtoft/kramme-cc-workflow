@@ -19,13 +19,12 @@ Verify all items before finalizing:
 - [ ] **For documentation:** No references in published content
 - [ ] **For any deliverable:** All content is self-contained
 
-### Issues are resolved and cleaned up
+### Issues are resolved
 
-- [ ] No active issues remain (all resolved)
-- [ ] All resolved issues moved to siw/LOG.md
-- [ ] All issue files deleted from `siw/issues/` directory
-- [ ] `siw/OPEN_ISSUES_OVERVIEW.md` deleted
-- [ ] `siw/issues/` directory deleted
+- [ ] No active issues remain (all resolved — status is DONE or IN REVIEW)
+- [ ] All resolved issues have `## Resolution` sections documented
+- [ ] All decisions moved to siw/LOG.md
+- [ ] Run `/kramme:siw:remove` to clean up temporary files when project is complete
 
 ### siw/LOG.md is complete
 

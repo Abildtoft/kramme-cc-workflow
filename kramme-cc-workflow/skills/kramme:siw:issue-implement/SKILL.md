@@ -645,12 +645,51 @@ No updates needed.
 
 After verification passes and the implementation is complete, close out tracking for the issue.
 
-### 11.1 Mark Issue as DONE
+### 11.1 Document Resolution in Issue File
 
-1. Update the issue file status line to `DONE`.
-2. Update the issue row in `siw/OPEN_ISSUES_OVERVIEW.md` to `DONE`.
+Add a `## Resolution` section to the issue file with:
 
-### 11.2 If This Was the Last Open Issue in a Phase, Confirm Phase Completion
+```markdown
+## Resolution
+
+**Date:** {date}
+
+### Summary
+{One paragraph describing what was done to resolve the issue}
+
+### Changes Made
+- {file 1} - {what changed}
+- {file 2} - {what changed}
+
+### Key Decisions
+- {any decisions made during implementation, if applicable}
+```
+
+**IMPORTANT:** Do NOT delete the issue file. The issue file is preserved as a record of the work.
+
+### 11.2 Determine Confidence and Set Status
+
+Use AskUserQuestion:
+
+```yaml
+header: "Issue Resolution Confidence"
+question: "How confident are you that this solution is correct and complete?"
+options:
+  - label: "Confident — mark as DONE"
+    description: "Solution is verified and complete. No further review needed."
+  - label: "Needs review — mark as IN REVIEW"
+    description: "Solution works but would benefit from human review before considering it done."
+```
+
+**If "Confident":** Set status to `DONE`.
+**If "Needs review":** Set status to `IN REVIEW`.
+
+### 11.3 Update Tracking Files
+
+1. Update the issue file status line to the chosen status (`DONE` or `IN REVIEW`).
+2. Update the issue row in `siw/OPEN_ISSUES_OVERVIEW.md` to match.
+
+### 11.4 If This Was the Last Open Issue in a Phase, Confirm Phase Completion
 
 Only applies to phase-prefixed issues (`P1-*`, `P2-*`, etc.). Skip for `G-*`.
 
@@ -673,7 +712,7 @@ options:
 - Update the phase section header in `siw/OPEN_ISSUES_OVERVIEW.md` by appending ` (DONE)` (e.g., `## Phase 2: Core Features (DONE)`)
 - Do not double-append if it is already marked
 
-### 11.3 Update siw/LOG.md Current Progress
+### 11.5 Update siw/LOG.md Current Progress
 
 Update `siw/LOG.md` to reflect completion:
 - Move the completed issue into "Last Completed"
