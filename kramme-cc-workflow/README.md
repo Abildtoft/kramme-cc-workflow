@@ -13,7 +13,6 @@ A Claude Code plugin providing tooling for daily workflow tasks. Developed for p
 - [Suggested Permissions](#suggested-permissions)
 - [Recommended MCP Servers](#recommended-mcp-servers)
 - [Recommended CLIs](#recommended-clis)
-- [Learnings Database](#learnings-database)
 - [Contributing](#contributing)
 - [Testing](#testing)
 - [Plugin Structure](#plugin-structure)
@@ -153,19 +152,6 @@ PR creation, review, iteration, and resolution.
 | `/kramme:pr:ux-review` | User | Audit UI, UX, and product experience of PR changes using specialized agents for accessibility, usability heuristics, product thinking, and visual consistency. Optionally uses browser automation for visual review. |
 | `/kramme:pr:rebase` | User | Rebase current branch onto latest main/master, then force push. Use when your PR is behind the base branch. |
 
-#### Learnings
-
-Persistent knowledge management across sessions using a SQLite database.
-
-| Skill | Invocation | Description |
-|-------|------------|-------------|
-| `/kramme:learnings:add` | User | Add a learning to the persistent database. Proposes adding to AGENTS.md if project-relevant. |
-| `/kramme:learnings:extract` | User | Extract non-obvious learnings from session to AGENTS.md files. Presents suggestions for approval before making changes. |
-| `/kramme:learnings:search` | User, Auto | Search learnings database using BM25 full-text search. Filter by category or project. |
-| `/kramme:learnings:list` | User, Auto | List all learnings, optionally filtered by category or project. Use `--categories` for summary or `--stats` for database statistics. |
-| `/kramme:learnings:delete` | User | Delete a learning from the database by ID. Supports bulk deletion by category, project, or age. |
-| `/kramme:learnings:setup` | User | Initialize or verify the learnings database (and optionally rebuild FTS). |
-
 #### Code Quality & Review
 
 Code cleanup, refactoring, and bug/security review.
@@ -214,7 +200,7 @@ Session management, verification, artifact cleanup, and hook configuration.
 | `/kramme:changelog:generate` | User | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
 | `/kramme:hooks:configure-links` | User | Configure `context-links` hook settings by writing local overrides to `hooks/context-links.config` (workspace slug, team keys, regexes). |
 | `/kramme:hooks:toggle` | User | Enable or disable a plugin hook. Use `status` to list all hooks, or specify a hook name to toggle. |
-| `/kramme:session:wrap-up` | User | End-of-session checklist to capture progress, ensure quality, and document next steps. Audits uncommitted changes, runs quality checks, prompts for session summary and next steps, and optionally extracts learnings. |
+| `/kramme:session:wrap-up` | User | End-of-session checklist to capture progress, ensure quality, and document next steps. Audits uncommitted changes, runs quality checks, and prompts for session summary and next steps. |
 | `/kramme:verify:run` | User, Auto | Run verification checks (tests, formatting, builds, linting, type checking) for affected code. Automatically detects project type and runs appropriate commands. |
 
 ### Background Skills
@@ -323,27 +309,6 @@ CLI tools that enhance the plugin experience. Some are required for specific com
 | `trash` | Safe file deletion (used by block-rm-rf hook) | `brew install trash` |
 | `jq` | JSON parsing (internal use) | `brew install jq` |
 | `markitdown` | Document conversion skill | `uvx markitdown` or `pip install markitdown` |
-| `sqlite3` | Learnings database (pre-installed on macOS) | Pre-installed |
-
-## Learnings Database
-
-The plugin includes a persistent SQLite database for storing learnings across sessions.
-
-**Location:** `~/.kramme-cc-workflow/learnings.db`
-
-**Commands:**
-- `/kramme:learnings:setup` - Initialize or verify the learnings database
-- `/kramme:learnings:add` - Add new learnings
-- `/kramme:learnings:search` - Full-text search with BM25 ranking
-- `/kramme:learnings:list` - Browse and filter learnings
-- `/kramme:learnings:delete` - Remove learnings
-
-**Categories:** Navigation, Editing, Testing, Git, Quality, Context, Architecture, Performance, Prompting, Tooling
-
-The database is initialized automatically on first use. To manually initialize or repair, run `/kramme:learnings:setup` or:
-```bash
-bash ~/.claude/plugins/kramme-cc-workflow/scripts/init-learnings-db.sh
-```
 
 ## Contributing
 
