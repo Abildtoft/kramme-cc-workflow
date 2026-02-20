@@ -183,13 +183,14 @@ Created              In Progress           Review              Completed
 - **READY** - Defined, waiting to be picked up
 - **IN PROGRESS** - Currently being implemented
 - **IN REVIEW** - Work complete, awaiting review/approval
-- **DONE** - Finalized (issue file deleted or marked complete)
+- **DONE** - Resolved and documented
 
 When an issue is completed:
-1. Decisions are logged in siw/LOG.md
-2. Key decisions are synced to spec (Step 10)
-3. Issue file is deleted
-4. Row removed from siw/OPEN_ISSUES_OVERVIEW.md
+1. Resolution steps documented in the issue file's `## Resolution` section
+2. Decisions logged in siw/LOG.md
+3. Key decisions synced to spec (Step 10)
+4. Status set to `IN REVIEW` (uncertain solution) or `DONE` (confident solution)
+5. Row updated in siw/OPEN_ISSUES_OVERVIEW.md
 
 ---
 

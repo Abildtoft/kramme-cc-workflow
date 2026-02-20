@@ -44,7 +44,7 @@ Read `templates/issues-template.md` for the full structure.
 2. Create `siw/OPEN_ISSUES_OVERVIEW.md` with the overview table
 3. Create `siw/issues/ISSUE-G-001-short-title.md` for the first issue
 
-**When resolved:** Mark the issue `DONE` in the overview (keep the row for history), document the decision in siw/LOG.md, and optionally delete the issue file after it's captured. If it was the last open issue in a phase (`P1-*`, `P2-*`, etc.), ask the user whether to mark the phase as DONE by appending ` (DONE)` to the phase section header.
+**When resolved:** Document the resolution in the issue file's `## Resolution` section, set status to `IN REVIEW` or `DONE` based on confidence, update the overview row, and document the decision in siw/LOG.md. If it was the last open issue in a phase (`P1-*`, `P2-*`, etc.), ask the user whether to mark the phase as DONE by appending ` (DONE)` to the phase section header.
 
 ## Step 3: siw/LOG.md
 

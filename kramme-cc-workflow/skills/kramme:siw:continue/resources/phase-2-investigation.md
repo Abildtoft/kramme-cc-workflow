@@ -47,9 +47,9 @@ Then read only that specific decision section (~10 lines per decision) using Rea
 
 - Choose the best approach
 - Fill in "Decision" section in the issue file
-- Mark the issue `DONE` in `siw/OPEN_ISSUES_OVERVIEW.md` (keep the row for history)
+- Document the resolution in the issue file's `## Resolution` section
+- Set status to `IN REVIEW` or `DONE` based on confidence, update the overview row
 - If this was a phase issue (`P1-*`, `P2-*`, etc.) and it was the last open issue in that phase, ask the user whether to mark the phase as DONE by appending ` (DONE)` to the phase section header
-- After recording the decision, optionally delete the issue file: `siw/issues/ISSUE-{prefix}-XXX-*.md`
 - Prepare to document in siw/LOG.md
 
 ### 4. Record in siw/LOG.md
