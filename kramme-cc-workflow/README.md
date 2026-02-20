@@ -150,6 +150,7 @@ PR creation, review, iteration, and resolution.
 | `/kramme:pr:fix-ci` | User | Iterate on a PR until CI passes. Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
 | `/kramme:pr:generate-description` | User | Write a structured PR title and body from git diff, commit log, and Linear context. Use `--direct` to update an existing PR in-place. |
 | `/kramme:pr:ux-review` | User | Audit UI, UX, and product experience of PR changes using specialized agents for accessibility, usability heuristics, product thinking, and visual consistency. Optionally uses browser automation for visual review. |
+| `/kramme:pr:ux-review:team` | User | Team-based UX audit using Agent Teams where specialized reviewers (usability, product, visual, accessibility) collaborate, cross-validate findings, and challenge each other. Higher quality, higher token cost. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
 | `/kramme:pr:rebase` | User | Rebase current branch onto latest main/master, then force push. Use when your PR is behind the base branch. |
 
 #### Code Quality & Review
