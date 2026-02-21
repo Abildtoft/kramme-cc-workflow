@@ -102,7 +102,7 @@ Work through each finding in priority order, applying the guidelines below.
 
 - **Validate** — Check for and fix any new linting, formatting, and testing issues
 - **Do NOT resolve or reply to comments** — Never mark review comments as resolved or post replies on the platform
-- **Generate summary** — Create `REVIEW_OVERVIEW.md` in the project root (see Output format below)
+- **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `UX_REVIEW_OVERVIEW.md`, update that file. If the source was `REVIEW_OVERVIEW.md` or an external/chat review, write to `REVIEW_OVERVIEW.md`.
 
 ## Guidelines
 
@@ -127,7 +127,9 @@ Work through each finding in priority order, applying the guidelines below.
 
 ## Output format
 
-Create `REVIEW_OVERVIEW.md` in the project root.
+Write resolutions to the appropriate file in the project root:
+- If the source review was `UX_REVIEW_OVERVIEW.md` → update `UX_REVIEW_OVERVIEW.md`
+- Otherwise → create/update `REVIEW_OVERVIEW.md`
 
 ### For external reviews
 
