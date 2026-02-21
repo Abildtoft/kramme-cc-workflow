@@ -1,13 +1,13 @@
 ---
 name: kramme:workflow-artifacts:cleanup
-description: Delete workflow artifacts (REVIEW_OVERVIEW.md, UX_REVIEW_OVERVIEW.md, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files)
+description: Delete workflow artifacts (REVIEW_OVERVIEW.md, UX_REVIEW_OVERVIEW.md, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files, visual diagram HTML files)
 disable-model-invocation: true
 user-invocable: true
 ---
 
 # Clean Up Artifacts
 
-Delete workflow artifact files from the current working directory.
+Delete workflow artifacts from the current working directory and generated diagram files under `~/.kramme-cc-workflow/diagrams/`.
 
 **Note:** For SIW-specific cleanup, consider using `/kramme:siw:remove` instead.
 
@@ -41,11 +41,12 @@ Delete the following files if they exist:
 
 ## Workflow
 
-1. Check which target files exist in the working directory
-2. If `siw/issues/` exists:
+1. Check which target files exist in the working directory and in `~/.kramme-cc-workflow/diagrams/`
+2. If visual diagram artifacts exist in `~/.kramme-cc-workflow/diagrams/`, ask before deleting because this directory is shared across sessions and projects
+3. If `siw/issues/` exists:
    - Only delete it if `siw/OPEN_ISSUES_OVERVIEW.md` exists
    - If `siw/issues/` contains non-`ISSUE-*.md` files, ask before deleting or skip and report
-3. Delete each remaining file that exists using `trash` (files can be restored from system Trash if needed)
-4. Report results:
+4. Delete each remaining file that exists using `trash` (files can be restored from system Trash if needed)
+5. Report results:
    - List files that were deleted
    - Note if no artifact files were found

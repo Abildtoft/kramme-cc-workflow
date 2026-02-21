@@ -35,7 +35,7 @@ Determine what to diff based on the argument:
 - `HEAD`: uncommitted changes only (`git diff` and `git diff --staged`)
 - PR number (e.g. `#42`): `gh pr diff 42`
 - Range (e.g. `abc123..def456`): diff between two commits
-- No argument: default to `main`
+- No argument: detect default branch from `origin/HEAD`; fallback to `main`, then `master`
 
 ## Data Gathering
 
@@ -92,7 +92,9 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 ## Output
 
 Write to `~/.kramme-cc-workflow/diagrams/diff-review-{descriptive-name}.html`. Create the directory if needed.
-Open in browser: `open ~/.kramme-cc-workflow/diagrams/{filename}.html`
+Open in browser:
+- macOS: `open ~/.kramme-cc-workflow/diagrams/{filename}.html`
+- Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html`
 Report the file path to the user.
 
 Include responsive section navigation.
