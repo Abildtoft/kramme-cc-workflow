@@ -96,7 +96,9 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 ## Output
 
 Write to `~/.kramme-cc-workflow/diagrams/plan-review-{descriptive-name}.html`. Create the directory if needed.
-Open in browser: `open ~/.kramme-cc-workflow/diagrams/{filename}.html`
+Open in browser:
+- macOS: `open ~/.kramme-cc-workflow/diagrams/{filename}.html`
+- Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html`
 Report the file path to the user.
 
 Include responsive section navigation.
