@@ -28,7 +28,7 @@ Then stop.
 Same as `/kramme:pr:resolve-review` Steps 0-1:
 
 1. Check for arguments (review content, instructions, or URL)
-2. Check for `REVIEW_OVERVIEW.md`
+2. Check for `REVIEW_OVERVIEW.md` and `UX_REVIEW_OVERVIEW.md`
 3. Check chat context
 4. Fetch from current branch's PR if nothing else found
 5. List all findings
@@ -120,7 +120,7 @@ After all teammates complete:
    - Ask the teammate to fix it (resume their session)
    - Fix it directly as the lead
 
-3. Write `REVIEW_OVERVIEW.md` using the same format as `/kramme:pr:resolve-review` Step 4, with an additional note about parallel resolution:
+3. Write resolutions to the appropriate file (if the source was `UX_REVIEW_OVERVIEW.md`, update that file; otherwise write to `REVIEW_OVERVIEW.md`), using the same format as `/kramme:pr:resolve-review` Step 4, with an additional note about parallel resolution:
 
 ```markdown
 ## Resolution Summary
