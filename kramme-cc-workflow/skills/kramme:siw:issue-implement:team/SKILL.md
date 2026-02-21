@@ -1,25 +1,31 @@
 ---
 name: kramme:siw:issue-implement:team
-description: Implement multiple SIW issues in parallel using Agent Teams. Each teammate gets a full context window and implements one issue. Best for phases with multiple independent issues.
+description: Implement multiple SIW issues in parallel using multi-agent execution. Each agent gets a full context window and implements one issue. Best for phases with multiple independent issues.
 argument-hint: "[issue-ids or 'phase N']"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # Parallel SIW Implementation
 
-Implement multiple SIW issues simultaneously using Agent Teams. Each teammate implements one issue with a full context window, following the `kramme:siw:issue-implement` workflow.
+Implement multiple SIW issues simultaneously using multi-agent execution. Each agent implements one issue with a full context window, following the `kramme:siw:issue-implement` workflow.
 
 **Arguments:** "$ARGUMENTS"
 
 ## Prerequisites
 
-This skill requires Agent Teams to be enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`). If teams are not available, print:
+This skill requires multi-agent execution.
+
+- **Claude Code:** Agent Teams must be enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`).
+- **Codex:** run in a Codex runtime with `multi_agent` enabled.
+
+If multi-agent execution is not available, print:
 
 ```
-Agent Teams are not enabled. Use /kramme:siw:issue-implement to implement issues one at a time, or enable teams:
-  Add CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 to settings.json
+Multi-agent execution is not enabled. Use /kramme:siw:issue-implement to implement issues one at a time.
+Claude Code: add CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 to settings.json.
+Codex: use a runtime with `multi_agent` enabled (for example, Conductor Codex runtime).
 ```
 
 Then stop.
@@ -80,9 +86,12 @@ options:
     description: "Don't implement anything"
 ```
 
-### Step 5: Spawn Implementation Team
+### Step 5: Spawn Implementation Agents
 
-Create a team named `siw-implement`.
+Create a multi-agent implementation session named `siw-implement`.
+
+- **Claude Code:** create an Agent Team.
+- **Codex:** launch equivalent parallel implementation agents via multi-agent mode.
 
 For each issue in Batch 1, spawn a teammate with:
 
@@ -172,18 +181,18 @@ Review all decisions logged by teammates. If any need spec updates, follow `kram
 
 ### Step 10: Cleanup
 
-1. Shut down all teammates
-2. Clean up the team
+1. Shut down all implementation agents
+2. Clean up the multi-agent session
 
 ## File Conflict Prevention
 
 This skill uses a multi-layer approach:
 
 1. **Pre-analysis**: Before spawning, the lead reads each issue's affected areas and builds a file ownership map
-2. **Exclusive ownership**: Each teammate gets an explicit list of files it can write to
+2. **Exclusive ownership**: Each agent gets an explicit list of files it can write to
 3. **Batching**: Issues with file overlaps go into sequential batches
 4. **Plan approval**: Lead reviews each teammate's plan to catch file conflicts early
-5. **Runtime messaging**: Teammates message the lead if they discover they need files outside their set
+5. **Runtime messaging**: Agents message the lead if they discover they need files outside their set
 6. **Post-verification**: `kramme:verify:run` catches any integration issues after all implementations
 
 ## Usage

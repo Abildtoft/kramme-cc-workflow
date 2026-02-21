@@ -1262,7 +1262,7 @@ Tool mapping:
 - LS: use ls via shell_command
 - WebFetch/WebSearch: use curl or Context7 for library docs
 - AskUserQuestion/Question: ask the user in chat
-- Task/Subagent/Parallel: run sequentially in main thread; use multi_tool_use.parallel for tool calls
+- Task/Subagent/Parallel: use multi-agent execution when available; otherwise run sequentially in main thread. Use multi_tool_use.parallel for parallel tool calls.
 - TodoWrite/TodoRead: use file-based todos in todos/ with file-todos skill
 - Skill: open the referenced SKILL.md and follow it
 - ExitPlanMode: ignore

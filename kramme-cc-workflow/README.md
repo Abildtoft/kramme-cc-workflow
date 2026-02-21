@@ -127,7 +127,7 @@ Local issue tracking and structured implementation planning using markdown files
 | `/kramme:siw:issue-define` | User | Define a new local issue with guided interview process. Creates issue files in the `issues/` directory. |
 | `/kramme:siw:generate-phases` | User | Break spec into atomic, phase-based issues with tests and validation. Uses `P1-001`, `P2-001`, `G-001` numbering. Reviews breakdown with subagent before creating files. |
 | `/kramme:siw:issue-implement` | User | Start implementing a defined local issue with codebase exploration and planning. Works on current branch. |
-| `/kramme:siw:issue-implement:team` | User | Implement multiple SIW issues simultaneously using Agent Teams. Each teammate implements one issue with a full context window. Handles file ownership and batching. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
+| `/kramme:siw:issue-implement:team` | User | Implement multiple SIW issues simultaneously using multi-agent execution. Each agent implements one issue with a full context window. Handles file ownership and batching. Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
 | `/kramme:siw:spec-audit` | User | Audit spec quality (coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design) before implementation. Produces a structured report and optionally creates SIW issues. |
 | `/kramme:siw:implementation-audit` | User | Exhaustively audit codebase against specification files. Finds naming misalignments, missing implementations, and spec drift. Produces a structured report and optionally creates SIW issues. |
 | `/kramme:siw:audit-resolve` | User | Resolve audit findings one-by-one with executive summaries, alternatives, a recommended option, and SIW issue creation based on user preference. |
@@ -144,13 +144,13 @@ PR creation, review, iteration, and resolution.
 |-------|------------|-------------|
 | `/kramme:pr:create` | User | Create a clean PR with narrative-quality commits and comprehensive description. Orchestrates branch setup, commit restructuring, and PR creation. |
 | `/kramme:pr:code-review` | User | Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop). Outputs REVIEW_OVERVIEW.md with actionable findings. |
-| `/kramme:pr:code-review:team` | User | Team-based PR review using Agent Teams where specialized reviewers collaborate, cross-validate findings, and challenge each other's suggestions. Higher quality, higher token cost. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
+| `/kramme:pr:code-review:team` | User | Team-based PR review using multi-agent execution where specialized reviewers collaborate, cross-validate findings, and challenge each other's suggestions. Higher quality, higher token cost. Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
 | `/kramme:pr:resolve-review` | User | Resolve findings from code reviews. Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
-| `/kramme:pr:resolve-review:team` | User | Resolve review findings in parallel using Agent Teams. Groups findings by file area and assigns to separate teammates for faster resolution. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
+| `/kramme:pr:resolve-review:team` | User | Resolve review findings in parallel using multi-agent execution. Groups findings by file area and assigns to separate agents for faster resolution. Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
 | `/kramme:pr:fix-ci` | User | Iterate on a PR until CI passes. Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
 | `/kramme:pr:generate-description` | User | Write a structured PR title and body from git diff, commit log, and Linear context. Use `--direct` to update an existing PR in-place. |
 | `/kramme:pr:ux-review` | User | Audit UI, UX, and product experience of PR changes using specialized agents for accessibility, usability heuristics, product thinking, and visual consistency. Optionally uses browser automation for visual review. |
-| `/kramme:pr:ux-review:team` | User | Team-based UX audit using Agent Teams where specialized reviewers (usability, product, visual, accessibility) collaborate, cross-validate findings, and challenge each other. Higher quality, higher token cost. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. |
+| `/kramme:pr:ux-review:team` | User | Team-based UX audit using multi-agent execution where specialized reviewers (usability, product, visual, accessibility) collaborate, cross-validate findings, and challenge each other. Higher quality, higher token cost. Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
 | `/kramme:pr:rebase` | User | Rebase current branch onto latest main/master, then force push. Use when your PR is behind the base branch. |
 
 #### Code Quality & Review
