@@ -1,25 +1,31 @@
 ---
 name: kramme:pr:ux-review:team
-description: Run UX audit using an Agent Team where specialized reviewers (usability, product, visual, accessibility) collaborate, cross-validate findings, and challenge each other. Higher quality than standard UX review but uses more tokens.
+description: Run UX audit using multi-agent execution where specialized reviewers (usability, product, visual, accessibility) collaborate, cross-validate findings, and challenge each other. Higher quality than standard UX review but uses more tokens.
 argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # Team-Based UX Audit
 
-Run a UX audit using Agent Teams. Each reviewer runs as a full teammate with its own context window, able to message other reviewers to cross-validate findings.
+Run a UX audit using multi-agent execution. Each reviewer runs with its own context window and can cross-validate findings with other reviewers.
 
 **Arguments:** "$ARGUMENTS"
 
 ## Prerequisites
 
-This skill requires Agent Teams to be enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`). If teams are not available, print:
+This skill requires multi-agent execution.
+
+- **Claude Code:** Agent Teams must be enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`).
+- **Codex:** run in a Codex runtime with `multi_agent` enabled.
+
+If multi-agent execution is not available, print:
 
 ```
-Agent Teams are not enabled. Run /kramme:pr:ux-review instead, or enable teams:
-  Add CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 to settings.json
+Multi-agent execution is not enabled. Run /kramme:pr:ux-review instead.
+Claude Code: add CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 to settings.json.
+Codex: use a runtime with `multi_agent` enabled (for example, Conductor Codex runtime).
 ```
 
 Then stop.
@@ -40,9 +46,12 @@ Same as `/kramme:pr:ux-review` Steps 1-6:
 
 If no UI-relevant files found, stop with the same message as the base skill.
 
-### Step 2: Spawn UX Review Team
+### Step 2: Spawn UX Review Agents
 
-Create a team named `pr-ux-review` and use **delegate mode** (coordination only, no implementation).
+Create a multi-agent UX review session named `pr-ux-review` and use **delegate mode** (coordination only, no implementation).
+
+- **Claude Code:** create an Agent Team.
+- **Codex:** launch equivalent parallel UX review agents via multi-agent mode.
 
 Spawn teammates based on applicable review categories. Each teammate receives:
 - The git diff commands to run (`git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`, `git diff --cached`, `git diff`)
@@ -184,8 +193,8 @@ This file is a working artifact -- it should NOT be committed. It will be cleane
 
 ### Step 7: Cleanup
 
-1. Shut down all teammates
-2. Clean up the team
+1. Shut down all review agents
+2. Clean up the multi-agent session
 
 ## Usage Examples
 

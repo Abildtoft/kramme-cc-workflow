@@ -1,22 +1,28 @@
 ---
 name: kramme:pr:resolve-review:team
-description: Resolve review findings in parallel using Agent Teams. Groups findings by file area and assigns to separate teammates for faster resolution. Best when review has 5+ findings across different areas.
+description: Resolve review findings in parallel using multi-agent execution. Groups findings by file area and assigns to separate agents for faster resolution. Best when review has 5+ findings across different areas.
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # Team-Based Review Resolution
 
-Resolve review findings in parallel using Agent Teams. Each teammate owns a non-overlapping set of files and implements fixes independently.
+Resolve review findings in parallel using multi-agent execution. Each agent owns a non-overlapping set of files and implements fixes independently.
 
 ## Prerequisites
 
-This skill requires Agent Teams to be enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`). If teams are not available, print:
+This skill requires multi-agent execution.
+
+- **Claude Code:** Agent Teams must be enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`).
+- **Codex:** run in a Codex runtime with `multi_agent` enabled.
+
+If multi-agent execution is not available, print:
 
 ```
-Agent Teams are not enabled. Run /kramme:pr:resolve-review instead, or enable teams:
-  Add CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 to settings.json
+Multi-agent execution is not enabled. Run /kramme:pr:resolve-review instead.
+Claude Code: add CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 to settings.json.
+Codex: use a runtime with `multi_agent` enabled (for example, Conductor Codex runtime).
 ```
 
 Then stop.
@@ -75,7 +81,7 @@ header: "Parallel Review Resolution"
 question: "Found X in-scope findings across Y file groups. How should I proceed?"
 options:
   - label: "Resolve in parallel"
-    description: "Spawn Z teammates to fix non-overlapping groups simultaneously"
+    description: "Spawn Z agents to fix non-overlapping groups simultaneously"
   - label: "Resolve sequentially"
     description: "Fix all findings in a single session (lower token cost)"
   - label: "Cancel"
@@ -84,40 +90,43 @@ options:
 
 If "Resolve sequentially" is selected, delegate to `/kramme:pr:resolve-review`.
 
-### Step 5: Spawn Resolver Team
+### Step 5: Spawn Resolver Agents
 
-Create a team named `resolve-review`.
+Create a multi-agent resolution session named `resolve-review`.
 
-Spawn one teammate per group (max 3 teammates). Each receives:
+- **Claude Code:** create an Agent Team.
+- **Codex:** launch equivalent parallel resolver agents via multi-agent mode.
+
+Spawn one agent per group (max 3 agents). Each receives:
 - Their assigned findings with full context
 - **Exclusive file ownership list**: "You have exclusive write access to: [files]. Do NOT modify files outside this list. If you need to change a file outside your list, message the lead."
 - The resolution guidelines from `/kramme:pr:resolve-review`
 
-For each teammate, create a task: "Resolve X findings in [file area]"
+For each agent, create a task: "Resolve X findings in [file area]"
 
 ### Step 6: Handle Sequential Findings
 
 If any findings were identified as overlapping multiple groups in Step 3:
 - Wait for parallel resolution to complete
-- Assign these findings to a teammate that already owns one of the overlapping files, OR resolve them directly as the lead
+- Assign these findings to an agent that already owns one of the overlapping files, OR resolve them directly as the lead
 
 ### Step 7: Monitor and Coordinate
 
-While teammates work:
+While agents work:
 - Monitor progress via TaskList
-- If a teammate discovers it needs a file outside its ownership set:
+- If an agent discovers it needs a file outside its ownership set:
   - Check if the other owner is done with that file
   - If yes: grant access
-  - If no: queue the modification for after the other teammate finishes
+  - If no: queue the modification for after the other agent finishes
 - Relay any questions about PR scope or business logic
 
 ### Step 8: Verify and Summarize
 
-After all teammates complete:
+After all agents complete:
 
 1. Run `kramme:verify:run` to check for integration issues
-2. If verification fails, identify which teammate's changes caused the issue and either:
-   - Ask the teammate to fix it (resume their session)
+2. If verification fails, identify which agent's changes caused the issue and either:
+   - Ask the responsible agent to fix it (resume its session)
    - Fix it directly as the lead
 
 3. Write resolutions to the appropriate file (if the source was `UX_REVIEW_OVERVIEW.md`, update that file; otherwise write to `REVIEW_OVERVIEW.md`), using the same format as `/kramme:pr:resolve-review` Step 4, with an additional note about parallel resolution:
@@ -125,7 +134,7 @@ After all teammates complete:
 ```markdown
 ## Resolution Summary
 
-Resolved X findings in parallel across Y teammates.
+Resolved X findings in parallel across Y agents.
 
 ### Resolver Teams
 - Resolver 1: Fixed X findings in [file area]
@@ -137,15 +146,15 @@ Resolved X findings in parallel across Y teammates.
 
 ### Step 9: Cleanup
 
-1. Shut down all teammates
-2. Clean up the team
+1. Shut down all resolver agents
+2. Clean up the multi-agent session
 
 ## File Conflict Prevention
 
 This skill uses **exclusive file ownership** to prevent conflicts:
-- The lead pre-assigns files to each teammate before spawning
-- No two teammates can write to the same file
-- If a teammate needs a file it doesn't own, it messages the lead
+- The lead pre-assigns files to each agent before spawning
+- No two agents can write to the same file
+- If an agent needs a file it doesn't own, it messages the lead
 - Findings that span multiple file groups are resolved sequentially after the parallel phase
 
 ## Usage

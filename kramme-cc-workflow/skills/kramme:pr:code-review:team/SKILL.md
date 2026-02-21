@@ -1,24 +1,30 @@
 ---
 name: kramme:pr:code-review:team
-description: Run comprehensive PR review using an Agent Team where specialized reviewers collaborate, cross-validate findings, and challenge each other. Higher quality than standard review but uses more tokens.
+description: Run comprehensive PR review using multi-agent execution where specialized reviewers collaborate, cross-validate findings, and challenge each other. Higher quality than standard review but uses more tokens.
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # Team-Based PR Review
 
-Run a comprehensive PR review using Agent Teams. Each reviewer runs as a full teammate with its own context window, able to message other reviewers to cross-validate findings.
+Run a comprehensive PR review using multi-agent execution. Each reviewer runs with its own context window and can cross-validate findings with other reviewers.
 
 **Review Aspects (optional):** "$ARGUMENTS"
 
 ## Prerequisites
 
-This skill requires Agent Teams to be enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`). If teams are not available, print:
+This skill requires multi-agent execution.
+
+- **Claude Code:** Agent Teams must be enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`).
+- **Codex:** run in a Codex runtime with `multi_agent` enabled.
+
+If multi-agent execution is not available, print:
 
 ```
-Agent Teams are not enabled. Run /kramme:pr:code-review instead, or enable teams:
-  Add CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 to settings.json
+Multi-agent execution is not enabled. Run /kramme:pr:code-review instead.
+Claude Code: add CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 to settings.json.
+Codex: use a runtime with `multi_agent` enabled (for example, Conductor Codex runtime).
 ```
 
 Then stop.
@@ -35,9 +41,12 @@ Same as `/kramme:pr:code-review` Steps 1-5:
 4. Check for previous `REVIEW_OVERVIEW.md` and extract previously addressed findings
 5. Determine applicable reviews based on changes
 
-### Step 2: Spawn Review Team
+### Step 2: Spawn Review Agents
 
-Create a team named `pr-review` and use **delegate mode** (coordination only, no implementation).
+Create a multi-agent review session named `pr-review` and use **delegate mode** (coordination only, no implementation).
+
+- **Claude Code:** create an Agent Team.
+- **Codex:** launch equivalent parallel review agents via multi-agent mode.
 
 Spawn teammates based on applicable review aspects. Each teammate receives:
 - The git diff command to run (`git diff origin/$BASE_BRANCH...HEAD`)
@@ -152,8 +161,8 @@ Write the aggregated review to `REVIEW_OVERVIEW.md` using the same format as `/k
 
 ### Step 7: Cleanup
 
-1. Shut down all teammates
-2. Clean up the team
+1. Shut down all review agents
+2. Clean up the multi-agent session
 
 ## Usage Examples
 
