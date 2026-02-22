@@ -38,7 +38,7 @@ Then continue to the next finding.
     ↓
 [Locate and read audit report]
     ↓
-[Extract actionable findings: DISC-*, MISS-*, and SPEC-*]
+[Extract actionable findings: DIV-*, EXT-*, SPEC-* (plus legacy DISC-*/MISS-*)]
     ↓
 [Optionally filter to user-selected finding IDs]
     ↓
@@ -66,7 +66,7 @@ header: "Choose Audit Type"
 question: "Both implementation and spec audit reports were found. Which findings should I resolve?"
 options:
   - label: "Implementation audit (Recommended)"
-    description: "Resolve DISC-* and MISS-* findings from AUDIT_IMPLEMENTATION_REPORT.md"
+    description: "Resolve DIV-*/EXT-* findings from AUDIT_IMPLEMENTATION_REPORT.md (also supports legacy DISC-*/MISS-*)"
   - label: "Spec quality audit"
     description: "Resolve SPEC-* findings from AUDIT_SPEC_REPORT.md"
   - label: "Both"
@@ -79,8 +79,10 @@ options:
 ## Step 2: Parse Findings
 
 Extract actionable findings from headings:
-- `### DISC-NNN: ...`
-- `### MISS-NNN: ...`
+- `### DIV-NNN: ...`
+- `### EXT-NNN: ...`
+- `### DISC-NNN: ...` (legacy)
+- `### MISS-NNN: ...` (legacy)
 - `### SPEC-NNN: ...`
 
 For each finding, collect:
@@ -98,9 +100,9 @@ Ignore:
 
 ## Step 3: Select Scope
 
-If `$ARGUMENTS` includes finding ids (example: `DISC-002 MISS-001 SPEC-003`), process only those.
+If `$ARGUMENTS` includes finding ids (example: `DIV-002 EXT-001 SPEC-003`), process only those.
 Otherwise, process all actionable findings in severity order:
-1. Critical findings (DISC-*, MISS-*, SPEC-*)
+1. Critical findings (DIV-*, EXT-*, DISC-*, MISS-*, SPEC-*)
 2. Major findings
 3. Minor findings
 
@@ -110,7 +112,9 @@ Detect the finding type from its ID prefix and use the matching triage style bel
 
 ---
 
-### For DISC-* and MISS-* findings (implementation audit)
+### For DIV-*/EXT-* findings (implementation audit)
+
+Legacy `DISC-*` and `MISS-*` findings use this same flow.
 
 #### 4.1 Executive Summary
 
@@ -202,7 +206,7 @@ Issue creation:
    - `siw/issues/ISSUE-G-{NNN}-resolve-{finding-id}-{slug}.md`
 3. Use the matching template based on finding type:
 
-### Template for DISC-* and MISS-* findings
+### Template for DIV-*/EXT-* findings
 
 ```markdown
 # ISSUE-G-{NNN}: Resolve {finding_id} - {short title}
