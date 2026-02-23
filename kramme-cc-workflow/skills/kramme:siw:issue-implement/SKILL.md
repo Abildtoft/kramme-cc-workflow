@@ -53,6 +53,22 @@ Start implementing a local issue through an extensive planning phase before any 
 
 ---
 
+## Status Update Procedure
+
+**CRITICAL — MANDATORY for every status change.** Every time an issue's status changes (to "In Progress", "IN REVIEW", or "DONE"), you MUST update ALL THREE files below. Never update one without the others.
+
+**Checklist (all three required):**
+
+- [ ] **Issue file** (`siw/issues/ISSUE-{prefix}-{number}-*.md`) — Change the `**Status:**` line to the new status
+- [ ] **Overview** (`siw/OPEN_ISSUES_OVERVIEW.md`) — Update the issue's row in the table to match the new status
+- [ ] **Log** (`siw/LOG.md`) — Update the "Current Progress" section to reflect the status change
+
+Skipping any of these files leaves the tracking state inconsistent. Treat this as a single atomic operation.
+
+This procedure is referenced as **"Run the Status Update Procedure"** throughout this skill.
+
+---
+
 ## Step 1: Parse Arguments and Read Issue
 
 ### 1.1 Extract Issue Identifier from Arguments
@@ -370,15 +386,9 @@ options:
    - Break requirements into discrete tasks
    - Identify dependencies
 
-2. **Update Issue Status**
-   - Change status to "In Progress" in issue file
-   - Update siw/OPEN_ISSUES_OVERVIEW.md
+2. **Set Status to "In Progress"** — Run the Status Update Procedure (all 3 files).
 
-3. **Update siw/LOG.md**
-   - Set Current Progress to this issue
-   - Record implementation start
-
-4. **Begin Implementation**
+3. **Begin Implementation**
    - Work through tasks one at a time
    - **ALWAYS** ask user to review after each task
    - Update siw/LOG.md as tasks complete
@@ -389,7 +399,7 @@ options:
 
 1. **Create Todo List from Acceptance Criteria**
 
-2. **Update Issue Status to "In Progress"**
+2. **Set Status to "In Progress"** — Run the Status Update Procedure (all 3 files).
 
 3. **Provide Starting Points**
    ```
@@ -420,7 +430,7 @@ options:
 2. **Create Comprehensive Plan**
    - Detailed task breakdown
 
-3. **Update Issue Status**
+3. **Set Status to "In Progress"** — Run the Status Update Procedure (all 3 files).
 
 4. **Implement Iteratively**
    - Work through all tasks
@@ -464,38 +474,30 @@ options:
 
 ---
 
-## Step 8: Update Progress Tracking
+## Step 8: Verify Status Update Completed
 
-### Update siw/LOG.md
+**CRITICAL:** Before proceeding, confirm that the Status Update Procedure was executed in Step 7. All three files must now show "In Progress":
 
-After starting implementation:
+- [ ] `siw/issues/ISSUE-{prefix}-{number}-*.md` — Status line reads: `**Status:** In Progress | **Priority:** {priority} | **Related:** {tasks}`
+- [ ] `siw/OPEN_ISSUES_OVERVIEW.md` — Issue row shows "In Progress"
+- [ ] `siw/LOG.md` — Current Progress section reads:
+  ```markdown
+  ## Current Progress
 
-```markdown
-## Current Progress
+  **Last Updated:** {date}
+  **Quick Summary:** Implementing {prefix}-{number}: {title}
 
-**Last Updated:** {date}
-**Quick Summary:** Implementing {prefix}-{number}: {title}
+  ### Project Status
+  - **Status:** In Progress | **Current Issue:** {prefix}-{number}
 
-### Project Status
-- **Status:** In Progress | **Current Issue:** {prefix}-{number}
+  ### Last Completed
+  - Started implementation of {prefix}-{number}
 
-### Last Completed
-- Started implementation of {prefix}-{number}
+  ### Next Steps
+  1. {next task from plan}
+  ```
 
-### Next Steps
-1. {next task from plan}
-```
-
-### Update Issue File
-
-Change status line:
-```markdown
-**Status:** In Progress | **Priority:** {priority} | **Related:** {tasks}
-```
-
-### Update siw/OPEN_ISSUES_OVERVIEW.md
-
-Update the issue's row status to "In Progress".
+**If any file was not updated in Step 7, update it now.** Do not proceed to Step 9 until all three files reflect "In Progress".
 
 ---
 
@@ -684,10 +686,15 @@ options:
 **If "Confident":** Set status to `DONE`.
 **If "Needs review":** Set status to `IN REVIEW`.
 
-### 11.3 Update Tracking Files
+### 11.3 Update All Tracking Files
 
-1. Update the issue file status line to the chosen status (`DONE` or `IN REVIEW`).
-2. Update the issue row in `siw/OPEN_ISSUES_OVERVIEW.md` to match.
+**CRITICAL:** Run the Status Update Procedure with the chosen status (`DONE` or `IN REVIEW`). All three files:
+
+- [ ] **Issue file** — Set `**Status:**` to the chosen status
+- [ ] **Overview** (`siw/OPEN_ISSUES_OVERVIEW.md`) — Update the issue row to match
+- [ ] **Log** (`siw/LOG.md`) — Move the issue into "Last Completed", set "Next Steps" to the next READY issue
+
+Do NOT proceed to 11.4 until all three files are updated.
 
 ### 11.4 If This Was the Last Open Issue in a Phase, Confirm Phase Completion
 
@@ -712,12 +719,9 @@ options:
 - Update the phase section header in `siw/OPEN_ISSUES_OVERVIEW.md` by appending ` (DONE)` (e.g., `## Phase 2: Core Features (DONE)`)
 - Do not double-append if it is already marked
 
-### 11.5 Update siw/LOG.md Current Progress
+### 11.5 Post-Phase LOG.md Update (only if phase marked DONE in 11.4)
 
-Update `siw/LOG.md` to reflect completion:
-- Move the completed issue into "Last Completed"
-- Set "Next Steps" to the next READY issue (or the next planned task)
-- If a phase was marked DONE, note that in the summary/last-completed entry
+If a phase was marked DONE in 11.4, update `siw/LOG.md` to note the phase completion in the summary/last-completed entry.
 
 ---
 
@@ -738,6 +742,10 @@ Update `siw/LOG.md` to reflect completion:
 ### Update siw/LOG.md
 
 **ALWAYS** update siw/LOG.md with progress and decisions.
+
+### Status Updates Are Atomic
+
+**ALWAYS** update all three tracking files together when changing issue status. See the Status Update Procedure at the top of this skill. Never update just the issue file or just the overview — all three files must be updated as a single operation.
 
 ### Sync Decisions to Spec
 

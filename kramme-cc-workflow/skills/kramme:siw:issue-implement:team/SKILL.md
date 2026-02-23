@@ -105,7 +105,7 @@ For each issue in Batch 1, spawn a teammate with:
    - Run `kramme:verify:run`
    - Document resolution in the issue file's `## Resolution` section (summary, changes, key decisions)
    - Set issue status to IN REVIEW or DONE based on confidence
-   - Update `siw/OPEN_ISSUES_OVERVIEW.md`
+   - Update ALL THREE tracking files atomically: issue file status, `siw/OPEN_ISSUES_OVERVIEW.md` row, and `siw/LOG.md` current progress
    - Message the lead when complete"
 5. **Plan approval**: Require plan approval before implementation begins. The lead reviews each teammate's technical plan and approves or rejects with feedback.
 
