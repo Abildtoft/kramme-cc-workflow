@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 ### Added
+## [0.31.0] - 2026-02-23
+
+### Changed
+- Add Arguments column to skill tables (#190)
+
+### Fixed
+- Strengthen status update reliability (#188)
+
 ## [0.30.0] - 2026-02-22
 
 ### Changed
@@ -380,6 +388,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.31.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.28.0...v0.29.0
 [0.27.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.26.0...v0.27.0
