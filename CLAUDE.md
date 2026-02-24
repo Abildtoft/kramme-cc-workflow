@@ -68,6 +68,10 @@ exit_if_hook_disabled "hook-name" "json" # For PostToolUse/Stop hooks
 - Use "Pull Request" (PR) terminology, not "Merge Request" (MR) — even when supporting GitLab
 - **Use conventional commits** - Commit messages and PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/) format (`feat:`, `fix:`, `docs:`, etc.) for automatic CHANGELOG generation. PR titles are validated by CI and become merge commit messages.
 - **Explicit skill frontmatter** - Every skill SKILL.md must declare all frontmatter fields explicitly (`name`, `description`, `disable-model-invocation`, `user-invocable`). Never rely on defaults.
+- **Skill name word order** - Multi-word skill names (the segment after `kramme:domain:`) follow one of three patterns:
+  1. **Verb-first** (default for actions): `resolve-review`, `generate-phases`, `fix-ci`
+  2. **Object-first** (only when 2+ skills share the prefix): `issue-define`, `issue-implement`
+  3. **Noun compound** (names a thing, not an action): `code-review`, `spec-audit`, `commit-message`
 
 ## Development
 
