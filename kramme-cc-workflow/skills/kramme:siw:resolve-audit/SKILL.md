@@ -1,5 +1,5 @@
 ---
-name: kramme:siw:audit-resolve
+name: kramme:siw:resolve-audit
 description: Resolve audit findings one-by-one with executive summaries, alternatives, recommendation, and SIW issue creation
 argument-hint: "[audit-report-path] [finding-id(s)]"
 disable-model-invocation: true
@@ -34,7 +34,7 @@ Then continue to the next finding.
 ## Process Overview
 
 ```
-/kramme:siw:audit-resolve [audit-report-path] [finding-id(s)]
+/kramme:siw:resolve-audit [audit-report-path] [finding-id(s)]
     ↓
 [Locate and read audit report]
     ↓
