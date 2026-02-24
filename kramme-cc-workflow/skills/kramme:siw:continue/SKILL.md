@@ -31,7 +31,8 @@ A local issue tracking system using markdown files to plan, track, and document 
 /kramme:siw:resolve-audit           # Walk audit findings one-by-one and create SIW issues
 /kramme:siw:issues-reindex          # Remove DONE issues, renumber within groups
 /kramme:siw:reset                   # Reset for next iteration (keeps spec)
-/kramme:siw:remove                  # Clean up when done
+/kramme:siw:close                   # Generate docs and clean up
+/kramme:siw:remove                  # Clean up when done (no docs)
 ```
 
 ## Issue Naming
@@ -120,6 +121,7 @@ Issues use prefix-based numbering:
 | `/kramme:siw:resolve-audit` | Resolve audit findings one-by-one with executive summaries, alternatives, and SIW issue creation |
 | `/kramme:siw:issues-reindex` | Remove DONE issues and renumber remaining within each prefix group |
 | `/kramme:siw:reset` | Reset workflow state (migrate log to spec, clear issues) |
+| `/kramme:siw:close` | Close SIW project, generate docs in `docs/<feature>/`, remove temporary files |
 | `/kramme:siw:remove` | Clean up all SIW files after completion |
 
 ---
@@ -145,6 +147,7 @@ ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw
 | **Implementation done** | Run `/kramme:siw:implementation-audit` to verify spec compliance |
 | **Audit report ready** | Run `/kramme:siw:resolve-audit` to triage findings and create issues one-by-one |
 | **Iteration complete** | Run `/kramme:siw:reset` to start fresh |
+| **Project complete, want docs** | Run `/kramme:siw:close` to generate documentation and clean up |
 | **Project complete** | Run `/kramme:siw:remove` to clean up |
 
 ### Resuming Work

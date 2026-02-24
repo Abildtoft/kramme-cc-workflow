@@ -136,6 +136,7 @@ Local issue tracking and structured implementation planning using markdown files
 | `/kramme:siw:issues-reindex` | User | — | Remove all DONE issues and renumber remaining issues from 001. Cleans up completed work and provides fresh numbering sequence. |
 | `/kramme:siw:reset` | User | — | Reset SIW workflow state while preserving the spec. Migrates log decisions to spec, then clears issues and log for fresh start. |
 | `/kramme:siw:reverse-engineer-spec` | User | `[branch \| folder \| file(s)] [--base main] [--model opus\|sonnet\|haiku]` | Reverse engineer an SIW specification from existing code. Produces a structured spec compatible with the SIW workflow. Use for documenting shipped features, onboarding to unfamiliar code, or bootstrapping SIW from an existing implementation. |
+| `/kramme:siw:close` | User | — | Close an SIW project by generating permanent documentation in `docs/<feature>/` capturing decisions, architecture, and implementation summary, then removing temporary workflow files. |
 | `/kramme:siw:remove` | User | — | Remove all Structured Implementation Workflow (SIW) files from current directory. Cleans up temporary workflow documents. |
 
 #### Pull Requests
