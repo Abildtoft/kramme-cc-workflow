@@ -164,25 +164,32 @@ REVIEW_SUMMARY.md"
     [[ "$output" == *"siw/AUDIT_SPEC_REPORT.md"* ]]
 }
 
-@test "blocks git commit when siw/LOG.md is staged" {
+@test "allows git commit when siw/LOG.md is staged" {
     mock_git_staged "siw/LOG.md"
     run run_hook "git commit -m 'log staged'"
-    is_blocked
-    [[ "$output" == *"siw/LOG.md"* ]]
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
 }
 
-@test "blocks git commit when siw/OPEN_ISSUES_OVERVIEW.md is staged" {
+@test "allows git commit when siw/OPEN_ISSUES_OVERVIEW.md is staged" {
     mock_git_staged "siw/OPEN_ISSUES_OVERVIEW.md"
     run run_hook "git commit -m 'overview staged'"
-    is_blocked
-    [[ "$output" == *"siw/OPEN_ISSUES_OVERVIEW.md"* ]]
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
 }
 
-@test "blocks git commit when configured specification files are staged" {
+@test "allows git commit when siw/PROJECT_PLAN.md is staged" {
     mock_git_staged "siw/PROJECT_PLAN.md"
     run run_hook "git commit -m 'plan staged'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "blocks git commit when UX_REVIEW_OVERVIEW.md is staged" {
+    mock_git_staged "UX_REVIEW_OVERVIEW.md"
+    run run_hook "git commit -m 'ux review staged'"
     is_blocked
-    [[ "$output" == *"siw/PROJECT_PLAN.md"* ]]
+    [[ "$output" == *"UX_REVIEW_OVERVIEW.md"* ]]
 }
 
 @test "blocks git commit when configured artifact is staged with other files" {
