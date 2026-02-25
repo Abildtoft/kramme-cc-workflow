@@ -194,6 +194,16 @@ Generate styled, self-contained HTML pages with diagrams, data tables, and inter
 | `/kramme:visual:diff-review` | User | Visual HTML diff review with executive summary, KPI dashboard, Mermaid architecture graphs, before/after panels, code review analysis, and decision log. |
 | `/kramme:visual:plan-review` | User | Visual plan review comparing current codebase against a proposed implementation plan, with blast radius analysis, current/planned architecture Mermaid diagrams, and risk assessment. |
 | `/kramme:visual:project-recap` | User | Mental model recap for context-switching back to a project. Architecture snapshot, recent activity timeline, decision log, and cognitive debt hotspots. |
+| `/kramme:visual:generate-image` | User, Auto | Generate or edit images using Gemini 3 Pro Image API. Supports text-to-image generation, image-to-image editing, and configurable resolution (1K/2K/4K). |
+
+**API key setup for `/kramme:visual:generate-image`:**
+
+```bash
+# Required for image generation/editing
+export GEMINI_API_KEY="your-api-key-here"
+```
+
+This works in both Claude Code and Codex. If running the script directly, you can also pass `--api-key` instead of using an environment variable.
 
 #### Discovery & Documentation
 
