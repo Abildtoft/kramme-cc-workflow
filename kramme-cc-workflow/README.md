@@ -207,6 +207,14 @@ Session management, verification, artifact cleanup, and hook configuration.
 | `/kramme:session:wrap-up` | User | — | End-of-session checklist to capture progress, ensure quality, and document next steps. Audits uncommitted changes, runs quality checks, and prompts for session summary and next steps. |
 | `/kramme:verify:run` | User, Auto | — | Run verification checks (tests, formatting, builds, linting, type checking) for affected code. Automatically detects project type and runs appropriate commands. |
 
+#### Nx
+
+Nx workspace tooling and configuration.
+
+| Skill | Invocation | Arguments | Description |
+|-------|------------|-----------|-------------|
+| `/kramme:nx:setup-portless` | User | — | Experimental. Set up portless in an Nx workspace for stable HTTPS localhost URLs instead of port numbers. Guides workspace-level proxy setup, per-app `dev:local`/`dev:full` targets, and troubleshooting. |
+
 ### Background Skills
 
 Auto-triggered by Claude based on context. These don't appear in the `/` menu.
