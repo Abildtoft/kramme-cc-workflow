@@ -1,6 +1,6 @@
 ---
 name: kramme:visual:project-recap
-description: Generate a visual HTML project recap to rebuild mental model when returning to a project — architecture snapshot, recent activity timeline, decision log, and cognitive debt hotspots
+description: EXPERIMENTAL - Generate a visual HTML project recap to rebuild mental model when returning to a project — architecture snapshot, recent activity timeline, decision log, and cognitive debt hotspots
 argument-hint: "[time-window: 2w|30d|3m]"
 disable-model-invocation: true
 user-invocable: true
