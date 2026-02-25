@@ -213,7 +213,7 @@ Nx workspace tooling and configuration.
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:nx:setup-portless` | User | — | Set up portless in an Nx workspace for stable HTTPS localhost URLs instead of port numbers. Guides workspace-level proxy setup, per-app `dev:local`/`dev:full` targets, and troubleshooting. |
+| `/kramme:nx:setup-portless` | User | — | Experimental. Set up portless in an Nx workspace for stable HTTPS localhost URLs instead of port numbers. Guides workspace-level proxy setup, per-app `dev:local`/`dev:full` targets, and troubleshooting. |
 
 ### Background Skills
 

@@ -1,6 +1,6 @@
 ---
 name: kramme:nx:setup-portless
-description: Set up portless in an Nx workspace for stable HTTPS localhost URLs. Use when adding portless, wiring up dev:local/dev:full targets, or configuring the HTTPS proxy.
+description: Experimental. Set up portless in an Nx workspace for stable HTTPS localhost URLs. Use when adding portless, wiring up dev:local/dev:full targets, or configuring the HTTPS proxy.
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -8,6 +8,8 @@ user-invocable: true
 # Set Up Portless in an Nx Workspace
 
 Add portless to an Nx workspace so apps get stable `https://<name>.localhost` URLs instead of port numbers. Portless runs a single HTTPS proxy daemon on port 443 that routes subdomains to individual dev servers.
+
+> Experimental: This skill is early and may change as we refine the Nx + portless workflow.
 
 ## When to Use
 
