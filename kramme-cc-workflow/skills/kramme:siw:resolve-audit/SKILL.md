@@ -19,17 +19,29 @@ Turn an audit report into decision-ready SIW issues by walking findings one at a
 
 Implementation stays separate and should happen later via `/kramme:siw:issue-implement`.
 
+## Hard Constraints
+
+**NEVER** present more than one finding at a time. Each finding gets its own full cycle (executive summary, alternatives, recommendation, user choice, issue creation) before the next finding begins.
+
+**NEVER** batch, group, or summarize multiple findings in a single message during the per-finding loop (Steps 4-6). Every finding is presented individually with its complete structure.
+
+**NEVER** skip the AskUserQuestion step for any finding. The user must explicitly choose an option before an issue is created.
+
+**NEVER** proceed to the next finding until the user has responded to the current finding's AskUserQuestion and the corresponding SIW issue has been created.
+
+**NEVER** replace the per-finding walkthrough with a summary table, overview list, or condensed format. The full structure from "Required Review Style" is mandatory for every single finding during Steps 4-6.
+
 ## Required Review Style
 
-For every finding processed, follow this exact structure:
+**CRITICAL:** For every single finding, follow this exact structure. No exceptions, no shortcuts, no batching.
 
 1. Detailed executive summary (with code references when available)
 2. Alternative options
 3. Well-argued preferred option
-4. User choice
+4. User choice via AskUserQuestion — **STOP and wait for response**
 5. SIW issue creation for the chosen option
 
-Then continue to the next finding.
+Then — and only then — continue to the next finding.
 
 ## Process Overview
 
@@ -191,7 +203,19 @@ options:
     description: "{one-line tradeoff}"
 ```
 
+Send this AskUserQuestion as a standalone message immediately after Step 4.3 (recommendation), with no additional surrounding content.
+
 If user asks to modify options, refine and re-ask before creating the issue.
+
+**STOP — MANDATORY GATE**
+
+After presenting AskUserQuestion for a finding:
+1. **STOP** and wait for the user's response
+2. **DO NOT** present the next finding while waiting
+3. **DO NOT** pre-compute or preview upcoming findings
+4. **DO NOT** combine the question with any other content
+
+Only after the user selects an option (or asks for modifications), proceed to Step 5 to create the SIW issue for this single finding.
 
 ## Step 5: Create SIW Issue For Chosen Option
 
@@ -317,10 +341,14 @@ Issue creation:
 
 ## Step 6: Continue Until Done
 
-After each created issue:
-- Confirm completion of that finding
-- Move to next finding in queue
-- Stop only when all selected findings are handled or user asks to stop
+After creating the SIW issue for one finding:
+1. Send a standalone completion message for that finding to the user
+2. **Return to Step 4** for the next finding in the queue
+3. In a separate subsequent message, present the next finding's full executive summary (Step 4.1) — do not skip or abbreviate
+
+**NEVER** process the next finding without completing the full cycle (Steps 4 through 5) for the current one.
+
+**STOP** only when all selected findings are handled or the user asks to stop.
 
 ## Step 7: Final Summary
 
@@ -329,5 +357,7 @@ At the end, report:
 - Issues created (`G-xxx` list)
 - Findings intentionally deferred
 - Recommended first implementation issue to start with
+
+This final summary is allowed only after all selected findings complete the full Steps 4-5 cycle.
 
 Then stop and wait for user instruction.
