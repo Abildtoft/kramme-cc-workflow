@@ -3,6 +3,17 @@
 ## [Unreleased]
 
 ### Added
+## [0.34.0] - 2026-02-25
+
+### Added
+- Add generate-image skill with Gemini script (#201)
+- Add HTML diagram generation skills (#177)
+- Add setup-portless skill (#198)
+
+### Fixed
+- Harden resolve-audit one-finding workflow (#200)
+- Autosquash fixup commits from merge-base (#199)
+
 ## [0.33.0] - 2026-02-24
 
 ### Added
@@ -401,6 +412,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.34.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.30.0...v0.31.0
