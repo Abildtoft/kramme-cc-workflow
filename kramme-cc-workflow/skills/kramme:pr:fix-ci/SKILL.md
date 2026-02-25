@@ -280,6 +280,12 @@ git show-ref --verify --quiet refs/remotes/origin/$BASE
 
 If the ref is missing, re-run base detection or `git fetch origin` and try again.
 
+Derive the branch fork point from the resolved base ref. This keeps fixup autosquash scoped to branch commits even when the base branch has advanced:
+
+```bash
+FIXUP_BASE=$(git merge-base HEAD "$BASE_REF")
+```
+
 #### 7b.2: Map Changed Files to Commits
 
 For each changed file (from `git diff --name-only`, `git diff --cached --name-only`, and untracked files from `git ls-files --others --exclude-standard`), find which branch commit last touched it:
@@ -311,7 +317,7 @@ git commit -m "<descriptive message of what was fixed>"
 #### 7b.5: Autosquash Rebase
 
 ```bash
-GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash $BASE_REF
+GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash "$FIXUP_BASE"
 ```
 
 **If rebase fails (conflicts):**

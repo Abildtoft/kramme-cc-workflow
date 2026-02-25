@@ -178,10 +178,12 @@ git commit --fixup=<commit_sha>
 
 ### Step 5: Autosquash Rebase
 
-Run an autosquash rebase to squash fixup commits into their targets:
+Run an autosquash rebase to squash fixup commits into their targets.
+Use the branch fork point (merge-base) so this rewrites only branch commits and does not pull newer base-branch commits into the feature branch:
 
 ```bash
-GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash <base>
+FORK_POINT=$(git merge-base HEAD <base>)
+GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash "$FORK_POINT"
 ```
 
 If the rebase succeeds, proceed to Step 6.
@@ -238,7 +240,7 @@ If the rebase fails mid-way due to conflicts:
    > "**Your fixup commits are NOT lost** - they still exist on the branch."
 
 4. **Provide resolution options:**
-   - **Retry manually:** User can run `git rebase -i --autosquash <base>` and resolve conflicts themselves
+   - **Retry manually:** User can run `git rebase -i --autosquash "$(git merge-base HEAD <base>)"` and resolve conflicts themselves
    - **Abandon fixups:** User can remove the fixup commits with `git reset HEAD~N` (where N = number of fixup commits created)
 
 ## Options
@@ -287,5 +289,6 @@ Any text after the command (and flags) is treated as custom instructions that in
 - Handles modified, deleted, and renamed files
 - Staged changes prompt for handling before proceeding
 - Orphan files (not touched by branch) require user decision or are skipped with `--no-confirm`
+- Autosquash rebase uses merge-base with the base branch, so fixup does not implicitly rebase onto the latest base tip
 - After rebase, force push is required if branch was previously pushed
 - Validation commands are project-specific - refer to CLAUDE.md/AGENTS.md
