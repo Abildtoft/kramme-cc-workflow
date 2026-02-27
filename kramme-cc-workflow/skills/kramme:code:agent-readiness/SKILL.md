@@ -1,5 +1,5 @@
 ---
-name: kramme:code:agent-native-audit
+name: kramme:code:agent-readiness
 description: "Audit a codebase for agent-nativeness — score how well-optimized it is for AI coding agents across 5 dimensions and generate a prioritized refactoring plan."
 disable-model-invocation: true
 user-invocable: true
@@ -14,7 +14,7 @@ Audit a codebase for agent-nativeness — how well-optimized it is for AI coding
 ## Process Overview
 
 ```
-/kramme:code:agent-native-audit
+/kramme:code:agent-readiness
     |
     v
 [Step 1: Detect Codebase Context] -> Language, framework, key signals
