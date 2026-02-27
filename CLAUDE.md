@@ -63,6 +63,8 @@ skill-name/
 
 Keep `SKILL.md` focused on orchestration logic. Move reference data, templates, agent prompts, and code examples to supporting files and reference them via `Read` tool instructions. See [Anthropic's skill docs](https://code.claude.com/docs/en/skills#add-supporting-files).
 
+For guided skill creation with best-practice scaffolding, use `/kramme:skill:create`.
+
 ### Hooks
 Edit `hooks/hooks.json` to add event handlers (PreToolUse, PostToolUse, SessionStart, Stop).
 
