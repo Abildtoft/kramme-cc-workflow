@@ -49,6 +49,20 @@ user-invocable: true
 - `user-invocable` — `false` hides from `/` menu; Claude auto-invokes based on context. Use for background conventions (commit style, verification rules). Set to `true` to show in `/` menu.
 - `kramme-platforms` — Restrict skill to specific platforms: `[claude-code]`, `[opencode]`, `[codex]`, or combinations. Omit to include on all platforms. Skills using Claude Code-only features (e.g. Agent Teams) should set `kramme-platforms: [claude-code]`.
 
+**Skill directory structure:**
+```
+skill-name/
+├── SKILL.md           # Core instructions (required, target under 500 lines)
+├── resources/         # Supporting files (loaded on demand)
+│   ├── templates/     # Output format templates
+│   ├── prompts/       # Agent prompt templates
+│   ├── examples/      # Code examples and samples
+│   └── references/    # Reference documentation
+└── scripts/           # Executable scripts
+```
+
+Keep `SKILL.md` focused on orchestration logic. Move reference data, templates, agent prompts, and code examples to supporting files and reference them via `Read` tool instructions. See [Anthropic's skill docs](https://code.claude.com/docs/en/skills#add-supporting-files).
+
 ### Hooks
 Edit `hooks/hooks.json` to add event handlers (PreToolUse, PostToolUse, SessionStart, Stop).
 
@@ -67,6 +81,7 @@ exit_if_hook_disabled "hook-name" "json" # For PostToolUse/Stop hooks
 - **Document all components in README.md** - Every command, skill, agent, and hook must be documented in the README with a description of what it does and when to use it
 - Use "Pull Request" (PR) terminology, not "Merge Request" (MR) — even when supporting GitLab
 - **Use conventional commits** - Commit messages and PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/) format (`feat:`, `fix:`, `docs:`, etc.) for automatic CHANGELOG generation. PR titles are validated by CI and become merge commit messages.
+- **SKILL.md target under 500 lines** - Keep new or refactored skills under ~500 lines by moving reference material, templates, and examples to supporting files. Legacy skills may temporarily exceed this target until migrated.
 - **Explicit skill frontmatter** - Every skill SKILL.md must declare all frontmatter fields explicitly (`name`, `description`, `disable-model-invocation`, `user-invocable`). Never rely on defaults.
 - **Skill name word order** - Multi-word skill names (the segment after `kramme:domain:`) follow one of three patterns:
   1. **Verb-first** (default for actions): `resolve-review`, `generate-phases`, `fix-ci`

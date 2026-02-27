@@ -1,0 +1,33 @@
+# Migration Checklist
+
+- [ ] Phase 1: Read all component files and identify patterns
+- [ ] Phase 2: Create ComponentStore
+  - [ ] Defined state interface with `readonly` properties
+  - [ ] Defined form controls interface
+  - [ ] Created form as class property (not in state)
+  - [ ] All selectors use `$` suffix
+  - [ ] All effects use `pipe()` directly
+  - [ ] Proper type narrowing in effects
+- [ ] Phase 3: Refactor component
+  - [ ] Component uses `OnPush` change detection
+  - [ ] Component is `standalone: true`
+  - [ ] ComponentStore in providers array
+  - [ ] Removed base class extensions
+  - [ ] Removed `@Select` decorators
+  - [ ] Removed manual subscriptions
+  - [ ] All `inject()` calls first in class
+  - [ ] Using `#privateField` syntax
+- [ ] Phase 4: Update template
+  - [ ] Updated template to use native control flow
+  - [ ] Added animations for conditional UI
+  - [ ] Proper form bindings
+- [ ] Phase 5: UX enhancements
+  - [ ] Added confirmation dialogs for destructive actions
+  - [ ] Success messages in ApiAction (not manual toasts)
+  - [ ] Copy-to-clipboard for IDs (if applicable)
+- [ ] Phase 6: Verification
+  - [ ] Lint passes
+  - [ ] No manual subscriptions in components
+  - [ ] Forms have proper type annotations
+  - [ ] No `any` types
+  - [ ] Tested all workflows
