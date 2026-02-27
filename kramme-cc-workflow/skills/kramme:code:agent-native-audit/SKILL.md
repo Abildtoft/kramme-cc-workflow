@@ -49,7 +49,12 @@ Gather codebase metadata before launching agents.
 Run quick checks:
 
 ```bash
-ls package.json tsconfig.json pyproject.toml Cargo.toml go.mod pom.xml build.gradle *.csproj 2>/dev/null
+for file in package.json tsconfig.json pyproject.toml setup.py requirements.txt Cargo.toml go.mod pom.xml build.gradle build.gradle.kts; do
+  if [ -e "$file" ]; then
+    echo "$file"
+  fi
+done
+find . -maxdepth 1 -type f \( -name "*.csproj" -o -name "*.sln" \)
 ```
 
 Identify primary language(s) by checking for config files:
@@ -67,22 +72,41 @@ Quick checks for files that inform the analysis:
 
 ```bash
 # Agent instructions
-ls CLAUDE.md .claude/ AGENTS.md 2>/dev/null
+for item in CLAUDE.md .claude AGENTS.md; do
+  if [ -e "$item" ]; then
+    echo "$item"
+  fi
+done
 
 # Documentation
-ls README.md docs/ 2>/dev/null
+for item in README.md docs; do
+  if [ -e "$item" ]; then
+    echo "$item"
+  fi
+done
 
 # CI/CD
-ls .github/workflows/*.yml .gitlab-ci.yml Jenkinsfile .circleci/config.yml 2>/dev/null
+if [ -d .github/workflows ]; then
+  find .github/workflows -maxdepth 1 -type f \( -name "*.yml" -o -name "*.yaml" \)
+fi
+for item in .gitlab-ci.yml Jenkinsfile .circleci/config.yml; do
+  if [ -e "$item" ]; then
+    echo "$item"
+  fi
+done
 
 # Linting and formatting
-ls .eslintrc* eslint.config* .prettierrc* prettier.config* ruff.toml .editorconfig 2>/dev/null
+find . -maxdepth 1 -type f \( -name ".eslintrc*" -o -name "eslint.config*" -o -name ".prettierrc*" -o -name "prettier.config*" -o -name "ruff.toml" -o -name ".editorconfig" \)
 
 # Testing
-ls jest.config* vitest.config* pytest.ini pyproject.toml karma.conf* cypress.config* playwright.config* 2>/dev/null
+find . -maxdepth 1 -type f \( -name "jest.config*" -o -name "vitest.config*" -o -name "pytest.ini" -o -name "pyproject.toml" -o -name "karma.conf*" -o -name "cypress.config*" -o -name "playwright.config*" \)
 
 # Hooks
-ls .husky/ .pre-commit-config.yaml lefthook.yml 2>/dev/null
+for item in .husky .pre-commit-config.yaml lefthook.yml; do
+  if [ -e "$item" ]; then
+    echo "$item"
+  fi
+done
 
 # Type checking strictness (TypeScript)
 # If tsconfig.json exists, check for "strict": true
