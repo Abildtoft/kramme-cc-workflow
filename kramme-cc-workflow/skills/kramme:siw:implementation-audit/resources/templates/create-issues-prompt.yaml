@@ -1,0 +1,11 @@
+header: "Create SIW Issues"
+question: "Found {N} actionable findings (divergences/extensions). Create SIW issues for them?"
+options:
+  - label: "Critical and major only"
+    description: "Create {N} issues (skip minor findings)"
+  - label: "All findings"
+    description: "Create {N} issues including minor ones"
+  - label: "Let me select"
+    description: "Choose which findings become issues"
+  - label: "No issues"
+    description: "Keep the report only"

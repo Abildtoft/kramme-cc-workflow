@@ -7,7 +7,6 @@ user-invocable: true
 ---
 
 # Audit Implementation Against Specification
-
 Exhaustively compare the codebase implementation against specification documents.
 
 ## Primary Objective (Mandatory)
@@ -282,64 +281,7 @@ For each group from Step 3, launch an Explore agent using the Task tool (`subage
 
 ### 4.2 Explore Agent Prompt
 
-Each agent receives this prompt structure:
-
-```
-You are running Pass A: strict spec-conformance auditing. Everything in the spec is a requirement — names, behaviors, data shapes, contracts, constraints.
-Your job is to find EVERY divergence and prove every claimed alignment with direct code evidence.
-
-## Your Spec Section
-
-{Paste the FULL raw text of the spec section/file assigned to this agent}
-
-## Requirements Checklist
-
-{For each requirement in this group:}
-- REQ-{id}: {description}
-  - Spec citation: {spec_citation}
-  - Key terms: {key_terms}
-  - Strict markers: {MUST/ONLY/NEVER or none}
-{End for each}
-
-## Instructions
-
-For each requirement, follow this exact process:
-
-1. **Search for implementation paths.** Use Grep for key terms and Glob for expected patterns.
-2. **Read implementation files end-to-end.** Do not stop at grep hits.
-3. **Check naming alignment.** Exact names, paths, fields, and contract identifiers.
-4. **Check behavioral alignment.** Validation, authorization, edge cases, status codes, fallback behavior.
-5. **Run strict negative/permissiveness checks when markers exist:**
-   - `MUST`: Find bypass paths (config flags, alternate handlers, unguarded flows).
-   - `ONLY`: Find broader paths than permitted (roles, scopes, data access, routes).
-   - `NEVER`: Find prohibited behavior reachable in any path.
-6. **Report one result per requirement** with status-based evidence requirements.
-
-For each requirement, output:
-- **REQ ID**: The requirement identifier
-- **Status**: IMPLEMENTED | PARTIAL | MISSING | NAMING_MISMATCH | BEHAVIOR_MISMATCH | OVER_PERMISSIVE | BYPASS_PATH | UNCERTAIN
-- **Evidence:**
-  - For `IMPLEMENTED`, `PARTIAL`, `NAMING_MISMATCH`, `BEHAVIOR_MISMATCH`, `OVER_PERMISSIVE`, or `BYPASS_PATH`:
-    - Spec citation: `{source_file} > {source_section} > {exact clause}`
-    - Code citation: `{file}:{line}` (one or more)
-    - Runtime behavior statement: `When {input/state}, code does {actual behavior}, therefore {aligns/diverges}.`
-  - For `MISSING` or `UNCERTAIN`:
-    - Spec citation
-    - Searched paths/patterns
-    - Why implementation evidence could not be established
-- **Discrepancy details**: If not IMPLEMENTED, describe exactly what differs
-- **Confidence**: HIGH | MEDIUM | LOW
-
-## Rules — Read These Carefully
-
-- **Report on EVERY requirement.** Do not skip any.
-- **Do not return early.** Continue until all requirements are checked.
-- **Grep hits are not evidence.** Read the function/class body and call path.
-- **No positive evidence = MISSING or UNCERTAIN.** Do not assume implementation.
-- **For PARTIAL status**, describe what is implemented and what is missing.
-- **For every non-`MISSING`/non-`UNCERTAIN` result**, the evidence triplet is required.
-- **Strict-marker requirements must include explicit permissiveness/bypass notes.**
-```
+Read the Pass A agent prompt template from `resources/prompts/pass-a-conformance.md`. Each agent receives that prompt structure, populated with its assigned spec section and requirements checklist.
 
 ### 4.3 Pass A Output Requirements
 
@@ -360,40 +302,7 @@ Launch Explore agents in parallel to hunt for undocumented implementation behavi
 
 ### 5.2 Pass B Prompt
 
-Each Pass B agent receives this prompt structure:
-
-```
-You are running Pass B: adversarial boundary/extension discovery.
-Do not prove conformance. Hunt for implementation behavior that exceeds, bypasses, or contradicts spec boundaries.
-
-## Spec Context
-{Assigned spec section(s)}
-
-## Focus Areas
-- Permission broadening beyond "ONLY" constraints
-- Config-driven bypasses of "MUST"/"NEVER" rules
-- Undocumented alternate flows
-- Data exposure paths not explicitly allowed by spec
-- Reuse/lifecycle mismatches that alter behavior
-- Hard-navigation/embedded UX behavior not defined by spec
-
-## Instructions
-1. Start from actual code boundaries, not only spec terms.
-2. Trace alternate code paths, feature flags, fallback paths, and default values.
-3. For each discovered extension, provide the mandatory evidence triplet:
-   - Spec citation (what boundary is missing/exceeded)
-   - Code citation (`file:line`)
-   - Runtime behavior statement
-4. If no extension is found in an explored area, report searched areas and reasoning.
-
-## Output
-- Extension ID: EXT-{n}
-- Type: ACCESS_BROADENING | BYPASS | UNDOCUMENTED_FLOW | DATA_EXPOSURE | LIFECYCLE_MISMATCH | OTHER
-- Related requirement/section: REQ-{id} or section name (or "No matching requirement")
-- Evidence triplet
-- Severity: Critical | Major | Minor
-- Confidence: HIGH | MEDIUM | LOW
-```
+Read the Pass B agent prompt template from `resources/prompts/pass-b-extension.md`. Each agent receives that prompt structure, populated with its assigned spec context.
 
 ### 5.3 Suspiciously-Clean Guardrail (Mandatory)
 
@@ -462,81 +371,7 @@ If the matrix is incomplete, audit is **BLOCKED** and no final report may be pro
 
 ## Step 7: Compile Mandatory Report Schema
 
-Generate a structured markdown report:
-
-```markdown
-# Audit Report: Implementation vs. Specification
-
-**Date:** {current date}
-**Spec Files Reviewed:** {list of spec files with paths}
-
-## Summary
-
-| Category | Count |
-|----------|-------|
-| Requirements checked | {total} |
-| Divergences | {count} |
-| Extensions | {count} |
-| Verified alignments | {count} |
-| Uncertain | {count} |
-| Conflicts resolved | {count} |
-| Conflicts unresolved | {count} |
-
-## Divergences
-
-### DIV-001: {Brief title}
-
-**Requirement:** REQ-{id} from {source_file} > {source_section}
-**Severity:** Critical | Major | Minor
-**Spec citation:** {file > section > clause}
-**Code citation:** {file:line[, file:line]}
-**Runtime behavior:** {input/state -> observed behavior}
-**Why divergent:** {exact mismatch explanation}
-
----
-
-## Extensions
-
-### EXT-001: {Brief title}
-
-**Type:** ACCESS_BROADENING | BYPASS | UNDOCUMENTED_FLOW | DATA_EXPOSURE | LIFECYCLE_MISMATCH | OTHER
-**Related requirement/section:** REQ-{id} or {section}
-**Severity:** Critical | Major | Minor
-**Spec citation:** {file > section > clause or "No matching requirement"}
-**Code citation:** {file:line[, file:line]}
-**Runtime behavior:** {input/state -> observed behavior}
-**Why this is out-of-spec:** {boundary exceeded or undocumented behavior}
-
----
-
-## Verified Alignments
-
-| Requirement | Spec citation | Code citation | Runtime behavior |
-|---|---|---|---|
-| REQ-{id} | {citation} | {file:line} | {behavior statement} |
-
-## Coverage Matrix
-
-| Section ID | Source | Req Count | Strict (M/O/N) | Pass A Checked | Pass B Checked | Divergences | Extensions | Alignments | Evidence Refs | Status |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|
-| SEC-01 | {source} | {n} | {n} | {n} | {n} | {n} | {n} | {n} | {refs} | COMPLETE |
-
-## Conflict Resolutions
-
-| Conflict ID | Items in conflict | Resolution | Evidence used |
-|---|---|---|---|
-| C-001 | REQ-012 status mismatch | Chosen: BEHAVIOR_MISMATCH | {file:line + rationale} |
-
-## Existing-Issue Cross-Reference
-
-Only include rows for findings with direct code evidence.
-
-| Finding | Evidence established | Existing issue(s) |
-|---|---|---|
-| DIV-001 | Yes | ISSUE-G-012 |
-```
-
-All above sections are mandatory. If a section has zero entries, include the section with `None`.
+Generate the report using the schema from `resources/templates/report-schema.md`. All sections in the schema are mandatory. If a section has zero entries, include the section with `None`.
 
 ---
 
@@ -604,19 +439,7 @@ Audit report written to: {path}
 
 ### 9.1 Ask User
 
-```yaml
-header: "Create SIW Issues"
-question: "Found {N} actionable findings (divergences/extensions). Create SIW issues for them?"
-options:
-  - label: "Critical and major only"
-    description: "Create {N} issues (skip minor findings)"
-  - label: "All findings"
-    description: "Create {N} issues including minor ones"
-  - label: "Let me select"
-    description: "Choose which findings become issues"
-  - label: "No issues"
-    description: "Keep the report only"
-```
+Use the prompt template from `resources/templates/create-issues-prompt.yaml`.
 
 ### 9.2 Preflight SIW Paths
 
@@ -634,90 +457,16 @@ Before creating any issues:
 For each selected finding:
 
 1. Determine next available `G-` issue number from `siw/issues/`.
-2. Create issue file `siw/issues/ISSUE-G-{NNN}-fix-{slugified-title}.md`:
-
-```markdown
-# ISSUE-G-{NNN}: Fix {finding title}
-
-**Status:** Ready | **Priority:** {Critical→High, Major→Medium, Minor→Low} | **Phase:** General | **Related:** Audit Report
-
-## Problem
-
-Audit found implementation behavior that is out of specification (divergence or extension).
-
-**Finding:** {DIV-XXX or EXT-XXX}
-**Spec requirement/context:** {REQ-{id} or section}
-**Source:** {source_file} > {source_section}
-
-## Context
-
-{What was found in the code vs. what the spec requires}
-{file:line references}
-
-## Scope
-
-### In Scope
-- {Specific fix needed}
-
-### Out of Scope
-- Refactoring unrelated code
-
-## Acceptance Criteria
-
-- [ ] Implementation matches the intended spec boundary
-- [ ] {Specific testable criterion based on the finding}
-
----
-
-## Technical Notes
-
-### Affected Areas
-- `{file path}` — {what needs to change}
-
-### References
-- Spec: `{spec_file}` > {section}
-- Audit Report: `{report_path}` > `{DIV-NNN or EXT-NNN}`
-```
+2. Create issue file `siw/issues/ISSUE-G-{NNN}-fix-{slugified-title}.md` using the template in `resources/templates/siw-issue-template.md`.
 
 3. Update `siw/OPEN_ISSUES_OVERVIEW.md` with new issue rows.
-4. Update `siw/LOG.md` Current Progress section:
-
-```markdown
-### Last Completed
-- Spec compliance audit: {N} findings found, {M} issues created
-```
+4. Update `siw/LOG.md` Current Progress section using `resources/templates/log-last-completed.md`.
 
 ---
 
 ## Step 10: Report Summary
 
-```
-Audit Complete
-==============
-
-Spec Files: {list}
-Requirements Checked: {total}
-Coverage Matrix: COMPLETE
-Conflicts: {resolved_count} resolved, 0 unresolved
-
-Results:
-  Divergences:         {N}
-  Extensions:          {N}
-  Verified alignments: {N}
-  Uncertain:           {N}
-
-Report: {report_path}
-
-{If issues created:}
-Issues Created: {N} (G-{start} through G-{end})
-See siw/OPEN_ISSUES_OVERVIEW.md for the full list.
-
-Next Steps:
-  - Resolve findings one-by-one with executive summaries, alternatives, and issue creation: /kramme:siw:resolve-audit
-  - Fix critical divergences/extensions first: /kramme:siw:issue-implement G-{first}
-  - Re-run after fixes to verify compliance: /kramme:siw:implementation-audit
-  - Clean up report when done: /kramme:workflow-artifacts:cleanup
-```
+Use the summary template from `resources/templates/audit-complete-summary.md`.
 
 **STOP HERE.** Wait for the user's next instruction.
 

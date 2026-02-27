@@ -1,0 +1,19 @@
+<!-- Native control flow with animation -->
+@if (form.controls.parentField.value) {
+<div @slideDown>
+  <mat-slide-toggle formControlName="childField">
+    Child Field
+  </mat-slide-toggle>
+</div>
+}
+
+<!-- Form bindings -->
+<form [formGroup]="form" class="tw-space-y-4">
+  <mat-form-field class="tw-w-full" subscriptSizing="fixed">
+    <mat-label>Field Name</mat-label>
+    <input matInput formControlName="fieldName" required />
+    @if (form.controls.fieldName.hasError("required")) {
+    <mat-error>Field is required</mat-error>
+    }
+  </mat-form-field>
+</form>
