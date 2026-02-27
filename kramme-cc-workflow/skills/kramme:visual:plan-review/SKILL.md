@@ -1,6 +1,6 @@
 ---
 name: kramme:visual:plan-review
-description: EXPERIMENTAL - Generate a visual HTML plan review comparing current codebase state vs. a proposed implementation plan, with architecture diagrams, blast radius analysis, and risk assessment
+description: Generate a visual HTML plan review comparing current codebase state vs. a proposed implementation plan, with architecture diagrams, blast radius analysis, and risk assessment
 argument-hint: "[plan-file-path]"
 disable-model-invocation: true
 user-invocable: true

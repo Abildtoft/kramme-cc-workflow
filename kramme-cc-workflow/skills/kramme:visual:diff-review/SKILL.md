@@ -1,6 +1,6 @@
 ---
 name: kramme:visual:diff-review
-description: EXPERIMENTAL - Generate a visual HTML diff review with before/after architecture comparison, KPI dashboard, Mermaid dependency graphs, and code review analysis
+description: Generate a visual HTML diff review with before/after architecture comparison, KPI dashboard, Mermaid dependency graphs, and code review analysis
 argument-hint: "[branch|commit|PR#|range]"
 disable-model-invocation: true
 user-invocable: true
