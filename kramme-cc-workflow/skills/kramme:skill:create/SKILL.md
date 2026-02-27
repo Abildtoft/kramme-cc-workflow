@@ -16,7 +16,7 @@ Based on [skills-best-practices](https://github.com/mgechev/skills-best-practice
 
 ## Phase 1: Parse Arguments
 
-1. Check `$ARGUMENTS` for a skill name (matches `kramme:*:*` pattern) or a free-text description.
+1. Check `$ARGUMENTS` for a skill name (matches the format in `resources/references/naming-conventions.md`) or a free-text description.
 2. If a valid name is provided, store it and skip Phase 3 name generation.
 3. If free-text is provided, use it as context for the design interview.
 4. If empty, proceed to Phase 2 to gather context.
@@ -71,9 +71,11 @@ Skip if `$ARGUMENTS` already provides a clear description.
 1. Read the naming conventions from `resources/references/naming-conventions.md`.
 
 2. If the user already provided a valid name, validate it against the rules:
-   - Format: `kramme:{domain}:{action}`
-   - 1-64 characters, lowercase letters, numbers, hyphens only, no consecutive hyphens
+   - Format: `kramme:{domain}:{action}` with optional qualifier segments (for example `:team`)
+   - 1-64 characters total
+   - Each segment uses lowercase letters, numbers, and hyphens only (no consecutive hyphens)
    - Check for collision: run `ls` on the skills directory to verify the name is not taken
+   - If the name already exists, stop and ask for a different name (do not overwrite files unless the user explicitly requests overwrite)
 
 3. If no name was provided, generate 2-3 suggestions:
    - Choose an existing domain namespace from the reference, or propose a new one if none fits
@@ -90,7 +92,7 @@ Skip if `$ARGUMENTS` already provides a clear description.
 
    ```yaml
    ---
-   name: kramme:{domain}:{action}
+   name: {skill-name}
    description: "{trigger-optimized description with negative trigger}"
    argument-hint: "{if applicable}"
    disable-model-invocation: {true|false}
@@ -111,7 +113,7 @@ Skip if `$ARGUMENTS` already provides a clear description.
 
 ### Simple tier
 
-1. Create the skill directory: `skills/{name}/`
+1. Create the skill directory: `skills/{skill-name}/`
 2. Read the template from `resources/templates/skill-md-simple.md`.
 3. Write `SKILL.md` with:
    - The finalized frontmatter (replacing template placeholders)
@@ -120,7 +122,7 @@ Skip if `$ARGUMENTS` already provides a clear description.
 
 ### Medium tier
 
-1. Create the skill directory: `skills/{name}/`
+1. Create the skill directory: `skills/{skill-name}/`
 2. Create `resources/` with appropriate subdirectories based on what the skill needs:
    - `resources/references/` — for domain docs, cheatsheets, rules
    - `resources/templates/` — for output format templates
@@ -187,7 +189,7 @@ Report any failing checks to the user with specific remediation steps.
 1. Generate the README table row for the skill:
 
    ```
-   | `/kramme:{name}` | {User[, Auto]} | {argument-hint or —} | {One-sentence description} |
+   | `/{skill-name}` | {User[, Auto]} | {argument-hint or —} | {One-sentence description} |
    ```
 
 2. Identify the correct README section based on the skill's domain:
@@ -197,26 +199,26 @@ Report any failing checks to the user with specific remediation steps.
    - Background skills → "Background Skills"
    - Other → suggest the best-fitting section or "Discovery & Documentation"
 
-3. Display the row and section name. Remind the user to add it to `kramme-cc-workflow/README.md`.
+3. Display the row and section name. Remind the user to add it to the plugin's `README.md` where skills are listed.
 
 ## Phase 8: Success Output
 
 Display the summary:
 
 ```
-Skill created: kramme:{name}
+Skill created: {skill-name}
 
 Files:
-  skills/{name}/SKILL.md               ({n} lines)
-  skills/{name}/resources/...           ({n} files)  [if applicable]
-  skills/{name}/scripts/...             ({n} files)  [if applicable]
+  skills/{skill-name}/SKILL.md          ({n} lines)
+  skills/{skill-name}/resources/...     ({n} files)  [if applicable]
+  skills/{skill-name}/scripts/...       ({n} files)  [if applicable]
 
 Next steps:
   1. Fill in TODO markers in SKILL.md and resource files
   2. Test locally: claude /plugin install /path/to/plugin
   3. Validate with LLM-assisted review (see resources/references/best-practices.md)
   4. Add to README.md (row shown above)
-  5. Commit: feat(skills): add {name} skill
+  5. Commit: feat(skills): add {skill-name} skill
 ```
 
 ---

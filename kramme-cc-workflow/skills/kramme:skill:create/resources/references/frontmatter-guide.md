@@ -6,11 +6,11 @@ Every SKILL.md must declare all fields explicitly. Never rely on defaults.
 
 ### `name`
 
-Format: `kramme:{domain}:{action}`
+Format: `kramme:{domain}:{action}` with optional suffix segments (for example `kramme:pr:code-review:team`)
 
 - 1-64 characters total
-- Lowercase letters, numbers, and hyphens only
-- No consecutive hyphens
+- Segment-based validation: each segment (split by `:`) uses lowercase letters, numbers, and hyphens only
+- No consecutive hyphens in any segment
 - Must exactly match the parent directory name
 - Examples: `kramme:code:refactor-pass`, `kramme:pr:fix-ci`, `kramme:git:commit-message`
 

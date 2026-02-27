@@ -3,11 +3,12 @@
 ## Name Format
 
 ```
-kramme:{domain}:{action}
+kramme:{domain}:{action}[:{qualifier}...]
 ```
 
 - **domain** — category grouping related skills
 - **action** — what the skill does, following word-order patterns below
+- **qualifier** (optional) — variant marker such as `team`
 
 ## Existing Domain Namespaces
 
@@ -53,8 +54,8 @@ Use when the skill name describes what it is, not what it does.
 ## Validation Rules
 
 1. Total name must be 1-64 characters
-2. Lowercase letters, numbers, and hyphens only
-3. No consecutive hyphens (`--`)
+2. Segment-based validation: each segment (split by `:`) uses lowercase letters, numbers, and hyphens only
+3. No consecutive hyphens (`--`) in any segment
 4. Name must match the parent directory name exactly
 5. Domain should be an existing namespace unless a new category is clearly needed
 6. When creating a new domain, confirm it doesn't overlap with existing ones
