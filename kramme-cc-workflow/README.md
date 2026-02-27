@@ -133,7 +133,7 @@ Local issue tracking and structured implementation planning using markdown files
 | `/kramme:siw:resolve-audit` | User | `[audit-report-path] [finding-id(s)]` | Resolve audit findings one-by-one with executive summaries, alternatives, a recommended option, and SIW issue creation based on user preference. |
 | `/kramme:siw:issues-reindex` | User | — | Remove all DONE issues and renumber remaining issues from 001. Cleans up completed work and provides fresh numbering sequence. |
 | `/kramme:siw:reset` | User | — | Reset SIW workflow state while preserving the spec. Migrates log decisions to spec, then clears issues and log for fresh start. |
-| `/kramme:siw:reverse-engineer-spec` | User | `[branch \| folder \| file(s)] [--base main] [--model opus\|sonnet\|haiku]` | Reverse engineer an SIW specification from existing code. Produces a structured spec compatible with the SIW workflow. Use for documenting shipped features, onboarding to unfamiliar code, or bootstrapping SIW from an existing implementation. |
+| `/kramme:siw:reverse-engineer-spec` | User | `[branch \| folder \| file(s)] [--base main] [--model opus\|sonnet\|haiku]` | Experimental. Reverse engineer an SIW specification from existing code. Produces a structured spec compatible with the SIW workflow. Use for documenting shipped features, onboarding to unfamiliar code, or bootstrapping SIW from an existing implementation. |
 | `/kramme:siw:close` | User | — | Close an SIW project by generating permanent documentation in `docs/<feature>/` capturing decisions, architecture, and implementation summary, then removing temporary workflow files. |
 | `/kramme:siw:remove` | User | — | Remove all Structured Implementation Workflow (SIW) files from current directory. Cleans up temporary workflow documents. |
 
@@ -188,10 +188,10 @@ Generate styled, self-contained HTML pages with diagrams, data tables, and inter
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:visual:diagram` | User, Auto | — | Generate beautiful HTML diagrams for architecture overviews, flowcharts, schemas, data tables, and any visual explanation. Also auto-triggers for complex ASCII tables (4+ rows or 3+ columns). |
-| `/kramme:visual:diff-review` | User | — | Visual HTML diff review with executive summary, KPI dashboard, Mermaid architecture graphs, before/after panels, code review analysis, and decision log. |
-| `/kramme:visual:plan-review` | User | — | Visual plan review comparing current codebase against a proposed implementation plan, with blast radius analysis, current/planned architecture Mermaid diagrams, and risk assessment. |
-| `/kramme:visual:project-recap` | User | — | Mental model recap for context-switching back to a project. Architecture snapshot, recent activity timeline, decision log, and cognitive debt hotspots. |
+| `/kramme:visual:diagram` | User, Auto | — | Experimental. Generate beautiful HTML diagrams for architecture overviews, flowcharts, schemas, data tables, and any visual explanation. Also auto-triggers for complex ASCII tables (4+ rows or 3+ columns). |
+| `/kramme:visual:diff-review` | User | — | Experimental. Visual HTML diff review with executive summary, KPI dashboard, Mermaid architecture graphs, before/after panels, code review analysis, and decision log. |
+| `/kramme:visual:plan-review` | User | — | Experimental. Visual plan review comparing current codebase against a proposed implementation plan, with blast radius analysis, current/planned architecture Mermaid diagrams, and risk assessment. |
+| `/kramme:visual:project-recap` | User | — | Experimental. Mental model recap for context-switching back to a project. Architecture snapshot, recent activity timeline, decision log, and cognitive debt hotspots. |
 | `/kramme:visual:generate-image` | User, Auto | — | Generate or edit images using Gemini 3 Pro Image API. Supports text-to-image generation, image-to-image editing, and configurable resolution (1K/2K/4K). |
 
 **API key setup for `/kramme:visual:generate-image`:**

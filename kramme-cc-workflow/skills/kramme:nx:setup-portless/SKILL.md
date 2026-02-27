@@ -1,6 +1,6 @@
 ---
 name: kramme:nx:setup-portless
-description: Experimental. Set up portless in an Nx workspace for stable HTTPS localhost URLs. Use when adding portless, wiring up dev:local/dev:full targets, or configuring the HTTPS proxy.
+description: Set up portless in an Nx workspace for stable HTTPS localhost URLs. Use when adding portless, wiring up dev:local/dev:full targets, or configuring the HTTPS proxy.
 disable-model-invocation: true
 user-invocable: true
 ---
