@@ -127,10 +127,8 @@ Local issue tracking and structured implementation planning using markdown files
 | `/kramme:siw:issue-define` | User | `[ISSUE-G-XXX or ISSUE-P1-XXX] or [description and/or file paths]` | Define a new local issue with guided interview process. Creates issue files in the `issues/` directory. |
 | `/kramme:siw:generate-phases` | User | `[spec-file-path]` | Break spec into atomic, phase-based issues with tests and validation. Uses `P1-001`, `P2-001`, `G-001` numbering. Reviews breakdown with subagent before creating files. |
 | `/kramme:siw:issue-implement` | User | `<G-001 \| P1-001 \| ISSUE-G-XXX>` | Start implementing a defined local issue with codebase exploration and planning. Works on current branch. |
-| `/kramme:siw:issue-implement:team` | User | `[issue-ids or 'phase N']` | Implement multiple SIW issues simultaneously using multi-agent execution. Each agent implements one issue with a full context window. Handles file ownership and batching. Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
 | `/kramme:siw:spec-audit` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Audit spec quality (coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design) before implementation. Produces a structured report and optionally creates SIW issues. |
 | `/kramme:siw:implementation-audit` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Exhaustively audit codebase against specification files. Finds naming misalignments, missing implementations, and spec drift. Produces a structured report and optionally creates SIW issues. |
-| `/kramme:siw:spec-audit:team` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Team-based spec quality audit where dimension specialists collaborate and cross-validate findings. Includes cross-reviewer meta-review. Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
 | `/kramme:siw:implementation-audit:team` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Team-based implementation audit with simultaneous conformance + extension passes and live cross-validation. Dedicated reconciler handles conflict resolution and guardrail enforcement. Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
 | `/kramme:siw:resolve-audit` | User | `[audit-report-path] [finding-id(s)]` | Resolve audit findings one-by-one with executive summaries, alternatives, a recommended option, and SIW issue creation based on user preference. |
 | `/kramme:siw:issues-reindex` | User | — | Remove all DONE issues and renumber remaining issues from 001. Cleans up completed work and provides fresh numbering sequence. |
@@ -188,13 +186,13 @@ Linear issue tracking integration.
 
 Generate styled, self-contained HTML pages with diagrams, data tables, and interactive visualizations. Output opens in the browser.
 
-| Skill | Invocation | Description |
-|-------|------------|-------------|
-| `/kramme:visual:diagram` | User, Auto | Generate beautiful HTML diagrams for architecture overviews, flowcharts, schemas, data tables, and any visual explanation. Also auto-triggers for complex ASCII tables (4+ rows or 3+ columns). |
-| `/kramme:visual:diff-review` | User | Visual HTML diff review with executive summary, KPI dashboard, Mermaid architecture graphs, before/after panels, code review analysis, and decision log. |
-| `/kramme:visual:plan-review` | User | Visual plan review comparing current codebase against a proposed implementation plan, with blast radius analysis, current/planned architecture Mermaid diagrams, and risk assessment. |
-| `/kramme:visual:project-recap` | User | Mental model recap for context-switching back to a project. Architecture snapshot, recent activity timeline, decision log, and cognitive debt hotspots. |
-| `/kramme:visual:generate-image` | User, Auto | Generate or edit images using Gemini 3 Pro Image API. Supports text-to-image generation, image-to-image editing, and configurable resolution (1K/2K/4K). |
+| Skill | Invocation | Arguments | Description |
+|-------|------------|-----------|-------------|
+| `/kramme:visual:diagram` | User, Auto | — | Generate beautiful HTML diagrams for architecture overviews, flowcharts, schemas, data tables, and any visual explanation. Also auto-triggers for complex ASCII tables (4+ rows or 3+ columns). |
+| `/kramme:visual:diff-review` | User | — | Visual HTML diff review with executive summary, KPI dashboard, Mermaid architecture graphs, before/after panels, code review analysis, and decision log. |
+| `/kramme:visual:plan-review` | User | — | Visual plan review comparing current codebase against a proposed implementation plan, with blast radius analysis, current/planned architecture Mermaid diagrams, and risk assessment. |
+| `/kramme:visual:project-recap` | User | — | Mental model recap for context-switching back to a project. Architecture snapshot, recent activity timeline, decision log, and cognitive debt hotspots. |
+| `/kramme:visual:generate-image` | User, Auto | — | Generate or edit images using Gemini 3 Pro Image API. Supports text-to-image generation, image-to-image editing, and configurable resolution (1K/2K/4K). |
 
 **API key setup for `/kramme:visual:generate-image`:**
 
