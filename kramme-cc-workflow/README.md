@@ -121,21 +121,21 @@ Local issue tracking and structured implementation planning using markdown files
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:siw:init` | User | `[spec-file(s) \| folder \| discover]` | Initialize structured implementation workflow documents in `siw/` (spec, siw/LOG.md, siw/issues). Links existing specs without duplicating content, or runs an in-depth interview with `discover`. Sets up local issue tracking without requiring Linear. |
-| `/kramme:siw:continue` | User, Auto | — | Structured Implementation Workflow (SIW) entry point. Triggers on "SIW", "structured workflow", or when siw/LOG.md and siw/OPEN_ISSUES_OVERVIEW.md files are detected. Use `/kramme:siw:init` to set up. |
-| `/kramme:siw:discovery` | User | `[spec-file-path(s) \| 'siw'] [--apply]` | Run a focused SIW spec-strengthening interview. Identifies quality gaps and produces concrete spec improvements. |
-| `/kramme:siw:issue-define` | User | `[ISSUE-G-XXX or ISSUE-P1-XXX] or [description and/or file paths]` | Define a new local issue with guided interview process. Creates issue files in the `issues/` directory. |
-| `/kramme:siw:generate-phases` | User | `[spec-file-path]` | Break spec into atomic, phase-based issues with tests and validation. Uses `P1-001`, `P2-001`, `G-001` numbering. Reviews breakdown with subagent before creating files. |
-| `/kramme:siw:issue-implement` | User | `<G-001 \| P1-001 \| ISSUE-G-XXX>` | Start implementing a defined local issue with codebase exploration and planning. Works on current branch. |
-| `/kramme:siw:spec-audit` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Audit spec quality (coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design) before implementation. Produces a structured report and optionally creates SIW issues. |
-| `/kramme:siw:implementation-audit` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Exhaustively audit codebase against specification files. Finds naming misalignments, missing implementations, and spec drift. Produces a structured report and optionally creates SIW issues. |
-| `/kramme:siw:implementation-audit:team` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Team-based implementation audit with simultaneous conformance + extension passes and live cross-validation. Dedicated reconciler handles conflict resolution and guardrail enforcement. Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
+| `/kramme:siw:init` | User | `[spec-file(s) \| folder \| discover]` | Initialize structured implementation workflow documents in `siw/` (spec, siw/LOG.md, siw/issues).<br><br>Links existing specs without duplicating content, or runs an in-depth interview with `discover`.<br><br>Sets up local issue tracking without requiring Linear. |
+| `/kramme:siw:continue` | User, Auto | — | Structured Implementation Workflow (SIW) entry point.<br><br>Triggers on "SIW", "structured workflow", or when siw/LOG.md and siw/OPEN_ISSUES_OVERVIEW.md files are detected.<br><br>Use `/kramme:siw:init` to set up. |
+| `/kramme:siw:discovery` | User | `[spec-file-path(s) \| 'siw'] [--apply]` | Run a focused SIW spec-strengthening interview.<br><br>Identifies quality gaps and produces concrete spec improvements. |
+| `/kramme:siw:issue-define` | User | `[ISSUE-G-XXX or ISSUE-P1-XXX] or [description and/or file paths]` | Define a new local issue with guided interview process.<br><br>Creates issue files in the `issues/` directory. |
+| `/kramme:siw:generate-phases` | User | `[spec-file-path]` | Break spec into atomic, phase-based issues with tests and validation.<br><br>Uses `P1-001`, `P2-001`, `G-001` numbering.<br><br>Reviews breakdown with subagent before creating files. |
+| `/kramme:siw:issue-implement` | User | `<G-001 \| P1-001 \| ISSUE-G-XXX>` | Start implementing a defined local issue with codebase exploration and planning.<br><br>Works on current branch. |
+| `/kramme:siw:spec-audit` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Audit spec quality (coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design) before implementation.<br><br>Produces a structured report and optionally creates SIW issues. |
+| `/kramme:siw:implementation-audit` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Exhaustively audit codebase against specification files.<br><br>Finds naming misalignments, missing implementations, and spec drift.<br><br>Produces a structured report and optionally creates SIW issues. |
+| `/kramme:siw:implementation-audit:team` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Team-based implementation audit with simultaneous conformance + extension passes and live cross-validation.<br><br>Dedicated reconciler handles conflict resolution and guardrail enforcement.<br><br>Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
 | `/kramme:siw:resolve-audit` | User | `[audit-report-path] [finding-id(s)]` | Resolve audit findings one-by-one with executive summaries, alternatives, a recommended option, and SIW issue creation based on user preference. |
-| `/kramme:siw:issues-reindex` | User | — | Remove all DONE issues and renumber remaining issues from 001. Cleans up completed work and provides fresh numbering sequence. |
-| `/kramme:siw:reset` | User | — | Reset SIW workflow state while preserving the spec. Migrates log decisions to spec, then clears issues and log for fresh start. |
-| `/kramme:siw:reverse-engineer-spec` | User | `[branch \| folder \| file(s)] [--base main] [--model opus\|sonnet\|haiku]` | Experimental. Reverse engineer an SIW specification from existing code. Produces a structured spec compatible with the SIW workflow. Use for documenting shipped features, onboarding to unfamiliar code, or bootstrapping SIW from an existing implementation. |
+| `/kramme:siw:issues-reindex` | User | — | Remove all DONE issues and renumber remaining issues from 001.<br><br>Cleans up completed work and provides fresh numbering sequence. |
+| `/kramme:siw:reset` | User | — | Reset SIW workflow state while preserving the spec.<br><br>Migrates log decisions to spec, then clears issues and log for fresh start. |
+| `/kramme:siw:reverse-engineer-spec` | User | `[branch \| folder \| file(s)] [--base main] [--model opus\|sonnet\|haiku]` | Experimental.<br><br>Reverse engineer an SIW specification from existing code.<br><br>Produces a structured spec compatible with the SIW workflow.<br><br>Use for documenting shipped features, onboarding to unfamiliar code, or bootstrapping SIW from an existing implementation. |
 | `/kramme:siw:close` | User | — | Close an SIW project by generating permanent documentation in `docs/<feature>/` capturing decisions, architecture, and implementation summary, then removing temporary workflow files. |
-| `/kramme:siw:remove` | User | — | Remove all Structured Implementation Workflow (SIW) files from current directory. Cleans up temporary workflow documents. |
+| `/kramme:siw:remove` | User | — | Remove all Structured Implementation Workflow (SIW) files from current directory.<br><br>Cleans up temporary workflow documents. |
 
 #### Pull Requests
 
@@ -143,16 +143,16 @@ PR creation, review, iteration, and resolution.
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:pr:create` | User | — | Create a clean PR with narrative-quality commits and comprehensive description. Orchestrates branch setup, commit restructuring, and PR creation. |
-| `/kramme:pr:code-review` | User | — | Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop). Outputs REVIEW_OVERVIEW.md with actionable findings. |
-| `/kramme:pr:code-review:team` | User | — | Team-based PR review using multi-agent execution where specialized reviewers collaborate, cross-validate findings, and challenge each other's suggestions. Higher quality, higher token cost. Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
-| `/kramme:pr:resolve-review` | User | — | Resolve findings from code reviews. Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
-| `/kramme:pr:resolve-review:team` | User | — | Resolve review findings in parallel using multi-agent execution. Groups findings by file area and assigns to separate agents for faster resolution. Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
-| `/kramme:pr:fix-ci` | User | — | Iterate on a PR until CI passes. Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
-| `/kramme:pr:generate-description` | User | `[--non-interactive] [--direct] [--visual]` | Write a structured PR title and body from git diff, commit log, and Linear context. Optionally auto-detects a running dev server and captures screenshots with `--visual`. |
-| `/kramme:pr:ux-review` | User | `[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [parallel]` | Audit UI, UX, and product experience of PR changes using specialized agents for accessibility, usability heuristics, product thinking, and visual consistency. Optionally uses browser automation for visual review. |
-| `/kramme:pr:ux-review:team` | User | `[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100]` | Team-based UX audit using multi-agent execution where specialized reviewers (usability, product, visual, accessibility) collaborate, cross-validate findings, and challenge each other. Higher quality, higher token cost. Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
-| `/kramme:pr:rebase` | User | — | Rebase current branch onto latest main/master, then force push. Use when your PR is behind the base branch. |
+| `/kramme:pr:create` | User | — | Create a clean PR with narrative-quality commits and comprehensive description.<br><br>Orchestrates branch setup, commit restructuring, and PR creation. |
+| `/kramme:pr:code-review` | User | — | Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop).<br><br>Outputs REVIEW_OVERVIEW.md with actionable findings. |
+| `/kramme:pr:code-review:team` | User | — | Team-based PR review using multi-agent execution where specialized reviewers collaborate, cross-validate findings, and challenge each other's suggestions.<br><br>Higher quality, higher token cost.<br><br>Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
+| `/kramme:pr:resolve-review` | User | — | Resolve findings from code reviews.<br><br>Evaluates each finding for scope and validity, implements fixes, and generates a response document. |
+| `/kramme:pr:resolve-review:team` | User | — | Resolve review findings in parallel using multi-agent execution.<br><br>Groups findings by file area and assigns to separate agents for faster resolution.<br><br>Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
+| `/kramme:pr:fix-ci` | User | — | Iterate on a PR until CI passes.<br><br>Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
+| `/kramme:pr:generate-description` | User | `[--non-interactive] [--direct] [--visual]` | Write a structured PR title and body from git diff, commit log, and Linear context.<br><br>Optionally auto-detects a running dev server and captures screenshots with `--visual`. |
+| `/kramme:pr:ux-review` | User | `[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [parallel]` | Audit UI, UX, and product experience of PR changes using specialized agents for accessibility, usability heuristics, product thinking, and visual consistency.<br><br>Optionally uses browser automation for visual review. |
+| `/kramme:pr:ux-review:team` | User | `[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100]` | Team-based UX audit using multi-agent execution where specialized reviewers (usability, product, visual, accessibility) collaborate, cross-validate findings, and challenge each other.<br><br>Higher quality, higher token cost.<br><br>Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
+| `/kramme:pr:rebase` | User | — | Rebase current branch onto latest main/master, then force push.<br><br>Use when your PR is behind the base branch. |
 
 #### Code Quality & Review
 
@@ -160,9 +160,9 @@ Code cleanup, refactoring, and bug/security review.
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:code:cleanup-ai` | User | — | Remove AI-generated code slop from a branch. Uses `kramme:deslop-reviewer` agent to identify slop, then fixes the issues. |
-| `/kramme:code:rewrite-clean` | User | — | Scrap a working-but-mediocre fix and reimplement elegantly. Extracts learnings from the initial attempt, then starts fresh with the elegant solution. |
-| `/kramme:code:refactor-pass` | User, Auto | — | Lightweight simplification pass on recent changes — removes dead code, straightens logic, removes excessive parameters, and verifies with build/tests. Unlike `kramme:code:rewrite-clean` which scraps and redoes from scratch, this incrementally cleans up working code. |
+| `/kramme:code:cleanup-ai` | User | — | Remove AI-generated code slop from a branch.<br><br>Uses `kramme:deslop-reviewer` agent to identify slop, then fixes the issues. |
+| `/kramme:code:rewrite-clean` | User | — | Scrap a working-but-mediocre fix and reimplement elegantly.<br><br>Extracts learnings from the initial attempt, then starts fresh with the elegant solution. |
+| `/kramme:code:refactor-pass` | User, Auto | — | Lightweight simplification pass on recent changes — removes dead code, straightens logic, removes excessive parameters, and verifies with build/tests.<br><br>Unlike `kramme:code:rewrite-clean` which scraps and redoes from scratch, this incrementally cleans up working code. |
 
 #### Git
 
@@ -170,7 +170,7 @@ Git history management and commit operations.
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:git:fixup` | User | — | Intelligently fixup unstaged changes into existing commits. Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
+| `/kramme:git:fixup` | User | — | Intelligently fixup unstaged changes into existing commits.<br><br>Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
 | `/kramme:git:recreate-commits` | User | — | Recreate current branch in-place with narrative-quality commits and logical, reviewer-friendly commit history. |
 
 #### Linear
@@ -179,8 +179,8 @@ Linear issue tracking integration.
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:linear:issue-define` | User | `[issue-id] or [description and/or file paths]` | Create or improve a Linear issue through exhaustive guided refinement. Can start from scratch or refine an existing issue by ID. |
-| `/kramme:linear:issue-implement` | User | — | Start implementing a Linear issue with branch setup, context gathering, and guided workflow. Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
+| `/kramme:linear:issue-define` | User | `[issue-id] or [description and/or file paths]` | Create or improve a Linear issue through exhaustive guided refinement.<br><br>Can start from scratch or refine an existing issue by ID. |
+| `/kramme:linear:issue-implement` | User | — | Start implementing a Linear issue with branch setup, context gathering, and guided workflow.<br><br>Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
 
 #### Visual
 
@@ -188,11 +188,11 @@ Generate styled, self-contained HTML pages with diagrams, data tables, and inter
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:visual:diagram` | User, Auto | — | Experimental. Generate beautiful HTML diagrams for architecture overviews, flowcharts, schemas, data tables, and any visual explanation. Also auto-triggers for complex ASCII tables (4+ rows or 3+ columns). |
-| `/kramme:visual:diff-review` | User | — | Experimental. Visual HTML diff review with executive summary, KPI dashboard, Mermaid architecture graphs, before/after panels, code review analysis, and decision log. |
-| `/kramme:visual:plan-review` | User | — | Experimental. Visual plan review comparing current codebase against a proposed implementation plan, with blast radius analysis, current/planned architecture Mermaid diagrams, and risk assessment. |
-| `/kramme:visual:project-recap` | User | — | Experimental. Mental model recap for context-switching back to a project. Architecture snapshot, recent activity timeline, decision log, and cognitive debt hotspots. |
-| `/kramme:visual:generate-image` | User, Auto | — | Generate or edit images using Gemini 3 Pro Image API. Supports text-to-image generation, image-to-image editing, and configurable resolution (1K/2K/4K). |
+| `/kramme:visual:diagram` | User, Auto | — | Experimental.<br><br>Generate beautiful HTML diagrams for architecture overviews, flowcharts, schemas, data tables, and any visual explanation.<br><br>Also auto-triggers for complex ASCII tables (4+ rows or 3+ columns). |
+| `/kramme:visual:diff-review` | User | — | Experimental.<br><br>Visual HTML diff review with executive summary, KPI dashboard, Mermaid architecture graphs, before/after panels, code review analysis, and decision log. |
+| `/kramme:visual:plan-review` | User | — | Experimental.<br><br>Visual plan review comparing current codebase against a proposed implementation plan, with blast radius analysis, current/planned architecture Mermaid diagrams, and risk assessment. |
+| `/kramme:visual:project-recap` | User | — | Experimental.<br><br>Mental model recap for context-switching back to a project.<br><br>Architecture snapshot, recent activity timeline, decision log, and cognitive debt hotspots. |
+| `/kramme:visual:generate-image` | User, Auto | — | Generate or edit images using Gemini 3 Pro Image API.<br><br>Supports text-to-image generation, image-to-image editing, and configurable resolution (1K/2K/4K). |
 
 **API key setup for `/kramme:visual:generate-image`:**
 
@@ -209,7 +209,7 @@ Requirements discovery, document conversion, and text processing.
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:discovery:interview` | User | `[file-path or topic description]` | Conduct an in-depth interview about a topic/proposal to uncover requirements. Uses structured questioning to explore features, processes, or architecture decisions. |
+| `/kramme:discovery:interview` | User | `[file-path or topic description]` | Conduct an in-depth interview about a topic/proposal to uncover requirements.<br><br>Uses structured questioning to explore features, processes, or architecture decisions. |
 | `/kramme:docs:to-markdown` | User, Auto | — | Convert documents (PDF, Word, Excel, images, audio, etc.) to Markdown using markitdown |
 | `/kramme:text:humanize` | User, Auto | `[file-path or text]` | Remove signs of AI-generated writing from text. |
 
@@ -219,12 +219,12 @@ Session management, verification, artifact cleanup, and hook configuration.
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:workflow-artifacts:cleanup` | User | — | Delete workflow artifacts (REVIEW_OVERVIEW.md, UX_REVIEW_OVERVIEW.md, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files, visual diagram HTML files). For SIW-specific cleanup, use `/kramme:siw:remove`. |
+| `/kramme:workflow-artifacts:cleanup` | User | — | Delete workflow artifacts (REVIEW_OVERVIEW.md, UX_REVIEW_OVERVIEW.md, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files, visual diagram HTML files).<br><br>For SIW-specific cleanup, use `/kramme:siw:remove`. |
 | `/kramme:changelog:generate` | User | — | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
 | `/kramme:hooks:configure-links` | User | `[show\|reset\|KEY=VALUE ...]` | Configure `context-links` hook settings by writing local overrides to `hooks/context-links.config` (workspace slug, team keys, regexes). |
-| `/kramme:hooks:toggle` | User | `<hook-name\|status> [enable\|disable]` | Enable or disable a plugin hook. Use `status` to list all hooks, or specify a hook name to toggle. |
-| `/kramme:session:wrap-up` | User | — | End-of-session checklist to capture progress, ensure quality, and document next steps. Audits uncommitted changes, runs quality checks, and prompts for session summary and next steps. |
-| `/kramme:verify:run` | User, Auto | — | Run verification checks (tests, formatting, builds, linting, type checking) for affected code. Automatically detects project type and runs appropriate commands. |
+| `/kramme:hooks:toggle` | User | `<hook-name\|status> [enable\|disable]` | Enable or disable a plugin hook.<br><br>Use `status` to list all hooks, or specify a hook name to toggle. |
+| `/kramme:session:wrap-up` | User | — | End-of-session checklist to capture progress, ensure quality, and document next steps.<br><br>Audits uncommitted changes, runs quality checks, and prompts for session summary and next steps. |
+| `/kramme:verify:run` | User, Auto | — | Run verification checks (tests, formatting, builds, linting, type checking) for affected code.<br><br>Automatically detects project type and runs appropriate commands. |
 
 #### Nx
 
@@ -232,7 +232,7 @@ Nx workspace tooling and configuration.
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:nx:setup-portless` | User | — | Experimental. Set up portless in an Nx workspace for stable HTTPS localhost URLs instead of port numbers. Guides workspace-level proxy setup, per-app `dev:local`/`dev:full` targets, and troubleshooting. |
+| `/kramme:nx:setup-portless` | User | — | Experimental.<br><br>Set up portless in an Nx workspace for stable HTTPS localhost URLs instead of port numbers.<br><br>Guides workspace-level proxy setup, per-app `dev:local`/`dev:full` targets, and troubleshooting. |
 
 ### Background Skills
 
