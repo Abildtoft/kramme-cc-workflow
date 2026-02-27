@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:generate-description
 description: Write a structured PR title and body from git diff, commit log, and Linear context. Outputs markdown for copy-paste or updates the PR directly with --direct.
-argument-hint: "[--non-interactive] [--direct]"
+argument-hint: "[--non-interactive] [--direct] [--visual]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -14,9 +14,11 @@ Parse `$ARGUMENTS` for flags:
 
 - `--non-interactive`: Skip clarification prompts (Phase 2.5) and save-to-file prompt (Phase 4). Generate the description directly from gathered context without pausing for user input.
 - `--direct`: Find the existing PR for the current branch and update its title and description directly. Skips copy-paste output and save-to-file prompt. Implies `--non-interactive`.
+- `--visual`: Auto-detect a running dev server and capture screenshots to embed in the PR description. Requires a browser MCP to be available (claude-in-chrome, chrome-devtools, or playwright).
 
 If `--non-interactive` is present, set `NON_INTERACTIVE=true` and remove the flag from remaining arguments.
 If `--direct` is present, set `DIRECT_UPDATE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments.
+If `--visual` is present, set `VISUAL_MODE=true` and remove the flag from remaining arguments.
 
 ## Instructions
 
@@ -326,6 +328,12 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
    ```
 
 4. **Wait for user response** before proceeding to Phase 3
+
+### Phase 2.6: Browser Detection and App Discovery
+
+**Skip this phase if `VISUAL_MODE` is not set.** Proceed directly to Phase 3.
+
+If `VISUAL_MODE=true`, read `${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:generate-description/resources/visual-capture.md` and follow **Phase 2.6** in that document to detect a browser MCP and discover the running dev server URL.
 
 ### Phase 3: Description Generation
 
@@ -655,7 +663,9 @@ dotnet ef database update -c ConnectContext
 
 #### 3.5 Screenshots and Videos Section
 
-**ALWAYS** include a placeholder section for visual aids:
+**If `VISUAL_MODE` is not set or browser/app detection failed (Phase 2.6):**
+
+Include a placeholder section for visual aids:
 
 ```markdown
 ## Screenshots / Videos
@@ -668,7 +678,11 @@ dotnet ef database update -c ConnectContext
 <!-- - Mobile/responsive views -->
 ```
 
-**NOTE**: This is a placeholder section for the PR creator to populate with relevant visuals
+**NOTE**: This is a placeholder section for the PR creator to populate with relevant visuals.
+
+**If `VISUAL_MODE=true` and a browser MCP and dev server were detected:**
+
+Read `${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:generate-description/resources/visual-capture.md` and follow **Phase 3.5** to capture screenshots, upload them, and build the Screenshots/Videos section.
 
 ### Phase 4: Output Formatting
 
@@ -758,9 +772,9 @@ Here is your generated PR:
 - [ ] Key files are listed (not line counts)
 - [ ] Test plan includes actionable scenarios
 - [ ] Breaking changes are documented (or marked as "None")
-- [ ] Screenshots/Videos placeholder section is included
+- [ ] Screenshots/Videos section is included (populated when visual capture succeeds; placeholder allowed when `--visual` is not used or capture is unavailable)
 - [ ] Markdown is properly formatted
-- [ ] No placeholders or TODOs in the output (except Screenshots section)
+- [ ] No placeholders or TODOs in the output (except Screenshots section when visual capture is unavailable)
 - [ ] Description is ready to copy-paste
 - [ ] No listing of the amount of lines changed
 - [ ] No AI attribution or "Generated with Claude Code" badges included
@@ -1213,6 +1227,39 @@ dotnet ef migrations remove -c ConnectContext
 <!-- - Error states or edge cases -->
 <!-- - Mobile/responsive views -->
 ```
+
+### Example 3: Frontend Feature with Visual Capture (`--visual`)
+
+**Input:**
+- Branch: `mab/wan-600-add-dark-mode-toggle`
+- Changed files: `settings-toggle.component.tsx`, `theme.service.ts`, `theme.css`
+- Flag: `--visual`
+- Auto-detected dev server: `http://localhost:4200` (Angular, port from `angular.json`)
+- Browser MCP: claude-in-chrome detected
+
+**Generated Screenshots/Videos section:**
+
+````markdown
+## Screenshots / Videos
+
+### Settings Page — Dark Mode Toggle
+
+The new dark mode toggle switch in the settings panel. Toggling it switches the application theme between light and dark mode.
+
+![Dark mode toggle in settings panel](https://github.com/user-attachments/assets/abc123...)
+
+### Dashboard — Dark Mode Applied
+
+The dashboard with dark mode enabled, showing the updated color scheme across all card and navigation components.
+
+![Dashboard in dark mode](https://github.com/user-attachments/assets/def456...)
+
+### Theme Toggle Flow (Demo)
+
+Animated demo showing the toggle interaction and smooth theme transition.
+
+![Theme toggle interaction](https://github.com/user-attachments/assets/ghi789.gif)
+````
 
 ## Reference Files
 
