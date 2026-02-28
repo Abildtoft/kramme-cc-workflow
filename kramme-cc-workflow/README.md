@@ -118,6 +118,7 @@ All plugin functionality is delivered through skills. Skills can be user-invoked
 #### Structured Implementation Workflow (SIW)
 
 Local issue tracking and structured implementation planning using markdown files.
+See [docs/siw.md](docs/siw.md) for detailed workflow documentation.
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
@@ -445,6 +446,7 @@ See [CLAUDE.md](CLAUDE.md) for detailed conventions. Quick reference:
 - [Plugins Reference](https://code.claude.com/docs/en/plugins-reference)
 - [Hooks Reference](https://code.claude.com/docs/en/hooks)
 - [Skills Documentation](https://code.claude.com/docs/en/skills)
+- [SIW Workflow Reference](docs/siw.md)
 
 ## Releases
 
