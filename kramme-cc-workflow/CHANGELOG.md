@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 ### Added
+## [0.37.0] - 2026-03-01
+
+### Changed
+- Extract reusable prompt and template resources (#216)
+
+### Fixed
+- Document missing skills, add agent colors, fix typo (#215)
+
 ## [0.36.0] - 2026-03-01
 
 ### Added
@@ -432,6 +440,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `context-links` hook for PR/Linear link display
 - BATS test suite for hooks
 
+[0.37.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.36.0...v0.37.0
 [0.36.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.35.0...v0.36.0
 [0.35.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.34.0...v0.35.0
 [0.34.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.33.0...v0.34.0
