@@ -3,9 +3,12 @@ name: kramme:git:recreate-commits
 description: Use when asked to recreate commits with narrative-quality history on the current branch.
 disable-model-invocation: true
 user-invocable: true
+argument-hint: --auto
 ---
 
 Reimplement the current branch with a clean, narrative-quality git commit history suitable for reviewer comprehension. By default, recreate commits on the current branch (not a new clean branch).
+
+**Flag:** `--auto` — Skip the granularity question and automatically choose the best granularity based on diff size and complexity.
 
 ### Steps
 
@@ -33,13 +36,15 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
 
 4. **Plan the commit storyline**
 
-   **Assess diff size and ask about granularity.** After analyzing the diff, assess whether the PR is large (many files changed, significant lines added/removed, multiple distinct features or areas touched). If the diff is large, ask the user which granularity level they want before planning:
+   **Assess diff size and determine granularity.** After analyzing the diff, assess whether the PR is large (many files changed, significant lines added/removed, multiple distinct features or areas touched).
+
+   If `--auto` was passed, choose the most appropriate granularity yourself based on diff size and complexity — do not ask the user. Otherwise, if the diff is large, ask the user which granularity level they want before planning:
 
    - **Coarse** — One commit per major grouping (~5-15 commits)
    - **Medium (recommended)** — Break each major grouping into several commits (~15-30 commits)
    - **Fine** — Recursively break down until each commit is a significant, self-standing change (~30-60+ commits)
 
-   For normal-sized PRs, skip this question and plan as usual.
+   For normal-sized PRs (without `--auto`), skip this question and plan as usual.
 
    **Use recursive decomposition to plan commits:**
 
