@@ -409,40 +409,7 @@ options:
 
 After gathering answers, create a comprehensive technical plan that translates the product requirements into a concrete implementation approach:
 
-```
-Technical Implementation Plan for {identifier}
-
-## Summary
-{One paragraph describing what will be built}
-
-## Product Requirements -> Technical Approach
-| Requirement | Technical Implementation |
-|-------------|-------------------------|
-| {user story 1} | {how it will be implemented} |
-| {user story 2} | {how it will be implemented} |
-
-## Files to Modify/Create
-- {file 1} - {what changes}
-- {file 2} - {what changes}
-- {new file if needed} - {purpose}
-
-## Patterns to Follow
-Based on exploration of {similar feature}, follow these patterns:
-- {pattern 1}
-- {pattern 2}
-
-## Implementation Steps
-1. {step 1}
-2. {step 2}
-3. {step 3}
-...
-
-## Testing Approach
-- {test type}: {what to test}
-
-## Open Questions (if any)
-- {any remaining uncertainties}
-```
+Read the technical plan template from `resources/templates/technical-plan.md` and populate it based on the gathered context and user answers.
 
 **Present this plan to the user and get confirmation before proceeding to implementation approach selection.**
 
@@ -470,127 +437,7 @@ options:
 
 ## Step 7: Workflow Execution by Approach
 
-### 7.1 Guided Implementation (Option 1)
-
-**Goal:** Create detailed plan, implement with user verification at each step.
-
-1. **Create Implementation Plan**
-
-   - Break requirements into discrete tasks
-   - Identify dependencies between tasks
-   - Consider using Structured Implementation Workflow (SIW) for complex issues - use `/kramme:siw:init` to set up
-
-2. **Create Todo List**
-
-   Use TodoWrite with tasks from the plan:
-
-   ```
-   - Analyze existing patterns for {feature area}
-   - Implement {task 1 from requirements}
-   - Add tests for {task 1}
-   - Implement {task 2 from requirements}
-   - ...
-   - Run verification (kramme:verify:run)
-   ```
-
-3. **Begin Implementation**
-   - Work through tasks one at a time
-   - **ALWAYS** ask user to review after completing each task
-   - Update todo list as tasks complete
-
-### 7.2 Context Setup Only (Option 2)
-
-**Goal:** Prepare everything, let user drive implementation.
-
-1. **Create Minimal Context**
-
-   - Branch is already created (Step 2)
-   - Create todo list from extracted requirements
-
-2. **Use TodoWrite for Requirements**
-
-   Create tasks from acceptance criteria:
-
-   ```
-   - [ ] {Acceptance criterion 1}
-   - [ ] {Acceptance criterion 2}
-   - [ ] {Requirement from description}
-   - [ ] Verify implementation meets requirements
-   - [ ] Run verification checks
-   ```
-
-3. **Provide Starting Points**
-
-   ```
-   Context is set up. Here's where to start:
-
-   Branch: {branchName}
-   Linear Issue: {url}
-
-   Likely affected areas based on requirements:
-   - {file/module 1} - {why}
-   - {file/module 2} - {why}
-
-   Similar implementations to reference:
-   - {existing feature 1} - {relevance}
-
-   Ready when you want to begin. Just tell me what to work on.
-   ```
-
-### 7.3 Autonomous Implementation (Option 3)
-
-**Goal:** Complete implementation with minimal interaction, verify at end.
-
-1. **Deep Codebase Analysis**
-
-   - Search for related files using Glob and Grep
-   - Read similar implementations for patterns
-   - Identify all files that need modification
-   - Understand testing patterns in the codebase
-
-2. **Create Comprehensive Plan**
-
-   - Use TodoWrite with detailed task breakdown
-   - Include exploration, implementation, testing, and verification
-
-3. **Implement Iteratively**
-
-   - Work through all tasks
-   - Make implementation decisions based on existing patterns
-   - Run tests after each significant change
-   - Document decisions in commit messages
-
-4. **Verification Phase**
-
-   - Invoke `kramme:verify:run` skill for full verification
-   - Fix any issues found
-   - Ensure all acceptance criteria are met
-
-5. **Present Results**
-
-   ```
-   Implementation Complete
-
-   Linear Issue: {identifier}
-   Branch: {branchName}
-
-   Changes Made:
-   - {summary of changes}
-
-   Files Modified:
-   - {list of key files}
-
-   Verification Results:
-   - Tests: {status}
-   - Lint: {status}
-   - Build: {status}
-
-   Acceptance Criteria:
-   - [x] {criterion 1}
-   - [x] {criterion 2}
-
-   Ready for your review. Run `/kramme:pr:create` when ready to submit.
-   ```
+Read the implementation workflow for the selected approach from `resources/references/implementation-workflows.md`. Follow the Guided, Context Setup, or Autonomous workflow based on the user's choice from Step 6.
 
 ---
 
@@ -640,20 +487,4 @@ When creating commits, **PREFER** including issue reference:
 
 ## Error Handling
 
-### Git Errors
-
-- Merge conflicts: Ask user to resolve manually
-- Push failures: Suggest manual push command
-- Branch conflicts: Offer rename options
-
-### Linear API Errors
-
-- Rate limits: Wait and retry
-- Authentication: Direct user to check MCP setup
-- Not found: Verify issue ID and access
-
-### Implementation Errors
-
-- Test failures: Present errors, ask how to proceed
-- Build failures: Show full error output
-- Lint errors: Fix automatically if minor, ask if significant
+Read the error handling guidance from `resources/references/error-handling.md`.
