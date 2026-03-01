@@ -246,7 +246,6 @@ This change enables admin users to query platforms for other users, which is req
   // After
   this.http.get("/api/platforms", { params: { userId: currentUserId } });
   ```
-````
 
 - **External integrations**: Add `userId` to query string in API requests
 

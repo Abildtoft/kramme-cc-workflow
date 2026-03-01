@@ -155,7 +155,6 @@ this.http.get("/api/platforms");
 // After
 this.http.get("/api/platforms", { params: { userId } });
 ```
-````
 
 **Impact:**
 

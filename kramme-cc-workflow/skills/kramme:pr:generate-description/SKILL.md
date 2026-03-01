@@ -549,4 +549,3 @@ Read the platform-specific notes from `resources/references/platform-notes.md`. 
   - Only reference Linear issues when documenting divergences or original requirements
   - **WRONG**: "As mentioned in LOG.md..." or "Based on our earlier discussion..."
   - **RIGHT**: "Linear issue WAN-123 requested X, but implemented Y because..."
-```

@@ -42,6 +42,40 @@ Store the detected platform for later steps.
 git branch --show-current
 ```
 
+### Detached HEAD Handling
+
+If the command above returns an empty value, the repository is in detached HEAD state.
+
+Use AskUserQuestion:
+```yaml
+header: "Detached HEAD"
+question: "You're currently in detached HEAD state. How should branch handling proceed?"
+options:
+  - label: "Create a new feature branch here"
+    description: "Create and switch to a new branch from the current commit"
+  - label: "Switch to existing branch"
+    description: "Select an existing local branch and continue from there"
+  - label: "Abort"
+    description: "Stop and let me fix branch state manually"
+multiSelect: false
+```
+
+**If "Create a new feature branch here":**
+```bash
+git checkout -b {chosen-branch-name}
+```
+Continue with the normal flow.
+
+**If "Switch to existing branch":**
+```bash
+git branch
+git checkout {existing-branch}
+```
+Continue with the normal flow.
+
+**If "Abort":**
+Stop the workflow with a clear message.
+
 ### Determine Main Branch
 
 ```bash
@@ -187,4 +221,41 @@ multiSelect: false
    ```
 
 **If already on a feature branch:**
-Continue with current branch. No action needed.
+Continue with current branch, but validate upstream configuration first.
+
+### No-Upstream Handling
+
+Check for an upstream branch:
+```bash
+git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null
+```
+
+**If upstream exists:** Continue with the current branch.
+
+**If upstream is missing:**
+
+Use AskUserQuestion:
+```yaml
+header: "No upstream"
+question: "Current branch has no upstream remote branch. What should I do?"
+options:
+  - label: "Set upstream now"
+    description: "Push and track this branch on origin"
+  - label: "Continue without upstream"
+    description: "Proceed now and handle push/upstream later"
+  - label: "Abort"
+    description: "Stop and let me configure branch tracking manually"
+multiSelect: false
+```
+
+**If "Set upstream now":**
+```bash
+git push -u origin $(git branch --show-current)
+```
+Continue with the workflow.
+
+**If "Continue without upstream":**
+Continue, but note that push/create steps may require explicit branch arguments later.
+
+**If "Abort":**
+Stop the workflow with a clear message.
