@@ -128,7 +128,9 @@ See [docs/siw.md](docs/siw.md) for detailed workflow documentation.
 | `/kramme:siw:issue-define` | User | `[ISSUE-G-XXX or ISSUE-P1-XXX] or [description and/or file paths]` | Define a new local issue with guided interview process.<br><br>Creates issue files in the `issues/` directory. |
 | `/kramme:siw:generate-phases` | User | `[spec-file-path]` | Break spec into atomic, phase-based issues with tests and validation.<br><br>Uses `P1-001`, `P2-001`, `G-001` numbering.<br><br>Reviews breakdown with subagent before creating files. |
 | `/kramme:siw:issue-implement` | User | `<G-001 \| P1-001 \| ISSUE-G-XXX>` | Start implementing a defined local issue with codebase exploration and planning.<br><br>Works on current branch. |
+| `/kramme:siw:issue-implement:team` | User | `[issue-ids or 'phase N']` | Implement multiple SIW issues in parallel using multi-agent execution.<br><br>Each agent gets a full context window and implements one issue. Best for phases with multiple independent issues.<br><br>Requires Agent Teams in Claude Code or Codex with `multi_agent` enabled. |
 | `/kramme:siw:spec-audit` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Audit spec quality (coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design) before implementation.<br><br>Produces a structured report and optionally creates SIW issues. |
+| `/kramme:siw:spec-audit:team` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Team-based spec audit where dimension specialists collaborate, cross-validate findings, and challenge each other's assessments.<br><br>Higher quality than standard spec-audit but uses more tokens.<br><br>Requires Agent Teams in Claude Code or Codex with `multi_agent` enabled. |
 | `/kramme:siw:implementation-audit` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Exhaustively audit codebase against specification files.<br><br>Finds naming misalignments, missing implementations, and spec drift.<br><br>Produces a structured report and optionally creates SIW issues. |
 | `/kramme:siw:implementation-audit:team` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Team-based implementation audit with simultaneous conformance + extension passes and live cross-validation.<br><br>Dedicated reconciler handles conflict resolution and guardrail enforcement.<br><br>Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
 | `/kramme:siw:resolve-audit` | User | `[audit-report-path] [finding-id(s)]` | Resolve audit findings one-by-one with executive summaries, alternatives, a recommended option, and SIW issue creation based on user preference. |
@@ -162,9 +164,34 @@ Code cleanup, refactoring, and bug/security review.
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
 | `/kramme:code:cleanup-ai` | User | — | Remove AI-generated code slop from a branch.<br><br>Uses `kramme:deslop-reviewer` agent to identify slop, then fixes the issues. |
+| `/kramme:code:migrate` | User | `<target e.g. 'Angular 19', 'React 19', 'Node 22'>` | Experimental.<br><br>Plan and execute framework or library version migrations with phased upgrades and verification gates.<br><br>Use when upgrading major framework versions (Angular, React, Node) or migrating between libraries. |
 | `/kramme:code:rewrite-clean` | User | — | Scrap a working-but-mediocre fix and reimplement elegantly.<br><br>Extracts learnings from the initial attempt, then starts fresh with the elegant solution. |
 | `/kramme:code:refactor-pass` | User, Auto | — | Lightweight simplification pass on recent changes — removes dead code, straightens logic, removes excessive parameters, and verifies with build/tests.<br><br>Unlike `kramme:code:rewrite-clean` which scraps and redoes from scratch, this incrementally cleans up working code. |
 | `/kramme:code:agent-readiness` | User | — | Experimental.<br><br>Audit a codebase for agent-nativeness — scores 5 dimensions (fully typed, traversable, test coverage, feedback loops, self-documenting) on a 1-5 scale and generates a prioritized refactoring plan.<br><br>Launches 3 parallel Explore agents for thorough analysis. Re-run after improvements to track score changes. |
+
+#### Debug
+
+Bug investigation and root cause analysis.
+
+| Skill | Invocation | Arguments | Description |
+|-------|------------|-----------|-------------|
+| `/kramme:debug:investigate` | User | `[bug description, error message, or issue reference]` | Experimental.<br><br>Structured bug investigation workflow: reproduce, isolate, trace root cause, and fix.<br><br>Use when debugging a bug, investigating an error, or tracking down a regression. |
+
+#### Dependencies
+
+Dependency auditing and management.
+
+| Skill | Invocation | Arguments | Description |
+|-------|------------|-----------|-------------|
+| `/kramme:deps:audit` | User | — | Experimental.<br><br>Audit project dependencies for outdated packages, security vulnerabilities, and staleness.<br><br>Generates a prioritized upgrade plan with risk assessment. |
+
+#### Testing
+
+Test generation and coverage.
+
+| Skill | Invocation | Arguments | Description |
+|-------|------------|-----------|-------------|
+| `/kramme:test:generate` | User | `[file-path or directory]` | Experimental.<br><br>Generate tests for existing code by analyzing project test patterns and conventions.<br><br>Use when adding test coverage to untested files or generating test stubs. |
 
 #### Git
 
@@ -195,6 +222,7 @@ Generate styled, self-contained HTML pages with diagrams, data tables, and inter
 | `/kramme:visual:plan-review` | User | — | Experimental.<br><br>Visual plan review comparing current codebase against a proposed implementation plan, with blast radius analysis, current/planned architecture Mermaid diagrams, and risk assessment. |
 | `/kramme:visual:project-recap` | User | — | Experimental.<br><br>Mental model recap for context-switching back to a project.<br><br>Architecture snapshot, recent activity timeline, decision log, and cognitive debt hotspots. |
 | `/kramme:visual:generate-image` | User, Auto | — | Generate or edit images using Gemini 3 Pro Image API.<br><br>Supports text-to-image generation, image-to-image editing, and configurable resolution (1K/2K/4K). |
+| `/kramme:visual:onboarding` | User | `[focus-area or audience]` | Experimental.<br><br>Generate an interactive HTML onboarding guide for newcomers to a codebase — architecture overview, domain model, key flows, conventions, and getting-started walkthrough. |
 
 **API key setup for `/kramme:visual:generate-image`:**
 

@@ -71,7 +71,7 @@ There may be cases where you will need to push commits with --no-verify in order
 ### Misc
 
 1. Never add yourself as an author or contributor on any branch or commit.
-2. Write your pull reuqest following the same instructions as in the pr.md command file.
+2. Write your pull request following the same instructions as in the pr.md command file.
 3. In your pull request, include a link to the original branch.
 
 Your commit should never include lines like:
