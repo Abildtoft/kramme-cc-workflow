@@ -5,6 +5,7 @@ A Claude Code plugin providing tooling for daily workflow tasks. Developed for p
 ## Table of Contents
 
 - [Installation & Updating](#installation--updating)
+- [Getting Started](#getting-started)
 - [Skills](#skills)
   - [User-Invocable Skills](#user-invocable-skills)
   - [Background Skills](#background-skills)
@@ -104,6 +105,43 @@ For OpenCode/Codex installs, updating is the same as installing: re-run the conv
 Restart Claude Code after updating for changes to take effect.
 
 **Auto-update:** Since Claude Code v2.0.70, auto-update can be enabled per-marketplace.
+
+## Getting Started
+
+Three common workflows to try after installation:
+
+### Plan and implement with SIW
+
+SIW (Structured Implementation Workflow) breaks non-trivial work into spec-driven issues tracked in local markdown files.
+
+```bash
+/kramme:siw:init              # link or create a spec, set up siw/ directory
+/kramme:siw:generate-phases   # break spec into phased issues
+/kramme:siw:issue-implement   # implement one issue at a time
+/kramme:siw:close             # archive decisions and clean up
+```
+
+See [docs/siw.md](docs/siw.md) for the full workflow reference.
+
+### Review and ship a PR
+
+```bash
+/kramme:pr:code-review        # run specialized review agents on your branch
+/kramme:pr:resolve-review     # fix the findings
+/kramme:pr:create             # restructure commits and open the PR
+/kramme:pr:fix-ci             # iterate until CI passes
+```
+
+### Quick utilities
+
+```bash
+/kramme:verify:run            # run tests, linting, and type checks for changed code
+/kramme:visual:diagram        # generate an HTML diagram from any explanation
+/kramme:docs:to-markdown      # convert PDF, Word, Excel, or images to Markdown
+/kramme:code:refactor-pass    # simplification pass on recent changes
+```
+
+All skills are listed in the reference below. Background skills (commit messages, verification guards) run automatically.
 
 ## Skills
 
