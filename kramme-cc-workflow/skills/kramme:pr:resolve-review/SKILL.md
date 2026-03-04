@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:resolve-review
 description: Resolve findings from code reviews by implementing fixes and documenting changes
-argument-hint: "[--review-source local|online] [--answer-and-resolve] [review-content|instructions|url]"
+argument-hint: "[--source local|online|--local|--online] [--reply] [review-content|instructions|url]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -16,22 +16,22 @@ Before searching for reviews, check if the user provided input directly with the
 
 1. **Check for arguments after the command** — If the user wrote `/kramme:pr:resolve-review <something>`:
    - Set `REVIEW_SOURCE=auto` by default.
-   - If `<something>` includes both `--review-source local` and `--review-source online`:
-     - Ask the user to choose exactly one `--review-source` value (`local` or `online`), then stop
-   - If `<something>` includes `--review-source local`:
-     - Set `REVIEW_SOURCE=local`
-     - Remove `--review-source local` from the remaining input before classification
-   - If `<something>` includes `--review-source online`:
-     - Set `REVIEW_SOURCE=online`
-     - Remove `--review-source online` from the remaining input before classification
-   - If `<something>` includes `--review-source` with any other value:
+   - Preferred source flags:
+     - `--source local` or `--local` → set `REVIEW_SOURCE=local`
+     - `--source online` or `--online` → set `REVIEW_SOURCE=online`
+   - Legacy source flag (still supported):
+     - `--review-source local|online`
+   - If `<something>` includes both local and online source selections (across any source flags):
+     - Ask the user to choose exactly one source value (`local` or `online`), then stop
+   - If `<something>` includes `--source` or `--review-source` with any other value:
      - Ask the user to choose `local` or `online`, then stop
-   - If `<something>` includes `--answer-and-resolve`:
+   - Remove any source flags (`--source ...`, `--local`, `--online`, `--review-source ...`) from remaining input before classification
+   - If `<something>` includes `--reply` (preferred) or `--answer-and-resolve` (legacy):
      - Set `ANSWER_AND_RESOLVE=true`
-     - Remove `--answer-and-resolve` from the remaining input before classification
+     - Remove `--reply` / `--answer-and-resolve` from remaining input before classification
      - Treat this as permission to post replies and resolve addressed review threads/discussions directly on the PR/MR
    - If `REVIEW_SOURCE=local` and `<something>` includes a URL:
-     - Ask the user to either remove the URL or switch to `--review-source online`, then stop
+     - Ask the user to either remove the URL or switch to `--source online` / `--online`, then stop
    - If `REVIEW_SOURCE=auto` and `<something>` includes a URL:
      - Set `REVIEW_SOURCE=online` and treat the URL as the external review source
    - If `<something>` looks like review content (e.g., contains code comments, file references, or review-like text) → treat it as the **review to resolve**
@@ -49,7 +49,7 @@ If no review content was provided in Step 0:
 
 1. **If `REVIEW_SOURCE=local`**:
    - Read `REVIEW_OVERVIEW.md` only (do not use `UX_REVIEW_OVERVIEW.md`, chat, or PR/MR APIs)
-   - If the file is missing, ask the user to provide review content, switch to `--review-source online`, or run `/kramme:pr:code-review` first
+   - If the file is missing, ask the user to provide review content, switch to `--source online` / `--online`, or run `/kramme:pr:code-review` first
    - Treat this as an **internal review**
 2. **If `REVIEW_SOURCE=online`**:
    - If a PR/MR URL is provided in arguments or chat, fetch review comments/discussions from that URL
