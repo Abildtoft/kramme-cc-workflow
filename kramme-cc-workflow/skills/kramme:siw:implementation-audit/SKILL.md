@@ -281,7 +281,7 @@ For each group from Step 3, launch an Explore agent using the Task tool (`subage
 
 ### 4.2 Explore Agent Prompt
 
-Read the Pass A agent prompt template from `resources/prompts/pass-a-conformance.md`. Each agent receives that prompt structure, populated with its assigned spec section and requirements checklist.
+Read the Pass A agent prompt template from `references/pass-a-conformance.md`. Each agent receives that prompt structure, populated with its assigned spec section and requirements checklist.
 
 ### 4.3 Pass A Output Requirements
 
@@ -302,7 +302,7 @@ Launch Explore agents in parallel to hunt for undocumented implementation behavi
 
 ### 5.2 Pass B Prompt
 
-Read the Pass B agent prompt template from `resources/prompts/pass-b-extension.md`. Each agent receives that prompt structure, populated with its assigned spec context.
+Read the Pass B agent prompt template from `references/pass-b-extension.md`. Each agent receives that prompt structure, populated with its assigned spec context.
 
 ### 5.3 Suspiciously-Clean Guardrail (Mandatory)
 
@@ -371,7 +371,7 @@ If the matrix is incomplete, audit is **BLOCKED** and no final report may be pro
 
 ## Step 7: Compile Mandatory Report Schema
 
-Generate the report using the schema from `resources/templates/report-schema.md`. All sections in the schema are mandatory. If a section has zero entries, include the section with `None`.
+Generate the report using the schema from `assets/report-schema.md`. All sections in the schema are mandatory. If a section has zero entries, include the section with `None`.
 
 ---
 
@@ -439,7 +439,7 @@ Audit report written to: {path}
 
 ### 9.1 Ask User
 
-Use the prompt template from `resources/templates/create-issues-prompt.yaml`.
+Use the prompt template from `assets/create-issues-prompt.yaml`.
 
 ### 9.2 Preflight SIW Paths
 
@@ -457,16 +457,16 @@ Before creating any issues:
 For each selected finding:
 
 1. Determine next available `G-` issue number from `siw/issues/`.
-2. Create issue file `siw/issues/ISSUE-G-{NNN}-fix-{slugified-title}.md` using the template in `resources/templates/siw-issue-template.md`.
+2. Create issue file `siw/issues/ISSUE-G-{NNN}-fix-{slugified-title}.md` using the template in `assets/siw-issue-template.md`.
 
 3. Update `siw/OPEN_ISSUES_OVERVIEW.md` with new issue rows.
-4. Update `siw/LOG.md` Current Progress section using `resources/templates/log-last-completed.md`.
+4. Update `siw/LOG.md` Current Progress section using `assets/log-last-completed.md`.
 
 ---
 
 ## Step 10: Report Summary
 
-Use the summary template from `resources/templates/audit-complete-summary.md`.
+Use the summary template from `assets/audit-complete-summary.md`.
 
 **STOP HERE.** Wait for the user's next instruction.
 

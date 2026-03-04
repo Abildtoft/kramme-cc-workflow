@@ -368,7 +368,7 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 
 **Skip this phase if `VISUAL_MODE` is not set.** Proceed directly to Phase 3.
 
-If `VISUAL_MODE=true`, read `${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:generate-description/resources/visual-capture.md` and follow **Phase 2.6** in that document to detect a browser MCP and discover the running dev server URL.
+If `VISUAL_MODE=true`, read `${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:generate-description/references/visual-capture.md` and follow **Phase 2.6** in that document to detect a browser MCP and discover the running dev server URL.
 
 ### Phase 3: Description Generation
 
@@ -427,7 +427,7 @@ Generate a PR title using [Conventional Commits](https://www.conventionalcommits
    - **PREFER** `Fixes` or `Closes` when the PR completes the work for the issue
    - **PREFER** `Related to` when the PR is partial work or tangentially related
 
-Read the section templates and worked examples from `resources/templates/section-templates.md`. It covers Summary, Technical Details (implementation approach, scope changes, changes by area, files summary), Test Plan, and Breaking Changes — each with structural guidance and a complete example.
+Read the section templates and worked examples from `assets/section-templates.md`. It covers Summary, Technical Details (implementation approach, scope changes, changes by area, files summary), Test Plan, and Breaking Changes — each with structural guidance and a complete example.
 
 #### 3.5 Screenshots and Videos Section
 
@@ -450,7 +450,7 @@ Include a placeholder section for visual aids:
 
 **If `VISUAL_MODE=true` and a browser MCP and dev server were detected:**
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:generate-description/resources/visual-capture.md` and follow **Phase 3.5** to capture screenshots, upload them, and build the Screenshots/Videos section.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:generate-description/references/visual-capture.md` and follow **Phase 3.5** to capture screenshots, upload them, and build the Screenshots/Videos section.
 
 ### Phase 4: Output Formatting
 
@@ -550,15 +550,15 @@ Here is your generated PR:
 
 ## Best Practices
 
-Read the best practices guidelines from `resources/references/best-practices.md`. Covers context gathering, writing style, technical details, and test plan rules.
+Read the best practices guidelines from `references/best-practices.md`. Covers context gathering, writing style, technical details, and test plan rules.
 
 ## Anti-Patterns
 
-Read the anti-pattern examples from `resources/examples/anti-patterns.md`. Includes title anti-patterns and 6 paired WRONG/CORRECT examples covering vague summaries, missing context, missing tests, tone, hidden breaking changes, and AI attribution.
+Read the anti-pattern examples from `references/anti-patterns.md`. Includes title anti-patterns and 6 paired WRONG/CORRECT examples covering vague summaries, missing context, missing tests, tone, hidden breaking changes, and AI attribution.
 
 ## Examples
 
-Read the complete PR examples from `resources/examples/pr-examples.md`. Includes 3 examples: frontend-only feature, full-stack with database migration, and frontend with visual capture (`--visual`).
+Read the complete PR examples from `references/pr-examples.md`. Includes 3 examples: frontend-only feature, full-stack with database migration, and frontend with visual capture (`--visual`).
 
 ## Reference Files
 
@@ -570,7 +570,7 @@ Read the complete PR examples from `resources/examples/pr-examples.md`. Includes
 
 ## Platform-Specific Notes
 
-Read the platform-specific notes from `resources/references/platform-notes.md`. Covers GitLab MCP tools, magic words for issue linking, team abbreviations, and GitHub conventions.
+Read the platform-specific notes from `references/platform-notes.md`. Covers GitLab MCP tools, magic words for issue linking, team abbreviations, and GitHub conventions.
 
 ## Notes
 

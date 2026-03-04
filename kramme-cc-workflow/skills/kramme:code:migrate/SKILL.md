@@ -71,7 +71,7 @@ options:
 
 ## Step 2: Fetch Migration Guide
 
-1. Read known migration sources from `resources/references/migration-sources.md`.
+1. Read known migration sources from `references/migration-sources.md`.
 
 2. Use `WebSearch` for the official migration guide:
    - Query: `{framework} {current} to {target} migration guide official`
@@ -84,9 +84,9 @@ options:
    - **Available codemods** — automated transformation tools
    - **Minimum requirements** — Node version, peer dependencies
 
-4. Check for codemods from `resources/references/codemod-registry.md`.
+4. Check for codemods from `references/codemod-registry.md`.
 
-5. Read common patterns from `resources/references/common-breaking-patterns.md`.
+5. Read common patterns from `references/common-breaking-patterns.md`.
 
 6. If **no official guide found**: search community resources, warn user that manual research may be needed.
 
@@ -118,7 +118,7 @@ Files affected: {N}
 
 ## Step 4: Generate Migration Plan
 
-Read the template from `resources/templates/migration-plan.md`.
+Read the template from `assets/migration-plan.md`.
 
 Create a phased plan:
 

@@ -49,15 +49,12 @@ user-invocable: true
 - `user-invocable` — `false` hides from `/` menu; Claude auto-invokes based on context. Use for background conventions (commit style, verification rules). Set to `true` to show in `/` menu.
 - `kramme-platforms` — Restrict skill to specific platforms: `[claude-code]`, `[opencode]`, `[codex]`, or combinations. Omit to include on all platforms. Skills using Claude Code-only features (e.g. Agent Teams) should set `kramme-platforms: [claude-code]`.
 
-**Skill directory structure:**
+**Skill directory structure** (follows [Agent Skills spec](https://agentskills.io/specification)):
 ```
 skill-name/
 ├── SKILL.md           # Core instructions (required, target under 500 lines)
-├── resources/         # Supporting files (loaded on demand)
-│   ├── templates/     # Output format templates
-│   ├── prompts/       # Agent prompt templates
-│   ├── examples/      # Code examples and samples
-│   └── references/    # Reference documentation
+├── references/        # Docs, prompts, examples agents read (loaded on demand)
+├── assets/            # Output templates, code templates, static resources
 └── scripts/           # Executable scripts
 ```
 
@@ -85,7 +82,7 @@ exit_if_hook_disabled "hook-name" "json" # For PostToolUse/Stop hooks
 - **Commit/PR title policy (canonical)** - Use plain-English commit messages for normal branch commits (no Conventional Commit prefix). Use [Conventional Commits](https://www.conventionalcommits.org/) format for PR titles (`feat:`, `fix:`, `docs:`, etc.). PR titles are validated by CI, become merge commit messages, and feed changelog generation.
 - **SKILL.md target under 500 lines** - Keep new or refactored skills under ~500 lines by moving reference material, templates, and examples to supporting files. Legacy skills may temporarily exceed this target until migrated.
 - **Explicit skill frontmatter** - Every skill SKILL.md must declare all frontmatter fields explicitly (`name`, `description`, `disable-model-invocation`, `user-invocable`). Never rely on defaults.
-- **Skills must be self-contained** - `SKILL.md` files and skill resources must not cite, link to, or instruct reading repository-level docs (including this repo's `CLAUDE.md`, `README.md`, or shared `docs/` files). Reason: skills run after installation in downstream environments, and cross-references create hidden coupling and brittle behavior. Every skill must contain its runtime policy within its own folder (`SKILL.md` + local `resources/`).
+- **Skills must be self-contained** - `SKILL.md` files and skill resources must not cite, link to, or instruct reading repository-level docs (including this repo's `CLAUDE.md`, `README.md`, or shared `docs/` files). Reason: skills run after installation in downstream environments, and cross-references create hidden coupling and brittle behavior. Every skill must contain its runtime policy within its own folder (`SKILL.md` + local `references/`/`assets/`).
 - **Skill name word order** - Multi-word skill names (the segment after `kramme:domain:`) follow one of three patterns:
   1. **Verb-first** (default for actions): `resolve-review`, `generate-phases`, `fix-ci`
   2. **Object-first** (only when 2+ skills share the prefix): `issue-define`, `issue-implement`

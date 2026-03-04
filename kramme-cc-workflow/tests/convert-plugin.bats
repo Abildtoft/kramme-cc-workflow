@@ -45,8 +45,8 @@ JSON
 
   run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
   [ "$status" -eq 0 ]
-  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/resources/references/pre-validation-checks.md" ]
-  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/resources/references/branch-and-platform-handling.md" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/references/pre-validation-checks.md" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/references/branch-and-platform-handling.md" ]
 }
 
 @test "codex conversion places agents in agents-home/skills" {

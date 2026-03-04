@@ -145,9 +145,9 @@ If `$ARGUMENTS` starts with "discover" or "interview":
 
 3. **Execute discovery interview workflow inline:**
 
-   Read the discovery interview framework from `resources/prompts/discovery-interview.md`. Use its topic classification, question dimensions, and coverage strategy to conduct the interview.
+   Read the discovery interview framework from `references/discovery-interview.md`. Use its topic classification, question dimensions, and coverage strategy to conduct the interview.
 
-4. Transform interview output to SIW format using the "Interview Output to SIW Mapping" section in `resources/prompts/discovery-interview.md`.
+4. Transform interview output to SIW format using the "Interview Output to SIW Mapping" section in `references/discovery-interview.md`.
 5. Store as `discovered_content`
 6. **Skip Phase 2**, continue to Phase 3 (Auto-detect Spec Type)
 
@@ -298,7 +298,7 @@ Create the `siw/` directory if it doesn't already exist.
 
 Create `siw/{spec_filename}` with structure based on available content.
 
-Read the spec template for the appropriate path from `resources/templates/spec-templates.md`. Use the slim template if `linked_spec_files` exists, the rich template if `discovered_content` exists, or the basic template otherwise. If `use_supporting_specs` is true, include the Supporting Specifications section from that file.
+Read the spec template for the appropriate path from `assets/spec-templates.md`. Use the slim template if `linked_spec_files` exists, the rich template if `discovered_content` exists, or the basic template otherwise. If `use_supporting_specs` is true, include the Supporting Specifications section from that file.
 
 ### 4.2 Create siw/LOG.md
 

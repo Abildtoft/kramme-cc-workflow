@@ -254,7 +254,7 @@ Create the documentation directory and files.
 mkdir -p {docs_path}
 ```
 
-Read the documentation templates from `resources/templates/documentation-templates.md`. It contains templates for all three files: README.md (project summary with scope, decisions, principles, implementation metrics), decisions.md (architecture decision records with index, context, rationale, alternatives), and architecture.md (conditional technical design with data model, API, component structure).
+Read the documentation templates from `assets/documentation-templates.md`. It contains templates for all three files: README.md (project summary with scope, decisions, principles, implementation metrics), decisions.md (architecture decision records with index, context, rationale, alternatives), and architecture.md (conditional technical design with data model, API, component structure).
 
 ### Content Rules
 

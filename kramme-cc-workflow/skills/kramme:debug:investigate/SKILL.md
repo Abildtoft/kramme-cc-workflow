@@ -138,13 +138,13 @@ options:
 ```
 
 3. **If bisecting:**
-   - Read the bisect guide from `resources/references/bisect-guide.md`.
+   - Read the bisect guide from `references/bisect-guide.md`.
    - Identify known-good commit: ask user, or find recent tag/release.
    - If a failing test exists, automate: `git bisect run <test-command>`.
    - Otherwise, guide manual bisect steps.
 
 4. **Consult investigation patterns:**
-   - Read common patterns from `resources/references/investigation-patterns.md`.
+   - Read common patterns from `references/investigation-patterns.md`.
    - Match symptoms to known patterns.
    - Apply recommended checks for the matching pattern.
 
@@ -156,7 +156,7 @@ options:
 
 ## Step 5: Document Findings
 
-Read the investigation log template from `resources/templates/investigation-log.md`.
+Read the investigation log template from `assets/investigation-log.md`.
 
 Compile the investigation log:
 

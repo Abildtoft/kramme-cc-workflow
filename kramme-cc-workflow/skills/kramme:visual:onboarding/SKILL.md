@@ -16,14 +16,14 @@ Generate a comprehensive, self-contained HTML onboarding guide for newcomers to 
 ## Prerequisites
 
 Read the shared visual references before generating:
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/resources/references/css-patterns.md`
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/resources/references/libraries.md`
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/resources/references/responsive-nav.md`
+- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/references/css-patterns.md`
+- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/references/libraries.md`
+- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/references/responsive-nav.md`
 
 Select the appropriate template to absorb patterns:
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/resources/templates/architecture.html`
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/resources/templates/data-table.html`
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/resources/templates/mermaid-flowchart.html`
+- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/architecture.html`
+- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/data-table.html`
+- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/mermaid-flowchart.html`
 
 Follow the visual-explainer workflow from `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/SKILL.md` (Think, Structure, Style, Deliver). Use a warm, inviting editorial aesthetic — "friendly textbook" not "cold reference." Vary fonts and palette.
 
@@ -35,8 +35,8 @@ Follow the visual-explainer workflow from `${CLAUDE_PLUGIN_ROOT}/skills/kramme:v
 
 ## Data Gathering
 
-Read the exploration dimensions guide from `resources/references/exploration-dimensions.md`.
-Read the agent prompt template from `resources/prompts/explore-agent.md`.
+Read the exploration dimensions guide from `references/exploration-dimensions.md`.
+Read the agent prompt template from `references/explore-agent.md`.
 
 Launch **2-3 Explore agents** in parallel (Task tool, `subagent_type: Explore`), splitting six dimensions:
 
