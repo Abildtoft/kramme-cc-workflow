@@ -13,10 +13,40 @@ This command uses the `kramme:deslop-reviewer` agent to identify AI slop, then f
 
 1. **Scan for slop**
    - Launch `kramme:deslop-reviewer` in code review mode
-   - Detect the base branch and get the diff:
+   - Detect the base branch using a 3-tier strategy and get the diff:
+     1. If the caller provided a base branch explicitly (for example, "Use `develop` as the base"), use it directly
+     2. Otherwise, query the PR/MR target branch with explicit host/CLI checks:
+     ```bash
+     REMOTE_URL=$(git remote get-url origin 2>/dev/null)
+     if printf '%s' "$REMOTE_URL" | grep -q 'github.com' && command -v gh >/dev/null 2>&1; then
+       BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
+     elif printf '%s' "$REMOTE_URL" | grep -qi 'gitlab' && command -v glab >/dev/null 2>&1; then
+       BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
+     elif command -v glab >/dev/null 2>&1; then
+       BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
+     fi
+     ```
+     3. If no PR/MR or query fails, fall back:
      ```bash
      BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
      [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
+     ```
+     Normalize before diffing:
+     ```bash
+     BASE_BRANCH=${BASE_BRANCH#refs/heads/}
+     BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
+     BASE_BRANCH=${BASE_BRANCH#origin/}
+     if [ -z "$BASE_BRANCH" ]; then
+       echo "Error: Could not determine base branch. Re-run with --base <ref>." >&2
+       exit 1
+     fi
+     if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
+       echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <ref>." >&2
+       exit 1
+     fi
+     ```
+     Then get the diff:
+     ```bash
      git diff origin/$BASE_BRANCH...HEAD
      ```
    - Agent identifies slop patterns in changed files

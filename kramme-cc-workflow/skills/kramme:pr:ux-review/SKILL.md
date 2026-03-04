@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:ux-review
 description: Audit UI, UX, and product experience of PR and local changes using specialized agents for usability heuristics, product thinking, visual consistency, and accessibility.
-argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [parallel]"
+argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <ref>] [parallel]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -19,8 +19,9 @@ Audit the UI, UX, and product experience of a PR's changes, including local stag
 1. If argument starts with `http` → store as `app_url` (enables visual mode for agents)
 2. If `--categories` flag → parse comma-separated list. Valid values: `a11y`, `ux`, `product`, `visual`, `all`
 3. If `--threshold N` → store as `custom_threshold` (0-100). Overrides each agent's default confidence threshold. Only findings with confidence >= N will be reported. Default thresholds if not specified: a11y = 90, ux/product/visual = 70.
-4. If `parallel` → launch agents in parallel instead of sequentially
-5. Default: all applicable categories, sequential, default thresholds
+4. If `--base <ref>` → store as explicit base branch override
+5. If `parallel` → launch agents in parallel instead of sequentially
+6. Default: all applicable categories, sequential, default thresholds
 
 ### Step 2: Load Project Review Conventions
 
@@ -35,11 +36,49 @@ Before selecting files or launching agents:
    - platform scope (desktop/mobile/web)
 4. Pass these conventions to every reviewer agent and tell them to prioritize documented conventions over generic best practices.
 
-### Step 3: Identify UI-Relevant Changed Files
+### Step 3: Resolve Base Branch and Identify UI-Relevant Changed Files
 
+Determine the correct base branch using a 3-tier strategy:
+
+**Tier 1: Explicit override**
+If `--base <ref>` was provided in Step 1, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
+
+**Tier 2: PR/MR target branch detection**
+```bash
+REMOTE_URL=$(git remote get-url origin 2>/dev/null)
+if printf '%s' "$REMOTE_URL" | grep -q 'github.com' && command -v gh >/dev/null 2>&1; then
+  BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
+elif printf '%s' "$REMOTE_URL" | grep -qi 'gitlab' && command -v glab >/dev/null 2>&1; then
+  BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
+elif command -v glab >/dev/null 2>&1; then
+  BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
+fi
+```
+- GitLab MCP alternative if `glab` is unavailable: use `mcp__gitlab__get_merge_request` and extract `target_branch`
+
+**Tier 3: Fallback**
 ```bash
 BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
 [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
+```
+
+Normalize before using `origin/$BASE_BRANCH` (handles values like `origin/develop` and `refs/heads/develop`):
+```bash
+BASE_BRANCH=${BASE_BRANCH#refs/heads/}
+BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
+BASE_BRANCH=${BASE_BRANCH#origin/}
+if [ -z "$BASE_BRANCH" ]; then
+  echo "Error: Could not determine base branch. Re-run with --base <ref>." >&2
+  exit 1
+fi
+if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
+  echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <ref>." >&2
+  exit 1
+fi
+```
+
+Then identify changed files:
+```bash
 BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
 {
   git diff --name-only "$BASE_REF"...HEAD      # committed PR diff
@@ -128,9 +167,10 @@ If `app_url` was provided:
 ### Step 7: Launch Agents
 
 For each applicable agent, launch via the Task tool with:
+- The resolved `BASE_BRANCH` from Step 3, so agents use the correct diff scope
 - Project conventions extracted from `CLAUDE.md`/`AGENTS.md` (explicitly mention stack requirements like Tailwind or Material Design 3 when present)
 - The list of UI-relevant changed files
-- Committed PR diff: `git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`
+- Committed PR diff: `git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD` (using the base resolved in Step 3)
 - Staged local diff: `git diff --cached`
 - Unstaged local diff: `git diff`
 - Untracked local files list: `git ls-files --others --exclude-standard` (agents should treat these as new files and review full file content)
@@ -144,7 +184,7 @@ For each applicable agent, launch via the Task tool with:
 ### Step 8: Validate Relevance
 
 After collecting findings from all agents:
-- Launch **kramme:pr-relevance-validator** with all findings
+- Launch **kramme:pr-relevance-validator** with all findings and the resolved `BASE_BRANCH`
 - Cross-reference each finding against the full audit scope (PR diff + staged/unstaged/untracked local changes)
 - Filter pre-existing issues and out-of-scope problems
 - Return only findings caused by this combined scope
