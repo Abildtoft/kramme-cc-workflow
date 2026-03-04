@@ -179,27 +179,27 @@ After scaffolding, verify the skill against these checks:
 - [ ] Instructions use third-person imperative voice
 - [ ] Workflow steps are numbered sequentially
 - [ ] Resource files are referenced with explicit JiT Read instructions
-- [ ] No README.md or CHANGELOG.md inside the skill directory
+- [ ] No extra documentation files inside the skill directory (for example release notes or status docs)
 - [ ] No redundant logic the agent already handles
 
 Report any failing checks to the user with specific remediation steps.
 
 ## Phase 7: Documentation Reminder
 
-1. Generate the README table row for the skill:
+1. Generate a skill-index table row for the skill:
 
    ```
    | `/{skill-name}` | {User[, Auto]} | {argument-hint or —} | {One-sentence description} |
    ```
 
-2. Identify the correct README section based on the skill's domain:
+2. Identify the correct documentation section based on the skill's domain:
    - SIW skills → "Structured Implementation Workflow (SIW)"
    - PR skills → "Pull Requests"
    - Code skills → "Code Quality & Review"
    - Background skills → "Background Skills"
    - Other → suggest the best-fitting section or "Discovery & Documentation"
 
-3. Display the row and section name. Remind the user to add it to the plugin's `README.md` where skills are listed.
+3. Display the row and section name. Remind the user to add it to the plugin's published skills index.
 
 ## Phase 8: Success Output
 
@@ -217,7 +217,7 @@ Next steps:
   1. Fill in TODO markers in SKILL.md and resource files
   2. Test locally: claude /plugin install /path/to/plugin
   3. Validate with LLM-assisted review (see resources/references/best-practices.md)
-  4. Add to README.md (row shown above)
+  4. Add the row to the plugin's skills index documentation
   5. Commit: feat(skills): add {skill-name} skill
 ```
 
