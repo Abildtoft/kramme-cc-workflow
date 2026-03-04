@@ -239,7 +239,7 @@ Use `siw/supporting-specs/` when:
 ## Templates Reference
 
 When manually creating documents, use these templates from:
-`skills/kramme:siw:continue/resources/templates/`
+`skills/kramme:siw:continue/assets/`
 
 | Document | Template |
 |----------|----------|
@@ -257,11 +257,11 @@ For detailed guidance on specific phases, read:
 
 | Phase | Resource |
 |-------|----------|
-| Resuming existing work | `resources/phase-0-resuming.md` |
-| Planning from scratch | `resources/phase-1-planning.md` |
-| Handling blockers | `resources/phase-2-investigation.md` |
-| Executing tasks | `resources/phase-3-execution.md` |
-| Completing work | `resources/phase-4-completion.md` |
+| Resuming existing work | `references/phase-0-resuming.md` |
+| Planning from scratch | `references/phase-1-planning.md` |
+| Handling blockers | `references/phase-2-investigation.md` |
+| Executing tasks | `references/phase-3-execution.md` |
+| Completing work | `references/phase-4-completion.md` |
 
 ---
 

@@ -65,7 +65,7 @@ Store as `TARGET_FILES`.
 
 ## Step 2: Detect Test Framework
 
-Read the detection heuristics from `resources/references/framework-detection.md`.
+Read the detection heuristics from `references/framework-detection.md`.
 
 1. Check for framework-specific config files:
    - `jest.config.*`, `vitest.config.*`, `pytest.ini`, `pyproject.toml` (pytest section), `Cargo.toml`, `*.bats`, `karma.conf.*`, `playwright.config.*`, `cypress.config.*`, `.mocharc.*`
@@ -98,7 +98,7 @@ Store detected configuration as `FRAMEWORK_CONFIG` (framework, runner command, f
 
 ## Step 3: Analyze Existing Test Patterns
 
-Read the conventions guide from `resources/references/test-conventions-guide.md`.
+Read the conventions guide from `references/test-conventions-guide.md`.
 
 1. **Find 3-5 existing test files** similar to the target:
    - Same directory or module
@@ -113,7 +113,7 @@ Read the conventions guide from `resources/references/test-conventions-guide.md`
    - Setup/teardown patterns (beforeEach, fixtures, TestMain)
    - Naming conventions (should..., verb-first, snake_case)
 
-3. **Produce a Test Convention Profile** using the template from `resources/templates/convention-profile.md`. Use concrete examples from the project, not generic samples.
+3. **Produce a Test Convention Profile** using the template from `assets/convention-profile.md`. Use concrete examples from the project, not generic samples.
 
 4. If **no existing tests found**: use sensible framework defaults. Note in the summary that conventions are assumed.
 

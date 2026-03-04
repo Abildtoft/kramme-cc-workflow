@@ -145,8 +145,8 @@ Launch 3 Explore agents in parallel (single message, 3 Task tool calls).
 
 For each agent:
 
-1. Read the prompt template from `resources/prompts/dimension-agent.md`.
-2. Read the dimension rubrics from `resources/references/dimension-rubrics.md`.
+1. Read the prompt template from `references/dimension-agent.md`.
+2. Read the dimension rubrics from `references/dimension-rubrics.md`.
 3. Populate the prompt template:
    - `{project_name}`: current directory name
    - `{languages}`: detected languages from Step 1
@@ -262,7 +262,7 @@ If **Abort**: stop and inform the user.
 
 ### 6.2 Write Report File
 
-Read the report template from `resources/templates/audit-report.md`.
+Read the report template from `assets/audit-report.md`.
 
 Populate and write `AGENT_NATIVE_AUDIT.md` in the project root with:
 - Scorecard summary table

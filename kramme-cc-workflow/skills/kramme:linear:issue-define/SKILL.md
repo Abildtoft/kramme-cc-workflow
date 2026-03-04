@@ -273,7 +273,7 @@ Conduct a thorough, multi-round interview using `AskUserQuestion`. Provide conte
 - Follow the standard interview flow below
 - Start from blank for each section
 
-Read the 5-round interview structure from `resources/prompts/interview-rounds.md`. It covers Problem & Value, Scope & Boundaries, Technical Context, Acceptance Criteria, and Metadata & Classification — each with questions to cover and guidance on when to dig deeper.
+Read the 5-round interview structure from `references/interview-rounds.md`. It covers Problem & Value, Scope & Boundaries, Technical Context, Acceptance Criteria, and Metadata & Classification — each with questions to cover and guidance on when to dig deeper.
 
 ### Adaptive Follow-up
 
@@ -299,13 +299,13 @@ Choose the template based on `issue_type`:
 
 ---
 
-Read the simple bug template from `resources/templates/simple-bug-template.md`. Use for `is_simple_bug = true`. It provides a concise format with title format, description template (Problem, Root Cause, Fix), and notes on when to reclassify.
+Read the simple bug template from `assets/simple-bug-template.md`. Use for `is_simple_bug = true`. It provides a concise format with title format, description template (Problem, Root Cause, Fix), and notes on when to reclassify.
 
 ---
 
 ### Comprehensive Template (for features, improvements, complex bugs)
 
-Read the comprehensive issue template from `resources/templates/comprehensive-template.md`. It covers mode-specific behavior (IMPROVE vs CREATE), title format, description template (Problem, Value, Goal, Scope, Acceptance Criteria, Edge Cases, Technical Notes, Dependencies, Dev Ask), and technical notes guidelines.
+Read the comprehensive issue template from `assets/comprehensive-template.md`. It covers mode-specific behavior (IMPROVE vs CREATE), title format, description template (Problem, Value, Goal, Scope, Acceptance Criteria, Edge Cases, Technical Notes, Dependencies, Dev Ask), and technical notes guidelines.
 
 ### Metadata to Set
 
