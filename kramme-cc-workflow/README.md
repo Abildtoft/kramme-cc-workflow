@@ -31,8 +31,8 @@ A Claude Code plugin providing tooling for daily workflow tasks. Developed for p
 Marketplace install (recommended):
 
 ```bash
-claude /plugin marketplace add Abildtoft/kramme-cc-workflow
-claude /plugin install kramme-cc-workflow@kramme-cc-workflow
+/plugin marketplace add Abildtoft/kramme-cc-workflow
+/plugin install kramme-cc-workflow@kramme-cc-workflow
 ```
 
 Direct Git install:
