@@ -1,6 +1,10 @@
 # kramme-cc-workflow
 
-A Claude Code plugin providing tooling for daily workflow tasks. Developed for personal use and shared here for inspiration — adapt them to your own workflow, or use them as a starting point.
+A Claude Code plugin providing tooling for daily workflow tasks.
+
+> [!IMPORTANT]
+> This is my personal workflow, built primarily for myself.
+> I release rapidly, optimize for failing fast, and may change or remove skills without warning.
 
 ## Table of Contents
 
