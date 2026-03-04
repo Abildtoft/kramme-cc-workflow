@@ -310,7 +310,7 @@ Auto-triggered by Claude based on context. These don't appear in the `/` menu.
 | Skill | Trigger Condition |
 |-------|-------------------|
 | `kramme:docs:update-agents-md` | Add guidelines to AGENTS.md with structured, keyword-based documentation. Triggers on "update AGENTS.md", "add to AGENTS.md", "maintain agent docs" |
-| `kramme:git:commit-message` | Creating commits or writing commit messages (plain English, no conventional commits) |
+| `kramme:git:commit-message` | Creating commits or writing commit messages (plain-English branch commits; Conventional Commit PR titles) |
 | `kramme:verify:before-completion` | About to claim work is complete/fixed/passing — requires evidence before assertions |
 
 ## Agents
@@ -429,6 +429,8 @@ PR titles must follow [Conventional Commits](https://www.conventionalcommits.org
 - `docs: update installation instructions`
 
 The PR title becomes the merge commit message and is used for automatic changelog generation.
+
+Regular branch commits should use plain-English commit messages (no Conventional Commit prefix).
 
 ## Testing
 

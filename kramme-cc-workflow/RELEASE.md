@@ -76,9 +76,9 @@ make test
 
 ### 2. Generate Changelog (Optional)
 
-Use the changelog-generator skill:
-```
-Create a changelog for commits since the last release tag
+Use the `/kramme:changelog:generate` skill:
+```bash
+/kramme:changelog:generate
 ```
 
 ### 3. Create Release Branch
