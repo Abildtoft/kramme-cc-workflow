@@ -118,43 +118,158 @@ constructor() {
 }
 ```
 
-#### 3. Updaters (State Mutations)
+#### 3. Replace `parseDates: true` with `parseObject` in the API Client
+
+Legacy CustomStore actions configured with `parseDates: true` rely on a framework-level interceptor to convert ISO date strings to `Date` objects. When migrating to ComponentStore, move this responsibility to the API client.
+
+-   **ALWAYS** replace `parseDates: true` by adding a `parseJsonResponse` helper to the API client file
+-   **ALWAYS** apply the helper via `.pipe(map(response => parseJsonResponse(response)))` on each HTTP method
+-   **NOTE**: Only move date parsing to the API client when the store is the sole consumer of those methods
+
+**EXAMPLE - Before (Legacy):**
+```typescript
+export const loadEvents = eventStore
+  .addApiAction('Event', 'Load')
+  .configure({ parseDates: true })
+  .withEffect(s => s.loadEvents)
+  .withReducer();
+```
+
+**EXAMPLE - After (API Client):**
+```typescript
+import { coToDateOrNull } from '@consensus/co/util-date-times';
+import { parseObject } from '@lib/helpers';
+import { Observable, map } from 'rxjs';
+
+/**
+ * Convert ISO date-time string properties to Date.
+ */
+function parseJsonResponse<T>(response: T): T {
+  return parseObject(response, (value: unknown) =>
+    typeof value === 'string' ? coToDateOrNull(value) : null
+  );
+}
+
+@Injectable({ providedIn: 'root' })
+export class EventClient {
+  readonly #http = inject(HttpClient);
+
+  loadEvents(): Observable<Event[]> {
+    return this.#http
+      .get<Event[]>(`${this.#server}/api/events`)
+      .pipe(map(response => parseJsonResponse(response)));
+  }
+}
+```
+
+#### 4. Replace `showErrors: true` with `CoSnackService`
+
+Legacy CustomStore actions configured with `showErrors: true` display error snackbars automatically. In ComponentStore effects, handle this explicitly in the `tapResponse` error callback.
+
+-   **ALWAYS** inject `CoSnackService` and `ErrorHandler` in the store
+-   **ALWAYS** use `getErrorMessage(error)` from `@consensus/co/util-http-errors` to extract a user-friendly message
+-   **ALWAYS** call both `this.#errorHandler.handleError(error)` (for logging) and `this.#snackService.error(...)` (for user notification) in error handlers
+
+**EXAMPLE - Before (Legacy):**
+```typescript
+export const saveEvent = eventStore
+  .addApiAction('Event', 'Save')
+  .configure({ showErrors: true })
+  .withEffect(s => s.saveEvent)
+  .withReducer();
+```
+
+**EXAMPLE - After (ComponentStore):**
+```typescript
+import { ErrorHandler, inject } from '@angular/core';
+import { CoSnackService } from '@consensus/co/ui-snackbars';
+import { getErrorMessage } from '@consensus/co/util-http-errors';
+
+// In the store class:
+readonly #errorHandler = inject(ErrorHandler);
+readonly #snackService = inject(CoSnackService);
+
+readonly saveEvent = this.effect<SaveEventModel>(
+  pipe(
+    mergeMap(payload =>
+      this.#client.saveEvent(payload).pipe(
+        tapResponse({
+          next: data => this.#updateEvent(data),
+          error: (error: unknown) => {
+            this.#errorHandler.handleError(error);
+            this.#snackService.error(getErrorMessage(error));
+          },
+        })
+      )
+    )
+  )
+);
+```
+
+#### 5. Updaters (State Mutations)
 
 -   **ALWAYS** use updaters to change state (not `setState` or `patchState`)
 -   **ALWAYS** use `set` prefix for updaters that replace entire state slices
 -   **ALWAYS** keep state transformations pure and predictable
+-   **ALWAYS** replace `updateListItem` from `@lib/redux` with `Array.map` using a ternary expression
 -   **NOTE**: Updaters can accept `PayloadType | Observable<PayloadType>` - wire observables directly
 
-**EXAMPLE:**
+**EXAMPLE - Replace `updateListItem`:**
 ```typescript
-// Updaters accept PayloadType | Observable<PayloadType>
-readonly setEvents = this.updater<Event[]>((state, events) => ({
-  ...state,
-  events,
-}));
-
-readonly addEvent = this.updater<Event>((state, event) => ({
-  ...state,
-  events: [...state.events, event],
-}));
-
-readonly updateEvent = this.updater<Event>((state, updated) => ({
-  ...state,
-  events: state.events.map((e) => (e.id === updated.id ? updated : e)),
-}));
-
-readonly removeEvent = this.updater<{ id: string }>((state, { id }) => ({
-  ...state,
-  events: state.events.filter((e) => e.id !== id),
-}));
-
-readonly setLoading = this.updater<boolean>((state, isLoading) => ({
-  ...state,
-  isLoading,
-}));
+// Legacy: updateListItem(state.events, x => x.id === data.id, data)
+// New: Array.map with ternary
+readonly #updateEvent = this.updater<Event>(
+  (state, data): EventStoreState => ({
+    ...state,
+    events: state.events.map(x => (x.id === data.id ? data : x)),
+  })
+);
 ```
 
-#### 4. Selectors (State Reads)
+**EXAMPLE - Common updater patterns:**
+```typescript
+// Replace entire collection
+readonly #setEvents = this.updater<Event[]>(
+  (state, events): EventStoreState => ({
+    ...state,
+    events,
+  })
+);
+
+// Add item to collection
+readonly #addEvent = this.updater<Event>(
+  (state, event): EventStoreState => ({
+    ...state,
+    events: [...state.events, event],
+  })
+);
+
+// Update item in collection (replaces updateListItem)
+readonly #updateEvent = this.updater<Event>(
+  (state, updated): EventStoreState => ({
+    ...state,
+    events: state.events.map(e => (e.id === updated.id ? updated : e)),
+  })
+);
+
+// Remove item from collection
+readonly #removeEvent = this.updater<string>(
+  (state, eventId): EventStoreState => ({
+    ...state,
+    events: state.events.filter(e => e.id !== eventId),
+  })
+);
+
+// Replace boolean flag
+readonly #setLoading = this.updater<boolean>(
+  (state, isLoading): EventStoreState => ({
+    ...state,
+    isLoading,
+  })
+);
+```
+
+#### 6. Selectors (State Reads)
 
 -   **ALWAYS** expose state via selectors, suffix static selectors with `$`
 -   **ALWAYS** prefix parameterized selectors with `select`
@@ -176,11 +291,13 @@ readonly activeEvents$ = this.select(
 );
 ```
 
-#### 5. Effects Best Practices
+#### 7. Effects Best Practices
 
 -   **ALWAYS** only use `tapResponse` nested in inner pipes (after `switchMap`/`mergeMap`)
 -   **ALWAYS** use the RxJS `pipe` operator directly in effects: `this.effect<Type>(pipe(...))` instead of `this.effect<Type>((trigger$) => trigger$.pipe(...))`
--   **ALWAYS** use `switchMap` for effects that should cancel previous requests
+-   **ALWAYS** use `switchMap` for load effects that should cancel previous requests
+-   **ALWAYS** use `mergeMap` for write effects (create, update, complete) that should run in parallel
+-   **ALWAYS** use `concatMap` for effects that need serialized execution (e.g., optimistic deletes with rollback)
 -   **NEVER** subscribe directly to form controls or observables inside components; wire them into store effects
 -   **NEVER** provide an empty observable (e.g., `this.effectName(of(undefined))`) when calling effects without arguments
     -   **NOTE**: The effect creates its own trigger observable internally; use `this.effectName()` instead
@@ -207,7 +324,32 @@ readonly saveEvent = this.effect<Event>(
 );
 ```
 
-#### 6. Websocket Integration
+**EXAMPLE - Optimistic delete with rollback:**
+```typescript
+readonly deleteAnswer = this.effect<string>(
+  pipe(
+    withLatestFrom(this.answers$),
+    tap(([answerId]) => this.#removeAnswer(answerId)),
+    // concatMap: serialize deletes so each rollback snapshot is consistent
+    concatMap(([answerId, answersBefore]) =>
+      this.#client.deleteAnswer(answerId).pipe(
+        tapResponse({
+          next: () => {
+            // Already removed optimistically
+          },
+          error: (error: unknown) => {
+            this.#setAnswers(answersBefore);
+            this.#errorHandler.handleError(error);
+            this.#snackService.error(getErrorMessage(error));
+          },
+        })
+      )
+    )
+  )
+);
+```
+
+#### 8. Websocket Integration
 
 -   **ALWAYS** inject `ConnectSharedDataAccessWebsocketService` in the store, not in a separate service
 -   **ALWAYS** wire websocket action observables directly to updaters in the constructor
@@ -236,7 +378,7 @@ constructor() {
 }
 ```
 
-#### 7. Update Consumers
+#### 9. Update Consumers
 
 -   **ALWAYS** use the `inject()` function instead of constructor injection
 -   **ALWAYS** place all `inject()` calls first in the class as readonly fields
@@ -272,7 +414,70 @@ this.#store.dispatch(eventActions.updateEvent({ event }));
 this.#eventStore.saveEvent(event);
 ```
 
-#### 8. Clean Up Legacy Code
+#### 10. Consumer Interaction Patterns
+
+Three patterns emerge for how components interact with ComponentStore effects:
+
+##### Fire-and-forget (most common)
+
+Call the effect method directly. The store handles state updates internally. Use for loads, updates, completion actions, and deletes.
+
+```typescript
+// Load data
+this.#eventStore.loadEvents();
+
+// Update an entity
+this.#eventStore.completeInterview({ ...formValue, id: interviewId, result });
+
+// Delete (store handles optimistic removal + rollback internally)
+this.#eventStore.deleteAnswer(answerId);
+// Immediately update component-local state
+this.answer = null;
+```
+
+##### Fire + watch selector (when the consumer needs the created entity)
+
+Call the effect, then use `firstValueFrom` with a selector to detect the new entity in state. Use when the consumer needs the created entity's ID (e.g., to navigate or update local state).
+
+```typescript
+// Snapshot existing IDs before the create
+const existingIds = new Set(
+  (await firstValueFrom(this.interviews$)).map(i => i.id)
+);
+
+// Fire the effect
+this.#certStore.createInterview({
+  participantUserId: userId,
+  questionnaireId,
+});
+
+// Wait for the store to receive the created entity
+const interview = await firstValueFrom(
+  this.interviews$.pipe(
+    map(interviews => interviews.find(i => !existingIds.has(i.id))),
+    filter(Boolean)
+  )
+);
+
+// Now use the entity (e.g., navigate)
+this.#router.navigate(['interviews', interview.id], {
+  relativeTo: this.#route,
+});
+```
+
+##### Fire + optimistic local update (updates with local component state)
+
+Call the effect, then immediately update component-local state. The store handles its own state via updaters; the component mirrors the change locally to keep its bindings in sync without waiting for a round-trip.
+
+```typescript
+// Fire the effect
+this.#certStore.updateAnswer({ ...this.answer, ...data });
+
+// Optimistically update the component-local reference
+this.answer = { ...this.answer, ...data };
+```
+
+#### 11. Clean Up Legacy Code
 
 -   **ALWAYS** remove store registration from feature store config (e.g., `provide-event-store.ts`)
 -   **ALWAYS** remove state slice from feature state interface
