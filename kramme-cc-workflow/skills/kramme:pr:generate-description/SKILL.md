@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:generate-description
 description: Write a structured PR title and body from git diff, commit log, and Linear context. Outputs markdown for copy-paste or updates the PR directly with --direct.
-argument-hint: "[--non-interactive] [--direct] [--visual]"
+argument-hint: "[--non-interactive] [--direct] [--visual] [--base <ref>]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -15,10 +15,12 @@ Parse `$ARGUMENTS` for flags:
 - `--non-interactive`: Skip clarification prompts (Phase 2.5) and save-to-file prompt (Phase 4). Generate the description directly from gathered context without pausing for user input.
 - `--direct`: Find the existing PR for the current branch and update its title and description directly. Skips copy-paste output and save-to-file prompt. Implies `--non-interactive`.
 - `--visual`: Auto-detect a running dev server and capture screenshots to embed in the PR description. Requires a browser MCP to be available (claude-in-chrome, chrome-devtools, or playwright).
+- `--base <ref>`: Use `<ref>` as the base branch for diff computation instead of auto-detecting.
 
 If `--non-interactive` is present, set `NON_INTERACTIVE=true` and remove the flag from remaining arguments.
 If `--direct` is present, set `DIRECT_UPDATE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments.
 If `--visual` is present, set `VISUAL_MODE=true` and remove the flag from remaining arguments.
+If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the flag and value from remaining arguments.
 
 ## Instructions
 
@@ -87,13 +89,46 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
    git branch --show-current
    ```
 
-4. **ALWAYS** detect and identify the base/target branch dynamically:
+4. **ALWAYS** detect and identify the base/target branch dynamically using a 3-tier strategy:
+
+   **Tier 1: Explicit override**
+   If `BASE_BRANCH_OVERRIDE` was set from `--base`, use that value directly.
+
+   **Tier 2: PR/MR target branch detection**
+   Query the platform for the actual target branch:
+   ```bash
+   REMOTE_URL=$(git remote get-url origin 2>/dev/null)
+   if printf '%s' "$REMOTE_URL" | grep -q 'github.com' && command -v gh >/dev/null 2>&1; then
+     BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
+   elif printf '%s' "$REMOTE_URL" | grep -qi 'gitlab' && command -v glab >/dev/null 2>&1; then
+     BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
+   elif command -v glab >/dev/null 2>&1; then
+     BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
+   fi
+   ```
+   - GitLab MCP alternative if `glab` is unavailable: use `mcp__gitlab__get_merge_request` and extract `target_branch`
+
+   **Tier 3: Fallback**
    ```bash
    BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
    [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
+   ```
+   Normalize before using `origin/$BASE_BRANCH`:
+   ```bash
+   BASE_BRANCH=${BASE_BRANCH#refs/heads/}
+   BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
+   BASE_BRANCH=${BASE_BRANCH#origin/}
+   if [ -z "$BASE_BRANCH" ]; then
+     echo "Error: Could not determine base branch. Re-run with --base <ref>." >&2
+     exit 1
+   fi
+   if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
+     echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <ref>." >&2
+     exit 1
+   fi
    echo "Base branch: $BASE_BRANCH"
    ```
-   - **NOTE**: This detects `main`, `master`, or any custom default branch
+   - **NOTE**: Tier 2 ensures correct scope when MR targets a non-default branch (e.g., a feature branch with other merged MRs)
    - **CAN** ask user if unclear or override needed
 
 5. **If `DIRECT_UPDATE=true`**, verify a PR exists for the current branch:
