@@ -23,8 +23,11 @@ Auto-triggered by Claude based on context. These don't appear in the `/` menu.
 
 ## Installation
 
+In a `claude` CLI session
+
 ```bash
-claude /plugin install /path/to/kramme-connect-workflow
+/plugin marketplace add Abildtoft/kramme-cc-workflow
+/plugin install kramme-connect-workflow@kramme-cc-workflow
 ```
 
 ### OpenCode + Codex (experimental)
