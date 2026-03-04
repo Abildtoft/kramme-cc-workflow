@@ -38,6 +38,17 @@ JSON
   [ ! -d "$TMP_DIR/.codex/prompts" ] || [ -z "$(ls -A "$TMP_DIR/.codex/prompts" 2>/dev/null)" ]
 }
 
+@test "codex conversion preserves user-invocable skill resources" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/resources/references/pre-validation-checks.md" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/resources/references/branch-and-platform-handling.md" ]
+}
+
 @test "codex conversion places agents in agents-home/skills" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
