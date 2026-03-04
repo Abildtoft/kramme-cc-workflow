@@ -23,7 +23,7 @@ Auto-triggered by Claude based on context. These don't appear in the `/` menu.
 
 ## Installation
 
-In a `claude` CLI session
+Marketplace install (recommended):
 
 ```bash
 /plugin marketplace add Abildtoft/kramme-cc-workflow
