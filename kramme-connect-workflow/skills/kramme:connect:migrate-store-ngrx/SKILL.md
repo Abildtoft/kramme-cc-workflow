@@ -83,13 +83,12 @@ export class EventStore extends ComponentStore<EventStoreState> {
 // New: ComponentStore effect
 readonly loadEvents = this.effect<void>(
   pipe(
-    tap(() => this.setLoading(true)),
+    // switchMap: only the latest load matters
     switchMap(() =>
       this.#api.getEvents().pipe(
         tapResponse({
           next: (events) => this.setEvents(events),
           error: (error) => this.#errorHandler.handle(error),
-          finalize: () => this.setLoading(false),
         })
       )
     )
@@ -293,11 +292,12 @@ readonly activeEvents$ = this.select(
 
 #### 7. Effects Best Practices
 
--   **ALWAYS** only use `tapResponse` nested in inner pipes (after `switchMap`/`mergeMap`)
+-   **ALWAYS** only use `tapResponse` nested in inner pipes (after the flattening operator)
 -   **ALWAYS** use the RxJS `pipe` operator directly in effects: `this.effect<Type>(pipe(...))` instead of `this.effect<Type>((trigger$) => trigger$.pipe(...))`
--   **ALWAYS** use `switchMap` for load effects that should cancel previous requests
--   **ALWAYS** use `mergeMap` for write effects (create, update, complete) that should run in parallel
--   **ALWAYS** use `concatMap` for effects that need serialized execution (e.g., optimistic deletes with rollback)
+-   **ALWAYS** default to `mergeMap` as the flattening operator in effects
+-   **ALWAYS** evaluate whether a different flattening operator is more appropriate, and if so use it with a comment justifying the choice
+    -   **EXAMPLE**: `// switchMap: only the latest load matters` when a new trigger should cancel the previous request
+    -   **EXAMPLE**: `// concatMap: serialize deletes so each rollback snapshot is consistent` when ordering matters
 -   **NEVER** subscribe directly to form controls or observables inside components; wire them into store effects
 -   **NEVER** provide an empty observable (e.g., `this.effectName(of(undefined))`) when calling effects without arguments
     -   **NOTE**: The effect creates its own trigger observable internally; use `this.effectName()` instead
@@ -308,15 +308,18 @@ readonly activeEvents$ = this.select(
 import { tapResponse } from '@ngrx/operators';
 ```
 
-**EXAMPLE - Nested tapResponse pattern:**
+**EXAMPLE - Default: `mergeMap` (no comment needed):**
 ```typescript
-readonly saveEvent = this.effect<Event>(
+readonly saveEvent = this.effect<SaveEventModel>(
   pipe(
-    switchMap((event) =>
-      this.#api.saveEvent(event).pipe(
+    mergeMap(payload =>
+      this.#client.saveEvent(payload).pipe(
         tapResponse({
-          next: (saved) => this.updateEvent(saved),
-          error: (error) => this.#errorHandler.handle(error),
+          next: data => this.#updateEvent(data),
+          error: (error: unknown) => {
+            this.#errorHandler.handleError(error);
+            this.#snackService.error(getErrorMessage(error));
+          },
         })
       )
     )
@@ -324,7 +327,27 @@ readonly saveEvent = this.effect<Event>(
 );
 ```
 
-**EXAMPLE - Optimistic delete with rollback:**
+**EXAMPLE - `switchMap` with justification comment:**
+```typescript
+readonly loadEvents = this.effect<void>(
+  pipe(
+    // switchMap: only the latest load matters
+    switchMap(() =>
+      this.#client.loadEvents().pipe(
+        tapResponse({
+          next: data => this.#setEvents(data),
+          error: (error: unknown) => {
+            this.#errorHandler.handleError(error);
+            this.#snackService.error(getErrorMessage(error));
+          },
+        })
+      )
+    )
+  )
+);
+```
+
+**EXAMPLE - Optimistic delete with `concatMap` and justification comment:**
 ```typescript
 readonly deleteAnswer = this.effect<string>(
   pipe(
