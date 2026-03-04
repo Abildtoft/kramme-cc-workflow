@@ -937,17 +937,20 @@ function escapeTemplateLiteral(value) {
 
 function convertClaudeToCodex(plugin, options) {
   const { skills, commands } = filterByPlatform(plugin.skills, plugin.commands, "codex")
-  const skillDirs = skills
-    .filter((skill) => skill.userInvocable === false)
-    .map((skill) => ({ name: skill.name, sourceDir: skill.sourceDir }))
+  const skillDirs = skills.map((skill) => ({ name: skill.name, sourceDir: skill.sourceDir }))
+  const copiedSkillNames = new Set(skillDirs.map((skill) => codexName(skill.name)))
 
   const usedSkillNames = new Set(skillDirs.map((skill) => codexName(skill.name)))
-  const knownCommandNames = new Set()
-  const commandSkills = commands.map((command) => {
-    const skillName = uniqueName(codexName(command.name), usedSkillNames)
-    knownCommandNames.add(skillName)
-    return convertCommandSkill(command, knownCommandNames, skillName)
-  })
+  const knownCommandNames = new Set(copiedSkillNames)
+  const commandSkills = commands
+    // Skill-backed commands already exist as copied skill directories.
+    .filter((command) => path.basename(command.sourcePath ?? "") !== "SKILL.md")
+    .filter((command) => !copiedSkillNames.has(codexName(command.name)))
+    .map((command) => {
+      const skillName = uniqueName(codexName(command.name), usedSkillNames)
+      knownCommandNames.add(skillName)
+      return convertCommandSkill(command, knownCommandNames, skillName)
+    })
 
   const agentSkills = plugin.agents.map((agent) => convertAgentSkill(agent, usedSkillNames))
 
