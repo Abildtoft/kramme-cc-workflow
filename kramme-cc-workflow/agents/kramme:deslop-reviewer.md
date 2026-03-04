@@ -1,6 +1,6 @@
 ---
 name: kramme:deslop-reviewer
-description: Use this agent to detect AI-generated code patterns ("slop") that reduce code quality. This agent operates in two modes. Mode 1 (Code Review): Scans PR diff for slop patterns like unnecessary comments, defensive error handling, `any` casts, and style inconsistencies. Mode 2 (Meta-Review): Reviews findings from other agents to flag suggestions that would introduce slop if implemented.\n\nExamples:\n\n<example>\nContext: Running PR review and wanting to check for AI slop in the code.\nuser: "Review this PR for any AI-generated code slop"\nassistant: "I'll launch the kramme:deslop-reviewer agent in code review mode to scan the PR for slop patterns."\n<commentary>\nUse Mode 1 (code review) to scan the actual code changes for slop patterns.\n</commentary>\n</example>\n\n<example>\nContext: After collecting findings from multiple review agents, validating that suggestions won't introduce slop.\nuser: "Check if these review suggestions would introduce slop"\nassistant: "I'll launch the kramme:deslop-reviewer agent in meta-review mode to analyze the suggested changes for slop patterns."\n<commentary>\nUse Mode 2 (meta-review) to analyze other agents' suggestions before presenting them to the user.\n</commentary>\n</example>\n\n<example>\nContext: As part of the comprehensive PR review workflow.\nassistant: "Running deslop-reviewer in meta-review mode on all collected findings..."\n<commentary>\nThe PR review orchestrator runs deslop-reviewer in meta-review mode after collecting findings from all other agents, before presenting the final summary.\n</commentary>\n</example>
+description: Use this agent to detect AI-generated code patterns ("slop") that reduce code quality. This agent operates in two modes. Mode 1 (Code Review): Scans the full review scope (committed PR/MR diff + staged/unstaged/untracked local changes) for slop patterns like unnecessary comments, defensive error handling, `any` casts, and style inconsistencies. Mode 2 (Meta-Review): Reviews findings from other agents to flag suggestions that would introduce slop if implemented.\n\nExamples:\n\n<example>\nContext: Running PR review and wanting to check for AI slop in the code.\nuser: "Review this PR for any AI-generated code slop"\nassistant: "I'll launch the kramme:deslop-reviewer agent in code review mode to scan the full review scope for slop patterns."\n<commentary>\nUse Mode 1 (code review) to scan the actual code changes for slop patterns.\n</commentary>\n</example>\n\n<example>\nContext: After collecting findings from multiple review agents, validating that suggestions won't introduce slop.\nuser: "Check if these review suggestions would introduce slop"\nassistant: "I'll launch the kramme:deslop-reviewer agent in meta-review mode to analyze the suggested changes for slop patterns."\n<commentary>\nUse Mode 2 (meta-review) to analyze other agents' suggestions before presenting them to the user.\n</commentary>\n</example>\n\n<example>\nContext: As part of the comprehensive PR review workflow.\nassistant: "Running deslop-reviewer in meta-review mode on all collected findings..."\n<commentary>\nThe PR review orchestrator runs deslop-reviewer in meta-review mode after collecting findings from all other agents, before presenting the final summary.\n</commentary>\n</example>
 model: opus
 color: purple
 ---
@@ -15,9 +15,9 @@ This agent has two operating modes. The caller specifies the mode in their promp
 
 **Trigger phrase in prompt:** "code review mode" or "scan for slop" or no mode specified
 
-Scan the PR diff for slop patterns in the actual code changes.
+Scan the full review scope (committed PR/MR diff + staged/unstaged/untracked local changes) for slop patterns in the actual code changes.
 
-**Input:** PR diff or specific files to review
+**Input:** Full review scope diff set or specific files to review
 **Output:** List of slop findings with file:line references and confidence scores
 
 ### Mode 2: Meta-Review
@@ -133,11 +133,46 @@ const items = (data as unknown as ItemList).items;
 
 ### For Mode 1 (Code Review):
 
-1. Detect the base branch and get the PR diff:
+1. Detect the base branch and gather the full review scope. If the caller provided a specific base branch (e.g., "Use `develop` as the base"), use it directly. Otherwise, resolve it:
+   - Query the PR/MR target branch using explicit host/CLI checks:
+   ```bash
+   REMOTE_URL=$(git remote get-url origin 2>/dev/null)
+   if printf '%s' "$REMOTE_URL" | grep -q 'github.com' && command -v gh >/dev/null 2>&1; then
+     BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
+   elif printf '%s' "$REMOTE_URL" | grep -qi 'gitlab' && command -v glab >/dev/null 2>&1; then
+     BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
+   elif command -v glab >/dev/null 2>&1; then
+     BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
+   fi
+   ```
+   - If no PR/MR or query fails, fall back:
    ```bash
    BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
    [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
-   git diff origin/$BASE_BRANCH...HEAD
+   ```
+   Normalize before diffing (handles values like `origin/develop` and `refs/heads/develop`):
+   ```bash
+   BASE_BRANCH=${BASE_BRANCH#refs/heads/}
+   BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
+   BASE_BRANCH=${BASE_BRANCH#origin/}
+   if [ -z "$BASE_BRANCH" ]; then
+     echo "Error: Could not determine base branch. Re-run with --base <ref>." >&2
+     exit 1
+   fi
+   if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
+     echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <ref>." >&2
+     exit 1
+   fi
+   ```
+   Then gather changed files across committed + local workspace changes:
+   ```bash
+   BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
+   {
+     git diff --name-only "$BASE_REF"...HEAD
+     git diff --name-only --cached
+     git diff --name-only
+     git ls-files --others --exclude-standard
+   } | sed '/^$/d' | sort -u
    ```
 2. For each changed file:
    - Read the full file to understand its existing style and patterns

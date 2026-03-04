@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:ux-review:team
 description: Run UX audit using multi-agent execution where specialized reviewers (usability, product, visual, accessibility) collaborate, cross-validate findings, and challenge each other. Higher quality than standard UX review but uses more tokens.
-argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100]"
+argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <ref>]"
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code, codex]
@@ -36,13 +36,14 @@ Then stop.
 
 Same as `/kramme:pr:ux-review` Steps 1-6:
 
-1. Parse arguments: `app_url` (starts with `http`), `--categories` filter, `--threshold N`
+1. Parse arguments: `app_url` (starts with `http`), `--categories` filter, `--threshold N`, `--base <ref>` override
    - No `parallel` argument — team version is inherently parallel
 2. Load project review conventions from `CLAUDE.md` and discovered `AGENTS.md` files
-3. Identify UI-relevant changed files via git diff (committed, staged, unstaged, untracked)
-4. Check for previous `UX_REVIEW_OVERVIEW.md` and extract previously addressed findings
-5. Determine which agents to launch (same logic: always ux/product/visual, conditionally a11y)
-6. Detect browser automation capability if `app_url` provided
+3. Resolve base branch using 3-tier strategy (explicit `--base` → PR/MR target branch → default branch fallback). See `/kramme:pr:ux-review` Step 3 for full logic.
+4. Identify UI-relevant changed files via git diff (committed using resolved base, staged, unstaged, untracked)
+5. Check for previous `UX_REVIEW_OVERVIEW.md` and extract previously addressed findings
+6. Determine which agents to launch (same logic: always ux/product/visual, conditionally a11y)
+7. Detect browser automation capability if `app_url` provided
 
 If no UI-relevant files found, stop with the same message as the base skill.
 
@@ -54,7 +55,7 @@ Create a multi-agent UX review session named `pr-ux-review` and use **delegate m
 - **Codex:** launch equivalent parallel UX review agents via multi-agent mode.
 
 Spawn teammates based on applicable review categories. Each teammate receives:
-- The git diff commands to run (`git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`, `git diff --cached`, `git diff`)
+- The resolved base branch and git diff commands to run (`git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`, `git diff --cached`, `git diff`, using the base resolved in Step 1)
 - Untracked files list: `git ls-files --others --exclude-standard`
 - The list of UI-relevant changed files
 - Project conventions extracted from `CLAUDE.md`/`AGENTS.md` (explicitly mention stack requirements like Tailwind or Material Design 3 when present)
@@ -99,8 +100,9 @@ Create tasks in the shared task list:
 - Assign each task to its corresponding teammate
 
 **Phase 2 task (blocked on all Phase 1 tasks):**
-- "Validate finding relevance against PR diff" -- spawn a new **relevance-validator** teammate
+- "Validate finding relevance against full audit scope" -- spawn a new **relevance-validator** teammate
 - Mission from `agents/kramme:pr-relevance-validator.md`
+- Pass the resolved `BASE_BRANCH` from Step 1 so relevance validation uses the same PR base
 - Cross-references all findings against the full audit scope (PR diff + staged/unstaged/untracked local changes)
 - Filters pre-existing and out-of-scope issues
 

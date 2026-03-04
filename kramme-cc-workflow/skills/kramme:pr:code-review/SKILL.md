@@ -1,6 +1,7 @@
 ---
 name: kramme:pr:code-review
 description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop). Outputs REVIEW_OVERVIEW.md with actionable findings.
+argument-hint: "[aspects] [--base <ref>] [parallel]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -16,9 +17,60 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 1. **Determine Review Scope**
    - Check git status to identify changed files
    - Parse arguments to see if user requested specific review aspects
+   - If `--base <ref>` flag → store as explicit base branch override
    - Default: Run all applicable reviews
 
-2. **Available Review Aspects:**
+2. **Resolve Base Branch**
+
+   Determine the correct base branch for diff computation using a 3-tier strategy:
+
+   **Tier 1: Explicit override**
+   If `--base <ref>` was provided, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
+
+   **Tier 2: PR/MR target branch detection**
+   Detect the hosting platform and query for the actual target branch:
+   ```bash
+   REMOTE_URL=$(git remote get-url origin 2>/dev/null)
+   if printf '%s' "$REMOTE_URL" | grep -q 'github.com' && command -v gh >/dev/null 2>&1; then
+     BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
+   elif printf '%s' "$REMOTE_URL" | grep -qi 'gitlab' && command -v glab >/dev/null 2>&1; then
+     BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
+   elif command -v glab >/dev/null 2>&1; then
+     BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
+   fi
+   ```
+
+   **GitLab (MCP, if glab unavailable):**
+   Use `mcp__gitlab__get_merge_request` and extract `target_branch`.
+
+   If a value is obtained, use it.
+
+   **Tier 3: Fallback (existing behavior)**
+   If no PR/MR exists or the query fails:
+   ```bash
+   BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+   [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
+   ```
+
+   Normalize before using `origin/$BASE_BRANCH` (handles values like `origin/develop` and `refs/heads/develop`):
+   ```bash
+   BASE_BRANCH=${BASE_BRANCH#refs/heads/}
+   BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
+   BASE_BRANCH=${BASE_BRANCH#origin/}
+
+   if [ -z "$BASE_BRANCH" ]; then
+     echo "Error: Could not determine base branch. Re-run with --base <ref>." >&2
+     exit 1
+   fi
+   if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
+     echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <ref>." >&2
+     exit 1
+   fi
+   ```
+
+   Use `origin/$BASE_BRANCH` for all subsequent diff commands.
+
+3. **Available Review Aspects:**
 
    - **comments** - Analyze code comment accuracy and maintainability
    - **tests** - Review test coverage quality and completeness
@@ -31,24 +83,32 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **simplify** - Simplify code for clarity and maintainability
    - **all** - Run all applicable reviews (default)
 
-3. **Identify Changed Files**
-   - Run `git diff --name-only` to see modified files
-   - Check if PR already exists: `gh pr view`
+4. **Identify Changed Files**
+   - Build a unified change scope (committed PR diff + staged + unstaged + untracked):
+   ```bash
+   BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
+   {
+     git diff --name-only "$BASE_REF"...HEAD
+     git diff --name-only --cached
+     git diff --name-only
+     git ls-files --others --exclude-standard
+   } | sed '/^$/d' | sort -u
+   ```
    - Identify file types and what reviews apply
 
-4. **Check for Previous Review Responses**
+5. **Check for Previous Review Responses**
 
    If `REVIEW_OVERVIEW.md` exists in the project root:
    - Parse the file to extract previously addressed findings
    - Extract for each finding: file path, line number, issue description, action taken
-   - Store this context for filtering in Step 9
+   - Store this context for filtering in Step 10
 
    Previously addressed findings have the format:
    - **File:** `path/to/file.ts:123`
    - **Issue/Finding:** [description]
    - **Action taken:** [what was done]
 
-5. **Determine Applicable Reviews**
+6. **Determine Applicable Reviews**
 
    Based on changes:
    - **Always applicable**: kramme:code-reviewer (general quality)
@@ -61,7 +121,14 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **If security-relevant changes** (API routes, auth logic, DB queries, external calls, user input handling, crypto): kramme:injection-reviewer, kramme:auth-reviewer, kramme:data-reviewer, kramme:logic-reviewer (launch all 4 in parallel)
    - **After passing review**: kramme:code-simplifier (polish and refine)
 
-6. **Launch Review Agents**
+7. **Launch Review Agents**
+
+   Pass the resolved `BASE_BRANCH` from Step 2 to all agents so they use the correct diff scope.
+   Instruct each agent to review the same unified scope:
+   - Committed diff: `git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`
+   - Staged diff: `git diff --cached`
+   - Unstaged diff: `git diff`
+   - Untracked files: `git ls-files --others --exclude-standard`
 
    **Sequential approach** (one at a time):
    - Easier to understand and act on
@@ -73,15 +140,15 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Faster for comprehensive review
    - Results come back together
 
-7. **Validate Relevance**
+8. **Validate Relevance**
 
    After collecting findings from all agents:
-   - Launch **kramme:pr-relevance-validator** with all findings
-   - Validator cross-references each finding against the PR diff
+   - Launch **kramme:pr-relevance-validator** with all findings and the resolved `BASE_BRANCH`
+   - Validator cross-references each finding against the full review scope (committed PR diff + staged/unstaged/untracked local changes)
    - Filters out pre-existing issues and out-of-scope problems
-   - Returns only findings caused by this PR
+   - Returns only findings caused by this review scope
 
-8. **Slop Meta-Review**
+9. **Slop Meta-Review**
 
    After relevance validation, review agent suggestions for slop:
    - Launch **kramme:deslop-reviewer** in meta-review mode
@@ -89,9 +156,9 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Flags suggestions that would introduce slop if implemented
    - Adds slop warnings to flagged suggestions (does not remove them)
 
-9. **Filter Previously Addressed Findings**
+10. **Filter Previously Addressed Findings**
 
-   If `REVIEW_OVERVIEW.md` was found in Step 4:
+   If `REVIEW_OVERVIEW.md` was found in Step 5:
    - Cross-reference validated findings against previously addressed findings
    - **Only filter** if the finding is essentially the same issue:
      - Same file
@@ -105,7 +172,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - When uncertain, err on the side of keeping the finding active
    - Add filtered findings to "Previously Addressed" section
 
-10. **Aggregate Results**
+11. **Aggregate Results**
 
    After validation, slop meta-review, and previous-response filtering, summarize:
    - **Critical Issues** (must fix before merge) - only validated findings
@@ -116,13 +183,13 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **Filtered Issues** (pre-existing or out-of-scope) - shown separately
    - **Previously Addressed** (findings matching REVIEW_OVERVIEW.md) - shown separately
 
-11. **Write Findings to File**
+12. **Write Findings to File**
 
-   Write the aggregated review summary from Step 10 to `REVIEW_OVERVIEW.md` in the project root, using the format from the template below. Include all sections even if empty (with count of 0).
+   Write the aggregated review summary from Step 11 to `REVIEW_OVERVIEW.md` in the project root, using the format from the template below. Include all sections even if empty (with count of 0).
 
    This file is a working artifact — it should NOT be committed. It will be cleaned up by `/kramme:workflow-artifacts:cleanup`.
 
-12. **Provide Action Plan**
+13. **Provide Action Plan**
 
    If Critical or Important issues were found, include a suggestion to run `/kramme:pr:resolve-review` to automatically address them.
 
@@ -196,6 +263,12 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 # Launches all agents in parallel
 ```
 
+**Custom base branch (for MRs targeting non-default branches):**
+```
+/kramme:pr:code-review --base develop
+# Diffs against develop instead of auto-detecting the base
+```
+
 ## Agent Descriptions:
 
 **kramme:comment-analyzer**:
@@ -235,10 +308,10 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 - Preserves functionality
 
 **kramme:pr-relevance-validator**:
-- Validates findings against PR diff
+- Validates findings against full review scope (committed + local)
 - Filters pre-existing issues
 - Filters out-of-scope problems
-- Ensures review focuses on PR changes
+- Ensures review focuses on in-scope changes
 
 **kramme:removal-planner**:
 - Identifies dead code and unused dependencies

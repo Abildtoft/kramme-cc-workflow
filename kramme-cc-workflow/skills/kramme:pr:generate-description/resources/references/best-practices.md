@@ -2,7 +2,7 @@
 
 ## Context Gathering
 
-- **ALWAYS** detect the base branch dynamically using `git symbolic-ref refs/remotes/origin/HEAD`
+- **ALWAYS** detect the base branch dynamically using a 3-tier strategy: first from the PR/MR target branch (`gh pr view --json baseRefName` or `glab mr view --json target_branch`), then from `git symbolic-ref refs/remotes/origin/HEAD`, then from `main`/`master` fallback. After resolution, normalize `BASE_BRANCH` by stripping `refs/heads/`, `refs/remotes/origin/`, and `origin/` prefixes before building `origin/$BASE_BRANCH`, then validate that `BASE_BRANCH` is non-empty and `origin/$BASE_BRANCH` exists (`git rev-parse --verify --quiet`). This ensures correct scope when an MR targets a non-default branch.
 - **ALWAYS** use `git diff origin/$BASE_BRANCH...HEAD` (three dots, `origin/` prefix) to compare from merge base against the remote's state
 - **NEVER** use local branch names like `main` or `master` directly - always use `origin/` prefix to avoid comparing against stale local branches
 - **ALWAYS** look at both commit messages and code changes - they tell different stories
