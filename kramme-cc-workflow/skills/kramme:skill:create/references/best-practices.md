@@ -9,16 +9,13 @@ Every skill follows this directory layout:
 ```
 skill-name/
 ├── SKILL.md           # Required: metadata + core instructions (<500 lines)
-├── resources/         # Supporting files (loaded on demand)
-│   ├── templates/     # Output format templates
-│   ├── prompts/       # Agent prompt templates
-│   ├── examples/      # Code examples and samples
-│   └── references/    # Reference documentation
+├── references/        # Docs, prompts, examples agents read (loaded on demand)
+├── assets/            # Output templates, code templates, static resources
 └── scripts/           # Executable code (tiny CLIs)
 ```
 
 - **SKILL.md** is the "brain" — use it for navigation and high-level procedures.
-- **Resources** are loaded just-in-time. Keep them **one level deep** only.
+- **references/** and **assets/** are loaded just-in-time. Keep them **flat** (no nesting).
 - **Scripts** handle fragile/repetitive operations. Do not bundle library code.
 
 ## Frontmatter Optimization
@@ -35,10 +32,10 @@ The `name` and `description` are the only fields the agent sees before triggerin
 Keep the context window lean by loading information only when needed.
 
 - **Keep SKILL.md under 500 lines.** Use it for orchestration only.
-- **Flat subdirectories only.** `resources/schema.md` — not `resources/db/v1/schema.md`.
+- **Flat directories only.** `references/schema.md` — not `references/db/v1/schema.md`.
 - **Just-in-time loading.** Explicitly instruct when to read a file:
   ```
-  Read the patterns catalog from `resources/references/patterns.md`.
+  Read the patterns catalog from `references/patterns.md`.
   ```
 - **Relative paths with forward slashes** regardless of OS.
 
@@ -54,7 +51,7 @@ Write instructions for LLMs, not humans.
 - **Step-by-step numbering.** Define workflows as strict chronological sequences.
 - **Map decision trees explicitly.** "If X, do Y. Otherwise, skip to Step 3."
 - **Third-person imperative.** "Extract the text..." not "I will extract..." or "You should extract..."
-- **Concrete templates over prose.** Place templates in `resources/templates/` and instruct the agent to copy the structure.
+- **Concrete templates over prose.** Place templates in `assets/` and instruct the agent to copy the structure.
 - **Consistent terminology.** Pick one term per concept and use it everywhere.
 
 ## Deterministic Scripts
@@ -122,6 +119,6 @@ Enforce progressive disclosure and shrink token footprint:
 
 > Based on the edge-case answers, rewrite the SKILL.md enforcing Progressive Disclosure:
 > 1. Keep SKILL.md as high-level steps using third-person imperative commands.
-> 2. Move dense rules, large templates, or complex schemas to `resources/` files.
+> 2. Move dense rules, large templates, or complex schemas to `references/` or `assets/` files.
 > 3. Replace removed content with explicit commands to read the new file when needed.
 > 4. Add an Error Handling section at the bottom.

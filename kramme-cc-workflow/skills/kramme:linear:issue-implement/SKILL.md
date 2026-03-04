@@ -409,7 +409,7 @@ options:
 
 After gathering answers, create a comprehensive technical plan that translates the product requirements into a concrete implementation approach:
 
-Read the technical plan template from `resources/templates/technical-plan.md` and populate it based on the gathered context and user answers.
+Read the technical plan template from `assets/technical-plan.md` and populate it based on the gathered context and user answers.
 
 **Present this plan to the user and get confirmation before proceeding to implementation approach selection.**
 
@@ -437,7 +437,7 @@ options:
 
 ## Step 7: Workflow Execution by Approach
 
-Read the implementation workflow for the selected approach from `resources/references/implementation-workflows.md`. Follow the Guided, Context Setup, or Autonomous workflow based on the user's choice from Step 6.
+Read the implementation workflow for the selected approach from `references/implementation-workflows.md`. Follow the Guided, Context Setup, or Autonomous workflow based on the user's choice from Step 6.
 
 ---
 
@@ -487,4 +487,4 @@ When creating commits, **PREFER** including issue reference:
 
 ## Error Handling
 
-Read the error handling guidance from `resources/references/error-handling.md`.
+Read the error handling guidance from `references/error-handling.md`.

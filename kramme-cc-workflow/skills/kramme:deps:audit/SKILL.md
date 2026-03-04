@@ -40,7 +40,7 @@ Audit project dependencies for outdated packages, security vulnerabilities, and 
 
 ## Step 1: Detect Package Manager
 
-Read the detection details from `resources/references/package-manager-commands.md`.
+Read the detection details from `references/package-manager-commands.md`.
 
 1. Check for lock files and manifests:
    - `package-lock.json` → npm
@@ -128,7 +128,7 @@ If an audit tool is not installed, warn and skip the vulnerability check. Sugges
 
 ## Step 4: Risk Assessment
 
-Read the scoring rubric from `resources/references/risk-assessment-matrix.md`.
+Read the scoring rubric from `references/risk-assessment-matrix.md`.
 
 For each package group, assess:
 
@@ -178,7 +178,7 @@ options:
   - Create SIW workflow — for major upgrade campaigns
 ```
 
-If **Write report**: read the template from `resources/templates/audit-report.md`, populate, and write `DEPENDENCY_AUDIT.md` in the project root.
+If **Write report**: read the template from `assets/audit-report.md`, populate, and write `DEPENDENCY_AUDIT.md` in the project root.
 
 If **Apply patches**: run the appropriate update commands for Phase 2 packages, then run `/kramme:verify:run`.
 

@@ -54,13 +54,13 @@ Orchestrate the creation of a clean, well-documented draft PR by:
 
 ## Step 1: Pre-Validation
 
-Read the pre-validation checks from `resources/references/pre-validation-checks.md`. Run all four checks (git repo, merge conflicts, rebase/merge in progress, remote configuration) and abort on any failure.
+Read the pre-validation checks from `references/pre-validation-checks.md`. Run all four checks (git repo, merge conflicts, rebase/merge in progress, remote configuration) and abort on any failure.
 
 ---
 
 ## Steps 2-3: Platform Detection and Branch Handling
 
-Read the platform detection and branch handling instructions from `resources/references/branch-and-platform-handling.md`. Detect the platform (GitHub/GitLab), validate the branch is a feature branch, detect the base branch, and handle edge cases (detached HEAD, main branch, Linear issue integration, no upstream).
+Read the platform detection and branch handling instructions from `references/branch-and-platform-handling.md`. Detect the platform (GitHub/GitLab), validate the branch is a feature branch, detect the base branch, and handle edge cases (detached HEAD, main branch, Linear issue integration, no upstream).
 
 ---
 

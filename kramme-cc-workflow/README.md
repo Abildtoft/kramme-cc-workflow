@@ -1,6 +1,10 @@
 # kramme-cc-workflow
 
-A Claude Code plugin providing tooling for daily workflow tasks. Developed for personal use and shared here for inspiration — adapt them to your own workflow, or use them as a starting point.
+A Claude Code plugin providing tooling for daily workflow tasks.
+
+> [!IMPORTANT]
+> This is my personal workflow, built primarily for myself.
+> I release rapidly, optimize for failing fast, and may change or remove skills without warning.
 
 ## Table of Contents
 
@@ -187,7 +191,7 @@ PR creation, review, iteration, and resolution.
 | `/kramme:pr:create` | User | — | Create a clean PR with narrative-quality commits and comprehensive description.<br><br>Orchestrates branch setup, commit restructuring, and PR creation. |
 | `/kramme:pr:code-review` | User | — | Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop).<br><br>Outputs REVIEW_OVERVIEW.md with actionable findings. |
 | `/kramme:pr:code-review:team` | User | — | Team-based PR review using multi-agent execution where specialized reviewers collaborate, cross-validate findings, and challenge each other's suggestions.<br><br>Higher quality, higher token cost.<br><br>Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
-| `/kramme:pr:resolve-review` | User | `[--review-source local\|online] [--answer-and-resolve] [review-content\|instructions\|url]` | Resolve findings from code reviews.<br><br>Evaluates each finding for scope and validity, implements fixes, and generates a response document.<br><br>Use `--review-source local` to target `REVIEW_OVERVIEW.md` only, or `--review-source online` to target PR/MR review comments.<br><br>Use `--answer-and-resolve` to post replies and resolve addressed review threads/discussions on the current PR/MR.<br><br>When `--review-source local` is selected, no platform replies or thread resolution are performed even if `--answer-and-resolve` is set. |
+| `/kramme:pr:resolve-review` | User | `[--source local\|online \| --local \| --online] [--reply] [review-content\|instructions\|url]` | Resolve findings from code reviews.<br><br>Evaluates each finding for scope and validity, implements fixes, and generates a response document.<br><br>Use `--source local` (or `--local`) to target `REVIEW_OVERVIEW.md` only, or `--source online` (or `--online`) to target PR/MR review comments.<br><br>Use `--reply` to post replies and resolve addressed review threads/discussions on the current PR/MR (`--answer-and-resolve` is still supported as a legacy alias).<br><br>When local source is selected, no platform replies or thread resolution are performed even if `--reply` is set. |
 | `/kramme:pr:resolve-review:team` | User | — | Resolve review findings in parallel using multi-agent execution.<br><br>Groups findings by file area and assigns to separate agents for faster resolution.<br><br>Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
 | `/kramme:pr:fix-ci` | User | — | Iterate on a PR until CI passes.<br><br>Automates the feedback-fix-push-wait cycle for both GitHub and GitLab. |
 | `/kramme:pr:generate-description` | User | `[--non-interactive] [--direct] [--visual]` | Write a structured PR title and body from git diff, commit log, and Linear context.<br><br>Optionally auto-detects a running dev server and captures screenshots with `--visual`. |
@@ -310,7 +314,7 @@ Auto-triggered by Claude based on context. These don't appear in the `/` menu.
 | Skill | Trigger Condition |
 |-------|-------------------|
 | `kramme:docs:update-agents-md` | Add guidelines to AGENTS.md with structured, keyword-based documentation. Triggers on "update AGENTS.md", "add to AGENTS.md", "maintain agent docs" |
-| `kramme:git:commit-message` | Creating commits or writing commit messages (plain English, no conventional commits) |
+| `kramme:git:commit-message` | Creating commits or writing commit messages (plain-English branch commits; Conventional Commit PR titles) |
 | `kramme:verify:before-completion` | About to claim work is complete/fixed/passing — requires evidence before assertions |
 
 ## Agents
@@ -430,6 +434,8 @@ PR titles must follow [Conventional Commits](https://www.conventionalcommits.org
 
 The PR title becomes the merge commit message and is used for automatic changelog generation.
 
+Regular branch commits should use plain-English commit messages (no Conventional Commit prefix).
+
 ## Testing
 
 The hooks are tested using [BATS](https://github.com/bats-core/bats-core) (Bash Automated Testing System). The test suite also requires `jq` for JSON parsing in hooks.
@@ -530,6 +536,7 @@ For maintainers: see [RELEASE.md](RELEASE.md) for the release process.
 - `kramme:performance-oracle`: From [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - `kramme:siw:reverse-engineer-spec`: Inspired by [blader/schematic](https://github.com/blader/schematic).
 - OpenCode/Codex converter: Inspired by [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
+- Skills authoring patterns: Inspired by [mgechev/skills-best-practices](https://github.com/mgechev/skills-best-practices).
 - `kramme:visual:*` skills: Adapted from [nicobailon/visual-explainer](https://github.com/nicobailon/visual-explainer).
 
 ## License

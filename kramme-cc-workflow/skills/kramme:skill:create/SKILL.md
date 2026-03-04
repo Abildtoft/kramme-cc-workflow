@@ -16,7 +16,7 @@ Based on [skills-best-practices](https://github.com/mgechev/skills-best-practice
 
 ## Phase 1: Parse Arguments
 
-1. Check `$ARGUMENTS` for a skill name (matches the format in `resources/references/naming-conventions.md`) or a free-text description.
+1. Check `$ARGUMENTS` for a skill name (matches the format in `references/naming-conventions.md`) or a free-text description.
 2. If a valid name is provided, store it and skip Phase 3 name generation.
 3. If free-text is provided, use it as context for the design interview.
 4. If empty, proceed to Phase 2 to gather context.
@@ -68,7 +68,7 @@ Skip if `$ARGUMENTS` already provides a clear description.
 
 ## Phase 3: Name Generation and Validation
 
-1. Read the naming conventions from `resources/references/naming-conventions.md`.
+1. Read the naming conventions from `references/naming-conventions.md`.
 
 2. If the user already provided a valid name, validate it against the rules:
    - Format: `kramme:{domain}:{action}` with optional qualifier segments (for example `:team`)
@@ -86,7 +86,7 @@ Skip if `$ARGUMENTS` already provides a clear description.
 
 ## Phase 4: Generate Frontmatter
 
-1. Read the frontmatter field reference from `resources/references/frontmatter-guide.md`.
+1. Read the frontmatter field reference from `references/frontmatter-guide.md`.
 
 2. Draft the frontmatter using the interview answers:
 
@@ -114,7 +114,7 @@ Skip if `$ARGUMENTS` already provides a clear description.
 ### Simple tier
 
 1. Create the skill directory: `skills/{skill-name}/`
-2. Read the template from `resources/templates/skill-md-simple.md`.
+2. Read the template from `assets/skill-md-simple.md`.
 3. Write `SKILL.md` with:
    - The finalized frontmatter (replacing template placeholders)
    - A heading matching the skill's purpose
@@ -123,12 +123,10 @@ Skip if `$ARGUMENTS` already provides a clear description.
 ### Medium tier
 
 1. Create the skill directory: `skills/{skill-name}/`
-2. Create `resources/` with appropriate subdirectories based on what the skill needs:
-   - `resources/references/` — for domain docs, cheatsheets, rules
-   - `resources/templates/` — for output format templates
-   - `resources/prompts/` — for agent prompt templates
-   - `resources/examples/` — for code examples
-3. Read the template from `resources/templates/skill-md-with-resources.md`.
+2. Create supporting directories based on what the skill needs:
+   - `references/` — for domain docs, cheatsheets, rules, agent prompts, examples
+   - `assets/` — for output format templates, code templates, static resources
+3. Read the template from `assets/skill-md-with-resources.md`.
 4. Write `SKILL.md` with:
    - The finalized frontmatter
    - Workflow steps with JiT loading instructions pointing to resource files
@@ -151,7 +149,7 @@ Skip if `$ARGUMENTS` already provides a clear description.
 - Number steps sequentially; map decision trees explicitly
 - Reference resource files with explicit Read instructions:
   ```
-  Read the {reference name} from `resources/{path}`.
+  Read the {reference name} from `references/{file}.md`.
   ```
 - Keep SKILL.md under 500 lines — if approaching the limit, move content to resources
 
@@ -162,7 +160,7 @@ After scaffolding, verify the skill against these checks:
 ### Structure
 
 - [ ] SKILL.md exists and is under 500 lines
-- [ ] All resource files are at most one level deep inside `resources/`
+- [ ] Supporting files are in `references/`, `assets/`, or `scripts/` (flat, no nesting)
 - [ ] All file paths in SKILL.md use forward slashes and relative paths
 - [ ] Directory name matches the `name` field in frontmatter exactly
 
@@ -179,27 +177,27 @@ After scaffolding, verify the skill against these checks:
 - [ ] Instructions use third-person imperative voice
 - [ ] Workflow steps are numbered sequentially
 - [ ] Resource files are referenced with explicit JiT Read instructions
-- [ ] No README.md or CHANGELOG.md inside the skill directory
+- [ ] No extra documentation files inside the skill directory (for example release notes or status docs)
 - [ ] No redundant logic the agent already handles
 
 Report any failing checks to the user with specific remediation steps.
 
 ## Phase 7: Documentation Reminder
 
-1. Generate the README table row for the skill:
+1. Generate a skill-index table row for the skill:
 
    ```
    | `/{skill-name}` | {User[, Auto]} | {argument-hint or —} | {One-sentence description} |
    ```
 
-2. Identify the correct README section based on the skill's domain:
+2. Identify the correct documentation section based on the skill's domain:
    - SIW skills → "Structured Implementation Workflow (SIW)"
    - PR skills → "Pull Requests"
    - Code skills → "Code Quality & Review"
    - Background skills → "Background Skills"
    - Other → suggest the best-fitting section or "Discovery & Documentation"
 
-3. Display the row and section name. Remind the user to add it to the plugin's `README.md` where skills are listed.
+3. Display the row and section name. Remind the user to add it to the plugin's published skills index.
 
 ## Phase 8: Success Output
 
@@ -210,14 +208,15 @@ Skill created: {skill-name}
 
 Files:
   skills/{skill-name}/SKILL.md          ({n} lines)
-  skills/{skill-name}/resources/...     ({n} files)  [if applicable]
+  skills/{skill-name}/references/...    ({n} files)  [if applicable]
+  skills/{skill-name}/assets/...        ({n} files)  [if applicable]
   skills/{skill-name}/scripts/...       ({n} files)  [if applicable]
 
 Next steps:
   1. Fill in TODO markers in SKILL.md and resource files
   2. Test locally: claude /plugin install /path/to/plugin
-  3. Validate with LLM-assisted review (see resources/references/best-practices.md)
-  4. Add to README.md (row shown above)
+  3. Validate with LLM-assisted review (see references/best-practices.md)
+  4. Add the row to the plugin's skills index documentation
   5. Commit: feat(skills): add {skill-name} skill
 ```
 
@@ -227,8 +226,8 @@ Next steps:
 
 For detailed best practices, validation prompts, and examples, read these resources on demand:
 
-- `resources/references/best-practices.md` — full best practices guide with LLM validation framework
-- `resources/references/frontmatter-guide.md` — frontmatter field rules, decision trees, examples
-- `resources/references/naming-conventions.md` — domain namespaces, word-order patterns, validation rules
-- `resources/templates/skill-md-simple.md` — template for simple skills
-- `resources/templates/skill-md-with-resources.md` — template for skills with resources/scripts
+- `references/best-practices.md` — full best practices guide with LLM validation framework
+- `references/frontmatter-guide.md` — frontmatter field rules, decision trees, examples
+- `references/naming-conventions.md` — domain namespaces, word-order patterns, validation rules
+- `assets/skill-md-simple.md` — template for simple skills
+- `assets/skill-md-with-resources.md` — template for skills with supporting files

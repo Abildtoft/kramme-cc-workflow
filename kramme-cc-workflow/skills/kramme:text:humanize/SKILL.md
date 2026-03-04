@@ -31,7 +31,7 @@ When given text to humanize:
 
 ## AI Writing Patterns
 
-Read the full patterns catalog from `resources/ai-writing-patterns.md`. It covers:
+Read the full patterns catalog from `references/ai-writing-patterns.md`. It covers:
 - Personality and soul (adding voice to clean-but-lifeless writing)
 - Content patterns (#1-6): inflated significance, fake notability, superficial analyses, promotional language, weasel words, formulaic sections
 - Language and grammar (#7-12): overused AI vocabulary, copula avoidance, negative parallelisms, rule of three, synonym cycling, false ranges

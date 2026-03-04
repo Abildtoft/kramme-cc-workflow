@@ -84,7 +84,7 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 - **ALWAYS** use proper type narrowing in effects with filter: `(tuple): tuple is [void, DataType] => tuple[1] !== null`
 - **ALWAYS** use `pipe()` directly in effects: `this.effect<Type>(pipe(...))` not `this.effect<Type>((param$) => param$.pipe(...))`
 
-**EXAMPLE:** See `resources/examples/component-store.ts` for a complete ComponentStore reference implementation.
+**EXAMPLE:** See `references/component-store.ts` for a complete ComponentStore reference implementation.
 
 ---
 
@@ -102,7 +102,7 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 - **ALWAYS** remove manual subscriptions
 - **ALWAYS** remove `DestroyRef` and `takeUntilDestroyed` (ComponentStore handles cleanup)
 
-**EXAMPLE:** See `resources/examples/component.ts` for a complete component reference implementation.
+**EXAMPLE:** See `references/component.ts` for a complete component reference implementation.
 
 ---
 
@@ -115,7 +115,7 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 - **PREFER** adding animations for conditional UI
 - **ALWAYS** use form bindings with proper type checking
 
-**EXAMPLE:** See `resources/examples/template.html` for native control flow and form binding examples.
+**EXAMPLE:** See `references/template.html` for native control flow and form binding examples.
 
 ---
 
@@ -215,7 +215,7 @@ export const updateAction = new ApiAction<State, Input, Output>(
 
 ### Common Patterns
 
-See `resources/patterns.md` for detailed examples of conditional field disabling and nonNullable form controls.
+See `references/patterns.md` for detailed examples of conditional field disabling and nonNullable form controls.
 
 ---
 
@@ -265,7 +265,7 @@ See `resources/patterns.md` for detailed examples of conditional field disabling
 
 ### Migration Checklist
 
-See `resources/checklist.md` for the full phase-by-phase migration checklist.
+See `references/checklist.md` for the full phase-by-phase migration checklist.
 
 ---
 
