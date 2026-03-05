@@ -3,8 +3,9 @@
 A Claude Code plugin providing tooling for daily workflow tasks.
 
 > [!IMPORTANT]
-> This is my personal workflow, built primarily for myself.
-> I release rapidly, optimize for failing fast, and may change or remove skills without warning.
+> Thanks for checking this out. It is my personal workflow, built primarily for myself.
+> I experiment in the open and ship updates quickly, so skills may change or occasionally be removed.
+> Questions are always welcome. Feel free to fork, "steal" ideas, or jump straight to the [sources of inspiration](#attribution).
 
 ## Table of Contents
 
