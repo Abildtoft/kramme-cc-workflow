@@ -234,7 +234,7 @@ The `[FIX PIPELINE]` prefix marks commits as iteration fixes, making them easy t
 
 ### Step 7b: Fixup Commit Flow (when `--fixup` is enabled)
 
-Read and follow the fixup commit flow from `resources/fixup-flow.md`. This covers base branch detection, file-to-commit mapping, fixup commit creation, autosquash rebase, and force push with lease.
+Read and follow the fixup commit flow from `references/fixup-flow.md`. This covers base branch detection, file-to-commit mapping, fixup commit creation, autosquash rebase, and force push with lease.
 
 ### Step 9: Repeat
 
@@ -250,7 +250,7 @@ Continue until all checks pass and no unaddressed feedback remains.
 
 **Skip this step if:** `--fixup` mode was used, or `--no-consolidate` flag is set.
 
-Read and follow the consolidation flow from `resources/consolidation-flow.md`. This covers detecting `[FIX PIPELINE]` commits, prompting the user for consolidation options (automated, interactive, or keep separate), mapping commits to targets, executing rebase, and force pushing.
+Read and follow the consolidation flow from `references/consolidation-flow.md`. This covers detecting `[FIX PIPELINE]` commits, prompting the user for consolidation options (automated, interactive, or keep separate), mapping commits to targets, executing rebase, and force pushing.
 
 ---
 

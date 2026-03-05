@@ -1,6 +1,7 @@
 ---
 name: kramme:pr:code-review:team
 description: Run comprehensive PR review using multi-agent execution where specialized reviewers collaborate, cross-validate findings, and challenge each other. Higher quality than standard review but uses more tokens.
+argument-hint: "[aspects] [--base <ref>]"
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code, codex]
@@ -33,13 +34,23 @@ Then stop.
 
 ### Step 1: Determine Review Scope
 
-Same as `/kramme:pr:code-review` Steps 1-5:
+Same as `/kramme:pr:code-review` Steps 1-6:
 
 1. Check git status to identify changed files
-2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, security, removal, simplify, all)
-3. Run `git diff --name-only` to see modified files
-4. Check for previous `REVIEW_OVERVIEW.md` and extract previously addressed findings
-5. Determine applicable reviews based on changes
+2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, security, removal, simplify, all) and `--base <ref>` override
+3. Resolve base branch using 3-tier strategy (explicit `--base` → PR/MR target branch → default branch fallback). See `/kramme:pr:code-review` Step 2 for full logic.
+4. Build a unified change scope (committed PR diff + staged + unstaged + untracked):
+   ```bash
+   BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
+   {
+     git diff --name-only "$BASE_REF"...HEAD
+     git diff --name-only --cached
+     git diff --name-only
+     git ls-files --others --exclude-standard
+   } | sed '/^$/d' | sort -u
+   ```
+5. Check for previous `REVIEW_OVERVIEW.md` and extract previously addressed findings
+6. Determine applicable reviews based on changes
 
 ### Step 2: Spawn Review Agents
 
@@ -49,7 +60,7 @@ Create a multi-agent review session named `pr-review` and use **delegate mode** 
 - **Codex:** launch equivalent parallel review agents via multi-agent mode.
 
 Spawn teammates based on applicable review aspects. Each teammate receives:
-- The git diff command to run (`git diff origin/$BASE_BRANCH...HEAD`)
+- The resolved base branch and diff commands to run (`git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`, `git diff --cached`, `git diff`, `git ls-files --others --exclude-standard`)
 - Their specific review mission (from the corresponding agent definition in `agents/`)
 - Instructions to **message other teammates** when they find cross-cutting issues
 
@@ -82,9 +93,10 @@ Create tasks in the shared task list:
 - Messages individual reviewers if their suggestions would introduce slop
 
 **Phase 3 task (blocked on Phase 2):**
-- "Validate finding relevance against PR diff" -- spawn a new **relevance-validator** teammate
+- "Validate finding relevance against full review scope" -- spawn a new **relevance-validator** teammate
 - Mission from `agents/kramme:pr-relevance-validator.md`
-- Cross-references all findings against the PR diff
+- Pass the resolved `BASE_BRANCH` from Step 1 so relevance validation uses the same PR base
+- Cross-references all findings against the full review scope (committed PR diff + staged/unstaged/untracked local changes)
 - Filters pre-existing and out-of-scope issues
 
 ### Step 4: Monitor and Facilitate
@@ -101,7 +113,7 @@ After all tasks complete:
 1. Gather findings from all teammates
 2. Apply the deslop-reviewer's meta-review annotations
 3. Apply the relevance-validator's filtering
-4. Filter previously addressed findings (same logic as `/kramme:pr:code-review` Step 9)
+4. Filter previously addressed findings (same logic as `/kramme:pr:code-review` Step 10)
 
 ### Step 6: Write REVIEW_OVERVIEW.md
 

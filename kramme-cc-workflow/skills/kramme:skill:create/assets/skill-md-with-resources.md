@@ -23,7 +23,7 @@ user-invocable: {true|false}
 
 ### Step 2: {Name}
 
-Read the {reference name} from `resources/references/{file}.md`.
+Read the {reference name} from `references/{file}.md`.
 
 {TODO: How to use the loaded content.}
 

@@ -179,5 +179,5 @@ If `use_supporting_specs` is true, add this section before "## Design Decisions"
 
 **Naming convention:** `NN-descriptor.md` (e.g., `01-data-model.md`, `02-api-specification.md`)
 
-See `resources/templates/spec-guidance.md` for detailed guidance on supporting specs.
+See `assets/spec-guidance.md` for detailed guidance on supporting specs.
 ```

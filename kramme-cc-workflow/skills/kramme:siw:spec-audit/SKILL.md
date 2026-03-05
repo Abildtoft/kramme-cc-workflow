@@ -254,7 +254,7 @@ Analyze the spec against each dimension below. For each finding, report:
 
 ### 3.4 Dimension Analysis Instructions
 
-Read the dimension-specific instructions from `resources/dimension-instructions.md` and include the relevant dimension blocks in each agent's prompt based on its assigned dimensions.
+Read the dimension-specific instructions from `references/dimension-instructions.md` and include the relevant dimension blocks in each agent's prompt based on its assigned dimensions.
 
 The 8 dimensions are: Coherence, Completeness, Clarity, Scope, Actionability, Testability, Value Proposition, Technical Design. Each includes check items and a severity guide.
 
@@ -326,7 +326,7 @@ options:
 
 ### 5.3 Compile and Write Report
 
-Use the report format template from `resources/templates/spec-audit-report-format.md`.
+Use the report format template from `assets/spec-audit-report-format.md`.
 
 After writing:
 ```
@@ -375,16 +375,16 @@ Before creating any issues:
 For each selected finding:
 
 1. Determine next available `G-` issue number from `siw/issues/`.
-2. Create issue file `siw/issues/ISSUE-G-{NNN}-spec-{slugified-title}.md` using `resources/templates/spec-issue-template.md`.
+2. Create issue file `siw/issues/ISSUE-G-{NNN}-spec-{slugified-title}.md` using `assets/spec-issue-template.md`.
 
 3. Update `siw/OPEN_ISSUES_OVERVIEW.md` with new issue rows.
-4. Update `siw/LOG.md` Current Progress section using `resources/templates/spec-log-last-completed.md`.
+4. Update `siw/LOG.md` Current Progress section using `assets/spec-log-last-completed.md`.
 
 ---
 
 ## Step 7: Report Summary
 
-Use the summary template from `resources/templates/spec-audit-summary.md`.
+Use the summary template from `assets/spec-audit-summary.md`.
 
 **STOP HERE.** Wait for the user's next instruction.
 
