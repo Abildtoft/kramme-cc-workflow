@@ -132,9 +132,19 @@ See [docs/siw.md](docs/siw.md) for the full workflow reference.
 
 ```bash
 /kramme:pr:code-review        # run specialized review agents on your branch
+/kramme:pr:product-review     # deep product review of your changes
 /kramme:pr:resolve-review     # fix the findings
+/kramme:pr:finalize           # final readiness check before shipping
 /kramme:pr:create             # restructure commits and open the PR
 /kramme:pr:fix-ci             # iterate until CI passes
+```
+
+### Inspect and test a live app
+
+```bash
+/kramme:browse http://localhost:3000           # navigate, screenshot, inspect
+/kramme:qa http://localhost:3000               # structured QA with evidence
+/kramme:product:audit http://localhost:3000     # whole-product experience review
 ```
 
 ### Quick utilities
@@ -172,6 +182,7 @@ See [docs/siw.md](docs/siw.md) for detailed workflow documentation.
 | `/kramme:siw:generate-phases` | User | `[spec-file-path]` | Break spec into atomic, phase-based issues with tests and validation.<br><br>Uses `P1-001`, `P2-001`, `G-001` numbering.<br><br>Reviews breakdown with subagent before creating files. |
 | `/kramme:siw:issue-implement` | User | `<G-001 \| P1-001 \| ISSUE-G-XXX>` | Start implementing a defined local issue with codebase exploration and planning.<br><br>Works on current branch. |
 | `/kramme:siw:issue-implement:team` | User | `[issue-ids or 'phase N']` | Implement multiple SIW issues in parallel using multi-agent execution.<br><br>Each agent gets a full context window and implements one issue. Best for phases with multiple independent issues.<br><br>Requires Agent Teams in Claude Code or Codex with `multi_agent` enabled. |
+| `/kramme:siw:product-review` | User | `[spec-file-path(s) \| 'siw']` | Experimental.<br><br>Product critique of SIW specs/plans before implementation.<br><br>Evaluates target user clarity, problem/solution fit, user state modeling, scope correctness, and success criteria quality.<br><br>Optionally creates SIW issues for product gaps. |
 | `/kramme:siw:spec-audit` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Audit spec quality (coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design) before implementation.<br><br>Produces a structured report and optionally creates SIW issues. |
 | `/kramme:siw:spec-audit:team` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Team-based spec audit where dimension specialists collaborate, cross-validate findings, and challenge each other's assessments.<br><br>Higher quality than standard spec-audit but uses more tokens.<br><br>Requires Agent Teams in Claude Code or Codex with `multi_agent` enabled. |
 | `/kramme:siw:implementation-audit` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Exhaustively audit codebase against specification files.<br><br>Finds naming misalignments, missing implementations, and spec drift.<br><br>Produces a structured report and optionally creates SIW issues. |
@@ -190,6 +201,7 @@ PR creation, review, iteration, and resolution.
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
 | `/kramme:pr:create` | User | — | Create a clean PR with narrative-quality commits and comprehensive description.<br><br>Orchestrates branch setup, commit restructuring, and PR creation. |
+| `/kramme:pr:product-review` | User | `[--base <ref>] [--threshold 0-100]` | Experimental.<br><br>Deep product review of branch and local changes.<br><br>Evaluates user-value alignment, flow completeness, missing states, copy/defaults, permission behavior, and adjacent-flow regressions.<br><br>Outputs PRODUCT_REVIEW_OVERVIEW.md. |
 | `/kramme:pr:code-review` | User | — | Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop).<br><br>Outputs REVIEW_OVERVIEW.md with actionable findings. |
 | `/kramme:pr:code-review:team` | User | — | Team-based PR review using multi-agent execution where specialized reviewers collaborate, cross-validate findings, and challenge each other's suggestions.<br><br>Higher quality, higher token cost.<br><br>Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
 | `/kramme:pr:resolve-review` | User | `[--source local\|online \| --local \| --online] [--reply] [review-content\|instructions\|url]` | Resolve findings from code reviews.<br><br>Evaluates each finding for scope and validity, implements fixes, and generates a response document.<br><br>Use `--source local` (or `--local`) to target `REVIEW_OVERVIEW.md` only, or `--source online` (or `--online`) to target PR/MR review comments.<br><br>Use `--reply` to post replies and resolve addressed review threads/discussions on the current PR/MR (`--answer-and-resolve` is still supported as a legacy alias).<br><br>When local source is selected, no platform replies or thread resolution are performed even if `--reply` is set. |
@@ -198,7 +210,18 @@ PR creation, review, iteration, and resolution.
 | `/kramme:pr:generate-description` | User | `[--non-interactive] [--direct] [--visual]` | Write a structured PR title and body from git diff, commit log, and Linear context.<br><br>Optionally auto-detects a running dev server and captures screenshots with `--visual`. |
 | `/kramme:pr:ux-review` | User | `[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [parallel]` | Audit UI, UX, and product experience of PR changes using specialized agents for accessibility, usability heuristics, product thinking, and visual consistency.<br><br>Optionally uses browser automation for visual review. |
 | `/kramme:pr:ux-review:team` | User | `[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100]` | Team-based UX audit using multi-agent execution where specialized reviewers (usability, product, visual, accessibility) collaborate, cross-validate findings, and challenge each other.<br><br>Higher quality, higher token cost.<br><br>Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
+| `/kramme:pr:finalize` | User | `[--skip <skill,...>] [--app-url <url>] [--base <ref>]` | Experimental.<br><br>Final PR readiness orchestration.<br><br>Coordinates verify:run, code review, product review, UX review, QA, and description generation. Produces a ready/not-ready/ready-with-caveats verdict.<br><br>Not for creating PRs, fixing CI, or merging code. |
 | `/kramme:pr:rebase` | User | — | Rebase current branch onto latest main/master, then force push.<br><br>Use when your PR is behind the base branch. |
+
+#### Browser & QA
+
+Live product inspection and structured testing.
+
+| Skill | Invocation | Arguments | Description |
+|-------|------------|-----------|-------------|
+| `/kramme:browse` | User | `<url> [--screenshot] [--console] [--network]` | Experimental.<br><br>Browser operator for live product inspection.<br><br>Detects available browser MCP tooling (claude-in-chrome, chrome-devtools, playwright) and provides consistent navigation, screenshot, interaction, and evidence capture. |
+| `/kramme:qa` | User | `<url> [quick\|diff-aware\|targeted <route>] [--base <ref>] [--regression]` | Experimental.<br><br>Structured QA testing with evidence capture.<br><br>Runs smoke checks, diff-aware validation, or targeted route testing. Produces QA_REPORT.md with screenshots, repro steps, severity, and recommended fixes. |
+| `/kramme:product:audit` | User | `<url> [--flows <flow1,flow2,...>] [--focus <dimension>]` | Experimental.<br><br>Whole-product review across flows and surfaces.<br><br>Evaluates navigation coherence, feature discoverability, onboarding, cross-flow consistency, dead ends, friction, and trust/safety. Produces PRODUCT_AUDIT_OVERVIEW.md. |
 
 #### Code Quality & Review
 
@@ -294,7 +317,7 @@ Session management, verification, artifact cleanup, and hook configuration.
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:workflow-artifacts:cleanup` | User | — | Delete workflow artifacts (REVIEW_OVERVIEW.md, UX_REVIEW_OVERVIEW.md, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files, visual diagram HTML files).<br><br>For SIW-specific cleanup, use `/kramme:siw:remove`. |
+| `/kramme:workflow-artifacts:cleanup` | User | — | Delete workflow artifacts (REVIEW_OVERVIEW.md, UX_REVIEW_OVERVIEW.md, PRODUCT_REVIEW_OVERVIEW.md, PRODUCT_REVIEW.md, QA_REPORT.md, QA_BASELINE.json, PRODUCT_AUDIT_OVERVIEW.md, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/PRODUCT_REVIEW.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files, visual diagram HTML files).<br><br>For SIW-specific cleanup, use `/kramme:siw:remove`. |
 | `/kramme:changelog:generate` | User | — | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
 | `/kramme:hooks:configure-links` | User | `[show\|reset\|KEY=VALUE ...]` | Configure `context-links` hook settings by writing local overrides to `hooks/context-links.config` (workspace slug, team keys, regexes). |
 | `/kramme:hooks:toggle` | User | `<hook-name\|status> [enable\|disable]` | Enable or disable a plugin hook.<br><br>Use `status` to list all hooks, or specify a hook name to toggle. |
@@ -343,7 +366,7 @@ Specialized subagents for PR review and UX audit tasks. Invoked by `/kramme:pr:c
 | `kramme:logic-reviewer` | Reviews for business logic flaws, race conditions, and TOCTOU bugs. |
 | `kramme:a11y-auditor` | Audits accessibility (WCAG 2.1 AA): ARIA, semantic HTML, color contrast, keyboard nav, focus management. |
 | `kramme:ux-reviewer` | Reviews usability (Nielsen's 10 heuristics) and interaction states (loading, error, empty, feedback). |
-| `kramme:product-reviewer` | Reviews product experience: feature discoverability, user flow completeness, edge cases, copy quality. |
+| `kramme:product-reviewer` | Reviews product experience in PR mode (diff-scoped) or spec mode (plan-scoped): feature discoverability, user flow completeness, edge cases, copy quality, target user clarity, problem/solution fit, trust/safety, post-action experience. |
 | `kramme:visual-reviewer` | Reviews visual consistency (design tokens, spacing, typography, color) and responsive design. |
 
 ## Hooks
