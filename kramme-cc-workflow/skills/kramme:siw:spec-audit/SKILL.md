@@ -155,6 +155,17 @@ For each element, capture:
 - **source_section**: Heading hierarchy
 - **content_summary**: Brief description of what the section contains
 
+### 2.2.5 Extract Work Context
+
+After reading all spec files, look for a `## Work Context` section in the spec files:
+
+1. Parse the markdown table to extract: Work Type, Priority Dimensions, Deprioritized dimensions
+   - If multiple spec files define Work Context, use the main spec file (the one matching the SIW init filename). If ambiguous, use the first found and warn.
+2. If not found or malformed, default to Production Feature (all dimensions equally weighted, no caps)
+3. Store as `work_context`
+
+**Work Context drives severity adjustments in Steps 3 and 4.** See downstream behavior rules below.
+
 ### 2.3 Present Extraction Summary
 
 ```
@@ -166,7 +177,10 @@ Sources:
 
 Structural Elements Found: {total}
 Sections identified: {count}
+Work Context: {work_context.work_type} — Priority: {priority_dimensions}, Deprioritized: {deprioritized}
 ```
+
+If no Work Context found, show: `Work Context: Not specified (using Production Feature defaults)`
 
 **If no extractable structure found:**
 
@@ -250,6 +264,23 @@ Analyze the spec against each dimension below. For each finding, report:
 - **Mark confidence on Technical Design findings.** These are more subjective — use HIGH | MEDIUM | LOW.
 
 {Dimension-specific instructions inserted here — see Section 3.4}
+
+## Work Context Adjustments
+
+This spec has Work Type: {work_context.work_type}
+
+Priority dimensions (flag even minor issues): {work_context.priority_dimensions}
+Deprioritized dimensions (cap at Minor severity): {work_context.deprioritized}
+
+When evaluating **deprioritized dimensions**:
+- Report findings normally, but tag each finding with: **[Deprioritized — capped at Minor]**
+- Do NOT assign Critical or Major severity to deprioritized dimension findings
+
+When evaluating **priority dimensions**:
+- Apply strict scrutiny. Even small gaps should be flagged.
+- Tag priority findings with: **[Priority dimension]**
+
+{If work_context is Production Feature or not specified, omit this entire section from the agent prompt.}
 ```
 
 ### 3.4 Dimension Analysis Instructions
@@ -281,6 +312,16 @@ For each finding:
 | **Critical** | Would block implementation or lead to fundamentally wrong implementation. Missing core requirements, contradictory specs, undefined key behaviors, fundamental design flaws. |
 | **Major** | Risks incorrect implementation or significant rework. Ambiguous requirements, missing edge cases, unclear scope boundaries, design gaps. |
 | **Minor** | Cosmetic or low-risk. Inconsistent terminology, missing non-critical sections, formatting issues, suboptimal choices. |
+
+### 4.3.5 Apply Work Context Severity Caps
+
+If `work_context` specifies deprioritized dimensions:
+
+For each finding in a deprioritized dimension:
+- If severity was assigned as Critical or Major, downgrade to Minor
+- Annotate: `[Deprioritized — capped at Minor from {original_severity}]`
+
+This ensures deprioritized dimensions never produce Critical or Major findings, while still reporting the issues for visibility.
 
 ### 4.4 Compute Dimension Scores
 

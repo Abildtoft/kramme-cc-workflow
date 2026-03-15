@@ -56,6 +56,15 @@ Auto-detection rules:
 
 If `siw/AUDIT_SPEC_REPORT.md` exists, read it and use unresolved findings as input signals.
 
+### 1.2 Extract Work Context
+
+After resolving spec files, look for a `## Work Context` section in the spec files:
+
+1. Parse the markdown table to extract: Work Type, Priority Dimensions, Deprioritized dimensions
+   - If multiple spec files define Work Context, use the main spec file (the one matching the SIW init filename). If ambiguous, use the first found and warn.
+2. If not found or malformed, default to Production Feature (all dimensions equally weighted)
+3. Store as `work_context`
+
 ## Step 2: Build Quality Gap Map
 
 Analyze the spec files against these SIW quality dimensions:
@@ -75,7 +84,16 @@ Create a short gap map:
 - Affected file/section
 - One-line problem summary
 
-Prioritize the top 3-5 highest-impact gaps for interview focus.
+Prioritize the top 3-5 gaps for interview focus using Work Context ordering:
+
+1. Critical gaps in **priority dimensions** (always first)
+2. Major gaps in priority dimensions
+3. Critical gaps in normal dimensions (neither priority nor deprioritized)
+4. Major gaps in normal dimensions
+5. Critical gaps in **deprioritized dimensions** (include only if Critical)
+6. Skip Major/Minor gaps in deprioritized dimensions unless all other gaps are resolved
+
+If `work_context` is Production Feature or not specified, fall back to highest-impact ordering as before.
 
 ## Step 3: Run Targeted Discovery Interview
 
@@ -97,6 +115,8 @@ Ask options that force concrete tradeoffs (2-4 options, plus user "Other").
 - **Actionability**: Task breakdown quality, handoff readiness, sequencing
 - **Testability**: Verifiable outcomes, measurable success criteria, failure criteria
 - **Technical design**: Data contracts, API behavior, state ownership, migration details
+
+When Work Context specifies deprioritized dimensions, skip those dimensions in interview unless the gap map shows a Critical-severity issue. For priority dimensions, ensure at least one interview round explicitly targets each priority dimension.
 
 Stop when:
 - Major gaps are resolved by decisions, or

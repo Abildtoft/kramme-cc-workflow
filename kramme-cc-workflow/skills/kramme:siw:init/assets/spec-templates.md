@@ -16,6 +16,16 @@ Use when `linked_spec_files` exists. The SIW spec acts as a lightweight coordina
 **Status:** Planning
 **Created:** {current date}
 
+## Work Context
+
+| Attribute | Value |
+|-----------|-------|
+| **Work Type** | {work_context_profile.work_type} |
+| **Maturity** | {work_context_profile.maturity} |
+| **Priority Dimensions** | {work_context_profile.priority_dimensions} |
+| **Deprioritized** | {work_context_profile.deprioritized or "None"} |
+| **Notes** | {work_context_profile.notes or empty} |
+
 ## Linked Specifications
 
 The following external documents are the source of truth for this project:
@@ -55,6 +65,16 @@ Use when `discovered_content` exists. Discovery mode generates content through i
 **Status:** Planning
 **Created:** {current date}
 **Source:** Discovery interview
+
+## Work Context
+
+| Attribute | Value |
+|-----------|-------|
+| **Work Type** | {work_context_profile.work_type} |
+| **Maturity** | {work_context_profile.maturity} |
+| **Priority Dimensions** | {work_context_profile.priority_dimensions} |
+| **Deprioritized** | {work_context_profile.deprioritized or "None"} |
+| **Notes** | {work_context_profile.notes or empty} |
 
 ## Objectives
 
@@ -135,6 +155,16 @@ Use when no linked files or discovered content (current default behavior).
 
 **Status:** Planning
 **Created:** {current date}
+
+## Work Context
+
+| Attribute | Value |
+|-----------|-------|
+| **Work Type** | {work_context_profile.work_type} |
+| **Maturity** | {work_context_profile.maturity} |
+| **Priority Dimensions** | {work_context_profile.priority_dimensions} |
+| **Deprioritized** | {work_context_profile.deprioritized or "None"} |
+| **Notes** | {work_context_profile.notes or empty} |
 
 ## Objectives
 

@@ -33,6 +33,8 @@ Set up the three-document system for tracking complex implementations locally, w
     ↓
 [Brief interview OR Confirm imported content]
     ↓
+[Select work context] -> Profile for downstream tool adaptation
+    ↓
 [Auto-detect spec type] -> Confirm filename
     ↓
 [Ask about supporting specs] -> Need detailed specs?
@@ -149,7 +151,7 @@ If `$ARGUMENTS` starts with "discover" or "interview":
 
 4. Transform interview output to SIW format using the "Interview Output to SIW Mapping" section in `references/discovery-interview.md`.
 5. Store as `discovered_content`
-6. **Skip Phase 2**, continue to Phase 3 (Auto-detect Spec Type)
+6. **Skip Phase 2**, continue to Phase 2.8 (Work Context Selection)
 
 ### Case 4: No Arguments
 
@@ -240,6 +242,42 @@ Store the response as `project_description`.
 
 If user provides empty response or selects "Skip", use a generic description derived from the linked file names.
 
+## Phase 2.8: Work Context Selection
+
+Select a work context profile that tells downstream tools (spec-audit, product-review, discovery, generate-phases) how to adapt their rigor and focus.
+
+Read the profile definitions and auto-detection heuristics from `references/work-context-profiles.md`.
+
+### Auto-detect Suggested Profile
+
+Based on `project_description` (or `discovered_content` topic), use the keyword heuristics from the reference file to suggest a profile. Default to Production Feature.
+
+### Ask User
+
+Use AskUserQuestion:
+
+```yaml
+header: "Work Context"
+question: "What type of work is this? This adjusts how spec audits, product reviews, and phase generation behave."
+options:
+  - label: "{auto-detected profile} (Recommended)"
+    description: "{one-line description from profile}"
+  - label: "Production Feature"
+    description: "Full rigor across all quality dimensions"
+  - label: "Prototype / Spike"
+    description: "Focus on actionability and technical design; skip commercial viability"
+  - label: "Internal Tool"
+    description: "Focus on actionability and clarity; skip value proposition"
+  - label: "Tech Debt / Refactor"
+    description: "Focus on technical design and testability; skip value proposition and scope"
+  - label: "Documentation / Process"
+    description: "Focus on clarity and completeness; skip technical design"
+```
+
+**Note:** Deduplicate — if the auto-detected profile is Production Feature, do not show it twice. Show one "Production Feature (Recommended)" option instead.
+
+Store the selected profile as `work_context_profile` with all attribute values from the reference file (work_type, maturity, priority_dimensions, deprioritized, notes).
+
 ## Phase 3: Auto-detect Spec Type and Confirm
 
 Based on `project_description`, auto-detect the most appropriate spec filename:
@@ -302,57 +340,7 @@ Read the spec template for the appropriate path from `assets/spec-templates.md`.
 
 ### 4.2 Create siw/LOG.md
 
-**Note:** Creating LOG.md during init ensures consistent structure. The file will be populated as work progresses.
-
-Create `siw/LOG.md` with initial structure:
-
-```markdown
-# LOG.md
-
-## Current Progress
-
-**Last Updated:** {current date}
-**Quick Summary:** Project initialized, ready for issue definition.
-
-### Project Status
-
-- **Status:** Planning | **Current Phase:** Initialization | **Overall Progress:** 0 tasks
-
-### Last Completed
-
-- Project initialization
-
-### Next Steps
-
-1. Define first issue with `/kramme:siw:issue-define`
-2. Begin implementation with `/kramme:siw:issue-implement`
-3. **Blockers:** None
-
----
-
-## Decision Log
-
-_Decisions will be documented here as they are made._
-
----
-
-## Rejected Alternatives Summary
-
-| Alternative | For | Why Rejected | Decision # |
-|------------|-----|--------------|------------|
-| _None yet_ | | | |
-
----
-
-## Guiding Principles
-
-1. {To be defined during implementation}
-
-## References
-
-- Spec: `siw/{spec_filename}`
-- Issues: `siw/OPEN_ISSUES_OVERVIEW.md`
-```
+Read the template from `assets/log-template.md`. Populate `{spec_filename}` and `{current date}`, then write to `siw/LOG.md`.
 
 ### 4.3 Create siw/OPEN_ISSUES_OVERVIEW.md
 
