@@ -57,7 +57,7 @@ Then — and only then — continue to the next finding.
     ↓
 [Locate and read audit report]
     ↓
-[Extract actionable findings: DIV-*, EXT-*, SPEC-* (plus legacy DISC-*/MISS-*)]
+[Extract actionable findings: DIV-*, EXT-*, SPEC-*, PROD-* (plus legacy DISC-*/MISS-*)]
     ↓
 [Optionally filter to user-selected finding IDs]
     ↓
@@ -109,6 +109,7 @@ Extract actionable findings from headings:
 - `### DISC-NNN: ...` (legacy)
 - `### MISS-NNN: ...` (legacy)
 - `### SPEC-NNN: ...`
+- `### PROD-NNN: ...`
 
 For each finding, collect:
 - Finding id and title
