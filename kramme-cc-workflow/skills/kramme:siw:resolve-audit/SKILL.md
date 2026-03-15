@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:resolve-audit
 description: Resolve audit findings one-by-one with executive summaries, alternatives, recommendation, and SIW issue creation
-argument-hint: "[audit-report-path] [finding-id(s)]"
+argument-hint: "[audit-report-path] [finding-id(s)] [--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -10,24 +10,29 @@ user-invocable: true
 
 Turn an audit report into decision-ready SIW issues by walking findings one at a time with clear options and a recommended path.
 
+**Flag:** `--auto` — Skip the per-finding AskUserQuestion step and automatically choose the best resolution option for each finding based on spec alignment, maintenance cost, delivery risk, and follow-up effort.
+If both implementation and spec audit reports exist and you want to stay scoped to one of them, pass that report path explicitly.
+
 ## Workflow Boundaries
 
 **This command triages audit findings and creates planning issues.**
 
-- **DOES**: Read audit report, summarize each finding, propose alternatives, recommend an option, capture user preference, create SIW issue(s)
+- **DOES**: Read audit report, summarize each finding, propose alternatives, recommend an option, capture user preference or auto-select a resolution, create SIW issue(s)
 - **DOES NOT**: Implement code changes
 
 Implementation stays separate and should happen later via `/kramme:siw:issue-implement`.
 
 ## Hard Constraints
 
-**NEVER** present more than one finding at a time. Each finding gets its own full cycle (executive summary, alternatives, recommendation, user choice, issue creation) before the next finding begins.
+**NEVER** present more than one finding at a time. Each finding gets its own full cycle (executive summary, alternatives, recommendation, resolution selection, issue creation) before the next finding begins.
 
 **NEVER** batch, group, or summarize multiple findings in a single message during the per-finding loop (Steps 4-6). Every finding is presented individually with its complete structure.
 
-**NEVER** skip the AskUserQuestion step for any finding. The user must explicitly choose an option before an issue is created.
+**WITHOUT `--auto`**, **NEVER** skip the AskUserQuestion step for any finding. The user must explicitly choose an option before an issue is created.
 
-**NEVER** proceed to the next finding until the user has responded to the current finding's AskUserQuestion and the corresponding SIW issue has been created.
+**WITHOUT `--auto`**, **NEVER** proceed to the next finding until the user has responded to the current finding's AskUserQuestion and the corresponding SIW issue has been created.
+
+**WITH `--auto`**, **NEVER** ask the user to choose among the proposed options for a finding. Select the strongest option yourself, create the SIW issue immediately, and continue to the next finding after the issue is created.
 
 **NEVER** replace the per-finding walkthrough with a summary table, overview list, or condensed format. The full structure from "Required Review Style" is mandatory for every single finding during Steps 4-6.
 
@@ -38,7 +43,9 @@ Implementation stays separate and should happen later via `/kramme:siw:issue-imp
 1. Detailed executive summary (with code references when available)
 2. Alternative options
 3. Well-argued preferred option
-4. User choice via AskUserQuestion — **STOP and wait for response**
+4. Resolution selection:
+   - Default mode: user choice via AskUserQuestion — **STOP and wait for response**
+   - `--auto` mode: model-selected option — proceed directly to issue creation
 5. SIW issue creation for the chosen option
 
 Then — and only then — continue to the next finding.
@@ -46,7 +53,7 @@ Then — and only then — continue to the next finding.
 ## Process Overview
 
 ```
-/kramme:siw:resolve-audit [audit-report-path] [finding-id(s)]
+/kramme:siw:resolve-audit [audit-report-path] [finding-id(s)] [--auto]
     ↓
 [Locate and read audit report]
     ↓
@@ -65,13 +72,18 @@ Then — and only then — continue to the next finding.
 
 ## Step 1: Locate Report
 
-1. If `$ARGUMENTS` includes a markdown path, use that path and skip auto-detection.
-2. Otherwise, discover available report files in this order:
+1. Parse `$ARGUMENTS` first:
+   - Treat `--auto` as an optional control flag, not a path or finding id
+   - Remaining markdown path tokens are candidate report paths
+   - Remaining `DIV-*`, `EXT-*`, `DISC-*`, `MISS-*`, and `SPEC-*` tokens are finding filters
+2. If the parsed arguments include a markdown path, use that path and skip auto-detection.
+3. Otherwise, discover available report files in this order:
    - `siw/AUDIT_IMPLEMENTATION_REPORT.md`
    - `siw/AUDIT_SPEC_REPORT.md`
    - `AUDIT_IMPLEMENTATION_REPORT.md` (project root)
    - `AUDIT_SPEC_REPORT.md` (project root)
-3. If **both implementation and spec reports exist** (any location), ask which type to resolve before continuing:
+4. If **both implementation and spec reports exist** (any location):
+   - Without `--auto`, ask which type to resolve before continuing:
 
 ```yaml
 header: "Choose Audit Type"
@@ -85,8 +97,9 @@ options:
     description: "Resolve findings from both reports in one run"
 ```
 
-4. If only one report type exists, use it automatically.
-5. If no report exists, stop and instruct the user to run `/kramme:siw:implementation-audit` or `/kramme:siw:spec-audit` first.
+   - With `--auto`, resolve both reports in one run. Process implementation findings first, then spec findings.
+5. If only one report type exists, use it automatically.
+6. If no report exists, stop and instruct the user to run `/kramme:siw:implementation-audit` or `/kramme:siw:spec-audit` first.
 
 ## Step 2: Parse Findings
 
@@ -112,7 +125,7 @@ Ignore:
 
 ## Step 3: Select Scope
 
-If `$ARGUMENTS` includes finding ids (example: `DIV-002 EXT-001 SPEC-003`), process only those.
+If the parsed arguments include finding ids (example: `DIV-002 EXT-001 SPEC-003`), process only those.
 Otherwise, process all actionable findings in severity order:
 1. Critical findings (DIV-*, EXT-*, DISC-*, MISS-*, SPEC-*)
 2. Major findings
@@ -187,9 +200,9 @@ State a clear recommendation and justify it with:
 - Reduction in ambiguity or rework risk
 - Effort to revise vs. cost of leaving the gap
 
-### 4.4 Capture User Choice
+### 4.4 Select Resolution
 
-Use AskUserQuestion to choose an option before creating an issue:
+Without `--auto`, use AskUserQuestion to choose an option before creating an issue:
 
 ```yaml
 header: "Choose Resolution"
@@ -207,7 +220,7 @@ Send this AskUserQuestion as a standalone message immediately after Step 4.3 (re
 
 If user asks to modify options, refine and re-ask before creating the issue.
 
-**STOP — MANDATORY GATE**
+**STOP — MANDATORY GATE (default mode only)**
 
 After presenting AskUserQuestion for a finding:
 1. **STOP** and wait for the user's response
@@ -216,6 +229,13 @@ After presenting AskUserQuestion for a finding:
 4. **DO NOT** combine the question with any other content
 
 Only after the user selects an option (or asks for modifications), proceed to Step 5 to create the SIW issue for this single finding.
+
+With `--auto`:
+1. **DO NOT** send AskUserQuestion for the finding
+2. Select the best option yourself, usually the recommended option from Step 4.3
+3. State `Selected resolution: Option X — {one-line why}` immediately after the recommendation
+4. Proceed directly to Step 5 without waiting for user input
+5. If the original options are weak or incomplete, refine them first and then choose the strongest revised option
 
 ## Step 5: Create SIW Issue For Chosen Option
 
@@ -345,6 +365,7 @@ After creating the SIW issue for one finding:
 1. Send a standalone completion message for that finding to the user
 2. **Return to Step 4** for the next finding in the queue
 3. In a separate subsequent message, present the next finding's full executive summary (Step 4.1) — do not skip or abbreviate
+4. With `--auto`, continue immediately after the completion message without waiting for user input
 
 **NEVER** process the next finding without completing the full cycle (Steps 4 through 5) for the current one.
 

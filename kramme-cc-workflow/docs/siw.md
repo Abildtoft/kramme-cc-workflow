@@ -268,7 +268,7 @@ When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW
 | Skill | Arguments | Description |
 |-------|-----------|-------------|
 | `/kramme:siw:implementation-audit` | `[spec-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Adversarial, exhaustive audit of code against spec. Pass A checks requirement-by-requirement conformance. Pass B scans for undocumented extensions. Includes conflict reconciliation and coverage gates. |
-| `/kramme:siw:resolve-audit` | `[audit-report-path] [finding-id(s)]` | Resolve audit findings one at a time. For each finding: executive summary, alternatives, recommended option, then user choice. Creates SIW issues for findings that need work. |
+| `/kramme:siw:resolve-audit` | `[audit-report-path] [finding-id(s)] [--auto]` | Resolve audit findings one at a time. By default each finding gets an executive summary, alternatives, a recommended option, then user choice. Add `--auto` to let the model select the resolution and create issues without pausing. If both audit reports exist, pass the report path to keep the run scoped. |
 
 ### Lifecycle Management
 
@@ -303,7 +303,7 @@ Full lifecycle from spec to completion:
 /kramme:siw:issue-implement P1-002            # Continue through phase
 /kramme:siw:issue-implement P2-001            # Move to phase 2
 /kramme:siw:implementation-audit              # Verify spec conformance
-/kramme:siw:resolve-audit                     # Triage audit findings
+/kramme:siw:resolve-audit siw/AUDIT_IMPLEMENTATION_REPORT.md --auto  # Triage implementation audit findings non-interactively
 /kramme:siw:issues-reindex                    # Clean up DONE issues
 /kramme:siw:close                             # Generate docs, clean up
 ```
