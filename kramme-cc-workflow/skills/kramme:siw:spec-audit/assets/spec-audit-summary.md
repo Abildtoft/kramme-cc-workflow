@@ -31,6 +31,7 @@ Next Steps:
   - Fix critical findings in the spec before starting implementation
   - Address major findings to reduce implementation risk
   - Resolve findings with executive summaries and issue creation: /kramme:siw:resolve-audit {report_path}
+  - Or let the model choose each resolution automatically: /kramme:siw:resolve-audit {report_path} --auto
   - Re-run after spec revisions to verify quality: /kramme:siw:spec-audit
   - When spec is ready, begin implementation: /kramme:siw:generate-phases or /kramme:siw:issue-implement
   - Clean up report when done: /kramme:workflow-artifacts:cleanup

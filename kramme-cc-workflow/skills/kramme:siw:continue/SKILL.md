@@ -28,7 +28,7 @@ A local issue tracking system using markdown files to plan, track, and document 
 /kramme:siw:issue-implement G-001   # Start implementing
 /kramme:siw:spec-audit               # Audit spec quality before implementation
 /kramme:siw:implementation-audit    # Audit code against spec for discrepancies
-/kramme:siw:resolve-audit           # Walk audit findings one-by-one and create SIW issues
+/kramme:siw:resolve-audit           # Walk audit findings one-by-one and create SIW issues (--auto + report path to stay scoped)
 /kramme:siw:issues-reindex          # Remove DONE issues, renumber within groups
 /kramme:siw:reset                   # Reset for next iteration (keeps spec)
 /kramme:siw:close                   # Generate docs and clean up
@@ -118,7 +118,7 @@ Issues use prefix-based numbering:
 | `/kramme:siw:issue-implement` | Start implementing a defined issue (accepts `G-001`, `P1-001`, etc.) |
 | `/kramme:siw:spec-audit` | Audit spec quality (coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design) before implementation |
 | `/kramme:siw:implementation-audit` | Audit codebase against spec for discrepancies, naming misalignments, and missing implementations |
-| `/kramme:siw:resolve-audit` | Resolve audit findings one-by-one with executive summaries, alternatives, and SIW issue creation |
+| `/kramme:siw:resolve-audit` | Resolve audit findings one-by-one with executive summaries, alternatives, and SIW issue creation. Add `--auto` to let the model choose each resolution without pausing for confirmation. If both audit reports exist, pass the report path to keep the run scoped. |
 | `/kramme:siw:issues-reindex` | Remove DONE issues and renumber remaining within each prefix group |
 | `/kramme:siw:reset` | Reset workflow state (migrate log to spec, clear issues) |
 | `/kramme:siw:close` | Close SIW project, generate docs in `docs/<feature>/`, remove temporary files |
@@ -145,7 +145,7 @@ ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw
 | **Ready to implement** | Run `/kramme:siw:issue-implement {number}` |
 | **Spec written, not yet validated** | Run `/kramme:siw:spec-audit` to check spec quality before implementing |
 | **Implementation done** | Run `/kramme:siw:implementation-audit` to verify spec compliance |
-| **Audit report ready** | Run `/kramme:siw:resolve-audit` to triage findings and create issues one-by-one |
+| **Audit report ready** | Run `/kramme:siw:resolve-audit` to triage findings and create issues one-by-one, or add `--auto` for a non-interactive pass. If both audit reports exist, pass the report path to avoid resolving both. |
 | **Iteration complete** | Run `/kramme:siw:reset` to start fresh |
 | **Project complete, want docs** | Run `/kramme:siw:close` to generate documentation and clean up |
 | **Project complete** | Run `/kramme:siw:remove` to clean up |
