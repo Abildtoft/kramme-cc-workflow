@@ -1,6 +1,6 @@
 ---
 name: kramme:code:refactor-opportunities
-description: "Scan the entire codebase (or a specified scope) for refactoring candidates. Use when the user asks to find refactor opportunities, audit code quality, identify tech debt, or wants a codebase health check."
+description: "(experimental) Scan the entire codebase (or a specified scope) for refactoring candidates. Use when the user asks to find refactor opportunities, audit code quality, identify tech debt, or wants a codebase health check."
 disable-model-invocation: false
 user-invocable: true
 argument-hint: [scope — e.g. src/api, or omit for full codebase]
