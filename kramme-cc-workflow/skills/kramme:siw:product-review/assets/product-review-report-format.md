@@ -3,6 +3,14 @@
 **Date:** {date}
 **Spec Files Reviewed:** {list}
 
+## Work Context
+
+{If work_context found:}
+Work Type: **{work_type}** — {adjustments applied, e.g. "Internal Tool adjustments: market fit analysis skipped"}
+
+{If no work_context found:}
+Not specified — full product review applied.
+
 ## Summary
 
 {2-3 sentence overall assessment of the spec's product quality. Does it solve the right problem for the right users? Is it scoped to deliver value?}

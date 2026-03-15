@@ -125,6 +125,14 @@ rm siw/issues/ISSUE-*.md
 
 ## Phase 2: Spec Analysis
 
+### 2.0.5 Extract Work Context
+
+After finding spec files, look for a `## Work Context` section in any of the spec files:
+
+1. Parse the markdown table to extract: Work Type, Priority Dimensions, Deprioritized dimensions
+2. If not found, default to Production Feature (3-5 phases, standard sizing)
+3. Store as `work_context`
+
 ### 2.1 Read Spec Content
 
 Read the main spec file and any supporting specs found in Phase 1.2.
@@ -146,7 +154,12 @@ Identify and extract:
 Analyze the spec to find natural phase boundaries:
 - Look for milestones, logical groupings, or dependency chains
 - Each phase should result in **demoable software** that can be run and tested
-- Default to 3-5 phases for medium projects
+- Default phase count depends on Work Context:
+  - **Production Feature** (default): 3-5 phases. Each phase results in demoable, tested software.
+  - **Prototype / Spike**: 2-3 phases. Larger, more exploratory phases. Phase 1 proves the core concept. Acceptance criteria focus on "does it work" over "is it production-ready." Skip polish and documentation phases.
+  - **Internal Tool**: 3-4 phases. Prioritize getting to a working tool fast. Phase 1 is the happy-path core workflow.
+  - **Tech Debt / Refactor**: 2-4 phases ordered by risk. Phase 1 tackles the highest-risk transformation with rollback capability. Include explicit rollback verification in phase acceptance criteria.
+  - **Documentation / Process**: Phases map to document sections or workflow stages. Each phase produces a reviewable deliverable.
 - Identify cross-cutting concerns for the "General" category (setup, tooling, docs)
 
 ### 3.2 Break Into Atomic Tasks
@@ -183,7 +196,14 @@ Launch a Task subagent to review the proposed breakdown:
 
 **Prompt:**
 ```
-Review this phase/task breakdown for a software project. Evaluate:
+Review this phase/task breakdown for a software project.
+
+Work Context: {work_context.work_type}
+- Verify phase count and granularity match the work type
+- For prototypes, do not flag broad task scope or missing test tasks
+- For refactors, verify each task has rollback safety
+
+Evaluate:
 
 1. **Atomicity**: Is each task truly independent and committable on its own?
 2. **Testability**: Does each task have clear, verifiable acceptance criteria?

@@ -3,6 +3,20 @@
 **Date:** {current date}
 **Spec Files Reviewed:** {list of spec files with paths}
 
+## Work Context Applied
+
+{If work_context found:}
+| Attribute | Value |
+|-----------|-------|
+| Work Type | {work_type} |
+| Priority Dimensions | {list} |
+| Deprioritized Dimensions | {list} |
+
+**Effect:** Findings in deprioritized dimensions are capped at Minor severity. Priority dimension findings are strictly evaluated.
+
+{If no work_context found:}
+Not specified — all dimensions evaluated with equal weight.
+
 ## Summary
 
 | Dimension | Score | Findings |

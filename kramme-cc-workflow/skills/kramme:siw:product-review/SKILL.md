@@ -130,6 +130,14 @@ To initialize a workflow with a spec, run /kramme:siw:init
 
 Read each spec file completely. Do not skim. Understand the full picture before launching the product review.
 
+### 2.1.5 Extract Work Context
+
+After reading all spec files, look for a `## Work Context` section in any of the spec files:
+
+1. Parse the markdown table to extract: Work Type, Priority Dimensions, Deprioritized dimensions
+2. If not found, default to Production Feature (full product review, no adjustments)
+3. Store as `work_context`
+
 ### 2.2 Extract Product Elements
 
 For each spec file, identify and extract:
@@ -166,6 +174,26 @@ Problem statement found: {yes/no}
 User flows documented: {count}
 ```
 
+### 2.5 Work Context Gate
+
+If `work_context.work_type` is **Prototype** or **Refactor**:
+
+Use AskUserQuestion:
+
+```yaml
+header: "Work Context: {work_type}"
+question: "This spec's Work Context is '{work_type}'. Product review evaluates user-facing concerns that may not apply. The spec audit (/kramme:siw:spec-audit) may be more useful."
+options:
+  - label: "Skip product review"
+    description: "Abort — product review is not relevant for this work type"
+  - label: "Proceed anyway"
+    description: "Run the full product review regardless"
+```
+
+If "Skip product review": Stop and suggest `/kramme:siw:spec-audit` instead.
+
+For all other work types, continue to Step 3.
+
 ---
 
 ## Step 3: Check for Previous Review
@@ -200,6 +228,20 @@ Read these files completely:
 ## Previously Addressed Findings
 
 {list of previously resolved PROD-NNN findings, or "None — first review"}
+
+## Work Context Adjustments
+
+{Include this block ONLY if work_context is not Production Feature and not absent:}
+
+This spec has Work Type: {work_context.work_type}
+
+{If Internal Tool:}
+- For "Target User Clarity": The target user is the development team. Assess whether the spec makes this clear, but do NOT flag the absence of market segmentation or persona research.
+- For "Problem/Solution Fit": Internal tools are justified by team productivity needs. Do NOT flag the absence of competitive analysis or market alternatives.
+
+{If Documentation / Process:}
+- Focus primarily on "Scope Correctness" and "Success Criteria Quality".
+- Cap "User State Modeling" and "Critical Moments Coverage" findings at Minor severity.
 
 ## Product Dimensions to Evaluate
 
