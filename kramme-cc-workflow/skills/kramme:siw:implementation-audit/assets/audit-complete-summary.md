@@ -20,6 +20,7 @@ See siw/OPEN_ISSUES_OVERVIEW.md for the full list.
 
 Next Steps:
   - Resolve findings one-by-one with executive summaries, alternatives, and issue creation: /kramme:siw:resolve-audit
+  - Or let the model choose each resolution automatically: /kramme:siw:resolve-audit {report_path} --auto
   - Fix critical divergences/extensions first: /kramme:siw:issue-implement G-{first}
   - Re-run after fixes to verify compliance: /kramme:siw:implementation-audit
   - Clean up report when done: /kramme:workflow-artifacts:cleanup
