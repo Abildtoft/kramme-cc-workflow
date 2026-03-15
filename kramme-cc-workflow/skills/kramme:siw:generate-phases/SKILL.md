@@ -125,19 +125,20 @@ rm siw/issues/ISSUE-*.md
 
 ## Phase 2: Spec Analysis
 
-### 2.0.5 Extract Work Context
+### 2.1 Extract Work Context
 
-After finding spec files, look for a `## Work Context` section in any of the spec files:
+After finding spec files, look for a `## Work Context` section in the spec files:
 
 1. Parse the markdown table to extract: Work Type, Priority Dimensions, Deprioritized dimensions
-2. If not found, default to Production Feature (3-5 phases, standard sizing)
+   - If multiple spec files define Work Context, use the main spec file (the one matching the SIW init filename). If ambiguous, use the first found and warn.
+2. If not found or malformed, default to Production Feature (3-5 phases, standard sizing)
 3. Store as `work_context`
 
-### 2.1 Read Spec Content
+### 2.2 Read Spec Content
 
 Read the main spec file and any supporting specs found in Phase 1.2.
 
-### 2.2 Extract Key Elements
+### 2.3 Extract Key Elements
 
 Identify and extract:
 - **Overview/objectives** - What is the project trying to achieve?

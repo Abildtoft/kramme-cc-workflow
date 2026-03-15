@@ -132,10 +132,11 @@ Read each spec file completely. Do not skim. Understand the full picture before 
 
 ### 2.1.5 Extract Work Context
 
-After reading all spec files, look for a `## Work Context` section in any of the spec files:
+After reading all spec files, look for a `## Work Context` section in the spec files:
 
 1. Parse the markdown table to extract: Work Type, Priority Dimensions, Deprioritized dimensions
-2. If not found, default to Production Feature (full product review, no adjustments)
+   - If multiple spec files define Work Context, use the main spec file (the one matching the SIW init filename). If ambiguous, use the first found and warn.
+2. If not found or malformed, default to Production Feature (full product review, no adjustments)
 3. Store as `work_context`
 
 ### 2.2 Extract Product Elements

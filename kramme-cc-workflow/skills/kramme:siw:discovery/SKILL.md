@@ -58,10 +58,11 @@ If `siw/AUDIT_SPEC_REPORT.md` exists, read it and use unresolved findings as inp
 
 ### 1.2 Extract Work Context
 
-After resolving spec files, look for a `## Work Context` section in any of the spec files:
+After resolving spec files, look for a `## Work Context` section in the spec files:
 
 1. Parse the markdown table to extract: Work Type, Priority Dimensions, Deprioritized dimensions
-2. If not found, default to Production Feature (all dimensions equally weighted)
+   - If multiple spec files define Work Context, use the main spec file (the one matching the SIW init filename). If ambiguous, use the first found and warn.
+2. If not found or malformed, default to Production Feature (all dimensions equally weighted)
 3. Store as `work_context`
 
 ## Step 2: Build Quality Gap Map

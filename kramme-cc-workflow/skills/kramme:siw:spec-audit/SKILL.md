@@ -157,10 +157,11 @@ For each element, capture:
 
 ### 2.2.5 Extract Work Context
 
-After reading all spec files, look for a `## Work Context` section in any of the spec files:
+After reading all spec files, look for a `## Work Context` section in the spec files:
 
 1. Parse the markdown table to extract: Work Type, Priority Dimensions, Deprioritized dimensions
-2. If not found, default to Production Feature (all dimensions equally weighted, no caps)
+   - If multiple spec files define Work Context, use the main spec file (the one matching the SIW init filename). If ambiguous, use the first found and warn.
+2. If not found or malformed, default to Production Feature (all dimensions equally weighted, no caps)
 3. Store as `work_context`
 
 **Work Context drives severity adjustments in Steps 3 and 4.** See downstream behavior rules below.
@@ -298,16 +299,6 @@ After all Explore agents complete:
 
 Gather all findings from every agent. Deduplicate — if multiple dimensions flagged the same issue, merge into one finding and note all affected dimensions.
 
-### 4.1.5 Apply Work Context Severity Caps
-
-If `work_context` specifies deprioritized dimensions:
-
-For each finding in a deprioritized dimension:
-- If severity was assigned as Critical or Major, downgrade to Minor
-- Annotate: `[Deprioritized — capped at Minor from {original_severity}]`
-
-This ensures deprioritized dimensions never produce Critical or Major findings, while still reporting the issues for visibility.
-
 ### 4.2 Assign Global Finding IDs
 
 Re-number all findings as `SPEC-001`, `SPEC-002`, etc. in severity order (Critical first, then Major, then Minor).
@@ -321,6 +312,16 @@ For each finding:
 | **Critical** | Would block implementation or lead to fundamentally wrong implementation. Missing core requirements, contradictory specs, undefined key behaviors, fundamental design flaws. |
 | **Major** | Risks incorrect implementation or significant rework. Ambiguous requirements, missing edge cases, unclear scope boundaries, design gaps. |
 | **Minor** | Cosmetic or low-risk. Inconsistent terminology, missing non-critical sections, formatting issues, suboptimal choices. |
+
+### 4.3.5 Apply Work Context Severity Caps
+
+If `work_context` specifies deprioritized dimensions:
+
+For each finding in a deprioritized dimension:
+- If severity was assigned as Critical or Major, downgrade to Minor
+- Annotate: `[Deprioritized — capped at Minor from {original_severity}]`
+
+This ensures deprioritized dimensions never produce Critical or Major findings, while still reporting the issues for visibility.
 
 ### 4.4 Compute Dimension Scores
 
