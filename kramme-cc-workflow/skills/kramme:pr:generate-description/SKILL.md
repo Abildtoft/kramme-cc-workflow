@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:generate-description
-description: Write a structured PR title and body from git diff, commit log, and Linear context. Outputs markdown for copy-paste or updates the PR directly with --direct.
-argument-hint: "[--non-interactive] [--direct] [--visual] [--base <ref>]"
+description: Write a structured PR title and body from git diff, commit log, and Linear context. Outputs markdown for copy-paste or updates the existing PR automatically in auto mode.
+argument-hint: "[--auto] [--visual] [--base <ref>]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -12,13 +12,11 @@ user-invocable: true
 
 Parse `$ARGUMENTS` for flags:
 
-- `--non-interactive`: Skip clarification prompts (Phase 2.5) and save-to-file prompt (Phase 4). Generate the description directly from gathered context without pausing for user input.
-- `--direct`: Find the existing PR for the current branch and update its title and description directly. Skips copy-paste output and save-to-file prompt. Implies `--non-interactive`.
+- `--auto`: Preferred hands-off mode. Skip clarification prompts (Phase 2.5) and the save-to-file prompt (Phase 4). If a PR already exists for the current branch, update it directly. If no PR exists yet, generate the title and description for copy-paste without pausing for user input.
 - `--visual`: Auto-detect a running dev server and capture screenshots to embed in the PR description. Requires a browser MCP to be available (claude-in-chrome, chrome-devtools, or playwright).
 - `--base <ref>`: Use `<ref>` as the base branch for diff computation instead of auto-detecting.
 
-If `--non-interactive` is present, set `NON_INTERACTIVE=true` and remove the flag from remaining arguments.
-If `--direct` is present, set `DIRECT_UPDATE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments.
+If `--auto` is present, set `AUTO_MODE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments.
 If `--visual` is present, set `VISUAL_MODE=true` and remove the flag from remaining arguments.
 If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the flag and value from remaining arguments.
 
@@ -35,7 +33,7 @@ If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the fl
 
 **When NOT to use this skill:**
 
-- The PR already has a description and you just need to update it
+- You only need a tiny manual wording edit to an existing PR description
 - You're creating a draft PR that doesn't need a full description yet
 - The changes are trivial (typo fixes, formatting) and don't warrant detailed documentation
 
@@ -131,7 +129,7 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
    - **NOTE**: Tier 2 ensures correct scope when MR targets a non-default branch (e.g., a feature branch with other merged MRs)
    - **CAN** ask user if unclear or override needed
 
-5. **If `DIRECT_UPDATE=true`**, verify a PR exists for the current branch:
+5. **If `AUTO_MODE=true`**, check whether a PR exists for the current branch:
 
    **GitHub:**
    ```bash
@@ -144,13 +142,12 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
    ```
    Or use MCP: `mcp__gitlab__list_merge_requests` filtered to the current branch.
 
-   **If no PR exists**, abort:
-   ```
-   Error: No PR found for the current branch.
+   **If a PR exists**, set `DIRECT_UPDATE=true` and capture the PR URL for Phase 4.
 
-   The --direct flag requires an existing PR to update.
-   Either create a PR first, or run without --direct to generate a description for copy-paste.
-   ```
+   **If no PR exists**, continue in generated-output mode:
+   - Keep `NON_INTERACTIVE=true` if auto mode is enabled
+   - Leave `DIRECT_UPDATE=false`
+   - Present the generated title and body for copy-paste in Phase 4
 
 ### Phase 2: Context Gathering
 
@@ -546,7 +543,7 @@ Here is your generated PR:
 - [ ] Description is ready to copy-paste
 - [ ] No listing of the amount of lines changed
 - [ ] No AI attribution or "Generated with Claude Code" badges included
-- [ ] Updated PR directly (if `--direct`) OR asked user if they want to save to markdown file
+- [ ] Updated an existing PR directly when `DIRECT_UPDATE=true`, otherwise presented copy-paste output and only asked about saving when `NON_INTERACTIVE=false`
 
 ## Best Practices
 

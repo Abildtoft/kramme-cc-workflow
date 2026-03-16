@@ -1,6 +1,7 @@
 ---
 name: kramme:pr:create
 description: Create a clean PR with narrative commits and comprehensive description
+argument-hint: "[--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -49,6 +50,19 @@ Orchestrate the creation of a clean, well-documented draft PR by:
     v
 [Success Output]
 ```
+
+## Step 0: Parse Arguments
+
+Parse `$ARGUMENTS` for optional flags before starting:
+
+- `--auto` -> set `AUTO_MODE=true` and remove the flag from the remaining arguments.
+
+`--auto` means:
+- use the recommended commit structure (`Narrative`)
+- invoke downstream skills in non-interactive mode
+- skip the final draft-PR confirmation
+- choose the recommended branch-handling path from the shared reference instructions
+- stop only on hard blockers
 
 ---
 
@@ -138,7 +152,9 @@ fi
 
 ### 6.1 Confirm Commit Restructuring Approach
 
-Use AskUserQuestion:
+If `AUTO_MODE=true`, skip this question and choose **Narrative (recommended)**.
+
+Otherwise use AskUserQuestion:
 ```yaml
 header: "Commit style"
 question: "How should commits be structured for the PR?"
@@ -156,6 +172,12 @@ multiSelect: false
 
 **IMPORTANT:** Use the Skill tool to invoke `recreate-commits`:
 
+If `AUTO_MODE=true`:
+```
+skill: "kramme:git:recreate-commits", args: "--auto"
+```
+
+Otherwise:
 ```
 skill: "kramme:git:recreate-commits"
 ```
@@ -202,10 +224,10 @@ Recovery:
 
 ### 7.1 Invoke the Skill
 
-**IMPORTANT:** Use the Skill tool to invoke `pr-description-generator` with `--non-interactive` to skip clarification prompts (the pr:create flow has its own confirmation at Step 8):
+**IMPORTANT:** Use the Skill tool to invoke `pr-description-generator` with `--auto` to skip clarification prompts (the pr:create flow has its own confirmation at Step 8, unless `AUTO_MODE=true`):
 
 ```
-skill: "kramme:pr:generate-description", args: "--non-interactive"
+skill: "kramme:pr:generate-description", args: "--auto"
 ```
 
 This skill will:
@@ -282,7 +304,9 @@ Description Preview:
 
 ### 8.2 Confirm Creation
 
-Use AskUserQuestion:
+If `AUTO_MODE=true`, skip this confirmation and proceed directly to Step 8.3.
+
+Otherwise use AskUserQuestion:
 ```yaml
 header: "Confirm"
 question: "Ready to create the Draft PR?"

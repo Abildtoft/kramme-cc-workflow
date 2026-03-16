@@ -1,7 +1,7 @@
 ---
 name: kramme:test:generate
 description: "(experimental) Generate tests for existing code by analyzing project test patterns and conventions. Use when adding test coverage to untested files or generating test stubs."
-argument-hint: "[file-path or directory]"
+argument-hint: "[file-path or directory] [--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -12,10 +12,15 @@ Generate tests for existing code by analyzing the project's test framework, conv
 
 **IMPORTANT:** This skill creates new test files and runs them. It does NOT modify source code — if a generated test fails, the test is fixed, not the source.
 
+Parse `$ARGUMENTS` for `--auto` before Step 1.
+
+- If present, set `AUTO_MODE=true` and remove the flag from the remaining input.
+- `--auto` means: infer the test framework, generate unit tests for the public API surface, and use **happy path + error cases** depth.
+
 ## Process Overview
 
 ```
-/kramme:test:generate src/utils/parser.ts
+/kramme:test:generate src/utils/parser.ts [--auto]
     |
     v
 [Step 1: Parse Arguments] -> File path, directory, or ask
@@ -49,7 +54,9 @@ Generate tests for existing code by analyzing the project's test framework, conv
 1. If `$ARGUMENTS` matches a **file path**: validate it exists.
 2. If `$ARGUMENTS` is a **directory**: discover source files without existing tests.
 3. If `$ARGUMENTS` is a **glob pattern**: expand and collect matching files.
-4. If `$ARGUMENTS` is **empty**, ask the user:
+4. If `$ARGUMENTS` is **empty** and `AUTO_MODE=true`, auto-detect target files by selecting changed source files that do not already have matching tests.
+   - If no such files are found, abort with a clear message telling the user to provide a file path or directory.
+5. If `$ARGUMENTS` is **empty** and `AUTO_MODE` is false, ask the user:
 
 ```
 AskUserQuestion
@@ -82,6 +89,10 @@ Read the detection heuristics from `references/framework-detection.md`.
    - Go convention (always co-located)
 
 5. If **multiple frameworks** detected:
+
+If `AUTO_MODE=true`, choose the framework with the strongest local convention signal (nearest matching tests first, then the framework with the clearest config and runner command).
+
+Otherwise:
 
 ```
 AskUserQuestion
@@ -136,6 +147,13 @@ Classify each testable unit and estimate the number of test cases based on Step 
 ---
 
 ## Step 5: User Configuration
+
+If `AUTO_MODE=true`, skip these prompts and use:
+- **Test Type:** Unit tests only
+- **Scope:** Public API surface only
+- **Edge Case Depth:** Happy path + error cases
+
+Otherwise:
 
 ```
 AskUserQuestion
@@ -241,9 +259,9 @@ Next Steps:
 | Scenario | Action |
 |---|---|
 | Target file not found | Abort: `Target file not found: {path}` |
-| No test framework detected | AskUserQuestion to choose a framework and test command |
+| No test framework detected | If `AUTO_MODE=true`, abort with a clear error. Otherwise AskUserQuestion to choose a framework and test command |
 | No existing tests to learn from | Use framework defaults; note in summary |
-| Multiple test frameworks detected | AskUserQuestion to select |
+| Multiple test frameworks detected | If `AUTO_MODE=true`, choose the strongest local convention signal. Otherwise AskUserQuestion to select |
 | Generated tests have syntax errors | Fix in Step 7 iteration |
 | Test runner not installed | Inform user, suggest install command |
 | Target has no exportable units | Warn; offer smoke test or skip |

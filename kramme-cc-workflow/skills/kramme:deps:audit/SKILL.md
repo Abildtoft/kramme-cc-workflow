@@ -1,6 +1,7 @@
 ---
 name: kramme:deps:audit
 description: "(experimental) Audit project dependencies for outdated packages, security vulnerabilities, and staleness. Generates a prioritized upgrade plan with risk assessment."
+argument-hint: "[--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -9,10 +10,15 @@ user-invocable: true
 
 Audit project dependencies for outdated packages, security vulnerabilities, and staleness. Groups related packages, assesses risk per update, and generates a prioritized upgrade plan.
 
+Parse `$ARGUMENTS` for `--auto` before Step 1.
+
+- If present, set `AUTO_MODE=true` and remove the flag from the remaining input.
+- `--auto` means: audit all detected ecosystems, write `DEPENDENCY_AUDIT.md`, and stop in review-only mode without applying updates or creating SIW issues.
+
 ## Process Overview
 
 ```
-/kramme:deps:audit
+/kramme:deps:audit [--auto]
     |
     v
 [Step 1: Detect Package Manager] -> npm/yarn/pnpm/pip/cargo/go/dotnet
@@ -54,6 +60,10 @@ Read the detection details from `references/package-manager-commands.md`.
 2. For monorepos, check: `nx.json`, `lerna.json`, `turbo.json`, `pnpm-workspace.yaml`.
 
 3. If **multiple ecosystems** detected:
+
+If `AUTO_MODE=true`, set `PACKAGE_MANAGER` to **all detected ecosystems** and continue.
+
+Otherwise:
 
 ```
 AskUserQuestion
@@ -157,6 +167,14 @@ Each entry includes: packages, current → target versions, risk level, recommen
 ---
 
 ## Step 6: User Review
+
+If `AUTO_MODE=true`:
+- Skip both prompts in this step
+- Write `DEPENDENCY_AUDIT.md` in the project root
+- Default to **Review only — no changes**
+- Continue to Step 7
+
+Otherwise:
 
 ```
 AskUserQuestion

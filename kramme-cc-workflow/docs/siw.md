@@ -246,7 +246,7 @@ When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW
 | Skill | Arguments | Description |
 |-------|-----------|-------------|
 | `/kramme:siw:discovery` | `[spec-path(s) \| 'siw'] [--apply]` | Targeted interview to strengthen weak specs. Identifies quality gaps and produces concrete improvements. Use `--apply` to auto-update specs with findings. |
-| `/kramme:siw:spec-audit` | `[spec-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Audit spec quality across 8 dimensions: coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design. Produces a structured report and optionally creates SIW issues. |
+| `/kramme:siw:spec-audit` | `[spec-path(s) \| 'siw'] [--auto] [--model opus\|sonnet\|haiku]` | Audit spec quality across 8 dimensions: coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design. Produces a structured report and optionally creates SIW issues. Add `--auto` to replace any previous report and create critical/major issues without pausing. |
 | `/kramme:siw:reverse-engineer-spec` | `[branch \| folder \| file(s)] [--base main] [--model opus\|sonnet\|haiku]` | Generate a spec from existing code. Analyzes git diffs, folders, or files using parallel agents. Produces an SIW-compatible spec. Useful for documenting shipped features or bootstrapping SIW from existing work. |
 
 ### Issue Management
@@ -267,7 +267,7 @@ When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW
 
 | Skill | Arguments | Description |
 |-------|-----------|-------------|
-| `/kramme:siw:implementation-audit` | `[spec-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Adversarial, exhaustive audit of code against spec. Pass A checks requirement-by-requirement conformance. Pass B scans for undocumented extensions. Includes conflict reconciliation and coverage gates. |
+| `/kramme:siw:implementation-audit` | `[spec-path(s) \| 'siw'] [--auto] [--model opus\|sonnet\|haiku]` | Adversarial, exhaustive audit of code against spec. Pass A checks requirement-by-requirement conformance. Pass B scans for undocumented extensions. Includes conflict reconciliation and coverage gates. Add `--auto` to replace any previous report and create critical/major issues without pausing. |
 | `/kramme:siw:resolve-audit` | `[audit-report-path] [finding-id(s)] [--auto]` | Resolve audit findings one at a time. By default each finding gets an executive summary, alternatives, a recommended option, then user choice. Add `--auto` to let the model select the resolution and create issues without pausing. If both audit reports exist, pass the report path to keep the run scoped. |
 
 ### Lifecycle Management
@@ -286,7 +286,7 @@ These variants run multiple agents in parallel. They require Agent Teams in Clau
 |-------|-----------|-------------|
 | `/kramme:siw:spec-audit:team` | `[spec-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Team-based spec audit with parallel dimension analysis. |
 | `/kramme:siw:implementation-audit:team` | `[spec-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Team-based implementation audit with simultaneous conformance + extension passes and a dedicated reconciler for conflict resolution. |
-| `/kramme:siw:issue-implement:team` | `<G-001 \| P1-001 \| ISSUE-G-XXX>` | Team-based implementation with parallel exploration and planning agents. |
+| `/kramme:siw:issue-implement:team` | `[issue-ids or 'phase N'] [--auto]` | Team-based implementation with parallel exploration and planning agents. Add `--auto` to start the proposed plan immediately. |
 
 ## Common Workflows
 

@@ -1,7 +1,7 @@
 ---
 name: kramme:code:migrate
 description: "(experimental) Plan and execute framework or library version migrations with phased upgrades and verification gates. Use when upgrading major framework versions (Angular, React, Node) or migrating between libraries."
-argument-hint: "<target e.g. 'Angular 19', 'React 19', 'Node 22'>"
+argument-hint: "<target e.g. 'Angular 19', 'React 19', 'Node 22'> [--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -10,10 +10,15 @@ user-invocable: true
 
 Plan and execute framework/library version migrations with phased upgrades, codemod automation, and verification gates between each phase.
 
+Parse `$ARGUMENTS` for `--auto` before Step 1.
+
+- If present, set `AUTO_MODE=true` and remove the flag from the remaining input.
+- `--auto` means: execute the full migration plan without pausing for review, skip phase-by-phase checkpoints, and abort on unresolved verification failures after the built-in retry budget is exhausted.
+
 ## Process Overview
 
 ```
-/kramme:code:migrate "Angular 19"
+/kramme:code:migrate "Angular 19" [--auto]
     |
     v
 [Step 1: Parse Target] -> Framework + current/target versions
@@ -43,7 +48,9 @@ Plan and execute framework/library version migrations with phased upgrades, code
 
 1. Extract framework/library name and target version from `$ARGUMENTS`.
    - Examples: `Angular 19`, `React 19`, `Node 22`, `Next.js 15`, `TypeScript 5.5`
-   - If empty or ambiguous:
+   - If empty or ambiguous and `AUTO_MODE=true`:
+     - Abort with: `Auto mode requires an explicit migration target such as "Angular 19" or "Node 22".`
+   - If empty or ambiguous and `AUTO_MODE` is false:
 
 ```
 AskUserQuestion
@@ -63,7 +70,9 @@ options:
 
 3. Validate direction:
    - Same version → report "Already on target version" and STOP.
-   - Downgrade → warn, AskUserQuestion to confirm.
+   - Downgrade:
+     - If `AUTO_MODE=true`, abort with a warning instead of prompting.
+     - Otherwise warn, AskUserQuestion to confirm.
 
 4. Report: `Current: {framework} {current} → Target: {framework} {target}`
 
@@ -165,6 +174,10 @@ Write plan to `migration-plan-{framework}-{target}.md` in project root.
 
 ## Step 5: User Review
 
+If `AUTO_MODE=true`, skip this prompt and choose **Execute full plan — all phases with verification gates**.
+
+Otherwise:
+
 ```
 AskUserQuestion
 header: Migration Plan Ready
@@ -198,6 +211,10 @@ For each phase:
 
 4. **If verification fails:** attempt fix (max 3 iterations), then escalate:
 
+If `AUTO_MODE=true`, skip the prompt below after the 3 failed attempts, print the errors, and abort while keeping changes made so far.
+
+Otherwise:
+
 ```
 AskUserQuestion
 header: Verification Failed — Phase {N}
@@ -210,6 +227,8 @@ options:
 ```
 
 5. **Phase-by-phase mode:** pause after each successful phase:
+
+Skip this checkpoint entirely when `AUTO_MODE=true`.
 
 ```
 AskUserQuestion
@@ -263,9 +282,9 @@ Next Steps:
 |---|---|
 | No migration guide found | Proceed with codebase analysis, warn about manual research |
 | Target version doesn't exist | Abort: `Version {target} not found for {framework}` |
-| Current version not detected | AskUserQuestion for current version |
+| Current version not detected | If `AUTO_MODE=true`, abort with a clear error. Otherwise AskUserQuestion for current version |
 | Codemod fails | Capture error, skip to manual approach, log failure |
 | Codemod produces invalid code | Revert affected files, fall back to manual |
-| Verification gate fails 3 times | Escalate to user with options |
+| Verification gate fails 3 times | If `AUTO_MODE=true`, print errors and abort while keeping changes so far. Otherwise escalate to user with options |
 | Conflicting peer dependencies | Report conflicts, suggest resolution order |
-| Migration branch exists | AskUserQuestion: use existing, create new, or abort |
+| Migration branch exists | If `AUTO_MODE=true`, abort with a clear error. Otherwise AskUserQuestion: use existing, create new, or abort |

@@ -1,6 +1,7 @@
 ---
 name: kramme:pr:resolve-review:team
 description: Resolve review findings in parallel using multi-agent execution. Groups findings by file area and assigns to separate agents for faster resolution. Best when review has 5+ findings across different areas.
+argument-hint: "[--auto] [review-content|instructions|url]"
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code, codex]
@@ -9,6 +10,11 @@ kramme-platforms: [claude-code, codex]
 # Team-Based Review Resolution
 
 Resolve review findings in parallel using multi-agent execution. Each agent owns a non-overlapping set of files and implements fixes independently.
+
+Parse `$ARGUMENTS` for `--auto` before Step 1.
+
+- If present, set `AUTO_MODE=true` and remove the flag from the remaining input.
+- `--auto` means the lead should skip the plan confirmation in Step 4 and proceed directly with the parallel plan whenever the grouping shows real parallelism.
 
 ## Prerequisites
 
@@ -74,7 +80,9 @@ Then delegate to the standard skill.
 
 ### Step 4: Present Plan
 
-Use AskUserQuestion to confirm the parallel plan:
+If `AUTO_MODE=true`, skip this AskUserQuestion and proceed with **Resolve in parallel**.
+
+Otherwise use AskUserQuestion to confirm the parallel plan:
 
 ```yaml
 header: "Parallel Review Resolution"

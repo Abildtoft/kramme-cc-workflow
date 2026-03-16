@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:implementation-audit
 description: Exhaustively audit codebase implementation against specification. Detects spec divergences, undocumented implementation extensions, contract violations, and spec drift.
-argument-hint: "[spec-file-path(s) | 'siw'] [--model opus|sonnet|haiku]"
+argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -27,7 +27,7 @@ A report is not complete unless it includes:
 ## Process Overview
 
 ```
-/kramme:siw:implementation-audit [spec-file-path(s) | 'siw'] [--model opus|sonnet|haiku]
+/kramme:siw:implementation-audit [spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku]
     |
     v
 [Step 1: Resolve Spec Files] -> Parse args or auto-detect from siw/
@@ -68,10 +68,18 @@ A report is not complete unless it includes:
 
 `$ARGUMENTS` contains the spec file path(s), keyword, and optional flags.
 
-**Extract `--model` flag first (Claude Code only — ignored on other platforms):**
+**Extract control flags first:**
+- If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag before processing remaining arguments.
+
+**Extract `--model` flag next (Claude Code only — ignored on other platforms):**
 - If `$ARGUMENTS` contains `--model opus`, `--model sonnet`, or `--model haiku`, extract it and store as `agent_model`.
 - **Default:** `opus`
 - Remove the flag from `$ARGUMENTS` before processing remaining arguments.
+
+`--auto` means:
+- replace any previous audit report automatically
+- create SIW issues for **Critical and Major** findings when Step 9 applies
+- skip the report overwrite / issue-creation prompts
 
 **Detection rules for remaining arguments:**
 1. **File path(s)**: Contains `/` or ends in `.md`, `.txt`
@@ -218,7 +226,9 @@ Warning: Could not extract structured requirements from {file}.
 The file may need clearer acceptance criteria, named entities, or explicit contracts.
 ```
 
-Use AskUserQuestion:
+If `AUTO_MODE=true`, choose **Attempt best-effort scan** automatically.
+
+Otherwise use AskUserQuestion:
 
 ```yaml
 header: "No Requirements Found"
@@ -386,6 +396,10 @@ Generate the report using the schema from `assets/report-schema.md`. All section
 
 If a previous report exists at the target path:
 
+If `AUTO_MODE=true`, choose **Replace** automatically.
+
+Otherwise:
+
 ```yaml
 header: "Existing Audit Report"
 question: "A previous audit report exists. How should I proceed?"
@@ -438,6 +452,10 @@ Audit report written to: {path}
 - Actionable findings were found (`Divergences + Extensions > 0`)
 
 ### 9.1 Ask User
+
+If `AUTO_MODE=true`, skip the prompt template and choose **Critical and major only** from `assets/create-issues-prompt.yaml`.
+
+Otherwise:
 
 Use the prompt template from `assets/create-issues-prompt.yaml`.
 

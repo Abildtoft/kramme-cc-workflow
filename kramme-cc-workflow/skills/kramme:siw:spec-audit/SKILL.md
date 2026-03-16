@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:spec-audit
 description: Audit specification documents for quality — coherence, completeness, clarity, scope, actionability, testability, value proposition, and technical design. Catches spec issues before implementation begins.
-argument-hint: "[spec-file-path(s) | 'siw'] [--model opus|sonnet|haiku]"
+argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -15,7 +15,7 @@ Evaluate specification documents for quality across 8 dimensions before implemen
 ## Process Overview
 
 ```
-/kramme:siw:spec-audit [spec-file-path(s) | 'siw'] [--model opus|sonnet|haiku]
+/kramme:siw:spec-audit [spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku]
     |
     v
 [Step 1: Resolve Spec Files] -> Parse args or auto-detect from siw/
@@ -47,10 +47,18 @@ Evaluate specification documents for quality across 8 dimensions before implemen
 
 `$ARGUMENTS` contains the spec file path(s), keyword, and optional flags.
 
-**Extract `--model` flag first (Claude Code only — ignored on other platforms):**
+**Extract control flags first:**
+- If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag before processing remaining arguments.
+
+**Extract `--model` flag next (Claude Code only — ignored on other platforms):**
 - If `$ARGUMENTS` contains `--model opus`, `--model sonnet`, or `--model haiku`, extract it and store as `agent_model`.
 - **Default:** `opus`
 - Remove the flag from `$ARGUMENTS` before processing remaining arguments.
+
+`--auto` means:
+- replace any previous audit report automatically
+- create SIW issues for **Critical and Major** findings when Step 6 applies
+- skip the report overwrite / issue-creation prompts
 
 **Detection rules for remaining arguments:**
 1. **File path(s)**: Contains `/` or ends in `.md`, `.txt`
@@ -189,7 +197,9 @@ Warning: Could not extract structured sections from {file}.
 The file may need clearer headings, task definitions, or section organization.
 ```
 
-Use AskUserQuestion:
+If `AUTO_MODE=true`, choose **Attempt best-effort analysis** automatically.
+
+Otherwise use AskUserQuestion:
 
 ```yaml
 header: "No Structure Found"
@@ -353,6 +363,10 @@ Read `siw/OPEN_ISSUES_OVERVIEW.md` and `siw/issues/*.md` to check if any found s
 
 If a previous report exists at the target path:
 
+If `AUTO_MODE=true`, choose **Replace** automatically.
+
+Otherwise:
+
 ```yaml
 header: "Existing Spec Audit Report"
 question: "A previous spec audit report exists. How should I proceed?"
@@ -385,6 +399,10 @@ Spec audit report written to: {path}
 - Critical or Major findings were found
 
 ### 6.1 Ask User
+
+If `AUTO_MODE=true`, skip this prompt and choose **Critical and major only**.
+
+Otherwise:
 
 ```yaml
 header: "Create SIW Issues"

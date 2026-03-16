@@ -1,5 +1,7 @@
 # Platform Detection and Branch Handling
 
+**AUTO MODE:** If the calling skill sets `AUTO_MODE=true`, choose the recommended/default path for each question below instead of asking the user. Only stop for hard blockers that cannot be resolved safely.
+
 ## Platform Detection
 
 Parse the remote URL from the pre-validation step:
@@ -18,7 +20,12 @@ REMOTE_URL=$(git remote get-url origin)
 
 **If platform cannot be determined:**
 
-Use AskUserQuestion:
+If `AUTO_MODE=true`:
+- Choose **GitHub** if `gh` is installed.
+- Otherwise choose **GitLab** if `glab` is installed.
+- If neither tool is available, stop with a clear error asking the user to rerun without `--auto`.
+
+Otherwise use AskUserQuestion:
 ```yaml
 header: "Platform"
 question: "Could not detect platform from remote URL. Which platform are you using?"
@@ -46,7 +53,9 @@ git branch --show-current
 
 If the command above returns an empty value, the repository is in detached HEAD state.
 
-Use AskUserQuestion:
+If `AUTO_MODE=true`, create a new feature branch from the current commit using the first generated file-based branch suggestion from the later "No, generate from file changes" path, then continue.
+
+Otherwise use AskUserQuestion:
 ```yaml
 header: "Detached HEAD"
 question: "You're currently in detached HEAD state. How should branch handling proceed?"
@@ -90,7 +99,9 @@ If this fails, try `main` then `master`.
 
 #### Check for Linear Issue
 
-First, ask if working on a Linear issue:
+If `AUTO_MODE=true`, skip this question and use the file-based branch naming flow by default.
+
+Otherwise, ask if working on a Linear issue:
 
 ```yaml
 header: "Branch source"
@@ -152,7 +163,9 @@ multiSelect: false
 
    **If branch exists locally:**
 
-   Use AskUserQuestion:
+   If `AUTO_MODE=true`, switch to the existing local branch.
+
+   Otherwise use AskUserQuestion:
 
    ```yaml
    header: "Branch Exists"
@@ -201,7 +214,9 @@ multiSelect: false
    - Test files only -> prefix with `test/`
    - Config files -> prefix with `chore/`
 
-3. Use AskUserQuestion:
+3. If `AUTO_MODE=true`, choose the first suggested branch name automatically.
+
+   Otherwise use AskUserQuestion:
    ```yaml
    header: "Branch name"
    question: "You're on the main branch. What should the new branch be named?"
@@ -234,7 +249,13 @@ git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null
 
 **If upstream is missing:**
 
-Use AskUserQuestion:
+If `AUTO_MODE=true`, set the upstream immediately with:
+```bash
+git push -u origin $(git branch --show-current)
+```
+Then continue.
+
+Otherwise use AskUserQuestion:
 ```yaml
 header: "No upstream"
 question: "Current branch has no upstream remote branch. What should I do?"
