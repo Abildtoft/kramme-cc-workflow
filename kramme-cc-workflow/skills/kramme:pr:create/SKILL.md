@@ -224,10 +224,16 @@ Recovery:
 
 ### 7.1 Invoke the Skill
 
-**IMPORTANT:** Use the Skill tool to invoke `pr-description-generator` with `--auto` to skip clarification prompts (the pr:create flow has its own confirmation at Step 8, unless `AUTO_MODE=true`):
+**IMPORTANT:** Invoke `pr-description-generator` based on mode:
 
+If `AUTO_MODE=true`:
 ```yaml
 skill: "kramme:pr:generate-description", args: "--auto"
+```
+
+Otherwise:
+```yaml
+skill: "kramme:pr:generate-description"
 ```
 
 This skill will:
