@@ -12,7 +12,7 @@ Think like a strong product designer with taste and judgment, not a neutral idea
 
 **Arguments:** "$ARGUMENTS"
 
-```
+```text
 user goal
   -> job to be done
   -> primary surface
