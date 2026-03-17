@@ -223,6 +223,14 @@ Live product inspection and structured testing.
 | `/kramme:qa` | User | `<url> [quick\|diff-aware\|targeted <route>] [--base <ref>] [--regression]` | Experimental.<br><br>Structured QA testing with evidence capture.<br><br>Runs smoke checks, diff-aware validation, or targeted route testing. Produces QA_REPORT.md with screenshots, repro steps, severity, and recommended fixes. |
 | `/kramme:product:audit` | User | `<url> [--flows <flow1,flow2,...>] [--focus <dimension>]` | Experimental.<br><br>Whole-product review across flows and surfaces.<br><br>Evaluates navigation coherence, feature discoverability, onboarding, cross-flow consistency, dead ends, friction, and trust/safety. Produces PRODUCT_AUDIT_OVERVIEW.md. |
 
+#### Product Design
+
+Product critique and design-direction skills.
+
+| Skill | Invocation | Arguments | Description |
+|-------|------------|-----------|-------------|
+| `/kramme:product:design-critic` | User | `[file-path, screenshot, URL, or product question]` | Experimental.<br><br>Critique or shape a product surface with strong design judgment.<br><br>Focuses on jobs-to-be-done, surface ownership, hierarchy, trust/governance surfacing, and competitor-informed pattern critique rather than generic visual polish. |
+
 #### Code Quality & Review
 
 Code cleanup, refactoring, and bug/security review.
@@ -367,7 +375,7 @@ Specialized subagents for PR review and UX audit tasks. Invoked by `/kramme:pr:c
 | `kramme:logic-reviewer` | Reviews for business logic flaws, race conditions, and TOCTOU bugs. |
 | `kramme:a11y-auditor` | Audits accessibility (WCAG 2.1 AA): ARIA, semantic HTML, color contrast, keyboard nav, focus management. |
 | `kramme:ux-reviewer` | Reviews usability (Nielsen's 10 heuristics) and interaction states (loading, error, empty, feedback). |
-| `kramme:product-reviewer` | Reviews product experience in PR mode (diff-scoped) or spec mode (plan-scoped): feature discoverability, user flow completeness, edge cases, copy quality, target user clarity, problem/solution fit, trust/safety, post-action experience. |
+| `kramme:product-reviewer` | Reviews product experience in PR mode (diff-scoped), spec mode (plan-scoped), or audit mode (live-product): feature discoverability, user flow completeness, edge cases, copy quality, target user clarity, problem/solution fit, trust/safety, design judgment, and post-action experience. |
 | `kramme:visual-reviewer` | Reviews visual consistency (design tokens, spacing, typography, color) and responsive design. |
 
 ## Hooks
