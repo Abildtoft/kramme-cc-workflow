@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.43.0] - 2026-03-17
+
+### Added
+- Add product design critic skill (#242)
+- Add auto-mode workflow support (#241)
+
 ## [0.42.0] - 2026-03-15
 
 ### Added
@@ -64,6 +70,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+[0.43.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.42.0...v0.43.0
 [0.42.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.41.0...v0.42.0
 [0.41.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.40.0...v0.41.0
 [0.40.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.39.0...v0.40.0
