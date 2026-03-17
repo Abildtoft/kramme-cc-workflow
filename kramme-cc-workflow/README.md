@@ -229,7 +229,7 @@ Product critique and design-direction skills.
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:product:design-critic` | User | `[file-path, screenshot, URL, or product question]` | Critique or shape a product surface with strong design judgment.<br><br>Focuses on jobs-to-be-done, surface ownership, hierarchy, trust/governance surfacing, and competitor-informed pattern critique rather than generic visual polish. |
+| `/kramme:product:design-critic` | User | `[file-path, screenshot, URL, or product question]` | Experimental.<br><br>Critique or shape a product surface with strong design judgment.<br><br>Focuses on jobs-to-be-done, surface ownership, hierarchy, trust/governance surfacing, and competitor-informed pattern critique rather than generic visual polish. |
 
 #### Code Quality & Review
 

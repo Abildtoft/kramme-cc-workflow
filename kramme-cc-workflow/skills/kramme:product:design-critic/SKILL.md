@@ -1,6 +1,6 @@
 ---
 name: kramme:product:design-critic
-description: Sharpen product design judgment for software UI/UX, interaction flows, jobs-to-be-done, hierarchy, trust, governance surfacing, and competitor-informed critique. Use when critiquing or shaping a product surface, card, panel, workflow, chat experience, or design strategy instead of merely suggesting visual polish.
+description: (experimental) Sharpen product design judgment for software UI/UX, interaction flows, jobs-to-be-done, hierarchy, trust, governance surfacing, and competitor-informed critique. Use when critiquing or shaping a product surface, card, panel, workflow, chat experience, or design strategy instead of merely suggesting visual polish.
 argument-hint: "[file-path, screenshot, URL, or product question]"
 disable-model-invocation: true
 user-invocable: true
