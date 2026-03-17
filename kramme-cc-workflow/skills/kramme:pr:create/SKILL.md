@@ -173,7 +173,7 @@ multiSelect: false
 **IMPORTANT:** Use the Skill tool to invoke `recreate-commits`:
 
 If `AUTO_MODE=true`:
-```
+```yaml
 skill: "kramme:git:recreate-commits", args: "--auto"
 ```
 
@@ -226,7 +226,7 @@ Recovery:
 
 **IMPORTANT:** Use the Skill tool to invoke `pr-description-generator` with `--auto` to skip clarification prompts (the pr:create flow has its own confirmation at Step 8, unless `AUTO_MODE=true`):
 
-```
+```yaml
 skill: "kramme:pr:generate-description", args: "--auto"
 ```
 

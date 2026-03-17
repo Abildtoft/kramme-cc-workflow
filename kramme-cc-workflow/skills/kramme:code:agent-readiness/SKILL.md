@@ -19,7 +19,7 @@ Parse `$ARGUMENTS` for `--auto` before Step 1.
 
 ## Process Overview
 
-```
+```text
 /kramme:code:agent-readiness [--auto]
     |
     v

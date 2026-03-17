@@ -286,7 +286,7 @@ These variants run multiple agents in parallel. They require Agent Teams in Clau
 |-------|-----------|-------------|
 | `/kramme:siw:spec-audit:team` | `[spec-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Team-based spec audit with parallel dimension analysis. |
 | `/kramme:siw:implementation-audit:team` | `[spec-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Team-based implementation audit with simultaneous conformance + extension passes and a dedicated reconciler for conflict resolution. |
-| `/kramme:siw:issue-implement:team` | `[issue-ids or 'phase N'] [--auto]` | Team-based implementation with parallel exploration and planning agents. Add `--auto` to start the proposed plan immediately. |
+| `/kramme:siw:issue-implement:team` | `[issue-ids or 'phase N'] [--auto]` | Team-based implementation with parallel exploration and planning agents. Add `--auto` to start the plan immediately. |
 
 ## Common Workflows
 

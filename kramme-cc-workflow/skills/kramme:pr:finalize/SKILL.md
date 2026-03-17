@@ -279,7 +279,7 @@ After completion, parse `UX_REVIEW_OVERVIEW.md` in the project root:
 - `APP_URL` was not provided
 
 If `AUTO_MODE=true`, skip this prompt and run diff-aware QA:
-```
+```yaml
 skill: "kramme:qa", args: "{APP_URL} diff-aware --base {BASE_BRANCH}"
 ```
 
@@ -382,7 +382,7 @@ Status: X blockers, Y major, Z minor / SKIPPED (no app URL) / COULD NOT RUN
 **Skip if** `generate-description` is in `SKIP_LIST`.
 
 If verdict is **READY** or **READY WITH CAVEATS** and `AUTO_MODE=true`, run:
-```
+```yaml
 skill: "kramme:pr:generate-description", args: "--auto --base {BASE_BRANCH}"
 ```
 
