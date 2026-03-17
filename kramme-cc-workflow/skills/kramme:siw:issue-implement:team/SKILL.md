@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:issue-implement:team
 description: Implement multiple SIW issues in parallel using multi-agent execution. Each agent gets a full context window and implements one issue. Best for phases with multiple independent issues.
-argument-hint: "[issue-ids or 'phase N']"
+argument-hint: "[issue-ids or 'phase N'] [--auto]"
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code, codex]
@@ -12,6 +12,11 @@ kramme-platforms: [claude-code, codex]
 Implement multiple SIW issues simultaneously using multi-agent execution. Each agent implements one issue with a full context window, following the `kramme:siw:issue-implement` workflow.
 
 **Arguments:** "$ARGUMENTS"
+
+Parse `$ARGUMENTS` for `--auto` before Step 1.
+
+- If present, set `AUTO_MODE=true` and remove the flag from the remaining input.
+- `--auto` means: skip the plan confirmation in Step 4 and start the proposed parallel implementation plan immediately.
 
 ## Prerequisites
 
@@ -69,7 +74,9 @@ For each candidate issue:
 
 ### Step 4: Present Plan
 
-Use AskUserQuestion:
+If `AUTO_MODE=true`, skip this AskUserQuestion and proceed with **Start parallel implementation**.
+
+Otherwise use AskUserQuestion:
 
 ```yaml
 header: "Parallel Implementation Plan"

@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:resolve-review
 description: Resolve findings from code reviews by implementing fixes and documenting changes
-argument-hint: "[--source local|online|--local|--online] [--reply] [review-content|instructions|url]"
+argument-hint: "[--auto] [--source local|online|--local|--online] [review-content|instructions|url]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -26,9 +26,9 @@ Before searching for reviews, check if the user provided input directly with the
    - If `<something>` includes `--source` or `--review-source` with any other value:
      - Ask the user to choose `local` or `online`, then stop
    - Remove any source flags (`--source ...`, `--local`, `--online`, `--review-source ...`) from remaining input before classification
-   - If `<something>` includes `--reply` (preferred) or `--answer-and-resolve` (legacy):
+   - If `<something>` includes `--auto` (preferred), `--reply` (legacy), or `--answer-and-resolve` (legacy):
      - Set `ANSWER_AND_RESOLVE=true`
-     - Remove `--reply` / `--answer-and-resolve` from remaining input before classification
+     - Remove `--auto` / `--reply` / `--answer-and-resolve` from remaining input before classification
      - Treat this as permission to post replies and resolve addressed review threads/discussions directly on the PR/MR
    - If `REVIEW_SOURCE=local` and `<something>` includes a URL:
      - Ask the user to either remove the URL or switch to `--source online` / `--online`, then stop
@@ -132,7 +132,7 @@ Work through each finding in priority order, applying the guidelines below.
 - **Review response behavior**:
   - Default (no flag): **Do NOT resolve or reply to comments** on the platform
   - If `ANSWER_AND_RESOLVE=true` and the review source is external: post replies for each external review comment, then resolve addressed threads/discussions on the PR/MR
-  - If `REVIEW_SOURCE=local`: do not post replies or resolve threads on the platform, even when `ANSWER_AND_RESOLVE=true`
+  - If `REVIEW_SOURCE=local`: do not post replies or resolve threads on the platform, even when `--auto` or a legacy reply alias was provided
   - If `ANSWER_AND_RESOLVE=true` and the review source is external: for disagreements or out-of-scope findings, post a rationale reply, but do not mark as resolved unless explicitly requested by the reviewer/user
 - **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `UX_REVIEW_OVERVIEW.md`, update that file. If the source was `REVIEW_OVERVIEW.md` or an external/chat review, write to `REVIEW_OVERVIEW.md`.
 

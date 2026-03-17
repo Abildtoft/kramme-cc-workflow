@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:finalize
 description: (experimental) Final PR readiness orchestration. Coordinates verify:run, pr:code-review, pr:product-review, pr:ux-review, qa, and pr:generate-description. Produces a ready/not-ready/ready-with-caveats verdict. Not for creating PRs, fixing CI, or merging code.
-argument-hint: "[--skip <skill,...>] [--app-url <url>] [--base <ref>]"
+argument-hint: "[--auto] [--skip <skill,...>] [--app-url <url>] [--base <ref>]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -16,10 +16,17 @@ Coordinate all pre-merge quality checks and produce a single readiness verdict. 
 
 ### Step 1: Parse Arguments
 
-1. If `--skip <skill,...>` → parse comma-separated list of skill short names to skip. Valid values: `verify`, `code-review`, `product-review`, `ux-review`, `qa`, `generate-description`. Store as `SKIP_LIST`.
-2. If `--app-url <url>` → store as `APP_URL` (enables QA testing against a running app).
-3. If `--base <ref>` → store as explicit base branch override.
-4. All flags are optional. Default: run all applicable steps, no app URL, auto-detect base.
+1. If `--auto` → set `AUTO_MODE=true`.
+2. If `--skip <skill,...>` → parse comma-separated list of skill short names to skip. Valid values: `verify`, `code-review`, `product-review`, `ux-review`, `qa`, `generate-description`. Store as `SKIP_LIST`.
+3. If `--app-url <url>` → store as `APP_URL` (enables QA testing against a running app).
+4. If `--base <ref>` → store as explicit base branch override.
+5. All flags are optional. Default: run all applicable steps, no app URL, auto-detect base.
+
+`--auto` means:
+- skip the execution-plan confirmation
+- run all applicable steps unless explicitly skipped
+- if QA is applicable, run `diff-aware`
+- if description generation is applicable, run it automatically without prompting
 
 ### Step 2: Pre-Validation
 
@@ -166,7 +173,9 @@ Steps to run:
 Skipped: {any --skip items, or "none"}
 ```
 
-Use AskUserQuestion to confirm:
+If `AUTO_MODE=true`, skip this prompt and execute the plan as displayed.
+
+Otherwise use AskUserQuestion to confirm:
 ```yaml
 header: "PR Finalize Plan"
 question: "Proceed with this plan?"
@@ -269,7 +278,12 @@ After completion, parse `UX_REVIEW_OVERVIEW.md` in the project root:
 - `HAS_UI_CHANGES` is false
 - `APP_URL` was not provided
 
-Before running, confirm with user:
+If `AUTO_MODE=true`, skip this prompt and run diff-aware QA:
+```yaml
+skill: "kramme:qa", args: "{APP_URL} diff-aware --base {BASE_BRANCH}"
+```
+
+Otherwise confirm with user:
 ```yaml
 header: "QA Testing"
 question: "Run QA testing against {APP_URL}? A browser MCP enables live checks; otherwise QA falls back to code-only analysis."
@@ -367,7 +381,12 @@ Status: X blockers, Y major, Z minor / SKIPPED (no app URL) / COULD NOT RUN
 
 **Skip if** `generate-description` is in `SKIP_LIST`.
 
-If verdict is **READY** or **READY WITH CAVEATS**, ask:
+If verdict is **READY** or **READY WITH CAVEATS** and `AUTO_MODE=true`, run:
+```yaml
+skill: "kramme:pr:generate-description", args: "--auto --base {BASE_BRANCH}"
+```
+
+Otherwise ask:
 ```yaml
 header: "PR Description"
 question: "Generate or update PR description now?"

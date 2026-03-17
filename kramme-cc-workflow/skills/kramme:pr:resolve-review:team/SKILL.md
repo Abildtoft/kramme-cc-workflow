@@ -1,6 +1,7 @@
 ---
 name: kramme:pr:resolve-review:team
 description: Resolve review findings in parallel using multi-agent execution. Groups findings by file area and assigns to separate agents for faster resolution. Best when review has 5+ findings across different areas.
+argument-hint: "[--auto] [review-content|instructions|url]"
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code, codex]
@@ -9,6 +10,12 @@ kramme-platforms: [claude-code, codex]
 # Team-Based Review Resolution
 
 Resolve review findings in parallel using multi-agent execution. Each agent owns a non-overlapping set of files and implements fixes independently.
+
+Parse `$ARGUMENTS` for `--auto` before Step 1.
+
+- If present, set `AUTO_MODE=true` and remove the flag from the remaining input.
+- `--auto` means the lead should skip the plan confirmation in Step 4, proceed directly with the parallel plan whenever the grouping shows real parallelism, and post/resolve addressed external review comments after the fixes land.
+- Legacy `--reply` / `--answer-and-resolve` flags may still be accepted by the delegated Step 1 parser, but `--auto` is the preferred flag going forward.
 
 ## Prerequisites
 
@@ -74,7 +81,9 @@ Then delegate to the standard skill.
 
 ### Step 4: Present Plan
 
-Use AskUserQuestion to confirm the parallel plan:
+If `AUTO_MODE=true`, skip this AskUserQuestion and proceed with **Resolve in parallel**.
+
+Otherwise use AskUserQuestion to confirm the parallel plan:
 
 ```yaml
 header: "Parallel Review Resolution"
@@ -129,7 +138,13 @@ After all agents complete:
    - Ask the responsible agent to fix it (resume its session)
    - Fix it directly as the lead
 
-3. Write resolutions to the appropriate file (if the source was `UX_REVIEW_OVERVIEW.md`, update that file; otherwise write to `REVIEW_OVERVIEW.md`), using the same format as `/kramme:pr:resolve-review` Step 4, with an additional note about parallel resolution:
+3. Apply the same platform reply behavior as `/kramme:pr:resolve-review` Step 4:
+   - Default (no flag): do not post replies or resolve threads on the platform
+   - If `AUTO_MODE=true` or `ANSWER_AND_RESOLVE=true`, and the review source is external: post replies for each external review comment, then resolve addressed threads/discussions on the PR/MR
+   - If `REVIEW_SOURCE=local`: do not post replies or resolve threads on the platform, even when `--auto` or a legacy reply alias was provided
+   - If `AUTO_MODE=true` or `ANSWER_AND_RESOLVE=true`, and the review source is external: for disagreements or out-of-scope findings, post a rationale reply, but do not mark as resolved unless explicitly requested by the reviewer/user
+
+4. Write resolutions to the appropriate file (if the source was `UX_REVIEW_OVERVIEW.md`, update that file; otherwise write to `REVIEW_OVERVIEW.md`), using the same format as `/kramme:pr:resolve-review` Step 4, with an additional note about parallel resolution:
 
 ```markdown
 ## Resolution Summary

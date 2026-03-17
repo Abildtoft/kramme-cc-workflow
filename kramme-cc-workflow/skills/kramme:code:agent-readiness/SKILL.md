@@ -1,6 +1,7 @@
 ---
 name: kramme:code:agent-readiness
 description: "Audit a codebase for agent-nativeness — score how well-optimized it is for AI coding agents across 5 dimensions and generate a prioritized refactoring plan."
+argument-hint: "[--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -9,12 +10,17 @@ user-invocable: true
 
 Audit a codebase for agent-nativeness — how well-optimized it is for AI coding agents (Claude Code, Codex, etc.) to work with effectively. Scores 5 dimensions and generates a prioritized refactoring plan.
 
+Parse `$ARGUMENTS` for `--auto` before Step 1.
+
+- If present, set `AUTO_MODE=true` and remove the flag from the remaining input.
+- `--auto` means: if a previous report exists, write a fresh report and include a score comparison instead of prompting the user.
+
 **IMPORTANT:** This is a thorough codebase audit. Do not return early. Do not guess scores without evidence. Explore the codebase systematically and score based on what you find.
 
 ## Process Overview
 
-```
-/kramme:code:agent-readiness
+```text
+/kramme:code:agent-readiness [--auto]
     |
     v
 [Step 1: Detect Codebase Context] -> Language, framework, key signals
@@ -245,7 +251,9 @@ If multiple agents suggest similar actions (e.g., both Agent A and Agent B menti
 
 Check if `AGENT_NATIVE_AUDIT.md` exists in the project root.
 
-If it exists, ask the user:
+If it exists and `AUTO_MODE=true`, proceed in **Compare** mode automatically.
+
+If it exists and `AUTO_MODE` is false, ask the user:
 
 ```
 A previous Agent-Native Audit report exists.

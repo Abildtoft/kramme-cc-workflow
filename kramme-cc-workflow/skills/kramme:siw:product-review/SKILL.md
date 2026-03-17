@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:product-review
 description: (experimental) Product critique of SIW specs and plans before implementation. Evaluates target user clarity, problem/solution fit, user state modeling, critical moments coverage, scope correctness, and success criteria quality. Not for code review or implementation auditing.
-argument-hint: "[spec-file-path(s) | 'siw']"
+argument-hint: "[spec-file-path(s) | 'siw'] [--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -15,7 +15,7 @@ Critique specification documents from a product perspective before implementatio
 ## Process Overview
 
 ```
-/kramme:siw:product-review [spec-file-path(s) | 'siw']
+/kramme:siw:product-review [spec-file-path(s) | 'siw'] [--auto]
     |
     v
 [Step 1: Resolve Spec Files] -> Parse args or auto-detect from siw/
@@ -49,6 +49,15 @@ Critique specification documents from a product perspective before implementatio
 ### 1.1 Parse Arguments
 
 `$ARGUMENTS` contains the spec file path(s) or keyword.
+
+**Extract control flags first:**
+- If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag before processing remaining arguments.
+
+`--auto` means:
+- replace any previous product review automatically
+- create SIW issues for **Critical and Major** findings when Step 7 applies
+- skip the report overwrite / issue-creation prompts
+- if Work Context is `Prototype` or `Refactor`, skip the product review and direct the user to `/kramme:siw:spec-audit`
 
 **Detection rules:**
 1. **File path(s)**: Contains `/` or ends in `.md`, `.txt`
@@ -178,6 +187,10 @@ User flows documented: {count}
 ### 2.5 Work Context Gate
 
 If `work_context.work_type` is **Prototype** or **Refactor**:
+
+If `AUTO_MODE=true`, stop here and suggest `/kramme:siw:spec-audit` instead.
+
+Otherwise:
 
 Use AskUserQuestion:
 
@@ -351,6 +364,10 @@ Read `siw/OPEN_ISSUES_OVERVIEW.md` and `siw/issues/*.md` to check if any product
 
 If a previous report exists at the target path:
 
+If `AUTO_MODE=true`, choose **Replace** automatically.
+
+Otherwise:
+
 ```yaml
 header: "Existing Product Review"
 question: "A previous product review exists. How should I proceed?"
@@ -383,6 +400,10 @@ Product review written to: {path}
 - Critical or Major findings were found
 
 ### 7.1 Ask User
+
+If `AUTO_MODE=true`, skip this prompt and choose **Critical and major only**.
+
+Otherwise:
 
 ```yaml
 header: "Create SIW Issues"
