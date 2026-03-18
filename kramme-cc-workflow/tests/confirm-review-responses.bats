@@ -199,11 +199,18 @@ REVIEW_SUMMARY.md"
     [[ "$output" == *"PRODUCT_REVIEW_OVERVIEW.md"* ]]
 }
 
-@test "blocks git commit when PRODUCT_REVIEW.md is staged in subdirectory" {
-    mock_git_staged "siw/PRODUCT_REVIEW.md"
-    run run_hook "git commit -m 'siw product review staged'"
+@test "blocks git commit when PRODUCT_AUDIT_OVERVIEW.md is staged" {
+    mock_git_staged "PRODUCT_AUDIT_OVERVIEW.md"
+    run run_hook "git commit -m 'product audit overview staged'"
     is_blocked
-    [[ "$output" == *"siw/PRODUCT_REVIEW.md"* ]]
+    [[ "$output" == *"PRODUCT_AUDIT_OVERVIEW.md"* ]]
+}
+
+@test "blocks git commit when PRODUCT_AUDIT.md is staged in subdirectory" {
+    mock_git_staged "siw/PRODUCT_AUDIT.md"
+    run run_hook "git commit -m 'siw product audit staged'"
+    is_blocked
+    [[ "$output" == *"siw/PRODUCT_AUDIT.md"* ]]
 }
 
 @test "blocks git commit when QA_REPORT.md is staged" {
@@ -218,13 +225,6 @@ REVIEW_SUMMARY.md"
     run run_hook "git commit -m 'qa baseline staged'"
     is_blocked
     [[ "$output" == *"QA_BASELINE.json"* ]]
-}
-
-@test "blocks git commit when PRODUCT_AUDIT_OVERVIEW.md is staged" {
-    mock_git_staged "PRODUCT_AUDIT_OVERVIEW.md"
-    run run_hook "git commit -m 'product audit staged'"
-    is_blocked
-    [[ "$output" == *"PRODUCT_AUDIT_OVERVIEW.md"* ]]
 }
 
 @test "blocks git commit when configured artifact is staged with other files" {

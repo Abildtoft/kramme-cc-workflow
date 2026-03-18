@@ -116,7 +116,7 @@ Issues use prefix-based numbering:
 | `/kramme:siw:issue-define` | Define a new work item with guided interview (creates `G-XXX` issues) |
 | `/kramme:siw:generate-phases` | Break spec into atomic phase-based issues (`P1-XXX`, `P2-XXX`, `G-XXX`) |
 | `/kramme:siw:issue-implement` | Start implementing a defined issue (accepts `G-001`, `P1-001`, etc.) |
-| `/kramme:siw:product-review` | Product critique of specs/plans — evaluates target user, problem/solution fit, user state modeling, and scope correctness |
+| `/kramme:siw:product-audit` | Product critique of specs/plans — evaluates target user, problem/solution fit, user state modeling, and scope correctness |
 | `/kramme:siw:spec-audit` | Audit spec quality (coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design) before implementation |
 | `/kramme:siw:implementation-audit` | Audit codebase against spec for discrepancies, naming misalignments, and missing implementations |
 | `/kramme:siw:resolve-audit` | Resolve audit findings one-by-one with executive summaries, alternatives, and SIW issue creation. Add `--auto` to let the model choose each resolution without pausing for confirmation. If both audit reports exist, pass the report path to keep the run scoped. |
@@ -144,7 +144,7 @@ ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw
 | **Spec feels weak or underspecified** | Run `/kramme:siw:discovery` to strengthen spec quality before creating/implementing issues |
 | **Need new work item** | Run `/kramme:siw:issue-define` |
 | **Ready to implement** | Run `/kramme:siw:issue-implement {number}` |
-| **Spec written, want product validation** | Run `/kramme:siw:product-review` to evaluate product thinking before implementation |
+| **Spec written, want product validation** | Run `/kramme:siw:product-audit` to evaluate product thinking before implementation |
 | **Spec written, not yet validated** | Run `/kramme:siw:spec-audit` to check spec quality before implementing |
 | **Implementation done** | Run `/kramme:siw:implementation-audit` to verify spec compliance |
 | **Audit report ready** | Run `/kramme:siw:resolve-audit` to triage findings and create issues one-by-one, or add `--auto` for a non-interactive pass. If both audit reports exist, pass the report path to avoid resolving both. |

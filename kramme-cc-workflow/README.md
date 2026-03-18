@@ -144,7 +144,7 @@ See [docs/siw.md](docs/siw.md) for the full workflow reference.
 ```bash
 /kramme:browse http://localhost:3000           # navigate, screenshot, inspect
 /kramme:qa http://localhost:3000               # structured QA with evidence
-/kramme:product:audit http://localhost:3000     # whole-product experience review
+/kramme:product:review http://localhost:3000    # whole-product experience review
 ```
 
 ### Quick utilities
@@ -182,7 +182,7 @@ See [docs/siw.md](docs/siw.md) for detailed workflow documentation.
 | `/kramme:siw:generate-phases` | User | `[spec-file-path]` | Break spec into atomic, phase-based issues with tests and validation.<br><br>Uses `P1-001`, `P2-001`, `G-001` numbering.<br><br>Reviews breakdown with subagent before creating files. |
 | `/kramme:siw:issue-implement` | User | `<G-001 \| P1-001 \| ISSUE-G-XXX>` | Start implementing a defined local issue with codebase exploration and planning.<br><br>Works on current branch. |
 | `/kramme:siw:issue-implement:team` | User | `[issue-ids or 'phase N'] [--auto]` | Implement multiple SIW issues in parallel using multi-agent execution.<br><br>Each agent gets a full context window and implements one issue. Best for phases with multiple independent issues.<br><br>Add `--auto` to start the plan immediately.<br><br>Requires Agent Teams in Claude Code or Codex with `multi_agent` enabled. |
-| `/kramme:siw:product-review` | User | `[spec-file-path(s) \| 'siw'] [--auto]` | Experimental.<br><br>Product critique of SIW specs/plans before implementation.<br><br>Evaluates target user clarity, problem/solution fit, user state modeling, scope correctness, and success criteria quality.<br><br>Optionally creates SIW issues for product gaps. Add `--auto` to replace prior review results and create critical/major issues without pausing. |
+| `/kramme:siw:product-audit` | User | `[spec-file-path(s) \| 'siw'] [--auto]` | Experimental.<br><br>Product audit of SIW specs/plans before implementation.<br><br>Evaluates target user clarity, problem/solution fit, user state modeling, scope correctness, and success criteria quality.<br><br>Optionally creates SIW issues for product gaps. Add `--auto` to replace prior audit results and create critical/major issues without pausing. |
 | `/kramme:siw:spec-audit` | User | `[spec-file-path(s) \| 'siw'] [--auto] [--model opus\|sonnet\|haiku]` | Audit spec quality (coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design) before implementation.<br><br>Produces a structured report and optionally creates SIW issues. Add `--auto` to replace prior report output and create critical/major issues without pausing. |
 | `/kramme:siw:spec-audit:team` | User | `[spec-file-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Team-based spec audit where dimension specialists collaborate, cross-validate findings, and challenge each other's assessments.<br><br>Higher quality than standard spec-audit but uses more tokens.<br><br>Requires Agent Teams in Claude Code or Codex with `multi_agent` enabled. |
 | `/kramme:siw:implementation-audit` | User | `[spec-file-path(s) \| 'siw'] [--auto] [--model opus\|sonnet\|haiku]` | Exhaustively audit codebase against specification files.<br><br>Finds naming misalignments, missing implementations, and spec drift.<br><br>Produces a structured report and optionally creates SIW issues. Add `--auto` to replace prior report output and create critical/major issues without pausing. |
@@ -221,7 +221,7 @@ Live product inspection and structured testing.
 |-------|------------|-----------|-------------|
 | `/kramme:browse` | User | `<url> [--screenshot] [--console] [--network]` | Experimental.<br><br>Browser operator for live product inspection.<br><br>Detects available browser MCP tooling (claude-in-chrome, chrome-devtools, playwright) and provides consistent navigation, screenshot, interaction, and evidence capture. |
 | `/kramme:qa` | User | `<url> [quick\|diff-aware\|targeted <route>] [--base <ref>] [--regression]` | Experimental.<br><br>Structured QA testing with evidence capture.<br><br>Runs smoke checks, diff-aware validation, or targeted route testing. Produces QA_REPORT.md with screenshots, repro steps, severity, and recommended fixes. |
-| `/kramme:product:audit` | User | `<url> [--flows <flow1,flow2,...>] [--focus <dimension>]` | Experimental.<br><br>Whole-product review across flows and surfaces.<br><br>Evaluates navigation coherence, feature discoverability, onboarding, cross-flow consistency, dead ends, friction, and trust/safety. Produces PRODUCT_AUDIT_OVERVIEW.md. |
+| `/kramme:product:review` | User | `<url> [--flows <flow1,flow2,...>] [--focus <dimension>]` | Experimental.<br><br>Whole-product review across flows and surfaces.<br><br>Evaluates navigation coherence, feature discoverability, onboarding, cross-flow consistency, dead ends, friction, and trust/safety. Produces PRODUCT_AUDIT_OVERVIEW.md. |
 
 #### Product Design
 
@@ -326,7 +326,7 @@ Session management, verification, artifact cleanup, and hook configuration.
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:workflow-artifacts:cleanup` | User | — | Delete workflow artifacts (REVIEW_OVERVIEW.md, UX_REVIEW_OVERVIEW.md, PRODUCT_REVIEW_OVERVIEW.md, PRODUCT_REVIEW.md, QA_REPORT.md, QA_BASELINE.json, PRODUCT_AUDIT_OVERVIEW.md, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/PRODUCT_REVIEW.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files, visual diagram HTML files).<br><br>For SIW-specific cleanup, use `/kramme:siw:remove`. |
+| `/kramme:workflow-artifacts:cleanup` | User | — | Delete workflow artifacts (REVIEW_OVERVIEW.md, UX_REVIEW_OVERVIEW.md, PRODUCT_REVIEW_OVERVIEW.md, PRODUCT_AUDIT_OVERVIEW.md, PRODUCT_AUDIT.md, QA_REPORT.md, QA_BASELINE.json, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/PRODUCT_AUDIT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files, visual diagram HTML files).<br><br>For SIW-specific cleanup, use `/kramme:siw:remove`. |
 | `/kramme:changelog:generate` | User | — | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
 | `/kramme:hooks:configure-links` | User | `[show\|reset\|KEY=VALUE ...]` | Configure `context-links` hook settings by writing local overrides to `hooks/context-links.config` (workspace slug, team keys, regexes). |
 | `/kramme:hooks:toggle` | User | `<hook-name\|status> [enable\|disable]` | Enable or disable a plugin hook.<br><br>Use `status` to list all hooks, or specify a hook name to toggle. |

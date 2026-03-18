@@ -1,4 +1,4 @@
-# Product Review
+# Product Audit
 
 **Date:** {date}
 **Spec Files Reviewed:** {list}
@@ -68,5 +68,5 @@ Not specified — full product review applied.
 
 1. Address critical findings in the spec
 2. Discuss open questions with stakeholders
-3. Re-run after spec revisions: `/kramme:siw:product-review`
+3. Re-run after spec revisions: `/kramme:siw:product-audit`
 4. If ready, proceed to implementation: `/kramme:siw:generate-phases`

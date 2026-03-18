@@ -38,7 +38,7 @@ More specifically:
 
 - `/kramme:browse` takes inspiration from gstack's dedicated browser skill, but should be implemented as a wrapper around available browser MCP tools rather than a custom compiled browser runtime.
 - `/kramme:qa` takes inspiration from gstack's QA workflow, especially the emphasis on screenshots, evidence, and changed-flow validation, but should be smaller and more incremental in V1.
-- `/kramme:pr:product-review`, `/kramme:siw:product-review`, and `/kramme:product:audit` take inspiration from gstack's use of different cognitive modes for different kinds of review, but should be expressed as a shared product-review family integrated into this repo's existing skill structure.
+- `/kramme:pr:product-review`, `/kramme:siw:product-audit`, and `/kramme:product:review` take inspiration from gstack's use of different cognitive modes for different kinds of review, but should be expressed as a shared product-review family integrated into this repo's existing skill structure.
 - `/kramme:pr:finalize` is conceptually inspired by gstack's end-of-workflow automation, but should remain PR-centered and compositional rather than trying to own merge or deploy behavior.
 
 ## Skills In Scope
@@ -46,10 +46,10 @@ More specifically:
 | Skill | Purpose | Primary Context | Depends On |
 |---|---|---|---|
 | `/kramme:pr:product-review` | Deep product review of branch and local changes | Pull requests / local diffs | Shared product-review core |
-| `/kramme:siw:product-review` | Product critique of specs and SIW plans before implementation | SIW / spec review | Shared product-review core |
+| `/kramme:siw:product-audit` | Product critique of specs and SIW plans before implementation | SIW / spec review | Shared product-review core |
 | `/kramme:browse` | Browser operator skill for inspecting and interacting with a live app | Live product / debugging / QA | Browser MCP availability |
 | `/kramme:qa` | Structured QA testing with evidence and reports | Live product / branch validation | `/kramme:browse` |
-| `/kramme:product:audit` | Whole-product product review across flows and surfaces | Live product / broader experience review | Shared product-review core + `/kramme:browse` |
+| `/kramme:product:review` | Whole-product product review across flows and surfaces | Live product / broader experience review | Shared product-review core + `/kramme:browse` |
 | `/kramme:pr:finalize` | Final PR readiness orchestration | Pull requests | Existing PR skills + `/kramme:pr:product-review` + `/kramme:qa` |
 
 ## Out Of Scope
@@ -102,10 +102,10 @@ The roadmap should land in an order that produces value early and minimizes depe
 The recommended order is:
 
 1. `pr:product-review`
-2. `siw:product-review`
+2. `siw:product-audit`
 3. `browse`
 4. `qa`
-5. `product:audit`
+5. `product:review`
 6. `pr:finalize`
 
 ## Existing Components To Reuse
@@ -156,8 +156,8 @@ The product-review family should use a predictable structure:
 Artifacts should be context-specific:
 
 - `PRODUCT_REVIEW_OVERVIEW.md` for PR review
-- `siw/PRODUCT_REVIEW.md` for SIW/spec review
-- `PRODUCT_AUDIT_OVERVIEW.md` for whole-product audit
+- `siw/PRODUCT_AUDIT.md` for SIW/spec review
+- `PRODUCT_AUDIT_OVERVIEW.md` for whole-product review
 
 ### Shared Threshold Philosophy
 
@@ -218,7 +218,7 @@ The PR-specific command should evaluate:
 - The output is scoped to the PR and local changes
 - The skill can explain why an issue is a product issue rather than a generic UX issue
 
-## Phase 2: `/kramme:siw:product-review`
+## Phase 2: `/kramme:siw:product-audit`
 
 ### Objective
 
@@ -232,7 +232,7 @@ Create a product review command for SIW/spec workflows that critiques plans befo
 
 ### Implementation Goals
 
-- Add `skills/kramme:siw:product-review/SKILL.md`
+- Add `skills/kramme:siw:product-audit/SKILL.md`
 - Reuse the shared product-review core in a plan/spec mode
 - Accept SIW spec files or current `siw/` context as the primary input
 - Evaluate product risks in plans, not code diffs
@@ -271,7 +271,7 @@ Introduce a reusable browser skill that gives the workflow a standardized live-p
 
 ### Why This Phase Comes Third
 
-- It enables both `qa` and `product:audit`
+- It enables both `qa` and `product:review`
 - It should be treated as infrastructure, not as a one-off utility
 - It is the largest new capability in the roadmap
 
@@ -365,7 +365,7 @@ Each QA run should capture:
 - It can validate changed flows with reasonable operator consistency
 - Its artifacts are useful inputs to `pr:finalize`
 
-## Phase 5: `/kramme:product:audit`
+## Phase 5: `/kramme:product:review`
 
 ### Objective
 
@@ -379,7 +379,7 @@ Create a whole-product review command for broader product experience analysis ac
 
 ### Implementation Goals
 
-- Add `skills/kramme:product:audit/SKILL.md`
+- Add `skills/kramme:product:review/SKILL.md`
 - Require a URL, running app, or equivalent live context
 - Review the broader product experience, not just one branch diff
 - Reuse the shared rubric but adapt the emphasis to system-wide experience
@@ -504,29 +504,29 @@ The README should explain the intended lifecycle:
 ### Recommended Final Names
 
 - `/kramme:pr:product-review`
-- `/kramme:siw:product-review`
+- `/kramme:siw:product-audit`
 - `/kramme:browse`
 - `/kramme:qa`
-- `/kramme:product:audit`
+- `/kramme:product:review`
 - `/kramme:pr:finalize`
 
 ### Naming Notes
 
-`siw:product-review` is recommended over `plan:product-review` because it matches the existing SIW namespace and makes the context obvious.
+`siw:product-audit` is recommended over `plan:product-review` because it matches the existing SIW namespace and makes the context obvious.
 
 If broader non-SIW plan review becomes important later, a `plan:` alias can be added without changing the shared implementation.
 
 ## Key Risks
 
-- Browser MCP availability may vary between environments, which can make `browse`, `qa`, and `product:audit` feel inconsistent unless failure behavior is very clear.
+- Browser MCP availability may vary between environments, which can make `browse`, `qa`, and `product:review` feel inconsistent unless failure behavior is very clear.
 - `pr:finalize` can become bloated if it starts absorbing logic that should remain in `verify`, `review`, or `qa`.
 - `pr:product-review` may overlap with `pr:ux-review` unless the product-review rubric is kept sharply focused on product value and flow logic.
-- `siw:product-review` can drift into generic spec audit behavior unless its product lens remains explicit.
+- `siw:product-audit` can drift into generic spec audit behavior unless its product lens remains explicit.
 
 ## Open Decisions
 
 - Whether `pr:finalize` should automatically invoke `qa` only for UI-relevant changes, or always ask first.
-- Whether `product:audit` should support screenshots as an alternative to live browser review in V1.
+- Whether `product:review` should support screenshots as an alternative to live browser review in V1.
 - Whether `qa` should write one standard artifact name or support user-specified output paths immediately.
 
 ## Recommended Next Step
@@ -535,6 +535,6 @@ Start with Phase 1 only:
 
 1. deepen the shared product-review foundation
 2. implement `/kramme:pr:product-review`
-3. implement `/kramme:siw:product-review`
+3. implement `/kramme:siw:product-audit`
 
 This creates immediate user value, establishes the common rubric, and keeps early delivery independent of browser tooling.

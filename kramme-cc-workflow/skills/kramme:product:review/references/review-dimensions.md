@@ -1,6 +1,6 @@
-# Product Audit Dimensions
+# Product Review Dimensions
 
-System-wide audit dimensions for whole-product review. These dimensions emphasize cross-flow patterns and overall product coherence rather than individual feature correctness.
+System-wide review dimensions for whole-product review. These dimensions emphasize cross-flow patterns and overall product coherence rather than individual feature correctness.
 
 ## Navigation and IA Coherence
 
