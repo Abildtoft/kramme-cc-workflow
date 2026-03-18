@@ -24,7 +24,7 @@ Critique specification documents from a product perspective before implementatio
 [Step 2: Read Specs Fully] -> Read every file, extract product elements
     |
     v
-[Step 3: Check for Previous Review] -> Parse existing PRODUCT_AUDIT.md
+[Step 3: Check for Previous Audit] -> Parse existing PRODUCT_AUDIT.md
     |
     v
 [Step 4: Launch Product Reviewer Agent] -> Explore agent for product critique

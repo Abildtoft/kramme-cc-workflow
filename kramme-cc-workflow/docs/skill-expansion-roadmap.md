@@ -49,7 +49,7 @@ More specifically:
 | `/kramme:siw:product-audit` | Product critique of specs and SIW plans before implementation | SIW / spec review | Shared product-review core |
 | `/kramme:browse` | Browser operator skill for inspecting and interacting with a live app | Live product / debugging / QA | Browser MCP availability |
 | `/kramme:qa` | Structured QA testing with evidence and reports | Live product / branch validation | `/kramme:browse` |
-| `/kramme:product:review` | Whole-product product review across flows and surfaces | Live product / broader experience review | Shared product-review core + `/kramme:browse` |
+| `/kramme:product:review` | Whole-product review across flows and surfaces | Live product / broader experience review | Shared product-review core + `/kramme:browse` |
 | `/kramme:pr:finalize` | Final PR readiness orchestration | Pull requests | Existing PR skills + `/kramme:pr:product-review` + `/kramme:qa` |
 
 ## Out Of Scope
