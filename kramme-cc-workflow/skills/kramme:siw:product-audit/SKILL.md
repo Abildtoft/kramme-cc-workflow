@@ -1,12 +1,12 @@
 ---
-name: kramme:siw:product-review
-description: (experimental) Product critique of SIW specs and plans before implementation. Evaluates target user clarity, problem/solution fit, user state modeling, critical moments coverage, scope correctness, and success criteria quality. Not for code review or implementation auditing.
+name: kramme:siw:product-audit
+description: (experimental) Product audit of SIW specs and plans before implementation. Evaluates target user clarity, problem/solution fit, user state modeling, critical moments coverage, scope correctness, and success criteria quality. Not for code review or implementation auditing.
 argument-hint: "[spec-file-path(s) | 'siw'] [--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
 
-# Product Review of SIW Specs
+# Product Audit of SIW Specs
 
 Critique specification documents from a product perspective before implementation begins. This is a spec-only analysis — no codebase code is read or compared.
 
@@ -15,7 +15,7 @@ Critique specification documents from a product perspective before implementatio
 ## Process Overview
 
 ```
-/kramme:siw:product-review [spec-file-path(s) | 'siw'] [--auto]
+/kramme:siw:product-audit [spec-file-path(s) | 'siw'] [--auto]
     |
     v
 [Step 1: Resolve Spec Files] -> Parse args or auto-detect from siw/
@@ -24,7 +24,7 @@ Critique specification documents from a product perspective before implementatio
 [Step 2: Read Specs Fully] -> Read every file, extract product elements
     |
     v
-[Step 3: Check for Previous Review] -> Parse existing PRODUCT_REVIEW.md
+[Step 3: Check for Previous Audit] -> Parse existing PRODUCT_AUDIT.md
     |
     v
 [Step 4: Launch Product Reviewer Agent] -> Explore agent for product critique
@@ -33,7 +33,7 @@ Critique specification documents from a product perspective before implementatio
 [Step 5: Classify and Deduplicate Findings] -> Severity, cross-reference issues
     |
     v
-[Step 6: Write Report] -> siw/PRODUCT_REVIEW.md
+[Step 6: Write Report] -> siw/PRODUCT_AUDIT.md
     |
     v
 [Step 7: Optionally Create SIW Issues] -> Convert findings to issues
@@ -99,7 +99,7 @@ Auto-detect spec files from the `siw/` directory:
 
 2. Find spec files (exclude workflow files):
    - Use Glob to find `siw/*.md`
-   - Exclude: `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `AUDIT_IMPLEMENTATION_REPORT.md`, `AUDIT_SPEC_REPORT.md`, `PRODUCT_REVIEW.md`, `SPEC_STRENGTHENING_PLAN.md`, `issues/`
+   - Exclude: `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `AUDIT_IMPLEMENTATION_REPORT.md`, `AUDIT_SPEC_REPORT.md`, `PRODUCT_AUDIT.md`, `SPEC_STRENGTHENING_PLAN.md`, `issues/`
 
 3. Find supporting specs:
    - Use Glob to find `siw/supporting-specs/*.md`
@@ -123,8 +123,8 @@ Expected locations:
   - siw/supporting-specs/*.md (supporting specifications)
 
 Or provide file path(s) directly:
-  /kramme:siw:product-review path/to/spec.md
-  /kramme:siw:product-review docs/spec1.md docs/spec2.md
+  /kramme:siw:product-audit path/to/spec.md
+  /kramme:siw:product-audit docs/spec1.md docs/spec2.md
 
 To initialize a workflow with a spec, run /kramme:siw:init
 ```
@@ -212,7 +212,7 @@ For all other work types, continue to Step 3.
 
 ## Step 3: Check for Previous Review
 
-If `siw/PRODUCT_REVIEW.md` (or `PRODUCT_REVIEW.md` in project root) exists:
+If `siw/PRODUCT_AUDIT.md` (or `PRODUCT_AUDIT.md` in project root) exists:
 
 1. Read the file.
 2. Parse for previously reported findings and their IDs (PROD-NNN).
@@ -357,8 +357,8 @@ Read `siw/OPEN_ISSUES_OVERVIEW.md` and `siw/issues/*.md` to check if any product
 
 ### 6.1 Determine File Location
 
-- If `siw/` directory exists: `siw/PRODUCT_REVIEW.md`
-- If no `siw/` directory: `PRODUCT_REVIEW.md` in project root
+- If `siw/` directory exists: `siw/PRODUCT_AUDIT.md`
+- If no `siw/` directory: `PRODUCT_AUDIT.md` in project root
 
 ### 6.2 Handle Existing Report
 
@@ -382,7 +382,7 @@ options:
 
 ### 6.3 Compile and Write Report
 
-Use the report format template from `assets/product-review-report-format.md`.
+Use the report format template from `assets/product-audit-report-format.md`.
 
 After writing:
 ```
@@ -461,7 +461,7 @@ Dimensions evaluated:
   - Success Criteria Quality: {assessed/not assessed}
 
 Suggested next steps:
-  - /kramme:siw:resolve-audit siw/PRODUCT_REVIEW.md  (address findings)
+  - /kramme:siw:resolve-audit siw/PRODUCT_AUDIT.md  (address findings)
   - /kramme:siw:spec-audit  (technical spec quality audit)
   - /kramme:siw:generate-phases  (when ready for implementation)
 ```
@@ -496,7 +496,7 @@ Suggested next steps:
 ## Usage Examples
 
 ```
-/kramme:siw:product-review
-/kramme:siw:product-review siw
-/kramme:siw:product-review docs/my-spec.md
+/kramme:siw:product-audit
+/kramme:siw:product-audit siw
+/kramme:siw:product-audit docs/my-spec.md
 ```

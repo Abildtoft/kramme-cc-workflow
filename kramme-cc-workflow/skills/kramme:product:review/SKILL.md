@@ -1,14 +1,14 @@
 ---
-name: kramme:product:audit
-description: (experimental) Whole-product review across flows and surfaces. Requires a live app URL. Evaluates navigation coherence, feature discoverability, onboarding, cross-flow consistency, dead ends, friction, and trust/safety. Produces PRODUCT_AUDIT_OVERVIEW.md. Not for branch-scoped PR review (use pr:product-review) or pre-implementation critique (use siw:product-review).
+name: kramme:product:review
+description: (experimental) Whole-product review across flows and surfaces. Requires a live app URL. Evaluates navigation coherence, feature discoverability, onboarding, cross-flow consistency, dead ends, friction, and trust/safety. Produces PRODUCT_AUDIT_OVERVIEW.md. Not for branch-scoped PR review (use pr:product-review) or pre-implementation spec audit (use siw:product-audit).
 argument-hint: "<url> [--flows <flow1,flow2,...>] [--focus <dimension>]"
 disable-model-invocation: true
 user-invocable: true
 ---
 
-# Whole-Product Audit
+# Whole-Product Review
 
-Perform a system-wide product experience review across flows and surfaces of a running application. Produces a structured audit report organized by dimension and severity.
+Perform a system-wide product experience review across flows and surfaces of a running application. Produces a structured review report organized by dimension and severity.
 
 **Arguments:** "$ARGUMENTS"
 
@@ -18,25 +18,25 @@ Perform a system-wide product experience review across flows and surfaces of a r
 
 Extract from `$ARGUMENTS`:
 
-1. **URL** (required) — the target URL to audit (e.g., `http://localhost:3000`, `https://staging.example.com`)
+1. **URL** (required) — the target URL to review (e.g., `http://localhost:3000`, `https://staging.example.com`)
 2. **Flags** (optional):
-   - `--flows <flow1,flow2,...>` — comma-separated list of flow names to scope the audit (e.g., `onboarding,settings,billing`)
-   - `--focus <dimension>` — specific audit dimension to emphasize (e.g., `discoverability`, `consistency`, `trust-safety`)
+   - `--flows <flow1,flow2,...>` — comma-separated list of flow names to scope the review (e.g., `onboarding,settings,billing`)
+   - `--focus <dimension>` — specific review dimension to emphasize (e.g., `discoverability`, `consistency`, `trust-safety`)
 
 Store parsed values:
-- `TARGET_URL` — the URL to audit
-- `SCOPED_FLOWS` — list of flow names, or empty (audit all discovered flows)
+- `TARGET_URL` — the URL to review
+- `SCOPED_FLOWS` — list of flow names, or empty (review all discovered flows)
 - `FOCUS_DIMENSION` — specific dimension to emphasize, or empty (all dimensions weighted equally)
 
 If no URL is provided, **hard stop**:
 
 ```
-Error: URL is required for product audit.
+Error: URL is required for product review.
 
 Usage:
-  /kramme:product:audit http://localhost:3000
-  /kramme:product:audit http://localhost:4200 --flows onboarding,settings,billing
-  /kramme:product:audit http://localhost:3000 --focus discoverability
+  /kramme:product:review http://localhost:3000
+  /kramme:product:review http://localhost:4200 --flows onboarding,settings,billing
+  /kramme:product:review http://localhost:3000 --focus discoverability
 ```
 
 ### Step 2: Validate Prerequisites
@@ -50,7 +50,7 @@ HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$TARGET_URL"
 - `2xx` or `3xx` — proceed
 - Connection refused — **hard stop**: `Error: Connection refused at $TARGET_URL. Start the application first, then re-run.`
 - Timeout — **hard stop**: `Error: Request to $TARGET_URL timed out after 10 seconds. Is the server running?`
-- `5xx` — **hard stop**: `Error: Server error ($HTTP_STATUS) at $TARGET_URL. Fix the server error before auditing.`
+- `5xx` — **hard stop**: `Error: Server error ($HTTP_STATUS) at $TARGET_URL. Fix the server error before reviewing.`
 - `4xx` — warn but proceed (page may require authentication or interaction to render)
 
 **Check for browser MCP:**
@@ -64,7 +64,7 @@ A browser MCP is required (same detection as `/kramme:browse`). Check for availa
 If none found, **hard stop**:
 
 ```
-Error: No browser automation MCP detected. Product audit requires live browser inspection.
+Error: No browser automation MCP detected. Product review requires live browser inspection.
 
 Install one of:
   - Claude in Chrome extension (recommended)
@@ -76,12 +76,12 @@ Install one of:
 
 ```
 Warning: The application at $TARGET_URL appears to require authentication.
-Please log in manually in the browser first, then re-run the audit.
+Please log in manually in the browser first, then re-run the review.
 ```
 
 ### Step 3: Load Project Context
 
-Read project context files to understand the product being audited:
+Read project context files to understand the product being reviewed:
 
 1. Read `CLAUDE.md` in the repo root
 2. Read `AGENTS.md` files if they exist (repo root and closest relevant directories)
@@ -94,16 +94,16 @@ Extract product context:
 
 Store this context as `PROJECT_CONTEXT` for use in agent instructions.
 
-### Step 3b: Check for Previous Audit
+### Step 3b: Check for Previous Review
 
 If `PRODUCT_AUDIT_OVERVIEW.md` exists in the project root:
 
 1. Read the file.
 2. Parse for previously reported findings and their IDs (PROD-NNN).
-3. Note which flows were previously audited and their findings.
+3. Note which flows were previously reviewed and their findings.
 4. Store as `PREVIOUS_FINDINGS` for deduplication in Step 6.
 
-This avoids re-reporting the same issues on subsequent audit runs. A finding is considered "previously reported" if it matches on:
+This avoids re-reporting the same issues on subsequent review runs. A finding is considered "previously reported" if it matches on:
 - Same flow (flow name or URL)
 - Same dimension
 - Same underlying issue (semantic match on root cause)
@@ -131,16 +131,16 @@ Analyze the landing page and navigation structure:
 3. Features that represent core product value
 4. Settings and account management
 
-Store the list of flows to audit as `AUDIT_FLOWS`, each with:
+Store the list of flows to review as `REVIEW_FLOWS`, each with:
 - `flow_name` — human-readable name
 - `flow_url` — URL to navigate to
 - `flow_context` — brief description from navigation label
 
-### Step 5: Audit Each Flow
+### Step 5: Review Each Flow
 
-Read `references/audit-dimensions.md` to load the audit dimensions.
+Read `references/review-dimensions.md` to load the review dimensions.
 
-For each flow in `AUDIT_FLOWS`:
+For each flow in `REVIEW_FLOWS`:
 
 **5a. Navigate and capture evidence**
 
@@ -157,24 +157,24 @@ This captures the page snapshot, screenshot, console messages, and network reque
 Launch the `kramme:product-reviewer` agent via the Task tool with the following context:
 
 ```
-You are auditing the overall product experience, not a branch diff.
-This is a system-wide product audit of a live application.
+You are reviewing the overall product experience, not a branch diff.
+This is a system-wide product review of a live application.
 
 PROJECT CONTEXT:
 $PROJECT_CONTEXT
 
 CURRENT FLOW: $FLOW_NAME ($FLOW_URL)
 
-AUDIT MODE: Whole-product audit (not PR review, not spec review).
-Evaluate this flow against the audit dimensions below.
+REVIEW MODE: Whole-product review (not PR review, not spec audit).
+Evaluate this flow against the review dimensions below.
 Focus on system-wide patterns and cross-flow consistency.
 Do NOT limit findings to a diff — evaluate the live product as-is.
 
 {If FOCUS_DIMENSION is set:}
 FOCUS: Emphasize the "$FOCUS_DIMENSION" dimension in your analysis, but still check all dimensions.
 
-AUDIT DIMENSIONS:
-{Contents of references/audit-dimensions.md}
+REVIEW DIMENSIONS:
+{Contents of references/review-dimensions.md}
 
 EVIDENCE:
 {Page snapshot, screenshot observations, console output, network summary from browse results}
@@ -219,31 +219,32 @@ Collect all findings from all flows. Organize by severity, then by dimension:
 - Navigation gaps (flows that don't connect to each other)
 - Terminology mismatches across flows
 
-**Previous audit deduplication (if `PREVIOUS_FINDINGS` exists from Step 3b):**
+**Previous review deduplication (if `PREVIOUS_FINDINGS` exists from Step 3b):**
 - Cross-reference each finding against previously reported findings
 - If a finding matches a previous one (same flow, dimension, and root cause): mark as "Previously Reported" and move to a separate section
-- If a previously reported finding no longer appears: mark as "Resolved since last audit"
-- New findings not in the previous audit are reported normally
+- If a previously reported finding no longer appears: mark as "Resolved since last review"
+- New findings not in the previous review are reported normally
 
 **Renumber findings before writing the report:**
 - After deduplication, assign fresh IDs sequentially across the full aggregated report: `PROD-001`, `PROD-002`, `PROD-003`, ...
 - Do not preserve per-flow scratch IDs from the individual reviewer runs
-- Use the renumbered IDs everywhere in the final report so follow-up discussion and previous-audit matching stay unambiguous
+- Use the renumbered IDs everywhere in the final report so follow-up discussion and previous-review matching stay unambiguous
 
-### Step 7: Write Audit Report
+### Step 7: Write Review Report
 
 Write `PRODUCT_AUDIT_OVERVIEW.md` at the project root.
 
 This is a working artifact, not committed. Cleaned up by `/kramme:workflow-artifacts:cleanup`.
 
+
 **Report structure:**
 
 ```markdown
-# Product Audit Overview
+# Product Review Overview
 
 **Application:** $TARGET_URL
 **Date:** {current date}
-**Flows audited:** {list of flow names}
+**Flows reviewed:** {list of flow names}
 **Focus:** {FOCUS_DIMENSION or "All dimensions"}
 
 ## Executive Summary
@@ -252,11 +253,11 @@ This is a working artifact, not committed. Cleaned up by `/kramme:workflow-artif
 Highlight the most significant patterns — both strengths and weaknesses.
 State the overall product maturity level: early/developing/mature/polished.}
 
-## Audit Scope
+## Review Scope
 
 | Flow | URL | Status |
 |------|-----|--------|
-| {flow_name} | {flow_url} | Audited / Skipped (reason) |
+| {flow_name} | {flow_url} | Reviewed / Skipped (reason) |
 
 ## Critical Findings
 
@@ -287,25 +288,25 @@ Each finding in PROD-NNN format.}
 - **Navigation gaps:** {flows that should connect but don't}
 - **Terminology:** {inconsistent terms across flows}
 
-## Previously Reported (from prior audit)
+## Previously Reported (from prior review)
 
 {If PREVIOUS_FINDINGS exists:}
-{Findings that match a previous audit run — same flow, dimension, and root cause.
+{Findings that match a previous review run — same flow, dimension, and root cause.
 Listed with their original PROD-NNN ID and current status.}
 
-{If no previous audit: omit this section entirely.}
+{If no previous review: omit this section entirely.}
 
-## Resolved Since Last Audit
+## Resolved Since Last Review
 
 {If PREVIOUS_FINDINGS exists:}
-{Findings from the previous audit that are no longer present — the issues have been fixed.}
+{Findings from the previous review that are no longer present — the issues have been fixed.}
 
-{If no previous audit: omit this section entirely.}
+{If no previous review: omit this section entirely.}
 
 ## Strengths
 
 {What the product does well from a product experience perspective.
-Bulleted list of 3-5 specific strengths observed during the audit.}
+Bulleted list of 3-5 specific strengths observed during the review.}
 
 ## Recommended Actions
 
@@ -325,9 +326,9 @@ Group by effort level: quick wins, medium effort, larger initiatives.}
 After writing the report, confirm completion:
 
 ```
-Product audit complete. Report written to PRODUCT_AUDIT_OVERVIEW.md.
+Product review complete. Report written to PRODUCT_AUDIT_OVERVIEW.md.
 
-Audited {N} flows at $TARGET_URL.
+Reviewed {N} flows at $TARGET_URL.
 Found: {X} critical, {Y} important, {Z} suggestions.
 
 Key patterns:
@@ -351,27 +352,27 @@ Key patterns:
 
 ## Usage Examples
 
-**Audit a local development server:**
+**Review a local development server:**
 ```
-/kramme:product:audit http://localhost:3000
+/kramme:product:review http://localhost:3000
 ```
 
 **Scope to specific flows:**
 ```
-/kramme:product:audit http://localhost:4200 --flows onboarding,settings,billing
+/kramme:product:review http://localhost:4200 --flows onboarding,settings,billing
 ```
 
 **Focus on a specific dimension:**
 ```
-/kramme:product:audit http://localhost:3000 --focus discoverability
+/kramme:product:review http://localhost:3000 --focus discoverability
 ```
 
-**Audit a staging environment:**
+**Review a staging environment:**
 ```
-/kramme:product:audit https://staging.myapp.com --flows dashboard,projects,team
+/kramme:product:review https://staging.myapp.com --flows dashboard,projects,team
 ```
 
 **Combine flow scoping and dimension focus:**
 ```
-/kramme:product:audit http://localhost:3000 --flows checkout,payment --focus trust-safety
+/kramme:product:review http://localhost:3000 --flows checkout,payment --focus trust-safety
 ```
