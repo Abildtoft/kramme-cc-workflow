@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:code-review
 description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline.
-argument-hint: "[aspects] [--base <ref>] [parallel] [--inline]"
+argument-hint: "[aspects] [--base <branch>] [parallel] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -17,7 +17,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 1. **Determine Review Scope**
    - Check git status to identify changed files
    - Parse arguments to see if user requested specific review aspects
-   - If `--base <ref>` flag → store as explicit base branch override
+   - If `--base <branch>` flag → store as explicit base branch override
    - If `--inline` flag → set `INLINE_MODE=true` and remove it from the aspect list
    - Default: Run all applicable reviews
 
@@ -26,7 +26,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    Determine the correct base branch for diff computation using a 3-tier strategy:
 
    **Tier 1: Explicit override**
-   If `--base <ref>` was provided, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
+   If `--base <branch>` was provided, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
 
    **Tier 2: PR/MR target branch detection**
    Detect the hosting platform and query for the actual target branch:
@@ -60,11 +60,16 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    BASE_BRANCH=${BASE_BRANCH#origin/}
 
    if [ -z "$BASE_BRANCH" ]; then
-     echo "Error: Could not determine base branch. Re-run with --base <ref>." >&2
+     echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
      exit 1
    fi
+   if ! git check-ref-format --branch "$BASE_BRANCH" >/dev/null 2>&1; then
+     echo "Error: Base branch '$BASE_BRANCH' is not a valid branch name. Re-run with --base <branch>." >&2
+     exit 1
+   fi
+   git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2>/dev/null || true
    if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
-     echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <ref>." >&2
+     echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <branch>." >&2
      exit 1
    fi
    ```

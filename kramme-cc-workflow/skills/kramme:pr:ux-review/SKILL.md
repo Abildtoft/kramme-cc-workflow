@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:ux-review
 description: Audit UI, UX, and product experience of PR and local changes using specialized agents for usability heuristics, product thinking, visual consistency, and accessibility. Supports inline report output with --inline.
-argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <ref>] [parallel] [--inline]"
+argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [parallel] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -19,7 +19,7 @@ Audit the UI, UX, and product experience of a PR's changes, including local stag
 1. If argument starts with `http` → store as `app_url` (enables visual mode for agents)
 2. If `--categories` flag → parse comma-separated list. Valid values: `a11y`, `ux`, `product`, `visual`, `all`
 3. If `--threshold N` → store as `custom_threshold` (0-100). Overrides each agent's default confidence threshold. Only findings with confidence >= N will be reported. Default thresholds if not specified: a11y = 90, ux/product/visual = 70.
-4. If `--base <ref>` → store as explicit base branch override
+4. If `--base <branch>` → store as explicit base branch override
 5. If `parallel` → launch agents in parallel instead of sequentially
 6. If `--inline` → set `INLINE_MODE=true` and do not write `UX_REVIEW_OVERVIEW.md`
 7. Default: all applicable categories, sequential, default thresholds
@@ -42,7 +42,7 @@ Before selecting files or launching agents:
 Determine the correct base branch using a 3-tier strategy:
 
 **Tier 1: Explicit override**
-If `--base <ref>` was provided in Step 1, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
+If `--base <branch>` was provided in Step 1, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
 
 **Tier 2: PR/MR target branch detection**
 ```bash
@@ -69,11 +69,16 @@ BASE_BRANCH=${BASE_BRANCH#refs/heads/}
 BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
 BASE_BRANCH=${BASE_BRANCH#origin/}
 if [ -z "$BASE_BRANCH" ]; then
-  echo "Error: Could not determine base branch. Re-run with --base <ref>." >&2
+  echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
   exit 1
 fi
+if ! git check-ref-format --branch "$BASE_BRANCH" >/dev/null 2>&1; then
+  echo "Error: Base branch '$BASE_BRANCH' is not a valid branch name. Re-run with --base <branch>." >&2
+  exit 1
+fi
+git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2>/dev/null || true
 if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
-  echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <ref>." >&2
+  echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <branch>." >&2
   exit 1
 fi
 ```

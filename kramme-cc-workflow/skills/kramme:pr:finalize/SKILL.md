@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:finalize
 description: (experimental) Final PR readiness orchestration. Coordinates verify:run, pr:code-review, pr:product-review, pr:ux-review, qa, and pr:generate-description. Produces a ready/not-ready/ready-with-caveats verdict. Not for creating PRs, fixing CI, or merging code.
-argument-hint: "[--auto] [--skip <skill,...>] [--app-url <url>] [--base <ref>]"
+argument-hint: "[--auto] [--skip <skill,...>] [--app-url <url>] [--base <branch>]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -19,7 +19,7 @@ Coordinate all pre-merge quality checks and produce a single readiness verdict. 
 1. If `--auto` → set `AUTO_MODE=true`.
 2. If `--skip <skill,...>` → parse comma-separated list of skill short names to skip. Valid values: `verify`, `code-review`, `product-review`, `ux-review`, `qa`, `generate-description`. Store as `SKIP_LIST`.
 3. If `--app-url <url>` → store as `APP_URL` (enables QA testing against a running app).
-4. If `--base <ref>` → store as explicit base branch override.
+4. If `--base <branch>` → store as explicit base branch override.
 5. All flags are optional. Default: run all applicable steps, no app URL, auto-detect base.
 
 `--auto` means:
@@ -60,7 +60,7 @@ Then run /kramme:pr:finalize again.
 Determine the correct base branch using a 3-tier strategy:
 
 **Tier 1: Explicit override**
-If `--base <ref>` was provided in Step 1, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
+If `--base <branch>` was provided in Step 1, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
 
 **Tier 2: PR/MR target branch detection**
 ```bash
@@ -87,11 +87,16 @@ BASE_BRANCH=${BASE_BRANCH#refs/heads/}
 BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
 BASE_BRANCH=${BASE_BRANCH#origin/}
 if [ -z "$BASE_BRANCH" ]; then
-  echo "Error: Could not determine base branch. Re-run with --base <ref>." >&2
+  echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
   exit 1
 fi
+if ! git check-ref-format --branch "$BASE_BRANCH" >/dev/null 2>&1; then
+  echo "Error: Base branch '$BASE_BRANCH' is not a valid branch name. Re-run with --base <branch>." >&2
+  exit 1
+fi
+git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2>/dev/null || true
 if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
-  echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <ref>." >&2
+  echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <branch>." >&2
   exit 1
 fi
 ```
@@ -426,7 +431,7 @@ pr:finalize does NOT:
 - **User aborts:** Stop immediately. Report what completed so far and what was skipped.
 - **No changes detected:** Stop early with clear message (Step 2.4).
 - **On main/master branch:** Stop with error (Step 2.2).
-- **Base branch not found:** Stop with error and suggest `--base <ref>` (Step 2.3).
+- **Base branch not found:** Stop with error and suggest `--base <branch>` (Step 2.3).
 
 ## Usage Examples
 

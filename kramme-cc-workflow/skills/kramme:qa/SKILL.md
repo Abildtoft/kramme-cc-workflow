@@ -1,7 +1,7 @@
 ---
 name: kramme:qa
 description: (experimental) Structured QA testing with evidence capture. Runs smoke checks, diff-aware validation, or targeted route testing against a live app. Produces QA_REPORT.md with screenshots, repro steps, severity, and recommended fixes, or replies inline with --inline. Uses browser MCP when available and falls back to code-only analysis otherwise.
-argument-hint: "<url> [quick|diff-aware|targeted <route>] [--base <ref>] [--regression] [--inline]"
+argument-hint: "<url> [quick|diff-aware|targeted <route>] [--base <branch>] [--regression] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -24,7 +24,7 @@ Extract from `$ARGUMENTS`:
    - `diff-aware` — test routes affected by changed UI files
    - `targeted <route>` — test a specific route/page
 3. **Flags**:
-   - `--base <ref>` — explicit base branch for diff-aware mode
+   - `--base <branch>` — explicit base branch for diff-aware mode
    - `--regression` — compare results against previous QA baseline (see Step 10)
    - `--inline` — reply with the QA report inline instead of writing `QA_REPORT.md`
 
@@ -42,7 +42,7 @@ Store parsed values:
 ```
 Error: URL is required.
 
-Usage: /kramme:qa <url> [quick|diff-aware|targeted <route>] [--base <ref>]
+Usage: /kramme:qa <url> [quick|diff-aware|targeted <route>] [--base <branch>]
 
 Examples:
   /kramme:qa http://localhost:3000
@@ -95,7 +95,7 @@ If route detection fails, fall back to testing only the landing page (`/`).
 Resolve the base branch using a 3-tier strategy:
 
 **Tier 1: Explicit override**
-If `--base <ref>` was provided, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
+If `--base <branch>` was provided, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
 
 **Tier 2: PR/MR target branch detection**
 ```bash
@@ -121,11 +121,16 @@ BASE_BRANCH=${BASE_BRANCH#refs/heads/}
 BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
 BASE_BRANCH=${BASE_BRANCH#origin/}
 if [ -z "$BASE_BRANCH" ]; then
-  echo "Error: Could not determine base branch. Re-run with --base <ref>." >&2
+  echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
   exit 1
 fi
+if ! git check-ref-format --branch "$BASE_BRANCH" >/dev/null 2>&1; then
+  echo "Error: Base branch '$BASE_BRANCH' is not a valid branch name. Re-run with --base <branch>." >&2
+  exit 1
+fi
+git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2>/dev/null || true
 if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
-  echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <ref>." >&2
+  echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <branch>." >&2
   exit 1
 fi
 ```
