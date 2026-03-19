@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:implementation-audit:team
-description: Exhaustively audit codebase implementation against specification using multi-agent execution where conformance and extension agents collaborate, challenge each other's findings in real time, and run simultaneous passes. Higher quality than standard implementation-audit but uses more tokens.
-argument-hint: "[spec-file-path(s) | 'siw'] [--model opus|sonnet|haiku]"
+description: Exhaustively audit codebase implementation against specification using multi-agent execution where conformance and extension agents collaborate, challenge each other's findings in real time, and run simultaneous passes. Higher quality than standard implementation-audit but uses more tokens. Supports inline report output with --inline.
+argument-hint: "[spec-file-path(s) | 'siw'] [--model opus|sonnet|haiku] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code, codex]
@@ -45,7 +45,7 @@ Then stop.
 
 Same as `/kramme:siw:implementation-audit` Steps 1-3:
 
-1. Parse `$ARGUMENTS` — extract `--model` flag (default: `opus`), resolve spec file paths or auto-detect from `siw/`
+1. Parse `$ARGUMENTS` — extract `--model` flag (default: `opus`), optional `--inline` output mode, resolve spec file paths or auto-detect from `siw/`
 2. Read every spec file end-to-end, extract requirements checklist (REQ-001, REQ-002, ...), mark strict requirements (MUST/ONLY/NEVER), respect scope boundaries
 3. Group requirements by spec file or major section into section groups. Identify code areas for each group. Build coverage matrix skeleton.
 
@@ -310,7 +310,7 @@ After the reconciler completes (and any Pass B2 runs):
 2. Follow `/kramme:siw:implementation-audit` Steps 7-8 for:
    - Compiling the mandatory report schema (Divergences, Extensions, Verified Alignments, Coverage Matrix, Conflict Resolutions, Existing-Issue Cross-Reference)
    - Enforcing final gates (coverage matrix complete, all conflicts resolved, evidence triplets present)
-   - Writing the report to `siw/AUDIT_IMPLEMENTATION_REPORT.md` (or project root)
+   - Writing the report to `siw/AUDIT_IMPLEMENTATION_REPORT.md` (or project root), or replying inline if `INLINE_MODE=true`
 
 **Additional report sections** (insert after Summary):
 

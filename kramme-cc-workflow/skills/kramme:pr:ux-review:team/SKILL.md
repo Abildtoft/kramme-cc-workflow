@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:ux-review:team
-description: Run UX audit using multi-agent execution where specialized reviewers (usability, product, visual, accessibility) collaborate, cross-validate findings, and challenge each other. Higher quality than standard UX review but uses more tokens.
-argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <ref>]"
+description: Run UX audit using multi-agent execution where specialized reviewers (usability, product, visual, accessibility) collaborate, cross-validate findings, and challenge each other. Higher quality than standard UX review but uses more tokens. Supports inline report output with --inline.
+argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <ref>] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code, codex]
@@ -36,7 +36,7 @@ Then stop.
 
 Same as `/kramme:pr:ux-review` Steps 1-6:
 
-1. Parse arguments: `app_url` (starts with `http`), `--categories` filter, `--threshold N`, `--base <ref>` override
+1. Parse arguments: `app_url` (starts with `http`), `--categories` filter, `--threshold N`, `--base <ref>` override, and optional `--inline` output mode
    - No `parallel` argument — team version is inherently parallel
 2. Load project review conventions from `CLAUDE.md` and discovered `AGENTS.md` files
 3. Resolve base branch using 3-tier strategy (explicit `--base` → PR/MR target branch → default branch fallback). See `/kramme:pr:ux-review` Step 3 for full logic.
@@ -121,9 +121,11 @@ After all tasks complete:
 2. Apply the relevance-validator's filtering
 3. Filter previously addressed findings (same logic as `/kramme:pr:ux-review` Step 9)
 
-### Step 6: Write UX_REVIEW_OVERVIEW.md
+### Step 6: Write UX_REVIEW_OVERVIEW.md or Reply Inline
 
-Write the aggregated audit to `UX_REVIEW_OVERVIEW.md` using the same format as `/kramme:pr:ux-review` Step 11, with team metadata:
+If `INLINE_MODE=true`, reply with the aggregated audit inline using the same format as `/kramme:pr:ux-review` Step 11, with team metadata, and do **not** create or update `UX_REVIEW_OVERVIEW.md`.
+
+Otherwise, write the aggregated audit to `UX_REVIEW_OVERVIEW.md` using the same format as `/kramme:pr:ux-review` Step 11, with team metadata:
 
 ```markdown
 # UX Audit Summary (Team Review)
@@ -191,7 +193,7 @@ Write the aggregated audit to `UX_REVIEW_OVERVIEW.md` using the same format as `
 **To resolve findings, run:** `/kramme:pr:resolve-review`
 ```
 
-This file is a working artifact -- it should NOT be committed. It will be cleaned up by `/kramme:workflow-artifacts:cleanup`.
+When file output is used, `UX_REVIEW_OVERVIEW.md` is a working artifact -- it should NOT be committed. It will be cleaned up by `/kramme:workflow-artifacts:cleanup`.
 
 ### Step 7: Cleanup
 
@@ -215,6 +217,9 @@ This file is a working artifact -- it should NOT be committed. It will be cleane
 
 /kramme:pr:ux-review:team http://localhost:4200 --categories ux,visual --threshold 85
 # Combined: visual mode, specific categories, custom threshold
+
+/kramme:pr:ux-review:team --inline
+# Team audit that replies inline instead of writing UX_REVIEW_OVERVIEW.md
 ```
 
 ## When to Use This vs `/kramme:pr:ux-review`

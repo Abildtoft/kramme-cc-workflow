@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:product-audit
-description: (experimental) Product audit of SIW specs and plans before implementation. Evaluates target user clarity, problem/solution fit, user state modeling, critical moments coverage, scope correctness, and success criteria quality. Not for code review or implementation auditing.
-argument-hint: "[spec-file-path(s) | 'siw'] [--auto]"
+description: (experimental) Product audit of SIW specs and plans before implementation. Evaluates target user clarity, problem/solution fit, user state modeling, critical moments coverage, scope correctness, and success criteria quality. Not for code review or implementation auditing. Supports inline report output with --inline.
+argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -52,6 +52,7 @@ Critique specification documents from a product perspective before implementatio
 
 **Extract control flags first:**
 - If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag before processing remaining arguments.
+- If `$ARGUMENTS` contains `--inline`, set `INLINE_MODE=true` and remove the flag before processing remaining arguments.
 
 `--auto` means:
 - replace any previous product review automatically
@@ -353,7 +354,7 @@ Read `siw/OPEN_ISSUES_OVERVIEW.md` and `siw/issues/*.md` to check if any product
 
 ---
 
-## Step 6: Write Report
+## Step 6: Write Report or Reply Inline
 
 ### 6.1 Determine File Location
 
@@ -362,7 +363,9 @@ Read `siw/OPEN_ISSUES_OVERVIEW.md` and `siw/issues/*.md` to check if any product
 
 ### 6.2 Handle Existing Report
 
-If a previous report exists at the target path:
+If `INLINE_MODE=true`, skip this overwrite step because no report file will be written.
+
+Otherwise, if a previous report exists at the target path:
 
 If `AUTO_MODE=true`, choose **Replace** automatically.
 
@@ -384,7 +387,11 @@ options:
 
 Use the report format template from `assets/product-audit-report-format.md`.
 
-After writing:
+If `INLINE_MODE=true`:
+- Reply with the fully populated report inline
+- Do **not** create or update `siw/PRODUCT_AUDIT.md` or `PRODUCT_AUDIT.md`
+
+Otherwise, after writing:
 ```
 Product review written to: {path}
 ```
@@ -448,7 +455,7 @@ Display a summary:
 ```
 Product Review Complete
 
-Report: {report_path}
+Report: {inline reply | report_path}
 Findings: {critical_count} Critical, {major_count} Major, {minor_count} Minor
 Issues created: {count} (or "None")
 
@@ -461,7 +468,8 @@ Dimensions evaluated:
   - Success Criteria Quality: {assessed/not assessed}
 
 Suggested next steps:
-  - /kramme:siw:resolve-audit siw/PRODUCT_AUDIT.md  (address findings)
+  - If file output was used: `/kramme:siw:resolve-audit siw/PRODUCT_AUDIT.md`  (address findings)
+  - If inline output was used: provide the inline report content to the follow-up workflow
   - /kramme:siw:spec-audit  (technical spec quality audit)
   - /kramme:siw:generate-phases  (when ready for implementation)
 ```
@@ -499,4 +507,5 @@ Suggested next steps:
 /kramme:siw:product-audit
 /kramme:siw:product-audit siw
 /kramme:siw:product-audit docs/my-spec.md
+/kramme:siw:product-audit --inline
 ```

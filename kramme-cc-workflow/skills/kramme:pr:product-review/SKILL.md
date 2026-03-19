@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:product-review
-description: (experimental) Deep product review of branch and local changes. Evaluates user-value alignment, flow completeness, missing states, copy/defaults, permission behavior, and adjacent-flow regressions. Not for UX heuristics, accessibility, or visual consistency -- use pr:ux-review for those.
-argument-hint: "[--base <ref>] [--threshold 0-100]"
+description: (experimental) Deep product review of branch and local changes. Evaluates user-value alignment, flow completeness, missing states, copy/defaults, permission behavior, and adjacent-flow regressions. Not for UX heuristics, accessibility, or visual consistency -- use pr:ux-review for those. Supports inline report output with --inline.
+argument-hint: "[--base <ref>] [--threshold 0-100] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -18,7 +18,8 @@ Deep product review of branch changes and local work. Evaluates user-value align
 
 1. If `--base <ref>` flag provided, store as explicit base branch override
 2. If `--threshold N` flag provided, store as `custom_threshold` (0-100). Only findings with confidence >= N will be reported. Default: 70
-3. If neither flag is present, use defaults
+3. If `--inline` flag provided, set `INLINE_MODE=true`
+4. If neither flag is present, use defaults
 
 ### Step 2: Load Project Review Conventions
 
@@ -155,13 +156,21 @@ After validation and filtering, organize findings into severity tiers:
 - **Previously Addressed** -- shown separately
 - **Product Strengths** (what's well-done)
 
-Write to `PRODUCT_REVIEW_OVERVIEW.md` in the project root using the report format from `assets/product-review-report-format.md`. Include all sections even if empty (with count of 0).
+If `INLINE_MODE=true`:
+- Reply with the full report inline using the report format from `assets/product-review-report-format.md`
+- Include all sections even if empty (with count of 0)
+- Do **not** create or update `PRODUCT_REVIEW_OVERVIEW.md`
 
-This file is a working artifact -- it should NOT be committed. It will be cleaned up by `/kramme:workflow-artifacts:cleanup`.
+Otherwise:
+- Write to `PRODUCT_REVIEW_OVERVIEW.md` in the project root using the report format from `assets/product-review-report-format.md`
+- Include all sections even if empty (with count of 0)
+- Treat the file as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
 
 ### Step 9: Provide Action Plan
 
-If Critical or Important findings were found, suggest running `/kramme:pr:resolve-review --local` to address them.
+If Critical or Important findings were found:
+- When `INLINE_MODE=false`, suggest running `/kramme:pr:resolve-review --local`
+- When `INLINE_MODE=true`, suggest passing the inline report content to `/kramme:pr:resolve-review`
 
 Organize findings summary in the terminal output:
 
@@ -179,9 +188,11 @@ Organize findings summary in the terminal output:
 - Suggestions: X
 - Open Questions: X
 
-Full report: PRODUCT_REVIEW_OVERVIEW.md
+Report output: {inline reply | PRODUCT_REVIEW_OVERVIEW.md}
 
-To resolve findings, run: /kramme:pr:resolve-review --local
+To resolve findings:
+- If file output was used: `/kramme:pr:resolve-review --local`
+- If inline output was used: `/kramme:pr:resolve-review <paste inline report>`
 ```
 
 ## Usage Examples
@@ -196,4 +207,8 @@ To resolve findings, run: /kramme:pr:resolve-review --local
 
 ```
 /kramme:pr:product-review --threshold 85
+```
+
+```
+/kramme:pr:product-review --inline
 ```

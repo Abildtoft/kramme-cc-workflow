@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:spec-audit
-description: Audit specification documents for quality — coherence, completeness, clarity, scope, actionability, testability, value proposition, and technical design. Catches spec issues before implementation begins.
-argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku]"
+description: Audit specification documents for quality — coherence, completeness, clarity, scope, actionability, testability, value proposition, and technical design. Catches spec issues before implementation begins. Supports inline report output with --inline.
+argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -49,6 +49,7 @@ Evaluate specification documents for quality across 8 dimensions before implemen
 
 **Extract control flags first:**
 - If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag before processing remaining arguments.
+- If `$ARGUMENTS` contains `--inline`, set `INLINE_MODE=true` and remove the flag before processing remaining arguments.
 
 **Extract `--model` flag next (Claude Code only — ignored on other platforms):**
 - If `$ARGUMENTS` contains `--model opus`, `--model sonnet`, or `--model haiku`, extract it and store as `agent_model`.
@@ -361,7 +362,9 @@ Read `siw/OPEN_ISSUES_OVERVIEW.md` and `siw/issues/*.md` to check if any found s
 
 ### 5.2 Handle Existing Report
 
-If a previous report exists at the target path:
+If `INLINE_MODE=true`, skip this overwrite step because no report file will be written.
+
+Otherwise, if a previous report exists at the target path:
 
 If `AUTO_MODE=true`, choose **Replace** automatically.
 
@@ -383,7 +386,11 @@ options:
 
 Use the report format template from `assets/spec-audit-report-format.md`.
 
-After writing:
+If `INLINE_MODE=true`:
+- Reply with the fully populated report inline
+- Do **not** create or update `siw/AUDIT_SPEC_REPORT.md` or `AUDIT_SPEC_REPORT.md`
+
+Otherwise, after writing:
 ```
 Spec audit report written to: {path}
 ```

@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:ux-review
-description: Audit UI, UX, and product experience of PR and local changes using specialized agents for usability heuristics, product thinking, visual consistency, and accessibility.
-argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <ref>] [parallel]"
+description: Audit UI, UX, and product experience of PR and local changes using specialized agents for usability heuristics, product thinking, visual consistency, and accessibility. Supports inline report output with --inline.
+argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <ref>] [parallel] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -21,7 +21,8 @@ Audit the UI, UX, and product experience of a PR's changes, including local stag
 3. If `--threshold N` → store as `custom_threshold` (0-100). Overrides each agent's default confidence threshold. Only findings with confidence >= N will be reported. Default thresholds if not specified: a11y = 90, ux/product/visual = 70.
 4. If `--base <ref>` → store as explicit base branch override
 5. If `parallel` → launch agents in parallel instead of sequentially
-6. Default: all applicable categories, sequential, default thresholds
+6. If `--inline` → set `INLINE_MODE=true` and do not write `UX_REVIEW_OVERVIEW.md`
+7. Default: all applicable categories, sequential, default thresholds
 
 ### Step 2: Load Project Review Conventions
 
@@ -216,9 +217,13 @@ After validation and filtering, organize findings:
 - **Filtered** (pre-existing or out-of-scope) — shown separately
 - **Previously Addressed** — shown separately
 
-### Step 11: Write Findings
+### Step 11: Write Findings or Reply Inline
 
-Write to `UX_REVIEW_OVERVIEW.md` in the project root:
+If `INLINE_MODE=true`:
+- Reply with the full audit inline using the format below
+- Do **not** create or update `UX_REVIEW_OVERVIEW.md`
+
+Otherwise, write to `UX_REVIEW_OVERVIEW.md` in the project root:
 
 ```markdown
 # UX Audit Summary
@@ -279,7 +284,7 @@ Write to `UX_REVIEW_OVERVIEW.md` in the project root:
 **To resolve findings, run:** `/kramme:pr:resolve-review`
 ```
 
-This file is a working artifact — it should NOT be committed. It will be cleaned up by `/kramme:workflow-artifacts:cleanup`.
+When file output is used, `UX_REVIEW_OVERVIEW.md` is a working artifact — it should NOT be committed. It will be cleaned up by `/kramme:workflow-artifacts:cleanup`.
 
 ### Step 12: Provide Action Plan
 
@@ -327,6 +332,12 @@ If Critical or Important issues found, suggest running `/kramme:pr:resolve-revie
 **Combined:**
 ```
 /kramme:pr:ux-review http://localhost:4200 --categories ux,visual --threshold 85 parallel
+```
+
+**Inline report (no markdown file):**
+```
+/kramme:pr:ux-review --inline
+/kramme:pr:ux-review http://localhost:3000 --categories ux,visual --inline
 ```
 
 ## Agent Descriptions

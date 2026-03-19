@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:code-review:team
-description: Run comprehensive PR review using multi-agent execution where specialized reviewers collaborate, cross-validate findings, and challenge each other. Higher quality than standard review but uses more tokens.
-argument-hint: "[aspects] [--base <ref>]"
+description: Run comprehensive PR review using multi-agent execution where specialized reviewers collaborate, cross-validate findings, and challenge each other. Higher quality than standard review but uses more tokens. Supports inline report output with --inline.
+argument-hint: "[aspects] [--base <ref>] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code, codex]
@@ -37,7 +37,7 @@ Then stop.
 Same as `/kramme:pr:code-review` Steps 1-6:
 
 1. Check git status to identify changed files
-2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, security, removal, simplify, all) and `--base <ref>` override
+2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, security, removal, simplify, all), `--base <ref>` override, and optional `--inline` output mode
 3. Resolve base branch using 3-tier strategy (explicit `--base` → PR/MR target branch → default branch fallback). See `/kramme:pr:code-review` Step 2 for full logic.
 4. Build a unified change scope (committed PR diff + staged + unstaged + untracked):
    ```bash
@@ -115,9 +115,11 @@ After all tasks complete:
 3. Apply the relevance-validator's filtering
 4. Filter previously addressed findings (same logic as `/kramme:pr:code-review` Step 10)
 
-### Step 6: Write REVIEW_OVERVIEW.md
+### Step 6: Write REVIEW_OVERVIEW.md or Reply Inline
 
-Write the aggregated review to `REVIEW_OVERVIEW.md` using the same format as `/kramme:pr:code-review` Step 10-12:
+If `INLINE_MODE=true`, reply with the aggregated review inline using the same format as `/kramme:pr:code-review` Step 10-12 and do **not** create or update `REVIEW_OVERVIEW.md`.
+
+Otherwise, write the aggregated review to `REVIEW_OVERVIEW.md` using the same format as `/kramme:pr:code-review` Step 10-12:
 
 ```markdown
 # PR Review Summary (Team Review)
@@ -184,6 +186,9 @@ Write the aggregated review to `REVIEW_OVERVIEW.md` using the same format as `/k
 
 /kramme:pr:code-review:team code errors tests
 # Team review focused on specific aspects
+
+/kramme:pr:code-review:team --inline
+# Team review that replies inline instead of writing REVIEW_OVERVIEW.md
 ```
 
 ## When to Use This vs `/kramme:pr:code-review`
