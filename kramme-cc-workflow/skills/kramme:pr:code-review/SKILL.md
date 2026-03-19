@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:code-review
-description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop). Outputs REVIEW_OVERVIEW.md with actionable findings.
-argument-hint: "[aspects] [--base <ref>] [parallel]"
+description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline.
+argument-hint: "[aspects] [--base <ref>] [parallel] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -18,6 +18,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Check git status to identify changed files
    - Parse arguments to see if user requested specific review aspects
    - If `--base <ref>` flag → store as explicit base branch override
+   - If `--inline` flag → set `INLINE_MODE=true` and remove it from the aspect list
    - Default: Run all applicable reviews
 
 2. **Resolve Base Branch**
@@ -183,11 +184,17 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **Filtered Issues** (pre-existing or out-of-scope) - shown separately
    - **Previously Addressed** (findings matching REVIEW_OVERVIEW.md) - shown separately
 
-12. **Write Findings to File**
+12. **Write Findings or Reply Inline**
 
-   Write the aggregated review summary from Step 11 to `REVIEW_OVERVIEW.md` in the project root, using the format from the template below. Include all sections even if empty (with count of 0).
+   If `INLINE_MODE=true`:
+   - Reply with the full aggregated review summary inline using the exact format below
+   - Do **not** create or update `REVIEW_OVERVIEW.md`
+   - Mention that `/kramme:pr:resolve-review` will need the user to save or paste the review content if they want to resolve it later without re-running the review
 
-   This file is a working artifact — it should NOT be committed. It will be cleaned up by `/kramme:workflow-artifacts:cleanup`.
+   Otherwise:
+   - Write the aggregated review summary from Step 11 to `REVIEW_OVERVIEW.md` in the project root, using the format below
+   - Include all sections even if empty (with count of 0)
+   - Treat the file as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
 
 13. **Provide Action Plan**
 
@@ -267,6 +274,12 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 ```
 /kramme:pr:code-review --base develop
 # Diffs against develop instead of auto-detecting the base
+```
+
+**Inline report (no markdown file):**
+```
+/kramme:pr:code-review --inline
+# Replies with the full report instead of writing REVIEW_OVERVIEW.md
 ```
 
 ## Agent Descriptions:

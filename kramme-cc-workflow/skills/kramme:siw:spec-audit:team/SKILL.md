@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:spec-audit:team
-description: Audit specification documents for quality using multi-agent execution where dimension specialists collaborate, cross-validate findings, and challenge each other's assessments. Higher quality than standard spec-audit but uses more tokens.
-argument-hint: "[spec-file-path(s) | 'siw'] [--model opus|sonnet|haiku]"
+description: Audit specification documents for quality using multi-agent execution where dimension specialists collaborate, cross-validate findings, and challenge each other's assessments. Higher quality than standard spec-audit but uses more tokens. Supports inline report output with --inline.
+argument-hint: "[spec-file-path(s) | 'siw'] [--model opus|sonnet|haiku] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code, codex]
@@ -36,7 +36,7 @@ Then stop.
 
 Same as `/kramme:siw:spec-audit` Steps 1-2:
 
-1. Parse `$ARGUMENTS` — extract `--model` flag (default: `opus`), resolve spec file paths or auto-detect from `siw/`
+1. Parse `$ARGUMENTS` — extract `--model` flag (default: `opus`), optional `--inline` output mode, resolve spec file paths or auto-detect from `siw/`
 2. Read every spec file end-to-end
 3. Extract structural elements (overview, scope, success criteria, requirements, design decisions, tasks, testing, edge cases, out of scope, technical architecture)
 4. Present extraction summary
@@ -207,7 +207,7 @@ After the cross-reviewer completes:
    - Assigning severity
    - Computing dimension scores (Strong/Adequate/Weak/Missing)
    - Cross-referencing existing SIW issues
-   - Writing the report to `siw/AUDIT_SPEC_REPORT.md` (or project root)
+   - Writing the report to `siw/AUDIT_SPEC_REPORT.md` (or project root), or replying inline if `INLINE_MODE=true`
 
 **Additional report sections** (insert after Summary):
 

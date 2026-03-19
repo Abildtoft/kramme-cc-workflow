@@ -1,7 +1,7 @@
 ---
 name: kramme:product:review
-description: (experimental) Whole-product review across flows and surfaces. Requires a live app URL. Evaluates navigation coherence, feature discoverability, onboarding, cross-flow consistency, dead ends, friction, and trust/safety. Produces PRODUCT_AUDIT_OVERVIEW.md. Not for branch-scoped PR review (use pr:product-review) or pre-implementation spec audit (use siw:product-audit).
-argument-hint: "<url> [--flows <flow1,flow2,...>] [--focus <dimension>]"
+description: (experimental) Whole-product review across flows and surfaces. Requires a live app URL. Evaluates navigation coherence, feature discoverability, onboarding, cross-flow consistency, dead ends, friction, and trust/safety. Produces PRODUCT_AUDIT_OVERVIEW.md, or replies inline with --inline. Not for branch-scoped PR review (use pr:product-review) or pre-implementation spec audit (use siw:product-audit).
+argument-hint: "<url> [--flows <flow1,flow2,...>] [--focus <dimension>] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -22,11 +22,13 @@ Extract from `$ARGUMENTS`:
 2. **Flags** (optional):
    - `--flows <flow1,flow2,...>` — comma-separated list of flow names to scope the review (e.g., `onboarding,settings,billing`)
    - `--focus <dimension>` — specific review dimension to emphasize (e.g., `discoverability`, `consistency`, `trust-safety`)
+   - `--inline` — reply with the full report inline instead of writing `PRODUCT_AUDIT_OVERVIEW.md`
 
 Store parsed values:
 - `TARGET_URL` — the URL to review
 - `SCOPED_FLOWS` — list of flow names, or empty (review all discovered flows)
 - `FOCUS_DIMENSION` — specific dimension to emphasize, or empty (all dimensions weighted equally)
+- `INLINE_MODE` — boolean (default: false)
 
 If no URL is provided, **hard stop**:
 
@@ -230,11 +232,15 @@ Collect all findings from all flows. Organize by severity, then by dimension:
 - Do not preserve per-flow scratch IDs from the individual reviewer runs
 - Use the renumbered IDs everywhere in the final report so follow-up discussion and previous-review matching stay unambiguous
 
-### Step 7: Write Review Report
+### Step 7: Write Review Report or Reply Inline
 
-Write `PRODUCT_AUDIT_OVERVIEW.md` at the project root.
+If `INLINE_MODE=true`:
+- Reply with the full report inline using the structure below
+- Do **not** create or update `PRODUCT_AUDIT_OVERVIEW.md`
 
-This is a working artifact, not committed. Cleaned up by `/kramme:workflow-artifacts:cleanup`.
+Otherwise:
+- Write `PRODUCT_AUDIT_OVERVIEW.md` at the project root
+- Treat it as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
 
 
 **Report structure:**
@@ -326,7 +332,7 @@ Group by effort level: quick wins, medium effort, larger initiatives.}
 After writing the report, confirm completion:
 
 ```
-Product review complete. Report written to PRODUCT_AUDIT_OVERVIEW.md.
+Product review complete. Report output: {inline reply | PRODUCT_AUDIT_OVERVIEW.md}.
 
 Reviewed {N} flows at $TARGET_URL.
 Found: {X} critical, {Y} important, {Z} suggestions.
@@ -365,6 +371,11 @@ Key patterns:
 **Focus on a specific dimension:**
 ```
 /kramme:product:review http://localhost:3000 --focus discoverability
+```
+
+**Reply inline instead of writing a report file:**
+```
+/kramme:product:review http://localhost:3000 --inline
 ```
 
 **Review a staging environment:**

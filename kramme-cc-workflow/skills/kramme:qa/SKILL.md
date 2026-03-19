@@ -1,7 +1,7 @@
 ---
 name: kramme:qa
-description: (experimental) Structured QA testing with evidence capture. Runs smoke checks, diff-aware validation, or targeted route testing against a live app. Produces QA_REPORT.md with screenshots, repro steps, severity, and recommended fixes. Uses browser MCP when available and falls back to code-only analysis otherwise.
-argument-hint: "<url> [quick|diff-aware|targeted <route>] [--base <ref>] [--regression]"
+description: (experimental) Structured QA testing with evidence capture. Runs smoke checks, diff-aware validation, or targeted route testing against a live app. Produces QA_REPORT.md with screenshots, repro steps, severity, and recommended fixes, or replies inline with --inline. Uses browser MCP when available and falls back to code-only analysis otherwise.
+argument-hint: "<url> [quick|diff-aware|targeted <route>] [--base <ref>] [--regression] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -26,6 +26,7 @@ Extract from `$ARGUMENTS`:
 3. **Flags**:
    - `--base <ref>` — explicit base branch for diff-aware mode
    - `--regression` — compare results against previous QA baseline (see Step 10)
+   - `--inline` — reply with the QA report inline instead of writing `QA_REPORT.md`
 
 Store parsed values:
 - `TARGET_URL` — the base URL to test
@@ -33,6 +34,7 @@ Store parsed values:
 - `TARGET_ROUTE` — specific route for targeted mode (e.g., `/settings/profile`)
 - `BASE_OVERRIDE` — explicit base branch if provided
 - `REGRESSION_MODE` — boolean (default: false)
+- `INLINE_MODE` — boolean (default: false)
 
 ### Step 2: Validate Prerequisites
 
@@ -277,11 +279,11 @@ Read `references/health-score-rubric.md` and compute a weighted health score (0-
 
 Store as `HEALTH_SCORE` and `HEALTH_LABEL` (Excellent/Good/Fair/Poor/Critical).
 
-### Step 8: Write QA Report
+### Step 8: Write QA Report or Reply Inline
 
-Write `QA_REPORT.md` at the project root using the template from `assets/qa-report-template.md`.
+Use the template from `assets/qa-report-template.md`.
 
-Read the template file and populate all sections:
+Populate all sections:
 - Fill in mode, URL, date, browser MCP type
 - List all tested routes with descriptions
 - Document each finding with severity, repro steps, expected vs actual, and recommended fix
@@ -290,7 +292,13 @@ Read the template file and populate all sections:
 
 **Numbering convention:** Findings are numbered `QA-001`, `QA-002`, etc.
 
-This file is a working artifact — it should NOT be committed. It will be cleaned up by `/kramme:workflow-artifacts:cleanup`.
+If `INLINE_MODE=true`:
+- Reply with the full populated QA report inline
+- Do **not** create or update `QA_REPORT.md`
+
+Otherwise:
+- Write `QA_REPORT.md` at the project root
+- Treat it as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
 
 ### Step 8b: Regression Comparison (conditional)
 
@@ -387,7 +395,7 @@ After writing the report, display an inline summary:
 Score: {baseline_score} -> {current_score} ({+N / -N})
 Fixed: {N} | New: {N} | Persistent: {N}
 
-Full report: QA_REPORT.md
+Report output: {inline reply | QA_REPORT.md}
 {If blockers found: "Fix blockers and re-run: /kramme:qa <url>"}
 ```
 
@@ -436,4 +444,10 @@ Full report: QA_REPORT.md
 ```
 /kramme:qa http://localhost:3000 --regression
 /kramme:qa http://localhost:4200 diff-aware --regression
+```
+
+**Inline report (no markdown file):**
+```
+/kramme:qa http://localhost:3000 --inline
+/kramme:qa http://localhost:4200 diff-aware --inline
 ```
