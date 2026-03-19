@@ -76,7 +76,10 @@ if ! git check-ref-format --branch "$BASE_BRANCH" >/dev/null 2>&1; then
   echo "Error: Base branch '$BASE_BRANCH' is not a valid branch name. Re-run with --base <branch>." >&2
   exit 1
 fi
-git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2>/dev/null || true
+if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2>/dev/null; then
+  echo "Error: Failed to fetch origin/$BASE_BRANCH. Check remote access and re-run with --base <branch>." >&2
+  exit 1
+fi
 if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
   echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <branch>." >&2
   exit 1
