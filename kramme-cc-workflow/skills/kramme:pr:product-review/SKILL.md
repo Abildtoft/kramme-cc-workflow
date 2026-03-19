@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:product-review
 description: (experimental) Deep product review of branch and local changes. Evaluates user-value alignment, flow completeness, missing states, copy/defaults, permission behavior, and adjacent-flow regressions. Not for UX heuristics, accessibility, or visual consistency -- use pr:ux-review for those. Supports inline report output with --inline.
-argument-hint: "[--base <ref>] [--threshold 0-100] [--inline]"
+argument-hint: "[--base <branch>] [--threshold 0-100] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -16,7 +16,7 @@ Deep product review of branch changes and local work. Evaluates user-value align
 
 ### Step 1: Parse Arguments
 
-1. If `--base <ref>` flag provided, store as explicit base branch override
+1. If `--base <branch>` flag provided, store as explicit base branch override
 2. If `--threshold N` flag provided, store as `custom_threshold` (0-100). Only findings with confidence >= N will be reported. Default: 70
 3. If `--inline` flag provided, set `INLINE_MODE=true`
 4. If neither flag is present, use defaults
@@ -39,7 +39,7 @@ Before launching agents:
 Determine the correct base branch using a 3-tier strategy:
 
 **Tier 1: Explicit override**
-If `--base <ref>` was provided in Step 1, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
+If `--base <branch>` was provided in Step 1, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
 
 **Tier 2: PR/MR target branch detection**
 ```bash
@@ -66,11 +66,19 @@ BASE_BRANCH=${BASE_BRANCH#refs/heads/}
 BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
 BASE_BRANCH=${BASE_BRANCH#origin/}
 if [ -z "$BASE_BRANCH" ]; then
-  echo "Error: Could not determine base branch. Re-run with --base <ref>." >&2
+  echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
+  exit 1
+fi
+if ! git check-ref-format --branch "$BASE_BRANCH" >/dev/null 2>&1; then
+  echo "Error: Base branch '$BASE_BRANCH' is not a valid branch name. Re-run with --base <branch>." >&2
+  exit 1
+fi
+if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2>/dev/null; then
+  echo "Error: Failed to fetch origin/$BASE_BRANCH. Check remote access and re-run with --base <branch>." >&2
   exit 1
 fi
 if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
-  echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <ref>." >&2
+  echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <branch>." >&2
   exit 1
 fi
 ```
