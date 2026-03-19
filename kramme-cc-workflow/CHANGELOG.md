@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.44.0] - 2026-03-19
+
+### Added
+- Add --granular flag for atomic decomposition (#244)
+
+### Changed
+- Add inline report output options (#246)
+- Rename product skills to clarify audit vs review (#245)
+
+### Fixed
+- Harden PR base branch resolution (#247)
+
 ## [0.43.0] - 2026-03-17
 
 ### Added
@@ -70,6 +82,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+[0.44.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.43.0...v0.44.0
 [0.43.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.42.0...v0.43.0
 [0.42.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.41.0...v0.42.0
 [0.41.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.40.0...v0.41.0
