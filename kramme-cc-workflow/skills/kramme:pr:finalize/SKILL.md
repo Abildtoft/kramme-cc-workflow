@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:finalize
 description: (experimental) Final PR readiness orchestration. Coordinates verify:run, pr:code-review, pr:product-review, pr:ux-review, qa, and pr:generate-description. Produces a ready/not-ready/ready-with-caveats verdict. Not for creating PRs, fixing CI, or merging code.
-argument-hint: "[--auto] [--skip <skill,...>] [--app-url <url>] [--base <branch>]"
+argument-hint: "[--auto] [--fix] [--skip <skill,...>] [--app-url <url>] [--base <branch>]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -17,16 +17,22 @@ Coordinate all pre-merge quality checks and produce a single readiness verdict. 
 ### Step 1: Parse Arguments
 
 1. If `--auto` → set `AUTO_MODE=true`.
-2. If `--skip <skill,...>` → parse comma-separated list of skill short names to skip. Valid values: `verify`, `code-review`, `product-review`, `ux-review`, `qa`, `generate-description`. Store as `SKIP_LIST`.
-3. If `--app-url <url>` → store as `APP_URL` (enables QA testing against a running app).
-4. If `--base <branch>` → store as explicit base branch override.
-5. All flags are optional. Default: run all applicable steps, no app URL, auto-detect base.
+2. If `--fix` → set `FIX_MODE=true`.
+3. If `--skip <skill,...>` → parse comma-separated list of skill short names to skip. Valid values: `verify`, `code-review`, `product-review`, `ux-review`, `qa`, `generate-description`. Store as `SKIP_LIST`.
+4. If `--app-url <url>` → store as `APP_URL` (enables QA testing against a running app).
+5. If `--base <branch>` → store as explicit base branch override.
+6. All flags are optional. Default: run all applicable steps, no app URL, auto-detect base.
 
 `--auto` means:
 - skip the execution-plan confirmation
 - run all applicable steps unless explicitly skipped
 - if QA is applicable, run `diff-aware`
 - if description generation is applicable, run it automatically without prompting
+
+`--fix` means:
+- after the initial verdict, if critical or important findings exist, automatically run `kramme:pr:resolve-review` to address them
+- re-run verification after fixes to produce an updated verdict
+- does NOT fix suggestions — only critical and important findings
 
 ### Step 2: Pre-Validation
 
@@ -176,8 +182,11 @@ Steps to run:
   3. pr:product-review     [always]
   4. pr:ux-review          [if UI changes detected]
   5. qa                    [if UI changes + app URL provided]
-  6. pr:generate-description [if no blockers]
+  6. pr:resolve-review     [if --fix and critical/important findings]
+  7. re-verify             [if --fix applied fixes]
+  8. pr:generate-description [if no blockers]
 
+Auto-fix: {yes/no}
 Skipped: {any --skip items, or "none"}
 ```
 
@@ -342,6 +351,28 @@ Aggregate all results into a verdict:
 - Critical findings exist in any review, OR
 - QA blockers found
 
+### Step 10.5: Auto-Fix (Conditional)
+
+**Skip if** `FIX_MODE` is not true, OR the verdict is **READY**.
+
+If `FIX_MODE=true` and critical or important findings exist:
+
+1. Run `kramme:pr:resolve-review` to address findings:
+   ```
+   skill: "kramme:pr:resolve-review", args: "--source local --severity critical,important"
+   ```
+
+2. After resolve-review completes, re-run verification:
+   ```
+   skill: "kramme:verify:run"
+   ```
+
+3. Re-assess the verdict using the same logic as Step 10, incorporating the updated state.
+
+4. Update the verdict and findings counts to reflect what was fixed.
+
+If resolve-review fails or introduces new issues, keep the original verdict and note the failure.
+
 ### Step 11: Display Verdict
 
 Display the assessment inline (no artifact file):
@@ -382,8 +413,8 @@ Status: X blockers, Y major, Z minor / SKIPPED (no app URL) / COULD NOT RUN
 **Next Steps guidance by verdict:**
 
 - **READY:** "PR is ready. Run `/kramme:pr:create` to create it, or `/kramme:pr:generate-description` to update the description."
-- **READY WITH CAVEATS:** "Consider addressing recommended fixes before creating the PR. Run `/kramme:pr:resolve-review` to address findings, or `/kramme:pr:create` to proceed."
-- **NOT READY:** "Fix blockers first. Run `/kramme:pr:resolve-review` to address critical findings, then re-run `/kramme:pr:finalize` to verify."
+- **READY WITH CAVEATS:** "Consider addressing recommended fixes before creating the PR. Run `/kramme:pr:resolve-review` to address findings, or `/kramme:pr:create` to proceed. Alternatively, re-run with `--fix` to auto-resolve critical and important findings."
+- **NOT READY:** "Fix blockers first. Run `/kramme:pr:finalize --fix` to auto-resolve critical and important findings, or `/kramme:pr:resolve-review` to address them manually."
 
 ### Step 12: Optionally Generate Description
 
@@ -426,7 +457,7 @@ pr:finalize does NOT:
 - Fix CI failures (use `/kramme:pr:fix-ci`)
 - Merge code
 - Replace detailed review commands — each sub-skill produces its own detailed report
-- Silently mutate the branch — no commits, rebases, or file modifications
+- Silently mutate the branch — without `--fix`, no commits, rebases, or file modifications occur. With `--fix`, resolve-review may create commits (with a rollback checkpoint)
 
 ## Error Handling
 
@@ -438,27 +469,12 @@ pr:finalize does NOT:
 
 ## Usage Examples
 
-**Basic finalize (all applicable steps):**
 ```
-/kramme:pr:finalize
-```
-
-**With app URL for QA testing:**
-```
-/kramme:pr:finalize --app-url http://localhost:3000
-```
-
-**Skip specific steps:**
-```
-/kramme:pr:finalize --skip qa,ux-review
-```
-
-**Custom base branch with app URL:**
-```
-/kramme:pr:finalize --app-url http://localhost:4200 --base develop
-```
-
-**Skip verification and QA:**
-```
-/kramme:pr:finalize --skip verify,qa
+/kramme:pr:finalize                                           # all applicable steps
+/kramme:pr:finalize --app-url http://localhost:3000            # with QA testing
+/kramme:pr:finalize --skip qa,ux-review                       # skip specific steps
+/kramme:pr:finalize --app-url http://localhost:4200 --base develop  # custom base + app URL
+/kramme:pr:finalize --fix                                     # auto-fix critical/important findings
+/kramme:pr:finalize --auto --fix                              # full automation + auto-fix
+/kramme:pr:finalize --skip verify,qa                          # skip verification and QA
 ```

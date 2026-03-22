@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:resolve-review
 description: Resolve findings from code reviews by implementing fixes and documenting changes
-argument-hint: "[--auto] [--source local|online|--local|--online] [review-content|instructions|url]"
+argument-hint: "[--auto] [--granular] [--severity critical,important] [--source local|online|--local|--online] [review-content|instructions|url]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -30,6 +30,14 @@ Before searching for reviews, check if the user provided input directly with the
      - Set `ANSWER_AND_RESOLVE=true`
      - Remove `--auto` / `--reply` / `--answer-and-resolve` from remaining input before classification
      - Treat this as permission to post replies and resolve addressed review threads/discussions directly on the PR/MR
+   - If `<something>` includes `--granular`:
+     - Set `GRANULAR_COMMITS=true`
+     - Remove `--granular` from remaining input before classification
+   - If `<something>` includes `--severity <levels>`:
+     - Parse comma-separated severity levels. Valid values: `critical`, `important`, `suggestion` (maps to High, Medium, Low respectively)
+     - Store as `SEVERITY_FILTER`
+     - Remove `--severity <levels>` from remaining input before classification
+     - When set, only findings matching the specified severities are addressed; others are skipped with **Action taken: Skipped — outside severity filter.**
    - If `REVIEW_SOURCE=local` and `<something>` includes a URL:
      - Ask the user to either remove the URL or switch to `--source online` / `--online`, then stop
    - If `REVIEW_SOURCE=auto` and `<something>` includes a URL:
@@ -118,17 +126,58 @@ For internal reviews (self-generated): Skip this substep and proceed directly to
 
 #### 2c. Prioritize by severity
 
-- **High**: Security issues, data loss risks, broken functionality, blocking bugs
-- **Medium**: Performance problems, maintainability concerns, missing error handling
-- **Low**: Style preferences, naming suggestions, minor refactors
+- **High** (= `critical`): Security issues, data loss risks, broken functionality, blocking bugs
+- **Medium** (= `important`): Performance problems, maintainability concerns, missing error handling
+- **Low** (= `suggestion`): Style preferences, naming suggestions, minor refactors
+
+If `SEVERITY_FILTER` is set, skip any finding whose severity is not in the filter. Document skipped findings with **Action taken: Skipped — outside severity filter.**
+
+#### 2d. Dismiss nitpicks with judgment
+
+Not every finding deserves a code change. Dismiss findings that meet ALL of these criteria:
+- Severity is **Low**
+- The suggestion is subjective (style, naming preference, alternative approach that isn't clearly better)
+- Implementing it would churn code without measurable improvement
+
+For dismissed findings, document them in the output with **Action taken: Acknowledged — no change.** and a one-line rationale. For external reviews with `ANSWER_AND_RESOLVE=true`, post a polite reply explaining why no change was made, but do NOT mark the thread as resolved (let the reviewer decide).
+
+### Step 2.5: Create rollback checkpoint
+
+Before making any code changes, create a checkpoint commit so fixes can be cleanly reverted if they introduce problems:
+
+```bash
+# Stage any uncommitted work first
+git add -A
+# Only create checkpoint if there are staged changes
+git diff --cached --quiet || git commit -m "wip: pre-resolve-review checkpoint"
+```
+
+Record the checkpoint commit SHA as `CHECKPOINT_SHA`:
+```bash
+CHECKPOINT_SHA=$(git rev-parse HEAD)
+```
+
+If fixes later fail verification (Step 4), offer to roll back:
+```bash
+git reset --hard "$CHECKPOINT_SHA"
+```
 
 ### Step 3: Implement fixes
 
 Work through each finding in priority order, applying the guidelines below.
 
+**If `GRANULAR_COMMITS=true`:** After implementing each finding, create a dedicated commit for it before moving to the next finding:
+
+```bash
+git add -A
+git commit -m "review: <brief description of the fix>"
+```
+
+Each commit should be self-contained and pass linting/formatting on its own. If a finding requires changes across multiple files, include all of them in the same commit. If two findings touch the same lines and cannot be separated cleanly, combine them into a single commit and note both finding numbers in the message.
+
 ### Step 4: Validate and summarize
 
-- **Validate** — Check for and fix any new linting, formatting, and testing issues
+- **Validate** — Check for and fix any new linting, formatting, and testing issues. If validation fails after multiple fix attempts and `CHECKPOINT_SHA` exists, offer to rollback: `git reset --hard "$CHECKPOINT_SHA"`
 - **Review response behavior**:
   - Default (no flag): **Do NOT resolve or reply to comments** on the platform
   - If `ANSWER_AND_RESOLVE=true` and the review source is external: post replies for each external review comment, then resolve addressed threads/discussions on the PR/MR
