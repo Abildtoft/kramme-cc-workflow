@@ -1,6 +1,6 @@
 ---
 name: kramme:siw:product-audit
-description: (experimental) Product audit of SIW specs and plans before implementation. Evaluates target user clarity, problem/solution fit, user state modeling, critical moments coverage, scope correctness, and success criteria quality. Not for code review or implementation auditing. Supports inline report output with --inline.
+description: (experimental) Product audit of SIW specs and plans before implementation. Evaluates target user clarity, problem/solution fit, user state modeling, critical moments coverage, scope correctness, success criteria quality, and prioritization quality. Infers likely user goals and non-goals when the spec is incomplete. Not for code review or implementation auditing. Supports inline report output with --inline.
 argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--inline]"
 disable-model-invocation: true
 user-invocable: true
@@ -158,10 +158,12 @@ For each spec file, identify and extract:
 | Target User | Who is the user? Persona, role, segment, or archetype |
 | Problem Statement | What problem is being solved? Current pain, unmet need |
 | Proposed Solution | What is being built? Core approach, key decisions |
+| Business Reason / Why Now | Why this matters now, what business outcome or urgency exists |
 | User Flows | How does the user interact? Steps, entry points, transitions |
 | User States | What states can the user be in? Empty, error, loading, success, edge |
 | Critical Moments | First use, error recovery, data loss, permission change, upgrade |
 | Scope | What is in and out? Boundaries, explicit exclusions |
+| Non-Goals | What is explicitly deferred, declined, or left for later |
 | Success Criteria | How is success measured? Metrics, definitions of done |
 | Phases / Milestones | How is delivery sequenced? What ships first? |
 
@@ -182,6 +184,8 @@ Sources:
 Product elements identified: {count}
 Target user defined: {yes/no}
 Problem statement found: {yes/no}
+Why now documented: {yes/no}
+Non-goals documented: {yes/no}
 User flows documented: {count}
 ```
 
@@ -302,6 +306,13 @@ This spec has Work Type: {work_context.work_type}
 - Are there metrics that matter but aren't tracked?
 - Severity guide: No success criteria = Critical. Unmeasurable criteria = Major. Missing metrics = Minor.
 
+### 7. Prioritization and Decision Quality
+- Does the spec make a clear call about what matters now versus later?
+- Are non-goals or deferred work explicit enough to keep implementation focused?
+- Are product decisions made at the product level, instead of being left as accidental engineering choices?
+- If tradeoffs are being accepted, are they visible and justified?
+- Severity guide: Missing core product decision = Critical. Missing non-goals or unclear prioritization = Major.
+
 ## Output Format
 
 For each finding, report:
@@ -320,6 +331,7 @@ For each finding, report:
 - Do not return early. Check every section against every dimension.
 - Quote the spec. Include relevant text when flagging an issue.
 - Be specific in recommendations. "Add more detail" is not enough.
+- If target user, value, why-now, or non-goals are missing, infer the most likely answer from the surrounding spec, state it as an assumption, and critique the spec against that assumption instead of stopping.
 - Note strengths. Identify what the spec does well from a product perspective.
 - List open questions. Product questions the spec doesn't address.
 ```
@@ -466,6 +478,7 @@ Dimensions evaluated:
   - Critical Moments Coverage: {assessed/not assessed}
   - Scope Correctness: {assessed/not assessed}
   - Success Criteria Quality: {assessed/not assessed}
+  - Prioritization and Decision Quality: {assessed/not assessed}
 
 Suggested next steps:
   - If file output was used: `/kramme:siw:resolve-audit siw/PRODUCT_AUDIT.md`  (address findings)

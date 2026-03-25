@@ -42,6 +42,10 @@ Draft the issue following this template:
 [What benefit users/business will gain]
 [How this aligns with product goals]
 
+## Why Now
+[Why this needs attention now]
+[What changed, what pressure exists, or what opportunity is being acted on]
+
 ## Goal
 [What success looks like - the desired outcome]
 [Clear statement of the end state]
@@ -56,6 +60,10 @@ Draft the issue following this template:
 ### Out of Scope
 - [Explicitly excluded item 1]
 - [Explicitly excluded item 2]
+
+## Decision Boundaries
+- **Product decisions captured here:** [user-facing choices, scope calls, business rules]
+- **Implementation choices left to engineering:** [architecture details, low-level approach]
 
 ## Acceptance Criteria
 - [ ] [Testable criterion 1 - user-facing behavior]
@@ -89,6 +97,9 @@ Draft the issue following this template:
 ## Dependencies
 - [Blocking issue or prerequisite, if any]
 - [Related issues for context]
+
+## Assumptions Used
+- [Only include when the issue had to infer target user, why-now, or non-goals from incomplete context]
 
 <!-- Only include this section if the issue has the "Dev Ask" label -->
 ## Original Dev Ask

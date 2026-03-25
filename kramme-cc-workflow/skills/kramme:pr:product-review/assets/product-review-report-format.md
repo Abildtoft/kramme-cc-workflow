@@ -59,6 +59,9 @@
 ## Open Questions
 - {things that need product owner input}
 
+## Assumptions Used
+- {only include when the reviewer inferred target user, value, or non-goals from incomplete context}
+
 ## Filtered (Pre-existing/Out-of-scope)
 <collapsed>
 - [file:line]: Brief description - Reason filtered

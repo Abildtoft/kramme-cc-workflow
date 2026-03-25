@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:product-review
-description: (experimental) Deep product review of branch and local changes. Evaluates user-value alignment, flow completeness, missing states, copy/defaults, permission behavior, and adjacent-flow regressions. Not for UX heuristics, accessibility, or visual consistency -- use pr:ux-review for those. Supports inline report output with --inline.
+description: (experimental) Deep product review of branch and local changes. Evaluates user-value alignment, flow completeness, missing states, copy/defaults, permission behavior, adjacent-flow regressions, and prioritization quality. Infers likely user goals and non-goals when rationale is missing. Not for UX heuristics, accessibility, or visual consistency -- use pr:ux-review for those. Supports inline report output with --inline.
 argument-hint: "[--base <branch>] [--threshold 0-100] [--inline]"
 disable-model-invocation: true
 user-invocable: true
@@ -32,7 +32,8 @@ Before launching agents:
    - UI stack and component/design system requirements
    - Platform scope (desktop/mobile/web)
    - Feature flags, permission models, or role-based access rules
-4. Pass these conventions to the reviewer agent and instruct it to prioritize documented conventions over generic best practices.
+4. Infer likely jobs-to-be-done, business goals, and obvious non-goals from the available docs when they are not stated explicitly.
+5. Pass these conventions and inferred constraints to the reviewer agent and instruct it to prioritize documented conventions over generic best practices.
 
 ### Step 3: Resolve Base Branch and Identify Changed Files
 
@@ -127,7 +128,7 @@ Launch **kramme:product-reviewer** via the Task tool with:
 - Unstaged local diff: `git diff`
 - Untracked local files list: `git ls-files --others --exclude-standard` (agent should treat these as new files and review full file content)
 - If `custom_threshold` was provided: instruct the agent to use this threshold instead of the default (e.g., "Only report findings with confidence >= {custom_threshold}")
-- Explicit instruction: **"You are in PR mode. Focus on changes introduced by this diff. Evaluate: user-value alignment, flow completeness, missing states (loading, error, empty, edge), copy quality and defaults, permission/role behavior, and adjacent-flow regressions."**
+- Explicit instruction: **"You are in PR mode. Focus on changes introduced by this diff. Evaluate: user-value alignment, flow completeness, missing states (loading, error, empty, edge), copy quality and defaults, permission/role behavior, adjacent-flow regressions, whether the change makes a clear product call, and whether obvious non-goals or deprioritized cases are missing. If rationale is absent, infer the likely user job and business reason from the code and docs, state the assumption, and review against it instead of stopping."**
 
 ### Step 6: Validate Relevance
 
@@ -160,6 +161,7 @@ After validation and filtering, organize findings into severity tiers:
 - **Important Product Issues** (should fix) -- only validated findings
 - **Product Suggestions** (nice to have) -- only validated findings
 - **Open Questions** (need product owner input)
+- **Assumptions Used** (only when the reviewer had to infer target user, value, or non-goals from incomplete context)
 - **Filtered** (pre-existing or out-of-scope) -- shown separately
 - **Previously Addressed** -- shown separately
 - **Product Strengths** (what's well-done)

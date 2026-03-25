@@ -14,6 +14,7 @@ Five-round interview structure for comprehensive issue definition.
 - What happens if we don't address this? (cost of inaction)
 - What value does solving this deliver? (user benefit, business outcome)
 - How does this align with product/company goals?
+- Which part of the problem matters most in this issue versus a later follow-up?
 
 **Dig deep on value:**
 - Don't accept vague answers like "it would be nice" or "users want it"
@@ -31,6 +32,7 @@ Five-round interview structure for comprehensive issue definition.
 - What is explicitly out of scope?
 - Are there related changes that should be separate issues?
 - What is the minimum viable implementation?
+- Which decisions belong in this issue, and which should remain implementation details for engineering?
 
 **Dig deeper when:**
 - Scope seems too broad for a single issue
@@ -43,6 +45,7 @@ Five-round interview structure for comprehensive issue definition.
 - Are there dependencies or blocking issues?
 - What existing patterns should be followed?
 - Are there technical constraints to consider?
+- Is there any missing product decision currently being pushed into technical implementation?
 
 **Leverage exploration findings:**
 - Present discovered patterns as options
@@ -61,6 +64,7 @@ Five-round interview structure for comprehensive issue definition.
 - Each criterion should be verifiable
 - Include both happy path and error scenarios
 - Consider performance/security if relevant
+- Prefer user-facing outcomes over implementation completion checklists
 
 ## Round 5: Metadata & Classification
 

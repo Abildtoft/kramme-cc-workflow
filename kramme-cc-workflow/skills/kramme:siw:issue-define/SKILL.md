@@ -37,7 +37,7 @@ Create or improve a local issue through guided interactive refinement. Can start
 
 1. **Problem Statement** - What pain point or opportunity exists?
 2. **Context** - What's the current state and why does this matter?
-3. **Scope** - What's in and out of scope?
+3. **Scope / Non-Goals** - What's in, what's out, and what should wait?
 4. **Acceptance Criteria** - How do we know we've solved the problem?
 5. **Technical Notes** - Implementation direction (not detailed how-to)
 
@@ -49,9 +49,10 @@ Create or improve a local issue through guided interactive refinement. Can start
 4. **Phase Recommendation (Create Mode)**: Suggest a phase prefix if the issue fits an active phase
 5. **Existing Issue Handling**: For improve mode, fetch issue; for create mode, check for similar issues
 6. **Codebase Exploration**: Search for related implementations and patterns
-7. **Interview**: Multi-round questioning (adapted for issue type and mode)
-8. **Issue Composition**: Draft issue following the template
-9. **Review & Create/Update**: User approval, then create or update issue file
+7. **Autonomous Framing**: Infer likely user, why-now, non-goals, and decision boundaries before asking
+8. **Interview**: Multi-round questioning (adapted for issue type and mode)
+9. **Issue Composition**: Draft issue following the template
+10. **Review & Create/Update**: User approval, then create or update issue file
 
 ## Phase 1: Input Parsing & Mode Detection
 
@@ -230,6 +231,14 @@ Before creating a new issue, check for existing similar issues:
 
 **Output**: Summarize findings to share with user and inform interview.
 
+Before the interview, synthesize a working hypothesis for:
+- who is affected
+- why this matters now
+- what should be explicitly deferred or split into another issue
+- which choices belong in the issue versus which should stay implementation-level
+
+Use these as assumptions to validate instead of asking the user to restate obvious context.
+
 ## Phase 4: Interview
 
 The interview adapts based on issue type.
@@ -377,6 +386,10 @@ Multi-round interview using `AskUserQuestion`.
 ### Out of Scope
 - {Explicitly excluded item 1}
 
+## Decision Boundaries
+- **Captured in this issue:** {product, behavior, or scope decisions that need alignment}
+- **Left to implementation:** {engineering choices that should not be over-specified here}
+
 ## Acceptance Criteria
 
 - [ ] {Testable criterion 1}
@@ -401,6 +414,9 @@ Multi-round interview using `AskUserQuestion`.
 
 ### References
 - {Related files: `path/to/file`}
+
+## Assumptions Used
+- {Only include when the issue had to infer user, why-now, or non-goals from incomplete context}
 ```
 
 ## Phase 6: Review & Create/Update
@@ -489,11 +505,14 @@ siw/issues/ISSUE-{prefix}-{number}-{sanitized-title}.md
 ### General Guidelines
 
 1. **Lead with "Why"** - Problem statement is most important
-2. **Be specific** - Vague issues lead to vague implementations
-3. **Check for similar issues** - Don't create duplicates
-4. **Keep simple bugs simple** - Don't over-engineer
-5. **Exhaust the interview** - Especially Round 1 for complex issues
-6. **Get user approval** - Always show draft before creating
+2. **Make non-goals explicit** - A tighter issue is more actionable than a broad wish list
+3. **Infer before asking** - Use codebase and workflow context to draft likely answers before asking the user for basics
+4. **Separate product calls from implementation details** - Capture the decision that needs alignment, not low-level how-to
+5. **Be specific** - Vague issues lead to vague implementations
+6. **Check for similar issues** - Don't create duplicates
+7. **Keep simple bugs simple** - Don't over-engineer
+8. **Exhaust the interview** - Especially Round 1 for complex issues
+9. **Get user approval** - Always show draft before creating
 
 ## Starting the Process
 

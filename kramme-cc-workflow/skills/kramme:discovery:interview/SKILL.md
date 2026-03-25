@@ -1,6 +1,6 @@
 ---
 name: kramme:discovery:interview
-description: Conduct an in-depth interview about a topic/proposal to uncover requirements and create a comprehensive plan
+description: Conduct an in-depth interview about a topic/proposal to uncover requirements, priorities, and non-goals, then create a comprehensive plan
 argument-hint: "[file-path or topic description]"
 disable-model-invocation: true
 user-invocable: true
@@ -13,10 +13,11 @@ Conduct a structured, in-depth interview about the presented topic, files, propo
 ## Process Overview
 
 1. **Initial Analysis**: Examine the topic/files/proposal presented
-2. **Topic Classification**: Determine the type of exploration needed
-3. **Multi-Round Interview**: Ask probing questions via AskUserQuestion
-4. **Progress Tracking**: Monitor coverage across dimensions
-5. **Synthesis**: Write an adaptive plan markdown file
+2. **Autonomous Framing**: Draft the likely target user, problem, why-now, and non-goals before asking questions
+3. **Topic Classification**: Determine the type of exploration needed
+4. **Multi-Round Interview**: Ask probing questions via AskUserQuestion only where meaningful uncertainty remains
+5. **Progress Tracking**: Monitor coverage across dimensions
+6. **Synthesis**: Write an adaptive plan markdown file
 
 ## Step 1: Topic Classification
 
@@ -31,6 +32,14 @@ Before starting the interview, classify the topic into one of these categories:
 
 Use AskUserQuestion to confirm the topic type if unclear.
 
+Before asking anything, write down a working hypothesis for:
+- Who the user or stakeholder is
+- What job they are trying to get done
+- Why this matters now
+- What is likely out of scope or intentionally deprioritized
+
+Treat these as assumptions to validate, not excuses to ask generic setup questions.
+
 ## Step 2: Interview Approach
 
 ### Question Philosophy
@@ -40,8 +49,12 @@ Craft questions that:
 - **Expose edge cases** - Surface scenarios that could break the design
 - **Reveal dependencies** - Uncover hidden connections to existing systems
 - **Quantify tradeoffs** - Make abstract concerns concrete
+- **Force prioritization** - Clarify what should not be done in this pass
+- **Separate decision ownership** - Distinguish product calls from implementation choices
+- **Plan the learning loop** - Ask how the team will know quickly if the approach is working
 
 **Avoid obvious questions.** Never ask "What is the feature?" or "Why do you want this?"
+If the artifact already answers a question, do not ask it again. Instead, present the inferred answer and ask only for confirmation or correction.
 
 ### Using AskUserQuestion Correctly
 
@@ -93,6 +106,7 @@ Options:
 ### Question Dimensions by Topic Type
 
 #### For Software Features
+- **User / Why Now**: target user, job-to-be-done, urgency, business value
 - **Architecture**: Component boundaries, data flow, state ownership
 - **Data Model**: Entities, relationships, constraints, migrations
 - **API Design**: Endpoints, payloads, versioning, error responses
@@ -100,16 +114,20 @@ Options:
 - **Integration**: Existing features affected, backward compatibility
 - **Performance**: Scale expectations, caching needs, async operations
 - **Security**: Authentication, authorization, data sensitivity
+- **Non-Goals**: deferred work, excluded edge cases, follow-up issues
 
 #### For Process/Workflow
+- **User / Why Now**: who is blocked today, urgency, business reason
 - **Triggers**: What initiates the process, frequency, urgency
 - **Steps**: Sequence, parallelism, dependencies
 - **Roles**: Who does what, handoffs, approvals
 - **Exceptions**: What can go wrong, escalation paths
 - **Tooling**: Systems involved, automation opportunities
 - **Metrics**: Success criteria, monitoring needs
+- **Non-Goals**: what process complexity should stay out of scope for now
 
 #### For Architecture Decisions
+- **Decision Ownership**: what is a product/business decision vs architecture decision
 - **Options**: What alternatives exist, pros/cons of each
 - **Constraints**: Non-negotiables, deadlines, budget
 - **Tradeoffs**: What you gain/lose with each option
@@ -155,6 +173,7 @@ After each round, analyze the answers and adapt your next questions:
 - Technical terms or domain concepts need definition
 
 **Don't just check boxes** — the goal is understanding, not coverage.
+If the remaining gaps are low-value or implementation-level only, stop the interview and move to synthesis.
 
 ### Progress Tracking
 
@@ -209,6 +228,12 @@ Select the appropriate template based on topic type:
 
 ## Overview
 Brief description of what we're building and the problem it solves.
+
+## Why Now
+Why this deserves attention now and what outcome matters.
+
+## Non-Goals
+- What this plan explicitly does not attempt in this pass
 
 ## Key Decisions
 | Decision | Choice | Rationale |
@@ -268,6 +293,12 @@ Items requiring further investigation.
 ## Overview
 What this process accomplishes and why it's needed.
 
+## Why Now
+Why changing this process matters now.
+
+## Non-Goals
+- What process complexity or follow-on changes are explicitly deferred
+
 ## Key Decisions
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
@@ -311,6 +342,9 @@ Items requiring further discussion.
 
 ## Context
 Why this decision is needed now.
+
+## Decision Boundaries
+What is being decided here, and what is intentionally left to product or implementation teams.
 
 ## Options Considered
 
@@ -358,6 +392,9 @@ When to revisit this decision.
 
 ## Overview
 What was reviewed and its purpose.
+
+## Why This Matters Now
+Why the document needs action now.
 
 ## Key Findings
 
@@ -408,6 +445,7 @@ Recommended actions with owners.
 
 **Process:**
 1. Parse and analyze any files or context provided via $ARGUMENTS
-2. Classify the topic type
-3. Confirm classification with user if ambiguous
-4. Ask your first round of probing questions
+2. Draft the autonomous framing hypotheses (target user, why-now, non-goals) before asking questions
+3. Classify the topic type
+4. Confirm classification with user if ambiguous
+5. Ask your first round of probing questions, starting with the highest-uncertainty assumptions

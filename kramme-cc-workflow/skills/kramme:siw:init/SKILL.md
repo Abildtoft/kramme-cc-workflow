@@ -147,7 +147,7 @@ If `$ARGUMENTS` starts with "discover" or "interview":
 
 3. **Execute discovery interview workflow inline:**
 
-   Read the discovery interview framework from `references/discovery-interview.md`. Use its topic classification, question dimensions, and coverage strategy to conduct the interview.
+   Read the discovery interview framework from `references/discovery-interview.md`. Use its autonomous framing, topic classification, question dimensions, coverage strategy, and SIW mapping to conduct the interview. Make sure the interview produces enough material to populate Objectives, Success Criteria, and Decision Boundaries when the topic needs them.
 
 4. Transform interview output to SIW format using the "Interview Output to SIW Mapping" section in `references/discovery-interview.md`.
 5. Store as `discovered_content`
@@ -155,7 +155,7 @@ If `$ARGUMENTS` starts with "discover" or "interview":
 
 ### Case 4: No Arguments
 
-**Continue to Phase 2** (current brief interview) - no change to existing behavior.
+**Continue to Phase 2** (structured brief interview for overview, why-now, non-goals, and decision boundaries).
 
 ## Phase 2: Brief Interview
 
@@ -170,6 +170,36 @@ freeform: true
 ```
 
 Store the response as `project_description`.
+
+Use AskUserQuestion to capture urgency and outcome:
+
+```yaml
+header: "Why Now"
+question: "Why does this work matter now, and what outcome matters most?"
+freeform: true
+```
+
+Store the response as `why_now`.
+
+Use AskUserQuestion to capture scope boundaries:
+
+```yaml
+header: "Non-Goals"
+question: "What should stay out of scope for this first pass?"
+freeform: true
+```
+
+Store the response as `out_of_scope_non_goals`.
+
+Use AskUserQuestion to capture decision boundaries:
+
+```yaml
+header: "Decision Scope"
+question: "What decisions should this spec lock down now, and what should be left to implementation?"
+freeform: true
+```
+
+Store the response as `decision_boundaries_notes`.
 
 ## Phase 2.5: Confirm Linked Sources
 
