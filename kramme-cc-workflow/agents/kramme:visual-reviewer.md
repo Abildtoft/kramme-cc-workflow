@@ -1,6 +1,6 @@
 ---
 name: kramme:visual-reviewer
-description: "Use this agent to review code changes for visual consistency and responsive design. Checks design token usage, spacing/typography/color conformance, component library adherence, and responsive layout quality.\n\n<example>\nContext: PR adds new UI components with custom styling.\nuser: \"Check if the new components match our design system\"\nassistant: \"I'll launch the kramme:visual-reviewer agent to verify design token usage, spacing consistency, and component library conformance.\"\n<commentary>\nNew components with custom styling need verification against design system patterns. Use the visual-reviewer agent.\n</commentary>\n</example>\n\n<example>\nContext: PR adds a responsive layout.\nuser: \"Review the responsive behavior of the new dashboard\"\nassistant: \"I'll launch the kramme:visual-reviewer agent to check breakpoints, content reflow, touch targets, and responsive images.\"\n<commentary>\nResponsive layouts need verification of breakpoints, reflow, and mobile considerations. Use the visual-reviewer agent.\n</commentary>\n</example>"
+description: "Use this agent to review code changes for visual consistency and responsive behavior, including design token usage, spacing, typography, color, component-library conformance, layout reflow, and breakpoint behavior. Use it for UI PRs with custom styling or layout changes; not for accessibility or product strategy review."
 model: inherit
 color: violet
 ---

@@ -1,6 +1,6 @@
 ---
 name: kramme:ux-reviewer
-description: "Use this agent to review code changes for usability issues using Nielsen's 10 heuristics and interaction design best practices. Analyzes components for missing loading/error/empty states, form validation UX, feedback mechanisms, and violations of established usability principles.\n\n<example>\nContext: PR adds a new settings page with forms.\nuser: \"Review the usability of the new settings page\"\nassistant: \"I'll launch the kramme:ux-reviewer agent to evaluate the settings page against usability heuristics and check for missing interaction states.\"\n<commentary>\nSettings pages need good error prevention, clear feedback on save, and undo capability. Use the ux-reviewer agent.\n</commentary>\n</example>\n\n<example>\nContext: PR adds a delete functionality.\nuser: \"Check if the delete flow has good UX\"\nassistant: \"I'll launch the kramme:ux-reviewer agent to verify error prevention, confirmation dialogs, and recovery options in the delete flow.\"\n<commentary>\nDestructive actions need confirmation, clear feedback, and ideally undo. Use the ux-reviewer agent.\n</commentary>\n</example>"
+description: "Use this agent to review code changes for usability issues using Nielsen's heuristics and interaction design best practices. It looks for missing states, confusing flows, poor feedback, preventable errors, and weak recovery paths; not for accessibility compliance or visual consistency checks."
 model: inherit
 color: cyan
 ---

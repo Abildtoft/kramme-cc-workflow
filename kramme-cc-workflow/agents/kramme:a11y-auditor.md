@@ -1,6 +1,6 @@
 ---
 name: kramme:a11y-auditor
-description: "Use this agent to audit code changes for accessibility (WCAG 2.1 AA) compliance. Analyzes components, templates, and styles for ARIA usage, semantic HTML, color contrast, keyboard navigation, focus management, and screen reader support. Only invoke when accessibility is a known project requirement.\n\n<example>\nContext: PR adds a new modal dialog component.\nuser: \"Review accessibility of the new modal\"\nassistant: \"I'll launch the kramme:a11y-auditor agent to check the modal for focus trapping, keyboard dismissal, ARIA roles, and screen reader announcements.\"\n<commentary>\nModal dialogs have strict a11y requirements (focus trap, escape to close, aria-modal, role=dialog). Use the a11y-auditor agent.\n</commentary>\n</example>\n\n<example>\nContext: PR adds a form with validation.\nuser: \"Check if the signup form is accessible\"\nassistant: \"I'll launch the kramme:a11y-auditor agent to verify form labels, error message associations, and keyboard navigation.\"\n<commentary>\nForms need label associations, aria-describedby for errors, and proper tab order. Use the a11y-auditor agent.\n</commentary>\n</example>"
+description: "Use this agent to audit UI code for WCAG 2.1 AA accessibility issues, including semantics, ARIA, keyboard navigation, focus handling, screen reader support, and contrast. Use it when accessibility is an explicit requirement or when reviewing forms, dialogs, and other interactive flows; not for general UX or visual consistency review."
 model: inherit
 color: green
 ---
