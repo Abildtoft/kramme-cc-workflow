@@ -1,6 +1,6 @@
 ---
 name: kramme:removal-planner
-description: "Use this agent to identify dead code, unused dependencies, and deprecated features that can be safely removed. This agent creates structured removal plans with verification steps.\n\n<example>\nContext: The user wants to clean up technical debt.\nuser: \"There's a lot of dead code in this module. Can you identify what can be removed?\"\nassistant: \"I'll use the kramme:removal-planner agent to analyze the module and create a safe removal plan.\"\n<commentary>\nThe user wants to identify removable code, so use the removal-planner agent to analyze and create a structured plan.\n</commentary>\n</example>\n\n<example>\nContext: After a major refactor, checking for leftover code.\nuser: \"We migrated to the new API. Can you check if all the old code is cleaned up?\"\nassistant: \"I'll use the kramme:removal-planner agent to identify any remaining old API code that can be removed.\"\n<commentary>\nPost-migration cleanup is a perfect use case for the removal-planner agent.\n</commentary>\n</example>"
+description: "Use this agent to identify dead code, unused dependencies, deprecated paths, and leftover migration artifacts that can be removed safely. It produces structured removal plans with verification steps; not for broad refactors where the code still serves an active purpose."
 model: inherit
 color: red
 ---
