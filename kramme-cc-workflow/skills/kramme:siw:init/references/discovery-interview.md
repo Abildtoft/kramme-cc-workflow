@@ -48,6 +48,7 @@ For Documentation Review: Why Now, Desired Outcome, Success Criteria, Clarity, C
 | Why Now / urgency | Why Now |
 | Objectives / desired outcome | Objectives |
 | Non-Goals / deferred work | Scope > Out of Scope / Non-Goals |
+| Assumptions / Inferred Context | Assumptions Used |
 | Key Decisions | Design Decisions |
 | Decision Boundaries | Decision Boundaries |
 | Technical Design / Data Model | Technical Design section |

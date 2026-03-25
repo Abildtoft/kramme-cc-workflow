@@ -19,9 +19,19 @@ Conduct a structured, in-depth interview about the presented topic, files, propo
 5. **Progress Tracking**: Monitor coverage across dimensions
 6. **Synthesis**: Write an adaptive plan markdown file
 
-## Step 1: Topic Classification
+## Step 1: Autonomous Framing
 
-Before starting the interview, classify the topic into one of these categories:
+Before starting the interview, write down a working hypothesis for:
+- Who the user or stakeholder is
+- What job they are trying to get done
+- Why this matters now
+- What is likely out of scope or intentionally deprioritized
+
+Treat these as assumptions to validate, not excuses to ask generic setup questions.
+
+## Step 2: Topic Classification
+
+After drafting the working hypothesis, classify the topic into one of these categories:
 
 | Type | Indicators | Focus Areas |
 |------|------------|-------------|
@@ -32,15 +42,7 @@ Before starting the interview, classify the topic into one of these categories:
 
 Use AskUserQuestion to confirm the topic type if unclear.
 
-Before asking anything, write down a working hypothesis for:
-- Who the user or stakeholder is
-- What job they are trying to get done
-- Why this matters now
-- What is likely out of scope or intentionally deprioritized
-
-Treat these as assumptions to validate, not excuses to ask generic setup questions.
-
-## Step 2: Interview Approach
+## Step 3: Interview Approach
 
 ### Question Philosophy
 
@@ -142,7 +144,7 @@ Options:
 - **Actionability**: Can someone implement this as-is?
 - **Assumptions**: What's implied but not stated
 
-## Step 3: Interview Execution
+## Step 4: Interview Execution
 
 ### Round Structure
 
@@ -210,7 +212,7 @@ Stop interviewing when:
 - Enough information exists to write a comprehensive plan
 - **Simple topics**: 1-2 rounds may suffice. Don't artificially extend the interview.
 
-## Step 4: Output Plan Document
+## Step 5: Output Plan Document
 
 ### File Naming
 Suggest a filename based on the topic, e.g., `user-auth-redesign-plan.md` or `deployment-process-plan.md`. Ask user for preferred location.

@@ -194,7 +194,7 @@ Use when no linked files or discovered content (current default behavior).
 - {To be defined}
 
 ### Out of Scope / Non-Goals
-{out_of_scope_non_goals or "- To be defined"}
+{out_of_scope_non_goals or "To be defined"}
 
 ## Success Criteria
 
@@ -210,7 +210,7 @@ Key decisions will be documented in `siw/LOG.md` as they are made.
 
 ## Decision Boundaries
 
-{decision_boundaries_notes or "- To be defined"}
+{decision_boundaries_notes or "To be defined"}
 
 ## References
 
