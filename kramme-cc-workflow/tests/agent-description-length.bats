@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-@test "agent descriptions fit Codex skill metadata limits" {
+@test "agent and skill descriptions fit Codex metadata limits" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for agent metadata tests"
   fi
@@ -13,10 +13,22 @@ const path = require("path");
 
 const MAX_LENGTH = 1024;
 const agentsDir = path.join(process.cwd(), "agents");
+const skillsDir = path.join(process.cwd(), "skills");
 const failures = [];
+const files = [
+  ...fs
+    .readdirSync(agentsDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+    .map((entry) => path.join("agents", entry.name)),
+  ...fs
+    .readdirSync(skillsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => path.join("skills", entry.name, "SKILL.md"))
+    .filter((entry) => fs.existsSync(path.join(process.cwd(), entry))),
+].sort();
 
-for (const entry of fs.readdirSync(agentsDir).filter((name) => name.endsWith(".md")).sort()) {
-  const raw = fs.readFileSync(path.join(agentsDir, entry), "utf8");
+for (const entry of files) {
+  const raw = fs.readFileSync(path.join(process.cwd(), entry), "utf8");
   const match = raw.match(/^---\n([\s\S]*?)\n---/);
   if (!match) {
     failures.push(`${entry}: missing frontmatter`);
@@ -24,14 +36,18 @@ for (const entry of fs.readdirSync(agentsDir).filter((name) => name.endsWith(".m
   }
 
   const descriptionMatch =
-    match[1].match(/^description:\s*"([\s\S]*?)"\n/m) ??
+    match[1].match(/^description:\s*"([\s\S]*?)"(?:\n|$)/m) ??
+    match[1].match(/^description:\s*\x27([\s\S]*?)\x27(?:\n|$)/m) ??
     match[1].match(/^description:\s*(.+)$/m);
   if (!descriptionMatch) {
     failures.push(`${entry}: missing description`);
     continue;
   }
 
-  const description = descriptionMatch[1].replace(/\s+/g, " ").trim();
+  const description = descriptionMatch[1]
+    .trim()
+    .replace(/^[\x27"]|[\x27"]$/g, "")
+    .replace(/\s+/g, " ");
   if (description.length > MAX_LENGTH) {
     failures.push(`${entry}: ${description.length} chars`);
   }
