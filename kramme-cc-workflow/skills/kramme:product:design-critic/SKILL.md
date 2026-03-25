@@ -30,6 +30,7 @@ user goal
 - Separate visual polish from product quality.
 - Use competitor inspiration to learn patterns, not to copy outputs.
 - Name the tradeoff and choose a side when the product needs one.
+- Make the product call instead of waiting for perfect certainty. Infer the likely job, priority, and non-goals from the artifact and state assumptions clearly.
 
 ## Use This Skill To
 
@@ -76,6 +77,8 @@ Start with the user's job, moment, and risk.
 
 If the design does not make the job easier, cleaner visuals do not save it.
 
+Also identify what should not be in this surface yet. Strong product design is partly about saying no.
+
 ### 3. Decide the owning surface
 
 Choose which surface should own the moment before discussing components.
@@ -100,6 +103,8 @@ State what matters most in one glance.
 - What should disappear until needed
 
 If everything is competing, the design has not chosen yet.
+
+Call out when an unresolved product decision is being hidden as a layout or component question.
 
 ### 5. Design for trust, not just task completion
 
@@ -151,6 +156,7 @@ Do not use craft details to excuse a weak product decision. Polish compounds str
 - Prefer strong object-action relationships over generic dashboards.
 - Prefer reversible flows when stakes are high.
 - Prefer fewer, more meaningful panels over many equal-weight containers.
+- Prefer explicit non-goals and deferred complexity over premature comprehensiveness.
 
 ## Explanation Layer
 

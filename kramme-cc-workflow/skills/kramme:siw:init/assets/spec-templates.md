@@ -76,6 +76,10 @@ Use when `discovered_content` exists. Discovery mode generates content through i
 | **Deprioritized** | {work_context_profile.deprioritized or "None"} |
 | **Notes** | {work_context_profile.notes or empty} |
 
+## Why Now
+
+{Why this matters now and what outcome matters most}
+
 ## Objectives
 
 {Objectives from interview}
@@ -87,7 +91,7 @@ Use when `discovered_content` exists. Discovery mode generates content through i
 {If available from interview}
 {Else: "- To be defined"}
 
-### Out of Scope
+### Out of Scope / Non-Goals
 {If available from interview}
 {Else: "- To be defined"}
 
@@ -123,6 +127,16 @@ Tasks will be tracked in individual issue files. See `siw/OPEN_ISSUES_OVERVIEW.m
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | {area} | {what decided} | {why} |
+}
+
+## Decision Boundaries
+
+{If available from interview:
+### Captured in this spec
+{Product, behavior, or scope decisions that need alignment}
+
+### Left to implementation
+{Engineering choices intentionally left open}
 }
 
 ## Open Questions
@@ -166,6 +180,10 @@ Use when no linked files or discovered content (current default behavior).
 | **Deprioritized** | {work_context_profile.deprioritized or "None"} |
 | **Notes** | {work_context_profile.notes or empty} |
 
+## Why Now
+
+{why_now or "To be defined"}
+
 ## Objectives
 
 - [ ] {Placeholder - define during issue creation}
@@ -175,8 +193,8 @@ Use when no linked files or discovered content (current default behavior).
 ### In Scope
 - {To be defined}
 
-### Out of Scope
-- {To be defined}
+### Out of Scope / Non-Goals
+{out_of_scope_non_goals or "To be defined"}
 
 ## Success Criteria
 
@@ -189,6 +207,10 @@ Tasks will be tracked in individual issue files. See `siw/OPEN_ISSUES_OVERVIEW.m
 ## Design Decisions
 
 Key decisions will be documented in `siw/LOG.md` as they are made.
+
+## Decision Boundaries
+
+{decision_boundaries_notes or "To be defined"}
 
 ## References
 

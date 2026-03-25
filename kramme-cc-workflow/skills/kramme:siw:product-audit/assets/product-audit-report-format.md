@@ -23,6 +23,7 @@ Not specified — full product review applied.
 | Critical Moments Coverage | {Thorough/Partial/Missing} |
 | Scope Correctness | {Right-sized/Too broad/Too narrow} |
 | Success Criteria Quality | {Measurable/Vague/Missing} |
+| Prioritization and Decision Quality | {Clear/Fuzzy/Missing} |
 
 | Severity | Count |
 |----------|-------|
@@ -59,6 +60,10 @@ Not specified — full product review applied.
 ## Open Questions
 
 - {product questions the spec doesn't address}
+
+## Assumptions Used
+
+- {only include when the reviewer inferred target user, value, why-now, or non-goals from incomplete specs}
 
 ## Strengths
 

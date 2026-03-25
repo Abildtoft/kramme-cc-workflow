@@ -34,8 +34,9 @@ Create or improve a Linear issue through exhaustive interactive refinement. Can 
 1. **Problem Statement** - What pain point or opportunity exists?
 2. **Value Proposition** - Why should we invest time in this?
 3. **User/Business Impact** - Who benefits and how?
-4. **Success Criteria** - How do we know we've solved the problem?
-5. **Technical Context** - High-level implementation direction (not detailed how-to)
+4. **Scope / Non-Goals** - What is intentionally excluded so the issue stays focused?
+5. **Success Criteria** - How do we know we've solved the problem?
+6. **Technical Context** - High-level implementation direction (not detailed how-to)
 
 ### Technical Content Guidelines
 
@@ -54,9 +55,10 @@ Create or improve a Linear issue through exhaustive interactive refinement. Can 
 3. **Linear Context Discovery**: Fetch available teams, labels, and projects
 4. **Existing Issue Handling**: For improve mode, fetch issue; for create mode, check duplicates
 5. **Codebase Exploration**: Search for related implementations and patterns
-6. **Interview**: Multi-round questioning (adapted for issue type and mode)
-7. **Issue Composition**: Draft issue following the template
-8. **Review & Create/Update**: User approval, then create or update in Linear
+6. **Autonomous Framing**: Infer target user, why-now, likely non-goals, and decision boundaries from the evidence gathered
+7. **Interview**: Multi-round questioning (adapted for issue type and mode)
+8. **Issue Composition**: Draft issue following the template
+9. **Review & Create/Update**: User approval, then create or update in Linear
 
 ## Phase 1: Input Parsing & Mode Detection
 
@@ -222,6 +224,15 @@ Before creating a new issue, check for existing Linear issues that may already c
    - These may inform scope or reveal known issues
 
 **Output**: Summarize findings to share with user and inform interview questions.
+
+Before starting the interview, synthesize a working hypothesis for:
+- target user or stakeholder
+- job-to-be-done / problem pressure
+- why this matters now
+- obvious non-goals or work that should be split out
+- which decisions belong in the issue versus which should stay implementation-level
+
+Present these as assumptions and refine them only where the evidence is weak.
 
 ## Phase 5: Interview
 
@@ -398,17 +409,20 @@ Read the comprehensive issue template from `assets/comprehensive-template.md`. I
 ### General Guidelines
 
 1. **Lead with "Why"** - Problem and value proposition are the most important parts. Don't settle for vague justifications.
-2. **Write for Product Team first** - The issue should be compelling to non-technical stakeholders. They read Problem, Value, Goal, Scope, and Acceptance Criteria.
-3. **Technical details are secondary** - Keep implementation proposals high-level. Engineers determine the detailed how.
-4. **Code examples only when necessary** - Only for specific bugs or concrete fixes. New features don't need code examples.
-5. **Check for duplicates first** - Always search existing issues before creating new ones.
-6. **Exhaust the interview** - Don't rush through questions. Especially Round 1 (Problem & Value) for comprehensive issues.
-7. **Use exploration findings strategically** - Reference patterns and affected areas, but don't dump implementation details.
-8. **Craft real options** - Every AskUserQuestion option should be a legitimate choice.
-9. **Connect the dots** - Show how different decisions interact and affect each other.
-10. **Challenge diplomatically** - If scope seems too broad, suggest splitting.
-11. **Get user approval** - Always show the draft before creating the issue.
-12. **Keep simple bugs simple** - Don't over-engineer the issue definition. If root cause and fix are clear, the simple template is sufficient.
+2. **Make non-goals explicit** - A focused issue is stronger than an aspirational one. If something should wait, say so.
+3. **Infer before asking** - Use repo context, existing issues, and provided files to draft the likely answer before asking the user to fill in basics.
+4. **Separate product calls from engineering choices** - Capture the decision that needs alignment, not detailed implementation instructions.
+5. **Write for Product Team first** - The issue should be compelling to non-technical stakeholders. They read Problem, Value, Goal, Scope, and Acceptance Criteria.
+6. **Technical details are secondary** - Keep implementation proposals high-level. Engineers determine the detailed how.
+7. **Code examples only when necessary** - Only for specific bugs or concrete fixes. New features don't need code examples.
+8. **Check for duplicates first** - Always search existing issues before creating new ones.
+9. **Exhaust the interview** - Don't rush through questions. Especially Round 1 (Problem & Value) for comprehensive issues.
+10. **Use exploration findings strategically** - Reference patterns and affected areas, but don't dump implementation details.
+11. **Craft real options** - Every AskUserQuestion option should be a legitimate choice.
+12. **Connect the dots** - Show how different decisions interact and affect each other.
+13. **Challenge diplomatically** - If scope seems too broad, suggest splitting.
+14. **Get user approval** - Always show the draft before creating the issue.
+15. **Keep simple bugs simple** - Don't over-engineer the issue definition. If root cause and fix are clear, the simple template is sufficient.
 
 ## Starting the Process
 
