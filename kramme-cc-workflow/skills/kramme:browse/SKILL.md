@@ -2,7 +2,7 @@
 name: kramme:browse
 description: (experimental) Browser operator for live product inspection. Detects available browser MCP tooling (claude-in-chrome, chrome-devtools, playwright) and provides consistent navigation, screenshots, interaction, and evidence capture. Not for code-only analysis.
 argument-hint: "<url> [--screenshot] [--console] [--network]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 

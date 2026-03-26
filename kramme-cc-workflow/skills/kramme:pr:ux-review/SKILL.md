@@ -2,7 +2,7 @@
 name: kramme:pr:ux-review
 description: Audit UI, UX, and product experience of PR and local changes using specialized agents for usability heuristics, product thinking, visual consistency, and accessibility. Supports inline report output with --inline.
 argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [parallel] [--inline]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 

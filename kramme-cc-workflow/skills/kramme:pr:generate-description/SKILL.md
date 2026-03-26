@@ -2,7 +2,7 @@
 name: kramme:pr:generate-description
 description: Write a structured PR title and body from git diff, commit log, and Linear context. Outputs markdown for copy-paste or updates the existing PR automatically in auto mode.
 argument-hint: "[--auto] [--visual] [--base <ref>]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 

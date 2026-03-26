@@ -1,7 +1,7 @@
 ---
 name: kramme:git:recreate-commits
 description: Use when asked to recreate commits with narrative-quality history on the current branch.
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 argument-hint: "[--auto] [--granular]"
 ---
