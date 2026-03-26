@@ -1,0 +1,49 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: generate-changelog-from-log
+    instruction: |
+      You have a skill called kramme:changelog:generate in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Generate a changelog from the git log entries in fixtures/git-log.txt.
+      These represent merged PRs from the last week. Treat this as a weekly changelog.
+
+      Save the output to CHANGELOG.md.
+
+      Do not attempt to run git commands or access GitHub APIs. Use the provided
+      git-log.txt file as the source of truth for all PR data.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:changelog:generate/SKILL.md
+      - src: fixtures/git-log.txt
+        dest: fixtures/git-log.txt
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 0.5
+      - type: llm_rubric
+        rubric: |
+          Content completeness (0-0.4):
+          - Does the changelog cover all 6 merged PRs from the git log?
+          - Are features and fixes grouped into separate sections?
+          - Are PR numbers included for traceability?
+          - Are contributor names credited?
+          Format quality (0-0.3):
+          - Does it follow the template format from the skill (sections for features, fixes, etc.)?
+          - Is the tone engaging and appropriate for an internal dev team?
+          - Does it include a date or time period reference?
+          Accuracy (0-0.3):
+          - Are the feature descriptions accurate to the git log content?
+          - Are the fix descriptions accurate (race condition, CSV truncation)?
+          - Is the docs PR handled appropriately (not mixed with features)?
+        weight: 0.5

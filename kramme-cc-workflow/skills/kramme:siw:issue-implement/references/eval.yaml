@@ -1,0 +1,27 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:siw:issue-implement:team/SKILL.md.
+      Read it and describe how you would implement an SIW issue.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:siw:issue-implement:team/SKILL.md
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention using parallel agent execution to implement
+          tasks concurrently, a planning phase before writing code, and
+          exploring the codebase to understand existing patterns.
+        weight: 1.0

@@ -1,0 +1,50 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: scan-express-app-refactoring
+    instruction: |
+      You have a skill called kramme:code:refactor-opportunities in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Scan this codebase for refactoring opportunities. Produce a report and save it
+      to refactor-report.md.
+
+      Do not ask for confirmation. Just produce the report.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:code:refactor-opportunities/SKILL.md
+      - src: references/
+        dest: skills/kramme:code:refactor-opportunities/references/
+      - src: assets/
+        dest: skills/kramme:code:refactor-opportunities/assets/
+      - src: fixtures/src/app.ts
+        dest: src/app.ts
+      - src: fixtures/package.json
+        dest: package.json
+    graders:
+      - type: llm_rubric
+        rubric: |
+          Finding quality (0-0.4):
+          - Are findings categorized (e.g. architecture, code quality, maintainability, performance)?
+          - Does each finding cite specific code with file and line references?
+          - Are severity levels assigned (critical, high, medium, low)?
+          - Does the report identify at least 4 distinct refactoring opportunities?
+          Evidence quality (0-0.3):
+          - Does the report identify the magic numbers (role === 1, 2, 3)?
+          - Does it flag the tight coupling between routes and database queries?
+          - Does it mention the duplicated error handling pattern across routes?
+          - Does it note the missing input validation?
+          Actionability (0-0.3):
+          - Are concrete refactoring steps provided for each finding?
+          - Are findings prioritized by impact or effort?
+          - Does the report suggest specific patterns (e.g. repository pattern, middleware, enums)?
+        weight: 1.0

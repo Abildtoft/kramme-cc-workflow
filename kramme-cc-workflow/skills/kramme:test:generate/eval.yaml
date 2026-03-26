@@ -1,0 +1,57 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: generate-math-tests
+    instruction: |
+      You have a skill called kramme:test:generate in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Generate tests for src/math.ts in `--auto` mode. Treat this as the
+      equivalent of invoking `/kramme:test:generate src/math.ts --auto`.
+      Follow the project's test patterns (vitest, tests colocated in src/).
+
+      Do not ask for confirmation. Just write the test file.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:test:generate/SKILL.md
+      - src: references/
+        dest: skills/kramme:test:generate/references/
+      - src: assets/
+        dest: skills/kramme:test:generate/assets/
+      - src: fixtures/src/math.ts
+        dest: src/math.ts
+      - src: fixtures/package.json
+        dest: package.json
+      - src: fixtures/vitest.config.ts
+        dest: vitest.config.ts
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 0.6
+      - type: llm_rubric
+        rubric: |
+          Test coverage (0-0.4):
+          - Are all exported functions tested (add, subtract, multiply, divide, modulo, power, clamp)?
+          - Does divide have a test for the zero-division error case?
+          - Does clamp have edge case tests (value below min, above max, within range)?
+          - Does modulo have a test for the zero case?
+          Test quality (0-0.3):
+          - Are tests organized with describe blocks per function?
+          - Do test names clearly describe the expected behavior?
+          - Are there both positive and negative test cases?
+          - Are assertions specific (toBe, toThrow, etc.) rather than generic?
+          Conventions (0-0.3):
+          - Does the test file follow vitest conventions (import from vitest or use globals)?
+          - Is the file named correctly (*.test.ts or *.spec.ts)?
+          - Is it colocated in src/ as the vitest config specifies?
+          - Does the import path correctly reference ../math or ./math?
+        weight: 0.4

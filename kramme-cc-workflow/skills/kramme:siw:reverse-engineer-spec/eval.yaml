@@ -1,0 +1,27 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:siw:reverse-engineer-spec/SKILL.md.
+      Read it and describe how you would reverse-engineer a spec from code.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:siw:reverse-engineer-spec/SKILL.md
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention analyzing existing code to extract behavior
+          and patterns, identifying implicit rules and domain concepts, and
+          producing a structured spec document from the analysis.
+        weight: 1.0

@@ -1,0 +1,30 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:product:design-critic/SKILL.md.
+      Read it and describe how you would critique the design of a settings page.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:product:design-critic/SKILL.md
+      - src: references/
+        dest: skills/kramme:product:design-critic/references/
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention evaluating jobs-to-be-done (what users need
+          from this page), assessing hierarchy and information architecture,
+          considering trust and clarity, and discussing tradeoffs in the
+          design decisions.
+        weight: 1.0

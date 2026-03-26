@@ -1,0 +1,58 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: investigate-divide-bug
+    instruction: |
+      You have a skill called kramme:debug:investigate in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Investigate why the divide function throws an error when given valid inputs
+      like divide(9, -3). The function should return -3 but instead throws
+      "Division by zero".
+
+      The code is in src/math.ts and tests are in src/math.test.ts.
+      Read the code, find the bug, and document your findings.
+
+      Since this is a test environment, when the skill asks user questions via
+      AskUserQuestion, choose "Report findings only, do not change code" for the
+      fix strategy. Write your investigation findings to investigation.md.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:debug:investigate/SKILL.md
+      - src: references/
+        dest: skills/kramme:debug:investigate/references/
+      - src: assets/
+        dest: skills/kramme:debug:investigate/assets/
+      - src: fixtures/src/math.ts
+        dest: src/math.ts
+      - src: fixtures/src/math.test.ts
+        dest: src/math.test.ts
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 0.3
+      - type: llm_rubric
+        rubric: |
+          Root cause identification (0-0.4):
+          - Did the agent identify that `b <= 0` is the wrong condition?
+          - Did it explain that the check should be `b === 0` (strict equality to zero)?
+          - Did it note that negative divisors are valid but currently rejected?
+          Investigation methodology (0-0.3):
+          - Did the agent follow the skill's structured phases (reproduce, isolate, trace)?
+          - Did it read the source code and test file?
+          - Did it trace the data flow from input to the error?
+          Documentation quality (0-0.3):
+          - Did the agent produce an investigation log or findings document?
+          - Does it include the file and line location of the bug?
+          - Does it include a confidence assessment?
+          - Is the root cause explanation clear and accurate?
+        weight: 0.7

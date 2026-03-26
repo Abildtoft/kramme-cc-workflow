@@ -1,0 +1,49 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: microservices-architecture-diagram
+    instruction: |
+      You have a skill called kramme:visual:diagram in the skills/ directory.
+      Read its SKILL.md and all referenced files (references/, assets/) and follow
+      the skill's instructions.
+
+      Generate an HTML diagram showing a simple 3-service microservices architecture
+      (API Gateway, User Service, Database). Save to output.html
+
+      Do not open the file in a browser. Just write it to output.html.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:visual:diagram/SKILL.md
+      - src: references/
+        dest: skills/kramme:visual:diagram/references/
+      - src: assets/
+        dest: skills/kramme:visual:diagram/assets/
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 0.6
+      - type: llm_rubric
+        rubric: |
+          HTML quality (0-0.4):
+          - Is the output a well-formed, self-contained HTML page?
+          - Does it include CSS styling (not plain unstyled HTML)?
+          - Does it use Google Fonts or distinctive typography?
+          - Does it include CSS custom properties for theming?
+          Content accuracy (0-0.3):
+          - Does the diagram show all 3 components: API Gateway, User Service, Database?
+          - Are the relationships/connections between components shown?
+          - Is the information hierarchy clear (titles, labels, descriptions)?
+          Visual quality (0-0.3):
+          - Does the page have a cohesive visual aesthetic?
+          - Is there visual hierarchy (hero sections, depth tiers)?
+          - Does it use color purposefully to convey meaning?
+        weight: 0.4

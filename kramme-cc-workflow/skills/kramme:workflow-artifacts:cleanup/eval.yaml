@@ -1,0 +1,57 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: cleanup-workflow-artifacts
+    instruction: |
+      You have a skill called kramme:workflow-artifacts:cleanup in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Clean up workflow artifacts from the project/ directory. The project directory
+      contains several artifact files that should be deleted, plus real source files
+      that must NOT be deleted.
+
+      Work in the project/ directory. Do not ask for confirmation — just delete the
+      artifact files. The `trash` command may not be available in this environment,
+      so use `rm` as a fallback.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:workflow-artifacts:cleanup/SKILL.md
+    docker:
+      setup:
+        - |
+          cd /workspace/project
+          mkdir -p src
+          echo 'export const main = () => console.log("hello");' > src/index.ts
+          echo '{"name":"test-project","version":"1.0.0"}' > package.json
+          echo '# Code Review' > REVIEW_OVERVIEW.md
+          echo '# UX Review' > UX_REVIEW_OVERVIEW.md
+          echo '# Spec Audit Report' > AUDIT_SPEC_REPORT.md
+          echo '# QA Report' > QA_REPORT.md
+          echo '# Product Audit' > PRODUCT_AUDIT.md
+    workdir: project
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 0.7
+      - type: llm_rubric
+        rubric: |
+          Cleanup accuracy (0-0.5):
+          - Did the agent delete the artifact files listed in the skill's target files?
+          - Did it preserve non-artifact files (src/index.ts, package.json)?
+          - Did it report which files were deleted?
+          Process adherence (0-0.3):
+          - Did the agent check which target files exist before deleting?
+          - Did it follow the skill's workflow (check existence, delete, report)?
+          Reporting (0-0.2):
+          - Did it list files that were deleted?
+          - Did it note any target files that were not found?
+        weight: 0.3

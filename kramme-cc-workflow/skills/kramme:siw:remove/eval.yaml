@@ -1,0 +1,31 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: remove-all-siw-files
+    instruction: |
+      You have an SIW project in the siw/ directory with LOG.md,
+      OPEN_ISSUES_OVERVIEW.md, SPEC.md, and issues/.
+
+      Read the skill at skills/kramme:siw:remove/SKILL.md and follow it
+      to remove all SIW workflow files.
+
+      When asked about keeping the spec, say no -- delete everything
+      (choose "All SIW files").
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:siw:remove/SKILL.md
+      - src: fixtures/siw/
+        dest: siw/
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 1.0

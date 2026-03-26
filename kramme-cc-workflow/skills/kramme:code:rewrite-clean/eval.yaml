@@ -1,0 +1,55 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: rewrite-csv-parser
+    instruction: |
+      You have a skill called kramme:code:rewrite-clean in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Earlier in this session, you implemented the current src/parser.ts as a
+      working but hacky CSV parser. Now that the behavior is understood and the
+      implementation works, redo it more elegantly.
+
+      Rewrite src/parser.ts cleanly from scratch with lessons learned from the
+      current hacky implementation. The rewritten file should provide the same
+      functionality but with modern, clean TypeScript.
+
+      Do not ask for confirmation. Just rewrite the file in place.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:code:rewrite-clean/SKILL.md
+      - src: fixtures/src/parser.ts
+        dest: src/parser.ts
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 0.3
+      - type: llm_rubric
+        rubric: |
+          Code quality (0-0.4):
+          - Are magic numbers replaced with named constants or direct character comparisons?
+          - Are callback-based APIs replaced with modern patterns (return values, async/await, or Promises)?
+          - Are `var` declarations replaced with `const`/`let`?
+          - Are `: any` types replaced with proper TypeScript types/interfaces?
+          - Is the recursive processLine() pattern replaced with iteration?
+          Functionality preservation (0-0.3):
+          - Does the rewrite handle quoted CSV fields (values containing commas)?
+          - Does it auto-detect numeric values?
+          - Does it handle boolean and null detection?
+          - Does it skip empty lines and malformed rows?
+          - Does it provide both parse and stringify functions?
+          Design improvements (0-0.3):
+          - Is there proper error handling (not just try-catch with callback)?
+          - Are there clear type definitions for the CSV row structure?
+          - Is the code well-organized with helper functions if needed?
+          - Is the implementation significantly cleaner than the original?
+        weight: 0.7
