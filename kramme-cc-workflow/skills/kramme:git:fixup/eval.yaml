@@ -1,0 +1,28 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:git:fixup/SKILL.md.
+      Read it and describe how you would create fixup commits for changed files.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:git:fixup/SKILL.md
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention mapping changed files to the commits that
+          originally touched them, creating fixup commits targeting those
+          original commits, and validating or running autosquash to clean up
+          history.
+        weight: 1.0

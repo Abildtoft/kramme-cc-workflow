@@ -1,0 +1,27 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:pr:code-review:team/SKILL.md.
+      Read it and describe how you would review a PR adding user authentication.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:pr:code-review:team/SKILL.md
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention using agent teams or multiple parallel agents
+          for the review, a security aspect relevant to authentication, and a
+          test coverage check or verification step.
+        weight: 1.0

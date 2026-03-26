@@ -1,0 +1,47 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: python:3.12-slim
+    setup: |
+      pip install --no-cache-dir uv markitdown
+
+tasks:
+  - name: convert-html-api-docs
+    instruction: |
+      You have a skill called kramme:docs:to-markdown in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Convert input.html to markdown. Save the result to output.md.
+
+      Do not ask for confirmation. Just convert and save.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:docs:to-markdown/SKILL.md
+      - src: fixtures/input.html
+        dest: input.html
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 0.6
+      - type: llm_rubric
+        rubric: |
+          Conversion accuracy (0-0.4):
+          - Are all headings preserved with correct hierarchy (h1 -> #, h2 -> ##, h3 -> ###)?
+          - Is the table converted to valid markdown table syntax with header row and separator?
+          - Are list items preserved with bullet markers?
+          - Is the link converted to markdown link syntax [text](url)?
+          Content preservation (0-0.3):
+          - Is all text content preserved (no missing paragraphs, list items, or table rows)?
+          - Are code elements (like HTTP status codes) preserved with backticks?
+          - Are bold/strong elements preserved with ** markers?
+          Formatting quality (0-0.3):
+          - Is the markdown clean and well-formatted (proper spacing between sections)?
+          - Would the markdown render correctly in a standard viewer?
+          - Is there no leftover HTML in the output?
+        weight: 0.4
