@@ -2,7 +2,7 @@
 name: kramme:pr:code-review
 description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline.
 argument-hint: "[aspects] [--base <branch>] [parallel] [--inline]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 

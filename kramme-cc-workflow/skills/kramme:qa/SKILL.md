@@ -2,7 +2,7 @@
 name: kramme:qa
 description: (experimental) Structured QA testing with evidence capture. Runs smoke checks, diff-aware validation, or targeted route testing against a live app. Produces QA_REPORT.md with screenshots, repro steps, severity, and recommended fixes, or replies inline with --inline. Uses browser MCP when available and falls back to code-only analysis otherwise.
 argument-hint: "<url> [quick|diff-aware|targeted <route>] [--base <branch>] [--regression] [--inline]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 
