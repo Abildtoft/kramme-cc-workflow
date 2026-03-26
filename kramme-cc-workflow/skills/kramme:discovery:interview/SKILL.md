@@ -8,7 +8,7 @@ user-invocable: true
 
 # Deep Exploration Interview
 
-Conduct a structured, in-depth interview about the presented topic, files, proposal, or feature. Use the AskUserQuestion tool throughout to gather decisions and uncover requirements. Conclude by writing a comprehensive plan.
+Conduct a structured, in-depth interview about the presented topic, files, proposal, or feature. Use the AskUserQuestion tool when interactive user input is available. In automated or non-interactive contexts, treat seeded requirements in the prompt as the user's answers, synthesize the interview from them, and conclude by writing a comprehensive plan.
 
 ## Process Overview
 
@@ -30,6 +30,19 @@ Use these markers in user-facing output to keep downstream tooling parseable:
 - `UNVERIFIED` — when you assert something you haven't confirmed (e.g., a feasibility guess during Phase 0 convergence).
 - `FRAMING` — the label applied when Phase 0 converges on the concrete problem statement that will feed the interview.
 - `PLAN` — the label applied to the synthesized plan document at hand-off.
+
+## Automated / Non-Interactive Mode
+
+If the prompt already includes concrete requirements, constraints, or example
+answers and there is no real user to respond:
+
+1. Treat those details as the interview answers.
+2. Do not call `AskUserQuestion`.
+3. Still follow the same phases: draft the framing hypothesis, classify the
+   topic, identify the key questions that matter, infer the answers from the
+   provided material, track coverage, and write the final plan.
+4. Only use `AskUserQuestion` when meaningful uncertainty remains and a human
+   can actually answer.
 
 ## Step 1: Autonomous Framing
 
@@ -216,7 +229,11 @@ Options:
 
 ### Round Structure
 
-Ask **1-4 questions per round** using AskUserQuestion. Mix questions across different dimensions.
+When running interactively, ask **1-4 questions per round** using
+AskUserQuestion. Mix questions across different dimensions.
+
+In automated or non-interactive mode, replace each round with a short written
+summary of the most important inferred questions and answers before moving on.
 
 After receiving answers, provide a brief synthesis before the next round:
 ```
@@ -283,7 +300,13 @@ Stop interviewing when:
 ## Step 5: Output Plan Document
 
 ### File Naming
-Suggest a filename based on the topic, e.g., `user-auth-redesign-plan.md` or `deployment-process-plan.md`. Ask user for preferred location.
+Suggest a filename based on the topic, e.g., `user-auth-redesign-plan.md` or
+`deployment-process-plan.md`.
+
+- **Interactive**: Ask the user for their preferred location before writing.
+- **Automated / non-interactive**: If the prompt already specifies an output
+  path or filename, use it. Otherwise write to the current working directory
+  using the suggested slugified filename.
 
 ### Template Selection
 
@@ -319,7 +342,9 @@ If a required section cannot be filled because the interview didn't cover it, le
 - Parse for the `--ideate` flag. If present, set `force_ideate=true` and remove from the argument list.
 - If the remaining text looks like file path(s): Read and analyze them first
 - If it's free text: Use as the topic description
-- If empty: Ask user what they want to explore using AskUserQuestion
+- If empty:
+  - **Interactive**: Ask what they want to explore using `AskUserQuestion`
+  - **Automated / non-interactive**: Stop and report that a topic or seeded answers are required
 
 **Process:**
 1. Parse and analyze any files or context provided via $ARGUMENTS
