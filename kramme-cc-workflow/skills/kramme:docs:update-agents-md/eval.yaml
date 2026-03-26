@@ -1,0 +1,44 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: add-snake-case-rule
+    instruction: |
+      You have a skill called kramme:docs:update-agents-md in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Add a rule to AGENTS.md: ALWAYS use snake_case for database column names
+
+      Do not ask for confirmation. Just update the file.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:docs:update-agents-md/SKILL.md
+      - src: fixtures/AGENTS.md
+        dest: AGENTS.md
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 0.7
+      - type: llm_rubric
+        rubric: |
+          Rule quality (0-0.4):
+          - Is the new rule about snake_case for database column names present?
+          - Does the rule use ALWAYS/NEVER directive style matching existing rules?
+          - Is the rule clear and unambiguous?
+          Integration (0-0.3):
+          - Are the original two rules preserved?
+          - Is the new rule placed in the correct section (Coding Standards)?
+          - Does the formatting match (bullet point with ALWAYS/NEVER prefix)?
+          Document integrity (0-0.3):
+          - Is the heading structure preserved?
+          - Is the file still valid markdown?
+          - Is there no duplicate content?
+        weight: 0.3

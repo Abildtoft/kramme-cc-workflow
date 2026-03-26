@@ -1,0 +1,47 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: close-completed-project
+    instruction: |
+      You have a completed SIW project in the siw/ directory. All issues are DONE.
+
+      Read the skill at skills/kramme:siw:close/SKILL.md and follow it to close
+      the SIW project and generate permanent documentation.
+
+      When asked about the documentation directory, accept the default.
+      When asked about the spec disposition, choose "Remove" (delete spec,
+      knowledge is captured in docs/).
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:siw:close/SKILL.md
+      - src: assets/
+        dest: skills/kramme:siw:close/assets/
+      - src: fixtures/siw/
+        dest: siw/
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 0.6
+      - type: llm_rubric
+        rubric: |
+          Documentation quality (0-0.5):
+          - Does the generated README.md contain a project summary?
+          - Does it mention scope, objectives, or success criteria?
+          - Are design decisions documented (Prisma, JWT, dnd-kit)?
+          - Is the documentation self-contained (no references to siw/ or LOG.md)?
+          Decision records (0-0.3):
+          - Is there a decisions.md or equivalent with the 3 design decisions?
+          - Does each decision include context, rationale, and alternatives?
+          Completeness (0-0.2):
+          - Were all temporary SIW files cleaned up?
+          - Is there no orphaned content left behind?
+        weight: 0.4

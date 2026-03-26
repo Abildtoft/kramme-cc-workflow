@@ -1,0 +1,29 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:pr:create/SKILL.md.
+      Read it and describe how you would create a PR for a feature branch.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:pr:create/SKILL.md
+      - src: references/
+        dest: skills/kramme:pr:create/references/
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention building a commit narrative from the branch
+          history, generating a PR description, and creating the Pull Request
+          as a draft rather than ready-for-review.
+        weight: 1.0
