@@ -175,9 +175,9 @@ See [docs/siw.md](docs/siw.md) for detailed workflow documentation.
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:siw:init` | User | `[spec-file(s) \| folder \| discover]` | Initialize structured implementation workflow documents in `siw/` (spec, siw/LOG.md, siw/issues).<br><br>Links existing specs without duplicating content, or runs an in-depth interview with `discover`.<br><br>Sets up local issue tracking without requiring Linear. |
+| `/kramme:siw:init` | User | `[spec-file(s) \| folder \| discover]` | Initialize structured implementation workflow documents in `siw/` (spec, siw/LOG.md, siw/issues).<br><br>Links existing specs without duplicating content, imports `siw/DISCOVERY_BRIEF.md`, or runs the discovery-brief flow with `discover` before initialization.<br><br>Sets up local issue tracking without requiring Linear. |
 | `/kramme:siw:continue` | User, Auto | — | Structured Implementation Workflow (SIW) entry point.<br><br>Triggers on "SIW", "structured workflow", or when siw/LOG.md and siw/OPEN_ISSUES_OVERVIEW.md files are detected.<br><br>Use `/kramme:siw:init` to set up. |
-| `/kramme:siw:discovery` | User | `[spec-file-path(s) \| 'siw'] [--apply]` | Run a focused SIW spec-strengthening interview.<br><br>Identifies quality gaps and produces concrete spec improvements. |
+| `/kramme:siw:discovery` | User | `[topic \| spec-file-path(s) \| 'siw'] [--apply]` | Run a deep discovery interview before writing a spec or to strengthen an existing one.<br><br>Greenfield runs write `siw/DISCOVERY_BRIEF.md`; refinement runs produce concrete improvement plans and can apply changes directly. |
 | `/kramme:siw:issue-define` | User | `[ISSUE-G-XXX or ISSUE-P1-XXX] or [description and/or file paths]` | Define a new local issue with guided interview process.<br><br>Creates issue files in the `issues/` directory. |
 | `/kramme:siw:generate-phases` | User | `[spec-file-path]` | Break spec into atomic, phase-based issues with tests and validation.<br><br>Uses `P1-001`, `P2-001`, `G-001` numbering.<br><br>Reviews breakdown with subagent before creating files. |
 | `/kramme:siw:issue-implement` | User | `<G-001 \| P1-001 \| ISSUE-G-XXX>` | Start implementing a defined local issue with codebase exploration and planning.<br><br>Works on current branch. |
