@@ -40,7 +40,7 @@ Then stop.
 ### Step 1: Read SIW State
 
 1. Read `siw/OPEN_ISSUES_OVERVIEW.md` to understand all issues and their statuses
-2. Read the main spec file (from `siw/` directory) for project context
+2. Read the main spec file (from `siw/` directory) for project context, excluding temporary artifacts such as `DISCOVERY_BRIEF.md`
 3. Read `siw/LOG.md` for current progress and decisions
 
 ### Step 2: Identify Parallelizable Issues
