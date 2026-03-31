@@ -123,6 +123,7 @@ Ignore:
 - Fully implemented section
 - Summary totals
 - Non-actionable uncertain rows unless explicitly requested
+- Findings marked `[Auto-fixed]` (already resolved by /kramme:siw:spec-audit:auto-fix)
 
 ## Step 3: Select Scope
 
