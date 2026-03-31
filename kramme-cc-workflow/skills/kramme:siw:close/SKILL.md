@@ -199,7 +199,7 @@ Extract:
 - **Problem statement** (from `## Problem Statement` if present)
 - **Stakeholders** (from `## Who's Affected` if present)
 - **Objectives** (from `## Objectives`)
-- **Scope** (from `## Scope` -- In Scope and Out of Scope)
+- **Scope** (from `## Scope` -- In Scope, Out of Scope, and Deferred)
 - **Success criteria** (from `## Success Criteria`)
 - **Priority tradeoffs** (from `## Priorities & Tradeoffs` if present)
 - **Constraints** (from `## Constraints` if present)

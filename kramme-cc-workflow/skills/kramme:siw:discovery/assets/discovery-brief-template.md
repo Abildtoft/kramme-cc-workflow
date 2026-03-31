@@ -21,13 +21,13 @@ If stated and actual aligned, say so. If they diverged, explain how.}
 
 {Synthesized understanding. May differ from the initial topic statement.}
 
-### Objectives
+## Objectives
 {Concrete, prioritized — from the interview}
 
-### Success Looks Like
+## Success Looks Like
 {Observable, testable indicators}
 
-### What You Don't Want
+## What You Don't Want
 {Explicit non-goals, anti-patterns, and deferred work}
 
 ## Scope & Boundaries

@@ -27,6 +27,9 @@ Describe what the implementation delivers, not a list of issue IDs.}
 **Excluded:**
 {Out-of-scope items from spec}
 
+**Deferred:**
+{Deferred items from spec}
+
 ## Key Decisions
 
 {N} design decisions were made during this project. See [decisions.md](decisions.md) for full details.

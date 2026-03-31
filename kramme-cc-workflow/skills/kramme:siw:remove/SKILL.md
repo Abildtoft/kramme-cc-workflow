@@ -7,7 +7,9 @@ user-invocable: true
 
 # Remove Structured Implementation Workflow Files
 
-Delete all SIW-related files from the `siw/` folder in the current working directory. This command cleans up the temporary workflow documents after implementation is complete.
+Delete all SIW-related files from the `siw/` folder in the current working directory. This command is the destructive cleanup path for SIW workflow documents after implementation is complete.
+
+If you need to preserve or archive handoff artifacts such as `siw/SPEC_STRENGTHENING_PLAN.md`, use `/kramme:siw:close` instead.
 
 ## Target Files
 
@@ -16,7 +18,7 @@ Delete all SIW-related files from the `siw/` folder in the current working direc
 - `siw/OPEN_ISSUES_OVERVIEW.md` - Issue tracking table
 - `siw/AUDIT_IMPLEMENTATION_REPORT.md` - Spec compliance audit report
 - `siw/AUDIT_SPEC_REPORT.md` - Spec quality audit report
-- `siw/SPEC_STRENGTHENING_PLAN.md` - Refinement discovery output before `--apply`
+- `siw/SPEC_STRENGTHENING_PLAN.md` - Refinement discovery output before `--apply`; this command deletes it, unlike `/kramme:siw:close`
 - `siw/DISCOVERY_BRIEF.md` - Greenfield discovery output before full workflow init
 - `siw/issues/` - Directory containing individual issue files
 

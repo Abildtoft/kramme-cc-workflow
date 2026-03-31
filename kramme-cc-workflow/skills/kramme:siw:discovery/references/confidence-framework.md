@@ -139,7 +139,7 @@ When a normalized Work Context profile exists, adjust which dimensions are criti
 
 Display after each interview round:
 
-```
+```text
 ┌─ Confidence Dashboard (Round N) ────────────┐
 │                                              │
 │ Problem Understanding   ████████░░  High     │

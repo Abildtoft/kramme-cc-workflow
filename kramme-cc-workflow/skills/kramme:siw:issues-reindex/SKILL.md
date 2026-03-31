@@ -201,7 +201,7 @@ Skip to Step 5.
 
 Find spec files using the same detection as other SIW skills:
 
-1. Find `.md` files directly under `siw/` (non-recursive), excluding: `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `AUDIT_IMPLEMENTATION_REPORT.md`, `AUDIT_SPEC_REPORT.md`, `SPEC_STRENGTHENING_PLAN.md`, `DISCOVERY_BRIEF.md`
+1. Find `.md` files directly under `siw/` (non-recursive), excluding: `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `SPEC_STRENGTHENING_PLAN.md`, `DISCOVERY_BRIEF.md`, `AUDIT_.*\.md`
 2. Never include files under `siw/issues/` in spec detection
 3. Find `.md` files under `siw/supporting-specs/` if the directory exists
 4. Store as `spec_files` (main) and `supporting_spec_files`

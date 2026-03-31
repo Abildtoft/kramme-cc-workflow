@@ -9,7 +9,7 @@ user-invocable: true
 
 Delete workflow artifacts from the current working directory and generated diagram files under `~/.kramme-cc-workflow/diagrams/`.
 
-**Note:** For SIW-specific cleanup, consider using `/kramme:siw:remove` instead. This command intentionally leaves `siw/DISCOVERY_BRIEF.md` and `siw/SPEC_STRENGTHENING_PLAN.md` alone because they can still be active handoff artifacts.
+**Note:** For SIW-specific cleanup, consider using `/kramme:siw:remove` instead. This cleanup command intentionally leaves `siw/DISCOVERY_BRIEF.md` and `siw/SPEC_STRENGTHENING_PLAN.md` alone because they can still be active handoff artifacts, while `/kramme:siw:remove` deletes them as part of destructive SIW cleanup.
 
 ## Target Files
 

@@ -23,6 +23,10 @@ Read the brief title plus these sections when present:
 - `Confidence Breakdown`
 - `Where Stated and Actual Wants Diverged`
 
+If an older brief nests `Objectives`, `Success Looks Like`, or `What You Don't Want`
+under `What You Actually Want`, extract those nested subsections as the same
+top-level fields before continuing.
+
 ## Split `Scope & Boundaries`
 
 Parse the `Scope & Boundaries` section into:
