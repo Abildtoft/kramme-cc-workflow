@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.47.0] - 2026-03-31
+
+### Added
+- Add discovery-first workflow handoff (#258)
+- Add spec-audit auto-fix skill for mechanical findings (#259)
+- Add copy review skills for UI text redundancy analysis (#253)
+
+### Changed
+- Strengthen product framing guidance (#255)
+
+### Fixed
+- Allow model invocation for skills called from other skills (#256)
+
 ## [0.46.0] - 2026-03-22
 
 ### Added
@@ -92,6 +105,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+[0.47.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.46.0...v0.47.0
 [0.46.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.45.0...v0.46.0
 [0.45.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.44.0...v0.45.0
 [0.44.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.43.0...v0.44.0
