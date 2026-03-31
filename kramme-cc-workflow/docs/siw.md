@@ -57,7 +57,8 @@ Or start from scratch with an interactive interview:
     │
     ├─── Optional spec refinement ──────────────────────┐
     │                                                    │
-    │    /kramme:siw:discovery      Strengthen weak specs│
+    │    /kramme:siw:discovery      Greenfield discovery │
+    │                               or spec refinement   │
     │    /kramme:siw:spec-audit     8-dimension quality  │
     │                               check                │
     │◄───────────────────────────────────────────────────┘
@@ -108,12 +109,13 @@ Or start from scratch with an interactive interview:
 |----------|---------|-------------|
 | `siw/[YOUR_SPEC].md` | Main specification — single source of truth | **Permanent** |
 | `siw/supporting-specs/*.md` | Detailed specs by domain (data model, API, UI) | **Permanent** |
+| `siw/DISCOVERY_BRIEF.md` | Greenfield discovery output before `siw:init` creates the full workflow | Temporary |
+| `siw/SPEC_STRENGTHENING_PLAN.md` | Refinement discovery output waiting for review or `--apply` | Temporary |
 | `siw/LOG.md` | Session progress, decision log, guiding principles | Temporary |
 | `siw/OPEN_ISSUES_OVERVIEW.md` | Issue tracking table | Temporary |
 | `siw/issues/ISSUE-*.md` | Individual issue files | Temporary |
 | `siw/AUDIT_IMPLEMENTATION_REPORT.md` | Implementation audit output | Temporary |
 | `siw/AUDIT_SPEC_REPORT.md` | Spec quality audit output | Temporary |
-| `siw/SPEC_STRENGTHENING_PLAN.md` | Discovery output | Temporary |
 
 ### Typical Directory Layout
 
@@ -124,6 +126,8 @@ siw/
 │   ├── 01-data-model.md
 │   ├── 02-api-specification.md
 │   └── 03-ui-specification.md
+├── DISCOVERY_BRIEF.md                ← Temporary (greenfield discovery output)
+├── SPEC_STRENGTHENING_PLAN.md        ← Temporary (refinement handoff artifact)
 ├── LOG.md                            ← Temporary
 ├── OPEN_ISSUES_OVERVIEW.md           ← Temporary
 ├── AUDIT_IMPLEMENTATION_REPORT.md    ← Temporary (created by audit)
@@ -238,14 +242,14 @@ When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW
 
 | Skill | Arguments | Description |
 |-------|-----------|-------------|
-| `/kramme:siw:init` | `[spec-file(s) \| folder \| discover]` | Initialize workflow. Accepts existing spec files, a folder of specs, or `discover` for interview-driven spec creation. Creates `siw/` directory with spec, LOG.md, overview, and issues folder. |
+| `/kramme:siw:init` | `[spec-file(s) \| folder \| discover]` | Initialize workflow. Accepts existing spec files, a folder of specs, `siw/DISCOVERY_BRIEF.md`, or `discover` to run the discovery-brief flow before spec creation. Creates `siw/` directory with spec, LOG.md, overview, and issues folder. |
 | `/kramme:siw:continue` | — | Entry point for resuming. Auto-triggers when SIW files are detected. Reads LOG.md for current state and suggests next action. |
 
 ### Specification Refinement
 
 | Skill | Arguments | Description |
 |-------|-----------|-------------|
-| `/kramme:siw:discovery` | `[spec-path(s) \| 'siw'] [--apply]` | Targeted interview to strengthen weak specs. Identifies quality gaps and produces concrete improvements. Use `--apply` to auto-update specs with findings. |
+| `/kramme:siw:discovery` | `[topic \| spec-path(s) \| 'siw'] [--apply]` | Deep discovery interview that works both before a spec exists and after one has gone stale. Greenfield runs write `siw/DISCOVERY_BRIEF.md`; refinement runs identify concrete improvements and can apply them with `--apply`. |
 | `/kramme:siw:spec-audit` | `[spec-path(s) \| 'siw'] [--auto] [--model opus\|sonnet\|haiku]` | Audit spec quality across 8 dimensions: coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design. Produces a structured report and optionally creates SIW issues. Add `--auto` to replace any previous report and create critical/major issues without pausing. |
 | `/kramme:siw:reverse-engineer-spec` | `[branch \| folder \| file(s)] [--base main] [--model opus\|sonnet\|haiku]` | Generate a spec from existing code. Analyzes git diffs, folders, or files using parallel agents. Produces an SIW-compatible spec. Useful for documenting shipped features or bootstrapping SIW from existing work. |
 
@@ -295,17 +299,28 @@ These variants run multiple agents in parallel. They require Agent Teams in Clau
 Full lifecycle from spec to completion:
 
 ```
-/kramme:siw:init my-feature-spec.md          # Link existing spec
-/kramme:siw:spec-audit                        # Validate spec quality
-/kramme:siw:discovery --apply                 # Fill quality gaps
+/kramme:siw:discovery build a notification system   # Capture the real problem first
+/kramme:siw:init siw/DISCOVERY_BRIEF.md             # Turn the brief into a full SIW workflow
+/kramme:siw:spec-audit                              # Validate spec quality
 /kramme:siw:generate-phases                   # Create phase-based issues
 /kramme:siw:issue-implement P1-001            # Implement first issue
 /kramme:siw:issue-implement P1-002            # Continue through phase
-/kramme:siw:issue-implement P2-001            # Move to phase 2
 /kramme:siw:implementation-audit              # Verify spec conformance
-/kramme:siw:resolve-audit siw/AUDIT_IMPLEMENTATION_REPORT.md --auto  # Triage implementation audit findings non-interactively
-/kramme:siw:issues-reindex                    # Clean up DONE issues
 /kramme:siw:close                             # Generate docs, clean up
+```
+
+### Existing Spec Refinement
+
+Strengthen an existing spec before planning or implementation:
+
+```
+/kramme:siw:init my-feature-spec.md          # Link existing spec
+/kramme:siw:spec-audit                       # Validate spec quality
+/kramme:siw:discovery --apply                # Fill quality gaps
+/kramme:siw:generate-phases                  # Create phase-based issues
+/kramme:siw:issue-implement P1-001           # Implement first issue
+/kramme:siw:implementation-audit             # Verify spec conformance
+/kramme:siw:close                            # Generate docs, clean up
 ```
 
 ### Reverse-Engineering Existing Code

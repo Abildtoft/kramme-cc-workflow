@@ -28,7 +28,7 @@ Set up the three-document system for tracking complex implementations locally, w
 [Check for existing files] -> Found? -> Ask: resume or start fresh
     ↓
 [Handle arguments] -> file/folder: import content
-                   -> discover: run kramme:discovery:interview
+                   -> discover: run greenfield discovery, then import siw/DISCOVERY_BRIEF.md
                    -> empty: continue to brief interview
     ↓
 [Brief interview OR Confirm imported content]
@@ -49,10 +49,16 @@ Set up the three-document system for tracking complex implementations locally, w
 Check if any workflow files already exist:
 
 ```bash
-ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/*SPEC*.md siw/*SPECIFICATION*.md siw/issues/ 2>/dev/null
+ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues/ 2>/dev/null
+find siw -maxdepth 1 -type f \( -name "*SPEC*.md" -o -name "*SPECIFICATION*.md" -o -name "*PLAN*.md" -o -name "*DESIGN*.md" \) \
+  ! -name "SPEC_STRENGTHENING_PLAN.md" \
+  ! -name "DISCOVERY_BRIEF.md" \
+  2>/dev/null
 ```
 
-**If files exist:**
+Read `references/existing-workflow-handling.md` and follow the first matching branch for `siw/DISCOVERY_BRIEF.md` only, `siw/DISCOVERY_BRIEF.md` + `siw/SPEC_STRENGTHENING_PLAN.md`, `siw/SPEC_STRENGTHENING_PLAN.md` only, other workflow files, or no files.
+
+**If other workflow files exist:**
 
 Use AskUserQuestion:
 
@@ -74,7 +80,7 @@ options:
 - Suggest reading siw/LOG.md for current progress
 
 **If "Start fresh":**
-- Delete existing workflow files (siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, siw/issues/, but preserve any siw/*SPEC*.md files with user confirmation)
+- Delete existing temporary workflow files (`siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/issues/`, `siw/DISCOVERY_BRIEF.md`, and `siw/SPEC_STRENGTHENING_PLAN.md`), but preserve any permanent SIW spec files such as `siw/*SPEC*.md`, `siw/*SPECIFICATION*.md`, `siw/*PLAN*.md`, and `siw/*DESIGN*.md`, explicitly excluding `siw/SPEC_STRENGTHENING_PLAN.md`, with user confirmation
 - Continue to Phase 1.5
 
 **If no files exist:** Continue to Phase 1.5
@@ -83,31 +89,41 @@ options:
 
 `$ARGUMENTS` contains any text the user provided after `/kramme:siw:init`.
 
+Use `resolved_arguments` as the effective Phase 1.5 input. If no Phase 1 branch already set `resolved_arguments`, default it to `$ARGUMENTS` now.
+
 ### Argument Parsing
 
-Parse `$ARGUMENTS` to detect the input type:
+Parse `resolved_arguments` to detect the input type:
 
 1. **File path(s)**: Contains `.md`, `.txt`, or other file extensions
 2. **Folder path**: A directory path (verify with `ls -d {path}`)
 3. **"discover" keyword**: Starts with "discover" or "interview"
 4. **Empty**: No arguments provided
 
+If `resolved_arguments` is empty because the user ran plain `/kramme:siw:init`, but Phase 1 found only `siw/DISCOVERY_BRIEF.md`, treat that file as the single file-path input and follow Case 1.
+
 ### Case 1: File Path(s) Provided
 
-If `$ARGUMENTS` contains file path(s):
+If `resolved_arguments` contains file path(s):
 
 1. Split arguments by spaces to get individual paths
-2. For each path provided:
+2. If exactly one provided path ends with `DISCOVERY_BRIEF.md`:
+   - Verify the file exists with `ls {path}`
+   - Read the full file
+   - Follow `references/discovery-brief-import.md` to extract sections and map them into `discovered_content`
+   - Set `project_description` from the brief title or `What You Actually Want`
+   - **Skip Phase 2**, continue to Phase 2.8 (Work Context Selection)
+3. For any other file paths provided:
    - Verify file exists with `ls {path}`
    - Read file to extract only: title/name (from first heading)
    - If file doesn't exist, warn and skip it
-3. Store file paths as `linked_spec_files` (do NOT extract full content - these remain the source of truth)
-4. Extract a brief project name from the file titles for `project_description`
-5. **Continue to Phase 2.5** (Confirm Linked Sources)
+4. Store file paths as `linked_spec_files` (do NOT extract full content - these remain the source of truth)
+5. Extract a brief project name from the file titles for `project_description`
+6. **Continue to Phase 2.5** (Confirm Linked Sources)
 
 ### Case 2: Folder Path Provided
 
-If `$ARGUMENTS` is a directory (verified with `ls -d`):
+If `resolved_arguments` is a directory (verified with `ls -d`):
 
 1. Scan folder for relevant specification files:
    ```bash
@@ -126,15 +142,15 @@ If `$ARGUMENTS` is a directory (verified with `ls -d`):
      - "None - start fresh"
    ```
 
-3. If "None - start fresh" selected: Clear arguments, **continue to Phase 2**
+3. If "None - start fresh" selected: Set `resolved_arguments` empty, **continue to Phase 2**
 4. If "All files" or specific files selected: Store selected paths as `linked_spec_files`
 5. **Continue to Phase 2.5** (Confirm Linked Sources)
 
 ### Case 3: "discover" Mode
 
-If `$ARGUMENTS` starts with "discover" or "interview":
+If `resolved_arguments` starts with "discover" or "interview":
 
-1. Extract optional topic from remaining arguments:
+1. Extract optional topic from remaining `resolved_arguments`:
    - `discover authentication system` → topic = "authentication system"
    - `discover` alone → ask for topic
 
@@ -145,13 +161,34 @@ If `$ARGUMENTS` starts with "discover" or "interview":
    freeform: true
    ```
 
-3. **Execute discovery interview workflow inline:**
-
-   Read the discovery interview framework from `references/discovery-interview.md`. Use its autonomous framing, topic classification, question dimensions, coverage strategy, and SIW mapping to conduct the interview. Make sure the interview produces enough material to populate Objectives, Success Criteria, and Decision Boundaries when the topic needs them.
-
-4. Transform interview output to SIW format using the "Interview Output to SIW Mapping" section in `references/discovery-interview.md`.
-5. Store as `discovered_content`
-6. **Skip Phase 2**, continue to Phase 2.8 (Work Context Selection)
+3. Do **not** run the legacy inline interview path here.
+4. Before launching discovery, check for permanent SIW spec files left in `siw/` using the same pattern as Phase 1:
+   ```bash
+   find siw -maxdepth 1 -type f \( -name "*SPEC*.md" -o -name "*SPECIFICATION*.md" -o -name "*PLAN*.md" -o -name "*DESIGN*.md" \) \
+     ! -name "SPEC_STRENGTHENING_PLAN.md" \
+     ! -name "DISCOVERY_BRIEF.md" \
+     2>/dev/null
+   ```
+5. If permanent spec files still exist, do **not** run greenfield discovery. Use AskUserQuestion:
+   ```yaml
+   header: "Existing Spec Files Found"
+   question: "Permanent SIW spec files still exist in siw/. A fresh discovery run would treat this as refinement, not a new project. How should I proceed?"
+   options:
+     - label: "Use existing specs"
+       description: "Treat the existing spec files as linked sources instead of running discovery"
+     - label: "Abort"
+       description: "Stop so I can archive or remove the old spec files before running fresh discovery"
+   ```
+6. If "Use existing specs":
+   - Store the detected paths as `linked_spec_files`
+   - Read only the first heading from each file to infer titles
+   - Set `project_description` from those titles
+   - Continue to Phase 2.5
+7. If "Abort": stop this command without changing files.
+8. If no permanent spec files exist, read `references/greenfield-discovery-handoff.md` and follow it to run the greenfield discovery handoff. That handoff must produce `siw/DISCOVERY_BRIEF.md` before returning here.
+9. Set `resolved_arguments=siw/DISCOVERY_BRIEF.md`.
+10. Follow the import procedure from `references/discovery-brief-import.md` to populate `discovered_content`.
+11. **Skip Phase 2**, continue to Phase 2.8 (Work Context Selection)
 
 ### Case 4: No Arguments
 

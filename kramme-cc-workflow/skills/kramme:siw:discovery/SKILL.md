@@ -1,171 +1,318 @@
 ---
 name: kramme:siw:discovery
-description: Strengthen SIW specifications through a targeted discovery interview. Reviews spec quality gaps, asks structured tradeoff questions, and produces concrete improvements for SIW spec files.
-argument-hint: "[spec-file-path(s) | 'siw'] [--apply]"
-disable-model-invocation: true
+description: Deep discovery interview that uncovers what you actually want, not what you think you should want. Works pre-spec (greenfield) or on existing specs (strengthening). Interviews until 95% confident.
+argument-hint: "[topic | spec-file(s) | 'siw'] [--apply]"
+disable-model-invocation: false
 user-invocable: true
 ---
 
-# SIW Spec Discovery
+# SIW Discovery
 
-Strengthen SIW spec quality before issue generation or implementation. This command runs a focused interview against SIW quality dimensions and outputs concrete spec improvements.
+> "Interview me until you have 95% confidence about what I actually want, not what I think I should want."
 
-Use this when the spec feels incomplete, vague, risky, or hard to implement.
+The gap between what someone says they want and what they actually need is where most failed projects begin. This skill makes the AI the interviewer — probing, challenging, and digging until it genuinely understands the work before a single line of spec or code is written.
+
+## When to Use
+
+- **Greenfield** (no spec yet): Starting a project and want to think it through before committing to a spec
+- **Refinement** (spec exists): Spec feels incomplete, vague, or disconnected from the real goal
+- **Realignment**: Mid-project, when the spec and the actual need have drifted apart
+
+Do NOT use for: implementation planning (use `generate-phases`), issue definition (use `issue-define`), or spec quality auditing (use `spec-audit`).
 
 ## Process Overview
 
+```text
+/kramme:siw:discovery [topic | spec-file(s) | 'siw'] [--apply]
+    │
+    ▼
+[Step 1: Detect mode & resolve context]
+    │
+    ▼
+[Step 2: Autonomous framing — draft hypothesis before asking anything]
+    │
+    ▼
+[Step 3: Initial confidence assessment across 7 dimensions]
+    │
+    ▼
+[Step 4: Discovery interview loop]
+    │   ├─ Pick lowest-confidence dimensions
+    │   ├─ Select probing technique
+    │   ├─ Ask 1-3 questions
+    │   ├─ Update confidence scores
+    │   ├─ Display confidence dashboard
+    │   └─ Repeat until 95% overall
+    │
+    ▼
+[Step 5: Synthesize findings]
+    │   ├─ Greenfield → siw/DISCOVERY_BRIEF.md
+    │   └─ Refinement → siw/SPEC_STRENGTHENING_PLAN.md
+    │
+    ▼
+[Step 6: Optional apply (--apply or user request)]
 ```
-/kramme:siw:discovery [spec-file(s) | 'siw'] [--apply]
-    |
-    v
-[Step 1: Resolve SIW spec files]
-    |
-    v
-[Step 2: Build quality gap map]
-    |
-    v
-[Step 3: Run targeted discovery interview]
-    |
-    v
-[Step 4: Write strengthening plan]
-    |
-    v
-[Step 5: Optional apply] -> update spec files + log decisions
-```
 
-## Step 1: Resolve Spec Files
-
-Resolve target files using this order:
-
-1. Parse flags and remaining arguments from `$ARGUMENTS`
-2. Explicit file paths from remaining arguments
-3. `siw/` auto-detection (main spec + `siw/supporting-specs/*.md`)
+## Step 1: Detect Mode & Resolve Context
 
 ### 1.1 Parse Arguments and Flags
 
 Parse `$ARGUMENTS` as shell-style arguments so quoted paths stay intact.
 
-- If `--apply` is present, set `apply_changes=true` and remove `--apply` from the argument list before file resolution.
-- Treat remaining arguments as either explicit file paths, the `siw` keyword, or empty input.
-- If remaining arguments are empty after flag extraction, default to `siw` auto-detection.
+- If `--apply` is present, set `apply_changes=true` and remove from argument list.
+- Treat remaining arguments as topic text, file paths, or the `siw` keyword.
 
-Auto-detection rules:
-- Include `siw/*.md` except `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `AUDIT_IMPLEMENTATION_REPORT.md`, `AUDIT_SPEC_REPORT.md`, `SPEC_STRENGTHENING_PLAN.md`
-- Include `siw/supporting-specs/*.md`
-- If no spec files are found, stop and ask the user to run `/kramme:siw:init` first
+### 1.2 Mode Detection
 
-If `siw/AUDIT_SPEC_REPORT.md` exists, read it and use unresolved findings as input signals.
+Detect mode automatically. First classify the current `siw/` state:
 
-### 1.2 Extract Work Context
+- `has_spec_files`: `siw/*.md` excluding `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `AUDIT_*.md`, `SPEC_STRENGTHENING_PLAN.md`, and `DISCOVERY_BRIEF.md`
+- `has_discovery_brief`: `siw/DISCOVERY_BRIEF.md` exists
+- `has_strengthening_plan`: `siw/SPEC_STRENGTHENING_PLAN.md` exists
 
-After resolving spec files, look for a `## Work Context` section in the spec files:
+Before branching into Greenfield vs Refinement, handle the ambiguous case explicitly:
 
-1. Parse the markdown table to extract: Work Type, Priority Dimensions, Deprioritized dimensions
-   - If multiple spec files define Work Context, use the main spec file (the one matching the SIW init filename). If ambiguous, use the first found and warn.
-2. If not found or malformed, default to Production Feature (all dimensions equally weighted)
-3. Store as `work_context`
+- If remaining arguments are plain topic text while spec files or `siw/DISCOVERY_BRIEF.md` already exist, ask whether the user wants to refine the existing SIW documents or start a separate discovery thread.
+- If they choose "refine existing", continue in **Refinement mode** and treat the target as `siw`.
+- If they choose "start separate", do NOT write a new brief into the current `siw/` directory. Tell them to archive/remove the existing SIW files first or use a different workspace, then stop. Never overwrite an existing `siw/DISCOVERY_BRIEF.md`.
+- If `siw/SPEC_STRENGTHENING_PLAN.md` exists without spec files or `siw/DISCOVERY_BRIEF.md`, do not offer a "refine existing" branch. Treat it as an unresolved strengthening artifact that must be applied, archived, or removed before starting another discovery pass.
 
-## Step 2: Build Quality Gap Map
+**Greenfield mode** when:
+- No `siw/` directory exists, OR
+- `siw/` exists but contains neither spec files, `siw/DISCOVERY_BRIEF.md`, nor `siw/SPEC_STRENGTHENING_PLAN.md`
 
-Analyze the spec files against these SIW quality dimensions:
+**Refinement mode** when:
+- Explicit file paths are provided, OR
+- `siw` keyword is used and spec files, `siw/DISCOVERY_BRIEF.md`, or `siw/SPEC_STRENGTHENING_PLAN.md` exist, OR
+- No arguments are given and spec files, `siw/DISCOVERY_BRIEF.md`, or `siw/SPEC_STRENGTHENING_PLAN.md` exist
 
-1. Coherence
-2. Completeness
-3. Clarity
-4. Scope definition
-5. Actionability
-6. Testability
-7. Value proposition
-8. Technical design
+### 1.3 Resolve Inputs
 
-Create a short gap map:
-- Dimension
-- Severity (`critical|major|minor`)
-- Affected file/section
-- One-line problem summary
+**Greenfield:**
+- If remaining arguments contain text (not file paths), store as `topic_hint`
+- If no arguments, ask for topic using AskUserQuestion:
 
-Prioritize the top 3-5 gaps for interview focus using Work Context ordering:
+```yaml
+header: "What are you building?"
+question: "Describe the project, problem, or idea you want to explore. Don't worry about being precise — that's what this interview is for."
+freeform: true
+```
 
-1. Critical gaps in **priority dimensions** (always first)
-2. Major gaps in priority dimensions
-3. Critical gaps in normal dimensions (neither priority nor deprioritized)
-4. Major gaps in normal dimensions
-5. Critical gaps in **deprioritized dimensions** (include only if Critical)
-6. Skip Major/Minor gaps in deprioritized dimensions unless all other gaps are resolved
+**Refinement:**
+- Resolve target documents using this order:
+  1. If explicit file paths include `siw/DISCOVERY_BRIEF.md` and `siw/SPEC_STRENGTHENING_PLAN.md` also exists, stop. Tell the user to apply, archive, or discard the pending strengthening plan before running another refinement interview against the brief.
+  2. Explicit file paths from arguments (SIW spec files or `siw/DISCOVERY_BRIEF.md`)
+  3. If no explicit files were provided and `siw/SPEC_STRENGTHENING_PLAN.md` exists in the workspace, read that plan, tell the user there is already an unresolved strengthening artifact in this workspace, and stop. They should apply, archive, or remove it before starting another discovery pass.
+  4. If no explicit files were provided and spec files exist, include `siw/*.md` except LOG.md, OPEN_ISSUES_OVERVIEW.md, AUDIT_*.md, SPEC_STRENGTHENING_PLAN.md, DISCOVERY_BRIEF.md. Include `siw/supporting-specs/*.md`.
+  5. If no explicit files were provided, no spec files exist, but `siw/DISCOVERY_BRIEF.md` does, target that brief so no-argument reruns resume the saved discovery output.
+  6. If nothing is found, switch to greenfield mode.
+- If `siw/AUDIT_SPEC_REPORT.md` exists, read it for input signals.
 
-If `work_context` is Production Feature or not specified, fall back to highest-impact ordering as before.
+### 1.4 Extract Work Context (Refinement only)
 
-## Step 3: Run Targeted Discovery Interview
+Look for `## Work Context` section in spec files:
+1. Parse the markdown table for Work Type, Priority Dimensions, Deprioritized dimensions
+2. Normalize `Work Type` to the closest Work Context profile using the mapping in `references/confidence-framework.md`
+3. Treat legacy `Priority Dimensions` and `Deprioritized` values from `siw:init` as interview-ordering hints only
+4. If not found, default to Production Feature (all dimensions active)
+5. Store as `work_context`
 
-Use AskUserQuestion for each round. Ask 1-3 high-value questions per round.
+## Step 2: Autonomous Framing
 
-### Question Rules
+**Before asking a single question**, draft a working hypothesis based on available context:
 
-For each question, always include:
-- **Why this matters** (1-2 sentences)
-- **Recommendation** (preferred option + rationale)
+**Greenfield:** Use the topic hint to infer:
+- Who the likely user/stakeholder is
+- What job they're trying to get done
+- Why this matters now
+- What's probably out of scope
+- What the stated want likely is vs. what the actual need might be
 
-Ask options that force concrete tradeoffs (2-4 options, plus user "Other").
+**Refinement:** Read the spec and infer:
+- What the spec says the project is about
+- What the spec actually focuses energy on (which may differ)
+- Where the spec is confident vs. hand-wavy
+- What's conspicuously absent
 
-### Interview Focus by Dimension
+Present the hypothesis to the user:
 
-- **Completeness**: Missing requirements, edge cases, non-functional constraints
-- **Clarity**: Ambiguous language, undefined terms, unclear acceptance criteria
-- **Scope**: Out-of-scope boundaries, phase cut lines, anti-goals
-- **Actionability**: Task breakdown quality, handoff readiness, sequencing
-- **Testability**: Verifiable outcomes, measurable success criteria, failure criteria
-- **Technical design**: Data contracts, API behavior, state ownership, migration details
+```text
+Here's my initial read on what you're building:
 
-When Work Context specifies deprioritized dimensions, skip those dimensions in interview unless the gap map shows a Critical-severity issue. For priority dimensions, ensure at least one interview round explicitly targets each priority dimension.
+[2-4 sentence hypothesis]
 
-Stop when:
-- Major gaps are resolved by decisions, or
-- Further questions produce low-value churn
+I'll use this as a starting point and validate/correct it during the interview. Let me know if I'm wildly off before we begin, or we can let the interview surface the corrections naturally.
+```
 
-## Step 4: Write Strengthening Plan
+Proceed immediately — don't wait for a response unless the user offers one. The hypothesis is a conversation opener, not a gate.
 
-Write `siw/SPEC_STRENGTHENING_PLAN.md` with:
+## Step 3: Initial Confidence Assessment
 
-1. **Summary**: what was weak and what changed
-2. **Decisions made**: decision, rationale, impacted section
-3. **Spec patch plan**: per-file checklist of exact edits
-4. **Open questions**: unresolved items blocking confidence
-5. **Suggested next command**:
-   - `/kramme:siw:audit-spec` to validate improvements
-   - `/kramme:siw:generate-phases` or `/kramme:siw:define-issue` when ready
+Read `references/confidence-framework.md` for dimension definitions and scoring rubrics.
 
-## Step 5: Optional Apply (`--apply`)
+### Greenfield
 
-If `apply_changes=true` (`--apply` was provided), or the user explicitly asks to apply changes:
+Start all 7 dimensions at **Low**, unless the topic hint is rich enough to justify Medium on specific dimensions.
 
-1. Edit spec files directly using decisions from Step 3
-2. Preserve file structure and headings where possible
-3. Add missing sections instead of scattering content
-4. Update `siw/LOG.md` with:
-   - summary of spec hardening
-   - key decisions
-   - remaining open questions
+### Refinement
 
-If not applying, keep this command planning-only.
+Map spec content to confidence dimensions using the mapping table in the framework reference. Score each:
+- Section missing → Low
+- Section present but vague → Medium
+- Section concrete and specific → High
+- Confident requires interview validation — never start higher than High from spec alone
+
+### Apply Work Context
+
+If Work Context exists, apply the adjustments from the framework reference:
+- Mark critical dimensions (must reach Confident)
+- Mark deprioritized dimensions (only need Medium)
+- Normal dimensions must reach High
+
+### Display Initial Dashboard
+
+Show the confidence dashboard (format in `references/confidence-framework.md`) with initial scores and overall percentage.
+
+## Step 4: Discovery Interview Loop
+
+Read `references/probing-techniques.md` for the technique library and selection guide.
+
+### Core Loop
+
+Repeat until confidence target is met (see "When to Stop" in framework reference):
+
+#### 4.1 Select Focus
+
+Pick the 1-2 lowest-confidence dimensions, weighted by criticality:
+1. Critical dimensions below Confident (always first)
+2. Normal dimensions below High
+3. Deprioritized dimensions below Medium (only if others are satisfied)
+
+#### 4.2 Select Technique
+
+Use the technique selection guide to pick 1-2 techniques appropriate for the focus dimensions.
+
+Early rounds (1-3): prefer **Solution Stripping**, **Why Chain**, and **Minimum Viable Test** — these establish the foundation.
+
+Middle rounds (4-6): prefer **Forced Tradeoff**, **Negative Space**, and **Constraint Removal** — these sharpen boundaries.
+
+Late rounds (7+): prefer **Restatement Challenge**, **Inversion**, and **Stakeholder Lens** — these validate and stress-test understanding.
+
+#### 4.3 Ask Questions
+
+Use AskUserQuestion. Ask 1-3 high-value questions per round. For each question:
+
+- **State why you're asking** (1 sentence — which dimension this targets)
+- **Include your current assumption** (what you think the answer is, so the user can correct rather than explain from scratch)
+- **Offer concrete options** when forcing tradeoffs (2-4 options + "Other")
+- **Use freeform** when probing for narrative or motivation
+
+When the technique calls for it, deliberately restate something the user said earlier — slightly differently — to test whether your model matches theirs.
+
+#### 4.4 Process Answers
+
+After each round:
+
+1. Map answers to confidence dimensions
+2. Check for stated vs. actual want divergence:
+   - Answer contradicts earlier answer → flag and probe
+   - Implementation details without problem statement → apply Solution Stripping next round
+   - Enthusiasm doesn't match stated priority → name the discrepancy
+3. If divergence detected, reset affected dimension to at most Medium until reconciled
+4. Update confidence levels using rubric indicators
+
+#### 4.5 Display Updated Dashboard
+
+Show the confidence dashboard with updated scores. Mark focus areas for next round with ◄. Include round number and overall percentage.
+
+If confidence dropped on any dimension (due to contradiction or revelation), note it:
+```text
+⚠ Scope Boundaries dropped from High to Medium — your answer about [X] suggests the scope is wider than the spec indicates.
+```
+
+#### 4.6 Check Stop Conditions
+
+**Stop when:**
+- All critical dimensions at Confident (90%+)
+- All normal dimensions at High (70%+)
+- All deprioritized dimensions at Medium (40%+)
+- Last 2 rounds produced confirmations, not revelations
+
+**Also stop when:**
+- User explicitly says "that's enough" or "I think you've got it"
+- 10+ rounds completed (suggest stopping, don't force — offer to continue if user wants)
+
+**Continue when:**
+- Any critical dimension below Confident
+- A contradiction was just discovered
+- Stated and actual wants haven't been reconciled
+
+### Interview Pacing
+
+- Rounds 1-2: broad, establishing. Cover Problem Understanding and Outcome Vision first.
+- Rounds 3-5: sharpening. Focus on Scope Boundaries, Priority Alignment, and Constraint Awareness.
+- Rounds 6+: validating. Stress-test with Restatement Challenge and Inversion. Fill remaining gaps.
+- If a round produces a surprise, pause the plan and follow the surprise — it's higher signal than the next planned question.
+
+## Step 5: Synthesize Findings
+
+### Greenfield Mode → DISCOVERY_BRIEF.md
+
+Create `siw/` if it does not already exist. Then read `assets/discovery-brief-template.md`, populate it from the interview, and write the result to `siw/DISCOVERY_BRIEF.md`.
+
+After writing, suggest next steps:
+- `/kramme:siw:init siw/DISCOVERY_BRIEF.md` — to bootstrap a full SIW workflow from this brief
+- `/kramme:siw:discovery siw/DISCOVERY_BRIEF.md --apply` — to iterate on the brief and fold clarified decisions back into it
+
+### Refinement Mode → SPEC_STRENGTHENING_PLAN.md
+
+Read `assets/spec-strengthening-plan-template.md`, populate it from the interview, and write the result to `siw/SPEC_STRENGTHENING_PLAN.md`.
+
+If the refinement target is `siw/DISCOVERY_BRIEF.md`, reference sections from the brief in the patch plan and treat the brief as the target document for optional apply.
+Treat `siw/SPEC_STRENGTHENING_PLAN.md` as a temporary handoff artifact: it should remain only while waiting for review or manual application, and it should be removed once the plan has been applied.
+
+## Step 6: Optional Apply
+
+If `apply_changes=true` or the user asks to apply:
+
+**Refinement mode:**
+1. Edit the target document(s) using decisions from Step 4
+2. Target documents may be SIW spec files or `siw/DISCOVERY_BRIEF.md`
+3. Preserve structure — add missing sections, don't scatter content
+4. If a full SIW workflow exists, update `siw/LOG.md` Decision Log with:
+   - Summary of discovery session
+   - Key decisions and rationale
+   - Remaining open questions
+5. After the target documents and optional log updates are complete, delete or trash `siw/SPEC_STRENGTHENING_PLAN.md` so future runs do not treat the applied plan as unresolved state
+
+**Greenfield mode:**
+- Apply is not applicable (the brief IS the output)
+- Suggest `/kramme:siw:init siw/DISCOVERY_BRIEF.md` for full workflow setup
 
 ## Output Quality Bar
 
-Do not finish with generic advice like "improve clarity".
+Every finding must be:
+- Tied to a specific confidence dimension
+- Grounded in something the user said (quote or paraphrase)
+- Actionable — either a decision made or a question that needs answering
+- Distinguishing stated want from actual want when they diverge
 
-Every recommendation must be:
-- tied to a specific section
-- phrased as an actionable edit
-- testable after modification
+Do NOT finish with generic advice like "improve clarity" or "add more detail." If you can't point to a specific gap grounded in the interview, it's not a real finding.
 
 ## Usage
 
 ```
 /kramme:siw:discovery
-# Auto-detect SIW specs and run targeted spec-strengthening interview
+# Auto-detect mode: greenfield if no spec, refinement if spec exists
+
+/kramme:siw:discovery build a notification system for our platform
+# Greenfield discovery with topic hint
+
+/kramme:siw:discovery siw
+# Refinement: strengthen existing SIW specs
 
 /kramme:siw:discovery siw/FEATURE_SPEC.md
-# Focus discovery on one spec file
+# Refinement: focus on one spec file
 
 /kramme:siw:discovery siw --apply
-# Discover and directly apply spec improvements
+# Refinement: discover and directly apply spec improvements
 ```

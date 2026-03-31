@@ -67,7 +67,7 @@ ls siw/OPEN_ISSUES_OVERVIEW.md 2>/dev/null
 
 **Otherwise:** Glob for spec files:
 ```bash
-ls siw/*.md | grep -v -E '(LOG\.md|OPEN_ISSUES_OVERVIEW\.md)'
+ls siw/*.md | grep -v -E '(LOG\.md|OPEN_ISSUES_OVERVIEW\.md|DISCOVERY_BRIEF\.md|SPEC_STRENGTHENING_PLAN\.md|AUDIT_.*\.md)'
 ```
 
 Also check for supporting specs:

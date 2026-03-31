@@ -76,9 +76,17 @@ Use when `discovered_content` exists. Discovery mode generates content through i
 | **Deprioritized** | {work_context_profile.deprioritized or "None"} |
 | **Notes** | {work_context_profile.notes or empty} |
 
+## Problem Statement
+
+{The real problem from interview}
+
 ## Why Now
 
 {Why this matters now and what outcome matters most}
+
+## Who's Affected
+
+{Stakeholders from interview}
 
 ## Objectives
 
@@ -95,10 +103,26 @@ Use when `discovered_content` exists. Discovery mode generates content through i
 {If available from interview}
 {Else: "- To be defined"}
 
+### Deferred
+{If available from interview}
+{Else: "- To be defined"}
+
 ## Success Criteria
 
 {From interview if available}
 {Format as checkbox list}
+
+## Priorities & Tradeoffs
+
+{If available from interview}
+{Else: "Capture the ordering that should win when scope conflicts arise."}
+
+## Constraints
+
+{Include constraints from interview:
+| Constraint | Type | Flexibility |
+|-----------|------|-------------|
+}
 
 ## Technical Design
 
@@ -149,6 +173,14 @@ Tasks will be tracked in individual issue files. See `siw/OPEN_ISSUES_OVERVIEW.m
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 }
+
+## Discovery Notes
+
+### Confidence Breakdown
+{If available from interview}
+
+### Where Stated and Actual Wants Diverged
+{If available from interview}
 
 ## References
 

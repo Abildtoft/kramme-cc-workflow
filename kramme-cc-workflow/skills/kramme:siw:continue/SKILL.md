@@ -22,7 +22,7 @@ A local issue tracking system using markdown files to plan, track, and document 
 
 ```
 /kramme:siw:init                    # Initialize workflow documents
-/kramme:siw:discovery               # Strengthen spec quality before planning
+/kramme:siw:discovery               # Deep discovery interview (greenfield or spec strengthening)
 /kramme:siw:issue-define "feature"  # Create a work item (G-001 format)
 /kramme:siw:generate-phases         # Break spec into phase-based issues (P1-001, P2-001)
 /kramme:siw:issue-implement G-001   # Start implementing
@@ -47,6 +47,8 @@ Issues use prefix-based numbering:
 |----------|---------|-------------|
 | **siw/[YOUR_SPEC].md** | Main specification (single source of truth) | **PERMANENT** |
 | **siw/supporting-specs/*.md** | Detailed specifications by domain | **PERMANENT** |
+| **siw/DISCOVERY_BRIEF.md** | Greenfield discovery output before `siw:init` creates the full workflow | Temporary |
+| **siw/SPEC_STRENGTHENING_PLAN.md** | Refinement discovery output waiting for review or `--apply` | Temporary |
 | **siw/AUDIT_IMPLEMENTATION_REPORT.md** | Spec compliance audit findings from `/kramme:siw:implementation-audit` | Temporary |
 | **siw/AUDIT_SPEC_REPORT.md** | Spec quality audit findings from `/kramme:siw:spec-audit` | Temporary |
 | **siw/OPEN_ISSUES_OVERVIEW.md** + **siw/issues/*.md** | Work items to implement | Temporary |
@@ -112,7 +114,7 @@ Issues use prefix-based numbering:
 | Command | Purpose |
 |---------|---------|
 | `/kramme:siw:init` | Initialize SIW documents (spec, siw/LOG.md, siw/issues) |
-| `/kramme:siw:discovery` | Strengthen SIW spec quality with a targeted discovery interview and concrete patch plan (optional apply) |
+| `/kramme:siw:discovery` | Deep discovery interview — works pre-spec (greenfield) or on existing specs (strengthening). Probes until 95% confident about actual wants. |
 | `/kramme:siw:issue-define` | Define a new work item with guided interview (creates `G-XXX` issues) |
 | `/kramme:siw:generate-phases` | Break spec into atomic phase-based issues (`P1-XXX`, `P2-XXX`, `G-XXX`) |
 | `/kramme:siw:issue-implement` | Start implementing a defined issue (accepts `G-001`, `P1-001`, etc.) |
@@ -132,7 +134,7 @@ Issues use prefix-based numbering:
 When SIW files already exist, check the current state:
 
 ```bash
-ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/*SPEC*.md siw/*SPECIFICATION*.md siw/issues/ 2>/dev/null
+ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/*SPEC*.md siw/*SPECIFICATION*.md siw/*PLAN*.md siw/*DESIGN*.md siw/issues/ 2>/dev/null
 ```
 
 ### Entry Point Decision
@@ -140,8 +142,12 @@ ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw
 | State | Action |
 |-------|--------|
 | **No files exist** | Run `/kramme:siw:init` to set up |
+| **Discovery brief exists, but no spec yet** | Run `/kramme:siw:init siw/DISCOVERY_BRIEF.md` to turn the brief into a full SIW workflow |
+| **Discovery brief + strengthening plan, but no spec yet** | Review `siw/SPEC_STRENGTHENING_PLAN.md`, fold accepted changes into `siw/DISCOVERY_BRIEF.md`, then archive/remove the plan before running `/kramme:siw:init siw/DISCOVERY_BRIEF.md`. Or run `/kramme:siw:init` to discard the plan and continue from the brief |
+| **Spec-strengthening plan exists without a spec** | Review or archive the plan first, or run `/kramme:siw:init` to decide whether to discard it before starting fresh |
 | **Files exist, resuming** | Read siw/LOG.md "Current Progress" section first |
-| **Spec feels weak or underspecified** | Run `/kramme:siw:discovery` to strengthen spec quality before creating/implementing issues |
+| **Spec feels weak or underspecified** | Run `/kramme:siw:discovery` to probe what you actually want and strengthen the spec |
+| **Starting a new project, want to think it through** | Run `/kramme:siw:discovery` in greenfield mode before creating any spec |
 | **Need new work item** | Run `/kramme:siw:issue-define` |
 | **Ready to implement** | Run `/kramme:siw:issue-implement {number}` |
 | **Spec written, want product validation** | Run `/kramme:siw:product-audit` to evaluate product thinking before implementation |
@@ -214,6 +220,8 @@ All workflow files live in the `siw/` folder in the project root:
 │   │   └── 03-ui-specification.md
 │   ├── AUDIT_IMPLEMENTATION_REPORT.md            ⏳ Temporary (audit output)
 │   ├── AUDIT_SPEC_REPORT.md            ⏳ Temporary (audit output)
+│   ├── DISCOVERY_BRIEF.md              ⏳ Temporary (greenfield discovery output)
+│   ├── SPEC_STRENGTHENING_PLAN.md      ⏳ Temporary (refinement handoff artifact)
 │   ├── OPEN_ISSUES_OVERVIEW.md     ⏳ Temporary
 │   ├── issues/                     ⏳ Temporary directory
 │   │   ├── ISSUE-G-001-setup.md        # General issues
@@ -222,8 +230,6 @@ All workflow files live in the `siw/` folder in the project root:
 │   │   ├── ISSUE-P1-002-feature-b.md
 │   │   └── ISSUE-P2-001-bug-fix.md     # Phase 2 issues
 │   └── LOG.md                      ⏳ Temporary
-├── AGENTS.md                       (optional)
-└── CLAUDE.md                       (optional)
 ```
 
 ### When to Use Supporting Specs
