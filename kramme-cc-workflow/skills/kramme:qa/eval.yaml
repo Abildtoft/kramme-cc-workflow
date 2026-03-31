@@ -1,0 +1,30 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:qa/SKILL.md.
+      Read it and describe how you would QA test a login page.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:qa/SKILL.md
+      - src: references/
+        dest: skills/kramme:qa/references/
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention smoke testing core flows (valid login,
+          invalid credentials, empty fields), capturing evidence such as
+          screenshots or console logs, and producing a structured report
+          with pass/fail results.
+        weight: 1.0

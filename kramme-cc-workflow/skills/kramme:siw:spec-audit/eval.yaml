@@ -1,0 +1,54 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: audit-flawed-spec
+    instruction: |
+      You have an SIW project in the siw/ directory with a deliberately flawed spec.
+      Read the skill at skills/kramme:siw:spec-audit/SKILL.md and follow it
+      to audit the spec quality and produce the audit report.
+
+      Use --inline mode so the report is output directly rather than written to a file.
+      When asked about creating SIW issues, choose "No issues" (report only).
+
+      The spec has known weaknesses: missing acceptance criteria, vague scope,
+      no error handling section, no success metrics, vague technical design.
+      A thorough audit should find these.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:siw:spec-audit/SKILL.md
+      - src: assets/
+        dest: skills/kramme:siw:spec-audit/assets/
+      - src: references/
+        dest: skills/kramme:siw:spec-audit/references/
+      - src: fixtures/siw/
+        dest: siw/
+    graders:
+      - type: llm_rubric
+        rubric: |
+          Dimension coverage (0-0.4):
+          - Did the audit evaluate at least 5 of the 8 dimensions (Coherence, Completeness, Clarity, Scope, Actionability, Testability, Value Proposition, Technical Design)?
+          - Are dimension scores or ratings provided (e.g., Strong/Adequate/Weak/Missing)?
+          - Is each dimension discussed with specific findings?
+
+          Finding quality (0-0.4):
+          - Did the audit identify that acceptance criteria / success criteria are missing or vague?
+          - Did the audit flag the vague scope ("Not sure yet, will figure out later")?
+          - Did the audit catch the vague technical design ("some modern framework", "database will store the data")?
+          - Did the audit note missing error handling definitions?
+          - Are findings categorized by severity (Critical/Major/Minor)?
+          - Do findings include specific recommendations, not just "add more detail"?
+
+          Report structure (0-0.2):
+          - Does the output have a recognizable audit report structure?
+          - Is there a summary with overall assessment?
+          - Are findings numbered or organized systematically?
+        weight: 1.0

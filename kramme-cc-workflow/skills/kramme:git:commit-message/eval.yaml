@@ -1,0 +1,46 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: write-commit-message-from-diff
+    instruction: |
+      You have a skill called kramme:git:commit-message in the skills/ directory.
+      Read its SKILL.md and follow its conventions.
+
+      Given the git diff in fixtures/sample.diff, write a commit message that follows
+      the skill's conventions. The diff adds a user registration validation function
+      to an existing validation utility file.
+
+      Save the commit message to commit-msg.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:git:commit-message/SKILL.md
+      - src: fixtures/sample.diff
+        dest: fixtures/sample.diff
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 0.6
+      - type: llm_rubric
+        rubric: |
+          Message quality (0-0.4):
+          - Does the subject line use imperative mood (e.g., "Add" not "Added")?
+          - Does the message describe what changed (registration validation)?
+          - Is the subject line a clear, descriptive sentence?
+          Convention adherence (0-0.3):
+          - Is the message in plain English without conventional commit prefixes?
+          - If a body is present, does it explain what/why rather than how?
+          - Are there no AI attribution markers?
+          Appropriateness (0-0.3):
+          - Is the message proportional to the change size?
+          - Does it mention validation, registration, or user input?
+          - Would a reviewer understand the change from this message?
+        weight: 0.4

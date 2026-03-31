@@ -1,0 +1,27 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:siw:product-audit/SKILL.md.
+      Read it and describe how you would do a product audit of a spec.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:siw:product-audit/SKILL.md
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention evaluating user clarity (can users understand
+          what this does), assessing problem/solution fit, and reviewing scope
+          appropriateness.
+        weight: 1.0

@@ -1,0 +1,50 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: init-task-management-app
+    instruction: |
+      Initialize a SIW project for a task management app feature.
+      Read the skill at skills/kramme:siw:init/SKILL.md and follow it.
+
+      When asked interview questions, use these answers:
+      - Project context: "A task management app with boards, lists, and cards"
+      - Why now: "We need to ship the MVP for beta testers next month"
+      - Non-goals: "Mobile app, real-time collaboration, third-party integrations"
+      - Decision scope: "Lock down data model and API contracts; leave UI details to implementation"
+      - Spec type: PROJECT_PLAN.md (accept recommended or choose this)
+      - Supporting specs: No
+      - Work context: Production Feature
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:siw:init/SKILL.md
+      - src: assets/
+        dest: skills/kramme:siw:init/assets/
+      - src: references/
+        dest: skills/kramme:siw:init/references/
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 0.7
+      - type: llm_rubric
+        rubric: |
+          Spec content quality (0-0.5):
+          - Does the spec mention task management, boards, lists, or cards?
+          - Does it include objectives or goals?
+          - Does it have scope boundaries (in-scope and out-of-scope)?
+          - Does it mention the non-goals (mobile, real-time, integrations)?
+          Workflow file quality (0-0.3):
+          - Does LOG.md have proper structure with a date entry?
+          - Does OPEN_ISSUES_OVERVIEW.md have the status legend and table header?
+          Process adherence (0-0.2):
+          - Did the agent follow the init skill workflow steps?
+          - Did it report success with next steps?
+        weight: 0.3
