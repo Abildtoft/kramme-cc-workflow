@@ -2,7 +2,7 @@
 name: kramme:siw:discovery
 description: Deep discovery interview that uncovers what you actually want, not what you think you should want. Works pre-spec (greenfield) or on existing specs (strengthening). Interviews until 95% confident.
 argument-hint: "[topic | spec-file(s) | 'siw'] [--apply]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 
@@ -22,7 +22,7 @@ Do NOT use for: implementation planning (use `generate-phases`), issue definitio
 
 ## Process Overview
 
-```
+```text
 /kramme:siw:discovery [topic | spec-file(s) | 'siw'] [--apply]
     │
     ▼
@@ -135,7 +135,7 @@ Look for `## Work Context` section in spec files:
 
 Present the hypothesis to the user:
 
-```
+```text
 Here's my initial read on what you're building:
 
 [2-4 sentence hypothesis]
@@ -225,7 +225,7 @@ After each round:
 Show the confidence dashboard with updated scores. Mark focus areas for next round with ◄. Include round number and overall percentage.
 
 If confidence dropped on any dimension (due to contradiction or revelation), note it:
-```
+```text
 ⚠ Scope Boundaries dropped from High to Medium — your answer about [X] suggests the scope is wider than the spec indicates.
 ```
 

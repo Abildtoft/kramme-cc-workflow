@@ -53,12 +53,11 @@ Generate permanent documentation from SIW artifacts, then remove temporary workf
 Check which SIW files exist:
 
 ```bash
-ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues/ 2>/dev/null
+ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_*.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues/ 2>/dev/null
 find siw -maxdepth 1 -type f -name "*.md" \
   ! -name "LOG.md" \
   ! -name "OPEN_ISSUES_OVERVIEW.md" \
-  ! -name "AUDIT_IMPLEMENTATION_REPORT.md" \
-  ! -name "AUDIT_SPEC_REPORT.md" \
+  ! -name "AUDIT_*.md" \
   ! -name "SPEC_STRENGTHENING_PLAN.md" \
   ! -name "DISCOVERY_BRIEF.md" \
   2>/dev/null
@@ -137,8 +136,7 @@ The feature name determines the output directory `docs/<feature-name>/`.
 1. Build `spec_candidates` from `siw/*.md`, excluding temporary SIW files:
    - `siw/LOG.md`
    - `siw/OPEN_ISSUES_OVERVIEW.md`
-   - `siw/AUDIT_IMPLEMENTATION_REPORT.md`
-   - `siw/AUDIT_SPEC_REPORT.md`
+   - `siw/AUDIT_*.md`
    - `siw/SPEC_STRENGTHENING_PLAN.md`
    - `siw/DISCOVERY_BRIEF.md`
 2. If no spec candidates are found, follow the "No spec file found" edge case.
@@ -375,8 +373,7 @@ Use `trash` command (recoverable). Fall back to `rm` if `trash` is not available
 **Temporary files (always deleted):**
 - `siw/LOG.md`
 - `siw/OPEN_ISSUES_OVERVIEW.md`
-- `siw/AUDIT_IMPLEMENTATION_REPORT.md`
-- `siw/AUDIT_SPEC_REPORT.md`
+- `siw/AUDIT_*.md`
 - `siw/DISCOVERY_BRIEF.md`
 - `siw/issues/` (entire directory)
 
@@ -387,7 +384,7 @@ Use `trash` command (recoverable). Fall back to `rm` if `trash` is not available
 
 ```bash
 if command -v trash &> /dev/null; then
-    trash siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/DISCOVERY_BRIEF.md 2>/dev/null
+    trash siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_*.md siw/DISCOVERY_BRIEF.md 2>/dev/null
     trash -r siw/issues/ 2>/dev/null
     if [ "{strengthening_plan_disposition}" = "remove" ]; then
         trash siw/SPEC_STRENGTHENING_PLAN.md 2>/dev/null
@@ -399,7 +396,7 @@ if command -v trash &> /dev/null; then
 else
     echo "Warning: 'trash' command not found. Files will be permanently deleted."
     echo "Consider installing: brew install trash"
-    rm -f siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/DISCOVERY_BRIEF.md
+    rm -f siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_*.md siw/DISCOVERY_BRIEF.md
     rm -rf siw/issues/
     if [ "{strengthening_plan_disposition}" = "remove" ]; then
         rm -f siw/SPEC_STRENGTHENING_PLAN.md
@@ -441,8 +438,7 @@ Documentation generated:
 Removed:
   siw/LOG.md
   siw/OPEN_ISSUES_OVERVIEW.md
-  siw/AUDIT_IMPLEMENTATION_REPORT.md      (if existed)
-  siw/AUDIT_SPEC_REPORT.md               (if existed)
+  siw/AUDIT_*.md                          (if existed)
   siw/SPEC_STRENGTHENING_PLAN.md         (if removed)
   siw/DISCOVERY_BRIEF.md                 (if existed)
   siw/issues/ ({count} issue files)

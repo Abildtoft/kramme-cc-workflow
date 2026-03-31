@@ -1,6 +1,6 @@
 # Confidence Framework
 
-Track understanding across 7 dimensions. The interview continues until overall confidence reaches the target threshold (default: 95% — all critical dimensions at Confident, all others at High or above).
+Track understanding across 7 dimensions. The interview continues until overall confidence reaches the target threshold (default: 95% — all critical dimensions at Confident, normal dimensions at High or above, and deprioritized dimensions at Medium or above).
 
 ## Dimensions
 
