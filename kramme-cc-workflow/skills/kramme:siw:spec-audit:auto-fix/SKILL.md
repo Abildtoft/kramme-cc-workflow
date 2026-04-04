@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:spec-audit:auto-fix
 description: Auto-fix mechanical spec-audit findings that have a single obvious correct resolution — cross-reference errors, terminology inconsistencies, numbering mistakes, formatting issues, and weasel words replaceable with specifics already in the spec. Run after spec-audit.
-argument-hint: "[audit-report-path] [--auto] [--dry-run]"
+argument-hint: "[audit-report-path] [--auto] [--dry-run] [--threshold 0-100]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -13,14 +13,17 @@ Apply deterministic fixes to spec-audit findings that have a single obvious corr
 Findings that require product decisions, stakeholder input, or choosing between valid alternatives are left untouched for `/kramme:siw:resolve-audit`.
 
 **Flags:**
-- `--auto` — Skip classification approval, apply all mechanical fixes without asking
+- `--auto` — Skip classification approval, apply all auto-fixable fixes without asking
 - `--dry-run` — Show classification and proposed fixes without modifying any files
+- `--threshold N` — Set confidence threshold for auto-fixing (0-100, default 80). Findings with confidence >= N are treated as auto-fixable. Use 90 for a stricter pass, 60 for aggressive.
 
 ## Hard Constraints
 
-**NEVER** modify a finding classified as `REQUIRES_DECISION`. If in doubt, classify as `REQUIRES_DECISION`.
+**NEVER** modify a finding below the confidence threshold. If in doubt, score conservatively.
 
-**NEVER** apply a fix that changes the meaning, scope, or intent of any requirement. Mechanical fixes correct form, not substance.
+**NEVER** auto-fix a safety-capped finding regardless of threshold. Critical findings in Completeness, Scope, or Value Proposition dimensions always require decisions. Findings whose recommendations use decision-signal language ("consider", "decide whether", "choose between") always require decisions.
+
+**NEVER** apply a fix that changes the meaning, scope, or intent of any requirement. Fixes correct form, not substance.
 
 **NEVER** invent information not already present in the spec. Every fix must derive from content that already exists somewhere in the spec files.
 
@@ -29,7 +32,7 @@ Findings that require product decisions, stakeholder input, or choosing between 
 ## Process Overview
 
 ```
-/kramme:siw:spec-audit:auto-fix [audit-report-path] [--auto] [--dry-run]
+/kramme:siw:spec-audit:auto-fix [audit-report-path] [--auto] [--dry-run] [--threshold N]
     |
     v
 [Step 1: Locate Report and Spec Files]
@@ -38,10 +41,10 @@ Findings that require product decisions, stakeholder input, or choosing between 
 [Step 2: Extract Findings]
     |
     v
-[Step 3: Classify Findings] -> MECHANICAL or REQUIRES_DECISION
+[Step 3: Score & Classify Findings] -> Confidence 0-100 -> AUTO-FIXABLE or REQUIRES_DECISION
     |
     v
-[Step 4: Approval Gate] -> User confirms (skip with --auto, stop with --dry-run)
+[Step 4: Approval Gate] -> User confirms (skip with --auto, stop with --dry-run, adjust with --threshold)
     |
     v
 [Step 5: Apply Fixes] -> Edit spec files, spot-check each fix
@@ -62,6 +65,7 @@ Findings that require product decisions, stakeholder input, or choosing between 
 Extract control flags from `$ARGUMENTS`:
 - `--auto` → set `AUTO_MODE=true`
 - `--dry-run` → set `DRY_RUN=true`
+- `--threshold N` → set `CONFIDENCE_THRESHOLD=N` (validate 0-100, default 80)
 - Remaining markdown path token → candidate report path
 
 ### 1.2 Find Report
@@ -127,6 +131,7 @@ For each finding, extract:
 - Location (source file > section heading)
 - Details (including quotes from the spec)
 - Recommendation
+- Fix Confidence (if present in the report)
 
 **Skip findings that match any of:**
 - Already marked `**Status:** [Auto-fixed]` (from a previous run)
@@ -145,40 +150,54 @@ No actionable findings to process.
 
 ---
 
-## Step 3: Classify Findings
+## Step 3: Score & Classify Findings
 
 Read the classification rubric from `references/classification-rubric.md`.
 
-For each extracted finding, determine:
+For each extracted finding, assign a **fix confidence score** (0-100):
 
-- **`MECHANICAL`** — The fix is deterministic given information already in the spec. Two competent spec authors would produce the same fix.
-- **`REQUIRES_DECISION`** — The fix requires judgment, stakeholder input, or choosing between valid alternatives.
+1. Score each of the four conditions (0-25): Determinism, Information Availability, Meaning Preservation, Alternative Absence.
+2. Sum the four scores for the finding's confidence (0-100).
+3. Apply safety caps — safety-capped findings are forced to confidence 0 regardless of score.
+4. If the audit report already includes a `Fix Confidence` score for a finding, use it as a starting point and adjust only if the rubric evaluation yields a materially different score. If the report is from an older format and has no `Fix Confidence` line, score the finding from scratch.
 
-Apply the rubric strictly. When in doubt, classify as `REQUIRES_DECISION`.
+Classify based on confidence vs `CONFIDENCE_THRESHOLD` (default 80):
+- confidence >= `CONFIDENCE_THRESHOLD` → **AUTO-FIXABLE**
+- confidence < `CONFIDENCE_THRESHOLD` → **REQUIRES_DECISION**
+
+Display confidence tier labels alongside scores:
+- 90-100: MECHANICAL
+- 75-89: HIGH_CONFIDENCE
+- 50-74: MODERATE_CONFIDENCE
+- 0-49: REQUIRES_DECISION
 
 ### 3.1 Present Classification
 
 ```
-Finding Classification
-=======================
+Finding Classification (threshold: {CONFIDENCE_THRESHOLD})
+==========================================================
 
-Mechanical (auto-fixable): {N}
+Auto-fixable ({N} findings at or above threshold):
 {For each:}
-  {SPEC-NNN} ({Severity}/{Dimension}): {one-line description of the fix}
+  {SPEC-NNN} ({Severity}/{Dimension}) [confidence: {score} — {tier}]: {one-line description of the fix}
 
-Requires decision (use /kramme:siw:resolve-audit): {M}
+Requires decision ({M} findings below threshold):
 {For each:}
-  {SPEC-NNN} ({Severity}/{Dimension}): {one-line reason it needs a decision}
+  {SPEC-NNN} ({Severity}/{Dimension}) [confidence: {score} — {tier}]: {one-line reason}
+{For safety-capped:}
+  {SPEC-NNN} ({Severity}/{Dimension}) [safety cap]: {one-line reason}
 
 Skipped: {K}
 {For each:}
   {SPEC-NNN}: {reason — already auto-fixed or has SIW issue}
 ```
 
-If no findings classified as mechanical:
+If no findings at or above threshold:
 
 ```
-No mechanical findings detected. All {N} findings require decisions.
+No auto-fixable findings at threshold {CONFIDENCE_THRESHOLD}. All {N} findings require decisions.
+{If any findings score 50-79:}
+Tip: {count} finding(s) scored 50-79. Use --threshold 60 to include moderate-confidence fixes.
 
 Next: /kramme:siw:resolve-audit {report_path}
 ```
@@ -191,34 +210,35 @@ Next: /kramme:siw:resolve-audit {report_path}
 
 ### With `--dry-run`
 
-For each mechanical finding, show the proposed fix:
+For each auto-fixable finding, show the proposed fix:
 
 ```
-Proposed Fixes (dry run — no files will be modified)
-=====================================================
+Proposed Fixes (dry run — threshold: {CONFIDENCE_THRESHOLD}, no files will be modified)
+========================================================================================
 
 SPEC-{NNN}: {title}
+  Confidence: {score}/100 ({tier})
   File: {spec_file} > {section}
   Current: "{quoted text from spec}"
   Proposed: "{what it would change to}"
   Reason: {why this fix is correct}
 
-{Repeat for each mechanical finding}
+{Repeat for each auto-fixable finding}
 ```
 
 **Action:** Stop after showing all proposed fixes.
 
 ### With `--auto`
 
-Proceed directly to Step 5 with all mechanical findings.
+Proceed directly to Step 5 with all auto-fixable findings.
 
 ### Default (interactive)
 
 ```yaml
-header: "Auto-Fix Mechanical Findings"
-question: "Found {N} mechanical findings to auto-fix and {M} findings requiring decisions. Proceed?"
+header: "Auto-Fix Findings (threshold: {CONFIDENCE_THRESHOLD})"
+question: "Found {N} auto-fixable findings (confidence >= {CONFIDENCE_THRESHOLD}) and {M} findings requiring decisions. Proceed?"
 options:
-  - label: "Fix all {N} mechanical findings"
+  - label: "Fix all {N} auto-fixable findings"
     description: "Apply fixes and update the audit report"
   - label: "Let me review first"
     description: "Show proposed fixes before applying (same as --dry-run)"
@@ -248,7 +268,7 @@ Group findings by spec file, then sort by location within each file (top of docu
 
 ### 5.2 Apply Each Fix
 
-For each mechanical finding in order:
+For each auto-fixable finding in order:
 
 1. **Read the section** referenced by the finding's location, plus enough surrounding context to understand the fix.
 2. **Determine the fix** — Based on the finding's details, recommendation, and the surrounding spec context, determine the exact text change.
@@ -278,6 +298,17 @@ For each successfully fixed finding, add annotations to its report entry:
 After the `**Severity:**` line, add:
 ```
 **Status:** [Auto-fixed]
+```
+
+Then handle `Fix Confidence` as follows:
+- If the entry already contains `**Fix Confidence:**`, replace that line with the final score and tier from the auto-fix pass.
+- If the entry does not contain `**Fix Confidence:**` (legacy report), insert:
+```
+**Fix Confidence:** {score}/100 ({tier})
+```
+
+After the confidence line, add:
+```
 **Fix applied:** {one-line description of the change}
 ```
 
@@ -313,6 +344,30 @@ If all Critical and Major findings were auto-fixed and only Minor findings remai
 Use the summary template from `assets/auto-fix-summary.md`.
 
 **STOP HERE.** Wait for the user's next instruction.
+
+---
+
+## Usage Examples
+
+```bash
+# Default (balanced — fixes mechanical + high-confidence findings)
+/kramme:siw:spec-audit:auto-fix
+
+# Stricter pass (higher confidence bar)
+/kramme:siw:spec-audit:auto-fix --threshold 90
+
+# Aggressive (includes moderate-confidence fixes)
+/kramme:siw:spec-audit:auto-fix --threshold 60
+
+# Preview what aggressive mode would fix
+/kramme:siw:spec-audit:auto-fix --dry-run --threshold 60
+
+# Auto-apply all auto-fixable findings without asking
+/kramme:siw:spec-audit:auto-fix --auto
+
+# Auto-apply with lower threshold
+/kramme:siw:spec-audit:auto-fix --auto --threshold 70
+```
 
 ---
 
