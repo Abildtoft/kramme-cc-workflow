@@ -273,7 +273,9 @@ Analyze the spec against each dimension below. For each finding, report:
 - **Do not return early.** Continue until you have checked every section against every assigned dimension.
 - **Quote the spec.** When flagging an issue, include the relevant text from the spec.
 - **Be specific in recommendations.** "Add more detail" is not enough. Say what detail is missing.
-- **Score fix confidence on all findings (0-100).** For each finding, assess how deterministic a fix would be: determinism of fix (0-25), information availability in spec (0-25), meaning preservation (0-25), absence of alternatives (0-25). Sum the four scores. Technical Design findings are typically lower confidence due to subjectivity.
+- **Score provisional fix confidence on all findings (0-100).** For each finding, assess how deterministic a fix would be: determinism of fix (0-25), information availability in spec (0-25), meaning preservation (0-25), absence of alternatives (0-25). Sum the four scores, then apply the safety caps below before writing the agent's provisional `Fix Confidence`. Technical Design findings are typically lower confidence due to subjectivity.
+- **Use these tier boundaries for the provisional score.** 90-100 = `MECHANICAL`, 75-89 = `HIGH_CONFIDENCE`, 50-74 = `MODERATE_CONFIDENCE`, 0-49 = `REQUIRES_DECISION`.
+- **Apply these safety caps before reporting the score.** Set the provisional score to `0 (REQUIRES_DECISION)` if any of these apply: Critical finding in Completeness, Scope, or Value Proposition; recommendation uses decision-signal language (`consider`, `decide whether`, `choose between`, `discuss with`, `evaluate options`); the finding adds or removes scope; the finding defines success-criteria substance rather than measurability.
 
 {Dimension-specific instructions inserted here — see Section 3.4}
 
@@ -311,7 +313,7 @@ After all Explore agents complete:
 
 Gather all findings from every agent. Deduplicate — if multiple dimensions flagged the same issue, merge into one finding and note all affected dimensions.
 
-When you merge duplicate findings, keep a single `Fix Confidence` field for the merged entry. Re-score the merged finding against the same four-condition rubric using the consolidated details and recommendation. Do not average the original agent scores.
+When you merge duplicate findings, keep a single `Fix Confidence` field for the merged entry. Re-score the merged finding against the same four-condition rubric using the consolidated details and recommendation, then re-apply the same tier boundaries and safety caps before writing the provisional merged value. Do not average the original agent scores.
 
 ### 4.2 Assign Global Finding IDs
 
@@ -336,6 +338,14 @@ For each finding in a deprioritized dimension:
 - Annotate: `[Deprioritized — capped at Minor from {original_severity}]`
 
 This ensures deprioritized dimensions never produce Critical or Major findings, while still reporting the issues for visibility.
+
+### 4.3.6 Normalize Final Fix Confidence
+
+After final severity assignment and any Work Context downgrades, recompute each finding's final `Fix Confidence` using the same four-condition rubric on the consolidated details and final recommendation.
+
+- Re-apply the shared tier boundaries and safety caps against the **final** severity, not the earlier agent-assigned severity.
+- Replace any earlier provisional score if severity, recommendation wording, or merged details changed during consolidation.
+- Use this normalized value in the report output.
 
 ### 4.4 Compute Dimension Scores
 

@@ -109,7 +109,9 @@ For each finding, report:
 - Do not return early. Continue until every section is checked against every assigned dimension.
 - Quote the spec. When flagging an issue, include the relevant text.
 - Be specific in recommendations. "Add more detail" is not enough — say what detail is missing.
-- Score fix confidence on all findings (0-100) using the same four-condition rubric as `/kramme:siw:spec-audit`: determinism, information availability, meaning preservation, and absence of alternatives.
+- Score provisional fix confidence on all findings (0-100) using the same four-condition rubric as `/kramme:siw:spec-audit`: determinism, information availability, meaning preservation, and absence of alternatives. Sum the four scores, then apply the safety caps below before writing the agent's provisional `Fix Confidence`.
+- Use these tier boundaries for the provisional score: 90-100 = `MECHANICAL`, 75-89 = `HIGH_CONFIDENCE`, 50-74 = `MODERATE_CONFIDENCE`, 0-49 = `REQUIRES_DECISION`.
+- Apply these safety caps before reporting the score: set the provisional score to `0 (REQUIRES_DECISION)` if any of these apply: Critical finding in Completeness, Scope, or Value Proposition; recommendation uses decision-signal language (`consider`, `decide whether`, `choose between`, `discuss with`, `evaluate options`); the finding adds or removes scope; the finding defines success-criteria substance rather than measurability.
 
 ## Cross-Validation Protocol
 
@@ -172,14 +174,23 @@ Output: Root-cause links
 For any dimension with 0 findings (or very few given spec size):
 - Read the spec sections that agent analyzed
 - Identify at least 2 specific aspects that SHOULD have been flagged
-- If you find gaps: report them as additional findings with the same format
+- If you find gaps: report them as additional findings with the same format, including `Fix Confidence`
 - If the dimension is genuinely strong: confirm it explicitly with evidence
 
 Threshold: For specs over 200 lines, a dimension with 0 findings requires
 justification.
 
 Output: Challenge findings or clean confirmations
-  SPEC-{N}: {new finding from challenged dimension}
+  For each new finding, use the full format below:
+  - **Finding ID**: SPEC-{NNN}
+  - **Dimension**: Which dimension
+  - **Title**: Brief description
+  - **Location**: Source file > section heading
+  - **Details**: What the issue is, with quotes from the spec
+  - **Severity**: Critical | Major | Minor
+  - **Recommendation**: Specific action to fix
+  - **Fix Confidence**: {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION})
+  Compute `Fix Confidence` exactly like the dimension auditors: sum the four 0-25 sub-scores, then apply the same tier boundaries and safety caps before reporting the provisional value.
   OR: "{dimension}: Confirmed no findings — {evidence}"
 
 ## Mission 3: Duplicate Detection
@@ -206,6 +217,7 @@ After the cross-reviewer completes:
 3. Follow `/kramme:siw:spec-audit` Steps 4-5 for:
    - Assigning global finding IDs (SPEC-001, SPEC-002, etc.)
    - Assigning severity
+   - After final severity assignment and any Work Context caps, re-scoring every finding, including cross-reviewer challenge findings, so the final `Fix Confidence` uses the shared tier boundaries and safety caps against the final severity
    - Computing dimension scores (Strong/Adequate/Weak/Missing)
    - Cross-referencing existing SIW issues
    - Writing the report to `siw/AUDIT_SPEC_REPORT.md` (or project root), or replying inline if `INLINE_MODE=true`

@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:spec-audit:auto-fix
 description: Auto-fix mechanical spec-audit findings that have a single obvious correct resolution — cross-reference errors, terminology inconsistencies, numbering mistakes, formatting issues, and weasel words replaceable with specifics already in the spec. Run after spec-audit.
-argument-hint: "[audit-report-path] [--auto] [--dry-run] [--threshold 0-100]"
+argument-hint: "[audit-report-path] [--auto] [--dry-run] [--threshold 50-100]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -10,18 +10,20 @@ user-invocable: true
 
 Apply deterministic fixes to spec-audit findings that have a single obvious correct resolution. This skill runs after `/kramme:siw:spec-audit` (or `:team`) and directly edits spec files to resolve mechanical issues — cross-reference errors, terminology inconsistencies, numbering mistakes, formatting issues, and weasel words replaceable with specifics already in the spec.
 
-Findings that require product decisions, stakeholder input, or choosing between valid alternatives are left untouched for `/kramme:siw:resolve-audit`.
+Findings that require product decisions, stakeholder input, or still lack a clearly best fix are left untouched for `/kramme:siw:resolve-audit`.
 
 **Flags:**
 - `--auto` — Skip classification approval, apply all auto-fixable fixes without asking
 - `--dry-run` — Show classification and proposed fixes without modifying any files
-- `--threshold N` — Set confidence threshold for auto-fixing (0-100, default 80). Findings with confidence >= N are treated as auto-fixable. Use 90 for a stricter pass, 60 for aggressive.
+- `--threshold N` — Set confidence threshold for auto-fixing (50-100, default 80). Findings with confidence >= N are auto-fixable only after safety caps and the determinism/alternative guardrails are applied. Use 90 for a stricter pass, 60 for aggressive, 50 for the most permissive allowed run.
 
 ## Hard Constraints
 
 **NEVER** modify a finding below the confidence threshold. If in doubt, score conservatively.
 
-**NEVER** auto-fix a safety-capped finding regardless of threshold. Critical findings in Completeness, Scope, or Value Proposition dimensions always require decisions. Findings whose recommendations use decision-signal language ("consider", "decide whether", "choose between") always require decisions.
+**NEVER** auto-fix a safety-capped finding regardless of threshold. Critical findings in Completeness, Scope, or Value Proposition dimensions always require decisions. Findings whose recommendations use decision-signal language ("consider", "decide whether", "choose between", "discuss with", "evaluate options"), change scope, or define success-criteria substance always require decisions.
+
+**NEVER** auto-fix a finding when either `Determinism` or `Alternative Absence` scores below 15. Those findings still require choosing an approach or between valid alternatives, so they belong in `/kramme:siw:resolve-audit` even if the total confidence reaches the active threshold.
 
 **NEVER** apply a fix that changes the meaning, scope, or intent of any requirement. Fixes correct form, not substance.
 
@@ -65,7 +67,7 @@ Findings that require product decisions, stakeholder input, or choosing between 
 Extract control flags from `$ARGUMENTS`:
 - `--auto` → set `AUTO_MODE=true`
 - `--dry-run` → set `DRY_RUN=true`
-- `--threshold N` → set `CONFIDENCE_THRESHOLD=N` (validate 0-100, default 80)
+- `--threshold N` → set `CONFIDENCE_THRESHOLD=N` (validate 50-100, default 80)
 - Remaining markdown path token → candidate report path
 
 ### 1.2 Find Report
@@ -161,9 +163,11 @@ For each extracted finding, assign a **fix confidence score** (0-100):
 3. Apply safety caps — safety-capped findings are forced to confidence 0 regardless of score.
 4. If the audit report already includes a `Fix Confidence` score for a finding, use it as a starting point and adjust only if the rubric evaluation yields a materially different score. If the report is from an older format and has no `Fix Confidence` line, score the finding from scratch.
 
-Classify based on confidence vs `CONFIDENCE_THRESHOLD` (default 80):
-- confidence >= `CONFIDENCE_THRESHOLD` → **AUTO-FIXABLE**
-- confidence < `CONFIDENCE_THRESHOLD` → **REQUIRES_DECISION**
+Classify based on the final confidence vs `CONFIDENCE_THRESHOLD` (default 80):
+- safety-capped finding → **REQUIRES_DECISION** regardless of threshold
+- finding with `Determinism < 15` or `Alternative Absence < 15` → **REQUIRES_DECISION** regardless of threshold
+- non-safety-capped finding with confidence >= `CONFIDENCE_THRESHOLD` → **AUTO-FIXABLE**
+- otherwise → **REQUIRES_DECISION**
 
 Display confidence tier labels alongside scores:
 - 90-100: MECHANICAL
@@ -367,6 +371,9 @@ Use the summary template from `assets/auto-fix-summary.md`.
 
 # Auto-apply with lower threshold
 /kramme:siw:spec-audit:auto-fix --auto --threshold 70
+
+# Most permissive allowed threshold
+/kramme:siw:spec-audit:auto-fix --dry-run --threshold 50
 ```
 
 ---
