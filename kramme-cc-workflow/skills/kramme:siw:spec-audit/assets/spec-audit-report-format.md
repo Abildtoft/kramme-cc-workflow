@@ -45,6 +45,7 @@ Not specified — all dimensions evaluated with equal weight.
 
 **Dimension:** {dimension}
 **Severity:** Critical
+**Fix Confidence:** {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION})
 **Location:** {source_file} > {source_section}
 **Details:** {explanation with quotes from the spec}
 **Impact:** {what goes wrong if this isn't fixed}

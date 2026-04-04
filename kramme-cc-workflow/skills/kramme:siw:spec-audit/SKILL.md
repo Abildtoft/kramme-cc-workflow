@@ -265,6 +265,7 @@ Analyze the spec against each dimension below. For each finding, report:
 - **Details**: What the issue is, with quotes from the spec
 - **Severity**: Critical | Major | Minor
 - **Recommendation**: Specific action to fix
+- **Fix Confidence**: {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION})
 
 ## Rules
 
@@ -272,7 +273,7 @@ Analyze the spec against each dimension below. For each finding, report:
 - **Do not return early.** Continue until you have checked every section against every assigned dimension.
 - **Quote the spec.** When flagging an issue, include the relevant text from the spec.
 - **Be specific in recommendations.** "Add more detail" is not enough. Say what detail is missing.
-- **Mark confidence on Technical Design findings.** These are more subjective — use HIGH | MEDIUM | LOW.
+- **Score fix confidence on all findings (0-100).** For each finding, assess how deterministic a fix would be: determinism of fix (0-25), information availability in spec (0-25), meaning preservation (0-25), absence of alternatives (0-25). Sum the four scores. Technical Design findings are typically lower confidence due to subjectivity.
 
 {Dimension-specific instructions inserted here — see Section 3.4}
 
@@ -309,6 +310,8 @@ After all Explore agents complete:
 ### 4.1 Collect Results
 
 Gather all findings from every agent. Deduplicate — if multiple dimensions flagged the same issue, merge into one finding and note all affected dimensions.
+
+When you merge duplicate findings, keep a single `Fix Confidence` field for the merged entry. Re-score the merged finding against the same four-condition rubric using the consolidated details and recommendation. Do not average the original agent scores.
 
 ### 4.2 Assign Global Finding IDs
 

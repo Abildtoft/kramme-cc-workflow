@@ -171,7 +171,7 @@ Check for:
 
 ## Dimension: Technical Design
 
-**Note:** This dimension requires domain judgment. Mark confidence on all findings: HIGH | MEDIUM | LOW.
+**Note:** This dimension requires domain judgment. Mark fix confidence on all findings (0-100) — score how deterministic a fix would be using four conditions: determinism of fix, information availability in spec, meaning preservation, absence of alternatives. Technical Design findings typically score lower due to subjectivity.
 
 Check for:
 

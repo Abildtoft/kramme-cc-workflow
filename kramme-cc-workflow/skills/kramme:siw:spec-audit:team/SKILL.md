@@ -101,6 +101,7 @@ For each finding, report:
 - **Details**: What the issue is, with quotes from the spec
 - **Severity**: Critical | Major | Minor
 - **Recommendation**: Specific action to fix
+- **Fix Confidence**: {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION})
 
 ## Rules
 
@@ -108,7 +109,7 @@ For each finding, report:
 - Do not return early. Continue until every section is checked against every assigned dimension.
 - Quote the spec. When flagging an issue, include the relevant text.
 - Be specific in recommendations. "Add more detail" is not enough — say what detail is missing.
-- Mark confidence on Technical Design findings: HIGH | MEDIUM | LOW.
+- Score fix confidence on all findings (0-100) using the same four-condition rubric as `/kramme:siw:spec-audit`: determinism, information availability, meaning preservation, and absence of alternatives.
 
 ## Cross-Validation Protocol
 
