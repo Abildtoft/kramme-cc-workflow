@@ -97,10 +97,10 @@ SH
   run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
   [ "$status" -eq 0 ]
 
-  run rg -n '/kramme:' "$TMP_DIR/.codex/skills/kramme:siw:issue-implement/SKILL.md"
+  run grep -n '/kramme:' "$TMP_DIR/.codex/skills/kramme:siw:issue-implement/SKILL.md"
   [ "$status" -eq 1 ]
 
-  run rg -n '\$kramme:pr:create' "$TMP_DIR/.codex/skills/kramme:siw:issue-implement/SKILL.md"
+  run grep -nE '\$kramme:pr:create' "$TMP_DIR/.codex/skills/kramme:siw:issue-implement/SKILL.md"
   [ "$status" -eq 0 ]
 }
 
@@ -129,13 +129,13 @@ MD
   run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
   [ "$status" -eq 0 ]
 
-  run rg -n '/kramme:demo-skill' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
+  run grep -n '/kramme:demo-skill' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
   [ "$status" -eq 1 ]
 
-  run rg -n '\$kramme:demo-skill' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
+  run grep -nE '\$kramme:demo-skill' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
   [ "$status" -eq 0 ]
 
-  run rg -n '/usr/bin' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
+  run grep -n '/usr/bin' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
   [ "$status" -eq 0 ]
 }
 
@@ -550,10 +550,10 @@ MD
 
   [ -f "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts" ]
 
-  run rg -n 'hook-bundles", "kramme-cc-workflow"' "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts"
+  run grep -nF 'hook-bundles", "kramme-cc-workflow"' "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts"
   [ "$status" -eq 0 ]
 
-  run rg -n 'CLAUDE_PLUGIN_ROOT="\$\{claudePluginRoot\}" bash \\\$\{CLAUDE_PLUGIN_ROOT\}/hooks/block-rm-rf.sh' "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts"
+  run grep -nE 'CLAUDE_PLUGIN_ROOT="\$\{claudePluginRoot\}" bash \\\$\{CLAUDE_PLUGIN_ROOT\}/hooks/block-rm-rf.sh' "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts"
   [ "$status" -eq 0 ]
 }
 
@@ -578,10 +578,10 @@ MD
   [ -f "$TMP_DIR/opencode/plugins/converted-hooks-plugin-a.ts" ]
   [ -f "$TMP_DIR/opencode/plugins/converted-hooks-plugin-b.ts" ]
 
-  run rg -n 'alpha-hook\.sh' "$TMP_DIR/opencode/plugins/converted-hooks-plugin-a.ts"
+  run grep -n 'alpha-hook\.sh' "$TMP_DIR/opencode/plugins/converted-hooks-plugin-a.ts"
   [ "$status" -eq 0 ]
 
-  run rg -n 'beta-hook\.sh' "$TMP_DIR/opencode/plugins/converted-hooks-plugin-b.ts"
+  run grep -n 'beta-hook\.sh' "$TMP_DIR/opencode/plugins/converted-hooks-plugin-b.ts"
   [ "$status" -eq 0 ]
 }
 
