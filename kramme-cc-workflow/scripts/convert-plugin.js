@@ -624,7 +624,8 @@ function convertClaudeToOpenCode(plugin, options) {
   const agentFiles = plugin.agents.map((agent) => convertAgent(agent, options))
   const commandMap = convertCommands(commands)
   const mcp = plugin.mcpServers ? convertMcp(plugin.mcpServers) : undefined
-  const plugins = plugin.hooks ? [convertHooks(plugin.hooks)] : []
+  const hookRootDir = plugin.hooks ? normalizeName(plugin.manifest.name) : undefined
+  const plugins = plugin.hooks ? [convertHooks(plugin.hooks, plugin.manifest.name, hookRootDir)] : []
 
   const config = {
     $schema: "https://opencode.ai/config.json",
@@ -638,6 +639,8 @@ function convertClaudeToOpenCode(plugin, options) {
     config,
     agents: agentFiles,
     plugins,
+    hookRootDir,
+    hookSourceDir: path.join(plugin.root, "hooks"),
     skillDirs: skills.map((skill) => ({ sourceDir: skill.sourceDir, name: skill.name })),
   }
 }
@@ -706,7 +709,7 @@ function convertMcp(servers) {
   return result
 }
 
-function convertHooks(hooks) {
+function convertHooks(hooks, pluginName, hookRootDir) {
   const handlerBlocks = []
   const hookMap = hooks.hooks ?? {}
   const unmappedEvents = []
@@ -733,10 +736,10 @@ function convertHooks(hooks) {
     ? `// Unmapped Claude hook events: ${unmappedEvents.join(", ")}\n`
     : ""
 
-  const content = `${unmappedComment}import type { Plugin } from "@opencode-ai/plugin"\n\nexport const ConvertedHooks: Plugin = async ({ $ }) => {\n  return {\n${handlerBlocks.join(",\n")}\n  }\n}\n\nexport default ConvertedHooks\n`
+  const content = `${unmappedComment}import path from "node:path"\nimport { fileURLToPath } from "node:url"\nimport type { Plugin } from "@opencode-ai/plugin"\n\nconst claudePluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "hook-bundles", ${JSON.stringify(hookRootDir)})\n\nexport const ConvertedHooks: Plugin = async ({ $ }) => {\n  return {\n${handlerBlocks.join(",\n")}\n  }\n}\n\nexport default ConvertedHooks\n`
 
   return {
-    name: "converted-hooks.ts",
+    name: `converted-hooks-${normalizeName(pluginName)}.ts`,
     content,
   }
 }
@@ -770,10 +773,11 @@ function renderHookStatements(matcher, useToolMatcher) {
   for (const hook of matcher.hooks) {
     if (hook.type === "command") {
       const escapedCommand = escapeTemplateLiteral(String(hook.command ?? ""))
+      const renderedCommand = `CLAUDE_PLUGIN_ROOT="\${claudePluginRoot}" ${escapedCommand}`
       if (condition) {
-        statements.push(`if (${condition}) { await $\`${escapedCommand}\` }`)
+        statements.push(`if (${condition}) { await $\`${renderedCommand}\` }`)
       } else {
-        statements.push(`await $\`${escapedCommand}\``)
+        statements.push(`await $\`${renderedCommand}\``)
       }
       if (hook.timeout) {
         statements.push(`// timeout: ${hook.timeout}s (not enforced)`)
@@ -1130,6 +1134,19 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
     await writeText(path.join(pluginsDir, plugin.name), plugin.content + "\n")
   }
 
+  const cleanedHooks = await cleanupInstalledEntries(paths.hookBundlesDir, previousEntries.hooks, {
+    label: "hook bundle",
+    recursive: true,
+    confirmOptions: extraOpts.confirm,
+  })
+  if (bundle.hookRootDir && bundle.hookSourceDir && await pathExists(bundle.hookSourceDir)) {
+    const hookRootPath = path.join(paths.hookBundlesDir, bundle.hookRootDir)
+    if (cleanedHooks) {
+      await fs.rm(hookRootPath, { recursive: true, force: true })
+    }
+    await copyDir(bundle.hookSourceDir, path.join(hookRootPath, "hooks"))
+  }
+
   const skillsRoot = paths.skillsDir
   const cleanedSkills = await cleanupInstalledEntries(skillsRoot, previousEntries.skills, {
     label: "skill",
@@ -1147,6 +1164,9 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
     agents: cleanedAgents
       ? bundle.agents.map((agent) => `${agent.name}.md`)
       : unionEntryLists(previousEntries.agents, bundle.agents.map((agent) => `${agent.name}.md`)),
+    hooks: cleanedHooks
+      ? (bundle.hookRootDir ? [bundle.hookRootDir] : [])
+      : unionEntryLists(previousEntries.hooks, bundle.hookRootDir ? [bundle.hookRootDir] : []),
     plugins: cleanedPlugins
       ? bundle.plugins.map((plugin) => plugin.name)
       : unionEntryLists(previousEntries.plugins, bundle.plugins.map((plugin) => plugin.name)),
@@ -1166,6 +1186,7 @@ function resolveOpenCodePaths(outputRoot) {
       root: outputRoot,
       configPath: path.join(outputRoot, "opencode.json"),
       agentsDir: path.join(outputRoot, "agents"),
+      hookBundlesDir: path.join(outputRoot, "hook-bundles"),
       pluginsDir: path.join(outputRoot, "plugins"),
       skillsDir: path.join(outputRoot, "skills"),
     }
@@ -1175,6 +1196,7 @@ function resolveOpenCodePaths(outputRoot) {
     root: outputRoot,
     configPath: path.join(outputRoot, "opencode.json"),
     agentsDir: path.join(outputRoot, ".opencode", "agents"),
+    hookBundlesDir: path.join(outputRoot, ".opencode", "hook-bundles"),
     pluginsDir: path.join(outputRoot, ".opencode", "plugins"),
     skillsDir: path.join(outputRoot, ".opencode", "skills"),
   }
@@ -1564,6 +1586,7 @@ async function loadInstallManifest(root, pluginName, targetName) {
     if (entries && typeof entries === "object") {
       return {
         agents: sanitizeEntryList(entries.agents),
+        hooks: sanitizeEntryList(entries.hooks),
         plugins: sanitizeEntryList(entries.plugins),
         prompts: sanitizeEntryList(entries.prompts),
         skills: sanitizeEntryList(entries.skills),
@@ -1580,6 +1603,7 @@ async function loadInstallManifest(root, pluginName, targetName) {
 async function writeInstallManifest(root, pluginName, targetName, entries) {
   await writeJson(getInstallManifestPath(root, pluginName, targetName), {
     agents: sanitizeEntryList(entries.agents),
+    hooks: sanitizeEntryList(entries.hooks),
     plugins: sanitizeEntryList(entries.plugins),
     prompts: sanitizeEntryList(entries.prompts),
     skills: sanitizeEntryList(entries.skills),
@@ -1595,6 +1619,7 @@ function getInstallEntries(state, pluginName, targetName) {
   const targetState = state.plugins?.[pluginName]?.[targetName]
   return {
     agents: sanitizeEntryList(targetState?.agents),
+    hooks: sanitizeEntryList(targetState?.hooks),
     plugins: sanitizeEntryList(targetState?.plugins),
     prompts: sanitizeEntryList(targetState?.prompts),
     skills: sanitizeEntryList(targetState?.skills),
@@ -1618,6 +1643,7 @@ function setInstallEntries(state, pluginName, targetName, entries) {
   }
   state.plugins[pluginName][targetName] = {
     agents: sanitizeEntryList(entries.agents),
+    hooks: sanitizeEntryList(entries.hooks),
     plugins: sanitizeEntryList(entries.plugins),
     prompts: sanitizeEntryList(entries.prompts),
     skills: sanitizeEntryList(entries.skills),
