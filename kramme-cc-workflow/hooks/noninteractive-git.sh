@@ -19,12 +19,353 @@ block() {
     exit 2
 }
 
-# If python3 is unavailable, only allow commands that clearly do not invoke git.
+PARSE_ERROR_REASON="Unable to safely parse command. Refusing potentially interactive git command."
+
+source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/git-parse-utils.sh"
+
+token_is_assignment() {
+    [[ "$1" =~ ^[A-Za-z_][A-Za-z0-9_]*=.*$ ]]
+}
+
+is_control_token() {
+    case "$1" in
+        ';'|'&&'|'||'|'|'|'|&'|'&')
+            return 0
+            ;;
+    esac
+    return 1
+}
+
+is_shell_keyword_token() {
+    case "$(strip_wrapping_quotes "$1")" in
+        '!'|if|then|elif|else|fi|do|done|while|until|for|in|case|esac|'{'|'}')
+            return 0
+            ;;
+    esac
+    return 1
+}
+
+segment_mentions_git_exec() {
+    local token
+    for token in "$@"; do
+        if [ "$(token_basename "$token")" = "git" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+args_have_short_option() {
+    local wanted="$1"
+    shift
+    local arg value
+
+    for arg in "$@"; do
+        value="$(strip_wrapping_quotes "$arg")"
+        [ "$value" = "--" ] && break
+        case "$value" in
+            --*|-) continue ;;
+            -*)
+                case "${value#-}" in
+                    *"$wanted"*) return 0 ;;
+                esac
+                ;;
+        esac
+    done
+    return 1
+}
+
+args_have_long_option() {
+    local wanted="$1"
+    shift
+    local arg value
+
+    for arg in "$@"; do
+        value="$(strip_wrapping_quotes "$arg")"
+        [ "$value" = "--" ] && break
+        [ "$value" = "$wanted" ] && return 0
+        case "$value" in
+            "$wanted"=*) return 0 ;;
+        esac
+    done
+    return 1
+}
+
+commit_has_message_source() {
+    args_have_short_option "m" "$@" \
+        || args_have_short_option "F" "$@" \
+        || args_have_short_option "C" "$@" \
+        || args_have_long_option "--message" "$@" \
+        || args_have_long_option "--file" "$@" \
+        || args_have_long_option "--reuse-message" "$@" \
+        || args_have_long_option "--no-edit" "$@"
+}
+
+shell_exec_uses_inline_command() {
+    local arg value
+
+    for arg in "$@"; do
+        value="$(strip_wrapping_quotes "$arg")"
+        [ "$value" = "--" ] && return 1
+        case "$value" in
+            -c|--command|--command=*) return 0 ;;
+            --*) ;;
+            -*)
+                case "${value#-}" in
+                    *c*) return 0 ;;
+                esac
+                ;;
+            *)
+                return 1
+                ;;
+        esac
+    done
+    return 1
+}
+
+record_git_editor_env() {
+    local assignment="$1"
+    local key="${assignment%%=*}"
+
+    case "$key" in
+        GIT_EDITOR)
+            has_git_editor=true
+            ;;
+        GIT_SEQUENCE_EDITOR)
+            has_git_sequence_editor=true
+            ;;
+    esac
+}
+
+evaluate_simple_git_segment() {
+    local token base value subcmd
+    local has_git_editor=false
+    local has_git_sequence_editor=false
+
+    [ $# -eq 0 ] && {
+        printf '__ALLOW__\n'
+        return
+    }
+
+    while [ $# -gt 0 ] && is_shell_keyword_token "$1"; do
+        shift
+    done
+
+    while [ $# -gt 0 ] && token_is_assignment "$(strip_wrapping_quotes "$1")"; do
+        record_git_editor_env "$(strip_wrapping_quotes "$1")"
+        shift
+    done
+
+    while [ $# -gt 0 ]; do
+        token="$1"
+        base="$(token_basename "$token")"
+        case "$base" in
+            env)
+                shift
+                while [ $# -gt 0 ]; do
+                    value="$(strip_wrapping_quotes "$1")"
+                    case "$value" in
+                        --)
+                            shift
+                            break
+                            ;;
+                        [A-Za-z_][A-Za-z0-9_]*=*)
+                            record_git_editor_env "$value"
+                            shift
+                            ;;
+                        -i|--ignore-environment)
+                            shift
+                            ;;
+                        -u|--unset)
+                            shift
+                            [ $# -gt 0 ] && shift
+                            ;;
+                        --unset=*|-u*)
+                            shift
+                            ;;
+                        -C|--chdir)
+                            if [ $# -ge 2 ]; then
+                                shift 2
+                            else
+                                shift
+                            fi
+                            ;;
+                        --chdir=*|-C*)
+                            shift
+                            ;;
+                        -*)
+                            shift
+                            ;;
+                        *)
+                            break
+                            ;;
+                    esac
+                done
+                ;;
+            command)
+                shift
+                while [ $# -gt 0 ]; do
+                    value="$(strip_wrapping_quotes "$1")"
+                    case "$value" in
+                        --)
+                            shift
+                            break
+                            ;;
+                        -*)
+                            shift
+                            ;;
+                        *)
+                            break
+                            ;;
+                    esac
+                done
+                ;;
+            sudo|xargs|find)
+                if segment_mentions_git_exec "$@"; then
+                    printf '%s\n' "$PARSE_ERROR_REASON"
+                    return
+                fi
+                printf '__ALLOW__\n'
+                return
+                ;;
+            sh|bash|zsh|dash|ksh)
+                shift
+                if shell_exec_uses_inline_command "$@" && segment_mentions_git_exec "$@"; then
+                    printf '%s\n' "$PARSE_ERROR_REASON"
+                    return
+                fi
+                printf '__ALLOW__\n'
+                return
+                ;;
+            git)
+                shift
+                break
+                ;;
+            *)
+                printf '__ALLOW__\n'
+                return
+                ;;
+        esac
+    done
+
+    while [ $# -gt 0 ]; do
+        value="$(strip_wrapping_quotes "$1")"
+        case "$value" in
+            --)
+                shift
+                break
+                ;;
+            -C|-c|--config-env|--exec-path|--git-dir|--namespace|--super-prefix|--work-tree)
+                if [ $# -ge 2 ]; then
+                    shift 2
+                else
+                    shift
+                fi
+                ;;
+            --config-env=*|--exec-path=*|--git-dir=*|--namespace=*|--super-prefix=*|--work-tree=*|-C*|-c*)
+                shift
+                ;;
+            -*)
+                shift
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+
+    if [ $# -eq 0 ]; then
+        printf '__ALLOW__\n'
+        return
+    fi
+
+    subcmd="$(strip_wrapping_quotes "$1")"
+    shift
+
+    case "$subcmd" in
+        commit)
+            if ! commit_has_message_source "$@"; then
+                printf '%s\n' 'git commit without a message source may open an editor. Use: git commit -m "your message" (or --no-edit for amend)'
+                return
+            fi
+            ;;
+        rebase)
+            if (args_have_short_option "i" "$@" || args_have_long_option "--interactive" "$@") && [ "$has_git_sequence_editor" != "true" ]; then
+                printf '%s\n' 'Interactive rebase will open an editor. Use: GIT_SEQUENCE_EDITOR=true git rebase -i ...'
+                return
+            fi
+            if args_have_long_option "--continue" "$@" && [ "$has_git_editor" != "true" ]; then
+                printf '%s\n' 'git rebase --continue may open an editor. Use: GIT_EDITOR=true git rebase --continue'
+                return
+            fi
+            ;;
+        add)
+            if args_have_short_option "p" "$@" || args_have_short_option "i" "$@" || args_have_long_option "--patch" "$@" || args_have_long_option "--interactive" "$@"; then
+                printf '%s\n' 'Interactive git add opens a prompt. Use explicit paths: git add <files>'
+                return
+            fi
+            ;;
+        merge)
+            if ! (args_have_long_option "--abort" "$@" || args_have_long_option "--quit" "$@" || args_have_long_option "--no-edit" "$@" || args_have_long_option "--no-commit" "$@" || args_have_long_option "--squash" "$@" || args_have_long_option "--ff-only" "$@" || args_have_long_option "--ff" "$@"); then
+                printf '%s\n' 'git merge may open an editor for the merge commit message. Use: git merge --no-edit <branch>'
+                return
+            fi
+            ;;
+        cherry-pick)
+            if ! (args_have_long_option "--continue" "$@" || args_have_long_option "--abort" "$@" || args_have_long_option "--quit" "$@" || args_have_long_option "--skip" "$@" || args_have_long_option "--no-edit" "$@" || args_have_long_option "--no-commit" "$@" || args_have_short_option "n" "$@"); then
+                printf '%s\n' 'git cherry-pick may open an editor. Use: git cherry-pick --no-edit <commit>'
+                return
+            fi
+            ;;
+    esac
+
+    printf '__ALLOW__\n'
+}
+
+fallback_noninteractive_reason() {
+    local raw_command="$1"
+    local token reason
+    local segment=()
+
+    if printf '%s\n' "$raw_command" | grep -qE '[$][(]|`|<<'; then
+        if printf '%s\n' "$raw_command" | grep -qE '(^|[^[:alnum:]_./-])([^[:space:]]*/)?git([^[:alnum:]_./-]|$)'; then
+            printf '%s\n' "$PARSE_ERROR_REASON"
+            return
+        fi
+        printf '__ALLOW__\n'
+        return
+    fi
+
+    set -f
+    # shellcheck disable=SC2086
+    set -- $raw_command
+    set +f
+
+    while [ $# -gt 0 ]; do
+        token="$1"
+        shift
+        if is_control_token "$token"; then
+            reason="$(evaluate_simple_git_segment "${segment[@]}")"
+            if [ "$reason" != "__ALLOW__" ]; then
+                printf '%s\n' "$reason"
+                return
+            fi
+            segment=()
+            continue
+        fi
+        segment+=("$token")
+    done
+
+    evaluate_simple_git_segment "${segment[@]}"
+}
+
+# If python3 is unavailable, fall back to a conservative shell parser.
 if ! command -v python3 >/dev/null 2>&1; then
-    if ! printf '%s\n' "$command" | grep -qE '(^|[^[:alnum:]_./-])(git|/usr/bin/git)([^[:alnum:]_./-]|$)'; then
+    reason="$(fallback_noninteractive_reason "$command")"
+    if [ "$reason" = "__ALLOW__" ]; then
         exit 0
     fi
-    block "python3 is required to inspect git commands safely. Install python3 or rerun with an explicitly non-interactive git command."
+    block "$reason"
 fi
 
 if ! decision=$(python3 - "$command" <<'PY'

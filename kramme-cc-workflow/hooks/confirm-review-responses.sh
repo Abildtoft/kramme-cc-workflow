@@ -42,6 +42,25 @@ matches_artifact() {
     return 1
 }
 
+source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/git-parse-utils.sh"
+
+should_replay_git_env() {
+    case "$1" in
+        GIT_DIR|GIT_WORK_TREE|GIT_INDEX_FILE|GIT_NAMESPACE|GIT_COMMON_DIR|GIT_OBJECT_DIRECTORY|GIT_ALTERNATE_OBJECT_DIRECTORIES)
+            return 0
+            ;;
+    esac
+    return 1
+}
+
+append_git_env_assignment() {
+    local assignment="$1"
+    local key="${assignment%%=*}"
+
+    should_replay_git_env "$key" || return 0
+    git_env+=("$key=${assignment#*=}")
+}
+
 parse_git_commit_context() {
     local raw_command="$1"
 
@@ -56,8 +75,17 @@ import sys
 ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
 ENV_OPTIONS_WITH_VALUE = {"-u", "--unset", "-C", "--chdir"}
 GIT_OPTIONS_WITH_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env"}
+REPLAY_ENV_VARS = {
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_NAMESPACE",
+    "GIT_COMMON_DIR",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+}
 
-result = {"is_commit": False, "git_args": []}
+result = {"is_commit": False, "git_args": [], "git_env": []}
 
 try:
     tokens = shlex.split(sys.argv[1], posix=True)
@@ -67,6 +95,9 @@ except ValueError:
 
 idx = 0
 while idx < len(tokens) and ASSIGNMENT.match(tokens[idx]):
+    key, value = tokens[idx].split("=", 1)
+    if key in REPLAY_ENV_VARS:
+        result["git_env"].append(f"{key}={value}")
     idx += 1
 
 if idx < len(tokens) and os.path.basename(tokens[idx]) == "env":
@@ -74,6 +105,9 @@ if idx < len(tokens) and os.path.basename(tokens[idx]) == "env":
     while idx < len(tokens):
         token = tokens[idx]
         if ASSIGNMENT.match(token):
+            key, value = token.split("=", 1)
+            if key in REPLAY_ENV_VARS:
+                result["git_env"].append(f"{key}={value}")
             idx += 1
             continue
         if token == "--":
@@ -141,7 +175,9 @@ PY
     local saw_git=false
     local is_commit=false
     local git_args=()
+    local git_env=()
     local git_args_json='[]'
+    local git_env_json='[]'
 
     set -f
     # shellcheck disable=SC2086
@@ -152,6 +188,7 @@ PY
         token="$1"
         case "$token" in
             [A-Za-z_][A-Za-z0-9_]*=*)
+                append_git_env_assignment "$token"
                 shift
                 ;;
             env|/usr/bin/env)
@@ -164,6 +201,7 @@ PY
                             break
                             ;;
                         [A-Za-z_][A-Za-z0-9_]*=*)
+                            append_git_env_assignment "$token"
                             shift
                             ;;
                         -u|--unset)
@@ -198,19 +236,19 @@ PY
                     esac
                 done
                 ;;
-            git|/usr/bin/git)
-                saw_git=true
-                shift
-                break
-                ;;
             *)
+                if [ "$(token_basename "$token")" = "git" ]; then
+                    saw_git=true
+                    shift
+                    break
+                fi
                 break
                 ;;
         esac
     done
 
     if [ "$saw_git" != "true" ]; then
-        printf '%s\n' '{"is_commit":false,"git_args":[]}'
+        printf '%s\n' '{"is_commit":false,"git_args":[],"git_env":[]}'
         return
     fi
 
@@ -259,9 +297,12 @@ PY
     if [ ${#git_args[@]} -gt 0 ]; then
         git_args_json="$(printf '%s\n' "${git_args[@]}" | jq -R . | jq -s .)"
     fi
+    if [ ${#git_env[@]} -gt 0 ]; then
+        git_env_json="$(printf '%s\n' "${git_env[@]}" | jq -R . | jq -s .)"
+    fi
 
-    jq -cn --argjson is_commit "$is_commit" --argjson git_args "$git_args_json" \
-        '{is_commit: $is_commit, git_args: $git_args}'
+    jq -cn --argjson is_commit "$is_commit" --argjson git_args "$git_args_json" --argjson git_env "$git_env_json" \
+        '{is_commit: $is_commit, git_args: $git_args, git_env: $git_env}'
 }
 
 input=$(cat)
@@ -284,9 +325,21 @@ done <<EOF
 $(echo "$commit_context" | jq -r '.git_args[]?')
 EOF
 
+git_env_assignments=()
+while IFS= read -r git_env; do
+    [ -z "$git_env" ] && continue
+    git_env_assignments+=("$git_env")
+done <<EOF
+$(echo "$commit_context" | jq -r '.git_env[]?')
+EOF
+
 # Check if configured artifact files are staged
 configured_artifacts="$(load_artifact_list "$ARTIFACT_LIST_FILE")"
-staged_files="$(git "${git_prefix_args[@]}" diff --cached --name-only 2>/dev/null)"
+if [ ${#git_env_assignments[@]} -gt 0 ]; then
+    staged_files="$(env "${git_env_assignments[@]}" git "${git_prefix_args[@]}" diff --cached --name-only 2>/dev/null)"
+else
+    staged_files="$(git "${git_prefix_args[@]}" diff --cached --name-only 2>/dev/null)"
+fi
 blocked_files=()
 
 if [ -n "$staged_files" ]; then
