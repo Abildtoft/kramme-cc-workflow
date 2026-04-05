@@ -52,16 +52,87 @@ run_hook_without_python() {
     is_allowed
 }
 
+@test "allows git status when python3 is unavailable" {
+    run run_hook_without_python "git status"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
 @test "blocks sh -c git commit when python3 is unavailable" {
     run run_hook_without_python "sh -c 'git commit'"
     is_blocked
-    [[ "$output" == *"python3 is required"* ]]
+    [[ "$output" == *"Unable to safely parse command"* ]]
 }
 
 @test "blocks bash -c interactive rebase when python3 is unavailable" {
     run run_hook_without_python "bash -c 'git rebase -i HEAD~2'"
     is_blocked
-    [[ "$output" == *"python3 is required"* ]]
+    [[ "$output" == *"Unable to safely parse command"* ]]
+}
+
+@test "blocks absolute-path git commit when python3 is unavailable" {
+    local absolute_git_dir
+    absolute_git_dir="$(mktemp -d)"
+    ln -s "$(command -v git)" "$absolute_git_dir/git"
+
+    run run_hook_without_python "$absolute_git_dir/git commit"
+    rm -rf "$absolute_git_dir"
+
+    is_blocked
+}
+
+@test "allows git commit -m when python3 is unavailable" {
+    run run_hook_without_python "git commit -m 'test message'"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git commit without message when python3 is unavailable" {
+    run run_hook_without_python "git commit"
+    is_blocked
+    [[ "$output" == *"git commit -m"* ]]
+}
+
+@test "allows GIT_SEQUENCE_EDITOR=true git rebase -i when python3 is unavailable" {
+    run run_hook_without_python "GIT_SEQUENCE_EDITOR=true git rebase -i HEAD~3"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git rebase -i without GIT_SEQUENCE_EDITOR when python3 is unavailable" {
+    run run_hook_without_python "git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
+@test "allows git merge --no-edit when python3 is unavailable" {
+    run run_hook_without_python "git merge --no-edit main"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git merge without --no-edit when python3 is unavailable" {
+    run run_hook_without_python "git merge main"
+    is_blocked
+    [[ "$output" == *"--no-edit"* ]]
+}
+
+@test "blocks git add -p when python3 is unavailable" {
+    run run_hook_without_python "git add -p"
+    is_blocked
+    [[ "$output" == *"explicit paths"* ]]
+}
+
+@test "allows git cherry-pick --no-edit when python3 is unavailable" {
+    run run_hook_without_python "git cherry-pick --no-edit abc123"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git cherry-pick without --no-edit when python3 is unavailable" {
+    run run_hook_without_python "git cherry-pick abc123"
+    is_blocked
+    [[ "$output" == *"--no-edit"* ]]
 }
 
 @test "allows git status" {

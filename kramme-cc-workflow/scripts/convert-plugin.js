@@ -959,6 +959,7 @@ function convertClaudeToCodex(plugin, options) {
     skillDirs,
     generatedSkills: commandSkills,
     agentSkills,
+    knownCommands: knownCommandNames,
     mcpServers: plugin.mcpServers,
   }
 }
@@ -1012,6 +1013,7 @@ function convertExistingSkillForCodex(skill, knownCommands) {
       skill.description ?? `Converted from Claude skill ${skill.name}`,
     ),
     "argument-hint": skill.argumentHint,
+    "allowed-tools": skill.allowedTools && skill.allowedTools.length > 0 ? skill.allowedTools : undefined,
     "disable-model-invocation": skill.disableModelInvocation,
     "user-invocable": skill.userInvocable,
     "kramme-platforms": skill.platforms && skill.platforms.length > 0 ? skill.platforms : undefined,
@@ -1209,10 +1211,12 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   })
 
   for (const skill of bundle.skillDirs) {
-    await copyDir(skill.sourceDir, path.join(skillsRoot, skill.name))
+    const targetDir = path.join(skillsRoot, skill.name)
+    await copyDir(skill.sourceDir, targetDir)
     if (skill.content) {
-      await writeText(path.join(skillsRoot, skill.name, "SKILL.md"), skill.content + "\n")
+      await writeText(path.join(targetDir, "SKILL.md"), skill.content + "\n")
     }
+    await rewriteCodexMarkdownResources(targetDir, bundle.knownCommands)
   }
 
   for (const skill of bundle.generatedSkills) {
@@ -1661,6 +1665,25 @@ async function copyDir(sourceDir, targetDir) {
     } else if (entry.isFile()) {
       await ensureDir(path.dirname(targetPath))
       await fs.copyFile(sourcePath, targetPath)
+    }
+  }
+}
+
+async function rewriteCodexMarkdownResources(rootDir, knownCommands) {
+  const entries = await fs.readdir(rootDir, { withFileTypes: true })
+  for (const entry of entries) {
+    const fullPath = path.join(rootDir, entry.name)
+    if (entry.isDirectory()) {
+      await rewriteCodexMarkdownResources(fullPath, knownCommands)
+      continue
+    }
+    if (!entry.isFile() || path.extname(entry.name) !== ".md" || entry.name === "SKILL.md") {
+      continue
+    }
+    const source = await readText(fullPath)
+    const transformed = transformContentForCodex(source, { knownCommands })
+    if (transformed !== source) {
+      await writeText(fullPath, transformed)
     }
   }
 }

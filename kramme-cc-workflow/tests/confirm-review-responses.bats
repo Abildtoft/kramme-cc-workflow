@@ -352,6 +352,72 @@ REVIEW_SUMMARY.md"
     is_blocked
 }
 
+@test "blocks absolute-path git commit when artifact is staged without python3" {
+    local absolute_git_dir
+    absolute_git_dir="$(mktemp -d)"
+    ln -s "$MOCK_DIR/git" "$absolute_git_dir/git"
+    mock_git_staged "REVIEW_OVERVIEW.md"
+
+    run run_hook_without_python "$absolute_git_dir/git commit -m 'test'"
+    rm -rf "$absolute_git_dir"
+
+    is_blocked
+}
+
+@test "checks staged artifacts in repo selected via GIT_DIR and GIT_WORK_TREE" {
+    local repo
+    repo="$(mktemp -d)"
+    git -C "$repo" init -q
+    touch "$repo/REVIEW_OVERVIEW.md"
+    git -C "$repo" add REVIEW_OVERVIEW.md
+
+    run run_hook "GIT_DIR=$repo/.git GIT_WORK_TREE=$repo git commit -m 'test'"
+    rm -rf "$repo"
+
+    is_blocked
+}
+
+@test "checks staged artifacts via GIT_DIR and GIT_WORK_TREE without python3" {
+    local repo
+    repo="$(mktemp -d)"
+    git -C "$repo" init -q
+    touch "$repo/REVIEW_OVERVIEW.md"
+    git -C "$repo" add REVIEW_OVERVIEW.md
+
+    # Needs real git (not mock) to query staged files from the real repo.
+    local fake_bin="$BATS_TEST_TMPDIR/no-python-bin-real-git"
+    rm -rf "$fake_bin"
+    mkdir -p "$fake_bin"
+    ln -s /bin/bash "$fake_bin/bash"
+    ln -s "$(command -v jq)" "$fake_bin/jq"
+    ln -s /bin/cat "$fake_bin/cat"
+    ln -s "$(command -v grep)" "$fake_bin/grep"
+    ln -s "$(command -v sed)" "$fake_bin/sed"
+    ln -s "$(command -v git)" "$fake_bin/git"
+    ln -s "$(command -v env)" "$fake_bin/env"
+
+    run make_bash_input "GIT_DIR=$repo/.git GIT_WORK_TREE=$repo git commit -m 'test'"
+    local json_input="$output"
+
+    run env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK" <<< "$json_input"
+    rm -rf "$repo" "$fake_bin"
+
+    is_blocked
+}
+
+@test "checks staged artifacts via env GIT_DIR wrapper" {
+    local repo
+    repo="$(mktemp -d)"
+    git -C "$repo" init -q
+    touch "$repo/REVIEW_OVERVIEW.md"
+    git -C "$repo" add REVIEW_OVERVIEW.md
+
+    run run_hook "env GIT_DIR=$repo/.git GIT_WORK_TREE=$repo git commit -m 'test'"
+    rm -rf "$repo"
+
+    is_blocked
+}
+
 # ============================================================================
 # CONFIGURABLE ARTIFACT LIST
 # ============================================================================

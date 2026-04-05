@@ -65,6 +65,72 @@ JSON
   [ "$status" -eq 0 ]
 }
 
+@test "codex conversion rewrites slash-command references in copied markdown resources" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/resource-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/skills/demo/references"
+  cat > "$FIXTURE_PLUGIN/skills/demo/SKILL.md" <<'MD'
+---
+name: kramme:demo-skill
+description: Demo skill
+disable-model-invocation: false
+user-invocable: true
+---
+Use /kramme:demo-skill.
+MD
+  cat > "$FIXTURE_PLUGIN/skills/demo/references/guide.md" <<'MD'
+Run /kramme:demo-skill to continue.
+Do not rewrite /usr/bin.
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+
+  run rg -n '/kramme:demo-skill' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
+  [ "$status" -eq 1 ]
+
+  run rg -n '\$kramme:demo-skill' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
+  [ "$status" -eq 0 ]
+
+  run rg -n '/usr/bin' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
+  [ "$status" -eq 0 ]
+}
+
+@test "codex conversion preserves allowed-tools in copied skills" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/allowed-tools-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/skills/demo"
+  cat > "$FIXTURE_PLUGIN/skills/demo/SKILL.md" <<'MD'
+---
+name: demo-skill
+description: Demo skill
+disable-model-invocation: false
+user-invocable: true
+allowed-tools:
+  - Read
+  - Edit(src/**)
+---
+Use /demo-skill.
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+
+  run sed -n '1,20p' "$TMP_DIR/.codex/skills/demo-skill/SKILL.md"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"allowed-tools:"* ]]
+  [[ "$output" == *"Read"* ]]
+  [[ "$output" == *"Edit(src/**)"* ]]
+}
+
 @test "codex conversion places agents in agents-home/skills" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
