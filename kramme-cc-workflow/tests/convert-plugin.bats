@@ -50,6 +50,21 @@ JSON
   [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/references/branch-and-platform-handling.md" ]
 }
 
+@test "codex conversion rewrites slash-command references inside copied skills" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+  [ "$status" -eq 0 ]
+
+  run rg -n '/kramme:' "$TMP_DIR/.codex/skills/kramme:siw:issue-implement/SKILL.md"
+  [ "$status" -eq 1 ]
+
+  run rg -n '\$kramme:pr:create' "$TMP_DIR/.codex/skills/kramme:siw:issue-implement/SKILL.md"
+  [ "$status" -eq 0 ]
+}
+
 @test "codex conversion places agents in agents-home/skills" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
@@ -113,6 +128,22 @@ JSON
   [ "$status" -eq 0 ]
   [ -d "$TMP_DIR/.agents/skills/kramme:architecture-strategist" ]
   [[ "$output" == *"non-interactive mode"* ]]
+}
+
+@test "codex conversion preserves local files in managed skills when cleanup is skipped" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+  [ "$status" -eq 0 ]
+
+  touch "$TMP_DIR/.codex/skills/kramme:pr:create/LOCAL-NOTES.txt"
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --non-interactive
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/LOCAL-NOTES.txt" ]
+  [[ "$output" == *"Skipping skill cleanup."* ]]
 }
 
 @test "codex conversion cleans stale skills when commands change" {
@@ -232,7 +263,7 @@ MD
   [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
 }
 
-@test "codex conversion cleans legacy stale skills on first stateful install" {
+@test "codex conversion preserves unknown legacy skills on first stateful install without state" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
   fi
@@ -242,7 +273,7 @@ MD
 
   run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
   [ "$status" -eq 0 ]
-  [ ! -d "$TMP_DIR/.codex/skills/kramme:obsolete-skill" ]
+  [ -d "$TMP_DIR/.codex/skills/kramme:obsolete-skill" ]
   [ -f "$TMP_DIR/.codex/.kramme-install-state.json" ]
 }
 
@@ -264,6 +295,70 @@ MD
   [ -f "$TMP_DIR/.agents/skills/performance-oracle/SKILL.md" ]
 }
 
+@test "codex conversion preserves existing workflow skills when reinstalling without state" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install kramme-cc-workflow --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+  run node "$SCRIPT" install kramme-connect-workflow --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+
+  rm "$TMP_DIR/.codex/.kramme-install-state.json"
+
+  run node "$SCRIPT" install kramme-connect-workflow --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:connect:migrate-store-ngrx/SKILL.md" ]
+}
+
+@test "codex conversion cleans stale same-plugin skills after state loss" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_DIR="$TMP_DIR/state-loss-plugin"
+  mkdir -p "$PLUGIN_DIR/.claude-plugin" "$PLUGIN_DIR/commands"
+  cat > "$PLUGIN_DIR/.claude-plugin/plugin.json" <<'JSON'
+{
+  "name": "state-loss-plugin",
+  "version": "1.0.0",
+  "agents": [],
+  "commands": [],
+  "skills": []
+}
+JSON
+  cat > "$PLUGIN_DIR/commands/kramme-old-skill.md" <<'MD'
+---
+name: kramme:old-skill
+description: Old skill
+---
+
+Old skill.
+MD
+
+  run node "$SCRIPT" install "$PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:old-skill/SKILL.md" ]
+
+  rm "$TMP_DIR/.codex/.kramme-install-state.json"
+  rm "$PLUGIN_DIR/commands/kramme-old-skill.md"
+  cat > "$PLUGIN_DIR/commands/kramme-new-skill.md" <<'MD'
+---
+name: kramme:new-skill
+description: New skill
+---
+
+New skill.
+MD
+
+  run node "$SCRIPT" install "$PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+  [ ! -f "$TMP_DIR/.codex/skills/kramme:old-skill/SKILL.md" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:new-skill/SKILL.md" ]
+}
+
 @test "opencode conversion preserves workflow skills when connect plugin is installed" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
@@ -280,7 +375,25 @@ MD
   [ -f "$TMP_DIR/opencode/skills/kramme:connect:migrate-store-ngrx/SKILL.md" ]
 }
 
-@test "opencode conversion cleans legacy stale skills on first stateful install" {
+@test "opencode conversion preserves existing workflow skills when reinstalling without state" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install kramme-cc-workflow --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+  run node "$SCRIPT" install kramme-connect-workflow --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  rm "$TMP_DIR/opencode/.kramme-install-state.json"
+
+  run node "$SCRIPT" install kramme-connect-workflow --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/opencode/skills/kramme:pr:create/SKILL.md" ]
+  [ -f "$TMP_DIR/opencode/skills/kramme:connect:migrate-store-ngrx/SKILL.md" ]
+}
+
+@test "opencode conversion preserves unknown legacy skills on first stateful install without state" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
   fi
@@ -290,7 +403,7 @@ MD
 
   run node "$SCRIPT" install "$REPO_ROOT" --to opencode --output "$TMP_DIR/opencode" --yes
   [ "$status" -eq 0 ]
-  [ ! -d "$TMP_DIR/opencode/skills/kramme:obsolete-skill" ]
+  [ -d "$TMP_DIR/opencode/skills/kramme:obsolete-skill" ]
   [ -f "$TMP_DIR/opencode/.kramme-install-state.json" ]
 }
 

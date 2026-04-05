@@ -19,6 +19,14 @@ block() {
     exit 2
 }
 
+# If python3 is unavailable, only allow commands that clearly do not invoke git.
+if ! command -v python3 >/dev/null 2>&1; then
+    if ! printf '%s\n' "$command" | grep -qE '(^|[^[:alnum:]_./-])(git|/usr/bin/git)([^[:alnum:]_./-]|$)'; then
+        exit 0
+    fi
+    block "python3 is required to inspect git commands safely. Install python3 or rerun with an explicitly non-interactive git command."
+fi
+
 if ! decision=$(python3 - "$command" <<'PY'
 import json
 import os
@@ -69,6 +77,16 @@ XARGS_OPTIONS_WITH_VALUE = {
     "--replace",
 }
 SUDO_OPTIONS_WITH_VALUE = {"-u", "-g", "-h", "-p", "-C", "-T", "-r", "-t"}
+GIT_OPTIONS_WITH_VALUE = {
+    "-C",
+    "-c",
+    "--config-env",
+    "--exec-path",
+    "--git-dir",
+    "--namespace",
+    "--super-prefix",
+    "--work-tree",
+}
 
 
 def strip_heredoc_bodies(command):
@@ -152,8 +170,137 @@ def is_assignment(token):
     return ASSIGNMENT.match(token) is not None
 
 
-def has_command_substitution(token):
-    return ("$" + "(") in token or chr(96) in token
+def read_dollar_substitution(command, start):
+    inner = []
+    depth = 1
+    idx = start + 2
+    in_single = False
+    in_double = False
+    escaped = False
+
+    while idx < len(command):
+        char = command[idx]
+
+        if escaped:
+            inner.append(char)
+            escaped = False
+            idx += 1
+            continue
+
+        if char == "\\" and not in_single:
+            inner.append(char)
+            escaped = True
+            idx += 1
+            continue
+
+        if char == "'" and not in_double:
+            in_single = not in_single
+            inner.append(char)
+            idx += 1
+            continue
+
+        if char == '"' and not in_single:
+            in_double = not in_double
+            inner.append(char)
+            idx += 1
+            continue
+
+        if not in_single and not in_double and command.startswith("$" + "(", idx):
+            nested_inner, idx = read_dollar_substitution(command, idx)
+            inner.append("$" + "(" + nested_inner + ")")
+            continue
+
+        if not in_single and not in_double and char == ")":
+            depth -= 1
+            if depth == 0:
+                return "".join(inner), idx + 1
+
+        inner.append(char)
+        idx += 1
+
+    raise ValueError("Unterminated command substitution.")
+
+
+def read_backtick_substitution(command, start):
+    inner = []
+    idx = start + 1
+    escaped = False
+
+    while idx < len(command):
+        char = command[idx]
+
+        if escaped:
+            inner.append(char)
+            escaped = False
+            idx += 1
+            continue
+
+        if char == "\\":
+            inner.append(char)
+            escaped = True
+            idx += 1
+            continue
+
+        if char == chr(96):
+            return "".join(inner), idx + 1
+
+        inner.append(char)
+        idx += 1
+
+    raise ValueError("Unterminated backtick command substitution.")
+
+
+def replace_command_substitutions(command):
+    substitutions = []
+    result = []
+    idx = 0
+    in_single = False
+    in_double = False
+    escaped = False
+
+    while idx < len(command):
+        char = command[idx]
+
+        if escaped:
+            result.append(char)
+            escaped = False
+            idx += 1
+            continue
+
+        if char == "\\" and not in_single:
+            result.append(char)
+            escaped = True
+            idx += 1
+            continue
+
+        if char == "'" and not in_double:
+            in_single = not in_single
+            result.append(char)
+            idx += 1
+            continue
+
+        if char == '"' and not in_single:
+            in_double = not in_double
+            result.append(char)
+            idx += 1
+            continue
+
+        if not in_single and command.startswith("$" + "(", idx):
+            inner, idx = read_dollar_substitution(command, idx)
+            substitutions.append(inner)
+            result.append(f"__CMD_SUBST_{len(substitutions) - 1}__")
+            continue
+
+        if not in_single and char == chr(96):
+            inner, idx = read_backtick_substitution(command, idx)
+            substitutions.append(inner)
+            result.append(f"__CMD_SUBST_{len(substitutions) - 1}__")
+            continue
+
+        result.append(char)
+        idx += 1
+
+    return "".join(result), substitutions
 
 
 def basename(token):
@@ -197,8 +344,6 @@ def parse_env_wrapped_segment(tokens, inherited_env=None):
         idx += 1
 
     while idx < len(tokens) and is_assignment(tokens[idx]):
-        if has_command_substitution(tokens[idx]):
-            raise ValueError("Assignment contains command substitution.")
         key, value = tokens[idx].split("=", 1)
         env[key] = value
         idx += 1
@@ -213,8 +358,6 @@ def parse_env_wrapped_segment(tokens, inherited_env=None):
                     idx += 1
                     break
                 if is_assignment(env_token):
-                    if has_command_substitution(env_token):
-                        raise ValueError("env assignment contains command substitution.")
                     key, value = env_token.split("=", 1)
                     env[key] = value
                     idx += 1
@@ -333,21 +476,58 @@ def parse_env_wrapped_segment(tokens, inherited_env=None):
     if not git_argv:
         return None
 
+    git_idx = 0
+    while git_idx < len(git_argv):
+        token = git_argv[git_idx]
+        if token == "--":
+            git_idx += 1
+            break
+        if token in GIT_OPTIONS_WITH_VALUE:
+            git_idx += 2
+            continue
+        if any(
+            token.startswith(prefix + "=")
+            for prefix in (
+                "--config-env",
+                "--exec-path",
+                "--git-dir",
+                "--namespace",
+                "--super-prefix",
+                "--work-tree",
+            )
+        ):
+            git_idx += 1
+            continue
+        if token.startswith("-C") and token != "-C":
+            git_idx += 1
+            continue
+        if token.startswith("-c") and token != "-c":
+            git_idx += 1
+            continue
+        if token.startswith("-"):
+            git_idx += 1
+            continue
+        break
+
+    if git_idx >= len(git_argv):
+        return None
+
     return {
         "env": env,
-        "subcmd": git_argv[0],
-        "args": git_argv[1:],
+        "subcmd": git_argv[git_idx],
+        "args": git_argv[git_idx + 1 :],
     }
 
 
 def parse_git_commands(command, inherited_env=None):
-    tokens = tokenize(command)
+    sanitized_command, substitutions = replace_command_substitutions(command)
+    tokens = tokenize(sanitized_command)
     parsed_commands = []
     for segment in split_segments(tokens):
         parsed = parse_env_wrapped_segment(segment, inherited_env=inherited_env)
         if parsed is not None:
             parsed_commands.append(parsed)
-    return parsed_commands
+    return parsed_commands, substitutions
 
 
 def has_long_option(args, *names):
@@ -377,9 +557,18 @@ def has_short_option(args, *letters):
     return False
 
 
-def evaluate(parsed_commands, depth=0):
+def evaluate(parsed_commands, substitutions, depth=0):
     if depth > 4:
         return PARSE_ERROR_REASON
+
+    for substitution in substitutions:
+        try:
+            nested_commands, nested_substitutions = parse_git_commands(substitution)
+        except ValueError:
+            return PARSE_ERROR_REASON
+        reason = evaluate(nested_commands, nested_substitutions, depth=depth + 1)
+        if reason is not None:
+            return reason
 
     for parsed in parsed_commands:
         subcmd = parsed["subcmd"]
@@ -388,10 +577,10 @@ def evaluate(parsed_commands, depth=0):
 
         if subcmd == "__shell_c__":
             try:
-                nested_commands = parse_git_commands(args[0], inherited_env=env)
+                nested_commands, nested_substitutions = parse_git_commands(args[0], inherited_env=env)
             except ValueError:
                 return PARSE_ERROR_REASON
-            reason = evaluate(nested_commands, depth=depth + 1)
+            reason = evaluate(nested_commands, nested_substitutions, depth=depth + 1)
             if reason is not None:
                 return reason
             continue
@@ -456,12 +645,12 @@ def evaluate(parsed_commands, depth=0):
 
 
 try:
-    parsed_commands = parse_git_commands(sys.argv[1])
+    parsed_commands, substitutions = parse_git_commands(sys.argv[1])
 except ValueError:
     print(json.dumps({"block": PARSE_ERROR_REASON}))
     sys.exit(0)
 
-reason = evaluate(parsed_commands)
+reason = evaluate(parsed_commands, substitutions)
 print(json.dumps({"block": reason}))
 PY
 ); then

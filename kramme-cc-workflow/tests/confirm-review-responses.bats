@@ -30,9 +30,42 @@ EOF
     chmod +x "$MOCK_DIR/git"
 }
 
+mock_git_staged_for_repo() {
+    local repo="$1"
+    local staged_files="$2"
+    local default_files="${3:-}"
+    cat > "$MOCK_DIR/git" << EOF
+#!/bin/bash
+if [[ "\$1" == "-C" && "\$2" == "$repo" && "\$3" == "diff" && "\$4" == "--cached" && "\$5" == "--name-only" ]]; then
+    echo "$staged_files"
+    exit 0
+fi
+if [[ "\$1" == "diff" && "\$2" == "--cached" && "\$3" == "--name-only" ]]; then
+    echo "$default_files"
+    exit 0
+fi
+/usr/bin/git "\$@"
+EOF
+    chmod +x "$MOCK_DIR/git"
+}
+
 # Helper to run hook with given command
 run_hook() {
     make_bash_input "$1" | bash "$HOOK"
+}
+
+run_hook_without_python() {
+    local cmd="$1"
+    local fake_bin="$BATS_TEST_TMPDIR/no-python-bin"
+    rm -rf "$fake_bin"
+    mkdir -p "$fake_bin"
+    ln -s /bin/bash "$fake_bin/bash"
+    ln -s "$(command -v jq)" "$fake_bin/jq"
+    ln -s /bin/cat "$fake_bin/cat"
+    ln -s "$(command -v grep)" "$fake_bin/grep"
+    ln -s "$(command -v sed)" "$fake_bin/sed"
+    ln -s "$MOCK_DIR/git" "$fake_bin/git"
+    make_bash_input "$cmd" | env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK"
 }
 
 # ============================================================================
@@ -290,20 +323,32 @@ REVIEW_SUMMARY.md"
 }
 
 @test "blocks env -C wrapped git commit when artifact is staged" {
-    mock_git_staged "REVIEW_OVERVIEW.md"
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
     run run_hook "env -C repo git commit -m 'test'"
     is_blocked
 }
 
 @test "blocks env --chdir wrapped git commit when artifact is staged" {
-    mock_git_staged "REVIEW_OVERVIEW.md"
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
     run run_hook "env --chdir=repo git commit -m 'test'"
     is_blocked
 }
 
 @test "blocks git -C commit when artifact is staged" {
-    mock_git_staged "REVIEW_OVERVIEW.md"
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
     run run_hook "git -C repo commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks git -C commit when artifact is staged without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "git -C repo commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks env --chdir wrapped git commit when artifact is staged without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "env --chdir=repo git commit -m 'test'"
     is_blocked
 }
 

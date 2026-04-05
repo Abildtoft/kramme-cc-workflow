@@ -6,9 +6,9 @@ disable-model-invocation: true
 user-invocable: true
 ---
 
-# Auto-Fix Mechanical Spec Audit Findings
+# Auto-Fix Safe Spec Audit Findings
 
-Apply deterministic fixes to spec-audit findings that have a single obvious correct resolution. This skill runs after `/kramme:siw:spec-audit` (or `:team`) and directly edits spec files to resolve mechanical issues — cross-reference errors, terminology inconsistencies, numbering mistakes, formatting issues, and weasel words replaceable with specifics already in the spec.
+Apply deterministic and clearly-best fixes to spec-audit findings that can be corrected safely from the spec itself. This skill runs after `/kramme:siw:spec-audit` (or `:team`) and directly edits spec files to resolve mechanical issues plus higher-confidence cleanup that still stays within the existing spec meaning.
 
 Findings that require product decisions, stakeholder input, or still lack a clearly best fix are left untouched for `/kramme:siw:resolve-audit`.
 
@@ -95,8 +95,9 @@ Expected locations:
 ### 1.3 Read Report and Spec Files
 
 1. Read the report file completely.
-2. Extract the spec file paths from the report header ("Spec Files Reviewed").
-3. Read every referenced spec file completely.
+2. If the file contains multiple appended `# Spec Audit Report` blocks, isolate the **last** block only. Treat that as the active audit run and ignore older appended runs.
+3. Extract the spec file paths from the active run's report header ("Spec Files Reviewed").
+4. Read every referenced spec file completely.
 
 If a spec file no longer exists at its path, warn and skip all findings for that file.
 
@@ -124,7 +125,7 @@ options:
 
 ## Step 2: Extract Findings
 
-Parse all `### SPEC-NNN: {title}` headings from the report.
+Parse all `### SPEC-NNN: {title}` headings from the active audit run only.
 
 For each finding, extract:
 - Finding ID and title

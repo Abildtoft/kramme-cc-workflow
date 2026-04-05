@@ -12,6 +12,18 @@ run_hook() {
     make_bash_input "$1" | bash "$HOOK"
 }
 
+run_hook_without_python() {
+    local cmd="$1"
+    local fake_bin="$BATS_TEST_TMPDIR/no-python-bin"
+    rm -rf "$fake_bin"
+    mkdir -p "$fake_bin"
+    ln -s /bin/bash "$fake_bin/bash"
+    ln -s "$(command -v jq)" "$fake_bin/jq"
+    ln -s /bin/cat "$fake_bin/cat"
+    ln -s "$(command -v grep)" "$fake_bin/grep"
+    make_bash_input "$cmd" | env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK"
+}
+
 # ============================================================================
 # BASIC ALLOW CASES
 # ============================================================================
@@ -32,6 +44,24 @@ run_hook() {
     run run_hook "ls -la"
     [ "$status" -eq 0 ]
     is_allowed
+}
+
+@test "allows non-git commands when python3 is unavailable" {
+    run run_hook_without_python "ls -la"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks sh -c git commit when python3 is unavailable" {
+    run run_hook_without_python "sh -c 'git commit'"
+    is_blocked
+    [[ "$output" == *"python3 is required"* ]]
+}
+
+@test "blocks bash -c interactive rebase when python3 is unavailable" {
+    run run_hook_without_python "bash -c 'git rebase -i HEAD~2'"
+    is_blocked
+    [[ "$output" == *"python3 is required"* ]]
 }
 
 @test "allows git status" {
@@ -128,6 +158,12 @@ run_hook() {
 
 @test "blocks git commit without message flag" {
     run run_hook "git commit"
+    is_blocked
+    [[ "$output" == *"git commit -m"* ]]
+}
+
+@test "blocks git -C repo commit without message flag" {
+    run run_hook "git -C repo commit"
     is_blocked
     [[ "$output" == *"git commit -m"* ]]
 }
@@ -234,6 +270,12 @@ run_hook() {
 
 @test "blocks git add -p" {
     run run_hook "git add -p"
+    is_blocked
+    [[ "$output" == *"explicit paths"* ]]
+}
+
+@test "blocks git -c core.editor=vim add -p" {
+    run run_hook "git -c core.editor=vim add -p"
     is_blocked
     [[ "$output" == *"explicit paths"* ]]
 }
@@ -404,6 +446,18 @@ EOF"
 @test "blocks git commit inside command substitution assignment" {
     run run_hook "out=\$(git commit)"
     is_blocked
+}
+
+@test "allows safe command substitution before git commit" {
+    run run_hook "MSG=\$(cat /tmp/msg) git commit -m 'test message'"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows safe command substitution before git rebase --continue" {
+    run run_hook "GIT_EDITOR=\$(command -v true) git rebase --continue"
+    [ "$status" -eq 0 ]
+    is_allowed
 }
 
 @test "blocks /usr/bin/sudo git commit" {
