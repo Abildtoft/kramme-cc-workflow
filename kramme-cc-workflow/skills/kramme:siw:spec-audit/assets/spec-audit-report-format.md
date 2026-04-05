@@ -12,7 +12,7 @@
 | Priority Dimensions | {list} |
 | Deprioritized Dimensions | {list} |
 
-**Effect:** Findings in deprioritized dimensions are capped at Minor severity. Priority dimension findings are strictly evaluated.
+**Effect:** Findings in deprioritized dimensions are capped at Minor severity. If a deprioritized finding was originally Critical or Major, keep the final severity at Minor and record `**Severity Note:** [Deprioritized — capped at Minor from {original_severity}]` so downstream tools preserve the original urgency. Priority dimension findings are strictly evaluated.
 
 {If no work_context found:}
 Not specified — all dimensions evaluated with equal weight.
@@ -36,6 +36,8 @@ Not specified — all dimensions evaluated with equal weight.
 | Major | {count} |
 | Minor | {count} |
 | **Total** | **{total}** |
+
+{If preserved critical caps exist:} **Preserved Critical Caps:** {count} (reported as Minor due to Work Context but still decision-required)
 
 **Overall Assessment:** {Ready for implementation / Needs revision / Significant gaps}
 
@@ -61,7 +63,7 @@ Not specified — all dimensions evaluated with equal weight.
 
 ## Minor Findings
 
-{Same format, without Impact field}
+{Same format, without Impact field. If Work Context capped a higher-severity finding into Minor, include `**Severity Note:** [Deprioritized — capped at Minor from {original_severity}]` immediately after the Severity line.}
 
 ## Dimension Details
 

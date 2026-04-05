@@ -9,6 +9,7 @@ Results:
   Fixed:                {N} (avg confidence: {avg_score})
   Failed verification:  {N} (reclassified to requires-decision)
   Below threshold:      {M} (requires decision)
+  Guardrail-blocked:    {G} (requires decision despite score)
   Safety-capped:        {S} (always requires decision)
   Skipped:              {K} (already fixed or has SIW issue)
 

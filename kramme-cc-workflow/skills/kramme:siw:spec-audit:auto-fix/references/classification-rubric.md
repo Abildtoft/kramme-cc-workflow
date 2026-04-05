@@ -4,7 +4,7 @@ A finding's **fix confidence** (0-100) measures how deterministic and safe an au
 
 ## Core Rule
 
-Score all four conditions. Sum the scores (0-100). Compare against the active threshold (50-100, default 80). Findings at or above the threshold are auto-fixable only if they are not safety-capped and both `Determinism` and `Alternative Absence` score at least 15.
+Score all four conditions. Sum the scores (0-100). Compare against the active threshold (60-100, default 80). Findings at or above the threshold are auto-fixable only if they are not safety-capped and all four conditions score at least 15.
 
 ### Condition 1: Determinism (0-25)
 
@@ -53,12 +53,14 @@ Score all four conditions. Sum the scores (0-100). Compare against the active th
 
 ## Auto-Fix Guardrails
 
-Lowering the threshold does **not** override these two guardrails:
+Lowering the threshold does **not** override these four guardrails:
 
 1. `Determinism < 15` → `REQUIRES_DECISION`. The fix still needs a chosen approach instead of having one clearly best answer.
-2. `Alternative Absence < 15` → `REQUIRES_DECISION`. The fix still requires choosing between valid alternatives.
+2. `Information Availability < 15` → `REQUIRES_DECISION`. The fix would require inventing or inferring information not stated clearly enough in the spec.
+3. `Meaning Preservation < 15` → `REQUIRES_DECISION`. The fix would risk changing requirement meaning instead of correcting form.
+4. `Alternative Absence < 15` → `REQUIRES_DECISION`. The fix still requires choosing between valid alternatives.
 
-These guardrails keep `--threshold 50` and `--threshold 60` runs from auto-fixing findings that still need human judgment.
+These guardrails keep `--threshold 60` runs from auto-fixing findings that still need human judgment.
 
 ## Fix Categories with Typical Confidence
 
@@ -89,6 +91,8 @@ These indicators pull confidence scores down. The more that apply, the lower the
 ## Safety Caps
 
 Certain findings are **capped at confidence 0** regardless of their condition scores. These always require human decision at every allowed threshold.
+
+If a later reporting step displays one of these findings as Minor because of Work Context severity capping, keep treating it as safety-capped and preserve the downgrade note (`[Deprioritized — capped at Minor from Critical]`) so downstream tools do not clear the cap.
 
 A finding is safety-capped if ANY of these apply:
 

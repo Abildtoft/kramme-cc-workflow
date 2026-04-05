@@ -111,7 +111,26 @@ For each finding, report:
 - Be specific in recommendations. "Add more detail" is not enough — say what detail is missing.
 - Score provisional fix confidence on all findings (0-100) using the same four-condition rubric as `/kramme:siw:spec-audit`: determinism, information availability, meaning preservation, and absence of alternatives. Sum the four scores, then apply the safety caps below before writing the agent's provisional `Fix Confidence`.
 - Use these tier boundaries for the provisional score: 90-100 = `MECHANICAL`, 75-89 = `HIGH_CONFIDENCE`, 50-74 = `MODERATE_CONFIDENCE`, 0-49 = `REQUIRES_DECISION`.
+- Apply these provisional guardrails before reporting the score: if any sub-score is below 15, set the provisional score to `0 (REQUIRES_DECISION)`.
 - Apply these safety caps before reporting the score: set the provisional score to `0 (REQUIRES_DECISION)` if any of these apply: Critical finding in Completeness, Scope, or Value Proposition; recommendation uses decision-signal language (`consider`, `decide whether`, `choose between`, `discuss with`, `evaluate options`); the finding adds or removes scope; the finding defines success-criteria substance rather than measurability.
+
+## Work Context Adjustments
+
+This spec has Work Type: {work_context.work_type}
+
+Priority dimensions (flag even minor issues): {work_context.priority_dimensions}
+Deprioritized dimensions (cap at Minor severity): {work_context.deprioritized}
+
+When evaluating **deprioritized dimensions**:
+- Assess severity normally and keep that original severity in the finding data
+- Tag each finding with: **[Deprioritized — cap to Minor during aggregation]**
+- Do NOT downgrade the severity yourself; the lead applies the Minor cap during aggregation after recording `original_severity`
+
+When evaluating **priority dimensions**:
+- Apply strict scrutiny. Even small gaps should be flagged.
+- Tag priority findings with: **[Priority dimension]**
+
+{If work_context is Production Feature or not specified, omit this entire section from the agent prompt.}
 
 ## Cross-Validation Protocol
 
@@ -160,6 +179,24 @@ and ensure the audit is complete and internally consistent.
 
 {List of spec file paths — read them for context when challenging findings}
 
+## Work Context Adjustments
+
+This spec has Work Type: {work_context.work_type}
+
+Priority dimensions (flag even minor issues): {work_context.priority_dimensions}
+Deprioritized dimensions (cap at Minor severity): {work_context.deprioritized}
+
+When evaluating **deprioritized dimensions**:
+- Assess severity normally and keep that original severity in the finding data
+- Tag each finding with: **[Deprioritized — cap to Minor during aggregation]**
+- Do NOT downgrade the severity yourself; the lead applies the Minor cap during aggregation after recording `original_severity`
+
+When evaluating **priority dimensions**:
+- Apply strict scrutiny. Even small gaps should be flagged.
+- Tag priority findings with: **[Priority dimension]**
+
+{If work_context is Production Feature or not specified, omit this entire section from the agent prompt.}
+
 ## Mission 1: Cross-Dimension Pattern Detection
 
 Read all findings from all agents. Identify findings that share a root cause.
@@ -190,7 +227,7 @@ Output: Challenge findings or clean confirmations
   - **Severity**: Critical | Major | Minor
   - **Recommendation**: Specific action to fix
   - **Fix Confidence**: {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION})
-  Compute `Fix Confidence` exactly like the dimension auditors: sum the four 0-25 sub-scores, then apply the same tier boundaries and safety caps before reporting the provisional value.
+  Compute `Fix Confidence` exactly like the dimension auditors: sum the four 0-25 sub-scores, then apply the same tier boundaries, sub-score guardrails, and safety caps before reporting the provisional value.
   OR: "{dimension}: Confirmed no findings — {evidence}"
 
 ## Mission 3: Duplicate Detection
@@ -217,7 +254,7 @@ After the cross-reviewer completes:
 3. Follow `/kramme:siw:spec-audit` Steps 4-5 for:
    - Assigning global finding IDs (SPEC-001, SPEC-002, etc.)
    - Assigning severity
-   - After final severity assignment and any Work Context caps, re-scoring every finding, including cross-reviewer challenge findings, so the final `Fix Confidence` uses the shared tier boundaries and safety caps against the final severity
+   - After final severity assignment and any Work Context caps, re-scoring every finding, including cross-reviewer challenge findings, so the final `Fix Confidence` uses the shared tier boundaries, four sub-score guardrails, and safety caps while preserving any pre-downgrade Critical safety cap via recorded `original_severity` and the matching report `Severity Note`
    - Computing dimension scores (Strong/Adequate/Weak/Missing)
    - Cross-referencing existing SIW issues
    - Writing the report to `siw/AUDIT_SPEC_REPORT.md` (or project root), or replying inline if `INLINE_MODE=true`
