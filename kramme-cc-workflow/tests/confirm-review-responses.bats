@@ -283,6 +283,30 @@ REVIEW_SUMMARY.md"
     is_blocked
 }
 
+@test "blocks env-wrapped git commit when artifact is staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook "/usr/bin/env git commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks env -C wrapped git commit when artifact is staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook "env -C repo git commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks env --chdir wrapped git commit when artifact is staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook "env --chdir=repo git commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks git -C commit when artifact is staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook "git -C repo commit -m 'test'"
+    is_blocked
+}
+
 # ============================================================================
 # CONFIGURABLE ARTIFACT LIST
 # ============================================================================

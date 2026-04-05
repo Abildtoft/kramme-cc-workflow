@@ -401,6 +401,11 @@ EOF"
     is_blocked
 }
 
+@test "blocks git commit inside command substitution assignment" {
+    run run_hook "out=\$(git commit)"
+    is_blocked
+}
+
 @test "blocks /usr/bin/sudo git commit" {
     run run_hook "/usr/bin/sudo git commit"
     is_blocked

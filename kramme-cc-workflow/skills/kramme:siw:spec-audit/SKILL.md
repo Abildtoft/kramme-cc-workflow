@@ -423,11 +423,11 @@ Spec audit report written to: {path}
 - `siw/OPEN_ISSUES_OVERVIEW.md` exists (SIW workflow is active)
 - `siw/issues/` exists or can be created
 - `siw/LOG.md` exists or can be created
-- Critical or Major findings were found, or a Minor finding preserves original Critical severity via `**Severity Note:** [Deprioritized — capped at Minor from Critical]`
+- Critical or Major findings were found, or a Minor finding preserves original Critical or Major severity via `**Severity Note:** [Deprioritized — capped at Minor from {original_severity}]`
 
 ### 6.1 Ask User
 
-If `AUTO_MODE=true`, skip this prompt and choose **Critical and major only** (this also includes Minor findings whose `Severity Note` preserves original Critical severity).
+If `AUTO_MODE=true`, skip this prompt and choose **Critical and major only** (this also includes Minor findings whose `Severity Note` preserves original Critical or Major severity).
 
 Otherwise:
 
@@ -436,7 +436,7 @@ header: "Create SIW Issues"
 question: "Found {N} actionable spec findings. Create SIW issues for them?"
 options:
   - label: "Critical and major only"
-    description: "Create {N} issues for visible Critical/Major findings plus Minor findings that preserve original Critical severity"
+    description: "Create {N} issues for visible Critical/Major findings plus Minor findings that preserve original Critical or Major severity"
   - label: "All findings"
     description: "Create {N} issues including minor ones"
   - label: "Let me select"
@@ -460,9 +460,9 @@ Before creating any issues:
 
 Before creating issue files, determine the selected findings set:
 
-- **Critical and major only** → include all visible Critical and Major findings, plus any Minor finding with `**Severity Note:** [Deprioritized — capped at Minor from Critical]`
+- **Critical and major only** → include all visible Critical and Major findings, plus any Minor finding with `**Severity Note:** [Deprioritized — capped at Minor from Critical]` or `**Severity Note:** [Deprioritized — capped at Minor from Major]`
 - **All findings** → include every finding
-- **Let me select** → present all findings, and clearly label preserved-critical Minor findings as still decision-required despite their final Minor severity
+- **Let me select** → present all findings, and clearly label Minor findings with preserved Critical or Major severity so their original urgency is not lost during selection
 
 ### 6.3 Create Issue Files
 
@@ -470,6 +470,8 @@ For each selected finding:
 
 1. Determine next available `G-` issue number from `siw/issues/`.
 2. Create issue file `siw/issues/ISSUE-G-{NNN}-spec-{slugified-title}.md` using `assets/spec-issue-template.md`.
+   - If the finding carries `**Severity Note:** [Deprioritized — capped at Minor from Critical]`, set the issue priority to `High` and copy the `Severity Note` into the issue body.
+   - If the finding carries `**Severity Note:** [Deprioritized — capped at Minor from Major]`, set the issue priority to `Medium` and copy the `Severity Note` into the issue body.
 
 3. Update `siw/OPEN_ISSUES_OVERVIEW.md` with new issue rows.
 4. Update `siw/LOG.md` Current Progress section using `assets/spec-log-last-completed.md`.

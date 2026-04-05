@@ -73,7 +73,7 @@ Spawn **4 dimension auditors** and **1 cross-reviewer** (5 agents total):
 
 Each dimension auditor receives the full spec text and analysis instructions for its assigned dimensions.
 
-Use the dimension-specific instructions from `/kramme:siw:spec-audit` Section 3.4 (Coherence, Completeness, Clarity, Scope, Actionability, Testability, Value Proposition, Technical Design) — paste the relevant blocks into each agent's prompt.
+Read `references/dimension-instructions.md` in this skill folder and paste the relevant blocks (Coherence, Completeness, Clarity, Scope, Actionability, Testability, Value Proposition, Technical Design) into each agent's prompt.
 
 **Base prompt for each auditor:**
 
@@ -89,7 +89,7 @@ Read these files completely:
 
 ## Your Assigned Dimensions
 
-{Dimension-specific instructions from base skill Section 3.4}
+{Paste the relevant blocks from references/dimension-instructions.md}
 
 ## Finding Format
 

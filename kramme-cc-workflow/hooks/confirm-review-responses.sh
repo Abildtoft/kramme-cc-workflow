@@ -42,6 +42,86 @@ matches_artifact() {
     return 1
 }
 
+is_git_commit_command() {
+    local raw_command="$1"
+
+    if command -v python3 >/dev/null 2>&1; then
+        python3 - "$raw_command" <<'PY'
+import os
+import re
+import shlex
+import sys
+
+ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
+ENV_OPTIONS_WITH_VALUE = {"-u", "--unset", "-C", "--chdir"}
+GIT_OPTIONS_WITH_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env"}
+
+try:
+    tokens = shlex.split(sys.argv[1], posix=True)
+except ValueError:
+    sys.exit(1)
+
+idx = 0
+while idx < len(tokens) and ASSIGNMENT.match(tokens[idx]):
+    idx += 1
+
+if idx < len(tokens) and os.path.basename(tokens[idx]) == "env":
+    idx += 1
+    while idx < len(tokens):
+        token = tokens[idx]
+        if ASSIGNMENT.match(token):
+            idx += 1
+            continue
+        if token == "--":
+            idx += 1
+            break
+        if token in ENV_OPTIONS_WITH_VALUE:
+            idx += 2
+            continue
+        if (
+            token.startswith("--unset=")
+            or token.startswith("--chdir=")
+            or (token.startswith("-u") and token != "-u")
+            or (token.startswith("-C") and token != "-C")
+        ):
+            idx += 1
+            continue
+        if token.startswith("-"):
+            idx += 1
+            continue
+        break
+
+if idx >= len(tokens) or os.path.basename(tokens[idx]) != "git":
+    sys.exit(1)
+
+idx += 1
+while idx < len(tokens):
+    token = tokens[idx]
+    if token == "--":
+        idx += 1
+        break
+    if token in GIT_OPTIONS_WITH_VALUE:
+        idx += 2
+        continue
+    if any(token.startswith(prefix + "=") for prefix in ("--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env")):
+        idx += 1
+        continue
+    if token.startswith("-"):
+        idx += 1
+        continue
+    break
+
+if idx < len(tokens) and tokens[idx] == "commit":
+    sys.exit(0)
+
+sys.exit(1)
+PY
+        return $?
+    fi
+
+    echo "$raw_command" | grep -qE '^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]+[[:space:]]+)*((/usr/bin/env|env)([[:space:]]+([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]+|-u([[:space:]]+[^[:space:]]+)?|--unset(=[^[:space:]]+|[[:space:]]+[^[:space:]]+)?|-C([[:space:]]+[^[:space:]]+)?|--chdir(=[^[:space:]]+|[[:space:]]+[^[:space:]]+)?))*[[:space:]]+)?git([[:space:]]+(-C|-c|--[^[:space:]]+)(=[^[:space:]]+|[[:space:]]+[^[:space:]]+)*)*[[:space:]]+commit\b'
+}
+
 input=$(cat)
 command=$(echo "$input" | jq -r '.tool_input.command // empty')
 
@@ -49,7 +129,7 @@ command=$(echo "$input" | jq -r '.tool_input.command // empty')
 [ -z "$command" ] && exit 0
 
 # Only check git commit commands
-if ! echo "$command" | grep -qE '^\s*git\s+commit\b'; then
+if ! is_git_commit_command "$command"; then
     exit 0
 fi
 
