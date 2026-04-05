@@ -50,7 +50,7 @@ Downstream tools that consume Work Context should:
 
 ### spec-audit
 
-- For **deprioritized dimensions**: cap maximum severity at Minor. Annotate capped findings with: `[Deprioritized — capped at Minor from {original_severity}]`
+- For **deprioritized dimensions**: assess severity normally, then cap the final report severity at Minor during aggregation. Preserve the original severity in finding metadata and annotate capped report entries with: `**Severity Note:** [Deprioritized — capped at Minor from {original_severity}]`
 - For **priority dimensions**: apply strict evaluation — flag even small issues
 - For **normal dimensions** (neither priority nor deprioritized): evaluate as usual
 - Add a "Work Context Applied" section at the top of `AUDIT_SPEC_REPORT.md` showing detected profile and severity adjustments

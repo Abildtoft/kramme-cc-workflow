@@ -275,6 +275,7 @@ Analyze the spec against each dimension below. For each finding, report:
 - **Be specific in recommendations.** "Add more detail" is not enough. Say what detail is missing.
 - **Score provisional fix confidence on all findings (0-100).** For each finding, assess how deterministic a fix would be: determinism of fix (0-25), information availability in spec (0-25), meaning preservation (0-25), absence of alternatives (0-25). Sum the four scores, then apply the safety caps below before writing the agent's provisional `Fix Confidence`. Technical Design findings are typically lower confidence due to subjectivity.
 - **Use these tier boundaries for the provisional score.** 90-100 = `MECHANICAL`, 75-89 = `HIGH_CONFIDENCE`, 50-74 = `MODERATE_CONFIDENCE`, 0-49 = `REQUIRES_DECISION`.
+- **Apply these provisional guardrails before reporting the score.** If any sub-score is below 15, set the provisional score to `0 (REQUIRES_DECISION)`.
 - **Apply these safety caps before reporting the score.** Set the provisional score to `0 (REQUIRES_DECISION)` if any of these apply: Critical finding in Completeness, Scope, or Value Proposition; recommendation uses decision-signal language (`consider`, `decide whether`, `choose between`, `discuss with`, `evaluate options`); the finding adds or removes scope; the finding defines success-criteria substance rather than measurability.
 
 {Dimension-specific instructions inserted here — see Section 3.4}
@@ -287,8 +288,9 @@ Priority dimensions (flag even minor issues): {work_context.priority_dimensions}
 Deprioritized dimensions (cap at Minor severity): {work_context.deprioritized}
 
 When evaluating **deprioritized dimensions**:
-- Report findings normally, but tag each finding with: **[Deprioritized — capped at Minor]**
-- Do NOT assign Critical or Major severity to deprioritized dimension findings
+- Assess severity normally and keep that original severity in the finding data
+- Tag each finding with: **[Deprioritized — cap to Minor during aggregation]**
+- Do NOT downgrade the severity yourself; the lead applies the Minor cap in Step 4.3.5 after recording `original_severity`
 
 When evaluating **priority dimensions**:
 - Apply strict scrutiny. Even small gaps should be flagged.
@@ -313,7 +315,7 @@ After all Explore agents complete:
 
 Gather all findings from every agent. Deduplicate — if multiple dimensions flagged the same issue, merge into one finding and note all affected dimensions.
 
-When you merge duplicate findings, keep a single `Fix Confidence` field for the merged entry. Re-score the merged finding against the same four-condition rubric using the consolidated details and recommendation, then re-apply the same tier boundaries and safety caps before writing the provisional merged value. Do not average the original agent scores.
+When you merge duplicate findings, keep a single `Fix Confidence` field for the merged entry. Re-score the merged finding against the same four-condition rubric using the consolidated details and recommendation, then re-apply the same tier boundaries, four sub-score guardrails, and safety caps before writing the provisional merged value. Do not average the original agent scores.
 
 ### 4.2 Assign Global Finding IDs
 
@@ -334,8 +336,8 @@ For each finding:
 If `work_context` specifies deprioritized dimensions:
 
 For each finding in a deprioritized dimension:
-- If severity was assigned as Critical or Major, downgrade to Minor
-- Annotate: `[Deprioritized — capped at Minor from {original_severity}]`
+- If severity was assigned as Critical or Major, record `original_severity={severity}`, then downgrade to Minor
+- Annotate capped findings with: `**Severity Note:** [Deprioritized — capped at Minor from {original_severity}]`
 
 This ensures deprioritized dimensions never produce Critical or Major findings, while still reporting the issues for visibility.
 
@@ -343,9 +345,11 @@ This ensures deprioritized dimensions never produce Critical or Major findings, 
 
 After final severity assignment and any Work Context downgrades, recompute each finding's final `Fix Confidence` using the same four-condition rubric on the consolidated details and final recommendation.
 
-- Re-apply the shared tier boundaries and safety caps against the **final** severity, not the earlier agent-assigned severity.
+- Re-apply the shared tier boundaries, four sub-score guardrails, and safety caps against the **final** severity, but do **not** clear a safety cap that already applied before a Work Context downgrade.
+- If Step 4.3.5 recorded `original_severity=Critical` for a Completeness, Scope, or Value Proposition finding, keep its final `Fix Confidence` at `0/100 (REQUIRES_DECISION)` and preserve the `Severity Note` so downstream auto-fix passes still treat it as safety-capped.
 - Replace any earlier provisional score if severity, recommendation wording, or merged details changed during consolidation.
-- Use this normalized value in the report output.
+- Track `preserved_critical_caps_count`: the number of final Minor findings whose `Severity Note` says `capped at Minor from Critical`.
+- Use this normalized value and `preserved_critical_caps_count` in the report output and downstream issue/summary logic.
 
 ### 4.4 Compute Dimension Scores
 
@@ -357,6 +361,9 @@ For each dimension, compute a quality score:
 | **Adequate** | No Critical findings. Some Major findings. |
 | **Weak** | Has Critical findings or many Major findings. |
 | **Missing** | Dimension not addressed at all in the spec. |
+
+- Any dimension that contains a final Minor finding with `**Severity Note:** [Deprioritized — capped at Minor from Critical]` is still `Weak`, even though the displayed severity is Minor.
+- Any report with `preserved_critical_caps_count > 0` must not be assessed as `Ready for implementation`.
 
 ### 4.5 Cross-reference Existing Issues
 
@@ -416,11 +423,11 @@ Spec audit report written to: {path}
 - `siw/OPEN_ISSUES_OVERVIEW.md` exists (SIW workflow is active)
 - `siw/issues/` exists or can be created
 - `siw/LOG.md` exists or can be created
-- Critical or Major findings were found
+- Critical or Major findings were found, or a Minor finding preserves original Critical severity via `**Severity Note:** [Deprioritized — capped at Minor from Critical]`
 
 ### 6.1 Ask User
 
-If `AUTO_MODE=true`, skip this prompt and choose **Critical and major only**.
+If `AUTO_MODE=true`, skip this prompt and choose **Critical and major only** (this also includes Minor findings whose `Severity Note` preserves original Critical severity).
 
 Otherwise:
 
@@ -429,7 +436,7 @@ header: "Create SIW Issues"
 question: "Found {N} actionable spec findings. Create SIW issues for them?"
 options:
   - label: "Critical and major only"
-    description: "Create {N} issues (skip minor findings)"
+    description: "Create {N} issues for visible Critical/Major findings plus Minor findings that preserve original Critical severity"
   - label: "All findings"
     description: "Create {N} issues including minor ones"
   - label: "Let me select"
@@ -448,6 +455,14 @@ Before creating any issues:
 2. Ensure `siw/LOG.md` exists.
    - If missing, create it with a minimal "Current Progress" section.
    - If creation fails, warn and skip Step 6 (report-only mode).
+
+### 6.2.5 Determine Issue-Eligible Findings
+
+Before creating issue files, determine the selected findings set:
+
+- **Critical and major only** → include all visible Critical and Major findings, plus any Minor finding with `**Severity Note:** [Deprioritized — capped at Minor from Critical]`
+- **All findings** → include every finding
+- **Let me select** → present all findings, and clearly label preserved-critical Minor findings as still decision-required despite their final Minor severity
 
 ### 6.3 Create Issue Files
 

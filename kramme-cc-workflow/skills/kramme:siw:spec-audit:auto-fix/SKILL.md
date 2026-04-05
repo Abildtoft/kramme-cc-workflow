@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:spec-audit:auto-fix
 description: Auto-fix mechanical spec-audit findings that have a single obvious correct resolution — cross-reference errors, terminology inconsistencies, numbering mistakes, formatting issues, and weasel words replaceable with specifics already in the spec. Run after spec-audit.
-argument-hint: "[audit-report-path] [--auto] [--dry-run] [--threshold 50-100]"
+argument-hint: "[audit-report-path] [--auto] [--dry-run] [--threshold 60-100]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -15,7 +15,7 @@ Findings that require product decisions, stakeholder input, or still lack a clea
 **Flags:**
 - `--auto` — Skip classification approval, apply all auto-fixable fixes without asking
 - `--dry-run` — Show classification and proposed fixes without modifying any files
-- `--threshold N` — Set confidence threshold for auto-fixing (50-100, default 80). Findings with confidence >= N are auto-fixable only after safety caps and the determinism/alternative guardrails are applied. Use 90 for a stricter pass, 60 for aggressive, 50 for the most permissive allowed run.
+- `--threshold N` — Set confidence threshold for auto-fixing (60-100, default 80). Findings with confidence >= N are auto-fixable only after safety caps and the four sub-score guardrails are applied. Use 90 for a stricter pass, 60 for the most permissive allowed run.
 
 ## Hard Constraints
 
@@ -23,7 +23,7 @@ Findings that require product decisions, stakeholder input, or still lack a clea
 
 **NEVER** auto-fix a safety-capped finding regardless of threshold. Critical findings in Completeness, Scope, or Value Proposition dimensions always require decisions. Findings whose recommendations use decision-signal language ("consider", "decide whether", "choose between", "discuss with", "evaluate options"), change scope, or define success-criteria substance always require decisions.
 
-**NEVER** auto-fix a finding when either `Determinism` or `Alternative Absence` scores below 15. Those findings still require choosing an approach or between valid alternatives, so they belong in `/kramme:siw:resolve-audit` even if the total confidence reaches the active threshold.
+**NEVER** auto-fix a finding when any sub-score is below 15. Low `Determinism` / `Alternative Absence` still require choosing an approach, while low `Information Availability` / `Meaning Preservation` would force inference or alter requirement meaning.
 
 **NEVER** apply a fix that changes the meaning, scope, or intent of any requirement. Fixes correct form, not substance.
 
@@ -67,7 +67,7 @@ Findings that require product decisions, stakeholder input, or still lack a clea
 Extract control flags from `$ARGUMENTS`:
 - `--auto` → set `AUTO_MODE=true`
 - `--dry-run` → set `DRY_RUN=true`
-- `--threshold N` → set `CONFIDENCE_THRESHOLD=N` (validate 50-100, default 80)
+- `--threshold N` → set `CONFIDENCE_THRESHOLD=N` (validate 60-100, default 80)
 - Remaining markdown path token → candidate report path
 
 ### 1.2 Find Report
@@ -130,6 +130,7 @@ For each finding, extract:
 - Finding ID and title
 - Dimension
 - Severity
+- Severity Note (if present)
 - Location (source file > section heading)
 - Details (including quotes from the spec)
 - Recommendation
@@ -160,12 +161,12 @@ For each extracted finding, assign a **fix confidence score** (0-100):
 
 1. Score each of the four conditions (0-25): Determinism, Information Availability, Meaning Preservation, Alternative Absence.
 2. Sum the four scores for the finding's confidence (0-100).
-3. Apply safety caps — safety-capped findings are forced to confidence 0 regardless of score.
+3. Apply safety caps — safety-capped findings are forced to confidence 0 regardless of score. If the report carries `**Severity Note:** [Deprioritized — capped at Minor from Critical]` for a Completeness, Scope, or Value Proposition finding, preserve that safety cap here as well.
 4. If the audit report already includes a `Fix Confidence` score for a finding, use it as a starting point and adjust only if the rubric evaluation yields a materially different score. If the report is from an older format and has no `Fix Confidence` line, score the finding from scratch.
 
 Classify based on the final confidence vs `CONFIDENCE_THRESHOLD` (default 80):
-- safety-capped finding → **REQUIRES_DECISION** regardless of threshold
-- finding with `Determinism < 15` or `Alternative Absence < 15` → **REQUIRES_DECISION** regardless of threshold
+- safety-capped finding, or a Completeness / Scope / Value Proposition finding marked `**Severity Note:** [Deprioritized — capped at Minor from Critical]` → **REQUIRES_DECISION** regardless of threshold
+- finding with `Determinism < 15`, `Information Availability < 15`, `Meaning Preservation < 15`, or `Alternative Absence < 15` → **REQUIRES_DECISION** regardless of threshold
 - non-safety-capped finding with confidence >= `CONFIDENCE_THRESHOLD` → **AUTO-FIXABLE**
 - otherwise → **REQUIRES_DECISION**
 
@@ -185,9 +186,11 @@ Auto-fixable ({N} findings at or above threshold):
 {For each:}
   {SPEC-NNN} ({Severity}/{Dimension}) [confidence: {score} — {tier}]: {one-line description of the fix}
 
-Requires decision ({M} findings below threshold):
-{For each:}
-  {SPEC-NNN} ({Severity}/{Dimension}) [confidence: {score} — {tier}]: {one-line reason}
+Requires decision ({M} findings):
+{For below-threshold:}
+  {SPEC-NNN} ({Severity}/{Dimension}) [below threshold; confidence: {score} — {tier}]: {one-line reason}
+{For guardrail-blocked:}
+  {SPEC-NNN} ({Severity}/{Dimension}) [guardrail-blocked; confidence: {score} — {tier}]: {one-line reason}
 {For safety-capped:}
   {SPEC-NNN} ({Severity}/{Dimension}) [safety cap]: {one-line reason}
 
@@ -200,8 +203,8 @@ If no findings at or above threshold:
 
 ```
 No auto-fixable findings at threshold {CONFIDENCE_THRESHOLD}. All {N} findings require decisions.
-{If any findings score 50-79:}
-Tip: {count} finding(s) scored 50-79. Use --threshold 60 to include moderate-confidence fixes.
+{If any findings score 60-79 and clear all guardrails:}
+Tip: {count} finding(s) cleared all guardrails but are below the threshold. Use --threshold 60 to include them.
 
 Next: /kramme:siw:resolve-audit {report_path}
 ```
@@ -339,7 +342,7 @@ and have been reclassified as requiring decisions:
 
 ### 6.4 Update Overall Assessment
 
-If all Critical and Major findings were auto-fixed and only Minor findings remain, update the overall assessment line to reflect the improved state.
+Only update the overall assessment line if all Critical and Major findings were auto-fixed, no remaining Minor finding carries `**Severity Note:** [Deprioritized — capped at Minor from Critical]`, and only uncapped Minor findings remain.
 
 ---
 
@@ -360,10 +363,10 @@ Use the summary template from `assets/auto-fix-summary.md`.
 # Stricter pass (higher confidence bar)
 /kramme:siw:spec-audit:auto-fix --threshold 90
 
-# Aggressive (includes moderate-confidence fixes)
+# Most permissive allowed threshold
 /kramme:siw:spec-audit:auto-fix --threshold 60
 
-# Preview what aggressive mode would fix
+# Preview what the lowest threshold would fix
 /kramme:siw:spec-audit:auto-fix --dry-run --threshold 60
 
 # Auto-apply all auto-fixable findings without asking
@@ -372,8 +375,6 @@ Use the summary template from `assets/auto-fix-summary.md`.
 # Auto-apply with lower threshold
 /kramme:siw:spec-audit:auto-fix --auto --threshold 70
 
-# Most permissive allowed threshold
-/kramme:siw:spec-audit:auto-fix --dry-run --threshold 50
 ```
 
 ---
@@ -402,9 +403,9 @@ If the Edit tool fails (e.g., old_string not found because the spec was modified
 - Continue with remaining findings
 
 ### All Fixes Fail
-If every mechanical fix fails verification:
+If every auto-fixable fix fails verification:
 ```
-All {N} mechanical fixes failed verification.
+All {N} auto-fixable fixes failed verification.
 The spec may have changed significantly since the audit.
 
 Recommended: Re-run /kramme:siw:spec-audit to get a fresh report.
