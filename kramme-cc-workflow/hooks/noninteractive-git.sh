@@ -152,6 +152,10 @@ def is_assignment(token):
     return ASSIGNMENT.match(token) is not None
 
 
+def has_command_substitution(token):
+    return ("$" + "(") in token or chr(96) in token
+
+
 def basename(token):
     return os.path.basename(token)
 
@@ -193,6 +197,8 @@ def parse_env_wrapped_segment(tokens, inherited_env=None):
         idx += 1
 
     while idx < len(tokens) and is_assignment(tokens[idx]):
+        if has_command_substitution(tokens[idx]):
+            raise ValueError("Assignment contains command substitution.")
         key, value = tokens[idx].split("=", 1)
         env[key] = value
         idx += 1
@@ -207,6 +213,8 @@ def parse_env_wrapped_segment(tokens, inherited_env=None):
                     idx += 1
                     break
                 if is_assignment(env_token):
+                    if has_command_substitution(env_token):
+                        raise ValueError("env assignment contains command substitution.")
                     key, value = env_token.split("=", 1)
                     env[key] = value
                     idx += 1

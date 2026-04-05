@@ -114,6 +114,7 @@ async function runInstall(parsed) {
   const primaryOutput = targetName === "codex" ? codexHome : outputRoot
   const writeOptions = {
     agentsHome,
+    pluginName: plugin.manifest.name,
     confirm: {
       yes: options.yes,
       nonInteractive: options.nonInteractive,
@@ -136,7 +137,7 @@ async function runInstall(parsed) {
       console.warn(`Skipping ${extra}: no output returned.`)
       continue
     }
-    const extraRoot = extra === "codex" ? codexHome : path.join(outputRoot, extra)
+    const extraRoot = extra === "codex" ? codexHome : outputRoot
     await handler.write(extraRoot, extraBundle, writeOptions)
     console.log(`Installed ${plugin.manifest.name} to ${extraRoot}`)
   }
@@ -1083,40 +1084,75 @@ function uniqueName(base, used) {
 
 async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
   const paths = resolveOpenCodePaths(outputRoot)
+  const pluginName = extraOpts.pluginName ?? "plugin"
+  const installStateSnapshot = await loadInstallState(paths.root)
+  const installState = installStateSnapshot.state
+  const previousEntries = getInstallEntries(installState, pluginName, "opencode")
   await ensureDir(paths.root)
   await writeJson(paths.configPath, bundle.config)
 
   const agentsDir = paths.agentsDir
-  if (bundle.agents.length > 0) {
+  if (!installStateSnapshot.fromDisk) {
     await cleanupKrammeComponents(agentsDir, {
       label: "agent",
       filter: (e) => e.isFile() && e.name.endsWith(".md"),
       confirmOptions: extraOpts.confirm,
     })
   }
+  const cleanedAgents = await cleanupInstalledEntries(agentsDir, previousEntries.agents, {
+    label: "agent",
+    confirmOptions: extraOpts.confirm,
+  })
   for (const agent of bundle.agents) {
     await writeText(path.join(agentsDir, `${agent.name}.md`), agent.content + "\n")
   }
 
-  if (bundle.plugins.length > 0) {
-    const pluginsDir = paths.pluginsDir
-    for (const plugin of bundle.plugins) {
-      await writeText(path.join(pluginsDir, plugin.name), plugin.content + "\n")
-    }
+  const pluginsDir = paths.pluginsDir
+  if (!installStateSnapshot.fromDisk) {
+    await cleanupKrammeComponents(pluginsDir, {
+      label: "plugin",
+      filter: (e) => e.isFile(),
+      confirmOptions: extraOpts.confirm,
+    })
+  }
+  const cleanedPlugins = await cleanupInstalledEntries(pluginsDir, previousEntries.plugins, {
+    label: "plugin",
+    confirmOptions: extraOpts.confirm,
+  })
+  for (const plugin of bundle.plugins) {
+    await writeText(path.join(pluginsDir, plugin.name), plugin.content + "\n")
   }
 
-  if (bundle.skillDirs.length > 0) {
-    const skillsRoot = paths.skillsDir
+  const skillsRoot = paths.skillsDir
+  if (!installStateSnapshot.fromDisk) {
     await cleanupKrammeComponents(skillsRoot, {
       label: "skill",
       filter: (e) => e.isDirectory(),
       recursive: true,
       confirmOptions: extraOpts.confirm,
     })
-    for (const skill of bundle.skillDirs) {
-      await copyDir(skill.sourceDir, path.join(skillsRoot, skill.name))
-    }
   }
+  const cleanedSkills = await cleanupInstalledEntries(skillsRoot, previousEntries.skills, {
+    label: "skill",
+    recursive: true,
+    confirmOptions: extraOpts.confirm,
+  })
+  for (const skill of bundle.skillDirs) {
+    await copyDir(skill.sourceDir, path.join(skillsRoot, skill.name))
+  }
+
+  setInstallEntries(installState, pluginName, "opencode", {
+    agents: cleanedAgents
+      ? bundle.agents.map((agent) => `${agent.name}.md`)
+      : unionEntryLists(previousEntries.agents, bundle.agents.map((agent) => `${agent.name}.md`)),
+    plugins: cleanedPlugins
+      ? bundle.plugins.map((plugin) => plugin.name)
+      : unionEntryLists(previousEntries.plugins, bundle.plugins.map((plugin) => plugin.name)),
+    skills: cleanedSkills
+      ? bundle.skillDirs.map((skill) => skill.name)
+      : unionEntryLists(previousEntries.skills, bundle.skillDirs.map((skill) => skill.name)),
+  })
+  await writeInstallState(paths.root, installState)
 }
 
 function resolveOpenCodePaths(outputRoot) {
@@ -1142,12 +1178,22 @@ function resolveOpenCodePaths(outputRoot) {
 
 async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   const codexRoot = resolveCodexOutputRoot(outputRoot)
+  const pluginName = extraOpts.pluginName ?? "plugin"
+  const installStateSnapshot = await loadInstallState(codexRoot)
+  const installState = installStateSnapshot.state
+  const previousEntries = getInstallEntries(installState, pluginName, "codex")
   await ensureDir(codexRoot)
 
   const promptsDir = path.join(codexRoot, "prompts")
-  await cleanupKrammeComponents(promptsDir, {
+  if (!installStateSnapshot.fromDisk) {
+    await cleanupKrammeComponents(promptsDir, {
+      label: "prompt",
+      filter: (e) => e.isFile() && e.name.endsWith(".md"),
+      confirmOptions: extraOpts.confirm,
+    })
+  }
+  const cleanedPrompts = await cleanupInstalledEntries(promptsDir, previousEntries.prompts, {
     label: "prompt",
-    filter: (e) => e.isFile() && e.name.endsWith(".md"),
     confirmOptions: extraOpts.confirm,
   })
   for (const prompt of bundle.prompts) {
@@ -1155,11 +1201,24 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   }
 
   const skillsRoot = path.join(codexRoot, "skills")
+  if (!installStateSnapshot.fromDisk) {
+    await cleanupKrammeComponents(skillsRoot, {
+      label: "skill",
+      filter: (e) => e.isDirectory(),
+      recursive: true,
+      confirmOptions: extraOpts.confirm,
+    })
+  }
   await cleanupKrammeComponents(skillsRoot, {
     label: "skill",
     filter: (e) => e.isDirectory(),
     recursive: true,
-    prefixes: ["kramme:", "kramme-", "impl-"],
+    prefixes: ["impl-"],
+    confirmOptions: extraOpts.confirm,
+  })
+  const cleanedCodexSkills = await cleanupInstalledEntries(skillsRoot, previousEntries.skills, {
+    label: "skill",
+    recursive: true,
     confirmOptions: extraOpts.confirm,
   })
 
@@ -1171,12 +1230,20 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
     await writeText(path.join(skillsRoot, skill.name, "SKILL.md"), skill.content + "\n")
   }
 
-  if (bundle.agentSkills) {
+  let cleanedAgentSkills = true
+  if (bundle.agentSkills && (bundle.agentSkills.length > 0 || previousEntries.agentSkills.length > 0)) {
     const agentsHome = extraOpts.agentsHome ?? path.join(os.homedir(), ".agents")
     const agentSkillsRoot = path.join(agentsHome, "skills")
-    await cleanupKrammeComponents(agentSkillsRoot, {
+    if (!installStateSnapshot.fromDisk) {
+      await cleanupKrammeComponents(agentSkillsRoot, {
+        label: "skill",
+        filter: (e) => e.isDirectory(),
+        recursive: true,
+        confirmOptions: extraOpts.confirm,
+      })
+    }
+    cleanedAgentSkills = await cleanupInstalledEntries(agentSkillsRoot, previousEntries.agentSkills, {
       label: "skill",
-      filter: (e) => e.isDirectory(),
       recursive: true,
       confirmOptions: extraOpts.confirm,
     })
@@ -1189,6 +1256,25 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   if (config) {
     await writeText(path.join(codexRoot, "config.toml"), config)
   }
+
+  setInstallEntries(installState, pluginName, "codex", {
+    prompts: cleanedPrompts
+      ? bundle.prompts.map((prompt) => `${prompt.name}.md`)
+      : unionEntryLists(previousEntries.prompts, bundle.prompts.map((prompt) => `${prompt.name}.md`)),
+    skills: cleanedCodexSkills
+      ? [
+          ...bundle.skillDirs.map((skill) => skill.name),
+          ...bundle.generatedSkills.map((skill) => skill.name),
+        ]
+      : unionEntryLists(previousEntries.skills, [
+          ...bundle.skillDirs.map((skill) => skill.name),
+          ...bundle.generatedSkills.map((skill) => skill.name),
+        ]),
+    agentSkills: cleanedAgentSkills
+      ? (bundle.agentSkills ?? []).map((skill) => skill.name)
+      : unionEntryLists(previousEntries.agentSkills, (bundle.agentSkills ?? []).map((skill) => skill.name)),
+  })
+  await writeInstallState(codexRoot, installState)
 }
 
 function resolveCodexOutputRoot(outputRoot) {
@@ -1440,6 +1526,82 @@ async function readJson(file) {
   return JSON.parse(raw)
 }
 
+function createInstallState() {
+  return {
+    version: 1,
+    plugins: {},
+  }
+}
+
+async function loadInstallState(root) {
+  const filePath = path.join(root, ".kramme-install-state.json")
+  if (!(await pathExists(filePath))) {
+    return {
+      state: createInstallState(),
+      fromDisk: false,
+    }
+  }
+
+  try {
+    const state = await readJson(filePath)
+    if (state && typeof state === "object" && state.plugins && typeof state.plugins === "object") {
+      return {
+        state,
+        fromDisk: true,
+      }
+    }
+  } catch {
+    // Ignore invalid state and rebuild from the current install.
+  }
+
+  return {
+    state: createInstallState(),
+    fromDisk: false,
+  }
+}
+
+async function writeInstallState(root, state) {
+  await writeJson(path.join(root, ".kramme-install-state.json"), state)
+}
+
+function getInstallEntries(state, pluginName, targetName) {
+  const targetState = state.plugins?.[pluginName]?.[targetName]
+  return {
+    agents: sanitizeEntryList(targetState?.agents),
+    plugins: sanitizeEntryList(targetState?.plugins),
+    prompts: sanitizeEntryList(targetState?.prompts),
+    skills: sanitizeEntryList(targetState?.skills),
+    agentSkills: sanitizeEntryList(targetState?.agentSkills),
+  }
+}
+
+function setInstallEntries(state, pluginName, targetName, entries) {
+  if (!state.plugins || typeof state.plugins !== "object") {
+    state.plugins = {}
+  }
+  if (!state.plugins[pluginName] || typeof state.plugins[pluginName] !== "object") {
+    state.plugins[pluginName] = {}
+  }
+  state.plugins[pluginName][targetName] = {
+    agents: sanitizeEntryList(entries.agents),
+    plugins: sanitizeEntryList(entries.plugins),
+    prompts: sanitizeEntryList(entries.prompts),
+    skills: sanitizeEntryList(entries.skills),
+    agentSkills: sanitizeEntryList(entries.agentSkills),
+  }
+}
+
+function sanitizeEntryList(entries) {
+  if (!Array.isArray(entries)) return []
+  return entries
+    .map((entry) => String(entry ?? "").trim())
+    .filter(Boolean)
+}
+
+function unionEntryLists(...lists) {
+  return Array.from(new Set(lists.flatMap((entries) => sanitizeEntryList(entries))))
+}
+
 async function writeJson(file, data) {
   const content = JSON.stringify(data, null, 2) + "\n"
   await writeText(file, content)
@@ -1501,6 +1663,39 @@ async function cleanupKrammeComponents(
     await fs.rm(path.join(dir, name), { recursive, force: true })
   }
   console.log(`Deleted ${matched.length} ${label}(s).`)
+}
+
+async function cleanupInstalledEntries(
+  dir,
+  entries,
+  { label, recursive = false, confirmOptions = {} } = {},
+) {
+  const matched = []
+  for (const entry of sanitizeEntryList(entries)) {
+    const targetPath = path.join(dir, entry)
+    if (await pathExists(targetPath)) {
+      matched.push(entry)
+    }
+  }
+
+  if (matched.length === 0) return true
+
+  console.log(`\nFound ${matched.length} existing ${label}(s) from this plugin in ${dir}:`)
+  for (const name of matched) {
+    console.log(`  - ${name}`)
+  }
+
+  const confirmed = await confirm(`Delete these ${label}s before installing?`, confirmOptions)
+  if (!confirmed) {
+    console.log(`Skipping ${label} cleanup.`)
+    return false
+  }
+
+  for (const entry of matched) {
+    await fs.rm(path.join(dir, entry), { recursive, force: true })
+  }
+  console.log(`Deleted ${matched.length} ${label}(s).`)
+  return true
 }
 
 let nonInteractiveReaderInitialized = false

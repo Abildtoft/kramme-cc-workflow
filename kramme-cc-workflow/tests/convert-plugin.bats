@@ -15,10 +15,11 @@ teardown() {
 
 create_fixture_plugin() {
   local plugin_dir="$1"
+  local plugin_name="${2:-fixture-plugin}"
   mkdir -p "$plugin_dir/.claude-plugin"
-  cat > "$plugin_dir/.claude-plugin/plugin.json" <<'JSON'
+  cat > "$plugin_dir/.claude-plugin/plugin.json" <<JSON
 {
-  "name": "fixture-plugin",
+  "name": "$plugin_name",
   "version": "1.0.0",
   "agents": [],
   "commands": [],
@@ -87,21 +88,13 @@ JSON
   [ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
 
   EMPTY_PLUGIN_DIR="$TMP_DIR/empty-plugin"
-  mkdir -p "$EMPTY_PLUGIN_DIR/.claude-plugin"
-  cat > "$EMPTY_PLUGIN_DIR/.claude-plugin/plugin.json" <<'JSON'
-{
-  "name": "empty-plugin",
-  "version": "1.0.0",
-  "agents": [],
-  "commands": [],
-  "skills": []
-}
-JSON
+  create_fixture_plugin "$EMPTY_PLUGIN_DIR" "kramme-cc-workflow"
 
   run node "$SCRIPT" install "$EMPTY_PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
   [ "$status" -eq 0 ]
   [ ! -d "$TMP_DIR/.agents/skills/kramme:architecture-strategist" ]
   [ ! -d "$TMP_DIR/.agents/skills/kramme:silent-failure-hunter" ]
+  [ ! -d "$TMP_DIR/.agents/skills/performance-oracle" ]
 }
 
 @test "codex conversion skips cleanup in non-interactive mode without --yes" {
@@ -114,16 +107,7 @@ JSON
   [ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
 
   EMPTY_PLUGIN_DIR="$TMP_DIR/empty-plugin"
-  mkdir -p "$EMPTY_PLUGIN_DIR/.claude-plugin"
-  cat > "$EMPTY_PLUGIN_DIR/.claude-plugin/plugin.json" <<'JSON'
-{
-  "name": "empty-plugin",
-  "version": "1.0.0",
-  "agents": [],
-  "commands": [],
-  "skills": []
-}
-JSON
+  create_fixture_plugin "$EMPTY_PLUGIN_DIR" "kramme-cc-workflow"
 
   run node "$SCRIPT" install "$EMPTY_PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --non-interactive
   [ "$status" -eq 0 ]
@@ -225,21 +209,13 @@ MD
   [ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
 
   EMPTY_PLUGIN_DIR="$TMP_DIR/empty-plugin-yes"
-  mkdir -p "$EMPTY_PLUGIN_DIR/.claude-plugin"
-  cat > "$EMPTY_PLUGIN_DIR/.claude-plugin/plugin.json" <<'JSON'
-{
-  "name": "empty-plugin-yes",
-  "version": "1.0.0",
-  "agents": [],
-  "commands": [],
-  "skills": []
-}
-JSON
+  create_fixture_plugin "$EMPTY_PLUGIN_DIR" "kramme-cc-workflow"
 
   run bash -c "set +e; set +o pipefail; yes | node \"$SCRIPT\" install \"$EMPTY_PLUGIN_DIR\" --to codex --codex-home \"$TMP_DIR\" --agents-home \"$TMP_DIR/.agents\"; exit \${PIPESTATUS[1]}"
   [ "$status" -eq 0 ]
   [ ! -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
   [ ! -d "$TMP_DIR/.agents/skills/kramme:architecture-strategist" ]
+  [ ! -d "$TMP_DIR/.agents/skills/performance-oracle" ]
 }
 
 @test "codex conversion cleans old impl- prefixed skills on upgrade" {
@@ -254,6 +230,79 @@ JSON
   [ "$status" -eq 0 ]
   [ ! -d "$TMP_DIR/.codex/skills/impl-kramme-create-pr" ]
   [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
+}
+
+@test "codex conversion cleans legacy stale skills on first stateful install" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  mkdir -p "$TMP_DIR/.codex/skills/kramme:obsolete-skill"
+  echo "old" > "$TMP_DIR/.codex/skills/kramme:obsolete-skill/SKILL.md"
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+  [ ! -d "$TMP_DIR/.codex/skills/kramme:obsolete-skill" ]
+  [ -f "$TMP_DIR/.codex/.kramme-install-state.json" ]
+}
+
+@test "codex conversion preserves workflow skills and agents when connect plugin is installed" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install kramme-cc-workflow --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
+  [ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
+
+  run node "$SCRIPT" install kramme-connect-workflow --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:connect:migrate-store-ngrx/SKILL.md" ]
+  [ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
+  [ -f "$TMP_DIR/.agents/skills/performance-oracle/SKILL.md" ]
+}
+
+@test "opencode conversion preserves workflow skills when connect plugin is installed" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install kramme-cc-workflow --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/opencode/opencode.json" ]
+  [ -f "$TMP_DIR/opencode/skills/kramme:pr:create/SKILL.md" ]
+
+  run node "$SCRIPT" install kramme-connect-workflow --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/opencode/skills/kramme:pr:create/SKILL.md" ]
+  [ -f "$TMP_DIR/opencode/skills/kramme:connect:migrate-store-ngrx/SKILL.md" ]
+}
+
+@test "opencode conversion cleans legacy stale skills on first stateful install" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  mkdir -p "$TMP_DIR/opencode/skills/kramme:obsolete-skill"
+  echo "old" > "$TMP_DIR/opencode/skills/kramme:obsolete-skill/SKILL.md"
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+  [ ! -d "$TMP_DIR/opencode/skills/kramme:obsolete-skill" ]
+  [ -f "$TMP_DIR/opencode/.kramme-install-state.json" ]
+}
+
+@test "--also opencode writes to the requested output root" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install kramme-cc-workflow --to codex --also opencode --output "$TMP_DIR/opencode-root" --codex-home "$TMP_DIR/.codex" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/opencode-root/opencode.json" ]
+  [ ! -f "$TMP_DIR/opencode-root/opencode/opencode.json" ]
 }
 
 @test "opencode conversion includes command entries from skills" {

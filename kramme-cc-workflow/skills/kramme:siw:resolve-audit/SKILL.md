@@ -116,6 +116,7 @@ For each finding, collect:
 - Requirement/source references
 - Evidence/code references
 - Severity/category section
+- Severity Note if present
 - Existing issue note if present
 - Source report path (`AUDIT_IMPLEMENTATION_REPORT.md` or `AUDIT_SPEC_REPORT.md`)
 
@@ -129,9 +130,9 @@ Ignore:
 
 If the parsed arguments include finding ids (example: `DIV-002 EXT-001 SPEC-003`), process only those.
 Otherwise, process all actionable findings in severity order:
-1. Critical findings (DIV-*, EXT-*, DISC-*, MISS-*, SPEC-*)
-2. Major findings
-3. Minor findings
+1. Critical findings, plus SPEC/PROD findings whose `Severity Note` says `from Critical`
+2. Major findings, plus SPEC/PROD findings whose `Severity Note` says `from Major`
+3. Remaining Minor findings
 
 ## Step 4: One-Finding Triage Loop
 
@@ -251,6 +252,7 @@ Issue creation:
 2. Create file:
    - `siw/issues/ISSUE-G-{NNN}-resolve-{finding-id}-{slug}.md`
 3. Use the matching template based on finding type:
+   - For SPEC/PROD findings with `Severity Note` showing `from Critical` or `from Major`, preserve that original severity when assigning issue priority and copy the `Severity Note` into the issue body.
 
 ### Template for DIV-*/EXT-* findings
 
@@ -308,7 +310,7 @@ Issue creation:
 ```markdown
 # ISSUE-G-{NNN}: Spec: {finding_id} - {short title}
 
-**Status:** Ready | **Priority:** {High/Medium/Low} | **Phase:** General | **Related:** Spec Audit Report
+**Status:** Ready | **Priority:** {High/Medium/Low; if `Severity Note` says `from Critical` use High, if it says `from Major` use Medium} | **Phase:** General | **Related:** Spec Audit Report
 
 ## Problem
 
@@ -317,6 +319,7 @@ Issue creation:
 **Audit Finding:** `{finding_id}`
 **Dimension:** {coherence/completeness/clarity/scope/actionability/testability/value/technical design}
 **Source:** `{report_path}`
+{If present} **Severity Note:** {copied from audit report}
 
 ## Context
 
