@@ -72,7 +72,7 @@ These guardrails keep `--threshold 60` runs from auto-fixing findings that still
 | **Passive voice with obvious actor** | "The request will be validated" in a section clearly about a specific component | Rewrite with the actor named in the surrounding context | 80-95 |
 | **Formatting inconsistencies** | Mixed list styles, inconsistent heading levels, inconsistent bold/italic usage | Standardize to the dominant format in the spec | 90-100 |
 | **Weasel words with specifics available** | "various endpoints" when the spec lists exact endpoints nearby, "etc." when all items are enumerable | Replace vague term with the specific items from the spec | 75-95 |
-| **Missing Out of Scope section** | No explicit out-of-scope section, but boundaries are deducible from in-scope items and context | Add section with items clearly derivable from existing content | 70-85 |
+| **Missing Out of Scope section** | No explicit out-of-scope section, but boundaries are deducible from in-scope items and context | Usually requires decision because adding scope framing changes requirement meaning, even when the boundaries seem derivable | 0-40 |
 | **Duplicate content** | Same information stated identically in two places, one clearly the canonical location | Remove the duplicate, keep the canonical instance | 85-95 |
 | **Broken markdown formatting** | Unclosed code blocks, malformed tables, broken link syntax | Fix the markdown syntax | 95-100 |
 
@@ -105,6 +105,6 @@ A finding is safety-capped if ANY of these apply:
 
 - **Terminology inconsistency where both terms are used frequently** (e.g., 8x vs 5x) → Score 30-40 (Condition 1: 5, Condition 4: 0). Below default threshold.
 - **Missing section that requires only a stub** (e.g., empty "Testing" section) → Score 20-30. Below default threshold.
-- **Missing section where content is fully derivable** (e.g., "Out of Scope" when in-scope is comprehensive) → Score 70-85. Auto-fixable at default only if score >= 80.
+- **Missing section where content is fully derivable** (e.g., "Out of Scope" when in-scope is comprehensive) → Score 0-40. Still below any allowed threshold because the fix adds scope framing.
 - **Passive voice where the actor is ambiguous** (could be frontend or backend) → Score 40-50. Below default threshold.
 - **Passive voice where the actor is obvious from section header** → Score 85-95. Auto-fixable at default threshold.

@@ -58,7 +58,7 @@ Evaluate specification documents for quality across 8 dimensions before implemen
 
 `--auto` means:
 - replace any previous audit report automatically
-- create SIW issues for **Critical and Major** findings when Step 6 applies
+- create SIW issues for **Critical and Major** findings, plus Minor findings that preserve original Critical or Major severity when Step 6 applies
 - skip the report overwrite / issue-creation prompts
 
 **Detection rules for remaining arguments:**
@@ -315,6 +315,8 @@ After all Explore agents complete:
 
 Gather all findings from every agent. Deduplicate — if multiple dimensions flagged the same issue, merge into one finding and note all affected dimensions.
 
+When a merged finding spans both deprioritized and non-deprioritized dimensions, treat the non-deprioritized dimension as authoritative for severity capping. Only findings whose affected dimensions are entirely deprioritized may be capped to Minor in Step 4.3.5.
+
 When you merge duplicate findings, keep a single `Fix Confidence` field for the merged entry. Re-score the merged finding against the same four-condition rubric using the consolidated details and recommendation, then re-apply the same tier boundaries, four sub-score guardrails, and safety caps before writing the provisional merged value. Do not average the original agent scores.
 
 ### 4.2 Assign Global Finding IDs
@@ -335,11 +337,13 @@ For each finding:
 
 If `work_context` specifies deprioritized dimensions:
 
-For each finding in a deprioritized dimension:
+For each finding whose affected dimensions are all deprioritized:
 - If severity was assigned as Critical or Major, record `original_severity={severity}`, then downgrade to Minor
 - Annotate capped findings with: `**Severity Note:** [Deprioritized — capped at Minor from {original_severity}]`
 
-This ensures deprioritized dimensions never produce Critical or Major findings, while still reporting the issues for visibility.
+If a merged finding also affects any non-deprioritized dimension, do **not** apply the cap. Keep the normally assigned severity and note all affected dimensions in the finding body.
+
+This ensures purely deprioritized dimensions never produce Critical or Major findings, while still preserving blockers that also affect prioritized or neutral dimensions.
 
 ### 4.3.6 Normalize Final Fix Confidence
 
@@ -401,6 +405,8 @@ options:
   - label: "Abort"
     description: "Cancel — keep existing report"
 ```
+
+If the user chooses **Append**, append the new report as a complete new `# Spec Audit Report` block at the end of the file, separated from the previous run with `---`. Do not merge sections across runs.
 
 ### 5.3 Compile and Write Report
 

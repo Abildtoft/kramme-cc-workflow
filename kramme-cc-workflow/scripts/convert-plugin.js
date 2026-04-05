@@ -938,10 +938,8 @@ function escapeTemplateLiteral(value) {
 
 function convertClaudeToCodex(plugin, options) {
   const { skills, commands } = filterByPlatform(plugin.skills, plugin.commands, "codex")
-  const skillDirs = skills.map((skill) => ({ name: skill.name, sourceDir: skill.sourceDir }))
-  const copiedSkillNames = new Set(skillDirs.map((skill) => codexName(skill.name)))
-
-  const usedSkillNames = new Set(skillDirs.map((skill) => codexName(skill.name)))
+  const copiedSkillNames = new Set(skills.map((skill) => codexName(skill.name)))
+  const usedSkillNames = new Set(copiedSkillNames)
   const knownCommandNames = new Set(copiedSkillNames)
   const commandSkills = commands
     // Skill-backed commands already exist as copied skill directories.
@@ -952,6 +950,7 @@ function convertClaudeToCodex(plugin, options) {
       knownCommandNames.add(skillName)
       return convertCommandSkill(command, knownCommandNames, skillName)
     })
+  const skillDirs = skills.map((skill) => convertExistingSkillForCodex(skill, knownCommandNames))
 
   const agentSkills = plugin.agents.map((agent) => convertAgentSkill(agent, usedSkillNames))
 
@@ -1006,6 +1005,22 @@ function convertCommandSkill(command, knownCommands, name) {
   return { name, content }
 }
 
+function convertExistingSkillForCodex(skill, knownCommands) {
+  const frontmatter = {
+    name: skill.name,
+    description: sanitizeDescription(
+      skill.description ?? `Converted from Claude skill ${skill.name}`,
+    ),
+    "argument-hint": skill.argumentHint,
+    "disable-model-invocation": skill.disableModelInvocation,
+    "user-invocable": skill.userInvocable,
+    "kramme-platforms": skill.platforms && skill.platforms.length > 0 ? skill.platforms : undefined,
+  }
+  const body = transformContentForCodex(skill.body.trim(), { knownCommands })
+  const content = formatFrontmatter(frontmatter, body.length > 0 ? body : skill.body)
+  return { name: skill.name, sourceDir: skill.sourceDir, content }
+}
+
 function transformContentForCodex(body, options = {}) {
   let result = body
   const knownCommands = options.knownCommands
@@ -1017,7 +1032,7 @@ function transformContentForCodex(body, options = {}) {
     return `${prefix}Use the $${skillName} skill to: ${trimmedArgs}`
   })
 
-  const slashCommandPattern = /(?<![:\w])\/([a-z][a-z0-9_:-]*?)(?=[\s,."')\]}]|$)/gi
+  const slashCommandPattern = /(?<![:\w])\/([a-z][a-z0-9_:-]*?)(?=[\s,.`"')\]}]|$)/gi
   result = result.replace(slashCommandPattern, (match, commandName) => {
     if (commandName.includes("/")) return match
     if (["dev", "tmp", "etc", "usr", "var", "bin", "home"].includes(commandName)) return match
@@ -1085,20 +1100,17 @@ function uniqueName(base, used) {
 async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
   const paths = resolveOpenCodePaths(outputRoot)
   const pluginName = extraOpts.pluginName ?? "plugin"
-  const installStateSnapshot = await loadInstallState(paths.root)
-  const installState = installStateSnapshot.state
-  const previousEntries = getInstallEntries(installState, pluginName, "opencode")
+  const { state: installState } = await loadInstallState(paths.root)
+  const previousEntries = await getPreviousInstallEntries(
+    paths.root,
+    installState,
+    pluginName,
+    "opencode",
+  )
   await ensureDir(paths.root)
   await writeJson(paths.configPath, bundle.config)
 
   const agentsDir = paths.agentsDir
-  if (!installStateSnapshot.fromDisk) {
-    await cleanupKrammeComponents(agentsDir, {
-      label: "agent",
-      filter: (e) => e.isFile() && e.name.endsWith(".md"),
-      confirmOptions: extraOpts.confirm,
-    })
-  }
   const cleanedAgents = await cleanupInstalledEntries(agentsDir, previousEntries.agents, {
     label: "agent",
     confirmOptions: extraOpts.confirm,
@@ -1108,13 +1120,6 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
   }
 
   const pluginsDir = paths.pluginsDir
-  if (!installStateSnapshot.fromDisk) {
-    await cleanupKrammeComponents(pluginsDir, {
-      label: "plugin",
-      filter: (e) => e.isFile(),
-      confirmOptions: extraOpts.confirm,
-    })
-  }
   const cleanedPlugins = await cleanupInstalledEntries(pluginsDir, previousEntries.plugins, {
     label: "plugin",
     confirmOptions: extraOpts.confirm,
@@ -1124,14 +1129,6 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
   }
 
   const skillsRoot = paths.skillsDir
-  if (!installStateSnapshot.fromDisk) {
-    await cleanupKrammeComponents(skillsRoot, {
-      label: "skill",
-      filter: (e) => e.isDirectory(),
-      recursive: true,
-      confirmOptions: extraOpts.confirm,
-    })
-  }
   const cleanedSkills = await cleanupInstalledEntries(skillsRoot, previousEntries.skills, {
     label: "skill",
     recursive: true,
@@ -1139,9 +1136,12 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
   })
   for (const skill of bundle.skillDirs) {
     await copyDir(skill.sourceDir, path.join(skillsRoot, skill.name))
+    if (skill.content) {
+      await writeText(path.join(skillsRoot, skill.name, "SKILL.md"), skill.content + "\n")
+    }
   }
 
-  setInstallEntries(installState, pluginName, "opencode", {
+  const nextEntries = {
     agents: cleanedAgents
       ? bundle.agents.map((agent) => `${agent.name}.md`)
       : unionEntryLists(previousEntries.agents, bundle.agents.map((agent) => `${agent.name}.md`)),
@@ -1151,8 +1151,10 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
     skills: cleanedSkills
       ? bundle.skillDirs.map((skill) => skill.name)
       : unionEntryLists(previousEntries.skills, bundle.skillDirs.map((skill) => skill.name)),
-  })
+  }
+  setInstallEntries(installState, pluginName, "opencode", nextEntries)
   await writeInstallState(paths.root, installState)
+  await writeInstallManifest(paths.root, pluginName, "opencode", nextEntries)
 }
 
 function resolveOpenCodePaths(outputRoot) {
@@ -1179,19 +1181,11 @@ function resolveOpenCodePaths(outputRoot) {
 async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   const codexRoot = resolveCodexOutputRoot(outputRoot)
   const pluginName = extraOpts.pluginName ?? "plugin"
-  const installStateSnapshot = await loadInstallState(codexRoot)
-  const installState = installStateSnapshot.state
-  const previousEntries = getInstallEntries(installState, pluginName, "codex")
+  const { state: installState } = await loadInstallState(codexRoot)
+  const previousEntries = await getPreviousInstallEntries(codexRoot, installState, pluginName, "codex")
   await ensureDir(codexRoot)
 
   const promptsDir = path.join(codexRoot, "prompts")
-  if (!installStateSnapshot.fromDisk) {
-    await cleanupKrammeComponents(promptsDir, {
-      label: "prompt",
-      filter: (e) => e.isFile() && e.name.endsWith(".md"),
-      confirmOptions: extraOpts.confirm,
-    })
-  }
   const cleanedPrompts = await cleanupInstalledEntries(promptsDir, previousEntries.prompts, {
     label: "prompt",
     confirmOptions: extraOpts.confirm,
@@ -1201,14 +1195,6 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   }
 
   const skillsRoot = path.join(codexRoot, "skills")
-  if (!installStateSnapshot.fromDisk) {
-    await cleanupKrammeComponents(skillsRoot, {
-      label: "skill",
-      filter: (e) => e.isDirectory(),
-      recursive: true,
-      confirmOptions: extraOpts.confirm,
-    })
-  }
   await cleanupKrammeComponents(skillsRoot, {
     label: "skill",
     filter: (e) => e.isDirectory(),
@@ -1224,6 +1210,9 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
 
   for (const skill of bundle.skillDirs) {
     await copyDir(skill.sourceDir, path.join(skillsRoot, skill.name))
+    if (skill.content) {
+      await writeText(path.join(skillsRoot, skill.name, "SKILL.md"), skill.content + "\n")
+    }
   }
 
   for (const skill of bundle.generatedSkills) {
@@ -1234,14 +1223,6 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   if (bundle.agentSkills && (bundle.agentSkills.length > 0 || previousEntries.agentSkills.length > 0)) {
     const agentsHome = extraOpts.agentsHome ?? path.join(os.homedir(), ".agents")
     const agentSkillsRoot = path.join(agentsHome, "skills")
-    if (!installStateSnapshot.fromDisk) {
-      await cleanupKrammeComponents(agentSkillsRoot, {
-        label: "skill",
-        filter: (e) => e.isDirectory(),
-        recursive: true,
-        confirmOptions: extraOpts.confirm,
-      })
-    }
     cleanedAgentSkills = await cleanupInstalledEntries(agentSkillsRoot, previousEntries.agentSkills, {
       label: "skill",
       recursive: true,
@@ -1257,7 +1238,7 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
     await writeText(path.join(codexRoot, "config.toml"), config)
   }
 
-  setInstallEntries(installState, pluginName, "codex", {
+  const nextEntries = {
     prompts: cleanedPrompts
       ? bundle.prompts.map((prompt) => `${prompt.name}.md`)
       : unionEntryLists(previousEntries.prompts, bundle.prompts.map((prompt) => `${prompt.name}.md`)),
@@ -1273,8 +1254,10 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
     agentSkills: cleanedAgentSkills
       ? (bundle.agentSkills ?? []).map((skill) => skill.name)
       : unionEntryLists(previousEntries.agentSkills, (bundle.agentSkills ?? []).map((skill) => skill.name)),
-  })
+  }
+  setInstallEntries(installState, pluginName, "codex", nextEntries)
   await writeInstallState(codexRoot, installState)
+  await writeInstallManifest(codexRoot, pluginName, "codex", nextEntries)
 }
 
 function resolveCodexOutputRoot(outputRoot) {
@@ -1560,6 +1543,46 @@ async function loadInstallState(root) {
   }
 }
 
+function getInstallManifestPath(root, pluginName, targetName) {
+  return path.join(
+    root,
+    ".kramme-install-manifests",
+    `${encodeURIComponent(pluginName)}-${targetName}.json`,
+  )
+}
+
+async function loadInstallManifest(root, pluginName, targetName) {
+  const filePath = getInstallManifestPath(root, pluginName, targetName)
+  if (!(await pathExists(filePath))) return null
+
+  try {
+    const entries = await readJson(filePath)
+    if (entries && typeof entries === "object") {
+      return {
+        agents: sanitizeEntryList(entries.agents),
+        plugins: sanitizeEntryList(entries.plugins),
+        prompts: sanitizeEntryList(entries.prompts),
+        skills: sanitizeEntryList(entries.skills),
+        agentSkills: sanitizeEntryList(entries.agentSkills),
+      }
+    }
+  } catch {
+    // Ignore invalid manifests and rebuild from the current install.
+  }
+
+  return null
+}
+
+async function writeInstallManifest(root, pluginName, targetName, entries) {
+  await writeJson(getInstallManifestPath(root, pluginName, targetName), {
+    agents: sanitizeEntryList(entries.agents),
+    plugins: sanitizeEntryList(entries.plugins),
+    prompts: sanitizeEntryList(entries.prompts),
+    skills: sanitizeEntryList(entries.skills),
+    agentSkills: sanitizeEntryList(entries.agentSkills),
+  })
+}
+
 async function writeInstallState(root, state) {
   await writeJson(path.join(root, ".kramme-install-state.json"), state)
 }
@@ -1573,6 +1596,13 @@ function getInstallEntries(state, pluginName, targetName) {
     skills: sanitizeEntryList(targetState?.skills),
     agentSkills: sanitizeEntryList(targetState?.agentSkills),
   }
+}
+
+async function getPreviousInstallEntries(root, state, pluginName, targetName) {
+  if (state.plugins?.[pluginName]?.[targetName]) {
+    return getInstallEntries(state, pluginName, targetName)
+  }
+  return (await loadInstallManifest(root, pluginName, targetName)) ?? getInstallEntries(state, pluginName, targetName)
 }
 
 function setInstallEntries(state, pluginName, targetName, entries) {
