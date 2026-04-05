@@ -28,6 +28,45 @@ create_fixture_plugin() {
 JSON
 }
 
+create_hook_fixture_plugin() {
+  local plugin_dir="$1"
+  local plugin_name="$2"
+  local script_name="$3"
+
+  create_fixture_plugin "$plugin_dir" "$plugin_name"
+  mkdir -p "$plugin_dir/hooks/lib"
+
+  cat > "$plugin_dir/hooks/hooks.json" <<JSON
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \${CLAUDE_PLUGIN_ROOT}/hooks/${script_name}.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+JSON
+
+  cat > "$plugin_dir/hooks/${script_name}.sh" <<'SH'
+#!/bin/bash
+exit 0
+SH
+
+  cat > "$plugin_dir/hooks/lib/check-enabled.sh" <<'SH'
+#!/bin/bash
+exit_if_hook_disabled() {
+  return 0
+}
+SH
+}
+
 @test "codex conversion creates skills from user-invocable skills" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
@@ -496,6 +535,54 @@ MD
   run jq -r '.command | has("kramme:pr:create")' "$TMP_DIR/opencode.json"
   [ "$status" -eq 0 ]
   [ "$output" = "true" ]
+}
+
+@test "opencode conversion installs hooks and injects plugin root for hook commands" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  [ -f "$TMP_DIR/opencode/hook-bundles/kramme-cc-workflow/hooks/block-rm-rf.sh" ]
+  [ -f "$TMP_DIR/opencode/hook-bundles/kramme-cc-workflow/hooks/lib/check-enabled.sh" ]
+
+  [ -f "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts" ]
+
+  run rg -n 'hook-bundles", "kramme-cc-workflow"' "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts"
+  [ "$status" -eq 0 ]
+
+  run rg -n 'CLAUDE_PLUGIN_ROOT="\$\{claudePluginRoot\}" bash \\\$\{CLAUDE_PLUGIN_ROOT\}/hooks/block-rm-rf.sh' "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts"
+  [ "$status" -eq 0 ]
+}
+
+@test "opencode conversion preserves existing hook-enabled plugin installs" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_A="$TMP_DIR/plugin-a"
+  PLUGIN_B="$TMP_DIR/plugin-b"
+  create_hook_fixture_plugin "$PLUGIN_A" "plugin-a" "alpha-hook"
+  create_hook_fixture_plugin "$PLUGIN_B" "plugin-b" "beta-hook"
+
+  run node "$SCRIPT" install "$PLUGIN_A" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  run node "$SCRIPT" install "$PLUGIN_B" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  [ -f "$TMP_DIR/opencode/hook-bundles/plugin-a/hooks/alpha-hook.sh" ]
+  [ -f "$TMP_DIR/opencode/hook-bundles/plugin-b/hooks/beta-hook.sh" ]
+  [ -f "$TMP_DIR/opencode/plugins/converted-hooks-plugin-a.ts" ]
+  [ -f "$TMP_DIR/opencode/plugins/converted-hooks-plugin-b.ts" ]
+
+  run rg -n 'alpha-hook\.sh' "$TMP_DIR/opencode/plugins/converted-hooks-plugin-a.ts"
+  [ "$status" -eq 0 ]
+
+  run rg -n 'beta-hook\.sh' "$TMP_DIR/opencode/plugins/converted-hooks-plugin-b.ts"
+  [ "$status" -eq 0 ]
 }
 
 @test "from-commands permissions fall back when no allowed-tools are declared" {

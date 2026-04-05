@@ -334,6 +334,18 @@ REVIEW_SUMMARY.md"
     is_blocked
 }
 
+@test "blocks chained git commit when artifact is staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook "git status && git commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks shell-wrapped git commit when artifact is staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook "sh -c 'git commit -m \"test\"'"
+    is_blocked
+}
+
 @test "blocks git -C commit when artifact is staged" {
     mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
     run run_hook "git -C repo commit -m 'test'"
@@ -349,6 +361,121 @@ REVIEW_SUMMARY.md"
 @test "blocks env --chdir wrapped git commit when artifact is staged without python3" {
     mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
     run run_hook_without_python "env --chdir=repo git commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks chained git commit when artifact is staged without python3" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "git status && git commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks shell-wrapped git commit when artifact is staged without python3" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "sh -c 'git commit -m \"test\"'"
+    is_blocked
+}
+
+@test "blocks git -C quoted path with spaces when artifact is staged without python3" {
+    local repo="$BATS_TEST_TMPDIR/repo with space"
+    mkdir -p "$repo"
+    mock_git_staged_for_repo "$repo" "REVIEW_OVERVIEW.md"
+
+    run run_hook_without_python "git -C '$repo' commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks git -C empty path commit when artifact is staged without python3" {
+    mock_git_staged_for_repo "" "REVIEW_OVERVIEW.md" "nothing.txt"
+
+    run run_hook_without_python "git -C '' commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks git -C escaped path with spaces when artifact is staged without python3" {
+    local repo="$BATS_TEST_TMPDIR/repo with space"
+    mkdir -p "$repo"
+    mock_git_staged_for_repo "$repo" "REVIEW_OVERVIEW.md"
+
+    run run_hook_without_python "git -C ${repo// /\\ } commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks git -C mixed quoted path with spaces when artifact is staged without python3" {
+    local repo_base="$BATS_TEST_TMPDIR/base"
+    local repo="$repo_base/repo with space"
+    mkdir -p "$repo_base" "$repo"
+    mock_git_staged_for_repo "$repo" "REVIEW_OVERVIEW.md"
+
+    run run_hook_without_python "git -C $repo_base/'repo with space' commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks sudo git commit when artifact is staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+
+    run run_hook "sudo git commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks sudo --user git commit when artifact is staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+
+    run run_hook "sudo --user root git commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks sudo --chdir git commit when artifact is staged" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+
+    run run_hook "sudo --chdir repo git commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks sudo --chdir= git commit when artifact is staged" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+
+    run run_hook "sudo --chdir=repo git commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks sudo git commit when artifact is staged without python3" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+
+    run run_hook_without_python "sudo git commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks sudo --user git commit when artifact is staged without python3" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+
+    run run_hook_without_python "sudo --user root git commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks sudo --chdir git commit when artifact is staged without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+
+    run run_hook_without_python "sudo --chdir repo git commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks sudo --chdir= git commit when artifact is staged without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+
+    run run_hook_without_python "sudo --chdir=repo git commit -m 'test'"
+
     is_blocked
 }
 

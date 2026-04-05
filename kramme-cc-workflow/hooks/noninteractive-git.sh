@@ -45,16 +45,6 @@ is_shell_keyword_token() {
     return 1
 }
 
-segment_mentions_git_exec() {
-    local token
-    for token in "$@"; do
-        if [ "$(token_basename "$token")" = "git" ]; then
-            return 0
-        fi
-    done
-    return 1
-}
-
 args_have_short_option() {
     local wanted="$1"
     shift
@@ -101,19 +91,48 @@ commit_has_message_source() {
         || args_have_long_option "--no-edit" "$@"
 }
 
-shell_exec_uses_inline_command() {
-    local arg value
+extract_shell_inline_command() {
+    local value
 
-    for arg in "$@"; do
-        value="$(strip_wrapping_quotes "$arg")"
-        [ "$value" = "--" ] && return 1
+    while [ $# -gt 0 ]; do
+        value="$(strip_wrapping_quotes "$1")"
         case "$value" in
-            -c|--command|--command=*) return 0 ;;
-            --*) ;;
+            --)
+                return 1
+                ;;
+            -c|--command)
+                shift
+                [ $# -gt 0 ] || return 1
+                printf '%s\n' "$(strip_wrapping_quotes "$1")"
+                return 0
+                ;;
+            --command=*)
+                printf '%s\n' "${value#*=}"
+                return 0
+                ;;
+            --rcfile|--init-file|--startup-file|-o|-O|+O)
+                shift
+                [ $# -gt 0 ] && shift
+                ;;
+            --rcfile=*|--init-file=*|--startup-file=*)
+                shift
+                ;;
+            --*)
+                shift
+                ;;
             -*)
                 case "${value#-}" in
-                    *c*) return 0 ;;
+                    *c*)
+                        shift
+                        [ $# -gt 0 ] || return 1
+                        printf '%s\n' "$(strip_wrapping_quotes "$1")"
+                        return 0
+                        ;;
                 esac
+                shift
+                ;;
+            +*)
+                shift
                 ;;
             *)
                 return 1
@@ -137,8 +156,41 @@ record_git_editor_env() {
     esac
 }
 
+evaluate_find_exec_segments() {
+    local value reason
+    local exec_segment=()
+
+    while [ $# -gt 0 ]; do
+        value="$(strip_wrapping_quotes "$1")"
+        case "$value" in
+            -exec|-execdir)
+                shift
+                exec_segment=()
+                while [ $# -gt 0 ]; do
+                    value="$(strip_wrapping_quotes "$1")"
+                    case "$value" in
+                        ';'|'+')
+                            break
+                            ;;
+                    esac
+                    exec_segment+=("$1")
+                    shift
+                done
+                reason="$(evaluate_simple_git_segment "${exec_segment[@]}")"
+                if [ "$reason" != "__ALLOW__" ]; then
+                    printf '%s\n' "$reason"
+                    return
+                fi
+                ;;
+        esac
+        shift
+    done
+
+    printf '__ALLOW__\n'
+}
+
 evaluate_simple_git_segment() {
-    local token base value subcmd
+    local token base value subcmd inline_command reason
     local has_git_editor=false
     local has_git_sequence_editor=false
 
@@ -220,19 +272,78 @@ evaluate_simple_git_segment() {
                     esac
                 done
                 ;;
-            sudo|xargs|find)
-                if segment_mentions_git_exec "$@"; then
-                    printf '%s\n' "$PARSE_ERROR_REASON"
-                    return
-                fi
-                printf '__ALLOW__\n'
+            sudo)
+                shift
+                while [ $# -gt 0 ]; do
+                    value="$(strip_wrapping_quotes "$1")"
+                    case "$value" in
+                        --)
+                            shift
+                            break
+                            ;;
+                        -u|-[ugpCRTtrh])
+                            shift
+                            [ $# -gt 0 ] && shift
+                            ;;
+                        --user|--group|--host|--prompt|--command-timeout|--close-from|--chdir|--role|--type|--other-user)
+                            shift
+                            [ $# -gt 0 ] && shift
+                            ;;
+                        --askpass|--background|--preserve-env|--remove-timestamp|--reset-timestamp|--validate|--version|--list|--non-interactive)
+                            shift
+                            ;;
+                        --host=*|--user=*|--group=*|--prompt=*|--command-timeout=*|--close-from=*|--chdir=*|--role=*|--type=*|--other-user=*|--preserve-env=*)
+                            shift
+                            ;;
+                        -*)
+                            shift
+                            ;;
+                        *)
+                            break
+                            ;;
+                    esac
+                done
+                ;;
+            xargs)
+                shift
+                while [ $# -gt 0 ]; do
+                    value="$(strip_wrapping_quotes "$1")"
+                    case "$value" in
+                        --)
+                            shift
+                            break
+                            ;;
+                        -d|-E|-I|-L|-P|-n|-s|--delimiter|--eof|--max-args|--max-chars|--max-procs|--replace)
+                            shift
+                            [ $# -gt 0 ] && shift
+                            ;;
+                        --delimiter=*|--eof=*|--max-args=*|--max-chars=*|--max-procs=*|--replace=*)
+                            shift
+                            ;;
+                        -*)
+                            shift
+                            ;;
+                        *)
+                            break
+                            ;;
+                    esac
+                done
+                ;;
+            find)
+                reason="$(evaluate_find_exec_segments "$@")"
+                printf '%s\n' "$reason"
                 return
+                ;;
+            -exec|-execdir)
+                shift
                 ;;
             sh|bash|zsh|dash|ksh)
                 shift
-                if shell_exec_uses_inline_command "$@" && segment_mentions_git_exec "$@"; then
-                    printf '%s\n' "$PARSE_ERROR_REASON"
-                    return
+                if inline_command="$(extract_shell_inline_command "$@")"; then
+                    if [ "$(fallback_noninteractive_reason "$inline_command")" != "__ALLOW__" ]; then
+                        printf '%s\n' "$PARSE_ERROR_REASON"
+                        return
+                    fi
                 fi
                 printf '__ALLOW__\n'
                 return
@@ -324,7 +435,7 @@ evaluate_simple_git_segment() {
 
 fallback_noninteractive_reason() {
     local raw_command="$1"
-    local token reason
+    local token_json token_type token_value reason
     local segment=()
 
     if printf '%s\n' "$raw_command" | grep -qE '[$][(]|`|<<'; then
@@ -336,15 +447,17 @@ fallback_noninteractive_reason() {
         return
     fi
 
-    set -f
-    # shellcheck disable=SC2086
-    set -- $raw_command
-    set +f
+    local tokenized
+    if ! tokenized="$(shell_tokenize "$raw_command" true)"; then
+        printf '%s\n' "$PARSE_ERROR_REASON"
+        return
+    fi
 
-    while [ $# -gt 0 ]; do
-        token="$1"
-        shift
-        if is_control_token "$token"; then
+    while IFS= read -r token_json; do
+        [ -z "$token_json" ] && continue
+        token_type="$(printf '%s\n' "$token_json" | jq -r '.type')"
+        token_value="$(printf '%s\n' "$token_json" | jq -r '.value')"
+        if [ "$token_type" = "control" ]; then
             reason="$(evaluate_simple_git_segment "${segment[@]}")"
             if [ "$reason" != "__ALLOW__" ]; then
                 printf '%s\n' "$reason"
@@ -353,8 +466,10 @@ fallback_noninteractive_reason() {
             segment=()
             continue
         fi
-        segment+=("$token")
-    done
+        segment+=("$token_value")
+    done <<EOF
+$tokenized
+EOF
 
     evaluate_simple_git_segment "${segment[@]}"
 }
@@ -401,6 +516,7 @@ SHELL_KEYWORDS = {
     "}",
 }
 SHELL_EXECUTABLES = {"sh", "bash", "zsh", "dash", "ksh"}
+SHELL_OPTIONS_WITH_VALUE = {"--command", "--rcfile", "--init-file", "--startup-file", "-o", "-O", "+O"}
 
 XARGS_OPTIONS_WITH_VALUE = {
     "-d",
@@ -662,6 +778,12 @@ def extract_shell_c_command(args):
             return None
         if arg.startswith("--command="):
             return arg.split("=", 1)[1]
+        if arg in SHELL_OPTIONS_WITH_VALUE:
+            idx += 2
+            continue
+        if any(arg.startswith(prefix + "=") for prefix in ("--rcfile", "--init-file", "--startup-file")):
+            idx += 1
+            continue
         if arg == "--":
             return None
         if arg.startswith("-") and not arg.startswith("--"):
@@ -669,6 +791,9 @@ def extract_shell_c_command(args):
                 if idx + 1 < len(args):
                     return args[idx + 1]
                 return None
+            idx += 1
+            continue
+        if arg.startswith("+"):
             idx += 1
             continue
         return None
@@ -744,7 +869,36 @@ def parse_env_wrapped_segment(tokens, inherited_env=None):
                 if sudo_token in SUDO_OPTIONS_WITH_VALUE:
                     idx += 2
                     continue
+                if sudo_token in {
+                    "--user",
+                    "--group",
+                    "--host",
+                    "--prompt",
+                    "--command-timeout",
+                    "--close-from",
+                    "--chdir",
+                    "--role",
+                    "--type",
+                    "--other-user",
+                }:
+                    idx += 2
+                    continue
                 if sudo_token.startswith("--user=") or sudo_token.startswith("--group="):
+                    idx += 1
+                    continue
+                if any(
+                    sudo_token.startswith(prefix + "=")
+                    for prefix in (
+                        "--host",
+                        "--prompt",
+                        "--command-timeout",
+                        "--close-from",
+                        "--chdir",
+                        "--role",
+                        "--type",
+                        "--other-user",
+                    )
+                ):
                     idx += 1
                     continue
                 if sudo_token.startswith("-"):
@@ -789,6 +943,10 @@ def parse_env_wrapped_segment(tokens, inherited_env=None):
                     idx += 1
                     break
                 idx += 1
+            continue
+
+        if tokens[idx] in ("-exec", "-execdir"):
+            idx += 1
             continue
 
         break
