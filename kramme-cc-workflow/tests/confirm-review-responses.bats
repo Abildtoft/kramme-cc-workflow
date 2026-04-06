@@ -30,9 +30,42 @@ EOF
     chmod +x "$MOCK_DIR/git"
 }
 
+mock_git_staged_for_repo() {
+    local repo="$1"
+    local staged_files="$2"
+    local default_files="${3:-}"
+    cat > "$MOCK_DIR/git" << EOF
+#!/bin/bash
+if [[ "\$1" == "-C" && "\$2" == "$repo" && "\$3" == "diff" && "\$4" == "--cached" && "\$5" == "--name-only" ]]; then
+    echo "$staged_files"
+    exit 0
+fi
+if [[ "\$1" == "diff" && "\$2" == "--cached" && "\$3" == "--name-only" ]]; then
+    echo "$default_files"
+    exit 0
+fi
+/usr/bin/git "\$@"
+EOF
+    chmod +x "$MOCK_DIR/git"
+}
+
 # Helper to run hook with given command
 run_hook() {
     make_bash_input "$1" | bash "$HOOK"
+}
+
+run_hook_without_python() {
+    local cmd="$1"
+    local fake_bin="$BATS_TEST_TMPDIR/no-python-bin"
+    rm -rf "$fake_bin"
+    mkdir -p "$fake_bin"
+    ln -s "$(command -v bash)" "$fake_bin/bash"
+    ln -s "$(command -v jq)" "$fake_bin/jq"
+    ln -s "$(command -v cat)" "$fake_bin/cat"
+    ln -s "$(command -v grep)" "$fake_bin/grep"
+    ln -s "$(command -v sed)" "$fake_bin/sed"
+    ln -s "$MOCK_DIR/git" "$fake_bin/git"
+    make_bash_input "$cmd" | env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK"
 }
 
 # ============================================================================
@@ -280,6 +313,235 @@ REVIEW_SUMMARY.md"
 @test "blocks git commit with multiple flags" {
     mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook "git commit -v --no-verify -m 'test'"
+    is_blocked
+}
+
+@test "blocks env-wrapped git commit when artifact is staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook "/usr/bin/env git commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks env -C wrapped git commit when artifact is staged" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook "env -C repo git commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks env --chdir wrapped git commit when artifact is staged" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook "env --chdir=repo git commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks chained git commit when artifact is staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook "git status && git commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks shell-wrapped git commit when artifact is staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook "sh -c 'git commit -m \"test\"'"
+    is_blocked
+}
+
+@test "blocks git -C commit when artifact is staged" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook "git -C repo commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks git -C commit when artifact is staged without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "git -C repo commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks env --chdir wrapped git commit when artifact is staged without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "env --chdir=repo git commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks chained git commit when artifact is staged without python3" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "git status && git commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks shell-wrapped git commit when artifact is staged without python3" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "sh -c 'git commit -m \"test\"'"
+    is_blocked
+}
+
+@test "blocks git -C quoted path with spaces when artifact is staged without python3" {
+    local repo="$BATS_TEST_TMPDIR/repo with space"
+    mkdir -p "$repo"
+    mock_git_staged_for_repo "$repo" "REVIEW_OVERVIEW.md"
+
+    run run_hook_without_python "git -C '$repo' commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks git -C empty path commit when artifact is staged without python3" {
+    mock_git_staged_for_repo "" "REVIEW_OVERVIEW.md" "nothing.txt"
+
+    run run_hook_without_python "git -C '' commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks git -C escaped path with spaces when artifact is staged without python3" {
+    local repo="$BATS_TEST_TMPDIR/repo with space"
+    mkdir -p "$repo"
+    mock_git_staged_for_repo "$repo" "REVIEW_OVERVIEW.md"
+
+    run run_hook_without_python "git -C ${repo// /\\ } commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks git -C mixed quoted path with spaces when artifact is staged without python3" {
+    local repo_base="$BATS_TEST_TMPDIR/base"
+    local repo="$repo_base/repo with space"
+    mkdir -p "$repo_base" "$repo"
+    mock_git_staged_for_repo "$repo" "REVIEW_OVERVIEW.md"
+
+    run run_hook_without_python "git -C $repo_base/'repo with space' commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks sudo git commit when artifact is staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+
+    run run_hook "sudo git commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks sudo --user git commit when artifact is staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+
+    run run_hook "sudo --user root git commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks sudo --chdir git commit when artifact is staged" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+
+    run run_hook "sudo --chdir repo git commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks sudo --chdir= git commit when artifact is staged" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+
+    run run_hook "sudo --chdir=repo git commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks sudo git commit when artifact is staged without python3" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+
+    run run_hook_without_python "sudo git commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks sudo --user git commit when artifact is staged without python3" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+
+    run run_hook_without_python "sudo --user root git commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks sudo --chdir git commit when artifact is staged without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+
+    run run_hook_without_python "sudo --chdir repo git commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks sudo --chdir= git commit when artifact is staged without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+
+    run run_hook_without_python "sudo --chdir=repo git commit -m 'test'"
+
+    is_blocked
+}
+
+@test "blocks absolute-path git commit when artifact is staged without python3" {
+    local absolute_git_dir
+    absolute_git_dir="$(mktemp -d)"
+    ln -s "$MOCK_DIR/git" "$absolute_git_dir/git"
+    mock_git_staged "REVIEW_OVERVIEW.md"
+
+    run run_hook_without_python "$absolute_git_dir/git commit -m 'test'"
+    rm -rf "$absolute_git_dir"
+
+    is_blocked
+}
+
+@test "checks staged artifacts in repo selected via GIT_DIR and GIT_WORK_TREE" {
+    local repo
+    repo="$(mktemp -d)"
+    git -C "$repo" init -q
+    touch "$repo/REVIEW_OVERVIEW.md"
+    git -C "$repo" add REVIEW_OVERVIEW.md
+
+    run run_hook "GIT_DIR=$repo/.git GIT_WORK_TREE=$repo git commit -m 'test'"
+    rm -rf "$repo"
+
+    is_blocked
+}
+
+@test "checks staged artifacts via GIT_DIR and GIT_WORK_TREE without python3" {
+    local repo
+    repo="$(mktemp -d)"
+    git -C "$repo" init -q
+    touch "$repo/REVIEW_OVERVIEW.md"
+    git -C "$repo" add REVIEW_OVERVIEW.md
+
+    # Needs real git (not mock) to query staged files from the real repo.
+    local fake_bin="$BATS_TEST_TMPDIR/no-python-bin-real-git"
+    rm -rf "$fake_bin"
+    mkdir -p "$fake_bin"
+    ln -s "$(command -v bash)" "$fake_bin/bash"
+    ln -s "$(command -v jq)" "$fake_bin/jq"
+    ln -s "$(command -v cat)" "$fake_bin/cat"
+    ln -s "$(command -v grep)" "$fake_bin/grep"
+    ln -s "$(command -v sed)" "$fake_bin/sed"
+    ln -s "$(command -v git)" "$fake_bin/git"
+    ln -s "$(command -v env)" "$fake_bin/env"
+
+    run make_bash_input "GIT_DIR=$repo/.git GIT_WORK_TREE=$repo git commit -m 'test'"
+    local json_input="$output"
+
+    run env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK" <<< "$json_input"
+    rm -rf "$repo" "$fake_bin"
+
+    is_blocked
+}
+
+@test "checks staged artifacts via env GIT_DIR wrapper" {
+    local repo
+    repo="$(mktemp -d)"
+    git -C "$repo" init -q
+    touch "$repo/REVIEW_OVERVIEW.md"
+    git -C "$repo" add REVIEW_OVERVIEW.md
+
+    run run_hook "env GIT_DIR=$repo/.git GIT_WORK_TREE=$repo git commit -m 'test'"
+    rm -rf "$repo"
+
     is_blocked
 }
 

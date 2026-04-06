@@ -1,6 +1,6 @@
 # ISSUE-G-{NNN}: Spec: {finding title}
 
-**Status:** Ready | **Priority:** {Critical→High, Major→Medium, Minor→Low} | **Phase:** General | **Related:** Spec Audit Report
+**Status:** Ready | **Priority:** {Critical→High, Major→Medium, Minor→Low; if `Severity Note` says `from Critical` use High, if it says `from Major` use Medium} | **Phase:** General | **Related:** Spec Audit Report
 
 ## Problem
 
@@ -8,6 +8,7 @@ Spec audit found a {dimension} issue in the specification.
 
 **Spec finding (SPEC-{id}):** {finding title}
 **Source:** {source_file} > {source_section}
+{If present} **Severity Note:** {copied from audit report}
 
 ## Context
 

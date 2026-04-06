@@ -19,6 +19,461 @@ block() {
     exit 2
 }
 
+PARSE_ERROR_REASON="Unable to safely parse command. Refusing potentially interactive git command."
+
+source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/git-parse-utils.sh"
+
+token_is_assignment() {
+    [[ "$1" =~ ^[A-Za-z_][A-Za-z0-9_]*=.*$ ]]
+}
+
+is_shell_keyword_token() {
+    case "$(strip_wrapping_quotes "$1")" in
+        '!'|if|then|elif|else|fi|do|done|while|until|for|in|case|esac|'{'|'}')
+            return 0
+            ;;
+    esac
+    return 1
+}
+
+args_have_short_option() {
+    local wanted="$1"
+    shift
+    local arg value
+
+    for arg in "$@"; do
+        value="$(strip_wrapping_quotes "$arg")"
+        [ "$value" = "--" ] && break
+        case "$value" in
+            --*|-) continue ;;
+            -*)
+                case "${value#-}" in
+                    *"$wanted"*) return 0 ;;
+                esac
+                ;;
+        esac
+    done
+    return 1
+}
+
+args_have_long_option() {
+    local wanted="$1"
+    shift
+    local arg value
+
+    for arg in "$@"; do
+        value="$(strip_wrapping_quotes "$arg")"
+        [ "$value" = "--" ] && break
+        [ "$value" = "$wanted" ] && return 0
+        case "$value" in
+            "$wanted"=*) return 0 ;;
+        esac
+    done
+    return 1
+}
+
+commit_has_message_source() {
+    args_have_short_option "m" "$@" \
+        || args_have_short_option "F" "$@" \
+        || args_have_short_option "C" "$@" \
+        || args_have_long_option "--message" "$@" \
+        || args_have_long_option "--file" "$@" \
+        || args_have_long_option "--reuse-message" "$@" \
+        || args_have_long_option "--no-edit" "$@"
+}
+
+extract_shell_inline_command() {
+    local value
+
+    while [ $# -gt 0 ]; do
+        value="$(strip_wrapping_quotes "$1")"
+        case "$value" in
+            --)
+                return 1
+                ;;
+            -c|--command)
+                shift
+                [ $# -gt 0 ] || return 1
+                printf '%s\n' "$(strip_wrapping_quotes "$1")"
+                return 0
+                ;;
+            --command=*)
+                printf '%s\n' "${value#*=}"
+                return 0
+                ;;
+            --rcfile|--init-file|--startup-file|-o|-O|+O)
+                shift
+                [ $# -gt 0 ] && shift
+                ;;
+            --rcfile=*|--init-file=*|--startup-file=*)
+                shift
+                ;;
+            --*)
+                shift
+                ;;
+            -*)
+                case "${value#-}" in
+                    *c*)
+                        shift
+                        [ $# -gt 0 ] || return 1
+                        printf '%s\n' "$(strip_wrapping_quotes "$1")"
+                        return 0
+                        ;;
+                esac
+                shift
+                ;;
+            +*)
+                shift
+                ;;
+            *)
+                return 1
+                ;;
+        esac
+    done
+    return 1
+}
+
+record_git_editor_env() {
+    local assignment="$1"
+    local key="${assignment%%=*}"
+
+    case "$key" in
+        GIT_EDITOR)
+            has_git_editor=true
+            ;;
+        GIT_SEQUENCE_EDITOR)
+            has_git_sequence_editor=true
+            ;;
+    esac
+}
+
+evaluate_find_exec_segments() {
+    local value reason
+    local exec_segment=()
+
+    while [ $# -gt 0 ]; do
+        value="$(strip_wrapping_quotes "$1")"
+        case "$value" in
+            -exec|-execdir)
+                shift
+                exec_segment=()
+                while [ $# -gt 0 ]; do
+                    value="$(strip_wrapping_quotes "$1")"
+                    case "$value" in
+                        ';'|'+')
+                            break
+                            ;;
+                    esac
+                    exec_segment+=("$1")
+                    shift
+                done
+                reason="$(evaluate_simple_git_segment "${exec_segment[@]}")"
+                if [ "$reason" != "__ALLOW__" ]; then
+                    printf '%s\n' "$reason"
+                    return
+                fi
+                ;;
+        esac
+        shift
+    done
+
+    printf '__ALLOW__\n'
+}
+
+evaluate_simple_git_segment() {
+    local token base value subcmd inline_command reason
+    local has_git_editor=false
+    local has_git_sequence_editor=false
+
+    [ $# -eq 0 ] && {
+        printf '__ALLOW__\n'
+        return
+    }
+
+    while [ $# -gt 0 ] && is_shell_keyword_token "$1"; do
+        shift
+    done
+
+    while [ $# -gt 0 ] && token_is_assignment "$(strip_wrapping_quotes "$1")"; do
+        record_git_editor_env "$(strip_wrapping_quotes "$1")"
+        shift
+    done
+
+    while [ $# -gt 0 ]; do
+        token="$1"
+        base="$(token_basename "$token")"
+        case "$base" in
+            env)
+                shift
+                while [ $# -gt 0 ]; do
+                    value="$(strip_wrapping_quotes "$1")"
+                    case "$value" in
+                        --)
+                            shift
+                            break
+                            ;;
+                        [A-Za-z_][A-Za-z0-9_]*=*)
+                            record_git_editor_env "$value"
+                            shift
+                            ;;
+                        -i|--ignore-environment)
+                            shift
+                            ;;
+                        -u|--unset)
+                            shift
+                            [ $# -gt 0 ] && shift
+                            ;;
+                        --unset=*|-u*)
+                            shift
+                            ;;
+                        -C|--chdir)
+                            if [ $# -ge 2 ]; then
+                                shift 2
+                            else
+                                shift
+                            fi
+                            ;;
+                        --chdir=*|-C*)
+                            shift
+                            ;;
+                        -*)
+                            shift
+                            ;;
+                        *)
+                            break
+                            ;;
+                    esac
+                done
+                ;;
+            command)
+                shift
+                while [ $# -gt 0 ]; do
+                    value="$(strip_wrapping_quotes "$1")"
+                    case "$value" in
+                        --)
+                            shift
+                            break
+                            ;;
+                        -*)
+                            shift
+                            ;;
+                        *)
+                            break
+                            ;;
+                    esac
+                done
+                ;;
+            sudo)
+                shift
+                while [ $# -gt 0 ]; do
+                    value="$(strip_wrapping_quotes "$1")"
+                    case "$value" in
+                        --)
+                            shift
+                            break
+                            ;;
+                        -u|-[ugpCRTtrh])
+                            shift
+                            [ $# -gt 0 ] && shift
+                            ;;
+                        --user|--group|--host|--prompt|--command-timeout|--close-from|--chdir|--role|--type|--other-user)
+                            shift
+                            [ $# -gt 0 ] && shift
+                            ;;
+                        --askpass|--background|--preserve-env|--remove-timestamp|--reset-timestamp|--validate|--version|--list|--non-interactive)
+                            shift
+                            ;;
+                        --host=*|--user=*|--group=*|--prompt=*|--command-timeout=*|--close-from=*|--chdir=*|--role=*|--type=*|--other-user=*|--preserve-env=*)
+                            shift
+                            ;;
+                        -*)
+                            shift
+                            ;;
+                        *)
+                            break
+                            ;;
+                    esac
+                done
+                ;;
+            xargs)
+                shift
+                while [ $# -gt 0 ]; do
+                    value="$(strip_wrapping_quotes "$1")"
+                    case "$value" in
+                        --)
+                            shift
+                            break
+                            ;;
+                        -d|-E|-I|-L|-P|-n|-s|--delimiter|--eof|--max-args|--max-chars|--max-procs|--replace)
+                            shift
+                            [ $# -gt 0 ] && shift
+                            ;;
+                        --delimiter=*|--eof=*|--max-args=*|--max-chars=*|--max-procs=*|--replace=*)
+                            shift
+                            ;;
+                        -*)
+                            shift
+                            ;;
+                        *)
+                            break
+                            ;;
+                    esac
+                done
+                ;;
+            find)
+                reason="$(evaluate_find_exec_segments "$@")"
+                printf '%s\n' "$reason"
+                return
+                ;;
+            -exec|-execdir)
+                shift
+                ;;
+            sh|bash|zsh|dash|ksh)
+                shift
+                if inline_command="$(extract_shell_inline_command "$@")"; then
+                    if [ "$(fallback_noninteractive_reason "$inline_command")" != "__ALLOW__" ]; then
+                        printf '%s\n' "$PARSE_ERROR_REASON"
+                        return
+                    fi
+                fi
+                printf '__ALLOW__\n'
+                return
+                ;;
+            git)
+                shift
+                break
+                ;;
+            *)
+                printf '__ALLOW__\n'
+                return
+                ;;
+        esac
+    done
+
+    while [ $# -gt 0 ]; do
+        value="$(strip_wrapping_quotes "$1")"
+        case "$value" in
+            --)
+                shift
+                break
+                ;;
+            -C|-c|--config-env|--exec-path|--git-dir|--namespace|--super-prefix|--work-tree)
+                if [ $# -ge 2 ]; then
+                    shift 2
+                else
+                    shift
+                fi
+                ;;
+            --config-env=*|--exec-path=*|--git-dir=*|--namespace=*|--super-prefix=*|--work-tree=*|-C*|-c*)
+                shift
+                ;;
+            -*)
+                shift
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+
+    if [ $# -eq 0 ]; then
+        printf '__ALLOW__\n'
+        return
+    fi
+
+    subcmd="$(strip_wrapping_quotes "$1")"
+    shift
+
+    case "$subcmd" in
+        commit)
+            if ! commit_has_message_source "$@"; then
+                printf '%s\n' 'git commit without a message source may open an editor. Use: git commit -m "your message" (or --no-edit for amend)'
+                return
+            fi
+            ;;
+        rebase)
+            if (args_have_short_option "i" "$@" || args_have_long_option "--interactive" "$@") && [ "$has_git_sequence_editor" != "true" ]; then
+                printf '%s\n' 'Interactive rebase will open an editor. Use: GIT_SEQUENCE_EDITOR=true git rebase -i ...'
+                return
+            fi
+            if args_have_long_option "--continue" "$@" && [ "$has_git_editor" != "true" ]; then
+                printf '%s\n' 'git rebase --continue may open an editor. Use: GIT_EDITOR=true git rebase --continue'
+                return
+            fi
+            ;;
+        add)
+            if args_have_short_option "p" "$@" || args_have_short_option "i" "$@" || args_have_long_option "--patch" "$@" || args_have_long_option "--interactive" "$@"; then
+                printf '%s\n' 'Interactive git add opens a prompt. Use explicit paths: git add <files>'
+                return
+            fi
+            ;;
+        merge)
+            if ! (args_have_long_option "--abort" "$@" || args_have_long_option "--quit" "$@" || args_have_long_option "--no-edit" "$@" || args_have_long_option "--no-commit" "$@" || args_have_long_option "--squash" "$@" || args_have_long_option "--ff-only" "$@" || args_have_long_option "--ff" "$@"); then
+                printf '%s\n' 'git merge may open an editor for the merge commit message. Use: git merge --no-edit <branch>'
+                return
+            fi
+            ;;
+        cherry-pick)
+            if ! (args_have_long_option "--continue" "$@" || args_have_long_option "--abort" "$@" || args_have_long_option "--quit" "$@" || args_have_long_option "--skip" "$@" || args_have_long_option "--no-edit" "$@" || args_have_long_option "--no-commit" "$@" || args_have_short_option "n" "$@"); then
+                printf '%s\n' 'git cherry-pick may open an editor. Use: git cherry-pick --no-edit <commit>'
+                return
+            fi
+            ;;
+    esac
+
+    printf '__ALLOW__\n'
+}
+
+fallback_noninteractive_reason() {
+    local raw_command="$1"
+    local token_json token_type token_value reason
+    local segment=()
+
+    if printf '%s\n' "$raw_command" | grep -qE '[$][(]|`|<<'; then
+        if printf '%s\n' "$raw_command" | grep -qE '(^|[^[:alnum:]_./-])([^[:space:]]*/)?git([^[:alnum:]_./-]|$)'; then
+            printf '%s\n' "$PARSE_ERROR_REASON"
+            return
+        fi
+        printf '__ALLOW__\n'
+        return
+    fi
+
+    local tokenized
+    if ! tokenized="$(shell_tokenize "$raw_command" true)"; then
+        printf '%s\n' "$PARSE_ERROR_REASON"
+        return
+    fi
+
+    while IFS= read -r token_json; do
+        [ -z "$token_json" ] && continue
+        token_type="$(printf '%s\n' "$token_json" | jq -r '.type')"
+        token_value="$(printf '%s\n' "$token_json" | jq -r '.value')"
+        if [ "$token_type" = "control" ]; then
+            reason="$(evaluate_simple_git_segment "${segment[@]}")"
+            if [ "$reason" != "__ALLOW__" ]; then
+                printf '%s\n' "$reason"
+                return
+            fi
+            segment=()
+            continue
+        fi
+        segment+=("$token_value")
+    done <<EOF
+$tokenized
+EOF
+
+    evaluate_simple_git_segment "${segment[@]}"
+}
+
+# If python3 is unavailable, fall back to a conservative shell parser.
+if ! command -v python3 >/dev/null 2>&1; then
+    reason="$(fallback_noninteractive_reason "$command")"
+    if [ "$reason" = "__ALLOW__" ]; then
+        exit 0
+    fi
+    block "$reason"
+fi
+
 if ! decision=$(python3 - "$command" <<'PY'
 import json
 import os
@@ -52,6 +507,7 @@ SHELL_KEYWORDS = {
     "}",
 }
 SHELL_EXECUTABLES = {"sh", "bash", "zsh", "dash", "ksh"}
+SHELL_OPTIONS_WITH_VALUE = {"--command", "--rcfile", "--init-file", "--startup-file", "-o", "-O", "+O"}
 
 XARGS_OPTIONS_WITH_VALUE = {
     "-d",
@@ -69,6 +525,16 @@ XARGS_OPTIONS_WITH_VALUE = {
     "--replace",
 }
 SUDO_OPTIONS_WITH_VALUE = {"-u", "-g", "-h", "-p", "-C", "-T", "-r", "-t"}
+GIT_OPTIONS_WITH_VALUE = {
+    "-C",
+    "-c",
+    "--config-env",
+    "--exec-path",
+    "--git-dir",
+    "--namespace",
+    "--super-prefix",
+    "--work-tree",
+}
 
 
 def strip_heredoc_bodies(command):
@@ -152,6 +618,139 @@ def is_assignment(token):
     return ASSIGNMENT.match(token) is not None
 
 
+def read_dollar_substitution(command, start):
+    inner = []
+    depth = 1
+    idx = start + 2
+    in_single = False
+    in_double = False
+    escaped = False
+
+    while idx < len(command):
+        char = command[idx]
+
+        if escaped:
+            inner.append(char)
+            escaped = False
+            idx += 1
+            continue
+
+        if char == "\\" and not in_single:
+            inner.append(char)
+            escaped = True
+            idx += 1
+            continue
+
+        if char == "'" and not in_double:
+            in_single = not in_single
+            inner.append(char)
+            idx += 1
+            continue
+
+        if char == '"' and not in_single:
+            in_double = not in_double
+            inner.append(char)
+            idx += 1
+            continue
+
+        if not in_single and not in_double and command.startswith("$" + "(", idx):
+            nested_inner, idx = read_dollar_substitution(command, idx)
+            inner.append("$" + "(" + nested_inner + ")")
+            continue
+
+        if not in_single and not in_double and char == ")":
+            depth -= 1
+            if depth == 0:
+                return "".join(inner), idx + 1
+
+        inner.append(char)
+        idx += 1
+
+    raise ValueError("Unterminated command substitution.")
+
+
+def read_backtick_substitution(command, start):
+    inner = []
+    idx = start + 1
+    escaped = False
+
+    while idx < len(command):
+        char = command[idx]
+
+        if escaped:
+            inner.append(char)
+            escaped = False
+            idx += 1
+            continue
+
+        if char == "\\":
+            inner.append(char)
+            escaped = True
+            idx += 1
+            continue
+
+        if char == chr(96):
+            return "".join(inner), idx + 1
+
+        inner.append(char)
+        idx += 1
+
+    raise ValueError("Unterminated backtick command substitution.")
+
+
+def replace_command_substitutions(command):
+    substitutions = []
+    result = []
+    idx = 0
+    in_single = False
+    in_double = False
+    escaped = False
+
+    while idx < len(command):
+        char = command[idx]
+
+        if escaped:
+            result.append(char)
+            escaped = False
+            idx += 1
+            continue
+
+        if char == "\\" and not in_single:
+            result.append(char)
+            escaped = True
+            idx += 1
+            continue
+
+        if char == "'" and not in_double:
+            in_single = not in_single
+            result.append(char)
+            idx += 1
+            continue
+
+        if char == '"' and not in_single:
+            in_double = not in_double
+            result.append(char)
+            idx += 1
+            continue
+
+        if not in_single and command.startswith("$" + "(", idx):
+            inner, idx = read_dollar_substitution(command, idx)
+            substitutions.append(inner)
+            result.append(f"__CMD_SUBST_{len(substitutions) - 1}__")
+            continue
+
+        if not in_single and char == chr(96):
+            inner, idx = read_backtick_substitution(command, idx)
+            substitutions.append(inner)
+            result.append(f"__CMD_SUBST_{len(substitutions) - 1}__")
+            continue
+
+        result.append(char)
+        idx += 1
+
+    return "".join(result), substitutions
+
+
 def basename(token):
     return os.path.basename(token)
 
@@ -170,6 +769,12 @@ def extract_shell_c_command(args):
             return None
         if arg.startswith("--command="):
             return arg.split("=", 1)[1]
+        if arg in SHELL_OPTIONS_WITH_VALUE:
+            idx += 2
+            continue
+        if any(arg.startswith(prefix + "=") for prefix in ("--rcfile", "--init-file", "--startup-file")):
+            idx += 1
+            continue
         if arg == "--":
             return None
         if arg.startswith("-") and not arg.startswith("--"):
@@ -177,6 +782,9 @@ def extract_shell_c_command(args):
                 if idx + 1 < len(args):
                     return args[idx + 1]
                 return None
+            idx += 1
+            continue
+        if arg.startswith("+"):
             idx += 1
             continue
         return None
@@ -252,7 +860,36 @@ def parse_env_wrapped_segment(tokens, inherited_env=None):
                 if sudo_token in SUDO_OPTIONS_WITH_VALUE:
                     idx += 2
                     continue
+                if sudo_token in {
+                    "--user",
+                    "--group",
+                    "--host",
+                    "--prompt",
+                    "--command-timeout",
+                    "--close-from",
+                    "--chdir",
+                    "--role",
+                    "--type",
+                    "--other-user",
+                }:
+                    idx += 2
+                    continue
                 if sudo_token.startswith("--user=") or sudo_token.startswith("--group="):
+                    idx += 1
+                    continue
+                if any(
+                    sudo_token.startswith(prefix + "=")
+                    for prefix in (
+                        "--host",
+                        "--prompt",
+                        "--command-timeout",
+                        "--close-from",
+                        "--chdir",
+                        "--role",
+                        "--type",
+                        "--other-user",
+                    )
+                ):
                     idx += 1
                     continue
                 if sudo_token.startswith("-"):
@@ -299,6 +936,10 @@ def parse_env_wrapped_segment(tokens, inherited_env=None):
                 idx += 1
             continue
 
+        if tokens[idx] in ("-exec", "-execdir"):
+            idx += 1
+            continue
+
         break
 
     while idx < len(tokens) and tokens[idx] in SHELL_KEYWORDS:
@@ -325,21 +966,58 @@ def parse_env_wrapped_segment(tokens, inherited_env=None):
     if not git_argv:
         return None
 
+    git_idx = 0
+    while git_idx < len(git_argv):
+        token = git_argv[git_idx]
+        if token == "--":
+            git_idx += 1
+            break
+        if token in GIT_OPTIONS_WITH_VALUE:
+            git_idx += 2
+            continue
+        if any(
+            token.startswith(prefix + "=")
+            for prefix in (
+                "--config-env",
+                "--exec-path",
+                "--git-dir",
+                "--namespace",
+                "--super-prefix",
+                "--work-tree",
+            )
+        ):
+            git_idx += 1
+            continue
+        if token.startswith("-C") and token != "-C":
+            git_idx += 1
+            continue
+        if token.startswith("-c") and token != "-c":
+            git_idx += 1
+            continue
+        if token.startswith("-"):
+            git_idx += 1
+            continue
+        break
+
+    if git_idx >= len(git_argv):
+        return None
+
     return {
         "env": env,
-        "subcmd": git_argv[0],
-        "args": git_argv[1:],
+        "subcmd": git_argv[git_idx],
+        "args": git_argv[git_idx + 1 :],
     }
 
 
 def parse_git_commands(command, inherited_env=None):
-    tokens = tokenize(command)
+    sanitized_command, substitutions = replace_command_substitutions(command)
+    tokens = tokenize(sanitized_command)
     parsed_commands = []
     for segment in split_segments(tokens):
         parsed = parse_env_wrapped_segment(segment, inherited_env=inherited_env)
         if parsed is not None:
             parsed_commands.append(parsed)
-    return parsed_commands
+    return parsed_commands, substitutions
 
 
 def has_long_option(args, *names):
@@ -369,9 +1047,18 @@ def has_short_option(args, *letters):
     return False
 
 
-def evaluate(parsed_commands, depth=0):
+def evaluate(parsed_commands, substitutions, depth=0):
     if depth > 4:
         return PARSE_ERROR_REASON
+
+    for substitution in substitutions:
+        try:
+            nested_commands, nested_substitutions = parse_git_commands(substitution)
+        except ValueError:
+            return PARSE_ERROR_REASON
+        reason = evaluate(nested_commands, nested_substitutions, depth=depth + 1)
+        if reason is not None:
+            return reason
 
     for parsed in parsed_commands:
         subcmd = parsed["subcmd"]
@@ -380,10 +1067,10 @@ def evaluate(parsed_commands, depth=0):
 
         if subcmd == "__shell_c__":
             try:
-                nested_commands = parse_git_commands(args[0], inherited_env=env)
+                nested_commands, nested_substitutions = parse_git_commands(args[0], inherited_env=env)
             except ValueError:
                 return PARSE_ERROR_REASON
-            reason = evaluate(nested_commands, depth=depth + 1)
+            reason = evaluate(nested_commands, nested_substitutions, depth=depth + 1)
             if reason is not None:
                 return reason
             continue
@@ -448,12 +1135,12 @@ def evaluate(parsed_commands, depth=0):
 
 
 try:
-    parsed_commands = parse_git_commands(sys.argv[1])
+    parsed_commands, substitutions = parse_git_commands(sys.argv[1])
 except ValueError:
     print(json.dumps({"block": PARSE_ERROR_REASON}))
     sys.exit(0)
 
-reason = evaluate(parsed_commands)
+reason = evaluate(parsed_commands, substitutions)
 print(json.dumps({"block": reason}))
 PY
 ); then
