@@ -8,6 +8,15 @@ const readline = require("readline")
 
 const PERMISSION_MODES = ["none", "broad", "from-commands"]
 
+function resolveManagedChild(root, entry, label) {
+  const resolvedRoot = path.resolve(root)
+  const resolvedPath = path.resolve(root, entry)
+  if (resolvedPath === resolvedRoot || !resolvedPath.startsWith(resolvedRoot + path.sep)) {
+    throw new Error(`Invalid ${label}: ${entry}`)
+  }
+  return resolvedPath
+}
+
 const TOOL_MAP = {
   bash: "bash",
   read: "read",
@@ -1154,9 +1163,10 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
     confirmOptions: extraOpts.confirm,
   })
   for (const skill of bundle.skillDirs) {
-    await copyDir(skill.sourceDir, path.join(skillsRoot, skill.name))
+    const targetDir = resolveManagedChild(skillsRoot, skill.name, "skill name")
+    await copyDir(skill.sourceDir, targetDir)
     if (skill.content) {
-      await writeText(path.join(skillsRoot, skill.name, "SKILL.md"), skill.content + "\n")
+      await writeText(path.join(targetDir, "SKILL.md"), skill.content + "\n")
     }
   }
 
@@ -1233,7 +1243,7 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   })
 
   for (const skill of bundle.skillDirs) {
-    const targetDir = path.join(skillsRoot, skill.name)
+    const targetDir = resolveManagedChild(skillsRoot, skill.name, "skill name")
     await copyDir(skill.sourceDir, targetDir)
     if (skill.content) {
       await writeText(path.join(targetDir, "SKILL.md"), skill.content + "\n")
@@ -1242,7 +1252,8 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   }
 
   for (const skill of bundle.generatedSkills) {
-    await writeText(path.join(skillsRoot, skill.name, "SKILL.md"), skill.content + "\n")
+    const targetDir = resolveManagedChild(skillsRoot, skill.name, "skill name")
+    await writeText(path.join(targetDir, "SKILL.md"), skill.content + "\n")
   }
 
   let cleanedAgentSkills = true
@@ -1255,7 +1266,8 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
       confirmOptions: extraOpts.confirm,
     })
     for (const skill of bundle.agentSkills) {
-      await writeText(path.join(agentSkillsRoot, skill.name, "SKILL.md"), skill.content + "\n")
+      const targetDir = resolveManagedChild(agentSkillsRoot, skill.name, "agent skill name")
+      await writeText(path.join(targetDir, "SKILL.md"), skill.content + "\n")
     }
   }
 
@@ -1751,16 +1763,16 @@ async function cleanupInstalledEntries(
 ) {
   const matched = []
   for (const entry of sanitizeEntryList(entries)) {
-    const targetPath = path.join(dir, entry)
+    const targetPath = resolveManagedChild(dir, entry, `${label} entry`)
     if (await pathExists(targetPath)) {
-      matched.push(entry)
+      matched.push({ name: entry, path: targetPath })
     }
   }
 
   if (matched.length === 0) return true
 
   console.log(`\nFound ${matched.length} existing ${label}(s) from this plugin in ${dir}:`)
-  for (const name of matched) {
+  for (const { name } of matched) {
     console.log(`  - ${name}`)
   }
 
@@ -1770,8 +1782,8 @@ async function cleanupInstalledEntries(
     return false
   }
 
-  for (const entry of matched) {
-    await fs.rm(path.join(dir, entry), { recursive, force: true })
+  for (const { path: targetPath } of matched) {
+    await fs.rm(targetPath, { recursive, force: true })
   }
   console.log(`Deleted ${matched.length} ${label}(s).`)
   return true

@@ -74,7 +74,7 @@ These guardrails keep `--threshold 60` runs from auto-fixing findings that still
 | **Weasel words with specifics available** | "various endpoints" when the spec lists exact endpoints nearby, "etc." when all items are enumerable | Replace vague term with the specific items from the spec | 75-95 |
 | **Missing Out of Scope section** | No explicit out-of-scope section, but boundaries are deducible from in-scope items and context | Usually requires decision because adding scope framing changes requirement meaning, even when the boundaries seem derivable | 0-40 |
 | **Duplicate content** | Same information stated identically in two places, one clearly the canonical location | Remove the duplicate, keep the canonical instance | 85-95 |
-| **Broken markdown formatting** | Unclosed code blocks, malformed tables, broken link syntax | Fix the markdown syntax | 95-100 |
+| **Broken Markdown formatting** | Unclosed code blocks, malformed tables, broken link syntax | Fix the Markdown syntax | 95-100 |
 
 ## Score Depressors
 

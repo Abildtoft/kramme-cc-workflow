@@ -17,9 +17,9 @@ run_hook_without_python() {
     local fake_bin="$BATS_TEST_TMPDIR/no-python-bin"
     rm -rf "$fake_bin"
     mkdir -p "$fake_bin"
-    ln -s /bin/bash "$fake_bin/bash"
+    ln -s "$(command -v bash)" "$fake_bin/bash"
     ln -s "$(command -v jq)" "$fake_bin/jq"
-    ln -s /bin/cat "$fake_bin/cat"
+    ln -s "$(command -v cat)" "$fake_bin/cat"
     ln -s "$(command -v grep)" "$fake_bin/grep"
     make_bash_input "$cmd" | env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK"
 }
