@@ -3,7 +3,7 @@ name: kramme:git:recreate-commits
 description: Use when asked to recreate commits with narrative-quality history on the current branch.
 disable-model-invocation: false
 user-invocable: true
-argument-hint: "[--auto] [--granular]"
+argument-hint: "[--auto] [--granular] [--base <branch>]"
 ---
 
 Reimplement the current branch with a clean, narrative-quality git commit history suitable for reviewer comprehension. By default, recreate commits on the current branch (not a new clean branch).
@@ -11,12 +11,23 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
 **Flags:**
 - `--auto` — Skip the granularity question and automatically choose the best granularity based on diff size and complexity.
 - `--granular` — Force atomic-level decomposition. Skips the granularity question. Use for very large PRs where 100+ commits are appropriate.
+- `--base <branch>` — Use `<branch>` as the base instead of auto-detecting. Without this flag, the skill tries to detect the base from an existing GitHub PR or GitLab MR, then falls back to `master`/`main`.
 
 ### Steps
 
 1. **Validate the source branch**
-   - Identify the current branch name and the base branch (`master` or `main`).
-   - If on `main` or `master`, stop and ask the user to switch to a feature branch first.
+   - **Determine the base branch** using the first method that succeeds:
+     1. **Explicit flag:** If `--base <branch>` was passed, use that ref.
+     2. **PR/MR metadata:** If no `--base` flag, try to detect the target branch from an existing pull request or merge request:
+        - **GitHub:** `gh pr view --json baseRefName --jq .baseRefName`
+        - **GitLab:** `glab mr view --json target_branch --jq .target_branch` (use `glab mr view $(glab mr list --source-branch=$(git branch --show-current) --json url --jq '.[0].iid') ...` if needed)
+        - If the command succeeds and returns a non-empty branch name, use it. If `gh`/`glab` is not installed, no PR/MR exists, or the command fails, fall through silently to the next method.
+     3. **Fallback:** Auto-detect `master` or `main`.
+   - **Validate the resolved base ref** (regardless of how it was determined):
+     - Verify it exists locally (`git rev-parse --verify <branch>`). If it does not, attempt `git fetch origin <branch>` once, then re-check. Abort with a clear error if it still does not exist.
+     - Verify it is an ancestor of `HEAD` (`git merge-base --is-ancestor <branch> HEAD`). If not, abort — resetting to a non-ancestor would drop commits.
+     - Verify the current branch is not `<branch>` itself.
+   - If the current branch equals the base branch, stop and ask the user to switch to a feature branch first.
    - **Fetch and update the local base branch** to ensure it matches the remote:
      ```bash
      git fetch origin <base-branch>
@@ -29,12 +40,12 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
    - Confirm it is up to date with the base branch.
 
 2. **Analyze the diff**
-   - Study all changes between the current branch and `master` (or `main` depending on your repository).
+   - Study all changes between the current branch and the base branch.
    - Form a clear understanding of the final intended state.
 
 3. **Prepare the branch**
    - By default, work on the current branch. Do NOT create a `{branch_name}-clean` branch unless explicitly requested.
-   - If explicitly asked to use a clean branch, create `{branch_name}-clean` from the merge base with main/master.
+   - If explicitly asked to use a clean branch, create `{branch_name}-clean` from the merge base with the base branch.
 
 4. **Plan the commit storyline**
 
@@ -59,7 +70,7 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
    Flatten the tree into a linear commit sequence that tells a coherent narrative — each step should reflect a logical stage of development, as if writing a tutorial.
 
 5. **Reimplement the work**
-   - Reset the branch to the merge base with main/master.
+   - Reset the branch to the merge base with the base branch.
    - Recreate the changes, committing step by step according to your plan.
    - Each commit must:
      - Introduce a single coherent idea.
