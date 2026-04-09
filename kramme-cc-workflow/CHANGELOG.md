@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.48.0] - 2026-04-09
+
+### Added
+- Harden recreate-commits base branch resolution (#262)
+
 ## [0.47.0] - 2026-03-31
 
 ### Added
@@ -105,6 +110,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+[0.48.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.47.0...v0.48.0
 [0.47.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.46.0...v0.47.0
 [0.46.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.45.0...v0.46.0
 [0.45.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.44.0...v0.45.0
