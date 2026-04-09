@@ -11,41 +11,117 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
 **Flags:**
 - `--auto` — Skip the granularity question and automatically choose the best granularity based on diff size and complexity.
 - `--granular` — Force atomic-level decomposition. Skips the granularity question. Use for very large PRs where 100+ commits are appropriate.
-- `--base <branch>` — Use `<branch>` as the base instead of auto-detecting. Without this flag, the skill tries to detect the base from an existing GitHub PR or GitLab MR, then falls back to `master`/`main`.
+- `--base <branch>` — Use `<branch>` as the base instead of auto-detecting. Without this flag, the skill tries to detect the base from an existing GitHub or GitLab pull request, then falls back to `master`/`main`.
 
 ### Steps
 
 1. **Validate the source branch**
    - **Determine the base branch** using the first method that succeeds:
-     1. **Explicit flag:** If `--base <branch>` was passed, use that ref.
-     2. **PR/MR metadata:** If no `--base` flag, try to detect the target branch from an existing pull request or merge request:
-        - **GitHub:** `gh pr view --json baseRefName --jq .baseRefName`
-        - **GitLab:** `glab mr view --json target_branch --jq .target_branch` (use `glab mr view $(glab mr list --source-branch=$(git branch --show-current) --json url --jq '.[0].iid') ...` if needed)
-        - If the command succeeds and returns a non-empty branch name, use it. If `gh`/`glab` is not installed, no PR/MR exists, or the command fails, fall through silently to the next method.
-     3. **Fallback:** Auto-detect `master` or `main`.
-   - **Validate the resolved base ref** (regardless of how it was determined):
-     - Verify it exists locally (`git rev-parse --verify <branch>`). If it does not, attempt `git fetch origin <branch>` once, then re-check. Abort with a clear error if it still does not exist.
-     - Verify it is an ancestor of `HEAD` (`git merge-base --is-ancestor <branch> HEAD`). If not, abort — resetting to a non-ancestor would drop commits.
-     - Verify the current branch is not `<branch>` itself.
-   - If the current branch equals the base branch, stop and ask the user to switch to a feature branch first.
-   - **Fetch and update the local base branch** to ensure it matches the remote:
+     1. **Explicit flag:** If `--base <branch>` was passed, store it as `BASE_REF` and use that ref.
+     2. **PR metadata:** If no `--base` flag, try to detect the target branch from an existing pull request:
+        - **GitHub:** `BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName')`
+        - **GitLab:** `BASE_BRANCH=$(glab mr view "$(git branch --show-current)" -F json | python3 -c 'import json,sys; print(json.load(sys.stdin)["target_branch"])')`
+        - If GitLab branch lookup fails, find the pull request IID first with `PR_IID=$(glab mr list --source-branch "$(git branch --show-current)" -F json | python3 -c 'import json,sys; data=json.load(sys.stdin); print(data[0]["iid"] if data else "")')`, then run `BASE_BRANCH=$(glab mr view "$PR_IID" -F json | python3 -c 'import json,sys; print(json.load(sys.stdin)["target_branch"])')`.
+        - If one of these commands succeeds and assigns a non-empty branch name, use it. If `gh`/`glab` is not installed, no PR exists, or the command fails, fall through silently to the next method.
+     3. **Fallback:** If no pull request metadata is available, set `BASE_BRANCH` explicitly:
+        ```bash
+        BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+        if [ -z "$BASE_BRANCH" ]; then
+          BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
+        fi
+        if [ -z "$BASE_BRANCH" ]; then
+          echo "Could not determine base branch; expected origin/HEAD, origin/main, or origin/master" >&2
+          exit 1
+        fi
+        ```
+   - If `BASE_BRANCH` was detected from PR metadata or fallback, normalize it before building `origin/<base-branch>`:
      ```bash
-     git fetch origin <base-branch>
-     git checkout <base-branch>
-     git merge --ff-only origin/<base-branch>
-     git checkout -  # return to feature branch
+     BASE_BRANCH=${BASE_BRANCH#refs/heads/}
+     BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
+     BASE_BRANCH=${BASE_BRANCH#origin/}
+     if [ -z "$BASE_BRANCH" ]; then
+       echo "Could not determine base branch" >&2
+       exit 1
+     fi
+     if ! git check-ref-format --branch "$BASE_BRANCH" >/dev/null 2>&1; then
+       echo "Base branch '$BASE_BRANCH' is not a valid branch name" >&2
+       exit 1
+     fi
+     if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}"; then
+       echo "Failed to fetch origin/$BASE_BRANCH" >&2
+       exit 1
+     fi
+     if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
+       echo "Base branch 'origin/$BASE_BRANCH' not found" >&2
+       exit 1
+     fi
+     BASE_REF="origin/$BASE_BRANCH"
+     ```
+   - If `BASE_REF` came from `--base`, resolve it before continuing:
+     ```bash
+     if ! git rev-parse --verify --quiet "$BASE_REF^{commit}" >/dev/null; then
+       case "$BASE_REF" in
+         refs/remotes/*/*)
+           BASE_REMOTE=${BASE_REF#refs/remotes/}
+           BASE_REMOTE=${BASE_REMOTE%%/*}
+           BASE_BRANCH=${BASE_REF#refs/remotes/${BASE_REMOTE}/}
+           ;;
+         refs/heads/*)
+           BASE_REMOTE=origin
+           BASE_BRANCH=${BASE_REF#refs/heads/}
+           ;;
+         */*)
+           BASE_REMOTE=${BASE_REF%%/*}
+           BASE_BRANCH=${BASE_REF#*/}
+           if ! git remote get-url "$BASE_REMOTE" >/dev/null 2>&1; then
+             echo "Explicit base ref '$BASE_REF' does not resolve locally and does not name a configured remote" >&2
+             exit 1
+           fi
+           ;;
+         *)
+           BASE_REMOTE=origin
+           BASE_BRANCH=$BASE_REF
+           ;;
+       esac
+
+       if ! git check-ref-format --branch "$BASE_BRANCH" >/dev/null 2>&1; then
+         echo "Explicit base ref '$BASE_REF' is not a valid branch name or ref" >&2
+         exit 1
+       fi
+       if ! git fetch "$BASE_REMOTE" "refs/heads/${BASE_BRANCH}:refs/remotes/${BASE_REMOTE}/${BASE_BRANCH}"; then
+         echo "Failed to fetch ${BASE_REMOTE}/${BASE_BRANCH} for explicit base ref '$BASE_REF'" >&2
+         exit 1
+       fi
+       BASE_REF="refs/remotes/${BASE_REMOTE}/${BASE_BRANCH}"
+     fi
+     ```
+   - **Validate the resolved base ref** (regardless of how it was determined):
+     - Verify `BASE_REF` resolves to a commit (`git rev-parse --verify --quiet "$BASE_REF^{commit}"`). Abort with a clear error if it does not.
+     - Verify the current branch is not the selected base branch or ref.
+     - Verify there is a merge base with `HEAD` (`git merge-base "$BASE_REF" HEAD >/dev/null`). Abort if the histories are unrelated.
+   - If the current branch equals the base branch, stop and ask the user to switch to a feature branch first.
+   - **Fetch and optionally update the local base branch** so it matches the remote when `BASE_REF` maps to `origin/<base-branch>` and a local branch exists:
+     ```bash
+     if [ -n "$BASE_BRANCH" ] && { [ "$BASE_REF" = "origin/$BASE_BRANCH" ] || [ "$BASE_REF" = "refs/remotes/origin/$BASE_BRANCH" ]; } && git show-ref --verify --quiet "refs/remotes/origin/${BASE_BRANCH}"; then
+       git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}"
+       if git show-ref --verify --quiet "refs/heads/${BASE_BRANCH}"; then
+         git checkout "${BASE_BRANCH}"
+         git merge --ff-only "origin/${BASE_BRANCH}"
+         git checkout -  # return to feature branch
+       fi
+     fi
      ```
      If the fast-forward merge fails (local base branch has diverged from remote), abort and ask the user to resolve manually before retrying.
    - Ensure the current branch has no merge conflicts, uncommitted changes, or other issues.
-   - Confirm it is up to date with the base branch.
+   - Confirm it is up to date with the selected base ref.
 
 2. **Analyze the diff**
-   - Study all changes between the current branch and the base branch.
+   - Study all changes between the current branch and `BASE_REF` from their merge base.
    - Form a clear understanding of the final intended state.
 
 3. **Prepare the branch**
    - By default, work on the current branch. Do NOT create a `{branch_name}-clean` branch unless explicitly requested.
-   - If explicitly asked to use a clean branch, create `{branch_name}-clean` from the merge base with the base branch.
+   - If explicitly asked to use a clean branch, create `{branch_name}-clean` from the merge base with `BASE_REF`.
 
 4. **Plan the commit storyline**
 
@@ -70,7 +146,7 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
    Flatten the tree into a linear commit sequence that tells a coherent narrative — each step should reflect a logical stage of development, as if writing a tutorial.
 
 5. **Reimplement the work**
-   - Reset the branch to the merge base with the base branch.
+   - Reset the branch to the merge base with `BASE_REF`.
    - Recreate the changes, committing step by step according to your plan.
    - Each commit must:
      - Introduce a single coherent idea.
