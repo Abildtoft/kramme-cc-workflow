@@ -2,13 +2,21 @@ Spec Auto-Fix Complete
 ======================
 
 Report: {report_path}
+Threshold: {CONFIDENCE_THRESHOLD}/100
 Spec files modified: {list of modified files, or "none" if dry-run}
 
 Results:
-  Fixed:                {N}
+  Fixed:                {N} (avg confidence: {avg_score})
   Failed verification:  {N} (reclassified to requires-decision)
-  Requires decision:    {M} (unchanged)
+  Below threshold:      {M} (requires decision)
+  Guardrail-blocked:    {G} (requires decision despite score)
+  Safety-capped:        {S} (always requires decision)
   Skipped:              {K} (already fixed or has SIW issue)
+
+{If CONFIDENCE_THRESHOLD != 80:}
+Note: Using custom threshold {CONFIDENCE_THRESHOLD}. Default is 80.
+  - To see what default would fix: /kramme:siw:spec-audit:auto-fix --dry-run
+  - To restore conservative mode: /kramme:siw:spec-audit:auto-fix --threshold 90
 
 {If requires-decision findings remain:}
 Next steps:

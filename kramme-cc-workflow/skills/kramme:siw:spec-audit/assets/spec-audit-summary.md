@@ -18,6 +18,8 @@ Findings:
   Major:    {N}
   Minor:    {N}
   Total:    {N}
+{If preserved critical caps exist:}
+  Preserved Critical Caps: {N} (reported as Minor due to Work Context but still decision-required)
 
 Overall: {Ready for implementation / Needs revision / Significant gaps}
 
@@ -29,6 +31,8 @@ See siw/OPEN_ISSUES_OVERVIEW.md for the full list.
 
 Next Steps:
   - Fix critical findings in the spec before starting implementation
+{If preserved critical caps exist:}
+  - Resolve preserved-critical findings reported as Minor with `Severity Note` before starting implementation or running auto-fix
   - Address major findings to reduce implementation risk
   - Auto-fix mechanical findings (cross-refs, terminology, formatting): /kramme:siw:spec-audit:auto-fix
   - Resolve remaining findings with executive summaries and issue creation: /kramme:siw:resolve-audit {report_path}

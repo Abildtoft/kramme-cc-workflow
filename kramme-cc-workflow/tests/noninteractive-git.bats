@@ -12,6 +12,18 @@ run_hook() {
     make_bash_input "$1" | bash "$HOOK"
 }
 
+run_hook_without_python() {
+    local cmd="$1"
+    local fake_bin="$BATS_TEST_TMPDIR/no-python-bin"
+    rm -rf "$fake_bin"
+    mkdir -p "$fake_bin"
+    ln -s "$(command -v bash)" "$fake_bin/bash"
+    ln -s "$(command -v jq)" "$fake_bin/jq"
+    ln -s "$(command -v cat)" "$fake_bin/cat"
+    ln -s "$(command -v grep)" "$fake_bin/grep"
+    make_bash_input "$cmd" | env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK"
+}
+
 # ============================================================================
 # BASIC ALLOW CASES
 # ============================================================================
@@ -32,6 +44,182 @@ run_hook() {
     run run_hook "ls -la"
     [ "$status" -eq 0 ]
     is_allowed
+}
+
+@test "allows non-git commands when python3 is unavailable" {
+    run run_hook_without_python "ls -la"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows git status when python3 is unavailable" {
+    run run_hook_without_python "git status"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks sh -c git commit when python3 is unavailable" {
+    run run_hook_without_python "sh -c 'git commit'"
+    is_blocked
+    [[ "$output" == *"Unable to safely parse command"* ]]
+}
+
+@test "blocks bash -c interactive rebase when python3 is unavailable" {
+    run run_hook_without_python "bash -c 'git rebase -i HEAD~2'"
+    is_blocked
+    [[ "$output" == *"Unable to safely parse command"* ]]
+}
+
+@test "blocks absolute-path git commit when python3 is unavailable" {
+    local absolute_git_dir
+    absolute_git_dir="$(mktemp -d)"
+    ln -s "$(command -v git)" "$absolute_git_dir/git"
+
+    run run_hook_without_python "$absolute_git_dir/git commit"
+    rm -rf "$absolute_git_dir"
+
+    is_blocked
+}
+
+@test "allows git commit -m when python3 is unavailable" {
+    run run_hook_without_python "git commit -m 'test message'"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks bash --rcfile wrapped git commit when python3 is unavailable" {
+    run run_hook_without_python "bash --rcfile /tmp/rc -c 'git commit'"
+
+    is_blocked
+    [[ "$output" == *"Unable to safely parse command"* ]]
+}
+
+@test "blocks bash -O wrapped git commit when python3 is unavailable" {
+    run run_hook_without_python "bash -O extglob -c 'git commit'"
+
+    is_blocked
+    [[ "$output" == *"Unable to safely parse command"* ]]
+}
+
+@test "blocks git -C quoted path with spaces when python3 is unavailable" {
+    local repo="$BATS_TEST_TMPDIR/repo with space"
+    mkdir -p "$repo"
+
+    run run_hook_without_python "git -C '$repo' commit"
+
+    is_blocked
+    [[ "$output" == *"git commit -m"* ]]
+}
+
+@test "blocks git -C empty path commit when python3 is unavailable" {
+    run run_hook_without_python "git -C '' commit"
+
+    is_blocked
+    [[ "$output" == *"git commit -m"* ]]
+}
+
+@test "allows quoted control operators when python3 is unavailable" {
+    run run_hook_without_python "echo '&&' git commit"
+
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows shell text mentioning git when python3 is unavailable" {
+    run run_hook_without_python "sh -c 'echo git commit'"
+
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows sudo arguments mentioning git when python3 is unavailable" {
+    run run_hook_without_python "sudo printf '%s\n' git"
+
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks sudo env-wrapped git commit when python3 is unavailable" {
+    run run_hook_without_python "sudo /usr/bin/env git commit"
+
+    is_blocked
+    [[ "$output" == *"git commit -m"* ]]
+}
+
+@test "blocks sudo --user git commit when python3 is unavailable" {
+    run run_hook_without_python "sudo --user root git commit"
+
+    is_blocked
+    [[ "$output" == *"git commit -m"* ]]
+}
+
+@test "blocks sudo --chdir interactive rebase when python3 is unavailable" {
+    run run_hook_without_python "sudo --chdir /tmp git rebase -i HEAD~2"
+
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
+@test "blocks find -exec shell-wrapped git commit when python3 is unavailable" {
+    run run_hook_without_python "find . -exec sh -c 'git commit' \;"
+
+    is_blocked
+    [[ "$output" == *"Unable to safely parse command"* || "$output" == *"git commit -m"* ]]
+}
+
+@test "blocks find with later exec git commit when python3 is unavailable" {
+    run run_hook_without_python "find . -exec echo ok \; -exec git commit \;"
+
+    is_blocked
+    [[ "$output" == *"git commit -m"* ]]
+}
+
+@test "blocks git commit without message when python3 is unavailable" {
+    run run_hook_without_python "git commit"
+    is_blocked
+    [[ "$output" == *"git commit -m"* ]]
+}
+
+@test "allows GIT_SEQUENCE_EDITOR=true git rebase -i when python3 is unavailable" {
+    run run_hook_without_python "GIT_SEQUENCE_EDITOR=true git rebase -i HEAD~3"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git rebase -i without GIT_SEQUENCE_EDITOR when python3 is unavailable" {
+    run run_hook_without_python "git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
+@test "allows git merge --no-edit when python3 is unavailable" {
+    run run_hook_without_python "git merge --no-edit main"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git merge without --no-edit when python3 is unavailable" {
+    run run_hook_without_python "git merge main"
+    is_blocked
+    [[ "$output" == *"--no-edit"* ]]
+}
+
+@test "blocks git add -p when python3 is unavailable" {
+    run run_hook_without_python "git add -p"
+    is_blocked
+    [[ "$output" == *"explicit paths"* ]]
+}
+
+@test "allows git cherry-pick --no-edit when python3 is unavailable" {
+    run run_hook_without_python "git cherry-pick --no-edit abc123"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git cherry-pick without --no-edit when python3 is unavailable" {
+    run run_hook_without_python "git cherry-pick abc123"
+    is_blocked
+    [[ "$output" == *"--no-edit"* ]]
 }
 
 @test "allows git status" {
@@ -72,6 +260,18 @@ run_hook() {
     run run_hook "git commit -m 'test message'"
     [ "$status" -eq 0 ]
     is_allowed
+}
+
+@test "blocks bash --rcfile wrapped git commit" {
+    run run_hook "bash --rcfile /tmp/rc -c 'git commit'"
+    is_blocked
+    [[ "$output" == *"Unable to safely parse command"* || "$output" == *"git commit -m"* ]]
+}
+
+@test "blocks bash -O wrapped git commit" {
+    run run_hook "bash -O extglob -c 'git commit'"
+    is_blocked
+    [[ "$output" == *"Unable to safely parse command"* || "$output" == *"git commit -m"* ]]
 }
 
 @test "allows git commit with --message flag" {
@@ -132,6 +332,12 @@ run_hook() {
     [[ "$output" == *"git commit -m"* ]]
 }
 
+@test "blocks git -C repo commit without message flag" {
+    run run_hook "git -C repo commit"
+    is_blocked
+    [[ "$output" == *"git commit -m"* ]]
+}
+
 @test "blocks git commit --amend without message" {
     run run_hook "git commit --amend"
     is_blocked
@@ -174,6 +380,12 @@ run_hook() {
     run run_hook "env GIT_SEQUENCE_EDITOR=true git rebase -i HEAD~3"
     [ "$status" -eq 0 ]
     is_allowed
+}
+
+@test "blocks sudo --chdir interactive rebase" {
+    run run_hook "sudo --chdir /tmp git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
 }
 
 @test "blocks git rebase -i without GIT_SEQUENCE_EDITOR" {
@@ -234,6 +446,12 @@ run_hook() {
 
 @test "blocks git add -p" {
     run run_hook "git add -p"
+    is_blocked
+    [[ "$output" == *"explicit paths"* ]]
+}
+
+@test "blocks git -c core.editor=vim add -p" {
+    run run_hook "git -c core.editor=vim add -p"
     is_blocked
     [[ "$output" == *"explicit paths"* ]]
 }
@@ -401,9 +619,32 @@ EOF"
     is_blocked
 }
 
+@test "blocks git commit inside command substitution assignment" {
+    run run_hook "out=\$(git commit)"
+    is_blocked
+}
+
+@test "allows safe command substitution before git commit" {
+    run run_hook "MSG=\$(cat /tmp/msg) git commit -m 'test message'"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows safe command substitution before git rebase --continue" {
+    run run_hook "GIT_EDITOR=\$(command -v true) git rebase --continue"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
 @test "blocks /usr/bin/sudo git commit" {
     run run_hook "/usr/bin/sudo git commit"
     is_blocked
+}
+
+@test "blocks sudo --user git commit" {
+    run run_hook "sudo --user root git commit"
+    is_blocked
+    [[ "$output" == *"git commit -m"* ]]
 }
 
 @test "allows command -- git commit with message" {
@@ -431,6 +672,12 @@ EOF"
 @test "blocks find -exec git commit" {
     run run_hook "find . -exec git commit \\;"
     is_blocked
+}
+
+@test "blocks find with later exec git commit" {
+    run run_hook "find . -exec echo ok \\; -exec git commit \\;"
+    is_blocked
+    [[ "$output" == *"git commit -m"* ]]
 }
 
 @test "blocks sh -c git commit" {

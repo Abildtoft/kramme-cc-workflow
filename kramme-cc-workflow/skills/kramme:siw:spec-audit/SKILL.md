@@ -58,7 +58,7 @@ Evaluate specification documents for quality across 8 dimensions before implemen
 
 `--auto` means:
 - replace any previous audit report automatically
-- create SIW issues for **Critical and Major** findings when Step 6 applies
+- create SIW issues for **Critical and Major** findings, plus Minor findings that preserve original Critical or Major severity when Step 6 applies
 - skip the report overwrite / issue-creation prompts
 
 **Detection rules for remaining arguments:**
@@ -265,6 +265,7 @@ Analyze the spec against each dimension below. For each finding, report:
 - **Details**: What the issue is, with quotes from the spec
 - **Severity**: Critical | Major | Minor
 - **Recommendation**: Specific action to fix
+- **Fix Confidence**: {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION})
 
 ## Rules
 
@@ -272,7 +273,10 @@ Analyze the spec against each dimension below. For each finding, report:
 - **Do not return early.** Continue until you have checked every section against every assigned dimension.
 - **Quote the spec.** When flagging an issue, include the relevant text from the spec.
 - **Be specific in recommendations.** "Add more detail" is not enough. Say what detail is missing.
-- **Mark confidence on Technical Design findings.** These are more subjective — use HIGH | MEDIUM | LOW.
+- **Score provisional fix confidence on all findings (0-100).** For each finding, assess how deterministic a fix would be: determinism of fix (0-25), information availability in spec (0-25), meaning preservation (0-25), absence of alternatives (0-25). Sum the four scores, then apply the safety caps below before writing the agent's provisional `Fix Confidence`. Technical Design findings are typically lower confidence due to subjectivity.
+- **Use these tier boundaries for the provisional score.** 90-100 = `MECHANICAL`, 75-89 = `HIGH_CONFIDENCE`, 50-74 = `MODERATE_CONFIDENCE`, 0-49 = `REQUIRES_DECISION`.
+- **Apply these provisional guardrails before reporting the score.** If any sub-score is below 15, set the provisional score to `0 (REQUIRES_DECISION)`.
+- **Apply these safety caps before reporting the score.** Set the provisional score to `0 (REQUIRES_DECISION)` if any of these apply: Critical finding in Completeness, Scope, or Value Proposition; recommendation uses decision-signal language (`consider`, `decide whether`, `choose between`, `discuss with`, `evaluate options`); the finding adds or removes scope; the finding defines success-criteria substance rather than measurability.
 
 {Dimension-specific instructions inserted here — see Section 3.4}
 
@@ -284,8 +288,9 @@ Priority dimensions (flag even minor issues): {work_context.priority_dimensions}
 Deprioritized dimensions (cap at Minor severity): {work_context.deprioritized}
 
 When evaluating **deprioritized dimensions**:
-- Report findings normally, but tag each finding with: **[Deprioritized — capped at Minor]**
-- Do NOT assign Critical or Major severity to deprioritized dimension findings
+- Assess severity normally and keep that original severity in the finding data
+- Tag each finding with: **[Deprioritized — cap to Minor during aggregation]**
+- Do NOT downgrade the severity yourself; the lead applies the Minor cap in Step 4.3.5 after recording `original_severity`
 
 When evaluating **priority dimensions**:
 - Apply strict scrutiny. Even small gaps should be flagged.
@@ -310,6 +315,10 @@ After all Explore agents complete:
 
 Gather all findings from every agent. Deduplicate — if multiple dimensions flagged the same issue, merge into one finding and note all affected dimensions.
 
+When a merged finding spans both deprioritized and non-deprioritized dimensions, treat the non-deprioritized dimension as authoritative for severity capping. Only findings whose affected dimensions are entirely deprioritized may be capped to Minor in Step 4.3.5.
+
+When you merge duplicate findings, keep a single `Fix Confidence` field for the merged entry. Re-score the merged finding against the same four-condition rubric using the consolidated details and recommendation, then re-apply the same tier boundaries, four sub-score guardrails, and safety caps before writing the provisional merged value. Do not average the original agent scores.
+
 ### 4.2 Assign Global Finding IDs
 
 Re-number all findings as `SPEC-001`, `SPEC-002`, etc. in severity order (Critical first, then Major, then Minor).
@@ -328,11 +337,23 @@ For each finding:
 
 If `work_context` specifies deprioritized dimensions:
 
-For each finding in a deprioritized dimension:
-- If severity was assigned as Critical or Major, downgrade to Minor
-- Annotate: `[Deprioritized — capped at Minor from {original_severity}]`
+For each finding whose affected dimensions are all deprioritized:
+- If severity was assigned as Critical or Major, record `original_severity={severity}`, then downgrade to Minor
+- Annotate capped findings with: `**Severity Note:** [Deprioritized — capped at Minor from {original_severity}]`
 
-This ensures deprioritized dimensions never produce Critical or Major findings, while still reporting the issues for visibility.
+If a merged finding also affects any non-deprioritized dimension, do **not** apply the cap. Keep the normally assigned severity and note all affected dimensions in the finding body.
+
+This ensures purely deprioritized dimensions never produce Critical or Major findings, while still preserving blockers that also affect prioritized or neutral dimensions.
+
+### 4.3.6 Normalize Final Fix Confidence
+
+After final severity assignment and any Work Context downgrades, recompute each finding's final `Fix Confidence` using the same four-condition rubric on the consolidated details and final recommendation.
+
+- Re-apply the shared tier boundaries, four sub-score guardrails, and safety caps against the **final** severity, but do **not** clear a safety cap that already applied before a Work Context downgrade.
+- If Step 4.3.5 recorded `original_severity=Critical` for a Completeness, Scope, or Value Proposition finding, keep its final `Fix Confidence` at `0/100 (REQUIRES_DECISION)` and preserve the `Severity Note` so downstream auto-fix passes still treat it as safety-capped.
+- Replace any earlier provisional score if severity, recommendation wording, or merged details changed during consolidation.
+- Track `preserved_critical_caps_count`: the number of final Minor findings whose `Severity Note` says `capped at Minor from Critical`.
+- Use this normalized value and `preserved_critical_caps_count` in the report output and downstream issue/summary logic.
 
 ### 4.4 Compute Dimension Scores
 
@@ -344,6 +365,9 @@ For each dimension, compute a quality score:
 | **Adequate** | No Critical findings. Some Major findings. |
 | **Weak** | Has Critical findings or many Major findings. |
 | **Missing** | Dimension not addressed at all in the spec. |
+
+- Any dimension that contains a final Minor finding with `**Severity Note:** [Deprioritized — capped at Minor from Critical]` is still `Weak`, even though the displayed severity is Minor.
+- Any report with `preserved_critical_caps_count > 0` must not be assessed as `Ready for implementation`.
 
 ### 4.5 Cross-reference Existing Issues
 
@@ -382,6 +406,8 @@ options:
     description: "Cancel — keep existing report"
 ```
 
+If the user chooses **Append**, append the new report as a complete new `# Spec Audit Report` block at the end of the file, separated from the previous run with `---`. Do not merge sections across runs.
+
 ### 5.3 Compile and Write Report
 
 Use the report format template from `assets/spec-audit-report-format.md`.
@@ -403,11 +429,11 @@ Spec audit report written to: {path}
 - `siw/OPEN_ISSUES_OVERVIEW.md` exists (SIW workflow is active)
 - `siw/issues/` exists or can be created
 - `siw/LOG.md` exists or can be created
-- Critical or Major findings were found
+- Critical or Major findings were found, or a Minor finding preserves original Critical or Major severity via `**Severity Note:** [Deprioritized — capped at Minor from {original_severity}]`
 
 ### 6.1 Ask User
 
-If `AUTO_MODE=true`, skip this prompt and choose **Critical and major only**.
+If `AUTO_MODE=true`, skip this prompt and choose **Critical and major only** (this also includes Minor findings whose `Severity Note` preserves original Critical or Major severity).
 
 Otherwise:
 
@@ -416,7 +442,7 @@ header: "Create SIW Issues"
 question: "Found {N} actionable spec findings. Create SIW issues for them?"
 options:
   - label: "Critical and major only"
-    description: "Create {N} issues (skip minor findings)"
+    description: "Create {N} issues for visible Critical/Major findings plus Minor findings that preserve original Critical or Major severity"
   - label: "All findings"
     description: "Create {N} issues including minor ones"
   - label: "Let me select"
@@ -436,12 +462,22 @@ Before creating any issues:
    - If missing, create it with a minimal "Current Progress" section.
    - If creation fails, warn and skip Step 6 (report-only mode).
 
+### 6.2.5 Determine Issue-Eligible Findings
+
+Before creating issue files, determine the selected findings set:
+
+- **Critical and major only** → include all visible Critical and Major findings, plus any Minor finding with `**Severity Note:** [Deprioritized — capped at Minor from Critical]` or `**Severity Note:** [Deprioritized — capped at Minor from Major]`
+- **All findings** → include every finding
+- **Let me select** → present all findings, and clearly label Minor findings with preserved Critical or Major severity so their original urgency is not lost during selection
+
 ### 6.3 Create Issue Files
 
 For each selected finding:
 
 1. Determine next available `G-` issue number from `siw/issues/`.
 2. Create issue file `siw/issues/ISSUE-G-{NNN}-spec-{slugified-title}.md` using `assets/spec-issue-template.md`.
+   - If the finding carries `**Severity Note:** [Deprioritized — capped at Minor from Critical]`, set the issue priority to `High` and copy the `Severity Note` into the issue body.
+   - If the finding carries `**Severity Note:** [Deprioritized — capped at Minor from Major]`, set the issue priority to `Medium` and copy the `Severity Note` into the issue body.
 
 3. Update `siw/OPEN_ISSUES_OVERVIEW.md` with new issue rows.
 4. Update `siw/LOG.md` Current Progress section using `assets/spec-log-last-completed.md`.
