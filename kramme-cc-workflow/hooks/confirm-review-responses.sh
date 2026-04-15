@@ -7,6 +7,15 @@ source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
 exit_if_hook_disabled "confirm-review-responses"
 
 ARTIFACT_LIST_FILE="${CONFIRM_REVIEW_ARTIFACT_LIST_FILE:-${CLAUDE_PLUGIN_ROOT}/hooks/confirm-review-artifacts.txt}"
+REPLAY_GIT_ENV_VARS=(
+    GIT_DIR
+    GIT_WORK_TREE
+    GIT_INDEX_FILE
+    GIT_NAMESPACE
+    GIT_COMMON_DIR
+    GIT_OBJECT_DIRECTORY
+    GIT_ALTERNATE_OBJECT_DIRECTORIES
+)
 
 load_artifact_list() {
     local list_file="$1"
@@ -63,8 +72,36 @@ append_git_env_assignment() {
     local value
 
     should_replay_git_env "$key" || return 0
+    remove_git_env_assignment "$key"
     value="$(strip_wrapping_quotes "${assignment#*=}")"
     git_env+=("$key=$value")
+}
+
+remove_git_env_assignment() {
+    local key="$1"
+    local assignment filtered=()
+
+    for assignment in "${git_env[@]}"; do
+        if [ "${assignment%%=*}" != "$key" ]; then
+            filtered+=("$assignment")
+        fi
+    done
+
+    git_env=("${filtered[@]}")
+}
+
+clear_git_env_assignments() {
+    git_env=()
+}
+
+collect_current_git_env_assignments() {
+    local key
+
+    for key in "${REPLAY_GIT_ENV_VARS[@]}"; do
+        if [ "${!key+x}" = x ]; then
+            printf '%s=%s\n' "$key" "${!key}"
+        fi
+    done
 }
 
 extract_shell_inline_command() {
@@ -239,11 +276,23 @@ EOF
                             append_git_env_assignment "$token"
                             shift
                             ;;
+                        -i|--ignore-environment)
+                            clear_git_env_assignments
+                            shift
+                            ;;
                         -u|--unset)
                             shift
-                            [ $# -gt 0 ] && shift
+                            if [ $# -gt 0 ]; then
+                                remove_git_env_assignment "$(strip_wrapping_quotes "$1")"
+                                shift
+                            fi
                             ;;
-                        --unset=*|-u*)
+                        --unset=*)
+                            remove_git_env_assignment "$(strip_wrapping_quotes "${token#*=}")"
+                            shift
+                            ;;
+                        -u*)
+                            remove_git_env_assignment "$(strip_wrapping_quotes "${token#-u}")"
                             shift
                             ;;
                         -C|--chdir)
@@ -369,6 +418,9 @@ EOF
 
 parse_git_commit_contexts() {
     local raw_command="$1"
+    local inherited_git_env
+
+    inherited_git_env="$(collect_current_git_env_assignments)"
 
     if command -v python3 >/dev/null 2>&1; then
         python3 - "$raw_command" <<'PY'
@@ -492,8 +544,27 @@ def parse_shell_inline_command(args):
     return None
 
 
+def unset_replay_env(git_env, key):
+    git_env[:] = [assignment for assignment in git_env if assignment.split("=", 1)[0] != key]
+
+
+def set_replay_env(git_env, key, value):
+    unset_replay_env(git_env, key)
+    git_env.append(f"{key}={value}")
+
+
+def clear_replay_env(git_env):
+    git_env[:] = []
+
+
+def inherited_replay_env_from_process():
+    return [f"{key}={os.environ[key]}" for key in REPLAY_ENV_VARS if key in os.environ]
+
+
 def parse_commit_contexts(command, inherited_git_args=None, inherited_git_env=None):
     contexts = []
+    if inherited_git_env is None:
+        inherited_git_env = inherited_replay_env_from_process()
     try:
         tokens = tokenize(command)
     except ValueError:
@@ -516,7 +587,7 @@ def parse_commit_segment(tokens, git_args, git_env):
     while idx < len(tokens) and ASSIGNMENT.match(tokens[idx]):
         key, value = tokens[idx].split("=", 1)
         if key in REPLAY_ENV_VARS:
-            git_env.append(f"{key}={value}")
+            set_replay_env(git_env, key, value)
         idx += 1
 
     while idx < len(tokens):
@@ -586,18 +657,29 @@ def parse_commit_segment(tokens, git_args, git_env):
                 if ASSIGNMENT.match(token):
                     key, value = token.split("=", 1)
                     if key in REPLAY_ENV_VARS:
-                        git_env.append(f"{key}={value}")
+                        set_replay_env(git_env, key, value)
                     idx += 1
                     continue
                 if token == "--":
                     idx += 1
                     break
+                if token in {"-i", "--ignore-environment"}:
+                    clear_replay_env(git_env)
+                    idx += 1
+                    continue
                 if token in ENV_OPTIONS_WITH_VALUE:
                     if token in {"-C", "--chdir"} and idx + 1 < len(tokens):
                         git_args.extend(["-C", tokens[idx + 1]])
+                    if token in {"-u", "--unset"} and idx + 1 < len(tokens):
+                        unset_replay_env(git_env, tokens[idx + 1])
                     idx += 2
                     continue
-                if token.startswith("--unset=") or (token.startswith("-u") and token != "-u"):
+                if token.startswith("--unset="):
+                    unset_replay_env(git_env, token.split("=", 1)[1])
+                    idx += 1
+                    continue
+                if token.startswith("-u") and token != "-u":
+                    unset_replay_env(git_env, token[2:])
                     idx += 1
                     continue
                 if token.startswith("--chdir="):
@@ -662,7 +744,7 @@ PY
     fi
 
     local context_lines
-    context_lines="$(parse_git_commit_contexts_fallback "$raw_command")"
+    context_lines="$(parse_git_commit_contexts_fallback "$raw_command" "" "$inherited_git_env")"
     if [ -z "$context_lines" ]; then
         printf '%s\n' '[]'
         return
@@ -700,11 +782,15 @@ while IFS= read -r commit_context_json; do
         git_env_assignments+=("$(printf '%s\n' "$git_env_json" | jq -r '.')")
     done < <(printf '%s\n' "$commit_context_json" | jq -c '.git_env[]?')
 
-    if [ ${#git_env_assignments[@]} -gt 0 ]; then
-        staged_files="$(env "${git_env_assignments[@]}" git "${git_prefix_args[@]}" diff --cached --name-only 2>/dev/null)"
-    else
-        staged_files="$(git "${git_prefix_args[@]}" diff --cached --name-only 2>/dev/null)"
-    fi
+    staged_files="$(
+        (
+            unset "${REPLAY_GIT_ENV_VARS[@]}"
+            for assignment in "${git_env_assignments[@]}"; do
+                export "$assignment"
+            done
+            git "${git_prefix_args[@]}" diff --cached --name-only 2>/dev/null
+        )
+    )"
 
     if [ -n "$staged_files" ]; then
         while IFS= read -r staged_file; do

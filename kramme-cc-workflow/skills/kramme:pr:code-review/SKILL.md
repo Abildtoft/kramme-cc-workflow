@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:code-review
 description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline.
-argument-hint: "[aspects] [--base <branch>] [parallel] [--inline]"
+argument-hint: "[aspects] [--emphasize <dim>...] [--base <branch>] [parallel] [--inline]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -19,6 +19,8 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Parse arguments to see if user requested specific review aspects
    - If `--base <branch>` flag → store as explicit base branch override
    - If `--inline` flag → set `INLINE_MODE=true` and remove it from the aspect list
+   - If `--emphasize <dim>...` flag → store dimension names in `EMPHASIZED_DIMENSIONS` list and remove from aspect list. Consume all tokens after `--emphasize` until the next `--` flag, `parallel`, or end of arguments. Each token must be a valid aspect name (`comments`, `tests`, `errors`, `types`, `code`, `slop`, `security`, `removal`, `simplify`). Reject `--emphasize all` (emphasizing everything is a no-op).
+   - If an explicit aspect list was provided and it does not include `all`, every emphasized dimension must also appear in that list. If any emphasized dimension was excluded by the user's aspect filter, stop with an error instead of re-ranking unrelated findings.
    - Default: Run all applicable reviews
 
 2. **Resolve Base Branch**
@@ -129,6 +131,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **If code deleted/refactored**: kramme:removal-planner (safe removal verification)
    - **If security-relevant changes** (API routes, auth logic, DB queries, external calls, user input handling, crypto): kramme:injection-reviewer, kramme:auth-reviewer, kramme:data-reviewer, kramme:logic-reviewer (launch all 4 in parallel)
    - **After passing review**: kramme:code-simplifier (polish and refine)
+   - Build `ACTIVE_REVIEW_DIMENSIONS` from the agents that will actually run after aspect filtering and applicability checks. If any emphasized dimension has no active agent in this set, stop with an error telling the user which emphasized dimensions are inactive. Do not cap unrelated findings when the emphasized review never ran.
 
 7. **Launch Review Agents**
 
@@ -183,7 +186,18 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
 11. **Aggregate Results**
 
-   After validation, slop meta-review, and previous-response filtering, summarize:
+   After validation, slop meta-review, and previous-response filtering, apply emphasis adjustments if `EMPHASIZED_DIMENSIONS` is non-empty. Only use findings from agents that actually ran in Step 7 when deciding what is emphasized vs non-emphasized.
+
+   **Dimension-to-agent mapping:**
+   `security` → injection-reviewer, auth-reviewer, data-reviewer, logic-reviewer | `errors` → silent-failure-hunter | `tests` → pr-test-analyzer | `comments` → comment-analyzer | `types` → type-design-analyzer | `code` → code-reviewer | `slop` → deslop-reviewer | `removal` → removal-planner | `simplify` → code-simplifier
+
+   **Promotion/capping rules (per finding, based on source agent):**
+   - Emphasized agent findings: Suggestion → promoted to Important. Critical and Important unchanged.
+   - Non-emphasized agent findings: Important → capped to Suggestion. Critical unchanged (never hide critical issues). Suggestion unchanged.
+
+   Track counts of promoted and capped findings for the report.
+
+   Then summarize:
    - **Critical Issues** (must fix before merge) - only validated findings
    - **Important Issues** (should fix) - only validated findings
    - **Suggestions** (nice to have) - only validated findings
@@ -216,6 +230,11 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - X findings validated as PR-caused
    - X findings filtered (pre-existing or out-of-scope)
    - X findings filtered (previously addressed in REVIEW_OVERVIEW.md)
+
+   ## Emphasis Applied (omit section if no emphasis)
+   - Emphasized: security, errors
+   - Findings promoted (Suggestion → Important): X
+   - Findings capped (Important → Suggestion): X
 
    ## Critical Issues (X found)
    - [agent-name]: Issue description [file:line]
@@ -276,6 +295,21 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 ```
 /kramme:pr:code-review all parallel
 # Launches all agents in parallel
+```
+
+**Emphasize specific dimensions:**
+```
+/kramme:pr:code-review --emphasize security
+# Run all applicable agents, but elevate security findings and quiet others
+
+/kramme:pr:code-review --emphasize security errors
+# Elevate both security and error-handling findings
+
+/kramme:pr:code-review tests errors --emphasize errors
+# Run only test+error agents, elevate error findings
+
+/kramme:pr:code-review comments --emphasize security
+# Invalid: security is not in the active review set, so the command should stop with an error
 ```
 
 **Custom base branch (for MRs targeting non-default branches):**
