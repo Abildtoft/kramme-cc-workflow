@@ -147,6 +147,22 @@ record_git_editor_env() {
     esac
 }
 
+unset_git_editor_env() {
+    case "$1" in
+        GIT_EDITOR)
+            has_git_editor=false
+            ;;
+        GIT_SEQUENCE_EDITOR)
+            has_git_sequence_editor=false
+            ;;
+    esac
+}
+
+clear_git_editor_env() {
+    has_git_editor=false
+    has_git_sequence_editor=false
+}
+
 evaluate_find_exec_segments() {
     local value reason
     local exec_segment=()
@@ -217,13 +233,22 @@ evaluate_simple_git_segment() {
                             shift
                             ;;
                         -i|--ignore-environment)
+                            clear_git_editor_env
                             shift
                             ;;
                         -u|--unset)
                             shift
-                            [ $# -gt 0 ] && shift
+                            if [ $# -gt 0 ]; then
+                                unset_git_editor_env "$(strip_wrapping_quotes "$1")"
+                                shift
+                            fi
                             ;;
-                        --unset=*|-u*)
+                        --unset=*)
+                            unset_git_editor_env "$(strip_wrapping_quotes "${value#*=}")"
+                            shift
+                            ;;
+                        -u*)
+                            unset_git_editor_env "$(strip_wrapping_quotes "${value#-u}")"
                             shift
                             ;;
                         -C|--chdir)
@@ -791,6 +816,16 @@ def extract_shell_c_command(args):
     return None
 
 
+def clear_editor_env(env):
+    env.pop("GIT_EDITOR", None)
+    env.pop("GIT_SEQUENCE_EDITOR", None)
+
+
+def unset_editor_env(env, key):
+    if key in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
+        env.pop(key, None)
+
+
 def parse_env_wrapped_segment(tokens, inherited_env=None):
     env = dict(inherited_env or {})
     idx = 0
@@ -820,15 +855,20 @@ def parse_env_wrapped_segment(tokens, inherited_env=None):
                     idx += 1
                     continue
                 if env_token in ("-i", "--ignore-environment"):
+                    clear_editor_env(env)
                     idx += 1
                     continue
                 if env_token in ("-u", "--unset"):
+                    if idx + 1 < len(tokens):
+                        unset_editor_env(env, tokens[idx + 1])
                     idx += 2
                     continue
                 if env_token.startswith("-u") and env_token != "-u":
+                    unset_editor_env(env, env_token[2:])
                     idx += 1
                     continue
                 if env_token.startswith("--unset="):
+                    unset_editor_env(env, env_token.split("=", 1)[1])
                     idx += 1
                     continue
                 if env_token.startswith("-"):

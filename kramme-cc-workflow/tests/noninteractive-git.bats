@@ -192,6 +192,18 @@ run_hook_without_python() {
     [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
 }
 
+@test "blocks prefixed GIT_EDITOR unset before rebase --continue when python3 is unavailable" {
+    run run_hook_without_python "GIT_EDITOR=true env -u GIT_EDITOR git rebase --continue"
+    is_blocked
+    [[ "$output" == *"GIT_EDITOR"* ]]
+}
+
+@test "blocks prefixed GIT_SEQUENCE_EDITOR ignore-environment before interactive rebase when python3 is unavailable" {
+    run run_hook_without_python "GIT_SEQUENCE_EDITOR=true env -i git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
 @test "allows git merge --no-edit when python3 is unavailable" {
     run run_hook_without_python "git merge --no-edit main"
     [ "$status" -eq 0 ]
@@ -414,6 +426,18 @@ run_hook_without_python() {
 @test "blocks env-wrapped rebase --continue without GIT_EDITOR" {
     run run_hook "env -u GIT_EDITOR git rebase --continue"
     is_blocked
+}
+
+@test "blocks prefixed GIT_EDITOR unset before rebase --continue" {
+    run run_hook "GIT_EDITOR=true env -u GIT_EDITOR git rebase --continue"
+    is_blocked
+    [[ "$output" == *"GIT_EDITOR"* ]]
+}
+
+@test "blocks prefixed GIT_SEQUENCE_EDITOR ignore-environment before interactive rebase" {
+    run run_hook "GIT_SEQUENCE_EDITOR=true env -i git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
 }
 
 @test "allows git rebase --abort" {

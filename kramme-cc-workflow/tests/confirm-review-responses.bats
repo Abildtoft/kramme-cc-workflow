@@ -36,6 +36,10 @@ mock_git_staged_for_repo() {
     local default_files="${3:-}"
     cat > "$MOCK_DIR/git" << EOF
 #!/bin/bash
+if [[ "\$GIT_DIR" == "$repo/.git" && "\$GIT_WORK_TREE" == "$repo" && "\$1" == "diff" && "\$2" == "--cached" && "\$3" == "--name-only" ]]; then
+    echo "$staged_files"
+    exit 0
+fi
 if [[ "\$1" == "-C" && "\$2" == "$repo" && "\$3" == "diff" && "\$4" == "--cached" && "\$5" == "--name-only" ]]; then
     echo "$staged_files"
     exit 0
@@ -54,6 +58,12 @@ run_hook() {
     make_bash_input "$1" | bash "$HOOK"
 }
 
+run_hook_with_repo_env() {
+    local repo="$1"
+    local cmd="$2"
+    make_bash_input "$cmd" | env GIT_DIR="$repo/.git" GIT_WORK_TREE="$repo" bash "$HOOK"
+}
+
 run_hook_without_python() {
     local cmd="$1"
     local fake_bin="$BATS_TEST_TMPDIR/no-python-bin"
@@ -66,6 +76,21 @@ run_hook_without_python() {
     ln -s "$(command -v sed)" "$fake_bin/sed"
     ln -s "$MOCK_DIR/git" "$fake_bin/git"
     make_bash_input "$cmd" | env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK"
+}
+
+run_hook_without_python_with_repo_env() {
+    local repo="$1"
+    local cmd="$2"
+    local fake_bin="$BATS_TEST_TMPDIR/no-python-bin"
+    rm -rf "$fake_bin"
+    mkdir -p "$fake_bin"
+    ln -s "$(command -v bash)" "$fake_bin/bash"
+    ln -s "$(command -v jq)" "$fake_bin/jq"
+    ln -s "$(command -v cat)" "$fake_bin/cat"
+    ln -s "$(command -v grep)" "$fake_bin/grep"
+    ln -s "$(command -v sed)" "$fake_bin/sed"
+    ln -s "$MOCK_DIR/git" "$fake_bin/git"
+    make_bash_input "$cmd" | env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" GIT_DIR="$repo/.git" GIT_WORK_TREE="$repo" "$fake_bin/bash" "$HOOK"
 }
 
 # ============================================================================
@@ -334,6 +359,40 @@ REVIEW_SUMMARY.md"
     is_blocked
 }
 
+@test "allows env -u clearing repo selection before git commit" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md" "notes.txt"
+    run run_hook "GIT_DIR=repo/.git GIT_WORK_TREE=repo env -u GIT_DIR -u GIT_WORK_TREE git commit -m 'test'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "allows env -i clearing repo selection before git commit" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md" "notes.txt"
+    run run_hook "GIT_DIR=repo/.git GIT_WORK_TREE=repo env -i git commit -m 'test'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "allows env -u clearing exported repo selection before git commit" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md" "notes.txt"
+    run run_hook_with_repo_env "repo" "env -u GIT_DIR -u GIT_WORK_TREE git commit -m 'test'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "allows env -i clearing exported repo selection before git commit" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md" "notes.txt"
+    run run_hook_with_repo_env "repo" "env -i git commit -m 'test'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "checks staged artifacts in repo selected via exported GIT_DIR and GIT_WORK_TREE" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_with_repo_env "repo" "git commit -m 'test'"
+    is_blocked
+}
+
 @test "blocks chained git commit when artifact is staged" {
     mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook "git status && git commit -m 'test'"
@@ -361,6 +420,40 @@ REVIEW_SUMMARY.md"
 @test "blocks env --chdir wrapped git commit when artifact is staged without python3" {
     mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
     run run_hook_without_python "env --chdir=repo git commit -m 'test'"
+    is_blocked
+}
+
+@test "allows env -u clearing repo selection before git commit without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md" "notes.txt"
+    run run_hook_without_python "GIT_DIR=repo/.git GIT_WORK_TREE=repo env -u GIT_DIR -u GIT_WORK_TREE git commit -m 'test'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "allows env -i clearing repo selection before git commit without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md" "notes.txt"
+    run run_hook_without_python "GIT_DIR=repo/.git GIT_WORK_TREE=repo env -i git commit -m 'test'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "allows env -u clearing exported repo selection before git commit without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md" "notes.txt"
+    run run_hook_without_python_with_repo_env "repo" "env -u GIT_DIR -u GIT_WORK_TREE git commit -m 'test'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "allows env -i clearing exported repo selection before git commit without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md" "notes.txt"
+    run run_hook_without_python_with_repo_env "repo" "env -i git commit -m 'test'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "checks staged artifacts in repo selected via exported GIT_DIR and GIT_WORK_TREE without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python_with_repo_env "repo" "git commit -m 'test'"
     is_blocked
 }
 
