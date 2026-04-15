@@ -74,6 +74,7 @@ append_git_env_assignment() {
     should_replay_git_env "$key" || return 0
     remove_git_env_assignment "$key"
     value="$(strip_wrapping_quotes "${assignment#*=}")"
+    remove_git_env_assignment "$key"
     git_env+=("$key=$value")
 }
 
@@ -668,10 +669,13 @@ def parse_commit_segment(tokens, git_args, git_env):
                     idx += 1
                     continue
                 if token in ENV_OPTIONS_WITH_VALUE:
+                    if token in {"-u", "--unset"}:
+                        if idx + 1 < len(tokens):
+                            unset_replay_env(git_env, tokens[idx + 1])
+                        idx += 2
+                        continue
                     if token in {"-C", "--chdir"} and idx + 1 < len(tokens):
                         git_args.extend(["-C", tokens[idx + 1]])
-                    if token in {"-u", "--unset"} and idx + 1 < len(tokens):
-                        unset_replay_env(git_env, tokens[idx + 1])
                     idx += 2
                     continue
                 if token.startswith("--unset="):

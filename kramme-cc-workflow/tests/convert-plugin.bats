@@ -553,8 +553,11 @@ MD
   run grep -nF 'hook-bundles", "kramme-cc-workflow"' "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts"
   [ "$status" -eq 0 ]
 
-  run grep -nE 'CLAUDE_PLUGIN_ROOT="\$\{claudePluginRoot\}" bash \\\$\{CLAUDE_PLUGIN_ROOT\}/hooks/block-rm-rf.sh' "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts"
+  run grep -nE 'CLAUDE_PLUGIN_ROOT="\$\{claudePluginRoot\}" bash \$\{claudePluginRoot\}/hooks/block-rm-rf.sh' "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts"
   [ "$status" -eq 0 ]
+
+  run grep -n '\${CLAUDE_PLUGIN_ROOT}/hooks/block-rm-rf.sh' "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts"
+  [ "$status" -eq 1 ]
 }
 
 @test "opencode conversion preserves existing hook-enabled plugin installs" {
