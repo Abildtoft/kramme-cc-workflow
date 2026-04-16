@@ -278,7 +278,7 @@ Git history management and commit operations.
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
 | `/kramme:git:fixup` | User | — | Intelligently fixup unstaged changes into existing commits.<br><br>Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
-| `/kramme:git:recreate-commits` | User | `[--auto] [--granular] [--base <branch>]` | Recreate current branch in-place with narrative-quality commits and logical, reviewer-friendly commit history. Add `--auto` to choose commit granularity without prompting. Use `--granular` for fine-grained commits. Use `--base` to override the auto-detected base branch. |
+| `/kramme:git:recreate-commits` | User | `[--auto] [--granular] [--base <branch>]` | Recreate current branch in-place with narrative-quality commits and logical, reviewer-friendly commit history. Add `--auto` to choose commit granularity without prompting. Use `--granular` to force atomic-level commits. Use `--base` to override the auto-detected base branch. |
 
 #### Linear
 
