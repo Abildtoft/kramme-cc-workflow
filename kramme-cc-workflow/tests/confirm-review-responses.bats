@@ -93,6 +93,21 @@ run_hook_without_python_with_repo_env() {
     make_bash_input "$cmd" | env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" GIT_DIR="$repo/.git" GIT_WORK_TREE="$repo" "$fake_bin/bash" "$HOOK"
 }
 
+run_hook_without_python_with_real_git() {
+    local cmd="$1"
+    local fake_bin="$BATS_TEST_TMPDIR/no-python-bin-real-git"
+    rm -rf "$fake_bin"
+    mkdir -p "$fake_bin"
+    ln -s "$(command -v bash)" "$fake_bin/bash"
+    ln -s "$(command -v jq)" "$fake_bin/jq"
+    ln -s "$(command -v cat)" "$fake_bin/cat"
+    ln -s "$(command -v grep)" "$fake_bin/grep"
+    ln -s "$(command -v sed)" "$fake_bin/sed"
+    ln -s "$(command -v git)" "$fake_bin/git"
+    ln -s "$(command -v env)" "$fake_bin/env"
+    make_bash_input "$cmd" | env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK"
+}
+
 # ============================================================================
 # BASIC ALLOW CASES
 # ============================================================================
@@ -633,6 +648,34 @@ REVIEW_SUMMARY.md"
     git -C "$repo" add REVIEW_OVERVIEW.md
 
     run run_hook "env GIT_DIR=$repo/.git GIT_WORK_TREE=$repo git commit -m 'test'"
+    rm -rf "$repo"
+
+    is_blocked
+}
+
+@test "blocks env -u GIT_INDEX_FILE after explicit assignment" {
+    local repo
+    repo="$(mktemp -d)"
+    git -C "$repo" init -q
+    touch "$repo/REVIEW_OVERVIEW.md"
+    git -C "$repo" add REVIEW_OVERVIEW.md
+    : > "$repo/alt.index"
+
+    run run_hook "GIT_INDEX_FILE=$repo/alt.index env -u GIT_INDEX_FILE git -C $repo commit -m 'test'"
+    rm -rf "$repo"
+
+    is_blocked
+}
+
+@test "blocks env -u GIT_INDEX_FILE after explicit assignment without python3" {
+    local repo
+    repo="$(mktemp -d)"
+    git -C "$repo" init -q
+    touch "$repo/REVIEW_OVERVIEW.md"
+    git -C "$repo" add REVIEW_OVERVIEW.md
+    : > "$repo/alt.index"
+
+    run run_hook_without_python_with_real_git "GIT_INDEX_FILE=$repo/alt.index env -u GIT_INDEX_FILE git -C $repo commit -m 'test'"
     rm -rf "$repo"
 
     is_blocked

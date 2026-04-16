@@ -781,8 +781,8 @@ function renderHookStatements(matcher, useToolMatcher) {
 
   for (const hook of matcher.hooks) {
     if (hook.type === "command") {
-      const escapedCommand = escapeTemplateLiteral(String(hook.command ?? ""))
-      const renderedCommand = `CLAUDE_PLUGIN_ROOT="\${claudePluginRoot}" ${escapedCommand}`
+      const renderedHookCommand = renderHookCommand(hook.command)
+      const renderedCommand = `CLAUDE_PLUGIN_ROOT="\${claudePluginRoot}" ${renderedHookCommand}`
       if (condition) {
         statements.push(`if (${condition}) { await $\`${renderedCommand}\` }`)
       } else {
@@ -947,6 +947,14 @@ function normalizePattern(tool, pattern) {
 
 function escapeTemplateLiteral(value) {
   return String(value).replace(/[`\\]/g, "\\$&").replace(/\$\{/g, "\\${")
+}
+
+function renderHookCommand(value) {
+  const placeholder = "__CLAUDE_PLUGIN_ROOT__"
+  const withPlaceholder = String(value ?? "")
+    .replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, placeholder)
+    .replace(/\$CLAUDE_PLUGIN_ROOT\b/g, placeholder)
+  return escapeTemplateLiteral(withPlaceholder).split(placeholder).join("${claudePluginRoot}")
 }
 
 function convertClaudeToCodex(plugin, options) {

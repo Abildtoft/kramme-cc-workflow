@@ -186,6 +186,18 @@ run_hook_without_python() {
     is_allowed
 }
 
+@test "blocks env -u GIT_SEQUENCE_EDITOR after explicit assignment when python3 is unavailable" {
+    run run_hook_without_python "GIT_SEQUENCE_EDITOR=true env -u GIT_SEQUENCE_EDITOR git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
+@test "blocks env -u GIT_EDITOR after explicit assignment when python3 is unavailable" {
+    run run_hook_without_python "GIT_EDITOR=true env -u GIT_EDITOR git rebase --continue"
+    is_blocked
+    [[ "$output" == *"GIT_EDITOR"* ]]
+}
+
 @test "blocks git rebase -i without GIT_SEQUENCE_EDITOR when python3 is unavailable" {
     run run_hook_without_python "git rebase -i HEAD~3"
     is_blocked
@@ -394,6 +406,12 @@ run_hook_without_python() {
     is_allowed
 }
 
+@test "blocks env -u GIT_SEQUENCE_EDITOR after explicit assignment" {
+    run run_hook "GIT_SEQUENCE_EDITOR=true env -u GIT_SEQUENCE_EDITOR git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
 @test "blocks sudo --chdir interactive rebase" {
     run run_hook "sudo --chdir /tmp git rebase -i HEAD~3"
     is_blocked
@@ -415,6 +433,12 @@ run_hook_without_python() {
     run run_hook "GIT_EDITOR=true git rebase --continue"
     [ "$status" -eq 0 ]
     is_allowed
+}
+
+@test "blocks env -u GIT_EDITOR after explicit assignment" {
+    run run_hook "GIT_EDITOR=true env -u GIT_EDITOR git rebase --continue"
+    is_blocked
+    [[ "$output" == *"GIT_EDITOR"* ]]
 }
 
 @test "blocks git rebase --continue without GIT_EDITOR" {
