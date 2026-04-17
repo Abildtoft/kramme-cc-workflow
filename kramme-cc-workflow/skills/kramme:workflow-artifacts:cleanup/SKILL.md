@@ -1,6 +1,6 @@
 ---
 name: kramme:workflow-artifacts:cleanup
-description: Delete workflow artifacts (REVIEW_OVERVIEW.md, UX_REVIEW_OVERVIEW.md, PRODUCT_REVIEW_OVERVIEW.md, PRODUCT_AUDIT_OVERVIEW.md, PRODUCT_AUDIT.md, QA_REPORT.md, QA_BASELINE.json, AUDIT_IMPLEMENTATION_REPORT.md, AUDIT_SPEC_REPORT.md, siw/PRODUCT_AUDIT.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, specification files, visual diagram HTML files)
+description: Delete workflow artifacts such as review overviews, audit reports, generated PR plans, temporary SIW files, and visual diagram HTML files
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -24,6 +24,7 @@ Delete the following files if they exist:
 - `PRODUCT_REVIEW_OVERVIEW.md`
 - `PRODUCT_AUDIT_OVERVIEW.md`
 - `PRODUCT_AUDIT.md`
+- `COPY_REVIEW_OVERVIEW.md`
 - `QA_REPORT.md`
 - `QA_BASELINE.json`
 - `AUDIT_IMPLEMENTATION_REPORT.md`
@@ -31,6 +32,9 @@ Delete the following files if they exist:
 - `siw/PRODUCT_AUDIT.md`
 - `siw/AUDIT_IMPLEMENTATION_REPORT.md`
 - `siw/AUDIT_SPEC_REPORT.md`
+
+**Planning artifacts:**
+- `PR_PLAN_*.md`
 
 **Structured Implementation Workflow (SIW) artifacts (in `siw/`):**
 - `siw/LOG.md`
