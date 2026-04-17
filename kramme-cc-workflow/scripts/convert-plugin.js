@@ -949,12 +949,76 @@ function escapeTemplateLiteral(value) {
   return String(value).replace(/[`\\]/g, "\\$&").replace(/\$\{/g, "\\${")
 }
 
+function renderHookRootReference(value, placeholder) {
+  // Scan the ORIGINAL (un-template-escaped) string so quote/backslash
+  // state tracks real shell semantics. Template-literal escaping is
+  // applied only to the literal spans between placeholder sites, never
+  // to the ${claudePluginRoot} interpolation itself.
+  const parts = []
+  let literal = ""
+  let inSingle = false
+  let inDouble = false
+  let escaped = false
+
+  const flushLiteral = () => {
+    if (literal) {
+      parts.push({ type: "literal", value: literal })
+      literal = ""
+    }
+  }
+
+  for (let i = 0; i < value.length; i += 1) {
+    const char = value[i]
+
+    if (escaped) {
+      literal += char
+      escaped = false
+      continue
+    }
+
+    if (char === "\\" && !inSingle) {
+      literal += char
+      escaped = true
+      continue
+    }
+
+    if (char === "'" && !inDouble) {
+      inSingle = !inSingle
+      literal += char
+      continue
+    }
+
+    if (char === "\"" && !inSingle) {
+      inDouble = !inDouble
+      literal += char
+      continue
+    }
+
+    if (value.startsWith(placeholder, i)) {
+      flushLiteral()
+      parts.push({ type: "placeholder", quoted: inSingle || inDouble })
+      i += placeholder.length - 1
+      continue
+    }
+
+    literal += char
+  }
+  flushLiteral()
+
+  return parts
+    .map((part) => {
+      if (part.type === "literal") return escapeTemplateLiteral(part.value)
+      return part.quoted ? "${claudePluginRoot}" : "\"${claudePluginRoot}\""
+    })
+    .join("")
+}
+
 function renderHookCommand(value) {
   const placeholder = "__CLAUDE_PLUGIN_ROOT__"
   const withPlaceholder = String(value ?? "")
     .replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, placeholder)
     .replace(/\$CLAUDE_PLUGIN_ROOT\b/g, placeholder)
-  return escapeTemplateLiteral(withPlaceholder).split(placeholder).join("${claudePluginRoot}")
+  return renderHookRootReference(withPlaceholder, placeholder)
 }
 
 function convertClaudeToCodex(plugin, options) {

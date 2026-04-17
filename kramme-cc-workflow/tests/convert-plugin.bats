@@ -32,27 +32,23 @@ create_hook_fixture_plugin() {
   local plugin_dir="$1"
   local plugin_name="$2"
   local script_name="$3"
+  local hook_command="${4:-bash \${CLAUDE_PLUGIN_ROOT}/hooks/${script_name}.sh}"
 
   create_fixture_plugin "$plugin_dir" "$plugin_name"
   mkdir -p "$plugin_dir/hooks/lib"
 
-  cat > "$plugin_dir/hooks/hooks.json" <<JSON
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \${CLAUDE_PLUGIN_ROOT}/hooks/${script_name}.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
-JSON
+  jq -n --arg cmd "$hook_command" '{
+    hooks: {
+      PreToolUse: [
+        {
+          matcher: "Bash",
+          hooks: [
+            {type: "command", command: $cmd}
+          ]
+        }
+      ]
+    }
+  }' > "$plugin_dir/hooks/hooks.json"
 
   cat > "$plugin_dir/hooks/${script_name}.sh" <<'SH'
 #!/bin/bash
@@ -553,10 +549,51 @@ MD
   run grep -nF 'hook-bundles", "kramme-cc-workflow"' "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts"
   [ "$status" -eq 0 ]
 
-  run grep -nE 'CLAUDE_PLUGIN_ROOT="\$\{claudePluginRoot\}" bash \$\{claudePluginRoot\}/hooks/block-rm-rf.sh' "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts"
+  run grep -nE 'CLAUDE_PLUGIN_ROOT="\$\{claudePluginRoot\}" bash "\$\{claudePluginRoot\}"/hooks/block-rm-rf.sh' "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts"
   [ "$status" -eq 0 ]
 
   run grep -n '\${CLAUDE_PLUGIN_ROOT}/hooks/block-rm-rf.sh' "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts"
+  [ "$status" -eq 1 ]
+}
+
+@test "opencode conversion quotes hook script paths when output root contains spaces" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  OUTPUT_ROOT="$TMP_DIR/opencode root"
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to opencode --output "$OUTPUT_ROOT" --yes
+  [ "$status" -eq 0 ]
+
+  [ -f "$OUTPUT_ROOT/.opencode/plugins/converted-hooks-kramme-cc-workflow.ts" ]
+
+  run grep -nE 'CLAUDE_PLUGIN_ROOT="\$\{claudePluginRoot\}" bash "\$\{claudePluginRoot\}"/hooks/block-rm-rf.sh' "$OUTPUT_ROOT/.opencode/plugins/converted-hooks-kramme-cc-workflow.ts"
+  [ "$status" -eq 0 ]
+
+  run grep -nE 'bash \$\{claudePluginRoot\}/hooks/block-rm-rf.sh' "$OUTPUT_ROOT/.opencode/plugins/converted-hooks-kramme-cc-workflow.ts"
+  [ "$status" -eq 1 ]
+}
+
+@test "opencode conversion preserves already-quoted CLAUDE_PLUGIN_ROOT hook commands" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_DIR="$TMP_DIR/quoted-hook-plugin"
+  create_hook_fixture_plugin "$PLUGIN_DIR" "quoted-hook-plugin" "quoted-hook" 'bash "${CLAUDE_PLUGIN_ROOT}"/hooks/quoted-hook.sh'
+
+  OUTPUT_ROOT="$TMP_DIR/opencode root"
+  run node "$SCRIPT" install "$PLUGIN_DIR" --to opencode --output "$OUTPUT_ROOT" --yes
+  [ "$status" -eq 0 ]
+
+  local converted_plugin="$OUTPUT_ROOT/.opencode/plugins/converted-hooks-quoted-hook-plugin.ts"
+  [ -f "$converted_plugin" ]
+
+  run grep -nF 'bash "${claudePluginRoot}"/hooks/quoted-hook.sh' "$converted_plugin"
+  [ "$status" -eq 0 ]
+
+  run grep -nF 'bash ""${claudePluginRoot}""/hooks/quoted-hook.sh' "$converted_plugin"
   [ "$status" -eq 1 ]
 }
 

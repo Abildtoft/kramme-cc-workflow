@@ -7,6 +7,9 @@ source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
 exit_if_hook_disabled "confirm-review-responses"
 
 ARTIFACT_LIST_FILE="${CONFIRM_REVIEW_ARTIFACT_LIST_FILE:-${CLAUDE_PLUGIN_ROOT}/hooks/confirm-review-artifacts.txt}"
+COMMAND_SUBSTITUTION_TOKEN="__CMD_SUBST_"
+UNSAFE_REPO_SELECTION_REASON="Unable to safely determine the git commit target because repository selection uses command substitution. Use a literal path or commit from within the target repo."
+PARSE_ERROR_REASON="Unable to safely parse command. Refusing possible git commit that may stage a review artifact."
 REPLAY_GIT_ENV_VARS=(
     GIT_DIR
     GIT_WORK_TREE
@@ -74,13 +77,44 @@ should_replay_git_env() {
     return 1
 }
 
+contains_command_substitution_token() {
+    case "$1" in
+        *"$COMMAND_SUBSTITUTION_TOKEN"*)
+            return 0
+            ;;
+    esac
+    return 1
+}
+
+context_has_dynamic_repo_selection() {
+    # Any prefix arg that still carries a command-substitution placeholder
+    # would be expanded by git when we replay it (see also git -c
+    # core.fsmonitor=$(...) which achieves RCE). Refuse to replay such
+    # args regardless of which flag they sit behind.
+    local arg assignment key value
+    for arg in "${git_prefix_args[@]}"; do
+        if contains_command_substitution_token "$arg"; then
+            return 0
+        fi
+    done
+
+    for assignment in "${git_env_assignments[@]}"; do
+        key="${assignment%%=*}"
+        value="${assignment#*=}"
+        if should_replay_git_env "$key" && contains_command_substitution_token "$value"; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 append_git_env_assignment() {
     local assignment="$1"
     local key="${assignment%%=*}"
     local value
 
     should_replay_git_env "$key" || return 0
-    remove_git_env_assignment "$key"
     value="$(strip_wrapping_quotes "${assignment#*=}")"
     remove_git_env_assignment "$key"
     git_env+=("$key=$value")
@@ -390,6 +424,15 @@ EOF
                 git_args+=("$(strip_wrapping_quotes "$token")")
                 shift
                 ;;
+            __CMD_SUBST_*)
+                # A command substitution between `git` and its subcommand
+                # will expand at runtime into unknown flags. Keep scanning
+                # past it so we still emit a commit context; the dynamic-
+                # repo-selection gate (which rejects any arg containing
+                # __CMD_SUBST_) will then block the whole segment.
+                git_args+=("$token")
+                shift
+                ;;
             *)
                 break
                 ;;
@@ -401,14 +444,34 @@ EOF
     fi
 }
 
+emit_parse_error_context() {
+    local reason="${1:-$PARSE_ERROR_REASON}"
+    jq -cn --arg reason "$reason" '{parse_error: $reason}'
+}
+
 parse_git_commit_contexts_fallback() {
     local raw_command="$1"
     local prefix_git_args="${2:-}"
     local prefix_git_env="${3:-}"
-    local tokenized token_json token_type token_value
+    local tokenized token_json token_type token_value substitution
     local segment=()
+    local sanitized_command
+    local substitutions=()
 
-    if ! tokenized="$(shell_tokenize "$raw_command" true)"; then
+    if ! replace_command_substitutions "$raw_command"; then
+        emit_parse_error_context
+        return
+    fi
+
+    sanitized_command="$SANITIZED_COMMAND"
+    substitutions=("${COMMAND_SUBSTITUTIONS[@]}")
+
+    for substitution in "${substitutions[@]}"; do
+        parse_git_commit_contexts_fallback "$substitution"
+    done
+
+    if ! tokenized="$(shell_tokenize "$sanitized_command" true)"; then
+        emit_parse_error_context
         return
     fi
 
@@ -436,7 +499,7 @@ parse_git_commit_contexts() {
     inherited_git_env="$(collect_current_git_env_assignments)"
 
     if command -v python3 >/dev/null 2>&1; then
-        python3 - "$raw_command" <<'PY'
+        python3 - "$raw_command" "$PARSE_ERROR_REASON" <<'PY'
 import json
 import os
 import re
@@ -463,6 +526,7 @@ SHELL_KEYWORDS = {
     "{",
     "}",
 }
+HEREDOC_START = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
 ENV_OPTIONS_WITH_VALUE = {"-u", "--unset", "-C", "--chdir"}
 GIT_OPTIONS_WITH_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env"}
 REPLAY_ENV_VARS = {
@@ -492,6 +556,7 @@ SHELL_OPTIONS_WITH_VALUE = {"--command", "--rcfile", "--init-file", "--startup-f
 
 
 def normalize_newlines(command):
+    command, _ = strip_heredoc_bodies(command)
     normalized = []
     in_single = False
     in_double = False
@@ -521,6 +586,199 @@ def normalize_newlines(command):
             in_double = not in_double
 
     return "".join(normalized)
+
+
+def _extract_body_substitutions(line):
+    # Collect $(...) / `...` contents from an unquoted heredoc body line.
+    # Mirrors the bash extract_body_substitutions helper.
+    subs = []
+    idx = 0
+    length = len(line)
+    while idx < length:
+        ch = line[idx]
+        if ch == "$" and idx + 1 < length and line[idx + 1] == "(":
+            inner, idx = read_dollar_substitution(line, idx)
+            subs.append(inner)
+            continue
+        if ch == chr(96):
+            inner, idx = read_backtick_substitution(line, idx)
+            subs.append(inner)
+            continue
+        idx += 1
+    return subs
+
+
+def strip_heredoc_bodies(command):
+    lines = command.splitlines(keepends=True)
+    stripped_lines = []
+    delimiter = None
+    is_quoted = False
+    is_dashed = False
+    extracted = []
+
+    for line in lines:
+        if delimiter is not None:
+            # Strip trailing newline for comparison only.
+            compare = line[:-1] if line.endswith("\n") else line
+            if is_dashed:
+                # POSIX: <<- strips leading TABs only (never spaces).
+                compare = compare.lstrip("\t")
+            if compare == delimiter:
+                stripped_lines.append(line)
+                delimiter = None
+                is_quoted = False
+                is_dashed = False
+                continue
+            if not is_quoted:
+                # Unquoted heredoc bodies still expand $(...) and `...`.
+                body_line = line[:-1] if line.endswith("\n") else line
+                extracted.extend(_extract_body_substitutions(body_line))
+            if line.endswith("\n"):
+                stripped_lines.append("\n")
+            else:
+                stripped_lines.append("")
+            continue
+
+        match = HEREDOC_START.search(line)
+        if match is not None:
+            delimiter = match.group(2)
+            is_quoted = match.group(1) != ""
+            is_dashed = match.group(0).startswith("<<-")
+        stripped_lines.append(line)
+
+    return "".join(stripped_lines), extracted
+
+
+def read_dollar_substitution(command, start):
+    inner = []
+    depth = 1
+    idx = start + 2
+    in_single = False
+    in_double = False
+    escaped = False
+
+    while idx < len(command):
+        char = command[idx]
+
+        if escaped:
+            escaped = False
+            idx += 1
+            continue
+
+        if char == "\\" and not in_single:
+            escaped = True
+            idx += 1
+            continue
+
+        if char == "'" and not in_double:
+            in_single = not in_single
+            idx += 1
+            continue
+
+        if char == '"' and not in_single:
+            in_double = not in_double
+            idx += 1
+            continue
+
+        if not in_single and not in_double and command.startswith("$" + "(", idx):
+            nested_inner, idx = read_dollar_substitution(command, idx)
+            inner.append("$" + "(" + nested_inner + ")")
+            continue
+
+        if not in_single and not in_double and char == ")":
+            depth -= 1
+            if depth == 0:
+                return "".join(inner), idx + 1
+
+        inner.append(char)
+        idx += 1
+
+    raise ValueError("Unterminated command substitution.")
+
+
+def read_backtick_substitution(command, start):
+    inner = []
+    idx = start + 1
+    escaped = False
+
+    while idx < len(command):
+        char = command[idx]
+
+        if escaped:
+            escaped = False
+            inner.append(char)
+            idx += 1
+            continue
+
+        if char == "\\":
+            escaped = True
+            inner.append(char)
+            idx += 1
+            continue
+
+        if char == chr(96):
+            return "".join(inner), idx + 1
+
+        inner.append(char)
+        idx += 1
+
+    raise ValueError("Unterminated backtick command substitution.")
+
+
+def replace_command_substitutions(command):
+    command, heredoc_body_substitutions = strip_heredoc_bodies(command)
+    # Start with any substitutions extracted from unquoted heredoc
+    # bodies — they're still executed by the shell and need inspection.
+    substitutions = list(heredoc_body_substitutions)
+    result = []
+    idx = 0
+    in_single = False
+    in_double = False
+    escaped = False
+
+    while idx < len(command):
+        char = command[idx]
+
+        if escaped:
+            result.append(char)
+            escaped = False
+            idx += 1
+            continue
+
+        if char == "\\" and not in_single:
+            result.append(char)
+            escaped = True
+            idx += 1
+            continue
+
+        if char == "'" and not in_double:
+            in_single = not in_single
+            result.append(char)
+            idx += 1
+            continue
+
+        if char == '"' and not in_single:
+            in_double = not in_double
+            result.append(char)
+            idx += 1
+            continue
+
+        if not in_single and command.startswith("$" + "(", idx):
+            inner, idx = read_dollar_substitution(command, idx)
+            substitutions.append(inner)
+            result.append(f"__CMD_SUBST_{len(substitutions) - 1}__")
+            continue
+
+        if not in_single and char == chr(96):
+            inner, idx = read_backtick_substitution(command, idx)
+            substitutions.append(inner)
+            result.append(f"__CMD_SUBST_{len(substitutions) - 1}__")
+            continue
+
+        result.append(char)
+        idx += 1
+
+    return "".join(result), substitutions
 
 
 def tokenize(command):
@@ -592,14 +850,31 @@ def inherited_replay_env_from_process():
     return [f"{key}={os.environ[key]}" for key in REPLAY_ENV_VARS if key in os.environ]
 
 
-def parse_commit_contexts(command, inherited_git_args=None, inherited_git_env=None):
+PARSE_ERROR_REASON = sys.argv[2] if len(sys.argv) > 2 else "Unable to safely parse command."
+
+
+class ParseError(Exception):
+    pass
+
+
+def parse_commit_contexts(command, inherited_git_args=None, inherited_git_env=None, depth=0):
+    # Cap recursion so pathological nesting can't hit Python's stack limit
+    # and convert a ValueError into an uncaught RecursionError (which would
+    # exit the interpreter non-zero and the shell would fail open).
+    if depth > 4:
+        raise ParseError("command substitution nesting too deep")
+
     contexts = []
     if inherited_git_env is None:
         inherited_git_env = inherited_replay_env_from_process()
     try:
-        tokens = tokenize(command)
-    except ValueError:
-        return contexts
+        sanitized_command, substitutions = replace_command_substitutions(command)
+        tokens = tokenize(sanitized_command)
+    except ValueError as exc:
+        raise ParseError(str(exc)) from exc
+
+    for substitution in substitutions:
+        contexts.extend(parse_commit_contexts(substitution, depth=depth + 1))
 
     for segment in split_segments(tokens):
         contexts.extend(
@@ -767,6 +1042,14 @@ def parse_commit_segment(tokens, git_args, git_env):
             git_args.append(token)
             idx += 1
             continue
+        # Command substitution between `git` and its subcommand expands to
+        # unknown flags at runtime; keep scanning so a commit context is
+        # emitted and the dynamic-repo-selection gate can block on the
+        # retained placeholder.
+        if token.startswith("__CMD_SUBST_"):
+            git_args.append(token)
+            idx += 1
+            continue
         break
 
     if idx < len(tokens) and tokens[idx] == "commit":
@@ -775,7 +1058,12 @@ def parse_commit_segment(tokens, git_args, git_env):
     return []
 
 
-print(json.dumps(parse_commit_contexts(sys.argv[1])))
+try:
+    result = parse_commit_contexts(sys.argv[1])
+except (ParseError, RecursionError):
+    # Emit a sentinel the shell caller recognises and blocks on.
+    result = [{"parse_error": PARSE_ERROR_REASON}]
+print(json.dumps(result))
 PY
         return
     fi
@@ -809,6 +1097,12 @@ blocked_files=()
 while IFS= read -r commit_context_json; do
     [ -z "$commit_context_json" ] && continue
 
+    parse_error_reason="$(printf '%s\n' "$commit_context_json" | jq -r '.parse_error // empty')"
+    if [ -n "$parse_error_reason" ]; then
+        echo "$parse_error_reason" >&2
+        exit 2
+    fi
+
     git_prefix_args=()
     while IFS= read -r git_arg_json; do
         git_prefix_args+=("$(printf '%s\n' "$git_arg_json" | jq -r '.')")
@@ -819,15 +1113,29 @@ while IFS= read -r commit_context_json; do
         git_env_assignments+=("$(printf '%s\n' "$git_env_json" | jq -r '.')")
     done < <(printf '%s\n' "$commit_context_json" | jq -c '.git_env[]?')
 
+    if context_has_dynamic_repo_selection; then
+        echo "$UNSAFE_REPO_SELECTION_REASON" >&2
+        exit 2
+    fi
+
     staged_files="$(
         (
             unset "${REPLAY_GIT_ENV_VARS[@]}"
             for assignment in "${git_env_assignments[@]}"; do
                 export "$assignment"
             done
-            git "${git_prefix_args[@]}" diff --cached --name-only 2>/dev/null
+            # Leave stderr on the hook's stderr so the user sees git's own
+            # diagnostic. We then fail closed based on the exit status.
+            git "${git_prefix_args[@]}" diff --cached --name-only
         )
     )"
+    diff_exit_status=$?
+    if [ "$diff_exit_status" -ne 0 ]; then
+        # Can't confirm the artifact is *not* staged — fail closed so
+        # bad-env/repo-corruption can't slip a staged artifact through.
+        echo "Unable to inspect staged files (git diff --cached exited $diff_exit_status). Refusing possible commit of a review artifact." >&2
+        exit 2
+    fi
 
     if [ -n "$staged_files" ]; then
         while IFS= read -r staged_file; do
@@ -844,6 +1152,21 @@ while IFS= read -r commit_context_json; do
 done < <(echo "$commit_contexts" | jq -c '.[]')
 
 if [ ${#blocked_files[@]} -gt 0 ]; then
+    deduped_blocked_files=()
+    for blocked_file in "${blocked_files[@]}"; do
+        already_seen=false
+        for existing_blocked_file in "${deduped_blocked_files[@]}"; do
+            if [ "$existing_blocked_file" = "$blocked_file" ]; then
+                already_seen=true
+                break
+            fi
+        done
+        if [ "$already_seen" != "true" ]; then
+            deduped_blocked_files+=("$blocked_file")
+        fi
+    done
+    blocked_files=("${deduped_blocked_files[@]}")
+
     blocked_file_list=$(IFS=', '; echo "${blocked_files[*]}")
     config_path_display="$ARTIFACT_LIST_FILE"
     if [ -n "$CLAUDE_PLUGIN_ROOT" ]; then

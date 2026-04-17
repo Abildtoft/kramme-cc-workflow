@@ -440,16 +440,65 @@ REVIEW_SUMMARY.md"
     is_blocked
 }
 
+@test "allows git commit text inside heredoc command substitution" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook "cat <<'EOF'
+\$(git commit -m 'test')
+EOF"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "blocks git commit with prefixed command substitution when artifact is staged" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook "MSG=\$(cat /tmp/msg) git -C repo commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks git commit inside command substitution when artifact is staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook "out=\$(git commit -m 'test')"
+    is_blocked
+}
+
 @test "blocks git -C commit when artifact is staged" {
     mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
     run run_hook "git -C repo commit -m 'test'"
     is_blocked
 }
 
+@test "blocks git -C command substitution when repo selection is dynamic" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook "git -C \$(printf repo) commit -m 'test'"
+    is_blocked
+    [[ "$output" == *"Unable to safely determine the git commit target"* ]]
+}
+
+@test "blocks GIT_DIR command substitution when repo selection is dynamic" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook "GIT_DIR=\$(printf repo/.git) GIT_WORK_TREE=repo git commit -m 'test'"
+    is_blocked
+    [[ "$output" == *"Unable to safely determine the git commit target"* ]]
+}
+
 @test "blocks git -C commit when artifact is staged without python3" {
     mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
     run run_hook_without_python "git -C repo commit -m 'test'"
     is_blocked
+}
+
+@test "blocks git -C command substitution when repo selection is dynamic without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "git -C \$(printf repo) commit -m 'test'"
+    is_blocked
+    [[ "$output" == *"Unable to safely determine the git commit target"* ]]
+}
+
+@test "blocks GIT_DIR command substitution when repo selection is dynamic without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "GIT_DIR=\$(printf repo/.git) GIT_WORK_TREE=repo git commit -m 'test'"
+    is_blocked
+    [[ "$output" == *"Unable to safely determine the git commit target"* ]]
 }
 
 @test "blocks env --chdir wrapped git commit when artifact is staged without python3" {
@@ -507,6 +556,27 @@ REVIEW_SUMMARY.md"
 @test "blocks shell-wrapped git commit when artifact is staged without python3" {
     mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook_without_python "sh -c 'git commit -m \"test\"'"
+    is_blocked
+}
+
+@test "allows git commit text inside heredoc command substitution without python3" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "cat <<'EOF'
+\$(git commit -m 'test')
+EOF"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "blocks git commit with prefixed command substitution when artifact is staged without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "MSG=\$(cat /tmp/msg) git -C repo commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks git commit inside command substitution when artifact is staged without python3" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "out=\$(git commit -m 'test')"
     is_blocked
 }
 

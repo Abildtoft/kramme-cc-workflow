@@ -451,20 +451,29 @@ evaluate_simple_git_segment() {
 
 fallback_noninteractive_reason() {
     local raw_command="$1"
-    local token_json token_type token_value reason
+    local token_json token_type token_value reason substitution
     local segment=()
+    local sanitized_command
+    local substitutions=()
 
-    if printf '%s\n' "$raw_command" | grep -qE '[$][(]|`|<<'; then
-        if printf '%s\n' "$raw_command" | grep -qE '(^|[^[:alnum:]_./-])([^[:space:]]*/)?git([^[:alnum:]_./-]|$)'; then
-            printf '%s\n' "$PARSE_ERROR_REASON"
-            return
-        fi
-        printf '__ALLOW__\n'
+    if ! replace_command_substitutions "$raw_command"; then
+        printf '%s\n' "$PARSE_ERROR_REASON"
         return
     fi
 
+    sanitized_command="$SANITIZED_COMMAND"
+    substitutions=("${COMMAND_SUBSTITUTIONS[@]}")
+
+    for substitution in "${substitutions[@]}"; do
+        reason="$(fallback_noninteractive_reason "$substitution")"
+        if [ "$reason" != "__ALLOW__" ]; then
+            printf '%s\n' "$reason"
+            return
+        fi
+    done
+
     local tokenized
-    if ! tokenized="$(shell_tokenize "$raw_command" true)"; then
+    if ! tokenized="$(shell_tokenize "$sanitized_command" true)"; then
         printf '%s\n' "$PARSE_ERROR_REASON"
         return
     fi
@@ -562,17 +571,51 @@ GIT_OPTIONS_WITH_VALUE = {
 }
 
 
+def _extract_body_substitutions(line):
+    # Collect $(...) / `...` contents from an unquoted heredoc body line.
+    # Mirrors the bash extract_body_substitutions helper.
+    subs = []
+    idx = 0
+    length = len(line)
+    while idx < length:
+        ch = line[idx]
+        if ch == "$" and idx + 1 < length and line[idx + 1] == "(":
+            inner, idx = read_dollar_substitution(line, idx)
+            subs.append(inner)
+            continue
+        if ch == chr(96):
+            inner, idx = read_backtick_substitution(line, idx)
+            subs.append(inner)
+            continue
+        idx += 1
+    return subs
+
+
 def strip_heredoc_bodies(command):
     lines = command.splitlines(keepends=True)
     stripped_lines = []
     delimiter = None
+    is_quoted = False
+    is_dashed = False
+    extracted = []
 
     for line in lines:
         if delimiter is not None:
-            if line.strip() == delimiter:
+            compare = line[:-1] if line.endswith("\n") else line
+            if is_dashed:
+                # POSIX: <<- strips leading TABs only (never spaces).
+                compare = compare.lstrip("\t")
+            if compare == delimiter:
                 stripped_lines.append(line)
                 delimiter = None
-            elif line.endswith("\n"):
+                is_quoted = False
+                is_dashed = False
+                continue
+            if not is_quoted:
+                # Unquoted heredoc bodies still expand $(...) and `...`.
+                body_line = line[:-1] if line.endswith("\n") else line
+                extracted.extend(_extract_body_substitutions(body_line))
+            if line.endswith("\n"):
                 stripped_lines.append("\n")
             else:
                 stripped_lines.append("")
@@ -581,13 +624,15 @@ def strip_heredoc_bodies(command):
         match = HEREDOC_START.search(line)
         if match is not None:
             delimiter = match.group(2)
+            is_quoted = match.group(1) != ""
+            is_dashed = match.group(0).startswith("<<-")
         stripped_lines.append(line)
 
-    return "".join(stripped_lines)
+    return "".join(stripped_lines), extracted
 
 
 def normalize_newlines(command):
-    command = strip_heredoc_bodies(command)
+    command, _ = strip_heredoc_bodies(command)
     normalized = []
     in_single = False
     in_double = False
@@ -724,7 +769,10 @@ def read_backtick_substitution(command, start):
 
 
 def replace_command_substitutions(command):
-    substitutions = []
+    command, heredoc_body_substitutions = strip_heredoc_bodies(command)
+    # Start with any substitutions extracted from unquoted heredoc
+    # bodies — they're still executed by the shell and need inspection.
+    substitutions = list(heredoc_body_substitutions)
     result = []
     idx = 0
     in_single = False
@@ -1187,7 +1235,7 @@ PY
     block "Unable to safely parse command metadata. Refusing potentially interactive git command."
 fi
 
-if ! reason=$(echo "$decision" | jq -r '.block // "__ALLOW__"' 2>/dev/null); then
+if ! reason=$(echo "$decision" | jq -r '.block // "__ALLOW__"'); then
     block "Unable to safely parse command metadata. Refusing potentially interactive git command."
 fi
 
