@@ -1226,6 +1226,7 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
       await fs.rm(hookRootPath, { recursive: true, force: true })
     }
     await copyDir(bundle.hookSourceDir, path.join(hookRootPath, "hooks"))
+    await bootstrapHookScripts(path.join(hookRootPath, "hooks"))
   }
 
   const skillsRoot = paths.skillsDir
@@ -1320,7 +1321,7 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
     if (skill.content) {
       await writeText(path.join(targetDir, "SKILL.md"), skill.content + "\n")
     }
-    await rewriteCodexMarkdownResources(targetDir, bundle.knownCommands)
+    await rewriteCodexMarkdownResourcesFromSource(skill.sourceDir, targetDir, bundle.knownCommands)
   }
 
   for (const skill of bundle.generatedSkills) {
@@ -1779,21 +1780,48 @@ async function copyDir(sourceDir, targetDir) {
   }
 }
 
-async function rewriteCodexMarkdownResources(rootDir, knownCommands) {
+async function bootstrapHookScripts(rootDir) {
+  if (!(await pathExists(rootDir))) return
+
   const entries = await fs.readdir(rootDir, { withFileTypes: true })
+  const bootstrapLine = ': "${CLAUDE_PLUGIN_ROOT:=$(CDPATH= cd -- "${BASH_SOURCE[0]%/*}/.." && pwd)}"'
   for (const entry of entries) {
     const fullPath = path.join(rootDir, entry.name)
     if (entry.isDirectory()) {
-      await rewriteCodexMarkdownResources(fullPath, knownCommands)
+      await bootstrapHookScripts(fullPath)
+      continue
+    }
+    if (!entry.isFile() || path.extname(entry.name) !== ".sh") {
+      continue
+    }
+
+    const source = await readText(fullPath)
+    if (source.includes(bootstrapLine)) continue
+
+    const lineEnding = source.includes("\r\n") ? "\r\n" : "\n"
+    const lines = source.split(/\r?\n/)
+    const insertIndex = lines[0]?.startsWith("#!") ? 1 : 0
+    lines.splice(insertIndex, 0, bootstrapLine)
+    await writeText(fullPath, lines.join(lineEnding))
+  }
+}
+
+async function rewriteCodexMarkdownResourcesFromSource(sourceDir, targetDir, knownCommands) {
+  const entries = await fs.readdir(sourceDir, { withFileTypes: true })
+  for (const entry of entries) {
+    const sourcePath = path.join(sourceDir, entry.name)
+    const targetPath = path.join(targetDir, entry.name)
+    if (entry.isDirectory()) {
+      await rewriteCodexMarkdownResourcesFromSource(sourcePath, targetPath, knownCommands)
       continue
     }
     if (!entry.isFile() || path.extname(entry.name) !== ".md" || entry.name === "SKILL.md") {
       continue
     }
-    const source = await readText(fullPath)
+    const source = await readText(targetPath)
     const transformed = transformContentForCodex(source, { knownCommands })
     if (transformed !== source) {
-      await writeText(fullPath, transformed)
+      await writeText(targetPath, transformed)
     }
   }
 }

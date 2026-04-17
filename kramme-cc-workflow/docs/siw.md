@@ -61,6 +61,11 @@ Or start from scratch with an interactive interview:
     │                               or spec refinement   │
     │    /kramme:siw:spec-audit     8-dimension quality  │
     │                               check                │
+    │    /kramme:siw:spec-audit:auto-fix                 │
+    │                               deterministic fixes  │
+    │    /kramme:siw:breakdown-findings                  │
+    │                               decision-ready       │
+    │                               spec triage          │
     │◄───────────────────────────────────────────────────┘
     │
     ▼
@@ -251,6 +256,7 @@ When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW
 |-------|-----------|-------------|
 | `/kramme:siw:discovery` | `[topic \| spec-path(s) \| 'siw'] [--apply]` | Deep discovery interview that works both before a spec exists and after one has gone stale. Greenfield runs write `siw/DISCOVERY_BRIEF.md`; refinement runs identify concrete improvements and can apply them with `--apply`. |
 | `/kramme:siw:spec-audit` | `[spec-path(s) \| 'siw'] [--auto] [--model opus\|sonnet\|haiku]` | Audit spec quality across 8 dimensions: coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design. Produces a structured report and optionally creates SIW issues. Add `--auto` to replace any previous report and create critical/major issues without pausing. |
+| `/kramme:siw:breakdown-findings` | `[audit-report-path] [SPEC-id(s)]` | Break down unresolved `SPEC-*` findings into one inline report with executive summaries, concrete options, and a recommendation for each finding. Skips auto-fixed and already-tracked findings by default, then asks which follow-up path to take without creating SIW issues directly. |
 | `/kramme:siw:reverse-engineer-spec` | `[branch \| folder \| file(s)] [--base main] [--model opus\|sonnet\|haiku]` | Generate a spec from existing code. Analyzes git diffs, folders, or files using parallel agents. Produces an SIW-compatible spec. Useful for documenting shipped features or bootstrapping SIW from existing work. |
 
 ### Issue Management
@@ -272,7 +278,7 @@ When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW
 | Skill | Arguments | Description |
 |-------|-----------|-------------|
 | `/kramme:siw:implementation-audit` | `[spec-path(s) \| 'siw'] [--auto] [--model opus\|sonnet\|haiku]` | Adversarial, exhaustive audit of code against spec. Pass A checks requirement-by-requirement conformance. Pass B scans for undocumented extensions. Includes conflict reconciliation and coverage gates. Add `--auto` to replace any previous report and create critical/major issues without pausing. |
-| `/kramme:siw:resolve-audit` | `[audit-report-path] [finding-id(s)] [--auto]` | Resolve audit findings one at a time. By default each finding gets an executive summary, alternatives, a recommended option, then user choice. Add `--auto` to let the model select the resolution and create issues without pausing. If both audit reports exist, pass the report path to keep the run scoped. |
+| `/kramme:siw:resolve-audit` | `[audit-report-path] [finding-id(s)] [--auto]` | Resolve audit findings one at a time. By default each finding gets an executive summary, alternatives, a recommended option, then user choice. Add `--auto` to let the model select the resolution and create issues without pausing. If both audit reports exist, pass the report path to keep the run scoped. Use `/kramme:siw:breakdown-findings` first when you want a spec-only batch breakdown before choosing a resolution path. |
 
 ### Lifecycle Management
 
