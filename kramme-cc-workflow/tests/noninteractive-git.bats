@@ -87,6 +87,12 @@ run_hook_without_python() {
     is_allowed
 }
 
+@test "allows safe command substitution before git commit when python3 is unavailable" {
+    run run_hook_without_python "MSG=\$(cat /tmp/msg) git commit -m 'test message'"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
 @test "blocks bash --rcfile wrapped git commit when python3 is unavailable" {
     run run_hook_without_python "bash --rcfile /tmp/rc -c 'git commit'"
 
@@ -127,6 +133,15 @@ run_hook_without_python() {
 
 @test "allows shell text mentioning git when python3 is unavailable" {
     run run_hook_without_python "sh -c 'echo git commit'"
+
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows git commit text inside heredoc command substitution when python3 is unavailable" {
+    run run_hook_without_python "cat <<'EOF'
+\$(git commit -m 'test message')
+EOF"
 
     [ "$status" -eq 0 ]
     is_allowed
@@ -182,6 +197,12 @@ run_hook_without_python() {
 
 @test "allows GIT_SEQUENCE_EDITOR=true git rebase -i when python3 is unavailable" {
     run run_hook_without_python "GIT_SEQUENCE_EDITOR=true git rebase -i HEAD~3"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows safe command substitution before git rebase --continue when python3 is unavailable" {
+    run run_hook_without_python "GIT_EDITOR=\$(command -v true) git rebase --continue"
     [ "$status" -eq 0 ]
     is_allowed
 }
@@ -655,6 +676,14 @@ EOF"
     [ "$status" -eq 0 ]
     # This might match, but the heredoc content is in quotes effectively
     # The behavior here depends on implementation - this tests current behavior
+}
+
+@test "allows git commit text inside heredoc command substitution" {
+    run run_hook "cat <<'EOF'
+\$(git commit -m 'test message')
+EOF"
+    [ "$status" -eq 0 ]
+    is_allowed
 }
 
 @test "blocks git commit inside if condition" {

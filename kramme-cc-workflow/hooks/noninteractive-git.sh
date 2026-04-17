@@ -451,20 +451,24 @@ evaluate_simple_git_segment() {
 
 fallback_noninteractive_reason() {
     local raw_command="$1"
-    local token_json token_type token_value reason
+    local token_json token_type token_value reason substitution
     local segment=()
 
-    if printf '%s\n' "$raw_command" | grep -qE '[$][(]|`|<<'; then
-        if printf '%s\n' "$raw_command" | grep -qE '(^|[^[:alnum:]_./-])([^[:space:]]*/)?git([^[:alnum:]_./-]|$)'; then
-            printf '%s\n' "$PARSE_ERROR_REASON"
-            return
-        fi
-        printf '__ALLOW__\n'
+    if ! replace_command_substitutions "$raw_command"; then
+        printf '%s\n' "$PARSE_ERROR_REASON"
         return
     fi
 
+    for substitution in "${COMMAND_SUBSTITUTIONS[@]}"; do
+        reason="$(fallback_noninteractive_reason "$substitution")"
+        if [ "$reason" != "__ALLOW__" ]; then
+            printf '%s\n' "$reason"
+            return
+        fi
+    done
+
     local tokenized
-    if ! tokenized="$(shell_tokenize "$raw_command" true)"; then
+    if ! tokenized="$(shell_tokenize "$SANITIZED_COMMAND" true)"; then
         printf '%s\n' "$PARSE_ERROR_REASON"
         return
     fi
@@ -724,6 +728,7 @@ def read_backtick_substitution(command, start):
 
 
 def replace_command_substitutions(command):
+    command = strip_heredoc_bodies(command)
     substitutions = []
     result = []
     idx = 0
