@@ -1,19 +1,19 @@
 ---
 name: kramme:pr:create
 description: Create a clean PR with narrative commits and comprehensive description
-argument-hint: "[--auto]"
+argument-hint: "[--auto] [--draft]"
 disable-model-invocation: true
 user-invocable: true
 ---
 
 # Create Pull Request
 
-Orchestrate the creation of a clean, well-documented draft PR by:
+Orchestrate the creation of a clean, well-documented PR by:
 1. Validating git state and detecting platform
 2. Setting up the branch (if on main)
 3. Creating clean, narrative-quality commits
 4. Generating a comprehensive description
-5. Pushing and creating the draft PR
+5. Pushing and creating the PR
 
 ## Process Overview
 
@@ -45,7 +45,7 @@ Orchestrate the creation of a clean, well-documented draft PR by:
 [Confirmation] -> Abort? -> Rollback
     |
     v
-[Push & Create Draft PR]
+[Push & Create PR]
     |
     v
 [Success Output]
@@ -56,13 +56,21 @@ Orchestrate the creation of a clean, well-documented draft PR by:
 Parse `$ARGUMENTS` for optional flags before starting:
 
 - `--auto` -> set `AUTO_MODE=true` and remove the flag from the remaining arguments.
+- `--draft` -> set `DRAFT_MODE=true` and remove the flag from the remaining arguments.
+
+Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`. Flag order is not significant.
 
 `--auto` means:
 - use the recommended commit structure (`Narrative`)
 - invoke downstream skills in non-interactive mode
-- skip the final draft-PR confirmation
+- skip the final PR confirmation
 - choose the recommended branch-handling path from the shared reference instructions
 - stop only on hard blockers
+
+`--draft` means:
+- create the PR as a draft (GitHub `--draft`, GitLab `--draft` / `draft: true` / `Draft:` title prefix).
+
+Without `--draft`, the PR is created ready for review.
 
 ---
 
@@ -291,14 +299,15 @@ None
 
 ### 8.1 Preview Summary
 
-Show the user what will be created:
+Show the user what will be created. When `DRAFT_MODE=true`, use `Draft [PR] Ready to Create` / `Status: Draft`; otherwise use `[PR] Ready to Create` / `Status: Ready for review`.
+
 ```
-Draft [PR] Ready to Create
+[PR] Ready to Create
 
 Platform: [GitHub/GitLab]
 Title: [Generated conventional commit title from pr-description-generator]
 Branch: {feature-branch} -> main
-Status: Draft
+Status: Ready for review
 
 Description Preview:
 ---
@@ -312,13 +321,14 @@ Description Preview:
 
 If `AUTO_MODE=true`, skip this confirmation and proceed directly to Step 8.3.
 
-Otherwise use AskUserQuestion:
+Otherwise use AskUserQuestion. When `DRAFT_MODE=true`, substitute "Draft PR" for "PR" in the question and the first option's label/description.
+
 ```yaml
 header: "Confirm"
-question: "Ready to create the Draft PR?"
+question: "Ready to create the PR?"
 options:
-  - label: "Create Draft PR"
-    description: "Push branch and create draft PR with the generated description"
+  - label: "Create PR"
+    description: "Push branch and create the PR with the generated description"
   - label: "Edit description first"
     description: "Review and modify the description before creating"
   - label: "Abort"
@@ -367,11 +377,16 @@ The generated description is saved. You can create the PR manually.
 ```
 **Action:** Show the full description for copy/paste, then abort.
 
-### 8.4 Create Draft PR
+### 8.4 Create PR
+
+Include the `--draft` flag only when `DRAFT_MODE=true`. The snippets below build a `DRAFT_FLAG` variable that is empty by default.
 
 **For GitHub:**
 ```bash
-gh pr create --draft \
+DRAFT_FLAG=""
+[ "$DRAFT_MODE" = "true" ] && DRAFT_FLAG="--draft"
+
+gh pr create $DRAFT_FLAG \
   --assignee @me \
   --title "{title}" \
   --body "$(cat <<'EOF'
@@ -385,7 +400,10 @@ EOF
 # Determine the logged-in GitLab username
 GLAB_USER="$(glab api /user | python3 -c 'import sys, json; print(json.load(sys.stdin)["username"])')"
 
-glab mr create --draft \
+DRAFT_FLAG=""
+[ "$DRAFT_MODE" = "true" ] && DRAFT_FLAG="--draft"
+
+glab mr create $DRAFT_FLAG \
   --assignee "$GLAB_USER" \
   --title "{title}" \
   --description "$(cat <<'EOF'
@@ -398,7 +416,7 @@ EOF
 ```
 
 **For GitLab (using MCP tools, if available):**
-Use `mcp__gitlab__create_merge_request` with `draft: true` (or prefix title with `Draft: `) and include `assignee_id` set to the current user's ID.
+Use `mcp__gitlab__create_merge_request` with `assignee_id` set to the current user's ID. When `DRAFT_MODE=true`, also pass `draft: true` (or prefix the title with `Draft: `); otherwise omit the `draft` argument.
 
 ### 8.5 Handle PR Creation Failure
 
@@ -418,21 +436,22 @@ Manual creation:
 ---
 {full generated description}
 ---
-
-Remember to mark it as Draft before creating.
 ```
+
+If `DRAFT_MODE=true`, append a final line: `Remember to mark it as Draft before creating.`
 
 ---
 
 ## Step 9: Success Output
 
-On successful creation:
+On successful creation. When `DRAFT_MODE=true`, use `Draft [PR] created successfully!` / `Status: Draft` and keep the final "Mark as ready for review when complete" next-step. Otherwise use the form below.
+
 ```
-Draft [PR] created successfully!
+[PR] created successfully!
 
 URL: {pr-url}
 Branch: {branch} -> main
-Status: Draft
+Status: Ready for review
 
 Commits included:
   - {commit 1 summary}
@@ -443,7 +462,6 @@ Next steps:
   1. Review the PR description for accuracy
   2. Add screenshots or videos if applicable
   3. Run tests and ensure CI passes
-  4. Mark as ready for review when complete
 ```
 
 ---
@@ -499,12 +517,11 @@ Your work is exactly as it was before running /kramme:pr:create.
 
 Per the recreate-commits skill requirements, this would cause issues.
 
-### Always Draft
-**ALWAYS** create PRs as Draft:
-- GitHub: Use `--draft` flag
-- GitLab: Use `--draft` flag or `Draft:` title prefix
+### Draft Mode (Opt-In)
+Draft PRs are opt-in via the `--draft` flag. Default behavior is to create PRs ready for review.
 
-Never create a ready-for-review PR directly.
+- GitHub: pass `--draft` to `gh pr create` only when the user supplied `--draft`.
+- GitLab: pass `--draft` to `glab mr create` (or `draft: true` via MCP, or prefix the title with `Draft:`) only when the user supplied `--draft`.
 
 ### Preserve Authorship
 **NEVER** modify git config or add AI as author. All commits should reflect the user's authorship.
