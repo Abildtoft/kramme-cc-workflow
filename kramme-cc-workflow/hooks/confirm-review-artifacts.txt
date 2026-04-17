@@ -1,14 +1,17 @@
 # Review artifact files that should trigger commit confirmation.
 # One entry per line.
-# - Basename entry (no slash): matches in any directory.
-# - Path entry (with slash): matches exact/suffix relative paths.
+# - Entries use shell-style glob patterns.
+# - Basename patterns (no slash): match in any directory.
+# - Path patterns (with slash): match exact/suffix relative paths.
 
 REVIEW_OVERVIEW.md
 UX_REVIEW_OVERVIEW.md
 PRODUCT_REVIEW_OVERVIEW.md
 PRODUCT_AUDIT_OVERVIEW.md
 PRODUCT_AUDIT.md
+COPY_REVIEW_OVERVIEW.md
 QA_REPORT.md
 QA_BASELINE.json
 AUDIT_SPEC_REPORT.md
 AUDIT_IMPLEMENTATION_REPORT.md
+PR_PLAN_*.md

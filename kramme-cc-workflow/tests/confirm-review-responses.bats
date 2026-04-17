@@ -286,6 +286,20 @@ REVIEW_SUMMARY.md"
     [[ "$output" == *"siw/PRODUCT_AUDIT.md"* ]]
 }
 
+@test "blocks git commit when COPY_REVIEW_OVERVIEW.md is staged" {
+    mock_git_staged "COPY_REVIEW_OVERVIEW.md"
+    run run_hook "git commit -m 'copy review staged'"
+    is_blocked
+    [[ "$output" == *"COPY_REVIEW_OVERVIEW.md"* ]]
+}
+
+@test "blocks git commit when PR plan artifact matching glob is staged" {
+    mock_git_staged "PR_PLAN_ADD_API_ERROR_HANDLING.md"
+    run run_hook "git commit -m 'plan staged'"
+    is_blocked
+    [[ "$output" == *"PR_PLAN_ADD_API_ERROR_HANDLING.md"* ]]
+}
+
 @test "blocks git commit when QA_REPORT.md is staged" {
     mock_git_staged "QA_REPORT.md"
     run run_hook "git commit -m 'qa report staged'"
@@ -414,6 +428,12 @@ REVIEW_SUMMARY.md"
     is_blocked
 }
 
+@test "blocks git commit inside if condition when artifact is staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook "if git commit -m 'test'; then echo ok; fi"
+    is_blocked
+}
+
 @test "blocks shell-wrapped git commit when artifact is staged" {
     mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook "sh -c 'git commit -m \"test\"'"
@@ -475,6 +495,12 @@ REVIEW_SUMMARY.md"
 @test "blocks chained git commit when artifact is staged without python3" {
     mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook_without_python "git status && git commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks git commit inside if condition when artifact is staged without python3" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "if git commit -m 'test'; then echo ok; fi"
     is_blocked
 }
 
