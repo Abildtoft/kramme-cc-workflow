@@ -42,12 +42,11 @@ matches_artifact() {
     local staged_file="$1"
     local artifact="$2"
 
-    # Basename entries (e.g. REVIEW_OVERVIEW.md) match any folder.
-    # Path entries (e.g. siw/LOG.md) match exact/suffix paths.
-    [ "$staged_file" = "$artifact" ] && return 0
-    case "$staged_file" in
-        */"$artifact") return 0 ;;
-    esac
+    # Artifact entries are shell-style globs.
+    # Basename patterns (e.g. REVIEW_OVERVIEW.md, PR_PLAN_*.md) match any folder.
+    # Path patterns (e.g. siw/LOG.md) match exact/suffix paths.
+    [[ "$staged_file" == $artifact ]] && return 0
+    [[ "$staged_file" == */$artifact ]] && return 0
     return 1
 }
 
@@ -55,6 +54,15 @@ source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/git-parse-utils.sh"
 
 token_is_assignment() {
     [[ "$1" =~ ^[A-Za-z_][A-Za-z0-9_]*=.*$ ]]
+}
+
+is_shell_keyword_token() {
+    case "$(strip_wrapping_quotes "$1")" in
+        '!'|if|then|elif|else|fi|do|done|while|until|for|in|case|esac|'{'|'}')
+            return 0
+            ;;
+    esac
+    return 1
 }
 
 should_replay_git_env() {
@@ -195,6 +203,10 @@ EOF
     done <<EOF
 $prefix_git_env
 EOF
+
+    while [ $# -gt 0 ] && is_shell_keyword_token "$1"; do
+        shift
+    done
 
     while [ $# -gt 0 ] && token_is_assignment "$(strip_wrapping_quotes "$1")"; do
         append_git_env_assignment "$(strip_wrapping_quotes "$1")"
@@ -433,6 +445,24 @@ import sys
 
 ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
 CONTROL_TOKENS = {";", "&&", "||", "|", "|&", "&"}
+SHELL_KEYWORDS = {
+    "!",
+    "if",
+    "then",
+    "elif",
+    "else",
+    "fi",
+    "do",
+    "done",
+    "while",
+    "until",
+    "for",
+    "in",
+    "case",
+    "esac",
+    "{",
+    "}",
+}
 ENV_OPTIONS_WITH_VALUE = {"-u", "--unset", "-C", "--chdir"}
 GIT_OPTIONS_WITH_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env"}
 REPLAY_ENV_VARS = {
@@ -584,6 +614,9 @@ def parse_commit_contexts(command, inherited_git_args=None, inherited_git_env=No
 
 def parse_commit_segment(tokens, git_args, git_env):
     idx = 0
+
+    while idx < len(tokens) and tokens[idx] in SHELL_KEYWORDS:
+        idx += 1
 
     while idx < len(tokens) and ASSIGNMENT.match(tokens[idx]):
         key, value = tokens[idx].split("=", 1)

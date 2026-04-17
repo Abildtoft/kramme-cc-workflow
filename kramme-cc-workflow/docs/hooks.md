@@ -26,7 +26,7 @@ Use `/kramme:hooks:toggle` to enable or disable hooks:
 State is stored in `hooks/hook-state.json` (gitignored) and persists across sessions.
 When a hook is disabled, the hook script drains stdin before exiting to avoid broken-pipe errors if the runner is piping JSON input.
 
-For `confirm-review-responses`, edit `hooks/confirm-review-artifacts.txt` to configure which staged files should trigger confirmation.
+For `confirm-review-responses`, edit `hooks/confirm-review-artifacts.txt` to configure which staged files should trigger confirmation. Entries support shell-style glob patterns, so generated artifacts like `PR_PLAN_*.md` can be guarded without listing every file explicitly.
 
 ## context-links Configuration
 
