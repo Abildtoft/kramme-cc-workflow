@@ -451,16 +451,21 @@ parse_git_commit_contexts_fallback() {
     local prefix_git_env="${3:-}"
     local tokenized token_json token_type token_value substitution
     local segment=()
+    local sanitized_command
+    local substitutions=()
 
     if ! replace_command_substitutions "$raw_command"; then
         return
     fi
 
-    for substitution in "${COMMAND_SUBSTITUTIONS[@]}"; do
+    sanitized_command="$SANITIZED_COMMAND"
+    substitutions=("${COMMAND_SUBSTITUTIONS[@]}")
+
+    for substitution in "${substitutions[@]}"; do
         parse_git_commit_contexts_fallback "$substitution"
     done
 
-    if ! tokenized="$(shell_tokenize "$SANITIZED_COMMAND" true)"; then
+    if ! tokenized="$(shell_tokenize "$sanitized_command" true)"; then
         return
     fi
 

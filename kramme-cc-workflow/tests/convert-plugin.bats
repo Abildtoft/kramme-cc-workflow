@@ -37,23 +37,18 @@ create_hook_fixture_plugin() {
   create_fixture_plugin "$plugin_dir" "$plugin_name"
   mkdir -p "$plugin_dir/hooks/lib"
 
-  cat > "$plugin_dir/hooks/hooks.json" <<JSON
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$hook_command"
-          }
-        ]
-      }
-    ]
-  }
-}
-JSON
+  jq -n --arg cmd "$hook_command" '{
+    hooks: {
+      PreToolUse: [
+        {
+          matcher: "Bash",
+          hooks: [
+            {type: "command", command: $cmd}
+          ]
+        }
+      ]
+    }
+  }' > "$plugin_dir/hooks/hooks.json"
 
   cat > "$plugin_dir/hooks/${script_name}.sh" <<'SH'
 #!/bin/bash

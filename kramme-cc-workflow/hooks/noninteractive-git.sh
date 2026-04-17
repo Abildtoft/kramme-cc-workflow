@@ -453,13 +453,18 @@ fallback_noninteractive_reason() {
     local raw_command="$1"
     local token_json token_type token_value reason substitution
     local segment=()
+    local sanitized_command
+    local substitutions=()
 
     if ! replace_command_substitutions "$raw_command"; then
         printf '%s\n' "$PARSE_ERROR_REASON"
         return
     fi
 
-    for substitution in "${COMMAND_SUBSTITUTIONS[@]}"; do
+    sanitized_command="$SANITIZED_COMMAND"
+    substitutions=("${COMMAND_SUBSTITUTIONS[@]}")
+
+    for substitution in "${substitutions[@]}"; do
         reason="$(fallback_noninteractive_reason "$substitution")"
         if [ "$reason" != "__ALLOW__" ]; then
             printf '%s\n' "$reason"
@@ -468,7 +473,7 @@ fallback_noninteractive_reason() {
     done
 
     local tokenized
-    if ! tokenized="$(shell_tokenize "$SANITIZED_COMMAND" true)"; then
+    if ! tokenized="$(shell_tokenize "$sanitized_command" true)"; then
         printf '%s\n' "$PARSE_ERROR_REASON"
         return
     fi
