@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.49.0] - 2026-04-17
+
+### Added
+- Add --after flag to recreate-commits and harden hook parsing (#268)
+- Add code:breakdown-findings skill with guarded plan artifacts (#269)
+- Add --emphasize flag and fix env unset/clear in hooks (#265)
+
+### Changed
+- Add missing flags to skill documentation (#267)
+- Constrain code-simplifier to behavior-preserving changes (#264)
+
+### Fixed
+- Handle env unset and clear in command parsing (#266)
+- Support compound commands and shell wrappers in git commit parsing (#261)
+
 ## [0.48.0] - 2026-04-09
 
 ### Added
@@ -110,6 +125,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+[0.49.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.48.0...v0.49.0
 [0.48.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.47.0...v0.48.0
 [0.47.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.46.0...v0.47.0
 [0.46.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.45.0...v0.46.0
