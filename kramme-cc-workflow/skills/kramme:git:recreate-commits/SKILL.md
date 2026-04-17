@@ -3,7 +3,7 @@ name: kramme:git:recreate-commits
 description: Use when asked to recreate commits with narrative-quality history on the current branch.
 disable-model-invocation: false
 user-invocable: true
-argument-hint: "[--auto] [--granular] [--base <branch>]"
+argument-hint: "[--auto] [--granular] [--base <branch>] [--after <commit>]"
 ---
 
 Reimplement the current branch with a clean, narrative-quality git commit history suitable for reviewer comprehension. By default, recreate commits on the current branch (not a new clean branch).
@@ -12,6 +12,7 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
 - `--auto` — Skip the granularity question and automatically choose the best granularity based on diff size and complexity.
 - `--granular` — Force atomic-level decomposition. Skips the granularity question. Use for very large PRs where 100+ commits are appropriate.
 - `--base <branch>` — Use `<branch>` as the base instead of auto-detecting. Without this flag, the skill tries to detect the base from an existing GitHub or GitLab pull request, then falls back to `master`/`main`.
+- `--after <commit>` — Only recreate commits after `<commit>`, keeping all earlier history intact. Accepts any valid git ref (SHA, short SHA, `HEAD~3`, etc.). The commit must exist and be an ancestor of `HEAD`. When set, the diff scope becomes `<commit>..HEAD` and the reset point becomes `<commit>` instead of the merge base.
 
 ### Steps
 
@@ -99,6 +100,9 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
      - Verify `BASE_REF` resolves to a commit (`git rev-parse --verify --quiet "$BASE_REF^{commit}"`). Abort with a clear error if it does not.
      - Verify the current branch is not the selected base branch or ref.
      - Verify there is a merge base with `HEAD` (`git merge-base "$BASE_REF" HEAD >/dev/null`). Abort if the histories are unrelated.
+   - **Validate `--after <commit>`** (if provided):
+     - Resolve the commit ref: `AFTER_COMMIT=$(git rev-parse --verify "$AFTER_ARG^{commit}")`. Abort with a clear error if it does not resolve.
+     - Verify it is an ancestor of `HEAD`: `git merge-base --is-ancestor "$AFTER_COMMIT" HEAD`. Abort if not.
    - If the current branch equals the base branch, stop and ask the user to switch to a feature branch first.
    - **Fetch and optionally update the local base branch** so it matches the remote when `BASE_REF` maps to `origin/<base-branch>` and a local branch exists:
      ```bash
@@ -116,12 +120,12 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
    - Confirm it is up to date with the selected base ref.
 
 2. **Analyze the diff**
-   - Study all changes between the current branch and `BASE_REF` from their merge base.
+   - If `--after` was provided, study the diff from `AFTER_COMMIT..HEAD`. Otherwise, study all changes between the current branch and `BASE_REF` from their merge base.
    - Form a clear understanding of the final intended state.
 
 3. **Prepare the branch**
    - By default, work on the current branch. Do NOT create a `{branch_name}-clean` branch unless explicitly requested.
-   - If explicitly asked to use a clean branch, create `{branch_name}-clean` from the merge base with `BASE_REF`.
+   - If explicitly asked to use a clean branch, create `{branch_name}-clean` from `AFTER_COMMIT` (if `--after` was provided) or from the merge base with `BASE_REF`.
 
 4. **Plan the commit storyline**
 
@@ -146,7 +150,7 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
    Flatten the tree into a linear commit sequence that tells a coherent narrative — each step should reflect a logical stage of development, as if writing a tutorial.
 
 5. **Reimplement the work**
-   - Reset the branch to the merge base with `BASE_REF`.
+   - If `--after` was provided, reset the branch to `AFTER_COMMIT`. Otherwise, reset the branch to the merge base with `BASE_REF`.
    - Recreate the changes, committing step by step according to your plan.
    - Each commit must:
      - Introduce a single coherent idea.
