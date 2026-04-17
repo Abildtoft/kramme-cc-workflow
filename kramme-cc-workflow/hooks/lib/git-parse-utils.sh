@@ -30,19 +30,78 @@ trim_ascii_whitespace() {
     printf '%s\n' "$value"
 }
 
+extract_body_substitutions() {
+    # Scan a line for $(...) and `...` substitutions and append them to
+    # HEREDOC_BODY_SUBSTITUTIONS. Used for unquoted heredoc bodies, where
+    # the shell still performs command substitution.
+    local line="$1"
+    local length="${#line}"
+    local idx=0
+    local char
+
+    while [ "$idx" -lt "$length" ]; do
+        char="${line:$idx:1}"
+        if [ "$char" = '$' ] && [ $((idx + 1)) -lt "$length" ] \
+            && [ "${line:$((idx + 1)):1}" = '(' ]; then
+            if read_dollar_substitution "$line" "$idx"; then
+                HEREDOC_BODY_SUBSTITUTIONS+=("$SUBSTITUTION_CONTENT")
+                idx="$SUBSTITUTION_END_INDEX"
+                continue
+            fi
+            return 1
+        fi
+        if [ "$char" = '`' ]; then
+            if read_backtick_substitution "$line" "$idx"; then
+                HEREDOC_BODY_SUBSTITUTIONS+=("$SUBSTITUTION_CONTENT")
+                idx="$SUBSTITUTION_END_INDEX"
+                continue
+            fi
+            return 1
+        fi
+        idx=$((idx + 1))
+    done
+    return 0
+}
+
 strip_heredoc_bodies() {
+    # Populates STRIPPED_COMMAND and HEREDOC_BODY_SUBSTITUTIONS.
+    # Called in the current shell (no subshell) so globals propagate.
     local raw_command="$1"
     local line
     local delimiter=""
+    local is_quoted=false
+    local is_dashed=false
+    local stripped
     local output_lines=()
-    local heredoc_pattern='<<-?[[:space:]]*(['"'"'"]?)([A-Za-z_][A-Za-z0-9_]*)\1'
+    # Match quoted delimiters first so we can distinguish them from unquoted.
+    # No backreferences — bash ERE does not support them reliably.
+    local h_single_pattern='<<(-?)[[:space:]]*'\''([A-Za-z_][A-Za-z0-9_]*)'\'
+    local h_double_pattern='<<(-?)[[:space:]]*"([A-Za-z_][A-Za-z0-9_]*)"'
+    local h_unquoted_pattern='<<(-?)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)([[:space:]]|$)'
+
+    STRIPPED_COMMAND=""
+    HEREDOC_BODY_SUBSTITUTIONS=()
 
     while IFS= read -r line || [ -n "$line" ]; do
         if [ -n "$delimiter" ]; then
-            if [ "$(trim_ascii_whitespace "$line")" = "$delimiter" ]; then
+            stripped="$line"
+            if [ "$is_dashed" = "true" ]; then
+                # <<- strips leading TABs only (POSIX). Do not strip spaces.
+                while [ -n "$stripped" ] && [ "${stripped:0:1}" = $'\t' ]; do
+                    stripped="${stripped:1}"
+                done
+            fi
+            if [ "$stripped" = "$delimiter" ]; then
                 output_lines+=("$line")
                 delimiter=""
+                is_quoted=false
+                is_dashed=false
             else
+                if [ "$is_quoted" != "true" ]; then
+                    # Unquoted heredoc: shell still expands $(...) / `...` in body.
+                    # Capture substitutions so the parser can inspect them.
+                    extract_body_substitutions "$line" || return 1
+                fi
                 output_lines+=("")
             fi
             continue
@@ -50,12 +109,26 @@ strip_heredoc_bodies() {
 
         output_lines+=("$line")
 
-        if [[ "$line" =~ $heredoc_pattern ]]; then
+        if [[ "$line" =~ $h_single_pattern ]]; then
             delimiter="${BASH_REMATCH[2]}"
+            is_quoted=true
+            [ -n "${BASH_REMATCH[1]}" ] && is_dashed=true || is_dashed=false
+        elif [[ "$line" =~ $h_double_pattern ]]; then
+            delimiter="${BASH_REMATCH[2]}"
+            is_quoted=true
+            [ -n "${BASH_REMATCH[1]}" ] && is_dashed=true || is_dashed=false
+        elif [[ "$line" =~ $h_unquoted_pattern ]]; then
+            delimiter="${BASH_REMATCH[2]}"
+            is_quoted=false
+            [ -n "${BASH_REMATCH[1]}" ] && is_dashed=true || is_dashed=false
         fi
     done <<< "$raw_command"
 
-    printf '%s\n' "${output_lines[@]}"
+    local joined
+    printf -v joined '%s\n' "${output_lines[@]}"
+    # Drop the trailing newline that printf adds to the last element.
+    STRIPPED_COMMAND="${joined%$'\n'}"
+    return 0
 }
 
 read_dollar_substitution_end() {
@@ -282,8 +355,12 @@ read_backtick_substitution() {
 }
 
 replace_command_substitutions() {
-    local raw_command
-    raw_command="$(strip_heredoc_bodies "$1")"
+    # strip_heredoc_bodies must run in the current shell so
+    # HEREDOC_BODY_SUBSTITUTIONS and STRIPPED_COMMAND propagate.
+    if ! strip_heredoc_bodies "$1"; then
+        return 1
+    fi
+    local raw_command="$STRIPPED_COMMAND"
     local length="${#raw_command}"
     local index=0
     local char
@@ -293,6 +370,15 @@ replace_command_substitutions() {
     local escaped=false
 
     COMMAND_SUBSTITUTIONS=()
+
+    # Substitutions captured from unquoted heredoc bodies still run
+    # in the shell; callers must inspect them like any other cmd subst.
+    if [ "${#HEREDOC_BODY_SUBSTITUTIONS[@]}" -gt 0 ]; then
+        local heredoc_sub
+        for heredoc_sub in "${HEREDOC_BODY_SUBSTITUTIONS[@]}"; do
+            COMMAND_SUBSTITUTIONS+=("$heredoc_sub")
+        done
+    fi
 
     while [ "$index" -lt "$length" ]; do
         char="${raw_command:$index:1}"
