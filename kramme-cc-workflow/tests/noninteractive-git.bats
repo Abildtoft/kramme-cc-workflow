@@ -58,6 +58,12 @@ run_hook_without_python() {
     is_allowed
 }
 
+@test "blocks newline-separated git commit when python3 is unavailable" {
+    run run_hook_without_python $'git status\ngit commit'
+    is_blocked
+    [[ "$output" == *"git commit -m"* ]]
+}
+
 @test "blocks sh -c git commit when python3 is unavailable" {
     run run_hook_without_python "sh -c 'git commit'"
     is_blocked

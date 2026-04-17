@@ -447,9 +447,72 @@ replace_command_substitutions() {
     SANITIZED_COMMAND="$result"
 }
 
+normalize_shell_newlines() {
+    local raw_command="$1"
+    local length="${#raw_command}"
+    local index=0
+    local char
+    local mode="normal"
+    local escaped=false
+    local normalized=""
+
+    while [ "$index" -lt "$length" ]; do
+        char="${raw_command:$index:1}"
+
+        if [ "$escaped" = "true" ]; then
+            normalized+="$char"
+            escaped=false
+            index=$((index + 1))
+            continue
+        fi
+
+        case "$mode" in
+            single)
+                normalized+="$char"
+                [ "$char" = "'" ] && mode="normal"
+                ;;
+            double)
+                normalized+="$char"
+                if [ "$char" = "\\" ]; then
+                    escaped=true
+                elif [ "$char" = '"' ]; then
+                    mode="normal"
+                fi
+                ;;
+            *)
+                case "$char" in
+                    "'")
+                        normalized+="$char"
+                        mode="single"
+                        ;;
+                    '"')
+                        normalized+="$char"
+                        mode="double"
+                        ;;
+                    "\\")
+                        normalized+="$char"
+                        escaped=true
+                        ;;
+                    $'\n'|$'\r')
+                        normalized+=";"
+                        ;;
+                    *)
+                        normalized+="$char"
+                        ;;
+                esac
+                ;;
+        esac
+
+        index=$((index + 1))
+    done
+
+    printf '%s\n' "$normalized"
+}
+
 shell_tokenize() {
     local raw_command="$1"
     local split_controls="${2:-false}"
+    raw_command="$(normalize_shell_newlines "$raw_command")"
     local length="${#raw_command}"
     local index=0
     local current=""

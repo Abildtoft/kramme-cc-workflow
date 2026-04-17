@@ -33,6 +33,8 @@ create_hook_fixture_plugin() {
   local plugin_name="$2"
   local script_name="$3"
   local hook_command="${4:-bash \${CLAUDE_PLUGIN_ROOT}/hooks/${script_name}.sh}"
+  local script_body="${5:-#!/bin/bash
+exit 0}"
 
   create_fixture_plugin "$plugin_dir" "$plugin_name"
   mkdir -p "$plugin_dir/hooks/lib"
@@ -50,10 +52,7 @@ create_hook_fixture_plugin() {
     }
   }' > "$plugin_dir/hooks/hooks.json"
 
-  cat > "$plugin_dir/hooks/${script_name}.sh" <<'SH'
-#!/bin/bash
-exit 0
-SH
+  printf '%s\n' "$script_body" > "$plugin_dir/hooks/${script_name}.sh"
 
   cat > "$plugin_dir/hooks/lib/check-enabled.sh" <<'SH'
 #!/bin/bash
@@ -231,7 +230,7 @@ MD
   [[ "$output" == *"non-interactive mode"* ]]
 }
 
-@test "codex conversion preserves local files in managed skills when cleanup is skipped" {
+@test "codex conversion preserves local markdown files in managed skills when cleanup is skipped" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
   fi
@@ -239,12 +238,15 @@ MD
   run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
   [ "$status" -eq 0 ]
 
-  touch "$TMP_DIR/.codex/skills/kramme:pr:create/LOCAL-NOTES.txt"
+  printf "Run /kramme:pr:create later\n" > "$TMP_DIR/.codex/skills/kramme:pr:create/LOCAL-NOTES.md"
 
   run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --non-interactive
   [ "$status" -eq 0 ]
-  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/LOCAL-NOTES.txt" ]
   [[ "$output" == *"Skipping skill cleanup."* ]]
+  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/LOCAL-NOTES.md" ]
+  run cat "$TMP_DIR/.codex/skills/kramme:pr:create/LOCAL-NOTES.md"
+  [ "$status" -eq 0 ]
+  [ "$output" = "Run /kramme:pr:create later" ]
 }
 
 @test "codex conversion cleans stale skills when commands change" {
@@ -595,6 +597,30 @@ MD
 
   run grep -nF 'bash ""${claudePluginRoot}""/hooks/quoted-hook.sh' "$converted_plugin"
   [ "$status" -eq 1 ]
+}
+
+@test "opencode conversion bootstraps copied hook scripts for env -i wrappers" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_DIR="$TMP_DIR/env-plugin"
+  create_hook_fixture_plugin \
+    "$PLUGIN_DIR" \
+    "env-plugin" \
+    "env-hook" \
+    "env -i bash \${CLAUDE_PLUGIN_ROOT}/hooks/env-hook.sh" \
+    $'#!/bin/bash\nsource "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"\nexit_if_hook_disabled "env-hook"\necho ok'
+
+  run node "$SCRIPT" install "$PLUGIN_DIR" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  run grep -nF ': "${CLAUDE_PLUGIN_ROOT:=$(CDPATH= cd -- "${BASH_SOURCE[0]%/*}/.." && pwd)}"' "$TMP_DIR/opencode/hook-bundles/env-plugin/hooks/env-hook.sh"
+  [ "$status" -eq 0 ]
+
+  run env -i bash "$TMP_DIR/opencode/hook-bundles/env-plugin/hooks/env-hook.sh"
+  [ "$status" -eq 0 ]
+  [ "$output" = "ok" ]
 }
 
 @test "opencode conversion preserves existing hook-enabled plugin installs" {

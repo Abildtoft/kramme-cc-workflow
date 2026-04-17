@@ -11,7 +11,7 @@ This repository contains Claude Code workflow plugins and support scripts.
 
 ## Main Plugin Contents (`kramme-cc-workflow`)
 
-- `59` skills in `skills/` (SIW, PR workflows, Linear workflows, verification, documentation utilities, and session helpers)
+- `72` skills in `skills/` (SIW, PR workflows, Linear workflows, verification, documentation utilities, and session helpers)
 - `20` specialized agents in `agents/` for review and analysis
 - built-in hooks in `hooks/hooks.json` for command safety, non-interactive git enforcement, formatting, and context links
 - release and install tooling in `scripts/`
@@ -41,7 +41,7 @@ Common SIW command flow:
 /kramme:siw:issues-reindex
 ```
 
-Related SIW commands include `/kramme:siw:issue-define`, `/kramme:siw:spec-audit`, `/kramme:siw:reset`, `/kramme:siw:reverse-engineer-spec`, and `/kramme:siw:remove`.
+Related SIW commands include `/kramme:siw:issue-define`, `/kramme:siw:spec-audit`, `/kramme:siw:breakdown-findings`, `/kramme:siw:reset`, `/kramme:siw:reverse-engineer-spec`, and `/kramme:siw:remove`.
 
 ## Installation
 
