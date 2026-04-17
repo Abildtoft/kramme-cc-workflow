@@ -949,12 +949,57 @@ function escapeTemplateLiteral(value) {
   return String(value).replace(/[`\\]/g, "\\$&").replace(/\$\{/g, "\\${")
 }
 
+function renderHookRootReference(value, placeholder) {
+  let result = ""
+  let inSingle = false
+  let inDouble = false
+  let escaped = false
+
+  for (let i = 0; i < value.length; i += 1) {
+    const char = value[i]
+
+    if (escaped) {
+      result += char
+      escaped = false
+      continue
+    }
+
+    if (char === "\\" && !inSingle) {
+      result += char
+      escaped = true
+      continue
+    }
+
+    if (char === "'" && !inDouble) {
+      inSingle = !inSingle
+      result += char
+      continue
+    }
+
+    if (char === "\"" && !inSingle) {
+      inDouble = !inDouble
+      result += char
+      continue
+    }
+
+    if (value.startsWith(placeholder, i)) {
+      result += inSingle || inDouble ? "${claudePluginRoot}" : "\"${claudePluginRoot}\""
+      i += placeholder.length - 1
+      continue
+    }
+
+    result += char
+  }
+
+  return result
+}
+
 function renderHookCommand(value) {
   const placeholder = "__CLAUDE_PLUGIN_ROOT__"
   const withPlaceholder = String(value ?? "")
     .replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, placeholder)
     .replace(/\$CLAUDE_PLUGIN_ROOT\b/g, placeholder)
-  return escapeTemplateLiteral(withPlaceholder).split(placeholder).join("${claudePluginRoot}")
+  return renderHookRootReference(escapeTemplateLiteral(withPlaceholder), placeholder)
 }
 
 function convertClaudeToCodex(plugin, options) {
