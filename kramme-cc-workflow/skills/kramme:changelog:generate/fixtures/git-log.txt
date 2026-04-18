@@ -1,0 +1,75 @@
+commit a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0
+Merge: 1234567 abcdef0
+Author: Sarah Chen <sarah.chen@example.com>
+Date:   Mon Mar 24 14:32:10 2025 +0100
+
+    feat: add real-time notification system (#142)
+
+    Implement WebSocket-based notifications for task assignments,
+    due date reminders, and comment mentions. Includes a notification
+    preferences panel in user settings.
+
+    Closes #98
+
+commit b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1
+Merge: 2345678 bcdef01
+Author: Marcus Johnson <marcus.j@example.com>
+Date:   Mon Mar 24 11:15:43 2025 +0100
+
+    fix: resolve race condition in task status updates (#139)
+
+    Multiple concurrent status changes could cause tasks to revert
+    to a previous state. Added optimistic locking with version
+    field on the task model.
+
+    Fixes #134
+
+commit c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2
+Merge: 3456789 cdef012
+Author: Aisha Patel <aisha.p@example.com>
+Date:   Sun Mar 23 18:45:22 2025 +0100
+
+    feat: board template gallery with community submissions (#137)
+
+    Users can now browse and apply pre-built board templates.
+    Community members can submit templates for review.
+    Includes 12 starter templates (Kanban, Sprint, etc.).
+
+    Closes #112
+
+commit d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3
+Merge: 4567890 def0123
+Author: Tom Eriksson <tom.e@example.com>
+Date:   Sun Mar 23 09:22:11 2025 +0100
+
+    fix: CSV export truncating long descriptions at 255 chars (#136)
+
+    The export utility was using a VARCHAR(255) buffer for the
+    description column. Switched to streaming writes with TEXT type.
+
+    Fixes #130
+
+commit e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4
+Merge: 5678901 ef01234
+Author: Sarah Chen <sarah.chen@example.com>
+Date:   Sat Mar 22 16:10:55 2025 +0100
+
+    docs: add API rate limiting guide and webhook documentation (#135)
+
+    Documents the new rate limits (100 req/min for free tier,
+    1000 req/min for pro) and webhook event payload schemas.
+
+commit f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5
+Merge: 6789012 f012345
+Author: Marcus Johnson <marcus.j@example.com>
+Date:   Fri Mar 21 13:48:33 2025 +0100
+
+    feat: keyboard shortcuts for power users (#131)
+
+    Add configurable keyboard shortcuts for common actions:
+    - Ctrl+K: Quick search
+    - Ctrl+N: New task
+    - Ctrl+Shift+B: Toggle sidebar
+    Custom keybindings stored per-user in settings.
+
+    Closes #95

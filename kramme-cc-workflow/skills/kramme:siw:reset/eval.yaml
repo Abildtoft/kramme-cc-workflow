@@ -1,0 +1,27 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:siw:reset/SKILL.md.
+      Read it and describe how you would reset SIW state.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:siw:reset/SKILL.md
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention migrating or archiving the LOG file,
+          clearing existing issues, and resetting numbering back to the
+          initial state.
+        weight: 1.0

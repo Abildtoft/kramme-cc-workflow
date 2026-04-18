@@ -1,0 +1,46 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: cleanup-ai-slop-utils
+    instruction: |
+      You have a skill called kramme:code:cleanup-ai in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Clean AI-generated slop from the code in src/. Fix the code in place.
+
+      Do not ask for confirmation. Just clean the code.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:code:cleanup-ai/SKILL.md
+      - src: fixtures/src/utils.ts
+        dest: src/utils.ts
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 0.6
+      - type: llm_rubric
+        rubric: |
+          Slop removal quality (0-0.5):
+          - Are "// Initialize the variable" style restating comments removed?
+          - Are unnecessary try-catch wrappers around simple operations removed?
+          - Are `: any` type annotations replaced with proper types (string, number, boolean, etc.)?
+          - Are redundant null/undefined checks on simple functions simplified?
+          - Is the verbose isEmpty() simplified (e.g. to a one-liner)?
+          Code preservation (0-0.3):
+          - Do all exported functions still exist with the same names?
+          - Does the code still compile conceptually (no syntax errors introduced)?
+          - Is the functional behavior preserved?
+          Code quality (0-0.2):
+          - Is the cleaned code idiomatic TypeScript?
+          - Are types specific rather than overly broad?
+          - Is the code meaningfully shorter than the original?
+        weight: 0.4

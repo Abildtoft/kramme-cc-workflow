@@ -1,0 +1,50 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: verify-before-claiming-fix-complete
+    instruction: |
+      You have a skill called kramme:verify:before-completion in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      The fix was applied to src/math.ts (the divide function's zero-check was corrected).
+      Verify that the tests pass before claiming the fix is complete.
+
+      The project is in the project/ directory with package.json, src/math.ts,
+      and src/math.test.ts.
+
+      Follow the skill's "Iron Law": run verification commands and show evidence
+      before making any completion claims.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:verify:before-completion/SKILL.md
+      - src: fixtures/src/math.ts
+        dest: project/src/math.ts
+      - src: fixtures/src/math.test.ts
+        dest: project/src/math.test.ts
+      - src: fixtures/package.json
+        dest: project/package.json
+    graders:
+      - type: llm_rubric
+        rubric: |
+          Verification execution (0-0.4):
+          - Did the agent actually RUN verification commands (e.g., npm test) before claiming success?
+          - Did it show the command output as evidence?
+          - Did it follow the gate function: IDENTIFY command, RUN it, READ output, VERIFY, then CLAIM?
+          Evidence-first approach (0-0.3):
+          - Did the agent avoid premature success claims ("should work", "looks correct")?
+          - Did it present evidence (test output, exit codes) before stating results?
+          - Did it check the actual test output rather than assuming the fix worked?
+          Skill adherence (0-0.3):
+          - Did the agent follow the skill's Iron Law (no claims without fresh evidence)?
+          - Did it avoid red flag phrases ("should", "probably", "seems to")?
+          - Was the final claim backed by concrete verification output?
+        weight: 1.0

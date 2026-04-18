@@ -1,0 +1,29 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:pr:fix-ci/SKILL.md.
+      Read it and describe how you would fix failing CI on a branch.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:pr:fix-ci/SKILL.md
+      - src: references/
+        dest: skills/kramme:pr:fix-ci/references/
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention identifying the specific CI failure from logs
+          or check output, iterating fixes until the pipeline goes green, and
+          consolidating fixes into clean commits.
+        weight: 1.0

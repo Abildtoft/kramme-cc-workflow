@@ -1,0 +1,29 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:linear:issue-define/SKILL.md.
+      Read it and describe how you would define a Linear issue for adding dark mode.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:linear:issue-define/SKILL.md
+      - src: references/
+        dest: skills/kramme:linear:issue-define/references/
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention crafting a clear problem statement, defining
+          scope and acceptance criteria, and using the Linear API to create
+          the issue.
+        weight: 1.0
