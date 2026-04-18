@@ -78,14 +78,17 @@ Quick checks for files that inform the analysis:
 
 ```bash
 # Agent instructions
-for item in CLAUDE.md .claude AGENTS.md; do
+for item in AGENTS.md CLAUDE.md .github/copilot-instructions.md; do
   if [ -e "$item" ]; then
     echo "$item"
   fi
 done
+if [ -d .claude ]; then
+  find .claude -maxdepth 1 -type f -name "*.md"
+fi
 
 # Documentation
-for item in README.md docs; do
+for item in README.md docs CONTRIBUTING.md CHANGELOG.md; do
   if [ -e "$item" ]; then
     echo "$item"
   fi

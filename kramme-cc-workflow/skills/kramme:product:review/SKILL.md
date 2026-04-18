@@ -85,8 +85,7 @@ Please log in manually in the browser first, then re-run the review.
 
 Read project context files to understand the product being reviewed:
 
-1. Read `CLAUDE.md` in the repo root
-2. Read `AGENTS.md` files if they exist (repo root and closest relevant directories)
+1. Read applicable project instruction files if they exist: repo-root `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, and markdown instruction files in repo-root `.claude/` when present, plus the closest relevant nested instruction files for the app surfaces under review (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or equivalents)
 
 Extract product context:
 - **Target users** — who is this product for?

@@ -4,7 +4,7 @@ Detailed guidance for each of the 6 exploration dimensions used in the onboardin
 
 ## 1. Project Identity
 
-**Files to read:** README.md, package.json / Cargo.toml / pyproject.toml / go.mod, CLAUDE.md, AGENTS.md, LICENSE
+**Files to read:** project docs, package.json / Cargo.toml / pyproject.toml / go.mod, AGENTS.md / CLAUDE.md, LICENSE
 
 **Extract:**
 - Project name and one-sentence purpose
@@ -26,7 +26,7 @@ Detailed guidance for each of the 6 exploration dimensions used in the onboardin
 **Module boundary signals:**
 - Separate `package.json` files (monorepo packages)
 - `index.ts` barrel exports (module public API)
-- Directory-level README or AGENTS.md files
+- Directory-level docs or AGENTS.md files
 - Clear separation: `src/`, `libs/`, `packages/`, `apps/`
 
 **For the guide:** Generate a Mermaid architecture diagram showing modules, their responsibilities, and how they connect. Label nodes with what they do, not just their names.
@@ -83,7 +83,7 @@ Detailed guidance for each of the 6 exploration dimensions used in the onboardin
 ## 6. Dev Setup
 
 **Where to find setup info:**
-- README.md "Getting Started" or "Development" section
+- Project docs with "Getting Started" or "Development" sections
 - CONTRIBUTING.md
 - Makefile, docker-compose.yml, .env.example
 - CI config (the CI pipeline often mirrors the dev setup)

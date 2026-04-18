@@ -373,7 +373,7 @@ If `VISUAL_MODE=true`, read `${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:generate-des
 
 Generate a PR title using [Conventional Commits](https://www.conventionalcommits.org/) format: `<type>(<scope>): <description>`
 
-**NOTE**: Check the project's CLAUDE.md for any project-specific conventional commit rules.
+**NOTE**: Check the project's `AGENTS.md`, `CLAUDE.md`, or equivalent instruction files for any project-specific conventional commit rules.
 
 **Types** (based on Phase 2.4 analysis):
 
@@ -559,8 +559,7 @@ Read the complete PR examples from `references/pr-examples.md`. Includes 3 examp
 
 **ALWAYS** refer to these files for context:
 
-- `AGENTS.md` - Authoritative development guidelines for this codebase
-- `CLAUDE.md` - AI-specific instructions, including GitLab vs GitHub guidance
+- Project instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents) - Authoritative development guidelines for this codebase, including GitLab vs GitHub guidance when documented
 - Existing PR descriptions in the repository for style reference
 
 ## Platform-Specific Notes
@@ -571,7 +570,7 @@ Read the platform-specific notes from `references/platform-notes.md`. Covers Git
 
 - **NOTE**: This skill generates the description text only - it does NOT create the PR
 - **NOTE**: After generation, review the description and adjust as needed before using it
-- **NOTE**: The skill follows Connect project conventions (AGENTS.md) but may need customization for other projects
+- **NOTE**: The skill follows the project's documented conventions in its instruction files, but may need customization for other projects
 - **NOTE**: If Linear issue lookup fails, continue anyway and note the issue ID in the summary without detailed context
 - **NOTE**: Spec files (siw/SPEC.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, etc.) and conversation history are for context gathering ONLY
   - Use them to understand what happened during implementation

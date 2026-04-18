@@ -347,7 +347,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 - Rates type design quality
 
 **kramme:code-reviewer**:
-- Checks CLAUDE.md compliance
+- Checks project instruction compliance
 - Detects bugs and issues
 - Reviews general code quality
 

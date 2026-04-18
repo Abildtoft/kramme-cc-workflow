@@ -25,15 +25,14 @@ Deep product review of branch changes and local work. Evaluates user-value align
 
 Before launching agents:
 
-1. Read `CLAUDE.md` from repo root.
-2. Discover `AGENTS.md` files in repo (`find . -name AGENTS.md`), then read relevant ones.
-3. Extract product and UI constraints, especially:
+1. Read any repo-root project instruction files if present (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in repo-root `.claude/`, or equivalents).
+2. Extract baseline product and UI constraints from those repo-root instruction files, nearby product docs, and the code, especially:
    - Product domain and target users
    - UI stack and component/design system requirements
    - Platform scope (desktop/mobile/web)
    - Feature flags, permission models, or role-based access rules
-4. Infer likely jobs-to-be-done, business goals, and obvious non-goals from the available docs when they are not stated explicitly.
-5. Pass these conventions and inferred constraints to the reviewer agent and instruct it to prioritize documented conventions over generic best practices.
+3. Infer likely jobs-to-be-done, business goals, and obvious non-goals from the available docs when they are not stated explicitly.
+4. Pass the merged conventions and inferred constraints to the reviewer agent and instruct it to prioritize documented conventions over generic best practices.
 
 ### Step 3: Resolve Base Branch and Identify Changed Files
 
@@ -97,6 +96,8 @@ BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
 
 All changed files are relevant for product review -- no file-type filtering.
 
+After identifying the changed files, discover any additional nested instruction files that apply to those files (for example `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or tool-specific equivalents) and merge those constraints into the conventions from Step 2 before launching the reviewer agent.
+
 If no changed files at all:
 
 ```
@@ -121,7 +122,7 @@ Previously addressed findings have the format:
 
 Launch **kramme:product-reviewer** via the Task tool with:
 - The resolved `BASE_BRANCH` from Step 3
-- Project conventions extracted from `CLAUDE.md`/`AGENTS.md`
+- Project conventions extracted from the instruction files gathered above and nearby product docs
 - All changed files (full list, no filtering)
 - Committed PR diff: `git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`
 - Staged local diff: `git diff --cached`

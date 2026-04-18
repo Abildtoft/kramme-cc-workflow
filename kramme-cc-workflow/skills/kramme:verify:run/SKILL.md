@@ -13,7 +13,7 @@ Run verification checks (tests, formatting, builds, linting, type checking) for 
 
 ### 1. Read Project Configuration
 
-**First, read the project's CLAUDE.md** to understand how checks should be run. Look for:
+**First, read all applicable project instruction files**: read repo-root `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, and any markdown instruction files in repo-root `.claude/` when present, then any relevant nested instruction files (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or equivalents). If both `AGENTS.md` and `CLAUDE.md` exist, read both. Look for:
 
 - **Formatting** commands (e.g., `nx format:check`, `dotnet format`, `prettier --check`)
 - **Linting** commands (e.g., `nx lint`, `eslint`, `dotnet format --verify-no-changes`)
@@ -27,7 +27,7 @@ Run verification checks (tests, formatting, builds, linting, type checking) for 
 
 ### 2. Fallback: Check CI Configuration
 
-If CLAUDE.md doesn't specify commands, check CI configuration files:
+If project instructions do not specify commands, check CI configuration files:
 - `.github/workflows/*.yml` (GitHub Actions)
 - `.gitlab-ci.yml` (GitLab CI)
 - `azure-pipelines.yml` (Azure DevOps)
@@ -47,7 +47,7 @@ If no configuration specifies commands, detect the project type:
 
 For affected detection and format checks, determine the base branch:
 
-1. **Check CLAUDE.md** for a specified base branch
+1. **Check the applicable project instruction files** (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or equivalent) for a specified base branch
 2. **Check `nx.json`** for `defaultBase` setting (Nx projects)
 3. **Auto-detect from git**: `git symbolic-ref refs/remotes/origin/HEAD | sed 's|refs/remotes/origin/||'`
 4. **Fallback**: Check if `main` exists, otherwise use `master`
@@ -256,10 +256,10 @@ Issues Found: 2 steps failed - see errors above for details
 
 ## Important Notes
 
-- Always prefer commands from CLAUDE.md over defaults
+- Always prefer explicitly documented commands from the applicable project instruction files over defaults
 - Use `--affected` or equivalent to minimize scope when possible
 - Do NOT automatically fix issues - this is a verification command only
-- If CLAUDE.md specifies a base branch for affected detection, use it; otherwise auto-detect (see step 4)
+- If any applicable project instruction file specifies a base branch for affected detection, use it; otherwise auto-detect (see step 4)
 - If a test suite/target doesn't exist, mark it as SKIPPED, don't fail
 - For faster iteration, E2E tests can be skipped with user confirmation
 - Always verify targets exist before running them to avoid confusing errors

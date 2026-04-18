@@ -10,6 +10,8 @@ argument-hint: [scope — e.g. src/api, or omit for full codebase]
 
 Systematically scan the codebase for refactoring candidates, categorize findings by severity, and produce a prioritized report.
 
+**Arguments:** "$ARGUMENTS"
+
 ## Inputs
 
 - **Scope** (optional): a directory, glob pattern, or file list to limit the scan. Defaults to the full codebase.
@@ -19,10 +21,11 @@ Systematically scan the codebase for refactoring candidates, categorize findings
 
 ### Phase 1 — Orientation
 
-1. Use the Read tool to examine `package.json` / `pyproject.toml` / build config to understand the stack and directory layout.
-2. If a `CLAUDE.md` file exists in the project root, read it to understand project-specific conventions.
-3. Determine the effective scan scope. List the source directories and file types that will be scanned.
-4. Count files in scope — report the count to the user before proceeding.
+1. Parse the optional scope path from `$ARGUMENTS`. If non-empty, store it as `TARGET_SCOPE`. Otherwise set `TARGET_SCOPE` to the repo root.
+2. Use the Read tool to examine `package.json` / `pyproject.toml` / build config to understand the stack and directory layout.
+3. Discover project instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents) if present and read the relevant ones to understand project-specific conventions.
+4. Determine the effective scan scope from `TARGET_SCOPE`. List the source directories and file types that will be scanned.
+5. Count files in scope — report the count to the user before proceeding.
 
 ### Phase 2 — Parallel Scan
 
@@ -66,7 +69,7 @@ Each agent must:
 ## Guidelines
 
 - **Evidence over speculation.** Every finding must reference a concrete file and line range. Do not flag hypothetical issues.
-- **Respect project conventions.** If the project intentionally uses a pattern (documented in project files or established by consistent usage), do not flag it. Check for a CLAUDE.md or similar convention file in the project root using the Read tool.
+- **Respect project conventions.** If the project intentionally uses a pattern (documented in project instruction files or established by consistent usage), do not flag it.
 - **No false positives over completeness.** It is better to miss a low-severity issue than to report something that isn't actually a problem.
 - **Be specific.** "This function is too complex" is not a finding. "Function `processOrder` (src/orders.ts:45-120) has 8 branches and 3 levels of nesting — extract validation into a separate function" is.
 - **Do not perform the refactors.** This skill identifies opportunities. The user decides what to act on. If they want to proceed, they can use `kramme:code:refactor-pass` on specific findings.

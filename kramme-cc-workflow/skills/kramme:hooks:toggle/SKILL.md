@@ -1,7 +1,6 @@
 ---
 name: kramme:hooks:toggle
 description: Enable or disable a plugin hook
-argument-hint: <hook-name|status> [enable|disable]
 disable-model-invocation: true
 user-invocable: true
 ---

@@ -58,7 +58,7 @@ Launch **2-3 Explore agents** in parallel (Task tool, `subagent_type: Explore`),
 
 | Dimension | What to find |
 |---|---|
-| **Project Identity** | README, package manifests, CLAUDE.md — purpose, users, tech stack |
+| **Project Identity** | Project docs, package manifests, AGENTS.md / CLAUDE.md — purpose, users, tech stack |
 | **Architecture** | Directory structure, module boundaries, dependency graph, entry points, build system |
 | **Domain Model** | Key entities, relationships, schemas, state management, data flow |
 | **Key Flows** | 3-5 most important user/system flows traced end-to-end |

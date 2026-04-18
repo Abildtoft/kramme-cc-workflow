@@ -25,10 +25,9 @@ Review branch changes and local work for unnecessary UI text. Finds labels, desc
 
 Before launching agents:
 
-1. Read `CLAUDE.md` from repo root.
-2. Discover `AGENTS.md` files in repo (`find . -name AGENTS.md`), then read relevant ones.
-3. Extract UI stack, component library, design system, target audience, and content strategy conventions.
-4. Pass these conventions to the reviewer agent and instruct it to prioritize documented conventions over generic best practices.
+1. Read any repo-root project instruction files if present (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in repo-root `.claude/`, or equivalents).
+2. Extract initial UI stack, component library, design system, target audience, and content strategy conventions from those repo-root instruction files and the surrounding UI code.
+3. Pass the merged conventions to the reviewer agent and instruct it to prioritize documented conventions over generic best practices.
 
 ### Step 3: Resolve Base Branch and Identify UI-Relevant Changed Files
 
@@ -96,6 +95,8 @@ Filter for UI-relevant files only:
 - **Views/Pages**: Files in `pages/`, `views/`, `screens/`, `routes/`, `app/` directories
 - **i18n/translations**: `*.json` files in `locales/`, `i18n/`, `translations/` directories
 
+After identifying the changed UI files, discover any additional nested instruction files that apply to those files (for example `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or tool-specific equivalents) and merge those constraints into the conventions from Step 2 before launching the reviewer agent.
+
 If no UI-relevant files found:
 
 ```
@@ -118,7 +119,7 @@ If `COPY_REVIEW_OVERVIEW.md` exists in the project root:
 
 Launch **kramme:copy-reviewer** via the Task tool with:
 - The resolved `BASE_BRANCH` from Step 3
-- Project conventions extracted from `CLAUDE.md`/`AGENTS.md`
+- Project conventions extracted from the discovered instruction files and established UI patterns
 - The list of UI-relevant changed files
 - Committed PR diff: `git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`
 - Staged local diff: `git diff --cached`

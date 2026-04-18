@@ -63,7 +63,7 @@ Run these first to understand the full scope:
 - Feature inventory: grep for new actions, keybindings, config fields, event types on both sides
 - Read all changed files in full — include surrounding code paths needed to validate behavior
 - Check whether `CHANGELOG.md` has an entry for these changes
-- Check whether `README.md` or docs need updates given new or changed features
+- Check whether project documentation needs updates given new or changed features
 - Reconstruct decision rationale: mine conversation history, progress docs, commit messages, PR descriptions
 
 ## Verification Checkpoint

@@ -28,14 +28,13 @@ Audit the UI, UX, and product experience of a PR's changes, including local stag
 
 Before selecting files or launching agents:
 
-1. Read `CLAUDE.md` from repo root.
-2. Discover `AGENTS.md` files in repo (`find . -name AGENTS.md`), then read relevant ones.
-3. Extract explicit review constraints, especially:
+1. Read any repo-root project instruction files if present (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in repo-root `.claude/`, or equivalents).
+2. Extract initial explicit review constraints from those repo-root instruction files and the UI code, especially:
    - UI stack (for example Tailwind)
    - component/design system requirements (for example Material Design 3)
    - accessibility requirements
    - platform scope (desktop/mobile/web)
-4. Pass these conventions to every reviewer agent and tell them to prioritize documented conventions over generic best practices.
+3. Pass the merged conventions to every reviewer agent and tell them to prioritize documented conventions over generic best practices.
 
 ### Step 3: Resolve Base Branch and Identify UI-Relevant Changed Files
 
@@ -105,6 +104,8 @@ Filter for UI-relevant files:
 - **Config**: Tailwind config, theme files, design token files
 - **Assets**: SVG files, icon sets
 
+After identifying the changed UI files, discover any additional nested instruction files that apply to those files (for example `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or tool-specific equivalents) and merge those constraints into the conventions from Step 2 before launching reviewer agents.
+
 If no UI-relevant files found:
 
 ```
@@ -135,7 +136,7 @@ If `UX_REVIEW_OVERVIEW.md` exists in the project root:
 
   Only launch if accessibility is a project requirement:
 
-  1. Search `CLAUDE.md` and discovered `AGENTS.md` files for keywords: `accessibility`, `a11y`, `WCAG`, `aria`, `screen reader`
+  1. Search the project instruction files gathered in Steps 2-3 for keywords: `accessibility`, `a11y`, `WCAG`, `aria`, `screen reader`
   2. Check `package.json` for a11y tooling: `eslint-plugin-jsx-a11y`, `axe-core`, `pa11y`, `@axe-core/*`
   3. Check for `.accessibilityrc`, a11y rules in ESLint/Biome config
   4. If **any signal found** → a11y is a requirement, launch the agent
@@ -177,7 +178,7 @@ If `app_url` was provided:
 
 For each applicable agent, launch via the Task tool with:
 - The resolved `BASE_BRANCH` from Step 3, so agents use the correct diff scope
-- Project conventions extracted from `CLAUDE.md`/`AGENTS.md` (explicitly mention stack requirements like Tailwind or Material Design 3 when present)
+- Project conventions extracted from the project instruction files (explicitly mention stack requirements like Tailwind or Material Design 3 when present)
 - The list of UI-relevant changed files
 - Committed PR diff: `git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD` (using the base resolved in Step 3)
 - Staged local diff: `git diff --cached`

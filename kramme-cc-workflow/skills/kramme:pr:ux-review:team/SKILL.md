@@ -38,7 +38,7 @@ Same as `/kramme:pr:ux-review` Steps 1-6:
 
 1. Parse arguments: `app_url` (starts with `http`), `--categories` filter, `--threshold N`, `--base <ref>` override, and optional `--inline` output mode
    - No `parallel` argument — team version is inherently parallel
-2. Load project review conventions from `CLAUDE.md` and discovered `AGENTS.md` files
+2. Load project review conventions from the project's instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents) and the UI code
 3. Resolve base branch using 3-tier strategy (explicit `--base` → PR/MR target branch → default branch fallback). See `/kramme:pr:ux-review` Step 3 for full logic.
 4. Identify UI-relevant changed files via git diff (committed using resolved base, staged, unstaged, untracked)
 5. Check for previous `UX_REVIEW_OVERVIEW.md` and extract previously addressed findings
@@ -58,7 +58,7 @@ Spawn teammates based on applicable review categories. Each teammate receives:
 - The resolved base branch and git diff commands to run (`git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`, `git diff --cached`, `git diff`, using the base resolved in Step 1)
 - Untracked files list: `git ls-files --others --exclude-standard`
 - The list of UI-relevant changed files
-- Project conventions extracted from `CLAUDE.md`/`AGENTS.md` (explicitly mention stack requirements like Tailwind or Material Design 3 when present)
+- Project conventions extracted from the project instruction files (explicitly mention stack requirements like Tailwind or Material Design 3 when present)
 - If `app_url` provided: the URL and browser MCP type
 - If `custom_threshold` provided: instruct the agent to use this threshold
 - Instructions to **message other teammates** when they find cross-cutting UX issues
@@ -73,7 +73,7 @@ Spawn teammates based on applicable review categories. Each teammate receives:
 
   Only spawn if accessibility is a project requirement:
 
-  1. Search `CLAUDE.md` and discovered `AGENTS.md` files for keywords: `accessibility`, `a11y`, `WCAG`, `aria`, `screen reader`
+  1. Search the project instruction files gathered in Step 1 for keywords: `accessibility`, `a11y`, `WCAG`, `aria`, `screen reader`
   2. Check `package.json` for a11y tooling: `eslint-plugin-jsx-a11y`, `axe-core`, `pa11y`, `@axe-core/*`
   3. Check for `.accessibilityrc`, a11y rules in ESLint/Biome config
   4. If **any signal found** -> a11y is a requirement, spawn the teammate

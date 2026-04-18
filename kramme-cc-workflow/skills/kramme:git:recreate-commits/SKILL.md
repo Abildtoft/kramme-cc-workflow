@@ -3,7 +3,6 @@ name: kramme:git:recreate-commits
 description: Use when asked to recreate commits with narrative-quality history on the current branch.
 disable-model-invocation: false
 user-invocable: true
-argument-hint: "[--auto] [--granular] [--base <branch>] [--after <commit>]"
 ---
 
 Reimplement the current branch with a clean, narrative-quality git commit history suitable for reviewer comprehension. By default, recreate commits on the current branch (not a new clean branch).

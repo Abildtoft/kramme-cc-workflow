@@ -177,6 +177,7 @@ After scaffolding, verify the skill against these checks:
 - [ ] Instructions use third-person imperative voice
 - [ ] Workflow steps are numbered sequentially
 - [ ] Resource files are referenced with explicit JiT Read instructions
+- [ ] No references to repo-root CLAUDE.md or README.md (skills must be self-contained per installation)
 - [ ] No extra documentation files inside the skill directory (for example release notes or status docs)
 - [ ] No redundant logic the agent already handles
 
