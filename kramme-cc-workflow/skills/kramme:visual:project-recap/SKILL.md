@@ -15,17 +15,33 @@ Generate a comprehensive visual project recap as a self-contained HTML page to r
 
 ## Prerequisites
 
-Read the shared visual references before generating:
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/references/css-patterns.md`
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/references/libraries.md`
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/references/responsive-nav.md`
+Read the local visual references before generating:
+- `references/css-patterns.md`
+- `references/libraries.md`
+- `references/responsive-nav.md`
 
 Select the appropriate template to absorb patterns:
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/architecture.html`
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/data-table.html`
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/mermaid-flowchart.html`
+- `assets/architecture.html`
+- `assets/data-table.html`
+- `assets/mermaid-flowchart.html`
 
-Follow the visual-explainer workflow from `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/SKILL.md` (Think, Structure, Style, Deliver). Use a warm editorial or paper/ink aesthetic with muted blues and greens, but vary fonts and palette from previous diagrams.
+Follow the workflow below. Use a warm editorial or paper/ink aesthetic with muted blues and greens, but vary fonts and palette from previous diagrams.
+
+## Workflow
+
+1. **Think.** Decide who the page is for, which diagram types best explain the project, and which visual direction fits this recap. Do not default to a generic dark dashboard.
+
+2. **Structure.** Use the local templates and references to choose the right rendering approach:
+   - `assets/architecture.html` for text-heavy architecture snapshots
+   - `assets/mermaid-flowchart.html` for Mermaid-based flows, state, and dependency views
+   - `assets/data-table.html` for KPI tables, audits, and structured comparisons
+   - `references/css-patterns.md` for layout, depth tiers, zoom controls, and collapsible sections
+   - `references/responsive-nav.md` when the page has 4+ sections and needs sticky desktop nav plus mobile horizontal nav
+   - `references/libraries.md` for Mermaid theming, Chart.js, anime.js, and CDN usage
+
+3. **Style.** Make typography, palette, depth, and motion feel intentional. Use distinctive Google Fonts, CSS custom properties for the full palette, atmospheric backgrounds instead of flat fills, meaningful hierarchy, and motion that respects `prefers-reduced-motion`.
+
+4. **Deliver.** Write a single self-contained HTML file to `~/.kramme-cc-workflow/diagrams/`, open it in the browser, and report the file path to the user.
 
 ## Time Window
 
