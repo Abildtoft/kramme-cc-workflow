@@ -40,7 +40,7 @@ Keep the context window lean by loading information only when needed.
 - **Relative paths with forward slashes** regardless of OS.
 
 **Do not create:**
-- Documentation files (README.md, CHANGELOG.md) inside skill directories
+- Documentation files (project overviews, changelogs) inside skill directories
 - Redundant logic the agent already handles reliably
 - Library code — skills should reference existing tools or contain tiny scripts
 

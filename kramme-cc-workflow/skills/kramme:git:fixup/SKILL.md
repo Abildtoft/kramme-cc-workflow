@@ -94,7 +94,7 @@ Before proceeding with the workflow, check if the user provided additional instr
 
 Before creating any commits, validate the changes won't break the build.
 
-**IMPORTANT:** Reference the project's `CLAUDE.md` or `AGENTS.md` to find the correct commands for:
+**IMPORTANT:** Reference the project's `AGENTS.md`, `CLAUDE.md`, or equivalent instruction files to find the correct commands for:
 
 - Building the project
 - Running tests (unit tests, integration tests)
@@ -291,4 +291,4 @@ Any text after the command (and flags) is treated as custom instructions that in
 - Orphan files (not touched by branch) require user decision or are skipped with `--no-confirm`
 - Autosquash rebase uses merge-base with the base branch, so fixup does not implicitly rebase onto the latest base tip
 - After rebase, force push is required if branch was previously pushed
-- Validation commands are project-specific - refer to CLAUDE.md/AGENTS.md
+- Validation commands are project-specific - refer to `AGENTS.md`, `CLAUDE.md`, or equivalent instruction files

@@ -65,7 +65,7 @@ Spawn teammates based on applicable review aspects. Each teammate receives:
 - Instructions to **message other teammates** when they find cross-cutting issues
 
 **Always spawn:**
-- **code-reviewer** -- General code quality and CLAUDE.md compliance (mission from `agents/kramme:code-reviewer.md`)
+- **code-reviewer** -- General code quality and project instruction compliance (mission from `agents/kramme:code-reviewer.md`)
 - **silent-failure-hunter** -- Error handling and silent failures (mission from `agents/kramme:silent-failure-hunter.md`)
 - **deslop-reviewer** -- AI slop pattern detection (mission from `agents/kramme:deslop-reviewer.md`)
 

@@ -55,7 +55,7 @@ For each assigned dimension, return:
 - **Be evidence-based.** Every score must cite specific files, counts, or patterns. No vague assessments.
 - **Be calibrated.** A 5 means genuinely excellent, not just "has the thing." A 3 is average. A 1 means fundamentally missing.
 - **Findings need specificity.** "Could use more tests" is too vague. "Module src/auth/ has 12 source files and 0 test files" is specific.
-- **Actions must be concrete.** "Improve documentation" is too vague. "Create CLAUDE.md with project structure, key commands (npm test, npm run lint), and naming conventions" is concrete.
+- **Actions must be concrete.** "Improve documentation" is too vague. "Create an instruction file (`AGENTS.md` or `CLAUDE.md`) with project structure, key commands (npm test, npm run lint), and naming conventions" is concrete.
 - **Use sequential finding IDs** starting from {start_id}.
 
 {dimension_rubrics}

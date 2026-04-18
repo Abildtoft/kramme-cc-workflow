@@ -10,6 +10,8 @@ user-invocable: true
 
 Scan the codebase for unnecessary UI text. Finds labels, descriptions, placeholders, tooltips, and instructions that duplicate what the UI already communicates through structure, icons, or interaction patterns.
 
+**Arguments:** "$ARGUMENTS"
+
 ## Inputs
 
 - **Scope** (optional): a directory, glob pattern, or file list to limit the scan. Defaults to the full codebase.
@@ -19,10 +21,10 @@ Scan the codebase for unnecessary UI text. Finds labels, descriptions, placehold
 
 ### Phase 1 — Orientation
 
-1. Read `package.json` / build config to understand the stack and directory layout.
-2. If a `CLAUDE.md` file exists in the project root, read it for project conventions and target audience.
-3. Discover `AGENTS.md` files and read relevant ones.
-4. Determine the effective scan scope. Filter to UI-relevant files only:
+1. Parse the optional scope path from `$ARGUMENTS`. If non-empty, store it as `TARGET_SCOPE`. Otherwise set `TARGET_SCOPE` to the repo root.
+2. Read `package.json` / build config to understand the stack and directory layout.
+3. Discover project instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents) and read the relevant ones for project conventions and target audience.
+4. Determine the effective scan scope from `TARGET_SCOPE`. Filter to UI-relevant files only:
    - **Components**: `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.component.ts`, `*.component.html`
    - **Templates**: `*.html`, `*.hbs`, `*.ejs`, `*.pug`
    - **Views/Pages**: Files in `pages/`, `views/`, `screens/`, `routes/`, `app/` directories
@@ -33,7 +35,7 @@ Scan the codebase for unnecessary UI text. Finds labels, descriptions, placehold
 
 Launch **kramme:copy-reviewer** in audit mode via the Task tool with:
 - The list of UI-relevant files in scope
-- Project conventions from `CLAUDE.md`/`AGENTS.md`
+- Project conventions from the discovered instruction files and established UI patterns
 - Instruction: **"You are in audit mode. Scan all provided files for copy redundancy. Flag all issues regardless of when they were introduced."**
 
 If scope exceeds 50 files, split into batches and launch multiple Task agents in parallel, each scanning a subset.
@@ -88,6 +90,6 @@ Treat `COPY_REVIEW_OVERVIEW.md` as a working artifact — it should **not** be c
 ## Guidelines
 
 - **Evidence over speculation.** Every finding must reference a concrete file and line. Do not flag hypothetical issues.
-- **Respect project conventions.** If the project intentionally uses a content strategy (documented in `CLAUDE.md`/`AGENTS.md` or established by consistent usage), do not flag it.
+- **Respect project conventions.** If the project intentionally uses a content strategy (documented in project instruction files or established by consistent usage), do not flag it.
 - **No false positives over completeness.** It is better to miss a borderline case than to suggest removing text that serves a purpose.
 - **Do not perform the removals.** This skill identifies opportunities. The user decides what to act on.

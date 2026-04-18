@@ -144,7 +144,7 @@ Do not praise a competitor just for being minimal. Minimal interfaces can still 
 
 ### 8. Apply a craft pass after the product call is clear
 
-Once the job, surface model, hierarchy, and trust model are working, refine the feel of the interface. Read [references/interface-polish.md](references/interface-polish.md) for the detailed craft checklist.
+Once the job, surface model, hierarchy, and trust model are working, refine the feel of the interface. Read `references/interface-polish.md` for the detailed craft checklist.
 
 Do not use craft details to excuse a weak product decision. Polish compounds strength; it does not replace it.
 
@@ -186,9 +186,9 @@ Keep the recommendation opinionated. Avoid ending with a pile of equivalent opti
 
 ## References
 
-- Read [references/design-principles.md](references/design-principles.md) when you need reusable design canons, mental models, and anti-patterns.
-- Read [references/critique-rubric.md](references/critique-rubric.md) when you need a sharper review checklist, teardown structure, or scoring lens.
-- Read [references/interface-polish.md](references/interface-polish.md) when you want a final-pass craft checklist for details that make strong interfaces feel more refined.
+- Read `references/design-principles.md` when you need reusable design canons, mental models, and anti-patterns.
+- Read `references/critique-rubric.md` when you need a sharper review checklist, teardown structure, or scoring lens.
+- Read `references/interface-polish.md` when you want a final-pass craft checklist for details that make strong interfaces feel more refined.
 
 ## Success Standard
 

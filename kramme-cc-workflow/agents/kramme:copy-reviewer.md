@@ -11,8 +11,7 @@ You are an expert at evaluating whether UI text earns its place. Your mission is
 
 Before reviewing:
 
-1. Read `CLAUDE.md` in the repo root.
-2. Read `AGENTS.md` files if they exist (repo root and closest relevant directories).
+1. Read the applicable project instruction files for the reviewed UI files: repo-root `AGENTS.md` and `CLAUDE.md` when present, plus the closest relevant nested instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents).
 3. Extract UI stack, component library, design system, terminology conventions, and target audience.
 
 Treat these conventions as review constraints. A project targeting novice users justifies more text than a power-user admin tool.
@@ -31,7 +30,7 @@ Flag all redundant text regardless of when introduced. Every finding references 
 
 ## Analysis Process
 
-1. **Read project conventions** — use `CLAUDE.md` and available `AGENTS.md` files to establish UI and audience context
+1. **Read project conventions** — use the applicable project instruction files to establish UI and audience context
 2. **Read files** — changed files (PR mode) or all in-scope files (audit mode)
 3. **Identify all text content** — labels, descriptions, placeholders, helper text, tooltips, headings, button text, empty state text, confirmation dialog text, instructional text, aria-labels used as visible text
 4. **For each text element, evaluate what the UI already communicates** — through icons, input types, surrounding context, page title, section structure, interaction patterns, or visual hierarchy

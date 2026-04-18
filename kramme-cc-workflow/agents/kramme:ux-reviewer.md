@@ -11,15 +11,14 @@ You are an expert usability reviewer specializing in evaluating web application 
 
 Before reviewing usability:
 
-1. Read `CLAUDE.md` in the repo root.
-2. Read `AGENTS.md` files if they exist (repo root and closest relevant directories).
+1. Read the applicable project instruction files for the reviewed UI files: repo-root `AGENTS.md` and `CLAUDE.md` when present, plus the closest relevant nested instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents).
 3. Extract explicit product/UI conventions (design system, component library, terminology, platform scope).
 
 Treat these conventions as the baseline for review. Heuristic suggestions should not conflict with explicit project rules.
 
 ## Analysis Process
 
-1. **Read project conventions** — use `CLAUDE.md` and available `AGENTS.md` files to establish expected UX patterns
+1. **Read project conventions** — use the applicable project instruction files to establish expected UX patterns
 2. **Read changed files** — read full files for context, then diffs for what specifically changed
 3. **Identify user-facing behavior** — map out what the user sees and does when interacting with these components
 4. **Apply each heuristic** — systematically check against Nielsen's 10 heuristics

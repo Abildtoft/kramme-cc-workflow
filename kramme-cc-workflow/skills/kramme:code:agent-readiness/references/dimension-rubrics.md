@@ -146,8 +146,8 @@ Assess how well the codebase communicates its intent, conventions, and usage to 
 
 ### What to Check
 
-1. **CLAUDE.md / agent instructions.** Does a CLAUDE.md (or equivalent agent instruction file) exist? Does it cover: project structure, key commands, conventions, common patterns?
-2. **README quality.** Does the README explain: what the project does, how to set it up, how to run it, how to test it, how to contribute?
+1. **Agent instructions.** Does an `AGENTS.md`, `CLAUDE.md`, or equivalent agent instruction file exist? Does it cover: project structure, key commands, conventions, common patterns?
+2. **Project docs quality.** Do the top-level project docs (for example `README.md`, `docs/`, `CONTRIBUTING.md`) explain: what the project does, how to set it up, how to run it, how to test it, how to contribute?
 3. **Code naming quality.** Are function, variable, and file names self-explanatory? Can you understand what code does without comments?
 4. **Inline documentation.** Are complex algorithms, business rules, or non-obvious decisions documented with comments? Are comments accurate (not stale)?
 5. **API documentation.** Are public APIs documented? (JSDoc, docstrings, OpenAPI specs)
@@ -158,16 +158,16 @@ Assess how well the codebase communicates its intent, conventions, and usage to 
 
 | Score | Criteria |
 |-------|----------|
-| **5** | CLAUDE.md with comprehensive agent instructions. README covers all essentials. Self-explanatory naming. Complex code documented. API docs present. Architecture docs or ADRs. Examples available. |
-| **4** | CLAUDE.md or equivalent exists. Good README. Mostly self-explanatory code. Some inline docs for complex parts. |
-| **3** | README exists but incomplete. No CLAUDE.md. Naming is okay. Sparse inline docs. Some API documentation. |
-| **2** | Minimal README. Poor naming in places. No agent-specific docs. Few or stale comments. |
-| **1** | No README or empty README. No CLAUDE.md. Poor naming. No comments. No documentation of any kind. |
+| **5** | Comprehensive agent instructions. Top-level docs cover all essentials. Self-explanatory naming. Complex code documented. API docs present. Architecture docs or ADRs. Examples available. |
+| **4** | Agent instructions or equivalent exist. Good top-level docs. Mostly self-explanatory code. Some inline docs for complex parts. |
+| **3** | Top-level docs exist but are incomplete. No dedicated agent instructions. Naming is okay. Sparse inline docs. Some API documentation. |
+| **2** | Minimal top-level docs. Poor naming in places. No agent-specific docs. Few or stale comments. |
+| **1** | No useful top-level docs. No agent-specific docs. Poor naming. No comments. No documentation of any kind. |
 
 ### Evidence to Gather
 
-- CLAUDE.md existence and content assessment (topics covered, line count)
-- README.md existence and completeness (sections present)
+- Instruction-file assessment (`AGENTS.md`, `CLAUDE.md`, or equivalent; topics covered, line count)
+- Top-level project docs assessment (`README.md`, `docs/`, `CONTRIBUTING.md`; sections present)
 - Sample of function/variable names (10+ across different modules)
 - Presence of JSDoc/docstrings on public APIs
 - Architecture docs or ADR directory
