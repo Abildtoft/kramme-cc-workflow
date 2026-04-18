@@ -6,6 +6,7 @@ disable-model-invocation: true
 user-invocable: true
 ---
 
+<!-- TODO: Refactor to <500 lines by moving Phase 4: Write SIW Spec to references/ -->
 # Reverse Engineer SIW Spec from Code
 
 Analyze existing code to produce a structured SIW-compatible specification. Works backward from implementation to documentation, producing specs that plug directly into the SIW workflow (`/kramme:siw:discovery`, `/kramme:siw:spec-audit`, `/kramme:siw:generate-phases`, etc.).

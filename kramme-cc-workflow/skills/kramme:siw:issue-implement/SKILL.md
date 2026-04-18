@@ -6,6 +6,7 @@ disable-model-invocation: true
 user-invocable: true
 ---
 
+<!-- TODO: Refactor to <500 lines by moving Step 7: Workflow Execution by Approach to references/ -->
 # Implement Local Issue
 
 Start implementing a local issue through an extensive planning phase before any code changes.

@@ -77,6 +77,37 @@ should_replay_git_env() {
     return 1
 }
 
+build_safe_git_prefix_args() {
+    safe_git_prefix_args=()
+    local token value
+
+    while [ $# -gt 0 ]; do
+        token="$1"
+        value="$(strip_wrapping_quotes "$token")"
+        case "$value" in
+            -C|--git-dir|--work-tree|--namespace)
+                safe_git_prefix_args+=("$value")
+                shift
+                if [ $# -gt 0 ]; then
+                    safe_git_prefix_args+=("$(strip_wrapping_quotes "$1")")
+                    shift
+                fi
+                ;;
+            --git-dir=*|--work-tree=*|--namespace=*)
+                safe_git_prefix_args+=("$value")
+                shift
+                ;;
+            -C*)
+                safe_git_prefix_args+=("-C" "$(strip_wrapping_quotes "${value#-C}")")
+                shift
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+}
+
 contains_command_substitution_token() {
     case "$1" in
         *"$COMMAND_SUBSTITUTION_TOKEN"*)
@@ -107,6 +138,24 @@ context_has_dynamic_repo_selection() {
     done
 
     return 1
+}
+
+list_staged_files_for_commit_context() {
+    local assignment
+
+    # Reconstruct only repo/index selection. Replaying config-bearing git
+    # prefixes like `-c` or `--config-env` would execute attacker-controlled
+    # commands while we inspect the index.
+    build_safe_git_prefix_args "${git_prefix_args[@]}"
+
+    (
+        unset "${REPLAY_GIT_ENV_VARS[@]}"
+        unset GIT_EXTERNAL_DIFF GIT_PAGER PAGER
+        for assignment in "${git_env_assignments[@]}"; do
+            export "$assignment"
+        done
+        git --no-pager "${safe_git_prefix_args[@]}" -c core.fsmonitor=false diff --cached --name-only --no-ext-diff
+    )
 }
 
 append_git_env_assignment() {
@@ -467,7 +516,7 @@ parse_git_commit_contexts_fallback() {
     substitutions=("${COMMAND_SUBSTITUTIONS[@]}")
 
     for substitution in "${substitutions[@]}"; do
-        parse_git_commit_contexts_fallback "$substitution"
+        parse_git_commit_contexts_fallback "$substitution" "$prefix_git_args" "$prefix_git_env"
     done
 
     if ! tokenized="$(shell_tokenize "$sanitized_command" true)"; then
@@ -874,7 +923,14 @@ def parse_commit_contexts(command, inherited_git_args=None, inherited_git_env=No
         raise ParseError(str(exc)) from exc
 
     for substitution in substitutions:
-        contexts.extend(parse_commit_contexts(substitution, depth=depth + 1))
+        contexts.extend(
+            parse_commit_contexts(
+                substitution,
+                inherited_git_args=inherited_git_args,
+                inherited_git_env=inherited_git_env,
+                depth=depth + 1,
+            )
+        )
 
     for segment in split_segments(tokens):
         contexts.extend(
@@ -1119,15 +1175,9 @@ while IFS= read -r commit_context_json; do
     fi
 
     staged_files="$(
-        (
-            unset "${REPLAY_GIT_ENV_VARS[@]}"
-            for assignment in "${git_env_assignments[@]}"; do
-                export "$assignment"
-            done
-            # Leave stderr on the hook's stderr so the user sees git's own
-            # diagnostic. We then fail closed based on the exit status.
-            git "${git_prefix_args[@]}" diff --cached --name-only
-        )
+        # Leave stderr on the hook's stderr so the user sees git's own
+        # diagnostic. We then fail closed based on the exit status.
+        list_staged_files_for_commit_context
     )"
     diff_exit_status=$?
     if [ "$diff_exit_status" -ne 0 ]; then

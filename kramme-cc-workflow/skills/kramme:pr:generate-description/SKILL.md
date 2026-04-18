@@ -6,6 +6,7 @@ disable-model-invocation: false
 user-invocable: true
 ---
 
+<!-- TODO: Refactor to <500 lines by moving Phase 2: Context Gathering to references/ -->
 # PR Description Generator
 
 ## Parse Arguments
@@ -48,18 +49,7 @@ High-quality PR descriptions are essential for:
 
 This skill automates the process of gathering context from multiple sources (git history, Linear issues, code changes) and generating a structured, comprehensive description following best practices for Pull Requests.
 
-### Guideline Keywords
-
-When used, these keywords indicate the strength and requirement level of guidelines:
-
-- **ALWAYS** — Mandatory requirement, exceptions are very rare and must be explicitly approved
-- **NEVER** — Strong prohibition, exceptions are very rare and must be explicitly approved
-- **PREFER** — Strong recommendation, exceptions allowed with justification
-- **CAN** — Optional, developer's discretion
-- **NOTE** — Context, rationale, or clarification
-- **EXAMPLE** — Illustrative example
-
-Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
+Read the guideline keyword glossary from `references/guideline-keywords.md`.
 
 ## Workflow
 

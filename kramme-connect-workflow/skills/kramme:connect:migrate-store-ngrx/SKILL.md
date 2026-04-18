@@ -5,6 +5,7 @@ disable-model-invocation: false
 user-invocable: true
 ---
 
+<!-- TODO: Refactor to <500 lines by moving Migration Checklist to references/ -->
 # Connect - Migrate Legacy Store to NgRx ComponentStore
 
 ## Instructions
@@ -17,16 +18,7 @@ user-invocable: true
 
 **Context:** Connect's frontend is migrating from a custom store abstraction built on top of NgRx Store to standalone NgRx ComponentStore services. This provides better encapsulation, simpler testing, and eliminates the need for actions/reducers/selectors boilerplate.
 
-### Guideline Keywords
-
--   **ALWAYS** — Mandatory requirement, exceptions are very rare and must be explicitly approved
--   **NEVER** — Strong prohibition, exceptions are very rare and must be explicitly approved
--   **PREFER** — Strong recommendation, exceptions allowed with justification
--   **CAN** — Optional, developer's discretion
--   **NOTE** — Context, rationale, or clarification
--   **EXAMPLE** — Illustrative example
-
-Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
+Read the guideline keyword glossary from `references/guideline-keywords.md`.
 
 ---
 

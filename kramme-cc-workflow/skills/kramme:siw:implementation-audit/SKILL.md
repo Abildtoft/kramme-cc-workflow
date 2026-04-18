@@ -6,6 +6,7 @@ disable-model-invocation: true
 user-invocable: true
 ---
 
+<!-- TODO: Refactor to <500 lines by moving Step 4: Pass A (Spec Conformance) to references/ -->
 # Audit Implementation Against Specification
 Exhaustively compare the codebase implementation against specification documents.
 

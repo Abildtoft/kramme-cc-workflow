@@ -623,6 +623,53 @@ MD
   [ "$output" = "ok" ]
 }
 
+@test "opencode conversion bootstraps nested hook scripts for env -i wrappers" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_DIR="$TMP_DIR/nested-env-plugin"
+  create_fixture_plugin "$PLUGIN_DIR" "nested-env-plugin"
+  mkdir -p "$PLUGIN_DIR/hooks/lib"
+
+  jq -n '{
+    hooks: {
+      PreToolUse: [
+        {
+          matcher: "Bash",
+          hooks: [
+            {type: "command", command: "env -i bash ${CLAUDE_PLUGIN_ROOT}/hooks/lib/nested-hook.sh"}
+          ]
+        }
+      ]
+    }
+  }' > "$PLUGIN_DIR/hooks/hooks.json"
+
+  cat > "$PLUGIN_DIR/hooks/lib/nested-hook.sh" <<'SH'
+#!/bin/bash
+source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
+exit_if_hook_disabled "nested-hook"
+echo ok
+SH
+
+  cat > "$PLUGIN_DIR/hooks/lib/check-enabled.sh" <<'SH'
+#!/bin/bash
+exit_if_hook_disabled() {
+  return 0
+}
+SH
+
+  run node "$SCRIPT" install "$PLUGIN_DIR" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  run grep -nF ': "${CLAUDE_PLUGIN_ROOT:=$(CDPATH= cd -- "${BASH_SOURCE[0]%/*}/../.." && pwd)}"' "$TMP_DIR/opencode/hook-bundles/nested-env-plugin/hooks/lib/nested-hook.sh"
+  [ "$status" -eq 0 ]
+
+  run env -i bash "$TMP_DIR/opencode/hook-bundles/nested-env-plugin/hooks/lib/nested-hook.sh"
+  [ "$status" -eq 0 ]
+  [ "$output" = "ok" ]
+}
+
 @test "opencode conversion preserves existing hook-enabled plugin installs" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"

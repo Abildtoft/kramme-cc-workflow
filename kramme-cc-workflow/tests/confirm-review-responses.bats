@@ -20,7 +20,18 @@ mock_git_staged() {
     local staged_files="$1"
     cat > "$MOCK_DIR/git" << EOF
 #!/bin/bash
-if [[ "\$1" == "diff" && "\$2" == "--cached" && "\$3" == "--name-only" ]]; then
+has_arg() {
+    local wanted="\$1"
+    shift
+    local arg
+    for arg in "\$@"; do
+        if [[ "\$arg" == "\$wanted" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+if has_arg diff "\$@" && has_arg --cached "\$@" && has_arg --name-only "\$@"; then
     echo "$staged_files"
     exit 0
 fi
@@ -36,15 +47,40 @@ mock_git_staged_for_repo() {
     local default_files="${3:-}"
     cat > "$MOCK_DIR/git" << EOF
 #!/bin/bash
-if [[ "\$GIT_DIR" == "$repo/.git" && "\$GIT_WORK_TREE" == "$repo" && "\$1" == "diff" && "\$2" == "--cached" && "\$3" == "--name-only" ]]; then
+has_arg() {
+    local wanted="\$1"
+    shift
+    local arg
+    for arg in "\$@"; do
+        if [[ "\$arg" == "\$wanted" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+selects_repo_via_prefix() {
+    local prev=""
+    local arg
+    for arg in "\$@"; do
+        if [[ "\$prev" == "-C" && "\$arg" == "$repo" ]]; then
+            return 0
+        fi
+        if [[ "\$arg" == "-C$repo" ]]; then
+            return 0
+        fi
+        prev="\$arg"
+    done
+    return 1
+}
+if has_arg diff "\$@" && has_arg --cached "\$@" && has_arg --name-only "\$@" && [[ "\$GIT_DIR" == "$repo/.git" && "\$GIT_WORK_TREE" == "$repo" ]]; then
     echo "$staged_files"
     exit 0
 fi
-if [[ "\$1" == "-C" && "\$2" == "$repo" && "\$3" == "diff" && "\$4" == "--cached" && "\$5" == "--name-only" ]]; then
+if has_arg diff "\$@" && has_arg --cached "\$@" && has_arg --name-only "\$@" && selects_repo_via_prefix "\$@"; then
     echo "$staged_files"
     exit 0
 fi
-if [[ "\$1" == "diff" && "\$2" == "--cached" && "\$3" == "--name-only" ]]; then
+if has_arg diff "\$@" && has_arg --cached "\$@" && has_arg --name-only "\$@"; then
     echo "$default_files"
     exit 0
 fi
@@ -165,6 +201,42 @@ src/component.tsx"
     run run_hook "git commit -m 'test commit'"
     [ "$status" -eq 0 ]
     [ -z "$output" ]
+}
+
+@test "ignores config-bearing git prefixes when checking staged files" {
+    local repo marker
+    repo="$(mktemp -d)"
+    marker="$BATS_TEST_TMPDIR/fsmonitor-prefix-marker"
+    rm -f "$marker"
+
+    git -C "$repo" init -q
+    touch "$repo/file.txt"
+    git -C "$repo" add file.txt
+
+    run run_hook "git -C $repo -c \"core.fsmonitor=touch $marker; false\" commit -m 'test'"
+    rm -rf "$repo"
+
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+    [ ! -f "$marker" ]
+}
+
+@test "ignores config-bearing git prefixes when checking staged files without python3" {
+    local repo marker
+    repo="$(mktemp -d)"
+    marker="$BATS_TEST_TMPDIR/fsmonitor-prefix-marker-no-python"
+    rm -f "$marker"
+
+    git -C "$repo" init -q
+    touch "$repo/file.txt"
+    git -C "$repo" add file.txt
+
+    run run_hook_without_python_with_real_git "git -C $repo -c \"core.fsmonitor=touch $marker; false\" commit -m 'test'"
+    rm -rf "$repo"
+
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+    [ ! -f "$marker" ]
 }
 
 @test "allows git commit when no files are staged" {
@@ -461,6 +533,19 @@ EOF"
     is_blocked
 }
 
+@test "blocks git commit inside command substitution when repo selection is inherited through sh -c" {
+    local repo
+    repo="$(mktemp -d)"
+    git -C "$repo" init -q
+    touch "$repo/REVIEW_OVERVIEW.md"
+    git -C "$repo" add REVIEW_OVERVIEW.md
+
+    run run_hook "env GIT_DIR=$repo/.git GIT_WORK_TREE=$repo sh -c 'echo \$(git commit -m \"test\")'"
+    rm -rf "$repo"
+
+    is_blocked
+}
+
 @test "blocks git -C commit when artifact is staged" {
     mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
     run run_hook "git -C repo commit -m 'test'"
@@ -577,6 +662,19 @@ EOF"
 @test "blocks git commit inside command substitution when artifact is staged without python3" {
     mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook_without_python "out=\$(git commit -m 'test')"
+    is_blocked
+}
+
+@test "blocks git commit inside command substitution when repo selection is inherited through sh -c without python3" {
+    local repo
+    repo="$(mktemp -d)"
+    git -C "$repo" init -q
+    touch "$repo/REVIEW_OVERVIEW.md"
+    git -C "$repo" add REVIEW_OVERVIEW.md
+
+    run run_hook_without_python_with_real_git "env GIT_DIR=$repo/.git GIT_WORK_TREE=$repo sh -c 'echo \$(git commit -m \"test\")'"
+    rm -rf "$repo"
+
     is_blocked
 }
 
@@ -708,6 +806,24 @@ EOF"
     is_blocked
 }
 
+@test "checks staged artifacts in repo selected via GIT_DIR and GIT_WORK_TREE without executing fsmonitor config" {
+    local repo marker
+    repo="$(mktemp -d)"
+    marker="$BATS_TEST_TMPDIR/fsmonitor-config-marker"
+    rm -f "$marker"
+
+    git -C "$repo" init -q
+    touch "$repo/REVIEW_OVERVIEW.md"
+    git -C "$repo" add REVIEW_OVERVIEW.md
+    git -C "$repo" config core.fsmonitor "touch $marker; false"
+
+    run run_hook "GIT_DIR=$repo/.git GIT_WORK_TREE=$repo git commit -m 'test'"
+    rm -rf "$repo"
+
+    is_blocked
+    [ ! -f "$marker" ]
+}
+
 @test "checks staged artifacts via GIT_DIR and GIT_WORK_TREE without python3" {
     local repo
     repo="$(mktemp -d)"
@@ -734,6 +850,24 @@ EOF"
     rm -rf "$repo" "$fake_bin"
 
     is_blocked
+}
+
+@test "checks staged artifacts via GIT_DIR and GIT_WORK_TREE without python3 or fsmonitor execution" {
+    local repo marker
+    repo="$(mktemp -d)"
+    marker="$BATS_TEST_TMPDIR/fsmonitor-config-marker-no-python"
+    rm -f "$marker"
+
+    git -C "$repo" init -q
+    touch "$repo/REVIEW_OVERVIEW.md"
+    git -C "$repo" add REVIEW_OVERVIEW.md
+    git -C "$repo" config core.fsmonitor "touch $marker; false"
+
+    run run_hook_without_python_with_real_git "GIT_DIR=$repo/.git GIT_WORK_TREE=$repo git commit -m 'test'"
+    rm -rf "$repo"
+
+    is_blocked
+    [ ! -f "$marker" ]
 }
 
 @test "checks staged artifacts via env GIT_DIR wrapper" {

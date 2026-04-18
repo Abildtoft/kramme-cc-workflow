@@ -1780,21 +1780,25 @@ async function copyDir(sourceDir, targetDir) {
   }
 }
 
-async function bootstrapHookScripts(rootDir) {
+async function bootstrapHookScripts(rootDir, bundleRootDir = path.dirname(rootDir)) {
   if (!(await pathExists(rootDir))) return
 
   const entries = await fs.readdir(rootDir, { withFileTypes: true })
-  const bootstrapLine = ': "${CLAUDE_PLUGIN_ROOT:=$(CDPATH= cd -- "${BASH_SOURCE[0]%/*}/.." && pwd)}"'
   for (const entry of entries) {
     const fullPath = path.join(rootDir, entry.name)
     if (entry.isDirectory()) {
-      await bootstrapHookScripts(fullPath)
+      await bootstrapHookScripts(fullPath, bundleRootDir)
       continue
     }
     if (!entry.isFile() || path.extname(entry.name) !== ".sh") {
       continue
     }
 
+    const scriptDir = path.dirname(fullPath)
+    const relativePluginRoot = (path.relative(scriptDir, bundleRootDir) || ".")
+      .split(path.sep)
+      .join("/")
+    const bootstrapLine = `: "\${CLAUDE_PLUGIN_ROOT:=\$(CDPATH= cd -- "\${BASH_SOURCE[0]%/*}/${relativePluginRoot}" && pwd)}"`
     const source = await readText(fullPath)
     if (source.includes(bootstrapLine)) continue
 

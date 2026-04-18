@@ -6,6 +6,7 @@ disable-model-invocation: true
 user-invocable: true
 ---
 
+<!-- TODO: Refactor to <500 lines by moving Step 4: Launch Product Reviewer Agent to references/ -->
 # Product Audit of SIW Specs
 
 Critique specification documents from a product perspective before implementation begins. This is a spec-only analysis — no codebase code is read or compared.
