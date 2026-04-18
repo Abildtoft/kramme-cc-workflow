@@ -5,6 +5,7 @@ disable-model-invocation: true
 user-invocable: true
 ---
 
+<!-- TODO: Refactor to <500 lines by moving Step 4: Verify Spec Capture of DONE Issues to references/ -->
 # Restart Issues
 
 Remove all DONE issues and renumber remaining issues **within each prefix group**. This command:
