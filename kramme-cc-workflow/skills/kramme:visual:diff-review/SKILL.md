@@ -15,17 +15,33 @@ Generate a comprehensive visual diff review as a self-contained HTML page.
 
 ## Prerequisites
 
-Read the shared visual references before generating:
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/references/css-patterns.md`
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/references/libraries.md`
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/references/responsive-nav.md`
+Read the local visual references before generating:
+- `references/css-patterns.md`
+- `references/libraries.md`
+- `references/responsive-nav.md`
 
 Select the appropriate template to absorb patterns:
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/architecture.html`
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/data-table.html`
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/mermaid-flowchart.html`
+- `assets/architecture.html`
+- `assets/data-table.html`
+- `assets/mermaid-flowchart.html`
 
-Follow the visual-explainer workflow from `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/SKILL.md` (Think, Structure, Style, Deliver). Use a GitHub-diff-inspired aesthetic with red/green before/after panels, but vary fonts and palette from previous diagrams.
+Follow the workflow below. Use a GitHub-diff-inspired aesthetic with red/green before/after panels, but vary fonts and palette from previous diagrams.
+
+## Workflow
+
+1. **Think.** Decide what changed, who needs the explanation, and which comparisons deserve the most visual weight. Choose diagram types that make before/after changes legible, not just pretty.
+
+2. **Structure.** Use the local templates and references to choose the rendering approach:
+   - `assets/architecture.html` for text-heavy architecture comparisons
+   - `assets/mermaid-flowchart.html` for dependency graphs, pipelines, state changes, and behavioral flows
+   - `assets/data-table.html` for KPI dashboards, file maps, and review tables
+   - `references/css-patterns.md` for layout patterns, zoom controls, depth tiers, and collapsible sections
+   - `references/responsive-nav.md` when the diff review spans 4+ sections and needs responsive navigation
+   - `references/libraries.md` for Mermaid theming, Chart.js, anime.js, and CDN usage
+
+3. **Style.** Use typography, palette, and depth to clearly distinguish before, after, neutral context, and risks. Avoid generic default styling. Respect `prefers-reduced-motion`.
+
+4. **Deliver.** Write a single self-contained HTML file to `~/.kramme-cc-workflow/diagrams/`, open it in the browser, and report the file path to the user.
 
 ## Scope Detection
 

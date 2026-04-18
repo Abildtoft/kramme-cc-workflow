@@ -15,17 +15,33 @@ Generate a comprehensive visual plan review as a self-contained HTML page, compa
 
 ## Prerequisites
 
-Read the shared visual references before generating:
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/references/css-patterns.md`
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/references/libraries.md`
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/references/responsive-nav.md`
+Read the local visual references before generating:
+- `references/css-patterns.md`
+- `references/libraries.md`
+- `references/responsive-nav.md`
 
 Select the appropriate template to absorb patterns:
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/architecture.html`
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/data-table.html`
-- `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/mermaid-flowchart.html`
+- `assets/architecture.html`
+- `assets/data-table.html`
+- `assets/mermaid-flowchart.html`
 
-Follow the visual-explainer workflow from `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/SKILL.md` (Think, Structure, Style, Deliver). Use a blueprint/editorial aesthetic with current-state vs. planned-state panels, but vary fonts and palette from previous diagrams.
+Follow the workflow below. Use a blueprint/editorial aesthetic with current-state vs. planned-state panels, but vary fonts and palette from previous diagrams.
+
+## Workflow
+
+1. **Think.** Decide who is reviewing the plan, which current-vs-planned comparisons need the strongest emphasis, and which diagram types will clarify blast radius and risk.
+
+2. **Structure.** Use the local templates and references to choose the rendering approach:
+   - `assets/architecture.html` for text-heavy subsystem snapshots
+   - `assets/mermaid-flowchart.html` for current/planned architecture, dependency graphs, and flows
+   - `assets/data-table.html` for impact dashboards, ripple analysis, and review tables
+   - `references/css-patterns.md` for layout patterns, zoom controls, depth tiers, and collapsible sections
+   - `references/responsive-nav.md` when the review spans 4+ sections and needs responsive navigation
+   - `references/libraries.md` for Mermaid theming, Chart.js, anime.js, and CDN usage
+
+3. **Style.** Use typography, palette, and depth to separate current state, planned state, and risk. Avoid default app styling. Use CSS custom properties, atmospheric backgrounds, and motion only where it helps comprehension.
+
+4. **Deliver.** Write a single self-contained HTML file to `~/.kramme-cc-workflow/diagrams/`, open it in the browser, and report the file path to the user.
 
 ## Inputs
 
