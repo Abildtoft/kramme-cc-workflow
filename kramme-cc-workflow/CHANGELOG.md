@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.51.0] - 2026-04-19
+
+### Added
+- Broaden breakdown-findings sources and harden opencode hooks (#277)
+
+### Changed
+- Generalize instruction-file guidance (#276)
+- Inline shared refs so each skill is self-contained (#274)
+
+### Fixed
+- Harden hooks and dedupe skill keyword docs (#275)
+
 ## [0.50.0] - 2026-04-18
 
 ### Added
@@ -131,6 +143,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+[0.51.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.50.0...v0.51.0
 [0.50.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.49.0...v0.50.0
 [0.49.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.48.0...v0.49.0
 [0.48.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.47.0...v0.48.0
