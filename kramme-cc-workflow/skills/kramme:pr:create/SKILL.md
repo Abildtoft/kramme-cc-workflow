@@ -6,6 +6,8 @@ disable-model-invocation: true
 user-invocable: true
 ---
 
+<!-- TODO: Refactor to <500 lines by moving Step 8: Confirmation and Creation to references/ -->
+
 # Create Pull Request
 
 Orchestrate the creation of a clean, well-documented PR by:

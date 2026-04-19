@@ -6,6 +6,8 @@ disable-model-invocation: true
 user-invocable: true
 ---
 
+<!-- TODO: Refactor to <500 lines by moving Phase 4: Create Documents to references/ -->
+
 # Initialize Structured Implementation Workflow
 
 Set up the three-document system for tracking complex implementations locally, without requiring Linear or other external issue trackers.

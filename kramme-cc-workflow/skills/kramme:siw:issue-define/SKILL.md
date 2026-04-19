@@ -6,6 +6,8 @@ disable-model-invocation: true
 user-invocable: true
 ---
 
+<!-- TODO: Refactor to <500 lines by moving Phase 5: Issue Composition (with templates) to references/ -->
+
 # Define Local Issue
 
 Create or improve a local issue through guided interactive refinement. Can start from scratch with a description, or improve an existing issue by providing its identifier. Supports file references for technical context and proactively explores the codebase to inform issue definition.

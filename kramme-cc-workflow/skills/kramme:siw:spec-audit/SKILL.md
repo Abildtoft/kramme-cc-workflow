@@ -6,6 +6,8 @@ disable-model-invocation: true
 user-invocable: true
 ---
 
+<!-- TODO: Refactor to <500 lines by moving Step 3: Launch Parallel Analysis (and its subagent-prompt subsections) to references/ -->
+
 # Audit Specification Quality
 
 Evaluate specification documents for quality across 8 dimensions before implementation begins. This is a spec-only analysis — no codebase code is read or compared.
