@@ -597,6 +597,31 @@ MD
 
   run grep -nF 'bash ""${claudePluginRoot}""/hooks/quoted-hook.sh' "$converted_plugin"
   [ "$status" -eq 1 ]
+
+  run grep -nF 'shellEscapeForDoubleQuotes' "$converted_plugin"
+  [ "$status" -eq 1 ]
+}
+
+@test "opencode conversion normalizes single-quoted CLAUDE_PLUGIN_ROOT hook commands" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_DIR="$TMP_DIR/single-quoted-hook-plugin"
+  create_hook_fixture_plugin "$PLUGIN_DIR" "single-quoted-hook-plugin" "quoted-hook" "bash '\${CLAUDE_PLUGIN_ROOT}'/hooks/quoted-hook.sh"
+
+  OUTPUT_ROOT="$(printf "%s/opencode'root" "$TMP_DIR")"
+  run node "$SCRIPT" install "$PLUGIN_DIR" --to opencode --output "$OUTPUT_ROOT" --yes
+  [ "$status" -eq 0 ]
+
+  local converted_plugin="$OUTPUT_ROOT/.opencode/plugins/converted-hooks-single-quoted-hook-plugin.ts"
+  [ -f "$converted_plugin" ]
+
+  run grep -nF 'bash "${claudePluginRoot}"/hooks/quoted-hook.sh' "$converted_plugin"
+  [ "$status" -eq 0 ]
+
+  run grep -nF "bash '\${claudePluginRoot}'/hooks/quoted-hook.sh" "$converted_plugin"
+  [ "$status" -eq 1 ]
 }
 
 @test "opencode conversion bootstraps copied hook scripts for env -i wrappers" {
@@ -615,7 +640,10 @@ MD
   run node "$SCRIPT" install "$PLUGIN_DIR" --to opencode --output "$TMP_DIR/opencode" --yes
   [ "$status" -eq 0 ]
 
-  run grep -nF ': "${CLAUDE_PLUGIN_ROOT:=$(CDPATH= cd -- "${BASH_SOURCE[0]%/*}/.." && pwd)}"' "$TMP_DIR/opencode/hook-bundles/env-plugin/hooks/env-hook.sh"
+  run grep -nF '# kramme hook bundle bootstrap start' "$TMP_DIR/opencode/hook-bundles/env-plugin/hooks/env-hook.sh"
+  [ "$status" -eq 0 ]
+
+  run grep -nF '_claude_hook_source="${BASH_SOURCE:-$0}"' "$TMP_DIR/opencode/hook-bundles/env-plugin/hooks/env-hook.sh"
   [ "$status" -eq 0 ]
 
   run env -i bash "$TMP_DIR/opencode/hook-bundles/env-plugin/hooks/env-hook.sh"
@@ -629,43 +657,26 @@ MD
   fi
 
   PLUGIN_DIR="$TMP_DIR/nested-env-plugin"
-  create_fixture_plugin "$PLUGIN_DIR" "nested-env-plugin"
-  mkdir -p "$PLUGIN_DIR/hooks/lib"
-
-  jq -n '{
-    hooks: {
-      PreToolUse: [
-        {
-          matcher: "Bash",
-          hooks: [
-            {type: "command", command: "env -i bash ${CLAUDE_PLUGIN_ROOT}/hooks/lib/nested-hook.sh"}
-          ]
-        }
-      ]
-    }
-  }' > "$PLUGIN_DIR/hooks/hooks.json"
-
-  cat > "$PLUGIN_DIR/hooks/lib/nested-hook.sh" <<'SH'
-#!/bin/bash
-source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
-exit_if_hook_disabled "nested-hook"
-echo ok
-SH
-
-  cat > "$PLUGIN_DIR/hooks/lib/check-enabled.sh" <<'SH'
-#!/bin/bash
-exit_if_hook_disabled() {
-  return 0
-}
-SH
+  create_hook_fixture_plugin \
+    "$PLUGIN_DIR" \
+    "nested-env-plugin" \
+    "lib/child" \
+    "env -i dash \${CLAUDE_PLUGIN_ROOT}/hooks/lib/child.sh" \
+    $'#!/bin/sh\n. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"\nexit_if_hook_disabled "child"\necho ok'
 
   run node "$SCRIPT" install "$PLUGIN_DIR" --to opencode --output "$TMP_DIR/opencode" --yes
   [ "$status" -eq 0 ]
 
-  run grep -nF ': "${CLAUDE_PLUGIN_ROOT:=$(CDPATH= cd -- "${BASH_SOURCE[0]%/*}/../.." && pwd)}"' "$TMP_DIR/opencode/hook-bundles/nested-env-plugin/hooks/lib/nested-hook.sh"
+  run grep -nF '# kramme hook bundle bootstrap start' "$TMP_DIR/opencode/hook-bundles/nested-env-plugin/hooks/lib/child.sh"
   [ "$status" -eq 0 ]
 
-  run env -i bash "$TMP_DIR/opencode/hook-bundles/nested-env-plugin/hooks/lib/nested-hook.sh"
+  run grep -nF '_claude_hook_source="${BASH_SOURCE:-$0}"' "$TMP_DIR/opencode/hook-bundles/nested-env-plugin/hooks/lib/child.sh"
+  [ "$status" -eq 0 ]
+
+  run grep -nF '"$_claude_hook_dir/../.."' "$TMP_DIR/opencode/hook-bundles/nested-env-plugin/hooks/lib/child.sh"
+  [ "$status" -eq 0 ]
+
+  run env -i dash "$TMP_DIR/opencode/hook-bundles/nested-env-plugin/hooks/lib/child.sh"
   [ "$status" -eq 0 ]
   [ "$output" = "ok" ]
 }

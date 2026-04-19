@@ -1014,8 +1014,13 @@ function renderHookRootReference(value, placeholder) {
 }
 
 function renderHookCommand(value) {
+  // Bun shell drops template interpolations inside single-quoted spans, so
+  // normalize single-quoted root placeholders to the double-quoted form first.
+  const normalizedValue = String(value ?? "")
+    .replace(/'\$\{CLAUDE_PLUGIN_ROOT\}'/g, '"${CLAUDE_PLUGIN_ROOT}"')
+    .replace(/'\$CLAUDE_PLUGIN_ROOT'/g, '"$CLAUDE_PLUGIN_ROOT"')
   const placeholder = "__CLAUDE_PLUGIN_ROOT__"
-  const withPlaceholder = String(value ?? "")
+  const withPlaceholder = normalizedValue
     .replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, placeholder)
     .replace(/\$CLAUDE_PLUGIN_ROOT\b/g, placeholder)
   return renderHookRootReference(withPlaceholder, placeholder)
@@ -1783,6 +1788,7 @@ async function copyDir(sourceDir, targetDir) {
 async function bootstrapHookScripts(rootDir, bundleRootDir = path.dirname(rootDir)) {
   if (!(await pathExists(rootDir))) return
 
+  const bootstrapMarker = "# kramme hook bundle bootstrap"
   const entries = await fs.readdir(rootDir, { withFileTypes: true })
   for (const entry of entries) {
     const fullPath = path.join(rootDir, entry.name)
@@ -1798,14 +1804,24 @@ async function bootstrapHookScripts(rootDir, bundleRootDir = path.dirname(rootDi
     const relativePluginRoot = (path.relative(scriptDir, bundleRootDir) || ".")
       .split(path.sep)
       .join("/")
-    const bootstrapLine = `: "\${CLAUDE_PLUGIN_ROOT:=\$(CDPATH= cd -- "\${BASH_SOURCE[0]%/*}/${relativePluginRoot}" && pwd)}"`
+    const bootstrapLines = [
+      `${bootstrapMarker} start`,
+      'if [ -z "${CLAUDE_PLUGIN_ROOT:-}" ]; then',
+      '  _claude_hook_source="${BASH_SOURCE:-$0}"',
+      '  _claude_hook_dir="$(CDPATH= cd -- "$(dirname -- "$_claude_hook_source")" && pwd)"',
+      `  CLAUDE_PLUGIN_ROOT="$(CDPATH= cd -- "$_claude_hook_dir/${relativePluginRoot}" && pwd)"`,
+      'fi',
+      'export CLAUDE_PLUGIN_ROOT',
+      'unset _claude_hook_source _claude_hook_dir',
+      `${bootstrapMarker} end`,
+    ]
     const source = await readText(fullPath)
-    if (source.includes(bootstrapLine)) continue
+    if (source.includes(bootstrapMarker)) continue
 
     const lineEnding = source.includes("\r\n") ? "\r\n" : "\n"
     const lines = source.split(/\r?\n/)
     const insertIndex = lines[0]?.startsWith("#!") ? 1 : 0
-    lines.splice(insertIndex, 0, bootstrapLine)
+    lines.splice(insertIndex, 0, ...bootstrapLines)
     await writeText(fullPath, lines.join(lineEnding))
   }
 }
