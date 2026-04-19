@@ -10,6 +10,11 @@ user-invocable: true
 
 Cluster validated findings from reviews, audits, or scans into PR-sized themes. Generate a self-contained implementation plan for each theme and an index linking them all.
 
+**Accepted sources**
+- An auto-detected overview/audit report in the project root (see Phase 1)
+- A path to any markdown file containing findings (non-standard names are fine)
+- Inline findings text pasted as the argument
+
 **Arguments:** "$ARGUMENTS"
 
 ## Workflow
@@ -17,24 +22,31 @@ Cluster validated findings from reviews, audits, or scans into PR-sized themes. 
 ### Phase 1: Locate Findings
 
 1. Check `$ARGUMENTS` for input:
-   - If a file path is provided, read that file as the findings source.
-   - If inline content is provided (review-like text with findings, file references, or severity markers), treat it as the findings source directly.
+   - If a file path is provided (any filename — the list below is for auto-detection only; user-supplied paths are accepted regardless of name), read that file as the findings source.
+   - If `$ARGUMENTS` is not a file path (no path separator, or the path does not resolve) but contains findings-like content, treat the argument as the findings source directly. Recognize inline findings by presence of any of:
+     - severity labels (`critical`, `high`, `major`, `medium`, `minor`, `low`, `suggestion`)
+     - file:line references (e.g. `src/foo.ts:42`)
+     - a numbered or bulleted list of issues with descriptions
+     - headings like `Finding`, `Issue`, `## 1.`
+
+     If the argument is a plain sentence with none of these markers, ask the user to clarify whether it is a path, inline findings, or a description of intent.
    - If empty, auto-detect by checking for these common findings artifacts in the project root (use the first one found):
      1. `REVIEW_OVERVIEW.md`
      2. `REFACTOR_OPPORTUNITIES_OVERVIEW.md`
      3. `UX_REVIEW_OVERVIEW.md`
      4. `PRODUCT_REVIEW_OVERVIEW.md`
      5. `COPY_REVIEW_OVERVIEW.md`
-     6. `PRODUCT_AUDIT_OVERVIEW.md`
-     7. `QA_REPORT.md`
-     8. `AUDIT_IMPLEMENTATION_REPORT.md`
-     9. `AUDIT_SPEC_REPORT.md`
-     10. `PRODUCT_AUDIT.md`
-     11. `siw/AUDIT_IMPLEMENTATION_REPORT.md`
-     12. `siw/AUDIT_SPEC_REPORT.md`
-     13. `siw/PRODUCT_AUDIT.md`
+     6. `AGENT_NATIVE_AUDIT.md`
+     7. `PRODUCT_AUDIT_OVERVIEW.md`
+     8. `QA_REPORT.md`
+     9. `AUDIT_IMPLEMENTATION_REPORT.md`
+     10. `AUDIT_SPEC_REPORT.md`
+     11. `PRODUCT_AUDIT.md`
+     12. `siw/AUDIT_IMPLEMENTATION_REPORT.md`
+     13. `siw/AUDIT_SPEC_REPORT.md`
+     14. `siw/PRODUCT_AUDIT.md`
    - If multiple files exist, list them and ask the user which to use (or process all if they choose "all").
-   - If no source is found, stop and tell the user: "No findings source found. Provide a file path, paste findings inline, or run a report-producing skill first (for example `/kramme:pr:code-review`, `/kramme:code:copy-review`, `/kramme:code:refactor-opportunities`, `/kramme:product:review`, `/kramme:qa`, or `/kramme:siw:spec-audit`)."
+   - If no source is found, stop and tell the user: "No findings source found. Provide a file path (any markdown file with findings will work), paste findings inline, or run a report-producing skill first (for example `/kramme:pr:code-review`, `/kramme:code:copy-review`, `/kramme:code:refactor-opportunities`, `/kramme:code:agent-readiness`, `/kramme:product:review`, `/kramme:qa`, or `/kramme:siw:spec-audit`)."
 
 2. Parse the findings source into a normalized list. For each finding, extract:
    - **Description** of the issue (the full problem statement, not a reference ID)
