@@ -1,6 +1,6 @@
 ---
 name: kramme:visual:onboarding
-description: "(experimental) Generate an interactive HTML onboarding guide for newcomers to a codebase — architecture overview, domain model, key flows, conventions, and getting-started walkthrough."
+description: "Generate an interactive HTML onboarding guide for newcomers to a codebase — architecture overview, domain model, key flows, conventions, and getting-started walkthrough."
 argument-hint: "[focus-area or audience]"
 disable-model-invocation: false
 user-invocable: true

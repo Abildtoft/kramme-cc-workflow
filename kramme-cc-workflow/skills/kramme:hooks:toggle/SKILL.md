@@ -1,6 +1,6 @@
 ---
 name: kramme:hooks:toggle
-description: Enable or disable a plugin hook
+description: Enable, disable, list, or reset hook toggles for the kramme-cc-workflow plugin. Use when a hook is firing unwantedly, when a new hook needs to be switched on, or when the user asks about current hook state.
 disable-model-invocation: true
 user-invocable: true
 ---

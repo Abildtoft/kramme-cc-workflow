@@ -1,6 +1,6 @@
 ---
 name: kramme:debug:investigate
-description: "(experimental) Structured bug investigation workflow: reproduce, isolate, trace root cause, and fix. Use when debugging a bug, investigating an error, or tracking down a regression."
+description: "Structured bug investigation workflow: reproduce, isolate, trace root cause, and fix. Use when debugging a bug, investigating an error, or tracking down a regression."
 argument-hint: "[bug description, error message, or issue reference]"
 disable-model-invocation: true
 user-invocable: true
