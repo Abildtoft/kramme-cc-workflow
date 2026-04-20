@@ -18,17 +18,21 @@ Every generated task must land at XS, S, M, or L. XL is never an acceptable fina
 
 A task must be broken down when any of the following are true:
 
-- Estimated >2 hours of work.
+- Estimated >1 focused day of work for one engineer.
 - Can't describe acceptance criteria in ≤3 bullets.
-- Touches two or more subsystems.
-- Title contains "and".
+- Bundles multiple independently reviewable outcomes into one task.
+- Title contains "and" because it often signals multiple deliverables. Split unless both halves are inseparable.
 
 ## Vertical vs horizontal slicing
 
-- ❌ Horizontal: "Build entire DB schema → build all APIs → build all UI".
-- ✅ Vertical: "User can create account (schema + API + UI, end-to-end)".
+- For user-facing feature work:
+  - ❌ Horizontal: "Build entire DB schema → build all APIs → build all UI".
+  - ✅ Vertical: "User can create account (schema + API + UI, end-to-end)".
+- For documentation, architecture, refactors, or process work:
+  - ❌ Horizontal: "Document all data models → document all APIs → document all UI flows".
+  - ✅ End-to-end: "Document account creation end-to-end, including constraints, API contract, and UI behavior".
 
-Each task is a vertical slice that delivers end-to-end value a reviewer can demo. Horizontal layer-by-layer tasks defer integration risk and produce undemoable intermediate states.
+Each task should leave behind the smallest reviewable end-to-end outcome for its work context. For feature work that usually means a vertical slice; for docs/refactors/process work it means one coherent deliverable that can be reviewed or demonstrated on its own. Horizontal layer-by-layer tasks still defer integration risk and should be avoided.
 
 ## Parallelization taxonomy
 

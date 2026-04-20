@@ -175,12 +175,16 @@ For each phase, decompose into atomic tasks:
 
 **Sizing and triggers:**
 
-Read sizing grammar, break-down triggers, and the vertical-vs-horizontal slicing rule from `references/task-sizing.md` and apply them during decomposition. Every task gets an explicit size (XS/S/M/L); any task that hits a break-down trigger — especially "title contains 'and'" — splits before leaving this step.
+Read sizing grammar, break-down triggers, and the context-appropriate slicing rule from `references/task-sizing.md` and apply them during decomposition. Every task gets an explicit size (XS/S/M/L); any task that hits a break-down trigger — especially one that bundles multiple independently reviewable outcomes — splits before leaving this step.
 
-**Slicing shape (verbatim — load-bearing):**
+**Slicing shape (context-aware — load-bearing):**
 
-- ❌ Horizontal: "Build entire DB schema → build all APIs → build all UI".
-- ✅ Vertical: "User can create account (schema + API + UI, end-to-end)".
+- For user-facing feature work:
+  - ❌ Horizontal: "Build entire DB schema → build all APIs → build all UI".
+  - ✅ Vertical: "User can create account (schema + API + UI, end-to-end)".
+- For documentation, refactors, architecture, or process work:
+  - ❌ Horizontal: "Document all data models → document all APIs → document all UI flows".
+  - ✅ End-to-end: "Document account creation end-to-end, including constraints, API contract, and UI behavior".
 
 **Identify dependencies:**
 - Which tasks block other tasks within the same phase?
@@ -222,6 +226,7 @@ Work Context: {work_context.work_type}
 - Verify phase count and granularity match the work type
 - For prototypes, do not flag broad task scope or missing test tasks
 - For refactors, verify each task has rollback safety
+- For documentation/process work, interpret "end-to-end" as the smallest reviewable deliverable for that workflow rather than schema + API + UI
 
 Evaluate:
 
@@ -231,7 +236,7 @@ Evaluate:
 4. **Completeness**: Are any tasks missing to achieve the phase goals?
 5. **Phase coherence**: Does each phase result in demoable, runnable software?
 6. **Sizing (hard gate)**: Every task must land XS, S, M, or L per `references/task-sizing.md`. Flag any XL task explicitly — XL is not an acceptable final state.
-7. **Vertical slicing**: Does each task cut vertically (end-to-end slice — schema + API + UI together) rather than horizontally (one layer across many features)? Flag any horizontal task.
+7. **Slicing shape**: For feature work, does each task cut vertically (end-to-end slice — schema + API + UI together) rather than horizontally (one layer across many features)? For documentation, refactors, architecture, or process work, does each task deliver the smallest reviewable end-to-end outcome for that context? Flag tasks that are layer-by-layer or that bundle multiple independent deliverables.
 8. **Parallelization**: Are parallelization categories (Safe / Must be sequential / Needs coordination) correctly assigned? Flag any safely-parallel work serialized unnecessarily, or any shared-state change marked parallel.
 
 For each issue found, provide:
@@ -243,7 +248,7 @@ If the breakdown looks good, confirm it's ready.
 
 **Incorporate feedback:** Update the phase plan based on subagent suggestions.
 
-**Loopback gate:** If the subagent reports any XL task or any horizontal slice, re-run Phase 3.2 decomposition and re-submit to the subagent. Only proceed to Phase 5 once the subagent confirms zero XL tasks and zero horizontal slices remain.
+**Loopback gate:** If the subagent reports any XL task or any context-inappropriate horizontal / over-bundled slice, re-run Phase 3.2 decomposition and re-submit to the subagent. Only proceed to Phase 5 once the subagent confirms zero XL tasks and zero slicing-shape issues remain.
 
 ## Phase 5: User Approval
 
@@ -458,7 +463,7 @@ Watch for these justifications that signal you are about to skip a hard gate:
 
 - "These tasks feel atomic, sizing is overkill." — If sizing is skipped, the next reviewer has no objective basis to flag drift. Apply XS/S/M/L every time.
 - "One XL task is fine, the implementer will figure it out." — No. XL means "break it down further." Letting one through breaks the gate for all future tasks.
-- "Horizontal slicing is faster for the AI to generate." — It is, and it produces a plan that defers integration risk. Every task ships a vertical slice.
+- "Horizontal slicing is faster for the AI to generate." — It is, and it produces a plan that defers integration risk. Every task should ship the smallest end-to-end slice appropriate to its work context.
 
 ## Red Flags
 

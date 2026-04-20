@@ -165,8 +165,8 @@ Findings excluded: X
 
 PLANS GENERATED:
   PR_PLAN_INDEX.md
-  PR_PLAN_{SLUG_1}.md -- {theme name} ({n} findings, size {S|M|L})
-  PR_PLAN_{SLUG_2}.md -- {theme name} ({n} findings, size {S|M|L})
+  PR_PLAN_{SLUG_1}.md -- {theme name} ({n} findings, size {XS|S|M|L})
+  PR_PLAN_{SLUG_2}.md -- {theme name} ({n} findings, size {XS|S|M|L})
   ...
 
 THINGS I DIDN'T TOUCH:
