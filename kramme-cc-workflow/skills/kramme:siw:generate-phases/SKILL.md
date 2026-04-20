@@ -478,7 +478,7 @@ Stop and recheck the workflow if any of these appear:
 
 Before reporting Phase 7, verify:
 
-- No task title contains the word "and".
+- Any task title containing the word "and" is justified because both halves are inseparable; otherwise split it.
 - Every task carries an explicit size; no XL survived Phase 4.
 - Phase 4 subagent prompt ran with all eight criteria (including Vertical slicing and Parallelization).
 - Parallelization categories are recorded for each task group.
