@@ -1,7 +1,7 @@
 ---
 name: kramme:discovery:interview
-description: Conduct an in-depth interview about a topic/proposal to uncover requirements, priorities, and non-goals, then create a comprehensive plan
-argument-hint: "[file-path or topic description]"
+description: Conduct an in-depth interview about a topic/proposal to uncover requirements, priorities, and non-goals, then create a comprehensive plan. Pass --ideate (or use a vague topic) to run a divergent pre-stage that generates variations before converging.
+argument-hint: "[file-path or topic description] [--ideate]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -15,9 +15,19 @@ Conduct a structured, in-depth interview about the presented topic, files, propo
 1. **Initial Analysis**: Examine the topic/files/proposal presented
 2. **Autonomous Framing**: Draft the likely target user, problem, why-now, and non-goals before asking questions
 3. **Topic Classification**: Determine the type of exploration needed
-4. **Multi-Round Interview**: Ask probing questions via AskUserQuestion only where meaningful uncertainty remains
-5. **Progress Tracking**: Monitor coverage across dimensions
-6. **Synthesis**: Write an adaptive plan markdown file
+4. **Phase 0 (optional) — Divergent**: If the framing is vague or `--ideate` is set, generate variations via lenses and converge before interviewing
+5. **Multi-Round Interview**: Ask probing questions via AskUserQuestion only where meaningful uncertainty remains
+6. **Progress Tracking**: Monitor coverage across dimensions
+7. **Synthesis**: Write an adaptive plan markdown file
+
+## Output Markers
+
+Use these markers in user-facing output to keep downstream tooling parseable:
+
+- `CONFUSION` — when the working hypothesis doesn't fit the user's framing and you need to flag it before continuing.
+- `MISSING REQUIREMENT` — when a question cannot be answered from the provided artifact and needs user input.
+- `UNVERIFIED` — when you assert something you haven't confirmed (e.g., a feasibility guess during Phase 0 convergence).
+- `PLAN` — the label applied to the synthesized plan document at hand-off.
 
 ## Step 1: Autonomous Framing
 
@@ -28,6 +38,8 @@ Before starting the interview, write down a working hypothesis for:
 - What is likely out of scope or intentionally deprioritized
 
 Treat these as assumptions to validate, not excuses to ask generic setup questions.
+
+If the hypothesis doesn't seem to match the user's framing, emit `CONFUSION:` and ask a clarifying question before continuing.
 
 ## Step 2: Topic Classification
 
@@ -41,6 +53,51 @@ After drafting the working hypothesis, classify the topic into one of these cate
 | **Documentation/Proposal** | RFC, design doc, specification review | Gaps, clarity, feasibility, actionability |
 
 Use AskUserQuestion to confirm the topic type if unclear.
+
+## Phase 0: Divergent (Optional)
+
+Run Phase 0 **only** when one of the following is true:
+
+- The user passed `--ideate` in `$ARGUMENTS`.
+- The framing is **vague** — it names an area but not a concrete ask. Heuristics: "improve X", "do something about Y", "help me think through Z", or a topic that can't be mapped to a specific outcome after Step 1 framing.
+
+If the framing is concrete (e.g., "Add email-based 2FA to the login flow"), **skip Phase 0** and proceed to Step 3.
+
+### Entry notice
+
+When Phase 0 is triggered by auto-detection (not by `--ideate`), display a one-line notice before running it:
+
+```text
+CONFUSION: The framing is broad. Running a short divergent pass (7 variation lenses, 3 stress-test axes) before the interview. Skip with "just interview me".
+```
+
+If the user responds with "just interview me" or similar, skip Phase 0 and proceed to Step 3 with the framing as-is.
+
+### Generate variations
+
+Read `references/variation-lenses.md` and apply 4–7 lenses to the topic. Produce 5–8 candidate variations. Not every lens fits every topic — pick the lenses most likely to surface meaningfully distinct framings.
+
+### Converge with stress-test axes
+
+For each surviving variation, note:
+
+- `{painkiller|vitamin}` — user value axis
+- `{first-failure-mode}` — feasibility axis (if you can't name one, mark it `UNVERIFIED` and record what evidence you'd need)
+- `{differentiator}` — what this does that existing alternatives don't
+
+Drop variations where the differentiator is "nothing distinct" or the feasibility story is unknowable without weeks of research.
+
+### Pick a concrete framing
+
+Present the 2–4 strongest variations via AskUserQuestion. If the user picks one, restate it as a concrete problem statement and emit:
+
+```text
+PLAN: Interview will proceed on the following framing — {chosen variation restated concretely}.
+```
+
+If the user picks "None of these", apply 2 fresh lenses and re-run convergence. If they still don't land on anything, fall back to the original framing and proceed with the interview.
+
+Feed the chosen framing into Step 3 as the working topic.
 
 ## Step 3: Interview Approach
 
@@ -57,6 +114,8 @@ Craft questions that:
 
 **Avoid obvious questions.** Never ask "What is the feature?" or "Why do you want this?"
 If the artifact already answers a question, do not ask it again. Instead, present the inferred answer and ask only for confirmation or correction.
+
+If a dimension requires information the artifact doesn't contain and the user hasn't provided, emit `MISSING REQUIREMENT:` before asking the user to fill the gap.
 
 ### Using AskUserQuestion Correctly
 
@@ -217,217 +276,24 @@ Stop interviewing when:
 ### File Naming
 Suggest a filename based on the topic, e.g., `user-auth-redesign-plan.md` or `deployment-process-plan.md`. Ask user for preferred location.
 
-### Adaptive Templates
+### Template Selection
 
-Select the appropriate template based on topic type:
+Pick the template matching the topic type classified in Step 2:
 
----
+| Topic Type | Template File |
+|------------|---------------|
+| Software Feature | `assets/template-feature.md` |
+| Process/Workflow | `assets/template-process.md` |
+| Architecture Decision | `assets/template-architecture.md` |
+| Documentation/Proposal Review | `assets/template-doc-review.md` |
 
-### Template: Software Feature
+Read the matching template, fill in the interview findings, and write the populated result to the user-chosen location. Emit `PLAN:` as the hand-off label:
 
-```markdown
-# [Feature Name] - Implementation Plan
-
-## Overview
-Brief description of what we're building and the problem it solves.
-
-## Why Now
-Why this deserves attention now and what outcome matters.
-
-## Non-Goals
-- What this plan explicitly does not attempt in this pass
-
-## Key Decisions
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| [Area] | [What we decided] | [Why, tradeoff accepted] |
-
-## Technical Design
-
-### Data Model
-Entities, relationships, key fields, constraints.
-
-### API Contracts
-Endpoints, request/response shapes, error codes.
-
-### State Management
-How state flows through the application, ownership.
-
-### Error Handling
-Strategy for different error scenarios.
-
-## User Experience
-
-### Primary Flow
-Step-by-step user journey for the main use case.
-
-### Edge Cases & Error States
-How we handle unusual scenarios and failures.
-
-## Implementation Phases
-
-### Phase 1: [Name]
-- [ ] Task 1
-- [ ] Task 2
-
-### Phase 2: [Name]
-- [ ] Task 1
-- [ ] Task 2
-
-## Testing Strategy
-What needs testing, approach for each layer.
-
-## Open Questions
-Items requiring further investigation.
-
-## Risks & Mitigations
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
+```text
+PLAN: Written to {path}. Ready for review.
 ```
 
----
-
-### Template: Process/Workflow
-
-```markdown
-# [Process Name] - Design Plan
-
-## Overview
-What this process accomplishes and why it's needed.
-
-## Why Now
-Why changing this process matters now.
-
-## Non-Goals
-- What process complexity or follow-on changes are explicitly deferred
-
-## Key Decisions
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-
-## Process Design
-
-### Trigger
-What initiates this process, frequency, urgency levels.
-
-### Steps
-1. **[Step Name]** - [Actor]: [Description]
-2. **[Step Name]** - [Actor]: [Description]
-
-### Roles & Responsibilities
-| Role | Responsibilities | Handoff Points |
-|------|------------------|----------------|
-
-### Exception Handling
-| Exception | Detection | Resolution Path |
-|-----------|-----------|-----------------|
-
-## Tooling & Automation
-Systems involved, automation opportunities, integration points.
-
-## Success Metrics
-How we measure if this process is working.
-
-## Rollout Plan
-How to transition from current state.
-
-## Open Questions
-Items requiring further discussion.
-```
-
----
-
-### Template: Architecture Decision
-
-```markdown
-# [Decision Topic] - Architecture Decision Record
-
-## Context
-Why this decision is needed now.
-
-## Decision Boundaries
-What is being decided here, and what is intentionally left to product or implementation teams.
-
-## Options Considered
-
-### Option 1: [Name]
-- **Pros**:
-- **Cons**:
-- **Effort**:
-- **Reversibility**:
-
-### Option 2: [Name]
-- **Pros**:
-- **Cons**:
-- **Effort**:
-- **Reversibility**:
-
-## Decision
-What we chose and why.
-
-## Tradeoffs Accepted
-What we're sacrificing with this choice.
-
-## Constraints & Assumptions
-Non-negotiables that shaped this decision.
-
-## Migration Plan
-How to get from current state to target.
-
-## Risks & Mitigations
-| Risk | Mitigation |
-|------|------------|
-
-## Success Criteria
-How we'll know this was the right choice.
-
-## Review Date
-When to revisit this decision.
-```
-
----
-
-### Template: Documentation/Proposal Review
-
-```markdown
-# [Document Name] - Review Summary
-
-## Overview
-What was reviewed and its purpose.
-
-## Why This Matters Now
-Why the document needs action now.
-
-## Key Findings
-
-### Strengths
-What the document does well.
-
-### Gaps
-What's missing or underspecified.
-
-### Concerns
-Feasibility issues, risks, or unclear areas.
-
-## Recommendations
-
-### Must Address
-Critical items before proceeding.
-
-### Should Address
-Important improvements.
-
-### Nice to Have
-Optional enhancements.
-
-## Clarifying Questions
-Questions the document should answer.
-
-## Next Steps
-Recommended actions with owners.
-```
-
----
+If a required section cannot be filled because the interview didn't cover it, leave the placeholder in place and add `MISSING REQUIREMENT: {dimension}` above it so the gap is explicit.
 
 ## Important Guidelines
 
@@ -441,7 +307,8 @@ Recommended actions with owners.
 
 **Handling $ARGUMENTS:**
 - `$ARGUMENTS` contains everything the user typed after `/kramme:discovery:interview`
-- If it looks like file path(s): Read and analyze them first
+- Parse for the `--ideate` flag. If present, set `force_ideate=true` and remove from the argument list.
+- If the remaining text looks like file path(s): Read and analyze them first
 - If it's free text: Use as the topic description
 - If empty: Ask user what they want to explore using AskUserQuestion
 
@@ -450,4 +317,33 @@ Recommended actions with owners.
 2. Draft the autonomous framing hypotheses (target user, why-now, non-goals) before asking questions
 3. Classify the topic type
 4. Confirm classification with user if ambiguous
-5. Ask your first round of probing questions, starting with the highest-uncertainty assumptions
+5. If `force_ideate=true` or the framing is vague, run Phase 0 before starting the interview
+6. Ask your first round of probing questions, starting with the highest-uncertainty assumptions
+
+## Epilogue
+
+### Common Rationalizations
+
+- *"The topic is already clear enough to skip Phase 0."* — Sometimes true. But if you can't state the concrete outcome in one sentence, the framing is vague and Phase 0 will save rounds.
+- *"The user will correct me if I'm wrong."* — They often won't, because they don't know what they don't know. Use `CONFUSION:` to surface mismatches early.
+- *"Coverage at 80% across all dimensions means I'm done."* — Coverage is a proxy, not a goal. Stop when no major unknowns remain, even if a dimension sits at 60%.
+- *"The template handles all topic types, so classification doesn't matter."* — It does. The template shapes what questions to ask; picking the wrong one produces a flabby plan.
+
+### Red Flags
+
+- Asking a question whose answer is already in the artifact. Stop and re-read the artifact.
+- Generating a plan before the user has confirmed the classification or chosen a Phase 0 framing.
+- Running Phase 0 on a concrete topic the user already scoped. Skip it.
+- Filling in a plan section from assumption rather than interview data. Emit `MISSING REQUIREMENT:` instead.
+- The interview drifts into implementation minutiae before the problem statement is settled.
+
+### Verification
+
+Before writing the plan, confirm:
+
+- [ ] The working hypothesis from Step 1 has been either validated or explicitly corrected during the interview.
+- [ ] The topic type from Step 2 matches what the user actually cares about (not what the artifact happens to contain).
+- [ ] If Phase 0 ran, the chosen framing was restated as a concrete problem statement and the user confirmed it.
+- [ ] Every dimension either has interview-grounded content or an explicit `MISSING REQUIREMENT:` marker.
+- [ ] Non-goals are stated with rationale, not left blank.
+- [ ] The `PLAN:` marker is present at hand-off.

@@ -52,6 +52,15 @@ Do NOT use for: implementation planning (use `generate-phases`), issue definitio
 [Step 6: Optional apply (--apply or user request)]
 ```
 
+## Output Markers
+
+Use these markers in user-facing output to keep downstream tooling parseable:
+
+- `CONFUSION` — when the working hypothesis doesn't match the user's framing, or when answers contradict earlier ones.
+- `MISSING REQUIREMENT` — when a confidence dimension can't be answered from the spec or artifact and needs user input.
+- `UNVERIFIED` — when you assert something you haven't confirmed (e.g., a hypothesis still awaiting validation).
+- `PLAN` — the label applied to the synthesized brief or strengthening plan at hand-off.
+
 ## Step 1: Detect Mode & Resolve Context
 
 ### 1.1 Parse Arguments and Flags
@@ -145,6 +154,8 @@ I'll use this as a starting point and validate/correct it during the interview. 
 
 Proceed immediately — don't wait for a response unless the user offers one. The hypothesis is a conversation opener, not a gate.
 
+If the hypothesis clearly clashes with the user's framing, prefix it with `CONFUSION:` and name what doesn't fit.
+
 ## Step 3: Initial Confidence Assessment
 
 Read `references/confidence-framework.md` for dimension definitions and scoring rubrics.
@@ -214,11 +225,12 @@ After each round:
 
 1. Map answers to confidence dimensions
 2. Check for stated vs. actual want divergence:
-   - Answer contradicts earlier answer → flag and probe
+   - Answer contradicts earlier answer → emit `CONFUSION:` and probe
    - Implementation details without problem statement → apply Solution Stripping next round
    - Enthusiasm doesn't match stated priority → name the discrepancy
 3. If divergence detected, reset affected dimension to at most Medium until reconciled
 4. Update confidence levels using rubric indicators
+5. If a dimension remains unanswerable because the required information isn't in the spec or the user's answers, emit `MISSING REQUIREMENT:` before asking the targeted follow-up.
 
 #### 4.5 Display Updated Dashboard
 
@@ -257,7 +269,7 @@ If confidence dropped on any dimension (due to contradiction or revelation), not
 
 ### Greenfield Mode → DISCOVERY_BRIEF.md
 
-Create `siw/` if it does not already exist. Then read `assets/discovery-brief-template.md`, populate it from the interview, and write the result to `siw/DISCOVERY_BRIEF.md`.
+Create `siw/` if it does not already exist. Then read `assets/discovery-brief-template.md`, populate it from the interview, and write the result to `siw/DISCOVERY_BRIEF.md`. Emit `PLAN: Written to siw/DISCOVERY_BRIEF.md.` at hand-off.
 
 After writing, suggest next steps:
 - `/kramme:siw:init siw/DISCOVERY_BRIEF.md` — to bootstrap a full SIW workflow from this brief
@@ -265,7 +277,7 @@ After writing, suggest next steps:
 
 ### Refinement Mode → SPEC_STRENGTHENING_PLAN.md
 
-Read `assets/spec-strengthening-plan-template.md`, populate it from the interview, and write the result to `siw/SPEC_STRENGTHENING_PLAN.md`.
+Read `assets/spec-strengthening-plan-template.md`, populate it from the interview, and write the result to `siw/SPEC_STRENGTHENING_PLAN.md`. Emit `PLAN: Written to siw/SPEC_STRENGTHENING_PLAN.md.` at hand-off.
 
 If the refinement target is `siw/DISCOVERY_BRIEF.md`, reference sections from the brief in the patch plan and treat the brief as the target document for optional apply.
 Treat `siw/SPEC_STRENGTHENING_PLAN.md` as a temporary handoff artifact: it should remain only while waiting for review or manual application, and it should be removed once the plan has been applied.
@@ -316,3 +328,30 @@ Do NOT finish with generic advice like "improve clarity" or "add more detail." I
 /kramme:siw:discovery siw --apply
 # Refinement: discover and directly apply spec improvements
 ```
+
+## Epilogue
+
+### Common Rationalizations
+
+- *"Confidence is high enough to stop."* — High confidence means nothing if it's high on the wrong dimensions. Re-check which dimensions are Critical for the current Work Context before stopping.
+- *"The user agreed with my hypothesis, so we're aligned."* — Agreement is cheap. Restatement Challenge is cheaper than re-doing the project. Verify at least once mid-interview.
+- *"Stated and actual wants are the same here."* — They rarely are. If you haven't surfaced *any* divergence by round 4, you probably haven't probed hard enough.
+- *"The spec covers it, so the dimension is Confident."* — A section can exist and still be vague. Score on specificity and actionability, not presence.
+
+### Red Flags
+
+- The user answers every question with "yes, that's right" and never corrects you. Likely you're asking leading questions or they're deferring. Force a tradeoff.
+- You're about to write the brief and can't quote a single surprising thing the user said. The interview didn't do its job.
+- You're defaulting a dimension to a guess instead of asking. Emit `MISSING REQUIREMENT:` and ask.
+- The "What You Don't Want" list is empty or has no rationales. Non-goals without reasons become scope creep later.
+- You're continuing past round 10 without a signal that anything new will surface. Suggest stopping.
+
+### Verification
+
+Before writing the brief or strengthening plan, confirm:
+
+- [ ] All critical dimensions reached Confident; all normal dimensions reached High; all deprioritized dimensions reached Medium.
+- [ ] Stated-vs-actual divergence was either surfaced and documented, or explicitly ruled out during the interview.
+- [ ] Every entry in "What You Don't Want" has a rationale.
+- [ ] Every unanswered dimension in the output carries a `MISSING REQUIREMENT:` marker, not a fabricated answer.
+- [ ] The `PLAN:` marker is present at hand-off.

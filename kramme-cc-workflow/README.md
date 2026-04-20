@@ -320,7 +320,7 @@ Requirements discovery, document conversion, and text processing.
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:discovery:interview` | User | `[file-path or topic description]` | Conduct an in-depth interview about a topic/proposal to uncover requirements.<br><br>Uses structured questioning to explore features, processes, or architecture decisions. |
+| `/kramme:discovery:interview` | User | `[file-path or topic description] [--ideate]` | Conduct an in-depth interview about a topic/proposal to uncover requirements.<br><br>Uses structured questioning to explore features, processes, or architecture decisions. Pass `--ideate` (or supply a vague topic) to run an optional divergent pre-stage that generates variations via seven lenses and converges on a concrete problem statement before interviewing. |
 | `/kramme:docs:add-greenfield-policy` | User | — | Add Hard-Cut Greenfield Policy to AGENTS.md (or CLAUDE.md).<br><br>Enforces one canonical codepath, no compatibility bridges, and explicit removal tracking for any temporary migration code. For projects with no existing user base. |
 | `/kramme:docs:to-markdown` | User, Auto | — | Convert documents (PDF, Word, Excel, images, audio, etc.) to Markdown using markitdown |
 | `/kramme:text:humanize` | User, Auto | `[file-path or text]` | Remove signs of AI-generated writing from text. |
