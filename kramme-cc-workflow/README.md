@@ -267,10 +267,11 @@ Dependency auditing and management.
 
 #### Testing
 
-Test generation and coverage.
+Test generation, coverage, and test-first discipline.
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
+| `/kramme:test:tdd` | User, Auto | — | Experimental.<br><br>Drive implementation with tests. Write a failing test first, implement the minimum to pass, then refactor.<br><br>Use when implementing new logic, fixing a bug (Prove-It pattern), or changing behavior. Complementary to `/kramme:test:generate`, which writes tests for existing untested code. |
 | `/kramme:test:generate` | User | `[file-path or directory] [--auto]` | Experimental.<br><br>Generate tests for existing code by analyzing project test patterns and conventions.<br><br>Use when adding test coverage to untested files or generating test stubs. Add `--auto` to infer framework/configuration defaults and skip the test-shape prompts. |
 
 #### Git
@@ -578,6 +579,7 @@ For maintainers: see [RELEASE.md](RELEASE.md) for the release process.
 - OpenCode/Codex converter: Inspired by [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - Skills authoring patterns: Inspired by [mgechev/skills-best-practices](https://github.com/mgechev/skills-best-practices).
 - `kramme:visual:*` skills: Adapted from [nicobailon/visual-explainer](https://github.com/nicobailon/visual-explainer).
+- `kramme:test:tdd`: Adapted from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills/tree/main/skills/test-driven-development).
 
 ## License
 
