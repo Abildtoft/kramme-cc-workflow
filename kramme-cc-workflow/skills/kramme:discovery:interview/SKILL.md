@@ -15,10 +15,11 @@ Conduct a structured, in-depth interview about the presented topic, files, propo
 1. **Initial Analysis**: Examine the topic/files/proposal presented
 2. **Autonomous Framing**: Draft the likely target user, problem, why-now, and non-goals before asking questions
 3. **Topic Classification**: Determine the type of exploration needed
-4. **Phase 0 (optional) — Divergent**: If the framing is vague or `--ideate` is set, generate variations via lenses and converge before interviewing
-5. **Multi-Round Interview**: Ask probing questions via AskUserQuestion only where meaningful uncertainty remains
-6. **Progress Tracking**: Monitor coverage across dimensions
-7. **Synthesis**: Write an adaptive plan markdown file
+4. **Phase 0 (optional) — Divergent**: If the framing is vague or `--ideate` is set, pause for an explicit skip-or-continue choice, then generate variations via lenses and converge before interviewing
+5. **Final Classification Check**: If Phase 0 changed the framing, reclassify before interviewing
+6. **Multi-Round Interview**: Ask probing questions via AskUserQuestion only where meaningful uncertainty remains
+7. **Progress Tracking**: Monitor coverage across dimensions
+8. **Synthesis**: Write an adaptive plan markdown file
 
 ## Output Markers
 
@@ -55,6 +56,8 @@ After drafting the working hypothesis, classify the topic into one of these cate
 
 Use AskUserQuestion to confirm the topic type if unclear.
 
+Treat this classification as provisional whenever Phase 0 may still run. If Phase 0 changes the framing or turns a vague topic into a different kind of concrete ask, repeat Step 2 on the chosen framing before starting Step 3. The final topic type controls the interview dimensions, coverage labels, and template selection in Step 5.
+
 ## Phase 0: Divergent (Optional)
 
 Run Phase 0 **only** when one of the following is true:
@@ -66,13 +69,18 @@ If the framing is concrete (e.g., "Add email-based 2FA to the login flow"), **sk
 
 ### Entry notice
 
-When Phase 0 is triggered by auto-detection (not by `--ideate`), display a one-line notice before running it:
+When Phase 0 is triggered by auto-detection (not by `--ideate`), display a one-line notice and then pause for an explicit user choice before running it:
 
 ```text
 CONFUSION: The framing is broad. Running a short divergent pass (7 variation lenses, 3 stress-test axes) before the interview. Skip with "just interview me".
 ```
 
-If the user responds with "just interview me" or similar, skip Phase 0 and proceed to Step 3 with the framing as-is.
+Immediately follow that notice with AskUserQuestion using two options:
+
+- `Run divergent pass` — continue with Phase 0
+- `Just interview me` — skip Phase 0 and proceed with the current framing
+
+Do not start generating variations until the user has answered. If they pick "Just interview me" (or respond with equivalent free text), skip Phase 0 and proceed with the current framing.
 
 ### Generate variations
 
@@ -98,7 +106,7 @@ FRAMING: Interview will proceed on the following framing — {chosen variation r
 
 If the user picks "None of these", apply 2 fresh lenses and re-run convergence. If they still don't land on anything, fall back to the original framing and proceed with the interview.
 
-Feed the chosen framing into Step 3 as the working topic.
+Feed the chosen framing into Step 2 and reclassify before Step 3. If the topic type changes, tell the user which type is now in force before you continue.
 
 ## Step 3: Interview Approach
 
@@ -256,7 +264,7 @@ Coverage: [Triggers: 80%] [Steps: 60%] [Roles: 40%] [Exceptions: 20%] [Metrics: 
 Coverage: [Options: 90%] [Tradeoffs: 70%] [Constraints: 50%] [Migration: 30%]
 ```
 
-**Documentation Review:**
+**Documentation/Proposal:**
 ```
 Coverage: [Clarity: 80%] [Completeness: 60%] [Feasibility: 40%] [Actionability: 20%]
 ```
@@ -279,7 +287,7 @@ Suggest a filename based on the topic, e.g., `user-auth-redesign-plan.md` or `de
 
 ### Template Selection
 
-Pick the template matching the topic type classified in Step 2:
+Pick the template matching the final topic type in force after Step 2 and any Phase 0 reclassification:
 
 | Topic Type | Template File |
 |------------|---------------|
@@ -317,9 +325,10 @@ If a required section cannot be filled because the interview didn't cover it, le
 1. Parse and analyze any files or context provided via $ARGUMENTS
 2. Draft the autonomous framing hypotheses (target user, why-now, non-goals) before asking questions
 3. Classify the topic type
-4. Confirm classification with user if ambiguous
-5. If `force_ideate=true` or the framing is vague, run Phase 0 before starting the interview
-6. Ask your first round of probing questions, starting with the highest-uncertainty assumptions
+4. If `force_ideate=true` or the framing is vague, run Phase 0 before starting the interview
+5. Reclassify if Phase 0 materially changed the framing
+6. Confirm classification with user if ambiguous
+7. Ask your first round of probing questions, starting with the highest-uncertainty assumptions
 
 ## Epilogue
 
@@ -336,6 +345,7 @@ If a required section cannot be filled because the interview didn't cover it, le
 - Generating a plan before the user has confirmed the classification or chosen a Phase 0 framing.
 - Running Phase 0 on a concrete topic the user already scoped. Skip it.
 - Filling in a plan section from assumption rather than interview data. Emit `MISSING REQUIREMENT:` instead.
+- Letting a Phase 0 framing change stand without reclassifying the topic type and template choice.
 - The interview drifts into implementation minutiae before the problem statement is settled.
 
 ### Verification
@@ -343,8 +353,9 @@ If a required section cannot be filled because the interview didn't cover it, le
 Before writing the plan, confirm:
 
 - [ ] The working hypothesis from Step 1 has been either validated or explicitly corrected during the interview.
-- [ ] The topic type from Step 2 matches what the user actually cares about (not what the artifact happens to contain).
+- [ ] The topic type from Step 2 matches what the user actually cares about (not what the artifact happens to contain), and was reclassified if Phase 0 changed the framing.
 - [ ] If Phase 0 ran, the chosen framing was restated as a concrete problem statement and the user confirmed it.
+- [ ] If Phase 0 was auto-triggered, the user was given an explicit skip-or-continue choice before variations were generated.
 - [ ] Every dimension either has interview-grounded content or an explicit `MISSING REQUIREMENT:` marker.
 - [ ] If the chosen template includes a non-goals section, each entry includes a rationale instead of a bare placeholder.
 - [ ] The `PLAN:` marker is present at hand-off.
