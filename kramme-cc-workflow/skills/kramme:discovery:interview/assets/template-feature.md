@@ -7,7 +7,10 @@ Brief description of what we're building and the problem it solves.
 Why this deserves attention now and what outcome matters.
 
 ## Non-Goals
-- What this plan explicitly does not attempt in this pass
+
+Every entry must pair a non-goal with its rationale. Format: `- {non-goal} — {why excluded}`.
+
+- {non-goal} — {why excluded: deferred-for-later / out-of-scope / competing priority / known risk}
 
 ## Key Decisions
 | Decision | Choice | Rationale |

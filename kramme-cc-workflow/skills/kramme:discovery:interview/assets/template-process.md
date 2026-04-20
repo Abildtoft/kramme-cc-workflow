@@ -7,7 +7,10 @@ What this process accomplishes and why it's needed.
 Why changing this process matters now.
 
 ## Non-Goals
-- What process complexity or follow-on changes are explicitly deferred
+
+Every entry must pair a non-goal with its rationale. Format: `- {non-goal} — {why excluded}`.
+
+- {non-goal} — {why excluded: deferred-for-later / out-of-scope / competing priority / known risk}
 
 ## Key Decisions
 | Decision | Choice | Rationale |

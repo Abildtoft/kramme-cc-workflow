@@ -93,10 +93,10 @@ For each variation, state the alternative that already exists (inside the produc
 
 1. List each surviving variation with: `{name} — {painkiller|vitamin} — {first-failure-mode} — {differentiator}`.
 2. Present to the user via AskUserQuestion. Options: 2–4 strongest variations + "None of these — let's iterate."
-3. When the user picks one, restate it as the concrete problem statement that feeds Step 3 (the existing interview). Use the `PLAN` marker in the hand-off:
+3. When the user picks one, restate it as the concrete problem statement that feeds Step 3 (the existing interview). Use the `FRAMING` marker in the hand-off:
 
 ```text
-PLAN: Interview will proceed on the following framing — {chosen variation restated concretely}.
+FRAMING: Interview will proceed on the following framing — {chosen variation restated concretely}.
 ```
 
 4. If the user picks "None of these," apply 2 fresh lenses and re-run convergence.

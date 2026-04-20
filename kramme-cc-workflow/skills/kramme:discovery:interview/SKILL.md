@@ -27,6 +27,7 @@ Use these markers in user-facing output to keep downstream tooling parseable:
 - `CONFUSION` — when the working hypothesis doesn't fit the user's framing and you need to flag it before continuing.
 - `MISSING REQUIREMENT` — when a question cannot be answered from the provided artifact and needs user input.
 - `UNVERIFIED` — when you assert something you haven't confirmed (e.g., a feasibility guess during Phase 0 convergence).
+- `FRAMING` — the label applied when Phase 0 converges on the concrete problem statement that will feed the interview.
 - `PLAN` — the label applied to the synthesized plan document at hand-off.
 
 ## Step 1: Autonomous Framing
@@ -92,7 +93,7 @@ Drop variations where the differentiator is "nothing distinct" or the feasibilit
 Present the 2–4 strongest variations via AskUserQuestion. If the user picks one, restate it as a concrete problem statement and emit:
 
 ```text
-PLAN: Interview will proceed on the following framing — {chosen variation restated concretely}.
+FRAMING: Interview will proceed on the following framing — {chosen variation restated concretely}.
 ```
 
 If the user picks "None of these", apply 2 fresh lenses and re-run convergence. If they still don't land on anything, fall back to the original framing and proceed with the interview.
@@ -175,7 +176,7 @@ Options:
 - **Integration**: Existing features affected, backward compatibility
 - **Performance**: Scale expectations, caching needs, async operations
 - **Security**: Authentication, authorization, data sensitivity
-- **Non-Goals**: deferred work, excluded edge cases, follow-up issues
+- **Non-Goals**: deferred work, excluded edge cases, follow-up issues, and why each is excluded
 
 #### For Process/Workflow
 - **User / Why Now**: who is blocked today, urgency, business reason
@@ -185,7 +186,7 @@ Options:
 - **Exceptions**: What can go wrong, escalation paths
 - **Tooling**: Systems involved, automation opportunities
 - **Metrics**: Success criteria, monitoring needs
-- **Non-Goals**: what process complexity should stay out of scope for now
+- **Non-Goals**: what process complexity should stay out of scope for now, and why
 
 #### For Architecture Decisions
 - **Decision Ownership**: what is a product/business decision vs architecture decision
@@ -196,7 +197,7 @@ Options:
 - **Migration**: Path from current to target state
 - **Risk**: What could go wrong, mitigation strategies
 
-#### For Documentation/Proposal Review
+#### For Documentation/Proposal
 - **Clarity**: What's ambiguous or underspecified
 - **Completeness**: What's missing that should be addressed
 - **Feasibility**: What seems unrealistic or risky
@@ -285,7 +286,7 @@ Pick the template matching the topic type classified in Step 2:
 | Software Feature | `assets/template-feature.md` |
 | Process/Workflow | `assets/template-process.md` |
 | Architecture Decision | `assets/template-architecture.md` |
-| Documentation/Proposal Review | `assets/template-doc-review.md` |
+| Documentation/Proposal | `assets/template-doc-review.md` |
 
 Read the matching template, fill in the interview findings, and write the populated result to the user-chosen location. Emit `PLAN:` as the hand-off label:
 
@@ -345,5 +346,5 @@ Before writing the plan, confirm:
 - [ ] The topic type from Step 2 matches what the user actually cares about (not what the artifact happens to contain).
 - [ ] If Phase 0 ran, the chosen framing was restated as a concrete problem statement and the user confirmed it.
 - [ ] Every dimension either has interview-grounded content or an explicit `MISSING REQUIREMENT:` marker.
-- [ ] Non-goals are stated with rationale, not left blank.
+- [ ] If the chosen template includes a non-goals section, each entry includes a rationale instead of a bare placeholder.
 - [ ] The `PLAN:` marker is present at hand-off.
