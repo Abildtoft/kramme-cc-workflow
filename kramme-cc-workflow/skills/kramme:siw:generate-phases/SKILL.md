@@ -170,8 +170,17 @@ For each phase, decompose into atomic tasks:
 **Each task should be:**
 - **Committable independently** - A single focused change
 - **Testable** - Has clear acceptance criteria and validation
-- **Appropriately sized** - Not too granular, not too broad
+- **Sized XS, S, M, or L** per `references/task-sizing.md`. XL tasks MUST be decomposed further before approval.
 - **Clearly defined** - Unambiguous scope with explicit boundaries
+
+**Sizing and triggers:**
+
+Read sizing grammar, break-down triggers, and the vertical-vs-horizontal slicing rule from `references/task-sizing.md` and apply them during decomposition. Every task gets an explicit size (XS/S/M/L); any task that hits a break-down trigger — especially "title contains 'and'" — splits before leaving this step.
+
+**Slicing shape (verbatim — load-bearing):**
+
+- ❌ Horizontal: "Build entire DB schema → build all APIs → build all UI".
+- ✅ Vertical: "User can create account (schema + API + UI, end-to-end)".
 
 **Identify dependencies:**
 - Which tasks block other tasks within the same phase?
@@ -190,6 +199,16 @@ For general tasks:
 - Setup/scaffolding that doesn't fit a specific phase
 - Tooling and configuration
 - Documentation tasks
+
+### 3.4 Parallelization Assessment
+
+Annotate each task group with one of three parallelization categories so the plan surfaces safe-to-run-in-parallel work explicitly rather than defaulting to serial execution:
+
+- **Safe to parallelize**: independent slices, tests, docs.
+- **Must be sequential**: migrations, shared-state changes.
+- **Needs coordination**: shared API contract → define contract first, then parallelize consumers.
+
+Record the chosen category per group (e.g., "Phase 1 tasks: Safe to parallelize after P1-001") so Phase 5's user-facing plan reflects it.
 
 ## Phase 4: Subagent Review
 
@@ -211,7 +230,9 @@ Evaluate:
 3. **Dependencies**: Are dependencies correctly identified? Any missing?
 4. **Completeness**: Are any tasks missing to achieve the phase goals?
 5. **Phase coherence**: Does each phase result in demoable, runnable software?
-6. **Sizing**: Are tasks appropriately sized (not too granular, not too broad)?
+6. **Sizing (hard gate)**: Every task must land XS, S, M, or L per `references/task-sizing.md`. Flag any XL task explicitly — XL is not an acceptable final state.
+7. **Vertical slicing**: Does each task cut vertically (end-to-end slice — schema + API + UI together) rather than horizontally (one layer across many features)? Flag any horizontal task.
+8. **Parallelization**: Are parallelization categories (Safe / Must be sequential / Needs coordination) correctly assigned? Flag any safely-parallel work serialized unnecessarily, or any shared-state change marked parallel.
 
 For each issue found, provide:
 - What's wrong
@@ -222,13 +243,15 @@ If the breakdown looks good, confirm it's ready.
 
 **Incorporate feedback:** Update the phase plan based on subagent suggestions.
 
+**Loopback gate:** If the subagent reports any XL task or any horizontal slice, re-run Phase 3.2 decomposition and re-submit to the subagent. Only proceed to Phase 5 once the subagent confirms zero XL tasks and zero horizontal slices remain.
+
 ## Phase 5: User Approval
 
-Present the proposed structure clearly:
+Present the proposed structure clearly, prefixed with the `PLAN:` output marker so downstream tooling can parse this block as the generated plan:
 
 ```
-Phase Plan for {Project Name}
-═════════════════════════════
+PLAN: Phase Plan for {Project Name}
+═══════════════════════════════════
 
 General Tasks ({N} tasks)
 ─────────────────────────
@@ -286,7 +309,7 @@ For each issue, create `siw/issues/ISSUE-{prefix}-{number}-{title}.md`:
 ```markdown
 # ISSUE-{prefix}-{number}: {Title}
 
-**Status:** Ready | **Priority:** {High|Medium|Low} | **Phase:** {N or General} | **Related:** {dependencies}
+**Status:** Ready | **Priority:** {High|Medium|Low} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Related:** {dependencies}
 
 ## Problem
 
@@ -371,21 +394,29 @@ If you add any non-DONE issues to a phase section currently marked ` (DONE)`, re
 
 ## Phase 7: Summary
 
-Report the results:
+Report the results using the standard end-of-turn triplet (adapted: this skill creates files rather than changing code, so "CHANGES MADE" becomes "FILES CREATED"):
 
 ```
 Phase Generation Complete
 ═════════════════════════
 
-Created {X} issues:
-  • General: {N} issues (G-001 to G-{N})
-  • Phase 1: {N} issues (P1-001 to P1-{N})
-  • Phase 2: {N} issues (P2-001 to P2-{N})
-  ...
-
-Files:
+FILES CREATED:
   • siw/issues/ISSUE-*.md ({X} files)
+    - General: {N} issues (G-001 to G-{N})
+    - Phase 1: {N} issues (P1-001 to P1-{N})
+    - Phase 2: {N} issues (P2-001 to P2-{N})
+    ...
   • siw/OPEN_ISSUES_OVERVIEW.md (updated)
+
+THINGS I DIDN'T TOUCH:
+  • Any existing non-issue files under siw/ (LOG.md, spec files, supporting-specs/)
+  • Source code — implementation is a separate workflow
+  • {List any issues explicitly preserved during Append mode}
+
+POTENTIAL CONCERNS:
+  • {Any subagent-flagged risks that survived user approval}
+  • {Any CONFUSION or MISSING REQUIREMENT markers from Phase 2 that were resolved by assumption — worth re-checking before implementation}
+  • {If empty, state: "None"}
 
 Suggested starting point:
   /kramme:siw:issue-implement ISSUE-{first-ready-issue}
@@ -404,8 +435,48 @@ Tips:
 2. **Atomic tasks** - Each task is one commit, one focused change
 3. **Testable criteria** - Every task has verifiable acceptance criteria
 4. **Clear dependencies** - Explicit about what blocks what
-5. **Appropriate sizing** - Tasks should be meaningful but focused, not micro-tasks
+5. **Appropriate sizing** - All tasks XS/S/M/L (XL decomposed). See `references/task-sizing.md`.
 6. **Review before create** - Always use subagent review and user approval
+
+## Output Markers
+
+Use these markers as prefixes when surfacing specific kinds of information so output stays parseable across the plugin:
+
+- `STACK DETECTED:` — prefix Phase 2.1 Work Context extraction results (e.g., `STACK DETECTED: Work Type = Prototype / Spike`).
+- `MISSING REQUIREMENT:` — use in Phase 2.3 when a required element (overview, scope, success criteria, technical design) is absent from the spec.
+- `CONFUSION:` — use in Phase 2 when the spec is internally inconsistent or ambiguous in a way that blocks decomposition.
+- `UNVERIFIED:` — use whenever an assumption is made because the spec is incomplete; surface explicitly so the user can correct it.
+- `NOTICED BUT NOT TOUCHING:` — use for out-of-scope observations (e.g., spec mentions related work this skill won't decompose).
+- `PLAN:` — prefix the full Phase 5 proposed-structure block.
+- `FILES CREATED / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS` — end-of-turn triplet used in Phase 7 Summary.
+
+Adopt all markers or none — mixed marker vocabularies degrade downstream parseability.
+
+## Common Rationalizations
+
+Watch for these justifications that signal you are about to skip a hard gate:
+
+- "These tasks feel atomic, sizing is overkill." — If sizing is skipped, the next reviewer has no objective basis to flag drift. Apply XS/S/M/L every time.
+- "One XL task is fine, the implementer will figure it out." — No. XL means "break it down further." Letting one through breaks the gate for all future tasks.
+- "Horizontal slicing is faster for the AI to generate." — It is, and it produces a plan that defers integration risk. Every task ships a vertical slice.
+
+## Red Flags
+
+Stop and recheck the workflow if any of these appear:
+
+- Phase 4 subagent returns empty feedback on the first pass — likely under-reviewing, not a clean breakdown.
+- Every task lands at size L — likely under-decomposed.
+- Sizing labels were assigned after the structure was drafted instead of during Phase 3.2 — the grammar did not drive decomposition.
+- Parallelization categories are all "Must be sequential" — likely missed safely-parallel slices.
+
+## Verification
+
+Before reporting Phase 7, verify:
+
+- No task title contains the word "and".
+- Every task carries an explicit size; no XL survived Phase 4.
+- Phase 4 subagent prompt ran with all eight criteria (including Vertical slicing and Parallelization).
+- Parallelization categories are recorded for each task group.
 
 ## Starting the Process
 

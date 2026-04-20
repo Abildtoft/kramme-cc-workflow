@@ -73,6 +73,18 @@ Group findings into PR-sized themes. A theme is a set of findings that should be
 
 1. **Target size**: each theme should map to a realistic single PR (roughly 1-8 findings, touching a bounded set of files). If a theme grows beyond what a single PR can cover, split it into a short series and note the dependency.
 
+   Apply this sizing grammar when sizing themes:
+
+   | Size | Scope |
+   |---|---|
+   | XS | 1 file, single finding |
+   | S | 1–2 files |
+   | M | 3–5 files |
+   | L | 5–8 files |
+   | **XL** | **8+ files — split into a series** |
+
+   Aim for S/M themes. Any theme that sizes XL MUST split before generating plans.
+
 2. **Avoid overlap**: every finding belongs to exactly one theme. If a finding could fit multiple themes, assign it to the one where it shares the strongest implementation dependency.
 
 3. **Singleton themes are fine**: if a finding does not cluster with others, it becomes its own single-finding theme.
@@ -88,13 +100,13 @@ Group findings into PR-sized themes. A theme is a set of findings that should be
 3. Verify no theme is too large (would require 500+ changed lines or touch 15+ files). Split if needed.
 4. Verify no two themes overlap in affected files without an explicit dependency note.
 
-Present the clustering to the user before generating files:
+Present the clustering to the user before generating files. Prefix the block with the `PLAN:` output marker so downstream tooling can parse the proposed clustering:
 
 ```
-Proposed themes:
-  1. add-api-error-handling (4 findings) -- files: src/api/*.ts
-  2. consolidate-config-parsing (3 findings) -- files: src/config/*, src/utils/config.ts
-  3. remove-dead-exports (2 findings) -- files: src/lib/*.ts
+PLAN: Proposed themes
+  1. add-api-error-handling (4 findings, size M) -- files: src/api/*.ts
+  2. consolidate-config-parsing (3 findings, size S) -- files: src/config/*, src/utils/config.ts
+  3. remove-dead-exports (2 findings, size S) -- files: src/lib/*.ts
   N excluded findings: [list if any]
 
 Proceed? (yes / adjust)
@@ -141,7 +153,7 @@ Every section and subsection in the template must be populated. Do not leave hea
 
 ### Phase 5: Summary
 
-Report to the user:
+Report to the user using the standard end-of-turn triplet (adapted: "CHANGES MADE" becomes "PLANS GENERATED" since this skill writes plan artifacts, not code):
 
 ```
 PR Plan Generation Complete
@@ -151,11 +163,21 @@ Findings processed: N
 Plans generated: M
 Findings excluded: X
 
-Files created:
+PLANS GENERATED:
   PR_PLAN_INDEX.md
-  PR_PLAN_{SLUG_1}.md -- {theme name} ({n} findings)
-  PR_PLAN_{SLUG_2}.md -- {theme name} ({n} findings)
+  PR_PLAN_{SLUG_1}.md -- {theme name} ({n} findings, size {S|M|L})
+  PR_PLAN_{SLUG_2}.md -- {theme name} ({n} findings, size {S|M|L})
   ...
+
+THINGS I DIDN'T TOUCH:
+  • The source findings file (read-only for this skill)
+  • Any existing PR_PLAN_*.md files from prior runs (surface them here if present)
+  • Findings listed under "Excluded" in the index
+
+POTENTIAL CONCERNS:
+  • {Any conflicting-findings CONFUSION markers that remained unresolved}
+  • {Any inferred severities flagged UNVERIFIED}
+  • {If none, state: "None"}
 
 Recommended first PR: PR_PLAN_{SLUG}.md -- {one-line rationale}
 ```
@@ -173,7 +195,46 @@ Recommended first PR: PR_PLAN_{SLUG}.md -- {one-line rationale}
 
 - **Self-contained plans above all.** Every plan must be readable in isolation. Never write "as described in the review" or "see finding #3."
 - **Actionable specificity.** "Improve error handling" is not a plan step. "Add try-catch to `fetchUser()` in `src/api/users.ts:45` that catches `NetworkError` and returns a typed error result" is.
-- **Conservative sizing.** When in doubt, make plans smaller. A focused 200-line PR is better than a sprawling 800-line PR.
+- **Conservative sizing.** No theme should land at XL. When in doubt, size down — a focused M theme (200-line PR) is better than a stretched L that inches toward an 800-line sprawl.
 - **Respect the source.** Do not add findings that were not in the input. Do not reinterpret findings. If a finding is unclear, flag it as an open question.
 - **Match verification to the work.** Do not force code-only requirements onto documentation, copy, QA, audit, or workflow changes. Generated plans should require the evidence that actually proves the theme is complete.
 - **Clean output files.** The generated markdown files are working artifacts. They can be cleaned up with `/kramme:workflow-artifacts:cleanup`.
+
+## Output Markers
+
+Use these markers as prefixes when surfacing specific kinds of information so output stays parseable across the plugin:
+
+- `UNVERIFIED:` — use in Phase 1 parsing when severity (or any other field) is inferred from context rather than stated in the source.
+- `CONFUSION:` — use when two findings conflict and both positions are surfaced as open questions in the generated plan(s).
+- `MISSING REQUIREMENT:` — use for any open question added to a plan that must be answered before implementation.
+- `NOTICED BUT NOT TOUCHING:` — prefix the excluded-findings list in the index.
+- `PLAN:` — prefix the Phase 2 proposed-themes block.
+- `PLANS GENERATED / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS` — end-of-turn triplet used in Phase 5 Summary.
+
+Adopt all markers or none — mixed marker vocabularies degrade downstream parseability.
+
+## Common Rationalizations
+
+Watch for these justifications that signal you are about to skip a hard gate:
+
+- "All findings in one PR is faster." — A sprawling PR is harder to review and more likely to stall. Split the theme.
+- "This theme is slightly XL but the engineer will manage." — XL is "split into a series," not "try harder."
+- "Conflicting findings can both be addressed together." — If two findings contradict, surface the conflict as an open question. Do not paper over it.
+
+## Red Flags
+
+Stop and re-cluster if any of these appear:
+
+- Any theme lands at 9+ findings, or a single plan touches 15+ files.
+- Conflicting findings were silently reconciled instead of flagged as an open question.
+- The index lists every finding (nothing excluded) — likely a missed duplicate or resolved item.
+- A plan references "the review" or "finding #3" (violates self-contained rule).
+
+## Verification
+
+Before reporting Phase 5, verify:
+
+- Every theme is sized ≤L.
+- `grep -l "as described in the review\|see finding #\|per the report" PR_PLAN_*.md` returns no files (self-contained rule).
+- Every conflict between findings is surfaced as an open question, not resolved unilaterally.
+- Every plan has all template sections populated with concrete content (no "N/A").
