@@ -949,6 +949,80 @@ function escapeTemplateLiteral(value) {
   return String(value).replace(/[`\\]/g, "\\$&").replace(/\$\{/g, "\\${")
 }
 
+function normalizeSingleQuotedRootPlaceholders(value) {
+  const input = String(value ?? "")
+  const containsPlaceholderPattern = /\$\{CLAUDE_PLUGIN_ROOT\}|\$CLAUDE_PLUGIN_ROOT\b/
+  const placeholderPattern = /\$\{CLAUDE_PLUGIN_ROOT\}|\$CLAUDE_PLUGIN_ROOT\b/g
+  let result = ""
+  let inDouble = false
+  let escaped = false
+
+  const rewriteSingleQuotedSpan = (inner) => {
+    if (!containsPlaceholderPattern.test(inner)) {
+      return `'${inner}'`
+    }
+
+    const segments = []
+    let lastIndex = 0
+    let placeholderMatch
+
+    placeholderPattern.lastIndex = 0
+    while ((placeholderMatch = placeholderPattern.exec(inner)) !== null) {
+      const prefix = inner.slice(lastIndex, placeholderMatch.index)
+      if (prefix) {
+        segments.push(`'${prefix}'`)
+      }
+      segments.push(`"${placeholderMatch[0]}"`)
+      lastIndex = placeholderMatch.index + placeholderMatch[0].length
+    }
+
+    const suffix = inner.slice(lastIndex)
+    if (suffix) {
+      segments.push(`'${suffix}'`)
+    }
+
+    return segments.join("")
+  }
+
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index]
+
+    if (escaped) {
+      result += char
+      escaped = false
+      continue
+    }
+
+    if (char === "\\") {
+      result += char
+      escaped = true
+      continue
+    }
+
+    if (char === "\"") {
+      inDouble = !inDouble
+      result += char
+      continue
+    }
+
+    if (char === "'" && !inDouble) {
+      const endIndex = input.indexOf("'", index + 1)
+      if (endIndex === -1) {
+        result += input.slice(index)
+        break
+      }
+
+      result += rewriteSingleQuotedSpan(input.slice(index + 1, endIndex))
+      index = endIndex
+      continue
+    }
+
+    result += char
+  }
+
+  return result
+}
+
 function renderHookRootReference(value, placeholder) {
   // Scan the ORIGINAL (un-template-escaped) string so quote/backslash
   // state tracks real shell semantics. Template-literal escaping is
@@ -1015,10 +1089,10 @@ function renderHookRootReference(value, placeholder) {
 
 function renderHookCommand(value) {
   // Bun shell drops template interpolations inside single-quoted spans, so
-  // normalize single-quoted root placeholders to the double-quoted form first.
-  const normalizedValue = String(value ?? "")
-    .replace(/'\$\{CLAUDE_PLUGIN_ROOT\}'/g, '"${CLAUDE_PLUGIN_ROOT}"')
-    .replace(/'\$CLAUDE_PLUGIN_ROOT'/g, '"$CLAUDE_PLUGIN_ROOT"')
+  // rewrite any single-quoted root placeholder into concatenated quoted
+  // fragments that keep the interpolation live without changing the
+  // surrounding literal shell text.
+  const normalizedValue = normalizeSingleQuotedRootPlaceholders(value)
   const placeholder = "__CLAUDE_PLUGIN_ROOT__"
   const withPlaceholder = normalizedValue
     .replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, placeholder)

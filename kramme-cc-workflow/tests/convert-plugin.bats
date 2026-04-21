@@ -624,6 +624,54 @@ MD
   [ "$status" -eq 1 ]
 }
 
+@test "opencode conversion keeps whole single-quoted CLAUDE_PLUGIN_ROOT paths interpolated" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_DIR="$TMP_DIR/single-quoted-whole-path-plugin"
+  create_hook_fixture_plugin "$PLUGIN_DIR" "single-quoted-whole-path-plugin" "quoted-hook" "bash '\${CLAUDE_PLUGIN_ROOT}/hooks/quoted-hook.sh'"
+
+  OUTPUT_ROOT="$(printf "%s/opencode'root" "$TMP_DIR")"
+  run node "$SCRIPT" install "$PLUGIN_DIR" --to opencode --output "$OUTPUT_ROOT" --yes
+  [ "$status" -eq 0 ]
+
+  local converted_plugin="$OUTPUT_ROOT/.opencode/plugins/converted-hooks-single-quoted-whole-path-plugin.ts"
+  [ -f "$converted_plugin" ]
+
+  run grep -nF 'bash "${claudePluginRoot}"'\''/hooks/quoted-hook.sh'\''' "$converted_plugin"
+  [ "$status" -eq 0 ]
+
+  run grep -nF "bash '\${claudePluginRoot}/hooks/quoted-hook.sh'" "$converted_plugin"
+  [ "$status" -eq 1 ]
+}
+
+@test "opencode conversion preserves nested single-quoted CLAUDE_PLUGIN_ROOT paths inside double-quoted commands" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_DIR="$TMP_DIR/nested-quoted-path-plugin"
+  create_hook_fixture_plugin \
+    "$PLUGIN_DIR" \
+    "nested-quoted-path-plugin" \
+    "quoted-hook" \
+    "bash -lc \"printf %s '\${CLAUDE_PLUGIN_ROOT}/hooks/quoted-hook.sh'\""
+
+  OUTPUT_ROOT="$TMP_DIR/opencode root"
+  run node "$SCRIPT" install "$PLUGIN_DIR" --to opencode --output "$OUTPUT_ROOT" --yes
+  [ "$status" -eq 0 ]
+
+  local converted_plugin="$OUTPUT_ROOT/.opencode/plugins/converted-hooks-nested-quoted-path-plugin.ts"
+  [ -f "$converted_plugin" ]
+
+  run grep -nF 'bash -lc "printf %s '\''${claudePluginRoot}/hooks/quoted-hook.sh'\''"' "$converted_plugin"
+  [ "$status" -eq 0 ]
+
+  run grep -nF '""${claudePluginRoot}""' "$converted_plugin"
+  [ "$status" -eq 1 ]
+}
+
 @test "opencode conversion bootstraps copied hook scripts for env -i wrappers" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
