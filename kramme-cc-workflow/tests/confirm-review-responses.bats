@@ -506,6 +506,12 @@ REVIEW_SUMMARY.md"
     is_blocked
 }
 
+@test "blocks git commit inside subshell grouping when artifact is staged" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook "(git commit -m 'test')"
+    is_blocked
+}
+
 @test "blocks shell-wrapped git commit when artifact is staged" {
     mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook "sh -c 'git commit -m \"test\"'"
@@ -635,6 +641,12 @@ EOF"
 @test "blocks git commit inside if condition when artifact is staged without python3" {
     mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook_without_python "if git commit -m 'test'; then echo ok; fi"
+    is_blocked
+}
+
+@test "blocks git commit inside subshell grouping when artifact is staged without python3" {
+    mock_git_staged "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "(git commit -m 'test')"
     is_blocked
 }
 

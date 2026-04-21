@@ -61,7 +61,7 @@ token_is_assignment() {
 
 is_shell_keyword_token() {
     case "$(strip_wrapping_quotes "$1")" in
-        '!'|if|then|elif|else|fi|do|done|while|until|for|in|case|esac|'{'|'}')
+        '!'|if|then|elif|else|fi|do|done|while|until|for|in|case|esac|'{'|'}'|'('|')')
             return 0
             ;;
     esac
@@ -574,6 +574,8 @@ SHELL_KEYWORDS = {
     "esac",
     "{",
     "}",
+    "(",
+    ")",
 }
 HEREDOC_START = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
 ENV_OPTIONS_WITH_VALUE = {"-u", "--unset", "-C", "--chdir"}
@@ -831,7 +833,7 @@ def replace_command_substitutions(command):
 
 
 def tokenize(command):
-    lexer = shlex.shlex(normalize_newlines(command), posix=True, punctuation_chars="|&;")
+    lexer = shlex.shlex(normalize_newlines(command), posix=True, punctuation_chars="()|&;")
     lexer.whitespace_split = True
     lexer.commenters = ""
     return list(lexer)

@@ -64,6 +64,12 @@ run_hook_without_python() {
     [[ "$output" == *"git commit -m"* ]]
 }
 
+@test "blocks git commit inside subshell grouping when python3 is unavailable" {
+    run run_hook_without_python "(git commit)"
+    is_blocked
+    [[ "$output" == *"git commit -m"* ]]
+}
+
 @test "blocks sh -c git commit when python3 is unavailable" {
     run run_hook_without_python "sh -c 'git commit'"
     is_blocked
@@ -113,6 +119,42 @@ run_hook_without_python() {
 
 @test "blocks git commit with -m and --edit when python3 is unavailable" {
     run run_hook_without_python "git commit -m 'test message' --edit"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git commit -S with --edit when python3 is unavailable" {
+    run run_hook_without_python "git commit -S --edit -m 'test message'"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git commit --gpg-sign with --edit when python3 is unavailable" {
+    run run_hook_without_python "git commit --gpg-sign --edit -m 'test message'"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git commit -S<keyid> with --edit when python3 is unavailable" {
+    run run_hook_without_python "git commit -Sdeadbeef --edit -m 'test message'"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git commit --gpg-sign=<keyid> with --edit when python3 is unavailable" {
+    run run_hook_without_python "git commit --gpg-sign=deadbeef --edit -m 'test message'"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git commit -u with --edit when python3 is unavailable" {
+    run run_hook_without_python "git commit -u --edit -m 'test message'"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git commit --untracked-files=<mode> with --edit when python3 is unavailable" {
+    run run_hook_without_python "git commit --untracked-files=all --edit -m 'test message'"
     is_blocked
     [[ "$output" == *"--edit"* ]]
 }
@@ -303,6 +345,30 @@ EOF"
     [[ "$output" == *"--edit"* ]]
 }
 
+@test "blocks git merge -S with --edit when python3 is unavailable" {
+    run run_hook_without_python "git merge -S --edit -m 'merge message' main"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git merge --gpg-sign with --edit when python3 is unavailable" {
+    run run_hook_without_python "git merge --gpg-sign --edit -m 'merge message' main"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git merge -S<keyid> with --edit when python3 is unavailable" {
+    run run_hook_without_python "git merge -Sdeadbeef --edit -m 'merge message' main"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git merge --gpg-sign=<keyid> with --edit when python3 is unavailable" {
+    run run_hook_without_python "git merge --gpg-sign=deadbeef --edit -m 'merge message' main"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
 @test "blocks git merge without --no-edit when python3 is unavailable" {
     run run_hook_without_python "git merge main"
     is_blocked
@@ -387,6 +453,42 @@ EOF"
 
 @test "blocks git commit with -m and --edit" {
     run run_hook "git commit -m 'test message' --edit"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git commit -S with --edit" {
+    run run_hook "git commit -S --edit -m 'test message'"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git commit --gpg-sign with --edit" {
+    run run_hook "git commit --gpg-sign --edit -m 'test message'"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git commit -S<keyid> with --edit" {
+    run run_hook "git commit -Sdeadbeef --edit -m 'test message'"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git commit --gpg-sign=<keyid> with --edit" {
+    run run_hook "git commit --gpg-sign=deadbeef --edit -m 'test message'"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git commit -u with --edit" {
+    run run_hook "git commit -u --edit -m 'test message'"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git commit --untracked-files=<mode> with --edit" {
+    run run_hook "git commit --untracked-files=all --edit -m 'test message'"
     is_blocked
     [[ "$output" == *"--edit"* ]]
 }
@@ -682,6 +784,30 @@ EOF"
     [[ "$output" == *"--edit"* ]]
 }
 
+@test "blocks git merge -S with --edit" {
+    run run_hook "git merge -S --edit -m 'merge message' feature-branch"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git merge --gpg-sign with --edit" {
+    run run_hook "git merge --gpg-sign --edit -m 'merge message' feature-branch"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git merge -S<keyid> with --edit" {
+    run run_hook "git merge -Sdeadbeef --edit -m 'merge message' feature-branch"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git merge --gpg-sign=<keyid> with --edit" {
+    run run_hook "git merge --gpg-sign=deadbeef --edit -m 'merge message' feature-branch"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
 @test "allows git merge --abort" {
     run run_hook "git merge --abort"
     [ "$status" -eq 0 ]
@@ -796,6 +922,11 @@ EOF"
 
 @test "blocks git commit inside if condition" {
     run run_hook "if git commit; then echo ok; fi"
+    is_blocked
+}
+
+@test "blocks git commit inside subshell grouping" {
+    run run_hook "(git commit)"
     is_blocked
 }
 
