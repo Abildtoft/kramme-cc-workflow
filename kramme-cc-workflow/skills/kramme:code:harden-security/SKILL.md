@@ -1,5 +1,5 @@
 ---
-name: kramme:code:security-harden
+name: kramme:code:harden-security
 description: Apply security-by-default when writing code that handles user input, authentication, data storage, or external integrations. Use when building features that accept untrusted data, manage user sessions, or call third-party services. Complements the review-time auth-reviewer / data-reviewer / injection-reviewer agents with author-time guardrails.
 disable-model-invocation: false
 user-invocable: true
