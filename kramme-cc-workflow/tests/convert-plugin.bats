@@ -510,6 +510,70 @@ MD
   [ -f "$TMP_DIR/opencode/.kramme-install-state.json" ]
 }
 
+@test "opencode conversion cleans stale skills when switching between equivalent output roots" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  local plugin_v1="$TMP_DIR/alias-plugin-v1"
+  local plugin_v2="$TMP_DIR/alias-plugin-v2"
+  create_fixture_plugin "$plugin_v1" "alias-plugin"
+  create_fixture_plugin "$plugin_v2" "alias-plugin"
+
+  mkdir -p "$plugin_v1/skills/demo"
+  cat > "$plugin_v1/skills/demo/SKILL.md" <<'MD'
+---
+name: kramme:demo
+description: Demo skill
+disable-model-invocation: false
+user-invocable: true
+---
+Demo.
+MD
+
+  run node "$SCRIPT" install "$plugin_v1" --to opencode --output "$TMP_DIR/opencode-root" --yes
+  [ "$status" -eq 0 ]
+  [ -d "$TMP_DIR/opencode-root/.opencode/skills/kramme:demo" ]
+
+  run node "$SCRIPT" install "$plugin_v2" --to opencode --output "$TMP_DIR/opencode-root/.opencode" --yes
+  [ "$status" -eq 0 ]
+  [ ! -d "$TMP_DIR/opencode-root/.opencode/skills/kramme:demo" ]
+}
+
+@test "opencode conversion falls back to legacy parent-root state when switching to hidden output root" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  local plugin_v1="$TMP_DIR/legacy-alias-plugin-v1"
+  local plugin_v2="$TMP_DIR/legacy-alias-plugin-v2"
+  create_fixture_plugin "$plugin_v1" "legacy-alias-plugin"
+  create_fixture_plugin "$plugin_v2" "legacy-alias-plugin"
+
+  mkdir -p "$plugin_v1/skills/demo"
+  cat > "$plugin_v1/skills/demo/SKILL.md" <<'MD'
+---
+name: kramme:demo
+description: Demo skill
+disable-model-invocation: false
+user-invocable: true
+---
+Demo.
+MD
+
+  run node "$SCRIPT" install "$plugin_v1" --to opencode --output "$TMP_DIR/opencode-root" --yes
+  [ "$status" -eq 0 ]
+  [ -d "$TMP_DIR/opencode-root/.opencode/skills/kramme:demo" ]
+
+  mv "$TMP_DIR/opencode-root/.opencode/.kramme-install-state.json" "$TMP_DIR/opencode-root/.kramme-install-state.json"
+  mv "$TMP_DIR/opencode-root/.opencode/.kramme-install-manifests" "$TMP_DIR/opencode-root/.kramme-install-manifests"
+
+  run node "$SCRIPT" install "$plugin_v2" --to opencode --output "$TMP_DIR/opencode-root/.opencode" --yes
+  [ "$status" -eq 0 ]
+  [ ! -d "$TMP_DIR/opencode-root/.opencode/skills/kramme:demo" ]
+  [ -f "$TMP_DIR/opencode-root/.opencode/.kramme-install-state.json" ]
+}
+
 @test "--also opencode writes to the requested output root" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"

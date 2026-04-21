@@ -1,7 +1,7 @@
 ---
 name: kramme:qa
 description: Structured QA testing with evidence capture. Runs smoke checks, diff-aware validation, or targeted route testing against a live app. Produces QA_REPORT.md with screenshots, repro steps, severity, and recommended fixes, or replies inline with --inline. Uses browser MCP when available and falls back to code-only analysis otherwise.
-argument-hint: "<url> [quick|diff-aware|targeted <route>] [--base <branch>] [--regression] [--inline]"
+argument-hint: "<url> [quick|diff-aware|targeted <route>] [--base <branch>] [--regression] [--inline] [--legacy-console]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -27,6 +27,7 @@ Extract from `$ARGUMENTS`:
    - `--base <branch>` — explicit base branch for diff-aware mode
    - `--regression` — compare results against previous QA baseline (see Step 10)
    - `--inline` — reply with the QA report inline instead of writing `QA_REPORT.md`
+   - `--legacy-console` — relax the clean-console standard for legacy apps with known noisy consoles (see Step 4)
 
 Store parsed values:
 - `TARGET_URL` — the base URL to test
@@ -35,6 +36,7 @@ Store parsed values:
 - `BASE_OVERRIDE` — explicit base branch if provided
 - `REGRESSION_MODE` — boolean (default: false)
 - `INLINE_MODE` — boolean (default: false)
+- `LEGACY_CONSOLE_MODE` — boolean (default: false)
 
 ### Step 2: Validate Prerequisites
 
@@ -201,11 +203,26 @@ For each identified page/route, read the QA rubric from `references/qa-rubric.md
 Create a test checklist for each route:
 
 1. **Page loads without errors** — no blank page, no stuck spinner, no crash
-2. **Console is clean** — no JavaScript errors, no unhandled promise rejections
-3. **Network requests succeed** — no 4xx/5xx responses from API calls
+2. **Console is clean** — apply the clean-console standard below
+3. **Network requests succeed** — use the network triage ladder in Step 6
 4. **Key interactions work** — buttons respond, forms submit, navigation works
 5. **Visual state is reasonable** — no overflow, no broken images, readable text
 6. **Edge states** — empty states handled, error states if triggerable
+7. **Accessibility ladder** — run the five checks below
+
+**Clean-console standard:**
+- Default: zero console errors, zero console warnings. Every error and every warning is a finding.
+- `LEGACY_CONSOLE_MODE` (true): zero console errors is still required; warnings demote to Info-level findings rather than Minor/Major.
+
+**Accessibility ladder** (run for every tested route):
+
+1. **Accessibility tree** — read the a11y tree; flag interactive elements without an accessible name (buttons, links, form controls).
+2. **Heading hierarchy** — exactly one `h1`; heading levels do not skip.
+3. **Focus order** — tab through the page; focus follows visual order and no focus traps.
+4. **Color contrast** — sample primary text and interactive elements against WCAG AA (4.5:1 for body text, 3:1 for large text and UI components).
+5. **Dynamic content announcement** — live regions, toasts, and modal open/close announce to assistive tech.
+
+Each failed a11y check becomes a finding in the `Content` category (the health-score rubric does not currently carry an `Accessibility` category — reuse `Content` until the rubric is extended).
 
 Prioritize test items by severity impact. Blockers first, then major, then minor.
 
@@ -257,8 +274,18 @@ For each tested page/route, collect:
 
 - **Screenshot** — visual state from browse (describes what the screenshot shows)
 - **Console errors/warnings** — grouped by severity (errors first, then warnings)
-- **Failed network requests** — any 4xx/5xx responses or failed requests
+- **Failed network requests** — classify per the triage ladder below
 - **Interaction results** — outcome of any interactions performed
+
+**Network triage ladder** (apply to every failed or anomalous request):
+
+| Signal | Interpretation | Action |
+|---|---|---|
+| `4xx` | Client sent wrong data (shape, auth, validation) | Capture the request payload + route; Major unless expected (e.g. 401 on a logged-out probe) |
+| `5xx` | Server error | Capture the response body after redacting tokens; Blocker |
+| CORS failure | Origin or headers mismatch | Capture origin + `Access-Control-*` response headers; Major |
+| Timeout | Response exceeded the time budget (> 3s default) | Capture URL + elapsed; Major unless route is known-slow |
+| Missing | A request that was expected never fired | Capture route context; Major — this is often a regression signal |
 
 Store evidence per route for inclusion in the QA report.
 
@@ -284,6 +311,8 @@ Read `references/health-score-rubric.md` and compute a weighted health score (0-
 1. Assign each finding to one category: Console, Network, Visual, Functional, Data, Interaction, or Content
 2. For each category, start at 100 and deduct per finding: Blocker -25, Major -15, Minor -8, Info -3 (minimum 0)
 3. Compute the weighted average using the rubric weights
+
+**Clean-console rule:** if any console error is present and `LEGACY_CONSOLE_MODE` is false, the Console category receives an automatic Blocker deduction in addition to per-finding deductions. Warnings follow the rule set in Step 4 (Minor/Major by default, Info under `--legacy-console`).
 
 Store as `HEALTH_SCORE` and `HEALTH_LABEL` (Excellent/Good/Fair/Poor/Critical).
 
@@ -406,6 +435,13 @@ Fixed: {N} | New: {N} | Persistent: {N}
 Report output: {inline reply | QA_REPORT.md}
 {If blockers found: "Fix blockers and re-run: /kramme:qa <url>"}
 ```
+
+## Conventions — output markers and verification
+
+Before producing the QA report, read `references/addy-conventions.md` and apply:
+
+- The 7-marker output vocabulary (`STACK DETECTED`, `UNVERIFIED`, `NOTICED BUT NOT TOUCHING`, `CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS`, `CONFUSION`, `MISSING REQUIREMENT`, `PLAN`) to section headers, summary callouts, and inline flags.
+- The `Common Rationalizations` / `Red Flags — STOP` / `Verification` epilogue as a pre-handoff checklist against this run.
 
 ## Error Handling Summary
 

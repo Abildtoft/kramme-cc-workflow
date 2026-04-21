@@ -1266,9 +1266,10 @@ function uniqueName(base, used) {
 async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
   const paths = resolveOpenCodePaths(outputRoot)
   const pluginName = extraOpts.pluginName ?? "plugin"
-  const { state: installState } = await loadInstallState(paths.root)
+  const installRoots = [paths.stateRoot, ...(paths.legacyStateRoots ?? [])]
+  const { state: installState } = await loadInstallStateWithFallback(installRoots)
   const previousEntries = await getPreviousInstallEntries(
-    paths.root,
+    installRoots,
     installState,
     pluginName,
     "opencode",
@@ -1337,30 +1338,39 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
       : unionEntryLists(previousEntries.skills, bundle.skillDirs.map((skill) => skill.name)),
   }
   setInstallEntries(installState, pluginName, "opencode", nextEntries)
-  await writeInstallState(paths.root, installState)
-  await writeInstallManifest(paths.root, pluginName, "opencode", nextEntries)
+  await writeInstallState(paths.stateRoot, installState)
+  await writeInstallManifest(paths.stateRoot, pluginName, "opencode", nextEntries)
 }
 
 function resolveOpenCodePaths(outputRoot) {
-  const base = path.basename(outputRoot)
+  const resolvedOutputRoot = path.resolve(outputRoot)
+  const base = path.basename(resolvedOutputRoot)
   if (base === "opencode" || base === ".opencode") {
+    const legacyStateRoots = base === ".opencode"
+      ? [path.dirname(resolvedOutputRoot)]
+      : []
     return {
-      root: outputRoot,
-      configPath: path.join(outputRoot, "opencode.json"),
-      agentsDir: path.join(outputRoot, "agents"),
-      hookBundlesDir: path.join(outputRoot, "hook-bundles"),
-      pluginsDir: path.join(outputRoot, "plugins"),
-      skillsDir: path.join(outputRoot, "skills"),
+      root: resolvedOutputRoot,
+      stateRoot: resolvedOutputRoot,
+      legacyStateRoots,
+      configPath: path.join(resolvedOutputRoot, "opencode.json"),
+      agentsDir: path.join(resolvedOutputRoot, "agents"),
+      hookBundlesDir: path.join(resolvedOutputRoot, "hook-bundles"),
+      pluginsDir: path.join(resolvedOutputRoot, "plugins"),
+      skillsDir: path.join(resolvedOutputRoot, "skills"),
     }
   }
 
+  const hiddenRoot = path.join(resolvedOutputRoot, ".opencode")
   return {
-    root: outputRoot,
-    configPath: path.join(outputRoot, "opencode.json"),
-    agentsDir: path.join(outputRoot, ".opencode", "agents"),
-    hookBundlesDir: path.join(outputRoot, ".opencode", "hook-bundles"),
-    pluginsDir: path.join(outputRoot, ".opencode", "plugins"),
-    skillsDir: path.join(outputRoot, ".opencode", "skills"),
+    root: resolvedOutputRoot,
+    stateRoot: hiddenRoot,
+    legacyStateRoots: [resolvedOutputRoot],
+    configPath: path.join(resolvedOutputRoot, "opencode.json"),
+    agentsDir: path.join(hiddenRoot, "agents"),
+    hookBundlesDir: path.join(hiddenRoot, "hook-bundles"),
+    pluginsDir: path.join(hiddenRoot, "plugins"),
+    skillsDir: path.join(hiddenRoot, "skills"),
   }
 }
 
@@ -1733,6 +1743,32 @@ async function loadInstallState(root) {
   }
 }
 
+async function loadInstallStateWithFallback(roots) {
+  const normalizedRoots = uniqueRoots(roots)
+  if (normalizedRoots.length === 0) {
+    return {
+      state: createInstallState(),
+      fromDisk: false,
+    }
+  }
+
+  let primaryResult = null
+  for (let index = 0; index < normalizedRoots.length; index += 1) {
+    const loaded = await loadInstallState(normalizedRoots[index])
+    if (index === 0) {
+      primaryResult = loaded
+    }
+    if (loaded.fromDisk) {
+      return loaded
+    }
+  }
+
+  return primaryResult ?? {
+    state: createInstallState(),
+    fromDisk: false,
+  }
+}
+
 function getInstallManifestPath(root, pluginName, targetName) {
   return path.join(
     root,
@@ -1791,11 +1827,18 @@ function getInstallEntries(state, pluginName, targetName) {
   }
 }
 
-async function getPreviousInstallEntries(root, state, pluginName, targetName) {
+async function getPreviousInstallEntries(rootOrRoots, state, pluginName, targetName) {
+  const roots = Array.isArray(rootOrRoots) ? rootOrRoots : [rootOrRoots]
   if (state.plugins?.[pluginName]?.[targetName]) {
     return getInstallEntries(state, pluginName, targetName)
   }
-  return (await loadInstallManifest(root, pluginName, targetName)) ?? getInstallEntries(state, pluginName, targetName)
+  for (const root of uniqueRoots(roots)) {
+    const manifest = await loadInstallManifest(root, pluginName, targetName)
+    if (manifest) {
+      return manifest
+    }
+  }
+  return getInstallEntries(state, pluginName, targetName)
 }
 
 function setInstallEntries(state, pluginName, targetName, entries) {
@@ -1824,6 +1867,14 @@ function sanitizeEntryList(entries) {
 
 function unionEntryLists(...lists) {
   return Array.from(new Set(lists.flatMap((entries) => sanitizeEntryList(entries))))
+}
+
+function uniqueRoots(roots) {
+  return Array.from(
+    new Set(
+      sanitizeEntryList(roots).map((root) => path.resolve(root)),
+    ),
+  )
 }
 
 async function writeJson(file, data) {
