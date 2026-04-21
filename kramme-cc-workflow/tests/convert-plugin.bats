@@ -821,6 +821,21 @@ MD
   [ "$status" -eq 0 ]
 }
 
+@test "opencode conversion removes legacy shared hook plugin on upgrade" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  mkdir -p "$TMP_DIR/opencode/plugins"
+  echo "old" > "$TMP_DIR/opencode/plugins/converted-hooks.ts"
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  [ ! -f "$TMP_DIR/opencode/plugins/converted-hooks.ts" ]
+  [ -f "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts" ]
+}
+
 @test "from-commands permissions fall back when no allowed-tools are declared" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
