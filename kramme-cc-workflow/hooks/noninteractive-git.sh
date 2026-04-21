@@ -20,6 +20,12 @@ block() {
 }
 
 PARSE_ERROR_REASON="Unable to safely parse command. Refusing potentially interactive git command."
+COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES="mFCctSu"
+COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE="mFCct"
+COMMIT_LONG_OPTIONS_CONSUME_NEXT_VALUE="--author --date --message --file --reuse-message --reedit-message --fixup --squash --cleanup --trailer --pathspec-from-file"
+MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES="mFsSX"
+MERGE_SHORT_OPTIONS_CONSUME_NEXT_VALUE="mFsX"
+MERGE_LONG_OPTIONS_CONSUME_NEXT_VALUE="--message --file --strategy --strategy-option --cleanup --into-name"
 
 source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/git-parse-utils.sh"
 
@@ -29,7 +35,7 @@ token_is_assignment() {
 
 is_shell_keyword_token() {
     case "$(strip_wrapping_quotes "$1")" in
-        '!'|if|then|elif|else|fi|do|done|while|until|for|in|case|esac|'{'|'}')
+        '!'|if|then|elif|else|fi|do|done|while|until|for|in|case|esac|'{'|'}'|'('|')')
             return 0
             ;;
     esac
@@ -56,6 +62,90 @@ args_have_short_option() {
     return 1
 }
 
+args_have_short_option_value_aware() {
+    local wanted="$1"
+    local options_with_values="$2"
+    shift 2
+    local arg value short_options idx option
+
+    for arg in "$@"; do
+        value="$(strip_wrapping_quotes "$arg")"
+        [ "$value" = "--" ] && break
+        case "$value" in
+            --*|-) continue ;;
+            -*)
+                short_options="${value#-}"
+                for ((idx = 0; idx < ${#short_options}; idx += 1)); do
+                    option="${short_options:$idx:1}"
+                    if [ "$option" = "$wanted" ]; then
+                        return 0
+                    fi
+                    case "$options_with_values" in
+                        *"$option"*)
+                            break
+                            ;;
+                    esac
+                done
+                ;;
+        esac
+    done
+    return 1
+}
+
+short_option_consumes_next_value() {
+    local arg="$1"
+    local options_with_values="$2"
+    local short_options idx option
+
+    case "$arg" in
+        --*|-) return 1 ;;
+        -*)
+            short_options="${arg#-}"
+            for ((idx = 0; idx < ${#short_options}; idx += 1)); do
+                option="${short_options:$idx:1}"
+                case "$options_with_values" in
+                    *"$option"*)
+                        [ "$idx" -eq "$((${#short_options} - 1))" ]
+                        return
+                        ;;
+                esac
+            done
+            ;;
+    esac
+    return 1
+}
+
+args_have_long_option_value_aware() {
+    local wanted="$1"
+    local short_options_with_values="$2"
+    local long_options_with_values="$3"
+    shift 3
+    local arg value skip_next=false
+
+    for arg in "$@"; do
+        value="$(strip_wrapping_quotes "$arg")"
+        if [ "$skip_next" = "true" ]; then
+            skip_next=false
+            continue
+        fi
+        [ "$value" = "--" ] && break
+        [ "$value" = "$wanted" ] && return 0
+        case "$value" in
+            "$wanted"=*) return 0 ;;
+        esac
+        if short_option_consumes_next_value "$value" "$short_options_with_values"; then
+            skip_next=true
+            continue
+        fi
+        case " $long_options_with_values " in
+            *" $value "*)
+                skip_next=true
+                ;;
+        esac
+    done
+    return 1
+}
+
 args_have_long_option() {
     local wanted="$1"
     shift
@@ -73,13 +163,20 @@ args_have_long_option() {
 }
 
 commit_has_message_source() {
-    args_have_short_option "m" "$@" \
-        || args_have_short_option "F" "$@" \
-        || args_have_short_option "C" "$@" \
+    args_have_short_option_value_aware "m" "$COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" \
+        || args_have_short_option_value_aware "F" "$COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" \
+        || args_have_short_option_value_aware "C" "$COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" \
         || args_have_long_option "--message" "$@" \
         || args_have_long_option "--file" "$@" \
         || args_have_long_option "--reuse-message" "$@" \
         || args_have_long_option "--no-edit" "$@"
+}
+
+merge_has_message_source() {
+    args_have_short_option_value_aware "m" "$MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" \
+        || args_have_short_option_value_aware "F" "$MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" \
+        || args_have_long_option "--message" "$@" \
+        || args_have_long_option "--file" "$@"
 }
 
 extract_shell_inline_command() {
@@ -411,6 +508,10 @@ evaluate_simple_git_segment() {
 
     case "$subcmd" in
         commit)
+            if args_have_short_option_value_aware "e" "$COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" || args_have_long_option_value_aware "--edit" "$COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE" "$COMMIT_LONG_OPTIONS_CONSUME_NEXT_VALUE" "$@"; then
+                printf '%s\n' 'git commit --edit opens an editor. Remove --edit to keep the commit non-interactive.'
+                return
+            fi
             if ! commit_has_message_source "$@"; then
                 printf '%s\n' 'git commit without a message source may open an editor. Use: git commit -m "your message" (or --no-edit for amend)'
                 return
@@ -433,7 +534,11 @@ evaluate_simple_git_segment() {
             fi
             ;;
         merge)
-            if ! (args_have_long_option "--abort" "$@" || args_have_long_option "--quit" "$@" || args_have_long_option "--no-edit" "$@" || args_have_long_option "--no-commit" "$@" || args_have_long_option "--squash" "$@" || args_have_long_option "--ff-only" "$@" || args_have_long_option "--ff" "$@"); then
+            if args_have_short_option_value_aware "e" "$MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" || args_have_long_option_value_aware "--edit" "$MERGE_SHORT_OPTIONS_CONSUME_NEXT_VALUE" "$MERGE_LONG_OPTIONS_CONSUME_NEXT_VALUE" "$@"; then
+                printf '%s\n' 'git merge --edit opens an editor. Remove --edit to keep the merge non-interactive.'
+                return
+            fi
+            if ! (args_have_long_option "--abort" "$@" || args_have_long_option "--quit" "$@" || args_have_long_option "--no-edit" "$@" || args_have_long_option "--no-commit" "$@" || args_have_long_option "--squash" "$@" || args_have_long_option "--ff-only" "$@" || args_have_long_option "--ff" "$@" || merge_has_message_source "$@"); then
                 printf '%s\n' 'git merge may open an editor for the merge commit message. Use: git merge --no-edit <branch>'
                 return
             fi
@@ -539,6 +644,8 @@ SHELL_KEYWORDS = {
     "esac",
     "{",
     "}",
+    "(",
+    ")",
 }
 SHELL_EXECUTABLES = {"sh", "bash", "zsh", "dash", "ksh"}
 SHELL_OPTIONS_WITH_VALUE = {"--command", "--rcfile", "--init-file", "--startup-file", "-o", "-O", "+O"}
@@ -665,7 +772,7 @@ def normalize_newlines(command):
 
 
 def tokenize(command):
-    lexer = shlex.shlex(normalize_newlines(command), posix=True, punctuation_chars="|&;")
+    lexer = shlex.shlex(normalize_newlines(command), posix=True, punctuation_chars="()|&;")
     lexer.whitespace_split = True
     lexer.commenters = ""
     return list(lexer)
@@ -1135,6 +1242,77 @@ def has_short_option(args, *letters):
     return False
 
 
+COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES = set("mFCctSu")
+COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE = set("mFCct")
+COMMIT_LONG_OPTIONS_CONSUME_NEXT_VALUE = {
+    "--author",
+    "--date",
+    "--message",
+    "--file",
+    "--reuse-message",
+    "--reedit-message",
+    "--fixup",
+    "--squash",
+    "--cleanup",
+    "--trailer",
+    "--pathspec-from-file",
+}
+MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES = set("mFsSX")
+MERGE_SHORT_OPTIONS_CONSUME_NEXT_VALUE = set("mFsX")
+MERGE_LONG_OPTIONS_CONSUME_NEXT_VALUE = {
+    "--message",
+    "--file",
+    "--strategy",
+    "--strategy-option",
+    "--cleanup",
+    "--into-name",
+}
+
+
+def has_short_option_value_aware(args, wanted, options_with_values):
+    for arg in args:
+        if arg == "--":
+            break
+        if not arg.startswith("-") or arg == "-" or arg.startswith("--"):
+            continue
+        for letter in arg[1:]:
+            if letter == wanted:
+                return True
+            if letter in options_with_values:
+                break
+    return False
+
+
+def short_option_consumes_next_value(arg, options_with_values):
+    if not arg.startswith("-") or arg == "-" or arg.startswith("--"):
+        return False
+    letters = arg[1:]
+    for idx, letter in enumerate(letters):
+        if letter in options_with_values:
+            return idx == len(letters) - 1
+    return False
+
+
+def has_long_option_value_aware(
+    args, wanted, short_options_with_values, long_options_with_values
+):
+    skip_next = False
+    for arg in args:
+        if skip_next:
+            skip_next = False
+            continue
+        if arg == "--":
+            break
+        if arg == wanted or arg.startswith(wanted + "="):
+            return True
+        if short_option_consumes_next_value(arg, short_options_with_values):
+            skip_next = True
+            continue
+        if arg in long_options_with_values:
+            skip_next = True
+    return False
+
+
 def evaluate(parsed_commands, substitutions, depth=0):
     if depth > 4:
         return PARSE_ERROR_REASON
@@ -1164,8 +1342,17 @@ def evaluate(parsed_commands, substitutions, depth=0):
             continue
 
         if subcmd == "commit":
+            if has_short_option_value_aware(args, "e", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES) or has_long_option_value_aware(
+                args,
+                "--edit",
+                COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE,
+                COMMIT_LONG_OPTIONS_CONSUME_NEXT_VALUE,
+            ):
+                return "git commit --edit opens an editor. Remove --edit to keep the commit non-interactive."
             has_message_source = (
-                has_short_option(args, "m", "F", "C")
+                has_short_option_value_aware(args, "m", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
+                or has_short_option_value_aware(args, "F", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
+                or has_short_option_value_aware(args, "C", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
                 or has_long_option(
                     args,
                     "--message",
@@ -1190,6 +1377,13 @@ def evaluate(parsed_commands, substitutions, depth=0):
                 return "Interactive git add opens a prompt. Use explicit paths: git add <files>"
 
         elif subcmd == "merge":
+            if has_short_option_value_aware(args, "e", MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES) or has_long_option_value_aware(
+                args,
+                "--edit",
+                MERGE_SHORT_OPTIONS_CONSUME_NEXT_VALUE,
+                MERGE_LONG_OPTIONS_CONSUME_NEXT_VALUE,
+            ):
+                return "git merge --edit opens an editor. Remove --edit to keep the merge non-interactive."
             is_explicitly_safe = has_long_option(
                 args,
                 "--abort",
@@ -1199,7 +1393,14 @@ def evaluate(parsed_commands, substitutions, depth=0):
                 "--squash",
                 "--ff-only",
                 "--ff",
+                "--message",
+                "--file",
             )
+            if not is_explicitly_safe:
+                is_explicitly_safe = (
+                    has_short_option_value_aware(args, "m", MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
+                    or has_short_option_value_aware(args, "F", MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
+                )
             if not is_explicitly_safe:
                 return "git merge may open an editor for the merge commit message. Use: git merge --no-edit <branch>"
 

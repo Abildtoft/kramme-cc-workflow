@@ -606,7 +606,7 @@ shell_tokenize() {
                         mode="double"
                         token_started=true
                         ;;
-                    ';'|'|'|'&')
+                    ';'|'|'|'&'|'('|')')
                         if [ "$split_controls" = "true" ]; then
                             if [ "$token_started" = "true" ]; then
                                 jq -cn --arg value "$current" '{type:"word", value:$value}'
