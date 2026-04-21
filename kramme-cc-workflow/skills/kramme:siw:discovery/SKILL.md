@@ -267,6 +267,8 @@ If confidence dropped on any dimension (due to contradiction or revelation), not
 
 ## Step 5: Synthesize Findings
 
+In either mode, if a dimension remains unanswered, keep the relevant placeholder in the generated artifact and insert `MISSING REQUIREMENT: {dimension}` immediately above that section so unresolved gaps survive the hand-off artifact.
+
 ### Greenfield Mode → DISCOVERY_BRIEF.md
 
 Create `siw/` if it does not already exist. Then read `assets/discovery-brief-template.md`, populate it from the interview, and write the result to `siw/DISCOVERY_BRIEF.md`. Emit `PLAN: Written to siw/DISCOVERY_BRIEF.md.` at hand-off.
@@ -290,11 +292,12 @@ If `apply_changes=true` or the user asks to apply:
 1. Edit the target document(s) using decisions from Step 4
 2. Target documents may be SIW spec files or `siw/DISCOVERY_BRIEF.md`
 3. Preserve structure — add missing sections, don't scatter content
-4. If a full SIW workflow exists, update `siw/LOG.md` Decision Log with:
+4. Preserve any `MISSING REQUIREMENT:` markers for unresolved dimensions instead of filling those sections with guesses
+5. If a full SIW workflow exists, update `siw/LOG.md` Decision Log with:
    - Summary of discovery session
    - Key decisions and rationale
    - Remaining open questions
-5. After the target documents and optional log updates are complete, delete or trash `siw/SPEC_STRENGTHENING_PLAN.md` so future runs do not treat the applied plan as unresolved state
+6. After the target documents and optional log updates are complete, delete or trash `siw/SPEC_STRENGTHENING_PLAN.md` so future runs do not treat the applied plan as unresolved state
 
 **Greenfield mode:**
 - Apply is not applicable (the brief IS the output)

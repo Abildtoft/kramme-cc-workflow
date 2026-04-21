@@ -10,7 +10,7 @@ Phase 0 is a **breadth** pre-stage before the depth-first interview. It fits whe
 - "We should do something about Y" (no direction)
 - "Help me think through Z" (exploratory, no candidate solution)
 
-Phase 0 does **not** apply when the user arrives with a concrete ask (e.g., "Add email-based 2FA to the login flow"). Skip directly to Step 3 of the interview.
+Phase 0 does **not** apply when the user arrives with a concrete ask (e.g., "Add email-based 2FA to the login flow") unless they explicitly passed `--ideate` to explore alternatives first. Without `--ideate`, skip directly to Step 3 of the interview.
 
 ## The Seven Variation Lenses
 
@@ -92,7 +92,7 @@ For each variation, state the alternative that already exists (inside the produc
 ## Convergence protocol
 
 1. List each surviving variation with: `{name} — {painkiller|vitamin} — {first-failure-mode} — {differentiator}`.
-2. Present to the user via AskUserQuestion. Options: 2–4 strongest variations + "None of these — let's iterate."
+2. Present to the user via AskUserQuestion. Options: 1-3 strongest variations plus `None of these — let's iterate.` Keep the total predefined option count between 2 and 4.
 3. When the user picks one, restate it as the concrete problem statement that feeds Step 3 (the existing interview). Use the `FRAMING` marker in the hand-off:
 
 ```text

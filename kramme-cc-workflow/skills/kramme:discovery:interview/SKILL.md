@@ -15,7 +15,7 @@ Conduct a structured, in-depth interview about the presented topic, files, propo
 1. **Initial Analysis**: Examine the topic/files/proposal presented
 2. **Autonomous Framing**: Draft the likely target user, problem, why-now, and non-goals before asking questions
 3. **Topic Classification**: Determine the type of exploration needed
-4. **Phase 0 (optional) — Divergent**: If the framing is vague or `--ideate` is set, pause for an explicit skip-or-continue choice, then generate variations via lenses and converge before interviewing
+4. **Phase 0 (optional) — Divergent**: If the framing is vague, pause for an explicit skip-or-continue choice before generating variations. If `--ideate` is set, treat that as an explicit request to run Phase 0 and proceed directly into the divergent pass.
 5. **Final Classification Check**: If Phase 0 changed the framing, reclassify before interviewing
 6. **Multi-Round Interview**: Ask probing questions via AskUserQuestion only where meaningful uncertainty remains
 7. **Progress Tracking**: Monitor coverage across dimensions
@@ -65,7 +65,7 @@ Run Phase 0 **only** when one of the following is true:
 - The user passed `--ideate` in `$ARGUMENTS`.
 - The framing is **vague** — it names an area but not a concrete ask. Heuristics: "improve X", "do something about Y", "help me think through Z", or a topic that can't be mapped to a specific outcome after Step 1 framing.
 
-If the framing is concrete (e.g., "Add email-based 2FA to the login flow"), **skip Phase 0** and proceed to Step 3.
+If the framing is concrete (e.g., "Add email-based 2FA to the login flow") and the user did **not** pass `--ideate`, **skip Phase 0** and proceed to Step 3. If the user explicitly passed `--ideate`, treat that as an intentional request to explore alternatives first and run Phase 0 anyway.
 
 ### Entry notice
 
@@ -98,7 +98,7 @@ Drop variations where the differentiator is "nothing distinct" or the feasibilit
 
 ### Pick a concrete framing
 
-Present the 2–4 strongest variations via AskUserQuestion. If the user picks one, restate it as a concrete problem statement and emit:
+Present the 1–3 strongest variations via AskUserQuestion and reserve one option slot for `None of these — let's iterate.` Keep the total predefined option count within AskUserQuestion's 2-4 option limit. If the user picks one, restate it as a concrete problem statement and emit:
 
 ```text
 FRAMING: Interview will proceed on the following framing — {chosen variation restated concretely}.
@@ -325,7 +325,7 @@ If a required section cannot be filled because the interview didn't cover it, le
 1. Parse and analyze any files or context provided via $ARGUMENTS
 2. Draft the autonomous framing hypotheses (target user, why-now, non-goals) before asking questions
 3. Classify the topic type
-4. If `force_ideate=true` or the framing is vague, run Phase 0 before starting the interview
+4. If `force_ideate=true`, run Phase 0 even when the framing is concrete. Otherwise, only run Phase 0 when the framing is vague.
 5. Reclassify if Phase 0 materially changed the framing
 6. Confirm classification with user if ambiguous
 7. Ask your first round of probing questions, starting with the highest-uncertainty assumptions
@@ -343,7 +343,7 @@ If a required section cannot be filled because the interview didn't cover it, le
 
 - Asking a question whose answer is already in the artifact. Stop and re-read the artifact.
 - Generating a plan before the user has confirmed the classification or chosen a Phase 0 framing.
-- Running Phase 0 on a concrete topic the user already scoped. Skip it.
+- Auto-running Phase 0 on a concrete topic the user already scoped when `--ideate` was not requested. Skip it.
 - Filling in a plan section from assumption rather than interview data. Emit `MISSING REQUIREMENT:` instead.
 - Letting a Phase 0 framing change stand without reclassifying the topic type and template choice.
 - The interview drifts into implementation minutiae before the problem statement is settled.
