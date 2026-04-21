@@ -1,6 +1,6 @@
 ---
 name: kramme:code:incremental
-description: "Deliver changes in thin vertical slices with scope discipline, incremental verification between slices, and feature-flag guardrails for incomplete work. Use when implementing any change that spans more than one file or commit. Enforces one-thing-at-a-time, rollback-friendly commits, and explicit separation of in-scope work from noticed-but-untouched observations."
+description: "(experimental) Deliver changes in thin vertical slices with scope discipline, incremental verification between slices, and feature-flag guardrails for incomplete work. Use when implementing any change that spans more than one file or commit. Enforces one-thing-at-a-time, rollback-friendly commits, and explicit separation of in-scope work from noticed-but-untouched observations."
 disable-model-invocation: false
 user-invocable: true
 ---
