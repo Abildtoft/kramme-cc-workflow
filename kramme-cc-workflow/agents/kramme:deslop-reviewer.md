@@ -129,6 +129,30 @@ const items = (data as unknown as ItemList).items;
 - Commented-out alternative implementations
 - TODO comments that reference the AI interaction ("as discussed", "per your request")
 
+### 9. AI-Aesthetic UI Defaults
+
+Recognizable visual defaults that mark UI code as AI-generated rather than design-system-driven. Flag any of the following in UI diffs (styling, templates, or component markup):
+
+- Purple/indigo accent applied without evidence the project palette calls for it (default Tailwind palette tells).
+- Gradient backgrounds compensating for weak hierarchy (e.g., `bg-gradient-to-br from-purple-* to-pink-*`).
+- `rounded-2xl` (or maximum radius) applied indiscriminately to every surface instead of matching an intentional radius tier.
+- Generic hero sections, stock card grids where every tile is the same size, or layout templates with no connection to the actual content priority.
+- Oversized symmetric padding on every container (e.g., `p-8` or `p-12` on dense list items).
+- Shadow-heavy design — stacked `shadow-lg` / `shadow-xl` on cards and buttons to fake depth where hierarchy should carry the load.
+- Lorem-ipsum-flavored placeholder copy or generic AI-voiced microcopy.
+- Color as the sole state indicator (red/green without supporting icon or text).
+
+**Example slop:**
+
+```tsx
+<div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl shadow-2xl p-12">
+  <h2 className="text-3xl font-bold text-white">Welcome</h2>
+  <p className="text-purple-100 mt-4">Get started with our amazing features.</p>
+</div>
+```
+
+The canonical author-time fix for each of these patterns lives in the `kramme:code:frontend-authoring` skill's `references/ai-aesthetic-table.md`. When flagging, reference the matching row by name (e.g., "AI-aesthetic: `rounded-2xl` on every surface") to make the recommended remediation unambiguous.
+
 ## Analysis Process
 
 ### For Mode 1 (Code Review):
@@ -241,6 +265,7 @@ const items = (data as unknown as ItemList).items;
 | Verbose Alternatives | X |
 | Excessive Logging | X |
 | Copy-Paste Artifacts | X |
+| AI-Aesthetic UI Defaults | X |
 | **Total** | X |
 ```
 
