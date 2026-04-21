@@ -479,7 +479,7 @@ options:
 
 **CRITICAL:** Before proceeding, confirm that the Status Update Procedure was executed in Step 7. All three files must now show "In Progress":
 
-- [ ] `siw/issues/ISSUE-{prefix}-{number}-*.md` — Status line reads: `**Status:** In Progress | **Priority:** {priority} | **Related:** {tasks}`
+- [ ] `siw/issues/ISSUE-{prefix}-{number}-*.md` — Status line reads `**Status:** In Progress ...` and preserves any existing `**Size:**` / `**Parallelization:**` metadata instead of deleting it
 - [ ] `siw/OPEN_ISSUES_OVERVIEW.md` — Issue row shows "In Progress"
 - [ ] `siw/LOG.md` — Current Progress section reads:
   ```markdown

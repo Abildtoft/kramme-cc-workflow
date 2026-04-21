@@ -80,8 +80,8 @@ Group findings into PR-sized themes. A theme is a set of findings that should be
    | XS | 1 file, single finding |
    | S | 1–2 files |
    | M | 3–5 files |
-   | L | 5–8 files |
-   | **XL** | **8+ files — split into a series** |
+   | L | 6–8 files |
+   | **XL** | **9+ files — split into a series** |
 
    Aim for S/M themes. Any theme that sizes XL MUST split before generating plans.
 
@@ -97,7 +97,7 @@ Group findings into PR-sized themes. A theme is a set of findings that should be
 
 1. Read all findings. Identify natural groupings by scanning for shared files, shared root causes, and shared fix patterns.
 2. Draft theme names using the pattern `verb-noun` in kebab-case (e.g., `add-api-error-handling`, `consolidate-config-parsing`, `remove-dead-code`). These become the `<slug>` in filenames.
-3. Verify no theme is too large (would require 500+ changed lines or touch 15+ files). Split if needed.
+3. Verify no theme is too large (would require 500+ changed lines or touch 9+ files). Split if needed.
 4. Verify no two themes overlap in affected files without an explicit dependency note.
 
 Present the clustering to the user before generating files. Prefix the block with the `PLAN:` output marker so downstream tooling can parse the proposed clustering:
@@ -225,9 +225,9 @@ Watch for these justifications that signal you are about to skip a hard gate:
 
 Stop and re-cluster if any of these appear:
 
-- Any theme lands at 9+ findings, or a single plan touches 15+ files.
+- Any theme lands at 9+ findings, or a single plan touches 9+ files.
 - Conflicting findings were silently reconciled instead of flagged as an open question.
-- The index lists every finding (nothing excluded) — likely a missed duplicate or resolved item.
+- The index excludes nothing even though some findings are duplicates, already resolved, or not actionable — likely a missed exclusion pass.
 - A plan references "the review" or "finding #3" (violates self-contained rule).
 
 ## Verification

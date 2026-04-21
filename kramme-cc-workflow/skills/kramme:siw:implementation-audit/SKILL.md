@@ -485,8 +485,11 @@ For each selected finding:
 
 1. Determine next available `G-` issue number from `siw/issues/`.
 2. Create issue file `siw/issues/ISSUE-G-{NNN}-fix-{slugified-title}.md` using the template in `assets/siw-issue-template.md`.
+   - Assign each issue an explicit `Size` (`XS|S|M|L`) and `Parallelization` category (`Safe to parallelize | Must be sequential | Needs coordination`) so the generated SIW issue matches the current tracker schema.
 
 3. Update `siw/OPEN_ISSUES_OVERVIEW.md` with new issue rows.
+   - Default to the 6-column SIW schema and keep or add the section-level `**Parallelization:**` line for `## General`.
+   - If the existing General section still uses the legacy 5-column schema, preserve that layout for compatibility instead of mixing schemas.
 4. Update `siw/LOG.md` Current Progress section using `assets/log-last-completed.md`.
 
 ---

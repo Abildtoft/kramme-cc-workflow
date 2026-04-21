@@ -195,8 +195,9 @@ Read sizing grammar, break-down triggers, and the context-appropriate slicing ru
 For each phase:
 - **Phase goal** - What milestone does this achieve?
 - **Demo description** - What can be demonstrated after this phase?
-- **Tasks** - List of atomic issues with titles and brief descriptions
+- **Tasks** - List of atomic issues with titles, sizes, and brief descriptions
 - **Dependencies** - What blocks what
+- **Parallelization** - Group category plus any gating note from Phase 3.4
 - **Validation** - How to verify the phase is complete
 
 For general tasks:
@@ -212,15 +213,19 @@ Annotate each task group with one of three parallelization categories so the pla
 - **Must be sequential**: migrations, shared-state changes.
 - **Needs coordination**: shared API contract → define contract first, then parallelize consumers.
 
-Record the chosen category per group (e.g., "Phase 1 tasks: Safe to parallelize after P1-001") so Phase 5's user-facing plan reflects it.
+Record the chosen category per group (e.g., "Phase 1 tasks: Safe to parallelize after P1-001") so Phase 5's user-facing plan reflects it and the same guidance is copied into the generated issue files and `siw/OPEN_ISSUES_OVERVIEW.md`.
 
 ## Phase 4: Subagent Review
 
 Launch a Task subagent to review the proposed breakdown:
 
+**Before the prompt, instruct the subagent to read `references/task-sizing.md` completely and use it as the source of truth for sizing, break-down triggers, slicing shape, and parallelization taxonomy.**
+
 **Prompt:**
 ```
 Review this phase/task breakdown for a software project.
+
+Before evaluating the plan, read `references/task-sizing.md` completely and use it as the source of truth for task sizing, break-down triggers, slicing shape, and parallelization categories.
 
 Work Context: {work_context.work_type}
 - Verify phase count and granularity match the work type
@@ -252,7 +257,7 @@ If the breakdown looks good, confirm it's ready.
 
 ## Phase 5: User Approval
 
-Present the proposed structure clearly, prefixed with the `PLAN:` output marker so downstream tooling can parse this block as the generated plan:
+Present the proposed structure clearly, prefixed with the `PLAN:` output marker so downstream tooling can parse this block as the generated plan. Show each issue's size inline and include one `Parallelization:` line per task group:
 
 ```
 PLAN: Phase Plan for {Project Name}
@@ -260,22 +265,25 @@ PLAN: Phase Plan for {Project Name}
 
 General Tasks ({N} tasks)
 ─────────────────────────
-  ISSUE-G-001: {Title} [Ready]
-  ISSUE-G-002: {Title} [Ready]
+  Parallelization: {Safe to parallelize | Must be sequential | Needs coordination}
+  ISSUE-G-001: {Title} [Ready | Size: XS|S|M|L]
+  ISSUE-G-002: {Title} [Ready | Size: XS|S|M|L]
 
 Phase 1: {Goal} ({N} tasks)
 ───────────────────────────
-  ISSUE-P1-001: {Title} [Ready]
-  ISSUE-P1-002: {Title} [Blocked by P1-001]
-  ISSUE-P1-003: {Title} [Ready]
+  Parallelization: {Safe to parallelize after P1-001 | Must be sequential | Needs coordination}
+  ISSUE-P1-001: {Title} [Ready | Size: XS|S|M|L]
+  ISSUE-P1-002: {Title} [Blocked by P1-001 | Size: XS|S|M|L]
+  ISSUE-P1-003: {Title} [Ready | Size: XS|S|M|L]
 
   Demo: {What can be demonstrated}
   Tests: {What tests validate this phase}
 
 Phase 2: {Goal} ({N} tasks)
 ───────────────────────────
-  ISSUE-P2-001: {Title} [Blocked by Phase 1]
-  ISSUE-P2-002: {Title} [Ready]
+  Parallelization: {Safe to parallelize | Must be sequential after Phase 1 | Needs coordination}
+  ISSUE-P2-001: {Title} [Blocked by Phase 1 | Size: XS|S|M|L]
+  ISSUE-P2-002: {Title} [Ready | Size: XS|S|M|L]
 
   Demo: {What can be demonstrated}
   Tests: {What tests validate this phase}
@@ -314,7 +322,7 @@ For each issue, create `siw/issues/ISSUE-{prefix}-{number}-{title}.md`:
 ```markdown
 # ISSUE-{prefix}-{number}: {Title}
 
-**Status:** Ready | **Priority:** {High|Medium|Low} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Related:** {dependencies}
+**Status:** Ready | **Priority:** {High|Medium|Low} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination; include gating note if applicable} | **Related:** {dependencies}
 
 ## Problem
 
@@ -361,6 +369,9 @@ For each issue, create `siw/issues/ISSUE-{prefix}-{number}-{title}.md`:
 ### Dependencies
 - Blocked by: {P1-001, P2-003, etc. if any, or "None"}
 - Blocks: {P1-002, P3-001, etc. if any, or "None"}
+
+### Parallelization Guidance
+{Whether this issue can proceed in parallel, must stay sequential, or needs coordination first. Reference the same group-level note shown in Phase 5.}
 ```
 
 ### 6.2 Update Overview Table
@@ -374,23 +385,29 @@ If you add any non-DONE issues to a phase section currently marked ` (DONE)`, re
 
 ## General
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| G-001 | {Title} | Ready | {Priority} | |
-| G-002 | {Title} | Ready | {Priority} | |
+**Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination}
+
+| # | Title | Status | Size | Priority | Related |
+|---|-------|--------|------|----------|---------|
+| G-001 | {Title} | Ready | {Size} | {Priority} | |
+| G-002 | {Title} | Ready | {Size} | {Priority} | |
 
 ## Phase 1: {Goal}
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| P1-001 | {Title} | Ready | High | |
-| P1-002 | {Title} | Ready | Medium | P1-001 |
+**Parallelization:** {Safe to parallelize after P1-001 | Must be sequential | Needs coordination}
+
+| # | Title | Status | Size | Priority | Related |
+|---|-------|--------|------|----------|---------|
+| P1-001 | {Title} | Ready | {Size} | High | |
+| P1-002 | {Title} | Ready | {Size} | Medium | P1-001 |
 
 ## Phase 2: {Goal}
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| P2-001 | {Title} | Ready | High | Phase 1 |
+**Parallelization:** {Safe to parallelize | Must be sequential after Phase 1 | Needs coordination}
+
+| # | Title | Status | Size | Priority | Related |
+|---|-------|--------|------|----------|---------|
+| P2-001 | {Title} | Ready | {Size} | High | Phase 1 |
 
 **Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
 
@@ -482,6 +499,8 @@ Before reporting Phase 7, verify:
 - Every task carries an explicit size; no XL survived Phase 4.
 - Phase 4 subagent prompt ran with all eight criteria (including Vertical slicing and Parallelization).
 - Parallelization categories are recorded for each task group.
+- The Phase 5 `PLAN:` block shows every issue size and every group-level `Parallelization:` note.
+- Generated issue files and `siw/OPEN_ISSUES_OVERVIEW.md` preserve the same size and parallelization guidance approved in Phase 5.
 
 ## Starting the Process
 

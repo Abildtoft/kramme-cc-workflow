@@ -5,9 +5,6 @@ argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku]
 disable-model-invocation: true
 user-invocable: true
 ---
-
-<!-- TODO: Refactor to <500 lines by moving Step 3: Launch Parallel Analysis (and its subagent-prompt subsections) to references/ -->
-
 # Audit Specification Quality
 
 Evaluate specification documents for quality across 8 dimensions before implementation begins. This is a spec-only analysis — no codebase code is read or compared.
@@ -317,9 +314,7 @@ After all Explore agents complete:
 
 Gather all findings from every agent. Deduplicate — if multiple dimensions flagged the same issue, merge into one finding and note all affected dimensions.
 
-When a merged finding spans both deprioritized and non-deprioritized dimensions, treat the non-deprioritized dimension as authoritative for severity capping. Only findings whose affected dimensions are entirely deprioritized may be capped to Minor in Step 4.3.5.
-
-When you merge duplicate findings, keep a single `Fix Confidence` field for the merged entry. Re-score the merged finding against the same four-condition rubric using the consolidated details and recommendation, then re-apply the same tier boundaries, four sub-score guardrails, and safety caps before writing the provisional merged value. Do not average the original agent scores.
+Read the merged-finding post-processing rules from `references/post-processing-rules.md` and apply them during consolidation.
 
 ### 4.2 Assign Global Finding IDs
 
@@ -349,13 +344,7 @@ This ensures purely deprioritized dimensions never produce Critical or Major fin
 
 ### 4.3.6 Normalize Final Fix Confidence
 
-After final severity assignment and any Work Context downgrades, recompute each finding's final `Fix Confidence` using the same four-condition rubric on the consolidated details and final recommendation.
-
-- Re-apply the shared tier boundaries, four sub-score guardrails, and safety caps against the **final** severity, but do **not** clear a safety cap that already applied before a Work Context downgrade.
-- If Step 4.3.5 recorded `original_severity=Critical` for a Completeness, Scope, or Value Proposition finding, keep its final `Fix Confidence` at `0/100 (REQUIRES_DECISION)` and preserve the `Severity Note` so downstream auto-fix passes still treat it as safety-capped.
-- Replace any earlier provisional score if severity, recommendation wording, or merged details changed during consolidation.
-- Track `preserved_critical_caps_count`: the number of final Minor findings whose `Severity Note` says `capped at Minor from Critical`.
-- Use this normalized value and `preserved_critical_caps_count` in the report output and downstream issue/summary logic.
+Read the final fix-confidence normalization rules from `references/post-processing-rules.md` and apply them after severity assignment and any Work Context caps.
 
 ### 4.4 Compute Dimension Scores
 
@@ -368,8 +357,7 @@ For each dimension, compute a quality score:
 | **Weak** | Has Critical findings or many Major findings. |
 | **Missing** | Dimension not addressed at all in the spec. |
 
-- Any dimension that contains a final Minor finding with `**Severity Note:** [Deprioritized — capped at Minor from Critical]` is still `Weak`, even though the displayed severity is Minor.
-- Any report with `preserved_critical_caps_count > 0` must not be assessed as `Ready for implementation`.
+Read the preserved-critical-cap assessment rules from `references/post-processing-rules.md` when computing dimension scores and the overall assessment.
 
 ### 4.5 Cross-reference Existing Issues
 
@@ -466,11 +454,7 @@ Before creating any issues:
 
 ### 6.2.5 Determine Issue-Eligible Findings
 
-Before creating issue files, determine the selected findings set:
-
-- **Critical and major only** → include all visible Critical and Major findings, plus any Minor finding with `**Severity Note:** [Deprioritized — capped at Minor from Critical]` or `**Severity Note:** [Deprioritized — capped at Minor from Major]`
-- **All findings** → include every finding
-- **Let me select** → present all findings, and clearly label Minor findings with preserved Critical or Major severity so their original urgency is not lost during selection
+Read the issue-eligibility selection rules from `references/post-processing-rules.md` before choosing which findings become issues.
 
 ### 6.3 Create Issue Files
 
@@ -480,8 +464,11 @@ For each selected finding:
 2. Create issue file `siw/issues/ISSUE-G-{NNN}-spec-{slugified-title}.md` using `assets/spec-issue-template.md`.
    - If the finding carries `**Severity Note:** [Deprioritized — capped at Minor from Critical]`, set the issue priority to `High` and copy the `Severity Note` into the issue body.
    - If the finding carries `**Severity Note:** [Deprioritized — capped at Minor from Major]`, set the issue priority to `Medium` and copy the `Severity Note` into the issue body.
+   - Assign each issue an explicit `Size` (`XS|S|M|L`) and `Parallelization` category (`Safe to parallelize | Must be sequential | Needs coordination`) so the generated SIW issue matches the current tracker schema.
 
 3. Update `siw/OPEN_ISSUES_OVERVIEW.md` with new issue rows.
+   - Default to the 6-column SIW schema and keep or add the section-level `**Parallelization:**` line for `## General`.
+   - If the existing General section still uses the legacy 5-column schema, preserve that layout for compatibility instead of mixing schemas.
 4. Update `siw/LOG.md` Current Progress section using `assets/spec-log-last-completed.md`.
 
 ---

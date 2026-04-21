@@ -445,43 +445,54 @@ Rebuild the issues table **maintaining section groupings**:
 
 1. Remove all DONE rows from each section
 2. Update issue numbers for remaining rows within each prefix group
-3. Keep all other columns (Title, Status, Priority, Related) unchanged
-4. Preserve section headers (General, Phase 1, Phase 2, etc.) exactly as written (including any ` (DONE)` marker on phase headers)
+3. Preserve the existing table schema for each section:
+   - If the section uses `| # | Title | Status | Size | Priority | Related |`, keep `Size`
+   - If the section uses the legacy `| # | Title | Status | Priority | Related |`, keep the legacy layout
+4. Preserve any section-level metadata line immediately above the table (for example `**Parallelization:** ...`) exactly as written
+5. Preserve section headers (General, Phase 1, Phase 2, etc.) exactly as written (including any ` (DONE)` marker on phase headers)
 
 **Before:**
 ```markdown
 ## General
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| G-001 | Setup | DONE | High | |
-| G-002 | Docs | READY | Low | |
-| G-003 | Config | READY | Medium | |
+**Parallelization:** Safe to parallelize
+
+| # | Title | Status | Size | Priority | Related |
+|---|-------|--------|------|----------|---------|
+| G-001 | Setup | DONE | S | High | |
+| G-002 | Docs | READY | XS | Low | |
+| G-003 | Config | READY | S | Medium | |
 
 ## Phase 1: Foundation
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| P1-001 | Feature A | IN PROGRESS | High | Task 1.0 |
-| P1-002 | Feature B | DONE | High | Task 2.0 |
-| P1-003 | Bug Fix | READY | Medium | Task 3.0 |
+**Parallelization:** Needs coordination
+
+| # | Title | Status | Size | Priority | Related |
+|---|-------|--------|------|----------|---------|
+| P1-001 | Feature A | IN PROGRESS | M | High | Task 1.0 |
+| P1-002 | Feature B | DONE | S | High | Task 2.0 |
+| P1-003 | Bug Fix | READY | S | Medium | Task 3.0 |
 ```
 
 **After:**
 ```markdown
 ## General
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| G-001 | Docs | READY | Low | |
-| G-002 | Config | READY | Medium | |
+**Parallelization:** Safe to parallelize
+
+| # | Title | Status | Size | Priority | Related |
+|---|-------|--------|------|----------|---------|
+| G-001 | Docs | READY | XS | Low | |
+| G-002 | Config | READY | S | Medium | |
 
 ## Phase 1: Foundation
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| P1-001 | Feature A | IN PROGRESS | High | Task 1.0 |
-| P1-002 | Bug Fix | READY | Medium | Task 3.0 |
+**Parallelization:** Needs coordination
+
+| # | Title | Status | Size | Priority | Related |
+|---|-------|--------|------|----------|---------|
+| P1-001 | Feature A | IN PROGRESS | M | High | Task 1.0 |
+| P1-002 | Bug Fix | READY | S | Medium | Task 3.0 |
 ```
 
 ---

@@ -1,6 +1,6 @@
 # ISSUE-G-{NNN}: Fix {finding title}
 
-**Status:** Ready | **Priority:** {Critical→High, Major→Medium, Minor→Low} | **Phase:** General | **Related:** Audit Report
+**Status:** Ready | **Priority:** {Critical→High, Major→Medium, Minor→Low} | **Size:** {XS|S|M|L} | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Related:** Audit Report
 
 ## Problem
 

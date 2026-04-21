@@ -321,8 +321,17 @@ Multi-round interview using `AskUserQuestion`.
 
 **Questions:**
 - What priority level? (High/Medium/Low)
+- What size best fits this issue? (XS/S/M/L)
+  - XS = 1 file, single function
+  - S = 1-2 files, one contained change
+  - M = 3-5 files, one feature/spec slice
+  - L = 6-8 files, multi-component
 - Are there related issues or tasks?
 - Does this block or depend on other work?
+- What parallelization category fits this work?
+  - Safe to parallelize
+  - Must be sequential
+  - Needs coordination
 
 ## Phase 5: Issue Composition
 
@@ -338,7 +347,7 @@ Multi-round interview using `AskUserQuestion`.
 ```markdown
 # ISSUE-{prefix}-{number}: Fix {what's broken}
 
-**Status:** Ready | **Priority:** {priority} | **Phase:** {N or General} | **Related:** {tasks if any}
+**Status:** Ready | **Priority:** {priority} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Related:** {tasks if any}
 
 ## Problem
 
@@ -367,7 +376,7 @@ Multi-round interview using `AskUserQuestion`.
 ```markdown
 # ISSUE-{prefix}-{number}: {Title}
 
-**Status:** Ready | **Priority:** {priority} | **Phase:** {N or General} | **Related:** {tasks if any}
+**Status:** Ready | **Priority:** {priority} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Related:** {tasks if any}
 
 ## Problem
 
@@ -451,10 +460,14 @@ siw/issues/ISSUE-{prefix}-{number}-{sanitized-title}.md
 
 **For new issues:** Add row to the appropriate section (General, Phase 1, Phase 2, etc.). If the section doesn't exist yet, create the section header and table first.
 ```markdown
-| {prefix}-{number} | {Title} | Ready | {Priority} | {Related} |
+**Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination}
+
+| {prefix}-{number} | {Title} | Ready | {Size} | {Priority} | {Related} |
 ```
 
 **For updated issues:** Update existing row if title/priority/status changed.
+
+**Schema rule:** If the existing section already uses the legacy 5-column table (`| # | Title | Status | Priority | Related |`), preserve that layout for compatibility. Otherwise, use the 6-column layout above and keep the section-level `**Parallelization:**` note aligned with the issue file's `**Parallelization:**` field.
 
 **Section organization:** Issues are grouped by prefix (General, Phase 1, Phase 2, etc.).
 
