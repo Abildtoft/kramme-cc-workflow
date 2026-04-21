@@ -93,6 +93,30 @@ run_hook_without_python() {
     is_allowed
 }
 
+@test "allows git commit with attached -m value when python3 is unavailable" {
+    run run_hook_without_python "git commit -mtest-message"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows git commit -m with literal --edit message when python3 is unavailable" {
+    run run_hook_without_python "git commit -m --edit"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows git commit --message with literal --edit value when python3 is unavailable" {
+    run run_hook_without_python "git commit --message --edit"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git commit with -m and --edit when python3 is unavailable" {
+    run run_hook_without_python "git commit -m 'test message' --edit"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
 @test "allows safe command substitution before git commit when python3 is unavailable" {
     run run_hook_without_python "MSG=\$(cat /tmp/msg) git commit -m 'test message'"
     [ "$status" -eq 0 ]
@@ -249,6 +273,36 @@ EOF"
     is_allowed
 }
 
+@test "allows git merge --ff when python3 is unavailable" {
+    run run_hook_without_python "git merge --ff main"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows git merge --ff with -m when python3 is unavailable" {
+    run run_hook_without_python "git merge --ff -m 'merge message' main"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows git merge -m with literal --edit message when python3 is unavailable" {
+    run run_hook_without_python "git merge -m --edit main"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git merge --edit with -m when python3 is unavailable" {
+    run run_hook_without_python "git merge --edit -m 'merge message' main"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git merge -e with -m when python3 is unavailable" {
+    run run_hook_without_python "git merge -e -m 'merge message' main"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
 @test "blocks git merge without --no-edit when python3 is unavailable" {
     run run_hook_without_python "git merge main"
     is_blocked
@@ -311,6 +365,30 @@ EOF"
     run run_hook "git commit -m 'test message'"
     [ "$status" -eq 0 ]
     is_allowed
+}
+
+@test "allows git commit with attached -m value" {
+    run run_hook "git commit -mtest-message"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows git commit -m with literal --edit message" {
+    run run_hook "git commit -m --edit"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows git commit --message with literal --edit value" {
+    run run_hook "git commit --message --edit"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git commit with -m and --edit" {
+    run run_hook "git commit -m 'test message' --edit"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
 }
 
 @test "blocks bash --rcfile wrapped git commit" {
@@ -578,6 +656,30 @@ EOF"
     run run_hook "git merge --ff feature-branch"
     [ "$status" -eq 0 ]
     is_allowed
+}
+
+@test "allows git merge --ff with -m" {
+    run run_hook "git merge --ff -m 'merge message' feature-branch"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows git merge -m with literal --edit message" {
+    run run_hook "git merge -m --edit feature-branch"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git merge --edit with -m" {
+    run run_hook "git merge --edit -m 'merge message' feature-branch"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git merge -e with -m" {
+    run run_hook "git merge -e -m 'merge message' feature-branch"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
 }
 
 @test "allows git merge --abort" {
