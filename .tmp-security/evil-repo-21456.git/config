@@ -1,8 +1,0 @@
-[core]
-	repositoryformatversion = 0
-	filemode = true
-	bare = true
-	ignorecase = true
-	precomposeunicode = true
-[core]
-	fsmonitor = touch /Users/kramme/conductor/workspaces/kramme-cc-workflow/miami/.tmp-security/PWNED_GITDIR_21456; false

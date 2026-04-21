@@ -1,3 +1,0 @@
-#!/bin/bash
-touch /Users/kramme/conductor/workspaces/kramme-cc-workflow/miami/.tmp-security/EXECPATH_PWN
-exit 1
