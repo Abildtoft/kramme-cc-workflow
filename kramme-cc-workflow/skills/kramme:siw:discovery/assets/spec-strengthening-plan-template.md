@@ -8,6 +8,15 @@
 
 {Summary: what was weak, what the interview revealed, how understanding shifted}
 
+## What You Don't Want
+
+Every entry must pair a non-goal with its rationale. Format: `- {non-goal} — {why excluded}`.
+
+- {non-goal} — {why excluded: scope drift / known failure mode / competing priority / stakeholder objection / deferred-for-later}
+- {non-goal} — {why excluded: ...}
+
+If the interview revealed that a previously-assumed goal is actually a non-goal, list it here with the rationale that surfaced during refinement.
+
 ## Where Stated and Actual Wants Diverged
 
 {If the spec said one thing but the interview revealed something different — document it here.

@@ -28,7 +28,13 @@ If stated and actual aligned, say so. If they diverged, explain how.}
 {Observable, testable indicators}
 
 ## What You Don't Want
-{Explicit non-goals, anti-patterns, and deferred work}
+
+Every entry must pair a non-goal with its rationale. Format: `- {non-goal} — {why excluded}`.
+
+- {non-goal} — {why excluded: scope drift / known failure mode / competing priority / stakeholder objection / deferred-for-later}
+- {non-goal} — {why excluded: ...}
+
+If a non-goal has no rationale beyond "didn't feel relevant," interrogate it in the interview before listing it — either it belongs as a real non-goal with a real reason, or it doesn't belong here at all.
 
 ## Scope & Boundaries
 
