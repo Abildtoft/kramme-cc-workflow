@@ -1287,10 +1287,14 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
   }
 
   const pluginsDir = paths.pluginsDir
-  const cleanedPlugins = await cleanupInstalledEntries(pluginsDir, previousEntries.plugins, {
-    label: "plugin",
-    confirmOptions: extraOpts.confirm,
-  })
+  const cleanedPlugins = await cleanupInstalledEntries(
+    pluginsDir,
+    unionEntryLists(previousEntries.plugins, legacyOpenCodePluginEntries(bundle)),
+    {
+      label: "plugin",
+      confirmOptions: extraOpts.confirm,
+    },
+  )
   for (const plugin of bundle.plugins) {
     await writeText(path.join(pluginsDir, plugin.name), plugin.content + "\n")
   }
@@ -1875,6 +1879,13 @@ function uniqueRoots(roots) {
       sanitizeEntryList(roots).map((root) => path.resolve(root)),
     ),
   )
+}
+
+function legacyOpenCodePluginEntries(bundle) {
+  if (!bundle.plugins.some((plugin) => plugin.name.startsWith("converted-hooks-"))) {
+    return []
+  }
+  return ["converted-hooks.ts"]
 }
 
 async function writeJson(file, data) {

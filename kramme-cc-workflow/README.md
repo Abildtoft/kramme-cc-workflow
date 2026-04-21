@@ -341,6 +341,7 @@ Session management, verification, artifact cleanup, and hook configuration.
 | `/kramme:changelog:generate` | User | — | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
 | `/kramme:hooks:configure-links` | User | `[show\|reset\|KEY=VALUE ...]` | Configure `context-links` hook settings by writing local overrides to `hooks/context-links.config` (workspace slug, team keys, regexes). |
 | `/kramme:hooks:toggle` | User | `<hook-name\|status> [enable\|disable]` | Enable or disable a plugin hook.<br><br>Use `status` to list all hooks, or specify a hook name to toggle. |
+| `/kramme:session:context-setup` | User, Auto | — | Configure effective agent context at session start or after output quality degrades.<br><br>Covers rules-file verification (CLAUDE.md / AGENTS.md), pre-task context loading, context-window hygiene, and trust-level tagging for inputs. |
 | `/kramme:session:wrap-up` | User | — | End-of-session checklist to capture progress, ensure quality, and document next steps.<br><br>Audits uncommitted changes, runs quality checks, and prompts for session summary and next steps. |
 | `/kramme:verify:run` | User, Auto | — | Run verification checks (tests, formatting, builds, linting, type checking) for affected code.<br><br>Automatically detects project type and runs appropriate commands. |
 
