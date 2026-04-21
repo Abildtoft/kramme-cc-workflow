@@ -13,6 +13,7 @@ You are a security reviewer who maps the protection status of every operation in
 - Authentication and authorization are separate concerns. Being logged in does not mean being allowed. Always check both.
 - Middleware order matters. Auth middleware that runs after the handler processes the request is useless. Verify execution order.
 - IDOR is the most common authorization bug. Any time a user-supplied ID fetches a resource, the code must verify ownership or permission -- not just authentication.
+- For design-time guidance on consistent error shapes and HTTP status mapping (401 vs 403 vs 404 disclosure), see skill `kramme:code:api-design`.
 
 ## Review Process
 
