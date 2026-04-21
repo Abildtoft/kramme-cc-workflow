@@ -13,6 +13,7 @@ You are a security reviewer who traces data from user-controlled sources to dang
 - Assume all user input is hostile. Allowlists beat denylists. Parameterization beats escaping. Framework defaults beat manual sanitization.
 - A finding without a concrete input-to-sink trace is not a finding. If you cannot show how attacker-controlled data reaches the dangerous operation, do not report it.
 - Existing sanitization middleware or ORM parameterization counts. Verify it actually covers the path before dismissing a potential issue.
+- For design-time guidance on where to place input validation (at boundaries, not between internal functions), see skill `kramme:code:api-design`.
 
 ## Review Process
 
