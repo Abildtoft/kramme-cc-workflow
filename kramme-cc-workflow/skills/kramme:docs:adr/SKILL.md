@@ -37,7 +37,8 @@ Before drafting, check whether the project already has ADRs. If yes, **preserve 
 2. If found, read 1–2 of the most recent ADRs. Identify:
    - Template style (Nygard, MADR, custom).
    - Status vocabulary (may differ from the four states below).
-   - Numbering format (`0001-` vs `001-` vs `ADR-001-`).
+   - Numbering format (`0001-` vs `001-` vs `ADR-001-` vs `adr-001-`).
+   - Filename contract: literal prefix before the number, numeric zero-padding width, separator after the number, and slug convention.
    - Filename slug convention.
 3. Treat the matched directory as `ADR_DIR` for the rest of the workflow.
 4. Match that style for the new ADR. Only fall back to `assets/adr-template.md` when the directory does not exist or is empty.
@@ -123,7 +124,7 @@ Superseding produces a multi-file change (new ADR + predecessor update). State t
 
 ```
 PLAN:
-1. Write the new ADR in ADR_DIR using the detected filename convention (for example `0007-title.md` or `ADR-007-title.md`) with status PROPOSED unless the decision is already adopted
+1. Write the new ADR in ADR_DIR using the detected filename convention (for example `0007-title.md`, `ADR-007-title.md`, or `adr-007-title.md`) with status PROPOSED unless the decision is already adopted
 2. If the new ADR is already ACCEPTED, update #MMMM: change status to "SUPERSEDED by #NNNN", add forward-reference
 3. Do not edit any other content of #MMMM
 ```
@@ -150,15 +151,21 @@ Apply the **When to use** criteria. If the decision affects only one function or
 
 ### 2. Find next ADR number
 
-Use `ADR_DIR` from pre-flight. Scan that directory for the highest existing ADR number and increment it. Match the project's filename convention, including any prefix (for example `0001-`, `001-`, or `ADR-001-`) and zero-padding.
+Use `ADR_DIR` from pre-flight. Scan that directory for the highest existing ADR number and increment it. Match the project's detected filename contract, including any literal prefix, zero-padding, separator, and slug style. Do not silently normalize the project onto `ADR-` or bare-number filenames.
+
+If the existing ADR filenames do not follow a sequential integer scheme you can increment safely (for example they are date-based or prose-only), emit `CONFUSION` and ask whether to preserve that non-sequential scheme or bootstrap a new ADR log.
+
+For the common `prefix + integer + separator + slug` shapes, extract the integer with a pattern adjusted to the detected prefix and separator. Example starting point:
 
 ```bash
 find "$ADR_DIR" -maxdepth 1 -type f -print \
   | sed 's#.*/##' \
-  | sed -nE 's/^(ADR-)?([0-9]+)-.*/\2/p' \
+  | sed -nE 's/^[^0-9]*([0-9]+)([-_].*)$/\1/p' \
   | sort -n \
   | tail -1
 ```
+
+Treat that snippet as an example, not a universal regex: tighten it to the exact convention you detected in pre-flight (for example `ADR-`, `adr-`, bare digits, or another fixed prefix) before trusting the result.
 
 If no ADR directory exists, create `docs/decisions/`, set `ADR_DIR=docs/decisions/`, and start at `0001`.
 
@@ -235,6 +242,7 @@ Before declaring the ADR done, self-check:
 - [ ] No prior ADR deleted.
 - [ ] Every unverifiable claim carries an `UNVERIFIED` marker.
 - [ ] ADR lives in the detected ADR directory (`ADR_DIR`), or `docs/decisions/` when bootstrapping a new log.
+- [ ] If the project already uses a non-default ADR filename prefix or separator (for example `adr-001-`), the new ADR preserves that contract and increments from the highest matching entry instead of restarting at `0001`.
 - [ ] File committed; not left uncommitted locally where it can be lost.
 
 If any box is unchecked, finish the gap or revert before declaring done.
