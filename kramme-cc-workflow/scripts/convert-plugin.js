@@ -7,6 +7,22 @@ const os = require("os")
 const readline = require("readline")
 
 const PERMISSION_MODES = ["none", "broad", "from-commands"]
+const SOURCE_TOOLS = [
+  "read",
+  "write",
+  "edit",
+  "bash",
+  "grep",
+  "glob",
+  "list",
+  "webfetch",
+  "skill",
+  "patch",
+  "task",
+  "question",
+  "todowrite",
+  "todoread",
+]
 
 function resolveManagedChild(root, entry, label) {
   const resolvedRoot = path.resolve(root)
@@ -647,9 +663,11 @@ function convertClaudeToOpenCode(plugin, options) {
   return {
     config,
     agents: agentFiles,
+    commands,
     plugins,
     hookRootDir,
     hookSourceDir: path.join(plugin.root, "hooks"),
+    permissionsMode: options.permissions,
     skillDirs: skills.map((skill) => ({ sourceDir: skill.sourceDir, name: skill.name })),
   }
 }
@@ -835,28 +853,12 @@ function inferTemperature(agent) {
 function applyPermissions(config, commands, mode) {
   if (mode === "none") return
 
-  const sourceTools = [
-    "read",
-    "write",
-    "edit",
-    "bash",
-    "grep",
-    "glob",
-    "list",
-    "webfetch",
-    "skill",
-    "patch",
-    "task",
-    "question",
-    "todowrite",
-    "todoread",
-  ]
   let enabled = new Set()
   const patterns = {}
   let hasAllowedToolsDeclaration = false
 
   if (mode === "broad") {
-    enabled = new Set(sourceTools)
+    enabled = new Set(SOURCE_TOOLS)
   } else {
     for (const command of commands) {
       if (!command.allowedTools) continue
@@ -875,23 +877,23 @@ function applyPermissions(config, commands, mode) {
 
     // Keep the legacy behavior usable for repos that define no per-command tool metadata.
     if (!hasAllowedToolsDeclaration) {
-      enabled = new Set(sourceTools)
+      enabled = new Set(SOURCE_TOOLS)
     }
   }
 
   const permission = {}
   const tools = {}
 
-  for (const tool of sourceTools) {
+  for (const tool of SOURCE_TOOLS) {
     tools[tool] = mode === "broad" ? true : enabled.has(tool)
   }
 
   if (mode === "broad") {
-    for (const tool of sourceTools) {
+    for (const tool of SOURCE_TOOLS) {
       permission[tool] = "allow"
     }
   } else {
-    for (const tool of sourceTools) {
+    for (const tool of SOURCE_TOOLS) {
       const toolPatterns = patterns[tool]
       if (toolPatterns && toolPatterns.size > 0) {
         const patternPermission = { "*": "deny" }
@@ -1381,8 +1383,10 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
     bundle,
     { hasTrackedInstall, pluginName },
   )
+  const legacyBaseConfig = needsLegacyOpenCodeBase(installState, pluginName)
+    ? await loadExistingOpenCodeConfig([...(paths.legacyConfigPaths ?? []), paths.configPath])
+    : {}
   await ensureDir(paths.root)
-  await writeJson(paths.configPath, bundle.config)
 
   const agentsDir = paths.agentsDir
   const cleanedAgents = await cleanupInstalledEntries(agentsDir, previousEntries.agents, {
@@ -1450,8 +1454,19 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
     skills: cleanedSkills
       ? bundle.skillDirs.map((skill) => skill.name)
       : unionEntryLists(previousEntries.skills, bundle.skillDirs.map((skill) => skill.name)),
+    commands: bundle.commands ?? [],
+    config: buildOpenCodePluginConfig(bundle.commands ?? [], bundle.config, bundle.permissionsMode ?? "broad"),
+    permissionsMode: bundle.permissionsMode ?? "broad",
+    updatedAtMs: Date.now(),
   }
   setInstallEntries(installState, pluginName, "opencode", nextEntries)
+  await writeJson(paths.configPath, buildCombinedOpenCodeConfigFromState(installState, {
+    preferredPluginName: pluginName,
+    legacyBaseConfig,
+    previousPreferredConfig: previousEntries.config,
+    previousPreferredEntries: trackedPreviousEntries,
+    currentPreferredCommands: bundle.commands ?? [],
+  }))
   await writeInstallState(paths.stateRoot, installState)
   await writeInstallManifest(paths.stateRoot, pluginName, "opencode", nextEntries)
 }
@@ -1460,13 +1475,17 @@ function resolveOpenCodePaths(outputRoot) {
   const resolvedOutputRoot = path.resolve(outputRoot)
   const base = path.basename(resolvedOutputRoot)
   if (base === "opencode" || base === ".opencode") {
+    const parentRoot = path.dirname(resolvedOutputRoot)
     const legacyStateRoots = base === ".opencode"
-      ? [path.dirname(resolvedOutputRoot)]
+      ? [parentRoot]
       : []
     return {
       root: resolvedOutputRoot,
       stateRoot: resolvedOutputRoot,
       legacyStateRoots,
+      legacyConfigPaths: base === ".opencode"
+        ? [path.join(parentRoot, "opencode.json")]
+        : [],
       configPath: path.join(resolvedOutputRoot, "opencode.json"),
       agentsDir: path.join(resolvedOutputRoot, "agents"),
       hookBundlesDir: path.join(resolvedOutputRoot, "hook-bundles"),
@@ -1480,6 +1499,7 @@ function resolveOpenCodePaths(outputRoot) {
     root: resolvedOutputRoot,
     stateRoot: hiddenRoot,
     legacyStateRoots: [resolvedOutputRoot],
+    legacyConfigPaths: [path.join(hiddenRoot, "opencode.json")],
     configPath: path.join(resolvedOutputRoot, "opencode.json"),
     agentsDir: path.join(hiddenRoot, "agents"),
     hookBundlesDir: path.join(hiddenRoot, "hook-bundles"),
@@ -1568,6 +1588,7 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
     agentSkills: cleanedAgentSkills
       ? (bundle.agentSkills ?? []).map((skill) => skill.name)
       : unionEntryLists(previousEntries.agentSkills, (bundle.agentSkills ?? []).map((skill) => skill.name)),
+    updatedAtMs: Date.now(),
   }
   setInstallEntries(installState, pluginName, "codex", nextEntries)
   await writeInstallState(codexRoot, installState)
@@ -1823,6 +1844,46 @@ async function readJson(file) {
   return JSON.parse(raw)
 }
 
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value)
+}
+
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value))
+}
+
+function sanitizeInstallPermissionsMode(value) {
+  return PERMISSION_MODES.includes(value) ? value : undefined
+}
+
+function sanitizeStoredCommand(command) {
+  if (!isPlainObject(command)) return null
+
+  const name = String(command.name ?? "").trim()
+  if (!name) return null
+
+  const sanitized = {
+    name,
+    description: command.description === undefined ? undefined : String(command.description),
+    model: command.model === undefined ? undefined : String(command.model),
+    body: String(command.body ?? ""),
+  }
+
+  const allowedTools = sanitizeEntryList(command.allowedTools)
+  if (allowedTools.length > 0) {
+    sanitized.allowedTools = allowedTools
+  }
+
+  return sanitized
+}
+
+function sanitizeStoredCommands(commands) {
+  if (!Array.isArray(commands)) return []
+  return commands
+    .map((command) => sanitizeStoredCommand(command))
+    .filter(Boolean)
+}
+
 function createInstallState() {
   return {
     version: 1,
@@ -1830,11 +1891,139 @@ function createInstallState() {
   }
 }
 
+function sanitizeInstallTimestamp(value) {
+  const timestamp = Number(value)
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return undefined
+  return timestamp
+}
+
+function sanitizeInstallConfig(config) {
+  if (!isPlainObject(config)) return {}
+
+  const sanitized = {}
+  if (isPlainObject(config.command) && Object.keys(config.command).length > 0) {
+    sanitized.command = cloneJson(config.command)
+  }
+  if (isPlainObject(config.mcp) && Object.keys(config.mcp).length > 0) {
+    sanitized.mcp = cloneJson(config.mcp)
+  }
+  if (isPlainObject(config.tools) && Object.keys(config.tools).length > 0) {
+    sanitized.tools = cloneJson(config.tools)
+  }
+  if (isPlainObject(config.permission) && Object.keys(config.permission).length > 0) {
+    sanitized.permission = cloneJson(config.permission)
+  }
+
+  return sanitized
+}
+
+function hasStoredOpenCodeConfig(targetState) {
+  return Object.keys(sanitizeInstallConfig(targetState?.config)).length > 0
+}
+
+function sanitizeInstallRecord(record) {
+  return {
+    agents: sanitizeEntryList(record?.agents),
+    hooks: sanitizeEntryList(record?.hooks),
+    plugins: sanitizeEntryList(record?.plugins),
+    prompts: sanitizeEntryList(record?.prompts),
+    skills: sanitizeEntryList(record?.skills),
+    agentSkills: sanitizeEntryList(record?.agentSkills),
+    commands: sanitizeStoredCommands(record?.commands),
+    config: sanitizeInstallConfig(record?.config),
+    permissionsMode: sanitizeInstallPermissionsMode(record?.permissionsMode),
+    updatedAtMs: sanitizeInstallTimestamp(record?.updatedAtMs),
+  }
+}
+
+function parseInstallManifestFilename(filename) {
+  const match = /^(.*)-(opencode|codex)\.json$/.exec(filename)
+  if (!match) return null
+
+  try {
+    return {
+      pluginName: decodeURIComponent(match[1]),
+      targetName: match[2],
+    }
+  } catch {
+    return null
+  }
+}
+
+function getLegacyManifestOrderTimestamp(stats) {
+  if (Number.isFinite(stats?.birthtimeMs) && stats.birthtimeMs > 0) {
+    return stats.birthtimeMs
+  }
+  if (Number.isFinite(stats?.mtimeMs) && stats.mtimeMs > 0) {
+    return stats.mtimeMs
+  }
+  if (Number.isFinite(stats?.ctimeMs) && stats.ctimeMs > 0) {
+    return stats.ctimeMs
+  }
+  return 0
+}
+
+async function rebuildInstallStateFromManifests(root) {
+  const state = createInstallState()
+  const manifestsDir = path.join(root, ".kramme-install-manifests")
+  if (!(await pathExists(manifestsDir))) return state
+
+  const entries = await fs.readdir(manifestsDir, { withFileTypes: true })
+  const manifests = []
+  for (const entry of entries) {
+    if (!entry.isFile() || path.extname(entry.name) !== ".json") continue
+
+    const manifestMeta = parseInstallManifestFilename(entry.name)
+    if (!manifestMeta) continue
+
+    const manifest = await loadInstallManifest(root, manifestMeta.pluginName, manifestMeta.targetName)
+    if (!manifest) continue
+
+    let fallbackUpdatedAtMs = 0
+    try {
+      const stats = await fs.stat(path.join(manifestsDir, entry.name))
+      // Prefer creation time so hand-edited legacy manifests still rebuild in install order.
+      fallbackUpdatedAtMs = getLegacyManifestOrderTimestamp(stats)
+    } catch {
+      // Ignore stat failures and fall back to deterministic filename ordering.
+    }
+
+    manifests.push({
+      ...manifestMeta,
+      manifest,
+      sortKey: manifest.updatedAtMs ?? fallbackUpdatedAtMs,
+    })
+  }
+
+  manifests.sort((left, right) => {
+    if (left.sortKey !== right.sortKey) {
+      return left.sortKey - right.sortKey
+    }
+    if (left.pluginName !== right.pluginName) {
+      return left.pluginName.localeCompare(right.pluginName)
+    }
+    return left.targetName.localeCompare(right.targetName)
+  })
+
+  for (const { pluginName, targetName, manifest, sortKey } of manifests) {
+    setInstallEntries(
+      state,
+      pluginName,
+      targetName,
+      manifest.updatedAtMs === undefined && sortKey > 0
+        ? { ...manifest, updatedAtMs: sortKey }
+        : manifest,
+    )
+  }
+
+  return state
+}
+
 async function loadInstallState(root) {
   const filePath = path.join(root, ".kramme-install-state.json")
   if (!(await pathExists(filePath))) {
     return {
-      state: createInstallState(),
+      state: await rebuildInstallStateFromManifests(root),
       fromDisk: false,
     }
   }
@@ -1852,8 +2041,68 @@ async function loadInstallState(root) {
   }
 
   return {
-    state: createInstallState(),
+    state: await rebuildInstallStateFromManifests(root),
     fromDisk: false,
+  }
+}
+
+function hasInstallStateEntries(state) {
+  if (!isPlainObject(state?.plugins)) return false
+  return Object.values(state.plugins)
+    .some((pluginTargets) => isPlainObject(pluginTargets) && Object.keys(pluginTargets).length > 0)
+}
+
+function hasTrackedInstallRecord(record) {
+  const sanitized = sanitizeInstallRecord(record)
+  return Boolean(sanitized.permissionsMode)
+    || sanitized.commands.length > 0
+    || Object.keys(sanitized.config).length > 0
+}
+
+function shouldReplaceInstallRecord(existingRecord, incomingRecord) {
+  const existingTracked = hasTrackedInstallRecord(existingRecord)
+  const incomingTracked = hasTrackedInstallRecord(incomingRecord)
+
+  // Records for the same plugin/target belong to a specific output root. Keep
+  // the active root's tracked record and only let legacy roots backfill when
+  // the active root lost its tracked install metadata.
+  if (existingTracked) {
+    return false
+  }
+  if (incomingTracked) {
+    return true
+  }
+
+  const existingTimestamp = sanitizeInstallTimestamp(existingRecord?.updatedAtMs) ?? 0
+  const incomingTimestamp = sanitizeInstallTimestamp(incomingRecord?.updatedAtMs) ?? 0
+  return incomingTimestamp > existingTimestamp
+}
+
+function mergeInstallStates(results) {
+  const merged = createInstallState()
+  let fromDisk = false
+
+  for (const result of results) {
+    if (!result) continue
+    fromDisk = fromDisk || Boolean(result.fromDisk)
+
+    for (const [pluginName, pluginTargets] of Object.entries(result.state?.plugins ?? {})) {
+      if (!isPlainObject(pluginTargets)) continue
+
+      for (const [targetName, targetRecord] of Object.entries(pluginTargets)) {
+        if (!isPlainObject(targetRecord)) continue
+
+        const existingRecord = merged.plugins?.[pluginName]?.[targetName]
+        if (!existingRecord || shouldReplaceInstallRecord(existingRecord, targetRecord)) {
+          setInstallEntries(merged, pluginName, targetName, targetRecord)
+        }
+      }
+    }
+  }
+
+  return {
+    state: merged,
+    fromDisk,
   }
 }
 
@@ -1866,18 +2115,18 @@ async function loadInstallStateWithFallback(roots) {
     }
   }
 
-  let primaryResult = null
+  const results = []
   for (let index = 0; index < normalizedRoots.length; index += 1) {
     const loaded = await loadInstallState(normalizedRoots[index])
-    if (index === 0) {
-      primaryResult = loaded
-    }
-    if (loaded.fromDisk) {
-      return loaded
-    }
+    results.push(loaded)
   }
 
-  return primaryResult ?? {
+  const merged = mergeInstallStates(results)
+  if (hasInstallStateEntries(merged.state) || merged.fromDisk) {
+    return merged
+  }
+
+  return {
     state: createInstallState(),
     fromDisk: false,
   }
@@ -1896,17 +2145,7 @@ async function loadInstallManifest(root, pluginName, targetName) {
   if (!(await pathExists(filePath))) return null
 
   try {
-    const entries = await readJson(filePath)
-    if (entries && typeof entries === "object") {
-      return {
-        agents: sanitizeEntryList(entries.agents),
-        hooks: sanitizeEntryList(entries.hooks),
-        plugins: sanitizeEntryList(entries.plugins),
-        prompts: sanitizeEntryList(entries.prompts),
-        skills: sanitizeEntryList(entries.skills),
-        agentSkills: sanitizeEntryList(entries.agentSkills),
-      }
-    }
+    return sanitizeInstallRecord(await readJson(filePath))
   } catch {
     // Ignore invalid manifests and rebuild from the current install.
   }
@@ -1915,14 +2154,7 @@ async function loadInstallManifest(root, pluginName, targetName) {
 }
 
 async function writeInstallManifest(root, pluginName, targetName, entries) {
-  await writeJson(getInstallManifestPath(root, pluginName, targetName), {
-    agents: sanitizeEntryList(entries.agents),
-    hooks: sanitizeEntryList(entries.hooks),
-    plugins: sanitizeEntryList(entries.plugins),
-    prompts: sanitizeEntryList(entries.prompts),
-    skills: sanitizeEntryList(entries.skills),
-    agentSkills: sanitizeEntryList(entries.agentSkills),
-  })
+  await writeJson(getInstallManifestPath(root, pluginName, targetName), sanitizeInstallRecord(entries))
 }
 
 async function writeInstallState(root, state) {
@@ -1931,14 +2163,7 @@ async function writeInstallState(root, state) {
 
 function getInstallEntries(state, pluginName, targetName) {
   const targetState = state.plugins?.[pluginName]?.[targetName]
-  return {
-    agents: sanitizeEntryList(targetState?.agents),
-    hooks: sanitizeEntryList(targetState?.hooks),
-    plugins: sanitizeEntryList(targetState?.plugins),
-    prompts: sanitizeEntryList(targetState?.prompts),
-    skills: sanitizeEntryList(targetState?.skills),
-    agentSkills: sanitizeEntryList(targetState?.agentSkills),
-  }
+  return sanitizeInstallRecord(targetState)
 }
 
 async function getPreviousInstallEntries(rootOrRoots, state, pluginName, targetName) {
@@ -1975,14 +2200,7 @@ function setInstallEntries(state, pluginName, targetName, entries) {
   if (!state.plugins[pluginName] || typeof state.plugins[pluginName] !== "object") {
     state.plugins[pluginName] = {}
   }
-  state.plugins[pluginName][targetName] = {
-    agents: sanitizeEntryList(entries.agents),
-    hooks: sanitizeEntryList(entries.hooks),
-    plugins: sanitizeEntryList(entries.plugins),
-    prompts: sanitizeEntryList(entries.prompts),
-    skills: sanitizeEntryList(entries.skills),
-    agentSkills: sanitizeEntryList(entries.agentSkills),
-  }
+  state.plugins[pluginName][targetName] = sanitizeInstallRecord(entries)
 }
 
 function sanitizeEntryList(entries) {
@@ -2004,6 +2222,439 @@ function uniqueRoots(roots) {
   )
 }
 
+function collectAllowedPermissionPatterns(permissionValue, patterns) {
+  if (!isPlainObject(permissionValue)) return
+
+  for (const [pattern, permission] of Object.entries(permissionValue)) {
+    if (pattern === "*" || permission !== "allow") continue
+    patterns.add(pattern)
+  }
+}
+
+function mergePermissionValues(existing, next) {
+  if (existing === undefined) return cloneJson(next)
+  if (next === undefined) return cloneJson(existing)
+  if (existing === "allow" || next === "allow") return "allow"
+
+  const allowPatterns = new Set()
+  collectAllowedPermissionPatterns(existing, allowPatterns)
+  collectAllowedPermissionPatterns(next, allowPatterns)
+
+  if (allowPatterns.size === 0) {
+    return "deny"
+  }
+
+  const merged = { "*": "deny" }
+  for (const pattern of allowPatterns) {
+    merged[pattern] = "allow"
+  }
+  return merged
+}
+
+function permissionValueHasAllowance(permissionValue) {
+  if (permissionValue === "allow") return true
+  if (!isPlainObject(permissionValue)) return false
+
+  return Object.entries(permissionValue)
+    .some(([pattern, permission]) => pattern !== "*" && permission === "allow")
+}
+
+function stripLegacyPermissionValue(baseValue, previousValue) {
+  if (baseValue === undefined) return undefined
+  if (previousValue === undefined) return cloneJson(baseValue)
+
+  // Broad legacy allows cannot be attributed safely, so do not carry them
+  // forward when we are subtracting a reinstalling plugin from the base config.
+  if (baseValue === "allow") {
+    return undefined
+  }
+  if (!isPlainObject(baseValue)) {
+    return undefined
+  }
+  if (!isPlainObject(previousValue)) {
+    return cloneJson(baseValue)
+  }
+
+  const remaining = {}
+  if (baseValue["*"] === "deny") {
+    remaining["*"] = "deny"
+  }
+
+  const removedPatterns = new Set()
+  collectAllowedPermissionPatterns(previousValue, removedPatterns)
+
+  for (const [pattern, permission] of Object.entries(baseValue)) {
+    if (pattern === "*" || permission !== "allow" || removedPatterns.has(pattern)) {
+      continue
+    }
+    remaining[pattern] = "allow"
+  }
+
+  return permissionValueHasAllowance(remaining) ? remaining : undefined
+}
+
+function buildToolStateFromPermissionConfig(permissionEntries) {
+  const tools = {}
+  const permission = {}
+
+  for (const tool of SOURCE_TOOLS) {
+    const value = permissionEntries[tool]
+    permission[tool] = value === undefined ? "deny" : cloneJson(value)
+    tools[tool] = permissionValueHasAllowance(permission[tool])
+  }
+
+  return { tools, permission }
+}
+
+function combineOpenCodeConfigs(configs) {
+  const combined = {
+    $schema: "https://opencode.ai/config.json",
+  }
+  const command = {}
+  const mcp = {}
+  const tools = {}
+  const permission = {}
+
+  for (const rawConfig of configs) {
+    const config = sanitizeInstallConfig(rawConfig)
+
+    if (isPlainObject(config.command)) {
+      Object.assign(command, cloneJson(config.command))
+    }
+    if (isPlainObject(config.mcp)) {
+      Object.assign(mcp, cloneJson(config.mcp))
+    }
+    if (isPlainObject(config.tools)) {
+      for (const [tool, enabled] of Object.entries(config.tools)) {
+        tools[tool] = Boolean(tools[tool] || enabled)
+      }
+    }
+    if (isPlainObject(config.permission)) {
+      for (const [tool, permissionValue] of Object.entries(config.permission)) {
+        permission[tool] = mergePermissionValues(permission[tool], permissionValue)
+      }
+    }
+  }
+
+  if (Object.keys(command).length > 0) {
+    combined.command = command
+  }
+  if (Object.keys(mcp).length > 0) {
+    combined.mcp = mcp
+  }
+  if (Object.keys(tools).length > 0) {
+    combined.tools = tools
+  }
+  if (Object.keys(permission).length > 0) {
+    combined.permission = permission
+  }
+
+  return combined
+}
+
+function buildOpenCodePluginConfig(commands, bundleConfig, permissionsMode) {
+  const sanitizedBundleConfig = sanitizeInstallConfig(bundleConfig)
+  const command = convertCommands(commands)
+  const config = {
+    $schema: bundleConfig?.$schema ?? "https://opencode.ai/config.json",
+    command: Object.keys(command).length > 0 ? command : undefined,
+    mcp: sanitizedBundleConfig.mcp,
+  }
+
+  applyPermissions(config, commands, permissionsMode)
+  return config
+}
+
+function filterConfiguredCommands(commandConfig, visibleCommandNames) {
+  if (!isPlainObject(commandConfig) || visibleCommandNames.size === 0) return undefined
+
+  const filtered = {}
+  for (const [name, command] of Object.entries(commandConfig)) {
+    if (visibleCommandNames.has(normalizeName(name))) {
+      filtered[name] = cloneJson(command)
+    }
+  }
+
+  return Object.keys(filtered).length > 0 ? filtered : undefined
+}
+
+function hasCompleteVisibleConfiguredCommands(record, visibleCommandNames) {
+  const configuredCommandNames = Object.keys(record.config.command ?? {})
+    .map((name) => normalizeName(name))
+
+  if (configuredCommandNames.length === 0) return true
+  return configuredCommandNames.every((name) => visibleCommandNames.has(name))
+}
+
+function buildStoredOpenCodeTargetConfig(targetState, visibleCommandNames) {
+  const record = sanitizeInstallRecord(targetState)
+  const config = {}
+
+  if (isPlainObject(record.config.mcp) && Object.keys(record.config.mcp).length > 0) {
+    config.mcp = cloneJson(record.config.mcp)
+  }
+
+  if (visibleCommandNames.size === 0) {
+    return config
+  }
+
+  const visibleCommands = record.commands
+    .filter((command) => visibleCommandNames.has(normalizeName(command.name)))
+
+  if (visibleCommands.length > 0) {
+    config.command = convertCommands(visibleCommands)
+  } else {
+    const filteredCommands = filterConfiguredCommands(record.config.command, visibleCommandNames)
+    if (filteredCommands) {
+      config.command = filteredCommands
+    }
+  }
+
+  if (visibleCommands.length > 0 && record.permissionsMode) {
+    applyPermissions(config, visibleCommands, record.permissionsMode)
+    return config
+  }
+
+  const canReuseStoredPermissions = hasCompleteVisibleConfiguredCommands(record, visibleCommandNames)
+
+  if (canReuseStoredPermissions && isPlainObject(record.config.tools) && Object.keys(record.config.tools).length > 0) {
+    config.tools = cloneJson(record.config.tools)
+  }
+  if (canReuseStoredPermissions && isPlainObject(record.config.permission) && Object.keys(record.config.permission).length > 0) {
+    config.permission = cloneJson(record.config.permission)
+  }
+
+  return config
+}
+
+function getOpenCodeInstallTargets(state, preferredPluginName) {
+  const targets = []
+
+  let originalIndex = 0
+  for (const [pluginName, pluginTargets] of Object.entries(state.plugins ?? {})) {
+    if (!isPlainObject(pluginTargets)) continue
+    const targetState = pluginTargets.opencode
+    if (!isPlainObject(targetState)) continue
+    targets.push({
+      pluginName,
+      targetState,
+      preferred: pluginName === preferredPluginName,
+      sortKey: sanitizeInstallTimestamp(targetState.updatedAtMs) ?? 0,
+      originalIndex,
+    })
+    originalIndex += 1
+  }
+
+  targets.sort((left, right) => {
+    if (left.preferred !== right.preferred) {
+      return left.preferred ? 1 : -1
+    }
+    if (left.sortKey !== right.sortKey) {
+      return left.sortKey - right.sortKey
+    }
+    if (left.originalIndex !== right.originalIndex) {
+      return left.originalIndex - right.originalIndex
+    }
+    return left.pluginName.localeCompare(right.pluginName)
+  })
+
+  return targets
+}
+
+function getVisibleOpenCodeCommands(targets) {
+  const visibleCommandNamesByPlugin = new Map()
+  const seen = new Set()
+
+  for (let index = targets.length - 1; index >= 0; index -= 1) {
+    const target = targets[index]
+    const record = sanitizeInstallRecord(target.targetState)
+    const visibleCommandNames = new Set()
+    const knownCommands = record.commands.length > 0
+      ? record.commands.map((command) => command.name)
+      : Object.keys(record.config.command ?? {})
+
+    for (const commandName of knownCommands) {
+      const normalizedName = normalizeName(commandName)
+      if (seen.has(normalizedName)) continue
+      visibleCommandNames.add(normalizedName)
+      seen.add(normalizedName)
+    }
+
+    visibleCommandNamesByPlugin.set(target.pluginName, visibleCommandNames)
+  }
+
+  return visibleCommandNamesByPlugin
+}
+
+function needsLegacyOpenCodeBase(state, preferredPluginName) {
+  return getOpenCodeInstallTargets(state, preferredPluginName)
+    .some(({ pluginName, targetState }) => pluginName !== preferredPluginName && !hasStoredOpenCodeConfig(targetState))
+}
+
+function normalizeCommandMatcherName(commandName) {
+  return String(commandName ?? "").trim().toLowerCase()
+}
+
+function deriveCommandFamilyPrefix(commandName) {
+  const normalizedName = normalizeCommandMatcherName(commandName)
+  const firstSeparator = normalizedName.indexOf(":")
+  const lastSeparator = normalizedName.lastIndexOf(":")
+  if (firstSeparator <= 0 || lastSeparator <= firstSeparator) {
+    return undefined
+  }
+  return normalizedName.slice(0, lastSeparator + 1)
+}
+
+function buildLegacyPreferredCommandMatchers(previousPreferredConfig, previousPreferredEntries, currentPreferredCommands) {
+  const previousConfig = sanitizeInstallConfig(previousPreferredConfig)
+  const previousEntries = sanitizeInstallRecord(previousPreferredEntries)
+  const currentCommands = sanitizeStoredCommands(currentPreferredCommands)
+  const exactNames = new Set()
+  const familyPrefixes = new Set()
+
+  for (const commandName of Object.keys(previousConfig.command ?? {})) {
+    exactNames.add(normalizeName(commandName))
+  }
+  for (const command of previousEntries.commands) {
+    exactNames.add(normalizeName(command.name))
+    const familyPrefix = deriveCommandFamilyPrefix(command.name)
+    if (familyPrefix) {
+      familyPrefixes.add(familyPrefix)
+    }
+  }
+  for (const skillName of previousEntries.skills) {
+    exactNames.add(normalizeName(skillName))
+    const familyPrefix = deriveCommandFamilyPrefix(skillName)
+    if (familyPrefix) {
+      familyPrefixes.add(familyPrefix)
+    }
+  }
+  for (const command of currentCommands) {
+    const familyPrefix = deriveCommandFamilyPrefix(command.name)
+    if (familyPrefix) {
+      familyPrefixes.add(familyPrefix)
+    }
+  }
+
+  return { exactNames, familyPrefixes }
+}
+
+function shouldStripLegacyPreferredCommand(commandName, matchers) {
+  const normalizedName = normalizeName(commandName)
+  const matcherName = normalizeCommandMatcherName(commandName)
+  if (matchers.exactNames.has(normalizedName)) {
+    return true
+  }
+
+  for (const familyPrefix of matchers.familyPrefixes) {
+    if (matcherName.startsWith(familyPrefix)) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function removeLegacyPreferredEntries(baseConfig, options = {}) {
+  const filtered = sanitizeInstallConfig(baseConfig)
+  const previous = sanitizeInstallConfig(options.previousPreferredConfig)
+  const commandMatchers = buildLegacyPreferredCommandMatchers(
+    options.previousPreferredConfig,
+    options.previousPreferredEntries,
+    options.currentPreferredCommands,
+  )
+
+  if (isPlainObject(filtered.command)) {
+    for (const commandName of Object.keys(filtered.command)) {
+      if (!shouldStripLegacyPreferredCommand(commandName, commandMatchers)) {
+        continue
+      }
+      delete filtered.command[commandName]
+    }
+  }
+
+  for (const serverName of Object.keys(previous.mcp ?? {})) {
+    if (isPlainObject(filtered.mcp)) {
+      delete filtered.mcp[serverName]
+    }
+  }
+
+  const previousHadPermissionState =
+    Object.keys(previous.command ?? {}).length > 0
+    || Object.keys(previous.tools ?? {}).length > 0
+    || Object.keys(previous.permission ?? {}).length > 0
+  if (previousHadPermissionState) {
+    const remainingPermissions = {}
+    for (const tool of SOURCE_TOOLS) {
+      const nextValue = stripLegacyPermissionValue(filtered.permission?.[tool], previous.permission?.[tool])
+      if (nextValue !== undefined) {
+        remainingPermissions[tool] = nextValue
+      }
+    }
+
+    if (Object.keys(remainingPermissions).length === 0) {
+      delete filtered.tools
+      delete filtered.permission
+    } else {
+      const normalizedPermissions = buildToolStateFromPermissionConfig(remainingPermissions)
+      filtered.tools = normalizedPermissions.tools
+      filtered.permission = normalizedPermissions.permission
+    }
+  }
+
+  return sanitizeInstallConfig(filtered)
+}
+
+function buildCombinedOpenCodeConfigFromState(state, options = {}) {
+  const preferredPluginName = typeof options === "string" ? options : options.preferredPluginName
+  const legacyBaseConfig = typeof options === "string" ? undefined : options.legacyBaseConfig
+  const previousPreferredConfig = typeof options === "string" ? undefined : options.previousPreferredConfig
+  const previousPreferredEntries = typeof options === "string" ? undefined : options.previousPreferredEntries
+  const currentPreferredCommands = typeof options === "string" ? undefined : options.currentPreferredCommands
+  const configs = []
+  const targets = getOpenCodeInstallTargets(state, preferredPluginName)
+  const visibleCommandNamesByPlugin = getVisibleOpenCodeCommands(targets)
+
+  const filteredLegacyBaseConfig = removeLegacyPreferredEntries(legacyBaseConfig, {
+    previousPreferredConfig,
+    previousPreferredEntries,
+    currentPreferredCommands,
+  })
+  if (Object.keys(filteredLegacyBaseConfig).length > 0) {
+    configs.push(filteredLegacyBaseConfig)
+  }
+
+  for (const { pluginName, targetState } of targets) {
+    const config = buildStoredOpenCodeTargetConfig(
+      targetState,
+      visibleCommandNamesByPlugin.get(pluginName) ?? new Set(),
+    )
+    if (Object.keys(config).length > 0) {
+      configs.push(config)
+    }
+  }
+
+  return combineOpenCodeConfigs(configs)
+}
+
+async function loadExistingOpenCodeConfig(configPathOrPaths) {
+  const configPaths = Array.isArray(configPathOrPaths)
+    ? configPathOrPaths
+    : [configPathOrPaths]
+  const configs = []
+
+  for (const configPath of Array.from(new Set(configPaths.map((value) => path.resolve(value))))) {
+    if (!(await pathExists(configPath))) continue
+
+    try {
+      configs.push(sanitizeInstallConfig(await readJson(configPath)))
+    } catch {
+      // Ignore invalid config candidates and keep searching.
+    }
+  }
+
+  return configs.length > 0 ? combineOpenCodeConfigs(configs) : {}
+}
 async function writeJson(file, data) {
   const content = JSON.stringify(data, null, 2) + "\n"
   await writeText(file, content)
