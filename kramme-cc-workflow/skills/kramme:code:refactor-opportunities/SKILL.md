@@ -1,6 +1,6 @@
 ---
 name: kramme:code:refactor-opportunities
-description: "Scan the entire codebase (or a specified scope) for refactoring candidates. Use when the user asks to find refactor opportunities, audit code quality, identify tech debt, or wants a codebase health check."
+description: "Scan the entire codebase (or a specified scope) for refactoring candidates. Use when the user asks to find refactor opportunities, audit code quality, identify tech debt, or wants a codebase health check. Flags themes whose combined blast radius exceeds 500 lines as automation candidates."
 disable-model-invocation: false
 user-invocable: true
 argument-hint: [scope — e.g. src/api, or omit for full codebase]
@@ -16,6 +16,17 @@ Systematically scan the codebase for refactoring candidates, categorize findings
 
 - **Scope** (optional): a directory, glob pattern, or file list to limit the scan. Defaults to the full codebase.
 - If the user specifies a scope, respect it. If they say "everything" or give no scope, scan all source directories (skip `node_modules`, `dist`, build artifacts, generated files, lock files, and vendored code).
+
+## Prerequisites — When NOT to flag a refactor
+
+A high-signal report rejects more than it reports. Do not flag:
+
+- **Code that is already clean.** Not every file needs changes. Skip files that read well and conform to the checklist.
+- **Code you don't understand yet.** If a pattern looks wrong but you haven't traced its callers, tests, or history, it is not a finding. Read more, or leave it.
+- **Performance-critical code where the alternatives are slower.** "Cleaner" does not override measured performance. Do not flag hot paths without evidence that the simpler form is at least as fast.
+- **Code that is about to be rewritten.** If a larger rewrite is already planned or in progress for the same area, flagging its current state is noise. Surface the overlap instead.
+
+These rejections are pre-filters — apply them before recording a finding, not during Synthesis.
 
 ## Workflow
 
@@ -41,29 +52,40 @@ Launch parallel Explore agents to cover the codebase efficiently. Split work by 
 Each agent must:
 - Read the checklist reference file for its assigned categories.
 - Scan all files in scope for findings in those categories.
+- Apply the When-NOT-to-flag pre-filter before recording.
 - Record each finding with: location, category, severity, description, suggested fix.
+- When the agent spots something outside its assigned categories, emit a `NOTICED BUT NOT TOUCHING` entry instead of silently re-categorizing into its own bucket:
+
+  ```
+  NOTICED BUT NOT TOUCHING: <file:line — what was seen>
+  Why skipping: outside assigned category group
+  ```
+
+  These entries are collected in Synthesis and surfaced in the report as uncategorized observations, not folded into the agent's findings.
 - Return findings as a structured list.
 
 ### Phase 3 — Synthesis
 
-1. Collect all agent findings.
+1. Collect all agent findings and `NOTICED BUT NOT TOUCHING` entries.
 2. Deduplicate (same location + same issue = one finding).
 3. Assign final severity. Promote findings that appear in 3+ locations to at least medium.
 4. Group related findings into **themes** — patterns that share a root cause or would benefit from a coordinated fix.
-5. Determine a **recommended refactor order** considering:
+5. **Rule of 500 — automation trigger.** For any theme whose combined blast radius exceeds **500 lines**, mark the theme as an automation candidate and recommend a codemod, AST transform, or batch refactor tool instead of manual per-file fixes. Addy's rule: *"If a refactoring would touch more than 500 lines, invest in automation."* Manual edits at that scale are error-prone and review-hostile.
+6. Determine a **recommended refactor order** considering:
    - High-severity items first
    - Quick wins (small blast radius, high clarity gain) early
    - Dependencies between findings (fix A before B)
    - Group thematically related changes together
+   - Automation-candidate themes (≥500 lines) separated from manual fixes in the order
 
 ### Phase 4 — Report
 
 1. Read `assets/report-template.md` for the output format.
-2. Produce the report following that template.
+2. Produce the report following that template. In the "Patterns & Themes" section, mark each theme's total line count and flag themes ≥500 lines as **automation candidates**.
 3. Write the report to `REFACTOR_OPPORTUNITIES_OVERVIEW.md` in the project root.
 4. Present a summary to the user with:
    - Total findings by severity
-   - Top 3 themes
+   - Top 3 themes (with automation-candidate flag if applicable)
    - Recommended first refactor to tackle
 
 ## Guidelines
@@ -73,3 +95,39 @@ Each agent must:
 - **No false positives over completeness.** It is better to miss a low-severity issue than to report something that isn't actually a problem.
 - **Be specific.** "This function is too complex" is not a finding. "Function `processOrder` (src/orders.ts:45-120) has 8 branches and 3 levels of nesting — extract validation into a separate function" is.
 - **Do not perform the refactors.** This skill identifies opportunities. The user decides what to act on. If they want to proceed, they can use `kramme:code:refactor-pass` on specific findings.
+
+---
+
+## Common Rationalizations
+
+These are how a scan turns from high-signal into noise. Each has a correct response:
+
+- *"This feels inconsistent, probably worth flagging."* → Not a finding without evidence. A concrete inconsistency across 3+ locations is a finding; a vague feeling is not.
+- *"I'll flag it at low severity just to be safe."* → Severity inflation in reverse. If it is not worth acting on, it is not worth recording.
+- *"This pattern looks odd; the project probably wants it fixed."* → Check the project instruction files and existing usage first. Intentional patterns are not findings.
+- *"I can't explain why it's wrong but it feels off."* → Not a finding. Read more, or leave it.
+- *"This category has few findings; let me dig for more."* → No. A short category list is valid data. Padding with low-signal items degrades the whole report.
+
+## Red Flags
+
+If you notice any of these during the scan, stop and tighten the filter:
+
+- Findings without a file and line range.
+- More than ~30% of findings concentrated in one category — usually a sign the filter is too loose for that category.
+- Severity inflation (low items promoted to medium without the 3+ locations rule).
+- Themes recommended for manual refactor despite exceeding 500 lines — the Rule of 500 was missed.
+- The report recommends changes that conflict with documented project conventions.
+- `NOTICED BUT NOT TOUCHING` entries were silently folded into findings instead of surfaced separately.
+
+## Verification
+
+Before writing the report, self-check:
+
+- [ ] Every finding has a file path and line range.
+- [ ] Every finding passed the When-NOT-to-flag pre-filter (not clean code, not uncomprehended, not hot-path-without-evidence, not about-to-be-rewritten).
+- [ ] No finding contradicts a documented project convention.
+- [ ] Themes exceeding 500 lines are marked automation candidates.
+- [ ] `NOTICED BUT NOT TOUCHING` entries are surfaced as a separate section, not mixed into findings.
+- [ ] The report has fewer findings than the raw agent output (filtering and deduplication actually happened).
+
+If any box is unchecked, fix the gap before writing the report.

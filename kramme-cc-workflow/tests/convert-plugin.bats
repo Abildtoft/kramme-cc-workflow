@@ -793,6 +793,287 @@ MD
   [ "$output" = "ok" ]
 }
 
+@test "opencode conversion cleans legacy converted-hooks plugin for same hook-enabled plugin upgrades" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/hook-plugin"
+  create_hook_fixture_plugin \
+    "$FIXTURE_PLUGIN" \
+    "hook-plugin" \
+    "alpha-hook" \
+    'bash ${CLAUDE_PLUGIN_ROOT}/hooks/alpha-hook.sh'
+  mkdir -p "$TMP_DIR/opencode/plugins"
+  cat > "$TMP_DIR/opencode/plugins/converted-hooks.ts" <<'TS'
+import type { Plugin } from "@opencode-ai/plugin"
+
+export const ConvertedHooks: Plugin = async ({ $ }) => {
+  return {
+    "tool.execute.before": async (input) => {
+      if (input.tool === "bash") { await $`bash \${CLAUDE_PLUGIN_ROOT}/hooks/alpha-hook.sh` }
+    }
+  }
+}
+
+export default ConvertedHooks
+TS
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  [ ! -f "$TMP_DIR/opencode/plugins/converted-hooks.ts" ]
+  [ -f "$TMP_DIR/opencode/plugins/converted-hooks-hook-plugin.ts" ]
+}
+
+@test "opencode conversion preserves legacy converted-hooks plugin for unrelated hook-enabled installs" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_A="$TMP_DIR/plugin-a"
+  PLUGIN_B="$TMP_DIR/plugin-b"
+  create_hook_fixture_plugin \
+    "$PLUGIN_A" \
+    "plugin-a" \
+    "alpha-hook" \
+    'bash ${CLAUDE_PLUGIN_ROOT}/hooks/alpha-hook.sh'
+  create_hook_fixture_plugin \
+    "$PLUGIN_B" \
+    "plugin-b" \
+    "beta-hook" \
+    'bash ${CLAUDE_PLUGIN_ROOT}/hooks/beta-hook.sh'
+
+  mkdir -p "$TMP_DIR/opencode/plugins"
+  cat > "$TMP_DIR/opencode/plugins/converted-hooks.ts" <<'TS'
+import type { Plugin } from "@opencode-ai/plugin"
+
+export const ConvertedHooks: Plugin = async ({ $ }) => {
+  return {
+    "tool.execute.before": async (input) => {
+      if (input.tool === "bash") { await $`bash \${CLAUDE_PLUGIN_ROOT}/hooks/alpha-hook.sh` }
+    }
+  }
+}
+
+export default ConvertedHooks
+TS
+
+  run node "$SCRIPT" install "$PLUGIN_B" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  [ -f "$TMP_DIR/opencode/plugins/converted-hooks.ts" ]
+  [ -f "$TMP_DIR/opencode/plugins/converted-hooks-plugin-b.ts" ]
+}
+
+@test "opencode conversion preserves legacy converted-hooks plugin when hook overlap is only partial" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_A="$TMP_DIR/plugin-a"
+  PLUGIN_B="$TMP_DIR/plugin-b"
+  create_hook_fixture_plugin "$PLUGIN_A" "plugin-a" "shared"
+  create_hook_fixture_plugin "$PLUGIN_B" "plugin-b" "shared"
+
+  jq -n '{
+    hooks: {
+      PreToolUse: [
+        {
+          matcher: "Bash",
+          hooks: [
+            {type: "command", command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/shared.sh"},
+            {type: "command", command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/a-only.sh"}
+          ]
+        }
+      ]
+    }
+  }' > "$PLUGIN_A/hooks/hooks.json"
+  jq -n '{
+    hooks: {
+      PreToolUse: [
+        {
+          matcher: "Bash",
+          hooks: [
+            {type: "command", command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/shared.sh"},
+            {type: "command", command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/b-only.sh"}
+          ]
+        }
+      ]
+    }
+  }' > "$PLUGIN_B/hooks/hooks.json"
+  printf '#!/bin/bash\nexit 0\n' > "$PLUGIN_A/hooks/a-only.sh"
+  printf '#!/bin/bash\nexit 0\n' > "$PLUGIN_B/hooks/b-only.sh"
+
+  mkdir -p "$TMP_DIR/opencode/plugins"
+  cat > "$TMP_DIR/opencode/plugins/converted-hooks.ts" <<'TS'
+import type { Plugin } from "@opencode-ai/plugin"
+
+export const ConvertedHooks: Plugin = async ({ $ }) => {
+  return {
+    "tool.execute.before": async (input) => {
+      if (input.tool === "bash") { await $`bash \${CLAUDE_PLUGIN_ROOT}/hooks/shared.sh` }
+      if (input.tool === "bash") { await $`bash \${CLAUDE_PLUGIN_ROOT}/hooks/a-only.sh` }
+    }
+  }
+}
+
+export default ConvertedHooks
+TS
+
+  run node "$SCRIPT" install "$PLUGIN_B" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  [ -f "$TMP_DIR/opencode/plugins/converted-hooks.ts" ]
+  [ -f "$TMP_DIR/opencode/plugins/converted-hooks-plugin-b.ts" ]
+}
+
+@test "opencode conversion preserves legacy converted-hooks plugin when current hook set is a subset of another plugin" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_A="$TMP_DIR/plugin-a"
+  PLUGIN_B="$TMP_DIR/plugin-b"
+  create_hook_fixture_plugin "$PLUGIN_A" "plugin-a" "shared"
+  create_hook_fixture_plugin "$PLUGIN_B" "plugin-b" "shared"
+
+  jq -n '{
+    hooks: {
+      PreToolUse: [
+        {
+          matcher: "Bash",
+          hooks: [
+            {type: "command", command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/shared.sh"},
+            {type: "command", command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/b-only.sh"}
+          ]
+        }
+      ]
+    }
+  }' > "$PLUGIN_B/hooks/hooks.json"
+  printf '#!/bin/bash\nexit 0\n' > "$PLUGIN_B/hooks/b-only.sh"
+
+  mkdir -p "$TMP_DIR/opencode/plugins"
+  cat > "$TMP_DIR/opencode/plugins/converted-hooks.ts" <<'TS'
+import type { Plugin } from "@opencode-ai/plugin"
+
+export const ConvertedHooks: Plugin = async ({ $ }) => {
+  return {
+    "tool.execute.before": async (input) => {
+      if (input.tool === "bash") { await $`bash \${CLAUDE_PLUGIN_ROOT}/hooks/shared.sh` }
+      if (input.tool === "bash") { await $`bash \${CLAUDE_PLUGIN_ROOT}/hooks/b-only.sh` }
+    }
+  }
+}
+
+export default ConvertedHooks
+TS
+
+  run node "$SCRIPT" install "$PLUGIN_A" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  [ -f "$TMP_DIR/opencode/plugins/converted-hooks.ts" ]
+  [ -f "$TMP_DIR/opencode/plugins/converted-hooks-plugin-a.ts" ]
+}
+
+@test "opencode conversion cleans legacy converted-hooks plugin for hookless same-plugin upgrades" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/hookless-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN" "hookless-plugin"
+  mkdir -p "$FIXTURE_PLUGIN/skills/example-skill" "$TMP_DIR/opencode/skills/hookless:example" "$TMP_DIR/opencode/plugins"
+  cat > "$FIXTURE_PLUGIN/skills/example-skill/SKILL.md" <<'MD'
+---
+name: hookless:example
+description: Example hookless skill
+disable-model-invocation: false
+user-invocable: true
+---
+Example body
+MD
+  printf 'legacy plugin\n' > "$TMP_DIR/opencode/plugins/converted-hooks.ts"
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  [ ! -f "$TMP_DIR/opencode/plugins/converted-hooks.ts" ]
+}
+
+@test "opencode conversion cleans legacy hook artifacts for hook-enabled to hookless same-plugin upgrades" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/hookless-plugin-from-hooked-upgrade"
+  create_fixture_plugin "$FIXTURE_PLUGIN" "hookless-plugin-from-hooked-upgrade"
+  mkdir -p "$TMP_DIR/opencode/plugins" "$TMP_DIR/opencode/hook-bundles/hookless-plugin-from-hooked-upgrade/hooks"
+  printf '#!/bin/bash\nexit 0\n' > "$TMP_DIR/opencode/hook-bundles/hookless-plugin-from-hooked-upgrade/hooks/alpha-hook.sh"
+  printf 'legacy plugin\n' > "$TMP_DIR/opencode/plugins/converted-hooks.ts"
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  [ ! -f "$TMP_DIR/opencode/plugins/converted-hooks.ts" ]
+  [ ! -d "$TMP_DIR/opencode/hook-bundles/hookless-plugin-from-hooked-upgrade" ]
+}
+
+@test "opencode conversion preserves legacy converted-hooks plugin after tracked hookless reinstall" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/hookless-plugin-with-state"
+  create_fixture_plugin "$FIXTURE_PLUGIN" "hookless-plugin-with-state"
+  mkdir -p "$FIXTURE_PLUGIN/skills/example-skill"
+  cat > "$FIXTURE_PLUGIN/skills/example-skill/SKILL.md" <<'MD'
+---
+name: hookless:example
+description: Example hookless skill
+disable-model-invocation: false
+user-invocable: true
+---
+Example body
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  mkdir -p "$TMP_DIR/opencode/plugins"
+  printf 'legacy plugin\n' > "$TMP_DIR/opencode/plugins/converted-hooks.ts"
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  [ -f "$TMP_DIR/opencode/plugins/converted-hooks.ts" ]
+}
+
+@test "opencode conversion preserves legacy converted-hooks plugin for unrelated hookless installs" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/unrelated-hookless-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN" "unrelated-hookless-plugin"
+  mkdir -p "$FIXTURE_PLUGIN/skills/example-skill" "$TMP_DIR/opencode/skills/workflow-example" "$TMP_DIR/opencode/plugins"
+  cat > "$FIXTURE_PLUGIN/skills/example-skill/SKILL.md" <<'MD'
+---
+name: unrelated:example
+description: Example unrelated hookless skill
+disable-model-invocation: false
+user-invocable: true
+---
+Example body
+MD
+  printf 'legacy plugin\n' > "$TMP_DIR/opencode/plugins/converted-hooks.ts"
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  [ -f "$TMP_DIR/opencode/plugins/converted-hooks.ts" ]
+}
+
 @test "opencode conversion preserves existing hook-enabled plugin installs" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
@@ -821,7 +1102,7 @@ MD
   [ "$status" -eq 0 ]
 }
 
-@test "opencode conversion removes legacy shared hook plugin on upgrade" {
+@test "opencode conversion preserves legacy shared hook plugin when ownership is ambiguous" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
   fi
@@ -832,7 +1113,7 @@ MD
   run node "$SCRIPT" install "$REPO_ROOT" --to opencode --output "$TMP_DIR/opencode" --yes
   [ "$status" -eq 0 ]
 
-  [ ! -f "$TMP_DIR/opencode/plugins/converted-hooks.ts" ]
+  [ -f "$TMP_DIR/opencode/plugins/converted-hooks.ts" ]
   [ -f "$TMP_DIR/opencode/plugins/converted-hooks-kramme-cc-workflow.ts" ]
 }
 
