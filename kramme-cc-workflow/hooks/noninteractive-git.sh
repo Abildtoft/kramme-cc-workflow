@@ -166,6 +166,7 @@ commit_has_message_source() {
     args_have_short_option_value_aware "m" "$COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" \
         || args_have_short_option_value_aware "F" "$COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" \
         || args_have_short_option_value_aware "C" "$COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" \
+        || commit_has_safe_fixup "$@" \
         || args_have_long_option "--message" "$@" \
         || args_have_long_option "--file" "$@" \
         || args_have_long_option "--reuse-message" "$@" \
@@ -177,6 +178,43 @@ merge_has_message_source() {
         || args_have_short_option_value_aware "F" "$MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" \
         || args_have_long_option "--message" "$@" \
         || args_have_long_option "--file" "$@"
+}
+
+commit_has_safe_fixup() {
+    local value target
+
+    while [ $# -gt 0 ]; do
+        value="$(strip_wrapping_quotes "$1")"
+        [ "$value" = "--" ] && break
+        case "$value" in
+            --fixup)
+                shift
+                [ $# -gt 0 ] || return 1
+                target="$(strip_wrapping_quotes "$1")"
+                case "$target" in
+                    amend:*|reword:*)
+                        return 1
+                        ;;
+                    *)
+                        return 0
+                        ;;
+                esac
+                ;;
+            --fixup=*)
+                target="${value#*=}"
+                case "$target" in
+                    amend:*|reword:*)
+                        return 1
+                        ;;
+                    *)
+                        return 0
+                        ;;
+                esac
+                ;;
+        esac
+        shift
+    done
+    return 1
 }
 
 extract_shell_inline_command() {
@@ -1313,6 +1351,22 @@ def has_long_option_value_aware(
     return False
 
 
+def has_safe_fixup(args):
+    idx = 0
+    while idx < len(args):
+        arg = args[idx]
+        if arg == "--":
+            break
+        if arg == "--fixup":
+            if idx + 1 >= len(args):
+                return False
+            return not args[idx + 1].startswith(("amend:", "reword:"))
+        if arg.startswith("--fixup="):
+            return not arg.split("=", 1)[1].startswith(("amend:", "reword:"))
+        idx += 1
+    return False
+
+
 def evaluate(parsed_commands, substitutions, depth=0):
     if depth > 4:
         return PARSE_ERROR_REASON
@@ -1353,6 +1407,7 @@ def evaluate(parsed_commands, substitutions, depth=0):
                 has_short_option_value_aware(args, "m", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
                 or has_short_option_value_aware(args, "F", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
                 or has_short_option_value_aware(args, "C", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
+                or has_safe_fixup(args)
                 or has_long_option(
                     args,
                     "--message",

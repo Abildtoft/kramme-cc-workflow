@@ -13,6 +13,14 @@ teardown() {
   fi
 }
 
+strip_legacy_opencode_tracking() {
+  local install_file
+  for install_file in "$1/.kramme-install-state.json" "$1/.kramme-install-manifests/"*.json; do
+    jq 'walk(if type == "object" then del(.opencodeConfig, .commandNames, .mcpServerNames, .permissionsMode, .sourcePath) else . end)' "$install_file" > "$TMP_DIR/stripped.json"
+    mv "$TMP_DIR/stripped.json" "$install_file"
+  done
+}
+
 create_fixture_plugin() {
   local plugin_dir="$1"
   local plugin_name="${2:-fixture-plugin}"
@@ -476,6 +484,14 @@ MD
   [ "$status" -eq 0 ]
   [ -f "$TMP_DIR/opencode/skills/kramme:pr:create/SKILL.md" ]
   [ -f "$TMP_DIR/opencode/skills/kramme:connect:migrate-store-ngrx/SKILL.md" ]
+
+  run jq -r '.command | has("kramme:pr:create")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("kramme:connect:migrate-store-ngrx")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
 }
 
 @test "opencode conversion preserves existing workflow skills when reinstalling without state" {
@@ -494,6 +510,167 @@ MD
   [ "$status" -eq 0 ]
   [ -f "$TMP_DIR/opencode/skills/kramme:pr:create/SKILL.md" ]
   [ -f "$TMP_DIR/opencode/skills/kramme:connect:migrate-store-ngrx/SKILL.md" ]
+
+  run jq -r '.command | has("kramme:pr:create")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("kramme:connect:migrate-store-ngrx")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+}
+
+@test "opencode conversion preserves existing workflow skills when legacy tracked config is missing" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install kramme-cc-workflow --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+  run node "$SCRIPT" install kramme-connect-workflow --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  for install_file in "$TMP_DIR/opencode/.kramme-install-state.json" "$TMP_DIR/opencode/.kramme-install-manifests/"*.json; do
+    jq 'walk(if type == "object" then del(.opencodeConfig) else . end)' "$install_file" > "$TMP_DIR/stripped.json"
+    mv "$TMP_DIR/stripped.json" "$install_file"
+  done
+
+  run node "$SCRIPT" install kramme-connect-workflow --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  run jq -r '.command | has("kramme:pr:create")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("kramme:connect:migrate-store-ngrx")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+}
+
+@test "opencode conversion removes stale commands when legacy tracked config is missing" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_A="$TMP_DIR/opencode-plugin-a"
+  PLUGIN_B="$TMP_DIR/opencode-plugin-b"
+  mkdir -p "$PLUGIN_A/commands" "$PLUGIN_B/commands"
+  create_fixture_plugin "$PLUGIN_A" "opencode-plugin-a"
+  create_fixture_plugin "$PLUGIN_B" "opencode-plugin-b"
+
+  cat > "$PLUGIN_A/commands/kramme-a-command.md" <<'MD'
+---
+name: kramme:a-command
+description: A command
+---
+
+Run A.
+MD
+
+  cat > "$PLUGIN_B/commands/kramme-b-command.md" <<'MD'
+---
+name: kramme:b-command
+description: B command
+---
+
+Run B.
+MD
+
+  run node "$SCRIPT" install "$PLUGIN_A" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+  run node "$SCRIPT" install "$PLUGIN_B" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  for install_file in "$TMP_DIR/opencode/.kramme-install-state.json" "$TMP_DIR/opencode/.kramme-install-manifests/"*.json; do
+    jq 'walk(if type == "object" then del(.opencodeConfig) else . end)' "$install_file" > "$TMP_DIR/stripped.json"
+    mv "$TMP_DIR/stripped.json" "$install_file"
+  done
+
+  rm "$PLUGIN_B/commands/kramme-b-command.md"
+
+  run node "$SCRIPT" install "$PLUGIN_B" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  run jq -r '.command | has("kramme:a-command")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("kramme:b-command")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+}
+
+@test "opencode conversion removes stale legacy commands and permissions when manifests predate config tracking" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_A="$TMP_DIR/plugins/opencode-plugin-a"
+  PLUGIN_B="$TMP_DIR/plugins/opencode-plugin-b"
+  mkdir -p "$PLUGIN_A/commands" "$PLUGIN_B/commands"
+  create_fixture_plugin "$PLUGIN_A" "opencode-plugin-a"
+  create_fixture_plugin "$PLUGIN_B" "opencode-plugin-b"
+
+  cat > "$PLUGIN_A/commands/kramme-a-command.md" <<'MD'
+---
+name: kramme:a-command
+description: A command
+allowed-tools: Read
+---
+
+Run A.
+MD
+
+  cat > "$PLUGIN_B/commands/kramme-b-command.md" <<'MD'
+---
+name: kramme:b-command
+description: B command
+allowed-tools: Read, Bash(npm test)
+---
+
+Run B.
+MD
+
+  run bash -c "cd \"$TMP_DIR\" && node \"$SCRIPT\" install opencode-plugin-a --to opencode --output \"$TMP_DIR/opencode\" --permissions from-commands --yes"
+  [ "$status" -eq 0 ]
+  run bash -c "cd \"$TMP_DIR\" && node \"$SCRIPT\" install opencode-plugin-b --to opencode --output \"$TMP_DIR/opencode\" --permissions from-commands --yes"
+  [ "$status" -eq 0 ]
+
+  strip_legacy_opencode_tracking "$TMP_DIR/opencode"
+
+  rm "$PLUGIN_B/commands/kramme-b-command.md"
+  cat > "$PLUGIN_B/commands/kramme-b-replacement.md" <<'MD'
+---
+name: kramme:b-replacement
+description: Replacement command
+allowed-tools: Read
+---
+
+Run replacement.
+MD
+
+  run bash -c "cd \"$TMP_DIR\" && node \"$SCRIPT\" install opencode-plugin-b --to opencode --output \"$TMP_DIR/opencode\" --permissions from-commands --yes"
+  [ "$status" -eq 0 ]
+
+  run jq -r '.command | has("kramme:a-command")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("kramme:b-command")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+
+  run jq -r '.command | has("kramme:b-replacement")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.tools.bash' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+
+  run jq -r '.permission.bash' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "deny" ]
 }
 
 @test "opencode conversion preserves unknown legacy skills on first stateful install without state" {

@@ -362,10 +362,14 @@ Issue creation:
 4. Add row to `siw/OPEN_ISSUES_OVERVIEW.md` with status `READY`.
    - Default to the 6-column SIW schema:
      ```markdown
-     **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination}
+     **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination | Mixed — see issue files}
 
      | G-{NNN} | {Title} | READY | {Size} | {Priority} | Audit Report |
      ```
+   - If `## General` already has a section-level `**Parallelization:**` line, treat it as a roll-up summary for the whole section rather than a per-issue mirror.
+   - Recompute it from all real `G-*` issue files after adding the new issue: if every issue shares the same section-level category/gating note, keep that shared summary; otherwise set it to `Mixed — see issue files for exact guidance`.
+   - If the General section is still in its empty placeholder state (`_None_` row / no real issues yet), replace the default summary from `siw:init` with the first real issue's category.
+   - If an existing legacy General section has no `**Parallelization:**` line, preserve that absence instead of inserting one.
    - If the existing General section still uses the legacy 5-column schema, preserve that layout for compatibility instead of mixing schemas.
 5. Append to `siw/LOG.md` under current progress with:
    - finding id

@@ -89,7 +89,7 @@ Group findings into PR-sized themes. A theme is a set of findings that should be
 
 3. **Singleton themes are fine**: if a finding does not cluster with others, it becomes its own single-finding theme.
 
-4. **Exclusions**: if any finding should be excluded from all plans (e.g., duplicates, already resolved, not actionable), record it with a reason. These go into the index under "Excluded Findings."
+4. **Exclusions**: if any finding should be excluded from all plans (e.g., duplicates, already resolved, not actionable), record it with a reason. These go into the index under "Excluded Findings" as one marker-prefixed line per finding. If nothing is excluded, write a plain sentence with no marker.
 
 5. **Conflicts**: if two findings contradict each other (e.g., "add abstraction" vs. "remove abstraction" for the same code), flag the conflict as an open question in the relevant plan(s) and do not assume a resolution.
 
@@ -107,7 +107,7 @@ PLAN: Proposed themes
   1. add-api-error-handling (4 findings, size M) -- files: src/api/*.ts
   2. consolidate-config-parsing (3 findings, size S) -- files: src/config/*, src/utils/config.ts
   3. remove-dead-exports (2 findings, size S) -- files: src/lib/*.ts
-  N excluded findings: [list if any]
+  0 excluded findings
 
 Proceed? (yes / adjust)
 ```
@@ -147,7 +147,7 @@ Every section and subsection in the template must be populated. Do not leave hea
    - **Plan listing**: filename, theme name, and a 2-4 sentence summary for each plan.
    - **Recommended implementation order**: ordered list with rationale (dependencies, risk reduction, quick wins first).
    - **Dependency map**: which plans depend on which.
-   - **Excluded findings**: any findings not included in any plan, with the reason.
+   - **Excluded findings**: any findings not included in any plan, with the reason. Emit each excluded entry on its own line prefixed with `NOTICED BUT NOT TOUCHING:` so downstream tooling can parse it reliably. If there are no exclusions, write `All findings were included in plans.` with no marker line.
    - **Source**: the findings source file or description used as input.
    - **Statistics**: total findings, plans generated, findings per plan, excluded count.
 
@@ -207,7 +207,7 @@ Use these markers as prefixes when surfacing specific kinds of information so ou
 - `UNVERIFIED:` — use in Phase 1 parsing when severity (or any other field) is inferred from context rather than stated in the source.
 - `CONFUSION:` — use when two findings conflict and both positions are surfaced as open questions in the generated plan(s).
 - `MISSING REQUIREMENT:` — use for any open question added to a plan that must be answered before implementation.
-- `NOTICED BUT NOT TOUCHING:` — prefix the excluded-findings list in the index.
+- `NOTICED BUT NOT TOUCHING:` — prefix each excluded-finding entry in the index.
 - `PLAN:` — prefix the Phase 2 proposed-themes block.
 - `PLANS GENERATED / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS` — end-of-turn triplet used in Phase 5 Summary.
 

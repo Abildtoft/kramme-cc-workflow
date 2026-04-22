@@ -105,6 +105,12 @@ run_hook_without_python() {
     is_allowed
 }
 
+@test "allows git commit with safe --fixup flag when python3 is unavailable" {
+    run run_hook_without_python "git commit --fixup=HEAD"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
 @test "allows git commit -m with literal --edit message when python3 is unavailable" {
     run run_hook_without_python "git commit -m --edit"
     [ "$status" -eq 0 ]
@@ -157,6 +163,11 @@ run_hook_without_python() {
     run run_hook_without_python "git commit --untracked-files=all --edit -m 'test message'"
     is_blocked
     [[ "$output" == *"--edit"* ]]
+}
+
+@test "blocks git commit with editor-opening --fixup=amend flag when python3 is unavailable" {
+    run run_hook_without_python "git commit --fixup=amend:HEAD"
+    is_blocked
 }
 
 @test "allows safe command substitution before git commit when python3 is unavailable" {
@@ -521,6 +532,17 @@ EOF"
     run run_hook "git commit --reuse-message=HEAD"
     [ "$status" -eq 0 ]
     is_allowed
+}
+
+@test "allows git commit with safe --fixup flag" {
+    run run_hook "git commit --fixup=HEAD"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git commit with editor-opening --fixup=amend flag" {
+    run run_hook "git commit --fixup=amend:HEAD"
+    is_blocked
 }
 
 @test "allows git commit with -F flag (message from file)" {

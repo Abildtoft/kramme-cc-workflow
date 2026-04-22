@@ -30,10 +30,8 @@ PR_PLAN_REMOVE_DEAD_EXPORTS.md (independent)
 
 ## Excluded Findings
 
-{{If any findings were excluded from all plans, list them here with the reason.}}
+{{If any findings were excluded from all plans, list each one on its own line with the marker prefix and reason.}}
 
-| Finding | Reason |
-|---------|--------|
-| {{description}} | {{why excluded: duplicate / already resolved / not actionable / ambiguous}} |
+NOTICED BUT NOT TOUCHING: {{description}} -- {{why excluded: duplicate / already resolved / not actionable / ambiguous}}
 
 {{If no findings were excluded, write: "All findings were included in plans."}}
