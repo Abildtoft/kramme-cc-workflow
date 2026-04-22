@@ -951,34 +951,84 @@ function escapeTemplateLiteral(value) {
   return String(value).replace(/[`\\]/g, "\\$&").replace(/\$\{/g, "\\${")
 }
 
+const ROOT_PLACEHOLDER_BARE = "$CLAUDE_PLUGIN_ROOT"
+const ROOT_PLACEHOLDER_BRACED = "${CLAUDE_PLUGIN_ROOT}"
+
+function matchRootPlaceholder(value, index) {
+  if (value.startsWith(ROOT_PLACEHOLDER_BRACED, index)) {
+    return ROOT_PLACEHOLDER_BRACED
+  }
+  if (!value.startsWith(ROOT_PLACEHOLDER_BARE, index)) {
+    return null
+  }
+
+  const nextChar = value[index + ROOT_PLACEHOLDER_BARE.length]
+  if (nextChar && /[A-Za-z0-9_]/.test(nextChar)) {
+    return null
+  }
+  return ROOT_PLACEHOLDER_BARE
+}
+
+function isEscapedAt(value, index) {
+  let backslashCount = 0
+  for (let i = index - 1; i >= 0 && value[i] === "\\"; i -= 1) {
+    backslashCount += 1
+  }
+  return backslashCount % 2 === 1
+}
+
+function replaceUnescapedRootPlaceholders(value, replacement) {
+  const input = String(value ?? "")
+  let result = ""
+
+  for (let index = 0; index < input.length; ) {
+    const placeholder = matchRootPlaceholder(input, index)
+    if (placeholder && !isEscapedAt(input, index)) {
+      result += replacement
+      index += placeholder.length
+      continue
+    }
+
+    result += input[index]
+    index += 1
+  }
+
+  return result
+}
+
 function normalizeSingleQuotedRootPlaceholders(value) {
   const input = String(value ?? "")
-  const containsPlaceholderPattern = /\$\{CLAUDE_PLUGIN_ROOT\}|\$CLAUDE_PLUGIN_ROOT\b/
-  const placeholderPattern = /\$\{CLAUDE_PLUGIN_ROOT\}|\$CLAUDE_PLUGIN_ROOT\b/g
   let result = ""
   let inDouble = false
   let escaped = false
 
   const rewriteSingleQuotedSpan = (inner) => {
-    if (!containsPlaceholderPattern.test(inner)) {
+    const segments = []
+    let literalStart = 0
+    let foundPlaceholder = false
+
+    for (let index = 0; index < inner.length; ) {
+      const placeholder = matchRootPlaceholder(inner, index)
+      if (placeholder && !isEscapedAt(inner, index)) {
+        const prefix = inner.slice(literalStart, index)
+        if (prefix) {
+          segments.push(`'${prefix}'`)
+        }
+        segments.push(`"${placeholder}"`)
+        foundPlaceholder = true
+        index += placeholder.length
+        literalStart = index
+        continue
+      }
+
+      index += 1
+    }
+
+    if (!foundPlaceholder) {
       return `'${inner}'`
     }
 
-    const segments = []
-    let lastIndex = 0
-    let placeholderMatch
-
-    placeholderPattern.lastIndex = 0
-    while ((placeholderMatch = placeholderPattern.exec(inner)) !== null) {
-      const prefix = inner.slice(lastIndex, placeholderMatch.index)
-      if (prefix) {
-        segments.push(`'${prefix}'`)
-      }
-      segments.push(`"${placeholderMatch[0]}"`)
-      lastIndex = placeholderMatch.index + placeholderMatch[0].length
-    }
-
-    const suffix = inner.slice(lastIndex)
+    const suffix = inner.slice(literalStart)
     if (suffix) {
       segments.push(`'${suffix}'`)
     }
@@ -1096,9 +1146,7 @@ function renderHookCommand(value) {
   // surrounding literal shell text.
   const normalizedValue = normalizeSingleQuotedRootPlaceholders(value)
   const placeholder = "__CLAUDE_PLUGIN_ROOT__"
-  const withPlaceholder = normalizedValue
-    .replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, placeholder)
-    .replace(/\$CLAUDE_PLUGIN_ROOT\b/g, placeholder)
+  const withPlaceholder = replaceUnescapedRootPlaceholders(normalizedValue, placeholder)
   return renderHookRootReference(withPlaceholder, placeholder)
 }
 

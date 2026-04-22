@@ -2323,6 +2323,32 @@ MD
   [ "$status" -eq 1 ]
 }
 
+@test "opencode conversion preserves escaped literal CLAUDE_PLUGIN_ROOT markers" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_DIR="$TMP_DIR/escaped-literal-hook-plugin"
+  create_hook_fixture_plugin \
+    "$PLUGIN_DIR" \
+    "escaped-literal-hook-plugin" \
+    "quoted-hook" \
+    'bash -lc "printf %s \$CLAUDE_PLUGIN_ROOT"'
+
+  OUTPUT_ROOT="$TMP_DIR/opencode root"
+  run node "$SCRIPT" install "$PLUGIN_DIR" --to opencode --output "$OUTPUT_ROOT" --yes
+  [ "$status" -eq 0 ]
+
+  local converted_plugin="$OUTPUT_ROOT/.opencode/plugins/converted-hooks-escaped-literal-hook-plugin.ts"
+  [ -f "$converted_plugin" ]
+
+  run grep -nF 'printf %s \\$CLAUDE_PLUGIN_ROOT' "$converted_plugin"
+  [ "$status" -eq 0 ]
+
+  run grep -nF 'printf %s \\${claudePluginRoot}' "$converted_plugin"
+  [ "$status" -eq 1 ]
+}
+
 @test "opencode conversion bootstraps copied hook scripts for env -i wrappers" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
