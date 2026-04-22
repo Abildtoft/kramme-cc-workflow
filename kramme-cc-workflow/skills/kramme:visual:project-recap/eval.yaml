@@ -29,6 +29,10 @@ tasks:
     workspace:
       - src: SKILL.md
         dest: skills/kramme:visual:project-recap/SKILL.md
+      - src: references/
+        dest: skills/kramme:visual:project-recap/references/
+      - src: assets/
+        dest: skills/kramme:visual:project-recap/assets/
       - src: ../kramme:visual:diagram/SKILL.md
         dest: skills/kramme:visual:diagram/SKILL.md
       - src: ../kramme:visual:diagram/references/

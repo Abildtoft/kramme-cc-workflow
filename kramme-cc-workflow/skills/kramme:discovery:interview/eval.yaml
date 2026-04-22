@@ -35,6 +35,10 @@ tasks:
     workspace:
       - src: SKILL.md
         dest: skills/kramme:discovery:interview/SKILL.md
+      - src: references/
+        dest: skills/kramme:discovery:interview/references/
+      - src: assets/
+        dest: skills/kramme:discovery:interview/assets/
     graders:
       - type: llm_rubric
         rubric: |
