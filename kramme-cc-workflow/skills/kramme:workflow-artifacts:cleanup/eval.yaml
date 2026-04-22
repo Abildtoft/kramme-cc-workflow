@@ -26,18 +26,16 @@ tasks:
       - src: SKILL.md
         dest: skills/kramme:workflow-artifacts:cleanup/SKILL.md
     docker:
-      setup:
-        - |
-          cd /workspace/project
-          mkdir -p src
-          echo 'export const main = () => console.log("hello");' > src/index.ts
-          echo '{"name":"test-project","version":"1.0.0"}' > package.json
-          echo '# Code Review' > REVIEW_OVERVIEW.md
-          echo '# UX Review' > UX_REVIEW_OVERVIEW.md
-          echo '# Spec Audit Report' > AUDIT_SPEC_REPORT.md
-          echo '# QA Report' > QA_REPORT.md
-          echo '# Product Audit' > PRODUCT_AUDIT.md
-    workdir: project
+      setup: |
+        cd /workspace/project
+        mkdir -p src
+        echo 'export const main = () => console.log("hello");' > src/index.ts
+        echo '{"name":"test-project","version":"1.0.0"}' > package.json
+        echo '# Code Review' > REVIEW_OVERVIEW.md
+        echo '# UX Review' > UX_REVIEW_OVERVIEW.md
+        echo '# Spec Audit Report' > AUDIT_SPEC_REPORT.md
+        echo '# QA Report' > QA_REPORT.md
+        echo '# Product Audit' > PRODUCT_AUDIT.md
     graders:
       - type: deterministic
         run: bash graders/check.sh

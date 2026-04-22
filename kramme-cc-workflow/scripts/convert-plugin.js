@@ -337,6 +337,7 @@ async function loadClaudePlugin(inputPath) {
   const skills = await loadSkills(resolveComponentDirs(root, "skills", manifest.skills))
   const commands = deriveInvocableCommands(legacyCommands, skills)
   const hooks = await loadHooks(root, manifest.hooks)
+  const hookSourceDirs = await loadHookSourceDirs(root, manifest.hooks)
   const mcpServers = await loadMcpServers(root, manifest)
 
   return {
@@ -346,6 +347,7 @@ async function loadClaudePlugin(inputPath) {
     commands,
     skills,
     hooks,
+    hookSourceDirs,
     mcpServers,
   }
 }
@@ -489,6 +491,44 @@ async function loadHooks(root, hooksField) {
 
   if (hookConfigs.length === 0) return undefined
   return mergeHooks(hookConfigs)
+}
+
+async function loadHookSourceDirs(root, hooksField) {
+  const sourceDirs = []
+  const seen = new Set()
+
+  const addHookSourceDir = async (sourceDir) => {
+    if (!(await pathExists(sourceDir))) return
+
+    const relativeDir = path.relative(root, sourceDir)
+    if (!relativeDir || relativeDir.startsWith("..") || path.isAbsolute(relativeDir)) {
+      return
+    }
+
+    const normalizedRelativeDir = relativeDir.split(path.sep).join("/")
+    if (seen.has(normalizedRelativeDir)) return
+
+    sourceDirs.push({
+      sourceDir,
+      relativeDir: normalizedRelativeDir,
+    })
+    seen.add(normalizedRelativeDir)
+  }
+
+  const addHookConfigPath = async (configPath) => {
+    if (!(await pathExists(configPath))) return
+    await addHookSourceDir(path.dirname(configPath))
+  }
+
+  await addHookSourceDir(path.join(root, "hooks"))
+
+  if (typeof hooksField === "string" || Array.isArray(hooksField)) {
+    for (const hookPath of toPathList(hooksField)) {
+      await addHookConfigPath(resolveWithinRoot(root, hookPath, "hooks path"))
+    }
+  }
+
+  return sourceDirs
 }
 
 async function loadMcpServers(root, manifest) {
@@ -649,7 +689,7 @@ function convertClaudeToOpenCode(plugin, options) {
     agents: agentFiles,
     plugins,
     hookRootDir,
-    hookSourceDir: path.join(plugin.root, "hooks"),
+    hookSourceDirs: plugin.hookSourceDirs,
     skillDirs: skills.map((skill) => ({ sourceDir: skill.sourceDir, name: skill.name })),
   }
 }
@@ -1414,13 +1454,20 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
     recursive: true,
     confirmOptions: extraOpts.confirm,
   })
-  if (bundle.hookRootDir && bundle.hookSourceDir && await pathExists(bundle.hookSourceDir)) {
+  if (bundle.hookRootDir && bundle.hookSourceDirs && bundle.hookSourceDirs.length > 0) {
     const hookRootPath = path.join(paths.hookBundlesDir, bundle.hookRootDir)
     if (cleanedHooks) {
       await fs.rm(hookRootPath, { recursive: true, force: true })
     }
-    await copyDir(bundle.hookSourceDir, path.join(hookRootPath, "hooks"))
-    await bootstrapHookScripts(path.join(hookRootPath, "hooks"))
+    for (const hookSource of bundle.hookSourceDirs) {
+      const targetHookDir = resolveManagedChild(
+        hookRootPath,
+        hookSource.relativeDir,
+        "hook bundle directory",
+      )
+      await copyDir(hookSource.sourceDir, targetHookDir)
+      await bootstrapHookScripts(targetHookDir, hookRootPath)
+    }
   }
 
   const skillsRoot = paths.skillsDir
