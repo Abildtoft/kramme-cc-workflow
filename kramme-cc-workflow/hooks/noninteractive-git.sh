@@ -403,12 +403,176 @@ clear_git_editor_env() {
     has_git_sequence_editor=false
 }
 
+array_contains() {
+    local wanted="$1"
+    shift
+    local value
+
+    for value in "$@"; do
+        if [ "$value" = "$wanted" ]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+segment_command_substitution_indexes() {
+    local token remainder index
+    local indexes=()
+
+    for token in "$@"; do
+        remainder="$token"
+        while [[ "$remainder" =~ __CMD_SUBST_([0-9]+)__ ]]; do
+            index="${BASH_REMATCH[1]}"
+            if ! array_contains "$index" "${indexes[@]}"; then
+                indexes+=("$index")
+            fi
+            remainder="${remainder#*"${BASH_REMATCH[0]}"}"
+        done
+    done
+
+    printf '%s\n' "${indexes[@]}"
+}
+
+control_token_preserves_shell_env() {
+    case "$1" in
+        ";"|"&&"|"||")
+            return 0
+            ;;
+    esac
+    return 1
+}
+
+apply_exported_editor_env_segment() {
+    local inherited_has_git_editor="${1:-false}"
+    local inherited_has_git_sequence_editor="${2:-false}"
+    local inherited_shell_has_git_editor="${3:-$inherited_has_git_editor}"
+    local inherited_shell_has_git_sequence_editor="${4:-$inherited_has_git_sequence_editor}"
+    local value token
+    local shell_env_persists=true
+    local pending_shell_has_git_editor=""
+    local pending_shell_has_git_sequence_editor=""
+
+    shift 4
+
+    PARSED_PERSISTED_HAS_GIT_EDITOR="$inherited_has_git_editor"
+    PARSED_PERSISTED_HAS_GIT_SEQUENCE_EDITOR="$inherited_has_git_sequence_editor"
+    PARSED_PERSISTED_SHELL_HAS_GIT_EDITOR="$inherited_shell_has_git_editor"
+    PARSED_PERSISTED_SHELL_HAS_GIT_SEQUENCE_EDITOR="$inherited_shell_has_git_sequence_editor"
+
+    while [ $# -gt 0 ] && is_shell_keyword_token "$1"; do
+        if [ "$(strip_wrapping_quotes "$1")" = "(" ]; then
+            shell_env_persists=false
+        fi
+        shift
+    done
+
+    while [ $# -gt 0 ] && token_is_assignment "$(strip_wrapping_quotes "$1")"; do
+        token="$(strip_wrapping_quotes "$1")"
+        case "${token%%=*}" in
+            GIT_EDITOR)
+                pending_shell_has_git_editor=true
+                ;;
+            GIT_SEQUENCE_EDITOR)
+                pending_shell_has_git_sequence_editor=true
+                ;;
+        esac
+        shift
+    done
+
+    if [ $# -eq 0 ]; then
+        if [ "$shell_env_persists" = "true" ]; then
+            [ -n "$pending_shell_has_git_editor" ] && PARSED_PERSISTED_SHELL_HAS_GIT_EDITOR="$pending_shell_has_git_editor"
+            [ -n "$pending_shell_has_git_sequence_editor" ] && PARSED_PERSISTED_SHELL_HAS_GIT_SEQUENCE_EDITOR="$pending_shell_has_git_sequence_editor"
+        fi
+        return
+    fi
+
+    [ "$shell_env_persists" = "true" ] || return
+    [ "$(token_basename "$1")" = "export" ] || return
+
+    [ -n "$pending_shell_has_git_editor" ] && PARSED_PERSISTED_SHELL_HAS_GIT_EDITOR="$pending_shell_has_git_editor"
+    [ -n "$pending_shell_has_git_sequence_editor" ] && PARSED_PERSISTED_SHELL_HAS_GIT_SEQUENCE_EDITOR="$pending_shell_has_git_sequence_editor"
+    shift
+
+    while [ $# -gt 0 ]; do
+        value="$(strip_wrapping_quotes "$1")"
+        case "$value" in
+            --)
+                shift
+                break
+                ;;
+            -n)
+                shift
+                if [ $# -gt 0 ]; then
+                    case "$(strip_wrapping_quotes "$1")" in
+                        GIT_EDITOR)
+                            PARSED_PERSISTED_HAS_GIT_EDITOR=false
+                            ;;
+                        GIT_SEQUENCE_EDITOR)
+                            PARSED_PERSISTED_HAS_GIT_SEQUENCE_EDITOR=false
+                            ;;
+                    esac
+                    shift
+                fi
+                ;;
+            -n*)
+                case "$(strip_wrapping_quotes "${value#-n}")" in
+                    GIT_EDITOR)
+                        PARSED_PERSISTED_HAS_GIT_EDITOR=false
+                        ;;
+                    GIT_SEQUENCE_EDITOR)
+                        PARSED_PERSISTED_HAS_GIT_SEQUENCE_EDITOR=false
+                        ;;
+                esac
+                shift
+                ;;
+            [A-Za-z_][A-Za-z0-9_]*=*)
+                case "${value%%=*}" in
+                    GIT_EDITOR)
+                        PARSED_PERSISTED_SHELL_HAS_GIT_EDITOR=true
+                        PARSED_PERSISTED_HAS_GIT_EDITOR=true
+                        ;;
+                    GIT_SEQUENCE_EDITOR)
+                        PARSED_PERSISTED_SHELL_HAS_GIT_SEQUENCE_EDITOR=true
+                        PARSED_PERSISTED_HAS_GIT_SEQUENCE_EDITOR=true
+                        ;;
+                esac
+                shift
+                ;;
+            [A-Za-z_][A-Za-z0-9_]*)
+                case "$value" in
+                    GIT_EDITOR)
+                        if [ "$PARSED_PERSISTED_SHELL_HAS_GIT_EDITOR" = "true" ]; then
+                            PARSED_PERSISTED_HAS_GIT_EDITOR=true
+                        fi
+                        ;;
+                    GIT_SEQUENCE_EDITOR)
+                        if [ "$PARSED_PERSISTED_SHELL_HAS_GIT_SEQUENCE_EDITOR" = "true" ]; then
+                            PARSED_PERSISTED_HAS_GIT_SEQUENCE_EDITOR=true
+                        fi
+                        ;;
+                esac
+                shift
+                ;;
+            -*)
+                shift
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+}
+
 evaluate_find_exec_segments() {
-    local has_git_editor="${1:-false}"
-    local has_git_sequence_editor="${2:-false}"
-    shift 2
+    local inherited_has_git_editor="${1:-false}"
+    local inherited_has_git_sequence_editor="${2:-false}"
     local value reason
     local exec_segment=()
+
+    shift 2
 
     while [ $# -gt 0 ]; do
         value="$(strip_wrapping_quotes "$1")"
@@ -426,7 +590,12 @@ evaluate_find_exec_segments() {
                     exec_segment+=("$1")
                     shift
                 done
-                reason="$(evaluate_simple_git_segment_with_env "$has_git_editor" "$has_git_sequence_editor" "${exec_segment[@]}")"
+                reason="$(
+                    evaluate_simple_git_segment \
+                        "$inherited_has_git_editor" \
+                        "$inherited_has_git_sequence_editor" \
+                        "${exec_segment[@]}"
+                )"
                 if [ "$reason" != "__ALLOW__" ]; then
                     printf '%s\n' "$reason"
                     return
@@ -440,14 +609,13 @@ evaluate_find_exec_segments() {
 }
 
 evaluate_simple_git_segment() {
-    evaluate_simple_git_segment_with_env false false "$@"
-}
-
-evaluate_simple_git_segment_with_env() {
-    local has_git_editor="${1:-false}"
-    local has_git_sequence_editor="${2:-false}"
-    shift 2
+    local inherited_has_git_editor="${1:-false}"
+    local inherited_has_git_sequence_editor="${2:-false}"
     local token base value subcmd inline_command reason
+    local has_git_editor="$inherited_has_git_editor"
+    local has_git_sequence_editor="$inherited_has_git_sequence_editor"
+
+    shift 2
 
     [ $# -eq 0 ] && {
         printf '__ALLOW__\n'
@@ -604,7 +772,7 @@ evaluate_simple_git_segment_with_env() {
             sh|bash|zsh|dash|ksh)
                 shift
                 if inline_command="$(extract_shell_inline_command "$@")"; then
-                    if [ "$(fallback_noninteractive_reason_with_env "$has_git_editor" "$has_git_sequence_editor" "$inline_command")" != "__ALLOW__" ]; then
+                    if [ "$(fallback_noninteractive_reason "$inline_command" "$has_git_editor" "$has_git_sequence_editor")" != "__ALLOW__" ]; then
                         printf '%s\n' "$PARSE_ERROR_REASON"
                         return
                     fi
@@ -716,14 +884,20 @@ evaluate_simple_git_segment_with_env() {
 }
 
 fallback_noninteractive_reason() {
-    fallback_noninteractive_reason_with_env false false "$1"
-}
-
-fallback_noninteractive_reason_with_env() {
-    local inherited_git_editor="${1:-false}"
-    local inherited_git_sequence_editor="${2:-false}"
-    local raw_command="$3"
+    local raw_command="$1"
+    local inherited_has_git_editor="${2:-false}"
+    local inherited_has_git_sequence_editor="${3:-false}"
     local token_json token_type token_value reason substitution
+    local has_git_editor="$inherited_has_git_editor"
+    local has_git_sequence_editor="$inherited_has_git_sequence_editor"
+    local shell_has_git_editor="$inherited_has_git_editor"
+    local shell_has_git_sequence_editor="$inherited_has_git_sequence_editor"
+    local segment_input_has_git_editor
+    local segment_input_has_git_sequence_editor
+    local segment_input_shell_has_git_editor
+    local segment_input_shell_has_git_sequence_editor
+    local segment_substitution_indexes=()
+    local used_substitution_indexes=()
     local segment=()
     local sanitized_command
     local substitutions=()
@@ -736,14 +910,6 @@ fallback_noninteractive_reason_with_env() {
     sanitized_command="$SANITIZED_COMMAND"
     substitutions=("${COMMAND_SUBSTITUTIONS[@]}")
 
-    for substitution in "${substitutions[@]}"; do
-        reason="$(fallback_noninteractive_reason_with_env "$inherited_git_editor" "$inherited_git_sequence_editor" "$substitution")"
-        if [ "$reason" != "__ALLOW__" ]; then
-            printf '%s\n' "$reason"
-            return
-        fi
-    done
-
     local tokenized
     if ! tokenized="$(shell_tokenize "$sanitized_command" true)"; then
         printf '%s\n' "$PARSE_ERROR_REASON"
@@ -755,10 +921,46 @@ fallback_noninteractive_reason_with_env() {
         token_type="$(printf '%s\n' "$token_json" | jq -r '.type')"
         token_value="$(printf '%s\n' "$token_json" | jq -r '.value')"
         if [ "$token_type" = "control" ]; then
-            reason="$(evaluate_simple_git_segment_with_env "$inherited_git_editor" "$inherited_git_sequence_editor" "${segment[@]}")"
+            segment_input_has_git_editor="$has_git_editor"
+            segment_input_has_git_sequence_editor="$has_git_sequence_editor"
+            segment_input_shell_has_git_editor="$shell_has_git_editor"
+            segment_input_shell_has_git_sequence_editor="$shell_has_git_sequence_editor"
+            segment_substitution_indexes=()
+            while IFS= read -r substitution; do
+                [ -z "$substitution" ] && continue
+                segment_substitution_indexes+=("$substitution")
+            done < <(segment_command_substitution_indexes "${segment[@]}")
+            for substitution in "${segment_substitution_indexes[@]}"; do
+                if ! array_contains "$substitution" "${used_substitution_indexes[@]}"; then
+                    used_substitution_indexes+=("$substitution")
+                fi
+                reason="$(fallback_noninteractive_reason "${substitutions[$substitution]}" "$segment_input_has_git_editor" "$segment_input_has_git_sequence_editor")"
+                if [ "$reason" != "__ALLOW__" ]; then
+                    printf '%s\n' "$reason"
+                    return
+                fi
+            done
+            apply_exported_editor_env_segment \
+                "$has_git_editor" \
+                "$has_git_sequence_editor" \
+                "$shell_has_git_editor" \
+                "$shell_has_git_sequence_editor" \
+                "${segment[@]}"
+            reason="$(evaluate_simple_git_segment "$has_git_editor" "$has_git_sequence_editor" "${segment[@]}")"
             if [ "$reason" != "__ALLOW__" ]; then
                 printf '%s\n' "$reason"
                 return
+            fi
+            if control_token_preserves_shell_env "$token_value"; then
+                has_git_editor="$PARSED_PERSISTED_HAS_GIT_EDITOR"
+                has_git_sequence_editor="$PARSED_PERSISTED_HAS_GIT_SEQUENCE_EDITOR"
+                shell_has_git_editor="$PARSED_PERSISTED_SHELL_HAS_GIT_EDITOR"
+                shell_has_git_sequence_editor="$PARSED_PERSISTED_SHELL_HAS_GIT_SEQUENCE_EDITOR"
+            else
+                has_git_editor="$segment_input_has_git_editor"
+                has_git_sequence_editor="$segment_input_has_git_sequence_editor"
+                shell_has_git_editor="$segment_input_shell_has_git_editor"
+                shell_has_git_sequence_editor="$segment_input_shell_has_git_sequence_editor"
             fi
             segment=()
             continue
@@ -768,7 +970,46 @@ fallback_noninteractive_reason_with_env() {
 $tokenized
 EOF
 
-    evaluate_simple_git_segment_with_env "$inherited_git_editor" "$inherited_git_sequence_editor" "${segment[@]}"
+    segment_substitution_indexes=()
+    while IFS= read -r substitution; do
+        [ -z "$substitution" ] && continue
+        segment_substitution_indexes+=("$substitution")
+    done < <(segment_command_substitution_indexes "${segment[@]}")
+    for substitution in "${segment_substitution_indexes[@]}"; do
+        if ! array_contains "$substitution" "${used_substitution_indexes[@]}"; then
+            used_substitution_indexes+=("$substitution")
+        fi
+        reason="$(fallback_noninteractive_reason "${substitutions[$substitution]}" "$has_git_editor" "$has_git_sequence_editor")"
+        if [ "$reason" != "__ALLOW__" ]; then
+            printf '%s\n' "$reason"
+            return
+        fi
+    done
+
+    apply_exported_editor_env_segment \
+        "$has_git_editor" \
+        "$has_git_sequence_editor" \
+        "$shell_has_git_editor" \
+        "$shell_has_git_sequence_editor" \
+        "${segment[@]}"
+    reason="$(evaluate_simple_git_segment "$has_git_editor" "$has_git_sequence_editor" "${segment[@]}")"
+    if [ "$reason" != "__ALLOW__" ]; then
+        printf '%s\n' "$reason"
+        return
+    fi
+
+    for substitution in "${!substitutions[@]}"; do
+        if array_contains "$substitution" "${used_substitution_indexes[@]}"; then
+            continue
+        fi
+        reason="$(fallback_noninteractive_reason "${substitutions[$substitution]}" "$inherited_has_git_editor" "$inherited_has_git_sequence_editor")"
+        if [ "$reason" != "__ALLOW__" ]; then
+            printf '%s\n' "$reason"
+            return
+        fi
+    done
+
+    printf '__ALLOW__\n'
 }
 
 # If python3 is unavailable, fall back to a conservative shell parser.
@@ -792,10 +1033,9 @@ PARSE_ERROR_REASON = (
 )
 
 CONTROL_TOKENS = {";", "&&", "||", "|", "|&", "&"}
+ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
 ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
-HEREDOC_SINGLE_QUOTED = re.compile(r"<<-?\s*'([^']+)'")
-HEREDOC_DOUBLE_QUOTED = re.compile(r'<<-?\s*"([^"]+)"')
-HEREDOC_UNQUOTED = re.compile(r"<<-?\s*([^\s'\";&()<>|]+)")
+HEREDOC_START = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
 SHELL_KEYWORDS = {
     "!",
     "if",
@@ -856,10 +1096,6 @@ def _extract_body_substitutions(line):
     while idx < length:
         ch = line[idx]
         if ch == "$" and idx + 1 < length and line[idx + 1] == "(":
-            if idx + 2 < length and line[idx + 2] == "(":
-                arithmetic_subs, idx = extract_arithmetic_substitutions(line, idx)
-                subs.extend(arithmetic_subs)
-                continue
             inner, idx = read_dollar_substitution(line, idx)
             subs.append(inner)
             continue
@@ -869,267 +1105,6 @@ def _extract_body_substitutions(line):
             continue
         idx += 1
     return subs
-
-
-def read_dollar_substitution_end(command, start):
-    depth = 1
-    idx = start + 2
-    in_single = False
-    in_double = False
-    escaped = False
-
-    while idx < len(command):
-        char = command[idx]
-
-        if escaped:
-            escaped = False
-            idx += 1
-            continue
-
-        if char == "\\" and not in_single:
-            escaped = True
-            idx += 1
-            continue
-
-        if char == "'" and not in_double:
-            in_single = not in_single
-            idx += 1
-            continue
-
-        if char == '"' and not in_single:
-            in_double = not in_double
-            idx += 1
-            continue
-
-        if not in_single and char == "$" and idx + 1 < len(command) and command[idx + 1] == "(":
-            if idx + 2 < len(command) and command[idx + 2] == "(":
-                idx = read_double_paren_end(command, idx, 3)
-            else:
-                idx = read_dollar_substitution_end(command, idx)
-            continue
-
-        if not in_single and char == chr(96):
-            idx = read_backtick_substitution_end(command, idx)
-            continue
-
-        if not in_single and not in_double and char == ")":
-            depth -= 1
-            idx += 1
-            if depth == 0:
-                return idx
-            continue
-
-        idx += 1
-
-    raise ValueError("Unterminated command substitution.")
-
-
-def read_backtick_substitution_end(command, start):
-    idx = start + 1
-    escaped = False
-
-    while idx < len(command):
-        char = command[idx]
-
-        if escaped:
-            escaped = False
-            idx += 1
-            continue
-
-        if char == "\\":
-            escaped = True
-            idx += 1
-            continue
-
-        if char == chr(96):
-            return idx + 1
-
-        idx += 1
-
-    raise ValueError("Unterminated backtick command substitution.")
-
-
-def read_double_paren_end(command, start, prefix_length):
-    idx = start + prefix_length
-    depth = 1
-    in_single = False
-    in_double = False
-    escaped = False
-
-    while idx < len(command):
-        char = command[idx]
-
-        if escaped:
-            escaped = False
-            idx += 1
-            continue
-
-        if char == "\\" and not in_single:
-            escaped = True
-            idx += 1
-            continue
-
-        if char == "'" and not in_double:
-            in_single = not in_single
-            idx += 1
-            continue
-
-        if char == '"' and not in_single:
-            in_double = not in_double
-            idx += 1
-            continue
-
-        if not in_single and char == "$" and idx + 1 < len(command) and command[idx + 1] == "(":
-            if idx + 2 < len(command) and command[idx + 2] == "(":
-                idx = read_double_paren_end(command, idx, 3)
-            else:
-                idx = read_dollar_substitution_end(command, idx)
-            continue
-
-        if not in_single and char == chr(96):
-            idx = read_backtick_substitution_end(command, idx)
-            continue
-
-        if not in_single and not in_double:
-            if char == "(":
-                depth += 1
-                idx += 1
-                continue
-
-            if char == ")":
-                depth -= 1
-                if depth == 0:
-                    if idx + 1 < len(command) and command[idx + 1] == ")":
-                        return idx + 2
-                    raise ValueError("Unterminated arithmetic expression.")
-
-        idx += 1
-
-    raise ValueError("Unterminated arithmetic expression.")
-
-
-def extract_arithmetic_substitutions(command, start, end=None):
-    if end is None:
-        end = read_double_paren_end(command, start, 3)
-
-    subs = []
-    idx = start + 3
-    limit = end - 2
-    in_single = False
-    in_double = False
-    escaped = False
-
-    while idx < limit:
-        char = command[idx]
-
-        if escaped:
-            escaped = False
-            idx += 1
-            continue
-
-        if char == "\\" and not in_single:
-            escaped = True
-            idx += 1
-            continue
-
-        if char == "'" and not in_double:
-            in_single = not in_single
-            idx += 1
-            continue
-
-        if char == '"' and not in_single:
-            in_double = not in_double
-            idx += 1
-            continue
-
-        if in_single or in_double:
-            idx += 1
-            continue
-
-        if char == "$" and idx + 1 < limit and command[idx + 1] == "(":
-            if idx + 2 < limit and command[idx + 2] == "(":
-                nested_end = read_double_paren_end(command, idx, 3)
-                nested_subs, idx = extract_arithmetic_substitutions(command, idx, nested_end)
-                subs.extend(nested_subs)
-                continue
-            inner, idx = read_dollar_substitution(command, idx)
-            subs.append(inner)
-            continue
-
-        if char == chr(96):
-            inner, idx = read_backtick_substitution(command, idx)
-            subs.append(inner)
-            continue
-
-        idx += 1
-
-    return subs, end
-
-
-def match_heredoc_start(line):
-    in_single = False
-    in_double = False
-    escaped = False
-
-    idx = 0
-    while idx < len(line):
-        char = line[idx]
-        if escaped:
-            escaped = False
-            idx += 1
-            continue
-
-        if char == "\\" and not in_single:
-            escaped = True
-            idx += 1
-            continue
-
-        if char == "'" and not in_double:
-            in_single = not in_single
-            idx += 1
-            continue
-
-        if char == '"' and not in_single:
-            in_double = not in_double
-            idx += 1
-            continue
-
-        if in_single or in_double:
-            idx += 1
-            continue
-
-        if char == "$" and idx + 1 < len(line) and line[idx + 1] == "(":
-            if idx + 2 < len(line) and line[idx + 2] == "(":
-                idx = read_double_paren_end(line, idx, 3)
-            else:
-                idx = read_dollar_substitution_end(line, idx)
-            continue
-
-        if char == "(" and idx + 1 < len(line) and line[idx + 1] == "(":
-            idx = read_double_paren_end(line, idx, 2)
-            continue
-
-        if char == chr(96):
-            idx = read_backtick_substitution_end(line, idx)
-            continue
-
-        if not line.startswith("<<", idx):
-            idx += 1
-            continue
-
-        candidate = line[idx:]
-        for pattern, is_quoted in (
-            (HEREDOC_SINGLE_QUOTED, True),
-            (HEREDOC_DOUBLE_QUOTED, True),
-            (HEREDOC_UNQUOTED, False),
-        ):
-            match = pattern.match(candidate)
-            if match is not None:
-                return match.group(1), is_quoted, match.group(0).startswith("<<-")
-
-        idx += 1
-
-    return None, False, False
 
 
 def strip_heredoc_bodies(command):
@@ -1162,9 +1137,11 @@ def strip_heredoc_bodies(command):
                 stripped_lines.append("")
             continue
 
-        heredoc_start = match_heredoc_start(line)
-        if heredoc_start[0] is not None:
-            delimiter, is_quoted, is_dashed = heredoc_start
+        match = HEREDOC_START.search(line)
+        if match is not None:
+            delimiter = match.group(2)
+            is_quoted = match.group(1) != ""
+            is_dashed = match.group(0).startswith("<<-")
         stripped_lines.append(line)
 
     return "".join(stripped_lines), extracted
@@ -1210,35 +1187,17 @@ def tokenize(command):
     return list(lexer)
 
 
-def token_has_control_operator(token):
-    if token in CONTROL_TOKENS:
-        return True
-
-    if any(char not in "()|&;" for char in token):
-        return False
-
-    idx = 0
-    while idx < len(token):
-        if token.startswith("&&", idx) or token.startswith("||", idx) or token.startswith("|&", idx):
-            return True
-        if token[idx] in ";|&":
-            return True
-        idx += 1
-
-    return False
-
-
 def split_segments(tokens):
     current = []
     for token in tokens:
-        if token_has_control_operator(token):
+        if token in CONTROL_TOKENS:
             if current:
-                yield current
+                yield current, token
                 current = []
             continue
         current.append(token)
     if current:
-        yield current
+        yield current, None
 
 
 def is_assignment(token):
@@ -1280,12 +1239,7 @@ def read_dollar_substitution(command, start):
             idx += 1
             continue
 
-        if not in_single and command.startswith("$" + "(", idx):
-            if idx + 2 < len(command) and command[idx + 2] == "(":
-                end = read_double_paren_end(command, idx, 3)
-                inner.append(command[idx:end])
-                idx = end
-                continue
+        if not in_single and not in_double and command.startswith("$" + "(", idx):
             nested_inner, idx = read_dollar_substitution(command, idx)
             inner.append("$" + "(" + nested_inner + ")")
             continue
@@ -1369,12 +1323,6 @@ def replace_command_substitutions(command):
             continue
 
         if not in_single and command.startswith("$" + "(", idx):
-            if idx + 2 < len(command) and command[idx + 2] == "(":
-                arithmetic_subs, end = extract_arithmetic_substitutions(command, idx)
-                substitutions.extend(arithmetic_subs)
-                result.append(command[idx:end])
-                idx = end
-                continue
             inner, idx = read_dollar_substitution(command, idx)
             substitutions.append(inner)
             result.append(f"__CMD_SUBST_{len(substitutions) - 1}__")
@@ -1440,6 +1388,81 @@ def clear_editor_env(env):
 def unset_editor_env(env, key):
     if key in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
         env.pop(key, None)
+
+
+def extract_placeholder_indexes(tokens):
+    indexes = []
+    seen = set()
+    for token in tokens:
+        for match in re.finditer(r"__CMD_SUBST_(\d+)__", token):
+            index = int(match.group(1))
+            if index not in seen:
+                seen.add(index)
+                indexes.append(index)
+    return indexes
+
+
+def apply_exported_editor_env(tokens, inherited_env=None, inherited_shell_vars=None):
+    env = dict(inherited_env or {})
+    shell_vars = dict(inherited_shell_vars or env)
+    idx = 0
+    shell_env_persists = True
+    pending_shell_vars = {}
+
+    while idx < len(tokens) and tokens[idx] in SHELL_KEYWORDS:
+        if tokens[idx] == "(":
+            shell_env_persists = False
+        idx += 1
+
+    while idx < len(tokens) and is_assignment(tokens[idx]):
+        key, value = tokens[idx].split("=", 1)
+        if key in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
+            pending_shell_vars[key] = value
+        idx += 1
+
+    if idx >= len(tokens):
+        if shell_env_persists:
+            shell_vars.update(pending_shell_vars)
+        return env, shell_vars
+
+    if not shell_env_persists or basename(tokens[idx]) != "export":
+        return env, shell_vars
+
+    shell_vars.update(pending_shell_vars)
+
+    idx += 1
+    while idx < len(tokens):
+        token = tokens[idx]
+        if token == "--":
+            idx += 1
+            break
+        if token == "-n":
+            if idx + 1 < len(tokens):
+                unset_editor_env(env, tokens[idx + 1])
+            idx += 2
+            continue
+        if token.startswith("-n") and token != "-n":
+            unset_editor_env(env, token[2:])
+            idx += 1
+            continue
+        if is_assignment(token):
+            key, value = token.split("=", 1)
+            if key in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
+                shell_vars[key] = value
+                env[key] = value
+            idx += 1
+            continue
+        if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", token):
+            if token in shell_vars and token in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
+                env[token] = shell_vars[token]
+            idx += 1
+            continue
+        if token.startswith("-"):
+            idx += 1
+            continue
+        break
+
+    return env, shell_vars
 
 
 def parse_env_wrapped_segment(tokens, inherited_env=None):
@@ -1665,14 +1688,49 @@ def parse_env_wrapped_segment(tokens, inherited_env=None):
     }
 
 
-def parse_git_commands(command, inherited_env=None):
-    sanitized_command, substitutions = replace_command_substitutions(command)
+def parse_git_commands(command, inherited_env=None, inherited_shell_vars=None):
+    sanitized_command, raw_substitutions = replace_command_substitutions(command)
     tokens = tokenize(sanitized_command)
     parsed_commands = []
-    for segment in split_segments(tokens):
-        parsed = parse_env_wrapped_segment(segment, inherited_env=inherited_env)
+    substitutions = []
+    current_env = dict(inherited_env or {})
+    current_shell_vars = dict(inherited_shell_vars or current_env)
+    used_placeholder_indexes = set()
+    for segment, separator in split_segments(tokens):
+        segment_env = dict(current_env)
+        segment_shell_vars = dict(current_shell_vars)
+        for placeholder_index in extract_placeholder_indexes(segment):
+            used_placeholder_indexes.add(placeholder_index)
+            substitutions.append(
+                {
+                    "command": raw_substitutions[placeholder_index],
+                    "env": dict(segment_env),
+                }
+            )
+        persisted_env, persisted_shell_vars = apply_exported_editor_env(
+            segment,
+            inherited_env=segment_env,
+            inherited_shell_vars=segment_shell_vars,
+        )
+        parsed = parse_env_wrapped_segment(segment, inherited_env=persisted_env)
         if parsed is not None:
             parsed_commands.append(parsed)
+        if separator in ENV_PERSISTING_CONTROL_TOKENS:
+            current_env = persisted_env
+            current_shell_vars = persisted_shell_vars
+        else:
+            current_env = segment_env
+            current_shell_vars = segment_shell_vars
+
+    for index, substitution in enumerate(raw_substitutions):
+        if index in used_placeholder_indexes:
+            continue
+        substitutions.append(
+            {
+                "command": substitution,
+                "env": dict(inherited_env or {}),
+            }
+        )
     return parsed_commands, substitutions
 
 
@@ -1857,7 +1915,11 @@ def evaluate(parsed_commands, substitutions, depth=0):
 
     for substitution in substitutions:
         try:
-            nested_commands, nested_substitutions = parse_git_commands(substitution)
+            nested_commands, nested_substitutions = parse_git_commands(
+                substitution["command"],
+                inherited_env=substitution["env"],
+                inherited_shell_vars=substitution["env"],
+            )
         except ValueError:
             return PARSE_ERROR_REASON
         reason = evaluate(nested_commands, nested_substitutions, depth=depth + 1)
@@ -1871,7 +1933,11 @@ def evaluate(parsed_commands, substitutions, depth=0):
 
         if subcmd == "__shell_c__":
             try:
-                nested_commands, nested_substitutions = parse_git_commands(args[0], inherited_env=env)
+                nested_commands, nested_substitutions = parse_git_commands(
+                    args[0],
+                    inherited_env=env,
+                    inherited_shell_vars=env,
+                )
             except ValueError:
                 return PARSE_ERROR_REASON
             reason = evaluate(nested_commands, nested_substitutions, depth=depth + 1)

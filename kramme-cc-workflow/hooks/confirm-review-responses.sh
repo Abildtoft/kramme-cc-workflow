@@ -117,6 +117,15 @@ contains_command_substitution_token() {
     return 1
 }
 
+control_token_preserves_shell_env() {
+    case "$1" in
+        ";"|"&&"|"||")
+            return 0
+            ;;
+    esac
+    return 1
+}
+
 context_has_dynamic_repo_selection() {
     # Any prefix arg that still carries a command-substitution placeholder
     # would be expanded by git when we replay it (see also git -c
@@ -184,6 +193,122 @@ remove_git_env_assignment() {
 
 clear_git_env_assignments() {
     git_env=()
+}
+
+append_shell_git_env_assignment() {
+    local assignment="$1"
+    local key="${assignment%%=*}"
+    local value
+
+    should_replay_git_env "$key" || return 0
+    value="$(strip_wrapping_quotes "${assignment#*=}")"
+    remove_shell_git_env_assignment "$key"
+    shell_git_env+=("$key=$value")
+}
+
+remove_shell_git_env_assignment() {
+    local key="$1"
+    local assignment filtered=()
+
+    for assignment in "${shell_git_env[@]}"; do
+        if [ "${assignment%%=*}" != "$key" ]; then
+            filtered+=("$assignment")
+        fi
+    done
+
+    shell_git_env=("${filtered[@]}")
+}
+
+clear_shell_git_env_assignments() {
+    shell_git_env=()
+}
+
+append_shell_git_var_assignment() {
+    local assignment="$1"
+    local key="${assignment%%=*}"
+    local value
+
+    should_replay_git_env "$key" || return 0
+    value="$(strip_wrapping_quotes "${assignment#*=}")"
+    remove_shell_git_var_assignment "$key"
+    shell_git_vars+=("$key=$value")
+}
+
+remove_shell_git_var_assignment() {
+    local key="$1"
+    local assignment filtered=()
+
+    for assignment in "${shell_git_vars[@]}"; do
+        if [ "${assignment%%=*}" != "$key" ]; then
+            filtered+=("$assignment")
+        fi
+    done
+
+    shell_git_vars=("${filtered[@]}")
+}
+
+find_shell_git_var_assignment() {
+    local key="$1"
+    local assignment
+
+    for assignment in "${shell_git_vars[@]}"; do
+        if [ "${assignment%%=*}" = "$key" ]; then
+            printf '%s\n' "$assignment"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+merge_shell_git_var_assignments() {
+    local assignment
+
+    for assignment in "$@"; do
+        append_shell_git_var_assignment "$assignment"
+    done
+}
+
+export_shell_git_var_assignment() {
+    local key="$1"
+    local assignment
+
+    if assignment="$(find_shell_git_var_assignment "$key")"; then
+        append_shell_git_env_assignment "$assignment"
+        append_git_env_assignment "$assignment"
+    fi
+}
+
+array_contains() {
+    local wanted="$1"
+    shift
+    local value
+
+    for value in "$@"; do
+        if [ "$value" = "$wanted" ]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+segment_command_substitution_indexes() {
+    local token remainder index
+    local indexes=()
+
+    for token in "$@"; do
+        remainder="$token"
+        while [[ "$remainder" =~ ${COMMAND_SUBSTITUTION_TOKEN}([0-9]+)__ ]]; do
+            index="${BASH_REMATCH[1]}"
+            if ! array_contains "$index" "${indexes[@]}"; then
+                indexes+=("$index")
+            fi
+            remainder="${remainder#*"${BASH_REMATCH[0]}"}"
+        done
+    done
+
+    printf '%s\n' "${indexes[@]}"
 }
 
 collect_current_git_env_assignments() {
@@ -266,12 +391,21 @@ emit_git_commit_context() {
 parse_git_commit_segment_fallback() {
     local prefix_git_args="$1"
     local prefix_git_env="$2"
-    shift 2
+    local prefix_shell_git_vars="${3:-$2}"
+    shift 3
 
     local token inline_command
     local saw_git=false
     local git_args=()
     local git_env=()
+    local shell_git_env=()
+    local shell_git_vars=()
+    local shell_env_persists=true
+    local pending_shell_git_vars=()
+
+    PARSED_SEGMENT_CONTEXT_LINES=""
+    PARSED_SEGMENT_PERSISTED_GIT_ENV="$prefix_git_env"
+    PARSED_SEGMENT_PERSISTED_GIT_VARS="$prefix_shell_git_vars"
 
     while IFS= read -r token; do
         [ -z "$token" ] && continue
@@ -282,19 +416,45 @@ EOF
 
     while IFS= read -r token; do
         [ -z "$token" ] && continue
-        git_env+=("$token")
+        shell_git_env+=("$token")
     done <<EOF
 $prefix_git_env
 EOF
 
+    while IFS= read -r token; do
+        [ -z "$token" ] && continue
+        shell_git_vars+=("$token")
+    done <<EOF
+$prefix_shell_git_vars
+EOF
+
+    git_env=("${shell_git_env[@]}")
+
     while [ $# -gt 0 ] && is_shell_keyword_token "$1"; do
+        if [ "$(strip_wrapping_quotes "$1")" = "(" ]; then
+            shell_env_persists=false
+        fi
         shift
     done
 
     while [ $# -gt 0 ] && token_is_assignment "$(strip_wrapping_quotes "$1")"; do
-        append_git_env_assignment "$(strip_wrapping_quotes "$1")"
+        token="$(strip_wrapping_quotes "$1")"
+        append_git_env_assignment "$token"
+        pending_shell_git_vars+=("$token")
         shift
     done
+
+    if [ $# -eq 0 ]; then
+        merge_shell_git_var_assignments "${pending_shell_git_vars[@]}"
+        if [ "$shell_env_persists" = "true" ]; then
+            PARSED_SEGMENT_PERSISTED_GIT_ENV="$(printf '%s\n' "${shell_git_env[@]}")"
+            PARSED_SEGMENT_PERSISTED_GIT_VARS="$(printf '%s\n' "${shell_git_vars[@]}")"
+        else
+            PARSED_SEGMENT_PERSISTED_GIT_ENV="$prefix_git_env"
+            PARSED_SEGMENT_PERSISTED_GIT_VARS="$prefix_shell_git_vars"
+        fi
+        return
+    fi
 
     while [ $# -gt 0 ]; do
         token="$1"
@@ -348,6 +508,52 @@ EOF
                             ;;
                         --chdir=*)
                             git_args+=("-C" "$(strip_wrapping_quotes "${token#*=}")")
+                            shift
+                            ;;
+                        -*)
+                            shift
+                            ;;
+                        *)
+                            break
+                            ;;
+                    esac
+                done
+                ;;
+            export)
+                merge_shell_git_var_assignments "${pending_shell_git_vars[@]}"
+                pending_shell_git_vars=()
+                shift
+                while [ $# -gt 0 ]; do
+                    token="$(strip_wrapping_quotes "$1")"
+                    case "$token" in
+                        --)
+                            shift
+                            break
+                            ;;
+                        -n)
+                            shift
+                            if [ $# -gt 0 ]; then
+                                remove_shell_git_env_assignment "$(strip_wrapping_quotes "$1")"
+                                remove_git_env_assignment "$(strip_wrapping_quotes "$1")"
+                                shift
+                            fi
+                            ;;
+                        -n*)
+                            remove_shell_git_env_assignment "$(strip_wrapping_quotes "${token#-n}")"
+                            remove_git_env_assignment "$(strip_wrapping_quotes "${token#-n}")"
+                            shift
+                            ;;
+                        -p|-f)
+                            shift
+                            ;;
+                        [A-Za-z_][A-Za-z0-9_]*=*)
+                            append_shell_git_var_assignment "$token"
+                            append_shell_git_env_assignment "$token"
+                            append_git_env_assignment "$token"
+                            shift
+                            ;;
+                        [A-Za-z_][A-Za-z0-9_]*)
+                            export_shell_git_var_assignment "$token"
                             shift
                             ;;
                         -*)
@@ -419,10 +625,20 @@ EOF
             sh|bash|zsh|dash|ksh)
                 shift
                 if inline_command="$(extract_shell_inline_command "$@")"; then
-                    parse_git_commit_contexts_fallback \
+                    PARSED_SEGMENT_CONTEXT_LINES="$(
+                        parse_git_commit_contexts_fallback \
                         "$inline_command" \
                         "$(printf '%s\n' "${git_args[@]}")" \
+                        "$(printf '%s\n' "${git_env[@]}")" \
                         "$(printf '%s\n' "${git_env[@]}")"
+                    )"
+                fi
+                if [ "$shell_env_persists" = "true" ]; then
+                    PARSED_SEGMENT_PERSISTED_GIT_ENV="$(printf '%s\n' "${shell_git_env[@]}")"
+                    PARSED_SEGMENT_PERSISTED_GIT_VARS="$(printf '%s\n' "${shell_git_vars[@]}")"
+                else
+                    PARSED_SEGMENT_PERSISTED_GIT_ENV="$prefix_git_env"
+                    PARSED_SEGMENT_PERSISTED_GIT_VARS="$prefix_shell_git_vars"
                 fi
                 return
                 ;;
@@ -432,12 +648,26 @@ EOF
                     shift
                     break
                 fi
+                if [ "$shell_env_persists" = "true" ]; then
+                    PARSED_SEGMENT_PERSISTED_GIT_ENV="$(printf '%s\n' "${shell_git_env[@]}")"
+                    PARSED_SEGMENT_PERSISTED_GIT_VARS="$(printf '%s\n' "${shell_git_vars[@]}")"
+                else
+                    PARSED_SEGMENT_PERSISTED_GIT_ENV="$prefix_git_env"
+                    PARSED_SEGMENT_PERSISTED_GIT_VARS="$prefix_shell_git_vars"
+                fi
                 return
                 ;;
         esac
     done
 
     if [ "$saw_git" != "true" ]; then
+        if [ "$shell_env_persists" = "true" ]; then
+            PARSED_SEGMENT_PERSISTED_GIT_ENV="$(printf '%s\n' "${shell_git_env[@]}")"
+            PARSED_SEGMENT_PERSISTED_GIT_VARS="$(printf '%s\n' "${shell_git_vars[@]}")"
+        else
+            PARSED_SEGMENT_PERSISTED_GIT_ENV="$prefix_git_env"
+            PARSED_SEGMENT_PERSISTED_GIT_VARS="$prefix_shell_git_vars"
+        fi
         return
     fi
 
@@ -489,7 +719,15 @@ EOF
     done
 
     if [ $# -gt 0 ] && [ "$(strip_wrapping_quotes "$1")" = "commit" ]; then
-        emit_git_commit_context
+        PARSED_SEGMENT_CONTEXT_LINES="$(emit_git_commit_context)"
+    fi
+
+    if [ "$shell_env_persists" = "true" ]; then
+        PARSED_SEGMENT_PERSISTED_GIT_ENV="$(printf '%s\n' "${shell_git_env[@]}")"
+        PARSED_SEGMENT_PERSISTED_GIT_VARS="$(printf '%s\n' "${shell_git_vars[@]}")"
+    else
+        PARSED_SEGMENT_PERSISTED_GIT_ENV="$prefix_git_env"
+        PARSED_SEGMENT_PERSISTED_GIT_VARS="$prefix_shell_git_vars"
     fi
 }
 
@@ -502,7 +740,14 @@ parse_git_commit_contexts_fallback() {
     local raw_command="$1"
     local prefix_git_args="${2:-}"
     local prefix_git_env="${3:-}"
+    local prefix_shell_git_vars="${4:-$prefix_git_env}"
     local tokenized token_json token_type token_value substitution
+    local current_git_env="$prefix_git_env"
+    local current_shell_git_vars="$prefix_shell_git_vars"
+    local segment_input_env
+    local segment_input_shell_vars
+    local segment_substitution_indexes=()
+    local used_substitution_indexes=()
     local segment=()
     local sanitized_command
     local substitutions=()
@@ -515,10 +760,6 @@ parse_git_commit_contexts_fallback() {
     sanitized_command="$SANITIZED_COMMAND"
     substitutions=("${COMMAND_SUBSTITUTIONS[@]}")
 
-    for substitution in "${substitutions[@]}"; do
-        parse_git_commit_contexts_fallback "$substitution" "$prefix_git_args" "$prefix_git_env"
-    done
-
     if ! tokenized="$(shell_tokenize "$sanitized_command" true)"; then
         emit_parse_error_context
         return
@@ -529,7 +770,34 @@ parse_git_commit_contexts_fallback() {
         token_type="$(printf '%s\n' "$token_json" | jq -r '.type')"
         token_value="$(printf '%s\n' "$token_json" | jq -r '.value')"
         if [ "$token_type" = "control" ]; then
-            parse_git_commit_segment_fallback "$prefix_git_args" "$prefix_git_env" "${segment[@]}"
+            segment_input_env="$current_git_env"
+            segment_input_shell_vars="$current_shell_git_vars"
+            segment_substitution_indexes=()
+            while IFS= read -r substitution; do
+                [ -z "$substitution" ] && continue
+                segment_substitution_indexes+=("$substitution")
+            done < <(segment_command_substitution_indexes "${segment[@]}")
+            for substitution in "${segment_substitution_indexes[@]}"; do
+                if ! array_contains "$substitution" "${used_substitution_indexes[@]}"; then
+                    used_substitution_indexes+=("$substitution")
+                fi
+                parse_git_commit_contexts_fallback \
+                    "${substitutions[$substitution]}" \
+                    "$prefix_git_args" \
+                    "$segment_input_env" \
+                    "$segment_input_shell_vars"
+            done
+            parse_git_commit_segment_fallback "$prefix_git_args" "$current_git_env" "$current_shell_git_vars" "${segment[@]}"
+            if [ -n "$PARSED_SEGMENT_CONTEXT_LINES" ]; then
+                printf '%s\n' "$PARSED_SEGMENT_CONTEXT_LINES"
+            fi
+            if control_token_preserves_shell_env "$token_value"; then
+                current_git_env="$PARSED_SEGMENT_PERSISTED_GIT_ENV"
+                current_shell_git_vars="$PARSED_SEGMENT_PERSISTED_GIT_VARS"
+            else
+                current_git_env="$segment_input_env"
+                current_shell_git_vars="$segment_input_shell_vars"
+            fi
             segment=()
             continue
         fi
@@ -538,7 +806,39 @@ parse_git_commit_contexts_fallback() {
 $tokenized
 EOF
 
-    parse_git_commit_segment_fallback "$prefix_git_args" "$prefix_git_env" "${segment[@]}"
+    segment_input_env="$current_git_env"
+    segment_input_shell_vars="$current_shell_git_vars"
+    segment_substitution_indexes=()
+    while IFS= read -r substitution; do
+        [ -z "$substitution" ] && continue
+        segment_substitution_indexes+=("$substitution")
+    done < <(segment_command_substitution_indexes "${segment[@]}")
+    for substitution in "${segment_substitution_indexes[@]}"; do
+        if ! array_contains "$substitution" "${used_substitution_indexes[@]}"; then
+            used_substitution_indexes+=("$substitution")
+        fi
+        parse_git_commit_contexts_fallback \
+            "${substitutions[$substitution]}" \
+            "$prefix_git_args" \
+            "$segment_input_env" \
+            "$segment_input_shell_vars"
+    done
+
+    parse_git_commit_segment_fallback "$prefix_git_args" "$current_git_env" "$current_shell_git_vars" "${segment[@]}"
+    if [ -n "$PARSED_SEGMENT_CONTEXT_LINES" ]; then
+        printf '%s\n' "$PARSED_SEGMENT_CONTEXT_LINES"
+    fi
+
+    for ((substitution = 0; substitution < ${#substitutions[@]}; substitution += 1)); do
+        if array_contains "$substitution" "${used_substitution_indexes[@]}"; then
+            continue
+        fi
+        parse_git_commit_contexts_fallback \
+            "${substitutions[$substitution]}" \
+            "$prefix_git_args" \
+            "$prefix_git_env" \
+            "$prefix_shell_git_vars"
+    done
 }
 
 parse_git_commit_contexts() {
@@ -557,6 +857,7 @@ import sys
 
 ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
 CONTROL_TOKENS = {";", "&&", "||", "|", "|&", "&"}
+ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
 SHELL_KEYWORDS = {
     "!",
     "if",
@@ -577,9 +878,7 @@ SHELL_KEYWORDS = {
     "(",
     ")",
 }
-HEREDOC_SINGLE_QUOTED = re.compile(r"<<-?\s*'([^']+)'")
-HEREDOC_DOUBLE_QUOTED = re.compile(r'<<-?\s*"([^"]+)"')
-HEREDOC_UNQUOTED = re.compile(r"<<-?\s*([^\s'\";&()<>|]+)")
+HEREDOC_START = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
 ENV_OPTIONS_WITH_VALUE = {"-u", "--unset", "-C", "--chdir"}
 GIT_OPTIONS_WITH_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env"}
 REPLAY_ENV_VARS = {
@@ -650,10 +949,6 @@ def _extract_body_substitutions(line):
     while idx < length:
         ch = line[idx]
         if ch == "$" and idx + 1 < length and line[idx + 1] == "(":
-            if idx + 2 < length and line[idx + 2] == "(":
-                arithmetic_subs, idx = extract_arithmetic_substitutions(line, idx)
-                subs.extend(arithmetic_subs)
-                continue
             inner, idx = read_dollar_substitution(line, idx)
             subs.append(inner)
             continue
@@ -663,267 +958,6 @@ def _extract_body_substitutions(line):
             continue
         idx += 1
     return subs
-
-
-def read_dollar_substitution_end(command, start):
-    depth = 1
-    idx = start + 2
-    in_single = False
-    in_double = False
-    escaped = False
-
-    while idx < len(command):
-        char = command[idx]
-
-        if escaped:
-            escaped = False
-            idx += 1
-            continue
-
-        if char == "\\" and not in_single:
-            escaped = True
-            idx += 1
-            continue
-
-        if char == "'" and not in_double:
-            in_single = not in_single
-            idx += 1
-            continue
-
-        if char == '"' and not in_single:
-            in_double = not in_double
-            idx += 1
-            continue
-
-        if not in_single and char == "$" and idx + 1 < len(command) and command[idx + 1] == "(":
-            if idx + 2 < len(command) and command[idx + 2] == "(":
-                idx = read_double_paren_end(command, idx, 3)
-            else:
-                idx = read_dollar_substitution_end(command, idx)
-            continue
-
-        if not in_single and char == chr(96):
-            idx = read_backtick_substitution_end(command, idx)
-            continue
-
-        if not in_single and not in_double and char == ")":
-            depth -= 1
-            idx += 1
-            if depth == 0:
-                return idx
-            continue
-
-        idx += 1
-
-    raise ValueError("Unterminated command substitution.")
-
-
-def read_backtick_substitution_end(command, start):
-    idx = start + 1
-    escaped = False
-
-    while idx < len(command):
-        char = command[idx]
-
-        if escaped:
-            escaped = False
-            idx += 1
-            continue
-
-        if char == "\\":
-            escaped = True
-            idx += 1
-            continue
-
-        if char == chr(96):
-            return idx + 1
-
-        idx += 1
-
-    raise ValueError("Unterminated backtick command substitution.")
-
-
-def read_double_paren_end(command, start, prefix_length):
-    idx = start + prefix_length
-    depth = 1
-    in_single = False
-    in_double = False
-    escaped = False
-
-    while idx < len(command):
-        char = command[idx]
-
-        if escaped:
-            escaped = False
-            idx += 1
-            continue
-
-        if char == "\\" and not in_single:
-            escaped = True
-            idx += 1
-            continue
-
-        if char == "'" and not in_double:
-            in_single = not in_single
-            idx += 1
-            continue
-
-        if char == '"' and not in_single:
-            in_double = not in_double
-            idx += 1
-            continue
-
-        if not in_single and char == "$" and idx + 1 < len(command) and command[idx + 1] == "(":
-            if idx + 2 < len(command) and command[idx + 2] == "(":
-                idx = read_double_paren_end(command, idx, 3)
-            else:
-                idx = read_dollar_substitution_end(command, idx)
-            continue
-
-        if not in_single and char == chr(96):
-            idx = read_backtick_substitution_end(command, idx)
-            continue
-
-        if not in_single and not in_double:
-            if char == "(":
-                depth += 1
-                idx += 1
-                continue
-
-            if char == ")":
-                depth -= 1
-                if depth == 0:
-                    if idx + 1 < len(command) and command[idx + 1] == ")":
-                        return idx + 2
-                    raise ValueError("Unterminated arithmetic expression.")
-
-        idx += 1
-
-    raise ValueError("Unterminated arithmetic expression.")
-
-
-def extract_arithmetic_substitutions(command, start, end=None):
-    if end is None:
-        end = read_double_paren_end(command, start, 3)
-
-    subs = []
-    idx = start + 3
-    limit = end - 2
-    in_single = False
-    in_double = False
-    escaped = False
-
-    while idx < limit:
-        char = command[idx]
-
-        if escaped:
-            escaped = False
-            idx += 1
-            continue
-
-        if char == "\\" and not in_single:
-            escaped = True
-            idx += 1
-            continue
-
-        if char == "'" and not in_double:
-            in_single = not in_single
-            idx += 1
-            continue
-
-        if char == '"' and not in_single:
-            in_double = not in_double
-            idx += 1
-            continue
-
-        if in_single or in_double:
-            idx += 1
-            continue
-
-        if char == "$" and idx + 1 < limit and command[idx + 1] == "(":
-            if idx + 2 < limit and command[idx + 2] == "(":
-                nested_end = read_double_paren_end(command, idx, 3)
-                nested_subs, idx = extract_arithmetic_substitutions(command, idx, nested_end)
-                subs.extend(nested_subs)
-                continue
-            inner, idx = read_dollar_substitution(command, idx)
-            subs.append(inner)
-            continue
-
-        if char == chr(96):
-            inner, idx = read_backtick_substitution(command, idx)
-            subs.append(inner)
-            continue
-
-        idx += 1
-
-    return subs, end
-
-
-def match_heredoc_start(line):
-    in_single = False
-    in_double = False
-    escaped = False
-
-    idx = 0
-    while idx < len(line):
-        char = line[idx]
-        if escaped:
-            escaped = False
-            idx += 1
-            continue
-
-        if char == "\\" and not in_single:
-            escaped = True
-            idx += 1
-            continue
-
-        if char == "'" and not in_double:
-            in_single = not in_single
-            idx += 1
-            continue
-
-        if char == '"' and not in_single:
-            in_double = not in_double
-            idx += 1
-            continue
-
-        if in_single or in_double:
-            idx += 1
-            continue
-
-        if char == "$" and idx + 1 < len(line) and line[idx + 1] == "(":
-            if idx + 2 < len(line) and line[idx + 2] == "(":
-                idx = read_double_paren_end(line, idx, 3)
-            else:
-                idx = read_dollar_substitution_end(line, idx)
-            continue
-
-        if char == "(" and idx + 1 < len(line) and line[idx + 1] == "(":
-            idx = read_double_paren_end(line, idx, 2)
-            continue
-
-        if char == chr(96):
-            idx = read_backtick_substitution_end(line, idx)
-            continue
-
-        if not line.startswith("<<", idx):
-            idx += 1
-            continue
-
-        candidate = line[idx:]
-        for pattern, is_quoted in (
-            (HEREDOC_SINGLE_QUOTED, True),
-            (HEREDOC_DOUBLE_QUOTED, True),
-            (HEREDOC_UNQUOTED, False),
-        ):
-            match = pattern.match(candidate)
-            if match is not None:
-                return match.group(1), is_quoted, match.group(0).startswith("<<-")
-
-        idx += 1
-
-    return None, False, False
 
 
 def strip_heredoc_bodies(command):
@@ -957,9 +991,11 @@ def strip_heredoc_bodies(command):
                 stripped_lines.append("")
             continue
 
-        heredoc_start = match_heredoc_start(line)
-        if heredoc_start[0] is not None:
-            delimiter, is_quoted, is_dashed = heredoc_start
+        match = HEREDOC_START.search(line)
+        if match is not None:
+            delimiter = match.group(2)
+            is_quoted = match.group(1) != ""
+            is_dashed = match.group(0).startswith("<<-")
         stripped_lines.append(line)
 
     return "".join(stripped_lines), extracted
@@ -996,12 +1032,7 @@ def read_dollar_substitution(command, start):
             idx += 1
             continue
 
-        if not in_single and command.startswith("$" + "(", idx):
-            if idx + 2 < len(command) and command[idx + 2] == "(":
-                end = read_double_paren_end(command, idx, 3)
-                inner.append(command[idx:end])
-                idx = end
-                continue
+        if not in_single and not in_double and command.startswith("$" + "(", idx):
             nested_inner, idx = read_dollar_substitution(command, idx)
             inner.append("$" + "(" + nested_inner + ")")
             continue
@@ -1085,12 +1116,6 @@ def replace_command_substitutions(command):
             continue
 
         if not in_single and command.startswith("$" + "(", idx):
-            if idx + 2 < len(command) and command[idx + 2] == "(":
-                arithmetic_subs, end = extract_arithmetic_substitutions(command, idx)
-                substitutions.extend(arithmetic_subs)
-                result.append(command[idx:end])
-                idx = end
-                continue
             inner, idx = read_dollar_substitution(command, idx)
             substitutions.append(inner)
             result.append(f"__CMD_SUBST_{len(substitutions) - 1}__")
@@ -1115,35 +1140,17 @@ def tokenize(command):
     return list(lexer)
 
 
-def token_has_control_operator(token):
-    if token in CONTROL_TOKENS:
-        return True
-
-    if any(char not in "()|&;" for char in token):
-        return False
-
-    idx = 0
-    while idx < len(token):
-        if token.startswith("&&", idx) or token.startswith("||", idx) or token.startswith("|&", idx):
-            return True
-        if token[idx] in ";|&":
-            return True
-        idx += 1
-
-    return False
-
-
 def split_segments(tokens):
     current = []
     for token in tokens:
-        if token_has_control_operator(token):
+        if token in CONTROL_TOKENS:
             if current:
-                yield current
+                yield current, token
                 current = []
             continue
         current.append(token)
     if current:
-        yield current
+        yield current, None
 
 
 def parse_shell_inline_command(args):
@@ -1202,7 +1209,19 @@ class ParseError(Exception):
     pass
 
 
-def parse_commit_contexts(command, inherited_git_args=None, inherited_git_env=None, depth=0):
+def extract_placeholder_indexes(tokens):
+    indexes = []
+    seen = set()
+    for token in tokens:
+        for match in re.finditer(r"__CMD_SUBST_(\d+)__", token):
+            index = int(match.group(1))
+            if index not in seen:
+                seen.add(index)
+                indexes.append(index)
+    return indexes
+
+
+def parse_commit_contexts(command, inherited_git_args=None, inherited_git_env=None, inherited_shell_git_vars=None, depth=0):
     # Cap recursion so pathological nesting can't hit Python's stack limit
     # and convert a ValueError into an uncaught RecursionError (which would
     # exit the interpreter non-zero and the shell would fail open).
@@ -1212,44 +1231,98 @@ def parse_commit_contexts(command, inherited_git_args=None, inherited_git_env=No
     contexts = []
     if inherited_git_env is None:
         inherited_git_env = inherited_replay_env_from_process()
+    if inherited_shell_git_vars is None:
+        inherited_shell_git_vars = list(inherited_git_env)
     try:
         sanitized_command, substitutions = replace_command_substitutions(command)
         tokens = tokenize(sanitized_command)
     except ValueError as exc:
         raise ParseError(str(exc)) from exc
 
-    for substitution in substitutions:
+    current_git_env = list(inherited_git_env or [])
+    current_shell_git_vars = list(inherited_shell_git_vars or [])
+    used_placeholder_indexes = set()
+    for segment, separator in split_segments(tokens):
+        segment_input_env = list(current_git_env)
+        segment_input_shell_git_vars = list(current_shell_git_vars)
+        for placeholder_index in extract_placeholder_indexes(segment):
+            used_placeholder_indexes.add(placeholder_index)
+            contexts.extend(
+                parse_commit_contexts(
+                    substitutions[placeholder_index],
+                    inherited_git_args=inherited_git_args,
+                    inherited_git_env=segment_input_env,
+                    inherited_shell_git_vars=segment_input_shell_git_vars,
+                    depth=depth + 1,
+                )
+            )
+        segment_contexts, segment_persisted_env, segment_persisted_shell_git_vars = parse_commit_segment(
+            segment,
+            list(inherited_git_args or []),
+            list(segment_input_env),
+            list(segment_input_shell_git_vars),
+            depth=depth,
+        )
+        contexts.extend(segment_contexts)
+        if separator in ENV_PERSISTING_CONTROL_TOKENS:
+            current_git_env = segment_persisted_env
+            current_shell_git_vars = segment_persisted_shell_git_vars
+        else:
+            current_git_env = segment_input_env
+            current_shell_git_vars = segment_input_shell_git_vars
+
+    for placeholder_index, substitution in enumerate(substitutions):
+        if placeholder_index in used_placeholder_indexes:
+            continue
         contexts.extend(
             parse_commit_contexts(
                 substitution,
                 inherited_git_args=inherited_git_args,
                 inherited_git_env=inherited_git_env,
+                inherited_shell_git_vars=inherited_shell_git_vars,
                 depth=depth + 1,
-            )
-        )
-
-    for segment in split_segments(tokens):
-        contexts.extend(
-            parse_commit_segment(
-                segment,
-                list(inherited_git_args or []),
-                list(inherited_git_env or []),
             )
         )
     return contexts
 
 
-def parse_commit_segment(tokens, git_args, git_env):
+def lookup_replay_env(assignments, key):
+    for assignment in assignments:
+        assignment_key, _, assignment_value = assignment.partition("=")
+        if assignment_key == key:
+            return assignment_value
+    return None
+
+
+def parse_commit_segment(tokens, git_args, git_env, shell_git_vars, depth=0):
     idx = 0
+    inherited_shell_git_env = list(git_env)
+    shell_git_env = list(inherited_shell_git_env)
+    inherited_shell_git_vars = list(shell_git_vars)
+    shell_git_vars = list(inherited_shell_git_vars)
+    git_env = list(shell_git_env)
+    shell_env_persists = True
+    pending_shell_git_vars = []
 
     while idx < len(tokens) and tokens[idx] in SHELL_KEYWORDS:
+        if tokens[idx] == "(":
+            shell_env_persists = False
         idx += 1
 
     while idx < len(tokens) and ASSIGNMENT.match(tokens[idx]):
         key, value = tokens[idx].split("=", 1)
         if key in REPLAY_ENV_VARS:
             set_replay_env(git_env, key, value)
+            set_replay_env(pending_shell_git_vars, key, value)
         idx += 1
+
+    if idx >= len(tokens):
+        for assignment in pending_shell_git_vars:
+            key, value = assignment.split("=", 1)
+            set_replay_env(shell_git_vars, key, value)
+        persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
+        persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
+        return [], persisted_shell_git_env, persisted_shell_git_vars
 
     while idx < len(tokens):
         base = os.path.basename(tokens[idx])
@@ -1311,6 +1384,49 @@ def parse_commit_segment(tokens, git_args, git_env):
                 break
             continue
 
+        if base == "export":
+            for assignment in pending_shell_git_vars:
+                key, value = assignment.split("=", 1)
+                set_replay_env(shell_git_vars, key, value)
+            pending_shell_git_vars = []
+            idx += 1
+            while idx < len(tokens):
+                token = tokens[idx]
+                if token == "--":
+                    idx += 1
+                    break
+                if token == "-n":
+                    if idx + 1 < len(tokens):
+                        unset_replay_env(shell_git_env, tokens[idx + 1])
+                        unset_replay_env(git_env, tokens[idx + 1])
+                    idx += 2
+                    continue
+                if token.startswith("-n") and token != "-n":
+                    unset_replay_env(shell_git_env, token[2:])
+                    unset_replay_env(git_env, token[2:])
+                    idx += 1
+                    continue
+                if ASSIGNMENT.match(token):
+                    key, value = token.split("=", 1)
+                    if key in REPLAY_ENV_VARS:
+                        set_replay_env(shell_git_vars, key, value)
+                        set_replay_env(shell_git_env, key, value)
+                        set_replay_env(git_env, key, value)
+                    idx += 1
+                    continue
+                if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", token):
+                    value = lookup_replay_env(shell_git_vars, token)
+                    if value is not None:
+                        set_replay_env(shell_git_env, token, value)
+                        set_replay_env(git_env, token, value)
+                    idx += 1
+                    continue
+                if token.startswith("-"):
+                    idx += 1
+                    continue
+                break
+            continue
+
         if base == "env":
             idx += 1
             while idx < len(tokens):
@@ -1363,16 +1479,34 @@ def parse_commit_segment(tokens, git_args, git_env):
         if base in SHELL_EXECUTABLES:
             nested_command = parse_shell_inline_command(tokens[idx + 1 :])
             if nested_command is None:
-                return []
-            return parse_commit_contexts(nested_command, git_args, git_env)
+                persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
+                persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
+                return [], persisted_shell_git_env, persisted_shell_git_vars
+            persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
+            persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
+            return (
+                parse_commit_contexts(
+                    nested_command,
+                    inherited_git_args=git_args,
+                    inherited_git_env=git_env,
+                    inherited_shell_git_vars=list(git_env),
+                    depth=depth + 1,
+                ),
+                persisted_shell_git_env,
+                persisted_shell_git_vars,
+            )
 
         if base == "git":
             break
 
-        return []
+        persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
+        persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
+        return [], persisted_shell_git_env, persisted_shell_git_vars
 
     if idx >= len(tokens) or os.path.basename(tokens[idx]) != "git":
-        return []
+        persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
+        persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
+        return [], persisted_shell_git_env, persisted_shell_git_vars
 
     idx += 1
     while idx < len(tokens):
@@ -1405,9 +1539,13 @@ def parse_commit_segment(tokens, git_args, git_env):
         break
 
     if idx < len(tokens) and tokens[idx] == "commit":
-        return [{"git_args": git_args, "git_env": git_env}]
+        persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
+        persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
+        return [{"git_args": git_args, "git_env": git_env}], persisted_shell_git_env, persisted_shell_git_vars
 
-    return []
+    persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
+    persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
+    return [], persisted_shell_git_env, persisted_shell_git_vars
 
 
 try:
@@ -1421,7 +1559,7 @@ PY
     fi
 
     local context_lines
-    context_lines="$(parse_git_commit_contexts_fallback "$raw_command" "" "$inherited_git_env")"
+    context_lines="$(parse_git_commit_contexts_fallback "$raw_command" "" "$inherited_git_env" "$inherited_git_env")"
     if [ -z "$context_lines" ]; then
         printf '%s\n' '[]'
         return
