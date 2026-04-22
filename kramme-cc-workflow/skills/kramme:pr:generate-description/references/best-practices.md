@@ -29,7 +29,7 @@
 - **PREFER** including relevant code snippets for complex changes
 - **NEVER** list every single file - focus on the most significant ones
 - **NEVER** list the amount of lines changed - it's not useful information, clutters the description and is often quickly made incorrect by subsequent commits
-- **CAN** reference existing patterns in AGENTS.md when explaining implementation choices
+- **CAN** reference existing code patterns when explaining implementation choices
 
 ## Test Plans
 

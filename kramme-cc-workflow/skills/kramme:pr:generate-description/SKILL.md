@@ -373,8 +373,6 @@ If `VISUAL_MODE=true`, read `${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:generate-des
 
 Generate a PR title using [Conventional Commits](https://www.conventionalcommits.org/) format: `<type>(<scope>): <description>`
 
-**NOTE**: Check the project's `AGENTS.md`, `CLAUDE.md`, or equivalent instruction files for any project-specific conventional commit rules.
-
 **Types** (based on Phase 2.4 analysis):
 
 | `feat` | `fix` | `refactor` | `docs` | `test` | `build`/`ci` | `chore` | `perf` | `style` | `revert` |
@@ -549,7 +547,7 @@ Read the best practices guidelines from `references/best-practices.md`. Covers c
 
 ## Anti-Patterns
 
-Read the anti-pattern examples from `references/anti-patterns.md`. Includes title anti-patterns and 6 paired WRONG/CORRECT examples covering vague summaries, missing context, missing tests, tone, hidden breaking changes, and AI attribution.
+Read the anti-pattern examples from `references/anti-patterns.md`. Includes title anti-patterns, vague-summary patterns (rejects titles like `Fix bug`, `Fix build`, `Phase 1`, `Add convenience functions`), and 6 paired WRONG/CORRECT examples covering vague summaries, missing context, missing tests, tone, hidden breaking changes, and AI attribution.
 
 ## Examples
 
@@ -559,7 +557,6 @@ Read the complete PR examples from `references/pr-examples.md`. Includes 3 examp
 
 **ALWAYS** refer to these files for context:
 
-- Project instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents) - Authoritative development guidelines for this codebase, including GitLab vs GitHub guidance when documented
 - Existing PR descriptions in the repository for style reference
 
 ## Platform-Specific Notes
@@ -570,7 +567,7 @@ Read the platform-specific notes from `references/platform-notes.md`. Covers Git
 
 - **NOTE**: This skill generates the description text only - it does NOT create the PR
 - **NOTE**: After generation, review the description and adjust as needed before using it
-- **NOTE**: The skill follows the project's documented conventions in its instruction files, but may need customization for other projects
+- **NOTE**: This skill is self-contained. If a downstream installation needs custom PR-title policy, adapt this skill locally instead of depending on repo-root instruction files.
 - **NOTE**: If Linear issue lookup fails, continue anyway and note the issue ID in the summary without detailed context
 - **NOTE**: Spec files (siw/SPEC.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, etc.) and conversation history are for context gathering ONLY
   - Use them to understand what happened during implementation

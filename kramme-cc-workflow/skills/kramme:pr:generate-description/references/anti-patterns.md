@@ -9,6 +9,19 @@
 | `fix: bug fix` | `fix(checkout): resolve race condition` | Vague |
 | `feat(user-auth-service): add comprehensive OAuth2...` | `feat(auth): add OAuth2 support` | Too long |
 
+## Vague Summary Anti-Patterns
+
+Reject titles and summary lines that restate the change without explaining it. Each of these reads as "something happened" without naming the what, the why, or the user-visible effect.
+
+| ❌ Wrong | ✅ Correct | Why it fails |
+|----------|-----------|-------|
+| `Fix bug` | `fix(auth): reject expired refresh tokens on /me endpoint` | Names neither the bug nor the fix. Works for a commit-to-self, not a PR. |
+| `Fix build` | `fix(ci): pin node to 20.11 to unblock vitest 1.4 install` | "Build" covers dozens of possible changes; the reviewer has to read the diff to find out which one. |
+| `Phase 1` | `feat(billing): add invoice line-item totals (phase 1 of 3: read path)` | Phase numbers are internal planning state. A reader two months later has no idea what Phase 1 was. |
+| `Add convenience functions` | `refactor(api): extract retry helper used by 4 call sites` | "Convenience" is a feeling, not a purpose. Name what the helper does and who uses it. |
+
+When rewriting, the test is: **can a reader who wasn't in the planning conversation understand the PR from the title alone?** If not, the title is vague.
+
 ---
 
 ### ❌ WRONG: Vague Summary

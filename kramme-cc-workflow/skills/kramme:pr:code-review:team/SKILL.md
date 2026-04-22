@@ -113,65 +113,26 @@ After all tasks complete:
 1. Gather findings from all teammates
 2. Apply the deslop-reviewer's meta-review annotations
 3. Apply the relevance-validator's filtering
-4. Filter previously addressed findings (same logic as `/kramme:pr:code-review` Step 10)
+4. Compute total lines changed using the same `numstat` + untracked-file formula and expected-exclusions rules as `/kramme:pr:code-review` Step 10, and add any `review-scope` size finding before any prior-response filtering
+5. Filter previously addressed findings (same logic as `/kramme:pr:code-review` Step 11, including any size finding added in the previous step)
 
 ### Step 6: Write REVIEW_OVERVIEW.md or Reply Inline
 
-If `INLINE_MODE=true`, reply with the aggregated review inline using the same format as `/kramme:pr:code-review` Step 10-12 and do **not** create or update `REVIEW_OVERVIEW.md`.
+Carry the Step 5 total lines changed into the final report so both review commands fire the size gate on the same scope. Use `git diff --numstat HEAD` for local tracked changes so partially staged files are counted once.
 
-Otherwise, write the aggregated review to `REVIEW_OVERVIEW.md` using the same format as `/kramme:pr:code-review` Step 10-12:
+If `INLINE_MODE=true`, reply with the aggregated review inline using the same template and conventions as `/kramme:pr:code-review` Steps 12-14, and do **not** create or update `REVIEW_OVERVIEW.md`.
 
-```markdown
-# PR Review Summary (Team Review)
+Otherwise, write the aggregated review to `REVIEW_OVERVIEW.md` using the same template and conventions as `/kramme:pr:code-review` Steps 12-14.
 
-## Team
-- X reviewers participated
-- Cross-review: deslop meta-review completed
-- Relevance validation: X findings validated, X filtered
+Keep the output schema-compatible with the standard PR review:
+- Include the `## Size` section and fire the `>1,000 reviewable lines` split recommendation with a named strategy
+- Keep the same severity prefix grammar (`Critical:`, `Nit:`, `Optional:`, `Consider:`, `FYI`)
+- Use `NOTICED BUT NOT TOUCHING` for pre-existing or out-of-scope notes
+- Include the `## Approval Standard` section verbatim
 
-## Relevance Filter
-- X findings validated as PR-caused
-- X findings filtered (pre-existing or out-of-scope)
-- X findings filtered (previously addressed in REVIEW_OVERVIEW.md)
-
-## Critical Issues (X found)
-- [reviewer-name]: Issue description [file:line]
-
-## Important Issues (X found)
-- [reviewer-name]: Issue description [file:line]
-
-## Suggestions (X found)
-- [reviewer-name]: Suggestion [file:line]
-
-## Slop Warnings (X found)
-- [reviewer-name]: Suggestion [file:line]
-  Warning: Would introduce [slop-type] - [explanation]
-
-## Cross-Review Notes
-- [Any disputes or cross-validation results between reviewers]
-
-## Filtered (Pre-existing/Out-of-scope)
-<collapsed>
-- [file:line]: Brief description - Reason filtered
-</collapsed>
-
-## Filtered (Previously Addressed)
-<collapsed>
-- [file:line]: Brief description
-  Matched: REVIEW_OVERVIEW.md - [action taken summary]
-</collapsed>
-
-## Strengths
-- What's well-done in this PR
-
-## Recommended Action
-1. Fix critical issues first
-2. Address important issues
-3. Consider suggestions
-4. Re-run review after fixes
-
-**To automatically resolve findings, run:** `/kramme:pr:resolve-review`
-```
+Fold team-specific context into the existing schema instead of inventing a separate report shape:
+- Add reviewer count, cross-review completion, and dispute notes as `**FYI**` bullets in `## Strengths`
+- When a finding came from a specific reviewer, use that reviewer name in place of `[agent-name]` inside the shared template
 
 ### Step 7: Cleanup
 
