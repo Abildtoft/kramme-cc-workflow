@@ -1,0 +1,44 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: run-verification-on-node-project
+    instruction: |
+      You have a skill called kramme:verify:run in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Run verification checks on the project in the project/ directory.
+      The project has a CLAUDE.md that specifies test, lint, and build commands.
+
+      Report the results of each verification step.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:verify:run/SKILL.md
+      - src: fixtures/package.json
+        dest: project/package.json
+      - src: fixtures/CLAUDE.md
+        dest: project/CLAUDE.md
+    graders:
+      - type: llm_rubric
+        rubric: |
+          Command discovery (0-0.3):
+          - Did the agent read the project's CLAUDE.md to find verification commands?
+          - Did it identify the three available commands (test, lint, build)?
+          - Did it follow the skill's priority order for reading configuration?
+          Execution (0-0.4):
+          - Did the agent actually run the verification commands (npm test, npm run lint, npm run build)?
+          - Did it continue through ALL checks even though some might fail?
+          - Did it capture and display output from each command?
+          Reporting (0-0.3):
+          - Did it produce a structured summary with PASS/FAIL/SKIPPED per step?
+          - Did it follow the output format from the skill (individual results + summary)?
+          - Did it correctly report that all checks passed?
+        weight: 1.0

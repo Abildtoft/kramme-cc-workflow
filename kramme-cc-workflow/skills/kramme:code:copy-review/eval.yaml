@@ -1,0 +1,43 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: review-button-copy-redundancy
+    instruction: |
+      You have a skill called kramme:code:copy-review in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Review the UI code in src/ for redundant copy. Produce findings and save
+      them to copy-review-report.md.
+
+      Do not ask for confirmation. Just produce the report.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:code:copy-review/SKILL.md
+      - src: fixtures/src/Button.tsx
+        dest: src/Button.tsx
+    graders:
+      - type: llm_rubric
+        rubric: |
+          Redundancy detection (0-0.5):
+          - Does the report identify redundant button labels (e.g. "Submit Button" should be "Submit")?
+          - Does it flag tooltip text that restates the button label ("Click to submit the button")?
+          - Does it find aria-labels that over-explain ("Submit button for form submission")?
+          - Does it catch the LoadMoreButton's surrounding text redundancy (hint text + label + description)?
+          - Does it identify at least 3 distinct redundancy instances?
+          Specificity (0-0.3):
+          - Does the report reference specific file and line numbers in Button.tsx?
+          - Are concrete before/after suggestions provided for each finding?
+          - Does each finding explain why the copy is redundant?
+          Completeness (0-0.2):
+          - Does the report cover all 5 button components?
+          - Are different types of redundancy distinguished (label vs tooltip vs aria-label vs surrounding text)?
+        weight: 1.0

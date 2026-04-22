@@ -793,6 +793,67 @@ MD
   [ "$output" = "ok" ]
 }
 
+@test "opencode conversion copies root hooks for inline manifest hook configs" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_DIR="$TMP_DIR/inline-hooks-plugin"
+  create_fixture_plugin "$PLUGIN_DIR" "inline-hooks-plugin"
+  mkdir -p "$PLUGIN_DIR/hooks/lib"
+
+  cat > "$PLUGIN_DIR/.claude-plugin/plugin.json" <<'JSON'
+{
+  "name": "inline-hooks-plugin",
+  "version": "1.0.0",
+  "agents": [],
+  "commands": [],
+  "skills": [],
+  "hooks": {
+    "hooks": {
+      "PreToolUse": [
+        {
+          "matcher": "Bash",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "env -i bash ${CLAUDE_PLUGIN_ROOT}/hooks/inline-hook.sh"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+JSON
+
+  cat > "$PLUGIN_DIR/hooks/inline-hook.sh" <<'SH'
+#!/bin/bash
+source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
+exit_if_hook_disabled "inline-hook"
+echo ok
+SH
+
+  cat > "$PLUGIN_DIR/hooks/lib/check-enabled.sh" <<'SH'
+#!/bin/bash
+exit_if_hook_disabled() {
+  return 0
+}
+SH
+
+  run node "$SCRIPT" install "$PLUGIN_DIR" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  [ -f "$TMP_DIR/opencode/hook-bundles/inline-hooks-plugin/hooks/inline-hook.sh" ]
+
+  run grep -nF '# kramme hook bundle bootstrap start' "$TMP_DIR/opencode/hook-bundles/inline-hooks-plugin/hooks/inline-hook.sh"
+  [ "$status" -eq 0 ]
+
+  run env -i bash "$TMP_DIR/opencode/hook-bundles/inline-hooks-plugin/hooks/inline-hook.sh"
+  [ "$status" -eq 0 ]
+  [ "$output" = "ok" ]
+}
+
 @test "opencode conversion cleans legacy converted-hooks plugin for same hook-enabled plugin upgrades" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"

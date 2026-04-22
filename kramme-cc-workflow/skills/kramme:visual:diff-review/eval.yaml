@@ -1,0 +1,64 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: diff-review-rest-to-graphql
+    instruction: |
+      You have a skill called kramme:visual:diff-review in the skills/ directory.
+      Read its SKILL.md and follow the skill's instructions.
+
+      Also read the shared visual references at:
+      - skills/kramme:visual:diagram/SKILL.md
+      - skills/kramme:visual:diagram/references/
+      - skills/kramme:visual:diagram/assets/
+
+      Generate a visual diff review HTML page comparing the current architecture
+      to a proposed change: migrating from REST to GraphQL. Since there is no git
+      history available, use the concept of a REST-to-GraphQL migration as the
+      subject matter — describe the before (REST endpoints) and after (GraphQL
+      schema/resolvers) architecture, with KPI estimates, risk assessment, and
+      code review analysis. Save to output.html
+
+      Do not open the file in a browser. Just write it to output.html.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:visual:diff-review/SKILL.md
+      - src: references/
+        dest: skills/kramme:visual:diff-review/references/
+      - src: assets/
+        dest: skills/kramme:visual:diff-review/assets/
+      - src: ../kramme:visual:diagram/SKILL.md
+        dest: skills/kramme:visual:diagram/SKILL.md
+      - src: ../kramme:visual:diagram/references/
+        dest: skills/kramme:visual:diagram/references/
+      - src: ../kramme:visual:diagram/assets/
+        dest: skills/kramme:visual:diagram/assets/
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 0.6
+      - type: llm_rubric
+        rubric: |
+          HTML quality (0-0.3):
+          - Is the output a well-formed, self-contained HTML page?
+          - Does it include CSS styling with custom properties?
+          - Does it use distinctive typography?
+          Diff review content (0-0.4):
+          - Does it include an executive summary section?
+          - Does it show before/after architecture comparison?
+          - Does it include KPI or metrics dashboard elements?
+          - Does it include a code review or risk assessment section?
+          - Does it reference REST and GraphQL concepts?
+          Visual quality (0-0.3):
+          - Does it use color to distinguish before/after (red/green)?
+          - Is there visual hierarchy with hero sections?
+          - Does it include section navigation?
+        weight: 0.4

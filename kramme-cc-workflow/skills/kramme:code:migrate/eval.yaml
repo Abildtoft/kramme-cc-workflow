@@ -1,0 +1,52 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: plan-express-to-fastify-migration
+    instruction: |
+      You have a skill called kramme:code:migrate in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Plan a migration from Express to Fastify for this project. Do NOT execute
+      the migration — just produce the migration plan. Save it to migration-plan.md.
+
+      Do not ask for confirmation. Just produce the plan.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:code:migrate/SKILL.md
+      - src: references/
+        dest: skills/kramme:code:migrate/references/
+      - src: assets/
+        dest: skills/kramme:code:migrate/assets/
+      - src: fixtures/src/app.ts
+        dest: src/app.ts
+      - src: fixtures/package.json
+        dest: package.json
+    graders:
+      - type: llm_rubric
+        rubric: |
+          Plan structure (0-0.3):
+          - Is the migration broken into clear phases (preparation, migration, verification)?
+          - Does each phase have concrete steps?
+          - Is there a timeline or effort estimate?
+          - Is it clear this is a plan and not an executed migration?
+          Breaking change awareness (0-0.3):
+          - Does the plan identify Express-to-Fastify API differences (app.get vs fastify.get, middleware vs plugins)?
+          - Does it address the body parsing difference (built-in vs middleware)?
+          - Does it mention request/response API differences (res.json vs reply.send)?
+          - Does it flag the error handling pattern change?
+          Verification gates (0-0.4):
+          - Does each phase include a verification or rollback step?
+          - Are there specific test criteria (e.g. all endpoints return same responses)?
+          - Does the plan include a parallel-running strategy or feature flag approach?
+          - Does it address database connection compatibility (pg with Fastify)?
+          - Are dependency changes documented (what to add/remove from package.json)?
+        weight: 1.0

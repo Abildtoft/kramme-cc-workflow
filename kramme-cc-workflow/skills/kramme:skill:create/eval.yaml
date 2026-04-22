@@ -1,0 +1,99 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: scaffold-simple-skill
+    instruction: |
+      You have a Claude Code plugin skill called kramme:skill:create.
+      Read its SKILL.md and follow its instructions to create a new simple skill.
+
+      Create a skill named "kramme:text:word-count" that counts words in a file.
+      When asked interview questions, use these answers:
+      - Purpose: Count words in a given file and report the total
+      - Invocation: User-only with side effects (option A)
+      - Complexity: Simple (option A)
+      - Arguments: [file-path]
+      - Platform: All platforms
+      This is an automated eval: use those answers directly instead of asking
+      interactive interview questions or pausing for frontmatter review.
+      If asked whether to optimize the description, skip that optional step.
+
+      Create the skill in the skills/ directory.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:skill:create/SKILL.md
+      - src: references/
+        dest: skills/kramme:skill:create/references/
+      - src: assets/
+        dest: skills/kramme:skill:create/assets/
+    graders:
+      - type: deterministic
+        run: bash graders/check-scaffold.sh
+        weight: 0.7
+      - type: llm_rubric
+        rubric: |
+          Structure compliance (0-0.4):
+          - Did the agent create skills/kramme:text:word-count/SKILL.md?
+          - Is the SKILL.md under 500 lines?
+          - Does the directory name match the frontmatter name field?
+          Frontmatter quality (0-0.3):
+          - Are all required fields present (name, description, disable-model-invocation, user-invocable)?
+          - Is the description under 1024 characters?
+          - Does the description include a negative trigger?
+          - Is argument-hint set to something like "[file-path]"?
+          Instruction quality (0-0.3):
+          - Are instructions in third-person imperative voice?
+          - Are workflow steps numbered sequentially?
+          - Does the skill describe a word-counting workflow?
+        weight: 0.3
+
+  - name: scaffold-medium-skill
+    instruction: |
+      You have a Claude Code plugin skill called kramme:skill:create.
+      Read its SKILL.md and follow its instructions to create a medium-complexity skill.
+
+      Create a skill named "kramme:code:lint-report" that generates linting reports.
+      When asked interview questions, use these answers:
+      - Purpose: Run linters on changed files and produce a structured report
+      - Invocation: User or auto-triggered (option B)
+      - Complexity: Medium (option B)
+      - Arguments: no
+      - Platform: All platforms
+      This is an automated eval: use those answers directly instead of asking
+      interactive interview questions or pausing for frontmatter review.
+      If asked whether to optimize the description, skip that optional step.
+
+      Create the skill in the skills/ directory.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:skill:create/SKILL.md
+      - src: references/
+        dest: skills/kramme:skill:create/references/
+      - src: assets/
+        dest: skills/kramme:skill:create/assets/
+    graders:
+      - type: deterministic
+        run: bash graders/check-medium-scaffold.sh
+        weight: 0.7
+      - type: llm_rubric
+        rubric: |
+          Structure compliance (0-0.4):
+          - Did the agent create skills/kramme:code:lint-report/SKILL.md?
+          - Does the skill directory contain a references/ subdirectory?
+          - Is SKILL.md under 500 lines?
+          Frontmatter quality (0-0.3):
+          - Is disable-model-invocation set to false (auto-triggered)?
+          - Is user-invocable set to true?
+          - Does the description mention linting AND include a negative trigger?
+          Content quality (0-0.3):
+          - Does SKILL.md reference files in references/ with Read instructions?
+          - Are there placeholder resource files with TODO markers?
+        weight: 0.3

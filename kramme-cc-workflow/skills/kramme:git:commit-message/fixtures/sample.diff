@@ -1,0 +1,40 @@
+diff --git a/src/utils/validation.ts b/src/utils/validation.ts
+index 3a1b2c4..9d8e7f6 100644
+--- a/src/utils/validation.ts
++++ b/src/utils/validation.ts
+@@ -1,5 +1,6 @@
+ import { z } from 'zod';
+ import { AppError } from './errors';
++import { sanitizeInput } from './sanitize';
+
+ export interface ValidationResult<T> {
+   success: boolean;
+@@ -12,6 +13,28 @@ export function validateEmail(email: string): boolean {
+   return emailRegex.test(email);
+ }
+
++/**
++ * Validate and sanitize user registration input.
++ * Checks email format, password strength, and username constraints.
++ */
++export function validateRegistration(input: {
++  email: string;
++  password: string;
++  username: string;
++}): ValidationResult<{ email: string; password: string; username: string }> {
++  const schema = z.object({
++    email: z.string().email(),
++    password: z.string().min(8).regex(/[A-Z]/).regex(/[0-9]/),
++    username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_-]+$/),
++  });
++
++  const result = schema.safeParse(sanitizeInput(input));
++  if (!result.success) {
++    return { success: false, error: result.error.format() };
++  }
++  return { success: true, data: result.data };
++}
++
+ export function validatePagination(page: number, limit: number): void {
+   if (page < 1) throw new AppError('Page must be >= 1', 400);
+   if (limit < 1 || limit > 100) throw new AppError('Limit must be 1-100', 400);

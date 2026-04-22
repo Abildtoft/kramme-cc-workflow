@@ -1,0 +1,63 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: session-wrap-up-with-changes
+    instruction: |
+      You have a skill called kramme:session:wrap-up in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Perform a session wrap-up. The project directory has been set up to simulate
+      an active development session with uncommitted changes, TODOs, and WIP markers.
+
+      Since this is a test environment without interactive prompts, skip any user
+      confirmation steps and report your findings directly. Skip quality checks.
+      Treat this as "quick mode".
+
+      Report your findings covering: git status, TODO detection, WIP detection,
+      and a final summary.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:session:wrap-up/SKILL.md
+    docker:
+      setup: |
+        apt-get update && apt-get install -y git
+        git init /workspace/project
+        cd /workspace/project
+        git config user.email "test@test.com"
+        git config user.name "Test"
+        mkdir -p src
+        echo 'export function add(a: number, b: number) { return a + b; }' > src/math.ts
+        echo '// TODO: add error handling for edge cases' >> src/math.ts
+        echo 'export function multiply(a: number, b: number) { /* WIP */ return 0; }' >> src/math.ts
+        echo '{"name": "test-project", "scripts": {"test": "echo ok"}}' > package.json
+        git add -A
+        git commit -m "Initial commit"
+        echo '// FIXME: this validation is incomplete' >> src/math.ts
+        echo 'export function subtract(a: number, b: number) { return a - b; }' >> src/math.ts
+        echo 'console.log("debug helper")' > src/debug.ts
+    graders:
+      - type: llm_rubric
+        rubric: |
+          Changes audit (0-0.4):
+          - Did the agent check git status and report uncommitted/untracked files?
+          - Did it detect the TODO comment ("add error handling for edge cases")?
+          - Did it detect WIP markers (the WIP comment or FIXME)?
+          - Did it identify the untracked debug.ts file?
+          Systematic approach (0-0.3):
+          - Did the agent follow the structured phases from the skill?
+          - Did it provide a summary with counts (uncommitted files, TODOs found, etc.)?
+          - Did it handle the session wrap-up in quick mode (skipping quality checks)?
+          Report quality (0-0.3):
+          - Is the final report formatted clearly?
+          - Does it mention specific file names and locations?
+          - Does it include actionable reminders about incomplete work?
+        weight: 1.0

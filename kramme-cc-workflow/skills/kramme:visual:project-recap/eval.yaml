@@ -1,0 +1,66 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: project-recap-node-project
+    instruction: |
+      You have a skill called kramme:visual:project-recap in the skills/ directory.
+      Read its SKILL.md and follow the skill's instructions.
+
+      Also read the shared visual references at:
+      - skills/kramme:visual:diagram/SKILL.md
+      - skills/kramme:visual:diagram/references/
+      - skills/kramme:visual:diagram/assets/
+
+      Generate a project recap HTML page for this project. The project source is in
+      the project/ directory (package.json and src/index.ts). Since there is no git
+      history available, base the recap on the project files — describe the
+      architecture, current state, and provide a mental model summary. Save to output.html
+
+      Do not open the file in a browser. Just write it to output.html.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:visual:project-recap/SKILL.md
+      - src: references/
+        dest: skills/kramme:visual:project-recap/references/
+      - src: assets/
+        dest: skills/kramme:visual:project-recap/assets/
+      - src: ../kramme:visual:diagram/SKILL.md
+        dest: skills/kramme:visual:diagram/SKILL.md
+      - src: ../kramme:visual:diagram/references/
+        dest: skills/kramme:visual:diagram/references/
+      - src: ../kramme:visual:diagram/assets/
+        dest: skills/kramme:visual:diagram/assets/
+      - src: fixtures/package.json
+        dest: project/package.json
+      - src: fixtures/index.ts
+        dest: project/src/index.ts
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 0.6
+      - type: llm_rubric
+        rubric: |
+          HTML quality (0-0.3):
+          - Is the output a well-formed, self-contained HTML page?
+          - Does it include CSS styling with custom properties?
+          - Does it use distinctive typography?
+          Recap content (0-0.4):
+          - Does it include a project identity section?
+          - Does it include an architecture snapshot or diagram?
+          - Does it describe the current state of the project?
+          - Does it reference actual project details (Express, tasks API)?
+          - Does it include mental model essentials or next steps?
+          Visual quality (0-0.3):
+          - Is there visual hierarchy with hero sections?
+          - Does it use warm editorial or paper/ink aesthetic?
+          - Does it include section navigation or collapsible sections?
+        weight: 0.4

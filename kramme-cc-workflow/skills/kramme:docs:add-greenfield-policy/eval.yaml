@@ -1,0 +1,43 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: add-greenfield-policy-to-claude-md
+    instruction: |
+      You have a skill called kramme:docs:add-greenfield-policy in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Add the greenfield policy to CLAUDE.md.
+
+      Do not ask for confirmation. Just update the file.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:docs:add-greenfield-policy/SKILL.md
+      - src: fixtures/CLAUDE.md
+        dest: CLAUDE.md
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 0.6
+      - type: llm_rubric
+        rubric: |
+          Policy presence (0-0.4):
+          - Does CLAUDE.md now contain a greenfield or hard-cut policy section?
+          - Is the policy clearly delineated (has its own heading or section)?
+          - Does it describe when/how to apply the greenfield approach?
+          Integration quality (0-0.3):
+          - Is the original CLAUDE.md content preserved (stack info, dev commands)?
+          - Is the new section logically placed within the document structure?
+          - Does the formatting match the existing document style?
+          Completeness (0-0.3):
+          - Does the policy cover key aspects (when to use, how to apply, what to preserve)?
+          - Is the policy actionable and not just a vague statement?
+        weight: 0.4
