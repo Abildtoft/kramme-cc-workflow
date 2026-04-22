@@ -449,7 +449,7 @@ apply_exported_editor_env_segment() {
     local inherited_has_git_sequence_editor="${2:-false}"
     local inherited_shell_has_git_editor="${3:-$inherited_has_git_editor}"
     local inherited_shell_has_git_sequence_editor="${4:-$inherited_has_git_sequence_editor}"
-    local value token
+    local value token command_name
     local shell_env_persists=true
     local pending_shell_has_git_editor=""
     local pending_shell_has_git_sequence_editor=""
@@ -490,80 +490,137 @@ apply_exported_editor_env_segment() {
     fi
 
     [ "$shell_env_persists" = "true" ] || return
-    [ "$(token_basename "$1")" = "export" ] || return
+    command_name="$(token_basename "$1")"
 
-    [ -n "$pending_shell_has_git_editor" ] && PARSED_PERSISTED_SHELL_HAS_GIT_EDITOR="$pending_shell_has_git_editor"
-    [ -n "$pending_shell_has_git_sequence_editor" ] && PARSED_PERSISTED_SHELL_HAS_GIT_SEQUENCE_EDITOR="$pending_shell_has_git_sequence_editor"
-    shift
+    case "$command_name" in
+        export)
+            [ -n "$pending_shell_has_git_editor" ] && PARSED_PERSISTED_SHELL_HAS_GIT_EDITOR="$pending_shell_has_git_editor"
+            [ -n "$pending_shell_has_git_sequence_editor" ] && PARSED_PERSISTED_SHELL_HAS_GIT_SEQUENCE_EDITOR="$pending_shell_has_git_sequence_editor"
+            shift
 
-    while [ $# -gt 0 ]; do
-        value="$(strip_wrapping_quotes "$1")"
-        case "$value" in
-            --)
-                shift
-                break
-                ;;
-            -n)
-                shift
-                if [ $# -gt 0 ]; then
-                    case "$(strip_wrapping_quotes "$1")" in
-                        GIT_EDITOR)
-                            PARSED_PERSISTED_HAS_GIT_EDITOR=false
-                            ;;
-                        GIT_SEQUENCE_EDITOR)
-                            PARSED_PERSISTED_HAS_GIT_SEQUENCE_EDITOR=false
-                            ;;
-                    esac
-                    shift
-                fi
-                ;;
-            -n*)
-                case "$(strip_wrapping_quotes "${value#-n}")" in
-                    GIT_EDITOR)
-                        PARSED_PERSISTED_HAS_GIT_EDITOR=false
-                        ;;
-                    GIT_SEQUENCE_EDITOR)
-                        PARSED_PERSISTED_HAS_GIT_SEQUENCE_EDITOR=false
-                        ;;
-                esac
-                shift
-                ;;
-            [A-Za-z_][A-Za-z0-9_]*=*)
-                case "${value%%=*}" in
-                    GIT_EDITOR)
-                        PARSED_PERSISTED_SHELL_HAS_GIT_EDITOR=true
-                        PARSED_PERSISTED_HAS_GIT_EDITOR=true
-                        ;;
-                    GIT_SEQUENCE_EDITOR)
-                        PARSED_PERSISTED_SHELL_HAS_GIT_SEQUENCE_EDITOR=true
-                        PARSED_PERSISTED_HAS_GIT_SEQUENCE_EDITOR=true
-                        ;;
-                esac
-                shift
-                ;;
-            [A-Za-z_][A-Za-z0-9_]*)
+            while [ $# -gt 0 ]; do
+                value="$(strip_wrapping_quotes "$1")"
                 case "$value" in
-                    GIT_EDITOR)
-                        if [ "$PARSED_PERSISTED_SHELL_HAS_GIT_EDITOR" = "true" ]; then
-                            PARSED_PERSISTED_HAS_GIT_EDITOR=true
+                    --)
+                        shift
+                        break
+                        ;;
+                    -n)
+                        shift
+                        if [ $# -gt 0 ]; then
+                            case "$(strip_wrapping_quotes "$1")" in
+                                GIT_EDITOR)
+                                    PARSED_PERSISTED_HAS_GIT_EDITOR=false
+                                    ;;
+                                GIT_SEQUENCE_EDITOR)
+                                    PARSED_PERSISTED_HAS_GIT_SEQUENCE_EDITOR=false
+                                    ;;
+                            esac
+                            shift
                         fi
                         ;;
-                    GIT_SEQUENCE_EDITOR)
-                        if [ "$PARSED_PERSISTED_SHELL_HAS_GIT_SEQUENCE_EDITOR" = "true" ]; then
-                            PARSED_PERSISTED_HAS_GIT_SEQUENCE_EDITOR=true
-                        fi
+                    -n*)
+                        case "$(strip_wrapping_quotes "${value#-n}")" in
+                            GIT_EDITOR)
+                                PARSED_PERSISTED_HAS_GIT_EDITOR=false
+                                ;;
+                            GIT_SEQUENCE_EDITOR)
+                                PARSED_PERSISTED_HAS_GIT_SEQUENCE_EDITOR=false
+                                ;;
+                        esac
+                        shift
+                        ;;
+                    [A-Za-z_][A-Za-z0-9_]*=*)
+                        case "${value%%=*}" in
+                            GIT_EDITOR)
+                                PARSED_PERSISTED_SHELL_HAS_GIT_EDITOR=true
+                                PARSED_PERSISTED_HAS_GIT_EDITOR=true
+                                ;;
+                            GIT_SEQUENCE_EDITOR)
+                                PARSED_PERSISTED_SHELL_HAS_GIT_SEQUENCE_EDITOR=true
+                                PARSED_PERSISTED_HAS_GIT_SEQUENCE_EDITOR=true
+                                ;;
+                        esac
+                        shift
+                        ;;
+                    [A-Za-z_][A-Za-z0-9_]*)
+                        case "$value" in
+                            GIT_EDITOR)
+                                if [ "$PARSED_PERSISTED_SHELL_HAS_GIT_EDITOR" = "true" ]; then
+                                    PARSED_PERSISTED_HAS_GIT_EDITOR=true
+                                fi
+                                ;;
+                            GIT_SEQUENCE_EDITOR)
+                                if [ "$PARSED_PERSISTED_SHELL_HAS_GIT_SEQUENCE_EDITOR" = "true" ]; then
+                                    PARSED_PERSISTED_HAS_GIT_SEQUENCE_EDITOR=true
+                                fi
+                                ;;
+                        esac
+                        shift
+                        ;;
+                    -*)
+                        shift
+                        ;;
+                    *)
+                        break
                         ;;
                 esac
-                shift
-                ;;
-            -*)
-                shift
-                ;;
-            *)
-                break
-                ;;
-        esac
-    done
+            done
+            ;;
+        unset)
+            local unset_targets_variables=true
+            shift
+
+            while [ $# -gt 0 ]; do
+                value="$(strip_wrapping_quotes "$1")"
+                case "$value" in
+                    --)
+                        shift
+                        break
+                        ;;
+                    -f|-n)
+                        unset_targets_variables=false
+                        shift
+                        ;;
+                    -v)
+                        unset_targets_variables=true
+                        shift
+                        ;;
+                    -*)
+                        case "$value" in
+                            *f*|*n*)
+                                unset_targets_variables=false
+                                ;;
+                            *v*)
+                                unset_targets_variables=true
+                                ;;
+                        esac
+                        shift
+                        ;;
+                    GIT_EDITOR)
+                        if [ "$unset_targets_variables" = "true" ]; then
+                            PARSED_PERSISTED_HAS_GIT_EDITOR=false
+                            PARSED_PERSISTED_SHELL_HAS_GIT_EDITOR=false
+                        fi
+                        shift
+                        ;;
+                    GIT_SEQUENCE_EDITOR)
+                        if [ "$unset_targets_variables" = "true" ]; then
+                            PARSED_PERSISTED_HAS_GIT_SEQUENCE_EDITOR=false
+                            PARSED_PERSISTED_SHELL_HAS_GIT_SEQUENCE_EDITOR=false
+                        fi
+                        shift
+                        ;;
+                    *)
+                        shift
+                        ;;
+                esac
+            done
+            ;;
+        *)
+            return
+            ;;
+    esac
 }
 
 evaluate_find_exec_segments() {
@@ -1425,42 +1482,74 @@ def apply_exported_editor_env(tokens, inherited_env=None, inherited_shell_vars=N
             shell_vars.update(pending_shell_vars)
         return env, shell_vars
 
-    if not shell_env_persists or basename(tokens[idx]) != "export":
+    if not shell_env_persists:
         return env, shell_vars
 
-    shell_vars.update(pending_shell_vars)
-
-    idx += 1
-    while idx < len(tokens):
-        token = tokens[idx]
-        if token == "--":
-            idx += 1
+    command_name = basename(tokens[idx])
+    if command_name == "export":
+        shell_vars.update(pending_shell_vars)
+        idx += 1
+        while idx < len(tokens):
+            token = tokens[idx]
+            if token == "--":
+                idx += 1
+                break
+            if token == "-n":
+                if idx + 1 < len(tokens):
+                    unset_editor_env(env, tokens[idx + 1])
+                idx += 2
+                continue
+            if token.startswith("-n") and token != "-n":
+                unset_editor_env(env, token[2:])
+                idx += 1
+                continue
+            if is_assignment(token):
+                key, value = token.split("=", 1)
+                if key in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
+                    shell_vars[key] = value
+                    env[key] = value
+                idx += 1
+                continue
+            if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", token):
+                if token in shell_vars and token in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
+                    env[token] = shell_vars[token]
+                idx += 1
+                continue
+            if token.startswith("-"):
+                idx += 1
+                continue
             break
-        if token == "-n":
-            if idx + 1 < len(tokens):
-                unset_editor_env(env, tokens[idx + 1])
-            idx += 2
-            continue
-        if token.startswith("-n") and token != "-n":
-            unset_editor_env(env, token[2:])
+        return env, shell_vars
+
+    if command_name == "unset":
+        unset_targets_variables = True
+        idx += 1
+        while idx < len(tokens):
+            token = tokens[idx]
+            if token == "--":
+                idx += 1
+                break
+            if token in {"-f", "-n"}:
+                unset_targets_variables = False
+                idx += 1
+                continue
+            if token == "-v":
+                unset_targets_variables = True
+                idx += 1
+                continue
+            if token.startswith("-"):
+                option_flags = token[1:]
+                if "f" in option_flags or "n" in option_flags:
+                    unset_targets_variables = False
+                elif "v" in option_flags:
+                    unset_targets_variables = True
+                idx += 1
+                continue
+            if unset_targets_variables and token in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
+                env.pop(token, None)
+                shell_vars.pop(token, None)
             idx += 1
-            continue
-        if is_assignment(token):
-            key, value = token.split("=", 1)
-            if key in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
-                shell_vars[key] = value
-                env[key] = value
-            idx += 1
-            continue
-        if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", token):
-            if token in shell_vars and token in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
-                env[token] = shell_vars[token]
-            idx += 1
-            continue
-        if token.startswith("-"):
-            idx += 1
-            continue
-        break
+        return env, shell_vars
 
     return env, shell_vars
 

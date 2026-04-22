@@ -506,6 +506,32 @@ REVIEW_SUMMARY.md"
     is_blocked
 }
 
+@test "blocks git commit after exported repo selection is nameref-unset" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && unset -n GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    is_blocked
+}
+
+@test "allows git commit after exported repo selection is unset" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && unset GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "blocks git commit after exported repo selection is function-unset" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && unset -f GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    is_blocked
+}
+
+@test "allows git commit when function-unset does not retain prefixed repo selection" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook "GIT_DIR=repo/.git GIT_WORK_TREE=repo unset -f nope && export GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
 @test "blocks git commit when piped export does not actually retarget the repo" {
     mock_git_staged_for_repo "repo" "" "REVIEW_OVERVIEW.md"
     run run_hook "export GIT_DIR=repo/.git GIT_WORK_TREE=repo | git commit -m 'test'"
@@ -675,6 +701,32 @@ EOF"
     mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
     run run_hook_without_python "GIT_DIR=repo/.git; GIT_WORK_TREE=repo; export GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
     is_blocked
+}
+
+@test "blocks git commit after exported repo selection is nameref-unset without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && unset -n GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    is_blocked
+}
+
+@test "allows git commit after exported repo selection is unset without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && unset GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "blocks git commit after exported repo selection is function-unset without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && unset -f GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    is_blocked
+}
+
+@test "allows git commit when function-unset does not retain prefixed repo selection without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "GIT_DIR=repo/.git GIT_WORK_TREE=repo unset -f nope && export GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
 }
 
 @test "blocks git commit when piped export does not actually retarget the repo without python3" {

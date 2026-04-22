@@ -344,6 +344,30 @@ EOF"
     [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
 }
 
+@test "allows interactive rebase after exported GIT_SEQUENCE_EDITOR is nameref-unset when python3 is unavailable" {
+    run run_hook_without_python "export GIT_SEQUENCE_EDITOR=true && unset -n GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks interactive rebase after exported GIT_SEQUENCE_EDITOR is unset when python3 is unavailable" {
+    run run_hook_without_python "export GIT_SEQUENCE_EDITOR=true && unset GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
+@test "allows interactive rebase after exported GIT_SEQUENCE_EDITOR is function-unset when python3 is unavailable" {
+    run run_hook_without_python "export GIT_SEQUENCE_EDITOR=true && unset -f GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks interactive rebase when function-unset does not retain prefixed GIT_SEQUENCE_EDITOR when python3 is unavailable" {
+    run run_hook_without_python "GIT_SEQUENCE_EDITOR=true unset -f nope && export GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
 @test "allows safe command substitution before git rebase --continue when python3 is unavailable" {
     run run_hook_without_python "GIT_EDITOR=\$(command -v true) git rebase --continue"
     [ "$status" -eq 0 ]
@@ -360,6 +384,30 @@ EOF"
     run run_hook_without_python "GIT_EDITOR=true; export GIT_EDITOR && git rebase --continue"
     [ "$status" -eq 0 ]
     is_allowed
+}
+
+@test "allows rebase --continue after exported GIT_EDITOR is nameref-unset when python3 is unavailable" {
+    run run_hook_without_python "export GIT_EDITOR=true && unset -n GIT_EDITOR && git rebase --continue"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks rebase --continue after exported GIT_EDITOR is unset when python3 is unavailable" {
+    run run_hook_without_python "export GIT_EDITOR=true && unset GIT_EDITOR && git rebase --continue"
+    is_blocked
+    [[ "$output" == *"GIT_EDITOR"* ]]
+}
+
+@test "allows rebase --continue after exported GIT_EDITOR is function-unset when python3 is unavailable" {
+    run run_hook_without_python "export GIT_EDITOR=true && unset -f GIT_EDITOR && git rebase --continue"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks rebase --continue when function-unset does not retain prefixed GIT_EDITOR when python3 is unavailable" {
+    run run_hook_without_python "GIT_EDITOR=true unset -f nope && export GIT_EDITOR && git rebase --continue"
+    is_blocked
+    [[ "$output" == *"GIT_EDITOR"* ]]
 }
 
 @test "allows command substitution to inherit exported GIT_SEQUENCE_EDITOR when python3 is unavailable" {
@@ -785,6 +833,30 @@ EOF"
     [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
 }
 
+@test "allows interactive rebase after exported GIT_SEQUENCE_EDITOR is nameref-unset" {
+    run run_hook "export GIT_SEQUENCE_EDITOR=true && unset -n GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks interactive rebase after exported GIT_SEQUENCE_EDITOR is unset" {
+    run run_hook "export GIT_SEQUENCE_EDITOR=true && unset GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
+@test "allows interactive rebase after exported GIT_SEQUENCE_EDITOR is function-unset" {
+    run run_hook "export GIT_SEQUENCE_EDITOR=true && unset -f GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks interactive rebase when function-unset does not retain prefixed GIT_SEQUENCE_EDITOR" {
+    run run_hook "GIT_SEQUENCE_EDITOR=true unset -f nope && export GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
 @test "blocks env -u GIT_SEQUENCE_EDITOR after explicit assignment" {
     run run_hook "GIT_SEQUENCE_EDITOR=true env -u GIT_SEQUENCE_EDITOR git rebase -i HEAD~3"
     is_blocked
@@ -824,6 +896,30 @@ EOF"
     run run_hook "GIT_EDITOR=true; export GIT_EDITOR && git rebase --continue"
     [ "$status" -eq 0 ]
     is_allowed
+}
+
+@test "allows rebase --continue after exported GIT_EDITOR is nameref-unset" {
+    run run_hook "export GIT_EDITOR=true && unset -n GIT_EDITOR && git rebase --continue"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks rebase --continue after exported GIT_EDITOR is unset" {
+    run run_hook "export GIT_EDITOR=true && unset GIT_EDITOR && git rebase --continue"
+    is_blocked
+    [[ "$output" == *"GIT_EDITOR"* ]]
+}
+
+@test "allows rebase --continue after exported GIT_EDITOR is function-unset" {
+    run run_hook "export GIT_EDITOR=true && unset -f GIT_EDITOR && git rebase --continue"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks rebase --continue when function-unset does not retain prefixed GIT_EDITOR" {
+    run run_hook "GIT_EDITOR=true unset -f nope && export GIT_EDITOR && git rebase --continue"
+    is_blocked
+    [[ "$output" == *"GIT_EDITOR"* ]]
 }
 
 @test "allows command substitution to inherit exported GIT_SEQUENCE_EDITOR" {

@@ -565,6 +565,47 @@ EOF
                     esac
                 done
                 ;;
+            unset)
+                pending_shell_git_vars=()
+                local unset_targets_variables=true
+                shift
+                while [ $# -gt 0 ]; do
+                    token="$(strip_wrapping_quotes "$1")"
+                    case "$token" in
+                        --)
+                            shift
+                            break
+                            ;;
+                        -f|-n)
+                            unset_targets_variables=false
+                            shift
+                            ;;
+                        -v)
+                            unset_targets_variables=true
+                            shift
+                            ;;
+                        -*)
+                            case "$token" in
+                                *f*|*n*)
+                                    unset_targets_variables=false
+                                    ;;
+                                *v*)
+                                    unset_targets_variables=true
+                                    ;;
+                            esac
+                            shift
+                            ;;
+                        *)
+                            if [ "$unset_targets_variables" = "true" ]; then
+                                remove_shell_git_var_assignment "$token"
+                                remove_shell_git_env_assignment "$token"
+                                remove_git_env_assignment "$token"
+                            fi
+                            shift
+                            ;;
+                    esac
+                done
+                ;;
             env|/usr/bin/env)
                 shift
                 while [ $# -gt 0 ]; do
@@ -1425,6 +1466,38 @@ def parse_commit_segment(tokens, git_args, git_env, shell_git_vars, depth=0):
                     idx += 1
                     continue
                 break
+            continue
+
+        if base == "unset":
+            pending_shell_git_vars = []
+            unset_targets_variables = True
+            idx += 1
+            while idx < len(tokens):
+                token = tokens[idx]
+                if token == "--":
+                    idx += 1
+                    break
+                if token in {"-f", "-n"}:
+                    unset_targets_variables = False
+                    idx += 1
+                    continue
+                if token == "-v":
+                    unset_targets_variables = True
+                    idx += 1
+                    continue
+                if token.startswith("-"):
+                    option_flags = token[1:]
+                    if "f" in option_flags or "n" in option_flags:
+                        unset_targets_variables = False
+                    elif "v" in option_flags:
+                        unset_targets_variables = True
+                    idx += 1
+                    continue
+                if unset_targets_variables:
+                    unset_replay_env(shell_git_vars, token)
+                    unset_replay_env(shell_git_env, token)
+                    unset_replay_env(git_env, token)
+                idx += 1
             continue
 
         if base == "env":
