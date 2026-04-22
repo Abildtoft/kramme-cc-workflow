@@ -103,7 +103,9 @@ Imprecise fetches return pages of navigation and marketing; precise fetches retu
 
 ## Integration with other skills
 
+- **Canonical docs-grounding entry point**: when another skill depends on current third-party framework/library behavior, it should point here rather than restating its own ad hoc doc-fetch rules. This skill owns the DETECT / FETCH / CITE discipline.
 - **Upstream/paired**: `kramme:code:migrate` — version migrations are the highest-value use case for this skill. The migration target version is the stack you need current docs for.
+- **Sibling authoring**: `kramme:code:frontend-authoring` — when UI work depends on framework-specific hooks, router behavior, server/client boundaries, or third-party component-library APIs, ground those decisions here and build the component there.
 - **Pairs well with**: any implementation skill touching external libraries. This skill owns *how to cite*; implementation skills own *what to build*.
 
 ---

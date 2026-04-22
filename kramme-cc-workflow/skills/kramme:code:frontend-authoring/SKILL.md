@@ -283,6 +283,7 @@ If any box is unchecked, the slice is not done. Fix the gap or split the slice.
 
 - **Upstream**: can be invoked standalone, or after a planning step (`kramme:siw:generate-phases`) where a phase involves UI work.
 - **Sibling authoring**: pairs with `kramme:code:incremental` — each UI slice obeys the six-rule increment loop; this skill adds the UI-specific passes on top.
+- **Sibling authoring**: pair with `kramme:code:source-driven` when the UI slice depends on framework-specific APIs, component-library behavior, or recently changed browser/runtime semantics. This skill owns UI structure, accessibility, and visual defaults; `source-driven` owns official-doc grounding and citation.
 - **Downstream reviewers**: `kramme:pr:ux-review`, the `kramme:a11y-auditor` agent, and the `kramme:deslop-reviewer` agent all check, post-hoc, for violations of the same defaults this skill prevents. If a reviewer flags one of the 9 AI-aesthetic patterns, the canonical fix lives in this skill's anti-pattern table.
 
 ---
