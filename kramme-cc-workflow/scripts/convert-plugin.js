@@ -1384,7 +1384,7 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
     { hasTrackedInstall, pluginName },
   )
   const legacyBaseConfig = needsLegacyOpenCodeBase(installState, pluginName)
-    ? await loadExistingOpenCodeConfig([paths.configPath, ...(paths.legacyConfigPaths ?? [])])
+    ? await loadExistingOpenCodeConfig([...(paths.legacyConfigPaths ?? []), paths.configPath])
     : {}
   await ensureDir(paths.root)
 
@@ -1464,6 +1464,8 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
     preferredPluginName: pluginName,
     legacyBaseConfig,
     previousPreferredConfig: previousEntries.config,
+    previousPreferredEntries: trackedPreviousEntries,
+    currentPreferredCommands: bundle.commands ?? [],
   }))
   await writeInstallState(paths.stateRoot, installState)
   await writeInstallManifest(paths.stateRoot, pluginName, "opencode", nextEntries)
@@ -2050,6 +2052,60 @@ function hasInstallStateEntries(state) {
     .some((pluginTargets) => isPlainObject(pluginTargets) && Object.keys(pluginTargets).length > 0)
 }
 
+function hasTrackedInstallRecord(record) {
+  const sanitized = sanitizeInstallRecord(record)
+  return Boolean(sanitized.permissionsMode)
+    || sanitized.commands.length > 0
+    || Object.keys(sanitized.config).length > 0
+}
+
+function shouldReplaceInstallRecord(existingRecord, incomingRecord) {
+  const existingTracked = hasTrackedInstallRecord(existingRecord)
+  const incomingTracked = hasTrackedInstallRecord(incomingRecord)
+
+  // Records for the same plugin/target belong to a specific output root. Keep
+  // the active root's tracked record and only let legacy roots backfill when
+  // the active root lost its tracked install metadata.
+  if (existingTracked) {
+    return false
+  }
+  if (incomingTracked) {
+    return true
+  }
+
+  const existingTimestamp = sanitizeInstallTimestamp(existingRecord?.updatedAtMs) ?? 0
+  const incomingTimestamp = sanitizeInstallTimestamp(incomingRecord?.updatedAtMs) ?? 0
+  return incomingTimestamp > existingTimestamp
+}
+
+function mergeInstallStates(results) {
+  const merged = createInstallState()
+  let fromDisk = false
+
+  for (const result of results) {
+    if (!result) continue
+    fromDisk = fromDisk || Boolean(result.fromDisk)
+
+    for (const [pluginName, pluginTargets] of Object.entries(result.state?.plugins ?? {})) {
+      if (!isPlainObject(pluginTargets)) continue
+
+      for (const [targetName, targetRecord] of Object.entries(pluginTargets)) {
+        if (!isPlainObject(targetRecord)) continue
+
+        const existingRecord = merged.plugins?.[pluginName]?.[targetName]
+        if (!existingRecord || shouldReplaceInstallRecord(existingRecord, targetRecord)) {
+          setInstallEntries(merged, pluginName, targetName, targetRecord)
+        }
+      }
+    }
+  }
+
+  return {
+    state: merged,
+    fromDisk,
+  }
+}
+
 async function loadInstallStateWithFallback(roots) {
   const normalizedRoots = uniqueRoots(roots)
   if (normalizedRoots.length === 0) {
@@ -2059,26 +2115,18 @@ async function loadInstallStateWithFallback(roots) {
     }
   }
 
-  let primaryResult = null
-  let fallbackResult = null
+  const results = []
   for (let index = 0; index < normalizedRoots.length; index += 1) {
     const loaded = await loadInstallState(normalizedRoots[index])
-    if (index === 0) {
-      primaryResult = loaded
-    }
-    if (loaded.fromDisk && hasInstallStateEntries(loaded.state)) {
-      return loaded
-    }
-    if (!fallbackResult && hasInstallStateEntries(loaded.state)) {
-      fallbackResult = loaded
-      continue
-    }
-    if (!fallbackResult && loaded.fromDisk) {
-      fallbackResult = loaded
-    }
+    results.push(loaded)
   }
 
-  return fallbackResult ?? primaryResult ?? {
+  const merged = mergeInstallStates(results)
+  if (hasInstallStateEntries(merged.state) || merged.fromDisk) {
+    return merged
+  }
+
+  return {
     state: createInstallState(),
     fromDisk: false,
   }
@@ -2443,12 +2491,84 @@ function needsLegacyOpenCodeBase(state, preferredPluginName) {
     .some(({ pluginName, targetState }) => pluginName !== preferredPluginName && !hasStoredOpenCodeConfig(targetState))
 }
 
-function removeLegacyPreferredEntries(baseConfig, previousPreferredConfig) {
-  const filtered = sanitizeInstallConfig(baseConfig)
-  const previous = sanitizeInstallConfig(previousPreferredConfig)
+function normalizeCommandMatcherName(commandName) {
+  return String(commandName ?? "").trim().toLowerCase()
+}
 
-  for (const commandName of Object.keys(previous.command ?? {})) {
-    if (isPlainObject(filtered.command)) {
+function deriveCommandFamilyPrefix(commandName) {
+  const normalizedName = normalizeCommandMatcherName(commandName)
+  const firstSeparator = normalizedName.indexOf(":")
+  const lastSeparator = normalizedName.lastIndexOf(":")
+  if (firstSeparator <= 0 || lastSeparator <= firstSeparator) {
+    return undefined
+  }
+  return normalizedName.slice(0, lastSeparator + 1)
+}
+
+function buildLegacyPreferredCommandMatchers(previousPreferredConfig, previousPreferredEntries, currentPreferredCommands) {
+  const previousConfig = sanitizeInstallConfig(previousPreferredConfig)
+  const previousEntries = sanitizeInstallRecord(previousPreferredEntries)
+  const currentCommands = sanitizeStoredCommands(currentPreferredCommands)
+  const exactNames = new Set()
+  const familyPrefixes = new Set()
+
+  for (const commandName of Object.keys(previousConfig.command ?? {})) {
+    exactNames.add(normalizeName(commandName))
+  }
+  for (const command of previousEntries.commands) {
+    exactNames.add(normalizeName(command.name))
+    const familyPrefix = deriveCommandFamilyPrefix(command.name)
+    if (familyPrefix) {
+      familyPrefixes.add(familyPrefix)
+    }
+  }
+  for (const skillName of previousEntries.skills) {
+    exactNames.add(normalizeName(skillName))
+    const familyPrefix = deriveCommandFamilyPrefix(skillName)
+    if (familyPrefix) {
+      familyPrefixes.add(familyPrefix)
+    }
+  }
+  for (const command of currentCommands) {
+    const familyPrefix = deriveCommandFamilyPrefix(command.name)
+    if (familyPrefix) {
+      familyPrefixes.add(familyPrefix)
+    }
+  }
+
+  return { exactNames, familyPrefixes }
+}
+
+function shouldStripLegacyPreferredCommand(commandName, matchers) {
+  const normalizedName = normalizeName(commandName)
+  const matcherName = normalizeCommandMatcherName(commandName)
+  if (matchers.exactNames.has(normalizedName)) {
+    return true
+  }
+
+  for (const familyPrefix of matchers.familyPrefixes) {
+    if (matcherName.startsWith(familyPrefix)) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function removeLegacyPreferredEntries(baseConfig, options = {}) {
+  const filtered = sanitizeInstallConfig(baseConfig)
+  const previous = sanitizeInstallConfig(options.previousPreferredConfig)
+  const commandMatchers = buildLegacyPreferredCommandMatchers(
+    options.previousPreferredConfig,
+    options.previousPreferredEntries,
+    options.currentPreferredCommands,
+  )
+
+  if (isPlainObject(filtered.command)) {
+    for (const commandName of Object.keys(filtered.command)) {
+      if (!shouldStripLegacyPreferredCommand(commandName, commandMatchers)) {
+        continue
+      }
       delete filtered.command[commandName]
     }
   }
@@ -2489,11 +2609,17 @@ function buildCombinedOpenCodeConfigFromState(state, options = {}) {
   const preferredPluginName = typeof options === "string" ? options : options.preferredPluginName
   const legacyBaseConfig = typeof options === "string" ? undefined : options.legacyBaseConfig
   const previousPreferredConfig = typeof options === "string" ? undefined : options.previousPreferredConfig
+  const previousPreferredEntries = typeof options === "string" ? undefined : options.previousPreferredEntries
+  const currentPreferredCommands = typeof options === "string" ? undefined : options.currentPreferredCommands
   const configs = []
   const targets = getOpenCodeInstallTargets(state, preferredPluginName)
   const visibleCommandNamesByPlugin = getVisibleOpenCodeCommands(targets)
 
-  const filteredLegacyBaseConfig = removeLegacyPreferredEntries(legacyBaseConfig, previousPreferredConfig)
+  const filteredLegacyBaseConfig = removeLegacyPreferredEntries(legacyBaseConfig, {
+    previousPreferredConfig,
+    previousPreferredEntries,
+    currentPreferredCommands,
+  })
   if (Object.keys(filteredLegacyBaseConfig).length > 0) {
     configs.push(filteredLegacyBaseConfig)
   }
@@ -2515,18 +2641,19 @@ async function loadExistingOpenCodeConfig(configPathOrPaths) {
   const configPaths = Array.isArray(configPathOrPaths)
     ? configPathOrPaths
     : [configPathOrPaths]
+  const configs = []
 
   for (const configPath of Array.from(new Set(configPaths.map((value) => path.resolve(value))))) {
     if (!(await pathExists(configPath))) continue
 
     try {
-      return sanitizeInstallConfig(await readJson(configPath))
+      configs.push(sanitizeInstallConfig(await readJson(configPath)))
     } catch {
       // Ignore invalid config candidates and keep searching.
     }
   }
 
-  return {}
+  return configs.length > 0 ? combineOpenCodeConfigs(configs) : {}
 }
 async function writeJson(file, data) {
   const content = JSON.stringify(data, null, 2) + "\n"

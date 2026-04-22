@@ -591,6 +591,89 @@ MD
   [ "$output" = "true" ]
 }
 
+@test "opencode conversion drops stale preferred commands after legacy state loss" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_A="$TMP_DIR/plugin-a"
+  PLUGIN_B="$TMP_DIR/plugin-b"
+  create_fixture_plugin "$PLUGIN_A" "plugin-a"
+  create_fixture_plugin "$PLUGIN_B" "plugin-b"
+  mkdir -p "$PLUGIN_A/commands" "$PLUGIN_B/commands"
+  cat > "$PLUGIN_A/commands/old.md" <<'MD'
+---
+name: plugin:a:old
+description: Old command
+---
+Old command.
+MD
+  cat > "$PLUGIN_B/commands/keep.md" <<'MD'
+---
+name: plugin:b:keep
+description: Keep command
+---
+Keep command.
+MD
+
+  run node "$SCRIPT" install "$PLUGIN_A" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+  run node "$SCRIPT" install "$PLUGIN_B" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  run node -e '
+    const fs = require("fs")
+    const path = require("path")
+    const stateFile = process.argv[1]
+    const manifestsDir = process.argv[2]
+    const state = JSON.parse(fs.readFileSync(stateFile, "utf8"))
+    for (const plugin of Object.values(state.plugins ?? {})) {
+      for (const target of Object.values(plugin ?? {})) {
+        delete target.commands
+        delete target.config
+        delete target.permissionsMode
+        delete target.updatedAtMs
+      }
+    }
+    fs.writeFileSync(stateFile, JSON.stringify(state, null, 2) + "\n")
+    for (const entry of fs.readdirSync(manifestsDir)) {
+      if (!entry.endsWith(".json")) continue
+      const manifestFile = path.join(manifestsDir, entry)
+      const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8"))
+      delete manifest.commands
+      delete manifest.config
+      delete manifest.permissionsMode
+      delete manifest.updatedAtMs
+      fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + "\n")
+    }
+  ' "$TMP_DIR/opencode/.kramme-install-state.json" "$TMP_DIR/opencode/.kramme-install-manifests"
+  [ "$status" -eq 0 ]
+
+  rm "$PLUGIN_A/commands/old.md"
+  cat > "$PLUGIN_A/commands/new.md" <<'MD'
+---
+name: plugin:a:new
+description: New command
+---
+New command.
+MD
+
+  run node "$SCRIPT" install "$PLUGIN_A" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  run jq -r '.command | has("plugin:a:old")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+
+  run jq -r '.command | has("plugin:a:new")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("plugin:b:keep")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+}
+
 @test "opencode conversion drops stale commands when legacy base fallback is required" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
@@ -1694,6 +1777,215 @@ JSON
   [ "$output" = "true" ]
 }
 
+@test "opencode conversion merges hidden-root manifests with parent-root state when switching roots" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  local plugin_a="$TMP_DIR/mixed-root-plugin-a"
+  local plugin_b="$TMP_DIR/mixed-root-plugin-b"
+  local plugin_c="$TMP_DIR/mixed-root-plugin-c"
+  create_fixture_plugin "$plugin_a" "plugin-a"
+  create_fixture_plugin "$plugin_b" "plugin-b"
+  create_fixture_plugin "$plugin_c" "plugin-c"
+  mkdir -p "$plugin_a/commands" "$plugin_b/commands" "$plugin_c/commands"
+  cat > "$plugin_a/commands/a.md" <<'MD'
+---
+name: a
+description: Command A
+---
+A command.
+MD
+  cat > "$plugin_b/commands/b.md" <<'MD'
+---
+name: b
+description: Command B
+---
+B command.
+MD
+  cat > "$plugin_c/commands/c.md" <<'MD'
+---
+name: c
+description: Command C
+---
+C command.
+MD
+
+  run node "$SCRIPT" install "$plugin_a" --to opencode --output "$TMP_DIR/opencode-root" --yes
+  [ "$status" -eq 0 ]
+
+  mv "$TMP_DIR/opencode-root/.opencode/.kramme-install-state.json" "$TMP_DIR/opencode-root/.kramme-install-state.json"
+  mv "$TMP_DIR/opencode-root/.opencode/.kramme-install-manifests" "$TMP_DIR/opencode-root/.kramme-install-manifests"
+
+  run node "$SCRIPT" install "$plugin_b" --to opencode --output "$TMP_DIR/opencode-root/.opencode" --yes
+  [ "$status" -eq 0 ]
+
+  rm "$TMP_DIR/opencode-root/.opencode/.kramme-install-state.json"
+
+  run node "$SCRIPT" install "$plugin_c" --to opencode --output "$TMP_DIR/opencode-root/.opencode" --yes
+  [ "$status" -eq 0 ]
+
+  run jq -r '.command | has("a")' "$TMP_DIR/opencode-root/.opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("b")' "$TMP_DIR/opencode-root/.opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("c")' "$TMP_DIR/opencode-root/.opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+}
+
+@test "opencode conversion prefers parent-root manifests over empty hidden-root state" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  local plugin_a="$TMP_DIR/manifest-only-parent-plugin-a"
+  local plugin_b="$TMP_DIR/manifest-only-parent-plugin-b"
+  create_fixture_plugin "$plugin_a" "plugin-a"
+  create_fixture_plugin "$plugin_b" "plugin-b"
+  mkdir -p "$plugin_a/commands" "$plugin_b/commands"
+  cat > "$plugin_a/commands/a.md" <<'MD'
+---
+name: a
+description: Command A
+---
+A command.
+MD
+  cat > "$plugin_b/commands/b.md" <<'MD'
+---
+name: b
+description: Command B
+---
+B command.
+MD
+
+  run node "$SCRIPT" install "$plugin_a" --to opencode --output "$TMP_DIR/opencode-root" --yes
+  [ "$status" -eq 0 ]
+
+  mv "$TMP_DIR/opencode-root/.opencode/.kramme-install-manifests" "$TMP_DIR/opencode-root/.kramme-install-manifests"
+  rm "$TMP_DIR/opencode-root/.opencode/.kramme-install-state.json"
+  mkdir -p "$TMP_DIR/opencode-root/.opencode"
+  cat > "$TMP_DIR/opencode-root/.opencode/.kramme-install-state.json" <<'JSON'
+{
+  "version": 1,
+  "plugins": {}
+}
+JSON
+
+  run node "$SCRIPT" install "$plugin_b" --to opencode --output "$TMP_DIR/opencode-root/.opencode" --yes
+  [ "$status" -eq 0 ]
+
+  run jq -r '.command | has("a")' "$TMP_DIR/opencode-root/.opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("b")' "$TMP_DIR/opencode-root/.opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+}
+
+@test "opencode conversion merges split legacy config roots when rebuilding hidden-root state" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  local plugin_a="$TMP_DIR/split-config-plugin-a"
+  local plugin_b="$TMP_DIR/split-config-plugin-b"
+  local plugin_c="$TMP_DIR/split-config-plugin-c"
+  create_fixture_plugin "$plugin_a" "plugin-a"
+  create_fixture_plugin "$plugin_b" "plugin-b"
+  create_fixture_plugin "$plugin_c" "plugin-c"
+  mkdir -p "$plugin_a/commands" "$plugin_b/commands" "$plugin_c/commands"
+  cat > "$plugin_a/commands/a.md" <<'MD'
+---
+name: plugin:a:parent
+description: Command A
+---
+A command.
+MD
+  cat > "$plugin_b/commands/b.md" <<'MD'
+---
+name: plugin:b:hidden
+description: Command B
+---
+B command.
+MD
+  cat > "$plugin_c/commands/c.md" <<'MD'
+---
+name: plugin:c:current
+description: Command C
+---
+C command.
+MD
+
+  run node "$SCRIPT" install "$plugin_a" --to opencode --output "$TMP_DIR/opencode-root" --yes
+  [ "$status" -eq 0 ]
+
+  mv "$TMP_DIR/opencode-root/.opencode/.kramme-install-state.json" "$TMP_DIR/opencode-root/.kramme-install-state.json"
+  mv "$TMP_DIR/opencode-root/.opencode/.kramme-install-manifests" "$TMP_DIR/opencode-root/.kramme-install-manifests"
+
+  run node "$SCRIPT" install "$plugin_b" --to opencode --output "$TMP_DIR/opencode-root/.opencode" --yes
+  [ "$status" -eq 0 ]
+
+  run jq '.command |= {"plugin:a:parent": .["plugin:a:parent"]}' "$TMP_DIR/opencode-root/opencode.json"
+  [ "$status" -eq 0 ]
+  printf '%s\n' "$output" > "$TMP_DIR/opencode-root/opencode.json"
+
+  run jq '.command |= {"plugin:b:hidden": .["plugin:b:hidden"]}' "$TMP_DIR/opencode-root/.opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  printf '%s\n' "$output" > "$TMP_DIR/opencode-root/.opencode/opencode.json"
+
+  run node -e '
+    const fs = require("fs")
+    const path = require("path")
+    const files = process.argv.slice(1)
+    for (const file of files) {
+      if (!file.endsWith(".json")) continue
+      const data = JSON.parse(fs.readFileSync(file, "utf8"))
+      if (file.endsWith(".kramme-install-state.json")) {
+        for (const plugin of Object.values(data.plugins ?? {})) {
+          for (const target of Object.values(plugin ?? {})) {
+            delete target.commands
+            delete target.config
+            delete target.permissionsMode
+            delete target.updatedAtMs
+          }
+        }
+      } else {
+        delete data.commands
+        delete data.config
+        delete data.permissionsMode
+        delete data.updatedAtMs
+      }
+      fs.writeFileSync(file, JSON.stringify(data, null, 2) + "\n")
+    }
+  ' \
+    "$TMP_DIR/opencode-root/.kramme-install-state.json" \
+    "$TMP_DIR/opencode-root/.opencode/.kramme-install-state.json" \
+    "$TMP_DIR/opencode-root/.kramme-install-manifests/plugin-a-opencode.json" \
+    "$TMP_DIR/opencode-root/.opencode/.kramme-install-manifests/plugin-b-opencode.json"
+  [ "$status" -eq 0 ]
+
+  run node "$SCRIPT" install "$plugin_c" --to opencode --output "$TMP_DIR/opencode-root/.opencode" --yes
+  [ "$status" -eq 0 ]
+
+  run jq -r '.command | has("plugin:a:parent")' "$TMP_DIR/opencode-root/.opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("plugin:b:hidden")' "$TMP_DIR/opencode-root/.opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("plugin:c:current")' "$TMP_DIR/opencode-root/.opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+}
+
 @test "opencode conversion preserves parent-root commands from manifests when switching to hidden output root" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
@@ -1736,6 +2028,72 @@ MD
   run jq -r '.command | has("b")' "$TMP_DIR/opencode-root/.opencode/opencode.json"
   [ "$status" -eq 0 ]
   [ "$output" = "true" ]
+}
+
+@test "opencode conversion keeps the current hidden-root state for same-plugin reinstalls without timestamps" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  local plugin_v1="$TMP_DIR/current-root-plugin-v1"
+  local plugin_v2="$TMP_DIR/current-root-plugin-v2"
+  local plugin_v3="$TMP_DIR/current-root-plugin-v3"
+  create_fixture_plugin "$plugin_v1" "current-root-plugin"
+  create_fixture_plugin "$plugin_v2" "current-root-plugin"
+  create_fixture_plugin "$plugin_v3" "current-root-plugin"
+  mkdir -p "$plugin_v1/skills/first" "$plugin_v2/skills/second" "$plugin_v3/skills/third"
+  cat > "$plugin_v1/skills/first/SKILL.md" <<'MD'
+---
+name: kramme:first
+description: First skill
+disable-model-invocation: false
+user-invocable: true
+---
+First.
+MD
+  cat > "$plugin_v2/skills/second/SKILL.md" <<'MD'
+---
+name: kramme:second
+description: Second skill
+disable-model-invocation: false
+user-invocable: true
+---
+Second.
+MD
+  cat > "$plugin_v3/skills/third/SKILL.md" <<'MD'
+---
+name: kramme:third
+description: Third skill
+disable-model-invocation: false
+user-invocable: true
+---
+Third.
+MD
+
+  run node "$SCRIPT" install "$plugin_v1" --to opencode --output "$TMP_DIR/opencode-root" --yes
+  [ "$status" -eq 0 ]
+
+  mv "$TMP_DIR/opencode-root/.opencode/.kramme-install-state.json" "$TMP_DIR/opencode-root/.kramme-install-state.json"
+  mv "$TMP_DIR/opencode-root/.opencode/.kramme-install-manifests" "$TMP_DIR/opencode-root/.kramme-install-manifests"
+
+  run node "$SCRIPT" install "$plugin_v2" --to opencode --output "$TMP_DIR/opencode-root/.opencode" --yes
+  [ "$status" -eq 0 ]
+
+  run node -e '
+    const fs = require("fs")
+    const file = process.argv[1]
+    const state = JSON.parse(fs.readFileSync(file, "utf8"))
+    delete state.plugins["current-root-plugin"].opencode.updatedAtMs
+    fs.writeFileSync(file, JSON.stringify(state, null, 2) + "\n")
+  ' "$TMP_DIR/opencode-root/.opencode/.kramme-install-state.json"
+  [ "$status" -eq 0 ]
+
+  run node "$SCRIPT" install "$plugin_v3" --to opencode --output "$TMP_DIR/opencode-root/.opencode" --yes
+  [ "$status" -eq 0 ]
+
+  [ ! -d "$TMP_DIR/opencode-root/.opencode/skills/kramme:first" ]
+  [ ! -d "$TMP_DIR/opencode-root/.opencode/skills/kramme:second" ]
+  [ -d "$TMP_DIR/opencode-root/.opencode/skills/kramme:third" ]
 }
 
 @test "opencode conversion preserves hidden-root commands when switching back to the parent output root" {
