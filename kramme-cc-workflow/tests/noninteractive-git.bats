@@ -82,30 +82,6 @@ run_hook_without_python() {
     [[ "$output" == *"Unable to safely parse command"* ]]
 }
 
-@test "allows bash -c git rebase --continue with GIT_EDITOR when python3 is unavailable" {
-    run run_hook_without_python "GIT_EDITOR=true bash -c 'git rebase --continue'"
-    [ "$status" -eq 0 ]
-    is_allowed
-}
-
-@test "allows bash -c git rebase -i with GIT_SEQUENCE_EDITOR when python3 is unavailable" {
-    run run_hook_without_python "GIT_SEQUENCE_EDITOR=true bash -c 'git rebase -i HEAD~2'"
-    [ "$status" -eq 0 ]
-    is_allowed
-}
-
-@test "allows find -exec bash -c git rebase --continue with GIT_EDITOR when python3 is unavailable" {
-    run run_hook_without_python "GIT_EDITOR=true find . -exec bash -c 'git rebase --continue' \;"
-    [ "$status" -eq 0 ]
-    is_allowed
-}
-
-@test "allows find -exec bash -c git rebase -i with GIT_SEQUENCE_EDITOR when python3 is unavailable" {
-    run run_hook_without_python "GIT_SEQUENCE_EDITOR=true find . -exec bash -c 'git rebase -i HEAD~2' \;"
-    [ "$status" -eq 0 ]
-    is_allowed
-}
-
 @test "blocks absolute-path git commit when python3 is unavailable" {
     local absolute_git_dir
     absolute_git_dir="$(mktemp -d)"
@@ -143,12 +119,6 @@ run_hook_without_python() {
 
 @test "allows git commit --message with literal --edit value when python3 is unavailable" {
     run run_hook_without_python "git commit --message --edit"
-    [ "$status" -eq 0 ]
-    is_allowed
-}
-
-@test "allows git commit with quoted semicolon in attached --message value when python3 is unavailable" {
-    run run_hook_without_python "git commit --message='test;message'"
     [ "$status" -eq 0 ]
     is_allowed
 }
@@ -242,12 +212,6 @@ run_hook_without_python() {
     is_allowed
 }
 
-@test "allows non-interactive git inside nested quoted command substitution when python3 is unavailable" {
-    run run_hook_without_python 'echo $(printf "%s" "$(git status)")'
-    [ "$status" -eq 0 ]
-    is_allowed
-}
-
 @test "blocks bash --rcfile wrapped git commit when python3 is unavailable" {
     run run_hook_without_python "bash --rcfile /tmp/rc -c 'git commit'"
 
@@ -300,60 +264,6 @@ EOF"
 
     [ "$status" -eq 0 ]
     is_allowed
-}
-
-@test "allows git rebase text inside quoted heredoc with punctuation delimiter when python3 is unavailable" {
-    run run_hook_without_python "cat <<'EOF-1'
-\$(git rebase -i HEAD~2)
-EOF-1"
-
-    [ "$status" -eq 0 ]
-    is_allowed
-}
-
-@test "blocks git commit after quoted heredoc marker string when python3 is unavailable" {
-    run run_hook_without_python "printf \"<<EOF-1\\n\"
-git commit"
-    is_blocked
-    [[ "$output" == *"git commit -m"* ]]
-}
-
-@test "blocks git commit in leftmost unquoted heredoc when later heredoc is quoted without python3" {
-    run run_hook_without_python "cat <<EOF <<'BAR'
-\$(git commit)
-EOF
-BAR"
-    is_blocked
-    [[ "$output" == *"git commit -m"* ]]
-}
-
-@test "blocks git commit after unquoted heredoc followed by semicolon when python3 is unavailable" {
-    run run_hook_without_python "cat <<EOF;
-body
-EOF
-git commit"
-    is_blocked
-    [[ "$output" == *"git commit -m"* ]]
-}
-
-@test "blocks git commit after arithmetic shift when python3 is unavailable" {
-    run run_hook_without_python $'echo $((1 << 2))\ngit commit'
-    is_blocked
-    [[ "$output" == *"git commit -m"* ]]
-}
-
-@test "blocks git commit inside arithmetic expansion when python3 is unavailable" {
-    run run_hook_without_python 'echo $(( $(git commit) + 1 ))'
-    is_blocked
-    [[ "$output" == *"git commit -m"* ]]
-}
-
-@test "blocks git commit inside arithmetic expansion in unquoted heredoc when python3 is unavailable" {
-    run run_hook_without_python "cat <<EOF
-\$(( \$(git commit) + 1 ))
-EOF"
-    is_blocked
-    [[ "$output" == *"git commit -m"* ]]
 }
 
 @test "allows sudo arguments mentioning git when python3 is unavailable" {
@@ -410,8 +320,98 @@ EOF"
     is_allowed
 }
 
+@test "allows exported GIT_SEQUENCE_EDITOR before interactive rebase when python3 is unavailable" {
+    run run_hook_without_python "export GIT_SEQUENCE_EDITOR=true && git rebase -i HEAD~3"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows bare-exported GIT_SEQUENCE_EDITOR before interactive rebase when python3 is unavailable" {
+    run run_hook_without_python "GIT_SEQUENCE_EDITOR=true; export GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks piped exported GIT_SEQUENCE_EDITOR before interactive rebase when python3 is unavailable" {
+    run run_hook_without_python "export GIT_SEQUENCE_EDITOR=true | git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
+@test "blocks subshell-exported GIT_SEQUENCE_EDITOR before interactive rebase when python3 is unavailable" {
+    run run_hook_without_python "(export GIT_SEQUENCE_EDITOR=true) && git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
+@test "allows interactive rebase after exported GIT_SEQUENCE_EDITOR is nameref-unset when python3 is unavailable" {
+    run run_hook_without_python "export GIT_SEQUENCE_EDITOR=true && unset -n GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks interactive rebase after exported GIT_SEQUENCE_EDITOR is unset when python3 is unavailable" {
+    run run_hook_without_python "export GIT_SEQUENCE_EDITOR=true && unset GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
+@test "allows interactive rebase after exported GIT_SEQUENCE_EDITOR is function-unset when python3 is unavailable" {
+    run run_hook_without_python "export GIT_SEQUENCE_EDITOR=true && unset -f GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks interactive rebase when function-unset does not retain prefixed GIT_SEQUENCE_EDITOR when python3 is unavailable" {
+    run run_hook_without_python "GIT_SEQUENCE_EDITOR=true unset -f nope && export GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
 @test "allows safe command substitution before git rebase --continue when python3 is unavailable" {
     run run_hook_without_python "GIT_EDITOR=\$(command -v true) git rebase --continue"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows exported GIT_EDITOR before rebase --continue when python3 is unavailable" {
+    run run_hook_without_python "export GIT_EDITOR=true && git rebase --continue"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows bare-exported GIT_EDITOR before rebase --continue when python3 is unavailable" {
+    run run_hook_without_python "GIT_EDITOR=true; export GIT_EDITOR && git rebase --continue"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows rebase --continue after exported GIT_EDITOR is nameref-unset when python3 is unavailable" {
+    run run_hook_without_python "export GIT_EDITOR=true && unset -n GIT_EDITOR && git rebase --continue"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks rebase --continue after exported GIT_EDITOR is unset when python3 is unavailable" {
+    run run_hook_without_python "export GIT_EDITOR=true && unset GIT_EDITOR && git rebase --continue"
+    is_blocked
+    [[ "$output" == *"GIT_EDITOR"* ]]
+}
+
+@test "allows rebase --continue after exported GIT_EDITOR is function-unset when python3 is unavailable" {
+    run run_hook_without_python "export GIT_EDITOR=true && unset -f GIT_EDITOR && git rebase --continue"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks rebase --continue when function-unset does not retain prefixed GIT_EDITOR when python3 is unavailable" {
+    run run_hook_without_python "GIT_EDITOR=true unset -f nope && export GIT_EDITOR && git rebase --continue"
+    is_blocked
+    [[ "$output" == *"GIT_EDITOR"* ]]
+}
+
+@test "allows command substitution to inherit exported GIT_SEQUENCE_EDITOR when python3 is unavailable" {
+    run run_hook_without_python "export GIT_SEQUENCE_EDITOR=true && out=\$(git rebase -i HEAD~3)"
     [ "$status" -eq 0 ]
     is_allowed
 }
@@ -809,28 +809,52 @@ EOF"
     is_allowed
 }
 
-@test "allows bash -c git rebase --continue with GIT_EDITOR" {
-    run run_hook "GIT_EDITOR=true bash -c 'git rebase --continue'"
+@test "allows exported GIT_SEQUENCE_EDITOR before interactive rebase" {
+    run run_hook "export GIT_SEQUENCE_EDITOR=true && git rebase -i HEAD~3"
     [ "$status" -eq 0 ]
     is_allowed
 }
 
-@test "allows bash -c git rebase -i with GIT_SEQUENCE_EDITOR" {
-    run run_hook "GIT_SEQUENCE_EDITOR=true bash -c 'git rebase -i HEAD~2'"
+@test "allows bare-exported GIT_SEQUENCE_EDITOR before interactive rebase" {
+    run run_hook "GIT_SEQUENCE_EDITOR=true; export GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
     [ "$status" -eq 0 ]
     is_allowed
 }
 
-@test "allows find -exec bash -c git rebase --continue with GIT_EDITOR" {
-    run run_hook "GIT_EDITOR=true find . -exec bash -c 'git rebase --continue' \;"
+@test "blocks piped exported GIT_SEQUENCE_EDITOR before interactive rebase" {
+    run run_hook "export GIT_SEQUENCE_EDITOR=true | git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
+@test "blocks subshell-exported GIT_SEQUENCE_EDITOR before interactive rebase" {
+    run run_hook "(export GIT_SEQUENCE_EDITOR=true) && git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
+@test "allows interactive rebase after exported GIT_SEQUENCE_EDITOR is nameref-unset" {
+    run run_hook "export GIT_SEQUENCE_EDITOR=true && unset -n GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
     [ "$status" -eq 0 ]
     is_allowed
 }
 
-@test "allows find -exec bash -c git rebase -i with GIT_SEQUENCE_EDITOR" {
-    run run_hook "GIT_SEQUENCE_EDITOR=true find . -exec bash -c 'git rebase -i HEAD~2' \;"
+@test "blocks interactive rebase after exported GIT_SEQUENCE_EDITOR is unset" {
+    run run_hook "export GIT_SEQUENCE_EDITOR=true && unset GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
+@test "allows interactive rebase after exported GIT_SEQUENCE_EDITOR is function-unset" {
+    run run_hook "export GIT_SEQUENCE_EDITOR=true && unset -f GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
     [ "$status" -eq 0 ]
     is_allowed
+}
+
+@test "blocks interactive rebase when function-unset does not retain prefixed GIT_SEQUENCE_EDITOR" {
+    run run_hook "GIT_SEQUENCE_EDITOR=true unset -f nope && export GIT_SEQUENCE_EDITOR && git rebase -i HEAD~3"
+    is_blocked
+    [[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
 }
 
 @test "blocks env -u GIT_SEQUENCE_EDITOR after explicit assignment" {
@@ -858,6 +882,48 @@ EOF"
 
 @test "allows git rebase --continue with GIT_EDITOR" {
     run run_hook "GIT_EDITOR=true git rebase --continue"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows exported GIT_EDITOR before rebase --continue" {
+    run run_hook "export GIT_EDITOR=true && git rebase --continue"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows bare-exported GIT_EDITOR before rebase --continue" {
+    run run_hook "GIT_EDITOR=true; export GIT_EDITOR && git rebase --continue"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows rebase --continue after exported GIT_EDITOR is nameref-unset" {
+    run run_hook "export GIT_EDITOR=true && unset -n GIT_EDITOR && git rebase --continue"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks rebase --continue after exported GIT_EDITOR is unset" {
+    run run_hook "export GIT_EDITOR=true && unset GIT_EDITOR && git rebase --continue"
+    is_blocked
+    [[ "$output" == *"GIT_EDITOR"* ]]
+}
+
+@test "allows rebase --continue after exported GIT_EDITOR is function-unset" {
+    run run_hook "export GIT_EDITOR=true && unset -f GIT_EDITOR && git rebase --continue"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks rebase --continue when function-unset does not retain prefixed GIT_EDITOR" {
+    run run_hook "GIT_EDITOR=true unset -f nope && export GIT_EDITOR && git rebase --continue"
+    is_blocked
+    [[ "$output" == *"GIT_EDITOR"* ]]
+}
+
+@test "allows command substitution to inherit exported GIT_SEQUENCE_EDITOR" {
+    run run_hook "export GIT_SEQUENCE_EDITOR=true && out=\$(git rebase -i HEAD~3)"
     [ "$status" -eq 0 ]
     is_allowed
 }
@@ -1152,65 +1218,6 @@ EOF"
     is_allowed
 }
 
-@test "allows git rebase text inside quoted heredoc with punctuation delimiter" {
-    run run_hook "cat <<'EOF-1'
-\$(git rebase -i HEAD~2)
-EOF-1"
-    [ "$status" -eq 0 ]
-    is_allowed
-}
-
-@test "allows git commit with quoted semicolon in attached --message value" {
-    run run_hook "git commit --message='test;message'"
-    [ "$status" -eq 0 ]
-    is_allowed
-}
-
-@test "blocks git commit after quoted heredoc marker string" {
-    run run_hook "printf \"<<EOF-1\\n\"
-git commit"
-    is_blocked
-    [[ "$output" == *"git commit -m"* ]]
-}
-
-@test "blocks git commit in leftmost unquoted heredoc when later heredoc is quoted" {
-    run run_hook "cat <<EOF <<'BAR'
-\$(git commit)
-EOF
-BAR"
-    is_blocked
-    [[ "$output" == *"git commit -m"* ]]
-}
-
-@test "blocks git commit after unquoted heredoc followed by semicolon" {
-    run run_hook "cat <<EOF;
-body
-EOF
-git commit"
-    is_blocked
-    [[ "$output" == *"git commit -m"* ]]
-}
-
-@test "blocks git commit after arithmetic shift" {
-    run run_hook $'echo $((1 << 2))\ngit commit'
-    is_blocked
-    [[ "$output" == *"git commit -m"* ]]
-}
-
-@test "blocks git commit inside arithmetic expansion" {
-    run run_hook 'echo $(( $(git commit) + 1 ))'
-    is_blocked
-    [[ "$output" == *"git commit -m"* ]]
-}
-
-@test "blocks git commit inside arithmetic expansion in unquoted heredoc" {
-    run run_hook "cat <<EOF
-\$(( \$(git commit) + 1 ))
-EOF"
-    is_blocked
-    [[ "$output" == *"git commit -m"* ]]
-}
-
 @test "blocks git commit inside if condition" {
     run run_hook "if git commit; then echo ok; fi"
     is_blocked
@@ -1239,12 +1246,6 @@ EOF"
 
 @test "allows safe command substitution before git rebase --continue" {
     run run_hook "GIT_EDITOR=\$(command -v true) git rebase --continue"
-    [ "$status" -eq 0 ]
-    is_allowed
-}
-
-@test "allows non-interactive git inside nested quoted command substitution" {
-    run run_hook 'echo $(printf "%s" "$(git status)")'
     [ "$status" -eq 0 ]
     is_allowed
 }

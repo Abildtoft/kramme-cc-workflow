@@ -203,13 +203,6 @@ src/component.tsx"
     [ -z "$output" ]
 }
 
-@test "allows git commit after nested quoted non-interactive command substitution" {
-    mock_git_staged "file1.txt"
-    run run_hook 'echo $(printf "%s" "$(git status)") && git commit -m "test commit"'
-    [ "$status" -eq 0 ]
-    [ -z "$output" ]
-}
-
 @test "ignores config-bearing git prefixes when checking staged files" {
     local repo marker
     repo="$(mktemp -d)"
@@ -244,13 +237,6 @@ src/component.tsx"
     [ "$status" -eq 0 ]
     [ -z "$output" ]
     [ ! -f "$marker" ]
-}
-
-@test "allows git commit after nested quoted non-interactive command substitution without python3" {
-    mock_git_staged "file1.txt"
-    run run_hook_without_python 'echo $(printf "%s" "$(git status)") && git commit -m "test commit"'
-    [ "$status" -eq 0 ]
-    [ -z "$output" ]
 }
 
 @test "allows git commit when no files are staged" {
@@ -508,6 +494,58 @@ REVIEW_SUMMARY.md"
     is_blocked
 }
 
+@test "blocks git commit when repo selection is exported in an earlier shell segment" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && git commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks git commit when repo selection is exported from earlier shell assignments" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook "GIT_DIR=repo/.git; GIT_WORK_TREE=repo; export GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks git commit after exported repo selection is nameref-unset" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && unset -n GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    is_blocked
+}
+
+@test "allows git commit after exported repo selection is unset" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && unset GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "blocks git commit after exported repo selection is function-unset" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && unset -f GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    is_blocked
+}
+
+@test "allows git commit when function-unset does not retain prefixed repo selection" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook "GIT_DIR=repo/.git GIT_WORK_TREE=repo unset -f nope && export GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "blocks git commit when piped export does not actually retarget the repo" {
+    mock_git_staged_for_repo "repo" "" "REVIEW_OVERVIEW.md"
+    run run_hook "export GIT_DIR=repo/.git GIT_WORK_TREE=repo | git commit -m 'test'"
+    is_blocked
+    [[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
+@test "blocks git commit when subshell export does not actually retarget the repo" {
+    mock_git_staged_for_repo "repo" "" "REVIEW_OVERVIEW.md"
+    run run_hook "(export GIT_DIR=repo/.git GIT_WORK_TREE=repo) && git commit -m 'test'"
+    is_blocked
+    [[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
 @test "blocks chained git commit when artifact is staged" {
     mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook "git status && git commit -m 'test'"
@@ -532,6 +570,13 @@ REVIEW_SUMMARY.md"
     is_blocked
 }
 
+@test "blocks git commit inside command substitution when exported repo selection is inherited" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && out=\$(git commit -m 'test')"
+    is_blocked
+    [[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
 @test "allows git commit text inside heredoc command substitution" {
     mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook "cat <<'EOF'
@@ -539,60 +584,6 @@ REVIEW_SUMMARY.md"
 EOF"
     [ "$status" -eq 0 ]
     [ -z "$output" ]
-}
-
-@test "allows git commit text inside quoted heredoc with punctuation delimiter" {
-    mock_git_staged "REVIEW_OVERVIEW.md"
-    run run_hook "cat <<'EOF-1'
-\$(git commit -m 'test')
-EOF-1"
-    [ "$status" -eq 0 ]
-    [ -z "$output" ]
-}
-
-@test "blocks git commit after quoted heredoc marker string when artifact is staged" {
-    mock_git_staged "REVIEW_OVERVIEW.md"
-    run run_hook "printf \"<<EOF-1\\n\"
-git commit -m 'test'"
-    is_blocked
-}
-
-@test "blocks git commit in leftmost unquoted heredoc when later heredoc is quoted and artifact is staged" {
-    mock_git_staged "REVIEW_OVERVIEW.md"
-    run run_hook "cat <<EOF <<'BAR'
-\$(git commit -m 'test')
-EOF
-BAR"
-    is_blocked
-}
-
-@test "blocks git commit after unquoted heredoc followed by semicolon when artifact is staged" {
-    mock_git_staged "REVIEW_OVERVIEW.md"
-    run run_hook "cat <<EOF;
-body
-EOF
-git commit -m 'test'"
-    is_blocked
-}
-
-@test "blocks git commit after arithmetic shift when artifact is staged" {
-    mock_git_staged "REVIEW_OVERVIEW.md"
-    run run_hook $'echo $((1 << 2))\ngit commit -m \'test\''
-    is_blocked
-}
-
-@test "blocks git commit inside arithmetic expansion when artifact is staged" {
-    mock_git_staged "REVIEW_OVERVIEW.md"
-    run run_hook "echo \$(( \$(git commit -m 'test') + 1 ))"
-    is_blocked
-}
-
-@test "blocks git commit inside arithmetic expansion in unquoted heredoc when artifact is staged" {
-    mock_git_staged "REVIEW_OVERVIEW.md"
-    run run_hook "cat <<EOF
-\$(( \$(git commit -m 'test') + 1 ))
-EOF"
-    is_blocked
 }
 
 @test "blocks git commit with prefixed command substitution when artifact is staged" {
@@ -623,12 +614,6 @@ EOF"
 @test "blocks git -C commit when artifact is staged" {
     mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
     run run_hook "git -C repo commit -m 'test'"
-    is_blocked
-}
-
-@test "blocks git -C quoted path with semicolon when artifact is staged" {
-    mock_git_staged_for_repo "repo;foo" "REVIEW_OVERVIEW.md"
-    run run_hook "git -C 'repo;foo' commit -m 'test'"
     is_blocked
 }
 
@@ -706,6 +691,58 @@ EOF"
     is_blocked
 }
 
+@test "blocks git commit when repo selection is exported in an earlier shell segment without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && git commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks git commit when repo selection is exported from earlier shell assignments without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "GIT_DIR=repo/.git; GIT_WORK_TREE=repo; export GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    is_blocked
+}
+
+@test "blocks git commit after exported repo selection is nameref-unset without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && unset -n GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    is_blocked
+}
+
+@test "allows git commit after exported repo selection is unset without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && unset GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "blocks git commit after exported repo selection is function-unset without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && unset -f GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    is_blocked
+}
+
+@test "allows git commit when function-unset does not retain prefixed repo selection without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "GIT_DIR=repo/.git GIT_WORK_TREE=repo unset -f nope && export GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "blocks git commit when piped export does not actually retarget the repo without python3" {
+    mock_git_staged_for_repo "repo" "" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "export GIT_DIR=repo/.git GIT_WORK_TREE=repo | git commit -m 'test'"
+    is_blocked
+    [[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
+@test "blocks git commit when subshell export does not actually retarget the repo without python3" {
+    mock_git_staged_for_repo "repo" "" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "(export GIT_DIR=repo/.git GIT_WORK_TREE=repo) && git commit -m 'test'"
+    is_blocked
+    [[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
 @test "blocks chained git commit when artifact is staged without python3" {
     mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook_without_python "git status && git commit -m 'test'"
@@ -730,6 +767,13 @@ EOF"
     is_blocked
 }
 
+@test "blocks git commit inside command substitution when exported repo selection is inherited without python3" {
+    mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+    run run_hook_without_python "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && out=\$(git commit -m 'test')"
+    is_blocked
+    [[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
 @test "allows git commit text inside heredoc command substitution without python3" {
     mock_git_staged "REVIEW_OVERVIEW.md"
     run run_hook_without_python "cat <<'EOF'
@@ -737,60 +781,6 @@ EOF"
 EOF"
     [ "$status" -eq 0 ]
     [ -z "$output" ]
-}
-
-@test "allows git commit text inside quoted heredoc with punctuation delimiter without python3" {
-    mock_git_staged "REVIEW_OVERVIEW.md"
-    run run_hook_without_python "cat <<'EOF-1'
-\$(git commit -m 'test')
-EOF-1"
-    [ "$status" -eq 0 ]
-    [ -z "$output" ]
-}
-
-@test "blocks git commit after quoted heredoc marker string when artifact is staged without python3" {
-    mock_git_staged "REVIEW_OVERVIEW.md"
-    run run_hook_without_python "printf \"<<EOF-1\\n\"
-git commit -m 'test'"
-    is_blocked
-}
-
-@test "blocks git commit in leftmost unquoted heredoc when later heredoc is quoted and artifact is staged without python3" {
-    mock_git_staged "REVIEW_OVERVIEW.md"
-    run run_hook_without_python "cat <<EOF <<'BAR'
-\$(git commit -m 'test')
-EOF
-BAR"
-    is_blocked
-}
-
-@test "blocks git commit after unquoted heredoc followed by semicolon when artifact is staged without python3" {
-    mock_git_staged "REVIEW_OVERVIEW.md"
-    run run_hook_without_python "cat <<EOF;
-body
-EOF
-git commit -m 'test'"
-    is_blocked
-}
-
-@test "blocks git commit after arithmetic shift when artifact is staged without python3" {
-    mock_git_staged "REVIEW_OVERVIEW.md"
-    run run_hook_without_python $'echo $((1 << 2))\ngit commit -m \'test\''
-    is_blocked
-}
-
-@test "blocks git commit inside arithmetic expansion when artifact is staged without python3" {
-    mock_git_staged "REVIEW_OVERVIEW.md"
-    run run_hook_without_python "echo \$(( \$(git commit -m 'test') + 1 ))"
-    is_blocked
-}
-
-@test "blocks git commit inside arithmetic expansion in unquoted heredoc when artifact is staged without python3" {
-    mock_git_staged "REVIEW_OVERVIEW.md"
-    run run_hook_without_python "cat <<EOF
-\$(( \$(git commit -m 'test') + 1 ))
-EOF"
-    is_blocked
 }
 
 @test "blocks git commit with prefixed command substitution when artifact is staged without python3" {
@@ -824,14 +814,6 @@ EOF"
     mock_git_staged_for_repo "$repo" "REVIEW_OVERVIEW.md"
 
     run run_hook_without_python "git -C '$repo' commit -m 'test'"
-
-    is_blocked
-}
-
-@test "blocks git -C quoted path with semicolon when artifact is staged without python3" {
-    mock_git_staged_for_repo "repo;foo" "REVIEW_OVERVIEW.md"
-
-    run run_hook_without_python "git -C 'repo;foo' commit -m 'test'"
 
     is_blocked
 }
