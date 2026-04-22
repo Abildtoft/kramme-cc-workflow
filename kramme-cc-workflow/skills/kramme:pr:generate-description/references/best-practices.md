@@ -23,6 +23,14 @@
    - **ALWAYS** write sentences like "Reduces query time by caching frequently accessed data"
 - **NEVER** make up statistics or performance claims without evidence
 
+## Change Summary Block
+
+- **ALWAYS** place `### Changes made`, `### Things I didn't touch`, and `### Potential concerns` immediately after `## Summary` and before `## Technical Details`
+- **ALWAYS** make `Changes made` a verb-led diff readout with one distinct change per bullet
+- **NEVER** omit one of the three subsections; use `None` only after considering it
+- **NEVER** turn `Things I didn't touch` into a generic future-work backlog; list only adjacent work explicitly considered and deferred
+- **ALWAYS** use `Potential concerns` for reviewer-visible risk such as migrations, feature-flag defaults, rollout dependencies, or partial coverage
+
 ## Technical Details
 
 - **ALWAYS** explain **why** decisions were made, not just **what** changed

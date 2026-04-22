@@ -24,6 +24,20 @@ This addresses user feedback that the platform picker was confusing for users wh
 
 Fixes WAN-521
 
+### Changes made
+
+- Add `PlatformPickerRedirectGuard` and `PlatformPickerRedirectStore` to redirect single-platform users before the picker renders
+- Wire the guard into platform-picker routing and add unit coverage for redirect, multi-platform, and error paths
+
+### Things I didn't touch
+
+- Multi-platform picker UI and selection flow
+- Backend platform-count APIs, since this example is frontend-only
+
+### Potential concerns
+
+- Redirect behavior depends on the existing platform-count call; verify slow/error responses still fall back to the picker without a blank screen
+
 ## Technical Details
 
 ### Implementation Approach
@@ -99,6 +113,22 @@ Here is your generated PR:
 Added user preferences storage and API endpoints to enable users to save and retrieve their application settings (theme, notification preferences, default views). This provides a foundation for future personalization features.
 
 Related to CON-789
+
+### Changes made
+
+- Add the `user_preferences` table and migration to persist per-user settings
+- Add backend CRUD endpoints and service logic for reading and writing preferences
+- Add frontend service and preferences UI that cache and sync user settings
+
+### Things I didn't touch
+
+- Existing profile settings outside the new preferences surface
+- Backfill of default rows for existing users; preferences are created on first save
+
+### Potential concerns
+
+- Deployment requires the database migration to run before the new endpoints are exercised
+- Existing users will not have persisted preferences until they save settings for the first time
 
 ## Technical Details
 

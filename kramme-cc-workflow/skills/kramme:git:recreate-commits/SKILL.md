@@ -13,7 +13,7 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
 - `--base <branch>` — Use `<branch>` as the base instead of auto-detecting. Without this flag, the skill tries to detect the base from an existing GitHub or GitLab pull request, then falls back to `master`/`main`.
 - `--after <commit>` — Only recreate commits after `<commit>`, keeping all earlier history intact. Accepts any valid git ref (SHA, short SHA, `HEAD~3`, etc.). The commit must exist and be an ancestor of `HEAD`. When set, the diff scope becomes `<commit>..HEAD` and the reset point becomes `<commit>` instead of the merge base.
 
-### Steps
+## Steps
 
 1. **Validate the source branch**
    - **Determine the base branch** using the first method that succeeds:
@@ -162,7 +162,24 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
 
 There may be cases where you will need to push commits with --no-verify in order to avoid known issues. It is not necessary that every commit pass tests or checks, though this should be the exception if you're doing your job correctly. It is essential that the end state of the branch be identical to the original end state before the reset.
 
-### Misc
+7. **Emit end-of-run change summary**
+
+   After the final commit lands and the branch matches the original end state, print a Change Summary block to the conversation (not to a commit). This is a required final emission — the skill is not done until it appears:
+
+   ```
+   CHANGES MADE:
+   - <verb-led list of the new commit storyline, e.g. "split auth middleware into 4 steps">
+
+   THINGS I DIDN'T TOUCH:
+   - <anything noticed while rewriting that was deliberately left in its original shape; "None" if nothing>
+
+   POTENTIAL CONCERNS:
+   - <risk items for the user: force-push needed, --no-verify usage, commits that individually don't build; "None" if nothing>
+   ```
+
+   Label casing must match exactly: `CHANGES MADE`, `THINGS I DIDN'T TOUCH`, `POTENTIAL CONCERNS`. All three blocks must be present even if one is "None".
+
+## Misc
 
 1. Never add yourself as an author or contributor on any branch or commit.
 2. Write your pull request following the same instructions as in the pr.md command file.
@@ -181,3 +198,44 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ```
 
 Or else I'll get in trouble with my boss.
+
+## Output markers
+
+Use these uppercase markers when reasoning about the recreation plan and reporting progress. One marker per line, no decoration:
+
+- **STACK DETECTED** — base branch and scope detected at the start of the run. `STACK DETECTED: origin/main, diff scope HEAD~12..HEAD, medium granularity selected`.
+- **UNVERIFIED** — claims about the final state that haven't been confirmed by `git diff`. `UNVERIFIED: the test suite passes at each commit — only the final state was diffed`.
+- **NOTICED BUT NOT TOUCHING** — adjacent cleanups that could have slipped in but didn't. `NOTICED BUT NOT TOUCHING: a stale comment in an untouched file — outside the recreation scope`.
+- **CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS** — required end-of-run summary (see Step 7).
+- **CONFUSION** — signals in the original history that don't match the final state. `CONFUSION: can't tell if the Phase 2 rename was intentional or accidental — folded into the rename commit`.
+- **MISSING REQUIREMENT** — input needed before reimplementation can proceed. `MISSING REQUIREMENT: granularity not specified and --auto not passed — asking the user before planning`.
+- **PLAN** — commit storyline announced before executing. `PLAN: 12 commits across 3 groupings — auth middleware, user API, tests`.
+
+## Common Rationalizations
+
+Lies you'll tell yourself mid-recreation. Each has a correct response:
+
+- *"This sub-step is trivial — I'll fold it into the next commit."* → Then it becomes invisible to the reviewer. If it's a distinct idea, it's a distinct commit.
+- *"The middle commits don't build — I'll `--no-verify` through it."* → Allowed as the exception, not the rule. Surface it in `POTENTIAL CONCERNS` or restructure so builds pass.
+- *"I'll squash the noisy fix-up commits into the bigger one."* → Fine only if the fix-up isn't its own idea. If it's "I forgot to handle null", it's its own commit.
+- *"I can skip the final diff check — I've been careful."* → The only guarantee the recreated branch matches the original is the diff check. Run it.
+
+## Red Flags — STOP
+
+Pause and reshape the storyline if any of these are true:
+
+- The final tree diff against the original end state is non-empty.
+- More than one commit would need the same summary sentence.
+- Force-pushing without having first warned the user (if the branch is shared).
+- Any commit message contains AI attribution or `Co-Authored-By: Claude`.
+- The recreated branch has more lines than the original (you introduced code during the rewrite).
+
+## Verification
+
+Before declaring the recreation done, self-check:
+
+- [ ] `git diff <original-tip>..HEAD` is empty — end state matches exactly.
+- [ ] Each commit introduces a single coherent idea with a plain-English subject line.
+- [ ] `--no-verify` usage, if any, is called out in `POTENTIAL CONCERNS`.
+- [ ] No AI attribution in any commit subject or body.
+- [ ] The `CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS` block was emitted.

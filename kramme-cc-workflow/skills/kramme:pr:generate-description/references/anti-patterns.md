@@ -44,6 +44,53 @@ Fixes WAN-521
 
 ---
 
+### ❌ WRONG: Summary Jumps Straight to Technical Details
+
+```markdown
+## Summary
+
+Added automatic redirect logic that skips the platform picker page when a user has access to only one platform, reducing unnecessary navigation steps.
+
+Fixes WAN-521
+
+## Technical Details
+
+### Implementation Approach
+
+Implemented a route guard that checks platform count before navigation.
+```
+
+### ✅ CORRECT: Include the Change Summary Block
+
+```markdown
+## Summary
+
+Added automatic redirect logic that skips the platform picker page when a user has access to only one platform, reducing unnecessary navigation steps.
+
+Fixes WAN-521
+
+### Changes made
+
+- Add a route guard and state store for single-platform redirects
+- Wire the guard into routing and cover redirect, multi-platform, and error paths with tests
+
+### Things I didn't touch
+
+- Multi-platform picker UI and selection flow
+
+### Potential concerns
+
+- Redirect behavior depends on the platform-count call; verify slow/error responses still fall back to the picker
+
+## Technical Details
+
+### Implementation Approach
+
+Implemented a route guard that checks platform count before navigation.
+```
+
+---
+
 ### ❌ WRONG: List of Files Without Context
 
 ```markdown
@@ -128,6 +175,19 @@ Added automatic redirect logic to skip the platform picker page when users have 
 to exactly one platform, eliminating an unnecessary navigation step.
 
 Fixes WAN-521
+
+### Changes made
+
+- Add a route guard that redirects users who have exactly one platform
+- Keep the picker route for multi-platform users and preserve existing navigation behavior
+
+### Things I didn't touch
+
+- Multi-platform picker UI copy and styling
+
+### Potential concerns
+
+- Redirect behavior depends on the platform-count lookup succeeding or falling back cleanly
 
 ## Technical Details
 
