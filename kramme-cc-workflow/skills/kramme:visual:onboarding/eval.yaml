@@ -31,6 +31,8 @@ tasks:
         dest: skills/kramme:visual:onboarding/SKILL.md
       - src: references/
         dest: skills/kramme:visual:onboarding/references/
+      - src: assets/
+        dest: skills/kramme:visual:onboarding/assets/
       - src: ../kramme:visual:diagram/SKILL.md
         dest: skills/kramme:visual:diagram/SKILL.md
       - src: ../kramme:visual:diagram/references/

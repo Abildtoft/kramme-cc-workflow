@@ -31,6 +31,10 @@ tasks:
     workspace:
       - src: SKILL.md
         dest: skills/kramme:visual:diff-review/SKILL.md
+      - src: references/
+        dest: skills/kramme:visual:diff-review/references/
+      - src: assets/
+        dest: skills/kramme:visual:diff-review/assets/
       - src: ../kramme:visual:diagram/SKILL.md
         dest: skills/kramme:visual:diagram/SKILL.md
       - src: ../kramme:visual:diagram/references/
