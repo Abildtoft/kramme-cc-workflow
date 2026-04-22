@@ -9,10 +9,26 @@ user-invocable: true
 
 Rebase the current branch onto the latest base branch and force push.
 
+## Why rebase — dev branches are costs
+
+A feature branch is a cost that compounds every day it stays open. It drifts from the base branch, it accumulates irrelevant diff when other PRs land, and it forces every reviewer to re-learn a stale context. Rebasing is how you pay down that cost: the branch stays in sync with `main`, the diff stays scoped to the change, and the reviewer's mental model of the base is still valid when they open the PR. Merge commits defer the cost — they hide drift behind a merge marker instead of resolving it — which is why this skill rebases and force-pushes rather than merging `main` in. If the rebase fights you, that is evidence the branch is already too old: finish it or split it, don't patch it with more merges.
+
 ## Options
 
 **Flags:**
 - `--base=<branch>` - Override auto-detected base branch (e.g., `--base=develop`)
+
+## Output markers
+
+Use these uppercase markers when reasoning about the rebase and reporting progress. One marker per line, no decoration:
+
+- **STACK DETECTED** — base branch, conflict method, and autostash state at the start. `STACK DETECTED: origin/main, --autostash enabled, 3 uncommitted changes stashed`.
+- **UNVERIFIED** — claims about resolved conflicts that haven't been runtime-checked. `UNVERIFIED: conflict auto-resolved in handler.ts but I didn't run the tests after`.
+- **NOTICED BUT NOT TOUCHING** — issues visible during rebase that are outside scope. `NOTICED BUT NOT TOUCHING: origin/main has an unrelated lint failure — not this rebase's problem`.
+- **CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS** — end-of-run summary when the rebase completes.
+- **CONFUSION** — ambiguous conflict evidence. `CONFUSION: both sides of the conflict add the same function but with different signatures — unclear which is authoritative`.
+- **MISSING REQUIREMENT** — a decision is needed before the rebase can proceed. `MISSING REQUIREMENT: origin/main has force-pushed since last fetch — confirm the target is correct before I continue`.
+- **PLAN** — announced sequence when conflicts span multiple rounds. `PLAN: resolve handler.ts first, then re-run the rebase; 2 more files likely to conflict afterward`.
 
 ## Workflow
 
@@ -167,3 +183,32 @@ git log --oneline origin/<base-branch>..HEAD
 
 Confirm success:
 > "Branch rebased onto `origin/<base-branch>` and pushed."
+
+## Common Rationalizations
+
+Lies you'll tell yourself mid-rebase. Each has a correct response:
+
+- *"I'll just merge `main` in instead — it's faster."* → Faster now, harder to review later. Merges hide drift; rebases resolve it.
+- *"The auto-conflict resolution looks right — I don't need to re-run tests."* → Conflict resolution is a code change. Re-run the verify battery or surface it as `UNVERIFIED`.
+- *"Force-push is fine; no one else is on this branch."* → If the branch is pushed, assume someone has it. `--force-with-lease` is the floor, not the ceiling — still warn the user.
+- *"Ten rounds of auto-resolve failed — I'll just pick one side."* → The skill aborts after 10 rounds for a reason. Escalate to the user; don't guess.
+
+## Red Flags — STOP
+
+Pause and hand back to the user if any of these are true:
+
+- `--force-with-lease` is about to run against `main`, `master`, or `develop`.
+- The auto-resolver merged logic from a file it doesn't fully understand.
+- The rebase touched migration files or generated artifacts; auto-resolution is unsafe there.
+- The branch hadn't been fetched recently and the base has moved significantly (>20 commits).
+- Any conflict was resolved by deleting a block instead of merging semantics.
+
+## Verification
+
+Before force-pushing, self-check:
+
+- [ ] Conflict Summary lists every resolved file with file + conflict + resolution.
+- [ ] The base branch was freshly fetched (Step 2 ran).
+- [ ] The user explicitly confirmed via `AskUserQuestion` (Step 5).
+- [ ] `--force-with-lease` (not `--force`) is the flag being used.
+- [ ] Post-push `git log --oneline origin/<base>..HEAD` shows the expected linear history.

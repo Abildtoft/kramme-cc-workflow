@@ -33,6 +33,21 @@ Implement login and logout functionality with JWT tokens.
 Sessions expire after 24 hours of inactivity.
 ```
 
+## Why not Conventional Commits on branch commits
+
+Some external guides (e.g. Addy Osmani's `git-workflow-and-versioning`) require `type(scope): message` on every commit. **Reject that here.** Conventional Commits are used only for PR titles (which become the merge commit on squash-merge) — not for the intermediate commits that make up a branch's history. Branch commits are narrative: they tell a reviewer the story of the change. A rigid `feat:`/`fix:`/`chore:` prefix forces every step into one of a handful of buckets that rarely describe the actual work. When a branch commit is a genuine step ("extract validator", "wire the reducer", "fix null-safety on input"), the prefix adds noise, not signal. Keep Conventional Commit discipline at the PR-title boundary where changelog automation actually reads it.
+
+## Pre-commit checklist
+
+Before running `git commit`, confirm all six:
+
+- [ ] **One logical change.** If the diff spans two concerns, split it now — not "in a follow-up".
+- [ ] **Verified the change.** Tests, typecheck, or lint ran against the staged state; failures were resolved or are deliberately called out in the body.
+- [ ] **Subject under 72 characters.** Plain-English, imperative mood, no trailing period, no Conventional Commit prefix.
+- [ ] **Body explains the *why*** when non-obvious — motivation, previous behavior, constraint that forced the shape. Omit the body if the subject is self-explanatory.
+- [ ] **No AI attribution** in subject, body, or trailers. No `Co-Authored-By: Claude`, no "Generated with Claude Code".
+- [ ] **Repository left in a working state.** This commit should not break `main` if it were the tip.
+
 ## Body Guidelines
 
 - Keep the body short; omit it entirely if it doesn't add value beyond the subject line
@@ -55,3 +70,43 @@ Commit messages should focus solely on what changed and why, regardless of how t
 - Each commit should be a single, stable change
 - Commits should be independently reviewable
 - The repository should be in a working state after each commit
+
+## Output markers
+
+Use these uppercase markers when reasoning about commit decisions. One marker per line, no decoration:
+
+- **STACK DETECTED** — the repo's commit conventions and any CI hooks observed. `STACK DETECTED: plain-English branch commits, husky pre-commit runs eslint + tsc`.
+- **UNVERIFIED** — claims about the change you couldn't confirm. `UNVERIFIED: haven't run the full test suite after the amend — only typecheck was run`.
+- **NOTICED BUT NOT TOUCHING** — adjacent issues observed while staging. `NOTICED BUT NOT TOUCHING: unrelated lint warning in an adjacent file — not part of this commit`.
+- **CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS** — end-of-turn summary when a commit (or commit series) is complete.
+- **CONFUSION** — contradictory signals in the staged diff. `CONFUSION: commit subject says "fix", but the diff adds a new endpoint`.
+- **MISSING REQUIREMENT** — a decision is needed before the commit can be written. `MISSING REQUIREMENT: subject claims a bug fix, but the failing test that motivates it isn't committed yet`.
+- **PLAN** — announced sequence when splitting the staging area across multiple commits. `PLAN: commit 1 extracts the validator, commit 2 wires it into the handler, commit 3 adds the test`.
+
+## Common Rationalizations
+
+Lies you'll tell yourself at commit time. Each has a correct response:
+
+- *"It's one logical change if I squint."* → If you had to squint, it's two. Split the staging area with `git add -p`.
+- *"I'll just add `Co-Authored-By: Claude` — it's honest."* → No. The repo forbids AI attribution; the author of a commit is the human making the call to ship it.
+- *"A Conventional Commit prefix makes it scannable."* → Branch commits aren't scanned by tooling — they're read by reviewers. The prefix costs signal for no gain.
+- *"I'll fix the test failure in the next commit."* → Then this commit leaves the repo broken. Either fix the test now or don't commit the broken state.
+
+## Red Flags — STOP
+
+Pause and reshape the commit if any of these are true:
+
+- The subject line starts with `WIP`, `temp`, `fixup`, or `misc` — the commit isn't ready.
+- The diff touches more than one concern (e.g. feature + lint fix + unrelated rename).
+- You're about to use `--no-verify` because hooks fail; fix the hook failure first.
+- You're about to amend a commit that has already been pushed to a shared branch.
+- The body explains *how* instead of *why*.
+
+## Verification
+
+Before running `git commit`, self-check:
+
+- [ ] The 6-item pre-commit checklist above is fully satisfied.
+- [ ] No AI attribution in subject, body, or trailers.
+- [ ] No Conventional Commit prefix on the branch commit (the PR title is where that lives).
+- [ ] The repository will be in a working state at this commit.

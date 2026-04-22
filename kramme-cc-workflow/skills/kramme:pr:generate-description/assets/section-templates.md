@@ -16,6 +16,46 @@ This change addresses user feedback that the platform picker was unnecessary for
 Fixes WAN-521
 ```
 
+The Summary section is followed immediately by the Change Summary block below.
+
+## Change Summary Section
+
+**ALWAYS** include this block immediately after `## Summary` and before `## Technical Details`.
+
+1. **Changes made**:
+
+   - Use verb-led bullets (`add`, `extract`, `wire`, `rename`, `remove`, `gate`)
+   - Scope each bullet to a feature, file area, or user-visible behavior
+   - Split distinct changes into separate bullets
+
+2. **Things I didn't touch**:
+
+   - List adjacent work considered and deliberately left out of scope
+   - Use `None` only after considering whether anything was explicitly deferred
+
+3. **Potential concerns**:
+
+   - Surface reviewer-relevant risk such as migrations, feature-flag defaults, partial coverage, rollout dependencies, or known follow-ups
+   - Use `None` if there is nothing material to flag
+
+**EXAMPLE Change Summary:**
+
+```markdown
+### Changes made
+
+- Add `PlatformPickerRedirectGuard` and `PlatformPickerRedirectStore` to redirect single-platform users before the picker renders
+- Wire the guard into platform-picker routing and add unit coverage for redirect, multi-platform, and error paths
+
+### Things I didn't touch
+
+- Multi-platform picker UI and selection flow
+- Backend platform-count APIs, since this example is frontend-only
+
+### Potential concerns
+
+- Redirect behavior depends on the existing platform-count call; verify slow/error responses still fall back to the picker without a blank screen
+```
+
 ## Technical Details Section
 
 **ALWAYS** include:
