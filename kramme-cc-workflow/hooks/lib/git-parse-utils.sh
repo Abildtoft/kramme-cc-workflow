@@ -43,6 +43,14 @@ extract_body_substitutions() {
         char="${line:$idx:1}"
         if [ "$char" = '$' ] && [ $((idx + 1)) -lt "$length" ] \
             && [ "${line:$((idx + 1)):1}" = '(' ]; then
+            if [ $((idx + 2)) -lt "$length" ] && [ "${line:$((idx + 2)):1}" = "(" ]; then
+                collect_arithmetic_substitutions "$line" "$idx" || return 1
+                if [ "${#ARITHMETIC_SUBSTITUTIONS[@]}" -gt 0 ]; then
+                    HEREDOC_BODY_SUBSTITUTIONS+=("${ARITHMETIC_SUBSTITUTIONS[@]}")
+                fi
+                idx="$SUBSTITUTION_END_INDEX"
+                continue
+            fi
             if read_dollar_substitution "$line" "$idx"; then
                 HEREDOC_BODY_SUBSTITUTIONS+=("$SUBSTITUTION_CONTENT")
                 idx="$SUBSTITUTION_END_INDEX"
@@ -63,6 +71,118 @@ extract_body_substitutions() {
     return 0
 }
 
+match_heredoc_start() {
+    local line="$1"
+    local length="${#line}"
+    local idx=0
+    local candidate
+    local char
+    local h_single_pattern=$'^<<(-?)[[:space:]]*\'([^\']+)\''
+    local h_double_pattern='^<<(-?)[[:space:]]*"([^"]+)"'
+    local h_unquoted_pattern=$'^<<(-?)[[:space:]]*([^[:space:]\'";&()<>|]+)'
+    local in_single=false
+    local in_double=false
+    local escaped=false
+
+    HEREDOC_MATCH_DELIMITER=""
+    HEREDOC_MATCH_IS_QUOTED=false
+    HEREDOC_MATCH_IS_DASHED=false
+
+    while [ "$idx" -lt "$length" ]; do
+        char="${line:$idx:1}"
+
+        if [ "$escaped" = "true" ]; then
+            escaped=false
+            idx=$((idx + 1))
+            continue
+        fi
+
+        if [ "$char" = "\\" ] && [ "$in_single" != "true" ]; then
+            escaped=true
+            idx=$((idx + 1))
+            continue
+        fi
+
+        if [ "$char" = "'" ] && [ "$in_double" != "true" ]; then
+            if [ "$in_single" = "true" ]; then
+                in_single=false
+            else
+                in_single=true
+            fi
+            idx=$((idx + 1))
+            continue
+        fi
+
+        if [ "$char" = '"' ] && [ "$in_single" != "true" ]; then
+            if [ "$in_double" = "true" ]; then
+                in_double=false
+            else
+                in_double=true
+            fi
+            idx=$((idx + 1))
+            continue
+        fi
+
+        if [ "$in_single" = "true" ] || [ "$in_double" = "true" ]; then
+            idx=$((idx + 1))
+            continue
+        fi
+
+        if [ "$char" = '$' ] && [ $((idx + 1)) -lt "$length" ] \
+            && [ "${line:$((idx + 1)):1}" = "(" ]; then
+            if [ $((idx + 2)) -lt "$length" ] && [ "${line:$((idx + 2)):1}" = "(" ]; then
+                read_arithmetic_expansion_end "$line" "$idx" || return 1
+            else
+                read_dollar_substitution_end "$line" "$idx" || return 1
+            fi
+            idx="$SUBSTITUTION_END_INDEX"
+            continue
+        fi
+
+        if [ "$char" = '(' ] && [ $((idx + 1)) -lt "$length" ] \
+            && [ "${line:$((idx + 1)):1}" = "(" ]; then
+            read_arithmetic_command_end "$line" "$idx" || return 1
+            idx="$SUBSTITUTION_END_INDEX"
+            continue
+        fi
+
+        if [ "$char" = '`' ]; then
+            read_backtick_substitution_end "$line" "$idx" || return 1
+            idx="$SUBSTITUTION_END_INDEX"
+            continue
+        fi
+
+        if [ "$idx" -ge $((length - 1)) ] || [ "${line:$idx:2}" != "<<" ]; then
+            idx=$((idx + 1))
+            continue
+        fi
+
+        candidate="${line:$idx}"
+        if [[ "$candidate" =~ $h_single_pattern ]]; then
+            HEREDOC_MATCH_DELIMITER="${BASH_REMATCH[2]}"
+            HEREDOC_MATCH_IS_QUOTED=true
+            [ -n "${BASH_REMATCH[1]}" ] && HEREDOC_MATCH_IS_DASHED=true || HEREDOC_MATCH_IS_DASHED=false
+            return 0
+        fi
+        if [[ "$candidate" =~ $h_double_pattern ]]; then
+            HEREDOC_MATCH_DELIMITER="${BASH_REMATCH[2]}"
+            HEREDOC_MATCH_IS_QUOTED=true
+            [ -n "${BASH_REMATCH[1]}" ] && HEREDOC_MATCH_IS_DASHED=true || HEREDOC_MATCH_IS_DASHED=false
+            return 0
+        fi
+        if [[ "$candidate" =~ $h_unquoted_pattern ]]; then
+            HEREDOC_MATCH_DELIMITER="${BASH_REMATCH[2]}"
+            HEREDOC_MATCH_IS_QUOTED=false
+            [ -n "${BASH_REMATCH[1]}" ] && HEREDOC_MATCH_IS_DASHED=true || HEREDOC_MATCH_IS_DASHED=false
+            return 0
+        fi
+
+        idx=$((idx + 1))
+    done
+
+    return 1
+}
+
 strip_heredoc_bodies() {
     # Populates STRIPPED_COMMAND and HEREDOC_BODY_SUBSTITUTIONS.
     # Called in the current shell (no subshell) so globals propagate.
@@ -73,12 +193,6 @@ strip_heredoc_bodies() {
     local is_dashed=false
     local stripped
     local output_lines=()
-    # Match quoted delimiters first so we can distinguish them from unquoted.
-    # No backreferences — bash ERE does not support them reliably.
-    local h_single_pattern='<<(-?)[[:space:]]*'\''([A-Za-z_][A-Za-z0-9_]*)'\'
-    local h_double_pattern='<<(-?)[[:space:]]*"([A-Za-z_][A-Za-z0-9_]*)"'
-    local h_unquoted_pattern='<<(-?)[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)([[:space:]]|$)'
-
     STRIPPED_COMMAND=""
     HEREDOC_BODY_SUBSTITUTIONS=()
 
@@ -109,18 +223,10 @@ strip_heredoc_bodies() {
 
         output_lines+=("$line")
 
-        if [[ "$line" =~ $h_single_pattern ]]; then
-            delimiter="${BASH_REMATCH[2]}"
-            is_quoted=true
-            [ -n "${BASH_REMATCH[1]}" ] && is_dashed=true || is_dashed=false
-        elif [[ "$line" =~ $h_double_pattern ]]; then
-            delimiter="${BASH_REMATCH[2]}"
-            is_quoted=true
-            [ -n "${BASH_REMATCH[1]}" ] && is_dashed=true || is_dashed=false
-        elif [[ "$line" =~ $h_unquoted_pattern ]]; then
-            delimiter="${BASH_REMATCH[2]}"
-            is_quoted=false
-            [ -n "${BASH_REMATCH[1]}" ] && is_dashed=true || is_dashed=false
+        if match_heredoc_start "$line"; then
+            delimiter="$HEREDOC_MATCH_DELIMITER"
+            is_quoted="$HEREDOC_MATCH_IS_QUOTED"
+            is_dashed="$HEREDOC_MATCH_IS_DASHED"
         fi
     done <<< "$raw_command"
 
@@ -180,8 +286,13 @@ read_dollar_substitution_end() {
 
         if [ "$in_single" != "true" ] && [ "$char" = '$' ] && [ $((index + 1)) -lt "$length" ] \
             && [ "${raw_command:$((index + 1)):1}" = "(" ]; then
-            depth=$((depth + 1))
-            index=$((index + 2))
+            if [ $((index + 2)) -lt "$length" ] && [ "${raw_command:$((index + 2)):1}" = "(" ]; then
+                read_arithmetic_expansion_end "$raw_command" "$index" || return 1
+                index="$SUBSTITUTION_END_INDEX"
+                continue
+            fi
+            read_dollar_substitution_end "$raw_command" "$index" || return 1
+            index="$SUBSTITUTION_END_INDEX"
             continue
         fi
 
@@ -199,6 +310,197 @@ read_dollar_substitution_end() {
     done
 
     return 1
+}
+
+read_double_paren_end() {
+    local raw_command="$1"
+    local index="$2"
+    local prefix_length="$3"
+    local length="${#raw_command}"
+    local depth=1
+    local char
+    local escaped=false
+    local in_single=false
+    local in_double=false
+
+    index=$((index + prefix_length))
+
+    while [ "$index" -lt "$length" ]; do
+        char="${raw_command:$index:1}"
+
+        if [ "$escaped" = "true" ]; then
+            escaped=false
+            index=$((index + 1))
+            continue
+        fi
+
+        if [ "$char" = "\\" ] && [ "$in_single" != "true" ]; then
+            escaped=true
+            index=$((index + 1))
+            continue
+        fi
+
+        if [ "$char" = "'" ] && [ "$in_double" != "true" ]; then
+            if [ "$in_single" = "true" ]; then
+                in_single=false
+            else
+                in_single=true
+            fi
+            index=$((index + 1))
+            continue
+        fi
+
+        if [ "$char" = '"' ] && [ "$in_single" != "true" ]; then
+            if [ "$in_double" = "true" ]; then
+                in_double=false
+            else
+                in_double=true
+            fi
+            index=$((index + 1))
+            continue
+        fi
+
+        if [ "$in_single" != "true" ] && [ "$char" = '$' ] && [ $((index + 1)) -lt "$length" ] \
+            && [ "${raw_command:$((index + 1)):1}" = "(" ]; then
+            if [ $((index + 2)) -lt "$length" ] && [ "${raw_command:$((index + 2)):1}" = "(" ]; then
+                read_arithmetic_expansion_end "$raw_command" "$index" || return 1
+            else
+                read_dollar_substitution_end "$raw_command" "$index" || return 1
+            fi
+            index="$SUBSTITUTION_END_INDEX"
+            continue
+        fi
+
+        if [ "$in_single" != "true" ] && [ "$char" = '`' ]; then
+            read_backtick_substitution_end "$raw_command" "$index" || return 1
+            index="$SUBSTITUTION_END_INDEX"
+            continue
+        fi
+
+        if [ "$in_single" != "true" ] && [ "$in_double" != "true" ]; then
+            if [ "$char" = '(' ]; then
+                depth=$((depth + 1))
+                index=$((index + 1))
+                continue
+            fi
+
+            if [ "$char" = ")" ]; then
+                depth=$((depth - 1))
+                if [ "$depth" -eq 0 ]; then
+                    if [ "$index" -lt $((length - 1)) ] && [ "${raw_command:$((index + 1)):1}" = ")" ]; then
+                        SUBSTITUTION_END_INDEX=$((index + 2))
+                        return 0
+                    fi
+                    return 1
+                fi
+            fi
+        fi
+
+        index=$((index + 1))
+    done
+
+    return 1
+}
+
+read_arithmetic_expansion_end() {
+    read_double_paren_end "$1" "$2" 3
+}
+
+read_arithmetic_command_end() {
+    read_double_paren_end "$1" "$2" 2
+}
+
+collect_arithmetic_substitutions() {
+    local raw_command="$1"
+    local index="$2"
+    local end="${3:-}"
+    local limit char
+    local escaped=false
+    local in_single=false
+    local in_double=false
+    local collected=()
+    local nested_end
+    local nested_substitutions=()
+
+    if [ -z "$end" ]; then
+        read_arithmetic_expansion_end "$raw_command" "$index" || return 1
+        end="$SUBSTITUTION_END_INDEX"
+    fi
+
+    limit=$((end - 2))
+    index=$((index + 3))
+
+    while [ "$index" -lt "$limit" ]; do
+        char="${raw_command:$index:1}"
+
+        if [ "$escaped" = "true" ]; then
+            escaped=false
+            index=$((index + 1))
+            continue
+        fi
+
+        if [ "$char" = "\\" ] && [ "$in_single" != "true" ]; then
+            escaped=true
+            index=$((index + 1))
+            continue
+        fi
+
+        if [ "$char" = "'" ] && [ "$in_double" != "true" ]; then
+            if [ "$in_single" = "true" ]; then
+                in_single=false
+            else
+                in_single=true
+            fi
+            index=$((index + 1))
+            continue
+        fi
+
+        if [ "$char" = '"' ] && [ "$in_single" != "true" ]; then
+            if [ "$in_double" = "true" ]; then
+                in_double=false
+            else
+                in_double=true
+            fi
+            index=$((index + 1))
+            continue
+        fi
+
+        if [ "$in_single" = "true" ] || [ "$in_double" = "true" ]; then
+            index=$((index + 1))
+            continue
+        fi
+
+        if [ "$char" = '$' ] && [ $((index + 1)) -lt "$limit" ] \
+            && [ "${raw_command:$((index + 1)):1}" = "(" ]; then
+            if [ $((index + 2)) -lt "$limit" ] && [ "${raw_command:$((index + 2)):1}" = "(" ]; then
+                collect_arithmetic_substitutions "$raw_command" "$index" || return 1
+                nested_end="$SUBSTITUTION_END_INDEX"
+                nested_substitutions=("${ARITHMETIC_SUBSTITUTIONS[@]}")
+                if [ "${#nested_substitutions[@]}" -gt 0 ]; then
+                    collected+=("${nested_substitutions[@]}")
+                fi
+                index="$nested_end"
+                continue
+            fi
+            read_dollar_substitution "$raw_command" "$index" || return 1
+            collected+=("$SUBSTITUTION_CONTENT")
+            index="$SUBSTITUTION_END_INDEX"
+            continue
+        fi
+
+        if [ "$char" = '`' ]; then
+            read_backtick_substitution "$raw_command" "$index" || return 1
+            collected+=("$SUBSTITUTION_CONTENT")
+            index="$SUBSTITUTION_END_INDEX"
+            continue
+        fi
+
+        index=$((index + 1))
+    done
+
+    SUBSTITUTION_END_INDEX="$end"
+    ARITHMETIC_SUBSTITUTIONS=("${collected[@]}")
+    return 0
 }
 
 read_backtick_substitution_end() {
@@ -290,6 +592,12 @@ read_dollar_substitution() {
 
         if [ "$in_single" != "true" ] && [ "$char" = '$' ] && [ $((index + 1)) -lt "$length" ] \
             && [ "${raw_command:$((index + 1)):1}" = "(" ]; then
+            if [ $((index + 2)) -lt "$length" ] && [ "${raw_command:$((index + 2)):1}" = "(" ]; then
+                read_arithmetic_expansion_end "$raw_command" "$index" || return 1
+                inner+="${raw_command:$index:$((SUBSTITUTION_END_INDEX - index))}"
+                index="$SUBSTITUTION_END_INDEX"
+                continue
+            fi
             if ! read_dollar_substitution "$raw_command" "$index"; then
                 return 1
             fi
@@ -421,6 +729,17 @@ replace_command_substitutions() {
 
         if [ "$in_single" != "true" ] && [ "$char" = '$' ] && [ $((index + 1)) -lt "$length" ] \
             && [ "${raw_command:$((index + 1)):1}" = "(" ]; then
+            if [ $((index + 2)) -lt "$length" ] && [ "${raw_command:$((index + 2)):1}" = "(" ]; then
+                if ! collect_arithmetic_substitutions "$raw_command" "$index"; then
+                    return 1
+                fi
+                if [ "${#ARITHMETIC_SUBSTITUTIONS[@]}" -gt 0 ]; then
+                    COMMAND_SUBSTITUTIONS+=("${ARITHMETIC_SUBSTITUTIONS[@]}")
+                fi
+                result+="${raw_command:$index:$((SUBSTITUTION_END_INDEX - index))}"
+                index="$SUBSTITUTION_END_INDEX"
+                continue
+            fi
             if ! read_dollar_substitution "$raw_command" "$index"; then
                 return 1
             fi
