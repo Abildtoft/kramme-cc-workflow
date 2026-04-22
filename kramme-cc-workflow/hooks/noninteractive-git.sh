@@ -162,7 +162,68 @@ args_have_long_option() {
     return 1
 }
 
+fixup_value_is_interactive() {
+    case "$1" in
+        amend:*|reword:*)
+            return 0
+            ;;
+    esac
+    return 1
+}
+
+classify_commit_fixup() {
+    local arg value skip_next=false expecting_fixup_value=false
+
+    for arg in "$@"; do
+        value="$(strip_wrapping_quotes "$arg")"
+        if [ "$expecting_fixup_value" = "true" ]; then
+            if fixup_value_is_interactive "$value"; then
+                printf 'interactive\n'
+            else
+                printf 'safe\n'
+            fi
+            return
+        fi
+        if [ "$skip_next" = "true" ]; then
+            skip_next=false
+            continue
+        fi
+        [ "$value" = "--" ] && break
+        case "$value" in
+            --fixup)
+                expecting_fixup_value=true
+                continue
+                ;;
+            --fixup=*)
+                if fixup_value_is_interactive "${value#*=}"; then
+                    printf 'interactive\n'
+                else
+                    printf 'safe\n'
+                fi
+                return
+                ;;
+        esac
+        if short_option_consumes_next_value "$value" "$COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE"; then
+            skip_next=true
+            continue
+        fi
+        case " $COMMIT_LONG_OPTIONS_CONSUME_NEXT_VALUE " in
+            *" $value "*)
+                skip_next=true
+                ;;
+        esac
+    done
+
+    printf 'none\n'
+}
+
+merge_edit_is_safe() {
+    args_have_long_option "--ff-only" "$@" && ! args_have_long_option "--no-ff" "$@"
+}
+
 commit_has_message_source() {
+    local commit_fixup_mode="$1"
+    shift
     commit_requests_editor "$@" && return 1
     args_have_short_option_value_aware "m" "$COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" \
         || args_have_short_option_value_aware "F" "$COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" \
@@ -170,6 +231,7 @@ commit_has_message_source() {
         || commit_has_safe_fixup "$@" \
         || args_have_long_option "--message" "$@" \
         || args_have_long_option "--file" "$@" \
+        || [ "$commit_fixup_mode" = "safe" ] \
         || args_have_long_option "--reuse-message" "$@" \
         || args_have_long_option "--no-edit" "$@"
 }
@@ -589,11 +651,21 @@ evaluate_simple_git_segment() {
 
     case "$subcmd" in
         commit)
+            local commit_fixup_mode has_no_edit=false
+
             if args_have_short_option_value_aware "e" "$COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" || args_have_long_option_value_aware "--edit" "$COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE" "$COMMIT_LONG_OPTIONS_CONSUME_NEXT_VALUE" "$@"; then
                 printf '%s\n' 'git commit --edit opens an editor. Remove --edit to keep the commit non-interactive.'
                 return
             fi
-            if ! commit_has_message_source "$@"; then
+            commit_fixup_mode="$(classify_commit_fixup "$@")"
+            if args_have_long_option "--no-edit" "$@"; then
+                has_no_edit=true
+            fi
+            if [ "$commit_fixup_mode" = "interactive" ] && [ "$has_no_edit" != "true" ]; then
+                printf '%s\n' 'git commit --fixup=amend:<commit> and --fixup=reword:<commit> open an editor unless you also pass --no-edit.'
+                return
+            fi
+            if ! commit_has_message_source "$commit_fixup_mode" "$@"; then
                 printf '%s\n' 'git commit without a message source may open an editor. Use: git commit -m "your message" (or --no-edit for amend)'
                 return
             fi
@@ -615,7 +687,7 @@ evaluate_simple_git_segment() {
             fi
             ;;
         merge)
-            if args_have_short_option_value_aware "e" "$MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" || args_have_long_option_value_aware "--edit" "$MERGE_SHORT_OPTIONS_CONSUME_NEXT_VALUE" "$MERGE_LONG_OPTIONS_CONSUME_NEXT_VALUE" "$@"; then
+            if (args_have_short_option_value_aware "e" "$MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" || args_have_long_option_value_aware "--edit" "$MERGE_SHORT_OPTIONS_CONSUME_NEXT_VALUE" "$MERGE_LONG_OPTIONS_CONSUME_NEXT_VALUE" "$@") && ! merge_edit_is_safe "$@"; then
                 printf '%s\n' 'git merge --edit opens an editor. Remove --edit to keep the merge non-interactive.'
                 return
             fi
@@ -1310,6 +1382,38 @@ def has_long_option(args, *names):
     return False
 
 
+def fixup_value_is_interactive(value):
+    return value.startswith("amend:") or value.startswith("reword:")
+
+
+def classify_commit_fixup(args):
+    skip_next = False
+    expecting_fixup_value = False
+    for arg in args:
+        if expecting_fixup_value:
+            return "interactive" if fixup_value_is_interactive(arg) else "safe"
+        if skip_next:
+            skip_next = False
+            continue
+        if arg == "--":
+            break
+        if arg == "--fixup":
+            expecting_fixup_value = True
+            continue
+        if arg.startswith("--fixup="):
+            return "interactive" if fixup_value_is_interactive(arg.split("=", 1)[1]) else "safe"
+        if short_option_consumes_next_value(arg, COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE):
+            skip_next = True
+            continue
+        if arg in COMMIT_LONG_OPTIONS_CONSUME_NEXT_VALUE:
+            skip_next = True
+    return "none"
+
+
+def merge_edit_is_safe(args):
+    return has_long_option(args, "--ff-only") and not has_long_option(args, "--no-ff")
+
+
 def has_short_option(args, *letters):
     wanted = set(letters)
     for arg in args:
@@ -1475,6 +1579,10 @@ def evaluate(parsed_commands, substitutions, depth=0):
                 COMMIT_LONG_OPTIONS_CONSUME_NEXT_VALUE,
             ):
                 return "git commit --edit opens an editor. Remove --edit to keep the commit non-interactive."
+            commit_fixup_mode = classify_commit_fixup(args)
+            has_no_edit = has_long_option(args, "--no-edit")
+            if commit_fixup_mode == "interactive" and not has_no_edit:
+                return "git commit --fixup=amend:<commit> and --fixup=reword:<commit> open an editor unless you also pass --no-edit."
             has_message_source = (
                 not commit_requests_editor(args)
                 and (
@@ -1482,12 +1590,8 @@ def evaluate(parsed_commands, substitutions, depth=0):
                     or has_short_option_value_aware(args, "F", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
                     or has_short_option_value_aware(args, "C", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
                     or has_safe_fixup(args)
-                    or has_long_option(
-                        args,
-                        "--message",
-                        "--file",
-                        "--reuse-message",
-                    )
+                    or has_long_option(args, "--message", "--file", "--reuse-message")
+                    or commit_fixup_mode == "safe"
                     or has_long_option(args, "--no-edit")
                 )
             )
@@ -1507,12 +1611,15 @@ def evaluate(parsed_commands, substitutions, depth=0):
                 return "Interactive git add opens a prompt. Use explicit paths: git add <files>"
 
         elif subcmd == "merge":
-            if has_short_option_value_aware(args, "e", MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES) or has_long_option_value_aware(
-                args,
-                "--edit",
-                MERGE_SHORT_OPTIONS_CONSUME_NEXT_VALUE,
-                MERGE_LONG_OPTIONS_CONSUME_NEXT_VALUE,
-            ):
+            if (
+                has_short_option_value_aware(args, "e", MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
+                or has_long_option_value_aware(
+                    args,
+                    "--edit",
+                    MERGE_SHORT_OPTIONS_CONSUME_NEXT_VALUE,
+                    MERGE_LONG_OPTIONS_CONSUME_NEXT_VALUE,
+                )
+            ) and not merge_edit_is_safe(args):
                 return "git merge --edit opens an editor. Remove --edit to keep the merge non-interactive."
             is_explicitly_safe = has_long_option(
                 args,

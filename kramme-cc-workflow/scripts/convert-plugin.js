@@ -1263,16 +1263,123 @@ function uniqueName(base, used) {
   return name
 }
 
+function legacyOpenCodeHookRootDirs(bundle, pluginName) {
+  return Array.from(new Set([
+    normalizeName(pluginName),
+    bundle.hookRootDir,
+  ].filter(Boolean)))
+}
+
+async function findInstalledLegacyOpenCodeHookRootDirs(paths, bundle, pluginName) {
+  const installed = []
+  for (const hookRootDir of legacyOpenCodeHookRootDirs(bundle, pluginName)) {
+    if (await pathExists(path.join(paths.hookBundlesDir, hookRootDir))) {
+      installed.push(hookRootDir)
+    }
+  }
+  return installed
+}
+
+async function currentPluginHasInstalledOpenCodeEntries(paths, bundle, pluginName) {
+  const targets = [
+    ...bundle.agents.map((agent) => path.join(paths.agentsDir, `${agent.name}.md`)),
+    ...bundle.plugins.map((plugin) => path.join(paths.pluginsDir, plugin.name)),
+    ...bundle.skillDirs.map((skill) => resolveManagedChild(paths.skillsDir, skill.name, "skill name")),
+  ]
+
+  for (const hookRootDir of legacyOpenCodeHookRootDirs(bundle, pluginName)) {
+    targets.push(path.join(paths.hookBundlesDir, hookRootDir))
+  }
+
+  for (const targetPath of targets) {
+    if (await pathExists(targetPath)) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function extractHookScriptFragments(content) {
+  return Array.from(new Set(
+    String(content ?? "").match(
+      /hooks\/(?:[^/"'`\s)]+\/)*[^/"'`\s)]+\.[A-Za-z0-9]+(?=(?:["'`\s)])|$|\/hooks\/)/g,
+    ) ?? [],
+  ))
+}
+
+function setsMatchExactly(left, right) {
+  if (left.size !== right.size) return false
+  for (const entry of left) {
+    if (!right.has(entry)) return false
+  }
+  return true
+}
+
+function legacyHookPluginLikelyBelongsToBundle(legacyContent, bundle) {
+  if (!bundle.hookRootDir) return false
+
+  if (legacyContent.includes(`hook-bundles/${bundle.hookRootDir}`)) {
+    return true
+  }
+
+  const hookScriptFragments = new Set(
+    bundle.plugins.flatMap((plugin) => extractHookScriptFragments(plugin.content)),
+  )
+  if (hookScriptFragments.size === 0) return false
+
+  const legacyHookScriptFragments = new Set(extractHookScriptFragments(legacyContent))
+  if (legacyHookScriptFragments.size === 0) return false
+
+  return setsMatchExactly(hookScriptFragments, legacyHookScriptFragments)
+}
+
+async function includeLegacyOpenCodeHookPlugin(paths, previousEntries, bundle, options = {}) {
+  const { hasTrackedInstall = false, pluginName = "plugin" } = options
+  const legacyPluginPath = path.join(paths.pluginsDir, "converted-hooks.ts")
+  if (!(await pathExists(legacyPluginPath))) {
+    return previousEntries
+  }
+
+  const legacyPluginContent = await readText(legacyPluginPath)
+  const legacyHookRootDirs = await findInstalledLegacyOpenCodeHookRootDirs(paths, bundle, pluginName)
+  const ownsLegacyHooks = (
+    legacyHookPluginLikelyBelongsToBundle(legacyPluginContent, bundle)
+    || (!hasTrackedInstall && (
+      legacyHookRootDirs.length > 0
+      || await currentPluginHasInstalledOpenCodeEntries(paths, bundle, pluginName)
+    ))
+  )
+
+  if (!ownsLegacyHooks) {
+    return previousEntries
+  }
+
+  // Older Opencode installs used a shared converted-hooks.ts filename and had
+  // no per-plugin state, so first upgrade needs to treat it as a cleanup target.
+  return {
+    ...previousEntries,
+    hooks: unionEntryLists(previousEntries.hooks, legacyHookRootDirs),
+    plugins: unionEntryLists(previousEntries.plugins, ["converted-hooks.ts"]),
+  }
+}
+
 async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
   const paths = resolveOpenCodePaths(outputRoot)
   const pluginName = extraOpts.pluginName ?? "plugin"
   const installRoots = [paths.stateRoot, ...(paths.legacyStateRoots ?? [])]
   const { state: installState } = await loadInstallStateWithFallback(installRoots)
-  const previousEntries = await getPreviousInstallEntries(
+  const { entries: trackedPreviousEntries, hasTrackedInstall } = await loadPreviousInstallEntries(
     installRoots,
     installState,
     pluginName,
     "opencode",
+  )
+  const previousEntries = await includeLegacyOpenCodeHookPlugin(
+    paths,
+    trackedPreviousEntries,
+    bundle,
+    { hasTrackedInstall, pluginName },
   )
   await ensureDir(paths.root)
   await writeJson(paths.configPath, bundle.config)
@@ -1287,9 +1394,12 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
   }
 
   const pluginsDir = paths.pluginsDir
+  // Only clean legacy shared hook plugins when previous-entry resolution tied
+  // them to this install; otherwise preserve them rather than deleting another
+  // plugin's still-untracked legacy hooks.
   const cleanedPlugins = await cleanupInstalledEntries(
     pluginsDir,
-    unionEntryLists(previousEntries.plugins, legacyOpenCodePluginEntries(bundle)),
+    previousEntries.plugins,
     {
       label: "plugin",
       confirmOptions: extraOpts.confirm,
@@ -1832,17 +1942,30 @@ function getInstallEntries(state, pluginName, targetName) {
 }
 
 async function getPreviousInstallEntries(rootOrRoots, state, pluginName, targetName) {
+  return (await loadPreviousInstallEntries(rootOrRoots, state, pluginName, targetName)).entries
+}
+
+async function loadPreviousInstallEntries(rootOrRoots, state, pluginName, targetName) {
   const roots = Array.isArray(rootOrRoots) ? rootOrRoots : [rootOrRoots]
   if (state.plugins?.[pluginName]?.[targetName]) {
-    return getInstallEntries(state, pluginName, targetName)
+    return {
+      entries: getInstallEntries(state, pluginName, targetName),
+      hasTrackedInstall: true,
+    }
   }
   for (const root of uniqueRoots(roots)) {
     const manifest = await loadInstallManifest(root, pluginName, targetName)
     if (manifest) {
-      return manifest
+      return {
+        entries: manifest,
+        hasTrackedInstall: true,
+      }
     }
   }
-  return getInstallEntries(state, pluginName, targetName)
+  return {
+    entries: getInstallEntries(state, pluginName, targetName),
+    hasTrackedInstall: false,
+  }
 }
 
 function setInstallEntries(state, pluginName, targetName, entries) {
@@ -1879,13 +2002,6 @@ function uniqueRoots(roots) {
       sanitizeEntryList(roots).map((root) => path.resolve(root)),
     ),
   )
-}
-
-function legacyOpenCodePluginEntries(bundle) {
-  if (!bundle.plugins.some((plugin) => plugin.name.startsWith("converted-hooks-"))) {
-    return []
-  }
-  return ["converted-hooks.ts"]
 }
 
 async function writeJson(file, data) {

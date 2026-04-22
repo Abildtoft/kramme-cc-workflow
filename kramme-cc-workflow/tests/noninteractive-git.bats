@@ -123,6 +123,42 @@ run_hook_without_python() {
     is_allowed
 }
 
+@test "allows git commit --fixup with separate target when python3 is unavailable" {
+    run run_hook_without_python "git commit --fixup HEAD"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows git commit --fixup with inline target when python3 is unavailable" {
+    run run_hook_without_python "git commit --fixup=HEAD"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git commit --fixup amend target when python3 is unavailable" {
+    run run_hook_without_python "git commit --fixup amend:HEAD"
+    is_blocked
+    [[ "$output" == *"--fixup=amend:"* ]]
+}
+
+@test "allows git commit --fixup amend target with --no-edit when python3 is unavailable" {
+    run run_hook_without_python "git commit --fixup=amend:HEAD --no-edit"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git commit --fixup reword target when python3 is unavailable" {
+    run run_hook_without_python "git commit --fixup=reword:HEAD"
+    is_blocked
+    [[ "$output" == *"--fixup=reword:"* ]]
+}
+
+@test "allows git commit --fixup reword target with --no-edit when python3 is unavailable" {
+    run run_hook_without_python "git commit --fixup=reword:HEAD --no-edit"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
 @test "blocks git commit with -m and --edit when python3 is unavailable" {
     run run_hook_without_python "git commit -m 'test message' --edit"
     is_blocked
@@ -338,6 +374,18 @@ EOF"
     is_allowed
 }
 
+@test "allows git merge --ff-only with --edit when python3 is unavailable" {
+    run run_hook_without_python "git merge --ff-only --edit main"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git merge --ff-only --no-ff with --edit when python3 is unavailable" {
+    run run_hook_without_python "git merge --ff-only --no-ff --edit main"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
+}
+
 @test "allows git merge -m with literal --edit message when python3 is unavailable" {
     run run_hook_without_python "git merge -m --edit main"
     [ "$status" -eq 0 ]
@@ -458,6 +506,42 @@ EOF"
 
 @test "allows git commit --message with literal --edit value" {
     run run_hook "git commit --message --edit"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows git commit --fixup with separate target" {
+    run run_hook "git commit --fixup HEAD"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "allows git commit --fixup with inline target" {
+    run run_hook "git commit --fixup=HEAD"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git commit --fixup amend target" {
+    run run_hook "git commit --fixup amend:HEAD"
+    is_blocked
+    [[ "$output" == *"--fixup=amend:"* ]]
+}
+
+@test "allows git commit --fixup amend target with --no-edit" {
+    run run_hook "git commit --fixup=amend:HEAD --no-edit"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git commit --fixup reword target" {
+    run run_hook "git commit --fixup=reword:HEAD"
+    is_blocked
+    [[ "$output" == *"--fixup=reword:"* ]]
+}
+
+@test "allows git commit --fixup reword target with --no-edit" {
+    run run_hook "git commit --fixup=reword:HEAD --no-edit"
     [ "$status" -eq 0 ]
     is_allowed
 }
@@ -786,6 +870,18 @@ EOF"
     run run_hook "git merge --ff -m 'merge message' feature-branch"
     [ "$status" -eq 0 ]
     is_allowed
+}
+
+@test "allows git merge --ff-only with --edit" {
+    run run_hook "git merge --ff-only --edit feature-branch"
+    [ "$status" -eq 0 ]
+    is_allowed
+}
+
+@test "blocks git merge --ff-only --no-ff with --edit" {
+    run run_hook "git merge --ff-only --no-ff --edit feature-branch"
+    is_blocked
+    [[ "$output" == *"--edit"* ]]
 }
 
 @test "allows git merge -m with literal --edit message" {
