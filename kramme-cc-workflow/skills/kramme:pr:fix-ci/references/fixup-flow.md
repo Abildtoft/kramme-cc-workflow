@@ -99,10 +99,17 @@ GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash "$FIXUP_BASE"
 
 ## 7b.6: Push with Force
 
-After successful rebase (or fallback), push with force:
+After successful rebase (or fallback), confirm one of these is true before pushing:
+
+- The branch is not shared.
+- The user explicitly confirmed collaborators are coordinated for a history rewrite.
+
+If neither is true, stop here. Keep the rebased result local, tell the user not to push it yet, and recommend either coordinating first or switching back to the default mode for visible iteration commits.
+
+If one of those conditions is true:
 
 ```bash
 git push --force-with-lease origin $(git branch --show-current)
 ```
 
-**Note:** `--force-with-lease` is required because the rebase rewrites history. It refuses to overwrite remote commits you haven't fetched, but you should still coordinate with other contributors before forcing.
+**Note:** `--force-with-lease` is required because the rebase rewrites history. It refuses to overwrite remote commits you haven't fetched, but it is not a substitute for collaborator coordination.
