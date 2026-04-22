@@ -4,6 +4,18 @@ Extended guidance for the five-question checklist in Step 1 of the skill. Each q
 
 ---
 
+## Choose the surface first
+
+Before answering the checklist, classify the surface being deprecated:
+
+- **Compile-time / internal-only** — modules, library entry points, framework adapters, types, build hooks. Dependents are discovered from the import graph, build graph, tests, config, and package/publish references.
+- **Runtime / internal** — services, jobs, queues, and shared runtime behavior used only inside the organization. Dependents are discovered from code references plus telemetry, logs, or analytics.
+- **External / public** — public APIs, SDKs, CLI flags, webhooks. Dependents are discovered from telemetry plus external docs, SDK/publish inventory, and partner/user communication channels.
+
+The rest of the checklist assumes you pick the evidence that matches this surface. Do not require access logs for compile-time-only removals, and do not accept compile-time-only evidence for public or runtime surfaces.
+
+---
+
 ## 1. Does this code still provide unique value?
 
 **Clear YES** — the code implements a capability no other module covers, no replacement exists in the codebase, and removing it would remove user-facing or developer-facing functionality.
@@ -22,20 +34,24 @@ Extended guidance for the five-question checklist in Step 1 of the skill. Each q
 
 ## 2. Who are the dependents (internal + external)?
 
-**Clear answer** — a list of concrete callers from three sources, not two, not one:
+**Clear answer** — a list of concrete callers from the evidence sources required by the chosen surface:
 
-1. **Import graph / build graph** — every source file that imports the module.
-2. **Access logs or analytics** — every runtime caller in the last meaningful time window (30 days for internal, 90 days for external APIs).
-3. **External comms** — external docs, SDK publishing, partner integrations. If the code is behind a public API, the external caller list matters more than the internal one.
+1. **Compile-time / internal-only** — import graph / build graph, tests or fixtures that still exercise the old path, and config / package / publish references.
+2. **Runtime / internal** — import graph / build graph plus access logs, analytics, or telemetry covering the last meaningful window.
+3. **External / public** — runtime telemetry plus external docs, SDK publishing, and partner integrations. If the code is behind a public API, the external caller list matters more than the internal import graph.
+
+If more than one surface applies, use the stricter evidence set.
 
 **"Not yet — gather more data" signals:**
 
-- Grep alone, no access logs.
+- Grep alone, with no corroborating import/build/test/config evidence.
+- Runtime deprecation with no access logs or telemetry.
+- Public API deprecation with no SDK/docs/partner inventory check.
 - "Nobody I asked uses it" — surveyed teams, not data.
 - Access logs show "low usage" but the sampling window is under 30 days.
 - Dynamic imports or reflection is used in the codebase and the grep couldn't resolve them.
 
-**Escalation when unknown:** emit `UNVERIFIED: <missing-data-source>` and gather it. If access logs don't exist, instrument first — add a counter on the old path and let it run for a rollback window before trusting "zero usage".
+**Escalation when unknown:** emit `UNVERIFIED: <missing-data-source>` and gather it. If runtime logs don't exist, instrument first — add a counter on the old path and let it run for a rollback window before trusting "zero usage". If compile-time evidence is ambiguous, add a temporary build/test guard or consumer check before trusting "zero references".
 
 ---
 
@@ -51,7 +67,7 @@ Extended guidance for the five-question checklist in Step 1 of the skill. Each q
 - A replacement exists but covers the happy path only — edge cases still use the old module.
 - "We'll build the replacement as part of the deprecation PR" — pushes Step 4.1 work into Step 4.4, a common cause of rollback.
 
-**Escalation when unknown:** block the deprecation until the replacement ships. Do not start announcements before the replacement is deployed and parity tests pass.
+**Escalation when unknown:** block the deprecation until the replacement ships. Do not start announcements before the replacement is merged and verified; runtime or public replacements must also be deployed before announcement.
 
 ---
 
@@ -118,7 +134,8 @@ A short list means deferring is fine — Advisory classification, long window. A
                                    │         ▼
                                    │     ┌──────────────────────────┐
                                    │     │ Q2: Dependents audited   │
-                                   │     │ from 3 sources?          │
+                                   │     │ from the required        │
+                                   │     │ sources for the surface? │
                                    │     └───┬──────────────────────┘
                                    │         │
                                    │         │ NO  → UNVERIFIED; gather data

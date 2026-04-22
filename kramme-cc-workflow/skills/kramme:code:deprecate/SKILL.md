@@ -1,7 +1,7 @@
 ---
 name: kramme:code:deprecate
 description: "Plan and execute deprecation of code, features, APIs, or modules, treating code as a liability. Covers the decision to deprecate (5-question checklist), Hyrum's Law risk assessment, Advisory vs Compulsory deprecation paths, Strangler / Adapter / Feature-Flag migration patterns, and a four-step workflow: build replacement → announce → migrate incrementally → remove old. Emits SIMPLICITY CHECK, NOTICED BUT NOT TOUCHING, UNVERIFIED, and ASK FIRST markers. Use when removing legacy systems, sunsetting features, retiring API versions, or cleaning up zombie code with unknown owners."
-disable-model-invocation: false
+disable-model-invocation: true
 user-invocable: true
 ---
 
@@ -23,6 +23,16 @@ When you find yourself about to "leave it for now because it's small", that is t
 - Cleaning up "zombie code" — code that nobody owns but that other code depends on.
 - Migrating away from a deprecated dependency and taking the old call sites with it.
 - Paired with `kramme:code:migrate` — when a framework migration finishes, the old framework's entry points need a deprecation workflow.
+
+## Choose the surface first
+
+Before Step 1, classify what kind of surface is being deprecated. The dependent audit, announcement path, and completion gates depend on this choice.
+
+- **Compile-time / internal-only** — modules, library entry points, framework adapters, types, build hooks. Dependents are discovered from the import graph, build graph, tests, config, and package/publish references. No deployment or access-log requirement.
+- **Runtime / internal** — services, jobs, queues, and shared runtime behavior used only inside the organization. Dependents are discovered from code references plus telemetry, logs, or analytics.
+- **External / public** — public APIs, SDKs, CLI flags, webhooks. Dependents are discovered from telemetry plus external docs, SDK/publish inventory, and partner/user communication channels.
+
+Use the strongest evidence that matches the surface. Do not require runtime telemetry for compile-time-only removals, and do not accept compile-time-only evidence for public or runtime surfaces.
 
 ## Hyrum's Law
 
@@ -61,7 +71,7 @@ Use during Step 1's dependent audit when grep turns up adjacent code that also l
 UNVERIFIED: <assumption that has no source>
 ```
 
-Flag anything you accepted without checking: "no one uses this endpoint" (did you read access logs?), "this flag is off in production" (did you query the flag service?), "the documented contract covers all observables" (Hyrum's Law says no). Every `UNVERIFIED` must be resolved before Step 4.4 (remove old) — verifying that something is dead is the removal's whole purpose.
+Flag anything you accepted without checking: "no one imports this module anymore" (did you check the build graph, tests, and config?), "no one uses this endpoint" (did you read access logs?), "this flag is off in production" (did you query the flag service?), "the documented contract covers all observables" (Hyrum's Law says no). Every `UNVERIFIED` must be resolved before Step 4.4 (remove old) — verifying that something is dead is the removal's whole purpose.
 
 ```
 ASK FIRST: <which boundary you're about to cross>
@@ -77,7 +87,7 @@ Use before: deprecating a public API, removing an externally-consumed endpoint, 
 Answer the five-question checklist. Extended signals and a decision tree live in `references/decision-checklist.md`.
 
 1. **Does this code still provide unique value?** If a replacement in the codebase already covers the same surface, value is duplicated — deprecation candidate. If no replacement exists, building the replacement is Step 4.1 and must happen *before* removal begins.
-2. **Who are the dependents (internal + external)?** Grep the codebase, check build graph, check access logs for runtime callers, check external API analytics. Internal-only changes the risk profile; external requires an announcement path. "No dependents found" with no access-log check is `UNVERIFIED`.
+2. **Who are the dependents (internal + external)?** Audit the evidence sources that match the chosen surface. Compile-time / internal-only => import/build graph, tests, config, and package/publish references. Runtime / internal => import/build graph plus telemetry/logs. External / public => telemetry/logs plus docs, SDKs, and partner inventory. "No dependents found" is `UNVERIFIED` only when a required evidence source for that surface has not been checked.
 3. **Does a replacement exist?** If yes, name it. If no, deprecation is blocked until a replacement ships — removing without a replacement is "delete the feature", a different decision.
 4. **What is the migration cost for dependents?** Low (mechanical, codemod-able) → short migration window OK. High (architectural, requires rethinking) → long window + `kramme:code:migrate` pattern (Strangler / Adapter / Feature Flag).
 5. **What is the maintenance cost of NOT deprecating?** Frame against concrete cost items: security patches, framework upgrades that require touching it, test flakes, onboarding time for new contributors. If the list is short, deferring is fine. If long or growing, deprecation has a clock.
@@ -127,25 +137,28 @@ Execute in order. Do not compress or overlap — each step has distinct exit cri
 
 Ship the replacement first. The replacement must cover the documented contract *and* the observable behaviors Hyrum's Law says callers may depend on: field ordering, error messages, timing characteristics, edge-case inputs, the exact shape of logs that ops depends on. Map each observable to either "replacement covers it" or "replacement intentionally changes it — communicated in Step 4.2".
 
-Exit criterion: the replacement is merged, deployed, and a contract test or characterization test asserts feature parity for every observable on the map.
+Exit criterion: the replacement is merged and verified. For runtime or public surfaces it is also deployed and monitored; for compile-time / internal-only surfaces it is exercised by the CI/build/test flows that cover dependents. In both cases, a contract test or characterization test asserts feature parity for every observable on the map.
 
 ### 4.2 Announce / document
 
-Publish: the deprecation notice, the timeline, the migration guide, and the rollback path. Surfaces depend on the audience:
+Publish: the deprecation notice, the timeline, the migration guide or upgrade note, and the rollback path. Surfaces depend on the audience:
 
-- **Internal code**: deprecation notice in the code (JSDoc `@deprecated`, Python `DeprecationWarning`, etc.), CHANGELOG entry, team-wide announcement channel.
+- **Compile-time / internal-only code**: deprecation notice in the code (JSDoc `@deprecated`, Python `DeprecationWarning`, etc.), CHANGELOG or migration note, and any package-level upgrade docs callers rely on.
+- **Runtime / internal code**: deprecation notice in the code when applicable, CHANGELOG entry, team-wide announcement channel, and operator/runbook note if runtime ownership is involved.
 - **External API**: changelog, developer mailing list, in-API deprecation header (`Deprecation: true`, `Sunset: <date>`), versioned documentation.
 - **Feature flag**: internal-only; the flag service is the announcement channel.
 
-Exit criterion: every dependent surface (internal or external) has received the announcement, and the migration guide has been validated against at least one real migration.
+Exit criterion: every dependent surface for the chosen surface type has received the announcement or upgrade note it actually uses, and the migration guide has been rehearsal-validated against at least one representative caller when caller migration is required before rollout begins.
 
 ### 4.3 Migrate incrementally
 
 Apply the Step 3 pattern. Migrate callers in slices — by team, by cohort, by path — with verification between slices. The Churn Rule says you own this migration: if callers are not migrating, you do the migrations yourself (codemods, PRs against consuming services, batch-updates).
 
-Every migrated slice must pass the same verification gate as the replacement: observable parity, no regression in test suite, no new error signal in production telemetry.
+The first migrated slice is the guide's real-world validation. If the guide is wrong or incomplete, fix it before moving to the next slice.
 
-Exit criterion: zero active callers of the old path. "Active" means callers seen in access logs / import graph within the rollback window (see 4.4).
+Every migrated slice must pass the same verification gate as the replacement: observable parity, no regression in test suite, and no new regression signal in the verification surface that applies (CI/build/test for compile-time internal code, telemetry for runtime/public surfaces).
+
+Exit criterion: zero active callers of the old path. "Active" means references still present in the import/build/test/config graph for compile-time / internal-only surfaces, or runtime callers / published consumer surfaces still pointing at the old path within the rollback window for runtime or public surfaces.
 
 ### 4.4 Remove old
 
@@ -163,14 +176,14 @@ The deprecation is not done until **all four** are true:
 
 - No references remain in code, tests, docs, or config.
 - Deprecation notices and migration guide are removed (or explicitly archived with a date).
-- Dependent audit confirms zero active consumers within the rollback window.
-- The rollback window has passed without incident (no rollbacks, no urgent revert requests, no newly-discovered dependents).
+- Dependent audit confirms zero active consumers within the observation window, using evidence appropriate to the surface type.
+- The observation window has passed without incident (no rollbacks, no urgent revert requests, no newly-discovered dependents).
 
-The rollback window depends on classification: Advisory deprecations hold for a release cycle after Step 4.3 completion; Compulsory deprecations hold for at least one on-call rotation to catch pages.
+The observation window depends on surface + classification: compile-time / internal-only deprecations hold through at least one green CI cycle and, if the artifact is published outside the repo, one release-candidate or consumer-update window. Runtime Advisory deprecations hold for a release cycle after Step 4.3 completion; runtime or public Compulsory deprecations hold for at least one on-call rotation to catch pages.
 
 ## Integration with other skills
 
-- **`kramme:code:migrate`** — the migration-toward-new side. When a framework or library migration completes, the old framework's call sites are deprecation candidates. Run migrate's phases 1-5 to move callers, then run this skill's Step 4.4 to remove the old path.
+- **`kramme:code:migrate`** — the migration-toward-new side. When a framework or library migration completes, the old framework's call sites are deprecation candidates. `kramme:code:migrate` may cover Step 4.1 and parts of Step 4.3, but it does not replace Step 4.2's announcement path or the surface-appropriate observation-window / zero-active-caller checks in this skill. Before Step 4.4, verify those gates are satisfied and recorded; if they are not, continue from the earliest incomplete deprecation step instead of jumping straight to removal.
 - **`kramme:code:api-design`** — for deprecating public API surfaces, the replacement's contract design belongs there. Hyrum's Law also appears in that skill because it governs both sides of the API lifecycle; each skill inlines its own copy.
 - **`kramme:code:refactor-opportunities`** — discovery mechanism. A scan that reports "dead code / unused exports" produces deprecation candidates for this skill to evaluate. Do not remove directly from a refactor report; pass each candidate through Step 1 first.
 - **`kramme:verify:run`** — verification gate between slices in Step 4.3 and after Step 4.4.
@@ -183,7 +196,7 @@ Each of these is a version of "skip the checklist". Correct response follows.
 
 | Rationalization | Reality |
 |---|---|
-| "Nobody uses it anymore." | `UNVERIFIED` until the dependent audit runs against access logs *and* the import graph. "I grepped and didn't see callers" misses dynamic imports, reflection, and external API callers. |
+| "Nobody uses it anymore." | `UNVERIFIED` until the dependent audit runs against the evidence required for the chosen surface. For compile-time / internal-only code that usually means import/build/test/config references; for runtime or public surfaces it includes telemetry. "I grepped and didn't see callers" still misses dynamic imports, reflection, and external API callers. |
 | "It's tiny, leaving it is fine." | Code is a liability — tests, docs, patches, and mental overhead scale with surface, not lines. The "tiny" framing is usually wrong once the maintenance cost question (Step 1, question 5) is answered. |
 | "We'll delete it after the next release." | This is the deprecate-and-abandon failure mode. The Churn Rule says migration is your work; "after the next release" without a migration plan means the deprecation never completes. |
 | "The announcement was six months ago." | Announcement is not migration. If callers still exist, either migrate them now or reclassify the deprecation as Advisory and extend the window. |
@@ -199,7 +212,7 @@ If you see any of these, stop and re-author:
 - Deprecating a public API with no migration guide.
 - Zombie code being removed without the ownership gate having cleared.
 - Step 4.4 (remove old) being executed while `UNVERIFIED` markers remain open.
-- Dependent audit based on grep alone — no access logs, no import graph, no analytics.
+- Dependent audit based on grep alone — no import/build graph, no telemetry where required, and no package/docs/consumer inventory for the chosen surface.
 - Announcement window under 30 days on a Compulsory deprecation without `ASK FIRST`.
 - "Replacement parity" claimed without a contract or characterization test.
 - Deprecation plan with no named migration pattern (Strangler / Adapter / Feature Flag).
@@ -214,12 +227,12 @@ Before declaring the deprecation complete, self-check:
 - [ ] Classification (Advisory / Compulsory) recorded.
 - [ ] Zombie-code gate explicitly cleared (owner identified) — not silently bypassed.
 - [ ] Named migration pattern recorded.
-- [ ] Replacement covers every observable on the contract-plus-Hyrum map, verified by a contract or characterization test.
-- [ ] Announcement published on every surface the audience uses (code notice, CHANGELOG, external comms, API headers as applicable).
-- [ ] Migration guide validated against at least one real migration.
-- [ ] Dependent audit confirms zero active consumers — based on access logs and import graph, not grep alone.
+- [ ] Replacement covers every observable on the contract-plus-Hyrum map, verified by a contract or characterization test and by the CI/build/test or deployed monitoring surface that applies.
+- [ ] Announcement published on every surface the audience uses (code notice, CHANGELOG, internal migration note, external comms, API headers as applicable).
+- [ ] Migration guide or upgrade note validated against at least one real migration when caller migration is required.
+- [ ] Dependent audit confirms zero active consumers — based on surface-appropriate evidence (import/build/test/config graph for compile-time / internal-only code; telemetry plus published consumer inventory for runtime or public surfaces), not grep alone.
 - [ ] Every `UNVERIFIED` marker resolved; every `NOTICED BUT NOT TOUCHING` logged; every `ASK FIRST` confirmed.
-- [ ] Rollback window has elapsed without incident.
+- [ ] Observation window has elapsed without incident (CI/release-candidate window for compile-time / internal-only; rollback window for runtime or public surfaces).
 - [ ] Old code, tests, docs, and deprecation notices removed *together* in the final commit.
 
 If any box is unchecked, the deprecation is not done. Fix the gap or split it into a tracked follow-up before closing the workflow.
