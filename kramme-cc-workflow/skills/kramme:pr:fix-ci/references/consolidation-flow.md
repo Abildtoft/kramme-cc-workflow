@@ -43,6 +43,8 @@ Options:
   3. Keep separate - Leave as-is (can squash-merge the PR later)
 ```
 
+If the branch is shared, only offer options 1 or 2 after the user explicitly confirms collaborators are coordinated for a history rewrite. Otherwise steer them to option 3.
+
 **If user selects "Keep separate":**
 ```
 Keeping [FIX PIPELINE] commits as separate commits.
@@ -185,7 +187,14 @@ After the user saves and closes the editor, git will execute the rebase.
 
 ## Step 10.7: Force Push
 
-After successful rebase:
+After successful rebase, confirm one of these is true before pushing:
+
+- The branch is not shared.
+- The user explicitly confirmed collaborators are coordinated for a history rewrite.
+
+If neither is true, stop here. Keep the rebased result local, tell the user not to push it yet, and recommend either coordinating first or resetting back to the pre-consolidation state and choosing "Keep separate".
+
+If one of those conditions is true:
 
 ```bash
 git push --force-with-lease origin $(git branch --show-current)
