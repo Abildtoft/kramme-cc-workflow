@@ -10,6 +10,8 @@ user-invocable: true
 
 Plan and execute framework/library version migrations with phased upgrades, codemod automation, and verification gates between each phase.
 
+Use `kramme:code:source-driven` for the official-doc grounding discipline inside this workflow, and `kramme:code:deprecate` after the migration when the old path still needs an explicit announcement / migration / removal plan.
+
 Parse `$ARGUMENTS` for `--auto` before Step 1.
 
 - If present, set `AUTO_MODE=true` and remove the flag from the remaining input.
@@ -80,11 +82,14 @@ options:
 
 ## Step 2: Fetch Migration Guide
 
-1. Read known migration sources from `references/migration-sources.md`.
+Run the DETECT / FETCH / CITE workflow from `kramme:code:source-driven` here. Treat that skill as the source of truth for how to ground, fetch, and cite documentation. This step adds only the migration-specific scope: which sources to check and what migration details to extract.
 
-2. Use `WebSearch` for the official migration guide:
-   - Query: `{framework} {current} to {target} migration guide official`
-   - Try official URL patterns from the reference file.
+1. Read known migration sources from `references/migration-sources.md` to identify the official migration-guide URLs, changelogs, and framework-specific upgrade hubs for the target stack.
+
+2. Use the `kramme:code:source-driven` fetch discipline to retrieve the official migration guide and any adjacent official changelog / breaking-change references for `{framework} {current} -> {target}`.
+   - Prefer the exact official URLs or URL patterns from `references/migration-sources.md`.
+   - Record the deep links you relied on.
+   - If an important migration claim cannot be backed by an official source, emit `UNVERIFIED` instead of guessing.
 
 3. Extract from the guide:
    - **Breaking changes** — renamed/removed APIs, behavior changes
@@ -97,7 +102,7 @@ options:
 
 5. Read common patterns from `references/common-breaking-patterns.md`.
 
-6. If **no official guide found**: search community resources, warn user that manual research may be needed.
+6. If **no official guide found**: mark that gap explicitly, then search community resources as a fallback and warn the user that manual verification may be needed before implementation.
 
 ---
 
