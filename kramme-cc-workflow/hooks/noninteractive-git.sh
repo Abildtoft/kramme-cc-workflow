@@ -163,9 +163,11 @@ args_have_long_option() {
 }
 
 commit_has_message_source() {
+    commit_requests_editor "$@" && return 1
     args_have_short_option_value_aware "m" "$COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" \
         || args_have_short_option_value_aware "F" "$COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" \
         || args_have_short_option_value_aware "C" "$COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" \
+        || commit_has_safe_fixup "$@" \
         || args_have_long_option "--message" "$@" \
         || args_have_long_option "--file" "$@" \
         || args_have_long_option "--reuse-message" "$@" \
@@ -177,6 +179,85 @@ merge_has_message_source() {
         || args_have_short_option_value_aware "F" "$MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES" "$@" \
         || args_have_long_option "--message" "$@" \
         || args_have_long_option "--file" "$@"
+}
+
+commit_requests_editor() {
+    local value short_options short_name consume_next
+
+    while [ $# -gt 0 ]; do
+        value="$(strip_wrapping_quotes "$1")"
+        [ "$value" = "--" ] && break
+
+        consume_next=0
+        case "$value" in
+            --edit|--reedit-message|--reedit-message=*)
+                return 0
+                ;;
+            --message|--file|--reuse-message|--fixup)
+                consume_next=1
+                ;;
+            --message=*|--file=*|--reuse-message=*|--fixup=*)
+                ;;
+            -[!-]*)
+                short_options="${value#-}"
+                while [ -n "$short_options" ]; do
+                    short_name="${short_options%"${short_options#?}"}"
+                    short_options="${short_options#?}"
+                    case "$short_name" in
+                        e|c)
+                            return 0
+                            ;;
+                        m|F|C)
+                            [ -z "$short_options" ] && consume_next=1
+                            short_options=""
+                            ;;
+                    esac
+                done
+                ;;
+        esac
+
+        shift
+        [ "$consume_next" -eq 1 ] && [ $# -gt 0 ] && shift
+    done
+
+    return 1
+}
+
+commit_has_safe_fixup() {
+    local value target
+
+    while [ $# -gt 0 ]; do
+        value="$(strip_wrapping_quotes "$1")"
+        [ "$value" = "--" ] && break
+        case "$value" in
+            --fixup)
+                shift
+                [ $# -gt 0 ] || return 1
+                target="$(strip_wrapping_quotes "$1")"
+                case "$target" in
+                    amend:*|reword:*)
+                        return 1
+                        ;;
+                    *)
+                        return 0
+                        ;;
+                esac
+                ;;
+            --fixup=*)
+                target="${value#*=}"
+                case "$target" in
+                    amend:*|reword:*)
+                        return 1
+                        ;;
+                    *)
+                        return 0
+                        ;;
+                esac
+                ;;
+        esac
+        shift
+    done
+    return 1
 }
 
 extract_shell_inline_command() {
@@ -1313,6 +1394,51 @@ def has_long_option_value_aware(
     return False
 
 
+def has_safe_fixup(args):
+    idx = 0
+    while idx < len(args):
+        arg = args[idx]
+        if arg == "--":
+            break
+        if arg == "--fixup":
+            if idx + 1 >= len(args):
+                return False
+            return not args[idx + 1].startswith(("amend:", "reword:"))
+        if arg.startswith("--fixup="):
+            return not arg.split("=", 1)[1].startswith(("amend:", "reword:"))
+        idx += 1
+    return False
+
+
+def commit_requests_editor(args):
+    idx = 0
+    while idx < len(args):
+        arg = args[idx]
+        if arg == "--":
+            break
+        if arg in ("--edit", "--reedit-message") or arg.startswith("--reedit-message="):
+            return True
+        if arg in ("--message", "--file", "--reuse-message", "--fixup"):
+            idx += 2
+            continue
+        if arg.startswith(("--message=", "--file=", "--reuse-message=", "--fixup=")):
+            idx += 1
+            continue
+        if arg.startswith("-") and arg != "-" and not arg.startswith("--"):
+            cluster = arg[1:]
+            consume_next = False
+            for pos, letter in enumerate(cluster):
+                if letter in ("e", "c"):
+                    return True
+                if letter in ("m", "F", "C"):
+                    consume_next = pos == len(cluster) - 1
+                    break
+            idx += 2 if consume_next else 1
+            continue
+        idx += 1
+    return False
+
+
 def evaluate(parsed_commands, substitutions, depth=0):
     if depth > 4:
         return PARSE_ERROR_REASON
@@ -1350,16 +1476,20 @@ def evaluate(parsed_commands, substitutions, depth=0):
             ):
                 return "git commit --edit opens an editor. Remove --edit to keep the commit non-interactive."
             has_message_source = (
-                has_short_option_value_aware(args, "m", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
-                or has_short_option_value_aware(args, "F", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
-                or has_short_option_value_aware(args, "C", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
-                or has_long_option(
-                    args,
-                    "--message",
-                    "--file",
-                    "--reuse-message",
+                not commit_requests_editor(args)
+                and (
+                    has_short_option_value_aware(args, "m", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
+                    or has_short_option_value_aware(args, "F", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
+                    or has_short_option_value_aware(args, "C", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
+                    or has_safe_fixup(args)
+                    or has_long_option(
+                        args,
+                        "--message",
+                        "--file",
+                        "--reuse-message",
+                    )
+                    or has_long_option(args, "--no-edit")
                 )
-                or has_long_option(args, "--no-edit")
             )
             if not has_message_source:
                 return "git commit without a message source may open an editor. Use: git commit -m \"your message\" (or --no-edit for amend)"

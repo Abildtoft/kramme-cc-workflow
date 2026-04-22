@@ -1,6 +1,6 @@
 # ISSUE-G-{NNN}: Spec: {finding title}
 
-**Status:** Ready | **Priority:** {Critical→High, Major→Medium, Minor→Low; if `Severity Note` says `from Critical` use High, if it says `from Major` use Medium} | **Phase:** General | **Related:** Spec Audit Report
+**Status:** Ready | **Priority:** {Critical→High, Major→Medium, Minor→Low; if `Severity Note` says `from Critical` use High, if it says `from Major` use Medium} | **Size:** {XS|S|M|L} | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Related:** Spec Audit Report
 
 ## Problem
 

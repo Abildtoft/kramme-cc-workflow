@@ -8,7 +8,7 @@ user-invocable: true
 
 # Generate Phases from Specification
 
-Break down a specification into atomic, committable issues organized into phases. Each phase results in demoable software, and each issue represents a self-contained piece of work with tests/validation.
+Break down a specification into atomic, committable issues organized into phases. Each phase results in a demoable or reviewable outcome appropriate to the work type, and each issue represents a self-contained piece of work with tests/validation.
 
 ## Workflow Boundaries
 
@@ -49,6 +49,10 @@ Use **phase-prefixed numbering** for clear organization:
     ↓
 [Report summary] -> Suggest /kramme:siw:issue-implement
 ```
+
+## Shared Guardrails
+
+Before executing Phase 2 or any later step, read `references/quality-gates.md` so the required output markers, hard gates, and final verification checklist are active throughout the workflow.
 
 ## Phase 1: Prerequisites & Input
 
@@ -154,7 +158,7 @@ Identify and extract:
 
 Analyze the spec to find natural phase boundaries:
 - Look for milestones, logical groupings, or dependency chains
-- Each phase should result in **demoable software** that can be run and tested
+- Each phase should result in a **demoable or reviewable outcome** appropriate to the work type
 - Default phase count depends on Work Context:
   - **Production Feature** (default): 3-5 phases. Each phase results in demoable, tested software.
   - **Prototype / Spike**: 2-3 phases. Larger, more exploratory phases. Phase 1 proves the core concept. Acceptance criteria focus on "does it work" over "is it production-ready." Skip polish and documentation phases.
@@ -170,8 +174,21 @@ For each phase, decompose into atomic tasks:
 **Each task should be:**
 - **Committable independently** - A single focused change
 - **Testable** - Has clear acceptance criteria and validation
-- **Appropriately sized** - Not too granular, not too broad
+- **Sized XS, S, M, or L** per `references/task-sizing.md`. XL tasks MUST be decomposed further before approval.
 - **Clearly defined** - Unambiguous scope with explicit boundaries
+
+**Sizing and triggers:**
+
+Read sizing grammar, break-down triggers, and the context-appropriate slicing rule from `references/task-sizing.md` and apply them during decomposition. Every task gets an explicit size (XS/S/M/L); any task that hits a break-down trigger — especially one that bundles multiple independently reviewable outcomes — splits before leaving this step.
+
+**Slicing shape (context-aware — load-bearing):**
+
+- For user-facing feature work:
+  - ❌ Horizontal: "Build entire DB schema → build all APIs → build all UI".
+  - ✅ Vertical: "User can create account (schema + API + UI, end-to-end)".
+- For documentation, refactors, architecture, or process work:
+  - ❌ Horizontal: "Document all data models → document all APIs → document all UI flows".
+  - ✅ End-to-end: "Document account creation end-to-end, including constraints, API contract, and UI behavior".
 
 **Identify dependencies:**
 - Which tasks block other tasks within the same phase?
@@ -181,9 +198,10 @@ For each phase, decompose into atomic tasks:
 
 For each phase:
 - **Phase goal** - What milestone does this achieve?
-- **Demo description** - What can be demonstrated after this phase?
-- **Tasks** - List of atomic issues with titles and brief descriptions
+- **Outcome description** - What can be demonstrated or reviewed after this phase?
+- **Tasks** - List of atomic issues with titles, sizes, and brief descriptions
 - **Dependencies** - What blocks what
+- **Parallelization** - Group category plus any gating note from Phase 3.4
 - **Validation** - How to verify the phase is complete
 
 For general tasks:
@@ -191,18 +209,33 @@ For general tasks:
 - Tooling and configuration
 - Documentation tasks
 
+### 3.4 Parallelization Assessment
+
+Annotate each task group with one of three parallelization categories so the plan surfaces safe-to-run-in-parallel work explicitly rather than defaulting to serial execution:
+
+- **Safe to parallelize**: independent slices, tests, docs.
+- **Must be sequential**: migrations, shared-state changes.
+- **Needs coordination**: shared API contract → define contract first, then parallelize consumers.
+
+Record the chosen category per group (e.g., "Phase 1 tasks: Safe to parallelize after P1-001") so Phase 5's user-facing plan reflects it, the generated issue files keep the exact approved guidance, and `siw/OPEN_ISSUES_OVERVIEW.md` stores the same decision as one section-level summary per task group.
+
 ## Phase 4: Subagent Review
 
 Launch a Task subagent to review the proposed breakdown:
 
+**Before the prompt, instruct the subagent to read `references/task-sizing.md` completely and use it as the source of truth for sizing, break-down triggers, slicing shape, and parallelization taxonomy.**
+
 **Prompt:**
 ```
-Review this phase/task breakdown for a software project.
+Review this phase/task breakdown for a software project or adjacent documentation/process deliverable.
+
+Before evaluating the plan, read `references/task-sizing.md` completely and use it as the source of truth for task sizing, break-down triggers, slicing shape, and parallelization categories.
 
 Work Context: {work_context.work_type}
 - Verify phase count and granularity match the work type
 - For prototypes, do not flag broad task scope or missing test tasks
 - For refactors, verify each task has rollback safety
+- For documentation/process work, interpret "end-to-end" as the smallest reviewable deliverable for that workflow rather than schema + API + UI
 
 Evaluate:
 
@@ -210,8 +243,10 @@ Evaluate:
 2. **Testability**: Does each task have clear, verifiable acceptance criteria?
 3. **Dependencies**: Are dependencies correctly identified? Any missing?
 4. **Completeness**: Are any tasks missing to achieve the phase goals?
-5. **Phase coherence**: Does each phase result in demoable, runnable software?
-6. **Sizing**: Are tasks appropriately sized (not too granular, not too broad)?
+5. **Phase coherence**: Does each phase result in a demoable or reviewable outcome that matches the work context?
+6. **Sizing (hard gate)**: Every task must land XS, S, M, or L per `references/task-sizing.md`. Flag any XL task explicitly — XL is not an acceptable final state.
+7. **Slicing shape**: For feature work, does each task cut vertically (end-to-end slice — schema + API + UI together) rather than horizontally (one layer across many features)? For documentation, refactors, architecture, or process work, does each task deliver the smallest reviewable end-to-end outcome for that context? Flag tasks that are layer-by-layer or that bundle multiple independent deliverables.
+8. **Parallelization**: Are parallelization categories (Safe / Must be sequential / Needs coordination) correctly assigned? Flag any safely-parallel work serialized unnecessarily, or any shared-state change marked parallel.
 
 For each issue found, provide:
 - What's wrong
@@ -222,34 +257,39 @@ If the breakdown looks good, confirm it's ready.
 
 **Incorporate feedback:** Update the phase plan based on subagent suggestions.
 
+**Loopback gate:** If the subagent reports any XL task or any context-inappropriate horizontal / over-bundled slice, re-run Phase 3.2 decomposition and re-submit to the subagent. Only proceed to Phase 5 once the subagent confirms zero XL tasks and zero slicing-shape issues remain.
+
 ## Phase 5: User Approval
 
-Present the proposed structure clearly:
+Present the proposed structure clearly, prefixed with the `PLAN:` output marker so downstream tooling can parse this block as the generated plan. Show each issue's size inline and include one `Parallelization:` line per task group:
 
 ```
-Phase Plan for {Project Name}
-═════════════════════════════
+PLAN: Phase Plan for {Project Name}
+═══════════════════════════════════
 
 General Tasks ({N} tasks)
 ─────────────────────────
-  ISSUE-G-001: {Title} [Ready]
-  ISSUE-G-002: {Title} [Ready]
+  Parallelization: {Safe to parallelize | Must be sequential | Needs coordination}
+  ISSUE-G-001: {Title} [Ready | Size: XS|S|M|L]
+  ISSUE-G-002: {Title} [Ready | Size: XS|S|M|L]
 
 Phase 1: {Goal} ({N} tasks)
 ───────────────────────────
-  ISSUE-P1-001: {Title} [Ready]
-  ISSUE-P1-002: {Title} [Blocked by P1-001]
-  ISSUE-P1-003: {Title} [Ready]
+  Parallelization: {Safe to parallelize after P1-001 | Must be sequential | Needs coordination}
+  ISSUE-P1-001: {Title} [Ready | Size: XS|S|M|L]
+  ISSUE-P1-002: {Title} [Blocked by P1-001 | Size: XS|S|M|L]
+  ISSUE-P1-003: {Title} [Ready | Size: XS|S|M|L]
 
-  Demo: {What can be demonstrated}
+  Outcome: {What can be demonstrated or reviewed}
   Tests: {What tests validate this phase}
 
 Phase 2: {Goal} ({N} tasks)
 ───────────────────────────
-  ISSUE-P2-001: {Title} [Blocked by Phase 1]
-  ISSUE-P2-002: {Title} [Ready]
+  Parallelization: {Safe to parallelize | Must be sequential after Phase 1 | Needs coordination}
+  ISSUE-P2-001: {Title} [Blocked by Phase 1 | Size: XS|S|M|L]
+  ISSUE-P2-002: {Title} [Ready | Size: XS|S|M|L]
 
-  Demo: {What can be demonstrated}
+  Outcome: {What can be demonstrated or reviewed}
   Tests: {What tests validate this phase}
 
 ...
@@ -286,7 +326,7 @@ For each issue, create `siw/issues/ISSUE-{prefix}-{number}-{title}.md`:
 ```markdown
 # ISSUE-{prefix}-{number}: {Title}
 
-**Status:** Ready | **Priority:** {High|Medium|Low} | **Phase:** {N or General} | **Related:** {dependencies}
+**Status:** Ready | **Priority:** {High|Medium|Low} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination; include gating note if applicable} | **Related:** {dependencies}
 
 ## Problem
 
@@ -333,79 +373,105 @@ For each issue, create `siw/issues/ISSUE-{prefix}-{number}-{title}.md`:
 ### Dependencies
 - Blocked by: {P1-001, P2-003, etc. if any, or "None"}
 - Blocks: {P1-002, P3-001, etc. if any, or "None"}
+
+### Parallelization Guidance
+{Whether this issue can proceed in parallel, must stay sequential, or needs coordination first. Start from the same group-level note shown in Phase 5, then add issue-specific gating detail when needed. `siw/OPEN_ISSUES_OVERVIEW.md` keeps only the group summary line for that section.}
 ```
 
 ### 6.2 Update Overview Table
 
-Update `siw/OPEN_ISSUES_OVERVIEW.md` with all new issues, grouped by phase:
+Update `siw/OPEN_ISSUES_OVERVIEW.md` with all new issues, grouped by phase. Modern sections keep one group-level `**Parallelization:**` summary line; exact per-issue guidance lives in the issue files. Legacy sections that predate that metadata keep their existing format unless the user is explicitly migrating the tracker schema.
 
 If you add any non-DONE issues to a phase section currently marked ` (DONE)`, remove the marker (or ask the user) so the header stays accurate.
+
+**Append-mode compatibility rules:**
+- Inspect each existing section before appending rows.
+- If a section already uses `| # | Title | Status | Size | Priority | Related |`, keep that 6-column schema.
+- If a section already uses the legacy `| # | Title | Status | Priority | Related |`, preserve that schema for compatibility and do not inject a `Size` column into that section.
+- If you're creating a brand-new section while appending into a tracker whose existing sections are legacy 5-column tables, match the legacy schema for the new section too instead of mixing layouts mid-file.
+- Preserve any existing section-level `**Parallelization:**` line exactly as written. If a legacy section predates that metadata, do not add the line unless the user is explicitly migrating the tracker schema.
 
 ```markdown
 # Open Issues Overview
 
 ## General
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| G-001 | {Title} | Ready | {Priority} | |
-| G-002 | {Title} | Ready | {Priority} | |
+**Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination}
+
+| # | Title | Status | Size | Priority | Related |
+|---|-------|--------|------|----------|---------|
+| G-001 | {Title} | Ready | {Size} | {Priority} | |
+| G-002 | {Title} | Ready | {Size} | {Priority} | |
 
 ## Phase 1: {Goal}
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| P1-001 | {Title} | Ready | High | |
-| P1-002 | {Title} | Ready | Medium | P1-001 |
+**Parallelization:** {Safe to parallelize after P1-001 | Must be sequential | Needs coordination}
+
+| # | Title | Status | Size | Priority | Related |
+|---|-------|--------|------|----------|---------|
+| P1-001 | {Title} | Ready | {Size} | High | |
+| P1-002 | {Title} | Ready | {Size} | Medium | P1-001 |
 
 ## Phase 2: {Goal}
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| P2-001 | {Title} | Ready | High | Phase 1 |
+**Parallelization:** {Safe to parallelize | Must be sequential after Phase 1 | Needs coordination}
+
+| # | Title | Status | Size | Priority | Related |
+|---|-------|--------|------|----------|---------|
+| P2-001 | {Title} | Ready | {Size} | High | Phase 1 |
 
 **Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
 
 **Details:** See `siw/issues/ISSUE-{prefix}-XXX-*.md` files.
 ```
 
+Legacy compatibility example when appending to an older tracker:
+
+```markdown
+## Phase 1: {Goal}
+
+| # | Title | Status | Priority | Related |
+|---|-------|--------|----------|---------|
+| P1-001 | {Title} | Ready | High | |
+| P1-002 | {Title} | Ready | Medium | P1-001 |
+```
+
 ## Phase 7: Summary
 
-Report the results:
+Report the results using the standard end-of-turn triplet (adapted: this skill creates files rather than changing code, so "CHANGES MADE" becomes "FILES CREATED"):
 
 ```
 Phase Generation Complete
 ═════════════════════════
 
-Created {X} issues:
-  • General: {N} issues (G-001 to G-{N})
-  • Phase 1: {N} issues (P1-001 to P1-{N})
-  • Phase 2: {N} issues (P2-001 to P2-{N})
-  ...
-
-Files:
+FILES CREATED:
   • siw/issues/ISSUE-*.md ({X} files)
+    - General: {N} issues (G-001 to G-{N})
+    - Phase 1: {N} issues (P1-001 to P1-{N})
+    - Phase 2: {N} issues (P2-001 to P2-{N})
+    ...
   • siw/OPEN_ISSUES_OVERVIEW.md (updated)
+
+THINGS I DIDN'T TOUCH:
+  • Any existing non-issue files under siw/ (LOG.md, spec files, supporting-specs/)
+  • Source code — implementation is a separate workflow
+  • {List any issues explicitly preserved during Append mode}
+
+POTENTIAL CONCERNS:
+  • {Any subagent-flagged risks that survived user approval}
+  • {Any CONFUSION or MISSING REQUIREMENT markers from Phase 2 that were resolved by assumption — worth re-checking before implementation}
+  • {If empty, state: "None"}
 
 Suggested starting point:
   /kramme:siw:issue-implement ISSUE-{first-ready-issue}
 
 Tips:
   • Work through phases sequentially (Phase 1 → Phase 2 → ...)
-  • General tasks can be done anytime
+  • General tasks follow their recorded parallelization guidance; only `Safe to parallelize` work can truly be done anytime
   • Mark issues DONE in the overview as you complete them
 ```
 
 **STOP HERE.** Wait for the user's next instruction.
-
-## Important Guidelines
-
-1. **Demoable phases** - Each phase must result in software that runs and can be demonstrated
-2. **Atomic tasks** - Each task is one commit, one focused change
-3. **Testable criteria** - Every task has verifiable acceptance criteria
-4. **Clear dependencies** - Explicit about what blocks what
-5. **Appropriate sizing** - Tasks should be meaningful but focused, not micro-tasks
-6. **Review before create** - Always use subagent review and user approval
 
 ## Starting the Process
 

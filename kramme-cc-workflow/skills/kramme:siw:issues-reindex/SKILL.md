@@ -89,12 +89,18 @@ To create issues, run /kramme:siw:issue-define
 
 ## Step 2: Parse Issues Overview
 
-Read siw/OPEN_ISSUES_OVERVIEW.md and extract all issues from the table:
+Read siw/OPEN_ISSUES_OVERVIEW.md section-by-section and extract all issues from the table.
+
+For each section, extract:
+- Section header
+- Table schema (`| # | Title | Status | Size | Priority | Related |` or the legacy 5-column form)
+- Any section-level metadata line immediately above the table (for example `**Parallelization:** ...`)
 
 For each row, extract:
 - Issue prefix and number (e.g., `G-001`, `P1-002`)
 - Title
 - Status (READY, IN PROGRESS, IN REVIEW, DONE)
+- Size when present in the 6-column schema
 - Priority
 - Related tasks
 
@@ -421,9 +427,13 @@ For each active issue that needs renumbering **within its prefix group**:
 
 1. Read the issue file content
 2. Update the issue number in the file header (e.g., `# ISSUE-G-003:` -> `# ISSUE-G-002:`)
-3. Update the `**Status:**` line if it references the issue number
-4. Write to new filename
-5. Delete old file
+3. Rewrite any short/full issue-id references inside the file body using the same `renumberById` / `deletedById` maps and collision-safe matching rules described in Step 8
+   - This includes `**Related:**`, dependency lists such as `Blocked by` / `Blocks`, `Parallelization Guidance`, and any other prose references to issue ids
+   - If a referenced issue was deleted, keep the original id and annotate it with `(deleted: "{title}")` instead of silently pointing it at a different renumbered issue
+4. Update the `**Status:**` line if it references the issue number
+5. Preserve any existing `**Size:**` / `**Parallelization:**` metadata while updating ids
+6. Write to new filename
+7. Delete old file
 
 **Example:**
 ```bash
@@ -435,6 +445,7 @@ mv siw/issues/ISSUE-G-003-api-design.md siw/issues/ISSUE-G-002-api-design.md
 **Important:**
 - Process each prefix group separately
 - Process in reverse order within each group (highest number first) to avoid conflicts when renaming
+- Classify matches against the original issue-file content first; do not chain replacements
 - Do NOT merge issues between prefix groups
 
 ---
@@ -445,43 +456,61 @@ Rebuild the issues table **maintaining section groupings**:
 
 1. Remove all DONE rows from each section
 2. Update issue numbers for remaining rows within each prefix group
-3. Keep all other columns (Title, Status, Priority, Related) unchanged
-4. Preserve section headers (General, Phase 1, Phase 2, etc.) exactly as written (including any ` (DONE)` marker on phase headers)
+3. Preserve the existing table schema for each section:
+   - If the section uses `| # | Title | Status | Size | Priority | Related |`, keep `Size`
+   - If the section uses the legacy `| # | Title | Status | Priority | Related |`, keep the legacy layout
+4. Handle section-level metadata lines carefully:
+   - Preserve non-`**Parallelization:**` metadata exactly as written.
+   - For `## General`, only recompute the `**Parallelization:**` summary if that line already exists:
+     - If every real General issue shares the same section-level category/gating note, use that shared summary.
+     - If real General issues disagree, set the summary to `Mixed — see issue files for exact guidance`.
+     - If no real General issues remain, keep or restore the default summary from `siw:init`.
+   - If an existing legacy General section has no `**Parallelization:**` line, keep it absent; do not add or restore one during reindex.
+   - For phase sections, preserve the approved summary wording, but if the `**Parallelization:**` line names concrete issue ids (`P1-003`, `ISSUE-P1-003`, etc.), rewrite those ids with the same collision-safe `renumberById` / `deletedById` rules used for issue bodies and `LOG.md` so the gating note stays accurate after renumbering. If a legacy phase section has no `**Parallelization:**` line, keep it absent.
+5. Preserve section headers (General, Phase 1, Phase 2, etc.) exactly as written (including any ` (DONE)` marker on phase headers)
 
 **Before:**
 ```markdown
 ## General
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| G-001 | Setup | DONE | High | |
-| G-002 | Docs | READY | Low | |
-| G-003 | Config | READY | Medium | |
+**Parallelization:** Safe to parallelize
+
+| # | Title | Status | Size | Priority | Related |
+|---|-------|--------|------|----------|---------|
+| G-001 | Setup | DONE | S | High | |
+| G-002 | Docs | READY | XS | Low | |
+| G-003 | Config | READY | S | Medium | |
 
 ## Phase 1: Foundation
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| P1-001 | Feature A | IN PROGRESS | High | Task 1.0 |
-| P1-002 | Feature B | DONE | High | Task 2.0 |
-| P1-003 | Bug Fix | READY | Medium | Task 3.0 |
+**Parallelization:** Needs coordination
+
+| # | Title | Status | Size | Priority | Related |
+|---|-------|--------|------|----------|---------|
+| P1-001 | Feature A | IN PROGRESS | M | High | Task 1.0 |
+| P1-002 | Feature B | DONE | S | High | Task 2.0 |
+| P1-003 | Bug Fix | READY | S | Medium | Task 3.0 |
 ```
 
 **After:**
 ```markdown
 ## General
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| G-001 | Docs | READY | Low | |
-| G-002 | Config | READY | Medium | |
+**Parallelization:** Safe to parallelize
+
+| # | Title | Status | Size | Priority | Related |
+|---|-------|--------|------|----------|---------|
+| G-001 | Docs | READY | XS | Low | |
+| G-002 | Config | READY | S | Medium | |
 
 ## Phase 1: Foundation
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| P1-001 | Feature A | IN PROGRESS | High | Task 1.0 |
-| P1-002 | Bug Fix | READY | Medium | Task 3.0 |
+**Parallelization:** Needs coordination
+
+| # | Title | Status | Size | Priority | Related |
+|---|-------|--------|------|----------|---------|
+| P1-001 | Feature A | IN PROGRESS | M | High | Task 1.0 |
+| P1-002 | Bug Fix | READY | S | Medium | Task 3.0 |
 ```
 
 ---

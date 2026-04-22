@@ -321,8 +321,17 @@ Multi-round interview using `AskUserQuestion`.
 
 **Questions:**
 - What priority level? (High/Medium/Low)
+- What size best fits this issue? (XS/S/M/L)
+  - XS = 1 file, single function
+  - S = 1-2 files, one contained change
+  - M = 3-5 files, one feature/spec slice
+  - L = 6-8 files, multi-component
 - Are there related issues or tasks?
 - Does this block or depend on other work?
+- What parallelization category fits this work?
+  - Safe to parallelize
+  - Must be sequential
+  - Needs coordination
 
 ## Phase 5: Issue Composition
 
@@ -338,7 +347,7 @@ Multi-round interview using `AskUserQuestion`.
 ```markdown
 # ISSUE-{prefix}-{number}: Fix {what's broken}
 
-**Status:** Ready | **Priority:** {priority} | **Phase:** {N or General} | **Related:** {tasks if any}
+**Status:** Ready | **Priority:** {priority} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Related:** {tasks if any}
 
 ## Problem
 
@@ -367,7 +376,7 @@ Multi-round interview using `AskUserQuestion`.
 ```markdown
 # ISSUE-{prefix}-{number}: {Title}
 
-**Status:** Ready | **Priority:** {priority} | **Phase:** {N or General} | **Related:** {tasks if any}
+**Status:** Ready | **Priority:** {priority} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Related:** {tasks if any}
 
 ## Problem
 
@@ -449,12 +458,25 @@ siw/issues/ISSUE-{prefix}-{number}-{sanitized-title}.md
 
 ### 4. Update siw/OPEN_ISSUES_OVERVIEW.md
 
-**For new issues:** Add row to the appropriate section (General, Phase 1, Phase 2, etc.). If the section doesn't exist yet, create the section header and table first.
+**For new issues:** Add row to the appropriate section (General, Phase 1, Phase 2, etc.). If the section doesn't exist yet, create the section header and table first. Add one section-level `**Parallelization:**` summary line only when the tracker already uses that metadata or when creating a brand-new modern section. If you're appending into a legacy tracker section that predates the line, keep that section metadata-free unless the user is explicitly migrating the schema. For `## General`, any present line is a live roll-up summary. For phase sections, any present line is the approved group-level guidance for the phase and should stay stable after creation unless the phase plan itself is being redefined.
 ```markdown
-| {prefix}-{number} | {Title} | Ready | {Priority} | {Related} |
+**Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination | Mixed — see issue files}
+
+| {prefix}-{number} | {Title} | Ready | {Size} | {Priority} | {Related} |
 ```
 
 **For updated issues:** Update existing row if title/priority/status changed.
+
+**Schema rule:** If the existing section already uses the legacy 5-column table (`| # | Title | Status | Priority | Related |`), preserve that layout for compatibility. Otherwise, use the 6-column layout above.
+
+**Parallelization summary rule:**
+- **`## General`**: If the section already has a `**Parallelization:**` note, or you're creating a brand-new modern General section, treat that note as a roll-up summary rather than a per-issue mirror. After creating or updating a real General issue, recompute the summary from all non-placeholder `G-*` issue files:
+  - If every real General issue shares the same section-level category/gating note, use that shared summary.
+  - If real General issues disagree, set the summary to `Mixed — see issue files for exact guidance`.
+  - If the General section is still in its empty placeholder state (`_None_` row / no real issues yet), replace the default summary from `siw:init` with this first real issue's section-level category.
+  - If an existing legacy General section has no `**Parallelization:**` line, keep it absent.
+- **Phase sections**: Preserve the existing section-level `**Parallelization:**` summary exactly as written. If a legacy phase section has no `**Parallelization:**` line, keep it absent. Do not recompute phase summaries from per-issue `**Parallelization:**` fields, because issue-level guidance may vary while the approved phase-level plan remains unchanged.
+- If creating a brand-new modern phase section from scratch, seed the section-level summary from this first issue's approved guidance and keep it stable for later edits unless the phase plan itself is re-approved.
 
 **Section organization:** Issues are grouped by prefix (General, Phase 1, Phase 2, etc.).
 

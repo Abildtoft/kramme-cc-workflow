@@ -63,10 +63,11 @@ Issue creation stays separate and should happen later via `/kramme:siw:resolve-a
    - `siw/AUDIT_SPEC_REPORT.md`
    - `AUDIT_SPEC_REPORT.md`
 7. If no spec-audit report exists, stop and instruct the user to run `/kramme:siw:spec-audit` first.
+8. If the selected report contains multiple appended `# Spec Audit Report` blocks, isolate the last block only and treat it as the active audit run. Ignore earlier appended runs.
 
 ## Step 2: Extract Findings
 
-Read the chosen spec-audit report fully enough to extract every `SPEC-*` finding and its surrounding metadata.
+Read the active spec-audit run fully enough to extract every `SPEC-*` finding and its surrounding metadata.
 
 For each finding, collect:
 - Finding id and title

@@ -97,13 +97,14 @@ options:
     description: "Resolve findings from both reports in one run"
 ```
 
-   - With `--auto`, resolve both reports in one run. Process implementation findings first, then spec findings.
+	   - With `--auto`, resolve both reports in one run. Process implementation findings first, then spec findings.
 5. If only one report type exists, use it automatically.
 6. If no report exists, stop and instruct the user to run `/kramme:siw:implementation-audit` or `/kramme:siw:spec-audit` first.
+7. If a selected report contains multiple appended top-level report blocks, isolate the last block only and treat it as the active audit run. Ignore earlier appended runs.
 
 ## Step 2: Parse Findings
 
-Extract actionable findings from headings:
+Extract actionable findings from the active audit run headings:
 - `### DIV-NNN: ...`
 - `### EXT-NNN: ...`
 - `### DISC-NNN: ...` (legacy)
@@ -259,7 +260,7 @@ Issue creation:
 ```markdown
 # ISSUE-G-{NNN}: Resolve {finding_id} - {short title}
 
-**Status:** Ready | **Priority:** {High/Medium/Low} | **Phase:** General | **Related:** Audit Report
+**Status:** Ready | **Priority:** {High/Medium/Low} | **Size:** {XS|S|M|L} | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Related:** Audit Report
 
 ## Problem
 
@@ -310,7 +311,7 @@ Issue creation:
 ```markdown
 # ISSUE-G-{NNN}: Spec: {finding_id} - {short title}
 
-**Status:** Ready | **Priority:** {High/Medium/Low; if `Severity Note` says `from Critical` use High, if it says `from Major` use Medium} | **Phase:** General | **Related:** Spec Audit Report
+**Status:** Ready | **Priority:** {High/Medium/Low; if `Severity Note` says `from Critical` use High, if it says `from Major` use Medium} | **Size:** {XS|S|M|L} | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Related:** Spec Audit Report
 
 ## Problem
 
@@ -359,6 +360,17 @@ Issue creation:
 ```
 
 4. Add row to `siw/OPEN_ISSUES_OVERVIEW.md` with status `READY`.
+   - Default to the 6-column SIW schema:
+     ```markdown
+     **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination | Mixed — see issue files}
+
+     | G-{NNN} | {Title} | READY | {Size} | {Priority} | Audit Report |
+     ```
+   - If `## General` already has a section-level `**Parallelization:**` line, treat it as a roll-up summary for the whole section rather than a per-issue mirror.
+   - Recompute it from all real `G-*` issue files after adding the new issue: if every issue shares the same section-level category/gating note, keep that shared summary; otherwise set it to `Mixed — see issue files for exact guidance`.
+   - If the General section is still in its empty placeholder state (`_None_` row / no real issues yet), replace the default summary from `siw:init` with the first real issue's category.
+   - If an existing legacy General section has no `**Parallelization:**` line, preserve that absence instead of inserting one.
+   - If the existing General section still uses the legacy 5-column schema, preserve that layout for compatibility instead of mixing schemas.
 5. Append to `siw/LOG.md` under current progress with:
    - finding id
    - selected option

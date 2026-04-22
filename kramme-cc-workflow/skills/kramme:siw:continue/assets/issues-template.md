@@ -48,23 +48,29 @@ siw/issues/
 
 ## General
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| G-001 | Project Setup | DONE | High | |
-| G-002 | Documentation | READY | Low | |
+**Parallelization:** Needs coordination
+
+| # | Title | Status | Size | Priority | Related |
+|---|-------|--------|------|----------|---------|
+| G-001 | Project Setup | DONE | S | High | |
+| G-002 | Documentation | READY | XS | Low | |
 
 ## Phase 1: Foundation
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| P1-001 | Data Tracking Strategy | IN PROGRESS | High | Task 1.0, 1.1 |
-| P1-002 | API Design Pattern | IN REVIEW | Medium | Task 2.1 |
+**Parallelization:** Needs coordination
+
+| # | Title | Status | Size | Priority | Related |
+|---|-------|--------|------|----------|---------|
+| P1-001 | Data Tracking Strategy | IN PROGRESS | M | High | Task 1.0, 1.1 |
+| P1-002 | API Design Pattern | IN REVIEW | S | Medium | Task 2.1 |
 
 ## Phase 2: Core Features
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| P2-001 | Validation Logic | READY | High | P1-001, P1-002 |
+**Parallelization:** Must be sequential
+
+| # | Title | Status | Size | Priority | Related |
+|---|-------|--------|------|----------|---------|
+| P2-001 | Validation Logic | READY | M | High | P1-001, P1-002 |
 
 **Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
 
@@ -80,7 +86,7 @@ File naming: `siw/issues/ISSUE-{prefix}-XXX-short-title.md` (e.g., `ISSUE-G-001-
 ```markdown
 # ISSUE-P1-001: Data Tracking Strategy
 
-**Status:** IN PROGRESS | **Priority:** High | **Phase:** 1 | **Related:** Task 1.0, Task 1.1
+**Status:** IN PROGRESS | **Priority:** High | **Size:** M | **Phase:** 1 | **Parallelization:** Needs coordination | **Related:** Task 1.0, Task 1.1
 
 ## Problem
 
