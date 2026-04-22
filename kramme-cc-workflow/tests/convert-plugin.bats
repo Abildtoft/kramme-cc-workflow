@@ -673,6 +673,382 @@ MD
   [ "$output" = "deny" ]
 }
 
+@test "opencode conversion recovers sibling local-path plugins when legacy config tracking is missing" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_A="$TMP_DIR/absolute-plugin-a"
+  PLUGIN_B="$TMP_DIR/absolute-plugin-b"
+  mkdir -p "$PLUGIN_A/commands" "$PLUGIN_B/commands"
+  create_fixture_plugin "$PLUGIN_A" "absolute-plugin-a"
+  create_fixture_plugin "$PLUGIN_B" "absolute-plugin-b"
+
+  cat > "$PLUGIN_A/commands/kramme-a-command.md" <<'MD'
+---
+name: kramme:a-command
+description: A command
+allowed-tools: Read
+---
+
+Run A.
+MD
+
+  cat > "$PLUGIN_B/commands/kramme-b-command.md" <<'MD'
+---
+name: kramme:b-command
+description: B command
+allowed-tools: Read, Bash(npm test)
+---
+
+Run B.
+MD
+
+  run node "$SCRIPT" install "$PLUGIN_A" --to opencode --output "$TMP_DIR/opencode" --permissions from-commands --yes
+  [ "$status" -eq 0 ]
+  run node "$SCRIPT" install "$PLUGIN_B" --to opencode --output "$TMP_DIR/opencode" --permissions from-commands --yes
+  [ "$status" -eq 0 ]
+
+  strip_legacy_opencode_tracking "$TMP_DIR/opencode"
+
+  rm "$PLUGIN_B/commands/kramme-b-command.md"
+  cat > "$PLUGIN_B/commands/kramme-b-replacement.md" <<'MD'
+---
+name: kramme:b-replacement
+description: Replacement command
+allowed-tools: Read
+---
+
+Run replacement.
+MD
+
+  run node "$SCRIPT" install "$PLUGIN_B" --to opencode --output "$TMP_DIR/opencode" --permissions from-commands --yes
+  [ "$status" -eq 0 ]
+
+  run jq -r '.command | has("kramme:a-command")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("kramme:b-command")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+
+  run jq -r '.command | has("kramme:b-replacement")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.tools.bash' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+
+  run jq -r '.permission.bash' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "deny" ]
+}
+
+@test "opencode conversion preserves sibling commands when duplicate plugin names make recovery ambiguous" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  WORKSPACES_DIR="$TMP_DIR/workspaces"
+  PLUGIN_A_OLD="$WORKSPACES_DIR/a-00-old"
+  PLUGIN_A_CURRENT="$WORKSPACES_DIR/a-99-current"
+  PLUGIN_B_CURRENT="$WORKSPACES_DIR/b-current"
+  mkdir -p "$PLUGIN_A_OLD/commands" "$PLUGIN_A_CURRENT/commands" "$PLUGIN_B_CURRENT/commands"
+  create_fixture_plugin "$PLUGIN_A_OLD" "duplicate-plugin-a"
+  create_fixture_plugin "$PLUGIN_A_CURRENT" "duplicate-plugin-a"
+  create_fixture_plugin "$PLUGIN_B_CURRENT" "duplicate-plugin-b"
+
+  cat > "$PLUGIN_A_OLD/commands/kramme-a-old.md" <<'MD'
+---
+name: kramme:a-old
+description: Old A command
+---
+
+Run old A.
+MD
+
+  cat > "$PLUGIN_A_CURRENT/commands/kramme-a-current.md" <<'MD'
+---
+name: kramme:a-current
+description: Current A command
+---
+
+Run current A.
+MD
+
+  cat > "$PLUGIN_B_CURRENT/commands/kramme-b-current.md" <<'MD'
+---
+name: kramme:b-current
+description: Current B command
+---
+
+Run current B.
+MD
+
+  run node "$SCRIPT" install "$PLUGIN_A_CURRENT" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+  run node "$SCRIPT" install "$PLUGIN_B_CURRENT" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  strip_legacy_opencode_tracking "$TMP_DIR/opencode"
+
+  run node "$SCRIPT" install "$PLUGIN_B_CURRENT" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  run jq -r '.command | has("kramme:a-current")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("kramme:b-current")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("kramme:a-old")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+}
+
+@test "opencode conversion preserves remaining legacy permission patterns when plugins share a tool" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_A="$TMP_DIR/plugins/shared-tool-plugin-a"
+  PLUGIN_B="$TMP_DIR/plugins/shared-tool-plugin-b"
+  mkdir -p "$PLUGIN_A/commands" "$PLUGIN_B/commands"
+  create_fixture_plugin "$PLUGIN_A" "shared-tool-plugin-a"
+  create_fixture_plugin "$PLUGIN_B" "shared-tool-plugin-b"
+
+  cat > "$PLUGIN_A/commands/kramme-a-command.md" <<'MD'
+---
+name: kramme:a-command
+description: A command
+allowed-tools: Read, Bash(npm test)
+---
+
+Run A.
+MD
+
+  cat > "$PLUGIN_B/commands/kramme-b-command.md" <<'MD'
+---
+name: kramme:b-command
+description: B command
+allowed-tools: Read, Bash(pnpm lint)
+---
+
+Run B.
+MD
+
+  run node "$SCRIPT" install "$PLUGIN_A" --to opencode --output "$TMP_DIR/opencode" --permissions from-commands --yes
+  [ "$status" -eq 0 ]
+  run node "$SCRIPT" install "$PLUGIN_B" --to opencode --output "$TMP_DIR/opencode" --permissions from-commands --yes
+  [ "$status" -eq 0 ]
+
+  strip_legacy_opencode_tracking "$TMP_DIR/opencode"
+
+  rm "$PLUGIN_B/commands/kramme-b-command.md"
+  cat > "$PLUGIN_B/commands/kramme-b-replacement.md" <<'MD'
+---
+name: kramme:b-replacement
+description: Replacement command
+allowed-tools: Read
+---
+
+Run replacement.
+MD
+
+  run node "$SCRIPT" install "$PLUGIN_B" --to opencode --output "$TMP_DIR/opencode" --permissions from-commands --yes
+  [ "$status" -eq 0 ]
+
+  run jq -r '.command | has("kramme:a-command")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("kramme:b-command")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+
+  run jq -r '.command | has("kramme:b-replacement")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.tools.bash' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.permission.bash["npm test"]' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "allow" ]
+
+  run jq -r '.permission.bash["pnpm lint"] // "missing"' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "missing" ]
+}
+
+@test "opencode conversion preserves sibling legacy permissions when reinstall uses a different permissions mode" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_A="$TMP_DIR/permission-plugin-a"
+  PLUGIN_B="$TMP_DIR/permission-plugin-b"
+  mkdir -p "$PLUGIN_A/commands" "$PLUGIN_B/commands"
+  create_fixture_plugin "$PLUGIN_A" "permission-plugin-a"
+  create_fixture_plugin "$PLUGIN_B" "permission-plugin-b"
+
+  cat > "$PLUGIN_A/commands/kramme-a-command.md" <<'MD'
+---
+name: kramme:a-command
+description: A command
+allowed-tools: Read, Bash(npm test)
+---
+
+Run A.
+MD
+
+  cat > "$PLUGIN_B/commands/kramme-b-command.md" <<'MD'
+---
+name: kramme:b-command
+description: B command
+allowed-tools: Read, Bash(pnpm lint)
+---
+
+Run B.
+MD
+
+  run node "$SCRIPT" install "$PLUGIN_A" --to opencode --output "$TMP_DIR/opencode" --permissions from-commands --yes
+  [ "$status" -eq 0 ]
+  run node "$SCRIPT" install "$PLUGIN_B" --to opencode --output "$TMP_DIR/opencode" --permissions from-commands --yes
+  [ "$status" -eq 0 ]
+
+  strip_legacy_opencode_tracking "$TMP_DIR/opencode"
+
+  rm "$PLUGIN_B/commands/kramme-b-command.md"
+  cat > "$PLUGIN_B/commands/kramme-b-replacement.md" <<'MD'
+---
+name: kramme:b-replacement
+description: Replacement command
+allowed-tools: Read
+---
+
+Run replacement.
+MD
+
+  run node "$SCRIPT" install "$PLUGIN_B" --to opencode --output "$TMP_DIR/opencode" --permissions none --yes
+  [ "$status" -eq 0 ]
+
+  run jq -r '.command | has("kramme:a-command")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("kramme:b-command")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+
+  run jq -r '.command | has("kramme:b-replacement")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.tools.bash' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.permission.read' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "allow" ]
+
+  run jq -r '.permission.bash["npm test"]' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "allow" ]
+
+  run jq -r '.permission.bash["pnpm lint"] // "missing"' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "missing" ]
+}
+
+@test "opencode conversion does not resurrect sibling permissions that were installed with none" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_A="$TMP_DIR/none-permission-plugin-a"
+  PLUGIN_B="$TMP_DIR/none-permission-plugin-b"
+  mkdir -p "$PLUGIN_A/commands" "$PLUGIN_B/commands"
+  create_fixture_plugin "$PLUGIN_A" "none-permission-plugin-a"
+  create_fixture_plugin "$PLUGIN_B" "none-permission-plugin-b"
+
+  cat > "$PLUGIN_A/commands/kramme-a-command.md" <<'MD'
+---
+name: kramme:a-command
+description: A command
+allowed-tools: Bash(echo a)
+---
+
+Run A.
+MD
+
+  cat > "$PLUGIN_B/commands/kramme-b-command.md" <<'MD'
+---
+name: kramme:b-command
+description: B command
+allowed-tools: Bash(npm test)
+---
+
+Run B.
+MD
+
+  run node "$SCRIPT" install "$PLUGIN_A" --to opencode --output "$TMP_DIR/opencode" --permissions none --yes
+  [ "$status" -eq 0 ]
+  run node "$SCRIPT" install "$PLUGIN_B" --to opencode --output "$TMP_DIR/opencode" --permissions from-commands --yes
+  [ "$status" -eq 0 ]
+
+  strip_legacy_opencode_tracking "$TMP_DIR/opencode"
+
+  rm "$PLUGIN_B/commands/kramme-b-command.md"
+  cat > "$PLUGIN_B/commands/kramme-b-replacement.md" <<'MD'
+---
+name: kramme:b-replacement
+description: Replacement command
+allowed-tools: Read
+---
+
+Run replacement.
+MD
+
+  run node "$SCRIPT" install "$PLUGIN_B" --to opencode --output "$TMP_DIR/opencode" --permissions from-commands --yes
+  [ "$status" -eq 0 ]
+
+  run jq -r '.command | has("kramme:a-command")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("kramme:b-command")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+
+  run jq -r '.command | has("kramme:b-replacement")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.tools.read' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.tools.bash' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "false" ]
+
+  run jq -r '.permission.read' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "allow" ]
+
+  run jq -r '.permission.bash' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "deny" ]
+}
+
 @test "opencode conversion preserves unknown legacy skills on first stateful install without state" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"

@@ -235,6 +235,6 @@ Stop and re-cluster if any of these appear:
 Before reporting Phase 5, verify:
 
 - Every theme is sized ≤L.
-- `grep -l "as described in the review\|see finding #\|per the report" PR_PLAN_*.md` returns no files (self-contained rule).
+- `! grep -l "as described in the review\|see finding #\|per the report" PR_PLAN_*.md >/dev/null` succeeds (self-contained rule).
 - Every conflict between findings is surfaced as an open question, not resolved unilaterally.
 - Every plan has all template sections populated with concrete content (no "N/A").
