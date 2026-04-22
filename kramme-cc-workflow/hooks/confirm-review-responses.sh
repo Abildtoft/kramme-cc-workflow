@@ -577,7 +577,9 @@ SHELL_KEYWORDS = {
     "(",
     ")",
 }
-HEREDOC_START = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+HEREDOC_SINGLE_QUOTED = re.compile(r"<<-?\s*'([^']+)'")
+HEREDOC_DOUBLE_QUOTED = re.compile(r'<<-?\s*"([^"]+)"')
+HEREDOC_UNQUOTED = re.compile(r"<<-?\s*([^\s'\";&()<>|]+)")
 ENV_OPTIONS_WITH_VALUE = {"-u", "--unset", "-C", "--chdir"}
 GIT_OPTIONS_WITH_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env"}
 REPLAY_ENV_VARS = {
@@ -648,6 +650,10 @@ def _extract_body_substitutions(line):
     while idx < length:
         ch = line[idx]
         if ch == "$" and idx + 1 < length and line[idx + 1] == "(":
+            if idx + 2 < length and line[idx + 2] == "(":
+                arithmetic_subs, idx = extract_arithmetic_substitutions(line, idx)
+                subs.extend(arithmetic_subs)
+                continue
             inner, idx = read_dollar_substitution(line, idx)
             subs.append(inner)
             continue
@@ -657,6 +663,267 @@ def _extract_body_substitutions(line):
             continue
         idx += 1
     return subs
+
+
+def read_dollar_substitution_end(command, start):
+    depth = 1
+    idx = start + 2
+    in_single = False
+    in_double = False
+    escaped = False
+
+    while idx < len(command):
+        char = command[idx]
+
+        if escaped:
+            escaped = False
+            idx += 1
+            continue
+
+        if char == "\\" and not in_single:
+            escaped = True
+            idx += 1
+            continue
+
+        if char == "'" and not in_double:
+            in_single = not in_single
+            idx += 1
+            continue
+
+        if char == '"' and not in_single:
+            in_double = not in_double
+            idx += 1
+            continue
+
+        if not in_single and char == "$" and idx + 1 < len(command) and command[idx + 1] == "(":
+            if idx + 2 < len(command) and command[idx + 2] == "(":
+                idx = read_double_paren_end(command, idx, 3)
+            else:
+                idx = read_dollar_substitution_end(command, idx)
+            continue
+
+        if not in_single and char == chr(96):
+            idx = read_backtick_substitution_end(command, idx)
+            continue
+
+        if not in_single and not in_double and char == ")":
+            depth -= 1
+            idx += 1
+            if depth == 0:
+                return idx
+            continue
+
+        idx += 1
+
+    raise ValueError("Unterminated command substitution.")
+
+
+def read_backtick_substitution_end(command, start):
+    idx = start + 1
+    escaped = False
+
+    while idx < len(command):
+        char = command[idx]
+
+        if escaped:
+            escaped = False
+            idx += 1
+            continue
+
+        if char == "\\":
+            escaped = True
+            idx += 1
+            continue
+
+        if char == chr(96):
+            return idx + 1
+
+        idx += 1
+
+    raise ValueError("Unterminated backtick command substitution.")
+
+
+def read_double_paren_end(command, start, prefix_length):
+    idx = start + prefix_length
+    depth = 1
+    in_single = False
+    in_double = False
+    escaped = False
+
+    while idx < len(command):
+        char = command[idx]
+
+        if escaped:
+            escaped = False
+            idx += 1
+            continue
+
+        if char == "\\" and not in_single:
+            escaped = True
+            idx += 1
+            continue
+
+        if char == "'" and not in_double:
+            in_single = not in_single
+            idx += 1
+            continue
+
+        if char == '"' and not in_single:
+            in_double = not in_double
+            idx += 1
+            continue
+
+        if not in_single and char == "$" and idx + 1 < len(command) and command[idx + 1] == "(":
+            if idx + 2 < len(command) and command[idx + 2] == "(":
+                idx = read_double_paren_end(command, idx, 3)
+            else:
+                idx = read_dollar_substitution_end(command, idx)
+            continue
+
+        if not in_single and char == chr(96):
+            idx = read_backtick_substitution_end(command, idx)
+            continue
+
+        if not in_single and not in_double:
+            if char == "(":
+                depth += 1
+                idx += 1
+                continue
+
+            if char == ")":
+                depth -= 1
+                if depth == 0:
+                    if idx + 1 < len(command) and command[idx + 1] == ")":
+                        return idx + 2
+                    raise ValueError("Unterminated arithmetic expression.")
+
+        idx += 1
+
+    raise ValueError("Unterminated arithmetic expression.")
+
+
+def extract_arithmetic_substitutions(command, start, end=None):
+    if end is None:
+        end = read_double_paren_end(command, start, 3)
+
+    subs = []
+    idx = start + 3
+    limit = end - 2
+    in_single = False
+    in_double = False
+    escaped = False
+
+    while idx < limit:
+        char = command[idx]
+
+        if escaped:
+            escaped = False
+            idx += 1
+            continue
+
+        if char == "\\" and not in_single:
+            escaped = True
+            idx += 1
+            continue
+
+        if char == "'" and not in_double:
+            in_single = not in_single
+            idx += 1
+            continue
+
+        if char == '"' and not in_single:
+            in_double = not in_double
+            idx += 1
+            continue
+
+        if in_single or in_double:
+            idx += 1
+            continue
+
+        if char == "$" and idx + 1 < limit and command[idx + 1] == "(":
+            if idx + 2 < limit and command[idx + 2] == "(":
+                nested_end = read_double_paren_end(command, idx, 3)
+                nested_subs, idx = extract_arithmetic_substitutions(command, idx, nested_end)
+                subs.extend(nested_subs)
+                continue
+            inner, idx = read_dollar_substitution(command, idx)
+            subs.append(inner)
+            continue
+
+        if char == chr(96):
+            inner, idx = read_backtick_substitution(command, idx)
+            subs.append(inner)
+            continue
+
+        idx += 1
+
+    return subs, end
+
+
+def match_heredoc_start(line):
+    in_single = False
+    in_double = False
+    escaped = False
+
+    idx = 0
+    while idx < len(line):
+        char = line[idx]
+        if escaped:
+            escaped = False
+            idx += 1
+            continue
+
+        if char == "\\" and not in_single:
+            escaped = True
+            idx += 1
+            continue
+
+        if char == "'" and not in_double:
+            in_single = not in_single
+            idx += 1
+            continue
+
+        if char == '"' and not in_single:
+            in_double = not in_double
+            idx += 1
+            continue
+
+        if in_single or in_double:
+            idx += 1
+            continue
+
+        if char == "$" and idx + 1 < len(line) and line[idx + 1] == "(":
+            if idx + 2 < len(line) and line[idx + 2] == "(":
+                idx = read_double_paren_end(line, idx, 3)
+            else:
+                idx = read_dollar_substitution_end(line, idx)
+            continue
+
+        if char == "(" and idx + 1 < len(line) and line[idx + 1] == "(":
+            idx = read_double_paren_end(line, idx, 2)
+            continue
+
+        if char == chr(96):
+            idx = read_backtick_substitution_end(line, idx)
+            continue
+
+        if not line.startswith("<<", idx):
+            idx += 1
+            continue
+
+        candidate = line[idx:]
+        for pattern, is_quoted in (
+            (HEREDOC_SINGLE_QUOTED, True),
+            (HEREDOC_DOUBLE_QUOTED, True),
+            (HEREDOC_UNQUOTED, False),
+        ):
+            match = pattern.match(candidate)
+            if match is not None:
+                return match.group(1), is_quoted, match.group(0).startswith("<<-")
+
+        idx += 1
+
+    return None, False, False
 
 
 def strip_heredoc_bodies(command):
@@ -690,11 +957,9 @@ def strip_heredoc_bodies(command):
                 stripped_lines.append("")
             continue
 
-        match = HEREDOC_START.search(line)
-        if match is not None:
-            delimiter = match.group(2)
-            is_quoted = match.group(1) != ""
-            is_dashed = match.group(0).startswith("<<-")
+        heredoc_start = match_heredoc_start(line)
+        if heredoc_start[0] is not None:
+            delimiter, is_quoted, is_dashed = heredoc_start
         stripped_lines.append(line)
 
     return "".join(stripped_lines), extracted
@@ -731,7 +996,12 @@ def read_dollar_substitution(command, start):
             idx += 1
             continue
 
-        if not in_single and not in_double and command.startswith("$" + "(", idx):
+        if not in_single and command.startswith("$" + "(", idx):
+            if idx + 2 < len(command) and command[idx + 2] == "(":
+                end = read_double_paren_end(command, idx, 3)
+                inner.append(command[idx:end])
+                idx = end
+                continue
             nested_inner, idx = read_dollar_substitution(command, idx)
             inner.append("$" + "(" + nested_inner + ")")
             continue
@@ -815,6 +1085,12 @@ def replace_command_substitutions(command):
             continue
 
         if not in_single and command.startswith("$" + "(", idx):
+            if idx + 2 < len(command) and command[idx + 2] == "(":
+                arithmetic_subs, end = extract_arithmetic_substitutions(command, idx)
+                substitutions.extend(arithmetic_subs)
+                result.append(command[idx:end])
+                idx = end
+                continue
             inner, idx = read_dollar_substitution(command, idx)
             substitutions.append(inner)
             result.append(f"__CMD_SUBST_{len(substitutions) - 1}__")
@@ -839,10 +1115,28 @@ def tokenize(command):
     return list(lexer)
 
 
+def token_has_control_operator(token):
+    if token in CONTROL_TOKENS:
+        return True
+
+    if any(char not in "()|&;" for char in token):
+        return False
+
+    idx = 0
+    while idx < len(token):
+        if token.startswith("&&", idx) or token.startswith("||", idx) or token.startswith("|&", idx):
+            return True
+        if token[idx] in ";|&":
+            return True
+        idx += 1
+
+    return False
+
+
 def split_segments(tokens):
     current = []
     for token in tokens:
-        if token in CONTROL_TOKENS:
+        if token_has_control_operator(token):
             if current:
                 yield current
                 current = []
