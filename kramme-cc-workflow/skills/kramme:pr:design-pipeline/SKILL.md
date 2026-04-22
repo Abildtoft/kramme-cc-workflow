@@ -1,5 +1,5 @@
 ---
-name: kramme:pr:pipeline-design
+name: kramme:pr:design-pipeline
 description: Design a CI/CD pipeline with quality gates, a <10-minute budget, feature-flag lifecycle, and an exit checklist. Use when adding a new CI pipeline, changing gate configuration, or planning a rollout for a new service. Complementary to kramme:pr:fix-ci (which fixes failures in an existing pipeline). Covers gate ordering (lint → types → unit → integration → build → audit), secrets storage, branch protection, rollback mechanism, and feature-flag lifecycle (create → test → canary → full rollout → remove flag AND dead code). Includes staged-rollout guardrails without turning into a rollout-execution runbook.
 disable-model-invocation: false
 user-invocable: true
