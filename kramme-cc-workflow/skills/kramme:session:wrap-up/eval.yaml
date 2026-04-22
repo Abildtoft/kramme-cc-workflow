@@ -28,20 +28,22 @@ tasks:
       - src: SKILL.md
         dest: skills/kramme:session:wrap-up/SKILL.md
     docker:
-      setup:
-        - apt-get update && apt-get install -y git
-        - git init /workspace/project && cd /workspace/project && git config user.email "test@test.com" && git config user.name "Test"
-        - |
-          cd /workspace/project
-          mkdir -p src
-          echo 'export function add(a: number, b: number) { return a + b; }' > src/math.ts
-          echo '// TODO: add error handling for edge cases' >> src/math.ts
-          echo 'export function multiply(a: number, b: number) { /* WIP */ return 0; }' >> src/math.ts
-          echo '{"name": "test-project", "scripts": {"test": "echo ok"}}' > package.json
-          git add -A && git commit -m "Initial commit"
-          echo '// FIXME: this validation is incomplete' >> src/math.ts
-          echo 'export function subtract(a: number, b: number) { return a - b; }' >> src/math.ts
-          echo 'console.log("debug helper")' > src/debug.ts
+      setup: |
+        apt-get update && apt-get install -y git
+        git init /workspace/project
+        cd /workspace/project
+        git config user.email "test@test.com"
+        git config user.name "Test"
+        mkdir -p src
+        echo 'export function add(a: number, b: number) { return a + b; }' > src/math.ts
+        echo '// TODO: add error handling for edge cases' >> src/math.ts
+        echo 'export function multiply(a: number, b: number) { /* WIP */ return 0; }' >> src/math.ts
+        echo '{"name": "test-project", "scripts": {"test": "echo ok"}}' > package.json
+        git add -A
+        git commit -m "Initial commit"
+        echo '// FIXME: this validation is incomplete' >> src/math.ts
+        echo 'export function subtract(a: number, b: number) { return a - b; }' >> src/math.ts
+        echo 'console.log("debug helper")' > src/debug.ts
     graders:
       - type: llm_rubric
         rubric: |

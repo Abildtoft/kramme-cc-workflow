@@ -1,6 +1,6 @@
 ---
 name: kramme:session:context-setup
-description: Configure effective agent context at session start or after output quality degrades. Covers rules-file verification (CLAUDE.md / AGENTS.md), pre-task context loading (files to modify + related tests + one similar-pattern example + type definitions), context-window hygiene, and trust-level tagging for inputs. Use when starting a new session, switching major tasks, or when output quality drops.
+description: Configure effective agent context at session start or after output quality degrades. Covers rules-file verification, pre-task context loading (files to modify + related tests + one similar-pattern example + type definitions), context-window hygiene, and trust-level tagging for inputs. Use when starting a new session, switching major tasks, or when output quality drops.
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -22,7 +22,7 @@ Five tiers, in load order. Higher tiers are cheaper to verify and shape how lowe
 
 ### L1 — Rules files
 
-Verify `CLAUDE.md` and/or `AGENTS.md` exist at the project root and cover:
+Verify the active rules file(s) for this workspace exist at the applicable root and cover:
 
 - Stack (languages, frameworks, major libraries).
 - Commands (install, build, test, lint, typecheck, run).
@@ -30,12 +30,12 @@ Verify `CLAUDE.md` and/or `AGENTS.md` exist at the project root and cover:
 - Boundaries (what not to touch, what requires human review).
 - Context Pointers (compact links to deeper docs, skills, scripts, source entry points, tests, schemas, ADRs, or runbooks with clear when/why cues).
 
-If a rules file is missing, stale, bloated with duplicated detail, or lacks useful Context Pointers, repair it before proceeding. Delegate the repair to `kramme:docs:update-agents-md`. Do not continue the task with a stale rules file — the agent will reproduce whatever conventions the rules file implies, including the wrong ones.
+If a rules file is missing, stale, bloated with duplicated detail, or lacks useful Context Pointers, repair it before proceeding. Use the local rules-file maintenance workflow if one exists; otherwise delegate the repair to `kramme:docs:update-agents-md` or stop and ask for the repair path. Do not continue the task with a stale rules file — the agent will reproduce whatever conventions the rules file implies, including the wrong ones.
 
 If verification shows rules are current but sparse, flag it rather than silently continuing:
 
 ```
-MISSING REQUIREMENT: AGENTS.md does not specify the test runner.
+MISSING REQUIREMENT: The active rules file does not specify the test runner.
 ```
 
 ```
@@ -134,7 +134,7 @@ Load from an MCP source only when that source is the authoritative answer. Pulli
 ## Integration with other skills
 
 - **Upstream of task work.** Call this skill (or perform its steps manually) before starting a real task. The tax is small; the cost of proceeding on the wrong context is large.
-- **Triggers `kramme:docs:update-agents-md`.** When L1 verification finds a missing or stale rules file, hand off to that skill for repair.
+- **Triggers local rules-file maintenance.** When L1 verification finds a missing or stale rules file, hand off to the project's rules-file maintenance workflow if one exists.
 - **Partnered with `kramme:session:wrap-up`.** This skill is the session-start bookend; `wrap-up` is the end-of-session bookend. Together they frame a session with explicit context setup and explicit context capture.
 - **Scope boundary.** This skill owns _when_ to fetch context — rules files, specs, source, errors, MCP sources. `kramme:code:source-driven` owns _how_ to ground external library/framework decisions in official docs and how to cite that evidence once fetched. If the partition ever collapses to one skill, restate the boundary there.
 
@@ -167,7 +167,7 @@ Signals that context is insufficient, stale, or misaligned. If any appears, stop
 
 Before declaring setup complete and starting real work, self-check:
 
-- Are `CLAUDE.md` / `AGENTS.md` present and current? If not, did you trigger repair?
+- Are the active rules file(s), such as `CLAUDE.md` / `AGENTS.md`, present and current? If not, did you trigger repair?
 - Do `CLAUDE.md` / `AGENTS.md` use Context Pointers for deeper docs, skills, scripts, entry points, tests, schemas, ADRs, or runbooks instead of duplicating bulky detail?
 - Are the four L3 artifacts loaded (files to modify, related tests, one similar-pattern example, type definitions)?
 - Is every loaded input tagged with a trust level?
