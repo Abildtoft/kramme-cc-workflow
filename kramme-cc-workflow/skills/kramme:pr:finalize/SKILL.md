@@ -422,6 +422,7 @@ Status: X blockers, Y major, Z minor / SKIPPED (no app URL) / COULD NOT RUN
 - **READY:** "PR is ready. Run `/kramme:pr:create` to create it, or `/kramme:pr:generate-description` to update the description."
 - **READY WITH CAVEATS:** "Consider addressing recommended fixes before creating the PR. Run `/kramme:pr:resolve-review` to address findings, or `/kramme:pr:create` to proceed. Alternatively, re-run with `--fix` to auto-resolve critical and important findings."
 - **NOT READY:** "Fix blockers first. Run `/kramme:pr:finalize --fix` to auto-resolve code-backed critical and important findings, or `/kramme:pr:resolve-review` to address them manually. Process blockers such as oversized-PR split recommendations still require manual follow-up."
+- **After merge (any verdict):** "For user-facing changes, run `/kramme:launch:rollout` to execute a staged post-merge rollout with canary gates and rollback triggers."
 
 ### Step 12: Optionally Generate Description
 
