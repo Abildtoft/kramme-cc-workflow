@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.52.0] - 2026-04-23
+
+### Added
+- Add deprecate and ADR authoring workflows (#300)
+- Add rollout workflow and harden git hooks (#299)
+- Add kramme:code:deprecate skill, harden kramme:code:migrate (#298)
+- Port Addy rigor into debug:investigate and harden git hook parsing (#297)
+- Add kramme:docs:adr skill for authoring ADRs (#296)
+- Add design-pipeline skill and harden fix-ci quality gates (#295)
+- Add kramme:code:performance skill (#294)
+- Port Addy Osmani git/PR rigor into kramme git and pr skills (#293)
+- Port Addy rigor into refactor and rewrite skills (#292)
+- Add task sizing and parallelization to phase planning (#291)
+- Port Addy Osmani code-review conventions into PR skills (#290)
+- Add kramme:code:harden-security skill (#289)
+- Add kramme:session:context-setup skill (#288)
+- Port browse and qa to Addy conventions (#287)
+- Add kramme:code:frontend-authoring skill (#286)
+- Add kramme:code:api-design skill (#284)
+- Add kramme:code:source-driven skill (#285)
+- Add kramme:code:incremental skill (#283)
+- Add kramme:docs:feature-spec skill (#282)
+- Port idea-refine divergent pre-stage to interview skill (#281)
+- Add kramme:test:tdd skill (#280)
+
 ## [0.51.0] - 2026-04-19
 
 ### Added
@@ -143,6 +168,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+[0.52.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.51.0...v0.52.0
 [0.51.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.50.0...v0.51.0
 [0.50.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.49.0...v0.50.0
 [0.49.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.48.0...v0.49.0
