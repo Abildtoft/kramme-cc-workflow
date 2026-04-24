@@ -122,6 +122,7 @@ async function runInstall(parsed) {
   const plugin = await loadClaudePlugin(resolvedPluginPath)
   const outputRoot = resolveRoot(parsed.output ?? parsed.o, ".config", "opencode")
   const codexHome = resolveRoot(parsed["codex-home"] ?? parsed.codexHome, ".codex")
+  const codexRoot = resolveCodexOutputRoot(codexHome)
   const agentsHome = resolveRoot(parsed["agents-home"] ?? parsed.agentsHome, ".agents")
   const options = {
     agentMode: String(parsed["agent-mode"] ?? parsed.agentMode ?? "subagent") === "primary" ? "primary" : "subagent",
@@ -136,7 +137,7 @@ async function runInstall(parsed) {
     throw new Error(`Target ${targetName} did not return a bundle.`)
   }
 
-  const primaryOutput = targetName === "codex" ? codexHome : outputRoot
+  const primaryOutput = targetName === "codex" ? codexRoot : outputRoot
   const writeOptions = {
     agentsHome,
     pluginName: plugin.manifest.name,
@@ -162,13 +163,13 @@ async function runInstall(parsed) {
       console.warn(`Skipping ${extra}: no output returned.`)
       continue
     }
-    const extraRoot = extra === "codex" ? codexHome : outputRoot
+    const extraRoot = extra === "codex" ? codexRoot : outputRoot
     await handler.write(extraRoot, extraBundle, writeOptions)
     console.log(`Installed ${plugin.manifest.name} to ${extraRoot}`)
   }
 
   if (allTargets.includes("codex")) {
-    await ensureCodexAgentsFile(codexHome)
+    await ensureCodexAgentsFile(codexRoot)
   }
 }
 
@@ -1159,15 +1160,12 @@ function convertCommandSkill(command, knownCommands, name) {
       command.description ?? `Converted from Claude command ${command.name}`,
     ),
     "argument-hint": command.argumentHint,
+    "allowed-tools": command.allowedTools && command.allowedTools.length > 0 ? command.allowedTools : undefined,
     "disable-model-invocation": command.disableModelInvocation,
-  }
-  const sections = []
-  if (command.allowedTools && command.allowedTools.length > 0) {
-    sections.push(`## Allowed tools\n${command.allowedTools.map((tool) => `- ${tool}`).join("\n")}`)
+    "user-invocable": true,
   }
   const transformedBody = transformContentForCodex(command.body.trim(), { knownCommands })
-  sections.push(transformedBody)
-  const body = sections.filter(Boolean).join("\n\n").trim()
+  const body = transformedBody.trim()
   const content = formatFrontmatter(frontmatter, body.length > 0 ? body : command.body)
   return { name, content }
 }
@@ -1215,6 +1213,55 @@ function transformContentForCodex(body, options = {}) {
     return `$${skillName} skill`
   })
 
+  result = normalizeCodexInstructionText(result)
+
+  return result
+}
+
+const CODEX_INSTRUCTION_REPLACEMENTS = [
+  [/\bUse `?AskUserQuestion`? to\b/g, "Ask the user directly in chat to"],
+  [/\buse `?AskUserQuestion`? to\b/g, "ask the user directly in chat to"],
+  [/\bOtherwise use `?AskUserQuestion`?\b/g, "Otherwise ask the user directly in chat"],
+  [/\botherwise use `?AskUserQuestion`?\b/g, "otherwise ask the user directly in chat"],
+  [/\bUse `?AskUserQuestion`?\b/g, "Ask the user directly in chat"],
+  [/\buse `?AskUserQuestion`?\b/g, "ask the user directly in chat"],
+  [/\busing `?AskUserQuestion`?\b/g, "using direct chat questions"],
+  [/\bvia `?AskUserQuestion`?\b/g, "via direct chat questions"],
+  [/\bthe `?AskUserQuestion`? tool\b/g, "direct chat questions"],
+  [/\bEvery `?AskUserQuestion`? option\b/g, "Every direct chat question option"],
+  [/\b`?AskUserQuestion`? option\b/g, "direct chat question option"],
+  [/\b`?AskUserQuestion`?\b/g, "direct chat question"],
+  [/\bTask tool calls\b/g, "subagent calls"],
+  [/\bvia the Task tool with\b/g, "using a subagent when available; otherwise in the main thread, with"],
+  [/\busing the Task tool with\b/g, "using a subagent when available; otherwise in the main thread, with"],
+  [/\bvia the Task tool\b/g, "using a subagent when available; otherwise in the main thread"],
+  [/\busing the Task tool\b/g, "using a subagent when available; otherwise in the main thread"],
+  [/\bTask tool\b/g, "subagent workflow"],
+  [/\bvia the Skill tool to\b/g, "using the corresponding Codex skill to"],
+  [/\busing the Skill tool to\b/g, "using the corresponding Codex skill to"],
+  [/\bInvoke via Skill tool\b/g, "Invoke using the corresponding Codex skill"],
+  [/\bvia the Skill tool\b/g, "using the corresponding Codex skill"],
+  [/\busing the Skill tool\b/g, "using the corresponding Codex skill"],
+  [/\bSkill tool\b/g, "skill invocation"],
+  [/\bTodoWrite\/TodoRead\b/g, "update_plan"],
+  [/\bTodoWrite\b/g, "update_plan"],
+  [/\bTodoRead\b/g, "update_plan"],
+  [/\bQuestion tool\b/g, "direct chat questions"],
+  [/\bRead tool\b/g, "shell reads or rg"],
+  [/\bEdit\/MultiEdit\b/g, "apply_patch"],
+  [/\bEdit tool\b/g, "apply_patch"],
+  [/\bMultiEdit\b/g, "apply_patch"],
+  [/\bsubagent_type\s*=\s*Explore\b/g, "agent_type=explorer"],
+  [/\bsubagent_type\s*:\s*Explore\b/g, "agent_type: explorer"],
+  [/\bExplore agents\b/g, "explorer subagents"],
+  [/\bExplore agent\b/g, "explorer subagent"],
+]
+
+function normalizeCodexInstructionText(text) {
+  let result = text
+  for (const [pattern, replacement] of CODEX_INSTRUCTION_REPLACEMENTS) {
+    result = result.replace(pattern, replacement)
+  }
   return result
 }
 
@@ -1670,7 +1717,7 @@ Tool mapping:
 - WebFetch/WebSearch: use curl or Context7 for library docs
 - AskUserQuestion/Question: ask the user in chat
 - Task/Subagent/Parallel: use multi-agent execution when available; otherwise run sequentially in main thread. Use multi_tool_use.parallel for parallel tool calls.
-- TodoWrite/TodoRead: use file-based todos in todos/ with file-todos skill
+- TodoWrite/TodoRead: use update_plan for short-lived task tracking; use a markdown file only when durable repo artifacts are explicitly needed
 - Skill: open the referenced SKILL.md and follow it
 - ExitPlanMode: ignore
 `

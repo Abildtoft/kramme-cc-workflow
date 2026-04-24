@@ -103,6 +103,23 @@ SH
   [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/references/branch-and-platform-handling.md" ]
 }
 
+@test "codex conversion maps todo tools to update_plan in AGENTS.md" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/.codex/AGENTS.md" ]
+  [ ! -f "$TMP_DIR/AGENTS.md" ]
+
+  run grep -n 'TodoWrite/TodoRead: use update_plan' "$TMP_DIR/.codex/AGENTS.md"
+  [ "$status" -eq 0 ]
+
+  run grep -n 'file-todos skill' "$TMP_DIR/.codex/AGENTS.md"
+  [ "$status" -eq 1 ]
+}
+
 @test "codex conversion rewrites slash-command references inside copied skills" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
@@ -182,6 +199,49 @@ MD
   [[ "$output" == *"allowed-tools:"* ]]
   [[ "$output" == *"Read"* ]]
   [[ "$output" == *"Edit(src/**)"* ]]
+}
+
+@test "codex conversion preserves allowed-tools for generated command skills" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/command-allowed-tools-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/commands"
+  cat > "$FIXTURE_PLUGIN/commands/demo-command.md" <<'MD'
+---
+name: kramme:demo-command
+description: Demo command
+disable-model-invocation: true
+allowed-tools:
+  - Read
+  - Edit(src/**)
+---
+Use /kramme:demo-command.
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+
+  run sed -n '1,20p' "$TMP_DIR/.codex/skills/kramme:demo-command/SKILL.md"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"allowed-tools:"* ]]
+  [[ "$output" == *"Read"* ]]
+  [[ "$output" == *"Edit(src/**)"* ]]
+  [[ "$output" == *"user-invocable: true"* ]]
+}
+
+@test "codex conversion rewrites Claude-only tool references across converted skill tree" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+  [ "$status" -eq 0 ]
+
+  run rg -n '\bAskUserQuestion\b|\bTask tool\b|\bSkill tool\b|\bTodoWrite\b|\bTodoRead\b|\bsubagent_type\s*[:=]\s*Explore\b' "$TMP_DIR/.codex/skills"
+  [ "$status" -eq 1 ]
 }
 
 @test "codex conversion places agents in agents-home/skills" {
