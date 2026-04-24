@@ -1250,6 +1250,10 @@ const CODEX_INSTRUCTION_REPLACEMENTS = [
   [/\buse `?AskUserQuestion`? with multiSelect to\b/g, "ask the user directly in chat and explicitly allow multiple selections to"],
   [/\bUse `?AskUserQuestion`? to ask\b/g, "Ask the user directly in chat"],
   [/\buse `?AskUserQuestion`? to ask\b/g, "ask the user directly in chat"],
+  [/\bUse the `?AskUserQuestion`? tool\b/g, "Ask the user directly in chat"],
+  [/\buse the `?AskUserQuestion`? tool\b/g, "ask the user directly in chat"],
+  [/\bUsing the `?AskUserQuestion`? tool\b/g, "By asking the user directly in chat"],
+  [/\busing the `?AskUserQuestion`? tool\b/g, "by asking the user directly in chat"],
   [/\bUse `?AskUserQuestion`? to\b/g, "Ask the user directly in chat to"],
   [/\buse `?AskUserQuestion`? to\b/g, "ask the user directly in chat to"],
   [/\bOtherwise AskUserQuestion\b/g, "Otherwise ask the user directly in chat"],
@@ -1307,15 +1311,18 @@ function normalizeCodexInstructionText(text) {
   for (const [pattern, replacement] of CODEX_INSTRUCTION_REPLACEMENTS) {
     result = result.replace(pattern, replacement)
   }
-  result = result.replace(/Ask the user directly in chat:\n\s*\nAsk the user directly in chat:\n/g, "Ask the user directly in chat:\n")
+  result = result.replace(
+    /(^[ \t]*)Ask the user directly in chat:\n\s*\n\1Ask the user directly in chat:\n/gm,
+    "$1Ask the user directly in chat:\n",
+  )
   return result
 }
 
 function rewriteAskUserQuestionCodeBlocks(text) {
-  return text.replace(/```([^\n]*)\n([\s\S]*?)```/g, (match, infoString, body) => {
+  return text.replace(/(^[ \t]*)```([^\n]*)\n([\s\S]*?)^\1```/gm, (match, indent, infoString, body) => {
     const parsed = parseAskUserQuestionBlock(body)
     if (!parsed) return match
-    return renderDirectChatQuestion(parsed)
+    return renderDirectChatQuestion(parsed, { indent })
   })
 }
 
@@ -1416,7 +1423,8 @@ function parseAskUserQuestionBlock(body) {
   return { header, question, multiSelect, options }
 }
 
-function renderDirectChatQuestion(prompt) {
+function renderDirectChatQuestion(prompt, options = {}) {
+  const indent = options.indent ?? ""
   const lines = ["Ask the user directly in chat:"]
   if (prompt.header) {
     lines.push(`Question label: ${prompt.header}`)
@@ -1431,7 +1439,7 @@ function renderDirectChatQuestion(prompt) {
       lines.push(option.description ? `- ${option.label} — ${option.description}` : `- ${option.label}`)
     }
   }
-  return lines.join("\n")
+  return lines.map((line) => `${indent}${line}`).join("\n")
 }
 
 function stripWrappingQuotes(value) {
