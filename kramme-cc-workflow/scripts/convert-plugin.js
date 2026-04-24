@@ -1219,18 +1219,63 @@ function transformContentForCodex(body, options = {}) {
 }
 
 const CODEX_INSTRUCTION_REPLACEMENTS = [
+  [/### Using AskUserQuestion Correctly\b/g, "### Asking Questions in Codex"],
+  [
+    /The AskUserQuestion tool requires \*\*2-4 predefined options\*\* per question\.\s*Users can always select "Other" to provide free-text input\./g,
+    "When asking directly in chat, offer a small set of concrete options when that helps the user answer quickly. Users can always ignore the suggested options and reply freely in chat.",
+  ],
+  [
+    /The AskUserQuestion tool requires \*\*2-4 predefined options\*\* per question\./g,
+    "When asking directly in chat, offer a small set of concrete options when that helps the user answer quickly.",
+  ],
+  [/Users can always select "Other" to provide free-text input\./g, "Users can always ignore the suggested options and reply freely in chat."],
+  [/\*\*Tool structure:\*\*/g, "**Suggested structure:**"],
+  [/- `header`: Short label\b/g, "- `Label`: Short label"],
+  [/- `question`: The full question text\b/g, "- `Question`: The full question text"],
+  [
+    /- `options`: 2-4 choices, each with `label` \(short\) and `description` \(explains tradeoff\)\b/g,
+    "- `Suggested options`: 2-4 concise choices, each with a short label and a tradeoff explanation",
+  ],
+  [
+    /- `multiSelect`: Set `true` when choices aren't mutually exclusive\b/g,
+    "- `Multi-select`: Use this style only when multiple options can apply at once",
+  ],
+  [
+    /- `multiSelect`: Set `true` for non-exclusive choices\b/g,
+    "- `Multi-select`: Use this style only when multiple options can apply at once",
+  ],
+  [/\bKeep the total predefined option count within AskUserQuestion's 2-4 option limit\./g, "Keep the option set concise; 2-4 concrete options is usually enough."],
+  [/\bKeep the total predefined option count between 2 and 4\./g, "Keep the option set concise; 2-4 concrete options is usually enough."],
+  [/\bUse `?AskUserQuestion`? with multiSelect to\b/g, "Ask the user directly in chat and explicitly allow multiple selections to"],
+  [/\buse `?AskUserQuestion`? with multiSelect to\b/g, "ask the user directly in chat and explicitly allow multiple selections to"],
+  [/\bUse `?AskUserQuestion`? to ask\b/g, "Ask the user directly in chat"],
+  [/\buse `?AskUserQuestion`? to ask\b/g, "ask the user directly in chat"],
   [/\bUse `?AskUserQuestion`? to\b/g, "Ask the user directly in chat to"],
   [/\buse `?AskUserQuestion`? to\b/g, "ask the user directly in chat to"],
-  [/\bOtherwise use `?AskUserQuestion`?\b/g, "Otherwise ask the user directly in chat"],
-  [/\botherwise use `?AskUserQuestion`?\b/g, "otherwise ask the user directly in chat"],
-  [/\bUse `?AskUserQuestion`?\b/g, "Ask the user directly in chat"],
-  [/\buse `?AskUserQuestion`?\b/g, "ask the user directly in chat"],
-  [/\busing `?AskUserQuestion`?\b/g, "using direct chat questions"],
-  [/\bvia `?AskUserQuestion`?\b/g, "via direct chat questions"],
-  [/\bthe `?AskUserQuestion`? tool\b/g, "direct chat questions"],
-  [/\bEvery `?AskUserQuestion`? option\b/g, "Every direct chat question option"],
-  [/\b`?AskUserQuestion`? option\b/g, "direct chat question option"],
-  [/\b`?AskUserQuestion`?\b/g, "direct chat question"],
+  [/\bOtherwise AskUserQuestion\b/g, "Otherwise ask the user directly in chat"],
+  [/\botherwise AskUserQuestion\b/g, "otherwise ask the user directly in chat"],
+  [/\bOtherwise use `?AskUserQuestion`?(?=[:\s.,)]|$)/g, "Otherwise ask the user directly in chat"],
+  [/\botherwise use `?AskUserQuestion`?(?=[:\s.,)]|$)/g, "otherwise ask the user directly in chat"],
+  [/\bUse `?AskUserQuestion`?(?=[:\s.,)]|$)/g, "Ask the user directly in chat"],
+  [/\buse `?AskUserQuestion`?(?=[:\s.,)]|$)/g, "ask the user directly in chat"],
+  [/\busing `?AskUserQuestion`?(?=[:\s.,)]|$)/g, "by asking the user directly in chat"],
+  [/\bvia `?AskUserQuestion`?(?=[:\s.,)]|$)/g, "by asking the user directly in chat"],
+  [/\bAskUserQuestion with (\d+) options\b/g, "a direct chat question with $1 concrete options"],
+  [/\bAskUserQuestion with multiSelect\b/g, "a direct chat question that explicitly allows multiple selections"],
+  [/\bEvery AskUserQuestion option\b/g, "Every option you present"],
+  [/\bAskUserQuestion option\b/g, "option you present"],
+  [/\bskip this AskUserQuestion\b/g, "skip this direct chat question"],
+  [/\bsend AskUserQuestion\b/g, "send the direct chat question"],
+  [/\bAfter presenting AskUserQuestion\b/g, "After asking the question in chat"],
+  [/\bfreeform AskUserQuestion\b/g, "direct chat follow-up for free-form input"],
+  [/\bAskUserQuestion\b/g, "direct chat question"],
+  [/\bUse direct chat question\b/g, "Ask the user directly in chat"],
+  [/\buse direct chat question\b/g, "ask the user directly in chat"],
+  [/\busing direct chat question\b/g, "by asking the user directly in chat"],
+  [/\bvia direct chat question\b/g, "by asking the user directly in chat"],
+  [/\bAsk the user directly in chat to ask\b/g, "Ask the user directly in chat"],
+  [/\bask the user directly in chat to ask\b/g, "ask the user directly in chat"],
+  [/\bAsk the user directly in chat with (\d+) options\b/g, "Ask the user directly in chat with $1 concrete options"],
   [/\bTask tool calls\b/g, "subagent calls"],
   [/\bvia the Task tool with\b/g, "using a subagent when available; otherwise in the main thread, with"],
   [/\busing the Task tool with\b/g, "using a subagent when available; otherwise in the main thread, with"],
@@ -1258,11 +1303,148 @@ const CODEX_INSTRUCTION_REPLACEMENTS = [
 ]
 
 function normalizeCodexInstructionText(text) {
-  let result = text
+  let result = rewriteAskUserQuestionCodeBlocks(text)
   for (const [pattern, replacement] of CODEX_INSTRUCTION_REPLACEMENTS) {
     result = result.replace(pattern, replacement)
   }
+  result = result.replace(/Ask the user directly in chat:\n\s*\nAsk the user directly in chat:\n/g, "Ask the user directly in chat:\n")
   return result
+}
+
+function rewriteAskUserQuestionCodeBlocks(text) {
+  return text.replace(/```([^\n]*)\n([\s\S]*?)```/g, (match, infoString, body) => {
+    const parsed = parseAskUserQuestionBlock(body)
+    if (!parsed) return match
+    return renderDirectChatQuestion(parsed)
+  })
+}
+
+function parseAskUserQuestionBlock(body) {
+  const lines = String(body).split(/\r?\n/)
+  let index = 0
+  while (index < lines.length && lines[index].trim() === "") {
+    index += 1
+  }
+
+  if (/^AskUserQuestion\b/.test(lines[index]?.trim() ?? "")) {
+    index += 1
+  }
+
+  let header = ""
+  let question = ""
+  let multiSelect = false
+  const options = []
+  let currentOption = null
+  let sawStructuredPrompt = false
+
+  const pushCurrentOption = () => {
+    if (!currentOption) return
+    options.push(currentOption)
+    currentOption = null
+  }
+
+  for (; index < lines.length; index += 1) {
+    const trimmed = lines[index].trim()
+    if (!trimmed) continue
+
+    let match = trimmed.match(/^header:\s*(.+)$/i)
+    if (match) {
+      header = stripWrappingQuotes(match[1])
+      sawStructuredPrompt = true
+      continue
+    }
+
+    match = trimmed.match(/^question:\s*(.+)$/i)
+    if (match) {
+      question = stripWrappingQuotes(match[1])
+      sawStructuredPrompt = true
+      continue
+    }
+
+    match = trimmed.match(/^multiSelect:\s*(.+)$/i)
+    if (match) {
+      multiSelect = /^true$/i.test(stripWrappingQuotes(match[1]))
+      sawStructuredPrompt = true
+      continue
+    }
+
+    if (/^options:\s*$/i.test(trimmed)) {
+      sawStructuredPrompt = true
+      continue
+    }
+
+    match = trimmed.match(/^-+\s*label:\s*(.+)$/i)
+    if (match) {
+      pushCurrentOption()
+      currentOption = { label: stripWrappingQuotes(match[1]), description: "" }
+      sawStructuredPrompt = true
+      continue
+    }
+
+    match = trimmed.match(/^description:\s*(.+)$/i)
+    if (match) {
+      if (currentOption) {
+        currentOption.description = stripWrappingQuotes(match[1])
+      }
+      sawStructuredPrompt = true
+      continue
+    }
+
+    match = trimmed.match(/^-+\s*\(freeform\)\s*(.+)$/i)
+    if (match) {
+      pushCurrentOption()
+      options.push({ label: stripWrappingQuotes(match[1]), description: "" })
+      sawStructuredPrompt = true
+      continue
+    }
+
+    match = trimmed.match(/^-+\s*(.+)$/)
+    if (match) {
+      pushCurrentOption()
+      options.push({ label: stripWrappingQuotes(match[1]), description: "" })
+      sawStructuredPrompt = true
+      continue
+    }
+  }
+
+  pushCurrentOption()
+
+  if (!sawStructuredPrompt || !question) {
+    return null
+  }
+
+  return { header, question, multiSelect, options }
+}
+
+function renderDirectChatQuestion(prompt) {
+  const lines = ["Ask the user directly in chat:"]
+  if (prompt.header) {
+    lines.push(`Question label: ${prompt.header}`)
+  }
+  lines.push(`Question: ${prompt.question}`)
+  if (prompt.multiSelect) {
+    lines.push("Allow multiple selections if more than one option can apply.")
+  }
+  if (prompt.options.length > 0) {
+    lines.push("Suggested options:")
+    for (const option of prompt.options) {
+      lines.push(option.description ? `- ${option.label} — ${option.description}` : `- ${option.label}`)
+    }
+  }
+  return lines.join("\n")
+}
+
+function stripWrappingQuotes(value) {
+  const trimmed = String(value ?? "").trim()
+  if (!trimmed) return ""
+  if (
+    (trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'")) ||
+    (trimmed.startsWith("`") && trimmed.endsWith("`"))
+  ) {
+    return trimmed.slice(1, -1)
+  }
+  return trimmed
 }
 
 function normalizeName(value) {
