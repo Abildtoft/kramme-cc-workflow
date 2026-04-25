@@ -1,6 +1,6 @@
 ---
 name: kramme:code:incremental
-description: "(experimental) Deliver changes in thin vertical slices with scope discipline, incremental verification between slices, and feature-flag guardrails for incomplete work. Use when implementing any change that spans more than one file or commit. Enforces one-thing-at-a-time, rollback-friendly commits, and explicit separation of in-scope work from noticed-but-untouched observations."
+description: "(experimental) Deliver changes in thin vertical slices with scope discipline, incremental verification between slices, and feature-flag guardrails for incomplete work. Use when implementing any change that spans more than one file or commit. Enforces one-thing-at-a-time, rollback-friendly commits, and explicit separation of in-scope work from noticed-but-untouched observations. Includes a refactor mode (opt-in via --refactor or after kramme:code:refactor-opportunities) that adds an interview-driven Decision Document and a Fowler-style tiny-commits plan where every intermediate state leaves the codebase working."
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -101,6 +101,18 @@ Before marking a slice done, confirm every box:
 - [ ] Committed with descriptive message.
 
 If any box is unchecked, the slice is not done. Fix the gap or split the slice.
+
+## Refactor mode
+
+When this skill runs against refactor work — explicit `--refactor` flag, invocation directly after `kramme:code:refactor-opportunities`, or any user ask phrased as "refactor X" — produce a different output shape on top of the same six rules: an interview-driven Decision Document plus an ordered tiny-commits plan.
+
+**When this mode applies** — opt-in. Trigger on `--refactor`, on a refactor candidate handed off from `kramme:code:refactor-opportunities`, or on the user phrase "refactor X" / "consolidate Y" / "extract Z". Feature work does not need this mode.
+
+**How it works** — the increment loop runs a 7-step interview before the first slice (problem statement → verify in code → alternatives considered → scope hammer → test coverage check → tiny-commits plan → file Decision Document), then executes the slices through the standard cycle. Each commit must leave the codebase in a working state — Fowler's bar — and revertible with `git revert` without breaking `main`. Decision Document goes to `siw/REFACTOR_DECISIONS.md` if SIW is active, otherwise inline as a markdown block in the body of the **first** commit (which carries rationale for the whole stack). The full interview, template, and per-commit checklist live in `references/refactor-mode.md`.
+
+**Relationship to the six rules** — refactor mode does not relax any rule. Rule 0 (Simplicity), 0.5 (Scope Discipline), 1 (One thing), 2 (Compilable), 4 (Safe defaults), and 5 (Rollback-friendly) all apply per slice. Rule 3 (Feature flags) is usually inapplicable during a refactor since behavior is unchanged; if the refactor temporarily forks behavior, flag it as for any other in-progress feature.
+
+**Sibling skills.** `kramme:code:refactor-pass` is the simplification-loop sibling — use it when the goal is to shrink or clarify recently changed code without restructuring. Use refactor mode here when the goal is structural change (depth, seams, locality) with a documented rationale that should outlive the diff.
 
 ## Integration with other skills
 
