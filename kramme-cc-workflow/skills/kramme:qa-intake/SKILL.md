@@ -269,7 +269,7 @@ Watch for these excuses — they signal the intake rubric is about to be softene
 | "The user gave me everything I need; let me ask three more for completeness." | The skill's value is rapid intake. Three "for completeness" questions per issue is the heavy interview the user explicitly opted out of by choosing this skill over `kramme:linear:issue-define`. |
 | "I'll just paste the helper name into the ticket — it's faster than translating." | The ticket lives for months; the helper name lives until the next refactor. Translate now. |
 | "It's all one report from the user, so it's one ticket." | The user's report shape is not the ticket shape. Three independent failure modes means three tickets even if the user described them in one breath. |
-| "The user said it's minor, so I'll skip the priority label." | Unlabeled minor issues become noise in the queue. Either tag low-priority explicitly or do not file. |
+| "The user said it's minor, so I'll skip the priority." | Unprioritized minor issues become noise in the queue. Either set low priority or tag low-priority explicitly. |
 | "Linear is unreachable, but I can describe the bug clearly enough — I'll skip filing." | Skipping defeats the skill's purpose. Fall back to SIW or `intake-issues/`; do not silently drop the report. |
 | "The user mentioned a file path, so I should keep it — it's helpful." | It is helpful for ten minutes and misleading for the next six months. Keep it out of the body. |
 
@@ -280,7 +280,7 @@ Pause and resolve before filing if any of these are true:
 - More than 3 clarifying questions have been asked on a single issue.
 - A draft ticket body contains `:\d+`, a `src/` path, a file extension (`.ts`, `.tsx`, `.py`, `.go`, `.js`, `.jsx`), an import path, or a private helper name.
 - A breakdown has been drafted without a parent issue/container, with child ID placeholders in the final parent body, without final child links on the parent, **or** without `Parent issue/report` lines on the children.
-- The user described an issue as "minor" or "not urgent" but the draft ticket has no low-priority label or marker.
+- The user described an issue as "minor" or "not urgent" but the draft ticket has no low priority, low-priority label, or low-priority marker.
 - The Linear sink is selected but no `LINEAR_TEAM` has been resolved.
 - The SIW sink is selected but the issue file will not have a matching row in `siw/OPEN_ISSUES_OVERVIEW.md`, or the General section's existing `**Parallelization:**` summary will be left stale.
 - The SIW sink is selected and a breakdown parent is about to be created as a `G-*` issue or added to `siw/OPEN_ISSUES_OVERVIEW.md`.
@@ -301,6 +301,6 @@ Before ending each session, self-check:
 - [ ] Each filed body uses domain language from `UBIQUITOUS_LANGUAGE.md` (if present) or the user's own phrasing (if not).
 - [ ] Every breakdown has a parent issue/container with final child links and no child ID placeholders, plus `Parent issue/report` lines on the children.
 - [ ] Every dependent child issue with a `Blocked by` line has non-`Safe to parallelize` SIW parallelization metadata.
-- [ ] Every "minor"/"not urgent" issue has a low-priority label or marker.
+- [ ] Every "minor"/"not urgent" issue has low priority, a low-priority label, or a low-priority marker.
 - [ ] No pre-existing ticket was modified or closed; any parent update only touched a ticket created during this same intake run.
 - [ ] The end-of-run epilogue lists `CHANGES MADE`, `THINGS I DIDN'T TOUCH`, and `POTENTIAL CONCERNS`.
