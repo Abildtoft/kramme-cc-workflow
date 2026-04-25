@@ -10,9 +10,6 @@ kramme-cc-workflow/            # General workflow plugin
   agents/                      # Specialized subagents (markdown files)
   skills/                      # Skills (subdirectories with SKILL.md)
   hooks/hooks.json             # Event handlers configuration
-kramme-connect-workflow/       # Connect monorepo plugin
-  .claude-plugin/plugin.json   # Plugin manifest
-  skills/                      # Skills (subdirectories with SKILL.md)
 ```
 
 ## Adding Components

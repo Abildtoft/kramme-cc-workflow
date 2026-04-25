@@ -572,7 +572,6 @@ See [CLAUDE.md](CLAUDE.md) for detailed conventions. Quick reference:
 
 | Plugin | Description |
 |--------|-------------|
-| [kramme-connect-workflow](../kramme-connect-workflow/) | Skills for [Consensus ApS](https://consensus.dk)'s Connect product — Angular modernization, Nx library extraction, NgRx migration, and Rive documentation |
 | [Agent Skills for Context Engineering](https://github.com/muratcankoylan/Agent-Skills-for-Context-Engineering) | Agent Skills focused on context engineering principles for building production-grade AI agent systems. |
 | [adversarial-spec](https://github.com/zscole/adversarial-spec) | Specification refinement through multi-model debate until consensus is reached. |
 
