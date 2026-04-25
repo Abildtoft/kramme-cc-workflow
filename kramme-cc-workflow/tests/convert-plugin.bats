@@ -278,6 +278,7 @@ user-invocable: true
 Use `AskUserQuestion` to confirm the topic.
 Conduct a multi-round interview using `AskUserQuestion`.
 Use the AskUserQuestion tool throughout to gather decisions.
+Surface the offer with `AskUserQuestion`.
 MD
 
   run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
@@ -289,6 +290,7 @@ MD
   [[ "$output" == *"Ask the user directly in chat to confirm the topic."* ]]
   [[ "$output" == *"Conduct a multi-round interview by asking the user directly in chat."* ]]
   [[ "$output" == *"Ask the user directly in chat throughout to gather decisions."* ]]
+  [[ "$output" == *"Surface the offer by asking the user directly in chat."* ]]
   [[ "$output" != *"direct chat questions`"* ]]
   [[ "$output" != *"direct chat question`"* ]]
   [[ "$output" != *"direct chat question tool"* ]]
@@ -343,6 +345,55 @@ MD
   [[ "$output" == *"Question: What bug should I investigate?"* ]]
   [[ "$output" != *"header:"* ]]
   [[ "$output" != *'```'* ]]
+  [[ "$output" != *"AskUserQuestion"* ]]
+}
+
+@test "codex conversion preserves multiline AskUserQuestion question bodies" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/ask-user-question-multiline-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/skills/demo"
+  cat > "$FIXTURE_PLUGIN/skills/demo/SKILL.md" <<'MD'
+---
+name: demo-skill
+description: Demo skill
+disable-model-invocation: false
+user-invocable: true
+---
+```yaml
+AskUserQuestion
+header: "ADR offer"
+question: |
+  This decision looks ADR-worthy:
+  - Hard to reverse: Routing will be hard to unwind later.
+  - Surprising without context: Maintainers will not infer this from code alone.
+  - Result of a real tradeoff: We rejected a simpler local-only option.
+
+  Record as an ADR?
+options:
+  - label: "Author ADR"
+    description: "Invoke /kramme:docs:adr now"
+  - label: "Skip"
+    description: "Don't author, and don't ask again about this decision"
+  - label: "Defer"
+    description: "Don't author now; allow re-offer if the decision recurs"
+multiSelect: false
+```
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+
+  run sed -n '1,40p' "$TMP_DIR/.codex/skills/demo-skill/SKILL.md"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Question label: ADR offer"* ]]
+  [[ "$output" == *$'Question: This decision looks ADR-worthy:\n  - Hard to reverse: Routing will be hard to unwind later.\n  - Surprising without context: Maintainers will not infer this from code alone.\n  - Result of a real tradeoff: We rejected a simpler local-only option.\n\n  Record as an ADR?'* ]]
+  [[ "$output" == *"- Author ADR — Invoke /kramme:docs:adr now"* ]]
+  [[ "$output" != *"Question: |"* ]]
+  [[ "$output" != *$'Suggested options:\n- Hard to reverse'* ]]
   [[ "$output" != *"AskUserQuestion"* ]]
 }
 

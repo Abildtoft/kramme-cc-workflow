@@ -214,21 +214,29 @@ The decision must meet **all three** criteria. If any one is missing, no offer:
 
 ### The canonical offer message
 
-Surface the offer with `AskUserQuestion`. Use three options so the user can record intent (not just yes/no). Name all three criteria inline so the user can sanity-check whether the test was applied loosely:
+Surface the offer with `AskUserQuestion`. Use three options so the user can record intent (not just yes/no). Name all three criteria inline so the user can sanity-check whether the test was applied loosely. Before presenting the question, replace each evidence placeholder with a concrete one-line reason from the current workflow:
 
+```yaml
+AskUserQuestion
+header: "ADR offer"
+question: |
+  This decision looks ADR-worthy:
+  - Hard to reverse: {hard_to_reverse_evidence}
+  - Surprising without context: {surprising_without_context_evidence}
+  - Result of a real tradeoff: {real_tradeoff_evidence}
+
+  Record as an ADR?
+options:
+  - label: "Author ADR"
+    description: "Invoke /kramme:docs:adr now"
+  - label: "Skip"
+    description: "Don't author, and don't ask again about this decision"
+  - label: "Defer"
+    description: "Don't author now; allow re-offer if the decision recurs"
+multiSelect: false
 ```
-This decision looks ADR-worthy:
-- Hard to reverse: <one-line evidence>
-- Surprising without context: <one-line evidence>
-- Result of a real tradeoff: <one-line evidence>
 
-Record as an ADR? Choose one:
-  - Author ADR — invoke /kramme:docs:adr now
-  - Skip — don't author, don't ask again about this decision
-  - Defer — don't author now, allow re-offer if the decision recurs
-```
-
-Copy this block verbatim. Paraphrase only if the surrounding structure forces it.
+Copy this payload structure verbatim. Substitute only the three `{...}` evidence values unless the surrounding structure forces a different question format.
 
 ### Handoff rule
 
