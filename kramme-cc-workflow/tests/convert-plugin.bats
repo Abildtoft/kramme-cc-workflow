@@ -103,6 +103,23 @@ SH
   [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/references/branch-and-platform-handling.md" ]
 }
 
+@test "codex conversion maps todo tools to update_plan in AGENTS.md" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/.codex/AGENTS.md" ]
+  [ ! -f "$TMP_DIR/AGENTS.md" ]
+
+  run grep -n 'TodoWrite/TodoRead: use update_plan' "$TMP_DIR/.codex/AGENTS.md"
+  [ "$status" -eq 0 ]
+
+  run grep -n 'file-todos skill' "$TMP_DIR/.codex/AGENTS.md"
+  [ "$status" -eq 1 ]
+}
+
 @test "codex conversion rewrites slash-command references inside copied skills" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
@@ -182,6 +199,323 @@ MD
   [[ "$output" == *"allowed-tools:"* ]]
   [[ "$output" == *"Read"* ]]
   [[ "$output" == *"Edit(src/**)"* ]]
+}
+
+@test "codex conversion preserves allowed-tools for generated command skills" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/command-allowed-tools-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/commands"
+  cat > "$FIXTURE_PLUGIN/commands/demo-command.md" <<'MD'
+---
+name: kramme:demo-command
+description: Demo command
+disable-model-invocation: true
+allowed-tools:
+  - Read
+  - Edit(src/**)
+---
+Use /kramme:demo-command.
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+
+  run sed -n '1,20p' "$TMP_DIR/.codex/skills/kramme:demo-command/SKILL.md"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"allowed-tools:"* ]]
+  [[ "$output" == *"Read"* ]]
+  [[ "$output" == *"Edit(src/**)"* ]]
+  [[ "$output" == *"user-invocable: true"* ]]
+}
+
+@test "codex conversion rewrites Claude-only tool references across converted skill tree" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+  [ "$status" -eq 0 ]
+
+  run grep -REn '\bAskUserQuestion\b|\bTask tool\b|\bSkill tool\b|\bTodoWrite\b|\bTodoRead\b|\bsubagent_type[[:space:]]*[:=][[:space:]]*Explore\b' "$TMP_DIR/.codex/skills"
+  if [ "$status" -ne 1 ]; then
+    printf 'Unexpected matches (status=%s):\n%s\n' "$status" "$output" >&2
+  fi
+  [ "$status" -eq 1 ]
+
+  run grep -REn 'direct chat questions`|direct chat question`' "$TMP_DIR/.codex/skills"
+  if [ "$status" -ne 1 ]; then
+    printf 'Unexpected matches (status=%s):\n%s\n' "$status" "$output" >&2
+  fi
+  [ "$status" -eq 1 ]
+
+  run grep -REn 'direct chat question tool' "$TMP_DIR/.codex/skills"
+  if [ "$status" -ne 1 ]; then
+    printf 'Unexpected matches (status=%s):\n%s\n' "$status" "$output" >&2
+  fi
+  [ "$status" -eq 1 ]
+}
+
+@test "codex conversion rewrites operational AskUserQuestion phrases without mangling markdown" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/ask-user-question-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/skills/demo"
+  cat > "$FIXTURE_PLUGIN/skills/demo/SKILL.md" <<'MD'
+---
+name: demo-skill
+description: Demo skill
+disable-model-invocation: false
+user-invocable: true
+---
+**Present classification to user via `AskUserQuestion`:**
+Use `AskUserQuestion` to confirm the topic.
+Conduct a multi-round interview using `AskUserQuestion`.
+Use the AskUserQuestion tool throughout to gather decisions.
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+
+  run sed -n '1,20p' "$TMP_DIR/.codex/skills/demo-skill/SKILL.md"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"**Present classification to user by asking the user directly in chat:**"* ]]
+  [[ "$output" == *"Ask the user directly in chat to confirm the topic."* ]]
+  [[ "$output" == *"Conduct a multi-round interview by asking the user directly in chat."* ]]
+  [[ "$output" == *"Ask the user directly in chat throughout to gather decisions."* ]]
+  [[ "$output" != *"direct chat questions`"* ]]
+  [[ "$output" != *"direct chat question`"* ]]
+  [[ "$output" != *"direct chat question tool"* ]]
+}
+
+@test "codex conversion rewrites AskUserQuestion blocks into direct-chat prompts" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/ask-user-question-blocks-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/skills/demo"
+  cat > "$FIXTURE_PLUGIN/skills/demo/SKILL.md" <<'MD'
+---
+name: demo-skill
+description: Demo skill
+disable-model-invocation: false
+user-invocable: true
+---
+Use AskUserQuestion:
+
+```yaml
+header: "Existing Workflow Files Found"
+question: "Workflow files already exist in this directory. How would you like to proceed?"
+options:
+  - label: "Resume existing workflow"
+    description: "Continue with current files"
+  - label: "Start fresh"
+    description: "Delete existing workflow files and create new ones"
+```
+
+```text
+AskUserQuestion
+header: Bug Description
+question: What bug should I investigate?
+options:
+  - (freeform) Describe the bug, paste an error message, or provide a Linear issue ID
+```
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+
+  run sed -n '1,40p' "$TMP_DIR/.codex/skills/demo-skill/SKILL.md"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Ask the user directly in chat:"* ]]
+  [[ "$output" == *"Question label: Existing Workflow Files Found"* ]]
+  [[ "$output" == *"Question: Workflow files already exist in this directory. How would you like to proceed?"* ]]
+  [[ "$output" == *"- Resume existing workflow — Continue with current files"* ]]
+  [[ "$output" == *"Question label: Bug Description"* ]]
+  [[ "$output" == *"Question: What bug should I investigate?"* ]]
+  [[ "$output" != *"header:"* ]]
+  [[ "$output" != *'```'* ]]
+  [[ "$output" != *"AskUserQuestion"* ]]
+}
+
+@test "codex conversion preserves indentation for rewritten AskUserQuestion blocks" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/ask-user-question-indentation-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/skills/demo"
+  cat > "$FIXTURE_PLUGIN/skills/demo/SKILL.md" <<'MD'
+---
+name: demo-skill
+description: Demo skill
+disable-model-invocation: false
+user-invocable: true
+---
+1. Ask for the issue ID:
+   ```yaml
+   header: "Linear issue"
+   question: "Enter the Linear issue ID (e.g., WAN-521):"
+   options: []
+   ```
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+
+  run sed -n '1,20p' "$TMP_DIR/.codex/skills/demo-skill/SKILL.md"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'1. Ask for the issue ID:\n   Ask the user directly in chat:\n   Question label: Linear issue\n   Question: Enter the Linear issue ID (e.g., WAN-521):'* ]]
+  [[ "$output" != *$'\nQuestion label: Linear issue'* ]]
+}
+
+@test "codex conversion rewrites AskUserQuestion blocks when closing fence indentation differs" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/ask-user-question-closing-indent-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/skills/demo"
+  cat > "$FIXTURE_PLUGIN/skills/demo/SKILL.md" <<'MD'
+---
+name: demo-skill
+description: Demo skill
+disable-model-invocation: false
+user-invocable: true
+---
+1. Ask for the issue ID:
+   ```yaml
+   header: "Linear issue"
+   question: "Enter the Linear issue ID (e.g., WAN-521):"
+   options: []
+  ```
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+
+  run sed -n '1,20p' "$TMP_DIR/.codex/skills/demo-skill/SKILL.md"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'1. Ask for the issue ID:\n   Ask the user directly in chat:\n   Question label: Linear issue\n   Question: Enter the Linear issue ID (e.g., WAN-521):'* ]]
+  [[ "$output" != *'```yaml'* ]]
+  [[ "$output" != *'AskUserQuestion'* ]]
+}
+
+@test "codex conversion does not terminate AskUserQuestion blocks on deeper-indented fences" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/ask-user-question-deeper-fence-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/skills/demo"
+  cat > "$FIXTURE_PLUGIN/skills/demo/SKILL.md" <<'MD'
+---
+name: demo-skill
+description: Demo skill
+disable-model-invocation: false
+user-invocable: true
+---
+1. Ask for the issue ID:
+   ```yaml
+   header: "Linear issue"
+   question: "Enter the Linear issue ID (e.g., WAN-521):"
+    ```
+   options: []
+   ```
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+
+  run sed -n '1,20p' "$TMP_DIR/.codex/skills/demo-skill/SKILL.md"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'1. Ask for the issue ID:\n   Ask the user directly in chat:\n   Question label: Linear issue\n   Question: Enter the Linear issue ID (e.g., WAN-521):'* ]]
+  [[ "$output" != *'options: []'* ]]
+  [[ "$output" != *'```'* ]]
+}
+
+@test "codex conversion rewrites AskUserQuestion blocks with longer Markdown fences" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/ask-user-question-longer-fence-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/skills/demo"
+  cat > "$FIXTURE_PLUGIN/skills/demo/SKILL.md" <<'MD'
+---
+name: demo-skill
+description: Demo skill
+disable-model-invocation: false
+user-invocable: true
+---
+1. Ask for the issue ID:
+   ````yaml
+   header: "Linear issue"
+   question: "Enter the Linear issue ID (e.g., WAN-521):"
+   options: []
+   ````
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+
+  run sed -n '1,20p' "$TMP_DIR/.codex/skills/demo-skill/SKILL.md"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'1. Ask for the issue ID:\n   Ask the user directly in chat:\n   Question label: Linear issue\n   Question: Enter the Linear issue ID (e.g., WAN-521):'* ]]
+  [[ "$output" != *'````yaml'* ]]
+  [[ "$output" != *'AskUserQuestion'* ]]
+}
+
+@test "codex conversion rewrites AskUserQuestion schema docs for Codex" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/ask-user-question-docs-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/skills/demo"
+  cat > "$FIXTURE_PLUGIN/skills/demo/SKILL.md" <<'MD'
+---
+name: demo-skill
+description: Demo skill
+disable-model-invocation: false
+user-invocable: true
+---
+### Using AskUserQuestion Correctly
+
+The AskUserQuestion tool requires **2-4 predefined options** per question.
+
+Users can always select "Other" to provide free-text input.
+
+- `header`: Short label
+- `question`: The full question text
+- `multiSelect`: Set `true` for non-exclusive choices
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+
+  run sed -n '1,20p' "$TMP_DIR/.codex/skills/demo-skill/SKILL.md"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"### Asking Questions in Codex"* ]]
+  [[ "$output" == *"When asking directly in chat, offer a small set of concrete options when that helps the user answer quickly."* ]]
+  [[ "$output" == *"Users can always ignore the suggested options and reply freely in chat."* ]]
+  [[ "$output" == *'- `Label`: Short label'* ]]
+  [[ "$output" == *'- `Question`: The full question text'* ]]
+  [[ "$output" == *'- `Multi-select`: Use this style only when multiple options can apply at once'* ]]
+  [[ "$output" != *"AskUserQuestion"* ]]
 }
 
 @test "codex conversion places agents in agents-home/skills" {

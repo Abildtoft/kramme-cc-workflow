@@ -122,6 +122,7 @@ async function runInstall(parsed) {
   const plugin = await loadClaudePlugin(resolvedPluginPath)
   const outputRoot = resolveRoot(parsed.output ?? parsed.o, ".config", "opencode")
   const codexHome = resolveRoot(parsed["codex-home"] ?? parsed.codexHome, ".codex")
+  const codexRoot = resolveCodexOutputRoot(codexHome)
   const agentsHome = resolveRoot(parsed["agents-home"] ?? parsed.agentsHome, ".agents")
   const options = {
     agentMode: String(parsed["agent-mode"] ?? parsed.agentMode ?? "subagent") === "primary" ? "primary" : "subagent",
@@ -136,7 +137,7 @@ async function runInstall(parsed) {
     throw new Error(`Target ${targetName} did not return a bundle.`)
   }
 
-  const primaryOutput = targetName === "codex" ? codexHome : outputRoot
+  const primaryOutput = targetName === "codex" ? codexRoot : outputRoot
   const writeOptions = {
     agentsHome,
     pluginName: plugin.manifest.name,
@@ -162,13 +163,13 @@ async function runInstall(parsed) {
       console.warn(`Skipping ${extra}: no output returned.`)
       continue
     }
-    const extraRoot = extra === "codex" ? codexHome : outputRoot
+    const extraRoot = extra === "codex" ? codexRoot : outputRoot
     await handler.write(extraRoot, extraBundle, writeOptions)
     console.log(`Installed ${plugin.manifest.name} to ${extraRoot}`)
   }
 
   if (allTargets.includes("codex")) {
-    await ensureCodexAgentsFile(codexHome)
+    await ensureCodexAgentsFile(codexRoot)
   }
 }
 
@@ -1159,15 +1160,12 @@ function convertCommandSkill(command, knownCommands, name) {
       command.description ?? `Converted from Claude command ${command.name}`,
     ),
     "argument-hint": command.argumentHint,
+    "allowed-tools": command.allowedTools && command.allowedTools.length > 0 ? command.allowedTools : undefined,
     "disable-model-invocation": command.disableModelInvocation,
-  }
-  const sections = []
-  if (command.allowedTools && command.allowedTools.length > 0) {
-    sections.push(`## Allowed tools\n${command.allowedTools.map((tool) => `- ${tool}`).join("\n")}`)
+    "user-invocable": true,
   }
   const transformedBody = transformContentForCodex(command.body.trim(), { knownCommands })
-  sections.push(transformedBody)
-  const body = sections.filter(Boolean).join("\n\n").trim()
+  const body = transformedBody.trim()
   const content = formatFrontmatter(frontmatter, body.length > 0 ? body : command.body)
   return { name, content }
 }
@@ -1215,7 +1213,281 @@ function transformContentForCodex(body, options = {}) {
     return `$${skillName} skill`
   })
 
+  result = normalizeCodexInstructionText(result)
+
   return result
+}
+
+const CODEX_INSTRUCTION_REPLACEMENTS = [
+  [/### Using AskUserQuestion Correctly\b/g, "### Asking Questions in Codex"],
+  [
+    /The AskUserQuestion tool requires \*\*2-4 predefined options\*\* per question\.\s*Users can always select "Other" to provide free-text input\./g,
+    "When asking directly in chat, offer a small set of concrete options when that helps the user answer quickly. Users can always ignore the suggested options and reply freely in chat.",
+  ],
+  [
+    /The AskUserQuestion tool requires \*\*2-4 predefined options\*\* per question\./g,
+    "When asking directly in chat, offer a small set of concrete options when that helps the user answer quickly.",
+  ],
+  [/Users can always select "Other" to provide free-text input\./g, "Users can always ignore the suggested options and reply freely in chat."],
+  [/\*\*Tool structure:\*\*/g, "**Suggested structure:**"],
+  [/- `header`: Short label\b/g, "- `Label`: Short label"],
+  [/- `question`: The full question text\b/g, "- `Question`: The full question text"],
+  [
+    /- `options`: 2-4 choices, each with `label` \(short\) and `description` \(explains tradeoff\)\b/g,
+    "- `Suggested options`: 2-4 concise choices, each with a short label and a tradeoff explanation",
+  ],
+  [
+    /- `multiSelect`: Set `true` when choices aren't mutually exclusive\b/g,
+    "- `Multi-select`: Use this style only when multiple options can apply at once",
+  ],
+  [
+    /- `multiSelect`: Set `true` for non-exclusive choices\b/g,
+    "- `Multi-select`: Use this style only when multiple options can apply at once",
+  ],
+  [/\bKeep the total predefined option count within AskUserQuestion's 2-4 option limit\./g, "Keep the option set concise; 2-4 concrete options is usually enough."],
+  [/\bKeep the total predefined option count between 2 and 4\./g, "Keep the option set concise; 2-4 concrete options is usually enough."],
+  [/\bUse `?AskUserQuestion`? with multiSelect to\b/g, "Ask the user directly in chat and explicitly allow multiple selections to"],
+  [/\buse `?AskUserQuestion`? with multiSelect to\b/g, "ask the user directly in chat and explicitly allow multiple selections to"],
+  [/\bUse `?AskUserQuestion`? to ask\b/g, "Ask the user directly in chat"],
+  [/\buse `?AskUserQuestion`? to ask\b/g, "ask the user directly in chat"],
+  [/\bUse the `?AskUserQuestion`? tool\b/g, "Ask the user directly in chat"],
+  [/\buse the `?AskUserQuestion`? tool\b/g, "ask the user directly in chat"],
+  [/\bUsing the `?AskUserQuestion`? tool\b/g, "By asking the user directly in chat"],
+  [/\busing the `?AskUserQuestion`? tool\b/g, "by asking the user directly in chat"],
+  [/\bUse `?AskUserQuestion`? to\b/g, "Ask the user directly in chat to"],
+  [/\buse `?AskUserQuestion`? to\b/g, "ask the user directly in chat to"],
+  [/\bOtherwise AskUserQuestion\b/g, "Otherwise ask the user directly in chat"],
+  [/\botherwise AskUserQuestion\b/g, "otherwise ask the user directly in chat"],
+  [/\bOtherwise use `?AskUserQuestion`?(?=[:\s.,)]|$)/g, "Otherwise ask the user directly in chat"],
+  [/\botherwise use `?AskUserQuestion`?(?=[:\s.,)]|$)/g, "otherwise ask the user directly in chat"],
+  [/\bUse `?AskUserQuestion`?(?=[:\s.,)]|$)/g, "Ask the user directly in chat"],
+  [/\buse `?AskUserQuestion`?(?=[:\s.,)]|$)/g, "ask the user directly in chat"],
+  [/\busing `?AskUserQuestion`?(?=[:\s.,)]|$)/g, "by asking the user directly in chat"],
+  [/\bvia `?AskUserQuestion`?(?=[:\s.,)]|$)/g, "by asking the user directly in chat"],
+  [/\bAskUserQuestion with (\d+) options\b/g, "a direct chat question with $1 concrete options"],
+  [/\bAskUserQuestion with multiSelect\b/g, "a direct chat question that explicitly allows multiple selections"],
+  [/\bEvery AskUserQuestion option\b/g, "Every option you present"],
+  [/\bAskUserQuestion option\b/g, "option you present"],
+  [/\bskip this AskUserQuestion\b/g, "skip this direct chat question"],
+  [/\bsend AskUserQuestion\b/g, "send the direct chat question"],
+  [/\bAfter presenting AskUserQuestion\b/g, "After asking the question in chat"],
+  [/\bfreeform AskUserQuestion\b/g, "direct chat follow-up for free-form input"],
+  [/\bAskUserQuestion\b/g, "direct chat question"],
+  [/\bUse direct chat question\b/g, "Ask the user directly in chat"],
+  [/\buse direct chat question\b/g, "ask the user directly in chat"],
+  [/\busing direct chat question\b/g, "by asking the user directly in chat"],
+  [/\bvia direct chat question\b/g, "by asking the user directly in chat"],
+  [/\bAsk the user directly in chat to ask\b/g, "Ask the user directly in chat"],
+  [/\bask the user directly in chat to ask\b/g, "ask the user directly in chat"],
+  [/\bAsk the user directly in chat with (\d+) options\b/g, "Ask the user directly in chat with $1 concrete options"],
+  [/\bTask tool calls\b/g, "subagent calls"],
+  [/\bvia the Task tool with\b/g, "using a subagent when available; otherwise in the main thread, with"],
+  [/\busing the Task tool with\b/g, "using a subagent when available; otherwise in the main thread, with"],
+  [/\bvia the Task tool\b/g, "using a subagent when available; otherwise in the main thread"],
+  [/\busing the Task tool\b/g, "using a subagent when available; otherwise in the main thread"],
+  [/\bTask tool\b/g, "subagent workflow"],
+  [/\bvia the Skill tool to\b/g, "using the corresponding Codex skill to"],
+  [/\busing the Skill tool to\b/g, "using the corresponding Codex skill to"],
+  [/\bInvoke via Skill tool\b/g, "Invoke using the corresponding Codex skill"],
+  [/\bvia the Skill tool\b/g, "using the corresponding Codex skill"],
+  [/\busing the Skill tool\b/g, "using the corresponding Codex skill"],
+  [/\bSkill tool\b/g, "skill invocation"],
+  [/\bTodoWrite\/TodoRead\b/g, "update_plan"],
+  [/\bTodoWrite\b/g, "update_plan"],
+  [/\bTodoRead\b/g, "update_plan"],
+  [/\bQuestion tool\b/g, "direct chat questions"],
+  [/\bRead tool\b/g, "shell reads or rg"],
+  [/\bEdit\/MultiEdit\b/g, "apply_patch"],
+  [/\bEdit tool\b/g, "apply_patch"],
+  [/\bMultiEdit\b/g, "apply_patch"],
+  [/\bsubagent_type\s*=\s*Explore\b/g, "agent_type=explorer"],
+  [/\bsubagent_type\s*:\s*Explore\b/g, "agent_type: explorer"],
+  [/\bExplore agents\b/g, "explorer subagents"],
+  [/\bExplore agent\b/g, "explorer subagent"],
+]
+
+function normalizeCodexInstructionText(text) {
+  let result = rewriteAskUserQuestionCodeBlocks(text)
+  for (const [pattern, replacement] of CODEX_INSTRUCTION_REPLACEMENTS) {
+    result = result.replace(pattern, replacement)
+  }
+  result = result.replace(
+    /(^[ \t]*)Ask the user directly in chat:\n\s*\n\1Ask the user directly in chat:\n/gm,
+    "$1Ask the user directly in chat:\n",
+  )
+  return result
+}
+
+function rewriteAskUserQuestionCodeBlocks(text) {
+  const openFencePattern = /(^[ \t]*)(`{3,})([^\n]*)\r?\n/gm
+  let result = ""
+  let cursor = 0
+  let match
+
+  while ((match = openFencePattern.exec(text))) {
+    const [openingLine, indent, openingFence] = match
+    const bodyStart = match.index + openingLine.length
+    const closingFence = findAskUserQuestionClosingFence(text, bodyStart, indent, openingFence.length)
+    if (!closingFence) continue
+
+    const body = text.slice(bodyStart, closingFence.index)
+    const parsed = parseAskUserQuestionBlock(body)
+    if (!parsed) {
+      openFencePattern.lastIndex = closingFence.afterIndex
+      continue
+    }
+
+    result += text.slice(cursor, match.index)
+    result += renderDirectChatQuestion(parsed, { indent })
+    cursor = closingFence.afterIndex
+    openFencePattern.lastIndex = closingFence.afterIndex
+  }
+
+  result += text.slice(cursor)
+  return result
+}
+
+function findAskUserQuestionClosingFence(text, fromIndex, openingIndent, minimumFenceLength) {
+  const closingFencePattern = /(^[ \t]*)(`{3,})[ \t]*(?:\r?\n|$)/gm
+  closingFencePattern.lastIndex = fromIndex
+
+  let match
+  while ((match = closingFencePattern.exec(text))) {
+    if (match[1].length <= openingIndent.length && match[2].length >= minimumFenceLength) {
+      return { index: match.index, afterIndex: closingFencePattern.lastIndex }
+    }
+  }
+
+  return null
+}
+
+function parseAskUserQuestionBlock(body) {
+  const lines = String(body).split(/\r?\n/)
+  let index = 0
+  while (index < lines.length && lines[index].trim() === "") {
+    index += 1
+  }
+
+  if (/^AskUserQuestion\b/.test(lines[index]?.trim() ?? "")) {
+    index += 1
+  }
+
+  let header = ""
+  let question = ""
+  let multiSelect = false
+  const options = []
+  let currentOption = null
+  let sawStructuredPrompt = false
+
+  const pushCurrentOption = () => {
+    if (!currentOption) return
+    options.push(currentOption)
+    currentOption = null
+  }
+
+  for (; index < lines.length; index += 1) {
+    const trimmed = lines[index].trim()
+    if (!trimmed) continue
+
+    let match = trimmed.match(/^header:\s*(.+)$/i)
+    if (match) {
+      header = stripWrappingQuotes(match[1])
+      sawStructuredPrompt = true
+      continue
+    }
+
+    match = trimmed.match(/^question:\s*(.+)$/i)
+    if (match) {
+      question = stripWrappingQuotes(match[1])
+      sawStructuredPrompt = true
+      continue
+    }
+
+    match = trimmed.match(/^multiSelect:\s*(.+)$/i)
+    if (match) {
+      multiSelect = /^true$/i.test(stripWrappingQuotes(match[1]))
+      sawStructuredPrompt = true
+      continue
+    }
+
+    if (/^options:\s*$/i.test(trimmed)) {
+      sawStructuredPrompt = true
+      continue
+    }
+
+    match = trimmed.match(/^-+\s*label:\s*(.+)$/i)
+    if (match) {
+      pushCurrentOption()
+      currentOption = { label: stripWrappingQuotes(match[1]), description: "" }
+      sawStructuredPrompt = true
+      continue
+    }
+
+    match = trimmed.match(/^description:\s*(.+)$/i)
+    if (match) {
+      if (currentOption) {
+        currentOption.description = stripWrappingQuotes(match[1])
+      }
+      sawStructuredPrompt = true
+      continue
+    }
+
+    match = trimmed.match(/^-+\s*\(freeform\)\s*(.+)$/i)
+    if (match) {
+      pushCurrentOption()
+      options.push({ label: stripWrappingQuotes(match[1]), description: "" })
+      sawStructuredPrompt = true
+      continue
+    }
+
+    match = trimmed.match(/^-+\s*(.+)$/)
+    if (match) {
+      pushCurrentOption()
+      options.push({ label: stripWrappingQuotes(match[1]), description: "" })
+      sawStructuredPrompt = true
+      continue
+    }
+  }
+
+  pushCurrentOption()
+
+  if (!sawStructuredPrompt || !question) {
+    return null
+  }
+
+  return { header, question, multiSelect, options }
+}
+
+function renderDirectChatQuestion(prompt, options = {}) {
+  const indent = options.indent ?? ""
+  const lines = ["Ask the user directly in chat:"]
+  if (prompt.header) {
+    lines.push(`Question label: ${prompt.header}`)
+  }
+  lines.push(`Question: ${prompt.question}`)
+  if (prompt.multiSelect) {
+    lines.push("Allow multiple selections if more than one option can apply.")
+  }
+  if (prompt.options.length > 0) {
+    lines.push("Suggested options:")
+    for (const option of prompt.options) {
+      lines.push(option.description ? `- ${option.label} — ${option.description}` : `- ${option.label}`)
+    }
+  }
+  return lines.map((line) => `${indent}${line}`).join("\n")
+}
+
+function stripWrappingQuotes(value) {
+  const trimmed = String(value ?? "").trim()
+  if (!trimmed) return ""
+  if (
+    (trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'")) ||
+    (trimmed.startsWith("`") && trimmed.endsWith("`"))
+  ) {
+    return trimmed.slice(1, -1)
+  }
+  return trimmed
 }
 
 function normalizeName(value) {
@@ -1670,7 +1942,7 @@ Tool mapping:
 - WebFetch/WebSearch: use curl or Context7 for library docs
 - AskUserQuestion/Question: ask the user in chat
 - Task/Subagent/Parallel: use multi-agent execution when available; otherwise run sequentially in main thread. Use multi_tool_use.parallel for parallel tool calls.
-- TodoWrite/TodoRead: use file-based todos in todos/ with file-todos skill
+- TodoWrite/TodoRead: use update_plan for short-lived task tracking; use a markdown file only when durable repo artifacts are explicitly needed
 - Skill: open the referenced SKILL.md and follow it
 - ExitPlanMode: ignore
 `
