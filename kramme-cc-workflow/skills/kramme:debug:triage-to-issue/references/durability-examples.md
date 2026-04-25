@@ -86,12 +86,12 @@ Acceptance criteria assert on observable behavior. The implementer is free to ch
 
 ---
 
-## Self-check (Phase 10 grep)
+## Self-check (durability grep)
 
 The orchestrator runs:
 
 ```
-rg ':\d+|src/|\.ts|\.tsx|\.py|\.go|\.rs' <issue-body>
+rg ':\d+|([[:alnum:]_.-]+/)+[[:alnum:]_.-]+\.[[:alnum:]]{1,8}|[[:alnum:]_-]+\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|kt|rb|php|swift|cs|cpp|c|h|hpp|sh|bash|zsh|fish|bats|md|mdx|json|ya?ml)\b' <issue-body>
 ```
 
-Matches inside fenced code blocks: ignore. Matches in prose: emit `RED FLAG` and prompt the user to edit before considering the issue creation complete.
+Matches inside fenced code blocks: ignore only when they are runnable repro commands or CLI invocations. Matches in prose: emit `RED FLAG` and prompt the user to edit before considering the issue creation complete.

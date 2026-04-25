@@ -70,6 +70,14 @@ options:
   - Markdown — write a standalone file at the repo root and surface the path
 ```
 
+If Linear is the selected sink, resolve required Linear metadata before continuing:
+
+1. List available Linear teams.
+2. If exactly one team is available, store it as `LINEAR_TEAM`.
+3. If the current branch, existing Linear reference, or workspace context clearly identifies a team, store that team as `LINEAR_TEAM`.
+4. If multiple teams are available and no team is obvious, ask exactly one `Linear Team` question. This required metadata question still fires when `--yes` or `--afk` was passed; those flags skip only the approval gate, not required create inputs.
+5. If no Linear team can be resolved, fall back to the markdown sink and note the reason in `POTENTIAL CONCERNS`.
+
 ### Phase 3 — Investigation
 
 Invoke `kramme:debug:investigate` via the Skill tool with the captured bug description as `$ARGUMENTS`.
@@ -117,7 +125,7 @@ Take the merged context from Phases 3–5 and rewrite it for the issue body. The
 
 - File paths (`src/`, any directory + filename).
 - Line numbers and `:\d+` patterns.
-- File extensions in prose (`.ts`, `.tsx`, `.py`, `.go`, `.rs`).
+- File extensions in prose (for example `.ts`, `.js`, `.py`, `.go`, `.rs`, `.sh`, `.bats`, `.md`, `.json`, `.yml`).
 - Internal helper, class, or private-function names.
 - Module-internal symbol references.
 
@@ -129,6 +137,12 @@ Take the merged context from Phases 3–5 and rewrite it for the issue body. The
 - Test commands and CLI invocations inside fenced code blocks (these are repro instructions, not implementation references).
 
 > See `references/durability-examples.md` for good-vs-bad rewrites of common patterns.
+
+Use this durability grep pattern for the pre-create and post-create checks:
+
+```
+rg ':\d+|([[:alnum:]_.-]+/)+[[:alnum:]_.-]+\.[[:alnum:]]{1,8}|[[:alnum:]_-]+\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|kt|rb|php|swift|cs|cpp|c|h|hpp|sh|bash|zsh|fish|bats|md|mdx|json|ya?ml)\b' <issue-body>
+```
 
 ### Phase 7 — Draft
 
@@ -158,11 +172,25 @@ options:
 
 If the user picks **Edit**, ask which section, take their changes, re-render the draft, and re-ask.
 
+### Phase 8.5 — Pre-create durability verification
+
+Run the durability grep against the final drafted body before writing anything to Linear, SIW, or markdown.
+
+Matches inside fenced code blocks (`` ``` ... ``` ``) are allowed only when they are runnable repro commands or CLI invocations. Matches in prose are a `RED FLAG`.
+
+If the grep finds prose matches:
+
+1. Show the matches and the section they came from.
+2. Prompt the user to edit the draft.
+3. Do not proceed to Phase 9 until the prose matches are removed, or until the user explicitly approves the specific matches after seeing the `RED FLAG`.
+
+If the user passed `--yes` or `--afk` and the grep finds prose matches, halt and require explicit approval before creation. Do not let the bypass flag file a leaky issue.
+
 ### Phase 9 — Create
 
 Branch on the sink chosen in Phase 2.
 
-**Linear:** call `mcp__linear__create_issue` with title, description (the drafted body), and any auto-detectable team/labels/project. Return the issue URL.
+**Linear:** call `mcp__linear__create_issue` with title, description (the drafted body), required `team: LINEAR_TEAM`, and any auto-detectable labels/project. Return the issue URL.
 
 **SIW:** write three files in lockstep:
 
@@ -174,15 +202,15 @@ All three updates must succeed atomically. If any write fails, surface the error
 
 **Markdown fallback:** write `BUG-{slug}-{YYYY-MM-DD}.md` to the project root with the full body. Surface the absolute path.
 
-### Phase 10 — Verification
+### Phase 10 — Post-create verification
 
-Grep the created body for durability violations:
+Repeat the durability grep against the created body:
 
 ```
-:\d+ | src/ | \.ts | \.tsx | \.py | \.go | \.rs
+rg ':\d+|([[:alnum:]_.-]+/)+[[:alnum:]_.-]+\.[[:alnum:]]{1,8}|[[:alnum:]_-]+\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|kt|rb|php|swift|cs|cpp|c|h|hpp|sh|bash|zsh|fish|bats|md|mdx|json|ya?ml)\b' <issue-body>
 ```
 
-Matches inside fenced code blocks (`` ``` ... ``` ``) are allowed (they are repro commands). Matches in prose are a `RED FLAG` — surface them and prompt the user to edit. Do not silently rewrite.
+Matches inside fenced code blocks (`` ``` ... ``` ``) are allowed only when they are runnable repro commands or CLI invocations. Matches in prose are a `RED FLAG` — surface them and prompt the user to edit. Do not silently rewrite.
 
 Emit a final block:
 
