@@ -324,9 +324,11 @@ Continue until all dimensions show adequate coverage for a well-defined issue.
 
 ### Durability rule
 
-Issue bodies must NOT include file paths, line numbers, or internal helper/class names. Describe modules, behaviors, and contracts. Reason: file paths and line numbers rot quickly; the issue should remain useful after major refactors.
+Authored issue content must NOT include file paths, line numbers, or internal helper/class names. Describe modules, behaviors, and contracts. Reason: file paths and line numbers rot quickly; the issue should remain useful after major refactors.
 
-This rule applies to every section composed in this phase — Problem, Value, Goal, Scope, Acceptance Criteria, Edge Cases, Technical Notes, Dependencies, and the Original Dev Ask preservation block.
+This rule applies to every section composed or refined in this phase — Problem, Value, Goal, Scope, Acceptance Criteria, Edge Cases, Technical Notes, and Dependencies.
+
+Exception: if `is_dev_ask` is true, preserve the Original Dev Ask archival block exactly as submitted, even when it contains file paths or helper names. Do not repeat those brittle references in the refined issue body; translate them into durable module, behavior, or contract language in the authored sections.
 
 - ❌ Bad: "Fix bug in `src/services/orderService.ts:142` where `applyDiscount()` returns NaN"
 - ✅ Good: "Order discount calculation returns NaN when applied to gift-card orders; affects checkout total and order summary email"

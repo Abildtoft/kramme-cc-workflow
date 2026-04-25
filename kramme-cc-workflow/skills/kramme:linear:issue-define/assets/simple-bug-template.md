@@ -30,11 +30,11 @@ For simple bugs (`is_simple_bug = true`), use this concise format.
 
 [1-2 sentences describing what needs to change]
 
-**File:** `path/to/affected/file.ts`
+**Affected area:** [module / behavior / contract — not file paths or line numbers]
 ```
 
 ## Notes
 
-- If multiple files are affected, list each on its own line with `**File:**` prefix
+- If multiple areas are affected, list each on its own line with `**Affected area:**` prefix
 - If root cause is unknown, reclassify to Bug (Complex), set `is_simple_bug = false`, and switch to the comprehensive interview/template
 - Keep each section brief - this template is intentionally minimal

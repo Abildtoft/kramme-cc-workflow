@@ -46,7 +46,7 @@ Before reporting Phase 7, verify:
 
 - Any task title containing the word "and" is justified because both halves are inseparable; otherwise split it.
 - Every task carries an explicit size; no XL survived Phase 4.
-- Phase 4 subagent prompt ran with all eight criteria (including Vertical slicing and Parallelization).
+- Phase 4 subagent prompt ran with all nine criteria (including Vertical slicing, Parallelization, and Mode coverage).
 - Parallelization categories are recorded for each task group.
 - The Phase 5 `PLAN:` block shows every issue size and every group-level `Parallelization:` note.
-- Generated issue files preserve each issue's approved size and parallelization guidance, and `siw/OPEN_ISSUES_OVERVIEW.md` preserves the approved sizes plus one section-level `Parallelization:` summary per task group where that metadata already exists. Legacy sections without that line remain unchanged unless the tracker is being explicitly migrated.
+- Generated issue files preserve each issue's approved size, Mode, and parallelization guidance, and `siw/OPEN_ISSUES_OVERVIEW.md` preserves the approved sizes and Mode values plus one section-level `Parallelization:` summary per task group where that metadata already exists. Legacy sections without that line remain unchanged unless the tracker is being explicitly migrated.
