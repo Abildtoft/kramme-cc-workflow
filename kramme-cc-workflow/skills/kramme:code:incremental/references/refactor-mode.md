@@ -11,7 +11,7 @@ Refactor work has three properties that change the output shape:
 
 Run these 7 short steps in order. Do not skip; refactors often unravel because step 1 was vague.
 
-1. **Problem statement.** What is wrong with the current shape, in one or two sentences? Use vocabulary from `kramme:code:refactor-opportunities/references/architecture-language.md` when applicable (depth, seam, locality). If the problem statement contains "it would be cleaner" with no further evidence, stop — there is no refactor here yet.
+1. **Problem statement.** What is wrong with the current shape, in one or two sentences? Use architecture vocabulary when applicable: depth is implementation complexity hidden behind a smaller interface, a seam is a place where behavior intentionally varies across adapters, and locality is whether code that changes together lives together. If the problem statement contains "it would be cleaner" with no further evidence, stop — there is no refactor here yet.
 
 2. **Verify in code.** Read the actual code being refactored, not the user's summary of it. Confirm the problem statement matches the source. Surface any mismatch before continuing.
 

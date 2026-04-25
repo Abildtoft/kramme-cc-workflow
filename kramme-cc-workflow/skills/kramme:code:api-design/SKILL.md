@@ -1,6 +1,7 @@
 ---
 name: kramme:code:api-design
 description: "(experimental) Design stable APIs and module boundaries. Covers contract-first approach, Hyrum's Law, validation placement (at boundaries, not between internal functions), consistent error shapes with HTTP status mapping, naming conventions, and TypeScript patterns for interface stability. Use when adding HTTP endpoints, public modules, SDK surfaces, or any interface with external or cross-team callers. Includes a Design It Twice mode (opt-in via --design-twice or the phrase 'design it twice') that spawns parallel sub-agents to explore radically different shapes before committing to one."
+argument-hint: "[--design-twice]"
 disable-model-invocation: false
 user-invocable: true
 kramme-platforms: [claude-code, codex]
@@ -144,7 +145,7 @@ The reason: reshaping adjacent contracts is itself a breaking change, and it des
 
 The first interface that comes to mind is rarely the best. Design It Twice spawns parallel sub-agents to draft radically different shapes for the same problem, then compares them in the open before any single design is locked in.
 
-**When this mode applies** — opt-in only. Trigger on `--design-twice`, on the user phrase "design it twice" or "show me alternatives", or on a high-leverage surface (SDK, cross-team contract) where the obvious shape feels suspiciously obvious. Do not enter this mode by default; the cost of multiplication is wasted on low-stakes interfaces.
+**When this mode applies** — opt-in only. Trigger on `--design-twice`, on the user phrase "design it twice" or "show me alternatives". For high-leverage surfaces (SDK, cross-team contract) where the obvious shape feels suspiciously obvious, ask before entering this mode. Do not enter it by default; the cost of multiplication is wasted on low-stakes interfaces.
 
 **How it works** — frame the problem (not the interface), spawn 3+ parallel sub-agents each pinned to a different constraint (minimize methods / maximize flexibility / optimize common case / ports & adapters), present each design in full sequentially, then compare in prose by depth, locality, and seam placement. End with a single recommendation: pick one, hybridize and explain the borrow, or redesign because the framing was wrong. See `references/design-it-twice.md` for the full process, prompt template, and comparison rubric.
 

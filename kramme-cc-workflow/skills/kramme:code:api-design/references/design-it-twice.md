@@ -7,9 +7,8 @@ The first interface that comes to mind is rarely the best one. Design It Twice e
 Trigger on any of:
 - The user passes `--design-twice` (or equivalent flag) to the skill invocation.
 - The user says "design it twice", "show me alternatives", "what other shapes are there", or otherwise asks for a comparison rather than a single design.
-- The interface is high-leverage (SDK boundary, public API, cross-team contract) and the first shape feels obvious — obvious shapes are exactly the ones to challenge.
 
-Do not enter this mode by default. A single contract is right for most work; multiplying designs has overhead and is wasted on low-stakes interfaces.
+Do not enter this mode by default. For high-leverage surfaces (SDK boundary, public API, cross-team contract) where the first shape feels obvious, ask the user whether to run this mode before spawning agents. A single contract is right for most work; multiplying designs has overhead and is wasted on low-stakes interfaces.
 
 ## Process
 
@@ -80,11 +79,11 @@ Present the designs sequentially first — readers should be able to evaluate ea
 
 #### Comparison rubric
 
-Score each design on three axes from `references/architecture-language.md`-compatible vocabulary (also vendored in `kramme:code:refactor-opportunities/references/architecture-language.md`):
+Score each design on three axes:
 
-- **Depth.** What does the implementation hide that the caller would otherwise carry? Cite an example call site.
+- **Depth.** What implementation complexity does the interface hide that the caller would otherwise carry? Cite an example call site.
 - **Locality.** When the most likely change request arrives ("we now also need to <X>"), how many places does the design force a change in?
-- **Seam placement.** Where does behavior vary across implementations? Are the seams placed where variation actually exists, or where it might exist someday? Apply the adapter-count rule.
+- **Seam placement.** Where does behavior vary across implementations? Are seams placed where variation actually exists, or where it might exist someday? Apply the adapter-count rule: one adapter is a hypothetical seam; two or more active adapters make the seam real.
 
 The comparison should be a single block of 3–6 paragraphs, not a checklist. Show the reader the trade-off, do not just enumerate it.
 
