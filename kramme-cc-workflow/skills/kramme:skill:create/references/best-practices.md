@@ -27,12 +27,29 @@ The `name` and `description` are the only fields the agent sees before triggerin
 - Bad: "React skills." (too vague)
 - Good: "Creates React components using Tailwind CSS. Use for style updates or UI logic changes. Don't use for Vue, Svelte, or vanilla CSS projects."
 
+### Description = system-prompt real estate
+
+The description is the **only** thing the agent sees when deciding whether to load a skill. It is rendered into the agent's system prompt alongside every other installed skill in the user's environment — it competes for attention against potentially dozens of other descriptions.
+
+Three failure modes follow from this:
+
+1. **Wrong skill picked.** A vague or misleading description loses to a more specific neighbor — even when this skill is the right one.
+2. **No skill picked.** A description that doesn't name the trigger conditions (keywords, file types, contexts) leaves the agent uncertain, and uncertain agents tend to do nothing rather than load.
+3. **Wrong skill picked falsely.** A description that over-claims (e.g., "for any code task") wins triggers it shouldn't and degrades the user's experience.
+
+Treat the description as a **trigger spec**, not a marketing summary:
+
+- Name the concrete inputs that should activate it (keywords in the user's prompt, imports in the file, file extensions, repo-state signals).
+- Name the inputs that should NOT activate it ("Not for X", "Skip when Y").
+- Keep it short enough to scan — every additional sentence dilutes the trigger signal.
+
 ## Progressive Disclosure
 
 Keep the context window lean by loading information only when needed.
 
 - **Keep SKILL.md under 500 lines.** Use it for orchestration only.
 - **Flat directories only.** `references/schema.md` — not `references/db/v1/schema.md`.
+- **References are one level deep.** SKILL.md may instruct the agent to read a file in `references/` or `assets/`. Reference files must NOT instruct the agent to read other reference files. The reason: chained references inflate the agent's context unpredictably and make the skill's true cost-of-load opaque to the author. If a reference file feels like it needs a child reference, restructure: either inline the child content, promote the child to a peer reference loaded directly from SKILL.md, or split the workflow into two skills.
 - **Just-in-time loading.** Explicitly instruct when to read a file:
   ```
   Read the patterns catalog from `references/patterns.md`.
@@ -53,6 +70,23 @@ Write instructions for LLMs, not humans.
 - **Third-person imperative.** "Extract the text..." not "I will extract..." or "You should extract..."
 - **Concrete templates over prose.** Place templates in `assets/` and instruct the agent to copy the structure.
 - **Consistent terminology.** Pick one term per concept and use it everywhere.
+
+### No time-sensitive info
+
+Skill instructions are durable artifacts. Once a skill is published, it can be:
+
+- Cached by the agent runtime for a session, a day, or longer.
+- Installed into downstream user environments where it lives unchanged for weeks or months.
+- Bundled into plugin distributions that update on a slower cadence than the underlying ecosystem.
+
+Time-sensitive content goes stale silently in any of those paths. Avoid embedding any of the following in a skill (SKILL.md or references):
+
+- Today's date, this week's library version, "the current API endpoint."
+- Links to URLs that rotate (latest release, latest blog post, "current best practice as of <month>").
+- Counts that drift ("we have 47 skills"; "the team has 12 engineers").
+- Process state ("we are migrating from X to Y this quarter").
+
+Prefer durable phrasings: "the latest stable version" (let the agent look it up), "as of the current release" (let the install context resolve), "the active migration target" (defer to the runtime). When concrete state is genuinely required, point to a runtime artifact (a config file, an environment variable, a single-source-of-truth doc) rather than inlining the value.
 
 ## Deterministic Scripts
 

@@ -93,15 +93,16 @@ Read siw/OPEN_ISSUES_OVERVIEW.md section-by-section and extract all issues from 
 
 For each section, extract:
 - Section header
-- Table schema (`| # | Title | Status | Size | Priority | Related |` or the legacy 5-column form)
+- Table schema (`| # | Title | Status | Size | Priority | Mode | Related |`, pre-Mode 6-column, or the legacy 5-column form)
 - Any section-level metadata line immediately above the table (for example `**Parallelization:** ...`)
 
 For each row, extract:
 - Issue prefix and number (e.g., `G-001`, `P1-002`)
 - Title
 - Status (READY, IN PROGRESS, IN REVIEW, DONE)
-- Size when present in the 6-column schema
+- Size when present in the 6- or 7-column schema
 - Priority
+- Mode when present in the 7-column schema (`AUTO` or `HITL`)
 - Related tasks
 
 Categorize issues **by prefix group**:
@@ -431,7 +432,7 @@ For each active issue that needs renumbering **within its prefix group**:
    - This includes `**Related:**`, dependency lists such as `Blocked by` / `Blocks`, `Parallelization Guidance`, and any other prose references to issue ids
    - If a referenced issue was deleted, keep the original id and annotate it with `(deleted: "{title}")` instead of silently pointing it at a different renumbered issue
 4. Update the `**Status:**` line if it references the issue number
-5. Preserve any existing `**Size:**` / `**Parallelization:**` metadata while updating ids
+5. Preserve any existing `**Size:**` / `**Parallelization:**` / `**Mode:**` metadata while updating ids
 6. Write to new filename
 7. Delete old file
 
@@ -457,6 +458,7 @@ Rebuild the issues table **maintaining section groupings**:
 1. Remove all DONE rows from each section
 2. Update issue numbers for remaining rows within each prefix group
 3. Preserve the existing table schema for each section:
+   - If the section uses `| # | Title | Status | Size | Priority | Mode | Related |`, keep `Size` and `Mode`
    - If the section uses `| # | Title | Status | Size | Priority | Related |`, keep `Size`
    - If the section uses the legacy `| # | Title | Status | Priority | Related |`, keep the legacy layout
 4. Handle section-level metadata lines carefully:
@@ -475,21 +477,21 @@ Rebuild the issues table **maintaining section groupings**:
 
 **Parallelization:** Safe to parallelize
 
-| # | Title | Status | Size | Priority | Related |
-|---|-------|--------|------|----------|---------|
-| G-001 | Setup | DONE | S | High | |
-| G-002 | Docs | READY | XS | Low | |
-| G-003 | Config | READY | S | Medium | |
+| # | Title | Status | Size | Priority | Mode | Related |
+|---|-------|--------|------|----------|------|---------|
+| G-001 | Setup | DONE | S | High | AUTO | |
+| G-002 | Docs | READY | XS | Low | AUTO | |
+| G-003 | Config | READY | S | Medium | HITL | |
 
 ## Phase 1: Foundation
 
 **Parallelization:** Needs coordination
 
-| # | Title | Status | Size | Priority | Related |
-|---|-------|--------|------|----------|---------|
-| P1-001 | Feature A | IN PROGRESS | M | High | Task 1.0 |
-| P1-002 | Feature B | DONE | S | High | Task 2.0 |
-| P1-003 | Bug Fix | READY | S | Medium | Task 3.0 |
+| # | Title | Status | Size | Priority | Mode | Related |
+|---|-------|--------|------|----------|------|---------|
+| P1-001 | Feature A | IN PROGRESS | M | High | AUTO | Task 1.0 |
+| P1-002 | Feature B | DONE | S | High | AUTO | Task 2.0 |
+| P1-003 | Bug Fix | READY | S | Medium | HITL | Task 3.0 |
 ```
 
 **After:**
@@ -498,19 +500,19 @@ Rebuild the issues table **maintaining section groupings**:
 
 **Parallelization:** Safe to parallelize
 
-| # | Title | Status | Size | Priority | Related |
-|---|-------|--------|------|----------|---------|
-| G-001 | Docs | READY | XS | Low | |
-| G-002 | Config | READY | S | Medium | |
+| # | Title | Status | Size | Priority | Mode | Related |
+|---|-------|--------|------|----------|------|---------|
+| G-001 | Docs | READY | XS | Low | AUTO | |
+| G-002 | Config | READY | S | Medium | HITL | |
 
 ## Phase 1: Foundation
 
 **Parallelization:** Needs coordination
 
-| # | Title | Status | Size | Priority | Related |
-|---|-------|--------|------|----------|---------|
-| P1-001 | Feature A | IN PROGRESS | M | High | Task 1.0 |
-| P1-002 | Bug Fix | READY | S | Medium | Task 3.0 |
+| # | Title | Status | Size | Priority | Mode | Related |
+|---|-------|--------|------|----------|------|---------|
+| P1-001 | Feature A | IN PROGRESS | M | High | AUTO | Task 1.0 |
+| P1-002 | Bug Fix | READY | S | Medium | HITL | Task 3.0 |
 ```
 
 ---

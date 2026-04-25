@@ -6,8 +6,6 @@ disable-model-invocation: true
 user-invocable: true
 ---
 
-<!-- TODO: Refactor to <500 lines by moving Phase 5: Issue Composition (with templates) to references/ -->
-
 # Define Local Issue
 
 Create or improve a local issue through guided interactive refinement. Can start from scratch with a description, or improve an existing issue by providing its identifier. Supports file references for technical context and proactively explores the codebase to inform issue definition.
@@ -257,13 +255,22 @@ Streamlined 2-round interview:
 **Round 2: Root Cause & Fix**
 - What's causing the bug? (if known)
 - What needs to change to fix it?
-- Which file(s) are affected?
+- Which area(s) are affected? If specific files are known, use them as private context for exploration, but translate them into durable module/behavior language in the issue body.
 
 **If root cause unknown after Round 2:**
 - Reclassify as Bug (Complex)
 - Switch to Standard Interview
 
-Then proceed to Phase 5 with simple template.
+Then run a streamlined metadata pass and store the answers as Round 5 metadata for Phase 5:
+- Priority (default Medium unless the user indicated urgency)
+- Size (default XS/S for localized simple bugs)
+- Related issues or blockers, if any
+- Parallelization category (default Safe to parallelize for localized fixes unless shared-state or sequencing concerns exist)
+- Mode:
+  - Default `AUTO` only when the root cause and fix are known, verification can be automated, and no external access, manual testing, design review, or architectural decision is required.
+  - Default `HITL — <one-line reason>` when any of those human inputs are needed or when unclear.
+
+Confirm inferred metadata with the user before composing. Then proceed to Phase 5 with the simple template.
 
 ### Standard Interview (for all other types)
 
@@ -317,7 +324,7 @@ Multi-round interview using `AskUserQuestion`.
 - Each criterion should be verifiable
 - Include both happy path and error scenarios
 
-### Round 5: Priority & Related Work
+### Round 5: Priority, Related Work & Mode
 
 **Questions:**
 - What priority level? (High/Medium/Low)
@@ -332,103 +339,22 @@ Multi-round interview using `AskUserQuestion`.
   - Safe to parallelize
   - Must be sequential
   - Needs coordination
+- What **Mode** fits this issue?
+  - **AUTO** — an autonomous agent can implement, verify, and prepare for review without human input
+  - **HITL** — human-in-the-loop is required (architectural decision, design review, judgment call, manual testing, or external system access). HITL requires a one-line reason.
+
+If the answer isn't supplied, infer Mode from the issue type and exploration findings, default to HITL when unclear, and confirm before composing.
 
 ## Phase 5: Issue Composition
 
-### Template Selection
+Read `references/issue-templates.md` and select the appropriate template:
 
-- **Bug (Simple)**: Simple Bug Template
-- **All others**: Comprehensive Template
+- Use the **Simple Bug Template** when `is_simple_bug = true`.
+- Use the **Comprehensive Template** otherwise.
 
-### Simple Bug Template
+Both templates include the `Mode:` field. When emitting the issue, fill `Mode: AUTO` or `Mode: HITL — <one-line reason>` from Round 5.
 
-**File naming:** `siw/issues/ISSUE-{prefix}-{number}-{short-description}.md`
-
-```markdown
-# ISSUE-{prefix}-{number}: Fix {what's broken}
-
-**Status:** Ready | **Priority:** {priority} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Related:** {tasks if any}
-
-## Problem
-
-{1-2 sentence description of the bug}
-
-**Steps to reproduce:**
-1. {Step 1}
-2. {Step 2}
-3. **Bug:** {What happens}
-
-## Root Cause
-
-{1-2 sentences explaining what's causing the bug}
-
-## Fix
-
-{1-2 sentences describing what needs to change}
-
-**File:** `{path/to/affected/file}`
-```
-
-### Comprehensive Template
-
-**File naming:** `siw/issues/ISSUE-{prefix}-{number}-{short-description}.md`
-
-```markdown
-# ISSUE-{prefix}-{number}: {Title}
-
-**Status:** Ready | **Priority:** {priority} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Related:** {tasks if any}
-
-## Problem
-
-{What pain point or issue exists}
-{Who is affected and how}
-
-## Context
-
-{Current state and background}
-{Why this matters now}
-
-## Scope
-
-### In Scope
-- {Specific item 1}
-- {Specific item 2}
-
-### Out of Scope
-- {Explicitly excluded item 1}
-
-## Decision Boundaries
-- **Captured in this issue:** {product, behavior, or scope decisions that need alignment}
-- **Left to implementation:** {engineering choices that should not be over-specified here}
-
-## Acceptance Criteria
-
-- [ ] {Testable criterion 1}
-- [ ] {Testable criterion 2}
-
-## Edge Cases
-
-- {Edge case 1}: {Expected behavior}
-
----
-
-## Technical Notes
-
-### Implementation Approach
-{High-level approach - what components/areas need changes}
-
-### Affected Areas
-- {Component/module 1}
-
-### Patterns to Follow
-{Reference existing patterns in the codebase}
-
-### References
-- {Related files: `path/to/file`}
-
-## Assumptions Used
-- {Only include when the issue had to infer user, why-now, or non-goals from incomplete context}
-```
+The references file also defines the **Durability rule**: issue bodies must describe modules, behaviors, and contracts — not file paths, line numbers, or internal helper/class names. Apply it to every section of the composed issue (Problem, Context, Technical Notes, References).
 
 ## Phase 6: Review & Create/Update
 
@@ -462,12 +388,14 @@ siw/issues/ISSUE-{prefix}-{number}-{sanitized-title}.md
 ```markdown
 **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination | Mixed — see issue files}
 
-| {prefix}-{number} | {Title} | Ready | {Size} | {Priority} | {Related} |
+| {prefix}-{number} | {Title} | Ready | {Size} | {Priority} | {Mode} | {Related} |
 ```
 
-**For updated issues:** Update existing row if title/priority/status changed.
+The `{Mode}` cell is `AUTO` or `HITL` (no inline reason in the table; the reason lives in the issue file). For updated issues that already have Mode in the issue file, sync the cell.
 
-**Schema rule:** If the existing section already uses the legacy 5-column table (`| # | Title | Status | Priority | Related |`), preserve that layout for compatibility. Otherwise, use the 6-column layout above.
+**For updated issues:** Update existing row if title/priority/status/mode changed.
+
+**Schema rule:** If the existing section already uses the legacy 5-column table (`| # | Title | Status | Priority | Related |`), preserve that layout for compatibility. If the existing section uses the previous 6-column modern table (`| # | Title | Status | Size | Priority | Related |` — pre-Mode), preserve that layout for in-place updates and only migrate to the 7-column layout when the user explicitly requests a schema migration. Use the 7-column layout above only for brand-new modern sections.
 
 **Parallelization summary rule:**
 - **`## General`**: If the section already has a `**Parallelization:**` note, or you're creating a brand-new modern General section, treat that note as a roll-up summary rather than a per-issue mirror. After creating or updating a real General issue, recompute the summary from all non-placeholder `G-*` issue files:

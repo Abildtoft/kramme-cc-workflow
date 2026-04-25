@@ -1,6 +1,6 @@
 ---
 name: kramme:docs:feature-spec
-description: Author a lightweight PRD-style feature spec before implementation. Produces a single reviewable markdown artifact covering objective, scope, boundaries, assumptions, non-goals, and testing strategy. Use when starting a feature that needs written alignment before coding but does NOT warrant the full siw/ tracked workflow. For tracked initiatives (phased issues, LOG, audit) use kramme:siw:init instead.
+description: Author a lightweight PRD-style feature spec before implementation. Produces a single reviewable markdown artifact covering objective, scope, boundaries, assumptions, non-goals, and testing strategy. Use when starting a feature that needs written alignment before coding but does NOT warrant the full siw/ tracked workflow. Pass --synthesize (or say "draft straight from context") to skip the assumptions block when the current conversation already grounds enough of the spec. For tracked initiatives (phased issues, LOG, audit) use kramme:siw:init instead.
 argument-hint: "[feature name or brief description]"
 disable-model-invocation: true
 user-invocable: true
@@ -11,6 +11,8 @@ user-invocable: true
 Author a one-page PRD-style spec before implementation. Emit an assumptions block first, draft the spec, then gate implementation on explicit user approval.
 
 **Arguments:** "$ARGUMENTS"
+
+Parse `$ARGUMENTS` for a `--synthesize` flag (anywhere in the string). Strip it from the remaining text before deriving the slug or feature name. Treat the flag as activating Synthesize mode (see below). The trigger phrase "draft straight from context" (or close paraphrase) in the user's most recent turn activates Synthesize mode equivalently — no flag needed.
 
 ## When to use this skill
 
@@ -65,6 +67,52 @@ Then stop and wait for the user's response. Do not proceed to Phase 2 until the 
 
 - If the user's request is ambiguous or contradicts an earlier turn, emit a `CONFUSION:` block naming the ambiguity and ask for clarification.
 - If a required spec area cannot be filled without more input (e.g. no testable success criteria are derivable), emit a `MISSING REQUIREMENT:` block naming what is missing. Do not invent.
+
+## Synthesize mode (skips Phase 1)
+
+Synthesize mode is **opt-in**. Activation:
+
+- The argument string contains `--synthesize`, OR
+- The user's most recent turn says "draft straight from context" (or close paraphrase like "just draft it from what we discussed", "skip the assumptions").
+
+When activated, evaluate the **preconditions** before skipping Phase 1.
+
+### Preconditions
+
+Synthesis is permitted only when at least **4 of the 6** spec areas can be populated with grounded content from the current conversation:
+
+1. Objective
+2. Scope & Non-goals
+3. Boundaries
+4. Testing Strategy
+5. Open Questions
+6. Success Criteria
+
+A spec area is "grounded" when the conversation contains explicit user statements, decisions, or shared context that lets you fill the area without inventing facts. Grounding is not the same as "I can guess plausibly." If you would prefix the content `UNVERIFIED:`, the area is not grounded.
+
+### When preconditions are met
+
+Skip Phase 1 entirely. Emit this marker before drafting:
+
+```
+SYNTHESIZE: drafting from current context, areas grounded: <N> of 6
+```
+
+Then proceed to Phase 2. Phase 3 approval gate stays — synthesis only removes the assumptions round-trip, not the explicit approval.
+
+### When preconditions fail
+
+Fall back to Phase 1 with this warning marker:
+
+```
+SYNTHESIZE: insufficient grounding (<N> of 6 areas), falling back to assumptions block
+```
+
+Then run Phase 1 normally. Do NOT silently invent the missing areas.
+
+### When the user disagrees with the fallback
+
+If the user pushes to synthesize anyway after a precondition-failure fallback, emit a `MISSING REQUIREMENT:` block naming the ungrounded areas and ask the user to either (a) supply enough context to ground them now, or (b) accept the assumptions-block round-trip. Do not draft.
 
 ## Phase 2: Draft the spec
 
@@ -129,7 +177,8 @@ On approval:
 
 | Marker | Used when |
 |--------|-----------|
-| `ASSUMPTIONS I'M MAKING:` | Phase 1, before drafting. Always. |
+| `ASSUMPTIONS I'M MAKING:` | Phase 1, before drafting (skipped only in Synthesize mode when preconditions are met). |
+| `SYNTHESIZE:` | When `--synthesize` or the trigger phrase activates synthesis — emitted before drafting (success) or before fallback to Phase 1 (insufficient grounding). |
 | `CONFUSION:` | Phase 1 or 2, when user input is ambiguous. |
 | `MISSING REQUIREMENT:` | Phase 2, when a required area cannot be filled. |
 | `UNVERIFIED:` | Phase 2, inline on any inferred claim inside the spec. |
@@ -147,12 +196,14 @@ These markers are deliberate. Keep them verbatim — tooling and downstream skil
 | "The assumptions block is noise, the user knows what they want." | The block costs one turn and catches misalignment before you've drafted six areas of the wrong spec. |
 | "One ambiguous area is fine, we'll figure it out in code." | No. Emit `MISSING REQUIREMENT:` and stop. Ambiguous specs produce ambiguous code. |
 | "The user said yes in a previous turn, that's approval." | Approval is explicit and scoped to the current spec version. Re-confirm after each revision. |
+| "I should always synthesize — the user prefers fewer questions." | Synthesis is only safe when 4 of 6 areas are grounded in the current conversation. Below that threshold, synthesis produces a confidently-wrong spec, which costs more cycles than the assumptions round-trip would have. |
 
 ## Red Flags — STOP
 
 - Implementation starts before the user explicitly approves the spec.
 - Scope creep mid-draft (new areas appearing without updating Phase 1 assumptions).
-- The Assumptions block is skipped or collapsed into the draft.
+- The Assumptions block is skipped or collapsed into the draft (without `--synthesize`/trigger phrase AND preconditions met).
+- Synthesizing with fewer than 4 of 6 areas grounded.
 - Claims inside the spec are presented as fact when they are inference — any such claim must be prefixed `UNVERIFIED:`.
 - The skill begins writing `siw/`, `LOG.md`, or issue files. That's out of scope — use `/kramme:siw:init` instead.
 - The user asks for phased breakdown — route to `/kramme:siw:init <spec-file>` after approval, then `/kramme:siw:generate-phases`; do not inline phases here.

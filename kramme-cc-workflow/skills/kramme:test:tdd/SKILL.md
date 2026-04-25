@@ -99,11 +99,35 @@ The ladder prefers **real implementations** first, dropping to lighter fakes/stu
 
 ## Anti-patterns
 
-Six common failure modes, with remedies.
+### Horizontal slices (the most common TDD failure)
 
-> See `references/anti-patterns.md` for the full table and the recommended order of operations when more than one is present.
+Writing all tests first, then all implementation. Sequence looks like:
 
-If you recognize one of these in the current session, stop and address it before writing the next test.
+```
+WRONG (horizontal):                RIGHT (vertical):
+  test1  →  test2  →  test3          test1  →  impl1
+  ↓                                   ↓
+  impl1  →  impl2  →  impl3          test2  →  impl2
+                                      ↓
+                                      test3  →  impl3
+```
+
+Why horizontal slicing produces bad tests:
+
+- **Tests of imagined behavior.** With no implementation yet, the tests assert what you *guessed* the behavior would be. The first impl pass discovers that several guesses were wrong, but the tests have already calcified them.
+- **Tests of shape rather than user-visible behavior.** Without running the code, it's hard to think about behavior, so tests drift to "this method exists, takes these args, returns this type." That's a type signature, not a specification.
+- **Tests insensitive to real changes.** When tests are written from theory, they tend to under-specify the conditions that actually matter. Real bugs slip past green suites.
+- **Outrunning your headlights.** You're committing to N test designs before the first one taught you anything. Vertical slicing lets each cycle's lesson reshape the next test.
+
+The existing Red Flag — "You wrote the implementation first and are now 'backfilling' tests to match" — is one specific failure mode of horizontal slicing (the implementation-first variant). Horizontal slicing also includes the test-first-then-batch-implementation variant, which feels disciplined but produces the same drift between tests and behavior.
+
+**The fix:** vertical slicing via tracer bullets — one test → make it pass → next test → make it pass. Each test is informed by the previous green; each implementation is shaped by the failing test in front of it.
+
+### Other anti-patterns
+
+Six additional failure modes, with remedies, are tabulated in `references/anti-patterns.md` (testing implementation details, flaky tests, testing framework code, snapshot abuse, no test isolation, mocking everything). Read that reference for the table and the recommended order of operations when more than one is present.
+
+If you recognize any anti-pattern in the current session — horizontal slices or any of the six in the reference — stop and address it before writing the next test.
 
 ---
 

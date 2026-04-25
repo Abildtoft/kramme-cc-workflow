@@ -102,10 +102,17 @@ Skip if `$ARGUMENTS` already provides a clear description.
    ```
 
 3. For the description:
+
+   The description is **system-prompt real estate.** It's the only thing the agent sees when deciding which skill to load — it lives in the agent's system prompt alongside every other installed skill in the user's environment, competing for the agent's attention. A poor description gets the wrong skill picked, or no skill picked at all. Goal: just enough to know what capability this skill provides AND when to trigger it (specific keywords, contexts, file types).
+
    - Write in third person ("Creates...", "Guides...", "Runs...")
    - Include what the skill does AND when to use it
    - Add a negative trigger ("Not for...", "Don't use for...")
+   - Name the concrete keywords, file types, or contexts that should trigger it (e.g., "when the file imports `anthropic`/`@anthropic-ai/sdk`")
+   - No time-sensitive content (today's date, this-week's library version, current URL) — descriptions ship to downstream installations and may be cached
    - Stay under 1,024 characters
+
+   See `references/best-practices.md` for the long-form rationale on description framing and the no-time-sensitive-info rule.
 
 4. Present the draft frontmatter to the user for review. Adjust based on feedback.
 
@@ -180,6 +187,8 @@ After scaffolding, verify the skill against these checks:
 - [ ] No references to repo-root CLAUDE.md or README.md (skills must be self-contained per installation)
 - [ ] No extra documentation files inside the skill directory (for example release notes or status docs)
 - [ ] No redundant logic the agent already handles
+- [ ] No time-sensitive info (skill instructions may be cached or shipped to downstream installations; today's URL or this-week's library version goes stale)
+- [ ] References are one level deep (SKILL.md → reference; references do not chain to other references)
 
 Report any failing checks to the user with specific remediation steps.
 

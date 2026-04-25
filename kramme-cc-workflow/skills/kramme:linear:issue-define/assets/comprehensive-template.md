@@ -92,7 +92,7 @@ Draft the issue following this template:
 [Only include code examples for specific bugs or concrete fixes]
 
 ### References
-- [Related files: `path/to/file.ts`]
+- [Related module / contract by name and responsibility]
 
 ## Dependencies
 - [Blocking issue or prerequisite, if any]
@@ -113,6 +113,7 @@ Draft the issue following this template:
 - If `is_dev_ask` flag is true, always include the "Original Dev Ask" section at the bottom
 - Quote the entire original description using markdown blockquote (`>`)
 - Do not modify the original text - preserve it exactly
+- The verbatim archival block is exempt from the durability rule; translate any brittle paths or helper names into durable language in the authored sections instead of rewriting the original quote
 - This section comes after all other sections, including Dependencies
 
 ## Technical Notes Guidelines

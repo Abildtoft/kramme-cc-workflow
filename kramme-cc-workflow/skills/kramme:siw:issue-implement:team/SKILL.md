@@ -42,18 +42,28 @@ Then stop.
 1. Read `siw/OPEN_ISSUES_OVERVIEW.md` to understand all issues and their statuses
 2. Read the main spec file (from `siw/` directory) for project context, excluding temporary artifacts such as `DISCOVERY_BRIEF.md`
 3. Read `siw/LOG.md` for current progress and decisions
+4. Capture each issue's `Mode` from the overview table when present, then confirm it from the issue file frontmatter when reading candidates. Treat missing Mode as `HITL — mode missing; requires human triage`.
 
 ### Step 2: Identify Parallelizable Issues
 
 **If specific issue IDs provided** (e.g., `G-001 P1-002`):
 - Validate each issue exists and is in READY status
 - Warn if any have unresolved blockers
+- If any requested issue is `HITL`, keep it out of the automatic batch until the user explicitly confirms that the required human decision/review/access has already been handled. `--auto` does not count as that confirmation.
 
 **If "phase N" provided** (e.g., `phase 1`):
 - Select all READY issues with prefix matching that phase (`P1-*` for phase 1)
+- Exclude HITL issues from the proposed automatic batch and list them separately as human-gated work.
 
 **If no arguments:**
-- Select all READY issues across all phases that have no unresolved blockers
+- Select all READY AUTO issues across all phases that have no unresolved blockers
+- Exclude HITL issues from the proposed automatic batch and list them separately as human-gated work.
+
+**HITL guardrail:**
+- Do not spawn implementation agents for HITL issues by default.
+- If all candidate issues are HITL, stop and ask the user to resolve the human requirement first or run `/kramme:siw:issue-implement` for a single issue with the needed context.
+- If `AUTO_MODE=true`, skip HITL issues automatically and report them as not started; if skipping leaves no AUTO candidates, stop without spawning agents.
+- If interactive mode includes HITL candidates, Step 4 must present them separately with their one-line reasons and require explicit user confirmation before any HITL issue enters a batch.
 
 ### Step 3: Analyze File Ownership
 
@@ -86,6 +96,7 @@ options:
     description: |
       Batch 1 (parallel): [issue-ids] - X teammates
       Batch 2 (after batch 1): [issue-ids] - Y teammates
+      Human-gated HITL issues not started: [issue-ids with reasons]
       Potential conflicts: [details if any]
   - label: "Adjust plan"
     description: "Let me modify which issues to include"
@@ -101,6 +112,8 @@ Create a multi-agent implementation session named `siw-implement`.
 - **Codex:** launch equivalent parallel implementation agents via multi-agent mode.
 
 For each issue in Batch 1, spawn a teammate with:
+
+**Precondition:** Every issue in the batch is `AUTO`, or the user explicitly confirmed inclusion of that specific HITL issue after seeing its reason in Step 4.
 
 1. **Issue content**: Full text of the issue file
 2. **Spec context**: Relevant sections of the main spec and any supporting specs
