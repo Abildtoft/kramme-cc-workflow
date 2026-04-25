@@ -16,10 +16,12 @@ Run a multi-issue QA-intake session. The user describes bugs they encountered du
 
 **This command ONLY listens to the user and files new tickets.**
 
-- **DOES**: ask short clarifying questions, explore the codebase for domain language, file new Linear/SIW/local tickets, link blockers in compound breakdowns.
-- **DOES NOT**: write code, modify existing tickets, close tickets, propose or implement fixes, run live-app QA against a URL.
+- **DOES**: ask short clarifying questions, explore the codebase for domain language, file new Linear/SIW/local tickets, link parent/child and blocker relationships between tickets created during the same intake run.
+- **DOES NOT**: write code, modify pre-existing tickets, close tickets, propose or implement fixes, run live-app QA against a URL.
 
-**Linear Issue Creation Override**: invoking this command IS explicit instruction to create new Linear issues. When the user has confirmed an issue scope inside the per-issue loop, proceed directly with `mcp__linear__create_issue` without a separate "may I create the ticket?" gate — the user is in-session and approval is implicit in their continued participation.
+Updating a parent ticket created earlier in the same intake run to add its just-created child links is part of filing the breakdown. It is not permission to edit older tickets.
+
+**Linear Issue Creation Override**: invoking this command IS explicit instruction to create new Linear issues and, for breakdowns, update only the just-created parent issue to add child links. When the user has confirmed an issue scope inside the per-issue loop, proceed directly with `mcp__linear__create_issue` without a separate "may I create the ticket?" gate — the user is in-session and approval is implicit in their continued participation.
 
 ## When to Use
 
@@ -32,7 +34,7 @@ Run a multi-issue QA-intake session. The user describes bugs they encountered du
 - **Live-app browser testing** — the user wants automated probing of a running URL with screenshots, network triage, and an a11y ladder. Use `kramme:qa` instead.
 - **Single-bug deep root-cause investigation and fix** — the user wants to reproduce, isolate, trace data flow, and apply a code fix. Use `kramme:debug:investigate` instead.
 - **One well-refined ticket** — the user has one issue and wants the full 5-round structured interview that produces a comprehensive, polished Linear issue. Use `kramme:linear:issue-define` instead.
-- **Editing or closing tickets** — this skill files new tickets only. For improving an existing Linear issue, use `kramme:linear:issue-define` in improve mode.
+- **Editing or closing pre-existing tickets** — this skill files new tickets only, apart from finalizing child links on a parent created during the same intake run. For improving an existing Linear issue, use `kramme:linear:issue-define` in improve mode.
 
 ## Process Overview
 
@@ -60,15 +62,15 @@ Run a multi-issue QA-intake session. The user describes bugs they encountered du
 
 ## Step 1: Detect Inputs
 
-### 1a. Ticket sink (auto-detect, no flag, no per-session prompt)
+### 1a. Ticket sink (auto-detect, no flag)
 
-Run this detection silently at session start and emit a single `STACK DETECTED` line announcing the chosen sink.
+Run sink detection silently at session start and emit a single `STACK DETECTED` line announcing the chosen sink. Ask a setup question only when required metadata, such as a Linear team, cannot be inferred.
 
-1. **Linear** — if `mcp__linear__create_issue` is available in the tool surface, use Linear. (`STACK DETECTED: Linear`)
-2. **SIW fallback** — else, if a `siw/` directory exists at the project root, file each issue as `siw/issues/ISSUE-QA-{NNN}-{slug}.md`, where `{NNN}` is the next free number across `siw/issues/ISSUE-QA-*.md`. (`STACK DETECTED: SIW (siw/issues/)`)
-3. **Local fallback** — else, file each issue as `intake-issues/{NNN}-{slug}.md` at the project root, creating the `intake-issues/` directory if it does not exist. Same numbering rule. (`STACK DETECTED: local intake-issues/`)
+1. **Linear** — if `mcp__linear__create_issue` is available in the tool surface, use Linear. Resolve a `LINEAR_TEAM` before the first issue is filed: use an obvious default if the workspace exposes one, use the only team if there is exactly one, otherwise ask one short session-level question for the team and reuse that answer for every issue in the intake run. If no team can be resolved, treat Linear as unavailable and continue to the next sink. (`STACK DETECTED: Linear`)
+2. **SIW fallback** — else, if `siw/OPEN_ISSUES_OVERVIEW.md` and `siw/issues/` exist at the project root, file each issue as a normal General SIW issue: `siw/issues/ISSUE-G-{NNN}-qa-{slug}.md`, where `{NNN}` is the next free real `G-` issue number across both `siw/issues/ISSUE-G-*.md` and `siw/OPEN_ISSUES_OVERVIEW.md`. When scanning the overview, count only real issue rows and ignore placeholder/example text such as the `_None_` row's `(G-001)` hint. Add a matching row to the `## General` section in `siw/OPEN_ISSUES_OVERVIEW.md`, preserving the existing table schema and any section-level metadata rules below. (`STACK DETECTED: SIW (siw/issues/)`)
+3. **Local fallback** — else, file each issue as `intake-issues/{NNN}-{slug}.md` at the project root, creating the `intake-issues/` directory if it does not exist. `{NNN}` is the next free number across existing `intake-issues/*.md` files; pad to 3 digits. (`STACK DETECTED: local intake-issues/`)
 
-If none of the three sinks is writable (no Linear MCP, no `siw/`, working tree is read-only), stop and emit `MISSING REQUIREMENT: no writable ticket sink — Linear MCP unavailable, no siw/ folder, and project root is read-only`.
+If none of the three sinks is writable (no Linear MCP with a resolved team, no complete SIW tracker, working tree is read-only), stop and emit `MISSING REQUIREMENT: no writable ticket sink — Linear MCP unavailable or no Linear team, no complete siw/ tracker, and project root is read-only`.
 
 ### 1b. Domain-language priming
 
@@ -127,15 +129,20 @@ Do **not** break down because:
 - The bug touches two files. (File count is irrelevant to ticket shape.)
 - The description is long. (Length alone does not imply multiple issues.)
 
-For a breakdown, file in **dependency order**: file the blocker first, capture its URL or ticket ID, then file each dependent with a `Blocked by: <ticket-id>` line in its body.
+For a breakdown, file the parent first, then file child issues in **dependency order**: file any blocker child before a dependent child, capture its URL or ticket ID, then file each dependent with a `Blocked by: <ticket-id>` line in its body. Before close-out, update only the parent created for this breakdown so its final body lists the child ticket IDs or URLs. Do not update pre-existing tickets.
 
 ### 3d. File the ticket(s)
 
 Apply the **Durability Rule** and the **Domain-Language Rule** (below) when composing each body.
 
-- **Linear**: call `mcp__linear__create_issue` with `title`, `description` (the markdown body from the templates below), and any priority label suggested by the user (`low`, `medium`, `high`, `urgent`). If the user said the issue is "minor" or "not urgent" and did not give an explicit priority, attach a low-priority label or marker — do not file unlabeled.
-- **SIW**: write `siw/issues/ISSUE-QA-{NNN}-{slug}.md` with the body. The `{NNN}` is the next free number across existing `ISSUE-QA-*.md` files; pad to 3 digits.
-- **Local**: write `intake-issues/{NNN}-{slug}.md`.
+- **Linear**: call `mcp__linear__create_issue` with `title`, `description` (the markdown body from the templates below), `team: LINEAR_TEAM`, and any priority label suggested by the user (`low`, `medium`, `high`, `urgent`). If the user said the issue is "minor" or "not urgent" and did not give an explicit priority, attach a low-priority label or marker — do not file unlabeled. For a breakdown, after all child IDs exist, call `mcp__linear__update_issue` only for the just-created parent to add the final `## Child issues` list.
+- **SIW**: write `siw/issues/ISSUE-G-{NNN}-qa-{slug}.md` using a SIW-compatible wrapper around the body:
+  - Header: `# ISSUE-G-{NNN}: QA: {title}`
+  - Status line: `**Status:** Ready | **Priority:** {Low|Medium|High|Urgent} | **Size:** XS | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential after <ticket-id> | Needs coordination} | **Related:** QA intake`. Use `Safe to parallelize` only when the ticket can start without blockers; dependent child issues with a `Blocked by` line must use `Must be sequential after <ticket-id>`.
+  - Sections: include the user-visible intake body under `## Problem`, and add acceptance criteria only when they follow directly from the user's expected behavior.
+  - Overview row: add `G-{NNN}` to the `## General` table in `siw/OPEN_ISSUES_OVERVIEW.md`; if the existing General section is the empty placeholder, replace it. If the section has a `**Parallelization:**` summary, recompute it from all non-placeholder `G-*` issue files: use the shared guidance when they agree, or `Mixed — see issue files for exact guidance` when they differ. If a legacy General section has no summary line, keep it absent.
+  - Breakdown parent: after child files are written, update the newly-created parent file so it contains the final `## Child issues` list.
+- **Local**: write `intake-issues/{NNN}-{slug}.md`. For a breakdown, apply the same final parent-child link rule as SIW.
 
 ### 3e. Continue
 
@@ -190,11 +197,13 @@ For a parent issue that scopes the overall report:
 ## Scope
 This intake report covers N independent failure modes. Each is filed as a separate ticket below for tracking.
 
-## Children
-- <ticket-id>: [one-line summary of failure mode 1]
-- <ticket-id>: [one-line summary of failure mode 2]
-- <ticket-id>: [one-line summary of failure mode 3]
+## Child issues
+- <ticket-id-or-url>: [one-line summary of failure mode 1]
+- <ticket-id-or-url>: [one-line summary of failure mode 2]
+- <ticket-id-or-url>: [one-line summary of failure mode 3]
 ```
+
+For Linear, create the parent without `## Child issues` if child IDs are not known yet, then update that just-created parent with the final child list before close-out. For SIW/local, either reserve the child IDs up front or update the newly-created parent file after child files are written.
 
 For each child issue (file these **after** the parent so the parent ID is known):
 
@@ -270,10 +279,13 @@ Pause and resolve before filing if any of these are true:
 
 - More than 3 clarifying questions have been asked on a single issue.
 - A draft ticket body contains `:\d+`, a `src/` path, a file extension (`.ts`, `.tsx`, `.py`, `.go`, `.js`, `.jsx`), an import path, or a private helper name.
-- A breakdown has been drafted without a parent issue **or** without `Parent issue` lines on the children.
+- A breakdown has been drafted without a parent issue, with child ID placeholders in the final parent body, without final child links on the parent, **or** without `Parent issue` lines on the children.
 - The user described an issue as "minor" or "not urgent" but the draft ticket has no low-priority label or marker.
+- The Linear sink is selected but no `LINEAR_TEAM` has been resolved.
+- The SIW sink is selected but the issue file will not have a matching row in `siw/OPEN_ISSUES_OVERVIEW.md`, or the General section's existing `**Parallelization:**` summary will be left stale.
+- A dependent child issue has a `Blocked by` line but its SIW status line still says `**Parallelization:** Safe to parallelize`.
 - The session has produced more than 10 tickets in one sitting and the user has not paused — confirm the user is still doing intentional intake, not piling on.
-- The skill is about to call `mcp__linear__update_issue`, close a ticket, or write code — this skill files new tickets only.
+- The skill is about to call `mcp__linear__update_issue` for anything except adding child links to the just-created breakdown parent, close a ticket, or write code — this skill files new tickets only.
 - No writable ticket sink has been resolved and the loop is about to start anyway.
 
 ## Verification
@@ -281,10 +293,13 @@ Pause and resolve before filing if any of these are true:
 Before ending each session, self-check:
 
 - [ ] `STACK DETECTED` was emitted at session start with the resolved sink.
+- [ ] If the sink is Linear, `LINEAR_TEAM` was resolved before the first issue was filed.
+- [ ] If the sink is SIW, every new issue file has a matching `G-{NNN}` row in `siw/OPEN_ISSUES_OVERVIEW.md`, and any existing General `**Parallelization:**` summary was updated or intentionally preserved as absent.
 - [ ] Each issue triggered at most 3 clarifying questions.
 - [ ] Each filed body passes the durability grep: no `:\d+`, no `src/`, no file extensions, no internal helper names.
 - [ ] Each filed body uses domain language from `UBIQUITOUS_LANGUAGE.md` (if present) or the user's own phrasing (if not).
-- [ ] Every breakdown has a parent issue and `Parent issue` lines on the children.
+- [ ] Every breakdown has a parent issue with final child links and no child ID placeholders, plus `Parent issue` lines on the children.
+- [ ] Every dependent child issue with a `Blocked by` line has non-`Safe to parallelize` SIW parallelization metadata.
 - [ ] Every "minor"/"not urgent" issue has a low-priority label or marker.
-- [ ] No existing ticket was modified or closed.
+- [ ] No pre-existing ticket was modified or closed; any parent update only touched a ticket created during this same intake run.
 - [ ] The end-of-run epilogue lists `CHANGES MADE`, `THINGS I DIDN'T TOUCH`, and `POTENTIAL CONCERNS`.
