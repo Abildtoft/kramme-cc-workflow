@@ -35,12 +35,14 @@ These rejections are pre-filters — apply them before recording a finding, not 
 1. Parse the optional scope path from `$ARGUMENTS`. If non-empty, store it as `TARGET_SCOPE`. Otherwise set `TARGET_SCOPE` to the repo root.
 2. Use the Read tool to examine `package.json` / `pyproject.toml` / build config to understand the stack and directory layout.
 3. Discover project instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents) if present and read the relevant ones to understand project-specific conventions.
-4. Determine the effective scan scope from `TARGET_SCOPE`. List the source directories and file types that will be scanned.
-5. Count files in scope — report the count to the user before proceeding.
+4. **Read accepted ADRs.** Look for `docs/decisions/` (or other common ADR locations: `doc/adr/`, `docs/adr/`, `architecture/decisions/`). If found, read every accepted ADR and store their decisions as `KNOWN_ADRS` — title, status, and a one-line summary of what was decided and what was rejected. These bound the design space the scan operates in. If no ADR directory exists, proceed silently with `KNOWN_ADRS = []`.
+5. **Read project domain language.** If `UBIQUITOUS_LANGUAGE.md` (or similar: `GLOSSARY.md`, `docs/glossary.md`) exists at the project root, read it and store the canonical domain terms. When naming refactor candidates in Phase 4, prefer these terms over internal helper class names — "the Order intake module" is more useful than "the FooBarHandler". If no glossary file exists, proceed silently — do not flag its absence.
+6. Determine the effective scan scope from `TARGET_SCOPE`. List the source directories and file types that will be scanned.
+7. Count files in scope — report the count to the user before proceeding.
 
 ### Phase 2 — Parallel Scan
 
-Read `references/checklist.md` for the full checklist of categories and recording format.
+Read `references/checklist.md` for the full checklist of categories and recording format. For findings in the Structural & Architectural and Coupling & Dependencies categories — anywhere depth, seams, wrappers, or speculative indirection are at issue — read `references/architecture-language.md` and use that vocabulary in the finding. Specifically, before flagging a wrapper as shallow, apply the **deletion test**; before flagging an interface as a speculative seam, apply the **adapter-count rule** ("one adapter = hypothetical seam, two adapters = real seam"). A finding that does not satisfy these tests is not yet a finding.
 
 Launch parallel Explore agents to cover the codebase efficiently. Split work by **category group**, not by directory, so each agent builds cross-cutting expertise:
 
@@ -68,10 +70,11 @@ Each agent must:
 
 1. Collect all agent findings and `NOTICED BUT NOT TOUCHING` entries.
 2. Deduplicate (same location + same issue = one finding).
-3. Assign final severity. Promote findings that appear in 3+ locations to at least medium.
-4. Group related findings into **themes** — patterns that share a root cause or would benefit from a coordinated fix.
-5. **Rule of 500 — automation trigger.** For any theme whose combined blast radius exceeds **500 lines**, mark the theme as an automation candidate and recommend a codemod, AST transform, or batch refactor tool instead of manual per-file fixes. Addy's rule: *"If a refactoring would touch more than 500 lines, invest in automation."* Manual edits at that scale are error-prone and review-hostile.
-6. Determine a **recommended refactor order** considering:
+3. **Filter against `KNOWN_ADRS`.** For each finding, check whether it contradicts an accepted ADR. If the contradiction is theoretical (the ADR rejected this exact refactor and no concrete new evidence has emerged), drop the finding silently — the ADR is decision-of-record. Surface as `_"contradicts ADR-NNNN — but worth reopening because <concrete new evidence>"_` only when real friction has accumulated since the ADR was accepted. The default is silent skip; the annotation is the exception.
+4. Assign final severity. Promote findings that appear in 3+ locations to at least medium.
+5. Group related findings into **themes** — patterns that share a root cause or would benefit from a coordinated fix.
+6. **Rule of 500 — automation trigger.** For any theme whose combined blast radius exceeds **500 lines**, mark the theme as an automation candidate and recommend a codemod, AST transform, or batch refactor tool instead of manual per-file fixes. Addy's rule: *"If a refactoring would touch more than 500 lines, invest in automation."* Manual edits at that scale are error-prone and review-hostile.
+7. Determine a **recommended refactor order** considering:
    - High-severity items first
    - Quick wins (small blast radius, high clarity gain) early
    - Dependencies between findings (fix A before B)
@@ -82,8 +85,10 @@ Each agent must:
 
 1. Read `assets/report-template.md` for the output format.
 2. Produce the report following that template. In the "Patterns & Themes" section, mark each theme's total line count and flag themes ≥500 lines as **automation candidates**.
-3. Write the report to `REFACTOR_OPPORTUNITIES_OVERVIEW.md` in the project root.
-4. Present a summary to the user with:
+3. **Depth/seam findings carry extra fields.** Any finding whose category is Structural or Coupling and whose vocabulary comes from `references/architecture-language.md` must include a one-line **deletion test** result (e.g., "inlining at the 1 call site removes 4 lines, no caller becomes harder to read") and an **adapter count** when claiming a seam is speculative. Findings missing these fields are not yet ready and should be dropped at this point, not paper-clipped together.
+4. **Names follow the project glossary.** When `UBIQUITOUS_LANGUAGE.md` was read in Phase 1, use the canonical domain terms in finding titles and descriptions. Default helper-class language is a tell that the scan didn't read the project's own vocabulary.
+5. Write the report to `REFACTOR_OPPORTUNITIES_OVERVIEW.md` in the project root.
+6. Present a summary to the user with:
    - Total findings by severity
    - Top 3 themes (with automation-candidate flag if applicable)
    - Recommended first refactor to tackle
@@ -118,6 +123,8 @@ If you notice any of these during the scan, stop and tighten the filter:
 - Themes recommended for manual refactor despite exceeding 500 lines — the Rule of 500 was missed.
 - The report recommends changes that conflict with documented project conventions.
 - `NOTICED BUT NOT TOUCHING` entries were silently folded into findings instead of surfaced separately.
+- A wrapper flagged as "unnecessary abstraction" without a deletion-test result attached — the test is what distinguishes a pass-through from a real consolidator.
+- A finding re-surfaces a refactor that was already considered and rejected in an accepted ADR, with no concrete new evidence — the ADR is decision-of-record; only re-open when the trade-off has actually shifted.
 
 ## Verification
 
@@ -129,5 +136,7 @@ Before writing the report, self-check:
 - [ ] Themes exceeding 500 lines are marked automation candidates.
 - [ ] `NOTICED BUT NOT TOUCHING` entries are surfaced as a separate section, not mixed into findings.
 - [ ] The report has fewer findings than the raw agent output (filtering and deduplication actually happened).
+- [ ] Every Structural / Coupling finding uses the architectural glossary and carries a deletion-test line; speculative-seam findings carry an adapter count.
+- [ ] No finding contradicts a `KNOWN_ADRS` entry without an explicit `contradicts ADR-NNNN` annotation backed by concrete new evidence.
 
 If any box is unchecked, fix the gap before writing the report.
