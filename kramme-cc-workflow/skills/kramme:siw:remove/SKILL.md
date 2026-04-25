@@ -52,6 +52,7 @@ Expected files:
 - siw/SPEC_STRENGTHENING_PLAN.md
 - siw/DISCOVERY_BRIEF.md
 - siw/issues/ directory
+- siw/qa-intake/ directory
 - Specification files in siw/ (e.g., siw/FEATURE_SPECIFICATION.md)
 ```
 **Action:** Stop.
@@ -86,7 +87,7 @@ header: "Delete SIW Files"
 question: "Which files should I delete?"
 options:
   - label: "Temporary files only"
-    description: "Delete siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/SPEC_STRENGTHENING_PLAN.md, siw/DISCOVERY_BRIEF.md, and siw/issues/ directory. Keep spec file."
+    description: "Delete siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/SPEC_STRENGTHENING_PLAN.md, siw/DISCOVERY_BRIEF.md, siw/issues/, and siw/qa-intake/. Keep spec file."
   - label: "All SIW files"
     description: "Delete everything including the specification file"
   - label: "Abort"
