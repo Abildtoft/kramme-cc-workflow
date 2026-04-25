@@ -240,13 +240,22 @@ MD
   run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
   [ "$status" -eq 0 ]
 
-  run rg -n '\bAskUserQuestion\b|\bTask tool\b|\bSkill tool\b|\bTodoWrite\b|\bTodoRead\b|\bsubagent_type\s*[:=]\s*Explore\b' "$TMP_DIR/.codex/skills"
+  run grep -REn '\bAskUserQuestion\b|\bTask tool\b|\bSkill tool\b|\bTodoWrite\b|\bTodoRead\b|\bsubagent_type[[:space:]]*[:=][[:space:]]*Explore\b' "$TMP_DIR/.codex/skills"
+  if [ "$status" -ne 1 ]; then
+    printf 'Unexpected matches (status=%s):\n%s\n' "$status" "$output" >&2
+  fi
   [ "$status" -eq 1 ]
 
-  run rg -n 'direct chat questions`|direct chat question`' "$TMP_DIR/.codex/skills"
+  run grep -REn 'direct chat questions`|direct chat question`' "$TMP_DIR/.codex/skills"
+  if [ "$status" -ne 1 ]; then
+    printf 'Unexpected matches (status=%s):\n%s\n' "$status" "$output" >&2
+  fi
   [ "$status" -eq 1 ]
 
-  run rg -n 'direct chat question tool' "$TMP_DIR/.codex/skills"
+  run grep -REn 'direct chat question tool' "$TMP_DIR/.codex/skills"
+  if [ "$status" -ne 1 ]; then
+    printf 'Unexpected matches (status=%s):\n%s\n' "$status" "$output" >&2
+  fi
   [ "$status" -eq 1 ]
 }
 
