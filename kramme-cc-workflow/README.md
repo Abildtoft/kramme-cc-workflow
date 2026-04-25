@@ -277,6 +277,7 @@ Bug investigation and root cause analysis.
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
 | `/kramme:debug:investigate` | User | `[bug description, error message, or issue reference]` | Structured bug investigation workflow: reproduce, isolate, trace root cause, and fix.<br><br>Use when debugging a bug, investigating an error, or tracking down a regression. |
+| `/kramme:debug:triage-to-issue` | User | `[bug description, error, or Linear/SIW ref] [--yes \| --afk]` | Experimental.<br><br>Triage a bug end-to-end into one implementation-ready ticket: orchestrate a root-cause investigation, design a TDD fix plan with RED-GREEN cycles, and file a refactor-durable Linear or local SIW issue in one mostly-hands-off pass.<br><br>Composes `kramme:debug:investigate`, `kramme:test:tdd` (Prove-It), and `kramme:linear:issue-define` via the Skill tool. Auto-detects the sink (Linear / SIW / project-root markdown) and asks once when both Linear and SIW are present. Applies a durability rule to the issue body — no file paths, no line numbers, no internal helper names — so the ticket remains useful after a refactor. Add `--yes` (alias `--afk`) to skip the approval gate. |
 
 #### Dependencies
 
