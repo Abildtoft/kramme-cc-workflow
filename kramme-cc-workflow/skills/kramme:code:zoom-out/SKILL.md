@@ -13,11 +13,11 @@ Produce a one-shot orientation map for an area of the codebase: which modules li
 ## Inputs
 
 - **`$ARGUMENTS`** (optional): a path, topic, or symbol naming the area to map.
-- If `$ARGUMENTS` is empty, infer the focus area from the most recently discussed file or symbol in the conversation.
+- If `$ARGUMENTS` is empty, infer the focus area from the most recently discussed file or symbol in the conversation. If no reliable focus exists, ask the user for a path, topic, or symbol before continuing.
 
 ## Workflow
 
-1. **Identify the focus area.** If `$ARGUMENTS` is non-empty, treat it as the entry point. Otherwise infer from recent conversation context. State the focus area at the top of the output.
+1. **Identify the focus area.** If `$ARGUMENTS` is non-empty, treat it as the entry point. Otherwise infer from recent conversation context. If no reliable focus exists, ask the user for a path, topic, or symbol before continuing. State the focus area at the top of the output.
 2. **List the relevant modules** in that area (≤15). For each, write `**ModuleName** — one-line role`. Use the project's domain language if `UBIQUITOUS_LANGUAGE.md` exists at the repo root.
 3. **Describe call relationships** as directed bullets: `**Caller** calls **Callee** to <reason>`. Cover both inbound (who calls into the area) and outbound (what the area calls).
 
