@@ -176,6 +176,14 @@ For each phase, decompose into atomic tasks:
 - **Testable** - Has clear acceptance criteria and validation
 - **Sized XS, S, M, or L** per `references/task-sizing.md`. XL tasks MUST be decomposed further before approval.
 - **Clearly defined** - Unambiguous scope with explicit boundaries
+- **Mode-tagged** - `AUTO` or `HITL` (see Mode taxonomy below)
+
+**Mode taxonomy (HITL vs AUTO — load-bearing for autonomous-agent pickup):**
+
+- **AUTO** — an autonomous agent can pick up, implement, verify, and prepare for review without human input.
+- **HITL** — human-in-the-loop is required for at least one of: architectural decision, design review, judgment call, manual testing, external system access. HITL tasks MUST carry a one-line reason (e.g., "needs architectural decision", "involves manual UAT").
+
+Tag each task during decomposition. Default to HITL when unclear; the subagent in Phase 4 will flag any task without a Mode label and any HITL task without a reason.
 
 **Sizing and triggers:**
 
@@ -247,6 +255,7 @@ Evaluate:
 6. **Sizing (hard gate)**: Every task must land XS, S, M, or L per `references/task-sizing.md`. Flag any XL task explicitly — XL is not an acceptable final state.
 7. **Slicing shape**: For feature work, does each task cut vertically (end-to-end slice — schema + API + UI together) rather than horizontally (one layer across many features)? For documentation, refactors, architecture, or process work, does each task deliver the smallest reviewable end-to-end outcome for that context? Flag tasks that are layer-by-layer or that bundle multiple independent deliverables.
 8. **Parallelization**: Are parallelization categories (Safe / Must be sequential / Needs coordination) correctly assigned? Flag any safely-parallel work serialized unnecessarily, or any shared-state change marked parallel.
+9. **Mode (AUTO vs HITL)**: Does every task carry a Mode label? Does every HITL task include a one-line reason (architectural decision, design review, judgment call, manual testing, external system access)? Flag any unlabeled task or HITL-without-reason. Do NOT second-guess the AUTO/HITL choice itself unless the rationale is obviously wrong (e.g., a task that requires manual UAT but is marked AUTO).
 
 For each issue found, provide:
 - What's wrong
@@ -257,11 +266,11 @@ If the breakdown looks good, confirm it's ready.
 
 **Incorporate feedback:** Update the phase plan based on subagent suggestions.
 
-**Loopback gate:** If the subagent reports any XL task or any context-inappropriate horizontal / over-bundled slice, re-run Phase 3.2 decomposition and re-submit to the subagent. Only proceed to Phase 5 once the subagent confirms zero XL tasks and zero slicing-shape issues remain.
+**Loopback gate:** If the subagent reports any XL task, any context-inappropriate horizontal / over-bundled slice, any task without a Mode label, or any HITL task without a one-line reason, re-run Phase 3.2 decomposition and re-submit to the subagent. Only proceed to Phase 5 once the subagent confirms zero XL tasks, zero slicing-shape issues, and complete Mode coverage.
 
 ## Phase 5: User Approval
 
-Present the proposed structure clearly, prefixed with the `PLAN:` output marker so downstream tooling can parse this block as the generated plan. Show each issue's size inline and include one `Parallelization:` line per task group:
+Present the proposed structure clearly, prefixed with the `PLAN:` output marker so downstream tooling can parse this block as the generated plan. Show each issue's size and Mode inline, and include one `Parallelization:` line per task group. HITL tasks include the one-line reason in the bracket:
 
 ```
 PLAN: Phase Plan for {Project Name}
@@ -270,15 +279,15 @@ PLAN: Phase Plan for {Project Name}
 General Tasks ({N} tasks)
 ─────────────────────────
   Parallelization: {Safe to parallelize | Must be sequential | Needs coordination}
-  ISSUE-G-001: {Title} [Ready | Size: XS|S|M|L]
-  ISSUE-G-002: {Title} [Ready | Size: XS|S|M|L]
+  ISSUE-G-001: {Title} [Ready | Size: XS|S|M|L | AUTO]
+  ISSUE-G-002: {Title} [Ready | Size: XS|S|M|L | HITL — needs architectural decision]
 
 Phase 1: {Goal} ({N} tasks)
 ───────────────────────────
   Parallelization: {Safe to parallelize after P1-001 | Must be sequential | Needs coordination}
-  ISSUE-P1-001: {Title} [Ready | Size: XS|S|M|L]
-  ISSUE-P1-002: {Title} [Blocked by P1-001 | Size: XS|S|M|L]
-  ISSUE-P1-003: {Title} [Ready | Size: XS|S|M|L]
+  ISSUE-P1-001: {Title} [Ready | Size: XS|S|M|L | AUTO]
+  ISSUE-P1-002: {Title} [Blocked by P1-001 | Size: XS|S|M|L | AUTO]
+  ISSUE-P1-003: {Title} [Ready | Size: XS|S|M|L | HITL — needs design review]
 
   Outcome: {What can be demonstrated or reviewed}
   Tests: {What tests validate this phase}
@@ -286,8 +295,8 @@ Phase 1: {Goal} ({N} tasks)
 Phase 2: {Goal} ({N} tasks)
 ───────────────────────────
   Parallelization: {Safe to parallelize | Must be sequential after Phase 1 | Needs coordination}
-  ISSUE-P2-001: {Title} [Blocked by Phase 1 | Size: XS|S|M|L]
-  ISSUE-P2-002: {Title} [Ready | Size: XS|S|M|L]
+  ISSUE-P2-001: {Title} [Blocked by Phase 1 | Size: XS|S|M|L | HITL — manual UAT]
+  ISSUE-P2-002: {Title} [Ready | Size: XS|S|M|L | AUTO]
 
   Outcome: {What can be demonstrated or reviewed}
   Tests: {What tests validate this phase}
@@ -295,6 +304,7 @@ Phase 2: {Goal} ({N} tasks)
 ...
 
 Total: {X} issues across {Y} phases + {Z} general
+AUTO: {n} | HITL: {m}
 ```
 
 Use AskUserQuestion:
@@ -326,7 +336,7 @@ For each issue, create `siw/issues/ISSUE-{prefix}-{number}-{title}.md`:
 ```markdown
 # ISSUE-{prefix}-{number}: {Title}
 
-**Status:** Ready | **Priority:** {High|Medium|Low} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination; include gating note if applicable} | **Related:** {dependencies}
+**Status:** Ready | **Priority:** {High|Medium|Low} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination; include gating note if applicable} | **Mode:** {AUTO | HITL — <one-line reason>} | **Related:** {dependencies}
 
 ## Problem
 
@@ -386,10 +396,13 @@ If you add any non-DONE issues to a phase section currently marked ` (DONE)`, re
 
 **Append-mode compatibility rules:**
 - Inspect each existing section before appending rows.
-- If a section already uses `| # | Title | Status | Size | Priority | Related |`, keep that 6-column schema.
-- If a section already uses the legacy `| # | Title | Status | Priority | Related |`, preserve that schema for compatibility and do not inject a `Size` column into that section.
-- If you're creating a brand-new section while appending into a tracker whose existing sections are legacy 5-column tables, match the legacy schema for the new section too instead of mixing layouts mid-file.
+- If a section already uses the **7-column** schema `| # | Title | Status | Size | Priority | Mode | Related |`, keep that schema and emit Mode for new rows.
+- If a section already uses the **6-column** schema `| # | Title | Status | Size | Priority | Related |` (pre-Mode), preserve it for compatibility. Only migrate to the 7-column schema when the user explicitly requests a schema migration.
+- If a section already uses the legacy **5-column** `| # | Title | Status | Priority | Related |`, preserve that schema and do not inject Size or Mode columns into that section.
+- If you're creating a brand-new section while appending into a tracker whose existing sections are legacy 5- or pre-Mode 6-column tables, match the existing dominant schema for the new section instead of mixing layouts mid-file.
 - Preserve any existing section-level `**Parallelization:**` line exactly as written. If a legacy section predates that metadata, do not add the line unless the user is explicitly migrating the tracker schema.
+
+The `Mode` cell is `AUTO` or `HITL` (no inline reason in the table; the reason lives in the issue file's frontmatter).
 
 ```markdown
 # Open Issues Overview
@@ -398,34 +411,34 @@ If you add any non-DONE issues to a phase section currently marked ` (DONE)`, re
 
 **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination}
 
-| # | Title | Status | Size | Priority | Related |
-|---|-------|--------|------|----------|---------|
-| G-001 | {Title} | Ready | {Size} | {Priority} | |
-| G-002 | {Title} | Ready | {Size} | {Priority} | |
+| # | Title | Status | Size | Priority | Mode | Related |
+|---|-------|--------|------|----------|------|---------|
+| G-001 | {Title} | Ready | {Size} | {Priority} | AUTO | |
+| G-002 | {Title} | Ready | {Size} | {Priority} | HITL | |
 
 ## Phase 1: {Goal}
 
 **Parallelization:** {Safe to parallelize after P1-001 | Must be sequential | Needs coordination}
 
-| # | Title | Status | Size | Priority | Related |
-|---|-------|--------|------|----------|---------|
-| P1-001 | {Title} | Ready | {Size} | High | |
-| P1-002 | {Title} | Ready | {Size} | Medium | P1-001 |
+| # | Title | Status | Size | Priority | Mode | Related |
+|---|-------|--------|------|----------|------|---------|
+| P1-001 | {Title} | Ready | {Size} | High | AUTO | |
+| P1-002 | {Title} | Ready | {Size} | Medium | AUTO | P1-001 |
 
 ## Phase 2: {Goal}
 
 **Parallelization:** {Safe to parallelize | Must be sequential after Phase 1 | Needs coordination}
 
-| # | Title | Status | Size | Priority | Related |
-|---|-------|--------|------|----------|---------|
-| P2-001 | {Title} | Ready | {Size} | High | Phase 1 |
+| # | Title | Status | Size | Priority | Mode | Related |
+|---|-------|--------|------|----------|------|---------|
+| P2-001 | {Title} | Ready | {Size} | High | HITL | Phase 1 |
 
 **Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
 
 **Details:** See `siw/issues/ISSUE-{prefix}-XXX-*.md` files.
 ```
 
-Legacy compatibility example when appending to an older tracker:
+Legacy compatibility example when appending to an older 5-column tracker:
 
 ```markdown
 ## Phase 1: {Goal}

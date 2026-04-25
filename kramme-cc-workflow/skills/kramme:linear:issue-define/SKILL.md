@@ -149,7 +149,26 @@ The target issue was already fetched in Phase 1. Now present it to the user:
    - If this is a Dev Ask issue (has "Dev Ask" label):
      - Note to user: "This issue was created through Linear Asks. The original request will be preserved in an 'Original Dev Ask' section at the bottom of the refined issue."
 
-2. **Identify Improvement Areas**
+2. **Resume from prior session triage**
+
+   The fetched issue body may contain AI-authored content from a prior session of this skill — for example an `## Original Dev Ask` block, a prior `## Problem`/`## Value`/`## Scope` set, or marker-tagged sections like `<!-- linear:issue-define: round-1 -->`.
+
+   Before launching the interview:
+   - Scan the description for these markers and for the canonical comprehensive-template section headings.
+   - For each section already populated with substantive prior-session content (not placeholder text or one-line stubs), record which interview round it covered:
+     - `## Problem` / `## Value` → Round 1 (Problem & Value)
+     - `## Scope` / `## Out of Scope` → Round 2 (Scope & Boundaries)
+     - `## Technical Notes` / `## Affected Areas` → Round 3 (Technical Context)
+     - `## Acceptance Criteria` / `## Edge Cases` → Round 4 (Acceptance Criteria)
+     - existing `labels`/`priority`/`project` → Round 5 (Metadata)
+   - Store the parsed sections as `prior_session_context`, keyed by round.
+
+   In Phase 5, the interview must:
+   - Skip rounds whose corresponding section is already populated with substantive prior-session content, unless the user selected that area as an improvement target in Step 3 below.
+   - When skipping, show the user a one-line summary like `Round 2 (Scope & Boundaries): carrying forward from prior session — say "revisit" to re-open` so the user can re-open any round on demand.
+   - Do not re-ask resolved questions. Treat ambiguity in prior content as a reason to surface that section for refinement, not as a reason to start the round from scratch.
+
+3. **Identify Improvement Areas**
    - Use `AskUserQuestion` to ask what aspects to improve:
      - Problem statement clarity
      - Value proposition
@@ -159,12 +178,13 @@ The target issue was already fetched in Phase 1. Now present it to the user:
      - Metadata (labels, priority, etc.)
      - All of the above (full refinement)
    - Store selected areas for focused interview in Phase 5
+   - Selected areas always take precedence over prior-session skips — if the user says "improve scope", run Round 2 even when prior content exists.
 
-3. **Search for Related Issues**
+4. **Search for Related Issues**
    - Use `mcp__linear__list_issues` with keywords from the existing issue
    - Identify issues to link as related or blockers
 
-**Output**: Improvement areas selected, related issues identified.
+**Output**: Improvement areas selected, related issues identified, prior-session context recorded.
 
 ### CREATE MODE
 
@@ -301,6 +321,17 @@ Coverage: [Problem: X%] [Scope: X%] [Technical: X%] [Acceptance: X%] [Metadata: 
 Continue until all dimensions show adequate coverage for a well-defined issue.
 
 ## Phase 6: Issue Composition
+
+### Durability rule
+
+Issue bodies must NOT include file paths, line numbers, or internal helper/class names. Describe modules, behaviors, and contracts. Reason: file paths and line numbers rot quickly; the issue should remain useful after major refactors.
+
+This rule applies to every section composed in this phase — Problem, Value, Goal, Scope, Acceptance Criteria, Edge Cases, Technical Notes, Dependencies, and the Original Dev Ask preservation block.
+
+- ❌ Bad: "Fix bug in `src/services/orderService.ts:142` where `applyDiscount()` returns NaN"
+- ✅ Good: "Order discount calculation returns NaN when applied to gift-card orders; affects checkout total and order summary email"
+
+When the codebase exploration in Phase 4 surfaced specific files or functions, translate them into module names and behaviors before writing them into the issue. Engineers reading the issue can re-discover the file location from the module name; the inverse — recovering intent from a stale path — is much harder.
 
 ### Template Selection
 
