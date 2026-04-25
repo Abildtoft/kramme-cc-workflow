@@ -255,13 +255,22 @@ Streamlined 2-round interview:
 **Round 2: Root Cause & Fix**
 - What's causing the bug? (if known)
 - What needs to change to fix it?
-- Which file(s) are affected?
+- Which area(s) are affected? If specific files are known, use them as private context for exploration, but translate them into durable module/behavior language in the issue body.
 
 **If root cause unknown after Round 2:**
 - Reclassify as Bug (Complex)
 - Switch to Standard Interview
 
-Then proceed to Phase 5 with simple template.
+Then run a streamlined metadata pass and store the answers as Round 5 metadata for Phase 5:
+- Priority (default Medium unless the user indicated urgency)
+- Size (default XS/S for localized simple bugs)
+- Related issues or blockers, if any
+- Parallelization category (default Safe to parallelize for localized fixes unless shared-state or sequencing concerns exist)
+- Mode:
+  - Default `AUTO` only when the root cause and fix are known, verification can be automated, and no external access, manual testing, design review, or architectural decision is required.
+  - Default `HITL — <one-line reason>` when any of those human inputs are needed or when unclear.
+
+Confirm inferred metadata with the user before composing. Then proceed to Phase 5 with the simple template.
 
 ### Standard Interview (for all other types)
 
