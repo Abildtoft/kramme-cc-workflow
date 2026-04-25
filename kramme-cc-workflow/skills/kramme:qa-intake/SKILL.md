@@ -129,7 +129,7 @@ Do **not** break down because:
 - The bug touches two files. (File count is irrelevant to ticket shape.)
 - The description is long. (Length alone does not imply multiple issues.)
 
-For a breakdown, file the parent first, then file child issues in **dependency order**: file any blocker child before a dependent child, capture its URL or ticket ID, then file each dependent with a `Blocked by: <ticket-id>` line in its body. Before close-out, update only the parent created for this breakdown so its final body lists the child ticket IDs or URLs. Do not update pre-existing tickets.
+For a breakdown, file the parent container first, then file child issues in **dependency order**: file any blocker child before a dependent child, capture its URL or ticket ID, then file each dependent with a `Blocked by: <ticket-id>` line in its body. In Linear, the parent container is a normal parent issue. In SIW, the parent container is a non-actionable intake summary outside `siw/issues/` and must not be added to `siw/OPEN_ISSUES_OVERVIEW.md`; only child issues become actionable `G-*` work items. Before close-out, update only the parent created for this breakdown so its final body lists the child ticket IDs or URLs. Do not update pre-existing tickets.
 
 ### 3d. File the ticket(s)
 
@@ -140,9 +140,9 @@ Apply the **Durability Rule** and the **Domain-Language Rule** (below) when comp
   - Header: `# ISSUE-G-{NNN}: QA: {title}`
   - Status line: `**Status:** Ready | **Priority:** {Low|Medium|High|Urgent} | **Size:** XS | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential after <ticket-id> | Needs coordination} | **Related:** QA intake`. Use `Safe to parallelize` only when the ticket can start without blockers; dependent child issues with a `Blocked by` line must use `Must be sequential after <ticket-id>`.
   - Sections: include the user-visible intake body under `## Problem`, and add acceptance criteria only when they follow directly from the user's expected behavior.
-  - Overview row: add `G-{NNN}` to the `## General` table in `siw/OPEN_ISSUES_OVERVIEW.md`; if the existing General section is the empty placeholder, replace it. If the section has a `**Parallelization:**` summary, recompute it from all non-placeholder `G-*` issue files: use the shared guidance when they agree, or `Mixed — see issue files for exact guidance` when they differ. If a legacy General section has no summary line, keep it absent.
-  - Breakdown parent: after child files are written, update the newly-created parent file so it contains the final `## Child issues` list.
-- **Local**: write `intake-issues/{NNN}-{slug}.md`. For a breakdown, apply the same final parent-child link rule as SIW.
+  - Overview row: add `G-{NNN}` to the `## General` table in `siw/OPEN_ISSUES_OVERVIEW.md` for every actionable SIW issue; if the existing General section is the empty placeholder, replace it. If the section has a `**Parallelization:**` summary, recompute it from all non-placeholder `G-*` issue files: use the shared guidance when they agree, or `Mixed — see issue files for exact guidance` when they differ. If a legacy General section has no summary line, keep it absent.
+  - Breakdown parent: write a non-actionable parent summary as `siw/qa-intake/QA-INTAKE-{NNN}-{slug}.md`, where `{NNN}` is the next free number across existing `siw/qa-intake/QA-INTAKE-*.md`; use `QA-INTAKE-{NNN}` as the parent report ID in child issue bodies. Do not create a `G-*` issue file or overview row for the parent. After child files are written, update the newly-created parent summary so it contains the final `## Child issues` list.
+- **Local**: write `intake-issues/{NNN}-{slug}.md`. For a breakdown, update the newly-created local parent file after child files are written so it contains the final `## Child issues` list.
 
 ### 3e. Continue
 
@@ -203,7 +203,7 @@ This intake report covers N independent failure modes. Each is filed as a separa
 - <ticket-id-or-url>: [one-line summary of failure mode 3]
 ```
 
-For Linear, create the parent without `## Child issues` if child IDs are not known yet, then update that just-created parent with the final child list before close-out. For SIW/local, either reserve the child IDs up front or update the newly-created parent file after child files are written.
+For Linear, create the parent without `## Child issues` if child IDs are not known yet, then update that just-created parent with the final child list before close-out. For SIW, create the parent as a non-actionable summary outside `siw/issues/` and leave it out of `siw/OPEN_ISSUES_OVERVIEW.md`; either reserve the child IDs up front or update the newly-created parent summary after child files are written. For local, either reserve the child IDs up front or update the newly-created parent file after child files are written.
 
 For each child issue (file these **after** the parent so the parent ID is known):
 
@@ -220,12 +220,12 @@ For each child issue (file these **after** the parent so the parent ID is known)
 3. **Bug:** [what happens instead]
 
 ## Additional context
-- **Parent issue:** <parent-ticket-id>
+- **Parent issue/report:** <parent-ticket-id-or-QA-INTAKE-NNN>
 - **Blocked by:** <other-child-ticket-id> (only if there is a real ordering dependency)
 - **Scope:** one slice of the parent — does not cover [the other failure modes]
 ```
 
-A breakdown without a parent issue and without `Parent issue` lines on the children is invalid (see Red Flags).
+A breakdown without a parent issue/container and without `Parent issue/report` lines on the children is invalid (see Red Flags).
 
 ## Durability Rule
 
@@ -279,10 +279,11 @@ Pause and resolve before filing if any of these are true:
 
 - More than 3 clarifying questions have been asked on a single issue.
 - A draft ticket body contains `:\d+`, a `src/` path, a file extension (`.ts`, `.tsx`, `.py`, `.go`, `.js`, `.jsx`), an import path, or a private helper name.
-- A breakdown has been drafted without a parent issue, with child ID placeholders in the final parent body, without final child links on the parent, **or** without `Parent issue` lines on the children.
+- A breakdown has been drafted without a parent issue/container, with child ID placeholders in the final parent body, without final child links on the parent, **or** without `Parent issue/report` lines on the children.
 - The user described an issue as "minor" or "not urgent" but the draft ticket has no low-priority label or marker.
 - The Linear sink is selected but no `LINEAR_TEAM` has been resolved.
 - The SIW sink is selected but the issue file will not have a matching row in `siw/OPEN_ISSUES_OVERVIEW.md`, or the General section's existing `**Parallelization:**` summary will be left stale.
+- The SIW sink is selected and a breakdown parent is about to be created as a `G-*` issue or added to `siw/OPEN_ISSUES_OVERVIEW.md`.
 - A dependent child issue has a `Blocked by` line but its SIW status line still says `**Parallelization:** Safe to parallelize`.
 - The session has produced more than 10 tickets in one sitting and the user has not paused — confirm the user is still doing intentional intake, not piling on.
 - The skill is about to call `mcp__linear__update_issue` for anything except adding child links to the just-created breakdown parent, close a ticket, or write code — this skill files new tickets only.
@@ -294,11 +295,11 @@ Before ending each session, self-check:
 
 - [ ] `STACK DETECTED` was emitted at session start with the resolved sink.
 - [ ] If the sink is Linear, `LINEAR_TEAM` was resolved before the first issue was filed.
-- [ ] If the sink is SIW, every new issue file has a matching `G-{NNN}` row in `siw/OPEN_ISSUES_OVERVIEW.md`, and any existing General `**Parallelization:**` summary was updated or intentionally preserved as absent.
+- [ ] If the sink is SIW, every new actionable issue file has a matching `G-{NNN}` row in `siw/OPEN_ISSUES_OVERVIEW.md`, every breakdown parent summary lives outside `siw/issues/` and is absent from the overview, and any existing General `**Parallelization:**` summary was updated or intentionally preserved as absent.
 - [ ] Each issue triggered at most 3 clarifying questions.
 - [ ] Each filed body passes the durability grep: no `:\d+`, no `src/`, no file extensions, no internal helper names.
 - [ ] Each filed body uses domain language from `UBIQUITOUS_LANGUAGE.md` (if present) or the user's own phrasing (if not).
-- [ ] Every breakdown has a parent issue with final child links and no child ID placeholders, plus `Parent issue` lines on the children.
+- [ ] Every breakdown has a parent issue/container with final child links and no child ID placeholders, plus `Parent issue/report` lines on the children.
 - [ ] Every dependent child issue with a `Blocked by` line has non-`Safe to parallelize` SIW parallelization metadata.
 - [ ] Every "minor"/"not urgent" issue has a low-priority label or marker.
 - [ ] No pre-existing ticket was modified or closed; any parent update only touched a ticket created during this same intake run.
