@@ -1319,11 +1319,46 @@ function normalizeCodexInstructionText(text) {
 }
 
 function rewriteAskUserQuestionCodeBlocks(text) {
-  return text.replace(/(^[ \t]*)```([^\n]*)\n([\s\S]*?)^\1```/gm, (match, indent, infoString, body) => {
+  const openFencePattern = /(^[ \t]*)```([^\n]*)\r?\n/gm
+  let result = ""
+  let cursor = 0
+  let match
+
+  while ((match = openFencePattern.exec(text))) {
+    const [openingLine, indent] = match
+    const bodyStart = match.index + openingLine.length
+    const closingFence = findAskUserQuestionClosingFence(text, bodyStart, indent)
+    if (!closingFence) continue
+
+    const body = text.slice(bodyStart, closingFence.index)
     const parsed = parseAskUserQuestionBlock(body)
-    if (!parsed) return match
-    return renderDirectChatQuestion(parsed, { indent })
-  })
+    if (!parsed) {
+      openFencePattern.lastIndex = closingFence.afterIndex
+      continue
+    }
+
+    result += text.slice(cursor, match.index)
+    result += renderDirectChatQuestion(parsed, { indent })
+    cursor = closingFence.afterIndex
+    openFencePattern.lastIndex = closingFence.afterIndex
+  }
+
+  result += text.slice(cursor)
+  return result
+}
+
+function findAskUserQuestionClosingFence(text, fromIndex, openingIndent) {
+  const closingFencePattern = /(^[ \t]*)```[ \t]*(?:\r?\n|$)/gm
+  closingFencePattern.lastIndex = fromIndex
+
+  let match
+  while ((match = closingFencePattern.exec(text))) {
+    if (match[1].length <= openingIndent.length) {
+      return { index: match.index, afterIndex: closingFencePattern.lastIndex }
+    }
+  }
+
+  return null
 }
 
 function parseAskUserQuestionBlock(body) {

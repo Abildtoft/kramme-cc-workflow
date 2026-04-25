@@ -369,6 +369,73 @@ MD
   [[ "$output" != *$'\nQuestion label: Linear issue'* ]]
 }
 
+@test "codex conversion rewrites AskUserQuestion blocks when closing fence indentation differs" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/ask-user-question-closing-indent-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/skills/demo"
+  cat > "$FIXTURE_PLUGIN/skills/demo/SKILL.md" <<'MD'
+---
+name: demo-skill
+description: Demo skill
+disable-model-invocation: false
+user-invocable: true
+---
+1. Ask for the issue ID:
+   ```yaml
+   header: "Linear issue"
+   question: "Enter the Linear issue ID (e.g., WAN-521):"
+   options: []
+  ```
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+
+  run sed -n '1,20p' "$TMP_DIR/.codex/skills/demo-skill/SKILL.md"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'1. Ask for the issue ID:\n   Ask the user directly in chat:\n   Question label: Linear issue\n   Question: Enter the Linear issue ID (e.g., WAN-521):'* ]]
+  [[ "$output" != *'```yaml'* ]]
+  [[ "$output" != *'AskUserQuestion'* ]]
+}
+
+@test "codex conversion does not terminate AskUserQuestion blocks on deeper-indented fences" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/ask-user-question-deeper-fence-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/skills/demo"
+  cat > "$FIXTURE_PLUGIN/skills/demo/SKILL.md" <<'MD'
+---
+name: demo-skill
+description: Demo skill
+disable-model-invocation: false
+user-invocable: true
+---
+1. Ask for the issue ID:
+   ```yaml
+   header: "Linear issue"
+   question: "Enter the Linear issue ID (e.g., WAN-521):"
+    ```
+   options: []
+   ```
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+
+  run sed -n '1,20p' "$TMP_DIR/.codex/skills/demo-skill/SKILL.md"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'1. Ask for the issue ID:\n   Ask the user directly in chat:\n   Question label: Linear issue\n   Question: Enter the Linear issue ID (e.g., WAN-521):'* ]]
+  [[ "$output" != *'options: []'* ]]
+  [[ "$output" != *'```'* ]]
+}
+
 @test "codex conversion rewrites AskUserQuestion schema docs for Codex" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
