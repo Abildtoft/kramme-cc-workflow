@@ -1,0 +1,7 @@
+sources:
+  - id: addy-git-workflow-versioning
+    url: https://github.com/addyosmani/agent-skills/tree/main/skills/git-workflow-and-versioning
+    title: "Addy Osmani agent-skills - git workflow and versioning"
+    rationale: "The status-marker and PR handoff conventions are adapted from Addy's git workflow conventions."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

@@ -1,0 +1,7 @@
+sources:
+  - id: nicobailon-visual-explainer
+    url: https://github.com/nicobailon/visual-explainer
+    title: "nicobailon/visual-explainer"
+    rationale: "Visual onboarding guide structure, diagram artifact patterns, and explanatory layout conventions are adapted from this project."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

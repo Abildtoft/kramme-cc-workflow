@@ -1,0 +1,13 @@
+sources:
+  - id: addy-code-review-quality
+    url: https://github.com/addyosmani/agent-skills/blob/main/skills/code-review-and-quality/SKILL.md
+    title: "Addy Osmani agent-skills - code review and quality"
+    rationale: "Review thresholds, severity prefix grammar, and dead-code ask-shape conventions are adapted from this source."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""
+  - id: addy-git-workflow-versioning
+    url: https://github.com/addyosmani/agent-skills/tree/main/skills/git-workflow-and-versioning
+    title: "Addy Osmani agent-skills - git workflow and versioning"
+    rationale: "The uppercase output marker convention for PR review summaries follows Addy's git workflow conventions."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

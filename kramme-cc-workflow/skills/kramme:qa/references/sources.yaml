@@ -1,0 +1,7 @@
+sources:
+  - id: addy-browser-testing-devtools
+    url: https://github.com/addyosmani/agent-skills/tree/main/skills/browser-testing-with-devtools
+    title: "Addy Osmani agent-skills - browser testing with DevTools"
+    rationale: "The QA network triage ladder, clean-console standard, accessibility ladder, and Addy marker conventions are adapted from this source."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

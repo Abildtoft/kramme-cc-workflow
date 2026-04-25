@@ -1,0 +1,7 @@
+sources:
+  - id: addy-spec-driven-development
+    url: https://github.com/addyosmani/agent-skills/tree/main/skills/spec-driven-development
+    title: "Addy Osmani agent-skills - spec-driven development"
+    rationale: "The lightweight feature-spec workflow and implementation-gating conventions are adapted from this source."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

@@ -1,0 +1,7 @@
+sources:
+  - id: nicobailon-visual-explainer
+    url: https://github.com/nicobailon/visual-explainer
+    title: "nicobailon/visual-explainer"
+    rationale: "Image-generation workflow framing and visual artifact handoff conventions are adapted from this project."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

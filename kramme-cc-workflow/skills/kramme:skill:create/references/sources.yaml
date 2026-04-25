@@ -1,0 +1,7 @@
+sources:
+  - id: mgechev-skills-best-practices
+    url: https://github.com/mgechev/skills-best-practices
+    title: "mgechev/skills-best-practices"
+    rationale: "Skill scaffolding, frontmatter optimization, and progressive-disclosure guidance are adapted from this project."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""
