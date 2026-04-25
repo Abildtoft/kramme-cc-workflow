@@ -1319,15 +1319,15 @@ function normalizeCodexInstructionText(text) {
 }
 
 function rewriteAskUserQuestionCodeBlocks(text) {
-  const openFencePattern = /(^[ \t]*)```([^\n]*)\r?\n/gm
+  const openFencePattern = /(^[ \t]*)(`{3,})([^\n]*)\r?\n/gm
   let result = ""
   let cursor = 0
   let match
 
   while ((match = openFencePattern.exec(text))) {
-    const [openingLine, indent] = match
+    const [openingLine, indent, openingFence] = match
     const bodyStart = match.index + openingLine.length
-    const closingFence = findAskUserQuestionClosingFence(text, bodyStart, indent)
+    const closingFence = findAskUserQuestionClosingFence(text, bodyStart, indent, openingFence.length)
     if (!closingFence) continue
 
     const body = text.slice(bodyStart, closingFence.index)
@@ -1347,13 +1347,13 @@ function rewriteAskUserQuestionCodeBlocks(text) {
   return result
 }
 
-function findAskUserQuestionClosingFence(text, fromIndex, openingIndent) {
-  const closingFencePattern = /(^[ \t]*)```[ \t]*(?:\r?\n|$)/gm
+function findAskUserQuestionClosingFence(text, fromIndex, openingIndent, minimumFenceLength) {
+  const closingFencePattern = /(^[ \t]*)(`{3,})[ \t]*(?:\r?\n|$)/gm
   closingFencePattern.lastIndex = fromIndex
 
   let match
   while ((match = closingFencePattern.exec(text))) {
-    if (match[1].length <= openingIndent.length) {
+    if (match[1].length <= openingIndent.length && match[2].length >= minimumFenceLength) {
       return { index: match.index, afterIndex: closingFencePattern.lastIndex }
     }
   }
