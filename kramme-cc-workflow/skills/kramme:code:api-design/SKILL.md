@@ -4,6 +4,7 @@ description: "(experimental) Design stable APIs and module boundaries. Covers co
 argument-hint: "[--design-twice]"
 disable-model-invocation: false
 user-invocable: true
+kramme-platforms: [claude-code, codex]
 ---
 
 # API and Interface Design
