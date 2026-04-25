@@ -6,13 +6,6 @@ This repository contains Claude Code workflow plugins and support scripts.
 > Several skills in `kramme-cc-workflow` are adapted from [Addy Osmani's agent-skills](https://github.com/addyosmani/agent-skills).
 > See the detailed attribution list in [`kramme-cc-workflow/README.md`](kramme-cc-workflow/README.md#attribution).
 
-## Included Plugins
-
-| Plugin | Description |
-|---|---|
-| [`kramme-cc-workflow`](kramme-cc-workflow/) | General workflow plugin. Includes SIW planning, PR lifecycle skills, verification helpers, review agents, hooks, and supporting scripts. |
-| [`kramme-connect-workflow`](kramme-connect-workflow/) | Connect-specific plugin for [Consensus ApS](https://consensus.dk)'s monorepo work (Angular modernization, Nx extraction, NgRx migration, and Rive docs). |
-
 ## Main Plugin Contents (`kramme-cc-workflow`)
 
 - `72` skills in `skills/` (SIW, PR workflows, Linear workflows, verification, documentation utilities, and session helpers)
@@ -62,18 +55,6 @@ Local install:
 claude /plugin install /path/to/kramme-cc-workflow/kramme-cc-workflow
 ```
 
-Install the Connect plugin from marketplace:
-
-```bash
-claude /plugin install kramme-cc-workflow@kramme-connect-workflow
-```
-
-Local install for the Connect plugin:
-
-```bash
-claude /plugin install /path/to/kramme-cc-workflow/kramme-connect-workflow
-```
-
 Update marketplace install:
 
 ```bash
@@ -91,17 +72,9 @@ After installation, common entry points are:
 /kramme:verify:run
 ```
 
-## Repository Structure
-
-| Directory | Purpose |
-|---|---|
-| [`kramme-cc-workflow/`](kramme-cc-workflow/) | Main plugin: workflow automation, review agents, hooks, and verification |
-| [`kramme-connect-workflow/`](kramme-connect-workflow/) | Connect product-specific skills |
-
 ## Documentation
 
 - [`kramme-cc-workflow/README.md`](kramme-cc-workflow/README.md)
-- [`kramme-connect-workflow/README.md`](kramme-connect-workflow/README.md)
 
 ## License
 

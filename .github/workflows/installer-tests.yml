@@ -21,7 +21,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          plugins=(kramme-cc-workflow kramme-connect-workflow)
+          plugins=(kramme-cc-workflow)
           targets=(opencode codex)
 
           for plugin in "${plugins[@]}"; do
