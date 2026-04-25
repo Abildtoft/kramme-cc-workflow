@@ -1,0 +1,7 @@
+sources:
+  - id: getsentry-agents-md-skill
+    url: https://skills.sh/getsentry/skills/agents-md
+    title: "getsentry/skills - agents-md skill"
+    rationale: "AGENTS.md update workflow, local skill discovery, and guideline keyword documentation patterns are inspired by this skill."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

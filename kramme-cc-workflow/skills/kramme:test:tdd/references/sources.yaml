@@ -1,0 +1,7 @@
+sources:
+  - id: addy-test-driven-development
+    url: https://github.com/addyosmani/agent-skills/tree/main/skills/test-driven-development
+    title: "Addy Osmani agent-skills - test-driven development"
+    rationale: "The red-green-refactor workflow, Prove-It pattern, and test discipline guidance are adapted from this source."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

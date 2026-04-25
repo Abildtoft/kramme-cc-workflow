@@ -1,0 +1,7 @@
+sources:
+  - id: addy-browser-testing-devtools
+    url: https://github.com/addyosmani/agent-skills/tree/main/skills/browser-testing-with-devtools
+    title: "Addy Osmani agent-skills - browser testing with DevTools"
+    rationale: "Browser MCP boundaries, evidence capture, JavaScript constraints, and content boundary markers are adapted from this source."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

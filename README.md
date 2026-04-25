@@ -16,6 +16,14 @@ This repository contains Claude Code workflow plugins and support scripts.
 
 Detailed documentation is available in [`kramme-cc-workflow/README.md`](kramme-cc-workflow/README.md).
 
+## Local Repository Maintenance
+
+This workspace also includes local maintenance skills under `.agents/skills/`, exposed to Claude Code through the `.claude/skills` symlink. These are for maintaining this repository and are not shipped as part of the public plugins.
+
+| Skill | Description |
+|---|---|
+| `/kramme:skill:audit-sources` | Audits one or more skills against declared inspiration sources, bootstraps missing `references/sources.yaml` manifests, compares fetched source snapshots, and writes `.context/skill-source-audit-<timestamp>.md` reports. |
+
 ## What SIW Is
 
 SIW means **Structured Implementation Workflow**.
@@ -71,6 +79,14 @@ After installation, common entry points are:
 /kramme:pr:fix-ci
 /kramme:verify:run
 ```
+
+## Repository Structure
+
+| Directory | Purpose |
+|---|---|
+| [`.agents/skills/`](.agents/skills/) | Local repository-maintenance skills used while developing this repo |
+| [`.claude/skills`](.claude/skills) | Symlink exposing local maintenance skills to Claude Code |
+| [`kramme-cc-workflow/`](kramme-cc-workflow/) | Main plugin: workflow automation, review agents, hooks, and verification |
 
 ## Documentation
 

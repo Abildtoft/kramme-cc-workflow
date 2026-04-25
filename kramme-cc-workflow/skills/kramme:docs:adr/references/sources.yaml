@@ -1,0 +1,13 @@
+sources:
+  - id: addy-documentation-and-adrs
+    url: https://github.com/addyosmani/agent-skills/tree/main/skills/documentation-and-adrs
+    title: "Addy Osmani agent-skills - documentation and ADRs"
+    rationale: "ADR lifecycle states, preservation rules, and drafting markers are adapted from this source."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""
+  - id: nygard-architecture-decisions
+    url: https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions
+    title: "Michael Nygard - Documenting Architecture Decisions"
+    rationale: "The fallback ADR template and decision-record framing are based on the Nygard-style ADR pattern."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

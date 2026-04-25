@@ -1,0 +1,13 @@
+sources:
+  - id: wikipedia-signs-of-ai-writing
+    url: https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
+    title: "Wikipedia - Signs of AI writing"
+    rationale: "The AI writing pattern catalog and editing checklist are based on this page maintained by WikiProject AI Cleanup."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""
+  - id: blader-humanizer
+    url: https://github.com/blader/humanizer
+    title: "blader/humanizer"
+    rationale: "The humanization workflow and pattern-removal framing are heavily inspired by this project."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

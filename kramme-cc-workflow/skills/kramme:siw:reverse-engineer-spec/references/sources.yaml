@@ -1,0 +1,7 @@
+sources:
+  - id: blader-schematic
+    url: https://github.com/blader/schematic
+    title: "blader/schematic"
+    rationale: "The reverse-engineering workflow for deriving specifications from existing code is inspired by this project."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

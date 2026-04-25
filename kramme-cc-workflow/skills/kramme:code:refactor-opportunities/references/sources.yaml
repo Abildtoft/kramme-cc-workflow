@@ -1,0 +1,7 @@
+sources:
+  - id: addy-agent-skills-lesson
+    url: https://addyosmani.com/agents/17-agent-skills/
+    title: "Addy Osmani - Agent skills reusable knowledge for agents"
+    rationale: "The Rule of 500 automation trigger for large refactors is attributed to Addy's guidance on skill-driven coding workflows."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""
