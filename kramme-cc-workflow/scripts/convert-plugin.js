@@ -1256,6 +1256,7 @@ const CODEX_INSTRUCTION_REPLACEMENTS = [
   [/\busing the `?AskUserQuestion`? tool\b/g, "by asking the user directly in chat"],
   [/\bUse `?AskUserQuestion`? to\b/g, "Ask the user directly in chat to"],
   [/\buse `?AskUserQuestion`? to\b/g, "ask the user directly in chat to"],
+  [/\bwith `?AskUserQuestion`?(?=[:\s.,)]|$)/g, "by asking the user directly in chat"],
   [/\bOtherwise AskUserQuestion\b/g, "Otherwise ask the user directly in chat"],
   [/\botherwise AskUserQuestion\b/g, "otherwise ask the user directly in chat"],
   [/\bOtherwise use `?AskUserQuestion`?(?=[:\s.,)]|$)/g, "Otherwise ask the user directly in chat"],
@@ -1398,7 +1399,14 @@ function parseAskUserQuestionBlock(body) {
 
     match = trimmed.match(/^question:\s*(.+)$/i)
     if (match) {
-      question = stripWrappingQuotes(match[1])
+      const value = stripWrappingQuotes(match[1])
+      if (/^[|>][-+]?$/i.test(value)) {
+        const block = readIndentedBlock(lines, index + 1, leadingWhitespaceLength(lines[index]))
+        question = value.startsWith(">") ? foldBlockScalar(block.value) : block.value
+        index = block.nextIndex - 1
+      } else {
+        question = value
+      }
       sawStructuredPrompt = true
       continue
     }
@@ -1464,7 +1472,7 @@ function renderDirectChatQuestion(prompt, options = {}) {
   if (prompt.header) {
     lines.push(`Question label: ${prompt.header}`)
   }
-  lines.push(`Question: ${prompt.question}`)
+  appendPrefixedMultiline(lines, "Question: ", prompt.question)
   if (prompt.multiSelect) {
     lines.push("Allow multiple selections if more than one option can apply.")
   }
@@ -1475,6 +1483,51 @@ function renderDirectChatQuestion(prompt, options = {}) {
     }
   }
   return lines.map((line) => `${indent}${line}`).join("\n")
+}
+
+function readIndentedBlock(lines, startIndex, parentIndent) {
+  const blockLines = []
+  let index = startIndex
+
+  for (; index < lines.length; index += 1) {
+    const line = lines[index]
+    if (line.trim() !== "" && leadingWhitespaceLength(line) <= parentIndent) break
+    blockLines.push(line)
+  }
+
+  const contentIndent = blockLines
+    .filter((line) => line.trim() !== "")
+    .reduce((minimum, line) => Math.min(minimum, leadingWhitespaceLength(line)), Infinity)
+
+  if (contentIndent === Infinity) {
+    return { value: "", nextIndex: index }
+  }
+
+  const value = blockLines
+    .map((line) => (line.trim() === "" ? "" : line.slice(contentIndent)))
+    .join("\n")
+    .replace(/\n+$/g, "")
+
+  return { value, nextIndex: index }
+}
+
+function leadingWhitespaceLength(value) {
+  return String(value ?? "").match(/^[ \t]*/)[0].length
+}
+
+function foldBlockScalar(value) {
+  return String(value)
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.replace(/\n/g, " "))
+    .join("\n\n")
+}
+
+function appendPrefixedMultiline(lines, prefix, value) {
+  const valueLines = String(value ?? "").split(/\r?\n/)
+  lines.push(`${prefix}${valueLines[0] ?? ""}`)
+  for (const line of valueLines.slice(1)) {
+    lines.push(line ? `  ${line}` : "")
+  }
 }
 
 function stripWrappingQuotes(value) {
