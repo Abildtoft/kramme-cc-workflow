@@ -70,7 +70,7 @@ If two internal symbols matter, describe the **contract drift** between them rat
 | Bad | Good |
 |---|---|
 | `[ ] Add `expiry < Date.now()` check before signature verification.` | `[ ] Expired tokens are rejected before signature verification is attempted.` |
-| `[ ] Move `_validateExpiry()` above `_verifySignature()`.` | `[ ] Expiry validation runs before signature validation in the middleware path. |
+| ``[ ] Move `_validateExpiry()` above `_verifySignature()`.`` | `[ ] Expiry validation runs before signature validation in the middleware path.` |
 | `[ ] Edit `worker.go` to retry only on transient errors.` | `[ ] The queue worker only retries on transient errors (network timeouts, 5xx); other errors fail fast.` |
 
 Acceptance criteria assert on observable behavior. The implementer is free to choose the code path.
