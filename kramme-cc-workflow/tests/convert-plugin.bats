@@ -28,6 +28,25 @@ create_fixture_plugin() {
 JSON
 }
 
+create_skill_fixture_plugin() {
+  local plugin_dir="$1"
+  local plugin_name="$2"
+  local skill_name="$3"
+  local description="${4:-Fixture skill}"
+
+  create_fixture_plugin "$plugin_dir" "$plugin_name"
+  mkdir -p "$plugin_dir/skills/fixture-skill"
+  cat > "$plugin_dir/skills/fixture-skill/SKILL.md" <<MD
+---
+name: $skill_name
+description: $description
+disable-model-invocation: false
+user-invocable: true
+---
+Fixture skill body.
+MD
+}
+
 create_hook_fixture_plugin() {
   local plugin_dir="$1"
   local plugin_name="$2"
@@ -380,6 +399,48 @@ MD
   [ -f "$TMP_DIR/.codex/.kramme-install-state.json" ]
 }
 
+@test "codex conversion preserves workflow skills and agents when another plugin is installed" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/fixture-plugin"
+  create_skill_fixture_plugin "$FIXTURE_PLUGIN" "fixture-plugin" "kramme:fixture:review"
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
+  [ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:fixture:review/SKILL.md" ]
+  [ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
+  [ -f "$TMP_DIR/.agents/skills/performance-oracle/SKILL.md" ]
+}
+
+@test "codex conversion preserves existing workflow skills when reinstalling another plugin without state" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/fixture-plugin"
+  create_skill_fixture_plugin "$FIXTURE_PLUGIN" "fixture-plugin" "kramme:fixture:review"
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+
+  rm "$TMP_DIR/.codex/.kramme-install-state.json"
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
+  [ -f "$TMP_DIR/.codex/skills/kramme:fixture:review/SKILL.md" ]
+}
+
 @test "codex conversion cleans stale same-plugin skills after state loss" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"
@@ -424,6 +485,147 @@ MD
   [ "$status" -eq 0 ]
   [ ! -f "$TMP_DIR/.codex/skills/kramme:old-skill/SKILL.md" ]
   [ -f "$TMP_DIR/.codex/skills/kramme:new-skill/SKILL.md" ]
+}
+
+@test "opencode conversion preserves workflow skills when another plugin is installed" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/fixture-plugin"
+  create_skill_fixture_plugin "$FIXTURE_PLUGIN" "fixture-plugin" "kramme:fixture:review"
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/opencode/opencode.json" ]
+  [ -f "$TMP_DIR/opencode/skills/kramme:pr:create/SKILL.md" ]
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/opencode/skills/kramme:pr:create/SKILL.md" ]
+  [ -f "$TMP_DIR/opencode/skills/kramme:fixture:review/SKILL.md" ]
+
+  run jq -r '.command | has("kramme:pr:create")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("kramme:fixture:review")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+}
+
+@test "opencode conversion preserves existing workflow skills when reinstalling another plugin without state" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/fixture-plugin"
+  create_skill_fixture_plugin "$FIXTURE_PLUGIN" "fixture-plugin" "kramme:fixture:review"
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  rm "$TMP_DIR/opencode/.kramme-install-state.json"
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+  [ -f "$TMP_DIR/opencode/skills/kramme:pr:create/SKILL.md" ]
+  [ -f "$TMP_DIR/opencode/skills/kramme:fixture:review/SKILL.md" ]
+
+  run jq -r '.command | has("kramme:pr:create")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("kramme:fixture:review")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+}
+
+@test "opencode conversion preserves workflow skills when reinstalling another plugin with legacy state records" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/fixture-plugin"
+  create_skill_fixture_plugin "$FIXTURE_PLUGIN" "fixture-plugin" "kramme:fixture:review"
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  run node -e '
+    const fs = require("fs")
+    const file = process.argv[1]
+    const state = JSON.parse(fs.readFileSync(file, "utf8"))
+    for (const plugin of Object.values(state.plugins ?? {})) {
+      for (const target of Object.values(plugin ?? {})) {
+        delete target.commands
+        delete target.config
+        delete target.permissionsMode
+        delete target.updatedAtMs
+      }
+    }
+    fs.writeFileSync(file, JSON.stringify(state, null, 2) + "\n")
+  ' "$TMP_DIR/opencode/.kramme-install-state.json"
+  [ "$status" -eq 0 ]
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  run jq -r '.command | has("kramme:pr:create")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("kramme:fixture:review")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+}
+
+@test "opencode conversion preserves workflow skills when reinstalling another plugin from legacy manifests after state loss" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/fixture-plugin"
+  create_skill_fixture_plugin "$FIXTURE_PLUGIN" "fixture-plugin" "kramme:fixture:review"
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  run node -e '
+    const fs = require("fs")
+    const path = require("path")
+    const root = process.argv[1]
+    for (const entry of fs.readdirSync(root)) {
+      if (!entry.endsWith(".json")) continue
+      const file = path.join(root, entry)
+      const manifest = JSON.parse(fs.readFileSync(file, "utf8"))
+      delete manifest.commands
+      delete manifest.config
+      delete manifest.permissionsMode
+      delete manifest.updatedAtMs
+      fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + "\n")
+    }
+  ' "$TMP_DIR/opencode/.kramme-install-manifests"
+  [ "$status" -eq 0 ]
+
+  rm "$TMP_DIR/opencode/.kramme-install-state.json"
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  run jq -r '.command | has("kramme:pr:create")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run jq -r '.command | has("kramme:fixture:review")' "$TMP_DIR/opencode/opencode.json"
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
 }
 
 @test "opencode conversion drops stale preferred commands after legacy state loss" {
