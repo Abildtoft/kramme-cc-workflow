@@ -32,9 +32,7 @@
    - **Documentation**: `*.md` files
    - **Configuration**: `*.json`, `*.config.*`, `*.yml` files
 
-4. **CAN** use GitLab/GitHub tools to get branch diffs if available:
-   - GitLab: `mcp__gitlab__get_branch_diffs`
-   - GitHub: `gh pr diff` (if PR already exists)
+4. **CAN** use `gh pr diff` to get branch diffs if a PR already exists.
 
 ### 2.2 Commit History Analysis
 

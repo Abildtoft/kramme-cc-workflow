@@ -39,7 +39,7 @@ Same as `/kramme:pr:ux-review` Steps 1-6:
 1. Parse arguments: `app_url` (starts with `http`), `--categories` filter, `--threshold N`, `--base <ref>` override, and optional `--inline` output mode
    - No `parallel` argument — team version is inherently parallel
 2. Load project review conventions from the project's instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents) and the UI code
-3. Resolve base branch using 3-tier strategy (explicit `--base` → PR/MR target branch → default branch fallback). See `/kramme:pr:ux-review` Step 3 for full logic.
+3. Resolve base branch using 3-tier strategy (explicit `--base` → PR target branch → default branch fallback). See `/kramme:pr:ux-review` Step 3 for full logic.
 4. Identify UI-relevant changed files via git diff (committed using resolved base, staged, unstaged, untracked)
 5. Check for previous `UX_REVIEW_OVERVIEW.md` and extract previously addressed findings
 6. Determine which agents to launch (same logic: always ux/product/visual, conditionally a11y)

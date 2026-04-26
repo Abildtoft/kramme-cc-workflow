@@ -9,11 +9,7 @@ When all CI checks pass and no unaddressed feedback remains, offer to consolidat
 Determine the base branch (reuse logic from fixup-flow.md Step 7b.1) and find pipeline fix commits:
 
 ```bash
-# GitHub
 BASE=$(gh pr view --json baseRefName --jq .baseRefName)
-
-# GitLab
-BASE=$(glab mr view --json target_branch --jq .target_branch)
 
 BASE_REF="origin/$BASE"
 git fetch origin $BASE

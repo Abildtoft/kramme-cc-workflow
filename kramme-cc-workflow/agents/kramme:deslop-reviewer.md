@@ -17,7 +17,7 @@ This agent has two operating modes. The caller specifies the mode in their promp
 
 **Trigger phrase in prompt:** "code review mode" or "scan for slop" or no mode specified
 
-Scan the full review scope (committed PR/MR diff + staged/unstaged/untracked local changes) for slop patterns in the actual code changes.
+Scan the full review scope (committed PR diff + staged/unstaged/untracked local changes) for slop patterns in the actual code changes.
 
 **Input:** Full review scope diff set or specific files to review
 **Output:** List of slop findings with file:line references and confidence scores
@@ -160,18 +160,11 @@ The canonical author-time fix for each of these patterns lives in the `kramme:co
 ### For Mode 1 (Code Review):
 
 1. Detect the base branch and gather the full review scope. If the caller provided a specific base branch (e.g., "Use `develop` as the base"), use it directly. Otherwise, resolve it:
-   - Query the PR/MR target branch using explicit host/CLI checks:
+   - Query the PR target branch:
    ```bash
-   REMOTE_URL=$(git remote get-url origin 2>/dev/null)
-   if printf '%s' "$REMOTE_URL" | grep -q 'github.com' && command -v gh >/dev/null 2>&1; then
-     BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
-   elif printf '%s' "$REMOTE_URL" | grep -qi 'gitlab' && command -v glab >/dev/null 2>&1; then
-     BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
-   elif command -v glab >/dev/null 2>&1; then
-     BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
-   fi
+   BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
    ```
-   - If no PR/MR or query fails, fall back:
+   - If no PR or query fails, fall back:
    ```bash
    BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
    [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')

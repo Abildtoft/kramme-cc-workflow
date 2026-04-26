@@ -28,7 +28,7 @@ Before searching for reviews, check if the user provided input directly with the
    - If `<something>` includes `--auto` (preferred), `--reply` (legacy), or `--answer-and-resolve` (legacy):
      - Set `ANSWER_AND_RESOLVE=true`
      - Remove `--auto` / `--reply` / `--answer-and-resolve` from remaining input before classification
-     - Treat this as permission to post replies and resolve addressed review threads/discussions directly on the PR/MR
+     - Treat this as permission to post replies and resolve addressed review threads directly on the PR
    - If `<something>` includes `--granular`:
      - Set `GRANULAR_COMMITS=true`
      - Remove `--granular` from remaining input before classification
@@ -55,16 +55,13 @@ Before searching for reviews, check if the user provided input directly with the
 If no review content was provided in Step 0:
 
 1. **If `REVIEW_SOURCE=local`**:
-    - Read `REVIEW_OVERVIEW.md` only (do not use `UX_REVIEW_OVERVIEW.md`, chat, or PR/MR APIs)
+    - Read `REVIEW_OVERVIEW.md` only (do not use `UX_REVIEW_OVERVIEW.md`, chat, or PR APIs)
     - When parsing local review artifacts, accept both `**Location:**` and legacy `**File:**` labels
     - If the file is missing, ask the user to provide review content, switch to `--source online` / `--online`, or run `/kramme:pr:code-review` first
     - Treat this as an **internal review**
 2. **If `REVIEW_SOURCE=online`**:
-   - If a PR/MR URL is provided in arguments or chat, fetch review comments/discussions from that URL
-   - Otherwise, fetch unresolved review comments from the current branch's PR/MR:
-     - Detect hosting platform: check for `.gitlab-ci.yml` (GitLab) or `.github/` directory (GitHub)
-     - For **GitHub**: Use `gh pr view --json reviews,comments` and `gh api repos/{owner}/{repo}/pulls/{number}/comments`
-     - For **GitLab**: Use GitLab MCP tools or API to fetch unresolved discussions
+   - If a PR URL is provided in arguments or chat, fetch review comments from that URL
+   - Otherwise, fetch unresolved review comments from the current branch's PR using `gh pr view --json reviews,comments` and `gh api repos/{owner}/{repo}/pulls/{number}/comments`
    - Treat this as an **external review**
 3. **If `REVIEW_SOURCE=auto`**:
     - Check for review files first:
@@ -77,9 +74,9 @@ If no review content was provided in Step 0:
       - This is an **internal review**
    - If no file found, scan chat context for:
      - Code review content from the agent → **internal review**
-     - A PR/MR URL provided by the user → **external review** (fetch from that URL)
-   - If still nothing found, fetch from current branch's PR/MR using platform-specific commands/APIs
-4. **If no review found for the selected source mode** — Ask the user to provide review content, provide a PR/MR URL, or choose a different source mode
+     - A PR URL provided by the user → **external review** (fetch from that URL)
+   - If still nothing found, fetch from current branch's PR using `gh pr view --json reviews,comments` and `gh api repos/{owner}/{repo}/pulls/{number}/comments`
+4. **If no review found for the selected source mode** — Ask the user to provide review content, provide a PR URL, or choose a different source mode
 5. **List all findings** — Present each comment with its location (`file:line` when applicable, otherwise a broader scope label such as `review-scope`) and content
 
 ### Step 2: Evaluate findings
@@ -183,9 +180,9 @@ Each commit should be self-contained and pass linting/formatting on its own. If 
 
 - **Validate** — Check for and fix any new linting, formatting, and testing issues. If validation fails after multiple fix attempts and `CHECKPOINT_SHA` exists, offer to rollback: `git reset --hard "$CHECKPOINT_SHA"`
 - **Review response behavior**:
-  - Default (no flag): **Do NOT resolve or reply to comments** on the platform
-  - If `ANSWER_AND_RESOLVE=true` and the review source is external: post replies for each external review comment, then resolve addressed threads/discussions on the PR/MR
-  - If `REVIEW_SOURCE=local`: do not post replies or resolve threads on the platform, even when `--auto` or a legacy reply alias was provided
+  - Default (no flag): **Do NOT resolve or reply to comments** on GitHub
+  - If `ANSWER_AND_RESOLVE=true` and the review source is external: post replies for each external review comment, then resolve addressed threads on the PR
+  - If `REVIEW_SOURCE=local`: do not post replies or resolve threads on GitHub, even when `--auto` or a legacy reply alias was provided
   - If `ANSWER_AND_RESOLVE=true` and the review source is external: for disagreements or out-of-scope findings, post a rationale reply, but do not mark as resolved unless explicitly requested by the reviewer/user
 - **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `UX_REVIEW_OVERVIEW.md`, update that file. If the source was `REVIEW_OVERVIEW.md` or an external/chat review, write to `REVIEW_OVERVIEW.md`.
 

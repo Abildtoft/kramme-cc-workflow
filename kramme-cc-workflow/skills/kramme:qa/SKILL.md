@@ -99,16 +99,9 @@ Resolve the base branch using a 3-tier strategy:
 **Tier 1: Explicit override**
 If `--base <branch>` was provided, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
 
-**Tier 2: PR/MR target branch detection**
+**Tier 2: PR target branch detection**
 ```bash
-REMOTE_URL=$(git remote get-url origin 2>/dev/null)
-if printf '%s' "$REMOTE_URL" | grep -q 'github.com' && command -v gh >/dev/null 2>&1; then
-  BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
-elif printf '%s' "$REMOTE_URL" | grep -qi 'gitlab' && command -v glab >/dev/null 2>&1; then
-  BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
-elif command -v glab >/dev/null 2>&1; then
-  BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
-fi
+BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
 ```
 
 **Tier 3: Fallback**

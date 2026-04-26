@@ -137,18 +137,10 @@ Navigate to each identified page and capture screenshots using the detected brow
 
 Attempt to upload screenshots so they can be embedded in the PR description with permanent URLs.
 
-**GitHub:**
 ```bash
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 # For each screenshot, use gh to upload and get a permanent URL
 # Upload via the GitHub issue file attachment mechanism
-```
-
-**GitLab:**
-```bash
-# Upload file to GitLab project uploads
-glab api --method POST "projects/:id/uploads" -F "file=@$SCREENSHOT_DIR/{filename}"
-# Returns: {"url": "/uploads/{hash}/{filename}", "markdown": "![screenshot](/uploads/{hash}/{filename})"}
 ```
 
 If upload fails, fall back to referencing local file paths.
@@ -182,7 +174,7 @@ If a GIF was captured:
 ```markdown
 ## Screenshots / Videos
 
-Screenshots captured locally. Drag and drop into the PR description on GitHub/GitLab:
+Screenshots captured locally. Drag and drop into the PR description on GitHub:
 
 | Screenshot | Description | Path |
 |-----------|-------------|------|
