@@ -5,10 +5,6 @@ Use this structure verbatim when writing `REVIEW_OVERVIEW.md` (or the inline rep
 ```markdown
 # PR Review Summary
 
-## Size
-- Total lines changed: X (threshold: ≤100 good, ~300 acceptable, >1,000 split)
-- If the reviewable portion (excluding expected exclusions such as lock files, snapshots, generated files, and pure test additions) is >1,000: also add a `**Critical:**` finding in `## Critical Issues` using location `review-scope` and a named splitting strategy from references/splitting-strategies.md
-
 ## Relevance Filter
 - X findings validated as PR-caused
 - X findings filtered (pre-existing or out-of-scope)
@@ -60,14 +56,12 @@ Approve if the change definitely improves overall code health.
 3. Consider suggestions
 4. Re-run review after fixes
 
-**To automatically resolve code-backed findings, run:** `/kramme:pr:resolve-review`  
-Process findings such as oversized-PR split recommendations must be handled manually.
+**To automatically resolve code-backed findings, run:** `/kramme:pr:resolve-review`
 ```
 
 ## Section notes
 
-- **Size** — emit even when under threshold; downstream tooling reads the total. If the raw total exceeds the threshold mostly because of expected exclusions (for example snapshots or lock files), explain that in `## Size` and skip the split blocker.
-- **Location** — use `path/to/file.ts:123` when the finding maps to a specific line. Use `review-scope` for PR-wide findings such as split recommendations.
+- **Location** — use `path/to/file.ts:123` when the finding maps to a specific line. Use `review-scope` for PR-wide findings.
 - **Critical:** prefix mirrors the section; the redundancy is intentional so a finding is still parseable when lifted out of its section (e.g., pasted into an inline comment).
 - **Dead Code** — keep dead-code findings in the severity bucket that matches their impact, and use the ask shape verbatim. Example: `[agent-name]: DEAD CODE IDENTIFIED: [location, location, ...]. Safe to remove these?` Never rewrite as "delete these files" or "remove unused imports."
 - **Emphasis** — emphasis may promote matching suggestions, but other validated findings keep their original severities.

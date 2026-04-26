@@ -113,19 +113,15 @@ After all tasks complete:
 1. Gather findings from all teammates
 2. Apply the deslop-reviewer's meta-review annotations
 3. Apply the relevance-validator's filtering
-4. Compute total lines changed using the same `numstat` + untracked-file formula and expected-exclusions rules as `/kramme:pr:code-review` Step 10, and add any `review-scope` size finding before any prior-response filtering
-5. Filter previously addressed findings (same logic as `/kramme:pr:code-review` Step 11, including any size finding added in the previous step)
+4. Filter previously addressed findings (same logic as `/kramme:pr:code-review` Step 10)
 
 ### Step 6: Write REVIEW_OVERVIEW.md or Reply Inline
 
-Carry the Step 5 total lines changed into the final report so both review commands fire the size gate on the same scope. Use `git diff --numstat HEAD` for local tracked changes so partially staged files are counted once.
+If `INLINE_MODE=true`, reply with the aggregated review inline using the same template and conventions as `/kramme:pr:code-review` Steps 11-13, and do **not** create or update `REVIEW_OVERVIEW.md`.
 
-If `INLINE_MODE=true`, reply with the aggregated review inline using the same template and conventions as `/kramme:pr:code-review` Steps 12-14, and do **not** create or update `REVIEW_OVERVIEW.md`.
-
-Otherwise, write the aggregated review to `REVIEW_OVERVIEW.md` using the same template and conventions as `/kramme:pr:code-review` Steps 12-14.
+Otherwise, write the aggregated review to `REVIEW_OVERVIEW.md` using the same template and conventions as `/kramme:pr:code-review` Steps 11-13.
 
 Keep the output schema-compatible with the standard PR review:
-- Include the `## Size` section and fire the `>1,000 reviewable lines` split recommendation with a named strategy
 - Keep the same severity prefix grammar (`Critical:`, `Nit:`, `Optional:`, `Consider:`, `FYI`)
 - Use `NOTICED BUT NOT TOUCHING` for pre-existing or out-of-scope notes
 - Include the `## Approval Standard` section verbatim

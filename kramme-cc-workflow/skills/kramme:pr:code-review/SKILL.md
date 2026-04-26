@@ -113,7 +113,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Parse the file to extract previously addressed findings
    - Extract for each finding: location (`file:line` or `review-scope`), issue description, action taken
    - Accept both `**Location:**` and legacy `**File:**` labels when parsing existing entries, and normalize either label to the same `location` field
-   - Store this context for filtering in Step 11
+   - Store this context for filtering in Step 10
 
    Previously addressed findings have the format:
    - **Location:** `path/to/file.ts:123` or `review-scope`
@@ -170,39 +170,10 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Flags suggestions that would introduce slop if implemented
    - Adds slop warnings to flagged suggestions (does not remove them)
 
-10. **PR Size Check**
-
-   Compute the total line change against the resolved base:
-   ```bash
-   BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
-   {
-     git diff --numstat "$BASE_REF"...HEAD
-     git diff --numstat HEAD
-     git ls-files --others --exclude-standard -z |
-       while IFS= read -r -d '' file; do
-         awk 'END { printf "%d\t0\t%s\n", NR, FILENAME }' "$file"
-       done
-   } | awk 'NF >= 3 { ins += ($1 == "-" ? 0 : $1); del += ($2 == "-" ? 0 : $2) } END { print ins + del }'
-   ```
-
-   Use `git diff --numstat HEAD` for local tracked changes so staged and unstaged edits on the same file are counted once. Do not sum `--cached` and unstaged `git diff` output separately, because partially staged files would be double-counted.
-
-   Gate the total against Addy's thresholds:
-   - **≤100 lines** — good. No action.
-   - **~300 lines** — acceptable. No action.
-   - **>1,000 reviewable lines** — too large. Surface a **Critical:** finding in Step 12 recommending a split, use location `review-scope`, and include a named strategy from `references/splitting-strategies.md` (prefer **Vertical**).
-
-   Untracked file line counts add to the total.
-
-   Before surfacing the split finding, inspect which files dominate the total and compute a **reviewable** judgment:
-   - Treat lock files, snapshots, generated files, and pure test additions as expected exclusions for the **Critical:** split gate.
-   - If the raw total is >1,000 but the excess is mostly those exclusions, note that in `## Size` and do **not** create a critical split finding.
-   - Only fire the split recommendation when the human-reviewable portion of the change is what actually exceeds the threshold.
-
-11. **Filter Previously Addressed Findings**
+10. **Filter Previously Addressed Findings**
 
    If `REVIEW_OVERVIEW.md` was found in Step 5:
-   - Cross-reference the full validated finding set against previously addressed findings **after Step 10 has added any PR-wide findings such as the size gate**
+   - Cross-reference the full validated finding set against previously addressed findings
    - **Only filter** if the finding is essentially the same issue:
      - For file-scoped findings: same file
      - For file-scoped findings: similar line number (within ~10 lines, accounting for code shifts)
@@ -216,7 +187,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - When uncertain, err on the side of keeping the finding active
    - Add filtered findings to "Previously Addressed" section
 
-12. **Aggregate Results**
+11. **Aggregate Results**
 
    After validation, slop meta-review, and previous-response filtering, apply emphasis adjustments if `EMPHASIZED_DIMENSIONS` is non-empty. Only use findings from agents that actually ran in Step 7 when deciding what is emphasized vs non-emphasized.
 
@@ -256,7 +227,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
    This applies whether the finding lands in Critical, Important, or Suggestions.
 
-13. **Write Findings or Reply Inline**
+12. **Write Findings or Reply Inline**
 
    If `INLINE_MODE=true`:
    - Reply with the full aggregated review summary inline using the template in `references/output-template.md` verbatim
@@ -264,13 +235,13 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Mention that `/kramme:pr:resolve-review` will need the user to save or paste the review content if they want to resolve it later without re-running the review
 
    Otherwise:
-   - Write the aggregated review summary from Step 12 to `REVIEW_OVERVIEW.md` in the project root, using the template in `references/output-template.md`
+   - Write the aggregated review summary from Step 11 to `REVIEW_OVERVIEW.md` in the project root, using the template in `references/output-template.md`
    - Include all sections even if empty (with count of 0)
    - Treat the file as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
 
-14. **Provide Action Plan**
+13. **Provide Action Plan**
 
-   If Critical or Important code-backed issues were found, include a suggestion to run `/kramme:pr:resolve-review` to automatically address them. For process-level findings such as `review-scope` split recommendations, tell the user the follow-up is manual rather than auto-resolvable. The template in `references/output-template.md` already includes the **Recommended Action** block and the **Approval Standard** line; do not omit either.
+   If Critical or Important code-backed issues were found, include a suggestion to run `/kramme:pr:resolve-review` to automatically address them. The template in `references/output-template.md` already includes the **Recommended Action** block and the **Approval Standard** line; do not omit either.
 
 ## Usage Examples:
 
@@ -460,7 +431,6 @@ Watch for these excuses — they signal the review is slipping into low-value te
 |---|---|
 | "It's just a nit, skip it." | Nits compound across reviews; ship the `Nit:` prefix and let the author decide, or the diff drifts on every PR. |
 | "This doesn't block merge, so it's fine." | "Doesn't block" is not "good." Approve only if the change definitely improves overall code health. |
-| "The PR is huge but the author already wrote it — too late to split." | Too-late-to-split is a merge-time excuse, not a review-time one. Splitting now is cheaper than un-splitting a regression after it ships. |
 | "AI wrote it, and the tests pass." | AI-generated code needs more scrutiny, not less — it's confident even when wrong. Read the diff as if a new hire wrote it under deadline. |
 | "We can clean this up in a follow-up." | Follow-ups are negotiable; the diff on screen is not. Land the cleanup or mark it `Critical:` now. |
 | "I'll re-review when they push again." | Re-review is a checkpoint, not a finding delivery mechanism. Surface every finding on the first pass or they rot across round-trips. |
@@ -475,7 +445,6 @@ If any of these are true, pause and re-scope the review before posting it:
 - The review is older than the PR (you've been reviewing longer than the author spent writing).
 - You're rewriting the PR in your head instead of reviewing the diff in front of you.
 - You're flagging style issues the project doesn't enforce anywhere else.
-- The splitting recommendation fires but you didn't name a strategy — `"too big"` alone is not actionable.
 - You're approving because the CI is green, not because the change definitely improves overall code health.
 - A dead-code finding is phrased as an instruction (`"delete X"`) instead of the ask shape (`DEAD CODE IDENTIFIED: X. Safe to remove these?`).
 - You have no `FYI` in the Strengths section — a review with zero positive observations is usually miscalibrated, not comprehensive.
@@ -487,10 +456,8 @@ If any of these are true, pause and re-scope the review before posting it:
 Before posting the review, confirm:
 
 - [ ] Every finding has a severity prefix (`Critical:`, `Nit:`, `Optional:`, `Consider:`, `FYI`, or no prefix for Required).
-- [ ] The Size section is present; if the reviewable portion is >1,000 lines, a **Critical:** finding with a named splitting strategy from `references/splitting-strategies.md` is surfaced.
 - [ ] Dead-code findings use the verbatim ask shape `DEAD CODE IDENTIFIED: [list]. Safe to remove these?`
 - [ ] The Approval Standard line appears: *"Approve if the change definitely improves overall code health."*
 - [ ] Pre-existing or out-of-scope observations are labeled `NOTICED BUT NOT TOUCHING`.
 - [ ] Every emphasized dimension in `--emphasize` actually produced findings in this review (or you noted that it didn't).
-- [ ] Process-level findings such as `review-scope` split recommendations are not presented as auto-resolvable via `/kramme:pr:resolve-review`.
 - [ ] No finding is presented as certain when the reviewer didn't trace it — those are labeled `UNVERIFIED`.

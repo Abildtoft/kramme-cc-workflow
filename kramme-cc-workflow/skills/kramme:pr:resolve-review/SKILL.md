@@ -110,7 +110,7 @@ Then, for each finding, ask: **"Is this within the PR's scope?"**
 - Style/naming changes in untouched code
 - Performance optimizations unrelated to the PR's changes
 - Requests to expand the PR's scope significantly
-- Process/workflow findings that require reorganizing the branch or PR rather than changing code in place (for example a `review-scope` split recommendation for an oversized PR)
+- Process/workflow findings that require reorganizing the branch or PR rather than changing code in place
 
 **Gray area** — Use judgment:
 - Small fixes in adjacent code that make the PR's changes cleaner
@@ -168,7 +168,7 @@ git reset --hard "$CHECKPOINT_SHA"
 
 Work through each finding in priority order, applying the guidelines below.
 
-If a finding is process-level and not implementable as an in-place code change (for example splitting an oversized PR), defer it with a concrete manual recommendation instead of attempting a partial code edit.
+If a finding is process-level and not implementable as an in-place code change, defer it with a concrete manual recommendation instead of attempting a partial code edit.
 
 **If `GRANULAR_COMMITS=true`:** After implementing each finding, create a dedicated commit for it before moving to the next finding:
 
