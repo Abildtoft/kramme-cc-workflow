@@ -1,6 +1,6 @@
 ---
 name: kramme:docs:out-of-scope
-description: "Record, check, append, or reconsider rejected enhancement concepts in the project's `.out-of-scope/` directory. One markdown file per concept; substantive reason + prior-request list. Use when the team rejects an enhancement and wants to remember why, or when checking whether a new request matches a prior rejection. Not for bug rejections (close as wontfix with a comment), not for deferrals (use issue priority/status instead), not for cross-repo aggregation."
+description: "(experimental) Record, check, append, or reconsider rejected enhancement concepts in the project's `.out-of-scope/` directory. One markdown file per concept; substantive reason + prior-request list. Use when the team rejects an enhancement and wants to remember why, or when checking whether a new request matches a prior rejection. Not for bug rejections (close as wontfix with a comment), not for deferrals (use issue priority/status instead), not for cross-repo aggregation."
 argument-hint: "<record|check|append|reconsider> <concept>"
 disable-model-invocation: true
 user-invocable: true
