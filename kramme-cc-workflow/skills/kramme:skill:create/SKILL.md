@@ -175,6 +175,8 @@ If the user is unsure whether something qualifies, default to including it — e
 
 If Question 6 returned external inspiration sources, write `<skill-dir>/references/sources.yaml` in the same scaffold. For each source captured in Phase 2:
 
+Before writing the manifest, ensure `<skill-dir>/references/` exists. This applies even to Simple-tier skills that otherwise do not create supporting directories; external inspiration requires the references directory for `sources.yaml`. Do not create placeholder reference files solely because of this step.
+
 ```yaml
 sources:
   - id: {kebab-case slug — stable across audits, do not rename}

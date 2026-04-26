@@ -114,12 +114,13 @@ ls siw/issues/ISSUE-{prefix}-{padded_number}-*.md 2>/dev/null
 - Read the full issue file
 - Extract:
   - Title (from `# ISSUE-{prefix}-{number}:` header)
-  - Status, Priority, Phase, Related tasks (from frontmatter line)
+  - Status, Priority, Phase, Mode, Related tasks (from frontmatter line)
   - Problem description
   - Context (if present)
   - Scope (in/out)
   - Acceptance Criteria
   - Technical Notes (if present)
+- If `Mode` is missing, set it to `HITL — mode missing; requires human triage` for this run. Missing Mode is not safe for Autonomous Implementation.
 
 **If not found:**
 
@@ -203,7 +204,7 @@ Technical Notes:
 {if present, show summary}
 ```
 
-**If the issue file's frontmatter has `**Mode:** HITL`**, surface this prominently. HITL means the issue requires human input for at least one of: architectural decision, design review, judgment call, manual testing, or external system access. The team variant `kramme:siw:issue-implement:team` excludes HITL issues from autonomous batches; this singular variant honors the same constraint at approach selection (Step 6) — recommend Guided Implementation and require explicit confirmation before Autonomous Implementation.
+**If the issue's Mode is `HITL`**, including the inferred `HITL — mode missing; requires human triage` fallback, surface this prominently. HITL means the issue requires human input for at least one of: architectural decision, design review, judgment call, manual testing, or external system access. The team variant `kramme:siw:issue-implement:team` excludes HITL issues from autonomous batches; this singular variant honors the same constraint at approach selection (Step 6) — recommend Guided Implementation and require explicit confirmation before Autonomous Implementation.
 
 ---
 
@@ -398,7 +399,7 @@ options:
 - If the user picks **Switch to Guided Implementation**, treat the original answer as if "Guided Implementation" had been selected; continue with Step 7.1.
 - If the user picks **Abort**, halt the workflow and surface the issue identifier so the user can return later.
 
-This gate fires only when (a) the issue carries an explicit `Mode: HITL` field and (b) the user picked Autonomous. AUTO and unclassified issues skip this gate entirely.
+This gate fires when (a) the issue carries `Mode: HITL` or Mode was missing and inferred as `HITL — mode missing; requires human triage`, and (b) the user picked Autonomous. Only explicit `Mode: AUTO` skips this gate.
 
 ---
 
