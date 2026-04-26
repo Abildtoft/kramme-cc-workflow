@@ -2074,18 +2074,44 @@ async function pathExists(filePath) {
 }
 
 async function copyDir(sourceDir, targetDir) {
+  const excludedRoots = copyTargetAncestors(sourceDir, targetDir)
+  await copyDirInternal(sourceDir, targetDir, excludedRoots)
+}
+
+async function copyDirInternal(sourceDir, targetDir, excludedRoots) {
   await ensureDir(targetDir)
   const entries = await fs.readdir(sourceDir, { withFileTypes: true })
   for (const entry of entries) {
     const sourcePath = path.join(sourceDir, entry.name)
+    if (isExcludedCopyPath(sourcePath, excludedRoots)) {
+      continue
+    }
     const targetPath = path.join(targetDir, entry.name)
     if (entry.isDirectory()) {
-      await copyDir(sourcePath, targetPath)
+      await copyDirInternal(sourcePath, targetPath, excludedRoots)
     } else if (entry.isFile()) {
       await ensureDir(path.dirname(targetPath))
       await fs.copyFile(sourcePath, targetPath)
     }
   }
+}
+
+function copyTargetAncestors(sourceDir, targetDir) {
+  const resolvedSource = path.resolve(sourceDir)
+  const resolvedTarget = path.resolve(targetDir)
+  if (resolvedTarget === resolvedSource || !resolvedTarget.startsWith(resolvedSource + path.sep)) {
+    return []
+  }
+
+  const firstSegment = path.relative(resolvedSource, resolvedTarget).split(path.sep)[0]
+  return firstSegment ? [path.join(resolvedSource, firstSegment)] : []
+}
+
+function isExcludedCopyPath(sourcePath, excludedRoots) {
+  const resolvedSource = path.resolve(sourcePath)
+  return excludedRoots.some((excludedRoot) => (
+    resolvedSource === excludedRoot || resolvedSource.startsWith(excludedRoot + path.sep)
+  ))
 }
 
 async function bootstrapHookScripts(rootDir, bundleRootDir = path.dirname(rootDir)) {

@@ -896,15 +896,16 @@ JSON
 echo ok
 SH
 
-  run node "$SCRIPT" install "$PLUGIN_DIR" --to opencode --output "$TMP_DIR/opencode" --yes
+  run node "$SCRIPT" install "$PLUGIN_DIR" --to opencode --output "$PLUGIN_DIR/opencode" --yes
   [ "$status" -eq 0 ]
 
-  [ -f "$TMP_DIR/opencode/hook-bundles/root-hooks-plugin/hook.sh" ]
+  [ -f "$PLUGIN_DIR/opencode/hook-bundles/root-hooks-plugin/hook.sh" ]
+  [ ! -d "$PLUGIN_DIR/opencode/hook-bundles/root-hooks-plugin/opencode" ]
 
-  run grep -nF '# kramme hook bundle bootstrap start' "$TMP_DIR/opencode/hook-bundles/root-hooks-plugin/hook.sh"
+  run grep -nF '# kramme hook bundle bootstrap start' "$PLUGIN_DIR/opencode/hook-bundles/root-hooks-plugin/hook.sh"
   [ "$status" -eq 0 ]
 
-  run env -i bash "$TMP_DIR/opencode/hook-bundles/root-hooks-plugin/hook.sh"
+  run env -i bash "$PLUGIN_DIR/opencode/hook-bundles/root-hooks-plugin/hook.sh"
   [ "$status" -eq 0 ]
   [ "$output" = "ok" ]
 }
