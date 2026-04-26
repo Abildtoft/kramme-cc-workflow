@@ -52,48 +52,23 @@ Read the guideline keyword glossary from `references/guideline-keywords.md`.
 
 ## Workflow
 
-### Phase 1: Platform Detection
+### Phase 1: Branch Setup
 
-**ALWAYS** detect which platform is being used:
-
-1. Check git remote URL:
-
-   ```bash
-   git remote get-url origin
-   ```
-
-   - Contains `gitlab.com` or `consensusaps` → GitLab
-   - Contains `github.com` → GitHub
-
-2. **ALWAYS** verify you have access to the appropriate tools:
-
-   - GitLab: GitLab MCP server tools (`mcp__gitlab__*`)
-   - GitHub: `gh` CLI tools via Bash
-
-3. **ALWAYS** confirm the current branch:
+1. **ALWAYS** confirm the current branch:
 
    ```bash
    git branch --show-current
    ```
 
-4. **ALWAYS** detect and identify the base/target branch dynamically using a 3-tier strategy:
+2. **ALWAYS** detect and identify the base/target branch dynamically using a 3-tier strategy:
 
    **Tier 1: Explicit override**
    If `BASE_BRANCH_OVERRIDE` was set from `--base`, use that value directly.
 
-   **Tier 2: PR/MR target branch detection**
-   Query the platform for the actual target branch:
+   **Tier 2: PR target branch detection**
    ```bash
-   REMOTE_URL=$(git remote get-url origin 2>/dev/null)
-   if printf '%s' "$REMOTE_URL" | grep -q 'github.com' && command -v gh >/dev/null 2>&1; then
-     BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
-   elif printf '%s' "$REMOTE_URL" | grep -qi 'gitlab' && command -v glab >/dev/null 2>&1; then
-     BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
-   elif command -v glab >/dev/null 2>&1; then
-     BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
-   fi
+   BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
    ```
-   - GitLab MCP alternative if `glab` is unavailable: use `mcp__gitlab__get_merge_request` and extract `target_branch`
 
    **Tier 3: Fallback**
    ```bash
@@ -123,21 +98,14 @@ Read the guideline keyword glossary from `references/guideline-keywords.md`.
    fi
    echo "Base branch: $BASE_BRANCH"
    ```
-   - **NOTE**: Tier 2 ensures correct scope when MR targets a non-default branch (e.g., a feature branch with other merged MRs)
+   - **NOTE**: Tier 2 ensures correct scope when the PR targets a non-default branch (e.g., a feature branch stacked on another PR)
    - **CAN** ask user if unclear or override needed
 
-5. **If `AUTO_MODE=true`**, check whether a PR exists for the current branch:
+3. **If `AUTO_MODE=true`**, check whether a PR exists for the current branch:
 
-   **GitHub:**
    ```bash
    gh pr view --json number,url
    ```
-
-   **GitLab:**
-   ```bash
-   glab mr view
-   ```
-   Or use MCP: `mcp__gitlab__list_merge_requests` filtered to the current branch.
 
    **If a PR exists**, set `DIRECT_UPDATE=true` and capture the PR URL for Phase 4.
 
@@ -150,7 +118,7 @@ Read the guideline keyword glossary from `references/guideline-keywords.md`.
 
 Read the context-gathering procedure from `references/context-gathering.md` and apply every step in that document before continuing. It covers:
 
-- **2.1 Git Changes Analysis** — diff between current branch and `origin/$BASE_BRANCH`, file categorization, optional GitLab/GitHub tool use.
+- **2.1 Git Changes Analysis** — diff between current branch and `origin/$BASE_BRANCH`, file categorization, optional GitHub tool use.
 - **2.2 Commit History Analysis** — commit log and message bodies, narrative arc extraction.
 - **2.3 Linear Issue Context** — branch-name parsing, `mcp__linear__get_issue`, divergence tracking.
 - **2.4 Code Structure Analysis** — scope (frontend/backend/full-stack), change characteristics, breaking-change indicators.
@@ -334,26 +302,14 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:generate-description/references/vis
 
 #### If `DIRECT_UPDATE=true`: Update PR directly
 
-**Skip copy-paste output and save-to-file prompt.** Update the existing PR's title and description using platform tools:
+**Skip copy-paste output and save-to-file prompt.** Update the existing PR's title and description:
 
-**GitHub:**
 ```bash
 gh pr edit --title "<title>" --body "$(cat <<'EOF'
 <description>
 EOF
 )"
 ```
-
-**GitLab (using glab CLI):**
-```bash
-glab mr update --title "<title>" --description "$(cat <<'EOF'
-<description>
-EOF
-)"
-```
-
-**GitLab (using MCP tools, if available):**
-Use `mcp__gitlab__update_merge_request` with the new title and description.
 
 **After updating**, confirm success:
 ```
@@ -436,7 +392,7 @@ Read the complete PR examples from `references/pr-examples.md`. Includes 3 examp
 
 ## Platform-Specific Notes
 
-Read the platform-specific notes from `references/platform-notes.md`. Covers GitLab MCP tools, magic words for issue linking, team abbreviations, and GitHub conventions.
+Read the platform-specific notes from `references/platform-notes.md`. Covers magic words for issue linking, team abbreviations, and GitHub conventions.
 
 ## Notes
 

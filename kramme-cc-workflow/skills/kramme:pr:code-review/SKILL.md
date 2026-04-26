@@ -30,26 +30,15 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    **Tier 1: Explicit override**
    If `--base <branch>` was provided, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
 
-   **Tier 2: PR/MR target branch detection**
-   Detect the hosting platform and query for the actual target branch:
+   **Tier 2: PR target branch detection**
    ```bash
-   REMOTE_URL=$(git remote get-url origin 2>/dev/null)
-   if printf '%s' "$REMOTE_URL" | grep -q 'github.com' && command -v gh >/dev/null 2>&1; then
-     BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
-   elif printf '%s' "$REMOTE_URL" | grep -qi 'gitlab' && command -v glab >/dev/null 2>&1; then
-     BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
-   elif command -v glab >/dev/null 2>&1; then
-     BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
-   fi
+   BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
    ```
-
-   **GitLab (MCP, if glab unavailable):**
-   Use `mcp__gitlab__get_merge_request` and extract `target_branch`.
 
    If a value is obtained, use it.
 
    **Tier 3: Fallback (existing behavior)**
-   If no PR/MR exists or the query fails:
+   If no PR exists or the query fails:
    ```bash
    BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
    [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
@@ -283,7 +272,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 # Invalid: security is not in the active review set, so the command should stop with an error
 ```
 
-**Custom base branch (for MRs targeting non-default branches):**
+**Custom base branch (for PRs targeting non-default branches):**
 ```
 /kramme:pr:code-review --base develop
 # Diffs against develop instead of auto-detecting the base

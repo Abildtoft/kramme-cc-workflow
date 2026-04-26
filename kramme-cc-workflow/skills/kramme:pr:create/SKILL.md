@@ -11,7 +11,7 @@ user-invocable: true
 # Create Pull Request
 
 Orchestrate the creation of a clean, well-documented PR by:
-1. Validating git state and detecting platform
+1. Validating git state
 2. Setting up the branch (if on main)
 3. Creating clean, narrative-quality commits
 4. Generating a comprehensive description
@@ -24,9 +24,6 @@ Orchestrate the creation of a clean, well-documented PR by:
     |
     v
 [Pre-Validation] -> Error? -> Abort with clear message
-    |
-    v
-[Platform Detection] -> Ambiguous? -> Ask user
     |
     v
 [Branch Handling] -> On main? -> Linear issue? -> Use Linear branch name / Ask for branch name
@@ -70,7 +67,7 @@ Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`. Flag order is not significant.
 - stop only on hard blockers
 
 `--draft` means:
-- create the PR as a draft (GitHub `--draft`, GitLab `--draft` / `draft: true` / `Draft:` title prefix).
+- create the PR as a draft (`gh pr create --draft`).
 
 Without `--draft`, the PR is created ready for review.
 
@@ -82,9 +79,9 @@ Read the pre-validation checks from `references/pre-validation-checks.md`. Run a
 
 ---
 
-## Steps 2-3: Platform Detection and Branch Handling
+## Steps 2-3: Branch Handling
 
-Read the platform detection and branch handling instructions from `references/branch-and-platform-handling.md`. Detect the platform (GitHub/GitLab), validate the branch is a feature branch, detect the base branch, and handle edge cases (detached HEAD, main branch, Linear issue integration, no upstream).
+Read the branch handling instructions from `references/branch-and-platform-handling.md`. Validate the branch is a feature branch, detect the base branch, and handle edge cases (detached HEAD, main branch, Linear issue integration, no upstream).
 
 ---
 
@@ -306,7 +303,6 @@ Show the user what will be created. When `DRAFT_MODE=true`, use `Draft [PR] Read
 ```
 [PR] Ready to Create
 
-Platform: [GitHub/GitLab]
 Title: [Generated conventional commit title from pr-description-generator]
 Branch: {feature-branch} -> main
 Status: Ready for review
@@ -381,9 +377,8 @@ The generated description is saved. You can create the PR manually.
 
 ### 8.4 Create PR
 
-Include the `--draft` flag only when `DRAFT_MODE=true`. The snippets below build a `DRAFT_FLAG` variable that is empty by default.
+Include the `--draft` flag only when `DRAFT_MODE=true`. The snippet below builds a `DRAFT_FLAG` variable that is empty by default.
 
-**For GitHub:**
 ```bash
 DRAFT_FLAG=""
 [ "$DRAFT_MODE" = "true" ] && DRAFT_FLAG="--draft"
@@ -397,29 +392,6 @@ EOF
 )"
 ```
 
-**For GitLab (using glab CLI):**
-```bash
-# Determine the logged-in GitLab username
-GLAB_USER="$(glab api /user | python3 -c 'import sys, json; print(json.load(sys.stdin)["username"])')"
-
-DRAFT_FLAG=""
-[ "$DRAFT_MODE" = "true" ] && DRAFT_FLAG="--draft"
-
-glab mr create $DRAFT_FLAG \
-  --assignee "$GLAB_USER" \
-  --title "{title}" \
-  --description "$(cat <<'EOF'
-{generated description}
-EOF
-)"
-
-# Alternative (if jq is installed):
-# GLAB_USER="$(glab api /user | jq -r '.username')"
-```
-
-**For GitLab (using MCP tools, if available):**
-Use `mcp__gitlab__create_merge_request` with `assignee_id` set to the current user's ID. When `DRAFT_MODE=true`, also pass `draft: true` (or prefix the title with `Draft: `); otherwise omit the `draft` argument.
-
 ### 8.5 Handle PR Creation Failure
 
 **If creation fails:**
@@ -430,9 +402,7 @@ Error: {error message}
 
 Manual creation:
   1. Your branch is pushed: origin/{branch-name}
-  2. Create manually at:
-     [GitHub]: https://github.com/{org}/{repo}/pull/new/{branch}
-     [GitLab]: https://gitlab.com/{org}/{repo}/-/merge_requests/new
+  2. Create manually at: https://github.com/{org}/{repo}/pull/new/{branch}
   3. Copy this description:
 
 ---
@@ -522,8 +492,7 @@ Per the recreate-commits skill requirements, this would cause issues.
 ### Draft Mode (Opt-In)
 Draft PRs are opt-in via the `--draft` flag. Default behavior is to create PRs ready for review.
 
-- GitHub: pass `--draft` to `gh pr create` only when the user supplied `--draft`.
-- GitLab: pass `--draft` to `glab mr create` (or `draft: true` via MCP, or prefix the title with `Draft:`) only when the user supplied `--draft`.
+- Pass `--draft` to `gh pr create` only when the user supplied `--draft`.
 
 ### Preserve Authorship
 **NEVER** modify git config or add AI as author. All commits should reflect the user's authorship.

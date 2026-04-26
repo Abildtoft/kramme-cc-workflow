@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Removed
+- Drop GitLab support; plugin is GitHub-only. Removes the GitLab MR detection branch from the `context-links` hook, the `glab` CLI permissions, the `mcp__gitlab__*` MCP permissions, and the `CONTEXT_LINKS_GITLAB_REMOTE_REGEX` config var. Skills, agents, and references now assume GitHub. Downstream users on GitLab installs should clean up their `settings.json` and any local `hooks/context-links.config` entries that referenced these.
+
 ## [0.52.0] - 2026-04-23
 
 ### Added

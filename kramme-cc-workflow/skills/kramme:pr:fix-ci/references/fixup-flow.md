@@ -7,18 +7,7 @@
 Use the PR's base branch from Step 1 so fixups stay scoped to the actual target branch.
 
 ```bash
-# GitHub
 BASE=$(gh pr view --json baseRefName --jq .baseRefName)
-```
-
-```bash
-# GitLab (glab CLI — preferred)
-BASE=$(glab mr view --json target_branch --jq .target_branch)
-```
-
-```bash
-# GitLab MCP (alternative if glab is unavailable)
-# Use target_branch from mcp__gitlab__get_merge_request
 ```
 
 If the PR base branch can't be determined, fall back to `origin/HEAD`, then `main`, then `master`.

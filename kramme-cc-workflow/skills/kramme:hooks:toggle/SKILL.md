@@ -25,7 +25,7 @@ Enable or disable hooks in the kramme-cc-workflow plugin.
 | `confirm-review-responses` | PreToolUse | Confirms before committing configured review artifact files (see `hooks/confirm-review-artifacts.txt`) |
 | `noninteractive-git` | PreToolUse | Forces non-interactive git commands |
 | `auto-format` | PostToolUse | Auto-formats code after Write/Edit operations |
-| `context-links` | Stop | Shows PR/MR and Linear issue links at session end |
+| `context-links` | Stop | Shows PR and Linear issue links at session end |
 
 ## Implementation
 

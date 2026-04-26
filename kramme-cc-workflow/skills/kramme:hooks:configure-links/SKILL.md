@@ -1,6 +1,6 @@
 ---
 name: kramme:hooks:configure-links
-description: Configure the context-links hook by updating hooks/context-links.config with workspace, team key, issue regex, and GitLab remote regex overrides. Use when end users want to set up or change context-links behavior without manually editing files.
+description: Configure the context-links hook by updating hooks/context-links.config with workspace, team key, and issue regex overrides. Use when end users want to set up or change context-links behavior without manually editing files.
 argument-hint: "[show|reset|KEY=VALUE ...]"
 disable-model-invocation: true
 user-invocable: true
@@ -19,7 +19,6 @@ Configure the `context-links` hook using a local config file:
 - `CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG`
 - `CONTEXT_LINKS_LINEAR_TEAM_KEYS`
 - `CONTEXT_LINKS_LINEAR_ISSUE_REGEX`
-- `CONTEXT_LINKS_GITLAB_REMOTE_REGEX`
 
 ## Usage
 
@@ -63,7 +62,7 @@ Configure the `context-links` hook using a local config file:
 If no arguments are provided:
 
 1. Run `show` behavior first.
-2. Prompt user for 1-4 updates in `KEY=VALUE` format (or blank to cancel).
+2. Prompt user for 1-3 updates in `KEY=VALUE` format (or blank to cancel).
 3. Apply updates with the same upsert workflow.
 
 ## Output Expectations
@@ -81,6 +80,5 @@ If no arguments are provided:
 /kramme:hooks:configure-links show
 /kramme:hooks:configure-links CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG=acme
 /kramme:hooks:configure-links CONTEXT_LINKS_LINEAR_TEAM_KEYS=ENG,OPS,PLAT
-/kramme:hooks:configure-links CONTEXT_LINKS_GITLAB_REMOTE_REGEX=git\\.example\\.com
 /kramme:hooks:configure-links reset
 ```

@@ -10,6 +10,3 @@
 
 # Optional explicit issue regex override. When set, this takes precedence over team keys.
 # CONTEXT_LINKS_LINEAR_ISSUE_REGEX="(ENG|OPS|PLAT)-[0-9]+"
-
-# Regex used to decide whether a remote is GitLab.
-# CONTEXT_LINKS_GITLAB_REMOTE_REGEX="(gitlab\\.com|git\\.example\\.com)"

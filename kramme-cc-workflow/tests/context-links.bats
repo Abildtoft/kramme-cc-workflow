@@ -15,14 +15,10 @@ setup() {
     export MOCK_GIT_REMOTE=""
     export MOCK_GH_PR_EXISTS=""
     export MOCK_GH_PR_NUMBER=""
-    export MOCK_GLAB_MR_EXISTS=""
-    export MOCK_GLAB_MR_NUMBER=""
-    export MOCK_GLAB_JSON_PRETTY=""
     export CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG=""
     export CONTEXT_LINKS_LINEAR_TEAM_KEYS=""
     export CONTEXT_LINKS_LINEAR_ISSUE_REGEX=""
-    export CONTEXT_LINKS_GITLAB_REMOTE_REGEX=""
-    unset LINEAR_WORKSPACE_SLUG LINEAR_TEAM_KEYS LINEAR_ISSUE_REGEX GITLAB_REMOTE_REGEX
+    unset LINEAR_WORKSPACE_SLUG LINEAR_TEAM_KEYS LINEAR_ISSUE_REGEX
 }
 
 # ============================================================================
@@ -211,71 +207,6 @@ setup() {
 }
 
 # ============================================================================
-# GITLAB MR DETECTION
-# ============================================================================
-
-@test "detects GitLab MR via gitlab.com" {
-    export MOCK_GIT_BRANCH="feature/WAN-123-test"
-    export MOCK_GIT_REMOTE="https://gitlab.com/user/repo.git"
-    export MOCK_GLAB_MR_EXISTS="true"
-    export MOCK_GLAB_MR_NUMBER="55"
-    run bash "$HOOK"
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"GitLab:"* ]]
-    [[ "$output" == *"merge_requests/55"* ]]
-}
-
-@test "detects GitLab MR with pretty JSON output" {
-    export MOCK_GIT_BRANCH="feature/WAN-123-test"
-    export MOCK_GIT_REMOTE="https://gitlab.com/user/repo.git"
-    export MOCK_GLAB_MR_EXISTS="true"
-    export MOCK_GLAB_MR_NUMBER="56"
-    export MOCK_GLAB_JSON_PRETTY="true"
-    run bash "$HOOK"
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"GitLab:"* ]]
-    [[ "$output" == *"merge_requests/56"* ]]
-}
-
-@test "detects GitLab MR via consensusaps domain" {
-    export MOCK_GIT_BRANCH="feature/WAN-123-test"
-    export MOCK_GIT_REMOTE="https://git.consensusaps.com/user/repo.git"
-    export MOCK_GLAB_MR_EXISTS="true"
-    export MOCK_GLAB_MR_NUMBER="77"
-    run bash "$HOOK"
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"GitLab:"* ]]
-    [[ "$output" == *"merge_requests/77"* ]]
-}
-
-@test "combines Linear and GitLab MR" {
-    export MOCK_GIT_BRANCH="feature/HEA-500-gitlab-test"
-    export MOCK_GIT_REMOTE="https://gitlab.com/user/repo.git"
-    export MOCK_GLAB_MR_EXISTS="true"
-    export MOCK_GLAB_MR_NUMBER="88"
-    run bash "$HOOK"
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"Linear:"* ]]
-    [[ "$output" == *"linear.app"* ]]
-    [[ "$output" == *"GitLab:"* ]]
-}
-
-@test "extracts MR URL not author URL from nested JSON" {
-    export MOCK_GIT_BRANCH="feature/WAN-123-test"
-    export MOCK_GIT_REMOTE="https://gitlab.com/user/repo.git"
-    export MOCK_GLAB_MR_EXISTS="true"
-    export MOCK_GLAB_MR_NUMBER="10013"
-    export MOCK_GLAB_JSON_PRETTY="true"
-    run bash "$HOOK"
-    [ "$status" -eq 0 ]
-    # Should contain the MR URL with merge_requests path
-    [[ "$output" == *"merge_requests/10013"* ]]
-    # Should NOT contain author profile URL
-    [[ "$output" != *"gitlab.com/authoruser"* ]]
-    [[ "$output" != *"gitlab.com/assigneeuser"* ]]
-}
-
-# ============================================================================
 # OUTPUT FORMAT VALIDATION
 # ============================================================================
 
@@ -303,27 +234,6 @@ setup() {
     run bash "$HOOK"
     [ "$status" -eq 0 ]
     [[ "$output" == *"ABC-321"* ]]
-}
-
-@test "GitLab remote regex can be overridden via env var" {
-    export MOCK_GIT_BRANCH="feature/WAN-123-test"
-    export MOCK_GIT_REMOTE="https://git.example.com/user/repo.git"
-    export CONTEXT_LINKS_GITLAB_REMOTE_REGEX="git\\.example\\.com"
-    export MOCK_GLAB_MR_EXISTS="true"
-    export MOCK_GLAB_MR_NUMBER="314"
-    run bash "$HOOK"
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"GitLab:"* ]]
-    [[ "$output" == *"merge_requests/314"* ]]
-}
-
-@test "invalid GitLab remote regex does not emit errors" {
-    export MOCK_GIT_BRANCH="main"
-    export MOCK_GIT_REMOTE="https://git.example.com/user/repo.git"
-    export CONTEXT_LINKS_GITLAB_REMOTE_REGEX="("
-    run bash "$HOOK"
-    [ "$status" -eq 0 ]
-    [ "$output" = "{}" ]
 }
 
 @test "context-links config file can override defaults" {

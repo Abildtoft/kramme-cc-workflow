@@ -23,7 +23,7 @@ Analyze the provided GitHub changes and related issues. Look for:
 3. Any other significant changes or improvements
 4. References to specific issues and their details
 5. Names of contributors who made the changes
-6. Use GitHub or GitLab CLI/API to lookup PRs/MRs and their descriptions
+6. Use GitHub CLI/API to lookup PRs and their descriptions
 7. Check PR labels to identify feature type (feature, bug, chore, etc.)
 8. Look for breaking changes and highlight them prominently
 9. Include PR numbers for traceability
