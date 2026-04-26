@@ -854,6 +854,61 @@ SH
   [ "$output" = "ok" ]
 }
 
+@test "opencode conversion copies root-level hook assets for root hook config paths" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  PLUGIN_DIR="$TMP_DIR/root-hooks-plugin"
+  create_fixture_plugin "$PLUGIN_DIR" "root-hooks-plugin"
+
+  cat > "$PLUGIN_DIR/.claude-plugin/plugin.json" <<'JSON'
+{
+  "name": "root-hooks-plugin",
+  "version": "1.0.0",
+  "agents": [],
+  "commands": [],
+  "skills": [],
+  "hooks": "hooks.json"
+}
+JSON
+
+  cat > "$PLUGIN_DIR/hooks.json" <<'JSON'
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "env -i bash ${CLAUDE_PLUGIN_ROOT}/hook.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+JSON
+
+  cat > "$PLUGIN_DIR/hook.sh" <<'SH'
+#!/bin/bash
+echo ok
+SH
+
+  run node "$SCRIPT" install "$PLUGIN_DIR" --to opencode --output "$TMP_DIR/opencode" --yes
+  [ "$status" -eq 0 ]
+
+  [ -f "$TMP_DIR/opencode/hook-bundles/root-hooks-plugin/hook.sh" ]
+
+  run grep -nF '# kramme hook bundle bootstrap start' "$TMP_DIR/opencode/hook-bundles/root-hooks-plugin/hook.sh"
+  [ "$status" -eq 0 ]
+
+  run env -i bash "$TMP_DIR/opencode/hook-bundles/root-hooks-plugin/hook.sh"
+  [ "$status" -eq 0 ]
+  [ "$output" = "ok" ]
+}
+
 @test "opencode conversion cleans legacy converted-hooks plugin for same hook-enabled plugin upgrades" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"

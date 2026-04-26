@@ -501,11 +501,13 @@ async function loadHookSourceDirs(root, hooksField) {
     if (!(await pathExists(sourceDir))) return
 
     const relativeDir = path.relative(root, sourceDir)
-    if (!relativeDir || relativeDir.startsWith("..") || path.isAbsolute(relativeDir)) {
+    if (relativeDir.startsWith("..") || path.isAbsolute(relativeDir)) {
       return
     }
 
-    const normalizedRelativeDir = relativeDir.split(path.sep).join("/")
+    const normalizedRelativeDir = relativeDir
+      ? relativeDir.split(path.sep).join("/")
+      : "."
     if (seen.has(normalizedRelativeDir)) return
 
     sourceDirs.push({
@@ -1460,11 +1462,13 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
       await fs.rm(hookRootPath, { recursive: true, force: true })
     }
     for (const hookSource of bundle.hookSourceDirs) {
-      const targetHookDir = resolveManagedChild(
-        hookRootPath,
-        hookSource.relativeDir,
-        "hook bundle directory",
-      )
+      const targetHookDir = hookSource.relativeDir === "."
+        ? hookRootPath
+        : resolveManagedChild(
+          hookRootPath,
+          hookSource.relativeDir,
+          "hook bundle directory",
+        )
       await copyDir(hookSource.sourceDir, targetHookDir)
       await bootstrapHookScripts(targetHookDir, hookRootPath)
     }
