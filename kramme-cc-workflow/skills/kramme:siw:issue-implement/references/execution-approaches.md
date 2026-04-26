@@ -6,6 +6,33 @@ The phrase "Run the Status Update Procedure" refers to the procedure declared at
 
 ---
 
+## Step 8 Status Update Verification
+
+After any workflow below transitions the issue to "In Progress", verify all three tracking files:
+
+- [ ] `siw/issues/ISSUE-{prefix}-{number}-*.md` — Status line reads `**Status:** In Progress ...` and preserves any existing `**Size:**` / `**Parallelization:**` metadata instead of deleting it.
+- [ ] `siw/OPEN_ISSUES_OVERVIEW.md` — Issue row shows "In Progress".
+- [ ] `siw/LOG.md` — Current Progress section uses this shape:
+  ```markdown
+  ## Current Progress
+
+  **Last Updated:** {date}
+  **Quick Summary:** Implementing {prefix}-{number}: {title}
+
+  ### Project Status
+  - **Status:** In Progress | **Current Issue:** {prefix}-{number}
+
+  ### Last Completed
+  - Started implementation of {prefix}-{number}
+
+  ### Next Steps
+  1. {next task from plan}
+  ```
+
+If any file was not updated during the selected workflow, run the Status Update Procedure again before returning to Step 9 in `SKILL.md`.
+
+---
+
 ## 7.1 Guided Implementation (Option 1)
 
 **Goal:** Implement with user verification at each step.
