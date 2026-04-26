@@ -356,7 +356,7 @@ Read and follow `references/execution-approaches.md` for the selected workflow's
 
 ## Step 8: Verify Status Update Completed
 
-**CRITICAL:** Before proceeding, confirm the Status Update Procedure (top of skill) ran in Step 7 and all three tracking files now show "In Progress". The issue file's status line must preserve any existing `**Size:**` / `**Parallelization:**` metadata, and `siw/LOG.md` must match the Current Progress shape in `references/execution-approaches.md`. Re-run the procedure for any file that wasn't updated. Do not proceed to Step 9 until all three files reflect "In Progress".
+**CRITICAL:** Before proceeding, confirm the Status Update Procedure (top of skill) ran in Step 7 and all three tracking files now show "In Progress". The issue file's status line must preserve any existing `**Size:**` / `**Parallelization:**` metadata, and `siw/LOG.md` must satisfy the Current Progress verification requirements in `references/execution-approaches.md` without overwriting more specific progress already recorded by the selected workflow. Re-run the procedure for any file that wasn't updated. Do not proceed to Step 9 until all three files reflect "In Progress".
 
 ---
 

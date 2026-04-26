@@ -12,24 +12,24 @@ After any workflow below transitions the issue to "In Progress", verify all thre
 
 - [ ] `siw/issues/ISSUE-{prefix}-{number}-*.md` — Status line reads `**Status:** In Progress ...` and preserves any existing `**Size:**` / `**Parallelization:**` metadata instead of deleting it.
 - [ ] `siw/OPEN_ISSUES_OVERVIEW.md` — Issue row shows "In Progress".
-- [ ] `siw/LOG.md` — Current Progress section uses this shape:
+- [ ] `siw/LOG.md` — Current Progress section identifies the active issue and preserves any more specific progress already recorded:
   ```markdown
   ## Current Progress
 
   **Last Updated:** {date}
-  **Quick Summary:** Implementing {prefix}-{number}: {title}
+  **Quick Summary:** {one-line summary mentioning {prefix}-{number}}
 
   ### Project Status
-  - **Status:** In Progress | **Current Issue:** {prefix}-{number}
+  - **Status:** In Progress | **Current Issue:** {prefix}-{number} | ...
 
   ### Last Completed
-  - Started implementation of {prefix}-{number}
+  - {started implementation of {prefix}-{number}, or the latest completed task}
 
   ### Next Steps
-  1. {next task from plan}
+  1. {next unfinished task from plan}
   ```
 
-If any file was not updated during the selected workflow, run the Status Update Procedure again before returning to Step 9 in `SKILL.md`.
+If any file was not updated during the selected workflow, run the Status Update Procedure again before returning to Step 9 in `SKILL.md`. When re-running it, update only missing or stale status fields and preserve accurate `Last Completed` / `Next Steps` details already written by the selected workflow.
 
 ---
 
