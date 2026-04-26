@@ -6,7 +6,6 @@ disable-model-invocation: true
 user-invocable: true
 ---
 
-<!-- TODO: Refactor to <500 lines by moving Step 7: Workflow Execution by Approach to references/ -->
 # Implement Local Issue
 
 Start implementing a local issue through an extensive planning phase before any code changes.
@@ -15,42 +14,15 @@ Start implementing a local issue through an extensive planning phase before any 
 
 ## Process Overview
 
-```
-/kramme:siw:issue-implement G-001
-    |
-    v
-[Validate & Read Issue] -> Not found? -> Show error, abort
-    |
-    v
-[Verify Git State] -> Warn if uncommitted changes
-    |
-    v
-[Parse Requirements] -> Extract acceptance criteria
-    |
-    v
-=============== PLANNING PHASE (extensive) ===============
-    |
-    v
-[Codebase Exploration] -> ALWAYS search for patterns/implementations
-    |
-    v
-[Technical Analysis] -> Map requirements to technical approach
-    |
-    v
-[Upfront Questions] -> Clarify ambiguities before proceeding
-    |
-    v
-[Create Technical Plan] -> Document approach, files, patterns
-    |
-    v
-=================== EXECUTION PHASE ===================
-    |
-    v
-[Approach Selection] -> AskUserQuestion with 3 options
-    |
-    v
-[Execute Workflow] -> Guided / Context-only / Autonomous
-```
+1. Parse arguments → read and validate the issue file
+2. Verify git state → warn on uncommitted changes
+3. Present issue context to the user
+4. **Planning phase:** codebase exploration → upfront questions → technical plan
+5. **Execution phase:** approach selection (Guided / Context-only / Autonomous) → run workflow
+6. Verify status update → success output
+7. **Completion phase:** sync decisions to spec → close issue → check phase completion
+
+Longer detail for the execution and completion phases lives in `references/execution-approaches.md` and `references/spec-sync.md`.
 
 ---
 
@@ -324,40 +296,7 @@ options:
 
 ### 5.3 Create Technical Plan
 
-After gathering answers, create a comprehensive plan:
-
-```
-Technical Implementation Plan for {prefix}-{number}
-
-## Summary
-{One paragraph describing what will be built}
-
-## Requirements -> Technical Approach
-| Requirement | Technical Implementation |
-|-------------|-------------------------|
-| {criterion 1} | {how it will be implemented} |
-| {criterion 2} | {how it will be implemented} |
-
-## Files to Modify/Create
-- {file 1} - {what changes}
-- {file 2} - {what changes}
-
-## Patterns to Follow
-Based on exploration of {similar feature}:
-- {pattern 1}
-- {pattern 2}
-
-## Implementation Steps
-1. {step 1}
-2. {step 2}
-3. {step 3}
-
-## Testing Approach
-- {test type}: {what to test}
-
-## Open Questions (if any)
-- {remaining uncertainties}
-```
+After gathering answers, create a comprehensive plan using the structure in `references/plan-template.md` (Summary, Requirements → Technical Approach, Files to Modify/Create, Patterns to Follow, Implementation Steps, Testing Approach, Open Questions).
 
 **Present plan and get confirmation before proceeding.**
 
@@ -405,126 +344,19 @@ This gate fires when (a) the issue carries `Mode: HITL` or Mode was missing and 
 
 ## Step 7: Workflow Execution by Approach
 
-### 7.1 Guided Implementation (Option 1)
+Run the workflow that matches the user's selection from Step 6:
 
-**Goal:** Implement with user verification at each step.
+- **Option 1 — Guided:** user reviews after each task.
+- **Option 2 — Context-only:** prepare context and starting points; user drives.
+- **Option 3 — Autonomous:** complete end-to-end with verification and decision sync.
 
-1. **Create Todo List**
-   - Break requirements into discrete tasks
-   - Identify dependencies
-
-2. **Set Status to "In Progress"** — Run the Status Update Procedure (all 3 files).
-
-3. **Begin Implementation**
-   - Work through tasks one at a time
-   - **ALWAYS** ask user to review after each task
-   - Update siw/LOG.md as tasks complete
-
-### 7.2 Context Setup Only (Option 2)
-
-**Goal:** Prepare everything, let user drive.
-
-1. **Create Todo List from Acceptance Criteria**
-
-2. **Set Status to "In Progress"** — Run the Status Update Procedure (all 3 files).
-
-3. **Provide Starting Points**
-   ```
-   Context set up. Here's where to start:
-
-   Issue: {prefix}-{number}
-   Branch: {current_branch}
-
-   Likely affected areas:
-   - {file/module 1} - {why}
-   - {file/module 2} - {why}
-
-   Similar implementations to reference:
-   - {existing feature} - {relevance}
-
-   Todo list created. Ready when you want to begin.
-   ```
-
-### 7.3 Autonomous Implementation (Option 3)
-
-**Goal:** Complete with minimal interaction.
-
-1. **Deep Analysis**
-   - Search for related files
-   - Read similar implementations
-   - Understand testing patterns
-
-2. **Create Comprehensive Plan**
-   - Detailed task breakdown
-
-3. **Set Status to "In Progress"** — Run the Status Update Procedure (all 3 files).
-
-4. **Implement Iteratively**
-   - Work through all tasks
-   - Follow existing patterns
-   - Run tests after changes
-   - Document decisions
-
-5. **Verification Phase**
-   - Invoke `kramme:verify:run` skill
-   - Fix any issues
-   - Ensure all criteria met
-
-6. **Sync Decisions to Spec**
-   - Review siw/LOG.md for decisions made during implementation
-   - Update spec with any decisions not already reflected
-   - Ensure spec matches actual implementation
-
-7. **Present Results**
-   ```
-   Implementation Complete
-
-   Issue: {prefix}-{number}
-   Branch: {branch}
-
-   Changes Made:
-   - {summary}
-
-   Files Modified:
-   - {list}
-
-   Verification Results:
-   - Tests: {status}
-   - Build: {status}
-
-   Acceptance Criteria:
-   - [x] {criterion 1}
-   - [x] {criterion 2}
-
-   Ready for review. Run /kramme:pr:create when ready.
-   ```
+Each workflow's task list, status-update points, and presentation templates live in `references/execution-approaches.md`. All three workflows must run the Status Update Procedure (top of skill) when transitioning to "In Progress".
 
 ---
 
 ## Step 8: Verify Status Update Completed
 
-**CRITICAL:** Before proceeding, confirm that the Status Update Procedure was executed in Step 7. All three files must now show "In Progress":
-
-- [ ] `siw/issues/ISSUE-{prefix}-{number}-*.md` — Status line reads `**Status:** In Progress ...` and preserves any existing `**Size:**` / `**Parallelization:**` metadata instead of deleting it
-- [ ] `siw/OPEN_ISSUES_OVERVIEW.md` — Issue row shows "In Progress"
-- [ ] `siw/LOG.md` — Current Progress section reads:
-  ```markdown
-  ## Current Progress
-
-  **Last Updated:** {date}
-  **Quick Summary:** Implementing {prefix}-{number}: {title}
-
-  ### Project Status
-  - **Status:** In Progress | **Current Issue:** {prefix}-{number}
-
-  ### Last Completed
-  - Started implementation of {prefix}-{number}
-
-  ### Next Steps
-  1. {next task from plan}
-  ```
-
-**If any file was not updated in Step 7, update it now.** Do not proceed to Step 9 until all three files reflect "In Progress".
+**CRITICAL:** Before proceeding, confirm the Status Update Procedure (top of skill) ran in Step 7 and all three tracking files now show "In Progress". The issue file's status line must preserve any existing `**Size:**` / `**Parallelization:**` metadata. Re-run the procedure for any file that wasn't updated. Do not proceed to Step 9 until all three files reflect "In Progress".
 
 ---
 
@@ -553,20 +385,11 @@ Quick Commands:
 
 ### 10.1 Review siw/LOG.md Decision Log
 
-Check siw/LOG.md for any decisions recorded during implementation:
-- New decisions made that aren't in the spec
-- Changes to originally planned approach
-- Discovered constraints or requirements
-- Technical choices that affect future work
+Check siw/LOG.md for decisions recorded during implementation: new decisions not in the spec, changes to the originally planned approach, discovered constraints, and technical choices that affect future work.
 
 ### 10.2 Compare Decisions Against Spec (and Supporting Specs)
 
-For each decision in siw/LOG.md:
-1. Check if the decision aligns with what's documented in the spec or supporting specs
-2. Identify decisions that:
-   - Contradict the spec (spec needs updating)
-   - Add new information (spec needs expanding)
-   - Clarify ambiguities (spec needs refinement)
+For each decision, check whether it aligns with the spec or supporting specs. Identify decisions that contradict (spec needs updating), add new information (spec needs expanding), or clarify ambiguities (spec needs refinement).
 
 **If supporting specs exist (`siw/supporting-specs/`)**, route decisions by topic:
 - Data model decisions → `*-data-model*.md`
@@ -575,98 +398,21 @@ For each decision in siw/LOG.md:
 - User story updates → `*-user-stories*.md`
 - Default → main spec if no matching supporting spec
 
-### 10.3 Present Spec Update Candidates
+### 10.3 Present Spec Update Candidates and Ask
 
-If misalignments found:
-
-```
-Spec Sync Check
-
-The following decisions from implementation don't match the current specification:
-
-Decisions needing spec update:
-1. Decision #{n}: {title}
-   - siw/LOG.md says: {decision}
-   - Spec says: {current spec content or "not mentioned"}
-   - Target file: {main spec or relevant supporting spec}
-   - Recommendation: {update/add/clarify}
-
-2. Decision #{n}: {title}
-   ...
-```
-
-Use AskUserQuestion:
-
-```yaml
-header: "Update Specification"
-question: "Should I update the specification to reflect these implementation decisions?"
-options:
-  - label: "Update spec with all decisions"
-    description: "Add all listed decisions to the specification"
-  - label: "Review each decision"
-    description: "Let me choose which decisions to include"
-  - label: "Skip spec update"
-    description: "Keep spec as-is (decisions remain only in siw/LOG.md)"
-```
+If misalignments are found, present them and use AskUserQuestion to choose between updating all, reviewing each, or skipping. Full presentation template and AskUserQuestion options live in `references/spec-sync.md`.
 
 ### 10.4 Update Specification File(s)
 
-For selected decisions, update the appropriate spec file (main spec or supporting spec).
+For selected decisions, update the appropriate spec file.
 
-**CRITICAL for supporting specs:** Don't just add to a "Design Decisions" section - **update the actual spec content** to reflect the decision. Supporting specs should always reflect current reality.
+**CRITICAL for supporting specs:** Update the actual spec content (entity definitions, endpoint contracts, component specs, diagrams) — do **not** just append to a "Design Decisions" section. Supporting specs should always reflect current reality.
 
-**Example:** If a decision changes an API endpoint from POST to PUT:
-- **Wrong:** Add "Decision #5: Changed to PUT" to Design Decisions section
-- **Right:** Update the endpoint definition in the API spec to show PUT, add brief note about why
-
-**When to update supporting spec content directly:**
-- Data model changes → Update entity definitions in `*-data-model*.md`
-- API changes → Update endpoint contracts in `*-api*.md`
-- UI changes → Update component specs in `*-ui*.md`
-- Architecture changes → Update diagrams/descriptions in architecture specs
-
-**When to use Design Decisions section (main spec only):**
-- Cross-cutting decisions that affect multiple areas
-- High-level architectural choices
-- Decisions that don't map to a specific spec section
-
-**Migration format for main spec's `## Design Decisions` section:**
-
-```markdown
-### Decision #5: Make ActionByUserId Nullable
-**Date:** 2025-11-05 | **Source:** ISSUE-G-003 implementation
-
-**Context:** Not all entities undergo this action, so the field shouldn't be required at the database level.
-**Decision:** Nullable at storage; required parameter when calling PerformAction().
-**Rationale:** Matches existing ActionAt pattern; semantically correct representation.
-```
-
-**Note:** The spec version is more concise than LOG.md - omit alternatives and detailed impact (those stay in LOG.md for historical reference).
+Use the main spec's `## Design Decisions` section only for cross-cutting decisions, high-level architectural choices, or decisions that don't map to a specific spec section. Worked example (POST → PUT migration), per-area routing, and the Design Decisions migration format are in `references/spec-sync.md`.
 
 ### 10.5 Confirm Sync Complete
 
-```
-Specification(s) Updated
-
-Main spec ({spec_filename}):
-- Decision #{n}: {title}
-
-Supporting specs:
-- siw/supporting-specs/01-data-model.md: Decision #{n}: {title}
-- siw/supporting-specs/02-api-specification.md: Decision #{n}: {title}
-
-Sections updated:
-- Design Decisions
-- {other sections if applicable}
-
-Specs and siw/LOG.md are now aligned.
-```
-
-**If no updates needed:**
-```
-Spec Sync Check: All implementation decisions align with the specifications.
-No updates needed.
-```
+Confirm the update to the user using the output template in `references/spec-sync.md`. If no updates were needed, report: "Spec Sync Check: All implementation decisions align with the specifications. No updates needed."
 
 ---
 
@@ -754,29 +500,12 @@ If a phase was marked DONE in 11.4, update `siw/LOG.md` to note the phase comple
 
 ## Important Constraints
 
-### No AI Attribution
-
-**NEVER** add Claude attribution to commits or code.
-
-### Verification Before Completion
-
-**ALWAYS** run verification before claiming completion. Use `kramme:verify:run` skill.
-
-### Respect Existing Patterns
-
-**ALWAYS** search for and follow existing patterns before implementing.
-
-### Update siw/LOG.md
-
-**ALWAYS** update siw/LOG.md with progress and decisions.
-
-### Status Updates Are Atomic
-
-**ALWAYS** update all three tracking files together when changing issue status. See the Status Update Procedure at the top of this skill. Never update just the issue file or just the overview — all three files must be updated as a single operation.
-
-### Sync Decisions to Spec
-
-**ALWAYS** run Step 10 (Spec Sync) before marking implementation complete. The specification must reflect the actual implementation.
+- **NEVER** add Claude attribution to commits or code.
+- **ALWAYS** run verification (`kramme:verify:run`) before claiming completion.
+- **ALWAYS** search for and follow existing patterns before implementing.
+- **ALWAYS** update `siw/LOG.md` with progress and decisions.
+- Status updates are atomic — update all three tracking files together (see Status Update Procedure at top of skill).
+- **ALWAYS** run Step 10 (Spec Sync) before marking implementation complete.
 
 ---
 
