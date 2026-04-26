@@ -33,7 +33,7 @@ Coordinate all pre-merge quality checks and produce a single readiness verdict. 
 - after the initial verdict, if code-backed critical or important findings exist, automatically run `kramme:pr:resolve-review` to address them
 - re-run verification after fixes to produce an updated verdict
 - does NOT fix suggestions — only critical and important findings
-- does NOT resolve process-only blockers such as `review-scope` split recommendations; those remain manual follow-up
+- does NOT resolve process-only blockers; those remain manual follow-up
 
 ### Step 2: Pre-Validation
 
@@ -376,7 +376,7 @@ If `FIX_MODE=true` and one or more code-backed critical or important code-review
 
 4. Update the verdict and findings counts to reflect what was fixed.
 
-If no code-backed critical/important code-review findings remain and the remaining blocker is process-level only (for example an oversized-PR split recommendation at `review-scope`), do **not** run `resolve-review`; keep the verdict and tell the user the follow-up is manual.
+If no code-backed critical/important code-review findings remain and the remaining blocker is process-level only, do **not** run `resolve-review`; keep the verdict and tell the user the follow-up is manual.
 
 If resolve-review fails or introduces new issues, keep the original verdict and note the failure.
 
@@ -421,7 +421,7 @@ Status: X blockers, Y major, Z minor / SKIPPED (no app URL) / COULD NOT RUN
 
 - **READY:** "PR is ready. Run `/kramme:pr:create` to create it, or `/kramme:pr:generate-description` to update the description."
 - **READY WITH CAVEATS:** "Consider addressing recommended fixes before creating the PR. Run `/kramme:pr:resolve-review` to address findings, or `/kramme:pr:create` to proceed. Alternatively, re-run with `--fix` to auto-resolve critical and important findings."
-- **NOT READY:** "Fix blockers first. Run `/kramme:pr:finalize --fix` to auto-resolve code-backed critical and important findings, or `/kramme:pr:resolve-review` to address them manually. Process blockers such as oversized-PR split recommendations still require manual follow-up."
+- **NOT READY:** "Fix blockers first. Run `/kramme:pr:finalize --fix` to auto-resolve code-backed critical and important findings, or `/kramme:pr:resolve-review` to address them manually. Process blockers still require manual follow-up."
 - **After merge (any verdict):** "For user-facing changes, run `/kramme:launch:rollout` to execute a staged post-merge rollout with canary gates and rollback triggers."
 
 ### Step 12: Optionally Generate Description
