@@ -47,7 +47,10 @@ if [ -z "$BASE_BRANCH" ]; then
   echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
   exit 1
 fi
-git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2>/dev/null || true
+if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2>/dev/null; then
+  echo "Error: Failed to fetch origin/$BASE_BRANCH. Check remote access and re-run with --base <branch>." >&2
+  exit 1
+fi
 git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null || {
   echo "Error: origin/$BASE_BRANCH not found. Re-run with --base <branch>." >&2
   exit 1
@@ -71,6 +74,22 @@ For each file, capture:
 - Insertions / deletions (`git diff --numstat "$BASE_REF"...HEAD` plus `git diff --numstat HEAD` for local).
 - Whether it's new, modified, deleted, or renamed.
 - File category — source, test, config, lock file, snapshot, generated.
+
+Use one combined numstat pass so untracked files are included in per-file slice counts and branch totals. The rows are the per-file records; aggregate the same rows for the branch total.
+```bash
+{
+  git diff --numstat "$BASE_REF"...HEAD
+  git diff --numstat HEAD
+  git ls-files --others --exclude-standard -z |
+    while IFS= read -r -d '' file; do
+      awk 'END { printf "%d\t0\t%s\n", NR, FILENAME }' "$file"
+    done
+}
+```
+To compute branch totals from those rows, sum the first two columns:
+```bash
+awk 'NF >= 3 { ins += ($1 == "-" ? 0 : $1); del += ($2 == "-" ? 0 : $2) } END { print ins, del, ins + del }'
+```
 
 ### 3. Read the Diff
 
