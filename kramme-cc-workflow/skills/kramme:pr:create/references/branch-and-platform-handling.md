@@ -1,45 +1,6 @@
-# Platform Detection and Branch Handling
+# Branch Handling
 
 **AUTO MODE:** If the calling skill sets `AUTO_MODE=true`, choose the recommended/default path for each question below instead of asking the user. Only stop for hard blockers that cannot be resolved safely.
-
-## Platform Detection
-
-Parse the remote URL from the pre-validation step:
-
-```bash
-REMOTE_URL=$(git remote get-url origin)
-```
-
-**Detection logic:**
-
-| URL Contains | Platform | CLI Tool |
-|--------------|----------|----------|
-| `github.com` | GitHub | `gh` |
-| `gitlab.com` | GitLab | `glab` or MCP |
-| `consensusaps` | GitLab | `glab` or MCP |
-
-**If platform cannot be determined:**
-
-If `AUTO_MODE=true`:
-- Choose **GitHub** if `gh` is installed.
-- Otherwise choose **GitLab** if `glab` is installed.
-- If neither tool is available, stop with a clear error asking the user to rerun without `--auto`.
-
-Otherwise use AskUserQuestion:
-```yaml
-header: "Platform"
-question: "Could not detect platform from remote URL. Which platform are you using?"
-options:
-  - label: "GitHub"
-    description: "Will create a Pull Request using the gh CLI"
-  - label: "GitLab"
-    description: "Will create a Pull Request using glab CLI or MCP tools"
-multiSelect: false
-```
-
-Store the detected platform for later steps.
-
----
 
 ## Branch Handling
 

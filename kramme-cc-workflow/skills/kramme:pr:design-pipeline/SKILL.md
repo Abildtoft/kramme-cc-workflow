@@ -27,7 +27,7 @@ Design a CI/CD pipeline at author time, before failures happen. This skill is th
 
 Before recommending any gate, declare what you detected about the repository. Emit a `STACK DETECTED` marker with:
 
-- CI platform (GitHub Actions / GitLab CI / CircleCI / Buildkite / Jenkins / other).
+- CI platform (GitHub Actions / CircleCI / Buildkite / Jenkins / other).
 - Primary language(s).
 - Package manager and lockfile.
 - Existing pipeline file(s), if any, and their current gate set.
@@ -123,7 +123,7 @@ This section is intentionally a guardrail summary, not a full rollout runbook. I
 
 ## Step 5: Secrets and branch protection
 
-- **Secrets** must live in a secrets manager (GitHub Actions secrets, GitLab CI variables with masking, AWS Secrets Manager, Vault). Not in committed files. Not in plaintext `.env` files (gitignore is a convention, not a boundary). Not in CI-level env vars without masking. Never echoed in logs.
+- **Secrets** must live in a secrets manager (GitHub Actions secrets, AWS Secrets Manager, Vault). Not in committed files. Not in plaintext `.env` files (gitignore is a convention, not a boundary). Not in CI-level env vars without masking. Never echoed in logs.
 - **Branch protection** must require the full PR gate set on the default branch. Required checks should include every blocking gate that runs before merge. If a gate also has an extended post-merge or nightly companion, name that separately instead of presenting it as a required PR check.
 - **Merge queue** (optional) — if the team ships multiple PRs per day, a merge queue prevents "green at PR time, red at merge time" drift by re-running the pipeline on the merged commit before landing.
 

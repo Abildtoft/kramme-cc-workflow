@@ -10,7 +10,7 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
 **Flags:**
 - `--auto` — Skip the granularity question and automatically choose the best granularity based on diff size and complexity.
 - `--granular` — Force atomic-level decomposition. Skips the granularity question. Use for very large PRs where 100+ commits are appropriate.
-- `--base <branch>` — Use `<branch>` as the base instead of auto-detecting. Without this flag, the skill tries to detect the base from an existing GitHub or GitLab pull request, then falls back to `master`/`main`.
+- `--base <branch>` — Use `<branch>` as the base instead of auto-detecting. Without this flag, the skill tries to detect the base from an existing GitHub pull request, then falls back to `master`/`main`.
 - `--after <commit>` — Only recreate commits after `<commit>`, keeping all earlier history intact. Accepts any valid git ref (SHA, short SHA, `HEAD~3`, etc.). The commit must exist and be an ancestor of `HEAD`. When set, the diff scope becomes `<commit>..HEAD` and the reset point becomes `<commit>` instead of the merge base.
 
 ## Steps
@@ -19,10 +19,8 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
    - **Determine the base branch** using the first method that succeeds:
      1. **Explicit flag:** If `--base <branch>` was passed, store it as `BASE_REF` and use that ref.
      2. **PR metadata:** If no `--base` flag, try to detect the target branch from an existing pull request:
-        - **GitHub:** `BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName')`
-        - **GitLab:** `BASE_BRANCH=$(glab mr view "$(git branch --show-current)" -F json | python3 -c 'import json,sys; print(json.load(sys.stdin)["target_branch"])')`
-        - If GitLab branch lookup fails, find the pull request IID first with `PR_IID=$(glab mr list --source-branch "$(git branch --show-current)" -F json | python3 -c 'import json,sys; data=json.load(sys.stdin); print(data[0]["iid"] if data else "")')`, then run `BASE_BRANCH=$(glab mr view "$PR_IID" -F json | python3 -c 'import json,sys; print(json.load(sys.stdin)["target_branch"])')`.
-        - If one of these commands succeeds and assigns a non-empty branch name, use it. If `gh`/`glab` is not installed, no PR exists, or the command fails, fall through silently to the next method.
+        - `BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName')`
+        - If this succeeds and assigns a non-empty branch name, use it. If `gh` is not installed, no PR exists, or the command fails, fall through silently to the next method.
      3. **Fallback:** If no pull request metadata is available, set `BASE_BRANCH` explicitly:
         ```bash
         BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')

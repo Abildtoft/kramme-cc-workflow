@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:fix-ci
-description: Iterate on a PR until CI passes. Use when you need to fix CI failures, address review feedback, or continuously push fixes until all checks are green. Automates the feedback-fix-push-wait cycle. Works with both GitHub and GitLab.
+description: Iterate on a PR until CI passes. Use when you need to fix CI failures, address review feedback, or continuously push fixes until all checks are green. Automates the feedback-fix-push-wait cycle.
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -9,7 +9,7 @@ user-invocable: true
 
 Continuously iterate on the current branch until all CI checks pass and review feedback is addressed.
 
-**Requires**: GitHub CLI (`gh`) or GitLab CLI (`glab`) authenticated and available.
+**Requires**: GitHub CLI (`gh`) authenticated and available.
 
 ## Why this loop exists
 
@@ -27,20 +27,7 @@ The fix-CI loop is the **CI Failure Feedback Loop** pattern: read the failure, m
 
 ---
 
-## Step 0: Detect Platform
-
-Determine whether this is a GitHub or GitLab repository:
-
-```bash
-git remote -v | head -1
-```
-
-- If remote contains `github.com` → use **GitHub** commands
-- If remote contains `gitlab.com` or other GitLab instance → use **GitLab** commands
-
----
-
-## GitHub Flow
+## Flow
 
 ### Step 1: Identify the PR
 
@@ -109,109 +96,7 @@ This waits until all checks complete. Exit code 0 means all passed, exit code 1 
 
 ---
 
-## GitLab Flow
-
-### Step 1: Identify the PR
-
-**Using GitLab MCP server (preferred if available):**
-```
-mcp__gitlab__get_merge_request with source_branch: <current-branch>
-```
-
-**Using glab CLI:**
-```bash
-glab mr view --web=false
-```
-
-**Using glab to list PRs for current branch:**
-```bash
-glab mr list --source-branch=$(git branch --show-current)
-```
-
-If no PR exists for the current branch, stop and inform the user.
-
-### Step 2: Check CI Status First
-
-**Using GitLab MCP server (preferred):**
-```
-mcp__gitlab__list_pipelines with ref: <current-branch>
-mcp__gitlab__get_pipeline with pipeline_id: <id>
-mcp__gitlab__list_pipeline_jobs with pipeline_id: <id>
-```
-
-**Using glab CLI:**
-```bash
-# View pipeline status for current branch
-glab ci status
-
-# List recent pipelines
-glab ci list --branch $(git branch --show-current)
-
-# View specific pipeline
-glab ci view <pipeline-id>
-```
-
-Pipeline statuses: `created`, `waiting_for_resource`, `preparing`, `pending`, `running`, `success`, `failed`, `canceled`, `skipped`, `manual`, `scheduled`.
-
-**Important:** If pipeline is still `running` or `pending`, wait before proceeding.
-
-### Step 3: Gather Review Feedback
-
-**Using GitLab MCP server (preferred):**
-```
-mcp__gitlab__get_merge_request with merge_request_iid: <iid>
-mcp__gitlab__mr_discussions with merge_request_iid: <iid>
-```
-
-**Using glab CLI:**
-```bash
-# View PR details including approval status
-glab mr view <mr-iid>
-
-# View PR notes/comments
-glab mr note list <mr-iid>
-```
-
-### Step 4: Investigate Failures
-
-**Using GitLab MCP server (preferred):**
-```
-mcp__gitlab__list_pipeline_jobs with pipeline_id: <id>, scope: "failed"
-mcp__gitlab__get_pipeline_job_output with job_id: <id>
-```
-
-**Using glab CLI:**
-```bash
-# List jobs in a pipeline
-glab ci list --pipeline <pipeline-id>
-
-# View job log (trace)
-glab ci trace <job-id>
-
-# Or view the entire pipeline's failed jobs
-glab ci view <pipeline-id> --web=false
-```
-
-Do NOT assume what failed based on the job name alone. Always read the actual logs.
-
-### Step 5-7: Fix, Commit, Push
-
-See common steps below.
-
-### Step 8: Wait for CI
-
-**Using glab CLI:**
-```bash
-# Watch pipeline status
-glab ci status --live
-
-# Or poll manually
-glab ci status --branch $(git branch --show-current)
-```
-
----
-
-## Common Steps (Both Platforms)
+## Common Steps
 
 ### Step 5: Validate Feedback
 
@@ -306,19 +191,13 @@ If disablement is genuinely warranted — a confirmed false positive, a test tha
 - Use `gh run view <run-id> --verbose` to see all job steps, not just failures
 - If a check is from an external service, the `link` field provides the URL
 
-**GitLab:**
-- Use `glab ci retry <job-id>` to retry a single failed job
-- Use `glab ci run` to trigger a new pipeline manually
-- Check for `allow_failure: true` jobs that don't block the pipeline
-- Use the GitLab MCP server tools when available for richer data access
-
 **Default Mode (New Commits):**
 - Creates commits with `[FIX PIPELINE]` prefix for easy identification
 - No force push during iteration (safer for collaborators watching the PR)
 - After CI passes, offers to consolidate `[FIX PIPELINE]` commits into original commits
 - On shared branches, only consolidate after explicit coordination; otherwise keep the commits separate and squash-merge later
 - Use `--no-consolidate` to skip the consolidation prompt
-- Alternative: Use "Squash and merge" in GitHub/GitLab to combine all commits when merging
+- Alternative: Use "Squash and merge" in GitHub to combine all commits when merging
 
 **Fixup Mode (`--fixup`):**
 - Use when you want to keep commit history clean during PR iteration

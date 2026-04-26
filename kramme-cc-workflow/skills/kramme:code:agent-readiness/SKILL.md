@@ -98,7 +98,7 @@ done
 if [ -d .github/workflows ]; then
   find .github/workflows -maxdepth 1 -type f \( -name "*.yml" -o -name "*.yaml" \)
 fi
-for item in .gitlab-ci.yml Jenkinsfile .circleci/config.yml; do
+for item in Jenkinsfile .circleci/config.yml; do
   if [ -e "$item" ]; then
     echo "$item"
   fi

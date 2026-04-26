@@ -75,7 +75,7 @@ exit_if_hook_disabled "hook-name" "json" # For PostToolUse/Stop hooks
 - Components are markdown files with YAML frontmatter
 - Keep instructions concise and actionable
 - **Document all components in README.md** - Every command, skill, agent, and hook must be documented in the README with a description of what it does and when to use it
-- Use "Pull Request" (PR) terminology, not "Merge Request" (MR) — even when supporting GitLab
+- Use "Pull Request" (PR) terminology consistently.
 - **Commit/PR title policy (canonical)** - Use plain-English commit messages for normal branch commits (no Conventional Commit prefix). Use [Conventional Commits](https://www.conventionalcommits.org/) format for PR titles (`feat:`, `fix:`, `docs:`, etc.). PR titles are validated by CI, become merge commit messages, and feed changelog generation.
 - **SKILL.md target under 500 lines** - Keep new or refactored skills under ~500 lines by moving reference material, templates, and examples to supporting files. Legacy skills may temporarily exceed this target until migrated.
 - **Explicit skill frontmatter** - Every skill SKILL.md must declare all frontmatter fields explicitly (`name`, `description`, `disable-model-invocation`, `user-invocable`). Never rely on defaults.
