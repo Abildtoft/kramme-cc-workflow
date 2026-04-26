@@ -38,7 +38,7 @@ Parse `$ARGUMENTS` as shell-style arguments so quoted paths stay intact.
 
 - If `--ideate` is present, set `force_ideate=true` and remove from argument list.
 - If `--decision-tree` is present, set `decision_tree_requested=true` and remove from argument list.
-- If remaining text includes trigger phrases like "walk the decision tree", "walk this depth-first", "resolve dependencies first", or "depth-first", set `decision_tree_requested=true` without removing meaningful topic words.
+- If remaining text includes trigger phrases like "walk the decision tree", "walk this depth-first", "resolve dependencies first", or "depth-first", set `decision_tree_requested=true` without removing meaningful topic words unless the phrase is only an instruction.
 - If the remaining text looks like file path(s), read and analyze them first.
 - If it is free text, use it as the topic description.
 - If it is empty, ask the user what they want to explore using AskUserQuestion.
@@ -359,7 +359,7 @@ If a required section cannot be filled because the interview didn't cover it, le
 **Handling $ARGUMENTS:**
 - `$ARGUMENTS` contains everything the user typed after `/kramme:discovery:interview`
 - Parse for the `--ideate` and `--decision-tree` flags. If present, set `force_ideate=true` and/or `decision_tree_requested=true`, then remove them from the argument list.
-- Treat natural-language requests to "walk the decision tree", "walk this depth-first", or "resolve dependencies first" as `decision_tree_requested=true`.
+- Treat natural-language requests to "walk the decision tree", "walk this depth-first", or "resolve dependencies first" as `decision_tree_requested=true` without treating phrase-only instructions as the topic.
 - If the remaining text looks like file path(s): Read and analyze them first
 - If it's free text: Use as the topic description
 - If empty: Ask user what they want to explore using AskUserQuestion
