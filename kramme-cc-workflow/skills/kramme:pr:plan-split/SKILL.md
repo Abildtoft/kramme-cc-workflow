@@ -75,7 +75,7 @@ For each file, capture:
 - Whether it's new, modified, deleted, or renamed.
 - File category — source, test, config, lock file, snapshot, generated.
 
-Use one combined numstat pass so untracked files are included in per-file slice counts and branch totals. The rows are the per-file records; aggregate the same rows for the branch total.
+Use one combined numstat pass so untracked files are included in per-file slice counts and branch totals. Group rows by path before treating them as per-file records because the same file can appear in both the committed diff and local WIP.
 ```bash
 {
   git diff --numstat "$BASE_REF"...HEAD
@@ -84,9 +84,22 @@ Use one combined numstat pass so untracked files are included in per-file slice 
     while IFS= read -r -d '' file; do
       awk 'END { printf "%d\t0\t%s\n", NR, FILENAME }' "$file"
     done
-}
+} | awk '
+  BEGIN { FS = OFS = "\t" }
+  NF >= 3 {
+    ins = ($1 == "-" ? 0 : $1)
+    del = ($2 == "-" ? 0 : $2)
+    add[$3] += ins
+    remove[$3] += del
+  }
+  END {
+    for (file in add) {
+      print add[file], remove[file], file
+    }
+  }
+'
 ```
-To compute branch totals from those rows, sum the first two columns:
+To compute branch totals from the grouped rows, sum the first two columns:
 ```bash
 awk 'NF >= 3 { ins += ($1 == "-" ? 0 : $1); del += ($2 == "-" ? 0 : $2) } END { print ins, del, ins + del }'
 ```
@@ -98,6 +111,12 @@ Read the actual diff content for source and test files:
 git diff "$BASE_REF"...HEAD
 git diff --cached
 git diff
+```
+
+For untracked source and test files from the change set, read their contents directly because regular `git diff` output has no blob to compare:
+```bash
+git ls-files --others --exclude-standard
+sed -n '1,240p' path/to/untracked-source-file
 ```
 
 Skip lock files, snapshots, and generated files when interpreting intent — they travel with their owning slice rather than defining one.

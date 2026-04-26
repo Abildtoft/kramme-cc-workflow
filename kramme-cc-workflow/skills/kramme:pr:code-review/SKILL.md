@@ -113,7 +113,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Parse the file to extract previously addressed findings
    - Extract for each finding: location (`file:line` or `review-scope`), issue description, action taken
    - Accept both `**Location:**` and legacy `**File:**` labels when parsing existing entries, and normalize either label to the same `location` field
-   - Store this context for filtering in Step 11
+   - Store this context for filtering in Step 10
 
    Previously addressed findings have the format:
    - **Location:** `path/to/file.ts:123` or `review-scope`
