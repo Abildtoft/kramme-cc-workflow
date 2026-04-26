@@ -115,6 +115,7 @@ freeform: true
   4. If no explicit files were provided and spec files exist, include `siw/*.md` except LOG.md, OPEN_ISSUES_OVERVIEW.md, AUDIT_*.md, SPEC_STRENGTHENING_PLAN.md, DISCOVERY_BRIEF.md. Include `siw/supporting-specs/*.md`.
   5. If no explicit files were provided, no spec files exist, but `siw/DISCOVERY_BRIEF.md` does, target that brief so no-argument reruns resume the saved discovery output.
   6. If nothing is found, switch to greenfield mode.
+- Check `.out-of-scope/` for prior matches against the topic. Two-step protocol: (a) list filenames in `.out-of-scope/` (skip silently if the directory is absent or empty); (b) read the body of any file whose slug plausibly matches `topic_hint` (greenfield) or the resolved spec scope (refinement). When a match is found, surface as "This is similar to `.out-of-scope/<slug>.md` (decided <date>) — we rejected this before because <one-line summary>. Continue, or honor the prior rejection?" and route the answer through AskUserQuestion. If the user honors the prior rejection, stop; otherwise continue and note the prior rejection in the discovery brief output. See `/kramme:docs:out-of-scope` for the storage skill.
 - If `siw/AUDIT_SPEC_REPORT.md` exists, read it for input signals.
 
 ### 1.4 Extract Work Context (Refinement only)
