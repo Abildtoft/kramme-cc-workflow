@@ -53,7 +53,7 @@ Generate permanent documentation from SIW artifacts, then remove temporary workf
 Check which SIW files exist:
 
 ```bash
-ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_*.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues/ 2>/dev/null
+ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_*.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues/ siw/qa-intake/ 2>/dev/null
 find siw -maxdepth 1 -type f -name "*.md" \
   ! -name "LOG.md" \
   ! -name "OPEN_ISSUES_OVERVIEW.md" \
@@ -376,6 +376,7 @@ Use `trash` command (recoverable). Fall back to `rm` if `trash` is not available
 - `siw/AUDIT_*.md`
 - `siw/DISCOVERY_BRIEF.md`
 - `siw/issues/` (entire directory)
+- `siw/qa-intake/` (QA intake parent summaries)
 
 **Conditional (based on Step 6):**
 - `siw/SPEC_STRENGTHENING_PLAN.md` (only if `strengthening_plan_disposition=remove`)
@@ -386,6 +387,7 @@ Use `trash` command (recoverable). Fall back to `rm` if `trash` is not available
 if command -v trash &> /dev/null; then
     trash siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_*.md siw/DISCOVERY_BRIEF.md 2>/dev/null
     trash -r siw/issues/ 2>/dev/null
+    trash -r siw/qa-intake/ 2>/dev/null
     if [ "{strengthening_plan_disposition}" = "remove" ]; then
         trash siw/SPEC_STRENGTHENING_PLAN.md 2>/dev/null
     fi
@@ -398,6 +400,7 @@ else
     echo "Consider installing: brew install trash"
     rm -f siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_*.md siw/DISCOVERY_BRIEF.md
     rm -rf siw/issues/
+    rm -rf siw/qa-intake/
     if [ "{strengthening_plan_disposition}" = "remove" ]; then
         rm -f siw/SPEC_STRENGTHENING_PLAN.md
     fi
@@ -416,9 +419,9 @@ After deletion, check if `siw/` is empty:
 
 ```bash
 # Remove .gitkeep files
-rm -f siw/.gitkeep siw/issues/.gitkeep siw/supporting-specs/.gitkeep 2>/dev/null
+rm -f siw/.gitkeep siw/issues/.gitkeep siw/qa-intake/.gitkeep siw/supporting-specs/.gitkeep 2>/dev/null
 # Remove empty directories
-rmdir siw/issues siw/supporting-specs siw 2>/dev/null
+rmdir siw/issues siw/qa-intake siw/supporting-specs siw 2>/dev/null
 ```
 
 If `siw/` still has files (spec kept or other files present), leave it alone.
@@ -442,6 +445,7 @@ Removed:
   siw/SPEC_STRENGTHENING_PLAN.md         (if removed)
   siw/DISCOVERY_BRIEF.md                 (if existed)
   siw/issues/ ({count} issue files)
+  siw/qa-intake/ ({count} intake summaries)
   siw/{spec_filename}                     (if removed)
   siw/supporting-specs/                   (if removed)
   siw/ directory                          (if empty)

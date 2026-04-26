@@ -40,6 +40,7 @@ Delete the following files if they exist:
 - `siw/LOG.md`
 - `siw/OPEN_ISSUES_OVERVIEW.md`
 - `siw/issues/` directory (only if SIW marker files are present)
+- `siw/qa-intake/` directory (only if SIW marker files are present)
 
 **Specification files (in `siw/`):**
 - `siw/FEATURE_SPECIFICATION.md`
@@ -56,7 +57,10 @@ Delete the following files if they exist:
 3. If `siw/issues/` exists:
    - Only delete it if `siw/OPEN_ISSUES_OVERVIEW.md` exists
    - If `siw/issues/` contains non-`ISSUE-*.md` files, ask before deleting or skip and report
-4. Delete each remaining file that exists using `trash` (files can be restored from system Trash if needed)
-5. Report results:
+4. If `siw/qa-intake/` exists:
+   - Only delete it if `siw/OPEN_ISSUES_OVERVIEW.md` exists
+   - If `siw/qa-intake/` contains non-`QA-INTAKE-*.md` files, ask before deleting or skip and report
+5. Delete each remaining file that exists using `trash` (files can be restored from system Trash if needed)
+6. Report results:
    - List files that were deleted
    - Note if no artifact files were found
