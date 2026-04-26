@@ -38,7 +38,7 @@ Same as `/kramme:pr:code-review` Steps 1-6:
 
 1. Check git status to identify changed files
 2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, security, removal, simplify, all), `--base <ref>` override, and optional `--inline` output mode
-3. Resolve base branch using 3-tier strategy (explicit `--base` → PR/MR target branch → default branch fallback). See `/kramme:pr:code-review` Step 2 for full logic.
+3. Resolve base branch using 3-tier strategy (explicit `--base` → PR target branch → default branch fallback). See `/kramme:pr:code-review` Step 2 for full logic.
 4. Build a unified change scope (committed PR diff + staged + unstaged + untracked):
    ```bash
    BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)

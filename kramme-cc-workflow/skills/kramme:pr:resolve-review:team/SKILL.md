@@ -138,10 +138,10 @@ After all agents complete:
    - Ask the responsible agent to fix it (resume its session)
    - Fix it directly as the lead
 
-3. Apply the same platform reply behavior as `/kramme:pr:resolve-review` Step 4:
-   - Default (no flag): do not post replies or resolve threads on the platform
-   - If `AUTO_MODE=true` or `ANSWER_AND_RESOLVE=true`, and the review source is external: post replies for each external review comment, then resolve addressed threads/discussions on the PR/MR
-   - If `REVIEW_SOURCE=local`: do not post replies or resolve threads on the platform, even when `--auto` or a legacy reply alias was provided
+3. Apply the same reply behavior as `/kramme:pr:resolve-review` Step 4:
+   - Default (no flag): do not post replies or resolve threads on GitHub
+   - If `AUTO_MODE=true` or `ANSWER_AND_RESOLVE=true`, and the review source is external: post replies for each external review comment, then resolve addressed threads on the PR
+   - If `REVIEW_SOURCE=local`: do not post replies or resolve threads on GitHub, even when `--auto` or a legacy reply alias was provided
    - If `AUTO_MODE=true` or `ANSWER_AND_RESOLVE=true`, and the review source is external: for disagreements or out-of-scope findings, post a rationale reply, but do not mark as resolved unless explicitly requested by the reviewer/user
 
 4. Write resolutions to the appropriate file (if the source was `UX_REVIEW_OVERVIEW.md`, update that file; otherwise write to `REVIEW_OVERVIEW.md`), using the same format as `/kramme:pr:resolve-review` Step 4, with an additional note about parallel resolution:

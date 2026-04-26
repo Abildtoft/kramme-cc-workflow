@@ -15,18 +15,11 @@ This command uses the `kramme:deslop-reviewer` agent to identify AI slop, then f
    - Launch `kramme:deslop-reviewer` in code review mode
    - Detect the base branch using a 3-tier strategy and get the diff:
      1. If the caller provided a base branch explicitly (for example, "Use `develop` as the base"), use it directly
-     2. Otherwise, query the PR/MR target branch with explicit host/CLI checks:
+     2. Otherwise, query the PR target branch:
      ```bash
-     REMOTE_URL=$(git remote get-url origin 2>/dev/null)
-     if printf '%s' "$REMOTE_URL" | grep -q 'github.com' && command -v gh >/dev/null 2>&1; then
-       BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
-     elif printf '%s' "$REMOTE_URL" | grep -qi 'gitlab' && command -v glab >/dev/null 2>&1; then
-       BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
-     elif command -v glab >/dev/null 2>&1; then
-       BASE_BRANCH=$(glab mr view --json target_branch --jq '.target_branch' 2>/dev/null)
-     fi
+     BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
      ```
-     3. If no PR/MR or query fails, fall back:
+     3. If no PR or query fails, fall back:
      ```bash
      BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
      [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')

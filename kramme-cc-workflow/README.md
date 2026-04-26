@@ -210,9 +210,9 @@ PR creation, review, iteration, and resolution.
 | `/kramme:pr:product-review` | User | `[--base <ref>] [--threshold 0-100] [--inline]` | Deep product review of branch and local changes.<br><br>Evaluates user-value alignment, flow completeness, missing states, copy/defaults, permission behavior, and adjacent-flow regressions.<br><br>Outputs `PRODUCT_REVIEW_OVERVIEW.md` by default. Add `--inline` to reply with the report instead. |
 | `/kramme:pr:code-review` | User | `[aspects] [--emphasize <dim>...] [--base <ref>] [parallel] [--inline]` | Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop).<br><br>Use `--emphasize` to promote selected review dimensions without downgrading other validated findings; emphasized dimensions must stay in the active review set.<br><br>Outputs `REVIEW_OVERVIEW.md` by default. Add `--inline` to reply with the report instead. |
 | `/kramme:pr:code-review:team` | User | `[aspects] [--base <ref>] [--inline]` | Team-based PR review using multi-agent execution where specialized reviewers collaborate, cross-validate findings, and challenge each other's suggestions.<br><br>Higher quality, higher token cost.<br><br>Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled.<br><br>Add `--inline` to reply with the report instead of writing `REVIEW_OVERVIEW.md`. |
-| `/kramme:pr:resolve-review` | User | `[--auto] [--granular] [--severity critical,important] [--source local\|online\|--local\|--online] [review-content\|instructions\|url]` | Resolve findings from code reviews.<br><br>Evaluates each finding for scope and validity, implements fixes, and generates a response document.<br><br>Use `--source local` (or `--local`) to target `REVIEW_OVERVIEW.md` only, or `--source online` (or `--online`) to target PR/MR review comments.<br><br>Use `--auto` to post replies and resolve addressed review threads/discussions on the current PR/MR (`--reply` and `--answer-and-resolve` are still supported as legacy aliases).<br><br>Use `--granular` to create one commit per finding instead of a single combined commit.<br><br>Use `--severity critical,important` to only address findings matching the specified severity levels (critical=High, important=Medium, suggestion=Low).<br><br>Creates a rollback checkpoint before making changes; offers `git reset --hard` if fixes fail validation.<br><br>When local source is selected, no platform replies or thread resolution are performed even if `--auto` is set. |
+| `/kramme:pr:resolve-review` | User | `[--auto] [--granular] [--severity critical,important] [--source local\|online\|--local\|--online] [review-content\|instructions\|url]` | Resolve findings from code reviews.<br><br>Evaluates each finding for scope and validity, implements fixes, and generates a response document.<br><br>Use `--source local` (or `--local`) to target `REVIEW_OVERVIEW.md` only, or `--source online` (or `--online`) to target PR review comments.<br><br>Use `--auto` to post replies and resolve addressed review threads on the current PR (`--reply` and `--answer-and-resolve` are still supported as legacy aliases).<br><br>Use `--granular` to create one commit per finding instead of a single combined commit.<br><br>Use `--severity critical,important` to only address findings matching the specified severity levels (critical=High, important=Medium, suggestion=Low).<br><br>Creates a rollback checkpoint before making changes; offers `git reset --hard` if fixes fail validation.<br><br>When local source is selected, no replies or thread resolution are performed even if `--auto` is set. |
 | `/kramme:pr:resolve-review:team` | User | `[--auto] [review-content\|instructions\|url]` | Resolve review findings in parallel using multi-agent execution.<br><br>Groups findings by file area and assigns to separate agents for faster resolution.<br><br>Add `--auto` to skip the parallel-plan confirmation and, for external reviews, post replies / resolve addressed threads after the fixes land.<br><br>Requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled. |
-| `/kramme:pr:fix-ci` | User | — | Iterate on a PR until CI passes.<br><br>Automates the feedback-fix-push-wait cycle for both GitHub and GitLab.<br><br>Enforces quality-gate discipline: gates are never silently disabled. |
+| `/kramme:pr:fix-ci` | User | — | Iterate on a PR until CI passes.<br><br>Automates the feedback-fix-push-wait cycle on GitHub.<br><br>Enforces quality-gate discipline: gates are never silently disabled. |
 | `/kramme:pr:design-pipeline` | User | — | Design a CI/CD pipeline: quality gates, budget (<10 min), feature-flag lifecycle, exit checklist.<br><br>Use at author time when adding or modifying a pipeline. Complementary to `/kramme:pr:fix-ci` (remediation). |
 | `/kramme:pr:generate-description` | User | `[--auto] [--visual] [--base <ref>]` | Write a structured PR title and body from git diff, commit log, and Linear context.<br><br>Every generated body includes a Change Summary block (`Changes made` / `Things I didn't touch` / `Potential concerns`).<br><br>`--auto` is the preferred hands-off mode: it skips prompts and updates the existing PR automatically when one already exists for the branch.<br><br>Optionally auto-detects a running dev server and captures screenshots with `--visual`. |
 | `/kramme:pr:copy-review` | User | `[--base <ref>] [--threshold 0-100] [--inline]` | Experimental.<br><br>Review PR and local changes for unnecessary, redundant, or duplicative UI text — labels, descriptions, placeholders, tooltips, and instructions that the UI already communicates through its structure.<br><br>Outputs `COPY_REVIEW_OVERVIEW.md` by default. Add `--inline` to reply with the report instead. |
@@ -423,7 +423,7 @@ Event handlers that run automatically at specific points in the Claude Code life
 | `block-rm-rf` | PreToolUse (Bash) | Blocks destructive file deletion commands and recommends `trash` instead. |
 | `confirm-review-responses` | PreToolUse (Bash) | Confirms before committing review artifact files. |
 | `noninteractive-git` | PreToolUse (Bash) | Blocks git commands that open an interactive editor. |
-| `context-links` | Stop | Displays PR/MR and Linear issue links at end of messages. |
+| `context-links` | Stop | Displays PR and Linear issue links at end of messages. |
 | `auto-format` | PostToolUse (Write\|Edit) | Auto-formats code after file modifications using detected project formatter. |
 
 Use `/kramme:hooks:toggle` to enable/disable hooks. State persists in `hooks/hook-state.json` (gitignored).
@@ -432,7 +432,7 @@ Use `/kramme:hooks:toggle` to enable/disable hooks. State persists in `hooks/hoo
 
 Add these to your Claude Code `settings.json` to reduce approval prompts. Two tiers are available:
 
-- **Core** — read-only git, GitHub, GitLab, and Linear operations
+- **Core** — read-only git, GitHub, and Linear operations
 - **Extended** — adds git write operations, PR creation, and build/test commands
 
 > **Warning:** Extended permissions include destructive git operations (`git push`, `git reset`, `git rebase`). Only use on projects where you have full control.
@@ -464,7 +464,6 @@ CLI tools that enhance the plugin experience. Some are required for specific com
 |-----|---------|---------|
 | `git` | Version control (all commands) | Pre-installed on most systems |
 | `gh` | GitHub PR workflows | `brew install gh` |
-| `glab` | GitLab MR workflows | `brew install glab` |
 
 ### Verification & Build
 
@@ -542,7 +541,7 @@ tests/
 ├── run-tests.sh              # Main test runner
 ├── test_helper/
 │   ├── common.bash           # Shared utilities
-│   └── mocks/                # Mock git, gh, glab commands
+│   └── mocks/                # Mock git, gh commands
 ├── auto-format.bats          # Tests for auto-format hook
 ├── block-rm-rf.bats          # Tests for block-rm-rf hook
 ├── confirm-review-responses.bats # Tests for confirm-review-responses hook

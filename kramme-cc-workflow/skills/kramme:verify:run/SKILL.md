@@ -29,7 +29,6 @@ Run verification checks (tests, formatting, builds, linting, type checking) for 
 
 If project instructions do not specify commands, check CI configuration files:
 - `.github/workflows/*.yml` (GitHub Actions)
-- `.gitlab-ci.yml` (GitLab CI)
 - `azure-pipelines.yml` (Azure DevOps)
 - `Jenkinsfile` (Jenkins)
 - `.circleci/config.yml` (CircleCI)
