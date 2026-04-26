@@ -5,3 +5,9 @@ sources:
     rationale: "The Rule of 500 automation trigger for large refactors is attributed to Addy's guidance on skill-driven coding workflows."
     last_reviewed_at: 2026-04-25
     baseline_hash: ""
+  - id: pocock-improve-codebase-architecture
+    url: https://github.com/mattpocock/skills/tree/main/improve-codebase-architecture
+    title: "Matt Pocock skills - improve-codebase-architecture"
+    rationale: "The architectural glossary (Module/Interface/Implementation/Depth/Seam/Adapter/Leverage/Locality) used in references/architecture-language.md, the deletion-test heuristic for distinguishing pass-through wrappers from real consolidators, and the adapter-count seam rule (one adapter = hypothetical seam, two = real seam) are adapted from this skill's LANGUAGE.md and DEEPENING.md."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

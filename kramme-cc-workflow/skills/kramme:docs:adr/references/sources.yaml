@@ -11,3 +11,9 @@ sources:
     rationale: "The fallback ADR template and decision-record framing are based on the Nygard-style ADR pattern."
     last_reviewed_at: 2026-04-25
     baseline_hash: ""
+  - id: pocock-domain-model
+    url: https://github.com/mattpocock/skills/tree/main/domain-model
+    title: "Matt Pocock skills - domain-model"
+    rationale: "The inline ADR-offer pattern with the 3-criterion test (hard-to-reverse, surprising-without-context, result-of-real-tradeoff) and the canonical offer message used by other skills (discovery, refactor) to detect ADR-worthy moments are adapted from this source."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

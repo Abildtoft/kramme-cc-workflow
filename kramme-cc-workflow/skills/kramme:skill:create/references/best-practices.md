@@ -88,6 +88,24 @@ Time-sensitive content goes stale silently in any of those paths. Avoid embeddin
 
 Prefer durable phrasings: "the latest stable version" (let the agent look it up), "as of the current release" (let the install context resolve), "the active migration target" (defer to the runtime). When concrete state is genuinely required, point to a runtime artifact (a config file, an environment variable, a single-source-of-truth doc) rather than inlining the value.
 
+### Sources of inspiration
+
+Skills derived from external content — another agent-skills repository, a paper, a book, a blog post, official framework docs — must declare those sources in a per-skill manifest at `references/sources.yaml`. The manifest is read by the `kramme:skill:audit-sources` skill to fetch each source on demand, hash it, compare to a stored baseline, and surface upstream changes worth folding into the skill.
+
+Why this matters:
+
+- **Skills go stale silently otherwise.** When the upstream source is revised — Pocock rewrites a skill, an Anthropic doc page changes, an OWASP item is renumbered — the kramme skill that absorbed those patterns will not pick up the revision unless the manifest declares the source. The drift only surfaces if a human notices independently, which scales poorly across dozens of skills.
+- **Attribution discipline.** Writing the rationale line ("what in this skill is derived from this source") forces curation. If the connection cannot be articulated in one sentence, the source is not really an inspiration source — it might be an illustrative reference, a tool the skill calls but doesn't derive content from, or unrelated reading. Only inspiration sources go into the manifest.
+
+Apply the manifest convention every time:
+
+- **At creation.** When a new skill is scaffolded from external content, author `sources.yaml` in the same change. The skill-creation workflow asks Question 6 ("External inspiration") for this reason — answer it honestly and let the scaffold step write the manifest.
+- **When absorbing new patterns.** When an existing skill is modified to absorb a new pattern from an external source — even patterns from a source already listed — update the manifest in the same change. Either add a new entry (if the source was not there) or amend the existing entry's rationale to reflect the additional pattern.
+
+A schema entry has six fields: `id` (kebab-case slug, stable across audits), `url` or `context7_library` (exactly one), `title` (human-readable), `rationale` (one sentence, what in this skill is derived from this source), `last_reviewed_at` (ISO date `YYYY-MM-DD`), `baseline_hash` (empty string on first creation; the audit skill populates it).
+
+The audit skill has a Bootstrap mode that can propose a manifest after the fact for skills created without one — but treat that as a recovery path, not the default workflow. Every commit that changes a skill should leave its `sources.yaml` accurate.
+
 ## Deterministic Scripts
 
 Offload fragile/repetitive tasks to `scripts/`.

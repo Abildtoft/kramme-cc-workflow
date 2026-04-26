@@ -1,0 +1,13 @@
+sources:
+  - id: pocock-design-an-interface
+    url: https://github.com/mattpocock/skills/tree/main/design-an-interface
+    title: "Matt Pocock skills - design-an-interface"
+    rationale: "The Design It Twice parallel sub-agent mode (3+ radically different interface designs with assigned constraints — minimize methods, maximize flexibility, optimize common case, ports & adapters — then comparison by depth, locality, and seam placement) is adapted from this source."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""
+  - id: pocock-improve-codebase-architecture-interface-design
+    url: https://github.com/mattpocock/skills/tree/main/improve-codebase-architecture
+    title: "Matt Pocock skills - improve-codebase-architecture (INTERFACE-DESIGN.md)"
+    rationale: "The dependency-category framing for choosing test stand-ins and adapter strategy (in-process, local-substitutable, remote-but-owned, true-external) used in the Design It Twice prompt template is adapted from this skill's INTERFACE-DESIGN.md and DEEPENING.md."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

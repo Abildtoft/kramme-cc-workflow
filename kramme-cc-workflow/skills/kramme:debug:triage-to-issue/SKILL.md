@@ -1,19 +1,19 @@
 ---
 name: kramme:debug:triage-to-issue
 description: "(experimental) Triage a bug end-to-end: orchestrate root-cause investigation, design a TDD fix plan with RED-GREEN cycles, and file a refactor-durable Linear or local SIW issue in one mostly-hands-off pass. Use when a bug needs to become an implementation-ready ticket without manually chaining kramme:debug:investigate, kramme:test:tdd, and kramme:linear:issue-define. Composes those skills through normal skill invocation. Not for the full interactive investigation with confidence gates (use kramme:debug:investigate alone), not for conversational bug-reporting QA sessions (the planned kramme:qa:intake sibling), not for implementing the fix (use kramme:linear:issue-implement or kramme:siw:issue-implement after this skill files the ticket)."
-argument-hint: "[bug description, error message, or Linear/SIW issue ref] [--yes | --afk]"
+argument-hint: "[bug description, error message, or Linear/SIW issue ref] [--yes | --auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
 
 # Triage a Bug to an Implementation-Ready Issue
 
-One command, one ticket. Take a bug description, run a root-cause investigation, design a TDD fix plan, and file a refactor-durable issue an AFK agent can pick up and implement. The composed result is what manually chaining `kramme:debug:investigate` → `kramme:test:tdd` → `kramme:linear:issue-define` would produce, but in one orchestrated pass.
+One command, one ticket. Take a bug description, run a root-cause investigation, design a TDD fix plan, and file a refactor-durable issue an autonomous (AUTO-mode) agent can pick up and implement. The composed result is what manually chaining `kramme:debug:investigate` → `kramme:test:tdd` → `kramme:linear:issue-define` would produce, but in one orchestrated pass.
 
 ## When to use
 
 - A user reports a bug and you want a single ticket containing root-cause + TDD plan + acceptance criteria.
-- The bug needs to be parked for an AFK agent or another contributor to implement later.
+- The bug needs to be parked for an autonomous agent or another contributor to implement later.
 - The repo uses Linear, SIW, or both — this skill auto-detects sinks.
 
 ## When to skip
@@ -29,7 +29,7 @@ One command, one ticket. Take a bug description, run a root-cause investigation,
 
 ### Phase 1 — Capture
 
-1. Read `$ARGUMENTS`. Strip any trailing `--yes` or `--afk` flag — both bypass the approval gate.
+1. Read `$ARGUMENTS`. Strip any trailing `--yes` or `--auto` flag — both bypass the approval gate.
 2. If the description is empty, ask exactly ONE question:
 
 ```yaml
@@ -75,7 +75,7 @@ If Linear is the selected sink, resolve required Linear metadata before continui
 1. List available Linear teams.
 2. If exactly one team is available, store it as `LINEAR_TEAM`.
 3. If the current branch, existing Linear reference, or workspace context clearly identifies a team, store that team as `LINEAR_TEAM`.
-4. If multiple teams are available and no team is obvious, ask exactly one `Linear Team` question. This required metadata question still fires when `--yes` or `--afk` was passed; those flags skip only the approval gate, not required create inputs.
+4. If multiple teams are available and no team is obvious, ask exactly one `Linear Team` question. This required metadata question still fires when `--yes` or `--auto` was passed; those flags skip only the approval gate, not required create inputs.
 5. If no Linear team can be resolved, fall back to the markdown sink and note the reason in `POTENTIAL CONCERNS`.
 
 ### Phase 3 — Investigation
@@ -159,7 +159,7 @@ Show the drafted body to the user.
 
 ### Phase 8 — Approval gate
 
-Skip if the user passed `--yes` or `--afk`. Otherwise:
+Skip if the user passed `--yes` or `--auto`. Otherwise:
 
 ```yaml
 header: Approval
@@ -184,7 +184,7 @@ If the grep finds prose matches:
 2. Prompt the user to edit the draft.
 3. Do not proceed to Phase 9 until the prose matches are removed, or until the user explicitly approves the specific matches after seeing the `RED FLAG`.
 
-If the user passed `--yes` or `--afk` and the grep finds prose matches, halt and require explicit approval before creation. Do not let the bypass flag file a leaky issue.
+If the user passed `--yes` or `--auto` and the grep finds prose matches, halt and require explicit approval before creation. Do not let the bypass flag file a leaky issue.
 
 ### Phase 9 — Create
 

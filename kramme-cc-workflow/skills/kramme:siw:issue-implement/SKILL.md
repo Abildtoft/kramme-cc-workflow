@@ -114,12 +114,13 @@ ls siw/issues/ISSUE-{prefix}-{padded_number}-*.md 2>/dev/null
 - Read the full issue file
 - Extract:
   - Title (from `# ISSUE-{prefix}-{number}:` header)
-  - Status, Priority, Phase, Related tasks (from frontmatter line)
+  - Status, Priority, Phase, Mode, Related tasks (from frontmatter line)
   - Problem description
   - Context (if present)
   - Scope (in/out)
   - Acceptance Criteria
   - Technical Notes (if present)
+- If `Mode` is missing, set it to `HITL — mode missing; requires human triage` for this run. Missing Mode is not safe for Autonomous Implementation.
 
 **If not found:**
 
@@ -191,6 +192,7 @@ Problem:
 
 Status: {status}
 Priority: {priority}
+Mode: {AUTO | HITL — <one-line reason> | (not classified)}
 Related: {related tasks}
 
 Acceptance Criteria:
@@ -201,6 +203,8 @@ Acceptance Criteria:
 Technical Notes:
 {if present, show summary}
 ```
+
+**If the issue's Mode is `HITL`**, including the inferred `HITL — mode missing; requires human triage` fallback, surface this prominently. HITL means the issue requires human input for at least one of: architectural decision, design review, judgment call, manual testing, or external system access. The team variant `kramme:siw:issue-implement:team` excludes HITL issues from autonomous batches; this singular variant honors the same constraint at approach selection (Step 6) — recommend Guided Implementation and require explicit confirmation before Autonomous Implementation.
 
 ---
 
@@ -372,8 +376,30 @@ options:
   - label: "Context Setup Only"
     description: "I'll create a todo list, but you guide implementation. Best when you know the approach."
   - label: "Autonomous Implementation"
-    description: "I'll implement and verify, check in when done. Best for straightforward tasks."
+    description: "I'll implement and verify, check in when done. Best for straightforward tasks. Not recommended for HITL issues."
 ```
+
+### 6.1 HITL Confirmation Gate (conditional)
+
+**If the issue's `Mode` is `HITL` and the user selected "Autonomous Implementation"**, do not proceed silently. Issue the following confirmation question:
+
+```yaml
+header: "HITL Issue Confirmation"
+question: "This issue is marked HITL — {one-line reason from issue file}. Autonomous implementation is not recommended for HITL issues. Proceed anyway?"
+options:
+  - label: "Proceed autonomously — human input handled outside this session"
+    description: "Confirm that the required architectural decision, review, judgment call, manual testing, or external access has already been resolved."
+  - label: "Switch to Guided Implementation"
+    description: "Get verification at each step instead. Recommended for HITL issues."
+  - label: "Abort and revisit later"
+    description: "Stop now; pick this issue back up after the human input is handled."
+```
+
+- If the user picks **Proceed autonomously**, continue with Step 7.3 (Autonomous Implementation). Log the override in `siw/LOG.md` Decision Log: `Decision: proceeded autonomously on HITL issue {prefix}-{number}; user confirmed prerequisites handled outside session`.
+- If the user picks **Switch to Guided Implementation**, treat the original answer as if "Guided Implementation" had been selected; continue with Step 7.1.
+- If the user picks **Abort**, halt the workflow and surface the issue identifier so the user can return later.
+
+This gate fires when (a) the issue carries `Mode: HITL` or Mode was missing and inferred as `HITL — mode missing; requires human triage`, and (b) the user picked Autonomous. Only explicit `Mode: AUTO` skips this gate.
 
 ---
 

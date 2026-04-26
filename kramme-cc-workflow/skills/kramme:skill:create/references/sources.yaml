@@ -5,3 +5,9 @@ sources:
     rationale: "Skill scaffolding, frontmatter optimization, and progressive-disclosure guidance are adapted from this project."
     last_reviewed_at: 2026-04-25
     baseline_hash: ""
+  - id: pocock-write-a-skill
+    url: https://github.com/mattpocock/skills/tree/main/write-a-skill
+    title: "Matt Pocock skills - write-a-skill"
+    rationale: "The description-as-system-prompt-real-estate framing in Phase 4 (the description is the only thing the agent sees when picking a skill to load), the no-time-sensitive-info validation rule, and the references-one-level-deep validation rule are adapted from this source."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

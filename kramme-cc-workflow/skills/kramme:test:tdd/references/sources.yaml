@@ -5,3 +5,9 @@ sources:
     rationale: "The red-green-refactor workflow, Prove-It pattern, and test discipline guidance are adapted from this source."
     last_reviewed_at: 2026-04-25
     baseline_hash: ""
+  - id: pocock-tdd
+    url: https://github.com/mattpocock/skills/tree/main/tdd
+    title: "Matt Pocock skills - tdd"
+    rationale: "The horizontal-slicing anti-pattern callout (writing all tests first, then all implementation, produces tests of imagined behavior) and the WRONG/RIGHT diagram contrasting horizontal vs vertical slicing via tracer bullets are adapted from this source."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

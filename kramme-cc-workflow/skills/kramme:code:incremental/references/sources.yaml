@@ -1,0 +1,7 @@
+sources:
+  - id: pocock-request-refactor-plan
+    url: https://github.com/mattpocock/skills/tree/main/request-refactor-plan
+    title: "Matt Pocock skills - request-refactor-plan"
+    rationale: "The refactor mode's interview-driven Decision Document and the Fowler-discipline tiny-commits plan (each commit leaves the codebase in a working state, individually revertible) are adapted from this source."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

@@ -1,0 +1,7 @@
+sources:
+  - id: pocock-zoom-out
+    url: https://github.com/mattpocock/skills/tree/main/zoom-out
+    title: "Matt Pocock skills - zoom-out"
+    rationale: "The 'map relevant modules and callers' one-shot orientation primitive is adapted from this source."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""
