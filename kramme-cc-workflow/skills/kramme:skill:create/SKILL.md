@@ -66,6 +66,17 @@ Skip if `$ARGUMENTS` already provides a clear description.
 > B) **Claude Code only** (uses Agent Teams or other Claude Code features)
 > C) **Specific combination** (specify which)
 
+### Question 6: External inspiration
+
+> Is this skill derived from external inspiration — another agent-skills repository, a paper, a book, a blog post, official framework docs?
+>
+> A) **Yes** — capture each source. Used to scaffold `references/sources.yaml` so the `kramme:skill:audit-sources` skill can track upstream changes worth absorbing later.
+> B) **No** — the skill is original to this repo or composed of patterns the repo already established.
+
+If A, ask the user for each source: title + URL (or library identifier resolvable via a docs MCP) + one-sentence rationale stating what in this skill is derived from the source. Capture as `external_sources` for use in Phase 5.
+
+If the user is unsure whether something qualifies, default to including it — extra entries are easy to remove; missing entries silently skip upstream-change detection.
+
 ## Phase 3: Name Generation and Validation
 
 1. Read the naming conventions from `references/naming-conventions.md`.
@@ -160,6 +171,27 @@ Skip if `$ARGUMENTS` already provides a clear description.
   ```
 - Keep SKILL.md under 500 lines — if approaching the limit, move content to resources
 
+### Scaffold `sources.yaml` (if external inspiration was identified in Phase 2)
+
+If Question 6 returned external inspiration sources, write `<skill-dir>/references/sources.yaml` in the same scaffold. For each source captured in Phase 2:
+
+```yaml
+sources:
+  - id: {kebab-case slug — stable across audits, do not rename}
+    url: {fully-qualified https URL — for blogs, READMEs, papers, deep links into another agent-skills repo}
+    # OR: context7_library: {<owner>/<name> — for libraries resolvable via a docs MCP}
+    title: "{human-readable title shown in audit reports}"
+    rationale: "{one sentence: exactly what in this skill is derived from this source}"
+    last_reviewed_at: {today, ISO YYYY-MM-DD}
+    baseline_hash: ""
+```
+
+Set `baseline_hash: ""` on every entry — the first run of `kramme:skill:audit-sources` will populate it after the initial fetch.
+
+If the skill has no external inspiration (Phase 2 Question 6 was "No"), skip this step entirely — do not create an empty `sources.yaml`. Skills without external derivation have nothing for the audit skill to track, and an empty manifest is treated the same as a missing one.
+
+If Phase 2 Question 6 was "No" but the user later realises during drafting that the skill DOES borrow from external content, return to this step and author the manifest before declaring the skill complete.
+
 ## Phase 6: Validation Checklist
 
 After scaffolding, verify the skill against these checks:
@@ -189,6 +221,7 @@ After scaffolding, verify the skill against these checks:
 - [ ] No redundant logic the agent already handles
 - [ ] No time-sensitive info (skill instructions may be cached or shipped to downstream installations; today's URL or this-week's library version goes stale)
 - [ ] References are one level deep (SKILL.md → reference; references do not chain to other references)
+- [ ] If the skill is derived from external inspiration, `references/sources.yaml` exists and lists every inspiration source with `id` / `url` (or `context7_library`) / `title` / `rationale` / `last_reviewed_at` / `baseline_hash` (empty string on first creation). Skipping this disables `kramme:skill:audit-sources` from detecting upstream changes — the skill's heritage becomes invisible to the audit, and revisions to the source go unnoticed silently.
 
 Report any failing checks to the user with specific remediation steps.
 

@@ -1,0 +1,7 @@
+sources:
+  - id: pocock-to-issues
+    url: https://github.com/mattpocock/skills/tree/main/to-issues
+    title: "Matt Pocock skills - to-issues"
+    rationale: "The tracer-bullet vertical-slice rule (each slice cuts through every layer end-to-end) and the per-task autonomy classification (HITL/AUTO, originally HITL/AFK in Pocock) are adapted from this source."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

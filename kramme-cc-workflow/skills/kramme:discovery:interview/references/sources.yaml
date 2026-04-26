@@ -1,0 +1,13 @@
+sources:
+  - id: pocock-grill-me
+    url: https://github.com/mattpocock/skills/tree/main/grill-me
+    title: "Matt Pocock skills - grill-me"
+    rationale: "The decision-tree mode (depth-first dependency resolution rather than coverage-dimensional batched questioning), one-question-at-a-time pacing for high-stakes decisions, and the codebase-as-answer-source rule (explore the code rather than ask if the answer is there) are adapted from this source."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""
+  - id: pocock-domain-model
+    url: https://github.com/mattpocock/skills/tree/main/domain-model
+    title: "Matt Pocock skills - domain-model"
+    rationale: "The UBIQUITOUS_LANGUAGE.md priming step and the inline ADR-offer hook on resolved decisions that meet the 3-criterion test are adapted from this source."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""

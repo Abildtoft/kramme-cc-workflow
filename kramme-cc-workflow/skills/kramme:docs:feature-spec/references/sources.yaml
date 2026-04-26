@@ -5,3 +5,9 @@ sources:
     rationale: "The lightweight feature-spec workflow and implementation-gating conventions are adapted from this source."
     last_reviewed_at: 2026-04-25
     baseline_hash: ""
+  - id: pocock-to-prd
+    url: https://github.com/mattpocock/skills/tree/main/to-prd
+    title: "Matt Pocock skills - to-prd"
+    rationale: "The synthesize-from-context mode (skip the assumptions block when the conversation already grounds the spec) and its precondition (at least 4 of 6 spec areas grounded before synthesis fires) are adapted from this source."
+    last_reviewed_at: 2026-04-25
+    baseline_hash: ""
