@@ -22,7 +22,7 @@ Start implementing a local issue through an extensive planning phase before any 
 6. Verify status update → success output
 7. **Completion phase:** sync decisions to spec → close issue → check phase completion
 
-Longer detail for the execution and completion phases lives in `references/execution-approaches.md` and `references/spec-sync.md`.
+When executing those phases, read and follow `references/execution-approaches.md` and `references/spec-sync.md` at the step where each reference is named.
 
 ---
 
@@ -296,7 +296,7 @@ options:
 
 ### 5.3 Create Technical Plan
 
-After gathering answers, create a comprehensive plan using the structure in `references/plan-template.md` (Summary, Requirements → Technical Approach, Files to Modify/Create, Patterns to Follow, Implementation Steps, Testing Approach, Open Questions).
+After gathering answers, read `references/plan-template.md` and create a comprehensive plan using that structure (Summary, Requirements → Technical Approach, Files to Modify/Create, Patterns to Follow, Implementation Steps, Testing Approach, Open Questions).
 
 **Present plan and get confirmation before proceeding.**
 
@@ -350,7 +350,7 @@ Run the workflow that matches the user's selection from Step 6:
 - **Option 2 — Context-only:** prepare context and starting points; user drives.
 - **Option 3 — Autonomous:** complete end-to-end with verification and decision sync.
 
-Each workflow's task list, status-update points, and presentation templates live in `references/execution-approaches.md`. All three workflows must run the Status Update Procedure (top of skill) when transitioning to "In Progress".
+Read and follow `references/execution-approaches.md` for the selected workflow's task list, status-update points, and presentation templates. All three workflows must run the Status Update Procedure (top of skill) when transitioning to "In Progress".
 
 ---
 
@@ -400,7 +400,7 @@ For each decision, check whether it aligns with the spec or supporting specs. Id
 
 ### 10.3 Present Spec Update Candidates and Ask
 
-If misalignments are found, present them and use AskUserQuestion to choose between updating all, reviewing each, or skipping. Full presentation template and AskUserQuestion options live in `references/spec-sync.md`.
+If misalignments are found, read `references/spec-sync.md`, present them using its template, and use AskUserQuestion to choose between updating all, reviewing each, or skipping.
 
 ### 10.4 Update Specification File(s)
 
@@ -408,11 +408,11 @@ For selected decisions, update the appropriate spec file.
 
 **CRITICAL for supporting specs:** Update the actual spec content (entity definitions, endpoint contracts, component specs, diagrams) — do **not** just append to a "Design Decisions" section. Supporting specs should always reflect current reality.
 
-Use the main spec's `## Design Decisions` section only for cross-cutting decisions, high-level architectural choices, or decisions that don't map to a specific spec section. Worked example (POST → PUT migration), per-area routing, and the Design Decisions migration format are in `references/spec-sync.md`.
+Use the main spec's `## Design Decisions` section only for cross-cutting decisions, high-level architectural choices, or decisions that don't map to a specific spec section. For the worked POST → PUT example, per-area routing reminders, and the Design Decisions migration format, read `references/spec-sync.md`.
 
 ### 10.5 Confirm Sync Complete
 
-Confirm the update to the user using the output template in `references/spec-sync.md`. If no updates were needed, report: "Spec Sync Check: All implementation decisions align with the specifications. No updates needed."
+Read the confirmation template in `references/spec-sync.md` and use it to confirm the update to the user. If no updates were needed, report: "Spec Sync Check: All implementation decisions align with the specifications. No updates needed."
 
 ---
 
