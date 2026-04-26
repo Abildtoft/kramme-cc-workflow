@@ -45,7 +45,7 @@ Capture a settled rejection.
 
 1. Slug the concept.
 2. If `.out-of-scope/<slug>.md` already exists, ask whether the user meant `append`. Stop unless overridden.
-3. **Settled-vs-deferral gate** via `AskUserQuestion`:
+3. **Settled-vs-deferral gate** via AskUserQuestion:
 
    ```yaml
    header: "Is this a settled rejection?"
@@ -56,7 +56,7 @@ Capture a settled rejection.
    ```
 
    If the user picks deferral, stop without writing.
-4. Gather rejection content via `AskUserQuestion`:
+4. Gather rejection content via AskUserQuestion:
    - Substantive reason (project scope, technical constraints, or strategic decision; not "we're too busy").
    - Optional code sample illustrating a technical constraint.
    - Prior-request references (issue links or PR references that triggered or shaped the rejection).
@@ -68,7 +68,7 @@ Capture a settled rejection.
    - "Why this is out of scope" → substantive reason.
    - "Prior requests" → bullet list of issue references with one-line context each.
 6. Create the directory first if missing (`mkdir -p .out-of-scope`).
-7. If `.gitignore` would hide `.out-of-scope/`, surface a one-time `AskUserQuestion` asking whether to keep it gitignored or remove the ignore rule. Default recommendation: committed (institutional memory).
+7. If `.gitignore` would hide `.out-of-scope/`, surface a one-time AskUserQuestion asking whether to keep it gitignored or remove the ignore rule. Default recommendation: committed (institutional memory).
 8. Print `recorded .out-of-scope/<slug>.md`.
 
 ### `check <concept>`
@@ -84,7 +84,7 @@ Look up whether a concept has been rejected before.
    This is similar to `.out-of-scope/<slug>.md` (decided <date>) — we rejected this before because <one-line summary of "Why this is out of scope">. Continue, or honor the prior rejection?
    ```
 
-5. Route the answer through `AskUserQuestion`:
+5. Route the answer through AskUserQuestion:
 
    ```yaml
    header: "Honor prior rejection?"
@@ -113,7 +113,7 @@ Remove a rejection that no longer applies.
 1. Slug the concept; locate `.out-of-scope/<slug>.md`.
 2. If absent, print `no rejection recorded for <concept>` and stop.
 3. Read the file and surface its content so the user sees what is being removed.
-4. Confirm via `AskUserQuestion`:
+4. Confirm via AskUserQuestion:
 
    ```yaml
    header: "Remove this rejection?"
@@ -157,7 +157,7 @@ Other skills (`kramme:siw:discovery`, `kramme:linear:issue-define`, `kramme:code
 1. **Cheap-list filenames first.** Run `ls .out-of-scope/` (or equivalent). If absent or empty, skip silently.
 2. **Read file bodies only on plausible match.** Concept similarity is judgmental, not fuzzy. Read at most a handful of files per session.
 3. **Surface format:** `This is similar to .out-of-scope/<slug>.md (decided <date>) — we rejected this before because <one-line summary>. Continue, or honor the prior rejection?`
-4. **User is the gate.** Never auto-fail; route through `AskUserQuestion` and let the user override.
+4. **User is the gate.** Never auto-fail; route through AskUserQuestion and let the user override.
 
 ## Verification
 
