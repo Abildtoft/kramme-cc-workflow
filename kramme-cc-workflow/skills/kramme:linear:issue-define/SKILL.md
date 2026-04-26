@@ -193,6 +193,7 @@ Before creating a new issue, check for existing Linear issues that may already c
 1. **Search for Duplicates**
    - Use `mcp__linear__list_issues` with `query` parameter containing keywords from the description
    - Search across relevant teams identified in Phase 2
+   - Also check `.out-of-scope/` in the project root: list filenames; read any whose slug plausibly matches the description; surface matches alongside Linear duplicate findings via the same `AskUserQuestion` prompt in step 3 (option labels: "proceed with new issue", "this matches a prior rejection — stop"). Skip silently if the directory is absent. See `/kramme:docs:out-of-scope` for the storage skill.
 
 2. **Identify Related Issues**
    - Look for issues that partially overlap with the proposed scope
