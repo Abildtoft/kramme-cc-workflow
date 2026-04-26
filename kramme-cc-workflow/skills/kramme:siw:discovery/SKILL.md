@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:discovery
-description: Deep discovery interview that uncovers what you actually want, not what you think you should want. Works pre-spec (greenfield) or on existing specs (strengthening). Interviews until 95% confident.
-argument-hint: "[topic | spec-file(s) | 'siw'] [--apply]"
+description: Deep discovery interview that uncovers what you actually want, not what you think you should want. Works pre-spec or on existing specs until 95% confident. Pass --decision-tree, or ask to walk depth-first, to resolve tightly coupled decisions one at a time.
+argument-hint: "[topic | spec-file(s) | 'siw'] [--apply] [--decision-tree]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -23,7 +23,7 @@ Do NOT use for: implementation planning (use `generate-phases`), issue definitio
 ## Process Overview
 
 ```text
-/kramme:siw:discovery [topic | spec-file(s) | 'siw'] [--apply]
+/kramme:siw:discovery [topic | spec-file(s) | 'siw'] [--apply] [--decision-tree]
     │
     ▼
 [Step 1: Detect mode & resolve context]
@@ -32,16 +32,15 @@ Do NOT use for: implementation planning (use `generate-phases`), issue definitio
 [Step 2: Autonomous framing — draft hypothesis before asking anything]
     │
     ▼
-[Step 3: Initial confidence assessment across 7 dimensions]
+[Step 3: Initial confidence assessment OR root decision map]
     │
     ▼
 [Step 4: Discovery interview loop]
-    │   ├─ Pick lowest-confidence dimensions
-    │   ├─ Select probing technique
-    │   ├─ Ask 1-3 questions
-    │   ├─ Update confidence scores
-    │   ├─ Display confidence dashboard
-    │   └─ Repeat until 95% overall
+    │   ├─ Coverage mode: pick dimensions, ask 1-3 questions, update confidence
+    │   ├─ Decision-tree mode: resolve dependencies one question at a time
+    │   ├─ Check whether the codebase already answers each question
+    │   ├─ Offer ADR handoff for durable tradeoff decisions
+    │   └─ Repeat until target confidence or decision tree closure
     │
     ▼
 [Step 5: Synthesize findings]
@@ -68,6 +67,8 @@ Use these markers in user-facing output to keep downstream tooling parseable:
 Parse `$ARGUMENTS` as shell-style arguments so quoted paths stay intact.
 
 - If `--apply` is present, set `apply_changes=true` and remove from argument list.
+- If `--decision-tree` is present, set `decision_tree_requested=true` and remove from argument list.
+- If remaining text includes trigger phrases like "walk the decision tree", "walk this depth-first", "resolve dependencies first", or "depth-first", set `decision_tree_requested=true` without removing the user's topic words unless the phrase is only an instruction.
 - Treat remaining arguments as topic text, file paths, or the `siw` keyword.
 
 ### 1.2 Mode Detection
@@ -125,6 +126,21 @@ Look for `## Work Context` section in spec files:
 4. If not found, default to Production Feature (all dimensions active)
 5. Store as `work_context`
 
+### 1.5 Select Interview Mode
+
+- If `decision_tree_requested=true`, use **Decision-Tree mode** and read `references/decision-tree-mode.md` before Step 3.
+- Otherwise use **Coverage mode** and keep the existing confidence-dimensional flow.
+- If the user switches mid-session with a phrase like "walk this depth-first", finish the current answer processing, then switch to Decision-Tree mode for the coupled decisions in flight.
+- If Decision-Tree mode exhausts the dependency branch but independent confidence gaps remain, switch back to Coverage mode for those gaps.
+
+### 1.6 Prime Ubiquitous Language
+
+Before Step 2, check for `UBIQUITOUS_LANGUAGE.md` at the project root:
+
+- If it exists, read it and use canonical terms throughout the interview and output artifacts.
+- If the user uses a term that conflicts with the glossary, pause with one targeted question: "Your glossary defines `{term}` as {canonical meaning}, but you seem to mean {observed meaning}. Which meaning should I use?"
+- If it does not exist, proceed silently. Do not mention the missing file or suggest creating it.
+
 ## Step 2: Autonomous Framing
 
 **Before asking a single question**, draft a working hypothesis based on available context:
@@ -156,9 +172,16 @@ Proceed immediately — don't wait for a response unless the user offers one. Th
 
 If the hypothesis clearly clashes with the user's framing, prefix it with `CONFUSION:` and name what doesn't fit.
 
-## Step 3: Initial Confidence Assessment
+## Step 3: Initial Assessment
 
 Read `references/confidence-framework.md` for dimension definitions and scoring rubrics.
+
+In **Decision-Tree mode**, also read `references/decision-tree-mode.md`, then replace the initial confidence dashboard with:
+
+1. Identify the root decision.
+2. List first-level dependencies that must be resolved before downstream questions are meaningful.
+3. Mark any branch that the codebase or target spec already answers, with file references where available.
+4. Keep unresolved confidence dimensions visible so synthesis still produces the normal SIW artifact.
 
 ### Greenfield
 
@@ -181,13 +204,33 @@ If Work Context exists, apply the adjustments from the framework reference:
 
 ### Display Initial Dashboard
 
-Show the confidence dashboard (format in `references/confidence-framework.md`) with initial scores and overall percentage.
+In Coverage mode, show the confidence dashboard (format in `references/confidence-framework.md`) with initial scores and overall percentage. In Decision-Tree mode, show the root decision, unresolved dependency branches, and any confidence dimensions that still need coverage before synthesis.
 
 ## Step 4: Discovery Interview Loop
 
 Read `references/probing-techniques.md` for the technique library and selection guide.
 
-### Core Loop
+Use **Coverage mode** by default. Use **Decision-Tree mode** when selected in Step 1.5.
+
+### Codebase-as-Answer-Source Rule
+
+Before asking any question in either mode, decide whether the answer can be found by exploring the workspace, target spec, existing SIW docs, or provided artifacts.
+
+- If yes, explore first, report the finding with the source, and ask only for confirmation or correction if meaningful uncertainty remains.
+- If no, ask the user.
+- Skip exploration when the question is genuinely preference-, priority-, or business-context-based and no artifact could answer it.
+
+### ADR-Offer Hook
+
+After each resolved decision in either mode, evaluate the ADR test. Offer `/kramme:docs:adr` only when all three are true:
+
+1. The decision is hard to reverse.
+2. It would be surprising later without context.
+3. It came from a real tradeoff, not a default.
+
+Prompt once: "This looks ADR-worthy because it is hard to reverse, surprising without context, and tradeoff-driven. Record it via `/kramme:docs:adr`?" Do not author the ADR inside this skill.
+
+### Coverage Mode Loop
 
 Repeat until confidence target is met (see "When to Stop" in framework reference):
 
@@ -212,10 +255,12 @@ Late rounds (7+): prefer **Restatement Challenge**, **Inversion**, and **Stakeho
 
 Use AskUserQuestion. Ask 1-3 high-value questions per round. For each question:
 
+- Apply the Codebase-as-Answer-Source Rule before asking.
 - **State why you're asking** (1 sentence — which dimension this targets)
 - **Include your current assumption** (what you think the answer is, so the user can correct rather than explain from scratch)
 - **Offer concrete options** when forcing tradeoffs (2-4 options + "Other")
 - **Use freeform** when probing for narrative or motivation
+- For high-stakes questions where the answer shapes the next question, ask only one question in the round.
 
 When the technique calls for it, deliberately restate something the user said earlier — slightly differently — to test whether your model matches theirs.
 
@@ -231,6 +276,7 @@ After each round:
 3. If divergence detected, reset affected dimension to at most Medium until reconciled
 4. Update confidence levels using rubric indicators
 5. If a dimension remains unanswerable because the required information isn't in the spec or the user's answers, emit `MISSING REQUIREMENT:` before asking the targeted follow-up.
+6. Run the ADR-Offer Hook for any resolved decision.
 
 #### 4.5 Display Updated Dashboard
 
@@ -257,6 +303,32 @@ If confidence dropped on any dimension (due to contradiction or revelation), not
 - Any critical dimension below Confident
 - A contradiction was just discovered
 - Stated and actual wants haven't been reconciled
+
+### Decision-Tree Mode Loop
+
+Read `references/decision-tree-mode.md` for the detailed process. Then repeat until the active decision tree is resolved or remaining gaps are independent enough for Coverage mode:
+
+#### 4D.1 Pick Next Branch
+
+Choose the highest-dependency unresolved branch: the decision that unlocks the most downstream choices. Do not ask about downstream branches until their prerequisite decision is settled.
+
+#### 4D.2 Resolve One Question
+
+Ask one question at a time by default. Batch only routine sibling questions that are independent and low-stakes. Apply the Codebase-as-Answer-Source Rule before asking.
+
+#### 4D.3 Process the Answer
+
+Record:
+- The decision or non-decision
+- The dependencies it unlocks or invalidates
+- The tradeoff accepted
+- Any confidence dimensions affected
+
+If the answer changes the root decision, redraw the active dependency tree before asking again.
+
+#### 4D.4 Check ADR and Mode Exit
+
+Run the ADR-Offer Hook for each resolved durable decision. Exit Decision-Tree mode when the coupled branch is resolved; continue in Coverage mode for independent confidence gaps.
 
 ### Interview Pacing
 
@@ -330,6 +402,9 @@ Do NOT finish with generic advice like "improve clarity" or "add more detail." I
 
 /kramme:siw:discovery siw --apply
 # Refinement: discover and directly apply spec improvements
+
+/kramme:siw:discovery --decision-tree "design the event store schema"
+# Decision-tree discovery: resolve coupled choices depth-first
 ```
 
 ## Epilogue

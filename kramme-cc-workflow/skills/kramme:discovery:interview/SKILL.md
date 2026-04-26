@@ -1,7 +1,7 @@
 ---
 name: kramme:discovery:interview
-description: Conduct an in-depth interview about a topic/proposal to uncover requirements, priorities, and non-goals, then create a comprehensive plan. Pass --ideate (or use a vague topic) to run a divergent pre-stage that generates variations before converging.
-argument-hint: "[file-path or topic description] [--ideate]"
+description: Conduct an in-depth interview about a topic/proposal to uncover requirements, priorities, and non-goals, then create a comprehensive plan. Pass --ideate for divergent framing, or --decision-tree / depth-first language to resolve tightly coupled decisions one question at a time.
+argument-hint: "[file-path or topic description] [--ideate] [--decision-tree]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -13,13 +13,14 @@ Conduct a structured, in-depth interview about the presented topic, files, propo
 ## Process Overview
 
 1. **Initial Analysis**: Examine the topic/files/proposal presented
-2. **Autonomous Framing**: Draft the likely target user, problem, why-now, and non-goals before asking questions
-3. **Topic Classification**: Determine the type of exploration needed
-4. **Phase 0 (optional) — Divergent**: If the framing is vague, pause for an explicit skip-or-continue choice before generating variations. If `--ideate` is set, treat that as an explicit request to run Phase 0 and proceed directly into the divergent pass.
-5. **Final Classification Check**: If Phase 0 changed the framing, reclassify before interviewing
-6. **Multi-Round Interview**: Ask probing questions via AskUserQuestion only where meaningful uncertainty remains
-7. **Progress Tracking**: Monitor coverage across dimensions
-8. **Synthesis**: Write an adaptive plan markdown file
+2. **Mode and Glossary Setup**: Detect `--decision-tree` or depth-first trigger phrases; read `UBIQUITOUS_LANGUAGE.md` if present
+3. **Autonomous Framing**: Draft the likely target user, problem, why-now, and non-goals before asking questions
+4. **Topic Classification**: Determine the type of exploration needed
+5. **Phase 0 (optional) — Divergent**: If the framing is vague, pause for an explicit skip-or-continue choice before generating variations. If `--ideate` is set, treat that as an explicit request to run Phase 0 and proceed directly into the divergent pass.
+6. **Final Classification Check**: If Phase 0 changed the framing, reclassify before interviewing
+7. **Interview**: Use coverage rounds by default or decision-tree mode for coupled decisions
+8. **Progress Tracking**: Monitor coverage across dimensions or resolved branches
+9. **Synthesis**: Write an adaptive plan markdown file
 
 ## Output Markers
 
@@ -30,6 +31,21 @@ Use these markers in user-facing output to keep downstream tooling parseable:
 - `UNVERIFIED` — when you assert something you haven't confirmed (e.g., a feasibility guess during Phase 0 convergence).
 - `FRAMING` — the label applied when Phase 0 converges on the concrete problem statement that will feed the interview.
 - `PLAN` — the label applied to the synthesized plan document at hand-off.
+
+## Step 0: Inputs, Mode, and Glossary
+
+Parse `$ARGUMENTS` as shell-style arguments so quoted paths stay intact.
+
+- If `--ideate` is present, set `force_ideate=true` and remove from argument list.
+- If `--decision-tree` is present, set `decision_tree_requested=true` and remove from argument list.
+- If remaining text includes trigger phrases like "walk the decision tree", "walk this depth-first", "resolve dependencies first", or "depth-first", set `decision_tree_requested=true` without removing meaningful topic words unless the phrase is only an instruction.
+- If the remaining text looks like file path(s), read and analyze them first.
+- If it is free text, use it as the topic description.
+- If it is empty, ask the user what they want to explore using AskUserQuestion.
+
+If `UBIQUITOUS_LANGUAGE.md` exists at the project root, read it before framing and use its canonical terms throughout the interview and plan. If the user uses a term that conflicts with the glossary, ask one targeted question to resolve the conflict. If the file does not exist, proceed silently.
+
+Use **Decision-Tree mode** when `decision_tree_requested=true`; otherwise use the default topic-classified coverage flow. Read `references/decision-tree-mode.md` only when Decision-Tree mode is active.
 
 ## Step 1: Autonomous Framing
 
@@ -122,9 +138,17 @@ Craft questions that:
 - **Plan the learning loop** - Ask how the team will know quickly if the approach is working
 
 **Avoid obvious questions.** Never ask "What is the feature?" or "Why do you want this?"
-If the artifact already answers a question, do not ask it again. Instead, present the inferred answer and ask only for confirmation or correction.
+If the artifact or codebase already answers a question, do not ask it again. Explore first, present the inferred answer with the source, and ask only for confirmation or correction.
 
 If a dimension requires information the artifact doesn't contain and the user hasn't provided, emit `MISSING REQUIREMENT:` before asking the user to fill the gap.
+
+### Codebase-as-Answer-Source Rule
+
+Before each question in either coverage or decision-tree mode, decide whether the workspace, provided files, or existing docs can answer it.
+
+- Explore instead of asking when the answer is discoverable.
+- Ask only for confirmation or correction if the source is stale, ambiguous, or incomplete.
+- Skip exploration when the question is about priorities, appetite, ownership, or other context only the user can provide.
 
 ### Using AskUserQuestion Correctly
 
@@ -214,9 +238,17 @@ Options:
 
 ## Step 4: Interview Execution
 
+### Mode Selection
+
+Use the default coverage rounds unless `decision_tree_requested=true`.
+
+In **Decision-Tree mode**, read `references/decision-tree-mode.md`, identify the root decision for the topic type, map first-level dependencies, and resolve branches depth-first. Ask one question at a time by default; batch only routine independent sibling questions. When the active tree is resolved, return to coverage rounds for any remaining question dimensions that are independent of the decisions already settled.
+
 ### Round Structure
 
 Ask **1-4 questions per round** using AskUserQuestion. Mix questions across different dimensions.
+
+For high-stakes or dependency-shaping decisions, ask one question in the round. Apply the Codebase-as-Answer-Source Rule before every question.
 
 After receiving answers, provide a brief synthesis before the next round:
 ```
@@ -244,6 +276,16 @@ After each round, analyze the answers and adapt your next questions:
 
 **Don't just check boxes** — the goal is understanding, not coverage.
 If the remaining gaps are low-value or implementation-level only, stop the interview and move to synthesis.
+
+### ADR-Offer Hook
+
+After each resolved decision, offer `/kramme:docs:adr` only when all three criteria are true:
+
+1. The decision is hard to reverse.
+2. It would be surprising later without context.
+3. It came from a real tradeoff, not a default.
+
+Prompt once and state the three criteria inline. Do not author the ADR inside this skill.
 
 ### Progress Tracking
 
@@ -316,19 +358,21 @@ If a required section cannot be filled because the interview didn't cover it, le
 
 **Handling $ARGUMENTS:**
 - `$ARGUMENTS` contains everything the user typed after `/kramme:discovery:interview`
-- Parse for the `--ideate` flag. If present, set `force_ideate=true` and remove from the argument list.
+- Parse for the `--ideate` and `--decision-tree` flags. If present, set `force_ideate=true` and/or `decision_tree_requested=true`, then remove them from the argument list.
+- Treat natural-language requests to "walk the decision tree", "walk this depth-first", or "resolve dependencies first" as `decision_tree_requested=true` without treating phrase-only instructions as the topic.
 - If the remaining text looks like file path(s): Read and analyze them first
 - If it's free text: Use as the topic description
 - If empty: Ask user what they want to explore using AskUserQuestion
 
 **Process:**
 1. Parse and analyze any files or context provided via $ARGUMENTS
-2. Draft the autonomous framing hypotheses (target user, why-now, non-goals) before asking questions
-3. Classify the topic type
-4. If `force_ideate=true`, run Phase 0 even when the framing is concrete. Otherwise, only run Phase 0 when the framing is vague.
-5. Reclassify if Phase 0 materially changed the framing
-6. Confirm classification with user if ambiguous
-7. Ask your first round of probing questions, starting with the highest-uncertainty assumptions
+2. Read `UBIQUITOUS_LANGUAGE.md` if present; proceed silently if absent
+3. Draft the autonomous framing hypotheses (target user, why-now, non-goals) before asking questions
+4. Classify the topic type
+5. If `force_ideate=true`, run Phase 0 even when the framing is concrete. Otherwise, only run Phase 0 when the framing is vague.
+6. Reclassify if Phase 0 materially changed the framing
+7. Confirm classification with user if ambiguous
+8. If `decision_tree_requested=true`, resolve the root decision and dependency branches first; otherwise ask the first coverage round from the highest-uncertainty assumptions
 
 ## Epilogue
 
