@@ -1,5 +1,5 @@
 ---
-name: kramme:siw:issues-reindex
+name: kramme:siw:issue-reindex
 description: Remove all DONE issues and renumber remaining issues within each prefix group
 disable-model-invocation: true
 user-invocable: true
@@ -22,7 +22,7 @@ Use this when you want to clean up completed issues and have fresh numbering seq
 ## Workflow
 
 ```
-/kramme:siw:issues-reindex
+/kramme:siw:issue-reindex
     |
     v
 [Find SIW files] -> Not found? -> Show error, abort

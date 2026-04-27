@@ -43,7 +43,7 @@ Common SIW command flow:
 /kramme:siw:generate-phases    # break spec into phase-based issues
 /kramme:siw:issue-implement    # implement one issue
 /kramme:siw:implementation-audit
-/kramme:siw:issues-reindex
+/kramme:siw:issue-reindex
 ```
 
 Related SIW commands include `/kramme:siw:issue-define`, `/kramme:siw:spec-audit`, `/kramme:siw:breakdown-findings`, `/kramme:siw:reset`, `/kramme:siw:reverse-engineer-spec`, and `/kramme:siw:remove`.

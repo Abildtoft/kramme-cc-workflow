@@ -86,7 +86,7 @@ Or start from scratch with an interactive interview:
 │   /kramme:siw:resolve-audit ──────────────────────────┘
 │       (triage findings → create new issues)
 │
-│   /kramme:siw:issues-reindex  (clean up DONE issues mid-workflow)
+│   /kramme:siw:issue-reindex  (clean up DONE issues mid-workflow)
 │
 └── Iterate until complete
         │
@@ -265,7 +265,7 @@ When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW
 |-------|-----------|-------------|
 | `/kramme:siw:issue-define` | `[issue-id] or [description and/or file paths]` | Create or improve issues with a guided interview. Supports both new issue creation and refinement of existing issues. Explores the codebase to identify relevant patterns. |
 | `/kramme:siw:generate-phases` | `[spec-file-path]` | Decompose a spec into atomic, phase-based issues (`P1-001`, `P2-001`, `G-001`). Each issue is self-contained with tests/validation. Reviews breakdown with a subagent before creating files. |
-| `/kramme:siw:issues-reindex` | — | Remove DONE issues and renumber remaining issues from 001 within each prefix group. Verifies DONE issues are captured in the spec before deletion. |
+| `/kramme:siw:issue-reindex` | — | Remove DONE issues and renumber remaining issues from 001 within each prefix group. Verifies DONE issues are captured in the spec before deletion. |
 
 ### Implementation
 

@@ -29,7 +29,7 @@ A local issue tracking system using markdown files to plan, track, and document 
 /kramme:siw:spec-audit               # Audit spec quality before implementation
 /kramme:siw:implementation-audit    # Audit code against spec for discrepancies
 /kramme:siw:resolve-audit           # Walk audit findings one-by-one and create SIW issues (--auto + report path to stay scoped)
-/kramme:siw:issues-reindex          # Remove DONE issues, renumber within groups
+/kramme:siw:issue-reindex          # Remove DONE issues, renumber within groups
 /kramme:siw:reset                   # Reset for next iteration (keeps spec)
 /kramme:siw:close                   # Generate docs and clean up
 /kramme:siw:remove                  # Clean up when done (no docs)
@@ -122,7 +122,7 @@ Issues use prefix-based numbering:
 | `/kramme:siw:spec-audit` | Audit spec quality (coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design) before implementation |
 | `/kramme:siw:implementation-audit` | Audit codebase against spec for discrepancies, naming misalignments, and missing implementations |
 | `/kramme:siw:resolve-audit` | Resolve audit findings one-by-one with executive summaries, alternatives, and SIW issue creation. Add `--auto` to let the model choose each resolution without pausing for confirmation. If both audit reports exist, pass the report path to keep the run scoped. |
-| `/kramme:siw:issues-reindex` | Remove DONE issues and renumber remaining within each prefix group |
+| `/kramme:siw:issue-reindex` | Remove DONE issues and renumber remaining within each prefix group |
 | `/kramme:siw:reset` | Reset workflow state (migrate log to spec, clear issues) |
 | `/kramme:siw:close` | Close SIW project, generate docs in `docs/<feature>/`, remove temporary files |
 | `/kramme:siw:remove` | Clean up all SIW files after completion |
