@@ -1,5 +1,5 @@
 ---
-name: kramme:qa-intake
+name: kramme:qa:intake
 description: Conversational QA intake session - user describes bugs they encountered, the agent lightly clarifies, explores the codebase in the background for domain language, and files durable Linear or SIW tickets one issue at a time. Use when the user has multiple bugs from a manual QA pass and wants to log them rapidly without per-issue deep interviews. Not for live-app browser testing (use kramme:qa), not for tracing the root cause of a single bug or applying a fix (use kramme:debug:investigate), not for one well-refined ticket with a 5-round interview (use kramme:linear:issue-define).
 argument-hint: "[optional starting context]"
 disable-model-invocation: true
@@ -39,7 +39,7 @@ Updating a parent ticket created earlier in the same intake run to add its just-
 ## Process Overview
 
 ```
-/kramme:qa-intake
+/kramme:qa:intake
     |
     v
 [Step 1: Detect Inputs] -> ticket sink + domain language priming
