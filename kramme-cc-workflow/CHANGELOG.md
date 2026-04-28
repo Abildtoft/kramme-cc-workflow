@@ -3,6 +3,31 @@
 ## Unreleased
 
 ### Removed
+## [0.53.0] - 2026-04-28
+
+### Added
+- Add plan-split skill, drop reviewer size gate (#315)
+- Add source manifests and harden HITL gate (#316)
+- Add kramme:docs:out-of-scope rejection KB (#314)
+- Add --decision-tree mode for coupled decisions (#313)
+- Add conversational QA intake skill (#312)
+- Add Design It Twice, Refactor mode, ADR-aware scans (#311)
+- Uplift workflow skills with HITL/AUTO + Pocock patterns (#307)
+- Add inline-offer pattern and multiline question support (#310)
+- Add kramme:debug:triage-to-issue skill (#309)
+- Add kramme:code:zoom-out orientation map (#308)
+- Add kramme:docs:ubiquitous-language for DDD glossaries (#306)
+- Add source audit workflow (#305)
+- Adapt Claude tool idioms in Codex skill output (#303)
+
+### Changed
+- Extract document creation reference (#321)
+- Split implementation audit output steps (#322)
+- Split reverse-engineer spec skill references (#323)
+- Regularize command names (#319)
+- Split issues-reindex skill references (#320)
+- Split issue-implement SKILL.md into references (#317)
+
 - Drop GitLab support; plugin is GitHub-only. Removes the GitLab MR detection branch from the `context-links` hook, the `glab` CLI permissions, the `mcp__gitlab__*` MCP permissions, and the `CONTEXT_LINKS_GITLAB_REMOTE_REGEX` config var. Skills, agents, and references now assume GitHub. Downstream users on GitLab installs should clean up their `settings.json` and any local `hooks/context-links.config` entries that referenced these.
 
 ## [0.52.0] - 2026-04-23
@@ -173,6 +198,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+[0.53.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.52.0...v0.53.0
 [0.52.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.51.0...v0.52.0
 [0.51.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.50.0...v0.51.0
 [0.50.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.49.0...v0.50.0
