@@ -232,7 +232,7 @@ Generate a PR title using [Conventional Commits](https://www.conventionalcommits
    - **PREFER** `Fixes` or `Closes` when the PR completes the work for the issue
    - **PREFER** `Related to` when the PR is partial work or tangentially related
 
-Read the section templates and worked examples from `assets/section-templates.md`. It covers Summary, Technical Details (implementation approach, scope changes, changes by area, files summary), Test Plan, and Breaking Changes — each with structural guidance and a complete example.
+Read the section templates and worked examples from `assets/section-templates.md`. It covers Summary, Technical Details (implementation approach, scope changes, changes by area, reviewer landmarks), Test Plan, and Breaking Changes — each with structural guidance and a complete example.
 
 #### 3.2 Change Summary Pattern
 
@@ -241,7 +241,7 @@ Every generated PR body **MUST** include a "Change Summary" block immediately af
 ```markdown
 ### Changes made
 
-- <verb-led statement of what moved, scoped to a file or feature>
+- <verb-led statement of what moved, scoped to a feature, behavior, or implementation area>
 - <one bullet per distinct change; do not lump multiple changes together>
 
 ### Things I didn't touch
@@ -258,6 +258,9 @@ Every generated PR body **MUST** include a "Change Summary" block immediately af
 Rules:
 
 - **Changes made** is a diff readout in English, not a narrative. One clear verb per bullet (`add`, `extract`, `rename`, `remove`, `wire`, `gate`).
+- **Changes made** is not a file inventory. Keep it to the distinct reviewer-relevant changes, usually 2-5 bullets.
+- **PREFER** describing capabilities, components, data flow, or review-critical behavior over naming files.
+- **ONLY** name a file when the file name itself helps the reviewer find a non-obvious entry point, risk, migration, generated artifact, or cross-area coupling.
 - **Things I didn't touch** is the honest scope line. It is not a "future work" backlog — only items that came up during this work and were deliberately deferred.
 - **Potential concerns** surfaces risk the reviewer wouldn't otherwise see. Not the same as "open questions" and not a place to hedge with "maybe fine".
 - **ALL THREE** H3s must be present even when one block is `None`. An empty block signals "considered and skipped", not "forgotten".
@@ -357,8 +360,8 @@ Here is your generated PR:
 - [ ] Linear issue is linked with appropriate magic word (Fixes/Closes vs. Related to)
 - [ ] Technical details cover implementation approach and key decisions from conversation/spec files
 - [ ] **Divergences from Linear issue are documented with clear rationale** (if applicable)
-- [ ] Changes are categorized by area (Frontend/Backend/Tests)
-- [ ] Key files are listed (not line counts)
+- [ ] Changes are categorized by area (Frontend/Backend/Tests) without repeating the GitHub file list
+- [ ] File names appear only when they add reviewer context that is not obvious from the GitHub diff
 - [ ] Test plan includes actionable scenarios
 - [ ] Breaking changes are documented (or marked as "None")
 - [ ] `### Changes made` block lists concrete change verbs — not vague verbs like `update` or `improve` with no object
@@ -368,6 +371,7 @@ Here is your generated PR:
 - [ ] Markdown is properly formatted
 - [ ] No placeholders or TODOs in the output (except Screenshots section when visual capture is unavailable)
 - [ ] Description is ready to copy-paste
+- [ ] No file-by-file inventory or "Key Files" section that mostly mirrors the GitHub UI
 - [ ] No listing of the amount of lines changed
 - [ ] No AI attribution or "Generated with Claude Code" badges included
 - [ ] Updated an existing PR directly when `DIRECT_UPDATE=true`, otherwise presented copy-paste output and only asked about saving when `NON_INTERACTIVE=false`
@@ -431,6 +435,7 @@ Pause and regenerate the description if any of these are true:
 
 - The summary says "various changes" or "multiple improvements" without nouns.
 - `Changes made` contains vague verbs like `update` or `improve` with no object.
+- The body includes a "Key Files", "Files Changed", or similar section that mostly repeats the GitHub file list.
 - A migration, feature-flag default, or breaking change is present in the diff but absent from `Potential concerns`.
 - The description references spec files, conversation history, or `siw/LOG.md` (reviewers can't see them).
 - An AI-attribution badge is about to land in the body.
