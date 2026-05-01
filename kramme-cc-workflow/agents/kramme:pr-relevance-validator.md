@@ -137,12 +137,16 @@ For each finding, assign one of:
 
 ### Validated Findings (X)
 
-Issues confirmed to be caused by the in-scope changes:
+Issues confirmed to be caused by the in-scope changes (code-level only):
 
 **[Source Agent]** - Severity
 - Issue: [description]
 - Location: `file:line`
 - Validation: Line was added/modified in this PR
+
+### Validated PR Description Findings (X)
+
+Findings against the PR title/body where the description does not match the diff. The description is the suspect, not the code; recommended fix is to update the PR text.
 
 **[Source Agent]** - Severity
 - Issue: [description]
@@ -177,6 +181,7 @@ Issues in files not modified in this review scope:
 | Category | Count |
 |----------|-------|
 | Validated | X |
+| Validated PR Description | X |
 | Likely Related | X |
 | Filtered (pre-existing) | X |
 | Filtered (out-of-scope) | X |
