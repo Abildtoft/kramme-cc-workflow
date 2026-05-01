@@ -40,8 +40,8 @@ Rate each issue from 0-100:
 Start by listing what you're reviewing. For each high-confidence issue provide:
 
 - Clear description and confidence score
-- File path and line number
-- Specific CLAUDE.md rule or bug explanation
+- File path and line number, or `PR description` for PR metadata findings
+- Specific CLAUDE.md rule, bug explanation, or inaccurate PR-description claim
 - Concrete fix suggestion
 
 Group issues by severity (Critical: 90-100, Important: 80-89).

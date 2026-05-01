@@ -107,12 +107,12 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
    If `REVIEW_OVERVIEW.md` exists in the project root:
    - Parse the file to extract previously addressed findings
-   - Extract for each finding: location (`file:line` or `review-scope`), issue description, action taken
+   - Extract for each finding: location (`file:line`, `review-scope`, or `PR description`), issue description, action taken
    - Accept both `**Location:**` and legacy `**File:**` labels when parsing existing entries, and normalize either label to the same `location` field
    - Store this context for filtering in Step 10
 
    Previously addressed findings have the format:
-   - **Location:** `path/to/file.ts:123` or `review-scope`
+   - **Location:** `path/to/file.ts:123`, `review-scope`, or `PR description`
    - Legacy compatibility: `**File:** path/to/file.ts:123` should be treated the same as `**Location:**`
    - **Issue/Finding:** [description]
    - **Action taken:** [what was done]
