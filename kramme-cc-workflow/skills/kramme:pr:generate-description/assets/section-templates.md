@@ -59,7 +59,7 @@ The Summary section is followed immediately by the Change Summary block below.
 
 ## Technical Details Section
 
-**ALWAYS** include:
+**ALWAYS** include items 1-3. Optionally include reviewer landmarks when they add review value:
 
 1. **Implementation approach** (2-4 sentences):
 
