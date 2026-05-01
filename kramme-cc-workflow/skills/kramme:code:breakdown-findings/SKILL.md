@@ -96,17 +96,30 @@ Group findings into PR-sized themes. A theme is a set of findings that should be
 #### Clustering process
 
 1. Read all findings. Identify natural groupings by scanning for shared files, shared root causes, and shared fix patterns.
-2. Draft theme names using the pattern `verb-noun` in kebab-case (e.g., `add-api-error-handling`, `consolidate-config-parsing`, `remove-dead-code`). These become the `<slug>` in filenames.
-3. Verify no theme is too large (would require 500+ changed lines or touch 9+ files). Split if needed.
-4. Verify no two themes overlap in affected files without an explicit dependency note.
+2. Draft theme names using the pattern `verb-noun` in kebab-case (e.g., `add-api-error-handling`, `consolidate-config-parsing`, `remove-dead-code`).
+3. Build a dependency graph across themes before naming files:
+   - A dependency exists when a theme cannot start until another theme lands, or when landing one theme materially reduces risk for another.
+   - A blocker exists when a theme must land before one or more downstream themes.
+   - Themes with no direct or transitive dependency between them are parallel candidates.
+   - If dependency direction is unclear, add an open question and choose the most conservative ordering.
+4. Assign every theme an execution label before generating files:
+   - Use `W##L` where `##` is a zero-padded wave number and `L` is an uppercase lane letter, such as `W01A`, `W01B`, `W02A`.
+   - Same wave number means the plans can run in parallel.
+   - A later wave number means the plan is blocked by at least one earlier-wave plan, and the exact blocker labels must be named in the plan title, index, and summary.
+   - Independent single-plan work still receives `W01A`.
+5. Create file slugs by prefixing the theme slug with the execution label, using kebab-case for the working slug and UPPER_SNAKE_CASE for the filename slug. Example: `w01a-define-error-types` becomes `PR_PLAN_W01A_DEFINE_ERROR_TYPES.md`.
+6. Verify no theme is too large (would require 500+ changed lines or touch 9+ files). Split if needed.
+7. Verify no two themes overlap in affected files without an explicit dependency note.
 
 Present the clustering to the user before generating files. Prefix the block with the `PLAN:` output marker so downstream tooling can parse the proposed clustering:
 
 ```
 PLAN: Proposed themes
-  1. add-api-error-handling (4 findings, size M) -- files: src/api/*.ts
-  2. consolidate-config-parsing (3 findings, size S) -- files: src/config/*, src/utils/config.ts
-  3. remove-dead-exports (2 findings, size S) -- files: src/lib/*.ts
+  Wave W01 (parallel):
+    W01A add-api-error-handling (4 findings, size M) -- blocks W02A -- files: src/api/*.ts
+    W01B remove-dead-exports (2 findings, size S) -- independent -- files: src/lib/*.ts
+  Wave W02:
+    W02A consolidate-config-parsing (3 findings, size S) -- blocked by W01A -- files: src/config/*, src/utils/config.ts
   0 excluded findings
 
 Proceed? (yes / adjust)
@@ -120,7 +133,14 @@ For each confirmed theme:
 
 1. Read the plan template from `assets/plan-template.md`.
 2. Fill in all sections. Every plan must be **fully self-contained** -- an engineer who has never read any prior document must understand the problem, context, and solution from the plan alone.
-3. Write the file to `PR_PLAN_{SLUG}.md` in the project root. Use UPPER_SNAKE_CASE for the slug in the filename (e.g., `PR_PLAN_ADD_API_ERROR_HANDLING.md`).
+3. Write the file to `PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md` in the project root. Use UPPER_SNAKE_CASE for the slug in the filename (e.g., `PR_PLAN_W01A_DEFINE_ERROR_TYPES.md`).
+4. Create a plan display name using this pattern: `{execution label} {theme name} ({parallel / blocked-by / blocks summary})`.
+5. Include the full plan display name in the plan title:
+   - Independent or parallel plan: `# PR Plan W01A: define-error-types (parallel in W01; independent)`
+   - Blocker plan: `# PR Plan W01A: define-error-types (blocks W02A)`
+   - Blocked plan: `# PR Plan W02A: adopt-typed-errors (blocked by W01A; blocks W03A)`
+   - Use multiple labels when needed, e.g. `blocked by W01A, W01B`.
+6. Keep the title, filename, Dependencies and Sequencing section, index row, dependency map, and final summary aligned. The same blocker/dependent labels must appear in all of them.
 
 #### Plan content requirements
 
@@ -133,7 +153,7 @@ Every section and subsection in the template must be populated. Do not leave hea
 - **Affected Files and Systems**: Every file, module, and system that will be touched.
 - **Current Behavior**: What happens today, with concrete examples or code references.
 - **Intended End State**: Target behavior after the PR lands.
-- **Dependencies and Sequencing**: What work must be completed before this PR can start, and what work this PR unblocks. Describe constraints by their content, not by referencing other plan files. External dependencies.
+- **Dependencies and Sequencing**: The execution label, parallel wave, exact blocker labels, exact dependent labels, what work must be completed before this PR can start, and what work this PR unblocks. Describe both labels and content so the plan is self-contained.
 - **Risks**: What could go wrong. Include mitigation for each risk.
 - **Open Questions**: Questions that must be answered before implementation. Note who should answer and the default assumption.
 - **Implementation Plan**: Numbered step-by-step instructions. Each step small enough to verify independently.
@@ -144,9 +164,9 @@ Every section and subsection in the template must be populated. Do not leave hea
 
 1. Read the index template from `assets/index-template.md`.
 2. Write `PR_PLAN_INDEX.md` in the project root with:
-   - **Plan listing**: filename, theme name, and a 2-4 sentence summary for each plan.
-   - **Recommended implementation order**: ordered list with rationale (dependencies, risk reduction, quick wins first).
-   - **Dependency map**: which plans depend on which.
+   - **Plan listing**: execution label, filename, full plan display name, blocking status, parallel group, and a 2-4 sentence summary for each plan.
+   - **Recommended implementation order**: ordered by wave and dependency, with rationale (dependencies, risk reduction, quick wins first). Explicitly group same-wave plans as parallel.
+   - **Dependency map**: which labeled plans depend on which labeled blockers, and which plans are independent.
    - **Excluded findings**: any findings not included in any plan, with the reason. Emit each excluded entry on its own line prefixed with `NOTICED BUT NOT TOUCHING:` so downstream tooling can parse it reliably. If there are no exclusions, write `All findings were included in plans.` with no marker line.
    - **Source**: the findings source file or description used as input.
    - **Statistics**: total findings, plans generated, findings per plan, excluded count.
@@ -165,8 +185,8 @@ Findings excluded: X
 
 PLANS GENERATED:
   PR_PLAN_INDEX.md
-  PR_PLAN_{SLUG_1}.md -- {theme name} ({n} findings, size {XS|S|M|L})
-  PR_PLAN_{SLUG_2}.md -- {theme name} ({n} findings, size {XS|S|M|L})
+  PR_PLAN_{EXECUTION_LABEL}_{SLUG_1}.md -- {execution label} {theme name} ({n} findings, size {XS|S|M|L}; {parallel in W## / blocked by W##L / blocks W##L})
+  PR_PLAN_{EXECUTION_LABEL}_{SLUG_2}.md -- {execution label} {theme name} ({n} findings, size {XS|S|M|L}; {parallel in W## / blocked by W##L / blocks W##L})
   ...
 
 THINGS I DIDN'T TOUCH:
@@ -179,7 +199,7 @@ POTENTIAL CONCERNS:
   • {Any inferred severities flagged UNVERIFIED}
   • {If none, state: "None"}
 
-Recommended first PR: PR_PLAN_{SLUG}.md -- {one-line rationale}
+Recommended first PR: PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md -- {one-line rationale including what it unblocks}
 ```
 
 ## Edge Cases
@@ -196,6 +216,7 @@ Recommended first PR: PR_PLAN_{SLUG}.md -- {one-line rationale}
 - **Self-contained plans above all.** Every plan must be readable in isolation. Never write "as described in the review" or "see finding #3."
 - **Actionable specificity.** "Improve error handling" is not a plan step. "Add try-catch to `fetchUser()` in `src/api/users.ts:45` that catches `NetworkError` and returns a typed error result" is.
 - **Conservative sizing.** No theme should land at XL. When in doubt, size down — a focused M theme (200-line PR) is better than a stretched L that inches toward an 800-line sprawl.
+- **Dependency-readable naming.** Plan titles, filenames, index rows, and the final summary must make sequencing obvious without reading the full plan. Use `W01A`/`W01B` for parallel first-wave plans, higher wave numbers for blocked follow-up plans, and explicit `blocked by`/`blocks` labels wherever a dependency exists.
 - **Respect the source.** Do not add findings that were not in the input. Do not reinterpret findings. If a finding is unclear, flag it as an open question.
 - **Match verification to the work.** Do not force code-only requirements onto documentation, copy, QA, audit, or workflow changes. Generated plans should require the evidence that actually proves the theme is complete.
 - **Clean output files.** The generated markdown files are working artifacts. They can be cleaned up with `/kramme:workflow-artifacts:cleanup`.
@@ -226,6 +247,9 @@ Watch for these justifications that signal you are about to skip a hard gate:
 Stop and re-cluster if any of these appear:
 
 - Any theme lands at 9+ findings, or a single plan touches 9+ files.
+- Any generated plan filename or title lacks an execution label such as `W01A`.
+- A blocked plan's title, index row, or dependency section omits the label of the plan blocking it.
+- Same-wave plans are described as sequential instead of parallel.
 - Conflicting findings were silently reconciled instead of flagged as an open question.
 - The index excludes nothing even though some findings are duplicates, already resolved, or not actionable — likely a missed exclusion pass.
 - A plan references "the review" or "finding #3" (violates self-contained rule).
@@ -236,5 +260,8 @@ Before reporting Phase 5, verify:
 
 - Every theme is sized ≤L.
 - `! grep -l "as described in the review\|see finding #\|per the report" PR_PLAN_*.md >/dev/null` succeeds (self-contained rule).
+- Every generated plan filename and title includes its execution label.
+- Every blocked plan names its blocker labels in the title, index row, dependency map, and Dependencies and Sequencing section.
+- Every same-wave group is marked as parallel in the index and summary.
 - Every conflict between findings is surfaced as an open question, not resolved unilaterally.
 - Every plan has all template sections populated with concrete content (no "N/A").
