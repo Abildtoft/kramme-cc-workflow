@@ -213,6 +213,8 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
    PR description findings should use the same severity rules as code findings. A materially false claim that would mislead merge approval, release notes, rollback planning, or QA is Important or Critical depending on impact. Minor missing detail is at most a Suggestion and should usually be omitted.
 
+   The recommended fix for a `PR description` finding is always to update the title/body to match the diff. The diff is the source of truth; the description is the suspect (PR descriptions drift, get written ahead of the final code, or are copied from earlier iterations). If a reviewer believes the code itself is wrong because it does not match the description's stated intent, raise that as a separate code-level finding with a `file:line` location.
+
    **Severity prefix grammar** — label every finding within each bucket using Addy's prefixes so downstream tooling can parse severity at the finding level, not only the section level:
 
    | Prefix | Meaning | Bucket |

@@ -126,7 +126,7 @@ For each finding with location `PR description`:
 For each finding, assign one of:
 - **Validated**: Issue is in changed code and caused by the in-scope changes
 - **Likely Validated**: Issue is near changed code, probably related
-- **Validated PR Description**: PR title/body claim materially conflicts with the current review scope
+- **Validated PR Description**: The PR title/body makes a claim that the current diff does not support. The description is the suspect, not the code; resolution is to update the PR text to match what shipped.
 - **Pre-existing**: Issue existed before these changes (filter)
 - **Out-of-scope**: File not modified in the review scope (filter)
 
@@ -147,7 +147,7 @@ Issues confirmed to be caused by the in-scope changes:
 **[Source Agent]** - Severity
 - Issue: [description]
 - Location: `PR description`
-- Validation: PR title/body claim conflicts with current review scope
+- Validation: PR title/body makes a claim the diff does not support; description is the suspect, recommended fix is to update the PR text
 
 ### Likely Related (X)
 

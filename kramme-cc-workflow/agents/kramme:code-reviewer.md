@@ -13,6 +13,8 @@ By default, review unstaged changes from `git diff`. The user may specify differ
 
 If PR metadata is provided, read the PR title and body before reviewing. Use it as context for intent and risk, but verify it against the actual diff. Report materially inaccurate PR description claims as review findings with location `PR description`.
 
+Treat the diff as the source of truth and the PR description as the suspect. PR descriptions drift, get written ahead of the final code, or are copy-pasted from earlier iterations. The default fix for a `PR description` finding is to update the description to match what shipped, not to change the code. If a reviewer separately concludes the code itself is wrong, that is a different finding with a `file:line` location.
+
 ## Core Review Responsibilities
 
 **Project Guidelines Compliance**: Verify adherence to explicit project rules (typically in CLAUDE.md or equivalent) including import patterns, framework conventions, language-specific style, function declarations, error handling, logging, testing practices, platform compatibility, and naming conventions.
