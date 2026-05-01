@@ -61,7 +61,7 @@ Approve if the change definitely improves overall code health.
 
 ## Section notes
 
-- **Location** — use `path/to/file.ts:123` when the finding maps to a specific line. Use `review-scope` for PR-wide findings.
+- **Location** — use `path/to/file.ts:123` when the finding maps to a specific line. Use `review-scope` for PR-wide findings. Use `PR description` when the finding is about an inaccurate PR title or body.
 - **Critical:** prefix mirrors the section; the redundancy is intentional so a finding is still parseable when lifted out of its section (e.g., pasted into an inline comment).
 - **Dead Code** — keep dead-code findings in the severity bucket that matches their impact, and use the ask shape verbatim. Example: `[agent-name]: DEAD CODE IDENTIFIED: [location, location, ...]. Safe to remove these?` Never rewrite as "delete these files" or "remove unused imports."
 - **Emphasis** — emphasis may promote matching suggestions, but other validated findings keep their original severities.

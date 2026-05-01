@@ -83,7 +83,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **simplify** - Simplify code for clarity and maintainability
    - **all** - Run all applicable reviews (default)
 
-4. **Identify Changed Files**
+4. **Identify Changed Files and PR Description**
    - Build a unified change scope (committed PR diff + staged + unstaged + untracked):
    ```bash
    BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
@@ -95,6 +95,13 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    } | sed '/^$/d' | sort -u
    ```
    - Identify file types and what reviews apply
+   - Read the current PR metadata, if a PR exists for this branch:
+   ```bash
+   PR_CONTEXT_JSON=$(gh pr view --json number,url,title,body,baseRefName,headRefName 2>/dev/null || true)
+   ```
+   - Treat the PR title and body as review context, not as trusted truth. If no PR exists or the query fails, proceed with an empty PR context and do not invent one.
+   - Compare the PR description against the current review scope. If it claims behavior, files, migrations, tests, risks, rollout status, or follow-up work that no longer matches the code, report that as a normal finding with location `PR description`.
+   - Do not report missing polish in the description unless it would mislead reviewers, release managers, or future maintainers about the current state of the code.
 
 5. **Check for Previous Review Responses**
 
@@ -126,12 +133,17 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
 7. **Launch Review Agents**
 
-   Pass the resolved `BASE_BRANCH` from Step 2 to all agents so they use the correct diff scope.
+   Pass the resolved `BASE_BRANCH` from Step 2 and the PR context from Step 4 to all agents so they use the correct diff scope and understand the stated intent of the change.
    Instruct each agent to review the same unified scope:
    - Committed diff: `git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`
    - Staged diff: `git diff --cached`
    - Unstaged diff: `git diff`
    - Untracked files: `git ls-files --others --exclude-standard`
+   - PR description context: parsed title/body/url from `PR_CONTEXT_JSON`, if present
+
+   Instruct agents to use the PR description in two ways:
+   - As context for intent, scope, risk, tests, and rollout assumptions while reviewing the code.
+   - As a review target: if the title or body is materially inaccurate for the current diff or local changes, emit a finding with location `PR description` and a concrete correction.
 
    **Sequential approach** (one at a time):
    - Easier to understand and act on
@@ -146,8 +158,8 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 8. **Validate Relevance**
 
    After collecting findings from all agents:
-   - Launch **kramme:pr-relevance-validator** with all findings and the resolved `BASE_BRANCH`
-   - Validator cross-references each finding against the full review scope (committed PR diff + staged/unstaged/untracked local changes)
+   - Launch **kramme:pr-relevance-validator** with all findings, the resolved `BASE_BRANCH`, and `PR_CONTEXT_JSON` if present
+   - Validator cross-references each finding against the full review scope (committed PR diff + staged/unstaged/untracked local changes, plus PR title/body for PR description findings)
    - Filters out pre-existing issues and out-of-scope problems
    - Returns only findings caused by this review scope
 
@@ -167,6 +179,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
      - For file-scoped findings: same file
      - For file-scoped findings: similar line number (within ~10 lines, accounting for code shifts)
      - For `review-scope` findings: both findings use location `review-scope`
+     - For PR description findings: both findings use location `PR description`
      - Same underlying issue (semantic match on root cause)
    - **Do NOT filter** (keep as active finding) if:
      - The issue description is substantively different (different root cause)
@@ -197,6 +210,8 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - **Positive Observations** (what's good)
    - **Filtered Issues** (pre-existing or out-of-scope) - shown separately
    - **Previously Addressed** (findings matching REVIEW_OVERVIEW.md) - shown separately
+
+   PR description findings should use the same severity rules as code findings. A materially false claim that would mislead merge approval, release notes, rollback planning, or QA is Important or Critical depending on impact. Minor missing detail is at most a Suggestion and should usually be omitted.
 
    **Severity prefix grammar** — label every finding within each bucket using Addy's prefixes so downstream tooling can parse severity at the finding level, not only the section level:
 
@@ -393,7 +408,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
 - Agents run autonomously and return detailed reports
 - Each agent focuses on its specialty for deep analysis
-- Results are actionable with specific locations (usually `file:line`, sometimes `review-scope`)
+- Results are actionable with specific locations (usually `file:line`, sometimes `review-scope` or `PR description`)
 - Agents use appropriate models for their complexity
 - All agents available in `/agents` list
 
