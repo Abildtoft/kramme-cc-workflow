@@ -1,6 +1,7 @@
 ---
 name: kramme:pr:rebase
 description: Rebase current branch onto latest main/master, then force push. Use when your PR is behind the base branch.
+argument-hint: "[--auto] [--base=<branch>]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -16,7 +17,10 @@ A feature branch is a cost that compounds every day it stays open. It drifts fro
 ## Options
 
 **Flags:**
+- `--auto` - Skip the final force-push confirmation and push immediately with `--force-with-lease` after a successful rebase.
 - `--base=<branch>` - Override auto-detected base branch (e.g., `--base=develop`)
+
+`--auto` only bypasses the final confirmation prompt. It does not bypass conflict handling, red-flag stops, or the requirement to use `--force-with-lease`.
 
 ## Output markers
 
@@ -33,6 +37,10 @@ Use these uppercase markers when reasoning about the rebase and reporting progre
 ## Workflow
 
 ### Step 1: Validate Prerequisites
+
+0. **Parse arguments:**
+
+   If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag from remaining arguments before processing `--base=<branch>`.
 
 1. **Check for rebase/merge in progress:**
 
@@ -157,7 +165,9 @@ This allows the user to review what was automatically resolved before force push
 
 ### Step 5: Force Push
 
-Before pushing, use `AskUserQuestion` to confirm:
+If `AUTO_MODE=true`, skip the confirmation prompt and push immediately with `--force-with-lease`.
+
+Otherwise, before pushing, use `AskUserQuestion` to confirm:
 
 > "Ready to force push rebased branch. This will overwrite the remote branch history. Continue?"
 >
@@ -209,6 +219,6 @@ Before force-pushing, self-check:
 
 - [ ] Conflict Summary lists every resolved file with file + conflict + resolution.
 - [ ] The base branch was freshly fetched (Step 2 ran).
-- [ ] The user explicitly confirmed via `AskUserQuestion` (Step 5).
+- [ ] The user explicitly confirmed via `AskUserQuestion` (Step 5), or `AUTO_MODE=true`.
 - [ ] `--force-with-lease` (not `--force`) is the flag being used.
 - [ ] Post-push `git log --oneline origin/<base>..HEAD` shows the expected linear history.
