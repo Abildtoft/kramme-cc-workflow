@@ -107,7 +107,7 @@ Group findings into PR-sized themes. A theme is a set of findings that should be
    - Same wave number means the plans can run in parallel.
    - A later wave number means the plan is blocked by at least one earlier-wave plan, and the exact blocker labels must be named in the plan title, index, and summary.
    - Independent single-plan work still receives `W01A`.
-5. Create file slugs by prefixing the theme slug with the execution label, using kebab-case for the working slug and UPPER_SNAKE_CASE for the filename slug. Example: `w01a-define-error-types` becomes `PR_PLAN_W01A_DEFINE_ERROR_TYPES.md`.
+5. Keep the theme slug separate from the execution label: derive `{SLUG}` from the theme name only, then prefix it with `{EXECUTION_LABEL}` only in the final filename. Example: execution label `W01A` plus theme slug `define-error-types` becomes `PR_PLAN_W01A_DEFINE_ERROR_TYPES.md`.
 6. Verify no theme is too large (would require 500+ changed lines or touch 9+ files). Split if needed.
 7. Verify no two themes overlap in affected files without an explicit dependency note.
 
