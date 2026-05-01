@@ -27,6 +27,7 @@
 
 - **ALWAYS** place `### Changes made`, `### Things I didn't touch`, and `### Potential concerns` immediately after `## Summary` and before `## Technical Details`
 - **ALWAYS** make `Changes made` a verb-led diff readout with one distinct change per bullet
+- **PREFER** 2-5 high-signal bullets in `Changes made`; do not mirror the list of files changed
 - **NEVER** omit one of the three subsections; use `None` only after considering it
 - **NEVER** turn `Things I didn't touch` into a generic future-work backlog; list only adjacent work explicitly considered and deferred
 - **ALWAYS** use `Potential concerns` for reviewer-visible risk such as migrations, feature-flag defaults, rollout dependencies, or partial coverage
@@ -35,7 +36,8 @@
 
 - **ALWAYS** explain **why** decisions were made, not just **what** changed
 - **PREFER** including relevant code snippets for complex changes
-- **NEVER** list every single file - focus on the most significant ones
+- **NEVER** add a "Key Files", "Files changed", or similar inventory just because files changed; reviewers already have the GitHub file list
+- **ONLY** mention a file when the name helps reviewers find a non-obvious entry point, generated artifact, migration, or risky coupling
 - **NEVER** list the amount of lines changed - it's not useful information, clutters the description and is often quickly made incorrect by subsequent commits
 - **CAN** reference existing code patterns when explaining implementation choices
 

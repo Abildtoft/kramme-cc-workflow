@@ -25,8 +25,9 @@ The Summary section is followed immediately by the Change Summary block below.
 1. **Changes made**:
 
    - Use verb-led bullets (`add`, `extract`, `wire`, `rename`, `remove`, `gate`)
-   - Scope each bullet to a feature, file area, or user-visible behavior
+   - Scope each bullet to a feature, implementation area, or user-visible behavior
    - Split distinct changes into separate bullets
+   - Do not mirror the GitHub file list; mention exact files only when the name helps reviewers find a non-obvious entry point or risk
 
 2. **Things I didn't touch**:
 
@@ -58,7 +59,7 @@ The Summary section is followed immediately by the Change Summary block below.
 
 ## Technical Details Section
 
-**ALWAYS** include:
+**ALWAYS** include items 1-3. Optionally include reviewer landmarks when they add review value:
 
 1. **Implementation approach** (2-4 sentences):
 
@@ -105,18 +106,16 @@ The Summary section is followed immediately by the Change Summary block below.
    - New tests added
    - Test coverage areas
 
-3. **Files changed summary**:
-   - Group by category (Frontend, Backend, Tests, etc.)
-   - **PREFER** listing only the most significant files (not every file)
+4. **Reviewer landmarks** (optional):
+   - Use only when the diff has non-obvious entry points, generated files, migrations, or cross-area coupling that reviewers should inspect together
+   - **DO NOT** create a generic "Key Files" or "Files changed" section for completeness; GitHub already shows that list
+   - Keep this to 1-3 high-signal bullets
    - **EXAMPLE**:
      ```markdown
-     **Key Files:**
+     **Reviewer landmarks:**
 
-     - Frontend:
-       - `libs/connect/shared/platform-picker/data-access/src/lib/platform-picker-redirect.guard.ts` - New guard implementation
-       - `libs/connect/shared/platform-picker/data-access/src/lib/platform-picker-redirect.guard.spec.ts` - Guard tests
-     - Backend:
-       - `Connect/Connect.Api/Controllers/PlatformController.cs` - Added user platform count endpoint
+     - Start with `PlatformPickerRedirectGuard` when reviewing redirect behavior; the store only supports guard state transitions
+     - Review the preferences migration with the new API contract because rollout order matters
      ```
 
 **EXAMPLE Technical Details:**
@@ -155,15 +154,10 @@ The Linear issue originally requested only redirecting single-platform users. Du
 - 3 integration tests for the new API endpoint
 - E2E tests for single-platform and multi-platform user flows
 
-**Key Files:**
+**Reviewer landmarks:**
 
-- Frontend:
-  - `libs/connect/shared/platform-picker/data-access/src/lib/platform-picker-redirect.guard.ts`
-  - `libs/connect/shared/platform-picker/data-access/src/lib/platform-picker-redirect.guard.spec.ts`
-  - `libs/connect/shared/platform-picker/data-access/src/lib/platform-picker-redirect.store.ts`
-- Backend:
-  - `Connect/Connect.Api/Controllers/PlatformController.cs`
-  - `Connect/Connect.Core/Services/PlatformService.cs`
+- Start with the route guard when reviewing redirect behavior; the store only supports guard state transitions
+- Review the platform-count endpoint and redirect fallback together because slow/error responses determine whether users still reach the picker
 ```
 
 ## Test Plan Section

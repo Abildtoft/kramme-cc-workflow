@@ -23,6 +23,8 @@
    git diff origin/$BASE_BRANCH...HEAD --stat
    ```
 
+   - Use this for analysis and scoping only. Do not reproduce the changed-file list in the final PR body unless a specific file is a non-obvious review landmark.
+
 3. **ALWAYS** categorize changed files by area:
 
    - **Frontend**: Files under `Connect/ng-app-monolith/`

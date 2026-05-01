@@ -52,11 +52,6 @@ Created a new Angular route guard (`PlatformPickerRedirectGuard`) that queries t
 - Integrated guard into platform picker route configuration
 - Added 12 unit tests covering all guard scenarios
 
-**Key Files:**
-- `libs/connect/shared/platform-picker/data-access/src/lib/platform-picker-redirect.guard.ts` - Guard implementation
-- `libs/connect/shared/platform-picker/data-access/src/lib/platform-picker-redirect.store.ts` - State management
-- `libs/connect/shared/platform-picker/data-access/src/lib/platform-picker-redirect.guard.spec.ts` - Tests
-
 ## Test Plan
 
 **Scenario 1: Single-platform user**
@@ -142,16 +137,15 @@ Database migration adds the preferences table with appropriate indexing and fore
 
 **Backend:**
 
-- `PreferencesController.cs` - New REST endpoints for preferences CRUD
-- `UserPreferencesService.cs` - Business logic for preference management
-- `UserPreference.cs` - Entity model
-- `20250122_AddUserPreferences.cs` - Database migration
+- Add REST endpoints for preferences CRUD
+- Add service logic and an entity model for preference management
+- Add the database migration for the new preferences table
 
 **Frontend:**
 
-- `user-preferences.service.ts` - Service for managing user preferences with local caching
-- `preferences.component.ts` - UI for editing preferences
-- API client updates for new endpoints
+- Add a preferences data service with local caching
+- Add the preferences editing UI
+- Wire the API client to the new endpoints
 
 **Database Migration:**
 
@@ -165,15 +159,9 @@ Database migration adds the preferences table with appropriate indexing and fore
 - 6 integration tests for API endpoints
 - 10 frontend component tests
 
-**Key Files:**
+**Reviewer landmarks:**
 
-- Backend:
-  - `Connect/Connect.Api/Controllers/PreferencesController.cs`
-  - `Connect/Connect.Core/Services/UserPreferencesService.cs`
-  - `Connect/Connect.Api/Migrations/20250122_AddUserPreferences.cs`
-- Frontend:
-  - `libs/connect/shared/preferences/data-access/src/lib/user-preferences.service.ts`
-  - `libs/connect/shared/preferences/feature/src/lib/preferences.component.ts`
+- Review the migration and backend endpoints together because deploy order affects whether preferences can be saved
 
 ## Test Plan
 
