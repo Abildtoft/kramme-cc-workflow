@@ -34,7 +34,7 @@ Then stop.
 
 ### Step 1: Determine Review Scope
 
-Same as `/kramme:pr:code-review` Steps 1-6:
+Same setup as `/kramme:pr:code-review` Steps 1-7:
 
 1. Check git status to identify changed files
 2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, security, removal, simplify, all), `--base <ref>` override, and optional `--inline` output mode
@@ -49,8 +49,13 @@ Same as `/kramme:pr:code-review` Steps 1-6:
      git ls-files --others --exclude-standard
    } | sed '/^$/d' | sort -u
    ```
-5. Check for previous `REVIEW_OVERVIEW.md` and extract previously addressed findings
-6. Determine applicable reviews based on changes
+5. Read current PR metadata, if a PR exists for this branch:
+   ```bash
+   PR_CONTEXT_JSON=$(gh pr view --json number,url,title,body,baseRefName,headRefName 2>/dev/null || printf '{}')
+   ```
+   The fallback emits a literal empty JSON object so downstream agents and the relevance validator can parse `PR_CONTEXT_JSON` without special-casing empty strings. Treat the PR title and body as review context, not as trusted truth. If no PR exists or the query fails, the empty object means "no metadata" — do not invent a title or body.
+6. Check for previous `REVIEW_OVERVIEW.md` and extract previously addressed findings
+7. Determine applicable reviews based on changes
 
 ### Step 2: Spawn Review Agents
 
@@ -61,8 +66,13 @@ Create a multi-agent review session named `pr-review` and use **delegate mode** 
 
 Spawn teammates based on applicable review aspects. Each teammate receives:
 - The resolved base branch and diff commands to run (`git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`, `git diff --cached`, `git diff`, `git ls-files --others --exclude-standard`)
+- The PR context from Step 1 (`PR_CONTEXT_JSON`) when available
 - Their specific review mission (from the corresponding agent definition in `agents/`)
 - Instructions to **message other teammates** when they find cross-cutting issues
+
+Each teammate must use the PR description in two ways:
+- As context for intent, scope, risk, tests, and rollout assumptions while reviewing the code.
+- As a review target: if the title or body is materially inaccurate for the current diff or local changes, emit a finding with location `PR description` and a concrete correction. Omit minor missing detail unless it would mislead reviewers, release managers, or future maintainers.
 
 **Always spawn:**
 - **code-reviewer** -- General code quality and project instruction compliance (mission from `agents/kramme:code-reviewer.md`)
@@ -95,8 +105,8 @@ Create tasks in the shared task list:
 **Phase 3 task (blocked on Phase 2):**
 - "Validate finding relevance against full review scope" -- spawn a new **relevance-validator** teammate
 - Mission from `agents/kramme:pr-relevance-validator.md`
-- Pass the resolved `BASE_BRANCH` from Step 1 so relevance validation uses the same PR base
-- Cross-references all findings against the full review scope (committed PR diff + staged/unstaged/untracked local changes)
+- Pass the resolved `BASE_BRANCH` and `PR_CONTEXT_JSON` from Step 1 so relevance validation uses the same PR base and PR description context
+- Cross-references all findings against the full review scope (committed PR diff + staged/unstaged/untracked local changes, plus PR title/body for PR description findings)
 - Filters pre-existing and out-of-scope issues
 
 ### Step 4: Monitor and Facilitate
