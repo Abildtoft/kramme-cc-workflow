@@ -1,6 +1,10 @@
-# PR Plan: {{theme-name}}
+# PR Plan {{execution-label}}: {{theme-name}} ({{parallel in W## / blocked by W##L / blocks W##L}})
 
-**File:** `PR_PLAN_{{SLUG}}.md`
+**File:** `PR_PLAN_{{EXECUTION_LABEL}}_{{SLUG}}.md`
+**Execution label:** `{{W##L}}`
+**Parallel group:** {{Wave W##; name sibling labels that can run in parallel, or "None - only plan in wave."}}
+**Blocked by:** {{Execution labels and content of prerequisite plans, or "None."}}
+**Blocks:** {{Execution labels and content of dependent plans, or "None."}}
 **Date:** {{date}}
 **Source findings:** {{count}} findings clustered into this theme
 **Estimated scope:** {{small / medium / large}} PR
@@ -41,11 +45,15 @@
 
 ### Prerequisites (must land before this PR)
 
-{{Describe what work must be completed before this PR can start, by its content — e.g., "error types must be defined and exported from the shared types module." Do not reference other plan filenames or theme names. State "None." if independent.}}
+{{List exact blocker execution labels plus the work that must be completed before this PR can start — e.g., "`W01A` must define and export shared error types." State "None." if independent.}}
 
 ### Dependents (blocked until this PR lands)
 
-{{Describe what work this PR unblocks, by its content — e.g., "API consumers cannot adopt typed errors until this PR lands." Do not reference other plan filenames or theme names. State "None." if nothing depends on this.}}
+{{List exact dependent execution labels plus the work this PR unblocks — e.g., "`W02A` cannot adopt typed errors until the shared error types exist." State "None." if nothing depends on this.}}
+
+### Parallel Work
+
+{{List same-wave execution labels that can run in parallel and why they do not depend on this plan. State "None." if there are no same-wave peers.}}
 
 ### External Dependencies
 
