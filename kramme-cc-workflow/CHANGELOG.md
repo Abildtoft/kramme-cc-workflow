@@ -3,6 +3,17 @@
 ## Unreleased
 
 ### Removed
+## [0.54.0] - 2026-05-02
+
+### Added
+- Add auto mode to rebase skill (#330)
+- Include PR description as review context and target (#327)
+- Add wave/lane labels to breakdown-findings plans (#326)
+
+### Changed
+- Scope refactor opportunity scans (#328)
+- Reduce file inventory guidance (#325)
+
 ## [0.53.0] - 2026-04-28
 
 ### Added
@@ -198,6 +209,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+[0.54.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.53.0...v0.54.0
 [0.53.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.52.0...v0.53.0
 [0.52.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.51.0...v0.52.0
 [0.51.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.50.0...v0.51.0
