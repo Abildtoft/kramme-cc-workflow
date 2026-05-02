@@ -18,9 +18,9 @@ Systematically scan the codebase for refactoring candidates, categorize findings
 - **Full codebase**: omit arguments, or say `full`, `full codebase`, `repo`, `everything`, or `all`. Scan all source directories.
 - **Current PR**: say `pr`, `current PR`, `diff`, `changes`, or pass `--scope pr`. Scan the files changed by the current branch against the resolved base branch, plus staged, unstaged, and untracked files.
 - **Named path**: pass `path <file-or-folder>`, `--scope path <file-or-folder>`, or a bare path-shaped argument that resolves to an existing file, folder, glob match, or file list. Scan only the matching files.
-- **Named feature**: pass `feature <name>`, `--scope feature <name>`, or `--feature <name>`. A bare argument that is not path-shaped is also treated as a feature name. Resolve the feature to its implementation, tests, routes, schemas, docs, and adjacent modules before scanning.
-- **Disambiguation**: an argument is *path-shaped* when it contains `/`, `.`, a glob meta-character (`*`, `?`, `[`), or matches a top-level project directory name. A bare path-shaped argument that resolves routes to `path`; one that does not resolve triggers a clarification ask. A bare argument that is not path-shaped routes to `feature`.
-- If more than one scope selector is provided and they cannot be reconciled, pause and ask which single scope to use. Do not silently broaden the scan.
+- **Named feature**: pass `feature <name>`, `--scope feature <name>`, or `--feature <name>`. A bare argument that is not path-shaped is also treated as a feature name; use the explicit `feature <name>` form when the feature name collides with a scope keyword (`full`, `pr`, `diff`, `changes`, `all`, `everything`, `repo`). Resolve the feature to its implementation, tests, routes, schemas, docs, and adjacent modules before scanning.
+- **Disambiguation**: an argument is *path-shaped* when it contains `/`, `.`, or a glob meta-character (`*`, `?`, `[`). A bare path-shaped argument that resolves routes to `path`; one that does not resolve triggers a clarification ask. A bare argument that is not path-shaped routes to `feature`.
+- If more than one scope selector is provided and they cannot be reconciled, pause and ask which single scope to use. Do not silently pick one selector over another.
 - In every mode, skip `node_modules`, `dist`, build artifacts, generated files, lock files, vendored code, and binary assets.
 
 ## Prerequisites — When NOT to flag a refactor
@@ -38,7 +38,7 @@ These rejections are pre-filters — apply them before recording a finding, not 
 
 ### Phase 1 — Orientation
 
-1. Parse `$ARGUMENTS` per the **Inputs** section into `SCOPE_MODE` and `SCOPE_VALUE`. `SCOPE_VALUE` is the repo root for `full`, the matched path set for `path`, and resolved in *Resolve the effective scan scope* below for `pr` and `feature`.
+1. Parse `$ARGUMENTS` per the **Inputs** section. If multiple scope selectors are present and conflict, pause and ask before continuing. Otherwise resolve to a single `SCOPE_MODE`; the per-mode target is computed in *Resolve the effective scan scope* below.
 2. Use the Read tool to examine `package.json` / `pyproject.toml` / build config to understand the stack and directory layout.
 3. Discover project instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents) if present and read the relevant ones to understand project-specific conventions.
 4. **Read accepted ADRs.** Look for `docs/decisions/` (or other common ADR locations: `doc/adr/`, `docs/adr/`, `architecture/decisions/`). If found, read every accepted ADR and store their decisions as `KNOWN_ADRS` — title, status, and a one-line summary of what was decided and what was rejected. These bound the design space the scan operates in. If no ADR directory exists, proceed silently with `KNOWN_ADRS = []`.
@@ -49,14 +49,14 @@ These rejections are pre-filters — apply them before recording a finding, not 
    - **PR**:
      1. Resolve the base ref in this order:
         - Explicit `--base <ref>`.
-        - `gh pr view --json baseRefName,baseRefOid` — if it returns metadata, use `origin/<baseRefName>`. For PRs from a fork where `origin` is not the base repo, ask for `--base <ref>` instead of guessing.
+        - `gh pr view --json baseRefName` — if it returns metadata, use `origin/<baseRefName>`. For PRs from a fork where `origin` is not the base repo, ask for `--base <ref>` instead of guessing.
         - Configured upstream, but skip it when it points at `origin/<current-branch>`.
         - `origin/main`, `origin/master`, `main`, then `master`.
      2. If no base can be resolved, report the attempted refs and ask for `--base <ref>` — do not fall back to `full`.
      3. Build the file set from `git diff --name-only <resolved-base>...HEAD`, `git diff --cached --name-only`, `git diff --name-only`, and `git ls-files --others --exclude-standard`. Keep only existing text/source files unless a deleted file reveals dead references elsewhere.
-   - **Path**: validate that every named file/folder exists or every glob matches at least one file. If a value does not match, ask for clarification instead of treating it as a feature. For folders, recursively include source files under the folder.
+   - **Path**: validate that every named file/folder exists or every glob matches at least one file. Unresolved values trigger the clarification ask defined in **Inputs**. For folders, recursively include source files under the folder.
    - **Feature**: search for the feature name and project-glossary synonyms across directory names, module names, routes, package names, tests, docs, config, schemas, and user-facing copy. Include primary implementation files, matching tests, API/routes, data models, feature flags, fixtures, and docs that directly define the feature. If the name maps to multiple unrelated areas, or if no file's name, route, or schema contains the feature term, present the candidate file groups (or the empty result) and ask the user to confirm or rename.
-7. Build a human-readable `SCOPE_DESCRIPTION` covering mode, resolved target, file count, and source directories — for example `Full codebase (1,247 files across 8 source directories)`, `Current PR against origin/main (14 files)`, `Path src/api (37 files)`, or `Feature "billing exports" (22 files across API, UI, and tests)`. Report it to the user before proceeding.
+7. Build a human-readable `SCOPE_DESCRIPTION` covering mode, resolved target, file count, and source directories — for example `Full codebase (1,247 files across 8 source directories)`, `Current PR against origin/main (14 files)`, `Path src/api (37 files)`, or `Feature "billing exports" (22 files across API, UI, tests, and docs)`. Report it to the user before proceeding.
 
 ### Phase 2 — Parallel Scan
 
