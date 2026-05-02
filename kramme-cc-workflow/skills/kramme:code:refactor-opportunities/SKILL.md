@@ -3,7 +3,7 @@ name: kramme:code:refactor-opportunities
 description: "Scan the full codebase, current PR, a named file/folder, or a named feature for refactoring candidates. Use when the user asks to find refactor opportunities, audit code quality, identify tech debt, or wants a codebase health check. Flags themes whose combined blast radius exceeds 500 lines as automation candidates."
 disable-model-invocation: false
 user-invocable: true
-argument-hint: "[full|pr|path <file-or-folder>|feature <name>]"
+argument-hint: "[full | pr | path <file-or-folder> | feature <name>]"
 ---
 
 # Refactor Opportunities
@@ -14,11 +14,12 @@ Systematically scan the codebase for refactoring candidates, categorize findings
 
 ## Inputs
 
-- **Scope selector** (optional): exactly one of `full`, `pr`, `path`, or `feature`. Defaults to `full`.
+- **Scope selector** (optional): the skill resolves arguments to exactly one of `full`, `pr`, `path`, or `feature`. Defaults to `full`.
 - **Full codebase**: omit arguments, or say `full`, `full codebase`, `repo`, `everything`, or `all`. Scan all source directories.
 - **Current PR**: say `pr`, `current PR`, `diff`, `changes`, or pass `--scope pr`. Scan the files changed by the current branch against the resolved base branch, plus staged, unstaged, and untracked files.
-- **Named path**: pass `path <file-or-folder>`, `--scope path <file-or-folder>`, or a bare existing file, folder, glob pattern, or file list. Scan only the matching files.
-- **Named feature**: pass `feature <name>`, `--scope feature <name>`, or `--feature <name>`. Resolve the feature to its implementation, tests, routes, schemas, docs, and adjacent modules before scanning.
+- **Named path**: pass `path <file-or-folder>`, `--scope path <file-or-folder>`, or a bare path-shaped argument that resolves to an existing file, folder, glob match, or file list. Scan only the matching files.
+- **Named feature**: pass `feature <name>`, `--scope feature <name>`, or `--feature <name>`. A bare argument that is not path-shaped is also treated as a feature name. Resolve the feature to its implementation, tests, routes, schemas, docs, and adjacent modules before scanning.
+- **Disambiguation**: an argument is *path-shaped* when it contains `/`, `.`, a glob meta-character (`*`, `?`, `[`), or matches a top-level project directory name. A bare path-shaped argument that resolves routes to `path`; one that does not resolve triggers a clarification ask. A bare argument that is not path-shaped routes to `feature`.
 - If more than one scope selector is provided and they cannot be reconciled, pause and ask which single scope to use. Do not silently broaden the scan.
 - In every mode, skip `node_modules`, `dist`, build artifacts, generated files, lock files, vendored code, and binary assets.
 
@@ -37,11 +38,7 @@ These rejections are pre-filters — apply them before recording a finding, not 
 
 ### Phase 1 — Orientation
 
-1. Parse `$ARGUMENTS` into a `SCOPE_MODE` and `SCOPE_VALUE`:
-   - `SCOPE_MODE=full`: no arguments or a full-codebase synonym. `SCOPE_VALUE` is the repo root.
-   - `SCOPE_MODE=pr`: PR/diff synonym or `--scope pr`. `SCOPE_VALUE` is the resolved PR file set.
-   - `SCOPE_MODE=path`: `path ...`, `--scope path ...`, or any bare argument that resolves to an existing file/folder/glob/list. `SCOPE_VALUE` is the matched path set.
-   - `SCOPE_MODE=feature`: `feature ...`, `--scope feature ...`, `--feature ...`, or a non-path natural-language feature name. `SCOPE_VALUE` is resolved in step 6.
+1. Parse `$ARGUMENTS` per the **Inputs** section into `SCOPE_MODE` and `SCOPE_VALUE`. `SCOPE_VALUE` is the repo root for `full`, the matched path set for `path`, and resolved in *Resolve the effective scan scope* below for `pr` and `feature`.
 2. Use the Read tool to examine `package.json` / `pyproject.toml` / build config to understand the stack and directory layout.
 3. Discover project instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents) if present and read the relevant ones to understand project-specific conventions.
 4. **Read accepted ADRs.** Look for `docs/decisions/` (or other common ADR locations: `doc/adr/`, `docs/adr/`, `architecture/decisions/`). If found, read every accepted ADR and store their decisions as `KNOWN_ADRS` — title, status, and a one-line summary of what was decided and what was rejected. These bound the design space the scan operates in. If no ADR directory exists, proceed silently with `KNOWN_ADRS = []`.
@@ -49,12 +46,17 @@ These rejections are pre-filters — apply them before recording a finding, not 
 5.5. **Read prior rejections.** If `.out-of-scope/` exists at the project root, list its filenames and store them as `KNOWN_OUT_OF_SCOPE`. Do not open file bodies yet — that happens in Phase 3 only when a finding plausibly matches a slug. If no directory exists, proceed silently with `KNOWN_OUT_OF_SCOPE = []`. See `/kramme:docs:out-of-scope` for the storage skill.
 6. Resolve the effective scan scope:
    - **Full**: list source directories from project structure and exclude generated/vendor/build paths.
-   - **PR**: resolve base branch in this order: explicit `--base <ref>`, current PR base from `gh pr view --json baseRefName,baseRefOid,url` when available, a configured upstream only when it names a likely target branch rather than a same-named feature branch (for example, skip `origin/<current-branch>`), `origin/main`, `origin/master`, `main`, then `master`. For branch names returned without a remote prefix, prefer the remote-tracking ref that belongs to the PR base repository (derive it from the PR URL and match it to a git remote, adding or fetching an upstream-style remote only when needed); fall back to `origin/<branch>` only when `origin` matches that base repository or no PR metadata is available. Build the file set from `git diff --name-only <resolved-base>...HEAD`, `git diff --cached --name-only`, `git diff --name-only`, and `git ls-files --others --exclude-standard`. Keep only existing text/source files unless a deleted file reveals dead references elsewhere. If no base can be resolved, report the attempted refs and ask for `--base <ref>` instead of falling back to `full`.
+   - **PR**:
+     1. Resolve the base ref in this order:
+        - Explicit `--base <ref>`.
+        - `gh pr view --json baseRefName,baseRefOid` — if it returns metadata, use `origin/<baseRefName>`. For PRs from a fork where `origin` is not the base repo, ask for `--base <ref>` instead of guessing.
+        - Configured upstream, but skip it when it points at `origin/<current-branch>`.
+        - `origin/main`, `origin/master`, `main`, then `master`.
+     2. If no base can be resolved, report the attempted refs and ask for `--base <ref>` — do not fall back to `full`.
+     3. Build the file set from `git diff --name-only <resolved-base>...HEAD`, `git diff --cached --name-only`, `git diff --name-only`, and `git ls-files --others --exclude-standard`. Keep only existing text/source files unless a deleted file reveals dead references elsewhere.
    - **Path**: validate that every named file/folder exists or every glob matches at least one file. If a value does not match, ask for clarification instead of treating it as a feature. For folders, recursively include source files under the folder.
-   - **Feature**: search for the feature name and project-glossary synonyms across directory names, module names, routes, package names, tests, docs, config, schemas, and user-facing copy. Include primary implementation files, matching tests, API/routes, data models, feature flags, fixtures, and docs that directly define the feature. If the name maps to multiple unrelated areas or fewer than two strong matches, present the candidate file groups and ask the user to pick one.
-7. Store a human-readable `SCOPE_DESCRIPTION` that includes the mode and resolved target, for example `Current PR against origin/main (14 files)` or `Feature "billing exports" (22 files across API, UI, and tests)`.
-8. List the source directories and file types that will be scanned.
-9. Count files in scope — report the count and `SCOPE_DESCRIPTION` to the user before proceeding.
+   - **Feature**: search for the feature name and project-glossary synonyms across directory names, module names, routes, package names, tests, docs, config, schemas, and user-facing copy. Include primary implementation files, matching tests, API/routes, data models, feature flags, fixtures, and docs that directly define the feature. If the name maps to multiple unrelated areas, or if no file's name, route, or schema contains the feature term, present the candidate file groups (or the empty result) and ask the user to confirm or rename.
+7. Build a human-readable `SCOPE_DESCRIPTION` covering mode, resolved target, file count, and source directories — for example `Full codebase (1,247 files across 8 source directories)`, `Current PR against origin/main (14 files)`, `Path src/api (37 files)`, or `Feature "billing exports" (22 files across API, UI, and tests)`. Report it to the user before proceeding.
 
 ### Phase 2 — Parallel Scan
 
