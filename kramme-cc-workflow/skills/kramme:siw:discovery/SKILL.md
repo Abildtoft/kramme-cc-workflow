@@ -350,6 +350,10 @@ After writing, suggest next steps:
 - `/kramme:siw:init siw/DISCOVERY_BRIEF.md` — to bootstrap a full SIW workflow from this brief
 - `/kramme:siw:discovery siw/DISCOVERY_BRIEF.md --apply` — to iterate on the brief and fold clarified decisions back into it
 
+### Optional plan-mode handoff
+
+When the host runtime supports it (Claude Code) and the user wants to move directly into implementation planning rather than the SIW spec/issue workflow, offer to call `EnterPlanMode` so the brief becomes the seed of an interactive plan. Ask once via AskUserQuestion (`Enter plan mode now` / `Stick with SIW`) — don't auto-trigger. If the runtime doesn't expose `EnterPlanMode`, skip this step silently.
+
 ### Refinement Mode → SPEC_STRENGTHENING_PLAN.md
 
 Read `assets/spec-strengthening-plan-template.md`, populate it from the interview, and write the result to `siw/SPEC_STRENGTHENING_PLAN.md`. Emit `PLAN: Written to siw/SPEC_STRENGTHENING_PLAN.md.` at hand-off.

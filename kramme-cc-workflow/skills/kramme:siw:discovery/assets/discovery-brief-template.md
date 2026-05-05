@@ -60,6 +60,8 @@ Include any forced tradeoffs that were resolved during the interview.}
 
 ## Risks
 
+Each risk must be specific enough to act on. "Could be slow" is useless; "adds an N+1 query on every dashboard load" is useful. Skip risks that are abstract enough to apply to any project.
+
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
 | {risk} | {H/M/L} | {H/M/L} | {approach} |

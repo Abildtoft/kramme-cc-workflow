@@ -44,3 +44,14 @@ How to transition from current state.
 
 ## Open Questions
 Items requiring further discussion.
+
+## Risks & Mitigations
+Each risk must be specific enough to act on. "Adoption could be hard" is useless; "engineers will skip the new approval step when on-call because the form takes 3 minutes during an incident" is useful.
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+
+## Sources
+Populate only when Phase R ran. List the files the codebase agent returned.
+
+- **Codebase**: `{path:line-range}` — {what was found}
