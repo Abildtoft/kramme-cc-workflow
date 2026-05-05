@@ -1,7 +1,7 @@
 ---
 name: kramme:discovery:interview
-description: Conduct an in-depth interview about a topic/proposal to uncover requirements, priorities, and non-goals, then create a comprehensive plan. Pass --ideate for divergent framing, or --decision-tree / depth-first language to resolve tightly coupled decisions one question at a time.
-argument-hint: "[file-path or topic description] [--ideate] [--decision-tree]"
+description: Conduct an in-depth interview about a topic/proposal to uncover requirements, priorities, and non-goals, then create a comprehensive plan. Pass --ideate for divergent framing, --decision-tree / depth-first language to resolve tightly coupled decisions one question at a time, or --research to launch topic-specific research agents before the interview.
+argument-hint: "[file-path or topic description] [--ideate] [--decision-tree] [--research]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -13,14 +13,16 @@ Conduct a structured, in-depth interview about the presented topic, files, propo
 ## Process Overview
 
 1. **Initial Analysis**: Examine the topic/files/proposal presented
-2. **Mode and Glossary Setup**: Detect `--decision-tree` or depth-first trigger phrases; read `UBIQUITOUS_LANGUAGE.md` if present
+2. **Mode and Glossary Setup**: Detect `--decision-tree`, `--research`, or depth-first trigger phrases; read `UBIQUITOUS_LANGUAGE.md` if present
 3. **Autonomous Framing**: Draft the likely target user, problem, why-now, and non-goals before asking questions
 4. **Topic Classification**: Determine the type of exploration needed
 5. **Phase 0 (optional) — Divergent**: If the framing is vague, pause for an explicit skip-or-continue choice before generating variations. If `--ideate` is set, treat that as an explicit request to run Phase 0 and proceed directly into the divergent pass.
-6. **Final Classification Check**: If Phase 0 changed the framing, reclassify before interviewing
-7. **Interview**: Use coverage rounds by default or decision-tree mode for coupled decisions
-8. **Progress Tracking**: Monitor coverage across dimensions or resolved branches
-9. **Synthesis**: Write an adaptive plan markdown file
+6. **Final Classification Check**: If Phase 0 changed the framing or the topic type is ambiguous, reclassify/confirm before research.
+7. **Phase R (optional) — Research**: When `--research` is set or the topic names external libraries, frameworks, or cross-cutting concerns, launch parallel research agents tailored to the confirmed topic classification, then run a brief check-in before the interview.
+8. **Post-Research Classification Check**: If Phase R changes the framing or classification, repeat topic classification before interviewing.
+9. **Interview**: Use coverage rounds by default or decision-tree mode for coupled decisions.
+10. **Progress Tracking**: Monitor coverage across dimensions or resolved branches.
+11. **Synthesis**: Write an adaptive plan markdown file.
 
 ## Output Markers
 
@@ -38,6 +40,7 @@ Parse `$ARGUMENTS` as shell-style arguments so quoted paths stay intact.
 
 - If `--ideate` is present, set `force_ideate=true` and remove from argument list.
 - If `--decision-tree` is present, set `decision_tree_requested=true` and remove from argument list.
+- If `--research` is present, set `research_requested=true` and remove from argument list.
 - If remaining text includes trigger phrases like "walk the decision tree", "walk this depth-first", "resolve dependencies first", or "depth-first", set `decision_tree_requested=true` without removing meaningful topic words unless the phrase is only an instruction.
 - If the remaining text looks like file path(s), read and analyze them first.
 - If it is free text, use it as the topic description.
@@ -56,6 +59,8 @@ Before starting the interview, write down a working hypothesis for:
 - What is likely out of scope or intentionally deprioritized
 
 Treat these as assumptions to validate, not excuses to ask generic setup questions.
+
+**Frame the underlying problem, not the proposed solution.** When the input includes a proposed approach ("let's add X", "we should switch to Y"), separate the problem the proposal is meant to solve from the proposal itself. The proposal may be correct, but the framing — and any research in Phase R — must be about the problem so that alternatives stay visible.
 
 If the hypothesis doesn't seem to match the user's framing, emit `CONFUSION:` and ask a clarifying question before continuing.
 
@@ -123,6 +128,59 @@ FRAMING: Interview will proceed on the following framing — {chosen variation r
 If the user picks "None of these", apply 2 fresh lenses and re-run convergence. If they still don't land on anything, fall back to the original framing and proceed with the interview.
 
 Feed the chosen framing into Step 2 and reclassify before Step 3. If the topic type changes, tell the user which type is now in force before you continue.
+
+## Phase R: Research Pre-pass (Optional)
+
+Run Phase R when **either** is true:
+
+- The user passed `--research` in `$ARGUMENTS`.
+- The framing names an **external library, framework, vendor service, or cross-cutting concern** (auth, observability, schema migration, deployment, performance) whose details the codebase or docs likely already answer. Heuristic: if you'd otherwise ask the user a question whose answer is sitting in the repo or in the framework's docs, run research first.
+
+If the framing is purely about priorities, ownership, or business context — answers only the user can give — **skip Phase R**. Research can't replace human input on those.
+
+### Entry notice
+
+When Phase R is auto-triggered (not by `--research`), display a one-line notice and pause for an explicit choice via AskUserQuestion:
+
+```text
+The framing names {library / framework / cross-cutting concern}. Running parallel research agents (codebase + docs) before the interview will let questions skip what's already answered. Skip with "just interview me".
+```
+
+Two options: `Run research pre-pass` or `Just interview me`. Do not launch agents until the user has answered.
+
+### Launch parallel agents
+
+Read `references/research-agents.md` for the per-classification agent prompt templates. Pick the agent set matching the topic type from Step 2:
+
+- **Software Feature** → Codebase + Docs + UX agents
+- **Architecture Decision** → Codebase + Docs + Dependencies agents
+- **Process/Workflow** → Codebase agent only
+- **Documentation/Proposal** → Codebase + Docs agents
+
+Spawn them via the Task tool with `subagent_type: Explore` (or `general-purpose` when the agent needs WebSearch / WebFetch / Context7 MCP). Each agent's prompt comes from the reference file.
+
+**Research the problem, not the proposal.** If the input includes a proposed solution, every agent should investigate the underlying problem independently before evaluating the proposal.
+
+Each agent must return: what it found, where it found it (file paths or URLs), and key snippets.
+
+### Post-research check-in
+
+After agents return, summarize the key finding in 2-3 sentences and surface anything that:
+
+- contradicts the working hypothesis from Step 1
+- materially shifts the topic type from Step 2
+- shows the proposed solution is unnecessary, more complex than needed, or solves the wrong problem
+
+Use AskUserQuestion to present a specific choice about how to proceed — not a generic "does this make sense?". Examples:
+
+- "Codebase already has `useDebouncedSearch` doing 80% of this. Do you want to extend it, or build separately?"
+- "Tanstack Query v5 deprecated the API the proposal uses. Switch to suspense queries, or pin to v4?"
+
+If the research surfaces nothing surprising, name that briefly and proceed. If it changes the framing or classification, repeat Step 2 before Step 3.
+
+### Pass research findings into the interview
+
+Carry research findings forward as context for Step 3. Apply the existing **Codebase-as-Answer-Source Rule** more aggressively now: any question whose answer is in the research output should be presented as `"Research found {finding} at {path}. Confirm or correct?"` instead of asked open-ended.
 
 ## Step 3: Interview Approach
 
@@ -329,7 +387,7 @@ Suggest a filename based on the topic, e.g., `user-auth-redesign-plan.md` or `de
 
 ### Template Selection
 
-Pick the template matching the final topic type in force after Step 2 and any Phase 0 reclassification:
+Pick the template matching the final topic type in force after Step 2 and any Phase 0 or Phase R reclassification:
 
 | Topic Type | Template File |
 |------------|---------------|
@@ -346,6 +404,10 @@ PLAN: Written to {path}. Ready for review.
 
 If a required section cannot be filled because the interview didn't cover it, leave the placeholder in place and add `MISSING REQUIREMENT: {dimension}` above it so the gap is explicit.
 
+### Optional plan-mode handoff
+
+When the host runtime supports it (Claude Code) and the user wants to move directly into implementation planning, offer to call `EnterPlanMode` so the synthesized plan becomes the seed of an interactive plan. Ask once via AskUserQuestion (`Enter plan mode now` / `Stop here, I'll review first`) — don't auto-trigger. If the runtime doesn't expose `EnterPlanMode`, skip this step silently.
+
 ## Important Guidelines
 
 1. **Craft real alternatives** - Every option should be a legitimate choice someone might make
@@ -358,7 +420,7 @@ If a required section cannot be filled because the interview didn't cover it, le
 
 **Handling $ARGUMENTS:**
 - `$ARGUMENTS` contains everything the user typed after `/kramme:discovery:interview`
-- Parse for the `--ideate` and `--decision-tree` flags. If present, set `force_ideate=true` and/or `decision_tree_requested=true`, then remove them from the argument list.
+- Parse for the `--ideate`, `--decision-tree`, and `--research` flags. If present, set `force_ideate=true`, `decision_tree_requested=true`, and/or `research_requested=true`, then remove them from the argument list.
 - Treat natural-language requests to "walk the decision tree", "walk this depth-first", or "resolve dependencies first" as `decision_tree_requested=true` without treating phrase-only instructions as the topic.
 - If the remaining text looks like file path(s): Read and analyze them first
 - If it's free text: Use as the topic description
@@ -372,7 +434,8 @@ If a required section cannot be filled because the interview didn't cover it, le
 5. If `force_ideate=true`, run Phase 0 even when the framing is concrete. Otherwise, only run Phase 0 when the framing is vague.
 6. Reclassify if Phase 0 materially changed the framing
 7. Confirm classification with user if ambiguous
-8. If `decision_tree_requested=true`, resolve the root decision and dependency branches first; otherwise ask the first coverage round from the highest-uncertainty assumptions
+8. If `research_requested=true`, run Phase R. Otherwise auto-trigger Phase R only when the framing names external libraries, frameworks, vendor services, or cross-cutting concerns whose answers likely sit in the codebase or framework docs.
+9. If `decision_tree_requested=true`, resolve the root decision and dependency branches first; otherwise ask the first coverage round from the highest-uncertainty assumptions
 
 ## Epilogue
 
@@ -388,6 +451,8 @@ If a required section cannot be filled because the interview didn't cover it, le
 - Asking a question whose answer is already in the artifact. Stop and re-read the artifact.
 - Generating a plan before the user has confirmed the classification or chosen a Phase 0 framing.
 - Auto-running Phase 0 on a concrete topic the user already scoped when `--ideate` was not requested. Skip it.
+- Auto-running Phase R on a pure-priorities or business-context topic where research can't help. Skip it.
+- Letting Phase R findings sit unread because they don't fit the original hypothesis. Surface contradictions before the interview, not after.
 - Filling in a plan section from assumption rather than interview data. Emit `MISSING REQUIREMENT:` instead.
 - Letting a Phase 0 framing change stand without reclassifying the topic type and template choice.
 - The interview drifts into implementation minutiae before the problem statement is settled.
@@ -397,9 +462,11 @@ If a required section cannot be filled because the interview didn't cover it, le
 Before writing the plan, confirm:
 
 - [ ] The working hypothesis from Step 1 has been either validated or explicitly corrected during the interview.
-- [ ] The topic type from Step 2 matches what the user actually cares about (not what the artifact happens to contain), and was reclassified if Phase 0 changed the framing.
+- [ ] The topic type from Step 2 matches what the user actually cares about (not what the artifact happens to contain), and was reclassified if Phase 0 or Phase R changed the framing.
 - [ ] If Phase 0 ran, the chosen framing was restated as a concrete problem statement and the user confirmed it.
 - [ ] If Phase 0 was auto-triggered, the user was given an explicit skip-or-continue choice before variations were generated.
+- [ ] If Phase R ran, the post-research check-in surfaced any contradictions before the interview began, and the chosen template's `Sources` section is populated with the file paths and URLs each agent returned.
 - [ ] Every dimension either has interview-grounded content or an explicit `MISSING REQUIREMENT:` marker.
 - [ ] If the chosen template includes a non-goals section, each entry includes a rationale instead of a bare placeholder.
+- [ ] If the chosen template has a `Risks & Mitigations` (or equivalent) section, each risk is concrete (e.g., "this adds an N+1 query on every page load") rather than vague ("this could be slow").
 - [ ] The `PLAN:` marker is present at hand-off.

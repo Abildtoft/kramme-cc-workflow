@@ -33,3 +33,9 @@ Questions the document should answer.
 
 ## Next Steps
 Recommended actions with owners.
+
+## Sources
+Populate only when Phase R ran. List the files and URLs the research agents returned.
+
+- **Codebase**: `{path:line-range}` — {what was found}
+- **Docs**: `{url}` — {what was found}

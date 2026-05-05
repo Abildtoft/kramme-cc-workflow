@@ -56,5 +56,14 @@ What needs testing, approach for each layer.
 Items requiring further investigation.
 
 ## Risks & Mitigations
+Each risk must be specific enough to act on. "Could be slow" is useless; "adds an N+1 query on every dashboard load" is useful.
+
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
+
+## Sources
+Populate only when Phase R ran. List the files and URLs the research agents returned, grouped by agent.
+
+- **Codebase**: `{path:line-range}` — {what was found}
+- **Docs**: `{url}` — {what was found, version it documents}
+- **UX**: `{path or url}` — {pattern referenced}
