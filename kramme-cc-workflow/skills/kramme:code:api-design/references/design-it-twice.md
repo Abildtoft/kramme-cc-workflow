@@ -34,18 +34,18 @@ Spawn at least three agents in parallel, each with a different constraint. Concr
 | 1 | **Minimize methods** (1–3 max). | Deep modules. One interface that hides everything. Risk: kitchen-sink "do" method. |
 | 2 | **Maximize flexibility.** Composable primitives, no opinionated defaults. | Library-shape. Many small functions. Risk: shallow modules that push complexity to callers. |
 | 3 | **Optimize the common case.** One ergonomic happy-path call; advanced cases via escape hatches. | Convenience-shape. Risk: hidden coupling between the happy path and the escape hatches. |
-| 4 (optional) | **Ports & adapters** for cross-seam dependencies. | Interface plus N adapters. Use when there is a real chance of multiple implementations (DB, transport, vendor). Drop if there's only one adapter — see the adapter-count rule. |
+| 4 (optional) | **Ports & adapters** for cross-seam dependencies. | Interface plus N adapters. Only worth assigning when the dependency is **remote-but-owned** (a service we own across a network) or **true-external** (a third party we don't own) per the taxonomy below — for in-process and local-substitutable dependencies the constraint usually collapses. Drop if there's only one adapter — see the adapter-count rule. |
 
 Each agent must produce the same output structure (Step 3 below) so comparison is mechanical rather than subjective. Agents do not see each other's drafts.
 
 #### Dependency categories (decide before constraint #4 fires)
 
-Constraint #4 is only worth assigning when the *category* of dependency justifies the cost of a port. Classify each external thing the design depends on into exactly one of these four categories, and let the category decide the adapter strategy:
+Constraint #4 is only worth assigning when the *category* of dependency justifies the cost of a port. Classify each thing the design depends on into exactly one of these four categories — including in-process collaborators that aren't external at all — and let the category decide the adapter strategy:
 
-- **In-process** — pure logic with no external dependency (math, parsing, in-memory transformation). No port, no adapter; the seam, if any, is internal to the module's own tests.
+- **In-process** — pure logic or in-memory state with no I/O (math, parsing, in-memory transformation). No port, no adapter; the seam, if any, is internal to the module's own tests.
 - **Local-substitutable** — a local resource with a substitutable in-process implementation (PGLite for Postgres, an in-memory FS for `node:fs`, a fake clock). The seam is internal to the module; no port at the module's external interface.
 - **Remote-but-owned** — a service we own that happens to live across a network (an internal HTTP/gRPC/queue service). Define a port at the seam: an in-memory adapter for tests, the real network adapter for production. Logic stays in one deep module even though deployment splits across processes.
-- **True external** — a third-party we don't own (Stripe, OpenAI, S3). Inject a port; mock at the seam. Mocking is acceptable here precisely because we can't substitute the real thing.
+- **True-external** — a third party we don't own (Stripe, OpenAI, S3). Inject a port; mock at the seam. Mocking is acceptable here precisely because we can't substitute the real thing.
 
 Use the category to decide whether constraint #4 is even a viable design — for in-process and local-substitutable dependencies, "Ports & adapters" usually collapses back into one of the other constraints because there is no real second adapter waiting. For remote-but-owned and true-external, constraint #4 is doing real work.
 
@@ -76,7 +76,7 @@ A 5–15 line snippet showing the most common call.
 What complexity lives behind the interface that callers do not see.
 
 ## Dependency strategy
-What this interface depends on, and how it acquires those dependencies (constructor injection, factory, ambient, etc.). For each dependency, name which of the four categories it falls into (in-process / local-substitutable / remote-but-owned / true external) and justify the adapter strategy with reference to that category — e.g. "remote-but-owned, so port + in-memory test adapter + real HTTP adapter" or "in-process, so no adapter and no port".
+What this interface depends on, and how it acquires those dependencies (constructor injection, factory, ambient, etc.). For each dependency, name which of the four categories it falls into (in-process / local-substitutable / remote-but-owned / true-external) and justify the adapter strategy with reference to that category — e.g. "remote-but-owned, so port + in-memory test adapter + real HTTP adapter" or "in-process, so no adapter and no port".
 
 ## Trade-offs
 What this design gives up to satisfy its constraint. Be honest. The next step will compare you against the others, and unsurfaced trade-offs become hidden costs.
