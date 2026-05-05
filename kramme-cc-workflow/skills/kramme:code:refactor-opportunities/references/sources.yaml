@@ -5,9 +5,15 @@ sources:
     rationale: "The Rule of 500 automation trigger for large refactors is attributed to Addy's guidance on skill-driven coding workflows."
     last_reviewed_at: 2026-04-25
     baseline_hash: ""
-  - id: pocock-improve-codebase-architecture
-    url: https://github.com/mattpocock/skills/tree/main/improve-codebase-architecture
-    title: "Matt Pocock skills - improve-codebase-architecture"
-    rationale: "The architectural glossary (Module/Interface/Implementation/Depth/Seam/Adapter/Leverage/Locality) used in references/architecture-language.md, the deletion-test heuristic for distinguishing pass-through wrappers from real consolidators, and the adapter-count seam rule (one adapter = hypothetical seam, two = real seam) are adapted from this skill's LANGUAGE.md and DEEPENING.md."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+  - id: pocock-improve-codebase-architecture-deepening
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/improve-codebase-architecture/DEEPENING.md
+    title: "Matt Pocock skills - improve-codebase-architecture (DEEPENING.md)"
+    rationale: "The deletion-test heuristic, adapter-count seam rule (one adapter = hypothetical seam, two = real seam), and replace-don't-layer test-migration rule in references/architecture-language.md are adapted from this source."
+    last_reviewed_at: 2026-05-05
+    baseline_hash: "sha256:9577485f4fc32c0267639a9151bb41c8af0f8f6086e4bf8b84d5b236e30604e9"
+  - id: pocock-improve-codebase-architecture-language
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/improve-codebase-architecture/LANGUAGE.md
+    title: "Matt Pocock skills - improve-codebase-architecture (LANGUAGE.md)"
+    rationale: "The architectural glossary (Module/Interface/Implementation/Depth/Seam/Adapter/Leverage/Locality) used in references/architecture-language.md is adapted from this source."
+    last_reviewed_at: 2026-05-05
+    baseline_hash: "sha256:6feca2140439c54a774749e8367f18350899ff69c777144ed2248cd4407949fa"

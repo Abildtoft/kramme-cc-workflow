@@ -22,6 +22,7 @@ A controlled vocabulary for talking about depth, seams, and indirection. Use the
 3. **The interface is the test surface.** The interface defines what's verifiable from the outside. If the test for the module looks like the implementation written twice, the interface is too thin; the module is shallow.
 4. **One adapter = hypothetical seam, two adapters = real seam.** A seam with one implementation is just indirection awaiting a fictional second use case. Do not introduce an interface for "testability" or "future flexibility" alone — wait for the second adapter to exist before paying the indirection cost.
 5. **Locality beats reuse.** When in doubt, keep the change-together code together. Premature extraction harms locality and rarely earns its leverage back.
+6. **Replace, don't layer, when migrating tests.** When a refactor moves logic to a new interface, delete the old shallow-module unit tests once interface-level tests cover the same behavior. Running both is duplication; if the old test has to change when the implementation changes, it was testing past the interface.
 
 ## Worked example: shallow wrapper
 

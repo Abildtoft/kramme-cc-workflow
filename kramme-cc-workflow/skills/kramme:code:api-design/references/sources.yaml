@@ -5,9 +5,15 @@ sources:
     rationale: "The Design It Twice parallel sub-agent mode (3+ radically different interface designs with assigned constraints — minimize methods, maximize flexibility, optimize common case, ports & adapters — then comparison by depth, locality, and seam placement) is adapted from this source."
     last_reviewed_at: 2026-04-25
     baseline_hash: ""
+  - id: pocock-improve-codebase-architecture-deepening
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/improve-codebase-architecture/DEEPENING.md
+    title: "Matt Pocock skills - improve-codebase-architecture (DEEPENING.md)"
+    rationale: "The dependency-category framing for choosing test stand-ins and adapter strategy (in-process, local-substitutable, remote-but-owned, true-external) is operationalized in references/design-it-twice.md as a 'Dependency categories' subsection that gates constraint #4 (Ports & adapters) and is required output in the per-sub-agent prompt template's 'Dependency strategy' section."
+    last_reviewed_at: 2026-05-05
+    baseline_hash: "sha256:9577485f4fc32c0267639a9151bb41c8af0f8f6086e4bf8b84d5b236e30604e9"
   - id: pocock-improve-codebase-architecture-interface-design
-    url: https://github.com/mattpocock/skills/tree/main/improve-codebase-architecture
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/improve-codebase-architecture/INTERFACE-DESIGN.md
     title: "Matt Pocock skills - improve-codebase-architecture (INTERFACE-DESIGN.md)"
-    rationale: "The dependency-category framing for choosing test stand-ins and adapter strategy (in-process, local-substitutable, remote-but-owned, true-external) used in the Design It Twice prompt template is adapted from this skill's INTERFACE-DESIGN.md and DEEPENING.md."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    rationale: "The Design It Twice framing and sub-agent output shape in references/design-it-twice.md are cross-checked against this source's interface-design process."
+    last_reviewed_at: 2026-05-05
+    baseline_hash: "sha256:678c3e34f1339015053212b3316bf0b676c70aa251050a0613667d4e755fb35e"
