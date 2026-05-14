@@ -16,7 +16,7 @@ Systematically scan the codebase for refactoring candidates, categorize findings
 
 - **Scope selector** (optional): the skill resolves arguments to exactly one of `full`, `pr`, `path`, or `feature`. Defaults to `full`.
 - **Full codebase**: omit arguments, say `full`, `full codebase`, `repo`, `everything`, or `all`, or pass `--scope full`. Scan all source directories.
-- **Current PR**: say `pr`, `current PR`, `diff`, or `changes`, or pass `--scope pr`. Scan the files changed by the current branch against the resolved base branch, plus staged, unstaged, and untracked files.
+- **Current PR**: say `pr`, `current PR`, `diff`, or `changes`, or pass `--scope pr`. Scan the files changed by the current branch against the resolved base branch, plus staged, unstaged, and untracked files. Changed files are context; active findings must be caused by the PR changes, not merely pre-existing debt in touched files.
 - **Named path**: pass `path <file-or-folder>`, `--scope path <file-or-folder>`, or a bare path-shaped argument that resolves to an existing file, folder, glob match, or file list. Scan only the matching files.
 - **Named feature**: pass `feature <name>`, `--scope feature <name>`, or `--feature <name>`. A bare argument that is neither a reserved keyword nor path-shaped is also treated as a feature name; use the explicit `feature <name>` form when the feature name collides with a reserved keyword (`full`, `full codebase`, `repo`, `everything`, `all`, `pr`, `current PR`, `diff`, `changes`). Resolve the feature to its implementation, tests, routes, schemas, docs, and adjacent modules before scanning.
 - **Disambiguation** (apply in order; first match wins):
@@ -57,6 +57,8 @@ These rejections are pre-filters — apply them before recording a finding, not 
         - `origin/main`, `origin/master`, `main`, then `master`.
      2. If no base can be resolved, report the attempted refs and ask for `--base <ref>` — do not fall back to `full`.
      3. Build the file set from `git diff --name-only <resolved-base>...HEAD`, `git diff --cached --name-only`, `git diff --name-only`, and `git ls-files --others --exclude-standard`. Drop deleted files from the set unless a search of the current tree/worktree shows surviving references to the deleted symbols or paths.
+     4. Build `PR_CHANGE_MAP` from `git diff --unified=0 <resolved-base>...HEAD`, `git diff --unified=0 --cached`, and `git diff --unified=0`. Record added/modified/deleted hunk ranges per file. Treat each untracked file's full content as added. Store the merge base as `PR_BASE_REF` for checking whether a candidate issue existed before the branch.
+     5. Use changed files as scan context, but use `PR_CHANGE_MAP` as the finding boundary. A PR-mode finding must be tied to an added/modified hunk, a new/untracked file, deleted code with surviving references, an unchanged line within ~5 lines of a changed hunk with a concrete causal chain, or unchanged code directly affected by a changed caller/API contract.
    - **Path**: validate that every named file/folder exists or every glob matches at least one file. If a value does not resolve, ask the user to clarify — do not fall back to `feature`. For folders, recursively include source files under the folder.
    - **Feature**: search for the feature name and project-glossary synonyms across directory names, module names, routes, package names, tests, docs, config, schemas, and user-facing copy. Include primary implementation files, matching tests, API/routes, data models, feature flags, fixtures, and docs that directly define the feature. If the name maps to multiple unrelated areas, or if no file's name, route, or schema contains the feature term, present the candidate file groups (or the empty result) and ask the user to confirm or rename. If the user confirms an empty result, terminate with a one-line message that the feature could not be located rather than producing a report.
 7. Build a human-readable `SCOPE_DESCRIPTION` covering mode, resolved target, file count, and source directories — for example `Full codebase (1,247 files across 8 source directories)`, `Current PR against origin/main (14 files)`, `Path src/api (37 files)`, or `Feature "billing exports" (22 files across API, UI, tests, and docs)`. Report it to the user before proceeding.
@@ -77,6 +79,8 @@ Each agent must:
 - Scan all files in scope for findings in those categories.
 - Apply the When-NOT-to-flag pre-filter before recording.
 - Record each finding with: location, category, severity, description, suggested fix.
+- When `SCOPE_MODE=pr`, include `PR relevance: <why this is caused by the PR>` on every finding. Valid relevance is one of: added/modified hunk, new/untracked file, deleted code with surviving references, unchanged line within ~5 lines of a changed hunk with a concrete causal chain, or unchanged code directly affected by a changed caller/API contract. "The file was touched" is not enough.
+- When `SCOPE_MODE=pr`, do not record repository-wide cleanup themes just because the changed file reveals them. If the fix would primarily modify untouched files or address a problem that existed unchanged in `PR_BASE_REF`, emit it as `NOTICED BUT NOT TOUCHING` with `Why skipping: pre-existing / outside PR scope`.
 - When the agent spots something outside its assigned categories, emit a `NOTICED BUT NOT TOUCHING` entry instead of silently re-categorizing into its own bucket:
 
   ```
@@ -91,6 +95,11 @@ Each agent must:
 
 1. Collect all agent findings and `NOTICED BUT NOT TOUCHING` entries.
 2. Deduplicate (same location + same issue = one finding).
+2.1. **Apply the PR relevance gate when `SCOPE_MODE=pr`.** Cross-reference each candidate against `PR_CHANGE_MAP` and `PR_BASE_REF` before severity assignment:
+   - Keep findings tied to an added/modified hunk, a new/untracked file, deleted code with surviving references, an unchanged line within ~5 lines of a changed hunk with a concrete causal chain, or unchanged code directly affected by a changed caller/API contract.
+   - Filter findings in files outside the PR file set, findings on unchanged lines with no PR-caused call-chain evidence, findings whose problem existed unchanged in the base tree, findings whose suggested fix is mainly broad cleanup in untouched files, and findings whose only relevance is "this file changed."
+   - Move filtered material to the report's PR-scope observations section, or to `NOTICED BUT NOT TOUCHING` if the report template has no dedicated section. Do not include filtered PR-scope observations in severity tables, themes, or recommended refactor order.
+   - If every candidate is filtered, report that there are no PR-scoped refactor opportunities. Do not widen the scan to full-repo cleanup.
 2.5. **Filter against `KNOWN_OUT_OF_SCOPE`.** For each finding, check whether its concept plausibly matches a slug in `KNOWN_OUT_OF_SCOPE`. If yes, read that file and either drop the finding (clean concept match, no new evidence) or annotate it as `_"matches .out-of-scope/<slug>.md (decided <date>) — re-evaluate?"_` when concrete new evidence has accumulated. Default is silent skip; the annotation is the exception. Symmetric to the ADR filter below.
 3. **Filter against `KNOWN_ADRS`.** For each finding, check whether it contradicts an accepted ADR. If the contradiction is theoretical (the ADR rejected this exact refactor and no concrete new evidence has emerged), drop the finding silently — the ADR is decision-of-record. Surface as `_"contradicts ADR-NNNN — but worth reopening because <concrete new evidence>"_` only when real friction has accumulated since the ADR was accepted. The default is silent skip; the annotation is the exception.
 4. Assign final severity. Promote findings that appear in 3+ locations to at least medium.
@@ -107,6 +116,7 @@ Each agent must:
 
 1. Read `assets/report-template.md` for the output format.
 2. Produce the report following that template. In the "Patterns & Themes" section, mark each theme's total line count and flag themes ≥500 lines as **automation candidates**.
+2.5. In PR mode, include `PR relevance` for every active finding using the PR-only table column described in the template, and include the count of filtered PR-scope observations in the summary. In non-PR scopes, omit PR relevance entirely. Filtered observations must not be described as findings.
 3. **Depth/seam findings carry extra fields.** Any finding whose category is Structural or Coupling and whose vocabulary comes from `references/architecture-language.md` must include a one-line **deletion test** result (e.g., "inlining at the 1 call site removes 4 lines, no caller becomes harder to read") and an **adapter count** when claiming a seam is speculative. Findings missing these fields are not yet ready and should be dropped at this point, not paper-clipped together.
 4. **Names follow the project glossary.** When `UBIQUITOUS_LANGUAGE.md` was read in Phase 1, use the canonical domain terms in finding titles and descriptions. Default helper-class language is a tell that the scan didn't read the project's own vocabulary.
 5. Write the report to `REFACTOR_OPPORTUNITIES_OVERVIEW.md` in the project root.
@@ -145,6 +155,8 @@ If you notice any of these during the scan, stop and tighten the filter:
 - Themes recommended for manual refactor despite exceeding 500 lines — the Rule of 500 was missed.
 - The report recommends changes that conflict with documented project conventions.
 - `NOTICED BUT NOT TOUCHING` entries were silently folded into findings instead of surfaced separately.
+- In PR mode, a finding is in a touched file but not tied to an added/modified hunk, a new/untracked file, deleted code with surviving references, an unchanged line within ~5 lines of a changed hunk with a concrete causal chain, or unchanged code directly affected by a changed caller/API contract.
+- In PR mode, a theme requires broad edits in untouched files but is presented as a PR-scoped finding.
 - A wrapper flagged as "unnecessary abstraction" without a deletion-test result attached — the test is what distinguishes a pass-through from a real consolidator.
 - A finding re-surfaces a refactor that was already considered and rejected in an accepted ADR, with no concrete new evidence — the ADR is decision-of-record; only re-open when the trade-off has actually shifted.
 
@@ -158,6 +170,8 @@ Before writing the report, self-check:
 - [ ] Themes exceeding 500 lines are marked automation candidates.
 - [ ] `NOTICED BUT NOT TOUCHING` entries are surfaced as a separate section, not mixed into findings.
 - [ ] The report has fewer findings than the raw agent output (filtering and deduplication actually happened).
+- [ ] In PR mode, every active finding has a concrete `PR relevance` line and passed the PR relevance gate.
+- [ ] In PR mode, filtered pre-existing or out-of-scope observations are not counted in severity totals, themes, or recommended order.
 - [ ] Every Structural / Coupling finding uses the architectural glossary and carries a deletion-test line; speculative-seam findings carry an adapter count.
 - [ ] No finding contradicts a `KNOWN_ADRS` entry without an explicit `contradicts ADR-NNNN` annotation backed by concrete new evidence.
 

@@ -13,6 +13,8 @@
 
 ---
 
+{{Severity tables: In Current PR scope only, add a `PR Relevance` column between `Location` and `Description` and populate it for every active finding. In full, path, and feature scopes, omit PR relevance entirely.}}
+
 ## High Severity
 
 | # | Category | Location | Description | Suggested Fix |
@@ -48,3 +50,7 @@
 ## Noticed But Not Touching
 
 {{Observations agents recorded outside their assigned category group. Not findings — surface them here so the user can decide whether to request a follow-up scan.}}
+
+## Filtered PR-Scope Observations
+
+{{Only include this section when Scope is Current PR. List observations that were considered but filtered because they were pre-existing, outside the PR relevance gate, or required broad cleanup in untouched files. These are not findings and must not appear in severity totals, themes, or recommended order.}}
