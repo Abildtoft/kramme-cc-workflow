@@ -6,6 +6,7 @@ Scan every category below. For each finding, record:
 - **Severity** — high (actively harmful), medium (degrades maintainability), low (cosmetic / nice-to-have)
 - **Description** — what the problem is, in one sentence
 - **Suggested fix** — concrete action, not vague advice
+- **PR relevance** — only when the caller set `SCOPE_MODE=pr`: one sentence tying the issue to an added/modified hunk, new/untracked file, deleted code with surviving references, an unchanged line within ~5 lines of a changed hunk with a concrete causal chain, or unchanged code directly affected by a changed caller/API contract. "File was touched" is not a valid relevance claim.
 
 ---
 
