@@ -3,6 +3,15 @@
 ## Unreleased
 
 ### Removed
+## [0.55.0] - 2026-05-15
+
+### Added
+- Audit Pocock arch sources, absorb 4-category taxonomy (#332)
+- Add research pre-pass (#333)
+
+### Changed
+- Gate PR-scoped findings (#334)
+
 ## [0.54.0] - 2026-05-02
 
 ### Added
@@ -209,6 +218,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+[0.55.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.54.0...v0.55.0
 [0.54.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.53.0...v0.54.0
 [0.53.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.52.0...v0.53.0
 [0.52.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.51.0...v0.52.0
