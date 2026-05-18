@@ -4,6 +4,9 @@
   "private": true,
   "description": "Converter CLI for kramme-cc-workflow",
   "license": "MIT",
+  "scripts": {
+    "test": "make test"
+  },
   "bin": {
     "kramme-cc-workflow": "scripts/convert-plugin.js"
   }

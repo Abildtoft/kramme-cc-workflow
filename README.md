@@ -8,8 +8,8 @@ This repository contains Claude Code workflow plugins and support scripts.
 
 ## Main Plugin Contents (`kramme-cc-workflow`)
 
-- `72` skills in `skills/` (SIW, PR workflows, Linear workflows, verification, documentation utilities, and session helpers)
-- `20` specialized agents in `agents/` for review and analysis
+- `86` skills in `skills/` (SIW, PR workflows, Linear workflows, verification, documentation utilities, and session helpers)
+- `21` specialized agents in `agents/` for review and analysis
 - built-in hooks in `hooks/hooks.json` for command safety, non-interactive git enforcement, formatting, and context links
 - release and install tooling in `scripts/`
 - Bats test suite in `tests/`
