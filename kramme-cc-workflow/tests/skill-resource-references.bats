@@ -13,12 +13,16 @@ const path = require("path");
 
 const skillsDir = path.join(process.cwd(), "skills");
 const failures = [];
+const resourcePathPattern =
+  /(?:references|assets|scripts)\/[A-Za-z0-9._~:/?#\[\]@!$&()+,;=%-]+\.(?:md|sh|js|ts|mjs|cjs|py|json|ya?ml|txt|html|css|png|jpe?g|gif|svg|webp)/.source;
+const skillResourcePathPattern =
+  /(?:\$\{(?:CLAUDE_)?PLUGIN_ROOT\}\/)?skills\/[A-Za-z0-9:_-]+\/(?:references|assets|scripts)\/[A-Za-z0-9._~:/?#\[\]@!$&()+,;=%-]+\.(?:md|sh|js|ts|mjs|cjs|py|json|ya?ml|txt|html|css|png|jpe?g|gif|svg|webp)/.source;
 const referencePattern =
-  /(?:^|[^A-Za-z0-9_./-])((?:references|assets|scripts)\/[A-Za-z0-9._~:/?#\[\]@!$&()+,;=%-]+\.(?:md|sh|js|ts|mjs|cjs|py|json|ya?ml|txt|html|css|png|jpe?g|gif|svg|webp))(?![A-Za-z0-9_./-])/g;
+  new RegExp(`(?:^|[^A-Za-z0-9_./-])((?:${skillResourcePathPattern})|(?:${resourcePathPattern}))(?![A-Za-z0-9_./-])`, "g");
 const loadInstructionPattern =
   /\b(read|follow|load|open|use|see|run|execute|copy|populate|template|from|consult|resolve|import|extract|compare|audit|check)\b/i;
 const resourceListItemPattern =
-  /^\s*(?:[-*]|\|)\s*`?(?:references|assets|scripts)\//;
+  /^\s*(?:[-*]|\|)\s*`?(?:(?:\$\{(?:CLAUDE_)?PLUGIN_ROOT\}\/)?skills\/[A-Za-z0-9:_-]+\/)?(?:references|assets|scripts)\//;
 
 function walkMarkdownFiles(dir) {
   const files = [];
@@ -48,6 +52,26 @@ function nonFencedLines(raw) {
   });
 }
 
+function resolveResourcePath(skillDir, resourcePath) {
+  const normalizedPath = resourcePath
+    .replace(/[),.;:]+$/g, "")
+    .split("#")[0]
+    .split("?")[0]
+    .replace(/^\$\{(?:CLAUDE_)?PLUGIN_ROOT\}\//, "");
+
+  if (normalizedPath.startsWith("skills/")) {
+    return {
+      resourcePath: normalizedPath,
+      targetPath: path.join(process.cwd(), normalizedPath),
+    };
+  }
+
+  return {
+    resourcePath: normalizedPath,
+    targetPath: path.join(skillDir, normalizedPath),
+  };
+}
+
 const skillDirs = fs
   .readdirSync(skillsDir, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
@@ -73,8 +97,7 @@ for (const skill of skillDirs) {
       }
 
       for (const match of matches) {
-        const resourcePath = match[1].replace(/[),.;:]+$/g, "").split("#")[0].split("?")[0];
-        const targetPath = path.join(skillDir, resourcePath);
+        const { resourcePath, targetPath } = resolveResourcePath(skillDir, match[1]);
 
         if (!fs.existsSync(targetPath)) {
           failures.push(`${relativeFile}:${index + 1}: missing ${resourcePath}`);
