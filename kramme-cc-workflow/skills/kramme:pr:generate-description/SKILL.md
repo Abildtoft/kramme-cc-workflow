@@ -27,9 +27,9 @@ If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the fl
 **Use this skill when:**
 
 - You're ready to create a Pull Request
-- You want a well-structured, comprehensive description for your changes
+- You want a well-structured, focused description for your changes
 - You need to document what changed, why it changed, and how to test it
-- You want to analyze multiple sources (git diff, commits, Linear issues) to create complete context
+- You want to analyze multiple sources (git diff, commits, Linear issues) to create reviewer-relevant context
 
 **When NOT to use this skill:**
 
@@ -46,7 +46,7 @@ High-quality PR descriptions are essential for:
 - Product/project managers tracking feature delivery
 - Creating an audit trail of technical decisions
 
-This skill automates the process of gathering context from multiple sources (git history, Linear issues, code changes) and generating a structured, comprehensive description following best practices for Pull Requests.
+This skill automates the process of gathering context from multiple sources (git history, Linear issues, code changes) and generating a structured, focused description following best practices for Pull Requests.
 
 Read the guideline keyword glossary from `references/guideline-keywords.md`.
 
@@ -232,7 +232,30 @@ Generate a PR title using [Conventional Commits](https://www.conventionalcommits
    - **PREFER** `Fixes` or `Closes` when the PR completes the work for the issue
    - **PREFER** `Related to` when the PR is partial work or tangentially related
 
-Read the section templates and worked examples from `assets/section-templates.md`. It covers Summary, Technical Details (implementation approach, scope changes, changes by area, reviewer landmarks), Test Plan, and Breaking Changes — each with structural guidance and a complete example.
+Read the section templates and worked examples from `assets/section-templates.md`. It covers Summary, Technical Details (implementation approach, scope changes, optional area notes, reviewer landmarks), Test Plan, and Breaking Changes — each with structural guidance and a complete example.
+
+#### 3.1.5 GitHub UI Duplication Guard
+
+Before drafting the body, decide what the PR description adds beyond GitHub's review UI.
+
+**ALWAYS** include context GitHub cannot infer from the diff browser:
+
+- Why the change exists
+- Non-obvious implementation decisions and trade-offs
+- Scope boundaries and deliberate exclusions
+- Risks, rollout constraints, migrations, feature-flag defaults, or partial coverage
+- Test scenarios reviewers or QA should run
+- Review landmarks only when the diff has a non-obvious entry point or coupled files that should be reviewed together
+
+**NEVER** include description content whose main value is already provided by GitHub:
+
+- A changed-file list, file tree, or file-by-file inventory
+- File counts, line counts, or `git diff --stat` summaries
+- A commit-by-commit changelog
+- Branch, author, or review metadata already visible in the PR chrome
+- A generic "Changes by Area" section that only groups modified files by Frontend/Backend/Tests
+
+If a section would merely prove that files changed, omit it or replace it with one or two review-relevant notes that explain behavior, coupling, risk, or review order.
 
 #### 3.2 Change Summary Pattern
 
@@ -257,7 +280,7 @@ Every generated PR body **MUST** include a "Change Summary" block immediately af
 
 Rules:
 
-- **Changes made** is a diff readout in English, not a narrative. One clear verb per bullet (`add`, `extract`, `rename`, `remove`, `wire`, `gate`).
+- **Changes made** is a reviewer-facing outcome summary, not a file inventory or commit log. One clear verb per bullet (`add`, `extract`, `rename`, `remove`, `wire`, `gate`).
 - **Changes made** is not a file inventory. Keep it to the distinct reviewer-relevant changes, usually 2-5 bullets.
 - **PREFER** describing capabilities, components, data flow, or review-critical behavior over naming files.
 - **ONLY** name a file when the file name itself helps the reviewer find a non-obvious entry point, risk, migration, generated artifact, or cross-area coupling.
@@ -358,9 +381,9 @@ Here is your generated PR:
 - [ ] **Title** uses imperative mood ("add", not "added")
 - [ ] Summary clearly explains what and why (objective tone, no excessive praise)
 - [ ] Linear issue is linked with appropriate magic word (Fixes/Closes vs. Related to)
-- [ ] Technical details cover implementation approach and key decisions from conversation/spec files
+- [ ] Technical details cover implementation approach and key decisions inferred from conversation/spec files without naming those private sources
 - [ ] **Divergences from Linear issue are documented with clear rationale** (if applicable)
-- [ ] Changes are categorized by area (Frontend/Backend/Tests) without repeating the GitHub file list
+- [ ] Any area-oriented technical details add context beyond the GitHub file tree
 - [ ] File names appear only when they add reviewer context that is not obvious from the GitHub diff
 - [ ] Test plan includes actionable scenarios
 - [ ] Breaking changes are documented (or marked as "None")
@@ -372,6 +395,7 @@ Here is your generated PR:
 - [ ] No placeholders or TODOs in the output (except Screenshots section when visual capture is unavailable)
 - [ ] Description is ready to copy-paste
 - [ ] No file-by-file inventory or "Key Files" section that mostly mirrors the GitHub UI
+- [ ] No generic "Changes by Area" section that only restates the modified file groups
 - [ ] No listing of the amount of lines changed
 - [ ] No AI attribution or "Generated with Claude Code" badges included
 - [ ] Updated an existing PR directly when `DIRECT_UPDATE=true`, otherwise presented copy-paste output and only asked about saving when `NON_INTERACTIVE=false`
@@ -436,6 +460,7 @@ Pause and regenerate the description if any of these are true:
 - The summary says "various changes" or "multiple improvements" without nouns.
 - `Changes made` contains vague verbs like `update` or `improve` with no object.
 - The body includes a "Key Files", "Files Changed", or similar section that mostly repeats the GitHub file list.
+- The body includes a "Changes by Area" section whose bullets could be reconstructed from GitHub's file tree without reading the prose.
 - A migration, feature-flag default, or breaking change is present in the diff but absent from `Potential concerns`.
 - The description references spec files, conversation history, or `siw/LOG.md` (reviewers can't see them).
 - An AI-attribution badge is about to land in the body.

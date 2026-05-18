@@ -26,7 +26,7 @@
 ## Change Summary Block
 
 - **ALWAYS** place `### Changes made`, `### Things I didn't touch`, and `### Potential concerns` immediately after `## Summary` and before `## Technical Details`
-- **ALWAYS** make `Changes made` a verb-led diff readout with one distinct change per bullet
+- **ALWAYS** make `Changes made` a reviewer-facing outcome summary with one distinct change per bullet
 - **PREFER** 2-5 high-signal bullets in `Changes made`; do not mirror the list of files changed
 - **NEVER** omit one of the three subsections; use `None` only after considering it
 - **NEVER** turn `Things I didn't touch` into a generic future-work backlog; list only adjacent work explicitly considered and deferred
@@ -37,7 +37,9 @@
 - **ALWAYS** explain **why** decisions were made, not just **what** changed
 - **PREFER** including relevant code snippets for complex changes
 - **NEVER** add a "Key Files", "Files changed", or similar inventory just because files changed; reviewers already have the GitHub file list
+- **NEVER** add a generic "Changes by Area" section whose only purpose is grouping modified files by frontend/backend/tests; GitHub's file tree already provides that signal
 - **ONLY** mention a file when the name helps reviewers find a non-obvious entry point, generated artifact, migration, or risky coupling
+- **PREFER** area notes only when they explain behavior, coupling, risk, rollout order, or review strategy
 - **NEVER** list the amount of lines changed - it's not useful information, clutters the description and is often quickly made incorrect by subsequent commits
 - **CAN** reference existing code patterns when explaining implementation choices
 
