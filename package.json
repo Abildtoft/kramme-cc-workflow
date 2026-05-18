@@ -4,6 +4,9 @@
   "private": true,
   "description": "Root entrypoint for npx GitHub installs",
   "license": "MIT",
+  "scripts": {
+    "test": "make -C kramme-cc-workflow test"
+  },
   "bin": {
     "kramme-cc-workflow": "kramme-cc-workflow/scripts/convert-plugin.js"
   }

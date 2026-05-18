@@ -1,4 +1,4 @@
-.PHONY: test test-verbose test-block test-context test-format install-test-deps check-deps
+.PHONY: test test-verbose test-convert test-noninteractive test-block test-context test-format install-test-deps check-deps
 
 # Default target - run all tests
 test:
@@ -8,6 +8,16 @@ test:
 test-verbose:
 	@chmod +x tests/test_helper/mocks/*
 	@bats tests/*.bats
+
+# Run only plugin conversion tests
+test-convert:
+	@chmod +x tests/test_helper/mocks/*
+	@bats tests/convert-plugin.bats
+
+# Run only non-interactive git tests
+test-noninteractive:
+	@chmod +x tests/test_helper/mocks/*
+	@bats tests/noninteractive-git.bats
 
 # Run only block-rm-rf tests
 test-block:

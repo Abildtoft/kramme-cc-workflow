@@ -520,6 +520,12 @@ make test
 # Run with verbose output (show test names)
 make test-verbose
 
+# Run only plugin conversion tests
+make test-convert
+
+# Run only non-interactive git tests
+make test-noninteractive
+
 # Run only block-rm-rf tests
 make test-block
 
