@@ -415,65 +415,9 @@ Spec audit report written to: {path}
 
 ## Step 6: Optionally Create SIW Issues
 
-**Only if ALL of these conditions are met:**
-- `siw/OPEN_ISSUES_OVERVIEW.md` exists (SIW workflow is active)
-- `siw/issues/` exists or can be created
-- `siw/LOG.md` exists or can be created
-- Critical or Major findings were found, or a Minor finding preserves original Critical or Major severity via `**Severity Note:** [Deprioritized — capped at Minor from {original_severity}]`
-
-### 6.1 Ask User
-
-If `AUTO_MODE=true`, skip this prompt and choose **Critical and major only** (this also includes Minor findings whose `Severity Note` preserves original Critical or Major severity).
-
-Otherwise:
-
-```yaml
-header: "Create SIW Issues"
-question: "Found {N} actionable spec findings. Create SIW issues for them?"
-options:
-  - label: "Critical and major only"
-    description: "Create {N} issues for visible Critical/Major findings plus Minor findings that preserve original Critical or Major severity"
-  - label: "All findings"
-    description: "Create {N} issues including minor ones"
-  - label: "Let me select"
-    description: "Choose which findings become issues"
-  - label: "No issues"
-    description: "Keep the report only"
-```
-
-### 6.2 Preflight SIW Paths
-
-Before creating any issues:
-
-1. Ensure `siw/issues/` exists.
-   - If missing, create it.
-   - If creation fails, warn and skip Step 6 (report-only mode).
-2. Ensure `siw/LOG.md` exists.
-   - If missing, create it with a minimal "Current Progress" section.
-   - If creation fails, warn and skip Step 6 (report-only mode).
-
-### 6.2.5 Determine Issue-Eligible Findings
-
 Read the issue-eligibility selection rules from `references/post-processing-rules.md` before choosing which findings become issues.
 
-### 6.3 Create Issue Files
-
-For each selected finding:
-
-1. Determine next available `G-` issue number from `siw/issues/`.
-2. Create issue file `siw/issues/ISSUE-G-{NNN}-spec-{slugified-title}.md` using `assets/spec-issue-template.md`.
-   - If the finding carries `**Severity Note:** [Deprioritized — capped at Minor from Critical]`, set the issue priority to `High` and copy the `Severity Note` into the issue body.
-   - If the finding carries `**Severity Note:** [Deprioritized — capped at Minor from Major]`, set the issue priority to `Medium` and copy the `Severity Note` into the issue body.
-   - Assign each issue an explicit `Size` (`XS|S|M|L`) and `Parallelization` category (`Safe to parallelize | Must be sequential | Needs coordination`) so the generated SIW issue matches the current tracker schema.
-
-3. Update `siw/OPEN_ISSUES_OVERVIEW.md` with new issue rows.
-   - Default to the 6-column SIW schema for new modern sections.
-   - If `## General` already has a section-level `**Parallelization:**` line, treat that line as a roll-up summary for the whole section rather than a per-issue mirror.
-   - Recompute it from all real `G-*` issue files after adding the new issue: if every issue shares the same section-level category/gating note, keep that shared summary; otherwise set it to `Mixed — see issue files for exact guidance`.
-   - If the General section is still in its empty placeholder state (`_None_` row / no real issues yet), replace the default summary from `siw:init` with the first real issue's category.
-   - If an existing legacy General section has no `**Parallelization:**` line, preserve that absence instead of inserting one.
-   - If the existing General section still uses the legacy 5-column schema, preserve that layout for compatibility instead of mixing schemas.
-4. Update `siw/LOG.md` Current Progress section using `assets/spec-log-last-completed.md`.
+Read and follow `references/issue-creation.md` for the full SIW issue creation flow. That reference defines eligibility, the user prompt, SIW path preflight, issue-eligible finding selection, issue-file creation, tracker updates, and the `siw/LOG.md` Current Progress update.
 
 ---
 
