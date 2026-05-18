@@ -216,6 +216,8 @@ Keep plugin-root paths like `${CLAUDE_PLUGIN_ROOT}/agents/kramme:reviewer.md`.
 MD
   cat > "$FIXTURE_PLUGIN/skills/demo/references/guide.md" <<'MD'
 Use the mission from agents/kramme:reviewer.md in copied resources.
+Use colon punctuation agents/kramme:reviewer.md: copied resources.
+Use semicolon punctuation agents/kramme:reviewer.md; copied resources.
 Use autolink <agents/kramme:reviewer.md> in copied resources.
 Keep anchored paths like agents/kramme:reviewer.md#usage.
 Keep query paths like agents/kramme:reviewer.md?plain=1.
@@ -235,6 +237,12 @@ MD
   [ "$status" -eq 0 ]
 
   run grep -nF 'Use autolink $kramme:reviewer skill in copied resources.' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
+  [ "$status" -eq 0 ]
+
+  run grep -nF 'Use colon punctuation $kramme:reviewer skill: copied resources.' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
+  [ "$status" -eq 0 ]
+
+  run grep -nF 'Use semicolon punctuation $kramme:reviewer skill; copied resources.' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
   [ "$status" -eq 0 ]
 
   run grep -nF '${CLAUDE_PLUGIN_ROOT}/agents/kramme:reviewer.md' "$TMP_DIR/.codex/skills/kramme:demo-skill/SKILL.md"
