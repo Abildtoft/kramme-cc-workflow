@@ -211,10 +211,12 @@ disable-model-invocation: false
 user-invocable: true
 ---
 Use the mission from `agents/kramme:reviewer.md`.
+Use linked mission via [reviewer mission](agents/kramme:reviewer.md).
 Keep plugin-root paths like `${CLAUDE_PLUGIN_ROOT}/agents/kramme:reviewer.md`.
 MD
   cat > "$FIXTURE_PLUGIN/skills/demo/references/guide.md" <<'MD'
 Use the mission from agents/kramme:reviewer.md in copied resources.
+Use autolink <agents/kramme:reviewer.md> in copied resources.
 Keep parent paths like ../agents/kramme:reviewer.md.
 MD
 
@@ -227,6 +229,12 @@ MD
   run grep -nE '\$kramme:reviewer skill' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
   [ "$status" -eq 0 ]
 
+  run grep -nF 'Use linked mission via $kramme:reviewer skill.' "$TMP_DIR/.codex/skills/kramme:demo-skill/SKILL.md"
+  [ "$status" -eq 0 ]
+
+  run grep -nF 'Use autolink $kramme:reviewer skill in copied resources.' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
+  [ "$status" -eq 0 ]
+
   run grep -nF '${CLAUDE_PLUGIN_ROOT}/agents/kramme:reviewer.md' "$TMP_DIR/.codex/skills/kramme:demo-skill/SKILL.md"
   [ "$status" -eq 0 ]
 
@@ -237,6 +245,9 @@ MD
   [ "$status" -eq 1 ]
 
   run grep -RFn '../$kramme:reviewer skill' "$TMP_DIR/.codex/skills"
+  [ "$status" -eq 1 ]
+
+  run grep -RFn ']($kramme:reviewer skill)' "$TMP_DIR/.codex/skills"
   [ "$status" -eq 1 ]
 }
 

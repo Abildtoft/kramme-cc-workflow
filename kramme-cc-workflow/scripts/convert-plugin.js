@@ -1242,12 +1242,17 @@ function transformContentForCodex(body, options = {}) {
 
 function rewriteCodexAgentFileReferences(text, knownAgentSkills) {
   if (!knownAgentSkills || knownAgentSkills.size === 0) return text
-  const agentPathPattern = /(?<![\w./\\}:$-])`?agents\/([a-z][a-z0-9_:-]*)\.md`?/gi
-  return text.replace(agentPathPattern, (match, agentName) => {
+  const linkTargetPattern = /(?<!!)\[[^\]\n]+\]\(\s*<?agents\/([a-z][a-z0-9_:-]*)\.md>?(?:\s+(?:"[^"\n]*"|'[^'\n]*'|\([^)\n]*\)))?\s*\)/gi
+  const autolinkPattern = /<agents\/([a-z][a-z0-9_:-]*)\.md>/gi
+  const agentPathPattern = /(?<![\w./\\}:$(-])`?agents\/([a-z][a-z0-9_:-]*)\.md`?/gi
+  const toSkillReference = (match, agentName) => {
     const skillName = knownAgentSkills.get(codexName(agentName))
     if (!skillName) return match
     return `$${skillName} skill`
-  })
+  }
+  text = text.replace(linkTargetPattern, toSkillReference)
+  text = text.replace(autolinkPattern, toSkillReference)
+  return text.replace(agentPathPattern, toSkillReference)
 }
 
 const CODEX_INSTRUCTION_REPLACEMENTS = [
