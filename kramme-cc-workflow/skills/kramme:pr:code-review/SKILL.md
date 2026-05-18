@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:code-review
-description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline.
-argument-hint: "[aspects] [--emphasize <dim>...] [--base <branch>] [parallel] [--inline]"
+description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. Use --team for multi-agent cross-validation.
+argument-hint: "[aspects] [--emphasize <dim>...] [--base <branch>] [parallel] [--team] [--inline]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -12,6 +12,10 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
 **Review Aspects (optional):** "$ARGUMENTS"
 
+## Team Mode
+
+If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments.
+
 ## Review Workflow:
 
 1. **Determine Review Scope**
@@ -19,6 +23,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
    - Parse arguments to see if user requested specific review aspects
    - If `--base <branch>` flag → store as explicit base branch override
    - If `--inline` flag → set `INLINE_MODE=true` and remove it from the aspect list
+   - If `--team` flag → use Team Mode and remove it from the aspect list
    - If `--emphasize <dim>...` flag → store dimension names in `EMPHASIZED_DIMENSIONS` list and remove from aspect list. Consume all tokens after `--emphasize` until the next `--` flag, `parallel`, or end of arguments. Each token must be a valid aspect name (`comments`, `tests`, `errors`, `types`, `code`, `slop`, `security`, `removal`, `simplify`). Reject `--emphasize all` (emphasizing everything is a no-op).
    - If an explicit aspect list was provided and it does not include `all`, every emphasized dimension must also appear in that list. If any emphasized dimension was excluded by the user's aspect filter, stop with an error instead of re-ranking unrelated findings.
    - Default: Run all applicable reviews

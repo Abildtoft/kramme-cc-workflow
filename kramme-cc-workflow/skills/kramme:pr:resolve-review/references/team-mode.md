@@ -1,15 +1,8 @@
----
-name: kramme:pr:resolve-review:team
-description: Resolve review findings in parallel using multi-agent execution. Groups findings by file area and assigns to separate agents for faster resolution. Best when review has 5+ findings across different areas.
-argument-hint: "[--auto] [review-content|instructions|url]"
-disable-model-invocation: true
-user-invocable: true
-kramme-platforms: [claude-code, codex]
----
-
 # Team-Based Review Resolution
 
 Resolve review findings in parallel using multi-agent execution. Each agent owns a non-overlapping set of files and implements fixes independently.
+
+This reference is loaded by `/kramme:pr:resolve-review --team`; assume `--team` has already been removed from `$ARGUMENTS`.
 
 Parse `$ARGUMENTS` for `--auto` before Step 1.
 
@@ -40,7 +33,7 @@ Then stop.
 
 Same as `/kramme:pr:resolve-review` Steps 0-1:
 
-1. Check for arguments (review content, instructions, or URL)
+1. Check for arguments, including source flags, severity filters, granular commits, review content, instructions, or URL
 2. Check for `REVIEW_OVERVIEW.md` and `UX_REVIEW_OVERVIEW.md`
 3. Check chat context
 4. Fetch from current branch's PR if nothing else found
@@ -175,21 +168,21 @@ This skill uses **exclusive file ownership** to prevent conflicts:
 ## Usage
 
 ```
-/kramme:pr:resolve-review:team
+/kramme:pr:resolve-review --team
 # Resolve findings from REVIEW_OVERVIEW.md in parallel
 
-/kramme:pr:resolve-review:team focus on critical issues only
+/kramme:pr:resolve-review --team focus on critical issues only
 # Resolve with additional instructions
 ```
 
 ## When to Use This vs `/kramme:pr:resolve-review`
 
-Use **this skill** when:
+Use **this mode** when:
 - 5+ findings across different file areas
 - Findings are spread across distinct modules/directories
 - You want faster resolution through parallelism
 
-Use **`/kramme:pr:resolve-review`** when:
+Use **standard `/kramme:pr:resolve-review`** when:
 - Few findings or all in the same files
 - Findings are interdependent
 - You want lower token cost

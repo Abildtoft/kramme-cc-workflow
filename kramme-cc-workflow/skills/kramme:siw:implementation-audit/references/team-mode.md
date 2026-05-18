@@ -1,15 +1,8 @@
----
-name: kramme:siw:implementation-audit:team
-description: Exhaustively audit codebase implementation against specification using multi-agent execution where conformance and extension agents collaborate, challenge each other's findings in real time, and run simultaneous passes. Higher quality than standard implementation-audit but uses more tokens. Supports inline report output with --inline.
-argument-hint: "[spec-file-path(s) | 'siw'] [--model opus|sonnet|haiku] [--inline]"
-disable-model-invocation: true
-user-invocable: true
-kramme-platforms: [claude-code, codex]
----
-
 # Team-Based Implementation Audit
 
 Exhaustively compare the codebase implementation against specification documents using multi-agent execution. Pass A (conformance) and Pass B (extensions) run simultaneously on each spec section, with live cross-validation between agents.
+
+This reference is loaded by `/kramme:siw:implementation-audit --team`; assume `--team` has already been removed from `$ARGUMENTS`.
 
 **Arguments:** "$ARGUMENTS"
 
@@ -45,7 +38,7 @@ Then stop.
 
 Same as `/kramme:siw:implementation-audit` Steps 1-3:
 
-1. Parse `$ARGUMENTS` — extract `--model` flag (default: `opus`), optional `--inline` output mode, resolve spec file paths or auto-detect from `siw/`
+1. Parse `$ARGUMENTS` — extract `--auto`, `--model` flag (default: `opus`), optional `--inline` output mode, resolve spec file paths or auto-detect from `siw/`
 2. Read every spec file end-to-end, extract requirements checklist (REQ-001, REQ-002, ...), mark strict requirements (MUST/ONLY/NEVER), respect scope boundaries
 3. Group requirements by spec file or major section into section groups. Identify code areas for each group. Build coverage matrix skeleton.
 
@@ -335,7 +328,7 @@ After the reconciler completes (and any Pass B2 runs):
 
 ### Step 10: Optionally Create SIW Issues
 
-Same as `/kramme:siw:implementation-audit` Step 9 — create SIW issues for actionable findings if SIW workflow is active.
+Same as `/kramme:siw:implementation-audit` Step 9 — create SIW issues for actionable findings if SIW workflow is active. If `AUTO_MODE=true`, use the standard auto-mode issue creation behavior.
 
 ### Step 11: Report Summary
 
@@ -348,14 +341,14 @@ Same as `/kramme:siw:implementation-audit` Step 10 — display requirements chec
 
 ## When to Use This vs `/kramme:siw:implementation-audit`
 
-Use **this skill** when:
+Use **this mode** when:
 - The spec has 20+ requirements across multiple sections
 - Strict requirements (MUST/ONLY/NEVER) need thorough bypass analysis
 - You want simultaneous conformance + extension analysis (faster wall-clock time)
 - You want live conflict detection instead of post-hoc reconciliation
 - Previous audits had unresolved conflicts that required multiple tie-break attempts
 
-Use **`/kramme:siw:implementation-audit`** when:
+Use **standard `/kramme:siw:implementation-audit`** when:
 - The spec is small (under 15 requirements)
 - You want lower token cost
 - The spec has 1-2 sections (limited benefit from cross-section messaging)

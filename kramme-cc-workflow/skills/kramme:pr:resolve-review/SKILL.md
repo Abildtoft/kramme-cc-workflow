@@ -1,12 +1,16 @@
 ---
 name: kramme:pr:resolve-review
-description: Resolve findings from code reviews by implementing fixes and documenting changes
-argument-hint: "[--auto] [--granular] [--severity critical,important] [--source local|online|--local|--online] [review-content|instructions|url]"
+description: Resolve findings from code reviews by implementing fixes and documenting changes. Use --team to resolve independent findings in parallel by file area.
+argument-hint: "[--team] [--auto] [--granular] [--severity critical,important] [--source local|online|--local|--online] [review-content|instructions|url]"
 disable-model-invocation: false
 user-invocable: true
 ---
 
 # Resolve Review Findings
+
+## Team Mode
+
+If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments.
 
 ## Workflow
 
@@ -30,6 +34,8 @@ Before searching for reviews, check if the user provided input directly with the
      - Set `ANSWER_AND_RESOLVE=true`
      - Remove `--auto` / `--reply` / `--answer-and-resolve` from remaining input before classification
      - Treat this as permission to post replies and resolve addressed review threads directly on the PR
+   - If `<something>` includes `--team`:
+     - Use Team Mode and remove `--team` from remaining input before classification
    - If `<something>` includes `--granular`:
      - Set `GRANULAR_COMMITS=true`
      - Remove `--granular` from remaining input before classification

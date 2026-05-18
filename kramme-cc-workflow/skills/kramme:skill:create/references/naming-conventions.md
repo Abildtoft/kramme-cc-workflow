@@ -43,7 +43,7 @@ Use when the skill performs a single action.
 Use only when 2+ skills share a prefix object.
 
 - `issue-define`, `issue-implement` (both operate on issues)
-- `code-review`, `code-review:team` (both are code reviews)
+- `code-review --team` rather than a separate team-named skill when the difference is only execution mode
 
 ### 3. Noun compound (names a thing)
 

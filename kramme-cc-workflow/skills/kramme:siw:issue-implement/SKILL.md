@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:issue-implement
-description: Start implementing a defined local issue with codebase exploration and planning
-argument-hint: <G-001 | P1-001 | ISSUE-G-XXX>
+description: Start implementing a defined local issue with codebase exploration and planning. Use --team to implement multiple independent SIW issues in parallel.
+argument-hint: "<G-001 | P1-001 | ISSUE-G-XXX> | --team [issue-ids | 'phase N'] [--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -11,6 +11,10 @@ user-invocable: true
 Start implementing a local issue through an extensive planning phase before any code changes.
 
 **IMPORTANT:** This command emphasizes thorough planning and codebase exploration to translate issue requirements into a concrete technical approach before starting implementation.
+
+## Team Mode
+
+If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments.
 
 ## Process Overview
 
@@ -47,6 +51,8 @@ This procedure is referenced as **"Run the Status Update Procedure"** throughout
 ### 1.1 Extract Issue Identifier from Arguments
 
 `$ARGUMENTS` contains the issue identifier provided by the user.
+
+If `$ARGUMENTS` contains `--team`, use Team Mode and remove the flag before parsing issue identifiers.
 
 **Accepted formats:**
 - Full format: `ISSUE-G-001`, `ISSUE-P1-001`, `ISSUE-P2-001`, etc.
@@ -176,7 +182,7 @@ Technical Notes:
 {if present, show summary}
 ```
 
-**If the issue's Mode is `HITL`**, including the inferred `HITL — mode missing; requires human triage` fallback, surface this prominently. HITL means the issue requires human input for at least one of: architectural decision, design review, judgment call, manual testing, or external system access. The team variant `kramme:siw:issue-implement:team` excludes HITL issues from autonomous batches; this singular variant honors the same constraint at approach selection (Step 6) — recommend Guided Implementation and require explicit confirmation before Autonomous Implementation.
+**If the issue's Mode is `HITL`**, including the inferred `HITL — mode missing; requires human triage` fallback, surface this prominently. HITL means the issue requires human input for at least one of: architectural decision, design review, judgment call, manual testing, or external system access. Team mode excludes HITL issues from autonomous batches; this standard mode honors the same constraint at approach selection (Step 6) — recommend Guided Implementation and require explicit confirmation before Autonomous Implementation.
 
 ---
 

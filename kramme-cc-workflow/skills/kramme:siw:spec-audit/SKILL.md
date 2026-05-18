@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:spec-audit
-description: Audit specification documents for quality — coherence, completeness, clarity, scope, actionability, testability, value proposition, and technical design. Catches spec issues before implementation begins. Supports inline report output with --inline.
-argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku] [--inline]"
+description: Audit specification documents for quality — coherence, completeness, clarity, scope, actionability, testability, value proposition, and technical design. Catches spec issues before implementation begins. Supports inline report output with --inline. Use --team for multi-agent cross-validation.
+argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku] [--team] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -11,10 +11,14 @@ Evaluate specification documents for quality across 8 dimensions before implemen
 
 **IMPORTANT:** This is a thorough quality audit. Do not return early. Do not assume a section is well-written without reading it carefully. Check every part of the specification against quality criteria. The goal is to find ALL weaknesses — a clean report is suspicious, not reassuring.
 
+## Team Mode
+
+If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments.
+
 ## Process Overview
 
 ```
-/kramme:siw:spec-audit [spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku]
+/kramme:siw:spec-audit [spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku] [--team]
     |
     v
 [Step 1: Resolve Spec Files] -> Parse args or auto-detect from siw/
@@ -49,6 +53,7 @@ Evaluate specification documents for quality across 8 dimensions before implemen
 **Extract control flags first:**
 - If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag before processing remaining arguments.
 - If `$ARGUMENTS` contains `--inline`, set `INLINE_MODE=true` and remove the flag before processing remaining arguments.
+- If `$ARGUMENTS` contains `--team`, use Team Mode and remove the flag before processing remaining arguments.
 
 **Extract `--model` flag next (Claude Code only — ignored on other platforms):**
 - If `$ARGUMENTS` contains `--model opus`, `--model sonnet`, or `--model haiku`, extract it and store as `agent_model`.

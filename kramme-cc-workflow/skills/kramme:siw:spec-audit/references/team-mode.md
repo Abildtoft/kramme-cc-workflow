@@ -1,15 +1,8 @@
----
-name: kramme:siw:spec-audit:team
-description: Audit specification documents for quality using multi-agent execution where dimension specialists collaborate, cross-validate findings, and challenge each other's assessments. Higher quality than standard spec-audit but uses more tokens. Supports inline report output with --inline.
-argument-hint: "[spec-file-path(s) | 'siw'] [--model opus|sonnet|haiku] [--inline]"
-disable-model-invocation: true
-user-invocable: true
-kramme-platforms: [claude-code, codex]
----
-
 # Team-Based Spec Quality Audit
 
 Evaluate specification documents for quality across 8 dimensions using multi-agent execution. Each dimension auditor runs with its own context window and can cross-validate findings with other auditors. A cross-reviewer meta-reviews all findings for completeness.
+
+This reference is loaded by `/kramme:siw:spec-audit --team`; assume `--team` has already been removed from `$ARGUMENTS`.
 
 **Arguments:** "$ARGUMENTS"
 
@@ -36,7 +29,7 @@ Then stop.
 
 Same as `/kramme:siw:spec-audit` Steps 1-2:
 
-1. Parse `$ARGUMENTS` — extract `--model` flag (default: `opus`), optional `--inline` output mode, resolve spec file paths or auto-detect from `siw/`
+1. Parse `$ARGUMENTS` — extract `--auto`, `--model` flag (default: `opus`), optional `--inline` output mode, resolve spec file paths or auto-detect from `siw/`
 2. Read every spec file end-to-end
 3. Extract structural elements (overview, scope, success criteria, requirements, design decisions, tasks, testing, edge cases, out of scope, technical architecture)
 4. Present extraction summary
@@ -278,7 +271,7 @@ Tag findings discovered via cross-validation with `[Cross-validated]`.
 
 ### Step 8: Optionally Create SIW Issues
 
-Same as `/kramme:siw:spec-audit` Step 6 — create SIW issues for actionable findings if SIW workflow is active.
+Same as `/kramme:siw:spec-audit` Step 6 — create SIW issues for actionable findings if SIW workflow is active. If `AUTO_MODE=true`, use the standard auto-mode issue creation behavior.
 
 ### Step 9: Report Summary
 
@@ -291,13 +284,13 @@ Same as `/kramme:siw:spec-audit` Step 7 — display quality scores, findings cou
 
 ## When to Use This vs `/kramme:siw:spec-audit`
 
-Use **this skill** when:
+Use **this mode** when:
 - The spec is large (200+ lines or multiple files)
 - You want cross-validation between dimension analyses
 - You want a cross-reviewer to challenge low-finding dimensions
 - You want higher-quality findings with fewer blind spots
 
-Use **`/kramme:siw:spec-audit`** when:
+Use **standard `/kramme:siw:spec-audit`** when:
 - The spec is small or focused
 - You want faster, lower-cost audit
 - You're running a quick check before implementation

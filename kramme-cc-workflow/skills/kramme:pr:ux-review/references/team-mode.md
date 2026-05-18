@@ -1,15 +1,8 @@
----
-name: kramme:pr:ux-review:team
-description: Run UX audit using multi-agent execution where specialized reviewers (usability, product, visual, accessibility) collaborate, cross-validate findings, and challenge each other. Higher quality than standard UX review but uses more tokens. Supports inline report output with --inline.
-argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <ref>] [--inline]"
-disable-model-invocation: true
-user-invocable: true
-kramme-platforms: [claude-code, codex]
----
-
 # Team-Based UX Audit
 
 Run a UX audit using multi-agent execution. Each reviewer runs with its own context window and can cross-validate findings with other reviewers.
+
+This reference is loaded by `/kramme:pr:ux-review --team`; assume `--team` has already been removed from `$ARGUMENTS`.
 
 **Arguments:** "$ARGUMENTS"
 
@@ -203,34 +196,34 @@ When file output is used, `UX_REVIEW_OVERVIEW.md` is a working artifact -- it sh
 ## Usage Examples
 
 ```
-/kramme:pr:ux-review:team
+/kramme:pr:ux-review --team
 # Full team UX audit with all applicable reviewers
 
-/kramme:pr:ux-review:team http://localhost:3000
+/kramme:pr:ux-review --team http://localhost:3000
 # Team UX audit with visual review
 
-/kramme:pr:ux-review:team --categories ux,product
+/kramme:pr:ux-review --team --categories ux,product
 # Team audit focused on specific categories
 
-/kramme:pr:ux-review:team --categories a11y
+/kramme:pr:ux-review --team --categories a11y
 # Accessibility only (runs regardless of project detection)
 
-/kramme:pr:ux-review:team http://localhost:4200 --categories ux,visual --threshold 85
+/kramme:pr:ux-review --team http://localhost:4200 --categories ux,visual --threshold 85
 # Combined: visual mode, specific categories, custom threshold
 
-/kramme:pr:ux-review:team --inline
+/kramme:pr:ux-review --team --inline
 # Team audit that replies inline instead of writing UX_REVIEW_OVERVIEW.md
 ```
 
 ## When to Use This vs `/kramme:pr:ux-review`
 
-Use **this skill** when:
+Use **this mode** when:
 - The PR is large or touches many UI areas
 - You want reviewers to cross-validate each other's UX findings
 - You want higher-quality findings with fewer false positives
 - The PR has both UX and accessibility concerns benefiting from multiple perspectives
 
-Use **`/kramme:pr:ux-review`** when:
+Use **standard `/kramme:pr:ux-review`** when:
 - The PR is small or focused
 - You want faster, lower-cost review
 - You only need one or two review categories

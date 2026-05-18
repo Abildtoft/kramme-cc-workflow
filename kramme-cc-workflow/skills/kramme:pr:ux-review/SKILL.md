@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:ux-review
-description: Audit UI, UX, and product experience of PR and local changes using specialized agents for usability heuristics, product thinking, visual consistency, and accessibility. Supports inline report output with --inline.
-argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [parallel] [--inline]"
+description: Audit UI, UX, and product experience of PR and local changes using specialized agents for usability heuristics, product thinking, visual consistency, and accessibility. Supports inline report output with --inline. Use --team for multi-agent cross-validation.
+argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [parallel] [--team] [--inline]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -12,6 +12,10 @@ Audit the UI, UX, and product experience of a PR's changes, including local stag
 
 **Arguments:** "$ARGUMENTS"
 
+## Team Mode
+
+If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments.
+
 ## Audit Workflow
 
 ### Step 1: Parse Arguments
@@ -21,8 +25,9 @@ Audit the UI, UX, and product experience of a PR's changes, including local stag
 3. If `--threshold N` → store as `custom_threshold` (0-100). Overrides each agent's default confidence threshold. Only findings with confidence >= N will be reported. Default thresholds if not specified: a11y = 90, ux/product/visual = 70.
 4. If `--base <branch>` → store as explicit base branch override
 5. If `parallel` → launch agents in parallel instead of sequentially
-6. If `--inline` → set `INLINE_MODE=true` and do not write `UX_REVIEW_OVERVIEW.md`
-7. Default: all applicable categories, sequential, default thresholds
+6. If `--team` → use Team Mode and remove it from the remaining arguments
+7. If `--inline` → set `INLINE_MODE=true` and do not write `UX_REVIEW_OVERVIEW.md`
+8. Default: all applicable categories, sequential, default thresholds
 
 ### Step 2: Load Project Review Conventions
 

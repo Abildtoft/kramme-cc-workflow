@@ -1,15 +1,8 @@
----
-name: kramme:pr:code-review:team
-description: Run comprehensive PR review using multi-agent execution where specialized reviewers collaborate, cross-validate findings, and challenge each other. Higher quality than standard review but uses more tokens. Supports inline report output with --inline.
-argument-hint: "[aspects] [--base <ref>] [--inline]"
-disable-model-invocation: true
-user-invocable: true
-kramme-platforms: [claude-code, codex]
----
-
 # Team-Based PR Review
 
 Run a comprehensive PR review using multi-agent execution. Each reviewer runs with its own context window and can cross-validate findings with other reviewers.
+
+This reference is loaded by `/kramme:pr:code-review --team`; assume `--team` has already been removed from `$ARGUMENTS`.
 
 **Review Aspects (optional):** "$ARGUMENTS"
 
@@ -37,7 +30,7 @@ Then stop.
 Same setup as `/kramme:pr:code-review` Steps 1-7:
 
 1. Check git status to identify changed files
-2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, security, removal, simplify, all), `--base <ref>` override, and optional `--inline` output mode
+2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, security, removal, simplify, all), `--emphasize <dim>...`, `--base <ref>` override, and optional `--inline` output mode
 3. Resolve base branch using 3-tier strategy (explicit `--base` → PR target branch → default branch fallback). See `/kramme:pr:code-review` Step 2 for full logic.
 4. Build a unified change scope (committed PR diff + staged + unstaged + untracked):
    ```bash
@@ -148,25 +141,25 @@ Fold team-specific context into the existing schema instead of inventing a separ
 ## Usage Examples
 
 ```
-/kramme:pr:code-review:team
+/kramme:pr:code-review --team
 # Full team review with all applicable reviewers
 
-/kramme:pr:code-review:team code errors tests
+/kramme:pr:code-review --team code errors tests
 # Team review focused on specific aspects
 
-/kramme:pr:code-review:team --inline
+/kramme:pr:code-review --team --inline
 # Team review that replies inline instead of writing REVIEW_OVERVIEW.md
 ```
 
 ## When to Use This vs `/kramme:pr:code-review`
 
-Use **this skill** when:
+Use **this mode** when:
 - The PR is large or touches many areas
 - You want reviewers to cross-validate each other's findings
 - The PR has security-sensitive changes that benefit from multiple perspectives
 - You want higher-quality findings with fewer false positives
 
-Use **`/kramme:pr:code-review`** when:
+Use **standard `/kramme:pr:code-review`** when:
 - The PR is small or focused
 - You want faster, lower-cost review
 - You only need one or two review aspects
