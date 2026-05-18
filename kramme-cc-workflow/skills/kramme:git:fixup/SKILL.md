@@ -1,6 +1,7 @@
 ---
 name: kramme:git:fixup
 description: Intelligently fixup unstaged changes into existing commits on the current branch. Maps each changed file to its most recent commit, validates (build/test/lint), creates fixup commits, and autosquashes.
+argument-hint: "[--skip-tests|--skip-build|--skip-lint|--skip-all] [--no-confirm] [--base=<branch>] [instructions]"
 disable-model-invocation: true
 user-invocable: true
 ---

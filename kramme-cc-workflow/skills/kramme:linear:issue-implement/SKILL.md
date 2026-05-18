@@ -1,6 +1,7 @@
 ---
 name: kramme:linear:issue-implement
 description: Start implementing a Linear issue with branch setup, context gathering, and guided workflow
+argument-hint: "<ISSUE-ID>"
 disable-model-invocation: true
 user-invocable: true
 ---
