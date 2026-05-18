@@ -1,0 +1,13 @@
+sources:
+  - id: microsoft-markitdown-readme
+    url: https://raw.githubusercontent.com/microsoft/markitdown/main/README.md
+    title: "Microsoft MarkItDown README"
+    rationale: "The command examples, supported-format list, plugin flags, and Document Intelligence guidance in this skill are derived from the official MarkItDown README."
+    last_reviewed_at: 2026-05-18
+    baseline_hash: "sha256:3d003f88b724b2423d16bd5747b1067dec3e9e65a601c60487a41e9594a99543"
+  - id: microsoft-markitdown-cli-main
+    url: https://raw.githubusercontent.com/microsoft/markitdown/main/packages/markitdown/src/markitdown/__main__.py
+    title: "Microsoft MarkItDown CLI entrypoint"
+    rationale: "The CLI option list in this skill is derived from MarkItDown's argparse option definitions."
+    last_reviewed_at: 2026-05-18
+    baseline_hash: "sha256:42db78df0d597bdbcfea9cb133102df6b36d4d975dad3772416c27ddeed4f9a9"
