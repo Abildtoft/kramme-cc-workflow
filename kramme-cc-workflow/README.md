@@ -304,7 +304,7 @@ Git history management and commit operations.
 
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
-| `/kramme:git:fixup` | User | — | Intelligently fixup unstaged changes into existing commits.<br><br>Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
+| `/kramme:git:fixup` | User | `[--skip-tests\|--skip-build\|--skip-lint\|--skip-all] [--no-confirm] [--base=<branch>] [instructions]` | Intelligently fixup unstaged changes into existing commits.<br><br>Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
 | `/kramme:git:recreate-commits` | User | `[--auto] [--after <commit>]` | Recreate current branch in-place with narrative-quality commits and logical, reviewer-friendly commit history. Emits a `CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS` summary at end of run. Add `--auto` to choose commit granularity without prompting. Add `--after <commit>` to keep commits up to and including `<commit>` and only recreate commits after it. |
 
 #### Linear
@@ -314,7 +314,7 @@ Linear issue tracking integration.
 | Skill | Invocation | Arguments | Description |
 |-------|------------|-----------|-------------|
 | `/kramme:linear:issue-define` | User | `[issue-id] or [description and/or file paths]` | Create or improve a Linear issue through exhaustive guided refinement.<br><br>Can start from scratch or refine an existing issue by ID. |
-| `/kramme:linear:issue-implement` | User | — | Start implementing a Linear issue with branch setup, context gathering, and guided workflow.<br><br>Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
+| `/kramme:linear:issue-implement` | User | `<ISSUE-ID>` | Start implementing a Linear issue with branch setup, context gathering, and guided workflow.<br><br>Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
 
 #### Visual
 
@@ -363,7 +363,7 @@ Session management, verification, artifact cleanup, and hook configuration.
 | `/kramme:workflow-artifacts:cleanup` | User | — | Delete workflow artifacts such as review overviews, audit reports, generated PR plans, temporary SIW files, and visual diagram HTML files.<br><br>For SIW-specific cleanup, use `/kramme:siw:remove`. |
 | `/kramme:changelog:generate` | User | — | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
 | `/kramme:hooks:configure-links` | User | `[show\|reset\|KEY=VALUE ...]` | Configure `context-links` hook settings by writing local overrides to `hooks/context-links.config` (workspace slug, team keys, regexes). |
-| `/kramme:hooks:toggle` | User | `<hook-name\|status> [enable\|disable]` | Enable or disable a plugin hook.<br><br>Use `status` to list all hooks, or specify a hook name to toggle. |
+| `/kramme:hooks:toggle` | User | `[status\|reset\|<hook-name> [enable\|disable]]` | Enable or disable a plugin hook.<br><br>Use `status` to list all hooks, `reset` to enable all hooks, or specify a hook name to toggle. |
 | `/kramme:session:context-setup` | User, Auto | — | Configure effective agent context at session start or after output quality degrades.<br><br>Covers rules-file verification (CLAUDE.md / AGENTS.md), pre-task context loading, context-window hygiene, and trust-level tagging for inputs. |
 | `/kramme:session:wrap-up` | User | — | End-of-session checklist to capture progress, ensure quality, and document next steps.<br><br>Audits uncommitted changes, runs quality checks, and prompts for session summary and next steps. |
 | `/kramme:verify:run` | User, Auto | — | Run verification checks (tests, formatting, builds, linting, type checking) for affected code.<br><br>Automatically detects project type and runs appropriate commands. |

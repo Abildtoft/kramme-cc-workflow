@@ -1,6 +1,7 @@
 ---
 name: kramme:pr:resolve-review
 description: Resolve findings from code reviews by implementing fixes and documenting changes
+argument-hint: "[--auto] [--granular] [--severity critical,important] [--source local|online] [review-content|instructions|url]"
 disable-model-invocation: false
 user-invocable: true
 ---
