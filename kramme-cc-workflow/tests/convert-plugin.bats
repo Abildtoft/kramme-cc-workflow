@@ -211,25 +211,33 @@ disable-model-invocation: false
 user-invocable: true
 ---
 Use the mission from `agents/kramme:reviewer.md`.
+Keep plugin-root paths like `${CLAUDE_PLUGIN_ROOT}/agents/kramme:reviewer.md`.
 MD
   cat > "$FIXTURE_PLUGIN/skills/demo/references/guide.md" <<'MD'
 Use the mission from agents/kramme:reviewer.md in copied resources.
+Keep parent paths like ../agents/kramme:reviewer.md.
 MD
 
   run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
   [ "$status" -eq 0 ]
-
-  run grep -REn 'agents/kramme:.*\.md' "$TMP_DIR/.codex/skills"
-  if [ "$status" -ne 1 ]; then
-    printf 'Unexpected stale agent references (status=%s):\n%s\n' "$status" "$output" >&2
-  fi
-  [ "$status" -eq 1 ]
 
   run grep -nE '\$kramme:reviewer skill' "$TMP_DIR/.codex/skills/kramme:demo-skill/SKILL.md"
   [ "$status" -eq 0 ]
 
   run grep -nE '\$kramme:reviewer skill' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
   [ "$status" -eq 0 ]
+
+  run grep -nF '${CLAUDE_PLUGIN_ROOT}/agents/kramme:reviewer.md' "$TMP_DIR/.codex/skills/kramme:demo-skill/SKILL.md"
+  [ "$status" -eq 0 ]
+
+  run grep -nF '../agents/kramme:reviewer.md' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
+  [ "$status" -eq 0 ]
+
+  run grep -RFn '${CLAUDE_PLUGIN_ROOT}/$kramme:reviewer skill' "$TMP_DIR/.codex/skills"
+  [ "$status" -eq 1 ]
+
+  run grep -RFn '../$kramme:reviewer skill' "$TMP_DIR/.codex/skills"
+  [ "$status" -eq 1 ]
 }
 
 @test "codex conversion preserves allowed-tools in copied skills" {
