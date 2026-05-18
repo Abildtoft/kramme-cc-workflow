@@ -170,6 +170,109 @@ MD
   [ "$status" -eq 0 ]
 }
 
+@test "codex conversion rewrites agent markdown references inside copied skills" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+  [ "$status" -eq 0 ]
+
+  run grep -REn 'agents/kramme:.*\.md' "$TMP_DIR/.codex/skills"
+  if [ "$status" -ne 1 ]; then
+    printf 'Unexpected stale agent references (status=%s):\n%s\n' "$status" "$output" >&2
+  fi
+  [ "$status" -eq 1 ]
+
+  run grep -nE '\$kramme:code-reviewer skill' "$TMP_DIR/.codex/skills/kramme:pr:code-review:team/SKILL.md"
+  [ "$status" -eq 0 ]
+}
+
+@test "codex conversion rewrites agent markdown references in copied markdown resources" {
+  if ! command -v node >/dev/null 2>&1; then
+    skip "node is required for converter tests"
+  fi
+
+  FIXTURE_PLUGIN="$TMP_DIR/agent-ref-resource-plugin"
+  create_fixture_plugin "$FIXTURE_PLUGIN"
+  mkdir -p "$FIXTURE_PLUGIN/agents" "$FIXTURE_PLUGIN/skills/demo/references"
+  cat > "$FIXTURE_PLUGIN/agents/kramme:reviewer.md" <<'MD'
+---
+name: kramme:reviewer
+description: Fixture reviewer
+---
+Review the code.
+MD
+  cat > "$FIXTURE_PLUGIN/skills/demo/SKILL.md" <<'MD'
+---
+name: kramme:demo-skill
+description: Demo skill
+disable-model-invocation: false
+user-invocable: true
+---
+Use the mission from `agents/kramme:reviewer.md`.
+Use linked mission via [reviewer mission](agents/kramme:reviewer.md).
+Keep plugin-root paths like `${CLAUDE_PLUGIN_ROOT}/agents/kramme:reviewer.md`.
+MD
+  cat > "$FIXTURE_PLUGIN/skills/demo/references/guide.md" <<'MD'
+Use the mission from agents/kramme:reviewer.md in copied resources.
+Use colon punctuation agents/kramme:reviewer.md: copied resources.
+Use semicolon punctuation agents/kramme:reviewer.md; copied resources.
+Use autolink <agents/kramme:reviewer.md> in copied resources.
+Keep anchored paths like agents/kramme:reviewer.md#usage.
+Keep query paths like agents/kramme:reviewer.md?plain=1.
+Keep parent paths like ../agents/kramme:reviewer.md.
+MD
+
+  run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+  [ "$status" -eq 0 ]
+
+  run grep -nE '\$kramme:reviewer skill' "$TMP_DIR/.codex/skills/kramme:demo-skill/SKILL.md"
+  [ "$status" -eq 0 ]
+
+  run grep -nE '\$kramme:reviewer skill' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
+  [ "$status" -eq 0 ]
+
+  run grep -nF 'Use linked mission via $kramme:reviewer skill.' "$TMP_DIR/.codex/skills/kramme:demo-skill/SKILL.md"
+  [ "$status" -eq 0 ]
+
+  run grep -nF 'Use autolink $kramme:reviewer skill in copied resources.' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
+  [ "$status" -eq 0 ]
+
+  run grep -nF 'Use colon punctuation $kramme:reviewer skill: copied resources.' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
+  [ "$status" -eq 0 ]
+
+  run grep -nF 'Use semicolon punctuation $kramme:reviewer skill; copied resources.' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
+  [ "$status" -eq 0 ]
+
+  run grep -nF '${CLAUDE_PLUGIN_ROOT}/agents/kramme:reviewer.md' "$TMP_DIR/.codex/skills/kramme:demo-skill/SKILL.md"
+  [ "$status" -eq 0 ]
+
+  run grep -nF '../agents/kramme:reviewer.md' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
+  [ "$status" -eq 0 ]
+
+  run grep -nF 'agents/kramme:reviewer.md#usage' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
+  [ "$status" -eq 0 ]
+
+  run grep -nF 'agents/kramme:reviewer.md?plain=1' "$TMP_DIR/.codex/skills/kramme:demo-skill/references/guide.md"
+  [ "$status" -eq 0 ]
+
+  run grep -RFn '${CLAUDE_PLUGIN_ROOT}/$kramme:reviewer skill' "$TMP_DIR/.codex/skills"
+  [ "$status" -eq 1 ]
+
+  run grep -RFn '../$kramme:reviewer skill' "$TMP_DIR/.codex/skills"
+  [ "$status" -eq 1 ]
+
+  run grep -RFn ']($kramme:reviewer skill)' "$TMP_DIR/.codex/skills"
+  [ "$status" -eq 1 ]
+
+  run grep -RFn '$kramme:reviewer skill#usage' "$TMP_DIR/.codex/skills"
+  [ "$status" -eq 1 ]
+
+  run grep -RFn '$kramme:reviewer skill?plain=1' "$TMP_DIR/.codex/skills"
+  [ "$status" -eq 1 ]
+}
+
 @test "codex conversion preserves allowed-tools in copied skills" {
   if ! command -v node >/dev/null 2>&1; then
     skip "node is required for converter tests"

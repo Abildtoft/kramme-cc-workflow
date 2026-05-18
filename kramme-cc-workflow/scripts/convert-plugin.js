@@ -1108,18 +1108,22 @@ function convertClaudeToCodex(plugin, options) {
   const copiedSkillNames = new Set(skills.map((skill) => codexName(skill.name)))
   const usedSkillNames = new Set(copiedSkillNames)
   const knownCommandNames = new Set(copiedSkillNames)
-  const commandSkills = commands
+  const commandSkillDefinitions = commands
     // Skill-backed commands already exist as copied skill directories.
     .filter((command) => path.basename(command.sourcePath ?? "") !== "SKILL.md")
     .filter((command) => !copiedSkillNames.has(codexName(command.name)))
     .map((command) => {
       const skillName = uniqueName(codexName(command.name), usedSkillNames)
       knownCommandNames.add(skillName)
-      return convertCommandSkill(command, knownCommandNames, skillName)
+      return { command, skillName }
     })
-  const skillDirs = skills.map((skill) => convertExistingSkillForCodex(skill, knownCommandNames))
 
   const agentSkills = plugin.agents.map((agent) => convertAgentSkill(agent, usedSkillNames))
+  const knownAgentSkills = buildKnownAgentSkillNames(plugin.agents, agentSkills)
+  const commandSkills = commandSkillDefinitions.map(({ command, skillName }) => (
+    convertCommandSkill(command, knownCommandNames, skillName, knownAgentSkills)
+  ))
+  const skillDirs = skills.map((skill) => convertExistingSkillForCodex(skill, knownCommandNames, knownAgentSkills))
 
   return {
     prompts: [],
@@ -1127,6 +1131,7 @@ function convertClaudeToCodex(plugin, options) {
     generatedSkills: commandSkills,
     agentSkills,
     knownCommands: knownCommandNames,
+    knownAgentSkills,
     mcpServers: plugin.mcpServers,
   }
 }
@@ -1153,7 +1158,21 @@ function convertAgentSkill(agent, usedNames) {
   return { name, content }
 }
 
-function convertCommandSkill(command, knownCommands, name) {
+function buildKnownAgentSkillNames(agents, agentSkills) {
+  const knownAgentSkills = new Map()
+  for (let index = 0; index < agents.length; index += 1) {
+    const agent = agents[index]
+    const skill = agentSkills[index]
+    if (!agent || !skill) continue
+    knownAgentSkills.set(codexName(agent.name), skill.name)
+    if (agent.sourcePath) {
+      knownAgentSkills.set(codexName(path.basename(agent.sourcePath, ".md")), skill.name)
+    }
+  }
+  return knownAgentSkills
+}
+
+function convertCommandSkill(command, knownCommands, name, knownAgentSkills) {
   const frontmatter = {
     name,
     description: sanitizeDescription(
@@ -1164,13 +1183,13 @@ function convertCommandSkill(command, knownCommands, name) {
     "disable-model-invocation": command.disableModelInvocation,
     "user-invocable": true,
   }
-  const transformedBody = transformContentForCodex(command.body.trim(), { knownCommands })
+  const transformedBody = transformContentForCodex(command.body.trim(), { knownCommands, knownAgentSkills })
   const body = transformedBody.trim()
   const content = formatFrontmatter(frontmatter, body.length > 0 ? body : command.body)
   return { name, content }
 }
 
-function convertExistingSkillForCodex(skill, knownCommands) {
+function convertExistingSkillForCodex(skill, knownCommands, knownAgentSkills) {
   const frontmatter = {
     name: skill.name,
     description: sanitizeDescription(
@@ -1182,7 +1201,7 @@ function convertExistingSkillForCodex(skill, knownCommands) {
     "user-invocable": skill.userInvocable,
     "kramme-platforms": skill.platforms && skill.platforms.length > 0 ? skill.platforms : undefined,
   }
-  const body = transformContentForCodex(skill.body.trim(), { knownCommands })
+  const body = transformContentForCodex(skill.body.trim(), { knownCommands, knownAgentSkills })
   const content = formatFrontmatter(frontmatter, body.length > 0 ? body : skill.body)
   return { name: skill.name, sourceDir: skill.sourceDir, content }
 }
@@ -1190,6 +1209,7 @@ function convertExistingSkillForCodex(skill, knownCommands) {
 function transformContentForCodex(body, options = {}) {
   let result = body
   const knownCommands = options.knownCommands
+  const knownAgentSkills = options.knownAgentSkills
 
   const taskPattern = /^(\s*-?\s*)Task\s+([a-z][a-z0-9-]*)\(([^)]+)\)/gm
   result = result.replace(taskPattern, (_match, prefix, agentName, args) => {
@@ -1213,9 +1233,26 @@ function transformContentForCodex(body, options = {}) {
     return `$${skillName} skill`
   })
 
+  result = rewriteCodexAgentFileReferences(result, knownAgentSkills)
+
   result = normalizeCodexInstructionText(result)
 
   return result
+}
+
+function rewriteCodexAgentFileReferences(text, knownAgentSkills) {
+  if (!knownAgentSkills || knownAgentSkills.size === 0) return text
+  const linkTargetPattern = /(?<!!)\[[^\]\n]+\]\(\s*<?agents\/([a-z][a-z0-9_:-]*)\.md>?(?:\s+(?:"[^"\n]*"|'[^'\n]*'|\([^)\n]*\)))?\s*\)/gi
+  const autolinkPattern = /<agents\/([a-z][a-z0-9_:-]*)\.md>/gi
+  const agentPathPattern = /(?<![\w./\\}:$(-])`?agents\/([a-z][a-z0-9_:-]*)\.md`?(?=$|[\s,.:;`"')\]}])/gi
+  const toSkillReference = (match, agentName) => {
+    const skillName = knownAgentSkills.get(codexName(agentName))
+    if (!skillName) return match
+    return `$${skillName} skill`
+  }
+  text = text.replace(linkTargetPattern, toSkillReference)
+  text = text.replace(autolinkPattern, toSkillReference)
+  return text.replace(agentPathPattern, toSkillReference)
 }
 
 const CODEX_INSTRUCTION_REPLACEMENTS = [
@@ -1869,7 +1906,10 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
     if (skill.content) {
       await writeText(path.join(targetDir, "SKILL.md"), skill.content + "\n")
     }
-    await rewriteCodexMarkdownResourcesFromSource(skill.sourceDir, targetDir, bundle.knownCommands)
+    await rewriteCodexMarkdownResourcesFromSource(skill.sourceDir, targetDir, {
+      knownCommands: bundle.knownCommands,
+      knownAgentSkills: bundle.knownAgentSkills,
+    })
   }
 
   for (const skill of bundle.generatedSkills) {
@@ -3054,20 +3094,20 @@ async function bootstrapHookScripts(rootDir, bundleRootDir = path.dirname(rootDi
   }
 }
 
-async function rewriteCodexMarkdownResourcesFromSource(sourceDir, targetDir, knownCommands) {
+async function rewriteCodexMarkdownResourcesFromSource(sourceDir, targetDir, options = {}) {
   const entries = await fs.readdir(sourceDir, { withFileTypes: true })
   for (const entry of entries) {
     const sourcePath = path.join(sourceDir, entry.name)
     const targetPath = path.join(targetDir, entry.name)
     if (entry.isDirectory()) {
-      await rewriteCodexMarkdownResourcesFromSource(sourcePath, targetPath, knownCommands)
+      await rewriteCodexMarkdownResourcesFromSource(sourcePath, targetPath, options)
       continue
     }
     if (!entry.isFile() || path.extname(entry.name) !== ".md" || entry.name === "SKILL.md") {
       continue
     }
     const source = await readText(targetPath)
-    const transformed = transformContentForCodex(source, { knownCommands })
+    const transformed = transformContentForCodex(source, options)
     if (transformed !== source) {
       await writeText(targetPath, transformed)
     }
