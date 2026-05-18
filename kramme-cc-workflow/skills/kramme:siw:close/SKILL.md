@@ -9,9 +9,7 @@ user-invocable: true
 
 Generate permanent documentation from SIW artifacts, then remove temporary workflow files. This is the terminal lifecycle command for SIW projects -- it captures accumulated knowledge (decisions, architecture, principles) before cleaning up.
 
-**Use when:** The project is complete and you want to preserve the knowledge before removing SIW files.
-**Use `siw:reset` instead when:** You want to start a new iteration on the same project.
-**Use `siw:remove` instead when:** You just want to delete SIW files without generating documentation.
+**Use when:** The project is complete and you want to preserve the knowledge before removing SIW files. **Use `siw:reset` instead when:** You want to start a new iteration on the same project. **Use `siw:remove` instead when:** You just want to delete SIW files without generating documentation.
 
 ## Workflow
 
@@ -53,23 +51,25 @@ Generate permanent documentation from SIW artifacts, then remove temporary workf
 Check which SIW files exist:
 
 ```bash
-ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_*.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues/ siw/qa-intake/ 2>/dev/null
+ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_*.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues/ siw/qa-intake/ 2> /dev/null
 find siw -maxdepth 1 -type f -name "*.md" \
   ! -name "LOG.md" \
   ! -name "OPEN_ISSUES_OVERVIEW.md" \
   ! -name "AUDIT_*.md" \
   ! -name "SPEC_STRENGTHENING_PLAN.md" \
   ! -name "DISCOVERY_BRIEF.md" \
-  2>/dev/null
-ls siw/supporting-specs/*.md 2>/dev/null
+  2> /dev/null
+ls siw/supporting-specs/*.md 2> /dev/null
 ```
 
 **If no SIW files found:**
+
 ```
 No SIW workflow files found in this directory.
 
 To initialize a new SIW workflow, run /kramme:siw:init
 ```
+
 **Action:** Stop.
 
 **If only a spec exists (no LOG.md or issues):**
@@ -95,7 +95,7 @@ options:
 Read `siw/OPEN_ISSUES_OVERVIEW.md` and check for issues not marked DONE:
 
 ```bash
-grep -E "\| (READY|IN PROGRESS|IN REVIEW) \|" siw/OPEN_ISSUES_OVERVIEW.md 2>/dev/null
+grep -E "\| (READY|IN PROGRESS|IN REVIEW) \|" siw/OPEN_ISSUES_OVERVIEW.md 2> /dev/null
 ```
 
 **If open issues found:**
@@ -115,10 +115,11 @@ options:
 ### 2.2 Check for Uncommitted Changes
 
 ```bash
-git status --porcelain siw/ 2>/dev/null
+git status --porcelain siw/ 2> /dev/null
 ```
 
 If uncommitted changes exist, warn:
+
 ```
 Warning: There are uncommitted changes to SIW files.
 These will be included in the generated documentation but the SIW file
@@ -192,6 +193,7 @@ Read all existing SIW files and extract structured knowledge.
 ### 4.1 From the Spec (`siw/[YOUR_SPEC].md`)
 
 Extract:
+
 - **Project title** (from `#` heading)
 - **Overview** (from `## Overview`)
 - **Problem statement** (from `## Problem Statement` if present)
@@ -211,12 +213,14 @@ Extract:
 ### 4.2 From Supporting Specs (`siw/supporting-specs/*.md`)
 
 For each supporting spec:
+
 - Extract title and key content
 - Categorize by domain (data model, API, UI, etc.)
 
 ### 4.3 From `siw/LOG.md`
 
 Extract:
+
 - **Decision Log entries** -- all decisions with number, title, problem, decision, rationale, alternatives, impact
 - **Guiding Principles** (from `## Guiding Principles`)
 - **Rejected Alternatives Summary** (from the table)
@@ -225,6 +229,7 @@ Extract:
 ### 4.4 From `siw/OPEN_ISSUES_OVERVIEW.md`
 
 Extract:
+
 - Phase structure (from section headers)
 - Issue count and completion percentage
 - All issues with final statuses
@@ -232,19 +237,23 @@ Extract:
 ### 4.5 From Individual Issue Files (`siw/issues/ISSUE-*.md`)
 
 For DONE issues:
+
 - Title, description, resolution section
 
 For non-DONE issues:
+
 - Title and status (listed as deferred work)
 
 ### 4.6 From Audit Reports (if present)
 
 From `siw/AUDIT_IMPLEMENTATION_REPORT.md` and `siw/AUDIT_SPEC_REPORT.md`:
+
 - Note their existence as quality verification evidence
 
 ### 4.7 Deduplicate Decisions
 
 Decisions may appear in both LOG.md and the spec's Design Decisions section (from prior resets or syncs):
+
 1. Read decisions from LOG.md (primary, most complete)
 2. Read decisions from spec's Design Decisions section
 3. Match by decision number (`Decision #N`) or title
@@ -266,6 +275,7 @@ Read the documentation templates from `assets/documentation-templates.md`. It co
 ### Content Rules
 
 All generated documentation must be:
+
 - **Self-contained** -- readable without SIW context
 - **Free of SIW references** -- no mentions of `siw/`, `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, issue file paths, or SIW-specific concepts
 - **Written in past tense** where describing what was built
@@ -371,6 +381,7 @@ The original project specification is preserved in [spec/](spec/) for reference.
 Use `trash` command (recoverable). Fall back to `rm` if `trash` is not available.
 
 **Temporary files (always deleted):**
+
 - `siw/LOG.md`
 - `siw/OPEN_ISSUES_OVERVIEW.md`
 - `siw/AUDIT_*.md`
@@ -379,35 +390,36 @@ Use `trash` command (recoverable). Fall back to `rm` if `trash` is not available
 - `siw/qa-intake/` (QA intake parent summaries)
 
 **Conditional (based on Step 6):**
+
 - `siw/SPEC_STRENGTHENING_PLAN.md` (only if `strengthening_plan_disposition=remove`)
 - `siw/{spec_filename}` (only if `spec_disposition=remove`)
 - `siw/supporting-specs/` (only if `spec_disposition=remove`)
 
 ```bash
 if command -v trash &> /dev/null; then
-    trash siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_*.md siw/DISCOVERY_BRIEF.md 2>/dev/null
-    trash -r siw/issues/ 2>/dev/null
-    trash -r siw/qa-intake/ 2>/dev/null
-    if [ "{strengthening_plan_disposition}" = "remove" ]; then
-        trash siw/SPEC_STRENGTHENING_PLAN.md 2>/dev/null
-    fi
-    if [ "{spec_disposition}" = "remove" ]; then
-        trash siw/{spec_filename} 2>/dev/null
-        trash -r siw/supporting-specs/ 2>/dev/null
-    fi
+  trash siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_*.md siw/DISCOVERY_BRIEF.md 2> /dev/null
+  trash -r siw/issues/ 2> /dev/null
+  trash -r siw/qa-intake/ 2> /dev/null
+  if [ "{strengthening_plan_disposition}" = "remove" ]; then
+    trash siw/SPEC_STRENGTHENING_PLAN.md 2> /dev/null
+  fi
+  if [ "{spec_disposition}" = "remove" ]; then
+    trash siw/{spec_filename} 2> /dev/null
+    trash -r siw/supporting-specs/ 2> /dev/null
+  fi
 else
-    echo "Warning: 'trash' command not found. Files will be permanently deleted."
-    echo "Consider installing: brew install trash"
-    rm -f siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_*.md siw/DISCOVERY_BRIEF.md
-    rm -rf siw/issues/
-    rm -rf siw/qa-intake/
-    if [ "{strengthening_plan_disposition}" = "remove" ]; then
-        rm -f siw/SPEC_STRENGTHENING_PLAN.md
-    fi
-    if [ "{spec_disposition}" = "remove" ]; then
-        rm -f siw/{spec_filename}
-        rm -rf siw/supporting-specs/
-    fi
+  echo "Warning: 'trash' command not found. Files will be permanently deleted."
+  echo "Consider installing: brew install trash"
+  rm -f siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_*.md siw/DISCOVERY_BRIEF.md
+  rm -rf siw/issues/
+  rm -rf siw/qa-intake/
+  if [ "{strengthening_plan_disposition}" = "remove" ]; then
+    rm -f siw/SPEC_STRENGTHENING_PLAN.md
+  fi
+  if [ "{spec_disposition}" = "remove" ]; then
+    rm -f siw/{spec_filename}
+    rm -rf siw/supporting-specs/
+  fi
 fi
 ```
 
@@ -419,9 +431,9 @@ After deletion, check if `siw/` is empty:
 
 ```bash
 # Remove .gitkeep files
-rm -f siw/.gitkeep siw/issues/.gitkeep siw/qa-intake/.gitkeep siw/supporting-specs/.gitkeep 2>/dev/null
+rm -f siw/.gitkeep siw/issues/.gitkeep siw/qa-intake/.gitkeep siw/supporting-specs/.gitkeep 2> /dev/null
 # Remove empty directories
-rmdir siw/issues siw/qa-intake siw/supporting-specs siw 2>/dev/null
+rmdir siw/issues siw/qa-intake siw/supporting-specs siw 2> /dev/null
 ```
 
 If `siw/` still has files (spec kept or other files present), leave it alone.
@@ -481,6 +493,7 @@ options:
 ### Linked external specifications
 
 If the spec has a `## Linked Specifications` section referencing files outside `siw/`:
+
 - Include the linked file references in the documentation README
 - Do NOT delete linked files (they are outside `siw/`)
 - Note them in the README under a "Related Documentation" section
@@ -488,6 +501,7 @@ If the spec has a `## Linked Specifications` section referencing files outside `
 ### No decisions in LOG.md
 
 If LOG.md has no Decision Log entries:
+
 - `decisions.md` will contain only the note: "No formal design decisions were recorded during this project."
 - README.md "Key Decisions" section replaced with: "No formal decisions were recorded. See the architecture documentation for technical details."
 

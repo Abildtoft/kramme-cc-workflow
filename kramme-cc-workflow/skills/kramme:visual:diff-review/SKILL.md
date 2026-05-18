@@ -16,11 +16,13 @@ Generate a comprehensive visual diff review as a self-contained HTML page.
 ## Prerequisites
 
 Read the local visual references before generating:
+
 - `references/css-patterns.md`
 - `references/libraries.md`
 - `references/responsive-nav.md`
 
 Select the appropriate template to absorb patterns:
+
 - `assets/architecture.html`
 - `assets/data-table.html`
 - `assets/mermaid-flowchart.html`
@@ -46,6 +48,7 @@ Follow the workflow below. Use a GitHub-diff-inspired aesthetic with red/green b
 ## Scope Detection
 
 Determine what to diff based on the argument:
+
 - Branch name (e.g. `main`, `develop`): working tree vs that branch
 - Commit hash: that specific commit's diff (`git show <hash>`)
 - `HEAD`: uncommitted changes only (`git diff` and `git diff --staged`)
@@ -56,6 +59,7 @@ Determine what to diff based on the argument:
 ## Data Gathering
 
 Run these first to understand the full scope:
+
 - `git diff --stat <ref>` for file-level overview
 - `git diff --name-status <ref> --` for new/modified/deleted files (separate src from tests)
 - Line counts: compare key files between `<ref>` and working tree
@@ -69,6 +73,7 @@ Run these first to understand the full scope:
 ## Verification Checkpoint
 
 Before generating HTML, produce a structured fact sheet of every claim you will present:
+
 - Every quantitative figure: line counts, file counts, function counts, test counts
 - Every function, type, and module name you will reference
 - Every behavior description: what code does, what changed, before vs. after
@@ -77,7 +82,7 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 
 ## Page Sections
 
-1. **Executive summary** — lead with the *intuition*: why do these changes exist? What was the core insight? Then factual scope (X files, Y lines, Z new modules). *Hero depth: larger type 20-24px, accent-tinted background.*
+1. **Executive summary** — lead with the _intuition_: why do these changes exist? What was the core insight? Then factual scope (X files, Y lines, Z new modules). _Hero depth: larger type 20-24px, accent-tinted background._
 2. **KPI dashboard** — lines added/removed, files changed, new modules, test counts. Include housekeeping indicator: CHANGELOG updated (green/red), docs need changes (green/yellow/red).
 3. **Module architecture** — Mermaid dependency graph of the current state. Wrap in `.mermaid-wrap` with zoom controls.
 4. **Major feature comparisons** — side-by-side before/after panels for each significant area of change.
@@ -107,11 +112,10 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 
 ## Output
 
-Write to `~/.kramme-cc-workflow/diagrams/diff-review-{descriptive-name}.html`. Create the directory if needed.
-Open in browser:
+Write to `~/.kramme-cc-workflow/diagrams/diff-review-{descriptive-name}.html`. Create the directory if needed. Open in browser:
+
 - macOS: `open ~/.kramme-cc-workflow/diagrams/{filename}.html`
-- Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html`
-Report the file path to the user.
+- Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html` Report the file path to the user.
 
 Include responsive section navigation.
 

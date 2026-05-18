@@ -142,10 +142,12 @@ Try again with /kramme:linear:issue-implement <correct-issue-id>
 The `mcp__linear__get_issue` response includes a `branchName` field - this is Linear's recommended branch name.
 
 **Priority:**
+
 1. **FIRST**: Use `branchName` from Linear if present and non-empty
 2. **FALLBACK ONLY**: If `branchName` is empty/missing, generate one using pattern: `{user-initials}/{ISSUE_ID}-{sanitized-title}`
 
 **If generating fallback:**
+
 - Ask user for their initials if not known
 - Sanitize title: lowercase, replace spaces with hyphens, max 50 chars for description
 
@@ -180,7 +182,7 @@ options:
 
 ```bash
 # Determine base branch
-BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||') || BASE="main"
+BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's|refs/remotes/origin/||') || BASE="main"
 
 # Fetch latest
 git fetch origin $BASE
@@ -296,11 +298,13 @@ Acceptance Criteria:
 ### 4.1 Why This Phase Is Essential
 
 Linear issues often describe:
+
 - **What** the user should be able to do (user stories)
 - **Why** it matters (business value)
 - **Acceptance criteria** (verification conditions)
 
 They typically do NOT describe:
+
 - Which files/modules to modify
 - What patterns to follow
 - How existing similar features are implemented
@@ -313,7 +317,6 @@ They typically do NOT describe:
 **ALWAYS perform these steps, even if the issue seems straightforward:**
 
 1. **Search for similar features/patterns:**
-
    - Use Glob and Grep to find related code
    - Look for existing implementations of similar functionality
    - Identify relevant modules, services, or components

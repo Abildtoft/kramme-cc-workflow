@@ -5,6 +5,7 @@ Reference for Step 2. Use these heuristics to identify the project's test framew
 ## JavaScript / TypeScript
 
 ### Jest
+
 - **Config:** `jest.config.*`, `jest.setup.*`, `jest` section in `package.json`
 - **Packages:** `jest`, `@jest/globals`, `ts-jest`, `babel-jest`, `@types/jest`
 - **Imports:** `import { describe, it, expect, jest } from '@jest/globals'` (or globals without import)
@@ -13,6 +14,7 @@ Reference for Step 2. Use these heuristics to identify the project's test framew
 - **Runner:** `npx jest` or `npm test`
 
 ### Vitest
+
 - **Config:** `vitest.config.*`, `vitest.workspace.*`, `test` section in `vite.config.*`
 - **Packages:** `vitest`, `@vitest/coverage-v8`, `@vitest/ui`
 - **Imports:** `import { describe, it, expect, vi } from 'vitest'`
@@ -21,6 +23,7 @@ Reference for Step 2. Use these heuristics to identify the project's test framew
 - **Runner:** `npx vitest run` (single) or `npx vitest` (watch)
 
 ### Mocha
+
 - **Config:** `.mocharc.*`, `mocha` section in `package.json`
 - **Packages:** `mocha`, `@types/mocha`, usually with `chai` + `sinon`
 - **Imports:** `import { expect } from 'chai'` (describe/it are globals)
@@ -29,6 +32,7 @@ Reference for Step 2. Use these heuristics to identify the project's test framew
 - **Runner:** `npx mocha`
 
 ### Cypress (E2E)
+
 - **Config:** `cypress.config.*`, `cypress/` directory
 - **Packages:** `cypress`
 - **Naming:** `*.cy.ts`, `*.cy.js` (in `cypress/e2e/`)
@@ -36,6 +40,7 @@ Reference for Step 2. Use these heuristics to identify the project's test framew
 - **Note:** E2E framework — prefer unit test framework for generation unless user requests E2E.
 
 ### Playwright
+
 - **Config:** `playwright.config.*`
 - **Packages:** `@playwright/test`
 - **Imports:** `import { test, expect } from '@playwright/test'`
@@ -45,6 +50,7 @@ Reference for Step 2. Use these heuristics to identify the project's test framew
 ## Python
 
 ### Pytest
+
 - **Config:** `pytest.ini`, `pyproject.toml` (`[tool.pytest]`), `setup.cfg` (`[tool:pytest]`), `conftest.py`
 - **Packages:** `pytest`, `pytest-cov`, `pytest-mock`
 - **Imports:** `import pytest`, `from unittest.mock import Mock, patch`
@@ -56,6 +62,7 @@ Reference for Step 2. Use these heuristics to identify the project's test framew
 ## Go
 
 ### Go Testing (built-in)
+
 - **Detection:** `*_test.go` files, `go.mod`
 - **Imports:** `"testing"`, optionally `"github.com/stretchr/testify/assert"`
 - **Assertions:** `t.Error()`, `t.Fatal()` (standard); `assert.Equal()` (testify)
@@ -65,6 +72,7 @@ Reference for Step 2. Use these heuristics to identify the project's test framew
 ## Rust
 
 ### Rust Testing (built-in)
+
 - **Detection:** `#[cfg(test)]` modules, `tests/` directory, `#[test]` attribute
 - **Assertions:** `assert!()`, `assert_eq!()`, `assert_ne!()`
 - **Naming:** inline `#[cfg(test)]` module (unit), `tests/*.rs` (integration)
@@ -73,6 +81,7 @@ Reference for Step 2. Use these heuristics to identify the project's test framew
 ## Shell
 
 ### Bats
+
 - **Detection:** `*.bats` files, `bats/` or `test/` directory
 - **Imports:** `load 'test_helper/bats-support/load'`, `load 'test_helper/bats-assert/load'`
 - **Naming:** `*.bats`
@@ -81,6 +90,7 @@ Reference for Step 2. Use these heuristics to identify the project's test framew
 ## .NET
 
 ### xUnit / NUnit / MSTest
+
 - **Detection in .csproj:** `<PackageReference Include="xunit" />`, `<PackageReference Include="NUnit" />`, `<PackageReference Include="MSTest.TestFramework" />`
 - **Mocking:** `Moq`, `NSubstitute`, `FakeItEasy`
 - **Naming:** `*Tests.cs`, `*Test.cs` in separate test project
@@ -89,6 +99,7 @@ Reference for Step 2. Use these heuristics to identify the project's test framew
 ## Detection Priority
 
 When multiple frameworks found, prefer:
+
 1. Unit test framework over E2E framework
 2. Framework used in test files closest to the target source file
 3. If still ambiguous: AskUserQuestion

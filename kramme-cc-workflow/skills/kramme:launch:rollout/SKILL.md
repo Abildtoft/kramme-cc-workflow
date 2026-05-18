@@ -129,7 +129,7 @@ Write the sequence into the launch ticket verbatim so the on-call can see which 
 The numeric gates for advance / hold / rollback decisions. Reproduce the table in the launch ticket so the decision rule is visible, not tribal.
 
 | Metric | Advance (green) | Hold and investigate (yellow) | Roll back (red) |
-|--------|-----------------|-------------------------------|-----------------|
+| --- | --- | --- | --- |
 | Error rate | Within 10% of baseline | 10–100% above baseline | >2× baseline |
 | P95 latency | Within 20% of baseline | 20–50% above baseline | >50% above baseline |
 | Client JS errors | No new error types | New errors at <0.1% of sessions | New errors at >0.1% of sessions |
@@ -184,30 +184,33 @@ Removing a flag means removing the check, the off-state code path, the flag-serv
 
 ## Rollback plan template
 
-Every rollout needs a documented rollback plan *before* step 1. Fill this in for the launch ticket:
+Every rollout needs a documented rollback plan _before_ step 1. Fill this in for the launch ticket:
 
 ```markdown
 ## Rollback Plan for [Feature/Release]
 
 ### Trigger Conditions
+
 - Error rate > 2× baseline.
 - P95 latency > [Xms — specific to this feature].
 - User reports of [specific expected failure mode].
 - [Any feature-specific trigger — e.g., "checkout conversion drops >5%"].
 
 ### Rollback Steps
-1. Disable the feature flag in the flag UI (expected time: < 1 minute).
-   — OR —
+
+1. Disable the feature flag in the flag UI (expected time: < 1 minute). — OR —
 1. Redeploy the previous version (`git revert <commit> && git push`, expected time: < 5 minutes).
-2. Verify the rollback: health check returns 200, error rate returns to baseline.
-3. Communicate: notify the team channel and on-call that a rollback occurred.
-4. Open a postmortem ticket within 24 hours.
+1. Verify the rollback: health check returns 200, error rate returns to baseline.
+1. Communicate: notify the team channel and on-call that a rollback occurred.
+1. Open a postmortem ticket within 24 hours.
 
 ### Database Considerations
+
 - Migration [X] rollback: [specific command / procedure, or "N/A — schema is backward-compatible"].
 - Data inserted by the new feature: [preserved / cleaned up / quarantined].
 
 ### Time-to-Rollback
+
 - Feature flag: < 1 minute.
 - Redeploy previous version: < 5 minutes.
 - Database rollback (if needed): < 15 minutes.
@@ -247,7 +250,7 @@ This template replaces handwavy "launch looks good" posts. It documents what hap
 The lies engineers tell themselves to skip rollout discipline. Each one has a correct response.
 
 | Rationalization | Reality |
-|---|---|
+| --- | --- |
 | "It works in staging, it'll work in production." | Production has different data, traffic, and edge cases. Staging validates that the code runs; production validates that the code works. |
 | "It's a small change, skip the canary." | Small changes break big things. The canary costs one day; a bad full-rollout costs a week. |
 | "We don't need a feature flag for this." | Every non-trivial change benefits from a kill switch. Flags are the cheapest insurance in the stack. |

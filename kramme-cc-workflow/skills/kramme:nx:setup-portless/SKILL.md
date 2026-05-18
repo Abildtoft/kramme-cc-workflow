@@ -54,7 +54,7 @@ Add this target to one project's `project.json` (typically the primary app). It 
 ### 3. Trust the CA certificate (once per machine)
 
 ```bash
-yarn nx run <app>:proxy:trust
+yarn nx run < app > :proxy:trust
 ```
 
 ## Per-App Setup
@@ -117,9 +117,9 @@ The proxy auto-starts when you launch an app — no manual `proxy start` needed.
 
 ```bash
 # Start the app
-yarn nx run <app>:dev:local
+yarn nx run < app > :dev:local
 # or with all services:
-yarn nx run <app>:dev:full
+yarn nx run < app > :dev:full
 
 # Open https://<app-name>.localhost
 ```
@@ -130,10 +130,10 @@ Multiple apps run simultaneously through the same proxy:
 
 ```bash
 # Terminal 1
-yarn nx run app-one:dev:local    # → https://app-one.localhost
+yarn nx run app-one:dev:local # → https://app-one.localhost
 
 # Terminal 2
-yarn nx run app-two:dev:local    # → https://app-two.localhost
+yarn nx run app-two:dev:local # → https://app-two.localhost
 ```
 
 ## Naming Conventions

@@ -28,6 +28,7 @@ Run verification checks (tests, formatting, builds, linting, type checking) for 
 ### 2. Fallback: Check CI Configuration
 
 If project instructions do not specify commands, check CI configuration files:
+
 - `.github/workflows/*.yml` (GitHub Actions)
 - `azure-pipelines.yml` (Azure DevOps)
 - `Jenkinsfile` (Jenkins)
@@ -38,6 +39,7 @@ Extract the test, build, lint, and format commands from these files.
 ### 3. Detect Project Type
 
 If no configuration specifies commands, detect the project type:
+
 - **Nx workspace**: Check for `nx.json` or `project.json`
 - **C#/.NET**: Check for `*.csproj` or `*.sln` files
 - **Node.js**: Check for `package.json`
@@ -53,18 +55,19 @@ For affected detection and format checks, determine the base branch:
 
 ```bash
 # Auto-detect base branch
-BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||') || BASE_BRANCH="main"
+BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's|refs/remotes/origin/||') || BASE_BRANCH="main"
 ```
 
 ### 5. Discover Available Targets (Nx)
 
 For Nx projects, discover available targets before running:
+
 ```bash
 # List affected projects
 nx show projects --affected
 
 # Check what targets are available for a project
-nx show project <project-name> --json | jq '.targets | keys'
+nx show project < project-name > --json | jq '.targets | keys'
 
 # Or inspect project.json files directly
 ```
@@ -94,11 +97,11 @@ Run checks in this order (continue through ALL checks even if some fail):
 nx show projects --affected --base=$BASE_BRANCH
 
 # Formatting (note: format:check doesn't use --affected flag)
-nx format:check --base=$BASE_BRANCH  # Checks files changed from base branch
+nx format:check --base=$BASE_BRANCH # Checks files changed from base branch
 
 # Run affected targets (use --parallel for speed)
 nx affected -t lint --parallel --base=$BASE_BRANCH
-nx affected -t typecheck --parallel --base=$BASE_BRANCH  # If typecheck target exists
+nx affected -t typecheck --parallel --base=$BASE_BRANCH # If typecheck target exists
 nx affected -t build --parallel --base=$BASE_BRANCH
 
 # Tests - run different test targets as available
@@ -137,16 +140,16 @@ dotnet test --no-build --filter "Category=E2E"
 cat package.json | jq '.scripts | keys'
 
 # Common patterns:
-npm run format:check   # or: npx prettier --check .
-npm run lint           # or: npx eslint .
-npm run typecheck      # or: npx tsc --noEmit
+npm run format:check # or: npx prettier --check .
+npm run lint         # or: npx eslint .
+npm run typecheck    # or: npx tsc --noEmit
 npm run build
 
 # Tests - check package.json for available test scripts
-npm run test           # Unit tests
-npm run test:component # Component tests (if available)
+npm run test             # Unit tests
+npm run test:component   # Component tests (if available)
 npm run test:integration # Integration tests (if available)
-npm run test:e2e       # E2E tests (if available)
+npm run test:e2e         # E2E tests (if available)
 ```
 
 ## Critical Requirements
@@ -163,6 +166,7 @@ npm run test:e2e       # E2E tests (if available)
 Before running tests, discover what's available:
 
 **For Nx:**
+
 ```bash
 # See all targets across affected projects (use detected BASE_BRANCH)
 nx show projects --affected --base=$BASE_BRANCH -t test
@@ -172,10 +176,12 @@ nx show projects --affected --base=$BASE_BRANCH -t e2e
 ```
 
 **For C#:**
+
 - Check test project files for `[Category("Unit")]` etc. attributes
 - Check CI configuration for test filter patterns
 
 **For Node.js:**
+
 - Check `package.json` scripts section for test variations
 
 ### Handling Failures
@@ -188,6 +194,7 @@ nx show projects --affected --base=$BASE_BRANCH -t e2e
 ### Parallelization
 
 Use parallel execution where possible for faster feedback:
+
 - **Nx**: Use `--parallel` flag (e.g., `nx affected -t lint --parallel`)
 - **dotnet**: Tests run in parallel by default, can configure with `--parallel`
 - **npm**: Check if scripts support parallel execution

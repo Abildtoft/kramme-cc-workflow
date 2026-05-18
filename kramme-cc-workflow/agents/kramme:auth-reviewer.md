@@ -22,9 +22,10 @@ You are a security reviewer who maps the protection status of every operation in
 For each changed file, build a table:
 
 | Endpoint/Operation | Auth Required? | Auth Check Present? | Authz Check? | CSRF Protected? |
-|----|----|----|----|----|
+| --- | --- | --- | --- | --- |
 
 Include:
+
 - HTTP route handlers (GET, POST, PUT, DELETE, PATCH)
 - GraphQL mutations and sensitive queries
 - WebSocket message handlers
@@ -34,6 +35,7 @@ Include:
 ### 2. Audit Authentication
 
 For each endpoint that should require authentication:
+
 - Is the auth check applied before the handler logic executes?
 - Can authentication be bypassed by omitting a header, changing a parameter, or altering the request method?
 - Is token validation complete (signature, expiration, issuer, audience)?
@@ -42,6 +44,7 @@ For each endpoint that should require authentication:
 ### 3. Audit Authorization and IDOR
 
 For each endpoint that accesses resources:
+
 - Does it verify the requesting user has permission for this specific resource?
 - Can user A access user B's data by changing an ID in the request?
 - Can a regular user access admin functionality by guessing routes or parameters?
@@ -50,6 +53,7 @@ For each endpoint that accesses resources:
 ### 4. Audit CSRF and Session Management
 
 For state-changing operations:
+
 - Is CSRF protection applied? Verify the mechanism (token, SameSite cookies, custom headers for XHR-only endpoints).
 - On authentication state changes (login, logout, privilege escalation): is the session ID regenerated?
 - Are session cookies configured with Secure, HttpOnly, and SameSite attributes?

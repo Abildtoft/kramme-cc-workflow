@@ -3,31 +3,37 @@
 ## Unreleased
 
 ### Removed
+
 - Breaking: Removed separate team-mode skills (`kramme:pr:code-review:team`, `kramme:pr:resolve-review:team`, `kramme:pr:ux-review:team`, `kramme:siw:issue-implement:team`, `kramme:siw:spec-audit:team`, and `kramme:siw:implementation-audit:team`). Use the base skill with `--team` instead.
 
 ## [0.55.0] - 2026-05-15
 
 ### Added
+
 - Audit Pocock arch sources, absorb 4-category taxonomy (#332)
 - Add research pre-pass (#333)
 
 ### Changed
+
 - Gate PR-scoped findings (#334)
 
 ## [0.54.0] - 2026-05-02
 
 ### Added
+
 - Add auto mode to rebase skill (#330)
 - Include PR description as review context and target (#327)
 - Add wave/lane labels to breakdown-findings plans (#326)
 
 ### Changed
+
 - Scope refactor opportunity scans (#328)
 - Reduce file inventory guidance (#325)
 
 ## [0.53.0] - 2026-04-28
 
 ### Added
+
 - Add plan-split skill, drop reviewer size gate (#315)
 - Add source manifests and harden HITL gate (#316)
 - Add kramme:docs:out-of-scope rejection KB (#314)
@@ -43,6 +49,7 @@
 - Adapt Claude tool idioms in Codex skill output (#303)
 
 ### Changed
+
 - Extract document creation reference (#321)
 - Split implementation audit output steps (#322)
 - Split reverse-engineer spec skill references (#323)
@@ -55,6 +62,7 @@
 ## [0.52.0] - 2026-04-23
 
 ### Added
+
 - Add deprecate and ADR authoring workflows (#300)
 - Add rollout workflow and harden git hooks (#299)
 - Add kramme:code:deprecate skill, harden kramme:code:migrate (#298)
@@ -80,85 +88,103 @@
 ## [0.51.0] - 2026-04-19
 
 ### Added
+
 - Broaden breakdown-findings sources and harden opencode hooks (#277)
 
 ### Changed
+
 - Generalize instruction-file guidance (#276)
 - Inline shared refs so each skill is self-contained (#274)
 
 ### Fixed
+
 - Harden hooks and dedupe skill keyword docs (#275)
 
 ## [0.50.0] - 2026-04-18
 
 ### Added
+
 - Make draft PRs opt-in via --draft flag (#272)
 - Add breakdown-findings skill for decision-ready spec triage (#271)
 
 ## [0.49.0] - 2026-04-17
 
 ### Added
+
 - Add --after flag to recreate-commits and harden hook parsing (#268)
 - Add code:breakdown-findings skill with guarded plan artifacts (#269)
 - Add --emphasize flag and fix env unset/clear in hooks (#265)
 
 ### Changed
+
 - Add missing flags to skill documentation (#267)
 - Constrain code-simplifier to behavior-preserving changes (#264)
 
 ### Fixed
+
 - Handle env unset and clear in command parsing (#266)
 - Support compound commands and shell wrappers in git commit parsing (#261)
 
 ## [0.48.0] - 2026-04-09
 
 ### Added
+
 - Harden recreate-commits base branch resolution (#262)
 
 ## [0.47.0] - 2026-03-31
 
 ### Added
+
 - Add discovery-first workflow handoff (#258)
 - Add spec-audit auto-fix skill for mechanical findings (#259)
 - Add copy review skills for UI text redundancy analysis (#253)
 
 ### Changed
+
 - Strengthen product framing guidance (#255)
 
 ### Fixed
+
 - Allow model invocation for skills called from other skills (#256)
 
 ## [0.46.0] - 2026-03-22
 
 ### Added
+
 - Add --fix, --granular, and --severity flags to PR review skills (#251)
 
 ## [0.45.0] - 2026-03-22
 
 ### Fixed
+
 - Fetch remote base branch before diff comparison (#249)
 
 ## [0.44.0] - 2026-03-19
 
 ### Added
+
 - Add --granular flag for atomic decomposition (#244)
 
 ### Changed
+
 - Add inline report output options (#246)
 - Rename product skills to clarify audit vs review (#245)
 
 ### Fixed
+
 - Harden PR base branch resolution (#247)
 
 ## [0.43.0] - 2026-03-17
 
 ### Added
+
 - Add product design critic skill (#242)
 - Add auto-mode workflow support (#241)
 
 ## [0.42.0] - 2026-03-15
 
 ### Added
+
 - Add kramme:pr:product-review skill — deep product review of branch and local changes
 - Add kramme:siw:product-review skill — product critique of SIW specs/plans before implementation
 - Add kramme:browse skill — browser operator for live product inspection via MCP
@@ -168,6 +194,7 @@
 - Expand kramme:product-reviewer agent with PR/spec modes, 6 new review dimensions, and threshold philosophy
 
 ### Changed
+
 - Improve kramme:browse with explicit MCP detection probes and before/after state comparison pattern
 - Improve kramme:qa with health score rubric, framework-specific hints, regression baseline mode
 - Improve kramme:product:audit with previous-audit deduplication
@@ -180,19 +207,23 @@
 ## [0.41.0] - 2026-03-08
 
 ### Added
+
 - Add kramme:docs:add-greenfield-policy skill (#233)
 
 ## [0.40.0] - 2026-03-05
 
 ### Changed
+
 - Make README alert more welcoming (#231)
 
 ## [0.39.0] - 2026-03-05
 
 ### Added
+
 - Improve `migrate-store-ngrx` skill with patterns from UFA `certificationStore` migration (#224)
 
 ### Changed
+
 - Correct installation instructions for plugins (#220)
 - Align supporting file dirs with Agent Skills spec (#229)
 - Simplify argument names (#228)
@@ -200,25 +231,27 @@
 - Clarify personal workflow scope (#225)
 
 ### Fixed
+
 - Align review scope with PR target branch (#227)
 
 ## [0.38.0] - 2026-03-04
 
 ### Added
+
 - Support review-source and reply flags (#219)
 
 ### Changed
+
 - Clarify skill policy and release docs (#221)
 - Add Getting Started guide and fix skill count (#218)
 
 ### Fixed
+
 - Preserve skill resources in conversion (#222)
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 [0.55.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.54.0...v0.55.0
 [0.54.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.53.0...v0.54.0

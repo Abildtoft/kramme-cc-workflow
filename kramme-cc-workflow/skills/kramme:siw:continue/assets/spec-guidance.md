@@ -5,6 +5,7 @@
 **Location:** Create this file under the `siw/` folder in the project root.
 
 **Document name:** Choose in Phase 1 Step 0 based on project type:
+
 - `FEATURE_SPECIFICATION.md` - Feature implementation
 - `DOCUMENTATION_SPEC.md` - Documentation projects
 - `API_DESIGN.md` - API design work
@@ -22,6 +23,7 @@
 The spec should support progressive reading - agents won't always read the full document.
 
 **Use consistent task numbering that's easy to grep:**
+
 - `### Task X.Y: Title` or `#### Task X.Y: Title`
 - Keep task sections self-contained (don't require reading previous tasks)
 - Include acceptance criteria directly in each task section
@@ -29,10 +31,12 @@ The spec should support progressive reading - agents won't always read the full 
 **Include a brief "Overview" section at top** (~10 lines) for quick project context.
 
 **How agents will read this document:**
+
 ```bash
 # Find a specific task
 grep -n "### Task 2.1\|#### Task 2.1" siw/YOUR_SPEC.md
 ```
+
 Then read just that section (~30 lines).
 
 ## Typical Sections
@@ -88,6 +92,7 @@ siw/supporting-specs/
 ```
 
 **Naming rules:**
+
 - Numbers provide ordering (00-99)
 - Use lowercase with hyphens
 - Use letters for variants (e.g., `03a-`, `03b-`)
@@ -101,7 +106,7 @@ When using supporting specs, the main spec becomes a table of contents:
 ## Supporting Specifications
 
 | # | Document | Description |
-|---|----------|-------------|
+| --- | --- | --- |
 | 00 | [Overview](supporting-specs/00-overview.md) | High-level architecture |
 | 01 | [Data Model](supporting-specs/01-data-model.md) | Entity definitions |
 | 02 | [API Specification](supporting-specs/02-api-specification.md) | Endpoint contracts |
@@ -118,10 +123,12 @@ Tasks can reference supporting specs for details:
 **Details:** See `siw/supporting-specs/02-api-specification.md#user-endpoints`
 
 **Requirements:**
+
 - Implement endpoints as specified in API spec
 - Follow error handling patterns from spec
 
 **Acceptance Criteria:**
+
 - [ ] All user endpoints implemented per spec
 - [ ] Request/response schemas match spec
 ```
@@ -141,24 +148,33 @@ Tasks can reference supporting specs for details:
 **CRITICAL:** Supporting specs must reflect current implementation, not original plans.
 
 When implementation decisions are made during Step 10 (Spec Sync):
+
 - **Update the actual content** of the supporting spec, not just add to a "Design Decisions" section
 - Supporting specs should always be the source of truth for their domain
 
 **Example - API endpoint change:**
+
 ```markdown
 # Before (original plan)
+
 ## User Endpoints
+
 POST /api/users - Create new user
 
 # After (decision made during implementation)
+
 ## User Endpoints
+
 PUT /api/users/{id} - Create or update user
+
 > Changed from POST to PUT for idempotency (Decision #5)
 ```
 
 **Don't do this:**
+
 ```markdown
 ## Design Decisions
+
 Decision #5: Changed POST to PUT
 ```
 
@@ -172,11 +188,13 @@ The goal is that anyone reading the supporting spec sees the **current** design,
 **File**: `Connect/Connect.Api/Features/MyFeature/Entities/MyEntity.cs`
 
 **Requirements:**
+
 - Add `ActionNote` property (string?, nullable, max 500 chars)
 - Add `ActionByUserId` property (string?, nullable)
 - Update `PerformAction()` method signature to accept these parameters
 
 **Acceptance Criteria:**
+
 - [ ] Properties added with correct nullability
 - [ ] Method signature updated
 - [ ] Unit tests pass

@@ -41,11 +41,11 @@ Feature-scoped rules the implementer should follow. Keep project-wide rules out 
 
 What gets covered and at which tier. Do not prescribe test code — name the coverage intent.
 
-| Tier | What it covers |
-|------|----------------|
-| Unit | <pure-logic areas, edge cases, invariants> |
-| Integration | <module boundaries, data flow, contracts> |
-| E2E | <user-visible flows, critical paths> |
+| Tier        | What it covers                             |
+| ----------- | ------------------------------------------ |
+| Unit        | <pure-logic areas, edge cases, invariants> |
+| Integration | <module boundaries, data flow, contracts>  |
+| E2E         | <user-visible flows, critical paths>       |
 
 Mark any tier deliberately skipped with one line explaining why.
 

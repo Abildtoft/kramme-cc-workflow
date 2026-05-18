@@ -1,6 +1,6 @@
 # OWASP Top 10 — author-time patterns
 
-Purpose: the OWASP Top 10 is the canonical list of web-app vulnerability classes. Most write-ups describe them at review or incident time. This file describes each category *at author time* — the pattern to reach for when writing the relevant code, so the category never materializes.
+Purpose: the OWASP Top 10 is the canonical list of web-app vulnerability classes. Most write-ups describe them at review or incident time. This file describes each category _at author time_ — the pattern to reach for when writing the relevant code, so the category never materializes.
 
 Not a review checklist. Review coverage lives in the three reviewer agents (`kramme:auth-reviewer`, `kramme:data-reviewer`, `kramme:injection-reviewer`).
 
@@ -54,7 +54,7 @@ Downstream review: `kramme:data-reviewer`.
 
 **Pattern at author time**: authorize every action at the data layer, default deny, check resource ownership on every read and write.
 
-- Every handler that touches a resource asks, for the current principal: *are you allowed to see this row?*
+- Every handler that touches a resource asks, for the current principal: _are you allowed to see this row?_
 - Enforcement at the **data layer**, not only at the handler layer. A handler-only check that falls through to a shared helper is the IDOR shape.
 - Default deny: explicit allow-lists, not implicit "unless denied".
 - Object-level access: never trust a client-supplied ID without mapping it through an ownership or permission check.
@@ -83,9 +83,9 @@ Downstream review: `kramme:auth-reviewer`.
 
 ## 8. Insecure deserialization
 
-**Pattern at author time**: validate the shape *before* deserializing into an object graph.
+**Pattern at author time**: validate the shape _before_ deserializing into an object graph.
 
-- JSON is safe to parse but not safe to *trust*. Parse first, validate shape with a schema (Zod / Pydantic / equivalent) next, convert to domain types last.
+- JSON is safe to parse but not safe to _trust_. Parse first, validate shape with a schema (Zod / Pydantic / equivalent) next, convert to domain types last.
 - Language-native binary deserialization (`pickle`, `unserialize`, Java serialization) on untrusted input is a remote-code-execution primitive. Prefer JSON or a typed binary format like Protobuf.
 - Class allow-lists for any deserializer that instantiates types from the payload.
 - Signed payloads for inter-service messages that carry instructions.

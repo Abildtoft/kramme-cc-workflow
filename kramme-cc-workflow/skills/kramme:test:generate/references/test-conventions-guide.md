@@ -9,6 +9,7 @@ Analyze 3-5 existing test files and examine each dimension below. Record concret
 ## 1. Import Patterns
 
 Look at the first 10-20 lines:
+
 - **Named imports:** `import { describe, it, expect } from 'vitest'`
 - **Default imports:** `import supertest from 'supertest'`
 - **Require:** `const { expect } = require('chai')`
@@ -64,7 +65,7 @@ Record the exact import block pattern to replicate.
 ## 7. File Organization
 
 - **Co-located:** `src/user.ts` + `src/user.test.ts`
-- **__tests__:** `src/__tests__/user.test.ts`
+- \***\*tests**:\*\* `src/__tests__/user.test.ts`
 - **Separate directory:** `tests/user.test.ts` mirroring `src/user.ts`
 - **Go:** always co-located (convention)
 - **Shared helpers:** where do test utilities live?
@@ -72,6 +73,7 @@ Record the exact import block pattern to replicate.
 ## Building the Profile
 
 After analyzing files:
+
 1. **Use the majority pattern** as the convention
 2. **If patterns vary:** prefer the most recently modified file's style
 3. **If a dimension is missing:** use framework defaults

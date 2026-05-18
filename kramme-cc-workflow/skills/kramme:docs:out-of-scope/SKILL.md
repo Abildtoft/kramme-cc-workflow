@@ -56,6 +56,7 @@ Capture a settled rejection.
    ```
 
    If the user picks deferral, stop without writing.
+
 4. Gather rejection content via AskUserQuestion:
    - Substantive reason (project scope, technical constraints, or strategic decision; not "we're too busy").
    - Optional code sample illustrating a technical constraint.
@@ -95,6 +96,7 @@ Look up whether a concept has been rejected before.
    ```
 
    If continuing, note the prior rejection in subsequent output so callers can see the override.
+
 6. If no plausible match, print `no prior rejections found for <concept>`.
 
 ### `append <concept> <issue-ref>`
@@ -133,8 +135,7 @@ Files in `.out-of-scope/` follow the canonical structure in `assets/out-of-scope
 ```markdown
 # {Concept Name}
 
-Decided: {YYYY-MM-DD}
-Decided by: {name or role}
+Decided: {YYYY-MM-DD} Decided by: {name or role}
 
 ## Why this is out of scope
 

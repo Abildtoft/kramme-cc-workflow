@@ -70,6 +70,7 @@ Issue creation stays separate and should happen later via `/kramme:siw:resolve-a
 Read the active spec-audit run fully enough to extract every `SPEC-*` finding and its surrounding metadata.
 
 For each finding, collect:
+
 - Finding id and title
 - Severity section (`Critical`, `Major`, `Minor`)
 - Dimension
@@ -82,6 +83,7 @@ For each finding, collect:
 - Whether the heading or body marks it as `[Auto-fixed]`
 
 Ignore:
+
 - Summary tables
 - Dimension summaries
 - Non-`SPEC-*` findings
@@ -91,6 +93,7 @@ Ignore:
 ### 3.1 Default unresolved definition
 
 Without explicit `SPEC-*` ids, include only findings that are:
+
 - `SPEC-*`
 - not marked `[Auto-fixed]`
 - not already represented by an open SIW issue
@@ -100,10 +103,12 @@ Without explicit `SPEC-*` ids, include only findings that are:
 If `siw/` exists, prefer live SIW state over stale report annotations.
 
 Check these sources when present:
+
 - `siw/OPEN_ISSUES_OVERVIEW.md`
 - `siw/issues/*.md`
 
 Treat a finding as already tracked when an issue references the same `SPEC-*` id and the issue is still open:
+
 - `READY`
 - `IN PROGRESS`
 - `IN REVIEW`
@@ -111,11 +116,13 @@ Treat a finding as already tracked when an issue references the same `SPEC-*` id
 Do **not** treat `DONE` issues as open.
 
 If live SIW state is missing or inconclusive, fall back to the report annotation:
+
 - `Existing issue: ISSUE-G-...`
 
 ### 3.3 Explicit finding filters
 
 If the user passed one or more `SPEC-*` ids:
+
 - Select only those findings
 - Include them even if they are auto-fixed or already tracked by an open issue
 - Annotate that state clearly in the output
@@ -125,6 +132,7 @@ If any requested `SPEC-*` id is not found in the report, stop and list the missi
 ### 3.4 Output ordering
 
 When no explicit ids are passed, order findings like this:
+
 1. Critical findings, plus Minor findings whose `Severity Note` says `from Critical`
 2. Major findings, plus Minor findings whose `Severity Note` says `from Major`
 3. Remaining Minor findings
@@ -138,6 +146,7 @@ Produce one inline response only. Do not split findings across multiple messages
 ### 4.1 Start with a short overview
 
 Include:
+
 - report path used
 - number of findings selected
 - number skipped as auto-fixed
@@ -146,6 +155,7 @@ Include:
 If explicit `SPEC-*` ids were used, state that the normal unresolved-only filter was overridden.
 
 If no findings remain after filtering:
+
 - State that no unresolved `SPEC-*` findings were found
 - Mention whether all findings were auto-fixed, already tracked, or absent
 - Skip the per-finding breakdown
@@ -164,12 +174,14 @@ For every selected finding, use this exact section order:
 ### 4.3 Executive summary
 
 Cover:
+
 - What the spec currently says or fails to say
 - Which quality dimension is affected
 - Which spec section(s) are impacted
 - Why this matters for implementation
 
 If the finding was explicitly requested but is already tracked or auto-fixed, add a short state note before the summary:
+
 - `State: already tracked by open issue {issue_id}`
 - `State: marked [Auto-fixed] in the audit report`
 
@@ -178,6 +190,7 @@ If the finding was explicitly requested but is already tracked or auto-fixed, ad
 Use the audit report as the evidence source.
 
 Include:
+
 - short quotes or paraphrases from the finding
 - spec file and section references when present
 - `Severity Note` when present and relevant to urgency
@@ -187,11 +200,13 @@ Do not quote more than needed. Favor concise excerpts and paraphrase the rest.
 ### 4.5 Resolution options
 
 Provide 2-3 concrete options. Include at least:
+
 - **Option A (Targeted addition)**: Add the minimum missing detail, rule, or section
 - **Option B (Section rework)**: Rewrite or restructure the affected section for clarity and completeness
 - **Option C (Defer / accept as-is)**: Only when it is genuinely credible
 
 For each option include:
+
 - What changes in the spec
 - Pros
 - Cons
@@ -202,6 +217,7 @@ Keep the options materially different. Do not present cosmetic variants of the s
 ### 4.6 Recommendation
 
 Pick one option and justify it explicitly using:
+
 - clarity for implementors
 - ambiguity or rework reduction
 - effort to revise the spec

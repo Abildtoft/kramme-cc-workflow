@@ -2,9 +2,7 @@
 
 ## Bug
 
-**Description:** {description}
-**Source:** {user report / error log / Linear issue}
-**Date:** {date}
+**Description:** {description} **Source:** {user report / error log / Linear issue} **Date:** {date}
 
 ## Timeline
 

@@ -5,6 +5,7 @@ argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 ---
+
 # Product Audit of SIW Specs
 
 Critique specification documents from a product perspective before implementation begins. This is a spec-only analysis — no codebase code is read or compared.
@@ -54,16 +55,19 @@ Critique specification documents from a product perspective before implementatio
 `$ARGUMENTS` contains the spec file path(s) or keyword.
 
 **Extract control flags first:**
+
 - If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag before processing remaining arguments.
 - If `$ARGUMENTS` contains `--inline`, set `INLINE_MODE=true` and remove the flag before processing remaining arguments.
 
 `--auto` means:
+
 - replace any previous product review automatically
 - create SIW issues for **Critical and Major** findings when Step 7 applies
 - skip the report overwrite / issue-creation prompts
 - if Work Context is `Prototype` or `Refactor`, skip the product review and direct the user to `/kramme:siw:spec-audit`
 
 **Detection rules:**
+
 1. **File path(s)**: Contains `/` or ends in `.md`, `.txt`
 2. **Keyword `siw`**: Explicitly requests auto-detection
 3. **Empty**: Default to auto-detection
@@ -77,7 +81,7 @@ Critique specification documents from a product perspective before implementatio
    - Verify file exists with `ls {path}`
    - If path is a directory, scan for markdown files:
      ```bash
-     find {path} -maxdepth 2 -type f -name "*.md" 2>/dev/null
+     find {path} -maxdepth 2 -type f -name "*.md" 2> /dev/null
      ```
    - If file doesn't exist, warn and skip.
 3. Store verified paths as `spec_files`.
@@ -97,8 +101,9 @@ Provided: {arguments}
 Auto-detect spec files from the `siw/` directory:
 
 1. Check if `siw/` exists:
+
    ```bash
-   ls siw/ 2>/dev/null
+   ls siw/ 2> /dev/null
    ```
 
 2. Find spec files (exclude workflow files):
@@ -157,7 +162,7 @@ After reading all spec files, look for a `## Work Context` section in the spec f
 For each spec file, identify and extract:
 
 | Element | What to look for |
-|---------|-----------------|
+| --- | --- |
 | Target User | Who is the user? Persona, role, segment, or archetype |
 | Problem Statement | What problem is being solved? Current pain, unmet need |
 | Proposed Solution | What is being built? Core approach, key decisions |
@@ -171,6 +176,7 @@ For each spec file, identify and extract:
 | Phases / Milestones | How is delivery sequenced? What ships first? |
 
 For each element, capture:
+
 - **source_file**: Which spec file
 - **source_section**: Heading hierarchy
 - **content_summary**: Brief description of what the section contains
@@ -242,7 +248,7 @@ Read `references/product-reviewer-prompt.md`, fill in the placeholders, and laun
 Gather all findings from the reviewer agent. Assign final severity using:
 
 | Severity | Criteria |
-|----------|----------|
+| --- | --- |
 | **Critical** | Would lead to building the wrong thing or shipping something users can't use. Missing target user, solution doesn't fit problem, no error recovery, undeliverable scope. |
 | **Major** | Risks a poor user experience or significant rework. Missing states, weak success criteria, phasing that delays value, gaps in critical moments. |
 | **Minor** | Low-risk product concerns. Missing edge states, suboptimal naming, cosmetic flow issues. |
@@ -297,10 +303,12 @@ options:
 Use the report format template from `assets/product-audit-report-format.md`.
 
 If `INLINE_MODE=true`:
+
 - Reply with the fully populated report inline
 - Do **not** create or update `siw/PRODUCT_AUDIT.md` or `PRODUCT_AUDIT.md`
 
 Otherwise, after writing:
+
 ```
 Product review written to: {path}
 ```
@@ -310,6 +318,7 @@ Product review written to: {path}
 ## Step 7: Optionally Create SIW Issues
 
 **Only if ALL of these conditions are met:**
+
 - `siw/OPEN_ISSUES_OVERVIEW.md` exists (SIW workflow is active)
 - `siw/issues/` exists or can be created
 - `siw/LOG.md` exists or can be created
@@ -391,20 +400,25 @@ Suggested next steps:
 ## Error Handling
 
 ### Spec File Errors
+
 - File not found: Warn and skip, continue with remaining files.
 - File empty or unreadable: Warn, suggest checking file path.
 
 ### Linked Spec (TOC) Detection
+
 - If the main spec is a lightweight TOC linking to supporting specs, automatically include the supporting specs in the review. Do not review the TOC structure alone.
 
 ### No Product Elements Found
+
 - If spec has no clear product elements: Proceed anyway — the absence of product elements is itself a finding.
 
 ### Explore Agent Failures
+
 - If the agent returns incomplete results: Note affected dimensions as "Incomplete analysis" in the report.
 - If the agent times out: Report which dimensions were affected, suggest re-running.
 
 ### SIW Workflow Not Active
+
 - Skip issue creation (Step 7).
 - Report file goes to project root instead of `siw/`.
 - All other steps work the same.

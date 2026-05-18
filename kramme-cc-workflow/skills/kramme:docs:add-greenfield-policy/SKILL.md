@@ -17,7 +17,7 @@ Add the Hard-Cut Greenfield Policy section to the project's agent instructions f
    3. If neither exists, create `AGENTS.md` in the project root.
 
    ```bash
-   ls -la AGENTS.md CLAUDE.md 2>/dev/null
+   ls -la AGENTS.md CLAUDE.md 2> /dev/null
    ```
 
 2. **Check for existing section** — Read the target file and search for the heading `## Hard-Cut Greenfield Policy`. If the section already exists, report that the policy is already present and stop. Do not duplicate it.
@@ -26,8 +26,7 @@ Add the Hard-Cut Greenfield Policy section to the project's agent instructions f
 
 4. **Add the policy section** — Add the following block. Include a blank line before the heading to ensure proper markdown separation from preceding content.
 
-   ~~~markdown
-
+   ```markdown
    ## Hard-Cut Greenfield Policy
 
    - This application currently has no external installed user base; optimize for one canonical current-state implementation, not compatibility with historical local states.
@@ -35,8 +34,7 @@ Add the Hard-Cut Greenfield Policy section to the project's agent instructions f
    - Prefer:
      - one canonical current-state codepath
      - fail-fast diagnostics
-     - explicit recovery steps
-     over:
+     - explicit recovery steps over:
      - automatic migration
      - compatibility glue
      - silent fallbacks
@@ -47,6 +45,6 @@ Add the Hard-Cut Greenfield Policy section to the project's agent instructions f
      - exact deletion criteria
      - the ADO/task that tracks its removal
    - Default stance across the app: delete old-state compatibility code rather than carrying it forward.
-   ~~~
+   ```
 
 5. **Confirm result** — Report which file was modified (or created) and that the Hard-Cut Greenfield Policy section was added successfully.

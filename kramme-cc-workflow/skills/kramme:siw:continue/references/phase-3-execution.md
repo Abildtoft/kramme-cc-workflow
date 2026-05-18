@@ -16,12 +16,14 @@ grep -n "### Task X.Y\|#### Task X.Y" siw/YOUR_SPEC.md
 Then read from that line with `limit: 30` lines.
 
 **What to check in the task section:**
+
 - Task details and acceptance criteria
 - Success criteria
 - Requirements and constraints
 - Suggested execution order
 
 **Read the full spec only during:**
+
 - Initial planning (Phase 1)
 - Final review (Phase 4)
 
@@ -30,6 +32,7 @@ Then read from that line with `limit: 30` lines.
 If the task references a supporting spec (e.g., "See `siw/supporting-specs/02-api-specification.md#endpoints`"):
 
 1. **Find the section** in the supporting spec:
+
    ```bash
    grep -n "## Endpoints\|### Endpoints" siw/supporting-specs/02-api-specification.md
    ```
@@ -58,16 +61,17 @@ If the task references a supporting spec (e.g., "See `siw/supporting-specs/02-ap
 ### 3. Don't Reference Temporary Documents in Deliverables
 
 **NEVER reference these temporary documents in final deliverables:**
+
 - siw/OPEN_ISSUES_OVERVIEW.md
-- siw/issues/*.md
+- siw/issues/\*.md
 - siw/LOG.md
 
 **CAN reference these permanent documents:**
-- siw/[YOUR_SPEC].md (main spec)
-- siw/supporting-specs/*.md (supporting specifications)
 
-**For code:** No references to temporary docs in comments, XML docs, JSDoc, error messages, or logs
-**For documentation:** No references to temporary docs in published content
+- siw/[YOUR_SPEC].md (main spec)
+- siw/supporting-specs/\*.md (supporting specifications)
+
+**For code:** No references to temporary docs in comments, XML docs, JSDoc, error messages, or logs **For documentation:** No references to temporary docs in published content
 
 **NOTE:** Temporary documents (LOG.md, issues/) are deleted after project completion; permanent documents (spec, supporting-specs) are kept.
 

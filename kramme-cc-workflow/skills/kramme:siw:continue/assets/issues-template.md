@@ -8,12 +8,12 @@ The issues system uses **progressive disclosure**: a lightweight overview file p
 
 Issues use a **prefix-based numbering** scheme:
 
-| Prefix | Purpose | Example |
-|--------|---------|---------|
-| `G-` | General issues (non-phase, standalone) | `ISSUE-G-001-setup.md` |
-| `P1-` | Phase 1 issues | `ISSUE-P1-001-database.md` |
-| `P2-` | Phase 2 issues | `ISSUE-P2-001-api.md` |
-| `P3-` | Phase 3 issues (etc.) | `ISSUE-P3-001-frontend.md` |
+| Prefix | Purpose                                | Example                    |
+| ------ | -------------------------------------- | -------------------------- |
+| `G-`   | General issues (non-phase, standalone) | `ISSUE-G-001-setup.md`     |
+| `P1-`  | Phase 1 issues                         | `ISSUE-P1-001-database.md` |
+| `P2-`  | Phase 2 issues                         | `ISSUE-P2-001-api.md`      |
+| `P3-`  | Phase 3 issues (etc.)                  | `ISSUE-P3-001-frontend.md` |
 
 **Default:** `/kramme:siw:issue-define` defaults to `G-` but can use `P1-`, `P2-`, etc. when the issue fits an active (not completed) phase. `/kramme:siw:generate-phases` typically creates `P1-`, `P2-`, etc. issues (and `G-` for cross-cutting tasks).
 
@@ -50,17 +50,17 @@ siw/issues/
 
 **Parallelization:** Needs coordination
 
-| # | Title | Status | Size | Priority | Related |
-|---|-------|--------|------|----------|---------|
-| G-001 | Project Setup | DONE | S | High | |
-| G-002 | Documentation | READY | XS | Low | |
+| #     | Title         | Status | Size | Priority | Related |
+| ----- | ------------- | ------ | ---- | -------- | ------- |
+| G-001 | Project Setup | DONE   | S    | High     |         |
+| G-002 | Documentation | READY  | XS   | Low      |         |
 
 ## Phase 1: Foundation
 
 **Parallelization:** Needs coordination
 
 | # | Title | Status | Size | Priority | Related |
-|---|-------|--------|------|----------|---------|
+| --- | --- | --- | --- | --- | --- |
 | P1-001 | Data Tracking Strategy | IN PROGRESS | M | High | Task 1.0, 1.1 |
 | P1-002 | API Design Pattern | IN REVIEW | S | Medium | Task 2.1 |
 
@@ -68,9 +68,9 @@ siw/issues/
 
 **Parallelization:** Must be sequential
 
-| # | Title | Status | Size | Priority | Related |
-|---|-------|--------|------|----------|---------|
-| P2-001 | Validation Logic | READY | M | High | P1-001, P1-002 |
+| #      | Title            | Status | Size | Priority | Related        |
+| ------ | ---------------- | ------ | ---- | -------- | -------------- |
+| P2-001 | Validation Logic | READY  | M    | High     | P1-001, P1-002 |
 
 **Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
 
@@ -102,21 +102,25 @@ Need tracking strategy for user actions on MyEntity.
 ### Option A: Add IAuditable Interface
 
 **Pros:**
+
 - Automatic tracking
 - Consistent with audit pattern
 
 **Cons:**
+
 - Redundant data (CreatedBy already tracked)
 - Not all entities need full audit
 
 ### Option B: Explicit ActionByUserId Property
 
 **Pros:**
+
 - Clear intent
 - Immutable after action
 - Lightweight
 
 **Cons:**
+
 - Manual implementation
 - Need to remember to set it
 
@@ -137,11 +141,13 @@ _To be filled when decision is made, then document in siw/LOG.md._
 ### Creating a New Issue
 
 **If this is the first issue (no issues exist yet):**
+
 1. Create `siw/issues/` directory
 2. Create `siw/OPEN_ISSUES_OVERVIEW.md` using the template above
 3. Create `siw/issues/ISSUE-G-001-short-title.md` using the template above
 
 **If issues already exist:**
+
 1. Determine the prefix:
    - Use `G-` for general/standalone issues (default for `/kramme:siw:issue-define`)
    - Use `P1-`, `P2-`, etc. for phase-specific issues

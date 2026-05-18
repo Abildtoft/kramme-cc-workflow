@@ -35,7 +35,7 @@ Use this when:
 
 ## Authorization & access control
 
-- [ ] Every handler that reads or mutates a user-scoped resource checks *this principal may touch this resource*, at the data layer.
+- [ ] Every handler that reads or mutates a user-scoped resource checks _this principal may touch this resource_, at the data layer.
 - [ ] Object references from the client (IDs in URL, body, headers) are validated against an ownership or permission predicate before use.
 - [ ] Admin endpoints guarded by an explicit admin predicate, not "happens to be logged in".
 - [ ] Default-deny on new endpoints: if the authorization requirement hasn't been stated, do not expose the route.
@@ -66,7 +66,7 @@ Use this when:
 - [ ] Redirects have a target-origin allow-list.
 - [ ] `eval`, `new Function(...)`, `setTimeout("...")`, `setInterval("...")`, dynamic `import()` of user paths all absent.
 
-**Why grouped together**: every injection class is *user data flowing to a sink that interprets it as code or syntax*. Walking the sinks is the reliable way to find them.
+**Why grouped together**: every injection class is _user data flowing to a sink that interprets it as code or syntax_. Walking the sinks is the reliable way to find them.
 
 ## XSS defense
 

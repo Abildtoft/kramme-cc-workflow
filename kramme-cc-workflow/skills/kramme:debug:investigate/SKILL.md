@@ -164,18 +164,21 @@ Compile the investigation log:
 ## Investigation: {BUG_DESCRIPTION}
 
 ### Timeline
+
 1. [REPRODUCE] {method} → {result}
 2. [ISOLATE] Scope: {files/functions}
 3. [TRACE] {method used}
 4. [ROOT CAUSE] {description} at {file}:{line}
 
 ### Root Cause Analysis
+
 - **What:** {what goes wrong}
 - **Where:** {file}:{line}
 - **Why:** {explanation of the mechanism}
 - **When introduced:** {commit if bisected, else "unknown"}
 
 ### Evidence
+
 {code snippets, test output, bisect results}
 ```
 
@@ -211,20 +214,24 @@ If **Report only**: skip to Step 8.
 ## Step 7: Implement and Verify
 
 ### 7a. Apply the Fix
+
 - Make the **minimal code change** that addresses the root cause.
 - Avoid unrelated refactoring — fix only the bug.
 - Log: `[FIX] Applied at {file}:{line}`
 
 ### 7b. Write Regression Test (if requested)
+
 - Write a test that **fails without the fix** and **passes with it** (red-green).
 - Place near existing tests for the affected module.
 - Log: `[TEST] Regression test at {test_file}`
 
 ### 7c. Verify
+
 - Run verification: reference `/kramme:verify:run` if available.
 - Check: regression test passes, no existing tests broken, build succeeds.
 
 ### 7d. Iterate if Needed
+
 - If verification fails: analyze and adjust the fix.
 - **Maximum 3 iterations.** After 3 attempts, present failures to user.
 - Log: `[VERIFY] Tests: {PASS/FAIL}, Build: {PASS/FAIL}`
@@ -261,7 +268,7 @@ Investigation Log:
 ## Error Handling
 
 | Scenario | Action |
-|---|---|
+| --- | --- |
 | Error message not found in codebase | Widen search: partial matches, case-insensitive, related symbols. Ask user for context. |
 | Git bisect fails | Fall back to manual trace using investigation patterns. |
 | Fix verification fails after 3 iterations | Present failures, suggest manual investigation. |

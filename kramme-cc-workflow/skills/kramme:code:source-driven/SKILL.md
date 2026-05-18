@@ -15,7 +15,7 @@ Ground framework and library decisions in official documentation. Training data 
 - Especially when the project uses a recent version (released in the last 12 months) where training data is likely stale.
 - Version migrations — pair with `kramme:code:migrate`.
 - API design decisions that depend on web standards (REST conventions, HTTP semantics, browser capabilities).
-- Any time the right answer depends on what the docs say *today*, not what you remember.
+- Any time the right answer depends on what the docs say _today_, not what you remember.
 
 Skip for: generic programming concepts, internal project code, and well-established language-level features that haven't changed in years.
 
@@ -106,7 +106,7 @@ Imprecise fetches return pages of navigation and marketing; precise fetches retu
 - **Canonical docs-grounding entry point**: when another skill depends on current third-party framework/library behavior, it should point here rather than restating its own ad hoc doc-fetch rules. This skill owns the DETECT / FETCH / CITE discipline.
 - **Upstream/paired**: `kramme:code:migrate` — version migrations are the highest-value use case for this skill. The migration target version is the stack you need current docs for.
 - **Sibling authoring**: `kramme:code:frontend-authoring` — when UI work depends on framework-specific hooks, router behavior, server/client boundaries, or third-party component-library APIs, ground those decisions here and build the component there.
-- **Pairs well with**: any implementation skill touching external libraries. This skill owns *how to cite*; implementation skills own *what to build*.
+- **Pairs well with**: any implementation skill touching external libraries. This skill owns _how to cite_; implementation skills own _what to build_.
 
 ---
 
@@ -114,13 +114,13 @@ Imprecise fetches return pages of navigation and marketing; precise fetches retu
 
 These are the lies you will tell yourself to skip the source step. Each one has a correct response:
 
-- *"I've used this library a hundred times, I don't need to check."* → Your last ten times may have been on an older version. Emit `STACK DETECTED` and at minimum skim the changelog.
-- *"The docs probably say the same thing my training data does."* → Often they don't. That's the bug you're about to ship.
-- *"I'll mention it might be outdated."* → Disclaimers don't help; flag with `UNVERIFIED` or verify.
-- *"Stack Overflow had a clear answer."* → Stack Overflow is not in the Source Hierarchy. Use it to find the official page, not as the citation.
-- *"The homepage is good enough for the link."* → No. Deep link or don't cite.
-- *"I'll add citations later."* → You won't. Cite in the commit that introduces the decision.
-- *"Two docs disagree, I'll just pick one."* → Emit `CONFLICT DETECTED` and name your resolution. Silent picks are unreviewable.
+- _"I've used this library a hundred times, I don't need to check."_ → Your last ten times may have been on an older version. Emit `STACK DETECTED` and at minimum skim the changelog.
+- _"The docs probably say the same thing my training data does."_ → Often they don't. That's the bug you're about to ship.
+- _"I'll mention it might be outdated."_ → Disclaimers don't help; flag with `UNVERIFIED` or verify.
+- _"Stack Overflow had a clear answer."_ → Stack Overflow is not in the Source Hierarchy. Use it to find the official page, not as the citation.
+- _"The homepage is good enough for the link."_ → No. Deep link or don't cite.
+- _"I'll add citations later."_ → You won't. Cite in the commit that introduces the decision.
+- _"Two docs disagree, I'll just pick one."_ → Emit `CONFLICT DETECTED` and name your resolution. Silent picks are unreviewable.
 
 ## Red Flags
 

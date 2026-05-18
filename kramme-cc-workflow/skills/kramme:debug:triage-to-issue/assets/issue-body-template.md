@@ -28,6 +28,7 @@ The title should remain meaningful after a refactor that renames internal helper
 [1–3 sentences describing the observable behavior in module / contract language. No file paths, no line numbers.]
 
 **Steps to reproduce:**
+
 1. [Step 1 — user-visible action]
 2. [Step 2 — user-visible action]
 3. **Bug:** [What happens that shouldn't]
@@ -36,10 +37,7 @@ The title should remain meaningful after a refactor that renames internal helper
 
 ## Root Cause Analysis
 
-**What:** [The misbehavior, in contract language]
-**Where:** [Public module / surface — e.g., "the auth middleware", "the rate limiter"]
-**Why:** [The mechanism — what assumption fails or what state goes wrong]
-**Confidence:** High / Medium / Low
+**What:** [The misbehavior, in contract language] **Where:** [Public module / surface — e.g., "the auth middleware", "the rate limiter"] **Why:** [The mechanism — what assumption fails or what state goes wrong] **Confidence:** High / Medium / Low
 
 [Optional 1–2 sentences of additional context if the mechanism is non-obvious.]
 
@@ -47,11 +45,9 @@ The title should remain meaningful after a refactor that renames internal helper
 
 Numbered RED-GREEN cycles. Each RED asserts on observable behavior through a public interface. Each GREEN is the minimal change to pass.
 
-1. **RED:** [Behavior assertion — e.g., "Calling the auth middleware with an expired token returns a 401 response"]
-   **GREEN:** [Minimal change description — e.g., "Add the expiry check before the signature check in the middleware's verify path"]
+1. **RED:** [Behavior assertion — e.g., "Calling the auth middleware with an expired token returns a 401 response"] **GREEN:** [Minimal change description — e.g., "Add the expiry check before the signature check in the middleware's verify path"]
 
-2. **RED:** [Next assertion]
-   **GREEN:** [Next minimal change]
+2. **RED:** [Next assertion] **GREEN:** [Next minimal change]
 
 **Prove-It regression test:**
 

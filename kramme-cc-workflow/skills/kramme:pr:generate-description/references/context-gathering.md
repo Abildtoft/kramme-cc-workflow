@@ -26,7 +26,6 @@
    - Use this for analysis and scoping only. Do not reproduce the changed-file list in the final PR body unless a specific file is a non-obvious review landmark.
 
 3. **ALWAYS** categorize changed files by area:
-
    - **Frontend**: Files under `Connect/ng-app-monolith/`
    - **Backend**: Files under `Connect/Connect.Api/`, `Connect/Connect.Core/`, etc.
    - **Tests**: Files matching `*.spec.ts`, `*.test.ts`, or under `tests/` directories
@@ -58,7 +57,6 @@
 ### 2.3 Linear Issue Context
 
 1. **ALWAYS** check if branch name contains a Linear issue ID:
-
    - Pattern: `{initials}/{team-issue-id}-{description}`
    - **Known team abbreviations**: WAN, HEA, MEL, POT, FIR, FEG
    - **EXAMPLE**: `mab/wan-521-ensure-that-platform-picker-page-is-only-shown-if-the-user`
@@ -73,14 +71,12 @@
    ```
 
 3. **ALWAYS** include in context:
-
    - Issue title
    - Issue description
    - Issue state
    - Related project/labels
 
 4. **ALWAYS** compare implementation against Linear issue description:
-
    - Check if the actual changes align with what was described in the issue
    - **ALWAYS** note any significant divergences from the original issue scope
    - **ALWAYS** identify if features were added/removed compared to issue description
@@ -94,7 +90,6 @@
 ### 2.4 Code Structure Analysis
 
 1. **ALWAYS** analyze the scope of changes:
-
    - Frontend-only: Only files under `ng-app-monolith/`
    - Backend-only: Only files under `Connect/` (excluding `ng-app-monolith/`)
    - Full-stack: Changes in both areas
@@ -102,7 +97,6 @@
    - Documentation-only: Only `.md` files modified
 
 2. **ALWAYS** identify change characteristics:
-
    - **New feature**: New files created, new functionality added
    - **Bug fix**: Primarily modifications to existing files, issue mentions "bug" or "fix"
    - **Refactor**: Code reorganization without behavior change
@@ -120,7 +114,6 @@
 **ALWAYS** check for implementation decisions and context from the development process:
 
 1. **Specification Files** (commonly created by Structured Implementation Workflow/SIW):
-
    - **ALWAYS** search for these files in the `siw/` directory:
      - `siw/SPEC.md` - Main specification document
      - `siw/LOG.md` - Implementation log/journal
@@ -133,7 +126,6 @@
    ```
 
 2. **Read specification files if found**:
-
    - Extract key technical decisions made during implementation
    - Identify scope changes or refinements
    - Note any deviations from original plan with rationale
@@ -142,7 +134,6 @@
    - Look for reviewer-relevant context (performance considerations, security implications, etc.)
 
 3. **Review conversation history**:
-
    - **ALWAYS** scan the current conversation for:
      - Architecture or design decisions discussed with the user
      - Trade-offs explicitly considered (e.g., "chose approach A over B because...")

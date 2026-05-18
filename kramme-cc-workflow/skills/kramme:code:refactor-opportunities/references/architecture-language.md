@@ -5,7 +5,7 @@ A controlled vocabulary for talking about depth, seams, and indirection. Use the
 ## Glossary
 
 | Term | Definition | Avoid |
-|---|---|---|
+| --- | --- | --- |
 | **Module** | A unit that hides a chunk of complexity behind a smaller interface than the complexity it contains. The unit-of-encapsulation. | "Component", "service" — both overloaded with framework-specific meanings. |
 | **Interface** | The public surface of a module: types, methods, invariants, error modes. What callers depend on. | "API" — too general, also implies HTTP. |
 | **Implementation** | Everything the interface hides. Internal data structures, helper functions, and any complexity that doesn't escape. | "Internals" is fine; "private code" is fine. |
@@ -27,6 +27,7 @@ A controlled vocabulary for talking about depth, seams, and indirection. Use the
 ## Worked example: shallow wrapper
 
 **Before** (`src/orders/save.ts`):
+
 ```ts
 // Calls db.orders.insert and translates a DB error into an OrderSaveError.
 export async function saveOrder(o: Order) {
@@ -47,11 +48,13 @@ Used by one caller (`src/orders/checkout.ts`).
 **Finding text** (the format Phase 4 emits):
 
 > `src/orders/save.ts:1-10` — **shallow wrapper** (depth/seam category, severity: low). `saveOrder` adds a layer over `db.orders.insert` without hiding meaningful complexity.
+>
 > - Deletion test: inlining at the 1 call site removes 4 lines and increases nothing.
 > - Adapter count: 1 (no alternate DB path exists).
 > - Suggested fix: inline at the call site; let the caller catch and translate the error directly.
 
 **After** (inlined):
+
 ```ts
 // in checkout.ts
 try {
@@ -66,6 +69,7 @@ Net: −1 export, −1 file in the import graph, same caller complexity. Depth r
 ## How to apply in findings
 
 A finding tagged Structural or Coupling must include:
+
 - The relevant glossary term (e.g., "shallow wrapper", "speculative seam", "low-leverage adapter").
 - A one-line **deletion test** result.
 - An **adapter count** when claiming a seam is speculative.

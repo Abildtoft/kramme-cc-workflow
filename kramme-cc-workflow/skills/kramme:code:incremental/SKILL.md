@@ -53,6 +53,7 @@ See `references/scope-discipline.md` for the full prohibition list and rationale
 One logical change per slice. If a slice is doing two things, split it. A slice can touch multiple files as long as they serve the same single logical change.
 
 Signs you are doing two things:
+
 - The commit message wants to use "and".
 - The diff has two independent review paths.
 - Reverting one part without the other still leaves a coherent state.
@@ -128,12 +129,12 @@ When this skill runs against refactor work — explicit `--refactor` flag, invoc
 
 These are the lies you will tell yourself to justify scope creep. Each one has a correct response:
 
-- *"It's just a one-line cleanup while I'm here."* → Emit `NOTICED BUT NOT TOUCHING`. Log it for a future slice.
-- *"The abstraction is obvious, I'll build it now."* → Rule of three. Wait for the third use case.
-- *"This test is flaky, let me rewrite it."* → Unrelated slice. File separately and continue with the current slice.
-- *"I'll split the commit later."* → You won't. Split it now.
-- *"The build is broken anyway, one more broken commit doesn't matter."* → It matters for bisect and revert. Fix the build before the next commit.
-- *"This change is too small to need a flag."* → Then it's too small to be incomplete. Finish it or flag it.
+- _"It's just a one-line cleanup while I'm here."_ → Emit `NOTICED BUT NOT TOUCHING`. Log it for a future slice.
+- _"The abstraction is obvious, I'll build it now."_ → Rule of three. Wait for the third use case.
+- _"This test is flaky, let me rewrite it."_ → Unrelated slice. File separately and continue with the current slice.
+- _"I'll split the commit later."_ → You won't. Split it now.
+- _"The build is broken anyway, one more broken commit doesn't matter."_ → It matters for bisect and revert. Fix the build before the next commit.
+- _"This change is too small to need a flag."_ → Then it's too small to be incomplete. Finish it or flag it.
 
 ## Red Flags
 

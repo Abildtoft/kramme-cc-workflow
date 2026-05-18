@@ -22,6 +22,7 @@ Break down a specification into atomic, committable issues organized into phases
 ## Issue Numbering Scheme
 
 Use **phase-prefixed numbering** for clear organization:
+
 - Phase 1 tasks: `ISSUE-P1-001`, `ISSUE-P1-002`, `ISSUE-P1-003`...
 - Phase 2 tasks: `ISSUE-P2-001`, `ISSUE-P2-002`...
 - General tasks: `ISSUE-G-001`, `ISSUE-G-002`... (cross-cutting concerns like setup, tooling, documentation)
@@ -59,8 +60,9 @@ Before executing Phase 2 or any later step, read `references/quality-gates.md` s
 ### 1.1 Validate SIW Workflow Exists
 
 Check for `siw/OPEN_ISSUES_OVERVIEW.md`:
+
 ```bash
-ls siw/OPEN_ISSUES_OVERVIEW.md 2>/dev/null
+ls siw/OPEN_ISSUES_OVERVIEW.md 2> /dev/null
 ```
 
 **If not found:** Inform user and suggest running `/kramme:siw:init` first. Stop.
@@ -70,24 +72,28 @@ ls siw/OPEN_ISSUES_OVERVIEW.md 2>/dev/null
 **If `$ARGUMENTS` provided:** Use as spec path.
 
 **Otherwise:** Glob for spec files:
+
 ```bash
 ls siw/*.md | grep -v -E '(LOG\.md|OPEN_ISSUES_OVERVIEW\.md|DISCOVERY_BRIEF\.md|SPEC_STRENGTHENING_PLAN\.md|AUDIT_.*\.md)'
 ```
 
 Also check for supporting specs:
+
 ```bash
-ls siw/supporting-specs/*.md 2>/dev/null
+ls siw/supporting-specs/*.md 2> /dev/null
 ```
 
 ### 1.3 Check Implementation Status
 
 Check if implementation appears to be in progress by looking for:
+
 - Issues with status "IN PROGRESS" in `siw/OPEN_ISSUES_OVERVIEW.md`
 - Recent entries in `siw/LOG.md` indicating active work
 - Uncommitted changes in git related to the spec
 - Recent commits that reference the spec, issues, or project keywords (check `git log --oneline -10`)
 
 **If implementation appears in progress:** Use AskUserQuestion:
+
 ```yaml
 header: "Implementation In Progress"
 question: "It looks like implementation may already be underway. Generating phases now could disrupt the current workflow. How should I proceed?"
@@ -103,11 +109,13 @@ options:
 ### 1.4 Check for Existing Issues
 
 List files in `siw/issues/`:
+
 ```bash
-ls siw/issues/ISSUE-*.md 2>/dev/null
+ls siw/issues/ISSUE-*.md 2> /dev/null
 ```
 
 **If issues exist:** Use AskUserQuestion:
+
 ```yaml
 header: "Existing Issues"
 question: "Found existing issues in siw/issues/. How should I proceed?"
@@ -123,6 +131,7 @@ options:
 **If "Abort":** Stop the workflow.
 
 **If "Replace":** Delete existing issue files:
+
 ```bash
 rm siw/issues/ISSUE-*.md
 ```
@@ -145,6 +154,7 @@ Read the main spec file and any supporting specs found in Phase 1.2.
 ### 2.3 Extract Key Elements
 
 Identify and extract:
+
 - **Overview/objectives** - What is the project trying to achieve?
 - **Scope** - What's in and out of scope?
 - **Success criteria** - How do we know we're done?
@@ -157,6 +167,7 @@ Identify and extract:
 ### 3.1 Identify Phase Boundaries
 
 Analyze the spec to find natural phase boundaries:
+
 - Look for milestones, logical groupings, or dependency chains
 - Each phase should result in a **demoable or reviewable outcome** appropriate to the work type
 - Default phase count depends on Work Context:
@@ -172,6 +183,7 @@ Analyze the spec to find natural phase boundaries:
 For each phase, decompose into atomic tasks:
 
 **Each task should be:**
+
 - **Committable independently** - A single focused change
 - **Testable** - Has clear acceptance criteria and validation
 - **Sized XS, S, M, or L** per `references/task-sizing.md`. XL tasks MUST be decomposed further before approval.
@@ -199,12 +211,14 @@ Read sizing grammar, break-down triggers, and the context-appropriate slicing ru
   - ✅ End-to-end: "Document account creation end-to-end, including constraints, API contract, and UI behavior".
 
 **Identify dependencies:**
+
 - Which tasks block other tasks within the same phase?
 - Which phases depend on completing previous phases?
 
 ### 3.3 Generate Phase Plan Structure
 
 For each phase:
+
 - **Phase goal** - What milestone does this achieve?
 - **Outcome description** - What can be demonstrated or reviewed after this phase?
 - **Tasks** - List of atomic issues with titles, sizes, and brief descriptions
@@ -213,6 +227,7 @@ For each phase:
 - **Validation** - How to verify the phase is complete
 
 For general tasks:
+
 - Setup/scaffolding that doesn't fit a specific phase
 - Tooling and configuration
 - Documentation tasks
@@ -234,6 +249,7 @@ Launch a Task subagent to review the proposed breakdown:
 **Before the prompt, instruct the subagent to read `references/task-sizing.md` completely and use it as the source of truth for sizing, break-down triggers, slicing shape, and parallelization taxonomy.**
 
 **Prompt:**
+
 ```
 Review this phase/task breakdown for a software project or adjacent documentation/process deliverable.
 
@@ -308,6 +324,7 @@ AUTO: {n} | HITL: {m}
 ```
 
 Use AskUserQuestion:
+
 ```yaml
 header: "Phase Plan"
 question: "Does this phase breakdown look correct? You can request specific changes."
@@ -327,6 +344,7 @@ options:
 For each issue, create `siw/issues/ISSUE-{prefix}-{number}-{title}.md`:
 
 **File naming:**
+
 - Prefix: `P1`, `P2`, `P3`... for phases, `G` for general
 - Number: 3-digit padded (001, 002, 003)
 - Title: lowercase, hyphens, max ~40 characters
@@ -349,10 +367,12 @@ For each issue, create `siw/issues/ISSUE-{prefix}-{number}-{title}.md`:
 ## Scope
 
 ### In Scope
+
 - {Specific deliverable 1}
 - {Specific deliverable 2}
 
 ### Out of Scope
+
 - {What's NOT included in this task}
 
 ## Acceptance Criteria
@@ -374,17 +394,21 @@ For each issue, create `siw/issues/ISSUE-{prefix}-{number}-{title}.md`:
 ## Technical Notes
 
 ### Implementation Approach
+
 {What needs to change - components, files, patterns}
 
 ### Affected Areas
+
 - {Component/file 1}
 - {Component/file 2}
 
 ### Dependencies
+
 - Blocked by: {P1-001, P2-003, etc. if any, or "None"}
 - Blocks: {P1-002, P3-001, etc. if any, or "None"}
 
 ### Parallelization Guidance
+
 {Whether this issue can proceed in parallel, must stay sequential, or needs coordination first. Start from the same group-level note shown in Phase 5, then add issue-specific gating detail when needed. `siw/OPEN_ISSUES_OVERVIEW.md` keeps only the group summary line for that section.}
 ```
 
@@ -395,6 +419,7 @@ Update `siw/OPEN_ISSUES_OVERVIEW.md` with all new issues, grouped by phase. Mode
 If you add any non-DONE issues to a phase section currently marked ` (DONE)`, remove the marker (or ask the user) so the header stays accurate.
 
 **Append-mode compatibility rules:**
+
 - Inspect each existing section before appending rows.
 - If a section already uses the **7-column** schema `| # | Title | Status | Size | Priority | Mode | Related |`, keep that schema and emit Mode for new rows.
 - If a section already uses the **6-column** schema `| # | Title | Status | Size | Priority | Related |` (pre-Mode), preserve it for compatibility. Only migrate to the 7-column schema when the user explicitly requests a schema migration.
@@ -411,27 +436,27 @@ The `Mode` cell is `AUTO` or `HITL` (no inline reason in the table; the reason l
 
 **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination}
 
-| # | Title | Status | Size | Priority | Mode | Related |
-|---|-------|--------|------|----------|------|---------|
-| G-001 | {Title} | Ready | {Size} | {Priority} | AUTO | |
-| G-002 | {Title} | Ready | {Size} | {Priority} | HITL | |
+| #     | Title   | Status | Size   | Priority   | Mode | Related |
+| ----- | ------- | ------ | ------ | ---------- | ---- | ------- |
+| G-001 | {Title} | Ready  | {Size} | {Priority} | AUTO |         |
+| G-002 | {Title} | Ready  | {Size} | {Priority} | HITL |         |
 
 ## Phase 1: {Goal}
 
 **Parallelization:** {Safe to parallelize after P1-001 | Must be sequential | Needs coordination}
 
-| # | Title | Status | Size | Priority | Mode | Related |
-|---|-------|--------|------|----------|------|---------|
-| P1-001 | {Title} | Ready | {Size} | High | AUTO | |
-| P1-002 | {Title} | Ready | {Size} | Medium | AUTO | P1-001 |
+| #      | Title   | Status | Size   | Priority | Mode | Related |
+| ------ | ------- | ------ | ------ | -------- | ---- | ------- |
+| P1-001 | {Title} | Ready  | {Size} | High     | AUTO |         |
+| P1-002 | {Title} | Ready  | {Size} | Medium   | AUTO | P1-001  |
 
 ## Phase 2: {Goal}
 
 **Parallelization:** {Safe to parallelize | Must be sequential after Phase 1 | Needs coordination}
 
-| # | Title | Status | Size | Priority | Mode | Related |
-|---|-------|--------|------|----------|------|---------|
-| P2-001 | {Title} | Ready | {Size} | High | HITL | Phase 1 |
+| #      | Title   | Status | Size   | Priority | Mode | Related |
+| ------ | ------- | ------ | ------ | -------- | ---- | ------- |
+| P2-001 | {Title} | Ready  | {Size} | High     | HITL | Phase 1 |
 
 **Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
 
@@ -443,10 +468,10 @@ Legacy compatibility example when appending to an older 5-column tracker:
 ```markdown
 ## Phase 1: {Goal}
 
-| # | Title | Status | Priority | Related |
-|---|-------|--------|----------|---------|
-| P1-001 | {Title} | Ready | High | |
-| P1-002 | {Title} | Ready | Medium | P1-001 |
+| #      | Title   | Status | Priority | Related |
+| ------ | ------- | ------ | -------- | ------- |
+| P1-001 | {Title} | Ready  | High     |         |
+| P1-002 | {Title} | Ready  | Medium   | P1-001  |
 ```
 
 ## Phase 7: Summary

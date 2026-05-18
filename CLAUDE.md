@@ -15,7 +15,9 @@ kramme-cc-workflow/            # General workflow plugin
 ## Adding Components
 
 ### Agents
+
 Create `agents/<agent-name>.md`:
+
 ```yaml
 ---
 name: kramme:agent-name
@@ -27,7 +29,9 @@ color: blue
 ```
 
 ### Skills
+
 Create `skills/<skill-name>/SKILL.md`:
+
 ```yaml
 ---
 name: skill-name
@@ -40,6 +44,7 @@ user-invocable: true
 ```
 
 **Frontmatter fields (all required except `argument-hint` and `kramme-platforms`):**
+
 - `name` / `description` — Description triggers auto-invocation matching.
 - `argument-hint` — Placeholder text shown in `/` menu for expected arguments. Only include when the skill accepts arguments.
 - `disable-model-invocation` — `true` prevents Claude from auto-invoking; user must trigger via `/` menu. Use for skills with side effects (git operations, file deletion, PR creation). Set to `false` to allow auto-invocation.
@@ -47,6 +52,7 @@ user-invocable: true
 - `kramme-platforms` — Restrict skill to specific platforms: `[claude-code]`, `[opencode]`, `[codex]`, or combinations. Omit to include on all platforms. Skills using Claude Code-only features (e.g. Agent Teams) should set `kramme-platforms: [claude-code]`.
 
 **Skill directory structure** (follows [Agent Skills spec](https://agentskills.io/specification)):
+
 ```
 skill-name/
 ├── SKILL.md           # Core instructions (required, target under 500 lines)
@@ -60,9 +66,11 @@ Keep `SKILL.md` focused on orchestration logic. Move reference data, templates, 
 For guided skill creation with best-practice scaffolding, use `/kramme:skill:create`.
 
 ### Hooks
+
 Edit `hooks/hooks.json` to add event handlers (PreToolUse, PostToolUse, SessionStart, Stop).
 
 **Important:** All hooks must support the toggle system. Add this at the start of each hook script:
+
 ```bash
 source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
 exit_if_hook_disabled "hook-name"        # For PreToolUse hooks
@@ -90,6 +98,7 @@ exit_if_hook_disabled "hook-name" "json" # For PostToolUse/Stop hooks
 ## Development
 
 Install locally for testing:
+
 ```bash
 claude /plugin install /path/to/this/repo
 ```

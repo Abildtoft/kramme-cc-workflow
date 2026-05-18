@@ -1,40 +1,33 @@
 # Spec Audit Report
 
-**Date:** {current date}
-**Spec Files Reviewed:** {list of spec files with paths}
+**Date:** {current date} **Spec Files Reviewed:** {list of spec files with paths}
 
 ## Work Context Applied
 
-{If work_context found:}
-| Attribute | Value |
-|-----------|-------|
-| Work Type | {work_type} |
-| Priority Dimensions | {list} |
-| Deprioritized Dimensions | {list} |
+{If work_context found:} | Attribute | Value | |-----------|-------| | Work Type | {work_type} | | Priority Dimensions | {list} | | Deprioritized Dimensions | {list} |
 
 **Effect:** Findings in deprioritized dimensions are capped at Minor severity. If a deprioritized finding was originally Critical or Major, keep the final severity at Minor and record `**Severity Note:** [Deprioritized — capped at Minor from {original_severity}]` so downstream tools preserve the original urgency. Priority dimension findings are strictly evaluated.
 
-{If no work_context found:}
-Not specified — all dimensions evaluated with equal weight.
+{If no work_context found:} Not specified — all dimensions evaluated with equal weight.
 
 ## Summary
 
-| Dimension | Score | Findings |
-|-----------|-------|----------|
-| Coherence | {Strong/Adequate/Weak/Missing} | {count} |
-| Completeness | {Strong/Adequate/Weak/Missing} | {count} |
-| Clarity | {Strong/Adequate/Weak/Missing} | {count} |
-| Scope | {Strong/Adequate/Weak/Missing} | {count} |
-| Actionability | {Strong/Adequate/Weak/Missing} | {count} |
-| Testability | {Strong/Adequate/Weak/Missing} | {count} |
-| Value Proposition | {Strong/Adequate/Weak/Missing} | {count} |
-| Technical Design | {Strong/Adequate/Weak/Missing} | {count} |
+| Dimension         | Score                          | Findings |
+| ----------------- | ------------------------------ | -------- |
+| Coherence         | {Strong/Adequate/Weak/Missing} | {count}  |
+| Completeness      | {Strong/Adequate/Weak/Missing} | {count}  |
+| Clarity           | {Strong/Adequate/Weak/Missing} | {count}  |
+| Scope             | {Strong/Adequate/Weak/Missing} | {count}  |
+| Actionability     | {Strong/Adequate/Weak/Missing} | {count}  |
+| Testability       | {Strong/Adequate/Weak/Missing} | {count}  |
+| Value Proposition | {Strong/Adequate/Weak/Missing} | {count}  |
+| Technical Design  | {Strong/Adequate/Weak/Missing} | {count}  |
 
-| Severity | Count |
-|----------|-------|
-| Critical | {count} |
-| Major | {count} |
-| Minor | {count} |
+| Severity  | Count       |
+| --------- | ----------- |
+| Critical  | {count}     |
+| Major     | {count}     |
+| Minor     | {count}     |
 | **Total** | **{total}** |
 
 {If preserved critical caps exist:} **Preserved Critical Caps:** {count} (reported as Minor due to Work Context but still decision-required)
@@ -45,13 +38,7 @@ Not specified — all dimensions evaluated with equal weight.
 
 ### SPEC-001: {Brief title}
 
-**Dimension:** {dimension}
-**Severity:** Critical
-**Fix Confidence:** {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION})
-**Location:** {source_file} > {source_section}
-**Details:** {explanation with quotes from the spec}
-**Impact:** {what goes wrong if this isn't fixed}
-**Recommendation:** {specific action to fix}
+**Dimension:** {dimension} **Severity:** Critical **Fix Confidence:** {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION}) **Location:** {source_file} > {source_section} **Details:** {explanation with quotes from the spec} **Impact:** {what goes wrong if this isn't fixed} **Recommendation:** {specific action to fix}
 
 ---
 
@@ -72,23 +59,25 @@ Not specified — all dimensions evaluated with equal weight.
 {2-3 sentence assessment}
 
 **Strengths:**
+
 - {what's consistent and well-aligned}
 
 **Gaps:**
+
 - {references to relevant SPEC-NNN findings}
 
 {Repeat for each of the 8 dimensions}
 
 ## Sections Present vs. Expected
 
-| Section | Status | Notes |
-|---------|--------|-------|
-| Overview/objectives | {Present/Missing/Incomplete} | {brief note} |
-| Scope and audience | {Present/Missing/Incomplete} | {brief note} |
-| Success criteria | {Present/Missing/Incomplete} | {brief note} |
-| Requirements and constraints | {Present/Missing/Incomplete} | {brief note} |
-| Design decisions | {Present/Missing/Incomplete} | {brief note} |
-| Implementation tasks | {Present/Missing/Incomplete} | {brief note} |
+| Section                        | Status                       | Notes        |
+| ------------------------------ | ---------------------------- | ------------ |
+| Overview/objectives            | {Present/Missing/Incomplete} | {brief note} |
+| Scope and audience             | {Present/Missing/Incomplete} | {brief note} |
+| Success criteria               | {Present/Missing/Incomplete} | {brief note} |
+| Requirements and constraints   | {Present/Missing/Incomplete} | {brief note} |
+| Design decisions               | {Present/Missing/Incomplete} | {brief note} |
+| Implementation tasks           | {Present/Missing/Incomplete} | {brief note} |
 | Testing/verification checklist | {Present/Missing/Incomplete} | {brief note} |
-| Edge cases and considerations | {Present/Missing/Incomplete} | {brief note} |
-| Out of scope | {Present/Missing/Incomplete} | {brief note} |
+| Edge cases and considerations  | {Present/Missing/Incomplete} | {brief note} |
+| Out of scope                   | {Present/Missing/Incomplete} | {brief note} |

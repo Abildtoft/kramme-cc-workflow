@@ -8,6 +8,7 @@ user-invocable: true
 # Reset Structured Implementation Workflow
 
 Reset the SIW workflow state to start fresh while preserving the specification document. This command:
+
 1. Reviews siw/LOG.md for decisions and progress that should be captured in the spec
 2. Migrates relevant content to the spec file
 3. Clears the issues directory and overview
@@ -49,24 +50,28 @@ Use this when you've completed a phase of work and want to start fresh with new 
 Check for required SIW files:
 
 ```bash
-ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/issues/ 2>/dev/null
-ls siw/*SPEC*.md siw/*SPECIFICATION*.md siw/*PLAN*.md siw/*DESIGN*.md 2>/dev/null
+ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/issues/ 2> /dev/null
+ls siw/*SPEC*.md siw/*SPECIFICATION*.md siw/*PLAN*.md siw/*DESIGN*.md 2> /dev/null
 ```
 
 **If siw/LOG.md doesn't exist:**
+
 ```
 No siw/LOG.md found. Nothing to reset.
 
 To initialize a new SIW workflow, run /kramme:siw:init
 ```
+
 **Action:** Abort.
 
 **If no spec file found:**
+
 ```
 Warning: No specification file found.
 
 The reset will clear siw/LOG.md and siw/issues, but there's no spec to migrate content to.
 ```
+
 Use AskUserQuestion to confirm proceeding without migration.
 
 ---
@@ -78,6 +83,7 @@ Read siw/LOG.md and extract content that may be worth preserving in the spec:
 ### 2.1 Extract Decision Log Entries
 
 Look for the `## Decision Log` section and extract all decisions:
+
 - Decision number and title
 - Problem statement
 - Decision made
@@ -87,6 +93,7 @@ Look for the `## Decision Log` section and extract all decisions:
 ### 2.2 Extract Completed Tasks
 
 From `## Current Progress` section:
+
 - Tasks marked as completed
 - Implementation details worth preserving
 - Any notes about how things were implemented
@@ -94,12 +101,14 @@ From `## Current Progress` section:
 ### 2.3 Extract Guiding Principles
 
 If `## Guiding Principles` section exists:
+
 - Principles that emerged during implementation
 - Constraints discovered
 
 ### 2.4 Extract Rejected Alternatives
 
 From `## Rejected Alternatives Summary`:
+
 - Important alternatives that were considered
 - Reasons for rejection (valuable for future reference)
 
@@ -167,12 +176,10 @@ Add to or create `## Design Decisions` section in spec:
 ## Design Decisions
 
 ### Decision #1: {title}
+
 **Date:** {date} | **Category:** {category}
 
-**Problem:** {problem}
-**Decision:** {decision}
-**Rationale:** {rationale}
-**Alternatives Rejected:** {alternatives}
+**Problem:** {problem} **Decision:** {decision} **Rationale:** {rationale} **Alternatives Rejected:** {alternatives}
 ```
 
 ### 4.2 Migrate Completed Tasks Summary
@@ -183,6 +190,7 @@ Add to `## Implementation Notes` or `## Completed Work` section:
 ## Implementation Notes
 
 ### Completed ({date range})
+
 - {task 1}: {brief description of what was done}
 - {task 2}: {brief description}
 ```
@@ -205,9 +213,9 @@ Add to `## Design Decisions` or `## Rejected Approaches` section:
 ```markdown
 ## Rejected Approaches
 
-| Approach | Purpose | Why Rejected |
-|----------|---------|--------------|
-| {approach 1} | {purpose} | {reason} |
+| Approach     | Purpose   | Why Rejected |
+| ------------ | --------- | ------------ |
+| {approach 1} | {purpose} | {reason}     |
 ```
 
 ---
@@ -218,13 +226,13 @@ Add to `## Design Decisions` or `## Rejected Approaches` section:
 
 ```bash
 # Count issues first for reporting
-issue_count=$(ls siw/issues/ISSUE-*.md 2>/dev/null | wc -l)
+issue_count=$(ls siw/issues/ISSUE-*.md 2> /dev/null | wc -l)
 
 # Delete using trash if available
 if command -v trash &> /dev/null; then
-    trash siw/issues/ISSUE-*.md 2>/dev/null
+  trash siw/issues/ISSUE-*.md 2> /dev/null
 else
-    rm -f siw/issues/ISSUE-*.md
+  rm -f siw/issues/ISSUE-*.md
 fi
 ```
 
@@ -240,8 +248,8 @@ Replace content with empty table:
 **Parallelization:** Needs coordination
 
 | # | Title | Status | Size | Priority | Related |
-|---|-------|--------|------|----------|---------|
-| _None_ | _Use `/kramme:siw:issue-define` to create first issue (G-001)_ | | | | |
+| --- | --- | --- | --- | --- | --- |
+| _None_ | _Use `/kramme:siw:issue-define` to create first issue (G-001)_ |  |  |  |  |
 
 **Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
 
@@ -261,8 +269,7 @@ Replace siw/LOG.md with fresh initial state:
 
 ## Current Progress
 
-**Last Updated:** {current date}
-**Quick Summary:** Workflow reset. Ready for new issues.
+**Last Updated:** {current date} **Quick Summary:** Workflow reset. Ready for new issues.
 
 ### Project Status
 
@@ -290,15 +297,14 @@ _Previous decisions migrated to {spec_filename}. New decisions will be documente
 ## Rejected Alternatives Summary
 
 | Alternative | For | Why Rejected | Decision # |
-|------------|-----|--------------|------------|
-| _None yet_ | | | |
+| ----------- | --- | ------------ | ---------- |
+| _None yet_  |     |              |            |
 
 ---
 
 ## Guiding Principles
 
-{If migrated: "See {spec_filename} for established principles."}
-{If not migrated: "1. {To be defined during implementation}"}
+{If migrated: "See {spec_filename} for established principles."} {If not migrated: "1. {To be defined during implementation}"}
 
 ## References
 
@@ -345,14 +351,18 @@ Next Steps:
 ## Edge Cases
 
 ### No content to migrate
+
 If siw/LOG.md is empty or minimal:
+
 ```
 siw/LOG.md has no significant content to migrate.
 Proceeding with reset...
 ```
 
 ### Multiple spec files
+
 If multiple spec files found:
+
 ```yaml
 header: "Multiple Spec Files Found"
 question: "Which specification file should receive the migrated content?"
@@ -363,8 +373,10 @@ options:
 ```
 
 ### Uncommitted changes to workflow files
+
 ```
 Warning: There are uncommitted changes to SIW workflow files.
 These changes will be lost after reset.
 ```
+
 Use AskUserQuestion to confirm.

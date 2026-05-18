@@ -22,6 +22,7 @@ The fix-CI loop is the **CI Failure Feedback Loop** pattern: read the failure, m
 ## Options
 
 **Flags:**
+
 - `--fixup` - Use fixup commits to amend existing branch commits instead of creating new commits. Requires force push. Orphan files (not touched by any branch commit, including files last modified on the base branch) are committed as new.
 - `--no-consolidate` - Skip the consolidation prompt after CI passes. Use for scripting or when you want to keep `[FIX PIPELINE]` commits separate.
 
@@ -46,6 +47,7 @@ gh pr checks --json name,state,bucket,link,workflow
 The `bucket` field categorizes state into: `pass`, `fail`, `pending`, `skipping`, or `cancel`.
 
 **Important:** If any of these checks are still `pending`, wait before proceeding:
+
 - `sentry` / `sentry-io`
 - `codecov`
 - `cursor` / `bugbot` / `seer`
@@ -56,16 +58,19 @@ These bots may post additional feedback comments once their checks complete. Wai
 ### Step 3: Gather Review Feedback
 
 **Review Comments and Status:**
+
 ```bash
 gh pr view --json reviews,comments,reviewDecision
 ```
 
 **Inline Code Review Comments:**
+
 ```bash
 gh api repos/{owner}/{repo}/pulls/{pr_number}/comments
 ```
 
 **PR Conversation Comments (includes bot comments):**
+
 ```bash
 gh api repos/{owner}/{repo}/issues/{pr_number}/comments
 ```
@@ -77,7 +82,7 @@ gh api repos/{owner}/{repo}/issues/{pr_number}/comments
 gh run list --branch $(git branch --show-current) --limit 5 --json databaseId,name,status,conclusion
 
 # View failed logs for a specific run
-gh run view <run-id> --log-failed
+gh run view < run-id > --log-failed
 ```
 
 Do NOT assume what failed based on the check name alone. Always read the actual logs.
@@ -132,6 +137,7 @@ Read and follow the fixup commit flow from `references/fixup-flow.md`. This cove
 ### Step 9: Repeat
 
 Return to Step 2 if:
+
 - Any CI checks failed
 - New review feedback appeared
 
@@ -168,17 +174,20 @@ If disablement is genuinely warranted — a confirmed false positive, a test tha
 ## Exit Conditions
 
 **Success:**
+
 - All CI checks are green
 - No unaddressed human review feedback
 - (Default mode) Consolidation completed or user chose to keep separate commits
 
 **Ask for Help:**
+
 - Same failure persists after 3 attempts (likely a flaky test or deeper issue)
 - Review feedback requires clarification or decision from the user
 - CI failure is unrelated to branch changes (infrastructure issue)
 - Consolidation rebase failed due to conflicts (user must resolve manually)
 
 **Stop Immediately:**
+
 - No PR exists for the current branch
 - Branch is out of sync and needs rebase (inform user)
 
@@ -187,11 +196,13 @@ If disablement is genuinely warranted — a confirmed false positive, a test tha
 ## Tips
 
 **GitHub:**
+
 - Use `gh pr checks --required` to focus only on required checks
 - Use `gh run view <run-id> --verbose` to see all job steps, not just failures
 - If a check is from an external service, the `link` field provides the URL
 
 **Default Mode (New Commits):**
+
 - Creates commits with `[FIX PIPELINE]` prefix for easy identification
 - No force push during iteration (safer for collaborators watching the PR)
 - After CI passes, offers to consolidate `[FIX PIPELINE]` commits into original commits
@@ -200,12 +211,14 @@ If disablement is genuinely warranted — a confirmed false positive, a test tha
 - Alternative: Use "Squash and merge" in GitHub to combine all commits when merging
 
 **Fixup Mode (`--fixup`):**
+
 - Use when you want to keep commit history clean during PR iteration
 - Orphan files (files not touched by any existing branch commit, including files last modified on the base branch) become new commits automatically
 - If rebase conflicts occur, the iteration continues with a regular commit
 - Uses `--force-with-lease` for a safer force push after rebase; only do this on an unshared branch or after collaborator coordination and an up-to-date fetch
 
 **Choosing a Mode:**
+
 - **Default**: Working with others, want visible iteration history, prefer to consolidate at the end
 - **`--fixup`**: Working alone, want clean history throughout, comfortable with force push
 
@@ -227,7 +240,7 @@ Use these markers so the user (and downstream tooling) can skim status at a glan
 Watch for these excuses — they signal the loop is slipping into damage.
 
 | Excuse | Reality |
-|---|---|
+| --- | --- |
 | "Just disable the lint rule to unblock the PR." | Silently disabling a gate is how quality erodes across PRs. Fix the root cause or surface `MISSING REQUIREMENT`. |
 | "The check is flaky, I'll retry it." | Retry once. If it fails again, treat it as real until you've read the logs and can name the infrastructure cause. |
 | "The failure is unrelated to my PR." | Maybe. Confirm with log evidence — git-blame the failing assertion, check main's CI history — not with assumption. |

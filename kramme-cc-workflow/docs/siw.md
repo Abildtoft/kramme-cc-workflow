@@ -25,12 +25,14 @@ The core idea: a **specification** is the permanent source of truth. Issues, log
 ## When to Use SIW
 
 **Good for:**
+
 - Multi-issue features requiring planning and decision tracking
 - Projects spanning multiple sessions where continuity matters
 - Work without Linear or when you want local-only tracking
 - Technical designs, API documentation, or system architecture
 
 **Not for:**
+
 - Small bug fixes (< 1 day of work)
 - Trivial updates or simple refactoring
 - Single-file changes with obvious scope
@@ -111,7 +113,7 @@ Or start from scratch with an interactive interview:
 ### File Overview
 
 | Document | Purpose | Persistence |
-|----------|---------|-------------|
+| --- | --- | --- |
 | `siw/[YOUR_SPEC].md` | Main specification — single source of truth | **Permanent** |
 | `siw/supporting-specs/*.md` | Detailed specs by domain (data model, API, UI) | **Permanent** |
 | `siw/DISCOVERY_BRIEF.md` | Greenfield discovery output before `siw:init` creates the full workflow | Temporary |
@@ -159,6 +161,7 @@ Issues → LOG.md → Spec
 ### Supporting Specs
 
 Use `siw/supporting-specs/` when:
+
 - The main spec exceeds ~500 lines
 - Multiple distinct domains exist (data model, API, UI, user stories)
 - You want targeted reading during implementation
@@ -184,12 +187,12 @@ docs/<feature>/
 
 Issues use prefix-based numbering:
 
-| Prefix | Usage | Example |
-|--------|-------|---------|
-| `G-XXX` | General issues — standalone, cross-cutting | `G-001`, `G-002` |
-| `P1-XXX` | Phase 1 issues | `P1-001`, `P1-002` |
-| `P2-XXX` | Phase 2 issues | `P2-001`, `P2-002` |
-| `P{N}-XXX` | Phase N issues | `P3-001` |
+| Prefix     | Usage                                      | Example            |
+| ---------- | ------------------------------------------ | ------------------ |
+| `G-XXX`    | General issues — standalone, cross-cutting | `G-001`, `G-002`   |
+| `P1-XXX`   | Phase 1 issues                             | `P1-001`, `P1-002` |
+| `P2-XXX`   | Phase 2 issues                             | `P2-001`, `P2-002` |
+| `P{N}-XXX` | Phase N issues                             | `P3-001`           |
 
 **File naming:** `ISSUE-{prefix}-{number}-{short-description}.md`
 
@@ -246,14 +249,14 @@ When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW
 ### Initialization & Setup
 
 | Skill | Arguments | Description |
-|-------|-----------|-------------|
+| --- | --- | --- |
 | `/kramme:siw:init` | `[spec-file(s) \| folder \| discover]` | Initialize workflow. Accepts existing spec files, a folder of specs, `siw/DISCOVERY_BRIEF.md`, or `discover` to run the discovery-brief flow before spec creation. Creates `siw/` directory with spec, LOG.md, overview, and issues folder. |
 | `/kramme:siw:continue` | — | Entry point for resuming. Auto-triggers when SIW files are detected. Reads LOG.md for current state and suggests next action. |
 
 ### Specification Refinement
 
 | Skill | Arguments | Description |
-|-------|-----------|-------------|
+| --- | --- | --- |
 | `/kramme:siw:discovery` | `[topic \| spec-path(s) \| 'siw'] [--apply] [--decision-tree]` | Deep discovery interview that works both before a spec exists and after one has gone stale. Greenfield runs write `siw/DISCOVERY_BRIEF.md`; refinement runs identify concrete improvements and can apply them with `--apply`. Pass `--decision-tree` for depth-first resolution of tightly coupled decisions. |
 | `/kramme:siw:spec-audit` | `[spec-path(s) \| 'siw'] [--auto] [--model opus\|sonnet\|haiku] [--team]` | Audit spec quality across 8 dimensions: coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design. Produces a structured report and optionally creates SIW issues. Add `--team` for parallel dimension analysis with cross-validation. Add `--auto` to replace any previous report and create critical/major issues without pausing. |
 | `/kramme:siw:breakdown-findings` | `[audit-report-path] [SPEC-id(s)]` | Break down unresolved `SPEC-*` findings into one inline report with executive summaries, concrete options, and a recommendation for each finding. Skips auto-fixed and already-tracked findings by default, then asks which follow-up path to take without creating SIW issues directly. |
@@ -262,7 +265,7 @@ When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW
 ### Issue Management
 
 | Skill | Arguments | Description |
-|-------|-----------|-------------|
+| --- | --- | --- |
 | `/kramme:siw:issue-define` | `[issue-id] or [description and/or file paths]` | Create or improve issues with a guided interview. Supports both new issue creation and refinement of existing issues. Explores the codebase to identify relevant patterns. |
 | `/kramme:siw:generate-phases` | `[spec-file-path]` | Decompose a spec into atomic, phase-based issues (`P1-001`, `P2-001`, `G-001`). Each issue is self-contained with tests/validation. Reviews breakdown with a subagent before creating files. |
 | `/kramme:siw:issue-reindex` | — | Remove DONE issues and renumber remaining issues from 001 within each prefix group. Verifies DONE issues are captured in the spec before deletion. |
@@ -270,20 +273,20 @@ When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW
 ### Implementation
 
 | Skill | Arguments | Description |
-|-------|-----------|-------------|
+| --- | --- | --- |
 | `/kramme:siw:issue-implement` | `<G-001 \| P1-001 \| ISSUE-G-XXX> \| --team [issue-ids \| 'phase N'] [--auto]` | Implement an issue with extensive planning before coding. Explores the codebase, asks clarifying questions, creates a technical plan, then offers three execution modes: **Guided** (step-by-step with verification), **Context-only** (you drive, agent prepares), **Autonomous** (agent implements end-to-end). For a single issue, pass one issue ID. Add `--team` to implement multiple independent issues in parallel; with no team-mode target, it selects ready AUTO issues. In team mode, `--auto` starts the proposed parallel plan immediately. Includes spec sync (step 10) to align decisions back to the spec. |
 
 ### Auditing & Quality
 
 | Skill | Arguments | Description |
-|-------|-----------|-------------|
+| --- | --- | --- |
 | `/kramme:siw:implementation-audit` | `[spec-path(s) \| 'siw'] [--auto] [--model opus\|sonnet\|haiku] [--team]` | Adversarial, exhaustive audit of code against spec. Pass A checks requirement-by-requirement conformance. Pass B scans for undocumented extensions. Includes conflict reconciliation and coverage gates. Add `--team` for simultaneous conformance + extension passes with a dedicated reconciler. Add `--auto` to replace any previous report and create critical/major issues without pausing. |
 | `/kramme:siw:resolve-audit` | `[audit-report-path] [finding-id(s)] [--auto]` | Resolve audit findings one at a time. By default each finding gets an executive summary, alternatives, a recommended option, then user choice. Add `--auto` to let the model select the resolution and create issues without pausing. If both audit reports exist, pass the report path to keep the run scoped. Use `/kramme:siw:breakdown-findings` first when you want a spec-only batch breakdown before choosing a resolution path. |
 
 ### Lifecycle Management
 
 | Skill | Arguments | Description |
-|-------|-----------|-------------|
+| --- | --- | --- |
 | `/kramme:siw:close` | — | Generate permanent documentation in `docs/<feature>/` (README, decisions, architecture), then remove temporary workflow files. Terminal command for completed projects. |
 | `/kramme:siw:reset` | — | Preserve the spec, migrate log decisions into it, then clear issues and LOG.md for a fresh iteration. Use when starting a new round of work on the same project. |
 | `/kramme:siw:remove` | — | Delete all SIW files. Uses `trash` for recoverability. No documentation generated. |
@@ -380,6 +383,7 @@ Use SIW as a lightweight local issue tracker without phases:
 **Resuming after context loss:** Read `siw/LOG.md` first (the "Current Progress" section), then check `siw/OPEN_ISSUES_OVERVIEW.md` to see issue statuses. The `siw:continue` skill does this automatically.
 
 **Choosing between close, reset, and remove:**
+
 - `siw:close` — Project is done, you want permanent docs. Generates `docs/<feature>/`, then removes temp files.
 - `siw:reset` — Project needs another iteration. Migrates decisions to spec, clears issues and log, keeps spec.
 - `siw:remove` — Just delete everything. No docs generated.

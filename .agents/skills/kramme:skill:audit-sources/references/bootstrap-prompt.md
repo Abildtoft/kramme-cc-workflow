@@ -12,27 +12,29 @@ Use this prompt to propose a `sources.yaml` for a skill that has none yet. Phase
 
 > You are proposing a `sources.yaml` manifest of inspiration sources for the plugin skill `<SKILL_NAME>`.
 >
-> **Inspiration sources** are external resources whose content the skill is *derived from* — official docs, library READMEs, blog posts, papers, standards, GitHub repos, conference talks. The skill encodes ideas, terminology, examples, or procedures from these sources.
+> **Inspiration sources** are external resources whose content the skill is _derived from_ — official docs, library READMEs, blog posts, papers, standards, GitHub repos, conference talks. The skill encodes ideas, terminology, examples, or procedures from these sources.
 >
 > **Not inspiration sources** (do not include):
+>
 > - Illustrative links mentioned in passing ("see this example PR")
 > - Links to other skills in this plugin
-> - Tool documentation for tools the skill *calls* but doesn't derive content from (e.g. `gh`, `git`, `npm`)
+> - Tool documentation for tools the skill _calls_ but doesn't derive content from (e.g. `gh`, `git`, `npm`)
 > - Internal cross-references
 > - Code package registries
 >
 > Read the SKILL.md and reference files below. For each candidate inspiration source you find, output a YAML entry with:
 >
 > - `id`: stable kebab-case slug
-> - `url` *or* `context7_library` (exactly one)
+> - `url` _or_ `context7_library` (exactly one)
 > - `title`: human-readable
-> - `rationale`: one sentence saying *what in this skill is derived from this source*. If you cannot write this confidently, drop the candidate — it is probably illustrative, not inspirational.
+> - `rationale`: one sentence saying _what in this skill is derived from this source_. If you cannot write this confidently, drop the candidate — it is probably illustrative, not inspirational.
 > - `last_reviewed_at: <today>`
 > - `baseline_hash: ""` (empty — will be populated on first fetch)
 >
 > Prefer `context7_library` when the source is a well-known library that a docs MCP (e.g. Context7) can resolve directly (React, Next.js, Django, Tailwind, etc.) — the audit will use the MCP if available and fall back to a web fetch otherwise. Use `url` for everything else, including blog posts, GitHub repos, and standards bodies.
 >
 > Look for sources in these places, in order:
+>
 > 1. Inline links in `SKILL.md` (`[text](url)`)
 > 2. Inline links in `references/*.md`
 > 3. Named-but-unlinked references ("OWASP Top 10", "Hyrum's Law", "Nielsen heuristics", "Addy Osmani") — propose a URL if obvious, else flag for the user

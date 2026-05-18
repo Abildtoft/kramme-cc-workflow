@@ -1,11 +1,11 @@
 #!/usr/bin/env bats
 
 @test "skill-local resource references point to existing files" {
-  if ! command -v node >/dev/null 2>&1; then
-    skip "node is required for skill resource reference tests"
-  fi
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for skill resource reference tests"
+	fi
 
-  run bash -c '
+	run bash -c '
     cd "'"$BATS_TEST_DIRNAME"'/.."
     node <<'"'"'NODE'"'"'
 const fs = require("fs");
@@ -114,5 +114,5 @@ if (failures.length > 0) {
 NODE
   '
 
-  [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }

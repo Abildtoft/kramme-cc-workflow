@@ -67,11 +67,13 @@ Create or improve a Linear issue through exhaustive interactive refinement. Can 
 ### Step 1: Detect Mode
 
 Check if input matches an existing Linear issue:
+
 - **Issue identifier pattern**: `TEAM-123` (uppercase letters, hyphen, numbers)
 - **Linear URL**: Contains `linear.app` with issue path
 - **UUID**: 36-character UUID format
 
 **If existing issue detected → IMPROVE MODE:**
+
 1. Extract the issue identifier
 2. Fetch issue details using `mcp__linear__get_issue` with `id` parameter
 3. Store the existing issue content (title, description, labels, etc.)
@@ -84,6 +86,7 @@ Check if input matches an existing Linear issue:
      - This content will be preserved in the final issue regardless of refinements
 
 **If no issue detected → CREATE MODE:**
+
 1. Parse for file paths (anything that looks like a path: contains `/`, ends in common extensions) and store them for Step 2
 2. Remaining text is the description/idea
 3. If empty, use `AskUserQuestion` to gather the initial concept
@@ -92,6 +95,7 @@ Check if input matches an existing Linear issue:
 ### Step 2: Process File References (Both Modes)
 
 **If file paths provided:**
+
 1. Read each file using the `Read` tool
 2. Extract relevant context:
    - What functionality does this code provide?
@@ -104,12 +108,14 @@ Check if input matches an existing Linear issue:
 After determining the mode (and any file context, if provided), classify the issue type. Auto-detect from context and suggest to the user (they can override):
 
 **Issue Types:**
+
 - **Bug (Simple)**: Root cause is known or easily identified, fix is localized, no architectural decisions needed
 - **Bug (Complex)**: Unknown root cause, affects multiple components, requires investigation
 - **Feature**: New functionality
 - **Improvement**: Enhance existing functionality
 
 **Detection Heuristics:**
+
 - Keywords like "bug", "fix", "broken", "doesn't work", "error", "issue" → suggest Bug
 - If user provides root cause and specific file(s) → suggest Bug (Simple)
 - If scope is unclear, multiple components mentioned, or investigation needed → suggest Bug (Complex)
@@ -117,11 +123,13 @@ After determining the mode (and any file context, if provided), classify the iss
 - Keywords like "improve", "refactor", "enhance", "optimize" → suggest Improvement
 
 **Present classification to user via `AskUserQuestion`:**
+
 - Show detected type with reasoning
 - Allow override to any type
 - Store `issue_type` for conditional behavior in later phases
 
 **For Bug (Simple), store these flags:**
+
 - `is_simple_bug = true`
 - This enables the streamlined interview and simple template
 
@@ -247,6 +255,7 @@ Before creating a new issue, check for existing Linear issues that may already c
 **Output**: Summarize findings to share with user and inform interview questions.
 
 Before starting the interview, synthesize a working hypothesis for:
+
 - target user or stakeholder
 - job-to-be-done / problem pressure
 - why this matters now
@@ -266,6 +275,7 @@ For simple bugs, use a streamlined 2-round interview instead of the full 5-round
 **Round 1: Problem & Reproduction**
 
 Questions to cover:
+
 - What's the bug? (brief description)
 - Steps to reproduce (numbered list ending with "Bug: [what happens]")
 - What should happen instead?
@@ -273,11 +283,13 @@ Questions to cover:
 **Round 2: Root Cause & Fix**
 
 Questions to cover:
+
 - What's causing the bug? (if known - 1-2 sentences)
 - What needs to change to fix it? (1-2 sentences)
 - Which file(s) are affected?
 
 **If root cause is unknown or unclear after Round 2:**
+
 - Reclassify as **Bug (Complex)** and set `is_simple_bug = false`
 - Switch to the **Standard Interview** starting at Round 1
 - Use the **Comprehensive Template** in Phase 6
@@ -295,6 +307,7 @@ Conduct a thorough, multi-round interview using `AskUserQuestion`. Provide conte
 ### Mode-Specific Behavior
 
 **IMPROVE MODE:**
+
 - Focus on the improvement areas selected in Phase 3
 - For each round, show the current content from the existing issue first
 - Ask if the user wants to: keep as-is, modify, or expand the current content
@@ -302,6 +315,7 @@ Conduct a thorough, multi-round interview using `AskUserQuestion`. Provide conte
 - Track what has changed vs. original
 
 **CREATE MODE:**
+
 - Follow the standard interview flow below
 - Start from blank for each section
 
@@ -310,11 +324,13 @@ Read the 5-round interview structure from `references/interview-rounds.md`. It c
 ### Adaptive Follow-up
 
 After each round:
+
 - **Dig deeper** when answers reveal unexpected complexity
 - **Pivot** when answers reveal the problem is different than assumed
 - **Clarify** when answers are ambiguous or contradictory
 
 **Track coverage:**
+
 ```
 Coverage: [Problem: X%] [Scope: X%] [Technical: X%] [Acceptance: X%] [Metadata: X%]
 ```
@@ -339,6 +355,7 @@ When the codebase exploration in Phase 4 surfaced specific files or functions, t
 ### Template Selection
 
 Choose the template based on `issue_type`:
+
 - **Bug (Simple)**: Use the Simple Bug Template below
 - **All others**: Use the Comprehensive Template
 
@@ -365,11 +382,13 @@ Read the comprehensive issue template from `assets/comprehensive-template.md`. I
 ### 1. Present Draft
 
 **IMPROVE MODE:**
+
 - Show the updated issue with change indicators
 - Highlight what changed vs. original content
 - Show before/after for significant modifications
 
 **CREATE MODE:**
+
 - Show the complete issue (title, description, metadata)
 - Format clearly for review
 
@@ -381,6 +400,7 @@ Read the comprehensive issue template from `assets/comprehensive-template.md`. I
 ### 3. Create or Update Issue
 
 **IMPROVE MODE:**
+
 - Use `mcp__linear__update_issue` with:
   - `id`: The existing issue ID
   - `title`: Updated title (if changed)
@@ -390,6 +410,7 @@ Read the comprehensive issue template from `assets/comprehensive-template.md`. I
   - Other metadata as applicable
 
 **CREATE MODE:**
+
 - Use `mcp__linear__create_issue` with:
   - `title`: The composed title
   - `description`: The full markdown description
@@ -401,10 +422,12 @@ Read the comprehensive issue template from `assets/comprehensive-template.md`. I
 ### 4. Return Result
 
 **IMPROVE MODE:**
+
 - Provide the updated issue URL
 - Summarize what was changed
 
 **CREATE MODE:**
+
 - Provide the created issue URL
 - Confirm successful creation
 
@@ -417,6 +440,7 @@ Read the comprehensive issue template from `assets/comprehensive-template.md`. I
 - Do NOT invoke other commands automatically
 
 **Next steps for the user:**
+
 - Review the created/updated issue in Linear
 - If ready to implement, invoke `/kramme:linear:issue-implement {issue-id}`
 - If changes needed, run `/kramme:linear:issue-define {issue-id}` again to refine

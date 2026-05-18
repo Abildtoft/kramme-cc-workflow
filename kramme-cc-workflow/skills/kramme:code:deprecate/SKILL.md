@@ -7,7 +7,7 @@ user-invocable: true
 
 # Code Deprecation
 
-Plan and execute the removal of code, features, APIs, or modules. Removing code safely requires the same rigor as adding it: the same risk assessment, the same phased rollout, the same verification gates. A skill that is missing here turns into *deprecate and abandon* — a notice goes up, nobody migrates, and the old path accretes users while labeled "dead".
+Plan and execute the removal of code, features, APIs, or modules. Removing code safely requires the same rigor as adding it: the same risk assessment, the same phased rollout, the same verification gates. A skill that is missing here turns into _deprecate and abandon_ — a notice goes up, nobody migrates, and the old path accretes users while labeled "dead".
 
 ## Code is a liability
 
@@ -48,7 +48,7 @@ This changes the default question from "does anything still call this?" to "what
 
 Ownership means the migration is your work, not theirs. "We announced deprecation six months ago" is not coverage for a removal if callers still exist — the announcement did not migrate anyone. Either migrate them, ship a backward-compatible shim that makes migration invisible, or do not remove.
 
-This rule forbids *deprecate and abandon*. It is the reason this skill has a four-step workflow instead of a one-step "put a notice and delete later".
+This rule forbids _deprecate and abandon_. It is the reason this skill has a four-step workflow instead of a one-step "put a notice and delete later".
 
 ## Markers
 
@@ -86,7 +86,7 @@ Use before: deprecating a public API, removing an externally-consumed endpoint, 
 
 Answer the five-question checklist. Extended signals and a decision tree live in `references/decision-checklist.md`.
 
-1. **Does this code still provide unique value?** If a replacement in the codebase already covers the same surface, value is duplicated — deprecation candidate. If no replacement exists, building the replacement is Step 4.1 and must happen *before* removal begins.
+1. **Does this code still provide unique value?** If a replacement in the codebase already covers the same surface, value is duplicated — deprecation candidate. If no replacement exists, building the replacement is Step 4.1 and must happen _before_ removal begins.
 2. **Who are the dependents (internal + external)?** Audit the evidence sources that match the chosen surface. Compile-time / internal-only => import/build graph, tests, config, and package/publish references. Runtime / internal => import/build graph plus telemetry/logs. External / public => telemetry/logs plus docs, SDKs, and partner inventory. "No dependents found" is `UNVERIFIED` only when a required evidence source for that surface has not been checked.
 3. **Does a replacement exist?** If yes, name it. If no, deprecation is blocked until a replacement ships — removing without a replacement is "delete the feature", a different decision.
 4. **What is the migration cost for dependents?** Low (mechanical, codemod-able) → short migration window OK. High (architectural, requires rethinking) → long window + `kramme:code:migrate` pattern (Strangler / Adapter / Feature Flag).
@@ -135,7 +135,7 @@ Execute in order. Do not compress or overlap — each step has distinct exit cri
 
 ### 4.1 Build the replacement
 
-Ship the replacement first. The replacement must cover the documented contract *and* the observable behaviors Hyrum's Law says callers may depend on: field ordering, error messages, timing characteristics, edge-case inputs, the exact shape of logs that ops depends on. Map each observable to either "replacement covers it" or "replacement intentionally changes it — communicated in Step 4.2".
+Ship the replacement first. The replacement must cover the documented contract _and_ the observable behaviors Hyrum's Law says callers may depend on: field ordering, error messages, timing characteristics, edge-case inputs, the exact shape of logs that ops depends on. Map each observable to either "replacement covers it" or "replacement intentionally changes it — communicated in Step 4.2".
 
 Exit criterion: the replacement is merged and verified. For runtime or public surfaces it is also deployed and monitored; for compile-time / internal-only surfaces it is exercised by the CI/build/test flows that cover dependents. In both cases, a contract test or characterization test asserts feature parity for every observable on the map.
 
@@ -195,7 +195,7 @@ The observation window depends on surface + classification: compile-time / inter
 Each of these is a version of "skip the checklist". Correct response follows.
 
 | Rationalization | Reality |
-|---|---|
+| --- | --- |
 | "Nobody uses it anymore." | `UNVERIFIED` until the dependent audit runs against the evidence required for the chosen surface. For compile-time / internal-only code that usually means import/build/test/config references; for runtime or public surfaces it includes telemetry. "I grepped and didn't see callers" still misses dynamic imports, reflection, and external API callers. |
 | "It's tiny, leaving it is fine." | Code is a liability — tests, docs, patches, and mental overhead scale with surface, not lines. The "tiny" framing is usually wrong once the maintenance cost question (Step 1, question 5) is answered. |
 | "We'll delete it after the next release." | This is the deprecate-and-abandon failure mode. The Churn Rule says migration is your work; "after the next release" without a migration plan means the deprecation never completes. |
@@ -233,6 +233,6 @@ Before declaring the deprecation complete, self-check:
 - [ ] Dependent audit confirms zero active consumers — based on surface-appropriate evidence (import/build/test/config graph for compile-time / internal-only code; telemetry plus published consumer inventory for runtime or public surfaces), not grep alone.
 - [ ] Every `UNVERIFIED` marker resolved; every `NOTICED BUT NOT TOUCHING` logged; every `ASK FIRST` confirmed.
 - [ ] Observation window has elapsed without incident (CI/release-candidate window for compile-time / internal-only; rollback window for runtime or public surfaces).
-- [ ] Old code, tests, docs, and deprecation notices removed *together* in the final commit.
+- [ ] Old code, tests, docs, and deprecation notices removed _together_ in the final commit.
 
 If any box is unchecked, the deprecation is not done. Fix the gap or split it into a tracked follow-up before closing the workflow.

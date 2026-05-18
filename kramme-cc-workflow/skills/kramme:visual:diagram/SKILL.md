@@ -26,6 +26,7 @@ Before writing HTML, commit to a direction. Don't default to "dark theme with bl
 **What type of diagram?** Architecture, flowchart, sequence, data flow, schema/ER, state machine, mind map, data table, timeline, or dashboard. Each has distinct layout needs and rendering approaches (see Diagram Types below).
 
 **What aesthetic?** Pick one and commit:
+
 - Monochrome terminal (green/amber on black, monospace everything)
 - Editorial (serif headlines, generous whitespace, muted palette)
 - Blueprint (technical drawing feel, grid lines, precise)
@@ -41,6 +42,7 @@ Vary the choice each time. If the last diagram was dark and technical, make the 
 ### 2. Structure
 
 **Read the reference template** before generating. Don't memorize it — read it each time to absorb the patterns.
+
 - For text-heavy architecture overviews (card content matters more than topology): read `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/architecture.html`
 - For flowcharts, sequence diagrams, ER, state machines, mind maps: read `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/mermaid-flowchart.html`
 - For data tables, comparisons, audits, feature matrices: read `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/data-table.html`
@@ -52,7 +54,7 @@ Vary the choice each time. If the last diagram was dark and technical, make the 
 **Choosing a rendering approach:**
 
 | Diagram type | Approach | Why |
-|---|---|---|
+| --- | --- | --- |
 | Architecture (text-heavy) | CSS Grid cards + flow arrows | Rich card content (descriptions, code, tool lists) needs CSS control |
 | Architecture (topology-focused) | **Mermaid** | Visible connections between components need automatic edge routing |
 | Flowchart / pipeline | **Mermaid** | Automatic node positioning and edge routing; hand-drawn mode available |
@@ -102,12 +104,24 @@ Apply these principles to every diagram:
 
 ```css
 /* Light-first (editorial, paper/ink, blueprint): */
-:root { /* light values */ }
-@media (prefers-color-scheme: dark) { :root { /* dark values */ } }
+:root {
+  /* light values */
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* dark values */
+  }
+}
 
 /* Dark-first (neon, IDE-inspired, terminal): */
-:root { /* dark values */ }
-@media (prefers-color-scheme: light) { :root { /* light values */ } }
+:root {
+  /* dark values */
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    /* light values */
+  }
+}
 ```
 
 **Surfaces whisper, they don't shout.** Build depth through subtle lightness shifts (2-4% between levels), not dramatic color changes. Borders should be low-opacity rgba (`rgba(255,255,255,0.08)` in dark mode, `rgba(0,0,0,0.08)` in light) — visible when you look, invisible when you don't.
@@ -125,6 +139,7 @@ Apply these principles to every diagram:
 **Output location:** Write to `~/.kramme-cc-workflow/diagrams/`. Create the directory if it doesn't exist. Use a descriptive filename based on content: `modem-architecture.html`, `pipeline-flow.html`, `schema-overview.html`. The directory persists across sessions.
 
 **Open in browser:**
+
 - macOS: `open ~/.kramme-cc-workflow/diagrams/filename.html`
 - Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/filename.html`
 
@@ -133,6 +148,7 @@ Apply these principles to every diagram:
 ## Diagram Types
 
 ### Architecture / System Diagrams
+
 Two approaches depending on what matters more:
 
 **Text-heavy overviews** (card content matters more than connections): CSS Grid with explicit row/column placement. Sections as rounded cards with colored borders and monospace labels. Vertical flow arrows between sections. Nested grids for subsystems. The reference template at `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/architecture.html` demonstrates this pattern. Use when cards need descriptions, code references, tool lists, or other rich content that Mermaid nodes can't hold.
@@ -140,34 +156,43 @@ Two approaches depending on what matters more:
 **Topology-focused diagrams** (connections matter more than card content): **Use Mermaid.** A `graph TD` or `graph LR` with custom `themeVariables` produces proper diagrams with automatic edge routing. Use `look: 'handDrawn'` for informal feel or `look: 'classic'` for clean lines. Use when the point is showing how components connect rather than describing what each component does in detail.
 
 ### Flowcharts / Pipelines
+
 **Use Mermaid.** Automatic node positioning and edge routing produces proper diagrams with connecting lines, decision diamonds, and parallel branches — dramatically better than CSS flexbox with arrow characters. Use `graph TD` for top-down or `graph LR` for left-right. Use `look: 'handDrawn'` for sketch aesthetic. Color-code node types with Mermaid's `classDef` or rely on `themeVariables` for automatic styling.
 
 ### Sequence Diagrams
+
 **Use Mermaid.** Lifelines, messages, activation boxes, notes, and loops all need automatic layout. Use Mermaid's `sequenceDiagram` syntax. Style actors and messages via CSS overrides on `.actor`, `.messageText`, `.activation` classes.
 
 ### Data Flow Diagrams
+
 **Use Mermaid.** Data flow diagrams emphasize connections over boxes — exactly what Mermaid excels at. Use `graph LR` or `graph TD` with edge labels for data descriptions. Thicker, colored edges for primary flows. Source/sink nodes styled differently from transform nodes via Mermaid's `classDef`.
 
 ### Schema / ER Diagrams
+
 **Use Mermaid.** Relationship lines between entities need automatic routing. Use Mermaid's `erDiagram` syntax with entity attributes. Style via `themeVariables` and CSS overrides on `.er.entityBox` and `.er.relationshipLine`.
 
 ### State Machines / Decision Trees
+
 **Use Mermaid.** Use `stateDiagram-v2` for states with labeled transitions. Supports nested states, forks, joins, and notes. Use `look: 'handDrawn'` for informal state diagrams. Decision trees can use `graph TD` with diamond decision nodes.
 
 **`stateDiagram-v2` label caveat:** Transition labels have a strict parser — colons, parentheses, `<br/>`, HTML entities, and most special characters cause silent parse failures. If your labels need any of these, use `flowchart LR` instead with rounded nodes and quoted edge labels. Reserve `stateDiagram-v2` for simple single-word or plain-text labels.
 
 ### Mind Maps / Hierarchical Breakdowns
+
 **Use Mermaid.** Use `mindmap` syntax for hierarchical branching from a root node. Mermaid handles the radial layout automatically. Style with `themeVariables` to control node colors at each depth level.
 
 ### Data Tables / Comparisons / Audits
+
 Use a real `<table>` element — not CSS Grid pretending to be a table. Tables get accessibility, copy-paste behavior, and column alignment for free. The reference template at `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/data-table.html` demonstrates all patterns.
 
 **Use proactively.** Any time you'd render an ASCII box-drawing table in the terminal, generate an HTML table instead. This includes: requirement audits, feature comparisons, status reports, configuration matrices, test result summaries, dependency lists, permission tables, API endpoint inventories — any structured rows and columns.
 
 ### Timeline / Roadmap Views
+
 Vertical or horizontal timeline with a central line (CSS pseudo-element). Phase markers as circles on the line. Content cards branching left/right (alternating) or all to one side. Date labels on the line. Color progression from past (muted) to future (vivid).
 
 ### Dashboard / Metrics Overview
+
 Card grid layout. Hero numbers large and prominent. Sparklines via inline SVG `<polyline>`. Progress bars via CSS `linear-gradient` on a div. For real charts (bar, line, pie), use **Chart.js via CDN** (see `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/references/libraries.md`). KPI cards with trend indicators (up/down arrows, percentage deltas).
 
 ## File Structure
@@ -177,26 +202,30 @@ Every diagram is a single self-contained `.html` file. No external assets except
 ```html
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Descriptive Title</title>
-  <link href="https://fonts.googleapis.com/css2?family=...&display=swap" rel="stylesheet">
-  <style>
-    /* CSS custom properties, theme, layout, components — all inline */
-  </style>
-</head>
-<body>
-  <!-- Semantic HTML: sections, headings, lists, tables, inline SVG -->
-  <!-- No script needed for static CSS-only diagrams -->
-  <!-- Optional: <script> for Mermaid, Chart.js, or anime.js when used -->
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Descriptive Title</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=...&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* CSS custom properties, theme, layout, components — all inline */
+    </style>
+  </head>
+  <body>
+    <!-- Semantic HTML: sections, headings, lists, tables, inline SVG -->
+    <!-- No script needed for static CSS-only diagrams -->
+    <!-- Optional: <script> for Mermaid, Chart.js, or anime.js when used -->
+  </body>
 </html>
 ```
 
 ## Quality Checks
 
 Before delivering, verify:
+
 - **The squint test**: Blur your eyes. Can you still perceive hierarchy? Are sections visually distinct?
 - **The swap test**: Would replacing your fonts and colors with a generic dark theme make this indistinguishable from a template? If yes, push the aesthetic further.
 - **Both themes**: Toggle your OS between light and dark mode. Both should look intentional, not broken.

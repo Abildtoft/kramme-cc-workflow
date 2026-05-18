@@ -57,6 +57,7 @@ Group in-scope findings so that no two groups touch the same files:
 4. Ensure no file appears in more than one group
 
 **Example grouping:**
+
 ```
 Group A (auth/): 3 findings touching auth/login.ts, auth/session.ts
 Group B (api/): 2 findings touching api/users.ts, api/handlers.ts
@@ -100,6 +101,7 @@ Create a multi-agent resolution session named `resolve-review`.
 - **Codex:** launch equivalent parallel resolver agents via multi-agent mode.
 
 Spawn one agent per group (max 3 agents). Each receives:
+
 - Their assigned findings with full context
 - **Exclusive file ownership list**: "You have exclusive write access to: [files]. Do NOT modify files outside this list. If you need to change a file outside your list, message the lead."
 - The resolution guidelines from `/kramme:pr:resolve-review`
@@ -109,12 +111,14 @@ For each agent, create a task: "Resolve X findings in [file area]"
 ### Step 6: Handle Sequential Findings
 
 If any findings were identified as overlapping multiple groups in Step 3:
+
 - Wait for parallel resolution to complete
 - Assign these findings to an agent that already owns one of the overlapping files, OR resolve them directly as the lead
 
 ### Step 7: Monitor and Coordinate
 
 While agents work:
+
 - Monitor progress via TaskList
 - If an agent discovers it needs a file outside its ownership set:
   - Check if the other owner is done with that file
@@ -145,6 +149,7 @@ After all agents complete:
 Resolved X findings in parallel across Y agents.
 
 ### Resolver Teams
+
 - Resolver 1: Fixed X findings in [file area]
 - Resolver 2: Fixed X findings in [file area]
 - Sequential: Fixed X overlapping findings after parallel phase
@@ -160,6 +165,7 @@ Resolved X findings in parallel across Y agents.
 ## File Conflict Prevention
 
 This skill uses **exclusive file ownership** to prevent conflicts:
+
 - The lead pre-assigns files to each agent before spawning
 - No two agents can write to the same file
 - If an agent needs a file it doesn't own, it messages the lead
@@ -178,11 +184,13 @@ This skill uses **exclusive file ownership** to prevent conflicts:
 ## When to Use This vs `/kramme:pr:resolve-review`
 
 Use **this mode** when:
+
 - 5+ findings across different file areas
 - Findings are spread across distinct modules/directories
 - You want faster resolution through parallelism
 
 Use **standard `/kramme:pr:resolve-review`** when:
+
 - Few findings or all in the same files
 - Findings are interdependent
 - You want lower token cost

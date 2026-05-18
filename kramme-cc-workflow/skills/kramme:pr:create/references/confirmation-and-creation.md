@@ -120,10 +120,11 @@ DRAFT_FLAG=""
 gh pr create $DRAFT_FLAG \
   --assignee @me \
   --title "{title}" \
-  --body "$(cat <<'EOF'
+  --body "$(
+    cat << 'EOF'
 {generated description}
 EOF
-)"
+  )"
 ```
 
 ### 8.5 Handle PR Creation Failure

@@ -25,6 +25,7 @@ Extract from `$ARGUMENTS`:
    - `--inline` — reply with the full report inline instead of writing `PRODUCT_AUDIT_OVERVIEW.md`
 
 Store parsed values:
+
 - `TARGET_URL` — the URL to review
 - `SCOPED_FLOWS` — list of flow names, or empty (review all discovered flows)
 - `FOCUS_DIMENSION` — specific dimension to emphasize, or empty (all dimensions weighted equally)
@@ -88,6 +89,7 @@ Read project context files to understand the product being reviewed:
 1. Read applicable project instruction files if they exist: repo-root `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, and markdown instruction files in repo-root `.claude/` when present, plus the closest relevant nested instruction files for the app surfaces under review (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or equivalents)
 
 Extract product context:
+
 - **Target users** — who is this product for?
 - **UI stack** — what framework, component library, or design system is used?
 - **Platform scope** — web only, mobile-responsive, desktop app?
@@ -105,6 +107,7 @@ If `PRODUCT_AUDIT_OVERVIEW.md` exists in the project root:
 4. Store as `PREVIOUS_FINDINGS` for deduplication in Step 6.
 
 This avoids re-reporting the same issues on subsequent review runs. A finding is considered "previously reported" if it matches on:
+
 - Same flow (flow name or URL)
 - Same dimension
 - Same underlying issue (semantic match on root cause)
@@ -120,6 +123,7 @@ Invoke `/kramme:browse` via the Skill tool to navigate to the root URL and take 
 ```
 
 Analyze the landing page and navigation structure:
+
 - Identify top-level navigation items (sidebar, header nav, tabs)
 - Identify key routes and their labels
 - Note the overall layout pattern (sidebar nav, top nav, dashboard, etc.)
@@ -127,12 +131,14 @@ Analyze the landing page and navigation structure:
 **If `--flows` was provided:** Map the provided flow names to discovered routes. If a flow name does not match any visible navigation item or route, note it as "not found in navigation" but still attempt to locate it by appending the flow name to the base URL (e.g., `$TARGET_URL/settings`).
 
 **If `--flows` was not provided:** Select 5-8 key flows from the navigation. Prioritize:
+
 1. Primary user-facing features (not admin/settings)
 2. Flows that appear in top-level navigation
 3. Features that represent core product value
 4. Settings and account management
 
 Store the list of flows to review as `REVIEW_FLOWS`, each with:
+
 - `flow_name` — human-readable name
 - `flow_url` — URL to navigate to
 - `flow_context` — brief description from navigation label
@@ -190,6 +196,7 @@ Use **Flow:** `$FLOW_NAME ($FLOW_URL)` instead of **File:** in findings.
 Collect all findings from the agent, prefixed with the flow name.
 
 **Error handling per flow:**
+
 - If navigation fails (connection error, timeout): Skip this flow. Log a finding:
   ```
   ### PROD-XXX: Flow unreachable — $FLOW_NAME
@@ -206,27 +213,33 @@ Collect all findings from the agent, prefixed with the flow name.
 Collect all findings from all flows. Organize by severity, then by dimension:
 
 **Critical** (broken flows, inaccessible features, data loss risk):
+
 - Findings with severity Critical from any flow
 
 **Important** (inconsistencies, missing states, poor discoverability):
+
 - Findings with severity Important from any flow
 
 **Suggestion** (polish, copy improvements, minor friction reduction):
+
 - Findings with severity Suggestion from any flow
 
 **Cross-flow patterns to identify during aggregation:**
+
 - Same issue appearing in multiple flows (deduplicate, note frequency)
 - Inconsistencies between flows (different patterns for same action)
 - Navigation gaps (flows that don't connect to each other)
 - Terminology mismatches across flows
 
 **Previous review deduplication (if `PREVIOUS_FINDINGS` exists from Step 3b):**
+
 - Cross-reference each finding against previously reported findings
 - If a finding matches a previous one (same flow, dimension, and root cause): mark as "Previously Reported" and move to a separate section
 - If a previously reported finding no longer appears: mark as "Resolved since last review"
 - New findings not in the previous review are reported normally
 
 **Renumber findings before writing the report:**
+
 - After deduplication, assign fresh IDs sequentially across the full aggregated report: `PROD-001`, `PROD-002`, `PROD-003`, ...
 - Do not preserve per-flow scratch IDs from the individual reviewer runs
 - Use the renumbered IDs everywhere in the final report so follow-up discussion and previous-review matching stay unambiguous
@@ -234,60 +247,54 @@ Collect all findings from all flows. Organize by severity, then by dimension:
 ### Step 7: Write Review Report or Reply Inline
 
 If `INLINE_MODE=true`:
+
 - Reply with the full report inline using the structure below
 - Do **not** create or update `PRODUCT_AUDIT_OVERVIEW.md`
 
 Otherwise:
+
 - Write `PRODUCT_AUDIT_OVERVIEW.md` at the project root
 - Treat it as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
-
 
 **Report structure:**
 
 ```markdown
 # Product Review Overview
 
-**Application:** $TARGET_URL
-**Date:** {current date}
-**Flows reviewed:** {list of flow names}
-**Focus:** {FOCUS_DIMENSION or "All dimensions"}
+**Application:** $TARGET_URL **Date:** {current date} **Flows reviewed:** {list of flow names} **Focus:** {FOCUS_DIMENSION or "All dimensions"}
 
 ## Executive Summary
 
-{3-5 sentence high-level assessment of the product's overall experience quality.
-Highlight the most significant patterns — both strengths and weaknesses.
-State the overall product maturity level: early/developing/mature/polished.}
+{3-5 sentence high-level assessment of the product's overall experience quality. Highlight the most significant patterns — both strengths and weaknesses. State the overall product maturity level: early/developing/mature/polished.}
 
 ## Review Scope
 
-| Flow | URL | Status |
-|------|-----|--------|
+| Flow        | URL        | Status                      |
+| ----------- | ---------- | --------------------------- |
 | {flow_name} | {flow_url} | Reviewed / Skipped (reason) |
 
 ## Critical Findings
 
-{All Critical findings, organized by dimension.
-Each finding in PROD-NNN format.}
+{All Critical findings, organized by dimension. Each finding in PROD-NNN format.}
 
 {If no critical findings: "No critical findings identified."}
 
 ## Important Findings
 
-{All Important findings, organized by dimension.
-Each finding in PROD-NNN format.}
+{All Important findings, organized by dimension. Each finding in PROD-NNN format.}
 
 {If no important findings: "No important findings identified."}
 
 ## Suggestions
 
-{All Suggestion findings, organized by dimension.
-Each finding in PROD-NNN format.}
+{All Suggestion findings, organized by dimension. Each finding in PROD-NNN format.}
 
 {If no suggestions: "No suggestions identified."}
 
 ## Cross-Flow Patterns
 
 {Patterns observed across multiple flows:}
+
 - **Recurring issues:** {issues that appear in 2+ flows}
 - **Inconsistencies:** {where flows behave differently for similar actions}
 - **Navigation gaps:** {flows that should connect but don't}
@@ -295,36 +302,34 @@ Each finding in PROD-NNN format.}
 
 ## Previously Reported (from prior review)
 
-{If PREVIOUS_FINDINGS exists:}
-{Findings that match a previous review run — same flow, dimension, and root cause.
-Listed with their original PROD-NNN ID and current status.}
+{If PREVIOUS_FINDINGS exists:} {Findings that match a previous review run — same flow, dimension, and root cause. Listed with their original PROD-NNN ID and current status.}
 
 {If no previous review: omit this section entirely.}
 
 ## Resolved Since Last Review
 
-{If PREVIOUS_FINDINGS exists:}
-{Findings from the previous review that are no longer present — the issues have been fixed.}
+{If PREVIOUS_FINDINGS exists:} {Findings from the previous review that are no longer present — the issues have been fixed.}
 
 {If no previous review: omit this section entirely.}
 
 ## Strengths
 
-{What the product does well from a product experience perspective.
-Bulleted list of 3-5 specific strengths observed during the review.}
+{What the product does well from a product experience perspective. Bulleted list of 3-5 specific strengths observed during the review.}
 
 ## Recommended Actions
 
-{Ordered list of recommendations, most impactful first.
-Group by effort level: quick wins, medium effort, larger initiatives.}
+{Ordered list of recommendations, most impactful first. Group by effort level: quick wins, medium effort, larger initiatives.}
 
 ### Quick Wins
+
 1. {Specific, actionable recommendation}
 
 ### Medium Effort
+
 1. {Specific, actionable recommendation}
 
 ### Larger Initiatives
+
 1. {Specific, actionable recommendation}
 ```
 
@@ -343,7 +348,7 @@ Key patterns:
 ## Error Handling Summary
 
 | Error | Behavior |
-|-------|----------|
+| --- | --- |
 | No URL provided | Hard stop with usage instructions |
 | No browser MCP detected | Hard stop with installation guidance |
 | App not running (connection refused) | Hard stop with instructions to start app |
@@ -358,31 +363,37 @@ Key patterns:
 ## Usage Examples
 
 **Review a local development server:**
+
 ```
 /kramme:product:review http://localhost:3000
 ```
 
 **Scope to specific flows:**
+
 ```
 /kramme:product:review http://localhost:4200 --flows onboarding,settings,billing
 ```
 
 **Focus on a specific dimension:**
+
 ```
 /kramme:product:review http://localhost:3000 --focus discoverability
 ```
 
 **Reply inline instead of writing a report file:**
+
 ```
 /kramme:product:review http://localhost:3000 --inline
 ```
 
 **Review a staging environment:**
+
 ```
 /kramme:product:review https://staging.myapp.com --flows dashboard,projects,team
 ```
 
 **Combine flow scoping and dimension focus:**
+
 ```
 /kramme:product:review http://localhost:3000 --flows checkout,payment --focus trust-safety
 ```

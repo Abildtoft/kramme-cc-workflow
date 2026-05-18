@@ -18,21 +18,23 @@ This skill is a **planning aid**. It reads the diff, names seams, and prints a r
 
 3-tier resolution.
 
-**Tier 1: Explicit override**
-If `--base <branch>` was provided, use it directly.
+**Tier 1: Explicit override** If `--base <branch>` was provided, use it directly.
 
 **Tier 2: PR target detection**
+
 ```bash
-BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
+BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2> /dev/null)
 ```
 
 **Tier 3: Fallback**
+
 ```bash
-BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@')
 [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
 ```
 
 Normalize, validate, and fetch:
+
 ```bash
 BASE_BRANCH=${BASE_BRANCH#refs/heads/}
 BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
@@ -42,11 +44,11 @@ if [ -z "$BASE_BRANCH" ]; then
   echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
   exit 1
 fi
-if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2>/dev/null; then
+if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2> /dev/null; then
   echo "Error: Failed to fetch origin/$BASE_BRANCH. Check remote access and re-run with --base <branch>." >&2
   exit 1
 fi
-git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null || {
+git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null || {
   echo "Error: origin/$BASE_BRANCH not found. Re-run with --base <branch>." >&2
   exit 1
 }
@@ -55,6 +57,7 @@ git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null || {
 ### 2. Build the Change Set
 
 Combine committed, staged, unstaged, and untracked changes:
+
 ```bash
 BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
 {
@@ -66,17 +69,19 @@ BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
 ```
 
 For each file, capture:
+
 - Insertions / deletions (`git diff --numstat "$BASE_REF"...HEAD` plus `git diff --numstat HEAD` for local).
 - Whether it's new, modified, deleted, or renamed.
 - File category — source, test, config, lock file, snapshot, generated.
 
 Use one combined numstat pass so untracked files are included in per-file slice counts and branch totals. Group rows by path before treating them as per-file records because the same file can appear in both the committed diff and local WIP.
+
 ```bash
 {
   git diff --numstat "$BASE_REF"...HEAD
   git diff --numstat HEAD
-  git ls-files --others --exclude-standard -z |
-    while IFS= read -r -d '' file; do
+  git ls-files --others --exclude-standard -z \
+    | while IFS= read -r -d '' file; do
       awk 'END { printf "%d\t0\t%s\n", NR, FILENAME }' "$file"
     done
 } | awk '
@@ -94,7 +99,9 @@ Use one combined numstat pass so untracked files are included in per-file slice 
   }
 '
 ```
+
 To compute branch totals from the grouped rows, sum the first two columns:
+
 ```bash
 awk 'NF >= 3 { ins += ($1 == "-" ? 0 : $1); del += ($2 == "-" ? 0 : $2) } END { print ins, del, ins + del }'
 ```
@@ -102,6 +109,7 @@ awk 'NF >= 3 { ins += ($1 == "-" ? 0 : $1); del += ($2 == "-" ? 0 : $2) } END { 
 ### 3. Read the Diff
 
 Read the actual diff content for source and test files:
+
 ```bash
 git diff "$BASE_REF"...HEAD
 git diff --cached
@@ -109,6 +117,7 @@ git diff
 ```
 
 For untracked source and test files from the change set, read their contents directly because regular `git diff` output has no blob to compare:
+
 ```bash
 git ls-files --others --exclude-standard
 sed -n '1,240p' path/to/untracked-source-file
@@ -121,7 +130,7 @@ Skip lock files, snapshots, and generated files when interpreting intent — the
 Build a table mapping each file to:
 
 | Dimension | Examples |
-|---|---|
+| --- | --- |
 | **Intent** | Feature A / Feature B / refactor-for-feature-A / standalone refactor / bug fix / dependency bump / cleanup |
 | **Layer** | UI / API / business logic / DB schema / config / infra / tests / docs |
 | **Module** | Directory or package boundary (`src/auth`, `packages/billing`) |
@@ -129,7 +138,7 @@ Build a table mapping each file to:
 
 Assigning each file to one **intent** is the load-bearing step — it's how you find the seams. If a file legitimately serves two intents (e.g., a shared utility extended for two features), note that and treat it as carried with the earlier slice.
 
-**Refactor classification matters.** A refactor that exists *to enable* feature X belongs with feature X — splitting it off forces reviewers to evaluate motion without context. A refactor that stands alone (renaming, dead-code removal, internal cleanup independent of any new behavior) belongs in its own slice and should ship before the feature work that follows.
+**Refactor classification matters.** A refactor that exists _to enable_ feature X belongs with feature X — splitting it off forces reviewers to evaluate motion without context. A refactor that stands alone (renaming, dead-code removal, internal cleanup independent of any new behavior) belongs in its own slice and should ship before the feature work that follows.
 
 ### 5. Detect Coupling
 
@@ -140,13 +149,14 @@ For each candidate seam, ask:
 - Does the slice exercise its layer end-to-end, or stop mid-stack (an API route with no caller, a UI component with no backend)?
 - Are there shared types, schema migrations, or config flags that force ordering?
 
-Flag tight coupling explicitly when proposing slices: *"Slice B depends on Slice A because B imports the new `UserSession` type defined in A."*
+Flag tight coupling explicitly when proposing slices: _"Slice B depends on Slice A because B imports the new `UserSession` type defined in A."_
 
 ### 6. Choose Seams
 
 Read `references/strategies.md` for the four named strategies and selection guidance. **Prefer Vertical.**
 
 For each proposed slice, produce:
+
 - A short name describing the user-visible capability (vertical) or boundary (other strategies).
 - The file list, with per-file line counts.
 - Total line count for the slice.
@@ -155,13 +165,13 @@ For each proposed slice, produce:
 - A one-line test plan: what tests verify the slice in isolation.
 - A one-sentence rationale: why this seam, not an arbitrary cut.
 
-The rationale is the load-bearing field. *"Smaller"* is not a reason; *"these two features share no code and ship value independently"* is.
+The rationale is the load-bearing field. _"Smaller"_ is not a reason; _"these two features share no code and ship value independently"_ is.
 
 **Per-slice sizing heuristic.** A reviewable PR usually lands in the **~50–200 source-line range** and takes **~10–15 minutes** to read carefully. If a candidate slice meaningfully exceeds that — say, >300 source lines or >20 minutes of estimated review — propose a sub-split inside that slice. Treat estimated review time as the practical test, not raw line count: 400 mechanical-rename lines may read in 5 minutes; 80 lines of intricate state-machine logic may read in 25.
 
-There is no hard upper-bound rule that classifies a PR as "too large" purely by line count. The heuristic is a *target for each slice*, not a gate against the whole branch.
+There is no hard upper-bound rule that classifies a PR as "too large" purely by line count. The heuristic is a _target for each slice_, not a gate against the whole branch.
 
-**Stack depth.** When a vertical or stacked plan naturally runs to **6 or more ordered slices**, work through the escape hatches in `references/strategies.md` § *When a stack would need 6+ slices* before recommending a long chain — combine adjacent slices, carve off the tail as a future branch, promote parallel slices, or reduce scope. If the long stack is genuinely the right answer, fold the coordination guidance from that section (chain naming in PR bodies, single reviewer, rebase cadence, merge cadence) into the recommendation so the user gets a *workable* long stack, not a cap-and-refuse.
+**Stack depth.** When a vertical or stacked plan naturally runs to **6 or more ordered slices**, work through the escape hatches in `references/strategies.md` § _When a stack would need 6+ slices_ before recommending a long chain — combine adjacent slices, carve off the tail as a future branch, promote parallel slices, or reduce scope. If the long stack is genuinely the right answer, fold the coordination guidance from that section (chain naming in PR bodies, single reviewer, rebase cadence, merge cadence) into the recommendation so the user gets a _workable_ long stack, not a cap-and-refuse.
 
 ### 7. Decide Whether to Split
 
@@ -198,7 +208,7 @@ Reply inline using the template in `references/output-template.md` verbatim. Do 
 ## Notes
 
 - This skill never edits code or rewrites git history. The user runs `git switch -c`, `git cherry-pick`, branch resets, etc. themselves.
-- Use after a code review surfaces *"this is doing too much"*, when a reviewer asks for a split, or before opening a PR you suspect bundles unrelated work.
+- Use after a code review surfaces _"this is doing too much"_, when a reviewer asks for a split, or before opening a PR you suspect bundles unrelated work.
 - **Author-driven, not reviewer-driven.** Splitting is the author's responsibility — reviewers shouldn't carry it. Self-review the diff first (a quick read-through, or run `kramme:pr:code-review`) so the seams reflect what the code actually does, not just what the file tree looks like.
 - Pair with `kramme:pr:code-review` for correctness; this skill only addresses scope and seams.
 - The recommendation is advice, not a verdict. If the user disagrees with a proposed seam, that's a useful signal — ask what they'd cut differently before re-planning.

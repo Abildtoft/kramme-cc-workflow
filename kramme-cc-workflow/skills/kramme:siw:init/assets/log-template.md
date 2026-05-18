@@ -2,8 +2,7 @@
 
 ## Current Progress
 
-**Last Updated:** {current date}
-**Quick Summary:** Project initialized, ready for issue definition.
+**Last Updated:** {current date} **Quick Summary:** Project initialized, ready for issue definition.
 
 ### Project Status
 
@@ -30,8 +29,8 @@ _Decisions will be documented here as they are made._
 ## Rejected Alternatives Summary
 
 | Alternative | For | Why Rejected | Decision # |
-|------------|-----|--------------|------------|
-| _None yet_ | | | |
+| ----------- | --- | ------------ | ---------- |
+| _None yet_  |     |              |            |
 
 ---
 

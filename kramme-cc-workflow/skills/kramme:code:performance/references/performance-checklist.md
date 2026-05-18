@@ -93,11 +93,14 @@ npx lhci autorun
 For a hot code path that does not have a clean CWV mapping (a background job, a CLI command, a server-rendered endpoint), write a dedicated timing test:
 
 ```ts
-import { test, expect } from 'vitest';
-import { computeReport } from './report';
+import { expect, test } from "vitest";
+import { computeReport } from "./report";
 
-test('computeReport stays under 150ms for 10k rows', async () => {
-  const rows = Array.from({ length: 10_000 }, (_, i) => ({ id: i, value: i * 2 }));
+test("computeReport stays under 150ms for 10k rows", async () => {
+  const rows = Array.from({ length: 10_000 }, (_, i) => ({
+    id: i,
+    value: i * 2,
+  }));
   const start = performance.now();
   await computeReport(rows);
   const elapsed = performance.now() - start;

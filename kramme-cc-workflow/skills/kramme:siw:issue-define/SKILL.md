@@ -61,6 +61,7 @@ Create or improve a local issue through guided interactive refinement. Can start
 ### Step 1: Detect Mode
 
 Check if input matches an existing issue:
+
 - **Issue identifier patterns**:
   - Full format: `ISSUE-G-001`, `ISSUE-P1-001`, `ISSUE-P2-001`, etc.
   - Short format: `G-001`, `P1-001`, `P2-001`, etc.
@@ -69,18 +70,21 @@ Check if input matches an existing issue:
 **Detection rule:** Only treat it as an existing issue if a matching file exists in `siw/issues/ISSUE-{prefix}-{number}-*.md`.
 
 **If existing issue detected → IMPROVE MODE:**
+
 1. Extract the prefix and number (e.g., `G` and `001` from `ISSUE-G-001`, or `P1` and `002` from `P1-002`)
 2. Find and read the issue file from `siw/issues/ISSUE-{prefix}-{number}-*.md`
 3. Store the existing issue content
 4. Set mode flag to "improve"
 
 **If an identifier-like argument was provided but no file exists:**
+
 1. Use `AskUserQuestion` to confirm whether they want to create a new issue instead
 2. If creating: treat the provided prefix as `requested_prefix` and ignore the provided number
 3. If the identifier was followed by additional text, treat that remainder as the initial description; otherwise ask for a description
 4. Continue in CREATE MODE
 
 **If no issue detected → CREATE MODE:**
+
 1. Parse optional **prefix hint** at the start of `$ARGUMENTS`:
    - Accepted: `G`, `G-`, `P1`, `P1-`, `P2`, `P2-`, etc.
    - Store as `requested_prefix` (without trailing `-`) and strip it from the description
@@ -92,6 +96,7 @@ Check if input matches an existing issue:
 ### Step 2: Process File References (Both Modes)
 
 **If file paths provided:**
+
 1. Read each file using the `Read` tool
 2. Extract relevant context:
    - What functionality does this code provide?
@@ -104,12 +109,14 @@ Check if input matches an existing issue:
 Auto-detect from context and suggest to the user (they can override):
 
 **Issue Types:**
+
 - **Bug (Simple)**: Root cause is known or easily identified, fix is localized, no architectural decisions needed
 - **Bug (Complex)**: Unknown root cause, affects multiple components, requires investigation
 - **Feature**: New functionality
 - **Improvement**: Enhance existing functionality
 
 **Detection Heuristics:**
+
 - Keywords like "bug", "fix", "broken", "doesn't work", "error" → suggest Bug
 - If user provides root cause and specific file(s) → suggest Bug (Simple)
 - If scope is unclear, multiple components mentioned → suggest Bug (Complex)
@@ -117,11 +124,13 @@ Auto-detect from context and suggest to the user (they can override):
 - Keywords like "improve", "refactor", "enhance", "optimize" → suggest Improvement
 
 **Present classification to user via `AskUserQuestion`:**
+
 - Show detected type with reasoning
 - Allow override to any type
 - Store `issue_type` for conditional behavior
 
 **For Bug (Simple), store:**
+
 - `is_simple_bug = true`
 - This enables streamlined interview and simple template
 
@@ -132,6 +141,7 @@ Only for CREATE MODE. Skip for IMPROVE MODE.
 Goal: recommend a phase prefix (`P1-`, `P2-`, etc.) when the issue clearly fits an **active** (not completed) phase. If the issue doesn't suit a phase well, or the relevant phase is completed, recommend `G` (General, i.e., IDs like `G-001`).
 
 **Inputs to check:**
+
 1. `siw/` spec file created by `/kramme:siw:init` (phase breakdown and tasks).
 2. `siw/LOG.md` for phase completion notes (e.g., "Phase 1 complete", "Status: DONE").
 3. `siw/OPEN_ISSUES_OVERVIEW.md` for existing phase sections and active work.
@@ -139,6 +149,7 @@ Goal: recommend a phase prefix (`P1-`, `P2-`, etc.) when the issue clearly fits 
 If multiple candidate spec files exist under `siw/`, ask the user which one is the main spec (exclude `siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, and `siw/DISCOVERY_BRIEF.md`).
 
 **Heuristics:**
+
 - Map the issue description and any referenced tasks to the most relevant phase in the spec.
 - If the phase is explicitly marked complete in the spec or log, do **not** recommend that phase.
 - If the phase section header in `siw/OPEN_ISSUES_OVERVIEW.md` is marked with ` (DONE)`, treat the phase as completed.
@@ -147,6 +158,7 @@ If multiple candidate spec files exist under `siw/`, ask the user which one is t
 - If the user explicitly supplied a prefix (`requested_prefix`), treat it as preferred, but warn if the phase appears completed and offer alternatives.
 
 **AskUserQuestion (recommendation + confirmation):**
+
 ```
 header: "Choose Issue Prefix"
 question: "Which prefix should we use? Recommendation: {recommended_prefix}- ({reason})."
@@ -232,6 +244,7 @@ Before creating a new issue, check for existing similar issues:
 **Output**: Summarize findings to share with user and inform interview.
 
 Before the interview, synthesize a working hypothesis for:
+
 - who is affected
 - why this matters now
 - what should be explicitly deferred or split into another issue
@@ -248,20 +261,24 @@ The interview adapts based on issue type.
 Streamlined 2-round interview:
 
 **Round 1: Problem & Reproduction**
+
 - What's the bug? (brief description)
 - Steps to reproduce (numbered list ending with "Bug: [what happens]")
 - What should happen instead?
 
 **Round 2: Root Cause & Fix**
+
 - What's causing the bug? (if known)
 - What needs to change to fix it?
 - Which area(s) are affected? If specific files are known, use them as private context for exploration, but translate them into durable module/behavior language in the issue body.
 
 **If root cause unknown after Round 2:**
+
 - Reclassify as Bug (Complex)
 - Switch to Standard Interview
 
 Then run a streamlined metadata pass and store the answers as Round 5 metadata for Phase 5:
+
 - Priority (default Medium unless the user indicated urgency)
 - Size (default XS/S for localized simple bugs)
 - Related issues or blockers, if any
@@ -283,18 +300,21 @@ Multi-round interview using `AskUserQuestion`.
 ### Round 1: Problem & Context (Most Important)
 
 **Questions:**
+
 - What specific problem or pain point does this solve?
 - Who is affected (end users, internal teams)?
 - How significant is the impact?
 - What happens if we don't address this?
 
 **Dig deep:**
+
 - Don't accept vague answers
 - Push for concrete impact
 
 ### Round 2: Scope & Boundaries
 
 **Questions:**
+
 - What is explicitly in scope?
 - What is explicitly out of scope?
 - Are there related changes that should be separate issues?
@@ -303,30 +323,35 @@ Multi-round interview using `AskUserQuestion`.
 ### Round 3: Technical Context
 
 **Questions:**
+
 - Which components/areas are affected?
 - Are there dependencies or blocking issues?
 - What existing patterns should be followed?
 - Are there technical constraints?
 
 **Leverage exploration findings:**
+
 - Present discovered patterns as options
 - Highlight related code
 
 ### Round 4: Acceptance Criteria
 
 **Questions:**
+
 - What defines "done"?
 - How should this be tested/verified?
 - Are there specific edge cases?
 - What quality criteria must be met?
 
 **Guide toward testable criteria:**
+
 - Each criterion should be verifiable
 - Include both happy path and error scenarios
 
 ### Round 5: Priority, Related Work & Mode
 
 **Questions:**
+
 - What priority level? (High/Medium/Low)
 - What size best fits this issue? (XS/S/M/L)
   - XS = 1 file, single function
@@ -372,11 +397,13 @@ The references file also defines the **Durability rule**: issue bodies must desc
 ### 3. Write Issue File
 
 **Create/Update issue file:**
+
 ```
 siw/issues/ISSUE-{prefix}-{number}-{sanitized-title}.md
 ```
 
 **Sanitize title:**
+
 - Lowercase
 - Replace spaces with hyphens
 - Remove special characters
@@ -385,6 +412,7 @@ siw/issues/ISSUE-{prefix}-{number}-{sanitized-title}.md
 ### 4. Update siw/OPEN_ISSUES_OVERVIEW.md
 
 **For new issues:** Add row to the appropriate section (General, Phase 1, Phase 2, etc.). If the section doesn't exist yet, create the section header and table first. Add one section-level `**Parallelization:**` summary line only when the tracker already uses that metadata or when creating a brand-new modern section. If you're appending into a legacy tracker section that predates the line, keep that section metadata-free unless the user is explicitly migrating the schema. For `## General`, any present line is a live roll-up summary. For phase sections, any present line is the approved group-level guidance for the phase and should stay stable after creation unless the phase plan itself is being redefined.
+
 ```markdown
 **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination | Mixed — see issue files}
 
@@ -398,6 +426,7 @@ The `{Mode}` cell is `AUTO` or `HITL` (no inline reason in the table; the reason
 **Schema rule:** If the existing section already uses the legacy 5-column table (`| # | Title | Status | Priority | Related |`), preserve that layout for compatibility. If the existing section uses the previous 6-column modern table (`| # | Title | Status | Size | Priority | Related |` — pre-Mode), preserve that layout for in-place updates and only migrate to the 7-column layout when the user explicitly requests a schema migration. Use the 7-column layout above only for brand-new modern sections.
 
 **Parallelization summary rule:**
+
 - **`## General`**: If the section already has a `**Parallelization:**` note, or you're creating a brand-new modern General section, treat that note as a roll-up summary rather than a per-issue mirror. After creating or updating a real General issue, recompute the summary from all non-placeholder `G-*` issue files:
   - If every real General issue shares the same section-level category/gating note, use that shared summary.
   - If real General issues disagree, set the summary to `Mixed — see issue files for exact guidance`.
@@ -409,19 +438,23 @@ The `{Mode}` cell is `AUTO` or `HITL` (no inline reason in the table; the reason
 **Section organization:** Issues are grouped by prefix (General, Phase 1, Phase 2, etc.).
 
 **If updating a phase issue to `DONE`:**
+
 - Check whether this was the last open issue in that phase section (no READY / IN PROGRESS / IN REVIEW remaining).
 - If so, ask the user whether to mark the entire phase as DONE by appending ` (DONE)` to the phase section header in `siw/OPEN_ISSUES_OVERVIEW.md`.
 
 **If creating or updating a phase issue that is not `DONE`:**
+
 - If the phase section header is currently marked ` (DONE)`, ask the user whether to remove the marker because there is now open work in that phase.
 
 ### 5. Return Result
 
 **IMPROVE MODE:**
+
 - Confirm issue file updated
 - Summarize what changed
 
 **CREATE MODE:**
+
 - Confirm issue file created
 - Show file path
 
@@ -433,6 +466,7 @@ The `{Mode}` cell is `AUTO` or `HITL` (no inline reason in the table; the reason
 - Do NOT start working on the issue
 
 **Next steps for the user:**
+
 - Review the created issue file
 - If ready to implement, invoke `/kramme:siw:issue-implement {prefix}-{number}` (e.g., `G-001`, `P1-001`)
 - If changes needed, run `/kramme:siw:issue-define {prefix}-{number}` again

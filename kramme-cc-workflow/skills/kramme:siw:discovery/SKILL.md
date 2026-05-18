@@ -87,10 +87,12 @@ Before branching into Greenfield vs Refinement, handle the ambiguous case explic
 - If `siw/SPEC_STRENGTHENING_PLAN.md` exists without spec files or `siw/DISCOVERY_BRIEF.md`, do not offer a "refine existing" branch. Treat it as an unresolved strengthening artifact that must be applied, archived, or removed before starting another discovery pass.
 
 **Greenfield mode** when:
+
 - No `siw/` directory exists, OR
 - `siw/` exists but contains neither spec files, `siw/DISCOVERY_BRIEF.md`, nor `siw/SPEC_STRENGTHENING_PLAN.md`
 
 **Refinement mode** when:
+
 - Explicit file paths are provided, OR
 - `siw` keyword is used and spec files, `siw/DISCOVERY_BRIEF.md`, or `siw/SPEC_STRENGTHENING_PLAN.md` exist, OR
 - No arguments are given and spec files, `siw/DISCOVERY_BRIEF.md`, or `siw/SPEC_STRENGTHENING_PLAN.md` exist
@@ -98,6 +100,7 @@ Before branching into Greenfield vs Refinement, handle the ambiguous case explic
 ### 1.3 Resolve Inputs
 
 **Greenfield:**
+
 - If remaining arguments contain text (not file paths), store as `topic_hint`
 - If no arguments, ask for topic using AskUserQuestion:
 
@@ -108,11 +111,12 @@ freeform: true
 ```
 
 **Refinement:**
+
 - Resolve target documents using this order:
   1. If explicit file paths include `siw/DISCOVERY_BRIEF.md` and `siw/SPEC_STRENGTHENING_PLAN.md` also exists, stop. Tell the user to apply, archive, or discard the pending strengthening plan before running another refinement interview against the brief.
   2. Explicit file paths from arguments (SIW spec files or `siw/DISCOVERY_BRIEF.md`)
   3. If no explicit files were provided and `siw/SPEC_STRENGTHENING_PLAN.md` exists in the workspace, read that plan, tell the user there is already an unresolved strengthening artifact in this workspace, and stop. They should apply, archive, or remove it before starting another discovery pass.
-  4. If no explicit files were provided and spec files exist, include `siw/*.md` except LOG.md, OPEN_ISSUES_OVERVIEW.md, AUDIT_*.md, SPEC_STRENGTHENING_PLAN.md, DISCOVERY_BRIEF.md. Include `siw/supporting-specs/*.md`.
+  4. If no explicit files were provided and spec files exist, include `siw/*.md` except LOG.md, OPEN*ISSUES_OVERVIEW.md, AUDIT*_.md, SPEC_STRENGTHENING_PLAN.md, DISCOVERY_BRIEF.md. Include `siw/supporting-specs/_.md`.
   5. If no explicit files were provided, no spec files exist, but `siw/DISCOVERY_BRIEF.md` does, target that brief so no-argument reruns resume the saved discovery output.
   6. If nothing is found, switch to greenfield mode.
 - Check `.out-of-scope/` for prior matches against the topic. Two-step protocol: (a) list filenames in `.out-of-scope/` (skip silently if the directory is absent or empty); (b) read the body of any file whose slug plausibly matches `topic_hint` (greenfield) or the resolved spec scope (refinement). When a match is found, surface as "This is similar to `.out-of-scope/<slug>.md` (decided <date>) — we rejected this before because <one-line summary>. Continue, or honor the prior rejection?" and route the answer through AskUserQuestion. If the user honors the prior rejection, stop; otherwise continue and note the prior rejection in the discovery brief output. See `/kramme:docs:out-of-scope` for the storage skill.
@@ -121,6 +125,7 @@ freeform: true
 ### 1.4 Extract Work Context (Refinement only)
 
 Look for `## Work Context` section in spec files:
+
 1. Parse the markdown table for Work Type, Priority Dimensions, Deprioritized dimensions
 2. Normalize `Work Type` to the closest Work Context profile using the mapping in `references/confidence-framework.md`
 3. Treat legacy `Priority Dimensions` and `Deprioritized` values from `siw:init` as interview-ordering hints only
@@ -147,6 +152,7 @@ Before Step 2, check for `UBIQUITOUS_LANGUAGE.md` at the project root:
 **Before asking a single question**, draft a working hypothesis based on available context:
 
 **Greenfield:** Use the topic hint to infer:
+
 - Who the likely user/stakeholder is
 - What job they're trying to get done
 - Why this matters now
@@ -154,6 +160,7 @@ Before Step 2, check for `UBIQUITOUS_LANGUAGE.md` at the project root:
 - What the stated want likely is vs. what the actual need might be
 
 **Refinement:** Read the spec and infer:
+
 - What the spec says the project is about
 - What the spec actually focuses energy on (which may differ)
 - Where the spec is confident vs. hand-wavy
@@ -191,6 +198,7 @@ Start all 7 dimensions at **Low**, unless the topic hint is rich enough to justi
 ### Refinement
 
 Map spec content to confidence dimensions using the mapping table in the framework reference. Score each:
+
 - Section missing → Low
 - Section present but vague → Medium
 - Section concrete and specific → High
@@ -199,6 +207,7 @@ Map spec content to confidence dimensions using the mapping table in the framewo
 ### Apply Work Context
 
 If Work Context exists, apply the adjustments from the framework reference:
+
 - Mark critical dimensions (must reach Confident)
 - Mark deprioritized dimensions (only need Medium)
 - Normal dimensions must reach High
@@ -238,6 +247,7 @@ Repeat until confidence target is met (see "When to Stop" in framework reference
 #### 4.1 Select Focus
 
 Pick the 1-2 lowest-confidence dimensions, weighted by criticality:
+
 1. Critical dimensions below Confident (always first)
 2. Normal dimensions below High
 3. Deprioritized dimensions below Medium (only if others are satisfied)
@@ -284,6 +294,7 @@ After each round:
 Show the confidence dashboard with updated scores. Mark focus areas for next round with ◄. Include round number and overall percentage.
 
 If confidence dropped on any dimension (due to contradiction or revelation), note it:
+
 ```text
 ⚠ Scope Boundaries dropped from High to Medium — your answer about [X] suggests the scope is wider than the spec indicates.
 ```
@@ -291,16 +302,19 @@ If confidence dropped on any dimension (due to contradiction or revelation), not
 #### 4.6 Check Stop Conditions
 
 **Stop when:**
+
 - All critical dimensions at Confident (90%+)
 - All normal dimensions at High (70%+)
 - All deprioritized dimensions at Medium (40%+)
 - Last 2 rounds produced confirmations, not revelations
 
 **Also stop when:**
+
 - User explicitly says "that's enough" or "I think you've got it"
 - 10+ rounds completed (suggest stopping, don't force — offer to continue if user wants)
 
 **Continue when:**
+
 - Any critical dimension below Confident
 - A contradiction was just discovered
 - Stated and actual wants haven't been reconciled
@@ -320,6 +334,7 @@ Ask one question at a time by default. Batch only routine sibling questions that
 #### 4D.3 Process the Answer
 
 Record:
+
 - The decision or non-decision
 - The dependencies it unlocks or invalidates
 - The tradeoff accepted
@@ -347,6 +362,7 @@ In either mode, if a dimension remains unanswered, keep the relevant placeholder
 Create `siw/` if it does not already exist. Then read `assets/discovery-brief-template.md`, populate it from the interview, and write the result to `siw/DISCOVERY_BRIEF.md`. Emit `PLAN: Written to siw/DISCOVERY_BRIEF.md.` at hand-off.
 
 After writing, suggest next steps:
+
 - `/kramme:siw:init siw/DISCOVERY_BRIEF.md` — to bootstrap a full SIW workflow from this brief
 - `/kramme:siw:discovery siw/DISCOVERY_BRIEF.md --apply` — to iterate on the brief and fold clarified decisions back into it
 
@@ -358,14 +374,14 @@ When the host runtime supports it (Claude Code) and the user wants to move direc
 
 Read `assets/spec-strengthening-plan-template.md`, populate it from the interview, and write the result to `siw/SPEC_STRENGTHENING_PLAN.md`. Emit `PLAN: Written to siw/SPEC_STRENGTHENING_PLAN.md.` at hand-off.
 
-If the refinement target is `siw/DISCOVERY_BRIEF.md`, reference sections from the brief in the patch plan and treat the brief as the target document for optional apply.
-Treat `siw/SPEC_STRENGTHENING_PLAN.md` as a temporary handoff artifact: it should remain only while waiting for review or manual application, and it should be removed once the plan has been applied.
+If the refinement target is `siw/DISCOVERY_BRIEF.md`, reference sections from the brief in the patch plan and treat the brief as the target document for optional apply. Treat `siw/SPEC_STRENGTHENING_PLAN.md` as a temporary handoff artifact: it should remain only while waiting for review or manual application, and it should be removed once the plan has been applied.
 
 ## Step 6: Optional Apply
 
 If `apply_changes=true` or the user asks to apply:
 
 **Refinement mode:**
+
 1. Edit the target document(s) using decisions from Step 4
 2. Target documents may be SIW spec files or `siw/DISCOVERY_BRIEF.md`
 3. Preserve structure — add missing sections, don't scatter content
@@ -377,12 +393,14 @@ If `apply_changes=true` or the user asks to apply:
 6. After the target documents and optional log updates are complete, delete or trash `siw/SPEC_STRENGTHENING_PLAN.md` so future runs do not treat the applied plan as unresolved state
 
 **Greenfield mode:**
+
 - Apply is not applicable (the brief IS the output)
 - Suggest `/kramme:siw:init siw/DISCOVERY_BRIEF.md` for full workflow setup
 
 ## Output Quality Bar
 
 Every finding must be:
+
 - Tied to a specific confidence dimension
 - Grounded in something the user said (quote or paraphrase)
 - Actionable — either a decision made or a question that needs answering
@@ -416,10 +434,10 @@ Do NOT finish with generic advice like "improve clarity" or "add more detail." I
 
 ### Common Rationalizations
 
-- *"Confidence is high enough to stop."* — High confidence means nothing if it's high on the wrong dimensions. Re-check which dimensions are Critical for the current Work Context before stopping.
-- *"The user agreed with my hypothesis, so we're aligned."* — Agreement is cheap. Restatement Challenge is cheaper than re-doing the project. Verify at least once mid-interview.
-- *"Stated and actual wants are the same here."* — They rarely are. If you haven't surfaced *any* divergence by round 4, you probably haven't probed hard enough.
-- *"The spec covers it, so the dimension is Confident."* — A section can exist and still be vague. Score on specificity and actionability, not presence.
+- _"Confidence is high enough to stop."_ — High confidence means nothing if it's high on the wrong dimensions. Re-check which dimensions are Critical for the current Work Context before stopping.
+- _"The user agreed with my hypothesis, so we're aligned."_ — Agreement is cheap. Restatement Challenge is cheaper than re-doing the project. Verify at least once mid-interview.
+- _"Stated and actual wants are the same here."_ — They rarely are. If you haven't surfaced _any_ divergence by round 4, you probably haven't probed hard enough.
+- _"The spec covers it, so the dimension is Confident."_ — A section can exist and still be vague. Score on specificity and actionability, not presence.
 
 ### Red Flags
 

@@ -5,7 +5,7 @@ Work Context is an optional metadata section in SIW specs that tells downstream 
 ## Profile Definitions
 
 | Profile | Work Type | Default Maturity | Priority Dimensions | Deprioritized Dimensions |
-|---------|-----------|-----------------|--------------------|-----------------------|
+| --- | --- | --- | --- | --- |
 | Production Feature | Production | Full Lifecycle | All 8 active | None |
 | Prototype / Spike | Prototype | Early Exploration | Actionability, Technical Design | Value Proposition, Completeness, Testability |
 | Internal Tool | Internal Tool | Varies | Actionability, Clarity | Value Proposition |
@@ -27,13 +27,13 @@ The Work Context section appears in the spec after `## Overview` and before `## 
 ```markdown
 ## Work Context
 
-| Attribute | Value |
-|-----------|-------|
-| **Work Type** | {work_type} |
-| **Maturity** | {maturity} |
-| **Priority Dimensions** | {comma-separated list} |
-| **Deprioritized** | {comma-separated list or "None"} |
-| **Notes** | {freeform context or empty} |
+| Attribute               | Value                            |
+| ----------------------- | -------------------------------- |
+| **Work Type**           | {work_type}                      |
+| **Maturity**            | {maturity}                       |
+| **Priority Dimensions** | {comma-separated list}           |
+| **Deprioritized**       | {comma-separated list or "None"} |
+| **Notes**               | {freeform context or empty}      |
 ```
 
 ## Parsing Instructions
@@ -93,7 +93,7 @@ Pass Work Context to the review subagent so it can validate phase count and task
 During init, suggest a profile based on `project_description` keywords:
 
 | Keywords | Suggested Profile |
-|----------|-------------------|
+| --- | --- |
 | prototype, spike, experiment, proof of concept, POC, try out, explore, exploratory | Prototype / Spike |
 | internal, developer tool, devtool, tooling, script, automation | Internal Tool |
 | refactor, tech debt, migration, cleanup, upgrade, modernize | Tech Debt / Refactor |

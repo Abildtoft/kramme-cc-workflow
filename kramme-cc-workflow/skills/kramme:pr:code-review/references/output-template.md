@@ -6,44 +6,53 @@ Use this structure verbatim when writing `REVIEW_OVERVIEW.md` (or the inline rep
 # PR Review Summary
 
 ## Relevance Filter
+
 - X findings validated as PR-caused
 - X findings filtered (pre-existing or out-of-scope)
 - X findings filtered (previously addressed in REVIEW_OVERVIEW.md)
 
 ## Emphasis Applied (omit section if no emphasis)
+
 - Emphasized: security, errors
 - Findings promoted (Suggestion → Important): X
 
 ## Critical Issues (X found)
+
 - **Critical:** [agent-name]: Issue description [location]
 
 ## Important Issues (X found)
+
 - [agent-name]: Issue description [location]
 
 ## Suggestions (X found)
+
 - **Nit:** [agent-name]: Suggestion [location]
 - **Consider:** [agent-name]: Suggestion [location]
 
 ## Slop Warnings (X found)
-- [agent-name]: Suggestion [location]
-  Warning: Would introduce [slop-type] - [explanation]
+
+- [agent-name]: Suggestion [location] Warning: Would introduce [slop-type] - [explanation]
 
 ## Dead Code (omit section if none flagged)
+
 - Summarize the dead-code findings already listed in the severity buckets above
 - If the report needs a roll-up, repeat the exact ask shape and keep the same severities in the main findings sections
 
 ## Filtered (Pre-existing/Out-of-scope)
+
 <collapsed>
 - NOTICED BUT NOT TOUCHING: [location]: Brief description - Reason filtered
 </collapsed>
 
 ## Filtered (Previously Addressed)
+
 <collapsed>
 - [location]: Brief description
   Matched: REVIEW_OVERVIEW.md - [action taken summary]
 </collapsed>
 
 ## Strengths
+
 - **FYI** What's well-done in this PR
 
 ## Approval Standard
@@ -51,6 +60,7 @@ Use this structure verbatim when writing `REVIEW_OVERVIEW.md` (or the inline rep
 Approve if the change definitely improves overall code health.
 
 ## Recommended Action
+
 1. Fix critical issues first
 2. Address important issues
 3. Consider suggestions

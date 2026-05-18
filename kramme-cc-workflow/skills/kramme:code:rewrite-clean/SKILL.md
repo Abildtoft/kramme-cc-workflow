@@ -112,12 +112,12 @@ Covered in "Prerequisites — When NOT to rewrite" above.
 
 These are the lies you will tell yourself to justify scrapping code that should stand. Each has a correct response:
 
-- *"The elegant version should be shorter."* → Line count is not a goal. Clarity is. An elegant version can be longer if it reads top-to-bottom.
-- *"I remember writing this; I don't need to re-read it."* → You remember the happy path. Chesterton's Fence is for the parts you don't remember writing for a reason.
-- *"The test is flaky; I'll just tweak it when the rewrite lands."* → If the rewrite requires modifying a test, it changed behavior. Revert or reclassify.
-- *"The rewrite surfaced a bug in the original — I'll fix it in the rewrite."* → No. A bug fix is its own slice. Revert, land the bug fix separately, then attempt the rewrite from the fixed baseline.
-- *"This abstraction is elegant in the abstract; the project just doesn't use it yet."* → Not elegant — speculative. Wait for the third use case before introducing an abstraction the codebase does not yet need.
-- *"I'll rewrite and rename at the same time for consistency."* → Two changes. Rename is its own slice, often its own PR. Pick one.
+- _"The elegant version should be shorter."_ → Line count is not a goal. Clarity is. An elegant version can be longer if it reads top-to-bottom.
+- _"I remember writing this; I don't need to re-read it."_ → You remember the happy path. Chesterton's Fence is for the parts you don't remember writing for a reason.
+- _"The test is flaky; I'll just tweak it when the rewrite lands."_ → If the rewrite requires modifying a test, it changed behavior. Revert or reclassify.
+- _"The rewrite surfaced a bug in the original — I'll fix it in the rewrite."_ → No. A bug fix is its own slice. Revert, land the bug fix separately, then attempt the rewrite from the fixed baseline.
+- _"This abstraction is elegant in the abstract; the project just doesn't use it yet."_ → Not elegant — speculative. Wait for the third use case before introducing an abstraction the codebase does not yet need.
+- _"I'll rewrite and rename at the same time for consistency."_ → Two changes. Rename is its own slice, often its own PR. Pick one.
 
 ## Red Flags
 

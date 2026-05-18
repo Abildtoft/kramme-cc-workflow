@@ -13,6 +13,7 @@ Apply deterministic and clearly-best fixes to spec-audit findings that can be co
 Findings that require product decisions, stakeholder input, or still lack a clearly best fix are left untouched for `/kramme:siw:resolve-audit`.
 
 **Flags:**
+
 - `--auto` — Skip classification approval, apply all auto-fixable fixes without asking
 - `--dry-run` — Show classification and proposed fixes without modifying any files
 - `--threshold N` — Set confidence threshold for auto-fixing (60-100, default 80). Findings with confidence >= N are auto-fixable only after safety caps and the four sub-score guardrails are applied. Use 90 for a stricter pass, 60 for the most permissive allowed run.
@@ -65,6 +66,7 @@ Findings that require product decisions, stakeholder input, or still lack a clea
 ### 1.1 Parse Arguments
 
 Extract control flags from `$ARGUMENTS`:
+
 - `--auto` → set `AUTO_MODE=true`
 - `--dry-run` → set `DRY_RUN=true`
 - `--threshold N` → set `CONFIDENCE_THRESHOLD=N` (validate 60-100, default 80)
@@ -75,6 +77,7 @@ Extract control flags from `$ARGUMENTS`:
 If a report path was provided, use it directly.
 
 Otherwise, auto-detect in order:
+
 1. `siw/AUDIT_SPEC_REPORT.md`
 2. `AUDIT_SPEC_REPORT.md` (project root)
 
@@ -128,6 +131,7 @@ options:
 Parse all `### SPEC-NNN: {title}` headings from the active audit run only.
 
 For each finding, extract:
+
 - Finding ID and title
 - Dimension
 - Severity
@@ -138,6 +142,7 @@ For each finding, extract:
 - Fix Confidence (if present in the report)
 
 **Skip findings that match any of:**
+
 - Already marked `**Status:** [Auto-fixed]` (from a previous run)
 - Contains `Existing issue:` note (already tracked via SIW)
 
@@ -166,12 +171,14 @@ For each extracted finding, assign a **fix confidence score** (0-100):
 4. If the audit report already includes a `Fix Confidence` score for a finding, use it as a starting point and adjust only if the rubric evaluation yields a materially different score. If the report is from an older format and has no `Fix Confidence` line, score the finding from scratch.
 
 Classify based on the final confidence vs `CONFIDENCE_THRESHOLD` (default 80):
+
 - safety-capped finding, or a Completeness / Scope / Value Proposition finding marked `**Severity Note:** [Deprioritized — capped at Minor from Critical]` → **REQUIRES_DECISION** regardless of threshold
 - finding with `Determinism < 15`, `Information Availability < 15`, `Meaning Preservation < 15`, or `Alternative Absence < 15` → **REQUIRES_DECISION** regardless of threshold
 - non-safety-capped finding with confidence >= `CONFIDENCE_THRESHOLD` → **AUTO-FIXABLE**
 - otherwise → **REQUIRES_DECISION**
 
 Display confidence tier labels alongside scores:
+
 - 90-100: MECHANICAL
 - 75-89: HIGH_CONFIDENCE
 - 50-74: MODERATE_CONFIDENCE
@@ -304,18 +311,22 @@ For each auto-fixable finding in order:
 For each successfully fixed finding, add annotations to its report entry:
 
 After the `**Severity:**` line, add:
+
 ```
 **Status:** [Auto-fixed]
 ```
 
 Then handle `Fix Confidence` as follows:
+
 - If the entry already contains `**Fix Confidence:**`, replace that line with the final score and tier from the auto-fix pass.
 - If the entry does not contain `**Fix Confidence:**` (legacy report), insert:
+
 ```
 **Fix Confidence:** {score}/100 ({tier})
 ```
 
 After the confidence line, add:
+
 ```
 **Fix applied:** {one-line description of the change}
 ```
@@ -335,8 +346,7 @@ If any findings failed verification and were reclassified, add a section at the 
 ```markdown
 ## Auto-Fix Notes
 
-The following findings were initially classified as mechanical but failed verification
-and have been reclassified as requiring decisions:
+The following findings were initially classified as mechanical but failed verification and have been reclassified as requiring decisions:
 
 - **{SPEC-NNN}:** {failure reason}
 ```
@@ -375,7 +385,6 @@ Use the summary template from `assets/auto-fix-summary.md`.
 
 # Auto-apply with lower threshold
 /kramme:siw:spec-audit:auto-fix --auto --threshold 70
-
 ```
 
 ---
@@ -383,7 +392,9 @@ Use the summary template from `assets/auto-fix-summary.md`.
 ## Error Handling
 
 ### Report Format Unexpected
+
 If the report does not contain `### SPEC-NNN:` headings, stop:
+
 ```
 Could not parse findings from {report_path}.
 Expected format: ### SPEC-NNN: {title}
@@ -392,19 +403,25 @@ The report may be from an incompatible version. Re-run /kramme:siw:spec-audit.
 ```
 
 ### Spec File Missing
+
 If a spec file referenced in the report no longer exists:
+
 - Warn: `Spec file not found: {path} — skipping {N} findings for this file`
 - Skip all findings referencing that file
 - Continue with remaining findings
 
 ### Edit Conflict
+
 If the Edit tool fails (e.g., old_string not found because the spec was modified since the audit):
+
 - Warn: `Edit failed for SPEC-{NNN}: text has changed since audit`
 - Skip this finding and reclassify as `REQUIRES_DECISION`
 - Continue with remaining findings
 
 ### All Fixes Fail
+
 If every auto-fixable fix fails verification:
+
 ```
 All {N} auto-fixable fixes failed verification.
 The spec may have changed significantly since the audit.

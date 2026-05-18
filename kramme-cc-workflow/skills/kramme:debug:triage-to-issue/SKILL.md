@@ -53,7 +53,7 @@ Probe in order:
 Decision table:
 
 | Linear MCP | SIW present | Action |
-|---|---|---|
+| --- | --- | --- |
 | Yes | Yes | Ask the user once which sink (Linear / SIW / Markdown at repo root). |
 | Yes | No | Use Linear, no question. |
 | No | Yes | Use SIW, no question. |
@@ -176,7 +176,7 @@ If the user picks **Edit**, ask which section, take their changes, re-render the
 
 Run the durability grep against the final drafted body before writing anything to Linear, SIW, or markdown.
 
-Matches inside fenced code blocks (`` ``` ... ``` ``) are allowed only when they are runnable repro commands or CLI invocations. Matches in prose are a `RED FLAG`.
+Matches inside fenced code blocks (` ``` ... ``` `) are allowed only when they are runnable repro commands or CLI invocations. Matches in prose are a `RED FLAG`.
 
 If the grep finds prose matches:
 
@@ -210,7 +210,7 @@ Repeat the durability grep against the created body:
 rg ':\d+|([[:alnum:]_.-]+/)+[[:alnum:]_.-]+\.[[:alnum:]]{1,8}|[[:alnum:]_-]+\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|kt|rb|php|swift|cs|cpp|c|h|hpp|sh|bash|zsh|fish|bats|md|mdx|json|ya?ml)\b' <issue-body>
 ```
 
-Matches inside fenced code blocks (`` ``` ... ``` ``) are allowed only when they are runnable repro commands or CLI invocations. Matches in prose are a `RED FLAG` — surface them and prompt the user to edit. Do not silently rewrite.
+Matches inside fenced code blocks (` ``` ... ``` `) are allowed only when they are runnable repro commands or CLI invocations. Matches in prose are a `RED FLAG` — surface them and prompt the user to edit. Do not silently rewrite.
 
 Emit a final block:
 
@@ -254,11 +254,11 @@ Reuse from `kramme:debug:investigate`:
 Watch for these — they signal the durability rule is about to break.
 
 | Excuse | Reality |
-|---|---|
-| "The file path is the clearest way to point at the bug." | Paths rot. The reader six months from now needs the *behavior* the bug breaks, not yesterday's filename. |
+| --- | --- |
+| "The file path is the clearest way to point at the bug." | Paths rot. The reader six months from now needs the _behavior_ the bug breaks, not yesterday's filename. |
 | "Line numbers are pinned to a commit, so they're stable." | They're stable until the next refactor. The issue is supposed to outlive that. |
 | "The internal helper name is the actual root cause." | If the bug is "this private helper is wrong," the fix is also rename-stable: describe the contract the helper represents. |
-| "If I strip everything internal, the issue is too vague." | Then the investigation isn't done. The contract-level statement *should* exist; if it doesn't, return to Phase 3. |
+| "If I strip everything internal, the issue is too vague." | Then the investigation isn't done. The contract-level statement _should_ exist; if it doesn't, return to Phase 3. |
 | "I'll just include the file path in a code block — that's allowed." | Code blocks are for repro commands. A bare path is still a path; readers parse it the same way. |
 
 ---

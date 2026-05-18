@@ -84,33 +84,38 @@ Store as `PACKAGE_MANAGER`.
 Run ecosystem-specific commands (from the reference file):
 
 **npm/yarn/pnpm:**
+
 ```bash
-npm outdated --json 2>/dev/null
-npm audit --json 2>/dev/null
+npm outdated --json 2> /dev/null
+npm audit --json 2> /dev/null
 ```
 
 **pip:**
+
 ```bash
-pip list --outdated --format=json 2>/dev/null
-pip-audit --json 2>/dev/null  # if installed
+pip list --outdated --format=json 2> /dev/null
+pip-audit --json 2> /dev/null # if installed
 ```
 
 **cargo:**
+
 ```bash
-cargo outdated 2>/dev/null    # if installed
-cargo audit 2>/dev/null       # if installed
+cargo outdated 2> /dev/null # if installed
+cargo audit 2> /dev/null    # if installed
 ```
 
 **go:**
+
 ```bash
-go list -m -u all 2>/dev/null
-govulncheck ./... 2>/dev/null # if installed
+go list -m -u all 2> /dev/null
+govulncheck ./... 2> /dev/null # if installed
 ```
 
 **dotnet:**
+
 ```bash
-dotnet list package --outdated 2>/dev/null
-dotnet list package --vulnerable 2>/dev/null
+dotnet list package --outdated 2> /dev/null
+dotnet list package --vulnerable 2> /dev/null
 ```
 
 Capture per package: name, current version, latest version, update type (major/minor/patch), vulnerabilities (severity, CVE ID).
@@ -169,6 +174,7 @@ Each entry includes: packages, current → target versions, risk level, recommen
 ## Step 6: User Review
 
 If `AUTO_MODE=true`:
+
 - Skip both prompts in this step
 - Write `DEPENDENCY_AUDIT.md` in the project root
 - Default to **Review only — no changes**
@@ -241,7 +247,7 @@ Report: DEPENDENCY_AUDIT.md
 ## Error Handling
 
 | Scenario | Action |
-|---|---|
+| --- | --- |
 | No package manager detected | Abort: `No supported package manager found in this directory.` |
 | Audit tool not installed | Warn, skip vulnerability check, suggest install command |
 | No outdated packages | Report clean: `All dependencies are up to date.` |

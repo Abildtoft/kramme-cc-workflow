@@ -54,7 +54,7 @@ For each section group N, spawn **a conformance/extension pair**. Additionally s
 **Agent structure:**
 
 | Agent Name | Role | Section |
-|---|---|---|
+| --- | --- | --- |
 | `conformance-1` | Pass A: requirement-by-requirement verification | Section group 1 |
 | `extension-1` | Pass B: adversarial extension scan | Section group 1 |
 | `conformance-2` | Pass A: requirement-by-requirement verification | Section group 2 |
@@ -67,10 +67,12 @@ Total agents: `(2 * section_groups) + 1`. For a typical 2-3 group spec, this mea
 ### Step 3: Create and Assign Tasks
 
 **Phase 1 tasks (parallel — all conformance and extension agents run simultaneously):**
+
 - Task per conformance agent: "Pass A: conformance audit for section group {N}" — assigned to `conformance-{N}`
 - Task per extension agent: "Pass B: extension scan for section group {N}" — assigned to `extension-{N}`
 
 **Phase 2 task (blocked on all Phase 1 tasks):**
+
 - "Reconcile conflicts + enforce guardrails" — assigned to `reconciler`
 
 ### Step 4: Conformance Agent Prompts
@@ -201,6 +203,7 @@ complete.
 ### Step 6: Monitor and Facilitate
 
 While agents work:
+
 - Monitor task progress via TaskList
 - Relay any questions agents have about the codebase or spec context
 - If an agent gets stuck, provide additional context or redirect
@@ -320,7 +323,7 @@ After the reconciler completes (and any Pass B2 runs):
 ## Cross-Validation Log
 
 | Message Type | From | To | Finding Affected | Outcome |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | BYPASS-ALERT | extension-1 | conformance-1 | REQ-{id} | Status changed: IMPLEMENTED -> BYPASS_PATH |
 | CROSS-SECTION | conformance-1 | conformance-2 | REQ-{id} | Found in unexpected location |
 | SCOPE-ALERT | conformance-2 | extension-2 | EXT-{id} | New extension finding created |
@@ -342,6 +345,7 @@ Same as `/kramme:siw:implementation-audit` Step 10 — display requirements chec
 ## When to Use This vs `/kramme:siw:implementation-audit`
 
 Use **this mode** when:
+
 - The spec has 20+ requirements across multiple sections
 - Strict requirements (MUST/ONLY/NEVER) need thorough bypass analysis
 - You want simultaneous conformance + extension analysis (faster wall-clock time)
@@ -349,6 +353,7 @@ Use **this mode** when:
 - Previous audits had unresolved conflicts that required multiple tie-break attempts
 
 Use **standard `/kramme:siw:implementation-audit`** when:
+
 - The spec is small (under 15 requirements)
 - You want lower token cost
 - The spec has 1-2 sections (limited benefit from cross-section messaging)

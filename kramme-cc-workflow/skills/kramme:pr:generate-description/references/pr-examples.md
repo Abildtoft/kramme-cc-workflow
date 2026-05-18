@@ -3,12 +3,14 @@
 ## Example 1: Frontend-Only Feature
 
 **Input:**
+
 - Branch: `mab/wan-521-auto-skip-platform-picker`
 - Changed files: 3 frontend files (guard, store, tests)
 - Commits: 4 commits with incremental implementation
 - Linear issue: WAN-521 (feature request)
 
 **Generated PR:**
+
 ```markdown
 Here is your generated PR:
 
@@ -47,18 +49,21 @@ Created a new Angular route guard (`PlatformPickerRedirectGuard`) that queries t
 ## Test Plan
 
 **Scenario 1: Single-platform user**
+
 - [ ] Log in with user account that has only one platform
 - [ ] Navigate to any route that would trigger platform picker
 - [ ] Verify automatic redirect past platform picker
 - [ ] Verify correct platform is pre-selected in destination
 
 **Scenario 2: Multi-platform user**
+
 - [ ] Log in with user account that has multiple platforms
 - [ ] Navigate to platform picker route
 - [ ] Verify platform picker page displays normally
 - [ ] Verify all platforms are shown in the picker
 
 **Scenario 3: Error handling**
+
 - [ ] Simulate platform service error (disconnect network)
 - [ ] Verify graceful fallback (show picker anyway)
 - [ ] Verify no crashes or console errors
@@ -194,21 +199,17 @@ Database migration adds the preferences table with appropriate indexing and fore
 
 ### Database Migration Required
 
-**What changed:**
-New `user_preferences` table added to database schema.
+**What changed:** New `user_preferences` table added to database schema.
 
-**Migration:**
-Run the following migration before deploying:
+**Migration:** Run the following migration before deploying:
 
 ```bash
 dotnet ef database update -c ConnectContext
 ```
 
-**Downtime:**
-~1 minute (table creation, no data backfill needed)
+**Downtime:** ~1 minute (table creation, no data backfill needed)
 
-**Rollback:**
-If rollback is needed:
+**Rollback:** If rollback is needed:
 
 ```bash
 dotnet ef migrations remove -c ConnectContext
@@ -227,6 +228,7 @@ dotnet ef migrations remove -c ConnectContext
 ## Example 3: Frontend Feature with Visual Capture (`--visual`)
 
 **Input:**
+
 - Branch: `mab/wan-600-add-dark-mode-toggle`
 - Changed files: `settings-toggle.component.tsx`, `theme.service.ts`, `theme.css`
 - Flag: `--visual`
@@ -235,7 +237,7 @@ dotnet ef migrations remove -c ConnectContext
 
 **Generated Screenshots/Videos section:**
 
-````markdown
+```markdown
 ## Screenshots / Videos
 
 ### Settings Page — Dark Mode Toggle
@@ -255,4 +257,4 @@ The dashboard with dark mode enabled, showing the updated color scheme across al
 Animated demo showing the toggle interaction and smooth theme transition.
 
 ![Theme toggle interaction](https://github.com/user-attachments/assets/ghi789.gif)
-````
+```

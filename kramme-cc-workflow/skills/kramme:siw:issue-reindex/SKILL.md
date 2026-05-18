@@ -8,6 +8,7 @@ user-invocable: true
 # Restart Issues
 
 Remove all DONE issues and renumber remaining issues **within each prefix group**. This command:
+
 1. Identifies all issues with status DONE
 2. Verifies DONE issue decisions and LOG.md entries are captured in specs before deletion
 3. Deletes DONE issue files
@@ -65,23 +66,27 @@ Use this when you want to clean up completed issues and have fresh numbering seq
 Check for required SIW files:
 
 ```bash
-ls siw/OPEN_ISSUES_OVERVIEW.md siw/issues/ 2>/dev/null
+ls siw/OPEN_ISSUES_OVERVIEW.md siw/issues/ 2> /dev/null
 ```
 
 **If siw/OPEN_ISSUES_OVERVIEW.md doesn't exist:**
+
 ```
 No siw/OPEN_ISSUES_OVERVIEW.md found. Nothing to restart.
 
 To initialize a new SIW workflow, run /kramme:siw:init
 ```
+
 **Action:** Abort.
 
 **If siw/issues/ directory doesn't exist or is empty:**
+
 ```
 No issues found. Nothing to restart.
 
 To create issues, run /kramme:siw:issue-define
 ```
+
 **Action:** Abort.
 
 ---
@@ -91,11 +96,13 @@ To create issues, run /kramme:siw:issue-define
 Read siw/OPEN_ISSUES_OVERVIEW.md section-by-section and extract all issues from the table.
 
 For each section, extract:
+
 - Section header
 - Table schema (`| # | Title | Status | Size | Priority | Mode | Related |`, pre-Mode 6-column, or the legacy 5-column form)
 - Any section-level metadata line immediately above the table (for example `**Parallelization:** ...`)
 
 For each row, extract:
+
 - Issue prefix and number (e.g., `G-001`, `P1-002`)
 - Title
 - Status (READY, IN PROGRESS, IN REVIEW, DONE)
@@ -105,10 +112,12 @@ For each row, extract:
 - Related tasks
 
 Categorize issues **by prefix group**:
+
 - **DONE issues per group:** Will be deleted
 - **Active issues per group:** Will be renumbered within their prefix (READY, IN PROGRESS, IN REVIEW)
 
 **Example grouping:**
+
 - G-001 (DONE), G-002 (READY), G-003 (READY) → Delete G-001, renumber G-002→G-001, G-003→G-002
 - P1-001 (READY), P1-002 (DONE) → Delete P1-002, P1-001 stays as P1-001
 
@@ -201,9 +210,9 @@ For each DONE issue:
 ```bash
 # Delete using trash if available
 if command -v trash &> /dev/null; then
-    trash siw/issues/ISSUE-{prefix}-{number}-*.md
+  trash siw/issues/ISSUE-{prefix}-{number}-*.md
 else
-    rm -f siw/issues/ISSUE-{prefix}-{number}-*.md
+  rm -f siw/issues/ISSUE-{prefix}-{number}-*.md
 fi
 ```
 
@@ -224,6 +233,7 @@ For each active issue that needs renumbering **within its prefix group**:
 7. Delete old file
 
 **Example:**
+
 ```bash
 # ISSUE-G-003-api-design.md -> ISSUE-G-002-api-design.md
 # Update content: "# ISSUE-G-003:" -> "# ISSUE-G-002:"
@@ -231,6 +241,7 @@ mv siw/issues/ISSUE-G-003-api-design.md siw/issues/ISSUE-G-002-api-design.md
 ```
 
 **Important:**
+
 - Process each prefix group separately
 - Process in reverse order within each group (highest number first) to avoid conflicts when renaming
 - Classify matches against the original issue-file content first; do not chain replacements
@@ -285,6 +296,7 @@ Next Steps:
 ```
 
 **LOG.md reporting variations:**
+
 - If LOG.md was updated: `siw/LOG.md (N issue references updated)`
 - If LOG.md exists but no references found: `siw/LOG.md (no issue references)`
 - If LOG.md doesn't exist: Omit from the list

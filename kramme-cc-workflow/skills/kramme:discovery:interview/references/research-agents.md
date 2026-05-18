@@ -8,12 +8,12 @@ When the proposed input contains a stated solution, every agent below must inves
 
 ## Agent set by topic type
 
-| Topic type | Agents |
-|---|---|
-| Software Feature | Codebase + Docs + UX |
-| Architecture Decision | Codebase + Docs + Dependencies |
-| Process/Workflow | Codebase |
-| Documentation/Proposal | Codebase + Docs |
+| Topic type             | Agents                         |
+| ---------------------- | ------------------------------ |
+| Software Feature       | Codebase + Docs + UX           |
+| Architecture Decision  | Codebase + Docs + Dependencies |
+| Process/Workflow       | Codebase                       |
+| Documentation/Proposal | Codebase + Docs                |
 
 If the topic crosses categories (e.g., a Software Feature whose architecture decision is the dominant question), pick the larger set.
 

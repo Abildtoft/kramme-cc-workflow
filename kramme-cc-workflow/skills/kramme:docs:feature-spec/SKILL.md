@@ -176,7 +176,7 @@ On approval:
 ## Conventions — output markers used in this skill
 
 | Marker | Used when |
-|--------|-----------|
+| --- | --- |
 | `ASSUMPTIONS I'M MAKING:` | Phase 1, before drafting (skipped only in Synthesize mode when preconditions are met). |
 | `SYNTHESIZE:` | When `--synthesize` or the trigger phrase activates synthesis — emitted before drafting (success) or before fallback to Phase 1 (insufficient grounding). |
 | `CONFUSION:` | Phase 1 or 2, when user input is ambiguous. |
@@ -190,7 +190,7 @@ These markers are deliberate. Keep them verbatim — tooling and downstream skil
 ## Common Rationalizations
 
 | Excuse | Reality |
-|--------|---------|
+| --- | --- |
 | "This feature is small enough to just start coding." | Then the spec takes ten minutes. Skip the skill and write code, but don't invoke this skill and then bypass the gate. |
 | "I'll write the spec after, once I see the shape." | That's reverse-engineering, not speccing. Use `/kramme:siw:reverse-engineer-spec` for that path. |
 | "The assumptions block is noise, the user knows what they want." | The block costs one turn and catches misalignment before you've drafted six areas of the wrong spec. |

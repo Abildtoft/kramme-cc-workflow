@@ -22,6 +22,7 @@ function render(result: TaskResult) {
 Why this matters for contract stability: a union without a tag forces callers to guess the shape from which fields happen to be present, which is Hyrum's Law bait — every caller guesses slightly differently, and every guess becomes a constraint. A tag makes the variant explicit and the narrowing mechanical.
 
 Use this shape for:
+
 - API results (`success` | `error`).
 - Webhook payloads (`event.type` determines `event.data` shape).
 - State machines (`"loading"` | `"loaded"` | `"error"`).
@@ -69,11 +70,13 @@ function taskId(raw: string): TaskId {
   return raw as TaskId;
 }
 
-function getTask(id: TaskId): Task { /* ... */ }
+function getTask(id: TaskId): Task {
+  /* ... */
+}
 
 const rawFromRequest: string = req.params.id;
 // getTask(rawFromRequest);        // compile error — string is not TaskId
-getTask(taskId(rawFromRequest));   // ok
+getTask(taskId(rawFromRequest)); // ok
 ```
 
 Why brand: without branding, `getTask(userId)` compiles and fails at runtime (or worse, returns the wrong record). With branding, the compiler catches the swap at the call site. The runtime cost is zero — brands are erased.

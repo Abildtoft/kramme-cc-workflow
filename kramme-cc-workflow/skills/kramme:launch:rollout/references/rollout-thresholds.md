@@ -5,7 +5,7 @@ The load-bearing artifact of this skill. Concrete numeric gates turn "is the rol
 ## The table
 
 | Metric | Advance (green) | Hold and investigate (yellow) | Roll back (red) |
-|--------|-----------------|-------------------------------|-----------------|
+| --- | --- | --- | --- |
 | Error rate | Within 10% of baseline | 10–100% above baseline | >2× baseline |
 | P95 latency | Within 20% of baseline | 20–50% above baseline | >50% above baseline |
 | Client JS errors | No new error types | New errors at <0.1% of sessions | New errors at >0.1% of sessions |

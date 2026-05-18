@@ -6,21 +6,20 @@
 
 Audit found implementation behavior that is out of specification (divergence or extension).
 
-**Finding:** {DIV-XXX or EXT-XXX}
-**Spec requirement/context:** {REQ-{id} or section}
-**Source:** {source_file} > {source_section}
+**Finding:** {DIV-XXX or EXT-XXX} **Spec requirement/context:** {REQ-{id} or section} **Source:** {source_file} > {source_section}
 
 ## Context
 
-{What was found in the code vs. what the spec requires}
-{file:line references}
+{What was found in the code vs. what the spec requires} {file:line references}
 
 ## Scope
 
 ### In Scope
+
 - {Specific fix needed}
 
 ### Out of Scope
+
 - Refactoring unrelated code
 
 ## Acceptance Criteria
@@ -33,8 +32,10 @@ Audit found implementation behavior that is out of specification (divergence or 
 ## Technical Notes
 
 ### Affected Areas
+
 - `{file path}` — {what needs to change}
 
 ### References
+
 - Spec: `{spec_file}` > {section}
 - Audit Report: `{report_path}` > `{DIV-NNN or EXT-NNN}`

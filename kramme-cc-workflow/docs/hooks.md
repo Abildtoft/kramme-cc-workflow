@@ -23,8 +23,7 @@ Use `/kramme:hooks:toggle` to enable or disable hooks:
 /kramme:hooks:toggle reset
 ```
 
-State is stored in `hooks/hook-state.json` (gitignored) and persists across sessions.
-When a hook is disabled, the hook script drains stdin before exiting to avoid broken-pipe errors if the runner is piping JSON input.
+State is stored in `hooks/hook-state.json` (gitignored) and persists across sessions. When a hook is disabled, the hook script drains stdin before exiting to avoid broken-pipe errors if the runner is piping JSON input.
 
 For `confirm-review-responses`, edit `hooks/confirm-review-artifacts.txt` to configure which staged files should trigger confirmation. Entries support shell-style glob patterns, so generated artifacts like `PR_PLAN_*.md` can be guarded without listing every file explicitly.
 
@@ -46,6 +45,7 @@ You can also configure this via skill:
 ```
 
 Supported variables:
+
 - `CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG` - Linear workspace slug used in issue URLs (default: `consensusaps`)
 - `CONTEXT_LINKS_LINEAR_TEAM_KEYS` - Comma/space separated team keys used for branch parsing (default: `WAN,HEA,MEL,POT,FIR,FEG`)
 - `CONTEXT_LINKS_LINEAR_ISSUE_REGEX` - Optional regex override for issue extraction (takes precedence over team keys)
@@ -56,20 +56,25 @@ Supported variables:
 ### Blocked Patterns
 
 **Direct commands:**
+
 - `rm -rf` (and variants: `-fr`, `-r -f`, `--recursive --force`)
 - `shred`, `unlink`
 
 **Path variants:**
+
 - `/bin/rm -rf`, `/usr/bin/rm -rf`, `./rm -rf`
 
 **Bypass attempts:**
+
 - `command rm -rf`, `env rm -rf`, `\rm -rf`
 - `sudo rm -rf`, `xargs rm -rf`
 
 **Subshell execution:**
+
 - `sh -c "rm -rf ..."`, `bash -c "rm -rf ..."`, `zsh -c "rm -rf ..."`
 
 **Find commands:**
+
 - `find . -delete`
 - `find . -exec rm -rf {} \;`
 
@@ -83,6 +88,7 @@ Supported variables:
 ### Why use `trash` instead of `rm -rf`?
 
 The `trash` command moves files to the system Trash instead of permanently deleting them:
+
 - **Recoverable**: Files can be restored from Trash if deleted accidentally
 - **Safe**: No risk of catastrophic data loss from typos or glob expansion errors
 - **Familiar**: Works just like `rm` but with a safety net
@@ -96,7 +102,7 @@ Install: `brew install trash`
 Blocks git commands that would open an interactive editor, forcing the agent to use non-interactive alternatives:
 
 | Command | Blocked When | Non-Interactive Alternative |
-|---------|--------------|----------------------------|
+| --- | --- | --- |
 | `git commit` | Missing message source (`-m`/`--message`/`-C`/`--reuse-message`/`-F`/`--file`) and no `--no-edit` (`-c`/`--reedit-message` still block) | `git commit -m "message"` or `git commit --amend --no-edit` |
 | `git rebase -i` | Missing `GIT_SEQUENCE_EDITOR=` | `GIT_SEQUENCE_EDITOR=true git rebase -i ...` |
 | `git rebase --continue` | Missing `GIT_EDITOR=` | `GIT_EDITOR=true git rebase --continue` |
@@ -108,18 +114,18 @@ Blocks git commands that would open an interactive editor, forcing the agent to 
 
 ### Supported Formatters
 
-| Language | Formatter | Detection |
-|----------|-----------|-----------|
-| JavaScript/TypeScript | Prettier | `"prettier"` in package.json |
-| JavaScript/TypeScript | Biome | `"@biomejs/biome"` in package.json |
-| CSS/SCSS/JSON/HTML/MD | Prettier | `"prettier"` in package.json |
-| Python | Black | `black` in pyproject.toml |
-| Python | Ruff | `ruff` in pyproject.toml |
-| Go | gofmt | go.mod exists |
-| Rust | rustfmt | Cargo.toml exists |
-| C# | dotnet format | *.csproj exists |
-| Shell | shfmt | globally available |
-| Nx workspace | nx format | nx.json exists |
+| Language              | Formatter     | Detection                          |
+| --------------------- | ------------- | ---------------------------------- |
+| JavaScript/TypeScript | Prettier      | `"prettier"` in package.json       |
+| JavaScript/TypeScript | Biome         | `"@biomejs/biome"` in package.json |
+| CSS/SCSS/JSON/HTML/MD | Prettier      | `"prettier"` in package.json       |
+| Python                | Black         | `black` in pyproject.toml          |
+| Python                | Ruff          | `ruff` in pyproject.toml           |
+| Go                    | gofmt         | go.mod exists                      |
+| Rust                  | rustfmt       | Cargo.toml exists                  |
+| C#                    | dotnet format | \*.csproj exists                   |
+| Shell                 | shfmt         | globally available                 |
+| Nx workspace          | nx format     | nx.json exists                     |
 
 **Priority**: CLAUDE.md override > Biome > Prettier > global tools
 
@@ -150,7 +156,7 @@ To clear the cache manually: `trash /tmp/claude-format-cache`
 The hook automatically skips:
 
 - **Binary files**: png, jpg, pdf, zip, exe, dll, woff, etc.
-- **Generated directories**: node_modules/, dist/, build/, .git/, vendor/, __pycache__/, coverage/
-- **Lock files**: *.lock, package-lock.json, pnpm-lock.yaml
-- **Source maps**: *.map
-- **Minified files**: *.min.js, *.min.css
+- **Generated directories**: node_modules/, dist/, build/, .git/, vendor/, **pycache**/, coverage/
+- **Lock files**: \*.lock, package-lock.json, pnpm-lock.yaml
+- **Source maps**: \*.map
+- **Minified files**: _.min.js, _.min.css

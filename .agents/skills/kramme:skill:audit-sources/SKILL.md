@@ -1,7 +1,7 @@
 ---
 name: kramme:skill:audit-sources
 description: "Audit one or more skills in this repo against their declared sources of inspiration (official docs, blog posts, library READMEs, papers) to detect upstream changes worth incorporating. On first run for a skill, scan its SKILL.md and references/ to propose a sources manifest. On subsequent runs, fetch each source, compare against a stored baseline snapshot, and surface concrete additions worth folding into the skill. Use when maintaining the repo and you want to refresh skills against their inspirations. Not for editing skills, validating frontmatter, or auditing code dependencies."
-argument-hint: "[skill-name | glob | \"all\"]"
+argument-hint: '[skill-name | glob | "all"]'
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -47,7 +47,7 @@ Goal: propose a `sources.yaml` for a skill that has none yet, then write it afte
 2. Read the bootstrap prompt from `references/bootstrap-prompt.md` and follow it. The prompt instructs the model to:
    - Read the target skill's `SKILL.md` and every file under its `references/`.
    - Extract candidate sources: external URLs, named libraries (for resolution via a docs MCP if present), and named-but-unlinked references ("OWASP Top 10", "Hyrum's Law").
-   - Distinguish *inspiration sources* (the skill's content is derived from them) from *illustrative references* (mentioned but not the basis of the skill). Only inspiration sources go into the manifest.
+   - Distinguish _inspiration sources_ (the skill's content is derived from them) from _illustrative references_ (mentioned but not the basis of the skill). Only inspiration sources go into the manifest.
 3. Present the proposed `sources.yaml` to the user for review and editing. Ask the user to confirm:
    - "Accept proposed sources, edit before writing, or skip this skill?"
 4. On accept, write the file to `<target-skill-dir>/references/sources.yaml`. Set `last_reviewed_at` to today and leave `baseline_hash` empty (Phase 4 will populate it on first fetch).

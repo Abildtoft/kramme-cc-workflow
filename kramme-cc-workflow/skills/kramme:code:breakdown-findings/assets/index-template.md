@@ -1,15 +1,13 @@
 # PR Plan Index
 
-**Generated:** {{date}}
-**Source:** {{source file or description}}
-**Total findings:** {{N}} | **Plans generated:** {{M}} | **Excluded:** {{X}}
+**Generated:** {{date}} **Source:** {{source file or description}} **Total findings:** {{N}} | **Plans generated:** {{M}} | **Excluded:** {{X}}
 
 ---
 
 ## Plans
 
 | Label | File | Plan Name | Findings | Sequencing | Summary |
-|-------|------|-------|----------|------------|---------|
+| --- | --- | --- | --- | --- | --- |
 | `{{W##L}}` | `PR_PLAN_{{EXECUTION_LABEL}}_{{SLUG}}.md` | {{W##L theme-name (parallel in W## / blocked by W##L / blocks W##L)}} | {{count}} | {{parallel in W## / blocked by W##L / blocks W##L}} | {{2-4 sentence summary}} |
 
 ## Recommended Implementation Order

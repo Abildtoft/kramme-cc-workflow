@@ -3,6 +3,7 @@
 When this skill is invoked for refactor work — `--refactor` flag, after `kramme:code:refactor-opportunities`, or any explicit "refactor X" ask — the increment loop runs the same six rules but produces a different output shape: an interview-driven Decision Document plus an ordered list of tiny commits, each leaving the codebase in a working state (Fowler).
 
 Refactor work has three properties that change the output shape:
+
 - The behavior is the same before and after; the changes are about structure.
 - The justification ("why now, why this shape") matters more than the diff and decays out of memory faster than the code.
 - The commits should be cherry-pickable and revertible individually — refactors are the most likely thing to bisect.
@@ -29,7 +30,7 @@ Run these 7 short steps in order. Do not skip; refactors often unravel because s
 
    The plan is a numbered list (1, 2, 3…) — order matters because each commit assumes the previous ones landed. If you cannot find an order where every intermediate state is green, the refactor is not yet planned; back up to step 3.
 
-7. **File the Decision Document.** Write the decisions out (template below) so the *why* survives long after the diff is reviewable. Location:
+7. **File the Decision Document.** Write the decisions out (template below) so the _why_ survives long after the diff is reviewable. Location:
    - If `siw/` exists at the project root (SIW workflow active), write `siw/REFACTOR_DECISIONS.md` and append on subsequent refactors.
    - Otherwise, inline the document as a markdown block in the body of the **first commit** of the sequence. The first commit is special — it carries the rationale for the whole stack.
 
@@ -39,18 +40,21 @@ Run these 7 short steps in order. Do not skip; refactors often unravel because s
 # Refactor Decision Document — <one-line title>
 
 ## Problem Statement
+
 <one or two sentences from interview step 1>
 
 ## Solution
+
 <the chosen shape, in one paragraph>
 
 ## Commits
+
 1. <commit message — does one thing, leaves codebase working>
 2. <commit message — ditto>
-3. <commit message — ditto>
-…
+3. <commit message — ditto> …
 
 ## Decision Document
+
 - **Modules built / modified:** <list>
 - **Interfaces changed:** <list, with before → after signature>
 - **Technical clarifications:** <any non-obvious choices a future maintainer would ask about>
@@ -59,12 +63,15 @@ Run these 7 short steps in order. Do not skip; refactors often unravel because s
 - **API contracts:** <if any caller-visible contract was touched — should be rare in a refactor; flag if more than incidental>
 
 ## Testing Decisions
+
 <what tests were added, what was characterised first, what was deferred>
 
 ## Out of Scope
+
 <list from interview step 4>
 
 ## Further Notes
+
 <any context that does not fit above and is worth preserving — links, references, related ADRs>
 ```
 
@@ -79,7 +86,7 @@ Each commit in the plan is held to a stricter bar than feature work:
 - **No conjunctions.** A commit message that wants to say "and" is two commits. Split.
 - **One logical change per commit.** Sized to one decision, not one file. A move-and-rename across three files is one commit; a rename plus an unrelated typo fix is two.
 
-The discipline is Fowler's: *"After each refactoring step, the code should still work."* Failure mode is ambitious commits that work in aggregate but each break in isolation — they pass review, then fail bisect six months later.
+The discipline is Fowler's: _"After each refactoring step, the code should still work."_ Failure mode is ambitious commits that work in aggregate but each break in isolation — they pass review, then fail bisect six months later.
 
 ## Checkpoints during execution
 

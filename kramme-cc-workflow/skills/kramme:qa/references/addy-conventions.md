@@ -19,7 +19,7 @@ One marker per line, uppercase, no decoration.
 Watch for these excuses — they signal the QA rubric is about to be softened.
 
 | Excuse | Reality |
-|---|---|
+| --- | --- |
 | "The health score is 92, we're good." | A high score with any Blocker finding is still a no-ship. The score is an aggregate, not a veto. |
 | "Console warnings are noisy in this codebase — ignore them." | Either run with `--legacy-console` to make that opt-out explicit, or treat the warnings as findings. Don't silently drop them. |
 | "The route I skipped isn't in the diff." | Diff-aware mode is a scope filter, not a skip list. If a route depends on changed shared code, it belongs in the run. |

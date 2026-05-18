@@ -44,7 +44,7 @@ Before running `git commit`, confirm all six:
 - [ ] **One logical change.** If the diff spans two concerns, split it now — not "in a follow-up".
 - [ ] **Verified the change.** Tests, typecheck, or lint ran against the staged state; failures were resolved or are deliberately called out in the body.
 - [ ] **Subject under 72 characters.** Plain-English, imperative mood, no trailing period, no Conventional Commit prefix.
-- [ ] **Body explains the *why*** when non-obvious — motivation, previous behavior, constraint that forced the shape. Omit the body if the subject is self-explanatory.
+- [ ] **Body explains the _why_** when non-obvious — motivation, previous behavior, constraint that forced the shape. Omit the body if the subject is self-explanatory.
 - [ ] **No AI attribution** in subject, body, or trailers. No `Co-Authored-By: Claude`, no "Generated with Claude Code".
 - [ ] **Repository left in a working state.** This commit should not break `main` if it were the tip.
 
@@ -87,10 +87,10 @@ Use these uppercase markers when reasoning about commit decisions. One marker pe
 
 Lies you'll tell yourself at commit time. Each has a correct response:
 
-- *"It's one logical change if I squint."* → If you had to squint, it's two. Split the staging area with `git add -p`.
-- *"I'll just add `Co-Authored-By: Claude` — it's honest."* → No. The repo forbids AI attribution; the author of a commit is the human making the call to ship it.
-- *"A Conventional Commit prefix makes it scannable."* → Branch commits aren't scanned by tooling — they're read by reviewers. The prefix costs signal for no gain.
-- *"I'll fix the test failure in the next commit."* → Then this commit leaves the repo broken. Either fix the test now or don't commit the broken state.
+- _"It's one logical change if I squint."_ → If you had to squint, it's two. Split the staging area with `git add -p`.
+- _"I'll just add `Co-Authored-By: Claude` — it's honest."_ → No. The repo forbids AI attribution; the author of a commit is the human making the call to ship it.
+- _"A Conventional Commit prefix makes it scannable."_ → Branch commits aren't scanned by tooling — they're read by reviewers. The prefix costs signal for no gain.
+- _"I'll fix the test failure in the next commit."_ → Then this commit leaves the repo broken. Either fix the test now or don't commit the broken state.
 
 ## Red Flags — STOP
 
@@ -100,7 +100,7 @@ Pause and reshape the commit if any of these are true:
 - The diff touches more than one concern (e.g. feature + lint fix + unrelated rename).
 - You're about to use `--no-verify` because hooks fail; fix the hook failure first.
 - You're about to amend a commit that has already been pushed to a shared branch.
-- The body explains *how* instead of *why*.
+- The body explains _how_ instead of _why_.
 
 ## Verification
 

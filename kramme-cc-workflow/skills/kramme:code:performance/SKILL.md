@@ -22,7 +22,7 @@ Measure before optimizing. Performance work without measurement is guessing — 
 ## Core Web Vitals targets
 
 | Metric | Good | Needs Improvement | Poor |
-|--------|------|-------------------|------|
+| --- | --- | --- | --- |
 | **LCP** (Largest Contentful Paint) | ≤ 2.5 s | ≤ 4.0 s | > 4.0 s |
 | **INP** (Interaction to Next Paint) | ≤ 200 ms | ≤ 500 ms | > 500 ms |
 | **CLS** (Cumulative Layout Shift) | ≤ 0.1 | ≤ 0.25 | > 0.25 |
@@ -60,7 +60,7 @@ NOTICED BUT NOT TOUCHING: <the perf smell you saw>
 Why skipping: <not on measured bottleneck / out of scope / deferred>
 ```
 
-The reason: every "while I'm here" fix dilutes the before/after delta for the change you *are* measuring, and makes it impossible to attribute the gain cleanly.
+The reason: every "while I'm here" fix dilutes the before/after delta for the change you _are_ measuring, and makes it impossible to attribute the gain cleanly.
 
 ### Step 1 — Measure
 
@@ -77,7 +77,7 @@ Two complementary approaches — use both:
 // Chrome DevTools MCP → Performance trace
 
 // RUM: web-vitals library in code
-import { onLCP, onINP, onCLS } from 'web-vitals';
+import { onCLS, onINP, onLCP } from "web-vitals";
 
 onLCP(console.log);
 onINP(console.log);
@@ -92,12 +92,12 @@ onCLS(console.log);
 // Database query logging with timing
 
 // Simple timing
-console.time('db-query');
+console.time("db-query");
 const result = await db.query(/* … */);
-console.timeEnd('db-query');
+console.timeEnd("db-query");
 ```
 
-Record the baseline number *with units* in the ticket or commit message. "Fast enough" is not a baseline.
+Record the baseline number _with units_ in the ticket or commit message. "Fast enough" is not a baseline.
 
 ### Step 2 — Identify the bottleneck
 
@@ -106,7 +106,7 @@ Common bottlenecks by category:
 **Frontend:**
 
 | Symptom | Likely cause | Investigation |
-|---------|--------------|---------------|
+| --- | --- | --- |
 | Slow LCP | Large images, render-blocking resources, slow server | Check network waterfall, image sizes |
 | High CLS | Images without dimensions, late-loading content, font shifts | Check layout-shift attribution |
 | Poor INP | Heavy JavaScript on main thread, large DOM updates | Check long tasks in Performance trace |
@@ -115,7 +115,7 @@ Common bottlenecks by category:
 **Backend:**
 
 | Symptom | Likely cause | Investigation |
-|---------|--------------|---------------|
+| --- | --- | --- |
 | Slow API responses | N+1 queries, missing indexes, unoptimized queries | Check database query log |
 | Memory growth | Leaked references, unbounded caches, large payloads | Heap snapshot analysis |
 | CPU spikes | Synchronous heavy computation, regex backtracking | CPU profiling |
@@ -236,13 +236,13 @@ If any box is unchecked, the slice is not done. Fix the gap or split the slice.
 
 These are the lies you will tell yourself to justify skipping the measurement or the guard. Each one has a correct response:
 
-- *"We'll optimize later."* → Performance debt compounds. Fix the obvious anti-pattern now; defer only the micro-optimizations.
-- *"It's fast on my machine."* → Your machine is not the user's. Profile on representative hardware and the slowest network profile the product supports.
-- *"This optimization is obvious — no need to measure."* → If you did not measure, you do not know. Profile first; half the time the "obvious" bottleneck is not the real one.
-- *"Users won't notice 100 ms."* → They do. Interaction delays above 100 ms are perceptible, and RUM data consistently shows them degrading conversion.
-- *"The framework handles performance."* → Frameworks prevent some classes of issue, but they do not fix N+1 queries, oversized bundles, or unoptimized images. Those are author-level decisions.
-- *"I'll add `React.memo` everywhere to be safe."* → Memoization is not free. Each memo adds bookkeeping cost and hides render causes. Apply only when profiling shows a measured win.
-- *"The fix is small enough to skip the regression test."* → The next unrelated refactor will delete the fix by accident. A guarded fix is a fix; an unguarded fix is a fix with an expiration date.
+- _"We'll optimize later."_ → Performance debt compounds. Fix the obvious anti-pattern now; defer only the micro-optimizations.
+- _"It's fast on my machine."_ → Your machine is not the user's. Profile on representative hardware and the slowest network profile the product supports.
+- _"This optimization is obvious — no need to measure."_ → If you did not measure, you do not know. Profile first; half the time the "obvious" bottleneck is not the real one.
+- _"Users won't notice 100 ms."_ → They do. Interaction delays above 100 ms are perceptible, and RUM data consistently shows them degrading conversion.
+- _"The framework handles performance."_ → Frameworks prevent some classes of issue, but they do not fix N+1 queries, oversized bundles, or unoptimized images. Those are author-level decisions.
+- _"I'll add `React.memo` everywhere to be safe."_ → Memoization is not free. Each memo adds bookkeeping cost and hides render causes. Apply only when profiling shows a measured win.
+- _"The fix is small enough to skip the regression test."_ → The next unrelated refactor will delete the fix by accident. A guarded fix is a fix; an unguarded fix is a fix with an expiration date.
 
 ## Red Flags
 

@@ -9,11 +9,13 @@
 If no issues exist yet, read `templates/issues-template.md` for templates.
 
 **If this is the first issue:**
+
 1. Create `siw/issues/` directory
 2. Create `siw/OPEN_ISSUES_OVERVIEW.md` (see template)
 3. Create `siw/issues/ISSUE-G-001-short-title.md`
 
 **If issues already exist:**
+
 1. Determine prefix (`G`, `P1`, `P2`, etc.)
 2. Find next issue number from `siw/OPEN_ISSUES_OVERVIEW.md` within that prefix group
 3. Create `siw/issues/ISSUE-{prefix}-XXX-short-title.md`
@@ -21,6 +23,7 @@ If no issues exist yet, read `templates/issues-template.md` for templates.
 5. If you added a non-DONE issue to a phase section currently marked ` (DONE)`, ask the user whether to remove the marker
 
 **In the issue file:**
+
 - Mark as IN PROGRESS while actively working on it
 - Document problem statement and context
 - List options being considered with pros/cons

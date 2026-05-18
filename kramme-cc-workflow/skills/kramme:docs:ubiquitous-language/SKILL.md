@@ -49,7 +49,7 @@ The glossary file uses this template. Subdomain sections are optional — use on
 ## <Subdomain name>
 
 | Term | Definition | Aliases to avoid |
-|---|---|---|
+| --- | --- | --- |
 | **CanonicalTerm** | One sentence describing what it means in this domain. | `synonym1`, `synonym2` |
 
 ## Relationships
@@ -64,7 +64,7 @@ The glossary file uses this template. Subdomain sections are optional — use on
 >
 > **Engineer:** So the Order is created with a draft status until …
 >
-> *(3–5 exchanges using ≥3 canonical terms)*
+> _(3–5 exchanges using ≥3 canonical terms)_
 
 ## Flagged ambiguities
 
@@ -150,11 +150,11 @@ Never overwrite blindly. If the merge would drop committed terms, emit `ASK FIRS
 
 These are the lies you will tell yourself to skip or distort the glossary. Each has a correct response:
 
-- *"These terms are obvious — everyone knows what 'order' means."* → Then write the one-sentence definition. If it takes three sentences or contradicts how someone else used it, the term was not as obvious as you thought.
-- *"We can capture this in code comments / type names."* → Code comments are read by engineers; the glossary is read by domain experts and new hires. Different audience, different artifact.
-- *"There's no real conflict — 'user' and 'customer' are basically the same."* → Then pick one. If you cannot pick one, you have a conflict.
-- *"I'll add every noun from the conversation to be thorough."* → Domain relevance only. Generic programming nouns rot the glossary and train readers to skim it.
-- *"Let me just overwrite the existing file with my fresher version."* → Read-then-merge. Committed canonicals are decisions; treat them like ADRs.
+- _"These terms are obvious — everyone knows what 'order' means."_ → Then write the one-sentence definition. If it takes three sentences or contradicts how someone else used it, the term was not as obvious as you thought.
+- _"We can capture this in code comments / type names."_ → Code comments are read by engineers; the glossary is read by domain experts and new hires. Different audience, different artifact.
+- _"There's no real conflict — 'user' and 'customer' are basically the same."_ → Then pick one. If you cannot pick one, you have a conflict.
+- _"I'll add every noun from the conversation to be thorough."_ → Domain relevance only. Generic programming nouns rot the glossary and train readers to skim it.
+- _"Let me just overwrite the existing file with my fresher version."_ → Read-then-merge. Committed canonicals are decisions; treat them like ADRs.
 
 ## Red Flags
 

@@ -1,7 +1,6 @@
 # {Concept Name}
 
-Decided: {YYYY-MM-DD}
-Decided by: {name or role}
+Decided: {YYYY-MM-DD} Decided by: {name or role}
 
 ## Why this is out of scope
 

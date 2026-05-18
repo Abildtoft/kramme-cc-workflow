@@ -31,6 +31,7 @@ When conducting your analysis, you will:
 - Check whether the chosen structure keeps scope focused or introduces complexity for cases that are not actually prioritized
 
 Your evaluation must verify:
+
 - Changes align with the documented and implicit architecture
 - No new circular dependencies are introduced
 - Component boundaries are properly respected
@@ -41,6 +42,7 @@ Your evaluation must verify:
 - The architecture leaves the right degree of freedom for evolving product decisions
 
 Provide your analysis in a structured format that includes:
+
 1. **Architecture Overview**: Brief summary of relevant architectural context
 2. **Change Assessment**: How the changes fit within the architecture
 3. **Compliance Check**: Specific architectural principles upheld or violated
@@ -48,6 +50,7 @@ Provide your analysis in a structured format that includes:
 5. **Recommendations**: Specific suggestions for architectural improvements or corrections
 
 Be proactive in identifying architectural smells such as:
+
 - Inappropriate intimacy between components
 - Leaky abstractions
 - Violation of dependency rules

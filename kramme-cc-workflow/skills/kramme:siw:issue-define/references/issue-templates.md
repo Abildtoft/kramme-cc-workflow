@@ -15,6 +15,7 @@ Every issue carries a `Mode` field that signals who should pick it up:
 - **HITL** — human-in-the-loop is required for at least one of: architectural decision, design review, judgment call, manual testing, external system access. HITL issues must include a one-line reason.
 
 Field shape:
+
 - `Mode: AUTO` (no reason needed)
 - `Mode: HITL — <one-line reason>` (reason required when HITL)
 
@@ -39,6 +40,7 @@ Issue bodies must NOT include file paths, line numbers, or internal helper/class
 {1-2 sentence description of the bug}
 
 **Steps to reproduce:**
+
 1. {Step 1}
 2. {Step 2}
 3. **Bug:** {What happens}
@@ -65,24 +67,25 @@ Issue bodies must NOT include file paths, line numbers, or internal helper/class
 
 ## Problem
 
-{What pain point or issue exists}
-{Who is affected and how}
+{What pain point or issue exists} {Who is affected and how}
 
 ## Context
 
-{Current state and background}
-{Why this matters now}
+{Current state and background} {Why this matters now}
 
 ## Scope
 
 ### In Scope
+
 - {Specific item 1}
 - {Specific item 2}
 
 ### Out of Scope
+
 - {Explicitly excluded item 1}
 
 ## Decision Boundaries
+
 - **Captured in this issue:** {product, behavior, or scope decisions that need alignment}
 - **Left to implementation:** {engineering choices that should not be over-specified here}
 
@@ -100,17 +103,22 @@ Issue bodies must NOT include file paths, line numbers, or internal helper/class
 ## Technical Notes
 
 ### Implementation Approach
+
 {High-level approach — describe components/areas/behaviors that need changes, not file paths}
 
 ### Affected Areas
+
 - {Component/module 1}
 
 ### Patterns to Follow
+
 {Reference existing patterns by name and behavior; avoid pinning to file paths or line numbers}
 
 ### References
+
 - {Related modules / contracts — describe by name and responsibility, not file paths}
 
 ## Assumptions Used
+
 - {Only include when the issue had to infer user, why-now, or non-goals from incomplete context}
 ```

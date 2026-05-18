@@ -59,7 +59,7 @@ If more than one surface applies, use the stricter evidence set.
 
 **Clear YES** — you can name the replacement module/endpoint/feature, and its contract covers the documented surface of the old code.
 
-**Clear NO** — no replacement, and the plan acknowledges that Step 4.1 (Build the replacement) must happen *before* announcement. Deprecating without a replacement is "delete the feature" — a different decision with a different stakeholder set.
+**Clear NO** — no replacement, and the plan acknowledges that Step 4.1 (Build the replacement) must happen _before_ announcement. Deprecating without a replacement is "delete the feature" — a different decision with a different stakeholder set.
 
 **"Not yet — gather more data" signals:**
 

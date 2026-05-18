@@ -24,12 +24,14 @@ Coordinate all pre-merge quality checks and produce a single readiness verdict. 
 6. All flags are optional. Default: run all applicable steps, no app URL, auto-detect base.
 
 `--auto` means:
+
 - skip the execution-plan confirmation
 - run all applicable steps unless explicitly skipped
 - if QA is applicable, run `diff-aware`
 - if description generation is applicable, run it automatically without prompting
 
 `--fix` means:
+
 - after the initial verdict, if code-backed critical or important findings exist, automatically run `kramme:pr:resolve-review` to address them
 - re-run verification after fixes to produce an updated verdict
 - does NOT fix suggestions — only critical and important findings
@@ -40,7 +42,7 @@ Coordinate all pre-merge quality checks and produce a single readiness verdict. 
 #### 2.1 Verify Git Repository
 
 ```bash
-git rev-parse --is-inside-work-tree 2>/dev/null
+git rev-parse --is-inside-work-tree 2> /dev/null
 ```
 
 If not a git repo → abort with error.
@@ -52,6 +54,7 @@ CURRENT_BRANCH=$(git branch --show-current)
 ```
 
 If `$CURRENT_BRANCH` is `main` or `master`:
+
 ```
 Error: Cannot finalize from the main/master branch.
 
@@ -60,27 +63,30 @@ Switch to a feature branch first:
 
 Then run /kramme:pr:finalize again.
 ```
+
 **Action:** Stop.
 
 #### 2.3 Resolve Base Branch
 
 Determine the correct base branch using a 3-tier strategy:
 
-**Tier 1: Explicit override**
-If `--base <branch>` was provided in Step 1, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
+**Tier 1: Explicit override** If `--base <branch>` was provided in Step 1, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
 
 **Tier 2: PR target branch detection**
+
 ```bash
-BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
+BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2> /dev/null)
 ```
 
 **Tier 3: Fallback**
+
 ```bash
-BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@')
 [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
 ```
 
 Normalize before using `origin/$BASE_BRANCH`:
+
 ```bash
 BASE_BRANCH=${BASE_BRANCH#refs/heads/}
 BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
@@ -89,15 +95,15 @@ if [ -z "$BASE_BRANCH" ]; then
   echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
   exit 1
 fi
-if ! git check-ref-format --branch "$BASE_BRANCH" >/dev/null 2>&1; then
+if ! git check-ref-format --branch "$BASE_BRANCH" > /dev/null 2>&1; then
   echo "Error: Base branch '$BASE_BRANCH' is not a valid branch name. Re-run with --base <branch>." >&2
   exit 1
 fi
-if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2>/dev/null; then
+if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2> /dev/null; then
   echo "Error: Failed to fetch origin/$BASE_BRANCH. Check remote access and re-run with --base <branch>." >&2
   exit 1
 fi
-if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
+if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null; then
   echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <branch>." >&2
   exit 1
 fi
@@ -116,11 +122,13 @@ CHANGE_COUNT=$({
 ```
 
 If `$CHANGE_COUNT` is 0:
+
 ```
 No changes detected compared to origin/{BASE_BRANCH}.
 
 Nothing to finalize. Make changes first, then run /kramme:pr:finalize again.
 ```
+
 **Action:** Stop.
 
 ### Step 3: Determine Scope
@@ -128,13 +136,14 @@ Nothing to finalize. Make changes first, then run /kramme:pr:finalize again.
 #### 3.1 Identify Changed Files
 
 Build a unified change scope (committed + staged + unstaged + untracked):
+
 ```bash
 BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
 {
-  git diff --name-only "$BASE_REF"...HEAD      # committed PR diff
-  git diff --name-only --cached                # staged local changes
-  git diff --name-only                         # unstaged local changes
-  git ls-files --others --exclude-standard     # untracked local files
+  git diff --name-only "$BASE_REF"...HEAD  # committed PR diff
+  git diff --name-only --cached            # staged local changes
+  git diff --name-only                     # unstaged local changes
+  git ls-files --others --exclude-standard # untracked local files
 } | sed '/^$/d' | sort -u
 ```
 
@@ -145,12 +154,14 @@ Store as `CHANGED_FILES` and count as `FILE_COUNT`.
 Read `references/ui-relevance-heuristics.md` for the full pattern list. Check each changed file against:
 
 **Extension patterns:**
+
 - Components: `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.component.ts`, `*.component.html`
 - Templates: `*.html`, `*.hbs`, `*.ejs`, `*.pug`
 - Styles: `*.css`, `*.scss`, `*.sass`, `*.less`, `*.styled.ts`, `*.styled.js`, `*.module.css`, `*.module.scss`
 - Configuration: `tailwind.config.*`, `theme.*`, files under `design-tokens/`
 
 **Directory patterns:**
+
 - `pages/`, `views/`, `screens/`, `routes/`, `app/`
 - `components/`, `widgets/`, `layouts/`, `templates/`
 - `styles/`, `css/`
@@ -186,6 +197,7 @@ Skipped: {any --skip items, or "none"}
 If `AUTO_MODE=true`, skip this prompt and execute the plan as displayed.
 
 Otherwise use AskUserQuestion to confirm:
+
 ```yaml
 header: "PR Finalize Plan"
 question: "Proceed with this plan?"
@@ -206,6 +218,7 @@ multiSelect: false
 **If "Skip QA":** Add `qa` to `SKIP_LIST`.
 
 **If "Customize":** Use AskUserQuestion with multiSelect to let user pick steps:
+
 ```yaml
 header: "Select steps"
 question: "Which steps should run?"
@@ -224,6 +237,7 @@ multiSelect: true
 **Skip if** `verify` is in `SKIP_LIST`.
 
 Invoke via Skill tool:
+
 ```
 skill: "kramme:verify:run"
 ```
@@ -239,11 +253,13 @@ Capture the result. Record pass/fail status.
 **Skip if** `code-review` is in `SKIP_LIST`.
 
 Invoke via Skill tool:
+
 ```
 skill: "kramme:pr:code-review", args: "--base {BASE_BRANCH}"
 ```
 
 After completion, parse `REVIEW_OVERVIEW.md` in the project root:
+
 - Count findings by severity: critical, important, suggestion
 - Inspect each critical/important code-review finding's location:
   - `review-scope` (or any broader non-file scope label) = process-level blocker, manual follow-up
@@ -258,11 +274,13 @@ After completion, parse `REVIEW_OVERVIEW.md` in the project root:
 **Skip if** `product-review` is in `SKIP_LIST`.
 
 Invoke via Skill tool:
+
 ```
 skill: "kramme:pr:product-review", args: "--base {BASE_BRANCH}"
 ```
 
 After completion, parse `PRODUCT_REVIEW_OVERVIEW.md` in the project root:
+
 - Count findings by severity: critical, important, suggestion
 - Critical findings = blockers
 
@@ -271,15 +289,18 @@ After completion, parse `PRODUCT_REVIEW_OVERVIEW.md` in the project root:
 ### Step 8: Execute UX Review (Conditional)
 
 **Skip if** ANY of:
+
 - `ux-review` is in `SKIP_LIST`
 - `HAS_UI_CHANGES` is false
 
 Invoke via Skill tool:
+
 ```
 skill: "kramme:pr:ux-review", args: "--base {BASE_BRANCH}"
 ```
 
 After completion, parse `UX_REVIEW_OVERVIEW.md` in the project root:
+
 - Count findings by severity: critical, important, suggestion
 - Critical findings = blockers
 
@@ -288,16 +309,19 @@ After completion, parse `UX_REVIEW_OVERVIEW.md` in the project root:
 ### Step 9: Execute QA (Conditional)
 
 **Skip if** ANY of:
+
 - `qa` is in `SKIP_LIST`
 - `HAS_UI_CHANGES` is false
 - `APP_URL` was not provided
 
 If `AUTO_MODE=true`, skip this prompt and run diff-aware QA:
+
 ```yaml
 skill: "kramme:qa", args: "{APP_URL} diff-aware --base {BASE_BRANCH}"
 ```
 
 Otherwise confirm with user:
+
 ```yaml
 header: "QA Testing"
 question: "Run QA testing against {APP_URL}? A browser MCP enables live checks; otherwise QA falls back to code-only analysis."
@@ -314,11 +338,13 @@ multiSelect: false
 **If "Skip QA":** Record as skipped. Continue.
 
 **If "Run QA quick":**
+
 ```
 skill: "kramme:qa", args: "{APP_URL} quick"
 ```
 
 **If "Run QA diff-aware":**
+
 ```
 skill: "kramme:qa", args: "{APP_URL} diff-aware --base {BASE_BRANCH}"
 ```
@@ -332,18 +358,21 @@ Parse QA results for blockers, major issues, and minor issues.
 Aggregate all results into a verdict:
 
 **READY:**
+
 - Verification passed (or skipped)
 - No critical findings from any review
 - No QA blockers
 - No skills recorded as `COULD NOT RUN`
 
 **READY WITH CAVEATS:**
+
 - Verification passed (or skipped)
 - No critical findings from any review
 - No QA blockers
 - BUT one or more of: important findings exist, suggestions exist, a skill could not run
 
 **NOT READY:**
+
 - Verification failed, OR
 - Critical findings exist in any review, OR
 - QA blockers found
@@ -355,11 +384,13 @@ Aggregate all results into a verdict:
 If `FIX_MODE=true` and one or more code-backed critical or important code-review findings exist:
 
 1. Run `kramme:pr:resolve-review` to address findings:
+
    ```
    skill: "kramme:pr:resolve-review", args: "--source local --severity critical,important"
    ```
 
 2. After resolve-review completes, re-run verification:
+
    ```
    skill: "kramme:verify:run"
    ```
@@ -382,30 +413,39 @@ Display the assessment inline (no artifact file):
 **Verdict: READY / READY WITH CAVEATS / NOT READY**
 
 ### Verification
+
 Status: PASS / FAIL / SKIPPED / COULD NOT RUN
 
 ### Code Review
+
 Status: X critical, Y important, Z suggestions / SKIPPED / COULD NOT RUN
 
 ### Product Review
+
 Status: X critical, Y important, Z suggestions / SKIPPED / COULD NOT RUN
 
 ### UX Review (if run)
+
 Status: X critical, Y important, Z suggestions / SKIPPED (no UI changes) / COULD NOT RUN
 
 ### QA (if run)
+
 Status: X blockers, Y major, Z minor / SKIPPED (no app URL) / COULD NOT RUN
 
 ### Blockers (must fix)
+
 1. [source]: description
 
 ### Recommended Fixes (should fix)
+
 1. [source]: description
 
 ### Optional Polish
+
 1. [source]: description
 
 ### Next Steps
+
 {context-dependent recommendations}
 ```
 
@@ -421,11 +461,13 @@ Status: X blockers, Y major, Z minor / SKIPPED (no app URL) / COULD NOT RUN
 **Skip if** `generate-description` is in `SKIP_LIST`.
 
 If verdict is **READY** or **READY WITH CAVEATS** and `AUTO_MODE=true`, run:
+
 ```yaml
 skill: "kramme:pr:generate-description", args: "--auto --base {BASE_BRANCH}"
 ```
 
 Otherwise ask:
+
 ```yaml
 header: "PR Description"
 question: "Generate or update PR description now?"
@@ -442,6 +484,7 @@ multiSelect: false
 **If "Skip":** Done.
 
 **If "Generate and update" or "Generate for review":**
+
 ```
 skill: "kramme:pr:generate-description", args: "--base {BASE_BRANCH}"
 ```
@@ -453,6 +496,7 @@ If "Generate and update" was selected and a PR already exists, apply the generat
 ## Explicit Non-Goals
 
 pr:finalize does NOT:
+
 - Create the PR itself (use `/kramme:pr:create`)
 - Fix CI failures (use `/kramme:pr:fix-ci`)
 - Merge code

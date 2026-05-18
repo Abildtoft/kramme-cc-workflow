@@ -3,6 +3,7 @@
 ## Step 0: Choose Your Specification Document Name
 
 Choose a permanent name based on project type:
+
 - `FEATURE_SPECIFICATION.md` - Feature implementation
 - `DOCUMENTATION_SPEC.md` - Documentation projects
 - `API_DESIGN.md` - API design work
@@ -20,6 +21,7 @@ Create the `siw/` directory first if it doesn't exist.
 Read `templates/spec-guidance.md` for structure details.
 
 **Include:**
+
 - Overview and objectives
 - Scope, audience, and success criteria
 - Guiding principles and constraints
@@ -40,6 +42,7 @@ Read `templates/spec-guidance.md` for structure details.
 Read `templates/issues-template.md` for the full structure.
 
 **When first issue arises:**
+
 1. Create `siw/issues/` directory
 2. Create `siw/OPEN_ISSUES_OVERVIEW.md` with the overview table
 3. Create `siw/issues/ISSUE-G-001-short-title.md` for the first issue
@@ -51,6 +54,7 @@ Read `templates/issues-template.md` for the full structure.
 **Note:** If you used `/kramme:siw:init`, LOG.md was already created with the initial structure.
 
 **If creating manually** (when first decision is made OR first task is completed):
+
 - Read `templates/log-template.md` for structure
 - Add "Current Progress" section at the very top
 - Add Decision Template

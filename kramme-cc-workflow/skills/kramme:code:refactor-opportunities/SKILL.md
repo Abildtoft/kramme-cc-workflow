@@ -22,7 +22,7 @@ Systematically scan the codebase for refactoring candidates, categorize findings
 - **Disambiguation** (apply in order; first match wins):
   1. A typed mode form (`--scope <mode>`, `--feature <name>`, `path <…>`, `feature <…>`) selects that mode directly.
   2. A bare argument that exactly matches a reserved full-codebase alias (`full`, `full codebase`, `repo`, `everything`, `all`) or PR alias (`pr`, `current PR`, `diff`, `changes`) selects the corresponding mode. To name a feature whose name collides with a reserved keyword, use the explicit `feature <name>` form.
-  3. A bare argument is *path-shaped* when it contains `/`, `.`, or a glob meta-character (`*`, `?`, `[`); a path-shaped argument that resolves selects `path`, and one that does not resolve triggers a clarification ask (do not fall back to `feature`).
+  3. A bare argument is _path-shaped_ when it contains `/`, `.`, or a glob meta-character (`*`, `?`, `[`); a path-shaped argument that resolves selects `path`, and one that does not resolve triggers a clarification ask (do not fall back to `feature`).
   4. Any other bare argument is treated as a feature name.
 - If two distinct scope selectors are provided (e.g. `--scope pr` plus a bare path, or `path <…>` plus `feature <…>`), pause and ask which single scope to use. `--base <ref>` is a PR-mode parameter, not a selector, and does not trigger this rule.
 
@@ -41,12 +41,11 @@ These rejections are pre-filters — apply them before recording a finding, not 
 
 ### Phase 1 — Orientation
 
-1. Parse `$ARGUMENTS` per the **Inputs** section into a single `SCOPE_MODE`, applying the multi-selector rule from **Inputs** before resolving. The per-mode target is computed in *Resolve the effective scan scope* below.
+1. Parse `$ARGUMENTS` per the **Inputs** section into a single `SCOPE_MODE`, applying the multi-selector rule from **Inputs** before resolving. The per-mode target is computed in _Resolve the effective scan scope_ below.
 2. Use the Read tool to examine `package.json` / `pyproject.toml` / build config to understand the stack and directory layout.
 3. Discover project instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents) if present and read the relevant ones to understand project-specific conventions.
 4. **Read accepted ADRs.** Look for `docs/decisions/` (or other common ADR locations: `doc/adr/`, `docs/adr/`, `architecture/decisions/`). If found, read every accepted ADR and store their decisions as `KNOWN_ADRS` — title, status, and a one-line summary of what was decided and what was rejected. These bound the design space the scan operates in. If no ADR directory exists, proceed silently with `KNOWN_ADRS = []`.
-5. **Read project domain language.** If `UBIQUITOUS_LANGUAGE.md` (or similar: `GLOSSARY.md`, `docs/glossary.md`) exists at the project root, read it and store the canonical domain terms. When naming refactor candidates in Phase 4, prefer these terms over internal helper class names — "the Order intake module" is more useful than "the FooBarHandler". If no glossary file exists, proceed silently — do not flag its absence.
-5.5. **Read prior rejections.** If `.out-of-scope/` exists at the project root, list its filenames and store them as `KNOWN_OUT_OF_SCOPE`. Do not open file bodies yet — that happens in Phase 3 only when a finding plausibly matches a slug. If no directory exists, proceed silently with `KNOWN_OUT_OF_SCOPE = []`. See `/kramme:docs:out-of-scope` for the storage skill.
+5. **Read project domain language.** If `UBIQUITOUS_LANGUAGE.md` (or similar: `GLOSSARY.md`, `docs/glossary.md`) exists at the project root, read it and store the canonical domain terms. When naming refactor candidates in Phase 4, prefer these terms over internal helper class names — "the Order intake module" is more useful than "the FooBarHandler". If no glossary file exists, proceed silently — do not flag its absence. 5.5. **Read prior rejections.** If `.out-of-scope/` exists at the project root, list its filenames and store them as `KNOWN_OUT_OF_SCOPE`. Do not open file bodies yet — that happens in Phase 3 only when a finding plausibly matches a slug. If no directory exists, proceed silently with `KNOWN_OUT_OF_SCOPE = []`. See `/kramme:docs:out-of-scope` for the storage skill.
 6. Resolve the effective scan scope. Across all modes, exclude `node_modules`, `dist`, build artifacts, generated files, lock files, vendored code, and binary assets. Then per mode:
    - **Full**: list source directories from project structure.
    - **PR**:
@@ -75,6 +74,7 @@ Launch parallel Explore agents to cover the codebase efficiently. Split work by 
 - **Agent 4 — Readability**: category 5 (Naming & Readability) — only if the user explicitly asks for naming/readability review, otherwise skip this agent.
 
 Each agent must:
+
 - Read the checklist reference file for its assigned categories.
 - Scan all files in scope for findings in those categories.
 - Apply the When-NOT-to-flag pre-filter before recording.
@@ -89,22 +89,21 @@ Each agent must:
   ```
 
   These entries are collected in Synthesis and surfaced in the report as uncategorized observations, not folded into the agent's findings.
+
 - Return findings as a structured list.
 
 ### Phase 3 — Synthesis
 
 1. Collect all agent findings and `NOTICED BUT NOT TOUCHING` entries.
-2. Deduplicate (same location + same issue = one finding).
-2.1. **Apply the PR relevance gate when `SCOPE_MODE=pr`.** Cross-reference each candidate against `PR_CHANGE_MAP` and `PR_BASE_REF` before severity assignment:
+2. Deduplicate (same location + same issue = one finding). 2.1. **Apply the PR relevance gate when `SCOPE_MODE=pr`.** Cross-reference each candidate against `PR_CHANGE_MAP` and `PR_BASE_REF` before severity assignment:
    - Keep findings tied to an added/modified hunk, a new/untracked file, deleted code with surviving references, an unchanged line within ~5 lines of a changed hunk with a concrete causal chain, or unchanged code directly affected by a changed caller/API contract.
    - Filter findings in files outside the PR file set, findings on unchanged lines with no PR-caused call-chain evidence, findings whose problem existed unchanged in the base tree, findings whose suggested fix is mainly broad cleanup in untouched files, and findings whose only relevance is "this file changed."
    - Move filtered material to the report's PR-scope observations section, or to `NOTICED BUT NOT TOUCHING` if the report template has no dedicated section. Do not include filtered PR-scope observations in severity tables, themes, or recommended refactor order.
-   - If every candidate is filtered, report that there are no PR-scoped refactor opportunities. Do not widen the scan to full-repo cleanup.
-2.5. **Filter against `KNOWN_OUT_OF_SCOPE`.** For each finding, check whether its concept plausibly matches a slug in `KNOWN_OUT_OF_SCOPE`. If yes, read that file and either drop the finding (clean concept match, no new evidence) or annotate it as `_"matches .out-of-scope/<slug>.md (decided <date>) — re-evaluate?"_` when concrete new evidence has accumulated. Default is silent skip; the annotation is the exception. Symmetric to the ADR filter below.
+   - If every candidate is filtered, report that there are no PR-scoped refactor opportunities. Do not widen the scan to full-repo cleanup. 2.5. **Filter against `KNOWN_OUT_OF_SCOPE`.** For each finding, check whether its concept plausibly matches a slug in `KNOWN_OUT_OF_SCOPE`. If yes, read that file and either drop the finding (clean concept match, no new evidence) or annotate it as `_"matches .out-of-scope/<slug>.md (decided <date>) — re-evaluate?"_` when concrete new evidence has accumulated. Default is silent skip; the annotation is the exception. Symmetric to the ADR filter below.
 3. **Filter against `KNOWN_ADRS`.** For each finding, check whether it contradicts an accepted ADR. If the contradiction is theoretical (the ADR rejected this exact refactor and no concrete new evidence has emerged), drop the finding silently — the ADR is decision-of-record. Surface as `_"contradicts ADR-NNNN — but worth reopening because <concrete new evidence>"_` only when real friction has accumulated since the ADR was accepted. The default is silent skip; the annotation is the exception.
 4. Assign final severity. Promote findings that appear in 3+ locations to at least medium.
 5. Group related findings into **themes** — patterns that share a root cause or would benefit from a coordinated fix.
-6. **Rule of 500 — automation trigger.** For any theme whose combined blast radius exceeds **500 lines**, mark the theme as an automation candidate and recommend a codemod, AST transform, or batch refactor tool instead of manual per-file fixes. Addy's rule: *"If a refactoring would touch more than 500 lines, invest in automation."* Manual edits at that scale are error-prone and review-hostile.
+6. **Rule of 500 — automation trigger.** For any theme whose combined blast radius exceeds **500 lines**, mark the theme as an automation candidate and recommend a codemod, AST transform, or batch refactor tool instead of manual per-file fixes. Addy's rule: _"If a refactoring would touch more than 500 lines, invest in automation."_ Manual edits at that scale are error-prone and review-hostile.
 7. Determine a **recommended refactor order** considering:
    - High-severity items first
    - Quick wins (small blast radius, high clarity gain) early
@@ -115,8 +114,7 @@ Each agent must:
 ### Phase 4 — Report
 
 1. Read `assets/report-template.md` for the output format.
-2. Produce the report following that template. In the "Patterns & Themes" section, mark each theme's total line count and flag themes ≥500 lines as **automation candidates**.
-2.5. In PR mode, include `PR relevance` for every active finding using the PR-only table column described in the template, and include the count of filtered PR-scope observations in the summary. In non-PR scopes, omit PR relevance entirely. Filtered observations must not be described as findings.
+2. Produce the report following that template. In the "Patterns & Themes" section, mark each theme's total line count and flag themes ≥500 lines as **automation candidates**. 2.5. In PR mode, include `PR relevance` for every active finding using the PR-only table column described in the template, and include the count of filtered PR-scope observations in the summary. In non-PR scopes, omit PR relevance entirely. Filtered observations must not be described as findings.
 3. **Depth/seam findings carry extra fields.** Any finding whose category is Structural or Coupling and whose vocabulary comes from `references/architecture-language.md` must include a one-line **deletion test** result (e.g., "inlining at the 1 call site removes 4 lines, no caller becomes harder to read") and an **adapter count** when claiming a seam is speculative. Findings missing these fields are not yet ready and should be dropped at this point, not paper-clipped together.
 4. **Names follow the project glossary.** When `UBIQUITOUS_LANGUAGE.md` was read in Phase 1, use the canonical domain terms in finding titles and descriptions. Default helper-class language is a tell that the scan didn't read the project's own vocabulary.
 5. Write the report to `REFACTOR_OPPORTUNITIES_OVERVIEW.md` in the project root.
@@ -139,11 +137,11 @@ Each agent must:
 
 These are how a scan turns from high-signal into noise. Each has a correct response:
 
-- *"This feels inconsistent, probably worth flagging."* → Not a finding without evidence. A concrete inconsistency across 3+ locations is a finding; a vague feeling is not.
-- *"I'll flag it at low severity just to be safe."* → Severity inflation in reverse. If it is not worth acting on, it is not worth recording.
-- *"This pattern looks odd; the project probably wants it fixed."* → Check the project instruction files and existing usage first. Intentional patterns are not findings.
-- *"I can't explain why it's wrong but it feels off."* → Not a finding. Read more, or leave it.
-- *"This category has few findings; let me dig for more."* → No. A short category list is valid data. Padding with low-signal items degrades the whole report.
+- _"This feels inconsistent, probably worth flagging."_ → Not a finding without evidence. A concrete inconsistency across 3+ locations is a finding; a vague feeling is not.
+- _"I'll flag it at low severity just to be safe."_ → Severity inflation in reverse. If it is not worth acting on, it is not worth recording.
+- _"This pattern looks odd; the project probably wants it fixed."_ → Check the project instruction files and existing usage first. Intentional patterns are not findings.
+- _"I can't explain why it's wrong but it feels off."_ → Not a finding. Read more, or leave it.
+- _"This category has few findings; let me dig for more."_ → No. A short category list is valid data. Padding with low-signal items degrades the whole report.
 
 ## Red Flags
 

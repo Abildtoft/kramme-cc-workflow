@@ -55,11 +55,13 @@ This procedure is referenced as **"Run the Status Update Procedure"** throughout
 If `$ARGUMENTS` contains `--team`, use Team Mode and remove the flag before parsing issue identifiers.
 
 **Accepted formats:**
+
 - Full format: `ISSUE-G-001`, `ISSUE-P1-001`, `ISSUE-P2-001`, etc.
 - Short format: `G-001`, `P1-001`, `P2-001`, etc.
 - Legacy format: `ISSUE-001` or `001` (treated as `G-001`)
 
 **Validation:**
+
 - Extract the prefix (`G`, `P1`, `P2`, etc.) and numeric portion
 - Pad number to 3 digits (1 → 001, 12 → 012)
 - Default prefix is `G` if none provided (IDs like `G-001`)
@@ -85,10 +87,11 @@ The issue can be specified as G-001, P1-001, ISSUE-G-001, etc.
 Search for issue file in `siw/issues/` directory:
 
 ```bash
-ls siw/issues/ISSUE-{prefix}-{padded_number}-*.md 2>/dev/null
+ls siw/issues/ISSUE-{prefix}-{padded_number}-*.md 2> /dev/null
 ```
 
 **If found:**
+
 - Read the full issue file
 - Extract:
   - Title (from `# ISSUE-{prefix}-{number}:` header)
@@ -193,11 +196,13 @@ Technical Notes:
 ### 4.1 Why This Phase Is Essential
 
 Issues describe:
+
 - **What** should be accomplished
 - **Why** it matters
 - **Acceptance criteria** for verification
 
 They may NOT describe:
+
 - Which files/modules to modify
 - What patterns to follow
 - How existing similar features are implemented
@@ -209,14 +214,15 @@ They may NOT describe:
 **ALWAYS perform these steps:**
 
 1. **Check supporting specs (if they exist):**
+
    ```bash
-   ls siw/supporting-specs/ 2>/dev/null
+   ls siw/supporting-specs/ 2> /dev/null
    ```
+
    If supporting specs exist, identify which ones are relevant:
    - Data model specs for entity-related work
    - API specs for endpoint-related work
-   - UI specs for frontend-related work
-   Read relevant sections for detailed requirements.
+   - UI specs for frontend-related work Read relevant sections for detailed requirements.
 
 2. **Search for similar features/patterns:**
    - Use Glob and Grep to find related code
@@ -224,6 +230,7 @@ They may NOT describe:
    - Identify relevant modules, services, or components
 
 3. **Use the Explore agent:**
+
    ```
    Task tool with subagent_type=Explore:
    "Find existing implementations related to {feature description from issue}.
@@ -398,6 +405,7 @@ Check siw/LOG.md for decisions recorded during implementation: new decisions not
 For each decision, check whether it aligns with the spec or supporting specs. Identify decisions that contradict (spec needs updating), add new information (spec needs expanding), or clarify ambiguities (spec needs refinement).
 
 **If supporting specs exist (`siw/supporting-specs/`)**, route decisions by topic:
+
 - Data model decisions → `*-data-model*.md`
 - API decisions → `*-api*.md`
 - UI/frontend decisions → `*-ui*.md` or `*-frontend*.md`
@@ -427,6 +435,7 @@ Read the confirmation template in `references/spec-sync.md` and use it to confir
 After verification passes and the implementation is complete, close out tracking for the issue.
 
 Read and follow `references/issue-closeout.md` for the closeout procedure:
+
 - Add the `## Resolution` section without deleting the issue file.
 - Ask for confidence and set the final status to `DONE` or `IN REVIEW`.
 - Run the Status Update Procedure for all three tracking files.
@@ -448,12 +457,15 @@ Read and follow `references/issue-closeout.md` for the closeout procedure:
 ## Error Handling
 
 ### Git Errors
+
 - Merge conflicts: Ask user to resolve
 - Stash failures: Report and suggest manual handling
 
 ### Issue File Errors
+
 - Malformed issue: Report what's missing, suggest `/kramme:siw:issue-define` to fix
 
 ### Implementation Errors
+
 - Test failures: Present errors, ask how to proceed
 - Build failures: Show full error output

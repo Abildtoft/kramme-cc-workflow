@@ -5,23 +5,27 @@ File patterns that indicate UI-relevant changes. Used to determine whether UX re
 ## File Extension Patterns
 
 ### Components
+
 - `*.tsx`, `*.jsx` — React components
 - `*.vue` — Vue components
 - `*.svelte` — Svelte components
 - `*.component.ts`, `*.component.html` — Angular components
 
 ### Templates
+
 - `*.html` — HTML templates
 - `*.hbs` — Handlebars templates
 - `*.ejs` — EJS templates
 - `*.pug` — Pug templates
 
 ### Styles
+
 - `*.css`, `*.scss`, `*.sass`, `*.less` — Stylesheets
 - `*.styled.ts`, `*.styled.js` — Styled components
 - `*.module.css`, `*.module.scss` — CSS modules
 
 ### Configuration
+
 - `tailwind.config.*` — Tailwind configuration
 - `theme.*` — Theme files
 - `**/design-tokens/**` — Design token files
@@ -29,6 +33,7 @@ File patterns that indicate UI-relevant changes. Used to determine whether UX re
 ## Directory Patterns
 
 Files in these directories are considered UI-relevant regardless of extension:
+
 - `pages/`, `views/`, `screens/` — Page/view files
 - `routes/`, `app/` — Route definitions
 - `components/`, `widgets/` — UI components

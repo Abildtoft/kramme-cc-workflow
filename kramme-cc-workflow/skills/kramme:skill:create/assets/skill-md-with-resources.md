@@ -2,8 +2,8 @@
 name: kramme:{domain}:{action}
 description: "{TODO: 1-2 sentences in third person. Include negative trigger. Max 1024 chars.}"
 argument-hint: "{TODO: argument format or remove this line}"
-disable-model-invocation: {true|false}
-user-invocable: {true|false}
+disable-model-invocation: { true|false }
+user-invocable: { true|false }
 ---
 
 # {Skill Title}

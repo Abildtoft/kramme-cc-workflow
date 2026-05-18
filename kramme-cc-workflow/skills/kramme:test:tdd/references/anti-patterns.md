@@ -3,7 +3,7 @@
 Six failure modes that show up repeatedly in TDD-flavored codebases. If you recognize one in your current session, stop and address it before writing the next test.
 
 | Anti-pattern | Symptom | Remedy |
-|---|---|---|
+| --- | --- | --- |
 | Testing implementation details | Tests assert which private method was called, which branch executed, or the exact shape of an internal data structure. Behavior-preserving refactors break the tests. | Test observable behavior — inputs → outputs, or inputs → side effects at system boundaries. Delete assertions on internals; if coverage drops when you delete them, the behavior itself is not covered. |
 | Flaky tests | Tests sometimes pass, sometimes fail, with no code changes. Re-runs make the problem "go away." | Diagnose the flakiness (race, timing, shared state, nondeterministic fixture). Never mark a flaky test as "retry and skip." A flaky test is worse than no test because it trains the team to ignore red. Fix it or delete it. |
 | Testing framework code | Tests exercise the ORM, HTTP client, or standard library rather than your code. Assertions look like `expect(array.length).toBe(...)`. | Trust the framework. Test **your** logic built on top of it. If you don't trust the framework, that's an integration concern, not a unit test concern. |

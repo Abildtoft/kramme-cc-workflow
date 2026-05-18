@@ -17,6 +17,7 @@ A feature branch is a cost that compounds every day it stays open. It drifts fro
 ## Options
 
 **Flags:**
+
 - `--auto` - Skip the final force-push confirmation and push immediately with `--force-with-lease` after a successful rebase.
 - `--base=<branch>` - Override auto-detected base branch (e.g., `--base=develop`)
 
@@ -45,10 +46,11 @@ Use these uppercase markers when reasoning about the rebase and reporting progre
 1. **Check for rebase/merge in progress:**
 
    ```bash
-   ls -d .git/rebase-merge .git/rebase-apply .git/MERGE_HEAD 2>/dev/null
+   ls -d .git/rebase-merge .git/rebase-apply .git/MERGE_HEAD 2> /dev/null
    ```
 
    If any exist, stop with error:
+
    > "A rebase or merge is already in progress. Complete or abort it first with `git rebase --abort` or `git merge --abort`."
 
 2. **Detect base branch:**
@@ -56,11 +58,10 @@ Use these uppercase markers when reasoning about the rebase and reporting progre
    If `--base=<branch>` was provided, use that value directly.
 
    Otherwise, try these methods in order:
-
    1. Check `origin/HEAD` (most reliable - reflects remote's default branch):
 
       ```bash
-      git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'
+      git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@'
       ```
 
    2. If that fails, check if `main` branch exists on remote:
@@ -85,6 +86,7 @@ Use these uppercase markers when reasoning about the rebase and reporting progre
    ```
 
    If current branch equals base branch, stop with error:
+
    > "You are on the base branch. Switch to a feature branch first."
 
 ### Step 2: Fetch Latest
@@ -116,21 +118,23 @@ git rebase --autostash origin/<base-branch>
    For each round:
 
    a. Get list of conflicting files:
-      ```bash
-      git diff --name-only --diff-filter=U
-      ```
+
+   ```bash
+   git diff --name-only --diff-filter=U
+   ```
 
    b. For each conflicting file:
-      - Read the file content
-      - Resolve conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) by analyzing both versions and choosing the best resolution
-      - **Record the conflict and resolution** (file path, what conflicted, how it was resolved)
-      - Write the resolved content back
-      - Stage the file: `git add <file>`
+   - Read the file content
+   - Resolve conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) by analyzing both versions and choosing the best resolution
+   - **Record the conflict and resolution** (file path, what conflicted, how it was resolved)
+   - Write the resolved content back
+   - Stage the file: `git add <file>`
 
    c. Continue the rebase:
-      ```bash
-      GIT_EDITOR=true git rebase --continue
-      ```
+
+   ```bash
+   GIT_EDITOR=true git rebase --continue
+   ```
 
    d. If rebase completes, proceed to **Step 4: Conflict Summary**
 
@@ -139,11 +143,13 @@ git rebase --autostash origin/<base-branch>
 2. **If resolution fails** (after 10 rounds or unresolvable conflict):
 
    Abort the rebase:
+
    ```bash
    git rebase --abort
    ```
 
    Inform user:
+
    > "Automatic conflict resolution failed after X attempts. The branch has been restored to its pre-rebase state."
    >
    > "Conflicting files that could not be resolved: `<list files>`"
@@ -157,6 +163,7 @@ If any conflicts were resolved during rebase, present a summary before proceedin
 > **Conflicts resolved during rebase:**
 >
 > For each resolved conflict, show:
+>
 > - **File:** `<file path>`
 > - **Conflict:** Brief description of what conflicted (e.g., "Both branches modified the `calculateTotal` function")
 > - **Resolution:** How it was resolved (e.g., "Combined changes: kept the new parameter from base branch and the validation logic from feature branch")
@@ -172,6 +179,7 @@ Otherwise, before pushing, use `AskUserQuestion` to confirm:
 > "Ready to force push rebased branch. This will overwrite the remote branch history. Continue?"
 >
 > Options:
+>
 > - **Yes, force push** - Push with `--force-with-lease`
 > - **Do not push** - Keep local rebase but don't push
 
@@ -188,20 +196,21 @@ git push --force-with-lease origin $(git branch --show-current)
 Show the commit log relative to base:
 
 ```bash
-git log --oneline origin/<base-branch>..HEAD
+git log --oneline origin/ < base-branch > ..HEAD
 ```
 
 Confirm success:
+
 > "Branch rebased onto `origin/<base-branch>` and pushed."
 
 ## Common Rationalizations
 
 Lies you'll tell yourself mid-rebase. Each has a correct response:
 
-- *"I'll just merge `main` in instead — it's faster."* → Faster now, harder to review later. Merges hide drift; rebases resolve it.
-- *"The auto-conflict resolution looks right — I don't need to re-run tests."* → Conflict resolution is a code change. Re-run the verify battery or surface it as `UNVERIFIED`.
-- *"Force-push is fine; no one else is on this branch."* → If the branch is pushed, assume someone has it. `--force-with-lease` is the floor, not the ceiling — still warn the user.
-- *"Ten rounds of auto-resolve failed — I'll just pick one side."* → The skill aborts after 10 rounds for a reason. Escalate to the user; don't guess.
+- _"I'll just merge `main` in instead — it's faster."_ → Faster now, harder to review later. Merges hide drift; rebases resolve it.
+- _"The auto-conflict resolution looks right — I don't need to re-run tests."_ → Conflict resolution is a code change. Re-run the verify battery or surface it as `UNVERIFIED`.
+- _"Force-push is fine; no one else is on this branch."_ → If the branch is pushed, assume someone has it. `--force-with-lease` is the floor, not the ceiling — still warn the user.
+- _"Ten rounds of auto-resolve failed — I'll just pick one side."_ → The skill aborts after 10 rounds for a reason. Escalate to the user; don't guess.
 
 ## Red Flags — STOP
 

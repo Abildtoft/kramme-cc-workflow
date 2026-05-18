@@ -114,7 +114,7 @@ WRONG (horizontal):                RIGHT (vertical):
 
 Why horizontal slicing produces bad tests:
 
-- **Tests of imagined behavior.** With no implementation yet, the tests assert what you *guessed* the behavior would be. The first impl pass discovers that several guesses were wrong, but the tests have already calcified them.
+- **Tests of imagined behavior.** With no implementation yet, the tests assert what you _guessed_ the behavior would be. The first impl pass discovers that several guesses were wrong, but the tests have already calcified them.
 - **Tests of shape rather than user-visible behavior.** Without running the code, it's hard to think about behavior, so tests drift to "this method exists, takes these args, returns this type." That's a type signature, not a specification.
 - **Tests insensitive to real changes.** When tests are written from theory, they tend to under-specify the conditions that actually matter. Real bugs slip past green suites.
 - **Outrunning your headlights.** You're committing to N test designs before the first one taught you anything. Vertical slicing lets each cycle's lesson reshape the next test.
@@ -158,7 +158,7 @@ When running in TDD mode, use these markers so the user can skim status at a gla
 Watch for these excuses — they signal the discipline is about to break.
 
 | Excuse | Reality |
-|---|---|
+| --- | --- |
 | "I'll add the test after — it's faster this way." | Retrofitted tests shape to the code, not the requirement. The test becomes a photograph, not a specification. |
 | "This is too simple to need a test." | If it's simple, the test is trivial. Write it anyway — the next edit may not be simple. |
 | "I can't test this without mocking everything." | That's a signal the code is coupled to too many collaborators. The test is telling you about the design. |

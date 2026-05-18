@@ -28,7 +28,7 @@ Assess how strongly the codebase leverages its type system to make code self-des
 ### Scoring Rubric
 
 | Score | Criteria |
-|-------|----------|
+| --- | --- |
 | **5** | Strict mode enabled. Near-zero `any` usage. Exported types cover all public APIs. Domain concepts encoded as types. Type generation from schemas where applicable. |
 | **4** | Strict mode or equivalent. Rare `any` usage (under 5 instances). Most public APIs typed. Some domain types. |
 | **3** | Types present on most functions. Some `any` usage (5-20 instances). Public APIs partially typed. Basic types but few domain-specific ones. |
@@ -63,7 +63,7 @@ Assess how easily an AI agent can discover, navigate, and understand the project
 ### Scoring Rubric
 
 | Score | Criteria |
-|-------|----------|
+| --- | --- |
 | **5** | Predictable structure. Consistent naming throughout. Clean imports with aliases. All files under 500 lines. Clear module boundaries. Colocated related files. Strong Context Pointers connect docs, entry points, tests, schemas, and architecture decisions. |
 | **4** | Logical structure with minor inconsistencies. Most files well-sized. Imports mostly clean. Good naming conventions. Useful Context Pointers exist for the main workflows or modules. |
 | **3** | Understandable structure but some confusion. Mixed naming patterns. Some large files. Import paths somewhat messy. Some Context Pointers exist, but coverage is inconsistent or agents still need broad searches. |
@@ -98,7 +98,7 @@ Assess the quality, breadth, and agent-friendliness of the test suite.
 ### Scoring Rubric
 
 | Score | Criteria |
-|-------|----------|
+| --- | --- |
 | **5** | Comprehensive tests for critical paths. Single-command execution. Fast feedback (under 30s for unit tests). Behavioral assertions. Consistent patterns. Test utilities and factories. Watch mode available. |
 | **4** | Good coverage of critical paths. Easy to run. Mostly behavioral. Some test utilities. Reasonable speed. |
 | **3** | Tests exist for some modules. Runnable but maybe slow or flaky. Mixed quality. Some missing critical paths. |
@@ -132,7 +132,7 @@ Assess the automated feedback infrastructure that helps agents catch errors quic
 ### Scoring Rubric
 
 | Score | Criteria |
-|-------|----------|
+| --- | --- |
 | **5** | Full CI pipeline (lint + typecheck + test + build). Pre-commit hooks. Auto-formatting enforced. Linter with strict rules. Type checking in CI. Editor settings present. Fast local feedback loop. |
 | **4** | CI with most checks. Linter configured. Formatter available. Type checking available. Some pre-commit hooks. |
 | **3** | Basic CI (tests only). Linter exists but not strict. Formatter available but not enforced. No pre-commit hooks. |
@@ -168,7 +168,7 @@ Assess how well the codebase communicates its intent, conventions, and usage to 
 ### Scoring Rubric
 
 | Score | Criteria |
-|-------|----------|
+| --- | --- |
 | **5** | Comprehensive agent instructions. Top-level docs cover all essentials. Self-explanatory naming. Complex code documented. API docs present. Architecture docs or ADRs. Examples available. Context Pointers keep docs concise while routing agents to precise deeper context. |
 | **4** | Agent instructions or equivalent exist. Good top-level docs. Mostly self-explanatory code. Some inline docs for complex parts. Useful Context Pointers cover common tasks and workflows. |
 | **3** | Top-level docs exist but are incomplete. No dedicated agent instructions. Naming is okay. Sparse inline docs. Some API documentation. Context Pointers are present but uneven, vague, or mostly implicit. |

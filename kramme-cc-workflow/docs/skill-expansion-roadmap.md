@@ -44,7 +44,7 @@ More specifically:
 ## Skills In Scope
 
 | Skill | Purpose | Primary Context | Depends On |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `/kramme:pr:product-review` | Deep product review of branch and local changes | Pull requests / local diffs | Shared product-review core |
 | `/kramme:siw:product-audit` | Product critique of specs and SIW plans before implementation | SIW / spec review | Shared product-review core |
 | `/kramme:browse` | Browser operator skill for inspecting and interacting with a live app | Live product / debugging / QA | Browser MCP availability |
@@ -279,8 +279,7 @@ Introduce a reusable browser skill that gives the workflow a standardized live-p
 
 - Add `skills/kramme:browse/SKILL.md`
 - Detect available browser MCP tooling at runtime
-- Establish a consistent interaction pattern:
-  navigate, inspect, screenshot, interact, verify, capture evidence
+- Establish a consistent interaction pattern: navigate, inspect, screenshot, interact, verify, capture evidence
 - Clearly fail when no browser MCP is available
 - Document supported workflows and fallback behavior
 

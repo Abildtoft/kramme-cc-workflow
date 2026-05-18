@@ -107,12 +107,12 @@ These are ways a simplification pass turns into damage. Watch for them while wor
 
 These are the lies you will tell yourself to justify going past the scope of the pass. Each has a correct response:
 
-- *"I'll simplify and fix the broken test together."* → Run tests **before** simplifying. If tests already fail, that is a separate problem — fix it (or log it) first, then simplify from a green baseline.
-- *"This abstraction is obviously useless, I don't need to read the blame."* → Chesterton's Fence. Read the blame. One of these deletes will eventually remove load-bearing behavior.
-- *"The diff is smaller if I inline this helper."* → Line count is not the goal. Keep the helper if its name carries intent.
-- *"I'll combine two simplifications into one commit for cleanliness."* → No. Each simplification stands alone so the failure surface is obvious if verification breaks.
-- *"The test is flaky; I'll just tweak it so it passes."* → If a simplification requires modifying a test, it is a behavior change, not a simplification. Revert or re-scope.
-- *"While I'm here, let me also rename this for consistency."* → Emit `NOTICED BUT NOT TOUCHING`. Rename is its own slice — often its own PR.
+- _"I'll simplify and fix the broken test together."_ → Run tests **before** simplifying. If tests already fail, that is a separate problem — fix it (or log it) first, then simplify from a green baseline.
+- _"This abstraction is obviously useless, I don't need to read the blame."_ → Chesterton's Fence. Read the blame. One of these deletes will eventually remove load-bearing behavior.
+- _"The diff is smaller if I inline this helper."_ → Line count is not the goal. Keep the helper if its name carries intent.
+- _"I'll combine two simplifications into one commit for cleanliness."_ → No. Each simplification stands alone so the failure surface is obvious if verification breaks.
+- _"The test is flaky; I'll just tweak it so it passes."_ → If a simplification requires modifying a test, it is a behavior change, not a simplification. Revert or re-scope.
+- _"While I'm here, let me also rename this for consistency."_ → Emit `NOTICED BUT NOT TOUCHING`. Rename is its own slice — often its own PR.
 
 ## Red Flags
 

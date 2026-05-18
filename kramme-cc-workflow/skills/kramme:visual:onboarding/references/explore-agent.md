@@ -1,8 +1,6 @@
 # Codebase Onboarding Exploration
 
-**Project:** {project_name}
-**Focus Dimensions:** {dimensions}
-**Audience:** {audience}
+**Project:** {project_name} **Focus Dimensions:** {dimensions} **Audience:** {audience}
 
 ## Task
 
@@ -23,6 +21,7 @@ For each dimension, report:
 **Summary:** {1-2 sentence overview}
 
 **Key Findings:**
+
 - {finding} (source: {file}:{line})
 - {finding} (source: {file}:{line})
 - ...

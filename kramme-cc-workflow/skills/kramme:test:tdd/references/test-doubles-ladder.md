@@ -15,11 +15,11 @@ Rule of thumb: if the test needs to stub/mock **three or more** collaborators to
 
 Size drives locality, speed, and what a failure means.
 
-| Size | Process | I/O | Duration |
-|---|---|---|---|
-| Small | Single process | No I/O | milliseconds |
-| Medium | Multi-process (localhost) | Localhost I/O | seconds |
-| Large | Multi-machine | External services | minutes |
+| Size   | Process                   | I/O               | Duration     |
+| ------ | ------------------------- | ----------------- | ------------ |
+| Small  | Single process            | No I/O            | milliseconds |
+| Medium | Multi-process (localhost) | Localhost I/O     | seconds      |
+| Large  | Multi-machine             | External services | minutes      |
 
 - **Small tests** are where most of your suite should live (base of the Test Pyramid). Cheap to run in watch mode, parallelize trivially, fail deterministically.
 - **Medium tests** catch integration bugs between processes on the same host (e.g., API + in-process DB). Slow enough that you run them on save or in CI, not every keystroke.

@@ -13,7 +13,7 @@ kramme:{domain}:{action}[:{qualifier}...]
 ## Existing Domain Namespaces
 
 | Domain | Purpose | Examples |
-|--------|---------|---------|
+| --- | --- | --- |
 | `code` | Code quality, refactoring | `code:refactor-pass`, `code:cleanup-ai` |
 | `pr` | Pull request workflows | `pr:fix-ci`, `pr:create`, `pr:code-review` |
 | `siw` | Structured Implementation Workflow | `siw:init`, `siw:spec-audit`, `siw:issue-define` |

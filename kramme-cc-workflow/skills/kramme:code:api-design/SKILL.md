@@ -8,7 +8,7 @@ user-invocable: true
 
 # API and Interface Design
 
-Design stable APIs and module boundaries with a contract-first workflow. This is the procedural expression of the rule "the contract is the surface area you can never take back": decide the shape, validation points, error cases, and naming *before* you write the handler, so the interface does not have to be rediscovered or reshaped once callers exist.
+Design stable APIs and module boundaries with a contract-first workflow. This is the procedural expression of the rule "the contract is the surface area you can never take back": decide the shape, validation points, error cases, and naming _before_ you write the handler, so the interface does not have to be rediscovered or reshaped once callers exist.
 
 ## When to use
 
@@ -38,9 +38,10 @@ If the interface you end up designing is not the smallest version, write a secon
 
 ### Rule 1 — Contract first
 
-Design the contract before the handler. The contract is: input type, output type, error cases, HTTP status mapping, and naming. Write it down — as a TypeScript type, an OpenAPI stub, a comment block, whatever the project reads — *before* writing implementation code.
+Design the contract before the handler. The contract is: input type, output type, error cases, HTTP status mapping, and naming. Write it down — as a TypeScript type, an OpenAPI stub, a comment block, whatever the project reads — _before_ writing implementation code.
 
 Signs the contract is not first:
+
 - You are typing a handler body and still deciding what fields go on the response.
 - You are choosing a status code after observing what the code happens to throw.
 - Input validation is being sprinkled in as you hit edge cases.
@@ -63,23 +64,23 @@ Every error returned from the API uses the same shape:
 
 ```ts
 type APIError = {
-  code: string;     // stable machine-readable identifier
-  message: string;  // human-readable, safe to show to end-users
+  code: string; // stable machine-readable identifier
+  message: string; // human-readable, safe to show to end-users
   details?: unknown; // optional structured context
 };
 ```
 
 HTTP status mapping:
 
-| Status | Meaning |
-|---|---|
-| 400 | Invalid data |
-| 401 | Not authenticated |
-| 403 | Not authorized |
-| 404 | Not found |
-| 409 | Conflict |
-| 422 | Validation failed |
-| 500 | Server error (never expose internals) |
+| Status | Meaning                               |
+| ------ | ------------------------------------- |
+| 400    | Invalid data                          |
+| 401    | Not authenticated                     |
+| 403    | Not authorized                        |
+| 404    | Not found                             |
+| 409    | Conflict                              |
+| 422    | Validation failed                     |
+| 500    | Server error (never expose internals) |
 
 Never mix error shapes across endpoints — callers build parsing logic against the first shape they see, and Hyrum's Law nails that shape in place. Worked examples and full payloads are in `references/error-shapes.md`.
 
@@ -162,13 +163,13 @@ The first interface that comes to mind is rarely the best. Design It Twice spawn
 
 These are the lies you will tell yourself to justify shipping an unstable contract:
 
-- *"I'll validate in the service layer, it's cleaner."* → No. Validate at the boundary. The service layer is internal; pushing validation there hides the real edge of trust.
-- *"This endpoint is internal, no pagination needed."* → Internal today, public tomorrow. Add pagination now; adding it later is a breaking change.
-- *"The client doesn't care about the error shape, they just check the status code."* → Until one of them doesn't. Then the inconsistent shape becomes load-bearing for exactly one caller, and you cannot fix it.
-- *"I'll rename this field before anyone uses it."* → There is no "before anyone uses it." The first caller is faster than you think.
-- *"These two endpoints are similar enough to share the same response type."* → Reusing a read type as a write payload is the most common source of accidentally public fields. Split them.
-- *"We can tighten the validation later."* → Loosening is cheap; tightening is a breaking change. Start strict.
-- *"I'll add the status code to the error body so clients can read it there."* → Redundant state. The status code is on the response already. Two sources of truth drift.
+- _"I'll validate in the service layer, it's cleaner."_ → No. Validate at the boundary. The service layer is internal; pushing validation there hides the real edge of trust.
+- _"This endpoint is internal, no pagination needed."_ → Internal today, public tomorrow. Add pagination now; adding it later is a breaking change.
+- _"The client doesn't care about the error shape, they just check the status code."_ → Until one of them doesn't. Then the inconsistent shape becomes load-bearing for exactly one caller, and you cannot fix it.
+- _"I'll rename this field before anyone uses it."_ → There is no "before anyone uses it." The first caller is faster than you think.
+- _"These two endpoints are similar enough to share the same response type."_ → Reusing a read type as a write payload is the most common source of accidentally public fields. Split them.
+- _"We can tighten the validation later."_ → Loosening is cheap; tightening is a breaking change. Start strict.
+- _"I'll add the status code to the error body so clients can read it there."_ → Redundant state. The status code is on the response already. Two sources of truth drift.
 
 ## Red Flags
 

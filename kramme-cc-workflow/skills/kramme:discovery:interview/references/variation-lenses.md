@@ -18,16 +18,18 @@ Apply 4–7 of these lenses to the user's stated idea. Produce 5–8 candidate v
 
 ### 1. Inversion — flip the premise
 
-Ask: *what if the opposite were true?* If the user wants to reduce friction in signup, invert to "what if friction were the product?" (e.g., a deliberately slow, high-commitment signup that pre-qualifies users).
+Ask: _what if the opposite were true?_ If the user wants to reduce friction in signup, invert to "what if friction were the product?" (e.g., a deliberately slow, high-commitment signup that pre-qualifies users).
 
 **Worked example** — "Improve onboarding for new users":
-- Inversion: What if onboarding were *removed* entirely? Users land in a working state with zero setup. What does the product look like?
+
+- Inversion: What if onboarding were _removed_ entirely? Users land in a working state with zero setup. What does the product look like?
 
 ### 2. Constraint removal — drop the "must have X"
 
 Identify the constraint the user treats as fixed, then remove it. Often reveals that the "hard constraint" was soft.
 
 **Worked example**:
+
 - If onboarding "must" use email capture, what if it didn't? Anonymous onboarding with identity deferred until value is delivered.
 
 ### 3. Audience shift — same idea for a different user
@@ -35,6 +37,7 @@ Identify the constraint the user treats as fixed, then remove it. Often reveals 
 Keep the mechanism; change who it serves. Surfaces whether the value is in the mechanism or in the specific audience.
 
 **Worked example**:
+
 - Onboarding aimed at non-technical admins instead of end-users — how does it change?
 
 ### 4. Combination — merge with an adjacent concept
@@ -42,13 +45,15 @@ Keep the mechanism; change who it serves. Surfaces whether the value is in the m
 Fuse the idea with something nearby in the problem space.
 
 **Worked example**:
+
 - Onboarding + community: new users are paired with an existing user for the first session, turning setup into a social hook.
 
 ### 5. Simplification — strip to the smallest viable form
 
-What's the *one* thing the idea must do? Remove everything else.
+What's the _one_ thing the idea must do? Remove everything else.
 
 **Worked example**:
+
 - Onboarding reduced to: "user types one command and sees one working output." Everything else is post-onboarding.
 
 ### 6. 10× version — dramatically bigger/faster/cheaper
@@ -56,6 +61,7 @@ What's the *one* thing the idea must do? Remove everything else.
 What if this were 10× faster, or 10× cheaper, or 10× broader in scope? Forces out the boundaries of what's possible.
 
 **Worked example**:
+
 - 10× faster: onboarding completes in <5 seconds. What has to go?
 - 10× broader: onboarding serves users across 10 adjacent products simultaneously.
 
@@ -64,6 +70,7 @@ What if this were 10× faster, or 10× cheaper, or 10× broader in scope? Forces
 Pick an expert from an adjacent domain (UX researcher, SRE, customer-support lead, security engineer) and reshape the idea through their priorities.
 
 **Worked example**:
+
 - A security engineer's onboarding: identity verification and threat-surface minimization come first; everything else is layered on after trust is established.
 
 ## The Three Stress-Test Axes
@@ -72,7 +79,7 @@ After generating variations, use these axes to **converge**. Each axis is one pa
 
 ### 1. User value — painkiller vs vitamin
 
-For each variation, answer: *is this a painkiller (solves a present, felt pain) or a vitamin (a nice-to-have that compounds over time)?*
+For each variation, answer: _is this a painkiller (solves a present, felt pain) or a vitamin (a nice-to-have that compounds over time)?_
 
 - Painkillers: user would pay today to make the pain stop. High urgency.
 - Vitamins: user would enjoy but can defer. Low urgency, easy to de-prioritize.
@@ -81,13 +88,13 @@ Neither is inherently better, but mixing them in one project is usually a mistak
 
 ### 2. Feasibility — what breaks first?
 
-For each variation, name the *first thing to break* under real conditions. If you can't name one, you haven't thought about it hard enough — flag it with `UNVERIFIED` and note what evidence you'd need.
+For each variation, name the _first thing to break_ under real conditions. If you can't name one, you haven't thought about it hard enough — flag it with `UNVERIFIED` and note what evidence you'd need.
 
 Concrete failure modes: scale, latency, data consistency, team capacity, dependency availability, cost, compliance, user expectations.
 
 ### 3. Differentiation — what does this do that alternatives don't?
 
-For each variation, state the alternative that already exists (inside the product, in competing products, or "do nothing") and what this variation does *that the alternative cannot*. If the answer is "nothing distinct," drop the variation.
+For each variation, state the alternative that already exists (inside the product, in competing products, or "do nothing") and what this variation does _that the alternative cannot_. If the answer is "nothing distinct," drop the variation.
 
 ## Convergence protocol
 
