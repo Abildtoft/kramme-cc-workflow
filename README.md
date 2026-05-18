@@ -2,9 +2,10 @@
 
 This repository contains Claude Code workflow plugins and support scripts.
 
+<!-- prettier-ignore-start -->
 > [!IMPORTANT]
-> Several skills in `kramme-cc-workflow` are adapted from [Addy Osmani's agent-skills](https://github.com/addyosmani/agent-skills).
-> See the detailed attribution list in [`kramme-cc-workflow/README.md`](kramme-cc-workflow/README.md#attribution).
+> Several skills in `kramme-cc-workflow` are adapted from [Addy Osmani's agent-skills](https://github.com/addyosmani/agent-skills). See the detailed attribution list in [`kramme-cc-workflow/README.md`](kramme-cc-workflow/README.md#attribution).
+<!-- prettier-ignore-end -->
 
 ## Main Plugin Contents (`kramme-cc-workflow`)
 
@@ -21,7 +22,7 @@ Detailed documentation is available in [`kramme-cc-workflow/README.md`](kramme-c
 This workspace also includes local maintenance skills under `.agents/skills/`, exposed to Claude Code through the `.claude/skills` symlink. These are for maintaining this repository and are not shipped as part of the public plugins.
 
 | Skill | Description |
-|---|---|
+| --- | --- |
 | `/kramme:skill:audit-sources` | Audits one or more skills against declared inspiration sources, bootstraps missing `references/sources.yaml` manifests, compares fetched source snapshots, and writes `.context/skill-source-audit-<timestamp>.md` reports. |
 
 ## What SIW Is
@@ -31,6 +32,7 @@ SIW means **Structured Implementation Workflow**.
 It is a local, file-based workflow for planning and implementing non-trivial work in a repository. Instead of relying on an external tracker, SIW keeps specification, issue breakdown, and progress state in versioned Markdown files.
 
 SIW typically manages:
+
 - specification files (created or linked during setup)
 - `siw/LOG.md` for decisions and progress notes
 - `siw/OPEN_ISSUES_OVERVIEW.md` as the active issue index
@@ -39,9 +41,9 @@ SIW typically manages:
 Common SIW command flow:
 
 ```bash
-/kramme:siw:init               # create or link spec + initialize siw/
-/kramme:siw:generate-phases    # break spec into phase-based issues
-/kramme:siw:issue-implement    # implement one issue
+/kramme:siw:init            # create or link spec + initialize siw/
+/kramme:siw:generate-phases # break spec into phase-based issues
+/kramme:siw:issue-implement # implement one issue
 /kramme:siw:implementation-audit
 /kramme:siw:issue-reindex
 ```
@@ -83,7 +85,7 @@ After installation, common entry points are:
 ## Repository Structure
 
 | Directory | Purpose |
-|---|---|
+| --- | --- |
 | [`.agents/skills/`](.agents/skills/) | Local repository-maintenance skills used while developing this repo |
 | [`.claude/skills`](.claude/skills) | Symlink exposing local maintenance skills to Claude Code |
 | [`kramme-cc-workflow/`](kramme-cc-workflow/) | Main plugin: workflow automation, review agents, hooks, and verification |

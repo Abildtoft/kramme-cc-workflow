@@ -5,7 +5,7 @@ Reference material for Rule 4 of `kramme:code:api-design`. The default conventio
 ## Default table
 
 | Element | Convention | Good | Bad |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | REST endpoints | Plural nouns, no verbs | `/tasks`, `/tasks/:id`, `/teams/:teamId/tasks` | `/createTask`, `/getTaskById`, `/task`, `/deleteAllTasks` |
 | Query params | `camelCase` | `?assigneeId=abc&dueBefore=...` | `?assignee_id=abc`, `?DueBefore=...`, `?due-before=...` |
 | Response fields | `camelCase` | `{ "createdAt": "...", "assigneeId": "..." }` | `{ "created_at": "...", "AssigneeId": "..." }` |
@@ -27,7 +27,7 @@ Pick the prefix that matches the semantic:
 - `has` — possession: `hasUnreadMessages`, `hasBillingAccount`.
 - `can` — permission or ability: `canEdit`, `canDelete`, `canInviteMembers`.
 
-Avoid `shouldX` on response fields — "should" belongs in the UI layer's decision logic, not in the data contract. The API returns facts; the client decides what *should* happen.
+Avoid `shouldX` on response fields — "should" belongs in the UI layer's decision logic, not in the data contract. The API returns facts; the client decides what _should_ happen.
 
 ## Per-ecosystem deviations
 
@@ -42,7 +42,7 @@ The load-bearing rule is not "always camelCase." It is: **pick one convention pe
 
 ## Edge cases
 
-- **Acronyms in names**: treat them as words. `userId` not `userID`; `htmlContent` not `HTMLContent`; `apiKey` not `APIKey`. The consistent rule is "first letter of each word is uppercase *except* the first word" — acronyms follow the same rule, or the casing logic gets special cases.
+- **Acronyms in names**: treat them as words. `userId` not `userID`; `htmlContent` not `HTMLContent`; `apiKey` not `APIKey`. The consistent rule is "first letter of each word is uppercase _except_ the first word" — acronyms follow the same rule, or the casing logic gets special cases.
 - **Timestamps**: `createdAt` / `updatedAt` / `deletedAt`. ISO-8601 strings on the wire. Suffix `At` for instants, `On` for dates without time (`startOn` for a calendar date).
 - **IDs**: `taskId` not `task_id`, `taskID`, or just `id` (when inside a nested object that already names the resource, bare `id` is fine).
 - **Nullable vs omitted**: decide and stay consistent. `"archivedAt": null` vs. field absent — both are valid; mixing them breaks parsers that distinguish missing keys from null values.

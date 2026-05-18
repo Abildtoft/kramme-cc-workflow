@@ -35,7 +35,7 @@ const allTasks = await db.tasks.findMany();
 const tasks = await db.tasks.findMany({
   take: 20,
   skip: (page - 1) * 20,
-  orderBy: { createdAt: 'desc' },
+  orderBy: { createdAt: "desc" },
 });
 ```
 
@@ -122,11 +122,11 @@ New object or array literals created during render become fresh references every
 ```tsx
 // BAD: creates new object on every render, children re-render
 function TaskList() {
-  return <TaskFilters options={{ sortBy: 'date', order: 'desc' }} />;
+  return <TaskFilters options={{ sortBy: "date", order: "desc" }} />;
 }
 
 // GOOD: stable reference (module scope or useMemo)
-const DEFAULT_OPTIONS = { sortBy: 'date', order: 'desc' } as const;
+const DEFAULT_OPTIONS = { sortBy: "date", order: "desc" } as const;
 function TaskList() {
   return <TaskFilters options={DEFAULT_OPTIONS} />;
 }
@@ -139,7 +139,11 @@ const TaskItem = React.memo(function TaskItem({ task }: Props) {
 // Use useMemo only when the computation itself is expensive
 function TaskStats({ tasks }: Props) {
   const stats = useMemo(() => calculateStats(tasks), [tasks]);
-  return <div>{stats.completed} / {stats.total}</div>;
+  return (
+    <div>
+      {stats.completed} / {stats.total}
+    </div>
+  );
 }
 ```
 
@@ -197,13 +201,16 @@ async function getAppConfig(): Promise<AppConfig> {
 }
 
 // HTTP caching for static assets — content hashing in filenames lets you cache forever
-app.use('/static', express.static('public', {
-  maxAge: '1y',
-  immutable: true,
-}));
+app.use(
+  "/static",
+  express.static("public", {
+    maxAge: "1y",
+    immutable: true,
+  }),
+);
 
 // Cache-Control for API responses that change on a cadence
-res.set('Cache-Control', 'public, max-age=300'); // 5 minutes
+res.set("Cache-Control", "public, max-age=300"); // 5 minutes
 ```
 
 Caching rules of thumb:

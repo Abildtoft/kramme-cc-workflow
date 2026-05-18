@@ -30,6 +30,7 @@ options:
 ### 8.3 Final Gate Before Write (Mandatory)
 
 Do **not** write a final report unless all are true:
+
 - Coverage matrix is complete
 - All conflicts are resolved
 - Every reported Divergence/Extension/Alignment has the evidence triplet
@@ -51,10 +52,12 @@ No final report was written.
 ### 8.4 Write the Report
 
 If `INLINE_MODE=true`:
+
 - Reply with the compiled report inline
 - Do **not** create or update `siw/AUDIT_IMPLEMENTATION_REPORT.md` or `AUDIT_IMPLEMENTATION_REPORT.md`
 
 Otherwise:
+
 - Write the compiled report to the target path
 - After writing, confirm:
   ```
@@ -66,6 +69,7 @@ Otherwise:
 ## Step 9: Optionally Create SIW Issues
 
 **Only if ALL of these conditions are met:**
+
 - `siw/OPEN_ISSUES_OVERVIEW.md` exists (SIW workflow is active)
 - `siw/issues/` exists or can be created
 - `siw/LOG.md` exists or can be created

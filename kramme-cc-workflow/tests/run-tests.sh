@@ -8,18 +8,18 @@ cd "$SCRIPT_DIR"
 
 # Check for BATS
 if ! command -v bats &> /dev/null; then
-    echo "ERROR: BATS is not installed."
-    echo "Install with: brew install bats-core"
-    echo "Or run: make install-test-deps"
-    exit 1
+  echo "ERROR: BATS is not installed."
+  echo "Install with: brew install bats-core"
+  echo "Or run: make install-test-deps"
+  exit 1
 fi
 
 # Check for jq (required by block-rm-rf hook)
 if ! command -v jq &> /dev/null; then
-    echo "ERROR: jq is not installed."
-    echo "Install with: brew install jq"
-    echo "Or run: make install-test-deps"
-    exit 1
+  echo "ERROR: jq is not installed."
+  echo "Install with: brew install jq"
+  echo "Or run: make install-test-deps"
+  exit 1
 fi
 
 # Make mock scripts executable
@@ -30,11 +30,11 @@ echo "Running hook tests..."
 echo "============================================"
 
 if [ -n "$1" ]; then
-    # Run specific test file
-    bats --tap "$1"
+  # Run specific test file
+  bats --tap "$1"
 else
-    # Run all tests
-    bats --tap *.bats
+  # Run all tests
+  bats --tap *.bats
 fi
 
 echo "============================================"

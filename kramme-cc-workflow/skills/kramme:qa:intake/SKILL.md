@@ -110,6 +110,7 @@ If you find yourself wanting a fourth question, stop. Note in your head that the
 While the user is describing or answering questions, kick off a single Explore agent **in parallel** (single Task tool call, `subagent_type=Explore`). The Explore agent's job is to learn — not to fix.
 
 Brief it with:
+
 - The user's description verbatim.
 - The repo path.
 - The instruction to report back, in under 200 words: feature purpose, the user-visible boundary of that feature, and 3-5 domain terms used in the codebase for the area in question. Explicit instruction: do **not** propose a fix and do **not** quote internal helper names that the user would not recognize.
@@ -125,6 +126,7 @@ Default to **one ticket per user report**. Break down into multiple linked ticke
 - The user explicitly distinguishes them ("there are kind of three things going on here").
 
 Do **not** break down because:
+
 - The fix has multiple steps. (Fix steps are an engineering concern, not a ticket-shape concern.)
 - The bug touches two files. (File count is irrelevant to ticket shape.)
 - The description is long. (Length alone does not imply multiple issues.)
@@ -170,17 +172,21 @@ End the session.
 
 ```markdown
 ## What happened
+
 [1-2 sentences in user-visible terms — what the user observed]
 
 ## What I expected
+
 [1 sentence — the behavior the user was expecting]
 
 ## Steps to reproduce
+
 1. [Step 1 in user-visible terms]
 2. [Step 2 in user-visible terms]
 3. **Bug:** [what happens instead]
 
 ## Additional context
+
 - **Consistency:** [every time / sometimes / only in state X]
 - **Environment:** [browser, OS, device, account type — only if mentioned]
 - **Domain area:** [one or two terms from UBIQUITOUS_LANGUAGE.md or the user's own phrasing]
@@ -192,12 +198,15 @@ For a parent issue that scopes the overall report:
 
 ```markdown
 ## What happened
+
 [Summary of the user's report in user-visible terms]
 
 ## Scope
+
 This intake report covers N independent failure modes. Each is filed as a separate ticket below for tracking.
 
 ## Child issues
+
 - <ticket-id-or-url>: [one-line summary of failure mode 1]
 - <ticket-id-or-url>: [one-line summary of failure mode 2]
 - <ticket-id-or-url>: [one-line summary of failure mode 3]
@@ -209,17 +218,21 @@ For each child issue (file these **after** the parent so the parent ID is known)
 
 ```markdown
 ## What happened
+
 [1-2 sentences specific to this failure mode]
 
 ## What I expected
+
 [1 sentence]
 
 ## Steps to reproduce
+
 1. [Step 1]
 2. [Step 2]
 3. **Bug:** [what happens instead]
 
 ## Additional context
+
 - **Parent issue/report:** <parent-ticket-id-or-QA-INTAKE-NNN>
 - **Blocked by:** <other-child-ticket-id> (only if there is a real ordering dependency)
 - **Scope:** one slice of the parent — does not cover [the other failure modes]
@@ -265,7 +278,7 @@ Use these markers verbatim. One per line, uppercase, no decoration.
 Watch for these excuses — they signal the intake rubric is about to be softened.
 
 | Excuse | Reality |
-|---|---|
+| --- | --- |
 | "The user gave me everything I need; let me ask three more for completeness." | The skill's value is rapid intake. Three "for completeness" questions per issue is the heavy interview the user explicitly opted out of by choosing this skill over `kramme:linear:issue-define`. |
 | "I'll just paste the helper name into the ticket — it's faster than translating." | The ticket lives for months; the helper name lives until the next refactor. Translate now. |
 | "It's all one report from the user, so it's one ticket." | The user's report shape is not the ticket shape. Three independent failure modes means three tickets even if the user described them in one breath. |

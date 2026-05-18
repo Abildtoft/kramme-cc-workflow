@@ -1,6 +1,7 @@
 # Refactor Opportunity Checklist
 
 Scan every category below. For each finding, record:
+
 - **Location** — file path and line range
 - **Category** — from the list below
 - **Severity** — high (actively harmful), medium (degrades maintainability), low (cosmetic / nice-to-have)

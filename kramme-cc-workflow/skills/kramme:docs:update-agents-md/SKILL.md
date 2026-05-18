@@ -26,8 +26,8 @@ Prefer Context Pointers when the detail would make `AGENTS.md` long, duplicate a
 Discover local skills to reference:
 
 ```bash
-find .claude/skills -name "SKILL.md" 2>/dev/null
-ls plugins/*/skills/*/SKILL.md 2>/dev/null
+find .claude/skills -name "SKILL.md" 2> /dev/null
+ls plugins/*/skills/*/SKILL.md 2> /dev/null
 ```
 
 Read each skill's frontmatter to understand when to reference it.
@@ -37,10 +37,10 @@ Map existing context before editing:
 ```bash
 find . -maxdepth 3 \
   \( -type d \( -name ".git" -o -name ".context" -o -name "node_modules" -o -name "dist" -o -name "build" -o -name ".next" -o -name ".nuxt" -o -name "coverage" -o -name ".venv" -o -name "venv" -o -name "target" \) -prune \) -o \
-  -type f \( -name "AGENTS.md" -o -name "CLAUDE.md" -o -name "README.md" -o -name "CONTRIBUTING.md" -o -name "*.md" \) -print 2>/dev/null
+  -type f \( -name "AGENTS.md" -o -name "CLAUDE.md" -o -name "README.md" -o -name "CONTRIBUTING.md" -o -name "*.md" \) -print 2> /dev/null
 find . -maxdepth 3 \
   \( -type d \( -name ".git" -o -name ".context" -o -name "node_modules" -o -name "dist" -o -name "build" -o -name ".next" -o -name ".nuxt" -o -name "coverage" -o -name ".venv" -o -name "venv" -o -name "target" \) -prune \) -o \
-  -type f \( -name "*schema*" -o -name "*registry*" -o -name "*routes*" -o -name "index.*" \) -print 2>/dev/null
+  -type f \( -name "*schema*" -o -name "*registry*" -o -name "*routes*" -o -name "index.*" \) -print 2> /dev/null
 ```
 
 Identify existing docs, scripts, modules, examples, and skills that should be pointed to instead of duplicated.
@@ -75,10 +75,12 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 Add sections as needed for the project:
 
 ### Context Map
+
 Use this when the repo has multiple important docs, skills, scripts, or subsystems:
 
 ```markdown
 ## Context Map
+
 - **ALWAYS** read `docs/architecture.md` before changing module boundaries
 - **ALWAYS** run `scripts/verify.sh` before claiming local verification; see `docs/testing.md` only for suite-specific details
 - **PREFER** `packages/api/src/routes/index.ts` as the entry point for API route discovery
@@ -86,46 +88,59 @@ Use this when the repo has multiple important docs, skills, scripts, or subsyste
 ```
 
 ### When Stuck
+
 ```markdown
 ## When Stuck
+
 - **ALWAYS** ask a clarifying question or propose alternatives
 - **NEVER** initiate large speculative changes without confirmation
 ```
 
 ### Git Commits
+
 ```markdown
 ## Git Commits
+
 - **ALWAYS** write succinct commit messages in imperative mood
 - **ALWAYS** keep the first line short
 - **NEVER** mention that you are an AI
 ```
 
 ### Issue Management
+
 ```markdown
 ## Linear Issues
+
 - **NEVER** change issue status without explicit instruction
 - **NEVER** create issues without explicit instruction
 ```
 
 ### Package Manager
+
 ```markdown
 ## Package Manager
+
 Use **pnpm**: `pnpm install`, `pnpm dev`, `pnpm test`
 ```
 
 ### Local Skills
+
 Reference each discovered skill:
+
 ```markdown
 ## Database
+
 Use `db-migrate` skill. See `.claude/skills/db-migrate/SKILL.md`
 ```
 
 ### Domain-Specific Sections
+
 Add sections for each tech stack (Frontend, Backend, etc.) with domain-specific guidelines.
 
 ## Anti-Patterns
 
 Omit these:
+
 - "Welcome to..." or "This document explains..."
 - Obvious instructions ("run tests", "write clean code")
 - Explanations of why (just say what)

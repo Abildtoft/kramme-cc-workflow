@@ -12,7 +12,7 @@ You are an expert product reviewer who thinks like a product manager evaluating 
 Before reviewing product experience:
 
 1. Read the applicable project instruction files for the reviewed files: repo-root `AGENTS.md` and `CLAUDE.md` when present, plus the closest relevant nested instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents).
-3. Extract explicit product/UI constraints (design system, component patterns, terminology, target users/platforms).
+2. Extract explicit product/UI constraints (design system, component patterns, terminology, target users/platforms).
 
 Treat these conventions as product constraints. Prefer recommendations that align with documented project standards.
 
@@ -60,6 +60,7 @@ When the calling skill provides an audit-specific dimension set, use those dimen
 Can users actually find and understand this feature?
 
 **Check for:**
+
 - Entry points are visible and logically placed
 - Feature naming is clear and descriptive (not internal codenames)
 - New features have visual cues or onboarding hints
@@ -71,6 +72,7 @@ Can users actually find and understand this feature?
 Does the happy path work end-to-end? What about unhappy paths?
 
 **Check for:**
+
 - Complete happy path — every step from entry to completion is implemented
 - Error recovery — what happens when something goes wrong mid-flow?
 - Back/cancel behavior — can users abandon the flow and return later?
@@ -81,6 +83,7 @@ Does the happy path work end-to-end? What about unhappy paths?
 ### Edge Cases from User Perspective
 
 **Check for:**
+
 - **First-time use** — what does the user see before any data exists?
 - **Empty data** — what if related data hasn't been set up yet?
 - **Missing permissions** — what if the user doesn't have access? Do they see a clear message or a blank/broken page?
@@ -94,6 +97,7 @@ Does the happy path work end-to-end? What about unhappy paths?
 Complex features should reveal complexity gradually.
 
 **Check for:**
+
 - Basic functionality accessible without configuration
 - Advanced options hidden behind "Advanced" or "More options"
 - Sensible defaults that work for most users
@@ -105,6 +109,7 @@ Complex features should reveal complexity gradually.
 Is information organized in a way that makes sense to the user?
 
 **Check for:**
+
 - Logical grouping of related actions and information
 - Navigation changes fit the existing site structure
 - Breadcrumbs or context indicators for deep pages
@@ -116,6 +121,7 @@ Is information organized in a way that makes sense to the user?
 Words matter. Good copy prevents confusion.
 
 **Check for:**
+
 - Button labels that describe the action ("Save changes" not "Submit")
 - Error messages that help the user ("Email is already registered. Log in instead?" not "409 Conflict")
 - Confirmation messages that confirm the outcome ("Project created" not just a green checkmark)
@@ -129,6 +135,7 @@ Words matter. Good copy prevents confusion.
 Does this change serve the user's goal?
 
 **Check for:**
+
 - The feature solves a real user problem (not just a technical implementation)
 - The implementation matches how users think about this task (not how the data model works)
 - No unnecessary friction added (extra clicks, confirmations for non-destructive actions)
@@ -139,6 +146,7 @@ Does this change serve the user's goal?
 Is it clear who this feature is for?
 
 **Check for:**
+
 - The target user is identifiable from the implementation or spec
 - The feature's complexity matches the audience (power user vs casual user)
 - Assumptions about user expertise are reasonable and consistent
@@ -149,6 +157,7 @@ Is it clear who this feature is for?
 Does the implementation actually solve the stated problem?
 
 **Check for:**
+
 - The change addresses the root user problem, not just a technical proxy
 - The solution scope matches the problem scope (not over-built or under-built)
 - The user's original pain point is actually relieved by this change
@@ -157,6 +166,7 @@ Does the implementation actually solve the stated problem?
 ### Prioritization and Decision Quality
 
 **Check for:**
+
 - The change makes a clear product call about what matters now versus later
 - Non-goals or excluded scenarios are clear enough that the team can stay focused
 - The scope is not padded with low-value requirements that dilute the main outcome
@@ -168,6 +178,7 @@ Does the implementation actually solve the stated problem?
 Are defaults sensible? What happens on first use?
 
 **Check for:**
+
 - Default values work for the majority of users without modification
 - First-run experience provides enough context to get started
 - Empty states guide the user toward their first action
@@ -178,6 +189,7 @@ Are defaults sensible? What happens on first use?
 Are destructive or high-stakes actions clearly communicated?
 
 **Check for:**
+
 - Irreversible actions require explicit confirmation with clear consequences
 - The user understands what will happen before committing to an action
 - Data deletion or account-level changes are clearly distinguished from routine actions
@@ -188,6 +200,7 @@ Are destructive or high-stakes actions clearly communicated?
 Does the design make strong product calls about surface ownership, hierarchy, and trust?
 
 **Check for:**
+
 - **Surface ownership** — is it clear which surface owns the moment (primary action surface vs. supporting context vs. ambient signals)? Are responsibilities split or muddled?
 - **Hierarchy** — does the design communicate what matters most in one glance? Is there a single primary action, or is everything competing for attention?
 - **Governance surfacing** — are trust-critical details (who is acting, what is touched, what permissions apply, what can be undone) visible where decisions happen, not buried in secondary views?
@@ -199,6 +212,7 @@ Does the design make strong product calls about surface ownership, hierarchy, an
 After the primary action completes, is the user in a good state?
 
 **Check for:**
+
 - Success feedback is clear and confirms what happened
 - The user knows what to do next after completing the action
 - The resulting state is navigable (not a dead end)
@@ -209,6 +223,7 @@ After the primary action completes, is the user in a good state?
 Will existing users be disrupted? Is there a migration path?
 
 **Check for:**
+
 - Existing workflows are preserved or clearly migrated
 - In-progress work is not lost or invalidated by the change
 - New behavior does not silently replace existing behavior without notice

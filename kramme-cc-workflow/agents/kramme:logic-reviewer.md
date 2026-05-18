@@ -35,6 +35,7 @@ For each read-then-write pattern:
 - **TOCTOU on external state**: Verify availability -> reserve. The state can change between verification and reservation.
 
 For each finding, describe:
+
 - The race window (what happens between check and act)
 - The concurrent scenario (two requests, two threads, user + background job)
 - Whether existing locking, transactions, or atomic operations prevent it
@@ -42,6 +43,7 @@ For each finding, describe:
 ### 3. Audit Numeric Operations
 
 For calculations involving money, quantities, balances, or counters:
+
 - Can values overflow or underflow? (What happens at MAX_INT, at zero, at negative?)
 - Is floating-point used for money? (Use integer cents or Decimal types instead.)
 - Can an attacker supply negative values where only positive are expected? (Negative quantity x price = refund instead of charge.)
@@ -51,6 +53,7 @@ For calculations involving money, quantities, balances, or counters:
 ### 4. Check Validation Bypass
 
 For each validation in the changed code:
+
 - Can the validation be bypassed by reordering API calls?
 - Can a discount, coupon, or promotion be applied multiple times?
 - Does the validation check the client-side state or the server-side state?

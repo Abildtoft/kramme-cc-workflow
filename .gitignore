@@ -1,3 +1,5 @@
+node_modules/
+
 kramme-cc-workflow/hooks/hook-state.json
 kramme-cc-workflow/hooks/context-links.config
 .claude/scheduled_tasks.lock

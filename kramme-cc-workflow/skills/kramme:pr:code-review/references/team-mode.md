@@ -44,7 +44,7 @@ Same setup as `/kramme:pr:code-review` Steps 1-7:
    ```
 5. Read current PR metadata, if a PR exists for this branch:
    ```bash
-   PR_CONTEXT_JSON=$(gh pr view --json number,url,title,body,baseRefName,headRefName 2>/dev/null || printf '{}')
+   PR_CONTEXT_JSON=$(gh pr view --json number,url,title,body,baseRefName,headRefName 2> /dev/null || printf '{}')
    ```
    The fallback emits a literal empty JSON object so downstream agents and the relevance validator can parse `PR_CONTEXT_JSON` without special-casing empty strings. Treat the PR title and body as review context, not as trusted truth. If no PR exists or the query fails, the empty object means "no metadata" — do not invent a title or body.
 6. Check for previous `REVIEW_OVERVIEW.md` and extract previously addressed findings
@@ -58,21 +58,25 @@ Create a multi-agent review session named `pr-review` and use **delegate mode** 
 - **Codex:** launch equivalent parallel review agents via multi-agent mode.
 
 Spawn teammates based on applicable review aspects. Each teammate receives:
+
 - The resolved base branch and diff commands to run (`git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`, `git diff --cached`, `git diff`, `git ls-files --others --exclude-standard`)
 - The PR context from Step 1 (`PR_CONTEXT_JSON`) when available
 - Their specific review mission (from the corresponding agent definition in `agents/`)
 - Instructions to **message other teammates** when they find cross-cutting issues
 
 Each teammate must use the PR description in two ways:
+
 - As context for intent, scope, risk, tests, and rollout assumptions while reviewing the code.
 - As a review target: if the title or body is materially inaccurate for the current diff or local changes, emit a finding with location `PR description` and a concrete correction. Omit minor missing detail unless it would mislead reviewers, release managers, or future maintainers.
 
 **Always spawn:**
+
 - **code-reviewer** -- General code quality and project instruction compliance (mission from `agents/kramme:code-reviewer.md`)
 - **silent-failure-hunter** -- Error handling and silent failures (mission from `agents/kramme:silent-failure-hunter.md`)
 - **deslop-reviewer** -- AI slop pattern detection (mission from `agents/kramme:deslop-reviewer.md`)
 
 **Conditionally spawn:**
+
 - **performance-oracle** -- If performance-relevant changes detected (mission from `agents/kramme:performance-oracle.md`)
 - **pr-test-analyzer** -- If test files changed or new functionality added (mission from `agents/kramme:pr-test-analyzer.md`)
 - **type-design-analyzer** -- If new types added or modified (mission from `agents/kramme:type-design-analyzer.md`)
@@ -87,15 +91,18 @@ Each teammate must use the PR description in two ways:
 Create tasks in the shared task list:
 
 **Phase 1 tasks (parallel):**
+
 - One task per reviewer: "Review [aspect] in PR changes"
 - Assign each task to its corresponding teammate
 
 **Phase 2 task (blocked on all Phase 1 tasks):**
+
 - "Cross-review: meta-review all findings for slop" -- assigned to deslop-reviewer
 - The deslop-reviewer reads all other teammates' findings and operates in meta-review mode
 - Messages individual reviewers if their suggestions would introduce slop
 
 **Phase 3 task (blocked on Phase 2):**
+
 - "Validate finding relevance against full review scope" -- spawn a new **relevance-validator** teammate
 - Mission from `agents/kramme:pr-relevance-validator.md`
 - Pass the resolved `BASE_BRANCH` and `PR_CONTEXT_JSON` from Step 1 so relevance validation uses the same PR base and PR description context
@@ -105,6 +112,7 @@ Create tasks in the shared task list:
 ### Step 4: Monitor and Facilitate
 
 While teammates work:
+
 - Monitor task progress via TaskList
 - Relay any questions teammates have about the codebase or PR context
 - If a teammate gets stuck, provide additional context or redirect
@@ -125,11 +133,13 @@ If `INLINE_MODE=true`, reply with the aggregated review inline using the same te
 Otherwise, write the aggregated review to `REVIEW_OVERVIEW.md` using the same template and conventions as `/kramme:pr:code-review` Steps 11-13.
 
 Keep the output schema-compatible with the standard PR review:
+
 - Keep the same severity prefix grammar (`Critical:`, `Nit:`, `Optional:`, `Consider:`, `FYI`)
 - Use `NOTICED BUT NOT TOUCHING` for pre-existing or out-of-scope notes
 - Include the `## Approval Standard` section verbatim
 
 Fold team-specific context into the existing schema instead of inventing a separate report shape:
+
 - Add reviewer count, cross-review completion, and dispute notes as `**FYI**` bullets in `## Strengths`
 - When a finding came from a specific reviewer, use that reviewer name in place of `[agent-name]` inside the shared template
 
@@ -154,12 +164,14 @@ Fold team-specific context into the existing schema instead of inventing a separ
 ## When to Use This vs `/kramme:pr:code-review`
 
 Use **this mode** when:
+
 - The PR is large or touches many areas
 - You want reviewers to cross-validate each other's findings
 - The PR has security-sensitive changes that benefit from multiple perspectives
 - You want higher-quality findings with fewer false positives
 
 Use **standard `/kramme:pr:code-review`** when:
+
 - The PR is small or focused
 - You want faster, lower-cost review
 - You only need one or two review aspects

@@ -5,7 +5,7 @@ The ranked list of sources to ground framework and library decisions in, highest
 ## The 4 tiers
 
 | Tier | Source | Example |
-|---|---|---|
+| --- | --- | --- |
 | 1 | Official project docs | react.dev, docs.djangoproject.com, symfony.com/doc |
 | 2 | Official blog / changelog | react.dev/blog, nextjs.org/blog |
 | 3 | Web standards | MDN, web.dev, html.spec.whatwg.org |
@@ -22,7 +22,7 @@ These may help you find the right page, but they are never the citation:
 - AI-generated documentation mirrors.
 - Your training data or memory of past projects.
 
-If Stack Overflow points you at an API, follow through to the official docs page for that API and cite *that*.
+If Stack Overflow points you at an API, follow through to the official docs page for that API and cite _that_.
 
 ## Examples of good source selection
 

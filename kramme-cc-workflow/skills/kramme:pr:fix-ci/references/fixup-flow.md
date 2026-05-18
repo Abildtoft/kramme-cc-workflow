@@ -14,7 +14,7 @@ If the PR base branch can't be determined, fall back to `origin/HEAD`, then `mai
 
 ```bash
 if [ -z "$BASE" ]; then
-  BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+  BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@')
 fi
 if [ -z "$BASE" ]; then
   if git show-ref --verify --quiet refs/remotes/origin/main; then

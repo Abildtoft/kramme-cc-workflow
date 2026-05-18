@@ -3,7 +3,7 @@
 ## Title Anti-Patterns
 
 | ❌ Wrong | ✅ Correct | Issue |
-|----------|-----------|-------|
+| --- | --- | --- |
 | `Update platform picker` | `feat(platform-picker): add redirect` | Missing type |
 | `feat(auth): fixed login bug` | `feat(auth): fix login bug` | Past tense |
 | `fix: bug fix` | `fix(checkout): resolve race condition` | Vague |
@@ -14,7 +14,7 @@
 Reject titles and summary lines that restate the change without explaining it. Each of these reads as "something happened" without naming the what, the why, or the user-visible effect.
 
 | ❌ Wrong | ✅ Correct | Why it fails |
-|----------|-----------|-------|
+| --- | --- | --- |
 | `Fix bug` | `fix(auth): reject expired refresh tokens on /me endpoint` | Names neither the bug nor the fix. Works for a commit-to-self, not a PR. |
 | `Fix build` | `fix(ci): pin node to 20.11 to unblock vitest 1.4 install` | "Build" covers dozens of possible changes; the reviewer has to read the diff to find out which one. |
 | `Phase 1` | `feat(billing): add invoice line-item totals (phase 1 of 3: read path)` | Phase numbers are internal planning state. A reader two months later has no idea what Phase 1 was. |
@@ -155,14 +155,11 @@ Test all the changes manually.
 ```markdown
 ## Summary
 
-This amazing implementation brilliantly solves the platform picker problem! We've created
-an excellent solution that elegantly handles all edge cases. This is a huge improvement
-that will dramatically enhance user experience!
+This amazing implementation brilliantly solves the platform picker problem! We've created an excellent solution that elegantly handles all edge cases. This is a huge improvement that will dramatically enhance user experience!
 
 ## Technical Details
 
-The implementation is beautifully architected using cutting-edge patterns. The guard is
-incredibly efficient and handles everything perfectly. This is truly exceptional work!
+The implementation is beautifully architected using cutting-edge patterns. The guard is incredibly efficient and handles everything perfectly. This is truly exceptional work!
 ```
 
 ### ✅ CORRECT: Professional, Objective Tone
@@ -170,8 +167,7 @@ incredibly efficient and handles everything perfectly. This is truly exceptional
 ```markdown
 ## Summary
 
-Added automatic redirect logic to skip the platform picker page when users have access
-to exactly one platform, eliminating an unnecessary navigation step.
+Added automatic redirect logic to skip the platform picker page when users have access to exactly one platform, eliminating an unnecessary navigation step.
 
 Fixes WAN-521
 
@@ -192,9 +188,7 @@ Fixes WAN-521
 
 ### Implementation Approach
 
-Implemented a route guard that checks platform count before navigation. When a user has
-exactly one platform, the guard redirects directly to that platform instead of showing
-the picker page.
+Implemented a route guard that checks platform count before navigation. When a user has exactly one platform, the guard redirects directly to that platform instead of showing the picker page.
 ```
 
 ---
@@ -214,11 +208,9 @@ Changed the API endpoint signature.
 
 ### API Endpoint Signature Change
 
-**What changed:**
-`GET /api/platforms` now requires `userId` query parameter.
+**What changed:** `GET /api/platforms` now requires `userId` query parameter.
 
-**Migration:**
-Update all API calls:
+**Migration:** Update all API calls:
 
 ```typescript
 // Before
@@ -232,7 +224,6 @@ this.http.get("/api/platforms", { params: { userId } });
 
 - 5 frontend components
 - 2 external services (audit-log, analytics)
-
 ````
 
 ---

@@ -35,20 +35,13 @@ Skip if `$ARGUMENTS` already provides a clear description.
 
 > How should this skill be triggered, and does it have side effects?
 >
-> A) **User-only with side effects** — creates/modifies/deletes files, runs git commands, calls APIs
->    (`user-invocable: true`, `disable-model-invocation: true`)
-> B) **User or auto-triggered** — read-only analysis, formatting, text processing
->    (`user-invocable: true`, `disable-model-invocation: false`)
-> C) **Background convention** — auto-applies rules like commit style or verification
->    (`user-invocable: false`, `disable-model-invocation: false`)
+> A) **User-only with side effects** — creates/modifies/deletes files, runs git commands, calls APIs (`user-invocable: true`, `disable-model-invocation: true`) B) **User or auto-triggered** — read-only analysis, formatting, text processing (`user-invocable: true`, `disable-model-invocation: false`) C) **Background convention** — auto-applies rules like commit style or verification (`user-invocable: false`, `disable-model-invocation: false`)
 
 ### Question 3: Complexity
 
 > What complexity tier fits this skill?
 >
-> A) **Simple** — single SKILL.md, no supporting files (~20-80 lines)
-> B) **Medium** — SKILL.md + resource files for reference content (~80-300 lines)
-> C) **Complex** — SKILL.md + resources + scripts for deterministic operations (~200-500 lines)
+> A) **Simple** — single SKILL.md, no supporting files (~20-80 lines) B) **Medium** — SKILL.md + resource files for reference content (~80-300 lines) C) **Complex** — SKILL.md + resources + scripts for deterministic operations (~200-500 lines)
 
 ### Question 4: Arguments
 
@@ -62,16 +55,13 @@ Skip if `$ARGUMENTS` already provides a clear description.
 
 > Should this skill be available on all platforms, or restricted?
 >
-> A) **All platforms** (default — omit `kramme-platforms`)
-> B) **Claude Code only** (uses Agent Teams or other Claude Code features)
-> C) **Specific combination** (specify which)
+> A) **All platforms** (default — omit `kramme-platforms`) B) **Claude Code only** (uses Agent Teams or other Claude Code features) C) **Specific combination** (specify which)
 
 ### Question 6: External inspiration
 
 > Is this skill derived from external inspiration — another agent-skills repository, a paper, a book, a blog post, official framework docs?
 >
-> A) **Yes** — capture each source. Used to scaffold `references/sources.yaml` so the `kramme:skill:audit-sources` skill can track upstream changes worth absorbing later.
-> B) **No** — the skill is original to this repo or composed of patterns the repo already established.
+> A) **Yes** — capture each source. Used to scaffold `references/sources.yaml` so the `kramme:skill:audit-sources` skill can track upstream changes worth absorbing later. B) **No** — the skill is original to this repo or composed of patterns the repo already established.
 
 If A, ask the user for each source: title + URL (or library identifier resolvable via a docs MCP) + one-sentence rationale stating what in this skill is derived from the source. Capture as `external_sources` for use in Phase 5.
 
@@ -103,19 +93,18 @@ If the user is unsure whether something qualifies, default to including it — e
 
    ```yaml
    ---
-   name: {skill-name}
+   name: { skill-name }
    description: "{trigger-optimized description with negative trigger}"
    argument-hint: "{if applicable}"
-   disable-model-invocation: {true|false}
-   user-invocable: {true|false}
-   kramme-platforms: {if applicable}
+   disable-model-invocation: { true|false }
+   user-invocable: { true|false }
+   kramme-platforms: { if applicable }
    ---
    ```
 
 3. For the description:
 
    The description is **system-prompt real estate.** It's the only thing the agent sees when deciding which skill to load — it lives in the agent's system prompt alongside every other installed skill in the user's environment, competing for the agent's attention. A poor description gets the wrong skill picked, or no skill picked at all. Goal: just enough to know what capability this skill provides AND when to trigger it (specific keywords, contexts, file types).
-
    - Write in third person ("Creates...", "Guides...", "Runs...")
    - Include what the skill does AND when to use it
    - Add a negative trigger ("Not for...", "Don't use for...")
@@ -179,12 +168,18 @@ Before writing the manifest, ensure `<skill-dir>/references/` exists. This appli
 
 ```yaml
 sources:
-  - id: {kebab-case slug — stable across audits, do not rename}
-    url: {fully-qualified https URL — for blogs, READMEs, papers, deep links into another agent-skills repo}
+  - id: { kebab-case slug — stable across audits, do not rename }
+    url:
+      {
+        fully-qualified https URL — for blogs,
+        READMEs,
+        papers,
+        deep links into another agent-skills repo,
+      }
     # OR: context7_library: {<owner>/<name> — for libraries resolvable via a docs MCP}
     title: "{human-readable title shown in audit reports}"
     rationale: "{one sentence: exactly what in this skill is derived from this source}"
-    last_reviewed_at: {today, ISO YYYY-MM-DD}
+    last_reviewed_at: { today, ISO YYYY-MM-DD }
     baseline_hash: ""
 ```
 

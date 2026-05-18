@@ -1,6 +1,6 @@
 # The Three-Tier Boundary System — extended rationale
 
-This is the reference expansion of the three-tier list in `SKILL.md`. Each item is annotated with *why it lives in that tier* and *the common exception, if any*.
+This is the reference expansion of the three-tier list in `SKILL.md`. Each item is annotated with _why it lives in that tier_ and _the common exception, if any_.
 
 The core claim: security decisions split cleanly into three tiers. Most mistakes happen when a Tier-2 ("Ask First") change gets handled as if it were Tier-1 ("Always Do"), or a Tier-3 ("Never Do") gets rationalized into Tier-2. Keeping the tiers honest prevents 90% of author-time regressions.
 

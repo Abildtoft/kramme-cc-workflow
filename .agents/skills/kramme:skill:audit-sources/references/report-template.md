@@ -7,13 +7,12 @@ Fill in placeholders surrounded by `{{ }}`. Omit empty sections (no "Errors: non
 ```markdown
 # Skill Source Audit — {{YYYY-MM-DD HH:MM}}
 
-**Scope:** {{argument the user passed, e.g. `kramme:code:*` or `all`}}
-**Targets:** {{N skills processed}}
+**Scope:** {{argument the user passed, e.g. `kramme:code:*` or `all`}} **Targets:** {{N skills processed}}
 
 ## Summary
 
 | Skill | Sources | Changed | Unchanged | Errors | Bootstrapped |
-|---|---:|---:|---:|---:|:---:|
+| --- | --: | --: | --: | --: | :-: |
 | {{kramme:code:harden-security}} | {{3}} | {{1}} | {{2}} | {{0}} | {{—}} |
 | {{kramme:pr:ux-review}} | {{2}} | {{0}} | {{2}} | {{0}} | {{✓}} |
 

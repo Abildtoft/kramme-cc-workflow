@@ -15,12 +15,12 @@ A skill with no sources to audit may omit the file entirely. An empty file (`sou
 ## Source entry fields
 
 | Field | Required | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `id` | yes | Stable, kebab-case slug. Used as the snapshot filename: `references/sources-snapshot/<id>.md`. Do not rename after first snapshot — rename means orphaned baseline. |
 | `url` | one of | Fully qualified `https://` URL. Use this for arbitrary docs, blog posts, GitHub READMEs, papers. |
 | `context7_library` | one of | Library identifier resolvable by a docs MCP (e.g. Context7's `resolve-library-id`), in `<owner>/<name>` form (`facebook/react`, `vercel/next.js`). The audit will use the MCP when present and fall back to fetching the library's canonical docs URL otherwise. |
 | `title` | yes | Human-readable title. Shown in the audit report. |
-| `rationale` | yes | One sentence: *what in this skill is derived from this source*. Forces curation discipline; if you can't write it, the source isn't an inspiration source. |
+| `rationale` | yes | One sentence: _what in this skill is derived from this source_. Forces curation discipline; if you can't write it, the source isn't an inspiration source. |
 | `last_reviewed_at` | yes | ISO date (`YYYY-MM-DD`) when the baseline was last refreshed. Updated by Phase 5 of the audit skill. |
 | `baseline_hash` | yes after first audit | `sha256:<hex>` of the normalized snapshot content. Empty string on a freshly bootstrapped entry; populated on the first successful fetch. |
 

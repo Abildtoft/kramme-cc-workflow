@@ -19,8 +19,7 @@ This agent has two operating modes. The caller specifies the mode in their promp
 
 Scan the full review scope (committed PR diff + staged/unstaged/untracked local changes) for slop patterns in the actual code changes.
 
-**Input:** Full review scope diff set or specific files to review
-**Output:** List of slop findings with file:line references and confidence scores
+**Input:** Full review scope diff set or specific files to review **Output:** List of slop findings with file:line references and confidence scores
 
 ### Mode 2: Meta-Review
 
@@ -28,8 +27,7 @@ Scan the full review scope (committed PR diff + staged/unstaged/untracked local 
 
 Review findings/suggestions from other agents and flag any that would introduce slop if implemented.
 
-**Input:** Findings from other review agents (provided in the prompt)
-**Output:** Assessment of which suggestions would introduce slop, with explanations
+**Input:** Findings from other review agents (provided in the prompt) **Output:** Assessment of which suggestions would introduce slop, with explanations
 
 ## Confidence Scoring
 
@@ -56,13 +54,14 @@ This threshold ensures we flag clear issues while avoiding noise from borderline
 - JSDoc/docstrings with trivial descriptions that add no value
 
 **Example slop:**
+
 ```typescript
 // Get the user by ID from the database
 const user = await db.getUserById(id);
 // Check if user exists
 if (!user) {
   // Throw error if not found
-  throw new NotFoundError('User not found');
+  throw new NotFoundError("User not found");
 }
 ```
 
@@ -75,11 +74,12 @@ if (!user) {
 - Multiple layers of the same defensive check
 
 **Example slop:**
+
 ```typescript
 function processValidatedInput(input: ValidatedInput) {
   // Input is already validated by the caller
-  if (!input) throw new Error('Input required');
-  if (typeof input.value !== 'string') throw new Error('Invalid type');
+  if (!input) throw new Error("Input required");
+  if (typeof input.value !== "string") throw new Error("Invalid type");
   // ... proceed with trusted input
 }
 ```
@@ -92,6 +92,7 @@ function processValidatedInput(input: ValidatedInput) {
 - Overly broad types when specific types are available
 
 **Example slop:**
+
 ```typescript
 const data = response.body as any;
 const items = (data as unknown as ItemList).items;
@@ -161,15 +162,20 @@ The canonical author-time fix for each of these patterns lives in the `kramme:co
 
 1. Detect the base branch and gather the full review scope. If the caller provided a specific base branch (e.g., "Use `develop` as the base"), use it directly. Otherwise, resolve it:
    - Query the PR target branch:
+
    ```bash
-   BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
+   BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2> /dev/null)
    ```
+
    - If no PR or query fails, fall back:
+
    ```bash
-   BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+   BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@')
    [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
    ```
+
    Normalize before diffing (handles values like `origin/develop` and `refs/heads/develop`):
+
    ```bash
    BASE_BRANCH=${BASE_BRANCH#refs/heads/}
    BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
@@ -178,20 +184,22 @@ The canonical author-time fix for each of these patterns lives in the `kramme:co
      echo "Error: Could not determine base branch. Re-run with --base <ref>." >&2
      exit 1
    fi
-   if ! git check-ref-format --branch "$BASE_BRANCH" >/dev/null 2>&1; then
+   if ! git check-ref-format --branch "$BASE_BRANCH" > /dev/null 2>&1; then
      echo "Error: Base branch '$BASE_BRANCH' is not a valid branch name. Re-run with --base <ref>." >&2
      exit 1
    fi
-   if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2>/dev/null; then
+   if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2> /dev/null; then
      echo "Error: Failed to fetch origin/$BASE_BRANCH. Check remote access and re-run with --base <ref>." >&2
      exit 1
    fi
-   if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
+   if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null; then
      echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <ref>." >&2
      exit 1
    fi
    ```
+
    Then gather changed files across committed + local workspace changes:
+
    ```bash
    BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
    {
@@ -201,6 +209,7 @@ The canonical author-time fix for each of these patterns lives in the `kramme:co
      git ls-files --others --exclude-standard
    } | sed '/^$/d' | sort -u
    ```
+
 2. For each changed file:
    - Read the full file to understand its existing style and patterns
    - Compare new code against the file's established conventions
@@ -234,34 +243,31 @@ The canonical author-time fix for each of these patterns lives in the `kramme:co
 ### Findings (X total, only showing confidence ≥ 80)
 
 **Unnecessary Comments** (X)
-- `file.ts:42` [Confidence: 85] - Comment describes obvious code
-  Line: `// Get the user from the database`
-  Why: The function call `getUserById(id)` is self-explanatory
+
+- `file.ts:42` [Confidence: 85] - Comment describes obvious code Line: `// Get the user from the database` Why: The function call `getUserById(id)` is self-explanatory
 
 **Defensive Overkill** (X)
-- `file.ts:55` [Confidence: 90] - Null check on guaranteed non-null value
-  Line: `if (!config) throw new Error('Config required');`
-  Why: Config is injected by the framework and always present
+
+- `file.ts:55` [Confidence: 90] - Null check on guaranteed non-null value Line: `if (!config) throw new Error('Config required');` Why: Config is injected by the framework and always present
 
 **Type Workarounds** (X)
-- `file.ts:78` [Confidence: 95] - Using `any` cast instead of proper typing
-  Line: `const data = response as any;`
-  Why: Response type should be properly defined in the API types
+
+- `file.ts:78` [Confidence: 95] - Using `any` cast instead of proper typing Line: `const data = response as any;` Why: Response type should be properly defined in the API types
 
 ### Summary
 
-| Pattern | Count |
-|---------|-------|
-| Unnecessary Comments | X |
-| Defensive Overkill | X |
-| Type Workarounds | X |
-| Style Inconsistencies | X |
-| Over-Engineering | X |
-| Verbose Alternatives | X |
-| Excessive Logging | X |
-| Copy-Paste Artifacts | X |
-| AI-Aesthetic UI Defaults | X |
-| **Total** | X |
+| Pattern                  | Count |
+| ------------------------ | ----- |
+| Unnecessary Comments     | X     |
+| Defensive Overkill       | X     |
+| Type Workarounds         | X     |
+| Style Inconsistencies    | X     |
+| Over-Engineering         | X     |
+| Verbose Alternatives     | X     |
+| Excessive Logging        | X     |
+| Copy-Paste Artifacts     | X     |
+| AI-Aesthetic UI Defaults | X     |
+| **Total**                | X     |
 ```
 
 ### For Mode 2 (Meta-Review):
@@ -272,6 +278,7 @@ The canonical author-time fix for each of these patterns lives in the `kramme:co
 ### Flagged Suggestions (X total)
 
 **From [source-agent]:**
+
 - Original suggestion: "[the suggestion]"
 - Slop type: [pattern name]
 - Why it's sloppy: [explanation]
@@ -279,13 +286,14 @@ The canonical author-time fix for each of these patterns lives in the `kramme:co
 ### Clean Suggestions (X total)
 
 Suggestions that pass slop review:
+
 - [source-agent]: [brief description]
 
 ### Summary
 
 | Reviewed | Flagged | Clean |
-|----------|---------|-------|
-| X | X | X |
+| -------- | ------- | ----- |
+| X        | X       | X     |
 ```
 
 ## Guidelines

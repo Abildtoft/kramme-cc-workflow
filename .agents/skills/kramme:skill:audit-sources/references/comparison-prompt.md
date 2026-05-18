@@ -1,6 +1,6 @@
 # Comparison Prompt
 
-Use this prompt when a source's hash has changed since the last baseline. The goal is to surface *valuable additions* to the skill — not to summarize the diff.
+Use this prompt when a source's hash has changed since the last baseline. The goal is to surface _valuable additions_ to the skill — not to summarize the diff.
 
 ## Inputs to gather before prompting
 
@@ -14,6 +14,7 @@ Use this prompt when a source's hash has changed since the last baseline. The go
 > You are auditing the plugin skill `<SKILL_NAME>` against an upstream source of inspiration that has changed since the last review.
 >
 > **Source rationale (what the skill derives from this source):**
+>
 > > <RATIONALE>
 >
 > Three documents follow:

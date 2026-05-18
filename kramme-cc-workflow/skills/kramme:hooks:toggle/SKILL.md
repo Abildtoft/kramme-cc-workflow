@@ -21,7 +21,7 @@ Enable or disable hooks in the kramme-cc-workflow plugin.
 ## Available Hooks
 
 | Hook Name | Event | Description |
-|-----------|-------|-------------|
+| --- | --- | --- |
 | `block-rm-rf` | PreToolUse | Blocks destructive file deletion (rm -rf, shred, etc.) |
 | `confirm-review-responses` | PreToolUse | Confirms before committing configured review artifact files (see `hooks/confirm-review-artifacts.txt`) |
 | `noninteractive-git` | PreToolUse | Forces non-interactive git commands |
@@ -33,11 +33,13 @@ Enable or disable hooks in the kramme-cc-workflow plugin.
 The state file is at `${CLAUDE_PLUGIN_ROOT}/hooks/hook-state.json`.
 
 ### For `status` command:
+
 1. Read `hooks/hook-state.json`
 2. List all hooks with their enabled/disabled state
 3. Format as a table
 
 ### For toggle/enable/disable:
+
 1. Read `hooks/hook-state.json`
 2. Parse the argument to get hook name and optional action
 3. Validate hook name against the available hooks list
@@ -49,6 +51,7 @@ The state file is at `${CLAUDE_PLUGIN_ROOT}/hooks/hook-state.json`.
 6. Confirm the change to user
 
 ### For `reset` command:
+
 1. Write `{"disabled": []}` to `hooks/hook-state.json`
 2. Confirm all hooks are now enabled
 

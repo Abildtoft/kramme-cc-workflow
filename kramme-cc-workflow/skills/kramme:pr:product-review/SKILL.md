@@ -38,21 +38,23 @@ Before launching agents:
 
 Determine the correct base branch using a 3-tier strategy:
 
-**Tier 1: Explicit override**
-If `--base <branch>` was provided in Step 1, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
+**Tier 1: Explicit override** If `--base <branch>` was provided in Step 1, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
 
 **Tier 2: PR target branch detection**
+
 ```bash
-BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
+BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2> /dev/null)
 ```
 
 **Tier 3: Fallback**
+
 ```bash
-BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@')
 [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
 ```
 
 Normalize before using `origin/$BASE_BRANCH` (handles values like `origin/develop` and `refs/heads/develop`):
+
 ```bash
 BASE_BRANCH=${BASE_BRANCH#refs/heads/}
 BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
@@ -61,28 +63,29 @@ if [ -z "$BASE_BRANCH" ]; then
   echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
   exit 1
 fi
-if ! git check-ref-format --branch "$BASE_BRANCH" >/dev/null 2>&1; then
+if ! git check-ref-format --branch "$BASE_BRANCH" > /dev/null 2>&1; then
   echo "Error: Base branch '$BASE_BRANCH' is not a valid branch name. Re-run with --base <branch>." >&2
   exit 1
 fi
-if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2>/dev/null; then
+if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2> /dev/null; then
   echo "Error: Failed to fetch origin/$BASE_BRANCH. Check remote access and re-run with --base <branch>." >&2
   exit 1
 fi
-if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
+if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null; then
   echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <branch>." >&2
   exit 1
 fi
 ```
 
 Then identify changed files from all four sources:
+
 ```bash
 BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
 {
-  git diff --name-only "$BASE_REF"...HEAD      # committed PR diff
-  git diff --name-only --cached                # staged local changes
-  git diff --name-only                         # unstaged local changes
-  git ls-files --others --exclude-standard     # untracked local files
+  git diff --name-only "$BASE_REF"...HEAD  # committed PR diff
+  git diff --name-only --cached            # staged local changes
+  git diff --name-only                     # unstaged local changes
+  git ls-files --others --exclude-standard # untracked local files
 } | sed '/^$/d' | sort -u
 ```
 
@@ -102,10 +105,12 @@ Nothing to review.
 ### Step 4: Check for Previous Review
 
 If `PRODUCT_REVIEW_OVERVIEW.md` exists in the project root:
+
 - Parse previously addressed findings (file path, line number, issue description, action taken)
 - Store for filtering in Step 7
 
 Previously addressed findings have the format:
+
 - **File:** `path/to/file.ts:123`
 - **Issue/Finding:** [description]
 - **Action taken:** [what was done]
@@ -113,6 +118,7 @@ Previously addressed findings have the format:
 ### Step 5: Launch Product Reviewer Agent
 
 Launch **kramme:product-reviewer** via the Task tool with:
+
 - The resolved `BASE_BRANCH` from Step 3
 - Project conventions extracted from the instruction files gathered above and nearby product docs
 - All changed files (full list, no filtering)
@@ -126,6 +132,7 @@ Launch **kramme:product-reviewer** via the Task tool with:
 ### Step 6: Validate Relevance
 
 After collecting findings from the product reviewer:
+
 - Launch **kramme:pr-relevance-validator** with all findings and the resolved `BASE_BRANCH`
 - Cross-reference each finding against the full review scope (committed PR diff + staged/unstaged/untracked local changes)
 - Filter pre-existing issues and out-of-scope problems
@@ -134,6 +141,7 @@ After collecting findings from the product reviewer:
 ### Step 7: Filter Previously Addressed Findings
 
 If `PRODUCT_REVIEW_OVERVIEW.md` was found in Step 4:
+
 - Cross-reference validated findings against previously addressed findings
 - **Only filter** if the finding is essentially the same issue:
   - Same file
@@ -150,6 +158,7 @@ If `PRODUCT_REVIEW_OVERVIEW.md` was found in Step 4:
 ### Step 8: Aggregate and Write Results
 
 After validation and filtering, organize findings into severity tiers:
+
 - **Critical Product Issues** (must fix before merge) -- only validated findings
 - **Important Product Issues** (should fix) -- only validated findings
 - **Product Suggestions** (nice to have) -- only validated findings
@@ -160,11 +169,13 @@ After validation and filtering, organize findings into severity tiers:
 - **Product Strengths** (what's well-done)
 
 If `INLINE_MODE=true`:
+
 - Reply with the full report inline using the report format from `assets/product-review-report-format.md`
 - Include all sections even if empty (with count of 0)
 - Do **not** create or update `PRODUCT_REVIEW_OVERVIEW.md`
 
 Otherwise:
+
 - Write to `PRODUCT_REVIEW_OVERVIEW.md` in the project root using the report format from `assets/product-review-report-format.md`
 - Include all sections even if empty (with count of 0)
 - Treat the file as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
@@ -172,6 +183,7 @@ Otherwise:
 ### Step 9: Provide Action Plan
 
 If Critical or Important findings were found:
+
 - When `INLINE_MODE=false`, suggest running `/kramme:pr:resolve-review --local`
 - When `INLINE_MODE=true`, suggest passing the inline report content to `/kramme:pr:resolve-review`
 

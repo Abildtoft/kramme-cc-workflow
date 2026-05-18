@@ -7,8 +7,7 @@ Create SIW-compatible scaffolding matching the structure from `kramme:siw:init`.
 
 ## Current Progress
 
-**Last Updated:** {current date}
-**Quick Summary:** Spec reverse-engineered from {source description}
+**Last Updated:** {current date} **Quick Summary:** Spec reverse-engineered from {source description}
 
 ### Project Status
 
@@ -36,8 +35,8 @@ _Decisions will be documented here as they are made._
 ## Rejected Alternatives Summary
 
 | Alternative | For | Why Rejected | Decision # |
-|------------|-----|--------------|------------|
-| _None yet_ | | | |
+| ----------- | --- | ------------ | ---------- |
+| _None yet_  |     |              |            |
 
 ---
 
@@ -61,8 +60,8 @@ _Decisions will be documented here as they are made._
 **Parallelization:** Needs coordination
 
 | # | Title | Status | Size | Priority | Related |
-|---|-------|--------|------|----------|---------|
-| _None_ | _Use `/kramme:siw:issue-define` to create first issue (G-001)_ | | | | |
+| --- | --- | --- | --- | --- | --- |
+| _None_ | _Use `/kramme:siw:issue-define` to create first issue (G-001)_ |  |  |  |  |
 
 **Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
 

@@ -30,6 +30,7 @@ Extract from `$ARGUMENTS`:
    - `--legacy-console` — relax the clean-console standard for legacy apps with known noisy consoles (see Step 4)
 
 Store parsed values:
+
 - `TARGET_URL` — the base URL to test
 - `TEST_MODE` — `quick`, `diff-aware`, or `targeted`
 - `TARGET_ROUTE` — specific route for targeted mode (e.g., `/settings/profile`)
@@ -41,6 +42,7 @@ Store parsed values:
 ### Step 2: Validate Prerequisites
 
 **URL is required.** If not provided, stop with:
+
 ```
 Error: URL is required.
 
@@ -60,11 +62,13 @@ HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$TARGET_URL")
 
 - `2xx` or `3xx` — proceed
 - Connection refused — stop with:
+
   ```
   Error: Connection refused at $TARGET_URL. Is the server running?
 
   Start your dev server first, then re-run the command.
   ```
+
 - Timeout — stop with:
   ```
   Error: Request to $TARGET_URL timed out after 5 seconds. Is the server running?
@@ -80,12 +84,14 @@ HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$TARGET_URL")
 **quick mode:**
 
 Auto-detect routes from the project structure. Look for route definitions in:
+
 - `pages/`, `app/` directories (Next.js, Nuxt, Remix file-based routing)
 - `routes/`, `views/`, `screens/` directories
 - Framework router config files (`router.ts`, `routes.ts`, `app-routing.module.ts`)
 - `package.json` for framework hints (next, nuxt, remix, angular, vue-router, react-router)
 
 Select the landing page (`/`) plus 2-3 key routes that represent core functionality. Prefer routes that are:
+
 - Top-level navigation items
 - User-facing pages (not API routes or admin pages)
 - Representative of different page types (list, detail, form)
@@ -96,21 +102,23 @@ If route detection fails, fall back to testing only the landing page (`/`).
 
 Resolve the base branch using a 3-tier strategy:
 
-**Tier 1: Explicit override**
-If `--base <branch>` was provided, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
+**Tier 1: Explicit override** If `--base <branch>` was provided, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
 
 **Tier 2: PR target branch detection**
+
 ```bash
-BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
+BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2> /dev/null)
 ```
 
 **Tier 3: Fallback**
+
 ```bash
-BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@')
 [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
 ```
 
 Normalize before using `origin/$BASE_BRANCH`:
+
 ```bash
 BASE_BRANCH=${BASE_BRANCH#refs/heads/}
 BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
@@ -119,32 +127,34 @@ if [ -z "$BASE_BRANCH" ]; then
   echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
   exit 1
 fi
-if ! git check-ref-format --branch "$BASE_BRANCH" >/dev/null 2>&1; then
+if ! git check-ref-format --branch "$BASE_BRANCH" > /dev/null 2>&1; then
   echo "Error: Base branch '$BASE_BRANCH' is not a valid branch name. Re-run with --base <branch>." >&2
   exit 1
 fi
-if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2>/dev/null; then
+if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2> /dev/null; then
   echo "Error: Failed to fetch origin/$BASE_BRANCH. Check remote access and re-run with --base <branch>." >&2
   exit 1
 fi
-if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
+if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null; then
   echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <branch>." >&2
   exit 1
 fi
 ```
 
 Identify changed UI files:
+
 ```bash
 BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
 {
-  git diff --name-only "$BASE_REF"...HEAD      # committed PR diff
-  git diff --name-only --cached                # staged local changes
-  git diff --name-only                         # unstaged local changes
-  git ls-files --others --exclude-standard     # untracked local files
+  git diff --name-only "$BASE_REF"...HEAD  # committed PR diff
+  git diff --name-only --cached            # staged local changes
+  git diff --name-only                     # unstaged local changes
+  git ls-files --others --exclude-standard # untracked local files
 } | sed '/^$/d' | sort -u
 ```
 
 Filter for UI-relevant files:
+
 - **Components**: `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.component.ts`, `*.component.html`
 - **Templates**: `*.html`, `*.hbs`, `*.ejs`, `*.pug`
 - **Styles**: `*.css`, `*.scss`, `*.sass`, `*.less`, `*.styled.ts`, `*.module.css`
@@ -153,6 +163,7 @@ Filter for UI-relevant files:
 - **Assets**: SVG files, icon sets
 
 If no UI-relevant files found:
+
 ```
 No UI-relevant changes detected in this PR or local working tree.
 
@@ -160,9 +171,11 @@ Changed files: {list file types}
 
 No routes to test. Use `quick` mode to test the app without a diff scope.
 ```
+
 **Action:** Stop.
 
 Map changed UI files to routes/pages:
+
 - File-based routing: derive route from file path (e.g., `pages/settings/profile.tsx` maps to `/settings/profile`)
 - Config-based routing: search router config for imports/references to the changed files
 - If mapping is ambiguous, include the likely route with a note
@@ -176,10 +189,11 @@ Use the user-specified route directly. The test scope is `TARGET_URL + TARGET_RO
 Check `package.json` (if it exists) for framework dependencies to load framework-specific QA hints:
 
 ```bash
-cat package.json 2>/dev/null | grep -oE '"(next|nuxt|@angular/core|react|vue|svelte|@sveltejs/kit|rails)"' | head -1
+cat package.json 2> /dev/null | grep -oE '"(next|nuxt|@angular/core|react|vue|svelte|@sveltejs/kit|rails)"' | head -1
 ```
 
 Also check project structure:
+
 - `next.config.*` → Next.js
 - `angular.json` → Angular
 - `nuxt.config.*` → Nuxt
@@ -204,6 +218,7 @@ Create a test checklist for each route:
 7. **Accessibility ladder** — run the five checks below
 
 **Clean-console standard:**
+
 - Default: zero console errors, zero console warnings. Every error and every warning is a finding.
 - `LEGACY_CONSOLE_MODE` (true): zero console errors is still required; warnings demote to Info-level findings rather than Minor/Major.
 
@@ -230,11 +245,13 @@ skill: "kramme:browse", args: "<TARGET_URL><route> --screenshot --console --netw
 ```
 
 This captures:
+
 - Visual screenshot of the page
 - Console messages (errors, warnings, info)
 - Network request summary (failed requests, slow responses)
 
 After navigation, perform basic interaction checks:
+
 - Click primary action buttons (if identifiable from page structure)
 - Verify navigation links work
 - Check form submissions if forms are present
@@ -242,6 +259,7 @@ After navigation, perform basic interaction checks:
 **If browse fails (no browser MCP available):**
 
 Degrade to code-only analysis:
+
 1. Read the changed files identified in Step 3
 2. Analyze code for potential issues:
    - Missing error boundaries or error handling
@@ -251,6 +269,7 @@ Degrade to code-only analysis:
    - Missing form validation
    - Accessibility issues visible in markup
 3. Report all findings as "code-only mode" with a clear warning:
+
    ```
    Warning: No browser MCP detected. Running in code-only mode.
    Findings are based on static code analysis only — no live testing performed.
@@ -273,7 +292,7 @@ For each tested page/route, collect:
 **Network triage ladder** (apply to every failed or anomalous request):
 
 | Signal | Interpretation | Action |
-|---|---|---|
+| --- | --- | --- |
 | `4xx` | Client sent wrong data (shape, auth, validation) | Capture the request payload + route; Major unless expected (e.g. 401 on a logged-out probe) |
 | `5xx` | Server error | Capture the response body after redacting tokens; Blocker |
 | CORS failure | Origin or headers mismatch | Capture origin + `Access-Control-*` response headers; Major |
@@ -292,6 +311,7 @@ Rate each issue found using severity levels:
 - **Info**: Observation without clear user impact, optimization opportunity, deprecation warning, minor inconsistency
 
 When assessing, consider:
+
 - Does the issue affect the critical user path?
 - Is the issue visible to users or only in developer tools?
 - Does the issue block a workflow or is it cosmetic?
@@ -314,6 +334,7 @@ Store as `HEALTH_SCORE` and `HEALTH_LABEL` (Excellent/Good/Fair/Poor/Critical).
 Use the template from `assets/qa-report-template.md`.
 
 Populate all sections:
+
 - Fill in mode, URL, date, browser MCP type
 - List all tested routes with descriptions
 - Document each finding with severity, repro steps, expected vs actual, and recommended fix
@@ -323,10 +344,12 @@ Populate all sections:
 **Numbering convention:** Findings are numbered `QA-001`, `QA-002`, etc.
 
 If `INLINE_MODE=true`:
+
 - Reply with the full populated QA report inline
 - Do **not** create or update `QA_REPORT.md`
 
 Otherwise:
+
 - Write `QA_REPORT.md` at the project root
 - Treat it as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
 
@@ -335,10 +358,12 @@ Otherwise:
 **Skip if** `REGRESSION_MODE` is false.
 
 Check if `QA_BASELINE.json` exists from a previous run:
+
 - If not found: warn `"No previous baseline found. Skipping regression comparison. This run's results will be saved as the new baseline."` and continue to Step 9.
 - If found: load and compare:
 
 **Comparison logic:**
+
 1. **Score delta:** `current_score - baseline_score` (positive = improvement, negative = regression)
 2. **Fixed issues:** findings in the baseline that are NOT in the current run (matched by title + route)
 3. **New issues:** findings in the current run that are NOT in the baseline
@@ -352,12 +377,15 @@ Add a `## Regression` section to the QA report:
 **Score delta:** {current_score} vs. {baseline_score} ({+N / -N})
 
 ### Fixed ({N})
+
 - QA-{NNN}: {title} (was {severity})
 
 ### New ({N})
+
 - QA-{NNN}: {title} ({severity})
 
 ### Persistent ({N})
+
 - QA-{NNN}: {title} ({severity})
 ```
 
@@ -366,6 +394,7 @@ Add a `## Regression` section to the QA report:
 After regression comparison (or if skipped), save a machine-readable baseline for future runs:
 
 Write `QA_BASELINE.json` at the project root:
+
 ```json
 {
   "date": "{ISO 8601 timestamp}",
@@ -439,7 +468,7 @@ Before producing the QA report, read `references/addy-conventions.md` and apply:
 ## Error Handling Summary
 
 | Error | Behavior |
-|-------|----------|
+| --- | --- |
 | No URL provided | Hard stop with usage instructions |
 | URL unreachable (connection refused) | Hard stop with diagnostic |
 | URL unreachable (timeout) | Hard stop with diagnostic |
@@ -454,36 +483,42 @@ Before producing the QA report, read `references/addy-conventions.md` and apply:
 ## Usage Examples
 
 **Quick smoke test (default mode):**
+
 ```
 /kramme:qa http://localhost:3000
 /kramme:qa http://localhost:3000 quick
 ```
 
 **Diff-aware testing (test routes affected by changes):**
+
 ```
 /kramme:qa http://localhost:4200 diff-aware --base develop
 /kramme:qa http://localhost:3000 diff-aware
 ```
 
 **Targeted route testing:**
+
 ```
 /kramme:qa http://localhost:3000 targeted /settings/profile
 /kramme:qa http://localhost:4200 targeted /dashboard
 ```
 
 **Staging environment:**
+
 ```
 /kramme:qa https://staging.myapp.com
 /kramme:qa https://staging.myapp.com diff-aware --base main
 ```
 
 **Regression comparison (compare against previous run):**
+
 ```
 /kramme:qa http://localhost:3000 --regression
 /kramme:qa http://localhost:4200 diff-aware --regression
 ```
 
 **Inline report (no markdown file):**
+
 ```
 /kramme:qa http://localhost:3000 --inline
 /kramme:qa http://localhost:4200 diff-aware --inline

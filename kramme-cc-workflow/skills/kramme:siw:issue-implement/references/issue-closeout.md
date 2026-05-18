@@ -12,13 +12,16 @@ Add a `## Resolution` section to the issue file with:
 **Date:** {date}
 
 ### Summary
+
 {One paragraph describing what was done to resolve the issue}
 
 ### Changes Made
+
 - {file 1} - {what changed}
 - {file 2} - {what changed}
 
 ### Key Decisions
+
 - {any decisions made during implementation, if applicable}
 ```
 
@@ -38,8 +41,7 @@ options:
     description: "Solution works but would benefit from human review before considering it done."
 ```
 
-**If "Confident":** Set status to `DONE`.
-**If "Needs review":** Set status to `IN REVIEW`.
+**If "Confident":** Set status to `DONE`. **If "Needs review":** Set status to `IN REVIEW`.
 
 ## 11.3 Update All Tracking Files
 
@@ -71,6 +73,7 @@ options:
 ```
 
 **If user selects "Yes":**
+
 - Update the phase section header in `siw/OPEN_ISSUES_OVERVIEW.md` by appending ` (DONE)` (e.g., `## Phase 2: Core Features (DONE)`)
 - Do not double-append if it is already marked
 

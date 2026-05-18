@@ -1,18 +1,17 @@
 # Migration Plan: {framework} {current} → {target}
 
-**Generated:** {date}
-**Project:** {project_name}
+**Generated:** {date} **Project:** {project_name}
 
 ## Impact Summary
 
-| Metric | Count |
-|---|---|
-| Breaking changes applicable | {N} of {total} |
-| Files affected | {N} |
-| Automated (codemod) | {N} |
-| Semi-automated | {N} |
-| Manual | {N} |
-| Estimated total effort | {Quick/Moderate/Significant} |
+| Metric                      | Count                        |
+| --------------------------- | ---------------------------- |
+| Breaking changes applicable | {N} of {total}               |
+| Files affected              | {N}                          |
+| Automated (codemod)         | {N}                          |
+| Semi-automated              | {N}                          |
+| Manual                      | {N}                          |
+| Estimated total effort      | {Quick/Moderate/Significant} |
 
 ## Phase 0: Pre-Migration
 
@@ -42,7 +41,9 @@
 **Effort:** {Moderate/Significant}
 
 {For each breaking change group:}
+
 ### {Group Name}
+
 - **Files:** {list}
 - **Change:** {description}
 - **Before:** `{old pattern}`

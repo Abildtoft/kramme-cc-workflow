@@ -10,8 +10,7 @@ user-invocable: true
 
 Turn an audit report into decision-ready SIW issues by walking findings one at a time with clear options and a recommended path.
 
-**Flag:** `--auto` — Skip the per-finding AskUserQuestion step and automatically choose the best resolution option for each finding based on spec alignment, maintenance cost, delivery risk, and follow-up effort.
-If both implementation and spec audit reports exist and you want to stay scoped to one of them, pass that report path explicitly.
+**Flag:** `--auto` — Skip the per-finding AskUserQuestion step and automatically choose the best resolution option for each finding based on spec alignment, maintenance cost, delivery risk, and follow-up effort. If both implementation and spec audit reports exist and you want to stay scoped to one of them, pass that report path explicitly.
 
 ## Workflow Boundaries
 
@@ -97,7 +96,8 @@ options:
     description: "Resolve findings from both reports in one run"
 ```
 
-	   - With `--auto`, resolve both reports in one run. Process implementation findings first, then spec findings.
+       - With `--auto`, resolve both reports in one run. Process implementation findings first, then spec findings.
+
 5. If only one report type exists, use it automatically.
 6. If no report exists, stop and instruct the user to run `/kramme:siw:implementation-audit` or `/kramme:siw:spec-audit` first.
 7. If a selected report contains multiple appended top-level report blocks, isolate the last block only and treat it as the active audit run. Ignore earlier appended runs.
@@ -105,6 +105,7 @@ options:
 ## Step 2: Parse Findings
 
 Extract actionable findings from the active audit run headings:
+
 - `### DIV-NNN: ...`
 - `### EXT-NNN: ...`
 - `### DISC-NNN: ...` (legacy)
@@ -113,6 +114,7 @@ Extract actionable findings from the active audit run headings:
 - `### PROD-NNN: ...`
 
 For each finding, collect:
+
 - Finding id and title
 - Requirement/source references
 - Evidence/code references
@@ -122,6 +124,7 @@ For each finding, collect:
 - Source report path (`AUDIT_IMPLEMENTATION_REPORT.md` or `AUDIT_SPEC_REPORT.md`)
 
 Ignore:
+
 - Fully implemented section
 - Summary totals
 - Non-actionable uncertain rows unless explicitly requested
@@ -129,8 +132,8 @@ Ignore:
 
 ## Step 3: Select Scope
 
-If the parsed arguments include finding ids (example: `DIV-002 EXT-001 SPEC-003`), process only those.
-Otherwise, process all actionable findings in severity order:
+If the parsed arguments include finding ids (example: `DIV-002 EXT-001 SPEC-003`), process only those. Otherwise, process all actionable findings in severity order:
+
 1. Critical findings, plus SPEC/PROD findings whose `Severity Note` says `from Critical`
 2. Major findings, plus SPEC/PROD findings whose `Severity Note` says `from Major`
 3. Remaining Minor findings
@@ -141,7 +144,7 @@ Detect the finding type from its ID prefix and use the matching triage style bel
 
 ---
 
-### For DIV-*/EXT-* findings (implementation audit)
+### For DIV-_/EXT-_ findings (implementation audit)
 
 Legacy `DISC-*` and `MISS-*` findings use this same flow.
 
@@ -155,11 +158,13 @@ Legacy `DISC-*` and `MISS-*` findings use this same flow.
 #### 4.2 Alternatives
 
 Provide 2-3 concrete options. Include at least:
+
 - **Option A (Minimal fix):** Smallest change to satisfy requirement
 - **Option B (Robust fix):** Better long-term alignment with clearer contracts
 - **Option C (Defer/spec adjustment):** Only when truly justified
 
 For each option include:
+
 - Scope
 - Pros
 - Cons
@@ -168,6 +173,7 @@ For each option include:
 #### 4.3 Preferred Option
 
 State a clear recommendation and justify it with:
+
 - Correctness against spec
 - Maintenance cost
 - Delivery risk
@@ -175,7 +181,7 @@ State a clear recommendation and justify it with:
 
 ---
 
-### For SPEC-* findings (spec quality audit)
+### For SPEC-\* findings (spec quality audit)
 
 #### 4.1 Executive Summary
 
@@ -187,11 +193,13 @@ State a clear recommendation and justify it with:
 #### 4.2 Alternatives
 
 Provide 2-3 concrete options for revising the spec. Include at least:
+
 - **Option A (Targeted addition):** Add the minimum missing detail, constraint, or section
 - **Option B (Section rework):** Restructure or rewrite the affected section for clarity and completeness
 - **Option C (Accept as-is / defer):** Only when the gap is low-risk or the spec will be revised later anyway
 
 For each option include:
+
 - What changes in the spec
 - Pros
 - Cons
@@ -200,6 +208,7 @@ For each option include:
 #### 4.3 Preferred Option
 
 State a clear recommendation and justify it with:
+
 - Clarity for implementors
 - Reduction in ambiguity or rework risk
 - Effort to revise vs. cost of leaving the gap
@@ -227,6 +236,7 @@ If user asks to modify options, refine and re-ask before creating the issue.
 **STOP — MANDATORY GATE (default mode only)**
 
 After presenting AskUserQuestion for a finding:
+
 1. **STOP** and wait for the user's response
 2. **DO NOT** present the next finding while waiting
 3. **DO NOT** pre-compute or preview upcoming findings
@@ -235,6 +245,7 @@ After presenting AskUserQuestion for a finding:
 Only after the user selects an option (or asks for modifications), proceed to Step 5 to create the SIW issue for this single finding.
 
 With `--auto`:
+
 1. **DO NOT** send AskUserQuestion for the finding
 2. Select the best option yourself, usually the recommended option from Step 4.3
 3. State `Selected resolution: Option X — {one-line why}` immediately after the recommendation
@@ -244,18 +255,20 @@ With `--auto`:
 ## Step 5: Create SIW Issue For Chosen Option
 
 Prerequisites:
+
 - `siw/OPEN_ISSUES_OVERVIEW.md` exists
 - `siw/issues/` exists (create if missing)
 - `siw/LOG.md` exists (create minimal file if missing)
 
 Issue creation:
+
 1. Determine next `G-` issue number from `siw/issues/ISSUE-G-*.md`.
 2. Create file:
    - `siw/issues/ISSUE-G-{NNN}-resolve-{finding-id}-{slug}.md`
 3. Use the matching template based on finding type:
    - For SPEC/PROD findings with `Severity Note` showing `from Critical` or `from Major`, preserve that original severity when assigning issue priority and copy the `Severity Note` into the issue body.
 
-### Template for DIV-*/EXT-* findings
+### Template for DIV-_/EXT-_ findings
 
 ```markdown
 # ISSUE-G-{NNN}: Resolve {finding_id} - {short title}
@@ -266,22 +279,24 @@ Issue creation:
 
 {Executive summary of the finding}
 
-**Audit Finding:** `{finding_id}`
-**Source:** `{report_path}`
+**Audit Finding:** `{finding_id}` **Source:** `{report_path}`
 
 ## Context
 
 {Spec requirement and current behavior gap}
 
 ### Evidence
+
 - `{file:path:line}` — {what it shows}
 
 ## Scope
 
 ### In Scope
+
 - Implement chosen option: {selected option name}
 
 ### Out of Scope
+
 - Implementing non-selected alternatives
 
 ## Acceptance Criteria
@@ -295,18 +310,21 @@ Issue creation:
 ## Technical Notes
 
 ### Selected Option
+
 {chosen option details}
 
 ### Alternatives Considered
+
 - Option A: {short summary}
 - Option B: {short summary}
 - Option C: {short summary if applicable}
 
 ### References
+
 - Audit report: `{report_path}` > `{finding_id}`
 ```
 
-### Template for SPEC-* findings
+### Template for SPEC-\* findings
 
 ```markdown
 # ISSUE-G-{NNN}: Spec: {finding_id} - {short title}
@@ -317,22 +335,20 @@ Issue creation:
 
 {Executive summary — what the spec says or fails to say, and why it matters}
 
-**Audit Finding:** `{finding_id}`
-**Dimension:** {coherence/completeness/clarity/scope/actionability/testability/value/technical design}
-**Source:** `{report_path}`
-{If present} **Severity Note:** {copied from audit report}
+**Audit Finding:** `{finding_id}` **Dimension:** {coherence/completeness/clarity/scope/actionability/testability/value/technical design} **Source:** `{report_path}` {If present} **Severity Note:** {copied from audit report}
 
 ## Context
 
-{Quotes from the spec showing the issue}
-{Which section(s) need revision}
+{Quotes from the spec showing the issue} {Which section(s) need revision}
 
 ## Scope
 
 ### In Scope
+
 - Revise spec per chosen option: {selected option name}
 
 ### Out of Scope
+
 - Code implementation changes
 - Revising unrelated spec sections
 
@@ -347,30 +363,36 @@ Issue creation:
 ## Technical Notes
 
 ### Selected Option
+
 {chosen option details — what to add, rewrite, or restructure}
 
 ### Alternatives Considered
+
 - Option A: {short summary}
 - Option B: {short summary}
 - Option C: {short summary if applicable}
 
 ### References
+
 - Spec audit report: `{report_path}` > `{finding_id}`
 - Spec section: `{spec_file}` > {section heading}
 ```
 
 4. Add row to `siw/OPEN_ISSUES_OVERVIEW.md` with status `READY`.
    - Default to the 6-column SIW schema:
+
      ```markdown
      **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination | Mixed — see issue files}
 
      | G-{NNN} | {Title} | READY | {Size} | {Priority} | Audit Report |
      ```
+
    - If `## General` already has a section-level `**Parallelization:**` line, treat it as a roll-up summary for the whole section rather than a per-issue mirror.
    - Recompute it from all real `G-*` issue files after adding the new issue: if every issue shares the same section-level category/gating note, keep that shared summary; otherwise set it to `Mixed — see issue files for exact guidance`.
    - If the General section is still in its empty placeholder state (`_None_` row / no real issues yet), replace the default summary from `siw:init` with the first real issue's category.
    - If an existing legacy General section has no `**Parallelization:**` line, preserve that absence instead of inserting one.
    - If the existing General section still uses the legacy 5-column schema, preserve that layout for compatibility instead of mixing schemas.
+
 5. Append to `siw/LOG.md` under current progress with:
    - finding id
    - selected option
@@ -379,6 +401,7 @@ Issue creation:
 ## Step 6: Continue Until Done
 
 After creating the SIW issue for one finding:
+
 1. Send a standalone completion message for that finding to the user
 2. **Return to Step 4** for the next finding in the queue
 3. In a separate subsequent message, present the next finding's full executive summary (Step 4.1) — do not skip or abbreviate
@@ -391,6 +414,7 @@ After creating the SIW issue for one finding:
 ## Step 7: Final Summary
 
 At the end, report:
+
 - Findings processed count
 - Issues created (`G-xxx` list)
 - Findings intentionally deferred

@@ -2,12 +2,12 @@
 
 ## Framework Configuration
 
-| Field | Value |
-|---|---|
-| **Framework** | {framework} |
-| **Test Runner** | {runner command} |
-| **File Naming** | {pattern, e.g., *.test.ts} |
-| **Directory** | {convention, e.g., co-located} |
+| Field           | Value                          |
+| --------------- | ------------------------------ |
+| **Framework**   | {framework}                    |
+| **Test Runner** | {runner command}               |
+| **File Naming** | {pattern, e.g., \*.test.ts}    |
+| **Directory**   | {convention, e.g., co-located} |
 
 ## Import Style
 
@@ -21,9 +21,7 @@
 {example structure: describe/it nesting or flat test() calls}
 ```
 
-**Nesting depth:** {1/2/3 levels}
-**Grouping by:** {function/feature/scenario}
-**Individual test keyword:** {it/test}
+**Nesting depth:** {1/2/3 levels} **Grouping by:** {function/feature/scenario} **Individual test keyword:** {it/test}
 
 ## Mocking Approach
 
@@ -31,8 +29,7 @@
 {example mock setup from existing tests}
 ```
 
-**Mock location:** {top of file / inline}
-**Mock reset:** {beforeEach / per-test / none}
+**Mock location:** {top of file / inline} **Mock reset:** {beforeEach / per-test / none}
 
 ## Assertion Style
 
@@ -52,5 +49,4 @@
 
 ## Naming Convention
 
-**Pattern:** {should... / verb-first / snake_case}
-**Example:** `{example test name from existing tests}`
+**Pattern:** {should... / verb-first / snake_case} **Example:** `{example test name from existing tests}`

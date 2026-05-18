@@ -5,15 +5,17 @@
 ## 1.1 Git Repository Check
 
 ```bash
-git rev-parse --is-inside-work-tree 2>/dev/null
+git rev-parse --is-inside-work-tree 2> /dev/null
 ```
 
 **If this fails:**
+
 ```
 Error: Not inside a git repository.
 
 Navigate to a git project directory and run /kramme:pr:create again.
 ```
+
 **Action:** Abort immediately.
 
 ## 1.2 Merge Conflict Check
@@ -23,6 +25,7 @@ git ls-files -u
 ```
 
 **If output is non-empty (conflicts exist):**
+
 ```
 Error: Merge conflict detected.
 
@@ -36,16 +39,19 @@ Please resolve these conflicts before creating a PR:
 
 Then run /kramme:pr:create again.
 ```
+
 **Action:** Abort.
 
 ## 1.3 Rebase/Merge In Progress Check
 
 Check for these paths:
+
 - `.git/rebase-merge/`
 - `.git/rebase-apply/`
 - `.git/MERGE_HEAD`
 
 **If any exist:**
+
 ```
 Error: [Rebase/Merge] operation in progress.
 
@@ -54,15 +60,17 @@ To abort: git [rebase/merge] --abort
 
 Resolve the in-progress operation, then run /kramme:pr:create again.
 ```
+
 **Action:** Abort.
 
 ## 1.4 Remote Configuration Check
 
 ```bash
-git remote get-url origin 2>/dev/null
+git remote get-url origin 2> /dev/null
 ```
 
 **If no remote configured:**
+
 ```
 Error: No remote 'origin' configured.
 
@@ -71,4 +79,5 @@ Add a remote first:
 
 Then run /kramme:pr:create again.
 ```
+
 **Action:** Abort.

@@ -11,6 +11,7 @@ user-invocable: true
 Cluster validated findings from reviews, audits, or scans into PR-sized themes. Generate a self-contained implementation plan for each theme and an index linking them all.
 
 **Accepted sources**
+
 - An auto-detected overview/audit report in the project root (see Phase 1)
 - A path to any markdown file containing findings (non-standard names are fine)
 - Inline findings text pasted as the argument
@@ -30,6 +31,7 @@ Cluster validated findings from reviews, audits, or scans into PR-sized themes. 
      - headings like `Finding`, `Issue`, `## 1.`
 
      If the argument is a plain sentence with none of these markers, ask the user to clarify whether it is a path, inline findings, or a description of intent.
+
    - If empty, auto-detect by checking for these common findings artifacts in the project root (use the first one found):
      1. `REVIEW_OVERVIEW.md`
      2. `REFACTOR_OPPORTUNITIES_OVERVIEW.md`
@@ -75,12 +77,12 @@ Group findings into PR-sized themes. A theme is a set of findings that should be
 
    Apply this sizing grammar when sizing themes:
 
-   | Size | Scope |
-   |---|---|
-   | XS | 1 file, single finding |
-   | S | 1–2 files |
-   | M | 3–5 files |
-   | L | 6–8 files |
+   | Size   | Scope                              |
+   | ------ | ---------------------------------- |
+   | XS     | 1 file, single finding             |
+   | S      | 1–2 files                          |
+   | M      | 3–5 files                          |
+   | L      | 6–8 files                          |
    | **XL** | **9+ files — split into a series** |
 
    Aim for S/M themes. Any theme that sizes XL MUST split before generating plans.

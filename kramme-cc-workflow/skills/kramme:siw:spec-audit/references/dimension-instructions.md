@@ -19,6 +19,7 @@ Check for:
 5. **Scope consistency.** Does the in-scope section align with what the tasks actually cover? Are out-of-scope items accidentally included in tasks?
 
 **Severity guide:**
+
 - Critical: Direct contradiction between requirements
 - Major: Terminology inconsistency that could cause confusion during implementation
 - Minor: Cosmetic inconsistencies (formatting, numbering)
@@ -44,6 +45,7 @@ Check for:
 7. **Missing non-functional requirements.** Performance, security, accessibility, backwards compatibility — are relevant ones addressed?
 
 **Severity guide:**
+
 - Critical: Missing core requirements, entire undefined subsystems
 - Major: Missing edge cases for important flows, missing acceptance criteria on complex tasks
 - Minor: Missing nice-to-have sections, minor gaps in coverage
@@ -69,6 +71,7 @@ Check for:
 7. **Conflicting levels of detail.** Some sections highly detailed while others are hand-wavy.
 
 **Severity guide:**
+
 - Critical: Ambiguity that blocks implementation (can't start without guessing)
 - Major: Ambiguity that risks wrong implementation
 - Minor: Cosmetic confusion, minor vagueness in non-critical areas
@@ -92,6 +95,7 @@ Check for:
 6. **Task-to-objective alignment.** Do the defined tasks collectively achieve the stated objectives? Are there objectives with no corresponding tasks?
 
 **Severity guide:**
+
 - Critical: No scope definition at all, objectives don't match tasks
 - Major: Implicit inclusions that could derail timeline, unclear phase boundaries
 - Minor: Missing out-of-scope declarations for unlikely features
@@ -117,6 +121,7 @@ Check for:
 7. **Ordering and dependency clarity.** Is it clear which tasks must be done before others? Are blocking dependencies explicit?
 
 **Severity guide:**
+
 - Critical: Tasks so vague they can't be started
 - Major: Missing acceptance criteria, tasks too large to estimate
 - Minor: Minor dependency gaps, slightly over-granular tasks
@@ -140,6 +145,7 @@ Check for:
 6. **Unverifiable constraints.** Non-functional requirements without specific thresholds or test methods.
 
 **Severity guide:**
+
 - Critical: Core success criteria that can't be verified
 - Major: Important requirements with no way to test
 - Minor: Nice-to-have verifications, minor subjective criteria
@@ -163,6 +169,7 @@ Check for:
 6. **Missing context.** Why now? What changed that makes this work necessary?
 
 **Severity guide:**
+
 - Critical: No problem statement, solution doesn't match stated problem
 - Major: No alternatives considered, no success metrics
 - Minor: Weak justification, missing minor context
@@ -188,6 +195,7 @@ Check for:
 6. **Technology choice justification.** Are technology selections explained? Are there known limitations that affect the design?
 
 **Severity guide:**
+
 - Critical: Fundamental design flaws (circular dependencies, missing entities for core flows, no auth on sensitive endpoints)
 - Major: Design gaps that will require rework (missing error contracts, unclear component boundaries, scalability blind spots)
 - Minor: Suboptimal choices, missing non-critical constraints

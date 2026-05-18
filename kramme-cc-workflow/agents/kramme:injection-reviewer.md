@@ -42,6 +42,7 @@ Follow each user-controlled value through the code to these sink categories:
 **Code evaluation sinks** -- eval, Function constructor, setTimeout/setInterval with strings, dynamic import paths
 
 For each trace, note:
+
 - The source (where user data enters)
 - Any transformations applied (encoding, validation, sanitization)
 - The sink (where the data is used dangerously)
@@ -50,6 +51,7 @@ For each trace, note:
 ### 3. Verify Each Finding
 
 Before reporting, confirm:
+
 - The sanitization you expect is actually missing (read the middleware chain, check framework config)
 - The code path is reachable (not dead code, not behind a feature flag that's off)
 - The input actually reaches the sink (follow the data flow, don't assume)

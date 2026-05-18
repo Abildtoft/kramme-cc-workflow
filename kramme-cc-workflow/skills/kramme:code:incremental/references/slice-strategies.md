@@ -11,6 +11,7 @@ The smallest end-to-end path through the stack — DB, API, UI — that delivers
 **Example**: "Display the user's email on the profile page."
 
 A single vertical slice:
+
 - Add a `SELECT email FROM users WHERE id = ?` to the existing profile query.
 - Extend the `/profile` endpoint response type to include `email`.
 - Render `{profile.email}` on the profile page.

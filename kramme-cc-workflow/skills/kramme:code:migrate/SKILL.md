@@ -120,6 +120,7 @@ For each breaking change from Step 2:
 For large codebases (50+ affected files), use the `Task` tool with `subagent_type: Explore` to parallelize analysis.
 
 4. **Impact summary:**
+
 ```
 Breaking changes applicable: {N} of {total from guide}
 Files affected: {N}
@@ -137,37 +138,44 @@ Read the template from `assets/migration-plan.md`.
 Create a phased plan:
 
 **Phase 0: Pre-Migration** (Quick)
+
 - Create migration branch from current HEAD
 - Run `/kramme:deps:audit` if available
 - Capture test baseline (pass/fail counts)
 - Verification: branch exists, baseline captured
 
 **Phase 1: Automated Migration — Codemods** (Quick to Moderate)
+
 - List and run applicable codemods
 - Review codemod output for correctness
 - Verification: build compiles (type errors OK)
 
 **Phase 2: Breaking Changes — Manual Fixes** (Moderate to Significant)
+
 - Group by area (imports, APIs, types, config)
 - Apply fixes in dependency order (shared code first)
 - Verification: no references to removed/renamed APIs
 
 **Phase 3: Configuration Updates** (Quick)
+
 - Update framework and build tool config files
 - Update CI/CD pipeline if needed
 - Update runtime version constraints
 - Verification: configuration is valid
 
 **Phase 4: Fix Compilation and Type Errors** (Moderate)
+
 - Run build, collect errors, fix systematically
 - Verification: clean build
 
 **Phase 5: Fix Tests** (Moderate to Significant)
+
 - Run full test suite, fix broken tests
 - Distinguish migration-caused vs. pre-existing failures
 - Verification: pass rate matches or exceeds baseline
 
 **Phase 6: Cleanup** (Quick)
+
 - Remove compatibility shims and polyfills
 - Remove migration TODOs
 - Run linter with new rule set
@@ -205,6 +213,7 @@ options:
 For each phase:
 
 1. **Announce:**
+
    ```
    ── Phase {N}: {Name} ──────────────────────
    Effort: {estimate}
@@ -284,7 +293,7 @@ Next Steps:
 ## Error Handling
 
 | Scenario | Action |
-|---|---|
+| --- | --- |
 | No migration guide found | Proceed with codebase analysis, warn about manual research |
 | Target version doesn't exist | Abort: `Version {target} not found for {framework}` |
 | Current version not detected | If `AUTO_MODE=true`, abort with a clear error. Otherwise AskUserQuestion for current version |

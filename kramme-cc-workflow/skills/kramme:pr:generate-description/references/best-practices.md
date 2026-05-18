@@ -19,8 +19,8 @@
 - **NEVER** use excessive praise or superlatives ("amazing", "excellent", "great improvement")
 - **NEVER** argue for why changes are good - describe what was done and why, without advocacy
 - **PREFER** factual descriptions over persuasive language
-   - **NEVER** write sentences like "This brilliant solution elegantly solves the performance problem"
-   - **ALWAYS** write sentences like "Reduces query time by caching frequently accessed data"
+  - **NEVER** write sentences like "This brilliant solution elegantly solves the performance problem"
+  - **ALWAYS** write sentences like "Reduces query time by caching frequently accessed data"
 - **NEVER** make up statistics or performance claims without evidence
 
 ## Change Summary Block

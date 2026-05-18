@@ -10,7 +10,7 @@ Verify all items before finalizing:
 - [ ] Verification checklist fully checked off
 - [ ] All success criteria met
 - [ ] Spec reflects actual execution (not original plan if it changed)
-- [ ] No references to siw/OPEN_ISSUES_OVERVIEW.md, siw/issues/*.md, or siw/LOG.md
+- [ ] No references to siw/OPEN_ISSUES_OVERVIEW.md, siw/issues/\*.md, or siw/LOG.md
 
 ### No deliverable references to temporary documents
 

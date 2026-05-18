@@ -9,22 +9,24 @@ Use for flowcharts, sequence diagrams, ER diagrams, state machines, mind maps, c
 Do NOT use for dashboards — CSS Grid card layouts with Chart.js look better for those. Data tables use `<table>` elements.
 
 **CDN:**
+
 ```html
 <script type="module">
-  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 
-  mermaid.initialize({ startOnLoad: true, /* ... */ });
+  mermaid.initialize({ startOnLoad: true /* ... */ });
 </script>
 ```
 
 **With ELK layout** (required for `layout: 'elk'` — it's a separate package, not bundled in core):
+
 ```html
 <script type="module">
-  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
-  import elkLayouts from 'https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk/dist/mermaid-layout-elk.esm.min.mjs';
+  import elkLayouts from "https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk/dist/mermaid-layout-elk.esm.min.mjs";
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 
   mermaid.registerLayoutLoaders(elkLayouts);
-  mermaid.initialize({ startOnLoad: true, layout: 'elk', /* ... */ });
+  mermaid.initialize({ startOnLoad: true, layout: "elk" /* ... */ });
 </script>
 ```
 
@@ -36,35 +38,35 @@ Always use `theme: 'base'` — it's the only theme where all `themeVariables` ar
 
 ```html
 <script type="module">
-  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 
-  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   mermaid.initialize({
     startOnLoad: true,
-    theme: 'base',
-    look: 'classic',
+    theme: "base",
+    look: "classic",
     themeVariables: {
       // Background and surfaces
-      primaryColor: isDark ? '#2d1b69' : '#ede9fe',
-      primaryBorderColor: isDark ? '#7c3aed' : '#8b5cf6',
-      primaryTextColor: isDark ? '#e6edf3' : '#1a1a2e',
-      secondaryColor: isDark ? '#1c2333' : '#f0fdf4',
-      secondaryBorderColor: isDark ? '#059669' : '#16a34a',
-      secondaryTextColor: isDark ? '#e6edf3' : '#1a1a2e',
-      tertiaryColor: isDark ? '#27201a' : '#fef3c7',
-      tertiaryBorderColor: isDark ? '#d97706' : '#f59e0b',
-      tertiaryTextColor: isDark ? '#e6edf3' : '#1a1a2e',
+      primaryColor: isDark ? "#2d1b69" : "#ede9fe",
+      primaryBorderColor: isDark ? "#7c3aed" : "#8b5cf6",
+      primaryTextColor: isDark ? "#e6edf3" : "#1a1a2e",
+      secondaryColor: isDark ? "#1c2333" : "#f0fdf4",
+      secondaryBorderColor: isDark ? "#059669" : "#16a34a",
+      secondaryTextColor: isDark ? "#e6edf3" : "#1a1a2e",
+      tertiaryColor: isDark ? "#27201a" : "#fef3c7",
+      tertiaryBorderColor: isDark ? "#d97706" : "#f59e0b",
+      tertiaryTextColor: isDark ? "#e6edf3" : "#1a1a2e",
       // Lines and edges
-      lineColor: isDark ? '#6b7280' : '#9ca3af',
+      lineColor: isDark ? "#6b7280" : "#9ca3af",
       // Text
       // Global default — CSS overrides on .nodeLabel/.edgeLabel win when present
-      fontSize: '16px',
-      fontFamily: 'var(--font-body)',
+      fontSize: "16px",
+      fontFamily: "var(--font-body)",
       // Notes and labels
-      noteBkgColor: isDark ? '#1c2333' : '#fefce8',
-      noteTextColor: isDark ? '#e6edf3' : '#1a1a2e',
-      noteBorderColor: isDark ? '#fbbf24' : '#d97706',
-    }
+      noteBkgColor: isDark ? "#1c2333" : "#fefce8",
+      noteTextColor: isDark ? "#e6edf3" : "#1a1a2e",
+      noteBorderColor: isDark ? "#fbbf24" : "#d97706",
+    },
   });
 </script>
 ```
@@ -75,21 +77,24 @@ Add `look: 'handDrawn'` for a sketchy, whiteboard-style aesthetic. Combines well
 
 ```html
 <script type="module">
-  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
-  import elkLayouts from 'https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk/dist/mermaid-layout-elk.esm.min.mjs';
+  import elkLayouts from "https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk/dist/mermaid-layout-elk.esm.min.mjs";
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 
   mermaid.registerLayoutLoaders(elkLayouts);
   mermaid.initialize({
     startOnLoad: true,
-    theme: 'base',
-    look: 'handDrawn',
-    layout: 'elk',
-    themeVariables: { /* same as above */ }
+    theme: "base",
+    look: "handDrawn",
+    layout: "elk",
+    themeVariables: {
+      /* same as above */
+    },
   });
 </script>
 ```
 
 Or set it per-diagram via frontmatter:
+
 ```
 ---
 config:
@@ -122,9 +127,16 @@ Mermaid renders SVG. Override its classes for pixel-perfect control that `themeV
    but any classDef that sets color: will hardcode a single value that
    breaks in the opposite color scheme. Fix: never set color: in classDef,
    and always include these CSS overrides. */
-.mermaid .nodeLabel { color: var(--text) !important; }
-.mermaid .edgeLabel { color: var(--text-dim) !important; background-color: var(--bg) !important; }
-.mermaid .edgeLabel rect { fill: var(--bg) !important; }
+.mermaid .nodeLabel {
+  color: var(--text) !important;
+}
+.mermaid .edgeLabel {
+  color: var(--text-dim) !important;
+  background-color: var(--bg) !important;
+}
+.mermaid .edgeLabel rect {
+  fill: var(--bg) !important;
+}
 
 /* Node shapes */
 .mermaid .node rect,
@@ -190,6 +202,7 @@ Avoid opaque light fills like `fill:#fefce8` — they render as bright boxes in 
 ### stateDiagram-v2 Label Limitations
 
 State diagram transition labels have a strict parser. Avoid:
+
 - `<br/>` — only works in flowcharts; causes a parse error in state diagrams
 - Parentheses in labels — `cancel()` can confuse the parser
 - Multiple colons — the first `:` is the label delimiter; extra colons in the label text may break parsing
@@ -227,12 +240,12 @@ Auth --> API
 
 **Arrow styles for semantic meaning:**
 
-| Arrow | Meaning | Use for |
-|-------|---------|---------|
-| `-->` | Solid | Primary flow |
-| `-.->` | Dotted | Optional, async, or fallback paths |
-| `==>` | Thick | Critical or highlighted path |
-| `--x` | Cross | Rejected or blocked |
+| Arrow          | Meaning | Use for                              |
+| -------------- | ------- | ------------------------------------ |
+| `-->`          | Solid   | Primary flow                         |
+| `-.->`         | Dotted  | Optional, async, or fallback paths   |
+| `==>`          | Thick   | Critical or highlighted path         |
+| `--x`          | Cross   | Rejected or blocked                  |
 | `-->\|label\|` | Labeled | Decision branches, data descriptions |
 
 **Escape pipes in labels.** If a label contains a literal `|`, use `#124;` (HTML entity) or rephrase to avoid it — pipes delimit edge labels in flowcharts.
@@ -242,6 +255,7 @@ Auth --> API
 ### Diagram Type Examples
 
 **Flowchart with decisions:**
+
 ```html
 <pre class="mermaid">
 graph TD
@@ -257,6 +271,7 @@ graph TD
 ```
 
 **Sequence diagram:**
+
 ```html
 <pre class="mermaid">
 sequenceDiagram
@@ -275,6 +290,7 @@ sequenceDiagram
 ```
 
 **ER diagram:**
+
 ```html
 <pre class="mermaid">
 erDiagram
@@ -289,6 +305,7 @@ erDiagram
 ```
 
 **State diagram:**
+
 ```html
 <pre class="mermaid">
 stateDiagram-v2
@@ -303,6 +320,7 @@ stateDiagram-v2
 ```
 
 **Mind map:**
+
 ```html
 <pre class="mermaid">
 mindmap
@@ -327,7 +345,7 @@ mindmap
 Mermaid initializes once — it can't reactively switch themes. Read the preference at load time inside your `<script type="module">`:
 
 ```javascript
-const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 // Use isDark to pick light or dark values in themeVariables
 ```
 
@@ -343,24 +361,30 @@ Use for bar charts, line charts, pie/doughnut charts, radar charts, and other da
 <canvas id="myChart" width="600" height="300"></canvas>
 
 <script>
-  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const textColor = isDark ? '#8b949e' : '#6b7280';
-  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-  const fontFamily = getComputedStyle(document.documentElement)
-    .getPropertyValue('--font-body').trim() || 'system-ui, sans-serif';
+  const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const textColor = isDark ? "#8b949e" : "#6b7280";
+  const gridColor = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+  const fontFamily =
+    getComputedStyle(document.documentElement)
+      .getPropertyValue("--font-body")
+      .trim() || "system-ui, sans-serif";
 
-  new Chart(document.getElementById('myChart'), {
-    type: 'bar',
+  new Chart(document.getElementById("myChart"), {
+    type: "bar",
     data: {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
-      datasets: [{
-        label: 'Feedback Items',
-        data: [45, 62, 78, 91, 120],
-        backgroundColor: isDark ? 'rgba(129, 140, 248, 0.6)' : 'rgba(79, 70, 229, 0.6)',
-        borderColor: isDark ? '#818cf8' : '#4f46e5',
-        borderWidth: 1,
-        borderRadius: 4,
-      }]
+      labels: ["Jan", "Feb", "Mar", "Apr", "May"],
+      datasets: [
+        {
+          label: "Feedback Items",
+          data: [45, 62, 78, 91, 120],
+          backgroundColor: isDark
+            ? "rgba(129, 140, 248, 0.6)"
+            : "rgba(79, 70, 229, 0.6)",
+          borderColor: isDark ? "#818cf8" : "#4f46e5",
+          borderWidth: 1,
+          borderRadius: 4,
+        },
+      ],
     },
     options: {
       responsive: true,
@@ -368,15 +392,22 @@ Use for bar charts, line charts, pie/doughnut charts, radar charts, and other da
         legend: { labels: { color: textColor, font: { family: fontFamily } } },
       },
       scales: {
-        x: { ticks: { color: textColor, font: { family: fontFamily } }, grid: { color: gridColor } },
-        y: { ticks: { color: textColor, font: { family: fontFamily } }, grid: { color: gridColor } },
-      }
-    }
+        x: {
+          ticks: { color: textColor, font: { family: fontFamily } },
+          grid: { color: gridColor },
+        },
+        y: {
+          ticks: { color: textColor, font: { family: fontFamily } },
+          grid: { color: gridColor },
+        },
+      },
+    },
   });
 </script>
 ```
 
 Wrap the canvas in a styled container:
+
 ```css
 .chart-container {
   background: var(--surface);
@@ -399,35 +430,39 @@ Use when a diagram has 10+ elements and you want a choreographed entrance sequen
 <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
 
 <script>
-  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const prefersReduced = window.matchMedia(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
 
   if (!prefersReduced) {
     anime({
-      targets: '.node',
+      targets: ".node",
       opacity: [0, 1],
       translateY: [20, 0],
       delay: anime.stagger(80, { start: 200 }),
-      easing: 'easeOutCubic',
+      easing: "easeOutCubic",
       duration: 500,
     });
 
     anime({
-      targets: '.connector path',
+      targets: ".connector path",
       strokeDashoffset: [anime.setDashoffset, 0],
-      easing: 'easeInOutCubic',
+      easing: "easeInOutCubic",
       duration: 800,
       delay: anime.stagger(150, { start: 600 }),
     });
 
-    document.querySelectorAll('[data-count]').forEach(el => {
+    document.querySelectorAll("[data-count]").forEach((el) => {
       anime({
         targets: { val: 0 },
         val: parseInt(el.dataset.count),
         round: 1,
         duration: 1200,
         delay: 400,
-        easing: 'easeOutExpo',
-        update: (anim) => { el.textContent = anim.animations[0].currentValue; }
+        easing: "easeOutExpo",
+        update: (anim) => {
+          el.textContent = anim.animations[0].currentValue;
+        },
       });
     });
   }
@@ -435,11 +470,16 @@ Use when a diagram has 10+ elements and you want a choreographed entrance sequen
 ```
 
 When using anime.js, set initial opacity to 0 in CSS so elements don't flash before the animation:
+
 ```css
-.node { opacity: 0; }
+.node {
+  opacity: 0;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .node { opacity: 1 !important; }
+  .node {
+    opacity: 1 !important;
+  }
 }
 ```
 
@@ -448,35 +488,39 @@ When using anime.js, set initial opacity to 0 in CSS so elements don't flash bef
 Always load with `display=swap` for fast rendering. Pick a distinctive pairing — body + mono at minimum, optionally a display font for the title.
 
 ```html
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@400;500;600;700&display=swap"
+  rel="stylesheet"
+/>
 ```
 
 Define as CSS variables for easy reference:
+
 ```css
 :root {
-  --font-body: 'Outfit', system-ui, sans-serif;
-  --font-mono: 'Space Mono', 'SF Mono', Consolas, monospace;
+  --font-body: "Outfit", system-ui, sans-serif;
+  --font-mono: "Space Mono", "SF Mono", Consolas, monospace;
 }
 ```
 
 **Font suggestions** (rotate — never use the same pairing twice in a row):
 
-| Body / Headings | Mono / Labels | Feel |
-|---|---|---|
-| Outfit | Space Mono | Clean geometric, modern |
-| Instrument Serif | JetBrains Mono | Editorial, refined |
-| Sora | IBM Plex Mono | Technical, precise |
-| DM Sans | Fira Code | Friendly, developer |
-| Fraunces | Source Code Pro | Warm, distinctive |
-| Libre Franklin | Inconsolata | Classic, reliable |
-| Manrope | Martian Mono | Soft, contemporary |
-| Playfair Display | Roboto Mono | Elegant contrast |
-| Bricolage Grotesque | Fragment Mono | Bold, characterful |
-| Geist | Geist Mono | Vercel-inspired, sharp |
-| Crimson Pro | Noto Sans Mono | Scholarly, serious |
-| Red Hat Display | Red Hat Mono | Cohesive family |
-| Plus Jakarta Sans | Azeret Mono | Rounded, approachable |
+| Body / Headings     | Mono / Labels   | Feel                    |
+| ------------------- | --------------- | ----------------------- |
+| Outfit              | Space Mono      | Clean geometric, modern |
+| Instrument Serif    | JetBrains Mono  | Editorial, refined      |
+| Sora                | IBM Plex Mono   | Technical, precise      |
+| DM Sans             | Fira Code       | Friendly, developer     |
+| Fraunces            | Source Code Pro | Warm, distinctive       |
+| Libre Franklin      | Inconsolata     | Classic, reliable       |
+| Manrope             | Martian Mono    | Soft, contemporary      |
+| Playfair Display    | Roboto Mono     | Elegant contrast        |
+| Bricolage Grotesque | Fragment Mono   | Bold, characterful      |
+| Geist               | Geist Mono      | Vercel-inspired, sharp  |
+| Crimson Pro         | Noto Sans Mono  | Scholarly, serious      |
+| Red Hat Display     | Red Hat Mono    | Cohesive family         |
+| Plus Jakarta Sans   | Azeret Mono     | Rounded, approachable   |
 
 Never default to Inter, Roboto, Arial, or system-ui as the primary choice.

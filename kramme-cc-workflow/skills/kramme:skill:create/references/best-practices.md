@@ -57,6 +57,7 @@ Keep the context window lean by loading information only when needed.
 - **Relative paths with forward slashes** regardless of OS.
 
 **Do not create:**
+
 - Documentation files (project overviews, changelogs) inside skill directories
 - Redundant logic the agent already handles reliably
 - Library code — skills should reference existing tools or contain tiny scripts
@@ -125,11 +126,12 @@ Test how the agent interprets the description in isolation:
 > I am building an Agent Skill. Agents decide whether to load this skill based entirely on the YAML metadata below.
 >
 > ```yaml
-> name: {skill-name}
-> description: {skill-description}
+> name: { skill-name }
+> description: { skill-description }
 > ```
 >
 > Based strictly on this description:
+>
 > 1. Generate 3 realistic user prompts that should trigger this skill.
 > 2. Generate 3 similar-sounding prompts that should NOT trigger this skill.
 > 3. Critique the description: Is it too broad? Suggest an optimized rewrite.
@@ -146,8 +148,8 @@ Ensure instructions are deterministic and don't force hallucination:
 >
 > {SKILL.md contents}
 >
-> Act as an autonomous agent that just triggered this skill. Simulate execution step-by-step.
-> For each step, write your internal monologue:
+> Act as an autonomous agent that just triggered this skill. Simulate execution step-by-step. For each step, write your internal monologue:
+>
 > 1. What exactly are you doing?
 > 2. Which file/script are you reading or running?
 > 3. Flag any Execution Blockers where you must guess because instructions are ambiguous.
@@ -156,9 +158,8 @@ Ensure instructions are deterministic and don't force hallucination:
 
 Force the LLM to find vulnerabilities:
 
-> Switch roles. Act as a ruthless QA tester. Your goal is to break this skill.
-> Ask 3-5 highly specific questions about edge cases, failure states, or missing fallbacks.
-> Focus on:
+> Switch roles. Act as a ruthless QA tester. Your goal is to break this skill. Ask 3-5 highly specific questions about edge cases, failure states, or missing fallbacks. Focus on:
+>
 > - What happens when scripts fail?
 > - What if the user's environment differs from assumptions?
 > - Are there implicit assumptions about tooling or configuration?
@@ -170,6 +171,7 @@ Force the LLM to find vulnerabilities:
 Enforce progressive disclosure and shrink token footprint:
 
 > Based on the edge-case answers, rewrite the SKILL.md enforcing Progressive Disclosure:
+>
 > 1. Keep SKILL.md as high-level steps using third-person imperative commands.
 > 2. Move dense rules, large templates, or complex schemas to `references/` or `assets/` files.
 > 3. Replace removed content with explicit commands to read the new file when needed.

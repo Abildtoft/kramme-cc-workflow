@@ -14,6 +14,7 @@ If you need to preserve or archive handoff artifacts such as `siw/SPEC_STRENGTHE
 ## Target Files
 
 **Temporary files (always deleted):**
+
 - `siw/LOG.md` - Session progress and decisions
 - `siw/OPEN_ISSUES_OVERVIEW.md` - Issue tracking table
 - `siw/AUDIT_IMPLEMENTATION_REPORT.md` - Spec compliance audit report
@@ -24,6 +25,7 @@ If you need to preserve or archive handoff artifacts such as `siw/SPEC_STRENGTHE
 - `siw/qa-intake/` - Directory containing QA intake parent summaries
 
 **Permanent files (optional, requires confirmation):**
+
 - Specification files in `siw/` (`siw/*SPEC*.md`, `siw/*SPECIFICATION*.md`, `siw/*PLAN*.md`, `siw/*DESIGN*.md`), excluding `siw/SPEC_STRENGTHENING_PLAN.md` and `siw/DISCOVERY_BRIEF.md`
 
 ## Workflow
@@ -33,14 +35,15 @@ If you need to preserve or archive handoff artifacts such as `siw/SPEC_STRENGTHE
 Check which SIW files exist:
 
 ```bash
-ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues/ siw/qa-intake/ 2>/dev/null
+ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues/ siw/qa-intake/ 2> /dev/null
 find siw -maxdepth 1 -type f \( -name "*SPEC*.md" -o -name "*SPECIFICATION*.md" -o -name "*PLAN*.md" -o -name "*DESIGN*.md" \) \
   ! -name "SPEC_STRENGTHENING_PLAN.md" \
   ! -name "DISCOVERY_BRIEF.md" \
-  2>/dev/null
+  2> /dev/null
 ```
 
 **If no SIW files found:**
+
 ```
 No SIW workflow files found in this directory.
 
@@ -55,6 +58,7 @@ Expected files:
 - siw/qa-intake/ directory
 - Specification files in siw/ (e.g., siw/FEATURE_SPECIFICATION.md)
 ```
+
 **Action:** Stop.
 
 ### Step 2: Present Found Files
@@ -100,12 +104,12 @@ Use `trash` command to move files to system Trash (recoverable):
 
 ```bash
 # Temporary files
-trash siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md 2>/dev/null
-trash -r siw/issues/ 2>/dev/null
-trash -r siw/qa-intake/ 2>/dev/null
+trash siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md 2> /dev/null
+trash -r siw/issues/ 2> /dev/null
+trash -r siw/qa-intake/ 2> /dev/null
 
 # If "All SIW files" selected
-trash siw/{spec_filename} 2>/dev/null
+trash siw/{spec_filename} 2> /dev/null
 ```
 
 **If `trash` is not available**, fall back to `rm` with warning:

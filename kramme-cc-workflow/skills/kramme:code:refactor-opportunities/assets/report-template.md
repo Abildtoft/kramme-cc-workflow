@@ -1,9 +1,6 @@
 # Refactor Opportunities Report
 
-**Project:** {{project}}
-**Date:** {{date}}
-**Scope:** {{scope description}}
-**Files scanned:** {{count}}
+**Project:** {{project}} **Date:** {{date}} **Scope:** {{scope description}} **Files scanned:** {{count}}
 
 ---
 
@@ -17,21 +14,21 @@
 
 ## High Severity
 
-| # | Category | Location | Description | Suggested Fix |
-|---|----------|----------|-------------|---------------|
-| 1 | {{cat}}  | {{file:line}} | {{desc}} | {{fix}} |
+| #   | Category | Location      | Description | Suggested Fix |
+| --- | -------- | ------------- | ----------- | ------------- |
+| 1   | {{cat}}  | {{file:line}} | {{desc}}    | {{fix}}       |
 
 ## Medium Severity
 
-| # | Category | Location | Description | Suggested Fix |
-|---|----------|----------|-------------|---------------|
-| 1 | {{cat}}  | {{file:line}} | {{desc}} | {{fix}} |
+| #   | Category | Location      | Description | Suggested Fix |
+| --- | -------- | ------------- | ----------- | ------------- |
+| 1   | {{cat}}  | {{file:line}} | {{desc}}    | {{fix}}       |
 
 ## Low Severity
 
-| # | Category | Location | Description | Suggested Fix |
-|---|----------|----------|-------------|---------------|
-| 1 | {{cat}}  | {{file:line}} | {{desc}} | {{fix}} |
+| #   | Category | Location      | Description | Suggested Fix |
+| --- | -------- | ------------- | ----------- | ------------- |
+| 1   | {{cat}}  | {{file:line}} | {{desc}}    | {{fix}}       |
 
 ---
 
@@ -39,9 +36,9 @@
 
 {{Group findings that share a root cause or would benefit from a single coordinated fix. For each theme, list the finding numbers it covers and the combined line count. Mark any theme whose combined blast radius exceeds 500 lines as an **automation candidate** (codemod / AST transform / batch refactor).}}
 
-| Theme | Findings | Combined lines | Automation candidate? |
-|-------|----------|----------------|-----------------------|
-| {{theme}} | {{#1, #2, …}} | {{count}} | {{yes / no}} |
+| Theme     | Findings      | Combined lines | Automation candidate? |
+| --------- | ------------- | -------------- | --------------------- |
+| {{theme}} | {{#1, #2, …}} | {{count}}      | {{yes / no}}          |
 
 ## Recommended Refactor Order
 

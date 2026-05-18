@@ -7,7 +7,6 @@ Three workflow options based on user's selected approach.
 **Goal:** Create detailed plan, implement with user verification at each step.
 
 1. **Create Implementation Plan**
-
    - Break requirements into discrete tasks
    - Identify dependencies between tasks
    - Consider using Structured Implementation Workflow (SIW) for complex issues - use `/kramme:siw:init` to set up
@@ -35,7 +34,6 @@ Three workflow options based on user's selected approach.
 **Goal:** Prepare everything, let user drive implementation.
 
 1. **Create Minimal Context**
-
    - Branch is already created (Step 2)
    - Create todo list from extracted requirements
 
@@ -74,26 +72,22 @@ Three workflow options based on user's selected approach.
 **Goal:** Complete implementation with minimal interaction, verify at end.
 
 1. **Deep Codebase Analysis**
-
    - Search for related files using Glob and Grep
    - Read similar implementations for patterns
    - Identify all files that need modification
    - Understand testing patterns in the codebase
 
 2. **Create Comprehensive Plan**
-
    - Use TodoWrite with detailed task breakdown
    - Include exploration, implementation, testing, and verification
 
 3. **Implement Iteratively**
-
    - Work through all tasks
    - Make implementation decisions based on existing patterns
    - Run tests after each significant change
    - Document decisions in commit messages
 
 4. **Verification Phase**
-
    - Invoke `kramme:verify:run` skill for full verification
    - Fix any issues found
    - Ensure all acceptance criteria are met

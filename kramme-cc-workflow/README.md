@@ -2,14 +2,13 @@
 
 A Claude Code plugin providing tooling for daily workflow tasks.
 
+<!-- prettier-ignore-start -->
 > [!IMPORTANT]
-> Thanks for checking this out. It is my personal workflow, built primarily for myself.
-> I experiment in the open and ship updates quickly, so skills may change or occasionally be removed.
-> Questions are always welcome. Feel free to fork, "steal" ideas, or jump straight to the [sources of inspiration](#attribution).
+> Thanks for checking this out. It is my personal workflow, built primarily for myself. I experiment in the open and ship updates quickly, so skills may change or occasionally be removed. Questions are always welcome. Feel free to fork, "steal" ideas, or jump straight to the [sources of inspiration](#attribution).
 
 > [!NOTE]
-> A meaningful part of this plugin's authoring workflow, browser/QA workflow, launch workflow, and output conventions is adapted from [Addy Osmani's `agent-skills`](https://github.com/addyosmani/agent-skills).
-> The [Attribution](#attribution) section calls out the specific skills and conventions that came from Addy's work.
+> A meaningful part of this plugin's authoring workflow, browser/QA workflow, launch workflow, and output conventions is adapted from [Addy Osmani's `agent-skills`](https://github.com/addyosmani/agent-skills). The [Attribution](#attribution) section calls out the specific skills and conventions that came from Addy's work.
+<!-- prettier-ignore-end -->
 
 ## Table of Contents
 
@@ -58,8 +57,7 @@ claude /plugin install /path/to/kramme-cc-workflow
 
 ### OpenCode + Codex (experimental)
 
-This repo includes a converter CLI (Node.js) that installs the plugin into OpenCode or Codex.
-Requires Node.js 18+. Use the plugin name from `.claude-plugin/marketplace.json` (here: `kramme-cc-workflow`).
+This repo includes a converter CLI (Node.js) that installs the plugin into OpenCode or Codex. Requires Node.js 18+. Use the plugin name from `.claude-plugin/marketplace.json` (here: `kramme-cc-workflow`).
 
 ```bash
 # OpenCode
@@ -88,8 +86,7 @@ Local dev from this repo:
 
 Helper scripts forward additional args to the converter (e.g., `--output`, `--codex-home`, `--also codex`).
 
-OpenCode output defaults to `~/.config/opencode` (XDG). Codex output defaults to `~/.codex` (`prompts/` and `skills/`).
-Both targets are experimental and may change as the formats evolve.
+OpenCode output defaults to `~/.config/opencode` (XDG). Codex output defaults to `~/.codex` (`prompts/` and `skills/`). Both targets are experimental and may change as the formats evolve.
 
 ### Updating
 
@@ -124,10 +121,10 @@ Three common workflows to try after installation:
 SIW (Structured Implementation Workflow) breaks non-trivial work into spec-driven issues tracked in local markdown files.
 
 ```bash
-/kramme:siw:init              # link or create a spec, set up siw/ directory
-/kramme:siw:generate-phases   # break spec into phased issues
-/kramme:siw:issue-implement   # implement one issue at a time
-/kramme:siw:close             # archive decisions and clean up
+/kramme:siw:init            # link or create a spec, set up siw/ directory
+/kramme:siw:generate-phases # break spec into phased issues
+/kramme:siw:issue-implement # implement one issue at a time
+/kramme:siw:close           # archive decisions and clean up
 ```
 
 See [docs/siw.md](docs/siw.md) for the full workflow reference.
@@ -135,29 +132,29 @@ See [docs/siw.md](docs/siw.md) for the full workflow reference.
 ### Review and ship a PR
 
 ```bash
-/kramme:pr:code-review        # run specialized review agents on your branch
-/kramme:pr:product-review     # deep product review of your changes
-/kramme:pr:resolve-review     # fix the findings
-/kramme:pr:finalize           # final readiness check before shipping
-/kramme:pr:create             # restructure commits and open the PR
-/kramme:pr:fix-ci             # iterate until CI passes
+/kramme:pr:code-review    # run specialized review agents on your branch
+/kramme:pr:product-review # deep product review of your changes
+/kramme:pr:resolve-review # fix the findings
+/kramme:pr:finalize       # final readiness check before shipping
+/kramme:pr:create         # restructure commits and open the PR
+/kramme:pr:fix-ci         # iterate until CI passes
 ```
 
 ### Inspect and test a live app
 
 ```bash
-/kramme:browse http://localhost:3000           # navigate, screenshot, inspect
-/kramme:qa http://localhost:3000               # structured QA with evidence
-/kramme:product:review http://localhost:3000    # whole-product experience review
+/kramme:browse http://localhost:3000         # navigate, screenshot, inspect
+/kramme:qa http://localhost:3000             # structured QA with evidence
+/kramme:product:review http://localhost:3000 # whole-product experience review
 ```
 
 ### Quick utilities
 
 ```bash
-/kramme:verify:run            # run tests, linting, and type checks for changed code
-/kramme:visual:diagram        # generate an HTML diagram from any explanation
-/kramme:docs:to-markdown      # convert PDF, Word, Excel, or images to Markdown
-/kramme:code:refactor-pass    # simplification pass on recent changes
+/kramme:verify:run         # run tests, linting, and type checks for changed code
+/kramme:visual:diagram     # generate an HTML diagram from any explanation
+/kramme:docs:to-markdown   # convert PDF, Word, Excel, or images to Markdown
+/kramme:code:refactor-pass # simplification pass on recent changes
 ```
 
 All skills are listed in the reference below. Background skills (commit messages, verification guards) run automatically.
@@ -176,11 +173,10 @@ All plugin functionality is delivered through skills. Skills can be user-invoked
 
 #### Structured Implementation Workflow (SIW)
 
-Local issue tracking and structured implementation planning using markdown files.
-See [docs/siw.md](docs/siw.md) for detailed workflow documentation.
+Local issue tracking and structured implementation planning using markdown files. See [docs/siw.md](docs/siw.md) for detailed workflow documentation.
 
 | Skill | Invocation | Arguments | Description |
-|-------|------------|-----------|-------------|
+| --- | --- | --- | --- |
 | `/kramme:siw:init` | User | `[spec-file(s) \| folder \| discover]` | Initialize structured implementation workflow documents in `siw/` (spec, siw/LOG.md, siw/issues).<br><br>Links existing specs without duplicating content, imports `siw/DISCOVERY_BRIEF.md`, or runs the discovery-brief flow with `discover` before initialization.<br><br>Sets up local issue tracking without requiring Linear. |
 | `/kramme:siw:continue` | User, Auto | — | Structured Implementation Workflow (SIW) entry point.<br><br>Triggers on "SIW", "structured workflow", or when siw/LOG.md and siw/OPEN_ISSUES_OVERVIEW.md files are detected.<br><br>Use `/kramme:siw:init` to set up. |
 | `/kramme:siw:discovery` | User | `[topic \| spec-file-path(s) \| 'siw'] [--apply] [--decision-tree]` | Run a deep discovery interview before writing a spec or to strengthen an existing one.<br><br>Greenfield runs write `siw/DISCOVERY_BRIEF.md`; refinement runs produce concrete improvement plans and can apply changes directly. Pass `--decision-tree` for depth-first resolution of tightly coupled decisions. |
@@ -204,7 +200,7 @@ See [docs/siw.md](docs/siw.md) for detailed workflow documentation.
 PR creation, review, iteration, and resolution.
 
 | Skill | Invocation | Arguments | Description |
-|-------|------------|-----------|-------------|
+| --- | --- | --- | --- |
 | `/kramme:pr:create` | User | `[--auto] [--draft]` | Create a clean PR with narrative-quality commits and comprehensive description.<br><br>Orchestrates branch setup, commit restructuring, and PR creation. Add `--auto` to use the recommended path end-to-end without confirmation prompts. Add `--draft` to create the PR as a draft (default is ready-for-review). |
 | `/kramme:pr:product-review` | User | `[--base <ref>] [--threshold 0-100] [--inline]` | Deep product review of branch and local changes.<br><br>Evaluates user-value alignment, flow completeness, missing states, copy/defaults, permission behavior, and adjacent-flow regressions.<br><br>Outputs `PRODUCT_REVIEW_OVERVIEW.md` by default. Add `--inline` to reply with the report instead. |
 | `/kramme:pr:code-review` | User | `[aspects] [--emphasize <dim>...] [--base <ref>] [parallel] [--team] [--inline]` | Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop). Reads the PR description as context and reports materially inaccurate title/body claims as findings.<br><br>Use `--emphasize` to promote selected review dimensions without downgrading other validated findings; emphasized dimensions must stay in the active review set.<br><br>Add `--team` for multi-agent reviewer cross-validation. Outputs `REVIEW_OVERVIEW.md` by default. Add `--inline` to reply with the report instead. |
@@ -223,7 +219,7 @@ PR creation, review, iteration, and resolution.
 Post-merge rollout, canary gates, and rollback discipline.
 
 | Skill | Invocation | Arguments | Description |
-|-------|------------|-----------|-------------|
+| --- | --- | --- | --- |
 | `/kramme:launch:rollout` | User | — | Execute a post-merge launch with staged rollout, numeric decision thresholds, and rollback triggers.<br><br>Sequence: staging → prod (flag OFF) → team enable → 5% canary → 25→50→100% gradual → full rollout + 1-week monitor + flag cleanup. Ports Addy Osmani's `shipping-and-launch` with the Rollout Decision Thresholds table as the load-bearing artifact. Emits `STACK DETECTED`, `UNVERIFIED`, `NOTICED BUT NOT TOUCHING`, `MISSING REQUIREMENT`, and `CONFUSION` markers. Complements `kramme:pr:finalize` (pre-merge readiness) with post-merge verification. |
 
 #### Browser & QA
@@ -231,7 +227,7 @@ Post-merge rollout, canary gates, and rollback discipline.
 Live product inspection and structured testing.
 
 | Skill | Invocation | Arguments | Description |
-|-------|------------|-----------|-------------|
+| --- | --- | --- | --- |
 | `/kramme:browse` | User | `<url> [--screenshot] [--console] [--network]` | Experimental.<br><br>Browser operator for live product inspection.<br><br>Detects available browser MCP tooling (claude-in-chrome, chrome-devtools, playwright) and provides consistent navigation, screenshot, interaction, and evidence capture. |
 | `/kramme:qa` | User | `<url> [quick\|diff-aware\|targeted <route>] [--base <ref>] [--regression] [--inline]` | Structured QA testing with evidence capture.<br><br>Runs smoke checks, diff-aware validation, or targeted route testing. Produces `QA_REPORT.md` by default. Add `--inline` to reply with the report instead. |
 | `/kramme:qa:intake` | User | `[optional starting context]` | Conversational QA intake session.<br><br>Listens to a user describe bugs from a manual QA pass and files durable Linear, SIW, or local tickets one issue at a time, with at most 2-3 light clarifying questions per issue and background codebase exploration for domain language. Companion to `/kramme:qa` (live-app testing) and `/kramme:linear:issue-define` (heavy single-issue refinement). |
@@ -242,7 +238,7 @@ Live product inspection and structured testing.
 Product critique and design-direction skills.
 
 | Skill | Invocation | Arguments | Description |
-|-------|------------|-----------|-------------|
+| --- | --- | --- | --- |
 | `/kramme:product:design-critic` | User | `[file-path, screenshot, URL, or product question]` | Experimental.<br><br>Critique or shape a product surface with strong design judgment.<br><br>Focuses on jobs-to-be-done, surface ownership, hierarchy, trust/governance surfacing, and competitor-informed pattern critique rather than generic visual polish. |
 
 #### Code Quality & Review
@@ -250,7 +246,7 @@ Product critique and design-direction skills.
 Code cleanup, refactoring, and bug/security review.
 
 | Skill | Invocation | Arguments | Description |
-|-------|------------|-----------|-------------|
+| --- | --- | --- | --- |
 | `/kramme:code:cleanup-ai` | User | — | Remove AI-generated code slop from a branch.<br><br>Uses `kramme:deslop-reviewer` agent to identify slop, then fixes the issues. |
 | `/kramme:code:migrate` | User | `<target e.g. 'Angular 19', 'React 19', 'Node 22'> [--auto]` | Experimental.<br><br>Plan and execute framework or library version migrations with phased upgrades and verification gates.<br><br>Uses the `kramme:code:source-driven` docs-grounding discipline for version-pinned migration guides and pairs with `kramme:code:deprecate` for removing the old path once callers have moved. Add `--auto` to execute the full plan without review checkpoints. |
 | `/kramme:code:rewrite-clean` | User | — | Scrap a working-but-mediocre fix and reimplement elegantly.<br><br>Applies Chesterton's Fence to the original before scrapping, emits a `SIMPLICITY CHECK` marker at design time, and rejects any rewrite that requires modifying tests to pass. Delegates verification to `kramme:verify:run`. |
@@ -273,7 +269,7 @@ Code cleanup, refactoring, and bug/security review.
 Bug investigation and root cause analysis.
 
 | Skill | Invocation | Arguments | Description |
-|-------|------------|-----------|-------------|
+| --- | --- | --- | --- |
 | `/kramme:debug:investigate` | User | `[bug description, error message, or issue reference]` | Structured bug investigation workflow: reproduce, isolate, trace root cause, and fix.<br><br>Use when debugging a bug, investigating an error, or tracking down a regression. |
 | `/kramme:debug:triage-to-issue` | User | `[bug description, error, or Linear/SIW ref] [--yes \| --auto]` | Experimental.<br><br>Triage a bug end-to-end into one implementation-ready ticket: orchestrate a root-cause investigation, design a TDD fix plan with RED-GREEN cycles, and file a refactor-durable Linear or local SIW issue in one mostly-hands-off pass.<br><br>Composes `kramme:debug:investigate`, `kramme:test:tdd` (Prove-It), and `kramme:linear:issue-define` via the Skill tool. Auto-detects the sink (Linear / SIW / project-root markdown) and asks once when both Linear and SIW are present. Applies a durability rule to the issue body — no file paths, no line numbers, no internal helper names — so the ticket remains useful after a refactor. Add `--yes` or `--auto` to skip the approval gate. |
 
@@ -282,7 +278,7 @@ Bug investigation and root cause analysis.
 Dependency auditing and management.
 
 | Skill | Invocation | Arguments | Description |
-|-------|------------|-----------|-------------|
+| --- | --- | --- | --- |
 | `/kramme:deps:audit` | User | `[--auto]` | Experimental.<br><br>Audit project dependencies for outdated packages, security vulnerabilities, and staleness.<br><br>Generates a prioritized upgrade plan with risk assessment. Add `--auto` to write `DEPENDENCY_AUDIT.md` and skip follow-up prompts. |
 
 #### Testing
@@ -290,7 +286,7 @@ Dependency auditing and management.
 Test generation, coverage, and test-first discipline.
 
 | Skill | Invocation | Arguments | Description |
-|-------|------------|-----------|-------------|
+| --- | --- | --- | --- |
 | `/kramme:test:tdd` | User, Auto | — | Experimental.<br><br>Drive implementation with tests. Write a failing test first, implement the minimum to pass, then refactor.<br><br>Use when implementing new logic, fixing a bug (Prove-It pattern), or changing behavior. Complementary to `/kramme:test:generate`, which writes tests for existing untested code. |
 | `/kramme:test:generate` | User | `[file-path or directory] [--auto]` | Experimental.<br><br>Generate tests for existing code by analyzing project test patterns and conventions.<br><br>Use when adding test coverage to untested files or generating test stubs. Add `--auto` to infer framework/configuration defaults and skip the test-shape prompts. |
 
@@ -299,7 +295,7 @@ Test generation, coverage, and test-first discipline.
 Git history management and commit operations.
 
 | Skill | Invocation | Arguments | Description |
-|-------|------------|-----------|-------------|
+| --- | --- | --- | --- |
 | `/kramme:git:fixup` | User | `[--skip-tests\|--skip-build\|--skip-lint\|--skip-all] [--no-confirm] [--base=<branch>] [instructions]` | Intelligently fixup unstaged changes into existing commits.<br><br>Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
 | `/kramme:git:recreate-commits` | User | `[--auto] [--after <commit>]` | Recreate current branch in-place with narrative-quality commits and logical, reviewer-friendly commit history. Emits a `CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS` summary at end of run. Add `--auto` to choose commit granularity without prompting. Add `--after <commit>` to keep commits up to and including `<commit>` and only recreate commits after it. |
 
@@ -308,7 +304,7 @@ Git history management and commit operations.
 Linear issue tracking integration.
 
 | Skill | Invocation | Arguments | Description |
-|-------|------------|-----------|-------------|
+| --- | --- | --- | --- |
 | `/kramme:linear:issue-define` | User | `[issue-id] or [description and/or file paths]` | Create or improve a Linear issue through exhaustive guided refinement.<br><br>Can start from scratch or refine an existing issue by ID. |
 | `/kramme:linear:issue-implement` | User | `<ISSUE-ID>` | Start implementing a Linear issue with branch setup, context gathering, and guided workflow.<br><br>Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
 
@@ -317,7 +313,7 @@ Linear issue tracking integration.
 Generate styled, self-contained HTML pages with diagrams, data tables, and interactive visualizations. Output opens in the browser.
 
 | Skill | Invocation | Arguments | Description |
-|-------|------------|-----------|-------------|
+| --- | --- | --- | --- |
 | `/kramme:visual:diagram` | User, Auto | — | Experimental.<br><br>Generate beautiful HTML diagrams for architecture overviews, flowcharts, schemas, data tables, and any visual explanation.<br><br>Also auto-triggers for complex ASCII tables (4+ rows or 3+ columns). |
 | `/kramme:visual:diff-review` | User | — | Experimental.<br><br>Visual HTML diff review with executive summary, KPI dashboard, Mermaid architecture graphs, before/after panels, code review analysis, and decision log. |
 | `/kramme:visual:plan-review` | User | — | Experimental.<br><br>Visual plan review comparing current codebase against a proposed implementation plan, with blast radius analysis, current/planned architecture Mermaid diagrams, and risk assessment. |
@@ -339,7 +335,7 @@ This works in both Claude Code and Codex. If running the script directly, you ca
 Requirements discovery, document conversion, and text processing.
 
 | Skill | Invocation | Arguments | Description |
-|-------|------------|-----------|-------------|
+| --- | --- | --- | --- |
 | `/kramme:discovery:interview` | User | `[file-path or topic description] [--ideate] [--decision-tree] [--research]` | Conduct an in-depth interview about a topic/proposal to uncover requirements.<br><br>Uses structured questioning to explore features, processes, or architecture decisions. Pass `--ideate` (or supply a vague topic) for divergent framing, `--decision-tree` for depth-first resolution of tightly coupled decisions, or `--research` to launch topic-specific research agents before the interview so questions can skip what the codebase or framework docs already answer. |
 | `/kramme:docs:add-greenfield-policy` | User | — | Add Hard-Cut Greenfield Policy to AGENTS.md (or CLAUDE.md).<br><br>Enforces one canonical codepath, no compatibility bridges, and explicit removal tracking for any temporary migration code. For projects with no existing user base. |
 | `/kramme:docs:adr` | User, Auto | — | Author an Architecture Decision Record for a significant, long-lived decision.<br><br>Creates `docs/decisions/NNNN-title.md` by default, or adds the ADR to the project's existing ADR directory when one is already in use. Preserves existing format and lifecycle states (PROPOSED / ACCEPTED / SUPERSEDED / DEPRECATED), otherwise uses a Nygard-style template. For in-project decisions during a tracked SIW initiative use `/kramme:siw:close` instead. |
@@ -355,7 +351,7 @@ Requirements discovery, document conversion, and text processing.
 Session management, verification, artifact cleanup, and hook configuration.
 
 | Skill | Invocation | Arguments | Description |
-|-------|------------|-----------|-------------|
+| --- | --- | --- | --- |
 | `/kramme:workflow-artifacts:cleanup` | User | — | Delete workflow artifacts such as review overviews, audit reports, generated PR plans, temporary SIW files, and visual diagram HTML files.<br><br>For SIW-specific cleanup, use `/kramme:siw:remove`. |
 | `/kramme:changelog:generate` | User | — | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
 | `/kramme:hooks:configure-links` | User | `[show\|reset\|KEY=VALUE ...]` | Configure `context-links` hook settings by writing local overrides to `hooks/context-links.config` (workspace slug, team keys, regexes). |
@@ -369,7 +365,7 @@ Session management, verification, artifact cleanup, and hook configuration.
 Nx workspace tooling and configuration.
 
 | Skill | Invocation | Arguments | Description |
-|-------|------------|-----------|-------------|
+| --- | --- | --- | --- |
 | `/kramme:nx:setup-portless` | User | — | Experimental.<br><br>Set up portless in an Nx workspace for stable HTTPS localhost URLs instead of port numbers.<br><br>Guides workspace-level proxy setup, per-app `dev:local`/`dev:full` targets, and troubleshooting. |
 
 ### Background Skills
@@ -377,7 +373,7 @@ Nx workspace tooling and configuration.
 Auto-triggered by Claude based on context. These don't appear in the `/` menu.
 
 | Skill | Trigger Condition |
-|-------|-------------------|
+| --- | --- |
 | `kramme:docs:update-agents-md` | Add guidelines to AGENTS.md with structured, keyword-based documentation. Triggers on "update AGENTS.md", "add to AGENTS.md", "maintain agent docs" |
 | `kramme:git:commit-message` | Creating commits or writing commit messages (plain-English branch commits; Conventional Commit PR titles; 6-item pre-commit checklist; explicit rejection of Conventional Commits on branch commits) |
 | `kramme:verify:before-completion` | About to claim work is complete/fixed/passing — requires evidence before assertions |
@@ -387,7 +383,7 @@ Auto-triggered by Claude based on context. These don't appear in the `/` menu.
 Specialized subagents for PR review and UX audit tasks. Invoked by `/kramme:pr:code-review`, `/kramme:pr:ux-review`, or directly via the Task tool.
 
 | Agent | Description |
-|-------|-------------|
+| --- | --- |
 | `kramme:code-reviewer` | Reviews code for bugs, style violations, and CLAUDE.md compliance. Uses confidence scoring (0-100) to filter issues. |
 | `kramme:code-simplifier` | Simplifies code for clarity and maintainability while preserving functionality. |
 | `kramme:design-iterator` | Iterative UI/UX design refinement — screenshots, analysis, improvements, repeat N times. |
@@ -415,7 +411,7 @@ Specialized subagents for PR review and UX audit tasks. Invoked by `/kramme:pr:c
 Event handlers that run automatically at specific points in the Claude Code lifecycle. For detailed configuration, pattern lists, and formatter tables, see [docs/hooks.md](docs/hooks.md).
 
 | Hook | Event | Description |
-|------|-------|-------------|
+| --- | --- | --- |
 | `block-rm-rf` | PreToolUse (Bash) | Blocks destructive file deletion commands and recommends `trash` instead. |
 | `confirm-review-responses` | PreToolUse (Bash) | Confirms before committing review artifact files. |
 | `noninteractive-git` | PreToolUse (Bash) | Blocks git commands that open an interactive editor. |
@@ -440,7 +436,7 @@ See [docs/permissions.md](docs/permissions.md) for the full JSON configuration.
 These MCP servers enhance the plugin's capabilities. See [docs/mcp-servers.md](docs/mcp-servers.md) for installation instructions.
 
 | Server | Purpose |
-|--------|---------|
+| --- | --- |
 | **Linear** | Issue tracking for `/kramme:linear:issue-implement` and `/kramme:linear:issue-define` |
 | **Context7** | Up-to-date library documentation retrieval |
 | **Nx MCP** | Nx monorepo tools for `/kramme:verify:run` in Nx workspaces |
@@ -456,15 +452,15 @@ CLI tools that enhance the plugin experience. Some are required for specific com
 
 ### Required
 
-| CLI | Purpose | Install |
-|-----|---------|---------|
+| CLI   | Purpose                        | Install                       |
+| ----- | ------------------------------ | ----------------------------- |
 | `git` | Version control (all commands) | Pre-installed on most systems |
-| `gh` | GitHub PR workflows | `brew install gh` |
+| `gh`  | GitHub PR workflows            | `brew install gh`             |
 
 ### Verification & Build
 
 | CLI | Purpose | Install |
-|-----|---------|---------|
+| --- | --- | --- |
 | `nx` | Nx monorepo commands | `npm install -g nx` |
 | `dotnet` | .NET project verification | [dotnet.microsoft.com](https://dotnet.microsoft.com/download) |
 | `prettier` | JS/TS formatting | `npm install -g prettier` |
@@ -474,7 +470,7 @@ CLI tools that enhance the plugin experience. Some are required for specific com
 ### Utilities
 
 | CLI | Purpose | Install |
-|-----|---------|---------|
+| --- | --- | --- |
 | `trash` | Safe file deletion (used by block-rm-rf hook) | `brew install trash` |
 | `jq` | JSON parsing (internal use) | `brew install jq` |
 | `markitdown` | Document conversion skill | `uvx markitdown` or `pip install markitdown` |
@@ -493,6 +489,7 @@ PR titles must follow [Conventional Commits](https://www.conventionalcommits.org
 **Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
 
 **Examples:**
+
 - `feat: add new skill for code review`
 - `fix(hooks): resolve context detection issue`
 - `docs: update installation instructions`
@@ -578,7 +575,7 @@ See [CLAUDE.md](CLAUDE.md) for detailed conventions. Quick reference:
 ## Related Plugins
 
 | Plugin | Description |
-|--------|-------------|
+| --- | --- |
 | [Agent Skills for Context Engineering](https://github.com/muratcankoylan/Agent-Skills-for-Context-Engineering) | Agent Skills focused on context engineering principles for building production-grade AI agent systems. |
 | [adversarial-spec](https://github.com/zscole/adversarial-spec) | Specification refinement through multi-model debate until consensus is reached. |
 

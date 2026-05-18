@@ -21,7 +21,7 @@ Defines what `scripts/normalize.py` strips and keeps when turning a fetched sour
 
 ### Volatile noise (regex pass after HTML strip)
 
-- Build/version stamps in footers: `Build [a-f0-9]{6,}`, `Generated on YYYY-MM-DD( HH:MM)?`, `v\d+\.\d+\.\d+(-\w+)?` *only when on a line with no other meaningful content*.
+- Build/version stamps in footers: `Build [a-f0-9]{6,}`, `Generated on YYYY-MM-DD( HH:MM)?`, `v\d+\.\d+\.\d+(-\w+)?` _only when on a line with no other meaningful content_.
 - Copyright years: collapse `Copyright YYYY` to `Copyright YEAR`.
 - View counters, "last updated" timestamps that appear on every page render.
 - Tracking query strings on links: strip `?utm_*`, `?ref=`, `?fbclid=`.

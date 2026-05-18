@@ -39,7 +39,7 @@ function isOnNewPath(id: string): boolean {
 
 ### Phasing
 
-- **Step 4.1 — Build replacement**: ship the new service *and* the façade. The façade routes 0% to new. Parity tests assert new-service output matches old-service output for a sample of real inputs.
+- **Step 4.1 — Build replacement**: ship the new service _and_ the façade. The façade routes 0% to new. Parity tests assert new-service output matches old-service output for a sample of real inputs.
 - **Step 4.2 — Announce**: callers are not asked to change anything. They continue to call the façade (which is the old public surface). Internal docs note the strangler is underway.
 - **Step 4.3 — Migrate incrementally**: ramp `isOnNewPath` from 0% to 100% in batches. Verify each batch before the next. Keep a per-cohort rollback ready — any batch can be reverted by adjusting the predicate.
 - **Step 4.4 — Remove old**: once the predicate is hard-coded to `true` and has held for the rollback window, remove `legacyUserProfileService` and the predicate itself. The façade becomes a thin pass-through or folds into the new service's public surface.
@@ -82,7 +82,7 @@ def get_user_by_id(userId: str) -> dict:
 
 ### Phasing
 
-- **Step 4.1 — Build replacement**: ship the new implementation *and* the adapter. Parity tests run through the adapter to prove translation is correct.
+- **Step 4.1 — Build replacement**: ship the new implementation _and_ the adapter. Parity tests run through the adapter to prove translation is correct.
 - **Step 4.2 — Announce**: the `DeprecationWarning` (or equivalent) is the primary in-code announcement. Publish the migration guide showing old-shape → new-shape with a codemod command.
 - **Step 4.3 — Migrate incrementally**: run the codemod against caller repos. Each migrated caller drops the deprecation warning. The adapter stays in place until the caller list is empty.
 - **Step 4.4 — Remove old**: delete the adapter, the deprecation warning, and the migration guide together. The new implementation is now the only path.
@@ -119,7 +119,7 @@ export async function processPayment(
 
 ### Phasing
 
-- **Step 4.1 — Build replacement**: ship the new path (`paymentsV2`) *and* wire the flag check. Flag defaults OFF. Parity tests compare results for a sample of production-shaped inputs.
+- **Step 4.1 — Build replacement**: ship the new path (`paymentsV2`) _and_ wire the flag check. Flag defaults OFF. Parity tests compare results for a sample of production-shaped inputs.
 - **Step 4.2 — Announce**: the flag is the announcement. Internal docs describe the rollout plan, who flips the flag, and the rollback criterion (error rate threshold, p95 latency ceiling, manual abort).
 - **Step 4.3 — Migrate incrementally**: ramp the flag — 1%, 5%, 25%, 50%, 100% — with verification at each step. A regression at any step pauses the rollout; a critical regression flips the flag back to the previous step. Watch the metrics named in the rollback criterion.
 - **Step 4.4 — Remove old**: once the flag has been at 100% for the rollback window, remove `paymentsV1`, the `flags.isEnabled` check, and the flag definition itself. Leaving the flag behind turns into technical debt — "what does this flag even do?" — so the flag removal is part of the deprecation, not a follow-up.
@@ -129,7 +129,7 @@ export async function processPayment(
 ## Pattern comparison
 
 | Dimension | Strangler | Adapter | Feature Flag |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Coexistence | Yes, long | Yes, medium | Yes, short |
 | Rollback granularity | Per-slice | Per-caller | Per-cohort |
 | Primary risk | Façade complexity | Shape-translation bugs | Flag service dependency |

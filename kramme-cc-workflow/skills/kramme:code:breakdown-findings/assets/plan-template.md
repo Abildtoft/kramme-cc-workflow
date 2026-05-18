@@ -1,13 +1,6 @@
 # PR Plan {{execution-label}}: {{theme-name}} ({{parallel in W## / blocked by W##L / blocks W##L}})
 
-**File:** `PR_PLAN_{{EXECUTION_LABEL}}_{{SLUG}}.md`
-**Execution label:** `{{W##L}}`
-**Parallel group:** {{Wave W##; name sibling labels that can run in parallel, or "None - only plan in wave."}}
-**Blocked by:** {{Execution labels and content of prerequisite plans, or "None."}}
-**Blocks:** {{Execution labels and content of dependent plans, or "None."}}
-**Date:** {{date}}
-**Source findings:** {{count}} findings clustered into this theme
-**Estimated scope:** {{small / medium / large}} PR
+**File:** `PR_PLAN_{{EXECUTION_LABEL}}_{{SLUG}}.md` **Execution label:** `{{W##L}}` **Parallel group:** {{Wave W##; name sibling labels that can run in parallel, or "None - only plan in wave."}} **Blocked by:** {{Execution labels and content of prerequisite plans, or "None."}} **Blocks:** {{Execution labels and content of dependent plans, or "None."}} **Date:** {{date}} **Source findings:** {{count}} findings clustered into this theme **Estimated scope:** {{small / medium / large}} PR
 
 ---
 
@@ -29,9 +22,9 @@
 
 ## Affected Files and Systems
 
-| File / Module | Role | Change Type |
-|---------------|------|-------------|
-| {{path}} | {{what it does}} | {{modify / create / delete}} |
+| File / Module | Role             | Change Type                  |
+| ------------- | ---------------- | ---------------------------- |
+| {{path}}      | {{what it does}} | {{modify / create / delete}} |
 
 ## Current Behavior
 
@@ -70,6 +63,7 @@
 ## Implementation Plan
 
 {{Numbered step-by-step instructions. Each step should be:
+
 - Small enough to verify independently
 - Specific about which files to change and how
 - Ordered by dependency (do A before B if B depends on A)}}
@@ -77,6 +71,7 @@
 ## Test and Verification Plan
 
 {{How to verify the PR works:
+
 - Automated tests to add or modify when code or executable behavior changes
 - Manual verification steps for user-visible or workflow changes
 - Re-run the relevant audit/review/QA flow when this plan comes from a generated report

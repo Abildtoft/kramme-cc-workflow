@@ -8,6 +8,7 @@ user-invocable: true
 Reimplement the current branch with a clean, narrative-quality git commit history suitable for reviewer comprehension. By default, recreate commits on the current branch (not a new clean branch).
 
 **Flags:**
+
 - `--auto` — Skip the granularity question and automatically choose the best granularity based on diff size and complexity.
 - `--granular` — Force atomic-level decomposition. Skips the granularity question. Use for very large PRs where 100+ commits are appropriate.
 - `--base <branch>` — Use `<branch>` as the base instead of auto-detecting. Without this flag, the skill tries to detect the base from an existing GitHub pull request, then falls back to `master`/`main`.
@@ -23,7 +24,7 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
         - If this succeeds and assigns a non-empty branch name, use it. If `gh` is not installed, no PR exists, or the command fails, fall through silently to the next method.
      3. **Fallback:** If no pull request metadata is available, set `BASE_BRANCH` explicitly:
         ```bash
-        BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+        BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@')
         if [ -z "$BASE_BRANCH" ]; then
           BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
         fi
@@ -41,7 +42,7 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
        echo "Could not determine base branch" >&2
        exit 1
      fi
-     if ! git check-ref-format --branch "$BASE_BRANCH" >/dev/null 2>&1; then
+     if ! git check-ref-format --branch "$BASE_BRANCH" > /dev/null 2>&1; then
        echo "Base branch '$BASE_BRANCH' is not a valid branch name" >&2
        exit 1
      fi
@@ -49,15 +50,16 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
        echo "Failed to fetch origin/$BASE_BRANCH" >&2
        exit 1
      fi
-     if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
+     if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null; then
        echo "Base branch 'origin/$BASE_BRANCH' not found" >&2
        exit 1
      fi
      BASE_REF="origin/$BASE_BRANCH"
      ```
    - If `BASE_REF` came from `--base`, resolve it before continuing:
+
      ```bash
-     if ! git rev-parse --verify --quiet "$BASE_REF^{commit}" >/dev/null; then
+     if ! git rev-parse --verify --quiet "$BASE_REF^{commit}" > /dev/null; then
        case "$BASE_REF" in
          refs/remotes/*/*)
            BASE_REMOTE=${BASE_REF#refs/remotes/}
@@ -71,7 +73,7 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
          */*)
            BASE_REMOTE=${BASE_REF%%/*}
            BASE_BRANCH=${BASE_REF#*/}
-           if ! git remote get-url "$BASE_REMOTE" >/dev/null 2>&1; then
+           if ! git remote get-url "$BASE_REMOTE" > /dev/null 2>&1; then
              echo "Explicit base ref '$BASE_REF' does not resolve locally and does not name a configured remote" >&2
              exit 1
            fi
@@ -81,8 +83,7 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
            BASE_BRANCH=$BASE_REF
            ;;
        esac
-
-       if ! git check-ref-format --branch "$BASE_BRANCH" >/dev/null 2>&1; then
+       if ! git check-ref-format --branch "$BASE_BRANCH" > /dev/null 2>&1; then
          echo "Explicit base ref '$BASE_REF' is not a valid branch name or ref" >&2
          exit 1
        fi
@@ -93,6 +94,7 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
        BASE_REF="refs/remotes/${BASE_REMOTE}/${BASE_BRANCH}"
      fi
      ```
+
    - **Validate the resolved base ref** (regardless of how it was determined):
      - Verify `BASE_REF` resolves to a commit (`git rev-parse --verify --quiet "$BASE_REF^{commit}"`). Abort with a clear error if it does not.
      - Verify the current branch is not the selected base branch or ref.
@@ -108,7 +110,7 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
        if git show-ref --verify --quiet "refs/heads/${BASE_BRANCH}"; then
          git checkout "${BASE_BRANCH}"
          git merge --ff-only "origin/${BASE_BRANCH}"
-         git checkout -  # return to feature branch
+         git checkout - # return to feature branch
        fi
      fi
      ```
@@ -129,7 +131,6 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
    **Assess diff size and determine granularity.** After analyzing the diff, assess whether the PR is large (many files changed, significant lines added/removed, multiple distinct features or areas touched).
 
    If `--granular` was passed, use **Atomic** granularity unconditionally — do not ask the user. If `--auto` was passed (without `--granular`), choose the most appropriate granularity yourself based on diff size and complexity — do not ask the user. Otherwise, if the diff is large, ask the user which granularity level they want before planning:
-
    - **Coarse** — One commit per major grouping (~5-15 commits)
    - **Medium (recommended)** — Break each major grouping into several commits (~15-30 commits)
    - **Fine** — Recursively break down until each commit is a significant, self-standing change (~30-60+ commits)
@@ -138,7 +139,6 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
    For normal-sized PRs (without `--auto`), skip this question and plan as usual.
 
    **Use recursive decomposition to plan commits:**
-
    1. **First pass:** Identify the major groupings of work (e.g., "add auth middleware", "implement user API", "add tests"). For **coarse** granularity, stop here — each grouping becomes one commit.
    2. **Second pass:** Break each major grouping into sub-steps (e.g., "add auth middleware" becomes: add dependencies, implement token validation, add middleware registration, add config). For **medium** granularity, stop here.
    3. **Third pass (fine only):** Selectively break sub-steps further, but only where a piece is a significant, self-standing addition (e.g., a substantial new function or module). Do not split trivial one-liner changes or tightly coupled changes that belong together.
@@ -213,10 +213,10 @@ Use these uppercase markers when reasoning about the recreation plan and reporti
 
 Lies you'll tell yourself mid-recreation. Each has a correct response:
 
-- *"This sub-step is trivial — I'll fold it into the next commit."* → Then it becomes invisible to the reviewer. If it's a distinct idea, it's a distinct commit.
-- *"The middle commits don't build — I'll `--no-verify` through it."* → Allowed as the exception, not the rule. Surface it in `POTENTIAL CONCERNS` or restructure so builds pass.
-- *"I'll squash the noisy fix-up commits into the bigger one."* → Fine only if the fix-up isn't its own idea. If it's "I forgot to handle null", it's its own commit.
-- *"I can skip the final diff check — I've been careful."* → The only guarantee the recreated branch matches the original is the diff check. Run it.
+- _"This sub-step is trivial — I'll fold it into the next commit."_ → Then it becomes invisible to the reviewer. If it's a distinct idea, it's a distinct commit.
+- _"The middle commits don't build — I'll `--no-verify` through it."_ → Allowed as the exception, not the rule. Surface it in `POTENTIAL CONCERNS` or restructure so builds pass.
+- _"I'll squash the noisy fix-up commits into the bigger one."_ → Fine only if the fix-up isn't its own idea. If it's "I forgot to handle null", it's its own commit.
+- _"I can skip the final diff check — I've been careful."_ → The only guarantee the recreated branch matches the original is the diff check. Run it.
 
 ## Red Flags — STOP
 

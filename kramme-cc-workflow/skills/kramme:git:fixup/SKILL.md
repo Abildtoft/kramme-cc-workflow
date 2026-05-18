@@ -28,6 +28,7 @@ Before proceeding with the workflow, check if the user provided additional instr
    - Any other decision points in the workflow
 
 **Examples of custom instructions:**
+
 - "Only process backend files" → Filter to files in Connect/Connect.Api/
 - "Skip the frontend changes for now" → Exclude files in ng-app-monolith/
 - "Group all test file changes together" → Create a single fixup for test files
@@ -38,11 +39,10 @@ Before proceeding with the workflow, check if the user provided additional instr
 1. **Detect base branch:**
 
    Try these methods in order:
-
    1. Check `origin/HEAD` (most reliable - reflects remote's default branch):
 
       ```bash
-      git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'
+      git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@'
       ```
 
    2. If that fails, check if `main` branch exists locally:
@@ -69,7 +69,6 @@ Before proceeding with the workflow, check if the user provided additional instr
    ```
 
    If staged changes exist, use `AskUserQuestion` to ask whether to:
-
    - Include them with the other changes (they'll be fixed up too)
    - Abort so user can handle them separately
 
@@ -86,7 +85,7 @@ Before proceeding with the workflow, check if the user provided additional instr
 4. **Check branch has commits ahead of base:**
 
    ```bash
-   git log <base>..HEAD --oneline
+   git log --oneline < base > ..HEAD
    ```
 
    If no commits, inform user this command requires existing commits to fixup into.
@@ -179,8 +178,7 @@ git commit --fixup=<commit_sha>
 
 ### Step 5: Autosquash Rebase
 
-Run an autosquash rebase to squash fixup commits into their targets.
-Use the branch fork point (merge-base) so this rewrites only branch commits and does not pull newer base-branch commits into the feature branch:
+Run an autosquash rebase to squash fixup commits into their targets. Use the branch fork point (merge-base) so this rewrites only branch commits and does not pull newer base-branch commits into the feature branch:
 
 ```bash
 FORK_POINT=$(git merge-base HEAD <base>)
@@ -203,7 +201,7 @@ If `REVIEW_OVERVIEW.md` exists in the project root:
 Show the final commit log:
 
 ```bash
-git log <base>..HEAD --oneline
+git log --oneline < base > ..HEAD
 ```
 
 Confirm success and show any remaining unstaged/untracked files.
@@ -249,6 +247,7 @@ If the rebase fails mid-way due to conflicts:
 **Arguments:** `$ARGUMENTS`
 
 **Flags:**
+
 - `--skip-tests` - Skip running tests (use when you've already validated)
 - `--skip-build` - Skip build validation
 - `--skip-lint` - Skip lint/format validation
@@ -256,8 +255,7 @@ If the rebase fails mid-way due to conflicts:
 - `--no-confirm` - Skip confirmation prompts (orphan files are skipped automatically)
 - `--base=<branch>` - Override auto-detected base branch
 
-**Custom Instructions:**
-Any text after the command (and flags) is treated as custom instructions that influence the workflow. These instructions are applied contextually throughout the process.
+**Custom Instructions:** Any text after the command (and flags) is treated as custom instructions that influence the workflow. These instructions are applied contextually throughout the process.
 
 ## Examples
 

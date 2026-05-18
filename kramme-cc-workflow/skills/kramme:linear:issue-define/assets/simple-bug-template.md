@@ -7,6 +7,7 @@ For simple bugs (`is_simple_bug = true`), use this concise format.
 `Fix [what's broken] when [trigger condition]`
 
 **Examples:**
+
 - "Fix dialog reopening after cancel when navigating between roles"
 - "Fix null pointer in user search when query is empty"
 
@@ -18,6 +19,7 @@ For simple bugs (`is_simple_bug = true`), use this concise format.
 [1-2 sentence description of the bug]
 
 **Steps to reproduce:**
+
 1. [Step 1]
 2. [Step 2]
 3. **Bug:** [What happens]

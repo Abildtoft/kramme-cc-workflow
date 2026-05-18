@@ -48,6 +48,7 @@ Create a multi-agent UX review session named `pr-ux-review` and use **delegate m
 - **Codex:** launch equivalent parallel UX review agents via multi-agent mode.
 
 Spawn teammates based on applicable review categories. Each teammate receives:
+
 - The resolved base branch and git diff commands to run (`git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`, `git diff --cached`, `git diff`, using the base resolved in Step 1)
 - Untracked files list: `git ls-files --others --exclude-standard`
 - The list of UI-relevant changed files
@@ -57,15 +58,16 @@ Spawn teammates based on applicable review categories. Each teammate receives:
 - Instructions to **message other teammates** when they find cross-cutting UX issues
 
 **Always spawn:**
+
 - **ux-reviewer** -- Usability heuristics and interaction states (mission from `agents/kramme:ux-reviewer.md`)
 - **product-reviewer** -- Product thinking and user flow analysis (mission from `agents/kramme:product-reviewer.md`)
 - **visual-reviewer** -- Visual consistency and responsive design (mission from `agents/kramme:visual-reviewer.md`)
 
 **Conditionally spawn:**
+
 - **a11y-auditor** -- Accessibility (WCAG 2.1 AA) (mission from `agents/kramme:a11y-auditor.md`)
 
   Only spawn if accessibility is a project requirement:
-
   1. Search the project instruction files gathered in Step 1 for keywords: `accessibility`, `a11y`, `WCAG`, `aria`, `screen reader`
   2. Check `package.json` for a11y tooling: `eslint-plugin-jsx-a11y`, `axe-core`, `pa11y`, `@axe-core/*`
   3. Check for `.accessibilityrc`, a11y rules in ESLint/Biome config
@@ -78,6 +80,7 @@ Spawn teammates based on applicable review categories. Each teammate receives:
      ```
 
 **Respect `--categories` filter:**
+
 - If `--categories ux` -> only spawn ux-reviewer
 - If `--categories a11y` -> spawn a11y-auditor regardless of detection
 - If `--categories product,visual` -> spawn product-reviewer and visual-reviewer
@@ -89,10 +92,12 @@ Spawn teammates based on applicable review categories. Each teammate receives:
 Create tasks in the shared task list:
 
 **Phase 1 tasks (parallel):**
+
 - One task per reviewer: "Audit [category] in PR changes"
 - Assign each task to its corresponding teammate
 
 **Phase 2 task (blocked on all Phase 1 tasks):**
+
 - "Validate finding relevance against full audit scope" -- spawn a new **relevance-validator** teammate
 - Mission from `agents/kramme:pr-relevance-validator.md`
 - Pass the resolved `BASE_BRANCH` from Step 1 so relevance validation uses the same PR base
@@ -102,6 +107,7 @@ Create tasks in the shared task list:
 ### Step 4: Monitor and Facilitate
 
 While teammates work:
+
 - Monitor task progress via TaskList
 - Relay any questions teammates have about the codebase or PR context
 - If a teammate gets stuck, provide additional context or redirect
@@ -123,15 +129,15 @@ Otherwise, write the aggregated audit to `UX_REVIEW_OVERVIEW.md` using the same 
 ```markdown
 # UX Audit Summary (Team Review)
 
-**Mode:** {Code-only | Visual + Code}
-**Agents Run:** {list of agents that ran}
-**Categories:** {list of categories audited}
+**Mode:** {Code-only | Visual + Code} **Agents Run:** {list of agents that ran} **Categories:** {list of categories audited}
 
 ## Team
+
 - X reviewers participated
 - Relevance validation: X findings validated, X filtered
 
 ## Relevance Filter
+
 - X findings validated as in-scope (PR/local)
 - X findings filtered (pre-existing or out-of-scope)
 - X findings filtered (previously addressed)
@@ -140,11 +146,7 @@ Otherwise, write the aggregated audit to `UX_REVIEW_OVERVIEW.md` using the same 
 
 ### {PREFIX}-NNN: {Brief title}
 
-**Agent:** {kramme:ux-reviewer | kramme:product-reviewer | kramme:visual-reviewer | kramme:a11y-auditor}
-**Category:** {specific category within agent's domain}
-**File:** `path/to/file.tsx:42`
-**Confidence:** {0-100}
-**User Impact:** High
+**Agent:** {kramme:ux-reviewer | kramme:product-reviewer | kramme:visual-reviewer | kramme:a11y-auditor} **Category:** {specific category within agent's domain} **File:** `path/to/file.tsx:42` **Confidence:** {0-100} **User Impact:** High
 
 **Issue:** {Description}
 
@@ -161,23 +163,28 @@ Otherwise, write the aggregated audit to `UX_REVIEW_OVERVIEW.md` using the same 
 {Same format}
 
 ## Cross-Review Notes
+
 - [Any disputes or cross-validation results between reviewers]
 
 ## Filtered (Pre-existing/Out-of-scope)
+
 <collapsed>
 - [file:line]: Brief description - Reason filtered
 </collapsed>
 
 ## Filtered (Previously Addressed)
+
 <collapsed>
 - [file:line]: Brief description
   Matched: UX_REVIEW_OVERVIEW.md - [action taken summary]
 </collapsed>
 
 ## UX Strengths
+
 - {What's well-done from a UX perspective}
 
 ## Recommended Action
+
 1. Fix critical issues first
 2. Address important issues
 3. Consider suggestions
@@ -218,12 +225,14 @@ When file output is used, `UX_REVIEW_OVERVIEW.md` is a working artifact -- it sh
 ## When to Use This vs `/kramme:pr:ux-review`
 
 Use **this mode** when:
+
 - The PR is large or touches many UI areas
 - You want reviewers to cross-validate each other's UX findings
 - You want higher-quality findings with fewer false positives
 - The PR has both UX and accessibility concerns benefiting from multiple perspectives
 
 Use **standard `/kramme:pr:ux-review`** when:
+
 - The PR is small or focused
 - You want faster, lower-cost review
 - You only need one or two review categories

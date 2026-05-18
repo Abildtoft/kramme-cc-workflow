@@ -1,8 +1,6 @@
 # NNNN. <Decision title>
 
-**Status**: PROPOSED | ACCEPTED | SUPERSEDED by #MMMM | DEPRECATED
-**Date**: YYYY-MM-DD
-**Deciders**: <names or roles>
+**Status**: PROPOSED | ACCEPTED | SUPERSEDED by #MMMM | DEPRECATED **Date**: YYYY-MM-DD **Deciders**: <names or roles>
 
 ## Context
 

@@ -38,42 +38,47 @@ A local issue tracking system using markdown files to plan, track, and document 
 ## Issue Naming
 
 Issues use prefix-based numbering:
+
 - `G-XXX` — General issues (standalone, non-phase)
 - `P1-XXX`, `P2-XXX`, etc. — Phase-specific issues
 
 ## Workflow Document System
 
 | Document | Purpose | Persistence |
-|----------|---------|-------------|
+| --- | --- | --- |
 | **siw/[YOUR_SPEC].md** | Main specification (single source of truth) | **PERMANENT** |
-| **siw/supporting-specs/*.md** | Detailed specifications by domain | **PERMANENT** |
+| **siw/supporting-specs/\*.md** | Detailed specifications by domain | **PERMANENT** |
 | **siw/DISCOVERY_BRIEF.md** | Greenfield discovery output before `siw:init` creates the full workflow | Temporary |
 | **siw/SPEC_STRENGTHENING_PLAN.md** | Refinement discovery output waiting for review or `--apply` | Temporary |
 | **siw/AUDIT_IMPLEMENTATION_REPORT.md** | Spec compliance audit findings from `/kramme:siw:implementation-audit` | Temporary |
 | **siw/AUDIT_SPEC_REPORT.md** | Spec quality audit findings from `/kramme:siw:spec-audit` | Temporary |
-| **siw/OPEN_ISSUES_OVERVIEW.md** + **siw/issues/*.md** | Work items to implement | Temporary |
+| **siw/OPEN_ISSUES_OVERVIEW.md** + **siw/issues/\*.md** | Work items to implement | Temporary |
 | **siw/LOG.md** | Session progress + decision rationale | Temporary |
 
 ### What Each Document Contains
 
 **Specification (PERMANENT):**
+
 - Project overview and objectives
 - Scope (in/out)
 - Design decisions (migrated from siw/LOG.md)
 - Success criteria
 
 **Supporting Specs (PERMANENT, optional):**
+
 - Detailed specifications organized by domain
 - Examples: data model, API design, UI specs, user stories
 - Named with ordering prefix: `00-overview.md`, `01-data-model.md`, etc.
 - Main spec references these via TOC
 
 **Issues (TEMPORARY):**
+
 - Individual work items (features, bugs, improvements)
 - Each issue has: problem, context, scope, acceptance criteria
 - Deleted when implemented
 
 **siw/LOG.md (TEMPORARY):**
+
 - Current progress and status
 - Decision log with rationale
 - Session continuity between conversations
@@ -112,7 +117,7 @@ Issues use prefix-based numbering:
 ## Commands Reference
 
 | Command | Purpose |
-|---------|---------|
+| --- | --- |
 | `/kramme:siw:init` | Initialize SIW documents (spec, siw/LOG.md, siw/issues) |
 | `/kramme:siw:discovery` | Deep discovery interview — works pre-spec (greenfield) or on existing specs (strengthening). Probes until 95% confident about actual wants. |
 | `/kramme:siw:issue-define` | Define a new work item with guided interview (creates `G-XXX` issues) |
@@ -134,13 +139,13 @@ Issues use prefix-based numbering:
 When SIW files already exist, check the current state:
 
 ```bash
-ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/*SPEC*.md siw/*SPECIFICATION*.md siw/*PLAN*.md siw/*DESIGN*.md siw/issues/ 2>/dev/null
+ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/*SPEC*.md siw/*SPECIFICATION*.md siw/*PLAN*.md siw/*DESIGN*.md siw/issues/ 2> /dev/null
 ```
 
 ### Entry Point Decision
 
 | State | Action |
-|-------|--------|
+| --- | --- |
 | **No files exist** | Run `/kramme:siw:init` to set up |
 | **Discovery brief exists, but no spec yet** | Run `/kramme:siw:init siw/DISCOVERY_BRIEF.md` to turn the brief into a full SIW workflow |
 | **Discovery brief + strengthening plan, but no spec yet** | Review `siw/SPEC_STRENGTHENING_PLAN.md`, fold accepted changes into `siw/DISCOVERY_BRIEF.md`, then archive/remove the plan before running `/kramme:siw:init siw/DISCOVERY_BRIEF.md`. Or run `/kramme:siw:init` to discard the plan and continue from the brief |
@@ -191,12 +196,14 @@ Created              In Progress           Review              Completed
 ```
 
 **Issue States:**
+
 - **READY** - Defined, waiting to be picked up
 - **IN PROGRESS** - Currently being implemented
 - **IN REVIEW** - Work complete, awaiting review/approval
 - **DONE** - Resolved and documented
 
 When an issue is completed:
+
 1. Resolution steps documented in the issue file's `## Resolution` section
 2. Decisions logged in siw/LOG.md
 3. Key decisions synced to spec (Step 10)
@@ -235,6 +242,7 @@ All workflow files live in the `siw/` folder in the project root:
 ### When to Use Supporting Specs
 
 Use `siw/supporting-specs/` when:
+
 - Main spec exceeds ~500 lines
 - Multiple distinct domains (data model, API, UI, user stories)
 - Different team members own different sections
@@ -246,14 +254,13 @@ Use `siw/supporting-specs/` when:
 
 ## Templates Reference
 
-When manually creating documents, use these templates from:
-`skills/kramme:siw:continue/assets/`
+When manually creating documents, use these templates from: `skills/kramme:siw:continue/assets/`
 
-| Document | Template |
-|----------|----------|
-| siw/[YOUR_SPEC].md | `assets/spec-guidance.md` |
-| siw/LOG.md | `assets/log-template.md` |
-| siw/issues | `assets/issues-template.md` |
+| Document           | Template                    |
+| ------------------ | --------------------------- |
+| siw/[YOUR_SPEC].md | `assets/spec-guidance.md`   |
+| siw/LOG.md         | `assets/log-template.md`    |
+| siw/issues         | `assets/issues-template.md` |
 
 **Tip:** Using `/kramme:siw:init` and `/kramme:siw:issue-define` is preferred over manual creation.
 
@@ -263,13 +270,13 @@ When manually creating documents, use these templates from:
 
 For detailed guidance on specific phases, read:
 
-| Phase | Resource |
-|-------|----------|
-| Resuming existing work | `references/phase-0-resuming.md` |
-| Planning from scratch | `references/phase-1-planning.md` |
-| Handling blockers | `references/phase-2-investigation.md` |
-| Executing tasks | `references/phase-3-execution.md` |
-| Completing work | `references/phase-4-completion.md` |
+| Phase                  | Resource                              |
+| ---------------------- | ------------------------------------- |
+| Resuming existing work | `references/phase-0-resuming.md`      |
+| Planning from scratch  | `references/phase-1-planning.md`      |
+| Handling blockers      | `references/phase-2-investigation.md` |
+| Executing tasks        | `references/phase-3-execution.md`     |
+| Completing work        | `references/phase-4-completion.md`    |
 
 ---
 

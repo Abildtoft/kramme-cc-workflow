@@ -6,21 +6,20 @@
 
 Spec audit found a {dimension} issue in the specification.
 
-**Spec finding (SPEC-{id}):** {finding title}
-**Source:** {source_file} > {source_section}
-{If present} **Severity Note:** {copied from audit report}
+**Spec finding (SPEC-{id}):** {finding title} **Source:** {source_file} > {source_section} {If present} **Severity Note:** {copied from audit report}
 
 ## Context
 
-{Details from the finding — what's wrong with the spec}
-{Impact if not addressed}
+{Details from the finding — what's wrong with the spec} {Impact if not addressed}
 
 ## Scope
 
 ### In Scope
+
 - {Specific spec revision needed}
 
 ### Out of Scope
+
 - Code implementation changes
 - Refactoring unrelated spec sections
 
@@ -35,8 +34,10 @@ Spec audit found a {dimension} issue in the specification.
 ## Technical Notes
 
 ### Recommendation
+
 {Recommendation from the finding}
 
 ### References
+
 - Spec: `{spec_file}` > {section}
 - Audit Report: `{report_path}` > SPEC-{id}

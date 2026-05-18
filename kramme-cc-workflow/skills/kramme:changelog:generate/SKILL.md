@@ -50,8 +50,8 @@ Now, create a change log summary with the following guidelines:
 6. Add a touch of humor or playfulness to make it engaging
 7. Use emojis sparingly to add visual interest
 8. Use consistent emoji for each section
-10. Format code/technical terms in backticks
-11. Include PR numbers in parentheses (e.g., "Fixed login bug (#123)")
+9. Format code/technical terms in backticks
+10. Include PR numbers in parentheses (e.g., "Fixed login bug (#123)")
 
 ## Deployment Notes
 

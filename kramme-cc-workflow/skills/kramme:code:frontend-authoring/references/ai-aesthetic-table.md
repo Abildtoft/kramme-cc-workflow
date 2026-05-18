@@ -5,7 +5,7 @@ The single highest-leverage author-time check. AI-generated UI has recognizable 
 Run this table against every UI draft before moving on. If a row describes your draft, apply the production alternative in the same row.
 
 | Anti-pattern | Why it reads as AI | Production alternative |
-|---|---|---|
+| --- | --- | --- |
 | Purple/indigo everything | Models default to visually "safe" palettes, making every app look identical. | Use the project's actual color palette. Neutral surfaces by default; accent used sparingly and intentionally. |
 | Excessive gradients | Gradients compensate for weak hierarchy. They add visual noise and clash with most design systems. | Solid surfaces + type + spacing. If the design system specifies a gradient, use the exact token. |
 | `rounded-2xl` on every surface | Maximum rounding signals "friendly" but ignores the hierarchy of corner radii in real designs. Visual noise. | Intentional radius per surface tier. One value for cards, one for inputs, one for buttons — from the design system. |

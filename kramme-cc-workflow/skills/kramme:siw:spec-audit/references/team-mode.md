@@ -44,7 +44,7 @@ Create a multi-agent session named `siw-spec-audit`.
 Spawn **4 dimension auditors** and **1 cross-reviewer** (5 agents total):
 
 | Agent Name | Dimensions | Rationale |
-|---|---|---|
+| --- | --- | --- |
 | `structure-auditor` | Coherence, Completeness | Contradictions and gaps are deeply intertwined — contradictions often manifest as completeness gaps |
 | `clarity-auditor` | Clarity, Actionability | Vague requirements are also non-actionable; a single agent can flag both the ambiguity and its implementation impact |
 | `validation-auditor` | Testability, Scope | Untestable criteria often stem from scope problems (implicit inclusions, missing boundaries) |
@@ -54,12 +54,14 @@ Spawn **4 dimension auditors** and **1 cross-reviewer** (5 agents total):
 ### Step 3: Create and Assign Tasks
 
 **Phase 1 tasks (parallel):**
+
 - Task 1: "Audit Coherence + Completeness" — assigned to `structure-auditor`
 - Task 2: "Audit Clarity + Actionability" — assigned to `clarity-auditor`
 - Task 3: "Audit Testability + Scope" — assigned to `validation-auditor`
 - Task 4: "Audit Value Proposition + Technical Design" — assigned to `design-auditor`
 
 **Phase 2 task (blocked on all Phase 1 tasks):**
+
 - Task 5: "Cross-review all findings" — assigned to `cross-reviewer`
 
 ### Step 4: Dimension Auditor Prompts
@@ -151,6 +153,7 @@ When done, message the lead with your complete findings and mark your task compl
 ### Step 5: Monitor and Facilitate
 
 While dimension auditors work:
+
 - Monitor task progress via TaskList
 - Relay any questions auditors have about spec structure or context
 - If an auditor gets stuck, provide additional context or redirect
@@ -285,12 +288,14 @@ Same as `/kramme:siw:spec-audit` Step 7 — display quality scores, findings cou
 ## When to Use This vs `/kramme:siw:spec-audit`
 
 Use **this mode** when:
+
 - The spec is large (200+ lines or multiple files)
 - You want cross-validation between dimension analyses
 - You want a cross-reviewer to challenge low-finding dimensions
 - You want higher-quality findings with fewer blind spots
 
 Use **standard `/kramme:siw:spec-audit`** when:
+
 - The spec is small or focused
 - You want faster, lower-cost audit
 - You're running a quick check before implementation

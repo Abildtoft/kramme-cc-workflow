@@ -14,6 +14,7 @@ A structured end-of-session ritual that ensures nothing is forgotten and capture
 ### Git Status
 
 Run `git status` and report:
+
 - **Uncommitted changes**: List modified/staged files
 - **Untracked files**: List new files not yet added
 - **Stash**: Check `git stash list` for forgotten stashes
@@ -21,11 +22,13 @@ Run `git status` and report:
 ### TODO Detection
 
 Search for TODOs added during this session:
+
 ```bash
 git diff HEAD~5 --unified=0 | grep -E "^\+.*TODO"
 ```
 
 If uncommitted changes exist:
+
 ```bash
 git diff --unified=0 | grep -E "^\+.*TODO"
 ```
@@ -35,6 +38,7 @@ Report any TODOs found with file locations.
 ### WIP Detection
 
 Flag potential incomplete work:
+
 - Files with "WIP", "FIXME", or "XXX" in recent changes
 - Commented-out code blocks in modified files
 - Empty function bodies or placeholder implementations
@@ -122,6 +126,7 @@ Present a summary:
 ## Quick Mode
 
 If user runs `/kramme:session:wrap-up quick`:
+
 - Skip quality checks
 - Skip learning extraction
 - Only run Phases 1, 3, and 6 (audit, summary, report)

@@ -161,7 +161,7 @@ Use these markers verbatim (uppercase, no decoration), one marker per line. They
 Watch for these excuses — they signal the design is about to regress:
 
 | Excuse | Reality |
-|---|---|
+| --- | --- |
 | "We can skip the audit gate for speed." | Audit cost is one-time to set up and seconds to run with caching. The cost of a shipped vulnerability is unbounded. |
 | "Secrets in `.env` are fine, it's gitignored." | Gitignore is a convention, not a boundary. One `git add -A` and secrets are in history. Use a secrets manager. |
 | "We'll remove the flag later." | "Later" is where dead flags live forever. Every flag ships with a named removal criterion or it doesn't ship. |

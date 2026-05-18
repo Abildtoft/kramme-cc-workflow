@@ -13,19 +13,22 @@ After any workflow below transitions the issue to "In Progress", verify all thre
 - [ ] `siw/issues/ISSUE-{prefix}-{number}-*.md` — Status line reads `**Status:** In Progress ...` and preserves any existing `**Size:**` / `**Parallelization:**` metadata instead of deleting it.
 - [ ] `siw/OPEN_ISSUES_OVERVIEW.md` — Issue row shows "In Progress".
 - [ ] `siw/LOG.md` — Current Progress section identifies the active issue and preserves any more specific progress already recorded:
+
   ```markdown
   ## Current Progress
 
-  **Last Updated:** {date}
-  **Quick Summary:** {one-line summary mentioning {prefix}-{number}}
+  **Last Updated:** {date} **Quick Summary:** {one-line summary mentioning {prefix}-{number}}
 
   ### Project Status
+
   - **Status:** In Progress | **Current Issue:** {prefix}-{number} | ...
 
   ### Last Completed
+
   - {started implementation of {prefix}-{number}, or the latest completed task}
 
   ### Next Steps
+
   1. {next unfinished task from plan}
   ```
 
@@ -59,6 +62,7 @@ If any file was not updated during the selected workflow, run the Status Update 
 2. **Set Status to "In Progress"** — Run the Status Update Procedure (all 3 files).
 
 3. **Provide Starting Points**
+
    ```
    Context set up. Here's where to start:
 
@@ -108,6 +112,7 @@ If any file was not updated during the selected workflow, run the Status Update 
    - Ensure spec matches actual implementation
 
 7. **Present Results**
+
    ```
    Implementation Complete
 

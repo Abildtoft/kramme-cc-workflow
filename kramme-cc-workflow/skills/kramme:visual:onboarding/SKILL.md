@@ -16,11 +16,13 @@ Generate a comprehensive, self-contained HTML onboarding guide for newcomers to 
 ## Prerequisites
 
 Read the local visual references before generating:
+
 - `references/css-patterns.md`
 - `references/libraries.md`
 - `references/responsive-nav.md`
 
 Select the appropriate template to absorb patterns:
+
 - `assets/architecture.html`
 - `assets/data-table.html`
 - `assets/mermaid-flowchart.html`
@@ -51,13 +53,12 @@ Follow the workflow below. Use a warm, inviting editorial aesthetic: friendly te
 
 ## Data Gathering
 
-Read the exploration dimensions guide from `references/exploration-dimensions.md`.
-Read the agent prompt template from `references/explore-agent.md`.
+Read the exploration dimensions guide from `references/exploration-dimensions.md`. Read the agent prompt template from `references/explore-agent.md`.
 
 Launch **2-3 Explore agents** in parallel (Task tool, `subagent_type: Explore`), splitting six dimensions:
 
 | Dimension | What to find |
-|---|---|
+| --- | --- |
 | **Project Identity** | Project docs, package manifests, AGENTS.md / CLAUDE.md — purpose, users, tech stack |
 | **Architecture** | Directory structure, module boundaries, dependency graph, entry points, build system |
 | **Domain Model** | Key entities, relationships, schemas, state management, data flow |
@@ -70,6 +71,7 @@ Populate agent prompts with relevant dimension details from the exploration-dime
 ## Verification Checkpoint
 
 Before generating HTML, produce a structured fact sheet:
+
 - Every module, function, type, and entity referenced — cite `source: file:line`
 - Every architecture description and behavior claim
 - Mark uncertain items explicitly
@@ -77,9 +79,9 @@ Before generating HTML, produce a structured fact sheet:
 
 ## Page Sections
 
-1. **Welcome & Project Identity** — Hero: name, one-sentence description, who it's for, key stats (languages, deps, test count). *Hero depth: large type, dominant.*
+1. **Welcome & Project Identity** — Hero: name, one-sentence description, who it's for, key stats (languages, deps, test count). _Hero depth: large type, dominant._
 
-2. **Architecture Overview** — Mermaid diagram of modules/relationships in `.mermaid-wrap` with zoom controls. Brief explanation per module. *Elevated depth.*
+2. **Architecture Overview** — Mermaid diagram of modules/relationships in `.mermaid-wrap` with zoom controls. Brief explanation per module. _Elevated depth._
 
 3. **Domain Model** — Mermaid ER/class diagram of key entities. Glossary of domain terms. Collapsible `<details>` per entity.
 
@@ -97,11 +99,10 @@ Before generating HTML, produce a structured fact sheet:
 
 ## Output
 
-Write to `~/.kramme-cc-workflow/diagrams/onboarding-{project-name}.html`. Create directory if needed.
-Open in browser:
+Write to `~/.kramme-cc-workflow/diagrams/onboarding-{project-name}.html`. Create directory if needed. Open in browser:
+
 - macOS: `open ~/.kramme-cc-workflow/diagrams/{filename}.html`
-- Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html`
-Report the file path to the user.
+- Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html` Report the file path to the user.
 
 Include responsive section navigation.
 

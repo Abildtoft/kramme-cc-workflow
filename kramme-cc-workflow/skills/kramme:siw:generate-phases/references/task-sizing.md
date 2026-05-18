@@ -5,11 +5,11 @@
 ## Task Sizing
 
 | Size | Scope | Notes |
-|---|---|---|
-| XS | 1 file, single function | |
-| S | 1–2 files, one endpoint | |
-| M | 3–5 files, one feature slice | |
-| L | 6–8 files, multi-component | |
+| --- | --- | --- |
+| XS | 1 file, single function |  |
+| S | 1–2 files, one endpoint |  |
+| M | 3–5 files, one feature slice |  |
+| L | 6–8 files, multi-component |  |
 | **XL** | 9+ files | **"Too large — break it down further"** |
 
 Every generated task must land at XS, S, M, or L. XL is never an acceptable final state — when a task sizes XL, decompose it further before Phase 5 user approval.

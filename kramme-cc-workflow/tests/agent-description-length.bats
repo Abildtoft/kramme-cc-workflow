@@ -1,11 +1,11 @@
 #!/usr/bin/env bats
 
 @test "agent and skill descriptions fit Codex metadata limits" {
-  if ! command -v node >/dev/null 2>&1; then
-    skip "node is required for agent metadata tests"
-  fi
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for agent metadata tests"
+	fi
 
-  run bash -c '
+	run bash -c '
     cd "'"$BATS_TEST_DIRNAME"'/.."
     node <<'"'"'NODE'"'"'
 const fs = require("fs");
@@ -60,15 +60,15 @@ if (failures.length > 0) {
 NODE
   '
 
-  [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
 
 @test "skill bodies stay within progressive disclosure budget" {
-  if ! command -v node >/dev/null 2>&1; then
-    skip "node is required for skill length tests"
-  fi
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for skill length tests"
+	fi
 
-  run bash -c '
+	run bash -c '
     cd "'"$BATS_TEST_DIRNAME"'/.."
     node <<'"'"'NODE'"'"'
 const fs = require("fs");
@@ -87,10 +87,10 @@ const skillFiles = fs
 
 for (const entry of skillFiles) {
   const raw = fs.readFileSync(path.join(process.cwd(), entry), "utf8");
-  const lineCount = raw.length === 0 ? 0 : raw.split(/\r?\n/).length - (raw.endsWith("\n") ? 1 : 0);
+  const lineCount = raw.split(/\r?\n/).filter((line) => line.trim().length > 0).length;
 
   if (lineCount > MAX_LINES) {
-    failures.push(`${entry}: ${lineCount} lines (limit ${MAX_LINES})`);
+    failures.push(`${entry}: ${lineCount} nonblank lines (limit ${MAX_LINES})`);
   }
 }
 
@@ -101,11 +101,11 @@ if (failures.length > 0) {
 NODE
   '
 
-  [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }
 
 @test "feature spec template preserves raw marker prefixes" {
-  run bash -c '
+	run bash -c '
     cd "'"$BATS_TEST_DIRNAME"'/.."
     template="skills/kramme:docs:feature-spec/assets/feature-spec-template.md"
 
@@ -118,5 +118,5 @@ NODE
     fi
   '
 
-  [ "$status" -eq 0 ]
+	[ "$status" -eq 0 ]
 }

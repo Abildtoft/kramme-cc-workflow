@@ -6,9 +6,9 @@ Reference material for Rule 3 of `kramme:code:api-design`. Every error response 
 
 ```ts
 type APIError = {
-  code: string;       // stable, machine-readable identifier
-  message: string;    // human-readable, safe for end-users
-  details?: unknown;  // optional structured context (field-level errors, retry hints, etc.)
+  code: string; // stable, machine-readable identifier
+  message: string; // human-readable, safe for end-users
+  details?: unknown; // optional structured context (field-level errors, retry hints, etc.)
 };
 ```
 
@@ -44,15 +44,15 @@ With `details`:
 
 ## HTTP status mapping
 
-| Status | Meaning |
-|---|---|
-| 400 | Invalid data |
-| 401 | Not authenticated |
-| 403 | Not authorized |
-| 404 | Not found |
-| 409 | Conflict |
-| 422 | Validation failed |
-| 500 | Server error (never expose internals) |
+| Status | Meaning                               |
+| ------ | ------------------------------------- |
+| 400    | Invalid data                          |
+| 401    | Not authenticated                     |
+| 403    | Not authorized                        |
+| 404    | Not found                             |
+| 409    | Conflict                              |
+| 422    | Validation failed                     |
+| 500    | Server error (never expose internals) |
 
 ### Worked examples
 

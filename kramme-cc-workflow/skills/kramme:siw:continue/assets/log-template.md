@@ -7,6 +7,7 @@
 **Update:** After completing tasks, before ending sessions, when making decisions.
 
 **DO NOT update after:**
+
 - Every file edit (only after completing logical units of work)
 - Minor refactoring within a task
 - Reading/exploring code
@@ -43,6 +44,7 @@ This document is designed for **progressive reading**:
 ### Decision Numbering
 
 Decisions are numbered **sequentially across the entire project** (not per-phase):
+
 - Start at #1 for the first decision
 - Increment by 1 for each new decision
 - Never reuse numbers, even if a decision is later revised
@@ -61,8 +63,7 @@ Decisions are numbered **sequentially across the entire project** (not per-phase
 ```markdown
 ## Current Progress
 
-**Last Updated:** YYYY-MM-DD HH:MM
-**Quick Summary:** [MUST be one line - e.g., "Implementing user tracking, 5/12 tasks done, working on API endpoint"]
+**Last Updated:** YYYY-MM-DD HH:MM **Quick Summary:** [MUST be one line - e.g., "Implementing user tracking, 5/12 tasks done, working on API endpoint"]
 
 ### 📍 Project Status
 
@@ -95,11 +96,7 @@ Decisions are numbered **sequentially across the entire project** (not per-phase
 
 **Date**: YYYY-MM-DD | **Category**: [Architecture/Data Model/UI/UX/etc.] | **Status**: [✅ Implemented/🔄 Partial/📋 Planned]
 
-**Problem**: [what needed to be decided]
-**Decision**: [chosen approach]
-**Rationale**: [why this was chosen]
-**Alternatives**: [rejected options + why]
-**Impact**: [changes made, files affected]
+**Problem**: [what needed to be decided] **Decision**: [chosen approach] **Rationale**: [why this was chosen] **Alternatives**: [rejected options + why] **Impact**: [changes made, files affected]
 ```
 
 **Example:**
@@ -109,11 +106,7 @@ Decisions are numbered **sequentially across the entire project** (not per-phase
 
 **Date**: 2025-11-05 | **Category**: Data Model | **Status**: ✅ Implemented
 
-**Problem**: Not all entities undergo this action
-**Decision**: Nullable at storage; required when calling PerformAction()
-**Rationale**: Matches ActionAt pattern; semantically correct
-**Alternatives**: Non-nullable - rejected (doesn't reflect reality)
-**Impact**: Updated spec + `MyEntity.cs:23`, `MyEntityConfiguration.cs:74`
+**Problem**: Not all entities undergo this action **Decision**: Nullable at storage; required when calling PerformAction() **Rationale**: Matches ActionAt pattern; semantically correct **Alternatives**: Non-nullable - rejected (doesn't reflect reality) **Impact**: Updated spec + `MyEntity.cs:23`, `MyEntityConfiguration.cs:74`
 ```
 
 ### Rejected Alternatives Summary
@@ -122,7 +115,7 @@ Decisions are numbered **sequentially across the entire project** (not per-phase
 ## Rejected Alternatives Summary
 
 | Alternative | For | Why Rejected | Decision # |
-|------------|-----|--------------|------------|
+| --- | --- | --- | --- |
 | IAuditable interface | Action tracking | Redundant fields | #1 |
 | Non-nullable ActionByUserId | Data model | Unrealistic | #5 |
 ```
@@ -157,8 +150,7 @@ Decisions are numbered **sequentially across the entire project** (not per-phase
 
 ## Current Progress
 
-**Last Updated:** 2025-11-05 16:45
-**Quick Summary:** Implementing user action tracking on MyEntity, 5/12 tasks done, working on API endpoint.
+**Last Updated:** 2025-11-05 16:45 **Quick Summary:** Implementing user action tracking on MyEntity, 5/12 tasks done, working on API endpoint.
 
 ### 📍 Project Status
 
@@ -183,26 +175,18 @@ Decisions are numbered **sequentially across the entire project** (not per-phase
 
 #### Decision #1: Use Explicit Properties Over IAuditable
 
-**Date**: 2025-11-04 | **Category**: Architecture | **Status**: ✅ Implemented
-**Problem**: Need action tracking without redundant audit data
-**Decision**: Explicit ActionByUserId/ActionNote properties vs IAuditable interface
-**Rationale**: Clearer intent, avoids redundant fields, not all entities need full audit
-**Alternatives**: IAuditable - rejected (redundant data) | **Impact**: Spec Task 1.1, MyEntity
+**Date**: 2025-11-04 | **Category**: Architecture | **Status**: ✅ Implemented **Problem**: Need action tracking without redundant audit data **Decision**: Explicit ActionByUserId/ActionNote properties vs IAuditable interface **Rationale**: Clearer intent, avoids redundant fields, not all entities need full audit **Alternatives**: IAuditable - rejected (redundant data) | **Impact**: Spec Task 1.1, MyEntity
 
 #### Decision #5: Make ActionByUserId Nullable
 
-**Date**: 2025-11-05 | **Category**: Data Model | **Status**: ✅ Implemented
-**Problem**: Not all entities undergo action | **Decision**: Nullable at storage, required in PerformAction()
-**Rationale**: Matches ActionAt pattern, semantically correct
-**Alternatives**: Non-nullable - rejected (doesn't reflect reality)
-**Impact**: Spec (lines 361,367,374,392), `MyEntity.cs:23`, `MyEntityConfiguration.cs:74`
+**Date**: 2025-11-05 | **Category**: Data Model | **Status**: ✅ Implemented **Problem**: Not all entities undergo action | **Decision**: Nullable at storage, required in PerformAction() **Rationale**: Matches ActionAt pattern, semantically correct **Alternatives**: Non-nullable - rejected (doesn't reflect reality) **Impact**: Spec (lines 361,367,374,392), `MyEntity.cs:23`, `MyEntityConfiguration.cs:74`
 
 ---
 
 ## Rejected Alternatives Summary
 
 | Alternative | For | Why Rejected | Decision # |
-|------------|-----|--------------|------------|
+| --- | --- | --- | --- |
 | IAuditable interface | Action tracking | Redundant fields | #1 |
 | Non-nullable ActionByUserId | Data model | Unrealistic | #5 |
 

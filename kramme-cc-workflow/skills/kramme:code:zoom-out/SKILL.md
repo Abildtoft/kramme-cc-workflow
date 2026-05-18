@@ -27,9 +27,11 @@ Produce a one-shot orientation map for an area of the codebase: which modules li
 **Focus area:** <path or topic>
 
 ## Modules
+
 - **<Name>** — <one-line role>
 
 ## Relationships
+
 - **<Caller>** calls **<Callee>** to <reason>
 ```
 

@@ -53,6 +53,7 @@ Use **Decision-Tree mode** when `decision_tree_requested=true`; otherwise use th
 ## Step 1: Autonomous Framing
 
 Before starting the interview, write down a working hypothesis for:
+
 - Who the user or stakeholder is
 - What job they are trying to get done
 - Why this matters now
@@ -69,7 +70,7 @@ If the hypothesis doesn't seem to match the user's framing, emit `CONFUSION:` an
 After drafting the working hypothesis, classify the topic into one of these categories:
 
 | Type | Indicators | Focus Areas |
-|------|------------|-------------|
+| --- | --- | --- |
 | **Software Feature** | New functionality, UI changes, API additions | Architecture, data model, UX flows, integration |
 | **Process/Workflow** | Team processes, approval flows, automation | Steps, roles, triggers, exceptions, tooling |
 | **Architecture Decision** | Technology choice, pattern selection, migration | Options, tradeoffs, constraints, reversibility |
@@ -187,6 +188,7 @@ Carry research findings forward as context for Step 3. Apply the existing **Code
 ### Question Philosophy
 
 Craft questions that:
+
 - **Challenge assumptions** - Present alternatives the user may not have considered
 - **Expose edge cases** - Surface scenarios that could break the design
 - **Reveal dependencies** - Uncover hidden connections to existing systems
@@ -195,8 +197,7 @@ Craft questions that:
 - **Separate decision ownership** - Distinguish product calls from implementation choices
 - **Plan the learning loop** - Ask how the team will know quickly if the approach is working
 
-**Avoid obvious questions.** Never ask "What is the feature?" or "Why do you want this?"
-If the artifact or codebase already answers a question, do not ask it again. Explore first, present the inferred answer with the source, and ask only for confirmation or correction.
+**Avoid obvious questions.** Never ask "What is the feature?" or "Why do you want this?" If the artifact or codebase already answers a question, do not ask it again. Explore first, present the inferred answer with the source, and ask only for confirmation or correction.
 
 If a dimension requires information the artifact doesn't contain and the user hasn't provided, emit `MISSING REQUIREMENT:` before asking the user to fill the gap.
 
@@ -213,6 +214,7 @@ Before each question in either coverage or decision-tree mode, decide whether th
 The AskUserQuestion tool requires **2-4 predefined options** per question. Users can always select "Other" to provide free-text input.
 
 **Tool structure:**
+
 - `header`: Short label (max 12 chars) shown as chip/tag, e.g., "Error handling"
 - `question`: The full question text
 - `options`: 2-4 choices, each with `label` (short) and `description` (explains tradeoff)
@@ -228,6 +230,7 @@ For **every question**, provide context before asking:
 This transforms the interview from interrogation into collaborative exploration.
 
 **Example - Complete question with context:**
+
 ```
 **Why this matters:** Rate limiting strategy directly affects both user experience and
 system stability. Getting this wrong could either frustrate users with unnecessary
@@ -247,6 +250,7 @@ Options:
 **Craft thoughtful options that represent real alternatives, not straw men.**
 
 **Example - Bad (no context, weak options):**
+
 ```
 Question: "Should we handle errors?"
 Options:
@@ -258,6 +262,7 @@ Options:
 ### Question Dimensions by Topic Type
 
 #### For Software Features
+
 - **User / Why Now**: target user, job-to-be-done, urgency, business value
 - **Architecture**: Component boundaries, data flow, state ownership
 - **Data Model**: Entities, relationships, constraints, migrations
@@ -269,6 +274,7 @@ Options:
 - **Non-Goals**: deferred work, excluded edge cases, follow-up issues, and why each is excluded
 
 #### For Process/Workflow
+
 - **User / Why Now**: who is blocked today, urgency, business reason
 - **Triggers**: What initiates the process, frequency, urgency
 - **Steps**: Sequence, parallelism, dependencies
@@ -279,6 +285,7 @@ Options:
 - **Non-Goals**: what process complexity should stay out of scope for now, and why
 
 #### For Architecture Decisions
+
 - **Decision Ownership**: what is a product/business decision vs architecture decision
 - **Options**: What alternatives exist, pros/cons of each
 - **Constraints**: Non-negotiables, deadlines, budget
@@ -288,6 +295,7 @@ Options:
 - **Risk**: What could go wrong, mitigation strategies
 
 #### For Documentation/Proposal
+
 - **Clarity**: What's ambiguous or underspecified
 - **Completeness**: What's missing that should be addressed
 - **Feasibility**: What seems unrealistic or risky
@@ -309,6 +317,7 @@ Ask **1-4 questions per round** using AskUserQuestion. Mix questions across diff
 For high-stakes or dependency-shaping decisions, ask one question in the round. Apply the Codebase-as-Answer-Source Rule before every question.
 
 After receiving answers, provide a brief synthesis before the next round:
+
 ```
 "Based on your answers: [key insight]. This raises follow-up questions about [area]..."
 ```
@@ -318,22 +327,24 @@ After receiving answers, provide a brief synthesis before the next round:
 After each round, analyze the answers and adapt your next questions:
 
 **Dig deeper when:**
+
 - An answer reveals unexpected complexity ("Tell me more about...")
 - The user mentions a constraint or concern in passing
 - A decision has significant downstream implications
 
 **Pivot when:**
+
 - Answers reveal the problem is different than assumed
 - A previously unexplored dimension becomes critical
 - The user's priorities shift from initial assumptions
 
 **Clarify when:**
+
 - An answer is ambiguous or contradictory
 - The user selects "Other" with a response that needs unpacking
 - Technical terms or domain concepts need definition
 
-**Don't just check boxes** — the goal is understanding, not coverage.
-If the remaining gaps are low-value or implementation-level only, stop the interview and move to synthesis.
+**Don't just check boxes** — the goal is understanding, not coverage. If the remaining gaps are low-value or implementation-level only, stop the interview and move to synthesis.
 
 ### ADR-Offer Hook
 
@@ -350,21 +361,25 @@ Prompt once and state the three criteria inline. Do not author the ADR inside th
 After each round, display coverage status using dimensions relevant to the topic type:
 
 **Software Feature:**
+
 ```
 Coverage: [Architecture: 70%] [Data Model: 60%] [API: 40%] [UX: 80%] [Integration: 20%]
 ```
 
 **Process/Workflow:**
+
 ```
 Coverage: [Triggers: 80%] [Steps: 60%] [Roles: 40%] [Exceptions: 20%] [Metrics: 0%]
 ```
 
 **Architecture Decision:**
+
 ```
 Coverage: [Options: 90%] [Tradeoffs: 70%] [Constraints: 50%] [Migration: 30%]
 ```
 
 **Documentation/Proposal:**
+
 ```
 Coverage: [Clarity: 80%] [Completeness: 60%] [Feasibility: 40%] [Actionability: 20%]
 ```
@@ -374,6 +389,7 @@ Adjust percentages based on how thoroughly each dimension has been explored.
 ### Completion Criteria
 
 Stop interviewing when:
+
 - All relevant dimensions show 80%+ coverage
 - No major unknowns remain for the topic type
 - User indicates satisfaction with exploration depth
@@ -383,18 +399,19 @@ Stop interviewing when:
 ## Step 5: Output Plan Document
 
 ### File Naming
+
 Suggest a filename based on the topic, e.g., `user-auth-redesign-plan.md` or `deployment-process-plan.md`. Ask user for preferred location.
 
 ### Template Selection
 
 Pick the template matching the final topic type in force after Step 2 and any Phase 0 or Phase R reclassification:
 
-| Topic Type | Template File |
-|------------|---------------|
-| Software Feature | `assets/template-feature.md` |
-| Process/Workflow | `assets/template-process.md` |
-| Architecture Decision | `assets/template-architecture.md` |
-| Documentation/Proposal | `assets/template-doc-review.md` |
+| Topic Type             | Template File                     |
+| ---------------------- | --------------------------------- |
+| Software Feature       | `assets/template-feature.md`      |
+| Process/Workflow       | `assets/template-process.md`      |
+| Architecture Decision  | `assets/template-architecture.md` |
+| Documentation/Proposal | `assets/template-doc-review.md`   |
 
 Read the matching template, fill in the interview findings, and write the populated result to the user-chosen location. Emit `PLAN:` as the hand-off label:
 
@@ -419,6 +436,7 @@ When the host runtime supports it (Claude Code) and the user wants to move direc
 ## Starting the Interview
 
 **Handling $ARGUMENTS:**
+
 - `$ARGUMENTS` contains everything the user typed after `/kramme:discovery:interview`
 - Parse for the `--ideate`, `--decision-tree`, and `--research` flags. If present, set `force_ideate=true`, `decision_tree_requested=true`, and/or `research_requested=true`, then remove them from the argument list.
 - Treat natural-language requests to "walk the decision tree", "walk this depth-first", or "resolve dependencies first" as `decision_tree_requested=true` without treating phrase-only instructions as the topic.
@@ -427,6 +445,7 @@ When the host runtime supports it (Claude Code) and the user wants to move direc
 - If empty: Ask user what they want to explore using AskUserQuestion
 
 **Process:**
+
 1. Parse and analyze any files or context provided via $ARGUMENTS
 2. Read `UBIQUITOUS_LANGUAGE.md` if present; proceed silently if absent
 3. Draft the autonomous framing hypotheses (target user, why-now, non-goals) before asking questions
@@ -441,10 +460,10 @@ When the host runtime supports it (Claude Code) and the user wants to move direc
 
 ### Common Rationalizations
 
-- *"The topic is already clear enough to skip Phase 0."* — Sometimes true. But if you can't state the concrete outcome in one sentence, the framing is vague and Phase 0 will save rounds.
-- *"The user will correct me if I'm wrong."* — They often won't, because they don't know what they don't know. Use `CONFUSION:` to surface mismatches early.
-- *"Coverage at 80% across all dimensions means I'm done."* — Coverage is a proxy, not a goal. Stop when no major unknowns remain, even if a dimension sits at 60%.
-- *"The template handles all topic types, so classification doesn't matter."* — It does. The template shapes what questions to ask; picking the wrong one produces a flabby plan.
+- _"The topic is already clear enough to skip Phase 0."_ — Sometimes true. But if you can't state the concrete outcome in one sentence, the framing is vague and Phase 0 will save rounds.
+- _"The user will correct me if I'm wrong."_ — They often won't, because they don't know what they don't know. Use `CONFUSION:` to surface mismatches early.
+- _"Coverage at 80% across all dimensions means I'm done."_ — Coverage is a proxy, not a goal. Stop when no major unknowns remain, even if a dimension sits at 60%.
+- _"The template handles all topic types, so classification doesn't matter."_ — It does. The template shapes what questions to ask; picking the wrong one produces a flabby plan.
 
 ### Red Flags
 

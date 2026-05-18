@@ -7,18 +7,18 @@ Compute a weighted 0-100 health score across QA categories. The score provides a
 Each category starts at 100. Deduct per finding found in that category.
 
 | Finding Severity | Deduction |
-|------------------|-----------|
-| Blocker | -25 |
-| Major | -15 |
-| Minor | -8 |
-| Info | -3 |
+| ---------------- | --------- |
+| Blocker          | -25       |
+| Major            | -15       |
+| Minor            | -8        |
+| Info             | -3        |
 
 Minimum score per category is 0.
 
 ## Categories and Weights
 
 | Category | Weight | What it measures |
-|----------|--------|-----------------|
+| --- | --- | --- |
 | Console | 15% | JavaScript errors, unhandled rejections, warnings |
 | Network | 10% | Failed API calls, 4xx/5xx responses, CORS errors |
 | Visual | 10% | Layout overflow, broken images, text overlap, clipping |
@@ -52,7 +52,7 @@ If a finding spans multiple categories, assign it to the most severe one.
 ## Score Interpretation
 
 | Score | Label | Meaning |
-|-------|-------|---------|
+| --- | --- | --- |
 | 90-100 | Excellent | No blockers, minimal issues. Ready to ship. |
 | 75-89 | Good | No blockers, some minor issues. Ready with caveats. |
 | 50-74 | Fair | Major issues present. Needs work before shipping. |

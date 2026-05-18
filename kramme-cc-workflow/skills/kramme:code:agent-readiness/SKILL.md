@@ -22,6 +22,7 @@ Parse `$ARGUMENTS` for `--auto` before Step 1.
 Treat Context Pointers as first-class agent-readiness evidence. A Context Pointer is an intentional link or code affordance that lets an agent move from a compact surface to the relevant deeper context without loading everything.
 
 Examples:
+
 - Agent instructions that point to focused docs, scripts, workflows, or source entry points with a clear "when to read/use this" cue
 - README/docs navigation that routes setup, architecture, testing, and deployment questions to specific files
 - Module-level `README.md`, `index.*`, route maps, registries, public exports, schemas, or shared helpers that act as reliable entry points
@@ -76,6 +77,7 @@ find . -maxdepth 1 -type f \( -name "*.csproj" -o -name "*.sln" \)
 ```
 
 Identify primary language(s) by checking for config files:
+
 - `tsconfig.json` / `package.json` with TypeScript deps → TypeScript
 - `package.json` without TypeScript → JavaScript
 - `pyproject.toml` / `setup.py` / `requirements.txt` → Python
@@ -112,7 +114,7 @@ for item in AGENTS.md CLAUDE.md README.md CONTRIBUTING.md docs; do
     echo "$item"
   fi
 done
-rg -ni "\[[^]]+\]\([^)]+\)|\b(see|read|follow|refer to|ADR|runbook|schema|entry point)\b" AGENTS.md CLAUDE.md README.md CONTRIBUTING.md docs 2>/dev/null | head -100
+rg -ni "\[[^]]+\]\([^)]+\)|\b(see|read|follow|refer to|ADR|runbook|schema|entry point)\b" AGENTS.md CLAUDE.md README.md CONTRIBUTING.md docs 2> /dev/null | head -100
 find . -maxdepth 3 \
   \( -type d \( -name ".git" -o -name ".context" -o -name "node_modules" -o -name "dist" -o -name "build" -o -name ".next" -o -name ".nuxt" -o -name "coverage" -o -name ".venv" -o -name "venv" -o -name "target" \) -prune \) -o \
   -type f \( -name "README.md" -o -name "index.*" -o -name "*registry*" -o -name "*routes*" -o -name "*schema*" \) -print
@@ -168,7 +170,7 @@ Launch 3 Explore agents in parallel (single message, 3 Task tool calls).
 ### Agent Grouping
 
 | Agent | Dimensions | Finding IDs |
-|-------|-----------|-------------|
+| --- | --- | --- |
 | **A: Type & Structure** | Fully Typed, Traversable | AN-001 through AN-099 |
 | **B: Test & Feedback** | Test Coverage, Feedback Loops | AN-100 through AN-199 |
 | **C: Documentation** | Self-Documenting | AN-200 through AN-299 |
@@ -192,6 +194,7 @@ For each agent:
 Launch all 3 agents simultaneously using the Task tool with `subagent_type: Explore`.
 
 Each agent prompt must include:
+
 - The populated prompt template
 - Only the rubric sections for its assigned dimensions
 - The codebase signals for context
@@ -205,6 +208,7 @@ After all 3 agents return:
 ### 3.1 Gather Results
 
 From each agent, extract:
+
 - Per-dimension scores (1-5)
 - Evidence bullet points
 - Context Pointer examples and gaps where relevant
@@ -214,6 +218,7 @@ From each agent, extract:
 ### 3.2 Validate Completeness
 
 For each of the 5 dimensions:
+
 - Verify a score was returned (1-5 range)
 - Verify evidence was provided
 - If an agent returned incomplete results for a dimension, note it as "Incomplete — re-run recommended"
@@ -221,6 +226,7 @@ For each of the 5 dimensions:
 ### 3.3 Renumber Findings
 
 Renumber all findings sequentially (AN-001, AN-002, ...) sorted by:
+
 1. Severity: Critical first, then Important, then Suggestion
 2. Within same severity: by dimension order (Typed → Traversable → Tests → Feedback → Docs)
 
@@ -241,7 +247,7 @@ Round to 1 decimal place.
 ### 4.2 Determine Assessment
 
 | Overall Score | Assessment |
-|--------------|------------|
+| --- | --- |
 | 4.5 – 5.0 | **Agent-Native** — Optimized for AI coding agents |
 | 3.5 – 4.4 | **Agent-Ready** — Solid foundation, minor improvements possible |
 | 2.5 – 3.4 | **Agent-Compatible** — Works but agents hit friction regularly |
@@ -255,13 +261,14 @@ Round to 1 decimal place.
 ### 5.1 Prioritize Actions
 
 Collect all improvement actions from all agents. Sort by:
+
 1. **Impact** (descending): High → Medium → Low
 2. **Effort** (ascending): Quick Win → Moderate → Significant
 
 ### 5.2 Assign to Phases
 
 | Phase | Criteria | Description |
-|-------|----------|-------------|
+| --- | --- | --- |
 | **Phase 1: Quick Wins** | High impact + Quick Win effort, OR Medium impact + Quick Win effort | Do these first — fast improvements with immediate value |
 | **Phase 2: Foundation** | High impact + Moderate effort, OR Medium impact + Moderate effort | Core improvements requiring real work |
 | **Phase 3: Polish** | Everything else (Significant effort, Low impact items) | Refinements for maximum agent-nativeness |
@@ -300,6 +307,7 @@ If **Abort**: stop and inform the user.
 Read the report template from `assets/audit-report.md`.
 
 Populate and write `AGENT_NATIVE_AUDIT.md` in the project root with:
+
 - Scorecard summary table
 - Score changes (if compare mode)
 - Dimension details with evidence, findings, and improvement actions
@@ -353,6 +361,7 @@ Next Steps:
 ```
 
 Where `{bar}` is a simple visual indicator using the score:
+
 - 5/5: `[==========]`
 - 4/5: `[========--]`
 - 3/5: `[======----]`

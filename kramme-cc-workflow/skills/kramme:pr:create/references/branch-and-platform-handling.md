@@ -17,6 +17,7 @@ If the command above returns an empty value, the repository is in detached HEAD 
 If `AUTO_MODE=true`, create a new feature branch from the current commit using the first generated file-based branch suggestion from the later "No, generate from file changes" path, then continue.
 
 Otherwise use AskUserQuestion:
+
 ```yaml
 header: "Detached HEAD"
 question: "You're currently in detached HEAD state. How should branch handling proceed?"
@@ -31,25 +32,28 @@ multiSelect: false
 ```
 
 **If "Create a new feature branch here":**
+
 ```bash
 git checkout -b {chosen-branch-name}
 ```
+
 Continue with the normal flow.
 
 **If "Switch to existing branch":**
+
 ```bash
 git branch
 git checkout {existing-branch}
 ```
+
 Continue with the normal flow.
 
-**If "Abort":**
-Stop the workflow with a clear message.
+**If "Abort":** Stop the workflow with a clear message.
 
 ### Determine Main Branch
 
 ```bash
-git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||'
+git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's|refs/remotes/origin/||'
 ```
 
 If this fails, try `main` then `master`.
@@ -78,6 +82,7 @@ multiSelect: false
 #### If "Yes, I have a Linear issue ID":
 
 1. Ask for the issue ID (user enters via "Other" free-text option):
+
    ```yaml
    header: "Linear issue"
    question: "Enter the Linear issue ID (e.g., WAN-521):"
@@ -85,11 +90,13 @@ multiSelect: false
    ```
 
 2. Fetch issue details using Linear MCP:
+
    ```
    mcp__linear__get_issue with id: {issue-id}
    ```
 
 3. **If fetch fails (MCP unavailable or issue not found):**
+
    ```
    Warning: Could not fetch Linear issue {issue-id}.
 
@@ -97,6 +104,7 @@ multiSelect: false
 
    Falling back to file-based branch naming.
    ```
+
    Continue with file-based naming.
 
 4. **If fetch succeeds and `branchName` is available:**
@@ -114,10 +122,10 @@ multiSelect: false
    - Use the generated name as `{branchName}`
 
 6. **Check if branch exists (local or remote):**
+
    ```bash
    # Check if branch exists locally
-   git rev-parse --verify {branchName} 2>/dev/null
-
+   git rev-parse --verify {branchName} 2> /dev/null
    # Check if branch exists on remote
    git ls-remote --heads origin {branchName}
    ```
@@ -150,11 +158,9 @@ multiSelect: false
 
    ```bash
    # Determine base branch
-   BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||') || BASE="main"
-
+   BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's|refs/remotes/origin/||') || BASE="main"
    # Fetch latest
    git fetch origin $BASE
-
    # Create branch from latest base
    git checkout -b {branchName} origin/$BASE
    ```
@@ -162,6 +168,7 @@ multiSelect: false
 #### If "No, generate from file changes" (or fallback):
 
 1. Analyze changed files to suggest branch names:
+
    ```bash
    # Get changed files (staged + unstaged + untracked)
    git diff --name-only HEAD
@@ -178,6 +185,7 @@ multiSelect: false
 3. If `AUTO_MODE=true`, choose the first suggested branch name automatically.
 
    Otherwise use AskUserQuestion:
+
    ```yaml
    header: "Branch name"
    question: "You're on the main branch. What should the new branch be named?"
@@ -196,14 +204,14 @@ multiSelect: false
    git checkout -b {chosen-branch-name}
    ```
 
-**If already on a feature branch:**
-Continue with current branch, but validate upstream configuration first.
+**If already on a feature branch:** Continue with current branch, but validate upstream configuration first.
 
 ### No-Upstream Handling
 
 Check for an upstream branch:
+
 ```bash
-git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null
+git rev-parse --abbrev-ref --symbolic-full-name @{u} 2> /dev/null
 ```
 
 **If upstream exists:** Continue with the current branch.
@@ -211,12 +219,15 @@ git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null
 **If upstream is missing:**
 
 If `AUTO_MODE=true`, set the upstream immediately with:
+
 ```bash
 git push -u origin $(git branch --show-current)
 ```
+
 Then continue.
 
 Otherwise use AskUserQuestion:
+
 ```yaml
 header: "No upstream"
 question: "Current branch has no upstream remote branch. What should I do?"
@@ -231,13 +242,13 @@ multiSelect: false
 ```
 
 **If "Set upstream now":**
+
 ```bash
 git push -u origin $(git branch --show-current)
 ```
+
 Continue with the workflow.
 
-**If "Continue without upstream":**
-Continue, but note that push/create steps may require explicit branch arguments later.
+**If "Continue without upstream":** Continue, but note that push/create steps may require explicit branch arguments later.
 
-**If "Abort":**
-Stop the workflow with a clear message.
+**If "Abort":** Stop the workflow with a clear message.

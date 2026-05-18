@@ -16,11 +16,13 @@ Generate a comprehensive visual plan review as a self-contained HTML page, compa
 ## Prerequisites
 
 Read the local visual references before generating:
+
 - `references/css-patterns.md`
 - `references/libraries.md`
 - `references/responsive-nav.md`
 
 Select the appropriate template to absorb patterns:
+
 - `assets/architecture.html`
 - `assets/data-table.html`
 - `assets/mermaid-flowchart.html`
@@ -61,6 +63,7 @@ Follow the workflow below. Use a blueprint/editorial aesthetic with current-stat
 ## Verification Checkpoint
 
 Before generating HTML, produce a structured fact sheet of every claim you will present:
+
 - Every quantitative figure: file counts, estimated lines, function counts, test counts
 - Every function, type, and module name from both the plan and the codebase
 - Every behavior description: what the code currently does vs. what the plan proposes
@@ -69,13 +72,13 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 
 ## Page Sections
 
-1. **Plan summary** — lead with the *intuition*: what problem does this plan solve, and what's the core insight behind the approach? Then scope: files touched, estimated scale, new modules planned. *Hero depth: larger type 20-24px, accent-tinted background.*
+1. **Plan summary** — lead with the _intuition_: what problem does this plan solve, and what's the core insight behind the approach? Then scope: files touched, estimated scale, new modules planned. _Hero depth: larger type 20-24px, accent-tinted background._
 
 2. **Impact dashboard** — files to modify/create/delete, estimated lines added/removed, new test files, dependencies affected. Include completeness indicator: tests (green/red), docs updates (green/yellow/red), migration/rollback (green/grey).
 
-3. **Current architecture** — Mermaid diagram of how the affected subsystem works *today*. Focus only on parts the plan touches. Wrap in `.mermaid-wrap` with zoom controls. *Use matching layout direction and node names as section 4.*
+3. **Current architecture** — Mermaid diagram of how the affected subsystem works _today_. Focus only on parts the plan touches. Wrap in `.mermaid-wrap` with zoom controls. _Use matching layout direction and node names as section 4._
 
-4. **Planned architecture** — Mermaid diagram of how the subsystem will work *after* implementation. Same node names and layout direction as current architecture. Highlight new nodes with accent border, removed nodes with reduced opacity, changed edges with different stroke color.
+4. **Planned architecture** — Mermaid diagram of how the subsystem will work _after_ implementation. Same node names and layout direction as current architecture. Highlight new nodes with accent border, removed nodes with reduced opacity, changed edges with different stroke color.
 
 5. **Change-by-change breakdown** — for each change in the plan, a side-by-side panel:
    - **Left (current):** what the code does now, with relevant snippets
@@ -111,11 +114,10 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 
 ## Output
 
-Write to `~/.kramme-cc-workflow/diagrams/plan-review-{descriptive-name}.html`. Create the directory if needed.
-Open in browser:
+Write to `~/.kramme-cc-workflow/diagrams/plan-review-{descriptive-name}.html`. Create the directory if needed. Open in browser:
+
 - macOS: `open ~/.kramme-cc-workflow/diagrams/{filename}.html`
-- Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html`
-Report the file path to the user.
+- Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html` Report the file path to the user.
 
 Include responsive section navigation.
 

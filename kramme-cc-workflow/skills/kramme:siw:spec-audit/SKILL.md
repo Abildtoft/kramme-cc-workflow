@@ -5,6 +5,7 @@ argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku]
 disable-model-invocation: true
 user-invocable: true
 ---
+
 # Audit Specification Quality
 
 Evaluate specification documents for quality across 8 dimensions before implementation begins. This is a spec-only analysis — no codebase code is read or compared.
@@ -51,21 +52,25 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 `$ARGUMENTS` contains the spec file path(s), keyword, and optional flags.
 
 **Extract control flags first:**
+
 - If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag before processing remaining arguments.
 - If `$ARGUMENTS` contains `--inline`, set `INLINE_MODE=true` and remove the flag before processing remaining arguments.
 - If `$ARGUMENTS` contains `--team`, use Team Mode and remove the flag before processing remaining arguments.
 
 **Extract `--model` flag next (Claude Code only — ignored on other platforms):**
+
 - If `$ARGUMENTS` contains `--model opus`, `--model sonnet`, or `--model haiku`, extract it and store as `agent_model`.
 - **Default:** `opus`
 - Remove the flag from `$ARGUMENTS` before processing remaining arguments.
 
 `--auto` means:
+
 - replace any previous audit report automatically
 - create SIW issues for **Critical and Major** findings, plus Minor findings that preserve original Critical or Major severity when Step 6 applies
 - skip the report overwrite / issue-creation prompts
 
 **Detection rules for remaining arguments:**
+
 1. **File path(s)**: Contains `/` or ends in `.md`, `.txt`
 2. **Keyword `siw`**: Explicitly requests auto-detection
 3. **Empty**: Default to auto-detection
@@ -79,7 +84,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - Verify file exists with `ls {path}`
    - If path is a directory, scan for markdown files:
      ```bash
-     find {path} -maxdepth 2 -type f -name "*.md" 2>/dev/null
+     find {path} -maxdepth 2 -type f -name "*.md" 2> /dev/null
      ```
    - If file doesn't exist, warn and skip.
 3. Store verified paths as `spec_files`.
@@ -99,8 +104,9 @@ Provided: {arguments}
 Auto-detect spec files from the `siw/` directory:
 
 1. Check if `siw/` exists:
+
    ```bash
-   ls siw/ 2>/dev/null
+   ls siw/ 2> /dev/null
    ```
 
 2. Find spec files (exclude workflow files):
@@ -150,7 +156,7 @@ Read each spec file completely. Do not skim. Understand the full picture before 
 For each spec file, identify and extract:
 
 | Element | What to look for |
-|---------|-----------------|
+| --- | --- |
 | Overview/Objectives | Opening section, project description, goals |
 | Scope Definition | In-scope items, out-of-scope items, boundaries |
 | Success Criteria | Measurable outcomes, checkboxes, definitions of done |
@@ -163,6 +169,7 @@ For each spec file, identify and extract:
 | Technical Architecture | Data models, API contracts, system design, component boundaries |
 
 For each element, capture:
+
 - **id**: Sequential ID (e.g., `ELEM-001`)
 - **source_file**: Which spec file
 - **source_section**: Heading hierarchy
@@ -225,15 +232,18 @@ options:
 Group the 8 quality dimensions across Explore agents based on spec size:
 
 **Small specs** (single file, under 200 lines) — **2 agents:**
+
 - Agent A: Coherence, Completeness, Value Proposition, Scope
 - Agent B: Clarity, Actionability, Testability, Technical Design
 
 **Medium specs** (1-3 files, 200-800 lines) — **3 agents:**
+
 - Agent A: Coherence, Value Proposition, Technical Design
 - Agent B: Completeness, Scope
 - Agent C: Clarity, Actionability, Testability
 
 **Large specs** (3+ files or 800+ lines) — **4 agents:**
+
 - Agent A: Coherence, Value Proposition
 - Agent B: Completeness, Scope
 - Agent C: Clarity, Actionability
@@ -330,7 +340,7 @@ Re-number all findings as `SPEC-001`, `SPEC-002`, etc. in severity order (Critic
 For each finding:
 
 | Severity | Criteria |
-|----------|----------|
+| --- | --- |
 | **Critical** | Would block implementation or lead to fundamentally wrong implementation. Missing core requirements, contradictory specs, undefined key behaviors, fundamental design flaws. |
 | **Major** | Risks incorrect implementation or significant rework. Ambiguous requirements, missing edge cases, unclear scope boundaries, design gaps. |
 | **Minor** | Cosmetic or low-risk. Inconsistent terminology, missing non-critical sections, formatting issues, suboptimal choices. |
@@ -340,6 +350,7 @@ For each finding:
 If `work_context` specifies deprioritized dimensions:
 
 For each finding whose affected dimensions are all deprioritized:
+
 - If severity was assigned as Critical or Major, record `original_severity={severity}`, then downgrade to Minor
 - Annotate capped findings with: `**Severity Note:** [Deprioritized — capped at Minor from {original_severity}]`
 
@@ -355,12 +366,12 @@ Read the final fix-confidence normalization rules from `references/post-processi
 
 For each dimension, compute a quality score:
 
-| Score | Meaning |
-|-------|---------|
-| **Strong** | No Critical or Major findings. At most Minor findings. |
-| **Adequate** | No Critical findings. Some Major findings. |
-| **Weak** | Has Critical findings or many Major findings. |
-| **Missing** | Dimension not addressed at all in the spec. |
+| Score        | Meaning                                                |
+| ------------ | ------------------------------------------------------ |
+| **Strong**   | No Critical or Major findings. At most Minor findings. |
+| **Adequate** | No Critical findings. Some Major findings.             |
+| **Weak**     | Has Critical findings or many Major findings.          |
+| **Missing**  | Dimension not addressed at all in the spec.            |
 
 Read the preserved-critical-cap assessment rules from `references/post-processing-rules.md` when computing dimension scores and the overall assessment.
 
@@ -408,10 +419,12 @@ If the user chooses **Append**, append the new report as a complete new `# Spec 
 Use the report format template from `assets/spec-audit-report-format.md`.
 
 If `INLINE_MODE=true`:
+
 - Reply with the fully populated report inline
 - Do **not** create or update `siw/AUDIT_SPEC_REPORT.md` or `AUDIT_SPEC_REPORT.md`
 
 Otherwise, after writing:
+
 ```
 Spec audit report written to: {path}
 ```
@@ -437,21 +450,26 @@ Use the summary template from `assets/spec-audit-summary.md`.
 ## Error Handling
 
 ### Spec File Errors
+
 - File not found: Warn and skip, continue with remaining files.
 - File empty or unreadable: Warn, suggest checking file path.
 
 ### Linked Spec (TOC) Detection
+
 - If the main spec is a lightweight TOC linking to supporting specs, automatically include the supporting specs in the audit. Do not audit the TOC structure alone.
 
 ### No Structural Elements Found
+
 - If spec has no clear structure: Offer best-effort analysis or abort.
 - If all elements fall into a single dimension: Proceed with fewer agents.
 
 ### Explore Agent Failures
+
 - If an agent returns incomplete results: Note affected dimensions as "Incomplete analysis" in the report.
 - If an agent times out: Report which dimension was affected, suggest re-running.
 
 ### SIW Workflow Not Active
+
 - Skip issue creation (Step 6).
 - Report file goes to project root instead of `siw/`.
 - All other steps work the same.

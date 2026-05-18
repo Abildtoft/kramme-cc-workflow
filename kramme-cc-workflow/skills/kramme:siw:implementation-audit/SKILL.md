@@ -7,6 +7,7 @@ user-invocable: true
 ---
 
 # Audit Implementation Against Specification
+
 Exhaustively compare the codebase implementation against specification documents.
 
 ## Primary Objective (Mandatory)
@@ -17,6 +18,7 @@ Every audit must detect and report both:
 2. **Extensions**: the implementation introduces behavior, access, data exposure, or flows beyond what the spec defines.
 
 A report is not complete unless it includes:
+
 - Spec divergences
 - Implementation extensions beyond spec
 - Section coverage proof
@@ -73,21 +75,25 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 `$ARGUMENTS` contains the spec file path(s), keyword, and optional flags.
 
 **Extract control flags first:**
+
 - If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag before processing remaining arguments.
 - If `$ARGUMENTS` contains `--inline`, set `INLINE_MODE=true` and remove the flag before processing remaining arguments.
 - If `$ARGUMENTS` contains `--team`, use Team Mode and remove the flag before processing remaining arguments.
 
 **Extract `--model` flag next (Claude Code only — ignored on other platforms):**
+
 - If `$ARGUMENTS` contains `--model opus`, `--model sonnet`, or `--model haiku`, extract it and store as `agent_model`.
 - **Default:** `opus`
 - Remove the flag from `$ARGUMENTS` before processing remaining arguments.
 
 `--auto` means:
+
 - replace any previous audit report automatically
 - create SIW issues for **Critical and Major** findings when Step 9 applies
 - skip the report overwrite / issue-creation prompts
 
 **Detection rules for remaining arguments:**
+
 1. **File path(s)**: Contains `/` or ends in `.md`, `.txt`
 2. **Keyword `siw`**: Explicitly requests auto-detection
 3. **Empty**: Default to auto-detection
@@ -101,7 +107,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - Verify file exists with `ls {path}`
    - If path is a directory, scan for markdown files:
      ```bash
-     find {path} -maxdepth 2 -type f -name "*.md" 2>/dev/null
+     find {path} -maxdepth 2 -type f -name "*.md" 2> /dev/null
      ```
    - If file doesn't exist, warn and skip.
 3. Store verified paths as `spec_files`.
@@ -121,8 +127,9 @@ Provided: {arguments}
 Auto-detect spec files from the `siw/` directory:
 
 1. Check if `siw/` exists:
+
    ```bash
-   ls siw/ 2>/dev/null
+   ls siw/ 2> /dev/null
    ```
 
 2. Find spec files (exclude workflow files):
@@ -197,6 +204,7 @@ For each item, capture:
 ### 2.3 Mark Strict Requirements for Negative/Permissiveness Checks
 
 For each requirement, detect strict operators:
+
 - `MUST`/`REQUIRED`/`SHALL` -> `MUST`
 - `ONLY`/`EXCLUSIVELY` -> `ONLY`
 - `NEVER`/`MUST NOT`/`FORBIDDEN` -> `NEVER`
@@ -206,6 +214,7 @@ Any requirement with at least one strict marker requires explicit negative/permi
 ### 2.4 Respect Scope Boundaries
 
 When parsing specs:
+
 - **Skip "Out of Scope" sections** — do not flag out-of-scope items as missing.
 - **Skip "Future Work" or "Deferred" sections** — unless spec marks them as partially implemented.
 - **Respect phase boundaries** — if spec has phases, only audit requirements for completed phases (check `siw/OPEN_ISSUES_OVERVIEW.md` for phase status if available).
@@ -261,6 +270,7 @@ Group requirements by **spec file or major spec section** (not by abstract domai
 ### 3.2 For Each Group, Identify Code Areas
 
 For each group of requirements, identify:
+
 - Which directories/files likely implement these requirements
 - Key file patterns to search (for example, `**/*controller*`, `**/*model*`)
 - Named identifiers that should appear in code
@@ -272,11 +282,12 @@ This information will be passed to Explore agents to direct their search.
 Create a section-level matrix row for every spec section that contributed requirements:
 
 | Section ID | Source | Requirement Count | Strict (M/O/N) | Pass A Checked | Pass B Checked | Divergences | Extensions | Alignments | Evidence Refs | Status |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|
+| --- | --- | --: | --: | --: | --: | --: | --: | --: | --- | --- |
 
 Initialize `Status = PENDING`.
 
 Coverage is complete only when each row has:
+
 - Non-empty counts for Pass A and Pass B checks
 - Divergence/Extension/Alignment totals
 - Evidence references backing row totals
@@ -302,6 +313,7 @@ Read the Pass A agent prompt template from `references/pass-a-conformance.md`. E
 ### 4.3 Pass A Output Requirements
 
 Agents must return:
+
 - Full per-requirement results
 - List of searched paths for any `MISSING` requirement
 - Section-level pass counts to update the coverage matrix
@@ -328,6 +340,7 @@ Treat low-findings outcomes on large specs as suspicious:
 - Findings unusually low if `divergences + extensions < max(3, ceil(requirements * 0.05))`.
 
 If suspiciously clean, **auto-run Pass B2** before finalizing:
+
 - Use a different grouping strategy than Pass B.
 - Explicitly target strict requirements (`MUST`/`ONLY`/`NEVER`), role checks, config flags, and data-access boundaries.
 - Record Pass B2 execution and findings in the final report.
@@ -345,6 +358,7 @@ Aggregate Pass A and Pass B/B2 findings by requirement and section.
 ### 6.2 Mandatory Conflict Detection
 
 A conflict exists when:
+
 - Two agents disagree on status for the same requirement.
 - A requirement is marked aligned while another finding shows bypass/permissiveness mismatch.
 - Evidence points to contradictory runtime behavior.
@@ -352,6 +366,7 @@ A conflict exists when:
 ### 6.3 Mandatory Conflict Resolution Tie-Break
 
 For each conflict:
+
 1. Re-open cited files and verify the exact code path with line-level evidence.
 2. If still unclear, run a targeted tie-break Explore agent on the conflicting requirement/path.
 3. Choose a canonical result and record why.
@@ -361,6 +376,7 @@ If any conflict remains unresolved, audit is **BLOCKED** and no final report may
 ### 6.4 Evidence Standard (Hard Gate)
 
 Every Divergence, Extension, and Verified Alignment must include:
+
 - **Spec citation**: source file + section + clause
 - **Code citation**: file path with line number(s)
 - **Runtime behavior statement**: concrete input/state -> observed behavior -> conclusion
@@ -376,6 +392,7 @@ Never use existing issues as primary evidence. Never let an existing issue suppr
 ### 6.6 Coverage Matrix Completion Gate (Hard Gate)
 
 Complete the section matrix for every audited section with:
+
 - Requirement counts
 - Pass A and Pass B checked counts
 - Divergence/Extension/Alignment totals
@@ -414,25 +431,31 @@ Use the summary template from `assets/audit-complete-summary.md`.
 ## Error Handling
 
 ### Spec File Errors
+
 - File not found: Warn and skip, continue with remaining files.
 - File empty or unreadable: Warn, suggest checking file path.
 
 ### No Requirements Extracted
+
 - If spec has no clear structure: Offer best-effort scan or abort.
 - If all requirements fall into a single group: Proceed with one agent instead of many.
 
 ### Explore Agent Failures
+
 - If an agent returns incomplete results: Note affected requirements as "Uncertain" in the report.
 - If an agent times out: Report which spec section was affected, suggest re-running with narrower scope.
 - If Pass B2 is required but fails to run: mark audit BLOCKED and do not write report.
 
 ### Conflicting Findings
+
 - If contradictions remain after tie-break: mark audit BLOCKED and do not write report.
 
 ### Incomplete Coverage Matrix
+
 - If any section row is incomplete: mark audit BLOCKED and do not write report.
 
 ### SIW Workflow Not Active
+
 - Skip issue creation (Step 9).
 - Report file goes to project root instead of `siw/`.
 - All other steps work the same.

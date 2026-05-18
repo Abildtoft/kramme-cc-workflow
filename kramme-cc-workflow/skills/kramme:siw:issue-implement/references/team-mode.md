@@ -40,19 +40,23 @@ Then stop.
 ### Step 2: Identify Parallelizable Issues
 
 **If specific issue IDs provided** (e.g., `G-001 P1-002`):
+
 - Validate each issue exists and is in READY status
 - Warn if any have unresolved blockers
 - If any requested issue is `HITL`, keep it out of the automatic batch until the user explicitly confirms that the required human decision/review/access has already been handled. `--auto` does not count as that confirmation.
 
 **If "phase N" provided** (e.g., `phase 1`):
+
 - Select all READY issues with prefix matching that phase (`P1-*` for phase 1)
 - Exclude HITL issues from the proposed automatic batch and list them separately as human-gated work.
 
 **If no arguments:**
+
 - Select all READY AUTO issues across all phases that have no unresolved blockers
 - Exclude HITL issues from the proposed automatic batch and list them separately as human-gated work.
 
 **HITL guardrail:**
+
 - Do not spawn implementation agents for HITL issues by default.
 - If all candidate issues are HITL, stop and ask the user to resolve the human requirement first or run `/kramme:siw:issue-implement` for a single issue with the needed context.
 - If `AUTO_MODE=true`, skip HITL issues automatically and report them as not started; if skipping leaves no AUTO candidates, stop without spawning agents.
@@ -67,10 +71,12 @@ For each candidate issue:
 3. Build a file-to-issue map
 
 **Identify conflicts:**
+
 - Issues that touch overlapping files cannot run in parallel
 - Group non-overlapping issues into parallelizable batches
 
 **Batching strategy:**
+
 - **Batch 1**: Maximum set of issues with no file overlaps
 - **Batch 2**: Issues that were blocked by Batch 1 file conflicts, OR issues whose SIW blockers are resolved by Batch 1 completions
 - Continue until all issues are batched
@@ -168,21 +174,24 @@ After all issues are implemented:
 ```markdown
 ## Current Progress
 
-**Last Updated:** {date}
-**Quick Summary:** Parallel implementation of X issues
+**Last Updated:** {date} **Quick Summary:** Parallel implementation of X issues
 
 ### Project Status
+
 - **Status:** In Progress | **Completed this session:** {issue-ids}
 
 ### Last Completed
+
 - {issue-id}: {title} (Batch 1)
 - {issue-id}: {title} (Batch 1)
 - {issue-id}: {title} (Batch 2)
 
 ### Decisions Made
+
 - [Any cross-cutting decisions discovered during parallel implementation]
 
 ### Next Steps
+
 1. {next ready issue or phase}
 ```
 
@@ -224,11 +233,13 @@ This skill uses a multi-layer approach:
 ## When to Use This vs `/kramme:siw:issue-implement`
 
 Use **this mode** when:
+
 - Multiple READY issues exist with no blocking dependencies
 - Issues touch different files/modules
 - You want to speed up a phase by parallelizing independent work
 
 Use **standard `/kramme:siw:issue-implement`** when:
+
 - Implementing a single issue
 - Issues are tightly coupled and need sequential implementation
 - You want lower token cost

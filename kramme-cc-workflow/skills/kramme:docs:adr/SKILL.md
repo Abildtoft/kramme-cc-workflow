@@ -58,7 +58,7 @@ Four states (Addy's convention; use verbatim unless the project already uses a d
 
 > "Don't delete old ADRs. They capture historical context."
 
-Even SUPERSEDED ADRs stay in the directory. They explain *why* the current approach was chosen over the previous one. Deleting them erases the reasoning that a future maintainer needs to avoid re-making a rejected choice.
+Even SUPERSEDED ADRs stay in the directory. They explain _why_ the current approach was chosen over the previous one. Deleting them erases the reasoning that a future maintainer needs to avoid re-making a rejected choice.
 
 ## Markers
 
@@ -252,13 +252,13 @@ The offering skill SHOULD track which decisions have already been offered in the
 
 These are the lies you will tell yourself to skip or distort the ADR. Each has a correct response:
 
-- *"It's just a tactical choice, not worth an ADR."* → Apply the significance test. If it affects more than one module, commits to a dependency, changes a public interface, changes the data model, or rejects a reasonable alternative — it warrants an ADR.
-- *"We'll capture the reasoning in the README."* → READMEs rot and get edited without attribution. ADRs are dated, numbered, and preserved.
-- *"This supersedes the old one, so delete it."* → Preservation rule. SUPERSEDED stays. The rejected previous approach is load-bearing context for the current one.
-- *"I'll backdate the ADR to when we actually decided."* → Date the writing, not the decision. Honesty beats revisionism. Backdated ADRs erode trust in the whole log.
-- *"Everyone already knows why."* → Nobody who joins next year knows why. The ADR is for them, not you.
-- *"I'll skip Alternatives — we never really considered any."* → Every decision rejected alternatives, even implicit ones ("do nothing", "keep what we have"). Name at least one.
-- *"I'll backfill the three prior undocumented decisions while I'm here."* → Emit `NOTICED BUT NOT TOUCHING` for each. Backfilling decisions you weren't present for invents history.
+- _"It's just a tactical choice, not worth an ADR."_ → Apply the significance test. If it affects more than one module, commits to a dependency, changes a public interface, changes the data model, or rejects a reasonable alternative — it warrants an ADR.
+- _"We'll capture the reasoning in the README."_ → READMEs rot and get edited without attribution. ADRs are dated, numbered, and preserved.
+- _"This supersedes the old one, so delete it."_ → Preservation rule. SUPERSEDED stays. The rejected previous approach is load-bearing context for the current one.
+- _"I'll backdate the ADR to when we actually decided."_ → Date the writing, not the decision. Honesty beats revisionism. Backdated ADRs erode trust in the whole log.
+- _"Everyone already knows why."_ → Nobody who joins next year knows why. The ADR is for them, not you.
+- _"I'll skip Alternatives — we never really considered any."_ → Every decision rejected alternatives, even implicit ones ("do nothing", "keep what we have"). Name at least one.
+- _"I'll backfill the three prior undocumented decisions while I'm here."_ → Emit `NOTICED BUT NOT TOUCHING` for each. Backfilling decisions you weren't present for invents history.
 
 ## Red Flags
 

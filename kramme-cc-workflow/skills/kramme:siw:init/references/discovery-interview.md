@@ -3,6 +3,7 @@
 ## Topic Classification
 
 Classify the topic into one of these categories:
+
 - **Software Feature**: New functionality, UI changes, API additions
 - **Process/Workflow**: Team processes, approval flows, automation
 - **Architecture Decision**: Technology choice, pattern selection, migration
@@ -11,6 +12,7 @@ Classify the topic into one of these categories:
 ## Autonomous Framing
 
 Before asking anything, draft a working hypothesis for:
+
 - Who the user or stakeholder is
 - What job they are trying to get done
 - Why this matters now
@@ -21,6 +23,7 @@ Treat these as assumptions to validate, not an excuse to ask generic setup quest
 ## Interview Approach
 
 Conduct multi-round interview using AskUserQuestion:
+
 - Ask probing questions with 2-4 predefined options per question
 - Only ask when meaningful uncertainty remains after reading the available context
 - For each question, provide context (why it matters) and a recommendation
@@ -42,17 +45,17 @@ For Documentation Review: Why Now, Desired Outcome, Success Criteria, Clarity, C
 
 ## Interview Output to SIW Mapping
 
-| Interview Output | SIW Spec Section |
-|------------------|------------------|
-| Overview/Summary | Overview |
-| Why Now / urgency | Why Now |
-| Objectives / desired outcome | Objectives |
-| Non-Goals / deferred work | Scope > Out of Scope / Non-Goals |
-| Assumptions / Inferred Context | Assumptions Used |
-| Key Decisions | Design Decisions |
-| Decision Boundaries | Decision Boundaries |
-| Technical Design / Data Model | Technical Design section |
-| Success Criteria | Success Criteria |
-| Implementation Phases/Steps | Tasks (inform issue creation) |
-| Open Questions | Open Questions section |
-| Risks & Mitigations | Risks section |
+| Interview Output               | SIW Spec Section                 |
+| ------------------------------ | -------------------------------- |
+| Overview/Summary               | Overview                         |
+| Why Now / urgency              | Why Now                          |
+| Objectives / desired outcome   | Objectives                       |
+| Non-Goals / deferred work      | Scope > Out of Scope / Non-Goals |
+| Assumptions / Inferred Context | Assumptions Used                 |
+| Key Decisions                  | Design Decisions                 |
+| Decision Boundaries            | Decision Boundaries              |
+| Technical Design / Data Model  | Technical Design section         |
+| Success Criteria               | Success Criteria                 |
+| Implementation Phases/Steps    | Tasks (inform issue creation)    |
+| Open Questions                 | Open Questions section           |
+| Risks & Mitigations            | Risks section                    |

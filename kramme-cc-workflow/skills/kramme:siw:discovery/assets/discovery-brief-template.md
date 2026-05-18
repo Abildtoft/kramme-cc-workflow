@@ -1,13 +1,10 @@
 # Discovery Brief: {Topic}
 
-**Generated:** {date}
-**Confidence:** {overall}%
-**Interview Rounds:** {N}
+**Generated:** {date} **Confidence:** {overall}% **Interview Rounds:** {N}
 
 ## The Real Problem
 
-{Not the stated problem — the actual underlying need, as uncovered by the interview.
-If stated and actual aligned, say so. If they diverged, explain how.}
+{Not the stated problem — the actual underlying need, as uncovered by the interview. If stated and actual aligned, say so. If they diverged, explain how.}
 
 ## Why Now
 
@@ -22,9 +19,11 @@ If stated and actual aligned, say so. If they diverged, explain how.}
 {Synthesized understanding. May differ from the initial topic statement.}
 
 ## Objectives
+
 {Concrete, prioritized — from the interview}
 
 ## Success Looks Like
+
 {Observable, testable indicators}
 
 ## What You Don't Want
@@ -39,45 +38,49 @@ If a non-goal has no rationale beyond "didn't feel relevant," interrogate it in 
 ## Scope & Boundaries
 
 ### In Scope
+
 {Specific items}
 
 ### Out of Scope
+
 {Explicitly excluded — with reasoning}
 
 ### Deferred
+
 {Not out of scope forever, but not now}
 
 ## Priorities & Tradeoffs
 
-{When conflicts arise, this is the ordering.
-Include any forced tradeoffs that were resolved during the interview.}
+{When conflicts arise, this is the ordering. Include any forced tradeoffs that were resolved during the interview.}
 
 ## Constraints
 
-| Constraint | Type | Flexibility |
-|---|---|---|
+| Constraint   | Type        | Flexibility            |
+| ------------ | ----------- | ---------------------- |
 | {constraint} | Hard / Soft | {can/cannot negotiate} |
 
 ## Risks
 
 Each risk must be specific enough to act on. "Could be slow" is useless; "adds an N+1 query on every dashboard load" is useful. Skip risks that are abstract enough to apply to any project.
 
-| Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| {risk} | {H/M/L} | {H/M/L} | {approach} |
+| Risk   | Likelihood | Impact  | Mitigation |
+| ------ | ---------- | ------- | ---------- |
+| {risk} | {H/M/L}    | {H/M/L} | {approach} |
 
 ## Key Decisions Made
 
-| Decision | Choice | Rationale |
-|---|---|---|
-| {area} | {what} | {why — from interview} |
+| Decision | Choice | Rationale              |
+| -------- | ------ | ---------------------- |
+| {area}   | {what} | {why — from interview} |
 
 ## Decision Boundaries
 
 ### Captured in this brief
+
 {Product, behavior, or scope decisions that need alignment now}
 
 ### Left to implementation
+
 {Engineering choices intentionally left open}
 
 ## Open Questions
@@ -90,5 +93,4 @@ Each risk must be specific enough to act on. "Could be slow" is useless; "adds a
 
 ## Where Stated and Actual Wants Diverged
 
-{If applicable: document where the initial framing and final understanding differed.
-This section is the most valuable artifact for future reference.}
+{If applicable: document where the initial framing and final understanding differed. This section is the most valuable artifact for future reference.}

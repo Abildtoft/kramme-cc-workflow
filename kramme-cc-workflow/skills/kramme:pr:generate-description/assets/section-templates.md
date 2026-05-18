@@ -23,19 +23,16 @@ The Summary section is followed immediately by the Change Summary block below.
 **ALWAYS** include this block immediately after `## Summary` and before `## Technical Details`.
 
 1. **Changes made**:
-
    - Use verb-led bullets (`add`, `extract`, `wire`, `rename`, `remove`, `gate`)
    - Scope each bullet to a feature, implementation area, or user-visible behavior
    - Split distinct changes into separate bullets
    - Do not mirror the GitHub file list; mention exact files only when the name helps reviewers find a non-obvious entry point or risk
 
 2. **Things I didn't touch**:
-
    - List adjacent work considered and deliberately left out of scope
    - Use `None` only after considering whether anything was explicitly deferred
 
 3. **Potential concerns**:
-
    - Surface reviewer-relevant risk such as migrations, feature-flag defaults, partial coverage, rollout dependencies, or known follow-ups
    - Use `None` if there is nothing material to flag
 
@@ -62,14 +59,12 @@ The Summary section is followed immediately by the Change Summary block below.
 **ALWAYS** include implementation approach. Include scope changes only when the implementation diverged from Linear. Include area notes and reviewer landmarks only when they add review value beyond GitHub's file tree:
 
 1. **Implementation approach** (2-4 sentences):
-
    - Key architectural decisions
    - Design patterns used
    - Why this approach was chosen over alternatives
    - **If applicable**: Divergences from Linear issue description with clear rationale
 
 2. **Scope changes** (if implementation diverged from Linear issue):
-
    - **ONLY document divergences from Linear issue(s)** - this is the only source reviewers have access to
    - **NEVER** reference spec files (SPEC.md, LOG.md, etc.) or conversation history - reviewers cannot see these
    - **What changed**: Clear description of how implementation differs from Linear issue
@@ -84,25 +79,21 @@ The Summary section is followed immediately by the Change Summary block below.
    Use area notes only when grouping by area explains behavior, risk, coupling, rollout order, or review strategy. Do not add this section merely to restate which frontend, backend, test, or config files changed.
 
    **Frontend Changes** (if applicable):
-
    - User-visible behavior or flow changes
    - State management, routing, or UI changes that affect review strategy
    - Component/service names only when they identify a non-obvious entry point
 
    **Backend Changes** (if applicable):
-
    - API contract or business logic behavior that reviewers need to understand
    - Service/repository interactions that affect correctness, security, or rollout
    - Database behavior that is not obvious from the migration file alone
 
    **Database Migrations** (if applicable):
-
    - Migration name and purpose
    - Compatibility, rollout, locking, or data backfill considerations
    - Data migrations or defaults reviewers should inspect
 
    **Test Coverage** (if applicable):
-
    - Behavior covered, important gaps, or manual verification that remains
    - Avoid raw counts unless the count itself is reviewer-relevant
 
@@ -111,6 +102,7 @@ The Summary section is followed immediately by the Change Summary block below.
    - **DO NOT** create a generic "Key Files" or "Files changed" section for completeness; GitHub already shows that list
    - Keep this to 1-3 high-signal bullets
    - **EXAMPLE**:
+
      ```markdown
      **Reviewer landmarks:**
 
@@ -160,13 +152,11 @@ The Linear issue originally requested only redirecting single-platform users. Du
 **ALWAYS** include actionable testing steps:
 
 1. **Setup steps** (if needed):
-
    - Environment configuration
    - Test data requirements
    - User permissions needed
 
 2. **Test scenarios** (organized by priority):
-
    - **Happy path**: Normal expected flow
    - **Edge cases**: Boundary conditions
    - **Error cases**: What happens when things go wrong
@@ -236,15 +226,12 @@ None
 **If breaking changes exist**, include:
 
 1. **What breaks**:
-
    - Clear description of what is no longer compatible
 
 2. **Why it's breaking**:
-
    - Rationale for the breaking change
 
 3. **Migration path**:
-
    - Step-by-step instructions for adapting to the change
 
 4. **Impact assessment**:
@@ -258,11 +245,9 @@ None
 
 ### API Endpoint Signature Change
 
-**What changed:**
-The `GET /api/platforms` endpoint now requires a `userId` query parameter. Previously, it inferred the user from the authentication context.
+**What changed:** The `GET /api/platforms` endpoint now requires a `userId` query parameter. Previously, it inferred the user from the authentication context.
 
-**Why:**
-This change enables admin users to query platforms for other users, which is required for the new admin dashboard feature.
+**Why:** This change enables admin users to query platforms for other users, which is required for the new admin dashboard feature.
 
 **Migration:**
 
@@ -286,17 +271,13 @@ This change enables admin users to query platforms for other users, which is req
 
 ### Database Migration
 
-**What changed:**
-New `platform_access_count` column added to `users` table with NOT NULL constraint.
+**What changed:** New `platform_access_count` column added to `users` table with NOT NULL constraint.
 
-**Migration:**
-Run migration before deploying new application version:
+**Migration:** Run migration before deploying new application version:
 
 ```bash
 dotnet ef database update -c ConnectContext
 ```
 
-**Downtime:**
-~5 minutes (backfill operation for existing users)
-
+**Downtime:** ~5 minutes (backfill operation for existing users)
 ````

@@ -94,7 +94,7 @@ find {folder} -maxdepth 4 -type f \
   -o -name "*.java" -o -name "*.rb" -o -name "*.swift" -o -name "*.kt" \) \
   ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/build/*" \
   ! -path "*/.git/*" ! -path "*/vendor/*" ! -path "*/__pycache__/*" \
-  2>/dev/null
+  2> /dev/null
 ```
 
 If zero files are found, stop: "No source files found in `{folder}`. Verify the path is correct and contains supported file types (.ts, .tsx, .js, .jsx, .vue, .svelte, .py, .go, .rs, .cs, .java, .rb, .swift, .kt)."
@@ -119,7 +119,8 @@ Use AskUserQuestion:
 
 ```yaml
 header: "Reverse Engineer Scope"
-question: "I found {n} files to analyze. Here's the breakdown:\n\n- Core implementation: {n} files\n- Integration points: {n} files\n- Tests: {n} files\n- Configuration: {n} files\n- Incidental: {n} files\n\nShould I proceed with this scope?"
+question:
+  "I found {n} files to analyze. Here's the breakdown:\n\n- Core implementation: {n} files\n- Integration points: {n} files\n- Tests: {n} files\n- Configuration: {n} files\n- Incidental: {n} files\n\nShould I proceed with this scope?"
 options:
   - label: "Proceed"
     description: "Analyze all {n} files"
@@ -140,7 +141,7 @@ For each file group, launch an Explore agent using the Task tool (`subagent_type
 ### 2.1 Determine Agent Count
 
 | File Count | Agents | Grouping |
-|------------|--------|----------|
+| --- | --- | --- |
 | <15 files | 2 | A: Core + Integration; B: Tests + Config |
 | 15-40 files | 3 | A: Core implementation; B: Integration + Config; C: Tests |
 | 40+ files | 4 | A: Core implementation; B: Integration points; C: Tests; D: Config + Infrastructure |
@@ -183,6 +184,7 @@ Compare the set of files analyzed by agents against the full file list from Phas
 ### 3.2 Fill Gaps
 
 For uncovered files, read the diffs or file contents directly. These often contain important details:
+
 - Type declarations (new fields on models)
 - Feature flag definitions
 - Bug fixes discovered during development
@@ -199,6 +201,7 @@ git log --format="%s%n%b" $(git merge-base $base_branch HEAD)..HEAD
 ```
 
 Extract:
+
 - Problem descriptions from commit messages
 - Design rationale from commit bodies
 - Issue references (Linear, GitHub, Jira patterns)

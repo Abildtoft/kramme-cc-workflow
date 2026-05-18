@@ -16,9 +16,7 @@ Parse `$ARGUMENTS` for flags:
 - `--visual`: Auto-detect a running dev server and capture screenshots to embed in the PR description. Requires a browser MCP to be available (claude-in-chrome, chrome-devtools, or playwright).
 - `--base <ref>`: Use `<ref>` as the base branch for diff computation instead of auto-detecting.
 
-If `--auto` is present, set `AUTO_MODE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments.
-If `--visual` is present, set `VISUAL_MODE=true` and remove the flag from remaining arguments.
-If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the flag and value from remaining arguments.
+If `--auto` is present, set `AUTO_MODE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments. If `--visual` is present, set `VISUAL_MODE=true` and remove the flag from remaining arguments. If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the flag and value from remaining arguments.
 
 ## Instructions
 
@@ -62,20 +60,23 @@ Read the guideline keyword glossary from `references/guideline-keywords.md`.
 
 2. **ALWAYS** detect and identify the base/target branch dynamically using a 3-tier strategy:
 
-   **Tier 1: Explicit override**
-   If `BASE_BRANCH_OVERRIDE` was set from `--base`, use that value directly.
+   **Tier 1: Explicit override** If `BASE_BRANCH_OVERRIDE` was set from `--base`, use that value directly.
 
    **Tier 2: PR target branch detection**
+
    ```bash
-   BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null)
+   BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2> /dev/null)
    ```
 
    **Tier 3: Fallback**
+
    ```bash
-   BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+   BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@')
    [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
    ```
+
    Normalize before using `origin/$BASE_BRANCH`:
+
    ```bash
    BASE_BRANCH=${BASE_BRANCH#refs/heads/}
    BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
@@ -84,20 +85,21 @@ Read the guideline keyword glossary from `references/guideline-keywords.md`.
      echo "Error: Could not determine base branch. Re-run with --base <ref>." >&2
      exit 1
    fi
-   if ! git check-ref-format --branch "$BASE_BRANCH" >/dev/null 2>&1; then
+   if ! git check-ref-format --branch "$BASE_BRANCH" > /dev/null 2>&1; then
      echo "Error: Base branch '$BASE_BRANCH' is not a valid branch name. Re-run with --base <ref>." >&2
      exit 1
    fi
-   if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2>/dev/null; then
+   if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2> /dev/null; then
      echo "Error: Failed to fetch origin/$BASE_BRANCH. Check remote access and re-run with --base <ref>." >&2
      exit 1
    fi
-   if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" >/dev/null; then
+   if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null; then
      echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <ref>." >&2
      exit 1
    fi
    echo "Base branch: $BASE_BRANCH"
    ```
+
    - **NOTE**: Tier 2 ensures correct scope when the PR targets a non-default branch (e.g., a feature branch stacked on another PR)
    - **CAN** ask user if unclear or override needed
 
@@ -131,7 +133,6 @@ Read the context-gathering procedure from `references/context-gathering.md` and 
 **ALWAYS** pause after gathering context and before generating the description:
 
 1. **Present initial analysis**:
-
    - Summarize what you've found:
      - Change type (feature, bug fix, refactor, etc.)
      - Scope (frontend-only, backend-only, full-stack)
@@ -140,7 +141,6 @@ Read the context-gathering procedure from `references/context-gathering.md` and 
      - Any breaking changes detected
 
 2. **Ask clarification questions**:
-
    - **ALWAYS** ask the user if there's anything specific they want emphasized
    - **ALWAYS** ask if there are any concerns or considerations reviewers should know about
    - **CAN** ask about:
@@ -190,6 +190,7 @@ Generate a PR title using [Conventional Commits](https://www.conventionalcommits
 | `feat` | `fix` | `refactor` | `docs` | `test` | `build`/`ci` | `chore` | `perf` | `style` | `revert` |
 
 **Rules**:
+
 - **Scope**: Optional. Use component/module name, lowercase, hyphenated (e.g., `auth`, `platform-picker`). Omit if changes span multiple areas.
 - **Description**: Imperative mood ("add", not "added"), specific, under 50 chars. Total title under 72 chars. No trailing period.
 
@@ -200,31 +201,33 @@ Generate a PR title using [Conventional Commits](https://www.conventionalcommits
 **ALWAYS** include:
 
 1. **What changed** (1-2 sentences, high-level, user/business-focused)
-
    - **PREFER** non-technical language when possible
    - **EXAMPLE**: "Added ability for users to export their survey results to PDF format"
 
 2. **Why it changed** (1-2 sentences, business context)
-
    - Pull from Linear issue description if available
    - **EXAMPLE**: "Users requested this feature to share results with stakeholders who don't have system access"
 
 3. **Link to Linear issue** (if available):
-
    - **ALWAYS** use a "magic word" + issue ID for automatic linking
    - **Magic words**: `Fixes`, `Closes`, `Resolves` (marks issue as done when PR merges)
    - **Alternative**: `Related to`, `Refs`, `References` (links without auto-closing)
    - **CAN** use either issue ID or full Linear URL
 
    **Format options:**
+
    ```markdown
    Fixes WAN-521
    ```
+
    or
+
    ```markdown
    Closes https://linear.app/consensusaps/issue/WAN-521/title
    ```
+
    or (for related but not closing):
+
    ```markdown
    Related to WAN-521
    ```
@@ -331,13 +334,15 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:generate-description/references/vis
 **Skip copy-paste output and save-to-file prompt.** Update the existing PR's title and description:
 
 ```bash
-gh pr edit --title "<title>" --body "$(cat <<'EOF'
+gh pr edit --title "<title>" --body "$(
+  cat << 'EOF'
 <description>
 EOF
 )"
 ```
 
 **After updating**, confirm success:
+
 ```
 PR updated successfully.
 
@@ -366,7 +371,6 @@ Here is your generated PR:
 **NOTE**: The title is formatted with backticks for easy copying. The description follows the standard markdown format.
 
 7. **ALWAYS** ask if the description should be saved to a markdown file (**skip if `NON_INTERACTIVE=true`**):
-
    - After presenting the description, ask: "Would you like me to save this description to a markdown file?"
    - If yes, save to a file named `PR_DESCRIPTION.md` in the repository root
    - Confirm the file location after saving
@@ -448,10 +452,10 @@ Use these uppercase markers when reasoning about the description generation. The
 
 Watch for these — they signal the description is about to under-serve the reviewer:
 
-- *"The diff is small; a one-line summary is enough."* → Small diffs still need the *why*. A one-line summary forces the reviewer to reconstruct intent from code.
-- *"I'll leave `Things I didn't touch` blank because nothing comes to mind."* → If nothing comes to mind, re-read the diff. `None` is a valid answer only after you've looked.
-- *"The Linear issue covers the context — no need to restate it."* → The PR body is read in isolation during review. Restate the essentials and link the issue.
-- *"I'll fold the migration warning into the body text."* → `Potential concerns` is a dedicated block for a reason; a buried warning is a missed warning.
+- _"The diff is small; a one-line summary is enough."_ → Small diffs still need the _why_. A one-line summary forces the reviewer to reconstruct intent from code.
+- _"I'll leave `Things I didn't touch` blank because nothing comes to mind."_ → If nothing comes to mind, re-read the diff. `None` is a valid answer only after you've looked.
+- _"The Linear issue covers the context — no need to restate it."_ → The PR body is read in isolation during review. Restate the essentials and link the issue.
+- _"I'll fold the migration warning into the body text."_ → `Potential concerns` is a dedicated block for a reason; a buried warning is a missed warning.
 
 ## Red Flags — STOP
 
@@ -470,7 +474,7 @@ Pause and regenerate the description if any of these are true:
 Before presenting or posting the description, self-check:
 
 - [ ] Title follows `<type>(<scope>): <description>` and is under 72 characters.
-- [ ] Summary restates the *why* in business terms.
+- [ ] Summary restates the _why_ in business terms.
 - [ ] `Changes made` / `Things I didn't touch` / `Potential concerns` are all present, with `None` used only after consideration.
 - [ ] Linear issue linked with the correct magic word (`Fixes`, `Closes`, `Related to`).
 - [ ] No AI attribution, no placeholder TODOs, no references to spec files.

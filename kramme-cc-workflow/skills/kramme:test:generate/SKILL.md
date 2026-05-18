@@ -149,6 +149,7 @@ Classify each testable unit and estimate the number of test cases based on Step 
 ## Step 5: User Configuration
 
 If `AUTO_MODE=true`, skip these prompts and use:
+
 - **Test Type:** Unit tests only
 - **Scope:** Public API surface only
 - **Edge Case Depth:** Happy path + error cases
@@ -257,7 +258,7 @@ Next Steps:
 ## Error Handling
 
 | Scenario | Action |
-|---|---|
+| --- | --- |
 | Target file not found | Abort: `Target file not found: {path}` |
 | No test framework detected | If `AUTO_MODE=true`, abort with a clear error. Otherwise AskUserQuestion to choose a framework and test command |
 | No existing tests to learn from | Use framework defaults; note in summary |

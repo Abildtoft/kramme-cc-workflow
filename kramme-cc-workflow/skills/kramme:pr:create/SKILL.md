@@ -9,6 +9,7 @@ user-invocable: true
 # Create Pull Request
 
 Orchestrate the creation of a clean, well-documented PR by:
+
 1. Validating git state
 2. Setting up the branch (if on main)
 3. Creating clean, narrative-quality commits
@@ -64,6 +65,7 @@ Parse `$ARGUMENTS` for optional flags before starting:
 Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`. Flag order is not significant.
 
 `--auto` means:
+
 - use the recommended commit structure (`Narrative`)
 - invoke downstream skills in non-interactive mode
 - skip the final PR confirmation
@@ -71,6 +73,7 @@ Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`. Flag order is not significant.
 - stop only on hard blockers
 
 `--draft` means:
+
 - create the PR as a draft (`gh pr create --draft`).
 
 Without `--draft`, the PR is created ready for review.
@@ -100,12 +103,13 @@ git status --porcelain
 ### 4.2 Check for Commits Ahead of Main
 
 ```bash
-git rev-list --count origin/main..HEAD 2>/dev/null || git rev-list --count origin/master..HEAD
+git rev-list --count origin/main..HEAD 2> /dev/null || git rev-list --count origin/master..HEAD
 ```
 
 ### 4.3 Validation
 
 **If both checks return empty/zero:**
+
 ```
 Error: No changes detected compared to main branch.
 
@@ -116,6 +120,7 @@ Current state:
 
 Nothing to create a PR for. Make some changes first, then run /kramme:pr:create again.
 ```
+
 **Action:** Abort.
 
 **If changes exist:** Continue to next step.
@@ -136,6 +141,7 @@ ORIGINAL_COMMIT=$(git rev-parse HEAD)
 ### 5.2 Stash Uncommitted Changes
 
 If there are uncommitted changes:
+
 ```bash
 git stash push -m "create-pr-backup-$(date +%s)"
 STASH_CREATED=true
@@ -144,12 +150,13 @@ STASH_CREATED=true
 ### 5.3 Rollback Procedure
 
 If rollback is needed at any point, execute:
+
 ```bash
 # Return to original branch
 git checkout $ORIGINAL_BRANCH
 
 # Delete clean branch if created
-git branch -D ${ORIGINAL_BRANCH}-clean 2>/dev/null || true
+git branch -D ${ORIGINAL_BRANCH}-clean 2> /dev/null || true
 
 # Restore stashed changes
 if [ "$STASH_CREATED" = "true" ]; then
@@ -166,6 +173,7 @@ fi
 If `AUTO_MODE=true`, skip this question and choose **Narrative (recommended)**.
 
 Otherwise use AskUserQuestion:
+
 ```yaml
 header: "Commit style"
 question: "How should commits be structured for the PR?"
@@ -184,16 +192,19 @@ multiSelect: false
 **IMPORTANT:** Use the Skill tool to invoke `recreate-commits`:
 
 If `AUTO_MODE=true`:
+
 ```yaml
 skill: "kramme:git:recreate-commits", args: "--auto"
 ```
 
 Otherwise:
+
 ```
 skill: "kramme:git:recreate-commits"
 ```
 
 This skill will:
+
 - Analyze all changes vs main/master
 - Plan a logical commit sequence
 - Create narrative-quality commits
@@ -202,6 +213,7 @@ This skill will:
 ### ⚠️ MANDATORY CONTINUATION - DO NOT STOP HERE
 
 After the recreate-commits skill completes:
+
 1. **DO NOT** end your turn or wait for user input
 2. **DO NOT** summarize what was done and ask "what next?"
 3. **IMMEDIATELY** invoke the pr-description-generator skill (Step 7)
@@ -211,6 +223,7 @@ This is Step 6 of 9. The PR creation workflow is not complete until Step 9.
 ### 6.3 Handle Skill Failure
 
 **If the skill fails or encounters an error:**
+
 ```
 Error: The recreate-commits skill encountered an issue.
 
@@ -227,6 +240,7 @@ Recovery:
   3. If a -clean branch was created: git branch -D {branch}-clean
   4. Try again with /kramme:pr:create
 ```
+
 **Action:** Execute rollback procedure from Step 5.3, then abort.
 
 ---
@@ -238,16 +252,19 @@ Recovery:
 **IMPORTANT:** Invoke `pr-description-generator` based on mode:
 
 If `AUTO_MODE=true`:
+
 ```yaml
 skill: "kramme:pr:generate-description", args: "--auto"
 ```
 
 Otherwise:
+
 ```yaml
 skill: "kramme:pr:generate-description"
 ```
 
 This skill will:
+
 - Analyze git diff and commit history
 - Check for Linear issue references in branch name
 - Generate a conventional commit-style **title** (`<type>(<scope>): <description>`)
@@ -256,6 +273,7 @@ This skill will:
 ### ⚠️ MANDATORY CONTINUATION - DO NOT STOP HERE
 
 After the pr-description-generator skill completes:
+
 1. **DO NOT** end your turn or wait for user input
 2. **DO NOT** just show the description and stop
 3. **IMMEDIATELY** proceed to Step 8 (Confirmation and Creation)
@@ -265,6 +283,7 @@ This is Step 7 of 9. The PR creation workflow is not complete until Step 9. Once
 ### 7.2 Capture the Title and Description
 
 The skill produces:
+
 1. A conventional commit-style **title** (e.g., `feat(auth): add OAuth2 support`)
 2. A complete markdown **description**
 
@@ -275,6 +294,7 @@ Capture both for use in Step 8.
 **If the skill fails:**
 
 Provide a minimal fallback template:
+
 ```markdown
 ## Summary
 
@@ -324,7 +344,7 @@ git checkout $ORIGINAL_BRANCH
 git reset --hard $ORIGINAL_COMMIT
 
 # Delete temporary branches
-git branch -D ${ORIGINAL_BRANCH}-clean 2>/dev/null || true
+git branch -D ${ORIGINAL_BRANCH}-clean 2> /dev/null || true
 
 # Restore stashed changes
 if [ "$STASH_CREATED" = "true" ]; then
@@ -354,7 +374,9 @@ Your work is exactly as it was before running /kramme:pr:create.
 ## Important Constraints
 
 ### No AI Attribution
+
 **NEVER** add these to commits:
+
 - `Generated with [Claude Code]`
 - `Co-Authored-By: Claude`
 - Any mention of AI assistance
@@ -362,15 +384,19 @@ Your work is exactly as it was before running /kramme:pr:create.
 Per the recreate-commits skill requirements, this would cause issues.
 
 ### Draft Mode (Opt-In)
+
 Draft PRs are opt-in via the `--draft` flag. Default behavior is to create PRs ready for review.
 
 - Pass `--draft` to `gh pr create` only when the user supplied `--draft`.
 
 ### Preserve Authorship
+
 **NEVER** modify git config or add AI as author. All commits should reflect the user's authorship.
 
 ### Complete All Steps
+
 Even for simple changes, invoke both skills:
+
 1. `recreate-commits` for clean commit history
 2. `pr-description-generator` for comprehensive description
 

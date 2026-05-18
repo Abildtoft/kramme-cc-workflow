@@ -5,7 +5,7 @@ Inline copy. This file is self-contained; no cross-skill references.
 ## Thresholds
 
 | Metric | Good | Needs Improvement | Poor |
-|--------|------|-------------------|------|
+| --- | --- | --- | --- |
 | **LCP** (Largest Contentful Paint) | ≤ 2.5 s | ≤ 4.0 s | > 4.0 s |
 | **INP** (Interaction to Next Paint) | ≤ 200 ms | ≤ 500 ms | > 500 ms |
 | **CLS** (Cumulative Layout Shift) | ≤ 0.1 | ≤ 0.25 | > 0.25 |
@@ -46,10 +46,10 @@ RUM captures real traffic in real conditions. Required to confirm a synthetic fi
 
 ```ts
 // web-vitals library — report every metric to your analytics endpoint
-import { onLCP, onINP, onCLS } from 'web-vitals';
+import { onCLS, onINP, onLCP } from "web-vitals";
 
 function report(metric: { name: string; value: number; id: string }) {
-  navigator.sendBeacon('/analytics/rum', JSON.stringify(metric));
+  navigator.sendBeacon("/analytics/rum", JSON.stringify(metric));
 }
 
 onLCP(report);

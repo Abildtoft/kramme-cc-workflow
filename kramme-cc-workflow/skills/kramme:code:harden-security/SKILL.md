@@ -221,20 +221,20 @@ These are the lies you will tell yourself to skip security discipline. Each one 
 The verbatim three rows from the source:
 
 | Rationalization | Reality |
-|---|---|
+| --- | --- |
 | "Internal tools don't need security." | Attackers target the weak link in a chain. |
 | "We'll add security later." | Retrofitting is 10× harder. |
 | "Just a prototype." | Prototypes become production. |
 
 Additional pairs encountered at author time:
 
-- *"The framework handles it."* → Maybe. Maybe not. Maybe on the default path and not on the one you're adding. Emit `UNVERIFIED` and check the docs for the version in use.
-- *"The client already validates this."* → Client-side validation is a UX feature. The server must validate independently — otherwise the API is a direct-write.
-- *"It's behind a VPN, so it's safe."* → Defense in depth. Every layer assumes the one in front of it has been bypassed.
-- *"Logging the request body will help debug."* → Until it logs a password. Redact before emitting; don't rely on a log processor.
-- *"We'll rotate the secret once we're live."* → The rotation path is the security control. Ship it on day one.
-- *"I'll put the token in localStorage, it's easier."* → Any XSS becomes account takeover. Use HttpOnly cookies.
-- *"`md5` is fine for this."* → Probably not. State what "this" is out loud — if it's a security decision, use a modern hash.
+- _"The framework handles it."_ → Maybe. Maybe not. Maybe on the default path and not on the one you're adding. Emit `UNVERIFIED` and check the docs for the version in use.
+- _"The client already validates this."_ → Client-side validation is a UX feature. The server must validate independently — otherwise the API is a direct-write.
+- _"It's behind a VPN, so it's safe."_ → Defense in depth. Every layer assumes the one in front of it has been bypassed.
+- _"Logging the request body will help debug."_ → Until it logs a password. Redact before emitting; don't rely on a log processor.
+- _"We'll rotate the secret once we're live."_ → The rotation path is the security control. Ship it on day one.
+- _"I'll put the token in localStorage, it's easier."_ → Any XSS becomes account takeover. Use HttpOnly cookies.
+- _"`md5` is fine for this."_ → Probably not. State what "this" is out loud — if it's a security decision, use a modern hash.
 
 ## Red Flags
 

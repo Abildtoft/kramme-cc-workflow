@@ -50,12 +50,14 @@ Supporting specs should always reflect current reality. Update the actual spec c
 - **Right:** Update the endpoint definition in the API spec to show PUT, and add a brief inline note about why.
 
 **Routing reminders (kept inline in SKILL.md but repeated here for context):**
+
 - Data model changes → Update entity definitions in `*-data-model*.md`
 - API changes → Update endpoint contracts in `*-api*.md`
 - UI changes → Update component specs in `*-ui*.md`
 - Architecture changes → Update diagrams/descriptions in architecture specs
 
 **When to use the main spec's `## Design Decisions` section instead:**
+
 - Cross-cutting decisions that affect multiple areas
 - High-level architectural choices
 - Decisions that don't map to a specific spec section
@@ -64,11 +66,10 @@ Supporting specs should always reflect current reality. Update the actual spec c
 
 ```markdown
 ### Decision #5: Make ActionByUserId Nullable
+
 **Date:** 2025-11-05 | **Source:** ISSUE-G-003 implementation
 
-**Context:** Not all entities undergo this action, so the field shouldn't be required at the database level.
-**Decision:** Nullable at storage; required parameter when calling PerformAction().
-**Rationale:** Matches existing ActionAt pattern; semantically correct representation.
+**Context:** Not all entities undergo this action, so the field shouldn't be required at the database level. **Decision:** Nullable at storage; required parameter when calling PerformAction(). **Rationale:** Matches existing ActionAt pattern; semantically correct representation.
 ```
 
 The spec version is more concise than LOG.md — omit alternatives and detailed impact (those stay in LOG.md for historical reference).

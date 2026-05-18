@@ -5,6 +5,7 @@ For features, improvements, and complex bugs. Used when `is_simple_bug = false`.
 ## Mode-Specific Behavior
 
 **IMPROVE MODE:**
+
 - Merge interview findings with existing issue content
 - For unchanged sections, preserve the original text
 - For modified sections, use the new content from the interview
@@ -14,6 +15,7 @@ For features, improvements, and complex bugs. Used when `is_simple_bug = false`.
   - `[ADDED]` for new sections
 
 **CREATE MODE:**
+
 - Compose the issue from scratch using interview findings
 
 Draft the issue following this template:
@@ -23,6 +25,7 @@ Draft the issue following this template:
 `[Action verb] [what] [where/context]`
 
 **Examples:**
+
 - "Add dark mode toggle to settings page"
 - "Fix pagination in user list API"
 - "Refactor authentication flow to use OAuth2"
@@ -33,44 +36,47 @@ Draft the issue following this template:
 
 ```markdown
 ## Problem
-[What pain point or issue exists today]
-[Who is affected and how often]
-[What is the cost/impact of this problem]
+
+[What pain point or issue exists today] [Who is affected and how often] [What is the cost/impact of this problem]
 
 ## Value Proposition
-[Why solving this matters]
-[What benefit users/business will gain]
-[How this aligns with product goals]
+
+[Why solving this matters] [What benefit users/business will gain] [How this aligns with product goals]
 
 ## Why Now
-[Why this needs attention now]
-[What changed, what pressure exists, or what opportunity is being acted on]
+
+[Why this needs attention now] [What changed, what pressure exists, or what opportunity is being acted on]
 
 ## Goal
-[What success looks like - the desired outcome]
-[Clear statement of the end state]
+
+[What success looks like - the desired outcome] [Clear statement of the end state]
 
 ## Scope
 
 ### In Scope
+
 - [Specific item 1]
 - [Specific item 2]
 - [Specific item 3]
 
 ### Out of Scope
+
 - [Explicitly excluded item 1]
 - [Explicitly excluded item 2]
 
 ## Decision Boundaries
+
 - **Product decisions captured here:** [user-facing choices, scope calls, business rules]
 - **Implementation choices left to engineering:** [architecture details, low-level approach]
 
 ## Acceptance Criteria
+
 - [ ] [Testable criterion 1 - user-facing behavior]
 - [ ] [Testable criterion 2 - user-facing behavior]
 - [ ] [Testable criterion 3 - user-facing behavior]
 
 ## Edge Cases
+
 - [Edge case 1]: [Expected behavior]
 - [Edge case 2]: [Expected behavior]
 
@@ -79,33 +85,36 @@ Draft the issue following this template:
 ## Technical Notes (For Engineering)
 
 ### Implementation Proposal
-[High-level approach - what components/areas need changes]
-[Architectural considerations if relevant]
-[Keep this strategic, not detailed implementation steps]
+
+[High-level approach - what components/areas need changes] [Architectural considerations if relevant] [Keep this strategic, not detailed implementation steps]
 
 ### Affected Areas
+
 - [Component/module 1]
 - [Component/module 2]
 
 ### Patterns to Follow
-[Reference existing patterns in the codebase]
-[Only include code examples for specific bugs or concrete fixes]
+
+[Reference existing patterns in the codebase] [Only include code examples for specific bugs or concrete fixes]
 
 ### References
+
 - [Related module / contract by name and responsibility]
 
 ## Dependencies
+
 - [Blocking issue or prerequisite, if any]
 - [Related issues for context]
 
 ## Assumptions Used
+
 - [Only include when the issue had to infer target user, why-now, or non-goals from incomplete context]
 
 <!-- Only include this section if the issue has the "Dev Ask" label -->
+
 ## Original Dev Ask
 
-> [Preserve the complete original issue description here exactly as it was submitted]
-> [This section is automatically included for issues created via Linear Asks]
+> [Preserve the complete original issue description here exactly as it was submitted] [This section is automatically included for issues created via Linear Asks]
 ```
 
 ## Dev Ask Handling

@@ -42,12 +42,14 @@ Options:
 If the branch is shared, only offer options 1 or 2 after the user explicitly confirms collaborators are coordinated for a history rewrite. Otherwise steer them to option 3.
 
 **If user selects "Keep separate":**
+
 ```
 Keeping [FIX PIPELINE] commits as separate commits.
 
 Tip: When merging the PR, consider using "Squash and merge" to combine all commits.
 Alternatively, run /kramme:git:recreate-commits to rewrite the branch later.
 ```
+
 Exit successfully.
 
 **If user selects "Automated":** Continue with Steps 10.3–10.5, then 10.7–10.8.
@@ -76,8 +78,8 @@ for FIX_SHA in $(echo "$FIX_COMMITS" | cut -d' ' -f1); do
   # Find the most recent original commit that touched any of these files
   TARGET=""
   for FILE in $CHANGED_FILES; do
-    CANDIDATE=$(git log $BASE_REF..HEAD --format="%H" -- "$FILE" | \
-      while read SHA; do
+    CANDIDATE=$(git log $BASE_REF..HEAD --format="%H" -- "$FILE" \
+      | while read SHA; do
         if ! git log -1 --format="%s" $SHA | grep -q "\[FIX PIPELINE\]"; then
           echo $SHA
           break
@@ -104,6 +106,7 @@ Build a mapping: `{target_sha: [fix_sha1, fix_sha2, ...]}`
 ## Step 10.4: Generate Rebase Sequence
 
 Create a rebase todo that:
+
 1. Places each `[FIX PIPELINE]` commit immediately after its target
 2. Marks `[FIX PIPELINE]` commits as `fixup` instead of `pick`
 3. Leaves orphan commits at the end as regular `pick` commits
@@ -151,14 +154,17 @@ rm $SEQUENCE_FILE
 **If rebase fails (conflicts):**
 
 1. Abort the rebase:
+
    ```bash
    git rebase --abort
    ```
 
 2. Inform user:
+
    > "Consolidation failed due to conflicts. Your `[FIX PIPELINE]` commits are preserved on the branch."
    >
    > "Options:"
+   >
    > - Resolve manually with interactive rebase
    > - Keep commits as-is and squash-merge the PR
    > - Run `/kramme:git:recreate-commits` for a complete rewrite
@@ -174,6 +180,7 @@ git rebase -i $BASE_REF
 ```
 
 The user can then:
+
 - Move `[FIX PIPELINE]` commits next to their targets
 - Change `pick` to `fixup` or `squash`
 - Drop unwanted commits

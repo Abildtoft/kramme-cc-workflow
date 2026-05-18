@@ -136,7 +136,7 @@ Load from an MCP source only when that source is the authoritative answer. Pulli
 - **Upstream of task work.** Call this skill (or perform its steps manually) before starting a real task. The tax is small; the cost of proceeding on the wrong context is large.
 - **Triggers `kramme:docs:update-agents-md`.** When L1 verification finds a missing or stale rules file, hand off to that skill for repair.
 - **Partnered with `kramme:session:wrap-up`.** This skill is the session-start bookend; `wrap-up` is the end-of-session bookend. Together they frame a session with explicit context setup and explicit context capture.
-- **Scope boundary.** This skill owns *when* to fetch context — rules files, specs, source, errors, MCP sources. `kramme:code:source-driven` owns *how* to ground external library/framework decisions in official docs and how to cite that evidence once fetched. If the partition ever collapses to one skill, restate the boundary there.
+- **Scope boundary.** This skill owns _when_ to fetch context — rules files, specs, source, errors, MCP sources. `kramme:code:source-driven` owns _how_ to ground external library/framework decisions in official docs and how to cite that evidence once fetched. If the partition ever collapses to one skill, restate the boundary there.
 
 ---
 
@@ -144,12 +144,12 @@ Load from an MCP source only when that source is the authoritative answer. Pulli
 
 These are the lies you tell yourself to skip context setup. Each has a correct response:
 
-- *"I already know this codebase."* → The agent doesn't, and the agent is doing the work. Load the context anyway.
-- *"Context setup takes too long."* → It takes minutes. One wrong-direction implementation costs hours. The ratio is not close.
-- *"The model has a huge context window, I'll just paste everything."* → Window size is not attention budget. A bloated window degrades reasoning as reliably as a sparse one does.
-- *"The previous task was in the same area, the context carries over."* → Carry-over context is stale context. The previous task's attention pattern is tuned to the previous task, not this one.
-- *"I'll load context as I go."* → Lazy loading during execution means decisions get made on thin context and rediscovered later. Load the core four files upfront.
-- *"There's no spec, I'll figure it out from the code."* → Then flag `MISSING REQUIREMENT` and ask. "Figure it out from the code" is how specs get silently invented.
+- _"I already know this codebase."_ → The agent doesn't, and the agent is doing the work. Load the context anyway.
+- _"Context setup takes too long."_ → It takes minutes. One wrong-direction implementation costs hours. The ratio is not close.
+- _"The model has a huge context window, I'll just paste everything."_ → Window size is not attention budget. A bloated window degrades reasoning as reliably as a sparse one does.
+- _"The previous task was in the same area, the context carries over."_ → Carry-over context is stale context. The previous task's attention pattern is tuned to the previous task, not this one.
+- _"I'll load context as I go."_ → Lazy loading during execution means decisions get made on thin context and rediscovered later. Load the core four files upfront.
+- _"There's no spec, I'll figure it out from the code."_ → Then flag `MISSING REQUIREMENT` and ask. "Figure it out from the code" is how specs get silently invented.
 
 ## Red Flags
 

@@ -17,8 +17,7 @@ Set up the three-document system for tracking complex implementations locally, w
 - **DOES**: Create siw/ folder, spec file, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, siw/issues/, and optionally siw/supporting-specs/
 - **DOES NOT**: Define issues, implement features, or make code changes
 
-**Issue definition is a separate workflow.** After this command completes, invoke `/kramme:siw:issue-define` to create your first issue.
-**Spec hardening is a separate workflow.** To strengthen an existing SIW spec, use `/kramme:siw:discovery`.
+**Issue definition is a separate workflow.** After this command completes, invoke `/kramme:siw:issue-define` to create your first issue. **Spec hardening is a separate workflow.** To strengthen an existing SIW spec, use `/kramme:siw:discovery`.
 
 ## Process Overview
 
@@ -49,11 +48,11 @@ Set up the three-document system for tracking complex implementations locally, w
 Check if any workflow files already exist:
 
 ```bash
-ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues/ 2>/dev/null
+ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues/ 2> /dev/null
 find siw -maxdepth 1 -type f \( -name "*SPEC*.md" -o -name "*SPECIFICATION*.md" -o -name "*PLAN*.md" -o -name "*DESIGN*.md" \) \
   ! -name "SPEC_STRENGTHENING_PLAN.md" \
   ! -name "DISCOVERY_BRIEF.md" \
-  2>/dev/null
+  2> /dev/null
 ```
 
 Read `references/existing-workflow-handling.md` and follow the first matching branch for `siw/DISCOVERY_BRIEF.md` only, `siw/DISCOVERY_BRIEF.md` + `siw/SPEC_STRENGTHENING_PLAN.md`, `siw/SPEC_STRENGTHENING_PLAN.md` only, other workflow files, or no files.
@@ -75,11 +74,13 @@ options:
 ```
 
 **If "Resume existing workflow":**
+
 - Stop this command
 - Inform user that the `kramme:siw:continue` skill will auto-trigger when they start working
 - Suggest reading siw/LOG.md for current progress
 
 **If "Start fresh":**
+
 - Delete existing temporary workflow files (`siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/issues/`, `siw/DISCOVERY_BRIEF.md`, and `siw/SPEC_STRENGTHENING_PLAN.md`), but preserve any permanent SIW spec files such as `siw/*SPEC*.md`, `siw/*SPECIFICATION*.md`, `siw/*PLAN*.md`, and `siw/*DESIGN*.md`, explicitly excluding `siw/SPEC_STRENGTHENING_PLAN.md`, with user confirmation
 - Continue to Phase 1.5
 
@@ -126,11 +127,13 @@ If `resolved_arguments` contains file path(s):
 If `resolved_arguments` is a directory (verified with `ls -d`):
 
 1. Scan folder for relevant specification files:
+
    ```bash
-   find {folder} -maxdepth 2 -type f \( -name "*.md" -o -name "*.txt" \) 2>/dev/null
+   find {folder} -maxdepth 2 -type f \( -name "*.md" -o -name "*.txt" \) 2> /dev/null
    ```
 
 2. Present found files to user using AskUserQuestion:
+
    ```yaml
    header: "Select Source Files"
    question: "Found these files in {folder}. Which should I use as linked sources?"
@@ -155,6 +158,7 @@ If `resolved_arguments` starts with "discover" or "interview":
    - `discover` alone → ask for topic
 
 2. If no topic provided, use AskUserQuestion:
+
    ```yaml
    header: "Discovery Topic"
    question: "What topic should we explore? Describe what you're building or the problem you're solving."
@@ -167,7 +171,7 @@ If `resolved_arguments` starts with "discover" or "interview":
    find siw -maxdepth 1 -type f \( -name "*SPEC*.md" -o -name "*SPECIFICATION*.md" -o -name "*PLAN*.md" -o -name "*DESIGN*.md" \) \
      ! -name "SPEC_STRENGTHENING_PLAN.md" \
      ! -name "DISCOVERY_BRIEF.md" \
-     2>/dev/null
+     2> /dev/null
    ```
 5. If permanent spec files still exist, do **not** run greenfield discovery. Use AskUserQuestion:
    ```yaml
@@ -350,6 +354,7 @@ Store the selected profile as `work_context_profile` with all attribute values f
 Based on `project_description`, auto-detect the most appropriate spec filename:
 
 **Detection heuristics:**
+
 - Keywords like "feature", "add", "implement", "new" → `FEATURE_SPECIFICATION.md`
 - Keywords like "api", "endpoint", "service" → `API_DESIGN.md`
 - Keywords like "doc", "documentation", "guide" → `DOCUMENTATION_SPEC.md`

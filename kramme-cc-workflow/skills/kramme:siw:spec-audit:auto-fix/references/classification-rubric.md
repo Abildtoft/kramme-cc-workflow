@@ -9,7 +9,7 @@ Score all four conditions. Sum the scores (0-100). Compare against the active th
 ### Condition 1: Determinism (0-25)
 
 | Score | Criteria |
-|-------|----------|
+| --- | --- |
 | 25 | One obvious right answer. No reasonable person would fix it differently. |
 | 15 | One clearly-best answer exists, though a minor alternative is conceivable. |
 | 5 | A reasonable fix exists but requires choosing a specific approach. |
@@ -18,7 +18,7 @@ Score all four conditions. Sum the scores (0-100). Compare against the active th
 ### Condition 2: Information Availability (0-25)
 
 | Score | Criteria |
-|-------|----------|
+| --- | --- |
 | 25 | All information needed is explicitly present in the spec. |
 | 15 | Information is present but requires combining content from multiple sections. |
 | 5 | Most information is present but a small inference is needed. |
@@ -27,7 +27,7 @@ Score all four conditions. Sum the scores (0-100). Compare against the active th
 ### Condition 3: Meaning Preservation (0-25)
 
 | Score | Criteria |
-|-------|----------|
+| --- | --- |
 | 25 | Fix changes only form, not substance. Zero meaning change. |
 | 15 | Fix primarily changes form; any meaning shift is trivially small and clearly intended. |
 | 5 | Fix has minor meaning implications that are almost certainly positive. |
@@ -36,7 +36,7 @@ Score all four conditions. Sum the scores (0-100). Compare against the active th
 ### Condition 4: Alternative Absence (0-25)
 
 | Score | Criteria |
-|-------|----------|
+| --- | --- |
 | 25 | No choosing between alternatives. The fix is the only reasonable option. |
 | 15 | One alternative exists but is clearly inferior. |
 | 5 | Two alternatives exist; one is moderately better than the other. |
@@ -44,12 +44,12 @@ Score all four conditions. Sum the scores (0-100). Compare against the active th
 
 ## Confidence Tiers
 
-| Tier | Range | Label |
-|------|-------|-------|
-| MECHANICAL | 90-100 | Deterministic fix, fully mechanical |
-| HIGH_CONFIDENCE | 75-89 | Clearly-best fix, near-mechanical |
-| MODERATE_CONFIDENCE | 50-74 | Reasonable fix, some judgment involved |
-| REQUIRES_DECISION | 0-49 | Needs human decision |
+| Tier                | Range  | Label                                  |
+| ------------------- | ------ | -------------------------------------- |
+| MECHANICAL          | 90-100 | Deterministic fix, fully mechanical    |
+| HIGH_CONFIDENCE     | 75-89  | Clearly-best fix, near-mechanical      |
+| MODERATE_CONFIDENCE | 50-74  | Reasonable fix, some judgment involved |
+| REQUIRES_DECISION   | 0-49   | Needs human decision                   |
 
 ## Auto-Fix Guardrails
 
@@ -65,7 +65,7 @@ These guardrails keep `--threshold 60` runs from auto-fixing findings that still
 ## Fix Categories with Typical Confidence
 
 | Category | What to Look For | Fix Pattern | Typical Confidence |
-|----------|-----------------|-------------|-------------------|
+| --- | --- | --- | --- |
 | **Cross-reference errors** | Section/task refs that don't match actual headings, broken internal links | Update reference to match the actual heading | 95-100 |
 | **Terminology inconsistency** | One term used N times, a synonym used 1-2 times for the same concept | Replace outlier(s) with the dominant term | 85-100 (drops if frequencies are close) |
 | **Numbering/ordering errors** | Task lists with gaps (2.3 → 2.5), duplicate numbers, wrong sequence | Renumber to correct sequence | 95-100 |

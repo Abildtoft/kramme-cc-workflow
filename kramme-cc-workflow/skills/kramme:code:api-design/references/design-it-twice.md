@@ -5,6 +5,7 @@ The first interface that comes to mind is rarely the best one. Design It Twice e
 ## When to enter this mode
 
 Trigger on any of:
+
 - The user passes `--design-twice` (or equivalent flag) to the skill invocation.
 - The user says "design it twice", "show me alternatives", "what other shapes are there", or otherwise asks for a comparison rather than a single design.
 
@@ -14,7 +15,7 @@ Do not enter this mode by default. For high-leverage surfaces (SDK boundary, pub
 
 ### Step 1 — Frame the problem space
 
-Write a short framing block before spawning agents. The framing names the *problem*, not the *interface*.
+Write a short framing block before spawning agents. The framing names the _problem_, not the _interface_.
 
 ```
 Problem: <what the caller is trying to accomplish, in one sentence>
@@ -30,7 +31,7 @@ Each agent receives this framing verbatim. They diverge on shape, not on problem
 Spawn at least three agents in parallel, each with a different constraint. Concrete constraint slate:
 
 | # | Constraint | Pushes the design toward |
-|---|---|---|
+| --- | --- | --- |
 | 1 | **Minimize methods** (1–3 max). | Deep modules. One interface that hides everything. Risk: kitchen-sink "do" method. |
 | 2 | **Maximize flexibility.** Composable primitives, no opinionated defaults. | Library-shape. Many small functions. Risk: shallow modules that push complexity to callers. |
 | 3 | **Optimize the common case.** One ergonomic happy-path call; advanced cases via escape hatches. | Convenience-shape. Risk: hidden coupling between the happy path and the escape hatches. |
@@ -40,7 +41,7 @@ Each agent must produce the same output structure (Step 3 below) so comparison i
 
 #### Dependency categories (decide before constraint #4 fires)
 
-Constraint #4 is only worth assigning when the *category* of dependency justifies the cost of a port. Classify each thing the design depends on into exactly one of these four categories — including in-process collaborators that aren't external at all — and let the category decide the adapter strategy:
+Constraint #4 is only worth assigning when the _category_ of dependency justifies the cost of a port. Classify each thing the design depends on into exactly one of these four categories — including in-process collaborators that aren't external at all — and let the category decide the adapter strategy:
 
 - **In-process** — pure logic or in-memory state with no I/O (math, parsing, in-memory transformation). No port, no adapter; the seam, if any, is internal to the module's own tests.
 - **Local-substitutable** — a local resource with a substitutable in-process implementation (PGLite for Postgres, an in-memory FS for `node:fs`, a fake clock). The seam is internal to the module; no port at the module's external interface.

@@ -19,15 +19,18 @@ Format: `kramme:{domain}:{action}` with optional suffix segments only when they 
 Maximum 1,024 characters. This is the only metadata the agent sees for routing.
 
 **Rules:**
+
 - Write in third person ("Creates...", "Guides...", "Runs...")
 - Describe the capability and when to use it
 - Include **negative triggers** — explicitly state what the skill is NOT for
 
 **Weak descriptions:**
+
 - "Code review skills." (too vague — triggers on everything)
 - "Helps with git." (no specificity)
 
 **Strong descriptions:**
+
 - "Creates and builds React components using Tailwind CSS. Use when the user wants to update component styles or UI logic. Don't use for Vue, Svelte, or vanilla CSS projects."
 - "Guide the creation of a new plugin skill with best-practice structure and frontmatter. Use when creating a skill from scratch. Not for editing existing skills."
 
@@ -36,7 +39,7 @@ Maximum 1,024 characters. This is the only metadata the agent sees for routing.
 Controls whether Claude can auto-invoke without user action.
 
 | Value | Use when... |
-|-------|-------------|
+| --- | --- |
 | `true` | Skill has side effects: creates/modifies/deletes files, runs git commands, calls external APIs, creates PRs |
 | `false` | Skill is read-only or advisory: analysis, formatting, review, style checking |
 
@@ -45,11 +48,12 @@ Controls whether Claude can auto-invoke without user action.
 Controls whether the skill appears in the `/` menu.
 
 | Value | Use when... |
-|-------|-------------|
+| --- | --- |
 | `true` | User should explicitly trigger: workflows, generators, interactive tools |
 | `false` | Background convention: commit style, verification rules, auto-formatting. Auto-triggers based on context matching description |
 
 **Common combinations:**
+
 - `user-invocable: true` + `disable-model-invocation: true` — User-only actions with side effects (most skills)
 - `user-invocable: true` + `disable-model-invocation: false` — User or auto-triggered (text processing, review)
 - `user-invocable: false` + `disable-model-invocation: false` — Background conventions (commit messages, verification)

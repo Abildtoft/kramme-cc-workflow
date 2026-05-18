@@ -16,11 +16,13 @@ Generate a comprehensive visual project recap as a self-contained HTML page to r
 ## Prerequisites
 
 Read the local visual references before generating:
+
 - `references/css-patterns.md`
 - `references/libraries.md`
 - `references/responsive-nav.md`
 
 Select the appropriate template to absorb patterns:
+
 - `assets/architecture.html`
 - `assets/data-table.html`
 - `assets/mermaid-flowchart.html`
@@ -46,6 +48,7 @@ Follow the workflow below. Use a warm editorial or paper/ink aesthetic with mute
 ## Time Window
 
 Determine the recency window from the argument:
+
 - Shorthand like `2w`, `30d`, `3m`: parse to git's `--since` format
 - If argument doesn't match a time pattern, treat as free-form context and use default
 - No argument: default to `2w` (2 weeks)
@@ -65,6 +68,7 @@ Determine the recency window from the argument:
 ## Verification Checkpoint
 
 Before generating HTML, produce a structured fact sheet of every claim you will present:
+
 - Every quantitative figure: commit counts, file counts, line counts, branch counts
 - Every module, function, and type name you will reference
 - Every behavior and architecture description
@@ -73,9 +77,9 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 
 ## Page Sections
 
-1. **Project identity** — a *current-state* summary: what this project does, who uses it, what stage it's at. Include version, key dependencies, and the elevator pitch for someone who forgot what they were building.
+1. **Project identity** — a _current-state_ summary: what this project does, who uses it, what stage it's at. Include version, key dependencies, and the elevator pitch for someone who forgot what they were building.
 
-2. **Architecture snapshot** — Mermaid diagram of the system as it exists today. Focus on conceptual modules and their relationships, not every file. Label nodes with what they do. Wrap in `.mermaid-wrap` with zoom controls. *Hero depth: elevated container, larger padding, accent-tinted background.*
+2. **Architecture snapshot** — Mermaid diagram of the system as it exists today. Focus on conceptual modules and their relationships, not every file. Label nodes with what they do. Wrap in `.mermaid-wrap` with zoom controls. _Hero depth: elevated container, larger padding, accent-tinted background._
 
 3. **Recent activity** — human-readable narrative grouped by theme: feature work, bug fixes, refactors, infrastructure. Timeline visualization with significant changes called out. For each theme, a one-sentence summary of what happened and why it mattered.
 
@@ -108,11 +112,10 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 
 ## Output
 
-Write to `~/.kramme-cc-workflow/diagrams/project-recap-{project-name}.html`. Create the directory if needed.
-Open in browser:
+Write to `~/.kramme-cc-workflow/diagrams/project-recap-{project-name}.html`. Create the directory if needed. Open in browser:
+
 - macOS: `open ~/.kramme-cc-workflow/diagrams/{filename}.html`
-- Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html`
-Report the file path to the user.
+- Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html` Report the file path to the user.
 
 Include responsive section navigation.
 

@@ -1,22 +1,12 @@
 # SPDX-FileCopyrightText: 2024-present Adam Fourney <adamfo@microsoft.com>
-#
-# SPDX-License-Identifier: MIT
-import argparse
-import sys
-import codecs
-from textwrap import dedent
-from importlib.metadata import entry_points
-from .__about__ import __version__
-from ._markitdown import MarkItDown, StreamInfo, DocumentConverterResult
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Convert various file formats to markdown.",
-        prog="markitdown",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        usage=dedent(
-            """
-            SYNTAX:
+#
+
+# SPDX-License-Identifier: MIT
+
+import argparse import sys import codecs from textwrap import dedent from importlib.metadata import entry_points from .**about** import **version** from .\_markitdown import MarkItDown, StreamInfo, DocumentConverterResult
+
+def main(): parser = argparse.ArgumentParser( description="Convert various file formats to markdown.", prog="markitdown", formatter_class=argparse.RawDescriptionHelpFormatter, usage=dedent( """ SYNTAX:
 
                 markitdown <OPTIONAL: FILENAME>
                 If FILENAME is empty, markitdown reads from stdin.
@@ -198,22 +188,8 @@ def main():
 
     _handle_output(args, result)
 
-def _handle_output(args, result: DocumentConverterResult):
-    """Handle output to stdout or file"""
-    if args.output:
-        with open(args.output, "w", encoding="utf-8") as f:
-            f.write(result.markdown)
-    else:
-        # Handle stdout encoding errors more gracefully
-        print(
-            result.markdown.encode(sys.stdout.encoding, errors="replace").decode(
-                sys.stdout.encoding
-            )
-        )
+def \_handle_output(args, result: DocumentConverterResult): """Handle output to stdout or file""" if args.output: with open(args.output, "w", encoding="utf-8") as f: f.write(result.markdown) else: # Handle stdout encoding errors more gracefully print( result.markdown.encode(sys.stdout.encoding, errors="replace").decode( sys.stdout.encoding ) )
 
-def _exit_with_error(message: str):
-    print(message)
-    sys.exit(1)
+def \_exit_with_error(message: str): print(message) sys.exit(1)
 
-if __name__ == "__main__":
-    main()
+if **name** == "**main**": main()
