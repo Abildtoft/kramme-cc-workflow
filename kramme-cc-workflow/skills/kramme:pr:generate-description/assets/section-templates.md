@@ -59,7 +59,7 @@ The Summary section is followed immediately by the Change Summary block below.
 
 ## Technical Details Section
 
-**ALWAYS** include items 1-3. Optionally include reviewer landmarks when they add review value:
+**ALWAYS** include implementation approach. Include scope changes only when the implementation diverged from Linear. Include area notes and reviewer landmarks only when they add review value beyond GitHub's file tree:
 
 1. **Implementation approach** (2-4 sentences):
 
@@ -79,32 +79,32 @@ The Summary section is followed immediately by the Change Summary block below.
    - **WRONG**: "As discussed in SPEC.md, we changed the approach..." (reviewers can't see SPEC.md)
    - **WRONG**: "Based on our conversation, we decided..." (reviewers can't see conversation history)
 
-3. **Changes by area**:
+3. **Area notes** (optional):
+
+   Use area notes only when grouping by area explains behavior, risk, coupling, rollout order, or review strategy. Do not add this section merely to restate which frontend, backend, test, or config files changed.
 
    **Frontend Changes** (if applicable):
 
-   - List key components/services modified or created
-   - State management changes (ComponentStore, etc.)
-   - Routing/navigation changes
-   - UI/UX changes
+   - User-visible behavior or flow changes
+   - State management, routing, or UI changes that affect review strategy
+   - Component/service names only when they identify a non-obvious entry point
 
    **Backend Changes** (if applicable):
 
-   - API endpoints added/modified
-   - Service/repository changes
-   - Business logic updates
-   - Database changes
+   - API contract or business logic behavior that reviewers need to understand
+   - Service/repository interactions that affect correctness, security, or rollout
+   - Database behavior that is not obvious from the migration file alone
 
    **Database Migrations** (if applicable):
 
    - Migration name and purpose
-   - Schema changes (tables, columns, indices)
-   - Data migrations (if any)
+   - Compatibility, rollout, locking, or data backfill considerations
+   - Data migrations or defaults reviewers should inspect
 
    **Test Coverage** (if applicable):
 
-   - New tests added
-   - Test coverage areas
+   - Behavior covered, important gaps, or manual verification that remains
+   - Avoid raw counts unless the count itself is reviewer-relevant
 
 4. **Reviewer landmarks** (optional):
    - Use only when the diff has non-obvious entry points, generated files, migrations, or cross-area coupling that reviewers should inspect together
@@ -133,26 +133,21 @@ The implementation uses NgRx ComponentStore for reactive state management and in
 
 The Linear issue originally requested only redirecting single-platform users. During implementation, added a 2-second timeout with graceful fallback to prevent indefinite loading states when the platform API is slow or unresponsive. This was added after discovering edge cases during testing where network latency could leave users on a blank screen.
 
-### Changes by Area
+### Area Notes
 
 **Frontend:**
 
-- Created `PlatformPickerRedirectGuard` implementing Angular `CanActivate` interface
-- Added `PlatformPickerRedirectStore` for managing guard state
-- Integrated guard into platform picker route configuration
-- Added comprehensive unit tests for guard logic
+- The route guard owns the navigation decision before the picker renders; the store only manages loading, success, and fallback states.
+- Routing keeps the existing picker path available for multi-platform and error cases.
 
 **Backend:**
 
-- Added `GET /api/platforms/count` endpoint to retrieve user platform count
-- Updated `PlatformService` to support count queries
-- Added caching for platform count to improve performance
+- The platform-count endpoint is read-only and supports the guard without changing the existing platform list contract.
+- Count caching affects redirect freshness, so stale counts should still fail open to the picker.
 
 **Tests:**
 
-- 15 new unit tests for guard behavior
-- 3 integration tests for the new API endpoint
-- E2E tests for single-platform and multi-platform user flows
+- Coverage focuses on redirect, multi-platform, and fallback behavior rather than visual picker rendering.
 
 **Reviewer landmarks:**
 

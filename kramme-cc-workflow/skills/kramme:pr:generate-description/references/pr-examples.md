@@ -44,14 +44,6 @@ Fixes WAN-521
 
 Created a new Angular route guard (`PlatformPickerRedirectGuard`) that queries the user's platform count and conditionally redirects based on the result. The guard integrates with the existing platform service and uses NgRx ComponentStore for reactive state management.
 
-### Changes by Area
-
-**Frontend:**
-- Implemented `PlatformPickerRedirectGuard` using Angular `CanActivate` interface
-- Created `PlatformPickerRedirectStore` for managing platform count state
-- Integrated guard into platform picker route configuration
-- Added 12 unit tests covering all guard scenarios
-
 ## Test Plan
 
 **Scenario 1: Single-platform user**
@@ -83,7 +75,7 @@ None
 <!-- - New features in action -->
 <!-- - Error states or edge cases -->
 <!-- - Mobile/responsive views -->
-````
+```
 
 ## Example 2: Full-Stack Feature with Database Migration
 
@@ -133,31 +125,26 @@ Implemented a new `user_preferences` table to store JSON preference data, with A
 
 Database migration adds the preferences table with appropriate indexing and foreign key constraints.
 
-### Changes by Area
+### Area Notes
 
 **Backend:**
 
-- Add REST endpoints for preferences CRUD
-- Add service logic and an entity model for preference management
-- Add the database migration for the new preferences table
+- The preferences API creates records on first save instead of backfilling defaults for every existing user.
+- Preference payloads are stored as user-scoped JSON so future settings can be added without additional schema changes.
 
 **Frontend:**
 
-- Add a preferences data service with local caching
-- Add the preferences editing UI
-- Wire the API client to the new endpoints
+- The preferences service caches saved values locally, then syncs through the new API client so the UI can reflect edits immediately.
+- The editing UI is intentionally separate from existing profile settings to keep this PR scoped to application preferences.
 
 **Database Migration:**
 
-- Added `user_preferences` table with columns: `id`, `user_id`, `preferences_json`, `created_at`, `updated_at`
-- Added index on `user_id` for query performance
-- Foreign key constraint to `users` table
+- The migration adds a user-scoped preferences table with timestamp metadata and an index for per-user lookups.
+- No data backfill is included; rows are created when users save preferences.
 
 **Tests:**
 
-- 8 unit tests for backend service
-- 6 integration tests for API endpoints
-- 10 frontend component tests
+- Coverage focuses on first-save creation, update behavior, validation failures, and cross-user isolation.
 
 **Reviewer landmarks:**
 
@@ -216,7 +203,6 @@ Run the following migration before deploying:
 ```bash
 dotnet ef database update -c ConnectContext
 ```
-````
 
 **Downtime:**
 ~1 minute (table creation, no data backfill needed)
@@ -236,7 +222,7 @@ dotnet ef migrations remove -c ConnectContext
 <!-- - New features in action -->
 <!-- - Error states or edge cases -->
 <!-- - Mobile/responsive views -->
-```
+````
 
 ## Example 3: Frontend Feature with Visual Capture (`--visual`)
 
