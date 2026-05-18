@@ -1,17 +1,17 @@
 ---
 name: kramme:docs:add-greenfield-policy
-description: "Append the Hard-Cut Greenfield Policy section to AGENTS.md or CLAUDE.md. Use when setting up a new greenfield project or adding the no-compatibility-code policy to an existing project. Not for editing or customizing the policy after it has been added."
+description: "Add the Hard-Cut Greenfield Policy section to AGENTS.md or CLAUDE.md. Use when setting up a new greenfield project or adding the no-compatibility-code policy to an existing project. Not for editing or customizing the policy after it has been added."
 disable-model-invocation: true
 user-invocable: true
 ---
 
 # Add Hard-Cut Greenfield Policy
 
-Append the Hard-Cut Greenfield Policy section to the project's agent instructions file. This policy establishes a default stance of deleting old-state compatibility code rather than carrying it forward.
+Add the Hard-Cut Greenfield Policy section to the project's agent instructions file, placing it where agents will naturally find policy guidance. This policy establishes a default stance of deleting old-state compatibility code rather than carrying it forward.
 
 ## Workflow
 
-1. **Locate target file** — Determine where to append the policy using this priority order:
+1. **Locate target file** — Determine where to add the policy using this priority order:
    1. If `AGENTS.md` exists in the project root, use it.
    2. If `AGENTS.md` does not exist but `CLAUDE.md` does, use `CLAUDE.md`.
    3. If neither exists, create `AGENTS.md` in the project root.
@@ -22,7 +22,9 @@ Append the Hard-Cut Greenfield Policy section to the project's agent instruction
 
 2. **Check for existing section** — Read the target file and search for the heading `## Hard-Cut Greenfield Policy`. If the section already exists, report that the policy is already present and stop. Do not duplicate it.
 
-3. **Append the policy section** — Add the following block to the end of the target file. Include a blank line before the heading to ensure proper markdown separation from preceding content.
+3. **Respect existing instruction structure** — If the target file has a policy/conventions section or a Context Map section, place the policy where an agent would naturally find it. Otherwise append the policy section to the end of the target file. Do not duplicate any surrounding explanation; `AGENTS.md` / `CLAUDE.md` should stay compact and use Context Pointers for deeper detail.
+
+4. **Add the policy section** — Add the following block. Include a blank line before the heading to ensure proper markdown separation from preceding content.
 
    ~~~markdown
 
@@ -47,4 +49,4 @@ Append the Hard-Cut Greenfield Policy section to the project's agent instruction
    - Default stance across the app: delete old-state compatibility code rather than carrying it forward.
    ~~~
 
-4. **Confirm result** — Report which file was modified (or created) and that the Hard-Cut Greenfield Policy section was added successfully.
+5. **Confirm result** — Report which file was modified (or created) and that the Hard-Cut Greenfield Policy section was added successfully.

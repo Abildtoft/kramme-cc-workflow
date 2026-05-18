@@ -7,7 +7,19 @@ disable-model-invocation: false
 
 # Adding to AGENTS.md
 
-AGENTS.md is the canonical agent-facing documentation. Each rule should be minimal, but many rules are OK.
+AGENTS.md is the canonical agent-facing documentation. If a project uses `CLAUDE.md` or another equivalent instruction file instead, apply the same structure there. Each rule should be minimal, but many rules are OK.
+
+## Context Pointer Model
+
+Use `AGENTS.md` as a routing map, not a warehouse. A Context Pointer is a concise link from an agent-facing rule to deeper context: a skill, doc, script, module, test suite, schema, runbook, ADR, or example file.
+
+A strong Context Pointer includes:
+
+- **Target** — the exact file, command, module, or skill to open or run
+- **Trigger** — when the agent should follow it
+- **Purpose** — what the target answers or governs
+
+Prefer Context Pointers when the detail would make `AGENTS.md` long, duplicate another source of truth, or apply only to a subset of tasks.
 
 ## Before Writing
 
@@ -19,6 +31,19 @@ ls plugins/*/skills/*/SKILL.md 2>/dev/null
 ```
 
 Read each skill's frontmatter to understand when to reference it.
+
+Map existing context before editing:
+
+```bash
+find . -maxdepth 3 \
+  \( -type d \( -name ".git" -o -name ".context" -o -name "node_modules" -o -name "dist" -o -name "build" -o -name ".next" -o -name ".nuxt" -o -name "coverage" -o -name ".venv" -o -name "venv" -o -name "target" \) -prune \) -o \
+  -type f \( -name "AGENTS.md" -o -name "CLAUDE.md" -o -name "README.md" -o -name "CONTRIBUTING.md" -o -name "*.md" \) -print 2>/dev/null
+find . -maxdepth 3 \
+  \( -type d \( -name ".git" -o -name ".context" -o -name "node_modules" -o -name "dist" -o -name "build" -o -name ".next" -o -name ".nuxt" -o -name "coverage" -o -name ".venv" -o -name "venv" -o -name "target" \) -prune \) -o \
+  -type f \( -name "*schema*" -o -name "*registry*" -o -name "*routes*" -o -name "index.*" \) -print 2>/dev/null
+```
+
+Identify existing docs, scripts, modules, examples, and skills that should be pointed to instead of duplicated.
 
 ## Guideline Keywords
 
@@ -41,11 +66,24 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 - **Headers + bullets** - No paragraphs
 - **Code blocks** - For commands and templates
 - **Reference, don't duplicate** - Point to skills: "See `.claude/skills/db-migrate/SKILL.md`"
+- **Context Pointers over pasted detail** - Point to deeper docs, scripts, modules, tests, schemas, or ADRs with a clear when/why cue
+- **One hop** - Important pointers should be directly visible from the active agent instruction file; avoid chains of documents that only point to more documents
 - **No filler** - No intros, conclusions, or pleasantries
 
 ## Common Sections
 
 Add sections as needed for the project:
+
+### Context Map
+Use this when the repo has multiple important docs, skills, scripts, or subsystems:
+
+```markdown
+## Context Map
+- **ALWAYS** read `docs/architecture.md` before changing module boundaries
+- **ALWAYS** run `scripts/verify.sh` before claiming local verification; see `docs/testing.md` only for suite-specific details
+- **PREFER** `packages/api/src/routes/index.ts` as the entry point for API route discovery
+- **CAN** use `.claude/skills/db-migrate/SKILL.md` when changing database migrations
+```
 
 ### When Stuck
 ```markdown
@@ -93,3 +131,5 @@ Omit these:
 - Explanations of why (just say what)
 - Long prose paragraphs
 - Content duplicated from skills (reference instead)
+- Link dumps without a trigger or purpose
+- Deep pointer chains where the active agent instruction file points to a doc that only points elsewhere
