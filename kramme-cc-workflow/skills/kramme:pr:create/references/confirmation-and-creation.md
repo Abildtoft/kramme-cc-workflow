@@ -6,7 +6,9 @@ Use this reference for `/kramme:pr:create` Steps 8-9 after the branch is prepare
 
 ### 8.1 Preview Summary
 
-Show the user what will be created. When `DRAFT_MODE=true`, use `Draft [PR] Ready to Create` / `Status: Draft`; otherwise use `[PR] Ready to Create` / `Status: Ready for review`.
+Show the user what will be created.
+
+When `DRAFT_MODE=false`, use:
 
 ```
 [PR] Ready to Create
@@ -21,13 +23,30 @@ Description Preview:
 ---
 ```
 
+When `DRAFT_MODE=true`, use:
+
+```
+Draft [PR] Ready to Create
+
+Title: [Generated conventional commit title from pr-description-generator]
+Branch: {feature-branch} -> main
+Status: Draft
+
+Description Preview:
+---
+{first 300 characters of description}...
+---
+```
+
 The title comes from the pr-description-generator skill output and follows conventional commit format (`<type>(<scope>): <description>`).
 
 ### 8.2 Confirm Creation
 
 If `AUTO_MODE=true`, skip this confirmation and proceed directly to Step 8.3.
 
-Otherwise use AskUserQuestion. When `DRAFT_MODE=true`, substitute "Draft PR" for "PR" in the question and the first option's label/description.
+Otherwise use AskUserQuestion.
+
+When `DRAFT_MODE=false`, use:
 
 ```yaml
 header: "Confirm"
@@ -42,20 +61,24 @@ options:
 multiSelect: false
 ```
 
+When `DRAFT_MODE=true`, use:
+
+```yaml
+header: "Confirm"
+question: "Ready to create the Draft PR?"
+options:
+  - label: "Create Draft PR"
+    description: "Push branch and create the Draft PR with the generated description"
+  - label: "Edit description first"
+    description: "Review and modify the description before creating"
+  - label: "Abort"
+    description: "Cancel and keep local changes without creating PR"
+multiSelect: false
+```
+
 If "Abort" selected:
 
-```
-Operation cancelled.
-
-Your changes remain local:
-  - Branch: {current-branch}
-  - Commits: {number} commits ready
-  - Status: Not pushed, no PR created
-
-You can run /kramme:pr:create again when ready.
-```
-
-Action: Abort. No rollback is needed because commits are preserved.
+Action: Execute Step 10: Abort and Rollback Handling from the main skill, then abort. This restores the original branch, original commit, and any stashed changes from Step 5 before reporting the abort to the user.
 
 If "Edit description first" selected, allow the user to provide edits, then continue.
 
