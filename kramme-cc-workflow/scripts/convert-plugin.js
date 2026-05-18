@@ -1244,7 +1244,7 @@ function rewriteCodexAgentFileReferences(text, knownAgentSkills) {
   if (!knownAgentSkills || knownAgentSkills.size === 0) return text
   const linkTargetPattern = /(?<!!)\[[^\]\n]+\]\(\s*<?agents\/([a-z][a-z0-9_:-]*)\.md>?(?:\s+(?:"[^"\n]*"|'[^'\n]*'|\([^)\n]*\)))?\s*\)/gi
   const autolinkPattern = /<agents\/([a-z][a-z0-9_:-]*)\.md>/gi
-  const agentPathPattern = /(?<![\w./\\}:$(-])`?agents\/([a-z][a-z0-9_:-]*)\.md`?/gi
+  const agentPathPattern = /(?<![\w./\\}:$(-])`?agents\/([a-z][a-z0-9_:-]*)\.md`?(?=$|[\s,.`"')\]}])/gi
   const toSkillReference = (match, agentName) => {
     const skillName = knownAgentSkills.get(codexName(agentName))
     if (!skillName) return match
