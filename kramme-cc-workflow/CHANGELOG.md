@@ -3,6 +3,8 @@
 ## Unreleased
 
 ### Removed
+- Breaking: Removed separate team-mode skills (`kramme:pr:code-review:team`, `kramme:pr:resolve-review:team`, `kramme:pr:ux-review:team`, `kramme:siw:issue-implement:team`, `kramme:siw:spec-audit:team`, and `kramme:siw:implementation-audit:team`). Use the base skill with `--team` instead.
+
 ## [0.55.0] - 2026-05-15
 
 ### Added

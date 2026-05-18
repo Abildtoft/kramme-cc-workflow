@@ -184,7 +184,7 @@ MD
   fi
   [ "$status" -eq 1 ]
 
-  run grep -nE '\$kramme:code-reviewer skill' "$TMP_DIR/.codex/skills/kramme:pr:code-review:team/SKILL.md"
+  run grep -nE '\$kramme:code-reviewer skill' "$TMP_DIR/.codex/skills/kramme:pr:code-review/references/team-mode.md"
   [ "$status" -eq 0 ]
 }
 

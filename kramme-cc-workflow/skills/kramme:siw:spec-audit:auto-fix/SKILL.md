@@ -8,7 +8,7 @@ user-invocable: true
 
 # Auto-Fix Safe Spec Audit Findings
 
-Apply deterministic and clearly-best fixes to spec-audit findings that can be corrected safely from the spec itself. This skill runs after `/kramme:siw:spec-audit` (or `:team`) and directly edits spec files to resolve mechanical issues plus higher-confidence cleanup that still stays within the existing spec meaning.
+Apply deterministic and clearly-best fixes to spec-audit findings that can be corrected safely from the spec itself. This skill runs after `/kramme:siw:spec-audit` (including `--team` runs) and directly edits spec files to resolve mechanical issues plus higher-confidence cleanup that still stays within the existing spec meaning.
 
 Findings that require product decisions, stakeholder input, or still lack a clearly best fix are left untouched for `/kramme:siw:resolve-audit`.
 

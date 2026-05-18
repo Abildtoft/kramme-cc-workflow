@@ -6,7 +6,7 @@ Every SKILL.md must declare all fields explicitly. Never rely on defaults.
 
 ### `name`
 
-Format: `kramme:{domain}:{action}` with optional suffix segments (for example `kramme:pr:code-review:team`)
+Format: `kramme:{domain}:{action}` with optional suffix segments only when they represent separate concepts. Prefer command flags such as `--team` for execution modes.
 
 - 1-64 characters total
 - Segment-based validation: each segment (split by `:`) uses lowercase letters, numbers, and hyphens only

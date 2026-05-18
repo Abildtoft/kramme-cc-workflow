@@ -1,15 +1,8 @@
----
-name: kramme:siw:issue-implement:team
-description: Implement multiple SIW issues in parallel using multi-agent execution. Each agent gets a full context window and implements one issue. Best for phases with multiple independent issues.
-argument-hint: "[issue-ids or 'phase N'] [--auto]"
-disable-model-invocation: true
-user-invocable: true
-kramme-platforms: [claude-code, codex]
----
-
 # Parallel SIW Implementation
 
 Implement multiple SIW issues simultaneously using multi-agent execution. Each agent implements one issue with a full context window, following the `kramme:siw:issue-implement` workflow.
+
+This reference is loaded by `/kramme:siw:issue-implement --team`; assume `--team` has already been removed from `$ARGUMENTS`.
 
 **Arguments:** "$ARGUMENTS"
 
@@ -218,24 +211,24 @@ This skill uses a multi-layer approach:
 ## Usage
 
 ```
-/kramme:siw:issue-implement:team
+/kramme:siw:issue-implement --team
 # Implement all READY issues with no blockers
 
-/kramme:siw:issue-implement:team phase 1
+/kramme:siw:issue-implement --team phase 1
 # Implement all READY Phase 1 issues
 
-/kramme:siw:issue-implement:team P1-001 P1-003 G-002
+/kramme:siw:issue-implement --team P1-001 P1-003 G-002
 # Implement specific issues in parallel
 ```
 
 ## When to Use This vs `/kramme:siw:issue-implement`
 
-Use **this skill** when:
+Use **this mode** when:
 - Multiple READY issues exist with no blocking dependencies
 - Issues touch different files/modules
 - You want to speed up a phase by parallelizing independent work
 
-Use **`/kramme:siw:issue-implement`** when:
+Use **standard `/kramme:siw:issue-implement`** when:
 - Implementing a single issue
 - Issues are tightly coupled and need sequential implementation
 - You want lower token cost

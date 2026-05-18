@@ -255,7 +255,7 @@ When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW
 | Skill | Arguments | Description |
 |-------|-----------|-------------|
 | `/kramme:siw:discovery` | `[topic \| spec-path(s) \| 'siw'] [--apply] [--decision-tree]` | Deep discovery interview that works both before a spec exists and after one has gone stale. Greenfield runs write `siw/DISCOVERY_BRIEF.md`; refinement runs identify concrete improvements and can apply them with `--apply`. Pass `--decision-tree` for depth-first resolution of tightly coupled decisions. |
-| `/kramme:siw:spec-audit` | `[spec-path(s) \| 'siw'] [--auto] [--model opus\|sonnet\|haiku]` | Audit spec quality across 8 dimensions: coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design. Produces a structured report and optionally creates SIW issues. Add `--auto` to replace any previous report and create critical/major issues without pausing. |
+| `/kramme:siw:spec-audit` | `[spec-path(s) \| 'siw'] [--auto] [--model opus\|sonnet\|haiku] [--team]` | Audit spec quality across 8 dimensions: coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design. Produces a structured report and optionally creates SIW issues. Add `--team` for parallel dimension analysis with cross-validation. Add `--auto` to replace any previous report and create critical/major issues without pausing. |
 | `/kramme:siw:breakdown-findings` | `[audit-report-path] [SPEC-id(s)]` | Break down unresolved `SPEC-*` findings into one inline report with executive summaries, concrete options, and a recommendation for each finding. Skips auto-fixed and already-tracked findings by default, then asks which follow-up path to take without creating SIW issues directly. |
 | `/kramme:siw:reverse-engineer-spec` | `[branch \| folder \| file(s)] [--base main] [--model opus\|sonnet\|haiku]` | Generate a spec from existing code. Analyzes git diffs, folders, or files using parallel agents. Produces an SIW-compatible spec. Useful for documenting shipped features or bootstrapping SIW from existing work. |
 
@@ -271,13 +271,13 @@ When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW
 
 | Skill | Arguments | Description |
 |-------|-----------|-------------|
-| `/kramme:siw:issue-implement` | `<G-001 \| P1-001 \| ISSUE-G-XXX>` | Implement an issue with extensive planning before coding. Explores the codebase, asks clarifying questions, creates a technical plan, then offers three execution modes: **Guided** (step-by-step with verification), **Context-only** (you drive, agent prepares), **Autonomous** (agent implements end-to-end). Includes spec sync (step 10) to align decisions back to the spec. |
+| `/kramme:siw:issue-implement` | `<G-001 \| P1-001 \| ISSUE-G-XXX> \| --team [issue-ids \| 'phase N'] [--auto]` | Implement an issue with extensive planning before coding. Explores the codebase, asks clarifying questions, creates a technical plan, then offers three execution modes: **Guided** (step-by-step with verification), **Context-only** (you drive, agent prepares), **Autonomous** (agent implements end-to-end). For a single issue, pass one issue ID. Add `--team` to implement multiple independent issues in parallel; with no team-mode target, it selects ready AUTO issues. In team mode, `--auto` starts the proposed parallel plan immediately. Includes spec sync (step 10) to align decisions back to the spec. |
 
 ### Auditing & Quality
 
 | Skill | Arguments | Description |
 |-------|-----------|-------------|
-| `/kramme:siw:implementation-audit` | `[spec-path(s) \| 'siw'] [--auto] [--model opus\|sonnet\|haiku]` | Adversarial, exhaustive audit of code against spec. Pass A checks requirement-by-requirement conformance. Pass B scans for undocumented extensions. Includes conflict reconciliation and coverage gates. Add `--auto` to replace any previous report and create critical/major issues without pausing. |
+| `/kramme:siw:implementation-audit` | `[spec-path(s) \| 'siw'] [--auto] [--model opus\|sonnet\|haiku] [--team]` | Adversarial, exhaustive audit of code against spec. Pass A checks requirement-by-requirement conformance. Pass B scans for undocumented extensions. Includes conflict reconciliation and coverage gates. Add `--team` for simultaneous conformance + extension passes with a dedicated reconciler. Add `--auto` to replace any previous report and create critical/major issues without pausing. |
 | `/kramme:siw:resolve-audit` | `[audit-report-path] [finding-id(s)] [--auto]` | Resolve audit findings one at a time. By default each finding gets an executive summary, alternatives, a recommended option, then user choice. Add `--auto` to let the model select the resolution and create issues without pausing. If both audit reports exist, pass the report path to keep the run scoped. Use `/kramme:siw:breakdown-findings` first when you want a spec-only batch breakdown before choosing a resolution path. |
 
 ### Lifecycle Management
@@ -288,15 +288,11 @@ When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW
 | `/kramme:siw:reset` | — | Preserve the spec, migrate log decisions into it, then clear issues and LOG.md for a fresh iteration. Use when starting a new round of work on the same project. |
 | `/kramme:siw:remove` | — | Delete all SIW files. Uses `trash` for recoverability. No documentation generated. |
 
-### Team Variants
+### Team Mode
 
-These variants run multiple agents in parallel. They require Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled.
+Pass `--team` to `/kramme:siw:spec-audit`, `/kramme:siw:implementation-audit`, or `/kramme:siw:issue-implement` to run the multi-agent workflow. Team mode requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled.
 
-| Skill | Arguments | Description |
-|-------|-----------|-------------|
-| `/kramme:siw:spec-audit:team` | `[spec-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Team-based spec audit with parallel dimension analysis. |
-| `/kramme:siw:implementation-audit:team` | `[spec-path(s) \| 'siw'] [--model opus\|sonnet\|haiku]` | Team-based implementation audit with simultaneous conformance + extension passes and a dedicated reconciler for conflict resolution. |
-| `/kramme:siw:issue-implement:team` | `[issue-ids or 'phase N'] [--auto]` | Team-based implementation with parallel exploration and planning agents. Add `--auto` to start the plan immediately. |
+**Breaking change:** The separate `:team` SIW skills were removed. Use `/kramme:siw:spec-audit --team`, `/kramme:siw:implementation-audit --team`, and `/kramme:siw:issue-implement --team` instead.
 
 ## Common Workflows
 

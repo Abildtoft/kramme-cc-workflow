@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:implementation-audit
-description: Exhaustively audit codebase implementation against specification. Detects spec divergences, undocumented implementation extensions, contract violations, and spec drift. Supports inline report output with --inline.
-argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku] [--inline]"
+description: Exhaustively audit codebase implementation against specification. Detects spec divergences, undocumented implementation extensions, contract violations, and spec drift. Supports inline report output with --inline. Use --team for multi-agent cross-validation.
+argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku] [--team] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -24,10 +24,14 @@ A report is not complete unless it includes:
 
 **IMPORTANT:** This workflow is adversarial and exhaustive. Do not return early. Do not conclude anything is implemented without reading code. Grep hits are not implementation evidence.
 
+## Team Mode
+
+If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments.
+
 ## Process Overview
 
 ```
-/kramme:siw:implementation-audit [spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku]
+/kramme:siw:implementation-audit [spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku] [--team]
     |
     v
 [Step 1: Resolve Spec Files] -> Parse args or auto-detect from siw/
@@ -71,6 +75,7 @@ A report is not complete unless it includes:
 **Extract control flags first:**
 - If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag before processing remaining arguments.
 - If `$ARGUMENTS` contains `--inline`, set `INLINE_MODE=true` and remove the flag before processing remaining arguments.
+- If `$ARGUMENTS` contains `--team`, use Team Mode and remove the flag before processing remaining arguments.
 
 **Extract `--model` flag next (Claude Code only — ignored on other platforms):**
 - If `$ARGUMENTS` contains `--model opus`, `--model sonnet`, or `--model haiku`, extract it and store as `agent_model`.

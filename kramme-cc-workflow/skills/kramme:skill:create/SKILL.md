@@ -82,7 +82,7 @@ If the user is unsure whether something qualifies, default to including it — e
 1. Read the naming conventions from `references/naming-conventions.md`.
 
 2. If the user already provided a valid name, validate it against the rules:
-   - Format: `kramme:{domain}:{action}` with optional qualifier segments (for example `:team`)
+   - Format: `kramme:{domain}:{action}` with optional qualifier segments when they represent separate concepts. Prefer flags such as `--team` for execution modes.
    - 1-64 characters total
    - Each segment uses lowercase letters, numbers, and hyphens only (no consecutive hyphens)
    - Check for collision: run `ls` on the skills directory to verify the name is not taken
