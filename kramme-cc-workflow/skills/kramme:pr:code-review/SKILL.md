@@ -55,7 +55,6 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    BASE_BRANCH=${BASE_BRANCH#refs/heads/}
    BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
    BASE_BRANCH=${BASE_BRANCH#origin/}
-   
    if [ -z "$BASE_BRANCH" ]; then
      echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
      exit 1

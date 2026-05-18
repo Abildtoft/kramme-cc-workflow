@@ -394,8 +394,8 @@ MD
 	[[ "$output" == *"Conduct a multi-round interview by asking the user directly in chat."* ]]
 	[[ "$output" == *"Ask the user directly in chat throughout to gather decisions."* ]]
 	[[ "$output" == *"Surface the offer by asking the user directly in chat."* ]]
-	[[ "$output" != *"direct chat questions$("* ]]
-  [[ "$output" != *"direct chat question)"* ]]
+	[[ "$output" != *'direct chat questions`'* ]]
+	[[ "$output" != *'direct chat question`'* ]]
 	[[ "$output" != *"direct chat question tool"* ]]
 }
 

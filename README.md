@@ -2,7 +2,10 @@
 
 This repository contains Claude Code workflow plugins and support scripts.
 
-> [!IMPORTANT] Several skills in `kramme-cc-workflow` are adapted from [Addy Osmani's agent-skills](https://github.com/addyosmani/agent-skills). See the detailed attribution list in [`kramme-cc-workflow/README.md`](kramme-cc-workflow/README.md#attribution).
+<!-- prettier-ignore-start -->
+> [!IMPORTANT]
+> Several skills in `kramme-cc-workflow` are adapted from [Addy Osmani's agent-skills](https://github.com/addyosmani/agent-skills). See the detailed attribution list in [`kramme-cc-workflow/README.md`](kramme-cc-workflow/README.md#attribution).
+<!-- prettier-ignore-end -->
 
 ## Main Plugin Contents (`kramme-cc-workflow`)
 

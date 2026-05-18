@@ -2,9 +2,13 @@
 
 A Claude Code plugin providing tooling for daily workflow tasks.
 
-> [!IMPORTANT] Thanks for checking this out. It is my personal workflow, built primarily for myself. I experiment in the open and ship updates quickly, so skills may change or occasionally be removed. Questions are always welcome. Feel free to fork, "steal" ideas, or jump straight to the [sources of inspiration](#attribution).
+<!-- prettier-ignore-start -->
+> [!IMPORTANT]
+> Thanks for checking this out. It is my personal workflow, built primarily for myself. I experiment in the open and ship updates quickly, so skills may change or occasionally be removed. Questions are always welcome. Feel free to fork, "steal" ideas, or jump straight to the [sources of inspiration](#attribution).
 
-> [!NOTE] A meaningful part of this plugin's authoring workflow, browser/QA workflow, launch workflow, and output conventions is adapted from [Addy Osmani's `agent-skills`](https://github.com/addyosmani/agent-skills). The [Attribution](#attribution) section calls out the specific skills and conventions that came from Addy's work.
+> [!NOTE]
+> A meaningful part of this plugin's authoring workflow, browser/QA workflow, launch workflow, and output conventions is adapted from [Addy Osmani's `agent-skills`](https://github.com/addyosmani/agent-skills). The [Attribution](#attribution) section calls out the specific skills and conventions that came from Addy's work.
+<!-- prettier-ignore-end -->
 
 ## Table of Contents
 

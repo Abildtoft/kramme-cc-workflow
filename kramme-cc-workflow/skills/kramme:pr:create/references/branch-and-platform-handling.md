@@ -126,7 +126,6 @@ multiSelect: false
    ```bash
    # Check if branch exists locally
    git rev-parse --verify {branchName} 2> /dev/null
-   
    # Check if branch exists on remote
    git ls-remote --heads origin {branchName}
    ```
@@ -160,10 +159,8 @@ multiSelect: false
    ```bash
    # Determine base branch
    BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's|refs/remotes/origin/||') || BASE="main"
-   
    # Fetch latest
    git fetch origin $BASE
-   
    # Create branch from latest base
    git checkout -b {branchName} origin/$BASE
    ```

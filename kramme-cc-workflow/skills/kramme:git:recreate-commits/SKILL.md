@@ -83,7 +83,6 @@ Reimplement the current branch with a clean, narrative-quality git commit histor
            BASE_BRANCH=$BASE_REF
            ;;
        esac
-     
        if ! git check-ref-format --branch "$BASE_BRANCH" > /dev/null 2>&1; then
          echo "Explicit base ref '$BASE_REF' is not a valid branch name or ref" >&2
          exit 1
