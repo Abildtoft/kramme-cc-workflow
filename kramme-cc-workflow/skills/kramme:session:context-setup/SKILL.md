@@ -28,13 +28,18 @@ Verify `CLAUDE.md` and/or `AGENTS.md` exist at the project root and cover:
 - Commands (install, build, test, lint, typecheck, run).
 - Conventions (naming, structure, commit style, test style).
 - Boundaries (what not to touch, what requires human review).
+- Context Pointers (compact links to deeper docs, skills, scripts, source entry points, tests, schemas, ADRs, or runbooks with clear when/why cues).
 
-If a rules file is missing or stale, repair it before proceeding. Delegate the repair to `kramme:docs:update-agents-md`. Do not continue the task with a stale rules file — the agent will reproduce whatever conventions the rules file implies, including the wrong ones.
+If a rules file is missing, stale, bloated with duplicated detail, or lacks useful Context Pointers, repair it before proceeding. Delegate the repair to `kramme:docs:update-agents-md`. Do not continue the task with a stale rules file — the agent will reproduce whatever conventions the rules file implies, including the wrong ones.
 
 If verification shows rules are current but sparse, flag it rather than silently continuing:
 
 ```
 MISSING REQUIREMENT: AGENTS.md does not specify the test runner.
+```
+
+```
+MISSING REQUIREMENT: AGENTS.md describes database migrations but does not point to the migration skill or schema docs.
 ```
 
 ### L2 — Specs and architecture
@@ -163,6 +168,7 @@ Signals that context is insufficient, stale, or misaligned. If any appears, stop
 Before declaring setup complete and starting real work, self-check:
 
 - Are `CLAUDE.md` / `AGENTS.md` present and current? If not, did you trigger repair?
+- Do `CLAUDE.md` / `AGENTS.md` use Context Pointers for deeper docs, skills, scripts, entry points, tests, schemas, ADRs, or runbooks instead of duplicating bulky detail?
 - Are the four L3 artifacts loaded (files to modify, related tests, one similar-pattern example, type definitions)?
 - Is every loaded input tagged with a trust level?
 - Is the total loaded context under ~2,000 lines, or deliberately budgeted higher with a named strategy?

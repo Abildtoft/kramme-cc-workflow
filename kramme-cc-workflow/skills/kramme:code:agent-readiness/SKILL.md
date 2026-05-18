@@ -17,6 +17,18 @@ Parse `$ARGUMENTS` for `--auto` before Step 1.
 
 **IMPORTANT:** This is a thorough codebase audit. Do not return early. Do not guess scores without evidence. Explore the codebase systematically and score based on what you find.
 
+## Context Pointer Signals
+
+Treat Context Pointers as first-class agent-readiness evidence. A Context Pointer is an intentional link or code affordance that lets an agent move from a compact surface to the relevant deeper context without loading everything.
+
+Examples:
+- Agent instructions that point to focused docs, scripts, workflows, or source entry points with a clear "when to read/use this" cue
+- README/docs navigation that routes setup, architecture, testing, and deployment questions to specific files
+- Module-level `README.md`, `index.*`, route maps, registries, public exports, schemas, or shared helpers that act as reliable entry points
+- Code comments that link unusual decisions to ADRs, issue specs, or design docs
+
+Good pointers are scoped, accurate, and explain why the target matters. Link dumps, stale references, and giant catch-all docs are weak or negative evidence.
+
 ## Process Overview
 
 ```text
@@ -93,6 +105,17 @@ for item in README.md docs CONTRIBUTING.md CHANGELOG.md; do
     echo "$item"
   fi
 done
+
+# Context pointer candidates
+for item in AGENTS.md CLAUDE.md README.md CONTRIBUTING.md docs; do
+  if [ -e "$item" ]; then
+    echo "$item"
+  fi
+done
+rg -n "\[[^]]+\]\([^)]+\)|\b(see|read|follow|refer to|ADR|runbook|schema|entry point)\b" AGENTS.md CLAUDE.md README.md CONTRIBUTING.md docs 2>/dev/null | head -100
+find . -maxdepth 3 \
+  \( -type d \( -name ".git" -o -name ".context" -o -name "node_modules" -o -name "dist" -o -name "build" -o -name ".next" -o -name ".nuxt" -o -name "coverage" -o -name ".venv" -o -name "venv" -o -name "target" \) -prune \) -o \
+  -type f \( -name "README.md" -o -name "index.*" -o -name "*registry*" -o -name "*routes*" -o -name "*schema*" \) -print
 
 # CI/CD
 if [ -d .github/workflows ]; then
@@ -184,6 +207,7 @@ After all 3 agents return:
 From each agent, extract:
 - Per-dimension scores (1-5)
 - Evidence bullet points
+- Context Pointer examples and gaps where relevant
 - Findings (with IDs, severity, details)
 - Improvement actions (with impact and effort)
 
@@ -279,6 +303,7 @@ Populate and write `AGENT_NATIVE_AUDIT.md` in the project root with:
 - Scorecard summary table
 - Score changes (if compare mode)
 - Dimension details with evidence, findings, and improvement actions
+- Context Pointer evidence folded into Traversable and Self-Documenting details
 - All findings summary table with severity counts
 - Refactoring plan with 3 phases
 

@@ -4,6 +4,14 @@ Include the relevant dimension blocks in each Explore agent's prompt based on it
 
 ---
 
+## Context Pointers
+
+A Context Pointer is an intentional link or code affordance that helps an AI agent move from compact context to the right deeper context without loading the whole codebase. Examples include AGENTS/CLAUDE instructions that point to focused docs, README navigation that routes setup/testing/architecture questions, module `README.md` files, `index.*` public exports, route maps, registries, schemas, shared helper entry points, and comments that point unusual decisions to ADRs or specs.
+
+Strong Context Pointers are accurate, scoped, and explain when or why to follow the pointer. Stale links, undifferentiated link dumps, and giant catch-all docs are weak evidence.
+
+---
+
 ## Dimension: Fully Typed
 
 Assess how strongly the codebase leverages its type system to make code self-describing and machine-parseable.
@@ -50,16 +58,17 @@ Assess how easily an AI agent can discover, navigate, and understand the project
 5. **File size discipline.** Are files reasonably sized (under ~300-500 lines)? Are large files split logically?
 6. **Barrel files / re-exports.** Are there clear module boundaries with index files that define public APIs?
 7. **Colocation.** Are related files (component + test + styles + types) colocated or clearly cross-referenced?
+8. **Context Pointer structure.** Are there clear entry points that route agents from high-level docs or module boundaries to the right source files, workflows, schemas, tests, or design records?
 
 ### Scoring Rubric
 
 | Score | Criteria |
 |-------|----------|
-| **5** | Predictable structure. Consistent naming throughout. Clean imports with aliases. All files under 500 lines. Clear module boundaries. Colocated related files. |
-| **4** | Logical structure with minor inconsistencies. Most files well-sized. Imports mostly clean. Good naming conventions. |
-| **3** | Understandable structure but some confusion. Mixed naming patterns. Some large files. Import paths somewhat messy. |
-| **2** | Unclear structure. Inconsistent naming. Many large files. Confusing import paths. Hard to find where things live. |
-| **1** | No discernible structure. Random file placement. Inconsistent naming. Massive files. Circular imports. No clear entry points. |
+| **5** | Predictable structure. Consistent naming throughout. Clean imports with aliases. All files under 500 lines. Clear module boundaries. Colocated related files. Strong Context Pointers connect docs, entry points, tests, schemas, and architecture decisions. |
+| **4** | Logical structure with minor inconsistencies. Most files well-sized. Imports mostly clean. Good naming conventions. Useful Context Pointers exist for the main workflows or modules. |
+| **3** | Understandable structure but some confusion. Mixed naming patterns. Some large files. Import paths somewhat messy. Some Context Pointers exist, but coverage is inconsistent or agents still need broad searches. |
+| **2** | Unclear structure. Inconsistent naming. Many large files. Confusing import paths. Few Context Pointers. Hard to find where things live. |
+| **1** | No discernible structure. Random file placement. Inconsistent naming. Massive files. Circular imports. No useful Context Pointers or clear entry points. |
 
 ### Evidence to Gather
 
@@ -68,6 +77,7 @@ Assess how easily an AI agent can discover, navigate, and understand the project
 - Sample of import paths (clean vs messy)
 - Naming pattern consistency check across 10+ files
 - Presence of barrel/index files
+- Examples of effective Context Pointers and missing pointer gaps
 
 ---
 
@@ -153,16 +163,17 @@ Assess how well the codebase communicates its intent, conventions, and usage to 
 5. **API documentation.** Are public APIs documented? (JSDoc, docstrings, OpenAPI specs)
 6. **Architecture documentation.** Is there an architecture overview or ADR (Architecture Decision Records) directory?
 7. **Example code.** Are there examples, scripts, or seed data that show how the system works?
+8. **Context Pointer quality.** Do docs and agent instructions use targeted links to deeper context with clear when/why cues, rather than bloating a single file or dumping undifferentiated links?
 
 ### Scoring Rubric
 
 | Score | Criteria |
 |-------|----------|
-| **5** | Comprehensive agent instructions. Top-level docs cover all essentials. Self-explanatory naming. Complex code documented. API docs present. Architecture docs or ADRs. Examples available. |
-| **4** | Agent instructions or equivalent exist. Good top-level docs. Mostly self-explanatory code. Some inline docs for complex parts. |
-| **3** | Top-level docs exist but are incomplete. No dedicated agent instructions. Naming is okay. Sparse inline docs. Some API documentation. |
-| **2** | Minimal top-level docs. Poor naming in places. No agent-specific docs. Few or stale comments. |
-| **1** | No useful top-level docs. No agent-specific docs. Poor naming. No comments. No documentation of any kind. |
+| **5** | Comprehensive agent instructions. Top-level docs cover all essentials. Self-explanatory naming. Complex code documented. API docs present. Architecture docs or ADRs. Examples available. Context Pointers keep docs concise while routing agents to precise deeper context. |
+| **4** | Agent instructions or equivalent exist. Good top-level docs. Mostly self-explanatory code. Some inline docs for complex parts. Useful Context Pointers cover common tasks and workflows. |
+| **3** | Top-level docs exist but are incomplete. No dedicated agent instructions. Naming is okay. Sparse inline docs. Some API documentation. Context Pointers are present but uneven, vague, or mostly implicit. |
+| **2** | Minimal top-level docs. Poor naming in places. No agent-specific docs. Few or stale comments. Few reliable Context Pointers. |
+| **1** | No useful top-level docs. No agent-specific docs. Poor naming. No comments. No documentation of any kind. No Context Pointers. |
 
 ### Evidence to Gather
 
@@ -172,3 +183,4 @@ Assess how well the codebase communicates its intent, conventions, and usage to 
 - Presence of JSDoc/docstrings on public APIs
 - Architecture docs or ADR directory
 - Example scripts or seed data
+- Quality of Context Pointers in docs and comments, including stale or missing links

@@ -23,8 +23,9 @@ Analyze the codebase against each dimension below. For each dimension:
 1. **Explore thoroughly.** Use Glob to understand structure, Grep to find patterns, and Read to examine specific files. Do not guess — gather evidence.
 2. **Score on 1-5 scale** using the rubric provided.
 3. **Provide evidence** for your score (specific files, counts, patterns observed).
-4. **List findings** — specific issues that lower the score.
-5. **List improvement actions** — concrete, actionable steps to improve the score.
+4. **Evaluate Context Pointers where relevant.** Look for links or code/doc entry points that route an agent from compact context to the right deeper file, module, command, schema, ADR, or workflow. Note strong examples and missing or stale pointer gaps.
+5. **List findings** — specific issues that lower the score.
+6. **List improvement actions** — concrete, actionable steps to improve the score.
 
 ## Output Format
 
@@ -36,6 +37,7 @@ For each assigned dimension, return:
 - {Specific observation with file path or pattern}
 - {Specific observation with file path or pattern}
 - {Quantitative data: counts, percentages, file sizes}
+- {Context Pointer example or gap, where relevant}
 
 **Findings:**
 - **AN-{NNN}** [{Critical|Important|Suggestion}]: {title}
@@ -56,6 +58,7 @@ For each assigned dimension, return:
 - **Be calibrated.** A 5 means genuinely excellent, not just "has the thing." A 3 is average. A 1 means fundamentally missing.
 - **Findings need specificity.** "Could use more tests" is too vague. "Module src/auth/ has 12 source files and 0 test files" is specific.
 - **Actions must be concrete.** "Improve documentation" is too vague. "Create an instruction file (`AGENTS.md` or `CLAUDE.md`) with project structure, key commands (npm test, npm run lint), and naming conventions" is concrete.
+- **Context Pointers matter.** For Traversable and Self-Documenting, explicitly assess whether compact docs and code entry points point to deeper context with clear when/why cues.
 - **Use sequential finding IDs** starting from {start_id}.
 
 {dimension_rubrics}

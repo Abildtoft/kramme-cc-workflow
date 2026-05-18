@@ -22,7 +22,9 @@ Append the Hard-Cut Greenfield Policy section to the project's agent instruction
 
 2. **Check for existing section** — Read the target file and search for the heading `## Hard-Cut Greenfield Policy`. If the section already exists, report that the policy is already present and stop. Do not duplicate it.
 
-3. **Append the policy section** — Add the following block to the end of the target file. Include a blank line before the heading to ensure proper markdown separation from preceding content.
+3. **Respect existing instruction structure** — If the target file has a policy/conventions section or a Context Map section, place the policy where an agent would naturally find it. Otherwise append the policy section to the end of the target file. Do not duplicate any surrounding explanation; `AGENTS.md` / `CLAUDE.md` should stay compact and use Context Pointers for deeper detail.
+
+4. **Add the policy section** — Add the following block. Include a blank line before the heading to ensure proper markdown separation from preceding content.
 
    ~~~markdown
 
@@ -47,4 +49,4 @@ Append the Hard-Cut Greenfield Policy section to the project's agent instruction
    - Default stance across the app: delete old-state compatibility code rather than carrying it forward.
    ~~~
 
-4. **Confirm result** — Report which file was modified (or created) and that the Hard-Cut Greenfield Policy section was added successfully.
+5. **Confirm result** — Report which file was modified (or created) and that the Hard-Cut Greenfield Policy section was added successfully.
