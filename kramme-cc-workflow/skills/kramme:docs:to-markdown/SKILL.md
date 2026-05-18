@@ -36,14 +36,15 @@ cat input.pdf | uvx markitdown -x .pdf > output.md
 ## Options
 
 ```bash
--o OUTPUT      # Output file
--x EXTENSION   # Hint file extension (for stdin)
--m MIME_TYPE   # Hint MIME type
--c CHARSET     # Hint charset (e.g., UTF-8)
--d             # Use Azure Document Intelligence
--e ENDPOINT    # Document Intelligence endpoint
---use-plugins  # Enable 3rd-party plugins
---list-plugins # Show installed plugins
+-o OUTPUT        # Output file
+-x EXTENSION     # Hint file extension (for stdin)
+-m MIME_TYPE     # Hint MIME type
+-c CHARSET       # Hint charset (e.g., UTF-8)
+-d               # Use Azure Document Intelligence
+-e ENDPOINT      # Document Intelligence endpoint
+--use-plugins    # Enable 3rd-party plugins
+--list-plugins   # Show installed plugins
+--keep-data-uris # Keep data URIs in output
 ```
 
 ## Examples
