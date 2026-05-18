@@ -112,7 +112,7 @@ for item in AGENTS.md CLAUDE.md README.md CONTRIBUTING.md docs; do
     echo "$item"
   fi
 done
-rg -n "\[[^]]+\]\([^)]+\)|\b(see|read|follow|refer to|ADR|runbook|schema|entry point)\b" AGENTS.md CLAUDE.md README.md CONTRIBUTING.md docs 2>/dev/null | head -100
+rg -ni "\[[^]]+\]\([^)]+\)|\b(see|read|follow|refer to|ADR|runbook|schema|entry point)\b" AGENTS.md CLAUDE.md README.md CONTRIBUTING.md docs 2>/dev/null | head -100
 find . -maxdepth 3 \
   \( -type d \( -name ".git" -o -name ".context" -o -name "node_modules" -o -name "dist" -o -name "build" -o -name ".next" -o -name ".nuxt" -o -name "coverage" -o -name ".venv" -o -name "venv" -o -name "target" \) -prune \) -o \
   -type f \( -name "README.md" -o -name "index.*" -o -name "*registry*" -o -name "*routes*" -o -name "*schema*" \) -print

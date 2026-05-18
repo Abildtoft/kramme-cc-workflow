@@ -67,7 +67,7 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 - **Code blocks** - For commands and templates
 - **Reference, don't duplicate** - Point to skills: "See `.claude/skills/db-migrate/SKILL.md`"
 - **Context Pointers over pasted detail** - Point to deeper docs, scripts, modules, tests, schemas, or ADRs with a clear when/why cue
-- **One hop** - Important pointers should be directly visible from `AGENTS.md`; avoid chains of documents that only point to more documents
+- **One hop** - Important pointers should be directly visible from the active agent instruction file; avoid chains of documents that only point to more documents
 - **No filler** - No intros, conclusions, or pleasantries
 
 ## Common Sections
@@ -132,4 +132,4 @@ Omit these:
 - Long prose paragraphs
 - Content duplicated from skills (reference instead)
 - Link dumps without a trigger or purpose
-- Deep pointer chains where `AGENTS.md` points to a doc that only points elsewhere
+- Deep pointer chains where the active agent instruction file points to a doc that only points elsewhere
