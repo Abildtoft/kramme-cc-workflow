@@ -153,6 +153,13 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - As context for intent, scope, risk, tests, and rollout assumptions while reviewing the code.
    - As a review target: if the title or body is materially inaccurate for the current diff or local changes, emit a finding with location `PR description` and a concrete correction.
 
+   Instruct every reviewer to apply this **Codebase Calibration Rule** before making a finding or recommending a fix:
+   - Match the existing practices in the touched files and nearby code. A defensive check, validation layer, retry, log, catch block, or runtime type guard is appropriate only when it fits the local style, an explicit project rule, or a concrete failure path introduced by the review scope.
+   - If the codebase relies on framework guarantees, schema validation, type narrowing, generated types, trusted internal callers, or centralized error boundaries, do not require redundant local guards unless this diff crosses a trust boundary or weakens that guarantee.
+   - If the local practice looks risky but the PR does not introduce or worsen it, label it `NOTICED BUT NOT TOUCHING` instead of making it a required finding.
+   - If the reviewer cannot prove the failure path from the diff, call it `UNVERIFIED` or `CONFUSION` and keep the recommendation optional.
+   - Security and data-loss risks may override local style, but the finding must name the concrete exploit path, information disclosure, corruption path, or user-visible failure that justifies stronger defensive handling.
+
    **Sequential approach** (one at a time):
    - Easier to understand and act on
    - Each report is complete before next
@@ -176,7 +183,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    After relevance validation, review agent suggestions for slop:
    - Launch **kramme:deslop-reviewer** in meta-review mode
    - Pass all validated findings/suggestions from other agents
-   - Flags suggestions that would introduce slop if implemented
+   - Flags suggestions that would introduce slop if implemented, especially defensive programming that does not match local codebase practice or lacks a concrete failure path
    - Adds slop warnings to flagged suggestions (does not remove them)
 
 10. **Filter Previously Addressed Findings**
@@ -485,6 +492,7 @@ If any of these are true, pause and re-scope the review before posting it:
 - The review is older than the PR (you've been reviewing longer than the author spent writing).
 - You're rewriting the PR in your head instead of reviewing the diff in front of you.
 - You're flagging style issues the project doesn't enforce anywhere else.
+- You're requiring defensive checks, logging, retries, or validation layers that nearby code intentionally does not use, and you cannot point to a concrete new failure path.
 - You're approving because the CI is green, not because the change definitely improves overall code health.
 - A dead-code finding is phrased as an instruction (`"delete X"`) instead of the ask shape (`DEAD CODE IDENTIFIED: X. Safe to remove these?`).
 - You have no `FYI` in the Strengths section — a review with zero positive observations is usually miscalibrated, not comprehensive.

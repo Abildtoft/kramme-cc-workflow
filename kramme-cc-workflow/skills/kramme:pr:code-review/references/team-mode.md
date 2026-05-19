@@ -69,6 +69,14 @@ Each teammate must use the PR description in two ways:
 - As context for intent, scope, risk, tests, and rollout assumptions while reviewing the code.
 - As a review target: if the title or body is materially inaccurate for the current diff or local changes, emit a finding with location `PR description` and a concrete correction. Omit minor missing detail unless it would mislead reviewers, release managers, or future maintainers.
 
+Each teammate must also apply this **Codebase Calibration Rule** before making a finding or recommending a fix:
+
+- Match the existing practices in the touched files and nearby code. A defensive check, validation layer, retry, log, catch block, or runtime type guard is appropriate only when it fits the local style, an explicit project rule, or a concrete failure path introduced by the review scope.
+- If the codebase relies on framework guarantees, schema validation, type narrowing, generated types, trusted internal callers, or centralized error boundaries, do not require redundant local guards unless this diff crosses a trust boundary or weakens that guarantee.
+- If the local practice looks risky but the PR does not introduce or worsen it, label it `NOTICED BUT NOT TOUCHING` instead of making it a required finding.
+- If the reviewer cannot prove the failure path from the diff, call it `UNVERIFIED` or `CONFUSION` and keep the recommendation optional.
+- Security and data-loss risks may override local style, but the finding must name the concrete exploit path, information disclosure, corruption path, or user-visible failure that justifies stronger defensive handling.
+
 **Always spawn:**
 
 - **code-reviewer** -- General code quality and project instruction compliance (mission from `agents/kramme:code-reviewer.md`)
@@ -99,7 +107,7 @@ Create tasks in the shared task list:
 
 - "Cross-review: meta-review all findings for slop" -- assigned to deslop-reviewer
 - The deslop-reviewer reads all other teammates' findings and operates in meta-review mode
-- Messages individual reviewers if their suggestions would introduce slop
+- Messages individual reviewers if their suggestions would introduce slop, especially defensive programming that does not match local codebase practice or lacks a concrete failure path
 
 **Phase 3 task (blocked on Phase 2):**
 
