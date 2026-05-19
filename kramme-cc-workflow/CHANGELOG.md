@@ -4,6 +4,23 @@
 
 ### Removed
 
+## [0.56.0] - 2026-05-19
+
+### Added
+- Calibrate codebase findings (#349)
+
+### Changed
+- Fold team modes into base skills (#344)
+- Extract workflow detail references (#340)
+- Document data URI option (#341)
+- Add argument hints (#339)
+- Add context pointer guidance (#338)
+- Trim progressive-disclosure docs (#336)
+- Avoid GitHub UI duplication (#337)
+
+### Fixed
+- Rewrite agent markdown references (#343)
+
 - Breaking: Removed separate team-mode skills (`kramme:pr:code-review:team`, `kramme:pr:resolve-review:team`, `kramme:pr:ux-review:team`, `kramme:siw:issue-implement:team`, `kramme:siw:spec-audit:team`, and `kramme:siw:implementation-audit:team`). Use the base skill with `--team` instead.
 
 ## [0.55.0] - 2026-05-15
@@ -253,6 +270,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+[0.56.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.55.0...v0.56.0
 [0.55.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.54.0...v0.55.0
 [0.54.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.53.0...v0.54.0
 [0.53.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.52.0...v0.53.0
