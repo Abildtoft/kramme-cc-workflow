@@ -1,0 +1,47 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: refactor-verbose-handler
+    instruction: |
+      You have a skill called kramme:code:refactor-pass in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Do a refactor pass on the recently changed code in src/. Simplify and clean up.
+
+      Do not ask for confirmation. Just refactor the code in place.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:code:refactor-pass/SKILL.md
+      - src: fixtures/src/handler.ts
+        dest: src/handler.ts
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 0.3
+      - type: llm_rubric
+        rubric: |
+          Simplification quality (0-0.4):
+          - Are the deeply nested null/undefined checks replaced with early returns or optional chaining?
+          - Are redundant variable assignments removed (e.g. const errorMessage = "..." then { error: errorMessage })?
+          - Is the for loop replaced with a map/reduce or simplified iteration?
+          - Are the nested discount if/else blocks simplified (e.g. to a lookup or cleaner conditional)?
+          Code correctness (0-0.3):
+          - Does the refactored code preserve the same behavior (validation, price calculation, discount tiers)?
+          - Is the discount logic still correct (>100: 5%, >250: 10%, >500: 15%)?
+          - Is the default quantity of 1 preserved when quantity is missing?
+          - Is error handling preserved?
+          Clean code (0-0.3):
+          - Is the unused import (unused_helper) removed?
+          - Is the code meaningfully shorter than the original?
+          - Are variable names clear and consistent?
+          - Is the code idiomatic TypeScript?
+        weight: 0.7

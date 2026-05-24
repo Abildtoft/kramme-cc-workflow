@@ -1,0 +1,63 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: discovery-interview-rest-api
+    instruction: |
+      You have a skill called kramme:discovery:interview in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Conduct a discovery interview about building a REST API for a bookstore.
+
+      When asked questions, the user wants:
+      - CRUD operations for books
+      - Author management
+      - Search by title and author
+      - Pagination on list endpoints
+      - Tech stack: Node.js with Express and PostgreSQL
+      - Authentication: JWT-based auth
+      - Non-goals: payment processing, shipping, inventory management
+
+      After the interview, write a comprehensive plan to a markdown file.
+
+      Since this is an automated test, use the information above as the user's
+      seeded answers. Do not wait for live AskUserQuestion responses. Synthesize
+      the interview from those answers and save the final plan as
+      bookstore-api-plan.md.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:discovery:interview/SKILL.md
+      - src: references/
+        dest: skills/kramme:discovery:interview/references/
+      - src: assets/
+        dest: skills/kramme:discovery:interview/assets/
+    graders:
+      - type: llm_rubric
+        rubric: |
+          Interview process (0-0.3):
+          - Did the agent follow the structured interview phases from the skill?
+          - Did it draft an autonomous framing hypothesis before asking questions?
+          - Did it classify the topic type (should be Software Feature)?
+          - Did it track coverage across dimensions?
+          Requirements gathering (0-0.4):
+          - Does the output cover CRUD operations for books?
+          - Does it address author management?
+          - Does it include search functionality (by title/author)?
+          - Does it mention pagination?
+          - Does it identify the tech stack (Node.js, Express, PostgreSQL)?
+          - Are non-goals explicitly listed?
+          Plan quality (0-0.3):
+          - Was a plan document produced (bookstore-api-plan.md or similar)?
+          - Does it follow the Software Feature template from the skill?
+          - Does it include key decisions, technical design, and implementation phases?
+          - Are API contracts or endpoint designs included?
+          - Does it have a testing strategy section?
+        weight: 1.0

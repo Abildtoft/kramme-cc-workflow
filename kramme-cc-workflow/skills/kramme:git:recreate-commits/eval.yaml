@@ -1,0 +1,28 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:git:recreate-commits/SKILL.md.
+      Read it and describe how you would recreate branch commits with narrative quality.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:git:recreate-commits/SKILL.md
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention creating narrative commits that tell a
+          coherent story, organizing changes into atomic commits grouped by
+          purpose, and considering the reviewer experience when structuring
+          commit history.
+        weight: 1.0

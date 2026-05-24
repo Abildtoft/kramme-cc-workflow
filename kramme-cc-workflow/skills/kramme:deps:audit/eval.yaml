@@ -1,0 +1,49 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: audit-outdated-deps
+    instruction: |
+      You have a skill called kramme:deps:audit in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Audit the dependencies in this project. Produce an audit report and save it
+      to deps-audit-report.md.
+
+      Do not ask for confirmation. Just produce the report.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:deps:audit/SKILL.md
+      - src: references/
+        dest: skills/kramme:deps:audit/references/
+      - src: assets/
+        dest: skills/kramme:deps:audit/assets/
+      - src: fixtures/package.json
+        dest: package.json
+    graders:
+      - type: llm_rubric
+        rubric: |
+          Outdated detection (0-0.4):
+          - Does the report identify outdated packages (express 4.17.0, lodash 4.17.15, axios 0.21.0)?
+          - Does it flag moment.js as deprecated/unmaintained with a modern alternative?
+          - Does it identify body-parser as unnecessary (built into Express 4.16+)?
+          - Does it note the outdated TypeScript version (4.4.4 vs 5.x)?
+          Risk assessment (0-0.3):
+          - Does the report flag axios 0.21.0 as having known security vulnerabilities?
+          - Does it assess risk levels (critical/high/medium/low) for each finding?
+          - Does it distinguish between security risks and maintenance risks?
+          - Does it flag jsonwebtoken 8.5.1 as having known CVEs?
+          Upgrade plan (0-0.3):
+          - Does the report suggest specific target versions for upgrades?
+          - Are upgrades prioritized (security fixes first, then maintenance)?
+          - Does it identify potential breaking changes (e.g. mongoose 5->7, eslint 7->9)?
+          - Does it suggest a phased approach rather than upgrading everything at once?
+        weight: 1.0

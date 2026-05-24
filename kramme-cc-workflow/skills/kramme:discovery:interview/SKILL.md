@@ -8,7 +8,7 @@ user-invocable: true
 
 # Deep Exploration Interview
 
-Conduct a structured, in-depth interview about the presented topic, files, proposal, or feature. Use the AskUserQuestion tool throughout to gather decisions and uncover requirements. Conclude by writing a comprehensive plan.
+Conduct a structured, in-depth interview about the presented topic, files, proposal, or feature. Use the AskUserQuestion tool when interactive user input is available. In automated or non-interactive contexts, treat seeded requirements in the prompt as the user's answers, synthesize the interview from them, and conclude by writing a comprehensive plan.
 
 ## Process Overview
 
@@ -49,6 +49,19 @@ Parse `$ARGUMENTS` as shell-style arguments so quoted paths stay intact.
 If `UBIQUITOUS_LANGUAGE.md` exists at the project root, read it before framing and use its canonical terms throughout the interview and plan. If the user uses a term that conflicts with the glossary, ask one targeted question to resolve the conflict. If the file does not exist, proceed silently.
 
 Use **Decision-Tree mode** when `decision_tree_requested=true`; otherwise use the default topic-classified coverage flow. Read `references/decision-tree-mode.md` only when Decision-Tree mode is active.
+
+## Automated / Non-Interactive Mode
+
+If the prompt already includes concrete requirements, constraints, or example
+answers and there is no real user to respond:
+
+1. Treat those details as the interview answers.
+2. Do not call `AskUserQuestion`.
+3. Still follow the same phases: draft the framing hypothesis, classify the
+   topic, identify the key questions that matter, infer the answers from the
+   provided material, track coverage, and write the final plan.
+4. Only use `AskUserQuestion` when meaningful uncertainty remains and a human
+   can actually answer.
 
 ## Step 1: Autonomous Framing
 
@@ -312,7 +325,11 @@ In **Decision-Tree mode**, read `references/decision-tree-mode.md`, identify the
 
 ### Round Structure
 
-Ask **1-4 questions per round** using AskUserQuestion. Mix questions across different dimensions.
+When running interactively, ask **1-4 questions per round** using
+AskUserQuestion. Mix questions across different dimensions.
+
+In automated or non-interactive mode, replace each round with a short written
+summary of the most important inferred questions and answers before moving on.
 
 For high-stakes or dependency-shaping decisions, ask one question in the round. Apply the Codebase-as-Answer-Source Rule before every question.
 
@@ -399,8 +416,13 @@ Stop interviewing when:
 ## Step 5: Output Plan Document
 
 ### File Naming
+Suggest a filename based on the topic, e.g., `user-auth-redesign-plan.md` or
+`deployment-process-plan.md`.
 
-Suggest a filename based on the topic, e.g., `user-auth-redesign-plan.md` or `deployment-process-plan.md`. Ask user for preferred location.
+- **Interactive**: Ask the user for their preferred location before writing.
+- **Automated / non-interactive**: If the prompt already specifies an output
+  path or filename, use it. Otherwise write to the current working directory
+  using the suggested slugified filename.
 
 ### Template Selection
 
@@ -442,7 +464,9 @@ When the host runtime supports it (Claude Code) and the user wants to move direc
 - Treat natural-language requests to "walk the decision tree", "walk this depth-first", or "resolve dependencies first" as `decision_tree_requested=true` without treating phrase-only instructions as the topic.
 - If the remaining text looks like file path(s): Read and analyze them first
 - If it's free text: Use as the topic description
-- If empty: Ask user what they want to explore using AskUserQuestion
+- If empty:
+  - **Interactive**: Ask what they want to explore using `AskUserQuestion`
+  - **Automated / non-interactive**: Stop and report that a topic or seeded answers are required
 
 **Process:**
 

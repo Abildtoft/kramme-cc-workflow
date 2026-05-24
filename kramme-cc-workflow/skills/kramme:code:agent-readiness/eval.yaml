@@ -1,0 +1,48 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: audit-simple-express-app
+    instruction: |
+      You have a skill called kramme:code:agent-readiness in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Audit this codebase for AI-agent readiness. Produce a scored report covering
+      all dimensions the skill defines. Save the report to agent-readiness-report.md.
+
+      Do not ask for confirmation. Just produce the report.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:code:agent-readiness/SKILL.md
+      - src: references/
+        dest: skills/kramme:code:agent-readiness/references/
+      - src: assets/
+        dest: skills/kramme:code:agent-readiness/assets/
+      - src: fixtures/src/app.ts
+        dest: src/app.ts
+      - src: fixtures/package.json
+        dest: package.json
+    graders:
+      - type: llm_rubric
+        rubric: |
+          Scoring dimensions (0-0.4):
+          - Does the report score at least 5 distinct readiness dimensions (e.g. testability, modularity, documentation, error handling, type safety)?
+          - Is each dimension scored numerically or with a clear rating?
+          - Is there an overall/aggregate score?
+          Specificity (0-0.3):
+          - Does the report reference specific files and code patterns from the codebase?
+          - Are findings evidence-based (citing magic numbers, tight DB coupling, missing tests, missing docs)?
+          - Does it identify the lack of separation between routes and business logic?
+          Actionability (0-0.3):
+          - Are there concrete, actionable recommendations (not just "improve testing")?
+          - Are recommendations prioritized or grouped by impact?
+          - Does the report suggest specific refactoring steps (e.g. extract DB layer, add types for role enum)?
+        weight: 1.0

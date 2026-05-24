@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>API Documentation</title>
+</head>
+<body>
+  <h1>User Management API</h1>
+  <p>
+    This API provides endpoints for managing user accounts in the system.
+    All requests require authentication via Bearer token in the Authorization header.
+  </p>
+
+  <h2>Endpoints</h2>
+
+  <h3>GET /api/users</h3>
+  <p>Returns a paginated list of all users. Supports the following query parameters:</p>
+  <ul>
+    <li><strong>page</strong> — Page number (default: 1)</li>
+    <li><strong>limit</strong> — Results per page (default: 20, max: 100)</li>
+    <li><strong>role</strong> — Filter by role (admin, editor, viewer)</li>
+    <li><strong>search</strong> — Full-text search on name and email</li>
+  </ul>
+
+  <h3>POST /api/users</h3>
+  <p>Creates a new user account. Required fields in the request body:</p>
+
+  <table border="1">
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Required</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>email</td>
+        <td>string</td>
+        <td>Yes</td>
+        <td>Must be a valid email address</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>string</td>
+        <td>Yes</td>
+        <td>Full name of the user</td>
+      </tr>
+      <tr>
+        <td>role</td>
+        <td>string</td>
+        <td>No</td>
+        <td>One of: admin, editor, viewer (default: viewer)</td>
+      </tr>
+      <tr>
+        <td>password</td>
+        <td>string</td>
+        <td>Yes</td>
+        <td>Minimum 8 characters, must include a number</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Error Codes</h3>
+  <p>The API uses standard HTTP status codes. Common error responses:</p>
+  <ul>
+    <li><code>400</code> — Invalid request body or missing required fields</li>
+    <li><code>401</code> — Missing or invalid authentication token</li>
+    <li><code>403</code> — Insufficient permissions for the requested action</li>
+    <li><code>404</code> — User not found</li>
+    <li><code>429</code> — Rate limit exceeded (max 100 requests per minute)</li>
+  </ul>
+
+  <p>For more information, visit the <a href="https://docs.example.com/api">full API reference</a>.</p>
+</body>
+</html>

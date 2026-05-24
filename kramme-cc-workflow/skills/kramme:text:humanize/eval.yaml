@@ -1,0 +1,87 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: humanize-blog-post
+    instruction: |
+      You have a skill called kramme:text:humanize in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Humanize the file input.md — remove AI writing patterns and make it
+      sound natural. Save the result to output.md.
+
+      Do not ask for confirmation. Just write the humanized text to output.md.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:text:humanize/SKILL.md
+      - src: references/
+        dest: skills/kramme:text:humanize/references/
+      - src: fixtures/ai-blog-post.md
+        dest: input.md
+    graders:
+      - type: deterministic
+        run: bash graders/check-patterns.sh
+        weight: 0.6
+      - type: llm_rubric
+        rubric: |
+          Pattern removal (0-0.4):
+          - Are em dashes removed or replaced with normal dashes/commas?
+          - Are rule-of-three lists ("seamless, intuitive, and effective") broken up?
+          - Are filler phrases ("It's worth noting", "Moreover", "Furthermore") gone?
+          - Is the chatbot sign-off ("I hope this has been helpful!") removed?
+          - Are negative parallelisms ("It's not just X — it's Y") rewritten?
+          Naturalness (0-0.3):
+          - Does the text sound like a human wrote it?
+          - Is sentence structure varied?
+          - Are vague claims replaced with specifics where possible?
+          Meaning preservation (0-0.3):
+          - Does the output cover the same topics as the input?
+          - Is the core argument (remote work trends, challenges, future) preserved?
+          - Is the text still substantive (not just stripped to nothing)?
+        weight: 0.4
+
+  - name: humanize-product-description
+    instruction: |
+      You have a skill called kramme:text:humanize in the skills/ directory.
+      Read its SKILL.md and follow its instructions.
+
+      Humanize the file input.md — remove AI writing patterns and make it
+      sound natural. Save the result to output.md.
+
+      Do not ask for confirmation. Just write the humanized text to output.md.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:text:humanize/SKILL.md
+      - src: references/
+        dest: skills/kramme:text:humanize/references/
+      - src: fixtures/ai-product-description.md
+        dest: input.md
+    graders:
+      - type: deterministic
+        run: bash graders/check-patterns.sh
+        weight: 0.6
+      - type: llm_rubric
+        rubric: |
+          Pattern removal (0-0.4):
+          - Is "serves as a testament" removed?
+          - Are rule-of-three marketing lists cleaned up?
+          - Are promotional superlatives ("groundbreaking", "cutting-edge", "unparalleled") toned down?
+          - Is "It's not just X — it's Y" rewritten?
+          - Are weasel attributions ("Industry experts believe") removed or cited?
+          Naturalness (0-0.3):
+          - Does the product description sound like a real person wrote it?
+          - Is the tone still professional but not robotic?
+          - Are specific claims backed by the original data points?
+          Meaning preservation (0-0.3):
+          - Are all features (AI insights, collaboration, workflows) still mentioned?
+          - Is the 98% satisfaction stat and 40% productivity claim preserved?
+          - Is the call to action still present?
+        weight: 0.4

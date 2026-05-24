@@ -1,0 +1,33 @@
+{
+  "name": "legacy-dashboard",
+  "version": "2.1.0",
+  "description": "Internal analytics dashboard",
+  "scripts": {
+    "start": "node dist/server.js",
+    "build": "tsc",
+    "dev": "ts-node src/server.ts",
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "4.17.0",
+    "lodash": "4.17.15",
+    "axios": "0.21.0",
+    "moment": "2.29.1",
+    "body-parser": "1.19.0",
+    "cors": "2.8.5",
+    "jsonwebtoken": "8.5.1",
+    "mongoose": "5.13.0",
+    "dotenv": "8.2.0",
+    "helmet": "4.6.0",
+    "winston": "3.3.3"
+  },
+  "devDependencies": {
+    "typescript": "4.4.4",
+    "ts-node": "10.2.1",
+    "jest": "27.2.0",
+    "@types/express": "4.17.13",
+    "@types/lodash": "4.14.175",
+    "@types/jsonwebtoken": "8.5.5",
+    "eslint": "7.32.0"
+  }
+}

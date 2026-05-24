@@ -1,0 +1,40 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:visual:generate-image/SKILL.md.
+      Read it and describe the exact command you would run to generate a
+      simple blue circle on a white background.
+      Write your plan to plan.txt.
+
+      Do not execute the command. The goal is to verify that you understand
+      the workflow for an external API-dependent skill.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:visual:generate-image/SKILL.md
+    graders:
+      - type: llm_rubric
+        rubric: |
+          Skill comprehension (0-0.4):
+          - Did the agent read the SKILL.md and understand it uses the Gemini API?
+          - Did it attempt to use the generate_image.py script (or reference it)?
+          - Did it construct a command with --prompt and --filename arguments?
+          Correct workflow (0-0.3):
+          - Did it use the correct script path pattern (${PLUGIN_ROOT}/skills/...)?
+          - Did it include a descriptive prompt for a blue circle?
+          - Did it use the timestamped filename pattern required by the skill?
+          Execution constraints (0-0.3):
+          - Did it explain that actual execution requires Gemini API access?
+          - Did it avoid fabricating a generated image or claiming the command was run?
+          - Did it keep the output as a plan/command rather than pretending the eval completed end-to-end?
+        weight: 1.0

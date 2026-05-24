@@ -1,0 +1,29 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:siw:continue/SKILL.md.
+      Read it and describe how you would continue an SIW workflow.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:siw:continue/SKILL.md
+      - src: references/
+        dest: skills/kramme:siw:continue/references/
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention detecting current SIW state (where the
+          workflow left off), and listing available commands or next steps
+          the user can take.
+        weight: 1.0

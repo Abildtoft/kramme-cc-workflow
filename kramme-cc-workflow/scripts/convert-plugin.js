@@ -415,6 +415,7 @@ async function loadClaudePlugin(inputPath) {
   );
   const commands = deriveInvocableCommands(legacyCommands, skills);
   const hooks = await loadHooks(root, manifest.hooks);
+  const hookSourceDirs = await loadHookSourceDirs(root, manifest.hooks);
   const mcpServers = await loadMcpServers(root, manifest);
 
   return {
@@ -424,6 +425,7 @@ async function loadClaudePlugin(inputPath) {
     commands,
     skills,
     hooks,
+    hookSourceDirs,
     mcpServers,
   };
 }
@@ -571,6 +573,46 @@ async function loadHooks(root, hooksField) {
 
   if (hookConfigs.length === 0) return undefined;
   return mergeHooks(hookConfigs);
+}
+
+async function loadHookSourceDirs(root, hooksField) {
+  const sourceDirs = []
+  const seen = new Set()
+
+  const addHookSourceDir = async (sourceDir) => {
+    if (!(await pathExists(sourceDir))) return
+
+    const relativeDir = path.relative(root, sourceDir)
+    if (relativeDir.startsWith("..") || path.isAbsolute(relativeDir)) {
+      return
+    }
+
+    const normalizedRelativeDir = relativeDir
+      ? relativeDir.split(path.sep).join("/")
+      : "."
+    if (seen.has(normalizedRelativeDir)) return
+
+    sourceDirs.push({
+      sourceDir,
+      relativeDir: normalizedRelativeDir,
+    })
+    seen.add(normalizedRelativeDir)
+  }
+
+  const addHookConfigPath = async (configPath) => {
+    if (!(await pathExists(configPath))) return
+    await addHookSourceDir(path.dirname(configPath))
+  }
+
+  await addHookSourceDir(path.join(root, "hooks"))
+
+  if (typeof hooksField === "string" || Array.isArray(hooksField)) {
+    for (const hookPath of toPathList(hooksField)) {
+      await addHookConfigPath(resolveWithinRoot(root, hookPath, "hooks path"))
+    }
+  }
+
+  return sourceDirs
 }
 
 async function loadMcpServers(root, manifest) {
@@ -748,7 +790,7 @@ function convertClaudeToOpenCode(plugin, options) {
     commands,
     plugins,
     hookRootDir,
-    hookSourceDir: path.join(plugin.root, "hooks"),
+    hookSourceDirs: plugin.hookSourceDirs,
     permissionsMode: options.permissions,
     skillDirs: skills.map((skill) => ({
       sourceDir: skill.sourceDir,
@@ -1510,6 +1552,26 @@ const CODEX_INSTRUCTION_REPLACEMENTS = [
     /\bfreeform AskUserQuestion\b/g,
     "direct chat follow-up for free-form input",
   ],
+  [
+    /\bDo not call\s+`?AskUserQuestion`?(?=[:\s.,)]|$)/g,
+    "Do not ask the user directly in chat",
+  ],
+  [
+    /\bdo not call\s+`?AskUserQuestion`?(?=[:\s.,)]|$)/g,
+    "do not ask the user directly in chat",
+  ],
+  [
+    /\binstead of calling\s+`?AskUserQuestion`?(?=[:\s.,)]|$)/g,
+    "instead of asking the user directly in chat",
+  ],
+  [
+    /\bcalling\s+`?AskUserQuestion`?(?=[:\s.,)]|$)/g,
+    "asking the user directly in chat",
+  ],
+  [
+    /\bfall back to\s+`?AskUserQuestion`?(?=[:\s.,)]|$)/g,
+    "fall back to asking the user directly in chat",
+  ],
   [/\bAskUserQuestion\b/g, "direct chat question"],
   [/\bUse direct chat question\b/g, "Ask the user directly in chat"],
   [/\buse direct chat question\b/g, "ask the user directly in chat"],
@@ -2079,15 +2141,25 @@ async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
   );
   if (
     bundle.hookRootDir &&
-    bundle.hookSourceDir &&
-    (await pathExists(bundle.hookSourceDir))
+    bundle.hookSourceDirs &&
+    bundle.hookSourceDirs.length > 0
   ) {
     const hookRootPath = path.join(paths.hookBundlesDir, bundle.hookRootDir);
     if (cleanedHooks) {
       await fs.rm(hookRootPath, { recursive: true, force: true });
     }
-    await copyDir(bundle.hookSourceDir, path.join(hookRootPath, "hooks"));
-    await bootstrapHookScripts(path.join(hookRootPath, "hooks"));
+    for (const hookSource of bundle.hookSourceDirs) {
+      const targetHookDir =
+        hookSource.relativeDir === "."
+          ? hookRootPath
+          : resolveManagedChild(
+              hookRootPath,
+              hookSource.relativeDir,
+              "hook bundle directory",
+            );
+      await copyDir(hookSource.sourceDir, targetHookDir);
+      await bootstrapHookScripts(targetHookDir, hookRootPath);
+    }
   }
 
   const skillsRoot = paths.skillsDir;
@@ -2250,7 +2322,7 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
     if (skill.content) {
       await writeText(path.join(targetDir, "SKILL.md"), skill.content + "\n");
     }
-    await rewriteCodexMarkdownResourcesFromSource(skill.sourceDir, targetDir, {
+    await rewriteCodexResourceFilesFromSource(skill.sourceDir, targetDir, {
       knownCommands: bundle.knownCommands,
       knownAgentSkills: bundle.knownAgentSkills,
     });
@@ -3512,18 +3584,48 @@ async function pathExists(filePath) {
 }
 
 async function copyDir(sourceDir, targetDir) {
+  const excludedRoots = copyTargetAncestors(sourceDir, targetDir);
+  await copyDirInternal(sourceDir, targetDir, excludedRoots);
+}
+
+async function copyDirInternal(sourceDir, targetDir, excludedRoots) {
   await ensureDir(targetDir);
   const entries = await fs.readdir(sourceDir, { withFileTypes: true });
   for (const entry of entries) {
     const sourcePath = path.join(sourceDir, entry.name);
+    if (isExcludedCopyPath(sourcePath, excludedRoots)) {
+      continue
+    }
     const targetPath = path.join(targetDir, entry.name);
     if (entry.isDirectory()) {
-      await copyDir(sourcePath, targetPath);
+      await copyDirInternal(sourcePath, targetPath, excludedRoots);
     } else if (entry.isFile()) {
       await ensureDir(path.dirname(targetPath));
       await fs.copyFile(sourcePath, targetPath);
     }
   }
+}
+
+function copyTargetAncestors(sourceDir, targetDir) {
+  const resolvedSource = path.resolve(sourceDir);
+  const resolvedTarget = path.resolve(targetDir);
+  if (resolvedTarget === resolvedSource || !resolvedTarget.startsWith(resolvedSource + path.sep)) {
+    return [];
+  }
+
+  const firstSegment = path
+    .relative(resolvedSource, resolvedTarget)
+    .split(path.sep)[0];
+  return firstSegment ? [path.join(resolvedSource, firstSegment)] : [];
+}
+
+function isExcludedCopyPath(sourcePath, excludedRoots) {
+  const resolvedSource = path.resolve(sourcePath);
+  return excludedRoots.some(
+    (excludedRoot) =>
+      resolvedSource === excludedRoot ||
+      resolvedSource.startsWith(excludedRoot + path.sep),
+  );
 }
 
 async function bootstrapHookScripts(
@@ -3570,17 +3672,24 @@ async function bootstrapHookScripts(
   }
 }
 
-async function rewriteCodexMarkdownResourcesFromSource(
+async function rewriteCodexResourceFilesFromSource(
   sourceDir,
   targetDir,
   options = {},
 ) {
+  const supportedExtensions = new Set([
+    ".md",
+    ".markdown",
+    ".yaml",
+    ".yml",
+    ".txt",
+  ]);
   const entries = await fs.readdir(sourceDir, { withFileTypes: true });
   for (const entry of entries) {
     const sourcePath = path.join(sourceDir, entry.name);
     const targetPath = path.join(targetDir, entry.name);
     if (entry.isDirectory()) {
-      await rewriteCodexMarkdownResourcesFromSource(
+      await rewriteCodexResourceFilesFromSource(
         sourcePath,
         targetPath,
         options,
@@ -3589,7 +3698,7 @@ async function rewriteCodexMarkdownResourcesFromSource(
     }
     if (
       !entry.isFile() ||
-      path.extname(entry.name) !== ".md" ||
+      !supportedExtensions.has(path.extname(entry.name).toLowerCase()) ||
       entry.name === "SKILL.md"
     ) {
       continue;

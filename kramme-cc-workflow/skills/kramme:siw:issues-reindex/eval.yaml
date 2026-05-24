@@ -1,0 +1,32 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: reindex-with-done-issue
+    instruction: |
+      You have an SIW project in the siw/ directory with 4 issues.
+      ISSUE-P1-001 is marked DONE, the rest are open.
+
+      Read the skill at skills/kramme:siw:issues-reindex/SKILL.md and follow it
+      to reindex the SIW issues: remove DONE issues and renumber remaining.
+
+      When asked about scope, choose "All issues".
+      When asked to confirm, proceed with the restart.
+      When asked about spec capture, skip (proceed with deletion).
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:siw:issues-reindex/SKILL.md
+      - src: fixtures/siw/
+        dest: siw/
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 1.0

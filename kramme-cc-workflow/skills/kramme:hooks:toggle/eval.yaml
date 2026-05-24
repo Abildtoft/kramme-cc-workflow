@@ -1,0 +1,27 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:hooks:toggle/SKILL.md.
+      Read it and describe how you would toggle hooks on and off.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:hooks:toggle/SKILL.md
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention listing available hooks with their current
+          status, and providing enable/disable commands to toggle individual
+          hooks on or off.
+        weight: 1.0

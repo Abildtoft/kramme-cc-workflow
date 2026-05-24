@@ -1,0 +1,27 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:siw:implementation-audit:team/SKILL.md.
+      Read it and describe how you would audit code against a spec.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:siw:implementation-audit:team/SKILL.md
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention using agent teams to audit in parallel,
+          detecting divergence between implementation and spec, and checking
+          section-by-section coverage of spec requirements.
+        weight: 1.0

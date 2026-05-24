@@ -1,0 +1,44 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 300
+  threshold: 0.8
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: generate-phases-from-spec
+    instruction: |
+      You have an SIW project initialized in the siw/ directory with a spec file.
+      Read the skill at skills/kramme:siw:generate-phases/SKILL.md and follow it
+      to generate phased issues from the spec.
+
+      When asked for approval, confirm the phase plan looks good.
+      When asked about existing issues, choose to proceed.
+      Accept all defaults.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:siw:generate-phases/SKILL.md
+      - src: fixtures/siw/
+        dest: siw/
+    graders:
+      - type: deterministic
+        run: bash graders/check.sh
+        weight: 0.7
+      - type: llm_rubric
+        rubric: |
+          Issue quality (0-0.5):
+          - Do issue files contain acceptance criteria with checkboxes?
+          - Do issues reference specific technical components (React, Express, Prisma, etc.)?
+          - Are dependencies between issues identified?
+          - Does each issue have a clear, focused scope?
+          Phase structure (0-0.3):
+          - Are phases organized logically (e.g., setup first, then core features)?
+          - Does each phase represent demoable software?
+          Overview quality (0-0.2):
+          - Does OPEN_ISSUES_OVERVIEW.md have phase sections with tables?
+          - Are issue numbers consistent between files and overview?
+        weight: 0.3

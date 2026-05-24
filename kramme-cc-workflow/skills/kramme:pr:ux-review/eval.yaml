@@ -1,0 +1,27 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:pr:ux-review/SKILL.md.
+      Read it and describe how you would do a UX review.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:pr:ux-review/SKILL.md
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention usability concerns (ease of use, user
+          friction), accessibility checks (a11y, screen readers, contrast),
+          and visual consistency across the interface.
+        weight: 1.0

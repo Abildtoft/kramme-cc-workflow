@@ -1,0 +1,29 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:pr:finalize/SKILL.md.
+      Read it and describe how you would finalize a PR for merge.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:pr:finalize/SKILL.md
+      - src: references/
+        dest: skills/kramme:pr:finalize/references/
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention running all checks (verify, review, QA or
+          similar quality gates), aggregating verdicts or results from each
+          check, and making a final go/no-go decision.
+        weight: 1.0

@@ -1,0 +1,29 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:linear:issue-implement/SKILL.md.
+      Read it and describe how you would implement a Linear issue.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:linear:issue-implement/SKILL.md
+      - src: references/
+        dest: skills/kramme:linear:issue-implement/references/
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention creating a branch from the issue, exploring
+          the codebase to understand context, and planning before writing code
+          (not jumping straight to implementation).
+        weight: 1.0

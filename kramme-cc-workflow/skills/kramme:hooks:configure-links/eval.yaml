@@ -1,0 +1,26 @@
+version: "1"
+
+defaults:
+  agent: claude
+  provider: docker
+  trials: 5
+  timeout: 180
+  threshold: 0.7
+  docker:
+    base: node:20-slim
+
+tasks:
+  - name: approach-check
+    instruction: |
+      You have a skill at skills/kramme:hooks:configure-links/SKILL.md.
+      Read it and describe how you would configure context links.
+      Write your plan to plan.txt.
+    workspace:
+      - src: SKILL.md
+        dest: skills/kramme:hooks:configure-links/SKILL.md
+    graders:
+      - type: llm_rubric
+        rubric: |
+          The plan should mention editing a configuration file for links,
+          and supporting workspace-level or team-level overrides.
+        weight: 1.0
