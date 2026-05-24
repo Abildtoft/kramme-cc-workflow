@@ -92,6 +92,139 @@ SH
 	[ ! -d "$TMP_DIR/.codex/prompts" ] || [ -z "$(ls -A "$TMP_DIR/.codex/prompts" 2>/dev/null)" ]
 }
 
+@test "codex conversion installs hooks as an enabled plugin bundle" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+	[ "$status" -eq 0 ]
+
+	local plugin_version
+	plugin_version="$(jq -r '.version' "$REPO_ROOT/.claude-plugin/plugin.json")"
+	local marketplace_root="$TMP_DIR/.codex/.kramme-plugin-marketplaces/kramme-cc-workflow"
+	local cache_root="$TMP_DIR/.codex/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/$plugin_version"
+
+	[ -f "$marketplace_root/.agents/plugins/marketplace.json" ]
+	[ -f "$marketplace_root/plugins/kramme-cc-workflow/.codex-plugin/plugin.json" ]
+	[ -f "$marketplace_root/plugins/kramme-cc-workflow/hooks/block-rm-rf.sh" ]
+	[ -f "$cache_root/.codex-plugin/plugin.json" ]
+	[ -f "$cache_root/hooks/block-rm-rf.sh" ]
+	[ -f "$cache_root/hooks/lib/check-enabled.sh" ]
+
+	run jq -r '.hooks' "$cache_root/.codex-plugin/plugin.json"
+	[ "$status" -eq 0 ]
+	[ "$output" = "./hooks/hooks.json" ]
+
+	run jq -r '.hooks.PreToolUse[0].hooks[0].command' "$cache_root/hooks/hooks.json"
+	[ "$status" -eq 0 ]
+	[ "$output" = 'bash ${CLAUDE_PLUGIN_ROOT}/hooks/block-rm-rf.sh' ]
+
+	run grep -RFn 'CLAUDE_PLUGIN_ROOT' "$cache_root/hooks/hooks.json"
+	[ "$status" -eq 0 ]
+
+	local hook_command
+	hook_command="$(jq -r '.hooks.PreToolUse[0].hooks[0].command' "$cache_root/hooks/hooks.json")"
+	run bash -c 'cd "$1" && printf "%s\n" "{\"tool_input\":{\"command\":\"echo ok\"}}" | CLAUDE_PLUGIN_ROOT="$2" bash -lc "$3"' _ "$TMP_DIR" "$cache_root" "$hook_command"
+	[ "$status" -eq 0 ]
+
+	run grep -nF '[plugins."kramme-cc-workflow@kramme-cc-workflow"]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+
+	run awk '
+		$0 == "[plugins.\"kramme-cc-workflow@kramme-cc-workflow\"]" { in_table = 1; next }
+		in_table && /^\[/ { exit }
+		in_table && $0 == "enabled = true" { found = 1 }
+		END { exit found ? 0 : 1 }
+	' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+
+	run jq -r '.pluginCaches[0]' "$TMP_DIR/.codex/.kramme-install-manifests/kramme-cc-workflow-codex.json"
+	[ "$status" -eq 0 ]
+	[ "$output" = "cache/kramme-cc-workflow/kramme-cc-workflow/$plugin_version" ]
+
+	run jq -r '.hookMarketplaces[0]' "$TMP_DIR/.codex/.kramme-install-manifests/kramme-cc-workflow-codex.json"
+	[ "$status" -eq 0 ]
+	[ "$output" = ".kramme-plugin-marketplaces/kramme-cc-workflow" ]
+
+	run jq -r 'has("plugins") or has("hooks")' "$TMP_DIR/.codex/.kramme-install-manifests/kramme-cc-workflow-codex.json"
+	[ "$status" -eq 0 ]
+	[ "$output" = "false" ]
+}
+
+@test "codex hook plugin manifest description is sanitized" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	FIXTURE_PLUGIN="$TMP_DIR/hook-description-plugin"
+	create_hook_fixture_plugin "$FIXTURE_PLUGIN" "hook-description-plugin" "alpha-hook"
+	node -e '
+const fs = require("fs");
+const manifestPath = process.argv[1];
+const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+manifest.description = `First line\nsecond line ${"x".repeat(1100)}`;
+fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+' "$FIXTURE_PLUGIN/.claude-plugin/plugin.json"
+
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+	[ "$status" -eq 0 ]
+
+	run jq -r '.description' "$TMP_DIR/.codex/plugins/cache/hook-description-plugin/hook-description-plugin/1.0.0/.codex-plugin/plugin.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "First line second line "* ]]
+	[[ "$output" == *"..." ]]
+	[[ "$output" != *$'\n'* ]]
+	[ "${#output}" -le 1024 ]
+}
+
+@test "codex conversion asks before replacing an untracked hook marketplace" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	FIXTURE_PLUGIN="$TMP_DIR/untracked-hook-marketplace-plugin"
+	create_hook_fixture_plugin "$FIXTURE_PLUGIN" "untracked-hook-marketplace-plugin" "alpha-hook"
+	mkdir -p "$TMP_DIR/.codex/.kramme-plugin-marketplaces/untracked-hook-marketplace-plugin"
+	printf 'keep\n' >"$TMP_DIR/.codex/.kramme-plugin-marketplaces/untracked-hook-marketplace-plugin/sentinel.txt"
+
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --non-interactive
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Refusing to overwrite existing untracked Codex hook marketplace."* ]]
+	[ -f "$TMP_DIR/.codex/.kramme-plugin-marketplaces/untracked-hook-marketplace-plugin/sentinel.txt" ]
+}
+
+@test "codex conversion removes managed hook plugin output when hooks are removed" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	FIXTURE_PLUGIN="$TMP_DIR/hookless-upgrade-plugin"
+	create_hook_fixture_plugin "$FIXTURE_PLUGIN" "hookless-upgrade-plugin" "alpha-hook"
+
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+	[ "$status" -eq 0 ]
+	[ -d "$TMP_DIR/.codex/.kramme-plugin-marketplaces/hookless-upgrade-plugin" ]
+	[ -d "$TMP_DIR/.codex/plugins/cache/hookless-upgrade-plugin/hookless-upgrade-plugin/1.0.0" ]
+
+	rm -r "$FIXTURE_PLUGIN/hooks"
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+	[ "$status" -eq 0 ]
+	[ ! -d "$TMP_DIR/.codex/.kramme-plugin-marketplaces/hookless-upgrade-plugin" ]
+	[ ! -d "$TMP_DIR/.codex/plugins/cache/hookless-upgrade-plugin/hookless-upgrade-plugin/1.0.0" ]
+
+	run grep -nF '[plugins."hookless-upgrade-plugin@hookless-upgrade-plugin"]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 1 ]
+
+	run jq -r '.hookMarketplaces | length' "$TMP_DIR/.codex/.kramme-install-manifests/hookless-upgrade-plugin-codex.json"
+	[ "$status" -eq 0 ]
+	[ "$output" = "0" ]
+
+	run jq -r '.pluginCaches | length' "$TMP_DIR/.codex/.kramme-install-manifests/hookless-upgrade-plugin-codex.json"
+	[ "$status" -eq 0 ]
+	[ "$output" = "0" ]
+}
+
 @test "codex conversion preserves user-invocable skill resources" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for converter tests"

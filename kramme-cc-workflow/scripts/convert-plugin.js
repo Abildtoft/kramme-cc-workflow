@@ -665,10 +665,40 @@ function convertClaudeToCodex(plugin) {
     knownCommands: knownCommandNames,
     knownAgentSkills,
     mcpServers: plugin.mcpServers,
+    codexPlugin: plugin.hooks ? convertCodexHookPlugin(plugin) : undefined,
   };
 }
 
 const CODEX_DESCRIPTION_MAX_LENGTH = 1024;
+
+function convertCodexHookPlugin(plugin) {
+  const name = normalizeName(plugin.manifest.name);
+  const version = String(plugin.manifest.version ?? "local").trim() || "local";
+  const marketplaceName = name;
+  const description = sanitizeDescription(
+    plugin.manifest.description ??
+      `Lifecycle hooks converted from ${plugin.manifest.name}.`,
+  );
+  const manifest = {
+    name,
+    version,
+    description,
+    hooks: "./hooks/hooks.json",
+  };
+
+  if (plugin.manifest.author) {
+    manifest.author = plugin.manifest.author;
+  }
+
+  return {
+    name,
+    marketplaceName,
+    version,
+    manifest,
+    hooks: cloneJson(plugin.hooks),
+    hookSourceDir: path.join(plugin.root, "hooks"),
+  };
+}
 
 function convertAgentSkill(agent, usedNames) {
   const name = uniqueName(codexName(agent.name), usedNames);
@@ -1386,12 +1416,42 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
     }
   }
 
+  const hookPluginResult = await writeCodexHookPluginBundle(
+    codexRoot,
+    bundle.codexPlugin,
+    previousEntries,
+    { confirmOptions: extraOpts.confirm },
+  );
+
   const config = renderCodexConfig(bundle.mcpServers);
   if (config) {
     await writeText(path.join(codexRoot, "config.toml"), config);
   }
+  if (bundle.codexPlugin) {
+    await upsertCodexHookPluginConfig(codexRoot, bundle.codexPlugin);
+  } else if (
+    previousEntries.pluginCaches.length > 0 ||
+    previousEntries.hookMarketplaces.length > 0
+  ) {
+    await removeCodexHookPluginConfig(
+      codexRoot,
+      codexHookPluginConfigRef(pluginName),
+    );
+  }
 
   const nextEntries = {
+    hookMarketplaces: hookPluginResult.cleanedHookMarketplaces
+      ? hookPluginResult.hookMarketplaces
+      : unionEntryLists(
+          previousEntries.hookMarketplaces,
+          hookPluginResult.hookMarketplaces,
+        ),
+    pluginCaches: hookPluginResult.cleanedPluginCaches
+      ? hookPluginResult.pluginCaches
+      : unionEntryLists(
+          previousEntries.pluginCaches,
+          hookPluginResult.pluginCaches,
+        ),
     prompts: cleanedPrompts
       ? bundle.prompts.map((prompt) => `${prompt.name}.md`)
       : unionEntryLists(
@@ -1418,6 +1478,269 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   setInstallEntries(installState, pluginName, "codex", nextEntries);
   await writeInstallState(codexRoot, installState);
   await writeInstallManifest(codexRoot, pluginName, "codex", nextEntries);
+}
+
+async function writeCodexHookPluginBundle(
+  codexRoot,
+  codexPlugin,
+  previousEntries,
+  options = {},
+) {
+  const confirmOptions = options.confirmOptions ?? {};
+  const cleanedPluginCaches = await cleanupInstalledEntries(
+    path.join(codexRoot, "plugins"),
+    previousEntries.pluginCaches,
+    {
+      label: "Codex plugin cache",
+      recursive: true,
+      confirmOptions,
+    },
+  );
+  const cleanedHookMarketplaces = await cleanupInstalledEntries(
+    codexRoot,
+    previousEntries.hookMarketplaces,
+    {
+      label: "Codex hook marketplace",
+      recursive: true,
+      confirmOptions,
+    },
+  );
+
+  if (!codexPlugin) {
+    return {
+      cleanedPluginCaches,
+      cleanedHookMarketplaces,
+      pluginCaches: [],
+      hookMarketplaces: [],
+    };
+  }
+
+  const marketplaceEntry = codexHookMarketplaceEntry(codexPlugin);
+  const marketplaceRoot = codexHookMarketplaceRoot(codexRoot, codexPlugin);
+  const marketplacePluginRoot = path.join(
+    marketplaceRoot,
+    "plugins",
+    codexPlugin.name,
+  );
+  const pluginCacheEntry = codexHookPluginCacheEntry(codexPlugin);
+  const pluginCacheRoot = resolveManagedChild(
+    path.join(codexRoot, "plugins"),
+    pluginCacheEntry,
+    "Codex plugin cache entry",
+  );
+
+  await prepareCodexHookPluginTarget(marketplaceRoot, {
+    label: "Codex hook marketplace",
+    entry: marketplaceEntry,
+    previousEntries: previousEntries.hookMarketplaces,
+    cleaned: cleanedHookMarketplaces,
+    confirmOptions,
+  });
+  await prepareCodexHookPluginTarget(pluginCacheRoot, {
+    label: "Codex plugin cache entry",
+    entry: pluginCacheEntry,
+    previousEntries: previousEntries.pluginCaches,
+    cleaned: cleanedPluginCaches,
+    confirmOptions,
+  });
+
+  await writeCodexHookPluginTree(marketplacePluginRoot, codexPlugin);
+  await writeCodexHookPluginTree(pluginCacheRoot, codexPlugin);
+  await writeCodexHookMarketplace(marketplaceRoot, codexPlugin);
+
+  return {
+    cleanedPluginCaches,
+    cleanedHookMarketplaces,
+    pluginCaches: [pluginCacheEntry],
+    hookMarketplaces: [marketplaceEntry],
+  };
+}
+
+async function prepareCodexHookPluginTarget(
+  targetRoot,
+  { label, entry, previousEntries, cleaned, confirmOptions },
+) {
+  if (!(await pathExists(targetRoot))) return;
+
+  const wasTracked = sanitizeEntryList(previousEntries).includes(entry);
+  if (wasTracked) {
+    if (cleaned) {
+      await fs.rm(targetRoot, { recursive: true, force: true });
+    }
+    return;
+  }
+
+  console.log(`\nFound existing untracked ${label} at ${targetRoot}.`);
+  const confirmed = await confirm(
+    `Delete existing ${label} before installing?`,
+    confirmOptions,
+  );
+  if (!confirmed) {
+    throw new Error(`Refusing to overwrite existing untracked ${label}.`);
+  }
+
+  await fs.rm(targetRoot, { recursive: true, force: true });
+}
+
+async function writeCodexHookPluginTree(targetRoot, codexPlugin) {
+  await writeJson(
+    path.join(targetRoot, ".codex-plugin", "plugin.json"),
+    codexPlugin.manifest,
+  );
+  const hooksRoot = path.join(targetRoot, "hooks");
+  if (await pathExists(codexPlugin.hookSourceDir)) {
+    await copyDir(codexPlugin.hookSourceDir, hooksRoot);
+  }
+  await writeJson(path.join(hooksRoot, "hooks.json"), codexPlugin.hooks);
+  await bootstrapHookScripts(hooksRoot, targetRoot);
+}
+
+async function writeCodexHookMarketplace(marketplaceRoot, codexPlugin) {
+  const marketplace = {
+    name: codexPlugin.marketplaceName,
+    interface: {
+      displayName: codexPlugin.manifest.name,
+    },
+    plugins: [
+      {
+        name: codexPlugin.name,
+        source: {
+          source: "local",
+          path: `./plugins/${codexPlugin.name}`,
+        },
+        policy: {
+          installation: "AVAILABLE",
+          authentication: "ON_INSTALL",
+        },
+        category: "Productivity",
+      },
+    ],
+  };
+
+  await writeJson(
+    path.join(marketplaceRoot, ".agents", "plugins", "marketplace.json"),
+    marketplace,
+  );
+}
+
+function codexHookPluginConfigRef(pluginName) {
+  const name = normalizeName(pluginName);
+  return { name, marketplaceName: name };
+}
+
+function codexHookMarketplaceEntry(codexPlugin) {
+  return path.join(".kramme-plugin-marketplaces", codexPlugin.marketplaceName);
+}
+
+function codexHookMarketplaceRoot(codexRoot, codexPlugin) {
+  return resolveManagedChild(
+    codexRoot,
+    codexHookMarketplaceEntry(codexPlugin),
+    "Codex hook marketplace entry",
+  );
+}
+
+function codexHookPluginCacheEntry(codexPlugin) {
+  return path.join(
+    "cache",
+    codexPlugin.marketplaceName,
+    codexPlugin.name,
+    codexPlugin.version,
+  );
+}
+
+async function upsertCodexHookPluginConfig(codexRoot, codexPlugin) {
+  const configPath = path.join(codexRoot, "config.toml");
+  const existing = (await pathExists(configPath))
+    ? await readText(configPath)
+    : "";
+  const tables = renderCodexHookPluginConfigTables(codexRoot, codexPlugin);
+  const updated = upsertTomlTables(existing, tables);
+  if (updated !== existing) {
+    await writeText(configPath, updated);
+  }
+}
+
+async function removeCodexHookPluginConfig(codexRoot, codexPlugin) {
+  const configPath = path.join(codexRoot, "config.toml");
+  if (!(await pathExists(configPath))) return;
+  const existing = await readText(configPath);
+  const updated = removeTomlTables(existing, [
+    codexMarketplaceTableHeader(codexPlugin),
+    codexPluginTableHeader(codexPlugin),
+  ]);
+  if (updated !== existing) {
+    await writeText(configPath, updated);
+  }
+}
+
+function renderCodexHookPluginConfigTables(codexRoot, codexPlugin) {
+  const source = codexHookMarketplaceRoot(codexRoot, codexPlugin);
+  const lastUpdated = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+  return [
+    {
+      header: codexMarketplaceTableHeader(codexPlugin),
+      content: [
+        codexMarketplaceTableHeader(codexPlugin),
+        `last_updated = ${formatTomlString(lastUpdated)}`,
+        'source_type = "local"',
+        `source = ${formatTomlString(source)}`,
+      ].join("\n"),
+    },
+    {
+      header: codexPluginTableHeader(codexPlugin),
+      content: [codexPluginTableHeader(codexPlugin), "enabled = true"].join(
+        "\n",
+      ),
+    },
+  ];
+}
+
+function codexMarketplaceTableHeader(codexPlugin) {
+  return `[marketplaces.${formatTomlKey(codexPlugin.marketplaceName)}]`;
+}
+
+function codexPluginTableHeader(codexPlugin) {
+  return `[plugins.${formatTomlKey(`${codexPlugin.name}@${codexPlugin.marketplaceName}`)}]`;
+}
+
+function upsertTomlTables(existing, tables) {
+  const headers = tables.map((table) => table.header);
+  const withoutExisting = removeTomlTables(existing, headers).trimEnd();
+  const renderedTables = tables.map((table) => table.content.trimEnd());
+  return (
+    [withoutExisting, ...renderedTables].filter(Boolean).join("\n\n") + "\n"
+  );
+}
+
+function removeTomlTables(existing, headers) {
+  let result = existing;
+  for (const header of headers) {
+    result = removeTomlTable(result, header);
+  }
+  return (
+    result.replace(/\n{3,}/g, "\n\n").trimEnd() + (result.trim() ? "\n" : "")
+  );
+}
+
+function removeTomlTable(existing, header) {
+  const lines = String(existing ?? "").split(/\r?\n/);
+  const kept = [];
+  let skipping = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed === header) {
+      skipping = true;
+      continue;
+    }
+    if (skipping && /^\[/.test(trimmed)) {
+      skipping = false;
+    }
+    if (!skipping) {
+      kept.push(line);
+    }
+  }
+  return kept.join("\n");
 }
 
 function resolveCodexOutputRoot(outputRoot) {
@@ -1684,6 +2007,10 @@ async function readJson(file) {
   return JSON.parse(raw);
 }
 
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
 function createInstallState() {
   return {
     version: 1,
@@ -1699,7 +2026,9 @@ function sanitizeInstallTimestamp(value) {
 
 function sanitizeInstallRecord(record) {
   return {
+    hookMarketplaces: sanitizeEntryList(record?.hookMarketplaces),
     prompts: sanitizeEntryList(record?.prompts),
+    pluginCaches: sanitizeEntryList(record?.pluginCaches),
     skills: sanitizeEntryList(record?.skills),
     agentSkills: sanitizeEntryList(record?.agentSkills),
     updatedAtMs: sanitizeInstallTimestamp(record?.updatedAtMs),
@@ -1924,6 +2253,50 @@ async function copyDir(sourceDir, targetDir) {
       await ensureDir(path.dirname(targetPath));
       await fs.copyFile(sourcePath, targetPath);
     }
+  }
+}
+
+async function bootstrapHookScripts(
+  rootDir,
+  bundleRootDir = path.dirname(rootDir),
+) {
+  if (!(await pathExists(rootDir))) return;
+
+  const bootstrapMarker = "# kramme hook bundle bootstrap";
+  const entries = await fs.readdir(rootDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(rootDir, entry.name);
+    if (entry.isDirectory()) {
+      await bootstrapHookScripts(fullPath, bundleRootDir);
+      continue;
+    }
+    if (!entry.isFile() || path.extname(entry.name) !== ".sh") {
+      continue;
+    }
+
+    const scriptDir = path.dirname(fullPath);
+    const relativePluginRoot = (path.relative(scriptDir, bundleRootDir) || ".")
+      .split(path.sep)
+      .join("/");
+    const bootstrapLines = [
+      `${bootstrapMarker} start`,
+      'if [ -z "${CLAUDE_PLUGIN_ROOT:-}" ]; then',
+      '  _claude_hook_source="${BASH_SOURCE:-$0}"',
+      '  _claude_hook_dir="$(CDPATH= cd -- "$(dirname -- "$_claude_hook_source")" && pwd)"',
+      `  CLAUDE_PLUGIN_ROOT="$(CDPATH= cd -- "$_claude_hook_dir/${relativePluginRoot}" && pwd)"`,
+      "fi",
+      "export CLAUDE_PLUGIN_ROOT",
+      "unset _claude_hook_source _claude_hook_dir",
+      `${bootstrapMarker} end`,
+    ];
+    const source = await readText(fullPath);
+    if (source.includes(bootstrapMarker)) continue;
+
+    const lineEnding = source.includes("\r\n") ? "\r\n" : "\n";
+    const lines = source.split(/\r?\n/);
+    const insertIndex = lines[0]?.startsWith("#!") ? 1 : 0;
+    lines.splice(insertIndex, 0, ...bootstrapLines);
+    await writeText(fullPath, lines.join(lineEnding));
   }
 }
 
