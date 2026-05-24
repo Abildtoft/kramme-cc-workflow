@@ -5,7 +5,7 @@ on:
 
 jobs:
   install:
-    name: Validate installer
+    name: Validate installers
     runs-on: ubuntu-latest
 
     steps:
