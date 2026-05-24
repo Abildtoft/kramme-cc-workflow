@@ -675,9 +675,10 @@ function convertCodexHookPlugin(plugin) {
   const name = normalizeName(plugin.manifest.name);
   const version = String(plugin.manifest.version ?? "local").trim() || "local";
   const marketplaceName = name;
-  const description =
+  const description = sanitizeDescription(
     plugin.manifest.description ??
-    `Lifecycle hooks converted from ${plugin.manifest.name}.`;
+      `Lifecycle hooks converted from ${plugin.manifest.name}.`,
+  );
   const manifest = {
     name,
     version,
@@ -1506,6 +1507,7 @@ async function writeCodexHookPluginBundle(
     return { cleanedPlugins, cleanedHooks, plugins: [], hooks: [] };
   }
 
+  const marketplaceEntry = codexHookMarketplaceEntry(codexPlugin);
   const marketplaceRoot = codexHookMarketplaceRoot(codexRoot, codexPlugin);
   const marketplacePluginRoot = path.join(
     marketplaceRoot,
@@ -1519,12 +1521,20 @@ async function writeCodexHookPluginBundle(
     "Codex plugin cache entry",
   );
 
-  if (cleanedHooks) {
-    await fs.rm(marketplaceRoot, { recursive: true, force: true });
-  }
-  if (cleanedPlugins) {
-    await fs.rm(pluginCacheRoot, { recursive: true, force: true });
-  }
+  await prepareCodexHookPluginTarget(marketplaceRoot, {
+    label: "Codex hook marketplace",
+    entry: marketplaceEntry,
+    previousEntries: previousEntries.hooks,
+    cleaned: cleanedHooks,
+    confirmOptions,
+  });
+  await prepareCodexHookPluginTarget(pluginCacheRoot, {
+    label: "Codex plugin cache entry",
+    entry: pluginCacheEntry,
+    previousEntries: previousEntries.plugins,
+    cleaned: cleanedPlugins,
+    confirmOptions,
+  });
 
   await writeCodexHookPluginTree(marketplacePluginRoot, codexPlugin);
   await writeCodexHookPluginTree(pluginCacheRoot, codexPlugin);
@@ -1534,8 +1544,34 @@ async function writeCodexHookPluginBundle(
     cleanedPlugins,
     cleanedHooks,
     plugins: [pluginCacheEntry],
-    hooks: [codexHookMarketplaceEntry(codexPlugin)],
+    hooks: [marketplaceEntry],
   };
+}
+
+async function prepareCodexHookPluginTarget(
+  targetRoot,
+  { label, entry, previousEntries, cleaned, confirmOptions },
+) {
+  if (!(await pathExists(targetRoot))) return;
+
+  const wasTracked = sanitizeEntryList(previousEntries).includes(entry);
+  if (wasTracked) {
+    if (cleaned) {
+      await fs.rm(targetRoot, { recursive: true, force: true });
+    }
+    return;
+  }
+
+  console.log(`\nFound existing untracked ${label} at ${targetRoot}.`);
+  const confirmed = await confirm(
+    `Delete existing ${label} before installing?`,
+    confirmOptions,
+  );
+  if (!confirmed) {
+    throw new Error(`Refusing to overwrite existing untracked ${label}.`);
+  }
+
+  await fs.rm(targetRoot, { recursive: true, force: true });
 }
 
 async function writeCodexHookPluginTree(targetRoot, codexPlugin) {

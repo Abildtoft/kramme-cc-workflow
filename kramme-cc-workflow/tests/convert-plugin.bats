@@ -131,7 +131,12 @@ SH
 	run grep -nF '[plugins."kramme-cc-workflow@kramme-cc-workflow"]' "$TMP_DIR/.codex/config.toml"
 	[ "$status" -eq 0 ]
 
-	run grep -nF 'enabled = true' "$TMP_DIR/.codex/config.toml"
+	run awk '
+		$0 == "[plugins.\"kramme-cc-workflow@kramme-cc-workflow\"]" { in_table = 1; next }
+		in_table && /^\[/ { exit }
+		in_table && $0 == "enabled = true" { found = 1 }
+		END { exit found ? 0 : 1 }
+	' "$TMP_DIR/.codex/config.toml"
 	[ "$status" -eq 0 ]
 
 	run jq -r '.plugins[0]' "$TMP_DIR/.codex/.kramme-install-manifests/kramme-cc-workflow-codex.json"
@@ -141,6 +146,48 @@ SH
 	run jq -r '.hooks[0]' "$TMP_DIR/.codex/.kramme-install-manifests/kramme-cc-workflow-codex.json"
 	[ "$status" -eq 0 ]
 	[ "$output" = ".kramme-plugin-marketplaces/kramme-cc-workflow" ]
+}
+
+@test "codex hook plugin manifest description is sanitized" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	FIXTURE_PLUGIN="$TMP_DIR/hook-description-plugin"
+	create_hook_fixture_plugin "$FIXTURE_PLUGIN" "hook-description-plugin" "alpha-hook"
+	node -e '
+const fs = require("fs");
+const manifestPath = process.argv[1];
+const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+manifest.description = `First line\nsecond line ${"x".repeat(1100)}`;
+fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+' "$FIXTURE_PLUGIN/.claude-plugin/plugin.json"
+
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+	[ "$status" -eq 0 ]
+
+	run jq -r '.description' "$TMP_DIR/.codex/plugins/cache/hook-description-plugin/hook-description-plugin/1.0.0/.codex-plugin/plugin.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "First line second line "* ]]
+	[[ "$output" == *"..." ]]
+	[[ "$output" != *$'\n'* ]]
+	[ "${#output}" -le 1024 ]
+}
+
+@test "codex conversion asks before replacing an untracked hook marketplace" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	FIXTURE_PLUGIN="$TMP_DIR/untracked-hook-marketplace-plugin"
+	create_hook_fixture_plugin "$FIXTURE_PLUGIN" "untracked-hook-marketplace-plugin" "alpha-hook"
+	mkdir -p "$TMP_DIR/.codex/.kramme-plugin-marketplaces/untracked-hook-marketplace-plugin"
+	printf 'keep\n' >"$TMP_DIR/.codex/.kramme-plugin-marketplaces/untracked-hook-marketplace-plugin/sentinel.txt"
+
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --non-interactive
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Refusing to overwrite existing untracked Codex hook marketplace."* ]]
+	[ -f "$TMP_DIR/.codex/.kramme-plugin-marketplaces/untracked-hook-marketplace-plugin/sentinel.txt" ]
 }
 
 @test "codex conversion preserves user-invocable skill resources" {
