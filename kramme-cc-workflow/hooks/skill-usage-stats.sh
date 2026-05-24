@@ -19,7 +19,7 @@ if ! command -v node > /dev/null 2>&1; then
   exit 0
 fi
 
-output=$(printf '%s' "$input" | node "${CLAUDE_PLUGIN_ROOT}/scripts/skill-usage.js" record 2> /dev/null)
+output=$(printf '%s' "$input" | node "${CLAUDE_PLUGIN_ROOT}/hooks/skill-usage.js" record 2> /dev/null)
 status=$?
 
 if [ "$status" -ne 0 ] || [ -z "$output" ]; then
