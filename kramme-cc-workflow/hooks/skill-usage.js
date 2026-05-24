@@ -211,6 +211,31 @@ function extractPromptSkills(input) {
   );
 }
 
+function extractScannedPromptSkills(input) {
+  const message = input.message;
+  const payloadMessage = input.payload?.message;
+  const roots = [
+    input.prompt,
+    typeof message === "string" ? message : [message?.content, message?.text],
+    input.body,
+    input.text,
+    input.content,
+    input.payload?.prompt,
+    typeof payloadMessage === "string"
+      ? payloadMessage
+      : [payloadMessage?.content, payloadMessage?.text],
+    input.payload?.body,
+    input.payload?.text,
+    input.payload?.content,
+  ];
+
+  return unique(
+    roots
+      .flatMap((root) => collectPromptText(root))
+      .flatMap((text) => extractSlashSkillNames(text)),
+  );
+}
+
 function extractToolSkills(input) {
   const toolName = stringValue(
     input.tool_name ?? input.toolName ?? input.tool ?? input.name,
@@ -274,6 +299,28 @@ function collectStrings(value, depth = 0) {
 
   return Object.values(value).flatMap((entry) =>
     collectStrings(entry, depth + 1),
+  );
+}
+
+function collectPromptText(value, depth = 0) {
+  if (value == null || depth > 8) return [];
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => collectPromptText(entry, depth + 1));
+  }
+  if (typeof value !== "object") return [];
+
+  const blockType = stringValue(value.type).toLowerCase();
+  if (blockType === "tool_result") return [];
+  if (blockType === "text" || blockType === "input_text") {
+    return [value.text, value.content].flatMap((entry) =>
+      collectPromptText(entry, depth + 1),
+    );
+  }
+  if (blockType) return [];
+
+  return [value.text, value.content].flatMap((entry) =>
+    collectPromptText(entry, depth + 1),
   );
 }
 
@@ -438,7 +485,7 @@ function recordsFromScannedObject(input, file) {
     input.message?.createdAt,
     input.message?.timestamp,
   );
-  return extractPromptSkills(input).map((skill) =>
+  return extractScannedPromptSkills(input).map((skill) =>
     scannedRecord({
       skill,
       file,

@@ -126,3 +126,20 @@ run_usage_hook() {
 	[ "$status" -eq 0 ]
 	[ "$output" = "[]" ]
 }
+
+@test "scan ignores user-role tool result content in transcript files" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for skill usage tests"
+	fi
+
+	TRANSCRIPT="$BATS_TEST_TMPDIR/tool-result.jsonl"
+	printf '%s\n' \
+		'{"type":"user","message":{"content":[{"type":"tool_result","content":"Read output mentioned /kramme:qa"}]},"session_id":"session-1"}' \
+		'{"type":"user","message":{"content":[{"type":"text","text":"Use /kramme:pr:create"}]},"session_id":"session-1"}' \
+		>"$TRANSCRIPT"
+
+	run node "$SCRIPT" scan "$TRANSCRIPT" --json
+	[ "$status" -eq 0 ]
+	[ "$(echo "$output" | jq -r 'length')" = "1" ]
+	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:pr:create" ]
+}
