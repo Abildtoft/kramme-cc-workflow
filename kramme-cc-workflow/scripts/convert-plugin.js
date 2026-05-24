@@ -1552,6 +1552,26 @@ const CODEX_INSTRUCTION_REPLACEMENTS = [
     /\bfreeform AskUserQuestion\b/g,
     "direct chat follow-up for free-form input",
   ],
+  [
+    /\bDo not call\s+`?AskUserQuestion`?(?=[:\s.,)]|$)/g,
+    "Do not ask the user directly in chat",
+  ],
+  [
+    /\bdo not call\s+`?AskUserQuestion`?(?=[:\s.,)]|$)/g,
+    "do not ask the user directly in chat",
+  ],
+  [
+    /\binstead of calling\s+`?AskUserQuestion`?(?=[:\s.,)]|$)/g,
+    "instead of asking the user directly in chat",
+  ],
+  [
+    /\bcalling\s+`?AskUserQuestion`?(?=[:\s.,)]|$)/g,
+    "asking the user directly in chat",
+  ],
+  [
+    /\bfall back to\s+`?AskUserQuestion`?(?=[:\s.,)]|$)/g,
+    "fall back to asking the user directly in chat",
+  ],
   [/\bAskUserQuestion\b/g, "direct chat question"],
   [/\bUse direct chat question\b/g, "Ask the user directly in chat"],
   [/\buse direct chat question\b/g, "ask the user directly in chat"],
@@ -2302,7 +2322,7 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
     if (skill.content) {
       await writeText(path.join(targetDir, "SKILL.md"), skill.content + "\n");
     }
-    await rewriteCodexMarkdownResourcesFromSource(skill.sourceDir, targetDir, {
+    await rewriteCodexResourceFilesFromSource(skill.sourceDir, targetDir, {
       knownCommands: bundle.knownCommands,
       knownAgentSkills: bundle.knownAgentSkills,
     });
@@ -3652,17 +3672,24 @@ async function bootstrapHookScripts(
   }
 }
 
-async function rewriteCodexMarkdownResourcesFromSource(
+async function rewriteCodexResourceFilesFromSource(
   sourceDir,
   targetDir,
   options = {},
 ) {
+  const supportedExtensions = new Set([
+    ".md",
+    ".markdown",
+    ".yaml",
+    ".yml",
+    ".txt",
+  ]);
   const entries = await fs.readdir(sourceDir, { withFileTypes: true });
   for (const entry of entries) {
     const sourcePath = path.join(sourceDir, entry.name);
     const targetPath = path.join(targetDir, entry.name);
     if (entry.isDirectory()) {
-      await rewriteCodexMarkdownResourcesFromSource(
+      await rewriteCodexResourceFilesFromSource(
         sourcePath,
         targetPath,
         options,
@@ -3671,7 +3698,7 @@ async function rewriteCodexMarkdownResourcesFromSource(
     }
     if (
       !entry.isFile() ||
-      path.extname(entry.name) !== ".md" ||
+      !supportedExtensions.has(path.extname(entry.name).toLowerCase()) ||
       entry.name === "SKILL.md"
     ) {
       continue;
