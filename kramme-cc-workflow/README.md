@@ -55,38 +55,29 @@ For local development:
 claude /plugin install /path/to/kramme-cc-workflow
 ```
 
-### OpenCode + Codex (experimental)
+### Codex
 
-This repo includes a converter CLI (Node.js) that installs the plugin into OpenCode or Codex. Requires Node.js 18+. Use the plugin name from `.claude-plugin/marketplace.json` (here: `kramme-cc-workflow`).
+This repo includes a converter CLI (Node.js) that installs the plugin into Codex. Requires Node.js 18+. Use the plugin name from `.claude-plugin/marketplace.json` (here: `kramme-cc-workflow`).
 
 ```bash
-# OpenCode
-node scripts/convert-plugin.js install kramme-cc-workflow --to opencode
-
-# Codex
-node scripts/convert-plugin.js install kramme-cc-workflow --to codex
+node scripts/convert-plugin.js install kramme-cc-workflow
 ```
 
 Run with npx (no clone):
 
 ```bash
-# OpenCode
-npx --yes github:Abildtoft/kramme-cc-workflow install kramme-cc-workflow --to opencode
-
-# Codex
-npx --yes github:Abildtoft/kramme-cc-workflow install kramme-cc-workflow --to codex
+npx --yes github:Abildtoft/kramme-cc-workflow install kramme-cc-workflow
 ```
 
 Local dev from this repo:
 
 ```bash
-./scripts/install-opencode.sh
 ./scripts/install-codex.sh
 ```
 
-Helper scripts forward additional args to the converter (e.g., `--output`, `--codex-home`, `--also codex`).
+Helper scripts forward additional args to the converter (e.g., `--codex-home`, `--agents-home`).
 
-OpenCode output defaults to `~/.config/opencode` (XDG). Codex output defaults to `~/.codex` (`prompts/` and `skills/`). Both targets are experimental and may change as the formats evolve.
+Codex output defaults to `~/.codex` (`prompts/` and `skills/`).
 
 ### Updating
 
@@ -106,7 +97,7 @@ claude /plugin install git+https://github.com/Abildtoft/kramme-cc-workflow
 claude /plugin install /path/to/kramme-cc-workflow
 ```
 
-For OpenCode/Codex installs, updating is the same as installing: re-run the converter to regenerate the output (use the commands in the OpenCode + Codex section). This overwrites the generated files in `~/.config/opencode` or `~/.codex`.
+For Codex installs, updating is the same as installing: re-run the converter to regenerate the output (use the commands in the Codex section). This overwrites the generated files in `~/.codex`.
 
 Restart Claude Code after updating for changes to take effect.
 
@@ -345,7 +336,6 @@ Requirements discovery, document conversion, and text processing.
 | `/kramme:docs:ubiquitous-language` | User, Auto | — | Extract a DDD-style ubiquitous language glossary from the current conversation.<br><br>Writes `UBIQUITOUS_LANGUAGE.md` at the project root with subdomain term tables, relationships, an example dialogue, and a Flagged ambiguities section with proposed resolutions. Re-running merges into the existing file. Not for code-level type glossaries or generic programming terms. |
 | `/kramme:text:humanize` | User, Auto | `[file-path or text]` | Remove signs of AI-generated writing from text. |
 | `/kramme:skill:create` | User | `[skill-name or description]` | Guide creation of a new plugin skill with best-practice structure, optimized frontmatter, and progressive disclosure.<br><br>Scaffolds the directory, generates SKILL.md from templates, and runs a validation checklist. Based on [skills-best-practices](https://github.com/mgechev/skills-best-practices). |
-| `/kramme:skill:review` | User, Auto | `[skill-path \| skill-name \| proposed skill text]` | Review plugin skills for focused scope, progressive disclosure, portability, safety, retry behavior, and documentation quality.<br><br>Read-only audit for `SKILL.md` files, skill directories, or draft skill text. Not for creating new skills, editing skills, or reviewing ordinary application code. |
 
 #### Workflow & Configuration
 
@@ -610,7 +600,7 @@ Addy Osmani's [`agent-skills`](https://github.com/addyosmani/agent-skills) is a 
 - `kramme:docs:adr`: Adapted from [addyosmani/agent-skills — documentation-and-adrs](https://github.com/addyosmani/agent-skills/tree/main/skills/documentation-and-adrs).
 - `kramme:code:source-driven`: Adapted from [addyosmani/agent-skills — source-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/source-driven-development).
 - `kramme:code:deprecate`: Adapted from [addyosmani/agent-skills — deprecation-and-migration](https://github.com/addyosmani/agent-skills/tree/main/skills/deprecation-and-migration).
-- OpenCode/Codex converter: Inspired by [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
+- Codex converter: Inspired by [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - Skills authoring patterns: Inspired by [mgechev/skills-best-practices](https://github.com/mgechev/skills-best-practices).
 - `kramme:visual:*` skills: Adapted from [nicobailon/visual-explainer](https://github.com/nicobailon/visual-explainer).
 - `kramme:test:tdd`: Adapted from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills/tree/main/skills/test-driven-development).
