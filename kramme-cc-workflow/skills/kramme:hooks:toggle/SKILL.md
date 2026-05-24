@@ -25,6 +25,7 @@ Enable or disable hooks in the kramme-cc-workflow plugin.
 | `block-rm-rf` | PreToolUse | Blocks destructive file deletion (rm -rf, shred, etc.) |
 | `confirm-review-responses` | PreToolUse | Confirms before committing configured review artifact files (see `hooks/confirm-review-artifacts.txt`) |
 | `noninteractive-git` | PreToolUse | Forces non-interactive git commands |
+| `skill-usage-stats` | UserPromptSubmit, PreToolUse | Records local skill usage statistics for slash invocations and Skill tool calls |
 | `auto-format` | PostToolUse | Auto-formats code after Write/Edit operations |
 | `context-links` | Stop | Shows PR and Linear issue links at session end |
 

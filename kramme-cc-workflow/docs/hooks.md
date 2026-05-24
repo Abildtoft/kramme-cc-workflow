@@ -27,6 +27,33 @@ State is stored in `hooks/hook-state.json` (gitignored) and persists across sess
 
 For `confirm-review-responses`, edit `hooks/confirm-review-artifacts.txt` to configure which staged files should trigger confirmation. Entries support shell-style glob patterns, so generated artifacts like `PR_PLAN_*.md` can be guarded without listing every file explicitly.
 
+## skill-usage-stats
+
+`skill-usage-stats` records local JSONL usage events when a prompt contains a `/kramme:*` skill invocation or when a Skill tool event names a `kramme:*` skill.
+
+Records are stored outside the repository at:
+
+```text
+~/.local/state/kramme-cc-workflow/skill-usage.jsonl
+```
+
+Set `KRAMME_SKILL_USAGE_FILE` to override the path, for example in tests or when keeping separate per-platform stats.
+
+Generate a report:
+
+```bash
+node scripts/skill-usage.js report --since 30d
+node scripts/skill-usage.js report --kind explicit --json
+```
+
+Scan existing transcript files for historical explicit invocations:
+
+```bash
+node scripts/skill-usage.js scan ~/.claude/projects --json
+```
+
+The hook is silent and fail-open. If Node.js is unavailable, if the payload cannot be parsed, or if recording fails, the hook returns `{}` and does not block the session.
+
 ## context-links Configuration
 
 `context-links` supports org-specific configuration via environment variables or an optional config file.
