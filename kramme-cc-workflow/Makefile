@@ -1,4 +1,4 @@
-.PHONY: test test-verbose test-convert test-noninteractive test-block test-context test-format install-test-deps check-deps
+.PHONY: test test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage install-test-deps check-deps
 
 # Default target - run all tests
 test:
@@ -33,6 +33,11 @@ test-context:
 test-format:
 	@chmod +x tests/test_helper/mocks/*
 	@bats tests/auto-format.bats
+
+# Run only skill usage stats tests
+test-skill-usage:
+	@chmod +x tests/test_helper/mocks/*
+	@bats tests/skill-usage-stats.bats
 
 # Install test dependencies
 install-test-deps:

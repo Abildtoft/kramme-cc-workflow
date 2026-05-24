@@ -28,6 +28,25 @@
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/noninteractive-git.sh"
           }
         ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/skill-usage-stats.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/skill-usage-stats.sh"
+          }
+        ]
       }
     ],
     "PostToolUse": [

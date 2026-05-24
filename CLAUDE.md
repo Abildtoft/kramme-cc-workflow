@@ -67,7 +67,7 @@ For guided skill creation with best-practice scaffolding, use `/kramme:skill:cre
 
 ### Hooks
 
-Edit `hooks/hooks.json` to add event handlers (PreToolUse, PostToolUse, SessionStart, Stop).
+Edit `hooks/hooks.json` to add event handlers (PreToolUse, PostToolUse, UserPromptSubmit, SessionStart, Stop).
 
 **Important:** All hooks must support the toggle system. Add this at the start of each hook script:
 

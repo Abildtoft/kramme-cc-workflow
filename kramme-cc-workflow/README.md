@@ -407,6 +407,7 @@ Event handlers that run automatically at specific points in the Claude Code life
 | `block-rm-rf` | PreToolUse (Bash) | Blocks destructive file deletion commands and recommends `trash` instead. |
 | `confirm-review-responses` | PreToolUse (Bash) | Confirms before committing review artifact files. |
 | `noninteractive-git` | PreToolUse (Bash) | Blocks git commands that open an interactive editor. |
+| `skill-usage-stats` | UserPromptSubmit, PreToolUse (Skill) | Records local skill usage statistics. |
 | `context-links` | Stop | Displays PR and Linear issue links at end of messages. |
 | `auto-format` | PostToolUse (Write\|Edit) | Auto-formats code after file modifications using detected project formatter. |
 
@@ -523,6 +524,9 @@ make test-context
 
 # Run only auto-format tests
 make test-format
+
+# Run only skill usage stats tests
+make test-skill-usage
 ```
 
 ### Test Structure
@@ -538,6 +542,7 @@ tests/
 ├── confirm-review-responses.bats # Tests for confirm-review-responses hook
 ├── convert-plugin.bats       # Tests for plugin conversion script
 ├── context-links.bats        # Tests for context-links hook
+├── skill-usage-stats.bats    # Tests for skill usage stats hook
 └── noninteractive-git.bats   # Tests for noninteractive-git hook
 ```
 
@@ -562,7 +567,7 @@ See [CLAUDE.md](CLAUDE.md) for detailed conventions. Quick reference:
 
 - **Agents**: Create markdown files in `agents/` with `name`, `description`, `model`, and `color` frontmatter.
 - **Skills**: Create a subdirectory in `skills/` with a `SKILL.md` file. Key frontmatter: `name`, `description`, `disable-model-invocation`, `user-invocable`, `kramme-platforms`.
-- **Hooks**: Edit `hooks/hooks.json` to add event handlers. Available events: `PreToolUse`, `PostToolUse`, `SessionStart`, `Stop`.
+- **Hooks**: Edit `hooks/hooks.json` to add event handlers. Available events: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `SessionStart`, `Stop`.
 
 ## Related Plugins
 
