@@ -165,6 +165,7 @@ Watch for these excuses — they signal the discipline is about to break.
 | "The test is flaky, I'll skip it and come back." | Skipped tests rot. Either fix the flakiness now or delete the test. |
 | "Green tests mean we're done." | Green tests mean the assertions held. Ask whether the assertions cover what can go wrong, not only what did go right. |
 | "We don't need the Prove-It test — the fix is obvious." | Obvious fixes regress. The test is cheap insurance; without it, the same bug ships again in six months. |
+| "This test matches the implementation, so it proves the code works." | Tests that simply restate the implementation provide zero confidence. Verify observable behavior, contracts, edge cases, or regressions instead. |
 
 ---
 
@@ -177,6 +178,7 @@ If any of these are true, pause and resolve before continuing:
 - The refactor step keeps turning tests red.
 - You're copy-pasting test bodies instead of parameterizing behavior that belongs to the code under test.
 - You wrote the implementation first and are now "backfilling" tests to match.
+- The test duplicates the current algorithm or simply restates the implementation instead of checking behavior.
 - The Prove-It test passes without the fix in place (the bug wasn't reproduced).
 - The test file is growing faster than the code file on a straightforward feature.
 - A test is marked `skip`/`xit`/`pending` and has been for more than one session.
@@ -188,6 +190,7 @@ If any of these are true, pause and resolve before continuing:
 Before declaring a TDD cycle complete, confirm:
 
 - [ ] Every new behavior has a test that would fail without the new code.
+- [ ] No new test simply restates the implementation; each one verifies observable behavior, a contract, an edge case, or a regression.
 - [ ] The full test suite is green, not only the new tests.
 - [ ] No test is marked `skip`/`xit`/`pending`.
 - [ ] For bug fixes: the Prove-It test fails against the pre-fix commit (checkout and prove, or rely on CI history).

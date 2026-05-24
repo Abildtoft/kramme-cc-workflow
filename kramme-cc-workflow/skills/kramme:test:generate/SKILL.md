@@ -198,6 +198,7 @@ options:
    - Group: happy path first, then error cases, then edge cases
 4. **Include:** imports, mocks/stubs, setup, assertions, teardown.
 5. **Add comments** only for tests that make assumptions about expected behavior.
+6. **Do not add tests that simply restate the implementation.** Tests must verify observable behavior, contracts, edge cases, or regressions. If a test duplicates the current algorithm without increasing confidence, delete it or rewrite it around behavior.
 
 ---
 
