@@ -92,6 +92,57 @@ SH
 	[ ! -d "$TMP_DIR/.codex/prompts" ] || [ -z "$(ls -A "$TMP_DIR/.codex/prompts" 2>/dev/null)" ]
 }
 
+@test "codex conversion installs hooks as an enabled plugin bundle" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+	[ "$status" -eq 0 ]
+
+	local plugin_version
+	plugin_version="$(jq -r '.version' "$REPO_ROOT/.claude-plugin/plugin.json")"
+	local marketplace_root="$TMP_DIR/.codex/.kramme-plugin-marketplaces/kramme-cc-workflow"
+	local cache_root="$TMP_DIR/.codex/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/$plugin_version"
+
+	[ -f "$marketplace_root/.agents/plugins/marketplace.json" ]
+	[ -f "$marketplace_root/plugins/kramme-cc-workflow/.codex-plugin/plugin.json" ]
+	[ -f "$marketplace_root/plugins/kramme-cc-workflow/hooks/block-rm-rf.sh" ]
+	[ -f "$cache_root/.codex-plugin/plugin.json" ]
+	[ -f "$cache_root/hooks/block-rm-rf.sh" ]
+	[ -f "$cache_root/hooks/lib/check-enabled.sh" ]
+
+	run jq -r '.hooks' "$cache_root/.codex-plugin/plugin.json"
+	[ "$status" -eq 0 ]
+	[ "$output" = "./hooks/hooks.json" ]
+
+	run jq -r '.hooks.PreToolUse[0].hooks[0].command' "$cache_root/hooks/hooks.json"
+	[ "$status" -eq 0 ]
+	[ "$output" = 'bash ${CLAUDE_PLUGIN_ROOT}/hooks/block-rm-rf.sh' ]
+
+	run grep -RFn 'CLAUDE_PLUGIN_ROOT' "$cache_root/hooks/hooks.json"
+	[ "$status" -eq 0 ]
+
+	local hook_command
+	hook_command="$(jq -r '.hooks.PreToolUse[0].hooks[0].command' "$cache_root/hooks/hooks.json")"
+	run bash -c 'cd "$1" && printf "%s\n" "{\"tool_input\":{\"command\":\"echo ok\"}}" | CLAUDE_PLUGIN_ROOT="$2" bash -lc "$3"' _ "$TMP_DIR" "$cache_root" "$hook_command"
+	[ "$status" -eq 0 ]
+
+	run grep -nF '[plugins."kramme-cc-workflow@kramme-cc-workflow"]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+
+	run grep -nF 'enabled = true' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+
+	run jq -r '.plugins[0]' "$TMP_DIR/.codex/.kramme-install-manifests/kramme-cc-workflow-codex.json"
+	[ "$status" -eq 0 ]
+	[ "$output" = "cache/kramme-cc-workflow/kramme-cc-workflow/$plugin_version" ]
+
+	run jq -r '.hooks[0]' "$TMP_DIR/.codex/.kramme-install-manifests/kramme-cc-workflow-codex.json"
+	[ "$status" -eq 0 ]
+	[ "$output" = ".kramme-plugin-marketplaces/kramme-cc-workflow" ]
+}
+
 @test "codex conversion preserves user-invocable skill resources" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for converter tests"

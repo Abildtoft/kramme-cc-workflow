@@ -665,10 +665,39 @@ function convertClaudeToCodex(plugin) {
     knownCommands: knownCommandNames,
     knownAgentSkills,
     mcpServers: plugin.mcpServers,
+    codexPlugin: plugin.hooks ? convertCodexHookPlugin(plugin) : undefined,
   };
 }
 
 const CODEX_DESCRIPTION_MAX_LENGTH = 1024;
+
+function convertCodexHookPlugin(plugin) {
+  const name = normalizeName(plugin.manifest.name);
+  const version = String(plugin.manifest.version ?? "local").trim() || "local";
+  const marketplaceName = name;
+  const description =
+    plugin.manifest.description ??
+    `Lifecycle hooks converted from ${plugin.manifest.name}.`;
+  const manifest = {
+    name,
+    version,
+    description,
+    hooks: "./hooks/hooks.json",
+  };
+
+  if (plugin.manifest.author) {
+    manifest.author = plugin.manifest.author;
+  }
+
+  return {
+    name,
+    marketplaceName,
+    version,
+    manifest,
+    hooks: cloneJson(plugin.hooks),
+    hookSourceDir: path.join(plugin.root, "hooks"),
+  };
+}
 
 function convertAgentSkill(agent, usedNames) {
   const name = uniqueName(codexName(agent.name), usedNames);
@@ -1386,12 +1415,39 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
     }
   }
 
+  const hookPluginResult = await writeCodexHookPluginBundle(
+    codexRoot,
+    bundle.codexPlugin,
+    previousEntries,
+    {
+      pluginName,
+      confirmOptions: extraOpts.confirm,
+    },
+  );
+
   const config = renderCodexConfig(bundle.mcpServers);
   if (config) {
     await writeText(path.join(codexRoot, "config.toml"), config);
   }
+  if (bundle.codexPlugin) {
+    await upsertCodexHookPluginConfig(codexRoot, bundle.codexPlugin);
+  } else if (
+    previousEntries.plugins.length > 0 ||
+    previousEntries.hooks.length > 0
+  ) {
+    await removeCodexHookPluginConfig(
+      codexRoot,
+      codexHookPluginConfigRef(pluginName),
+    );
+  }
 
   const nextEntries = {
+    hooks: hookPluginResult.cleanedHooks
+      ? hookPluginResult.hooks
+      : unionEntryLists(previousEntries.hooks, hookPluginResult.hooks),
+    plugins: hookPluginResult.cleanedPlugins
+      ? hookPluginResult.plugins
+      : unionEntryLists(previousEntries.plugins, hookPluginResult.plugins),
     prompts: cleanedPrompts
       ? bundle.prompts.map((prompt) => `${prompt.name}.md`)
       : unionEntryLists(
@@ -1418,6 +1474,229 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   setInstallEntries(installState, pluginName, "codex", nextEntries);
   await writeInstallState(codexRoot, installState);
   await writeInstallManifest(codexRoot, pluginName, "codex", nextEntries);
+}
+
+async function writeCodexHookPluginBundle(
+  codexRoot,
+  codexPlugin,
+  previousEntries,
+  options = {},
+) {
+  const confirmOptions = options.confirmOptions ?? {};
+  const cleanedPlugins = await cleanupInstalledEntries(
+    path.join(codexRoot, "plugins"),
+    previousEntries.plugins,
+    {
+      label: "Codex plugin cache",
+      recursive: true,
+      confirmOptions,
+    },
+  );
+  const cleanedHooks = await cleanupInstalledEntries(
+    codexRoot,
+    previousEntries.hooks,
+    {
+      label: "Codex hook marketplace",
+      recursive: true,
+      confirmOptions,
+    },
+  );
+
+  if (!codexPlugin) {
+    return { cleanedPlugins, cleanedHooks, plugins: [], hooks: [] };
+  }
+
+  const marketplaceRoot = codexHookMarketplaceRoot(codexRoot, codexPlugin);
+  const marketplacePluginRoot = path.join(
+    marketplaceRoot,
+    "plugins",
+    codexPlugin.name,
+  );
+  const pluginCacheEntry = codexHookPluginCacheEntry(codexPlugin);
+  const pluginCacheRoot = resolveManagedChild(
+    path.join(codexRoot, "plugins"),
+    pluginCacheEntry,
+    "Codex plugin cache entry",
+  );
+
+  if (cleanedHooks) {
+    await fs.rm(marketplaceRoot, { recursive: true, force: true });
+  }
+  if (cleanedPlugins) {
+    await fs.rm(pluginCacheRoot, { recursive: true, force: true });
+  }
+
+  await writeCodexHookPluginTree(marketplacePluginRoot, codexPlugin);
+  await writeCodexHookPluginTree(pluginCacheRoot, codexPlugin);
+  await writeCodexHookMarketplace(marketplaceRoot, codexPlugin);
+
+  return {
+    cleanedPlugins,
+    cleanedHooks,
+    plugins: [pluginCacheEntry],
+    hooks: [codexHookMarketplaceEntry(codexPlugin)],
+  };
+}
+
+async function writeCodexHookPluginTree(targetRoot, codexPlugin) {
+  await writeJson(
+    path.join(targetRoot, ".codex-plugin", "plugin.json"),
+    codexPlugin.manifest,
+  );
+  const hooksRoot = path.join(targetRoot, "hooks");
+  if (await pathExists(codexPlugin.hookSourceDir)) {
+    await copyDir(codexPlugin.hookSourceDir, hooksRoot);
+  }
+  await writeJson(path.join(hooksRoot, "hooks.json"), codexPlugin.hooks);
+  await bootstrapHookScripts(hooksRoot, targetRoot);
+}
+
+async function writeCodexHookMarketplace(marketplaceRoot, codexPlugin) {
+  const marketplace = {
+    name: codexPlugin.marketplaceName,
+    interface: {
+      displayName: codexPlugin.manifest.name,
+    },
+    plugins: [
+      {
+        name: codexPlugin.name,
+        source: {
+          source: "local",
+          path: `./plugins/${codexPlugin.name}`,
+        },
+        policy: {
+          installation: "AVAILABLE",
+          authentication: "ON_INSTALL",
+        },
+        category: "Productivity",
+      },
+    ],
+  };
+
+  await writeJson(
+    path.join(marketplaceRoot, ".agents", "plugins", "marketplace.json"),
+    marketplace,
+  );
+}
+
+function codexHookPluginConfigRef(pluginName) {
+  const name = normalizeName(pluginName);
+  return { name, marketplaceName: name };
+}
+
+function codexHookMarketplaceEntry(codexPlugin) {
+  return path.join(".kramme-plugin-marketplaces", codexPlugin.marketplaceName);
+}
+
+function codexHookMarketplaceRoot(codexRoot, codexPlugin) {
+  return resolveManagedChild(
+    codexRoot,
+    codexHookMarketplaceEntry(codexPlugin),
+    "Codex hook marketplace entry",
+  );
+}
+
+function codexHookPluginCacheEntry(codexPlugin) {
+  return path.join(
+    "cache",
+    codexPlugin.marketplaceName,
+    codexPlugin.name,
+    codexPlugin.version,
+  );
+}
+
+async function upsertCodexHookPluginConfig(codexRoot, codexPlugin) {
+  const configPath = path.join(codexRoot, "config.toml");
+  const existing = (await pathExists(configPath))
+    ? await readText(configPath)
+    : "";
+  const tables = renderCodexHookPluginConfigTables(codexRoot, codexPlugin);
+  const updated = upsertTomlTables(existing, tables);
+  if (updated !== existing) {
+    await writeText(configPath, updated);
+  }
+}
+
+async function removeCodexHookPluginConfig(codexRoot, codexPlugin) {
+  const configPath = path.join(codexRoot, "config.toml");
+  if (!(await pathExists(configPath))) return;
+  const existing = await readText(configPath);
+  const updated = removeTomlTables(existing, [
+    codexMarketplaceTableHeader(codexPlugin),
+    codexPluginTableHeader(codexPlugin),
+  ]);
+  if (updated !== existing) {
+    await writeText(configPath, updated);
+  }
+}
+
+function renderCodexHookPluginConfigTables(codexRoot, codexPlugin) {
+  const source = codexHookMarketplaceRoot(codexRoot, codexPlugin);
+  const lastUpdated = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+  return [
+    {
+      header: codexMarketplaceTableHeader(codexPlugin),
+      content: [
+        codexMarketplaceTableHeader(codexPlugin),
+        `last_updated = ${formatTomlString(lastUpdated)}`,
+        'source_type = "local"',
+        `source = ${formatTomlString(source)}`,
+      ].join("\n"),
+    },
+    {
+      header: codexPluginTableHeader(codexPlugin),
+      content: [codexPluginTableHeader(codexPlugin), "enabled = true"].join(
+        "\n",
+      ),
+    },
+  ];
+}
+
+function codexMarketplaceTableHeader(codexPlugin) {
+  return `[marketplaces.${formatTomlKey(codexPlugin.marketplaceName)}]`;
+}
+
+function codexPluginTableHeader(codexPlugin) {
+  return `[plugins.${formatTomlKey(`${codexPlugin.name}@${codexPlugin.marketplaceName}`)}]`;
+}
+
+function upsertTomlTables(existing, tables) {
+  const headers = tables.map((table) => table.header);
+  const withoutExisting = removeTomlTables(existing, headers).trimEnd();
+  const renderedTables = tables.map((table) => table.content.trimEnd());
+  return (
+    [withoutExisting, ...renderedTables].filter(Boolean).join("\n\n") + "\n"
+  );
+}
+
+function removeTomlTables(existing, headers) {
+  let result = existing;
+  for (const header of headers) {
+    result = removeTomlTable(result, header);
+  }
+  return (
+    result.replace(/\n{3,}/g, "\n\n").trimEnd() + (result.trim() ? "\n" : "")
+  );
+}
+
+function removeTomlTable(existing, header) {
+  const lines = String(existing ?? "").split(/\r?\n/);
+  const kept = [];
+  let skipping = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed === header) {
+      skipping = true;
+      continue;
+    }
+    if (skipping && /^\[/.test(trimmed)) {
+      skipping = false;
+    }
+    if (!skipping) {
+      kept.push(line);
+    }
+  }
+  return kept.join("\n");
 }
 
 function resolveCodexOutputRoot(outputRoot) {
