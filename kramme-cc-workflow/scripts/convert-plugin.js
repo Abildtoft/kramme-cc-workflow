@@ -6,24 +6,6 @@ const path = require("path");
 const os = require("os");
 const readline = require("readline");
 
-const PERMISSION_MODES = ["none", "broad", "from-commands"];
-const SOURCE_TOOLS = [
-  "read",
-  "write",
-  "edit",
-  "bash",
-  "grep",
-  "glob",
-  "list",
-  "webfetch",
-  "skill",
-  "patch",
-  "task",
-  "question",
-  "todowrite",
-  "todoread",
-];
-
 function resolveManagedChild(root, entry, label) {
   const resolvedRoot = path.resolve(root);
   const resolvedPath = path.resolve(root, entry);
@@ -36,76 +18,36 @@ function resolveManagedChild(root, entry, label) {
   return resolvedPath;
 }
 
-const TOOL_MAP = {
-  bash: "bash",
-  read: "read",
-  write: "write",
-  edit: "edit",
-  grep: "grep",
-  glob: "glob",
-  list: "list",
-  webfetch: "webfetch",
-  skill: "skill",
-  patch: "patch",
-  task: "task",
-  question: "question",
-  todowrite: "todowrite",
-  todoread: "todoread",
-};
-
-const HOOK_EVENT_MAP = {
-  PreToolUse: { events: ["tool.execute.before"], type: "tool" },
-  PostToolUse: { events: ["tool.execute.after"], type: "tool" },
-  PostToolUseFailure: {
-    events: ["tool.execute.after"],
-    type: "tool",
-    requireError: true,
-    note: "Claude PostToolUseFailure",
-  },
-  SessionStart: { events: ["session.created"], type: "session" },
-  SessionEnd: { events: ["session.deleted"], type: "session" },
-  Stop: { events: ["session.idle"], type: "session" },
-  PreCompact: { events: ["experimental.session.compacting"], type: "session" },
-  PermissionRequest: {
-    events: ["permission.requested", "permission.replied"],
-    type: "permission",
-    note: "Claude PermissionRequest",
-  },
-  UserPromptSubmit: {
-    events: ["message.created", "message.updated"],
-    type: "message",
-    note: "Claude UserPromptSubmit",
-  },
-  Notification: {
-    events: ["message.updated"],
-    type: "message",
-    note: "Claude Notification",
-  },
-  Setup: { events: ["session.created"], type: "session", note: "Claude Setup" },
-  SubagentStart: {
-    events: ["message.updated"],
-    type: "message",
-    note: "Claude SubagentStart",
-  },
-  SubagentStop: {
-    events: ["message.updated"],
-    type: "message",
-    note: "Claude SubagentStop",
-  },
-};
-
 const targets = {
-  opencode: {
-    name: "opencode",
-    convert: convertClaudeToOpenCode,
-    write: writeOpenCodeBundle,
-  },
   codex: {
     name: "codex",
     convert: convertClaudeToCodex,
     write: writeCodexBundle,
   },
 };
+
+const REMOVED_OPENCODE_INSTALL_OPTIONS = [
+  {
+    keys: ["output", "o"],
+    label: "--output/-o",
+    hint: "use --codex-home to choose the Codex install root.",
+  },
+  {
+    keys: ["permissions"],
+    label: "--permissions",
+    hint: "Codex installs preserve allowed-tools in skill frontmatter.",
+  },
+  {
+    keys: ["agent-mode", "agentMode"],
+    label: "--agent-mode",
+    hint: "Claude agents are now installed as Codex agent skills.",
+  },
+  {
+    keys: ["infer-temperature", "inferTemperature"],
+    label: "--infer-temperature",
+    hint: "Codex skills do not support converted temperature settings.",
+  },
+];
 
 async function main() {
   const argv = process.argv.slice(2);
@@ -135,24 +77,18 @@ async function main() {
 
 async function runInstall(parsed) {
   const pluginInput = parsed._[0] ?? process.cwd();
-  const targetName = String(parsed.to ?? "opencode");
-  const target = targets[targetName];
-  if (!target) {
-    throw new Error(`Unknown target: ${targetName}`);
-  }
+  const { targetName, target } = resolveTarget(parsed);
 
-  const permissions = String(parsed.permissions ?? "broad");
-  if (!PERMISSION_MODES.includes(permissions)) {
-    throw new Error(`Unknown permissions mode: ${permissions}`);
+  rejectRemovedOpenCodeInstallOptions(parsed);
+
+  if (parsed.also) {
+    throw new Error(
+      "--also is no longer supported; install the Codex target directly.",
+    );
   }
 
   const resolvedPluginPath = await resolvePluginInput(pluginInput);
   const plugin = await loadClaudePlugin(resolvedPluginPath);
-  const outputRoot = resolveRoot(
-    parsed.output ?? parsed.o,
-    ".config",
-    "opencode",
-  );
   const codexHome = resolveRoot(
     parsed["codex-home"] ?? parsed.codexHome,
     ".codex",
@@ -162,17 +98,7 @@ async function runInstall(parsed) {
     parsed["agents-home"] ?? parsed.agentsHome,
     ".agents",
   );
-  const options = {
-    agentMode:
-      String(parsed["agent-mode"] ?? parsed.agentMode ?? "subagent") ===
-      "primary"
-        ? "primary"
-        : "subagent",
-    inferTemperature: parseBoolean(
-      parsed["infer-temperature"] ?? parsed.inferTemperature,
-      true,
-    ),
-    permissions,
+  const confirmOptions = {
     yes: parseBoolean(parsed.yes ?? parsed.y, false),
     nonInteractive: parseBoolean(
       parsed["non-interactive"] ?? parsed.nonInteractive,
@@ -180,64 +106,50 @@ async function runInstall(parsed) {
     ),
   };
 
-  const bundle = target.convert(plugin, options);
+  const bundle = target.convert(plugin);
   if (!bundle) {
     throw new Error(`Target ${targetName} did not return a bundle.`);
   }
 
-  const primaryOutput = targetName === "codex" ? codexRoot : outputRoot;
   const writeOptions = {
     agentsHome,
     pluginName: plugin.manifest.name,
     confirm: {
-      yes: options.yes,
-      nonInteractive: options.nonInteractive,
+      yes: confirmOptions.yes,
+      nonInteractive: confirmOptions.nonInteractive,
     },
   };
 
-  await target.write(primaryOutput, bundle, writeOptions);
-  console.log(`Installed ${plugin.manifest.name} to ${primaryOutput}`);
+  await target.write(codexRoot, bundle, writeOptions);
+  console.log(`Installed ${plugin.manifest.name} to ${codexRoot}`);
+  await ensureCodexAgentsFile(codexRoot);
+}
 
-  const extraTargets = parseExtraTargets(parsed.also);
-  const allTargets = [targetName, ...extraTargets];
-  for (const extra of extraTargets) {
-    const handler = targets[extra];
-    if (!handler) {
-      console.warn(`Skipping unknown target: ${extra}`);
-      continue;
-    }
-    const extraBundle = handler.convert(plugin, options);
-    if (!extraBundle) {
-      console.warn(`Skipping ${extra}: no output returned.`);
-      continue;
-    }
-    const extraRoot = extra === "codex" ? codexRoot : outputRoot;
-    await handler.write(extraRoot, extraBundle, writeOptions);
-    console.log(`Installed ${plugin.manifest.name} to ${extraRoot}`);
+function resolveTarget(parsed) {
+  const targetName = String(parsed.to ?? "codex");
+  const target = targets[targetName];
+  if (!target) {
+    throw new Error(`Unknown target: ${targetName}`);
   }
+  return { targetName, target };
+}
 
-  if (allTargets.includes("codex")) {
-    await ensureCodexAgentsFile(codexRoot);
+function rejectRemovedOpenCodeInstallOptions(parsed) {
+  for (const option of REMOVED_OPENCODE_INSTALL_OPTIONS) {
+    if (option.keys.some((key) => Object.hasOwn(parsed, key))) {
+      throw new Error(`${option.label} is no longer supported; ${option.hint}`);
+    }
   }
 }
 
 async function runStats(parsed) {
   const pluginInput = parsed._[0] ?? process.cwd();
+  const { target } = resolveTarget(parsed);
   const resolvedPluginPath = await resolvePluginInput(pluginInput);
   const plugin = await loadClaudePlugin(resolvedPluginPath);
 
-  const options = {
-    agentMode: "subagent",
-    inferTemperature: true,
-    permissions: "broad",
-    yes: true,
-    nonInteractive: true,
-  };
-
-  const opencodeBundle = convertClaudeToOpenCode(plugin, options);
-  const codexBundle = convertClaudeToCodex(plugin, options);
+  const codexBundle = target.convert(plugin);
   const stats = {
-    opencode_skills: opencodeBundle.skillDirs.length,
     codex_skills:
       codexBundle.skillDirs.length + codexBundle.generatedSkills.length,
     agent_skills: codexBundle.agentSkills?.length ?? 0,
@@ -260,14 +172,9 @@ function printHelp(exitCode) {
   scripts/convert-plugin.js stats <plugin-name|path> [options]
 
 Options:
-  --to <target>           Target format: opencode | codex (default: opencode)
-  --output, -o <dir>      Output directory (OpenCode root; default: ~/.config/opencode)
+  --to <target>           Target format: codex (default: codex)
   --codex-home <dir>      Codex root (default: ~/.codex)
   --agents-home <dir>     Agents root (default: ~/.agents)
-  --also <targets>        Comma-separated extra targets to generate
-  --permissions <mode>    none | broad | from-commands (default: broad)
-  --agent-mode <mode>     primary | subagent (default: subagent)
-  --infer-temperature     true | false (default: true)
   --yes, -y               Assume "yes" for all cleanup confirmations
   --non-interactive       Never prompt; use default answers for confirmations
   --json                  (stats only) print a JSON object instead of key=value lines
@@ -327,14 +234,6 @@ function parseBoolean(value, fallback) {
   if (normalized === "false" || normalized === "0" || normalized === "no")
     return false;
   return fallback;
-}
-
-function parseExtraTargets(value) {
-  if (!value) return [];
-  return String(value)
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
 }
 
 function resolveRoot(value, ...defaultSegments) {
@@ -718,490 +617,7 @@ function filterByPlatform(skills, commands, platform) {
   };
 }
 
-function convertClaudeToOpenCode(plugin, options) {
-  const { skills, commands } = filterByPlatform(
-    plugin.skills,
-    plugin.commands,
-    "opencode",
-  );
-  const agentFiles = plugin.agents.map((agent) => convertAgent(agent, options));
-  const commandMap = convertCommands(commands);
-  const mcp = plugin.mcpServers ? convertMcp(plugin.mcpServers) : undefined;
-  const hookRootDir = plugin.hooks
-    ? normalizeName(plugin.manifest.name)
-    : undefined;
-  const plugins = plugin.hooks
-    ? [convertHooks(plugin.hooks, plugin.manifest.name, hookRootDir)]
-    : [];
-
-  const config = {
-    $schema: "https://opencode.ai/config.json",
-    command: Object.keys(commandMap).length > 0 ? commandMap : undefined,
-    mcp: mcp && Object.keys(mcp).length > 0 ? mcp : undefined,
-  };
-
-  applyPermissions(config, commands, options.permissions);
-
-  return {
-    config,
-    agents: agentFiles,
-    commands,
-    plugins,
-    hookRootDir,
-    hookSourceDir: path.join(plugin.root, "hooks"),
-    permissionsMode: options.permissions,
-    skillDirs: skills.map((skill) => ({
-      sourceDir: skill.sourceDir,
-      name: skill.name,
-    })),
-  };
-}
-
-function convertAgent(agent, options) {
-  const frontmatter = {
-    description: agent.description,
-    mode: options.agentMode,
-  };
-
-  if (agent.model && agent.model !== "inherit") {
-    frontmatter.model = normalizeModel(agent.model);
-  }
-
-  if (options.inferTemperature) {
-    const temperature = inferTemperature(agent);
-    if (temperature !== undefined) {
-      frontmatter.temperature = temperature;
-    }
-  }
-
-  const content = formatFrontmatter(frontmatter, agent.body);
-  return {
-    name: agent.name,
-    content,
-  };
-}
-
-function convertCommands(commands) {
-  const result = {};
-  for (const command of commands) {
-    const entry = {
-      description: command.description,
-      template: command.body,
-    };
-    if (command.model && command.model !== "inherit") {
-      entry.model = normalizeModel(command.model);
-    }
-    result[command.name] = entry;
-  }
-  return result;
-}
-
-function convertMcp(servers) {
-  const result = {};
-  for (const [name, server] of Object.entries(servers)) {
-    if (server.command) {
-      result[name] = {
-        type: "local",
-        command: [server.command, ...(server.args ?? [])],
-        environment: server.env,
-        enabled: true,
-      };
-      continue;
-    }
-
-    if (server.url) {
-      result[name] = {
-        type: "remote",
-        url: server.url,
-        headers: server.headers,
-        enabled: true,
-      };
-    }
-  }
-  return result;
-}
-
-function convertHooks(hooks, pluginName, hookRootDir) {
-  const handlerBlocks = [];
-  const hookMap = hooks.hooks ?? {};
-  const unmappedEvents = [];
-
-  for (const [eventName, matchers] of Object.entries(hookMap)) {
-    const mapping = HOOK_EVENT_MAP[eventName];
-    if (!mapping) {
-      unmappedEvents.push(eventName);
-      continue;
-    }
-    if (matchers.length === 0) continue;
-    for (const event of mapping.events) {
-      handlerBlocks.push(
-        renderHookHandlers(event, matchers, {
-          useToolMatcher:
-            mapping.type === "tool" || mapping.type === "permission",
-          requireError: Boolean(mapping.requireError),
-          note: mapping.note,
-        }),
-      );
-    }
-  }
-
-  const unmappedComment =
-    unmappedEvents.length > 0
-      ? `// Unmapped Claude hook events: ${unmappedEvents.join(", ")}\n`
-      : "";
-
-  const content = `${unmappedComment}import path from "node:path"\nimport { fileURLToPath } from "node:url"\nimport type { Plugin } from "@opencode-ai/plugin"\n\nconst claudePluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "hook-bundles", ${JSON.stringify(hookRootDir)})\n\nexport const ConvertedHooks: Plugin = async ({ $ }) => {\n  return {\n${handlerBlocks.join(",\n")}\n  }\n}\n\nexport default ConvertedHooks\n`;
-
-  return {
-    name: `converted-hooks-${normalizeName(pluginName)}.ts`,
-    content,
-  };
-}
-
-function renderHookHandlers(event, matchers, options) {
-  const statements = [];
-  for (const matcher of matchers) {
-    statements.push(...renderHookStatements(matcher, options.useToolMatcher));
-  }
-  const rendered = statements.map((line) => `    ${line}`).join("\n");
-  const wrapped = options.requireError
-    ? `    if (input?.error) {\n${statements.map((line) => `      ${line}`).join("\n")}\n    }`
-    : rendered;
-  const note = options.note ? `    // ${options.note}\n` : "";
-  return `    "${event}": async (input) => {\n${note}${wrapped}\n    }`;
-}
-
-function renderHookStatements(matcher, useToolMatcher) {
-  if (!matcher.hooks || matcher.hooks.length === 0) return [];
-  const tools = String(matcher.matcher ?? "")
-    .split("|")
-    .map((tool) => tool.trim().toLowerCase())
-    .filter(Boolean);
-
-  const useMatcher = useToolMatcher && tools.length > 0 && !tools.includes("*");
-  const condition = useMatcher
-    ? tools.map((tool) => `input.tool === "${tool}"`).join(" || ")
-    : null;
-  const statements = [];
-
-  for (const hook of matcher.hooks) {
-    if (hook.type === "command") {
-      const renderedHookCommand = renderHookCommand(hook.command);
-      const renderedCommand = `CLAUDE_PLUGIN_ROOT="\${claudePluginRoot}" ${renderedHookCommand}`;
-      if (condition) {
-        statements.push(`if (${condition}) { await $\`${renderedCommand}\` }`);
-      } else {
-        statements.push(`await $\`${renderedCommand}\``);
-      }
-      if (hook.timeout) {
-        statements.push(`// timeout: ${hook.timeout}s (not enforced)`);
-      }
-      continue;
-    }
-    if (hook.type === "prompt") {
-      statements.push(
-        `// Prompt hook for ${matcher.matcher}: ${String(hook.prompt ?? "").replace(/\n/g, " ")}`,
-      );
-      continue;
-    }
-    if (hook.type === "agent") {
-      statements.push(`// Agent hook for ${matcher.matcher}: ${hook.agent}`);
-      continue;
-    }
-    statements.push(`// Unsupported hook for ${matcher.matcher}: ${hook.type}`);
-  }
-
-  return statements;
-}
-
-function normalizeModel(model) {
-  if (model.includes("/")) return model;
-  if (/^claude-/.test(model)) return `anthropic/${model}`;
-  if (/^(gpt-|o1-|o3-)/.test(model)) return `openai/${model}`;
-  if (/^gemini-/.test(model)) return `google/${model}`;
-  return `anthropic/${model}`;
-}
-
-function inferTemperature(agent) {
-  const sample = `${agent.name} ${agent.description ?? ""}`.toLowerCase();
-  if (
-    /(review|audit|security|sentinel|oracle|lint|verification|guardian)/.test(
-      sample,
-    )
-  ) {
-    return 0.1;
-  }
-  if (
-    /(plan|planning|architecture|strategist|analysis|research)/.test(sample)
-  ) {
-    return 0.2;
-  }
-  if (/(doc|readme|changelog|editor|writer)/.test(sample)) {
-    return 0.3;
-  }
-  if (/(brainstorm|creative|ideate|design|concept)/.test(sample)) {
-    return 0.6;
-  }
-  return 0.3;
-}
-
-function applyPermissions(config, commands, mode) {
-  if (mode === "none") return;
-
-  let enabled = new Set();
-  const patterns = {};
-  let hasAllowedToolsDeclaration = false;
-
-  if (mode === "broad") {
-    enabled = new Set(SOURCE_TOOLS);
-  } else {
-    for (const command of commands) {
-      if (!command.allowedTools) continue;
-      hasAllowedToolsDeclaration = true;
-      for (const tool of command.allowedTools) {
-        const parsed = parseToolSpec(tool);
-        if (!parsed.tool) continue;
-        enabled.add(parsed.tool);
-        if (parsed.pattern) {
-          const normalizedPattern = normalizePattern(
-            parsed.tool,
-            parsed.pattern,
-          );
-          if (!patterns[parsed.tool]) patterns[parsed.tool] = new Set();
-          patterns[parsed.tool].add(normalizedPattern);
-        }
-      }
-    }
-
-    // Keep the legacy behavior usable for repos that define no per-command tool metadata.
-    if (!hasAllowedToolsDeclaration) {
-      enabled = new Set(SOURCE_TOOLS);
-    }
-  }
-
-  const permission = {};
-  const tools = {};
-
-  for (const tool of SOURCE_TOOLS) {
-    tools[tool] = mode === "broad" ? true : enabled.has(tool);
-  }
-
-  if (mode === "broad") {
-    for (const tool of SOURCE_TOOLS) {
-      permission[tool] = "allow";
-    }
-  } else {
-    for (const tool of SOURCE_TOOLS) {
-      const toolPatterns = patterns[tool];
-      if (toolPatterns && toolPatterns.size > 0) {
-        const patternPermission = { "*": "deny" };
-        for (const pattern of toolPatterns) {
-          patternPermission[pattern] = "allow";
-        }
-        permission[tool] = patternPermission;
-      } else {
-        permission[tool] = enabled.has(tool) ? "allow" : "deny";
-      }
-    }
-  }
-
-  if (enabled.has("write") || enabled.has("edit")) {
-    if (typeof permission.edit === "string") permission.edit = "allow";
-    if (typeof permission.write === "string") permission.write = "allow";
-  }
-  if (patterns.write || patterns.edit) {
-    const combined = new Set();
-    for (const pattern of patterns.write ?? []) combined.add(pattern);
-    for (const pattern of patterns.edit ?? []) combined.add(pattern);
-    const combinedPermission = { "*": "deny" };
-    for (const pattern of combined) {
-      combinedPermission[pattern] = "allow";
-    }
-    permission.edit = combinedPermission;
-    permission.write = combinedPermission;
-  }
-
-  config.permission = permission;
-  config.tools = tools;
-}
-
-function parseToolSpec(raw) {
-  const trimmed = String(raw ?? "").trim();
-  if (!trimmed) return { tool: null };
-  const [namePart, patternPart] = trimmed.split("(", 2);
-  const name = namePart.trim().toLowerCase();
-  const tool = TOOL_MAP[name] ?? null;
-  if (!patternPart) return { tool };
-  const normalizedPattern = patternPart.endsWith(")")
-    ? patternPart.slice(0, -1).trim()
-    : patternPart.trim();
-  return { tool, pattern: normalizedPattern };
-}
-
-function normalizePattern(tool, pattern) {
-  if (tool === "bash") {
-    return pattern.replace(/:/g, " ").trim();
-  }
-  return pattern;
-}
-
-function escapeTemplateLiteral(value) {
-  return String(value).replace(/[`\\]/g, "\\$&").replace(/\$\{/g, "\\${");
-}
-
-function normalizeSingleQuotedRootPlaceholders(value) {
-  const input = String(value ?? "");
-  const containsPlaceholderPattern =
-    /\$\{CLAUDE_PLUGIN_ROOT\}|\$CLAUDE_PLUGIN_ROOT\b/;
-  const placeholderPattern = /\$\{CLAUDE_PLUGIN_ROOT\}|\$CLAUDE_PLUGIN_ROOT\b/g;
-  let result = "";
-  let inDouble = false;
-  let escaped = false;
-
-  const rewriteSingleQuotedSpan = (inner) => {
-    if (!containsPlaceholderPattern.test(inner)) {
-      return `'${inner}'`;
-    }
-
-    const segments = [];
-    let lastIndex = 0;
-    let placeholderMatch;
-
-    placeholderPattern.lastIndex = 0;
-    while ((placeholderMatch = placeholderPattern.exec(inner)) !== null) {
-      const prefix = inner.slice(lastIndex, placeholderMatch.index);
-      if (prefix) {
-        segments.push(`'${prefix}'`);
-      }
-      segments.push(`"${placeholderMatch[0]}"`);
-      lastIndex = placeholderMatch.index + placeholderMatch[0].length;
-    }
-
-    const suffix = inner.slice(lastIndex);
-    if (suffix) {
-      segments.push(`'${suffix}'`);
-    }
-
-    return segments.join("");
-  };
-
-  for (let index = 0; index < input.length; index += 1) {
-    const char = input[index];
-
-    if (escaped) {
-      result += char;
-      escaped = false;
-      continue;
-    }
-
-    if (char === "\\") {
-      result += char;
-      escaped = true;
-      continue;
-    }
-
-    if (char === '"') {
-      inDouble = !inDouble;
-      result += char;
-      continue;
-    }
-
-    if (char === "'" && !inDouble) {
-      const endIndex = input.indexOf("'", index + 1);
-      if (endIndex === -1) {
-        result += input.slice(index);
-        break;
-      }
-
-      result += rewriteSingleQuotedSpan(input.slice(index + 1, endIndex));
-      index = endIndex;
-      continue;
-    }
-
-    result += char;
-  }
-
-  return result;
-}
-
-function renderHookRootReference(value, placeholder) {
-  // Scan the ORIGINAL (un-template-escaped) string so quote/backslash
-  // state tracks real shell semantics. Template-literal escaping is
-  // applied only to the literal spans between placeholder sites, never
-  // to the ${claudePluginRoot} interpolation itself.
-  const parts = [];
-  let literal = "";
-  let inSingle = false;
-  let inDouble = false;
-  let escaped = false;
-
-  const flushLiteral = () => {
-    if (literal) {
-      parts.push({ type: "literal", value: literal });
-      literal = "";
-    }
-  };
-
-  for (let i = 0; i < value.length; i += 1) {
-    const char = value[i];
-
-    if (escaped) {
-      literal += char;
-      escaped = false;
-      continue;
-    }
-
-    if (char === "\\" && !inSingle) {
-      literal += char;
-      escaped = true;
-      continue;
-    }
-
-    if (char === "'" && !inDouble) {
-      inSingle = !inSingle;
-      literal += char;
-      continue;
-    }
-
-    if (char === '"' && !inSingle) {
-      inDouble = !inDouble;
-      literal += char;
-      continue;
-    }
-
-    if (value.startsWith(placeholder, i)) {
-      flushLiteral();
-      parts.push({ type: "placeholder", quoted: inSingle || inDouble });
-      i += placeholder.length - 1;
-      continue;
-    }
-
-    literal += char;
-  }
-  flushLiteral();
-
-  return parts
-    .map((part) => {
-      if (part.type === "literal") return escapeTemplateLiteral(part.value);
-      return part.quoted ? "${claudePluginRoot}" : '"${claudePluginRoot}"';
-    })
-    .join("");
-}
-
-function renderHookCommand(value) {
-  // Bun shell drops template interpolations inside single-quoted spans, so
-  // rewrite any single-quoted root placeholder into concatenated quoted
-  // fragments that keep the interpolation live without changing the
-  // surrounding literal shell text.
-  const normalizedValue = normalizeSingleQuotedRootPlaceholders(value);
-  const placeholder = "__CLAUDE_PLUGIN_ROOT__";
-  const withPlaceholder = normalizedValue
-    .replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, placeholder)
-    .replace(/\$CLAUDE_PLUGIN_ROOT\b/g, placeholder);
-  return renderHookRootReference(withPlaceholder, placeholder);
-}
-
-function convertClaudeToCodex(plugin, options) {
+function convertClaudeToCodex(plugin) {
   const { skills, commands } = filterByPlatform(
     plugin.skills,
     plugin.commands,
@@ -1880,324 +1296,6 @@ function uniqueName(base, used) {
   return name;
 }
 
-function legacyOpenCodeHookRootDirs(bundle, pluginName) {
-  return Array.from(
-    new Set([normalizeName(pluginName), bundle.hookRootDir].filter(Boolean)),
-  );
-}
-
-async function findInstalledLegacyOpenCodeHookRootDirs(
-  paths,
-  bundle,
-  pluginName,
-) {
-  const installed = [];
-  for (const hookRootDir of legacyOpenCodeHookRootDirs(bundle, pluginName)) {
-    if (await pathExists(path.join(paths.hookBundlesDir, hookRootDir))) {
-      installed.push(hookRootDir);
-    }
-  }
-  return installed;
-}
-
-async function currentPluginHasInstalledOpenCodeEntries(
-  paths,
-  bundle,
-  pluginName,
-) {
-  const targets = [
-    ...bundle.agents.map((agent) =>
-      path.join(paths.agentsDir, `${agent.name}.md`),
-    ),
-    ...bundle.plugins.map((plugin) => path.join(paths.pluginsDir, plugin.name)),
-    ...bundle.skillDirs.map((skill) =>
-      resolveManagedChild(paths.skillsDir, skill.name, "skill name"),
-    ),
-  ];
-
-  for (const hookRootDir of legacyOpenCodeHookRootDirs(bundle, pluginName)) {
-    targets.push(path.join(paths.hookBundlesDir, hookRootDir));
-  }
-
-  for (const targetPath of targets) {
-    if (await pathExists(targetPath)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-function extractHookScriptFragments(content) {
-  return Array.from(
-    new Set(
-      String(content ?? "").match(
-        /hooks\/(?:[^/"'`\s)]+\/)*[^/"'`\s)]+\.[A-Za-z0-9]+(?=(?:["'`\s)])|$|\/hooks\/)/g,
-      ) ?? [],
-    ),
-  );
-}
-
-function setsMatchExactly(left, right) {
-  if (left.size !== right.size) return false;
-  for (const entry of left) {
-    if (!right.has(entry)) return false;
-  }
-  return true;
-}
-
-function legacyHookPluginLikelyBelongsToBundle(legacyContent, bundle) {
-  if (!bundle.hookRootDir) return false;
-
-  if (legacyContent.includes(`hook-bundles/${bundle.hookRootDir}`)) {
-    return true;
-  }
-
-  const hookScriptFragments = new Set(
-    bundle.plugins.flatMap((plugin) =>
-      extractHookScriptFragments(plugin.content),
-    ),
-  );
-  if (hookScriptFragments.size === 0) return false;
-
-  const legacyHookScriptFragments = new Set(
-    extractHookScriptFragments(legacyContent),
-  );
-  if (legacyHookScriptFragments.size === 0) return false;
-
-  return setsMatchExactly(hookScriptFragments, legacyHookScriptFragments);
-}
-
-async function includeLegacyOpenCodeHookPlugin(
-  paths,
-  previousEntries,
-  bundle,
-  options = {},
-) {
-  const { hasTrackedInstall = false, pluginName = "plugin" } = options;
-  const legacyPluginPath = path.join(paths.pluginsDir, "converted-hooks.ts");
-  if (!(await pathExists(legacyPluginPath))) {
-    return previousEntries;
-  }
-
-  const legacyPluginContent = await readText(legacyPluginPath);
-  const legacyHookRootDirs = await findInstalledLegacyOpenCodeHookRootDirs(
-    paths,
-    bundle,
-    pluginName,
-  );
-  const ownsLegacyHooks =
-    legacyHookPluginLikelyBelongsToBundle(legacyPluginContent, bundle) ||
-    (!hasTrackedInstall &&
-      (legacyHookRootDirs.length > 0 ||
-        (await currentPluginHasInstalledOpenCodeEntries(
-          paths,
-          bundle,
-          pluginName,
-        ))));
-
-  if (!ownsLegacyHooks) {
-    return previousEntries;
-  }
-
-  // Older Opencode installs used a shared converted-hooks.ts filename and had
-  // no per-plugin state, so first upgrade needs to treat it as a cleanup target.
-  return {
-    ...previousEntries,
-    hooks: unionEntryLists(previousEntries.hooks, legacyHookRootDirs),
-    plugins: unionEntryLists(previousEntries.plugins, ["converted-hooks.ts"]),
-  };
-}
-
-async function writeOpenCodeBundle(outputRoot, bundle, extraOpts = {}) {
-  const paths = resolveOpenCodePaths(outputRoot);
-  const pluginName = extraOpts.pluginName ?? "plugin";
-  const installRoots = [paths.stateRoot, ...(paths.legacyStateRoots ?? [])];
-  const { state: installState } =
-    await loadInstallStateWithFallback(installRoots);
-  const { entries: trackedPreviousEntries, hasTrackedInstall } =
-    await loadPreviousInstallEntries(
-      installRoots,
-      installState,
-      pluginName,
-      "opencode",
-    );
-  const previousEntries = await includeLegacyOpenCodeHookPlugin(
-    paths,
-    trackedPreviousEntries,
-    bundle,
-    { hasTrackedInstall, pluginName },
-  );
-  const legacyBaseConfig = needsLegacyOpenCodeBase(installState, pluginName)
-    ? await loadExistingOpenCodeConfig([
-        ...(paths.legacyConfigPaths ?? []),
-        paths.configPath,
-      ])
-    : {};
-  await ensureDir(paths.root);
-
-  const agentsDir = paths.agentsDir;
-  const cleanedAgents = await cleanupInstalledEntries(
-    agentsDir,
-    previousEntries.agents,
-    {
-      label: "agent",
-      confirmOptions: extraOpts.confirm,
-    },
-  );
-  for (const agent of bundle.agents) {
-    await writeText(
-      path.join(agentsDir, `${agent.name}.md`),
-      agent.content + "\n",
-    );
-  }
-
-  const pluginsDir = paths.pluginsDir;
-  // Only clean legacy shared hook plugins when previous-entry resolution tied
-  // them to this install; otherwise preserve them rather than deleting another
-  // plugin's still-untracked legacy hooks.
-  const cleanedPlugins = await cleanupInstalledEntries(
-    pluginsDir,
-    previousEntries.plugins,
-    {
-      label: "plugin",
-      confirmOptions: extraOpts.confirm,
-    },
-  );
-  for (const plugin of bundle.plugins) {
-    await writeText(path.join(pluginsDir, plugin.name), plugin.content + "\n");
-  }
-
-  const cleanedHooks = await cleanupInstalledEntries(
-    paths.hookBundlesDir,
-    previousEntries.hooks,
-    {
-      label: "hook bundle",
-      recursive: true,
-      confirmOptions: extraOpts.confirm,
-    },
-  );
-  if (
-    bundle.hookRootDir &&
-    bundle.hookSourceDir &&
-    (await pathExists(bundle.hookSourceDir))
-  ) {
-    const hookRootPath = path.join(paths.hookBundlesDir, bundle.hookRootDir);
-    if (cleanedHooks) {
-      await fs.rm(hookRootPath, { recursive: true, force: true });
-    }
-    await copyDir(bundle.hookSourceDir, path.join(hookRootPath, "hooks"));
-    await bootstrapHookScripts(path.join(hookRootPath, "hooks"));
-  }
-
-  const skillsRoot = paths.skillsDir;
-  const cleanedSkills = await cleanupInstalledEntries(
-    skillsRoot,
-    previousEntries.skills,
-    {
-      label: "skill",
-      recursive: true,
-      confirmOptions: extraOpts.confirm,
-    },
-  );
-  for (const skill of bundle.skillDirs) {
-    const targetDir = resolveManagedChild(skillsRoot, skill.name, "skill name");
-    await copyDir(skill.sourceDir, targetDir);
-    if (skill.content) {
-      await writeText(path.join(targetDir, "SKILL.md"), skill.content + "\n");
-    }
-  }
-
-  const nextEntries = {
-    agents: cleanedAgents
-      ? bundle.agents.map((agent) => `${agent.name}.md`)
-      : unionEntryLists(
-          previousEntries.agents,
-          bundle.agents.map((agent) => `${agent.name}.md`),
-        ),
-    hooks: cleanedHooks
-      ? bundle.hookRootDir
-        ? [bundle.hookRootDir]
-        : []
-      : unionEntryLists(
-          previousEntries.hooks,
-          bundle.hookRootDir ? [bundle.hookRootDir] : [],
-        ),
-    plugins: cleanedPlugins
-      ? bundle.plugins.map((plugin) => plugin.name)
-      : unionEntryLists(
-          previousEntries.plugins,
-          bundle.plugins.map((plugin) => plugin.name),
-        ),
-    skills: cleanedSkills
-      ? bundle.skillDirs.map((skill) => skill.name)
-      : unionEntryLists(
-          previousEntries.skills,
-          bundle.skillDirs.map((skill) => skill.name),
-        ),
-    commands: bundle.commands ?? [],
-    config: buildOpenCodePluginConfig(
-      bundle.commands ?? [],
-      bundle.config,
-      bundle.permissionsMode ?? "broad",
-    ),
-    permissionsMode: bundle.permissionsMode ?? "broad",
-    updatedAtMs: Date.now(),
-  };
-  setInstallEntries(installState, pluginName, "opencode", nextEntries);
-  await writeJson(
-    paths.configPath,
-    buildCombinedOpenCodeConfigFromState(installState, {
-      preferredPluginName: pluginName,
-      legacyBaseConfig,
-      previousPreferredConfig: previousEntries.config,
-      previousPreferredEntries: trackedPreviousEntries,
-      currentPreferredCommands: bundle.commands ?? [],
-    }),
-  );
-  await writeInstallState(paths.stateRoot, installState);
-  await writeInstallManifest(
-    paths.stateRoot,
-    pluginName,
-    "opencode",
-    nextEntries,
-  );
-}
-
-function resolveOpenCodePaths(outputRoot) {
-  const resolvedOutputRoot = path.resolve(outputRoot);
-  const base = path.basename(resolvedOutputRoot);
-  if (base === "opencode" || base === ".opencode") {
-    const parentRoot = path.dirname(resolvedOutputRoot);
-    const legacyStateRoots = base === ".opencode" ? [parentRoot] : [];
-    return {
-      root: resolvedOutputRoot,
-      stateRoot: resolvedOutputRoot,
-      legacyStateRoots,
-      legacyConfigPaths:
-        base === ".opencode" ? [path.join(parentRoot, "opencode.json")] : [],
-      configPath: path.join(resolvedOutputRoot, "opencode.json"),
-      agentsDir: path.join(resolvedOutputRoot, "agents"),
-      hookBundlesDir: path.join(resolvedOutputRoot, "hook-bundles"),
-      pluginsDir: path.join(resolvedOutputRoot, "plugins"),
-      skillsDir: path.join(resolvedOutputRoot, "skills"),
-    };
-  }
-
-  const hiddenRoot = path.join(resolvedOutputRoot, ".opencode");
-  return {
-    root: resolvedOutputRoot,
-    stateRoot: hiddenRoot,
-    legacyStateRoots: [resolvedOutputRoot],
-    legacyConfigPaths: [path.join(hiddenRoot, "opencode.json")],
-    configPath: path.join(resolvedOutputRoot, "opencode.json"),
-    agentsDir: path.join(hiddenRoot, "agents"),
-    hookBundlesDir: path.join(hiddenRoot, "hook-bundles"),
-    pluginsDir: path.join(hiddenRoot, "plugins"),
-    skillsDir: path.join(hiddenRoot, "skills"),
-  };
-}
-
 async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   const codexRoot = resolveCodexOutputRoot(outputRoot);
   const pluginName = extraOpts.pluginName ?? "plugin";
@@ -2586,49 +1684,6 @@ async function readJson(file) {
   return JSON.parse(raw);
 }
 
-function isPlainObject(value) {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function cloneJson(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
-function sanitizeInstallPermissionsMode(value) {
-  return PERMISSION_MODES.includes(value) ? value : undefined;
-}
-
-function sanitizeStoredCommand(command) {
-  if (!isPlainObject(command)) return null;
-
-  const name = String(command.name ?? "").trim();
-  if (!name) return null;
-
-  const sanitized = {
-    name,
-    description:
-      command.description === undefined
-        ? undefined
-        : String(command.description),
-    model: command.model === undefined ? undefined : String(command.model),
-    body: String(command.body ?? ""),
-  };
-
-  const allowedTools = sanitizeEntryList(command.allowedTools);
-  if (allowedTools.length > 0) {
-    sanitized.allowedTools = allowedTools;
-  }
-
-  return sanitized;
-}
-
-function sanitizeStoredCommands(commands) {
-  if (!Array.isArray(commands)) return [];
-  return commands
-    .map((command) => sanitizeStoredCommand(command))
-    .filter(Boolean);
-}
-
 function createInstallState() {
   return {
     version: 1,
@@ -2642,56 +1697,23 @@ function sanitizeInstallTimestamp(value) {
   return timestamp;
 }
 
-function sanitizeInstallConfig(config) {
-  if (!isPlainObject(config)) return {};
-
-  const sanitized = {};
-  if (isPlainObject(config.command) && Object.keys(config.command).length > 0) {
-    sanitized.command = cloneJson(config.command);
-  }
-  if (isPlainObject(config.mcp) && Object.keys(config.mcp).length > 0) {
-    sanitized.mcp = cloneJson(config.mcp);
-  }
-  if (isPlainObject(config.tools) && Object.keys(config.tools).length > 0) {
-    sanitized.tools = cloneJson(config.tools);
-  }
-  if (
-    isPlainObject(config.permission) &&
-    Object.keys(config.permission).length > 0
-  ) {
-    sanitized.permission = cloneJson(config.permission);
-  }
-
-  return sanitized;
-}
-
-function hasStoredOpenCodeConfig(targetState) {
-  return Object.keys(sanitizeInstallConfig(targetState?.config)).length > 0;
-}
-
 function sanitizeInstallRecord(record) {
   return {
-    agents: sanitizeEntryList(record?.agents),
-    hooks: sanitizeEntryList(record?.hooks),
-    plugins: sanitizeEntryList(record?.plugins),
     prompts: sanitizeEntryList(record?.prompts),
     skills: sanitizeEntryList(record?.skills),
     agentSkills: sanitizeEntryList(record?.agentSkills),
-    commands: sanitizeStoredCommands(record?.commands),
-    config: sanitizeInstallConfig(record?.config),
-    permissionsMode: sanitizeInstallPermissionsMode(record?.permissionsMode),
     updatedAtMs: sanitizeInstallTimestamp(record?.updatedAtMs),
   };
 }
 
 function parseInstallManifestFilename(filename) {
-  const match = /^(.*)-(opencode|codex)\.json$/.exec(filename);
+  const match = /^(.*)-codex\.json$/.exec(filename);
   if (!match) return null;
 
   try {
     return {
       pluginName: decodeURIComponent(match[1]),
-      targetName: match[2],
+      targetName: "codex",
     };
   } catch {
     return null;
@@ -2803,103 +1825,6 @@ async function loadInstallState(root) {
   };
 }
 
-function hasInstallStateEntries(state) {
-  if (!isPlainObject(state?.plugins)) return false;
-  return Object.values(state.plugins).some(
-    (pluginTargets) =>
-      isPlainObject(pluginTargets) && Object.keys(pluginTargets).length > 0,
-  );
-}
-
-function hasTrackedInstallRecord(record) {
-  const sanitized = sanitizeInstallRecord(record);
-  return (
-    Boolean(sanitized.permissionsMode) ||
-    sanitized.commands.length > 0 ||
-    Object.keys(sanitized.config).length > 0
-  );
-}
-
-function shouldReplaceInstallRecord(existingRecord, incomingRecord) {
-  const existingTracked = hasTrackedInstallRecord(existingRecord);
-  const incomingTracked = hasTrackedInstallRecord(incomingRecord);
-
-  // Records for the same plugin/target belong to a specific output root. Keep
-  // the active root's tracked record and only let legacy roots backfill when
-  // the active root lost its tracked install metadata.
-  if (existingTracked) {
-    return false;
-  }
-  if (incomingTracked) {
-    return true;
-  }
-
-  const existingTimestamp =
-    sanitizeInstallTimestamp(existingRecord?.updatedAtMs) ?? 0;
-  const incomingTimestamp =
-    sanitizeInstallTimestamp(incomingRecord?.updatedAtMs) ?? 0;
-  return incomingTimestamp > existingTimestamp;
-}
-
-function mergeInstallStates(results) {
-  const merged = createInstallState();
-  let fromDisk = false;
-
-  for (const result of results) {
-    if (!result) continue;
-    fromDisk = fromDisk || Boolean(result.fromDisk);
-
-    for (const [pluginName, pluginTargets] of Object.entries(
-      result.state?.plugins ?? {},
-    )) {
-      if (!isPlainObject(pluginTargets)) continue;
-
-      for (const [targetName, targetRecord] of Object.entries(pluginTargets)) {
-        if (!isPlainObject(targetRecord)) continue;
-
-        const existingRecord = merged.plugins?.[pluginName]?.[targetName];
-        if (
-          !existingRecord ||
-          shouldReplaceInstallRecord(existingRecord, targetRecord)
-        ) {
-          setInstallEntries(merged, pluginName, targetName, targetRecord);
-        }
-      }
-    }
-  }
-
-  return {
-    state: merged,
-    fromDisk,
-  };
-}
-
-async function loadInstallStateWithFallback(roots) {
-  const normalizedRoots = uniqueRoots(roots);
-  if (normalizedRoots.length === 0) {
-    return {
-      state: createInstallState(),
-      fromDisk: false,
-    };
-  }
-
-  const results = [];
-  for (let index = 0; index < normalizedRoots.length; index += 1) {
-    const loaded = await loadInstallState(normalizedRoots[index]);
-    results.push(loaded);
-  }
-
-  const merged = mergeInstallStates(results);
-  if (hasInstallStateEntries(merged.state) || merged.fromDisk) {
-    return merged;
-  }
-
-  return {
-    state: createInstallState(),
-    fromDisk: false,
-  };
-}
-
 function getInstallManifestPath(root, pluginName, targetName) {
   return path.join(
     root,
@@ -2937,43 +1862,12 @@ function getInstallEntries(state, pluginName, targetName) {
   return sanitizeInstallRecord(targetState);
 }
 
-async function getPreviousInstallEntries(
-  rootOrRoots,
-  state,
-  pluginName,
-  targetName,
-) {
-  return (
-    await loadPreviousInstallEntries(rootOrRoots, state, pluginName, targetName)
-  ).entries;
-}
-
-async function loadPreviousInstallEntries(
-  rootOrRoots,
-  state,
-  pluginName,
-  targetName,
-) {
-  const roots = Array.isArray(rootOrRoots) ? rootOrRoots : [rootOrRoots];
+async function getPreviousInstallEntries(root, state, pluginName, targetName) {
   if (state.plugins?.[pluginName]?.[targetName]) {
-    return {
-      entries: getInstallEntries(state, pluginName, targetName),
-      hasTrackedInstall: true,
-    };
+    return getInstallEntries(state, pluginName, targetName);
   }
-  for (const root of uniqueRoots(roots)) {
-    const manifest = await loadInstallManifest(root, pluginName, targetName);
-    if (manifest) {
-      return {
-        entries: manifest,
-        hasTrackedInstall: true,
-      };
-    }
-  }
-  return {
-    entries: getInstallEntries(state, pluginName, targetName),
-    hasTrackedInstall: false,
-  };
+  const manifest = await loadInstallManifest(root, pluginName, targetName);
+  return manifest ?? getInstallEntries(state, pluginName, targetName);
 }
 
 function setInstallEntries(state, pluginName, targetName, entries) {
@@ -3000,499 +1894,6 @@ function unionEntryLists(...lists) {
   );
 }
 
-function uniqueRoots(roots) {
-  return Array.from(
-    new Set(sanitizeEntryList(roots).map((root) => path.resolve(root))),
-  );
-}
-
-function collectAllowedPermissionPatterns(permissionValue, patterns) {
-  if (!isPlainObject(permissionValue)) return;
-
-  for (const [pattern, permission] of Object.entries(permissionValue)) {
-    if (pattern === "*" || permission !== "allow") continue;
-    patterns.add(pattern);
-  }
-}
-
-function mergePermissionValues(existing, next) {
-  if (existing === undefined) return cloneJson(next);
-  if (next === undefined) return cloneJson(existing);
-  if (existing === "allow" || next === "allow") return "allow";
-
-  const allowPatterns = new Set();
-  collectAllowedPermissionPatterns(existing, allowPatterns);
-  collectAllowedPermissionPatterns(next, allowPatterns);
-
-  if (allowPatterns.size === 0) {
-    return "deny";
-  }
-
-  const merged = { "*": "deny" };
-  for (const pattern of allowPatterns) {
-    merged[pattern] = "allow";
-  }
-  return merged;
-}
-
-function permissionValueHasAllowance(permissionValue) {
-  if (permissionValue === "allow") return true;
-  if (!isPlainObject(permissionValue)) return false;
-
-  return Object.entries(permissionValue).some(
-    ([pattern, permission]) => pattern !== "*" && permission === "allow",
-  );
-}
-
-function stripLegacyPermissionValue(baseValue, previousValue) {
-  if (baseValue === undefined) return undefined;
-  if (previousValue === undefined) return cloneJson(baseValue);
-
-  // Broad legacy allows cannot be attributed safely, so do not carry them
-  // forward when we are subtracting a reinstalling plugin from the base config.
-  if (baseValue === "allow") {
-    return undefined;
-  }
-  if (!isPlainObject(baseValue)) {
-    return undefined;
-  }
-  if (!isPlainObject(previousValue)) {
-    return cloneJson(baseValue);
-  }
-
-  const remaining = {};
-  if (baseValue["*"] === "deny") {
-    remaining["*"] = "deny";
-  }
-
-  const removedPatterns = new Set();
-  collectAllowedPermissionPatterns(previousValue, removedPatterns);
-
-  for (const [pattern, permission] of Object.entries(baseValue)) {
-    if (
-      pattern === "*" ||
-      permission !== "allow" ||
-      removedPatterns.has(pattern)
-    ) {
-      continue;
-    }
-    remaining[pattern] = "allow";
-  }
-
-  return permissionValueHasAllowance(remaining) ? remaining : undefined;
-}
-
-function buildToolStateFromPermissionConfig(permissionEntries) {
-  const tools = {};
-  const permission = {};
-
-  for (const tool of SOURCE_TOOLS) {
-    const value = permissionEntries[tool];
-    permission[tool] = value === undefined ? "deny" : cloneJson(value);
-    tools[tool] = permissionValueHasAllowance(permission[tool]);
-  }
-
-  return { tools, permission };
-}
-
-function combineOpenCodeConfigs(configs) {
-  const combined = {
-    $schema: "https://opencode.ai/config.json",
-  };
-  const command = {};
-  const mcp = {};
-  const tools = {};
-  const permission = {};
-
-  for (const rawConfig of configs) {
-    const config = sanitizeInstallConfig(rawConfig);
-
-    if (isPlainObject(config.command)) {
-      Object.assign(command, cloneJson(config.command));
-    }
-    if (isPlainObject(config.mcp)) {
-      Object.assign(mcp, cloneJson(config.mcp));
-    }
-    if (isPlainObject(config.tools)) {
-      for (const [tool, enabled] of Object.entries(config.tools)) {
-        tools[tool] = Boolean(tools[tool] || enabled);
-      }
-    }
-    if (isPlainObject(config.permission)) {
-      for (const [tool, permissionValue] of Object.entries(config.permission)) {
-        permission[tool] = mergePermissionValues(
-          permission[tool],
-          permissionValue,
-        );
-      }
-    }
-  }
-
-  if (Object.keys(command).length > 0) {
-    combined.command = command;
-  }
-  if (Object.keys(mcp).length > 0) {
-    combined.mcp = mcp;
-  }
-  if (Object.keys(tools).length > 0) {
-    combined.tools = tools;
-  }
-  if (Object.keys(permission).length > 0) {
-    combined.permission = permission;
-  }
-
-  return combined;
-}
-
-function buildOpenCodePluginConfig(commands, bundleConfig, permissionsMode) {
-  const sanitizedBundleConfig = sanitizeInstallConfig(bundleConfig);
-  const command = convertCommands(commands);
-  const config = {
-    $schema: bundleConfig?.$schema ?? "https://opencode.ai/config.json",
-    command: Object.keys(command).length > 0 ? command : undefined,
-    mcp: sanitizedBundleConfig.mcp,
-  };
-
-  applyPermissions(config, commands, permissionsMode);
-  return config;
-}
-
-function filterConfiguredCommands(commandConfig, visibleCommandNames) {
-  if (!isPlainObject(commandConfig) || visibleCommandNames.size === 0)
-    return undefined;
-
-  const filtered = {};
-  for (const [name, command] of Object.entries(commandConfig)) {
-    if (visibleCommandNames.has(normalizeName(name))) {
-      filtered[name] = cloneJson(command);
-    }
-  }
-
-  return Object.keys(filtered).length > 0 ? filtered : undefined;
-}
-
-function hasCompleteVisibleConfiguredCommands(record, visibleCommandNames) {
-  const configuredCommandNames = Object.keys(record.config.command ?? {}).map(
-    (name) => normalizeName(name),
-  );
-
-  if (configuredCommandNames.length === 0) return true;
-  return configuredCommandNames.every((name) => visibleCommandNames.has(name));
-}
-
-function buildStoredOpenCodeTargetConfig(targetState, visibleCommandNames) {
-  const record = sanitizeInstallRecord(targetState);
-  const config = {};
-
-  if (
-    isPlainObject(record.config.mcp) &&
-    Object.keys(record.config.mcp).length > 0
-  ) {
-    config.mcp = cloneJson(record.config.mcp);
-  }
-
-  if (visibleCommandNames.size === 0) {
-    return config;
-  }
-
-  const visibleCommands = record.commands.filter((command) =>
-    visibleCommandNames.has(normalizeName(command.name)),
-  );
-
-  if (visibleCommands.length > 0) {
-    config.command = convertCommands(visibleCommands);
-  } else {
-    const filteredCommands = filterConfiguredCommands(
-      record.config.command,
-      visibleCommandNames,
-    );
-    if (filteredCommands) {
-      config.command = filteredCommands;
-    }
-  }
-
-  if (visibleCommands.length > 0 && record.permissionsMode) {
-    applyPermissions(config, visibleCommands, record.permissionsMode);
-    return config;
-  }
-
-  const canReuseStoredPermissions = hasCompleteVisibleConfiguredCommands(
-    record,
-    visibleCommandNames,
-  );
-
-  if (
-    canReuseStoredPermissions &&
-    isPlainObject(record.config.tools) &&
-    Object.keys(record.config.tools).length > 0
-  ) {
-    config.tools = cloneJson(record.config.tools);
-  }
-  if (
-    canReuseStoredPermissions &&
-    isPlainObject(record.config.permission) &&
-    Object.keys(record.config.permission).length > 0
-  ) {
-    config.permission = cloneJson(record.config.permission);
-  }
-
-  return config;
-}
-
-function getOpenCodeInstallTargets(state, preferredPluginName) {
-  const targets = [];
-
-  let originalIndex = 0;
-  for (const [pluginName, pluginTargets] of Object.entries(
-    state.plugins ?? {},
-  )) {
-    if (!isPlainObject(pluginTargets)) continue;
-    const targetState = pluginTargets.opencode;
-    if (!isPlainObject(targetState)) continue;
-    targets.push({
-      pluginName,
-      targetState,
-      preferred: pluginName === preferredPluginName,
-      sortKey: sanitizeInstallTimestamp(targetState.updatedAtMs) ?? 0,
-      originalIndex,
-    });
-    originalIndex += 1;
-  }
-
-  targets.sort((left, right) => {
-    if (left.preferred !== right.preferred) {
-      return left.preferred ? 1 : -1;
-    }
-    if (left.sortKey !== right.sortKey) {
-      return left.sortKey - right.sortKey;
-    }
-    if (left.originalIndex !== right.originalIndex) {
-      return left.originalIndex - right.originalIndex;
-    }
-    return left.pluginName.localeCompare(right.pluginName);
-  });
-
-  return targets;
-}
-
-function getVisibleOpenCodeCommands(targets) {
-  const visibleCommandNamesByPlugin = new Map();
-  const seen = new Set();
-
-  for (let index = targets.length - 1; index >= 0; index -= 1) {
-    const target = targets[index];
-    const record = sanitizeInstallRecord(target.targetState);
-    const visibleCommandNames = new Set();
-    const knownCommands =
-      record.commands.length > 0
-        ? record.commands.map((command) => command.name)
-        : Object.keys(record.config.command ?? {});
-
-    for (const commandName of knownCommands) {
-      const normalizedName = normalizeName(commandName);
-      if (seen.has(normalizedName)) continue;
-      visibleCommandNames.add(normalizedName);
-      seen.add(normalizedName);
-    }
-
-    visibleCommandNamesByPlugin.set(target.pluginName, visibleCommandNames);
-  }
-
-  return visibleCommandNamesByPlugin;
-}
-
-function needsLegacyOpenCodeBase(state, preferredPluginName) {
-  return getOpenCodeInstallTargets(state, preferredPluginName).some(
-    ({ pluginName, targetState }) =>
-      pluginName !== preferredPluginName &&
-      !hasStoredOpenCodeConfig(targetState),
-  );
-}
-
-function normalizeCommandMatcherName(commandName) {
-  return String(commandName ?? "")
-    .trim()
-    .toLowerCase();
-}
-
-function deriveCommandFamilyPrefix(commandName) {
-  const normalizedName = normalizeCommandMatcherName(commandName);
-  const firstSeparator = normalizedName.indexOf(":");
-  const lastSeparator = normalizedName.lastIndexOf(":");
-  if (firstSeparator <= 0 || lastSeparator <= firstSeparator) {
-    return undefined;
-  }
-  return normalizedName.slice(0, lastSeparator + 1);
-}
-
-function buildLegacyPreferredCommandMatchers(
-  previousPreferredConfig,
-  previousPreferredEntries,
-  currentPreferredCommands,
-) {
-  const previousConfig = sanitizeInstallConfig(previousPreferredConfig);
-  const previousEntries = sanitizeInstallRecord(previousPreferredEntries);
-  const currentCommands = sanitizeStoredCommands(currentPreferredCommands);
-  const exactNames = new Set();
-  const familyPrefixes = new Set();
-
-  for (const commandName of Object.keys(previousConfig.command ?? {})) {
-    exactNames.add(normalizeName(commandName));
-  }
-  for (const command of previousEntries.commands) {
-    exactNames.add(normalizeName(command.name));
-    const familyPrefix = deriveCommandFamilyPrefix(command.name);
-    if (familyPrefix) {
-      familyPrefixes.add(familyPrefix);
-    }
-  }
-  for (const skillName of previousEntries.skills) {
-    exactNames.add(normalizeName(skillName));
-    const familyPrefix = deriveCommandFamilyPrefix(skillName);
-    if (familyPrefix) {
-      familyPrefixes.add(familyPrefix);
-    }
-  }
-  for (const command of currentCommands) {
-    const familyPrefix = deriveCommandFamilyPrefix(command.name);
-    if (familyPrefix) {
-      familyPrefixes.add(familyPrefix);
-    }
-  }
-
-  return { exactNames, familyPrefixes };
-}
-
-function shouldStripLegacyPreferredCommand(commandName, matchers) {
-  const normalizedName = normalizeName(commandName);
-  const matcherName = normalizeCommandMatcherName(commandName);
-  if (matchers.exactNames.has(normalizedName)) {
-    return true;
-  }
-
-  for (const familyPrefix of matchers.familyPrefixes) {
-    if (matcherName.startsWith(familyPrefix)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-function removeLegacyPreferredEntries(baseConfig, options = {}) {
-  const filtered = sanitizeInstallConfig(baseConfig);
-  const previous = sanitizeInstallConfig(options.previousPreferredConfig);
-  const commandMatchers = buildLegacyPreferredCommandMatchers(
-    options.previousPreferredConfig,
-    options.previousPreferredEntries,
-    options.currentPreferredCommands,
-  );
-
-  if (isPlainObject(filtered.command)) {
-    for (const commandName of Object.keys(filtered.command)) {
-      if (!shouldStripLegacyPreferredCommand(commandName, commandMatchers)) {
-        continue;
-      }
-      delete filtered.command[commandName];
-    }
-  }
-
-  for (const serverName of Object.keys(previous.mcp ?? {})) {
-    if (isPlainObject(filtered.mcp)) {
-      delete filtered.mcp[serverName];
-    }
-  }
-
-  const previousHadPermissionState =
-    Object.keys(previous.command ?? {}).length > 0 ||
-    Object.keys(previous.tools ?? {}).length > 0 ||
-    Object.keys(previous.permission ?? {}).length > 0;
-  if (previousHadPermissionState) {
-    const remainingPermissions = {};
-    for (const tool of SOURCE_TOOLS) {
-      const nextValue = stripLegacyPermissionValue(
-        filtered.permission?.[tool],
-        previous.permission?.[tool],
-      );
-      if (nextValue !== undefined) {
-        remainingPermissions[tool] = nextValue;
-      }
-    }
-
-    if (Object.keys(remainingPermissions).length === 0) {
-      delete filtered.tools;
-      delete filtered.permission;
-    } else {
-      const normalizedPermissions =
-        buildToolStateFromPermissionConfig(remainingPermissions);
-      filtered.tools = normalizedPermissions.tools;
-      filtered.permission = normalizedPermissions.permission;
-    }
-  }
-
-  return sanitizeInstallConfig(filtered);
-}
-
-function buildCombinedOpenCodeConfigFromState(state, options = {}) {
-  const preferredPluginName =
-    typeof options === "string" ? options : options.preferredPluginName;
-  const legacyBaseConfig =
-    typeof options === "string" ? undefined : options.legacyBaseConfig;
-  const previousPreferredConfig =
-    typeof options === "string" ? undefined : options.previousPreferredConfig;
-  const previousPreferredEntries =
-    typeof options === "string" ? undefined : options.previousPreferredEntries;
-  const currentPreferredCommands =
-    typeof options === "string" ? undefined : options.currentPreferredCommands;
-  const configs = [];
-  const targets = getOpenCodeInstallTargets(state, preferredPluginName);
-  const visibleCommandNamesByPlugin = getVisibleOpenCodeCommands(targets);
-
-  const filteredLegacyBaseConfig = removeLegacyPreferredEntries(
-    legacyBaseConfig,
-    {
-      previousPreferredConfig,
-      previousPreferredEntries,
-      currentPreferredCommands,
-    },
-  );
-  if (Object.keys(filteredLegacyBaseConfig).length > 0) {
-    configs.push(filteredLegacyBaseConfig);
-  }
-
-  for (const { pluginName, targetState } of targets) {
-    const config = buildStoredOpenCodeTargetConfig(
-      targetState,
-      visibleCommandNamesByPlugin.get(pluginName) ?? new Set(),
-    );
-    if (Object.keys(config).length > 0) {
-      configs.push(config);
-    }
-  }
-
-  return combineOpenCodeConfigs(configs);
-}
-
-async function loadExistingOpenCodeConfig(configPathOrPaths) {
-  const configPaths = Array.isArray(configPathOrPaths)
-    ? configPathOrPaths
-    : [configPathOrPaths];
-  const configs = [];
-
-  for (const configPath of Array.from(
-    new Set(configPaths.map((value) => path.resolve(value))),
-  )) {
-    if (!(await pathExists(configPath))) continue;
-
-    try {
-      configs.push(sanitizeInstallConfig(await readJson(configPath)));
-    } catch {
-      // Ignore invalid config candidates and keep searching.
-    }
-  }
-
-  return configs.length > 0 ? combineOpenCodeConfigs(configs) : {};
-}
 async function writeJson(file, data) {
   const content = JSON.stringify(data, null, 2) + "\n";
   await writeText(file, content);
@@ -3523,50 +1924,6 @@ async function copyDir(sourceDir, targetDir) {
       await ensureDir(path.dirname(targetPath));
       await fs.copyFile(sourcePath, targetPath);
     }
-  }
-}
-
-async function bootstrapHookScripts(
-  rootDir,
-  bundleRootDir = path.dirname(rootDir),
-) {
-  if (!(await pathExists(rootDir))) return;
-
-  const bootstrapMarker = "# kramme hook bundle bootstrap";
-  const entries = await fs.readdir(rootDir, { withFileTypes: true });
-  for (const entry of entries) {
-    const fullPath = path.join(rootDir, entry.name);
-    if (entry.isDirectory()) {
-      await bootstrapHookScripts(fullPath, bundleRootDir);
-      continue;
-    }
-    if (!entry.isFile() || path.extname(entry.name) !== ".sh") {
-      continue;
-    }
-
-    const scriptDir = path.dirname(fullPath);
-    const relativePluginRoot = (path.relative(scriptDir, bundleRootDir) || ".")
-      .split(path.sep)
-      .join("/");
-    const bootstrapLines = [
-      `${bootstrapMarker} start`,
-      'if [ -z "${CLAUDE_PLUGIN_ROOT:-}" ]; then',
-      '  _claude_hook_source="${BASH_SOURCE:-$0}"',
-      '  _claude_hook_dir="$(CDPATH= cd -- "$(dirname -- "$_claude_hook_source")" && pwd)"',
-      `  CLAUDE_PLUGIN_ROOT="$(CDPATH= cd -- "$_claude_hook_dir/${relativePluginRoot}" && pwd)"`,
-      "fi",
-      "export CLAUDE_PLUGIN_ROOT",
-      "unset _claude_hook_source _claude_hook_dir",
-      `${bootstrapMarker} end`,
-    ];
-    const source = await readText(fullPath);
-    if (source.includes(bootstrapMarker)) continue;
-
-    const lineEnding = source.includes("\r\n") ? "\r\n" : "\n";
-    const lines = source.split(/\r?\n/);
-    const insertIndex = lines[0]?.startsWith("#!") ? 1 : 0;
-    lines.splice(insertIndex, 0, ...bootstrapLines);
-    await writeText(fullPath, lines.join(lineEnding));
   }
 }
 

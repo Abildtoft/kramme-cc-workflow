@@ -76,6 +76,5 @@ Placeholder text shown in the `/` menu. Only include when the skill accepts argu
 Restrict skill to specific platforms. Omit to include on all platforms.
 
 - `[claude-code]` — Claude Code only (e.g., skills using Agent Teams)
-- `[opencode]` — OpenCode only
 - `[codex]` — Codex only
-- `[claude-code, opencode]` — Multiple platforms
+- `[claude-code, codex]` — Multiple platforms
