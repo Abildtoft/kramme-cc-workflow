@@ -26,7 +26,7 @@ Find repeated work in recent agent sessions and turn only the practical patterns
    - If no session source is readable, ask for an export path and stop.
 
 2. Build an inventory of existing automation before proposing anything.
-   - Read existing skill frontmatter from `skills/*/SKILL.md`, `kramme-cc-workflow/skills/*/SKILL.md`, or any explicit skill directory in the current workspace.
+   - Read existing skill frontmatter from `skills/*/SKILL.md`, `.claude/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md`, `kramme-cc-workflow/skills/*/SKILL.md`, or any explicit skill directory in the current workspace.
    - Read existing subagent frontmatter from `agents/*.md`, `kramme-cc-workflow/agents/*.md`, `.claude/agents/*.md`, or any explicit agent directory in the current workspace.
    - Record likely overlaps by name, description, and trigger phrases.
 
