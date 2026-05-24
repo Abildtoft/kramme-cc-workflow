@@ -345,6 +345,7 @@ Requirements discovery, document conversion, and text processing.
 | `/kramme:docs:ubiquitous-language` | User, Auto | — | Extract a DDD-style ubiquitous language glossary from the current conversation.<br><br>Writes `UBIQUITOUS_LANGUAGE.md` at the project root with subdomain term tables, relationships, an example dialogue, and a Flagged ambiguities section with proposed resolutions. Re-running merges into the existing file. Not for code-level type glossaries or generic programming terms. |
 | `/kramme:text:humanize` | User, Auto | `[file-path or text]` | Remove signs of AI-generated writing from text. |
 | `/kramme:skill:create` | User | `[skill-name or description]` | Guide creation of a new plugin skill with best-practice structure, optimized frontmatter, and progressive disclosure.<br><br>Scaffolds the directory, generates SKILL.md from templates, and runs a validation checklist. Based on [skills-best-practices](https://github.com/mgechev/skills-best-practices). |
+| `/kramme:skill:review` | User, Auto | `[skill-path \| skill-name \| proposed skill text]` | Review plugin skills for focused scope, progressive disclosure, portability, safety, retry behavior, and documentation quality.<br><br>Read-only audit for `SKILL.md` files, skill directories, or draft skill text. Not for creating new skills, editing skills, or reviewing ordinary application code. |
 
 #### Workflow & Configuration
 
