@@ -139,13 +139,17 @@ SH
 	' "$TMP_DIR/.codex/config.toml"
 	[ "$status" -eq 0 ]
 
-	run jq -r '.plugins[0]' "$TMP_DIR/.codex/.kramme-install-manifests/kramme-cc-workflow-codex.json"
+	run jq -r '.pluginCaches[0]' "$TMP_DIR/.codex/.kramme-install-manifests/kramme-cc-workflow-codex.json"
 	[ "$status" -eq 0 ]
 	[ "$output" = "cache/kramme-cc-workflow/kramme-cc-workflow/$plugin_version" ]
 
-	run jq -r '.hooks[0]' "$TMP_DIR/.codex/.kramme-install-manifests/kramme-cc-workflow-codex.json"
+	run jq -r '.hookMarketplaces[0]' "$TMP_DIR/.codex/.kramme-install-manifests/kramme-cc-workflow-codex.json"
 	[ "$status" -eq 0 ]
 	[ "$output" = ".kramme-plugin-marketplaces/kramme-cc-workflow" ]
+
+	run jq -r 'has("plugins") or has("hooks")' "$TMP_DIR/.codex/.kramme-install-manifests/kramme-cc-workflow-codex.json"
+	[ "$status" -eq 0 ]
+	[ "$output" = "false" ]
 }
 
 @test "codex hook plugin manifest description is sanitized" {
@@ -188,6 +192,37 @@ fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"Refusing to overwrite existing untracked Codex hook marketplace."* ]]
 	[ -f "$TMP_DIR/.codex/.kramme-plugin-marketplaces/untracked-hook-marketplace-plugin/sentinel.txt" ]
+}
+
+@test "codex conversion removes managed hook plugin output when hooks are removed" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	FIXTURE_PLUGIN="$TMP_DIR/hookless-upgrade-plugin"
+	create_hook_fixture_plugin "$FIXTURE_PLUGIN" "hookless-upgrade-plugin" "alpha-hook"
+
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+	[ "$status" -eq 0 ]
+	[ -d "$TMP_DIR/.codex/.kramme-plugin-marketplaces/hookless-upgrade-plugin" ]
+	[ -d "$TMP_DIR/.codex/plugins/cache/hookless-upgrade-plugin/hookless-upgrade-plugin/1.0.0" ]
+
+	rm -r "$FIXTURE_PLUGIN/hooks"
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+	[ "$status" -eq 0 ]
+	[ ! -d "$TMP_DIR/.codex/.kramme-plugin-marketplaces/hookless-upgrade-plugin" ]
+	[ ! -d "$TMP_DIR/.codex/plugins/cache/hookless-upgrade-plugin/hookless-upgrade-plugin/1.0.0" ]
+
+	run grep -nF '[plugins."hookless-upgrade-plugin@hookless-upgrade-plugin"]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 1 ]
+
+	run jq -r '.hookMarketplaces | length' "$TMP_DIR/.codex/.kramme-install-manifests/hookless-upgrade-plugin-codex.json"
+	[ "$status" -eq 0 ]
+	[ "$output" = "0" ]
+
+	run jq -r '.pluginCaches | length' "$TMP_DIR/.codex/.kramme-install-manifests/hookless-upgrade-plugin-codex.json"
+	[ "$status" -eq 0 ]
+	[ "$output" = "0" ]
 }
 
 @test "codex conversion preserves user-invocable skill resources" {

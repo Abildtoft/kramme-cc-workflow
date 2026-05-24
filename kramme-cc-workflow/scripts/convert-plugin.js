@@ -1420,10 +1420,7 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
     codexRoot,
     bundle.codexPlugin,
     previousEntries,
-    {
-      pluginName,
-      confirmOptions: extraOpts.confirm,
-    },
+    { confirmOptions: extraOpts.confirm },
   );
 
   const config = renderCodexConfig(bundle.mcpServers);
@@ -1433,8 +1430,8 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   if (bundle.codexPlugin) {
     await upsertCodexHookPluginConfig(codexRoot, bundle.codexPlugin);
   } else if (
-    previousEntries.plugins.length > 0 ||
-    previousEntries.hooks.length > 0
+    previousEntries.pluginCaches.length > 0 ||
+    previousEntries.hookMarketplaces.length > 0
   ) {
     await removeCodexHookPluginConfig(
       codexRoot,
@@ -1443,12 +1440,18 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   }
 
   const nextEntries = {
-    hooks: hookPluginResult.cleanedHooks
-      ? hookPluginResult.hooks
-      : unionEntryLists(previousEntries.hooks, hookPluginResult.hooks),
-    plugins: hookPluginResult.cleanedPlugins
-      ? hookPluginResult.plugins
-      : unionEntryLists(previousEntries.plugins, hookPluginResult.plugins),
+    hookMarketplaces: hookPluginResult.cleanedHookMarketplaces
+      ? hookPluginResult.hookMarketplaces
+      : unionEntryLists(
+          previousEntries.hookMarketplaces,
+          hookPluginResult.hookMarketplaces,
+        ),
+    pluginCaches: hookPluginResult.cleanedPluginCaches
+      ? hookPluginResult.pluginCaches
+      : unionEntryLists(
+          previousEntries.pluginCaches,
+          hookPluginResult.pluginCaches,
+        ),
     prompts: cleanedPrompts
       ? bundle.prompts.map((prompt) => `${prompt.name}.md`)
       : unionEntryLists(
@@ -1484,18 +1487,18 @@ async function writeCodexHookPluginBundle(
   options = {},
 ) {
   const confirmOptions = options.confirmOptions ?? {};
-  const cleanedPlugins = await cleanupInstalledEntries(
+  const cleanedPluginCaches = await cleanupInstalledEntries(
     path.join(codexRoot, "plugins"),
-    previousEntries.plugins,
+    previousEntries.pluginCaches,
     {
       label: "Codex plugin cache",
       recursive: true,
       confirmOptions,
     },
   );
-  const cleanedHooks = await cleanupInstalledEntries(
+  const cleanedHookMarketplaces = await cleanupInstalledEntries(
     codexRoot,
-    previousEntries.hooks,
+    previousEntries.hookMarketplaces,
     {
       label: "Codex hook marketplace",
       recursive: true,
@@ -1504,7 +1507,12 @@ async function writeCodexHookPluginBundle(
   );
 
   if (!codexPlugin) {
-    return { cleanedPlugins, cleanedHooks, plugins: [], hooks: [] };
+    return {
+      cleanedPluginCaches,
+      cleanedHookMarketplaces,
+      pluginCaches: [],
+      hookMarketplaces: [],
+    };
   }
 
   const marketplaceEntry = codexHookMarketplaceEntry(codexPlugin);
@@ -1524,15 +1532,15 @@ async function writeCodexHookPluginBundle(
   await prepareCodexHookPluginTarget(marketplaceRoot, {
     label: "Codex hook marketplace",
     entry: marketplaceEntry,
-    previousEntries: previousEntries.hooks,
-    cleaned: cleanedHooks,
+    previousEntries: previousEntries.hookMarketplaces,
+    cleaned: cleanedHookMarketplaces,
     confirmOptions,
   });
   await prepareCodexHookPluginTarget(pluginCacheRoot, {
     label: "Codex plugin cache entry",
     entry: pluginCacheEntry,
-    previousEntries: previousEntries.plugins,
-    cleaned: cleanedPlugins,
+    previousEntries: previousEntries.pluginCaches,
+    cleaned: cleanedPluginCaches,
     confirmOptions,
   });
 
@@ -1541,10 +1549,10 @@ async function writeCodexHookPluginBundle(
   await writeCodexHookMarketplace(marketplaceRoot, codexPlugin);
 
   return {
-    cleanedPlugins,
-    cleanedHooks,
-    plugins: [pluginCacheEntry],
-    hooks: [marketplaceEntry],
+    cleanedPluginCaches,
+    cleanedHookMarketplaces,
+    pluginCaches: [pluginCacheEntry],
+    hookMarketplaces: [marketplaceEntry],
   };
 }
 
@@ -1999,6 +2007,10 @@ async function readJson(file) {
   return JSON.parse(raw);
 }
 
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
 function createInstallState() {
   return {
     version: 1,
@@ -2014,7 +2026,9 @@ function sanitizeInstallTimestamp(value) {
 
 function sanitizeInstallRecord(record) {
   return {
+    hookMarketplaces: sanitizeEntryList(record?.hookMarketplaces),
     prompts: sanitizeEntryList(record?.prompts),
+    pluginCaches: sanitizeEntryList(record?.pluginCaches),
     skills: sanitizeEntryList(record?.skills),
     agentSkills: sanitizeEntryList(record?.agentSkills),
     updatedAtMs: sanitizeInstallTimestamp(record?.updatedAtMs),
@@ -2239,6 +2253,50 @@ async function copyDir(sourceDir, targetDir) {
       await ensureDir(path.dirname(targetPath));
       await fs.copyFile(sourcePath, targetPath);
     }
+  }
+}
+
+async function bootstrapHookScripts(
+  rootDir,
+  bundleRootDir = path.dirname(rootDir),
+) {
+  if (!(await pathExists(rootDir))) return;
+
+  const bootstrapMarker = "# kramme hook bundle bootstrap";
+  const entries = await fs.readdir(rootDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(rootDir, entry.name);
+    if (entry.isDirectory()) {
+      await bootstrapHookScripts(fullPath, bundleRootDir);
+      continue;
+    }
+    if (!entry.isFile() || path.extname(entry.name) !== ".sh") {
+      continue;
+    }
+
+    const scriptDir = path.dirname(fullPath);
+    const relativePluginRoot = (path.relative(scriptDir, bundleRootDir) || ".")
+      .split(path.sep)
+      .join("/");
+    const bootstrapLines = [
+      `${bootstrapMarker} start`,
+      'if [ -z "${CLAUDE_PLUGIN_ROOT:-}" ]; then',
+      '  _claude_hook_source="${BASH_SOURCE:-$0}"',
+      '  _claude_hook_dir="$(CDPATH= cd -- "$(dirname -- "$_claude_hook_source")" && pwd)"',
+      `  CLAUDE_PLUGIN_ROOT="$(CDPATH= cd -- "$_claude_hook_dir/${relativePluginRoot}" && pwd)"`,
+      "fi",
+      "export CLAUDE_PLUGIN_ROOT",
+      "unset _claude_hook_source _claude_hook_dir",
+      `${bootstrapMarker} end`,
+    ];
+    const source = await readText(fullPath);
+    if (source.includes(bootstrapMarker)) continue;
+
+    const lineEnding = source.includes("\r\n") ? "\r\n" : "\n";
+    const lines = source.split(/\r?\n/);
+    const insertIndex = lines[0]?.startsWith("#!") ? 1 : 0;
+    lines.splice(insertIndex, 0, ...bootstrapLines);
+    await writeText(fullPath, lines.join(lineEnding));
   }
 }
 
