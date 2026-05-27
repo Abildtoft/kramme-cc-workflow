@@ -487,7 +487,7 @@ The test strategy should be proportional to current repository norms.
 
 For each phase:
 
-- update `kramme-cc-workflow/README.md`
+- update the root `README.md`
 - update `kramme-cc-workflow/CHANGELOG.md`
 - ensure new skills appear in any generated or converted plugin output
 - document relationships between overlapping skills to reduce confusion

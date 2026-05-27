@@ -1,6 +1,6 @@
 # Recommended MCP Servers
 
-These MCP servers enhance the plugin's capabilities. See the [README](../README.md#recommended-mcp-servers) for a summary.
+These MCP servers enhance the plugin's capabilities. See the root [README](../../README.md#recommended-mcp-servers) for a summary.
 
 ## Linear
 
