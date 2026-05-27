@@ -120,18 +120,23 @@ The redirect runs before the platform picker renders, so single-platform users d
 
 ---
 
-### ❌ WRONG: No Test Plan
+### ❌ WRONG: No Manual Test Plan
 
 ```markdown
 ## Test Plan
 
-Test all the changes manually.
+- [x] `npm test -- platform-picker`
+- [x] `npm run lint`
 ```
 
-### ✅ CORRECT: Actionable Test Scenarios
+This only proves what the agent already ran. It does not tell reviewers or QA how to exercise the changed behavior.
+
+### ✅ CORRECT: Manual Scenarios First, Commands Separate
 
 ```markdown
 ## Test Plan
+
+### Manual scenarios
 
 **Scenario 1: Single-platform user**
 
@@ -146,6 +151,11 @@ Test all the changes manually.
 - [ ] Navigate to `/platform-picker`
 - [ ] Verify platform picker page displays
 - [ ] Verify all platforms are listed
+
+### Automated verification
+
+- `npm test -- platform-picker`
+- `npm run lint`
 ```
 
 ---

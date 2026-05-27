@@ -48,6 +48,8 @@ Created a new Angular route guard (`PlatformPickerRedirectGuard`) that queries t
 
 ## Test Plan
 
+### Manual scenarios
+
 **Scenario 1: Single-platform user**
 
 - [ ] Log in with user account that has only one platform
@@ -67,6 +69,10 @@ Created a new Angular route guard (`PlatformPickerRedirectGuard`) that queries t
 - [ ] Simulate platform service error (disconnect network)
 - [ ] Verify graceful fallback (show picker anyway)
 - [ ] Verify no crashes or console errors
+
+### Automated verification
+
+- `npm test -- platform-picker`
 
 ## Breaking Changes
 
@@ -162,7 +168,7 @@ Database migration adds the preferences table with appropriate indexing and fore
 - Database migration applied
 - User account for testing
 
-### Test Scenarios
+### Manual scenarios
 
 **Scenario 1: Create preferences (first time)**
 
@@ -194,6 +200,11 @@ Database migration adds the preferences table with appropriate indexing and fore
 - [ ] Log in as User B
 - [ ] Verify User B cannot see User A's preferences
 - [ ] Verify User B can create own preferences
+
+### Automated verification
+
+- `dotnet test`
+- `npm test -- preferences`
 
 ## Breaking Changes
 
