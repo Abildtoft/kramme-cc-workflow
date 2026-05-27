@@ -1,6 +1,6 @@
 # Structured Implementation Workflow (SIW) Reference
 
-Detailed documentation for the Structured Implementation Workflow. See the [README](../README.md#structured-implementation-workflow-siw) for a summary.
+Detailed documentation for the Structured Implementation Workflow. See the root [README](../../README.md#structured-implementation-workflow-siw) for a summary.
 
 ## Table of Contents
 

@@ -1,6 +1,6 @@
 # Hook Reference
 
-Detailed documentation for each hook. See the [README](../README.md#hooks) for a summary.
+Detailed documentation for each hook. See the root [README](../../README.md#hooks) for a summary.
 
 ## Toggling Hooks
 
