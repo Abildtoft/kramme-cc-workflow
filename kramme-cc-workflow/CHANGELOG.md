@@ -4,6 +4,21 @@
 
 ### Removed
 
+## [0.57.0] - 2026-05-27
+
+### Added
+- Add skill usage stats (#355)
+- Install converted hook plugin bundle (#353)
+- Add repeat automation skill (#352)
+- Add skill review workflow (#351)
+
+### Changed
+- Make root README canonical (#359)
+- Support implementation audit breakdowns (#358)
+- Require manual test plans in descriptions (#357)
+- Discourage implementation-restating tests (#356)
+- Remove OpenCode support (#354)
+
 ## [0.56.0] - 2026-05-19
 
 ### Added
@@ -270,6 +285,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+[0.57.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.56.0...v0.57.0
 [0.56.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.55.0...v0.56.0
 [0.55.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.54.0...v0.55.0
 [0.54.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.53.0...v0.54.0
