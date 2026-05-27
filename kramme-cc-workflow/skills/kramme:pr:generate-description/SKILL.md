@@ -237,6 +237,13 @@ Generate a PR title using [Conventional Commits](https://www.conventionalcommits
 
 Read the section templates and worked examples from `assets/section-templates.md`. It covers Summary, Technical Details (implementation approach, scope changes, optional area notes, reviewer landmarks), Test Plan, and Breaking Changes — each with structural guidance and a complete example.
 
+When drafting the Test Plan, make it a reviewer/QA execution plan first:
+
+- **ALWAYS** lead with manual or reviewer-run scenarios that exercise the changed behavior.
+- **NEVER** substitute commands you ran (`npm test`, lint, typecheck, build, etc.) for the manual steps needed to validate the PR.
+- **CAN** add commands already run only in a separate `### Automated verification` subsection after the scenarios.
+- If the change has no meaningful manual path, include `### Manual QA` with a concrete reason and the closest reviewer-run validation path, then list automated verification separately.
+
 #### 3.1.5 GitHub UI Duplication Guard
 
 Before drafting the body, decide what the PR description adds beyond GitHub's review UI.
@@ -389,7 +396,7 @@ Here is your generated PR:
 - [ ] **Divergences from Linear issue are documented with clear rationale** (if applicable)
 - [ ] Any area-oriented technical details add context beyond the GitHub file tree
 - [ ] File names appear only when they add reviewer context that is not obvious from the GitHub diff
-- [ ] Test plan includes actionable scenarios
+- [ ] Test plan leads with actionable manual or reviewer-run scenarios, not just commands the agent already ran
 - [ ] Breaking changes are documented (or marked as "None")
 - [ ] `### Changes made` block lists concrete change verbs — not vague verbs like `update` or `improve` with no object
 - [ ] `### Things I didn't touch` block captures adjacent work considered and deliberately deferred (or states `None`)
@@ -456,6 +463,7 @@ Watch for these — they signal the description is about to under-serve the revi
 - _"I'll leave `Things I didn't touch` blank because nothing comes to mind."_ → If nothing comes to mind, re-read the diff. `None` is a valid answer only after you've looked.
 - _"The Linear issue covers the context — no need to restate it."_ → The PR body is read in isolation during review. Restate the essentials and link the issue.
 - _"I'll fold the migration warning into the body text."_ → `Potential concerns` is a dedicated block for a reason; a buried warning is a missed warning.
+- _"The tests passed, so the Test Plan can just list the commands I ran."_ → Passing commands are evidence, not reviewer/QA instructions. Add them only after manual scenarios.
 
 ## Red Flags — STOP
 
@@ -466,6 +474,7 @@ Pause and regenerate the description if any of these are true:
 - The body includes a "Key Files", "Files Changed", or similar section that mostly repeats the GitHub file list.
 - The body includes a "Changes by Area" section whose bullets could be reconstructed from GitHub's file tree without reading the prose.
 - A migration, feature-flag default, or breaking change is present in the diff but absent from `Potential concerns`.
+- The Test Plan is only automated commands, or starts with commands before explaining the manual/reviewer scenarios.
 - The description references spec files, conversation history, or `siw/LOG.md` (reviewers can't see them).
 - An AI-attribution badge is about to land in the body.
 
@@ -476,5 +485,6 @@ Before presenting or posting the description, self-check:
 - [ ] Title follows `<type>(<scope>): <description>` and is under 72 characters.
 - [ ] Summary restates the _why_ in business terms.
 - [ ] `Changes made` / `Things I didn't touch` / `Potential concerns` are all present, with `None` used only after consideration.
+- [ ] Test Plan explains how a reviewer or QA person should exercise the behavior; automated commands are separate evidence, not the whole plan.
 - [ ] Linear issue linked with the correct magic word (`Fixes`, `Closes`, `Related to`).
 - [ ] No AI attribution, no placeholder TODOs, no references to spec files.

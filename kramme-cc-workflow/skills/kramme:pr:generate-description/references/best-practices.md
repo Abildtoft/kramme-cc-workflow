@@ -46,6 +46,10 @@
 ## Test Plans
 
 - **ALWAYS** make test scenarios actionable (steps anyone can follow)
+- **ALWAYS** lead with manual or reviewer-run scenarios that exercise the changed behavior
 - **PREFER** checklist format for test scenarios
 - **NEVER** write "test thoroughly" without specific scenarios
+- **NEVER** substitute the verification commands you ran for the manual steps reviewers or QA need
+- **CAN** include commands already run only in a separate `### Automated verification` subsection after the scenarios
+- **ALWAYS** explain why manual QA is not applicable when a change has no meaningful manual path, then provide the closest reviewer-run validation path
 - **ALWAYS** include edge cases and error scenarios, not just happy paths

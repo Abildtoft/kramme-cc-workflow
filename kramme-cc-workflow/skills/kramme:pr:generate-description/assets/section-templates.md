@@ -149,14 +149,16 @@ The Linear issue originally requested only redirecting single-platform users. Du
 
 ## Test Plan Section
 
-**ALWAYS** include actionable testing steps:
+The Test Plan is for future reviewer or QA execution. It is not a transcript of the verification commands the agent already ran.
+
+**ALWAYS** include actionable manual or reviewer-run testing steps before any automated verification:
 
 1. **Setup steps** (if needed):
    - Environment configuration
    - Test data requirements
    - User permissions needed
 
-2. **Test scenarios** (organized by priority):
+2. **Manual or reviewer-run test scenarios** (organized by priority):
    - **Happy path**: Normal expected flow
    - **Edge cases**: Boundary conditions
    - **Error cases**: What happens when things go wrong
@@ -164,6 +166,12 @@ The Linear issue originally requested only redirecting single-platform users. Du
 3. **Verification points**:
    - Expected outcomes for each scenario
    - What to check in the UI, database, logs, etc.
+
+4. **Automated verification** (optional, after the scenarios):
+   - Include commands already run only after the manual/reviewer scenarios
+   - Label them `### Automated verification` so reviewers can distinguish evidence from test instructions
+   - Never make test, lint, typecheck, or build commands the entire Test Plan
+   - If no manual scenario applies, include a `### Manual QA` note explaining why and give the closest reviewer-run validation path
 
 **PREFER** using a checklist format for clarity:
 
@@ -177,7 +185,7 @@ The Linear issue originally requested only redirecting single-platform users. Du
 - User account with multiple platforms (for multi-platform testing)
 - User account with single platform (for auto-redirect testing)
 
-### Test Scenarios
+### Manual scenarios
 
 **Scenario 1: Single-platform user**
 
@@ -203,6 +211,10 @@ The Linear issue originally requested only redirecting single-platform users. Du
 
 - [ ] Log in as a new user with no platforms
 - [ ] Verify appropriate message/redirect to onboarding
+
+### Automated verification
+
+- `npm test -- platform-picker`
 ```
 
 ## Breaking Changes Section
