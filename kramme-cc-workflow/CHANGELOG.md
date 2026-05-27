@@ -4,6 +4,11 @@
 
 ### Removed
 
+## [0.58.0] - 2026-05-27
+
+### Fixed
+- Restore skill review workflow (#361)
+
 ## [0.57.0] - 2026-05-27
 
 ### Added
@@ -285,6 +290,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+[0.58.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.57.0...v0.58.0
 [0.57.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.56.0...v0.57.0
 [0.56.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.55.0...v0.56.0
 [0.55.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.54.0...v0.55.0
