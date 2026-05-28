@@ -343,7 +343,7 @@ Session management, verification, artifact cleanup, and hook configuration.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:workflow-artifacts:cleanup` | User | — | Delete workflow artifacts such as review overviews, audit reports, generated PR plans, temporary SIW files, and visual diagram HTML files.<br><br>For SIW-specific cleanup, use `/kramme:siw:remove`. |
+| `/kramme:workflow-artifacts:cleanup` | User | — | Delete workflow artifacts — review and audit overviews, QA reports, generated PR plans, SIW tracking files, and visual diagram HTML — from the working directory and the shared diagrams folder.<br><br>Confirms before deleting and keeps SIW specification files unless you explicitly include them; deletions are recoverable from the system Trash when `trash` is installed.<br><br>For SIW-specific cleanup, use `/kramme:siw:remove`. |
 | `/kramme:changelog:generate` | User | `[daily\|weekly]` | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts. Returns changelog text only (reads PRs read-only, writes/sends nothing). |
 | `/kramme:hooks:configure-links` | User | `[show\|reset\|KEY=VALUE ...]` | Configure `context-links` hook settings by writing local overrides to `kramme-cc-workflow/hooks/context-links.config` (workspace slug, team keys, regexes). |
 | `/kramme:hooks:toggle` | User | `<status\|reset\|hook-name> [enable\|disable]` | Enable or disable a plugin hook.<br><br>Use `status` to list all hooks, `reset` to enable all hooks, or specify a hook name to toggle. |
