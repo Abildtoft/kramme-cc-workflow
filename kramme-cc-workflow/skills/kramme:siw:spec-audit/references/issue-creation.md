@@ -2,6 +2,8 @@
 
 Use this when `SKILL.md` reaches Step 6 and the audit found issue-eligible findings.
 
+**Do not invoke this reference when `INLINE_MODE=true`.** Inline runs are read-only previews and must not write issue files or update tracker/log files.
+
 ## Eligibility
 
 Only create SIW issues if ALL of these conditions are met:
