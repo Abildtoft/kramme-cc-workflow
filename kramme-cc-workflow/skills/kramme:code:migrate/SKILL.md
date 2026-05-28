@@ -12,6 +12,8 @@ Plan and execute framework/library version migrations with phased upgrades, code
 
 Use `kramme:code:source-driven` for the official-doc grounding discipline inside this workflow, and `kramme:code:deprecate` after the migration when the old path still needs an explicit announcement / migration / removal plan.
 
+Skip for: patch or minor version bumps with no breaking changes, isolated single-package upgrades, runtime-only changes (e.g. bumping `.nvmrc` without language/API changes), and routine dependency updates — use `kramme:deps:audit` or `kramme:pr:create` directly instead.
+
 Parse `$ARGUMENTS` for `--auto` before Step 1.
 
 - If present, set `AUTO_MODE=true` and remove the flag from the remaining input.
@@ -21,6 +23,9 @@ Parse `$ARGUMENTS` for `--auto` before Step 1.
 
 ```
 /kramme:code:migrate "Angular 19" [--auto]
+    |
+    v
+[Step 0: Preflight] -> Check clean working tree, detect prior plan/branch
     |
     v
 [Step 1: Parse Target] -> Framework + current/target versions
@@ -36,13 +41,53 @@ Parse `$ARGUMENTS` for `--auto` before Step 1.
     |
     v
 [Step 5: User Review] -> Execute / phase-by-phase / plan only / SIW
+                        (skipped under --auto: executes full plan)
     |
     v
 [Step 6: Execute Phase-by-Phase] -> Migrate → verify → checkpoint
+                                    (per-phase pause skipped under --auto)
     |
     v
 [Step 7: Completion Report] -> Summary + next steps
 ```
+
+---
+
+## Step 0: Preflight
+
+1. **Working tree must be clean.** Run `git status --porcelain`.
+   - If output is non-empty:
+     - If `AUTO_MODE=true`, abort with: `Working tree is dirty. Commit or stash changes before running --auto migration. Files: {list}`.
+     - Otherwise:
+
+```
+AskUserQuestion
+header: Working Tree Not Clean
+question: Uncommitted changes will be carried onto the migration branch, mixing pre-existing work with migration changes. How to proceed?
+options:
+  - Abort — let me commit or stash first
+  - Stash and continue — run `git stash -u`, restore after
+  - Continue anyway — I accept the mixed diff
+```
+
+2. **Detect prior migration state.** Check for an existing plan file matching `migration-plan-*.md` in the project root and an existing `migrate/*` branch.
+   - If neither: continue to Step 1.
+   - If a prior plan or branch exists:
+     - If `AUTO_MODE=true`, abort with: `Prior migration artifacts detected ({plan-file} / {branch-name}). Auto mode will not overwrite. Remove artifacts or run without --auto to choose.`
+     - Otherwise:
+
+```
+AskUserQuestion
+header: Prior Migration Detected
+question: Found existing migration artifacts ({plan-file} / {branch-name}). How to proceed?
+options:
+  - Resume — keep plan, switch to branch, ask which phase to start from
+  - Restart — delete plan, abandon branch (confirm), start fresh
+  - Abort — leave artifacts untouched, stop here
+```
+
+   - On **Resume**: load the existing plan, check out the branch, AskUserQuestion for the phase number to start from, then jump to Step 6 with that phase.
+   - On **Restart**: confirm branch deletion explicitly before deleting; then continue to Step 1.
 
 ---
 
@@ -82,7 +127,7 @@ options:
 
 ## Step 2: Fetch Migration Guide
 
-Run the DETECT / FETCH / CITE workflow from `kramme:code:source-driven` here. Treat that skill as the source of truth for how to ground, fetch, and cite documentation. This step adds only the migration-specific scope: which sources to check and what migration details to extract.
+Run the DETECT / FETCH / IMPLEMENT / CITE workflow from `kramme:code:source-driven` here. Treat that skill as the source of truth for how to ground, fetch, and cite documentation. This step adds only the migration-specific scope: which sources to check and what migration details to extract.
 
 1. Read known migration sources from `references/migration-sources.md` to identify the official migration-guide URLs, changelogs, and framework-specific upgrade hubs for the target stack.
 
@@ -181,7 +226,16 @@ Create a phased plan:
 - Run linter with new rule set
 - Verification: clean lint, no migration artifacts
 
-Write plan to `migration-plan-{framework}-{target}.md` in project root.
+Write plan to `migration-plan-{slug}.md` in the project root, where `{slug}` is `{framework}-{target}` normalized as:
+
+- lowercase
+- non-alphanumeric runs collapsed to a single `-`
+- leading/trailing `-` trimmed
+- truncated to 60 characters
+
+Examples: `Angular 19` → `angular-19`, `Next.js 15` → `next-js-15`, `Node 22` → `node-22`. Reject the input and abort if the slug is empty after normalization.
+
+Refuse to write outside the project root. If a file already exists at the target path, the Step 0 preflight should have handled it — if it slips through, AskUserQuestion (overwrite / abort), or abort under `AUTO_MODE`.
 
 ---
 
@@ -202,8 +256,8 @@ options:
   - Create SIW workflow — init SIW with phases as issues
 ```
 
-- **Plan only:** report plan file location and STOP.
-- **Create SIW:** reference `/kramme:siw:init` with the plan content, then STOP.
+- **Plan only:** print the plan file path and STOP.
+- **Create SIW:** print `Run /kramme:siw:init {plan-path}` for the user, do not invoke it automatically, then STOP.
 - **Execute / Phase by phase:** continue to Step 6.
 
 ---
@@ -221,7 +275,7 @@ For each phase:
 
 2. **Execute** migration steps (codemods, code changes, config updates).
 
-3. **Run verification gate** — reference `/kramme:verify:run` for comprehensive checks.
+3. **Run verification gate** — invoke `/kramme:verify:run` via the Skill tool for comprehensive checks, or fall back to the project's build/lint/test commands if the skill is unavailable.
 
 4. **If verification fails:** attempt fix (max 3 iterations), then escalate:
 

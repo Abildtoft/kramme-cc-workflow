@@ -82,7 +82,7 @@
 
 **Verification:** Pass rate matches or exceeds baseline ({baseline_count} tests).
 
-## Phase 6: Manual Verification and Cleanup
+## Phase 6: Cleanup
 
 **Effort:** Quick
 
