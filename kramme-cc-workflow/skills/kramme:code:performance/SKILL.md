@@ -227,7 +227,6 @@ If any box is unchecked, the slice is not done. Fix the gap or split the slice.
 ## Integration with other skills
 
 - **Downstream review**: the `performance-oracle` agent verifies measurements and bottleneck identification post-hoc. A change that followed this skill's MEASURE/VERIFY discipline makes that review mechanical.
-- **Sibling authoring**: `kramme:code:frontend-authoring` — UI slices are where most CWV wins and losses happen. Author the component per `frontend-authoring`; apply the budget and measurement gates per this skill.
 - **Companion**: `kramme:code:incremental` — each optimization is one slice through the incremental loop. The five-step workflow (MEASURE / IDENTIFY / FIX / VERIFY / GUARD) fits inside a single increment; the budget becomes the increment's exit criterion.
 
 ---

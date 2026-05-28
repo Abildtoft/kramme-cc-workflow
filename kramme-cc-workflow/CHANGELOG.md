@@ -5,6 +5,7 @@
 ### Removed
 
 - Remove kramme:code:zoom-out orientation skill
+- Breaking: Removed `/kramme:code:frontend-authoring` skill.
 
 ## [0.58.0] - 2026-05-27
 
