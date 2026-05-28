@@ -1,6 +1,6 @@
 ---
 name: kramme:qa
-description: Structured QA testing with evidence capture. Runs smoke checks, diff-aware validation, or targeted route testing against a live app. Produces QA_REPORT.md with screenshots, repro steps, severity, and recommended fixes, or replies inline with --inline. Uses browser MCP when available and falls back to code-only analysis otherwise.
+description: Structured QA testing with evidence capture. Runs smoke checks, diff-aware validation, or targeted route testing against a live app. Produces QA_REPORT.md with screenshots, repro steps, severity, and recommended fixes, or replies inline with --inline. Uses browser MCP when available and falls back to code-only analysis otherwise. Not for logging multiple bugs from a manual pass (use kramme:qa:intake) or tracing one bug's root cause (use kramme:debug:investigate).
 argument-hint: "<url> [quick|diff-aware|targeted <route>] [--base <branch>] [--regression] [--inline] [--legacy-console]"
 disable-model-invocation: false
 user-invocable: true
@@ -25,8 +25,8 @@ Extract from `$ARGUMENTS`:
    - `targeted <route>` — test a specific route/page
 3. **Flags**:
    - `--base <branch>` — explicit base branch for diff-aware mode
-   - `--regression` — compare results against previous QA baseline (see Step 10)
-   - `--inline` — reply with the QA report inline instead of writing `QA_REPORT.md`
+   - `--regression` — compare results against previous QA baseline (see Step 8b)
+   - `--inline` — reply with the QA report inline instead of writing `QA_REPORT.md` (still writes `QA_BASELINE.json`, which regression depends on; see Step 9)
    - `--legacy-console` — relax the clean-console standard for legacy apps with known noisy consoles (see Step 4)
 
 Store parsed values:
@@ -230,7 +230,7 @@ Create a test checklist for each route:
 4. **Color contrast** — sample primary text and interactive elements against WCAG AA (4.5:1 for body text, 3:1 for large text and UI components).
 5. **Dynamic content announcement** — live regions, toasts, and modal open/close announce to assistive tech.
 
-Each failed a11y check becomes a finding in the `Content` category (the health-score rubric does not currently carry an `Accessibility` category — reuse `Content` until the rubric is extended).
+Each failed a11y check becomes a finding in the `Accessibility` category (see `references/health-score-rubric.md`).
 
 Prioritize test items by severity impact. Blockers first, then major, then minor.
 
@@ -258,17 +258,22 @@ After navigation, perform basic interaction checks:
 
 **If browse fails (no browser MCP available):**
 
-Degrade to code-only analysis:
+Degrade to code-only analysis. First select which source files to read, by mode:
 
-1. Read the changed files identified in Step 3
-2. Analyze code for potential issues:
-   - Missing error boundaries or error handling
-   - Missing loading states
-   - Hardcoded strings or missing i18n
-   - Unhandled null/undefined access
-   - Missing form validation
-   - Accessibility issues visible in markup
-3. Report all findings as "code-only mode" with a clear warning:
+- **diff-aware** — read the changed UI files identified in Step 3.
+- **targeted** — map `TARGET_ROUTE` back to its source file(s) by reversing the Step 3 route-detection logic (file-based routing: route → file path; config-based routing: search the router config for the route, then read the component it references).
+- **quick** — for each route selected in Step 3, map it back to its source file(s) the same way. If a route cannot be mapped to a file, note it as skipped (no source located) rather than silently dropping it.
+
+Then analyze the selected files for potential issues:
+
+- Missing error boundaries or error handling
+- Missing loading states
+- Hardcoded strings or missing i18n
+- Unhandled null/undefined access
+- Missing form validation
+- Accessibility issues visible in markup
+
+Report all findings as "code-only mode" with a clear warning:
 
    ```
    Warning: No browser MCP detected. Running in code-only mode.
@@ -321,7 +326,7 @@ When assessing, consider:
 
 Read `references/health-score-rubric.md` and compute a weighted health score (0-100).
 
-1. Assign each finding to one category: Console, Network, Visual, Functional, Data, Interaction, or Content
+1. Assign each finding to one category: Console, Network, Visual, Functional, Data, Interaction, Content, or Accessibility
 2. For each category, start at 100 and deduct per finding: Blocker -25, Major -15, Minor -8, Info -3 (minimum 0)
 3. Compute the weighted average using the rubric weights
 
@@ -391,7 +396,7 @@ Add a `## Regression` section to the QA report:
 
 ### Step 9: Save Baseline
 
-After regression comparison (or if skipped), save a machine-readable baseline for future runs:
+After regression comparison (or if skipped), save a machine-readable baseline for future runs. This runs regardless of `INLINE_MODE` — `--inline` suppresses only `QA_REPORT.md`, not the baseline, so regression comparisons keep working across runs.
 
 Write `QA_BASELINE.json` at the project root:
 
@@ -410,7 +415,7 @@ Write `QA_BASELINE.json` at the project root:
       "id": "QA-001",
       "title": "{title}",
       "severity": "{Blocker|Major|Minor|Info}",
-      "category": "{Console|Network|Visual|Functional|Data|Interaction|Content}",
+      "category": "{Console|Network|Visual|Functional|Data|Interaction|Content|Accessibility}",
       "route": "{URL path}"
     }
   ],
@@ -482,44 +487,11 @@ Before producing the QA report, read `references/addy-conventions.md` and apply:
 
 ## Usage Examples
 
-**Quick smoke test (default mode):**
-
 ```
-/kramme:qa http://localhost:3000
-/kramme:qa http://localhost:3000 quick
-```
-
-**Diff-aware testing (test routes affected by changes):**
-
-```
-/kramme:qa http://localhost:4200 diff-aware --base develop
-/kramme:qa http://localhost:3000 diff-aware
-```
-
-**Targeted route testing:**
-
-```
-/kramme:qa http://localhost:3000 targeted /settings/profile
-/kramme:qa http://localhost:4200 targeted /dashboard
-```
-
-**Staging environment:**
-
-```
-/kramme:qa https://staging.myapp.com
-/kramme:qa https://staging.myapp.com diff-aware --base main
-```
-
-**Regression comparison (compare against previous run):**
-
-```
-/kramme:qa http://localhost:3000 --regression
-/kramme:qa http://localhost:4200 diff-aware --regression
-```
-
-**Inline report (no markdown file):**
-
-```
-/kramme:qa http://localhost:3000 --inline
-/kramme:qa http://localhost:4200 diff-aware --inline
+/kramme:qa http://localhost:3000                              # quick smoke test (default)
+/kramme:qa http://localhost:4200 diff-aware --base develop    # test routes affected by changes
+/kramme:qa http://localhost:3000 targeted /settings/profile  # one specific route
+/kramme:qa https://staging.myapp.com                          # staging URL
+/kramme:qa http://localhost:3000 --regression                # compare against previous baseline
+/kramme:qa http://localhost:3000 --inline                    # reply inline, no QA_REPORT.md
 ```
