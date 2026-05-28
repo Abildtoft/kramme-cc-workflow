@@ -7,8 +7,7 @@ This reference is loaded by `/kramme:pr:resolve-review --team`; assume `--team` 
 Parse `$ARGUMENTS` for `--auto` before Step 1.
 
 - If present, set `AUTO_MODE=true` and remove the flag from the remaining input.
-- `--auto` means the lead should skip the plan confirmation in Step 4, proceed directly with the parallel plan whenever the grouping shows real parallelism, and post/resolve addressed external review comments after the fixes land.
-- Legacy `--reply` / `--answer-and-resolve` flags may still be accepted by the delegated Step 1 parser, but `--auto` is the preferred flag going forward.
+- `--auto` means the lead skips the plan confirmation in Step 4, proceeds directly with the parallel plan whenever the grouping shows real parallelism, and posts/resolves addressed external review comments after the fixes land.
 
 ## Prerequisites
 
@@ -34,7 +33,7 @@ Then stop.
 Same as `/kramme:pr:resolve-review` Steps 0-1:
 
 1. Check for arguments, including source flags, severity filters, granular commits, review content, instructions, or URL
-2. Check for `REVIEW_OVERVIEW.md` and `UX_REVIEW_OVERVIEW.md`
+2. Check for `REVIEW_OVERVIEW.md`, `UX_REVIEW_OVERVIEW.md`, and `PRODUCT_REVIEW_OVERVIEW.md`
 3. Check chat context
 4. Fetch from current branch's PR if nothing else found
 5. List all findings
@@ -45,7 +44,7 @@ Same as `/kramme:pr:resolve-review` Step 2:
 
 1. **Scope check** -- Classify each finding as in-scope, out-of-scope, or gray area
 2. **Validity assessment** -- For external reviews, assess whether you agree
-3. **Severity prioritization** -- High > Medium > Low
+3. **Severity prioritization** -- critical > important > suggestion
 
 ### Step 3: Group Findings by File Area
 
@@ -75,23 +74,15 @@ Then delegate to the standard skill.
 
 ### Step 4: Present Plan
 
-If `AUTO_MODE=true`, skip this AskUserQuestion and proceed with **Resolve in parallel**.
+If `AUTO_MODE=true`, skip this prompt and proceed with **Resolve in parallel**.
 
-Otherwise use AskUserQuestion to confirm the parallel plan:
+Otherwise ask the user to confirm the parallel plan with three options:
 
-```yaml
-header: "Parallel Review Resolution"
-question: "Found X in-scope findings across Y file groups. How should I proceed?"
-options:
-  - label: "Resolve in parallel"
-    description: "Spawn Z agents to fix non-overlapping groups simultaneously"
-  - label: "Resolve sequentially"
-    description: "Fix all findings in a single session (lower token cost)"
-  - label: "Cancel"
-    description: "Don't resolve any findings"
-```
+- **Resolve in parallel** — Spawn Z agents to fix non-overlapping groups simultaneously.
+- **Resolve sequentially** — Fix all findings in a single session (lower token cost). Delegate to `/kramme:pr:resolve-review`.
+- **Cancel** — Don't resolve any findings.
 
-If "Resolve sequentially" is selected, delegate to `/kramme:pr:resolve-review`.
+Frame the question as: "Found X in-scope findings across Y file groups. How should I proceed?"
 
 ### Step 5: Spawn Resolver Agents
 
@@ -119,7 +110,7 @@ If any findings were identified as overlapping multiple groups in Step 3:
 
 While agents work:
 
-- Monitor progress via TaskList
+- Monitor each agent's progress
 - If an agent discovers it needs a file outside its ownership set:
   - Check if the other owner is done with that file
   - If yes: grant access
@@ -136,12 +127,10 @@ After all agents complete:
    - Fix it directly as the lead
 
 3. Apply the same reply behavior as `/kramme:pr:resolve-review` Step 4:
-   - Default (no flag): do not post replies or resolve threads on GitHub
-   - If `AUTO_MODE=true` or `ANSWER_AND_RESOLVE=true`, and the review source is external: post replies for each external review comment, then resolve addressed threads on the PR
-   - If `REVIEW_SOURCE=local`: do not post replies or resolve threads on GitHub, even when `--auto` or a legacy reply alias was provided
-   - If `AUTO_MODE=true` or `ANSWER_AND_RESOLVE=true`, and the review source is external: for disagreements or out-of-scope findings, post a rationale reply, but do not mark as resolved unless explicitly requested by the reviewer/user
+   - `REVIEW_SOURCE=local`, or neither `AUTO_MODE` nor `ANSWER_AND_RESOLVE` is set: do not post replies or resolve threads on GitHub.
+   - `AUTO_MODE=true` or `ANSWER_AND_RESOLVE=true` on an external review: print the summary line (`Posting N replies and resolving M threads on PR #X`), then post a reply for each addressed comment and resolve those threads. For disagreements or out-of-scope findings, post a rationale reply but do not resolve the thread.
 
-4. Write resolutions to the appropriate file (if the source was `UX_REVIEW_OVERVIEW.md`, update that file; otherwise write to `REVIEW_OVERVIEW.md`), using the same format as `/kramme:pr:resolve-review` Step 4, with an additional note about parallel resolution:
+4. Write resolutions to the appropriate file (if the source was `UX_REVIEW_OVERVIEW.md` or `PRODUCT_REVIEW_OVERVIEW.md`, update that file in place; otherwise write to `REVIEW_OVERVIEW.md`), using the same format as `/kramme:pr:resolve-review` Step 4 and Output format (in-place updates, never delete entries), with an additional note about parallel resolution:
 
 ```markdown
 ## Resolution Summary

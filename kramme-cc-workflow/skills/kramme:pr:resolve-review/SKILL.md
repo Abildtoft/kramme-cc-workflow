@@ -1,12 +1,14 @@
 ---
 name: kramme:pr:resolve-review
 description: Resolve findings from code reviews by implementing fixes and documenting changes. Use --team to resolve independent findings in parallel by file area.
-argument-hint: "[--team] [--auto] [--granular] [--severity critical,important] [--source local|online|--local|--online] [review-content|instructions|url]"
-disable-model-invocation: false
+argument-hint: "[--team] [--auto] [--granular] [--severity ...] [--source local|online] [review|url|instructions]"
+disable-model-invocation: true
 user-invocable: true
 ---
 
 # Resolve Review Findings
+
+**Not for:** resolving a single inline comment with no structured review, landing unrelated fixes that just happened to be mentioned by a reviewer, or making changes to a branch the user has not asked you to modify.
 
 ## Team Mode
 
@@ -14,77 +16,52 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 
 ## Workflow
 
-### Step 0: Check for input
+### Step 0: Parse arguments
 
-Before searching for reviews, check if the user provided input directly with the command:
+Parse `$ARGUMENTS` for flags. After extracting all flags, the remainder is the **payload**.
 
-1. **Check for arguments after the command** — If the user wrote `/kramme:pr:resolve-review <something>`:
-   - Set `REVIEW_SOURCE=auto` by default.
-   - Preferred source flags:
-     - `--source local` or `--local` → set `REVIEW_SOURCE=local`
-     - `--source online` or `--online` → set `REVIEW_SOURCE=online`
-   - Legacy source flag (still supported):
-     - `--review-source local|online`
-   - If `<something>` includes both local and online source selections (across any source flags):
-     - Ask the user to choose exactly one source value (`local` or `online`), then stop
-   - If `<something>` includes `--source` or `--review-source` with any other value:
-     - Ask the user to choose `local` or `online`, then stop
-   - Remove any source flags (`--source ...`, `--local`, `--online`, `--review-source ...`) from remaining input before classification
-   - If `<something>` includes `--auto` (preferred), `--reply` (legacy), or `--answer-and-resolve` (legacy):
-     - Set `ANSWER_AND_RESOLVE=true`
-     - Remove `--auto` / `--reply` / `--answer-and-resolve` from remaining input before classification
-     - Treat this as permission to post replies and resolve addressed review threads directly on the PR
-   - If `<something>` includes `--team`:
-     - Use Team Mode and remove `--team` from remaining input before classification
-   - If `<something>` includes `--granular`:
-     - Set `GRANULAR_COMMITS=true`
-     - Remove `--granular` from remaining input before classification
-   - If `<something>` includes `--severity <levels>`:
-     - Parse comma-separated severity levels. Valid values: `critical`, `important`, `suggestion` (maps to High, Medium, Low respectively)
-     - Store as `SEVERITY_FILTER`
-     - Remove `--severity <levels>` from remaining input before classification
-     - When set, only findings matching the specified severities are addressed; others are skipped with **Action taken: Skipped — outside severity filter.**
-   - If `REVIEW_SOURCE=local` and `<something>` includes a URL:
-     - Ask the user to either remove the URL or switch to `--source online` / `--online`, then stop
-   - If `REVIEW_SOURCE=auto` and `<something>` includes a URL:
-     - Set `REVIEW_SOURCE=online` and treat the URL as the external review source
-   - If `<something>` looks like review content (e.g., contains code comments, file references, or review-like text) → treat it as the **review to resolve**
-   - If `<something>` looks like instructions (e.g., "focus on security issues", "only address high priority items") → store as **additional instructions** to apply during evaluation and implementation
-   - If `<something>` is a URL → treat as **external review** source (fetch from that URL)
+**Flags:**
 
-2. **Apply additional instructions throughout** — If the user provided instructions (not review content), keep them in mind when:
-   - Prioritizing which findings to address
-   - Evaluating whether to implement a fix
-   - Deciding how to implement fixes
+- `--source local|online` (aliases `--local`, `--online`) → `REVIEW_SOURCE`. Default `auto`. If both are selected, or `--source` is given an unknown value, ask the user to pick one and stop.
+- `--auto` → `ANSWER_AND_RESOLVE=true`. Permits posting replies and resolving addressed threads on the PR (external reviews only).
+- `--team` → Team Mode (see top of file).
+- `--granular` → `GRANULAR_COMMITS=true`. One commit per finding.
+- `--severity <list>` → `SEVERITY_FILTER`. Comma-separated values from `critical`, `important`, `suggestion`. Findings outside the filter are skipped with **Action taken: Skipped — outside severity filter.**
+
+**Payload classification:**
+
+- URL → external review source. If `REVIEW_SOURCE=local`, ask the user to drop the URL or switch to `--source online`, then stop. Otherwise set `REVIEW_SOURCE=online` and fetch from the URL.
+- Review-like prose (file references, code excerpts, structured findings) → the **review to resolve**.
+- Plain direction (e.g. "focus on security issues", "only high priority") → **additional instructions**. Apply throughout when prioritizing findings, judging validity, and choosing how to implement fixes.
+
+If the payload contains both review content and direction, treat the bulk as the review and the prefatory text as instructions.
 
 ### Step 1: Find the review
 
 If no review content was provided in Step 0:
 
-1. **If `REVIEW_SOURCE=local`**:
-   - Read `REVIEW_OVERVIEW.md` only (do not use `UX_REVIEW_OVERVIEW.md`, chat, or PR APIs)
-   - When parsing local review artifacts, accept both `**Location:**` and legacy `**File:**` labels
-   - If the file is missing, ask the user to provide review content, switch to `--source online` / `--online`, or run `/kramme:pr:code-review` first
-   - Treat this as an **internal review**
-2. **If `REVIEW_SOURCE=online`**:
-   - If a PR URL is provided in arguments or chat, fetch review comments from that URL
-   - Otherwise, fetch unresolved review comments from the current branch's PR using `gh pr view --json reviews,comments` and `gh api repos/{owner}/{repo}/pulls/{number}/comments`
-   - Treat this as an **external review**
-3. **If `REVIEW_SOURCE=auto`**:
-   - Check for review files first:
-     - `REVIEW_OVERVIEW.md` (generated by `/kramme:pr:code-review`)
-     - `UX_REVIEW_OVERVIEW.md` (generated by `/kramme:pr:ux-review`)
-     - `PRODUCT_REVIEW_OVERVIEW.md` (generated by `/kramme:pr:product-review`)
-     - Accept both `**Location:**` and legacy `**File:**` labels when parsing existing local artifacts
-     - If any file exists, parse it as the review to resolve
-     - If multiple exist, ask the user which to resolve (or resolve them sequentially)
-     - This is an **internal review**
-   - If no file found, scan chat context for:
-     - Code review content from the agent → **internal review**
-     - A PR URL provided by the user → **external review** (fetch from that URL)
-   - If still nothing found, fetch from current branch's PR using `gh pr view --json reviews,comments` and `gh api repos/{owner}/{repo}/pulls/{number}/comments`
-4. **If no review found for the selected source mode** — Ask the user to provide review content, provide a PR URL, or choose a different source mode
-5. **List all findings** — Present each comment with its location (`file:line` when applicable, otherwise a broader scope label such as `review-scope`) and content
+**Local review files** (treated as **internal reviews**):
+
+- `REVIEW_OVERVIEW.md` (from `/kramme:pr:code-review`)
+- `UX_REVIEW_OVERVIEW.md` (from `/kramme:pr:ux-review`)
+- `PRODUCT_REVIEW_OVERVIEW.md` (from `/kramme:pr:product-review`)
+
+When parsing these files, accept both `**Location:**` and legacy `**File:**` labels.
+
+**Fetching from GitHub** (treated as **external reviews**):
+
+- Use the PR URL provided in arguments or chat if present; otherwise the current branch's PR.
+- Commands: `gh pr view --json reviews,comments` and `gh api repos/{owner}/{repo}/pulls/{number}/comments`.
+
+**By source mode:**
+
+1. `REVIEW_SOURCE=local` — read `REVIEW_OVERVIEW.md` only. If missing, ask the user to provide review content, switch to `--source online`, or run `/kramme:pr:code-review` first.
+2. `REVIEW_SOURCE=online` — fetch from GitHub.
+3. `REVIEW_SOURCE=auto` — try local files first (if multiple exist, ask which to resolve). If none, scan chat for review content or a PR URL. If still nothing, fetch from GitHub.
+
+If no review is found for the selected mode, ask the user to provide review content, provide a PR URL, or choose a different mode.
+
+Then **list all findings** with location (`file:line` when applicable, otherwise a broader scope label such as `review-scope`) and content.
 
 ### Step 2: Evaluate findings
 
@@ -137,9 +114,9 @@ For internal reviews (self-generated): Skip this substep and proceed directly to
 
 #### 2c. Prioritize by severity
 
-- **High** (= `critical`): Security issues, data loss risks, broken functionality, blocking bugs
-- **Medium** (= `important`): Performance problems, maintainability concerns, missing error handling
-- **Low** (= `suggestion`): Style preferences, naming suggestions, minor refactors
+- **critical**: Security issues, data loss risks, broken functionality, blocking bugs
+- **important**: Performance problems, maintainability concerns, missing error handling
+- **suggestion**: Style preferences, naming suggestions, minor refactors
 
 If `SEVERITY_FILTER` is set, skip any finding whose severity is not in the filter. Document skipped findings with **Action taken: Skipped — outside severity filter.**
 
@@ -147,7 +124,7 @@ If `SEVERITY_FILTER` is set, skip any finding whose severity is not in the filte
 
 Not every finding deserves a code change. Dismiss findings that meet ALL of these criteria:
 
-- Severity is **Low**
+- Severity is **suggestion**
 - The suggestion is subjective (style, naming preference, alternative approach that isn't clearly better)
 - Implementing it would churn code without measurable improvement
 
@@ -155,26 +132,27 @@ For dismissed findings, document them in the output with **Action taken: Acknowl
 
 ### Step 2.5: Create rollback checkpoint
 
-Before making any code changes, create a checkpoint commit so fixes can be cleanly reverted if they introduce problems:
+If no findings remain after scope and severity filtering, skip this step and Step 3, and write a summary-only output in Step 4 (no checkpoint, no fixes, no validation, no stash).
 
-```bash
-# Stage any uncommitted work first
-git add -A
-# Only create checkpoint if there are staged changes
-git diff --cached --quiet || git commit -m "wip: pre-resolve-review checkpoint"
-```
-
-Record the checkpoint commit SHA as `CHECKPOINT_SHA`:
+Otherwise record the current HEAD and stash any uncommitted work so fix commits land on a clean tree:
 
 ```bash
 CHECKPOINT_SHA=$(git rev-parse HEAD)
+CHECKPOINT_STASH=
+if ! git diff --quiet HEAD || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+  git stash push -u -m "pre-resolve-review checkpoint"
+  CHECKPOINT_STASH=1
+fi
 ```
 
 If fixes later fail verification (Step 4), offer to roll back:
 
 ```bash
 git reset --hard "$CHECKPOINT_SHA"
+[ -n "$CHECKPOINT_STASH" ] && git stash pop
 ```
+
+Either way, Step 4 pops the stash so the user's pre-existing uncommitted work is restored.
 
 ### Step 3: Implement fixes
 
@@ -193,13 +171,18 @@ Each commit should be self-contained and pass linting/formatting on its own. If 
 
 ### Step 4: Validate and summarize
 
-- **Validate** — Check for and fix any new linting, formatting, and testing issues. If validation fails after multiple fix attempts and `CHECKPOINT_SHA` exists, offer to rollback: `git reset --hard "$CHECKPOINT_SHA"`
-- **Review response behavior**:
-  - Default (no flag): **Do NOT resolve or reply to comments** on GitHub
-  - If `ANSWER_AND_RESOLVE=true` and the review source is external: post replies for each external review comment, then resolve addressed threads on the PR
-  - If `REVIEW_SOURCE=local`: do not post replies or resolve threads on GitHub, even when `--auto` or a legacy reply alias was provided
-  - If `ANSWER_AND_RESOLVE=true` and the review source is external: for disagreements or out-of-scope findings, post a rationale reply, but do not mark as resolved unless explicitly requested by the reviewer/user
-- **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `UX_REVIEW_OVERVIEW.md`, update that file. If the source was `REVIEW_OVERVIEW.md` or an external/chat review, write to `REVIEW_OVERVIEW.md`.
+- **Validate** — Run `kramme:verify:run` and fix any new lint/format/test issues it reports. If validation fails after multiple attempts and `CHECKPOINT_SHA` exists, offer to roll back (see Step 2.5).
+- **Reply behavior**:
+  - `REVIEW_SOURCE=local` or `ANSWER_AND_RESOLVE` unset: do not post replies or resolve threads on GitHub.
+  - `ANSWER_AND_RESOLVE=true` on an external review: print `Posting N replies and resolving M threads on PR #X` before any `gh` write so the user can interrupt. Then post a reply for each addressed comment and resolve those threads. For disagreements or out-of-scope findings, post a rationale reply but do not resolve the thread.
+- **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `UX_REVIEW_OVERVIEW.md` or `PRODUCT_REVIEW_OVERVIEW.md`, update that file in place. If the source was `REVIEW_OVERVIEW.md` or an external/chat review, write to `REVIEW_OVERVIEW.md`.
+- **Restore the checkpoint** — If a stash was created in Step 2.5, pop it now so the user's pre-existing uncommitted work is restored:
+
+  ```bash
+  [ -n "$CHECKPOINT_STASH" ] && git stash pop
+  ```
+
+  If `git stash pop` reports conflicts, leave the stash in place and tell the user to resolve manually with `git stash pop`.
 
 ## Guidelines
 
@@ -208,7 +191,7 @@ Each commit should be self-contained and pass linting/formatting on its own. If 
 - **Write clear, maintainable code** — prioritize readability and simplicity; prefer straightforward solutions over clever ones, but do not be lazy.
 - **Add comments where needed** — if a fix involves non-obvious logic or trade-offs, include concise comments explaining the reasoning.
 - **Ask questions if unsure** — if any aspect of the fix or the related business logic is unclear, seek clarification before proceeding.
-- **Follow project conventions** — ensure fixes align with the best practices outlined in AGENTS.md.
+- **Follow project conventions** — ensure fixes align with the best practices outlined in the target project's AGENTS.md (when present).
 - **Stay focused** — limit changes to what's necessary for the fix; avoid unrelated refactors or improvements.
 
 ### For each fix
@@ -226,8 +209,11 @@ Each commit should be self-contained and pass linting/formatting on its own. If 
 
 Write resolutions to the appropriate file in the project root:
 
-- If the source review was `UX_REVIEW_OVERVIEW.md` → update `UX_REVIEW_OVERVIEW.md`
-- Otherwise → create/update `REVIEW_OVERVIEW.md`
+- If the source review was `UX_REVIEW_OVERVIEW.md` → update `UX_REVIEW_OVERVIEW.md` in place
+- If the source review was `PRODUCT_REVIEW_OVERVIEW.md` → update `PRODUCT_REVIEW_OVERVIEW.md` in place
+- Otherwise → create or update `REVIEW_OVERVIEW.md`
+
+Updates are **in place**: for each addressed finding, replace its `Action taken:` (and any other resolution fields) inside the existing entry. Findings present in the source but not addressed in this run (severity-filtered, out-of-scope) stay verbatim — never delete entries. If the source did not exist (review came from chat or `gh`), create a fresh `REVIEW_OVERVIEW.md` containing every processed finding.
 
 ### For external reviews
 
