@@ -27,7 +27,7 @@ A feature branch is a cost that compounds every day it stays open. It drifts fro
 
 Use these uppercase markers when reasoning about the rebase and reporting progress. One marker per line, no decoration:
 
-- **STACK DETECTED** — base branch, conflict method, and autostash state at the start. `STACK DETECTED: origin/main, --autostash enabled, 3 uncommitted changes stashed`.
+- **REBASE PREFLIGHT** — base branch, conflict method, and autostash state at the start. `REBASE PREFLIGHT: origin/main, --autostash enabled, 3 uncommitted changes stashed`.
 - **UNVERIFIED** — claims about resolved conflicts that haven't been runtime-checked. `UNVERIFIED: conflict auto-resolved in handler.ts but I didn't run the tests after`.
 - **NOTICED BUT NOT TOUCHING** — issues visible during rebase that are outside scope. `NOTICED BUT NOT TOUCHING: origin/main has an unrelated lint failure — not this rebase's problem`.
 - **CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS** — end-of-run summary when the rebase completes.
@@ -37,11 +37,11 @@ Use these uppercase markers when reasoning about the rebase and reporting progre
 
 ## Workflow
 
+### Step 0: Parse Arguments
+
+If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag from remaining arguments before processing `--base=<branch>`.
+
 ### Step 1: Validate Prerequisites
-
-0. **Parse arguments:**
-
-   If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag from remaining arguments before processing `--base=<branch>`.
 
 1. **Check for rebase/merge in progress:**
 
@@ -99,13 +99,11 @@ git fetch origin <base-branch>
 
 ### Step 3: Rebase
 
-Run the rebase with `--autostash` to automatically handle uncommitted changes:
+Run the rebase with `--autostash` so uncommitted changes are stashed before the rebase and popped after, covering the common case of rebasing with local modifications:
 
 ```bash
 git rebase --autostash origin/<base-branch>
 ```
-
-**Note:** `--autostash` automatically stashes uncommitted changes before rebase and pops them after, handling the common case of rebasing with local modifications.
 
 **If rebase succeeds:** Proceed to Step 4.
 
@@ -113,7 +111,9 @@ git rebase --autostash origin/<base-branch>
 
 1. **Attempt automatic resolution (up to 10 conflict rounds):**
 
-   Track all conflicts and resolutions for the summary.
+   The 10-round cap exists because each round reapplies a single commit; beyond that, conflicts almost always indicate semantic drift the auto-resolver can't handle safely — escalate to the user instead of guessing further.
+
+   Track all conflicts and resolutions for the summary. Before resolving each file, re-read the **Red Flags** section below — if any apply (migrations, generated artifacts, files you don't fully understand, deletions that drop semantics), abort instead of resolving.
 
    For each round:
 
@@ -130,7 +130,7 @@ git rebase --autostash origin/<base-branch>
    - Write the resolved content back
    - Stage the file: `git add <file>`
 
-   c. Continue the rebase:
+   c. Continue the rebase (`GIT_EDITOR=true` prevents `git rebase --continue` from opening an editor on commit-message prompts):
 
    ```bash
    GIT_EDITOR=true git rebase --continue
@@ -156,9 +156,11 @@ git rebase --autostash origin/<base-branch>
    >
    > "To resolve manually, run `git rebase origin/<base-branch>`, fix conflicts, then `git rebase --continue`."
 
-### Step 4: Conflict Summary
+### Step 4: Conflict Summary (only if conflicts were resolved)
 
-If any conflicts were resolved during rebase, present a summary before proceeding:
+If the rebase completed without conflicts, skip to Step 5.
+
+Otherwise, present a summary so the user can review what was auto-resolved before force pushing:
 
 > **Conflicts resolved during rebase:**
 >
@@ -167,8 +169,6 @@ If any conflicts were resolved during rebase, present a summary before proceedin
 > - **File:** `<file path>`
 > - **Conflict:** Brief description of what conflicted (e.g., "Both branches modified the `calculateTotal` function")
 > - **Resolution:** How it was resolved (e.g., "Combined changes: kept the new parameter from base branch and the validation logic from feature branch")
-
-This allows the user to review what was automatically resolved before force pushing.
 
 ### Step 5: Force Push
 
@@ -193,10 +193,10 @@ git push --force-with-lease origin $(git branch --show-current)
 
 ### Step 6: Report Results
 
-Show the commit log relative to base:
+Show the commit log relative to base (substitute the resolved base-branch name for `<base-branch>` — no spaces around the angle brackets, or the shell will read it as redirection):
 
 ```bash
-git log --oneline origin/ < base-branch > ..HEAD
+git log --oneline origin/<base-branch>..HEAD
 ```
 
 Confirm success:
@@ -226,7 +226,7 @@ Pause and hand back to the user if any of these are true:
 
 Before force-pushing, self-check:
 
-- [ ] Conflict Summary lists every resolved file with file + conflict + resolution.
+- [ ] If conflicts were resolved, the Conflict Summary lists every resolved file with file + conflict + resolution. (No conflicts → this item is N/A.)
 - [ ] The base branch was freshly fetched (Step 2 ran).
 - [ ] The user explicitly confirmed via `AskUserQuestion` (Step 5), or `AUTO_MODE=true`.
 - [ ] `--force-with-lease` (not `--force`) is the flag being used.
