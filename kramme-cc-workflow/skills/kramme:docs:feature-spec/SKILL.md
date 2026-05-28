@@ -192,7 +192,7 @@ These markers are deliberate. Keep them verbatim — tooling and downstream skil
 | Excuse | Reality |
 | --- | --- |
 | "This feature is small enough to just start coding." | Then the spec takes ten minutes. Skip the skill and write code, but don't invoke this skill and then bypass the gate. |
-| "I'll write the spec after, once I see the shape." | That's reverse-engineering, not speccing. Use `/kramme:siw:reverse-engineer-spec` for that path. |
+| "I'll write the spec after, once I see the shape." | That's reverse-engineering, not speccing. If the code already exists, document it separately rather than retrofitting a spec to match. |
 | "The assumptions block is noise, the user knows what they want." | The block costs one turn and catches misalignment before you've drafted six areas of the wrong spec. |
 | "One ambiguous area is fine, we'll figure it out in code." | No. Emit `MISSING REQUIREMENT:` and stop. Ambiguous specs produce ambiguous code. |
 | "The user said yes in a previous turn, that's approval." | Approval is explicit and scoped to the current spec version. Re-confirm after each revision. |

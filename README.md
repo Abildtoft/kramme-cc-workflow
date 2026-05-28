@@ -183,7 +183,6 @@ Local issue tracking and structured implementation planning using markdown files
 | `/kramme:siw:resolve-audit` | User | `[audit-report-path] [finding-id(s)] [--auto]` | Resolve audit findings one-by-one with executive summaries, alternatives, a recommended option, and SIW issue creation. Add `--auto` to let the model choose each resolution without pausing for confirmation. If both audit reports exist, pass the report path to keep the run scoped.<br><br>For a batch breakdown before choosing a follow-up path, use `/kramme:siw:breakdown-findings`. |
 | `/kramme:siw:issue-reindex` | User | — | Remove all DONE issues and renumber remaining issues from 001.<br><br>Cleans up completed work and provides fresh numbering sequence. |
 | `/kramme:siw:reset` | User | — | Reset SIW workflow state while preserving the spec.<br><br>Migrates log decisions to spec, then clears issues and log for fresh start. |
-| `/kramme:siw:reverse-engineer-spec` | User | `[branch \| folder \| file(s)] [--base main] [--model opus\|sonnet\|haiku]` | Experimental.<br><br>Reverse engineer an SIW specification from existing code.<br><br>Produces a structured spec compatible with the SIW workflow.<br><br>Use for documenting shipped features, onboarding to unfamiliar code, or bootstrapping SIW from an existing implementation. |
 | `/kramme:siw:close` | User | — | Close an SIW project by generating permanent documentation in `docs/<feature>/` capturing decisions, architecture, and implementation summary, then removing temporary workflow files. |
 | `/kramme:siw:remove` | User | — | Remove all Structured Implementation Workflow (SIW) files from current directory.<br><br>Cleans up temporary workflow documents. |
 
@@ -618,7 +617,6 @@ Addy Osmani's [`agent-skills`](https://github.com/addyosmani/agent-skills) is a 
 - `kramme:design-iterator`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - `kramme:text:humanize`: Based on Wikipedia: Signs of AI writing (maintained by WikiProject AI Cleanup) and heavily inspired by [blader/humanizer](https://github.com/blader/humanizer).
 - `kramme:performance-oracle`: From [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
-- `kramme:siw:reverse-engineer-spec`: Inspired by [blader/schematic](https://github.com/blader/schematic).
 - `kramme:docs:feature-spec`: Adapted from [addyosmani/agent-skills — spec-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/spec-driven-development).
 - `kramme:docs:adr`: Adapted from [addyosmani/agent-skills — documentation-and-adrs](https://github.com/addyosmani/agent-skills/tree/main/skills/documentation-and-adrs).
 - `kramme:code:source-driven`: Adapted from [addyosmani/agent-skills — source-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/source-driven-development).
