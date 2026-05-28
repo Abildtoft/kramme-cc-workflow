@@ -3,11 +3,14 @@ name: kramme:code:harden-security
 description: Apply security-by-default when writing code that handles user input, authentication, data storage, or external integrations. Use when building features that accept untrusted data, manage user sessions, or call third-party services. Complements the review-time auth-reviewer / data-reviewer / injection-reviewer agents with author-time guardrails.
 disable-model-invocation: false
 user-invocable: true
+kramme-platforms: [claude-code]
 ---
 
 # Security Hardening
 
 Apply security-by-default at author time. This is the procedural counterpart to the review-time security agents: instead of catching vulnerabilities after they're written, bake the guardrails in while the code is being authored. Retrofitting security is roughly an order of magnitude more expensive than writing it in the first place — the goal here is that common classes of vulnerability never reach the review stage at all.
+
+Code examples in this skill use TypeScript/Node idioms (Zod, `npm audit`, `crypto.timingSafeEqual`). The underlying rules are stack-agnostic — translate to the equivalent in your ecosystem (Pydantic, `go-playground/validator`, Rails strong params, Go's `crypto/subtle`, etc.). Calls to `kramme:auth-reviewer`, `kramme:data-reviewer`, and `kramme:injection-reviewer` assume the Claude Code agent runtime.
 
 ## When to use
 
@@ -18,49 +21,61 @@ Apply security-by-default at author time. This is the procedural counterpart to 
 - Configuring headers, CORS, cookies, or rate limits.
 - Anywhere you find yourself about to write an `innerHTML`, `eval`, `exec`, or raw SQL interpolation.
 
+## When not to use
+
+- Pure refactors of internal code that doesn't cross a trust boundary (renames, extract-method, dead-code removal).
+- Documentation-only changes, build-tool config, lint/format settings.
+- Test-only changes that don't introduce new fixtures with real-looking secrets or PII.
+- Pure UI/styling changes with no data flow.
+
+Trust-boundary work always wins over the negative triggers — if a refactor moves a validation point, this skill applies.
+
 ## Markers
 
-Four markers anchor this skill's output:
+Four markers anchor this skill's output. Only `SIMPLICITY CHECK` is mandatory per slice; the other three appear when their triggering condition is present.
 
 ```
 SIMPLICITY CHECK: <the simplest security measure that satisfies the threat model>
 ```
 
-State the smallest coherent safeguard before adding more layers. Over-engineered auth/crypto/validation stacks are themselves a security liability — complexity hides bugs. Only expand beyond the simplest version if a concrete threat forces it.
+**Mandatory per slice.** State the smallest coherent safeguard before adding more layers. Over-engineered auth/crypto/validation stacks are themselves a security liability — complexity hides bugs. Only expand beyond the simplest version if a concrete threat forces it.
 
 ```
 NOTICED BUT NOT TOUCHING: <what you saw>
 Why skipping: <out-of-scope / unrelated / deferred>
 ```
 
-When you notice an existing insecure pattern in adjacent code (a missing auth check three lines above, a colleague's `md5` helper, a secret checked in last year), log it and move on. Do not silently fix adjacent security bugs during scoped work — silent fixes are unreviewable and often break callers. If it's serious, file a separate ticket.
+**Emit when** you notice an existing insecure pattern in adjacent code (a missing auth check three lines above, a colleague's `md5` helper, a secret checked in last year). Log it and move on. Do not silently fix adjacent security bugs during scoped work — silent fixes are unreviewable and often break callers. If it's serious, file a separate ticket.
 
 ```
 UNVERIFIED: <assumption that has no source>
 ```
 
-Flag assumed-safe behavior you did not verify at the boundary: "this library sanitizes HTML" (does it? which version? which input?), "the upstream service strips control characters" (confirm or validate yourself), "TLS is terminated at the proxy so this header is trusted" (is it?). Blocks silent passage of guesswork.
+**Emit when** you rely on assumed-safe behavior you did not verify at the boundary: "this library sanitizes HTML" (does it? which version? which input?), "the upstream service strips control characters", "TLS is terminated at the proxy so this header is trusted". Blocks silent passage of guesswork.
 
 ```
 ASK FIRST: <which Tier-2 situation you're about to enter>
 Plan: <what you intend to do>
 ```
 
-Use when a change touches one of the Three-Tier "Ask First" situations (new auth flows, CORS changes, file upload endpoints, rate-limit adjustments, elevated-permission additions, new third-party integrations). Pause and surface the plan. These are the changes where a quiet mistake cascades.
+**Emit when** a change touches one of the Three-Tier "Ask First" situations (new auth flows, CORS changes, file upload endpoints, rate-limit adjustments, elevated-permission additions, new third-party integrations). Pause and surface the plan. These are the changes where a quiet mistake cascades.
 
 ## The Three-Tier Boundary System
 
 The load-bearing artifact of this skill. Classify every security decision into one of three tiers: do reflexively, pause and ask, never do.
 
-### Always Do
+### Always Do (reflexive while authoring)
 
 - Validate all input at trust boundaries.
 - Parameterize every DB query.
 - Hash passwords with bcrypt / scrypt / argon2.
-- Run `npm audit` / equivalent every release.
 - Use HTTPS for everything.
-- Set security headers (CSP, HSTS, X-Frame-Options).
 - Principle of least privilege on tokens and service accounts.
+
+### Always Do (slice exit criteria, not per-line)
+
+- Run `npm audit` / equivalent before the slice lands.
+- Confirm security headers (CSP, HSTS, X-Frame-Options) are set at the response boundary.
 
 ### Ask First
 
@@ -84,16 +99,9 @@ Per-item rationale and exception notes live in `references/boundary-system.md`.
 
 ## Input validation at trust boundaries
 
-Validation belongs at the points where untrusted data enters trusted code, **once**, and nowhere else. Internal functions can then assume their inputs are safe.
+Validation belongs at the points where untrusted data enters trusted code, **once**, and nowhere else. Internal functions then assume their inputs are safe.
 
-A trust boundary includes:
-
-- HTTP handlers (query, body, path, headers, cookies).
-- Form submissions.
-- Environment-variable loading.
-- External service responses — third-party APIs return untrusted data even if the integration has been stable for years.
-- File uploads and WebSocket messages.
-- Anything read from a queue, cache, or object store that originated outside your code.
+A trust boundary includes HTTP handlers (query, body, path, headers, cookies), form submissions, environment-variable loading, external service responses, file uploads, WebSocket messages, and anything read from a queue, cache, or object store that originated outside your code. Third-party APIs return untrusted data even if the integration has been stable for years.
 
 ### Zod `safeParse` boundary pattern
 
@@ -103,9 +111,7 @@ if (!result.success) return { error: result.error.flatten() };
 const validated = result.data;
 ```
 
-Validate once, at the boundary, into a typed shape. Downstream code takes the typed value and stops re-validating. Non-TypeScript stacks follow the same shape with their ecosystem's equivalent (Pydantic, `go-playground/validator`, Rails strong params, etc.).
-
-If the urge to re-validate inside an internal function surfaces, the boundary is probably in the wrong place.
+Validate once, at the boundary, into a typed shape. Downstream code takes the typed value and stops re-validating. If the urge to re-validate inside an internal function surfaces, the boundary is probably in the wrong place.
 
 ## Authentication and session lifecycle
 
@@ -169,9 +175,7 @@ Run before every push when working near credential-handling code:
 git diff --cached | grep -i "password\|secret\|api_key\|token"
 ```
 
-Noisy on purpose — false positives are preferable to a real key landing in git history. Add project-specific patterns (`PRIVATE_KEY`, vendor prefixes) as the codebase warrants.
-
-A pre-commit hook that runs this automatically is a reasonable follow-up; treat that as a separate change, not part of the feature you're writing now.
+Noisy on purpose — false positives are preferable to a real key landing in git history. Add project-specific patterns (`PRIVATE_KEY`, vendor prefixes) as the codebase warrants. A pre-commit hook that runs this automatically is a reasonable follow-up; treat that as a separate change.
 
 ### Secret lifecycle
 
@@ -181,89 +185,66 @@ A pre-commit hook that runs this automatically is a reasonable follow-up; treat 
 - **Rotation** — documented cadence. A secret with no rotation path is already compromised — you just don't know when.
 - **Destruction** — zeroed in memory where the language allows; revoked upstream when no longer needed.
 
-## Security authoring checklist (exit criterion)
+## Common rationalizations
 
-Before marking a security-sensitive slice done, confirm every box. The extended version with per-item rationale lives in `references/security-checklist.md`.
-
-- [ ] `SIMPLICITY CHECK` emitted — the security measure matches the threat, not imagined threats.
-- [ ] Untrusted inputs validated **once**, at the boundary, into a typed shape.
-- [ ] Every DB query parameterized; no string interpolation of user data.
-- [ ] No `innerHTML` / `dangerouslySetInnerHTML` / `v-html` with user data; `eval`/`exec`/`Function(...)` absent.
-- [ ] Passwords hashed with bcrypt/scrypt/argon2; secret comparisons constant-time.
-- [ ] Session tokens server-issued, rotated on privilege change, never in client-accessible storage.
-- [ ] Cookies carry `Secure` + `HttpOnly` + `SameSite` where applicable.
-- [ ] No secrets in the diff (`git diff --cached | grep -i "password\|secret\|api_key\|token"` clean).
-- [ ] No sensitive data in logs, errors, or API responses; stack traces not exposed to end users.
-- [ ] Any `ASK FIRST` situation surfaced and confirmed before implementation.
-- [ ] Every `NOTICED BUT NOT TOUCHING` observation logged, not silently fixed.
-- [ ] Every `UNVERIFIED` assumption either verified or explicitly flagged for review.
-
-If any box is unchecked, the slice is not done. Fix the gap or split the slice.
-
-## Integration with other skills
-
-- **Sibling authoring**: `kramme:code:api-design` owns where the trust boundary lives for a given surface — this skill owns what happens at that boundary. When adding a new endpoint, design the contract with `kramme:code:api-design`, then harden it here.
-- **Upstream discipline**: `kramme:code:incremental` — each security-relevant change follows the slice discipline. Splitting a "fix auth + add rate limit + rotate the secret" change into three slices keeps each reviewable.
-- **Downstream review agents**:
-  - `kramme:auth-reviewer` — verifies auth/authz/CSRF/session checks this skill was supposed to put in place.
-  - `kramme:data-reviewer` — verifies crypto usage, info-disclosure, and DoS bounds.
-  - `kramme:injection-reviewer` — verifies injection/XSS defenses at input→sink paths.
-
-A finding from any of the three agents that traces back to code authored with this skill applied is a signal that a rule above was skipped or misapplied — close the loop by updating this skill.
-
----
-
-## Common Rationalizations
-
-These are the lies you will tell yourself to skip security discipline. Each one has a correct response.
-
-The verbatim three rows from the source:
+Lies you will tell yourself to skip security discipline. Each one has a correct response.
 
 | Rationalization | Reality |
 | --- | --- |
 | "Internal tools don't need security." | Attackers target the weak link in a chain. |
 | "We'll add security later." | Retrofitting is 10× harder. |
 | "Just a prototype." | Prototypes become production. |
+| "The framework handles it." | Maybe on the default path, not the one you're adding. Emit `UNVERIFIED` and check the docs for the version in use. |
+| "The client already validates this." | Client-side validation is a UX feature. The server must validate independently — otherwise the API is a direct-write. |
+| "It's behind a VPN, so it's safe." | Defense in depth. Every layer assumes the one in front of it has been bypassed. |
+| "Logging the request body will help debug." | Until it logs a password. Redact before emitting; don't rely on a log processor. |
+| "We'll rotate the secret once we're live." | The rotation path is the security control. Ship it on day one. |
+| "I'll put the token in localStorage, it's easier." | Any XSS becomes account takeover. Use HttpOnly cookies. |
+| "`md5` is fine for this." | Probably not. State what "this" is out loud — if it's a security decision, use a modern hash. |
 
-Additional pairs encountered at author time:
+## Integration with other skills
 
-- _"The framework handles it."_ → Maybe. Maybe not. Maybe on the default path and not on the one you're adding. Emit `UNVERIFIED` and check the docs for the version in use.
-- _"The client already validates this."_ → Client-side validation is a UX feature. The server must validate independently — otherwise the API is a direct-write.
-- _"It's behind a VPN, so it's safe."_ → Defense in depth. Every layer assumes the one in front of it has been bypassed.
-- _"Logging the request body will help debug."_ → Until it logs a password. Redact before emitting; don't rely on a log processor.
-- _"We'll rotate the secret once we're live."_ → The rotation path is the security control. Ship it on day one.
-- _"I'll put the token in localStorage, it's easier."_ → Any XSS becomes account takeover. Use HttpOnly cookies.
-- _"`md5` is fine for this."_ → Probably not. State what "this" is out loud — if it's a security decision, use a modern hash.
+- **Sibling authoring**: `kramme:code:api-design` owns where the trust boundary lives for a given surface — this skill owns what happens at that boundary. When adding a new endpoint, design the contract with `kramme:code:api-design`, then harden it here.
+- **Upstream discipline**: `kramme:code:incremental` — each security-relevant change follows the slice discipline. Splitting a "fix auth + add rate limit + rotate the secret" change into three slices keeps each reviewable.
+- **Downstream review agents** (Claude Code only):
+  - `kramme:auth-reviewer` — verifies auth/authz/CSRF/session checks this skill was supposed to put in place.
+  - `kramme:data-reviewer` — verifies crypto usage, info-disclosure, and DoS bounds.
+  - `kramme:injection-reviewer` — verifies injection/XSS defenses at input→sink paths.
 
-## Red Flags
+A finding from any of the three agents that traces back to code authored with this skill applied is a signal that a rule above was skipped or misapplied — close the loop by updating this skill.
 
-If you notice any of these in your own draft, stop and re-author:
+## Exit checklist
 
-- A secret, API key, or connection string appears in the diff (grep is clean when it's clean).
-- `innerHTML =`, `dangerouslySetInnerHTML`, `v-html`, or `[innerHTML]` with user-derived data.
+Before declaring a security-sensitive slice done, confirm every box. The extended version with per-item rationale and per-area grouping lives in `references/security-checklist.md`.
+
+- [ ] `SIMPLICITY CHECK` emitted — the security measure matches the threat, not imagined threats.
+- [ ] Untrusted inputs validated **once**, at the boundary, into a typed shape; no internal re-validation.
+- [ ] Every DB query parameterized; no string interpolation of user data.
+- [ ] No `innerHTML` / `dangerouslySetInnerHTML` / `v-html` / `eval` / `exec` / `Function(...)` with user-derived data.
+- [ ] Passwords hashed with bcrypt/scrypt/argon2; secret comparisons constant-time.
+- [ ] Session tokens server-issued, rotated on privilege change, never in client-accessible storage; cookies carry `Secure` + `HttpOnly` + `SameSite`.
+- [ ] No secrets in the diff: `git diff --cached | grep -i "password\|secret\|api_key\|token"` is clean.
+- [ ] `npm audit` / equivalent introduces no new high-or-critical findings.
+- [ ] No sensitive data in logs; production error responses return a generic message + correlation ID, never a stack trace.
+- [ ] Security headers (CSP, HSTS, X-Frame-Options) set on the response boundary.
+- [ ] Every new endpoint, handler, or RPC has an explicit auth/authz decision.
+- [ ] Any `ASK FIRST` situation surfaced and confirmed before implementation.
+- [ ] Every `NOTICED BUT NOT TOUCHING` observation logged (ticket or PR description), not silently fixed.
+- [ ] Every `UNVERIFIED` assumption either verified or explicitly left open with owner.
+- [ ] Would `kramme:auth-reviewer`, `kramme:data-reviewer`, or `kramme:injection-reviewer` flag anything? Run them against the diff before opening the PR.
+
+If any box is unchecked, the slice is not done. Fix the gap or split the slice.
+
+## Red flags in your own draft
+
+If any of these appear in your draft, stop and re-author:
+
+- A secret, API key, or connection string in the diff.
 - String-interpolated SQL, shell, or template input.
-- `eval`, `new Function(...)`, `exec`, or `spawn` with a user-supplied command string.
-- Password storage using `md5`, `sha1`, raw `sha256`, or (worse) plaintext.
+- Password storage using `md5`, `sha1`, raw `sha256`, or plaintext.
 - Session token written to `localStorage`, `sessionStorage`, or any client-readable cookie.
-- Log line or error response containing a password, token, full request body from an auth route, or a stack trace.
+- Log line or error response containing a password, token, full auth-route request body, or a stack trace.
 - `Access-Control-Allow-Origin: *` on an endpoint that reads or mutates user data.
 - Auth endpoint with no rate limit.
 - CORS, CSP, or cookie attribute change introduced without an `ASK FIRST` surfacing.
 - A third-party API response flowing into business logic without a `safeParse` (or equivalent) at the boundary.
-- Stack trace or internal error message returned to end users in production.
-
-## Verification
-
-Before declaring the security-sensitive change done, self-check:
-
-- Pre-commit secret grep returns nothing that looks like a real credential.
-- `npm audit` (or ecosystem equivalent) has no new high-or-critical findings introduced by this change.
-- Every new endpoint, handler, or RPC has an explicit auth/authz decision — documented in code or in the slice description.
-- No session tokens land in client-accessible storage; cookies carry `Secure`, `HttpOnly`, and `SameSite`.
-- Every untrusted input has exactly one validation point, at the boundary, into a typed shape.
-- No new `innerHTML` / `dangerouslySetInnerHTML` / `eval` / `exec` path with user-derived data.
-- Production error responses expose a generic message plus an error code — never a stack trace or internal path.
-- Every `ASK FIRST` decision in scope has been surfaced before code landed; every `NOTICED BUT NOT TOUCHING` has a ticket or backlog entry; every `UNVERIFIED` has been resolved or explicitly left open with owner.
-- Would the `kramme:auth-reviewer`, `kramme:data-reviewer`, or `kramme:injection-reviewer` agents flag anything here? Run them against the diff and close findings before opening the PR.
-
-If any answer is no, close the gap before declaring done.
