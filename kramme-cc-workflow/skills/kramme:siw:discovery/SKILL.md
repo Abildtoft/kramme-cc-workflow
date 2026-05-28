@@ -2,8 +2,9 @@
 name: kramme:siw:discovery
 description: Deep discovery interview that uncovers what you actually want, not what you think you should want. Works pre-spec or on existing specs until 95% confident. Pass --decision-tree, or ask to walk depth-first, to resolve tightly coupled decisions one at a time.
 argument-hint: "[topic | spec-file(s) | 'siw'] [--apply] [--decision-tree]"
-disable-model-invocation: false
+disable-model-invocation: true
 user-invocable: true
+kramme-platforms: [claude-code]
 ---
 
 # SIW Discovery
@@ -66,7 +67,7 @@ Use these markers in user-facing output to keep downstream tooling parseable:
 
 Parse `$ARGUMENTS` as shell-style arguments so quoted paths stay intact.
 
-- If `--apply` is present, set `apply_changes=true` and remove from argument list.
+- If `--apply` is present, set `apply_changes=true` and remove from argument list. `--apply` has no effect in Greenfield mode (the brief is the output); if Greenfield mode is detected later, tell the user the flag was ignored and continue.
 - If `--decision-tree` is present, set `decision_tree_requested=true` and remove from argument list.
 - If remaining text includes trigger phrases like "walk the decision tree", "walk this depth-first", "resolve dependencies first", or "depth-first", set `decision_tree_requested=true` without removing the user's topic words unless the phrase is only an instruction.
 - Treat remaining arguments as topic text, file paths, or the `siw` keyword.
@@ -116,11 +117,11 @@ freeform: true
   1. If explicit file paths include `siw/DISCOVERY_BRIEF.md` and `siw/SPEC_STRENGTHENING_PLAN.md` also exists, stop. Tell the user to apply, archive, or discard the pending strengthening plan before running another refinement interview against the brief.
   2. Explicit file paths from arguments (SIW spec files or `siw/DISCOVERY_BRIEF.md`)
   3. If no explicit files were provided and `siw/SPEC_STRENGTHENING_PLAN.md` exists in the workspace, read that plan, tell the user there is already an unresolved strengthening artifact in this workspace, and stop. They should apply, archive, or remove it before starting another discovery pass.
-  4. If no explicit files were provided and spec files exist, include `siw/*.md` except LOG.md, OPEN*ISSUES_OVERVIEW.md, AUDIT*_.md, SPEC_STRENGTHENING_PLAN.md, DISCOVERY_BRIEF.md. Include `siw/supporting-specs/_.md`.
+  4. If no explicit files were provided and spec files exist, include `siw/*.md` except `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `AUDIT_*.md`, `SPEC_STRENGTHENING_PLAN.md`, `DISCOVERY_BRIEF.md`. Also include `siw/supporting-specs/*.md`.
   5. If no explicit files were provided, no spec files exist, but `siw/DISCOVERY_BRIEF.md` does, target that brief so no-argument reruns resume the saved discovery output.
   6. If nothing is found, switch to greenfield mode.
 - Check `.out-of-scope/` for prior matches against the topic. Two-step protocol: (a) list filenames in `.out-of-scope/` (skip silently if the directory is absent or empty); (b) read the body of any file whose slug plausibly matches `topic_hint` (greenfield) or the resolved spec scope (refinement). When a match is found, surface as "This is similar to `.out-of-scope/<slug>.md` (decided <date>) — we rejected this before because <one-line summary>. Continue, or honor the prior rejection?" and route the answer through AskUserQuestion. If the user honors the prior rejection, stop; otherwise continue and note the prior rejection in the discovery brief output. See `/kramme:docs:out-of-scope` for the storage skill.
-- If `siw/AUDIT_SPEC_REPORT.md` exists, read it for input signals.
+- If `siw/AUDIT_SPEC_REPORT.md` exists, read it and lower the matching confidence dimension to Low for every section the audit flagged as missing, vague, or contradictory before starting the interview.
 
 ### 1.4 Extract Work Context (Refinement only)
 
@@ -166,10 +167,10 @@ Before Step 2, check for `UBIQUITOUS_LANGUAGE.md` at the project root:
 - Where the spec is confident vs. hand-wavy
 - What's conspicuously absent
 
-Present the hypothesis to the user:
+Present the hypothesis to the user, prefixed with `UNVERIFIED:` so downstream readers know it is a working assumption awaiting interview validation:
 
 ```text
-Here's my initial read on what you're building:
+UNVERIFIED: Here's my initial read on what you're building:
 
 [2-4 sentence hypothesis]
 
@@ -178,7 +179,7 @@ I'll use this as a starting point and validate/correct it during the interview. 
 
 Proceed immediately — don't wait for a response unless the user offers one. The hypothesis is a conversation opener, not a gate.
 
-If the hypothesis clearly clashes with the user's framing, prefix it with `CONFUSION:` and name what doesn't fit.
+If the hypothesis clearly clashes with the user's framing, additionally prefix it with `CONFUSION:` and name what doesn't fit.
 
 ## Step 3: Initial Assessment
 
@@ -390,7 +391,7 @@ If `apply_changes=true` or the user asks to apply:
    - Summary of discovery session
    - Key decisions and rationale
    - Remaining open questions
-6. After the target documents and optional log updates are complete, delete or trash `siw/SPEC_STRENGTHENING_PLAN.md` so future runs do not treat the applied plan as unresolved state
+6. After the target documents and optional log updates are complete, run `rm siw/SPEC_STRENGTHENING_PLAN.md` so future runs do not treat the applied plan as unresolved state
 
 **Greenfield mode:**
 
