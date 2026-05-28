@@ -8,6 +8,7 @@
 
 ## Linear API Errors
 
+- Tools unavailable (`mcp__linear__*` missing): Linear MCP server is not connected — stop and ask the user to connect it
 - Rate limits: Wait and retry
 - Authentication: Direct user to check MCP setup
 - Not found: Verify issue ID and access
