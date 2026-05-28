@@ -8,11 +8,13 @@ user-invocable: true
 
 # Configure Context Links
 
-Configure the `context-links` hook using a local config file:
+Configure the `context-links` hook using a local config file.
 
-- File: `${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config`
-- Template: `${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config.example`
-- Git status: ignored by `.gitignore` (local-only overrides)
+- **Config file:** `${CONTEXT_LINKS_CONFIG_FILE:-${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config}` — resolve this once and use the result as the target for every read, write, and delete below (referred to as "the config file"). Honor the `CONTEXT_LINKS_CONFIG_FILE` override: the hook reads from this same resolved path, so editing any other path has no effect.
+- **Template:** `${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config.example`
+- **Git status:** the default config file is git-ignored, so its contents are local-only and not recoverable from version control once deleted.
+
+Do not use this skill to enable or disable the hook itself (that is the hook toggle system), or to edit any other hook.
 
 ## Supported Keys
 
@@ -23,39 +25,43 @@ Configure the `context-links` hook using a local config file:
 ## Usage
 
 - `/kramme:hooks:configure-links`:
-  - Create config from example if missing
+  - Create the config file from the template if missing
   - Show current values
   - Ask which values to update, then apply changes
 
 - `/kramme:hooks:configure-links show`:
-  - Show current config file content and effective values from supported keys
+  - Print the config file contents
+  - For each supported key, report the value set in the config file. For any key not set there, note that the hook falls back (in order) to `CONTEXT_LINKS_*` env vars, legacy `LINEAR_*` env vars, then the built-in defaults in `hooks/context-links.sh`. Do not present a config-file value as the final value when an env var may override it.
 
 - `/kramme:hooks:configure-links reset`:
-  - Delete `hooks/context-links.config` if present
-  - Confirm fallback to built-in defaults
+  - Print the current config file contents so the user can recover values
+  - Ask the user to confirm deletion (the file is git-ignored and cannot be recovered afterward)
+  - On confirmation, delete the config file if present
+  - Report that the hook will now use its built-in defaults from `hooks/context-links.sh`
 
 - `/kramme:hooks:configure-links KEY=VALUE [KEY=VALUE ...]`:
-  - Upsert each supported key into `hooks/context-links.config`
-  - Preserve unrelated comments/lines where practical
+  - Upsert each supported key into the config file
+  - Preserve unrelated comments/lines
 
 ## Argument Rules
 
 1. Parse `$ARGUMENTS` by spaces.
-2. Recognize `show` and `reset` as exclusive commands.
-3. Treat remaining tokens with `=` as `KEY=VALUE` updates.
-4. Reject unknown keys with a clear message and list of supported keys.
+2. `show` and `reset` are mutually exclusive: reject if both appear, or if either appears alongside any `KEY=VALUE` token.
+3. Treat remaining tokens containing `=` as `KEY=VALUE` updates.
+4. Reject unknown keys, and reject any bare token that is neither `show` nor `reset` and contains no `=`, with a clear message listing the supported keys.
+5. Values cannot contain spaces (spaces split arguments). For multi-value keys such as `CONTEXT_LINKS_LINEAR_TEAM_KEYS`, use commas: `ENG,OPS,PLAT`.
 
 ## Update Workflow
 
-1. Ensure `${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config` exists:
-   - If missing and template exists, copy from `.example`.
-   - If template missing, create file with a short header comment.
-2. For each `KEY=VALUE`:
-   - Escape value safely for shell replacement.
-   - If key exists (commented or uncommented), replace the line with `KEY="VALUE"`.
-   - If key does not exist, append `KEY="VALUE"` at end of file.
-3. Print final config file content.
-4. Confirm changes are active immediately for the hook.
+1. Ensure the config file exists:
+   - If missing and the template exists, copy from `.example`.
+   - If both are missing, create the file with a short header comment.
+2. For each `KEY=VALUE`, edit by reading the file, modifying it in memory, and writing it back. Do not use `sed`: its replacement breaks on regex/metacharacter values such as `(ENG|OPS|PLAT)-[0-9]+`.
+   - Write the value as `KEY="VALUE"`, wrapping it in double quotes and escaping any embedded `"` and `\`.
+   - If the key already appears (commented or uncommented, possibly more than once), remove all of those lines and leave a single canonical `KEY="VALUE"`.
+   - If the key does not appear, append `KEY="VALUE"` at the end of the file.
+3. Print the final config file contents.
+4. Note that changes take effect on the hook's next run — it reloads the config each time, so no restart is needed.
 
 ## Interactive Mode (No Arguments)
 
@@ -68,11 +74,11 @@ If no arguments are provided:
 ## Output Expectations
 
 - Report:
-  - config file path
+  - config file path (the resolved absolute path)
   - keys changed
   - keys unchanged
   - keys rejected (if any)
-- When `reset` is used, confirm the hook will use defaults from `hooks/context-links.sh`.
+- For `reset`, after deletion, report that the hook will use its built-in defaults from `hooks/context-links.sh`.
 
 ## Examples
 
