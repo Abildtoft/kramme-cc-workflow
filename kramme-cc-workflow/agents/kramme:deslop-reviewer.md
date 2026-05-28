@@ -154,7 +154,7 @@ Recognizable visual defaults that mark UI code as AI-generated rather than desig
 </div>
 ```
 
-The canonical author-time fix for each of these patterns lives in the `kramme:code:frontend-authoring` skill's `references/ai-aesthetic-table.md`. When flagging, reference the matching row by name (e.g., "AI-aesthetic: `rounded-2xl` on every surface") to make the recommended remediation unambiguous.
+When flagging these patterns, name the specific tell (e.g., "AI-aesthetic: `rounded-2xl` on every surface") so the recommended remediation is unambiguous.
 
 ## Analysis Process
 
