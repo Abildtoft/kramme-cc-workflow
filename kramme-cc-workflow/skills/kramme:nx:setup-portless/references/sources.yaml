@@ -1,0 +1,7 @@
+sources:
+  - id: vercel-labs-portless
+    url: https://github.com/vercel-labs/portless
+    title: "Vercel Labs - portless CLI"
+    rationale: "The CLI commands (run, trust, proxy start/stop, hosts sync), reserved app names, auto-start proxy behavior, PORTLESS_* env vars, and proxy flags documented in this skill mirror the portless CLI (verified against v0.13.1)."
+    last_reviewed_at: 2026-05-28
+    baseline_hash: ""
