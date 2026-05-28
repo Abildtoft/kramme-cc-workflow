@@ -49,6 +49,8 @@ Reason(s):
 No final report was written.
 ```
 
+**STOP HERE.** Do not continue to Step 9. Wait for the user's next instruction.
+
 ### 8.4 Write the Report
 
 If `INLINE_MODE=true`:
@@ -68,7 +70,9 @@ Otherwise:
 
 ## Step 9: Optionally Create SIW Issues
 
-**Only if ALL of these conditions are met:**
+**Skip this step entirely if `INLINE_MODE=true`.** Inline mode means the user asked for ephemeral output; do not write issue files. Proceed straight to Step 10.
+
+**Otherwise, only if ALL of these conditions are met:**
 
 - `siw/OPEN_ISSUES_OVERVIEW.md` exists (SIW workflow is active)
 - `siw/issues/` exists or can be created
