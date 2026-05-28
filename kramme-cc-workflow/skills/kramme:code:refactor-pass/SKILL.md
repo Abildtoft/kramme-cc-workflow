@@ -1,6 +1,6 @@
 ---
 name: kramme:code:refactor-pass
-description: "Perform a refactor pass focused on simplicity after recent changes. Use when the user asks for a refactor/cleanup pass, simplification, or dead-code removal and expects build/tests to verify behavior. Applies Chesterton's Fence before removing code, rejects simplifications that require modifying tests, and emits SIMPLICITY CHECK / NOTICED BUT NOT TOUCHING markers."
+description: "Perform a refactor pass focused on simplicity after recent changes. Use when the user asks for a refactor/cleanup pass, simplification, or dead-code removal on a narrow scope and expects build/tests to verify behavior. Applies Chesterton's Fence before removing code, rejects simplifications that require modifying tests, and works one slice at a time."
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -15,7 +15,7 @@ Perform a simplification pass on recent changes: remove dead code, straighten lo
 - When the user asks for "a refactor pass", "cleanup", "simplification", or "dead-code removal" on recent work.
 - On a narrow scope — typically the diff of the current branch or a few files. Not for codebase-wide scans (use `kramme:code:refactor-opportunities` for that).
 
-## Prerequisites — When NOT to simplify
+## When NOT to simplify
 
 Before starting, check that simplification is actually warranted. Do not proceed if:
 
@@ -25,6 +25,37 @@ Before starting, check that simplification is actually warranted. Do not proceed
 - **It's about to be rewritten.** If the code will be replaced by other in-flight work, a refactor pass is wasted effort. Surface the overlap and stop.
 
 If any of these apply to the whole scope, stop and tell the user why. If they apply to specific sections, skip those sections.
+
+## Resolve scope
+
+Before picking simplifications, decide what "recent changes" means for this invocation:
+
+1. If the user named files or a directory, use that.
+2. Otherwise, default to the current branch's diff against the base branch (e.g. `git diff origin/main...HEAD`), plus uncommitted working-tree changes.
+3. If the resulting scope is empty (clean working tree, no diff against base), stop and ask the user what to scope to. Do not invent a scope.
+
+Record the scope before starting the loop. Every simplification must fall inside it; observations outside it become `NOTICED BUT NOT TOUCHING` markers, not new work.
+
+## Markers
+
+This skill emits two markers. Use these exact formats so a calling agent can parse them.
+
+`SIMPLICITY CHECK` — the minimum change you intend to make for the current slice:
+
+```
+SIMPLICITY CHECK: <one-line summary of the minimum change>
+```
+
+If the change ends up larger than that minimum, add a second line naming the concrete requirement that forced the expansion.
+
+`NOTICED BUT NOT TOUCHING` — anything adjacent you saw while editing but are intentionally leaving alone:
+
+```
+NOTICED BUT NOT TOUCHING: <what you saw>
+Why skipping: out-of-scope for this simplification
+```
+
+Log; do not silently resolve. A future pass can address it as its own slice.
 
 ## Pre-flight: Chesterton's Fence
 
@@ -40,11 +71,11 @@ If you can't answer all five, you haven't earned the right to remove it. Either 
 
 ## The Simplification Loop
 
-Each simplification is one pass through this loop. **One simplification at a time** — test after each. Do not batch.
+Each simplification is one pass through this loop. **One simplification at a time** — verify after each. Do not batch.
 
 ### 1. Pick one simplification
 
-From the recent changes, pick exactly one target. Candidates:
+From the resolved scope, pick exactly one target. Candidates:
 
 - Dead code or dead paths.
 - Twisted logic that can be straightened.
@@ -54,54 +85,35 @@ From the recent changes, pick exactly one target. Candidates:
 
 ### 2. Emit a SIMPLICITY CHECK
 
-State the minimum change that accomplishes the simplification. If you end up doing more, a concrete requirement must force it.
-
-```
-SIMPLICITY CHECK: <one-line summary of the minimum change>
-```
-
-If the minimum change is not what you build, add a second line explaining what forced the expansion.
+State the minimum change that accomplishes the simplification (see Markers).
 
 ### 3. Apply the change
 
 Apply only that one change. Keep the diff small. If the diff grows past a few files or a few dozen lines, you are probably doing more than one thing — split the slice.
 
-While editing, if you notice something adjacent that also wants fixing, do not fix it. Emit a marker:
+If you notice something adjacent that also wants fixing, do not fix it — emit a `NOTICED BUT NOT TOUCHING` marker and continue.
 
-```
-NOTICED BUT NOT TOUCHING: <what you saw>
-Why skipping: out-of-scope for this simplification
-```
+### 4. Verify and commit
 
-Log it; do not silently resolve it. A future pass can address it as its own slice.
+Run the project's verification battery via `kramme:verify:run` — build, typecheck, lint, and existing tests must all pass. **Tests must pass unmodified.** If a test fails, you changed behavior: revert the slice (`git restore` the touched files) and either re-plan or reclassify it as a behavior change handled outside this skill.
 
-### 4. Verify
+If `kramme:verify:run` cannot run (no test/lint/build configured, tool errors, etc.), stop and surface the gap. Do not declare the slice verified.
 
-Run the project's verification battery. Delegate to `kramme:verify:run` — build, typecheck, lint, and existing tests must all pass **without any test modifications**.
-
-If a test fails, you changed behavior. Either revert and re-plan, or accept that this is not a simplification (it's a behavior change) and treat it as such.
+When verification passes, commit the slice on its own. The committed state becomes the baseline for the next iteration.
 
 ### 5. Move to the next simplification
 
-Return to step 1 with the committed state as the new baseline. Do not accumulate simplifications into one large diff.
+Return to step 1 with the new committed baseline. Do not accumulate simplifications into one large diff.
 
-## Over-simplification traps
+## Traps to avoid
 
-These are ways a simplification pass turns into damage. Watch for them while working:
+Ways a simplification pass turns into damage. If any of these happen, reject the slice and revert:
 
 - **Inlining too aggressively.** Inlining a helper that is used once but has a meaningful name destroys a comment. Keep the name if it carries intent.
-- **Removing "unnecessary" abstractions.** An abstraction with only one caller today may be there for a planned second caller, or to isolate volatility. Apply Chesterton's Fence before deletion.
-- **Optimizing for line count.** Shorter is not the goal. A 10-line function that reads top-to-bottom beats a 4-line function that requires a dictionary.
-- **Removing error handling.** Defensive checks that look redundant often are not. A `try/catch` wrapping a library call may be absorbing a known failure mode. Prove the branch is unreachable before removing it.
-
-## Integration with other skills
-
-- **Verification**: Step 4 delegates to `kramme:verify:run`.
-- **Sibling — slice discipline**: `kramme:code:incremental` applies the same one-thing-at-a-time rule to feature work. Refactor passes obey the same six rules; this skill is the refactor-flavored loop.
-- **Alternative — scrap and rewrite**: if the recent code is inelegant enough that simplification would touch more than ~50% of it, stop and use `kramme:code:rewrite-clean` instead. A mediocre implementation is sometimes best scrapped rather than patched.
-- **Broader scan**: if the simplification opportunities extend beyond the recent diff, stop and suggest `kramme:code:refactor-opportunities` for a codebase-wide scan.
-
----
+- **Removing "unnecessary" abstractions without applying the Fence.** An abstraction with only one caller today may be there for a planned second caller, or to isolate volatility.
+- **Optimizing for line count.** Shorter is not the goal. A 10-line function that reads top-to-bottom beats a 4-line function that requires a dictionary. If the "simplified" version is longer than the original, discard it.
+- **Removing defensive checks without proving they are unreachable.** A `try/catch` wrapping a library call may be absorbing a known failure mode; a `null` check that "can't happen" must be proven unreachable (via types, invariants, or caller analysis) before removal.
+- **Renaming for personal taste.** Rename only to restore consistency with the surrounding codebase.
 
 ## Common Rationalizations
 
@@ -114,24 +126,16 @@ These are the lies you will tell yourself to justify going past the scope of the
 - _"The test is flaky; I'll just tweak it so it passes."_ → If a simplification requires modifying a test, it is a behavior change, not a simplification. Revert or re-scope.
 - _"While I'm here, let me also rename this for consistency."_ → Emit `NOTICED BUT NOT TOUCHING`. Rename is its own slice — often its own PR.
 
-## Red Flags
+## Integration with other skills
 
-Rejection criteria. If any of these are true, reject the simplification and revert:
+- **Verification**: Step 4 delegates to `kramme:verify:run`.
+- **Sibling — slice discipline**: `kramme:code:incremental` applies the same one-thing-at-a-time rule to feature work. Refactor passes obey the same six rules; this skill is the refactor-flavored loop.
+- **Alternative — scrap and rewrite**: if the recent code is inelegant enough that simplification would touch more than ~50% of it, stop and use `kramme:code:rewrite-clean` instead. A mediocre implementation is sometimes best scrapped rather than patched.
+- **Broader scan**: if the simplification opportunities extend beyond the recent diff, stop and suggest `kramme:code:refactor-opportunities` for a codebase-wide scan.
 
-- **Simplification that requires modifying tests to pass.** Tests encode behavior. Modifying a test to accommodate a "simplification" means behavior changed. Revert or reclassify.
-- **"Simplified" code is longer than the original.** If the simplified version is longer, it is not a simplification. Discard the change.
-- **Renaming for personal preference (not codebase consistency).** If the old name matches the codebase and the new name matches your taste, keep the old name. Rename only to restore consistency.
-- **Removing defensive checks without proving they're unreachable.** A `null` check that "can't happen" must be proven unreachable (via types, invariants, or caller analysis) before removal. Otherwise, leave it.
+## Before declaring done
 
-## Verification
+The loop enforces most invariants per-iteration; this is the residual check:
 
-Before declaring the pass done, self-check:
-
-- [ ] Every simplification was applied and verified in isolation — no batched diffs.
-- [ ] All existing tests pass **without any test modifications**.
-- [ ] Build, typecheck, and lint all pass.
-- [ ] No `SIMPLICITY CHECK` was expanded without a concrete forcing requirement.
-- [ ] Every out-of-scope observation has a logged `NOTICED BUT NOT TOUCHING` marker; none were silently fixed.
-- [ ] The final diff is smaller and clearer than the input. If it is larger or less clear, revert.
-
-If any box is unchecked, finish the gap or revert before declaring done.
+- The final diff is smaller and clearer than the input. If it is larger or less clear, revert.
+- Every observation outside the original scope has a `NOTICED BUT NOT TOUCHING` marker; none were silently fixed.
