@@ -79,14 +79,19 @@ When activated, evaluate the **preconditions** before skipping Phase 1.
 
 ### Preconditions
 
-Synthesis is permitted only when at least **4 of the 6** spec areas can be populated with grounded content from the current conversation:
+Synthesis is permitted only when **both** of the following hold:
 
-1. Objective
+- At least **4 of the 6** spec areas can be populated with grounded content from the current conversation, AND
+- **Objective and Success Criteria are among the grounded areas.** These two carry the spec's substance; a bare count can otherwise be met by cheap-to-fill areas (Open Questions, Boundaries) while the spec has no real spine.
+
+The six areas:
+
+1. Objective *(required for synthesis)*
 2. Scope & Non-goals
 3. Boundaries
 4. Testing Strategy
 5. Open Questions
-6. Success Criteria
+6. Success Criteria *(required for synthesis)*
 
 A spec area is "grounded" when the conversation contains explicit user statements, decisions, or shared context that lets you fill the area without inventing facts. Grounding is not the same as "I can guess plausibly." If you would prefix the content `UNVERIFIED:`, the area is not grounded.
 
@@ -116,7 +121,9 @@ If the user pushes to synthesize anyway after a precondition-failure fallback, e
 
 ## Phase 2: Draft the spec
 
-Derive a slug from the feature name (lowercase, hyphenated, ~3–5 words). Write the spec to `<slug>-spec.md` in the repo root.
+Derive a slug from the feature name (lowercase, hyphenated, ~3–5 words). When no feature name was supplied — common in Synthesize mode — derive both the name and slug from the dominant feature discussed in the current conversation; if that is still ambiguous, emit `CONFUSION:` and ask for a name before writing.
+
+Write the spec to `<slug>-spec.md` in the repo root. This skill assumes a repository context: the repo root anchors both the default location and the path-safety check below. If no repository root resolves, fall back to the current working directory and state which directory was used.
 
 If the user passed an explicit path as the argument, honor it only when it still fits this skill's boundaries:
 
@@ -124,6 +131,8 @@ If the user passed an explicit path as the argument, honor it only when it still
 - The resolved path must stay inside the current repository root.
 - Reject reserved destinations: `AGENTS.md`, `CLAUDE.md`, and any path under `siw/`.
 - If the path is reserved or otherwise unclear, emit `CONFUSION:` and ask for a different destination before writing.
+
+Before writing, check whether the destination file already exists. If it does, do not overwrite it blindly — emit `CONFUSION:` naming the existing path and ask the user to choose: overwrite it, revise it in place, or write to a different slug. This guard runs before the Phase 3 approval gate, so an existing spec is never clobbered without consent.
 
 Copy the six-area structure from `assets/feature-spec-template.md` and fill each area. The areas are:
 
@@ -179,7 +188,7 @@ On approval:
 | --- | --- |
 | `ASSUMPTIONS I'M MAKING:` | Phase 1, before drafting (skipped only in Synthesize mode when preconditions are met). |
 | `SYNTHESIZE:` | When `--synthesize` or the trigger phrase activates synthesis — emitted before drafting (success) or before fallback to Phase 1 (insufficient grounding). |
-| `CONFUSION:` | Phase 1 or 2, when user input is ambiguous. |
+| `CONFUSION:` | Phase 1 or 2, when user input is ambiguous — including when the resolved destination is reserved, unclear, or already exists. |
 | `MISSING REQUIREMENT:` | Phase 2, when a required area cannot be filled. |
 | `UNVERIFIED:` | Phase 2, inline on any inferred claim inside the spec. |
 | `POTENTIAL CONCERNS:` | Phase 2, inside Open Questions for risks worth flagging. |
@@ -196,14 +205,14 @@ These markers are deliberate. Keep them verbatim — tooling and downstream skil
 | "The assumptions block is noise, the user knows what they want." | The block costs one turn and catches misalignment before you've drafted six areas of the wrong spec. |
 | "One ambiguous area is fine, we'll figure it out in code." | No. Emit `MISSING REQUIREMENT:` and stop. Ambiguous specs produce ambiguous code. |
 | "The user said yes in a previous turn, that's approval." | Approval is explicit and scoped to the current spec version. Re-confirm after each revision. |
-| "I should always synthesize — the user prefers fewer questions." | Synthesis is only safe when 4 of 6 areas are grounded in the current conversation. Below that threshold, synthesis produces a confidently-wrong spec, which costs more cycles than the assumptions round-trip would have. |
+| "I should always synthesize — the user prefers fewer questions." | Synthesis is only safe when at least 4 of 6 areas — including Objective and Success Criteria — are grounded in the current conversation. Below that threshold, synthesis produces a confidently-wrong spec, which costs more cycles than the assumptions round-trip would have. |
 
 ## Red Flags — STOP
 
 - Implementation starts before the user explicitly approves the spec.
 - Scope creep mid-draft (new areas appearing without updating Phase 1 assumptions).
 - The Assumptions block is skipped or collapsed into the draft (without `--synthesize`/trigger phrase AND preconditions met).
-- Synthesizing with fewer than 4 of 6 areas grounded.
+- Synthesizing with fewer than 4 of 6 areas grounded, or with Objective or Success Criteria ungrounded.
 - Claims inside the spec are presented as fact when they are inference — any such claim must be prefixed `UNVERIFIED:`.
 - The skill begins writing `siw/`, `LOG.md`, or issue files. That's out of scope — use `/kramme:siw:init` instead.
 - The user asks for phased breakdown — route to `/kramme:siw:init <spec-file>` after approval, then `/kramme:siw:generate-phases`; do not inline phases here.
@@ -217,6 +226,7 @@ Before claiming the spec is complete:
 3. Every inferred claim is prefixed `UNVERIFIED:`.
 4. Every flagged risk inside Open Questions is prefixed `POTENTIAL CONCERNS:`.
 5. Any explicit destination path resolves inside the current repository root and stays out of `AGENTS.md`, `CLAUDE.md`, and `siw/`.
-6. The user has explicitly approved — not "sounds good" from an earlier turn, but a current-turn approval of the current spec version.
+6. If the destination already existed before this run, the user explicitly chose to overwrite or revise it — no spec was clobbered silently.
+7. The user has explicitly approved — not "sounds good" from an earlier turn, but a current-turn approval of the current spec version.
 
 If any check fails, stay in Phase 2 or Phase 3; do not hand off downstream.
