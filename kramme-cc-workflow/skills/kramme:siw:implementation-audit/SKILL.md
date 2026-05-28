@@ -18,7 +18,7 @@ Exhaustively compare the codebase implementation against specification documents
 
 ## Platform note
 
-Standard mode assumes a host harness with a research sub-agent primitive (Claude Code: `Task` tool with `subagent_type=Explore`; Codex: equivalent task sub-agent). The `AskUserQuestion` prompts shown in YAML below map to the host's interactive prompt mechanism. Team mode (`--team`) additionally requires multi-agent support and is gated explicitly in `references/team-mode.md`.
+Standard mode assumes a host harness with a research sub-agent primitive (Claude Code: `Task` tool with `subagent_type=Explore`; Codex: equivalent task sub-agent). Interactive YAML prompt blocks shown in later steps map to the host's interactive question mechanism. Team mode (`--team`) additionally requires multi-agent support and is gated explicitly in `references/team-mode.md`.
 
 ## Primary Objective (Mandatory)
 
