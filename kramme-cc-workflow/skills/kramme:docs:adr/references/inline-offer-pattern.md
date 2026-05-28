@@ -12,7 +12,7 @@ The decision must meet **all three** criteria. If any one is missing, no offer:
 
 ## The canonical offer message
 
-Surface the offer with a structured multi-option prompt (for example `AskUserQuestion` on Claude Code; use the nearest equivalent elsewhere). Use three options so the user can record intent (not just yes/no). Name all three criteria inline so the user can sanity-check whether the test was applied loosely. Before presenting the question, replace each evidence placeholder with a concrete one-line reason from the current workflow:
+Surface the offer with `AskUserQuestion`. Use three options so the user can record intent (not just yes/no). Name all three criteria inline so the user can sanity-check whether the test was applied loosely. Before presenting the question, replace each evidence placeholder with a concrete one-line reason from the current workflow:
 
 ```yaml
 AskUserQuestion
@@ -34,7 +34,7 @@ options:
 multiSelect: false
 ```
 
-Keep the three options and their meanings; substitute the three `{...}` evidence values. Map the structure onto whatever structured-prompt primitive the host harness provides.
+Copy this payload structure verbatim. Substitute only the three `{...}` evidence values unless the surrounding structure forces a different question format.
 
 ## Handoff rule
 
