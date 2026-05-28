@@ -1,0 +1,13 @@
+sources:
+  - id: laws-of-ux
+    url: https://lawsofux.com/
+    title: "Laws of UX (Jon Yablonski)"
+    rationale: "The named cognitive and UX laws in references/design-principles.md (Fitts's, Hick's, Jakob's, Miller's, Tesler's) are drawn from the Laws of UX collection."
+    last_reviewed_at: 2026-05-28
+    baseline_hash: ""
+  - id: nngroup-usability-heuristics
+    url: https://www.nngroup.com/articles/ten-usability-heuristics/
+    title: "Nielsen Norman Group - 10 Usability Heuristics for User Interface Design"
+    rationale: "The state-coverage checklist and the trust, visibility-of-status, and error-recovery framing in references/critique-rubric.md and the Interaction Rules follow Nielsen's usability heuristics."
+    last_reviewed_at: 2026-05-28
+    baseline_hash: ""
