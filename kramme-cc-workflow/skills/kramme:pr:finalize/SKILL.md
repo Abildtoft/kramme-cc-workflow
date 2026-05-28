@@ -4,6 +4,7 @@ description: (experimental) Final PR readiness orchestration. Coordinates verify
 argument-hint: "[--auto] [--fix] [--skip <skill,...>] [--app-url <url>] [--base <branch>]"
 disable-model-invocation: true
 user-invocable: true
+kramme-platforms: [claude-code]
 ---
 
 # PR Finalize — Readiness Orchestration
@@ -135,10 +136,9 @@ Nothing to finalize. Make changes first, then run /kramme:pr:finalize again.
 
 #### 3.1 Identify Changed Files
 
-Build a unified change scope (committed + staged + unstaged + untracked):
+Reuse the `BASE_REF` computed in Step 2.4. Build a unified change scope (committed + staged + unstaged + untracked):
 
 ```bash
-BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
 {
   git diff --name-only "$BASE_REF"...HEAD  # committed PR diff
   git diff --name-only --cached            # staged local changes
@@ -151,21 +151,7 @@ Store as `CHANGED_FILES` and count as `FILE_COUNT`.
 
 #### 3.2 Determine UI Relevance
 
-Read `references/ui-relevance-heuristics.md` for the full pattern list. Check each changed file against:
-
-**Extension patterns:**
-
-- Components: `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.component.ts`, `*.component.html`
-- Templates: `*.html`, `*.hbs`, `*.ejs`, `*.pug`
-- Styles: `*.css`, `*.scss`, `*.sass`, `*.less`, `*.styled.ts`, `*.styled.js`, `*.module.css`, `*.module.scss`
-- Configuration: `tailwind.config.*`, `theme.*`, files under `design-tokens/`
-
-**Directory patterns:**
-
-- `pages/`, `views/`, `screens/`, `routes/`, `app/`
-- `components/`, `widgets/`, `layouts/`, `templates/`
-- `styles/`, `css/`
-- `public/`, `static/`, `assets/` (only SVG or image files)
+Read `references/ui-relevance-heuristics.md` and apply its extension and directory patterns to each entry in `CHANGED_FILES`.
 
 Set `HAS_UI_CHANGES=true` if ANY changed file matches. Otherwise `HAS_UI_CHANGES=false`.
 
@@ -246,19 +232,25 @@ Capture the result. Record pass/fail status.
 
 **If verification fails:** Record as blocker. **CONTINUE** with remaining steps — do not abort.
 
-**If skill errors out:** Record as `COULD NOT RUN: {error message}`. Continue.
+See [Error Handling](#error-handling) for skill-error treatment.
 
 ### Step 6: Execute Code Review
 
 **Skip if** `code-review` is in `SKIP_LIST`.
 
-Invoke via Skill tool:
+Delete any stale overview file so a failed run cannot be misread:
+
+```bash
+rm -f REVIEW_OVERVIEW.md
+```
+
+Invoke via Skill tool (never pass `--inline` — this skill requires the file output):
 
 ```
 skill: "kramme:pr:code-review", args: "--base {BASE_BRANCH}"
 ```
 
-After completion, parse `REVIEW_OVERVIEW.md` in the project root:
+After completion, if `REVIEW_OVERVIEW.md` does not exist in the project root, treat as `COULD NOT RUN: overview file not produced`. Otherwise parse it:
 
 - Count findings by severity: critical, important, suggestion
 - Inspect each critical/important code-review finding's location:
@@ -267,24 +259,28 @@ After completion, parse `REVIEW_OVERVIEW.md` in the project root:
 - Keep separate tallies for code-backed vs process-level critical/important code-review findings
 - Critical findings = blockers
 
-**If skill errors out:** Record as `COULD NOT RUN: {error message}`. Continue.
+See [Error Handling](#error-handling) for skill-error treatment.
 
 ### Step 7: Execute Product Review
 
 **Skip if** `product-review` is in `SKIP_LIST`.
 
-Invoke via Skill tool:
+```bash
+rm -f PRODUCT_REVIEW_OVERVIEW.md
+```
+
+Invoke via Skill tool (do not pass `--inline`):
 
 ```
 skill: "kramme:pr:product-review", args: "--base {BASE_BRANCH}"
 ```
 
-After completion, parse `PRODUCT_REVIEW_OVERVIEW.md` in the project root:
+After completion, if `PRODUCT_REVIEW_OVERVIEW.md` does not exist, treat as `COULD NOT RUN: overview file not produced`. Otherwise parse it:
 
 - Count findings by severity: critical, important, suggestion
 - Critical findings = blockers
 
-**If skill errors out:** Record as `COULD NOT RUN: {error message}`. Continue.
+See [Error Handling](#error-handling) for skill-error treatment.
 
 ### Step 8: Execute UX Review (Conditional)
 
@@ -293,18 +289,22 @@ After completion, parse `PRODUCT_REVIEW_OVERVIEW.md` in the project root:
 - `ux-review` is in `SKIP_LIST`
 - `HAS_UI_CHANGES` is false
 
-Invoke via Skill tool:
+```bash
+rm -f UX_REVIEW_OVERVIEW.md
+```
+
+Invoke via Skill tool (do not pass `--inline`):
 
 ```
 skill: "kramme:pr:ux-review", args: "--base {BASE_BRANCH}"
 ```
 
-After completion, parse `UX_REVIEW_OVERVIEW.md` in the project root:
+After completion, if `UX_REVIEW_OVERVIEW.md` does not exist, treat as `COULD NOT RUN: overview file not produced`. Otherwise parse it:
 
 - Count findings by severity: critical, important, suggestion
 - Critical findings = blockers
 
-**If skill errors out:** Record as `COULD NOT RUN: {error message}`. Continue.
+See [Error Handling](#error-handling) for skill-error treatment.
 
 ### Step 9: Execute QA (Conditional)
 
@@ -351,11 +351,11 @@ skill: "kramme:qa", args: "{APP_URL} diff-aware --base {BASE_BRANCH}"
 
 Parse QA results for blockers, major issues, and minor issues.
 
-**If skill errors out:** Record as `COULD NOT RUN: {error message}`. Continue.
+See [Error Handling](#error-handling) for skill-error treatment.
 
 ### Step 10: Assess Readiness
 
-Aggregate all results into a verdict:
+Aggregate all results into a verdict. Explicitly skipped steps (`--skip` or conditional skip) are not caveats; failures and `COULD NOT RUN` are.
 
 **READY:**
 
@@ -377,7 +377,7 @@ Aggregate all results into a verdict:
 - Critical findings exist in any review, OR
 - QA blockers found
 
-### Step 10.5: Auto-Fix (Conditional)
+### Step 11: Auto-Fix (Conditional)
 
 **Skip if** `FIX_MODE` is not true, OR the verdict is **READY**.
 
@@ -403,60 +403,11 @@ If no code-backed critical/important code-review findings remain and the remaini
 
 If resolve-review fails or introduces new issues, keep the original verdict and note the failure.
 
-### Step 11: Display Verdict
+### Step 12: Display Verdict
 
-Display the assessment inline (no artifact file):
+Render the verdict inline (no artifact file) using the template and per-verdict next-steps guidance in `references/verdict-template.md`. Substitute counts and status from Steps 5–10.
 
-```markdown
-## PR Readiness Assessment
-
-**Verdict: READY / READY WITH CAVEATS / NOT READY**
-
-### Verification
-
-Status: PASS / FAIL / SKIPPED / COULD NOT RUN
-
-### Code Review
-
-Status: X critical, Y important, Z suggestions / SKIPPED / COULD NOT RUN
-
-### Product Review
-
-Status: X critical, Y important, Z suggestions / SKIPPED / COULD NOT RUN
-
-### UX Review (if run)
-
-Status: X critical, Y important, Z suggestions / SKIPPED (no UI changes) / COULD NOT RUN
-
-### QA (if run)
-
-Status: X blockers, Y major, Z minor / SKIPPED (no app URL) / COULD NOT RUN
-
-### Blockers (must fix)
-
-1. [source]: description
-
-### Recommended Fixes (should fix)
-
-1. [source]: description
-
-### Optional Polish
-
-1. [source]: description
-
-### Next Steps
-
-{context-dependent recommendations}
-```
-
-**Next Steps guidance by verdict:**
-
-- **READY:** "PR is ready. Run `/kramme:pr:create` to create it, or `/kramme:pr:generate-description` to update the description."
-- **READY WITH CAVEATS:** "Consider addressing recommended fixes before creating the PR. Run `/kramme:pr:resolve-review` to address findings, or `/kramme:pr:create` to proceed. Alternatively, re-run with `--fix` to auto-resolve critical and important findings."
-- **NOT READY:** "Fix blockers first. Run `/kramme:pr:finalize --fix` to auto-resolve code-backed critical and important findings, or `/kramme:pr:resolve-review` to address them manually. Process blockers still require manual follow-up."
-- **After merge (any verdict):** "For user-facing changes, run `/kramme:launch:rollout` to execute a staged post-merge rollout with canary gates and rollback triggers."
-
-### Step 12: Optionally Generate Description
+### Step 13: Optionally Generate Description
 
 **Skip if** `generate-description` is in `SKIP_LIST`.
 
@@ -489,7 +440,7 @@ multiSelect: false
 skill: "kramme:pr:generate-description", args: "--base {BASE_BRANCH}"
 ```
 
-If "Generate and update" was selected and a PR already exists, apply the generated description to the PR.
+If "Generate and update" was selected and a PR already exists, apply the generated description to the PR. If no PR exists, treat the selection as "Generate for review", emit the generated description inline, and note that no PR was found.
 
 **If skill errors out:** Report error but do not fail the overall assessment.
 
@@ -503,9 +454,14 @@ pr:finalize does NOT:
 - Replace detailed review commands — each sub-skill produces its own detailed report
 - Silently mutate the branch — without `--fix`, no commits, rebases, or file modifications occur. With `--fix`, resolve-review may create commits (with a rollback checkpoint)
 
+Side effects to be aware of:
+
+- Step 13 may overwrite an open PR's description when "Generate and update" is selected (or when `--auto` is set and a PR exists). Use `--skip generate-description` to opt out.
+
 ## Error Handling
 
-- **Individual skill failure:** Record as `COULD NOT RUN` with the error message. Continue with remaining steps. Include in final verdict as a caveat.
+- **Individual skill failure:** When a sub-skill errors out or returns a non-zero result, record as `COULD NOT RUN: {error message}`, continue with remaining steps, and include the entry as a caveat in the final verdict.
+- **Expected overview file missing:** When a review sub-skill completes but its overview file (`REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, `UX_REVIEW_OVERVIEW.md`) is not present, treat as `COULD NOT RUN: overview file not produced` rather than zero findings.
 - **User aborts:** Stop immediately. Report what completed so far and what was skipped.
 - **No changes detected:** Stop early with clear message (Step 2.4).
 - **On main/master branch:** Stop with error (Step 2.2).
