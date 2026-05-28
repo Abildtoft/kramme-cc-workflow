@@ -1,26 +1,26 @@
-# Consolidation Phase (Step 10)
+# Consolidation Phase (Step 11)
 
 **Skip this step if:** `--fixup` mode was used, or `--no-consolidate` flag is set.
 
 When all CI checks pass and no unaddressed feedback remains, offer to consolidate the `[FIX PIPELINE]` commits into the original branch commits.
 
-## Step 10.1: Detect [FIX PIPELINE] Commits
+## Step 11.1: Detect [FIX PIPELINE] Commits
 
-Determine the base branch (reuse logic from fixup-flow.md Step 7b.1) and find pipeline fix commits:
+Determine the base branch (reuse logic from fixup-flow.md Step 8b.1) and find pipeline fix commits:
 
 ```bash
 BASE=$(gh pr view --json baseRefName --jq .baseRefName)
 
 BASE_REF="origin/$BASE"
-git fetch origin $BASE
+git fetch origin "$BASE"
 
 # Find [FIX PIPELINE] commits
-FIX_COMMITS=$(git log $BASE_REF..HEAD --format="%H %s" | grep "\[FIX PIPELINE\]")
+FIX_COMMITS=$(git log "$BASE_REF..HEAD" --format="%H %s" | grep "\[FIX PIPELINE\]")
 ```
 
 If no `[FIX PIPELINE]` commits exist, skip to success exit.
 
-## Step 10.2: Prompt for Consolidation
+## Step 11.2: Prompt for Consolidation
 
 Present the user with a summary and options:
 
@@ -52,91 +52,43 @@ Alternatively, run /kramme:git:recreate-commits to rewrite the branch later.
 
 Exit successfully.
 
-**If user selects "Automated":** Continue with Steps 10.3–10.5, then 10.7–10.8.
+**If user selects "Automated":** Continue with Steps 11.3–11.5, then 11.7–11.8.
 
-**If user selects "Interactive":** Skip to Step 10.6, then 10.7–10.8.
+**If user selects "Interactive":** Skip to Step 11.6, then 11.7–11.8.
 
 > **Note:** Interactive mode opens a text editor and requires a terminal environment. It won't work in non-interactive contexts like automated pipelines or some IDE integrations.
 
-## Step 10.3: Map [FIX PIPELINE] Commits to Targets
+## Step 11.3: Map [FIX PIPELINE] Commits to Targets
 
-For each `[FIX PIPELINE]` commit, determine which original commit it should be folded into:
+For each `[FIX PIPELINE]` commit, determine which original commit it should be folded into. Implement this as a short helper script in your scratch dir and store the result as a mapping `target_sha -> [fix_sha, ...]` plus a separate orphan list.
 
-```bash
-# Get all commits on the branch
-ALL_COMMITS=$(git log $BASE_REF..HEAD --format="%H %s" --reverse)
+Algorithm:
 
-# Separate original commits from [FIX PIPELINE] commits
-ORIGINAL_COMMITS=$(echo "$ALL_COMMITS" | grep -v "\[FIX PIPELINE\]")
-FIX_COMMITS=$(echo "$ALL_COMMITS" | grep "\[FIX PIPELINE\]")
+1. List all branch commits in order:
+   ```bash
+   git log "$BASE_REF..HEAD" --format="%H %s" --reverse
+   ```
+   Split into `ORIGINAL_COMMITS` (subject does **not** start with `[FIX PIPELINE]`) and `FIX_COMMITS` (subject does).
+2. For each `FIX_SHA` in `FIX_COMMITS`:
+   1. Get the files it changed:
+      ```bash
+      git diff-tree --no-commit-id --name-only -r "$FIX_SHA"
+      ```
+   2. For each of those files, walk `git log "$BASE_REF..HEAD" --format=%H -- "$FILE"` from newest to oldest and stop at the first SHA whose subject does NOT start with `[FIX PIPELINE]`. That SHA is the candidate target.
+   3. Use the first candidate found across the files as the target. If no candidate exists (the fix only touches files no original commit touched), mark `FIX_SHA` as an orphan.
+3. Persist the mapping and orphan list for Step 11.4 (e.g., as two JSON files in your scratch dir).
 
-# For each [FIX PIPELINE] commit, find its target
-for FIX_SHA in $(echo "$FIX_COMMITS" | cut -d' ' -f1); do
-  # Get files changed in this [FIX PIPELINE] commit
-  CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r $FIX_SHA)
+## Step 11.4: Generate Rebase Sequence
 
-  # Find the most recent original commit that touched any of these files
-  TARGET=""
-  for FILE in $CHANGED_FILES; do
-    CANDIDATE=$(git log $BASE_REF..HEAD --format="%H" -- "$FILE" \
-      | while read SHA; do
-        if ! git log -1 --format="%s" $SHA | grep -q "\[FIX PIPELINE\]"; then
-          echo $SHA
-          break
-        fi
-      done)
-    if [ -n "$CANDIDATE" ]; then
-      TARGET=$CANDIDATE
-      break
-    fi
-  done
+Using the mapping and orphan list from Step 11.3, produce a rebase todo file with these rules:
 
-  if [ -z "$TARGET" ]; then
-    # Orphan: files only exist in [FIX PIPELINE] commits
-    # These will be left as regular commits at the end
-    echo "orphan:$FIX_SHA"
-  else
-    echo "$TARGET:$FIX_SHA"
-  fi
-done
-```
+1. For each original commit in branch order, write `pick <sha> <subject>`.
+2. Immediately after each original commit, write `fixup <fix_sha> <fix_subject>` for every `[FIX PIPELINE]` commit mapped to it.
+3. At the end, write `pick <orphan_sha> <orphan_subject>` for each orphan (strip the `[FIX PIPELINE] ` prefix from the subject so the final history reads cleanly).
 
-Build a mapping: `{target_sha: [fix_sha1, fix_sha2, ...]}`
+Write the result to a temp file you control (`$(mktemp)`) and pass it to Step 11.5.
 
-## Step 10.4: Generate Rebase Sequence
-
-Create a rebase todo that:
-
-1. Places each `[FIX PIPELINE]` commit immediately after its target
-2. Marks `[FIX PIPELINE]` commits as `fixup` instead of `pick`
-3. Leaves orphan commits at the end as regular `pick` commits
-
-```bash
-# Generate the rebase sequence
-git log $BASE_REF..HEAD --format="%H %s" --reverse | while read SHA MSG; do
-  if echo "$MSG" | grep -q "\[FIX PIPELINE\]"; then
-    # This is a [FIX PIPELINE] commit - will be handled when we see its target
-    continue
-  fi
-
-  # Print the original commit
-  echo "pick $SHA $MSG"
-
-  # Print any [FIX PIPELINE] commits that target this one
-  for FIX_SHA in $(get_fixes_for_target $SHA); do
-    FIX_MSG=$(git log -1 --format="%s" $FIX_SHA)
-    echo "fixup $FIX_SHA $FIX_MSG"
-  done
-done
-
-# Append orphan commits at the end (keep as regular commits)
-for ORPHAN_SHA in $ORPHAN_COMMITS; do
-  ORPHAN_MSG=$(git log -1 --format="%s" $ORPHAN_SHA | sed 's/\[FIX PIPELINE\] //')
-  echo "pick $ORPHAN_SHA $ORPHAN_MSG"
-done
-```
-
-## Step 10.5: Execute Rebase (Automated)
+## Step 11.5: Execute Rebase (Automated)
 
 Save the generated sequence to a temp file and use it as the sequence editor:
 
@@ -146,9 +98,9 @@ SEQUENCE_FILE=$(mktemp)
 # ... write generated sequence to $SEQUENCE_FILE ...
 
 # Run rebase with custom sequence
-GIT_SEQUENCE_EDITOR="cat $SEQUENCE_FILE >" git rebase -i $BASE_REF
+GIT_SEQUENCE_EDITOR="cat \"$SEQUENCE_FILE\" >" git rebase -i "$BASE_REF"
 
-rm $SEQUENCE_FILE
+rm "$SEQUENCE_FILE"
 ```
 
 **If rebase fails (conflicts):**
@@ -171,12 +123,12 @@ rm $SEQUENCE_FILE
 
 3. Exit without force push
 
-## Step 10.6: Execute Rebase (Interactive)
+## Step 11.6: Execute Rebase (Interactive)
 
 For interactive mode, open the editor so the user can manually arrange commits:
 
 ```bash
-git rebase -i $BASE_REF
+git rebase -i "$BASE_REF"
 ```
 
 The user can then:
@@ -188,7 +140,7 @@ The user can then:
 
 After the user saves and closes the editor, git will execute the rebase.
 
-## Step 10.7: Force Push
+## Step 11.7: Force Push
 
 After successful rebase, confirm one of these is true before pushing:
 
@@ -200,10 +152,10 @@ If neither is true, stop here. Keep the rebased result local, tell the user not 
 If one of those conditions is true:
 
 ```bash
-git push --force-with-lease origin $(git branch --show-current)
+git push --force-with-lease origin "$(git branch --show-current)"
 ```
 
-## Step 10.8: Confirm Success
+## Step 11.8: Confirm Success
 
 ```
 Successfully consolidated [FIX PIPELINE] commits!
