@@ -32,6 +32,7 @@ If you find yourself saying "it's just a spike, I'll add tests later" more than 
 
 Write a test that **fails because the behavior doesn't exist yet**, not because of a syntax error, missing import, or misconfigured fixture. The failure message should point at the missing behavior.
 
+- If no test runner is configured (greenfield project), set one up — or surface `MISSING REQUIREMENT` if the choice needs a decision — before writing the first test. There's nothing to run a RED test against otherwise.
 - Keep the test focused: one behavior per test.
 - Use a concrete example first (`formatDate("2026-04-20") → "Apr 20, 2026"`). Avoid parameterized or property-based tests until the behavior exists.
 - Run the test immediately. Confirm it fails, and read the failure message.
@@ -133,7 +134,7 @@ If you recognize any anti-pattern in the current session — horizontal slices o
 
 ## Output markers
 
-When running in TDD mode, use these markers so the user can skim status at a glance. They are a **plugin-wide convention** — other kramme skills should adopt the same vocabulary over time. Use them verbatim (uppercase, no decoration), one marker per line.
+Use these markers so the user can skim status at a glance. They are a **plugin-wide convention** — other kramme skills should adopt the same vocabulary over time. Use them verbatim (uppercase, no decoration), one marker per line.
 
 - **STACK DETECTED** — I've identified the language, framework, and test runner. `STACK DETECTED: TypeScript + Vitest, tests co-located as *.test.ts`.
 - **UNVERIFIED** — I'm asserting something but haven't confirmed it yet. `UNVERIFIED: assumed the API returns ISO-8601 dates; I'll check before implementing`.
@@ -165,7 +166,6 @@ Watch for these excuses — they signal the discipline is about to break.
 | "The test is flaky, I'll skip it and come back." | Skipped tests rot. Either fix the flakiness now or delete the test. |
 | "Green tests mean we're done." | Green tests mean the assertions held. Ask whether the assertions cover what can go wrong, not only what did go right. |
 | "We don't need the Prove-It test — the fix is obvious." | Obvious fixes regress. The test is cheap insurance; without it, the same bug ships again in six months. |
-| "This test matches the implementation, so it proves the code works." | Tests that simply restate the implementation provide zero confidence. Verify observable behavior, contracts, edge cases, or regressions instead. |
 
 ---
 
