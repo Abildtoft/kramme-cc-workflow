@@ -5,7 +5,7 @@ disable-model-invocation: true
 user-invocable: true
 ---
 
-# Elegant Refactor
+# Rewrite Clean
 
 Knowing everything you know now, scrap this and implement the elegant solution.
 
@@ -90,23 +90,13 @@ If the design expands beyond the `SIMPLICITY CHECK`, write a second line explain
 
 ### 4. Scrap and Reimplement
 
-1. **Save the current state** — Note the files and behavior to verify against. Record the expected behavior (including edge cases from Chesterton's Fence) so you can check the rewrite against it.
-2. **Revert the changes** — Go back to before the mediocre fix.
-3. **Implement the elegant solution** — Write it fresh, properly.
-4. **Verify equivalence** — Delegate to `kramme:verify:run` for the project's verification battery. All existing tests must pass **without modification**. If a test fails, the rewrite changed behavior — revert or reclassify as a behavior change.
+1. **Create a recovery point** — Before reverting, preserve the mediocre fix so you can return to it if the rewrite turns out worse. Commit it on a throwaway branch (`git switch -c rewrite-baseline && git commit -am "baseline: pre-rewrite"`) or stash with a labeled message (`git stash push -u -m "pre-rewrite baseline"`). State the exact recovery command before continuing.
+2. **Save the expected behavior** — Note the files touched and the behavior to verify against, including the edge cases surfaced by Chesterton's Fence. This is the spec the rewrite must satisfy.
+3. **Revert the changes** — Return the working tree to the state before the mediocre fix.
+4. **Implement the elegant solution** — Write it fresh, properly.
+5. **Verify equivalence** — Delegate to `kramme:verify:run` for the project's verification battery. If a test fails, the rewrite changed behavior — restore the recovery point or reclassify as a behavior change.
 
-## When to Use This
-
-- After a fix that works but makes you wince.
-- When you realize mid-implementation there's a better way.
-- When the solution has grown tentacles.
-- When explaining the code would be embarrassing.
-
-## When NOT to Use This
-
-Covered in "Prerequisites — When NOT to rewrite" above.
-
----
+"Existing tests" in this skill includes any tests written or modified during the current session. The rewrite must satisfy them unchanged.
 
 ## Common Rationalizations
 
