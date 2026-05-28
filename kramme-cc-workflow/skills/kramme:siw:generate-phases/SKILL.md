@@ -4,6 +4,7 @@ description: Break spec into atomic, phase-based issues with tests and validatio
 argument-hint: "[spec-file-path]"
 disable-model-invocation: true
 user-invocable: true
+kramme-platforms: [claude-code]
 ---
 
 # Generate Phases from Specification
@@ -69,12 +70,12 @@ ls siw/OPEN_ISSUES_OVERVIEW.md 2> /dev/null
 
 ### 1.2 Find Spec File(s)
 
-**If `$ARGUMENTS` provided:** Use as spec path.
+**If `$ARGUMENTS` provided:** Use as spec path. If the path does not exist, stop and surface the missing path; do not silently fall back to a glob.
 
-**Otherwise:** Glob for spec files:
+**Otherwise:** Glob for candidate spec files (anything under `siw/` that is not a workflow artifact):
 
 ```bash
-ls siw/*.md | grep -v -E '(LOG\.md|OPEN_ISSUES_OVERVIEW\.md|DISCOVERY_BRIEF\.md|SPEC_STRENGTHENING_PLAN\.md|AUDIT_.*\.md)'
+ls siw/*.md 2> /dev/null | grep -v -E '(LOG\.md|OPEN_ISSUES_OVERVIEW\.md|DISCOVERY_BRIEF\.md|SPEC_STRENGTHENING_PLAN\.md|AUDIT_.*\.md)'
 ```
 
 Also check for supporting specs:
@@ -83,14 +84,20 @@ Also check for supporting specs:
 ls siw/supporting-specs/*.md 2> /dev/null
 ```
 
+**Main-spec selection:**
+
+- **Zero candidates:** stop. Surface `MISSING REQUIREMENT: no spec file found under siw/` and suggest the user run `/kramme:siw:discovery` or pass an explicit `$ARGUMENTS` path. Do not invent a spec.
+- **One candidate:** use it as the main spec.
+- **Multiple candidates:** read the first `## Project` (or `# `) heading of `siw/LOG.md` to find the initiative name; pick the spec whose filename matches that name (case-insensitive, hyphen/underscore-insensitive). If no match, surface `UNVERIFIED: multiple spec files found, picked {first}` and use the first candidate; the user can re-run with an explicit path.
+
 ### 1.3 Check Implementation Status
 
-Check if implementation appears to be in progress by looking for:
+Implementation is considered in progress when **either** signal is present:
 
-- Issues with status "IN PROGRESS" in `siw/OPEN_ISSUES_OVERVIEW.md`
-- Recent entries in `siw/LOG.md` indicating active work
-- Uncommitted changes in git related to the spec
-- Recent commits that reference the spec, issues, or project keywords (check `git log --oneline -10`)
+- Any row in `siw/OPEN_ISSUES_OVERVIEW.md` has status `IN PROGRESS` or `IN REVIEW`.
+- `siw/LOG.md` contains an entry dated within the last 7 days under `## Current Progress` or an active task list.
+
+Do not infer in-progress from generic `git log` keywords or unrelated uncommitted changes — those produce false positives. The two signals above are authoritative.
 
 **If implementation appears in progress:** Use AskUserQuestion:
 
@@ -114,11 +121,11 @@ List files in `siw/issues/`:
 ls siw/issues/ISSUE-*.md 2> /dev/null
 ```
 
-**If issues exist:** Use AskUserQuestion:
+**If issues exist:** show the matched filenames inline so the user sees exactly what is on disk before choosing. Then use AskUserQuestion:
 
 ```yaml
 header: "Existing Issues"
-question: "Found existing issues in siw/issues/. How should I proceed?"
+question: "Found {N} existing issues in siw/issues/ (listed above). How should I proceed?"
 options:
   - label: "Append"
     description: "Add new phase issues alongside existing ones"
@@ -130,11 +137,26 @@ options:
 
 **If "Abort":** Stop the workflow.
 
-**If "Replace":** Delete existing issue files:
+**If "Replace":** Verify nothing is at risk before deleting.
 
-```bash
-rm siw/issues/ISSUE-*.md
-```
+1. Check for uncommitted changes under `siw/issues/`:
+
+   ```bash
+   git status --porcelain -- siw/issues/ 2> /dev/null
+   ```
+
+   If output is non-empty, list the dirty paths and re-prompt with AskUserQuestion options "Proceed and discard changes" / "Abort". Abort by default if the user does not pick "Proceed".
+
+2. Delete the issue files. Prefer `trash` for recoverability; fall back to `rm -f` with a warning:
+
+   ```bash
+   if command -v trash &> /dev/null; then
+     trash siw/issues/ISSUE-*.md 2> /dev/null
+   else
+     echo "Warning: 'trash' not found. Files will be permanently deleted. Install with 'brew install trash' (macOS) or your distro's 'trash-cli' package."
+     rm -f siw/issues/ISSUE-*.md
+   fi
+   ```
 
 ## Phase 2: Spec Analysis
 
@@ -150,6 +172,8 @@ After finding spec files, look for a `## Work Context` section in the spec files
 ### 2.2 Read Spec Content
 
 Read the main spec file and any supporting specs found in Phase 1.2.
+
+**Read failure:** if any spec file fails to read (permission error, missing file, empty file), stop and surface the path and the error. Do not silently skip the file or paraphrase what the spec "probably" said.
 
 ### 2.3 Extract Key Elements
 
@@ -201,14 +225,7 @@ Tag each task during decomposition. Default to HITL when unclear; the subagent i
 
 Read sizing grammar, break-down triggers, and the context-appropriate slicing rule from `references/task-sizing.md` and apply them during decomposition. Every task gets an explicit size (XS/S/M/L); any task that hits a break-down trigger — especially one that bundles multiple independently reviewable outcomes — splits before leaving this step.
 
-**Slicing shape (context-aware — load-bearing):**
-
-- For user-facing feature work:
-  - ❌ Horizontal: "Build entire DB schema → build all APIs → build all UI".
-  - ✅ Vertical: "User can create account (schema + API + UI, end-to-end)".
-- For documentation, refactors, architecture, or process work:
-  - ❌ Horizontal: "Document all data models → document all APIs → document all UI flows".
-  - ✅ End-to-end: "Document account creation end-to-end, including constraints, API contract, and UI behavior".
+**Slicing shape (context-aware — load-bearing):** apply the vertical-vs-horizontal rule from `references/task-sizing.md` to each task in the chosen Work Context. Each task must leave the smallest reviewable end-to-end outcome for its context.
 
 **Identify dependencies:**
 
@@ -234,11 +251,7 @@ For general tasks:
 
 ### 3.4 Parallelization Assessment
 
-Annotate each task group with one of three parallelization categories so the plan surfaces safe-to-run-in-parallel work explicitly rather than defaulting to serial execution:
-
-- **Safe to parallelize**: independent slices, tests, docs.
-- **Must be sequential**: migrations, shared-state changes.
-- **Needs coordination**: shared API contract → define contract first, then parallelize consumers.
+Annotate each task group with one of the three parallelization categories defined in `references/task-sizing.md` (Safe to parallelize / Must be sequential / Needs coordination). The categorization surfaces safe-to-run-in-parallel work explicitly instead of defaulting to serial execution.
 
 Record the chosen category per group (e.g., "Phase 1 tasks: Safe to parallelize after P1-001") so Phase 5's user-facing plan reflects it, the generated issue files keep the exact approved guidance, and `siw/OPEN_ISSUES_OVERVIEW.md` stores the same decision as one section-level summary per task group.
 
@@ -268,8 +281,8 @@ Evaluate:
 3. **Dependencies**: Are dependencies correctly identified? Any missing?
 4. **Completeness**: Are any tasks missing to achieve the phase goals?
 5. **Phase coherence**: Does each phase result in a demoable or reviewable outcome that matches the work context?
-6. **Sizing (hard gate)**: Every task must land XS, S, M, or L per `references/task-sizing.md`. Flag any XL task explicitly — XL is not an acceptable final state.
-7. **Slicing shape**: For feature work, does each task cut vertically (end-to-end slice — schema + API + UI together) rather than horizontally (one layer across many features)? For documentation, refactors, architecture, or process work, does each task deliver the smallest reviewable end-to-end outcome for that context? Flag tasks that are layer-by-layer or that bundle multiple independent deliverables.
+6. **Sizing (hard gate)**: apply the XS/S/M/L grammar and the XL-is-not-acceptable rule from `references/task-sizing.md`. Flag any XL task explicitly.
+7. **Slicing shape**: apply the vertical-vs-horizontal rule from `references/task-sizing.md` for the declared Work Context. Flag layer-by-layer tasks and tasks that bundle multiple independent deliverables.
 8. **Parallelization**: Are parallelization categories (Safe / Must be sequential / Needs coordination) correctly assigned? Flag any safely-parallel work serialized unnecessarily, or any shared-state change marked parallel.
 9. **Mode (AUTO vs HITL)**: Does every task carry a Mode label? Does every HITL task include a one-line reason (architectural decision, design review, judgment call, manual testing, external system access)? Flag any unlabeled task or HITL-without-reason. Do NOT second-guess the AUTO/HITL choice itself unless the rationale is obviously wrong (e.g., a task that requires manual UAT but is marked AUTO).
 
@@ -282,7 +295,11 @@ If the breakdown looks good, confirm it's ready.
 
 **Incorporate feedback:** Update the phase plan based on subagent suggestions.
 
-**Loopback gate:** If the subagent reports any XL task, any context-inappropriate horizontal / over-bundled slice, any task without a Mode label, or any HITL task without a one-line reason, re-run Phase 3.2 decomposition and re-submit to the subagent. Only proceed to Phase 5 once the subagent confirms zero XL tasks, zero slicing-shape issues, and complete Mode coverage.
+**Loopback gate (max 3 iterations):** If the subagent reports any XL task, any context-inappropriate horizontal / over-bundled slice, any task without a Mode label, or any HITL task without a one-line reason, re-run Phase 3.2 decomposition and re-submit to the subagent. Only proceed to Phase 5 once the subagent confirms zero XL tasks, zero slicing-shape issues, and complete Mode coverage.
+
+If the gate is still failing after **3 review passes**, stop looping. Surface the remaining flagged items to the user as `POTENTIAL CONCERNS` and use AskUserQuestion to choose: "Proceed to Phase 5 with remaining concerns" / "Abort and let me edit the spec first". Do not loop a fourth time.
+
+**Subagent failure handling:** If the Task subagent does not return structured feedback (empty response, unstructured text, or tool error), surface the raw response, treat the iteration as inconclusive, and ask the user how to proceed via AskUserQuestion: "Re-run review" / "Proceed without review" / "Abort". Re-runs count toward the 3-iteration cap.
 
 ## Phase 5: User Approval
 
@@ -510,16 +527,3 @@ Tips:
 ```
 
 **STOP HERE.** Wait for the user's next instruction.
-
-## Starting the Process
-
-1. Parse `$ARGUMENTS` for optional spec file path
-2. Validate SIW workflow exists (`siw/OPEN_ISSUES_OVERVIEW.md`)
-3. Find and read spec file(s)
-4. Check if implementation is in progress, warn if so
-5. Check for existing issues, handle accordingly
-6. Analyze spec and decompose into phases/tasks
-7. Launch review subagent for validation
-8. Present plan and get user approval
-9. Create issue files and update overview
-10. Report summary
