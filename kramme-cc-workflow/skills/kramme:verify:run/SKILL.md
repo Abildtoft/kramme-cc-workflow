@@ -7,7 +7,7 @@ user-invocable: true
 
 # Verify Affected Code
 
-Run verification checks (tests, formatting, builds, linting, type checking) for affected code based on the project's configuration.
+Discover the project's verification commands, run them against affected code, and report results. This is a verification command only: it never modifies files or auto-fixes issues.
 
 ## Instructions
 
@@ -34,7 +34,7 @@ If project instructions do not specify commands, check CI configuration files:
 - `Jenkinsfile` (Jenkins)
 - `.circleci/config.yml` (CircleCI)
 
-Extract the test, build, lint, and format commands from these files.
+Extract **only** the test, build, lint, type-check, and format commands. CI files interleave verification with deploy, publish, release, and other state-mutating steps — never run those, and never run steps that push to a remote, write to a registry, or modify infrastructure. If a step's intent is ambiguous, skip it and note it in the report rather than running it.
 
 ### 3. Detect Project Type
 
@@ -44,18 +44,31 @@ If no configuration specifies commands, detect the project type:
 - **C#/.NET**: Check for `*.csproj` or `*.sln` files
 - **Node.js**: Check for `package.json`
 
+If none of these match and no commands were found in steps 1-2, report "No verification commands found" with the locations checked, then stop. Do not invent commands.
+
+This skill relies on `git`, plus the toolchain for the detected project type (`nx`, `dotnet`, or `npm`) and `jq` for the JSON-inspection snippets below. If a required tool is missing, mark the checks that need it as `SKIPPED` with the reason (same handling as a missing target) rather than failing the run.
+
 ### 4. Determine Base Branch
 
 For affected detection and format checks, determine the base branch:
 
 1. **Check the applicable project instruction files** (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or equivalent) for a specified base branch
 2. **Check `nx.json`** for `defaultBase` setting (Nx projects)
-3. **Auto-detect from git**: `git symbolic-ref refs/remotes/origin/HEAD | sed 's|refs/remotes/origin/||'`
-4. **Fallback**: Check if `main` exists, otherwise use `master`
+3. **Auto-detect from git**: read `origin/HEAD`
+4. **Fallback**: if `origin/HEAD` is unset, use `main` if it exists, otherwise `master`
 
 ```bash
-# Auto-detect base branch
-BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's|refs/remotes/origin/||') || BASE_BRANCH="main"
+# Auto-detect base branch. --short strips the refs/remotes/origin/ prefix.
+# Branch off git's own exit status, not the pipeline's, so the fallback fires when origin/HEAD is unset.
+BASE_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2> /dev/null)
+BASE_BRANCH=${BASE_BRANCH#origin/}
+if [ -z "$BASE_BRANCH" ]; then
+  if git show-ref --verify --quiet refs/heads/main; then
+    BASE_BRANCH=main
+  else
+    BASE_BRANCH=master
+  fi
+fi
 ```
 
 ### 5. Discover Available Targets (Nx)
@@ -66,8 +79,9 @@ For Nx projects, discover available targets before running:
 # List affected projects
 nx show projects --affected
 
-# Check what targets are available for a project
-nx show project < project-name > --json | jq '.targets | keys'
+# Check what targets are available for a project (quote the name; the brackets are a placeholder)
+PROJECT=my-app
+nx show project "$PROJECT" --json | jq '.targets | keys'
 
 # Or inspect project.json files directly
 ```
@@ -87,70 +101,7 @@ Run checks in this order (continue through ALL checks even if some fail):
 
 ## Default Commands by Project Type
 
-### Nx Workspace (TypeScript/JavaScript)
-
-```bash
-# First, determine base branch (see step 4 above)
-# Use detected BASE_BRANCH for all affected commands
-
-# Check affected projects first
-nx show projects --affected --base=$BASE_BRANCH
-
-# Formatting (note: format:check doesn't use --affected flag)
-nx format:check --base=$BASE_BRANCH # Checks files changed from base branch
-
-# Run affected targets (use --parallel for speed)
-nx affected -t lint --parallel --base=$BASE_BRANCH
-nx affected -t typecheck --parallel --base=$BASE_BRANCH # If typecheck target exists
-nx affected -t build --parallel --base=$BASE_BRANCH
-
-# Tests - run different test targets as available
-nx affected -t test --parallel --base=$BASE_BRANCH           # Unit tests
-nx affected -t component-test --parallel --base=$BASE_BRANCH # Component tests (if exists)
-nx affected -t integration-test --base=$BASE_BRANCH          # Integration tests (if exists)
-nx affected -t e2e --base=$BASE_BRANCH                       # E2E tests (if exists)
-```
-
-### C#/.NET Project
-
-```bash
-# Restore dependencies if needed
-dotnet restore
-
-# Formatting and style
-dotnet format --verify-no-changes
-
-# Build
-dotnet build --no-restore
-
-# Tests (use --parallel for faster execution)
-# Run all tests if no categories defined:
-dotnet test --no-build
-
-# Or run by category if they exist:
-dotnet test --no-build --filter "Category=Unit"
-dotnet test --no-build --filter "Category=Integration"
-dotnet test --no-build --filter "Category=E2E"
-```
-
-### Standard Node.js Project
-
-```bash
-# Check package.json scripts for available commands
-cat package.json | jq '.scripts | keys'
-
-# Common patterns:
-npm run format:check # or: npx prettier --check .
-npm run lint         # or: npx eslint .
-npm run typecheck    # or: npx tsc --noEmit
-npm run build
-
-# Tests - check package.json for available test scripts
-npm run test             # Unit tests
-npm run test:component   # Component tests (if available)
-npm run test:integration # Integration tests (if available)
-npm run test:e2e         # E2E tests (if available)
-```
+When project instructions and CI config don't specify commands, read `references/commands-by-project-type.md` for default check-only command sets (Nx, C#/.NET, Node.js) and per-ecosystem test-suite discovery. Read only the section for the project type you detected in step 3, and use the `$BASE_BRANCH` from step 4.
 
 ## Critical Requirements
 
@@ -163,26 +114,7 @@ npm run test:e2e         # E2E tests (if available)
 
 ### Test Suite Discovery
 
-Before running tests, discover what's available:
-
-**For Nx:**
-
-```bash
-# See all targets across affected projects (use detected BASE_BRANCH)
-nx show projects --affected --base=$BASE_BRANCH -t test
-nx show projects --affected --base=$BASE_BRANCH -t component-test
-nx show projects --affected --base=$BASE_BRANCH -t integration-test
-nx show projects --affected --base=$BASE_BRANCH -t e2e
-```
-
-**For C#:**
-
-- Check test project files for `[Category("Unit")]` etc. attributes
-- Check CI configuration for test filter patterns
-
-**For Node.js:**
-
-- Check `package.json` scripts section for test variations
+Before running tests, discover which suites exist so you can run only those and mark the rest `SKIPPED`. Per-ecosystem discovery commands are in `references/commands-by-project-type.md`.
 
 ### Handling Failures
 
@@ -267,5 +199,6 @@ Issues Found: 2 steps failed - see errors above for details
 - Do NOT automatically fix issues - this is a verification command only
 - If any applicable project instruction file specifies a base branch for affected detection, use it; otherwise auto-detect (see step 4)
 - If a test suite/target doesn't exist, mark it as SKIPPED, don't fail
-- For faster iteration, E2E tests can be skipped with user confirmation
 - Always verify targets exist before running them to avoid confusing errors
+- Integration and E2E suites often mutate state (databases, queues) or require running services. Treat them as potentially side-effecting: skip them when the environment isn't prepared, and confirm with the user before running them when in doubt. E2E can also be skipped for faster iteration.
+- This skill only discovers and runs checks. To gate completion claims on fresh evidence (before committing or opening a PR), that policy lives in the `kramme:verify:before-completion` skill.
