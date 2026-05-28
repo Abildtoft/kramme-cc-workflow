@@ -9,6 +9,7 @@ For features, improvements, and complex bugs. Used when `is_simple_bug = false`.
 - Merge interview findings with existing issue content
 - For unchanged sections, preserve the original text
 - For modified sections, use the new content from the interview
+- Preserve any existing content that does not map to a recognized template section verbatim under a `## Notes (carried over)` heading rather than discarding it
 - When presenting the draft, indicate what changed vs. original:
   - `[UNCHANGED]` for preserved sections
   - `[MODIFIED]` for updated sections
