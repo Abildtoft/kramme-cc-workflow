@@ -1,6 +1,7 @@
 ---
 name: kramme:docs:adr
 description: "Author Architecture Decision Records for significant, long-lived decisions. Creates ADRs in docs/decisions/ with sequential numbering and lifecycle states (PROPOSED / ACCEPTED / SUPERSEDED / DEPRECATED). Detects and preserves existing ADR format when one is in use; falls back to a Nygard-style template otherwise. Use when adopting a new pattern, committing to a dependency, changing a public interface, changing the data model, or rejecting an alternative a future maintainer might reasonably re-propose. For in-project decisions during a tracked SIW initiative use /kramme:siw:close's decision log instead."
+argument-hint: "[decision title]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -47,7 +48,7 @@ If the existing style uses a vocabulary that conflicts with the four lifecycle s
 
 ## Lifecycle states
 
-Four states (Addy's convention; use verbatim unless the project already uses a different vocabulary):
+Four states (use verbatim unless the project already uses a different vocabulary):
 
 - **PROPOSED** — under discussion; not yet adopted.
 - **ACCEPTED** — in effect.
@@ -101,7 +102,6 @@ An ADR built on unverified claims misleads future readers more than no ADR at al
 Gate drafting if any of these are absent:
 
 - Deciders (at least one named person or role).
-- Date of writing.
 - Context framing (what problem forced the choice).
 - At least one rejected alternative.
 
@@ -153,6 +153,8 @@ Apply the **When to use** criteria. If the decision affects only one function or
 
 Use `ADR_DIR` from pre-flight. Scan that directory for the highest existing ADR number and increment it. Match the project's detected filename contract, including any literal prefix, zero-padding, separator, and slug style. Do not silently normalize the project onto `ADR-` or bare-number filenames.
 
+While scanning, also check existing ADR titles and slugs for one that already records this decision. If a match exists, emit `CONFUSION` ("an ADR for this decision may already exist: #NNNN — supersede it instead of creating a duplicate?") and resolve with the user before numbering a new file.
+
 If the existing ADR filenames do not follow a sequential integer scheme you can increment safely (for example they are date-based or prose-only), emit `CONFUSION` and ask whether to preserve that non-sequential scheme or bootstrap a new ADR log.
 
 For the common `prefix + integer + separator + slug` shapes, extract the integer with a pattern adjusted to the detected prefix and separator. Example starting point:
@@ -200,51 +202,9 @@ If the predecessor was authored by someone else, emit `ASK FIRST` before proceed
 - **Sibling — in-project decisions**: `kramme:siw:init` / `kramme:siw:close` handle decisions that live within a single tracked initiative via a project-scoped `decisions.md`. Do not double-log those here.
 - **Upstream discipline**: `kramme:code:incremental` — when an ADR accompanies code changes, each slice stays scoped to its own decision. Do not bundle multiple ADR-worthy decisions into one slice.
 
-## Inline-offer pattern
+## Inline-offer pattern (for other skills)
 
-For other skills that resolve decisions during their own workflow (discovery interviews, refactor explorations, architecture critiques): use this pattern to surface an ADR opportunity without inline-authoring the ADR.
-
-### When to offer
-
-The decision must meet **all three** criteria. If any one is missing, no offer:
-
-- **Hard to reverse** — undoing it later would be costly or destructive.
-- **Surprising without context** — a future maintainer would reasonably ask "why this?" and not be able to infer the answer from the code alone.
-- **Result of a real tradeoff** — a credible alternative was rejected for a stated reason.
-
-### The canonical offer message
-
-Surface the offer with `AskUserQuestion`. Use three options so the user can record intent (not just yes/no). Name all three criteria inline so the user can sanity-check whether the test was applied loosely. Before presenting the question, replace each evidence placeholder with a concrete one-line reason from the current workflow:
-
-```yaml
-AskUserQuestion
-header: "ADR offer"
-question: |
-  This decision looks ADR-worthy:
-  - Hard to reverse: {hard_to_reverse_evidence}
-  - Surprising without context: {surprising_without_context_evidence}
-  - Result of a real tradeoff: {real_tradeoff_evidence}
-
-  Record as an ADR?
-options:
-  - label: "Author ADR"
-    description: "Invoke /kramme:docs:adr now"
-  - label: "Skip"
-    description: "Don't author, and don't ask again about this decision"
-  - label: "Defer"
-    description: "Don't author now; allow re-offer if the decision recurs"
-multiSelect: false
-```
-
-Copy this payload structure verbatim. Substitute only the three `{...}` evidence values unless the surrounding structure forces a different question format.
-
-### Handoff rule
-
-The offering skill MUST NOT author the ADR inline. It hands off to `/kramme:docs:adr`, which runs its own 5-step authoring workflow. The offering skill MAY pre-load a decision title and a short context summary as `$ARGUMENTS` so the user does not have to retype them.
-
-### De-duplication
-
-The offering skill SHOULD track which decisions have already been offered in the current session (by title or stable identifier) and not re-offer the same decision. `Skip` and `Defer` differ here: `Skip` suppresses re-offers for the lifetime of the session; `Defer` allows re-offer only if the same decision resurfaces in a later workflow step.
+Skills that resolve decisions during their own workflow (discovery interviews, refactor explorations, architecture critiques) can surface an ADR opportunity and hand off here rather than authoring inline. The offer contract — the three-criterion test, the canonical offer message, the handoff rule, and session de-duplication — lives in `references/inline-offer-pattern.md`. Read it only when implementing that handoff in another skill.
 
 ---
 
@@ -252,7 +212,7 @@ The offering skill SHOULD track which decisions have already been offered in the
 
 These are the lies you will tell yourself to skip or distort the ADR. Each has a correct response:
 
-- _"It's just a tactical choice, not worth an ADR."_ → Apply the significance test. If it affects more than one module, commits to a dependency, changes a public interface, changes the data model, or rejects a reasonable alternative — it warrants an ADR.
+- _"It's just a tactical choice, not worth an ADR."_ → Apply the **When to use** significance test. If any criterion there matches, it warrants an ADR.
 - _"We'll capture the reasoning in the README."_ → READMEs rot and get edited without attribution. ADRs are dated, numbered, and preserved.
 - _"This supersedes the old one, so delete it."_ → Preservation rule. SUPERSEDED stays. The rejected previous approach is load-bearing context for the current one.
 - _"I'll backdate the ADR to when we actually decided."_ → Date the writing, not the decision. Honesty beats revisionism. Backdated ADRs erode trust in the whole log.
@@ -262,7 +222,7 @@ These are the lies you will tell yourself to skip or distort the ADR. Each has a
 
 ## Red Flags
 
-Rejection criteria. If any of these are true, revert the ADR and re-plan:
+Rejection criteria. If any of these are true, revert the ADR (delete a newly created file, or undo the predecessor edit when superseding) and re-plan:
 
 - **Silently deleting a prior ADR** instead of marking it SUPERSEDED or DEPRECATED.
 - **ACCEPTED status with no deciders named.** An unattributed decision is an anonymous decree.
@@ -289,6 +249,5 @@ Before declaring the ADR done, self-check:
 - [ ] Every unverifiable claim carries an `UNVERIFIED` marker.
 - [ ] ADR lives in the detected ADR directory (`ADR_DIR`), or `docs/decisions/` when bootstrapping a new log.
 - [ ] If the project already uses a non-default ADR filename prefix or separator (for example `adr-001-`), the new ADR preserves that contract and increments from the highest matching entry instead of restarting at `0001`.
-- [ ] File committed; not left uncommitted locally where it can be lost.
 
-If any box is unchecked, finish the gap or revert before declaring done.
+If any box is unchecked, finish the gap or revert (delete the new file, or undo the predecessor edit) before declaring done.
