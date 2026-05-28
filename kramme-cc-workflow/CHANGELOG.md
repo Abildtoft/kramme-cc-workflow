@@ -4,6 +4,8 @@
 
 ### Removed
 
+- Remove kramme:code:zoom-out orientation skill
+
 ## [0.58.0] - 2026-05-27
 
 ### Fixed
