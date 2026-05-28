@@ -3,6 +3,7 @@ name: kramme:siw:reset
 description: Reset SIW workflow state while preserving the spec - migrates log decisions to spec, clears issues and log
 disable-model-invocation: true
 user-invocable: true
+kramme-platforms: [claude-code]
 ---
 
 # Reset Structured Implementation Workflow
@@ -23,6 +24,9 @@ Use this when you've completed a phase of work and want to start fresh with new 
     |
     v
 [Find SIW files] -> Not found? -> Show error, abort
+    |
+    v
+[Check git status of siw/] -> Dirty? -> Confirm overwrite, else abort
     |
     v
 [Analyze siw/LOG.md] -> Extract decisions, completed tasks, learnings
@@ -73,6 +77,16 @@ The reset will clear siw/LOG.md and siw/issues, but there's no spec to migrate c
 ```
 
 Use AskUserQuestion to confirm proceeding without migration.
+
+### 1.1 Check for Uncommitted SIW Changes
+
+Step 5 deletes issue files and Step 6 overwrites siw/LOG.md, so dirty paths under `siw/` will be lost. Check before continuing:
+
+```bash
+git status --porcelain -- siw/ 2> /dev/null
+```
+
+If output is non-empty, list the dirty paths and use AskUserQuestion with options "Proceed and discard changes" / "Abort". Abort by default if the user does not pick "Proceed".
 
 ---
 
@@ -158,15 +172,17 @@ options:
     description: "Add discovered principles to spec"
   - label: "Rejected alternatives"
     description: "Add rejected alternatives for future reference"
-  - label: "Skip migration"
-    description: "Reset without migrating any content (content will be lost)"
 ```
+
+If the user selects nothing, treat that as "skip migration" and proceed straight to Step 5 — log content will be lost on the LOG.md reset.
 
 ---
 
 ## Step 4: Update Specification File
 
-For each selected migration category, update the spec file:
+For each selected migration category, update the spec file. Resolve `{date}` placeholders with today's date (`date +%Y-%m-%d`); derive `{date range}` from the earliest and latest entries in the LOG's Current Progress section.
+
+Before appending, scan the spec for an existing heading that matches the entry you are about to add — same Decision number/title, same principle text, same rejected approach. If found, skip that entry rather than duplicating it. This keeps re-runs from accreting copies into the spec.
 
 ### 4.1 Migrate Decisions
 
@@ -179,7 +195,13 @@ Add to or create `## Design Decisions` section in spec:
 
 **Date:** {date} | **Category:** {category}
 
-**Problem:** {problem} **Decision:** {decision} **Rationale:** {rationale} **Alternatives Rejected:** {alternatives}
+**Problem:** {problem}
+
+**Decision:** {decision}
+
+**Rationale:** {rationale}
+
+**Alternatives Rejected:** {alternatives}
 ```
 
 ### 4.2 Migrate Completed Tasks Summary
@@ -341,13 +363,6 @@ Next Steps:
 
 ---
 
-## Important Notes
-
-1. **Always offer migration** - Don't lose valuable decisions without user consent
-2. **Preserve the spec** - The spec is permanent; add to it, don't replace it
-3. **Clear indication of reset** - siw/LOG.md should show when reset happened
-4. **Idempotent** - Running reset multiple times is safe (nothing to migrate if already reset)
-
 ## Edge Cases
 
 ### No content to migrate
@@ -371,12 +386,3 @@ options:
   - label: "{spec_file_2}"
   - label: "Don't migrate (reset only)"
 ```
-
-### Uncommitted changes to workflow files
-
-```
-Warning: There are uncommitted changes to SIW workflow files.
-These changes will be lost after reset.
-```
-
-Use AskUserQuestion to confirm.
