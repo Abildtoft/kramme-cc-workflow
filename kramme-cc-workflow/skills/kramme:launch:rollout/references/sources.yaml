@@ -1,0 +1,7 @@
+sources:
+  - id: addy-git-workflow-versioning
+    url: https://github.com/addyosmani/agent-skills/tree/main/skills/git-workflow-and-versioning
+    title: "Addy Osmani agent-skills - git workflow and versioning"
+    rationale: "The staged-rollout sequence, feature-flag lifecycle rules, pre-launch checklist, common-rationalizations framing, and uppercase output-marker convention are adapted from Addy's git workflow and versioning skill."
+    last_reviewed_at: 2026-05-28
+    baseline_hash: ""
