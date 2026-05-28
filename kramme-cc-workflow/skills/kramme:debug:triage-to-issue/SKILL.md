@@ -1,6 +1,6 @@
 ---
 name: kramme:debug:triage-to-issue
-description: "(experimental) Triage a bug end-to-end: orchestrate root-cause investigation, design a TDD fix plan with RED-GREEN cycles, and file a refactor-durable Linear or local SIW issue in one mostly-hands-off pass. Use when a bug needs to become an implementation-ready ticket without manually chaining kramme:debug:investigate, kramme:test:tdd, and kramme:linear:issue-define. Composes those skills through normal skill invocation. Not for the full interactive investigation with confidence gates (use kramme:debug:investigate alone), not for conversational bug-reporting QA sessions (the planned kramme:qa:intake sibling), not for implementing the fix (use kramme:linear:issue-implement or kramme:siw:issue-implement after this skill files the ticket)."
+description: "(experimental) Triage a bug end-to-end: orchestrate root-cause investigation, design a TDD fix plan with RED-GREEN cycles, and file a refactor-durable Linear or local SIW issue in one mostly-hands-off pass. Use when a bug needs to become an implementation-ready ticket without manually chaining kramme:debug:investigate, kramme:test:tdd, and kramme:linear:issue-define. Composes kramme:debug:investigate and kramme:linear:issue-define via skill invocation; captures kramme:test:tdd conventions inline in v1. Not for the full interactive investigation with confidence gates (use kramme:debug:investigate alone), not for conversational multi-bug QA-intake sessions (use kramme:qa:intake), not for implementing the fix (use kramme:linear:issue-implement or kramme:siw:issue-implement after this skill files the ticket)."
 argument-hint: "[bug description, error message, or Linear/SIW issue ref] [--yes | --auto]"
 disable-model-invocation: true
 user-invocable: true
@@ -19,7 +19,7 @@ One command, one ticket. Take a bug description, run a root-cause investigation,
 ## When to skip
 
 - The bug needs interactive investigation with multiple confidence gates → use `kramme:debug:investigate` directly.
-- You want to discuss the bug conversationally before deciding whether to file → use the planned `kramme:qa:intake` sibling (not yet built).
+- You want to discuss the bug conversationally, or log several bugs from one QA pass → use `kramme:qa:intake` (conversational multi-bug intake).
 - You're going to implement the fix yourself in the same session → run `kramme:debug:investigate` then `kramme:test:tdd` (Prove-It); skip the ticket overhead.
 - The "bug" is actually a feature request, scope question, or design proposal → use `kramme:linear:issue-define` directly.
 
@@ -138,11 +138,18 @@ Take the merged context from Phases 3–5 and rewrite it for the issue body. The
 
 > See `references/durability-examples.md` for good-vs-bad rewrites of common patterns.
 
-Use this durability grep pattern for the pre-create and post-create checks:
+**Redact secrets before publishing externally.** Bug descriptions, error messages, stack traces, and repro logs routinely carry bearer tokens, API keys, connection strings, passwords, and personal data. Scan the body and replace any such value with `[REDACTED]` before filing to Linear or any shared sink — the durability grep below catches paths, not secrets.
+
+This is the canonical **durability grep**, reused by the pre-create (Phase 8.5) and post-create (Phase 10) checks. The draft is not on disk until Phase 9, so pipe the body string into `rg`:
 
 ```
-rg ':\d+|([[:alnum:]_.-]+/)+[[:alnum:]_.-]+\.[[:alnum:]]{1,8}|[[:alnum:]_-]+\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|kt|rb|php|swift|cs|cpp|c|h|hpp|sh|bash|zsh|fish|bats|md|mdx|json|ya?ml)\b' <issue-body>
+printf '%s' "$BODY" | rg ':\d+|([[:alnum:]_.-]+/)+[[:alnum:]_.-]+\.[[:alnum:]]{1,8}|[[:alnum:]_-]+\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|kt|rb|php|swift|cs|cpp|c|h|hpp|sh|bash|zsh|fish|bats|md|mdx|json|ya?ml)\b'
 ```
+
+Classify each match before treating it as a problem:
+
+- **Allowed:** matches inside fenced code blocks that are runnable repro/CLI commands; well-known framework identifiers used as nouns (`Next.js`, `Node.js`, `Vue.js`, `Nuxt.js`); public package names (`@company/auth`).
+- **RED FLAG:** any other prose match — a bare path, line number, filename, or internal symbol.
 
 ### Phase 7 — Draft
 
@@ -174,9 +181,7 @@ If the user picks **Edit**, ask which section, take their changes, re-render the
 
 ### Phase 8.5 — Pre-create durability verification
 
-Run the durability grep against the final drafted body before writing anything to Linear, SIW, or markdown.
-
-Matches inside fenced code blocks (` ``` ... ``` `) are allowed only when they are runnable repro commands or CLI invocations. Matches in prose are a `RED FLAG`.
+Run the durability grep from Phase 6 against the final drafted body (pipe the body string into `rg`) before writing anything to Linear, SIW, or markdown. Classify matches using the allowed / `RED FLAG` rules from Phase 6.
 
 If the grep finds prose matches:
 
@@ -190,27 +195,21 @@ If the user passed `--yes` or `--auto` and the grep finds prose matches, halt an
 
 Branch on the sink chosen in Phase 2.
 
-**Linear:** call `mcp__linear__create_issue` with title, description (the drafted body), required `team: LINEAR_TEAM`, and any auto-detectable labels/project. Return the issue URL.
+**Linear:** before creating, search the team for an open issue with the same title. If one exists, surface it and ask before filing a duplicate; under `--yes` / `--auto`, skip creation and report the existing issue instead of duplicating. Otherwise call `mcp__linear__create_issue` with title, description (the drafted body), required `team: LINEAR_TEAM`, and any auto-detectable labels/project. Return the issue URL.
 
 **SIW:** write three files in lockstep:
 
-1. `siw/issues/ISSUE-{prefix}-{NNN}-{slug}.md` — full issue body. Use the prefix and number scheme already in use in the repo's `siw/issues/` directory (typically `G` for general or `P{N}` for phased; pad to 3 digits). Slug is a kebab-case fragment of the title.
+1. `siw/issues/ISSUE-{prefix}-{NNN}-{slug}.md` — full issue body. Use the prefix and number scheme already in use in the repo's `siw/issues/` directory (typically `G` for general or `P{N}` for phased; pad to 3 digits). Pick the next unused number for the prefix so a re-run never overwrites an existing issue file. Slug is a kebab-case fragment of the title.
 2. `siw/OPEN_ISSUES_OVERVIEW.md` — append a row to the index table with status `OPEN`.
 3. `siw/LOG.md` — add an entry under the current progress / decision-log section noting the new issue and the date.
 
 All three updates must succeed atomically. If any write fails, surface the error and offer the user a chance to roll back the partial create.
 
-**Markdown fallback:** write `BUG-{slug}-{YYYY-MM-DD}.md` to the project root with the full body. Surface the absolute path.
+**Markdown fallback:** write `BUG-{slug}-{YYYY-MM-DD}.md` to the project root with the full body. If that file already exists (same-day re-run), append a numeric suffix (`-2`, `-3`, …) rather than overwriting. Surface the absolute path.
 
 ### Phase 10 — Post-create verification
 
-Repeat the durability grep against the created body:
-
-```
-rg ':\d+|([[:alnum:]_.-]+/)+[[:alnum:]_.-]+\.[[:alnum:]]{1,8}|[[:alnum:]_-]+\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|kt|rb|php|swift|cs|cpp|c|h|hpp|sh|bash|zsh|fish|bats|md|mdx|json|ya?ml)\b' <issue-body>
-```
-
-Matches inside fenced code blocks (` ``` ... ``` `) are allowed only when they are runnable repro commands or CLI invocations. Matches in prose are a `RED FLAG` — surface them and prompt the user to edit. Do not silently rewrite.
+Repeat the durability grep from Phase 6 against the created body. For the SIW or markdown sink, grep the written file; for the Linear sink there is no local file, so grep the body string you submitted. Classify matches using the Phase 6 rules — matches in prose are a `RED FLAG`; surface them and prompt the user to edit. Do not silently rewrite.
 
 Emit a final block:
 
@@ -278,7 +277,7 @@ Watch for these — they signal the durability rule is about to break.
 
 - **`kramme:debug:investigate`** — source of the investigation phase (Steps 1–6 + Step 8 reporting). The orchestrator stops it at the propose-fix gate via the "Report only" option.
 - **`kramme:test:tdd`** — source of the Prove-It cycle conventions and RED-GREEN structure used in Phase 4. v1 captures the patterns; the sub-skill itself may not be invocable as a pure planner (see Phase 4 caveat).
-- **`kramme:linear:issue-define`** — source of issue-creation conventions (title format, template selection, metadata). v1 issues the create call directly via `mcp__linear__create_issue` for predictable interception, but the body shape mirrors the `Simple Bug Template` and `Comprehensive Template` from issue-define's assets (without copying the `**File:** path/to/affected/file.ts` line, which violates the durability rule).
+- **`kramme:linear:issue-define`** — source of issue-creation conventions (title format, template selection, metadata). v1 issues the create call directly via `mcp__linear__create_issue` for predictable interception, but the body shape mirrors the `Simple Bug Template` and `Comprehensive Template` from issue-define's assets. Both skills enforce the same durability constraint: issue-define via its `**Affected area:**` field (module / behavior / contract, not paths or line numbers), this skill via the durability grep.
 - **`kramme:linear:issue-implement` / `kramme:siw:issue-implement`** — downstream consumers. The ticket body produced here is designed to be picked up by these flows without re-investigation.
 
 ---

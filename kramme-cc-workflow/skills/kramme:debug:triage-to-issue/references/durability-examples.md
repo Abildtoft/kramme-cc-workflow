@@ -81,6 +81,7 @@ Acceptance criteria assert on observable behavior. The implementer is free to ch
 
 - Repro commands in fenced code blocks: `npm test path/to/test.spec.ts` is fine inside a ` ``` ` block. The reader runs it as-is.
 - Public package or module identifiers used as nouns: `the @company/auth package`, `the orders microservice`. These are stable architectural references.
+- Well-known framework names used as nouns: `Next.js`, `Node.js`, `Vue.js`, `Nuxt.js`. These end in a code extension, so the grep flags them, but they are architectural references, not file paths — allow them in prose.
 - HTTP routes and CLI commands: `/api/login`, `claude /plugin install` — these are public surfaces.
 - Error message strings the user sees: `"Token has expired"`. These are part of the contract.
 
@@ -88,10 +89,7 @@ Acceptance criteria assert on observable behavior. The implementer is free to ch
 
 ## Self-check (durability grep)
 
-The orchestrator runs:
+The orchestrator runs the canonical durability grep defined in `SKILL.md` Phase 6 (the single source of the pattern) against the issue body and classifies each match by these rules:
 
-```
-rg ':\d+|([[:alnum:]_.-]+/)+[[:alnum:]_.-]+\.[[:alnum:]]{1,8}|[[:alnum:]_-]+\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|kt|rb|php|swift|cs|cpp|c|h|hpp|sh|bash|zsh|fish|bats|md|mdx|json|ya?ml)\b' <issue-body>
-```
-
-Matches inside fenced code blocks: ignore only when they are runnable repro commands or CLI invocations. Matches in prose: emit `RED FLAG` and prompt the user to edit before considering the issue creation complete.
+- **Ignore:** matches inside fenced code blocks that are runnable repro commands or CLI invocations; well-known framework names used as nouns (`Next.js`, `Node.js`, `Vue.js`, `Nuxt.js`); public package names (`@company/auth`).
+- **`RED FLAG`:** any other prose match — a bare path, line number, filename, or internal symbol. Prompt the user to edit before considering issue creation complete.
