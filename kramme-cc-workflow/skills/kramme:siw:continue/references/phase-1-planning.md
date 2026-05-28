@@ -18,7 +18,7 @@ This is the only document that persists after completion.
 
 Create the `siw/` directory first if it doesn't exist.
 
-Read `templates/spec-guidance.md` for structure details.
+Read `assets/spec-guidance.md` for structure details.
 
 **Include:**
 
@@ -39,7 +39,7 @@ Read `templates/spec-guidance.md` for structure details.
 
 **Only create when first blocker or investigation need arises.**
 
-Read `templates/issues-template.md` for the full structure.
+Read `assets/issues-template.md` for the full structure.
 
 **When first issue arises:**
 
@@ -55,7 +55,7 @@ Read `templates/issues-template.md` for the full structure.
 
 **If creating manually** (when first decision is made OR first task is completed):
 
-- Read `templates/log-template.md` for structure
+- Read `assets/log-template.md` for structure
 - Add "Current Progress" section at the very top
 - Add Decision Template
 - Document first decision with full rationale (if applicable)
