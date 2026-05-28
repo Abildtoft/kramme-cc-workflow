@@ -15,23 +15,16 @@ Generate a comprehensive visual diff review as a self-contained HTML page.
 
 ## Prerequisites
 
-Read the local visual references before generating:
+Confirm the environment before gathering data:
 
-- `references/css-patterns.md`
-- `references/libraries.md`
-- `references/responsive-nav.md`
+- Run from inside a git work tree. If the working directory is not a git repository, report that and stop.
+- For a PR-number argument, `gh` must be installed and authenticated. If it is missing, report the exact tool needed and stop, or ask for a branch or range instead.
 
-Select the appropriate template to absorb patterns:
-
-- `assets/architecture.html`
-- `assets/data-table.html`
-- `assets/mermaid-flowchart.html`
-
-Follow the workflow below. Use a GitHub-diff-inspired aesthetic with red/green before/after panels, but vary fonts and palette from previous diagrams.
+Read the local `references/` and `assets/` files just-in-time, as step 2 below directs — each entry there names the file that covers each need. Use a GitHub-diff-inspired aesthetic with red/green before/after panels, but vary fonts and palette from previous diagrams.
 
 ## Workflow
 
-1. **Think.** Decide what changed, who needs the explanation, and which comparisons deserve the most visual weight. Choose diagram types that make before/after changes legible, not just pretty.
+1. **Think (ultrathink).** Decide what changed, who needs the explanation, and which comparisons deserve the most visual weight. Choose diagram types that make before/after changes legible, not just pretty.
 
 2. **Structure.** Use the local templates and references to choose the rendering approach:
    - `assets/architecture.html` for text-heavy architecture comparisons
@@ -112,11 +105,11 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 
 ## Output
 
-Write to `~/.kramme-cc-workflow/diagrams/diff-review-{descriptive-name}.html`. Create the directory if needed. Open in browser:
+Write to `~/.kramme-cc-workflow/diagrams/diff-review-{descriptive-name}.html`. Create the directory if needed. Re-running with the same scope reuses the same descriptive name and overwrites the previous file by design — vary the name only when you want to keep an earlier review.
+
+Open in browser:
 
 - macOS: `open ~/.kramme-cc-workflow/diagrams/{filename}.html`
-- Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html` Report the file path to the user.
+- Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html`
 
-Include responsive section navigation.
-
-Ultrathink.
+Report the file path to the user. Include responsive section navigation.
