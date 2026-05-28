@@ -1,153 +1,152 @@
 ---
 name: kramme:siw:remove
-description: Remove all Structured Implementation Workflow (SIW) files from current directory
+description: Delete SIW workflow files from the current directory. Destructive; use kramme:siw:close first if you want to preserve documentation.
 disable-model-invocation: true
 user-invocable: true
 ---
 
 # Remove Structured Implementation Workflow Files
 
-Delete all SIW-related files from the `siw/` folder in the current working directory. This command is the destructive cleanup path for SIW workflow documents after implementation is complete.
+Delete SIW-related files from the `siw/` folder in the current working directory. This is the destructive cleanup path for SIW workflow documents after implementation is complete.
 
-If you need to preserve or archive handoff artifacts such as `siw/SPEC_STRENGTHENING_PLAN.md`, use `/kramme:siw:close` instead.
+If you want to preserve accumulated knowledge as permanent documentation, use `/kramme:siw:close` instead. If you want to start a fresh iteration on the same project, use `/kramme:siw:reset`.
 
 ## Target Files
 
-**Temporary files (always deleted):**
+**Temporary (always candidates for deletion):**
 
-- `siw/LOG.md` - Session progress and decisions
-- `siw/OPEN_ISSUES_OVERVIEW.md` - Issue tracking table
-- `siw/AUDIT_IMPLEMENTATION_REPORT.md` - Spec compliance audit report
-- `siw/AUDIT_SPEC_REPORT.md` - Spec quality audit report
-- `siw/SPEC_STRENGTHENING_PLAN.md` - Refinement discovery output before `--apply`; this command deletes it, unlike `/kramme:siw:close`
-- `siw/DISCOVERY_BRIEF.md` - Greenfield discovery output before full workflow init
-- `siw/issues/` - Directory containing individual issue files
-- `siw/qa-intake/` - Directory containing QA intake parent summaries
+- `siw/LOG.md` — Session progress and decisions
+- `siw/OPEN_ISSUES_OVERVIEW.md` — Issue tracking table
+- `siw/AUDIT_IMPLEMENTATION_REPORT.md` — Spec compliance audit report
+- `siw/AUDIT_SPEC_REPORT.md` — Spec quality audit report
+- `siw/SPEC_STRENGTHENING_PLAN.md` — Refinement discovery output (this command deletes it, unlike `/kramme:siw:close`)
+- `siw/DISCOVERY_BRIEF.md` — Greenfield discovery output
+- `siw/issues/` — Individual issue files
+- `siw/qa-intake/` — QA intake parent summaries
 
-**Permanent files (optional, requires confirmation):**
+**Permanent (optional, requires explicit confirmation):**
 
-- Specification files in `siw/` (`siw/*SPEC*.md`, `siw/*SPECIFICATION*.md`, `siw/*PLAN*.md`, `siw/*DESIGN*.md`), excluding `siw/SPEC_STRENGTHENING_PLAN.md` and `siw/DISCOVERY_BRIEF.md`
+- Specification files in `siw/` matching `*SPEC*.md`, `*SPECIFICATION*.md`, `*PLAN*.md`, or `*DESIGN*.md`, excluding `SPEC_STRENGTHENING_PLAN.md` and `DISCOVERY_BRIEF.md`
+- `siw/supporting-specs/` — Numbered supporting specs
+
+Only files discovered in Step 1 are deleted, listed in the confirmation prompt, or reported as deleted. Items in the lists above that do not exist on disk are ignored.
 
 ## Workflow
 
 ### Step 1: Scan for SIW Files
 
-Check which SIW files exist:
+Discover what exists. Record two lists from the output:
+
+- `found_temporary` — temp files and directories
+- `found_permanent` — spec/permanent files plus `siw/supporting-specs/` if present
 
 ```bash
-ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues/ siw/qa-intake/ 2> /dev/null
+ls -d siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues siw/qa-intake 2> /dev/null
 find siw -maxdepth 1 -type f \( -name "*SPEC*.md" -o -name "*SPECIFICATION*.md" -o -name "*PLAN*.md" -o -name "*DESIGN*.md" \) \
   ! -name "SPEC_STRENGTHENING_PLAN.md" \
   ! -name "DISCOVERY_BRIEF.md" \
   2> /dev/null
+ls -d siw/supporting-specs 2> /dev/null
 ```
 
-**If no SIW files found:**
+**If both lists are empty:**
 
 ```
 No SIW workflow files found in this directory.
-
-Expected files:
-- siw/LOG.md
-- siw/OPEN_ISSUES_OVERVIEW.md
-- siw/AUDIT_IMPLEMENTATION_REPORT.md
-- siw/AUDIT_SPEC_REPORT.md
-- siw/SPEC_STRENGTHENING_PLAN.md
-- siw/DISCOVERY_BRIEF.md
-- siw/issues/ directory
-- siw/qa-intake/ directory
-- Specification files in siw/ (e.g., siw/FEATURE_SPECIFICATION.md)
 ```
 
-**Action:** Stop.
+Stop.
 
-### Step 2: Present Found Files
+### Step 2: Check for Uncommitted Changes
 
-List what will be deleted:
+```bash
+git status --porcelain -- siw/ 2> /dev/null
+```
+
+If any output exists, warn the user before proceeding to confirmation:
 
 ```
-SIW Workflow Files Found:
+Warning: There are uncommitted changes to SIW files:
+{paths from porcelain output, one per line}
 
-Temporary (will be deleted):
-- siw/LOG.md
-- siw/OPEN_ISSUES_OVERVIEW.md
-- siw/AUDIT_IMPLEMENTATION_REPORT.md
-- siw/AUDIT_SPEC_REPORT.md
-- siw/SPEC_STRENGTHENING_PLAN.md
-- siw/DISCOVERY_BRIEF.md
-- siw/issues/ ({count} issue files)
-- siw/qa-intake/ ({count} intake summaries)
-
-Permanent (optional):
-- siw/{spec_filename}
+If `trash` is available, these will be recoverable from the system Trash. Otherwise they will be permanently lost.
 ```
+
+If the working tree is clean or not a git repo, skip the warning. Continue to Step 3 either way.
 
 ### Step 3: Confirm Deletion
 
-Use AskUserQuestion:
+Use AskUserQuestion. Build option descriptions from the actual contents of `found_temporary` and `found_permanent` — do not list files that were not found in Step 1.
 
 ```yaml
 header: "Delete SIW Files"
-question: "Which files should I delete?"
+question: "Found {len(found_temporary)} temporary item(s){, plus {len(found_permanent)} permanent item(s) if non-empty}. Which should I delete?"
 options:
   - label: "Temporary files only"
-    description: "Delete siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, siw/AUDIT_IMPLEMENTATION_REPORT.md, siw/AUDIT_SPEC_REPORT.md, siw/SPEC_STRENGTHENING_PLAN.md, siw/DISCOVERY_BRIEF.md, siw/issues/, and siw/qa-intake/. Keep spec file."
+    description: "Delete: {comma-separated paths in found_temporary}. Keep permanent files."
   - label: "All SIW files"
-    description: "Delete everything including the specification file"
+    description: "Delete the temporary items plus: {comma-separated paths in found_permanent}."
   - label: "Abort"
     description: "Cancel and keep all files"
 ```
 
+If `found_permanent` is empty, omit the "All SIW files" option.
+
 ### Step 4: Delete Files
 
-Use `trash` command to move files to system Trash (recoverable):
+Determine the deletion set from the user's selection:
+
+- "Temporary files only" → `delete_set = found_temporary`
+- "All SIW files" → `delete_set = found_temporary + found_permanent`
+
+Prefer `trash` for recoverability. Use `trash -r` for directories.
 
 ```bash
-# Temporary files
-trash siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md 2> /dev/null
-trash -r siw/issues/ 2> /dev/null
-trash -r siw/qa-intake/ 2> /dev/null
-
-# If "All SIW files" selected
-trash siw/{spec_filename} 2> /dev/null
+# Files
+trash <each file path in delete_set> 2> /dev/null
+# Directories
+trash -r <each directory path in delete_set> 2> /dev/null
 ```
 
-**If `trash` is not available**, fall back to `rm` with warning:
+**If `trash` is not installed,** warn and fall back to `rm`:
 
 ```
 Warning: 'trash' command not found. Files will be permanently deleted.
-Consider installing: brew install trash
+Install with `brew install trash` (macOS) or your distro's `trash-cli` package (Linux).
 ```
 
 ```bash
-rm -f siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md
-rm -rf siw/issues/
-rm -rf siw/qa-intake/
-# If all files: rm -f siw/{spec_filename}
+rm -f <each file path in delete_set>
+rm -rf <each directory path in delete_set>
 ```
 
-### Step 5: Report Results
+### Step 5: Clean Up Empty `siw/`
+
+After deletion, remove leftover `.gitkeep` placeholders and any directories that are now empty. `rmdir` only succeeds on empty directories, so it is safe to call unconditionally.
+
+```bash
+rm -f siw/.gitkeep siw/issues/.gitkeep siw/qa-intake/.gitkeep siw/supporting-specs/.gitkeep 2> /dev/null
+rmdir siw/issues siw/qa-intake siw/supporting-specs siw 2> /dev/null
+```
+
+Record whether `siw/` itself was removed for the report.
+
+### Step 6: Report Results
+
+Report only paths that were actually in `delete_set`:
 
 ```
 SIW Cleanup Complete
 
 Deleted:
-- siw/LOG.md
-- siw/OPEN_ISSUES_OVERVIEW.md
-- siw/AUDIT_IMPLEMENTATION_REPORT.md
-- siw/AUDIT_SPEC_REPORT.md
-- siw/SPEC_STRENGTHENING_PLAN.md
-- siw/DISCOVERY_BRIEF.md
-- siw/issues/ ({count} files)
-- siw/qa-intake/ ({count} files)
-{- siw/{spec_filename} (if selected)}
+{each path in delete_set, one per line}
 
 {If using trash: Files moved to Trash and can be restored if needed.}
+{If siw/ was removed: siw/ directory removed.}
 ```
 
 ## Important Notes
 
-1. **Use `trash` when available** - Allows recovery from system Trash
-2. **Spec files are permanent** - Default is to keep them; only delete with explicit confirmation
-3. **Check for uncommitted changes** - If any deleted files had uncommitted changes, warn the user
-4. **Works with `/kramme:siw:init`** - Can re-initialize workflow after cleanup
+1. **`trash` keeps deletions recoverable** — prefer it over `rm` whenever it is installed.
+2. **Permanent files default to kept** — the "All SIW files" option must be explicitly selected to delete spec files and `siw/supporting-specs/`.
+3. **Works with `/kramme:siw:init`** — the workflow can be re-initialized after cleanup.
