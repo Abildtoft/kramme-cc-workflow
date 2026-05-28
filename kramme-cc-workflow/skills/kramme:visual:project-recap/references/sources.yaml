@@ -3,5 +3,5 @@ sources:
     url: https://github.com/nicobailon/visual-explainer
     title: "nicobailon/visual-explainer"
     rationale: "Project-recap visualization workflow, explanatory artifacts, and rendering conventions are adapted from this project."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-05-28
+    baseline_hash: "8f1d0e38ab0f265632a31d2fd032f7b730c98c15"
