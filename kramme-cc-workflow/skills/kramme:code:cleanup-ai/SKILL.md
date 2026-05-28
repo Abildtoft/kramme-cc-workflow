@@ -1,84 +1,53 @@
 ---
 name: kramme:code:cleanup-ai
-description: Remove AI-generated code slop from a branch. Use when cleaning up AI-generated code, removing unnecessary comments, defensive checks, or type casts. Checks diff against main and fixes style inconsistencies.
+description: Remove AI-generated code slop from a branch. Use when cleaning up AI-generated code, removing unnecessary comments, defensive checks, or type casts. Checks the branch diff against the resolved base and fixes style inconsistencies. Not for generated, vendored, lockfile, snapshot, or `*.d.ts` files.
+argument-hint: [base-branch]
 disable-model-invocation: true
 user-invocable: true
 ---
 
 # Remove AI Code Slop
 
-This command uses the `kramme:deslop-reviewer` agent to identify AI slop, then fixes the identified issues.
+This skill uses the `kramme:deslop-reviewer` agent to identify AI slop in the branch's diff against a base, then applies the agent's recommended fixes.
+
+## Preconditions
+
+Run `git status --porcelain`. If the working tree is dirty, confirm with the user before continuing — the skill's edits will land alongside theirs in `git diff` and will be hard to separate when reverting.
 
 ## Process
 
-1. **Scan for slop**
-   - Launch `kramme:deslop-reviewer` in code review mode
-   - Detect the base branch using a 3-tier strategy and get the diff:
-     1. If the caller provided a base branch explicitly (for example, "Use `develop` as the base"), use it directly
-     2. Otherwise, query the PR target branch:
+1. **Resolve the base branch** — try these sources in order; use the first non-empty value:
+   - The argument passed to this skill.
+   - `gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null`
+   - `git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'`
 
-     ```bash
-     BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2> /dev/null)
-     ```
+   Assign the result to `BASE_BRANCH` with any leading `origin/` stripped, then validate and fetch:
 
-     3. If no PR or query fails, fall back:
+   ```bash
+   git check-ref-format --branch "$BASE_BRANCH" && \
+     git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" && \
+     git rev-parse --verify --quiet "origin/$BASE_BRANCH"
+   ```
 
-     ```bash
-     BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@')
-     [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
-     ```
+   On failure, stop and ask the user to re-run with the base branch as the skill argument.
 
-     Normalize before diffing:
+2. **Scan for slop**
 
-     ```bash
-     BASE_BRANCH=${BASE_BRANCH#refs/heads/}
-     BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
-     BASE_BRANCH=${BASE_BRANCH#origin/}
-     if [ -z "$BASE_BRANCH" ]; then
-       echo "Error: Could not determine base branch. Re-run with --base <ref>." >&2
-       exit 1
-     fi
-     if ! git check-ref-format --branch "$BASE_BRANCH" > /dev/null 2>&1; then
-       echo "Error: Base branch '$BASE_BRANCH' is not a valid branch name. Re-run with --base <ref>." >&2
-       exit 1
-     fi
-     if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2> /dev/null; then
-       echo "Error: Failed to fetch origin/$BASE_BRANCH. Check remote access and re-run with --base <ref>." >&2
-       exit 1
-     fi
-     if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null; then
-       echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <ref>." >&2
-       exit 1
-     fi
-     ```
+   Launch `kramme:deslop-reviewer` in code review mode against `git diff origin/$BASE_BRANCH...HEAD`.
 
-     Then get the diff:
+3. **Filter the findings**
 
-     ```bash
-     git diff origin/$BASE_BRANCH...HEAD
-     ```
+   Discard any finding whose file is generated, vendored, a lockfile, a snapshot, or `*.d.ts` before deciding what to fix.
 
-   - Agent identifies slop patterns in changed files
+4. **Apply fixes by confidence**
 
-2. **Review findings**
-   - Present the slop findings to understand what will be changed
-   - Findings include file:line references and explanations
+   The agent scores findings 0–100. Apply the agent's specific recommendation per finding — do not pattern-match generically:
+   - **≥76**: auto-apply.
+   - **51–75**: summarize the finding to the user and apply on confirmation.
+   - **<51**: skip; list in the final report.
 
-3. **Fix identified slop**
-   - For each slop finding, edit the file to remove the pattern:
-     - Remove unnecessary comments
-     - Remove excessive defensive checks/try-catch blocks
-     - Replace `any` casts with proper types where possible
-     - Align style with the rest of the file
+   Leave a finding unchanged when applying it would alter test expectations, public APIs, or behavior the agent itself flagged as possibly intentional.
 
-4. **Report summary**
-   - Provide a 1-3 sentence summary of what was changed
-   - List files that were modified
+5. **Report**
 
-## Slop Patterns (Quick Reference)
-
-- **Unnecessary comments**: Comments describing obvious code or over-documenting
-- **Defensive overkill**: Try-catch/null checks where not needed
-- **Type workarounds**: `any` casts, `@ts-ignore` without justification
-- **Style inconsistencies**: Different patterns than the rest of the file
-- **Over-engineering**: Unnecessary abstractions for simple operations
+   1–3 sentences: which files were edited, plus counts for applied / confirmed / skipped / filtered.
