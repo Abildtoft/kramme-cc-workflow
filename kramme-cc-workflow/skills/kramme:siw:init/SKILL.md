@@ -49,9 +49,11 @@ Check if any workflow files already exist:
 
 ```bash
 ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues/ 2> /dev/null
-find siw -maxdepth 1 -type f \( -name "*SPEC*.md" -o -name "*SPECIFICATION*.md" -o -name "*PLAN*.md" -o -name "*DESIGN*.md" \) \
-  ! -name "SPEC_STRENGTHENING_PLAN.md" \
-  ! -name "DISCOVERY_BRIEF.md" \
+# Permanent SIW spec detection (referenced as `permanent-spec find` elsewhere in this skill).
+# Case-insensitive so lowercase/mixed-case filenames like `feature_spec.md` are not missed.
+find siw -maxdepth 1 -type f \( -iname "*SPEC*.md" -o -iname "*SPECIFICATION*.md" -o -iname "*PLAN*.md" -o -iname "*DESIGN*.md" \) \
+  ! -iname "SPEC_STRENGTHENING_PLAN.md" \
+  ! -iname "DISCOVERY_BRIEF.md" \
   2> /dev/null
 ```
 
@@ -81,7 +83,27 @@ options:
 
 **If "Start fresh":**
 
-- Delete existing temporary workflow files (`siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/issues/`, `siw/DISCOVERY_BRIEF.md`, and `siw/SPEC_STRENGTHENING_PLAN.md`), but preserve any permanent SIW spec files such as `siw/*SPEC*.md`, `siw/*SPECIFICATION*.md`, `siw/*PLAN*.md`, and `siw/*DESIGN*.md`, explicitly excluding `siw/SPEC_STRENGTHENING_PLAN.md`, with user confirmation
+- Before deleting `siw/issues/`, count any existing issue files:
+
+  ```bash
+  ls siw/issues/ISSUE-*.md 2> /dev/null | wc -l
+  ```
+
+  If the count is greater than zero, surface a second confirmation using AskUserQuestion before deleting:
+
+  ```yaml
+  header: "Delete Existing Issues"
+  question: "{n} issue file(s) in siw/issues/ will be deleted. This cannot be undone."
+  options:
+    - label: "Delete all issues"
+      description: "Proceed with Start fresh; all issue files are removed"
+    - label: "Abort"
+      description: "Stop so I can back up or move issues out of siw/issues/ first"
+  ```
+
+  If "Abort", stop this command without changing any files.
+
+- Delete existing temporary workflow files (`siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/issues/`, `siw/DISCOVERY_BRIEF.md`, and `siw/SPEC_STRENGTHENING_PLAN.md`), but preserve any permanent SIW spec files matched by the `permanent-spec find` from earlier in Phase 1 (`*SPEC*.md`, `*SPECIFICATION*.md`, `*PLAN*.md`, `*DESIGN*.md`, case-insensitive; the permanent-spec find already excludes `SPEC_STRENGTHENING_PLAN.md` and `DISCOVERY_BRIEF.md`). No further confirmation is required — consent was already collected by the Start-fresh / Abort question above.
 - Continue to Phase 1.5
 
 **If no files exist:** Continue to Phase 1.5
@@ -166,13 +188,7 @@ If `resolved_arguments` starts with "discover" or "interview":
    ```
 
 3. Do **not** run the legacy inline interview path here.
-4. Before launching discovery, check for permanent SIW spec files left in `siw/` using the same pattern as Phase 1:
-   ```bash
-   find siw -maxdepth 1 -type f \( -name "*SPEC*.md" -o -name "*SPECIFICATION*.md" -o -name "*PLAN*.md" -o -name "*DESIGN*.md" \) \
-     ! -name "SPEC_STRENGTHENING_PLAN.md" \
-     ! -name "DISCOVERY_BRIEF.md" \
-     2> /dev/null
-   ```
+4. Before launching discovery, re-run the `permanent-spec find` from Phase 1 to check for permanent SIW spec files left in `siw/`.
 5. If permanent spec files still exist, do **not** run greenfield discovery. Use AskUserQuestion:
    ```yaml
    header: "Existing Spec Files Found"
@@ -283,15 +299,31 @@ options:
 
 ### Handle File Location Choice
 
+For both **"Move to siw/"** and **"Copy to siw/"**, before transferring each file, check the target path with `[ -e "siw/{filename}" ]`. If a file already exists at the target, use AskUserQuestion before overwriting:
+
+```yaml
+header: "Target File Exists"
+question: "siw/{filename} already exists. How should I proceed for this file?"
+options:
+  - label: "Overwrite"
+    description: "Replace siw/{filename} with the incoming file"
+  - label: "Rename incoming"
+    description: "Keep siw/{filename} and write the new file as siw/{filename-stem}-imported{ext}"
+  - label: "Skip"
+    description: "Leave both files where they are and reference the original path"
+```
+
+Apply the user's choice per file, then:
+
 - **"Keep in place"**: Store paths as-is in `linked_spec_files`, continue to Phase 2.6
 - **"Move to siw/"**:
-  - Move each file to `siw/{filename}`
-  - Update `linked_spec_files` with new paths
+  - Move each file to `siw/{filename}` (or the renamed/skipped path per the collision prompt above)
+  - Update `linked_spec_files` with the resulting paths
   - Continue to Phase 2.6
 - **"Copy to siw/"**:
   - Warn: "This creates duplicate files. Consider using 'Keep in place' to maintain a single source of truth."
-  - If user confirms, copy files to `siw/`
-  - Update `linked_spec_files` with new paths
+  - If user confirms, copy files to `siw/` (or the renamed/skipped path per the collision prompt above)
+  - Update `linked_spec_files` with the resulting paths
   - Continue to Phase 2.6
 
 ## Phase 2.6: Confirm Project Context
