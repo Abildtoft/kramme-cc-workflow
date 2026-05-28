@@ -4,10 +4,10 @@ sources:
     title: "Addy Osmani agent-skills - test-driven development"
     rationale: "The red-green-refactor workflow, Prove-It pattern, and test discipline guidance are adapted from this source."
     last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    baseline_hash: "ad35cbf9cfd1a13ea0908064087717be04205a91"
   - id: pocock-tdd
-    url: https://github.com/mattpocock/skills/tree/main/tdd
+    url: https://github.com/mattpocock/skills/tree/main/skills/engineering/tdd
     title: "Matt Pocock skills - tdd"
     rationale: "The horizontal-slicing anti-pattern callout (writing all tests first, then all implementation, produces tests of imagined behavior) and the WRONG/RIGHT diagram contrasting horizontal vs vertical slicing via tracer bullets are adapted from this source."
     last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    baseline_hash: "b2039ab896a01ebcc539704f69974f7bcdfb1226"
