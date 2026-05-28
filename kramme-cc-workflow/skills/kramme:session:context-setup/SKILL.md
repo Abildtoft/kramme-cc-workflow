@@ -1,6 +1,6 @@
 ---
 name: kramme:session:context-setup
-description: Configure effective agent context at session start or after output quality degrades. Covers rules-file verification (CLAUDE.md / AGENTS.md), pre-task context loading (files to modify + related tests + one similar-pattern example + type definitions), context-window hygiene, and trust-level tagging for inputs. Use when starting a new session, switching major tasks, or when output quality drops.
+description: Configure effective agent context at session start or after output quality degrades. Covers rules-file verification (CLAUDE.md / AGENTS.md), pre-task context loading (files to modify + related tests + one similar-pattern example + type definitions), context-window hygiene, and trust-level tagging for inputs. Use when starting a new session, switching major tasks, or when output quality drops. Not for trivial single-file edits or mid-task incremental loads — it is a session-boundary ritual, not a per-edit step.
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -9,12 +9,16 @@ user-invocable: true
 
 Configure effective agent context at session start or after output quality degrades. Context quality dominates output quality: the agent can only reason about what is in its window, and a noisy window degrades reasoning as much as a missing one. This skill turns context preparation into an explicit, repeatable step instead of something that gets skipped because it feels like overhead.
 
+This skill produces no file. It configures in-session context and emits markers plus a final self-check; its only mutating path is the delegated rules-file repair below.
+
 ## When to use
 
 - **Session start.** Before the first real task in a new session.
 - **Major task switch.** When moving from one feature, bug, or subsystem to another — the context that served the previous task is usually the wrong context for the next one.
 - **Output-quality drop.** When the agent starts hallucinating paths, re-asks for files already loaded, repeats the same grep, or drifts off the codebase's patterns. These are symptoms of context exhaustion or context mismatch.
 - **Before a load-bearing decision.** When about to make a non-trivial architectural or design call, confirm the relevant context is loaded before reasoning.
+
+**When not to use:** trivial single-file edits, or mid-task incremental loads where the four-file L3 pass is pure overhead. This is a session-boundary ritual, not a per-edit step.
 
 ## The Context Hierarchy
 
@@ -30,7 +34,7 @@ Verify `CLAUDE.md` and/or `AGENTS.md` exist at the project root and cover:
 - Boundaries (what not to touch, what requires human review).
 - Context Pointers (compact links to deeper docs, skills, scripts, source entry points, tests, schemas, ADRs, or runbooks with clear when/why cues).
 
-If a rules file is missing, stale, bloated with duplicated detail, or lacks useful Context Pointers, repair it before proceeding. Delegate the repair to `kramme:docs:update-agents-md`. Do not continue the task with a stale rules file — the agent will reproduce whatever conventions the rules file implies, including the wrong ones.
+If a rules file is missing, stale, bloated with duplicated detail, or lacks useful Context Pointers, repair it before proceeding. Delegate the repair to `kramme:docs:update-agents-md`; if that skill is unavailable, repair the file inline or flag `MISSING REQUIREMENT` and pause. Do not continue the task with a stale rules file — the agent will reproduce whatever conventions the rules file implies, including the wrong ones.
 
 If verification shows rules are current but sparse, flag it rather than silently continuing:
 
@@ -117,7 +121,7 @@ When context is insufficient or ambiguous, emit the appropriate marker instead o
 - `MISSING REQUIREMENT: <what is absent>` — a piece of context the task depends on is not loaded and not derivable. Close the gap before proceeding.
 - `PLAN: <ordered next steps>` — the agent's declared next-step chain. Emitted before execution so the plan can be inspected and redirected.
 
-Use these verbatim. The markers are parsed by downstream tooling and by the reviewer; ad-hoc substitutes degrade both.
+Use these verbatim, so reviewers and any downstream tooling can match them; ad-hoc substitutes defeat that.
 
 ## MCP integrations
 
