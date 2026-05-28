@@ -1,46 +1,18 @@
-# Rollout Decision Thresholds
+# Rollout Decision Thresholds — rationale
 
-The load-bearing artifact of this skill. Concrete numeric gates turn "is the rollout healthy?" into a falsifiable question. Use the table at every stage of the staged rollout sequence (team enable, 5% canary, 25%, 50%, 100%).
+The thresholds table, the green/yellow/red reading rules, the immediate rollback triggers, and the window values are all defined in `SKILL.md` and kept inline there because they are load-bearing at decision time. This file does **not** repeat them — it has one home, so a tuned number never disagrees with itself. What lives here is the reasoning: how to define a baseline, why the windows are what they are, why these specific numbers, and what to do when you have no baseline.
 
-## The table
-
-| Metric | Advance (green) | Hold and investigate (yellow) | Roll back (red) |
-| --- | --- | --- | --- |
-| Error rate | Within 10% of baseline | 10–100% above baseline | >2× baseline |
-| P95 latency | Within 20% of baseline | 20–50% above baseline | >50% above baseline |
-| Client JS errors | No new error types | New errors at <0.1% of sessions | New errors at >0.1% of sessions |
-| Business metrics | Neutral or positive | Decline <5% (may be noise) | Decline >5% |
+## Defining the baseline
 
 Baseline = the equivalent window from the same day-of-week and hour-of-day, pre-rollout. Do not compare midnight traffic to peak traffic and call it a regression.
 
-## How to apply
+## Window lengths — the reasoning
 
-- **Green across the table** — advance to the next percentage after the window expires.
-- **Any yellow** — hold. Investigate the specific metric. Advance only after the signal clears or the investigation proves it unrelated.
-- **Any red** — roll back immediately. Do not negotiate. The cost of a false-positive rollback is small; the cost of a false-negative is a production incident.
+The window values live in the Rollout Sequence in `SKILL.md` (team 24h, canary 24–48h, 25%/50% 12–24h each, 100% 1 week). The reasoning behind them:
 
-One yellow does not cancel another yellow. Multiple yellows → treat as red unless each has a confirmed non-rollout cause.
-
-## Immediate rollback triggers
-
-Independent of the thresholds table — roll back immediately if any of the following occur, even at the team-enable or 5% canary stage:
-
-- Error rate increases by more than 2× baseline.
-- P95 latency increases by more than 50%.
-- User-reported issues spike (support tickets, social mentions, in-product feedback).
-- Data integrity issues detected (corrupted writes, missing fields, inconsistent reads).
-- Security vulnerability discovered in the shipped code.
-
-These are non-negotiable. Surface them as `STACK DETECTED` triggers during rollout planning so the on-call has a pre-agreed action.
-
-## Window lengths
-
-- **Team enable** — 24 hours minimum before canary.
-- **5% canary** — 24–48 hours.
-- **25% / 50%** — 12–24 hours each, depending on traffic volume.
-- **100%** — 1 week of active monitoring before flag cleanup.
-
-Shorter windows are acceptable only for reversible flag-gated changes with low blast radius. Document the exception as `CONFUSION` if the team disagrees on the window.
+- The window exists so a slow-burn regression (memory leak, queue backup, cache eviction) has time to surface before the next percentage step. Skipping the wait defeats the staged sequence.
+- Shorter windows are acceptable only for reversible flag-gated changes with low blast radius.
+- Document any shortened window as `CONFUSION` if the team disagrees on the length.
 
 ## Why these specific numbers
 

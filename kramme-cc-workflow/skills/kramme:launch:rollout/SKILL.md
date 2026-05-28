@@ -87,6 +87,8 @@ Do not proceed past this gate on the assumption that "we can fix it during canar
 
 The sequence is six staged gates. Each gate has a monitoring window and a set of thresholds that must pass before advancing. Do not compress the sequence to save time — the windows are the whole point.
 
+**The launch ticket** referenced throughout is wherever this rollout is tracked — your team's Linear/Jira/GitHub issue for the release. If none exists, create a `LAUNCH.md` at the repo root and use it as the ticket. The sequence, the thresholds table, and the rollback plan all get written there.
+
 ```
 1. DEPLOY to staging
    └── Full test suite passes in the staging environment.
@@ -198,11 +200,12 @@ Every rollout needs a documented rollback plan _before_ step 1. Fill this in for
 
 ### Rollback Steps
 
-1. Disable the feature flag in the flag UI (expected time: < 1 minute). — OR —
-1. Redeploy the previous version (`git revert <commit> && git push`, expected time: < 5 minutes).
-1. Verify the rollback: health check returns 200, error rate returns to baseline.
-1. Communicate: notify the team channel and on-call that a rollback occurred.
-1. Open a postmortem ticket within 24 hours.
+1. Reverse the change, whichever is faster:
+   - **Flag flip** — disable the feature flag in the flag UI (expected time: < 1 minute), or
+   - **Redeploy** — `git revert <commit> && git push` to ship the previous version (expected time: < 5 minutes).
+2. Verify the rollback: health check returns 200, error rate returns to baseline.
+3. Communicate: notify the team channel and on-call that a rollback occurred.
+4. Open a postmortem ticket within 24 hours.
 
 ### Database Considerations
 
@@ -254,8 +257,7 @@ The lies engineers tell themselves to skip rollout discipline. Each one has a co
 | "It works in staging, it'll work in production." | Production has different data, traffic, and edge cases. Staging validates that the code runs; production validates that the code works. |
 | "It's a small change, skip the canary." | Small changes break big things. The canary costs one day; a bad full-rollout costs a week. |
 | "We don't need a feature flag for this." | Every non-trivial change benefits from a kill switch. Flags are the cheapest insurance in the stack. |
-| "Monitoring is overhead." | Not having monitoring means discovering problems from user complaints. That's a worse kind of overhead. |
-| "We'll add monitoring later." | Add it before launch. You cannot debug what you cannot see. |
+| "Monitoring is overhead." | Not having monitoring means discovering problems from user complaints. That's a worse kind of overhead — and you cannot debug what you cannot see, so add it before launch, not later. |
 | "Latency is only 30% above baseline — probably fine." | 30% is yellow. The table says hold and investigate. "Probably fine" is not a decision rule. |
 | "Rolling back is admitting failure." | Rolling back is responsible engineering. Shipping a broken feature is the failure. |
 | "We'll clean up the flag later." | Later is never. Schedule the cleanup ticket before starting the rollout. |
@@ -277,7 +279,6 @@ If you notice any of these during rollout planning or execution, stop:
 - A metric is red but the rollout continues ("we'll watch it").
 - A rollback trigger is hit but the response is a code-fix-forward instead of a rollback.
 - Flag nesting has appeared (flag A only makes sense when flag B is on).
-- "It's Friday afternoon" energy.
 
 Any single red flag above is grounds to halt. Two or more is grounds to cancel the rollout and restart from pre-flight.
 
