@@ -1,7 +1,7 @@
 ---
 name: kramme:visual:plan-review
 description: Generate a visual HTML plan review comparing current codebase state vs. a proposed implementation plan, with architecture diagrams, blast radius analysis, and risk assessment
-argument-hint: "[plan-file-path]"
+argument-hint: "[plan-file-path] [codebase-path]"
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code]
@@ -9,25 +9,17 @@ kramme-platforms: [claude-code]
 
 # Visual Plan Review
 
-Generate a comprehensive visual plan review as a self-contained HTML page, comparing the current codebase against a proposed implementation plan.
+Generate a comprehensive visual plan review as a single-file HTML page, comparing the current codebase against a proposed implementation plan. Diagrams render Mermaid/Chart.js from CDN, so viewing them requires network access.
+
+Use this before implementation, against a plan, spec, or RFC document. To review changes that already exist on a branch or PR, use `kramme:visual:diff-review` instead.
 
 **Arguments:** "$ARGUMENTS"
 
 ## Prerequisites
 
-Read the local visual references before generating:
+The local `references/` and `assets/` files supply the visual patterns for this skill. Load each one just in time as Workflow step 2 directs — read only the references and templates a given section actually needs, not all of them up front.
 
-- `references/css-patterns.md`
-- `references/libraries.md`
-- `references/responsive-nav.md`
-
-Select the appropriate template to absorb patterns:
-
-- `assets/architecture.html`
-- `assets/data-table.html`
-- `assets/mermaid-flowchart.html`
-
-Follow the workflow below. Use a blueprint/editorial aesthetic with current-state vs. planned-state panels, but vary fonts and palette from previous diagrams.
+Use a blueprint/editorial aesthetic with current-state vs. planned-state panels, but vary fonts and palette from previous diagrams.
 
 ## Workflow
 
@@ -43,12 +35,22 @@ Follow the workflow below. Use a blueprint/editorial aesthetic with current-stat
 
 3. **Style.** Use typography, palette, and depth to separate current state, planned state, and risk. Avoid default app styling. Use CSS custom properties, atmospheric backgrounds, and motion only where it helps comprehension.
 
-4. **Deliver.** Write a single self-contained HTML file to `~/.kramme-cc-workflow/diagrams/`, open it in the browser, and report the file path to the user.
+4. **Deliver.** Write the HTML file and open it in the browser as described in **Output** below.
 
 ## Inputs
 
 - Plan file: `$1` (path to a markdown plan, spec, or RFC document)
 - Codebase: `$2` if provided, otherwise the current working directory
+
+## Plan Resolution
+
+Resolve the plan file before gathering any data:
+
+- No `$1` provided → stop and ask the user for the plan file path.
+- `$1` does not resolve to a readable file → stop and report the exact path tried and what is needed.
+- The resolved file is empty → stop and report that the plan file has no content.
+
+If `$2` is provided but is not a readable directory, stop and report the path; otherwise use the current working directory as the codebase root.
 
 ## Data Gathering
 
@@ -114,11 +116,12 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 
 ## Output
 
-Write to `~/.kramme-cc-workflow/diagrams/plan-review-{descriptive-name}.html`. Create the directory if needed. Open in browser:
+Write to `~/.kramme-cc-workflow/diagrams/plan-review-{descriptive-name}.html`. Create the directory if needed. Re-running with the same `{descriptive-name}` overwrites the prior file in place — regenerating the report is the intended behavior. Open in browser:
 
 - macOS: `open ~/.kramme-cc-workflow/diagrams/{filename}.html`
-- Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html` Report the file path to the user.
+- Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html`
+- Windows: `start "" ~/.kramme-cc-workflow/diagrams/{filename}.html`
 
-Include responsive section navigation.
+Report the file path to the user. Include responsive section navigation.
 
 Ultrathink.
