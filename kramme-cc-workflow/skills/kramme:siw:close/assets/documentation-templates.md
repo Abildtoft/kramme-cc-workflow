@@ -118,11 +118,7 @@ Key design decisions made during the {project title} implementation. Each decisi
 
 ## `architecture.md` -- Technical Design (Conditional)
 
-**Only generate this file if at least one of:**
-
-- The spec has a `## Technical Design` section
-- Supporting specs exist with substantive content
-- 5+ decisions with architecture-related categories
+Generate this file only when the conditions in SKILL.md Step 5 are met. Include only sections that have content; omit empty sections.
 
 ```markdown
 # Architecture
@@ -143,5 +139,3 @@ Key design decisions made during the {project title} implementation. Each decisi
 
 {From supporting spec matching _ui_, _frontend_, or _architecture_}
 ```
-
-Include only sections that have content. Omit empty sections.
