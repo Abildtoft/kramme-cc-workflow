@@ -50,17 +50,17 @@ Continue with the normal flow.
 
 **If "Abort":** Stop the workflow with a clear message.
 
-### Determine Main Branch
+### Determine Base Branch
 
 ```bash
 git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's|refs/remotes/origin/||'
 ```
 
-If this fails, try `main` then `master`.
+Capture the result as `{base-branch}` — used in later display strings, the `git rev-list` check in Step 4, and as the `--base` argument to `gh pr create`. If this command produces no output, fall back to `main`, then `master` (verify each with `git ls-remote --heads origin <name>`); if neither exists, abort with a message asking the user to set `origin/HEAD` or pass a base manually.
 
 ### Branch Decision
 
-**If current branch is `main` or `master`:**
+**If the current branch equals `{base-branch}`:**
 
 #### Check for Linear Issue
 
@@ -157,12 +157,8 @@ multiSelect: false
 7. **If branch doesn't exist:**
 
    ```bash
-   # Determine base branch
-   BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's|refs/remotes/origin/||') || BASE="main"
-   # Fetch latest
-   git fetch origin $BASE
-   # Create branch from latest base
-   git checkout -b {branchName} origin/$BASE
+   git fetch origin {base-branch}
+   git checkout -b {branchName} origin/{base-branch}
    ```
 
 #### If "No, generate from file changes" (or fallback):
@@ -188,7 +184,7 @@ multiSelect: false
 
    ```yaml
    header: "Branch name"
-   question: "You're on the main branch. What should the new branch be named?"
+   question: "You're on the {base-branch} branch. What should the new branch be named?"
    options:
      - label: "feature/{suggested-name-1}"
        description: "Based on changes in {primary-area}"
