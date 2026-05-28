@@ -17,13 +17,11 @@ Review branch changes and local work for unnecessary UI text. Finds labels, desc
 ### Step 1: Parse Arguments
 
 1. If `--base <branch>` flag provided, store as explicit base branch override
-2. If `--threshold N` flag provided, store as `custom_threshold` (0-100). Only findings with confidence >= N will be reported. Default: 75
+2. If `--threshold N` flag provided, store as `custom_threshold` (0-100). Only findings with confidence >= N will be reported. If not provided, set `custom_threshold=75`.
 3. If `--inline` flag provided, set `INLINE_MODE=true`
 4. If neither flag is present, use defaults
 
 ### Step 2: Load Project Review Conventions
-
-Before launching agents:
 
 1. Read any repo-root project instruction files if present (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in repo-root `.claude/`, or equivalents).
 2. Extract initial UI stack, component library, design system, target audience, and content strategy conventions from those repo-root instruction files and the surrounding UI code.
@@ -93,17 +91,15 @@ Filter for UI-relevant files only:
 
 After identifying the changed UI files, discover any additional nested instruction files that apply to those files (for example `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or tool-specific equivalents) and merge those constraints into the conventions from Step 2 before launching the reviewer agent.
 
-If no UI-relevant files found:
+If no UI-relevant files found, reply inline with the following message (regardless of `INLINE_MODE`) and stop. Do not create or update `COPY_REVIEW_OVERVIEW.md`.
 
 ```
 No UI-relevant files detected in this PR or local working tree.
 
-Changed files: {list file types}
+Changed files: {comma-separated list of file extensions or paths from the unified change scope}
 
 No UI copy to review.
 ```
-
-**Action:** Stop.
 
 ### Step 4: Check for Previous Review
 
@@ -123,8 +119,8 @@ Launch **kramme:copy-reviewer** via the Task tool with:
 - Staged local diff: `git diff --cached`
 - Unstaged local diff: `git diff`
 - Untracked local files list: `git ls-files --others --exclude-standard` (agent should treat these as new files and review full file content)
-- If `custom_threshold` was provided: instruct the agent to use this threshold instead of the default (e.g., "Only report findings with confidence >= {custom_threshold}")
-- Explicit instruction: **"You are in PR mode. Focus on text redundancy introduced by this diff. For each text element in changed code, evaluate whether the UI already communicates the same information through its structure, icons, or interaction patterns."**
+- Instruct the agent to apply the confidence threshold: "Only report findings with confidence >= {custom_threshold}"
+- Focus instruction: **"Focus on text redundancy introduced by this diff. For each text element in changed code, evaluate whether the UI already communicates the same information through its structure, icons, or interaction patterns."**
 
 ### Step 6: Validate Relevance
 
@@ -179,8 +175,8 @@ Otherwise:
 
 If Critical or Important findings were found:
 
-- When `INLINE_MODE=false`, suggest running `/kramme:pr:resolve-review`
-- When `INLINE_MODE=true`, suggest passing the inline report content to `/kramme:pr:resolve-review`
+- When `INLINE_MODE=false`, suggest running `/kramme:pr:resolve-review` and point it at `COPY_REVIEW_OVERVIEW.md` (e.g., pass the file contents or run in the same session so chat context contains the report).
+- When `INLINE_MODE=true`, suggest re-running with the inline report content passed as the argument: `/kramme:pr:resolve-review <paste report>` — or invoke it in the same session so chat context contains the report.
 
 Organize findings summary in the terminal output:
 
