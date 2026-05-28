@@ -21,7 +21,7 @@ Run a multi-issue QA-intake session. The user describes bugs they encountered du
 
 Updating a parent ticket created earlier in the same intake run to add its just-created child links is part of filing the breakdown. It is not permission to edit older tickets.
 
-**Linear Issue Creation Override**: invoking this command IS explicit instruction to create new Linear issues and, for breakdowns, update only the just-created parent issue to add child links. When the user has confirmed an issue scope inside the per-issue loop, proceed directly with the available Linear issue creation tool without a separate "may I create the ticket?" gate — the user is in-session and approval is implicit in their continued participation.
+**Linear Issue Creation Override**: invoking this command IS explicit instruction to create new Linear issues and, for breakdowns, update only the just-created parent issue to add child links. For a **single ticket**, file it directly without a separate "may I create the ticket?" gate — the user is in-session and approval for one-ticket-per-report is implicit in their continued participation. For a **breakdown** (a parent plus multiple children from one report), the scope split is the agent's own decision, not the user's stated shape, so do not file on implicit approval: emit `PLAN` with the proposed split and wait for the user's go-ahead before creating any ticket.
 
 ## When to Use
 
@@ -93,6 +93,8 @@ Do not ask for a list, do not ask the user to pre-categorize. One issue at a tim
 
 Run this loop until the user says they are done.
 
+This skill does not dedup against tickets from a previous run. If you are resuming after an interrupted session, the user may already have some issues filed — confirm what is already logged before re-filing, since re-running creates duplicates (Linear: silent duplicate issues; SIW/local: fresh `{NNN}` numbers under new IDs).
+
 ### 3a. Listen and lightly clarify
 
 Read the user's description. Ask **at most 2-3 short clarifying questions**, drawn only from this list:
@@ -105,9 +107,11 @@ Read the user's description. Ask **at most 2-3 short clarifying questions**, dra
 
 If you find yourself wanting a fourth question, stop. Note in your head that the issue may need follow-up after filing, and proceed to file with the information you have. Emit `UNVERIFIED` for any assumption baked into the ticket.
 
-### 3b. Explore in the background
+If, after clarifying, the description still names no observable behavior — no symptom, no surface, nothing a future reader could look for — do not invent one. Emit `MISSING REQUIREMENT: issue names no observable behavior` and ask the user to restate what they actually saw before filing.
 
-While the user is describing or answering questions, kick off a single Explore agent **in parallel** (single Task tool call, `subagent_type=Explore`). The Explore agent's job is to learn — not to fix.
+### 3b. Explore for domain language
+
+After reading the user's description, fire off a single background exploration using whatever subagent capability your harness provides (in Claude Code: one Task tool call with `subagent_type=Explore`). Its job is to learn — not to fix.
 
 Brief it with:
 
@@ -115,7 +119,12 @@ Brief it with:
 - The repo path.
 - The instruction to report back, in under 200 words: feature purpose, the user-visible boundary of that feature, and 3-5 domain terms used in the codebase for the area in question. Explicit instruction: do **not** propose a fix and do **not** quote internal helper names that the user would not recognize.
 
-Use the agent's report only as a vocabulary aid for the ticket body. If the report is slow or unhelpful, file the ticket using the user's own phrasing and emit `UNVERIFIED: domain-language exploration did not return in time`.
+Use the report only as a vocabulary aid for the ticket body. Degrade gracefully:
+
+- If your harness has no background-exploration capability, skip this step and write the ticket from the user's own phrasing.
+- If the report is slow or unhelpful, file the ticket using the user's own phrasing.
+
+Either way, emit `UNVERIFIED: domain-language exploration unavailable` for any vocabulary you could not confirm.
 
 ### 3c. Assess scope: single ticket or breakdown
 
@@ -131,11 +140,15 @@ Do **not** break down because:
 - The bug touches two files. (File count is irrelevant to ticket shape.)
 - The description is long. (Length alone does not imply multiple issues.)
 
-For a breakdown, file the parent container first, then file child issues in **dependency order**: file any blocker child before a dependent child, capture its URL or ticket ID, then file each dependent with a `Blocked by: <ticket-id>` line in its body. In Linear, the parent container is a normal parent issue. In SIW, the parent container is a non-actionable intake summary outside `siw/issues/` and must not be added to `siw/OPEN_ISSUES_OVERVIEW.md`; only child issues become actionable `G-*` work items. Before close-out, update only the parent created for this breakdown so its final body lists the child ticket IDs or URLs. Do not update pre-existing tickets.
+**Before filing a breakdown, gate on the user.** A breakdown multiplies one report into a parent plus N children — that split is the agent's decision, so the implicit single-ticket approval does not extend to it. Emit `PLAN` with the proposed split (parent + each child on one line) and wait for the user's go-ahead before creating any ticket. A single ticket needs no such pause.
+
+Once confirmed, file the parent container first, then file child issues in **dependency order**: file any blocker child before a dependent child, capture its URL or ticket ID, then file each dependent with a `Blocked by: <ticket-id>` line in its body. In Linear, the parent container is a normal parent issue. In SIW, the parent container is a non-actionable intake summary outside `siw/issues/` and must not be added to `siw/OPEN_ISSUES_OVERVIEW.md`; only child issues become actionable `G-*` work items. Before close-out, update the parent created for this breakdown so its final body lists the child ticket IDs or URLs.
 
 ### 3d. File the ticket(s)
 
 Apply the **Durability Rule** and the **Domain-Language Rule** (below) when composing each body.
+
+Derive `{slug}` from the issue title: lowercase, kebab-case, ASCII alphanumerics and hyphens only — strip path separators, dots, and whitespace so the slug is always a safe single path segment.
 
 - **Linear**: call the available Linear issue creation tool with `title`, `description` (the markdown body from the templates below), `team: LINEAR_TEAM`, and any priority suggested by the user (`low`, `medium`, `high`, `urgent`). In Claude Code, create with `mcp__linear__create_issue` and update with `mcp__linear__update_issue`. In Codex, create with `save_issue` without `id`, update the just-created parent with `save_issue` plus `id`, and map priority names to the numeric `priority` field: `urgent` = 1, `high` = 2, `medium`/`normal` = 3, `low`/`minor`/`not urgent` = 4. Use `labels` only for real Linear labels. If the user said the issue is "minor" or "not urgent" and did not give an explicit priority, set low priority or attach an explicit low-priority marker — do not file unlabeled. For a breakdown, after all child IDs exist, update only the just-created parent to add the final `## Child issues` list.
 - **SIW**: write `siw/issues/ISSUE-G-{NNN}-qa-{slug}.md` using a SIW-compatible wrapper around the body:
@@ -145,6 +158,8 @@ Apply the **Durability Rule** and the **Domain-Language Rule** (below) when comp
   - Overview row: add `G-{NNN}` to the `## General` table in `siw/OPEN_ISSUES_OVERVIEW.md` for every actionable SIW issue; if the existing General section is the empty placeholder, replace it. If the section has a `**Parallelization:**` summary, recompute it from all non-placeholder `G-*` issue files: use the shared guidance when they agree, or `Mixed — see issue files for exact guidance` when they differ. If a legacy General section has no summary line, keep it absent.
   - Breakdown parent: create `siw/qa-intake/` if needed, then write a non-actionable parent summary as `siw/qa-intake/QA-INTAKE-{NNN}-{slug}.md`, where `{NNN}` is the next free number across existing `siw/qa-intake/QA-INTAKE-*.md`; use `QA-INTAKE-{NNN}` as the parent report ID in child issue bodies. Do not create a `G-*` issue file or overview row for the parent. After child files are written, update the newly-created parent summary so it contains the final `## Child issues` list.
 - **Local**: write `intake-issues/{NNN}-{slug}.md`. For a breakdown, update the newly-created local parent file after child files are written so it contains the final `## Child issues` list.
+
+If a create/write call fails partway through a breakdown, stop the breakdown immediately. Report which tickets were filed and which were not, and leave the parent's `## Child issues` list pointing only at children that actually exist — omit the missing links rather than inventing IDs. Do not silently retry into a duplicate.
 
 ### 3e. Continue
 
@@ -212,7 +227,7 @@ This intake report covers N independent failure modes. Each is filed as a separa
 - <ticket-id-or-url>: [one-line summary of failure mode 3]
 ```
 
-For Linear, create the parent without `## Child issues` if child IDs are not known yet, then update that just-created parent with the final child list before close-out. For SIW, create the parent as a non-actionable summary outside `siw/issues/` and leave it out of `siw/OPEN_ISSUES_OVERVIEW.md`; either reserve the child IDs up front or update the newly-created parent summary after child files are written. For local, either reserve the child IDs up front or update the newly-created parent file after child files are written.
+Fill in `## Child issues` only once the child IDs exist — either reserve the IDs up front or add the list afterward. See the per-sink mechanics in Step 3d for how each sink creates the parent and adds the final child list.
 
 For each child issue (file these **after** the parent so the parent ID is known):
 
@@ -266,7 +281,7 @@ If the user volunteers a file path, acknowledge it conversationally but do not w
 Use these markers verbatim. One per line, uppercase, no decoration.
 
 - **STACK DETECTED** — announce the resolved ticket sink at session start. `STACK DETECTED: Linear`.
-- **PLAN** — announce the per-issue plan when an issue triggers a breakdown. `PLAN: file 1 parent + 3 children for the save / toast / a11y report`.
+- **PLAN** — announce the proposed split when an issue triggers a breakdown, then wait for the user's go-ahead before filing. `PLAN: file 1 parent + 3 children for the save / toast / a11y report`.
 - **UNVERIFIED** — any claim in the ticket body that was not confirmed by the user. `UNVERIFIED: assumed the issue happens on the production tier; user only confirmed staging`.
 - **MISSING REQUIREMENT** — the session cannot proceed (no writable ticket sink, user gave a description that names no observable behavior, etc.). `MISSING REQUIREMENT: no writable ticket sink available`.
 - **CONFUSION** — the user's two clarifying answers contradict each other. Surface this back to the user before filing. `CONFUSION: user said "every time" and then "only after a refresh" — ask which`.
@@ -292,6 +307,7 @@ Pause and resolve before filing if any of these are true:
 
 - More than 3 clarifying questions have been asked on a single issue.
 - A draft ticket body contains `:\d+`, a `src/` path, a file extension (`.ts`, `.tsx`, `.py`, `.go`, `.js`, `.jsx`), an import path, or a private helper name.
+- A breakdown is about to be filed without first emitting `PLAN` and getting the user's go-ahead — breakdown scope is the agent's decision, not implicitly approved.
 - A breakdown has been drafted without a parent issue/container, with child ID placeholders in the final parent body, without final child links on the parent, **or** without `Parent issue/report` lines on the children.
 - The user described an issue as "minor" or "not urgent" but the draft ticket has no low priority, low-priority label, or low-priority marker.
 - The Linear sink is selected but no `LINEAR_TEAM` has been resolved.
@@ -312,6 +328,7 @@ Before ending each session, self-check:
 - [ ] Each issue triggered at most 3 clarifying questions.
 - [ ] Each filed body passes the durability grep: no `:\d+`, no `src/`, no file extensions, no internal helper names.
 - [ ] Each filed body uses domain language from `UBIQUITOUS_LANGUAGE.md` (if present) or the user's own phrasing (if not).
+- [ ] Every breakdown was announced with `PLAN` and confirmed by the user before any of its tickets were filed.
 - [ ] Every breakdown has a parent issue/container with final child links and no child ID placeholders, plus `Parent issue/report` lines on the children.
 - [ ] Every dependent child issue with a `Blocked by` line has non-`Safe to parallelize` SIW parallelization metadata.
 - [ ] Every "minor"/"not urgent" issue has low priority, a low-priority label, or a low-priority marker.
