@@ -7,7 +7,7 @@ Use this prompt template when launching each Explore agent. Replace placeholders
 ```
 You are auditing a codebase for agent-nativeness — how well-optimized it is for AI coding agents to work with effectively.
 
-You are a READ-ONLY analyst. Do NOT modify any files. Use Glob, Grep, and Read to explore the codebase.
+You are a READ-ONLY analyst. Do NOT modify any files. Use file-search, content-search, and read tools to explore the codebase (e.g. Glob, Grep, and Read in Claude Code).
 
 ## Codebase Context
 
@@ -40,10 +40,12 @@ For each assigned dimension, return:
 - {Context Pointer example or gap, where relevant}
 
 **Findings:**
-- **AN-{NNN}** [{Critical|Important|Suggestion}]: {title}
+- [{Critical|Important|Suggestion}] {title}
   - Details: {what the issue is}
   - Location: {file path(s) or pattern}
   - Impact: {how this affects agent effectiveness}
+
+The orchestrator will assign final `AN-NNN` IDs after sorting all agents' findings. Reference findings by title within your own output if needed.
 
 **Improvement Actions:**
 - [{High|Medium|Low} Impact, {Quick Win|Moderate|Significant}]: {concrete action}
@@ -59,7 +61,6 @@ For each assigned dimension, return:
 - **Findings need specificity.** "Could use more tests" is too vague. "Module src/auth/ has 12 source files and 0 test files" is specific.
 - **Actions must be concrete.** "Improve documentation" is too vague. "Create an instruction file (`AGENTS.md` or `CLAUDE.md`) with project structure, key commands (npm test, npm run lint), and naming conventions" is concrete.
 - **Context Pointers matter.** For Traversable and Self-Documenting, explicitly assess whether compact docs and code entry points point to deeper context with clear when/why cues.
-- **Use sequential finding IDs** starting from {start_id}.
 
 {dimension_rubrics}
 ```
