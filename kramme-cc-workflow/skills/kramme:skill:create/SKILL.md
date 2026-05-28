@@ -8,22 +8,21 @@ user-invocable: true
 
 # Create Skill
 
-Guide the creation of a new plugin skill with best-practice structure, frontmatter, progressive disclosure, and validation.
-
-Based on [skills-best-practices](https://github.com/mgechev/skills-best-practices) adapted to this project's conventions.
+Guide the creation of a new plugin skill with best-practice structure, frontmatter, progressive disclosure, and validation. External attribution lives in `references/sources.yaml`.
 
 ---
 
 ## Phase 1: Parse Arguments
 
-1. Check `$ARGUMENTS` for a skill name (matches the format in `references/naming-conventions.md`) or a free-text description.
-2. If a valid name is provided, store it and skip Phase 3 name generation.
-3. If free-text is provided, use it as context for the design interview.
-4. If empty, proceed to Phase 2 to gather context.
+1. Inspect `$ARGUMENTS` and classify it:
+   - Contains `kramme:` followed by colon-separated segments → treat as a candidate skill name.
+   - Other non-empty input → treat as free-text context for the design interview.
+   - Empty → proceed to Phase 2 with no preset.
+2. Defer strict name validation to Phase 3, where `references/naming-conventions.md` is loaded.
 
 ## Phase 2: Design Interview
 
-Ask the user the following questions. Batch related questions into a single AskUserQuestion when possible.
+Batch Q2, Q3, and Q5 into a single multi-choice prompt (they are independent multi-choice questions). Ask Q1, Q4, and Q6 separately because they require free-form or conditional follow-up.
 
 ### Question 1: Purpose
 
@@ -35,13 +34,17 @@ Skip if `$ARGUMENTS` already provides a clear description.
 
 > How should this skill be triggered, and does it have side effects?
 >
-> A) **User-only with side effects** — creates/modifies/deletes files, runs git commands, calls APIs (`user-invocable: true`, `disable-model-invocation: true`) B) **User or auto-triggered** — read-only analysis, formatting, text processing (`user-invocable: true`, `disable-model-invocation: false`) C) **Background convention** — auto-applies rules like commit style or verification (`user-invocable: false`, `disable-model-invocation: false`)
+> A) **User-only with side effects** — creates/modifies/deletes files, runs git commands, calls APIs (`user-invocable: true`, `disable-model-invocation: true`)
+> B) **User or auto-triggered** — read-only analysis, formatting, text processing (`user-invocable: true`, `disable-model-invocation: false`)
+> C) **Background convention** — auto-applies rules like commit style or verification (`user-invocable: false`, `disable-model-invocation: false`)
 
 ### Question 3: Complexity
 
 > What complexity tier fits this skill?
 >
-> A) **Simple** — single SKILL.md, no supporting files (~20-80 lines) B) **Medium** — SKILL.md + resource files for reference content (~80-300 lines) C) **Complex** — SKILL.md + resources + scripts for deterministic operations (~200-500 lines)
+> A) **Simple** — single SKILL.md, no supporting files (~20-80 lines)
+> B) **Medium** — SKILL.md + resource files for reference content (~80-300 lines)
+> C) **Complex** — SKILL.md + resources + scripts for deterministic operations (~200-500 lines)
 
 ### Question 4: Arguments
 
@@ -55,13 +58,16 @@ Skip if `$ARGUMENTS` already provides a clear description.
 
 > Should this skill be available on all platforms, or restricted?
 >
-> A) **All platforms** (default — omit `kramme-platforms`) B) **Claude Code only** (uses Agent Teams or other Claude Code features) C) **Specific combination** (specify which)
+> A) **All platforms** (default — omit `kramme-platforms`)
+> B) **Claude Code only** (uses Agent Teams or other Claude Code features)
+> C) **Specific combination** (specify which)
 
 ### Question 6: External inspiration
 
 > Is this skill derived from external inspiration — another agent-skills repository, a paper, a book, a blog post, official framework docs?
 >
-> A) **Yes** — capture each source. Used to scaffold `references/sources.yaml` so the `kramme:skill:audit-sources` skill can track upstream changes worth absorbing later. B) **No** — the skill is original to this repo or composed of patterns the repo already established.
+> A) **Yes** — capture each source. Used to scaffold `references/sources.yaml` so the `kramme:skill:audit-sources` skill can track upstream changes worth absorbing later.
+> B) **No** — the skill is original to this repo or composed of patterns the repo already established.
 
 If A, ask the user for each source: title + URL (or library identifier resolvable via a docs MCP) + one-sentence rationale stating what in this skill is derived from the source. Capture as `external_sources` for use in Phase 5.
 
@@ -71,12 +77,13 @@ If the user is unsure whether something qualifies, default to including it — e
 
 1. Read the naming conventions from `references/naming-conventions.md`.
 
-2. If the user already provided a valid name, validate it against the rules:
+2. If Phase 1 produced a candidate skill name, validate it against the rules:
    - Format: `kramme:{domain}:{action}` with optional qualifier segments when they represent separate concepts. Prefer flags such as `--team` for execution modes.
    - 1-64 characters total
    - Each segment uses lowercase letters, numbers, and hyphens only (no consecutive hyphens)
-   - Check for collision: run `ls` on the skills directory to verify the name is not taken
-   - If the name already exists, stop and ask for a different name (do not overwrite files unless the user explicitly requests overwrite)
+   - On any format violation, stop and ask for a corrected name (see the Error Handling section).
+   - Check for collision: list the skills directory (e.g., `ls skills/` or a glob over `skills/*/SKILL.md`) to verify the name is not taken.
+   - On collision, stop and ask for a different name. Do not overwrite.
 
 3. If no name was provided, generate 2-3 suggestions:
    - Choose an existing domain namespace from the reference, or propose a new one if none fits
@@ -104,19 +111,21 @@ If the user is unsure whether something qualifies, default to including it — e
 
 3. For the description:
 
-   The description is **system-prompt real estate.** It's the only thing the agent sees when deciding which skill to load — it lives in the agent's system prompt alongside every other installed skill in the user's environment, competing for the agent's attention. A poor description gets the wrong skill picked, or no skill picked at all. Goal: just enough to know what capability this skill provides AND when to trigger it (specific keywords, contexts, file types).
+   The description is the only metadata the agent sees when deciding whether to load this skill. Treat it as a trigger spec, not a marketing summary. See `references/best-practices.md` for the rationale.
    - Write in third person ("Creates...", "Guides...", "Runs...")
    - Include what the skill does AND when to use it
    - Add a negative trigger ("Not for...", "Don't use for...")
    - Name the concrete keywords, file types, or contexts that should trigger it (e.g., "when the file imports `anthropic`/`@anthropic-ai/sdk`")
-   - No time-sensitive content (today's date, this-week's library version, current URL) — descriptions ship to downstream installations and may be cached
+   - No time-sensitive content — descriptions ship to downstream installations and may be cached
    - Stay under 1,024 characters
-
-   See `references/best-practices.md` for the long-form rationale on description framing and the no-time-sensitive-info rule.
 
 4. Present the draft frontmatter to the user for review. Adjust based on feedback.
 
 ## Phase 5: Scaffold Directory and Files
+
+Before writing any file, verify the working directory contains a `skills/` parent (or whatever path the consumer plugin uses). If it does not, stop — see the Error Handling section.
+
+If any target file already exists during scaffolding, abort and report the conflicting path. Do not silently overwrite. To regenerate, the user must remove the existing skill directory first.
 
 ### Simple tier
 
@@ -162,20 +171,12 @@ If the user is unsure whether something qualifies, default to including it — e
 
 ### Scaffold `sources.yaml` (if external inspiration was identified in Phase 2)
 
-If Question 6 returned external inspiration sources, write `<skill-dir>/references/sources.yaml` in the same scaffold. For each source captured in Phase 2:
-
-Before writing the manifest, ensure `<skill-dir>/references/` exists. This applies even to Simple-tier skills that otherwise do not create supporting directories; external inspiration requires the references directory for `sources.yaml`. Do not create placeholder reference files solely because of this step.
+If Question 6 identified external inspiration, write `<skill-dir>/references/sources.yaml` (creating `references/` first if necessary, even for Simple-tier skills). Skip this step entirely if no inspiration was identified — do not create an empty manifest. If the user identifies inspiration later during drafting, return here before declaring the skill complete.
 
 ```yaml
 sources:
   - id: { kebab-case slug — stable across audits, do not rename }
-    url:
-      {
-        fully-qualified https URL — for blogs,
-        READMEs,
-        papers,
-        deep links into another agent-skills repo,
-      }
+    url: { fully-qualified https URL }
     # OR: context7_library: {<owner>/<name> — for libraries resolvable via a docs MCP}
     title: "{human-readable title shown in audit reports}"
     rationale: "{one sentence: exactly what in this skill is derived from this source}"
@@ -183,11 +184,7 @@ sources:
     baseline_hash: ""
 ```
 
-Set `baseline_hash: ""` on every entry — the first run of `kramme:skill:audit-sources` will populate it after the initial fetch.
-
-If the skill has no external inspiration (Phase 2 Question 6 was "No"), skip this step entirely — do not create an empty `sources.yaml`. Skills without external derivation have nothing for the audit skill to track, and an empty manifest is treated the same as a missing one.
-
-If Phase 2 Question 6 was "No" but the user later realises during drafting that the skill DOES borrow from external content, return to this step and author the manifest before declaring the skill complete.
+Set `baseline_hash: ""` on every entry — the first run of `kramme:skill:audit-sources` populates it after the initial fetch.
 
 ## Phase 6: Validation Checklist
 
@@ -218,26 +215,25 @@ After scaffolding, verify the skill against these checks:
 - [ ] No redundant logic the agent already handles
 - [ ] No time-sensitive info (skill instructions may be cached or shipped to downstream installations; today's URL or this-week's library version goes stale)
 - [ ] References are one level deep (SKILL.md → reference; references do not chain to other references)
-- [ ] If the skill is derived from external inspiration, `references/sources.yaml` exists and lists every inspiration source with `id` / `url` (or `context7_library`) / `title` / `rationale` / `last_reviewed_at` / `baseline_hash` (empty string on first creation). Skipping this disables `kramme:skill:audit-sources` from detecting upstream changes — the skill's heritage becomes invisible to the audit, and revisions to the source go unnoticed silently.
+- [ ] If the skill is derived from external inspiration, `references/sources.yaml` exists with one entry per source (`id`, `url` or `context7_library`, `title`, `rationale`, `last_reviewed_at`, `baseline_hash`).
 
 Report any failing checks to the user with specific remediation steps.
 
-## Phase 7: Documentation Reminder
+## Phase 7: Documentation Reminder (optional)
 
-1. Generate a skill-index table row for the skill:
+If the consumer plugin maintains a published skills index:
+
+1. Generate a skill-index table row:
 
    ```
    | `/{skill-name}` | {User[, Auto]} | {argument-hint or —} | {One-sentence description} |
    ```
 
-2. Identify the correct documentation section based on the skill's domain:
-   - SIW skills → "Structured Implementation Workflow (SIW)"
-   - PR skills → "Pull Requests"
-   - Code skills → "Code Quality & Review"
-   - Background skills → "Background Skills"
-   - Other → suggest the best-fitting section or "Discovery & Documentation"
+2. Suggest the best-fitting section based on the skill's domain (e.g., SIW skills under a SIW heading, PR skills under a Pull Requests heading, code skills under a code-quality heading).
 
-3. Display the row and section name. Remind the user to add it to the plugin's published skills index.
+3. Display the row and section suggestion. Remind the user to add them to their skills index.
+
+If the consumer plugin does not maintain such an index, skip this phase.
 
 ## Phase 8: Success Output
 
@@ -256,9 +252,22 @@ Next steps:
   1. Fill in TODO markers in SKILL.md and resource files
   2. Test locally: claude /plugin install /path/to/plugin
   3. Validate with LLM-assisted review (see references/best-practices.md)
-  4. Add the row to the plugin's skills index documentation
-  5. Commit: feat(skills): add {skill-name} skill
+  4. Add the row to the plugin's skills index documentation (if applicable)
+  5. Commit the new skill files using your project's commit-message convention
 ```
+
+---
+
+## Error Handling
+
+- **Invalid skill name** (segments contain uppercase letters, `--`, exceed 64 chars, or omit the `kramme:` prefix) — stop, display the rules from `references/naming-conventions.md`, and ask for a corrected name.
+- **Name collision** (`skills/{skill-name}/` already exists) — stop and ask for a different name. Do not overwrite.
+- **Pre-existing target files** during Phase 5 — abort and report the conflicting path. To regenerate, the user must remove the existing skill directory first. Do not partially overwrite.
+- **Missing `skills/` parent** — the working directory does not look like a plugin repo. Stop and ask the user to confirm the target plugin root before retrying.
+- **Filesystem write failure** (permissions, full disk, read-only mount) — stop, report the failing path and the underlying error, and ask the user to resolve before re-running. Do not attempt cleanup of partially-written files; surface them so the user can decide.
+- **Unrecognised argument format** — if `$ARGUMENTS` is neither a candidate skill name nor parseable free text, treat as empty and proceed to Phase 2.
+- **User abandons mid-interview (before Phase 5)** — no files have been written; re-running the skill starts fresh.
+- **User abandons mid-scaffold (during Phase 5)** — the skill directory may contain partial files. Surface the directory path so the user can inspect or remove it before re-running.
 
 ---
 
