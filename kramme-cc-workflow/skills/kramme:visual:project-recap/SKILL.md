@@ -11,23 +11,18 @@ kramme-platforms: [claude-code]
 
 Generate a comprehensive visual project recap as a self-contained HTML page to rebuild mental model when returning to a project.
 
+Use this when returning to a project you already know and need to reload context. For first-time orientation in an unfamiliar codebase, an onboarding walkthrough fits better than a recap.
+
 **Arguments:** "$ARGUMENTS"
 
-## Prerequisites
+## Visual resources
 
-Read the local visual references before generating:
+Load these on demand as Workflow step 2 directs — don't read them all up front:
 
-- `references/css-patterns.md`
-- `references/libraries.md`
-- `references/responsive-nav.md`
+- `references/css-patterns.md`, `references/libraries.md`, `references/responsive-nav.md`
+- `assets/architecture.html`, `assets/data-table.html`, `assets/mermaid-flowchart.html` — copy the one template matching the element you're rendering
 
-Select the appropriate template to absorb patterns:
-
-- `assets/architecture.html`
-- `assets/data-table.html`
-- `assets/mermaid-flowchart.html`
-
-Follow the workflow below. Use a warm editorial or paper/ink aesthetic with muted blues and greens, but vary fonts and palette from previous diagrams.
+Use a warm editorial or paper/ink aesthetic with muted blues and greens. Vary fonts and palette so the page doesn't feel generic.
 
 ## Workflow
 
@@ -43,7 +38,7 @@ Follow the workflow below. Use a warm editorial or paper/ink aesthetic with mute
 
 3. **Style.** Make typography, palette, depth, and motion feel intentional. Use distinctive Google Fonts, CSS custom properties for the full palette, atmospheric backgrounds instead of flat fills, meaningful hierarchy, and motion that respects `prefers-reduced-motion`.
 
-4. **Deliver.** Write a single self-contained HTML file to `~/.kramme-cc-workflow/diagrams/`, open it in the browser, and report the file path to the user.
+4. **Deliver.** Produce a single self-contained HTML file. See the Output section for the path, overwrite behavior, and how to open it.
 
 ## Time Window
 
@@ -52,10 +47,13 @@ Determine the recency window from the argument:
 - Shorthand like `2w`, `30d`, `3m`: parse to git's `--since` format
 - If argument doesn't match a time pattern, treat as free-form context and use default
 - No argument: default to `2w` (2 weeks)
+- If the window contains no commits, widen it (e.g., `2w` → `3m`) until there is activity, or state "no activity in {window}" explicitly rather than rendering empty Recent activity, Decision log, and Cognitive debt sections
 
 ## Data Gathering
 
-1. **Project identity.** Read available project docs, `CHANGELOG.md`, `package.json` / `Cargo.toml` / `pyproject.toml` / `go.mod` for name, description, version, dependencies. Read the top-level file structure.
+If the directory is not a git repository, skip the git-based steps (2–4) and build the recap from docs, file structure, and source only — state plainly in the page that no git history was available. Otherwise:
+
+1. **Project identity.** Read available project docs, `CHANGELOG.md`, `package.json` / `Cargo.toml` / `pyproject.toml` / `go.mod` for name, description, version, dependencies. Read the top-level file structure. If no manifest declares a name, fall back to the working-directory name.
 
 2. **Recent activity.** `git log --oneline --since=<window>` for commit history. `git log --stat --since=<window>` for file-level change scope. `git shortlog -sn --since=<window>` for contributor activity. Identify most active codebase areas.
 
@@ -74,6 +72,7 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 - Every behavior and architecture description
 - For each, cite the source: the git command output or the file:line where you read it
 - If something cannot be verified, mark it as uncertain
+- Do not embed secrets, credentials, tokens, or personal data surfaced in diffs, commit messages, or source. Summarize sensitive areas instead of quoting them — the output is written to disk and opened in a browser
 
 ## Page Sections
 
@@ -112,10 +111,15 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 
 ## Output
 
-Write to `~/.kramme-cc-workflow/diagrams/project-recap-{project-name}.html`. Create the directory if needed. Open in browser:
+Write to `~/.kramme-cc-workflow/diagrams/project-recap-{project-name}.html`, where `{project-name}` is the manifest name or, failing that, the working-directory name. Create the directory if needed. Re-running overwrites the existing recap for this project.
 
-- macOS: `open ~/.kramme-cc-workflow/diagrams/{filename}.html`
-- Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html` Report the file path to the user.
+Open in the browser, then report the file path to the user:
+
+- macOS: `open <path>`
+- Linux: `xdg-open <path>`
+- Windows: `start "" <path>`
+
+If no opener is available (headless, CI, or the command fails), just report the path — the file is the deliverable.
 
 Include responsive section navigation.
 
