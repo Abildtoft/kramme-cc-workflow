@@ -15,6 +15,8 @@ Claiming work is complete without verification is dishonesty, not efficiency.
 
 **Violating the letter of this rule is violating the spirit of this rule.**
 
+This skill runs your project's own verification commands (tests, build, lint) and gates claims on their output. It produces no artifact and changes no code, except the optional regression red-green check below, which temporarily reverts a fix.
+
 ## The Iron Law
 
 ```
@@ -39,6 +41,8 @@ BEFORE claiming any status or expressing satisfaction:
 Skip any step = lying, not verifying
 ```
 
+If no command can prove the claim — no test/build/lint exists, or it cannot run in this environment — say so explicitly: name what you changed and what you could not verify. "Cannot verify X here" is an honest status; "X passes" without evidence is not.
+
 ## Common Failures
 
 | Claim | Requires | Not Sufficient |
@@ -51,16 +55,17 @@ Skip any step = lying, not verifying
 | Agent completed | VCS diff shows changes | Agent reports "success" |
 | Requirements met | Line-by-line checklist | Tests passing |
 
-## Red Flags - STOP
+## When To Apply — Red Flags That Mean STOP
 
-- Using "should", "probably", "seems to"
-- Expressing satisfaction before verification ("Great!", "Perfect!", "Done!", etc.)
-- About to commit/push/PR without verification
-- Trusting agent success reports
-- Relying on partial verification
-- Thinking "just this once"
-- Tired and wanting work over
-- **ANY wording implying success without having run verification**
+Run the gate before ANY of these:
+
+- A success/completion claim or expression of satisfaction ("Great!", "Perfect!", "Done!")
+- Any positive statement about work state, or hedging like "should", "probably", "seems to"
+- Committing, pushing, creating a PR, completing a task, or moving to the next one
+- Trusting an agent's success report, or relying on a partial check
+- Thinking "just this once" or "I'm tired and want this over"
+
+The rule covers exact phrases, paraphrases, synonyms, and **ANY wording implying success without fresh verification**. Different words do not exempt you.
 
 ## Rationalization Prevention
 
@@ -87,7 +92,7 @@ Skip any step = lying, not verifying
 **Regression tests (TDD Red-Green):**
 
 ```
-✅ Write → Run (pass) → Revert fix → Run (MUST FAIL) → Restore → Run (pass)
+✅ Write → Run (pass) → Revert fix via VCS (git stash) → Run (MUST FAIL) → Restore (git stash pop) → Run (pass)
 ❌ "I've written a regression test" (without red-green verification)
 ```
 
@@ -114,36 +119,10 @@ Skip any step = lying, not verifying
 
 ## Why This Matters
 
-From 24 failure memories:
+False completion claims have concrete costs:
 
-- your human partner said "I don't believe you" - trust broken
-- Undefined functions shipped - would crash
-- Missing requirements shipped - incomplete features
-- Time wasted on false completion → redirect → rework
-- Violates: "Honesty is a core value. If you lie, you'll be replaced."
-
-## When To Apply
-
-**ALWAYS before:**
-
-- ANY variation of success/completion claims
-- ANY expression of satisfaction
-- ANY positive statement about work state
-- Committing, PR creation, task completion
-- Moving to next task
-- Delegating to agents
-
-**Rule applies to:**
-
-- Exact phrases
-- Paraphrases and synonyms
-- Implications of success
-- ANY communication suggesting completion/correctness
-
-## The Bottom Line
-
-**No shortcuts for verification.**
-
-Run the command. Read the output. THEN claim the result.
-
-This is non-negotiable.
+- Trust breaks — once a claim proves false, every later claim is doubted
+- Broken code ships — undefined functions and unhandled cases that crash in use
+- Incomplete features ship — requirements silently missed
+- Rework — time lost to redirect-and-redo after a false "done"
+- Honesty is a core value; a claim without evidence is a lie, not a shortcut
