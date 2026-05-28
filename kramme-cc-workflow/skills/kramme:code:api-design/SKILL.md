@@ -1,6 +1,6 @@
 ---
 name: kramme:code:api-design
-description: "(experimental) Design stable APIs and module boundaries. Covers contract-first approach, Hyrum's Law, validation placement (at boundaries, not between internal functions), consistent error shapes with HTTP status mapping, naming conventions, and TypeScript patterns for interface stability. Use when adding HTTP endpoints, public modules, SDK surfaces, or any interface with external or cross-team callers. Includes a Design It Twice mode (opt-in via --design-twice or the phrase 'design it twice') that spawns parallel sub-agents to explore radically different shapes before committing to one."
+description: "(experimental) Design stable APIs and module boundaries. Covers contract-first approach, Hyrum's Law, validation placement (at boundaries, not between internal functions), consistent error shapes with HTTP status mapping, naming conventions, and TypeScript patterns for interface stability. Use when adding HTTP endpoints, public modules, SDK surfaces, or any interface with external or cross-team callers. Includes a Design It Twice mode (opt-in via --design-twice or the phrase 'design it twice') that drafts radically different shapes — in parallel via sub-agents on Claude Code, sequentially elsewhere — before committing to one."
 argument-hint: "[--design-twice]"
 disable-model-invocation: false
 user-invocable: true
@@ -8,7 +8,7 @@ user-invocable: true
 
 # API and Interface Design
 
-Design stable APIs and module boundaries with a contract-first workflow. This is the procedural expression of the rule "the contract is the surface area you can never take back": decide the shape, validation points, error cases, and naming _before_ you write the handler, so the interface does not have to be rediscovered or reshaped once callers exist.
+Design stable APIs and module boundaries with a contract-first workflow. Decide the shape, validation points, error cases, and naming _before_ writing the handler, so the interface does not have to be rediscovered or reshaped once callers exist — the contract is surface area you can never take back.
 
 ## When to use
 
@@ -16,7 +16,7 @@ Design stable APIs and module boundaries with a contract-first workflow. This is
 - Exporting a new public module, package, or SDK function from a shared library.
 - Changing the shape of an existing response, error, or input payload.
 - Introducing a new resource, pagination scheme, or list endpoint.
-- Any time you catch yourself sketching a handler before you have sketched the contract.
+- Self-check while implementing: if you catch yourself sketching a handler before sketching the contract, stop and run this skill on the contract first.
 
 ## Hyrum's Law
 
@@ -60,29 +60,9 @@ Validating between internal functions duplicates work, hides the real boundary, 
 
 ### Rule 3 — Consistent error shape
 
-Every error returned from the API uses the same shape:
+Every error returned from the API uses the same shape: `{ code, message, details? }` (the `APIError` type). HTTP status comes from a fixed mapping: 400 invalid data, 401 not authenticated, 403 not authorized, 404 not found, 409 conflict, 422 validation failed, 500 server error (never expose internals).
 
-```ts
-type APIError = {
-  code: string; // stable machine-readable identifier
-  message: string; // human-readable, safe to show to end-users
-  details?: unknown; // optional structured context
-};
-```
-
-HTTP status mapping:
-
-| Status | Meaning                               |
-| ------ | ------------------------------------- |
-| 400    | Invalid data                          |
-| 401    | Not authenticated                     |
-| 403    | Not authorized                        |
-| 404    | Not found                             |
-| 409    | Conflict                              |
-| 422    | Validation failed                     |
-| 500    | Server error (never expose internals) |
-
-Never mix error shapes across endpoints — callers build parsing logic against the first shape they see, and Hyrum's Law nails that shape in place. Worked examples and full payloads are in `references/error-shapes.md`.
+Never mix error shapes across endpoints — callers build parsing logic against the first shape they see, and Hyrum's Law nails that shape in place. The canonical `APIError` type, full status mapping, worked examples per status code, and the 500-disclosure rule live in `references/error-shapes.md`.
 
 ### Rule 4 — Naming conventions
 
@@ -113,15 +93,15 @@ type PaginatedResponse<T> = {
 
 Callers build pagination UI and prefetching logic against this shape. Adding pagination later is a breaking change; adding it now is free.
 
-### Rule 6 — TypeScript patterns (applicable to TS projects)
+### Rule 6 — TypeScript patterns
 
 Three patterns keep TypeScript interfaces stable under Hyrum's Law:
 
-- **Discriminated unions** for variants — `type Result = { type: "success"; value: T } | { type: "error"; error: APIError }`.
+- **Discriminated unions** for variants — tag each shape with a literal field so callers narrow on the tag, not on field presence.
 - **Input / Output type separation** — `CreateTaskInput` is not `Task`. Do not reuse the read type as the write payload.
-- **Branded types for IDs** — `type TaskId = string & { readonly __brand: 'TaskId' }`.
+- **Branded types for IDs** — give each ID kind a phantom-branded string so the compiler refuses cross-resource swaps.
 
-Code examples and factory patterns live in `references/typescript-patterns.md`. Non-TS projects can skip this rule, but the underlying intent (don't conflate read and write shapes; don't let raw strings flow where a typed ID is expected) applies everywhere.
+Code examples, factory patterns, and the per-pattern rationale live in `references/typescript-patterns.md`. Non-TS projects can skip this rule, but the underlying intent (don't conflate read and write shapes; don't let raw strings flow where a typed ID is expected) applies everywhere.
 
 ### Rule 7 — Noticed but not touching
 
@@ -143,11 +123,13 @@ The reason: reshaping adjacent contracts is itself a breaking change, and it des
 
 ## Design It Twice mode
 
-The first interface that comes to mind is rarely the best. Design It Twice spawns parallel sub-agents to draft radically different shapes for the same problem, then compares them in the open before any single design is locked in.
+The first interface that comes to mind is rarely the best. Design It Twice drafts radically different shapes for the same problem in parallel, then compares them in the open before any single design is locked in.
+
+**Platform requirement** — the parallel form requires a multi-agent capability (Claude Code's Agent tool). On platforms without it, fall back to the sequential variant: draft each design in turn under the same constraint slate, taking care not to read prior designs while drafting the next, then compare them with the same rubric. `references/design-it-twice.md` covers both forms.
 
 **When this mode applies** — opt-in only. Trigger on `--design-twice`, on the user phrase "design it twice" or "show me alternatives". For high-leverage surfaces (SDK, cross-team contract) where the obvious shape feels suspiciously obvious, ask before entering this mode. Do not enter it by default; the cost of multiplication is wasted on low-stakes interfaces.
 
-**How it works** — frame the problem (not the interface), spawn 3+ parallel sub-agents each pinned to a different constraint (minimize methods / maximize flexibility / optimize common case / ports & adapters), present each design in full sequentially, then compare in prose by depth, locality, and seam placement. End with a single recommendation: pick one, hybridize and explain the borrow, or redesign because the framing was wrong. See `references/design-it-twice.md` for the full process, prompt template, and comparison rubric.
+**How it works** — frame the problem (not the interface), produce 3+ designs each pinned to a different constraint (minimize methods / maximize flexibility / optimize common case / ports & adapters), present each in full sequentially, then compare in prose by depth, locality, and seam placement. End with a single recommendation: pick one, hybridize and explain the borrow, or redesign because the framing was wrong. See `references/design-it-twice.md` for the full process, prompt template, and comparison rubric.
 
 **Relationship to the rules** — Design It Twice is upstream of Rule 0–7. Once a design is picked, every rule above applies to that design. The mode does not loosen any rule; it raises the chance the picked design is worth applying them to.
 
@@ -190,7 +172,7 @@ If you notice any of these in your own design, stop and redesign:
 Before declaring the contract done, self-check every item:
 
 - Does the endpoint follow the resource-noun naming rule (plural, no verbs)?
-- Do all error responses use the `APIError` shape with a correct HTTP status from the table?
+- Do all error responses use the `APIError` shape with a correct HTTP status from the Rule 3 mapping (full table in `references/error-shapes.md`)?
 - Do list endpoints return the pagination envelope?
 - Are all untrusted inputs validated exactly at the boundary — and no inputs validated redundantly between internals?
 - Do public types have separate Input and Output variants where the read shape differs from the write shape?
