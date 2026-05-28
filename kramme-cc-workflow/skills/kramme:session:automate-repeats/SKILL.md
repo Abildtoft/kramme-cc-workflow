@@ -19,10 +19,10 @@ Find repeated work in recent agent sessions and turn only the practical patterns
 ## Workflow
 
 1. Resolve the session source.
-   - If `$ARGUMENTS` includes files or directories, use those.
-   - If `$ARGUMENTS` includes `--recent N`, inspect the N most recent readable session files.
-   - Otherwise, search likely local session stores in this order: `.context/`, `~/.codex/sessions/`, `~/.claude/projects/`.
-   - Prefer JSONL session files sorted by modification time. Cap the first pass at about 30 recent files or the last 30 days, whichever is smaller.
+   - If `$ARGUMENTS` includes files or directories, use those. If an explicitly provided path is missing or unreadable, stop and report the exact path instead of falling back to the default stores.
+   - If `$ARGUMENTS` includes `--recent N`, inspect the N most recent readable session files. An explicit `N` overrides the default cap below.
+   - Otherwise, search likely local session stores in this order, using the first store that yields readable sessions: `.context/`, `~/.codex/sessions/`, `~/.claude/projects/`.
+   - Prefer JSONL session files sorted by modification time. Cap the first pass at about 30 recent files or the last 30 days, whichever is smaller. Skip files that cannot be parsed and list them under `UNVERIFIED`.
    - If no session source is readable, ask for an export path and stop.
 
 2. Build an inventory of existing automation before proposing anything.
@@ -54,12 +54,14 @@ Find repeated work in recent agent sessions and turn only the practical patterns
 
 7. Scaffold skills simply.
    - Use `skills/{skill-name}/SKILL.md` when the current workspace's skill root is `skills/`; use `kramme-cc-workflow/skills/{skill-name}/SKILL.md` when that plugin layout exists.
+   - If the destination path already exists, do not overwrite it. Skip the candidate and report it under `NOT CREATED` with reason `already exists`.
    - Use names in the form `kramme:{domain}:{action}` when adding to this plugin-style tree.
-   - Include frontmatter fields: `name`, `description`, `disable-model-invocation`, and `user-invocable`; add `argument-hint` only when useful.
+   - Include frontmatter fields: `name`, `description`, `disable-model-invocation`, and `user-invocable`; add `argument-hint` only when useful. Set `disable-model-invocation: true` for any generated skill with side effects (file writes, git, network, deletion); otherwise `false`.
    - Keep each generated `SKILL.md` focused on the workflow. Avoid placeholder docs, READMEs, and large reference files unless the candidate truly needs them.
 
 8. Scaffold subagents simply.
    - Use `agents/{agent-name}.md` when the current workspace's agent root is `agents/`; use `kramme-cc-workflow/agents/{agent-name}.md` when that plugin layout exists.
+   - If the destination path already exists, do not overwrite it. Skip the candidate and report it under `NOT CREATED` with reason `already exists`.
    - Include frontmatter fields: `name`, `description`, `model`, and `color`.
    - Keep the body to mission, scope boundaries, analysis process, and output format.
    - Make the agent read-only by default unless the role explicitly requires edits and the user's request authorizes side effects.
