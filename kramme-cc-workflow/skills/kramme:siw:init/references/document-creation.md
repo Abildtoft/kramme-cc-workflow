@@ -8,6 +8,33 @@ Create the `siw/` directory if it doesn't already exist.
 
 ### 4.1 Create Specification Document
 
+Before writing, check whether `siw/{spec_filename}` already exists with `[ -e "siw/{spec_filename}" ]`. This can happen when Phase 1's "Start fresh" branch preserved a permanent spec whose filename now collides with the one chosen in Phase 3.
+
+If the target exists, use AskUserQuestion:
+
+```yaml
+header: "Spec File Exists"
+question: "siw/{spec_filename} already exists (preserved from an earlier run). How should I proceed?"
+options:
+  - label: "Reuse existing spec"
+    description: "Keep the existing file as-is and skip Step 4.1; continue with Step 4.2"
+  - label: "Write to a new filename"
+    description: "Save the generated spec as siw/{spec_filename-stem}-NEW{ext} and keep the original"
+  - label: "Overwrite"
+    description: "Replace siw/{spec_filename} with the newly generated content"
+  - label: "Abort"
+    description: "Stop without changing any files"
+```
+
+Apply the user's choice:
+
+- **Reuse existing spec**: skip to Step 4.2 (do not write).
+- **Write to a new filename**: update `spec_filename` to the renamed path before continuing.
+- **Overwrite**: continue normally — the file will be replaced.
+- **Abort**: stop this command without changing any files.
+
+If the target does not exist, continue normally.
+
 Create `siw/{spec_filename}` with structure based on available content.
 
 Read the spec template for the appropriate path from `assets/spec-templates.md`. Use the slim template if `linked_spec_files` exists, the rich template if `discovered_content` exists, or the basic template otherwise. If `use_supporting_specs` is true, include the Supporting Specifications section from that file.

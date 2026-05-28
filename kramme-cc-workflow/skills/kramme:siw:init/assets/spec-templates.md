@@ -249,7 +249,5 @@ If `use_supporting_specs` is true, add this section before "## Design Decisions"
 | ---------- | ----------------------------------------- | ----------- |
 | _None yet_ | _Create files in `siw/supporting-specs/`_ |             |
 
-**Naming convention:** `NN-descriptor.md` (e.g., `01-data-model.md`, `02-api-specification.md`)
-
-See `assets/spec-guidance.md` for detailed guidance on supporting specs.
+**Naming convention:** `NN-descriptor.md` (e.g., `01-data-model.md`, `02-api-specification.md`). Use numbers `00`-`99` for ordering, lowercase with hyphens, and letters for variants (`03a-`, `03b-`). Keep supporting specs as the current source of truth for their domain — update content in place rather than appending a "Design Decisions" trail.
 ```
