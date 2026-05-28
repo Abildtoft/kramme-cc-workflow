@@ -14,8 +14,9 @@ Review one or more skills against the skill-authoring rubric. This is a read-onl
 
 1. **Resolve the target**
    - Accept a `SKILL.md` path, a skill directory path, a skill name, or pasted draft skill text.
-   - If a skill name is provided, check `skills/{skill-name}/SKILL.md` and `{skill-name}/SKILL.md` relative to the current workspace.
-   - If no target is provided, inspect the current VCS diff for changed `skills/*/SKILL.md` files. If none are found, ask for a target.
+   - If the input is pasted skill text, skip path resolution and treat the text as the `SKILL.md` content.
+   - If a skill name is provided, check `skills/{skill-name}/SKILL.md` and `{skill-name}/SKILL.md` relative to the current working directory.
+   - If no target is provided, inspect the current VCS diff for changed `skills/*/SKILL.md` files. Review every changed file, emitting one findings section per skill plus a combined rubric snapshot. If none are found, ask for a target.
    - If a path is missing or unreadable, stop with the exact path and the next command or input needed.
 
 2. **Read only the needed artifacts**
@@ -62,3 +63,4 @@ Review one or more skills against the skill-authoring rubric. This is a read-onl
 - Prefer removing instructions over adding process when the same outcome remains clear.
 - Do not recommend scripts, resources, or new metadata unless they reduce real complexity or make failure handling more reliable.
 - Treat "review only" as a boundary. If the user asks for fixes, complete the review first, then make a separate edit pass.
+- Mark rubric areas `N/A` in the summary when they do not apply to the skill under review (e.g. idempotency for a stateless reviewer). Do not invent findings to fill them.
