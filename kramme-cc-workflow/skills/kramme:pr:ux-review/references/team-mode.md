@@ -57,7 +57,7 @@ Spawn teammates based on applicable review categories. Each teammate receives:
 - If `custom_threshold` provided: instruct the agent to use this threshold
 - Instructions to **message other teammates** when they find cross-cutting UX issues
 
-Use the same agent-selection logic as `/kramme:pr:ux-review` Step 5 (always-launch set, conditional a11y detection, and `--categories` filter) — substitute "spawn the teammate" for "launch the agent". Each agent's mission lives in `agents/kramme:<agent-name>.md`.
+Use the same agent-selection logic as `/kramme:pr:ux-review` Step 5 (always-launch set, conditional a11y detection, and `--categories` filter) — substitute "spawn the teammate" for "launch the agent". Mission files: `agents/kramme:ux-reviewer.md`, `agents/kramme:product-reviewer.md`, `agents/kramme:visual-reviewer.md`, and `agents/kramme:a11y-auditor.md`.
 
 ### Step 3: Create and Assign Tasks
 
