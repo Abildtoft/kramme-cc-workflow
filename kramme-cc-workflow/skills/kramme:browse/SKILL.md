@@ -1,7 +1,7 @@
 ---
 name: kramme:browse
 description: (experimental) Browser operator for live product inspection. Detects available browser MCP tooling (claude-in-chrome, chrome-devtools, playwright) and provides consistent navigation, screenshots, interaction, and evidence capture. Not for code-only analysis.
-argument-hint: "<url> [--screenshot] [--console] [--network]"
+argument-hint: "<url|auto> [--screenshot] [--console] [--network]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -37,15 +37,11 @@ Store parsed values:
 
 ### Step 2: Detect Browser MCP
 
-Probe for available browser MCP tools in priority order. For each provider, attempt a lightweight read-only call to confirm availability:
+Detect the provider by checking which `mcp__<provider>__*` tools are present in your available tool set — **do not call a tool to probe**. Select the **first** provider whose tools are present, in priority order: claude-in-chrome, then chrome-devtools, then playwright. See `references/mcp-tool-reference.md` ("Detection Strategy") for the prefix mapping. Store the detected type as `BROWSER_MCP` (`claude-in-chrome`, `chrome-devtools`, or `playwright`).
 
-1. **claude-in-chrome** — call `mcp__claude-in-chrome__tabs_context_mcp`. If it returns tab data (or an empty list), the provider is available.
-2. **chrome-devtools** — call `mcp__chrome-devtools__list_pages`. If it returns a page list, the provider is available.
-3. **playwright** — call `mcp__playwright__browser_tabs`. If it returns tab info (or an error indicating no browser is open yet), the provider is available.
+Detect by presence, not by invocation: in harnesses that load MCP tools lazily, a probe call can fail for reasons unrelated to availability and produce a false "no browser MCP" hard stop. If your harness only exposes a tool after an explicit load step, load the detected provider's tools before Step 4.
 
-Use the **first provider that responds successfully**. Store the detected type as `BROWSER_MCP` (`claude-in-chrome`, `chrome-devtools`, or `playwright`).
-
-If all three probes fail or the tools do not exist, emit error and **hard stop**:
+If no provider's tools are present, emit error and **hard stop**:
 
 ```
 Error: No browser automation MCP detected. The browse skill requires a browser MCP.
@@ -62,12 +58,7 @@ Browse without a browser is meaningless — do not continue.
 
 **If URL is `auto`:** Run dev server detection to find a running local server.
 
-Read `references/dev-server-detection.md` and follow the detection steps:
-
-1. Scan common ports (3000, 3001, 4200, 4201, 5173, 5174, 5000, 8000, 8080, 8888, 9000) for active listeners
-2. Check framework config files if ambiguous
-3. Resolve to a single URL
-4. Verify with HTTP request
+Read `references/dev-server-detection.md` and follow the detection steps: scan common dev-server ports for active listeners, check framework config files if ambiguous, resolve to a single URL, and verify it with an HTTP request.
 
 If no dev server found:
 
@@ -93,15 +84,9 @@ HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$TARGET_URL")
 
 ### Step 4: Navigate
 
-Navigate to the target URL using the detected browser MCP. Read `references/mcp-tool-reference.md` for the correct tool mapping.
+Navigate to the target URL using the detected browser MCP's navigate tool (see `references/mcp-tool-reference.md` for the per-provider tool name). Wait for page load to complete before proceeding.
 
-| BROWSER_MCP      | Tool                                  |
-| ---------------- | ------------------------------------- |
-| claude-in-chrome | `mcp__claude-in-chrome__navigate`     |
-| chrome-devtools  | `mcp__chrome-devtools__navigate_page` |
-| playwright       | `mcp__playwright__browser_navigate`   |
-
-Wait for page load to complete before proceeding.
+**Tab lifecycle:** Open a fresh tab/page for this run rather than reusing an existing one, unless the user explicitly asks to operate on a tab they already have open — reusing a user's tab risks navigating away from their work. Scope all console and network capture (Step 8) to activity after this navigation, so evidence reflects the current page and not state left over from a prior run or tab.
 
 If navigation fails (timeout, connection error):
 
@@ -119,25 +104,11 @@ If navigation fails (timeout, connection error):
 
 ### Step 5: Inspect
 
-Take a page snapshot (DOM state / accessibility tree) to understand page structure.
-
-| BROWSER_MCP      | Tool                                  |
-| ---------------- | ------------------------------------- |
-| claude-in-chrome | `mcp__claude-in-chrome__read_page`    |
-| chrome-devtools  | `mcp__chrome-devtools__take_snapshot` |
-| playwright       | `mcp__playwright__browser_snapshot`   |
-
-This provides structural understanding of the page for subsequent interactions. Present a summary of the page structure (key elements, headings, forms, navigation).
+Take a page snapshot (DOM state / accessibility tree) using the detected MCP's snapshot tool (see `references/mcp-tool-reference.md`). This provides structural understanding of the page for subsequent interactions. Present a summary of the page structure (key elements, headings, forms, navigation).
 
 ### Step 6: Screenshot
 
-If `CAPTURE_SCREENSHOT` is enabled, capture a visual screenshot.
-
-| BROWSER_MCP      | Tool                                                   |
-| ---------------- | ------------------------------------------------------ |
-| claude-in-chrome | `mcp__claude-in-chrome__computer` (action: screenshot) |
-| chrome-devtools  | `mcp__chrome-devtools__take_screenshot`                |
-| playwright       | `mcp__playwright__browser_take_screenshot`             |
+If `CAPTURE_SCREENSHOT` is enabled, capture a visual screenshot using the detected MCP's screenshot tool (see `references/mcp-tool-reference.md`).
 
 If screenshot capture fails: warn and continue with remaining steps.
 
@@ -147,7 +118,7 @@ Warning: Screenshot capture failed. Continuing with other captures.
 
 ### Step 7: Interact
 
-If the caller requests specific interactions (clicking elements, filling forms, selecting options), execute them using the appropriate MCP tools.
+Interactions are not passed via `$ARGUMENTS` (which carries only the URL and capture flags) — they come from the surrounding request or conversation. If the caller has asked for specific interactions (clicking elements, filling forms, selecting options), execute them using the appropriate MCP tools.
 
 Read `references/mcp-tool-reference.md` for the full tool mapping per action:
 
@@ -186,21 +157,9 @@ Warning: Could not {action} on {element}. Skipping.
 
 Capture additional evidence based on enabled flags.
 
-**If `CAPTURE_CONSOLE` is enabled:**
+**If `CAPTURE_CONSOLE` is enabled:** read console messages using the detected MCP's console tool (see `references/mcp-tool-reference.md`).
 
-| BROWSER_MCP      | Tool                                           |
-| ---------------- | ---------------------------------------------- |
-| claude-in-chrome | `mcp__claude-in-chrome__read_console_messages` |
-| chrome-devtools  | `mcp__chrome-devtools__list_console_messages`  |
-| playwright       | `mcp__playwright__browser_console_messages`    |
-
-**If `CAPTURE_NETWORK` is enabled:**
-
-| BROWSER_MCP      | Tool                                           |
-| ---------------- | ---------------------------------------------- |
-| claude-in-chrome | `mcp__claude-in-chrome__read_network_requests` |
-| chrome-devtools  | `mcp__chrome-devtools__list_network_requests`  |
-| playwright       | `mcp__playwright__browser_network_requests`    |
+**If `CAPTURE_NETWORK` is enabled:** read network requests using the detected MCP's network tool (see `references/mcp-tool-reference.md`).
 
 If any individual capture fails, warn and continue:
 
