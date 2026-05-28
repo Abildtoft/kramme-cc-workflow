@@ -12,6 +12,8 @@ Structured debugging workflow: reproduce, isolate, trace root cause, and fix. Ma
 
 **IMPORTANT:** Follow all phases systematically. Do not skip to a fix without tracing the root cause first.
 
+**Not for:** performance profiling, greenfield feature work, or changes whose cause is already known — go straight to the change in those cases.
+
 ## Process Overview
 
 ```
@@ -47,7 +49,7 @@ Structured debugging workflow: reproduce, isolate, trace root cause, and fix. Ma
 ## Step 1: Parse Input
 
 1. If `$ARGUMENTS` matches a **Linear issue pattern** (e.g., `TEAM-123`):
-   - Fetch via `mcp__linear__get_issue`.
+   - Fetch via the Linear MCP integration (e.g., `mcp__linear__get_issue`).
    - Extract: description, steps to reproduce, expected vs. actual behavior.
    - If Linear MCP unavailable: treat as plain text, ask user to paste issue content.
 
@@ -55,15 +57,7 @@ Structured debugging workflow: reproduce, isolate, trace root cause, and fix. Ma
 
 3. If `$ARGUMENTS` is **free text**: use as bug description.
 
-4. If `$ARGUMENTS` is **empty**:
-
-```
-AskUserQuestion
-header: Bug Description
-question: What bug should I investigate?
-options:
-  - (freeform) Describe the bug, paste an error message, or provide a Linear issue ID
-```
+4. If `$ARGUMENTS` is **empty**: ask the user — "What bug should I investigate? Describe it, paste an error message, or provide a Linear issue ID." Wait for a response before continuing.
 
 Store as `BUG_DESCRIPTION`.
 
@@ -142,6 +136,7 @@ options:
    - Identify known-good commit: ask user, or find recent tag/release.
    - If a failing test exists, automate: `git bisect run <test-command>`.
    - Otherwise, guide manual bisect steps.
+   - **Always run `git bisect reset` when finished — and before any fallback or early exit — to restore the working tree.**
 
 4. **Consult investigation patterns:**
    - Read common patterns from `references/investigation-patterns.md`.
@@ -156,33 +151,9 @@ options:
 
 ## Step 5: Document Findings
 
-Read the investigation log template from `assets/investigation-log.md`.
+Read the log template from `assets/investigation-log.md` and fill it in from the timeline logs (`[REPRODUCE]`, `[ISOLATE]`, `[ROOT CAUSE]`) and findings gathered so far. Capture evidence — code snippets, test output, bisect results — under the relevant sections.
 
-Compile the investigation log:
-
-```markdown
-## Investigation: {BUG_DESCRIPTION}
-
-### Timeline
-
-1. [REPRODUCE] {method} → {result}
-2. [ISOLATE] Scope: {files/functions}
-3. [TRACE] {method used}
-4. [ROOT CAUSE] {description} at {file}:{line}
-
-### Root Cause Analysis
-
-- **What:** {what goes wrong}
-- **Where:** {file}:{line}
-- **Why:** {explanation of the mechanism}
-- **When introduced:** {commit if bisected, else "unknown"}
-
-### Evidence
-
-{code snippets, test output, bisect results}
-```
-
-Store the log for inclusion in the final summary.
+Store the completed log for inclusion in the final summary.
 
 ---
 
@@ -270,7 +241,7 @@ Investigation Log:
 | Scenario | Action |
 | --- | --- |
 | Error message not found in codebase | Widen search: partial matches, case-insensitive, related symbols. Ask user for context. |
-| Git bisect fails | Fall back to manual trace using investigation patterns. |
+| Git bisect fails | Run `git bisect reset` to restore the tree, then fall back to manual trace using investigation patterns. |
 | Fix verification fails after 3 iterations | Present failures, suggest manual investigation. |
 | Linear MCP unavailable | Treat issue ref as text, ask user to paste content. |
 | No test framework detected | Skip regression test. Note in summary. |
