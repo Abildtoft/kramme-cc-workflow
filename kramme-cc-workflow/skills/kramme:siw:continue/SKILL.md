@@ -1,39 +1,31 @@
 ---
 name: kramme:siw:continue
-description: Structured Implementation Workflow (SIW) - Use a structured workflow with core specification, planning, and audit documents to plan, track, and implement work items. Triggers on "SIW", "structured workflow", or when siw/LOG.md and siw/OPEN_ISSUES_OVERVIEW.md files are detected.
+description: Entry point for the Structured Implementation Workflow (SIW) — a local, markdown-based workflow for planning, tracking, and implementing multi-step work. Resumes in-flight SIW runs by reading siw/LOG.md and siw/OPEN_ISSUES_OVERVIEW.md, or routes new work to the right SIW subcommand. Triggers on "SIW", "structured workflow", or when siw/LOG.md and siw/OPEN_ISSUES_OVERVIEW.md files are detected.
 disable-model-invocation: false
 user-invocable: true
 ---
 
 # Structured Implementation Workflow (SIW)
 
-A local issue tracking system using markdown files to plan, track, and document implementations without requiring external services.
+A local, markdown-based workflow for planning, tracking, and implementing multi-step work without external services.
+
+## What This Skill Does
+
+This skill is the SIW entry point. When invoked, it:
+
+1. **Detects current state** — checks for `siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, and the spec document.
+2. **Resumes if state exists** — follows the resume flow in `references/phase-0-resuming.md` (read LOG.md "Current Progress", check open issues, continue the next task).
+3. **Routes if not** — points to the right SIW subcommand based on what's needed (see *Working With Existing Files* below).
+
+It does not directly create, modify, or close SIW documents; that is delegated to the SIW subcommands listed in the *Commands Reference* table.
 
 ## When to Use
 
-- Complex features requiring planning and decision tracking
-- Multi-issue projects with multiple work items
-- Projects without Linear or when you want local-only tracking
-- Technical designs, API documentation, or system architecture
+- **Resuming SIW work** — primary auto-trigger when `siw/LOG.md` is present.
+- Starting structured work on a complex feature, multi-issue project, or technical design.
+- Local-only tracking when an external tracker (Linear, Jira) is not in use.
 
 **NOT for:** Small bug fixes (<1 day), trivial updates, simple refactoring.
-
-## Quick Start
-
-```
-/kramme:siw:init                    # Initialize workflow documents
-/kramme:siw:discovery               # Deep discovery interview (greenfield or spec strengthening)
-/kramme:siw:issue-define "feature"  # Create a work item (G-001 format)
-/kramme:siw:generate-phases         # Break spec into phase-based issues (P1-001, P2-001)
-/kramme:siw:issue-implement G-001   # Start implementing
-/kramme:siw:spec-audit               # Audit spec quality before implementation
-/kramme:siw:implementation-audit    # Audit code against spec for discrepancies
-/kramme:siw:resolve-audit           # Walk audit findings one-by-one and create SIW issues (--auto + report path to stay scoped)
-/kramme:siw:issue-reindex          # Remove DONE issues, renumber within groups
-/kramme:siw:reset                   # Reset for next iteration (keeps spec)
-/kramme:siw:close                   # Generate docs and clean up
-/kramme:siw:remove                  # Clean up when done (no docs)
-```
 
 ## Issue Naming
 
@@ -110,7 +102,7 @@ Issues use prefix-based numbering:
 1. **Spec NEVER references temp docs** - It's self-contained and permanent
 2. **NEVER reference temp docs in code** - Comments, docs, error messages must not mention siw/LOG.md or siw/issues
 3. **Decisions flow one-way:** Issues → siw/LOG.md → siw/[YOUR_SPEC].md
-4. **Sync before completion:** Always run Step 10 (Spec Sync) in implement-issue
+4. **Sync before completion:** Before closing an issue, migrate the issue's decisions from siw/LOG.md into the permanent spec (the spec sync step inside `/kramme:siw:issue-implement`)
 
 ---
 
@@ -165,48 +157,34 @@ ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw
 
 ### Resuming Work
 
-When resuming a session with existing SIW files:
-
-1. **Read siw/LOG.md first** - Check "Current Progress" section for:
-   - What was last completed
-   - What's next
-   - Any blockers
-
-2. **Check siw/OPEN_ISSUES_OVERVIEW.md** - See which issues are:
-   - READY (not started)
-   - IN PROGRESS (being worked on)
-   - IN REVIEW (awaiting review/approval)
-   - DONE (completed)
-
-3. **Continue or start new** - Either:
-   - Continue the in-progress issue
-   - Pick up the next ready issue with `/kramme:siw:issue-implement`
+When existing SIW files are detected, follow the targeted reading flow in `references/phase-0-resuming.md`. In short: read the "Current Progress" section of `siw/LOG.md`, scan `siw/OPEN_ISSUES_OVERVIEW.md` for status, then either continue the IN PROGRESS issue or pick up the next READY one with `/kramme:siw:issue-implement`.
 
 ---
 
 ## Issue Lifecycle
 
 ```
-Created              In Progress           Review              Completed
-   │                      │                   │                    │
-   ▼                      ▼                   ▼                    ▼
-┌─────────┐          ┌─────────┐        ┌─────────┐          ┌─────────┐
-│  READY  │ ───────► │IN PROG  │ ─────► │IN REVIEW│ ───────► │  DONE   │
-└─────────┘          └─────────┘        └─────────┘          └─────────┘
+                                            ┌─────────────────────────────┐
+                                            │   (shortcut when confident) │
+                                            ▼                             │
+┌─────────┐          ┌─────────┐        ┌─────────┐          ┌─────────┐  │
+│  READY  │ ───────► │IN PROG  │ ─────► │IN REVIEW│ ───────► │  DONE   │  │
+└─────────┘          └────┬────┘        └─────────┘          └─────────┘  │
+                          └──────────────────────────────────────────────┘
 ```
 
 **Issue States:**
 
-- **READY** - Defined, waiting to be picked up
-- **IN PROGRESS** - Currently being implemented
-- **IN REVIEW** - Work complete, awaiting review/approval
-- **DONE** - Resolved and documented
+- **READY** — Defined, waiting to be picked up
+- **IN PROGRESS** — Currently being implemented
+- **IN REVIEW** — Work complete, awaiting review/approval (use when the resolution is uncertain or needs sign-off)
+- **DONE** — Resolved and documented (skip IN REVIEW when the resolution is straightforward and confident)
 
 When an issue is completed:
 
 1. Resolution steps documented in the issue file's `## Resolution` section
 2. Decisions logged in siw/LOG.md
-3. Key decisions synced to spec (Step 10)
+3. Key decisions synced to the permanent spec (the spec sync step in `/kramme:siw:issue-implement`)
 4. Status set to `IN REVIEW` (uncertain solution) or `DONE` (confident solution)
 5. Row updated in siw/OPEN_ISSUES_OVERVIEW.md
 
@@ -254,7 +232,7 @@ Use `siw/supporting-specs/` when:
 
 ## Templates Reference
 
-When manually creating documents, use these templates from: `skills/kramme:siw:continue/assets/`
+When manually creating documents, use the templates in this skill's `assets/` directory:
 
 | Document           | Template                    |
 | ------------------ | --------------------------- |

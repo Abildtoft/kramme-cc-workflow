@@ -13,7 +13,7 @@
 grep -n "### Task X.Y\|#### Task X.Y" siw/YOUR_SPEC.md
 ```
 
-Then read from that line with `limit: 30` lines.
+Then read ~30 lines from that line.
 
 **What to check in the task section:**
 
@@ -37,7 +37,7 @@ If the task references a supporting spec (e.g., "See `siw/supporting-specs/02-ap
    grep -n "## Endpoints\|### Endpoints" siw/supporting-specs/02-api-specification.md
    ```
 
-2. **Read just that section** with `limit: 50` lines
+2. **Read just that section** (~50 lines)
 
 3. **Use supporting specs for**:
    - Detailed data model definitions

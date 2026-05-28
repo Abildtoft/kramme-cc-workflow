@@ -16,7 +16,7 @@ You're resuming work. Follow this reading order:
 
 **Use targeted reading:**
 
-- Read tool with `limit: 50` (Current Progress is always at the top)
+- Read only the first ~50 lines (Current Progress is always at the top)
 - The section contains everything you need: status, last completed, next steps
 
 **Only read Decision Log when:**
@@ -51,7 +51,7 @@ You're resuming work. Follow this reading order:
 grep -n "### Task X.Y\|#### Task X.Y" siw/YOUR_SPEC.md
 ```
 
-Then read from that line with `limit: 30` lines. Task sections are self-contained.
+Then read ~30 lines from that line. Task sections are self-contained.
 
 **What to look for in the task section:**
 
@@ -72,7 +72,7 @@ ls siw/supporting-specs/ 2> /dev/null
   ```bash
   grep -n "## Section Name" siw/supporting-specs/02-api-specification.md
   ```
-- Read from that line with `limit: 50`
+- Read ~50 lines from that line
 
 **Don't read all supporting specs** - only read the one referenced by your current task.
 

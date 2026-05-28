@@ -6,7 +6,7 @@
 
 ### 1. Create Issue File
 
-If no issues exist yet, read `templates/issues-template.md` for templates.
+If no issues exist yet, read `assets/issues-template.md` for templates.
 
 **If this is the first issue:**
 

@@ -141,13 +141,13 @@ Tasks can reference supporting specs for details:
    ```bash
    grep -n "## User Endpoints" siw/supporting-specs/02-api-specification.md
    ```
-4. Read from that line with `limit: 50`
+4. Read ~50 lines from that line
 
 ### Keeping Supporting Specs Current
 
 **CRITICAL:** Supporting specs must reflect current implementation, not original plans.
 
-When implementation decisions are made during Step 10 (Spec Sync):
+When implementation decisions are made during the spec sync step in `/kramme:siw:issue-implement`:
 
 - **Update the actual content** of the supporting spec, not just add to a "Design Decisions" section
 - Supporting specs should always be the source of truth for their domain
