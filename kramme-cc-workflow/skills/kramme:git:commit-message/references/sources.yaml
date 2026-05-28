@@ -2,7 +2,7 @@ sources:
   - id: getsentry-commit-skill
     url: https://agentskills.so/skills/getsentry-skills-commit
     title: "getsentry/skills - commit skill"
-    rationale: "Commit message structure, pre-commit checks, and issue-reference guidance are derived from this skill."
+    rationale: "Commit message structure and pre-commit checks are derived from this skill."
     last_reviewed_at: 2026-04-25
     baseline_hash: ""
   - id: addy-git-workflow-versioning
