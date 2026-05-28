@@ -38,7 +38,7 @@ Defines what to verify at each level during QA testing.
 
 ## Console and Network
 
-- No errors in console (warnings are noted but not blockers)
+- Console is clean: every error and every warning is a finding by default (warnings demote to Info only under `--legacy-console`). See the clean-console standard in SKILL.md Step 4.
 - All API calls return expected status codes
 - No CORS errors
 - No mixed content warnings

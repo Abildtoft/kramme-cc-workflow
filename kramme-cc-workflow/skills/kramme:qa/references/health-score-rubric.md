@@ -24,8 +24,9 @@ Minimum score per category is 0.
 | Visual | 10% | Layout overflow, broken images, text overlap, clipping |
 | Functional | 25% | Broken flows, dead buttons, form failures, navigation dead-ends |
 | Data | 10% | Stale data, missing empty states, wrong context, pagination bugs |
-| Interaction | 15% | Buttons, forms, dropdowns, modals, keyboard navigation |
-| Content | 15% | Copy errors, missing labels, developer jargon, unclear messages |
+| Interaction | 10% | Buttons, forms, dropdowns, modals |
+| Content | 10% | Copy errors, developer jargon, unclear messages |
+| Accessibility | 10% | Missing accessible names, heading hierarchy, focus order, contrast, dynamic-content announcement |
 
 ## Computation
 
@@ -46,6 +47,7 @@ Each QA finding maps to one category based on its primary symptom:
 - **Data**: Wrong data displayed, stale state, missing empty state, broken pagination
 - **Interaction**: Button doesn't respond, form won't submit, dropdown broken, modal stuck
 - **Content**: Typo, unclear error message, developer jargon visible, missing placeholder text
+- **Accessibility**: Interactive element without an accessible name, broken heading hierarchy, focus order/trap issues, insufficient color contrast, dynamic content not announced
 
 If a finding spans multiple categories, assign it to the most severe one.
 

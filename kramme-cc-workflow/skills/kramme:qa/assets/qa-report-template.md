@@ -11,7 +11,7 @@
 
 ### QA-NNN: {title}
 
-**Severity:** Blocker | Major | Minor | Info **Category:** Console | Network | Visual | Functional | Data | Interaction | Content **Route:** {URL path} **Console:** {relevant console output or "clean"} **Network:** {relevant network issues or "all OK"}
+**Severity:** Blocker | Major | Minor | Info **Category:** Console | Network | Visual | Functional | Data | Interaction | Content | Accessibility **Route:** {URL path} **Console:** {relevant console output or "clean"} **Network:** {relevant network issues or "all OK"}
 
 **Repro Steps:**
 
@@ -34,8 +34,9 @@
 | Visual             | {N}/100                | 10%    | {count}     |
 | Functional         | {N}/100                | 25%    | {count}     |
 | Data               | {N}/100                | 10%    | {count}     |
-| Interaction        | {N}/100                | 15%    | {count}     |
-| Content            | {N}/100                | 15%    | {count}     |
+| Interaction        | {N}/100                | 10%    | {count}     |
+| Content            | {N}/100                | 10%    | {count}     |
+| Accessibility      | {N}/100                | 10%    | {count}     |
 | **Weighted Total** | **{HEALTH_SCORE}/100** |        | **{total}** |
 
 ## Summary
