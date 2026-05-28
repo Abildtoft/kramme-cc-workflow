@@ -4,11 +4,20 @@ description: "Audit a codebase for agent-nativeness — score how well-optimized
 argument-hint: "[--auto]"
 disable-model-invocation: true
 user-invocable: true
+kramme-platforms: [claude-code]
 ---
 
 # Agent-Native Audit
 
 Audit a codebase for agent-nativeness — how well-optimized it is for AI coding agents (Claude Code, Codex, etc.) to work with effectively. Scores 5 dimensions and generates a prioritized refactoring plan.
+
+**Not for:**
+
+- Per-feature or per-PR audits — use `kramme:pr:code-review` or `kramme:code:refactor-opportunities` instead.
+- Replacing a refactor-opportunity scan — this scores agent-nativeness, not general code quality.
+- Per-package audits inside a monorepo — this skill audits root-level configuration. Run per-package separately if needed.
+
+**What it touches:** writes one report file (`AGENT_NATIVE_AUDIT.md`) at the project root. Read-only otherwise.
 
 Parse `$ARGUMENTS` for `--auto` before Step 1.
 
@@ -39,7 +48,7 @@ Good pointers are scoped, accurate, and explain why the target matters. Link dum
 [Step 1: Detect Codebase Context] -> Language, framework, key signals
     |
     v
-[Step 2: Launch Parallel Analysis] -> 3 Explore agents across 5 dimensions
+[Step 2: Launch Parallel Analysis] -> 3 agents covering 5 dimensions
     |
     v
 [Step 3: Collect and Score Results] -> Per-dimension scores 1-5
@@ -62,6 +71,8 @@ Good pointers are scoped, accurate, and explain why the target matters. Link dum
 ## Step 1: Detect Codebase Context
 
 Gather codebase metadata before launching agents.
+
+This step assumes `ripgrep` (`rg`) is available. If `rg` is missing, substitute `grep -rEn` in the search command below.
 
 ### 1.1 Detect Language and Framework
 
@@ -91,8 +102,8 @@ Identify primary language(s) by checking for config files:
 Quick checks for files that inform the analysis:
 
 ```bash
-# Agent instructions
-for item in AGENTS.md CLAUDE.md .github/copilot-instructions.md; do
+# Docs, agent instructions, and CI configs
+for item in AGENTS.md CLAUDE.md .github/copilot-instructions.md README.md docs CONTRIBUTING.md CHANGELOG.md Jenkinsfile .circleci/config.yml .husky .pre-commit-config.yaml lefthook.yml; do
   if [ -e "$item" ]; then
     echo "$item"
   fi
@@ -100,50 +111,30 @@ done
 if [ -d .claude ]; then
   find .claude -maxdepth 1 -type f -name "*.md"
 fi
+if [ -d .github/workflows ]; then
+  find .github/workflows -maxdepth 1 -type f \( -name "*.yml" -o -name "*.yaml" \)
+fi
 
-# Documentation
-for item in README.md docs CONTRIBUTING.md CHANGELOG.md; do
-  if [ -e "$item" ]; then
-    echo "$item"
-  fi
-done
+# Linting, formatting, and test runner configs (root level)
+find . -maxdepth 1 -type f \( \
+  -name ".eslintrc*" -o -name "eslint.config*" \
+  -o -name ".prettierrc*" -o -name "prettier.config*" \
+  -o -name "ruff.toml" -o -name ".editorconfig" \
+  -o -name "jest.config*" -o -name "vitest.config*" \
+  -o -name "pytest.ini" -o -name "karma.conf*" \
+  -o -name "cypress.config*" -o -name "playwright.config*" \)
 
-# Context pointer candidates
-for item in AGENTS.md CLAUDE.md README.md CONTRIBUTING.md docs; do
-  if [ -e "$item" ]; then
-    echo "$item"
-  fi
-done
+# Context pointer signals: scan instruction and doc files for routing language
 rg -ni "\[[^]]+\]\([^)]+\)|\b(see|read|follow|refer to|ADR|runbook|schema|entry point)\b" AGENTS.md CLAUDE.md README.md CONTRIBUTING.md docs 2> /dev/null | head -100
+
+# Code-level entry points (registries, routes, schemas, barrels)
 find . -maxdepth 3 \
   \( -type d \( -name ".git" -o -name ".context" -o -name "node_modules" -o -name "dist" -o -name "build" -o -name ".next" -o -name ".nuxt" -o -name "coverage" -o -name ".venv" -o -name "venv" -o -name "target" \) -prune \) -o \
   -type f \( -name "README.md" -o -name "index.*" -o -name "*registry*" -o -name "*routes*" -o -name "*schema*" \) -print
 
-# CI/CD
-if [ -d .github/workflows ]; then
-  find .github/workflows -maxdepth 1 -type f \( -name "*.yml" -o -name "*.yaml" \)
-fi
-for item in Jenkinsfile .circleci/config.yml; do
-  if [ -e "$item" ]; then
-    echo "$item"
-  fi
-done
-
-# Linting and formatting
-find . -maxdepth 1 -type f \( -name ".eslintrc*" -o -name "eslint.config*" -o -name ".prettierrc*" -o -name "prettier.config*" -o -name "ruff.toml" -o -name ".editorconfig" \)
-
-# Testing
-find . -maxdepth 1 -type f \( -name "jest.config*" -o -name "vitest.config*" -o -name "pytest.ini" -o -name "pyproject.toml" -o -name "karma.conf*" -o -name "cypress.config*" -o -name "playwright.config*" \)
-
-# Hooks
-for item in .husky .pre-commit-config.yaml lefthook.yml; do
-  if [ -e "$item" ]; then
-    echo "$item"
-  fi
-done
-
-# Type checking strictness (TypeScript)
-# If tsconfig.json exists, check for "strict": true
+# Type checking strictness (TypeScript): if tsconfig.json exists, check for "strict": true.
+# Python equivalent: pyproject.toml [tool.mypy] strict / [tool.pyright].
+# pyproject.toml may also configure test runners — note both purposes when present.
 ```
 
 Store all detected signals as `codebase_signals`.
@@ -158,7 +149,7 @@ Language(s): {detected}
 Framework(s): {detected}
 Key signals: {list of detected files/configs}
 
-Launching 3 dimension analysis agents...
+Launching 3 agents covering 5 dimensions...
 ```
 
 ---
@@ -169,11 +160,13 @@ Launch 3 Explore agents in parallel (single message, 3 Task tool calls).
 
 ### Agent Grouping
 
-| Agent | Dimensions | Finding IDs |
-| --- | --- | --- |
-| **A: Type & Structure** | Fully Typed, Traversable | AN-001 through AN-099 |
-| **B: Test & Feedback** | Test Coverage, Feedback Loops | AN-100 through AN-199 |
-| **C: Documentation** | Self-Documenting | AN-200 through AN-299 |
+| Agent | Dimensions |
+| --- | --- |
+| **A: Type & Structure** | Fully Typed, Traversable |
+| **B: Test & Feedback** | Test Coverage, Feedback Loops |
+| **C: Documentation** | Self-Documenting |
+
+Sub-agents emit findings without IDs. The orchestrator assigns sequential `AN-NNN` identifiers in Step 3.3 after sorting, so cross-references inside a single agent's output should use the finding title rather than a placeholder ID.
 
 ### Agent Prompt Construction
 
@@ -186,7 +179,6 @@ For each agent:
    - `{languages}`: detected languages from Step 1
    - `{frameworks}`: detected frameworks from Step 1
    - `{codebase_signals}`: signals from Step 1.3
-   - `{start_id}`: the start of the finding ID range for this agent (1, 100, or 200)
    - `{dimension_rubrics}`: the relevant dimension sections from the rubrics file
 
 ### Launch
@@ -223,12 +215,14 @@ For each of the 5 dimensions:
 - Verify evidence was provided
 - If an agent returned incomplete results for a dimension, note it as "Incomplete — re-run recommended"
 
-### 3.3 Renumber Findings
+### 3.3 Assign Finding IDs
 
-Renumber all findings sequentially (AN-001, AN-002, ...) sorted by:
+Sort all collected findings, then assign sequential IDs (AN-001, AN-002, ...). Sort by:
 
 1. Severity: Critical first, then Important, then Suggestion
 2. Within same severity: by dimension order (Typed → Traversable → Tests → Feedback → Docs)
+
+If a sub-agent referenced a finding by title elsewhere in its output (in an improvement action, for example), update the reference to the assigned ID.
 
 ---
 
@@ -269,9 +263,9 @@ Collect all improvement actions from all agents. Sort by:
 
 | Phase | Criteria | Description |
 | --- | --- | --- |
-| **Phase 1: Quick Wins** | High impact + Quick Win effort, OR Medium impact + Quick Win effort | Do these first — fast improvements with immediate value |
-| **Phase 2: Foundation** | High impact + Moderate effort, OR Medium impact + Moderate effort | Core improvements requiring real work |
-| **Phase 3: Polish** | Everything else (Significant effort, Low impact items) | Refinements for maximum agent-nativeness |
+| **Phase 1: Quick Wins** | Any action with Quick Win effort | Do these first — fast improvements regardless of impact |
+| **Phase 2: Foundation** | High or Medium impact + Moderate effort | Core improvements requiring real work |
+| **Phase 3: Polish** | Everything else (Significant effort, or Low impact + Moderate effort) | Refinements for maximum agent-nativeness |
 
 ### 5.3 Deduplicate
 
@@ -298,7 +292,7 @@ How should I proceed?
 3. Abort — keep existing report
 ```
 
-If **Compare**: parse the previous report's scorecard table to extract dimension scores. Include a "Score Changes" section in the new report showing deltas.
+If **Compare**: parse the previous report's scorecard table to extract dimension scores. Include a "Score Changes" section in the new report showing deltas. If parsing fails (the existing file has an unexpected format or is not a prior audit report), fall back to **Replace** mode and note the parse failure in the Step 7 terminal summary.
 
 If **Abort**: stop and inform the user.
 

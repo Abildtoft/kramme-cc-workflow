@@ -2,6 +2,8 @@
 
 Use this template when writing the AGENT_NATIVE_AUDIT.md output file. Replace all `{placeholders}`.
 
+In Compare mode, insert the **Score Changes** block (shown after the main template) immediately after the Scorecard section. Skip it in Replace mode.
+
 ---
 
 ```markdown
@@ -19,19 +21,6 @@ Use this template when writing the AGENT_NATIVE_AUDIT.md output file. Replace al
 | Feedback Loops   | {N}/5       | {1-line summary} |
 | Self-Documenting | {N}/5       | {1-line summary} |
 | **Overall**      | **{N.N}/5** | **{assessment}** |
-
-{If comparing with previous audit, include:}
-
-## Score Changes
-
-| Dimension        | Previous    | Current     | Delta        |
-| ---------------- | ----------- | ----------- | ------------ |
-| Fully Typed      | {N}/5       | {N}/5       | {+/-N}       |
-| Traversable      | {N}/5       | {N}/5       | {+/-N}       |
-| Test Coverage    | {N}/5       | {N}/5       | {+/-N}       |
-| Feedback Loops   | {N}/5       | {N}/5       | {+/-N}       |
-| Self-Documenting | {N}/5       | {N}/5       | {+/-N}       |
-| **Overall**      | **{N.N}/5** | **{N.N}/5** | **{+/-N.N}** |
 
 ## Dimension Details
 
@@ -118,4 +107,23 @@ Refinements for maximum agent-nativeness.
 | #   | Action   | Dimension   | Impact | Effort      | Files/Areas |
 | --- | -------- | ----------- | ------ | ----------- | ----------- |
 | 1   | {action} | {dimension} | Medium | Significant | {files}     |
+```
+
+---
+
+## Score Changes block (Compare mode only)
+
+Insert this block immediately after the Scorecard section when comparing against a prior audit.
+
+```markdown
+## Score Changes
+
+| Dimension        | Previous    | Current     | Delta        |
+| ---------------- | ----------- | ----------- | ------------ |
+| Fully Typed      | {N}/5       | {N}/5       | {+/-N}       |
+| Traversable      | {N}/5       | {N}/5       | {+/-N}       |
+| Test Coverage    | {N}/5       | {N}/5       | {+/-N}       |
+| Feedback Loops   | {N}/5       | {N}/5       | {+/-N}       |
+| Self-Documenting | {N}/5       | {N}/5       | {+/-N}       |
+| **Overall**      | **{N.N}/5** | **{N.N}/5** | **{+/-N.N}** |
 ```
