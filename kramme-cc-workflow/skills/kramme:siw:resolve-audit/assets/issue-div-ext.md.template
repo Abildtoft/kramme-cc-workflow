@@ -1,0 +1,51 @@
+# ISSUE-G-{NNN}: Resolve {finding_id} - {short title}
+
+**Status:** Ready | **Priority:** {High/Medium/Low} | **Size:** {XS|S|M|L} | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Related:** Audit Report
+
+## Problem
+
+{Executive summary of the finding}
+
+**Audit Finding:** `{finding_id}` **Source:** `{report_path}`
+
+## Context
+
+{Spec requirement and current behavior gap}
+
+### Evidence
+
+- `{file:path:line}` — {what it shows}
+
+## Scope
+
+### In Scope
+
+- Implement chosen option: {selected option name}
+
+### Out of Scope
+
+- Implementing non-selected alternatives
+
+## Acceptance Criteria
+
+- [ ] Requirement is satisfied according to spec
+- [ ] Evidence paths in audit finding are updated/validated
+- [ ] Follow-up audit no longer reports `{finding_id}`
+
+---
+
+## Technical Notes
+
+### Selected Option
+
+{chosen option details}
+
+### Alternatives Considered
+
+- Option A: {short summary}
+- Option B: {short summary}
+- Option C: {short summary if applicable}
+
+### References
+
+- Audit report: `{report_path}` > `{finding_id}`

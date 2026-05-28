@@ -1,0 +1,49 @@
+# ISSUE-G-{NNN}: Spec: {finding_id} - {short title}
+
+**Status:** Ready | **Priority:** {High/Medium/Low — see Step 3 severity-inheritance rule} | **Size:** {XS|S|M|L} | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Related:** Spec Audit Report
+
+## Problem
+
+{Executive summary — what the spec says or fails to say, and why it matters}
+
+**Audit Finding:** `{finding_id}` **Dimension:** {coherence/completeness/clarity/scope/actionability/testability/value/technical design} **Source:** `{report_path}` {If present} **Severity Note:** {copied from audit report}
+
+## Context
+
+{Quotes from the spec showing the issue} {Which section(s) need revision}
+
+## Scope
+
+### In Scope
+
+- Revise spec per chosen option: {selected option name}
+
+### Out of Scope
+
+- Code implementation changes
+- Revising unrelated spec sections
+
+## Acceptance Criteria
+
+- [ ] Spec section addresses the finding
+- [ ] {Specific criterion from the chosen option}
+- [ ] Follow-up spec audit no longer reports `{finding_id}`
+
+---
+
+## Technical Notes
+
+### Selected Option
+
+{chosen option details — what to add, rewrite, or restructure}
+
+### Alternatives Considered
+
+- Option A: {short summary}
+- Option B: {short summary}
+- Option C: {short summary if applicable}
+
+### References
+
+- Spec audit report: `{report_path}` > `{finding_id}`
+- Spec section: `{spec_file}` > {section heading}

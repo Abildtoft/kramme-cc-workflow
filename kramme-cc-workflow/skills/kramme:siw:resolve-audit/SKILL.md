@@ -10,7 +10,7 @@ user-invocable: true
 
 Turn an audit report into decision-ready SIW issues by walking findings one at a time with clear options and a recommended path.
 
-**Flag:** `--auto` — Skip the per-finding AskUserQuestion step and automatically choose the best resolution option for each finding based on spec alignment, maintenance cost, delivery risk, and follow-up effort. If both implementation and spec audit reports exist and you want to stay scoped to one of them, pass that report path explicitly.
+**Flag:** `--auto` — Skip the per-finding AskUserQuestion step and automatically choose the best resolution option for each finding based on spec alignment, maintenance cost, delivery risk, and follow-up effort. If multiple audit reports exist and you want to stay scoped to one of them, pass that report path explicitly.
 
 ## Workflow Boundaries
 
@@ -23,31 +23,21 @@ Implementation stays separate and should happen later via `/kramme:siw:issue-imp
 
 ## Hard Constraints
 
-**NEVER** present more than one finding at a time. Each finding gets its own full cycle (executive summary, alternatives, recommendation, resolution selection, issue creation) before the next finding begins.
+**One finding at a time, every time.** Each finding completes its full cycle — executive summary → alternatives → recommendation → resolution → SIW issue — before the next finding is presented. Never batch, group, summarize, or preview multiple findings in a single message during Steps 4–6.
 
-**NEVER** batch, group, or summarize multiple findings in a single message during the per-finding loop (Steps 4-6). Every finding is presented individually with its complete structure.
+**Default mode:** the per-finding AskUserQuestion (Step 4.4) is mandatory. STOP after asking and wait for the user's response before creating the issue or advancing.
 
-**WITHOUT `--auto`**, **NEVER** skip the AskUserQuestion step for any finding. The user must explicitly choose an option before an issue is created.
-
-**WITHOUT `--auto`**, **NEVER** proceed to the next finding until the user has responded to the current finding's AskUserQuestion and the corresponding SIW issue has been created.
-
-**WITH `--auto`**, **NEVER** ask the user to choose among the proposed options for a finding. Select the strongest option yourself, create the SIW issue immediately, and continue to the next finding after the issue is created.
-
-**NEVER** replace the per-finding walkthrough with a summary table, overview list, or condensed format. The full structure from "Required Review Style" is mandatory for every single finding during Steps 4-6.
+**`--auto` mode:** do not ask the user to choose. Select the strongest option, create the issue, continue.
 
 ## Required Review Style
 
-**CRITICAL:** For every single finding, follow this exact structure. No exceptions, no shortcuts, no batching.
+For every finding, follow this structure:
 
-1. Detailed executive summary (with code references when available)
+1. Executive summary (with code references when available)
 2. Alternative options
-3. Well-argued preferred option
-4. Resolution selection:
-   - Default mode: user choice via AskUserQuestion — **STOP and wait for response**
-   - `--auto` mode: model-selected option — proceed directly to issue creation
+3. Preferred option with justification
+4. Resolution: user-selected via AskUserQuestion (default) or model-selected (`--auto`)
 5. SIW issue creation for the chosen option
-
-Then — and only then — continue to the next finding.
 
 ## Process Overview
 
@@ -58,7 +48,7 @@ Then — and only then — continue to the next finding.
     ↓
 [Extract actionable findings: DIV-*, EXT-*, SPEC-*, PROD-* (plus legacy DISC-*/MISS-*)]
     ↓
-[Optionally filter to user-selected finding IDs]
+[Optionally filter to user-selected finding IDs; skip findings already linked to a G-* issue]
     ↓
 [Process one finding at a time]
     ↓
@@ -74,32 +64,36 @@ Then — and only then — continue to the next finding.
 1. Parse `$ARGUMENTS` first:
    - Treat `--auto` as an optional control flag, not a path or finding id
    - Remaining markdown path tokens are candidate report paths
-   - Remaining `DIV-*`, `EXT-*`, `DISC-*`, `MISS-*`, and `SPEC-*` tokens are finding filters
+   - Remaining `DIV-*`, `EXT-*`, `DISC-*`, `MISS-*`, `SPEC-*`, and `PROD-*` tokens are finding filters
 2. If the parsed arguments include a markdown path, use that path and skip auto-detection.
 3. Otherwise, discover available report files in this order:
    - `siw/AUDIT_IMPLEMENTATION_REPORT.md`
    - `siw/AUDIT_SPEC_REPORT.md`
+   - `siw/PRODUCT_AUDIT.md`
    - `AUDIT_IMPLEMENTATION_REPORT.md` (project root)
    - `AUDIT_SPEC_REPORT.md` (project root)
-4. If **both implementation and spec reports exist** (any location):
-   - Without `--auto`, ask which type to resolve before continuing:
+   - `PRODUCT_AUDIT.md` (project root)
+4. If **more than one report type exists** (any location):
+   - Without `--auto`, ask which to resolve before continuing. Build the options list from the reports that were actually found (omit unavailable ones); include "All" only when two or more were found:
 
 ```yaml
 header: "Choose Audit Type"
-question: "Both implementation and spec audit reports were found. Which findings should I resolve?"
+question: "Multiple audit reports were found. Which findings should I resolve?"
 options:
-  - label: "Implementation audit (Recommended)"
+  - label: "Implementation audit (Recommended when available)"
     description: "Resolve DIV-*/EXT-* findings from AUDIT_IMPLEMENTATION_REPORT.md (also supports legacy DISC-*/MISS-*)"
   - label: "Spec quality audit"
     description: "Resolve SPEC-* findings from AUDIT_SPEC_REPORT.md"
-  - label: "Both"
-    description: "Resolve findings from both reports in one run"
+  - label: "Product audit"
+    description: "Resolve PROD-* findings from PRODUCT_AUDIT.md"
+  - label: "All"
+    description: "Resolve findings from every available report in one run"
 ```
 
-       - With `--auto`, resolve both reports in one run. Process implementation findings first, then spec findings.
+       - With `--auto`, resolve every available report in one run, in this order: implementation findings, spec findings, product findings.
 
-5. If only one report type exists, use it automatically.
-6. If no report exists, stop and instruct the user to run `/kramme:siw:implementation-audit` or `/kramme:siw:spec-audit` first.
+5. If only one report exists, use it automatically.
+6. If no report exists, stop and instruct the user to run `/kramme:siw:implementation-audit`, `/kramme:siw:spec-audit`, or `/kramme:siw:product-audit` first.
 7. If a selected report contains multiple appended top-level report blocks, isolate the last block only and treat it as the active audit run. Ignore earlier appended runs.
 
 ## Step 2: Parse Findings
@@ -121,7 +115,7 @@ For each finding, collect:
 - Severity/category section
 - Severity Note if present
 - Existing issue note if present
-- Source report path (`AUDIT_IMPLEMENTATION_REPORT.md` or `AUDIT_SPEC_REPORT.md`)
+- Source report path (`AUDIT_IMPLEMENTATION_REPORT.md`, `AUDIT_SPEC_REPORT.md`, or `PRODUCT_AUDIT.md`)
 
 Ignore:
 
@@ -138,9 +132,15 @@ If the parsed arguments include finding ids (example: `DIV-002 EXT-001 SPEC-003`
 2. Major findings, plus SPEC/PROD findings whose `Severity Note` says `from Major`
 3. Remaining Minor findings
 
+**Severity-inheritance rule (referenced by issue templates):** map a SPEC/PROD finding's effective priority from its `Severity Note` — `from Critical` → High, `from Major` → Medium, otherwise the finding's own severity.
+
+**Skip findings that already have an issue.** If a finding's "Existing issue" note references a `G-*` issue that exists on disk under `siw/issues/`, drop it from the queue and list it in the Step 7 summary under "Skipped — already has issue". This keeps re-runs idempotent.
+
+**Unknown finding ids.** For each `DIV-*`/`EXT-*`/`SPEC-*`/`PROD-*`/legacy id passed in `$ARGUMENTS` that does not appear in the active report, list it in the Step 7 summary under "Skipped — not in report". If none of the requested ids match any finding, stop before Step 4 with a clear error naming the missing ids and the report path.
+
 ## Step 4: One-Finding Triage Loop
 
-Detect the finding type from its ID prefix and use the matching triage style below.
+Detect the finding type from its ID prefix and use the matching Step 4.1–4.3 style below. Step 4.4 (resolution selection) is shared by all finding types.
 
 ---
 
@@ -213,7 +213,43 @@ State a clear recommendation and justify it with:
 - Reduction in ambiguity or rework risk
 - Effort to revise vs. cost of leaving the gap
 
-### 4.4 Select Resolution
+---
+
+### For PROD-\* findings (product audit)
+
+#### 4.1 Executive Summary
+
+- Which product dimension is affected (target user, problem/solution fit, user state, critical moments, scope, success criteria, prioritization)
+- What the spec or product surface says (quote when available) and what's missing
+- Why this matters for users or delivery if unfixed
+- Which spec section(s), flow(s), or screen(s) need attention
+
+#### 4.2 Alternatives
+
+Provide 2-3 concrete options. Include at least:
+
+- **Option A (Targeted clarification):** Add or sharpen the affected product element in place
+- **Option B (Scope or flow change):** Restructure flow, narrow scope, or rework the section to close the gap properly
+- **Option C (Accept as-is / defer):** Only when the gap is low-risk for the current rollout
+
+For each option include:
+
+- What changes (spec, flow, scope)
+- Pros
+- Cons
+- Risk to users or delivery if chosen
+
+#### 4.3 Preferred Option
+
+State a clear recommendation and justify it with:
+
+- User value protected or unlocked
+- Reduction in rework or wrong-thing risk
+- Effort to revise vs. cost of shipping with the gap
+
+---
+
+### 4.4 Select Resolution (applies to all finding types)
 
 Without `--auto`, use AskUserQuestion to choose an option before creating an issue:
 
@@ -229,20 +265,9 @@ options:
     description: "{one-line tradeoff}"
 ```
 
-Send this AskUserQuestion as a standalone message immediately after Step 4.3 (recommendation), with no additional surrounding content.
+Send this AskUserQuestion as a standalone message immediately after Step 4.3 (recommendation), with no additional surrounding content. STOP and wait for the user's response before doing anything else (see Hard Constraints).
 
-If user asks to modify options, refine and re-ask before creating the issue.
-
-**STOP — MANDATORY GATE (default mode only)**
-
-After presenting AskUserQuestion for a finding:
-
-1. **STOP** and wait for the user's response
-2. **DO NOT** present the next finding while waiting
-3. **DO NOT** pre-compute or preview upcoming findings
-4. **DO NOT** combine the question with any other content
-
-Only after the user selects an option (or asks for modifications), proceed to Step 5 to create the SIW issue for this single finding.
+If the user asks to modify options, refine and re-ask before creating the issue. Once they pick, proceed to Step 5 for this finding only.
 
 With `--auto`:
 
@@ -256,127 +281,20 @@ With `--auto`:
 
 Prerequisites:
 
-- `siw/OPEN_ISSUES_OVERVIEW.md` exists
+- `siw/OPEN_ISSUES_OVERVIEW.md` exists. If missing, stop with: "SIW workflow not initialized. Run `/kramme:siw:init` before resolving audit findings." Do not create issues without it.
 - `siw/issues/` exists (create if missing)
-- `siw/LOG.md` exists (create minimal file if missing)
+- `siw/LOG.md` exists (create minimal file with a `## Current Progress` section if missing)
 
 Issue creation:
 
 1. Determine next `G-` issue number from `siw/issues/ISSUE-G-*.md`.
 2. Create file:
    - `siw/issues/ISSUE-G-{NNN}-resolve-{finding-id}-{slug}.md`
-3. Use the matching template based on finding type:
-   - For SPEC/PROD findings with `Severity Note` showing `from Critical` or `from Major`, preserve that original severity when assigning issue priority and copy the `Severity Note` into the issue body.
-
-### Template for DIV-_/EXT-_ findings
-
-```markdown
-# ISSUE-G-{NNN}: Resolve {finding_id} - {short title}
-
-**Status:** Ready | **Priority:** {High/Medium/Low} | **Size:** {XS|S|M|L} | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Related:** Audit Report
-
-## Problem
-
-{Executive summary of the finding}
-
-**Audit Finding:** `{finding_id}` **Source:** `{report_path}`
-
-## Context
-
-{Spec requirement and current behavior gap}
-
-### Evidence
-
-- `{file:path:line}` — {what it shows}
-
-## Scope
-
-### In Scope
-
-- Implement chosen option: {selected option name}
-
-### Out of Scope
-
-- Implementing non-selected alternatives
-
-## Acceptance Criteria
-
-- [ ] Requirement is satisfied according to spec
-- [ ] Evidence paths in audit finding are updated/validated
-- [ ] Follow-up audit no longer reports `{finding_id}`
-
----
-
-## Technical Notes
-
-### Selected Option
-
-{chosen option details}
-
-### Alternatives Considered
-
-- Option A: {short summary}
-- Option B: {short summary}
-- Option C: {short summary if applicable}
-
-### References
-
-- Audit report: `{report_path}` > `{finding_id}`
-```
-
-### Template for SPEC-\* findings
-
-```markdown
-# ISSUE-G-{NNN}: Spec: {finding_id} - {short title}
-
-**Status:** Ready | **Priority:** {High/Medium/Low; if `Severity Note` says `from Critical` use High, if it says `from Major` use Medium} | **Size:** {XS|S|M|L} | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Related:** Spec Audit Report
-
-## Problem
-
-{Executive summary — what the spec says or fails to say, and why it matters}
-
-**Audit Finding:** `{finding_id}` **Dimension:** {coherence/completeness/clarity/scope/actionability/testability/value/technical design} **Source:** `{report_path}` {If present} **Severity Note:** {copied from audit report}
-
-## Context
-
-{Quotes from the spec showing the issue} {Which section(s) need revision}
-
-## Scope
-
-### In Scope
-
-- Revise spec per chosen option: {selected option name}
-
-### Out of Scope
-
-- Code implementation changes
-- Revising unrelated spec sections
-
-## Acceptance Criteria
-
-- [ ] Spec section addresses the finding
-- [ ] {Specific criterion from the chosen option}
-- [ ] Follow-up spec audit no longer reports `{finding_id}`
-
----
-
-## Technical Notes
-
-### Selected Option
-
-{chosen option details — what to add, rewrite, or restructure}
-
-### Alternatives Considered
-
-- Option A: {short summary}
-- Option B: {short summary}
-- Option C: {short summary if applicable}
-
-### References
-
-- Spec audit report: `{report_path}` > `{finding_id}`
-- Spec section: `{spec_file}` > {section heading}
-```
+3. Use the matching template based on finding type (read the template file and substitute placeholders):
+   - DIV-_/EXT-_ (and legacy DISC-_/MISS-_): `assets/issue-div-ext.md.template`
+   - SPEC-\*: `assets/issue-spec.md.template`
+   - PROD-\*: `assets/issue-prod.md.template`
+   - When the finding has a `Severity Note`, copy it verbatim into the issue body and apply the severity-inheritance rule from Step 3 to set `Priority`.
 
 4. Add row to `siw/OPEN_ISSUES_OVERVIEW.md` with status `READY`.
    - Default to the 6-column SIW schema:
@@ -393,10 +311,11 @@ Issue creation:
    - If an existing legacy General section has no `**Parallelization:**` line, preserve that absence instead of inserting one.
    - If the existing General section still uses the legacy 5-column schema, preserve that layout for compatibility instead of mixing schemas.
 
-5. Append to `siw/LOG.md` under current progress with:
-   - finding id
-   - selected option
-   - created issue id
+5. Append a one-line entry to `siw/LOG.md` under the `## Current Progress` section (in `### Last Completed`). Include finding id, selected option, and created issue id. Example:
+
+   ```markdown
+   - {YYYY-MM-DD} G-{NNN}: resolved {finding_id} via Option {X} ({one-line option name})
+   ```
 
 ## Step 6: Continue Until Done
 
@@ -418,6 +337,8 @@ At the end, report:
 - Findings processed count
 - Issues created (`G-xxx` list)
 - Findings intentionally deferred
+- Skipped — already has issue (finding ids + existing `G-*`)
+- Skipped — not in report (finding ids passed in arguments that did not match the active report)
 - Recommended first implementation issue to start with
 
 This final summary is allowed only after all selected findings complete the full Steps 4-5 cycle.
