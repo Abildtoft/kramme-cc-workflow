@@ -11,58 +11,15 @@ Generate permanent documentation from SIW artifacts, then remove temporary workf
 
 **Use when:** The project is complete and you want to preserve the knowledge before removing SIW files. **Use `siw:reset` instead when:** You want to start a new iteration on the same project. **Use `siw:remove` instead when:** You just want to delete SIW files without generating documentation.
 
-## Workflow
-
-```
-/kramme:siw:close
-    |
-    v
-[Step 1: Scan for SIW files] -> Not found? -> Error, abort
-    |
-    v
-[Step 2: Pre-close verification] -> Open issues? -> Warn user
-    |
-    v
-[Step 3: Determine feature name] -> From spec heading, confirm with user
-    |
-    v
-[Step 4: Extract knowledge from all SIW artifacts]
-    |
-    v
-[Step 5: Generate documentation in docs/<feature-name>/]
-    |
-    v
-[Step 6: Ask about spec disposition]
-    |
-    v
-[Step 7: Remove temporary SIW files]
-    |
-    v
-[Step 8: Clean up empty siw/ directory]
-    |
-    v
-[Step 9: Report results]
-```
-
----
-
 ## Step 1: Scan for SIW Files
 
-Check which SIW files exist:
+Check whether any SIW artifacts exist:
 
 ```bash
-ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_*.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues/ siw/qa-intake/ 2> /dev/null
-find siw -maxdepth 1 -type f -name "*.md" \
-  ! -name "LOG.md" \
-  ! -name "OPEN_ISSUES_OVERVIEW.md" \
-  ! -name "AUDIT_*.md" \
-  ! -name "SPEC_STRENGTHENING_PLAN.md" \
-  ! -name "DISCOVERY_BRIEF.md" \
-  2> /dev/null
-ls siw/supporting-specs/*.md 2> /dev/null
+find siw -type f -print -quit 2>/dev/null
 ```
 
-**If no SIW files found:**
+If the command returns no output, no SIW files exist. Print the message below and stop:
 
 ```
 No SIW workflow files found in this directory.
@@ -70,11 +27,13 @@ No SIW workflow files found in this directory.
 To initialize a new SIW workflow, run /kramme:siw:init
 ```
 
-**Action:** Stop.
+Otherwise, detect the "minimal SIW" case (only a spec, no workflow state):
 
-**If only a spec exists (no LOG.md or issues):**
+```bash
+if [ ! -f siw/LOG.md ] && [ ! -d siw/issues ] && [ -n "$(ls siw/*.md 2>/dev/null)" ]; then echo minimal; fi
+```
 
-Use AskUserQuestion:
+If the check prints `minimal`, use AskUserQuestion:
 
 ```yaml
 header: "Minimal SIW Project"
@@ -264,13 +223,20 @@ Decisions may appear in both LOG.md and the spec's Design Decisions section (fro
 
 ## Step 5: Generate Documentation
 
-Create the documentation directory and files.
+Create the documentation directory and write the output files:
 
 ```bash
-mkdir -p {docs_path}
+mkdir -p "{docs_path}"
 ```
 
-Read the documentation templates from `assets/documentation-templates.md`. It contains templates for all three files: README.md (project summary with scope, decisions, principles, implementation metrics), decisions.md (architecture decision records with index, context, rationale, alternatives), and architecture.md (conditional technical design with data model, API, component structure).
+Read the templates from `assets/documentation-templates.md`, substitute placeholders from Step 4's extracted knowledge, and write:
+
+- `{docs_path}/README.md` -- project summary (scope, decisions, principles, implementation metrics)
+- `{docs_path}/decisions.md` -- architecture decision records (index, context, rationale, alternatives)
+- `{docs_path}/architecture.md` -- technical design, **only** if any of the following holds:
+  - the spec has a `## Technical Design` section, **or**
+  - supporting specs exist with substantive content, **or**
+  - 5+ decisions are tagged with architecture-related categories
 
 ### Content Rules
 
@@ -283,102 +249,43 @@ All generated documentation must be:
 
 ---
 
-## Step 6: Ask About Spec Disposition
+## Step 6: Resolve File Dispositions
 
-If `siw/SPEC_STRENGTHENING_PLAN.md` exists, use AskUserQuestion before the spec question:
+Decide what happens to the spec, `siw/supporting-specs/`, and `siw/SPEC_STRENGTHENING_PLAN.md`. Read `references/spec-disposition.md` for the prompts, discovery-rich detection rules, and conflict handling.
 
-```yaml
-header: "Strengthening Plan"
-question: "A pending spec-strengthening plan still exists. What should happen to it during close?"
-options:
-  - label: "Keep in siw/"
-    description: "Preserve siw/SPEC_STRENGTHENING_PLAN.md for later follow-up"
-  - label: "Move to {docs_path}/spec/"
-    description: "Preserve the plan alongside the generated documentation"
-  - label: "Discard"
-    description: "Delete the plan during close"
-```
+Outputs (consumed by Step 7):
 
-Store the result as `strengthening_plan_disposition` with values `keep`, `move`, or `remove`.
+- `spec_disposition`: `remove`, `keep`, or `move`
+- `strengthening_plan_disposition`: `remove`, `keep`, or `move`
 
-If `siw/SPEC_STRENGTHENING_PLAN.md` does not exist, set `strengthening_plan_disposition=remove`.
+When either disposition is `move`, append the "Original Specification" README note described in the reference.
 
-Before presenting options, inspect the spec for discovery-origin context that is not fully preserved in the generated close-out docs. Treat any of the following as discovery-rich source content:
-
-- `## Problem Statement`
-- `## Who's Affected`
-- `## Priorities & Tradeoffs`
-- `## Constraints`
-- `## Decision Boundaries`
-- `## Risks`
-- `## Discovery Notes`
-
-If any of those sections are present, set `preserve_spec_source=true`.
-
-If `preserve_spec_source=true`, use AskUserQuestion:
-
-```yaml
-header: "Specification Files"
-question: "This spec still contains discovery context that is not copied verbatim into {docs_path}/. How should I preserve the source material?"
-options:
-  - label: "Move to {docs_path}/spec/"
-    description: "Preserve the original spec alongside the generated docs"
-  - label: "Keep in siw/"
-    description: "Leave siw/{spec_filename} and siw/supporting-specs/ in place"
-```
-
-Store the result as `spec_disposition` with values `move` or `keep`.
-
-Otherwise, use AskUserQuestion:
-
-```yaml
-header: "Specification Files"
-question: "What should happen to the SIW specification file(s)?"
-options:
-  - label: "Remove"
-    description: "Delete spec and supporting specs (knowledge is captured in {docs_path}/)"
-  - label: "Keep in siw/"
-    description: "Preserve siw/{spec_filename} and siw/supporting-specs/ as-is"
-  - label: "Move to {docs_path}/spec/"
-    description: "Move spec file(s) into the documentation directory"
-```
-
-Store the result as `spec_disposition` with values `remove`, `keep`, or `move`.
-
-After both disposition questions are answered, validate them together:
-
-- `strengthening_plan_disposition=keep` is only valid when `spec_disposition=keep`
-- If the spec will move or be removed, do not leave `siw/SPEC_STRENGTHENING_PLAN.md` behind in `siw/`
-
-If `strengthening_plan_disposition=keep` and `spec_disposition!=keep`, use AskUserQuestion:
-
-```yaml
-header: "Strengthening Plan Conflict"
-question: "Keeping the strengthening plan in siw/ would orphan it because the spec will not remain there. What should happen instead?"
-options:
-  - label: "Move to {docs_path}/spec/"
-    description: "Preserve the plan alongside the generated documentation"
-  - label: "Discard"
-    description: "Delete the plan during close"
-```
-
-Store the result as `strengthening_plan_disposition` with values `move` or `remove`.
-
-**If "Move":** Move spec and supporting specs to `{docs_path}/spec/`. Add to README.md:
-
-```markdown
-## Original Specification
-
-The original project specification is preserved in [spec/](spec/) for reference.
-```
-
-**If `strengthening_plan_disposition=move`:** Move `siw/SPEC_STRENGTHENING_PLAN.md` to `{docs_path}/spec/`. If the README note above was not already added for the spec, add a short note that pending specification artifacts are preserved in `spec/`.
+The reference enforces: `strengthening_plan_disposition=keep` requires `spec_disposition=keep`; otherwise the plan cannot remain orphaned in `siw/` after Step 7.
 
 ---
 
 ## Step 7: Remove Temporary SIW Files
 
-Use `trash` command (recoverable). Fall back to `rm` if `trash` is not available.
+### 7.1 Verify documentation before deletion
+
+Before removing any SIW files, confirm the generated documentation is present and non-empty. If any required file is missing or zero-byte, abort without deleting anything; the docs must be rewritten before retrying.
+
+```bash
+test -s "{docs_path}/README.md"    || { echo "ERROR: {docs_path}/README.md missing or empty"; exit 1; }
+test -s "{docs_path}/decisions.md" || { echo "ERROR: {docs_path}/decisions.md missing or empty"; exit 1; }
+```
+
+If `architecture.md` was generated in Step 5, also require:
+
+```bash
+test -s "{docs_path}/architecture.md" || { echo "ERROR: {docs_path}/architecture.md missing or empty"; exit 1; }
+```
+
+If any `move` disposition from Step 6 applies, confirm the move targets are in place under `{docs_path}/spec/` before deletion.
+
+### 7.2 Remove files
+
+Use `trash` (recoverable). Fall back to `rm` if `trash` is not available. Always quote the spec filename: it can contain spaces or other shell-significant characters.
 
 **Temporary files (always deleted):**
 
@@ -392,7 +299,7 @@ Use `trash` command (recoverable). Fall back to `rm` if `trash` is not available
 **Conditional (based on Step 6):**
 
 - `siw/SPEC_STRENGTHENING_PLAN.md` (only if `strengthening_plan_disposition=remove`)
-- `siw/{spec_filename}` (only if `spec_disposition=remove`)
+- `siw/{spec_filename}` (only if `spec_disposition=remove`; skip when empty)
 - `siw/supporting-specs/` (only if `spec_disposition=remove`)
 
 ```bash
@@ -403,8 +310,8 @@ if command -v trash &> /dev/null; then
   if [ "{strengthening_plan_disposition}" = "remove" ]; then
     trash siw/SPEC_STRENGTHENING_PLAN.md 2> /dev/null
   fi
-  if [ "{spec_disposition}" = "remove" ]; then
-    trash siw/{spec_filename} 2> /dev/null
+  if [ "{spec_disposition}" = "remove" ] && [ -n "{spec_filename}" ]; then
+    trash "siw/{spec_filename}" 2> /dev/null
     trash -r siw/supporting-specs/ 2> /dev/null
   fi
 else
@@ -416,8 +323,8 @@ else
   if [ "{strengthening_plan_disposition}" = "remove" ]; then
     rm -f siw/SPEC_STRENGTHENING_PLAN.md
   fi
-  if [ "{spec_disposition}" = "remove" ]; then
-    rm -f siw/{spec_filename}
+  if [ "{spec_disposition}" = "remove" ] && [ -n "{spec_filename}" ]; then
+    rm -f "siw/{spec_filename}"
     rm -rf siw/supporting-specs/
   fi
 fi
@@ -442,33 +349,36 @@ If `siw/` still has files (spec kept or other files present), leave it alone.
 
 ## Step 9: Report Results
 
+Print a closing summary built from what actually happened. Include only lines that apply -- do not emit the `(if …)` annotations themselves.
+
+Sections to include:
+
+- **Documentation generated:** every file written under `{docs_path}/` (always at least `README.md` and `decisions.md`; `architecture.md` when generated).
+- **Removed:** each path actually removed in Step 7.2 (skip lines for files that never existed).
+- **Preserved:** each path that survived (`siw/{spec_filename}`, `siw/supporting-specs/`, `siw/SPEC_STRENGTHENING_PLAN.md`, `{docs_path}/spec/`). Omit the section if nothing was preserved.
+- **Recovery note:** if `trash` was used in Step 7.2, add: `Files moved to Trash and can be restored if needed.`
+- A final line: `The documentation in {docs_path}/ is self-contained and can be read without any SIW context.`
+
+Example shape (with placeholders for the dynamic content):
+
 ```
 SIW Project Closed
 
 Documentation generated:
   {docs_path}/README.md              - Project summary
   {docs_path}/decisions.md           - {N} design decisions
-  {docs_path}/architecture.md        - Technical design       (if generated)
+  {docs_path}/architecture.md        - Technical design
 
 Removed:
   siw/LOG.md
   siw/OPEN_ISSUES_OVERVIEW.md
-  siw/AUDIT_*.md                          (if existed)
-  siw/SPEC_STRENGTHENING_PLAN.md         (if removed)
-  siw/DISCOVERY_BRIEF.md                 (if existed)
   siw/issues/ ({count} issue files)
   siw/qa-intake/ ({count} intake summaries)
-  siw/{spec_filename}                     (if removed)
-  siw/supporting-specs/                   (if removed)
-  siw/ directory                          (if empty)
-
-{If using trash: Files moved to Trash and can be restored if needed.}
 
 Preserved:
-  siw/SPEC_STRENGTHENING_PLAN.md         (if kept)
-  siw/{spec_filename}                     (if kept)
-  siw/supporting-specs/                   (if kept)
-  {docs_path}/spec/                       (if spec or plan moved)
+  {docs_path}/spec/
+
+Files moved to Trash and can be restored if needed.
 
 The documentation in {docs_path}/ is self-contained and
 can be read without any SIW context.
