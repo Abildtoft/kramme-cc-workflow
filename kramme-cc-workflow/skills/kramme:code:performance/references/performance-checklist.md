@@ -1,38 +1,8 @@
-# Performance exit checklist and CI budget
+# Performance CI enforcement
 
-Inline copy. Self-contained; no cross-skill references.
+The canonical Exit checklist and starting budget defaults live in `SKILL.md`. This file holds the example config files for enforcing the budget in CI.
 
-## Exit checklist
-
-Before declaring a performance slice done, every box must be checked:
-
-- [ ] Before and after measurements exist (specific numbers with units).
-- [ ] The specific bottleneck is identified and addressed (not "general slowness").
-- [ ] Core Web Vitals are within Good thresholds.
-- [ ] Bundle size has not increased significantly (or the increase is justified against the budget).
-- [ ] No new N+1 queries in the data-fetching path.
-- [ ] Performance budget passes in CI (if configured).
-- [ ] Existing tests still pass — the optimization did not change behavior.
-
-If any box is unchecked, the slice is not done. Fix the gap or split the slice.
-
-## Performance budget (starting defaults)
-
-Treat these as a floor — tighten per product, never loosen silently.
-
-```
-JavaScript bundle (initial):  < 200 KB gzipped
-CSS:                          < 50 KB gzipped
-Images (above the fold):      < 200 KB per image
-Fonts (total):                < 100 KB
-API response time (p95):      < 200 ms
-Time to Interactive (4G):     < 3.5 s
-Lighthouse Performance score: ≥ 90
-```
-
-## CI enforcement
-
-### Bundle size — `bundlesize`
+## Bundle size — `bundlesize`
 
 `bundlesize.config.json`:
 
@@ -59,7 +29,7 @@ Run in CI:
 npx bundlesize
 ```
 
-### Lighthouse CI — `lhci`
+## Lighthouse CI — `lhci`
 
 `lighthouserc.json`:
 
@@ -88,7 +58,7 @@ Run in CI:
 npx lhci autorun
 ```
 
-### Custom regression tests
+## Custom regression tests
 
 For a hot code path that does not have a clean CWV mapping (a background job, a CLI command, a server-rendered endpoint), write a dedicated timing test:
 

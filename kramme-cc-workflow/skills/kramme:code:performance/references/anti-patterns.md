@@ -1,7 +1,5 @@
 # Performance anti-patterns — before/after
 
-Inline copy. Self-contained; no cross-skill references.
-
 Six named anti-patterns with canonical fixes. Each one comes up enough that "I saw the smell, I knew the fix" should be the reflex.
 
 ## N+1 queries (backend)

@@ -1,6 +1,6 @@
 ---
 name: kramme:code:performance
-description: "(experimental) Apply measure-first performance discipline with Core Web Vitals targets when building or optimizing code. Covers synthetic vs RUM measurement, CWV thresholds (LCP, INP, CLS), the MEASURE / IDENTIFY / FIX / VERIFY / GUARD workflow, a diagnostic decision tree for triaging slowness, common bottlenecks (N+1 queries, unbounded fetch, unoptimized images, bundle bloat, unnecessary re-renders, missing caching), and the trap of premature memoization. Use when performance requirements exist, users or monitoring report slowness, CWV scores are below thresholds, or when implementing features that handle large datasets or high traffic. Complements the review-time `performance-oracle` agent with author-time guardrails."
+description: "(experimental) Measure-first performance discipline tied to Core Web Vitals (LCP, INP, CLS). Use when users or monitoring report slowness, CWV scores miss thresholds, performance requirements exist in the spec, you suspect a recent change introduced a regression, or you're building features that handle large datasets or high traffic. Enforces baseline measurement, single-bottleneck fixes, verification, and regression guards. Complements the review-time `performance-oracle` agent."
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -17,7 +17,12 @@ Measure before optimizing. Performance work without measurement is guessing — 
 - You suspect a recent change introduced a regression.
 - Building features that handle large datasets or high traffic.
 
-**When NOT to use:** do not optimize before you have evidence of a problem. Premature optimization adds complexity that costs more than the performance it gains.
+## When NOT to use
+
+- The concern is theoretical with no user impact or monitoring signal — premature optimization.
+- The codebase has no measurement infrastructure yet — install baseline monitoring first.
+- The slowness is in a third-party dependency or platform you do not control — escalate, do not patch around it.
+- The bottleneck requires an architectural decision (data model change, service split) — plan first, then return here for the per-slice optimization work.
 
 ## Core Web Vitals targets
 
@@ -27,7 +32,7 @@ Measure before optimizing. Performance work without measurement is guessing — 
 | **INP** (Interaction to Next Paint) | ≤ 200 ms | ≤ 500 ms | > 500 ms |
 | **CLS** (Cumulative Layout Shift) | ≤ 0.1 | ≤ 0.25 | > 0.25 |
 
-A change that regresses any metric from Good into Needs Improvement is a regression, even if the absolute number still looks fine. Full measurement commands and the inline copy of this table live in `references/core-web-vitals.md` (self-contained; no cross-skill links).
+A change that regresses any metric from Good into Needs Improvement is a regression, even if the absolute number still looks fine. Full measurement commands, what each metric measures, mobile/desktop differences, and the noise floor live in `references/core-web-vitals.md`.
 
 ## The five-step workflow
 
@@ -62,6 +67,8 @@ Why skipping: <not on measured bottleneck / out of scope / deferred>
 
 The reason: every "while I'm here" fix dilutes the before/after delta for the change you _are_ measuring, and makes it impossible to attribute the gain cleanly.
 
+Emit both markers in your response text, using the exact formats above, so a calling agent or reviewer can parse them.
+
 ### Step 1 — Measure
 
 Two complementary approaches — use both:
@@ -74,7 +81,6 @@ Two complementary approaches — use both:
 ```ts
 // Synthetic: Lighthouse in Chrome DevTools (or CI)
 // Chrome DevTools → Performance tab → Record
-// Chrome DevTools MCP → Performance trace
 
 // RUM: web-vitals library in code
 import { onCLS, onINP, onLCP } from "web-vitals";
@@ -151,7 +157,7 @@ Use the tree as a triage path, not a checklist. Follow one branch per measuremen
 
 ### Step 3 — Fix the bottleneck
 
-Six common anti-patterns, each with a canonical fix. The full before/after code examples live in `references/anti-patterns.md` (inline copy; self-contained). The named anti-patterns:
+Six common anti-patterns, each with a canonical fix. Full before/after code examples live in `references/anti-patterns.md`. The named anti-patterns:
 
 - **N+1 queries** — one query per row of a parent collection. Fix with a single query plus `include` / `join` / eager loading.
 - **Unbounded data fetching** — listing endpoints that return every row. Fix with pagination (`take` + `skip` or cursor pagination) and a hard server-side limit.
@@ -208,26 +214,32 @@ npx bundlesize --config bundlesize.config.json
 npx lhci autorun
 ```
 
-Budgets are floors, not ceilings — a PR that adds 30 KB to the bundle without justifying it against the budget is a PR that should not merge. The complete checklist and example config files live in `references/performance-checklist.md` (inline; self-contained).
+Budgets are floors, not ceilings — a PR that adds 30 KB to the bundle without justifying it against the budget is a PR that should not merge. Example `bundlesize.config.json`, `lighthouserc.json`, and a custom regression test live in `references/performance-checklist.md`.
 
 ## Exit checklist
 
-Before declaring a perf slice done, confirm every box:
+Before declaring a perf slice done, confirm every item:
 
-- [ ] Before and after measurements exist (specific numbers with units).
-- [ ] The specific bottleneck is identified and addressed (not "general slowness").
-- [ ] Core Web Vitals are within Good thresholds.
-- [ ] Bundle size has not increased significantly (or the increase is justified against the budget).
+- [ ] Before and after numbers exist with units, recorded in the commit message or PR description.
+- [ ] The specific bottleneck is named — a concrete query, component, asset, or code path — not "general slowness".
+- [ ] Core Web Vitals are within Good thresholds (or at least moved out of Poor).
+- [ ] The improvement exceeds measurement noise on both p50 and p95.
+- [ ] No adjacent metric (bundle size, another CWV, an API endpoint's latency) regressed as a side effect.
+- [ ] A budget or regression test exists that fails if this fix is undone.
+- [ ] Bundle size has not increased without justification against the budget.
 - [ ] No new N+1 queries in the data-fetching path.
 - [ ] Performance budget passes in CI (if configured).
+- [ ] A `NOTICED BUT NOT TOUCHING` entry exists for every perf smell observed outside the measured bottleneck.
 - [ ] Existing tests still pass — the optimization did not change behavior.
 
-If any box is unchecked, the slice is not done. Fix the gap or split the slice.
+If any item is unchecked, the slice is not done. Fix the gap or split the slice.
 
 ## Integration with other skills
 
-- **Downstream review**: the `performance-oracle` agent verifies measurements and bottleneck identification post-hoc. A change that followed this skill's MEASURE/VERIFY discipline makes that review mechanical.
-- **Companion**: `kramme:code:incremental` — each optimization is one slice through the incremental loop. The five-step workflow (MEASURE / IDENTIFY / FIX / VERIFY / GUARD) fits inside a single increment; the budget becomes the increment's exit criterion.
+If these siblings are installed:
+
+- **Downstream review** — the `performance-oracle` agent verifies measurements and bottleneck identification post-hoc. Following MEASURE/VERIFY discipline here makes that review mechanical.
+- **Companion** — `kramme:code:incremental`: each optimization is one slice through the incremental loop. The five-step workflow fits inside a single increment; the budget becomes the increment's exit criterion.
 
 ---
 
@@ -240,7 +252,6 @@ These are the lies you will tell yourself to justify skipping the measurement or
 - _"This optimization is obvious — no need to measure."_ → If you did not measure, you do not know. Profile first; half the time the "obvious" bottleneck is not the real one.
 - _"Users won't notice 100 ms."_ → They do. Interaction delays above 100 ms are perceptible, and RUM data consistently shows them degrading conversion.
 - _"The framework handles performance."_ → Frameworks prevent some classes of issue, but they do not fix N+1 queries, oversized bundles, or unoptimized images. Those are author-level decisions.
-- _"I'll add `React.memo` everywhere to be safe."_ → Memoization is not free. Each memo adds bookkeeping cost and hides render causes. Apply only when profiling shows a measured win.
 - _"The fix is small enough to skip the regression test."_ → The next unrelated refactor will delete the fix by accident. A guarded fix is a fix; an unguarded fix is a fix with an expiration date.
 
 ## Red Flags
@@ -253,20 +264,5 @@ If you notice any of these, stop and return to step 1:
 - Images without dimensions, lazy loading, or responsive sizes.
 - Bundle size growing without review or budget justification.
 - No performance monitoring or regression test for a fix that claims a measurable win.
-- `React.memo`, `useMemo`, or `useCallback` applied reflexively, without a profile showing it helps.
 - A change that improves one CWV metric while silently regressing another.
 - A `SIMPLICITY CHECK` that is missing at the top of the fix.
-
-## Verification
-
-Before declaring a perf slice done, self-check:
-
-- Do the before and after numbers exist, with units, in the commit message or PR description?
-- Is the specific bottleneck named — a concrete query, component, asset, or code path — not "general slowness"?
-- Are Core Web Vitals in Good (or at least out of Poor) after the fix?
-- Is there a budget or regression test that will fail if this fix is undone?
-- Is there a `NOTICED BUT NOT TOUCHING` entry for every perf smell observed outside the measured bottleneck?
-- Did the improvement exceed measurement noise on both p50 and p95?
-- Did any adjacent metric (bundle size, another CWV, an API endpoint's latency) regress as a side effect?
-
-If any answer is no, close the gap before declaring done.
