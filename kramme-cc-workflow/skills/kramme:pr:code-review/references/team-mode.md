@@ -30,7 +30,7 @@ Then stop.
 Same setup as `/kramme:pr:code-review` Steps 1-7:
 
 1. Check git status to identify changed files
-2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, security, removal, simplify, all), `--emphasize <dim>...`, `--base <ref>` override, and optional `--inline` output mode
+2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, security, performance, removal, simplify, all), `--emphasize <dim>...`, `--base <ref>` override, and optional `--inline` output mode
 3. Resolve base branch using 3-tier strategy (explicit `--base` → PR target branch → default branch fallback). See `/kramme:pr:code-review` Step 2 for full logic.
 4. Build a unified change scope (committed PR diff + staged + unstaged + untracked):
    ```bash
@@ -106,7 +106,7 @@ Create tasks in the shared task list:
 **Phase 2 task (blocked on all Phase 1 tasks):**
 
 - "Cross-review: meta-review all findings for slop" -- assigned to deslop-reviewer
-- The deslop-reviewer reads all other teammates' findings and operates in meta-review mode
+- Pass the findings list (not a diff) and open the task prompt with `Operate in meta-review mode.` The agent's description documents both modes; the input shape and this directive together select meta-review mode.
 - Messages individual reviewers if their suggestions would introduce slop, especially defensive programming that does not match local codebase practice or lacks a concrete failure path
 
 **Phase 3 task (blocked on Phase 2):**

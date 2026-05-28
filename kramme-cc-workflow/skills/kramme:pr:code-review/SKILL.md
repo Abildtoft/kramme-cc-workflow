@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:code-review
-description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, slop). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. Use --team for multi-agent cross-validation.
+description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, performance, slop). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. Use --team for multi-agent cross-validation. Not for UX, visual, or accessibility review -- use kramme:pr:ux-review for those.
 argument-hint: "[aspects] [--emphasize <dim>...] [--base <branch>] [parallel] [--team] [--inline]"
 disable-model-invocation: false
 user-invocable: true
@@ -24,9 +24,11 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - If `--base <branch>` flag → store as explicit base branch override
    - If `--inline` flag → set `INLINE_MODE=true` and remove it from the aspect list
    - If `--team` flag → use Team Mode and remove it from the aspect list
-   - If `--emphasize <dim>...` flag → store dimension names in `EMPHASIZED_DIMENSIONS` list and remove from aspect list. Consume all tokens after `--emphasize` until the next `--` flag, `parallel`, or end of arguments. Each token must be a valid aspect name (`comments`, `tests`, `errors`, `types`, `code`, `slop`, `security`, `removal`, `simplify`). Reject `--emphasize all` (emphasizing everything is a no-op).
+   - If the bare token `parallel` appears anywhere in `$ARGUMENTS` → set `LAUNCH_MODE=parallel` and remove it from the aspect list. Default is `LAUNCH_MODE=sequential`.
+   - If `--emphasize <dim>...` flag → store dimension names in `EMPHASIZED_DIMENSIONS` list and remove from aspect list. Consume all tokens after `--emphasize` until the next `--` flag, `parallel`, or end of arguments. Each token must be a valid aspect name (`comments`, `tests`, `errors`, `types`, `code`, `slop`, `security`, `performance`, `removal`, `simplify`). Reject `--emphasize all` (emphasizing everything is a no-op).
+   - Validate remaining positional tokens as aspect names against the same list plus `all`. If any token is not a recognized aspect, stop with an error naming the unrecognized token and listing valid aspects. Do not silently fall through to "run all applicable reviews."
    - If an explicit aspect list was provided and it does not include `all`, every emphasized dimension must also appear in that list. If any emphasized dimension was excluded by the user's aspect filter, stop with an error instead of re-ranking unrelated findings.
-   - Default: Run all applicable reviews
+   - Default (no aspect tokens, or `all`): Run all applicable reviews **except** `simplify`. The simplifier is opt-in only -- it runs only when `simplify` is explicitly listed (see Step 6).
 
 2. **Resolve Base Branch**
 
@@ -83,23 +85,25 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - **code** - General code review for project guidelines
    - **slop** - Detect AI-generated code patterns (unnecessary comments, defensive overkill, type workarounds)
    - **security** - Security review: injection, auth, data protection, business logic (4 specialized agents)
+   - **performance** - Performance and scalability review (algorithmic complexity, query efficiency, memory, caching)
    - **removal** - Identify dead code and create safe removal plans
-   - **simplify** - Simplify code for clarity and maintainability
-   - **all** - Run all applicable reviews (default)
+   - **simplify** - Simplify code for clarity and maintainability (opt-in only; not part of default `all`)
+   - **all** - Run all applicable reviews except `simplify` (default)
 
 4. **Identify Changed Files and PR Description**
    - Build a unified change scope (committed PR diff + staged + unstaged + untracked):
 
    ```bash
    BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
-   {
+   CHANGED_FILES=$({
      git diff --name-only "$BASE_REF"...HEAD
      git diff --name-only --cached
      git diff --name-only
      git ls-files --others --exclude-standard
-   } | sed '/^$/d' | sort -u
+   } | sed '/^$/d' | sort -u)
    ```
 
+   - If `CHANGED_FILES` is empty, stop with: `No changes detected against origin/$BASE_BRANCH. If this is wrong, re-run with --base <branch>.` Do not launch reviewers against an empty scope.
    - Identify file types and what reviews apply
    - Read the current PR metadata, if a PR exists for this branch:
 
@@ -118,6 +122,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - Parse the file to extract previously addressed findings
    - Extract for each finding: location (`file:line`, `review-scope`, or `PR description`), issue description, action taken
    - Accept both `**Location:**` and legacy `**File:**` labels when parsing existing entries, and normalize either label to the same `location` field
+   - If the file exists but contains no parseable addressed findings (stale draft, unrelated content, or missing expected sections), treat the previous-response set as empty and continue. Do not abort the review.
    - Store this context for filtering in Step 10
 
    Previously addressed findings have the format:
@@ -136,8 +141,9 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - **If error handling changed**: kramme:silent-failure-hunter
    - **If types added/modified**: kramme:type-design-analyzer
    - **If code deleted/refactored**: kramme:removal-planner (safe removal verification)
+   - **If performance-relevant changes** (data-heavy code paths, loops over large collections, DB queries, caching, hot paths): performance-oracle
    - **If security-relevant changes** (API routes, auth logic, DB queries, external calls, user input handling, crypto): kramme:injection-reviewer, kramme:auth-reviewer, kramme:data-reviewer, kramme:logic-reviewer (launch all 4 in parallel)
-   - **After passing review**: kramme:code-simplifier (polish and refine)
+   - **Only when `simplify` is explicitly listed in the aspect arguments**: kramme:code-simplifier (polish and refine). The simplifier never runs as part of `all`, because simplification suggestions can conflict with as-yet-unresolved Critical/Important findings. Run the review first, resolve those, then re-run with `simplify`.
    - Build `ACTIVE_REVIEW_DIMENSIONS` from the agents that will actually run after aspect filtering and applicability checks. If any emphasized dimension has no active agent in this set, stop with an error telling the user which emphasized dimensions are inactive. Do not cap unrelated findings when the emphasized review never ran.
 
 7. **Launch Review Agents**
@@ -160,15 +166,11 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - If the reviewer cannot prove the failure path from the diff, call it `UNVERIFIED` or `CONFUSION` and keep the recommendation optional.
    - Security and data-loss risks may override local style, but the finding must name the concrete exploit path, information disclosure, corruption path, or user-visible failure that justifies stronger defensive handling.
 
-   **Sequential approach** (one at a time):
-   - Easier to understand and act on
-   - Each report is complete before next
-   - Good for interactive review
+   Instruct each spawned reviewer to label findings with the output markers documented in `references/review-discipline.md` (`UNVERIFIED`, `NOTICED BUT NOT TOUCHING`, `CONFUSION`, `MISSING REQUIREMENT`) so the aggregated report is parseable.
 
-   **Parallel approach** (user can request):
-   - Launch all agents simultaneously
-   - Faster for comprehensive review
-   - Results come back together
+   Launch the agents resolved in Step 6 using `LAUNCH_MODE` from Step 1:
+   - `LAUNCH_MODE=sequential` (default): launch one agent, wait for its report, then launch the next. Use this for interactive review where each report should be readable before the next runs.
+   - `LAUNCH_MODE=parallel`: launch all applicable agents simultaneously and collect results together. Use this when the user passed the `parallel` keyword.
 
 8. **Validate Relevance**
 
@@ -181,8 +183,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 9. **Slop Meta-Review**
 
    After relevance validation, review agent suggestions for slop:
-   - Launch **kramme:deslop-reviewer** in meta-review mode
-   - Pass all validated findings/suggestions from other agents
+   - Launch a second invocation of **kramme:deslop-reviewer**. Open the prompt with `Operate in meta-review mode.` and pass the list of validated findings/suggestions as the only input -- do not pass a diff. The agent's description documents both modes; the input shape and this directive together select meta-review mode.
    - Flags suggestions that would introduce slop if implemented, especially defensive programming that does not match local codebase practice or lacks a concrete failure path
    - Adds slop warnings to flagged suggestions (does not remove them)
 
@@ -209,7 +210,7 @@ If `REVIEW_OVERVIEW.md` was found in Step 5:
 
 After validation, slop meta-review, and previous-response filtering, apply emphasis adjustments if `EMPHASIZED_DIMENSIONS` is non-empty. Only use findings from agents that actually ran in Step 7 when deciding what is emphasized vs non-emphasized.
 
-**Dimension-to-agent mapping:** `security` → injection-reviewer, auth-reviewer, data-reviewer, logic-reviewer | `errors` → silent-failure-hunter | `tests` → pr-test-analyzer | `comments` → comment-analyzer | `types` → type-design-analyzer | `code` → code-reviewer | `slop` → deslop-reviewer | `removal` → removal-planner | `simplify` → code-simplifier
+**Dimension-to-agent mapping:** `security` → injection-reviewer, auth-reviewer, data-reviewer, logic-reviewer | `errors` → silent-failure-hunter | `tests` → pr-test-analyzer | `comments` → comment-analyzer | `types` → type-design-analyzer | `code` → code-reviewer | `slop` → deslop-reviewer | `performance` → performance-oracle | `removal` → removal-planner | `simplify` → code-simplifier
 
 **Promotion rules (per finding, based on source agent):**
 
@@ -268,6 +269,8 @@ Otherwise:
 
 If Critical or Important code-backed issues were found, include a suggestion to run `/kramme:pr:resolve-review` to automatically address them. The template in `references/output-template.md` already includes the **Recommended Action** block and the **Approval Standard** line; do not omit either.
 
+Before posting (whether to `REVIEW_OVERVIEW.md` or inline), run the pre-posting verification checklist in `references/review-discipline.md` (severity prefixes, dead-code ask shape, Approval Standard line, `NOTICED BUT NOT TOUCHING` labels on out-of-scope notes, emphasized-dimension coverage, `UNVERIFIED` labels on untraced findings).
+
 ## Usage Examples:
 
 **Full review (default):**
@@ -285,15 +288,18 @@ If Critical or Important code-backed issues were found, include a suggestion to 
 /kramme:pr:code-review comments
 # Reviews only code comments
 
+/kramme:pr:code-review performance
+# Performance and scalability review only
+
 /kramme:pr:code-review simplify
-# Simplifies code after passing review
+# Opt-in simplifier pass. Run after the main review is clean.
 ```
 
 **Parallel review:**
 
 ```
 /kramme:pr:code-review all parallel
-# Launches all agents in parallel
+# LAUNCH_MODE=parallel; spawns all applicable agents simultaneously
 ```
 
 **Emphasize specific dimensions:**
@@ -326,186 +332,9 @@ If Critical or Important code-backed issues were found, include a suggestion to 
 # Replies with the full report instead of writing REVIEW_OVERVIEW.md
 ```
 
-## Agent Descriptions:
+## Review discipline
 
-**kramme:comment-analyzer**:
+`references/review-discipline.md` holds the reviewer-craft conventions used by every spawned reviewer and by the orchestrator's final-check pass: the output markers (`UNVERIFIED`, `NOTICED BUT NOT TOUCHING`, `CONFUSION`, `MISSING REQUIREMENT`), the common rationalizations to watch for, the red-flag stop list, and the pre-posting verification checklist.
 
-- Verifies comment accuracy vs code
-- Identifies comment rot
-- Checks documentation completeness
-
-**kramme:pr-test-analyzer**:
-
-- Reviews behavioral test coverage
-- Identifies critical gaps
-- Evaluates test quality
-
-**kramme:silent-failure-hunter**:
-
-- Finds silent failures
-- Reviews catch blocks
-- Checks error logging
-
-**kramme:type-design-analyzer**:
-
-- Analyzes type encapsulation
-- Reviews invariant expression
-- Rates type design quality
-
-**kramme:code-reviewer**:
-
-- Checks project instruction compliance
-- Detects bugs and issues
-- Reviews general code quality
-
-**kramme:deslop-reviewer**:
-
-- Detects AI-generated code patterns
-- Flags unnecessary comments, defensive overkill, type workarounds
-- Meta-reviews other agents' suggestions for slop potential
-
-**kramme:code-simplifier**:
-
-- Simplifies complex code
-- Improves clarity and readability
-- Applies project standards
-- Preserves functionality
-
-**kramme:pr-relevance-validator**:
-
-- Validates findings against full review scope (committed + local)
-- Filters pre-existing issues
-- Filters out-of-scope problems
-- Ensures review focuses on in-scope changes
-
-**kramme:removal-planner**:
-
-- Identifies dead code and unused dependencies
-- Verifies safe removal with reference searches
-- Creates structured removal plans
-- Distinguishes safe vs deferred removals
-
-**kramme:injection-reviewer**:
-
-- SQL, command, template, header injection
-- XSS and output escaping
-- Input sanitization verification
-
-**kramme:auth-reviewer**:
-
-- Authentication and authorization checks
-- IDOR and privilege escalation
-- CSRF protection and session management
-
-**kramme:data-reviewer**:
-
-- Cryptographic misuse and secret exposure
-- Information disclosure in errors and logs
-- DoS vectors and resource exhaustion
-
-**kramme:logic-reviewer**:
-
-- Business logic flaws and edge cases
-- Race conditions and TOCTOU bugs
-- Numeric overflow and state machine violations
-
-## Tips:
-
-- **Run early**: Before creating PR, not after
-- **Focus on changes**: Agents analyze git diff by default
-- **Address critical first**: Fix high-priority issues before lower priority
-- **Re-run after fixes**: Verify issues are resolved
-- **Use specific reviews**: Target specific aspects when you know the concern
-
-## Workflow Integration:
-
-**Before committing:**
-
-```
-1. Write code
-2. Run: /kramme:pr:code-review code errors
-3. Fix any critical issues
-4. Commit
-```
-
-**Before creating PR:**
-
-```
-1. Stage all changes
-2. Run: /kramme:pr:code-review all
-3. Address all critical and important issues
-4. Run specific reviews again to verify
-5. Create PR
-```
-
-**After PR feedback:**
-
-```
-1. Make requested changes
-2. Run targeted reviews based on feedback
-3. Verify issues are resolved
-4. Push updates
-```
-
-## Notes:
-
-- Agents run autonomously and return detailed reports
-- Each agent focuses on its specialty for deep analysis
-- Results are actionable with specific locations (usually `file:line`, sometimes `review-scope` or `PR description`)
-- Agents use appropriate models for their complexity
-- All agents available in `/agents` list
-
-## Review speed norm
-
-One business day is the **maximum** time a PR should sit waiting on review, not the target. If the review slips past a day, the diff stales, the author context-switches, and the eventual review skews toward nitpicks because the reviewer is working against the PR instead of with the author.
-
-## Output markers
-
-Use these markers so the user (and downstream tooling) can skim status at a glance. They are a **plugin-wide convention** for Addy-ported skills. Use them verbatim (uppercase, no decoration), one marker per line.
-
-- **UNVERIFIED** — a finding asserted but not directly confirmed against the code. `UNVERIFIED: agent flagged a race on cache invalidation; I didn't trace all callsites`.
-- **NOTICED BUT NOT TOUCHING** — a pre-existing issue or out-of-scope observation surfaced during review. `NOTICED BUT NOT TOUCHING: the whole retry helper swallows errors, but that's outside this PR`.
-- **CONFUSION** — the reviewer can't decide whether something is a bug without more context. `CONFUSION: the nullable return from getUser() is new here; is None a valid result or a missing check?`
-- **MISSING REQUIREMENT** — spec or intent is ambiguous; a product decision is needed before the review can complete. `MISSING REQUIREMENT: no guidance on how to handle the duplicate-email case — ask before approving`.
-
----
-
-## Common rationalizations
-
-Watch for these excuses — they signal the review is slipping into low-value territory.
-
-| Excuse | Reality |
-| --- | --- |
-| "It's just a nit, skip it." | Nits compound across reviews; ship the `Nit:` prefix and let the author decide, or the diff drifts on every PR. |
-| "This doesn't block merge, so it's fine." | "Doesn't block" is not "good." Approve only if the change definitely improves overall code health. |
-| "AI wrote it, and the tests pass." | AI-generated code needs more scrutiny, not less — it's confident even when wrong. Read the diff as if a new hire wrote it under deadline. |
-| "We can clean this up in a follow-up." | Follow-ups are negotiable; the diff on screen is not. Land the cleanup or mark it `Critical:` now. |
-| "I'll re-review when they push again." | Re-review is a checkpoint, not a finding delivery mechanism. Surface every finding on the first pass or they rot across round-trips. |
-
----
-
-## Red Flags — STOP
-
-If any of these are true, pause and re-scope the review before posting it:
-
-- Every finding you're about to post is marked **Critical:** — the bucket has lost meaning; re-triage.
-- The review is older than the PR (you've been reviewing longer than the author spent writing).
-- You're rewriting the PR in your head instead of reviewing the diff in front of you.
-- You're flagging style issues the project doesn't enforce anywhere else.
-- You're requiring defensive checks, logging, retries, or validation layers that nearby code intentionally does not use, and you cannot point to a concrete new failure path.
-- You're approving because the CI is green, not because the change definitely improves overall code health.
-- A dead-code finding is phrased as an instruction (`"delete X"`) instead of the ask shape (`DEAD CODE IDENTIFIED: X. Safe to remove these?`).
-- You have no `FYI` in the Strengths section — a review with zero positive observations is usually miscalibrated, not comprehensive.
-
----
-
-## Verification
-
-Before posting the review, confirm:
-
-- [ ] Every finding has a severity prefix (`Critical:`, `Nit:`, `Optional:`, `Consider:`, `FYI`, or no prefix for Required).
-- [ ] Dead-code findings use the verbatim ask shape `DEAD CODE IDENTIFIED: [list]. Safe to remove these?`
-- [ ] The Approval Standard line appears: _"Approve if the change definitely improves overall code health."_
-- [ ] Pre-existing or out-of-scope observations are labeled `NOTICED BUT NOT TOUCHING`.
-- [ ] Every emphasized dimension in `--emphasize` actually produced findings in this review (or you noted that it didn't).
-- [ ] No finding is presented as certain when the reviewer didn't trace it — those are labeled `UNVERIFIED`.
+- **Step 7** must pass the output-marker convention to each spawned reviewer so findings come back labeled consistently.
+- **Step 13** must run the verification checklist before posting the aggregated report.
