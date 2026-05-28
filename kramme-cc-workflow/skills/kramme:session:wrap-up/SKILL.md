@@ -1,6 +1,7 @@
 ---
 name: kramme:session:wrap-up
 description: End-of-session checklist to capture progress, ensure quality, and document next steps
+argument-hint: [quick]
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -21,27 +22,33 @@ Run `git status` and report:
 
 ### TODO Detection
 
-Search for TODOs added during this session:
+Search for TODOs added during this session.
 
-```bash
-git diff HEAD~5 --unified=0 | grep -E "^\+.*TODO"
-```
-
-If uncommitted changes exist:
+Uncommitted changes:
 
 ```bash
 git diff --unified=0 | grep -E "^\+.*TODO"
+```
+
+Recent commits (the fallback guards against histories shorter than the window):
+
+```bash
+base=$(git rev-parse --verify --quiet HEAD~5 || git rev-list --max-parents=0 HEAD | head -1)
+git diff "$base" --unified=0 | grep -E "^\+.*TODO"
 ```
 
 Report any TODOs found with file locations.
 
 ### WIP Detection
 
-Flag potential incomplete work:
+Scan recent changes for explicit markers:
 
-- Files with "WIP", "FIXME", or "XXX" in recent changes
-- Commented-out code blocks in modified files
-- Empty function bodies or placeholder implementations
+```bash
+base=$(git rev-parse --verify --quiet HEAD~5 || git rev-list --max-parents=0 HEAD | head -1)
+git diff "$base" --unified=0 | grep -E "^\+.*(WIP|FIXME|XXX)"
+```
+
+Then spot-check modified files by judgment for commented-out code blocks and empty or placeholder function bodies. Report anything found.
 
 ## Phase 2: Quality Check
 
@@ -89,19 +96,24 @@ optional: true
 
 ## Phase 4: Context Preservation
 
-If SIW is active (`siw/LOG.md` exists), update it with:
+Build the session block, using the current date for the heading:
 
 ```markdown
-## Session: [date]
+## Session: [current date]
 
 **Accomplished:** [user's summary]
 
 **Next steps:** [user's next steps]
 
-**Blockers:** [if any]
+**Blockers:** [if any, else "None"]
 ```
 
-If no SIW is active, skip this phase.
+Append it to the active context log so the summary survives the session:
+
+- If SIW is active (`siw/LOG.md` exists), append to `siw/LOG.md`.
+- Otherwise, append to `SESSION_NOTES.md` at the repository root, creating the file if it does not exist.
+
+Remember the path written so Phase 5 can report it.
 
 ## Phase 5: Final Report
 
@@ -113,11 +125,12 @@ Present a summary:
 ### Changes Status
 - Uncommitted files: N
 - Untracked files: N
+- Stashes: N
 - TODOs found: N
 - Quality checks: PASS/FAIL/SKIPPED
 
 ### Documentation
-- Session notes: Saved to [location] / Not saved
+- Session notes: Saved to [path] / Not saved
 
 ### Reminders
 [List any uncommitted work, failing tests, or blockers]
@@ -125,8 +138,4 @@ Present a summary:
 
 ## Quick Mode
 
-If user runs `/kramme:session:wrap-up quick`:
-
-- Skip quality checks
-- Skip learning extraction
-- Only run Phases 1, 3, and 6 (audit, summary, report)
+If user runs `/kramme:session:wrap-up quick`, skip the quality-check prompt (Phase 2) and run Phases 1, 3, 4, and 5 (audit, summary, context preservation, report).

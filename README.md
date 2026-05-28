@@ -349,7 +349,7 @@ Session management, verification, artifact cleanup, and hook configuration.
 | `/kramme:hooks:toggle` | User | `<status\|reset\|hook-name> [enable\|disable]` | Enable or disable a plugin hook.<br><br>Use `status` to list all hooks, `reset` to enable all hooks, or specify a hook name to toggle. |
 | `/kramme:session:automate-repeats` | User | `[session-paths or --recent N] [--create]` | Review recent agent sessions to identify repeated manual workflows and repeated asks, then propose or scaffold only useful skills or custom subagents.<br><br>Deduplicates against existing automation, requires repeated evidence, and keeps generated components simple. |
 | `/kramme:session:context-setup` | User, Auto | — | Configure effective agent context at session start or after output quality degrades.<br><br>Covers rules-file verification (CLAUDE.md / AGENTS.md), pre-task context loading, context-window hygiene, and trust-level tagging for inputs. |
-| `/kramme:session:wrap-up` | User | — | End-of-session checklist to capture progress, ensure quality, and document next steps.<br><br>Audits uncommitted changes, runs quality checks, and prompts for session summary and next steps. |
+| `/kramme:session:wrap-up` | User | `[quick]` | End-of-session checklist to capture progress, ensure quality, and document next steps.<br><br>Audits uncommitted changes, runs quality checks, and prompts for session summary and next steps. Persists the summary to `siw/LOG.md` or `SESSION_NOTES.md`. `quick` skips the quality-check prompt. |
 | `/kramme:verify:run` | User, Auto | — | Run verification checks (tests, formatting, builds, linting, type checking) for affected code.<br><br>Automatically detects project type and runs appropriate commands. |
 
 #### Nx
