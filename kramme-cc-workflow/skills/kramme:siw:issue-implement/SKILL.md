@@ -1,16 +1,24 @@
 ---
 name: kramme:siw:issue-implement
 description: Start implementing a defined local issue with codebase exploration and planning. Use --team to implement multiple independent SIW issues in parallel.
-argument-hint: "<G-001 | P1-001 | ISSUE-G-XXX> | --team [issue-ids | 'phase N'] [--auto]"
+argument-hint: "<issue-id> | --team [issue-ids | 'phase N'] [--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
 
 # Implement Local Issue
 
-Start implementing a local issue through an extensive planning phase before any code changes.
+Plan before coding: explore the codebase, agree on a technical approach, then implement against the chosen approach.
 
-**IMPORTANT:** This command emphasizes thorough planning and codebase exploration to translate issue requirements into a concrete technical approach before starting implementation.
+## Expected Issue File Contract
+
+This skill consumes issue files produced by `kramme:siw:issue-define`. Each issue carries a status line of the form:
+
+```
+**Status:** {status} | **Priority:** {priority} | **Size:** {size} | **Phase:** {N or General} | **Parallelization:** {value} | **Mode:** {AUTO | HITL — <one-line reason>} | **Related:** {tasks if any}
+```
+
+The `Mode` field gates the HITL safety logic in Step 3.1 and Step 6.1. If `Mode` is absent, the skill treats the issue as `HITL — mode missing; requires human triage` and routes it through the HITL gate.
 
 ## Team Mode
 
@@ -32,15 +40,33 @@ When executing those phases, read and follow `references/execution-approaches.md
 
 ## Status Update Procedure
 
-**CRITICAL — MANDATORY for every status change.** Every time an issue's status changes (to "In Progress", "IN REVIEW", or "DONE"), you MUST update ALL THREE files below. Never update one without the others.
+Every status change (to "In Progress", "IN REVIEW", or "DONE") must update all three tracking files atomically. Skipping any file leaves the tracking state inconsistent.
 
-**Checklist (all three required):**
+**Required updates:**
 
-- [ ] **Issue file** (`siw/issues/ISSUE-{prefix}-{number}-*.md`) — Change the `**Status:**` line to the new status
-- [ ] **Overview** (`siw/OPEN_ISSUES_OVERVIEW.md`) — Update the issue's row in the table to match the new status
-- [ ] **Log** (`siw/LOG.md`) — Update the "Current Progress" section to reflect the status change
+- [ ] **Issue file** (`siw/issues/ISSUE-{prefix}-{number}-*.md`) — Set the `**Status:**` line to the new status. Preserve the rest of the status line (`Size`, `Parallelization`, `Mode`, `Related`, etc.) — do not delete adjacent metadata.
+- [ ] **Overview** (`siw/OPEN_ISSUES_OVERVIEW.md`) — Update the issue's row in the table to match the new status.
+- [ ] **Log** (`siw/LOG.md`) — Update the `## Current Progress` section to reflect the change. The block must identify the active issue and preserve any more-specific `Last Completed` / `Next Steps` already written by the calling step:
 
-Skipping any of these files leaves the tracking state inconsistent. Treat this as a single atomic operation.
+  ```markdown
+  ## Current Progress
+
+  **Last Updated:** {date} **Quick Summary:** {one-line summary mentioning {prefix}-{number}}
+
+  ### Project Status
+
+  - **Status:** {status} | **Current Issue:** {prefix}-{number} | ...
+
+  ### Last Completed
+
+  - {most recent meaningful event}
+
+  ### Next Steps
+
+  1. {next unfinished task from plan}
+  ```
+
+When re-running the procedure to repair a partial update, touch only stale fields; do not overwrite accurate `Last Completed` / `Next Steps` entries.
 
 This procedure is referenced as **"Run the Status Update Procedure"** throughout this skill.
 
@@ -191,7 +217,7 @@ Technical Notes:
 
 ## Step 4: Codebase Exploration (PLANNING PHASE)
 
-**CRITICAL:** **ALWAYS** perform extensive codebase exploration to understand how to implement the feature, regardless of how detailed the issue is.
+Explore the codebase before proposing a technical approach. Scale the depth to the issue: a tightly-scoped issue that already lists files and patterns needs targeted verification; a broadly-scoped issue needs full exploration.
 
 ### 4.1 Why This Phase Is Essential
 
@@ -201,17 +227,17 @@ Issues describe:
 - **Why** it matters
 - **Acceptance criteria** for verification
 
-They may NOT describe:
+They may not describe:
 
 - Which files/modules to modify
 - What patterns to follow
 - How existing similar features are implemented
 
-**Your job is to bridge this gap through thorough exploration.**
+Exploration bridges this gap before any code changes.
 
-### 4.2 Mandatory Exploration Steps
+### 4.2 Exploration Steps
 
-**ALWAYS perform these steps:**
+Run all of the following before drafting the technical plan:
 
 1. **Check supporting specs (if they exist):**
 
@@ -229,10 +255,11 @@ They may NOT describe:
    - Look for existing implementations of similar functionality
    - Identify relevant modules, services, or components
 
-3. **Use the Explore agent:**
+3. **Delegate broader exploration to a sub-agent when available:**
+
+   On Claude Code, invoke the Task tool with `subagent_type=Explore`. On Codex or other harnesses, use the equivalent exploration agent if one is available; otherwise continue with direct Glob/Grep. The prompt:
 
    ```
-   Task tool with subagent_type=Explore:
    "Find existing implementations related to {feature description from issue}.
     Identify relevant files, patterns, and conventions used in this codebase."
    ```
@@ -269,7 +296,7 @@ Suggested Approach:
 
 ## Step 5: Upfront Questions (PLANNING PHASE)
 
-**CRITICAL:** Ask questions rather than making assumptions. The goal is to fully understand before writing code.
+Ask before assuming. Resolve ambiguities in scope, technical approach, and testing expectations before writing code.
 
 ### 5.1 Identify Ambiguities
 
@@ -283,7 +310,7 @@ Review the issue and exploration results to identify:
 
 ### 5.2 Ask Clarifying Questions
 
-**ALWAYS** use AskUserQuestion for unclear aspects.
+Use AskUserQuestion for each unresolved ambiguity.
 
 **Example questions:**
 
@@ -333,7 +360,7 @@ options:
 
 ### 6.1 HITL Confirmation Gate (conditional)
 
-**If the issue's `Mode` is `HITL` and the user selected "Autonomous Implementation"**, do not proceed silently. Issue the following confirmation question:
+If the issue's `Mode` is `HITL` and the user selected "Autonomous Implementation", issue the following confirmation question before continuing:
 
 ```yaml
 header: "HITL Issue Confirmation"
@@ -369,7 +396,7 @@ Read and follow `references/execution-approaches.md` for the selected workflow's
 
 ## Step 8: Verify Status Update Completed
 
-**CRITICAL:** Before proceeding, confirm the Status Update Procedure (top of skill) ran in Step 7 and all three tracking files now show "In Progress". The issue file's status line must preserve any existing `**Size:**` / `**Parallelization:**` metadata, and `siw/LOG.md` must satisfy the Current Progress verification requirements in `references/execution-approaches.md` without overwriting more specific progress already recorded by the selected workflow. Re-run the procedure for any file that wasn't updated. Do not proceed to Step 9 until all three files reflect "In Progress".
+Confirm the Status Update Procedure ran during Step 7 and that all three tracking files now show "In Progress" per the checklist at the top of this skill. Re-run the procedure for any file that wasn't updated. Do not proceed to Step 9 until all three files reflect "In Progress".
 
 ---
 
@@ -383,18 +410,15 @@ Branch: {branch}
 Approach: {selected approach}
 
 {Approach-specific next steps}
-
-Quick Commands:
-- /kramme:verify:run - Run verification checks
-- /kramme:pr:create - Create PR when ready
-- /kramme:pr:code-review - Review changes for issues
 ```
+
+If the companion skills `/kramme:verify:run`, `/kramme:pr:create`, and `/kramme:pr:code-review` are installed in this environment, append a "Quick Commands" block listing them. Omit the block (or any individual line) for skills that are not available.
 
 ---
 
 ## Step 10: Sync Decisions to Specification (COMPLETION PHASE)
 
-**CRITICAL:** Before marking implementation complete, ensure the specification reflects all decisions made during implementation.
+Before marking implementation complete, ensure the specification reflects all decisions made during implementation.
 
 ### 10.1 Review siw/LOG.md Decision Log
 
@@ -420,7 +444,7 @@ If misalignments are found, read `references/spec-sync.md`, present them using i
 
 For selected decisions, update the appropriate spec file.
 
-**CRITICAL for supporting specs:** Update the actual spec content (entity definitions, endpoint contracts, component specs, diagrams) — do **not** just append to a "Design Decisions" section. Supporting specs should always reflect current reality.
+For supporting specs, update the actual spec content (entity definitions, endpoint contracts, component specs, diagrams) — do not just append to a "Design Decisions" section. Supporting specs should always reflect current reality.
 
 Use the main spec's `## Design Decisions` section only for cross-cutting decisions, high-level architectural choices, or decisions that don't map to a specific spec section. For the worked POST → PUT example, per-area routing reminders, and the Design Decisions migration format, read `references/spec-sync.md`.
 
@@ -436,36 +460,19 @@ After verification passes and the implementation is complete, close out tracking
 
 Read and follow `references/issue-closeout.md` for the closeout procedure:
 
-- Add the `## Resolution` section without deleting the issue file.
+- Check whether the issue is already closed (status `DONE` with an existing `## Resolution`) and short-circuit if so.
+- Add (or replace, or amend) the `## Resolution` section without deleting the issue file.
 - Ask for confidence and set the final status to `DONE` or `IN REVIEW`.
 - Run the Status Update Procedure for all three tracking files.
 - For phase-prefixed issues, check whether the phase should be marked complete.
 
 ---
 
-## Important Constraints
+## Constraints
 
-- **NEVER** add Claude attribution to commits or code.
-- **ALWAYS** run verification (`kramme:verify:run`) before claiming completion.
-- **ALWAYS** search for and follow existing patterns before implementing.
-- **ALWAYS** update `siw/LOG.md` with progress and decisions.
-- Status updates are atomic — update all three tracking files together (see Status Update Procedure at top of skill).
-- **ALWAYS** run Step 10 (Spec Sync) before marking implementation complete.
-
----
-
-## Error Handling
-
-### Git Errors
-
-- Merge conflicts: Ask user to resolve
-- Stash failures: Report and suggest manual handling
-
-### Issue File Errors
-
-- Malformed issue: Report what's missing, suggest `/kramme:siw:issue-define` to fix
-
-### Implementation Errors
-
-- Test failures: Present errors, ask how to proceed
-- Build failures: Show full error output
+- Do not add Claude attribution to commits or code.
+- Run verification (`kramme:verify:run`) before claiming completion.
+- Search for and follow existing patterns before introducing new ones.
+- Update `siw/LOG.md` with progress and decisions as you go.
+- Status updates are atomic — update all three tracking files together (see Status Update Procedure).
+- Run Step 10 (Spec Sync) before marking implementation complete.

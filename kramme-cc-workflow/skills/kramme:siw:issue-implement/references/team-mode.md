@@ -32,10 +32,10 @@ Then stop.
 
 ### Step 1: Read SIW State
 
-1. Read `siw/OPEN_ISSUES_OVERVIEW.md` to understand all issues and their statuses
-2. Read the main spec file (from `siw/` directory) for project context, excluding temporary artifacts such as `DISCOVERY_BRIEF.md`
-3. Read `siw/LOG.md` for current progress and decisions
-4. Capture each issue's `Mode` from the overview table when present, then confirm it from the issue file frontmatter when reading candidates. Treat missing Mode as `HITL — mode missing; requires human triage`.
+1. Read `siw/OPEN_ISSUES_OVERVIEW.md` to understand all issues and their statuses.
+2. Read the main spec file for project context. The main spec is the project-named uppercase markdown file at the top of `siw/` (for example `siw/FEATURE_SPECIFICATION.md`, `siw/API_DESIGN.md`, `siw/PROJECT_PLAN.md`) — the filename is chosen at `kramme:siw:init` time. Exclude the SIW tracking files (`LOG.md`, `OPEN_ISSUES_OVERVIEW.md`) and temporary artifacts (`DISCOVERY_BRIEF.md`). If multiple candidates remain after filtering, ask the user which file is the main spec before continuing.
+3. Read `siw/LOG.md` for current progress and decisions.
+4. Capture each issue's `Mode` from the overview table when present, then confirm it from the issue file status line when reading candidates. Treat missing Mode as `HITL — mode missing; requires human triage`.
 
 ### Step 2: Identify Parallelizable Issues
 

@@ -2,37 +2,7 @@
 
 After the user selects an approach in Step 6, run **only** the workflow that matches their selection. Each workflow ends by handing control to Step 8 in the main skill (verify status update completed).
 
-The phrase "Run the Status Update Procedure" refers to the procedure declared at the top of `SKILL.md` — update all three tracking files (issue file, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/LOG.md`) atomically.
-
----
-
-## Step 8 Status Update Verification
-
-After any workflow below transitions the issue to "In Progress", verify all three tracking files:
-
-- [ ] `siw/issues/ISSUE-{prefix}-{number}-*.md` — Status line reads `**Status:** In Progress ...` and preserves any existing `**Size:**` / `**Parallelization:**` metadata instead of deleting it.
-- [ ] `siw/OPEN_ISSUES_OVERVIEW.md` — Issue row shows "In Progress".
-- [ ] `siw/LOG.md` — Current Progress section identifies the active issue and preserves any more specific progress already recorded:
-
-  ```markdown
-  ## Current Progress
-
-  **Last Updated:** {date} **Quick Summary:** {one-line summary mentioning {prefix}-{number}}
-
-  ### Project Status
-
-  - **Status:** In Progress | **Current Issue:** {prefix}-{number} | ...
-
-  ### Last Completed
-
-  - {started implementation of {prefix}-{number}, or the latest completed task}
-
-  ### Next Steps
-
-  1. {next unfinished task from plan}
-  ```
-
-If any file was not updated during the selected workflow, run the Status Update Procedure again before returning to Step 9 in `SKILL.md`. When re-running it, update only missing or stale status fields and preserve accurate `Last Completed` / `Next Steps` details already written by the selected workflow.
+The phrase "Run the Status Update Procedure" refers to the procedure declared at the top of `SKILL.md` — update all three tracking files (issue file, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/LOG.md`) atomically. That block also specifies the `Current Progress` shape `siw/LOG.md` must end up in, including the "preserve more-specific progress" rule.
 
 ---
 
