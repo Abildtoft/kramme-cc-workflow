@@ -12,6 +12,8 @@ Start implementing a Linear issue through an extensive planning phase before any
 
 **IMPORTANT:** Linear issues are typically written for product teams and may be light on technical implementation details. This command emphasizes thorough planning and codebase exploration to translate product requirements into a concrete technical approach before starting implementation.
 
+**Prerequisite:** Requires the Linear MCP server. For work tracked through the Structured Implementation Workflow, use `kramme:siw:issue-implement` instead — this skill implements a single Linear issue directly.
+
 ## Process Overview
 
 ```
@@ -80,15 +82,17 @@ The issue ID should be in the format TEAM-NUMBER (e.g., WAN-521, HEA-456).
 
 ### 1.2 Fetch Issue Details
 
-**ALWAYS** use the Linear MCP tool to fetch complete issue details:
+Use the Linear MCP tool to fetch complete issue details. `{ISSUE_ID}` is the human-readable identifier from `$ARGUMENTS` (e.g. `WAN-123`), which `get_issue` accepts directly:
 
 ```
 mcp__linear__get_issue with id: {ISSUE_ID}
 ```
 
+**If the `mcp__linear__*` tools are unavailable**, the Linear MCP server is not connected. Stop and tell the user to connect it — do not continue without issue data.
+
 **Capture from issue response:**
 
-- `id` - Linear issue UUID (for API calls)
+- `id` - Linear issue UUID. Use this (referred to below as `{issueUuid}`) for any later call that needs the UUID rather than the identifier.
 - `identifier` - Human-readable ID (e.g., WAN-123)
 - `title` - Issue title
 - `description` - Full issue description (markdown)
@@ -101,10 +105,10 @@ mcp__linear__get_issue with id: {ISSUE_ID}
 
 ### 1.3 Fetch Issue Comments
 
-**ALWAYS** fetch comments for additional context:
+Fetch comments for additional context, using the UUID captured in Step 1.2:
 
 ```
-mcp__linear__list_comments with issueId: {ISSUE_ID}
+mcp__linear__list_comments with issueId: {issueUuid}
 ```
 
 Comments often contain:
@@ -188,19 +192,19 @@ BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's|refs/remo
 git fetch origin $BASE
 
 # Create branch from latest base
-git checkout -b {branchName} origin/$BASE
+git checkout -b "{branchName}" "origin/$BASE"
 ```
 
 **If branch exists locally:**
 
 ```bash
-git checkout {branchName}
+git checkout "{branchName}"
 ```
 
 **If branch exists only on remote:**
 
 ```bash
-git checkout -b {branchName} origin/{branchName}
+git checkout -b "{branchName}" "origin/{branchName}"
 ```
 
 ### 2.4 Verify Branch Creation (REQUIRED)
@@ -293,7 +297,7 @@ Acceptance Criteria:
 
 ## Step 4: Codebase Exploration (PLANNING PHASE)
 
-**CRITICAL:** Linear issues are typically product-focused and lack technical implementation details. **ALWAYS** perform extensive codebase exploration to understand how to implement the feature, regardless of how the issue is written.
+Linear issues are typically product-focused and lack technical implementation details. Perform extensive codebase exploration to understand how to implement the feature, regardless of how the issue is written.
 
 ### 4.1 Why This Phase Is Essential
 
@@ -314,20 +318,16 @@ They typically do NOT describe:
 
 ### 4.2 Mandatory Exploration Steps
 
-**ALWAYS perform these steps, even if the issue seems straightforward:**
+Perform these steps even if the issue seems straightforward:
 
 1. **Search for similar features/patterns:**
-   - Use Glob and Grep to find related code
+   - Use the available code-search tools (e.g. Glob and Grep) to find related code
    - Look for existing implementations of similar functionality
    - Identify relevant modules, services, or components
 
-2. **Use the Explore agent:**
+2. **Dispatch a codebase-exploration subagent** (or run the search directly if subagents are unavailable):
 
-   ```
-   Task tool with subagent_type=Explore:
-   "Find existing implementations related to {feature description from issue}.
-    Identify relevant files, patterns, and conventions used in this codebase."
-   ```
+   Ask it to find existing implementations related to {feature description from issue} and identify the relevant files, patterns, and conventions used in this codebase. In Claude Code this is the `Explore` agent via the Task tool.
 
 3. **Identify key files and patterns:**
    - List files that will likely need modification
@@ -359,7 +359,7 @@ Suggested Approach:
 
 ## Step 5: Upfront Questions (PLANNING PHASE)
 
-**CRITICAL:** Tend towards asking questions rather than plunging into implementation. The goal is to fully understand requirements before writing any code.
+Tend towards asking questions rather than plunging into implementation. Fully understand requirements before writing any code.
 
 ### 5.1 Identify Ambiguities
 
@@ -373,7 +373,7 @@ Review the issue and exploration results to identify:
 
 ### 5.2 Ask Clarifying Questions
 
-**ALWAYS** use AskUserQuestion for each unclear aspect before proceeding.
+Use AskUserQuestion for each unclear aspect before proceeding.
 
 **Example questions to consider:**
 
@@ -434,7 +434,7 @@ options:
   - label: "Context Setup Only"
     description: "I'll set up the branch and create a todo list, but you'll guide the implementation. Best when you know the approach."
   - label: "Autonomous Implementation"
-    description: "I'll analyze the codebase, plan, implement, and verify. Check in when done. Best for straightforward tasks."
+    description: "I'll analyze the codebase, plan, implement, commit as I go, and verify. Check in when done. Best for straightforward tasks."
 ```
 
 ---
@@ -470,7 +470,7 @@ Quick Commands:
 
 ### No AI Attribution
 
-**NEVER** add Claude attribution to commits or code. See `kramme:git:recreate-commits` skill.
+Never add AI/Claude attribution to commits or code.
 
 ### Linear Issue Linking
 
