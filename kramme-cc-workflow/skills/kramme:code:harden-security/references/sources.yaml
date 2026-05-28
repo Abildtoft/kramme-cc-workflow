@@ -1,0 +1,7 @@
+sources:
+  - id: owasp-top-10
+    url: https://owasp.org/www-project-top-ten/
+    title: "OWASP Top 10"
+    rationale: "The author-time category pattern guide in references/owasp-top-10.md follows the OWASP Top 10 vulnerability taxonomy."
+    last_reviewed_at: 2026-05-28
+    baseline_hash: ""
