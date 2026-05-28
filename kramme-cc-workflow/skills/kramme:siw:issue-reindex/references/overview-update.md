@@ -5,7 +5,7 @@ Use this procedure to rebuild `siw/OPEN_ISSUES_OVERVIEW.md` after DONE issues ar
 ## Inputs
 
 - The original `siw/OPEN_ISSUES_OVERVIEW.md` content.
-- The confirmed restart scope.
+- The confirmed reindex scope.
 - `renumberById`: original active issue id to new active issue id.
 - `deletedById`: original DONE issue id to deleted issue title.
 - The renamed active issue files.
@@ -17,7 +17,7 @@ Use this procedure to rebuild `siw/OPEN_ISSUES_OVERVIEW.md` after DONE issues ar
    - 7-column: `#`, `Title`, `Status`, `Size`, `Priority`, `Mode`, `Related`
    - 6-column: `#`, `Title`, `Status`, `Size`, `Priority`, `Related`
    - legacy 5-column: `#`, `Title`, `Status`, `Priority`, `Related`
-3. Remove rows for DONE issues that are in the confirmed restart scope.
+3. Remove rows for DONE issues that are in the confirmed reindex scope.
 4. Preserve rows outside the confirmed scope exactly, except when their `Related` column references ids that must be annotated as deleted.
 5. For active rows in scope, replace the issue id with its new id from `renumberById`.
 6. Keep active rows grouped under their original section. Do not move issues across General, Phase, or prefix groups.
