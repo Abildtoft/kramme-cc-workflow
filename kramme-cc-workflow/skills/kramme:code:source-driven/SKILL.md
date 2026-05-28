@@ -39,13 +39,17 @@ Extract the libraries in play and their pinned versions. Then emit:
 STACK DETECTED: <framework> <version>, <library> <version>, ...
 ```
 
-Version matters. "React" is not enough — React 18 and React 19 have materially different APIs.
+Versions matter — React 18 and React 19 have materially different APIs.
+
+If none of these files exist (global CLI tool, unversioned cloud service, ad hoc script), ask the user for the framework and version. If they can't supply one, emit `UNVERIFIED` rather than guessing.
 
 ### 2. FETCH — pull the current docs
 
-Try Context7 MCP first (`mcp__context7__resolve-library-id` → `mcp__context7__query-docs`). It returns version-matched documentation directly.
+Try Context7 MCP first if it's connected in the current harness (`mcp__context7__resolve-library-id` → `mcp__context7__query-docs`). It returns version-matched documentation directly.
 
-If Context7 doesn't cover the library, fall back to direct URLs from the Source Hierarchy in `references/source-hierarchy.md`. Be precise — fetch the exact page you need, not the homepage.
+If Context7 MCP is unavailable or doesn't cover the library, fall back to the harness's web-fetch capability (e.g., WebFetch) against direct URLs from the Source Hierarchy in `references/source-hierarchy.md`. Be precise — fetch the exact page you need, not the homepage.
+
+If no fetch capability is available at all, emit `UNVERIFIED` instead of implementing from memory.
 
 If two authoritative sources disagree, emit:
 
@@ -93,7 +97,6 @@ Imprecise fetches return pages of navigation and marketing; precise fetches retu
 2. Deep links with anchors where the doc supports them.
 3. Quoted passages for non-obvious decisions. A link alone is weak evidence when the page is long.
 4. Include browser/runtime support data when relevant (caniuse for web APIs, node.green for Node features).
-5. When docs are unavailable, state it explicitly with `UNVERIFIED` — never paper over the gap with a hedge.
 
 ## Markers
 
@@ -135,12 +138,4 @@ If you notice any of these, stop and re-ground:
 
 ## Verification
 
-Before declaring the work done, self-check:
-
-- Does every non-obvious framework/library decision have a deep-link citation?
-- Are all citations to Tier 1–4 sources in the Source Hierarchy (no Stack Overflow, no third-party blogs)?
-- Does every `UNVERIFIED` marker have either a source now or an explicit unresolved note?
-- Did every `CONFLICT DETECTED` record name its resolution?
-- Would a reviewer who follows each citation arrive at the same code you wrote?
-
-If any answer is no, fix the gap before declaring done.
+Before declaring done, ask one question: would a reviewer who follows each citation arrive at the same code you wrote? If not, fix the gap — usually an unresolved `UNVERIFIED`, a `CONFLICT DETECTED` with no recorded resolution, or a citation that points at a page that doesn't actually say what you claim.
