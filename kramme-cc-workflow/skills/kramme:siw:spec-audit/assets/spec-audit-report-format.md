@@ -1,10 +1,17 @@
 # Spec Audit Report
 
-**Date:** {current date} **Spec Files Reviewed:** {list of spec files with paths}
+**Date:** {current date}
+**Spec Files Reviewed:** {list of spec files with paths}
 
 ## Work Context Applied
 
-{If work_context found:} | Attribute | Value | |-----------|-------| | Work Type | {work_type} | | Priority Dimensions | {list} | | Deprioritized Dimensions | {list} |
+{If work_context found:}
+
+| Attribute                | Value           |
+| ------------------------ | --------------- |
+| Work Type                | {work_type}     |
+| Priority Dimensions      | {list}          |
+| Deprioritized Dimensions | {list}          |
 
 **Effect:** Findings in deprioritized dimensions are capped at Minor severity. If a deprioritized finding was originally Critical or Major, keep the final severity at Minor and record `**Severity Note:** [Deprioritized — capped at Minor from {original_severity}]` so downstream tools preserve the original urgency. Priority dimension findings are strictly evaluated.
 
@@ -38,7 +45,16 @@
 
 ### SPEC-001: {Brief title}
 
-**Dimension:** {dimension} **Severity:** Critical **Fix Confidence:** {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION}) **Location:** {source_file} > {source_section} **Details:** {explanation with quotes from the spec} **Impact:** {what goes wrong if this isn't fixed} **Recommendation:** {specific action to fix}
+**Dimension:** {dimension}
+**Severity:** Critical
+**Fix Confidence:** {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION})
+**Location:** {source_file} > {source_section}
+
+**Details:** {explanation with quotes from the spec}
+
+**Impact:** {what goes wrong if this isn't fixed}
+
+**Recommendation:** {specific action to fix}
 
 ---
 

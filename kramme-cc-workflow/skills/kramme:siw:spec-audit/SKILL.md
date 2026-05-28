@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:spec-audit
 description: Audit specification documents for quality — coherence, completeness, clarity, scope, actionability, testability, value proposition, and technical design. Catches spec issues before implementation begins. Supports inline report output with --inline. Use --team for multi-agent cross-validation.
-argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku] [--team] [--inline]"
+argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku] [--inline] [--team]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -69,11 +69,17 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 - create SIW issues for **Critical and Major** findings, plus Minor findings that preserve original Critical or Major severity when Step 6 applies
 - skip the report overwrite / issue-creation prompts
 
+`--inline` means:
+
+- print the report inline in the reply instead of writing `siw/AUDIT_SPEC_REPORT.md`
+- skip Step 6 (no SIW issues, no `siw/OPEN_ISSUES_OVERVIEW.md` / `siw/LOG.md` updates) so the workspace is not mutated
+
 **Detection rules for remaining arguments:**
 
 1. **File path(s)**: Contains `/` or ends in `.md`, `.txt`
 2. **Keyword `siw`**: Explicitly requests auto-detection
 3. **Empty**: Default to auto-detection
+4. **Anything else** (e.g., a bare `myspec` token with no slash or extension): Treat as a candidate path and verify it with `ls`. If verification fails, surface the same "No valid specification files found" error from Section 1.2 — never silently fall through to auto-detection on an unrecognized token.
 
 ### 1.2 If File Paths Provided
 
@@ -82,9 +88,9 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - Do **not** naively split on spaces.
 2. For each parsed path:
    - Verify file exists with `ls {path}`
-   - If path is a directory, scan for markdown files:
+   - If path is a directory, scan for markdown files (always quote the interpolated path so spaces and shell metacharacters are preserved):
      ```bash
-     find {path} -maxdepth 2 -type f -name "*.md" 2> /dev/null
+     find "{path}" -maxdepth 2 -type f -name "*.md" 2> /dev/null
      ```
    - If file doesn't exist, warn and skip.
 3. Store verified paths as `spec_files`.
@@ -111,7 +117,8 @@ Auto-detect spec files from the `siw/` directory:
 
 2. Find spec files (exclude workflow files):
    - Use Glob to find `siw/*.md`
-   - Exclude: `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `SPEC_STRENGTHENING_PLAN.md`, `DISCOVERY_BRIEF.md`, `AUDIT_.*\.md`
+   - Exclude: `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `SPEC_STRENGTHENING_PLAN.md`, `DISCOVERY_BRIEF.md`, any filename matching `AUDIT_.*\.md` or `SIW_.*\.md` (defensive patterns for current and future SIW workflow files).
+   - **Coupling note for SIW skill authors:** Any new top-level workflow file added under `siw/` by sibling skills must either match one of the patterns above or be added to this list, or it will be silently audited as a spec.
 
 3. Find supporting specs:
    - Use Glob to find `siw/supporting-specs/*.md`
@@ -180,7 +187,7 @@ For each element, capture:
 After reading all spec files, look for a `## Work Context` section in the spec files:
 
 1. Parse the markdown table to extract: Work Type, Priority Dimensions, Deprioritized dimensions
-   - If multiple spec files define Work Context, use the main spec file (the one matching the SIW init filename). If ambiguous, use the first found and warn.
+   - If multiple spec files define Work Context, prefer the top-level `siw/*.md` candidate (specs in `siw/supporting-specs/` are auxiliary). If more than one top-level spec defines Work Context, use the lexicographically first one and emit a one-line warning that names the ignored files.
 2. If not found or malformed, default to Production Feature (all dimensions equally weighted, no caps)
 3. Store as `work_context`
 
@@ -251,6 +258,8 @@ Group the 8 quality dimensions across Explore agents based on spec size:
 
 ### 3.2 Launch Explore Agents
 
+**Platform requirement:** The standard workflow assumes the Claude Code `Task` tool with `subagent_type=Explore`. For multi-agent execution on Codex or other runtimes, invoke this skill with `--team` (see `references/team-mode.md` for the cross-platform multi-agent path). If the standard workflow runs in a runtime without the Task/Explore tooling, fall back to a single sequential pass that walks every dimension group inline and report this in the summary.
+
 For each agent group, launch an Explore agent using the Task tool (`subagent_type=Explore`, `model={agent_model}`).
 
 **Default model:** `opus`. Override with `--model sonnet` or `--model haiku` for faster/cheaper runs.
@@ -287,10 +296,7 @@ Analyze the spec against each dimension below. For each finding, report:
 - **Do not return early.** Continue until you have checked every section against every assigned dimension.
 - **Quote the spec.** When flagging an issue, include the relevant text from the spec.
 - **Be specific in recommendations.** "Add more detail" is not enough. Say what detail is missing.
-- **Score provisional fix confidence on all findings (0-100).** For each finding, assess how deterministic a fix would be: determinism of fix (0-25), information availability in spec (0-25), meaning preservation (0-25), absence of alternatives (0-25). Sum the four scores, then apply the safety caps below before writing the agent's provisional `Fix Confidence`. Technical Design findings are typically lower confidence due to subjectivity.
-- **Use these tier boundaries for the provisional score.** 90-100 = `MECHANICAL`, 75-89 = `HIGH_CONFIDENCE`, 50-74 = `MODERATE_CONFIDENCE`, 0-49 = `REQUIRES_DECISION`.
-- **Apply these provisional guardrails before reporting the score.** If any sub-score is below 15, set the provisional score to `0 (REQUIRES_DECISION)`.
-- **Apply these safety caps before reporting the score.** Set the provisional score to `0 (REQUIRES_DECISION)` if any of these apply: Critical finding in Completeness, Scope, or Value Proposition; recommendation uses decision-signal language (`consider`, `decide whether`, `choose between`, `discuss with`, `evaluate options`); the finding adds or removes scope; the finding defines success-criteria substance rather than measurability.
+- **Score provisional fix confidence on every finding using `references/fix-confidence-rubric.md`.** Sum the four 0-25 sub-scores, then apply the tier boundaries, the sub-score guardrail, and the safety caps documented in that file before writing the provisional `Fix Confidence`. Technical Design findings are typically lower confidence due to subjectivity.
 
 {Dimension-specific instructions inserted here — see Section 3.4}
 
@@ -329,7 +335,7 @@ After all Explore agents complete:
 
 Gather all findings from every agent. Deduplicate — if multiple dimensions flagged the same issue, merge into one finding and note all affected dimensions.
 
-Read the merged-finding post-processing rules from `references/post-processing-rules.md` and apply them during consolidation.
+Read `references/post-processing-rules.md` once at the start of Step 4 and apply it throughout: merged-finding handling here in 4.1, severity-cap accounting in 4.3.5, final fix-confidence normalization in 4.3.6, dimension-score effects in 4.4, and issue eligibility in Step 6.
 
 ### 4.2 Assign Global Finding IDs
 
@@ -360,7 +366,7 @@ This ensures purely deprioritized dimensions never produce Critical or Major fin
 
 ### 4.3.6 Normalize Final Fix Confidence
 
-Read the final fix-confidence normalization rules from `references/post-processing-rules.md` and apply them after severity assignment and any Work Context caps.
+Apply the "Final Fix Confidence" section of `references/post-processing-rules.md` (already loaded in Step 4.1) after severity assignment and any Work Context caps.
 
 ### 4.4 Compute Dimension Scores
 
@@ -373,7 +379,7 @@ For each dimension, compute a quality score:
 | **Weak**     | Has Critical findings or many Major findings.          |
 | **Missing**  | Dimension not addressed at all in the spec.            |
 
-Read the preserved-critical-cap assessment rules from `references/post-processing-rules.md` when computing dimension scores and the overall assessment.
+Apply the "Overall Assessment After Severity Caps" section of `references/post-processing-rules.md` (already loaded in Step 4.1) when computing dimension scores and the overall assessment.
 
 ### 4.5 Cross-reference Existing Issues
 
@@ -433,7 +439,9 @@ Spec audit report written to: {path}
 
 ## Step 6: Optionally Create SIW Issues
 
-Read the issue-eligibility selection rules from `references/post-processing-rules.md` before choosing which findings become issues.
+**If `INLINE_MODE=true`, skip this entire step.** Inline runs are read-only previews — do not write issue files or touch `siw/OPEN_ISSUES_OVERVIEW.md` / `siw/LOG.md`.
+
+Apply the "Issue-Eligible Findings" section of `references/post-processing-rules.md` (already loaded in Step 4.1) to choose which findings become issues.
 
 Read and follow `references/issue-creation.md` for the full SIW issue creation flow. That reference defines eligibility, the user prompt, SIW path preflight, issue-eligible finding selection, issue-file creation, tracker updates, and the `siw/LOG.md` Current Progress update.
 
@@ -441,9 +449,7 @@ Read and follow `references/issue-creation.md` for the full SIW issue creation f
 
 ## Step 7: Report Summary
 
-Use the summary template from `assets/spec-audit-summary.md`.
-
-**STOP HERE.** Wait for the user's next instruction.
+Use the summary template from `assets/spec-audit-summary.md`, then end the turn.
 
 ---
 
