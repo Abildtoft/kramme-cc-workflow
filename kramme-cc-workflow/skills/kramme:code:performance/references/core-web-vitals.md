@@ -1,7 +1,5 @@
 # Core Web Vitals — thresholds and measurement
 
-Inline copy. This file is self-contained; no cross-skill references.
-
 ## Thresholds
 
 | Metric | Good | Needs Improvement | Poor |
