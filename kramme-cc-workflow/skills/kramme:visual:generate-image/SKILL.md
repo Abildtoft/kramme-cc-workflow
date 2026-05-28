@@ -13,9 +13,15 @@ Generate new images or edit existing ones using Google's Gemini 3 Pro Image API.
 
 **Arguments:** "$ARGUMENTS"
 
+**Side effects:** Calls Google's paid Gemini API over the network and writes a PNG to disk. Every run consumes API quota, and higher resolutions cost more.
+
+**Not for:** generating diagrams, charts, or data visualizations from structured input, and not for analyzing or describing an existing image — this skill only writes image files.
+
 ## Usage
 
-Run the script using absolute path (do NOT cd to skill directory first).
+**Requires:** `uv`, network access, and a Gemini API key (see the API Key section below).
+
+Run the script by absolute path from the user's current working directory, so images save where the user is working — do not `cd` into the skill directory first.
 
 Set plugin root once (works in both Claude Code and Codex):
 
@@ -28,16 +34,14 @@ If your environment does not set either variable, replace `${PLUGIN_ROOT}` in th
 **Generate new image:**
 
 ```bash
-uv run ${PLUGIN_ROOT}/skills/kramme:visual:generate-image/scripts/generate_image.py --prompt "your image description" --filename "output-name.png" [--resolution 1K | 2K | 4K] [--api-key KEY]
+uv run ${PLUGIN_ROOT}/skills/kramme:visual:generate-image/scripts/generate_image.py --prompt "your image description" --filename "output-name.png" [--resolution 1K | 2K | 4K]
 ```
 
 **Edit existing image:**
 
 ```bash
-uv run ${PLUGIN_ROOT}/skills/kramme:visual:generate-image/scripts/generate_image.py --prompt "editing instructions" --filename "output-name.png" --input-image "path/to/input.png" [--resolution 1K | 2K | 4K] [--api-key KEY]
+uv run ${PLUGIN_ROOT}/skills/kramme:visual:generate-image/scripts/generate_image.py --prompt "editing instructions" --filename "output-name.png" --input-image "path/to/input.png" [--resolution 1K | 2K | 4K]
 ```
-
-**Important:** Always run from the user's current working directory so images are saved where the user is working, not in the skill directory.
 
 ## Resolution Options
 
@@ -54,14 +58,21 @@ Map user requests to API parameters:
 - "2K", "2048", "normal", "medium resolution" → `2K`
 - "high resolution", "high-res", "hi-res", "4K", "ultra" → `4K`
 
+**Editing:** when no resolution is specified, the script matches the output to the input image's dimensions (≥3000px → 4K, ≥1500px → 2K, otherwise 1K). Pass `--resolution` explicitly to override this and control cost.
+
 ## API Key
 
-The script checks for API key in this order:
+The script reads the key from the `--api-key` argument first, then the `GEMINI_API_KEY` environment variable. **Prefer the environment variable** — values passed as command arguments are visible in process listings, shell history, and logs.
 
-1. `--api-key` argument (use if user provided key in chat)
-2. `GEMINI_API_KEY` environment variable
+Set it inline for a single command so it is not stored as a named flag or persisted in the session:
 
-If neither is available, the script exits with an error message.
+```bash
+GEMINI_API_KEY="<key>" uv run ${PLUGIN_ROOT}/skills/kramme:visual:generate-image/scripts/generate_image.py --prompt "..." --filename "..."
+```
+
+Use `--api-key` only when the environment variable cannot be set. If the user pastes a key in chat, prefer the inline prefix above.
+
+If no key is available, the script exits with an error.
 
 ## Filename Generation
 
@@ -104,17 +115,5 @@ Preserve user's creative intent in both cases.
 - Saves PNG to current directory (or specified path if filename includes directory)
 - Script outputs the full path to the generated image
 - **Do not read the image back** - just inform the user of the saved path
-
-## Examples
-
-**Generate new image:**
-
-```bash
-uv run ${PLUGIN_ROOT}/skills/kramme:visual:generate-image/scripts/generate_image.py --prompt "A serene Japanese garden with cherry blossoms" --filename "2025-11-23-14-23-05-japanese-garden.png" --resolution 4K
-```
-
-**Edit existing image:**
-
-```bash
-uv run ${PLUGIN_ROOT}/skills/kramme:visual:generate-image/scripts/generate_image.py --prompt "make the sky more dramatic with storm clouds" --filename "2025-11-23-14-25-30-dramatic-sky.png" --input-image "original-photo.jpg" --resolution 2K
-```
+- An existing file at the target filename is overwritten without warning. The timestamped naming pattern avoids collisions for generated images; when editing with an explicit filename, choose a new name to preserve the original.
+- If the script exits non-zero, surface its stderr to the user instead of retrying blindly — common causes are a missing API key, no network, or a prompt rejected by the model.
