@@ -11,11 +11,19 @@ Wire portless into an Nx workspace so apps get stable `https://<name>.localhost`
 
 > Experimental: This skill is early and may change as we refine the Nx + portless workflow.
 
+> Examples below invoke Nx as `nx …`. If Nx isn't on your PATH, prefix with your package manager's runner: `yarn nx`, `pnpm nx`, or `npx nx`.
+
 ## When to Use
 
 - Setting up a new Nx workspace that needs local HTTPS with custom domains
 - Adding a new app to an existing workspace that already has portless
 - Wiring up `dev:local` / `dev:full` targets for an Nx project
+
+**Not for:** non-Nx projects, or production/public TLS — portless is a local development proxy only.
+
+**What this touches:** installs `portless` as a dev dependency, edits one or more `project.json` files, and (via `proxy:trust`) installs a locally-trusted root CA into your machine's trust store.
+
+**Platform:** macOS and Linux. Steps rely on `sudo`, `$HOME`, port 443, and `.localhost` resolution; Windows is not covered.
 
 ## Operational Model
 
@@ -54,10 +62,14 @@ Add this target to one project's `project.json` (typically the primary app). It 
 ### 3. Trust the CA certificate (once per machine)
 
 ```bash
-yarn nx run < app > :proxy:trust
+nx run <app>:proxy:trust
 ```
 
+This installs a locally-trusted root CA (similar to mkcert) so browsers accept `https://*.localhost`. It affects the whole machine — run it only on trusted dev machines.
+
 ## Per-App Setup
+
+> Re-running is safe: skip any target that already exists in `project.json` instead of duplicating it, and skip the dependency install and `proxy:trust` when the workspace already has portless.
 
 ### 1. Add a `dev:local` target
 
@@ -100,16 +112,15 @@ Alternatively, use `portless run` to infer the app name from `package.json`:
 
 ### 2. Add a `dev:full` target (optional)
 
-If the app has companion services (e.g., Convex backend), create a composite target:
+If the app has companion services (e.g., a Convex backend), create a composite target. `-t` lists the targets to run across the projects selected by `-p`:
 
 ```jsonc
 "dev:full": {
-  "dependsOn": [],
-  "command": "yarn nx run-many -t dev:local convex-dev -p <app> --parallel=2"
+  "command": "nx run-many -t dev:local convex-dev -p <app> --parallel=2"
 }
 ```
 
-Adjust the target list and parallelism for the services the app needs.
+Adjust the targets, projects, and parallelism for the services the app needs.
 
 ## Running
 
@@ -117,9 +128,9 @@ The proxy auto-starts when you launch an app — no manual `proxy start` needed.
 
 ```bash
 # Start the app
-yarn nx run < app > :dev:local
+nx run <app>:dev:local
 # or with all services:
-yarn nx run < app > :dev:full
+nx run <app>:dev:full
 
 # Open https://<app-name>.localhost
 ```
@@ -130,10 +141,10 @@ Multiple apps run simultaneously through the same proxy:
 
 ```bash
 # Terminal 1
-yarn nx run app-one:dev:local # → https://app-one.localhost
+nx run app-one:dev:local # → https://app-one.localhost
 
 # Terminal 2
-yarn nx run app-two:dev:local # → https://app-two.localhost
+nx run app-two:dev:local # → https://app-two.localhost
 ```
 
 ## Naming Conventions
@@ -175,7 +186,7 @@ Common `proxy:start` additions:
 Useful env vars when you need them:
 
 - `PORTLESS_PORT` to override the proxy port
-- `PORTLESS_HTTPS=0` to disable TLS
+- `PORTLESS_HTTPS=0` to disable TLS (local non-HTTPS use only — drops the trusted-cert setup)
 - `PORTLESS_LAN=1` to default to LAN mode
 - `PORTLESS_TLD=test` to change the TLD
 - `PORTLESS_STATE_DIR` to override the proxy state directory
@@ -184,7 +195,7 @@ Useful env vars when you need them:
 
 | Problem | Fix |
 | --- | --- |
-| `portless` exits because there is no TTY or it cannot prompt for elevation | Pre-start the proxy with `yarn nx run <app>:proxy:start`, then launch `dev:local` |
+| `portless` exits because there is no TTY or it cannot prompt for elevation | Pre-start the proxy with `nx run <app>:proxy:start`, then launch `dev:local` |
 | Permission error on port 443 | Keep `sudo`, or run the proxy on an unprivileged port such as `-p 8080` |
-| Browser shows a certificate warning | Run `yarn nx run <app>:proxy:trust` again |
+| Browser shows a certificate warning | Run `nx run <app>:proxy:trust` again |
 | Safari cannot resolve the local hostname | Run `portless hosts sync` to add host entries |
