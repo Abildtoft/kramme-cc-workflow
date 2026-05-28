@@ -4,6 +4,7 @@ description: (experimental) Whole-product review across flows and surfaces. Requ
 argument-hint: "<url> [--flows <flow1,flow2,...>] [--focus <dimension>] [--inline]"
 disable-model-invocation: true
 user-invocable: true
+kramme-platforms: [claude-code]
 ---
 
 # Whole-Product Review
@@ -31,6 +32,21 @@ Store parsed values:
 - `FOCUS_DIMENSION` — specific dimension to emphasize, or empty (all dimensions weighted equally)
 - `INLINE_MODE` — boolean (default: false)
 
+**Normalize `--focus` to a dimension label.** Map the supplied token to a dimension from `references/review-dimensions.md`:
+
+| `--focus` token | Dimension label |
+| --- | --- |
+| `navigation`, `ia` | Navigation and IA Coherence |
+| `discoverability` | Feature Discoverability |
+| `onboarding` | Onboarding and First-Run |
+| `consistency` | Cross-Flow Consistency |
+| `dead-ends` | Dead Ends and Abandoned Transitions |
+| `friction` | Repeated Friction Points |
+| `trust-safety` | Trust and Safety Cues |
+| `copy` | Copy and Expectation Management |
+
+If the token is unrecognized, warn (`Warning: unknown --focus "<token>"; emphasizing it as free text and reviewing all dimensions.`) and proceed, passing the token through verbatim. Store the mapped label (or raw token) as `FOCUS_DIMENSION`.
+
 If no URL is provided, **hard stop**:
 
 ```
@@ -43,6 +59,8 @@ Usage:
 ```
 
 ### Step 2: Validate Prerequisites
+
+**Validate the URL format first.** If `TARGET_URL` does not begin with `http://` or `https://`, **hard stop**: `Error: TARGET_URL must be an http:// or https:// URL. Got: $TARGET_URL`. This rejects typos and keeps an unintended value from reaching the shell.
 
 **Verify the application is reachable:**
 
@@ -104,7 +122,7 @@ If `PRODUCT_AUDIT_OVERVIEW.md` exists in the project root:
 1. Read the file.
 2. Parse for previously reported findings and their IDs (PROD-NNN).
 3. Note which flows were previously reviewed and their findings.
-4. Store as `PREVIOUS_FINDINGS` for deduplication in Step 6.
+4. Store as `PREVIOUS_FINDINGS` for deduplication in Step 7.
 
 This avoids re-reporting the same issues on subsequent review runs. A finding is considered "previously reported" if it matches on:
 
@@ -159,23 +177,29 @@ Invoke `/kramme:browse` via the Skill tool to navigate to the flow's URL with fu
 
 This captures the page snapshot, screenshot, console messages, and network requests.
 
+**Go one level deep where it is safe.** A single landing snapshot misses friction, dead ends, and multi-step onboarding. After the initial capture, follow the flow's primary non-destructive entry point one step (the main call-to-action, the next step of a wizard, opening a create/empty state) and capture again. Never trigger destructive or irreversible actions (delete, pay, send, deactivate) — record those as review observations instead. If a deeper step needs data or auth that is unavailable, note it as a coverage gap for this flow and stop descending.
+
 **5b. Launch product reviewer agent**
 
 Launch the `kramme:product-reviewer` agent via the Task tool with the following context:
 
 ```
-You are reviewing the overall product experience, not a branch diff.
-This is a system-wide product review of a live application.
+You are reviewing the overall product experience of a live application, not a branch diff.
 
 PROJECT CONTEXT:
 $PROJECT_CONTEXT
 
-CURRENT FLOW: $FLOW_NAME ($FLOW_URL)
+CURRENT FLOW: $FLOW_NAME @ $FLOW_URL
 
-REVIEW MODE: Whole-product review (not PR review, not spec audit).
-Evaluate this flow against the review dimensions below.
-Focus on system-wide patterns and cross-flow consistency.
-Do NOT limit findings to a diff — evaluate the live product as-is.
+REVIEW MODE: Whole-product audit (not PR review, not spec audit).
+Evaluate THIS flow against the review dimensions below. Nothing here is
+"pre-existing" — flag every issue you find in this flow regardless of when
+it was introduced.
+
+You see only this one flow. Do not assert cross-flow inconsistencies you
+cannot verify from this evidence alone. Instead, capture this flow's
+observable patterns in the "Observed Patterns" block below so a later
+cross-flow synthesis step can compare them across flows.
 
 {If FOCUS_DIMENSION is set:}
 FOCUS: Emphasize the "$FOCUS_DIMENSION" dimension in your analysis, but still check all dimensions.
@@ -186,9 +210,16 @@ REVIEW DIMENSIONS:
 EVIDENCE:
 {Page snapshot, screenshot observations, console output, network summary from browse results}
 
-Evaluate this flow and return findings in the standard PROD-NNN format.
-For each finding, include the flow name and URL instead of file:line references.
-Use **Flow:** `$FLOW_NAME ($FLOW_URL)` instead of **File:** in findings.
+Return findings in the standard PROD-NNN audit format, using
+**Flow:** `$FLOW_NAME @ $FLOW_URL` as the location field.
+
+Then append an "Observed Patterns" block (plain notes, not findings) covering:
+- Terminology used for the key nouns and verbs on this flow
+- Primary action label(s) and their exact wording
+- Confirmation pattern (modal / inline / toast / none)
+- Save and cancel behavior
+- Loading, error, and empty-state patterns
+- Navigation entry and exit points (where this flow links to and from)
 ```
 
 **5c. Collect findings**
@@ -202,15 +233,51 @@ Collect all findings from the agent, prefixed with the flow name.
   ### PROD-XXX: Flow unreachable — $FLOW_NAME
   **Severity:** Critical
   **Dimension:** Dead Ends and Abandoned Transitions
-  **Flow:** `$FLOW_NAME ($FLOW_URL)`
+  **Flow:** `$FLOW_NAME @ $FLOW_URL`
+  **Confidence:** 100
+  **User Impact:** High
   **Issue:** Navigation to this flow failed. This may indicate a dead link, an auth-gated page, or a broken route.
   ```
 - If the agent times out or fails: Skip this flow. Log a warning and continue to the next flow.
 - Continue to the next flow regardless of individual flow failures.
 
-### Step 6: Aggregate Findings
+### Step 6: Cross-Flow Synthesis
 
-Collect all findings from all flows. Organize by severity, then by dimension:
+The per-flow reviews in Step 5 each saw only one flow, so cross-flow dimensions (system-wide IA, consistency, terminology drift, gaps between flows) cannot be judged from any single review. Run one synthesis pass over all flows together.
+
+If fewer than two flows were reviewed successfully, skip this step (there is nothing to compare) and note in the report that cross-flow synthesis was not run.
+
+Otherwise, build a digest from every reviewed flow — its `Observed Patterns` block plus a one-line evidence summary — and launch the `kramme:product-reviewer` agent via the Task tool with:
+
+```
+You are performing the CROSS-FLOW SYNTHESIS pass of a whole-product audit.
+You are given digests of every reviewed flow. Find issues that are only
+visible when flows are compared. Do NOT re-review any single flow.
+
+PROJECT CONTEXT:
+$PROJECT_CONTEXT
+
+FLOW DIGESTS:
+{For each flow: $FLOW_NAME @ $FLOW_URL, its Observed Patterns block, and a one-line evidence summary}
+
+Evaluate ONLY these cross-flow dimensions:
+- Navigation and IA Coherence (across the whole product)
+- Cross-Flow Consistency (terminology, confirmation patterns, save/cancel, loading/error states)
+- Dead Ends and Abandoned Transitions (flows that should connect but don't)
+- Repeated Friction Points (the same friction in 2+ flows)
+- Copy and Expectation Management (terminology drift across flows)
+
+Return findings in the standard PROD-NNN audit format. Because these findings
+span flows, replace the single Flow location field with a **Flows:** line
+listing every flow involved, e.g.
+**Flows:** `Settings @ /settings`, `Billing @ /billing`
+Do not report issues contained within a single flow — those belong to the
+per-flow reviews.
+```
+
+### Step 7: Aggregate Findings
+
+Collect all findings from every per-flow review and from the cross-flow synthesis pass. Organize by severity, then by dimension:
 
 **Critical** (broken flows, inaccessible features, data loss risk):
 
@@ -224,12 +291,11 @@ Collect all findings from all flows. Organize by severity, then by dimension:
 
 - Findings with severity Suggestion from any flow
 
-**Cross-flow patterns to identify during aggregation:**
+**Fold in the cross-flow synthesis findings (from Step 6).** During aggregation:
 
-- Same issue appearing in multiple flows (deduplicate, note frequency)
-- Inconsistencies between flows (different patterns for same action)
-- Navigation gaps (flows that don't connect to each other)
-- Terminology mismatches across flows
+- Place the synthesis findings (inconsistencies, navigation gaps, terminology drift, cross-flow friction) under the appropriate severity sections and in the Cross-Flow Patterns section below.
+- Deduplicate the same single-flow issue reported by multiple per-flow reviews (note frequency).
+- Drop any synthesis finding that merely restates a single-flow finding already reported.
 
 **Previous review deduplication (if `PREVIOUS_FINDINGS` exists from Step 3b):**
 
@@ -244,7 +310,7 @@ Collect all findings from all flows. Organize by severity, then by dimension:
 - Do not preserve per-flow scratch IDs from the individual reviewer runs
 - Use the renumbered IDs everywhere in the final report so follow-up discussion and previous-review matching stay unambiguous
 
-### Step 7: Write Review Report or Reply Inline
+### Step 8: Write Review Report or Reply Inline
 
 If `INLINE_MODE=true`:
 
@@ -350,14 +416,18 @@ Key patterns:
 | Error | Behavior |
 | --- | --- |
 | No URL provided | Hard stop with usage instructions |
+| URL not `http(s)://` | Hard stop with format error |
+| Unknown `--focus` token | Warn, emphasize as free text, review all dimensions |
 | No browser MCP detected | Hard stop with installation guidance |
 | App not running (connection refused) | Hard stop with instructions to start app |
 | App timeout | Hard stop with diagnostic |
 | App returns 5xx | Hard stop with server error diagnostic |
 | App returns 4xx | Warn and proceed (may need auth) |
 | Authentication required | Warn user to authenticate manually first |
+| Deeper interaction blocked (auth/data) | Note coverage gap for the flow, stop descending |
 | Individual flow navigation fails | Skip flow, log as Critical finding, continue |
 | Agent timeout on a flow | Skip flow, log warning, continue |
+| Fewer than 2 flows reviewed | Skip cross-flow synthesis, note in report |
 | All flows fail | Report with only infrastructure findings |
 
 ## Usage Examples
@@ -368,32 +438,14 @@ Key patterns:
 /kramme:product:review http://localhost:3000
 ```
 
-**Scope to specific flows:**
+**Scope to specific flows and focus a dimension:**
 
 ```
-/kramme:product:review http://localhost:4200 --flows onboarding,settings,billing
-```
-
-**Focus on a specific dimension:**
-
-```
-/kramme:product:review http://localhost:3000 --focus discoverability
+/kramme:product:review http://localhost:4200 --flows checkout,payment --focus trust-safety
 ```
 
 **Reply inline instead of writing a report file:**
 
 ```
-/kramme:product:review http://localhost:3000 --inline
-```
-
-**Review a staging environment:**
-
-```
-/kramme:product:review https://staging.myapp.com --flows dashboard,projects,team
-```
-
-**Combine flow scoping and dimension focus:**
-
-```
-/kramme:product:review http://localhost:3000 --flows checkout,payment --focus trust-safety
+/kramme:product:review https://staging.myapp.com --inline
 ```
