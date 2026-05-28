@@ -1,6 +1,6 @@
 # Refactor Mode
 
-When this skill is invoked for refactor work — `--refactor` flag, after `kramme:code:refactor-opportunities`, or any explicit "refactor X" ask — the increment loop runs the same six rules but produces a different output shape: an interview-driven Decision Document plus an ordered list of tiny commits, each leaving the codebase in a working state (Fowler).
+When this skill is invoked for refactor work — `--refactor` flag, after `kramme:code:refactor-opportunities`, or any explicit "refactor X" ask — the increment loop runs the same rules but produces a different output shape: an interview-driven Decision Document plus an ordered list of tiny commits, each leaving the codebase in a working state (Fowler).
 
 Refactor work has three properties that change the output shape:
 

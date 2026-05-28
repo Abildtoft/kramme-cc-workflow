@@ -1,6 +1,6 @@
 ---
 name: kramme:code:incremental
-description: "(experimental) Deliver changes in thin vertical slices with scope discipline, incremental verification between slices, and feature-flag guardrails for incomplete work. Use when implementing any change that spans more than one file or commit. Enforces one-thing-at-a-time, rollback-friendly commits, and explicit separation of in-scope work from noticed-but-untouched observations. Includes a refactor mode (opt-in via --refactor or after kramme:code:refactor-opportunities) that adds an interview-driven Decision Document and a Fowler-style tiny-commits plan where every intermediate state leaves the codebase working."
+description: "(experimental) Deliver changes in small, verified slices with scope discipline, incremental verification between slices, and feature-flag guardrails for incomplete work. Use when implementing any change that spans more than one file or commit. Enforces one-thing-at-a-time, rollback-friendly commits, and explicit separation of in-scope work from noticed-but-untouched observations. Includes a refactor mode (opt-in via --refactor or after kramme:code:refactor-opportunities) that adds an interview-driven Decision Document and a Fowler-style tiny-commits plan where every intermediate state leaves the codebase working."
 argument-hint: "[--refactor]"
 disable-model-invocation: false
 user-invocable: true
@@ -8,7 +8,7 @@ user-invocable: true
 
 # Incremental Implementation
 
-Deliver changes in thin vertical slices with scope discipline, incremental verification between slices, and feature-flag guardrails for incomplete work. This is the procedural expression of the rule "don't add features beyond what the task requires": turn implementation into a loop of small, verified, rollback-friendly increments where out-of-scope observations are logged but never silently fixed.
+Deliver changes in small, verified slices with scope discipline, incremental verification between slices, and feature-flag guardrails for incomplete work. This is the procedural expression of the rule "don't add features beyond what the task requires": turn implementation into a loop of small, verified, rollback-friendly increments where out-of-scope observations are logged but never silently fixed.
 
 ## When to use
 
@@ -17,7 +17,9 @@ Deliver changes in thin vertical slices with scope discipline, incremental verif
 - Any time scope creep is a realistic risk, especially when touching files adjacent to the target area.
 - Refactors where you want each intermediate state to be independently reviewable and revertible.
 
-## The Six Rules
+**Do not use for**: single-file one-line fixes, doc-only edits, dependency-version bumps, or any change whose entire diff fits in a single coherent commit. The loop's overhead outweighs the discipline at that size.
+
+## The Rules
 
 ### Rule 0 — Simplicity First
 
@@ -38,15 +40,7 @@ NOTICED BUT NOT TOUCHING: <what you saw>
 Why skipping: <out-of-scope / unrelated / deferred>
 ```
 
-See `references/scope-discipline.md` for the full prohibition list and rationale. The load-bearing prohibitions:
-
-- Clean up adjacent code you didn't need to touch.
-- Refactor imports in untouched files.
-- Remove comments you don't understand.
-- Add un-specced features.
-- Modernize syntax in files you only read.
-- "Fix while I'm here".
-- Build abstractions before the third use case demands it (rule of three).
+The canonical "do NOT" list (clean up adjacent code, refactor untouched imports, modernize syntax in files you only read, build abstractions before the third use case, etc.) and the rationale for each item live in `references/scope-discipline.md`. Read it before the first slice if scope creep is a known failure mode on this change.
 
 ### Rule 1 — One thing at a time
 
@@ -84,7 +78,7 @@ Each increment is one pass through this five-step loop:
 
 1. **Slice** — pick one slicing strategy: vertical, contract-first, or risk-first. See `references/slice-strategies.md` for when to use each and concrete examples.
 2. **Implement** — build the smallest version of the slice that is coherent and compilable. One logical change.
-3. **Verify** — build, typecheck, lint, and run existing tests. Delegate to `kramme:verify:run` to execute the project's verification battery.
+3. **Verify** — build, typecheck, lint, and run existing tests. Delegate to `kramme:verify:run` to execute the project's verification battery. If that skill is unavailable, or the project has no configured verification battery, invoke the project's build/typecheck/test commands directly (read them from `package.json`, `Makefile`, or equivalent) and log the missing battery as a `NOTICED BUT NOT TOUCHING` for a follow-up slice. Do not skip verification.
 4. **Commit** — compose an atomic, descriptive commit message. Delegate to `kramme:git:commit-message`.
 5. **Move forward** — carry state to the next slice. Do not restart the loop from scratch; the next slice builds on the committed state.
 
@@ -106,13 +100,13 @@ If any box is unchecked, the slice is not done. Fix the gap or split the slice.
 
 ## Refactor mode
 
-When this skill runs against refactor work — explicit `--refactor` flag, invocation directly after `kramme:code:refactor-opportunities`, or any user ask phrased as "refactor X" — produce a different output shape on top of the same six rules: an interview-driven Decision Document plus an ordered tiny-commits plan.
+When this skill runs against refactor work — explicit `--refactor` flag, invocation directly after `kramme:code:refactor-opportunities`, or any user ask phrased as "refactor X" — produce a different output shape on top of the same rules: an interview-driven Decision Document plus an ordered tiny-commits plan.
 
 **When this mode applies** — opt-in. Trigger on `--refactor`, on a refactor candidate handed off from `kramme:code:refactor-opportunities`, or on the user phrase "refactor X" / "consolidate Y" / "extract Z". Feature work does not need this mode.
 
-**How it works** — the increment loop runs a 7-step interview before the first slice (problem statement → verify in code → alternatives considered → scope hammer → test coverage check → tiny-commits plan → file Decision Document), then executes the slices through the standard cycle. Each commit must leave the codebase in a working state — Fowler's bar — and revertible with `git revert` without breaking `main`. Decision Document goes to `siw/REFACTOR_DECISIONS.md` if SIW is active, otherwise inline as a markdown block in the body of the **first** commit (which carries rationale for the whole stack). The full interview, template, and per-commit checklist live in `references/refactor-mode.md`.
+**How it works** — the increment loop runs a 7-step interview before the first slice (problem statement → verify in code → alternatives considered → scope hammer → test coverage check → tiny-commits plan → file Decision Document), then executes the slices through the standard cycle. Each commit must leave the codebase in a working state — Fowler's bar — and revertible with `git revert` without breaking `main`. Decision Document goes to `siw/REFACTOR_DECISIONS.md` if SIW is active, otherwise inline as a markdown block in the **body** (not the subject line) of the first commit, which carries rationale for the whole stack — reviewers should expect to scan the first commit's body, not its title. The full interview, template, and per-commit checklist live in `references/refactor-mode.md`.
 
-**Relationship to the six rules** — refactor mode does not relax any rule. Rule 0 (Simplicity), 0.5 (Scope Discipline), 1 (One thing), 2 (Compilable), 4 (Safe defaults), and 5 (Rollback-friendly) all apply per slice. Rule 3 (Feature flags) is usually inapplicable during a refactor since behavior is unchanged; if the refactor temporarily forks behavior, flag it as for any other in-progress feature.
+**Relationship to the rules** — refactor mode does not relax any rule. Rule 0 (Simplicity), 0.5 (Scope Discipline), 1 (One thing), 2 (Compilable), 4 (Safe defaults), and 5 (Rollback-friendly) all apply per slice. Rule 3 (Feature flags) is usually inapplicable during a refactor since behavior is unchanged; if the refactor temporarily forks behavior, flag it as for any other in-progress feature.
 
 **Sibling skills.** `kramme:code:refactor-pass` is the simplification-loop sibling — use it when the goal is to shrink or clarify recently changed code without restructuring. Use refactor mode here when the goal is structural change (depth, seams, locality) with a documented rationale that should outlive the diff.
 
@@ -121,7 +115,7 @@ When this skill runs against refactor work — explicit `--refactor` flag, invoc
 - **Upstream**: typically invoked after `kramme:siw:generate-phases` — each generated phase becomes a sequence of slices through this loop. Any planning skill that produces a phased plan can feed into this one.
 - **Step 3 (Verify)**: delegates to `kramme:verify:run` for the project's verification battery.
 - **Step 4 (Commit)**: delegates to `kramme:git:commit-message` for commit composition.
-- **Sibling**: `kramme:code:refactor-pass` follows the same slice discipline — refactors are a different flavor of increment but obey the same six rules.
+- **Sibling**: `kramme:code:refactor-pass` follows the same slice discipline — refactors are a different flavor of increment but obey the same rules.
 
 ---
 
