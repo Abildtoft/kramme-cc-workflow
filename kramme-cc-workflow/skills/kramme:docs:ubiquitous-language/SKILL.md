@@ -1,6 +1,6 @@
 ---
 name: kramme:docs:ubiquitous-language
-description: "Extract a DDD-style ubiquitous language glossary from the current conversation, flagging ambiguities and proposing canonical terms. Saves to UBIQUITOUS_LANGUAGE.md at the project root. Use when the user wants to define domain terms, build a glossary, harden terminology, or mentions 'ubiquitous language' or 'DDD'. Not for general programming concepts (array, function, endpoint), code-level type/class glossaries, or per-feature naming inside a single module."
+description: "Extract a DDD-style ubiquitous language glossary from the current conversation, flagging ambiguities and proposing canonical terms. Saves to UBIQUITOUS_LANGUAGE.md at the repo root. Use when the user wants to define domain terms, build a glossary, harden terminology, or mentions 'ubiquitous language' or 'DDD'. Not for general programming concepts (array, function, endpoint), code-level type/class glossaries, or per-feature naming inside a single module."
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -26,16 +26,16 @@ Route elsewhere if:
 
 ## Pre-flight: detect existing glossary
 
-Before drafting, check whether the project already has a glossary at the repo root.
+Before drafting, check whether the project already has a glossary at the repo root (the VCS top level; ask if ambiguous, e.g. in a monorepo).
 
-1. Read `UBIQUITOUS_LANGUAGE.md` if it exists.
-2. If it exists, treat it as the merge target — do not overwrite it. Identify:
+1. Read `UBIQUITOUS_LANGUAGE.md` if it exists. If it exists but does not parse as the expected format, emit a `CONFUSION` marker and ask before merging — do not overwrite a file you cannot read.
+2. If it exists and parses, treat it as the merge target — do not overwrite it. Identify:
    - Subdomain section names already in use.
    - Term entries already canonicalized (these are committed; do not rename them silently).
    - Aliases already listed as "to avoid" (preserve them).
 3. If `GLOSSARY.md` exists instead, emit a `CONFUSION` marker and ask the user whether to migrate it to `UBIQUITOUS_LANGUAGE.md` or keep the existing filename.
 
-If no glossary exists, create `UBIQUITOUS_LANGUAGE.md` at the repo root.
+If no glossary exists, state the target path (`UBIQUITOUS_LANGUAGE.md` at the repo root) and a brief outline of the terms you will capture before writing the new file.
 
 ## Output format
 
@@ -82,7 +82,7 @@ The glossary file uses this template. Subdomain sections are optional — use on
 4. **One-sentence definitions.** If you cannot define it in one sentence, the concept is too coarse — split it.
 5. **Show relationships when natural.** Cardinality (`has many`, `is a kind of`, `triggers`) is more useful than prose.
 6. **Skip generic programming concepts.** No `function`, `array`, `endpoint`, `database`, `request`, `response` — unless the project gives them a domain-specific meaning.
-7. **Cluster into subdomain tables when it helps.** A 30-term flat table is unreadable; 3 sections of 10 terms each is scannable. Use one table when the project is small.
+7. **Orient the reader once the glossary grows.** A flat 30-term table is unreadable. Below ~15 terms a single table is fine; at 15+ terms provide subdomain grouping, a Relationships section, or both so the reader has a way in.
 8. **Always include an example dialogue.** Use ≥3 canonical terms. The dialogue is the test that the vocabulary holds together.
 
 ## Markers
@@ -101,7 +101,7 @@ user for 3–5 example domain terms or describe the project's subject area.
 
 ### CONFUSION
 
-When subdomain split is unclear or two existing files conflict.
+When the subdomain split is unclear, two existing files conflict, or an existing glossary cannot be parsed.
 
 ```
 CONFUSION: terms cluster around both "billing" and "subscription" — these
@@ -121,7 +121,7 @@ Why skipping: out of scope for this glossary pass; flag for a follow-up run
 
 ### ASK FIRST
 
-These are Tier-2 changes — ask the user before proceeding:
+Ask the user before any of these:
 
 - Renaming a canonical that already lives in the existing `UBIQUITOUS_LANGUAGE.md`.
 - Migrating an existing `GLOSSARY.md` to the canonical filename.
@@ -156,18 +156,6 @@ These are the lies you will tell yourself to skip or distort the glossary. Each 
 - _"I'll add every noun from the conversation to be thorough."_ → Domain relevance only. Generic programming nouns rot the glossary and train readers to skim it.
 - _"Let me just overwrite the existing file with my fresher version."_ → Read-then-merge. Committed canonicals are decisions; treat them like ADRs.
 
-## Red Flags
-
-Rejection criteria. If any of these are true, revert and re-plan:
-
-- **Silent overwrite of an existing `UBIQUITOUS_LANGUAGE.md`** without a stated merge plan.
-- **Renaming a committed canonical** without `ASK FIRST`.
-- **Generic programming concepts** (function, array, endpoint, request, response, database) appearing in any term table.
-- **No "Flagged ambiguities" section** when the conversation clearly contained overloaded or synonymous terms.
-- **Multi-sentence definitions.** If the term needs more than one sentence, split the concept.
-- **Example dialogue uses fewer than 3 canonical terms** or uses aliases-to-avoid.
-- **Term table with no relationships and no subdomain grouping** when 15+ terms are present — the reader has no orientation.
-
 ## Verification
 
 Before declaring the glossary done, self-check:
@@ -179,7 +167,7 @@ Before declaring the glossary done, self-check:
 - [ ] Example dialogue uses ≥3 canonical terms and uses zero aliases-to-avoid.
 - [ ] No generic programming concepts in any term table.
 - [ ] If a previous glossary existed, its committed canonicals are preserved or changed only via `ASK FIRST`.
-- [ ] Subdomain sections used when 15+ terms are present; flat table acceptable below that.
+- [ ] At 15+ terms, the glossary provides subdomain grouping and/or a Relationships section; a flat table is fine below that.
 - [ ] Relationships section names cardinality (e.g. `has many`, `is a kind of`), not free-form prose.
 
 If any box is unchecked, finish the gap or revert before declaring done.

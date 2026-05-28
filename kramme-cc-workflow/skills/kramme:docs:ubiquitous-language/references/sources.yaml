@@ -1,7 +1,7 @@
 sources:
   - id: pocock-ubiquitous-language
-    url: https://github.com/mattpocock/skills/tree/main/ubiquitous-language
-    title: "Matt Pocock skills - ubiquitous-language"
-    rationale: "The DDD-style glossary extraction workflow, ambiguity flagging, opinionated canonicalization (alias-to-avoid pattern), and example-dialogue convention are adapted from this source."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    url: https://github.com/mattpocock/skills/tree/main/skills/deprecated/ubiquitous-language
+    title: "Matt Pocock skills - ubiquitous-language (deprecated upstream)"
+    rationale: "The DDD-style glossary extraction workflow, ambiguity flagging, opinionated canonicalization (alias-to-avoid pattern), and example-dialogue convention are adapted from this source; note it has since been deprecated upstream, so future divergence is expected."
+    last_reviewed_at: 2026-05-28
+    baseline_hash: "483fe10b01bed81b7eba7ee26df3f1bef9540c88"
