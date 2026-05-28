@@ -9,41 +9,32 @@ kramme-platforms: [claude-code]
 
 # Visual Onboarding Guide
 
-Generate a comprehensive, self-contained HTML onboarding guide for newcomers to a codebase.
+Generate a comprehensive onboarding guide for newcomers to a codebase as a single HTML file (diagram and chart libraries load from CDN, so rendering needs network access).
+
+Use this for a full newcomer guide to a codebase or subsystem. For a single diagram of one system or flow, use `kramme:visual:diagram` instead.
 
 **Arguments:** "$ARGUMENTS"
 
 ## Prerequisites
 
-Read the local visual references before generating:
+Read `references/css-patterns.md` before generating — it holds the always-needed layout, depth-tier, zoom, and collapsible patterns. Load the other references (`libraries.md`, `responsive-nav.md`) and the asset templates only when the workflow step below calls for them.
 
-- `references/css-patterns.md`
-- `references/libraries.md`
-- `references/responsive-nav.md`
-
-Select the appropriate template to absorb patterns:
-
-- `assets/architecture.html`
-- `assets/data-table.html`
-- `assets/mermaid-flowchart.html`
-
-Follow the workflow below. Use a warm, inviting editorial aesthetic: friendly textbook, not cold reference. Vary fonts and palette.
+**Aesthetic:** a warm, inviting editorial style — friendly textbook, not cold reference. Expressive typography, a clear palette, atmospheric backgrounds, obvious hierarchy, and motion only where it aids orientation. Vary fonts and palette. Respect `prefers-reduced-motion` and `prefers-color-scheme`.
 
 ## Workflow
 
 1. **Think.** Decide who the onboarding page is for, what they need to understand first, and which diagrams best lower the initial cognitive load.
 
-2. **Structure.** Use the local templates and references to choose the rendering approach:
-   - `assets/architecture.html` for text-heavy module overviews
+2. **Structure.** Choose the rendering approach. Read each resource below only when its condition applies:
    - `assets/mermaid-flowchart.html` for architecture, entity relationships, and key flows
+   - `assets/architecture.html` for text-heavy module overviews
    - `assets/data-table.html` for setup commands, conventions, and quick-reference tables
-   - `references/css-patterns.md` for layout patterns, zoom controls, depth tiers, and collapsible sections
    - `references/responsive-nav.md` when the guide spans 4+ sections and needs responsive navigation
-   - `references/libraries.md` for Mermaid theming, Chart.js, anime.js, and CDN usage
+   - `references/libraries.md` when using Mermaid theming, Chart.js, or anime.js (CDN usage)
 
-3. **Style.** Make the page inviting and readable: expressive typography, a clear palette, atmospheric backgrounds, obvious hierarchy, and motion only where it helps orientation. Respect `prefers-reduced-motion`.
+3. **Style.** Apply the aesthetic from Prerequisites, keeping hierarchy and orientation cues obvious.
 
-4. **Deliver.** Write a single self-contained HTML file to `~/.kramme-cc-workflow/diagrams/`, open it in the browser, and report the file path to the user.
+4. **Deliver.** Run the Verification Checkpoint, then produce and open the page per the **Output** section below.
 
 ## Arguments
 
@@ -68,6 +59,8 @@ Launch **2-3 Explore agents** in parallel (Task tool, `subagent_type: Explore`),
 
 Populate agent prompts with relevant dimension details from the exploration-dimensions reference.
 
+If an agent returns nothing or fails, proceed with the dimensions you have and mark the gap in the fact sheet rather than blocking. If the codebase lacks project docs or a package manifest, still emit a best-effort guide and flag the thin sections explicitly.
+
 ## Verification Checkpoint
 
 Before generating HTML, produce a structured fact sheet:
@@ -76,6 +69,7 @@ Before generating HTML, produce a structured fact sheet:
 - Every architecture description and behavior claim
 - Mark uncertain items explicitly
 - Verify Mermaid diagram data against actual file structure
+- Escape repo-derived text (code snippets, names, paths) before embedding it in HTML
 
 ## Page Sections
 
@@ -95,15 +89,18 @@ Before generating HTML, produce a structured fact sheet:
 
 8. **Where to Go Next** — Links to docs, common next steps, contacts (from CODEOWNERS if available).
 
-**Visual hierarchy:** Sections 1-2 dominate viewport. Sections 5-8 are reference (compact, collapsible). Sticky sidebar nav. Support `prefers-color-scheme`.
+**Visual hierarchy:** Sections 1-2 dominate viewport. Sections 5-8 are reference (compact, collapsible). Sticky sidebar nav.
 
 ## Output
 
-Write to `~/.kramme-cc-workflow/diagrams/onboarding-{project-name}.html`. Create directory if needed. Open in browser:
+Write to `~/.kramme-cc-workflow/diagrams/onboarding-{project-name}.html`, deriving `{project-name}` from the package manifest's `name`, falling back to the repository directory name. Create the directory if needed. Re-running for the same project overwrites the existing file.
 
-- macOS: `open ~/.kramme-cc-workflow/diagrams/{filename}.html`
-- Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html` Report the file path to the user.
+Open in the default browser:
 
-Include responsive section navigation.
+- macOS: `open <path>`
+- Linux: `xdg-open <path>`
+- Windows: `start <path>`
+
+If no browser opens (e.g., a headless environment), skip it. Always report the final file path to the user.
 
 Ultrathink.
