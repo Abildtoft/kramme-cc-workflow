@@ -44,9 +44,15 @@ if [ -z "$BASE_BRANCH" ]; then
   echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
   exit 1
 fi
+BASE_STALE=0
 if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2> /dev/null; then
-  echo "Error: Failed to fetch origin/$BASE_BRANCH. Check remote access and re-run with --base <branch>." >&2
-  exit 1
+  if git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null; then
+    BASE_STALE=1
+    echo "Warning: Failed to fetch origin/$BASE_BRANCH; using cached local ref (may be stale)." >&2
+  else
+    echo "Error: Failed to fetch origin/$BASE_BRANCH and no local copy exists. Check remote access and re-run with --base <branch>." >&2
+    exit 1
+  fi
 fi
 git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null || {
   echo "Error: origin/$BASE_BRANCH not found. Re-run with --base <branch>." >&2
@@ -67,6 +73,8 @@ BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
   git ls-files --others --exclude-standard
 } | sed '/^$/d' | sort -u
 ```
+
+If the deduplicated change set is empty, stop and reply with a single line — `No changes between HEAD and origin/$BASE_BRANCH. Nothing to split.` — and skip the rest of the workflow. If the base ref was used in stale mode (see step 1), say so in the same line.
 
 For each file, capture:
 
@@ -100,6 +108,8 @@ Use one combined numstat pass so untracked files are included in per-file slice 
 '
 ```
 
+Untracked files are counted by `NR` (line count) over the file contents, which approximates insertions for text but is meaningless for binaries (images, archives, fixtures). Treat per-file counts for untracked binary assets as approximate, and flag any obvious binary in the report rather than letting its line count drive slice sizing.
+
 To compute branch totals from the grouped rows, sum the first two columns:
 
 ```bash
@@ -124,6 +134,8 @@ sed -n '1,240p' path/to/untracked-source-file
 ```
 
 Skip lock files, snapshots, and generated files when interpreting intent — they travel with their owning slice rather than defining one.
+
+**Large-diff guardrail.** If the branch total from step 2 exceeds **~2000 source lines** (excluding lock files, snapshots, and generated files), do not read the diff as one blob. Instead, group files by module/directory from step 4's categorization and read each group's diff separately (e.g., `git diff "$BASE_REF"...HEAD -- src/auth/`), prioritizing source over tests and skipping snapshots. State in the final report that the diff was read in groups and which groups, if any, were sampled rather than read in full — reviewers need to know which slices were assessed from full content vs. summary.
 
 ### 4. Categorize Changes
 
@@ -207,7 +219,6 @@ Reply inline using the template in `references/output-template.md` verbatim. Do 
 
 ## Notes
 
-- This skill never edits code or rewrites git history. The user runs `git switch -c`, `git cherry-pick`, branch resets, etc. themselves.
 - Use after a code review surfaces _"this is doing too much"_, when a reviewer asks for a split, or before opening a PR you suspect bundles unrelated work.
 - **Author-driven, not reviewer-driven.** Splitting is the author's responsibility — reviewers shouldn't carry it. Self-review the diff first (a quick read-through, or run `kramme:pr:code-review`) so the seams reflect what the code actually does, not just what the file tree looks like.
 - Pair with `kramme:pr:code-review` for correctness; this skill only addresses scope and seams.
