@@ -57,35 +57,7 @@ Spawn teammates based on applicable review categories. Each teammate receives:
 - If `custom_threshold` provided: instruct the agent to use this threshold
 - Instructions to **message other teammates** when they find cross-cutting UX issues
 
-**Always spawn:**
-
-- **ux-reviewer** -- Usability heuristics and interaction states (mission from `agents/kramme:ux-reviewer.md`)
-- **product-reviewer** -- Product thinking and user flow analysis (mission from `agents/kramme:product-reviewer.md`)
-- **visual-reviewer** -- Visual consistency and responsive design (mission from `agents/kramme:visual-reviewer.md`)
-
-**Conditionally spawn:**
-
-- **a11y-auditor** -- Accessibility (WCAG 2.1 AA) (mission from `agents/kramme:a11y-auditor.md`)
-
-  Only spawn if accessibility is a project requirement:
-  1. Search the project instruction files gathered in Step 1 for keywords: `accessibility`, `a11y`, `WCAG`, `aria`, `screen reader`
-  2. Check `package.json` for a11y tooling: `eslint-plugin-jsx-a11y`, `axe-core`, `pa11y`, `@axe-core/*`
-  3. Check for `.accessibilityrc`, a11y rules in ESLint/Biome config
-  4. If **any signal found** -> a11y is a requirement, spawn the teammate
-  5. If **no signal found** -> skip unless user explicitly passes `--categories a11y` or `--categories all`
-  6. When skipped, include in output:
-     ```
-     Note: A11y audit skipped -- no accessibility requirements detected in this project.
-     Use `--categories a11y` to run it explicitly.
-     ```
-
-**Respect `--categories` filter:**
-
-- If `--categories ux` -> only spawn ux-reviewer
-- If `--categories a11y` -> spawn a11y-auditor regardless of detection
-- If `--categories product,visual` -> spawn product-reviewer and visual-reviewer
-- If `--categories all` -> spawn all 4 teammates (a11y included regardless of detection)
-- If no `--categories` flag -> spawn the 3 core teammates + a11y only if detected
+Use the same agent-selection logic as `/kramme:pr:ux-review` Step 5 (always-launch set, conditional a11y detection, and `--categories` filter) — substitute "spawn the teammate" for "launch the agent". Mission files: `agents/kramme:ux-reviewer.md`, `agents/kramme:product-reviewer.md`, `agents/kramme:visual-reviewer.md`, and `agents/kramme:a11y-auditor.md`.
 
 ### Step 3: Create and Assign Tasks
 
@@ -108,7 +80,7 @@ Create tasks in the shared task list:
 
 While teammates work:
 
-- Monitor task progress via TaskList
+- Monitor task progress via the platform's task-listing primitive
 - Relay any questions teammates have about the codebase or PR context
 - If a teammate gets stuck, provide additional context or redirect
 
@@ -146,7 +118,9 @@ Otherwise, write the aggregated audit to `UX_REVIEW_OVERVIEW.md` using the same 
 
 ### {PREFIX}-NNN: {Brief title}
 
-**Agent:** {kramme:ux-reviewer | kramme:product-reviewer | kramme:visual-reviewer | kramme:a11y-auditor} **Category:** {specific category within agent's domain} **File:** `path/to/file.tsx:42` **Confidence:** {0-100} **User Impact:** High
+**Agent:** {kramme:ux-reviewer | kramme:product-reviewer | kramme:visual-reviewer | kramme:a11y-auditor} **Category:** {specific category within agent's domain} **File:** `path/to/file.tsx:42` **Confidence:** {0-100} **User Impact:** {High | Medium | Low}
+
+`{PREFIX}` is the agent's short code: `UX`, `PROD`, `VIS`, `A11Y`. Numbering is sequential within each prefix.
 
 **Issue:** {Description}
 
@@ -193,7 +167,7 @@ Otherwise, write the aggregated audit to `UX_REVIEW_OVERVIEW.md` using the same 
 **To resolve findings, run:** `/kramme:pr:resolve-review`
 ```
 
-When file output is used, `UX_REVIEW_OVERVIEW.md` is a working artifact -- it should NOT be committed. It will be cleaned up by `/kramme:workflow-artifacts:cleanup`.
+When file output is used, `UX_REVIEW_OVERVIEW.md` is a working artifact -- it should NOT be committed. It is intended to be cleaned up by `/kramme:workflow-artifacts:cleanup` when that skill is installed.
 
 ### Step 7: Cleanup
 
