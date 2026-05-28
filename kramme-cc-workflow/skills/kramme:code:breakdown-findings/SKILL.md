@@ -1,6 +1,6 @@
 ---
 name: kramme:code:breakdown-findings
-description: "Cluster validated findings into PR-sized themes and generate self-contained implementation plans. Use after review, audit, scan, or QA workflows that produce findings reports."
+description: "Cluster validated findings into PR-sized themes and generate self-contained implementation plans. Use after review, audit, scan, or QA workflows that produce findings reports. Not for raw bug lists without severity or location structure, and not for triaging a single issue."
 argument-hint: "[source-file-or-content]"
 disable-model-invocation: true
 user-invocable: true
@@ -20,35 +20,28 @@ Cluster validated findings from reviews, audits, or scans into PR-sized themes. 
 
 ## Workflow
 
+### Phase 0: Check for Prior Artifacts
+
+Before doing anything else, list any existing `PR_PLAN_*.md` files (including `PR_PLAN_INDEX.md`) in the project root.
+
+- If none exist, proceed to Phase 1.
+- If any exist, stop and tell the user:
+  ```
+  Prior PR plan artifacts found:
+    {list of files}
+
+  Re-running would risk silent overwrite of plans whose slugs match new themes, and would leave stale plans whose slugs do not match.
+  Run `/kramme:workflow-artifacts:cleanup` to clear them, then re-run this skill.
+  ```
+- Do not delete, rename, or overwrite the files yourself.
+
 ### Phase 1: Locate Findings
 
-1. Check `$ARGUMENTS` for input:
-   - If a file path is provided (any filename — the list below is for auto-detection only; user-supplied paths are accepted regardless of name), read that file as the findings source.
-   - If `$ARGUMENTS` is not a file path (no path separator, or the path does not resolve) but contains findings-like content, treat the argument as the findings source directly. Recognize inline findings by presence of any of:
-     - severity labels (`critical`, `high`, `major`, `medium`, `minor`, `low`, `suggestion`)
-     - file:line references (e.g. `src/foo.ts:42`)
-     - a numbered or bulleted list of issues with descriptions
-     - headings like `Finding`, `Issue`, `## 1.`
-
-     If the argument is a plain sentence with none of these markers, ask the user to clarify whether it is a path, inline findings, or a description of intent.
-
-   - If empty, auto-detect by checking for these common findings artifacts in the project root (use the first one found):
-     1. `REVIEW_OVERVIEW.md`
-     2. `REFACTOR_OPPORTUNITIES_OVERVIEW.md`
-     3. `UX_REVIEW_OVERVIEW.md`
-     4. `PRODUCT_REVIEW_OVERVIEW.md`
-     5. `COPY_REVIEW_OVERVIEW.md`
-     6. `AGENT_NATIVE_AUDIT.md`
-     7. `PRODUCT_AUDIT_OVERVIEW.md`
-     8. `QA_REPORT.md`
-     9. `AUDIT_IMPLEMENTATION_REPORT.md`
-     10. `AUDIT_SPEC_REPORT.md`
-     11. `PRODUCT_AUDIT.md`
-     12. `siw/AUDIT_IMPLEMENTATION_REPORT.md`
-     13. `siw/AUDIT_SPEC_REPORT.md`
-     14. `siw/PRODUCT_AUDIT.md`
-   - If multiple files exist, list them and ask the user which to use (or process all if they choose "all").
-   - If no source is found, stop and tell the user: "No findings source found. Provide a file path (any markdown file with findings will work), paste findings inline, or run a report-producing skill first (for example `/kramme:pr:code-review`, `/kramme:code:copy-review`, `/kramme:code:refactor-opportunities`, `/kramme:code:agent-readiness`, `/kramme:product:review`, `/kramme:qa`, or `/kramme:siw:spec-audit`)."
+1. Resolve the findings source from `$ARGUMENTS`:
+   - **Resolvable file path** (resolves on disk, any filename): read it as the source.
+   - **Non-empty, not a path**: treat the argument as inline findings text.
+   - **Empty**: auto-detect by checking the candidates in `references/auto-detect-sources.md` (use the first one that exists). If multiple exist, list them and ask which one to use — process exactly one source per run.
+   - **Empty and nothing auto-detected**: stop and tell the user: "No findings source found. Provide a file path (any markdown file with findings will work), paste findings as the next message, or run a report-producing skill first (for example `/kramme:pr:code-review`, `/kramme:code:copy-review`, `/kramme:code:refactor-opportunities`, `/kramme:code:agent-readiness`, `/kramme:product:review`, `/kramme:qa`, or `/kramme:siw:spec-audit`)."
 
 2. Parse the findings source into a normalized list. For each finding, extract:
    - **Description** of the issue (the full problem statement, not a reference ID)
@@ -110,7 +103,7 @@ Group findings into PR-sized themes. A theme is a set of findings that should be
    - A later wave number means the plan is blocked by at least one earlier-wave plan, and the exact blocker labels must be named in the plan title, index, and summary.
    - Independent single-plan work still receives `W01A`.
 5. Keep the theme slug separate from the execution label: derive `{SLUG}` from the theme name only, then prefix it with `{EXECUTION_LABEL}` only in the final filename. Example: execution label `W01A` plus theme slug `define-error-types` becomes `PR_PLAN_W01A_DEFINE_ERROR_TYPES.md`.
-6. Verify no theme is too large (would require 500+ changed lines or touch 9+ files). Split if needed.
+6. Verify no theme is too large (touches 9+ files per the sizing grammar above). Split if needed.
 7. Verify no two themes overlap in affected files without an explicit dependency note.
 
 Present the clustering to the user before generating files. Prefix the block with the `PLAN:` output marker so downstream tooling can parse the proposed clustering:
@@ -146,21 +139,11 @@ For each confirmed theme:
 
 #### Plan content requirements
 
-Every section and subsection in the template must be populated. Do not leave headings empty or write "N/A".
+Populate every section in the template — no empty headings, no "N/A". The template's inline guidance covers what each section needs. A few non-obvious points that the template cannot enforce:
 
-- **Problem Statement**: Restate the full problem. Do NOT reference finding IDs, report names, or prior documents.
-- **Why These Belong Together**: Explain the shared root cause, area, or dependency.
-- **Goals**: What the PR achieves. Be specific and measurable.
-- **Non-Goals**: What the PR explicitly does NOT do.
-- **Affected Files and Systems**: Every file, module, and system that will be touched.
-- **Current Behavior**: What happens today, with concrete examples or code references.
-- **Intended End State**: Target behavior after the PR lands.
-- **Dependencies and Sequencing**: The execution label, parallel wave, exact blocker labels, exact dependent labels, what work must be completed before this PR can start, and what work this PR unblocks. Describe both labels and content so the plan is self-contained.
-- **Risks**: What could go wrong. Include mitigation for each risk.
-- **Open Questions**: Questions that must be answered before implementation. Note who should answer and the default assumption.
-- **Implementation Plan**: Numbered step-by-step instructions. Each step small enough to verify independently.
-- **Test and Verification Plan**: Use the verification methods that fit the theme. Include automated tests when code or executable behavior changes, and use workflow-specific checks such as manual validation, rerunning the source audit/review, docs/build validation, screenshots, or reproduced QA steps when the work is non-code.
-- **Completion Criteria**: Checklist of conditions for the PR to be mergeable.
+- **Problem Statement**: Restate the full problem in the plan's own words. Do NOT reference finding IDs, report names, or prior documents — the plan must be readable in isolation.
+- **Dependencies and Sequencing**: Name the execution label, the parallel wave, the exact blocker labels, and the exact dependent labels. Describe both the labels and the content of each dependency so the relationship is clear without cross-reading other plans.
+- **Test and Verification Plan**: Match verification to the work. Include automated tests when code changes; use manual validation, re-runs of the source audit/review, docs/build checks, or screenshots when the work is non-code.
 
 ### Phase 4: Generate Index
 
@@ -175,7 +158,7 @@ Every section and subsection in the template must be populated. Do not leave hea
 
 ### Phase 5: Summary
 
-Report to the user using the standard end-of-turn triplet (adapted: "CHANGES MADE" becomes "PLANS GENERATED" since this skill writes plan artifacts, not code):
+Report to the user using this end-of-turn template:
 
 ```
 PR Plan Generation Complete
@@ -193,7 +176,6 @@ PLANS GENERATED:
 
 THINGS I DIDN'T TOUCH:
   • The source findings file (read-only for this skill)
-  • Any existing PR_PLAN_*.md files from prior runs (surface them here if present)
   • Findings listed under "Excluded" in the index
 
 POTENTIAL CONCERNS:
@@ -234,7 +216,7 @@ Use these markers as prefixes when surfacing specific kinds of information so ou
 - `PLAN:` — prefix the Phase 2 proposed-themes block.
 - `PLANS GENERATED / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS` — end-of-turn triplet used in Phase 5 Summary.
 
-Adopt all markers or none — mixed marker vocabularies degrade downstream parseability.
+Use these markers verbatim where applicable. Do not invent alternate spellings or rename them — downstream tooling matches the exact strings.
 
 ## Common Rationalizations
 
@@ -261,7 +243,7 @@ Stop and re-cluster if any of these appear:
 Before reporting Phase 5, verify:
 
 - Every theme is sized ≤L.
-- `! grep -l "as described in the review\|see finding #\|per the report" PR_PLAN_*.md >/dev/null` succeeds (self-contained rule).
+- Re-read each generated plan and confirm no section refers back to the source (no phrasings like "see the review", "per the audit", "finding #N", "as described above the cut", or any other back-reference that would break the self-contained rule).
 - Every generated plan filename and title includes its execution label.
 - Every blocked plan names its blocker labels in the title, index row, dependency map, and Dependencies and Sequencing section.
 - Every same-wave group is marked as parallel in the index and summary.
