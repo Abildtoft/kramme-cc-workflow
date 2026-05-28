@@ -49,7 +49,7 @@ Reply inline using this structure verbatim. Include every section even when empt
 ## Next Steps
 
 1. Note your current branch state (`git status`, current commits) so you can return here if needed.
-2. For each slice, create a new branch off `<base>` and bring in only that slice's files (cherry-pick, partial checkout, or re-author). See the recipes in `strategies.md`.
+2. For each slice, create a new branch off `<base-branch>` and bring in only that slice's files (cherry-pick, partial checkout, or re-author). See the recipes in `strategies.md`.
 3. In each PR's body, document its position in the plan: `"depends on #N"` for stacked slices, or `"part 1 of 3, parallel with #M"` for parallel splits. Reviewers shouldn't have to reverse-engineer the structure.
 4. Open one PR per slice in dependency order. Run `kramme:pr:code-review` on each before publishing.
 ```
