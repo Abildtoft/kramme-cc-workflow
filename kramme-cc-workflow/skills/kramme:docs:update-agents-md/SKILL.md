@@ -7,7 +7,7 @@ disable-model-invocation: false
 
 # Adding to AGENTS.md
 
-AGENTS.md is the canonical agent-facing documentation. If a project uses `CLAUDE.md` or another equivalent instruction file instead, apply the same structure there. Each rule should be minimal, but many rules are OK.
+AGENTS.md is the canonical agent-facing documentation. If a project uses `CLAUDE.md` or another equivalent instruction file instead, apply the same structure there. Many rules are OK.
 
 ## Context Pointer Model
 
@@ -23,10 +23,18 @@ Prefer Context Pointers when the detail would make `AGENTS.md` long, duplicate a
 
 ## Before Writing
 
-Discover local skills to reference:
+Resolve the target file first:
+
+- Detect existing instruction files: `AGENTS.md`, `CLAUDE.md`, or another equivalent.
+- If several exist, prefer `AGENTS.md`; mirror rules into the others only when the project already keeps them in sync.
+- If none exists, create `AGENTS.md`.
+- **ALWAYS** read the chosen file in full before proposing edits, so additions reconcile with what is already there.
+- **ALWAYS** show the planned additions (or a diff) and apply them after confirmation — this file governs all future agent behavior.
+
+Discover local skills to reference (skill directories vary by harness — adjust paths to the local layout):
 
 ```bash
-find .claude/skills -name "SKILL.md" 2> /dev/null
+find .claude/skills .agents -name "SKILL.md" 2> /dev/null
 ls plugins/*/skills/*/SKILL.md 2> /dev/null
 ```
 
@@ -37,7 +45,7 @@ Map existing context before editing:
 ```bash
 find . -maxdepth 3 \
   \( -type d \( -name ".git" -o -name ".context" -o -name "node_modules" -o -name "dist" -o -name "build" -o -name ".next" -o -name ".nuxt" -o -name "coverage" -o -name ".venv" -o -name "venv" -o -name "target" \) -prune \) -o \
-  -type f \( -name "AGENTS.md" -o -name "CLAUDE.md" -o -name "README.md" -o -name "CONTRIBUTING.md" -o -name "*.md" \) -print 2> /dev/null
+  -type f \( -name "*.md" \) -print 2> /dev/null
 find . -maxdepth 3 \
   \( -type d \( -name ".git" -o -name ".context" -o -name "node_modules" -o -name "dist" -o -name "build" -o -name ".next" -o -name ".nuxt" -o -name "coverage" -o -name ".venv" -o -name "venv" -o -name "target" \) -prune \) -o \
   -type f \( -name "*schema*" -o -name "*registry*" -o -name "*routes*" -o -name "index.*" \) -print 2> /dev/null
@@ -61,6 +69,7 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 ## Writing Rules
 
 - **Existing sections first** - Only propose new sections if no appropriate existing section exists
+- **Reconcile, don't append** - Before adding a rule or Context Pointer, check whether an equivalent already exists; update it in place instead of duplicating. Re-running this skill must not create duplicate rules or sections
 - **One rule per bullet** - Keep each guideline minimal and atomic
 - **Start with keyword** - Every rule begins with ALWAYS/NEVER/PREFER/CAN/NOTE
 - **Headers + bullets** - No paragraphs
@@ -69,6 +78,12 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 - **Context Pointers over pasted detail** - Point to deeper docs, scripts, modules, tests, schemas, or ADRs with a clear when/why cue
 - **One hop** - Important pointers should be directly visible from the active agent instruction file; avoid chains of documents that only point to more documents
 - **No filler** - No intros, conclusions, or pleasantries
+
+## After Writing
+
+- Re-read the edited region.
+- **ALWAYS** confirm each new bullet starts with a keyword and states exactly one rule.
+- **ALWAYS** confirm no rule or section was duplicated.
 
 ## Common Sections
 
