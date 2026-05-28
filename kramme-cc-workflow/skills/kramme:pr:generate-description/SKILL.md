@@ -179,14 +179,15 @@ If `VISUAL_MODE=true`, read `references/visual-capture.md` and follow **Phase 2.
 
 ### Phase 3: Description Generation
 
-Before drafting, evaluate whether any **MISSING REQUIREMENT** conditions hold (see [Output markers](#output-markers)). Emit a `MISSING REQUIREMENT: …` line in the skill's conversation output whenever:
+Before drafting, evaluate whether any **MISSING REQUIREMENT** conditions hold (see the Output markers section below). Emit a `MISSING REQUIREMENT: …` line in the skill's conversation output whenever:
 
 - The branch name has no detectable issue ID and commits reference none — confirm the intended ticket or proceed without one.
 - The diff contains a database migration but no rationale is present in commits, Linear, or conversation — request the migration's purpose/rollback plan.
 - The diff toggles a feature flag's default but no rollout context is available — request the rollout plan.
-- Auto mode is active and the PR's base branch cannot be resolved after all three tiers — request `--base <ref>`.
 
 Surface the marker even when `NON_INTERACTIVE=true`; do not prompt the user, but make the gap visible in the run output so it appears alongside the generated description.
+
+(Phase 1 already aborts hard when the base branch cannot be resolved, so there is no Phase 3 trigger for that case.)
 
 **ALWAYS** generate a structured PR title and description after that check.
 
@@ -347,44 +348,57 @@ Read `references/visual-capture.md` and follow **Phase 3.5** to capture screensh
 
 #### If `DIRECT_UPDATE=true`: Update PR directly
 
-**Skip copy-paste output and save-to-file prompt.** Back up the current PR body, then update title and description from files.
+**Skip copy-paste output and save-to-file prompt.** Use this sequence to avoid both shell-interpolation and heredoc-terminator collisions in LLM-generated content:
 
-```bash
-mkdir -p .kramme-cc-workflow/pr-description
-PR_BACKUP=".kramme-cc-workflow/pr-description/pr-body.backup.$(date +%Y%m%d-%H%M%S).md"
-gh pr view --json body --jq '.body' > "$PR_BACKUP" 2> /dev/null || true
+1. **Anchor to repo root and prepare the workspace directory.** Run this bash block first:
 
-PR_TITLE_FILE=$(mktemp)
-PR_BODY_FILE=$(mktemp)
-trap 'rm -f "$PR_TITLE_FILE" "$PR_BODY_FILE"' EXIT
+   ```bash
+   REPO_ROOT=$(git rev-parse --show-toplevel)
+   BACKUP_DIR="$REPO_ROOT/.kramme-cc-workflow/pr-description"
+   mkdir -p "$BACKUP_DIR"
 
-# Agent writes the literal title and body into these files (no shell interpolation):
-cat > "$PR_TITLE_FILE" <<'PR_TITLE_DELIM_98237'
-<title>
-PR_TITLE_DELIM_98237
+   # Ensure the namespace is gitignored so backups and saved descriptions are
+   # not accidentally committed. Append once if missing.
+   GITIGNORE="$REPO_ROOT/.gitignore"
+   if [ -f "$GITIGNORE" ] && ! grep -qxF ".kramme-cc-workflow/" "$GITIGNORE"; then
+     printf '\n.kramme-cc-workflow/\n' >> "$GITIGNORE"
+   fi
 
-cat > "$PR_BODY_FILE" <<'PR_BODY_DELIM_98237'
-<description>
-PR_BODY_DELIM_98237
+   # Snapshot the prior PR body. Real failure leaves no backup; empty backup is discarded.
+   PR_BACKUP="$BACKUP_DIR/pr-body.backup.$(date -u +%Y%m%dT%H%M%SZ).$$.md"
+   gh pr view --json body --jq '.body' > "$PR_BACKUP" 2> /dev/null
+   if [ ! -s "$PR_BACKUP" ]; then
+     PR_BACKUP=""
+   fi
+   echo "BACKUP_DIR=$BACKUP_DIR"
+   echo "PR_BACKUP=${PR_BACKUP:-<none>}"
+   ```
 
-PR_TITLE=$(cat "$PR_TITLE_FILE")
-gh pr edit --title "$PR_TITLE" --body-file "$PR_BODY_FILE"
-```
+2. **Write the generated title and body to files using the Write tool (not bash).** Targets:
+   - `$BACKUP_DIR/new-title.txt` — the conventional-commit title, single line, no trailing newline.
+   - `$BACKUP_DIR/new-body.md` — the full description markdown.
 
-Notes:
+   Using the Write tool keeps the title and body content fully out of any shell parser, eliminating both `$`/backtick expansion and heredoc-terminator collisions regardless of what tokens appear in the body.
 
-- The single-quoted heredoc terminators (`PR_TITLE_DELIM_98237`, `PR_BODY_DELIM_98237`) are unique enough that PR text is unlikely to collide. Heredoc bodies are literal — no `$`/backtick expansion happens on title or body content.
-- Reading the title via `$(cat …)` keeps it out of any earlier interpolation step.
-- `gh pr view` runs before the edit so manual edits to the previous PR body are preserved in `.kramme-cc-workflow/pr-description/`.
+3. **Apply the edit:**
 
-**After updating**, confirm success and surface the backup path:
+   ```bash
+   gh pr edit \
+     --title "$(cat "$BACKUP_DIR/new-title.txt")" \
+     --body-file "$BACKUP_DIR/new-body.md"
+   ```
+
+   - `"$(cat …)"` substitutes the literal file contents into one argv element; `gh` does not re-evaluate the argument as shell.
+   - `--body-file` reads the body straight from disk; nothing in it flows through the shell.
+
+**After updating**, confirm success. Include the backup line only when a backup actually exists:
 
 ```
 PR updated successfully.
 
 URL: {pr-url}
 Title: {title}
-Previous body backed up to: {PR_BACKUP}
+{when PR_BACKUP is non-empty: "Previous body backed up to: {PR_BACKUP}"}
 ```
 
 **If the update fails**, fall back to presenting the description for copy-paste (same as the default flow below) and show the error.
@@ -413,11 +427,11 @@ Here is your generated PR:
 
 After presenting the description, ask: "Would you like me to save this description to a markdown file?"
 
-If yes, save to `.kramme-cc-workflow/pr-description/PR_DESCRIPTION.md` (the parent directory is already gitignore-friendly because it lives under a tool-scoped namespace). Confirm the absolute file path after saving.
+If yes, save to `$REPO_ROOT/.kramme-cc-workflow/pr-description/PR_DESCRIPTION.md` where `REPO_ROOT=$(git rev-parse --show-toplevel)`. Append `.kramme-cc-workflow/` to the repo's `.gitignore` first if it is not already listed (use the same idempotent check as the `DIRECT_UPDATE` block above), so the saved file is not accidentally committed. Confirm the absolute file path after saving.
 
 ### Phase 5: Pre-publish Verification
 
-Run the consolidated checklist in [Verification](#verification) below. Phases 1–4 do not have their own checklist; the Verification section is the single source of truth.
+Run the consolidated checklist in the Verification section near the end of this file. Phases 1–4 do not have their own checklist; the Verification section is the single source of truth.
 
 ## Best Practices
 
@@ -497,6 +511,6 @@ Single pre-publish checklist. Run this before presenting copy-paste output, befo
 
 **Output routing**
 
-- [ ] `DIRECT_UPDATE=true` → ran `gh pr view --json body` backup before `gh pr edit`; backup path surfaced in the success message.
+- [ ] `DIRECT_UPDATE=true` → ran the Phase 4 sequence in order: repo-root anchored backup → `.gitignore` append → Write tool wrote title/body files → `gh pr edit --title "$(cat …)" --body-file …`. The success message includes the backup line only when the backup file is non-empty.
 - [ ] `DIRECT_UPDATE=false` → presented copy-paste output; only asked about saving when `NON_INTERACTIVE=false`.
 - [ ] Any `MISSING REQUIREMENT`, `UNVERIFIED`, `CONFUSION`, or `NOTICED BUT NOT TOUCHING` markers are emitted in the run output, not embedded in the PR body.
