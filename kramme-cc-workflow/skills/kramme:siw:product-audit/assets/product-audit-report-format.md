@@ -1,12 +1,12 @@
 # Product Audit
 
-**Date:** {date} **Spec Files Reviewed:** {list}
+**Date:** {date} **Spec Files Audited:** {list}
 
 ## Work Context
 
 {If work_context found:} Work Type: **{work_type}** — {adjustments applied, e.g. "Internal Tool adjustments: market fit analysis skipped"}
 
-{If no work_context found:} Not specified — full product review applied.
+{If no work_context found:} Not specified — full product audit applied.
 
 ## Summary
 

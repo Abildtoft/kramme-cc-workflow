@@ -1,6 +1,6 @@
 # Product Reviewer Agent Prompt
 
-Use this prompt for `/kramme:siw:product-audit` Step 4. Fill in `{list of spec file paths}`, `{previous findings}` (previously resolved `PROD-NNN` findings, or `None - first review`), and optional work-context blocks before launching the reviewer agent.
+Use this prompt for `/kramme:siw:product-audit` Step 4. Fill in `{list of spec file paths}`, `{previous findings}` (previously resolved `PROD-NNN` findings, or `None - first audit`), and optional work-context blocks before launching the reviewer agent.
 
 ## Launch
 
