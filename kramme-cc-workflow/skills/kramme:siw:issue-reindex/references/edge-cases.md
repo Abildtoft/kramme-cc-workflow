@@ -60,7 +60,7 @@ If no active spec file exists during the capture check:
 
 Prefer `trash` when available. If it is unavailable:
 
-- Use `rm -f` only after the restart plan is confirmed and spec capture is complete.
+- Use `rm -f` only after the reindex plan is confirmed and spec capture is complete.
 - Report that permanent deletion was used.
 - Do not use recursive deletion for individual issue markdown files.
 
@@ -70,5 +70,5 @@ If a table row cannot be parsed:
 
 - Preserve the original row.
 - Do not infer an issue id from the title.
-- Stop if the malformed row is in the confirmed restart scope.
+- Stop if the malformed row is in the confirmed reindex scope.
 - Report the row and ask the user to repair it before continuing.

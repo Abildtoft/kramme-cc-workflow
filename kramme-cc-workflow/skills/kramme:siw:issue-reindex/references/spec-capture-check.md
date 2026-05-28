@@ -1,10 +1,10 @@
 # Spec Capture Check
 
-Use this check after the user confirms the restart plan and before deleting any DONE issue files.
+Use this check after the user confirms the reindex plan and before deleting any DONE issue files.
 
 ## Inputs
 
-- The confirmed restart scope.
+- The confirmed reindex scope.
 - The original issue-id map, including every DONE issue selected for deletion.
 - The DONE issue files from `siw/issues/`.
 - `siw/LOG.md` when present.

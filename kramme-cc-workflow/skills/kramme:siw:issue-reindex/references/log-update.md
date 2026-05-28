@@ -7,7 +7,7 @@ Use this procedure to update `siw/LOG.md` and to apply the same issue-reference 
 - The original file content being rewritten.
 - `renumberById`: original active issue id to new active issue id.
 - `deletedById`: original DONE issue id to deleted issue title.
-- The confirmed restart scope.
+- The confirmed reindex scope.
 
 ## Matching Rules
 

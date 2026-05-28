@@ -1,11 +1,12 @@
 ---
 name: kramme:siw:issue-reindex
-description: Remove all DONE issues and renumber remaining issues within each prefix group
+description: Remove all DONE issues and renumber remaining issues within each prefix group. Not for editing live issue content, archiving still-open issues, or moving issues between prefix groups.
 disable-model-invocation: true
 user-invocable: true
+kramme-platforms: [claude-code]
 ---
 
-# Restart Issues
+# Reindex Issues
 
 Remove all DONE issues and renumber remaining issues **within each prefix group**. This command:
 
@@ -72,7 +73,7 @@ ls siw/OPEN_ISSUES_OVERVIEW.md siw/issues/ 2> /dev/null
 **If siw/OPEN_ISSUES_OVERVIEW.md doesn't exist:**
 
 ```
-No siw/OPEN_ISSUES_OVERVIEW.md found. Nothing to restart.
+No siw/OPEN_ISSUES_OVERVIEW.md found. Nothing to reindex.
 
 To initialize a new SIW workflow, run /kramme:siw:init
 ```
@@ -82,7 +83,7 @@ To initialize a new SIW workflow, run /kramme:siw:init
 **If siw/issues/ directory doesn't exist or is empty:**
 
 ```
-No issues found. Nothing to restart.
+No issues found. Nothing to reindex.
 
 To create issues, run /kramme:siw:issue-define
 ```
@@ -132,15 +133,15 @@ Categorize issues **by prefix group**:
 Use AskUserQuestion:
 
 ```yaml
-header: "Restart Scope"
-question: "Phase issues detected. Which issues should be included in the restart?"
+header: "Reindex Scope"
+question: "Phase issues detected. Which issues should be included in the reindex?"
 options:
   - label: "All issues"
-    description: "Reset both general (G-) and phase (P1-, P2-, etc.) issues"
+    description: "Reindex both general (G-) and phase (P1-, P2-, etc.) issues"
   - label: "General issues only"
-    description: "Reset only general (G-) issues, leave phase issues unchanged"
+    description: "Reindex only general (G-) issues, leave phase issues unchanged"
   - label: "Cancel"
-    description: "Abort the restart"
+    description: "Abort the reindex"
 ```
 
 **If "Cancel":** Abort.
@@ -153,10 +154,10 @@ options:
 
 ### 3.2 Present the Plan
 
-Present the plan to the user (filtered by scope if applicable):
+Present the plan to the user (filtered by scope if applicable). No-change rows may be omitted in large workspaces to keep the summary scannable:
 
 ```
-Issues Restart Plan
+Issues Reindex Plan
 
 DONE issues to delete (X):
 - G-002: {title}
@@ -166,19 +167,16 @@ DONE issues to delete (X):
 Active issues to renumber (by prefix group):
 
 General (G-):
-- G-001 -> G-001 (no change)
 - G-003 -> G-002
 
 # Phase sections only shown if "All issues" selected:
 Phase 1 (P1-):
-- P1-001 -> P1-001 (no change)
-- P1-002 -> P1-002 (no change)
 - P1-004 -> P1-003
 
 Phase 2 (P2-):
-- P2-001 -> P2-001 (no change)
+- (no renames)
 
-Proceed with restart?
+Proceed with reindex?
 ```
 
 ### 3.3 Confirm
@@ -186,10 +184,10 @@ Proceed with restart?
 Use AskUserQuestion:
 
 ```yaml
-header: "Confirm Issues Restart"
+header: "Confirm Issues Reindex"
 question: "This will delete DONE issues and renumber remaining issues. Proceed?"
 options:
-  - label: "Yes, restart issues"
+  - label: "Yes, reindex issues"
     description: "Delete DONE issues and renumber remaining from 001"
   - label: "No, cancel"
     description: "Keep current state"
@@ -199,72 +197,92 @@ options:
 
 ## Step 4: Verify Spec Capture of DONE Issues
 
-Read and follow `references/spec-capture-check.md` before deleting any DONE issue files.
+Read and follow `references/spec-capture-check.md` before deleting any DONE issue files. It defines durable-vs-transient classification, spec-update rules, stop conditions, and the spec-capture report format.
 
 ---
 
 ## Step 5: Delete DONE Issue Files
 
-For each DONE issue:
+For each DONE issue id, resolve the matching file before deletion:
+
+1. Expand the glob `siw/issues/ISSUE-{prefix}-{number}-*.md` to its concrete matches.
+2. **Exactly one match:** proceed to delete.
+3. **Zero matches:** apply the missing-DONE-file rule in `references/edge-cases.md` ("Missing Files") and stop for user confirmation.
+4. **Multiple matches:** apply the multiple-files rule in `references/edge-cases.md` ("Missing Files") and stop to ask which file is authoritative.
+
+Delete the single confirmed file. Prefer `trash` when available; otherwise fall back to `rm -f` on that exact path:
 
 ```bash
-# Delete using trash if available
+target="siw/issues/ISSUE-G-001-some-slug.md"   # the single resolved path
 if command -v trash &> /dev/null; then
-  trash siw/issues/ISSUE-{prefix}-{number}-*.md
+  trash "$target"
 else
-  rm -f siw/issues/ISSUE-{prefix}-{number}-*.md
+  rm -f "$target"
 fi
 ```
+
+Never pass the unexpanded glob to `trash` or `rm`.
 
 ---
 
 ## Step 6: Rename Remaining Issue Files
 
+Define maps before renaming anything:
+
+- `renumberById`: original active issue id → new active issue id (see `references/log-update.md` for the full definition and matching rules).
+- `deletedById`: original DONE issue id → deleted issue title (same reference).
+
+Build the complete original-to-new filename map for every active issue in scope, then verify every target filename is unique and does not collide with an existing file outside the map.
+
 For each active issue that needs renumbering **within its prefix group**:
 
-1. Read the issue file content
-2. Update the issue number in the file header (e.g., `# ISSUE-G-003:` -> `# ISSUE-G-002:`)
-3. Rewrite any short/full issue-id references inside the file body using the same `renumberById` / `deletedById` maps and collision-safe matching rules described in Step 8
-   - This includes `**Related:**`, dependency lists such as `Blocked by` / `Blocks`, `Parallelization Guidance`, and any other prose references to issue ids
-   - If a referenced issue was deleted, keep the original id and annotate it with `(deleted: "{title}")` instead of silently pointing it at a different renumbered issue
-4. Update the `**Status:**` line if it references the issue number
-5. Preserve any existing `**Size:**` / `**Parallelization:**` / `**Mode:**` metadata while updating ids
-6. Write to new filename
-7. Delete old file
+1. Read the issue file content.
+2. Update the issue number in the file header (e.g., `# ISSUE-G-003:` -> `# ISSUE-G-002:`).
+3. Rewrite any short/full issue-id references inside the file body using the `renumberById` / `deletedById` maps and the collision-safe matching rules in `references/log-update.md`.
+   - This includes `**Related:**`, dependency lists such as `Blocked by` / `Blocks`, `Parallelization Guidance`, and any other prose references to issue ids.
+   - If a referenced issue was deleted, keep the original id and annotate it with `(deleted: "{title}")` instead of silently pointing it at a different renumbered issue.
+4. Update the `**Status:**` line if it references the issue number.
+5. Preserve any existing `**Size:**` / `**Parallelization:**` / `**Mode:**` metadata while updating ids.
+6. Write to the new filename.
+7. Delete the old file.
+
+**Rename order to avoid collisions:**
+
+- Compress-down (the common case after DONE deletions, e.g., `G-002 → G-001`, `G-003 → G-002`) requires processing renames in **ascending order of the new id within each prefix group**. Processing highest-first collides because the lower target still exists.
+- For any case where two active files would swap or where ascending order is not obviously safe, follow `references/edge-cases.md` ("Rename Collisions") and rename through temporary filenames so order does not matter.
 
 **Example:**
 
 ```bash
-# ISSUE-G-003-api-design.md -> ISSUE-G-002-api-design.md
-# Update content: "# ISSUE-G-003:" -> "# ISSUE-G-002:"
+# Compress-down within G-: G-002 -> G-001, then G-003 -> G-002
+mv siw/issues/ISSUE-G-002-foo.md siw/issues/ISSUE-G-001-foo.md
 mv siw/issues/ISSUE-G-003-api-design.md siw/issues/ISSUE-G-002-api-design.md
 ```
 
 **Important:**
 
-- Process each prefix group separately
-- Process in reverse order within each group (highest number first) to avoid conflicts when renaming
-- Classify matches against the original issue-file content first; do not chain replacements
-- Do NOT merge issues between prefix groups
+- Process each prefix group separately.
+- Classify matches against the original issue-file content first; do not chain replacements.
+- Do NOT merge issues between prefix groups.
 
 ---
 
 ## Step 7: Update siw/OPEN_ISSUES_OVERVIEW.md
 
-Read and follow `references/overview-update.md` to rebuild `siw/OPEN_ISSUES_OVERVIEW.md`.
+Read and follow `references/overview-update.md` to rebuild `siw/OPEN_ISSUES_OVERVIEW.md`. It defines the section/schema preservation rules, related-column rewrites, empty-section handling, and consistency checks.
 
 ---
 
 ## Step 8: Update siw/LOG.md
 
-Read and follow `references/log-update.md` to update issue references in `siw/LOG.md`.
+Read and follow `references/log-update.md` to update issue references in `siw/LOG.md`. It defines `renumberById` / `deletedById`, the short/full id matching rules, replacement rules, and the active-issue-body rewrite rules used by Step 6.
 
 ---
 
 ## Step 9: Report Results
 
 ```
-Issues Restart Complete
+Issues Reindex Complete
 
 Spec Capture:
 - {N} items migrated
