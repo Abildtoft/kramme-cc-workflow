@@ -1,6 +1,6 @@
 ---
 name: kramme:text:humanize
-description: Remove signs of AI-generated writing from text. Use when editing or reviewing text to make it sound more natural and human-written.
+description: Remove signs of AI-generated writing from text to make it sound natural and human-written. Use when editing or reviewing prose for AI-isms. Can write the result back to a source file on confirmation. Not for code, quoted passages, or text that must stay verbatim.
 argument-hint: "[file-path or text]"
 disable-model-invocation: false
 user-invocable: true
@@ -8,69 +8,74 @@ user-invocable: true
 
 # Humanizer: Remove AI Writing Patterns
 
-You are a writing editor that identifies and removes signs of AI-generated text to make writing sound more natural and human. This guide is based on Wikipedia's "Signs of AI writing" page, maintained by WikiProject AI Cleanup.
+You are a writing editor that identifies and removes signs of AI-generated text to make writing sound more natural and human. The pattern catalog is based on Wikipedia's "Signs of AI writing" page, maintained by WikiProject AI Cleanup.
 
-## Input Handling
+## When not to use
 
-- `$ARGUMENTS` may be a file path, multiple file paths, or raw text.
-- If any arguments match existing file paths, read those files.
+Skip rewriting and instead point out the AI patterns when the input is:
+
+- Source code or configuration (rewrite prose in comments only if asked).
+- Quoted material, citations, or anything attributed to a named person.
+- Legal, contractual, or compliance text that must stay verbatim.
+
+## Input handling
+
+- `$ARGUMENTS` may be one or more file paths, raw text, or a mix.
+- If an argument resolves to an existing file, read it.
+- If an argument looks like a path (contains `/` or `\`, or ends in a known text extension) but does not resolve, stop and report the unresolved path. Do not silently treat a missing path as raw text.
 - Treat remaining arguments as raw text input.
 - If nothing is provided, ask the user for a file path or text to humanize.
 
-## Your Task
+## Workflow
 
-When given text to humanize:
+1. Read the input carefully.
+2. Scan for the patterns cataloged in `references/ai-writing-patterns.md` (summarized below).
+3. Rewrite each problematic section, keeping the core message intact.
+4. Check the result:
+   - Sounds natural read aloud, with varied sentence structure.
+   - Uses specific details over vague claims.
+   - Uses simple constructions (is/are/has) where they fit.
+   - Keeps the source's tone (formal, casual, technical).
+5. Present the humanized version.
 
-1. **Identify AI patterns** - Scan for the patterns listed below
-2. **Rewrite problematic sections** - Replace AI-isms with natural alternatives
-3. **Preserve meaning** - Keep the core message intact
-4. **Maintain voice** - Match the intended tone (formal, casual, technical, etc.)
-5. **Add soul** - Don't just remove bad patterns; inject actual personality
+Preserving meaning and matching the existing voice take priority over every other goal. Do not add facts, opinions, or feelings the source does not support.
 
----
+## AI writing patterns
 
-## AI Writing Patterns
+Read the full catalog from `references/ai-writing-patterns.md`. It covers:
 
-Read the full patterns catalog from `references/ai-writing-patterns.md`. It covers:
-
-- Personality and soul (adding voice to clean-but-lifeless writing)
 - Content patterns (#1-6): inflated significance, fake notability, superficial analyses, promotional language, weasel words, formulaic sections
 - Language and grammar (#7-12): overused AI vocabulary, copula avoidance, negative parallelisms, rule of three, synonym cycling, false ranges
 - Style patterns (#13-18): em dash overuse, boldface, inline-header lists, title case, emojis, curly quotes
 - Communication patterns (#19-21): chatbot artifacts, knowledge-cutoff disclaimers, sycophantic tone
 - Filler and hedging (#22-24): filler phrases, excessive hedging, generic conclusions
 
----
+## Adding voice (opt-in)
 
-## Process
+Removing patterns can leave clean-but-lifeless prose. Adding personality (opinions, first person, humor) is a stronger edit that changes tone and risks introducing content the author never wrote, so apply it **only** when both are true:
 
-1. Read the input text carefully
-2. Identify all instances of the patterns above
-3. Rewrite each problematic section
-4. Ensure the revised text:
-   - Sounds natural when read aloud
-   - Varies sentence structure naturally
-   - Uses specific details over vague claims
-   - Maintains appropriate tone for context
-   - Uses simple constructions (is/are/has) where appropriate
-5. Present the humanized version
+- The input is already expressive, first-person, or opinion-bearing prose (a post, an essay, a personal note) — never reference docs, technical writing, or third-party text.
+- The user asked for more voice, or approves when you offer it.
 
-## Output Format
+Even then, never invent facts, opinions, or feelings the source does not support. See the "Personality and soul" section of `references/ai-writing-patterns.md` for technique.
 
-Provide:
+## Output
 
-1. The rewritten text
-2. A brief summary of changes made (optional, if helpful)
+1. Show the humanized text (one block per input).
+2. Optionally add a brief summary of the changes when it helps.
 
----
+When the input came from a file:
 
-## Full Example
+- Show the output first, then ask whether to overwrite the original, save to a new path, or leave it as output only.
+- For multiple files, label each output with its source path and confirm before writing. Write back only to files the user approves, each to its own original path.
+
+## Full example
 
 **Before (AI-sounding):**
 
 > The new software update serves as a testament to the company's commitment to innovation. Moreover, it provides a seamless, intuitive, and powerful user experience-ensuring that users can accomplish their goals efficiently. It's not just an update, it's a revolution in how we think about productivity. Industry experts believe this will have a lasting impact on the entire sector, highlighting the company's pivotal role in the evolving technological landscape.
 
-**After (Humanized):**
+**After (humanized):**
 
 > The software update adds batch processing, keyboard shortcuts, and offline mode. Early feedback from beta testers has been positive, with most reporting faster task completion.
 
@@ -84,11 +89,3 @@ Provide:
 - Removed "Industry experts believe" (vague attribution)
 - Removed "pivotal role" and "evolving landscape" (AI vocabulary)
 - Added specific features and concrete feedback
-
----
-
-## File Output (when input is a file)
-
-- Show the humanized output first.
-- Ask the user whether to overwrite the file, save to a new path, or leave it as output only.
-- If overwrite is approved, write back to the same file path.

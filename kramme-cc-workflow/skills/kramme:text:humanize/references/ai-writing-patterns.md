@@ -6,6 +6,8 @@ Based on Wikipedia's "Signs of AI writing" page, maintained by WikiProject AI Cl
 
 ## PERSONALITY AND SOUL
 
+This is an opt-in technique, not a cleanup default. Apply it only to expressive, first-person prose when the user wants more voice, and never invent facts, opinions, or feelings the source does not support. For reference, technical, or third-party text, skip this section and only remove patterns. Preserving meaning and the author's tone always wins.
+
 Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as obvious as slop. Good writing has a human behind it.
 
 ### Signs of soulless writing (even if technically "clean"):
