@@ -4,6 +4,7 @@ description: Deep product review of branch and local changes. Evaluates user-val
 argument-hint: "[--base <branch>] [--threshold 0-100] [--inline]"
 disable-model-invocation: false
 user-invocable: true
+kramme-platforms: [claude-code]
 ---
 
 # Product Review for Pull Request and Local Changes
@@ -87,9 +88,8 @@ BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
   git diff --name-only                     # unstaged local changes
   git ls-files --others --exclude-standard # untracked local files
 } | sed '/^$/d' | sort -u
+# All changed files are relevant for product review -- no file-type filtering.
 ```
-
-All changed files are relevant for product review -- no file-type filtering.
 
 After identifying the changed files, discover any additional nested instruction files that apply to those files (for example `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or tool-specific equivalents) and merge those constraints into the conventions from Step 2 before launching the reviewer agent.
 
@@ -115,6 +115,8 @@ Previously addressed findings have the format:
 - **Issue/Finding:** [description]
 - **Action taken:** [what was done]
 
+If the file exists but contains no parseable entries in this format (e.g., it was hand-edited, partially written, or follows an older schema), skip the previously-addressed filtering in Step 7 and continue with all findings active. Do not stop the workflow.
+
 ### Step 5: Launch Product Reviewer Agent
 
 Launch **kramme:product-reviewer** via the Task tool with:
@@ -126,7 +128,7 @@ Launch **kramme:product-reviewer** via the Task tool with:
 - Staged local diff: `git diff --cached`
 - Unstaged local diff: `git diff`
 - Untracked local files list: `git ls-files --others --exclude-standard` (agent should treat these as new files and review full file content)
-- If `custom_threshold` was provided: instruct the agent to use this threshold instead of the default (e.g., "Only report findings with confidence >= {custom_threshold}")
+- Threshold instruction: always pass an explicit threshold to the agent. Use `custom_threshold` if provided in Step 1, otherwise pass 70 (e.g., "Only report findings with confidence >= {threshold}"). Do not rely on the agent's internal default.
 - Explicit instruction: **"You are in PR mode. Focus on changes introduced by this diff. Evaluate: user-value alignment, flow completeness, missing states (loading, error, empty, edge), copy quality and defaults, permission/role behavior, adjacent-flow regressions, whether the change makes a clear product call, and whether obvious non-goals or deprioritized cases are missing. If rationale is absent, infer the likely user job and business reason from the code and docs, state the assumption, and review against it instead of stopping."**
 
 ### Step 6: Validate Relevance
@@ -137,6 +139,8 @@ After collecting findings from the product reviewer:
 - Cross-reference each finding against the full review scope (committed PR diff + staged/unstaged/untracked local changes)
 - Filter pre-existing issues and out-of-scope problems
 - Return only findings caused by this combined scope
+
+**Agent failure handling.** If the product reviewer or relevance validator is unavailable, times out, or returns output that cannot be parsed as findings, surface the failure to the user with the agent name and what was attempted, then stop without writing `PRODUCT_REVIEW_OVERVIEW.md`. Do not fabricate findings or silently continue with an empty result.
 
 ### Step 7: Filter Previously Addressed Findings
 
@@ -179,15 +183,11 @@ Otherwise:
 - Write to `PRODUCT_REVIEW_OVERVIEW.md` in the project root using the report format from `assets/product-review-report-format.md`
 - Include all sections even if empty (with count of 0)
 - Treat the file as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
+- If `PRODUCT_REVIEW_OVERVIEW.md` is not already listed in `.gitignore` (or any `.gitignore` in a parent directory), append the entry and mention the addition to the user. This prevents accidental commits of the working artifact.
 
 ### Step 9: Provide Action Plan
 
-If Critical or Important findings were found:
-
-- When `INLINE_MODE=false`, suggest running `/kramme:pr:resolve-review --local`
-- When `INLINE_MODE=true`, suggest passing the inline report content to `/kramme:pr:resolve-review`
-
-Organize findings summary in the terminal output:
+Emit the terminal output below. When there are Critical or Important findings, the embedded resolve commands serve as the action plan; when there are none, omit the "To resolve findings" block.
 
 ```
 # Product Review Complete
