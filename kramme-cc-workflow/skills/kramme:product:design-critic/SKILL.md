@@ -42,11 +42,19 @@ user goal
 - Map jobs-to-be-done and turn them into concrete interface behavior.
 - Tear down competitor products with an eye for reusable design moves.
 
+## Do Not Use This Skill For
+
+- Accessibility compliance audits (WCAG, screen-reader, contrast-only checks).
+- Visual-consistency or design-token QA on already-shipped UI.
+- Standalone usability-heuristic or copy-only reviews.
+
+Reach for the dedicated accessibility, visual, or copy reviewers for those. This skill is for product-design judgment, not single-axis polish.
+
 ## Input Handling
 
 Ground the critique in the artifact before giving advice.
 
-- If `$ARGUMENTS` includes one or more **URLs**, inspect them with `/kramme:browse` or the best available browser tooling before critiquing.
+- If `$ARGUMENTS` includes one or more **URLs**, inspect them with the best available browser tooling before critiquing (in Claude Code, `/kramme:browse`).
 - If `$ARGUMENTS` includes **image files or screenshots**, inspect the image first and critique the actual surface shown.
 - If `$ARGUMENTS` includes **local files**, read them before critiquing. Treat markdown/spec files as product context, and treat design/image assets as the surface under review.
 - If `$ARGUMENTS` includes both artifacts and a question, use the artifacts as primary evidence and the question as the framing.
@@ -156,7 +164,6 @@ Do not use craft details to excuse a weak product decision. Polish compounds str
 - Prefer strong object-action relationships over generic dashboards.
 - Prefer reversible flows when stakes are high.
 - Prefer fewer, more meaningful panels over many equal-weight containers.
-- Prefer explicit non-goals and deferred complexity over premature comprehensiveness.
 
 ## Explanation Layer
 
@@ -183,6 +190,8 @@ Structure the response in this order:
 8. Competitor or pattern references, if relevant
 
 Keep the recommendation opinionated. Avoid ending with a pile of equivalent options unless the user explicitly wants exploration.
+
+This skill produces a critique only: it writes no files and makes no changes to the artifact under review.
 
 ## References
 
