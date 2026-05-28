@@ -4,6 +4,100 @@
 
 ### Removed
 
+## [0.59.0] - 2026-05-28
+
+### Added
+- Add pr:verify-description for body/diff drift checks (#371)
+
+### Changed
+- Resolve review findings on kramme:visual:diff-review (#451)
+- Resolve review findings on kramme:visual:diagram (#447)
+- Resolve review findings on kramme:visual:generate-image (#450)
+- Resolve review findings on kramme:visual:project-recap (#449)
+- Resolve review findings on kramme:visual:plan-review (#448)
+- Resolve review findings on kramme:visual:onboarding (#446)
+- Resolve review findings on kramme:product:review (#445)
+- Resolve review findings on kramme:browse (#441)
+- Resolve review findings on kramme:product:design-critic (#443)
+- Resolve review findings on kramme:nx:setup-portless (#442)
+- Resolve review findings on kramme:linear:issue-implement (#444)
+- Resolve review findings on kramme:linear:issue-define (#440)
+- Guard workflow-artifacts:cleanup deletions (#439)
+- Resolve review findings on kramme:hooks:toggle (#437)
+- Resolve review findings on kramme:docs:adr (#426)
+- Resolve review findings on kramme:git:recreate-commits (#436)
+- Resolve review findings on kramme:hooks:configure-links (#433)
+- Resolve review findings on kramme:launch:rollout (#435)
+- Resolve review findings on kramme:changelog:generate (#434)
+- Resolve review findings on kramme:git:commit-message (#432)
+- Resolve review findings on kramme:git:fixup (#431)
+- Resolve review findings on kramme:session:automate-repeats (#430)
+- Resolve review findings on kramme:session:context-setup (#429)
+- Resolve review findings on kramme:session:wrap-up (#428)
+- Resolve review findings on kramme:docs:ubiquitous-language (#427)
+- Resolve review findings on kramme:discovery:interview (#425)
+- Resolve review findings on kramme:docs:feature-spec (#424)
+- Resolve review findings on kramme:docs:update-agents-md (#423)
+- Resolve review findings on kramme:text:humanize (#422)
+- Resolve review findings on kramme:docs:out-of-scope (#421)
+- Resolve review findings on kramme:docs:add-greenfield-policy (#419)
+- Resolve review findings on kramme:qa:intake (#418)
+- Resolve review findings on kramme:qa (#416)
+- Resolve review findings on kramme:verify:before-completion (#415)
+- Resolve review findings on kramme:verify:run (#414)
+- Resolve review findings on kramme:test:tdd (#417)
+- Resolve review findings on kramme:test:generate (#413)
+- Resolve review findings on kramme:debug:triage-to-issue (#412)
+- Resolve review findings on kramme:debug:investigate (#411)
+- Resolve review findings on kramme:code:api-design (#409)
+- Resolve review findings on kramme:code:performance (#410)
+- Resolve review findings on kramme:code:harden-security (#408)
+- Resolve review findings on kramme:code:migrate (#404)
+- Resolve review findings on kramme:deps:audit (#405)
+- Resolve review findings on kramme:code:agent-readiness (#406)
+- Resolve review findings on kramme:code:deprecate (#407)
+- Resolve review findings on kramme:code:source-driven (#403)
+- Remove kramme:code:frontend-authoring (#402)
+- Resolve review findings on kramme:code:cleanup-ai (#401)
+- Resolve review findings on kramme:code:refactor-opportunities (#400)
+- Resolve review findings on kramme:code:breakdown-findings (#398)
+- Resolve review findings on kramme:code:refactor-pass (#399)
+- Resolve review findings on kramme:code:rewrite-clean (#397)
+- Resolve review findings on kramme:code:incremental (#396)
+- Resolve review findings on kramme:pr:resolve-review (#394)
+- Resolve review findings on kramme:pr:generate-description (#388)
+- Resolve review findings on kramme:pr:design-pipeline (#392)
+- Resolve review findings on kramme:pr:code-review (#393)
+- Resolve review findings on kramme:pr:ux-review (#389)
+- Resolve review findings on kramme:pr:copy-review (#391)
+- Resolve review findings on kramme:pr:product-review (#390)
+- Resolve review findings on kramme:pr:fix-ci (#385)
+- Resolve review findings on kramme:pr:create (#386)
+- Resolve review findings on kramme:pr:finalize (#387)
+- Resolve review findings on kramme:pr:rebase (#384)
+- Resolve review findings on kramme:pr:plan-split (#383)
+- Resolve review findings on kramme:siw:implementation-audit (#379)
+- Resolve review findings on kramme:siw:product-audit (#381)
+- Resolve review findings on siw:spec-audit:auto-fix (#380)
+- Resolve review findings on kramme:siw:spec-audit (#382)
+- Resolve review findings on kramme:siw:issue-define (#375)
+- Resolve review findings on siw:issue-implement (#374)
+- Harden siw:generate-phases against review findings (#376)
+- Resolve review findings on kramme:siw:breakdown-findings (#373)
+- Resolve review findings on kramme:siw:discovery (#372)
+- Tighten siw:close and add verify-before-delete gate (#370)
+- Harden siw:remove with safety checks and consistent cleanup (#367)
+- Resolve review findings on kramme:siw:reset (#365)
+- Tighten skill:create interview and add error handling (#364)
+- Tighten skill:review resolution and N/A rubric handling (#363)
+
+### Fixed
+- Resolve review findings on kramme:docs:to-markdown (#420)
+- Resolve review findings on kramme:siw:resolve-audit (#377)
+- Harden kramme:siw:init destructive paths (#369)
+- Repair siw:continue template paths and clarify role (#368)
+- Correct rename order and harden delete in issue-reindex (#366)
+
 - Remove kramme:code:zoom-out orientation skill
 - Breaking: Removed `/kramme:code:frontend-authoring` skill.
 
@@ -293,6 +387,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+[0.59.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.58.0...v0.59.0
 [0.58.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.57.0...v0.58.0
 [0.57.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.56.0...v0.57.0
 [0.56.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.55.0...v0.56.0
