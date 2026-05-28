@@ -4,7 +4,6 @@ description: Define or improve a local SIW issue file through a guided interview
 argument-hint: "[ISSUE-G-XXX or ISSUE-P1-XXX] or [description and/or file paths for context]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
 ---
 
 # Define Local Issue
