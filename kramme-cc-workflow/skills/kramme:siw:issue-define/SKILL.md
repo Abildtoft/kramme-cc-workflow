@@ -1,9 +1,10 @@
 ---
 name: kramme:siw:issue-define
-description: Define a new local issue with guided interview process
+description: Define or improve a local SIW issue file through a guided interview. For Linear or other external trackers use kramme:linear:issue-define.
 argument-hint: "[ISSUE-G-XXX or ISSUE-P1-XXX] or [description and/or file paths for context]"
 disable-model-invocation: true
 user-invocable: true
+kramme-platforms: [claude-code]
 ---
 
 # Define Local Issue
@@ -19,13 +20,11 @@ Create or improve a local issue through guided interactive refinement. Can start
 - **DOES**: Interview user, explore codebase for context, compose well-structured issue, create/update issue file
 - **DOES NOT**: Write code, implement features, fix bugs, or make any changes to the codebase
 
-**Implementation is a separate workflow.** After this command completes, the user can invoke `/kramme:siw:issue-implement` if they want to start implementing.
-
-**CRITICAL**: Do NOT proceed to code implementation after creating the issue. The workflow is complete once the issue file is created.
+**Implementation is a separate workflow.** This skill ends when the issue file is written and the tracker is updated. After it completes, the user can invoke `/kramme:siw:issue-implement` if they want to start implementing.
 
 ## Prerequisites
 
-**Workflow files should exist.** If `siw/OPEN_ISSUES_OVERVIEW.md` doesn't exist, suggest running `/kramme:siw:init` first.
+**Workflow files should exist.** If `siw/OPEN_ISSUES_OVERVIEW.md` doesn't exist, suggest running `/kramme:siw:init` first. If the file is still missing after that suggestion, stop without creating an issue.
 
 ## Audience Priority
 
@@ -40,19 +39,6 @@ Create or improve a local issue through guided interactive refinement. Can start
 3. **Scope / Non-Goals** - What's in, what's out, and what should wait?
 4. **Acceptance Criteria** - How do we know we've solved the problem?
 5. **Technical Notes** - Implementation direction (not detailed how-to)
-
-## Process Overview
-
-1. **Input Parsing & Mode Detection**: Detect if improving existing issue or creating new
-2. **File References**: Read provided files (if any) to gather technical context
-3. **Issue Type Classification**: Classify the issue type (bug/feature/improvement)
-4. **Phase Recommendation (Create Mode)**: Suggest a phase prefix if the issue fits an active phase
-5. **Existing Issue Handling**: For improve mode, fetch issue; for create mode, check for similar issues
-6. **Codebase Exploration**: Search for related implementations and patterns
-7. **Autonomous Framing**: Infer likely user, why-now, non-goals, and decision boundaries before asking
-8. **Interview**: Multi-round questioning (adapted for issue type and mode)
-9. **Issue Composition**: Draft issue following the template
-10. **Review & Create/Update**: User approval, then create or update issue file
 
 ## Phase 1: Input Parsing & Mode Detection
 
@@ -213,8 +199,8 @@ Before creating a new issue, check for existing similar issues:
 3. **Generate Next Issue Number**
    - Determine `issue_prefix` (from Step 4; fallback to `requested_prefix` if present; otherwise default `G`)
    - Parse `siw/OPEN_ISSUES_OVERVIEW.md` table to find highest issue number **within that prefix group**
-   - Next issue = highest + 1 within group (or 001 if no issues with that prefix exist)
-   - Pad number to 3 digits (1 → 001, 12 → 012)
+   - Compute candidate = highest + 1 (or 001 if no issues with that prefix exist), padded to 3 digits
+   - **Verify no on-disk collision:** glob `siw/issues/ISSUE-{issue_prefix}-{candidate}-*.md`. If any file matches, the tracker is out of sync with `siw/issues/`. Increment the candidate and re-check until no file matches, then warn the user that the tracker may need a reindex via `/kramme:siw:issue-reindex`.
    - Store as `issue_number`
    - Full ID: `{issue_prefix}-{issue_number}` (e.g., `G-001`, `P1-002`)
 
@@ -274,10 +260,11 @@ Streamlined 2-round interview:
 
 **If root cause unknown after Round 2:**
 
-- Reclassify as Bug (Complex)
-- Switch to Standard Interview
+- Confirm the reclassification with the user via `AskUserQuestion` (one question, defaulting to "reclassify as Bug (Complex)").
+- Run the previously-skipped Phase 3 (Codebase Exploration).
+- Restart the standard interview at Round 1, pre-filling answers from the Round 1/Round 2 simple-bug pass so the user only refines what's new.
 
-Then run a streamlined metadata pass and store the answers as Round 5 metadata for Phase 5:
+Then run a streamlined **Metadata pass** and store the answers for Phase 5:
 
 - Priority (default Medium unless the user indicated urgency)
 - Size (default XS/S for localized simple bugs)
@@ -411,40 +398,13 @@ siw/issues/ISSUE-{prefix}-{number}-{sanitized-title}.md
 
 ### 4. Update siw/OPEN_ISSUES_OVERVIEW.md
 
-**For new issues:** Add row to the appropriate section (General, Phase 1, Phase 2, etc.). If the section doesn't exist yet, create the section header and table first. Add one section-level `**Parallelization:**` summary line only when the tracker already uses that metadata or when creating a brand-new modern section. If you're appending into a legacy tracker section that predates the line, keep that section metadata-free unless the user is explicitly migrating the schema. For `## General`, any present line is a live roll-up summary. For phase sections, any present line is the approved group-level guidance for the phase and should stay stable after creation unless the phase plan itself is being redefined.
+Issues are grouped by prefix (General, Phase 1, Phase 2, etc.).
 
-```markdown
-**Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination | Mixed — see issue files}
+**For new issues:** Add a row to the appropriate section. If the section doesn't exist yet, create the section header and table first.
 
-| {prefix}-{number} | {Title} | Ready | {Size} | {Priority} | {Mode} | {Related} |
-```
+**For updated issues:** Update the existing row if title, priority, status, or mode changed.
 
-The `{Mode}` cell is `AUTO` or `HITL` (no inline reason in the table; the reason lives in the issue file). For updated issues that already have Mode in the issue file, sync the cell.
-
-**For updated issues:** Update existing row if title/priority/status/mode changed.
-
-**Schema rule:** If the existing section already uses the legacy 5-column table (`| # | Title | Status | Priority | Related |`), preserve that layout for compatibility. If the existing section uses the previous 6-column modern table (`| # | Title | Status | Size | Priority | Related |` — pre-Mode), preserve that layout for in-place updates and only migrate to the 7-column layout when the user explicitly requests a schema migration. Use the 7-column layout above only for brand-new modern sections.
-
-**Parallelization summary rule:**
-
-- **`## General`**: If the section already has a `**Parallelization:**` note, or you're creating a brand-new modern General section, treat that note as a roll-up summary rather than a per-issue mirror. After creating or updating a real General issue, recompute the summary from all non-placeholder `G-*` issue files:
-  - If every real General issue shares the same section-level category/gating note, use that shared summary.
-  - If real General issues disagree, set the summary to `Mixed — see issue files for exact guidance`.
-  - If the General section is still in its empty placeholder state (`_None_` row / no real issues yet), replace the default summary from `siw:init` with this first real issue's section-level category.
-  - If an existing legacy General section has no `**Parallelization:**` line, keep it absent.
-- **Phase sections**: Preserve the existing section-level `**Parallelization:**` summary exactly as written. If a legacy phase section has no `**Parallelization:**` line, keep it absent. Do not recompute phase summaries from per-issue `**Parallelization:**` fields, because issue-level guidance may vary while the approved phase-level plan remains unchanged.
-- If creating a brand-new modern phase section from scratch, seed the section-level summary from this first issue's approved guidance and keep it stable for later edits unless the phase plan itself is re-approved.
-
-**Section organization:** Issues are grouped by prefix (General, Phase 1, Phase 2, etc.).
-
-**If updating a phase issue to `DONE`:**
-
-- Check whether this was the last open issue in that phase section (no READY / IN PROGRESS / IN REVIEW remaining).
-- If so, ask the user whether to mark the entire phase as DONE by appending ` (DONE)` to the phase section header in `siw/OPEN_ISSUES_OVERVIEW.md`.
-
-**If creating or updating a phase issue that is not `DONE`:**
-
-- If the phase section header is currently marked ` (DONE)`, ask the user whether to remove the marker because there is now open work in that phase.
+Read `references/tracker-schema.md` for the column-layout rules (three coexisting layouts, when to use each, when to migrate), the parallelization-summary recomputation rules, and the `(DONE)` phase-marker rules.
 
 ### 5. Return Result
 
@@ -458,57 +418,18 @@ The `{Mode}` cell is `AUTO` or `HITL` (no inline reason in the table; the reason
 - Confirm issue file created
 - Show file path
 
-### 6. Workflow Complete - STOP
+### 6. Workflow Complete
 
-**The define-issue workflow is now complete.**
+The skill ends here. Surface the file path and tell the user that if they want to implement next, they can run `/kramme:siw:issue-implement {prefix}-{number}`, or re-run `/kramme:siw:issue-define {prefix}-{number}` to refine. Do not start implementation.
 
-- Do NOT proceed to code implementation
-- Do NOT start working on the issue
+## Guidelines
 
-**Next steps for the user:**
-
-- Review the created issue file
-- If ready to implement, invoke `/kramme:siw:issue-implement {prefix}-{number}` (e.g., `G-001`, `P1-001`)
-- If changes needed, run `/kramme:siw:issue-define {prefix}-{number}` again
-
-**STOP HERE.** Wait for the user's next instruction.
-
-## Important Guidelines
-
-### Template Selection
-
-1. **Use Simple Bug Template when:**
-   - Root cause is known
-   - Fix is localized to 1-3 files
-   - No architectural decisions needed
-
-2. **Use Comprehensive Template when:**
-   - Root cause unknown
-   - Multiple components affected
-   - Feature, improvement, or complex bug
-   - Scope needs definition
-
-### General Guidelines
-
-1. **Lead with "Why"** - Problem statement is most important
-2. **Make non-goals explicit** - A tighter issue is more actionable than a broad wish list
-3. **Infer before asking** - Use codebase and workflow context to draft likely answers before asking the user for basics
-4. **Separate product calls from implementation details** - Capture the decision that needs alignment, not low-level how-to
-5. **Be specific** - Vague issues lead to vague implementations
-6. **Check for similar issues** - Don't create duplicates
-7. **Keep simple bugs simple** - Don't over-engineer
-8. **Exhaust the interview** - Especially Round 1 for complex issues
-9. **Get user approval** - Always show draft before creating
-
-## Starting the Process
-
-1. Parse `$ARGUMENTS` and detect mode (issue ID → improve, otherwise → create)
-2. If improve mode: read the existing issue file
-3. If create mode with no input: ask what issue to define
-4. Process file references (if any)
-5. Classify issue type
-6. Phase 2: Handle existing issues appropriately
-7. Phase 3: Codebase exploration (skip for simple bugs if root cause known)
-8. Phase 4: Interview
-9. Phase 5: Compose issue
-10. Phase 6: Review, refine, and create/update
+1. **Lead with "Why"** — Problem statement is most important.
+2. **Make non-goals explicit** — A tighter issue is more actionable than a broad wish list.
+3. **Infer before asking** — Use codebase and workflow context to draft likely answers before asking the user for basics.
+4. **Separate product calls from implementation details** — Capture the decision that needs alignment, not low-level how-to.
+5. **Be specific** — Vague issues lead to vague implementations.
+6. **Check for similar issues** — Don't create duplicates.
+7. **Keep simple bugs simple** — Don't over-engineer.
+8. **Exhaust the interview** — Especially Round 1 for complex issues.
+9. **Get user approval** — Always show draft before creating.
