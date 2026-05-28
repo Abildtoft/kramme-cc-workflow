@@ -75,7 +75,7 @@ Check if input matches an existing Linear issue:
 **If existing issue detected → IMPROVE MODE:**
 
 1. Extract the issue identifier
-2. Fetch issue details using `mcp__linear__get_issue` with `id` parameter
+2. Fetch issue details using `mcp__linear__get_issue` with `id` parameter. If the call errors or returns no issue, stop and report the exact identifier that failed — do not continue in IMPROVE mode or silently fall back to CREATE mode.
 3. Store the existing issue content (title, description, labels, etc.)
 4. Set mode flag to "improve"
 5. **Check for Dev Ask label**
@@ -89,7 +89,7 @@ Check if input matches an existing Linear issue:
 
 1. Parse for file paths (anything that looks like a path: contains `/`, ends in common extensions) and store them for Step 2
 2. Remaining text is the description/idea
-3. If empty, use `AskUserQuestion` to gather the initial concept
+3. If empty, ask the user in plain prose what issue they want to define — an open-ended idea, not a multiple-choice prompt
 4. Set mode flag to "create"
 
 ### Step 2: Process File References (Both Modes)
@@ -159,10 +159,10 @@ The target issue was already fetched in Phase 1. Now present it to the user:
 
 2. **Resume from prior session triage**
 
-   The fetched issue body may contain AI-authored content from a prior session of this skill — for example an `## Original Dev Ask` block, a prior `## Problem`/`## Value`/`## Scope` set, or marker-tagged sections like `<!-- linear:issue-define: round-1 -->`.
+   The fetched issue body may contain AI-authored content from a prior session of this skill — for example an `## Original Dev Ask` block or a prior `## Problem`/`## Value`/`## Scope` set.
 
    Before launching the interview:
-   - Scan the description for these markers and for the canonical comprehensive-template section headings.
+   - Scan the description for the canonical comprehensive-template section headings.
    - For each section already populated with substantive prior-session content (not placeholder text or one-line stubs), record which interview round it covered:
      - `## Problem` / `## Value` → Round 1 (Problem & Value)
      - `## Scope` / `## Out of Scope` → Round 2 (Scope & Boundaries)
@@ -329,13 +329,13 @@ After each round:
 - **Pivot** when answers reveal the problem is different than assumed
 - **Clarify** when answers are ambiguous or contradictory
 
-**Track coverage:**
+**Track coverage.** Continue until each dimension meets its exit bar:
 
-```
-Coverage: [Problem: X%] [Scope: X%] [Technical: X%] [Acceptance: X%] [Metadata: X%]
-```
-
-Continue until all dimensions show adequate coverage for a well-defined issue.
+- **Problem**: a named user/stakeholder, a frequency or severity signal, and a cost-of-inaction statement are captured
+- **Scope**: at least one explicit in-scope item and one explicit out-of-scope item
+- **Technical**: affected modules/areas are named, plus any blocking dependencies
+- **Acceptance**: every criterion is individually verifiable, covering the happy path and at least one failure/edge case
+- **Metadata**: team selected, and labels/priority/project resolved or explicitly skipped
 
 ## Phase 6: Issue Composition
 
@@ -356,8 +356,8 @@ When the codebase exploration in Phase 4 surfaced specific files or functions, t
 
 Choose the template based on `issue_type`:
 
-- **Bug (Simple)**: Use the Simple Bug Template below
-- **All others**: Use the Comprehensive Template
+- **Simple Bug Template** — when the root cause is known or easily identified, the fix is localized, no architectural decisions are needed, and the bug fits in a few sentences (`is_simple_bug = true`)
+- **Comprehensive Template** — for features, improvements, and complex bugs: unknown root cause needing investigation, multiple affected components, scope boundaries to define, or stakeholder alignment that matters
 
 ---
 
@@ -419,6 +419,12 @@ Read the comprehensive issue template from `assets/comprehensive-template.md`. I
   - `project`: Selected project (if any)
   - `priority`: Selected priority (if any)
 
+**If the create or update call fails:**
+
+- Output the full drafted issue markdown (title, description, and intended metadata) to the user so the interview work is not lost
+- Report the error Linear returned
+- Offer to retry; do not silently abandon the draft or proceed to the next step
+
 ### 4. Return Result
 
 **IMPROVE MODE:**
@@ -449,23 +455,6 @@ Read the comprehensive issue template from `assets/comprehensive-template.md`. I
 
 ## Important Guidelines
 
-### Template Selection
-
-1. **Use Simple Bug Template when:**
-   - The root cause is known or easily identified
-   - The fix is localized to 1-3 files
-   - No architectural decisions are needed
-   - The bug can be fully described in a few sentences
-
-2. **Use Comprehensive Template when:**
-   - Root cause is unknown and needs investigation
-   - Multiple components are affected
-   - The issue is a feature, improvement, or complex bug
-   - Scope boundaries need definition
-   - Stakeholder alignment is important
-
-### General Guidelines
-
 1. **Lead with "Why"** - Problem and value proposition are the most important parts. Don't settle for vague justifications.
 2. **Make non-goals explicit** - A focused issue is stronger than an aspirational one. If something should wait, say so.
 3. **Infer before asking** - Use repo context, existing issues, and provided files to draft the likely answer before asking the user to fill in basics.
@@ -481,17 +470,3 @@ Read the comprehensive issue template from `assets/comprehensive-template.md`. I
 13. **Challenge diplomatically** - If scope seems too broad, suggest splitting.
 14. **Get user approval** - Always show the draft before creating the issue.
 15. **Keep simple bugs simple** - Don't over-engineer the issue definition. If root cause and fix are clear, the simple template is sufficient.
-
-## Starting the Process
-
-1. Parse `$ARGUMENTS` and detect mode (issue ID → improve, otherwise → create)
-2. If improve mode: fetch the existing issue details
-3. If create mode with no input: ask what issue they want to define
-4. Process file references (if any)
-5. Classify issue type (auto-detect and confirm with user)
-6. Begin Phase 2 (Linear Context Discovery)
-7. Phase 3: For improve mode, present issue and select areas to improve; for create mode, check for duplicates
-8. Phase 4: Codebase exploration (skip for simple bugs if root cause known)
-9. Phase 5: Interview (simple 2-round for simple bugs, full 5-round for others)
-10. Phase 6: Compose issue using appropriate template
-11. Phase 7: Review, refine, and create/update issue
