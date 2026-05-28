@@ -344,7 +344,7 @@ Session management, verification, artifact cleanup, and hook configuration.
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
 | `/kramme:workflow-artifacts:cleanup` | User | — | Delete workflow artifacts such as review overviews, audit reports, generated PR plans, temporary SIW files, and visual diagram HTML files.<br><br>For SIW-specific cleanup, use `/kramme:siw:remove`. |
-| `/kramme:changelog:generate` | User | — | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts and audience-aware formatting |
+| `/kramme:changelog:generate` | User | `[daily\|weekly]` | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts. Returns changelog text only (reads PRs read-only, writes/sends nothing). |
 | `/kramme:hooks:configure-links` | User | `[show\|reset\|KEY=VALUE ...]` | Configure `context-links` hook settings by writing local overrides to `kramme-cc-workflow/hooks/context-links.config` (workspace slug, team keys, regexes). |
 | `/kramme:hooks:toggle` | User | `<status\|reset\|hook-name> [enable\|disable]` | Enable or disable a plugin hook.<br><br>Use `status` to list all hooks, `reset` to enable all hooks, or specify a hook name to toggle. |
 | `/kramme:session:automate-repeats` | User | `[session-paths or --recent N] [--create]` | Review recent agent sessions to identify repeated manual workflows and repeated asks, then propose or scaffold only useful skills or custom subagents.<br><br>Deduplicates against existing automation, requires repeated evidence, and keeps generated components simple. |
