@@ -9,12 +9,6 @@ user-invocable: true
 
 Plan and execute the removal of code, features, APIs, or modules. Removing code safely requires the same rigor as adding it: the same risk assessment, the same phased rollout, the same verification gates. A skill that is missing here turns into _deprecate and abandon_ — a notice goes up, nobody migrates, and the old path accretes users while labeled "dead".
 
-## Code is a liability
-
-Every line of code carries ongoing cost: tests to maintain, docs to keep current, dependencies to patch, security advisories to evaluate, mental overhead for anyone reading the codebase. A line that no longer earns its keep is pure cost. Removing it is not cleanup — it is first-class engineering work, with the same review, planning, and verification discipline as writing new code.
-
-When you find yourself about to "leave it for now because it's small", that is the rationalization this skill exists to answer.
-
 ## When to use
 
 - Removing a legacy system, library, or internal framework once a replacement has landed.
@@ -23,6 +17,13 @@ When you find yourself about to "leave it for now because it's small", that is t
 - Cleaning up "zombie code" — code that nobody owns but that other code depends on.
 - Migrating away from a deprecated dependency and taking the old call sites with it.
 - Paired with `kramme:code:migrate` — when a framework migration finishes, the old framework's entry points need a deprecation workflow.
+
+## Do not use when
+
+- Deleting a feature outright with no replacement intended — that is a product decision with a different stakeholder set, not a deprecation.
+- Refactoring without removing a public or call-site surface — use `kramme:code:refactor-pass`.
+- Renaming a symbol or moving a file with no behavioral or contract change — a codemod plus PR review is enough.
+- Purging a single dead function discovered in passing — make the deletion in the PR that proves it is unreferenced, without the four-step workflow.
 
 ## Choose the surface first
 
@@ -146,7 +147,8 @@ Publish: the deprecation notice, the timeline, the migration guide or upgrade no
 - **Compile-time / internal-only code**: deprecation notice in the code (JSDoc `@deprecated`, Python `DeprecationWarning`, etc.), CHANGELOG or migration note, and any package-level upgrade docs callers rely on.
 - **Runtime / internal code**: deprecation notice in the code when applicable, CHANGELOG entry, team-wide announcement channel, and operator/runbook note if runtime ownership is involved.
 - **External API**: changelog, developer mailing list, in-API deprecation header (`Deprecation: true`, `Sunset: <date>`), versioned documentation.
-- **Feature flag**: internal-only; the flag service is the announcement channel.
+
+When the Step 3 pattern is Feature Flag, the flag service itself acts as a per-cohort announcement channel in addition to the surface-appropriate notices above — see `references/migration-patterns.md`.
 
 Exit criterion: every dependent surface for the chosen surface type has received the announcement or upgrade note it actually uses, and the migration guide has been rehearsal-validated against at least one representative caller when caller migration is required before rollout begins.
 
@@ -164,13 +166,13 @@ Exit criterion: zero active callers of the old path. "Active" means references s
 
 Remove together: the old code, its tests, its docs, and the deprecation notices. Leaving any one behind is a rollback trap — deprecation notices on code that no longer exists confuse future readers; tests of removed code waste CI.
 
-Before executing this step, resolve every open `UNVERIFIED` from Step 1. If any is still open, emit `ASK FIRST: removing with open UNVERIFIED markers` and do not proceed.
+Before executing this step, resolve every open `UNVERIFIED` from any step. If any is still open, emit `ASK FIRST: removing with open UNVERIFIED markers` and do not proceed.
 
-Exit criterion: see the four exit criteria below.
+Exit criterion: the four overall-completion gates in the next section are all true.
 
 ---
 
-## Exit criteria
+## Overall completion gates
 
 The deprecation is not done until **all four** are true:
 
