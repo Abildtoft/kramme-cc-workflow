@@ -4,6 +4,7 @@ description: (experimental) Product audit of SIW specs and plans before implemen
 argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--inline]"
 disable-model-invocation: true
 user-invocable: true
+kramme-platforms: [claude-code]
 ---
 
 # Product Audit of SIW Specs
@@ -15,7 +16,7 @@ Critique specification documents from a product perspective before implementatio
 ## Process Overview
 
 ```
-/kramme:siw:product-audit [spec-file-path(s) | 'siw'] [--auto]
+/kramme:siw:product-audit [spec-file-path(s) | 'siw'] [--auto] [--inline]
     |
     v
 [Step 1: Resolve Spec Files] -> Parse args or auto-detect from siw/
@@ -44,7 +45,7 @@ Critique specification documents from a product perspective before implementatio
 
 ## References
 
-- `references/product-reviewer-prompt.md` - read during Step 4 for the full product reviewer agent prompt, product dimensions, severity guides, output format, and review rules.
+- `references/product-reviewer-prompt.md` - read during Step 4 for the full product reviewer agent prompt, product dimensions, severity guides, output format, and audit rules.
 
 ---
 
@@ -61,10 +62,14 @@ Critique specification documents from a product perspective before implementatio
 
 `--auto` means:
 
-- replace any previous product review automatically
+- replace any previous product audit automatically
 - create SIW issues for **Critical and Major** findings when Step 7 applies
 - skip the report overwrite / issue-creation prompts
-- if Work Context is `Prototype` or `Refactor`, skip the product review and direct the user to `/kramme:siw:spec-audit`
+
+`--inline` means:
+
+- reply with the report inline instead of writing `siw/PRODUCT_AUDIT.md`
+- skip Step 7 entirely — no issue files, no `OPEN_ISSUES_OVERVIEW.md` updates, no `LOG.md` updates
 
 **Detection rules:**
 
@@ -122,7 +127,7 @@ Auto-detect spec files from the `siw/` directory:
 
 6. Store files as `spec_files`.
 
-### 1.4 If No Spec Files Found
+### 1.4 If Auto-Detection Found Nothing
 
 ```
 Error: No specification files found.
@@ -146,18 +151,18 @@ To initialize a workflow with a spec, run /kramme:siw:init
 
 ### 2.1 Read Every Spec File End-to-End
 
-Read each spec file completely. Do not skim. Understand the full picture before launching the product review.
+Read each spec file completely. Do not skim. Understand the full picture before launching the product audit.
 
-### 2.1.5 Extract Work Context
+### 2.2 Extract Work Context
 
 After reading all spec files, look for a `## Work Context` section in the spec files:
 
 1. Parse the markdown table to extract: Work Type, Priority Dimensions, Deprioritized dimensions
    - If multiple spec files define Work Context, use the main spec file (the one matching the SIW init filename). If ambiguous, use the first found and warn.
-2. If not found or malformed, default to Production Feature (full product review, no adjustments)
+2. If not found or malformed, default to Production Feature (full product audit, no adjustments)
 3. Store as `work_context`
 
-### 2.2 Extract Product Elements
+### 2.3 Extract Product Elements
 
 For each spec file, identify and extract:
 
@@ -181,10 +186,10 @@ For each element, capture:
 - **source_section**: Heading hierarchy
 - **content_summary**: Brief description of what the section contains
 
-### 2.3 Present Extraction Summary
+### 2.4 Present Extraction Summary
 
 ```
-Product Review Scope
+Product Audit Scope
 
 Sources:
   - {spec_file_1}
@@ -210,34 +215,35 @@ Use AskUserQuestion:
 
 ```yaml
 header: "Work Context: {work_type}"
-question: "This spec's Work Context is '{work_type}'. Product review evaluates user-facing concerns that may not apply. The spec audit (/kramme:siw:spec-audit) may be more useful."
+question: "This spec's Work Context is '{work_type}'. A product audit evaluates user-facing concerns that may not apply. The spec audit (/kramme:siw:spec-audit) may be more useful."
 options:
-  - label: "Skip product review"
-    description: "Abort — product review is not relevant for this work type"
+  - label: "Skip product audit"
+    description: "Abort — product audit is not relevant for this work type"
   - label: "Proceed anyway"
-    description: "Run the full product review regardless"
+    description: "Run the full product audit regardless"
 ```
 
-If "Skip product review": Stop and suggest `/kramme:siw:spec-audit` instead.
+If "Skip product audit": Stop and suggest `/kramme:siw:spec-audit` instead.
 
 For all other work types, continue to Step 3.
 
 ---
 
-## Step 3: Check for Previous Review
+## Step 3: Check for Previous Audit
 
 If `siw/PRODUCT_AUDIT.md` (or `PRODUCT_AUDIT.md` in project root) exists:
 
 1. Read the file.
 2. Parse for previously reported findings and their IDs (PROD-NNN).
-3. Note which findings were marked as addressed or resolved.
-4. This context is passed to the reviewer agent to avoid re-reporting resolved items.
+3. Record the highest existing PROD-NNN as `previous_max_id` and note which findings are marked addressed or resolved versus still open.
+4. Still-open findings keep their existing IDs; new findings start at `previous_max_id + 1` (see Step 5.3).
+5. This context is passed to the reviewer agent to avoid re-reporting resolved items.
 
 ---
 
 ## Step 4: Launch Product Reviewer Agent
 
-Read `references/product-reviewer-prompt.md`, fill in the placeholders, and launch one `kramme:product-reviewer` Explore agent with that prompt. No relevance validation step is needed because the entire spec set is the review scope.
+Read `references/product-reviewer-prompt.md`, fill in the placeholders, and launch one `kramme:product-reviewer` Explore agent with that prompt. No relevance validation step is needed because the entire spec set is the audit scope.
 
 ---
 
@@ -259,7 +265,10 @@ If multiple dimensions flagged the same issue, merge into one finding and note a
 
 ### 5.3 Assign Final IDs
 
-Re-number all findings as `PROD-001`, `PROD-002`, etc. in severity order (Critical first, then Major, then Minor).
+- If a previous audit was found in Step 3, still-open findings retain their existing `PROD-NNN` IDs. New findings get sequential IDs starting at `previous_max_id + 1`, ordered by severity (Critical first, then Major, then Minor).
+- If no previous audit was found, number all findings `PROD-001`, `PROD-002`, etc. in severity order.
+
+This keeps IDs stable across re-runs so commits, SIW issues, and external references stay valid.
 
 ### 5.4 Cross-reference Existing SIW Issues
 
@@ -282,20 +291,20 @@ If `INLINE_MODE=true`, skip this overwrite step because no report file will be w
 
 Otherwise, if a previous report exists at the target path:
 
-If `AUTO_MODE=true`, choose **Replace** automatically.
+If `AUTO_MODE=true`, choose **Replace** automatically and record the prior report's date so Step 8 can surface that a replacement happened.
 
 Otherwise:
 
 ```yaml
-header: "Existing Product Review"
-question: "A previous product review exists. How should I proceed?"
+header: "Existing Product Audit"
+question: "A previous product audit exists. How should I proceed?"
 options:
   - label: "Replace"
-    description: "Overwrite with new review results"
+    description: "Overwrite with new audit results"
   - label: "Append"
-    description: "Add new review as a dated section (preserves history)"
+    description: "Add new audit as a dated section (preserves history)"
   - label: "Abort"
-    description: "Cancel — keep existing review"
+    description: "Cancel — keep existing audit"
 ```
 
 ### 6.3 Compile and Write Report
@@ -310,14 +319,16 @@ If `INLINE_MODE=true`:
 Otherwise, after writing:
 
 ```
-Product review written to: {path}
+Product audit written to: {path}
 ```
 
 ---
 
 ## Step 7: Optionally Create SIW Issues
 
-**Only if ALL of these conditions are met:**
+**Skip this step entirely if `INLINE_MODE=true`.** Inline mode means no file writes — that includes issue files, `OPEN_ISSUES_OVERVIEW.md`, and `LOG.md`. Proceed to Step 8.
+
+Otherwise, only if ALL of these conditions are met:
 
 - `siw/OPEN_ISSUES_OVERVIEW.md` exists (SIW workflow is active)
 - `siw/issues/` exists or can be created
@@ -371,9 +382,10 @@ For each selected finding:
 Display a summary:
 
 ```
-Product Review Complete
+Product Audit Complete
 
 Report: {inline reply | report_path}
+{If a prior report was replaced in auto mode:} Replaced previous audit dated {previous_date}.
 Findings: {critical_count} Critical, {major_count} Major, {minor_count} Minor
 Issues created: {count} (or "None")
 
@@ -406,7 +418,7 @@ Suggested next steps:
 
 ### Linked Spec (TOC) Detection
 
-- If the main spec is a lightweight TOC linking to supporting specs, automatically include the supporting specs in the review. Do not review the TOC structure alone.
+- If the main spec is a lightweight TOC linking to supporting specs, automatically include the supporting specs in the audit. Do not audit the TOC structure alone.
 
 ### No Product Elements Found
 
