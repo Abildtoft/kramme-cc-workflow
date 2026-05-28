@@ -1,6 +1,6 @@
 ---
 name: kramme:visual:diagram
-description: Generate beautiful, self-contained HTML pages that visually explain systems, code changes, plans, and data. Use when the user asks for a diagram, architecture overview, flowchart, schema, or any visual explanation of technical concepts. Also use proactively when about to render a complex ASCII table (4+ rows or 3+ columns) — present it as a styled HTML page instead.
+description: Generate beautiful, self-contained HTML pages that visually explain systems, code changes, plans, and data. Use when the user asks for a diagram, architecture overview, flowchart, schema, or any visual explanation of technical concepts. Also use proactively when about to render a large ASCII table (4+ rows and 3+ columns) — present it as a styled HTML page instead.
 argument-hint: "[topic or description]"
 disable-model-invocation: false
 user-invocable: true
@@ -9,11 +9,11 @@ kramme-platforms: [claude-code]
 
 # Visual Diagram
 
-Generate self-contained HTML files for technical diagrams, visualizations, and data tables. Always open the result in the browser. Never fall back to ASCII art when this skill is loaded.
+Generate self-contained HTML files for technical diagrams, visualizations, and data tables. When the user explicitly asked for a visual, open the result in the browser; when you're rendering a table proactively (see below), write the file and share the path but don't auto-launch a browser. Never fall back to ASCII art when this skill is loaded.
 
 **Arguments:** "$ARGUMENTS"
 
-**Proactive table rendering.** When you're about to present tabular data as an ASCII box-drawing table in the terminal (comparisons, audits, feature matrices, status reports, any structured rows/columns), generate an HTML page instead. The threshold: if the table has 4+ rows or 3+ columns, it belongs in the browser. Don't wait for the user to ask — render it as HTML automatically and tell them the file path. You can still include a brief text summary in the chat, but the table itself should be the HTML page.
+**Proactive table rendering.** When you're about to present tabular data as an ASCII box-drawing table in the terminal (comparisons, audits, feature matrices, status reports, any structured rows/columns), generate an HTML page instead. The threshold: a table with **4+ rows and 3+ columns** belongs in the browser — smaller tables are fine to leave inline. Don't wait for the user to ask — render it as HTML and tell them the file path. Because the user didn't request a visual here, write the file and report the path but don't auto-open a browser tab; reserve auto-open for explicit diagram requests. You can still include a brief text summary in the chat, but the table itself should be the HTML page.
 
 ## Workflow
 
@@ -74,16 +74,22 @@ Vary the choice each time. If the last diagram was dark and technical, make the 
 **AI-generated illustrations (optional).** If [surf-cli](https://github.com/nicobailon/surf-cli) is available, you can generate images via Gemini and embed them in the page for creative, illustrative, explanatory, educational, or decorative purposes. Check availability with `which surf`. If available:
 
 ```bash
-# Generate to a temp file (use --aspect-ratio for control)
-surf gemini "descriptive prompt" --generate-image /tmp/ve-img.png --aspect-ratio 16:9
+# Generate to a unique temp file — one per image, never a fixed shared name
+# (a page can have a hero banner plus inline illustrations)
+TMP=$(mktemp /tmp/ve-img-XXXXXX.png)
+surf gemini "descriptive prompt" --generate-image "$TMP" --aspect-ratio 16:9
 
-# Base64 encode for self-containment (macOS)
-IMG=$(base64 -i /tmp/ve-img.png)
-# Linux: IMG=$(base64 -w 0 /tmp/ve-img.png)
+# Base64-encode for self-containment (macOS; Linux: base64 -w 0 "$TMP")
+IMG=$(base64 -i "$TMP")
 
-# Embed in HTML and clean up
-# <img src="data:image/png;base64,${IMG}" alt="descriptive alt text">
-rm /tmp/ve-img.png
+# Remove the temp file whether or not the steps above succeeded
+rm -f "$TMP"
+```
+
+Embed the encoded bytes inline, substituting them for `${IMG}`:
+
+```html
+<img src="data:image/png;base64,${IMG}" alt="descriptive alt text" />
 ```
 
 See `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/references/css-patterns.md` for image container styles (hero banners, inline illustrations, captions).
@@ -138,10 +144,13 @@ Apply these principles to every diagram:
 
 **Output location:** Write to `~/.kramme-cc-workflow/diagrams/`. Create the directory if it doesn't exist. Use a descriptive filename based on content: `modem-architecture.html`, `pipeline-flow.html`, `schema-overview.html`. The directory persists across sessions.
 
-**Open in browser:**
+**Open in browser** — only when the user explicitly asked for a visual. For proactively-rendered tables, skip this and just report the path.
 
 - macOS: `open ~/.kramme-cc-workflow/diagrams/filename.html`
 - Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/filename.html`
+- Windows: `start "" "%USERPROFILE%\.kramme-cc-workflow\diagrams\filename.html"`
+
+If the open command fails (headless, CI, or SSH with no GUI), don't retry — just report the path.
 
 **Tell the user** the file path so they can re-open or share it.
 
@@ -157,7 +166,7 @@ Two approaches depending on what matters more:
 
 ### Flowcharts / Pipelines
 
-**Use Mermaid.** Automatic node positioning and edge routing produces proper diagrams with connecting lines, decision diamonds, and parallel branches — dramatically better than CSS flexbox with arrow characters. Use `graph TD` for top-down or `graph LR` for left-right. Use `look: 'handDrawn'` for sketch aesthetic. Color-code node types with Mermaid's `classDef` or rely on `themeVariables` for automatic styling.
+**Use Mermaid.** Use `graph TD` for top-down or `graph LR` for left-right, with decision diamonds and parallel branches. Use `look: 'handDrawn'` for sketch aesthetic. Color-code node types with Mermaid's `classDef` or rely on `themeVariables` for automatic styling.
 
 ### Sequence Diagrams
 
@@ -165,7 +174,7 @@ Two approaches depending on what matters more:
 
 ### Data Flow Diagrams
 
-**Use Mermaid.** Data flow diagrams emphasize connections over boxes — exactly what Mermaid excels at. Use `graph LR` or `graph TD` with edge labels for data descriptions. Thicker, colored edges for primary flows. Source/sink nodes styled differently from transform nodes via Mermaid's `classDef`.
+**Use Mermaid.** Use `graph LR` or `graph TD` with edge labels for data descriptions. Thicker, colored edges for primary flows. Source/sink nodes styled differently from transform nodes via Mermaid's `classDef`.
 
 ### Schema / ER Diagrams
 
@@ -185,7 +194,7 @@ Two approaches depending on what matters more:
 
 Use a real `<table>` element — not CSS Grid pretending to be a table. Tables get accessibility, copy-paste behavior, and column alignment for free. The reference template at `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/data-table.html` demonstrates all patterns.
 
-**Use proactively.** Any time you'd render an ASCII box-drawing table in the terminal, generate an HTML table instead. This includes: requirement audits, feature comparisons, status reports, configuration matrices, test result summaries, dependency lists, permission tables, API endpoint inventories — any structured rows and columns.
+**Use proactively** for any sizable structured table — see the proactive threshold and behavior at the top of this skill. Common cases: requirement audits, feature comparisons, status reports, configuration matrices, test result summaries, dependency lists, permission tables, API endpoint inventories.
 
 ### Timeline / Roadmap Views
 
@@ -227,7 +236,7 @@ Every diagram is a single self-contained `.html` file. No external assets except
 Before delivering, verify:
 
 - **The squint test**: Blur your eyes. Can you still perceive hierarchy? Are sections visually distinct?
-- **The swap test**: Would replacing your fonts and colors with a generic dark theme make this indistinguishable from a template? If yes, push the aesthetic further.
+- **The swap test** (defined in step 1, Think): if a generic dark theme would render this indistinguishable from a template, push the aesthetic further.
 - **Both themes**: Toggle your OS between light and dark mode. Both should look intentional, not broken.
 - **Information completeness**: Does the diagram actually convey what the user asked for? Pretty but incomplete is a failure.
 - **No overflow**: Resize the browser to different widths. No content should clip or escape its container. Every grid and flex child needs `min-width: 0`. Side-by-side panels need `overflow-wrap: break-word`. Never use `display: flex` on `<li>` for marker characters — it creates anonymous flex items that can't shrink. Use absolute positioning for markers instead. See the Overflow Protection section in `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/references/css-patterns.md`.
