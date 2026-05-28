@@ -4,11 +4,14 @@ description: Conduct an in-depth interview about a topic/proposal to uncover req
 argument-hint: "[file-path or topic description] [--ideate] [--decision-tree] [--research]"
 disable-model-invocation: true
 user-invocable: true
+kramme-platforms: [claude-code]
 ---
 
 # Deep Exploration Interview
 
 Conduct a structured, in-depth interview about the presented topic, files, proposal, or feature. Use the AskUserQuestion tool throughout to gather decisions and uncover requirements. Conclude by writing a comprehensive plan.
+
+**When not to use:** for standalone discovery that produces a one-off plan file, use this skill. For discovery inside a tracked SIW (Structured Implementation Workflow) initiative — where the output feeds `siw/` planning documents — use `kramme:siw:discovery` instead.
 
 ## Process Overview
 
@@ -42,7 +45,7 @@ Parse `$ARGUMENTS` as shell-style arguments so quoted paths stay intact.
 - If `--decision-tree` is present, set `decision_tree_requested=true` and remove from argument list.
 - If `--research` is present, set `research_requested=true` and remove from argument list.
 - If remaining text includes trigger phrases like "walk the decision tree", "walk this depth-first", "resolve dependencies first", or "depth-first", set `decision_tree_requested=true` without removing meaningful topic words unless the phrase is only an instruction.
-- If the remaining text looks like file path(s), read and analyze them first.
+- If the remaining text looks like file path(s), read and analyze them first. If a path cannot be read, report the exact path and ask (via AskUserQuestion) whether to treat the input as a free-text topic instead of proceeding on a missing artifact.
 - If it is free text, use it as the topic description.
 - If it is empty, ask the user what they want to explore using AskUserQuestion.
 
@@ -104,31 +107,11 @@ Immediately follow that notice with AskUserQuestion using two options:
 
 Do not start generating variations until the user has answered. If they pick "Just interview me" (or respond with equivalent free text), skip Phase 0 and proceed with the current framing.
 
-### Generate variations
+### Generate, converge, and pick a framing
 
-Read `references/variation-lenses.md` and apply 4–7 lenses to the topic. Produce 5–8 candidate variations. Not every lens fits every topic — pick the lenses most likely to surface meaningfully distinct framings.
+Read `references/variation-lenses.md` and follow it to generate 5–8 candidate variations (4–7 lenses), converge with the three stress-test axes, and run the convergence protocol. When presenting the strongest variations via AskUserQuestion, reserve one option slot for `None of these — let's iterate.` and keep the total within AskUserQuestion's 2-4 option limit. Emit the `FRAMING:` marker on the chosen framing. If the user keeps rejecting candidates, fall back to the original framing and proceed.
 
-### Converge with stress-test axes
-
-For each surviving variation, note:
-
-- `{painkiller|vitamin}` — user value axis
-- `{first-failure-mode}` — feasibility axis (if you can't name one, mark it `UNVERIFIED` and record what evidence you'd need)
-- `{differentiator}` — what this does that existing alternatives don't
-
-Drop variations where the differentiator is "nothing distinct" or the feasibility story is unknowable without weeks of research.
-
-### Pick a concrete framing
-
-Present the 1–3 strongest variations via AskUserQuestion and reserve one option slot for `None of these — let's iterate.` Keep the total predefined option count within AskUserQuestion's 2-4 option limit. If the user picks one, restate it as a concrete problem statement and emit:
-
-```text
-FRAMING: Interview will proceed on the following framing — {chosen variation restated concretely}.
-```
-
-If the user picks "None of these", apply 2 fresh lenses and re-run convergence. If they still don't land on anything, fall back to the original framing and proceed with the interview.
-
-Feed the chosen framing into Step 2 and reclassify before Step 3. If the topic type changes, tell the user which type is now in force before you continue.
+Then feed the chosen framing into Step 2 and reclassify before Step 3. If the topic type changes, tell the user which type is now in force before you continue.
 
 ## Phase R: Research Pre-pass (Optional)
 
@@ -178,6 +161,8 @@ Use AskUserQuestion to present a specific choice about how to proceed — not a 
 - "Tanstack Query v5 deprecated the API the proposal uses. Switch to suspense queries, or pin to v4?"
 
 If the research surfaces nothing surprising, name that briefly and proceed. If it changes the framing or classification, repeat Step 2 before Step 3.
+
+If an agent fails or returns no usable findings, do not block the interview: name which coverage area is therefore still user-answered (rather than research-answered) and continue. Never present a failed agent's absence as a confirmed finding.
 
 ### Pass research findings into the interview
 
@@ -400,7 +385,7 @@ Stop interviewing when:
 
 ### File Naming
 
-Suggest a filename based on the topic, e.g., `user-auth-redesign-plan.md` or `deployment-process-plan.md`. Ask user for preferred location.
+Suggest a filename based on the topic, e.g., `user-auth-redesign-plan.md` or `deployment-process-plan.md`. Ask user for preferred location. Before writing, check whether the target path already exists; if it does, confirm overwrite or pick a new name via AskUserQuestion rather than clobbering a prior plan silently.
 
 ### Template Selection
 
@@ -432,29 +417,6 @@ When the host runtime supports it (Claude Code) and the user wants to move direc
 3. **Connect answers** - Show how different decisions interact
 4. **Challenge diplomatically** - "Have you considered X?" not "X is wrong"
 5. **Depth over breadth** - Better to deeply explore key areas than superficially cover everything
-
-## Starting the Interview
-
-**Handling $ARGUMENTS:**
-
-- `$ARGUMENTS` contains everything the user typed after `/kramme:discovery:interview`
-- Parse for the `--ideate`, `--decision-tree`, and `--research` flags. If present, set `force_ideate=true`, `decision_tree_requested=true`, and/or `research_requested=true`, then remove them from the argument list.
-- Treat natural-language requests to "walk the decision tree", "walk this depth-first", or "resolve dependencies first" as `decision_tree_requested=true` without treating phrase-only instructions as the topic.
-- If the remaining text looks like file path(s): Read and analyze them first
-- If it's free text: Use as the topic description
-- If empty: Ask user what they want to explore using AskUserQuestion
-
-**Process:**
-
-1. Parse and analyze any files or context provided via $ARGUMENTS
-2. Read `UBIQUITOUS_LANGUAGE.md` if present; proceed silently if absent
-3. Draft the autonomous framing hypotheses (target user, why-now, non-goals) before asking questions
-4. Classify the topic type
-5. If `force_ideate=true`, run Phase 0 even when the framing is concrete. Otherwise, only run Phase 0 when the framing is vague.
-6. Reclassify if Phase 0 materially changed the framing
-7. Confirm classification with user if ambiguous
-8. If `research_requested=true`, run Phase R. Otherwise auto-trigger Phase R only when the framing names external libraries, frameworks, vendor services, or cross-cutting concerns whose answers likely sit in the codebase or framework docs.
-9. If `decision_tree_requested=true`, resolve the root decision and dependency branches first; otherwise ask the first coverage round from the highest-uncertainty assumptions
 
 ## Epilogue
 
