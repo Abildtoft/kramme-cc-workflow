@@ -35,7 +35,7 @@ Watch for these justifications that signal you are about to skip a hard gate:
 
 Stop and recheck the workflow if any of these appear:
 
-- Phase 4 subagent returns empty feedback on the first pass — likely under-reviewing, not a clean breakdown.
+- Phase 4 subagent returns "no findings" on the first pass — likely under-reviewing, not a clean breakdown. (Distinct from a missing or malformed response, which is handled by the Subagent failure stanza in `SKILL.md` Phase 4.)
 - Every task lands at size L — likely under-decomposed.
 - Sizing labels were assigned after the structure was drafted instead of during Phase 3.2 — the grammar did not drive decomposition.
 - Parallelization categories are all "Must be sequential" — likely missed safely-parallel slices.
@@ -49,4 +49,4 @@ Before reporting Phase 7, verify:
 - Phase 4 subagent prompt ran with all nine criteria (including Vertical slicing, Parallelization, and Mode coverage).
 - Parallelization categories are recorded for each task group.
 - The Phase 5 `PLAN:` block shows every issue size and every group-level `Parallelization:` note.
-- Generated issue files preserve each issue's approved size, Mode, and parallelization guidance. In `siw/OPEN_ISSUES_OVERVIEW.md`, modern 7-column sections preserve approved sizes and Mode values plus one section-level `Parallelization:` summary per task group where that metadata already exists. Legacy 5-column and pre-Mode 6-column sections preserve only the metadata their schema supports; Mode remains in the issue files unless the tracker is explicitly migrated. Legacy sections without that line remain unchanged unless the tracker is being explicitly migrated.
+- Generated issue files preserve each issue's approved size, Mode, and parallelization guidance. For tracker schema rules (modern 7-column, pre-Mode 6-column, legacy 5-column) see Phase 6.2 in `SKILL.md`.
