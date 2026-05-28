@@ -71,9 +71,25 @@ CONFUSION: <ambiguous signal>
 
 Use when a metric could have multiple causes. Example: `CONFUSION: P95 latency 30% above baseline at 5% canary — could be cold-start cache warm-up or real regression.` Forces an investigation rather than a snap judgment.
 
+## Before you start
+
+**Inputs.** Gather these before step 1 — the rollout cannot begin without them:
+
+- The feature or PR being rolled out (the merge commit this launch covers).
+- The feature flag name, or an explicit decision that this change ships without a flag (see "Changes that ship without a flag" below).
+- The deploy target and the monitoring + error-reporting source.
+- The baseline data source for the Rollout Decision Thresholds — a dashboard or log query, not a guess. If it is a guess, `UNVERIFIED` applies.
+
+**Resuming an in-progress rollout.** The monitoring windows below run from 24 hours to a week, so a launch is almost always re-entered across sessions. On invocation, check the launch ticket for this feature before doing anything else:
+
+- **Ticket records a current gate** — read the gate, the last percentage reached, and the prior threshold observations, then continue from the next gate. Do not re-run the pre-flight gate or restart at staging.
+- **No ticket, or no rollout recorded** — this is a cold start. Proceed to the pre-flight gate.
+
+The launch ticket is the source of truth for gate position. If it is missing or silent on the current gate, treat the rollout as not yet started.
+
 ## Pre-flight gate
 
-Before step 1, confirm every box in `references/pre-launch-checklist.md` is checked or explicitly deferred with an owner. The checklist has six sections: Code Quality, Security, Performance, Accessibility, Infrastructure, Documentation.
+Before step 1, read `references/pre-launch-checklist.md` and confirm every box is checked or explicitly deferred with an owner. The checklist has six sections: Code Quality, Security, Performance, Accessibility, Infrastructure, Documentation. If any referenced file in this skill is unreadable, halt and report the path — do not proceed from memory.
 
 If any box is unchecked:
 
@@ -124,6 +140,8 @@ The sequence is six staged gates. Each gate has a monitoring window and a set of
 
 Write the sequence into the launch ticket verbatim so the on-call can see which gate is current.
 
+**Changes that ship without a flag.** Some user-facing changes correctly have no flag (see `references/feature-flag-rules.md` — e.g. internal tools used by fewer than five people, where a direct revert is cheaper than a flag). For these, steps 3–5 (team enable, canary, gradual percentages) do not apply: run steps 1–2 (staging, then production), complete the first-hour verification, and keep the revert-on-trigger path armed in place of the percentage gates. If a change is user-facing and carries real risk, prefer adding a flag over skipping the staged gates.
+
 ## Rollout Decision Thresholds
 
 The numeric gates for advance / hold / rollback decisions. Reproduce the table in the launch ticket so the decision rule is visible, not tribal.
@@ -139,7 +157,7 @@ The numeric gates for advance / hold / rollback decisions. Reproduce the table i
 
 - **Green across the row** — advance.
 - **Any yellow** — hold, investigate, advance only when cleared.
-- **Any red** — roll back immediately.
+- **Any red** — roll back immediately. A false-positive rollback is cheap; a false-negative is a production incident.
 - **Multiple yellows** — treat as red unless each has a confirmed non-rollout cause.
 
 `UNVERIFIED` applies if you don't have a real baseline — do not advance past 5% on a guessed baseline.
