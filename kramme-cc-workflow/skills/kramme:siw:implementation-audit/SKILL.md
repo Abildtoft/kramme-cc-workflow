@@ -1,6 +1,6 @@
 ---
 name: kramme:siw:implementation-audit
-description: Exhaustively audit codebase implementation against specification. Detects spec divergences, undocumented implementation extensions, contract violations, and spec drift. Supports inline report output with --inline. Use --team for multi-agent cross-validation.
+description: Exhaustively audit codebase implementation against specification. Detects spec divergences, undocumented implementation extensions, contract violations, and spec drift. Supports inline report output and an optional team mode for multi-agent cross-validation.
 argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku] [--team] [--inline]"
 disable-model-invocation: true
 user-invocable: true
@@ -9,6 +9,16 @@ user-invocable: true
 # Audit Implementation Against Specification
 
 Exhaustively compare the codebase implementation against specification documents.
+
+## When not to use this skill
+
+- **Spec quality review** — use `/kramme:siw:spec-audit` to audit the spec itself for ambiguity, gaps, or contradictions before comparing against code.
+- **User/product audit** — use `/kramme:siw:product-audit` to evaluate whether the spec describes the right product.
+- **PR-scoped review** — use `/kramme:pr:code-review` for code quality on a specific diff; this skill compares the *full* implementation against the *full* spec.
+
+## Platform note
+
+Standard mode assumes a host harness with a research sub-agent primitive (Claude Code: `Task` tool with `subagent_type=Explore`; Codex: equivalent task sub-agent). Interactive YAML prompt blocks shown in later steps map to the host's interactive question mechanism. Team mode (`--team`) additionally requires multi-agent support and is gated explicitly in `references/team-mode.md`.
 
 ## Primary Objective (Mandatory)
 
@@ -29,42 +39,6 @@ A report is not complete unless it includes:
 ## Team Mode
 
 If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments.
-
-## Process Overview
-
-```
-/kramme:siw:implementation-audit [spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku] [--team]
-    |
-    v
-[Step 1: Resolve Spec Files] -> Parse args or auto-detect from siw/
-    |
-    v
-[Step 2: Read Specs and Extract Requirements] -> Read fully, extract checklist
-    |
-    v
-[Step 3: Plan Coverage + Exploration] -> Build section matrix and code search plan
-    |
-    v
-[Step 4: Pass A (Spec Conformance)] -> Requirement-by-requirement verification
-    |
-    v
-[Step 5: Pass B (Boundary/Extension Discovery)] -> Adversarial extension scan
-    |
-    v
-[Step 6: Reconcile Conflicts + Enforce Gates] -> Tie-break + evidence + coverage gates
-    |
-    v
-[Step 7: Compile Mandatory Report Schema] -> Structured markdown contract
-    |
-    v
-[Step 8: Write Report File] -> siw/AUDIT_IMPLEMENTATION_REPORT.md (only if gates pass)
-    |
-    v
-[Step 9: Optionally Create SIW Issues] -> Convert findings to issues
-    |
-    v
-[Step 10: Report Summary] -> Stats and next steps
-```
 
 ---
 
@@ -281,7 +255,7 @@ This information will be passed to Explore agents to direct their search.
 
 Create a section-level matrix row for every spec section that contributed requirements:
 
-| Section ID | Source | Requirement Count | Strict (M/O/N) | Pass A Checked | Pass B Checked | Divergences | Extensions | Alignments | Evidence Refs | Status |
+| Section ID | Source | Req Count | Strict (M/O/N) | Pass A Checked | Pass B Checked | Divergences | Extensions | Alignments | Evidence Refs | Status |
 | --- | --- | --: | --: | --: | --: | --: | --: | --: | --- | --- |
 
 Initialize `Status = PENDING`.
@@ -383,11 +357,23 @@ Every Divergence, Extension, and Verified Alignment must include:
 
 Findings missing any of the above are invalid until evidence is completed.
 
-### 6.5 Existing-Issue Hygiene Rule
+### 6.5 Build Existing-Issue Cross-Reference
 
-Existing SIW issues may be used **only as cross-reference** after direct code evidence is established.
+After findings are stable (post tie-break, evidence verified), join them against existing SIW issues:
 
-Never use existing issues as primary evidence. Never let an existing issue suppress a finding.
+1. If `siw/issues/` does not exist, populate the report's `Existing-Issue Cross-Reference` section with `None` and skip the rest of this step.
+2. Otherwise, Glob `siw/issues/*.md` and read each issue's title and `Related` / `Spec requirement` / `Finding` lines.
+3. For each finding (Divergence or Extension), match against existing issues by:
+   - Referenced `REQ-{id}` or finding ID (`DIV-{n}` / `EXT-{n}`), or
+   - Overlapping spec citation (same file + section), or
+   - Overlapping code citation (same file path, overlapping line range).
+4. Record one row per finding that has at least one match. Findings with no match are not included.
+
+**Hygiene constraints (Hard):**
+
+- Existing issues may be used **only as cross-reference** after direct code evidence is already established in 6.4.
+- Never use an existing issue as primary evidence.
+- Never let an existing issue suppress a finding, even if the issue claims the behavior is intentional or accepted.
 
 ### 6.6 Coverage Matrix Completion Gate (Hard Gate)
 
