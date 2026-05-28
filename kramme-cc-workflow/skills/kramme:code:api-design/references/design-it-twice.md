@@ -1,6 +1,15 @@
 # Design It Twice
 
-The first interface that comes to mind is rarely the best one. Design It Twice escapes that trap by generating multiple radically different shapes in parallel, each under a constraint that pushes it away from the others, then comparing them in the open. The 8 rules in `SKILL.md` apply afterwards to whichever design is picked — Design It Twice is upstream of those rules, not a replacement for them.
+The first interface that comes to mind is rarely the best one. Design It Twice escapes that trap by generating multiple radically different shapes, each under a constraint that pushes it away from the others, then comparing them in the open. The 8 rules in `SKILL.md` apply afterwards to whichever design is picked — Design It Twice is upstream of those rules, not a replacement for them.
+
+## Parallel vs sequential form
+
+The mode runs in one of two forms depending on platform capability:
+
+- **Parallel form (Claude Code).** Spawn the constraint-pinned sub-agents in parallel via the Agent tool. Faster, and each agent stays blind to the others' drafts by construction.
+- **Sequential form (any platform).** Draft each design in turn against the same constraint slate, finishing one before starting the next. To preserve the blind-to-each-other property that the parallel form gets for free, do not re-read prior designs while drafting the next — only consult the shared framing block from Step 1. The comparison rubric (Step 3) is identical in both forms.
+
+Pick the parallel form when available; fall back to sequential when the Agent tool is unavailable.
 
 ## When to enter this mode
 
@@ -9,13 +18,13 @@ Trigger on any of:
 - The user passes `--design-twice` (or equivalent flag) to the skill invocation.
 - The user says "design it twice", "show me alternatives", "what other shapes are there", or otherwise asks for a comparison rather than a single design.
 
-Do not enter this mode by default. For high-leverage surfaces (SDK boundary, public API, cross-team contract) where the first shape feels obvious, ask the user whether to run this mode before spawning agents. A single contract is right for most work; multiplying designs has overhead and is wasted on low-stakes interfaces.
+Do not enter this mode by default. For high-leverage surfaces (SDK boundary, public API, cross-team contract) where the first shape feels obvious, ask the user whether to run this mode before producing designs. A single contract is right for most work; multiplying designs has overhead and is wasted on low-stakes interfaces.
 
 ## Process
 
 ### Step 1 — Frame the problem space
 
-Write a short framing block before spawning agents. The framing names the _problem_, not the _interface_.
+Write a short framing block before any design is produced. The framing names the _problem_, not the _interface_.
 
 ```
 Problem: <what the caller is trying to accomplish, in one sentence>
@@ -24,11 +33,11 @@ Invariants: <what must hold across all designs>
 Out of scope: <variants we are not exploring>
 ```
 
-Each agent receives this framing verbatim. They diverge on shape, not on problem.
+Each design receives this framing verbatim. They diverge on shape, not on problem.
 
-### Step 2 — Spawn parallel sub-agents
+### Step 2 — Produce three or more designs
 
-Spawn at least three agents in parallel, each with a different constraint. Concrete constraint slate:
+Produce at least three designs, each pinned to a different constraint — in parallel via sub-agents when available, sequentially otherwise (see "Parallel vs sequential form" above). Concrete constraint slate:
 
 | # | Constraint | Pushes the design toward |
 | --- | --- | --- |
@@ -37,7 +46,7 @@ Spawn at least three agents in parallel, each with a different constraint. Concr
 | 3 | **Optimize the common case.** One ergonomic happy-path call; advanced cases via escape hatches. | Convenience-shape. Risk: hidden coupling between the happy path and the escape hatches. |
 | 4 (optional) | **Ports & adapters** for cross-seam dependencies. | Interface plus N adapters. Only worth assigning when the dependency is **remote-but-owned** (a service we own across a network) or **true-external** (a third party we don't own) per the taxonomy below — for in-process and local-substitutable dependencies the constraint usually collapses. Drop if there's only one adapter — see the adapter-count rule. |
 
-Each agent must produce the same output structure (Step 3 below) so comparison is mechanical rather than subjective. Agents do not see each other's drafts.
+Each design must follow the same output structure (Step 3 below) so comparison is mechanical rather than subjective. Designs are produced blind to each other — in the parallel form this is guaranteed by separate sub-agents; in the sequential form, do not re-read prior designs while drafting the next.
 
 #### Dependency categories (decide before constraint #4 fires)
 
@@ -50,10 +59,12 @@ Constraint #4 is only worth assigning when the _category_ of dependency justifie
 
 Use the category to decide whether constraint #4 is even a viable design — for in-process and local-substitutable dependencies, "Ports & adapters" usually collapses back into one of the other constraints because there is no real second adapter waiting. For remote-but-owned and true-external, constraint #4 is doing real work.
 
-#### Prompt template per sub-agent
+#### Prompt template per design
+
+In the parallel form, send this prompt to each sub-agent. In the sequential form, use the same prompt as a self-brief at the start of each design pass.
 
 ```
-You are designing one alternative for a parallel interface-design exercise.
+You are designing one alternative for a comparative interface-design exercise.
 
 Problem framing:
 <paste the framing block from Step 1>
@@ -84,6 +95,14 @@ What this design gives up to satisfy its constraint. Be honest. The next step wi
 
 Do not compare yourself to other designs. Do not propose a hybrid. Do not break the constraint.
 ```
+
+#### Handling missing or degenerate designs
+
+Before moving to Step 3, check the produced designs:
+
+- **Malformed output** (sections missing, constraint visibly broken): re-run that single design once with the same prompt. If it fails a second time, drop it and continue with the remainder.
+- **Collapsed constraint** (two designs are substantively the same shape — typically constraint #4 collapsing into another when the dependency category is in-process or local-substitutable): drop the duplicate and note it in the comparison block so the reader sees the constraint did not buy a distinct design.
+- **Fewer than two distinct designs survive**: stop and surface this to the user. The mode requires at least two real alternatives to be useful; below that, propose either re-framing the problem or proceeding without Design It Twice.
 
 ### Step 3 — Present and compare
 
