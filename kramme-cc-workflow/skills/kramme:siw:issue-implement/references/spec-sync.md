@@ -17,7 +17,7 @@ Decisions needing spec update:
 1. Decision #{n}: {title}
    - siw/LOG.md says: {decision}
    - Spec says: {current spec content or "not mentioned"}
-   - Target file: {main spec or relevant supporting spec}
+   - Target file: {main spec filename or relevant supporting spec path}
    - Recommendation: {update/add/clarify}
 
 2. Decision #{n}: {title}
@@ -39,6 +39,10 @@ options:
 ```
 
 ---
+
+## Identifying the Main Spec
+
+The main spec is the project-named uppercase markdown file at the top of `siw/` (chosen at `kramme:siw:init` time — common names include `FEATURE_SPECIFICATION.md`, `API_DESIGN.md`, `SYSTEM_DESIGN.md`, `PROJECT_PLAN.md`). Exclude the SIW tracking files (`LOG.md`, `OPEN_ISSUES_OVERVIEW.md`) and any temporary artifacts (`DISCOVERY_BRIEF.md`). If multiple candidates remain, ask the user which file is the main spec before editing it.
 
 ## Updating Supporting Specs (10.4) — Worked Example
 

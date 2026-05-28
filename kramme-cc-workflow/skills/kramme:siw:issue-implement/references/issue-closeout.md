@@ -2,9 +2,30 @@
 
 Use this when `SKILL.md` reaches Step 11 after verification passes and implementation is complete.
 
+## 11.0 Idempotency Check
+
+Before doing anything else, check the current state of the issue file:
+
+- If the issue's status line already reads `Status: DONE` and a `## Resolution` section already exists, the issue has already been closed out. Report `Issue {prefix}-{number} is already closed (Status: DONE).` and skip directly to 11.4 (phase-completion check) without re-running the Status Update Procedure or asking the confidence question.
+- If a `## Resolution` section already exists but status is not `DONE` (for example, status is `IN REVIEW` from an earlier run), use AskUserQuestion to decide what to do:
+
+  ```yaml
+  header: "Existing Resolution Section"
+  question: "This issue already has a ## Resolution section from an earlier run. How should I record this run's outcome?"
+  options:
+    - label: "Replace the existing Resolution section"
+      description: "Overwrite with this run's summary, changes, and decisions"
+    - label: "Append as an amendment"
+      description: "Keep the original and add a new ### Amendment ({date}) block below it"
+    - label: "Skip — keep the existing Resolution unchanged"
+      description: "Continue with the status update only"
+  ```
+
+Apply the chosen action in 11.1, then continue.
+
 ## 11.1 Document Resolution in Issue File
 
-Add a `## Resolution` section to the issue file with:
+If 11.0 routed to "Skip", omit this step. Otherwise add (or replace, or append-as-amendment) the `## Resolution` block:
 
 ```markdown
 ## Resolution
@@ -25,7 +46,9 @@ Add a `## Resolution` section to the issue file with:
 - {any decisions made during implementation, if applicable}
 ```
 
-**IMPORTANT:** Do NOT delete the issue file. The issue file is preserved as a record of the work.
+For "Append as an amendment", insert a new `### Amendment ({date})` block under the existing Resolution heading with the same three subsections rather than duplicating the top-level heading.
+
+Do not delete the issue file. The issue file is preserved as a record of the work.
 
 ## 11.2 Determine Confidence and Set Status
 
@@ -45,13 +68,13 @@ options:
 
 ## 11.3 Update All Tracking Files
 
-**CRITICAL:** Run the Status Update Procedure with the chosen status (`DONE` or `IN REVIEW`). All three files:
+Run the Status Update Procedure with the chosen status (`DONE` or `IN REVIEW`). All three files:
 
 - [ ] **Issue file** — Set `**Status:**` to the chosen status
 - [ ] **Overview** (`siw/OPEN_ISSUES_OVERVIEW.md`) — Update the issue row to match
 - [ ] **Log** (`siw/LOG.md`) — Move the issue into "Last Completed", set "Next Steps" to the next READY issue
 
-Do NOT proceed to 11.4 until all three files are updated.
+Do not proceed to 11.4 until all three files are updated.
 
 ## 11.4 If This Was the Last Open Issue in a Phase, Confirm Phase Completion
 
