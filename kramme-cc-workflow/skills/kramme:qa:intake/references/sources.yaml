@@ -4,4 +4,4 @@ sources:
     title: "Matt Pocock skills - qa"
     rationale: "The conversational multi-bug intake workflow, the at-most-2-3-clarifying-questions cap, background codebase exploration for domain language, single-issue-vs-breakdown decision logic, and the durable issue-body conventions are adapted from this source."
     last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    baseline_hash: "6a87ed07b027d3485dcc77fddff628b62d4e4a9b"
