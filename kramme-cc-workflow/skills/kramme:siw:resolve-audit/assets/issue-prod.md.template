@@ -1,0 +1,49 @@
+# ISSUE-G-{NNN}: Product: {finding_id} - {short title}
+
+**Status:** Ready | **Priority:** {High/Medium/Low — see Step 3 severity-inheritance rule} | **Size:** {XS|S|M|L} | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Related:** Product Audit Report
+
+## Problem
+
+{Executive summary — which product dimension is at risk and why it matters for users or delivery}
+
+**Audit Finding:** `{finding_id}` **Dimension:** {target user / problem-solution fit / user state / critical moments / scope / success criteria / prioritization} **Source:** `{report_path}` {If present} **Severity Note:** {copied from audit report}
+
+## Context
+
+{Quotes from the spec or product surface that show the gap} {Which section(s), flow(s), or screen(s) are affected}
+
+## Scope
+
+### In Scope
+
+- Apply chosen option: {selected option name} — revise spec, flow, or scope as the option specifies
+
+### Out of Scope
+
+- Implementation of non-selected alternatives
+- Unrelated product dimensions
+
+## Acceptance Criteria
+
+- [ ] Product gap is closed per the chosen option
+- [ ] {Specific criterion from the chosen option}
+- [ ] Follow-up product audit no longer reports `{finding_id}`
+
+---
+
+## Technical Notes
+
+### Selected Option
+
+{chosen option details — what changes in the spec, flow, or scope}
+
+### Alternatives Considered
+
+- Option A: {short summary}
+- Option B: {short summary}
+- Option C: {short summary if applicable}
+
+### References
+
+- Product audit report: `{report_path}` > `{finding_id}`
+- Spec section: `{spec_file}` > {section heading}
