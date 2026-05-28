@@ -25,13 +25,15 @@
 
    - Use this for analysis and scoping only. Do not reproduce the changed-file list in the final PR body unless a specific file is a non-obvious review landmark.
 
-3. **ALWAYS** categorize changed files by area:
-   - **Frontend**: Files under `Connect/ng-app-monolith/`
-   - **Backend**: Files under `Connect/Connect.Api/`, `Connect/Connect.Core/`, etc.
-   - **Tests**: Files matching `*.spec.ts`, `*.test.ts`, or under `tests/` directories
-   - **Migrations**: Files under `Connect/Connect.Api/Migrations/`
-   - **Documentation**: `*.md` files
-   - **Configuration**: `*.json`, `*.config.*`, `*.yml` files
+3. **ALWAYS** categorize changed files by area using generic heuristics. Prefer file extensions and conventional directory names; only escalate to repo-specific knowledge when the heuristic is ambiguous.
+   - **Frontend**: `*.ts`/`*.tsx`/`*.jsx`/`*.vue`/`*.svelte`/`*.html`/`*.css`/`*.scss` outside test directories, or files under conventional UI directories (`app/`, `src/`, `pages/`, `components/`, `views/`, `screens/`, `web/`, frontend-named monorepo packages).
+   - **Backend**: Server-side language files (`*.cs`, `*.go`, `*.py`, `*.rb`, `*.java`, `*.kt`, `*.rs`, server-side `*.ts`/`*.js`) outside test directories, or files under `api/`, `server/`, `services/`, `backend/`, or backend-named monorepo packages.
+   - **Tests**: Files matching `*.spec.*`, `*.test.*`, `*_test.*`, or under `tests/`, `test/`, `__tests__/`, `e2e/`, `spec/`.
+   - **Migrations**: Files under `migrations/`, `db/migrate/`, `prisma/migrations/`, or matching ORM migration naming conventions (e.g. EF Core `*.Designer.cs` pairs, Rails timestamp-prefixed Ruby files).
+   - **Documentation**: `*.md`, `*.mdx`, `*.rst`, `*.adoc` files; `docs/` directory contents.
+   - **Configuration**: `*.json`, `*.yaml`/`*.yml`, `*.toml`, `*.ini`, `.env.*`, `*.config.*`, and tool dotfiles (`.eslintrc*`, `.prettierrc*`, etc.).
+
+   If the consumer repository uses a non-standard layout the agent cannot infer, fall back to "Other" rather than guessing.
 
 4. **CAN** use `gh pr diff` to get branch diffs if a PR already exists.
 
@@ -56,45 +58,46 @@
 
 ### 2.3 Linear Issue Context
 
-1. **ALWAYS** check if branch name contains a Linear issue ID:
-   - Pattern: `{initials}/{team-issue-id}-{description}`
-   - **Known team abbreviations**: WAN, HEA, MEL, POT, FIR, FEG
-   - **EXAMPLE**: `mab/wan-521-ensure-that-platform-picker-page-is-only-shown-if-the-user`
-   - Extract issue ID: `wan-521` → `WAN-521` (uppercase)
-   - **EXAMPLE**: `jd/hea-123-fix-header-bug` → Extract: `HEA-123`
-   - **EXAMPLE**: `ab/mel-456-add-new-feature` → Extract: `MEL-456`
+1. **ALWAYS** check if the branch name or commit messages contain a Linear-style issue ID. Match the generic pattern `[A-Z]{2,5}-\d+` (case-insensitive at extraction time; normalize to uppercase). Do not hard-code a team prefix list — accept any prefix that Linear validates in step 2.
+   - Branch-name pattern: `{initials}/{team-issue-id}-{description}` or `{team-issue-id}-{description}` at the root.
+   - **EXAMPLE**: `mab/wan-521-ensure-platform-picker-only-shown-once` → `WAN-521`.
+   - **EXAMPLE**: `jd/hea-123-fix-header-bug` → `HEA-123`.
+   - **EXAMPLE**: `ab/mel-456-add-new-feature` → `MEL-456`.
+   - **EXAMPLE**: `eng/blog-87-launch-rss` → `BLOG-87`.
 
-2. **ALWAYS** attempt to fetch Linear issue details if issue ID found:
+2. **ALWAYS** attempt to fetch Linear issue details if a candidate ID is found:
 
    ```
    mcp__linear__get_issue with issue ID
    ```
 
-3. **ALWAYS** include in context:
+   If `mcp__linear__list_teams` is available, **CAN** use it to validate that the extracted prefix maps to a real team before fetching. Treat a lookup failure as "no Linear context" rather than an error — continue and note the unresolved ID.
+
+3. **ALWAYS** include in context (when the lookup succeeds):
    - Issue title
    - Issue description
    - Issue state
    - Related project/labels
 
-4. **ALWAYS** compare implementation against Linear issue description:
-   - Check if the actual changes align with what was described in the issue
-   - **ALWAYS** note any significant divergences from the original issue scope
-   - **ALWAYS** identify if features were added/removed compared to issue description
-   - **ALWAYS** note if approach differs from what was requested in the issue
-   - **EXAMPLE**: Issue asked for A, but implementation delivers A + B, or implements A differently
+4. **ALWAYS** compare implementation against the Linear issue description:
+   - Check if the actual changes align with what was described in the issue.
+   - **ALWAYS** note significant divergences from the original issue scope.
+   - **ALWAYS** identify if features were added or removed relative to the issue.
+   - **ALWAYS** note if the approach differs from what the issue requested.
+   - **EXAMPLE**: Issue asked for A, but implementation delivers A + B, or implements A differently.
 
-5. **CAN** check commit messages for Linear issue references:
-   - Pattern: `{TEAM}-{number}` where TEAM is one of: WAN, HEA, MEL, POT, FIR, FEG
-   - **EXAMPLE**: `WAN-123`, `Fixes HEA-456`, `Related to MEL-789`
+5. **CAN** scan commit messages for additional issue references using the same generic `[A-Z]{2,5}-\d+` pattern.
+   - **EXAMPLE**: `WAN-123`, `Fixes HEA-456`, `Related to BLOG-789`.
 
 ### 2.4 Code Structure Analysis
 
-1. **ALWAYS** analyze the scope of changes:
-   - Frontend-only: Only files under `ng-app-monolith/`
-   - Backend-only: Only files under `Connect/` (excluding `ng-app-monolith/`)
-   - Full-stack: Changes in both areas
-   - Tests-only: Only test files modified
-   - Documentation-only: Only `.md` files modified
+1. **ALWAYS** analyze the scope of changes using the categorization from §2.1.3:
+   - **Frontend-only**: All non-test, non-config changes fall into the Frontend bucket.
+   - **Backend-only**: All non-test, non-config changes fall into the Backend bucket.
+   - **Full-stack**: Both Frontend and Backend buckets have non-trivial changes.
+   - **Tests-only**: Only Test bucket changes.
+   - **Documentation-only**: Only Documentation bucket changes.
+   - **Other**: Falls outside the buckets above; describe the scope in prose.
 
 2. **ALWAYS** identify change characteristics:
    - **New feature**: New files created, new functionality added

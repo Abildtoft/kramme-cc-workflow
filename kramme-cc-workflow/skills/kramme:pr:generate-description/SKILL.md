@@ -175,11 +175,21 @@ Read the context-gathering procedure from `references/context-gathering.md` and 
 
 **Skip this phase if `VISUAL_MODE` is not set.** Proceed directly to Phase 3.
 
-If `VISUAL_MODE=true`, read `${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:generate-description/references/visual-capture.md` and follow **Phase 2.6** in that document to detect a browser MCP and discover the running dev server URL.
+If `VISUAL_MODE=true`, read `references/visual-capture.md` and follow **Phase 2.6** in that document to detect a browser MCP and discover the running dev server URL.
 
 ### Phase 3: Description Generation
 
-**ALWAYS** generate a structured PR title and description.
+Before drafting, evaluate whether any **MISSING REQUIREMENT** conditions hold (see the Output markers section below). Emit a `MISSING REQUIREMENT: …` line in the skill's conversation output whenever:
+
+- The branch name has no detectable issue ID and commits reference none — confirm the intended ticket or proceed without one.
+- The diff contains a database migration but no rationale is present in commits, Linear, or conversation — request the migration's purpose/rollback plan.
+- The diff toggles a feature flag's default but no rollout context is available — request the rollout plan.
+
+Surface the marker even when `NON_INTERACTIVE=true`; do not prompt the user, but make the gap visible in the run output so it appears alongside the generated description.
+
+(Phase 1 already aborts hard when the base branch cannot be resolved, so there is no Phase 3 trigger for that case.)
+
+**ALWAYS** generate a structured PR title and description after that check.
 
 #### 3.0 Title Generation
 
@@ -319,7 +329,7 @@ Include a placeholder section for visual aids:
 
 **If `VISUAL_MODE=true` and a browser MCP and dev server were detected:**
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:generate-description/references/visual-capture.md` and follow **Phase 3.5** to capture screenshots, upload them, and build the Screenshots/Videos section.
+Read `references/visual-capture.md` and follow **Phase 3.5** to capture screenshots, upload them, and build the Screenshots/Videos section.
 
 ### Phase 4: Output Formatting
 
@@ -338,23 +348,57 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:generate-description/references/vis
 
 #### If `DIRECT_UPDATE=true`: Update PR directly
 
-**Skip copy-paste output and save-to-file prompt.** Update the existing PR's title and description:
+**Skip copy-paste output and save-to-file prompt.** Use this sequence to avoid both shell-interpolation and heredoc-terminator collisions in LLM-generated content:
 
-```bash
-gh pr edit --title "<title>" --body "$(
-  cat << 'EOF'
-<description>
-EOF
-)"
-```
+1. **Anchor to repo root and prepare the workspace directory.** Run this bash block first:
 
-**After updating**, confirm success:
+   ```bash
+   REPO_ROOT=$(git rev-parse --show-toplevel)
+   BACKUP_DIR="$REPO_ROOT/.kramme-cc-workflow/pr-description"
+   mkdir -p "$BACKUP_DIR"
+
+   # Ensure the namespace is gitignored so backups and saved descriptions are
+   # not accidentally committed. Append once if missing.
+   GITIGNORE="$REPO_ROOT/.gitignore"
+   if [ -f "$GITIGNORE" ] && ! grep -qxF ".kramme-cc-workflow/" "$GITIGNORE"; then
+     printf '\n.kramme-cc-workflow/\n' >> "$GITIGNORE"
+   fi
+
+   # Snapshot the prior PR body. Real failure leaves no backup; empty backup is discarded.
+   PR_BACKUP="$BACKUP_DIR/pr-body.backup.$(date -u +%Y%m%dT%H%M%SZ).$$.md"
+   gh pr view --json body --jq '.body' > "$PR_BACKUP" 2> /dev/null
+   if [ ! -s "$PR_BACKUP" ]; then
+     PR_BACKUP=""
+   fi
+   echo "BACKUP_DIR=$BACKUP_DIR"
+   echo "PR_BACKUP=${PR_BACKUP:-<none>}"
+   ```
+
+2. **Write the generated title and body to files using the Write tool (not bash).** Targets:
+   - `$BACKUP_DIR/new-title.txt` — the conventional-commit title, single line, no trailing newline.
+   - `$BACKUP_DIR/new-body.md` — the full description markdown.
+
+   Using the Write tool keeps the title and body content fully out of any shell parser, eliminating both `$`/backtick expansion and heredoc-terminator collisions regardless of what tokens appear in the body.
+
+3. **Apply the edit:**
+
+   ```bash
+   gh pr edit \
+     --title "$(cat "$BACKUP_DIR/new-title.txt")" \
+     --body-file "$BACKUP_DIR/new-body.md"
+   ```
+
+   - `"$(cat …)"` substitutes the literal file contents into one argv element; `gh` does not re-evaluate the argument as shell.
+   - `--body-file` reads the body straight from disk; nothing in it flows through the shell.
+
+**After updating**, confirm success. Include the backup line only when a backup actually exists:
 
 ```
 PR updated successfully.
 
 URL: {pr-url}
 Title: {title}
+{when PR_BACKUP is non-empty: "Previous body backed up to: {PR_BACKUP}"}
 ```
 
 **If the update fails**, fall back to presenting the description for copy-paste (same as the default flow below) and show the error.
@@ -377,39 +421,17 @@ Here is your generated PR:
 
 **NOTE**: The title is formatted with backticks for easy copying. The description follows the standard markdown format.
 
-7. **ALWAYS** ask if the description should be saved to a markdown file (**skip if `NON_INTERACTIVE=true`**):
-   - After presenting the description, ask: "Would you like me to save this description to a markdown file?"
-   - If yes, save to a file named `PR_DESCRIPTION.md` in the repository root
-   - Confirm the file location after saving
+#### Optional: Save to a markdown file
 
-### Phase 5: Final Checklist
+**Skip this step if `NON_INTERACTIVE=true`.**
 
-**ALWAYS** verify before presenting the PR:
+After presenting the description, ask: "Would you like me to save this description to a markdown file?"
 
-- [ ] **Title** follows conventional commit format (`<type>(<scope>): <description>`)
-- [ ] **Title** uses correct type (feat, fix, refactor, docs, test, chore, etc.)
-- [ ] **Title** is concise (under 72 characters total)
-- [ ] **Title** uses imperative mood ("add", not "added")
-- [ ] Summary clearly explains what and why (objective tone, no excessive praise)
-- [ ] Linear issue is linked with appropriate magic word (Fixes/Closes vs. Related to)
-- [ ] Technical details cover implementation approach and key decisions inferred from conversation/spec files without naming those private sources
-- [ ] **Divergences from Linear issue are documented with clear rationale** (if applicable)
-- [ ] Any area-oriented technical details add context beyond the GitHub file tree
-- [ ] File names appear only when they add reviewer context that is not obvious from the GitHub diff
-- [ ] Test plan leads with actionable manual or reviewer-run scenarios, not just commands the agent already ran
-- [ ] Breaking changes are documented (or marked as "None")
-- [ ] `### Changes made` block lists concrete change verbs — not vague verbs like `update` or `improve` with no object
-- [ ] `### Things I didn't touch` block captures adjacent work considered and deliberately deferred (or states `None`)
-- [ ] `### Potential concerns` block captures ship-risk items reviewers need (migrations, feature-flag defaults, partial coverage) or states `None`
-- [ ] Screenshots/Videos section is included (populated when visual capture succeeds; placeholder allowed when `--visual` is not used or capture is unavailable)
-- [ ] Markdown is properly formatted
-- [ ] No placeholders or TODOs in the output (except Screenshots section when visual capture is unavailable)
-- [ ] Description is ready to copy-paste
-- [ ] No file-by-file inventory or "Key Files" section that mostly mirrors the GitHub UI
-- [ ] No generic "Changes by Area" section that only restates the modified file groups
-- [ ] No listing of the amount of lines changed
-- [ ] No AI attribution or "Generated with Claude Code" badges included
-- [ ] Updated an existing PR directly when `DIRECT_UPDATE=true`, otherwise presented copy-paste output and only asked about saving when `NON_INTERACTIVE=false`
+If yes, save to `$REPO_ROOT/.kramme-cc-workflow/pr-description/PR_DESCRIPTION.md` where `REPO_ROOT=$(git rev-parse --show-toplevel)`. Append `.kramme-cc-workflow/` to the repo's `.gitignore` first if it is not already listed (use the same idempotent check as the `DIRECT_UPDATE` block above), so the saved file is not accidentally committed. Confirm the absolute file path after saving.
+
+### Phase 5: Pre-publish Verification
+
+Run the consolidated checklist in the Verification section near the end of this file. Phases 1–4 do not have their own checklist; the Verification section is the single source of truth.
 
 ## Best Practices
 
@@ -422,12 +444,6 @@ Read the anti-pattern examples from `references/anti-patterns.md`. Includes titl
 ## Examples
 
 Read the complete PR examples from `references/pr-examples.md`. Includes 3 examples: frontend-only feature, full-stack with database migration, and frontend with visual capture (`--visual`).
-
-## Reference Files
-
-**ALWAYS** refer to these files for context:
-
-- Existing PR descriptions in the repository for style reference
 
 ## Platform-Specific Notes
 
@@ -455,36 +471,46 @@ Use these uppercase markers when reasoning about the description generation. The
 - **CONFUSION** — diff evidence that contradicts the commit log or Linear issue. `CONFUSION: commits say "add feature flag", but the diff toggles it on by default`.
 - **MISSING REQUIREMENT** — context the user must provide before a faithful description can be generated. `MISSING REQUIREMENT: no Linear ID in branch name and no issue mentioned in commits — confirm the intended ticket or proceed without one`.
 
-## Common Rationalizations
+## Common Rationalizations and Red Flags
 
-Watch for these — they signal the description is about to under-serve the reviewer:
-
-- _"The diff is small; a one-line summary is enough."_ → Small diffs still need the _why_. A one-line summary forces the reviewer to reconstruct intent from code.
-- _"I'll leave `Things I didn't touch` blank because nothing comes to mind."_ → If nothing comes to mind, re-read the diff. `None` is a valid answer only after you've looked.
-- _"The Linear issue covers the context — no need to restate it."_ → The PR body is read in isolation during review. Restate the essentials and link the issue.
-- _"I'll fold the migration warning into the body text."_ → `Potential concerns` is a dedicated block for a reason; a buried warning is a missed warning.
-- _"The tests passed, so the Test Plan can just list the commands I ran."_ → Passing commands are evidence, not reviewer/QA instructions. Add them only after manual scenarios.
-
-## Red Flags — STOP
-
-Pause and regenerate the description if any of these are true:
-
-- The summary says "various changes" or "multiple improvements" without nouns.
-- `Changes made` contains vague verbs like `update` or `improve` with no object.
-- The body includes a "Key Files", "Files Changed", or similar section that mostly repeats the GitHub file list.
-- The body includes a "Changes by Area" section whose bullets could be reconstructed from GitHub's file tree without reading the prose.
-- A migration, feature-flag default, or breaking change is present in the diff but absent from `Potential concerns`.
-- The Test Plan is only automated commands, or starts with commands before explaining the manual/reviewer scenarios.
-- The description references spec files, conversation history, or `siw/LOG.md` (reviewers can't see them).
-- An AI-attribution badge is about to land in the body.
+Read `references/red-flags.md` before finalizing. Covers five common rationalizations that under-serve the reviewer and eight stop-and-regenerate red flags (vague summary nouns, file-list mirroring, missing migration warnings, automated-only Test Plan, spec-file references, AI-attribution badges).
 
 ## Verification
 
-Before presenting or posting the description, self-check:
+Single pre-publish checklist. Run this before presenting copy-paste output, before `gh pr edit`, and before saving to file.
 
-- [ ] Title follows `<type>(<scope>): <description>` and is under 72 characters.
-- [ ] Summary restates the _why_ in business terms.
-- [ ] `Changes made` / `Things I didn't touch` / `Potential concerns` are all present, with `None` used only after consideration.
-- [ ] Test Plan explains how a reviewer or QA person should exercise the behavior; automated commands are separate evidence, not the whole plan.
-- [ ] Linear issue linked with the correct magic word (`Fixes`, `Closes`, `Related to`).
-- [ ] No AI attribution, no placeholder TODOs, no references to spec files.
+**Title**
+
+- [ ] Follows `<type>(<scope>): <description>` with a valid type (`feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `style`, `build`, `ci`, `revert`).
+- [ ] Under 72 characters total. Imperative mood (`add`, not `added`). No trailing period.
+
+**Summary and Change Summary block**
+
+- [ ] Summary restates the _why_ in business terms, not just the _what_.
+- [ ] Linear (or GitHub) issue linked with the correct magic word (`Fixes`, `Closes`, `Resolves`, `Related to`, `Refs`, `References`).
+- [ ] `### Changes made` lists distinct verb-led bullets — no vague verbs (`update`, `improve`) without an object.
+- [ ] `### Things I didn't touch` reflects adjacent work considered and deliberately deferred (or `None` after consideration).
+- [ ] `### Potential concerns` flags migrations, feature-flag defaults, partial coverage, and rollout risk (or `None`).
+
+**Technical Details and Test Plan**
+
+- [ ] Implementation approach explains key decisions. Divergences from the Linear issue have a clear rationale.
+- [ ] No file-by-file inventory, "Key Files" section, "Changes by Area" file-grouping, line counts, or anything that just mirrors the GitHub diff.
+- [ ] File names appear only when they identify a non-obvious entry point, migration, generated artifact, or cross-area coupling.
+- [ ] Test Plan leads with reviewer/QA scenarios. Commands the agent already ran appear only under `### Automated verification`.
+- [ ] Breaking changes section is present (`None` is a valid value after consideration).
+- [ ] Screenshots/Videos section is included — populated when `--visual` succeeded, placeholder otherwise.
+
+**Boundary, tone, and operational hygiene**
+
+- [ ] Objective tone — no superlatives, no advocacy, no invented statistics.
+- [ ] No references to spec files (`siw/SPEC.md`, `LOG.md`, etc.) or conversation history. Linear is the only external source the body may cite.
+- [ ] No AI-attribution badges, "Generated with Claude Code", or `Co-Authored-By: Claude` lines.
+- [ ] No placeholder `[TODO]` / `[Fill this in]` strings (except the documented Screenshots placeholder).
+- [ ] Markdown headings, code blocks, and lists are well-formed.
+
+**Output routing**
+
+- [ ] `DIRECT_UPDATE=true` → ran the Phase 4 sequence in order: repo-root anchored backup → `.gitignore` append → Write tool wrote title/body files → `gh pr edit --title "$(cat …)" --body-file …`. The success message includes the backup line only when the backup file is non-empty.
+- [ ] `DIRECT_UPDATE=false` → presented copy-paste output; only asked about saving when `NON_INTERACTIVE=false`.
+- [ ] Any `MISSING REQUIREMENT`, `UNVERIFIED`, `CONFUSION`, or `NOTICED BUT NOT TOUCHING` markers are emitted in the run output, not embedded in the PR body.
