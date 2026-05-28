@@ -37,6 +37,8 @@ Route elsewhere if:
 
 Lowercase, replace spaces and underscores with hyphens, strip characters outside `[a-z0-9-]`, collapse repeated hyphens. Example: `"Dark Mode"` → `dark-mode`. The skill always keys files by slug; the user-facing concept name is preserved verbatim inside the file body.
 
+If the computed slug is empty (the concept was missing or contained no usable characters), print an error naming the offending input and stop before any file operation. This guard applies to every subcommand, including `append` when the concept token is missing.
+
 ## Subcommands
 
 ### `record <concept>`
@@ -57,19 +59,19 @@ Capture a settled rejection.
 
    If the user picks deferral, stop without writing.
 
-4. Gather rejection content via AskUserQuestion:
+4. Gather rejection content from the user in prose — these are free-text fields, not multiple choice, so do not use AskUserQuestion here. Pull from the surrounding conversation where the answer is already known and ask for the rest:
    - Substantive reason (project scope, technical constraints, or strategic decision; not "we're too busy").
    - Optional code sample illustrating a technical constraint.
    - Prior-request references (issue links or PR references that triggered or shaped the rejection).
    - Decider name or role.
-5. Render `.out-of-scope/<slug>.md` from `assets/out-of-scope-template.md`:
+5. Create the directory if missing (`mkdir -p .out-of-scope`).
+6. Render and write `.out-of-scope/<slug>.md` from `assets/out-of-scope-template.md`:
    - `{Concept Name}` → user-facing concept (preserve original casing, not the slug).
    - `{YYYY-MM-DD}` → today's absolute date. Capture the date in the file body so `git mv`, re-checkout, or copy operations cannot reset it via mtime.
    - `{name or role}` → decider.
    - "Why this is out of scope" → substantive reason.
    - "Prior requests" → bullet list of issue references with one-line context each.
-6. Create the directory first if missing (`mkdir -p .out-of-scope`).
-7. If `.gitignore` would hide `.out-of-scope/`, surface a one-time AskUserQuestion asking whether to keep it gitignored or remove the ignore rule. Default recommendation: committed (institutional memory).
+7. If `.gitignore` would hide `.out-of-scope/`, ask once per record run (via AskUserQuestion) whether to keep it gitignored or remove the ignore rule. Default recommendation: committed (institutional memory).
 8. Print `recorded .out-of-scope/<slug>.md`.
 
 ### `check <concept>`
@@ -105,8 +107,9 @@ Record an additional request that asked for an already-rejected concept.
 
 1. Slug the concept; locate `.out-of-scope/<slug>.md`.
 2. If absent, ask whether the user meant `record`. Stop unless overridden.
-3. Append a new bullet under the "Prior requests" heading: `- <issue-ref> — <short context>`. Ask for the short context if not provided.
-4. Print `appended <issue-ref> to .out-of-scope/<slug>.md`.
+3. If `<issue-ref>` already appears under "Prior requests", print `<issue-ref> already recorded in .out-of-scope/<slug>.md` and stop — re-running must not duplicate bullets.
+4. Otherwise append a new bullet under the "Prior requests" heading: `- <issue-ref> — <short context>`. Ask for the short context if not provided.
+5. Print `appended <issue-ref> to .out-of-scope/<slug>.md`.
 
 ### `reconsider <concept>`
 
@@ -130,30 +133,18 @@ Remove a rejection that no longer applies.
 
 ## File format
 
-Files in `.out-of-scope/` follow the canonical structure in `assets/out-of-scope-template.md`. Preview:
+Files in `.out-of-scope/` follow the canonical structure in `assets/out-of-scope-template.md` — the single source of truth; read it before rendering. The load-bearing elements, in order:
 
-```markdown
-# {Concept Name}
+1. `# {Concept Name}` — the first heading; `check` matches against it.
+2. `Decided: {YYYY-MM-DD} Decided by: {name or role}` — date and decider on one line.
+3. `## Why this is out of scope` — the substantive reason, plus an optional code sample.
+4. `## Prior requests` — the bullet list `append` grows.
 
-Decided: {YYYY-MM-DD} Decided by: {name or role}
-
-## Why this is out of scope
-
-{Substantive paragraph or two explaining the reason. Reference project scope, technical constraints, or strategic decisions. Avoid temporary excuses ("we're too busy") — those are deferrals, not rejections.}
-
-{Optional code sample illustrating the technical constraint, if applicable.}
-
-## Prior requests
-
-- {issue reference 1} — {short context}
-- {issue reference 2} — {short context}
-```
-
-The headings are load-bearing — `check` looks up files by slug and first-heading match, `append` locates the "Prior requests" list by heading. Manual edits should preserve heading text and order.
+`check` looks up files by slug and first-heading match; `append` locates the "Prior requests" list by heading. Manual edits must preserve heading text and order.
 
 ## Reading guidance for consuming skills
 
-Other skills (`kramme:siw:discovery`, `kramme:linear:issue-define`, `kramme:code:refactor-opportunities`) read `.out-of-scope/` during their context-gathering phase. Each skill carries its own inline instruction so it stays self-contained when this skill is missing. The shared protocol they follow:
+Skills that read `.out-of-scope/` during their context-gathering phase — discovery, issue-definition, and refactor-planning skills among them — each carry their own inline instruction so they stay self-contained when this skill is missing. The shared protocol they follow:
 
 1. **Cheap-list filenames first.** Run `ls .out-of-scope/` (or equivalent). If absent or empty, skip silently.
 2. **Read file bodies only on plausible match.** Concept similarity is judgmental, not fuzzy. Read at most a handful of files per session.
@@ -165,6 +156,7 @@ Other skills (`kramme:siw:discovery`, `kramme:linear:issue-define`, `kramme:code
 - `.out-of-scope/<slug>.md` is created with the canonical template after `record`.
 - `Decided:` line in the file body is today's absolute date (not just file mtime).
 - `check` surfaces matches by concept similarity, not by exact slug equality only.
-- `append` grows the "Prior requests" list by one bullet per call.
+- `append` grows the "Prior requests" list by one bullet per new issue reference; a duplicate reference is rejected, not re-appended.
+- An empty slug (missing or fully stripped concept) errors out before any file operation.
 - `reconsider` deletes the matching file and prints a confirmation.
 - `description` field is ≤ 1024 chars; this SKILL.md is ≤ 500 lines.
