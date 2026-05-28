@@ -2,17 +2,7 @@
 
 Extended guidance for the five-question checklist in Step 1 of the skill. Each question has: what a clear answer looks like, signals that mean "not yet — gather more data", and an escalation path when the answer is unknown.
 
----
-
-## Choose the surface first
-
-Before answering the checklist, classify the surface being deprecated:
-
-- **Compile-time / internal-only** — modules, library entry points, framework adapters, types, build hooks. Dependents are discovered from the import graph, build graph, tests, config, and package/publish references.
-- **Runtime / internal** — services, jobs, queues, and shared runtime behavior used only inside the organization. Dependents are discovered from code references plus telemetry, logs, or analytics.
-- **External / public** — public APIs, SDKs, CLI flags, webhooks. Dependents are discovered from telemetry plus external docs, SDK/publish inventory, and partner/user communication channels.
-
-The rest of the checklist assumes you pick the evidence that matches this surface. Do not require access logs for compile-time-only removals, and do not accept compile-time-only evidence for public or runtime surfaces.
+Assumes the surface (compile-time / internal-only, runtime / internal, or external / public) has already been classified per SKILL.md > "Choose the surface first". Each question below picks evidence sources that match that surface.
 
 ---
 

@@ -120,7 +120,7 @@ export async function processPayment(
 ### Phasing
 
 - **Step 4.1 — Build replacement**: ship the new path (`paymentsV2`) _and_ wire the flag check. Flag defaults OFF. Parity tests compare results for a sample of production-shaped inputs.
-- **Step 4.2 — Announce**: the flag is the announcement. Internal docs describe the rollout plan, who flips the flag, and the rollback criterion (error rate threshold, p95 latency ceiling, manual abort).
+- **Step 4.2 — Announce**: the flag service is the per-cohort announcement channel, layered on top of the surface-appropriate notices from SKILL.md Step 4.2. Internal docs describe the rollout plan, who flips the flag, and the rollback criterion (error rate threshold, p95 latency ceiling, manual abort).
 - **Step 4.3 — Migrate incrementally**: ramp the flag — 1%, 5%, 25%, 50%, 100% — with verification at each step. A regression at any step pauses the rollout; a critical regression flips the flag back to the previous step. Watch the metrics named in the rollback criterion.
 - **Step 4.4 — Remove old**: once the flag has been at 100% for the rollback window, remove `paymentsV1`, the `flags.isEnabled` check, and the flag definition itself. Leaving the flag behind turns into technical debt — "what does this flag even do?" — so the flag removal is part of the deprecation, not a follow-up.
 
