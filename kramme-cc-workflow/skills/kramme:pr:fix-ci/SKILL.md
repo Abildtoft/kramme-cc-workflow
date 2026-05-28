@@ -34,11 +34,24 @@ The fix-CI loop is the **CI Failure Feedback Loop** pattern: read the failure, m
 
 ```bash
 gh pr view --json number,url,headRefName,baseRefName
+PR_NUMBER=$(gh pr view --json number --jq .number)
 ```
 
-If no PR exists for the current branch, stop and inform the user.
+If no PR exists for the current branch, stop and inform the user. Keep `PR_NUMBER` for Step 4.
 
-### Step 2: Check CI Status First
+### Step 2: Confirm the branch is in sync with the base
+
+A stale branch will produce CI failures unrelated to the PR, wasting iteration cycles. Catch this before iterating.
+
+```bash
+BASE=$(gh pr view --json baseRefName --jq .baseRefName)
+git fetch origin "$BASE"
+git rev-list --left-right --count "origin/$BASE"...HEAD
+```
+
+If the left count is non-zero (the base has commits not in the branch), stop and ask the user to rebase before proceeding.
+
+### Step 3: Check CI status first
 
 ```bash
 gh pr checks --json name,state,bucket,link,workflow
@@ -55,55 +68,41 @@ The `bucket` field categorizes state into: `pass`, `fail`, `pending`, `skipping`
 
 These bots may post additional feedback comments once their checks complete. Waiting avoids duplicate work.
 
-### Step 3: Gather Review Feedback
+### Step 4: Gather review feedback
 
-**Review Comments and Status:**
+`gh api` auto-expands `{owner}` and `{repo}` from the current repo context. Substitute `$PR_NUMBER` (captured in Step 1) where the PR number is needed.
+
+**Review comments and status:**
 
 ```bash
 gh pr view --json reviews,comments,reviewDecision
 ```
 
-**Inline Code Review Comments:**
+**Inline code review comments:**
 
 ```bash
-gh api repos/{owner}/{repo}/pulls/{pr_number}/comments
+gh api "repos/{owner}/{repo}/pulls/$PR_NUMBER/comments"
 ```
 
-**PR Conversation Comments (includes bot comments):**
+**PR conversation comments (includes bot comments):**
 
 ```bash
-gh api repos/{owner}/{repo}/issues/{pr_number}/comments
+gh api "repos/{owner}/{repo}/issues/$PR_NUMBER/comments"
 ```
 
-### Step 4: Investigate Failures
+### Step 5: Investigate failures
 
 ```bash
 # List recent runs for this branch
-gh run list --branch $(git branch --show-current) --limit 5 --json databaseId,name,status,conclusion
+gh run list --branch "$(git branch --show-current)" --limit 5 --json databaseId,name,status,conclusion
 
-# View failed logs for a specific run
-gh run view < run-id > --log-failed
+# View failed logs for a specific run (substitute the databaseId from above)
+gh run view "$RUN_ID" --log-failed
 ```
 
 Do NOT assume what failed based on the check name alone. Always read the actual logs.
 
-### Step 5-7: Fix, Commit, Push
-
-See common steps below.
-
-### Step 8: Wait for CI
-
-```bash
-gh pr checks --watch --interval 30
-```
-
-This waits until all checks complete. Exit code 0 means all passed, exit code 1 means failures.
-
----
-
-## Common Steps
-
-### Step 5: Validate Feedback
+### Step 6: Validate feedback
 
 For each piece of feedback (CI failure or review comment):
 
@@ -112,40 +111,48 @@ For each piece of feedback (CI failure or review comment):
 3. **Check if already addressed** - The issue may have been fixed in a subsequent commit
 4. **Skip invalid feedback** - If the concern is not legitimate, move on
 
-### Step 6: Address Valid Issues
+### Step 7: Address valid issues
 
 Make minimal, targeted code changes. Only fix what is actually broken.
 
-### Step 7: Commit and Push
+### Step 8: Commit and push
 
-**If `--fixup` mode is enabled:** See Step 7b (Fixup Commit Flow) below.
+**If `--fixup` mode is enabled:** See Step 8b below.
 
 **Default (no flag):**
 
 ```bash
 git add -A
 git commit -m "[FIX PIPELINE] <descriptive message of what was fixed>"
-git push origin $(git branch --show-current)
+git push origin "$(git branch --show-current)"
 ```
 
-The `[FIX PIPELINE]` prefix marks commits as iteration fixes from CI or review feedback, making them easy to identify and consolidate later (see Step 10).
+The `[FIX PIPELINE]` prefix marks commits as iteration fixes from CI or review feedback, making them easy to identify and consolidate later (see Step 11).
 
-### Step 7b: Fixup Commit Flow (when `--fixup` is enabled)
+### Step 8b: Fixup commit flow (when `--fixup` is enabled)
 
 Read and follow the fixup commit flow from `references/fixup-flow.md`. This covers base branch detection, file-to-commit mapping, fixup commit creation, autosquash rebase, and force push with lease. Shared branches still require explicit collaborator coordination before any history rewrite or force push.
 
-### Step 9: Repeat
+### Step 9: Wait for CI
 
-Return to Step 2 if:
+```bash
+gh pr checks --watch --interval 30
+```
+
+This waits until all checks complete. Exit code 0 means all passed, exit code 1 means failures.
+
+If the watch hangs well past expected runtimes (rule of thumb: >30 minutes for a typical PR pipeline), a check is likely stuck pending — runner outage, missing webhook, or an external bot that never reported back. Cancel the watch, name the stuck check, and surface `CONFUSION` so the user can decide whether to retry, ignore, or escalate.
+
+### Step 10: Repeat
+
+Return to Step 3 if:
 
 - Any CI checks failed
 - New review feedback appeared
 
 Continue until all checks pass and no unaddressed feedback remains.
 
----
-
-### Step 10: Consolidation Phase (Default Mode Only)
+### Step 11: Consolidation phase (default mode only)
 
 **Skip this step if:** `--fixup` mode was used, or `--no-consolidate` flag is set.
 
@@ -201,23 +208,7 @@ If disablement is genuinely warranted — a confirmed false positive, a test tha
 - Use `gh run view <run-id> --verbose` to see all job steps, not just failures
 - If a check is from an external service, the `link` field provides the URL
 
-**Default Mode (New Commits):**
-
-- Creates commits with `[FIX PIPELINE]` prefix for easy identification
-- No force push during iteration (safer for collaborators watching the PR)
-- After CI passes, offers to consolidate `[FIX PIPELINE]` commits into original commits
-- On shared branches, only consolidate after explicit coordination; otherwise keep the commits separate and squash-merge later
-- Use `--no-consolidate` to skip the consolidation prompt
-- Alternative: Use "Squash and merge" in GitHub to combine all commits when merging
-
-**Fixup Mode (`--fixup`):**
-
-- Use when you want to keep commit history clean during PR iteration
-- Orphan files (files not touched by any existing branch commit, including files last modified on the base branch) become new commits automatically
-- If rebase conflicts occur, the iteration continues with a regular commit
-- Uses `--force-with-lease` for a safer force push after rebase; only do this on an unshared branch or after collaborator coordination and an up-to-date fetch
-
-**Choosing a Mode:**
+**Choosing a mode:**
 
 - **Default**: Working with others, want visible iteration history, prefer to consolidate at the end
 - **`--fixup`**: Working alone, want clean history throughout, comfortable with force push

@@ -1,8 +1,8 @@
-# Fixup Commit Flow (Step 7b)
+# Fixup Commit Flow (Step 8b)
 
 **Goal:** Amend existing branch commits instead of adding new commits, keeping history clean during iteration.
 
-## 7b.1: Determine Base Branch (from PR)
+## Step 8b.1: Determine Base Branch (from PR)
 
 Use the PR's base branch from Step 1 so fixups stay scoped to the actual target branch.
 
@@ -29,8 +29,8 @@ BASE_REF="origin/$BASE"
 Before using `BASE_REF`, ensure the remote ref exists and is up to date:
 
 ```bash
-git fetch origin $BASE
-git show-ref --verify --quiet refs/remotes/origin/$BASE
+git fetch origin "$BASE"
+git show-ref --verify --quiet "refs/remotes/origin/$BASE"
 ```
 
 If the ref is missing, re-run base detection or `git fetch origin` and try again.
@@ -41,17 +41,17 @@ Derive the branch fork point from the resolved base ref. This keeps fixup autosq
 FIXUP_BASE=$(git merge-base HEAD "$BASE_REF")
 ```
 
-## 7b.2: Map Changed Files to Commits
+## Step 8b.2: Map Changed Files to Commits
 
 For each changed file (from `git diff --name-only`, `git diff --cached --name-only`, and untracked files from `git ls-files --others --exclude-standard`), find which branch commit last touched it:
 
 ```bash
-git log $BASE_REF..HEAD -n 1 --format=%H -- <file_path>
+git log "$BASE_REF..HEAD" -n 1 --format=%H -- "<file_path>"
 ```
 
 Combine and de-dupe those file lists before mapping. Group files by their target commit SHA. Files with no matching commit are "orphans" (files not touched by any branch commit, including files last modified on the base branch).
 
-## 7b.3: Create Fixup Commits
+## Step 8b.3: Create Fixup Commits
 
 For each target commit (from the mapping):
 
@@ -60,7 +60,7 @@ git add -A -- <matched_files...>
 git commit --fixup=<commit_sha>
 ```
 
-## 7b.4: Handle Orphan Files
+## Step 8b.4: Handle Orphan Files
 
 If any files were not touched by branch commits (orphans), create a regular commit for them:
 
@@ -69,7 +69,7 @@ git add -A -- <orphan_files...>
 git commit -m "<descriptive message of what was fixed>"
 ```
 
-## 7b.5: Autosquash Rebase
+## Step 8b.5: Autosquash Rebase
 
 ```bash
 GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash "$FIXUP_BASE"
@@ -83,10 +83,10 @@ GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash "$FIXUP_BASE"
    ```
 2. Log a warning:
    > "Autosquash rebase failed due to conflicts. Falling back to regular commit mode for this iteration. The fixup commits remain on the branch and can be manually squashed later."
-3. Fall back to regular commit (Step 7 default behavior) for any remaining uncommitted changes
+3. Fall back to regular commit (Step 8 default behavior) for any remaining uncommitted changes
 4. Continue to push step
 
-## 7b.6: Push with Force
+## Step 8b.6: Push with Force
 
 After successful rebase (or fallback), confirm one of these is true before pushing:
 
@@ -98,7 +98,7 @@ If neither is true, stop here. Keep the rebased result local, tell the user not 
 If one of those conditions is true:
 
 ```bash
-git push --force-with-lease origin $(git branch --show-current)
+git push --force-with-lease origin "$(git branch --show-current)"
 ```
 
 **Note:** `--force-with-lease` is required because the rebase rewrites history. It refuses to overwrite remote commits you haven't fetched, but it is not a substitute for collaborator coordination.
