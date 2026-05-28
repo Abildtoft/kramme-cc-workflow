@@ -10,11 +10,12 @@ Maps each browser action to the correct MCP tool per provider.
 | Page snapshot | `mcp__claude-in-chrome__read_page` | `mcp__chrome-devtools__take_snapshot` | `mcp__playwright__browser_snapshot` |
 | Screenshot | `mcp__claude-in-chrome__computer` (action: screenshot) | `mcp__chrome-devtools__take_screenshot` | `mcp__playwright__browser_take_screenshot` |
 | Click | `mcp__claude-in-chrome__computer` (action: click) | `mcp__chrome-devtools__click` | `mcp__playwright__browser_click` |
-| Fill input | `mcp__claude-in-chrome__form_input` | `mcp__chrome-devtools__fill` | `mcp__playwright__browser_fill_form` |
+| Fill input | `mcp__claude-in-chrome__form_input` | `mcp__chrome-devtools__fill` | `mcp__playwright__browser_type` |
+| Fill form (batch) | `mcp__claude-in-chrome__form_input` | `mcp__chrome-devtools__fill_form` | `mcp__playwright__browser_fill_form` |
 | Read console | `mcp__claude-in-chrome__read_console_messages` | `mcp__chrome-devtools__list_console_messages` | `mcp__playwright__browser_console_messages` |
 | Read network | `mcp__claude-in-chrome__read_network_requests` | `mcp__chrome-devtools__list_network_requests` | `mcp__playwright__browser_network_requests` |
 | Hover | `mcp__claude-in-chrome__computer` (action: hover) | `mcp__chrome-devtools__hover` | `mcp__playwright__browser_hover` |
-| Press key | N/A | `mcp__chrome-devtools__press_key` | `mcp__playwright__browser_press_key` |
+| Press key | `mcp__claude-in-chrome__computer` (action: key) | `mcp__chrome-devtools__press_key` | `mcp__playwright__browser_press_key` |
 | Get page text | `mcp__claude-in-chrome__get_page_text` | N/A | N/A |
 | Tab management | `mcp__claude-in-chrome__tabs_create_mcp` | `mcp__chrome-devtools__new_page` | N/A |
 
