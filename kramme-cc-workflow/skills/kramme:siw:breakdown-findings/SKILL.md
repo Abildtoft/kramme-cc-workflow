@@ -12,22 +12,14 @@ Turn unresolved findings from a spec-audit or implementation-audit report into a
 
 ## Workflow Boundaries
 
-**This command is analysis-only.**
-
-- **DOES**: Read a spec-audit or implementation-audit report, identify unresolved supported findings, explain each finding, present 2-3 concrete resolution options, recommend one option, and route the user toward the next command
-- **DOES NOT**: Create or edit SIW issues, update `siw/LOG.md`, update `siw/OPEN_ISSUES_OVERVIEW.md`, or write a new report file
-- **DOES NOT**: Read product-audit reports
-
-Issue creation stays separate and should happen later via `/kramme:siw:resolve-audit` or `/kramme:siw:issue-define`.
+**This command is analysis-only.** It reads a spec-audit or implementation-audit report, identifies unresolved supported findings, explains each one, presents 2-3 resolution options, recommends one, and routes the user toward the next command. Issue creation stays separate and happens later via `/kramme:siw:resolve-audit` or `/kramme:siw:issue-define`.
 
 ## Hard Constraints
 
-- **NEVER** create or modify files as part of this command
-- **NEVER** write a breakdown artifact such as `siw/FINDINGS_BREAKDOWN.md`
-- **NEVER** read `PRODUCT_AUDIT.md` for this command
+- **NEVER** create or modify files as part of this command (no SIW issues, no updates to `siw/LOG.md` or `siw/OPEN_ISSUES_OVERVIEW.md`, no breakdown artifact such as `siw/FINDINGS_BREAKDOWN.md`, no new report file)
+- **NEVER** read product-audit reports (e.g. `PRODUCT_AUDIT.md`) for this command
 - **NEVER** include unsupported finding ids in the breakdown
 - **ALWAYS** return a single inline response covering all selected findings
-- **ALWAYS** preserve report order within each severity band
 - **ALWAYS** treat explicit supported finding ids as an override to the default unresolved-only filter
 
 ## Process Overview
@@ -74,6 +66,7 @@ Issue creation stays separate and should happen later via `/kramme:siw:resolve-a
    - If more than one compatible report exists and explicit ids do not disambiguate the report type, ask the user which report to use before continuing.
 7. If no supported audit report exists, stop and instruct the user to run `/kramme:siw:implementation-audit` or `/kramme:siw:spec-audit` first.
 8. If the selected report contains multiple appended top-level report blocks, isolate the last block only and treat it as the active audit run. Ignore earlier appended runs. Supported top-level markers include `# Audit Report: Implementation vs. Specification` and `# Spec Audit Report`.
+9. If the isolated active block contains zero supported finding headings (for example a run with only verified alignments), stop and tell the user the latest audit run produced no supported findings to break down. Do not fall through to the "filtered to zero" message in Step 4.1, which is reserved for findings that existed but were all auto-fixed or already tracked.
 
 ## Step 2: Extract Findings
 
@@ -127,13 +120,11 @@ Check these sources when present:
 - `siw/OPEN_ISSUES_OVERVIEW.md`
 - `siw/issues/*.md`
 
-Treat a finding as already tracked when an issue references the same finding id and the issue is still open:
+Treat a finding as already tracked when an issue references the same finding id and the issue is **not** in a closed state. The only closed state is:
 
-- `READY`
-- `IN PROGRESS`
-- `IN REVIEW`
+- `DONE`
 
-Do **not** treat `DONE` issues as open.
+Every other state — including but not limited to `READY`, `IN PROGRESS`, `IN REVIEW`, `BLOCKED`, `DEFERRED`, `DRAFT`, and any unrecognized state — counts as still open. When in doubt, treat the issue as open so the finding is filtered out by default rather than re-surfaced in error.
 
 If live SIW state is missing or inconclusive, fall back to report annotations:
 
@@ -280,8 +271,9 @@ Instead, reply with the exact next command syntax to run.
 
 ### If the user chooses "Resolve selected findings"
 
-- Provide one exact `/kramme:siw:resolve-audit` command using the current report path and the finding ids from the current breakdown
-- If the user asked for a subset, use only that subset
+- Provide one exact `/kramme:siw:resolve-audit` command using the current report path
+- Always list every finding id that appeared in this breakdown explicitly, even when the user did not pass a subset. This keeps the follow-up command deterministic if SIW state shifts between runs (for example, an issue moves to `IN PROGRESS`) and prevents `resolve-audit` from re-deriving a different unresolved set
+- If the user narrowed the breakdown to a subset, list only that subset
 
 Example shape:
 
