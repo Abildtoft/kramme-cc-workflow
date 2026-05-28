@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:ux-review
 description: Audit UI, UX, and product experience of PR and local changes using specialized agents for usability heuristics, product thinking, visual consistency, and accessibility. Supports inline report output with --inline. Use --team for multi-agent cross-validation.
-argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [parallel] [--team] [--inline]"
+argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [--parallel] [--team] [--inline]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -24,7 +24,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 2. If `--categories` flag → parse comma-separated list. Valid values: `a11y`, `ux`, `product`, `visual`, `all`
 3. If `--threshold N` → store as `custom_threshold` (0-100). Overrides each agent's default confidence threshold. Only findings with confidence >= N will be reported. Default thresholds if not specified: a11y = 90, ux/product/visual = 70.
 4. If `--base <branch>` → store as explicit base branch override
-5. If `parallel` → launch agents in parallel instead of sequentially
+5. If `--parallel` (or bare `parallel` for backward compatibility) → launch agents in parallel instead of sequentially
 6. If `--team` → use Team Mode and remove it from the remaining arguments
 7. If `--inline` → set `INLINE_MODE=true` and do not write `UX_REVIEW_OVERVIEW.md`
 8. Default: all applicable categories, sequential, default thresholds
@@ -182,7 +182,7 @@ If `app_url` was provided:
 
 ### Step 7: Launch Agents
 
-For each applicable agent, launch via the Task tool with:
+For each applicable agent, launch the reviewer using the platform's agent-invocation primitive with:
 
 - The resolved `BASE_BRANCH` from Step 3, so agents use the correct diff scope
 - Project conventions extracted from the project instruction files (explicitly mention stack requirements like Tailwind or Material Design 3 when present)
@@ -196,13 +196,15 @@ For each applicable agent, launch via the Task tool with:
 
 **Sequential (default):** Launch agents one at a time. Easier to read and act on.
 
-**Parallel (if user passes `parallel`):** Launch all agents simultaneously. Faster but results come back together.
+**Parallel (if user passes `--parallel`):** Launch all agents simultaneously. Faster but results come back together.
+
+**Mode field:** If `app_url` was provided, set `Mode` to `Visual + Code` in the output template; otherwise `Code-only`.
 
 ### Step 8: Validate Relevance
 
 After collecting findings from all agents:
 
-- Launch **kramme:pr-relevance-validator** with all findings and the resolved `BASE_BRANCH`
+- Launch **kramme:pr-relevance-validator** (mission from `agents/kramme:pr-relevance-validator.md`) with all findings and the resolved `BASE_BRANCH`
 - Cross-reference each finding against the full audit scope (PR diff + staged/unstaged/untracked local changes)
 - Filter pre-existing issues and out-of-scope problems
 - Return only findings caused by this combined scope
@@ -214,7 +216,7 @@ If `UX_REVIEW_OVERVIEW.md` was found in Step 4:
 - Cross-reference validated findings against previously addressed findings
 - **Only filter** if the finding is the same issue:
   - Same file
-  - Similar line number (within ~10 lines)
+  - Same enclosing function, component, or block (do not rely on raw line distance — refactors and formatters shift line numbers)
   - Same underlying issue (semantic match)
 - **Do NOT filter** if:
   - The issue is substantively different
@@ -259,7 +261,9 @@ Otherwise, write to `UX_REVIEW_OVERVIEW.md` in the project root:
 
 ### {PREFIX}-NNN: {Brief title}
 
-**Agent:** {kramme:ux-reviewer | kramme:product-reviewer | kramme:visual-reviewer | kramme:a11y-auditor} **Category:** {specific category within agent's domain} **File:** `path/to/file.tsx:42` **Confidence:** {0-100} **User Impact:** High
+**Agent:** {kramme:ux-reviewer | kramme:product-reviewer | kramme:visual-reviewer | kramme:a11y-auditor} **Category:** {specific category within agent's domain} **File:** `path/to/file.tsx:42` **Confidence:** {0-100} **User Impact:** {High | Medium | Low}
+
+`{PREFIX}` is the agent's short code: `UX` (ux-reviewer), `PROD` (product-reviewer), `VIS` (visual-reviewer), `A11Y` (a11y-auditor). Numbering is sequential within each prefix (`UX-001`, `UX-002`, `PROD-001`, ...).
 
 **Issue:** {Description}
 
@@ -302,7 +306,7 @@ Otherwise, write to `UX_REVIEW_OVERVIEW.md` in the project root:
 **To resolve findings, run:** `/kramme:pr:resolve-review`
 ```
 
-When file output is used, `UX_REVIEW_OVERVIEW.md` is a working artifact — it should NOT be committed. It will be cleaned up by `/kramme:workflow-artifacts:cleanup`.
+When file output is used, `UX_REVIEW_OVERVIEW.md` is a working artifact — it should NOT be committed. It is intended to be cleaned up by `/kramme:workflow-artifacts:cleanup` when that skill is installed.
 
 ### Step 12: Provide Action Plan
 
