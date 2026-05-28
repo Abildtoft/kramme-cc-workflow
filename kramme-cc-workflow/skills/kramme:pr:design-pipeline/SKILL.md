@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:design-pipeline
-description: Design a CI/CD pipeline with quality gates, a <10-minute budget, feature-flag lifecycle, and an exit checklist. Use when adding a new CI pipeline, changing gate configuration, or planning a rollout for a new service. Complementary to kramme:pr:fix-ci (which fixes failures in an existing pipeline). Covers gate ordering (lint → types → unit → integration → build → audit), secrets storage, branch protection, rollback mechanism, and feature-flag lifecycle (create → test → canary → full rollout → remove flag AND dead code). Includes staged-rollout guardrails without turning into a rollout-execution runbook.
+description: Design a CI/CD pipeline with quality gates, a <10-minute budget, feature-flag lifecycle, and an exit checklist. Use when adding a new CI pipeline, changing gate configuration, or planning a rollout for a new service. Complementary to kramme:pr:fix-ci (which fixes failures in an existing pipeline). Covers gate ordering, secrets storage, branch protection, rollback mechanism, and staged-rollout guardrails — not a rollout-execution runbook.
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -30,7 +30,7 @@ Before recommending any gate, declare what you detected about the repository. Em
 - CI platform (GitHub Actions / CircleCI / Buildkite / Jenkins / other).
 - Primary language(s).
 - Package manager and lockfile.
-- Existing pipeline file(s), if any, and their current gate set.
+- Existing pipeline file(s), if any, and their current gate set. If no CI exists yet, state that explicitly (e.g., "no pipeline file present; this is a greenfield design").
 
 Example:
 
@@ -110,14 +110,12 @@ If the user proposes a flag without a removal plan, emit `MISSING REQUIREMENT` a
 
 ## Step 4: Staged rollout (summary)
 
-For the canary → full-rollout sequence, short summary:
+For the canary → full-rollout sequence, short summary. If the design requires more than the four bullets below, that work is out of scope for this skill; stop and call it out as separate rollout-runbook work.
 
 1. **Canary** — deploy to a small bounded subset (one region, one tenant class, N% of traffic). Watch metrics for a defined bake period.
 2. **Percentage rollout** — incrementally raise the subset (e.g., 5% → 25% → 50% → 100%) with a bake period between steps.
 3. **Full** — 100% and remove the canary scaffolding.
 4. **Rollback criteria** — named metrics and thresholds that, if breached at any stage, trigger immediate rollback.
-
-This section is intentionally a guardrail summary, not a full rollout runbook. If rollout execution itself becomes the main deliverable, call that out as separate work and expand the operating plan before implementation.
 
 ---
 
