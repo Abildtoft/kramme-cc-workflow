@@ -11,7 +11,9 @@ Add the Hard-Cut Greenfield Policy section to the project's agent instructions f
 
 ## Workflow
 
-1. **Locate target file** — Determine where to add the policy using this priority order:
+1. **Confirm the project is greenfield** — This policy asserts the application has no external installed user base. Only proceed when that is true (a new project, or one with no released users). If the project already has users, stop and report that the policy does not apply.
+
+2. **Locate target file** — Run from the project root so the lookups below resolve the correct files. Determine where to add the policy using this priority order:
    1. If `AGENTS.md` exists in the project root, use it.
    2. If `AGENTS.md` does not exist but `CLAUDE.md` does, use `CLAUDE.md`.
    3. If neither exists, create `AGENTS.md` in the project root.
@@ -20,11 +22,11 @@ Add the Hard-Cut Greenfield Policy section to the project's agent instructions f
    ls -la AGENTS.md CLAUDE.md 2> /dev/null
    ```
 
-2. **Check for existing section** — Read the target file and search for the heading `## Hard-Cut Greenfield Policy`. If the section already exists, report that the policy is already present and stop. Do not duplicate it.
+3. **Check for existing section** — Read the target file and search for the heading `## Hard-Cut Greenfield Policy`. If the section already exists, report that the policy is already present and stop. Do not duplicate it.
 
-3. **Respect existing instruction structure** — If the target file has a policy/conventions section or a Context Map section, place the policy where an agent would naturally find it. Otherwise append the policy section to the end of the target file. Do not duplicate any surrounding explanation; `AGENTS.md` / `CLAUDE.md` should stay compact and use Context Pointers for deeper detail.
+4. **Respect existing instruction structure** — If the target file has a policy or conventions section, place the policy where an agent would naturally find it. Otherwise append the policy section to the end of the target file. Keep the section short; link to detailed docs rather than inlining them.
 
-4. **Add the policy section** — Add the following block. Include a blank line before the heading to ensure proper markdown separation from preceding content.
+5. **Add the policy section** — Add the following block. Include a blank line before the heading and a trailing newline after the block so it stays cleanly separated from surrounding content.
 
    ```markdown
    ## Hard-Cut Greenfield Policy
@@ -34,7 +36,8 @@ Add the Hard-Cut Greenfield Policy section to the project's agent instructions f
    - Prefer:
      - one canonical current-state codepath
      - fail-fast diagnostics
-     - explicit recovery steps over:
+     - explicit recovery steps
+   - Over:
      - automatic migration
      - compatibility glue
      - silent fallbacks
@@ -43,8 +46,8 @@ Add the Hard-Cut Greenfield Policy section to the project's agent instructions f
      - why it exists
      - why the canonical path is insufficient
      - exact deletion criteria
-     - the ADO/task that tracks its removal
+     - the issue/ticket that tracks its removal
    - Default stance across the app: delete old-state compatibility code rather than carrying it forward.
    ```
 
-5. **Confirm result** — Report which file was modified (or created) and that the Hard-Cut Greenfield Policy section was added successfully.
+6. **Confirm result** — Report which file was modified (or created) and that the Hard-Cut Greenfield Policy section was added successfully.
