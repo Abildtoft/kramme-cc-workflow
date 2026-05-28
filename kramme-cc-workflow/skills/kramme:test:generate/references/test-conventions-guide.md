@@ -65,7 +65,7 @@ Record the exact import block pattern to replicate.
 ## 7. File Organization
 
 - **Co-located:** `src/user.ts` + `src/user.test.ts`
-- \***\*tests**:\*\* `src/__tests__/user.test.ts`
+- **`__tests__/` subdirectory:** `src/__tests__/user.test.ts`
 - **Separate directory:** `tests/user.test.ts` mirroring `src/user.ts`
 - **Go:** always co-located (convention)
 - **Shared helpers:** where do test utilities live?
