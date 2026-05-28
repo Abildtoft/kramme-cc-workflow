@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:spec-audit:auto-fix
 description: Auto-fix mechanical spec-audit findings that have a single obvious correct resolution — cross-reference errors, terminology inconsistencies, numbering mistakes, formatting issues, and weasel words replaceable with specifics already in the spec. Run after spec-audit.
-argument-hint: "[audit-report-path] [--auto] [--dry-run] [--threshold 60-100]"
+argument-hint: "[audit-report-path] [--auto] [--dry-run] [--threshold 60-100] [--allow-dirty]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -17,6 +17,7 @@ Findings that require product decisions, stakeholder input, or still lack a clea
 - `--auto` — Skip classification approval, apply all auto-fixable fixes without asking
 - `--dry-run` — Show classification and proposed fixes without modifying any files
 - `--threshold N` — Set confidence threshold for auto-fixing (60-100, default 80). Findings with confidence >= N are auto-fixable only after safety caps and the four sub-score guardrails are applied. Use 90 for a stricter pass, 60 for the most permissive allowed run.
+- `--allow-dirty` — Allow `--auto` runs to proceed when spec files have uncommitted changes. Without this flag, dirty spec files abort an `--auto` run.
 
 ## Hard Constraints
 
@@ -24,7 +25,7 @@ Findings that require product decisions, stakeholder input, or still lack a clea
 
 **NEVER** auto-fix a safety-capped finding regardless of threshold. Critical findings in Completeness, Scope, or Value Proposition dimensions always require decisions. Findings whose recommendations use decision-signal language ("consider", "decide whether", "choose between", "discuss with", "evaluate options"), change scope, or define success-criteria substance always require decisions.
 
-**NEVER** auto-fix a finding when any sub-score is below 15. Low `Determinism` / `Alternative Absence` still require choosing an approach, while low `Information Availability` / `Meaning Preservation` would force inference or alter requirement meaning.
+**NEVER** auto-fix a finding when any sub-score is below 15. See `references/classification-rubric.md` (Auto-Fix Guardrails) for the authoritative rule and its rationale.
 
 **NEVER** apply a fix that changes the meaning, scope, or intent of any requirement. Fixes correct form, not substance.
 
@@ -35,7 +36,7 @@ Findings that require product decisions, stakeholder input, or still lack a clea
 ## Process Overview
 
 ```
-/kramme:siw:spec-audit:auto-fix [audit-report-path] [--auto] [--dry-run] [--threshold N]
+/kramme:siw:spec-audit:auto-fix [audit-report-path] [--auto] [--dry-run] [--threshold N] [--allow-dirty]
     |
     v
 [Step 1: Locate Report and Spec Files]
@@ -69,7 +70,8 @@ Extract control flags from `$ARGUMENTS`:
 
 - `--auto` → set `AUTO_MODE=true`
 - `--dry-run` → set `DRY_RUN=true`
-- `--threshold N` → set `CONFIDENCE_THRESHOLD=N` (validate 60-100, default 80)
+- `--allow-dirty` → set `ALLOW_DIRTY=true`
+- `--threshold N` → set `CONFIDENCE_THRESHOLD=N` (default 80). If `N` is non-numeric or outside 60-100, abort with: `Threshold {N} out of range. --threshold must be an integer between 60 and 100.`
 - Remaining markdown path token → candidate report path
 
 ### 1.2 Find Report
@@ -112,7 +114,15 @@ Run `git status` on the spec files. If any have uncommitted changes, warn:
 Warning: {file} has uncommitted changes. Auto-fixes will be applied on top of these changes.
 ```
 
-With `--auto`, continue with the warning. Otherwise, ask:
+With `--auto` **and** `--allow-dirty`, continue with the warning. With `--auto` alone, abort:
+
+```
+Spec files have uncommitted changes. --auto refuses to edit dirty spec files without --allow-dirty.
+
+Either commit or stash the changes, or re-run with: /kramme:siw:spec-audit:auto-fix --auto --allow-dirty
+```
+
+Otherwise (interactive), ask:
 
 ```yaml
 header: "Uncommitted Spec Changes"
@@ -165,10 +175,9 @@ Read the classification rubric from `references/classification-rubric.md`.
 
 For each extracted finding, assign a **fix confidence score** (0-100):
 
-1. Score each of the four conditions (0-25): Determinism, Information Availability, Meaning Preservation, Alternative Absence.
+1. Score each of the four conditions (0-25): Determinism, Information Availability, Meaning Preservation, Alternative Absence. **Always score from scratch using the rubric** — do not rely on a `Fix Confidence` value already present in the report (treat any such value as informational only).
 2. Sum the four scores for the finding's confidence (0-100).
 3. Apply safety caps — safety-capped findings are forced to confidence 0 regardless of score. If the report carries `**Severity Note:** [Deprioritized — capped at Minor from Critical]` for a Completeness, Scope, or Value Proposition finding, preserve that safety cap here as well.
-4. If the audit report already includes a `Fix Confidence` score for a finding, use it as a starting point and adjust only if the rubric evaluation yields a materially different score. If the report is from an older format and has no `Fix Confidence` line, score the finding from scratch.
 
 Classify based on the final confidence vs `CONFIDENCE_THRESHOLD` (default 80):
 
@@ -273,13 +282,15 @@ options:
     description: "Cancel — no changes"
 ```
 
+This skill is intentionally batch-only — per-finding selection is **not** offered. To exclude specific findings, abort and re-run with a higher `--threshold`, or address them individually via `/kramme:siw:resolve-audit`.
+
 ---
 
 ## Step 5: Apply Fixes
 
 ### 5.1 Order Fixes
 
-Group findings by spec file, then sort by location within each file (top of document to bottom). Processing top-to-bottom avoids line-offset drift from earlier edits.
+Group findings by spec file, then sort by location within each file (top of document to bottom). Processing top-to-bottom avoids `old_string` mismatches that occur when an earlier edit changes the surrounding text a later finding expects.
 
 ### 5.2 Apply Each Fix
 
@@ -333,11 +344,26 @@ After the confidence line, add:
 
 ### 6.2 Update Summary Counts
 
-In the severity count table at the top of the report, add a row:
+The audit report's Summary section contains a fixed-schema severity table:
 
 ```
-| Auto-fixed | {count} |
+| Severity  | Count       |
+| --------- | ----------- |
+| Critical  | {count}     |
+| Major     | {count}     |
+| Minor     | {count}     |
+| **Total** | **{total}** |
 ```
+
+Insert a new `Auto-fixed` row **immediately before the `**Total**` row** so it slots into the existing two-column schema:
+
+```
+| Auto-fixed | {count}     |
+```
+
+Leave the Critical / Major / Minor counts unchanged — the per-finding `**Status:** [Auto-fixed]` annotation from Step 6.1 carries the resolution state.
+
+If the table schema does not match the expected shape (e.g., extra columns, missing `Total` row), skip this step and log: `Severity table schema unrecognized — per-finding annotations applied; summary table left unchanged.`
 
 ### 6.3 Document Failures
 
@@ -353,7 +379,13 @@ The following findings were initially classified as mechanical but failed verifi
 
 ### 6.4 Update Overall Assessment
 
-Only update the overall assessment line if all Critical and Major findings were auto-fixed, no remaining Minor finding carries `**Severity Note:** [Deprioritized — capped at Minor from Critical]`, and only uncapped Minor findings remain.
+Update the `**Overall Assessment:**` line (in the report's Summary section, format defined by `kramme:siw:spec-audit`: one of `Ready for implementation`, `Needs revision`, `Significant gaps`) only if **all** of the following hold:
+
+- All Critical and Major findings were auto-fixed.
+- No remaining Minor finding carries `**Severity Note:** [Deprioritized — capped at Minor from Critical]` (or any other preserved-critical cap).
+- Only uncapped Minor findings remain (or zero findings remain).
+
+When those conditions hold, replace the existing value with `Ready for implementation`. Otherwise, leave the existing value untouched.
 
 ---
 
