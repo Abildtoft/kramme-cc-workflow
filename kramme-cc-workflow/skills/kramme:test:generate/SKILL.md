@@ -12,6 +12,8 @@ Generate tests for existing code by analyzing the project's test framework, conv
 
 **IMPORTANT:** This skill creates new test files and runs them. It does NOT modify source code — if a generated test fails, the test is fixed, not the source.
 
+**When to use:** Adding coverage to existing, untested code. For test-first new logic or bug reproduction, use `kramme:test:tdd` instead. Generate E2E specs only when explicitly asked — default to the project's unit test framework.
+
 Parse `$ARGUMENTS` for `--auto` before Step 1.
 
 - If present, set `AUTO_MODE=true` and remove the flag from the remaining input.
@@ -53,8 +55,9 @@ Parse `$ARGUMENTS` for `--auto` before Step 1.
 
 1. If `$ARGUMENTS` matches a **file path**: validate it exists.
 2. If `$ARGUMENTS` is a **directory**: discover source files without existing tests.
+   - If every source file already has a matching test, stop and report that there is nothing to generate.
 3. If `$ARGUMENTS` is a **glob pattern**: expand and collect matching files.
-4. If `$ARGUMENTS` is **empty** and `AUTO_MODE=true`, auto-detect target files by selecting changed source files that do not already have matching tests.
+4. If `$ARGUMENTS` is **empty** and `AUTO_MODE=true`, auto-detect target files by selecting source files changed in the working tree relative to the base branch (`git diff`) that do not already have matching tests.
    - If no such files are found, abort with a clear message telling the user to provide a file path or directory.
 5. If `$ARGUMENTS` is **empty** and `AUTO_MODE` is false, ask the user:
 
@@ -190,6 +193,13 @@ options:
 
 ## Step 6: Generate Tests
 
+For each target, compute its conventional test path from `FRAMEWORK_CONFIG` and check whether a test file already exists there before writing.
+
+- **If a test file already exists:** do not overwrite it silently. Ask the user whether to overwrite it, add the new cases into the existing file, or skip this target. (Directory and `--auto` modes already exclude tested files in Step 1; this guard covers explicit file-path and glob targets.)
+- **If none exists:** proceed.
+
+Then:
+
 1. **Create test file(s)** following `FRAMEWORK_CONFIG` naming and directory conventions.
 2. **Use the Test Convention Profile** from Step 3 for style consistency.
 3. **Structure tests:**
@@ -204,17 +214,17 @@ options:
 
 ## Step 7: Run and Verify
 
-1. **Run the generated tests** using the detected runner command:
-   - `npx jest --testPathPattern="path/to/test"`
+1. **Run the generated tests** using the detected runner command. Examples (path-filter flags are version-dependent — prefer the project's own runner invocation):
+   - `npx jest --testPathPattern="path/to/test"` (Jest ≥30 uses `--testPathPatterns`)
    - `npx vitest run path/to/test`
    - `pytest path/to/test_file.py`
    - `go test ./path/to/package/ -run TestFunctionName`
    - `cargo test module_name`
 
 2. **If tests fail** — analyze the failure and fix the **test** (not the source code):
-   - Wrong assertion values → update expected values
    - Incorrect mock → fix mock return values or setup
    - Missing import → add the import
+   - Wrong assertion values → update expected values **only when the generated assertion was itself mistaken**. If the code's actual output looks wrong (not just unexpected), do NOT edit the assertion to make it pass — that encodes a bug as a passing test. Leave the test red and record the suspected source defect for the Step 8 summary.
    - Re-run after each fix
 
 3. **Maximum 3 fix iterations.** After 3 attempts, present remaining failures to user.
@@ -242,6 +252,11 @@ Remaining Failures:
   - {test name}: {error summary}
 {/if}
 
+{if suspected_source_defects}
+Suspected Source Defects (test left red, source NOT modified):
+  - {location}: {what the code does vs. what the contract implies}
+{/if}
+
 {if conventions_assumed}
 Note: No existing test files found. Conventions assumed from
 {framework} defaults. Review and adjust as needed.
@@ -261,6 +276,8 @@ Next Steps:
 | Scenario | Action |
 | --- | --- |
 | Target file not found | Abort: `Target file not found: {path}` |
+| Test file already exists at the target path | Ask whether to overwrite, merge cases in, or skip (Step 6). Never overwrite silently |
+| Directory target has no untested files | Report that there is nothing to generate and stop |
 | No test framework detected | If `AUTO_MODE=true`, abort with a clear error. Otherwise AskUserQuestion to choose a framework and test command |
 | No existing tests to learn from | Use framework defaults; note in summary |
 | Multiple test frameworks detected | If `AUTO_MODE=true`, choose the strongest local convention signal. Otherwise AskUserQuestion to select |
