@@ -7,12 +7,14 @@ Templates and selection rules for composing local issues. Read this file from th
 - **Bug (Simple)**: Simple Bug Template
 - **All others**: Comprehensive Template
 
-## Terminology: Mode (HITL vs AUTO)
+## Terminology: Mode (AUTO vs HITL)
 
 Every issue carries a `Mode` field that signals who should pick it up:
 
 - **AUTO** — an autonomous agent can pick up, implement, verify, and prepare for review without human input.
-- **HITL** — human-in-the-loop is required for at least one of: architectural decision, design review, judgment call, manual testing, external system access. HITL issues must include a one-line reason.
+- **HITL** — human-in-the-loop is required for at least one of: an unsettled architectural decision, design review, a genuine product/judgment call, manual testing that cannot be automated, or external-system access an agent cannot perform. HITL issues must include a one-line reason naming the specific requirement.
+
+**Default: `AUTO`.** Choose `HITL` only when you can name a specific blocking human requirement from the list above; a single weak or speculative concern is not enough. When unclear, choose `AUTO` — do not default to HITL out of caution.
 
 Field shape:
 

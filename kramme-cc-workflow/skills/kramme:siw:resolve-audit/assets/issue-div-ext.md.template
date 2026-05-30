@@ -1,6 +1,6 @@
 # ISSUE-G-{NNN}: Resolve {finding_id} - {short title}
 
-**Status:** Ready | **Priority:** {High/Medium/Low} | **Size:** {XS|S|M|L} | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Related:** Audit Report
+**Status:** Ready | **Priority:** {High/Medium/Low} | **Size:** {XS|S|M|L} | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Mode:** {AUTO | HITL — <reason>; default AUTO — see Step 5} | **Related:** Audit Report
 
 ## Problem
 
