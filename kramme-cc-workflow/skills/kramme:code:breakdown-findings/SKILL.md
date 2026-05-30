@@ -1,6 +1,6 @@
 ---
 name: kramme:code:breakdown-findings
-description: "Cluster validated findings into PR-sized themes and generate self-contained implementation plans. Use after review, audit, scan, or QA workflows that produce findings reports. Not for raw bug lists without severity or location structure, and not for triaging a single issue."
+description: "Cluster validated findings into PR-sized themes and generate self-contained implementation plans. Use after review, audit, scan, or QA workflows that produce findings reports. Also accepts a pre-clustered handoff from a delegating skill (themes already grouped, mapped one-to-one to plans) plus an optional shared implementation-setup block rendered into every plan. Not for raw bug lists without severity or location structure, and not for triaging a single issue."
 argument-hint: "[source-file-or-content]"
 disable-model-invocation: true
 user-invocable: true
@@ -55,9 +55,23 @@ Before doing anything else, list any existing `PR_PLAN_*.md` files (including `P
    Found N findings from {source}. Proceeding to cluster.
    ```
 
+#### Pre-clustered handoff (delegated input)
+
+A delegating skill (for example a PR split planner) may hand over work that is **already grouped into PR-sized themes** rather than a raw findings list. Treat the source as a pre-clustered handoff when it opens with the marker line `PRE-CLUSTERED HANDOFF` (a delegating skill sets this), or — absent the marker — when it declares the themes directly, each with a name, a file list, and a dependency relationship (`depends on` / `blocks` / `parallel with`) instead of standalone findings to be grouped. The shared `## Implementation Setup` block, if any, lives inside this same document.
+
+When the source is a pre-clustered handoff:
+
+- **Skip the per-finding parse in step 2.** Capture each declared theme verbatim: its name, file list (with line counts if given), dependency relationship, rationale, and test plan. Do not invent severities — a delegated theme is a unit of work, not a finding.
+- **Capture the shared Implementation Setup block, if present.** A handoff may include one `## Implementation Setup` block meant for every plan (e.g. worktree / reference-branch instructions). Hold it for Phase 3; do not alter its wording.
+- **Do not re-cluster** (see Phase 2). The themes are fixed; map each to exactly one plan.
+- **Adapt the findings vocabulary to themes.** A handoff has no findings and no exclusions: in Phase 4 write `All themes included.` in the index's Excluded section, and in Phase 5 report theme counts (not "findings processed"/"findings excluded") and name the delegated handoff as the source.
+- Report the theme count: `Found N pre-clustered themes from {source}. Proceeding to plan (no re-clustering).`
+
 ### Phase 2: Cluster into Themes
 
-Group findings into PR-sized themes. A theme is a set of findings that should be fixed together because they share one or more of:
+**Pre-clustered handoff:** if Phase 1 identified the source as a pre-clustered handoff, do **not** re-cluster — the themes are already the intended PR seams, and re-grouping would destroy the caller's analysis. Skip the clustering rules and clustering process below, **including the file-count sizing grammar and the 9-file XL gate**: the caller sized these seams deliberately (often by review time, not file count), so do not split or merge a theme. If a theme looks unusually large, note it as an open question in that plan rather than re-cutting it. Still build the dependency graph from the declared `depends on` / `blocks` / `parallel with` relationships and assign execution labels (clustering-process steps 3–5). Print the 1:1 mapping (the `PLAN:`-prefixed block) for visibility, but do **not** block on the `Proceed? (yes / adjust)` prompt — a pre-clustered handoff has already been confirmed by its caller and has no clustering left to adjust. (The Phase 0 artifact guard still applies.)
+
+Otherwise, group findings into PR-sized themes. A theme is a set of findings that should be fixed together because they share one or more of:
 
 - **Root cause** -- same underlying problem manifesting in multiple places
 - **Affected area** -- same file, module, or subsystem
@@ -136,6 +150,7 @@ For each confirmed theme:
    - Blocked plan: `# PR Plan W02A: adopt-typed-errors (blocked by W01A; blocks W03A)`
    - Use multiple labels when needed, e.g. `blocked by W01A, W01B`.
 6. Keep the title, filename, Dependencies and Sequencing section, index row, dependency map, and final summary aligned. The same blocker/dependent labels must appear in all of them.
+7. **If Phase 1 captured a shared Implementation Setup block** (delegated handoff), render it verbatim as the template's `## Implementation Setup` section in **every** plan — same wording in each, with any branch names or paths the caller already resolved left exactly as given. When no block was supplied, omit that section entirely.
 
 #### Plan content requirements
 
@@ -194,6 +209,7 @@ Recommended first PR: PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md -- {one-line rationale
 - **Large input (30+ findings)**: cluster aggressively. Aim for 5-10 themes maximum. Split oversized themes into a series with sequencing notes.
 - **Conflicting findings**: do not pick a side. Flag the conflict as an open question and present both positions.
 - **Ambiguous severity**: infer from context (security = critical, style = low). State the inference in the plan.
+- **Pre-clustered handoff**: when the source already declares PR-sized themes (a delegated split or plan), preserve them 1:1 — do not re-cluster, add, drop, or reinterpret themes. Skip severity inference. Render any supplied Implementation Setup block verbatim and identical in every plan.
 
 ## Guidelines
 
@@ -228,6 +244,8 @@ Watch for these justifications that signal you are about to skip a hard gate:
 
 ## Red Flags
 
+The clustering and sizing flags below **do not apply to a pre-clustered handoff** — the caller owns grouping and sizing, so surface any concern as an open question in the affected plan instead of re-clustering or splitting.
+
 Stop and re-cluster if any of these appear:
 
 - Any theme lands at 9+ findings, or a single plan touches 9+ files.
@@ -242,10 +260,11 @@ Stop and re-cluster if any of these appear:
 
 Before reporting Phase 5, verify:
 
-- Every theme is sized ≤L.
+- Every theme is sized ≤L (except a pre-clustered handoff, whose seams are preserved as-is — an oversized theme carries an open question instead of being split).
 - Re-read each generated plan and confirm no section refers back to the source (no phrasings like "see the review", "per the audit", "finding #N", "as described above the cut", or any other back-reference that would break the self-contained rule).
 - Every generated plan filename and title includes its execution label.
 - Every blocked plan names its blocker labels in the title, index row, dependency map, and Dependencies and Sequencing section.
 - Every same-wave group is marked as parallel in the index and summary.
 - Every conflict between findings is surfaced as an open question, not resolved unilaterally.
 - Every plan has all template sections populated with concrete content (no "N/A").
+- For a pre-clustered handoff: every declared theme maps to exactly one plan (none merged, split, added, or dropped), and any supplied Implementation Setup block appears verbatim and identical in every plan.
