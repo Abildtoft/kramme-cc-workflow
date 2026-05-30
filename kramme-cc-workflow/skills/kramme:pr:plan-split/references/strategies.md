@@ -33,36 +33,40 @@ Avoid vague framings: _"this is too big," "consider splitting,"_ or _"break this
 
 These are the manual steps the author runs after the plan is approved. The skill never executes them.
 
-**Vertical / By file group** — branch off the base, then pull only the slice's files from the working branch:
+**Terminology:** `<reference-branch>` is the branch this skill is run in — the one that holds all the changes being split, and the source every slice extracts its files from. `<base-branch>` (e.g. `main`) is the merge target each slice roots on. Each slice is built in its **own git worktree**, on its own branch — any branch name except `<reference-branch>`. The branch names and worktree paths below are **examples, not requirements**.
+
+**Vertical / By file group** — each slice gets its own worktree branched off the base, then pulls only that slice's files from the reference branch:
 
 ```bash
-git switch <base-branch>           # e.g. main
-git switch -c slice-1-<feature>
-git checkout <big-branch> -- path/to/feature/   # pull whole subtree
-git checkout <big-branch> -- src/lib/parser.ts  # or specific files
-git status                                       # review what came across
+# Worktree path and `-b` branch name are EXAMPLES — choose your own.
+git worktree add ../slice-1-<feature> -b slice-1-<feature> <base-branch>
+cd ../slice-1-<feature>
+git checkout <reference-branch> -- path/to/feature/   # pull whole subtree
+git checkout <reference-branch> -- src/lib/parser.ts  # or specific files
+git status                                            # review what came across
 git add <intentional files>
 git commit -m "..."
 ```
 
-When commits on the working branch are already well-organized, prefer cherry-pick:
+When commits on the reference branch are already well-organized, prefer cherry-pick:
 
 ```bash
-git switch -c slice-1-<feature> <base-branch>
+git worktree add ../slice-1-<feature> -b slice-1-<feature> <base-branch>
+cd ../slice-1-<feature>
 git cherry-pick <hash> <hash> <hash>
 ```
 
 Use `git cherry-pick -n` to stage without committing if you need to drop or split hunks.
 
-**Stack** — chain branches, each rooted on the previous; each becomes a PR targeting the previous PR's branch:
+**Stack** — chain worktrees, each branch rooted on the previous; each becomes a PR targeting the previous PR's branch:
 
 ```bash
-git switch -c stack-1-schema     <base-branch>
-# ... bring in schema files, commit ...
-git switch -c stack-2-service    stack-1-schema
-# ... bring in service files, commit ...
-git switch -c stack-3-ui         stack-2-service
-# ... bring in UI files, commit ...
+git worktree add ../stack-1-schema  -b stack-1-schema  <base-branch>
+# ... in ../stack-1-schema, bring in schema files, commit ...
+git worktree add ../stack-2-service -b stack-2-service stack-1-schema
+# ... in ../stack-2-service, bring in service files, commit ...
+git worktree add ../stack-3-ui      -b stack-3-ui      stack-2-service
+# ... in ../stack-3-ui, bring in UI files, commit ...
 ```
 
 Open PRs in order: `stack-1-schema → base`, `stack-2-service → stack-1-schema`, etc. Re-target each downstream PR to `base` after its parent merges.

@@ -60,6 +60,10 @@
 
 {{Numbered list of questions that must be answered before implementation begins. For each question, note who should answer it and what the default assumption is if no answer is available.}}
 
+## Implementation Setup
+
+{{OPTIONAL — include this section only when a delegating caller supplied a shared Implementation Setup block (e.g. worktree / reference-branch instructions for a PR split). Render that block verbatim, identical across every plan in the set, with any branch names or paths already resolved by the caller left as-is. When no block was supplied, omit this section entirely — do not invent one.}}
+
 ## Implementation Plan
 
 {{Numbered step-by-step instructions. Each step should be:

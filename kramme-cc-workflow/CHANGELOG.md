@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+- pr:plan-split now delegates `PR_PLAN_*.md` artifact generation to code:breakdown-findings, handing over its slices as pre-clustered themes plus a worktree-based implementation setup that extracts each slice's changes from the branch the skill is run in
+- code:breakdown-findings now accepts a pre-clustered handoff (themes mapped one-to-one to plans, no re-clustering) and an optional shared implementation-setup block rendered verbatim into every plan
+
 ### Removed
 
 ## [0.59.0] - 2026-05-28

@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:plan-split
-description: Analyze the current branch's diff and recommend how to break it into smaller, independently mergeable PRs. Categorizes changes by feature, layer, and module; detects coupling; and proposes a concrete seam (vertical, stack, by file group, or horizontal — preferring vertical) for each suggested slice with file lists, line counts, dependency order, test plan, and rationale. Use before opening a PR that bundles unrelated work, when a reviewer asks for a split, or when a branch has grown to the point where reviewers stop reading. Reports inline; does not edit code or rewrite git history.
+description: Analyze the current branch's diff and break it into smaller, independently mergeable PRs. Categorizes changes by feature, layer, and module; detects coupling; and proposes a concrete seam (vertical, stack, by file group, or horizontal — preferring vertical) for each slice with file lists, line counts, dependency order, test plan, and rationale. Hands the slices to kramme:code:breakdown-findings to write the PR_PLAN_*.md artifacts, supplying a worktree-based implementation setup that extracts each slice's changes from the branch the skill is run in. Use before opening a PR that bundles unrelated work, when a reviewer asks for a split, or when a branch has grown too large to review. Plans only; does not edit source code, create branches, or rewrite git history.
 argument-hint: "[--base <branch>]"
 disable-model-invocation: true
 user-invocable: true
@@ -8,9 +8,9 @@ user-invocable: true
 
 # PR Split Planner
 
-Recommend how to break the current branch's changes into smaller, independently mergeable PRs.
+Break the current branch's changes into smaller, independently mergeable PRs.
 
-This skill is a **planning aid**. It reads the diff, names seams, and prints a recommendation. It never edits code, creates branches, or rewrites history — those are manual follow-ups.
+This skill is a **planning aid**. It reads the diff, names seams, and proposes one slice per mergeable PR. It does not write the plan files itself: once the slices are confirmed, it **delegates to `kramme:code:breakdown-findings`** — the canonical PR-plan generator — handing over the slices as pre-clustered themes plus a worktree-based implementation setup. That skill writes the `PR_PLAN_*.md` artifacts. This skill never edits source code, creates git branches, or rewrites history. Each plan is implemented later, by hand, in its own git worktree.
 
 ## Workflow
 
@@ -59,6 +59,18 @@ git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null || {
   exit 1
 }
 ```
+
+Then capture the **reference branch** — the branch this skill is run in, which holds the changes being split. Every generated plan extracts its files from this branch.
+
+```bash
+REFERENCE_BRANCH=$(git symbolic-ref --quiet --short HEAD 2> /dev/null)
+if [ -z "$REFERENCE_BRANCH" ]; then
+  echo "Error: HEAD is detached — there is no branch to use as the reference branch for extracting changes. Check out the branch that holds the work and re-run." >&2
+  exit 1
+fi
+```
+
+`REFERENCE_BRANCH` is distinct from `BASE_BRANCH`. `BASE_BRANCH` (e.g. `main`) is what the diff is measured against and what each slice branches off of and merges back into. `REFERENCE_BRANCH` is the current feature branch that actually contains the work. Each plan branches off `BASE_BRANCH` in a fresh worktree and pulls its slice's files from `REFERENCE_BRANCH`. Use both resolved names (never the literal placeholders) when filling the Implementation Setup block handed to `breakdown-findings` in step 8.
 
 ### 2. Build the Change Set
 
@@ -203,9 +215,46 @@ Recommend **KEEP AS ONE** when:
 
 Either way, say so explicitly and explain why. The user asked for a split plan; refusing to invent one is a valid answer when the diff is genuinely atomic.
 
-### 8. Print the Recommendation
+### 8. Delegate Artifact Generation to breakdown-findings
 
-Reply inline using the template in `references/output-template.md` verbatim. Do not write a file unless the user explicitly asks — this skill is exploratory.
+This skill does not write the `PR_PLAN_*.md` files itself. It assembles the confirmed slices into a pre-clustered handoff and delegates to `kramme:code:breakdown-findings`, which is the single canonical PR-plan generator (one naming scheme, one index, one cleanup path).
+
+If the recommendation is **KEEP AS ONE**, do not delegate. Report inline why the diff is atomic and stop — there is nothing to split.
+
+If the recommendation is **SPLIT**:
+
+1. **Confirm the slices.** Print the proposed slices (name, strategy, files, dependency order) and ask: `Proceed to generate plans for these N slices? (yes / adjust)`. Do not delegate until the user confirms. If they adjust, re-plan.
+
+2. **Assemble one handoff document.** Build a single markdown document — the complete input handed to `breakdown-findings`. It contains, in order:
+   - The marker line `PRE-CLUSTERED HANDOFF — themes are fixed; do not re-cluster.` so the delegate detects the mode without guessing.
+   - One **theme per slice** (do not merge or re-split — these slices are the seams). For each: the slice name, strategy, the file list with per-file line counts, the dependency relationship (`depends on` / `blocks` / `parallel with`), the one-line test plan, and the one-sentence rationale.
+   - A single shared `## Implementation Setup` block (template below), with `{{REFERENCE_BRANCH}}` and `{{BASE_BRANCH}}` already replaced by the resolved names. The block lives **inside** this document — it is not a separate input.
+
+3. **Delegate.** Invoke `/kramme:code:breakdown-findings` with this document as its source (inline findings text). The delegate detects the pre-clustered marker, maps each theme 1:1 to a plan without re-clustering, embeds the Implementation Setup block in every plan, and owns the prior-artifact check, execution-label naming, the per-plan files, the index, and the end-of-turn summary.
+
+   If `/kramme:code:breakdown-findings` is unavailable in this environment, do not silently stop: print the handoff document (themes + Implementation Setup block) inline so the user can generate the plans by hand.
+
+**Implementation Setup block — hand this to `breakdown-findings` verbatim, with `{{REFERENCE_BRANCH}}` and `{{BASE_BRANCH}}` replaced by the resolved branch names (never the placeholder text). It must specify all four points; do not drop any:**
+
+````markdown
+## Implementation Setup
+
+Implement this plan in its **own dedicated git worktree**, separate from every other plan in this split.
+
+- **Reference branch (source of the changes):** `{{REFERENCE_BRANCH}}` — the branch this split was planned from. It holds the full set of work being split. Extract **only this slice's files** from it; do not pull changes from any other branch.
+- **One worktree per plan:** each plan is built in its own worktree so slices develop and review independently and in parallel.
+- **Implementation branch:** use whatever branch is checked out in that worktree. Any name works **except `{{REFERENCE_BRANCH}}`** — never implement onto the reference branch itself.
+- **Example setup** (branch name and worktree path are **examples, not requirements** — pick your own):
+
+  ```bash
+  # `-b` branch name and the worktree path are EXAMPLES. Substitute any you like;
+  # the only rule is the branch must NOT be `{{REFERENCE_BRANCH}}`.
+  git worktree add ../<slice-slug> -b <your-branch-name> origin/{{BASE_BRANCH}}
+  cd ../<slice-slug>
+  git checkout {{REFERENCE_BRANCH}} -- <this slice's files>   # pull only this slice
+  git status   # review what came across, then commit
+  ```
+````
 
 ## Usage
 
@@ -223,3 +272,4 @@ Reply inline using the template in `references/output-template.md` verbatim. Do 
 - **Author-driven, not reviewer-driven.** Splitting is the author's responsibility — reviewers shouldn't carry it. Self-review the diff first (a quick read-through, or run `kramme:pr:code-review`) so the seams reflect what the code actually does, not just what the file tree looks like.
 - Pair with `kramme:pr:code-review` for correctness; this skill only addresses scope and seams.
 - The recommendation is advice, not a verdict. If the user disagrees with a proposed seam, that's a useful signal — ask what they'd cut differently before re-planning.
+- Artifact generation is delegated to `kramme:code:breakdown-findings`. That skill writes the `PR_PLAN_*.md` files (working artifacts, clearable with `/kramme:workflow-artifacts:cleanup`) and owns the prior-artifact check, so this skill does not write or guard those files itself.
