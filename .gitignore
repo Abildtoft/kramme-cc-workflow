@@ -5,3 +5,5 @@ kramme-cc-workflow/hooks/context-links.config
 .claude/scheduled_tasks.lock
 __pycache__/
 *.pyc
+
+.kramme-cc-workflow/
