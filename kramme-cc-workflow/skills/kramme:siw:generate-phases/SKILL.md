@@ -214,12 +214,12 @@ For each phase, decompose into atomic tasks:
 - **Clearly defined** - Unambiguous scope with explicit boundaries
 - **Mode-tagged** - `AUTO` or `HITL` (see Mode taxonomy below)
 
-**Mode taxonomy (HITL vs AUTO — load-bearing for autonomous-agent pickup):**
+**Mode taxonomy (AUTO vs HITL — load-bearing for autonomous-agent pickup):**
 
 - **AUTO** — an autonomous agent can pick up, implement, verify, and prepare for review without human input.
-- **HITL** — human-in-the-loop is required for at least one of: architectural decision, design review, judgment call, manual testing, external system access. HITL tasks MUST carry a one-line reason (e.g., "needs architectural decision", "involves manual UAT").
+- **HITL** — human-in-the-loop is required for at least one of: an unsettled architectural decision, design review, a genuine product/judgment call, manual testing that cannot be automated, external-system access an agent cannot perform. HITL tasks MUST carry a one-line reason (e.g., "needs architectural decision", "involves manual UAT").
 
-Tag each task during decomposition. Default to HITL when unclear; the subagent in Phase 4 will flag any task without a Mode label and any HITL task without a reason.
+Tag each task during decomposition. **Default to `AUTO`**; reserve `HITL` for tasks with a concrete human-input requirement from the list above, and when unclear choose `AUTO`. The subagent in Phase 4 will flag any task without a Mode label, any HITL task without a reason, and any task marked HITL whose stated reason is weak or speculative rather than a real blocking requirement.
 
 **Sizing and triggers:**
 
@@ -284,7 +284,7 @@ Evaluate:
 6. **Sizing (hard gate)**: apply the XS/S/M/L grammar and the XL-is-not-acceptable rule from `references/task-sizing.md`. Flag any XL task explicitly.
 7. **Slicing shape**: apply the vertical-vs-horizontal rule from `references/task-sizing.md` for the declared Work Context. Flag layer-by-layer tasks and tasks that bundle multiple independent deliverables.
 8. **Parallelization**: Are parallelization categories (Safe / Must be sequential / Needs coordination) correctly assigned? Flag any safely-parallel work serialized unnecessarily, or any shared-state change marked parallel.
-9. **Mode (AUTO vs HITL)**: Does every task carry a Mode label? Does every HITL task include a one-line reason (architectural decision, design review, judgment call, manual testing, external system access)? Flag any unlabeled task or HITL-without-reason. Do NOT second-guess the AUTO/HITL choice itself unless the rationale is obviously wrong (e.g., a task that requires manual UAT but is marked AUTO).
+9. **Mode (AUTO vs HITL)**: The default is `AUTO`; `HITL` is the exception. Does every task carry a Mode label? Does every HITL task include a one-line reason naming a concrete human-input requirement (unsettled architectural decision, design review, genuine judgment call, non-automatable manual testing, external-system access)? Flag any unlabeled task, any HITL-without-reason, and any task marked HITL whose reason is weak or speculative rather than a real blocking requirement (it should be AUTO). Also flag the reverse: a task that genuinely needs human input but is marked AUTO (e.g., requires manual UAT).
 
 For each issue found, provide:
 - What's wrong
@@ -295,7 +295,7 @@ If the breakdown looks good, confirm it's ready.
 
 **Incorporate feedback:** Update the phase plan based on subagent suggestions.
 
-**Loopback gate (max 3 iterations):** If the subagent reports any XL task, any context-inappropriate horizontal / over-bundled slice, any task without a Mode label, or any HITL task without a one-line reason, re-run Phase 3.2 decomposition and re-submit to the subagent. Only proceed to Phase 5 once the subagent confirms zero XL tasks, zero slicing-shape issues, and complete Mode coverage.
+**Loopback gate (max 3 iterations):** If the subagent reports any XL task, any context-inappropriate horizontal / over-bundled slice, or any Mode-coverage issue per criterion 9 (unlabeled task, HITL-without-reason, or HITL whose reason is too weak to justify it), re-run Phase 3.2 decomposition and re-submit to the subagent. Only proceed to Phase 5 once the subagent confirms zero XL tasks, zero slicing-shape issues, and complete, correctly-defaulted Mode coverage.
 
 If the gate is still failing after **3 review passes**, stop looping. Surface the remaining flagged items to the user as `POTENTIAL CONCERNS` and use AskUserQuestion to choose: "Proceed to Phase 5 with remaining concerns" / "Abort and let me edit the spec first". Do not loop a fourth time.
 

@@ -371,8 +371,16 @@ Before creating any issues:
 For each selected finding:
 
 1. Determine next available `G-` issue number from `siw/issues/`.
-2. Create issue file `siw/issues/ISSUE-G-{NNN}-product-{slugified-title}.md`.
+2. Create issue file `siw/issues/ISSUE-G-{NNN}-product-{slugified-title}.md`. Give it a status line carrying explicit `Size` (`XS|S|M|L`), `Parallelization` (`Safe to parallelize | Must be sequential | Needs coordination`), and `Mode` metadata so it matches the current tracker schema:
+
+   ```markdown
+   **Status:** Ready | **Priority:** {Critical→High, Major→Medium, Minor→Low} | **Size:** {XS|S|M|L} | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Mode:** {AUTO | HITL — <reason>} | **Related:** Product Audit Report
+   ```
+
+   **Mode default is `AUTO`.** Set `HITL — <one-line reason>` only when resolving the finding requires a concrete human-input step: an unsettled product/architectural decision, design review, a judgment call, manual testing that can't be automated, or external-system access. When unclear, choose `AUTO`. (A finding's severity does not by itself make it HITL.)
 3. Update `siw/OPEN_ISSUES_OVERVIEW.md` with new issue rows.
+   - For a brand-new modern section, use the 7-column modern schema including the `Mode` column (`# | Title | Status | Size | Priority | Mode | Related`); the `Mode` cell is `AUTO` or `HITL` (the reason lives in the issue body, not the table).
+   - When a section already exists, match its column count exactly (legacy 5-col / pre-Mode 6-col / modern 7-col) and preserve it in place — do not migrate layouts or add a `Mode` column to a section that lacks one.
 4. Update `siw/LOG.md` Current Progress section.
 
 ---

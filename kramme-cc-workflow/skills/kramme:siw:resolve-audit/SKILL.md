@@ -295,21 +295,23 @@ Issue creation:
    - SPEC-\*: `assets/issue-spec.md.template`
    - PROD-\*: `assets/issue-prod.md.template`
    - When the finding has a `Severity Note`, copy it verbatim into the issue body and apply the severity-inheritance rule from Step 3 to set `Priority`.
+   - Set the `Mode` field. **Default `AUTO`.** Most resolutions an autonomous agent can implement and verify are AUTO. Set `HITL — <one-line reason>` only when the chosen option carries a concrete human-input requirement: an unsettled architectural/product decision, design review, a judgment call, manual testing that can't be automated, or external-system access. When unclear, choose `AUTO`. (A finding's severity does not by itself make it HITL.)
 
 4. Add row to `siw/OPEN_ISSUES_OVERVIEW.md` with status `READY`.
-   - Default to the 6-column SIW schema:
+   - For a brand-new modern section, use the 7-column modern schema including the `Mode` column; the `Mode` cell is `AUTO` or `HITL` (the reason lives in the issue body, not the table):
 
      ```markdown
      **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination | Mixed — see issue files}
 
-     | G-{NNN} | {Title} | READY | {Size} | {Priority} | Audit Report |
+     | G-{NNN} | {Title} | READY | {Size} | {Priority} | {AUTO | HITL} | Audit Report |
      ```
+
+   - When a section already exists, match its column count exactly (legacy 5-col / pre-Mode 6-col / modern 7-col) and preserve it in place — do not migrate layouts or add a `Mode` column to a section that lacks one.
 
    - If `## General` already has a section-level `**Parallelization:**` line, treat it as a roll-up summary for the whole section rather than a per-issue mirror.
    - Recompute it from all real `G-*` issue files after adding the new issue: if every issue shares the same section-level category/gating note, keep that shared summary; otherwise set it to `Mixed — see issue files for exact guidance`.
    - If the General section is still in its empty placeholder state (`_None_` row / no real issues yet), replace the default summary from `siw:init` with the first real issue's category.
    - If an existing legacy General section has no `**Parallelization:**` line, preserve that absence instead of inserting one.
-   - If the existing General section still uses the legacy 5-column schema, preserve that layout for compatibility instead of mixing schemas.
 
 5. Append a one-line entry to `siw/LOG.md` under the `## Current Progress` section (in `### Last Completed`). Include finding id, selected option, and created issue id. Example:
 

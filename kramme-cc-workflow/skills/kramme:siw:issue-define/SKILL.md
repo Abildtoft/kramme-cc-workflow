@@ -270,8 +270,8 @@ Then run a streamlined **Metadata pass** and store the answers for Phase 5:
 - Related issues or blockers, if any
 - Parallelization category (default Safe to parallelize for localized fixes unless shared-state or sequencing concerns exist)
 - Mode:
-  - Default `AUTO` only when the root cause and fix are known, verification can be automated, and no external access, manual testing, design review, or architectural decision is required.
-  - Default `HITL — <one-line reason>` when any of those human inputs are needed or when unclear.
+  - Default `AUTO`. Localized simple bugs with a known fix and automatable verification are the canonical AUTO case.
+  - Use `HITL — <one-line reason>` only when the fix has a concrete human-input requirement (external access, manual testing that can't be automated, design review, or an unsettled architectural/judgment call). When unclear, choose `AUTO`.
 
 Confirm inferred metadata with the user before composing. Then proceed to Phase 5 with the simple template.
 
@@ -351,10 +351,10 @@ Multi-round interview using `AskUserQuestion`.
   - Must be sequential
   - Needs coordination
 - What **Mode** fits this issue?
-  - **AUTO** — an autonomous agent can implement, verify, and prepare for review without human input
-  - **HITL** — human-in-the-loop is required (architectural decision, design review, judgment call, manual testing, or external system access). HITL requires a one-line reason.
+  - **AUTO** (default) — an autonomous agent can implement, verify, and prepare for review without human input
+  - **HITL** — human-in-the-loop is required by a concrete need: an unsettled architectural decision, design review, a genuine product/judgment call, manual testing that can't be automated, or external system access. HITL requires a one-line reason naming that need.
 
-If the answer isn't supplied, infer Mode from the issue type and exploration findings, default to HITL when unclear, and confirm before composing.
+If the answer isn't supplied, infer Mode from the issue type and exploration findings. **Default to `AUTO`**; only choose `HITL` when you can name a specific blocking human requirement, and confirm before composing.
 
 ## Phase 5: Issue Composition
 

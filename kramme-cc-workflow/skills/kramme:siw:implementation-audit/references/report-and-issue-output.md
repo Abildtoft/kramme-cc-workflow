@@ -105,12 +105,13 @@ For each selected finding:
 1. Determine next available `G-` issue number from `siw/issues/`.
 2. Create issue file `siw/issues/ISSUE-G-{NNN}-fix-{slugified-title}.md` using the template in `assets/siw-issue-template.md`.
    - Assign each issue an explicit `Size` (`XS|S|M|L`) and `Parallelization` category (`Safe to parallelize | Must be sequential | Needs coordination`) so the generated SIW issue matches the current tracker schema.
+   - Assign each issue an explicit `Mode`. **Default `AUTO`.** Most divergence/extension fixes are AUTO. Set `HITL — <one-line reason>` only when the fix requires a concrete human-input step: an unsettled architectural/product decision, design review, a judgment call, manual testing that can't be automated, or external-system access. When unclear, choose `AUTO`.
 
 3. Update `siw/OPEN_ISSUES_OVERVIEW.md` with new issue rows.
-   - Default to the 6-column SIW schema for new modern sections.
+   - For a brand-new modern section, use the 7-column modern schema including the `Mode` column (`# | Title | Status | Size | Priority | Mode | Related`); the `Mode` cell is `AUTO` or `HITL` (the reason lives in the issue body, not the table).
+   - When a section already exists, match its column count exactly (legacy 5-col / pre-Mode 6-col / modern 7-col) and preserve it in place — do not migrate layouts or add a `Mode` column to a section that lacks one.
    - If `## General` already has a section-level `**Parallelization:**` line, treat that line as a roll-up summary for the whole section rather than a per-issue mirror.
    - Recompute it from all real `G-*` issue files after adding the new issue: if every issue shares the same section-level category/gating note, keep that shared summary; otherwise set it to `Mixed — see issue files for exact guidance`.
    - If the General section is still in its empty placeholder state (`_None_` row / no real issues yet), replace the default summary from `siw:init` with the first real issue's category.
    - If an existing legacy General section has no `**Parallelization:**` line, preserve that absence instead of inserting one.
-   - If the existing General section still uses the legacy 5-column schema, preserve that layout for compatibility instead of mixing schemas.
 4. Update `siw/LOG.md` Current Progress section using `assets/log-last-completed.md`.
