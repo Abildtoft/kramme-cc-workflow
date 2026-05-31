@@ -1,0 +1,7 @@
+sources:
+  - id: steipete-skill-cleaner
+    url: https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/skill-cleaner/SKILL.md
+    title: "Peter Steinberger - skill-cleaner"
+    rationale: "Prompt-footprint evidence, description slimming, duplicate detection, unused-skill signals, root auditing, and budget-pressure checks are adapted from this skill."
+    last_reviewed_at: 2026-05-31
+    baseline_hash: ""
