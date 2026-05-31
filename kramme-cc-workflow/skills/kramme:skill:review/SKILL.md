@@ -25,13 +25,19 @@ Review one or more skills against the skill-authoring rubric. This is a read-onl
    - Inspect `assets/` or `scripts/` only when the `SKILL.md` depends on them or when safety/retry behavior depends on their contents.
    - Do not bulk-load unrelated skills, repo docs, or generated output.
 
-3. **Extract the skill contract**
+3. **Optionally gather prompt-footprint evidence**
+   - When reviewing an installed or repo-backed skill and the user asks about prompt budget, skill size, description slimming, duplicate skills, unused skills, or skill-root cleanup, use an existing `skill-cleaner` report or local analyzer if one is already available.
+   - Treat `skill-cleaner` output as supporting evidence only: loaded prompt cost, long-description candidates, duplicated or unused skills, loaded roots, and prompt-budget pressure.
+   - Do not fetch, install, or run external analyzer code in this review. If no analyzer is available, continue with the normal rubric and note that ecosystem evidence was not checked; analyzer setup or execution belongs in a separate non-review task.
+
+4. **Extract the skill contract**
    - Identify the skill's job, trigger conditions, negative triggers, expected arguments, inputs, outputs, side effects, resource dependencies, platform assumptions, and failure modes.
    - If the contract is unclear, treat that as a review finding instead of guessing intent.
 
-4. **Review against the rubric**
+5. **Review against the rubric**
    - **Focused and composable**: The skill owns one coherent job, avoids bundling unrelated workflows, and composes with other skills by reference instead of duplicating their responsibilities.
-   - **Concise**: The description and body avoid generic advice, redundant model instructions, repeated examples, and information the agent can infer.
+   - **Prompt footprint**: The frontmatter description preserves trigger nouns while staying compact; `SKILL.md` contains only essential workflow; generic advice, repeated examples, and information the agent can infer are removed or moved out of the loaded path.
+   - **Ecosystem fit**: When ecosystem evidence is available, the skill is not an unnecessary duplicate, unused loaded skill, or root/configuration mismatch.
    - **Progressively disclosed**: Core workflow stays in `SKILL.md`; optional detail lives in directly referenced resource files; references are loaded just in time.
    - **Harness-agnostic and portable**: Instructions avoid hard-coded Claude/Codex/OpenCode tool names unless platform-gated. Paths are relative, assumptions are declared, and platform-specific behavior is marked in frontmatter or prose.
    - **Secure**: Side effects are explicit; destructive operations require confirmation; secrets are not printed; external input is validated; external commands and network calls have clear trust boundaries.
@@ -40,14 +46,16 @@ Review one or more skills against the skill-authoring rubric. This is a read-onl
    - **Self-describing boundaries**: The frontmatter and body say when to use the skill, when not to use it, what it may touch, and what it will produce.
    - **Well-documented**: Arguments, outputs, validation steps, resource files, and source-attribution requirements are documented without auxiliary README-style files.
 
-5. **Report findings first**
+6. **Report findings first**
    - Order findings by severity: Critical, Major, Minor, Nit.
    - For each finding, include location, problem, why it matters, and a concrete fix.
+   - For prompt-footprint findings, identify the exact content to remove, shorten, merge, or move to `references/`, and name any trigger nouns that must be preserved.
    - Use file and line references when reviewing files. For pasted drafts, reference the nearest heading or frontmatter field.
    - Do not pad the report with style preferences. If a skill passes a rubric area, note it in the summary rather than creating a non-finding.
 
-6. **Summarize the result**
+7. **Summarize the result**
    - Include a compact rubric snapshot with `Pass`, `Watch`, or `Fail` for each rubric area.
+   - Mark `Ecosystem fit` as `N/A` when no cleaner report, local analyzer, or comparable repository evidence was used.
    - Include open questions only when they block a confident recommendation.
    - If no findings are found, say so clearly and mention any residual risk from unread resources or unrun validation.
 
