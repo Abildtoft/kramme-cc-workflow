@@ -168,9 +168,11 @@ The Test Plan is for future reviewer or QA execution. It is not a transcript of 
    - What to check in the UI, database, logs, etc.
 
 4. **Automated verification** (optional, after the scenarios):
-   - Include commands already run only after the manual/reviewer scenarios
+   - Include commands already run only when they add PR-specific signal beyond CI
+   - Omit this subsection when it would only repeat routine CI-owned checks such as format, lint, typecheck, build, or the standard unit-test suite
    - Label them `### Automated verification` so reviewers can distinguish evidence from test instructions
    - Never make test, lint, typecheck, or build commands the entire Test Plan
+   - Do not list missing command targets such as "No unit-test target exists"; put meaningful coverage risk in `### Potential concerns` or the Manual QA rationale instead
    - If no manual scenario applies, include a `### Manual QA` note explaining why and give the closest reviewer-run validation path
 
 **PREFER** using a checklist format for clarity:
@@ -214,7 +216,7 @@ The Test Plan is for future reviewer or QA execution. It is not a transcript of 
 
 ### Automated verification
 
-- `npm test -- platform-picker`
+- `npm test -- platform-picker -- --runInBand` (targeted regression run; the standard CI suite does not isolate this guard path)
 ```
 
 ## Breaking Changes Section

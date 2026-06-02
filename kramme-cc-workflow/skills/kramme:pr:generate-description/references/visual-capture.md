@@ -4,25 +4,22 @@ Instructions for capturing screenshots and videos when `--visual` is used.
 
 ## Phase 2.6: Browser Detection and App Discovery
 
-### Step 1: Detect Browser MCP
+### Step 1: Detect Browser Automation Capability
 
-Check for available browser MCP tools (in priority order):
+Check for available browser automation capabilities in the current runtime:
 
-1. `mcp__claude-in-chrome__*` tools — supports screenshots and GIF recording
-2. `mcp__chrome-devtools__*` tools — supports screenshots
-3. `mcp__playwright__*` tools — supports screenshots
+1. Browser navigation and screenshot capture.
+2. Optional interaction recording or GIF/video export.
+3. Optional ability to save captured files to a caller-specified path.
 
-If found → set `BROWSER_MCP` to the detected type (`claude-in-chrome`, `chrome-devtools`, or `playwright`). Set `HAS_GIF=true` if `claude-in-chrome` is detected (it supports GIF recording via `mcp__claude-in-chrome__gif_creator`).
+Examples of suitable providers include browser extension tools, Chrome DevTools integrations, Playwright-backed tools, or equivalent browser automation APIs. If found, set `BROWSER_AUTOMATION` to the detected provider name. Set `HAS_GIF=true` only if the provider explicitly supports interaction recording/export.
 
 If none found:
 
 ```
-Warning: No browser automation MCP detected. Skipping visual capture.
+Warning: No browser automation capability detected. Skipping visual capture.
 
-The --visual flag requires one of:
-  - Claude in Chrome extension (recommended — supports screenshots + GIF recording)
-  - Chrome DevTools MCP (screenshots)
-  - Playwright MCP (screenshots)
+The --visual flag requires browser automation that can navigate pages and capture screenshots.
 
 Continuing with placeholder Screenshots/Videos section.
 ```
@@ -45,6 +42,8 @@ Auto-detect the application URL by checking for running dev servers:
    - `next.config.js` / `next.config.mjs` → dev defaults to 3000
    - `package.json` → parse `"dev"` or `"start"` scripts for `--port` flags
    - `.env` / `.env.local` → `PORT=` variable
+
+   When checking env files, read only the `PORT=` assignment needed for discovery. Never print full env-file contents or any non-port variables, and ignore non-numeric or out-of-range port values.
 
 3. **Resolve the URL**:
    - If exactly one dev server is found → use it (e.g., `http://localhost:4200`)
@@ -103,24 +102,14 @@ SCREENSHOT_DIR="$HOME/.kramme-cc-workflow/pr-screenshots/${BRANCH_NAME}"
 mkdir -p "$SCREENSHOT_DIR"
 ```
 
-Navigate to each identified page and capture screenshots using the detected browser MCP:
+Navigate to each identified page and capture screenshots using the detected browser automation provider's equivalent operations:
 
-**Using `mcp__claude-in-chrome__*`:**
+1. Navigate to `VISUAL_URL` + route.
+2. Wait for the page to finish loading.
+3. Capture a screenshot and save it under `SCREENSHOT_DIR` using a stable file name such as `{page-name}.png`.
+4. If `HAS_GIF=true` and the change involves interaction, record the shortest useful interaction sequence and export it under `SCREENSHOT_DIR`.
 
-1. Use `mcp__claude-in-chrome__navigate` to visit `VISUAL_URL` + route
-2. Wait for the page to load (use `mcp__claude-in-chrome__computer` with action `wait`, duration 2)
-3. Use `mcp__claude-in-chrome__computer` with action `screenshot` to capture
-4. If `HAS_GIF=true` and the change involves interaction: a. Use `mcp__claude-in-chrome__gif_creator` with action `start_recording` b. Capture initial frame c. Perform the interaction sequence (clicks, form fills, etc.) d. Capture final frame e. Use `mcp__claude-in-chrome__gif_creator` with action `stop_recording` f. Use `mcp__claude-in-chrome__gif_creator` with action `export` with `download: true`
-
-**Using `mcp__chrome-devtools__*`:**
-
-1. Use `mcp__chrome-devtools__navigate_page` with `type: "url"` and the target URL
-2. Use `mcp__chrome-devtools__take_screenshot` with `filePath` set to `SCREENSHOT_DIR/{page-name}.png`
-
-**Using `mcp__playwright__*`:**
-
-1. Use `mcp__playwright__browser_navigate` with the target URL
-2. Use `mcp__playwright__browser_take_screenshot` with `filename` set to `{page-name}.png`
+If the provider returns image data rather than writing directly to disk, save it with the runtime's file-write capability. If the provider cannot save or return a screenshot file, warn and skip that capture.
 
 **Error handling during capture:**
 
@@ -141,17 +130,14 @@ Navigate to each identified page and capture screenshots using the detected brow
 
 - **NEVER** let visual capture failures block the PR description generation
 
-### 3.5.3 Upload Screenshots to Platform
+### 3.5.3 Prepare Screenshots for PR Description
 
-Attempt to upload screenshots so they can be embedded in the PR description with permanent URLs.
+Use remote image URLs only when the runtime provides an explicit, supported upload or attachment capability that returns stable URLs suitable for a PR body. Do not invent an upload workflow from `gh` alone, and do not embed base64-encoded images.
 
-```bash
-REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
-# For each screenshot, use gh to upload and get a permanent URL
-# Upload via the GitHub issue file attachment mechanism
-```
+If no supported upload capability is available, keep screenshots local:
 
-If upload fails, fall back to referencing local file paths.
+- For copy-paste output, include a local-only table so the PR creator can drag and drop files manually.
+- For `DIRECT_UPDATE=true`, do not write local filesystem paths into the PR body because reviewers cannot access them. Instead, use a placeholder Screenshots/Videos section in the PR body and print the local screenshot paths in the skill's conversation output.
 
 ### 3.5.4 Build the Screenshots Section
 
@@ -177,7 +163,7 @@ If a GIF was captured:
 ![{descriptive-alt-text}]({uploaded-gif-url})
 ```
 
-**If screenshots are local-only (upload failed):**
+**If screenshots are local-only and `DIRECT_UPDATE=false`:**
 
 ```markdown
 ## Screenshots / Videos
@@ -188,5 +174,17 @@ Screenshots captured locally. Drag and drop into the PR description on GitHub:
 | ----------- | --------------- | -------------- |
 | {page-name} | {what it shows} | `{local-path}` |
 ```
+
+**If screenshots are local-only and `DIRECT_UPDATE=true`:**
+
+Use this PR body section:
+
+```markdown
+## Screenshots / Videos
+
+<!-- Screenshots were captured locally but not embedded automatically. Attach screenshots to this PR manually if helpful. -->
+```
+
+Then emit the local file list in the skill's conversation output, outside the PR body.
 
 **NEVER** embed base64-encoded images directly in the PR description.

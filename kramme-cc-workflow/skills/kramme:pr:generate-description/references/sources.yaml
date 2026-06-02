@@ -1,7 +1,7 @@
 sources:
   - id: addy-git-workflow-versioning
-    url: https://github.com/addyosmani/agent-skills/tree/main/skills/git-workflow-and-versioning
+    url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/git-workflow-and-versioning/SKILL.md
     title: "Addy Osmani agent-skills - git workflow and versioning"
     rationale: "PR description structure, output markers, and pull-request handoff conventions are adapted from this source."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-06-02
+    baseline_hash: "sha256:b1a84eac7a47f6e2985a27733137d862fcdeb552eefe2bd17629e1f3c20e0e97"

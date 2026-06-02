@@ -154,8 +154,7 @@ This only proves what the agent already ran. It does not tell reviewers or QA ho
 
 ### Automated verification
 
-- `npm test -- platform-picker`
-- `npm run lint`
+- `npm test -- platform-picker -- --runInBand` (targeted regression run; CI does not isolate this guard path)
 ```
 
 ---

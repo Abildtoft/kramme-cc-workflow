@@ -70,10 +70,6 @@ Created a new Angular route guard (`PlatformPickerRedirectGuard`) that queries t
 - [ ] Verify graceful fallback (show picker anyway)
 - [ ] Verify no crashes or console errors
 
-### Automated verification
-
-- `npm test -- platform-picker`
-
 ## Breaking Changes
 
 None
@@ -201,11 +197,6 @@ Database migration adds the preferences table with appropriate indexing and fore
 - [ ] Verify User B cannot see User A's preferences
 - [ ] Verify User B can create own preferences
 
-### Automated verification
-
-- `dotnet test`
-- `npm test -- preferences`
-
 ## Breaking Changes
 
 ### Database Migration Required
@@ -244,7 +235,7 @@ dotnet ef migrations remove -c ConnectContext
 - Changed files: `settings-toggle.component.tsx`, `theme.service.ts`, `theme.css`
 - Flag: `--visual`
 - Auto-detected dev server: `http://localhost:4200` (Angular, port from `angular.json`)
-- Browser MCP: claude-in-chrome detected
+- Browser automation: screenshot and recording provider detected
 
 **Generated Screenshots/Videos section:**
 

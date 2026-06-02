@@ -1,8 +1,8 @@
 ---
 name: kramme:pr:generate-description
-description: Write a structured PR title and body from git diff, commit log, and Linear context. Outputs markdown for copy-paste or updates the existing PR automatically in auto mode.
+description: Write a structured PR title and body from git diff, commit log, and Linear context. Outputs markdown for copy-paste or, when explicitly invoked with --auto, updates an existing PR.
 argument-hint: "[--auto] [--visual] [--base <ref>]"
-disable-model-invocation: false
+disable-model-invocation: true
 user-invocable: true
 ---
 
@@ -12,8 +12,8 @@ user-invocable: true
 
 Parse `$ARGUMENTS` for flags:
 
-- `--auto`: Preferred hands-off mode. Skip clarification prompts (Phase 2.5) and the save-to-file prompt (Phase 4). If a PR already exists for the current branch, update it directly. If no PR exists yet, generate the title and description for copy-paste without pausing for user input.
-- `--visual`: Auto-detect a running dev server and capture screenshots to embed in the PR description. Requires a browser MCP to be available (claude-in-chrome, chrome-devtools, or playwright).
+- `--auto`: Preferred hands-off mode for explicit user invocation. Skip clarification prompts (Phase 2.5) and the save-to-file prompt (Phase 4). If a PR already exists for the current branch, update its title/body directly. If no PR exists yet, generate the title and description for copy-paste without pausing for user input.
+- `--visual`: Auto-detect a running dev server and capture screenshots to embed in the PR description. Requires an available browser automation capability; if none is available, continue with the placeholder Screenshots/Videos section.
 - `--base <ref>`: Use `<ref>` as the base branch for diff computation instead of auto-detecting.
 
 If `--auto` is present, set `AUTO_MODE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments. If `--visual` is present, set `VISUAL_MODE=true` and remove the flag from remaining arguments. If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the flag and value from remaining arguments.
@@ -122,7 +122,7 @@ Read the context-gathering procedure from `references/context-gathering.md` and 
 
 - **2.1 Git Changes Analysis** — diff between current branch and `origin/$BASE_BRANCH`, file categorization, optional GitHub tool use.
 - **2.2 Commit History Analysis** — commit log and message bodies, narrative arc extraction.
-- **2.3 Linear Issue Context** — branch-name parsing, `mcp__linear__get_issue`, divergence tracking.
+- **2.3 Linear Issue Context** — branch-name parsing, optional Linear integration lookup, divergence tracking.
 - **2.4 Code Structure Analysis** — scope (frontend/backend/full-stack), change characteristics, breaking-change indicators.
 - **2.5 Conversation History and Specification Files Analysis** — SIW spec files, conversation review, decision capture. Spec files and conversation context are for YOUR analysis only and **NEVER** referenced in the final PR body.
 
@@ -175,17 +175,19 @@ Read the context-gathering procedure from `references/context-gathering.md` and 
 
 **Skip this phase if `VISUAL_MODE` is not set.** Proceed directly to Phase 3.
 
-If `VISUAL_MODE=true`, read `references/visual-capture.md` and follow **Phase 2.6** in that document to detect a browser MCP and discover the running dev server URL.
+If `VISUAL_MODE=true`, read `references/visual-capture.md` and follow **Phase 2.6** in that document to detect an available browser automation capability and discover the running dev server URL.
 
 ### Phase 3: Description Generation
 
 Before drafting, evaluate whether any **MISSING REQUIREMENT** conditions hold (see the Output markers section below). Emit a `MISSING REQUIREMENT: …` line in the skill's conversation output whenever:
 
-- The branch name has no detectable issue ID and commits reference none — confirm the intended ticket or proceed without one.
-- The diff contains a database migration but no rationale is present in commits, Linear, or conversation — request the migration's purpose/rollback plan.
-- The diff toggles a feature flag's default but no rollout context is available — request the rollout plan.
+- The branch name has no detectable issue ID and commits reference none — non-blocking; confirm the intended ticket or proceed without one.
+- The diff contains a database migration but no rationale is present in commits, Linear, or conversation — blocking for direct update; request the migration's purpose/rollback plan.
+- The diff toggles a feature flag's default but no rollout context is available — blocking for direct update; request the rollout plan.
 
 Surface the marker even when `NON_INTERACTIVE=true`; do not prompt the user, but make the gap visible in the run output so it appears alongside the generated description.
+
+If any blocking missing requirement is present, set `DIRECT_UPDATE=false` even when `--auto` found an existing PR. Continue by generating copy-paste output so the user can supply the missing context before publication. Do not publish a PR body that invents migration rationale, rollback plans, or rollout context.
 
 (Phase 1 already aborts hard when the base branch cannot be resolved, so there is no Phase 3 trigger for that case.)
 
@@ -251,7 +253,10 @@ When drafting the Test Plan, make it a reviewer/QA execution plan first:
 
 - **ALWAYS** lead with manual or reviewer-run scenarios that exercise the changed behavior.
 - **NEVER** substitute commands you ran (`npm test`, lint, typecheck, build, etc.) for the manual steps needed to validate the PR.
-- **CAN** add commands already run only in a separate `### Automated verification` subsection after the scenarios.
+- Treat `### Automated verification` as optional evidence, not a transcript of local commands.
+- **OMIT** `### Automated verification` when it would only repeat routine checks already covered by CI, such as format, lint, typecheck, build, or the normal unit-test suite.
+- **CAN** add commands already run only in a separate `### Automated verification` subsection after the scenarios when they add PR-specific signal beyond CI, such as a targeted regression command not run by CI, a migration dry-run, a local smoke test requiring seeded data, or visual capture verification.
+- **NEVER** list missing command targets under `### Automated verification` (for example, "No unit-test target exists"). If the missing target creates a real coverage risk, surface it in `### Potential concerns` or the Manual QA rationale; otherwise omit it.
 - If the change has no meaningful manual path, include `### Manual QA` with a concrete reason and the closest reviewer-run validation path, then list automated verification separately.
 
 #### 3.1.5 GitHub UI Duplication Guard
@@ -327,9 +332,9 @@ Include a placeholder section for visual aids:
 
 **NOTE**: This is a placeholder section for the PR creator to populate with relevant visuals.
 
-**If `VISUAL_MODE=true` and a browser MCP and dev server were detected:**
+**If `VISUAL_MODE=true` and a browser automation capability and dev server were detected:**
 
-Read `references/visual-capture.md` and follow **Phase 3.5** to capture screenshots, upload them, and build the Screenshots/Videos section.
+Read `references/visual-capture.md` and follow **Phase 3.5** to capture screenshots, prepare them for embedding or manual attachment, and build the Screenshots/Videos section.
 
 ### Phase 4: Output Formatting
 
@@ -357,11 +362,13 @@ Read `references/visual-capture.md` and follow **Phase 3.5** to capture screensh
    BACKUP_DIR="$REPO_ROOT/.kramme-cc-workflow/pr-description"
    mkdir -p "$BACKUP_DIR"
 
-   # Ensure the namespace is gitignored so backups and saved descriptions are
-   # not accidentally committed. Append once if missing.
-   GITIGNORE="$REPO_ROOT/.gitignore"
-   if [ -f "$GITIGNORE" ] && ! grep -qxF ".kramme-cc-workflow/" "$GITIGNORE"; then
-     printf '\n.kramme-cc-workflow/\n' >> "$GITIGNORE"
+   # Ensure the namespace is locally excluded so backups and saved descriptions are
+   # not accidentally committed. Use git's local exclude file; do not mutate tracked files.
+   GIT_EXCLUDE=$(git rev-parse --git-path info/exclude)
+   mkdir -p "$(dirname "$GIT_EXCLUDE")"
+   touch "$GIT_EXCLUDE"
+   if ! grep -qxF ".kramme-cc-workflow/" "$GIT_EXCLUDE"; then
+     printf '\n.kramme-cc-workflow/\n' >> "$GIT_EXCLUDE"
    fi
 
    # Snapshot the prior PR body. Real failure leaves no backup; empty backup is discarded.
@@ -374,11 +381,11 @@ Read `references/visual-capture.md` and follow **Phase 3.5** to capture screensh
    echo "PR_BACKUP=${PR_BACKUP:-<none>}"
    ```
 
-2. **Write the generated title and body to files using the Write tool (not bash).** Targets:
+2. **Write the generated title and body to files using the runtime's file-write capability, keeping generated Markdown out of the shell parser.** Targets:
    - `$BACKUP_DIR/new-title.txt` — the conventional-commit title, single line, no trailing newline.
    - `$BACKUP_DIR/new-body.md` — the full description markdown.
 
-   Using the Write tool keeps the title and body content fully out of any shell parser, eliminating both `$`/backtick expansion and heredoc-terminator collisions regardless of what tokens appear in the body.
+   Prefer a native file-write/edit capability. If unavailable, use an equivalent safe file-write method that does not pass generated Markdown through shell interpolation or a heredoc.
 
 3. **Apply the edit:**
 
@@ -427,7 +434,7 @@ Here is your generated PR:
 
 After presenting the description, ask: "Would you like me to save this description to a markdown file?"
 
-If yes, save to `$REPO_ROOT/.kramme-cc-workflow/pr-description/PR_DESCRIPTION.md` where `REPO_ROOT=$(git rev-parse --show-toplevel)`. Append `.kramme-cc-workflow/` to the repo's `.gitignore` first if it is not already listed (use the same idempotent check as the `DIRECT_UPDATE` block above), so the saved file is not accidentally committed. Confirm the absolute file path after saving.
+If yes, save to `$REPO_ROOT/.kramme-cc-workflow/pr-description/PR_DESCRIPTION.md` where `REPO_ROOT=$(git rev-parse --show-toplevel)`. Add `.kramme-cc-workflow/` to git's local exclude file first if it is not already listed (use the same idempotent check as the `DIRECT_UPDATE` block above), so the saved file is not accidentally committed without mutating tracked files. Confirm the absolute file path after saving.
 
 ### Phase 5: Pre-publish Verification
 
@@ -451,7 +458,7 @@ Read the platform-specific notes from `references/platform-notes.md`. Covers mag
 
 ## Notes
 
-- **NOTE**: This skill generates the description text only - it does NOT create the PR
+- **NOTE**: This skill generates PR title/body content and does NOT create a new PR. When explicitly invoked with `--auto`, an existing PR is found, and no blocking missing requirement is present, it may update that PR's title/body through `gh pr edit`. When saving output, it may write local files under `.kramme-cc-workflow/pr-description/` and add `.kramme-cc-workflow/` to git's local exclude file if missing.
 - **NOTE**: After generation, review the description and adjust as needed before using it
 - **NOTE**: This skill is self-contained. If a downstream installation needs custom PR-title policy, adapt this skill locally instead of depending on repo-root instruction files.
 - **NOTE**: If Linear issue lookup fails, continue anyway and note the issue ID in the summary without detailed context
@@ -473,7 +480,7 @@ Use these uppercase markers when reasoning about the description generation. The
 
 ## Common Rationalizations and Red Flags
 
-Read `references/red-flags.md` before finalizing. Covers five common rationalizations that under-serve the reviewer and eight stop-and-regenerate red flags (vague summary nouns, file-list mirroring, missing migration warnings, automated-only Test Plan, spec-file references, AI-attribution badges).
+Read `references/red-flags.md` before finalizing. Covers common rationalizations that under-serve the reviewer and stop-and-regenerate red flags (vague summary nouns, file-list mirroring, missing migration warnings, automated-only Test Plan, spec-file references, AI-attribution badges).
 
 ## Verification
 
@@ -497,9 +504,9 @@ Single pre-publish checklist. Run this before presenting copy-paste output, befo
 - [ ] Implementation approach explains key decisions. Divergences from the Linear issue have a clear rationale.
 - [ ] No file-by-file inventory, "Key Files" section, "Changes by Area" file-grouping, line counts, or anything that just mirrors the GitHub diff.
 - [ ] File names appear only when they identify a non-obvious entry point, migration, generated artifact, or cross-area coupling.
-- [ ] Test Plan leads with reviewer/QA scenarios. Commands the agent already ran appear only under `### Automated verification`.
+- [ ] Test Plan leads with reviewer/QA scenarios. `### Automated verification` is omitted unless the listed commands add signal beyond CI; missing targets are not listed as verification.
 - [ ] Breaking changes section is present (`None` is a valid value after consideration).
-- [ ] Screenshots/Videos section is included — populated when `--visual` succeeded, placeholder otherwise.
+- [ ] Screenshots/Videos section is included — populated when `--visual` produced embeddable remote assets, local-only table when copy-paste output can reference captured files, placeholder when capture failed or direct-update mode only has local files.
 
 **Boundary, tone, and operational hygiene**
 
@@ -511,6 +518,12 @@ Single pre-publish checklist. Run this before presenting copy-paste output, befo
 
 **Output routing**
 
-- [ ] `DIRECT_UPDATE=true` → ran the Phase 4 sequence in order: repo-root anchored backup → `.gitignore` append → Write tool wrote title/body files → `gh pr edit --title "$(cat …)" --body-file …`. The success message includes the backup line only when the backup file is non-empty.
+- [ ] `DIRECT_UPDATE=true` → no blocking missing requirements are present, then ran the Phase 4 sequence in order: repo-root anchored backup → local git exclude update → title/body files written outside shell interpolation → `gh pr edit --title "$(cat …)" --body-file …`. The success message includes the backup line only when the backup file is non-empty.
 - [ ] `DIRECT_UPDATE=false` → presented copy-paste output; only asked about saving when `NON_INTERACTIVE=false`.
 - [ ] Any `MISSING REQUIREMENT`, `UNVERIFIED`, `CONFUSION`, or `NOTICED BUT NOT TOUCHING` markers are emitted in the run output, not embedded in the PR body.
+- [ ] Workflow artifact setup did not modify tracked files solely to ignore generated PR-description files.
+
+**Final conciseness pass**
+
+- [ ] Removed repeated phrasing or duplicated facts across Summary, Change Summary, Technical Details, Test Plan, and Breaking Changes.
+- [ ] Shortened paragraphs and bullets that do not add reviewer value while preserving the why, risks, scope boundaries, and test instructions.

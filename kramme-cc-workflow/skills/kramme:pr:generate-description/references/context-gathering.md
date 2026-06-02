@@ -65,13 +65,13 @@
    - **EXAMPLE**: `ab/mel-456-add-new-feature` → `MEL-456`.
    - **EXAMPLE**: `eng/blog-87-launch-rss` → `BLOG-87`.
 
-2. **ALWAYS** attempt to fetch Linear issue details if a candidate ID is found:
+2. **ALWAYS** attempt to fetch Linear issue details if a candidate ID is found and a Linear integration is available:
 
    ```
-   mcp__linear__get_issue with issue ID
+   Use the runtime's Linear issue lookup capability with the extracted issue ID.
    ```
 
-   If `mcp__linear__list_teams` is available, **CAN** use it to validate that the extracted prefix maps to a real team before fetching. Treat a lookup failure as "no Linear context" rather than an error — continue and note the unresolved ID.
+   If the runtime exposes a Linear team-listing capability, **CAN** use it to validate that the extracted prefix maps to a real team before fetching. Treat a missing integration or lookup failure as "no Linear context" rather than an error — continue and note the unresolved ID.
 
 3. **ALWAYS** include in context (when the lookup succeeds):
    - Issue title
