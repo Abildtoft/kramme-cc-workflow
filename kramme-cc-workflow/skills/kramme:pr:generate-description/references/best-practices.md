@@ -6,8 +6,8 @@
 - **ALWAYS** use `git diff origin/$BASE_BRANCH...HEAD` (three dots, `origin/` prefix) to compare from merge base against the remote's state
 - **NEVER** use local branch names like `main` or `master` directly - always use `origin/` prefix to avoid comparing against stale local branches
 - **ALWAYS** look at both commit messages and code changes - they tell different stories
-- **NEVER** skip Linear issue lookup if the branch name contains an issue ID
-- **PREFER** using MCP tools (Linear) over bash commands when available for richer data
+- **NEVER** skip Linear issue lookup if the branch name contains an issue ID and a Linear integration is available
+- **PREFER** using available issue-tracker integration capabilities over bash commands when available for richer data
 
 ## Writing Style
 
@@ -22,6 +22,9 @@
   - **NEVER** write sentences like "This brilliant solution elegantly solves the performance problem"
   - **ALWAYS** write sentences like "Reduces query time by caching frequently accessed data"
 - **NEVER** make up statistics or performance claims without evidence
+- **ALWAYS** run a final conciseness pass before publishing: remove repeated claims, collapse overlapping bullets, and keep only context reviewers need
+- **PREFER** concise sections that preserve the business reason, implementation rationale, risks, scope boundaries, and test instructions over exhaustive narrative
+- **NEVER** pad sections to look comprehensive; omit or shorten content that repeats earlier sections without adding review value
 
 ## Change Summary Block
 
@@ -50,6 +53,8 @@
 - **PREFER** checklist format for test scenarios
 - **NEVER** write "test thoroughly" without specific scenarios
 - **NEVER** substitute the verification commands you ran for the manual steps reviewers or QA need
-- **CAN** include commands already run only in a separate `### Automated verification` subsection after the scenarios
+- **OMIT** `### Automated verification` when it would only repeat routine checks already covered by CI, such as format, lint, typecheck, build, or the standard unit-test suite
+- **CAN** include commands already run only in a separate `### Automated verification` subsection after the scenarios when they add PR-specific signal beyond CI
+- **NEVER** list missing command targets under automated verification; only mention a missing target when it creates a real coverage risk, and put that in `### Potential concerns` or the Manual QA rationale
 - **ALWAYS** explain why manual QA is not applicable when a change has no meaningful manual path, then provide the closest reviewer-run validation path
 - **ALWAYS** include edge cases and error scenarios, not just happy paths
