@@ -3,6 +3,16 @@
 ## Unreleased
 
 ### Changed
+## [0.60.0] - 2026-06-05
+
+### Added
+- Default issue Mode to AUTO and add Mode column to schema (#454)
+
+### Changed
+- Tighten PR body guidance (#456)
+- Add prompt footprint rubric (#455)
+- Delegate plan-split artifacts to breakdown-findings (#453)
+
 - pr:plan-split now delegates `PR_PLAN_*.md` artifact generation to code:breakdown-findings, handing over its slices as pre-clustered themes plus a worktree-based implementation setup that extracts each slice's changes from the branch the skill is run in
 - code:breakdown-findings now accepts a pre-clustered handoff (themes mapped one-to-one to plans, no re-clustering) and an optional shared implementation-setup block rendered verbatim into every plan
 
@@ -391,6 +401,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+[0.60.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.59.0...v0.60.0
 [0.59.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.58.0...v0.59.0
 [0.58.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.57.0...v0.58.0
 [0.57.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.56.0...v0.57.0
