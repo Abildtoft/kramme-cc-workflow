@@ -1,7 +1,7 @@
 ---
 name: kramme:debug:investigate
 description: "Structured bug investigation workflow: reproduce, isolate, trace root cause, and fix. Use when debugging a bug, investigating an error, or tracking down a regression."
-argument-hint: "[bug description, error message, or issue reference]"
+argument-hint: "[bug description, error message, or issue reference] [--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -13,6 +13,8 @@ Structured debugging workflow: reproduce, isolate, trace root cause, and fix. Ma
 **IMPORTANT:** Follow all phases systematically. Do not skip to a fix without tracing the root cause first.
 
 **Not for:** performance profiling, greenfield feature work, or changes whose cause is already known — go straight to the change in those cases.
+
+Parse `$ARGUMENTS` before Step 1. If `--auto` is present, set `AUTO_MODE=true` and remove the flag from the bug description. `--auto` chooses conservative debugging defaults and continues without strategy prompts when evidence is sufficient. It does not bypass required bug input, low-confidence stops, reproduction gaps that make a fix speculative, or verification failure handling.
 
 ## Process Overview
 
@@ -73,6 +75,10 @@ Store as `BUG_DESCRIPTION`.
 
 4. If **no reproduction path found**:
 
+If `AUTO_MODE=true`, do not ask for reproduction steps. Continue with static investigation only, log `[REPRODUCE] unconfirmed via available local evidence`, and do not implement a fix later unless the root cause becomes High confidence and a regression test can be written from code evidence.
+
+Otherwise:
+
 ```
 AskUserQuestion
 header: Reproduction
@@ -102,6 +108,8 @@ options:
 
 5. If **multiple candidate areas** found:
 
+If `AUTO_MODE=true`, investigate all candidates and keep a short evidence note for each before narrowing. Otherwise:
+
 ```
 AskUserQuestion
 header: Multiple Candidate Areas
@@ -121,6 +129,8 @@ options:
 1. **Read identified code paths** in full. Follow execution from trigger to error.
 
 2. **Check for regression** — if the bug may have been introduced recently:
+
+If `AUTO_MODE=true`, use git bisect only when both a known-good commit and an automated failing command are available without user input. Otherwise continue manual trace and note that bisect was skipped. If `AUTO_MODE` is false:
 
 ```
 AskUserQuestion
@@ -164,9 +174,11 @@ Store the completed log for inclusion in the final summary.
    - **Medium** — root cause is likely correct, fix may have side effects
    - **Low** — root cause is uncertain, multiple possible explanations
 
-2. If confidence is **Low**: present findings to user before proceeding.
+2. If confidence is **Low**: present findings to user before proceeding. In `AUTO_MODE`, skip directly to Step 8 with `Fix Applied: No`.
 
-3. Ask the user:
+3. If `AUTO_MODE=true` and confidence is High or Medium, choose **Implement fix + write regression test** only when reproduction was confirmed. If reproduction was unconfirmed, implement only when confidence is High and a deterministic regression test can be written from code evidence; otherwise skip directly to Step 8 with `Fix Applied: No`. When reproduction was confirmed but no local test framework or deterministic regression test path exists, implement the minimal fix and note `Regression Test: skipped - no deterministic local test path found`. If confidence is Low, report only.
+
+Otherwise ask the user:
 
 ```
 AskUserQuestion

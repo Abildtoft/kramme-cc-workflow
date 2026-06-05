@@ -1,7 +1,7 @@
 ---
 name: kramme:linear:issue-implement
 description: Start implementing a Linear issue with branch setup, context gathering, and guided workflow
-argument-hint: "<ISSUE-ID>"
+argument-hint: "<ISSUE-ID> [--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -13,6 +13,8 @@ Start implementing a Linear issue through an extensive planning phase before any
 **IMPORTANT:** Linear issues are typically written for product teams and may be light on technical implementation details. This command emphasizes thorough planning and codebase exploration to translate product requirements into a concrete technical approach before starting implementation.
 
 **Prerequisite:** Requires the Linear MCP server. For work tracked through the Structured Implementation Workflow, use `kramme:siw:issue-implement` instead — this skill implements a single Linear issue directly.
+
+Parse `$ARGUMENTS` before Step 1. If `--auto` is present, set `AUTO_MODE=true` and remove the flag before extracting the Linear issue id. `--auto` skips plan and approach confirmation when the technical path is clear, then chooses Autonomous Implementation. It does not bypass dirty-worktree handling, branch verification, missing Linear metadata, or genuinely blocking product/technical ambiguities.
 
 ## Process Overview
 
@@ -152,7 +154,7 @@ The `mcp__linear__get_issue` response includes a `branchName` field - this is Li
 
 **If generating fallback:**
 
-- Ask user for their initials if not known
+- Ask user for their initials if not known. If `AUTO_MODE=true` and initials are not known, use `auto` as the prefix instead of asking.
 - Sanitize title: lowercase, replace spaces with hyphens, max 50 chars for description
 
 ### 2.2 Check Current Git State
@@ -163,6 +165,10 @@ git branch --show-current
 ```
 
 **If uncommitted changes exist:**
+
+If `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: uncommitted changes exist; rerun without --auto to choose stash, commit, discard, or abort`.
+
+Otherwise:
 
 Use AskUserQuestion:
 
@@ -373,7 +379,7 @@ Review the issue and exploration results to identify:
 
 ### 5.2 Ask Clarifying Questions
 
-Use AskUserQuestion for each unclear aspect before proceeding.
+Use AskUserQuestion for each unclear aspect before proceeding. In `AUTO_MODE`, first choose conservative defaults when the codebase and issue text clearly support them: prefer the smallest in-scope implementation, prefer the existing local pattern with the strongest precedent, and prefer the narrowest test set that covers the acceptance criteria. If an ambiguity would change product scope, data model, security posture, public API, or user-visible behavior, ask even in `AUTO_MODE`.
 
 **Example questions to consider:**
 
@@ -415,7 +421,7 @@ After gathering answers, create a comprehensive technical plan that translates t
 
 Read the technical plan template from `assets/technical-plan.md` and populate it based on the gathered context and user answers.
 
-**Present this plan to the user and get confirmation before proceeding to implementation approach selection.**
+**Present this plan to the user and get confirmation before proceeding to implementation approach selection.** If `AUTO_MODE=true`, present the plan, add `AUTO: proceeding with autonomous implementation`, and continue without the confirmation prompt only when no blocking ambiguity remains.
 
 ---
 
@@ -436,6 +442,8 @@ options:
   - label: "Autonomous Implementation"
     description: "I'll analyze the codebase, plan, implement, commit as I go, and verify. Check in when done. Best for straightforward tasks."
 ```
+
+If `AUTO_MODE=true`, skip this question and choose **Autonomous Implementation**.
 
 ---
 

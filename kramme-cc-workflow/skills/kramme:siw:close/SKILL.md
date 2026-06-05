@@ -1,6 +1,7 @@
 ---
 name: kramme:siw:close
 description: Close an SIW project by generating permanent documentation in docs/<feature>/ and removing temporary workflow files
+argument-hint: "[--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -11,12 +12,14 @@ Generate permanent documentation from SIW artifacts, then remove temporary workf
 
 **Use when:** The project is complete and you want to preserve the knowledge before removing SIW files. **Use `siw:reset` instead when:** You want to start a new iteration on the same project. **Use `siw:remove` instead when:** You just want to delete SIW files without generating documentation.
 
+Parse `$ARGUMENTS` before Step 1. If `--auto` is present, set `AUTO_MODE=true`. `--auto` uses the derived documentation directory and skips confirmation prompts only when the close is unambiguous: no open issues, no dirty SIW files, one main spec candidate, and no existing docs directory. It does not bypass cleanup safety or overwrite existing documentation.
+
 ## Step 1: Scan for SIW Files
 
 Check whether any SIW artifacts exist:
 
 ```bash
-find siw -type f -print -quit 2>/dev/null
+find siw -type f -print -quit 2> /dev/null
 ```
 
 If the command returns no output, no SIW files exist. Print the message below and stop:
@@ -30,10 +33,12 @@ To initialize a new SIW workflow, run /kramme:siw:init
 Otherwise, detect the "minimal SIW" case (only a spec, no workflow state):
 
 ```bash
-if [ ! -f siw/LOG.md ] && [ ! -d siw/issues ] && [ -n "$(ls siw/*.md 2>/dev/null)" ]; then echo minimal; fi
+if [ ! -f siw/LOG.md ] && [ ! -d siw/issues ] && [ -n "$(ls siw/*.md 2> /dev/null)" ]; then echo minimal; fi
 ```
 
-If the check prints `minimal`, use AskUserQuestion:
+If the check prints `minimal` and `AUTO_MODE=true`, choose **Generate docs from spec only** automatically.
+
+If the check prints `minimal` and `AUTO_MODE` is false, use AskUserQuestion:
 
 ```yaml
 header: "Minimal SIW Project"
@@ -59,6 +64,8 @@ grep -E "\| (READY|IN PROGRESS|IN REVIEW) \|" siw/OPEN_ISSUES_OVERVIEW.md 2> /de
 
 **If open issues found:**
 
+If `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: open SIW issues remain; rerun without --auto to close anyway or abort`.
+
 Use AskUserQuestion:
 
 ```yaml
@@ -77,13 +84,25 @@ options:
 git status --porcelain siw/ 2> /dev/null
 ```
 
-If uncommitted changes exist, warn:
+If uncommitted changes exist and `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: uncommitted SIW changes exist; rerun without --auto to review them before cleanup`.
+
+If uncommitted changes exist and `AUTO_MODE` is false, warn:
 
 ```
 Warning: There are uncommitted changes to SIW files.
 These will be included in the generated documentation but the SIW file
 changes themselves will be lost after cleanup.
 ```
+
+### 2.3 Check Recoverable Deletion for Auto Mode
+
+If `AUTO_MODE=true`, verify `trash` is installed before generating documentation or moving spec files:
+
+```bash
+command -v trash
+```
+
+If it is missing, stop with `MISSING REQUIREMENT: trash is required for --auto close; rerun without --auto to confirm permanent deletion`.
 
 ---
 
@@ -100,7 +119,7 @@ The feature name determines the output directory `docs/<feature-name>/`.
    - `siw/SPEC_STRENGTHENING_PLAN.md`
    - `siw/DISCOVERY_BRIEF.md`
 2. If no spec candidates are found, follow the "No spec file found" edge case.
-3. If multiple spec candidates are found, use AskUserQuestion to select the main one:
+3. If multiple spec candidates are found and `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: multiple spec candidates found; pass through an interactive close to choose the main spec`. Otherwise use AskUserQuestion to select the main one:
    ```yaml
    header: "Multiple Spec Files Found"
    question: "Which specification file is the main spec for this project?"
@@ -114,7 +133,7 @@ The feature name determines the output directory `docs/<feature-name>/`.
 
 ### 3.2 Confirm with User
 
-Use AskUserQuestion:
+If `AUTO_MODE=true`, use the default `docs/{derived-feature-name}` and print it. Otherwise use AskUserQuestion:
 
 ```yaml
 header: "Documentation Directory"
@@ -128,6 +147,8 @@ Store as `docs_path`.
 ### 3.3 Check for Existing Directory
 
 If `docs_path` already exists:
+
+If `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: {docs_path} already exists; rerun without --auto to overwrite or choose another directory`.
 
 ```yaml
 header: "Documentation Directory Exists"
@@ -253,6 +274,15 @@ All generated documentation must be:
 
 Decide what happens to the spec, `siw/supporting-specs/`, and `siw/SPEC_STRENGTHENING_PLAN.md`. Read `references/spec-disposition.md` for the prompts, discovery-rich detection rules, and conflict handling.
 
+If `AUTO_MODE=true`, do not use the interactive prompts from `references/spec-disposition.md`. Use conservative preservation defaults instead:
+
+- Set `spec_disposition=move` so the main spec and `siw/supporting-specs/` are preserved under `{docs_path}/spec/`.
+- If `siw/SPEC_STRENGTHENING_PLAN.md` exists, set `strengthening_plan_disposition=move`; otherwise set `strengthening_plan_disposition=remove`.
+- Before moving anything, verify the relevant destination paths under `{docs_path}/spec/` do not already exist. If any destination would overwrite a file or directory, stop with `MISSING REQUIREMENT: spec disposition target already exists; rerun without --auto to choose how to preserve the source material`.
+- Append the "Original Specification" README note described in `references/spec-disposition.md` after the move. This keeps durable source material while avoiding hidden prompts in auto mode.
+
+If `AUTO_MODE` is false, read and follow `references/spec-disposition.md`.
+
 Outputs (consumed by Step 7):
 
 - `spec_disposition`: `remove`, `keep`, or `move`
@@ -271,14 +301,23 @@ The reference enforces: `strengthening_plan_disposition=keep` requires `spec_dis
 Before removing any SIW files, confirm the generated documentation is present and non-empty. If any required file is missing or zero-byte, abort without deleting anything; the docs must be rewritten before retrying.
 
 ```bash
-test -s "{docs_path}/README.md"    || { echo "ERROR: {docs_path}/README.md missing or empty"; exit 1; }
-test -s "{docs_path}/decisions.md" || { echo "ERROR: {docs_path}/decisions.md missing or empty"; exit 1; }
+test -s "{docs_path}/README.md" || {
+  echo "ERROR: {docs_path}/README.md missing or empty"
+  exit 1
+}
+test -s "{docs_path}/decisions.md" || {
+  echo "ERROR: {docs_path}/decisions.md missing or empty"
+  exit 1
+}
 ```
 
 If `architecture.md` was generated in Step 5, also require:
 
 ```bash
-test -s "{docs_path}/architecture.md" || { echo "ERROR: {docs_path}/architecture.md missing or empty"; exit 1; }
+test -s "{docs_path}/architecture.md" || {
+  echo "ERROR: {docs_path}/architecture.md missing or empty"
+  exit 1
+}
 ```
 
 If any `move` disposition from Step 6 applies, confirm the move targets are in place under `{docs_path}/spec/` before deletion.
@@ -286,6 +325,8 @@ If any `move` disposition from Step 6 applies, confirm the move targets are in p
 ### 7.2 Remove files
 
 Use `trash` (recoverable). Fall back to `rm` if `trash` is not available. Always quote the spec filename: it can contain spaces or other shell-significant characters.
+
+In `AUTO_MODE`, `trash` was already verified during Step 2.3 before documentation generation or spec moves.
 
 **Temporary files (always deleted):**
 

@@ -1,7 +1,7 @@
 ---
 name: kramme:code:cleanup-ai
 description: Remove AI-generated code slop from a branch. Use when cleaning up AI-generated code, removing unnecessary comments, defensive checks, or type casts. Checks the branch diff against the resolved base and fixes style inconsistencies. Not for generated, vendored, lockfile, snapshot, or `*.d.ts` files.
-argument-hint: [base-branch]
+argument-hint: "[base-branch] [--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -10,9 +10,11 @@ user-invocable: true
 
 This skill uses the `kramme:deslop-reviewer` agent to identify AI slop in the branch's diff against a base, then applies the agent's recommended fixes.
 
+Parse `$ARGUMENTS` before the preconditions. If `--auto` is present, set `AUTO_MODE=true` and remove the flag before base-branch resolution. `--auto` applies medium-confidence cleanup findings automatically; it does not bypass dirty-worktree protection or behavior/API/test-expectation safeguards.
+
 ## Preconditions
 
-Run `git status --porcelain`. If the working tree is dirty, confirm with the user before continuing — the skill's edits will land alongside theirs in `git diff` and will be hard to separate when reverting.
+Run `git status --porcelain`. If the working tree is dirty and `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: working tree is dirty; rerun without --auto to decide whether to continue`. If the working tree is dirty and `AUTO_MODE` is false, confirm with the user before continuing — the skill's edits will land alongside theirs in `git diff` and will be hard to separate when reverting.
 
 ## Process
 
@@ -43,7 +45,7 @@ Run `git status --porcelain`. If the working tree is dirty, confirm with the use
 
    The agent scores findings 0–100. Apply the agent's specific recommendation per finding — do not pattern-match generically:
    - **≥76**: auto-apply.
-   - **51–75**: summarize the finding to the user and apply on confirmation.
+   - **51–75**: summarize the finding to the user and apply on confirmation. If `AUTO_MODE=true`, apply automatically and count it separately as medium-confidence auto-applied.
    - **<51**: skip; list in the final report.
 
    Leave a finding unchanged when applying it would alter test expectations, public APIs, or behavior the agent itself flagged as possibly intentional.

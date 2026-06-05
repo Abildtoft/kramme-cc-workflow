@@ -1,7 +1,7 @@
 ---
 name: kramme:docs:feature-spec
-description: Author a lightweight PRD-style feature spec before implementation. Produces a single reviewable markdown artifact covering objective, scope, boundaries, assumptions, non-goals, and testing strategy. Use when starting a feature that needs written alignment before coding but does NOT warrant the full siw/ tracked workflow. Pass --synthesize (or say "draft straight from context") to skip the assumptions block when the current conversation already grounds enough of the spec. For tracked initiatives (phased issues, LOG, audit) use kramme:siw:init instead.
-argument-hint: "[feature name or brief description]"
+description: Author a lightweight PRD-style feature spec before implementation. Produces a single reviewable markdown artifact covering objective, scope, boundaries, assumptions, non-goals, and testing strategy. Use when starting a feature that needs written alignment before coding but does NOT warrant the full siw/ tracked workflow. Pass --synthesize, --auto, or say "draft straight from context" to skip the assumptions block when the current conversation already grounds enough of the spec. For tracked initiatives (phased issues, LOG, audit) use kramme:siw:init instead.
+argument-hint: "[feature name or brief description] [--synthesize|--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -12,7 +12,7 @@ Author a one-page PRD-style spec before implementation. Emit an assumptions bloc
 
 **Arguments:** "$ARGUMENTS"
 
-Parse `$ARGUMENTS` for a `--synthesize` flag (anywhere in the string). Strip it from the remaining text before deriving the slug or feature name. Treat the flag as activating Synthesize mode (see below). The trigger phrase "draft straight from context" (or close paraphrase) in the user's most recent turn activates Synthesize mode equivalently — no flag needed.
+Parse `$ARGUMENTS` for a `--synthesize` or `--auto` flag (anywhere in the string). Strip it from the remaining text before deriving the slug or feature name. Treat either flag as activating Synthesize mode (see below). The trigger phrase "draft straight from context" (or close paraphrase) in the user's most recent turn activates Synthesize mode equivalently — no flag needed.
 
 ## When to use this skill
 
@@ -72,7 +72,7 @@ Then stop and wait for the user's response. Do not proceed to Phase 2 until the 
 
 Synthesize mode is **opt-in**. Activation:
 
-- The argument string contains `--synthesize`, OR
+- The argument string contains `--synthesize` or `--auto`, OR
 - The user's most recent turn says "draft straight from context" (or close paraphrase like "just draft it from what we discussed", "skip the assumptions").
 
 When activated, evaluate the **preconditions** before skipping Phase 1.
@@ -187,7 +187,7 @@ On approval:
 | Marker | Used when |
 | --- | --- |
 | `ASSUMPTIONS I'M MAKING:` | Phase 1, before drafting (skipped only in Synthesize mode when preconditions are met). |
-| `SYNTHESIZE:` | When `--synthesize` or the trigger phrase activates synthesis — emitted before drafting (success) or before fallback to Phase 1 (insufficient grounding). |
+| `SYNTHESIZE:` | When `--synthesize`, `--auto`, or the trigger phrase activates synthesis — emitted before drafting (success) or before fallback to Phase 1 (insufficient grounding). |
 | `CONFUSION:` | Phase 1 or 2, when user input is ambiguous — including when the resolved destination is reserved, unclear, or already exists. |
 | `MISSING REQUIREMENT:` | Phase 2, when a required area cannot be filled. |
 | `UNVERIFIED:` | Phase 2, inline on any inferred claim inside the spec. |
@@ -211,7 +211,7 @@ These markers are deliberate. Keep them verbatim — tooling and downstream skil
 
 - Implementation starts before the user explicitly approves the spec.
 - Scope creep mid-draft (new areas appearing without updating Phase 1 assumptions).
-- The Assumptions block is skipped or collapsed into the draft (without `--synthesize`/trigger phrase AND preconditions met).
+- The Assumptions block is skipped or collapsed into the draft (without `--synthesize`/`--auto`/trigger phrase AND preconditions met).
 - Synthesizing with fewer than 4 of 6 areas grounded, or with Objective or Success Criteria ungrounded.
 - Claims inside the spec are presented as fact when they are inference — any such claim must be prefixed `UNVERIFIED:`.
 - The skill begins writing `siw/`, `LOG.md`, or issue files. That's out of scope — use `/kramme:siw:init` instead.

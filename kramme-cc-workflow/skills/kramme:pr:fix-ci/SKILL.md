@@ -1,6 +1,7 @@
 ---
 name: kramme:pr:fix-ci
 description: Iterate on a PR until CI passes. Use when you need to fix CI failures, address review feedback, or continuously push fixes until all checks are green. Automates the feedback-fix-push-wait cycle.
+argument-hint: "[--fixup] [--no-consolidate|--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -25,6 +26,7 @@ The fix-CI loop is the **CI Failure Feedback Loop** pattern: read the failure, m
 
 - `--fixup` - Use fixup commits to amend existing branch commits instead of creating new commits. Requires force push. Orphan files (not touched by any branch commit, including files last modified on the base branch) are committed as new.
 - `--no-consolidate` - Skip the consolidation prompt after CI passes. Use for scripting or when you want to keep `[FIX PIPELINE]` commits separate.
+- `--auto` - Alias for `--no-consolidate`. Runs the CI fix loop unattended where possible and keeps `[FIX PIPELINE]` commits separate instead of prompting for history rewrite.
 
 ---
 
@@ -154,7 +156,7 @@ Continue until all checks pass and no unaddressed feedback remains.
 
 ### Step 11: Consolidation phase (default mode only)
 
-**Skip this step if:** `--fixup` mode was used, or `--no-consolidate` flag is set.
+**Skip this step if:** `--fixup` mode was used, or `--no-consolidate` / `--auto` flag is set.
 
 Read and follow the consolidation flow from `references/consolidation-flow.md`. This covers detecting `[FIX PIPELINE]` commits, prompting the user for consolidation options (automated, interactive, or keep separate), mapping commits to targets, executing rebase, and force pushing. On shared branches, consolidation requires explicit coordination before any history rewrite.
 

@@ -1,7 +1,7 @@
 ---
 name: kramme:code:breakdown-findings
 description: "Cluster validated findings into PR-sized themes and generate self-contained implementation plans. Use after review, audit, scan, or QA workflows that produce findings reports. Also accepts a pre-clustered handoff from a delegating skill (themes already grouped, mapped one-to-one to plans) plus an optional shared implementation-setup block rendered into every plan. Not for raw bug lists without severity or location structure, and not for triaging a single issue."
-argument-hint: "[source-file-or-content]"
+argument-hint: "[source-file-or-content] [--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -17,6 +17,8 @@ Cluster validated findings from reviews, audits, or scans into PR-sized themes. 
 - Inline findings text pasted as the argument
 
 **Arguments:** "$ARGUMENTS"
+
+Parse `$ARGUMENTS` as shell-style arguments before Phase 0. If `--auto` is present, set `AUTO_MODE=true` and remove the flag from the remaining source text. `--auto` skips the clustering confirmation after a proposed plan is produced. It does not bypass prior-artifact protection, missing-source handling, multiple-source ambiguity, or conflict/open-question reporting.
 
 ## Workflow
 
@@ -135,6 +137,8 @@ Proceed? (yes / adjust)
 ```
 
 Wait for user confirmation. If the user requests adjustments, re-cluster accordingly.
+
+If `AUTO_MODE=true`, do not ask for confirmation. Print the same `PLAN:` block, add `AUTO: proceeding with the proposed clustering`, and continue directly to Phase 3. Still stop before Phase 3 if the plan contains an unresolved contradiction that would make the generated plan misleading rather than merely conservative.
 
 ### Phase 3: Generate Plans
 
