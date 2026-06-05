@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:init
 description: Initialize structured implementation workflow documents in siw/ (spec, LOG.md, issues)
-argument-hint: "[spec-file(s) | folder | discover]"
+argument-hint: "[spec-file(s) | folder | discover] [--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -43,6 +43,8 @@ Set up the three-document system for tracking complex implementations locally, w
 [Report success] -> Suggest /kramme:siw:issue-define
 ```
 
+Before Phase 1, parse `$ARGUMENTS` as shell-style arguments. If `--auto` is present, set `AUTO_MODE=true` and remove it from the remaining input. `--auto` uses safe initialization defaults when enough context is already supplied: keep linked files in place, use all discovered files from an explicit folder, choose the auto-detected work context and spec filename, and create a single spec file without supporting specs. It does not bypass required project context, existing-workflow protection, deletion confirmation, file overwrite checks, or fresh discovery topic requirements.
+
 ## Phase 1: Check for Existing Workflow Files
 
 Check if any workflow files already exist:
@@ -60,6 +62,8 @@ find siw -maxdepth 1 -type f \( -iname "*SPEC*.md" -o -iname "*SPECIFICATION*.md
 Read `references/existing-workflow-handling.md` and follow the first matching branch for `siw/DISCOVERY_BRIEF.md` only, `siw/DISCOVERY_BRIEF.md` + `siw/SPEC_STRENGTHENING_PLAN.md`, `siw/SPEC_STRENGTHENING_PLAN.md` only, other workflow files, or no files.
 
 **If other workflow files exist:**
+
+If `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: SIW workflow files already exist; rerun without --auto to resume, start fresh, or abort`. Do not delete existing workflow files in auto mode.
 
 Use AskUserQuestion:
 
@@ -154,7 +158,7 @@ If `resolved_arguments` is a directory (verified with `ls -d`):
    find {folder} -maxdepth 2 -type f \( -name "*.md" -o -name "*.txt" \) 2> /dev/null
    ```
 
-2. Present found files to user using AskUserQuestion:
+2. Present found files to user. If `AUTO_MODE=true`, select **All files** automatically. Otherwise use AskUserQuestion:
 
    ```yaml
    header: "Select Source Files"
@@ -179,17 +183,16 @@ If `resolved_arguments` starts with "discover" or "interview":
    - `discover authentication system` → topic = "authentication system"
    - `discover` alone → ask for topic
 
-2. If no topic provided, use AskUserQuestion:
+2. If no topic provided and `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: discovery topic required for --auto`. If no topic provided and `AUTO_MODE` is false, use AskUserQuestion:
 
    ```yaml
    header: "Discovery Topic"
    question: "What topic should we explore? Describe what you're building or the problem you're solving."
    freeform: true
    ```
-
 3. Do **not** run the legacy inline interview path here.
 4. Before launching discovery, re-run the `permanent-spec find` from Phase 1 to check for permanent SIW spec files left in `siw/`.
-5. If permanent spec files still exist, do **not** run greenfield discovery. Use AskUserQuestion:
+5. If permanent spec files still exist, do **not** run greenfield discovery. If `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: permanent SIW spec files already exist; rerun without --auto to choose whether to use them`. Otherwise use AskUserQuestion:
    ```yaml
    header: "Existing Spec Files Found"
    question: "Permanent SIW spec files still exist in siw/. A fresh discovery run would treat this as refinement, not a new project. How should I proceed?"
@@ -217,6 +220,8 @@ If `resolved_arguments` starts with "discover" or "interview":
 ## Phase 2: Brief Interview
 
 **Skip this phase if `imported_spec_content` or `discovered_content` exists from Phase 1.5.**
+
+If `AUTO_MODE=true` and Phase 2 would run, stop before asking with `MISSING REQUIREMENT: project context required for --auto; pass a spec file, folder, discovery brief, or use discover <topic>`.
 
 Use AskUserQuestion to gather context:
 
@@ -283,7 +288,7 @@ These files remain the source of truth. The SIW spec will link to them.
 
 ### Ask About File Location
 
-Use AskUserQuestion:
+If `AUTO_MODE=true`, choose **Keep in place**. Otherwise use AskUserQuestion:
 
 ```yaml
 header: "File Location"
@@ -330,7 +335,7 @@ Apply the user's choice per file, then:
 
 **Only executed if `linked_spec_files` exists.**
 
-Use AskUserQuestion:
+If `AUTO_MODE=true`, use the inferred default value. Otherwise use AskUserQuestion:
 
 ```yaml
 header: "Project Context"
@@ -357,7 +362,7 @@ Based on `project_description` (or `discovered_content` topic), use the keyword 
 
 ### Ask User
 
-Use AskUserQuestion:
+If `AUTO_MODE=true`, choose the auto-detected profile. Otherwise use AskUserQuestion:
 
 ```yaml
 header: "Work Context"
@@ -396,6 +401,10 @@ Based on `project_description`, auto-detect the most appropriate spec filename:
 
 **Confirm with user:**
 
+If `AUTO_MODE=true`, choose `{detected_name}` automatically.
+
+Otherwise:
+
 ```yaml
 header: "Specification Document"
 question: "I'll create a specification document. Which name fits best?"
@@ -418,7 +427,7 @@ Store as `spec_filename`.
 
 ## Phase 3.5: Ask About Supporting Specs
 
-Use AskUserQuestion:
+If `AUTO_MODE=true`, choose **No - single spec file is enough**. Otherwise use AskUserQuestion:
 
 ```yaml
 header: "Supporting Specifications"

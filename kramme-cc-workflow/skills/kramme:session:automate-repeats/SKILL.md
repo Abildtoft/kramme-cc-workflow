@@ -1,7 +1,7 @@
 ---
 name: kramme:session:automate-repeats
 description: "Reviews recent agent session transcripts to find repeated manual workflows or repeated user asks, then proposes and optionally scaffolds only useful new skills or custom subagents. Use when the user asks to inspect recent sessions, find automation opportunities, or create reusable workflows from repeated work. Not for summarizing one session, general retrospectives, or codebase refactoring."
-argument-hint: "[session-paths or --recent N] [--create]"
+argument-hint: "[session-paths or --recent N] [--create|--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -17,6 +17,8 @@ Find repeated work in recent agent sessions and turn only the practical patterns
 - Treat session logs as private. Paraphrase evidence unless a short exact phrase is necessary to justify a candidate. Do not copy secrets, customer data, tokens, or long user messages into generated files.
 
 ## Workflow
+
+Before Step 1, parse `$ARGUMENTS` for `--auto`. Treat `--auto` as an alias for `--create`: remove it from the remaining source arguments and scaffold the selected candidates after the usefulness gate. It does not bypass missing session-source handling or existing-destination protection.
 
 1. Resolve the session source.
    - If `$ARGUMENTS` includes files or directories, use those. If an explicitly provided path is missing or unreadable, stop and report the exact path instead of falling back to the default stores.
@@ -50,7 +52,7 @@ Find repeated work in recent agent sessions and turn only the practical patterns
 6. Present a compact plan before writing files unless the user explicitly requested hands-off creation.
    - Include: candidate name, skill vs subagent, evidence count, destination path, and why it passes the usefulness gate.
    - If the user asked only to "suggest", stop after the report.
-   - If the user said "create", passed `--create`, or confirms the plan, scaffold the selected candidates.
+   - If the user said "create", passed `--create` or `--auto`, or confirms the plan, scaffold the selected candidates.
 
 7. Scaffold skills simply.
    - Use `skills/{skill-name}/SKILL.md` when the current workspace's skill root is `skills/`; use `kramme-cc-workflow/skills/{skill-name}/SKILL.md` when that plugin layout exists.

@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:generate-phases
 description: Break spec into atomic, phase-based issues with tests and validation
-argument-hint: "[spec-file-path]"
+argument-hint: "[spec-file-path] [--auto]"
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code]
@@ -52,6 +52,8 @@ Use **phase-prefixed numbering** for clear organization:
 [Report summary] -> Suggest /kramme:siw:issue-implement
 ```
 
+Before Phase 1, parse `$ARGUMENTS` as shell-style arguments. If `--auto` is present, set `AUTO_MODE=true` and remove it before resolving the spec path. `--auto` accepts the final reviewed phase plan and creates issue files without the Phase 5 approval prompt. It does not bypass required input, in-progress implementation stops, dirty-file protection, subagent review failure handling, or destructive replacement of existing issue files.
+
 ## Shared Guardrails
 
 Before executing Phase 2 or any later step, read `references/quality-gates.md` so the required output markers, hard gates, and final verification checklist are active throughout the workflow.
@@ -99,7 +101,9 @@ Implementation is considered in progress when **either** signal is present:
 
 Do not infer in-progress from generic `git log` keywords or unrelated uncommitted changes — those produce false positives. The two signals above are authoritative.
 
-**If implementation appears in progress:** Use AskUserQuestion:
+**If implementation appears in progress and `AUTO_MODE=true`:** do not ask. Stop with `MISSING REQUIREMENT: implementation appears to be in progress; rerun without --auto to decide whether to continue`.
+
+**If implementation appears in progress and `AUTO_MODE` is false:** Use AskUserQuestion:
 
 ```yaml
 header: "Implementation In Progress"
@@ -121,7 +125,7 @@ List files in `siw/issues/`:
 ls siw/issues/ISSUE-*.md 2> /dev/null
 ```
 
-**If issues exist:** show the matched filenames inline so the user sees exactly what is on disk before choosing. Then use AskUserQuestion:
+**If issues exist:** show the matched filenames inline so the user sees exactly what is on disk before choosing. If `AUTO_MODE=true`, choose **Append** automatically and continue; never choose Replace or delete existing issue files under `--auto`. Otherwise use AskUserQuestion:
 
 ```yaml
 header: "Existing Issues"
@@ -299,7 +303,11 @@ If the breakdown looks good, confirm it's ready.
 
 If the gate is still failing after **3 review passes**, stop looping. Surface the remaining flagged items to the user as `POTENTIAL CONCERNS` and use AskUserQuestion to choose: "Proceed to Phase 5 with remaining concerns" / "Abort and let me edit the spec first". Do not loop a fourth time.
 
+If `AUTO_MODE=true`, do not proceed with remaining concerns after 3 failed review passes. Stop and report the unresolved `POTENTIAL CONCERNS`.
+
 **Subagent failure handling:** If the Task subagent does not return structured feedback (empty response, unstructured text, or tool error), surface the raw response, treat the iteration as inconclusive, and ask the user how to proceed via AskUserQuestion: "Re-run review" / "Proceed without review" / "Abort". Re-runs count toward the 3-iteration cap.
+
+If `AUTO_MODE=true` and the subagent response is inconclusive, re-run once if the 3-iteration cap leaves room; otherwise stop. Never proceed without review in auto mode.
 
 ## Phase 5: User Approval
 
@@ -353,6 +361,8 @@ options:
 ```
 
 **If "Need changes":** Gather feedback and revise the plan. Repeat Phase 5.
+
+If `AUTO_MODE=true`, do not ask for approval. Print the same `PLAN:` block, add `AUTO: creating issue files from this phase plan`, and continue directly to Phase 6.
 
 ## Phase 6: File Creation
 

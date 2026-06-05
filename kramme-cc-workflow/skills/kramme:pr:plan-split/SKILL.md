@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:plan-split
 description: Analyze the current branch's diff and break it into smaller, independently mergeable PRs. Categorizes changes by feature, layer, and module; detects coupling; and proposes a concrete seam (vertical, stack, by file group, or horizontal — preferring vertical) for each slice with file lists, line counts, dependency order, test plan, and rationale. Hands the slices to kramme:code:breakdown-findings to write the PR_PLAN_*.md artifacts, supplying a worktree-based implementation setup that extracts each slice's changes from the branch the skill is run in. Use before opening a PR that bundles unrelated work, when a reviewer asks for a split, or when a branch has grown too large to review. Plans only; does not edit source code, create branches, or rewrite git history.
-argument-hint: "[--base <branch>]"
+argument-hint: "[--base <branch>] [--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -13,6 +13,8 @@ Break the current branch's changes into smaller, independently mergeable PRs.
 This skill is a **planning aid**. It reads the diff, names seams, and proposes one slice per mergeable PR. It does not write the plan files itself: once the slices are confirmed, it **delegates to `kramme:code:breakdown-findings`** — the canonical PR-plan generator — handing over the slices as pre-clustered themes plus a worktree-based implementation setup. That skill writes the `PR_PLAN_*.md` artifacts. This skill never edits source code, creates git branches, or rewrites history. Each plan is implemented later, by hand, in its own git worktree.
 
 ## Workflow
+
+Before Step 1, parse `$ARGUMENTS` as shell-style arguments. If `--auto` is present, set `AUTO_MODE=true` and remove it before base-branch parsing. `--auto` skips the slice-confirmation prompt when the skill recommends `SPLIT`; it does not bypass base-branch validation, empty-diff stops, or the `KEEP AS ONE` outcome.
 
 ### 1. Resolve Base Branch
 
@@ -223,14 +225,14 @@ If the recommendation is **KEEP AS ONE**, do not delegate. Report inline why the
 
 If the recommendation is **SPLIT**:
 
-1. **Confirm the slices.** Print the proposed slices (name, strategy, files, dependency order) and ask: `Proceed to generate plans for these N slices? (yes / adjust)`. Do not delegate until the user confirms. If they adjust, re-plan.
+1. **Confirm the slices.** Print the proposed slices (name, strategy, files, dependency order). If `AUTO_MODE=true`, add `AUTO: proceeding to generate plans for these N slices` and continue without asking. Otherwise ask: `Proceed to generate plans for these N slices? (yes / adjust)`. Do not delegate until the user confirms. If they adjust, re-plan.
 
 2. **Assemble one handoff document.** Build a single markdown document — the complete input handed to `breakdown-findings`. It contains, in order:
    - The marker line `PRE-CLUSTERED HANDOFF — themes are fixed; do not re-cluster.` so the delegate detects the mode without guessing.
    - One **theme per slice** (do not merge or re-split — these slices are the seams). For each: the slice name, strategy, the file list with per-file line counts, the dependency relationship (`depends on` / `blocks` / `parallel with`), the one-line test plan, and the one-sentence rationale.
    - A single shared `## Implementation Setup` block (template below), with `{{REFERENCE_BRANCH}}` and `{{BASE_BRANCH}}` already replaced by the resolved names. The block lives **inside** this document — it is not a separate input.
 
-3. **Delegate.** Invoke `/kramme:code:breakdown-findings` with this document as its source (inline findings text). The delegate detects the pre-clustered marker, maps each theme 1:1 to a plan without re-clustering, embeds the Implementation Setup block in every plan, and owns the prior-artifact check, execution-label naming, the per-plan files, the index, and the end-of-turn summary.
+3. **Delegate.** Invoke `/kramme:code:breakdown-findings` with this document as its source (inline findings text), adding `--auto` when `AUTO_MODE=true`. The delegate detects the pre-clustered marker, maps each theme 1:1 to a plan without re-clustering, embeds the Implementation Setup block in every plan, and owns the prior-artifact check, execution-label naming, the per-plan files, the index, and the end-of-turn summary.
 
    If `/kramme:code:breakdown-findings` is unavailable in this environment, do not silently stop: print the handoff document (themes + Implementation Setup block) inline so the user can generate the plans by hand.
 

@@ -1,6 +1,7 @@
 ---
 name: kramme:siw:issue-reindex
 description: Remove all DONE issues and renumber remaining issues within each prefix group. Not for editing live issue content, archiving still-open issues, or moving issues between prefix groups.
+argument-hint: "[--auto]"
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code]
@@ -18,6 +19,8 @@ Remove all DONE issues and renumber remaining issues **within each prefix group*
 6. Updates siw/LOG.md issue references to match new numbers
 
 Use this when you want to clean up completed issues and have fresh numbering sequences within each group.
+
+Parse `$ARGUMENTS` before Step 1. If `--auto` is present, set `AUTO_MODE=true`. `--auto` includes all prefix groups, skips the final confirmation prompt, and proceeds only when deletion is recoverable through `trash`, SIW files are clean, spec-capture verification has no required user decision, and every DONE issue resolves to exactly one file.
 
 **Important:** Issues are renumbered within their own prefix group. Phase groupings remain intact.
 
@@ -80,6 +83,17 @@ To initialize a new SIW workflow, run /kramme:siw:init
 
 **Action:** Abort.
 
+### 1.1 Auto-Mode Safety Checks
+
+If `AUTO_MODE=true`, run:
+
+```bash
+git status --porcelain -- siw/OPEN_ISSUES_OVERVIEW.md siw/LOG.md siw/issues/ 2> /dev/null
+command -v trash
+```
+
+If any SIW path is dirty, stop with `MISSING REQUIREMENT: SIW workflow files have uncommitted changes; rerun without --auto to review them`. If `trash` is unavailable, stop with `MISSING REQUIREMENT: trash is required for --auto reindex so DONE issue deletion is recoverable`.
+
 **If siw/issues/ directory doesn't exist or is empty:**
 
 ```
@@ -129,6 +143,8 @@ Categorize issues **by prefix group**:
 ### 3.1 Ask About Scope (if phase issues exist)
 
 **If any phase issues (P1-, P2-, etc.) exist**, ask which issues to include:
+
+If `AUTO_MODE=true`, choose **All issues** automatically. Otherwise:
 
 Use AskUserQuestion:
 
@@ -181,6 +197,10 @@ Proceed with reindex?
 
 ### 3.3 Confirm
 
+If `AUTO_MODE=true`, skip this prompt after printing the plan and add `AUTO: proceeding with issues reindex`.
+
+Otherwise:
+
 Use AskUserQuestion:
 
 ```yaml
@@ -198,6 +218,8 @@ options:
 ## Step 4: Verify Spec Capture of DONE Issues
 
 Read and follow `references/spec-capture-check.md` before deleting any DONE issue files. It defines durable-vs-transient classification, spec-update rules, stop conditions, and the spec-capture report format.
+
+If that reference requires any user confirmation, spec edit decision, or unresolved classification choice and `AUTO_MODE=true`, stop before deleting files with `MISSING REQUIREMENT: spec-capture verification needs a human decision; rerun without --auto`.
 
 ---
 

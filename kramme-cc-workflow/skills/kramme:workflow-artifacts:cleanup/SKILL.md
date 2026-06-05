@@ -1,6 +1,7 @@
 ---
 name: kramme:workflow-artifacts:cleanup
 description: Delete workflow artifacts — review and audit overviews, QA reports, generated PR plans, SIW tracking files, and visual diagram HTML — from the working directory and the shared diagrams folder. Confirms before deleting; SIW specification files are kept unless you explicitly include them. Recoverable via Trash when `trash` is installed, otherwise permanent.
+argument-hint: "[--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -8,6 +9,8 @@ user-invocable: true
 # Clean Up Artifacts
 
 Delete workflow artifacts from the current working directory and generated diagram files under `~/.kramme-cc-workflow/diagrams/`. This is a destructive command: deletion is recoverable from the system Trash only when `trash` is installed (see Step 4), so it always confirms first.
+
+Parse `$ARGUMENTS` before Step 1. If `--auto` is present, set `AUTO_MODE=true`. `--auto` deletes only always-candidate artifacts from Step 1 and keeps permanent SIW specs. It requires `trash` to be available and aborts on dirty tracked artifact files; it never falls back to permanent deletion.
 
 **Note:** For SIW-specific cleanup, consider using `/kramme:siw:remove` instead. This cleanup command intentionally leaves `siw/DISCOVERY_BRIEF.md` and `siw/SPEC_STRENGTHENING_PLAN.md` alone because they can still be active handoff artifacts, while `/kramme:siw:remove` deletes them as part of destructive SIW cleanup.
 
@@ -74,7 +77,9 @@ If no candidates and no specs exist, report `No artifact files found.` and stop.
 
 ### Step 2: Warn on uncommitted changes
 
-If the working directory is a git repository, run `git status --porcelain --` against the found working-directory paths. If any found file has uncommitted changes, list them and warn that deletion will discard that work (recoverable from Trash only if `trash` is installed). Skip this step when not in a git repo.
+If the working directory is a git repository, run `git status --porcelain --untracked-files=no --` against the found working-directory paths. If any tracked found file has uncommitted changes, list it and warn that deletion will discard that work (recoverable from Trash only if `trash` is installed). Skip this step when not in a git repo. Untracked found artifacts are expected cleanup targets and are listed in the confirmation prompt; do not treat `??` entries as dirty for this guard.
+
+If `AUTO_MODE=true` and any tracked found working-directory path has uncommitted changes, stop without deleting anything.
 
 ### Step 3: Confirm
 
@@ -86,11 +91,15 @@ Ask the user to confirm before deleting anything. Build the options from the Ste
 
 Offer at least: delete artifacts only (keep specs), delete everything found (artifacts + specs), or cancel. Omit the "everything" option when no permanent specs were found. If the user cancels, stop without deleting.
 
+If `AUTO_MODE=true`, skip this prompt and choose "delete artifacts only (keep specs)". Include shared diagram files in the auto-selected artifact set, but never include permanent specs.
+
 ### Step 4: Delete
 
 Delete only the confirmed set. Prefer `trash` for recoverability; use `trash -r` for directories (`siw/issues/`, `siw/qa-intake/`).
 
-If `trash` is not installed, warn that deletion will be permanent, then fall back to `rm` / `rm -rf`:
+If `AUTO_MODE=true`, verify `trash` is installed before deleting anything. If it is missing, stop with `MISSING REQUIREMENT: trash is required for --auto cleanup; rerun without --auto to confirm permanent deletion`.
+
+If `trash` is not installed and `AUTO_MODE` is false, warn that deletion will be permanent, then fall back to `rm` / `rm -rf`:
 
 ```
 Warning: 'trash' command not found. Files will be permanently deleted.
