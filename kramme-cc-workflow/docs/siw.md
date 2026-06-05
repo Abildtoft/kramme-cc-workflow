@@ -268,6 +268,7 @@ When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW
 | `/kramme:siw:issue-define` | `[issue-id] or [description and/or file paths]` | Create or improve issues with a guided interview. Supports both new issue creation and refinement of existing issues. Explores the codebase to identify relevant patterns. |
 | `/kramme:siw:generate-phases` | `[spec-file-path]` | Decompose a spec into atomic, phase-based issues (`P1-001`, `P2-001`, `G-001`). Each issue is self-contained with tests/validation. Reviews breakdown with a subagent before creating files. |
 | `/kramme:siw:issue-reindex` | — | Remove DONE issues and renumber remaining issues from 001 within each prefix group. Verifies DONE issues are captured in the spec before deletion. |
+| `/kramme:siw:transfer-to-linear` | `[siw-dir] [--project <name-or-id>] [--team <team>] [--dry-run] [--skip-done]` | One-way migration of an SIW project into Linear. Creates one Linear project, migrates the main spec and supporting specs as Linear Documents, creates milestones from SIW phases and issues from SIW issues (dependencies recorded as text), then prompts `/kramme:siw:remove` to retire the local `siw/` files. No rerun mapping is kept, so re-running can duplicate issues. Add `--skip-done` to omit completed issues; `--dry-run` previews without writing. |
 
 ### Implementation
 

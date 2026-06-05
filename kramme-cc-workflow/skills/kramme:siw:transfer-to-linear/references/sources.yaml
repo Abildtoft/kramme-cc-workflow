@@ -1,0 +1,37 @@
+sources:
+  - id: linear-project-milestones
+    url: https://linear.app/docs/project-milestones
+    title: "Linear — Project milestones"
+    rationale: "The phase-to-milestone mapping in references/linear-mapping.md (Milestone Mapping) relies on project milestones being first-class objects with name/description/targetDate, distinct from cycles."
+    last_reviewed_at: 2026-06-05
+    baseline_hash: ""
+  - id: linear-mcp
+    url: https://linear.app/docs/mcp
+    title: "Linear — Model Context Protocol (MCP) server"
+    rationale: "The skill targets the official Linear MCP server for project, milestone, document, and issue writes; the Feb 2026 MCP update is why milestone and document creation are assumed available."
+    last_reviewed_at: 2026-06-05
+    baseline_hash: ""
+  - id: linear-issue-relations
+    url: https://linear.app/docs/issue-relations
+    title: "Linear — Issue relations"
+    rationale: "Justifies the text-only dependency decision: relations (blocks/related/similar/duplicate) exist in the API but are not exposed via the MCP server, so the skill records dependencies as text rather than live links."
+    last_reviewed_at: 2026-06-05
+    baseline_hash: ""
+  - id: linear-priority
+    url: https://linear.app/docs/priority
+    title: "Linear — Priority"
+    rationale: "The priority mapping table in references/linear-mapping.md maps SIW High/Medium/Low onto Linear's numeric priority scale (0 None, 1 Urgent, 2 High, 3 Medium, 4 Low)."
+    last_reviewed_at: 2026-06-05
+    baseline_hash: ""
+  - id: linear-graphql-schema
+    url: https://github.com/linear/linear/blob/master/packages/sdk/src/schema.graphql
+    title: "Linear — GraphQL API schema"
+    rationale: "Source of the WorkflowState type values (backlog/unstarted/started/completed/canceled) used for status mapping, the ProjectCreateInput contract (teamIds required, statusId is a UUID), and the IssueRelationType enum noted in the Dependencies section."
+    last_reviewed_at: 2026-06-05
+    baseline_hash: ""
+  - id: linear-rate-limiting
+    url: https://linear.app/developers/rate-limiting
+    title: "Linear — API rate limiting"
+    rationale: "Informs the expectation that one-issue-per-mutation migration is acceptable for typical SIW sizes and that the MCP server offers no batching primitive."
+    last_reviewed_at: 2026-06-05
+    baseline_hash: ""
