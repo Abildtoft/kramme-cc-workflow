@@ -295,7 +295,7 @@ Linear issue tracking integration.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:linear:issue-define` | User | `[issue-id] or [description and/or file paths]` | Create or improve a Linear issue through exhaustive guided refinement.<br><br>Can start from scratch or refine an existing issue by ID. |
+| `/kramme:linear:issue-define` | User | `[issue-id] or [description and/or file paths] [--quick]` | Create or improve a Linear issue through guided refinement.<br><br>Can start from scratch, refine an existing issue by ID, or use `--quick` for a fast new-issue path with light clarification and duplicate checking. |
 | `/kramme:linear:issue-implement` | User | `<ISSUE-ID>` | Start implementing a Linear issue with branch setup, context gathering, and guided workflow.<br><br>Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
 
 #### Visual

@@ -1,14 +1,14 @@
 ---
 name: kramme:linear:issue-define
-description: Create or improve a well-structured Linear issue through exhaustive guided refinement
-argument-hint: "[issue-id] or [description and/or file paths for context]"
+description: "Create or improve a well-structured Linear issue through guided refinement. Use with --quick to create one new Linear issue from rough input using light clarification, duplicate checking, metadata selection, and approval instead of the full interview. Not for implementing Linear issues (use kramme:linear:issue-implement), multi-bug QA intake (use kramme:qa:intake), or root-cause bug triage (use kramme:debug:triage-to-issue)."
+argument-hint: "[issue-id] or [description and/or file paths for context] [--quick]"
 disable-model-invocation: true
 user-invocable: true
 ---
 
 # Define Linear Issue
 
-Create or improve a Linear issue through exhaustive interactive refinement. Can start from scratch with a description, or improve an existing issue by providing its identifier. Supports file references for technical context and proactively explores the codebase to inform issue definition.
+Create or improve a Linear issue through exhaustive interactive refinement. Can start from scratch with a description, or improve an existing issue by providing its identifier. Supports file references for technical context and proactively explores the codebase to inform issue definition. Use `--quick` for a fast new-issue path with light clarification and the same approval discipline.
 
 ## Workflow Boundaries
 
@@ -50,12 +50,12 @@ Create or improve a Linear issue through exhaustive interactive refinement. Can 
 
 ## Process Overview
 
-1. **Input Parsing & Mode Detection**: Detect if improving existing issue or creating new
-2. **File References & Issue Type**: Read provided files (if any) and classify the issue type
+1. **Input Parsing & Mode Detection**: Detect if improving existing issue, creating new, or quick-creating new with `--quick`
+2. **File References & Issue Type**: Read provided files (if any) and classify the issue type unless `--quick` is active
 3. **Linear Context Discovery**: Fetch available teams, labels, and projects
 4. **Existing Issue Handling**: For improve mode, fetch issue; for create mode, check duplicates
 5. **Codebase Exploration**: Search for related implementations and patterns
-6. **Autonomous Framing**: Infer target user, why-now, likely non-goals, and decision boundaries from the evidence gathered
+6. **Quick-create exit or Autonomous Framing**: In `--quick` create mode, follow `references/quick-create.md` and skip the exhaustive interview; otherwise infer target user, why-now, likely non-goals, and decision boundaries from the evidence gathered
 7. **Interview**: Multi-round questioning (adapted for issue type and mode)
 8. **Issue Composition**: Draft issue following the template
 9. **Review & Create/Update**: User approval, then create or update in Linear
@@ -63,6 +63,11 @@ Create or improve a Linear issue through exhaustive interactive refinement. Can 
 ## Phase 1: Input Parsing & Mode Detection
 
 **Handling `$ARGUMENTS`:**
+
+First parse flags:
+
+- If `$ARGUMENTS` contains `--quick`, remove it from the working description and set `quick_create = true`.
+- `--quick` is only valid for new Linear issues. If the remaining input identifies an existing Linear issue, stop and ask the user to rerun without `--quick` for improvement mode.
 
 ### Step 1: Detect Mode
 
@@ -105,6 +110,8 @@ Check if input matches an existing Linear issue:
 
 ### Step 3: Issue Type Classification
 
+If `quick_create = true`, skip this step and proceed directly to Phase 2. Quick create does not need issue-type classification because it uses the concise body rules in `references/quick-create.md`.
+
 After determining the mode (and any file context, if provided), classify the issue type. Auto-detect from context and suggest to the user (they can override):
 
 **Issue Types:**
@@ -142,6 +149,13 @@ Fetch Linear workspace context to enable informed metadata selection:
 3. **Projects**: `mcp__linear__list_projects` - Get active projects for association
 
 Store this context for use in Phase 5 (Metadata & Classification round).
+
+If `quick_create = true`, resolve the create team here because Round 5 is skipped:
+
+1. Use the only team if exactly one exists, or an obvious team from the branch, workspace, or user input.
+2. Otherwise ask one short question for the target team.
+3. If no team can be resolved, emit `MISSING REQUIREMENT: Linear team is required to create the issue` and stop.
+4. Store selected labels, project, and priority only when the user named them or they clearly match available Linear metadata.
 
 ## Phase 3: Existing Issue Handling
 
@@ -209,7 +223,8 @@ Before creating a new issue, check for existing Linear issues that may already c
    - Identify issues that could be affected by this work
 
 3. **Present Findings to User**
-   - If potential duplicates found, show them to the user via `AskUserQuestion`:
+   - If `quick_create = true` and a strong duplicate is found, show the issue and ask whether to stop, create anyway, or rerun without `--quick` to improve the existing issue. If the user wants to improve, stop; do not switch into IMPROVE mode during the same quick run.
+   - If `quick_create = false` and potential duplicates are found, show them to the user via `AskUserQuestion`:
      - Option to proceed with new issue (if not truly a duplicate)
      - Option to improve an existing issue instead → **Switch to IMPROVE MODE**
      - Option to link as related issue
@@ -217,11 +232,21 @@ Before creating a new issue, check for existing Linear issues that may already c
 
 4. **Decision Point**
    - If user confirms this is a duplicate → Stop and direct to existing issue
-   - If user wants to improve existing issue → Fetch that issue with `mcp__linear__get_issue`, switch to IMPROVE MODE, and restart from Phase 3
-   - If user confirms new issue is needed → Continue to Phase 4
+   - If `quick_create = false` and user wants to improve existing issue → Fetch that issue with `mcp__linear__get_issue`, switch to IMPROVE MODE, and restart from Phase 3
+   - If `quick_create = true` and user confirms a new issue is needed → Continue to QUICK CREATE MODE below
+   - If `quick_create = false` and user confirms a new issue is needed → Continue to Phase 4
    - Store any related issues for later linking
 
 **Output**: List of related issues to reference, confirmation to proceed.
+
+### QUICK CREATE MODE
+
+If `quick_create = true` and mode is CREATE:
+
+1. Complete Phase 2 team resolution and Phase 3 duplicate handling first.
+2. Read the quick-create workflow from `references/quick-create.md`.
+3. Follow that workflow to clarify, draft, approve, create, and return the Linear URL.
+4. Skip Phases 4-7 below and stop after returning the created Linear issue.
 
 ## Phase 4: Codebase Exploration
 
