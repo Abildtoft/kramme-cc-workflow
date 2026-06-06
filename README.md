@@ -228,6 +228,15 @@ Live product inspection and structured testing.
 | `/kramme:qa:intake` | User | `[optional starting context]` | Conversational QA intake session.<br><br>Listens to a user describe bugs from a manual QA pass and files durable Linear, SIW, or local tickets one issue at a time, with at most 2-3 light clarifying questions per issue and background codebase exploration for domain language. Companion to `/kramme:qa` (live-app testing) and `/kramme:linear:issue-define` (heavy single-issue refinement). |
 | `/kramme:product:review` | User | `<url> [--flows <flow1,flow2,...>] [--focus <dimension>] [--inline]` | Experimental.<br><br>Whole-product review across flows and surfaces.<br><br>Evaluates navigation coherence, feature discoverability, onboarding, cross-flow consistency, dead ends, friction, and trust/safety. Produces `PRODUCT_AUDIT_OVERVIEW.md` by default. Add `--inline` to reply with the report instead. |
 
+#### Product Strategy
+
+Repo-level product strategy and product health feedback loops.
+
+| Skill | Invocation | Arguments | Description |
+| --- | --- | --- | --- |
+| `/kramme:product:strategy` | User | `[optional: section or notes to revisit]` | Create or update repo-root `STRATEGY.md` as a concise product anchor.<br><br>Covers target problem, approach, users, metrics, active tracks, milestones, and non-goals. Downstream discovery, feature spec, SIW, and product review skills read it when present. |
+| `/kramme:product:pulse` | User | `[lookback window, e.g. 24h, 7d, 1h] [--inline]` | Generate a time-windowed product pulse report in `docs/pulse-reports/`.<br><br>Covers usage, quality, errors, performance, customer signals, strategy alignment, and followups. Works with partial or manual sources and labels coverage gaps. |
+
 #### Product Design
 
 Product critique and design-direction skills.
@@ -622,6 +631,7 @@ Copied scripts and substantial copied assets must preserve upstream source and l
 - `kramme:design-iterator`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - `kramme:text:humanize`: Based on Wikipedia: Signs of AI writing (maintained by WikiProject AI Cleanup) and heavily inspired by [blader/humanizer](https://github.com/blader/humanizer).
 - `kramme:performance-oracle`: From [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
+- `kramme:product:strategy` and `kramme:product:pulse`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin) skills `ce-strategy` and `ce-product-pulse`.
 - `kramme:docs:feature-spec`: Adapted from [addyosmani/agent-skills — spec-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/spec-driven-development).
 - `kramme:docs:adr`: Adapted from [addyosmani/agent-skills — documentation-and-adrs](https://github.com/addyosmani/agent-skills/tree/main/skills/documentation-and-adrs).
 - `kramme:code:source-driven`: Adapted from [addyosmani/agent-skills — source-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/source-driven-development).

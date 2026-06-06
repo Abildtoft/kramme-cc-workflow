@@ -112,8 +112,12 @@ Extract product context:
 - **UI stack** — what framework, component library, or design system is used?
 - **Platform scope** — web only, mobile-responsive, desktop app?
 - **Product domain** — what does the product do?
+- **Strategy context** — if repo-root `STRATEGY.md` exists, target problem, approach, users, key metrics, active tracks, and non-goals
+- **Recent pulse context** — if `docs/pulse-reports/` exists, the 1-3 most recent usage, quality, error, performance, customer-signal, and followup highlights
 
 Store this context as `PROJECT_CONTEXT` for use in agent instructions.
+
+If `STRATEGY.md` has `last_updated` frontmatter older than 90 days, mark relevant strategy facts as `STALE:` in `PROJECT_CONTEXT`. If no strategy or pulse artifacts exist, record `MISSING PRODUCT CONTEXT:` for the missing coverage without blocking the review.
 
 ### Step 3b: Check for Previous Review
 
@@ -196,6 +200,12 @@ Evaluate THIS flow against the review dimensions below. Nothing here is
 "pre-existing" — flag every issue you find in this flow regardless of when
 it was introduced.
 
+When PROJECT CONTEXT includes strategy or pulse context, evaluate whether
+this flow supports or contradicts the active tracks, target users, key
+metrics, non-goals, or recent pulse signals. Missing strategy or pulse
+coverage is not a finding by itself; report it only as a coverage gap unless
+the flow makes product-direction claims that cannot be evaluated.
+
 You see only this one flow. Do not assert cross-flow inconsistencies you
 cannot verify from this evidence alone. Instead, capture this flow's
 observable patterns in the "Observed Patterns" block below so a later
@@ -266,6 +276,7 @@ Evaluate ONLY these cross-flow dimensions:
 - Dead Ends and Abandoned Transitions (flows that should connect but don't)
 - Repeated Friction Points (the same friction in 2+ flows)
 - Copy and Expectation Management (terminology drift across flows)
+- Strategy and Pulse Alignment (whether flow patterns support or contradict active tracks, target users, metrics, non-goals, and recent pulse signals)
 
 Return findings in the standard PROD-NNN audit format. Because these findings
 span flows, replace the single Flow location field with a **Flows:** line
@@ -365,6 +376,10 @@ Otherwise:
 - **Inconsistencies:** {where flows behave differently for similar actions}
 - **Navigation gaps:** {flows that should connect but don't}
 - **Terminology:** {inconsistent terms across flows}
+
+## Strategy and Pulse Alignment
+
+{How the reviewed flows support, conflict with, or lack evidence against STRATEGY.md and recent pulse reports. Include MISSING PRODUCT CONTEXT or STALE markers when applicable.}
 
 ## Previously Reported (from prior review)
 

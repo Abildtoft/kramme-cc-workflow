@@ -25,6 +25,10 @@ Use when `linked_spec_files` exists. The SIW spec acts as a lightweight coordina
 | **Deprioritized**       | {work_context_profile.deprioritized or "None"} |
 | **Notes**               | {work_context_profile.notes or empty}          |
 
+## Product Strategy Context
+
+{If strategy_context exists: summarize target problem, primary users, active tracks, relevant metrics, and applicable non-goals. If no strategy context exists and the work is broad product-direction work: `MISSING PRODUCT CONTEXT: no STRATEGY.md found`. For narrow work with no strategy context, omit this section.}
+
 ## Linked Specifications
 
 The following external documents are the source of truth for this project:
@@ -72,6 +76,10 @@ Use when `discovered_content` exists. Discovery mode generates content through i
 | **Priority Dimensions** | {work_context_profile.priority_dimensions}     |
 | **Deprioritized**       | {work_context_profile.deprioritized or "None"} |
 | **Notes**               | {work_context_profile.notes or empty}          |
+
+## Product Strategy Context
+
+{If strategy_context exists: summarize target problem, primary users, active tracks, relevant metrics, and applicable non-goals. Include `STALE:` markers if strategy frontmatter is old. If no strategy context exists and the work is broad product-direction work: `MISSING PRODUCT CONTEXT: no STRATEGY.md found`. For narrow work with no strategy context, omit this section.}
 
 ## Problem Statement
 
@@ -197,6 +205,10 @@ Use when no linked files or discovered content (current default behavior).
 | **Priority Dimensions** | {work_context_profile.priority_dimensions}     |
 | **Deprioritized**       | {work_context_profile.deprioritized or "None"} |
 | **Notes**               | {work_context_profile.notes or empty}          |
+
+## Product Strategy Context
+
+{If strategy_context exists: summarize target problem, primary users, active tracks, relevant metrics, and applicable non-goals. Include strategy conflicts as open questions rather than resolving them silently. If no strategy context exists and the work is broad product-direction work: `MISSING PRODUCT CONTEXT: no STRATEGY.md found`. For narrow work with no strategy context, omit this section.}
 
 ## Why Now
 

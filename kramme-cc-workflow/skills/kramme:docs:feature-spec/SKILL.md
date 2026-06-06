@@ -35,6 +35,8 @@ Route elsewhere if:
 ## Process Overview
 
 ```
+Phase 0: Strategy Grounding (optional)
+    ↓
 Phase 1: Assumptions
     ↓
 [User corrects or confirms]
@@ -49,6 +51,13 @@ Phase 3: Approval gate
 
 ## Phase 1: Assumptions
 
+Before drafting assumptions, check for repo-root `STRATEGY.md`.
+
+- If it exists, read it and extract target problem, approach, who it is for, key metrics, active tracks, and non-goals.
+- If its `last_updated` frontmatter is older than 90 days, mark relevant strategy facts as `STALE:` when presenting assumptions.
+- If the proposed feature conflicts with an active track or strategy non-goal, emit `CONFUSION:` with the concrete conflict and ask whether the feature is intended to change strategy or should be scoped differently.
+- If no `STRATEGY.md` exists, proceed silently for narrow features. For broad product-direction work, emit `MISSING PRODUCT CONTEXT:` and suggest `/kramme:product:strategy` as an optional precursor without blocking this skill.
+
 Before drafting anything, state what you are assuming about the feature. Emit this block verbatim, filling each bullet:
 
 ```
@@ -57,6 +66,7 @@ ASSUMPTIONS I'M MAKING:
 - <assumption about users>
 - <assumption about stack or constraints>
 - <assumption about what's out of scope>
+- <assumption about strategy fit; omit this bullet for narrow features when no repo-level strategy context exists>
 
 Correct me before I draft the spec.
 ```
@@ -145,9 +155,18 @@ Copy the six-area structure from `assets/feature-spec-template.md` and fill each
 
 Replace every angle-bracket template placeholder with concrete content and delete the author note comment block before treating the draft as reviewable.
 
+When `STRATEGY.md` exists, weave its relevant facts into the existing six areas rather than adding a seventh section:
+
+- Objective: include the target problem or active track when it directly grounds the feature.
+- Scope & Non-goals: carry forward any applicable strategy non-goals.
+- Success Criteria: prefer strategy metrics when they are relevant and measurable for this feature.
+- Open Questions: list strategy conflicts or missing metric sources that still need a product decision.
+
 ### Marking claims honestly
 
 - If a claim in the spec is an inference rather than confirmed fact (e.g. presumed user count, presumed API availability, presumed schema), prefix it inline with `UNVERIFIED:`.
+- If a strategy fact is old enough to need caution, prefix it inline with `STALE:`.
+- If strategy context would materially affect the spec but is absent, prefix the gap with `MISSING PRODUCT CONTEXT:`.
 - If the Open Questions area surfaces a risk the user should weigh, prefix that bullet with `POTENTIAL CONCERNS:`.
 
 After writing the file, emit a `PLAN:` block summarizing the spec shape — area headings, key decisions in each area, and the file path — so the user can review structure before reading prose.

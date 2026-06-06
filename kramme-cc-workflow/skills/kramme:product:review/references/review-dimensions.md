@@ -66,3 +66,11 @@ System-wide review dimensions for whole-product review. These dimensions emphasi
 - Do success messages confirm what happened?
 - Is developer-facing jargon hidden from the user?
 - Do empty states communicate what the user should do?
+
+## Strategy and Pulse Alignment
+
+- Do the reviewed flows support the target users, active tracks, metrics, and non-goals in `STRATEGY.md` when present?
+- Do recent pulse reports point to usage, quality, error, performance, or customer-signal issues that these flows ignore?
+- Are there flows that appear important in the UI but are absent from active tracks or metrics?
+- Are there strategic non-goals being contradicted by current navigation, calls to action, or empty states?
+- If strategy or pulse context is missing, is that absence only noted as a coverage gap rather than treated as a defect?

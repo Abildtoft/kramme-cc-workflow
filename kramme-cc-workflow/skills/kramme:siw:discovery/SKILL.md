@@ -59,6 +59,8 @@ Use these markers in user-facing output to keep downstream tooling parseable:
 - `CONFUSION` — when the working hypothesis doesn't match the user's framing, or when answers contradict earlier ones.
 - `MISSING REQUIREMENT` — when a confidence dimension can't be answered from the spec or artifact and needs user input.
 - `UNVERIFIED` — when you assert something you haven't confirmed (e.g., a hypothesis still awaiting validation).
+- `STALE` — when repo-level strategy context exists but its `last_updated` value is old enough to verify before relying on it.
+- `MISSING PRODUCT CONTEXT` — when strategy grounding would materially improve discovery but no `STRATEGY.md` exists.
 - `PLAN` — the label applied to the synthesized brief or strengthening plan at hand-off.
 
 ## Step 1: Detect Mode & Resolve Context
@@ -148,6 +150,15 @@ Before Step 2, check for `UBIQUITOUS_LANGUAGE.md` at the project root:
 - If the user uses a term that conflicts with the glossary, pause with one targeted question: "Your glossary defines `{term}` as {canonical meaning}, but you seem to mean {observed meaning}. Which meaning should I use?"
 - If it does not exist, proceed silently. Do not mention the missing file or suggest creating it.
 
+### 1.7 Prime Product Strategy
+
+Before Step 2, check for `STRATEGY.md` at the project root:
+
+- If it exists, read it and extract target problem, approach, who it is for, key metrics, active tracks, milestones if present, and non-goals.
+- Store this as `STRATEGY_CONTEXT` and use it as product grounding for the interview and synthesized artifact.
+- If its `last_updated` frontmatter is older than 90 days, mark relevant strategy context as `STALE:` in the initial hypothesis and treat it as a question to verify.
+- If no `STRATEGY.md` exists, proceed silently for narrow refinement. For greenfield product discovery or broad repo-level direction work, emit `MISSING PRODUCT CONTEXT:` once and suggest `/kramme:product:strategy` as an optional precursor without blocking discovery.
+
 ## Step 2: Autonomous Framing
 
 **Before asking a single question**, draft a working hypothesis based on available context:
@@ -157,6 +168,7 @@ Before Step 2, check for `UBIQUITOUS_LANGUAGE.md` at the project root:
 - Who the likely user/stakeholder is
 - What job they're trying to get done
 - Why this matters now
+- How the topic fits or conflicts with `STRATEGY_CONTEXT`, when present
 - What's probably out of scope
 - What the stated want likely is vs. what the actual need might be
 
@@ -166,6 +178,7 @@ Before Step 2, check for `UBIQUITOUS_LANGUAGE.md` at the project root:
 - What the spec actually focuses energy on (which may differ)
 - Where the spec is confident vs. hand-wavy
 - What's conspicuously absent
+- Whether the spec aligns with target users, active tracks, key metrics, and non-goals from `STRATEGY_CONTEXT`, when present
 
 Present the hypothesis to the user, prefixed with `UNVERIFIED:` so downstream readers know it is a working assumption awaiting interview validation:
 
@@ -180,6 +193,8 @@ I'll use this as a starting point and validate/correct it during the interview. 
 Proceed immediately — don't wait for a response unless the user offers one. The hypothesis is a conversation opener, not a gate.
 
 If the hypothesis clearly clashes with the user's framing, additionally prefix it with `CONFUSION:` and name what doesn't fit.
+
+If `STRATEGY_CONTEXT` exists and the target work appears to conflict with an active track, target user, metric, or non-goal, name the conflict in the hypothesis. This is a product-alignment prompt, not a blocker; the user may confirm that strategy should change.
 
 ## Step 3: Initial Assessment
 
