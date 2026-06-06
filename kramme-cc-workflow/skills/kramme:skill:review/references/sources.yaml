@@ -5,3 +5,9 @@ sources:
     rationale: "Prompt-footprint evidence, description slimming, duplicate detection, unused-skill signals, root auditing, and budget-pressure checks are adapted from this skill."
     last_reviewed_at: 2026-05-31
     baseline_hash: ""
+  - id: compound-engineering-plugin-skill-workflows
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main
+    title: "EveryInc compound-engineering-plugin"
+    rationale: "Review checks for missing external attribution, copied-script license notes, monolithic direct ports, and unclear artifact lifecycles are informed by representative Compound skills including ce-compound, ce-compound-refresh, ce-plan, ce-code-review, and ce-optimize; initially reviewed at commit 6f9ab03a031c054a8046659926251fb6c149269f."
+    last_reviewed_at: 2026-06-06
+    baseline_hash: ""
