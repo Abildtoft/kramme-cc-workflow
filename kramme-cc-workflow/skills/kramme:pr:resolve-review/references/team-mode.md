@@ -4,9 +4,10 @@ Resolve review findings in parallel using multi-agent execution. Each agent owns
 
 This reference is loaded by `/kramme:pr:resolve-review --team`; assume `--team` has already been removed from `$ARGUMENTS`.
 
-Parse `$ARGUMENTS` for `--auto` before Step 1.
+Parse `$ARGUMENTS` for `--auto` and `--implement-only` before Step 1.
 
-- If present, set `AUTO_MODE=true` and remove the flag from the remaining input.
+- If `--implement-only` is present, stop and ask the user to rerun without `--team` or without `--implement-only`. Team mode writes its own review summary and applies its own reply behavior, so it cannot satisfy implement-only's no-output/no-reply contract.
+- If `--auto` is present, set `AUTO_MODE=true` and remove the flag from the remaining input.
 - `--auto` means the lead skips the plan confirmation in Step 4, proceeds directly with the parallel plan whenever the grouping shows real parallelism, and posts/resolves addressed external review comments after the fixes land.
 
 ## Prerequisites
