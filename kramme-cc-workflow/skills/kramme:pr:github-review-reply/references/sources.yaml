@@ -1,0 +1,13 @@
+sources:
+  - id: github-rest-pull-review-comments
+    url: https://docs.github.com/en/rest/pulls/comments
+    title: "GitHub REST API endpoints for pull request review comments"
+    rationale: "The skill uses this source for listing review comments and posting replies to pull request review comments."
+    last_reviewed_at: 2026-06-05
+    baseline_hash: ""
+  - id: github-graphql-pull-review-threads
+    url: https://docs.github.com/en/graphql/reference/pulls
+    title: "GitHub GraphQL Pull requests reference"
+    rationale: "The skill uses this source for reviewThreads metadata and the resolveReviewThread mutation."
+    last_reviewed_at: 2026-06-05
+    baseline_hash: ""
