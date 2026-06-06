@@ -8,7 +8,7 @@ user-invocable: true
 
 # Create Skill
 
-Guide the creation of a new plugin skill with best-practice structure, frontmatter, progressive disclosure, and validation. External attribution lives in `references/sources.yaml`.
+Guide the creation of a new plugin skill with best-practice structure, frontmatter, progressive disclosure, and validation. External attribution lives in `references/sources.yaml`; copied external files also keep source and license notes in the copied file.
 
 ---
 
@@ -22,7 +22,7 @@ Guide the creation of a new plugin skill with best-practice structure, frontmatt
 
 ## Phase 2: Design Interview
 
-Batch Q2, Q3, and Q5 into a single multi-choice prompt (they are independent multi-choice questions). Ask Q1, Q4, and Q6 separately because they require free-form or conditional follow-up.
+Batch Q2, Q3, and Q5 into a single multi-choice prompt (they are independent multi-choice questions). Ask Q1, Q4, Q6, and Q7 separately because they require free-form or conditional follow-up.
 
 ### Question 1: Purpose
 
@@ -64,14 +64,35 @@ Skip if `$ARGUMENTS` already provides a clear description.
 
 ### Question 6: External inspiration
 
-> Is this skill derived from external inspiration — another agent-skills repository, a paper, a book, a blog post, official framework docs?
+> Is this skill derived from external inspiration — another agent-skills repository, a script, a paper, a book, a blog post, official framework docs?
 >
 > A) **Yes** — capture each source. Used to scaffold `references/sources.yaml` so the `kramme:skill:audit-sources` skill can track upstream changes worth absorbing later.
 > B) **No** — the skill is original to this repo or composed of patterns the repo already established.
 
-If A, ask the user for each source: title + URL (or library identifier resolvable via a docs MCP) + one-sentence rationale stating what in this skill is derived from the source. Capture as `external_sources` for use in Phase 5.
+If A, ask the user for each source:
+- title + URL (or library identifier resolvable via a docs MCP),
+- one-sentence rationale stating what in this skill is derived from the source,
+- whether the source will be copied as code/assets, adapted as workflow/prose, or used only as conceptual inspiration,
+- for copied code/assets: upstream license, original file path, and exact upstream commit or release when known.
+
+Capture as `external_sources` for use in Phase 5. Capture copied files separately as `copied_external_assets`.
 
 If the user is unsure whether something qualifies, default to including it — extra entries are easy to remove; missing entries silently skip upstream-change detection.
+
+### Question 7: Artifact Lifecycle
+
+> Will this skill create, update, refresh, or retire a durable artifact — for example a markdown report, issue file, generated code file, copied asset, config, or source snapshot?
+>
+> A) **No durable artifact** — it only returns an inline answer or performs stateless analysis.
+> B) **Yes** — document how the artifact is produced, consumed, refreshed, and retired.
+
+If B, ask:
+- What exact artifact path, naming pattern, or location will the skill produce or update?
+- Which later user action, workflow, skill, script, or reviewer consumes it?
+- What event or command refreshes it?
+- What event or command retires, archives, or deletes it?
+
+Capture as `artifact_lifecycle` for use in Phase 5.
 
 ## Phase 3: Name Generation and Validation
 
@@ -135,6 +156,8 @@ If any target file already exists during scaffolding, abort and report the confl
    - The finalized frontmatter (replacing template placeholders)
    - A heading matching the skill's purpose
    - Numbered workflow steps as TODO placeholders
+   - An artifact lifecycle section only when `artifact_lifecycle` was captured
+   - A source-tracking section only when `external_sources` were captured
 
 ### Medium tier
 
@@ -147,6 +170,8 @@ If any target file already exists during scaffolding, abort and report the confl
    - The finalized frontmatter
    - Workflow steps with JiT loading instructions pointing to resource files
    - TODO placeholders for the user to fill in
+   - An artifact lifecycle section only when `artifact_lifecycle` was captured
+   - A source-tracking section only when `external_sources` were captured
 5. Create placeholder resource files with clear TODO headers describing their purpose.
 
 ### Complex tier
@@ -156,6 +181,7 @@ If any target file already exists during scaffolding, abort and report the confl
 3. Create placeholder script files with:
    - A shebang line (`#!/usr/bin/env bash` or `#!/usr/bin/env python3`)
    - Usage comment describing expected arguments
+   - Source URL, original path, upstream commit or release, and license note when the script copies external code
    - Descriptive error messages for common failure modes
    - TODO markers for the implementation
 
@@ -168,10 +194,15 @@ If any target file already exists during scaffolding, abort and report the confl
   Read the {reference name} from `references/{file}.md`.
   ```
 - Keep SKILL.md under 500 lines — if approaching the limit, move content to resources
+- For workflow skills that write durable artifacts, document how each artifact is produced, consumed, refreshed, and retired.
+- When adapting external work, rewrite prose and workflow steps in local vocabulary. Do not directly port long monolithic upstream skills; split them into smaller skills or references.
+- When copying substantial external scripts or assets, preserve the upstream license and source header in the copied file, and name the copied local path in `references/sources.yaml`.
 
 ### Scaffold `sources.yaml` (if external inspiration was identified in Phase 2)
 
 If Question 6 identified external inspiration, write `<skill-dir>/references/sources.yaml` (creating `references/` first if necessary, even for Simple-tier skills). Skip this step entirely if no inspiration was identified — do not create an empty manifest. If the user identifies inspiration later during drafting, return here before declaring the skill complete.
+
+Use moving upstream URLs for sources that should be checked for drift, such as a default-branch GitHub URL or canonical docs page. Preserve exact commits or releases in copied-file source notes and in the rationale when they matter for attribution; only pin the audit URL itself when the source is intentionally immutable. For copied external files, make the rationale name the copied local file and verify the copied file itself carries the upstream source and license note.
 
 ```yaml
 sources:
@@ -216,6 +247,9 @@ After scaffolding, verify the skill against these checks:
 - [ ] No time-sensitive info (skill instructions may be cached or shipped to downstream installations; today's URL or this-week's library version goes stale)
 - [ ] References are one level deep (SKILL.md → reference; references do not chain to other references)
 - [ ] If the skill is derived from external inspiration, `references/sources.yaml` exists with one entry per source (`id`, `url` or `context7_library`, `title`, `rationale`, `last_reviewed_at`, `baseline_hash`).
+- [ ] If external scripts or assets were copied, each copied file preserves the upstream source, exact commit or release when known, and license note.
+- [ ] If the skill writes durable artifacts, the artifact path, producer, consumer, refresh trigger, and retirement path are documented.
+- [ ] If the skill adapts a long upstream workflow, it is decomposed into local skills or direct references instead of copied as one monolithic SKILL.md.
 
 Report any failing checks to the user with specific remediation steps.
 

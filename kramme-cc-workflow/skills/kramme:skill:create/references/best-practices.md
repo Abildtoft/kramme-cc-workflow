@@ -107,6 +107,29 @@ A schema entry has six fields: `id` (kebab-case slug, stable across audits), `ur
 
 The audit skill has a Bootstrap mode that can propose a manifest after the fact for skills created without one — but treat that as a recovery path, not the default workflow. Every commit that changes a skill should leave its `sources.yaml` accurate.
 
+### External adaptation discipline
+
+Treat copied implementation and adapted workflow ideas as different things:
+
+- **Copied scripts or assets** must keep an upstream source note in the copied file. Include the URL, original path, exact upstream commit or release when known, and license. If the upstream file is MIT-licensed, preserve the MIT attribution instead of replacing it with a generic repo-level credit.
+- **Adapted workflows or prose** should be rewritten in this repo's vocabulary and structure. The source manifest explains the borrowed idea; the skill body should read like a local workflow, not a pasted upstream skill.
+- **Long upstream skills are not templates.** A monolithic external `SKILL.md` is a signal to decompose the workflow into smaller local skills, a short orchestrating skill plus references, or a deterministic script. Direct ports create large prompt footprints and drag in assumptions that usually do not fit this plugin.
+- **Source snapshots are selective.** Add a local source snapshot only when the skill depends on exact upstream wording, the source is volatile, or the audit workflow cannot reliably fetch the source. Otherwise, use a stable but moving URL in `sources.yaml` so audits can detect upstream drift; keep exact commits or releases in attribution notes unless the audited source is intentionally immutable.
+- **Destructive behavior does not inherit trust.** If an upstream skill deletes files, rewrites git history, posts network replies, or calls external APIs, preserve this repo's confirmation and rollback conventions instead of copying the upstream behavior blindly.
+
+### Durable artifact lifecycle
+
+Skills that produce durable artifacts need lifecycle notes in the skill body. A durable artifact is anything meant to live beyond the current answer: markdown reports, issue files, generated code, copied assets, config files, source snapshots, release notes, or review plans.
+
+For each artifact, document:
+
+- **Produced by**: the step, command, or script that creates or updates it.
+- **Consumed by**: the user action, follow-up skill, script, reviewer, or CI job that reads it.
+- **Refreshed by**: the trigger that makes an older copy stale and the command or step that regenerates it.
+- **Retired by**: the cleanup, archive, merge, close, or delete path that removes it from active workflow.
+
+If an artifact has no consumer, it is probably just process residue and should not be written. If it has no retirement path, it will accumulate as stale context.
+
 ## Deterministic Scripts
 
 Offload fragile/repetitive tasks to `scripts/`.

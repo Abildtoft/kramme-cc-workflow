@@ -36,6 +36,14 @@ Read the {reference name} from `references/{file}.md`.
 - {TODO: Error scenario 1} — {recovery action}
 - {TODO: Error scenario 2} — {recovery action}
 
+## Artifact Lifecycle
+
+{TODO: If this skill writes durable artifacts, describe how they are produced, consumed, refreshed, and retired. Remove this section if it only returns inline output.}
+
+## Source Tracking
+
+{TODO: If this skill adapts external sources, create `references/sources.yaml` with one entry per source. If it copies external scripts or assets, preserve the upstream source and license note in each copied file. Remove this section if there are no external sources.}
+
 ## Output
 
 {TODO: Describe expected output format or result.}

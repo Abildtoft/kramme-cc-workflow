@@ -587,6 +587,7 @@ See [CLAUDE.md](CLAUDE.md) for detailed conventions. Quick reference:
 - **Agents**: Create markdown files in `kramme-cc-workflow/agents/` with `name`, `description`, `model`, and `color` frontmatter.
 - **Skills**: Create a subdirectory in `kramme-cc-workflow/skills/` with a `SKILL.md` file. Key frontmatter: `name`, `description`, `disable-model-invocation`, `user-invocable`, `kramme-platforms`.
 - **Hooks**: Edit `kramme-cc-workflow/hooks/hooks.json` to add event handlers. Available events: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `SessionStart`, `Stop`.
+- **External sources**: When adapting skills, scripts, docs, or workflows from another project, update the skill's `references/sources.yaml`. Copied scripts or assets must keep upstream source, exact commit or release when known, and license notes in the copied file. Prefer rewriting workflows in local vocabulary and splitting long upstream skills into smaller local skills or references; use `/kramme:skill:create` and `/kramme:skill:review` for the detailed checks.
 
 ## Related Plugins
 
@@ -613,6 +614,8 @@ For maintainers: see [RELEASE.md](kramme-cc-workflow/RELEASE.md) for the release
 
 Addy Osmani's [`agent-skills`](https://github.com/addyosmani/agent-skills) is a major upstream influence on this plugin. Several skills below are direct adaptations, and several others reuse core conventions from Addy's prompts and workflows.
 
+Copied scripts and substantial copied assets must preserve upstream source and license notes in the copied file, not only in this README. Adapted workflows should record their source in the skill's `references/sources.yaml`, rewrite the workflow in this plugin's style, and avoid direct ports of long monolithic skill bodies.
+
 - `kramme:docs:update-agents-md`: Inspired by [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/agents-md/SKILL.md).
 - `kramme:architecture-strategist`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - `kramme:git:commit-message`: From [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/commit/SKILL.md).
@@ -625,6 +628,7 @@ Addy Osmani's [`agent-skills`](https://github.com/addyosmani/agent-skills) is a 
 - `kramme:code:deprecate`: Adapted from [addyosmani/agent-skills — deprecation-and-migration](https://github.com/addyosmani/agent-skills/tree/main/skills/deprecation-and-migration).
 - Codex converter: Inspired by [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - Skills authoring patterns: Inspired by [mgechev/skills-best-practices](https://github.com/mgechev/skills-best-practices).
+- External-source adaptation policy, copied-script attribution guardrails, and artifact-lifecycle prompts: Informed by [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f), reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`, including representative skills `ce-compound`, `ce-compound-refresh`, `ce-plan`, `ce-code-review`, and `ce-optimize`.
 - `kramme:visual:*` skills: Adapted from [nicobailon/visual-explainer](https://github.com/nicobailon/visual-explainer).
 - `kramme:test:tdd`: Adapted from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills/tree/main/skills/test-driven-development).
 - `kramme:browse` security boundaries, JavaScript constraints, content boundary markers, and Addy marker/epilogue conventions: adapted from [addyosmani/agent-skills — browser-testing-with-devtools](https://github.com/addyosmani/agent-skills/tree/main/skills/browser-testing-with-devtools).
