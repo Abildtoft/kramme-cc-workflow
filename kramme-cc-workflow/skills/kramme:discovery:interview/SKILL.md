@@ -16,8 +16,8 @@ Conduct a structured, in-depth interview about the presented topic, files, propo
 ## Process Overview
 
 1. **Initial Analysis**: Examine the topic/files/proposal presented
-2. **Mode and Glossary Setup**: Detect `--decision-tree`, `--research`, or depth-first trigger phrases; read `UBIQUITOUS_LANGUAGE.md` if present
-3. **Autonomous Framing**: Draft the likely target user, problem, why-now, and non-goals before asking questions
+2. **Mode, Glossary, and Strategy Setup**: Detect `--decision-tree`, `--research`, or depth-first trigger phrases; read `UBIQUITOUS_LANGUAGE.md` and `STRATEGY.md` if present
+3. **Autonomous Framing**: Draft the likely target user, problem, why-now, strategy fit, and non-goals before asking questions
 4. **Topic Classification**: Determine the type of exploration needed
 5. **Phase 0 (optional) — Divergent**: If the framing is vague, pause for an explicit skip-or-continue choice before generating variations. If `--ideate` is set, treat that as an explicit request to run Phase 0 and proceed directly into the divergent pass.
 6. **Final Classification Check**: If Phase 0 changed the framing or the topic type is ambiguous, reclassify/confirm before research.
@@ -34,6 +34,8 @@ Use these markers in user-facing output to keep downstream tooling parseable:
 - `CONFUSION` — when the working hypothesis doesn't fit the user's framing and you need to flag it before continuing.
 - `MISSING REQUIREMENT` — when a question cannot be answered from the provided artifact and needs user input.
 - `UNVERIFIED` — when you assert something you haven't confirmed (e.g., a feasibility guess during Phase 0 convergence).
+- `STALE` — when repo-level product strategy exists but its `last_updated` value is old enough to deserve caution.
+- `MISSING PRODUCT CONTEXT` — when strategy grounding would materially help but no `STRATEGY.md` exists.
 - `FRAMING` — the label applied when Phase 0 converges on the concrete problem statement that will feed the interview.
 - `PLAN` — the label applied to the synthesized plan document at hand-off.
 
@@ -51,6 +53,18 @@ Parse `$ARGUMENTS` as shell-style arguments so quoted paths stay intact.
 
 If `UBIQUITOUS_LANGUAGE.md` exists at the project root, read it before framing and use its canonical terms throughout the interview and plan. If the user uses a term that conflicts with the glossary, ask one targeted question to resolve the conflict. If the file does not exist, proceed silently.
 
+If `STRATEGY.md` exists at the project root, read it before framing and extract:
+
+- target problem,
+- approach,
+- who it is for,
+- key metrics,
+- active tracks,
+- milestones if present,
+- non-goals.
+
+Store this as `STRATEGY_CONTEXT`. If the file has `last_updated` frontmatter older than 90 days, mark it `STALE:` in the initial framing and treat it as context to verify, not a hard constraint. If no `STRATEGY.md` exists, proceed silently for narrow tasks. For repo-level product discovery or broad "what should we build" work, emit `MISSING PRODUCT CONTEXT:` once and suggest `/kramme:product:strategy` as an optional precursor without blocking the interview.
+
 Use **Decision-Tree mode** when `decision_tree_requested=true`; otherwise use the default topic-classified coverage flow. Read `references/decision-tree-mode.md` only when Decision-Tree mode is active.
 
 ## Step 1: Autonomous Framing
@@ -60,11 +74,14 @@ Before starting the interview, write down a working hypothesis for:
 - Who the user or stakeholder is
 - What job they are trying to get done
 - Why this matters now
+- How the topic fits or conflicts with `STRATEGY_CONTEXT`, when present
 - What is likely out of scope or intentionally deprioritized
 
 Treat these as assumptions to validate, not excuses to ask generic setup questions.
 
 **Frame the underlying problem, not the proposed solution.** When the input includes a proposed approach ("let's add X", "we should switch to Y"), separate the problem the proposal is meant to solve from the proposal itself. The proposal may be correct, but the framing — and any research in Phase R — must be about the problem so that alternatives stay visible.
+
+If the topic conflicts with active tracks, target users, key metrics, or non-goals in `STRATEGY_CONTEXT`, state the conflict before asking interview questions. Surface it as context, not as a veto: the user may be intentionally changing direction.
 
 If the hypothesis doesn't seem to match the user's framing, emit `CONFUSION:` and ask a clarifying question before continuing.
 

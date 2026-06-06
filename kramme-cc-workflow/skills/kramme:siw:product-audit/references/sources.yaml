@@ -1,0 +1,13 @@
+sources:
+  - id: compound-ce-strategy
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-strategy
+    title: "EveryInc compound-engineering-plugin - ce-strategy"
+    rationale: "The strategy-alignment checks against target users, active tracks, metrics, and non-goals are adapted from this source."
+    last_reviewed_at: 2026-06-06
+    baseline_hash: ""
+  - id: compound-ce-product-pulse
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-product-pulse
+    title: "EveryInc compound-engineering-plugin - ce-product-pulse"
+    rationale: "The use of recent pulse reports as evidence for product audit priority, risk, and success-criteria checks is adapted from this source."
+    last_reviewed_at: 2026-06-06
+    baseline_hash: ""

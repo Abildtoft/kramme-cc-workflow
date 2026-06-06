@@ -32,6 +32,8 @@ Set up the three-document system for tracking complex implementations locally, w
     ↓
 [Brief interview OR Confirm imported content]
     ↓
+[Read STRATEGY.md if present]
+    ↓
 [Select work context] -> Profile for downstream tool adaptation
     ↓
 [Auto-detect spec type] -> Confirm filename
@@ -352,6 +354,14 @@ If user provides empty response or selects "Skip", use a generic description der
 
 ## Phase 2.8: Work Context Selection
 
+Before selecting the work context, check for repo-root `STRATEGY.md`.
+
+- If it exists, read it and extract target problem, approach, who it is for, key metrics, active tracks, and non-goals.
+- Store this as `strategy_context`.
+- If its `last_updated` frontmatter is older than 90 days, mark relevant context `STALE:` in the generated spec.
+- If the initialized work conflicts with an active track or non-goal, surface the conflict before asking about Work Context. Do not block initialization; the user may be intentionally changing strategy.
+- If no `STRATEGY.md` exists, do not block or mention it for narrow work. For broad product-direction work, include `MISSING PRODUCT CONTEXT: no STRATEGY.md found` in the generated spec's strategy context note and suggest `/kramme:product:strategy` after initialization.
+
 Select a work context profile that tells downstream tools (spec-audit, product-review, discovery, generate-phases) how to adapt their rigor and focus.
 
 Read the profile definitions and auto-detection heuristics from `references/work-context-profiles.md`.
@@ -444,6 +454,8 @@ Store as `use_supporting_specs`.
 ## Phase 4: Create Documents
 
 Read `references/document-creation.md` and follow it to create `siw/`, `siw/{spec_filename}`, `siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/issues/`, and optional `siw/supporting-specs/`.
+
+When `strategy_context` exists, include a concise `## Product Strategy Context` section in the generated SIW spec using the relevant placeholders from `assets/spec-templates.md`. Keep it to strategy facts and conflicts; do not duplicate the entire `STRATEGY.md`.
 
 ## Phase 5: Report Success
 

@@ -179,6 +179,8 @@ For each spec file, identify and extract:
 | Non-Goals | What is explicitly deferred, declined, or left for later |
 | Success Criteria | How is success measured? Metrics, definitions of done |
 | Phases / Milestones | How is delivery sequenced? What ships first? |
+| Strategy Alignment | Whether the spec aligns with repo-root `STRATEGY.md` target users, active tracks, metrics, and non-goals |
+| Pulse Signals | Whether recent `docs/pulse-reports/` evidence supports or challenges the spec's priorities |
 
 For each element, capture:
 
@@ -225,7 +227,20 @@ options:
 
 If "Skip product audit": Stop and suggest `/kramme:siw:spec-audit` instead.
 
-For all other work types, continue to Step 3.
+For all other work types, continue to Step 2.6.
+
+---
+
+### 2.6 Load Strategy and Pulse Context
+
+Before checking previous audits, load optional product-loop context:
+
+- If repo-root `STRATEGY.md` exists, read it and extract target problem, approach, who it is for, key metrics, active tracks, milestones if present, and non-goals.
+- If its `last_updated` frontmatter is older than 90 days, mark relevant context as `STALE:` in the report.
+- If `docs/pulse-reports/` exists, read the 1-3 most recent reports and extract usage, quality, error, performance, customer-signal, and followup highlights that relate to the audited spec.
+- If neither exists, continue. Missing strategy or pulse coverage is report context, not a finding by itself unless the spec makes broad product-direction claims that cannot be evaluated without that context.
+
+Store the result as `PRODUCT_LOOP_CONTEXT` for the reviewer agent and final report.
 
 ---
 
@@ -243,7 +258,7 @@ If `siw/PRODUCT_AUDIT.md` (or `PRODUCT_AUDIT.md` in project root) exists:
 
 ## Step 4: Launch Product Reviewer Agent
 
-Read `references/product-reviewer-prompt.md`, fill in the placeholders, and launch one `kramme:product-reviewer` Explore agent with that prompt. No relevance validation step is needed because the entire spec set is the audit scope.
+Read `references/product-reviewer-prompt.md`, fill in the placeholders, including `PRODUCT_LOOP_CONTEXT`, and launch one `kramme:product-reviewer` Explore agent with that prompt. No relevance validation step is needed because the entire spec set is the audit scope.
 
 ---
 
@@ -405,6 +420,7 @@ Dimensions evaluated:
   - Scope Correctness: {assessed/not assessed}
   - Success Criteria Quality: {assessed/not assessed}
   - Prioritization and Decision Quality: {assessed/not assessed}
+  - Strategy and Pulse Alignment: {assessed/not assessed}
 
 Suggested next steps:
   - If file output was used: `/kramme:siw:resolve-audit siw/PRODUCT_AUDIT.md`  (address findings)
