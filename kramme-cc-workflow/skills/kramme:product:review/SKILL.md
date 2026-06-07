@@ -1,7 +1,7 @@
 ---
 name: kramme:product:review
-description: (experimental) Whole-product review across flows and surfaces. Requires a live app URL. Evaluates navigation coherence, feature discoverability, onboarding, cross-flow consistency, dead ends, friction, and trust/safety. Produces PRODUCT_AUDIT_OVERVIEW.md, or replies inline with --inline. Not for branch-scoped PR review (use pr:product-review) or pre-implementation spec audit (use siw:product-audit).
-argument-hint: "<url> [--flows <flow1,flow2,...>] [--focus <dimension>] [--inline]"
+description: (experimental) Whole-product review across flows and surfaces. Requires a live app URL or auto-detected local dev server. Evaluates navigation coherence, feature discoverability, onboarding, cross-flow consistency, dead ends, friction, and trust/safety. Produces PRODUCT_AUDIT_OVERVIEW.md, or replies inline with --inline. Not for branch-scoped PR review (use pr:product-review) or pre-implementation spec audit (use siw:product-audit).
+argument-hint: "<url|auto> [--flows <flow1,flow2,...>] [--focus <dimension>] [--inline]"
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code]
@@ -19,7 +19,7 @@ Perform a system-wide product experience review across flows and surfaces of a r
 
 Extract from `$ARGUMENTS`:
 
-1. **URL** (required) — the target URL to review (e.g., `http://localhost:3000`, `https://staging.example.com`)
+1. **URL** (required) — the target URL to review (e.g., `http://localhost:3000`, `https://staging.example.com`) or `auto` to discover a running local dev server
 2. **Flags** (optional):
    - `--flows <flow1,flow2,...>` — comma-separated list of flow names to scope the review (e.g., `onboarding,settings,billing`)
    - `--focus <dimension>` — specific review dimension to emphasize (e.g., `discoverability`, `consistency`, `trust-safety`)
@@ -54,13 +54,24 @@ Error: URL is required for product review.
 
 Usage:
   /kramme:product:review http://localhost:3000
+  /kramme:product:review auto
   /kramme:product:review http://localhost:4200 --flows onboarding,settings,billing
   /kramme:product:review http://localhost:3000 --focus discoverability
 ```
 
 ### Step 2: Validate Prerequisites
 
-**Validate the URL format first.** If `TARGET_URL` does not begin with `http://` or `https://`, **hard stop**: `Error: TARGET_URL must be an http:// or https:// URL. Got: $TARGET_URL`. This rejects typos and keeps an unintended value from reaching the shell.
+**If URL is `auto`:** Resolve it with the shared dev-server detector:
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh auto
+```
+
+- `http://...` or `https://...` — set `TARGET_URL` to that value and continue.
+- `__MULTIPLE_URLS__` — list the candidate URLs and ask the user to pick one; if the runtime cannot ask, hard stop with the candidate list.
+- `__NO_RUNNING_SERVER__` — hard stop with: `Error: No running dev server detected. Start the application first, then re-run.`
+
+**Validate the URL format after auto-resolution.** If `TARGET_URL` does not begin with `http://` or `https://`, **hard stop**: `Error: TARGET_URL must be an http:// or https:// URL, or auto. Got: $TARGET_URL`. This rejects typos and keeps an unintended value from reaching the shell.
 
 **Verify the application is reachable:**
 
@@ -431,7 +442,8 @@ Key patterns:
 | Error | Behavior |
 | --- | --- |
 | No URL provided | Hard stop with usage instructions |
-| URL not `http(s)://` | Hard stop with format error |
+| `auto` finds no running server | Hard stop with instructions to start app |
+| URL not `http(s)://` and not `auto` | Hard stop with format error |
 | Unknown `--focus` token | Warn, emphasize as free text, review all dimensions |
 | No browser MCP detected | Hard stop with installation guidance |
 | App not running (connection refused) | Hard stop with instructions to start app |
@@ -451,6 +463,7 @@ Key patterns:
 
 ```
 /kramme:product:review http://localhost:3000
+/kramme:product:review auto
 ```
 
 **Scope to specific flows and focus a dimension:**

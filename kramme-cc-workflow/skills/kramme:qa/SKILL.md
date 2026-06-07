@@ -1,7 +1,7 @@
 ---
 name: kramme:qa
 description: Structured QA testing with evidence capture. Runs smoke checks, diff-aware validation, or targeted route testing against a live app. Produces QA_REPORT.md with screenshots, repro steps, severity, and recommended fixes, or replies inline with --inline. Uses browser MCP when available and falls back to code-only analysis otherwise. Not for logging multiple bugs from a manual pass (use kramme:qa:intake) or tracing one bug's root cause (use kramme:debug:investigate).
-argument-hint: "<url> [quick|diff-aware|targeted <route>] [--base <branch>] [--regression] [--inline] [--legacy-console]"
+argument-hint: "<url|auto> [quick|diff-aware|targeted <route>] [--base <branch>] [--regression] [--inline] [--legacy-console]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -18,7 +18,7 @@ Run smoke checks, diff-aware validation, or targeted route testing against a liv
 
 Extract from `$ARGUMENTS`:
 
-1. **URL** (required) — the target URL to test (e.g., `http://localhost:3000`, `https://staging.example.com`)
+1. **URL** (required) — the target URL to test (e.g., `http://localhost:3000`, `https://staging.example.com`) or `auto` to discover a running local dev server
 2. **Mode** (optional, default: `quick`):
    - `quick` — landing page + 2-3 key routes
    - `diff-aware` — test routes affected by changed UI files
@@ -46,13 +46,26 @@ Store parsed values:
 ```
 Error: URL is required.
 
-Usage: /kramme:qa <url> [quick|diff-aware|targeted <route>] [--base <branch>]
+Usage: /kramme:qa <url|auto> [quick|diff-aware|targeted <route>] [--base <branch>]
 
 Examples:
   /kramme:qa http://localhost:3000
+  /kramme:qa auto
   /kramme:qa http://localhost:4200 diff-aware --base develop
   /kramme:qa http://localhost:3000 targeted /settings/profile
 ```
+
+**If URL is `auto`:** Resolve it with the shared dev-server detector:
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh auto
+```
+
+- `http://...` or `https://...` — set `TARGET_URL` to that value and continue.
+- `__MULTIPLE_URLS__` — list the candidate URLs and ask the user to pick one; if the runtime cannot ask, hard stop with the candidate list.
+- `__NO_RUNNING_SERVER__` — hard stop with: `Error: No running dev server detected. Start your dev server first, then re-run the command.`
+
+**Validate explicit or resolved URL format.** If `TARGET_URL` does not begin with `http://` or `https://`, stop with: `Error: TARGET_URL must be an http:// or https:// URL, or auto. Got: $TARGET_URL`.
 
 **Verify app is reachable** with a curl health check:
 
@@ -186,7 +199,15 @@ Use the user-specified route directly. The test scope is `TARGET_URL + TARGET_RO
 
 ### Step 3b: Detect Framework
 
-Check `package.json` (if it exists) for framework dependencies to load framework-specific QA hints:
+First use the shared project-type detector:
+
+```bash
+DETECTED_PROJECT_TYPE=$(${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-project-type.sh 2> /dev/null)
+```
+
+If the output is a single type (for example `next`, `vite`, or `rails`) or a single monorepo hit (`next@apps/web`), store the type as `DETECTED_FRAMEWORK`.
+
+If the shared detector returns `unknown` or `multiple`, check `package.json` (if it exists) for framework dependencies to load framework-specific QA hints:
 
 ```bash
 cat package.json 2> /dev/null | grep -oE '"(next|nuxt|@angular/core|react|vue|svelte|@sveltejs/kit|rails)"' | head -1
@@ -475,6 +496,7 @@ Before producing the QA report, read `references/addy-conventions.md` and apply:
 | Error | Behavior |
 | --- | --- |
 | No URL provided | Hard stop with usage instructions |
+| `auto` finds no running server | Hard stop with instructions to start app |
 | URL unreachable (connection refused) | Hard stop with diagnostic |
 | URL unreachable (timeout) | Hard stop with diagnostic |
 | URL returns 5xx | Hard stop with server error diagnostic |
@@ -489,6 +511,7 @@ Before producing the QA report, read `references/addy-conventions.md` and apply:
 
 ```
 /kramme:qa http://localhost:3000                              # quick smoke test (default)
+/kramme:qa auto                                               # auto-detect a running local dev server
 /kramme:qa http://localhost:4200 diff-aware --base develop    # test routes affected by changes
 /kramme:qa http://localhost:3000 targeted /settings/profile  # one specific route
 /kramme:qa https://staging.myapp.com                          # staging URL

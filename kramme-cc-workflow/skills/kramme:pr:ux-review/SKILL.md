@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:ux-review
 description: Audit UI, UX, and product experience of PR and local changes using specialized agents for usability heuristics, product thinking, visual consistency, and accessibility. Supports inline report output with --inline. Use --team for multi-agent cross-validation.
-argument-hint: "[app-url] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [--parallel] [--team] [--inline]"
+argument-hint: "[app-url|auto] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [--parallel] [--team] [--inline]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -20,7 +20,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 
 ### Step 1: Parse Arguments
 
-1. If argument starts with `http` → store as `app_url` (enables visual mode for agents)
+1. If argument starts with `http` or equals `auto` → store as `app_url` (enables visual mode for agents)
 2. If `--categories` flag → parse comma-separated list. Valid values: `a11y`, `ux`, `product`, `visual`, `all`
 3. If `--threshold N` → store as `custom_threshold` (0-100). Overrides each agent's default confidence threshold. Only findings with confidence >= N will be reported. Default thresholds if not specified: a11y = 90, ux/product/visual = 70.
 4. If `--base <branch>` → store as explicit base branch override
@@ -161,6 +161,16 @@ If `UX_REVIEW_OVERVIEW.md` exists in the project root:
 ### Step 6: Detect Browser Automation (If URL Provided)
 
 If `app_url` was provided:
+
+0. If `app_url` is `auto`, resolve it with the shared dev-server detector before checking browser automation:
+
+   ```bash
+   ${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh auto
+   ```
+
+   - `http://...` or `https://...` — replace `app_url` with the resolved URL.
+   - `__MULTIPLE_URLS__` — list candidates and ask the user to choose one; if non-interactive, clear `app_url`, warn, and continue in code-only mode.
+   - `__NO_RUNNING_SERVER__` — clear `app_url`, warn, and continue in code-only mode.
 
 1. Check for available browser MCP tools (in priority order):
    - `mcp__claude-in-chrome__*` tools
