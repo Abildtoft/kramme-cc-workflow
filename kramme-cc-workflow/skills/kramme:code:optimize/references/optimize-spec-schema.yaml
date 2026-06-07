@@ -1,0 +1,238 @@
+# Optimization Spec Schema
+# Adapted from EveryInc/compound-engineering-plugin:
+# https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-optimize/references/optimize-spec-schema.yaml
+# Reviewed upstream commit: 6f9ab03a031c054a8046659926251fb6c149269f
+
+required_fields:
+  name:
+    type: string
+    pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    description: Lowercase kebab-case identifier safe for branch and worktree names.
+
+  description:
+    type: string
+    description: Human-readable optimization goal.
+
+  metric:
+    type: object
+    required_children:
+      primary:
+        type: object
+        required_children:
+          type:
+            type: enum
+            values: [hard, judge]
+          name:
+            type: string
+          direction:
+            type: enum
+            values: [maximize, minimize]
+        optional_children:
+          target:
+            type: number
+            default: null
+      degenerate_gates:
+        type: array
+        min_items: 1
+        description: Fast hard gates that reject broken or gameable outputs before ranking or judge evaluation.
+        items:
+          type: object
+          required_children:
+            name:
+              type: string
+            check:
+              type: string
+              pattern: "^(>=|<=|>|<|==|!=)\\s+[-+]?[0-9]+(?:\\.[0-9]+)?$"
+          optional_children:
+            description:
+              type: string
+    optional_children:
+      diagnostics:
+        type: array
+        default: []
+        items:
+          type: object
+          required_children:
+            name:
+              type: string
+      judge:
+        type: object
+        required_when: "metric.primary.type == judge"
+        required_children:
+          rubric:
+            type: string
+          scoring:
+            type: object
+            required_children:
+              primary:
+                type: string
+        optional_children:
+          scoring.secondary:
+            type: array
+            default: []
+          model:
+            type: enum
+            values: [haiku, sonnet, opus]
+            default: haiku
+          sample_size:
+            type: integer
+            default: 10
+          batch_size:
+            type: integer
+            default: 5
+          sample_seed:
+            type: integer
+            default: 42
+          stratification:
+            type: array
+            default: null
+          singleton_sample:
+            type: integer
+            default: 0
+          singleton_rubric:
+            type: string
+            required_when: "metric.judge.singleton_sample > 0"
+          minimum_improvement:
+            type: number
+            default: 0.3
+          max_total_cost_usd:
+            type: number_or_null
+            default: 5
+
+  measurement:
+    type: object
+    required_children:
+      command:
+        type: string
+        min_length: 1
+        description: Shell command that outputs JSON to stdout.
+    optional_children:
+      timeout_seconds:
+        type: integer
+        default: 600
+      working_directory:
+        type: string
+        default: "."
+      output_format:
+        type: enum
+        values: [json]
+        default: json
+      stability:
+        type: object
+        default:
+          mode: stable
+        optional_children:
+          mode:
+            type: enum
+            values: [stable, repeat]
+            default: stable
+          repeat_count:
+            type: integer
+            default: 5
+          aggregation:
+            type: enum
+            values: [median, mean, min, max]
+            default: median
+          noise_threshold:
+            type: number
+            default: 0.02
+
+  scope:
+    type: object
+    required_children:
+      mutable:
+        type: array
+        min_items: 1
+        items:
+          type: string
+      immutable:
+        type: array
+        min_items: 1
+        items:
+          type: string
+
+optional_fields:
+  execution:
+    type: object
+    default:
+      mode: serial
+      backend: worktree
+      max_concurrent: 1
+    optional_children:
+      mode:
+        type: enum
+        values: [serial, parallel]
+      backend:
+        type: enum
+        values: [worktree]
+      max_concurrent:
+        type: integer
+        minimum: 1
+        maximum_when_worktree: 6
+
+  parallel:
+    type: object
+    default:
+      port_strategy: none
+      shared_files: []
+    optional_children:
+      port_strategy:
+        type: enum
+        values: [none, env]
+      port_env:
+        type: string
+        default: EVAL_PORT
+      shared_files:
+        type: array
+        items:
+          type: string
+
+  dependencies:
+    type: object
+    default:
+      approved: []
+    optional_children:
+      approved:
+        type: array
+        items:
+          type: string
+
+  constraints:
+    type: array
+    default: []
+    items:
+      type: string
+
+  stopping:
+    type: object
+    default:
+      max_iterations: 4
+      max_hours: 1
+      plateau_iterations: 3
+      target_reached: true
+    optional_children:
+      max_iterations:
+        type: integer
+      max_hours:
+        type: number
+      plateau_iterations:
+        type: integer
+      target_reached:
+        type: boolean
+
+  max_runner_up_merges_per_batch:
+    type: integer
+    default: 0
+
+validation_rules:
+  - measurement.command must not be empty.
+  - metric.degenerate_gates must contain at least one gate.
+  - metric.judge must exist when metric.primary.type is judge.
+  - metric.judge.max_total_cost_usd may be null only after explicit user approval.
+  - scope.mutable and scope.immutable must both be non-empty.
+  - scope.immutable should include the measurement harness, fixtures, source data, and judge rubric inputs.
+  - experiment workers may modify only scope.mutable paths.
+  - execution.max_concurrent above 1 requires a parallelism probe and user approval.
+  - measurement.command must be shown to the user and approved before the first run.
+  - parallel.shared_files must use relative repo paths; absolute paths and parent traversal are invalid.
+  - sensitive shared files such as .env, credentials, databases, and private fixtures require explicit approval.
