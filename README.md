@@ -145,6 +145,7 @@ See [docs/siw.md](kramme-cc-workflow/docs/siw.md) for the full workflow referenc
 
 ```bash
 /kramme:verify:run         # run tests, linting, and type checks for changed code
+/kramme:setup              # report missing local workflow dependencies
 /kramme:visual:diagram     # generate an HTML diagram from any explanation
 /kramme:docs:to-markdown   # convert PDF, Word, Excel, or images to Markdown
 /kramme:code:refactor-pass # simplification pass on recent changes
@@ -300,6 +301,8 @@ Git history management and commit operations.
 | --- | --- | --- | --- |
 | `/kramme:git:fixup` | User | `[--skip-tests\|--skip-build\|--skip-lint\|--skip-all] [--no-confirm] [--base=<branch>] [instructions]` | Intelligently fixup unstaged changes into existing commits.<br><br>Maps each changed file to its most recent commit, validates, creates fixup commits, and autosquashes. |
 | `/kramme:git:recreate-commits` | User | `[--auto] [--after <commit>]` | Recreate current branch in-place with narrative-quality commits and logical, reviewer-friendly commit history. Emits a `CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS` summary at end of run. Add `--auto` to choose commit granularity without prompting. Add `--after <commit>` to keep commits up to and including `<commit>` and only recreate commits after it. |
+| `/kramme:git:clean-gone-branches` | User | `[--prune] [--delete] [--yes] [--force]` | List local branches whose upstream remote branch is gone, show associated worktrees, label likely Conductor workspace paths, and delete safe candidates only after explicit confirmation. |
+| `/kramme:git:worktree` | User | `<list\|create\|remove> [options]` | Safely list, create, and remove git worktrees with checks for existing paths, checked-out branches, dirty removals, and Conductor workspace directories. |
 
 #### Linear
 
@@ -355,6 +358,7 @@ Session management, verification, artifact cleanup, and hook configuration.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
+| `/kramme:setup` | User, Auto | `[--json\|--help]` | Run a read-only environment health check for local workflow dependencies, optional CLIs, repository context, and detectable Conductor/worktree state. Reports install guidance without changing the environment. |
 | `/kramme:workflow-artifacts:cleanup` | User | — | Delete workflow artifacts — review and audit overviews, QA reports, generated PR plans, SIW tracking files, and visual diagram HTML — from the working directory and the shared diagrams folder.<br><br>Confirms before deleting and keeps SIW specification files unless you explicitly include them; deletions are recoverable from the system Trash when `trash` is installed.<br><br>For SIW-specific cleanup, use `/kramme:siw:remove`. |
 | `/kramme:changelog:generate` | User | `[daily\|weekly]` | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts. Returns changelog text only (reads PRs read-only, writes/sends nothing). |
 | `/kramme:hooks:configure-links` | User | `[show\|reset\|KEY=VALUE ...]` | Configure `context-links` hook settings by writing local overrides to `kramme-cc-workflow/hooks/context-links.config` (workspace slug, team keys, regexes). |
@@ -634,6 +638,7 @@ Copied scripts and substantial copied assets must preserve upstream source and l
 - `kramme:performance-oracle`: From [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - `kramme:product:strategy` and `kramme:product:pulse`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin) skills `ce-strategy` and `ce-product-pulse`.
 - `kramme:session:search` and `kramme:session:automate-repeats`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin) skill `ce-sessions`, including its safe session discovery and extraction substrate reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
+- `kramme:setup`, `kramme:git:clean-gone-branches`, and `kramme:git:worktree`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin) skills `ce-setup`, `ce-clean-gone-branches`, and `ce-worktree`, reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
 - `kramme:docs:feature-spec`: Adapted from [addyosmani/agent-skills — spec-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/spec-driven-development).
 - `kramme:docs:adr`: Adapted from [addyosmani/agent-skills — documentation-and-adrs](https://github.com/addyosmani/agent-skills/tree/main/skills/documentation-and-adrs).
 - `kramme:code:source-driven`: Adapted from [addyosmani/agent-skills — source-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/source-driven-development).

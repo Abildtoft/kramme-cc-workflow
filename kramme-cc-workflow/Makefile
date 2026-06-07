@@ -1,4 +1,4 @@
-.PHONY: test test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage install-test-deps check-deps
+.PHONY: test test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-git-clean-gone test-git-worktree install-test-deps check-deps
 
 # Default target - run all tests
 test:
@@ -38,6 +38,14 @@ test-format:
 test-skill-usage:
 	@chmod +x tests/test_helper/mocks/*
 	@bats tests/skill-usage-stats.bats
+
+# Run only gone-branch cleanup tests
+test-git-clean-gone:
+	@bats tests/clean-gone-branches.bats
+
+# Run only worktree helper tests
+test-git-worktree:
+	@bats tests/worktree-helper.bats
 
 # Install test dependencies
 install-test-deps:

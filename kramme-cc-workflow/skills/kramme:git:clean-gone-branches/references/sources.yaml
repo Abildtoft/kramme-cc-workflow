@@ -1,0 +1,7 @@
+sources:
+  - id: compound-ce-clean-gone-branches
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-clean-gone-branches
+    title: "EveryInc compound-engineering-plugin - ce-clean-gone-branches"
+    rationale: "The gone-upstream discovery flow, confirmation-first deletion posture, and branch cleanup framing are adapted from this source; reviewed at commit 6f9ab03a031c054a8046659926251fb6c149269f."
+    last_reviewed_at: 2026-06-07
+    baseline_hash: ""

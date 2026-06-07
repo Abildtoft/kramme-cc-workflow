@@ -1,0 +1,7 @@
+sources:
+  - id: compound-ce-worktree
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-worktree
+    title: "EveryInc compound-engineering-plugin - ce-worktree"
+    rationale: "The confirmation-first worktree create/remove workflow and safety checks around active workspace directories are adapted from this source; reviewed at commit 6f9ab03a031c054a8046659926251fb6c149269f."
+    last_reviewed_at: 2026-06-07
+    baseline_hash: ""
