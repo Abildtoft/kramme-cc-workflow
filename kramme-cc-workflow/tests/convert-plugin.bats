@@ -108,9 +108,23 @@ SH
 	[ -f "$marketplace_root/.agents/plugins/marketplace.json" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/.codex-plugin/plugin.json" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/hooks/block-rm-rf.sh" ]
+	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/dev-server/detect-url.sh" ]
+	[ ! -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/install-codex.sh" ]
 	[ -f "$cache_root/.codex-plugin/plugin.json" ]
 	[ -f "$cache_root/hooks/block-rm-rf.sh" ]
 	[ -f "$cache_root/hooks/lib/check-enabled.sh" ]
+	[ -f "$cache_root/scripts/dev-server/detect-url.sh" ]
+	[ ! -f "$cache_root/scripts/install-codex.sh" ]
+	[ -f "$TMP_DIR/.codex/scripts/dev-server/detect-url.sh" ]
+
+	run grep -RFn '${CLAUDE_PLUGIN_ROOT}/scripts/dev-server' "$TMP_DIR/.codex/skills"
+	[ "$status" -eq 1 ]
+
+	run grep -RFn "'$TMP_DIR/.codex/scripts/dev-server'/detect-url.sh auto" "$TMP_DIR/.codex/skills"
+	[ "$status" -eq 0 ]
+
+	run grep -nF "DETECTED_PROJECT_TYPE=$('$TMP_DIR/.codex/scripts/dev-server'/detect-project-type.sh 2> /dev/null)" "$TMP_DIR/.codex/skills/kramme:qa/SKILL.md"
+	[ "$status" -eq 0 ]
 
 	run jq -r '.hooks' "$cache_root/.codex-plugin/plugin.json"
 	[ "$status" -eq 0 ]

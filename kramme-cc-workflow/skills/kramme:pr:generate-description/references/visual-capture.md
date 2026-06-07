@@ -28,44 +28,38 @@ Clear `VISUAL_MODE` (disable visual capture) and return to the main skill flow.
 
 ### Step 2: Discover Running Dev Server
 
-Auto-detect the application URL by checking for running dev servers:
+Auto-detect the application URL with the shared dev-server detector:
 
-1. **Scan for listening ports** — check common dev server ports for active listeners:
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh auto
+```
 
-   ```bash
-   lsof -iTCP -sTCP:LISTEN -P -n 2> /dev/null | grep -E ':(3000|3001|4200|4201|5173|5174|5000|8000|8080|8888|9000) '
-   ```
+The shared detector applies the plugin-wide precedence contract: explicit values, `.claude/launch.json`, framework config, Procfile/Docker/package metadata, env `PORT=`, framework defaults, then common running ports.
 
-2. **Check framework config files** for configured ports (if listeners are ambiguous or none found on common ports):
-   - `angular.json` → look for `"port"` in `serve.options`
-   - `vite.config.ts` / `vite.config.js` → `server.port`
-   - `next.config.js` / `next.config.mjs` → dev defaults to 3000
-   - `package.json` → parse `"dev"` or `"start"` scripts for `--port` flags
-   - `.env` / `.env.local` → `PORT=` variable
+When checking env files, the shared script reads only the `PORT=` assignment needed for discovery. Never print full env-file contents or any non-port variables, and ignore non-numeric or out-of-range port values.
 
-   When checking env files, read only the `PORT=` assignment needed for discovery. Never print full env-file contents or any non-port variables, and ignore non-numeric or out-of-range port values.
+Handle stdout:
 
-3. **Resolve the URL**:
-   - If exactly one dev server is found → use it (e.g., `http://localhost:4200`)
-   - If multiple servers are found → pick the one that matches the project's primary framework, or if ambiguous, list them and ask the user to confirm (unless `NON_INTERACTIVE=true`, in which case pick the first match)
-   - If no server is found:
+- If the detector returns one `http://...` or `https://...` URL, set `VISUAL_URL` to it.
+- If the detector returns `__MULTIPLE_URLS__`, list candidates and ask the user to confirm unless `NON_INTERACTIVE=true`. In non-interactive mode, pick the first candidate and emit a warning.
+- If the detector returns `__NO_RUNNING_SERVER__`:
 
-     ```
-     Warning: No running dev server detected on common ports (3000, 4200, 5173, 8080, ...).
+  ```
+  Warning: No running dev server detected on common ports (3000, 4200, 5173, 8080, ...).
 
-     Start your dev server and re-run with --visual, or continue without screenshots.
-     ```
+  Start your dev server and re-run with --visual, or continue without screenshots.
+  ```
 
-     Clear `VISUAL_MODE` and return to the main skill flow.
+  Clear `VISUAL_MODE` and return to the main skill flow.
 
-4. **Verify the URL** — make a quick HTTP request to confirm the server responds:
+After selecting a URL, verify it with a quick HTTP request:
 
-   ```bash
-   curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$VISUAL_URL"
-   ```
+```bash
+curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$VISUAL_URL"
+```
 
-   - If 2xx or 3xx → proceed
-   - If connection refused or timeout → warn and clear `VISUAL_MODE`
+- If 2xx or 3xx → proceed.
+- If connection refused or timeout → warn and clear `VISUAL_MODE`.
 
 Set `VISUAL_URL` to the discovered URL.
 

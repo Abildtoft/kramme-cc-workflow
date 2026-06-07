@@ -697,6 +697,12 @@ function convertCodexHookPlugin(plugin) {
     manifest,
     hooks: cloneJson(plugin.hooks),
     hookSourceDir: path.join(plugin.root, "hooks"),
+    sharedScriptDirs: [
+      {
+        sourceDir: path.join(plugin.root, "scripts", "dev-server"),
+        targetDir: path.join("scripts", "dev-server"),
+      },
+    ],
   };
 }
 
@@ -848,6 +854,31 @@ function rewriteCodexAgentFileReferences(text, knownAgentSkills) {
   text = text.replace(linkTargetPattern, toSkillReference);
   text = text.replace(autolinkPattern, toSkillReference);
   return text.replace(agentPathPattern, toSkillReference);
+}
+
+function codexSharedScriptReplacements(codexRoot, sharedScriptDirs = []) {
+  return sharedScriptDirs.map((sharedScriptDir) => ({
+    sourcePrefix: `\${CLAUDE_PLUGIN_ROOT}/${sharedScriptDir.targetDir
+      .split(path.sep)
+      .join("/")}/`,
+    targetPrefix: `${shellQuotePath(
+      path.join(codexRoot, sharedScriptDir.targetDir),
+    )}/`,
+  }));
+}
+
+function rewriteCodexSharedScriptReferences(text, replacements = []) {
+  let result = text;
+  for (const replacement of replacements) {
+    result = result
+      .split(replacement.sourcePrefix)
+      .join(replacement.targetPrefix);
+  }
+  return result;
+}
+
+function shellQuotePath(filePath) {
+  return `'${String(filePath).replace(/'/g, "'\\''")}'`;
 }
 
 const CODEX_INSTRUCTION_REPLACEMENTS = [
@@ -1337,6 +1368,19 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
     "codex",
   );
   await ensureDir(codexRoot);
+  const sharedScriptDirs = bundle.codexPlugin?.sharedScriptDirs ?? [];
+  for (const sharedScriptDir of sharedScriptDirs) {
+    if (await pathExists(sharedScriptDir.sourceDir)) {
+      await copyDir(
+        sharedScriptDir.sourceDir,
+        path.join(codexRoot, sharedScriptDir.targetDir),
+      );
+    }
+  }
+  const sharedScriptReplacements = codexSharedScriptReplacements(
+    codexRoot,
+    sharedScriptDirs,
+  );
 
   const promptsDir = path.join(codexRoot, "prompts");
   const cleanedPrompts = await cleanupInstalledEntries(
@@ -1376,17 +1420,26 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
     const targetDir = resolveManagedChild(skillsRoot, skill.name, "skill name");
     await copyDir(skill.sourceDir, targetDir);
     if (skill.content) {
-      await writeText(path.join(targetDir, "SKILL.md"), skill.content + "\n");
+      const content = rewriteCodexSharedScriptReferences(
+        skill.content,
+        sharedScriptReplacements,
+      );
+      await writeText(path.join(targetDir, "SKILL.md"), content + "\n");
     }
     await rewriteCodexMarkdownResourcesFromSource(skill.sourceDir, targetDir, {
       knownCommands: bundle.knownCommands,
       knownAgentSkills: bundle.knownAgentSkills,
+      sharedScriptReplacements,
     });
   }
 
   for (const skill of bundle.generatedSkills) {
     const targetDir = resolveManagedChild(skillsRoot, skill.name, "skill name");
-    await writeText(path.join(targetDir, "SKILL.md"), skill.content + "\n");
+    const content = rewriteCodexSharedScriptReferences(
+      skill.content,
+      sharedScriptReplacements,
+    );
+    await writeText(path.join(targetDir, "SKILL.md"), content + "\n");
   }
 
   let cleanedAgentSkills = true;
@@ -1590,6 +1643,14 @@ async function writeCodexHookPluginTree(targetRoot, codexPlugin) {
   const hooksRoot = path.join(targetRoot, "hooks");
   if (await pathExists(codexPlugin.hookSourceDir)) {
     await copyDir(codexPlugin.hookSourceDir, hooksRoot);
+  }
+  for (const sharedScriptDir of codexPlugin.sharedScriptDirs ?? []) {
+    if (await pathExists(sharedScriptDir.sourceDir)) {
+      await copyDir(
+        sharedScriptDir.sourceDir,
+        path.join(targetRoot, sharedScriptDir.targetDir),
+      );
+    }
   }
   await writeJson(path.join(hooksRoot, "hooks.json"), codexPlugin.hooks);
   await bootstrapHookScripts(hooksRoot, targetRoot);
@@ -2325,7 +2386,10 @@ async function rewriteCodexMarkdownResourcesFromSource(
       continue;
     }
     const source = await readText(targetPath);
-    const transformed = transformContentForCodex(source, options);
+    const transformed = rewriteCodexSharedScriptReferences(
+      transformContentForCodex(source, options),
+      options.sharedScriptReplacements,
+    );
     if (transformed !== source) {
       await writeText(targetPath, transformed);
     }

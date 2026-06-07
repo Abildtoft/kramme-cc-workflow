@@ -56,9 +56,19 @@ Browse without a browser is meaningless — do not continue.
 
 ### Step 3: Discover or Validate URL
 
-**If URL is `auto`:** Run dev server detection to find a running local server.
+**If URL is `auto`:** Run shared dev-server detection to find a running local server.
 
-Read `references/dev-server-detection.md` and follow the detection steps: scan common dev-server ports for active listeners, check framework config files if ambiguous, resolve to a single URL, and verify it with an HTTP request.
+Read `references/dev-server-detection.md`, then run the shared detector:
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh auto
+```
+
+Use the detector output as follows:
+
+- `http://...` or `https://...` — set `TARGET_URL` to that value and continue to the explicit URL health check below.
+- `__MULTIPLE_URLS__` — list the candidate URLs and ask the user to pick one; if the runtime cannot ask, hard stop with the candidate list.
+- `__NO_RUNNING_SERVER__` — hard stop with the message below.
 
 If no dev server found:
 
