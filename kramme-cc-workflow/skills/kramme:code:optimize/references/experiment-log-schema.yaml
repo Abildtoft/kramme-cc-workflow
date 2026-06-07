@@ -1,0 +1,154 @@
+# Experiment Log Schema
+# Adapted from EveryInc/compound-engineering-plugin:
+# https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-optimize/references/experiment-log-schema.yaml
+# Reviewed upstream commit: 6f9ab03a031c054a8046659926251fb6c149269f
+
+location: ".context/code-optimize/<spec-name>/experiment-log.yaml"
+persistence_model:
+  rule: The experiment log on disk is the single source of truth.
+  write_discipline:
+    - Write each experiment result immediately after measurement.
+    - Read the file back after every critical write.
+    - Re-read the log at phase boundaries before decisions.
+    - Keep experiment entries append-first; update outcomes and best only after batch evaluation.
+    - Use per-experiment result.yaml markers for crash recovery.
+
+structure:
+  spec:
+    type: string
+    required: true
+  run_id:
+    type: string
+    required: true
+  started_at:
+    type: string
+    format: ISO 8601 timestamp
+    required: true
+  baseline:
+    type: object
+    required: true
+    children:
+      timestamp:
+        type: string
+      gates:
+        type: object
+      diagnostics:
+        type: object
+      judge:
+        type: object
+        optional: true
+  experiments:
+    type: array
+    required: true
+    items:
+      type: experiment_entry
+  best:
+    type: object
+    required: true
+    children:
+      iteration:
+        type: integer
+        description: Use 0 for the baseline before experiments are kept.
+      metrics:
+        type: object
+      judge:
+        type: object
+        optional: true
+      total_judge_cost_usd:
+        type: number
+        default: 0
+  hypothesis_backlog:
+    type: array
+    default: []
+    items:
+      type: hypothesis_entry
+
+hypothesis_entry:
+  required_children:
+    description:
+      type: string
+    category:
+      type: string
+    priority:
+      type: enum
+      values: [high, medium, low]
+    dep_status:
+      type: enum
+      values: [approved, needs_approval, not_applicable]
+    required_deps:
+      type: array
+      items:
+        type: string
+
+experiment_entry:
+  required_children:
+    iteration:
+      type: integer
+    batch:
+      type: integer
+    hypothesis:
+      type: string
+    category:
+      type: string
+    outcome:
+      type: enum
+      values:
+        - measured
+        - kept
+        - reverted
+        - degenerate
+        - error
+        - timeout
+        - deferred_needs_approval
+        - runner_up_kept
+        - runner_up_reverted
+  optional_children:
+    changes:
+      type: array
+      items:
+        children:
+          file:
+            type: string
+          summary:
+            type: string
+    gates:
+      type: object
+    gates_passed:
+      type: boolean
+    diagnostics:
+      type: object
+    judge:
+      type: object
+    primary_delta:
+      type: string
+    learnings:
+      type: string
+    commit:
+      type: string
+    deferred_reason:
+      type: string
+    error_message:
+      type: string
+    merged_with:
+      type: integer
+
+outcome_transitions:
+  proposed: hypothesis_backlog
+  selected: experiment dispatched
+  measured: raw metrics persisted before batch evaluation
+  kept: improved current best and merged into optimization branch
+  runner_up_kept: file-disjoint runner-up improved the combined state after remeasurement
+  runner_up_reverted: runner-up was promising alone but worse or neutral in combination
+  reverted: did not improve or failed ranking criteria
+  degenerate: failed a degenerate gate
+  error: measurement crashed or returned malformed output
+  timeout: measurement exceeded timeout_seconds
+  deferred_needs_approval: needs dependencies the user has not approved
+
+strategy_digest:
+  location: ".context/code-optimize/<spec-name>/strategy-digest.md"
+  purpose:
+    - Summarize tried categories and outcomes.
+    - Record current best and improvement from baseline.
+    - Preserve learnings for the next hypothesis batch.
+    - Avoid reading the full experiment log into context for every iteration.
