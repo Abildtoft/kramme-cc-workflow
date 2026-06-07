@@ -1,0 +1,7 @@
+sources:
+  - id: compound-ce-setup
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-setup/SKILL.md
+    title: "EveryInc compound-engineering-plugin - ce-setup"
+    rationale: "The read-only environment readiness flow, grouped dependency reporting, and install-guidance-only posture are adapted from this source; reviewed at commit 6f9ab03a031c054a8046659926251fb6c149269f."
+    last_reviewed_at: 2026-06-07
+    baseline_hash: "sha256:626696dc061455a1320559b48ef8bced72fe8b87403d3d4d55592627c99ea6ec"
