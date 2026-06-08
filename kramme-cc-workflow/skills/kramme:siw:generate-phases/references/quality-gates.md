@@ -8,6 +8,8 @@
 4. **Clear dependencies** - Explicit about what blocks what
 5. **Appropriate sizing** - All tasks XS/S/M/L (XL decomposed). See `references/task-sizing.md`.
 6. **Review before create** - Always use subagent review and user approval
+7. **Stable identifiers** - Preserve existing issue IDs after files are written; use `/kramme:siw:issue-reindex` for intentional renumbering
+8. **Risk-triggered deepening** - Run the Phase 4.5 confidence deepening gate only when risk signals are present
 
 ## Output Markers
 
@@ -39,6 +41,8 @@ Stop and recheck the workflow if any of these appear:
 - Every task lands at size L — likely under-decomposed.
 - Sizing labels were assigned after the structure was drafted instead of during Phase 3.2 — the grammar did not drive decomposition.
 - Parallelization categories are all "Must be sequential" — likely missed safely-parallel slices.
+- Existing issue IDs are renumbered during append, refinement, splitting, deletion, or deepening — this breaks references that should survive ordinary plan evolution.
+- A risky plan skips Phase 4.5 because Phase 4 already ran — the deepening gate checks sequencing, hidden dependencies, and risk treatment beyond the hard atomicity/sizing review.
 
 ## Verification
 
@@ -46,7 +50,10 @@ Before reporting Phase 7, verify:
 
 - Any task title containing the word "and" is justified because both halves are inseparable; otherwise split it.
 - Every task carries an explicit size; no XL survived Phase 4.
-- Phase 4 subagent prompt ran with all nine criteria (including Vertical slicing, Parallelization, and Mode coverage).
+- Phase 4 subagent prompt ran with all nine criteria (including Vertical slicing, Parallelization, and Mode coverage) against the final plan after any Phase 4.5 changes.
 - Parallelization categories are recorded for each task group.
 - The Phase 5 `PLAN:` block shows every issue size and every group-level `Parallelization:` note.
+- Existing append-mode issue IDs were preserved, with new work assigned to the next unused number in each prefix group.
+- Risk signals were checked; Phase 4.5 ran when triggered, did not run unconditionally for small, clear plans, and looped back through Phase 4 if it changed, split, deleted, or reordered tasks.
 - Generated issue files preserve each issue's approved size, Mode, and parallelization guidance. For tracker schema rules (modern 7-column, pre-Mode 6-column, legacy 5-column) see Phase 6.2 in `SKILL.md`.
+- Generated issue files use repo-relative paths for affected files, tests, and pattern references.
