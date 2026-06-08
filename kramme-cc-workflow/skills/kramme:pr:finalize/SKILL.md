@@ -33,9 +33,9 @@ Coordinate all pre-merge quality checks and produce a single readiness verdict. 
 
 `--fix` means:
 
-- after the initial verdict, if code-backed critical or important findings exist, automatically run `kramme:pr:resolve-review` to address them
+- after the initial verdict, if eligible `gated_auto` code-backed critical or important findings exist, automatically run `kramme:pr:resolve-review` to address them
 - re-run verification after fixes to produce an updated verdict
-- does NOT fix suggestions — only critical and important findings
+- does NOT fix suggestions, manual findings, advisory findings, or process-only blockers — only eligible `gated_auto` code-backed critical/important findings
 - does NOT resolve process-only blockers; those remain manual follow-up
 
 ### Step 2: Pre-Validation
@@ -253,10 +253,18 @@ skill: "kramme:pr:code-review", args: "--base {BASE_BRANCH}"
 After completion, if `REVIEW_OVERVIEW.md` does not exist in the project root, treat as `COULD NOT RUN: overview file not produced`. Otherwise parse it:
 
 - Count findings by severity: critical, important, suggestion
-- Inspect each critical/important code-review finding's location:
+- Inspect each critical/important code-review finding's action class and structured `Location` field:
+  - Prefer the explicit `Location:` field from the structured finding schema
+  - If `Location:` is missing, fall back to inline `[location]` text only for legacy reports
+  - `Action class: gated_auto` with `path/to/file:line` = code-backed finding, eligible for `/kramme:pr:resolve-review`
+  - `Action class: manual` = manual follow-up, even when the finding has a file location
+  - `Action class: advisory` on a critical/important finding = invalid review schema; treat as manual follow-up and record a `COULD NOT AUTO-FIX: invalid action class` caveat
   - `review-scope` (or any broader non-file scope label) = process-level blocker, manual follow-up
-  - `path/to/file:line` = code-backed finding, eligible for `/kramme:pr:resolve-review`
-- Keep separate tallies for code-backed vs process-level critical/important code-review findings
+  - Missing action class in a legacy report = manual follow-up unless the finding is explicitly identified as auto-resolvable
+  - Missing location after both explicit-field and legacy-inline parsing = manual follow-up; record `COULD NOT AUTO-FIX: missing Location`
+- Keep separate tallies for eligible `gated_auto` code-backed vs manual/process-level critical/important code-review findings
+- Store each eligible `gated_auto` finding as `ELIGIBLE_REVIEW_FIXES` with `Finding ID` as source id, severity, location, finding text, action class, owner, confidence, and evidence
+- If an eligible finding has no `Finding ID`, do not invent one from position or prose. Treat it as manual follow-up and record `COULD NOT AUTO-FIX: missing Finding ID`.
 - Critical findings = blockers
 
 See [Error Handling](#error-handling) for skill-error treatment.
@@ -357,49 +365,79 @@ See [Error Handling](#error-handling) for skill-error treatment.
 
 Aggregate all results into a verdict. Explicitly skipped steps (`--skip` or conditional skip) are not caveats; failures and `COULD NOT RUN` are.
 
+Before choosing the verdict, run the **residual-work gate**. Every unresolved or noteworthy item from verification, code review, product review, UX review, and QA must receive exactly one disposition:
+
+| Disposition | Use when | Required fields |
+| --- | --- | --- |
+| `fixed_now` | The issue was resolved during this finalize run, usually through `--fix` and re-verification. | source, previous severity, fix summary, verification result |
+| `deferred_with_owner` | The work can wait without invalidating the PR, and someone owns the follow-up. | source, owner, rationale, follow-up path |
+| `accepted_risk` | The maintainer intentionally accepts the remaining risk. | source, owner/approver, rationale, rollback or monitoring note |
+| `blocked_by_missing_information` | The orchestrator cannot determine readiness without a product, design, security, infrastructure, or release decision. | source, missing decision, who must answer |
+| `not_relevant` | The item was filtered, previously addressed, out of scope, or not caused by the branch. | source, reason |
+
+Residual-work rules:
+
+- Unclassified residual work is a blocker. Do not return `READY WITH CAVEATS` while any remaining item lacks a disposition.
+- Critical review findings, QA blockers, verification failures, and `blocked_by_missing_information` items are blockers unless they were fixed now and re-verified.
+- `COULD NOT RUN` steps are residual work. Classify them as `blocked_by_missing_information` when their result is necessary for merge confidence; otherwise classify as `deferred_with_owner` or `accepted_risk` with rationale.
+- Suggestions and advisory findings may be `deferred_with_owner`, `accepted_risk`, or `not_relevant`, but they still need an explicit disposition.
+- `gated_auto` code-review findings are eligible for `--fix`; `manual` findings remain human follow-up; `advisory` findings must not become automatic fix work.
+- Description generation runs after the readiness verdict and reports its own result separately. Do not include generation output in the residual-work gate.
+
+Store all residual item dispositions for the verdict template, not only blockers. `READY WITH CAVEATS` must show the actual deferred and accepted-risk items so the user can review what remains before creating the PR.
+
 **READY:**
 
 - Verification passed (or skipped)
 - No critical findings from any review
 - No QA blockers
 - No skills recorded as `COULD NOT RUN`
+- All residual work is `fixed_now` or `not_relevant`
 
 **READY WITH CAVEATS:**
 
 - Verification passed (or skipped)
 - No critical findings from any review
 - No QA blockers
-- BUT one or more of: important findings exist, suggestions exist, a skill could not run
+- No residual item is `blocked_by_missing_information` or unclassified
+- BUT one or more of: important findings exist, suggestions exist, a non-blocking skill could not run, or residual work is classified as `deferred_with_owner` or `accepted_risk`
 
 **NOT READY:**
 
 - Verification failed, OR
 - Critical findings exist in any review, OR
-- QA blockers found
+- QA blockers found, OR
+- Any residual work is unclassified or `blocked_by_missing_information`
 
 ### Step 11: Auto-Fix (Conditional)
 
 **Skip if** `FIX_MODE` is not true, OR the verdict is **READY**.
 
-If `FIX_MODE=true` and one or more code-backed critical or important code-review findings exist:
+If `FIX_MODE=true` and one or more eligible `gated_auto` code-backed critical or important code-review findings exist:
 
-1. Run `kramme:pr:resolve-review` to address findings:
+1. Build a caller-scoped findings payload from `ELIGIBLE_REVIEW_FIXES`. Include only findings whose action class is `gated_auto` and whose location is `path/to/file:line`. Do not include `manual`, `advisory`, `review-scope`, `PR description`, or legacy entries without an explicit auto-resolvable marker.
+
+2. Run `kramme:pr:resolve-review` in implement-only mode with that payload:
 
    ```
-   skill: "kramme:pr:resolve-review", args: "--source local --severity critical,important"
+   skill: "kramme:pr:resolve-review", args: "--implement-only --severity critical,important {ELIGIBLE_REVIEW_FIXES_PAYLOAD}"
    ```
 
-2. After resolve-review completes, re-run verification:
+   Do **not** use `--source local` for this handoff. Local-source mode re-reads the entire `REVIEW_OVERVIEW.md` and would allow manual or advisory critical/important findings into the auto-fix path.
+
+3. After resolve-review completes, read `.context/resolve-review/implement-only-summary.json` if present and use it to classify each eligible finding as fixed, deferred, or blocked.
+
+4. Re-run verification:
 
    ```
    skill: "kramme:verify:run"
    ```
 
-3. Re-assess the verdict using the same logic as Step 10, incorporating the updated state.
+5. Re-assess the verdict using the same logic as Step 10, incorporating the updated state.
 
-4. Update the verdict and findings counts to reflect what was fixed.
+6. Update the verdict, findings counts, and residual-work dispositions to reflect what was fixed.
 
-If no code-backed critical/important code-review findings remain and the remaining blocker is process-level only, do **not** run `resolve-review`; keep the verdict and tell the user the follow-up is manual.
+If no eligible `gated_auto` code-backed critical/important code-review findings remain and the remaining blocker is process-level only, do **not** run `resolve-review`; keep the verdict and tell the user the follow-up is manual.
 
 If resolve-review fails or introduces new issues, keep the original verdict and note the failure.
 

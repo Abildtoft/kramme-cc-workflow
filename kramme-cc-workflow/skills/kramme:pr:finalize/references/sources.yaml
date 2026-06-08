@@ -1,0 +1,7 @@
+sources:
+  - id: compound-ce-code-review
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-code-review
+    title: "EveryInc compound-engineering-plugin - ce-code-review"
+    rationale: "Residual-work disposition and handoff classification are adapted into the kramme final readiness workflow so caveats cannot hide unresolved merge risk."
+    last_reviewed_at: 2026-06-07
+    baseline_hash: ""

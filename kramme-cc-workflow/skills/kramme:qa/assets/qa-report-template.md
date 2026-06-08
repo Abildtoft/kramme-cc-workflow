@@ -7,6 +7,12 @@
 - {route 1}: {description}
 - {route 2}: {description}
 
+## Journey Matrix (diff-aware only)
+
+| Route / Screen | Journey | Changed Files | State / Data Setup | Expected Behavior | Evidence | Result | Follow-up |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| {route or screen} | {user task} | {files} | {state} | {expected result} | {screenshot, console/network note, a11y note, code-only note, or skipped reason} | pass / fail / blocked / skipped / code-only | QA-NNN / issue / none |
+
 ## Findings ({N} total)
 
 ### QA-NNN: {title}
@@ -49,5 +55,7 @@
 ## Recommendation
 
 {ready / not ready / ready with caveats — with explanation}
+
+QA default flow does not auto-fix or auto-commit findings. Use the follow-up references above to route fixes.
 
 **To resolve blockers, fix the issues and re-run:** `/kramme:qa <url>`

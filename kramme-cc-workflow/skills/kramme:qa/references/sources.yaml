@@ -11,3 +11,15 @@ sources:
     rationale: "The auto URL mode and shared project-type detection guidance reference the shared dev-server detection contract adapted from this source."
     last_reviewed_at: 2026-06-06
     baseline_hash: ""
+  - id: compound-ce-dogfood-beta
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-dogfood-beta
+    title: "EveryInc compound-engineering-plugin - ce-dogfood-beta"
+    rationale: "The branch-diff-to-journey matrix is adapted from Compound dogfood planning mechanics, while preserving kramme's no-default-auto-fix behavior."
+    last_reviewed_at: 2026-06-07
+    baseline_hash: ""
+  - id: compound-ce-test-browser
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-test-browser
+    title: "EveryInc compound-engineering-plugin - ce-test-browser"
+    rationale: "Browser test matrix conventions for route/screen, state, expected behavior, evidence, result, and follow-up are adapted into kramme QA reports."
+    last_reviewed_at: 2026-06-07
+    baseline_hash: ""

@@ -121,30 +121,37 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    If `REVIEW_OVERVIEW.md` exists in the project root:
    - Parse the file to extract previously addressed findings
    - Extract for each finding: location (`file:line`, `review-scope`, or `PR description`), issue description, action taken
-   - Accept both `**Location:**` and legacy `**File:**` labels when parsing existing entries, and normalize either label to the same `location` field
+   - Accept the structured `- Location:` field, `**Location:**`, and legacy `**File:**` labels when parsing existing entries, and normalize any of them to the same `location` field
    - If the file exists but contains no parseable addressed findings (stale draft, unrelated content, or missing expected sections), treat the previous-response set as empty and continue. Do not abort the review.
    - Store this context for filtering in Step 10
 
    Previously addressed findings have the format:
-   - **Location:** `path/to/file.ts:123`, `review-scope`, or `PR description`
-   - Legacy compatibility: `**File:** path/to/file.ts:123` should be treated the same as `**Location:**`
+   - `- Location: path/to/file.ts:123`, `review-scope`, or `PR description`
+   - Legacy compatibility: `**Location:** path/to/file.ts:123` and `**File:** path/to/file.ts:123` should be treated the same as the structured `Location` field
    - **Issue/Finding:** [description]
    - **Action taken:** [what was done]
 
 6. **Determine Applicable Reviews**
 
-   Based on changes:
-   - **Always applicable**: kramme:code-reviewer (general quality)
-   - **Always applicable**: kramme:deslop-reviewer (detect AI slop patterns)
-   - **If test files changed**: kramme:pr-test-analyzer
-   - **If comments/docs added**: kramme:comment-analyzer
-   - **If error handling changed**: kramme:silent-failure-hunter
-   - **If types added/modified**: kramme:type-design-analyzer
-   - **If code deleted/refactored**: kramme:removal-planner (safe removal verification)
-   - **If performance-relevant changes** (data-heavy code paths, loops over large collections, DB queries, caching, hot paths): performance-oracle
-   - **If security-relevant changes** (API routes, auth logic, DB queries, external calls, user input handling, crypto): kramme:injection-reviewer, kramme:auth-reviewer, kramme:data-reviewer, kramme:logic-reviewer (launch all 4 in parallel)
-   - **Only when `simplify` is explicitly listed in the aspect arguments**: kramme:code-simplifier (polish and refine). The simplifier never runs as part of `all`, because simplification suggestions can conflict with as-yet-unresolved Critical/Important findings. Run the review first, resolve those, then re-run with `simplify`.
-   - Build `ACTIVE_REVIEW_DIMENSIONS` from the agents that will actually run after aspect filtering and applicability checks. If any emphasized dimension has no active agent in this set, stop with an error telling the user which emphasized dimensions are inactive. Do not cap unrelated findings when the emphasized review never ran.
+   Select reviewers with this taxonomy. The taxonomy applies to default `all` reviews; explicit aspect filters still narrow the active set to the requested dimensions.
+
+   **Always-on reviewers** (run for default `all` because they catch broad regressions across stack types):
+   - `kramme:code-reviewer` — general quality, project instruction compliance, and PR-description drift
+   - `kramme:silent-failure-hunter` — swallowed errors, weak propagation, and misleading fallback behavior
+   - `kramme:deslop-reviewer` — AI slop patterns, unnecessary defensive noise, and weak type workarounds
+
+   **Cross-cutting conditional reviewers** (activate when the changed files or diff semantics match):
+   - `kramme:pr-test-analyzer` — if test files changed, new behavior was added, or coverage claims appear in the PR description
+   - `kramme:comment-analyzer` — if comments, docstrings, docs, or explanation-heavy inline text changed
+   - `kramme:type-design-analyzer` — if types, schemas, interfaces, data models, or invariants changed
+   - `kramme:removal-planner` — if code was deleted, deprecated, consolidated, or refactored enough that safe removal needs verification
+   - `kramme:code-simplifier` — only when `simplify` is explicitly listed in the aspect arguments. The simplifier never runs as part of `all`, because simplification suggestions can conflict with unresolved Critical/Important findings. Run the review first, resolve those, then re-run with `simplify`.
+
+   **Stack-specific conditional reviewers** (activate only when the touched stack has the relevant risk surface):
+   - `performance-oracle` — data-heavy paths, loops over large collections, DB queries, caching, hot paths, rendering bottlenecks, or expensive client bundles
+   - Security reviewer bundle — API routes, auth logic, authorization checks, DB queries, external calls, user input handling, crypto, secrets, session state, or business-rule enforcement. Launch `kramme:injection-reviewer`, `kramme:auth-reviewer`, `kramme:data-reviewer`, and `kramme:logic-reviewer` together.
+
+   Build `ACTIVE_REVIEW_DIMENSIONS` from the agents that will actually run after aspect filtering and applicability checks. If any emphasized dimension has no active agent in this set, stop with an error telling the user which emphasized dimensions are inactive. Do not cap unrelated findings when the emphasized review never ran.
 
 7. **Launch Review Agents**
 
@@ -167,6 +174,16 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - Security and data-loss risks may override local style, but the finding must name the concrete exploit path, information disclosure, corruption path, or user-visible failure that justifies stronger defensive handling.
 
    Instruct each spawned reviewer to label findings with the output markers documented in `references/review-discipline.md` (`UNVERIFIED`, `NOTICED BUT NOT TOUCHING`, `CONFUSION`, `MISSING REQUIREMENT`) so the aggregated report is parseable.
+
+   Instruct every reviewer to return these fields for each finding:
+   - **Finding ID:** leave blank for raw reviewer output; the aggregator assigns stable `CR-001`, `CR-002`, ... IDs after dedupe
+   - **Severity:** Critical, Important, Suggestion, or FYI using the prefix grammar in Step 11
+   - **Location:** concrete `path/to/file:line`, `review-scope`, or `PR description`
+   - **Confidence:** `high`, `medium`, or `low`
+   - **Action class:** `gated_auto`, `manual`, or `advisory` from `references/review-discipline.md`; Critical/Important findings may use only `gated_auto` or `manual`, while Suggestions/FYI use `advisory`
+   - **Owner:** resolver, author, maintainer, reviewer, or unknown
+   - **Evidence:** concrete location, trace, reproduction, failing expectation, or reason the finding is marked `UNVERIFIED`
+   - **Relevance status:** PR-caused, pre-existing/out-of-scope, previously addressed, or unresolved pending validation
 
    Launch the agents resolved in Step 6 using `LAUNCH_MODE` from Step 1:
    - `LAUNCH_MODE=sequential` (default): launch one agent, wait for its report, then launch the next. Use this for interactive review where each report should be readable before the next runs.
@@ -208,6 +225,15 @@ If `REVIEW_OVERVIEW.md` was found in Step 5:
 
 11. **Aggregate Results**
 
+After validation, slop meta-review, and previous-response filtering, dedupe and merge findings before applying emphasis:
+
+- Merge only findings that name the same concrete location or review scope and the same root cause.
+- Keep the highest severity across merged duplicates, combine evidence, and preserve all source agents.
+- Promote confidence only when independent reviewers identify the same issue with the same location/root cause. Two weak findings about similar symptoms are not enough.
+- Do not merge contradictory findings. Record contradictions as open questions with action class `manual`; if the contradiction blocks approval, place it in Critical or Important based on impact.
+- Findings labeled `UNVERIFIED` can be retained, but they must keep `low` or `medium` confidence and use `manual` or `advisory` unless the concrete risk is separately proven.
+- Drop or separate findings that only share a broad theme but require different fixes.
+
 After validation, slop meta-review, and previous-response filtering, apply emphasis adjustments if `EMPHASIZED_DIMENSIONS` is non-empty. Only use findings from agents that actually ran in Step 7 when deciding what is emphasized vs non-emphasized.
 
 **Dimension-to-agent mapping:** `security` → injection-reviewer, auth-reviewer, data-reviewer, logic-reviewer | `errors` → silent-failure-hunter | `tests` → pr-test-analyzer | `comments` → comment-analyzer | `types` → type-design-analyzer | `code` → code-reviewer | `slop` → deslop-reviewer | `performance` → performance-oracle | `removal` → removal-planner | `simplify` → code-simplifier
@@ -219,6 +245,12 @@ After validation, slop meta-review, and previous-response filtering, apply empha
 
 Track the count of promoted findings for the report.
 
+Assign stable `Finding ID` values to every active finding after dedupe, filtering, and emphasis are complete:
+
+- Use `CR-001`, `CR-002`, etc. in final report order, starting with Critical, then Important, then Suggestions.
+- Preserve an existing ID if a finding is carried forward from a previous `REVIEW_OVERVIEW.md` and still describes the same root cause.
+- Include the ID in the final report so callers such as `/kramme:pr:finalize` can pass exact findings to `/kramme:pr:resolve-review`.
+
 Then summarize:
 
 - **Critical Issues** (must fix before merge) - only validated findings
@@ -228,6 +260,12 @@ Then summarize:
 - **Positive Observations** (what's good)
 - **Filtered Issues** (pre-existing or out-of-scope) - shown separately
 - **Previously Addressed** (findings matching REVIEW_OVERVIEW.md) - shown separately
+
+Every active finding must include its finding ID, location, confidence, action class, owner, and evidence in the final report:
+
+- `gated_auto` — code-backed Critical/Important finding with a concrete file/line, a clear fix, and enough confidence for `/kramme:pr:resolve-review` to attempt it.
+- `manual` — requires a human decision, product/process judgment, PR-description update, cross-team ownership, or more context before a fix is safe.
+- `advisory` — optional suggestion, FYI, low-confidence observation, or quality improvement that should not block merge. Do not use this class for Critical or Important findings.
 
 PR description findings should use the same severity rules as code findings. A materially false claim that would mislead merge approval, release notes, rollback planning, or QA is Important or Critical depending on impact. Minor missing detail is at most a Suggestion and should usually be omitted.
 
@@ -267,7 +305,7 @@ Otherwise:
 
 13. **Provide Action Plan**
 
-If Critical or Important code-backed issues were found, include a suggestion to run `/kramme:pr:resolve-review` to automatically address them. The template in `references/output-template.md` already includes the **Recommended Action** block and the **Approval Standard** line; do not omit either.
+If eligible `gated_auto` Critical or Important code-backed issues were found, include a suggestion to run `/kramme:pr:resolve-review` to automatically address them. Manual and advisory findings must remain human follow-up in the report. The template in `references/output-template.md` already includes the **Recommended Action** block and the **Approval Standard** line; do not omit either.
 
 Before posting (whether to `REVIEW_OVERVIEW.md` or inline), run the pre-posting verification checklist in `references/review-discipline.md` (severity prefixes, dead-code ask shape, Approval Standard line, `NOTICED BUT NOT TOUCHING` labels on out-of-scope notes, emphasized-dimension coverage, `UNVERIFIED` labels on untraced findings).
 
