@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:spec-audit
-description: Audit specification documents for quality — coherence, completeness, clarity, scope, actionability, testability, value proposition, and technical design. Catches spec issues before implementation begins. Supports inline report output with --inline. Use --team for multi-agent cross-validation.
-argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku] [--inline] [--team]"
+description: Audit specification documents for quality — coherence, completeness, clarity, scope, actionability, testability, value proposition, and technical design. Catches spec issues before implementation begins. Supports inline report output with --inline and direct spec updates with --apply. Use --team for multi-agent cross-validation.
+argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--apply] [--model opus|sonnet|haiku] [--inline] [--team]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -19,7 +19,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 ## Process Overview
 
 ```
-/kramme:siw:spec-audit [spec-file-path(s) | 'siw'] [--auto] [--model opus|sonnet|haiku] [--team]
+/kramme:siw:spec-audit [spec-file-path(s) | 'siw'] [--auto] [--apply] [--model opus|sonnet|haiku] [--inline] [--team]
     |
     v
 [Step 1: Resolve Spec Files] -> Parse args or auto-detect from siw/
@@ -37,7 +37,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 [Step 5: Write Report] -> siw/AUDIT_SPEC_REPORT.md
     |
     v
-[Step 6: Optionally Create SIW Issues] -> Convert findings to issues
+[Step 6: Optionally Apply Findings or Create SIW Issues] -> Direct spec edits or issue creation
     |
     v
 [Step 7: Report Summary] -> Stats and next steps
@@ -54,6 +54,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 **Extract control flags first:**
 
 - If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag before processing remaining arguments.
+- If `$ARGUMENTS` contains `--apply` or `--apply-now`, set `APPLY_MODE=true` and remove the flag before processing remaining arguments.
 - If `$ARGUMENTS` contains `--inline`, set `INLINE_MODE=true` and remove the flag before processing remaining arguments.
 - If `$ARGUMENTS` contains `--team`, use Team Mode and remove the flag before processing remaining arguments.
 
@@ -69,10 +70,24 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 - create SIW issues for **Critical and Major** findings, plus Minor findings that preserve original Critical or Major severity when Step 6 applies
 - skip the report overwrite / issue-creation prompts
 
+`--apply` means:
+
+- write the audit report as usual, then update the reviewed spec files directly for findings that clear the direct-apply safety gates
+- skip Step 6 issue creation entirely — do **not** create `G-*` issues, do **not** update `siw/OPEN_ISSUES_OVERVIEW.md`, and do **not** touch `siw/issues/`
+- if combined with `--auto`, also skip the direct-apply approval prompt
+
 `--inline` means:
 
 - print the report inline in the reply instead of writing `siw/AUDIT_SPEC_REPORT.md`
 - skip Step 6 (no SIW issues, no `siw/OPEN_ISSUES_OVERVIEW.md` / `siw/LOG.md` updates) so the workspace is not mutated
+
+If `INLINE_MODE=true` and `APPLY_MODE=true` (from `--apply` or `--apply-now`), abort before reading specs:
+
+```
+Error: --inline cannot be combined with --apply or --apply-now.
+
+--inline is read-only. Re-run without --inline to apply spec updates.
+```
 
 **Detection rules for remaining arguments:**
 
@@ -437,13 +452,63 @@ Spec audit report written to: {path}
 
 ---
 
-## Step 6: Optionally Create SIW Issues
+## Step 6: Optionally Apply Findings or Create SIW Issues
 
 **If `INLINE_MODE=true`, skip this entire step.** Inline runs are read-only previews — do not write issue files or touch `siw/OPEN_ISSUES_OVERVIEW.md` / `siw/LOG.md`.
 
-Apply the "Issue-Eligible Findings" section of `references/post-processing-rules.md` (already loaded in Step 4.1) to choose which findings become issues.
+If there are no findings, skip the rest of Step 6.
 
-Read and follow `references/issue-creation.md` for the full SIW issue creation flow. That reference defines eligibility, the user prompt, SIW path preflight, issue-eligible finding selection, issue-file creation, tracker updates, and the `siw/LOG.md` Current Progress update.
+If `APPLY_MODE=true`, read and follow `references/apply-now.md`, then skip issue creation entirely.
+
+If `AUTO_MODE=true`, apply the "Issue-Eligible Findings" section of `references/post-processing-rules.md` (already loaded in Step 4.1), then read and follow `references/issue-creation.md` using the standard auto-mode behavior.
+
+Before prompting, determine whether SIW issue creation is available:
+
+- Apply the "Issue-Eligible Findings" section of `references/post-processing-rules.md` using the **Critical and major only** selection to compute `ISSUE_ELIGIBLE_FINDINGS`.
+- Set `ISSUE_CREATION_AVAILABLE=true` only if all `references/issue-creation.md` eligibility requirements are met: `siw/OPEN_ISSUES_OVERVIEW.md` exists, `siw/issues/` exists or can be created, `siw/LOG.md` exists or can be created, and `ISSUE_ELIGIBLE_FINDINGS` is not empty.
+- If `ISSUE_CREATION_AVAILABLE=false`, do not show any issue-creation options.
+
+If `ISSUE_CREATION_AVAILABLE=false`, ask the user which follow-up path to take:
+
+```yaml
+header: "Resolve Spec Findings"
+question: "Found {N} actionable spec findings. Apply safe fixes now or keep the report only?"
+options:
+  - label: "Apply now"
+    description: "Update spec files directly for findings that clear the direct-apply safety gates"
+  - label: "Keep report only"
+    description: "Make no spec edits or issue files"
+```
+
+If the user chooses **Apply now**, read and follow `references/apply-now.md`, then skip issue creation entirely.
+
+If the user chooses **Keep report only**, stop Step 6 after keeping the report only.
+
+If `ISSUE_CREATION_AVAILABLE=true`, ask the user which follow-up path to take:
+
+```yaml
+header: "Resolve Spec Findings"
+question: "Found {N} actionable spec findings. Apply safe fixes now or create SIW issues?"
+options:
+  - label: "Apply now"
+    description: "Update spec files directly for findings that clear the direct-apply safety gates; create no G-* issues"
+  - label: "Critical and major only"
+    description: "Create {N} issues for visible Critical/Major findings plus Minor findings that preserve original Critical or Major severity"
+  - label: "All findings"
+    description: "Create {N} issues including minor ones"
+  - label: "Let me select"
+    description: "Choose which findings become issues"
+  - label: "No issues"
+    description: "Keep the report only"
+```
+
+If the user chooses **Apply now**, read and follow `references/apply-now.md`, then skip issue creation entirely.
+
+If the user chooses **No issues**, stop Step 6 after keeping the report only.
+
+If the user chooses an issue-creation option, apply the "Issue-Eligible Findings" section of `references/post-processing-rules.md` (already loaded in Step 4.1) to choose which findings become issues. Pass the user's selection to `references/issue-creation.md` so it does not ask the same prompt again.
+
+For issue-creation options, read and follow `references/issue-creation.md` for the full SIW issue creation flow. That reference defines eligibility, the user prompt, SIW path preflight, issue-eligible finding selection, issue-file creation, tracker updates, and the `siw/LOG.md` Current Progress update.
 
 ---
 

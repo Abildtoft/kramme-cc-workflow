@@ -2,7 +2,7 @@
 
 Use this when `SKILL.md` reaches Step 6 and the audit found issue-eligible findings.
 
-**Do not invoke this reference when `INLINE_MODE=true`.** Inline runs are read-only previews and must not write issue files or update tracker/log files.
+**Do not invoke this reference when `INLINE_MODE=true` or `APPLY_MODE=true`.** Inline runs are read-only previews. Apply-mode runs update spec files directly and must not write issue files or update tracker files.
 
 ## Eligibility
 
@@ -16,6 +16,8 @@ Only create SIW issues if ALL of these conditions are met:
 ## 6.1 Ask User
 
 If `AUTO_MODE=true`, skip this prompt and choose **Critical and major only** (this also includes Minor findings whose `Severity Note` preserves original Critical or Major severity).
+
+If `SKILL.md` already collected a Step 6 issue-creation choice, honor that choice and skip this prompt. Do not ask the user twice.
 
 Otherwise:
 
