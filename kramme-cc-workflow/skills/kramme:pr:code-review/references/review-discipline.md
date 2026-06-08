@@ -15,6 +15,42 @@ Use these markers so the user (and downstream tooling) can skim status at a glan
 - **CONFUSION** — the reviewer can't decide whether something is a bug without more context. `CONFUSION: the nullable return from getUser() is new here; is None a valid result or a missing check?`
 - **MISSING REQUIREMENT** — spec or intent is ambiguous; a product decision is needed before the review can complete. `MISSING REQUIREMENT: no guidance on how to handle the duplicate-email case — ask before approving`.
 
+## Finding schema
+
+Every active finding must include these fields before it is posted:
+
+| Field | Values | Purpose |
+| --- | --- | --- |
+| Finding ID | `CR-001`, `CR-002`, ... | Gives downstream workflows a stable source identifier for handoffs and resolution summaries. |
+| Severity | Critical, Important, Suggestion, FYI | Describes merge impact. Use the prefix grammar from `output-template.md`. |
+| Location | `path/to/file:line`, `review-scope`, or `PR description` | Lets downstream workflows distinguish auto-fixable code findings from manual/process findings. |
+| Confidence | `high`, `medium`, `low` | States how directly the reviewer traced the issue. |
+| Action class | `gated_auto`, `manual`, `advisory` | Separates urgency from safe ownership. |
+| Owner | resolver, author, maintainer, reviewer, unknown | Names who can act next. |
+| Evidence | concrete trace, location, reproduction, failed expectation, or `UNVERIFIED` reason | Prevents unsupported findings from becoming gatekeeping. |
+
+## Action classes
+
+- **`gated_auto`** — Code-backed Critical or Important finding with a concrete file/line, an unambiguous fix direction, and enough confidence for `/kramme:pr:resolve-review` to attempt it. Do not use this for PR-description drift, product decisions, missing requirements, or broad process issues.
+- **`manual`** — The finding needs human judgment, a maintainer decision, product clarification, cross-team ownership, a PR-description update, or a trace the reviewer could not complete. Manual findings may still block merge when impact is high.
+- **`advisory`** — Optional polish, FYI, low-confidence observation, or improvement idea. Advisory findings do not block merge and are not eligible for automatic resolution.
+
+## Severity and action-class compatibility
+
+- Critical and Important findings may use only `gated_auto` or `manual`; they must not use `advisory` because those buckets represent blocking or recommended work.
+- Suggestions and FYI observations use `advisory`; do not mark optional work as `manual` just because a human would perform it.
+- If a finding feels optional, put it in Suggestions instead of keeping it in Critical/Important with `advisory`.
+- If a Critical or Important finding cannot be auto-resolved, keep it `manual` and name the decision or owner needed next.
+
+## Confidence and merge rules
+
+- **High confidence** means the reviewer traced the behavior to the changed code, reproduced it, or tied it to a concrete failing expectation.
+- **Medium confidence** means the issue is strongly indicated by the diff but still depends on a nearby assumption, framework behavior, or untested runtime state.
+- **Low confidence** means the issue is plausible but not traced. Keep the `UNVERIFIED` marker visible and avoid merge-blocking language unless another reviewer proves the same risk.
+- Merge duplicate findings only when they identify the same concrete location or review scope and the same root cause.
+- Promote confidence only when independent reviewers agree on the same issue, not merely the same broad concern.
+- Keep contradictory findings separate and record the conflict as `CONFUSION` or `MISSING REQUIREMENT` with action class `manual`.
+
 ## Common rationalizations
 
 Watch for these excuses — they signal the review is slipping into low-value territory.
@@ -45,8 +81,12 @@ If any of these are true, pause and re-scope the review before posting it:
 Before posting the review, confirm:
 
 - [ ] Every finding has a severity prefix (`Critical:`, `Nit:`, `Optional:`, `Consider:`, `FYI`, or no prefix for Required).
+- [ ] Every active finding has a stable Finding ID (`CR-001`, `CR-002`, ...).
+- [ ] Every active finding includes Location, Confidence, Action class, Owner, and Evidence.
 - [ ] Dead-code findings use the verbatim ask shape `DEAD CODE IDENTIFIED: [list]. Safe to remove these?`
 - [ ] The Approval Standard line appears: _"Approve if the change definitely improves overall code health."_
 - [ ] Pre-existing or out-of-scope observations are labeled `NOTICED BUT NOT TOUCHING`.
 - [ ] Every emphasized dimension in `--emphasize` actually produced findings in this review (or you noted that it didn't).
 - [ ] No finding is presented as certain when the reviewer didn't trace it — those are labeled `UNVERIFIED`.
+- [ ] `gated_auto` appears only on code-backed findings with a concrete location and a clear fix path.
+- [ ] `advisory` appears only on Suggestions or FYI observations, never on Critical or Important findings.

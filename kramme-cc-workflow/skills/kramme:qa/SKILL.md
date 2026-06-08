@@ -193,6 +193,19 @@ Map changed UI files to routes/pages:
 - Config-based routing: search router config for imports/references to the changed files
 - If mapping is ambiguous, include the likely route with a note
 
+Create a branch-diff-to-journey matrix before building the test checklist. Read `references/diff-aware-journey-matrix.md` and populate one row per route/screen and meaningful user journey:
+
+- **Route / screen** — derived route, named screen, or `UNVERIFIED: {likely route}` for uncertain mappings
+- **Journey** — concrete user task affected by the diff
+- **Changed files** — files that made the row relevant
+- **State / data setup** — auth, role, feature flag, seeded data, empty/error state, or other prerequisite
+- **Expected behavior** — observable success condition for the changed behavior
+- **Evidence** — screenshot, console/network note, a11y tree note, code-only evidence, or skipped reason
+- **Result** — pass, fail, blocked, skipped, or code-only
+- **Follow-up** — QA finding ID, issue reference, or `none`
+
+Mark speculative route mappings as `UNVERIFIED` rather than silently treating them as known routes. If a journey would mutate shared data, send external notifications, change billing, delete records, or otherwise be destructive, ask the user before executing it; if the runtime cannot ask, mark the row `blocked`.
+
 **targeted mode:**
 
 Use the user-specified route directly. The test scope is `TARGET_URL + TARGET_ROUTE`.
@@ -227,6 +240,8 @@ If a framework is detected, store as `DETECTED_FRAMEWORK` and read `references/f
 ### Step 4: Build Test Plan
 
 For each identified page/route, read the QA rubric from `references/qa-rubric.md`.
+
+For `diff-aware` mode, build the checklist from the journey matrix rows created in Step 3. Prioritize matrix rows whose changed files are closest to user-facing behavior, then rows covering edge states. Keep uncertain rows in the plan with `UNVERIFIED` assumptions so the final report shows what was and was not proven.
 
 Create a test checklist for each route:
 
@@ -363,11 +378,14 @@ Populate all sections:
 
 - Fill in mode, URL, date, browser MCP type
 - List all tested routes with descriptions
+- Include the journey matrix for `diff-aware` runs, with route/screen, journey, state, expected behavior, evidence, result, and follow-up
 - Document each finding with severity, repro steps, expected vs actual, and recommended fix
 - Calculate summary counts per severity level
 - Provide overall recommendation (ready / not ready / ready with caveats)
 
 **Numbering convention:** Findings are numbered `QA-001`, `QA-002`, etc.
+
+QA does not auto-fix or auto-commit findings in the default flow. Record recommended fixes and follow-up issue references, then leave implementation to the user or a separate fix workflow.
 
 If `INLINE_MODE=true`:
 
@@ -431,6 +449,18 @@ Write `QA_BASELINE.json` at the project root:
   "healthScore": {HEALTH_SCORE},
   "healthLabel": "{HEALTH_LABEL}",
   "routesTested": {N},
+  "journeyMatrix": [
+    {
+      "routeOrScreen": "{route or screen}",
+      "journey": "{user task}",
+      "changedFiles": ["{path}"],
+      "stateOrDataSetup": "{state}",
+      "expectedBehavior": "{expected result}",
+      "evidence": "{screenshot, console/network note, a11y note, code-only note, or skipped reason}",
+      "result": "{pass|fail|blocked|skipped|code-only}",
+      "followUp": "{QA-NNN|issue|none}"
+    }
+  ],
   "findings": [
     {
       "id": "QA-001",
@@ -460,6 +490,7 @@ After writing the report, display an inline summary:
 
 **Mode:** {quick | diff-aware | targeted}
 **Routes Tested:** {N}
+**Journey Matrix Rows:** {N, if diff-aware}
 **Browser:** {claude-in-chrome | chrome-devtools | playwright | code-only}
 **Framework:** {DETECTED_FRAMEWORK or "not detected"}
 **Health Score:** {HEALTH_SCORE}/100 ({HEALTH_LABEL})

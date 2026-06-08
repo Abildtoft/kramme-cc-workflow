@@ -77,22 +77,32 @@ Each teammate must also apply this **Codebase Calibration Rule** before making a
 - If the reviewer cannot prove the failure path from the diff, call it `UNVERIFIED` or `CONFUSION` and keep the recommendation optional.
 - Security and data-loss risks may override local style, but the finding must name the concrete exploit path, information disclosure, corruption path, or user-visible failure that justifies stronger defensive handling.
 
-**Always spawn:**
+Each teammate must return the shared finding schema from `references/review-discipline.md`: severity, location, confidence, action class, owner, evidence, and relevance status. Leave Finding ID blank in raw teammate output; the aggregator assigns stable `CR-001`, `CR-002`, ... IDs after dedupe so team output stays compatible with standard `/kramme:pr:code-review`.
+
+Use the same reviewer taxonomy as the standard workflow:
+
+**Always-on reviewers** (for default `all` reviews):
 
 - **code-reviewer** -- General code quality and project instruction compliance (mission from `agents/kramme:code-reviewer.md`)
 - **silent-failure-hunter** -- Error handling and silent failures (mission from `agents/kramme:silent-failure-hunter.md`)
 - **deslop-reviewer** -- AI slop pattern detection (mission from `agents/kramme:deslop-reviewer.md`)
 
-**Conditionally spawn:**
+**Cross-cutting conditional reviewers:**
 
-- **performance-oracle** -- If performance-relevant changes detected (mission from `agents/kramme:performance-oracle.md`)
 - **pr-test-analyzer** -- If test files changed or new functionality added (mission from `agents/kramme:pr-test-analyzer.md`)
 - **type-design-analyzer** -- If new types added or modified (mission from `agents/kramme:type-design-analyzer.md`)
 - **comment-analyzer** -- If significant comments or docs added (mission from `agents/kramme:comment-analyzer.md`)
+- **removal-planner** -- If code was deleted, deprecated, consolidated, or refactored enough that safe removal needs verification (mission from `agents/kramme:removal-planner.md`)
+
+**Stack-specific conditional reviewers:**
+
+- **performance-oracle** -- If performance-relevant changes detected: data-heavy paths, loops over large collections, DB queries, caching, hot paths, rendering bottlenecks, or expensive client bundles (mission from `agents/kramme:performance-oracle.md`)
 - **injection-reviewer** -- If security-relevant changes detected (API routes, auth logic, DB queries, external calls, user input handling, crypto) (mission from `agents/kramme:injection-reviewer.md`)
 - **auth-reviewer** -- If security-relevant changes detected (mission from `agents/kramme:auth-reviewer.md`)
 - **data-reviewer** -- If security-relevant changes detected (mission from `agents/kramme:data-reviewer.md`)
 - **logic-reviewer** -- If security-relevant changes detected (mission from `agents/kramme:logic-reviewer.md`)
+
+When the user passed an explicit aspect filter, spawn only the reviewers matching that filter and the applicable conditions. If `simplify` was explicitly requested, add **code-simplifier** after the main review findings are understood; it remains opt-in and is not part of default `all`.
 
 ### Step 3: Create and Assign Tasks
 
@@ -133,6 +143,9 @@ After all tasks complete:
 2. Apply the deslop-reviewer's meta-review annotations
 3. Apply the relevance-validator's filtering
 4. Filter previously addressed findings (same logic as `/kramme:pr:code-review` Step 10)
+5. Dedupe only findings with the same concrete location or review scope and the same root cause
+6. Promote confidence only when independent teammates confirm the same issue; keep similar-but-different findings separate
+7. Record contradictions as `CONFUSION` or `MISSING REQUIREMENT` with action class `manual`
 
 ### Step 6: Write REVIEW_OVERVIEW.md or Reply Inline
 
@@ -143,6 +156,7 @@ Otherwise, write the aggregated review to `REVIEW_OVERVIEW.md` using the same te
 Keep the output schema-compatible with the standard PR review:
 
 - Keep the same severity prefix grammar (`Critical:`, `Nit:`, `Optional:`, `Consider:`, `FYI`)
+- Include Finding ID, location, confidence, action class, owner, and evidence for every active finding
 - Use `NOTICED BUT NOT TOUCHING` for pre-existing or out-of-scope notes
 - Include the `## Approval Standard` section verbatim
 

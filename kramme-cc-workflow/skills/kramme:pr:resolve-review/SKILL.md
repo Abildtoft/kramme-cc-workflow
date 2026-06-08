@@ -63,7 +63,7 @@ If no review content was provided in Step 0:
 - `UX_REVIEW_OVERVIEW.md` (from `/kramme:pr:ux-review`)
 - `PRODUCT_REVIEW_OVERVIEW.md` (from `/kramme:pr:product-review`)
 
-When parsing these files, accept both `**Location:**` and legacy `**File:**` labels.
+When parsing these files, accept the structured `- Location:` field, `**Location:**`, and legacy `**File:**` labels.
 
 **Fetching from GitHub** (treated as **external reviews**):
 
@@ -78,7 +78,15 @@ When parsing these files, accept both `**Location:**` and legacy `**File:**` lab
 
 If no review is found for the selected mode, ask the user to provide review content, provide a PR URL, or choose a different mode.
 
-Then **list all findings** with location (`file:line` when applicable, otherwise a broader scope label such as `review-scope`) and content.
+Then **list all findings** with location (`file:line` when applicable, otherwise a broader scope label such as `review-scope`) and content. For old `REVIEW_OVERVIEW.md` files without an explicit location field, fall back to inline `[location]` text when present.
+
+For local review files that include the structured `/kramme:pr:code-review` finding schema, also parse `Finding ID`, `Location`, `Action class`, `Confidence`, `Owner`, and `Evidence` for each finding:
+
+- `Action class: gated_auto` with a concrete `path/to/file:line` location is eligible for implementation.
+- `Action class: manual` is not auto-implementable, even when it has a file location. Defer it with a manual follow-up recommendation unless the user supplied a separate explicit implementation payload that changes the scope.
+- `Action class: advisory` is optional. Do not implement it from local auto-discovery unless the user explicitly asks to resolve suggestions or names that finding.
+- `review-scope`, `PR description`, and other non-file locations are process-level findings. Defer them with a concrete manual recommendation.
+- Legacy local findings without an action class keep the previous location/severity behavior, but do not infer `gated_auto` from a file location when an action class is present.
 
 ### Step 2: Evaluate findings
 
@@ -137,7 +145,16 @@ For internal reviews (self-generated): Skip this substep and proceed directly to
 
 If `SEVERITY_FILTER` is set, skip any finding whose severity is not in the filter. Document skipped findings with **Action taken: Skipped — outside severity filter.**
 
-#### 2d. Dismiss nitpicks with judgment
+#### 2d. Apply action-class eligibility
+
+When a finding came from a structured local review and includes an action class, apply the action-class gate before implementation:
+
+- Implement only `gated_auto` findings with concrete file locations.
+- Defer `manual` findings with **Action taken: Deferred — manual follow-up required.** Include the owner and evidence when available.
+- Acknowledge `advisory` findings with **Action taken: Acknowledged — advisory.** unless the user explicitly asked to resolve suggestions or named that finding.
+- Never treat `manual`, `advisory`, `review-scope`, or `PR description` findings as implementation candidates just because they are critical or important.
+
+#### 2e. Dismiss nitpicks with judgment
 
 Not every finding deserves a code change. Dismiss findings that meet ALL of these criteria:
 
@@ -149,7 +166,7 @@ For dismissed findings, document them in the output with **Action taken: Acknowl
 
 ### Step 2.5: Create rollback checkpoint
 
-If no findings remain after scope and severity filtering, skip this step and Step 3, and write a summary-only output in Step 4 (no checkpoint, no fixes, no validation, no stash).
+If no findings remain after scope, severity, and action-class filtering, skip this step and Step 3, and write a summary-only output in Step 4 (no checkpoint, no fixes, no validation, no stash).
 
 Otherwise create a retry-safe checkpoint before editing. If `.context/resolve-review/checkpoint-*.env` already exists from an unfinished run, inspect the newest checkpoint first. If it references an existing stash object, restore it or ask the user how to proceed before creating another checkpoint; do not create nested checkpoints.
 
