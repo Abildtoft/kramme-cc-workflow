@@ -1,0 +1,13 @@
+sources:
+  - id: compound-ce-work
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-work
+    title: "EveryInc compound-engineering-plugin - ce-work"
+    rationale: "The plan intake, route-before-work gate, context gathering before edits, missing-requirement handling, and bounded execution loop are adapted from ce-work while intentionally omitting broader autonomous pipeline behavior."
+    last_reviewed_at: 2026-06-08
+    baseline_hash: ""
+  - id: compound-ce-plan
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-plan
+    title: "EveryInc compound-engineering-plugin - ce-plan"
+    rationale: "The standalone plan-shape assumptions, completion-criteria emphasis, dependency awareness, and missing-context markers consumed by this adapter are adapted from ce-plan."
+    last_reviewed_at: 2026-06-08
+    baseline_hash: ""
