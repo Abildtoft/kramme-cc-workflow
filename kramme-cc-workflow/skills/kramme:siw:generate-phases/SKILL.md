@@ -28,6 +28,16 @@ Use **phase-prefixed numbering** for clear organization:
 - Phase 2 tasks: `ISSUE-P2-001`, `ISSUE-P2-002`...
 - General tasks: `ISSUE-G-001`, `ISSUE-G-002`... (cross-cutting concerns like setup, tooling, documentation)
 
+## Issue Identifier Stability
+
+Issue IDs are stable once issue files are written.
+
+- During draft planning (before Phase 6 writes files), proposed IDs may be reshaped as the plan is reviewed.
+- After files exist, ordinary append, refinement, deletion, splitting, or deepening must not renumber existing issues just to close gaps.
+- When splitting an existing concept, keep the original ID on the original concept and assign the next unused number in that prefix group to the split-out concept.
+- When deleting or replacing a concept outside the explicit Replace flow, leave numbering gaps in place.
+- Intentional cleanup and renumbering belongs to `/kramme:siw:issue-reindex`; do not duplicate that workflow here.
+
 ## Process Overview
 
 ```
@@ -44,6 +54,8 @@ Use **phase-prefixed numbering** for clear organization:
 [Analyze spec and decompose into phases/tasks]
     ↓
 [Launch review subagent] -> Validates atomicity, testability, dependencies
+    ↓
+[Run targeted deepening gate if risk signals are present]
     ↓
 [Present phase plan to user] -> Confirm or request changes
     ↓
@@ -141,6 +153,8 @@ options:
 
 **If "Abort":** Stop the workflow.
 
+**If "Append":** preserve all existing issue IDs exactly as written. New issues use the next unused number within their prefix group based on both `siw/OPEN_ISSUES_OVERVIEW.md` and on-disk `siw/issues/ISSUE-{prefix}-*.md` files. Do not backfill gaps unless the user explicitly runs `/kramme:siw:issue-reindex`.
+
 **If "Replace":** Verify nothing is at risk before deleting.
 
 1. Check for uncommitted changes under `siw/issues/`:
@@ -224,6 +238,8 @@ For each phase, decompose into atomic tasks:
 - **HITL** — human-in-the-loop is required for at least one of: an unsettled architectural decision, design review, a genuine product/judgment call, manual testing that cannot be automated, external-system access an agent cannot perform. HITL tasks MUST carry a one-line reason (e.g., "needs architectural decision", "involves manual UAT").
 
 Tag each task during decomposition. **Default to `AUTO`**; reserve `HITL` for tasks with a concrete human-input requirement from the list above, and when unclear choose `AUTO`. The subagent in Phase 4 will flag any task without a Mode label, any HITL task without a reason, and any task marked HITL whose stated reason is weak or speculative rather than a real blocking requirement.
+
+**Draft ID handling:** assign phase-prefixed issue IDs while drafting so dependencies can be reviewed. Existing IDs from append mode are immutable. New draft IDs may still be reordered or reshaped before files are written, but once Phase 6 creates issue files, later refinement must preserve IDs per the Issue Identifier Stability rules above.
 
 **Sizing and triggers:**
 
@@ -309,6 +325,33 @@ If `AUTO_MODE=true`, do not proceed with remaining concerns after 3 failed revie
 
 If `AUTO_MODE=true` and the subagent response is inconclusive, re-run once if the 3-iteration cap leaves room; otherwise stop. Never proceed without review in auto mode.
 
+### Phase 4.5: Planning Confidence Deepening Gate
+
+After Phase 4 passes the hard gates and before Phase 5 user approval, decide whether a targeted confidence deepening pass is needed. This gate is selective; small, clear plans with no risk signals proceed directly to Phase 5.
+
+**Risk signals that trigger deepening:**
+
+- Large or complex breakdown: more than 4 phases, more than 10 issues, several `L` tasks, or dense dependency chains.
+- Cross-cutting architecture, shared API/CLI/schema contracts, multi-surface parity, or other work where an early sequencing mistake would cause churn.
+- Security, auth, privacy, payments, data migrations, backfills, persistent data changes, rollout, monitoring, or operational risk.
+- Uncertain plan input: multiple `UNVERIFIED` assumptions, any unresolved `CONFUSION`, missing technical design needed for decomposition, or unclear prerequisites.
+- Coordination-heavy plan: any phase or group marked `Needs coordination` where the contract-defining issue and consumers are not clearly separated.
+
+**If no signal is present:** continue to Phase 5. Do not run a broad review out of habit.
+
+**If any signal is present:** run one targeted deepening pass over the risky sections before Phase 5. The pass checks:
+
+- sequencing and hidden prerequisites,
+- hidden cross-phase or cross-issue dependencies,
+- oversized tasks that escaped Phase 4 despite not being XL,
+- insufficient verification for risky work,
+- missing rollback, rollout, migration, security, or data-safety treatment when relevant,
+- whether any split, deletion, or reordering would accidentally renumber existing issue IDs.
+
+Use the smallest useful review surface. Prefer a single focused Task subagent when the risk is mostly sequencing/decomposition; add a specialist only when the risk maps directly to that domain (for example security, data migration, performance, or architecture). In the prompt, pass the risk signals, the proposed phase plan, any `UNVERIFIED` assumptions, and the specific questions above. Ask for concrete plan improvements only; no implementation code or shell commands.
+
+Incorporate valid findings into the draft plan before Phase 5. Preserve all existing append-mode IDs. If a new draft task splits from another new draft task before file creation, keep the original ID on the original concept and assign the split-out concept the next unused draft number in that prefix group. If the deepening pass changes, splits, deletes, or reorders any task, loop back through Phase 4 with the revised plan before Phase 5; the final user-facing plan must be the same plan that passed Phase 4's hard gates. If the pass surfaces a true product or scope blocker, use `MISSING REQUIREMENT:` or `CONFUSION:` and stop for user input; in `AUTO_MODE=true`, stop instead of inventing assumptions.
+
 ## Phase 5: User Approval
 
 Present the proposed structure clearly, prefixed with the `PLAN:` output marker so downstream tooling can parse this block as the generated plan. Show each issue's size and Mode inline, and include one `Parallelization:` line per task group. HITL tasks include the one-line reason in the bracket:
@@ -375,6 +418,10 @@ For each issue, create `siw/issues/ISSUE-{prefix}-{number}-{title}.md`:
 - Prefix: `P1`, `P2`, `P3`... for phases, `G` for general
 - Number: 3-digit padded (001, 002, 003)
 - Title: lowercase, hyphens, max ~40 characters
+
+**Number assignment in append mode:** use the next unused number within each prefix group. Check both the overview table and on-disk issue filenames before assigning. Existing gaps remain gaps unless `/kramme:siw:issue-reindex` is explicitly run.
+
+**Path references:** generated issue files must use repo-relative paths for affected files, tests, and pattern references. Do not embed absolute local paths; they break portability across workspaces and teammates.
 
 **Issue template:**
 
