@@ -258,7 +258,7 @@ When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW
 | Skill | Arguments | Description |
 | --- | --- | --- |
 | `/kramme:siw:discovery` | `[topic \| spec-path(s) \| 'siw'] [--apply] [--decision-tree]` | Deep discovery interview that works both before a spec exists and after one has gone stale. Greenfield runs write `siw/DISCOVERY_BRIEF.md`; refinement runs identify concrete improvements and can apply them with `--apply`. Pass `--decision-tree` for depth-first resolution of tightly coupled decisions. |
-| `/kramme:siw:spec-audit` | `[spec-path(s) \| 'siw'] [--auto] [--model opus\|sonnet\|haiku] [--team]` | Audit spec quality across 8 dimensions: coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design. Produces a structured report and optionally creates SIW issues. Add `--team` for parallel dimension analysis with cross-validation. Add `--auto` to replace any previous report and create critical/major issues without pausing. |
+| `/kramme:siw:spec-audit` | `[spec-path(s) \| 'siw'] [--auto] [--apply] [--model opus\|sonnet\|haiku] [--inline] [--team]` | Audit spec quality across 8 dimensions: coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design. Produces a structured report and optionally creates SIW issues. Add `--apply` to update spec files directly for findings that clear direct-apply safety gates and create no `G-*` issues. Add `--inline` for read-only report output. Add `--team` for parallel dimension analysis with cross-validation. Add `--auto` to replace any previous report and create critical/major issues without pausing. |
 | `/kramme:siw:breakdown-findings` | `[audit-report-path] [finding-id(s)]` | Break down unresolved spec-audit or implementation-audit findings into one inline report with executive summaries, concrete options, and a recommendation for each finding. Supports `SPEC-*`, `DIV-*`, `EXT-*`, and legacy `DISC-*`/`MISS-*` findings. Skips auto-fixed and already-tracked findings by default, then asks which follow-up path to take without creating SIW issues directly. |
 
 ### Issue Management
@@ -320,8 +320,8 @@ Strengthen an existing spec before planning or implementation:
 
 ```
 /kramme:siw:init my-feature-spec.md          # Link existing spec
-/kramme:siw:spec-audit                       # Validate spec quality
-/kramme:siw:discovery --apply                # Fill quality gaps
+/kramme:siw:spec-audit --apply               # Validate spec quality and apply safe spec updates directly
+/kramme:siw:discovery --apply                # Fill remaining quality gaps through interview
 /kramme:siw:generate-phases                  # Create phase-based issues
 /kramme:siw:issue-implement P1-001           # Implement first issue
 /kramme:siw:implementation-audit             # Verify spec conformance

@@ -10,6 +10,7 @@ Overall: {Ready for implementation / Needs revision / Significant gaps}
 
 Report: {report_path}
 
+{If direct apply ran:} Applied Now: {N} finding(s) updated spec files directly. Issues Created: 0.
 {If issues created:} Issues Created: {N} (G-{start} through G-{end}) See siw/OPEN_ISSUES_OVERVIEW.md for the full list.
 
 Next Steps:
