@@ -1,0 +1,7 @@
+sources:
+  - id: compound-engineering-ce-compound-refresh
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-compound-refresh
+    title: "EveryInc compound-engineering-plugin - ce-compound-refresh"
+    rationale: "The stale-learning refresh workflow, keep/update/consolidate/delete classifications, evidence-first audit, and confirmation gate before deleting or consolidating notes are adapted from ce-compound-refresh."
+    last_reviewed_at: 2026-06-08
+    baseline_hash: ""

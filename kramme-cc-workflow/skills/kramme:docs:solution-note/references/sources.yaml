@@ -1,0 +1,7 @@
+sources:
+  - id: compound-engineering-ce-compound
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-compound
+    title: "EveryInc compound-engineering-plugin - ce-compound"
+    rationale: "The solved-problem knowledge capture flow, solution-note shape, failed-approaches emphasis, reuse guidance, and optional vocabulary-update routing are adapted from ce-compound."
+    last_reviewed_at: 2026-06-08
+    baseline_hash: ""
