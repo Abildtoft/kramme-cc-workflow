@@ -212,11 +212,12 @@ PR creation, review, iteration, and resolution.
 
 #### Launch
 
-Post-merge rollout, canary gates, and rollback discipline.
+Post-merge rollout, release communication, canary gates, and rollback discipline.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
 | `/kramme:launch:rollout` | User | — | Execute a post-merge launch with staged rollout, numeric decision thresholds, and rollback triggers.<br><br>Sequence: staging → prod (flag OFF) → team enable → 5% canary → 25→50→100% gradual → full rollout + 1-week monitor + flag cleanup. Ports Addy Osmani's `shipping-and-launch` with the Rollout Decision Thresholds table as the load-bearing artifact. Emits `STACK DETECTED`, `UNVERIFIED`, `NOTICED BUT NOT TOUCHING`, `MISSING REQUIREMENT`, and `CONFUSION` markers. Complements `kramme:pr:finalize` (pre-merge readiness) with post-merge verification. |
+| `/kramme:launch:announce` | User | `[feature, PR, or release context] [--channels changelog,social,email,demo]` | Draft user-facing launch announcement copy for a shipped feature across changelog blurbs, short social posts, email snippets, and demo scripts.<br><br>Returns review-ready drafts only; does not post, publish, or replace rollout gates. |
 
 #### Browser & QA
 
@@ -363,7 +364,7 @@ Session management, verification, artifact cleanup, and hook configuration.
 | --- | --- | --- | --- |
 | `/kramme:setup` | User, Auto | `[--json\|--help]` | Run a read-only environment health check for local workflow dependencies, optional CLIs, repository context, and detectable Conductor/worktree state. Reports install guidance without changing the environment. |
 | `/kramme:workflow-artifacts:cleanup` | User | — | Delete workflow artifacts — review and audit overviews, QA reports, generated PR plans, SIW tracking files, and visual diagram HTML — from the working directory and the shared diagrams folder.<br><br>Confirms before deleting and keeps SIW specification files unless you explicitly include them; deletions are recoverable from the system Trash when `trash` is installed.<br><br>For SIW-specific cleanup, use `/kramme:siw:remove`. |
-| `/kramme:changelog:generate` | User | `[daily\|weekly]` | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts. Returns changelog text only (reads PRs read-only, writes/sends nothing). |
+| `/kramme:changelog:generate` | User | `[daily\|weekly\|release-notes <question>]` | Create engaging daily/weekly changelogs from recent merges to main, with contributor shoutouts, or answer plugin release-note/version questions from changelog and GitHub release sources.<br><br>Returns text only (reads PRs/releases read-only, writes/sends nothing). |
 | `/kramme:hooks:configure-links` | User | `[show\|reset\|KEY=VALUE ...]` | Configure `context-links` hook settings by writing local overrides to `kramme-cc-workflow/hooks/context-links.config` (workspace slug, team keys, regexes). |
 | `/kramme:hooks:toggle` | User | `<status\|reset\|hook-name> [enable\|disable]` | Enable or disable a plugin hook.<br><br>Use `status` to list all hooks, `reset` to enable all hooks, or specify a hook name to toggle. |
 | `/kramme:session:search` | User, Auto | `[question or topic] [--days N] [--platform claude\|codex\|cursor]` | Search prior Claude Code, Codex, and Cursor sessions for targeted technical context.<br><br>Discovers session metadata, writes redacted skeleton/error extracts to `.context/session-search/`, and synthesizes what was tried, what failed, decisions, and related context without loading raw transcripts. |
@@ -644,6 +645,7 @@ Copied scripts and substantial copied assets must preserve upstream source and l
 - `kramme:session:search` and `kramme:session:automate-repeats`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin) skill `ce-sessions`, including its safe session discovery and extraction substrate reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
 - `kramme:setup`, `kramme:git:clean-gone-branches`, and `kramme:git:worktree`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin) skills `ce-setup`, `ce-clean-gone-branches`, and `ce-worktree`, reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
 - `kramme:docs:solution-note` and `kramme:docs:solution-refresh`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin) skills `ce-compound` and `ce-compound-refresh`, reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
+- `kramme:launch:announce` and `kramme:changelog:generate` release communication modes: Adapted from [EveryInc/compound-engineering-plugin — ce-promote](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-promote) and [ce-release-notes](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-release-notes).
 - `kramme:docs:feature-spec`: Adapted from [addyosmani/agent-skills — spec-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/spec-driven-development).
 - `kramme:docs:adr`: Adapted from [addyosmani/agent-skills — documentation-and-adrs](https://github.com/addyosmani/agent-skills/tree/main/skills/documentation-and-adrs).
 - `kramme:code:source-driven`: Adapted from [addyosmani/agent-skills — source-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/source-driven-development).
