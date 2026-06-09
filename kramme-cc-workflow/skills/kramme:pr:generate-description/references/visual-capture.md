@@ -1,184 +1,82 @@
-# Visual Capture Workflow
+# Visual Evidence Delegation
 
-Instructions for capturing screenshots and videos when `--visual` is used.
+Instructions for `--visual` mode in `kramme:pr:generate-description`.
 
-## Phase 2.6: Browser Detection and App Discovery
+This skill does not own browser screenshot, GIF, or terminal recording mechanics. It delegates capture to `kramme:visual:demo-reel`, then formats the returned evidence for the PR description.
 
-### Step 1: Detect Browser Automation Capability
+## Phase 2.6: Prepare Demo Evidence Target
 
-Check for available browser automation capabilities in the current runtime:
+Build a concise evidence target from Phase 2 diff analysis:
 
-1. Browser navigation and screenshot capture.
-2. Optional interaction recording or GIF/video export.
-3. Optional ability to save captured files to a caller-specified path.
+- likely product surface: web UI, CLI, API, or other observable behavior,
+- route, command, or scenario if recoverable,
+- whether the change is a feature, bug fix, visual state change, or interaction,
+- any known safety constraints such as auth, private data, or destructive flows.
 
-Examples of suitable providers include browser extension tools, Chrome DevTools integrations, Playwright-backed tools, or equivalent browser automation APIs. If found, set `BROWSER_AUTOMATION` to the detected provider name. Set `HAS_GIF=true` only if the provider explicitly supports interaction recording/export.
-
-If none found:
-
-```
-Warning: No browser automation capability detected. Skipping visual capture.
-
-The --visual flag requires browser automation that can navigate pages and capture screenshots.
-
-Continuing with placeholder Screenshots/Videos section.
-```
-
-Clear `VISUAL_MODE` (disable visual capture) and return to the main skill flow.
-
-### Step 2: Discover Running Dev Server
-
-Auto-detect the application URL with the shared dev-server detector:
+Do not start a dev server. Do not call browser tools in this phase. Do not duplicate the shared dev-server port cascade here. If a web URL must be discovered, the demo-reel skill uses the shared detector:
 
 ```bash
 ${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh auto
 ```
 
-The shared detector applies the plugin-wide precedence contract: explicit values, `.claude/launch.json`, framework config, Procfile/Docker/package metadata, env `PORT=`, framework defaults, then common running ports.
+When checking env files for URL discovery, the shared script reads only the `PORT=` assignment needed for discovery. Never print full env-file contents or any non-port variables, and ignore non-numeric or out-of-range port values.
 
-When checking env files, the shared script reads only the `PORT=` assignment needed for discovery. Never print full env-file contents or any non-port variables, and ignore non-numeric or out-of-range port values.
+Store the target summary as `VISUAL_CAPTURE_TARGET`. If no observable behavior exists, clear `VISUAL_MODE` and use the placeholder Screenshots/Videos section.
 
-Handle stdout:
+## Phase 3.5: Invoke Demo Evidence Capture
 
-- If the detector returns one `http://...` or `https://...` URL, set `VISUAL_URL` to it.
-- If the detector returns `__MULTIPLE_URLS__`, list candidates and ask the user to confirm unless `NON_INTERACTIVE=true`. In non-interactive mode, pick the first candidate and emit a warning.
-- If the detector returns `__NO_RUNNING_SERVER__`:
+Call or follow `kramme:visual:demo-reel` with `VISUAL_CAPTURE_TARGET`. If the user supplied an explicit app URL in the surrounding request, pass it through as `--url <url>`; otherwise let demo-reel resolve `auto` when web capture is appropriate.
 
-  ```
-  Warning: No running dev server detected on common ports (3000, 4200, 5173, 8080, ...).
+Expected result shape:
 
-  Start your dev server and re-run with --visual, or continue without screenshots.
-  ```
-
-  Clear `VISUAL_MODE` and return to the main skill flow.
-
-After selecting a URL, verify it with a quick HTTP request:
-
-```bash
-curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$VISUAL_URL"
+```text
+=== Demo Evidence Complete ===
+Tier: static|before-after|browser-reel|terminal-recording|skipped
+Description: <one sentence describing what the evidence shows>
+Directory: <local artifact directory>
+Files:
+- <path or "none">
+PR Markdown:
+<local-only markdown table or embed guidance>
+=== End Demo Evidence ===
 ```
 
-- If 2xx or 3xx → proceed.
-- If connection refused or timeout → warn and clear `VISUAL_MODE`.
+If demo-reel returns `Tier: skipped`, no files, or a capture failure, use the placeholder Screenshots/Videos section. Visual capture failures must not block PR description generation.
 
-Set `VISUAL_URL` to the discovered URL.
+## Build the Screenshots / Videos Section
 
-## Phase 3.5: Visual Capture
+**If demo-reel returns remote URLs from an explicit user-approved upload flow:**
 
-### 3.5.1 Analyze UI Changes
+Use the returned embed guidance in the PR body.
 
-Using the diff analysis from Phase 2, identify UI-relevant changes:
+**If demo-reel returns local-only files and `DIRECT_UPDATE=false`:**
 
-1. **Find changed UI files**: Filter changed files for UI-relevant extensions:
-   - Components: `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.component.ts`, `*.component.html`
-   - Templates: `*.html`, `*.hbs`, `*.ejs`, `*.pug`
-   - Styles: `*.css`, `*.scss`, `*.sass`, `*.less`, `*.styled.ts`, `*.module.css`
-   - Views/Pages: Files in `pages/`, `views/`, `screens/`, `routes/`, `app/` directories
-
-2. **Determine which pages to capture**: Analyze changed files to infer routes/pages:
-   - Look for route definitions in changed files or files that import changed components
-   - Map components to their likely URLs (e.g., `pages/settings/` → `/settings`)
-   - If routes cannot be inferred, capture the landing page at `VISUAL_URL`
-   - **Limit to a maximum of 5 distinct pages** to keep screenshot count manageable
-
-3. **Determine capture scenarios** for each page:
-   - **Default state**: The page as it loads
-   - **Changed feature**: If the diff adds a new UI element, navigate to show it
-   - **Interactive flow**: If `HAS_GIF=true` and the change involves interaction (form submission, navigation, toggle), plan a GIF recording
-
-### 3.5.2 Capture Screenshots
-
-Create the output directory:
-
-```bash
-BRANCH_NAME=$(git branch --show-current | tr '/' '-')
-SCREENSHOT_DIR="$HOME/.kramme-cc-workflow/pr-screenshots/${BRANCH_NAME}"
-mkdir -p "$SCREENSHOT_DIR"
-```
-
-Navigate to each identified page and capture screenshots using the detected browser automation provider's equivalent operations:
-
-1. Navigate to `VISUAL_URL` + route.
-2. Wait for the page to finish loading.
-3. Capture a screenshot and save it under `SCREENSHOT_DIR` using a stable file name such as `{page-name}.png`.
-4. If `HAS_GIF=true` and the change involves interaction, record the shortest useful interaction sequence and export it under `SCREENSHOT_DIR`.
-
-If the provider returns image data rather than writing directly to disk, save it with the runtime's file-write capability. If the provider cannot save or return a screenshot file, warn and skip that capture.
-
-**Error handling during capture:**
-
-- If navigation fails (timeout, 404, connection refused), skip that page and log a warning
-- If screenshot capture fails, skip and log a warning
-- If ALL captures fail, fall back to the placeholder section and warn:
-
-  ```
-  Warning: Could not capture any screenshots from {VISUAL_URL}.
-
-  Possible causes:
-    - Application is not running at this URL
-    - Pages require authentication
-    - Network/firewall issues
-
-  Using placeholder Screenshots/Videos section instead.
-  ```
-
-- **NEVER** let visual capture failures block the PR description generation
-
-### 3.5.3 Prepare Screenshots for PR Description
-
-Use remote image URLs only when the runtime provides an explicit, supported upload or attachment capability that returns stable URLs suitable for a PR body. Do not invent an upload workflow from `gh` alone, and do not embed base64-encoded images.
-
-If no supported upload capability is available, keep screenshots local:
-
-- For copy-paste output, include a local-only table so the PR creator can drag and drop files manually.
-- For `DIRECT_UPDATE=true`, do not write local filesystem paths into the PR body because reviewers cannot access them. Instead, use a placeholder Screenshots/Videos section in the PR body and print the local screenshot paths in the skill's conversation output.
-
-### 3.5.4 Build the Screenshots Section
-
-**If screenshots were uploaded (have remote URLs):**
+Include a local-only table so the PR creator can drag and drop the files manually:
 
 ```markdown
 ## Screenshots / Videos
 
-### {Page/Feature Name}
+Screenshots or demo artifacts captured locally. Drag and drop into the PR description on GitHub:
 
-{Brief description of what this screenshot shows and which changes are visible}
-
-![{descriptive-alt-text}]({uploaded-url})
+| Evidence | What it shows | Path |
+| --- | --- | --- |
+| <label> | <description> | `<local-path>` |
 ```
 
-If a GIF was captured:
-
-```markdown
-### {Interaction Name} (Demo)
-
-{Brief description of the interaction flow shown}
-
-![{descriptive-alt-text}]({uploaded-gif-url})
-```
-
-**If screenshots are local-only and `DIRECT_UPDATE=false`:**
-
-```markdown
-## Screenshots / Videos
-
-Screenshots captured locally. Drag and drop into the PR description on GitHub:
-
-| Screenshot  | Description     | Path           |
-| ----------- | --------------- | -------------- |
-| {page-name} | {what it shows} | `{local-path}` |
-```
-
-**If screenshots are local-only and `DIRECT_UPDATE=true`:**
+**If demo-reel returns local-only files and `DIRECT_UPDATE=true`:**
 
 Use this PR body section:
 
 ```markdown
 ## Screenshots / Videos
 
-<!-- Screenshots were captured locally but not embedded automatically. Attach screenshots to this PR manually if helpful. -->
+<!-- Demo evidence was captured locally but not embedded automatically. Attach screenshots or video to this PR manually if helpful. -->
 ```
 
-Then emit the local file list in the skill's conversation output, outside the PR body.
+Then emit the local file list in the skill conversation output, outside the PR body.
 
-**NEVER** embed base64-encoded images directly in the PR description.
+**If no evidence was captured:**
+
+Use the normal placeholder section from the parent skill.
+
+Never embed base64-encoded images directly in the PR description. Never invent placeholder image or GIF URLs.

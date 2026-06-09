@@ -1,0 +1,7 @@
+sources:
+  - id: compound-ce-demo-reel
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/b6250490bec4c0488d68ad66d72bd99f6edb95fd/plugins/compound-engineering/skills/ce-demo-reel
+    title: "EveryInc compound-engineering-plugin - ce-demo-reel"
+    rationale: "Capture-tier selection, evidence-vs-test distinction, secret preflight, fallback behavior, and demo artifact reporting are adapted from this source."
+    last_reviewed_at: 2026-06-08
+    baseline_hash: ""
