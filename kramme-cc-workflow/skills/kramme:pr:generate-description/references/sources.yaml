@@ -5,9 +5,9 @@ sources:
     rationale: "PR description structure, output markers, and pull-request handoff conventions are adapted from this source."
     last_reviewed_at: 2026-06-02
     baseline_hash: "sha256:b1a84eac7a47f6e2985a27733137d862fcdeb552eefe2bd17629e1f3c20e0e97"
-  - id: compound-ce-polish-dev-server
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-polish
-    title: "EveryInc compound-engineering-plugin - ce-polish"
-    rationale: "The visual capture app URL discovery flow references the shared dev-server detection contract adapted from this source."
-    last_reviewed_at: 2026-06-06
+  - id: compound-ce-demo-reel
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/b6250490bec4c0488d68ad66d72bd99f6edb95fd/plugins/compound-engineering/skills/ce-demo-reel
+    title: "EveryInc compound-engineering-plugin - ce-demo-reel"
+    rationale: "The --visual flow delegates proof capture to a demo-evidence workflow and adopts local/remote evidence result formatting from this source."
+    last_reviewed_at: 2026-06-08
     baseline_hash: ""

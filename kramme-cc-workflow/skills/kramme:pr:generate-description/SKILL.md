@@ -13,7 +13,7 @@ user-invocable: true
 Parse `$ARGUMENTS` for flags:
 
 - `--auto`: Preferred hands-off mode for explicit user invocation. Skip clarification prompts (Phase 2.5) and the save-to-file prompt (Phase 4). If a PR already exists for the current branch, update its title/body directly. If no PR exists yet, generate the title and description for copy-paste without pausing for user input.
-- `--visual`: Auto-detect a running dev server and capture screenshots to embed in the PR description. Requires an available browser automation capability; if none is available, continue with the placeholder Screenshots/Videos section.
+- `--visual`: Delegate demo evidence capture to `kramme:visual:demo-reel` and include the resulting Screenshots/Videos section when local or embeddable evidence is available. If capture cannot run, continue with the placeholder Screenshots/Videos section.
 - `--base <ref>`: Use `<ref>` as the base branch for diff computation instead of auto-detecting.
 
 If `--auto` is present, set `AUTO_MODE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments. If `--visual` is present, set `VISUAL_MODE=true` and remove the flag from remaining arguments. If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the flag and value from remaining arguments.
@@ -171,11 +171,11 @@ Read the context-gathering procedure from `references/context-gathering.md` and 
 
 4. **Wait for user response** before proceeding to Phase 3
 
-### Phase 2.6: Browser Detection and App Discovery
+### Phase 2.6: Visual Evidence Delegation Prep
 
 **Skip this phase if `VISUAL_MODE` is not set.** Proceed directly to Phase 3.
 
-If `VISUAL_MODE=true`, read `references/visual-capture.md` and follow **Phase 2.6** in that document to detect an available browser automation capability and discover the running dev server URL.
+If `VISUAL_MODE=true`, read `references/visual-capture.md` and follow **Phase 2.6** in that document. This prepares the target summary for `kramme:visual:demo-reel`; it does not duplicate browser capture or dev-server heuristics inside this PR-description skill.
 
 ### Phase 3: Description Generation
 
@@ -332,9 +332,9 @@ Include a placeholder section for visual aids:
 
 **NOTE**: This is a placeholder section for the PR creator to populate with relevant visuals.
 
-**If `VISUAL_MODE=true` and a browser automation capability and dev server were detected:**
+**If `VISUAL_MODE=true`:**
 
-Read `references/visual-capture.md` and follow **Phase 3.5** to capture screenshots, prepare them for embedding or manual attachment, and build the Screenshots/Videos section.
+Read `references/visual-capture.md` and follow **Phase 3.5** to delegate evidence capture to `kramme:visual:demo-reel`, prepare any returned local artifacts for manual attachment or embeddable assets, and build the Screenshots/Videos section. Do not implement a separate screenshot/GIF capture flow here.
 
 ### Phase 4: Output Formatting
 
