@@ -1,0 +1,417 @@
+#!/usr/bin/env python3
+"""Lint copied skill contracts declared in synced-contracts.yaml.
+
+The registry is JSON-compatible YAML so this script can run with only the
+Python standard library on developer machines and GitHub-hosted runners.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import re
+from pathlib import Path
+from typing import Any
+
+
+def add_arguments(parser: argparse.ArgumentParser, defaults: argparse.Namespace) -> argparse.ArgumentParser:
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=defaults.repo_root,
+        help="Repository root. Defaults to two directories above this script.",
+    )
+    parser.add_argument(
+        "--registry",
+        type=Path,
+        default=defaults.registry,
+        help="Path to synced-contracts.yaml.",
+    )
+    return parser
+
+
+def parse_cli() -> argparse.Namespace:
+    script_dir = Path(__file__).resolve().parent
+    defaults = argparse.Namespace(
+        repo_root=script_dir.parent.parent,
+        registry=script_dir / "synced-contracts.yaml",
+    )
+    parser = argparse.ArgumentParser(description="Lint copied skill contracts")
+    return add_arguments(parser, defaults).parse_args()
+
+
+def load_registry(path: Path) -> dict[str, Any]:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise SystemExit(
+            f"{path}: registry must be JSON-compatible YAML for stdlib parsing: {exc}"
+        ) from exc
+
+
+def rel(path: Path, root: Path) -> str:
+    try:
+        return path.relative_to(root).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def resolve(root: Path, path: str) -> Path:
+    return (root / path).resolve()
+
+
+def read_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def strip_quotes(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        return value[1:-1]
+    return value
+
+
+def is_empty_value(value: str | None) -> bool:
+    if value is None:
+        return True
+    return strip_quotes(value).strip() == ""
+
+
+def normalize_value(value: str, normalizer: str | None) -> str:
+    value = value.replace("`", "").strip()
+    if normalizer == "status_vocabulary":
+        parts = [part.strip().upper() for part in re.split(r"\s*(?:\||,)\s*", value)]
+        return " | ".join(part for part in parts if part)
+    return re.sub(r"\s+", " ", value)
+
+
+def extract_contract_value(
+    text: str,
+    regex: str,
+    normalizer: str | None,
+) -> tuple[str, int] | None:
+    source = text.replace("`", "")
+    match = re.search(regex, source, flags=re.MULTILINE)
+    if not match:
+        return None
+    value = match.group(1) if match.lastindex else match.group(0)
+    line = source.count("\n", 0, match.start()) + 1
+    return normalize_value(value, normalizer), line
+
+
+def check_text_contracts(root: Path, registry: dict[str, Any], failures: list[str]) -> None:
+    for group in registry.get("text_contracts", []):
+        name = group["name"]
+        regex = group["extract_regex"]
+        normalizer = group.get("normalizer")
+        reference: tuple[str, str, int] | None = None
+        for copy in group["paths"]:
+            path = resolve(root, copy)
+            if not path.exists():
+                failures.append(f"{name}: registered path is missing: {copy}")
+                continue
+            extracted = extract_contract_value(read_text(path), regex, normalizer)
+            if extracted is None:
+                failures.append(f"{name}: no registered contract match in {copy}")
+                continue
+            value, line = extracted
+            if reference is None:
+                reference = (value, copy, line)
+                continue
+            ref_value, ref_path, ref_line = reference
+            if value != ref_value:
+                failures.append(
+                    f"{name}: {copy}:{line} differs from {ref_path}:{ref_line}; "
+                    f"expected {ref_value!r}, got {value!r}"
+                )
+
+
+def heading_lines(text: str) -> list[tuple[int, str]]:
+    matches = []
+    for number, line in enumerate(text.splitlines(), start=1):
+        stripped = line.strip()
+        if re.match(r"^#{1,6}\s+\S", stripped):
+            matches.append((number, stripped))
+    return matches
+
+
+def check_ordered_heading_contracts(root: Path, registry: dict[str, Any], failures: list[str]) -> None:
+    for group in registry.get("ordered_heading_contracts", []):
+        name = group["name"]
+        expected = group["headings"]
+        for copy in group["paths"]:
+            path = resolve(root, copy)
+            if not path.exists():
+                failures.append(f"{name}: registered path is missing: {copy}")
+                continue
+            headings = heading_lines(read_text(path))
+            last_index = -1
+            for heading in expected:
+                found = next(
+                    (
+                        (index, line_no)
+                        for index, (line_no, actual) in enumerate(headings)
+                        if index > last_index and actual == heading
+                    ),
+                    None,
+                )
+                if found is None:
+                    failures.append(f"{name}: missing or out-of-order heading {heading!r} in {copy}")
+                    break
+                last_index = found[0]
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def check_file_identity(root: Path, registry: dict[str, Any], failures: list[str]) -> None:
+    for group in registry.get("file_identity_groups", []):
+        name = group["name"]
+        reference: tuple[str, str] | None = None
+        for copy in group["paths"]:
+            path = resolve(root, copy)
+            if not path.exists():
+                failures.append(f"{name}: registered path is missing: {copy}")
+                continue
+            current_hash = sha256(path)
+            if reference is None:
+                reference = (current_hash, copy)
+                continue
+            ref_hash, ref_path = reference
+            if current_hash != ref_hash:
+                failures.append(
+                    f"{name}: {copy} hash {current_hash} differs from {ref_path} hash {ref_hash}; "
+                    "sync all registered copies"
+                )
+
+
+def parse_frontmatter(text: str) -> dict[str, str] | None:
+    lines = text.splitlines()
+    if not lines or lines[0] != "---":
+        return None
+    end = None
+    for index, line in enumerate(lines[1:], start=1):
+        if line == "---":
+            end = index
+            break
+    if end is None:
+        return None
+
+    frontmatter: dict[str, str] = {}
+    for line in lines[1:end]:
+        match = re.match(r"^([A-Za-z0-9_-]+):\s*(.*)$", line)
+        if match:
+            frontmatter[match.group(1)] = strip_quotes(match.group(2))
+    return frontmatter
+
+
+def skill_paths(root: Path, pattern: str) -> list[Path]:
+    return sorted(path for path in root.glob(pattern) if path.is_file())
+
+
+def check_mechanical(root: Path, registry: dict[str, Any], failures: list[str]) -> None:
+    config = registry.get("mechanical", {})
+    pattern = config.get("skill_glob", "kramme-cc-workflow/skills/*/SKILL.md")
+    max_lines = int(config.get("max_skill_lines", 500))
+    max_description = int(config.get("max_description_chars", 1024))
+    required_fields = config.get(
+        "required_frontmatter",
+        ["name", "description", "disable-model-invocation", "user-invocable"],
+    )
+    line_allowlist = set(config.get("allow_line_count_over", []))
+
+    for path in skill_paths(root, pattern):
+        relative = rel(path, root)
+        text = read_text(path)
+        line_count = len(text.splitlines())
+        if line_count > max_lines and relative not in line_allowlist:
+            failures.append(
+                f"mechanical: {relative} has {line_count} lines, exceeds {max_lines}; "
+                "move reference material out of SKILL.md or add a registry burndown entry"
+            )
+
+        frontmatter = parse_frontmatter(text)
+        if frontmatter is None:
+            failures.append(f"mechanical: {relative} is missing YAML frontmatter")
+            continue
+        for field in required_fields:
+            if field not in frontmatter:
+                failures.append(f"mechanical: {relative} is missing frontmatter field {field!r}")
+        description = frontmatter.get("description")
+        if description is not None and len(description) > max_description:
+            failures.append(
+                f"mechanical: {relative} description is {len(description)} chars, "
+                f"exceeds {max_description}"
+            )
+
+
+def parse_sources_manifest(path: Path) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    current: dict[str, Any] | None = None
+
+    def set_field(entry: dict[str, Any], key: str, raw_value: str, line_no: int) -> None:
+        entry[key] = strip_quotes(raw_value.strip())
+        entry.setdefault("_lines", {})[key] = line_no
+
+    for line_no, line in enumerate(read_text(path).splitlines(), start=1):
+        item_match = re.match(r"^\s*-\s+([A-Za-z0-9_]+):\s*(.*)$", line)
+        if item_match:
+            if current is not None:
+                entries.append(current)
+            current = {}
+            set_field(current, item_match.group(1), item_match.group(2), line_no)
+            continue
+
+        if current is None:
+            continue
+        field_match = re.match(r"^\s+([A-Za-z0-9_]+):\s*(.*)$", line)
+        if field_match:
+            set_field(current, field_match.group(1), field_match.group(2), line_no)
+
+    if current is not None:
+        entries.append(current)
+    return entries
+
+
+def marker_present(text: str, markers: list[str]) -> bool:
+    return any(marker in text for marker in markers)
+
+
+def check_marker_manifests(root: Path, registry: dict[str, Any], failures: list[str]) -> None:
+    config = registry.get("marker_implies_manifest")
+    if not config:
+        return
+
+    pattern = config.get("skill_glob", "kramme-cc-workflow/skills/*/SKILL.md")
+    markers = config.get("markers", [])
+    manifest_rel = config.get("manifest", "references/sources.yaml")
+    required_fields = config.get("required_fields", [])
+    one_of_fields = config.get("one_of_fields", [])
+    allow_empty = {
+        (item["path"], item["entry_id"], item["field"])
+        for item in config.get("allow_empty_fields", [])
+    }
+
+    for path in skill_paths(root, pattern):
+        text = read_text(path)
+        if not marker_present(text, markers):
+            continue
+        relative = rel(path, root)
+        manifest_path = path.parent / manifest_rel
+        manifest_relative = rel(manifest_path, root)
+        if not manifest_path.exists():
+            failures.append(
+                f"marker manifest: {relative} contains a port marker but lacks {manifest_relative}"
+            )
+            continue
+        entries = parse_sources_manifest(manifest_path)
+        if not entries:
+            failures.append(f"marker manifest: {manifest_relative} has no source entries")
+            continue
+        for index, entry in enumerate(entries, start=1):
+            entry_id = entry.get("id", f"entry-{index}")
+            for field in required_fields:
+                value = entry.get(field)
+                if field not in entry:
+                    failures.append(
+                        f"marker manifest: {manifest_relative} entry {entry_id!r} is missing {field!r}"
+                    )
+                    continue
+                if is_empty_value(value) and (manifest_relative, entry_id, field) not in allow_empty:
+                    line = entry.get("_lines", {}).get(field, "?")
+                    failures.append(
+                        f"marker manifest: {manifest_relative}:{line} entry {entry_id!r} "
+                        f"has empty {field!r}"
+                    )
+            if one_of_fields and not any(not is_empty_value(entry.get(field)) for field in one_of_fields):
+                failures.append(
+                    f"marker manifest: {manifest_relative} entry {entry_id!r} must define one of "
+                    + ", ".join(repr(field) for field in one_of_fields)
+                )
+
+
+def canonical_epilogue_heading(line: str) -> str | None:
+    match = re.match(r"^#{2,3}\s+(.+?)\s*$", line)
+    if not match:
+        return None
+    title = match.group(1).strip()
+    if title == "Common Rationalizations":
+        return title
+    if title.startswith("Red Flags"):
+        return "Red Flags"
+    if title == "Verification":
+        return title
+    return None
+
+
+def check_epilogue_order(root: Path, registry: dict[str, Any], failures: list[str]) -> None:
+    config = registry.get("epilogue_order")
+    if not config:
+        return
+
+    pattern = config.get("skill_glob", "kramme-cc-workflow/skills/*/SKILL.md")
+    trigger = re.compile(config.get("trigger_heading_regex", r"^#{2,3}\s+Common Rationalizations\b"), re.MULTILINE)
+    required = config.get("required_headings", ["Common Rationalizations", "Red Flags", "Verification"])
+    allowlist = set(config.get("allowlist", []))
+
+    for path in skill_paths(root, pattern):
+        relative = rel(path, root)
+        if relative in allowlist:
+            continue
+        text = read_text(path)
+        if not trigger.search(text):
+            continue
+        positions: dict[str, int] = {}
+        for index, line in enumerate(text.splitlines(), start=1):
+            canonical = canonical_epilogue_heading(line)
+            if canonical and canonical not in positions:
+                positions[canonical] = index
+
+        missing = [heading for heading in required if heading not in positions]
+        if missing:
+            failures.append(
+                f"epilogue order: {relative} is missing canonical section(s): {', '.join(missing)}"
+            )
+            continue
+        order = [positions[heading] for heading in required]
+        if order != sorted(order):
+            failures.append(
+                f"epilogue order: {relative} must order sections as "
+                + " -> ".join(required)
+                + f"; found line order {order}"
+            )
+
+
+def run(root: Path, registry: dict[str, Any]) -> list[str]:
+    failures: list[str] = []
+    check_text_contracts(root, registry, failures)
+    check_ordered_heading_contracts(root, registry, failures)
+    check_file_identity(root, registry, failures)
+    check_marker_manifests(root, registry, failures)
+    check_epilogue_order(root, registry, failures)
+    check_mechanical(root, registry, failures)
+    return failures
+
+
+def main() -> int:
+    args = parse_cli()
+    root = args.repo_root.resolve()
+    registry = load_registry(args.registry.resolve())
+    failures = run(root, registry)
+    if failures:
+        print("skill contract lint failed:")
+        for failure in failures:
+            print(f"::error::{failure}")
+        return 1
+    print("skill contract lint passed.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

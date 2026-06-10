@@ -1,4 +1,4 @@
-.PHONY: test test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-git-clean-gone test-git-worktree install-test-deps check-deps
+.PHONY: test test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-git-clean-gone test-git-worktree install-test-deps check-deps
 
 # Default target - run all tests
 test:
@@ -38,6 +38,10 @@ test-format:
 test-skill-usage:
 	@chmod +x tests/test_helper/mocks/*
 	@bats tests/skill-usage-stats.bats
+
+# Run only skill contract lint tests
+test-skill-contracts:
+	@bats tests/lint-skill-contracts.bats
 
 # Run only gone-branch cleanup tests
 test-git-clean-gone:
