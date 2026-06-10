@@ -107,15 +107,12 @@ When verification passes, commit the slice on its own. The committed state becom
 
 Return to step 1 with the new committed baseline. Do not accumulate simplifications into one large diff.
 
-## Traps to avoid
+## Integration with other skills
 
-Ways a simplification pass turns into damage. If any of these happen, reject the slice and revert:
-
-- **Inlining too aggressively.** Inlining a helper that is used once but has a meaningful name destroys a comment. Keep the name if it carries intent.
-- **Removing "unnecessary" abstractions without applying the Fence.** An abstraction with only one caller today may be there for a planned second caller, or to isolate volatility.
-- **Optimizing for line count.** Shorter is not the goal. A 10-line function that reads top-to-bottom beats a 4-line function that requires a dictionary. If the "simplified" version is longer than the original, discard it.
-- **Removing defensive checks without proving they are unreachable.** A `try/catch` wrapping a library call may be absorbing a known failure mode; a `null` check that "can't happen" must be proven unreachable (via types, invariants, or caller analysis) before removal.
-- **Renaming for personal taste.** Rename only to restore consistency with the surrounding codebase.
+- **Verification**: Step 4 delegates to `kramme:verify:run`.
+- **Sibling — slice discipline**: `kramme:code:incremental` applies the same one-thing-at-a-time rule to feature work. Refactor passes obey the same six rules; this skill is the refactor-flavored loop.
+- **Alternative — scrap and rewrite**: if the recent code is inelegant enough that simplification would touch more than ~50% of it, stop and use `kramme:code:rewrite-clean` instead. A mediocre implementation is sometimes best scrapped rather than patched.
+- **Broader scan**: if the simplification opportunities extend beyond the recent diff, stop and suggest `kramme:code:refactor-opportunities` for a codebase-wide scan.
 
 ## Common Rationalizations
 
@@ -128,14 +125,17 @@ These are the lies you will tell yourself to justify going past the scope of the
 - _"The test is flaky; I'll just tweak it so it passes."_ → If a simplification requires modifying a test, it is a behavior change, not a simplification. Revert or re-scope.
 - _"While I'm here, let me also rename this for consistency."_ → Emit `NOTICED BUT NOT TOUCHING`. Rename is its own slice — often its own PR.
 
-## Integration with other skills
+## Red Flags
 
-- **Verification**: Step 4 delegates to `kramme:verify:run`.
-- **Sibling — slice discipline**: `kramme:code:incremental` applies the same one-thing-at-a-time rule to feature work. Refactor passes obey the same six rules; this skill is the refactor-flavored loop.
-- **Alternative — scrap and rewrite**: if the recent code is inelegant enough that simplification would touch more than ~50% of it, stop and use `kramme:code:rewrite-clean` instead. A mediocre implementation is sometimes best scrapped rather than patched.
-- **Broader scan**: if the simplification opportunities extend beyond the recent diff, stop and suggest `kramme:code:refactor-opportunities` for a codebase-wide scan.
+Ways a simplification pass turns into damage. If any of these happen, reject the slice and revert:
 
-## Before declaring done
+- **Inlining too aggressively.** Inlining a helper that is used once but has a meaningful name destroys a comment. Keep the name if it carries intent.
+- **Removing "unnecessary" abstractions without applying the Fence.** An abstraction with only one caller today may be there for a planned second caller, or to isolate volatility.
+- **Optimizing for line count.** Shorter is not the goal. A 10-line function that reads top-to-bottom beats a 4-line function that requires a dictionary. If the "simplified" version is longer than the original, discard it.
+- **Removing defensive checks without proving they are unreachable.** A `try/catch` wrapping a library call may be absorbing a known failure mode; a `null` check that "can't happen" must be proven unreachable (via types, invariants, or caller analysis) before removal.
+- **Renaming for personal taste.** Rename only to restore consistency with the surrounding codebase.
+
+## Verification
 
 The loop enforces most invariants per-iteration; this is the residual check:
 

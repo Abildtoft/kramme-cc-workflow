@@ -83,6 +83,55 @@ Use before: deprecating a public API, removing an externally-consumed endpoint, 
 
 ---
 
+## Deprecation plan artifact
+
+Create or update `DEPRECATION_PLAN.md` in the repository root before Step 1 finishes. This is the working artifact for the deprecation workflow; after the deprecation closes, delete it or archive the final decision in durable project docs.
+
+Minimum template:
+
+```md
+# Deprecation Plan: <symbol / feature / API>
+Owner: <team or person>
+Surface: <Compile-time / internal-only | Runtime / internal | External / public>
+Classification: <Advisory | Compulsory | TBD>
+Replacement: <new surface>
+Migration pattern: <Strangler | Adapter | Feature Flag Migration>
+Target removal date: <YYYY-MM-DD or TBD>
+Current step: <Step 1 | Step 2 | Step 3 | Step 4.1 | Step 4.2 | Step 4.3 | Step 4.4 | Complete>
+
+## Call Sites
+- <known dependent or audit source, with evidence checked>
+
+## Migration Log
+- <date>: <slice migrated / verification result>
+
+## Decisions
+- <checklist answer, exception, or ASK FIRST outcome>
+
+## Open Markers
+- UNVERIFIED: <assumption still needing proof, owner, and clearance evidence>
+- ASK FIRST: <boundary surfaced, confirmer, and date>
+- NOTICED BUT NOT TOUCHING: <follow-up candidate and why it stays out of scope>
+
+## Step Status
+- [ ] Step 1 decision checklist answered and recorded.
+- [ ] Step 2 classification recorded.
+- [ ] Zombie-code gate cleared or escalated to owner.
+- [ ] Step 3 migration pattern recorded.
+- [ ] Step 4.1 replacement built and verified.
+- [ ] Step 4.2 announcement and migration guide published.
+- [ ] Step 4.3 active callers migrated to zero.
+- [ ] Step 4.4 old code, tests, docs, and notices removed together.
+
+## Completion Gates
+- [ ] No references remain in code, tests, docs, or config.
+- [ ] Deprecation notices and migration guide removed or archived with a date.
+- [ ] Dependent audit confirms zero active consumers with surface-appropriate evidence.
+- [ ] Observation window elapsed without incident.
+```
+
+On re-invocation, read `DEPRECATION_PLAN.md` first. Use `## Step Status`, `## Open Markers`, and `## Completion Gates` to find the earliest incomplete exit criterion across Step 1 through Step 4.4 and the overall completion gates, then resume there. If an existing plan lacks a status field for a required gate, treat that gate as incomplete until the evidence is recorded. Do not jump straight to removal because a previous session announced the deprecation.
+
 ## Step 1 — Decide whether to deprecate
 
 Answer the five-question checklist. Extended signals and a decision tree live in `references/decision-checklist.md`.
@@ -94,6 +143,8 @@ Answer the five-question checklist. Extended signals and a decision tree live in
 5. **What is the maintenance cost of NOT deprecating?** Frame against concrete cost items: security patches, framework upgrades that require touching it, test flakes, onboarding time for new contributors. If the list is short, deferring is fine. If long or growing, deprecation has a clock.
 
 Emit `SIMPLICITY CHECK: <smallest coherent removal>` once the answers are in.
+
+Record the five answers in `DEPRECATION_PLAN.md` under `## Decisions`.
 
 ## Step 2 — Classify: Advisory vs Compulsory
 
@@ -120,7 +171,7 @@ The reason: zombie code is often load-bearing in non-obvious ways (the original 
 
 ## Step 3 — Pick a migration pattern
 
-Pick one named pattern and record it in the deprecation plan's header. Short descriptions inline; full examples + phasing guidance in `references/migration-patterns.md`.
+Pick one named pattern and record it in `DEPRECATION_PLAN.md`'s header. Short descriptions inline; full examples + phasing guidance in `references/migration-patterns.md`.
 
 - **Strangler** — route to old or new behind a façade; migrate callers one slice at a time. Use when callers are many and the migration window spans months.
 - **Adapter** — thin shim that translates the old API shape to the new (or vice versa) during transition. Use when the shape changed but the migration is largely mechanical.
@@ -225,10 +276,10 @@ If you see any of these, stop and re-author:
 
 Before declaring the deprecation complete, self-check:
 
-- [ ] Five-question checklist answered; answers recorded in the deprecation plan.
+- [ ] Five-question checklist answered; answers recorded in `DEPRECATION_PLAN.md`.
 - [ ] Classification (Advisory / Compulsory) recorded.
 - [ ] Zombie-code gate explicitly cleared (owner identified) — not silently bypassed.
-- [ ] Named migration pattern recorded.
+- [ ] Named migration pattern recorded in `DEPRECATION_PLAN.md`.
 - [ ] Replacement covers every observable on the contract-plus-Hyrum map, verified by a contract or characterization test and by the CI/build/test or deployed monitoring surface that applies.
 - [ ] Announcement published on every surface the audience uses (code notice, CHANGELOG, internal migration note, external comms, API headers as applicable).
 - [ ] Migration guide or upgrade note validated against at least one real migration when caller migration is required.

@@ -1,7 +1,13 @@
 sources:
   - id: pocock-request-refactor-plan
-    url: https://github.com/mattpocock/skills/tree/main/request-refactor-plan
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/deprecated/request-refactor-plan/SKILL.md
     title: "Matt Pocock skills - request-refactor-plan"
     rationale: "The refactor mode's interview-driven Decision Document and the Fowler-discipline tiny-commits plan (each commit leaves the codebase in a working state, individually revertible) are adapted from this source."
-    last_reviewed_at: 2026-04-25
+    last_reviewed_at: 2026-06-10
+    baseline_hash: ""
+  - id: addy-incremental-implementation
+    url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/incremental-implementation/SKILL.md
+    title: "Addy Osmani agent-skills - incremental implementation"
+    rationale: "The small-slice implementation loop, vertical/contract/risk slicing taxonomy, and one-slice-at-a-time verification discipline are adapted from this source."
+    last_reviewed_at: 2026-06-10
     baseline_hash: ""

@@ -23,6 +23,7 @@ Measure before optimizing. Performance work without measurement is guessing — 
 - The codebase has no measurement infrastructure yet — install baseline monitoring first.
 - The slowness is in a third-party dependency or platform you do not control — escalate, do not patch around it.
 - The bottleneck requires an architectural decision (data model change, service split) — plan first, then return here for the per-slice optimization work.
+- The goal is to compare repeatable variants against a harness for bundle size, latency, relevance, ranking, prompt quality, or another metric — use `kramme:code:optimize`.
 
 ## Core Web Vitals targets
 
@@ -216,30 +217,13 @@ npx lhci autorun
 
 Budgets are floors, not ceilings — a PR that adds 30 KB to the bundle without justifying it against the budget is a PR that should not merge. Example `bundlesize.config.json`, `lighthouserc.json`, and a custom regression test live in `references/performance-checklist.md`.
 
-## Exit checklist
-
-Before declaring a perf slice done, confirm every item:
-
-- [ ] Before and after numbers exist with units, recorded in the commit message or PR description.
-- [ ] The specific bottleneck is named — a concrete query, component, asset, or code path — not "general slowness".
-- [ ] Core Web Vitals are within Good thresholds (or at least moved out of Poor).
-- [ ] The improvement exceeds measurement noise on both p50 and p95.
-- [ ] No adjacent metric (bundle size, another CWV, an API endpoint's latency) regressed as a side effect.
-- [ ] A budget or regression test exists that fails if this fix is undone.
-- [ ] Bundle size has not increased without justification against the budget.
-- [ ] No new N+1 queries in the data-fetching path.
-- [ ] Performance budget passes in CI (if configured).
-- [ ] A `NOTICED BUT NOT TOUCHING` entry exists for every perf smell observed outside the measured bottleneck.
-- [ ] Existing tests still pass — the optimization did not change behavior.
-
-If any item is unchecked, the slice is not done. Fix the gap or split the slice.
-
 ## Integration with other skills
 
 If these siblings are installed:
 
 - **Downstream review** — the `performance-oracle` agent verifies measurements and bottleneck identification post-hoc. Following MEASURE/VERIFY discipline here makes that review mechanical.
 - **Companion** — `kramme:code:incremental`: each optimization is one slice through the incremental loop. The five-step workflow fits inside a single increment; the budget becomes the increment's exit criterion.
+- **Boundary** — `kramme:code:optimize` owns repeatable harness-driven experiments across multiple variants; this skill owns one-shot review-and-fix performance passes where the bottleneck and fix are measured directly.
 
 ---
 
@@ -266,3 +250,21 @@ If you notice any of these, stop and return to step 1:
 - No performance monitoring or regression test for a fix that claims a measurable win.
 - A change that improves one CWV metric while silently regressing another.
 - A `SIMPLICITY CHECK` that is missing at the top of the fix.
+
+## Verification
+
+Before declaring a perf slice done, confirm every item:
+
+- [ ] Before and after numbers exist with units, recorded in the commit message or PR description.
+- [ ] The specific bottleneck is named — a concrete query, component, asset, or code path — not "general slowness".
+- [ ] Core Web Vitals are within Good thresholds (or at least moved out of Poor).
+- [ ] The improvement exceeds measurement noise on both p50 and p95.
+- [ ] No adjacent metric (bundle size, another CWV, an API endpoint's latency) regressed as a side effect.
+- [ ] A budget or regression test exists that fails if this fix is undone.
+- [ ] Bundle size has not increased without justification against the budget.
+- [ ] No new N+1 queries in the data-fetching path.
+- [ ] Performance budget passes in CI (if configured).
+- [ ] A `NOTICED BUT NOT TOUCHING` entry exists for every perf smell observed outside the measured bottleneck.
+- [ ] Existing tests still pass — the optimization did not change behavior.
+
+If any item is unchecked, the slice is not done. Fix the gap or split the slice.
