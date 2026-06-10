@@ -1,0 +1,7 @@
+sources:
+  - id: addy-code-simplification
+    url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/code-simplification/SKILL.md
+    title: "Addy Osmani agent-skills - code simplification"
+    rationale: "Commit 761ca6a ported Addy-style simplification rigor into this skill; the Chesterton's Fence gate, rationalizations, red flags, and verification discipline for behavior-preserving rewrites are adapted from this source. Reviewed against upstream commit 5e262b20e0cd88dba39e558f42f5c0b6d766d4b4."
+    last_reviewed_at: 2026-06-10
+    baseline_hash: "sha256:f0c5ed754057eb0c1e027e2587f59de816651feb5e837242296c43ea21cf621d"
