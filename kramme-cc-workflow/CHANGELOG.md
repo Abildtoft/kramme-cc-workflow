@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Changed
+- Rename `/kramme:pr:design-pipeline` to `/kramme:ci:design-pipeline` so CI/CD pipeline design no longer appears in PR review namespaces.
+- Rename `/kramme:verify-understanding` to `/kramme:learn:verify-understanding` to separate human comprehension checks from code verification skills.
+- Clarify that `/kramme:visual:diff-review` produces a visual diff artifact, not an actionable PR/code review workflow.
+
 ## [0.61.0] - 2026-06-06
 
 ### Added
