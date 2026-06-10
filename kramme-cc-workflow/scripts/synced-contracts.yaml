@@ -25,7 +25,7 @@
       "extract_regex": "(READY\\s*(?:\\||,)\\s*IN PROGRESS\\s*(?:\\||,)\\s*IN REVIEW\\s*(?:\\||,)\\s*DONE)",
       "normalizer": "status_vocabulary",
       "paths": [
-        "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:generate-phases/references/tracker-schema.md",
         "kramme-cc-workflow/skills/kramme:siw:issue-reindex/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:reset/SKILL.md"
       ]
