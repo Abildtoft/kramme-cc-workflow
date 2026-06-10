@@ -21,7 +21,7 @@ Coordinate all pre-merge quality checks and produce a single readiness verdict. 
 2. If `--fix` → set `FIX_MODE=true`.
 3. If `--skip <skill,...>` → parse comma-separated list of skill short names to skip. Valid values: `verify`, `code-review`, `product-review`, `ux-review`, `qa`, `generate-description`. Store as `SKIP_LIST`.
 4. If `--app-url <url>` → store as `APP_URL` (enables QA testing against a running app).
-5. If `--base <branch>` → store as explicit base branch override.
+5. If `--base <branch>` → store as `BASE_BRANCH_OVERRIDE`.
 6. All flags are optional. Default: run all applicable steps, no app URL, auto-detect base.
 
 `--auto` means:
@@ -74,9 +74,8 @@ Read `references/base-branch-resolution.md` and follow it to compute `BASE_BRANC
 #### 2.4 Verify Changes Exist
 
 ```bash
-BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
 CHANGE_COUNT=$({
-  git diff --name-only "$BASE_REF"...HEAD
+  git diff --name-only "$MERGE_BASE"...HEAD
   git diff --name-only --cached
   git diff --name-only
   git ls-files --others --exclude-standard
@@ -86,7 +85,7 @@ CHANGE_COUNT=$({
 If `$CHANGE_COUNT` is 0:
 
 ```
-No changes detected compared to origin/{BASE_BRANCH}.
+No changes detected compared to {BASE_REF}.
 
 Nothing to finalize. Make changes first, then run /kramme:pr:finalize again.
 ```
@@ -97,11 +96,11 @@ Nothing to finalize. Make changes first, then run /kramme:pr:finalize again.
 
 #### 3.1 Identify Changed Files
 
-Reuse the `BASE_REF` computed in Step 2.4. Build a unified change scope (committed + staged + unstaged + untracked):
+Reuse the `MERGE_BASE` computed in Step 2.3. Build a unified change scope (committed + staged + unstaged + untracked):
 
 ```bash
 {
-  git diff --name-only "$BASE_REF"...HEAD  # committed PR diff
+  git diff --name-only "$MERGE_BASE"...HEAD  # committed PR diff
   git diff --name-only --cached            # staged local changes
   git diff --name-only                     # unstaged local changes
   git ls-files --others --exclude-standard # untracked local files

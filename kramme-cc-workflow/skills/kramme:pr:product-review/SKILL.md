@@ -17,7 +17,7 @@ Deep product review of branch changes and local work. Evaluates user-value align
 
 ### Step 1: Parse Arguments
 
-1. If `--base <branch>` flag provided, store as explicit base branch override
+1. If `--base <branch>` flag provided, store as `BASE_BRANCH_OVERRIDE`
 2. If `--threshold N` flag provided, store as `custom_threshold` (0-100). Only findings with confidence >= N will be reported. Default: 70
 3. If `--inline` flag provided, set `INLINE_MODE=true`
 4. If neither flag is present, use defaults
@@ -37,59 +37,20 @@ Before launching agents:
 
 ### Step 3: Resolve Base Branch and Identify Changed Files
 
-Determine the correct base branch using a 3-tier strategy:
-
-**Tier 1: Explicit override** If `--base <branch>` was provided in Step 1, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
-
-**Tier 2: PR target branch detection**
+Use the shared plugin script to resolve the base branch and build the unified change scope (committed PR diff + staged + unstaged + untracked). It uses the same 3-tier strategy: explicit `--base`, PR target branch, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
 
 ```bash
-BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2> /dev/null)
+COLLECT_ARGS=(--strict)
+[ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
+
+RESOLVED=$(${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh "${COLLECT_ARGS[@]}") || {
+  echo "Base/diff collection failed; see the message above and stop." >&2
+  exit 1
+}
+eval "$RESOLVED"
 ```
 
-**Tier 3: Fallback**
-
-```bash
-BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@')
-[ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
-```
-
-Normalize before using `origin/$BASE_BRANCH` (handles values like `origin/develop` and `refs/heads/develop`):
-
-```bash
-BASE_BRANCH=${BASE_BRANCH#refs/heads/}
-BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
-BASE_BRANCH=${BASE_BRANCH#origin/}
-if [ -z "$BASE_BRANCH" ]; then
-  echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
-  exit 1
-fi
-if ! git check-ref-format --branch "$BASE_BRANCH" > /dev/null 2>&1; then
-  echo "Error: Base branch '$BASE_BRANCH' is not a valid branch name. Re-run with --base <branch>." >&2
-  exit 1
-fi
-if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2> /dev/null; then
-  echo "Error: Failed to fetch origin/$BASE_BRANCH. Check remote access and re-run with --base <branch>." >&2
-  exit 1
-fi
-if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null; then
-  echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <branch>." >&2
-  exit 1
-fi
-```
-
-Then identify changed files from all four sources:
-
-```bash
-BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
-{
-  git diff --name-only "$BASE_REF"...HEAD  # committed PR diff
-  git diff --name-only --cached            # staged local changes
-  git diff --name-only                     # unstaged local changes
-  git ls-files --others --exclude-standard # untracked local files
-} | sed '/^$/d' | sort -u
-# All changed files are relevant for product review -- no file-type filtering.
-```
+The script exports `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES`. All changed files in `CHANGED_FILES` are relevant for product review -- no file-type filtering.
 
 After identifying the changed files, discover any additional nested instruction files that apply to those files (for example `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or tool-specific equivalents) and merge those constraints into the conventions from Step 2 before launching the reviewer agent.
 
@@ -121,10 +82,10 @@ If the file exists but contains no parseable entries in this format (e.g., it wa
 
 Launch **kramme:product-reviewer** via the Task tool with:
 
-- The resolved `BASE_BRANCH` from Step 3
+- The resolved `BASE_BRANCH`, `BASE_REF`, and `MERGE_BASE` from Step 3
 - Project conventions extracted from the instruction files gathered above and nearby product docs
 - All changed files (full list, no filtering)
-- Committed PR diff: `git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`
+- Committed PR diff: `git diff "$MERGE_BASE"...HEAD`
 - Staged local diff: `git diff --cached`
 - Unstaged local diff: `git diff`
 - Untracked local files list: `git ls-files --others --exclude-standard` (agent should treat these as new files and review full file content)

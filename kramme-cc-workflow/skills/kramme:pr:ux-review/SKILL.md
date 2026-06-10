@@ -23,7 +23,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 1. If argument starts with `http` or equals `auto` → store as `app_url` (enables visual mode for agents)
 2. If `--categories` flag → parse comma-separated list. Valid values: `a11y`, `ux`, `product`, `visual`, `all`
 3. If `--threshold N` → store as `custom_threshold` (0-100). Overrides each agent's default confidence threshold. Only findings with confidence >= N will be reported. Default thresholds if not specified: a11y = 90, ux/product/visual = 70.
-4. If `--base <branch>` → store as explicit base branch override
+4. If `--base <branch>` → store as `BASE_BRANCH_OVERRIDE`
 5. If `--parallel` (or deprecated bare `parallel` for backward compatibility) → launch agents in parallel instead of sequentially
 6. If `--team` → use Team Mode and remove it from the remaining arguments
 7. If `--inline` → set `INLINE_MODE=true` and do not write `UX_REVIEW_OVERVIEW.md`
@@ -43,58 +43,20 @@ Before selecting files or launching agents:
 
 ### Step 3: Resolve Base Branch and Identify UI-Relevant Changed Files
 
-Determine the correct base branch using a 3-tier strategy:
-
-**Tier 1: Explicit override** If `--base <branch>` was provided in Step 1, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
-
-**Tier 2: PR target branch detection**
+Use the shared plugin script to resolve the base branch and build the unified change scope (committed PR diff + staged + unstaged + untracked). It uses the same 3-tier strategy: explicit `--base`, PR target branch, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
 
 ```bash
-BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2> /dev/null)
+COLLECT_ARGS=(--strict)
+[ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
+
+RESOLVED=$(${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh "${COLLECT_ARGS[@]}") || {
+  echo "Base/diff collection failed; see the message above and stop." >&2
+  exit 1
+}
+eval "$RESOLVED"
 ```
 
-**Tier 3: Fallback**
-
-```bash
-BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@')
-[ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
-```
-
-Normalize before using `origin/$BASE_BRANCH` (handles values like `origin/develop` and `refs/heads/develop`):
-
-```bash
-BASE_BRANCH=${BASE_BRANCH#refs/heads/}
-BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
-BASE_BRANCH=${BASE_BRANCH#origin/}
-if [ -z "$BASE_BRANCH" ]; then
-  echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
-  exit 1
-fi
-if ! git check-ref-format --branch "$BASE_BRANCH" > /dev/null 2>&1; then
-  echo "Error: Base branch '$BASE_BRANCH' is not a valid branch name. Re-run with --base <branch>." >&2
-  exit 1
-fi
-if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2> /dev/null; then
-  echo "Error: Failed to fetch origin/$BASE_BRANCH. Check remote access and re-run with --base <branch>." >&2
-  exit 1
-fi
-if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null; then
-  echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <branch>." >&2
-  exit 1
-fi
-```
-
-Then identify changed files:
-
-```bash
-BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
-{
-  git diff --name-only "$BASE_REF"...HEAD  # committed PR diff
-  git diff --name-only --cached            # staged local changes
-  git diff --name-only                     # unstaged local changes
-  git ls-files --others --exclude-standard # untracked local files
-} | sed '/^$/d' | sort -u
-```
+The script exports `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES`. Use `CHANGED_FILES` for the file filtering below.
 
 Filter for UI-relevant files:
 
@@ -200,10 +162,10 @@ If `app_url` was provided:
 
 For each applicable agent, launch the reviewer using the platform's agent-invocation primitive with:
 
-- The resolved `BASE_BRANCH` from Step 3, so agents use the correct diff scope
+- The resolved `BASE_BRANCH`, `BASE_REF`, and `MERGE_BASE` from Step 3, so agents use the correct diff scope
 - Project conventions extracted from the project instruction files (explicitly mention stack requirements like Tailwind or Material Design 3 when present)
 - The list of UI-relevant changed files
-- Committed PR diff: `git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD` (using the base resolved in Step 3)
+- Committed PR diff: `git diff "$MERGE_BASE"...HEAD` (using the base resolved in Step 3)
 - Staged local diff: `git diff --cached`
 - Unstaged local diff: `git diff`
 - Untracked local files list: `git ls-files --others --exclude-standard` (agents should treat these as new files and review full file content)

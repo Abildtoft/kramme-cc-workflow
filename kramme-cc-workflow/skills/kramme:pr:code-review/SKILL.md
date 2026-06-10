@@ -21,7 +21,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 1. **Determine Review Scope**
    - Check git status to identify changed files
    - Parse arguments to see if user requested specific review aspects
-   - If `--base <branch>` flag → store as explicit base branch override
+   - If `--base <branch>` flag → store as `BASE_BRANCH_OVERRIDE`
    - If `--inline` flag → set `INLINE_MODE=true` and remove it from the aspect list
    - If `--team` flag → use Team Mode and remove it from the aspect list
    - If `--parallel` appears anywhere in `$ARGUMENTS` → set `LAUNCH_MODE=parallel` and remove it from the aspect list. Default is `LAUNCH_MODE=sequential`.
@@ -31,52 +31,22 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - If an explicit aspect list was provided and it does not include `all`, every emphasized dimension must also appear in that list. If any emphasized dimension was excluded by the user's aspect filter, stop with an error instead of re-ranking unrelated findings.
    - Default (no aspect tokens, or `all`): Run all applicable reviews **except** `simplify`. The simplifier is opt-in only -- it runs only when `simplify` is explicitly listed (see Step 6).
 
-2. **Resolve Base Branch**
+2. **Resolve Base Branch and Collect Review Diff**
 
-   Determine the correct base branch for diff computation using a 3-tier strategy:
-
-   **Tier 1: Explicit override** If `--base <branch>` was provided, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
-
-   **Tier 2: PR target branch detection**
+   Use the shared plugin script to resolve the base branch and build the unified change scope (committed PR diff + staged + unstaged + untracked). It uses the same 3-tier strategy: explicit `--base`, PR target branch, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
 
    ```bash
-   BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2> /dev/null)
+   COLLECT_ARGS=(--strict)
+   [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
+
+   RESOLVED=$(${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh "${COLLECT_ARGS[@]}") || {
+     echo "Base/diff collection failed; see the message above and stop." >&2
+     exit 1
+   }
+   eval "$RESOLVED"
    ```
 
-   If a value is obtained, use it.
-
-   **Tier 3: Fallback (existing behavior)** If no PR exists or the query fails:
-
-   ```bash
-   BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@')
-   [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
-   ```
-
-   Normalize before using `origin/$BASE_BRANCH` (handles values like `origin/develop` and `refs/heads/develop`):
-
-   ```bash
-   BASE_BRANCH=${BASE_BRANCH#refs/heads/}
-   BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
-   BASE_BRANCH=${BASE_BRANCH#origin/}
-   if [ -z "$BASE_BRANCH" ]; then
-     echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
-     exit 1
-   fi
-   if ! git check-ref-format --branch "$BASE_BRANCH" > /dev/null 2>&1; then
-     echo "Error: Base branch '$BASE_BRANCH' is not a valid branch name. Re-run with --base <branch>." >&2
-     exit 1
-   fi
-   if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2> /dev/null; then
-     echo "Error: Failed to fetch origin/$BASE_BRANCH. Check remote access and re-run with --base <branch>." >&2
-     exit 1
-   fi
-   if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null; then
-     echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <branch>." >&2
-     exit 1
-   fi
-   ```
-
-   Use `origin/$BASE_BRANCH` for all subsequent diff commands.
+   The script exports `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES`. Use `BASE_REF`/`MERGE_BASE` for committed diff commands and `BASE_BRANCH` for display or when invoking sibling review skills.
 
 3. **Available Review Aspects:**
    - **comments** - Analyze code comment accuracy and maintainability
@@ -92,19 +62,8 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - **all** - Run all applicable reviews except `simplify` (default)
 
 4. **Identify Changed Files and PR Description**
-   - Build a unified change scope (committed PR diff + staged + unstaged + untracked):
-
-   ```bash
-   BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
-   CHANGED_FILES=$({
-     git diff --name-only "$BASE_REF"...HEAD
-     git diff --name-only --cached
-     git diff --name-only
-     git ls-files --others --exclude-standard
-   } | sed '/^$/d' | sort -u)
-   ```
-
-   - If `CHANGED_FILES` is empty, stop with: `No changes detected against origin/$BASE_BRANCH. If this is wrong, re-run with --base <branch>.` Do not launch reviewers against an empty scope.
+   - Use the newline-delimited `CHANGED_FILES` exported by Step 2 as the unified change scope.
+   - If `CHANGED_FILES` is empty, stop with: `No changes detected against $BASE_REF. If this is wrong, re-run with --base <branch>.` Do not launch reviewers against an empty scope.
    - Identify file types and what reviews apply
    - Read the current PR metadata, if a PR exists for this branch:
 
@@ -156,8 +115,8 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 
 7. **Launch Review Agents**
 
-   Pass the resolved `BASE_BRANCH` from Step 2 and the PR context from Step 4 to all agents so they use the correct diff scope and understand the stated intent of the change. Instruct each agent to review the same unified scope:
-   - Committed diff: `git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`
+   Pass the resolved `BASE_BRANCH`, `BASE_REF`, `MERGE_BASE`, and PR context from Steps 2 and 4 to all agents so they use the correct diff scope and understand the stated intent of the change. Instruct each agent to review the same unified scope:
+   - Committed diff: `git diff "$MERGE_BASE"...HEAD`
    - Staged diff: `git diff --cached`
    - Unstaged diff: `git diff`
    - Untracked files: `git ls-files --others --exclude-standard`
