@@ -324,9 +324,9 @@ If any `move` disposition from Step 6 applies, confirm the move targets are in p
 
 ### 7.2 Remove files
 
-Use `trash` (recoverable). Fall back to `rm` if `trash` is not available. Always quote the spec filename: it can contain spaces or other shell-significant characters.
+Use `trash` (recoverable). Always quote the spec filename: it can contain spaces or other shell-significant characters.
 
-In `AUTO_MODE`, `trash` was already verified during Step 2.3 before documentation generation or spec moves.
+In `AUTO_MODE`, `trash` was already verified during Step 2.3 before documentation generation or spec moves. If it is missing here anyway, stop with `MISSING REQUIREMENT: trash is required for --auto close; rerun without --auto to confirm permanent deletion`.
 
 **Temporary files (always deleted):**
 
@@ -343,33 +343,24 @@ In `AUTO_MODE`, `trash` was already verified during Step 2.3 before documentatio
 - `siw/{spec_filename}` (only if `spec_disposition=remove`; skip when empty)
 - `siw/supporting-specs/` (only if `spec_disposition=remove`)
 
+Build `delete_targets` from the paths above that actually exist. Expand globs before deletion so unmatched globs are never reported as removed. If `delete_targets` is empty, skip the deletion command and continue to reporting. Delete directories by passing them to `trash` as normal path arguments; do not pass recursive flags to `trash`. Do not suppress deletion errors. Capture stderr/stdout so any failure can be reported.
+
 ```bash
 if command -v trash &> /dev/null; then
-  trash siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_*.md siw/DISCOVERY_BRIEF.md 2> /dev/null
-  trash -r siw/issues/ 2> /dev/null
-  trash -r siw/qa-intake/ 2> /dev/null
-  if [ "{strengthening_plan_disposition}" = "remove" ]; then
-    trash siw/SPEC_STRENGTHENING_PLAN.md 2> /dev/null
-  fi
-  if [ "{spec_disposition}" = "remove" ] && [ -n "{spec_filename}" ]; then
-    trash "siw/{spec_filename}" 2> /dev/null
-    trash -r siw/supporting-specs/ 2> /dev/null
-  fi
+  trash "${delete_targets[@]}"
 else
+  if [ "${AUTO_MODE:-false}" = "true" ]; then
+    echo "MISSING REQUIREMENT: trash is required for --auto close; rerun without --auto to confirm permanent deletion"
+    exit 1
+  fi
   echo "Warning: 'trash' command not found. Files will be permanently deleted."
   echo "Consider installing: brew install trash"
-  rm -f siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_*.md siw/DISCOVERY_BRIEF.md
-  rm -rf siw/issues/
-  rm -rf siw/qa-intake/
-  if [ "{strengthening_plan_disposition}" = "remove" ]; then
-    rm -f siw/SPEC_STRENGTHENING_PLAN.md
-  fi
-  if [ "{spec_disposition}" = "remove" ] && [ -n "{spec_filename}" ]; then
-    rm -f "siw/{spec_filename}"
-    rm -rf siw/supporting-specs/
-  fi
+  # Ask for explicit confirmation before running:
+  rm -rf "${delete_targets[@]}"
 fi
 ```
+
+After deletion, verify every target with `[ ! -e "$path" ]`. Record only verified-absent paths in `deleted_paths`. Record any surviving paths in `failed_delete_paths` with the captured error output; these must be reported as failures instead of "Removed".
 
 ---
 
@@ -378,10 +369,20 @@ fi
 After deletion, check if `siw/` is empty:
 
 ```bash
-# Remove .gitkeep files
-rm -f siw/.gitkeep siw/issues/.gitkeep siw/qa-intake/.gitkeep siw/supporting-specs/.gitkeep 2> /dev/null
+# Remove .gitkeep only from directories that were part of delete_targets.
+rm -f siw/issues/.gitkeep siw/qa-intake/.gitkeep 2> /dev/null
+if [ "{spec_disposition}" = "remove" ]; then
+  rm -f siw/supporting-specs/.gitkeep 2> /dev/null
+fi
+if [ -z "$(find siw -mindepth 1 ! -name .gitkeep -print -quit 2> /dev/null)" ]; then
+  rm -f siw/.gitkeep 2> /dev/null
+fi
 # Remove empty directories
-rmdir siw/issues siw/qa-intake siw/supporting-specs siw 2> /dev/null
+rmdir siw/issues siw/qa-intake 2> /dev/null
+if [ "{spec_disposition}" = "remove" ]; then
+  rmdir siw/supporting-specs 2> /dev/null
+fi
+rmdir siw 2> /dev/null
 ```
 
 If `siw/` still has files (spec kept or other files present), leave it alone.
@@ -395,7 +396,8 @@ Print a closing summary built from what actually happened. Include only lines th
 Sections to include:
 
 - **Documentation generated:** every file written under `{docs_path}/` (always at least `README.md` and `decisions.md`; `architecture.md` when generated).
-- **Removed:** each path actually removed in Step 7.2 (skip lines for files that never existed).
+- **Removed:** each path verified absent in Step 7.2 (skip lines for files that never existed).
+- **Failed to remove:** each target that still exists after Step 7.2, with the captured error. Omit the section if all targets were removed.
 - **Preserved:** each path that survived (`siw/{spec_filename}`, `siw/supporting-specs/`, `siw/SPEC_STRENGTHENING_PLAN.md`, `{docs_path}/spec/`). Omit the section if nothing was preserved.
 - **Recovery note:** if `trash` was used in Step 7.2, add: `Files moved to Trash and can be restored if needed.`
 - A final line: `The documentation in {docs_path}/ is self-contained and can be read without any SIW context.`

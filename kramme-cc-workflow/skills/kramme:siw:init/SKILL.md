@@ -109,7 +109,7 @@ options:
 
   If "Abort", stop this command without changing any files.
 
-- Delete existing temporary workflow files (`siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/issues/`, `siw/DISCOVERY_BRIEF.md`, and `siw/SPEC_STRENGTHENING_PLAN.md`), but preserve any permanent SIW spec files matched by the `permanent-spec find` from earlier in Phase 1 (`*SPEC*.md`, `*SPECIFICATION*.md`, `*PLAN*.md`, `*DESIGN*.md`, case-insensitive; the permanent-spec find already excludes `SPEC_STRENGTHENING_PLAN.md` and `DISCOVERY_BRIEF.md`). No further confirmation is required — consent was already collected by the Start-fresh / Abort question above.
+- Delete existing temporary workflow files (`siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/issues/`, `siw/DISCOVERY_BRIEF.md`, and `siw/SPEC_STRENGTHENING_PLAN.md`), but preserve any permanent SIW spec files matched by the `permanent-spec find` from earlier in Phase 1 (`*SPEC*.md`, `*SPECIFICATION*.md`, `*PLAN*.md`, `*DESIGN*.md`, case-insensitive; the permanent-spec find already excludes `SPEC_STRENGTHENING_PLAN.md` and `DISCOVERY_BRIEF.md`). Use `trash` without recursive flags when available so the deleted workflow files are recoverable from the system Trash. If `trash` is missing, warn that deletion will be permanent and ask for explicit confirmation before running `rm -rf`. After deletion, verify each target with `[ ! -e "$path" ]`; report any surviving path as a deletion failure instead of continuing as if Start fresh succeeded.
 - Continue to Phase 1.5
 
 **If no files exist:** Continue to Phase 1.5

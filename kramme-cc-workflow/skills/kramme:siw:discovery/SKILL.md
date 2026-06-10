@@ -406,7 +406,11 @@ If `apply_changes=true` or the user asks to apply:
    - Summary of discovery session
    - Key decisions and rationale
    - Remaining open questions
-6. After the target documents and optional log updates are complete, run `rm siw/SPEC_STRENGTHENING_PLAN.md` so future runs do not treat the applied plan as unresolved state
+6. After the target documents and optional log updates are complete, remove `siw/SPEC_STRENGTHENING_PLAN.md` using a trash-first, verified deletion:
+   - If `trash` is installed, run `trash siw/SPEC_STRENGTHENING_PLAN.md` without suppressing errors.
+   - If `trash` is missing, warn that the file will be permanently deleted and ask for explicit confirmation before running `rm -f siw/SPEC_STRENGTHENING_PLAN.md`.
+   - After deletion, verify `[ ! -e siw/SPEC_STRENGTHENING_PLAN.md ]`. Report a failure if the file still exists instead of claiming it was removed.
+   This prevents future runs from treating the applied plan as unresolved state while keeping deletion recoverable when possible.
 
 **Greenfield mode:**
 

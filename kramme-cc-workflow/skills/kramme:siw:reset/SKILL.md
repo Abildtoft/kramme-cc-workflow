@@ -35,6 +35,9 @@ Use this when you've completed a phase of work and want to start fresh with new 
 [Present migration candidates] -> User selects what to migrate
     |
     v
+[Confirm destructive reset] -> Abort? -> Stop before changes
+    |
+    v
 [Update spec file] -> Add selected content
     |
     v
@@ -174,11 +177,40 @@ options:
     description: "Add rejected alternatives for future reference"
 ```
 
-If the user selects nothing, treat that as "skip migration" and proceed straight to Step 5 — log content will be lost on the LOG.md reset.
+If the user selects nothing, treat that as "skip migration" and proceed to Step 4 — log content will be lost on the LOG.md reset if the user confirms.
 
 ---
 
-## Step 4: Update Specification File
+## Step 4: Confirm Destructive Reset
+
+Before editing the spec file or running Step 5, explicitly confirm the destructive reset. This confirmation is required even when there is no content to migrate, when the working directory is not a git repository, or when Step 1.1 found no dirty SIW paths.
+
+Summarize exactly what will be deleted or overwritten:
+
+- `siw/issues/ISSUE-*.md` issue files
+- `siw/OPEN_ISSUES_OVERVIEW.md`
+- `siw/LOG.md`
+- any content from `siw/LOG.md` that was not selected for migration
+
+Use AskUserQuestion:
+
+```yaml
+header: "Confirm Reset"
+question: "Resetting will delete issue files and overwrite siw/OPEN_ISSUES_OVERVIEW.md and siw/LOG.md. Continue?"
+options:
+  - label: "Proceed with reset"
+    description: "Delete issue files and reset the SIW tracking documents"
+  - label: "Abort"
+    description: "Keep the current SIW workflow files unchanged"
+```
+
+If "Abort", stop before editing the spec, deleting issue files, or overwriting workflow documents.
+
+---
+
+## Step 4.5: Update Specification File
+
+If the user selected no migration categories in Step 3, skip this step and continue to Step 5.
 
 For each selected migration category, update the spec file. Resolve `{date}` placeholders with today's date (`date +%Y-%m-%d`); derive `{date range}` from the earliest and latest entries in the LOG's Current Progress section.
 
@@ -247,16 +279,30 @@ Add to `## Design Decisions` or `## Rejected Approaches` section:
 ### 5.1 Delete Issue Files
 
 ```bash
-# Count issues first for reporting
-issue_count=$(ls siw/issues/ISSUE-*.md 2> /dev/null | wc -l)
+issue_paths=$(find siw/issues -maxdepth 1 -type f -name 'ISSUE-*.md' 2> /dev/null)
+issue_count=$(printf '%s\n' "$issue_paths" | sed '/^$/d' | wc -l)
 
-# Delete using trash if available
-if command -v trash &> /dev/null; then
-  trash siw/issues/ISSUE-*.md 2> /dev/null
-else
-  rm -f siw/issues/ISSUE-*.md
+if [ -n "$issue_paths" ]; then
+  if command -v trash &> /dev/null; then
+    while IFS= read -r path; do
+      trash "$path"
+    done << EOF
+$issue_paths
+EOF
+  else
+    echo "Warning: 'trash' command not found. Issue files will be permanently deleted."
+    echo "Install with brew install trash (macOS) or your distro's trash-cli package (Linux)."
+    # Ask for explicit confirmation after the permanent-deletion warning, then run:
+    while IFS= read -r path; do
+      rm -f "$path"
+    done << EOF
+$issue_paths
+EOF
+  fi
 fi
 ```
+
+Do not suppress deletion errors. Capture stderr/stdout. After deletion, verify every issue file with `[ ! -e "$path" ]`. Record only verified-absent files in `deleted_issue_paths`, and record survivors in `failed_delete_paths` with the captured error.
 
 ### 5.2 Reset siw/OPEN_ISSUES_OVERVIEW.md
 
@@ -349,9 +395,10 @@ Migrated to {spec_filename}:
 {Or: "No content migrated"}
 
 Cleared:
-- {issue_count} issue files deleted
+- {count(deleted_issue_paths)} issue files deleted
 - siw/OPEN_ISSUES_OVERVIEW.md reset to empty
 - siw/LOG.md reset to initial state
+{If any failed_delete_paths: "- Failed to delete: {each failed path with error}"}
 
 Preserved:
 - {spec_filename} (with migrated content)
@@ -371,8 +418,10 @@ If siw/LOG.md is empty or minimal:
 
 ```
 siw/LOG.md has no significant content to migrate.
-Proceeding with reset...
+Confirming reset before deleting or overwriting workflow files...
 ```
+
+Then run Step 4 before Step 5. Do not proceed directly to deletion from this edge case.
 
 ### Multiple spec files
 
