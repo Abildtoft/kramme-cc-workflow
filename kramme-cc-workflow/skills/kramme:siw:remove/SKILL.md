@@ -99,13 +99,12 @@ Determine the deletion set from the user's selection:
 - "Temporary files only" → `delete_set = found_temporary`
 - "All SIW files" → `delete_set = found_temporary + found_permanent`
 
-Prefer `trash` for recoverability. Use `trash -r` for directories.
+Prefer `trash` for recoverability. Build `delete_set` from paths that were discovered in Step 1 and selected in Step 3. Expand any globs before deletion so unmatched patterns are never reported as deleted. If `delete_set` is empty after filtering to existing paths, skip the deletion command and report that nothing matched the selection.
+
+Delete directories by passing them to `trash` as normal path arguments; do not pass recursive flags to `trash`. Do not suppress deletion errors. Capture stderr/stdout so any failure can be reported.
 
 ```bash
-# Files
-trash <each file path in delete_set> 2> /dev/null
-# Directories
-trash -r <each directory path in delete_set> 2> /dev/null
+trash <each path in delete_set>
 ```
 
 **If `trash` is not installed,** warn and fall back to `rm`:
@@ -116,17 +115,19 @@ Install with `brew install trash` (macOS) or your distro's `trash-cli` package (
 ```
 
 ```bash
-rm -f <each file path in delete_set>
-rm -rf <each directory path in delete_set>
+# Ask for explicit confirmation after the permanent-deletion warning, then run:
+rm -rf <each path in delete_set>
 ```
+
+After deletion, verify every target with `[ ! -e "$path" ]`. Record only verified-absent paths in `deleted_paths`. Record any surviving paths in `failed_delete_paths` with the captured error output; these must be reported as failures instead of "Deleted".
 
 ### Step 5: Clean Up Empty `siw/`
 
-After deletion, remove leftover `.gitkeep` placeholders and any directories that are now empty. `rmdir` only succeeds on empty directories, so it is safe to call unconditionally.
+After deletion, remove leftover `.gitkeep` placeholders only from directories included in the confirmed `delete_set`. Do not remove `.gitkeep` files from directories the user chose to keep. `rmdir` only succeeds on empty directories, so it is safe to call for directories in the confirmed delete set and their now-empty parents.
 
 ```bash
-rm -f siw/.gitkeep siw/issues/.gitkeep siw/qa-intake/.gitkeep siw/supporting-specs/.gitkeep 2> /dev/null
-rmdir siw/issues siw/qa-intake siw/supporting-specs siw 2> /dev/null
+rm -f <.gitkeep files inside directory paths in delete_set> 2> /dev/null
+rmdir <directory paths in delete_set> siw 2> /dev/null
 ```
 
 Record whether `siw/` itself was removed for the report.
@@ -139,7 +140,10 @@ Report only paths that were actually in `delete_set`:
 SIW Cleanup Complete
 
 Deleted:
-{each path in delete_set, one per line}
+{each path in deleted_paths, one per line}
+
+Failed to delete:
+{each path in failed_delete_paths with error, one per line; omit section if empty}
 
 {If using trash: Files moved to Trash and can be restored if needed.}
 {If siw/ was removed: siw/ directory removed.}
