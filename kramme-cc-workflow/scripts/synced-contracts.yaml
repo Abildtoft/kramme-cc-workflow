@@ -29,6 +29,33 @@
         "kramme-cc-workflow/skills/kramme:siw:issue-reindex/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:reset/SKILL.md"
       ]
+    },
+    {
+      "name": "pr-review-collect-review-diff-block",
+      "extract_regex": "(?s)(COLLECT_ARGS=\\(--strict\\).*?eval \"\\$RESOLVED\")",
+      "normalizer": "linewise",
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:ux-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:copy-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md"
+      ]
+    },
+    {
+      "name": "copy-review-redundancy-scope",
+      "extract_regex": "(Finds labels, descriptions, placeholders, tooltips, and instructions that duplicate what the UI already communicates through structure, icons, or interaction patterns\\.)",
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:code:copy-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:copy-review/SKILL.md"
+      ]
+    },
+    {
+      "name": "copy-review-ui-relevant-file-types",
+      "extract_regex": "(?s)(- \\*\\*Components\\*\\*: \\*\\.tsx, \\*\\.jsx, \\*\\.vue, \\*\\.svelte, \\*\\.component\\.ts, \\*\\.component\\.html.*?- \\*\\*i18n/translations\\*\\*: \\*\\.json files in locales/, i18n/, translations/ directories)",
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:code:copy-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:copy-review/SKILL.md"
+      ]
     }
   ],
   "ordered_heading_contracts": [
@@ -430,6 +457,32 @@
       "Verification"
     ],
     "allowlist": []
+  },
+  "hooks_json": {
+    "path": "kramme-cc-workflow/hooks/hooks.json",
+    "plugin_root": "kramme-cc-workflow",
+    "allowed_events": [
+      "PreToolUse",
+      "PostToolUse",
+      "UserPromptSubmit",
+      "SessionStart",
+      "Stop"
+    ],
+    "matcher_required_events": [
+      "PreToolUse",
+      "PostToolUse"
+    ],
+    "allowed_hook_types": [
+      "command"
+    ]
+  },
+  "readme_skill_sync": {
+    "readme": "README.md",
+    "skills_dir": "kramme-cc-workflow/skills",
+    "documented_skill_regex": "^\\|\\s*`/(?P<name>kramme:[A-Za-z0-9:_-]+)`\\s*\\|",
+    "allow_readme_only_skills": [
+      "kramme:skill:audit-sources"
+    ]
   },
   "mechanical": {
     "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",

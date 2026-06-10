@@ -112,6 +112,8 @@ Implementation is considered in progress when **either** signal is present. For 
 - Any row in `siw/OPEN_ISSUES_OVERVIEW.md` has status `IN PROGRESS` or `IN REVIEW`.
 - `siw/LOG.md` contains an entry dated within the last 7 days under `## Current Progress` or an active task list.
 
+**Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
+
 Do not infer in-progress from generic `git log` keywords or unrelated uncommitted changes — those produce false positives. The two signals above are authoritative.
 
 **If implementation appears in progress and `AUTO_MODE=true`:** do not ask. Stop with `MISSING REQUIREMENT: implementation appears to be in progress; rerun without --auto to decide whether to continue`.

@@ -2,11 +2,6 @@ name: Skill Lint
 
 on:
   pull_request:
-    paths:
-      - ".github/workflows/skill-lint.yml"
-      - "kramme-cc-workflow/scripts/lint-skill-contracts.py"
-      - "kramme-cc-workflow/scripts/synced-contracts.yaml"
-      - "kramme-cc-workflow/skills/**"
 
 jobs:
   skill-lint:
