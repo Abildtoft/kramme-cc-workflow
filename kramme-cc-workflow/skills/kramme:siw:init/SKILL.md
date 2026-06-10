@@ -52,12 +52,28 @@ Before Phase 1, parse `$ARGUMENTS` as shell-style arguments. If `--auto` is pres
 Check if any workflow files already exist:
 
 ```bash
-ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues/ 2> /dev/null
+find siw -maxdepth 1 \( \
+  -name "LOG.md" -o \
+  -name "OPEN_ISSUES_OVERVIEW.md" -o \
+  -name "AUDIT_IMPLEMENTATION_REPORT.md" -o \
+  -name "AUDIT_SPEC_REPORT.md" -o \
+  -name "PRODUCT_AUDIT.md" -o \
+  -name "SIW_*.md" -o \
+  -name "SPEC_STRENGTHENING_PLAN.md" -o \
+  -name "DISCOVERY_BRIEF.md" -o \
+  -name "issues" \
+\) -print 2> /dev/null
 # Permanent SIW spec detection (referenced as `permanent-spec find` elsewhere in this skill).
 # Case-insensitive so lowercase/mixed-case filenames like `feature_spec.md` are not missed.
+# Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): LOG.md, OPEN_ISSUES_OVERVIEW.md, DISCOVERY_BRIEF.md, SPEC_STRENGTHENING_PLAN.md, AUDIT_*.md, PRODUCT_AUDIT.md, SIW_*.md.
 find siw -maxdepth 1 -type f \( -iname "*SPEC*.md" -o -iname "*SPECIFICATION*.md" -o -iname "*PLAN*.md" -o -iname "*DESIGN*.md" \) \
-  ! -iname "SPEC_STRENGTHENING_PLAN.md" \
+  ! -iname "LOG.md" \
+  ! -iname "OPEN_ISSUES_OVERVIEW.md" \
   ! -iname "DISCOVERY_BRIEF.md" \
+  ! -iname "SPEC_STRENGTHENING_PLAN.md" \
+  ! -iname "AUDIT_*.md" \
+  ! -iname "PRODUCT_AUDIT.md" \
+  ! -iname "SIW_*.md" \
   2> /dev/null
 ```
 
@@ -109,7 +125,7 @@ options:
 
   If "Abort", stop this command without changing any files.
 
-- Delete existing temporary workflow files (`siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/issues/`, `siw/DISCOVERY_BRIEF.md`, and `siw/SPEC_STRENGTHENING_PLAN.md`), but preserve any permanent SIW spec files matched by the `permanent-spec find` from earlier in Phase 1 (`*SPEC*.md`, `*SPECIFICATION*.md`, `*PLAN*.md`, `*DESIGN*.md`, case-insensitive; the permanent-spec find already excludes `SPEC_STRENGTHENING_PLAN.md` and `DISCOVERY_BRIEF.md`). Use `trash` without recursive flags when available so the deleted workflow files are recoverable from the system Trash. If `trash` is missing, warn that deletion will be permanent and ask for explicit confirmation before running `rm -rf`. After deletion, verify each target with `[ ! -e "$path" ]`; report any surviving path as a deletion failure instead of continuing as if Start fresh succeeded.
+- Delete existing temporary workflow files (`siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/issues/`, `siw/DISCOVERY_BRIEF.md`, `siw/SPEC_STRENGTHENING_PLAN.md`, `siw/AUDIT_IMPLEMENTATION_REPORT.md`, `siw/AUDIT_SPEC_REPORT.md`, `siw/PRODUCT_AUDIT.md`, and `siw/SIW_*.md`), but preserve any permanent SIW spec files matched by the `permanent-spec find` from earlier in Phase 1 (`*SPEC*.md`, `*SPECIFICATION*.md`, `*PLAN*.md`, `*DESIGN*.md`, case-insensitive; the permanent-spec find already excludes the synced SIW spec-exclusion contract). Use `trash` without recursive flags when available so the deleted workflow files are recoverable from the system Trash. If `trash` is missing, warn that deletion will be permanent and ask for explicit confirmation before running `rm -rf`. After deletion, verify each target with `[ ! -e "$path" ]`; report any surviving path as a deletion failure instead of continuing as if Start fresh succeeded.
 - Continue to Phase 1.5
 
 **If no files exist:** Continue to Phase 1.5

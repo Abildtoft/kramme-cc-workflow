@@ -131,7 +131,7 @@ Goal: recommend a phase prefix (`P1-`, `P2-`, etc.) when the issue clearly fits 
 2. `siw/LOG.md` for phase completion notes (e.g., "Phase 1 complete", "Status: DONE").
 3. `siw/OPEN_ISSUES_OVERVIEW.md` for existing phase sections and active work.
 
-If multiple candidate spec files exist under `siw/`, ask the user which one is the main spec (exclude `siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, and `siw/DISCOVERY_BRIEF.md`).
+If multiple candidate spec files exist under `siw/`, ask the user which one is the main spec. Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): LOG.md, OPEN_ISSUES_OVERVIEW.md, DISCOVERY_BRIEF.md, SPEC_STRENGTHENING_PLAN.md, AUDIT_*.md, PRODUCT_AUDIT.md, SIW_*.md.
 
 **Heuristics:**
 
@@ -340,10 +340,16 @@ Multi-round interview using `AskUserQuestion`.
 
 - What priority level? (High/Medium/Low)
 - What size best fits this issue? (XS/S/M/L)
-  - XS = 1 file, single function
-  - S = 1-2 files, one contained change
-  - M = 3-5 files, one feature/spec slice
-  - L = 6-8 files, multi-component
+
+  | Size | Scope | Notes |
+  | --- | --- | --- |
+  | XS | 1 file, single function |  |
+  | S | 1–2 files, one endpoint |  |
+  | M | 3–5 files, one feature slice |  |
+  | L | 6–8 files, multi-component |  |
+  | **XL** | 9+ files | **"Too large — break it down further"** |
+
+  Every generated task must land at XS, S, M, or L. XL is never an acceptable final state — when a task sizes XL, decompose it further before Phase 5 user approval.
 - Are there related issues or tasks?
 - Does this block or depend on other work?
 - What parallelization category fits this work?

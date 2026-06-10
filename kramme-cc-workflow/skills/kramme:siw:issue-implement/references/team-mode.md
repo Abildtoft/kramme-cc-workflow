@@ -178,7 +178,7 @@ After all issues are implemented:
 
 ### Project Status
 
-- **Status:** In Progress | **Completed this session:** {issue-ids}
+- **Status:** IN PROGRESS | **Completed this session:** {issue-ids}
 
 ### Last Completed
 

@@ -14,7 +14,7 @@ The phrase "Run the Status Update Procedure" refers to the procedure declared at
    - Break requirements into discrete tasks
    - Identify dependencies
 
-2. **Set Status to "In Progress"** — Run the Status Update Procedure (all 3 files).
+2. **Set Status to "IN PROGRESS"** — Run the Status Update Procedure (all 3 files).
 
 3. **Begin Implementation**
    - Work through tasks one at a time
@@ -29,7 +29,7 @@ The phrase "Run the Status Update Procedure" refers to the procedure declared at
 
 1. **Create Todo List from Acceptance Criteria**
 
-2. **Set Status to "In Progress"** — Run the Status Update Procedure (all 3 files).
+2. **Set Status to "IN PROGRESS"** — Run the Status Update Procedure (all 3 files).
 
 3. **Provide Starting Points**
 
@@ -63,7 +63,7 @@ The phrase "Run the Status Update Procedure" refers to the procedure declared at
 2. **Create Comprehensive Plan**
    - Detailed task breakdown
 
-3. **Set Status to "In Progress"** — Run the Status Update Procedure (all 3 files).
+3. **Set Status to "IN PROGRESS"** — Run the Status Update Procedure (all 3 files).
 
 4. **Implement Iteratively**
    - Work through all tasks

@@ -35,7 +35,7 @@ Issue bodies must NOT include file paths, line numbers, or internal helper/class
 ```markdown
 # ISSUE-{prefix}-{number}: Fix {what's broken}
 
-**Status:** Ready | **Priority:** {priority} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Mode:** {AUTO | HITL — <reason>} | **Related:** {tasks if any}
+**Status:** READY | **Priority:** {priority} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Mode:** {AUTO | HITL — <reason>} | **Related:** {tasks if any}
 
 ## Problem
 
@@ -65,7 +65,7 @@ Issue bodies must NOT include file paths, line numbers, or internal helper/class
 ```markdown
 # ISSUE-{prefix}-{number}: {Title}
 
-**Status:** Ready | **Priority:** {priority} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Mode:** {AUTO | HITL — <reason>} | **Related:** {tasks if any}
+**Status:** READY | **Priority:** {priority} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Mode:** {AUTO | HITL — <reason>} | **Related:** {tasks if any}
 
 ## Problem
 

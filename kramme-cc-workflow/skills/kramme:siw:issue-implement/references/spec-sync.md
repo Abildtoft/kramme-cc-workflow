@@ -42,7 +42,7 @@ options:
 
 ## Identifying the Main Spec
 
-The main spec is the project-named uppercase markdown file at the top of `siw/` (chosen at `kramme:siw:init` time — common names include `FEATURE_SPECIFICATION.md`, `API_DESIGN.md`, `SYSTEM_DESIGN.md`, `PROJECT_PLAN.md`). Exclude the SIW tracking files (`LOG.md`, `OPEN_ISSUES_OVERVIEW.md`) and any temporary artifacts (`DISCOVERY_BRIEF.md`). If multiple candidates remain, ask the user which file is the main spec before editing it.
+The main spec is the project-named uppercase markdown file at the top of `siw/` (chosen at `kramme:siw:init` time — common names include `FEATURE_SPECIFICATION.md`, `API_DESIGN.md`, `SYSTEM_DESIGN.md`, `PROJECT_PLAN.md`). Exclude the synced SIW spec-exclusion contract before selecting a candidate: `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, and `SIW_*.md`. If multiple candidates remain, ask the user which file is the main spec before editing it.
 
 ## Updating Supporting Specs (10.4) — Worked Example
 

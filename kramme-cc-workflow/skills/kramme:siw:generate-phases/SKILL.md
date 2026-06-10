@@ -89,7 +89,8 @@ ls siw/OPEN_ISSUES_OVERVIEW.md 2> /dev/null
 **Otherwise:** Glob for candidate spec files (anything under `siw/` that is not a workflow artifact):
 
 ```bash
-ls siw/*.md 2> /dev/null | grep -v -E '(LOG\.md|OPEN_ISSUES_OVERVIEW\.md|DISCOVERY_BRIEF\.md|SPEC_STRENGTHENING_PLAN\.md|AUDIT_.*\.md)'
+# Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): LOG.md, OPEN_ISSUES_OVERVIEW.md, DISCOVERY_BRIEF.md, SPEC_STRENGTHENING_PLAN.md, AUDIT_*.md, PRODUCT_AUDIT.md, SIW_*.md.
+ls siw/*.md 2> /dev/null | grep -v -E '/(LOG|OPEN_ISSUES_OVERVIEW|DISCOVERY_BRIEF|SPEC_STRENGTHENING_PLAN|PRODUCT_AUDIT)\.md$|/AUDIT_.*\.md$|/SIW_.*\.md$'
 ```
 
 Also check for supporting specs:
@@ -106,7 +107,7 @@ ls siw/supporting-specs/*.md 2> /dev/null
 
 ### 1.3 Check Implementation Status
 
-Implementation is considered in progress when **either** signal is present:
+Implementation is considered in progress when **either** signal is present. For one release, normalize legacy title-case `In Progress` to `IN PROGRESS` before checking these signals:
 
 - Any row in `siw/OPEN_ISSUES_OVERVIEW.md` has status `IN PROGRESS` or `IN REVIEW`.
 - `siw/LOG.md` contains an entry dated within the last 7 days under `## Current Progress` or an active task list.
@@ -279,14 +280,56 @@ Record the chosen category per group (e.g., "Phase 1 tasks: Safe to parallelize 
 
 Launch a Task subagent to review the proposed breakdown:
 
-**Before the prompt, instruct the subagent to read `references/task-sizing.md` completely and use it as the source of truth for sizing, break-down triggers, slicing shape, and parallelization taxonomy.**
+**Before the prompt, include the synced Task Sizing Grammar below. It is copied from `references/task-sizing.md` so the subagent does not rely on a working-directory-relative read.**
 
 **Prompt:**
 
 ```
 Review this phase/task breakdown for a software project or adjacent documentation/process deliverable.
 
-Before evaluating the plan, read `references/task-sizing.md` completely and use it as the source of truth for task sizing, break-down triggers, slicing shape, and parallelization categories.
+Before evaluating the plan, use this Task Sizing Grammar as the source of truth for task sizing, break-down triggers, slicing shape, and parallelization categories.
+
+Task Sizing Grammar:
+
+## Task Sizing
+
+| Size | Scope | Notes |
+| --- | --- | --- |
+| XS | 1 file, single function |  |
+| S | 1–2 files, one endpoint |  |
+| M | 3–5 files, one feature slice |  |
+| L | 6–8 files, multi-component |  |
+| **XL** | 9+ files | **"Too large — break it down further"** |
+
+Every generated task must land at XS, S, M, or L. XL is never an acceptable final state — when a task sizes XL, decompose it further before Phase 5 user approval.
+
+## Break-down triggers
+
+A task must be broken down when any of the following are true:
+
+- Estimated >1 focused day of work for one engineer.
+- Can't describe acceptance criteria in ≤3 bullets.
+- Bundles multiple independently reviewable outcomes into one task.
+- Title contains "and" because it often signals multiple deliverables. Split unless both halves are inseparable.
+
+## Vertical vs horizontal slicing
+
+- For user-facing feature work:
+  - ❌ Horizontal: "Build entire DB schema → build all APIs → build all UI".
+  - ✅ Vertical: "User can create account (schema + API + UI, end-to-end)".
+- For documentation, architecture, refactors, or process work:
+  - ❌ Horizontal: "Document all data models → document all APIs → document all UI flows".
+  - ✅ End-to-end: "Document account creation end-to-end, including constraints, API contract, and UI behavior".
+
+Each task should leave behind the smallest reviewable end-to-end outcome for its work context. For feature work that usually means a vertical slice; for docs/refactors/process work it means one coherent deliverable that can be reviewed or demonstrated on its own. Horizontal layer-by-layer tasks still defer integration risk and should be avoided.
+
+## Parallelization taxonomy
+
+When Phase 3.4 annotates task groups, use these three categories:
+
+- **Safe to parallelize**: independent slices, tests, docs.
+- **Must be sequential**: migrations, shared-state changes.
+- **Needs coordination**: shared API contract → define contract first, then parallelize consumers.
 
 Work Context: {work_context.work_type}
 - Verify phase count and granularity match the work type
@@ -301,8 +344,8 @@ Evaluate:
 3. **Dependencies**: Are dependencies correctly identified? Any missing?
 4. **Completeness**: Are any tasks missing to achieve the phase goals?
 5. **Phase coherence**: Does each phase result in a demoable or reviewable outcome that matches the work context?
-6. **Sizing (hard gate)**: apply the XS/S/M/L grammar and the XL-is-not-acceptable rule from `references/task-sizing.md`. Flag any XL task explicitly.
-7. **Slicing shape**: apply the vertical-vs-horizontal rule from `references/task-sizing.md` for the declared Work Context. Flag layer-by-layer tasks and tasks that bundle multiple independent deliverables.
+6. **Sizing (hard gate)**: apply the XS/S/M/L grammar and the XL-is-not-acceptable rule from the Task Sizing Grammar above. Flag any XL task explicitly.
+7. **Slicing shape**: apply the vertical-vs-horizontal rule from the Task Sizing Grammar above for the declared Work Context. Flag layer-by-layer tasks and tasks that bundle multiple independent deliverables.
 8. **Parallelization**: Are parallelization categories (Safe / Must be sequential / Needs coordination) correctly assigned? Flag any safely-parallel work serialized unnecessarily, or any shared-state change marked parallel.
 9. **Mode (AUTO vs HITL)**: The default is `AUTO`; `HITL` is the exception. Does every task carry a Mode label? Does every HITL task include a one-line reason naming a concrete human-input requirement (unsettled architectural decision, design review, genuine judgment call, non-automatable manual testing, external-system access)? Flag any unlabeled task, any HITL-without-reason, and any task marked HITL whose reason is weak or speculative rather than a real blocking requirement (it should be AUTO). Also flag the reverse: a task that genuinely needs human input but is marked AUTO (e.g., requires manual UAT).
 
@@ -363,15 +406,15 @@ PLAN: Phase Plan for {Project Name}
 General Tasks ({N} tasks)
 ─────────────────────────
   Parallelization: {Safe to parallelize | Must be sequential | Needs coordination}
-  ISSUE-G-001: {Title} [Ready | Size: XS|S|M|L | AUTO]
-  ISSUE-G-002: {Title} [Ready | Size: XS|S|M|L | HITL — needs architectural decision]
+  ISSUE-G-001: {Title} [READY | Size: XS|S|M|L | AUTO]
+  ISSUE-G-002: {Title} [READY | Size: XS|S|M|L | HITL — needs architectural decision]
 
 Phase 1: {Goal} ({N} tasks)
 ───────────────────────────
   Parallelization: {Safe to parallelize after P1-001 | Must be sequential | Needs coordination}
-  ISSUE-P1-001: {Title} [Ready | Size: XS|S|M|L | AUTO]
+  ISSUE-P1-001: {Title} [READY | Size: XS|S|M|L | AUTO]
   ISSUE-P1-002: {Title} [Blocked by P1-001 | Size: XS|S|M|L | AUTO]
-  ISSUE-P1-003: {Title} [Ready | Size: XS|S|M|L | HITL — needs design review]
+  ISSUE-P1-003: {Title} [READY | Size: XS|S|M|L | HITL — needs design review]
 
   Outcome: {What can be demonstrated or reviewed}
   Tests: {What tests validate this phase}
@@ -380,7 +423,7 @@ Phase 2: {Goal} ({N} tasks)
 ───────────────────────────
   Parallelization: {Safe to parallelize | Must be sequential after Phase 1 | Needs coordination}
   ISSUE-P2-001: {Title} [Blocked by Phase 1 | Size: XS|S|M|L | HITL — manual UAT]
-  ISSUE-P2-002: {Title} [Ready | Size: XS|S|M|L | AUTO]
+  ISSUE-P2-002: {Title} [READY | Size: XS|S|M|L | AUTO]
 
   Outcome: {What can be demonstrated or reviewed}
   Tests: {What tests validate this phase}
@@ -428,7 +471,7 @@ For each issue, create `siw/issues/ISSUE-{prefix}-{number}-{title}.md`:
 ```markdown
 # ISSUE-{prefix}-{number}: {Title}
 
-**Status:** Ready | **Priority:** {High|Medium|Low} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination; include gating note if applicable} | **Mode:** {AUTO | HITL — <one-line reason>} | **Related:** {dependencies}
+**Status:** READY | **Priority:** {High|Medium|Low} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination; include gating note if applicable} | **Mode:** {AUTO | HITL — <one-line reason>} | **Related:** {dependencies}
 
 ## Problem
 
@@ -512,8 +555,8 @@ The `Mode` cell is `AUTO` or `HITL` (no inline reason in the table; the reason l
 
 | #     | Title   | Status | Size   | Priority   | Mode | Related |
 | ----- | ------- | ------ | ------ | ---------- | ---- | ------- |
-| G-001 | {Title} | Ready  | {Size} | {Priority} | AUTO |         |
-| G-002 | {Title} | Ready  | {Size} | {Priority} | HITL |         |
+| G-001 | {Title} | READY  | {Size} | {Priority} | AUTO |         |
+| G-002 | {Title} | READY  | {Size} | {Priority} | HITL |         |
 
 ## Phase 1: {Goal}
 
@@ -521,8 +564,8 @@ The `Mode` cell is `AUTO` or `HITL` (no inline reason in the table; the reason l
 
 | #      | Title   | Status | Size   | Priority | Mode | Related |
 | ------ | ------- | ------ | ------ | -------- | ---- | ------- |
-| P1-001 | {Title} | Ready  | {Size} | High     | AUTO |         |
-| P1-002 | {Title} | Ready  | {Size} | Medium   | AUTO | P1-001  |
+| P1-001 | {Title} | READY  | {Size} | High     | AUTO |         |
+| P1-002 | {Title} | READY  | {Size} | Medium   | AUTO | P1-001  |
 
 ## Phase 2: {Goal}
 
@@ -530,7 +573,7 @@ The `Mode` cell is `AUTO` or `HITL` (no inline reason in the table; the reason l
 
 | #      | Title   | Status | Size   | Priority | Mode | Related |
 | ------ | ------- | ------ | ------ | -------- | ---- | ------- |
-| P2-001 | {Title} | Ready  | {Size} | High     | HITL | Phase 1 |
+| P2-001 | {Title} | READY  | {Size} | High     | HITL | Phase 1 |
 
 **Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
 
@@ -544,9 +587,11 @@ Legacy compatibility example when appending to an older 5-column tracker:
 
 | #      | Title   | Status | Priority | Related |
 | ------ | ------- | ------ | -------- | ------- |
-| P1-001 | {Title} | Ready  | High     |         |
-| P1-002 | {Title} | Ready  | Medium   | P1-001  |
+| P1-001 | {Title} | READY  | High     |         |
+| P1-002 | {Title} | READY  | Medium   | P1-001  |
 ```
+
+When reading existing tracker rows in append mode, accept legacy title-case `Ready` and `In Progress` as `READY` and `IN PROGRESS` for one release. Emit uppercase statuses for all new or updated rows.
 
 ## Phase 7: Summary
 

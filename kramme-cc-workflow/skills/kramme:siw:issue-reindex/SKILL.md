@@ -126,6 +126,8 @@ For each row, extract:
 - Mode when present in the 7-column schema (`AUTO` or `HITL`)
 - Related tasks
 
+For one release, normalize legacy title-case `Ready` and `In Progress` to `READY` and `IN PROGRESS` before categorizing. Rebuilt overview rows must emit uppercase statuses.
+
 Categorize issues **by prefix group**:
 
 - **DONE issues per group:** Will be deleted

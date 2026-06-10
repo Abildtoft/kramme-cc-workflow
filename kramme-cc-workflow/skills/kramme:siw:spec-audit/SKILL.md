@@ -132,7 +132,8 @@ Auto-detect spec files from the `siw/` directory:
 
 2. Find spec files (exclude workflow files):
    - Use Glob to find `siw/*.md`
-   - Exclude: `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `SPEC_STRENGTHENING_PLAN.md`, `DISCOVERY_BRIEF.md`, any filename matching `AUDIT_.*\.md` or `SIW_.*\.md` (defensive patterns for current and future SIW workflow files).
+   - Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.
+   - Exclude that workflow-artifact set before treating any top-level `siw/*.md` file as a spec. When the filter excludes every candidate, report the excluded filenames and ask for an explicit spec path instead of silently proceeding.
    - **Coupling note for SIW skill authors:** Any new top-level workflow file added under `siw/` by sibling skills must either match one of the patterns above or be added to this list, or it will be silently audited as a spec.
 
 3. Find supporting specs:
@@ -148,6 +149,8 @@ Auto-detect spec files from the `siw/` directory:
 6. Store files as `spec_files`.
 
 ### 1.4 If No Spec Files Found
+
+If auto-detection found no spec files because every top-level `siw/*.md` candidate was excluded by the workflow-artifact filter, report the excluded filenames and ask the user for explicit spec path(s). Validate provided paths with the explicit-path flow from Step 1.2 and continue when valid. If the user provides no path, then emit the generic error below and abort.
 
 ```
 Error: No specification files found.

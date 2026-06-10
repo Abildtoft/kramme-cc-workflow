@@ -65,18 +65,18 @@ Decisions are numbered **sequentially across the entire project** (not per-phase
 
 **Last Updated:** YYYY-MM-DD HH:MM **Quick Summary:** [MUST be one line - e.g., "Implementing user tracking, 5/12 tasks done, working on API endpoint"]
 
-### 📍 Project Status
+### Project Status
 
-- **Status:** In Progress | **Current Phase:** Phase 3: Execution - Task 1.2 | **Overall Progress:** 3 of 12 tasks
+- **Status:** IN PROGRESS | **Current Phase:** Phase 3: Execution - Task 1.2 | **Overall Progress:** 3 of 12 tasks
 
-### ✅ Last Completed
+### Last Completed
 
 - **Task:** Task 1.1 - Add tracking properties
 - **What was done:** Added ActionNote/ActionByUserId properties with nullability
 - **Files:** `MyEntity.cs`, `MyEntityConfiguration.cs` | **Status:** Completed
 - **Notes:** Made nullable after investigation (Decision #5)
 
-### ⏭️ Next Steps
+### Next Steps
 
 1. Task 1.2 - Update PerformAction() signature (~30 min)
 2. Task 1.3 - Add validation (~20 min)
@@ -152,16 +152,16 @@ Decisions are numbered **sequentially across the entire project** (not per-phase
 
 **Last Updated:** 2025-11-05 16:45 **Quick Summary:** Implementing user action tracking on MyEntity, 5/12 tasks done, working on API endpoint.
 
-### 📍 Project Status
+### Project Status
 
-- **Status:** In Progress | **Phase:** Phase 3: Execution - Task 2.1 | **Progress:** 5 of 12 tasks
+- **Status:** IN PROGRESS | **Phase:** Phase 3: Execution - Task 2.1 | **Progress:** 5 of 12 tasks
 
-### ✅ Last Completed
+### Last Completed
 
 - **Task:** Task 1.3 - Add validation | **Files:** `MyEntity.cs`, `MyEntityValidator.cs`, `MyEntityTests.cs`
 - **Status:** Completed | **Notes:** Tests passing, ready for Task 2.1
 
-### ⏭️ Next Steps
+### Next Steps
 
 1. Task 2.1 - Create API endpoint (~45 min)
 2. Task 2.2 - Add endpoint tests (~30 min)

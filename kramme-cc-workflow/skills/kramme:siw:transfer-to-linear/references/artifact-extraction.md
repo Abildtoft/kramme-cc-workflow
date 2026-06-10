@@ -12,6 +12,8 @@ Build main-spec candidates from markdown files directly under the SIW directory,
 - `DISCOVERY_BRIEF.md`
 - `SPEC_STRENGTHENING_PLAN.md`
 - `AUDIT_*.md`
+- `PRODUCT_AUDIT.md`
+- `SIW_*.md`
 
 If exactly one candidate exists, use it. If multiple exist, prefer the file whose first `#` heading matches the project title in `LOG.md`; otherwise present the candidates and ask the user which one is the main spec.
 
@@ -82,7 +84,7 @@ For each issue file, extract:
 
 - SIW ID from the heading or filename, such as `G-001`, `P1-002`, or `ISSUE-G-001`.
 - Title from the first heading after the ID.
-- Status from the `**Status:**` metadata line. Normalize casing — the metadata line uses `Ready` while the tracker/legend uses `READY`; treat them as the same value (READY, IN PROGRESS, IN REVIEW, DONE).
+- Status from the `**Status:**` metadata line. Normalize casing for one release — legacy issue files may use `Ready` while the tracker/legend uses `READY`; treat them as the same value (READY, IN PROGRESS, IN REVIEW, DONE).
 - Priority, size, phase, parallelization, mode, and related values from the same metadata line when present.
 - Milestone assignment from the issue phase metadata or the overview section containing the issue. For `G-*` issues, set milestone assignment to empty regardless of section text.
 - Body sections: Problem, Context, Scope, Decision Boundaries, Acceptance Criteria, Edge Cases, Technical Notes, Resolution.
