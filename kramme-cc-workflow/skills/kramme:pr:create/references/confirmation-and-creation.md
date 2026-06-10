@@ -133,17 +133,30 @@ Action: Show the full description for copy/paste, then abort.
 
 ### 8.4 Create PR
 
-Emit the command below. Include `--draft` on the first line only when `DRAFT_MODE=true`; otherwise omit it entirely (do not emit an empty flag). The whole `gh pr create … EOF` block must run in a single Bash invocation so the heredoc resolves before the shell exits.
+Create the PR body through a temporary file. Do not pass generated Markdown through shell interpolation or a heredoc; body content can legally contain shell metacharacters or a literal `EOF` line.
+
+1. Create and capture temp file paths:
+
+   ```bash
+   PR_TITLE_FILE=$(mktemp "${TMPDIR:-/tmp}/pr-title.XXXXXX")
+   PR_BODY_FILE=$(mktemp "${TMPDIR:-/tmp}/pr-body.XXXXXX")
+   echo "$PR_TITLE_FILE"
+   echo "$PR_BODY_FILE"
+   ```
+
+2. Write `{title}` to the captured title path and `{description}` to the captured body path using the runtime's file-write capability. Do not use `cat <<EOF`, `printf "{description}"`, or any other shell-parsed form for generated Markdown.
+
+3. Emit the command below. Include `--draft` on the first line only when `DRAFT_MODE=true`; otherwise omit it entirely (do not emit an empty flag). Substitute the captured temp file paths for `{pr-title-file}` and `{pr-body-file}` and remove both files after the command finishes.
 
 ```bash
 gh pr create \
   --base {base-branch} \
   --assignee @me \
-  --title "{title}" \
-  --body "$(cat <<'EOF'
-{description}
-EOF
-)"
+  --title "$(cat "{pr-title-file}")" \
+  --body-file "{pr-body-file}"
+PR_CREATE_STATUS=$?
+rm -f "{pr-title-file}" "{pr-body-file}"
+exit "$PR_CREATE_STATUS"
 ```
 
 When `DRAFT_MODE=true`, add `--draft \` as the second line.
@@ -151,6 +164,8 @@ When `DRAFT_MODE=true`, add `--draft \` as the second line.
 ### 8.5 Handle PR Creation Failure
 
 If `gh pr create` fails (but the push in Step 8.3 succeeded):
+
+Before showing manual creation instructions, execute Step 9.0 from `references/state-and-rollback.md` so any excluded uncommitted changes are restored locally or explicitly reported for manual conflict resolution. Do not run Step 10 here: the branch was already pushed, and the failure output should preserve that manual-creation path.
 
 ```
 Warning: Failed to create [PR] automatically.
@@ -182,6 +197,7 @@ On successful creation, emit the message below. When `DRAFT_MODE=true`, substitu
 URL: {pr-url}
 Branch: {feature-branch} -> {base-branch}
 Status: Ready for review
+Uncommitted work: {none | committed and included before history rewrite | excluded from PR and restored locally | excluded from PR but restore needs manual conflict resolution}
 
 Commits included:
   - {commit 1 summary}
