@@ -292,7 +292,7 @@ This keeps IDs stable across re-runs so commits, SIW issues, and external refere
 
 **Only if `siw/OPEN_ISSUES_OVERVIEW.md` exists:**
 
-Read `siw/OPEN_ISSUES_OVERVIEW.md` and `siw/issues/*.md` to check if any product findings already have open issues. Mark these findings with a note: "Existing issue: {issue-id}".
+Read `siw/OPEN_ISSUES_OVERVIEW.md` and `siw/issues/*.md` to check if any product findings already have open issues. Mark these findings with a note: `Existing issue: {issue-id}`. Step 7.3 must skip only annotations that still resolve to an existing issue file instead of creating a duplicate issue.
 
 ---
 
@@ -388,8 +388,9 @@ Before creating any issues:
 
 For each selected finding:
 
-1. Determine next available `G-` issue number from `siw/issues/`.
-2. Create issue file `siw/issues/ISSUE-G-{NNN}-product-{slugified-title}.md`. Give it a status line carrying explicit `Size` (`XS|S|M|L`), `Parallelization` (`Safe to parallelize | Must be sequential | Needs coordination`), and `Mode` metadata so it matches the current tracker schema:
+1. Apply the standard handled-finding skip rule. Skip the finding and report the matched artifact if it carries an `Existing issue:` annotation that resolves to an existing `siw/issues/ISSUE-G-*.md` file, is marked `**Status:** [Auto-fixed]` or `**Status:** [Applied directly]`, or a file matching `siw/issues/ISSUE-G-*-{finding-id}-*.md` exists. Treat unresolved `Existing issue:` annotations as stale metadata: warn in the final summary, but do not skip the finding.
+2. Determine next available `G-` issue number from `siw/issues/`.
+3. Create issue file `siw/issues/ISSUE-G-{NNN}-product-{finding-id}-{slugified-title}.md`. Give it a status line carrying explicit `Size` (`XS|S|M|L`), `Parallelization` (`Safe to parallelize | Must be sequential | Needs coordination`), and `Mode` metadata so it matches the current tracker schema:
 
    ```markdown
    **Status:** READY | **Priority:** {Critical→High, Major→Medium, Minor→Low} | **Size:** {XS|S|M|L} | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Mode:** {AUTO | HITL — <reason>} | **Related:** Product Audit Report
@@ -397,10 +398,11 @@ For each selected finding:
 
    **Mode default is `AUTO`.** Set `HITL — <one-line reason>` only when resolving the finding requires a concrete human-input step: an unsettled product/architectural decision, design review, a judgment call, manual testing that can't be automated, or external-system access. When unclear, choose `AUTO`. (A finding's severity does not by itself make it HITL.)
 
-3. Update `siw/OPEN_ISSUES_OVERVIEW.md` with new issue rows.
+4. Update `siw/OPEN_ISSUES_OVERVIEW.md` with new issue rows.
    - For a brand-new modern section, use the 7-column modern schema including the `Mode` column (`# | Title | Status | Size | Priority | Mode | Related`); the `Mode` cell is `AUTO` or `HITL` (the reason lives in the issue body, not the table).
    - When a section already exists, match its column count exactly (legacy 5-col / pre-Mode 6-col / modern 7-col) and preserve it in place — do not migrate layouts or add a `Mode` column to a section that lacks one.
-4. Update `siw/LOG.md` Current Progress section.
+5. Annotate the source product audit report entry with `Existing issue: G-{NNN}` immediately after the issue is created. If the report cannot be edited, warn in the final summary and include the finding id plus created issue id.
+6. Update `siw/LOG.md` Current Progress section.
 
 ---
 
