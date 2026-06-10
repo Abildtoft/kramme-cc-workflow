@@ -192,7 +192,8 @@ options:
 
 ```bash
 # Determine base branch
-BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's|refs/remotes/origin/||') || BASE="main"
+BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's|refs/remotes/origin/||' || true)
+[ -n "$BASE" ] || BASE="main"
 
 # Fetch latest
 git fetch origin $BASE

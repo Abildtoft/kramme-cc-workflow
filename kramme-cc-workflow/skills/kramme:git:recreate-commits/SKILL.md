@@ -1,6 +1,7 @@
 ---
 name: kramme:git:recreate-commits
 description: Use when asked to recreate commits with narrative-quality history on the current branch.
+argument-hint: "[--auto|--granular] [--base <branch>] [--after <commit>] [--force-backup]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -17,13 +18,19 @@ This rewrites history and requires a force-push to sync any remote. It is user-t
 - `--granular` — Force atomic-level decomposition. Skips the granularity question. Use for very large PRs where 100+ commits are appropriate.
 - `--base <branch>` — Use `<branch>` as the base instead of auto-detecting. Without this flag, the skill tries to detect the base from an existing GitHub pull request, then from `origin/HEAD`, then from `origin/main` or `origin/master`.
 - `--after <commit>` — Only recreate commits after `<commit>`, keeping all earlier history intact. Accepts any valid git ref (SHA, short SHA, `HEAD~3`, etc.). The commit must exist and be an ancestor of `HEAD`. When set, the diff scope becomes `<commit>..HEAD` and the reset point becomes `<commit>` instead of the merge base.
+- `--force-backup` — Allow the resolution script to replace an existing `<branch>-recreate-backup` branch after you have inspected that backup and confirmed it is safe to move. Without this flag, an existing backup makes the script stop so retries cannot destroy the original recovery point.
 
 ## Steps
 
-1. **Validate and resolve the base** — run the resolution script (from the skill directory), passing through the skill's `--base`/`--after` values as `BASE_FLAG`/`AFTER_ARG`. It determines the base ref, validates every precondition, fast-forwards a matching local base branch to its remote, and creates a recovery backup of the current tip **before anything destructive happens**:
+1. **Validate and resolve the base** — resolve `SKILL_DIR` to the directory containing this `SKILL.md`, then run the resolution script from the user's current repository. Do not `cd` into the skill directory; the script intentionally inspects and mutates the current git repository. Pass through the skill's `--base`/`--after`/`--force-backup` values as `BASE_FLAG`/`AFTER_ARG`/`FORCE_BACKUP`. It determines the base ref, validates every precondition, fast-forwards a matching local base branch to its remote, and creates a recovery backup of the current tip **before anything destructive happens**:
 
    ```bash
-   RESOLVED=$(scripts/resolve-base.sh ${BASE_FLAG:+--base "$BASE_FLAG"} ${AFTER_ARG:+--after "$AFTER_ARG"}) || {
+   ARGS=()
+   [ -n "${BASE_FLAG:-}" ] && ARGS+=(--base "$BASE_FLAG")
+   [ -n "${AFTER_ARG:-}" ] && ARGS+=(--after "$AFTER_ARG")
+   [ "${FORCE_BACKUP:-0}" = "1" ] && ARGS+=(--force-backup)
+
+   RESOLVED=$("$SKILL_DIR/scripts/resolve-base.sh" "${ARGS[@]}") || {
      echo "Base resolution failed; see the message above and stop." >&2
      exit 1
    }
@@ -32,9 +39,9 @@ This rewrites history and requires a force-push to sync any remote. It is user-t
 
    On success the script prints shell-quoted assignments that `eval` loads into the environment: `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, `AFTER_COMMIT`, `RESET_POINT`, `ORIGINAL_TIP`, and `BACKUP_REF`. On any failure it writes the reason to stderr and exits non-zero — stop and surface that message; do not continue.
 
-   The script enforces these preconditions, aborting on the first that fails: clean working tree, `HEAD` on a feature branch (not detached, not the base branch), `BASE_REF` resolves to a commit, a merge base exists with `HEAD`, `--after` (if given) resolves and is an ancestor of `HEAD`, and a matching local base branch fast-forwards cleanly to its remote (it aborts rather than reconcile a diverged local base).
+   The script enforces these preconditions, aborting on the first that fails: it is being run from the user's repository instead of the repository that contains the skill script, clean working tree, `HEAD` on a feature branch (not detached, not the base branch), `BASE_REF` resolves to a commit, a merge base exists with `HEAD`, `--after` (if given) resolves and is an ancestor of `HEAD`, a matching local base branch fast-forwards cleanly to its remote (it aborts rather than reconcile a diverged local base), and the recovery backup branch does not already exist unless `--force-backup` was explicitly passed.
 
-   It records two values you rely on later: `ORIGINAL_TIP` (the pre-reset `HEAD`, the byte-identical target end state) and `BACKUP_REF` (a branch pointing at `ORIGINAL_TIP`). Recover the original branch at any time with `git reset --hard "$BACKUP_REF"`.
+   It records two values you rely on later: `ORIGINAL_TIP` (the pre-reset `HEAD`, the byte-identical target end state) and `BACKUP_REF` (a branch pointing at `ORIGINAL_TIP`). Recover the original branch at any time with `git reset --hard "$BACKUP_REF"`. If the backup already exists, inspect it before retrying; only pass `--force-backup` after confirming the previous recovery point can be replaced.
 
 2. **Analyze the diff**
    - Study the full diff from `$RESET_POINT..HEAD` (this is `$AFTER_COMMIT..HEAD` when `--after` was given, otherwise `$MERGE_BASE..HEAD`).
