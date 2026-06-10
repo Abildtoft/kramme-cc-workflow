@@ -4,6 +4,7 @@ description: Remove AI-generated code slop from a branch. Use when cleaning up A
 argument-hint: "[base-branch] [--auto]"
 disable-model-invocation: true
 user-invocable: true
+kramme-platforms: [claude-code]
 ---
 
 # Remove AI Code Slop

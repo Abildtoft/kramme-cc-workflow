@@ -79,14 +79,15 @@ If `AUTO_MODE=true`, do not ask for reproduction steps. Continue with static inv
 
 Otherwise:
 
+Ask the user, using a structured-question capability when the harness provides one. If not, ask the same question in plain text with a numbered list and wait for the response:
+
 ```
-AskUserQuestion
-header: Reproduction
-question: How can this bug be reproduced?
-options:
-  - Run specific test — I'll provide the test command
-  - Steps to follow — I'll describe the reproduction steps
-  - Cannot reproduce — the bug is intermittent or environment-specific
+Header: Reproduction
+Question: How can this bug be reproduced?
+Options:
+1. Run specific test — I'll provide the test command
+2. Steps to follow — I'll describe the reproduction steps
+3. Cannot reproduce — the bug is intermittent or environment-specific
 ```
 
 5. Log: `[REPRODUCE] {method} → {result: confirmed/unconfirmed}`
@@ -110,14 +111,15 @@ options:
 
 If `AUTO_MODE=true`, investigate all candidates and keep a short evidence note for each before narrowing. Otherwise:
 
+Ask the user, using a structured-question capability when the harness provides one. If not, ask the same question in plain text with a numbered list and wait for the response:
+
 ```
-AskUserQuestion
-header: Multiple Candidate Areas
-question: The bug could originate in several areas. Where should I focus first?
-options:
-  - "{area 1}: {evidence}"
-  - "{area 2}: {evidence}"
-  - "Investigate all candidates"
+Header: Multiple Candidate Areas
+Question: The bug could originate in several areas. Where should I focus first?
+Options:
+1. "{area 1}: {evidence}"
+2. "{area 2}: {evidence}"
+3. "Investigate all candidates"
 ```
 
 6. Log: `[ISOLATE] Scope narrowed to {files/functions}`
@@ -132,13 +134,14 @@ options:
 
 If `AUTO_MODE=true`, use git bisect only when both a known-good commit and an automated failing command are available without user input. Otherwise continue manual trace and note that bisect was skipped. If `AUTO_MODE` is false:
 
+Ask the user, using a structured-question capability when the harness provides one. If not, ask the same question in plain text with a numbered list and wait for the response:
+
 ```
-AskUserQuestion
-header: Regression Investigation
-question: This looks like it may be a regression. Use git bisect to find the introducing commit?
-options:
-  - Yes, run git bisect
-  - No, continue manual trace
+Header: Regression Investigation
+Question: This looks like it may be a regression. Use git bisect to find the introducing commit?
+Options:
+1. Yes, run git bisect
+2. No, continue manual trace
 ```
 
 3. **If bisecting:**
@@ -178,16 +181,15 @@ Store the completed log for inclusion in the final summary.
 
 3. If `AUTO_MODE=true` and confidence is High or Medium, choose **Implement fix + write regression test** only when reproduction was confirmed. If reproduction was unconfirmed, implement only when confidence is High and a deterministic regression test can be written from code evidence; otherwise skip directly to Step 8 with `Fix Applied: No`. When reproduction was confirmed but no local test framework or deterministic regression test path exists, implement the minimal fix and note `Regression Test: skipped - no deterministic local test path found`. If confidence is Low, report only.
 
-Otherwise ask the user:
+Otherwise ask the user, using a structured-question capability when the harness provides one. If not, ask the same question in plain text with a numbered list and wait for the response:
 
 ```
-AskUserQuestion
-header: Fix Strategy
-question: "Root cause identified with {confidence} confidence. How to proceed?"
-options:
-  - Implement fix + write regression test
-  - Implement fix only, skip test
-  - Report findings only, do not change code
+Header: Fix Strategy
+Question: Root cause identified with {confidence} confidence. How to proceed?
+Options:
+1. Implement fix + write regression test
+2. Implement fix only, skip test
+3. Report findings only, do not change code
 ```
 
 If **Report only**: skip to Step 8.
