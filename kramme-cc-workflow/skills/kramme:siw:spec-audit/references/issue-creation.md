@@ -17,7 +17,9 @@ Only create SIW issues if ALL of these conditions are met:
 
 If `AUTO_MODE=true`, skip this prompt and choose **Critical and major only** (this also includes Minor findings whose `Severity Note` preserves original Critical or Major severity).
 
-If `SKILL.md` already collected a Step 6 issue-creation choice, honor that choice and skip this prompt. Do not ask the user twice.
+If `SKILL.md` already collected a concrete Step 6 issue-selection choice (**Critical and major only**, **All findings**, **Let me select**, or **No issues**), honor that choice and skip this prompt. Do not ask the user twice.
+
+A prior **Create SIW issues** routing choice is not a concrete issue-selection choice. Continue to this prompt so the user can choose which findings become issues.
 
 Otherwise:
 

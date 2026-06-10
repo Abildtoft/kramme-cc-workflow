@@ -1,6 +1,6 @@
 ---
 name: kramme:siw:spec-audit
-description: Audit specification documents for quality — coherence, completeness, clarity, scope, actionability, testability, value proposition, and technical design. Catches spec issues before implementation begins. Supports inline report output with --inline and direct spec updates with --apply. Use --team for multi-agent cross-validation.
+description: Audit specification documents for quality — coherence, completeness, clarity, scope, actionability, testability, value proposition, and technical design. Catches spec issues before implementation begins. Supports inline report output with --inline; --apply runs the same auto-fix procedure as kramme:siw:spec-audit:auto-fix. Use --team for multi-agent cross-validation.
 argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--apply] [--model opus|sonnet|haiku] [--inline] [--team]"
 disable-model-invocation: true
 user-invocable: true
@@ -37,7 +37,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 [Step 5: Write Report] -> siw/AUDIT_SPEC_REPORT.md
     |
     v
-[Step 6: Optionally Apply Findings or Create SIW Issues] -> Direct spec edits or issue creation
+[Step 6: Optionally Apply Findings or Create SIW Issues] -> Canonical auto-fix or issue creation
     |
     v
 [Step 7: Report Summary] -> Stats and next steps
@@ -72,9 +72,9 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 
 `--apply` means:
 
-- write the audit report as usual, then update the reviewed spec files directly for findings that clear the direct-apply safety gates
+- write the audit report as usual, then run the same procedure as `/kramme:siw:spec-audit:auto-fix` against that report for findings that clear the canonical auto-fix gates
 - skip Step 6 issue creation entirely — do **not** create `G-*` issues, do **not** update `siw/OPEN_ISSUES_OVERVIEW.md`, and do **not** touch `siw/issues/`
-- if combined with `--auto`, also skip the direct-apply approval prompt
+- if combined with `--auto`, pass the same approval behavior to the auto-fix procedure
 
 `--inline` means:
 
@@ -314,7 +314,7 @@ Analyze the spec against each dimension below. For each finding, report:
 - **Do not return early.** Continue until you have checked every section against every assigned dimension.
 - **Quote the spec.** When flagging an issue, include the relevant text from the spec.
 - **Be specific in recommendations.** "Add more detail" is not enough. Say what detail is missing.
-- **Score provisional fix confidence on every finding using `references/fix-confidence-rubric.md`.** Sum the four 0-25 sub-scores, then apply the tier boundaries, the sub-score guardrail, and the safety caps documented in that file before writing the provisional `Fix Confidence`. Technical Design findings are typically lower confidence due to subjectivity.
+- **Score provisional fix confidence on every finding using `references/fix-confidence-rubric.md`.** Sum the four 0-25 sub-scores, then apply the tier boundaries, the sub-score guardrail, and the safety caps documented in that file before writing the provisional `Fix Confidence`.
 
 {Dimension-specific instructions inserted here — see Section 3.4}
 
@@ -475,10 +475,10 @@ If `ISSUE_CREATION_AVAILABLE=false`, ask the user which follow-up path to take:
 
 ```yaml
 header: "Resolve Spec Findings"
-question: "Found {N} actionable spec findings. Apply safe fixes now or keep the report only?"
+question: "Found {N} actionable spec findings. Auto-fix safe findings now or keep the report only?"
 options:
   - label: "Apply now"
-    description: "Update spec files directly for findings that clear the direct-apply safety gates"
+    description: "Run the canonical auto-fix procedure against the audit report"
   - label: "Keep report only"
     description: "Make no spec edits or issue files"
 ```
@@ -491,27 +491,21 @@ If `ISSUE_CREATION_AVAILABLE=true`, ask the user which follow-up path to take:
 
 ```yaml
 header: "Resolve Spec Findings"
-question: "Found {N} actionable spec findings. Apply safe fixes now or create SIW issues?"
+question: "Found {N} actionable spec findings. Auto-fix safe findings, create SIW issues, or keep the report only?"
 options:
   - label: "Apply now"
-    description: "Update spec files directly for findings that clear the direct-apply safety gates; create no G-* issues"
-  - label: "Critical and major only"
-    description: "Create {N} issues for visible Critical/Major findings plus Minor findings that preserve original Critical or Major severity"
-  - label: "All findings"
-    description: "Create {N} issues including minor ones"
-  - label: "Let me select"
-    description: "Choose which findings become issues"
-  - label: "No issues"
-    description: "Keep the report only"
+    description: "Run the canonical auto-fix procedure against the audit report; create no G-* issues"
+  - label: "Create SIW issues"
+    description: "Choose which findings become SIW issues"
+  - label: "Keep report only"
+    description: "Make no spec edits or issue files"
 ```
 
 If the user chooses **Apply now**, read and follow `references/apply-now.md`, then skip issue creation entirely.
 
-If the user chooses **No issues**, stop Step 6 after keeping the report only.
+If the user chooses **Keep report only**, stop Step 6 after keeping the report only.
 
-If the user chooses an issue-creation option, apply the "Issue-Eligible Findings" section of `references/post-processing-rules.md` (already loaded in Step 4.1) to choose which findings become issues. Pass the user's selection to `references/issue-creation.md` so it does not ask the same prompt again.
-
-For issue-creation options, read and follow `references/issue-creation.md` for the full SIW issue creation flow. That reference defines eligibility, the user prompt, SIW path preflight, issue-eligible finding selection, issue-file creation, tracker updates, and the `siw/LOG.md` Current Progress update.
+If the user chooses **Create SIW issues**, read and follow `references/issue-creation.md` starting at §6.1. Treat **Create SIW issues** as a routing choice only, not as the detailed issue-selection choice; §6.1 must still ask for or resolve **Critical and major only**, **All findings**, **Let me select**, or **No issues**.
 
 ---
 
