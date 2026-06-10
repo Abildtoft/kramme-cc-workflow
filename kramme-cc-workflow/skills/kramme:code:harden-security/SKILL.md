@@ -140,6 +140,8 @@ Any change that introduces a new auth method, IdP, or role model is `ASK FIRST` 
 
 The review-time `kramme:injection-reviewer` agent catches these at PR stage; this section prevents them in the first draft.
 
+Read `references/owasp-top-10.md` when a slice touches injection, XSS, parser, authentication, access-control, dependency, logging, or security-misconfiguration risk; it maps the OWASP categories to author-time prevention patterns.
+
 - **SQL / NoSQL** — parameterize every query. Never `"SELECT * FROM users WHERE id = " + userId`. If the ORM exposes a raw-interpolation escape hatch, that's a code smell; the one good reason is usually not present.
 - **Command execution** — don't. If you must, use the explicit-args form (`spawn(cmd, [arg1, arg2])`), never shell-interpreted strings, never `shell: true`.
 - **Templates and DOM** — `textContent` over `innerHTML`. Framework-specific: no `dangerouslySetInnerHTML`, `v-html`, `[innerHTML]` with user data.
@@ -185,7 +187,18 @@ Noisy on purpose — false positives are preferable to a real key landing in git
 - **Rotation** — documented cadence. A secret with no rotation path is already compromised — you just don't know when.
 - **Destruction** — zeroed in memory where the language allows; revoked upstream when no longer needed.
 
-## Common rationalizations
+## Integration with other skills
+
+- **Sibling authoring**: `kramme:code:api-design` owns where the trust boundary lives for a given surface — this skill owns what happens at that boundary. When adding a new endpoint, design the contract with `kramme:code:api-design`, then harden it here.
+- **Upstream discipline**: `kramme:code:incremental` — each security-relevant change follows the slice discipline. Splitting a "fix auth + add rate limit + rotate the secret" change into three slices keeps each reviewable.
+- **Downstream review agents** (Claude Code only):
+  - `kramme:auth-reviewer` — verifies auth/authz/CSRF/session checks this skill was supposed to put in place.
+  - `kramme:data-reviewer` — verifies crypto usage, info-disclosure, and DoS bounds.
+  - `kramme:injection-reviewer` — verifies injection/XSS defenses at input→sink paths.
+
+A finding from any of the three agents that traces back to code authored with this skill applied is a signal that a rule above was skipped or misapplied — close the loop by updating this skill.
+
+## Common Rationalizations
 
 Lies you will tell yourself to skip security discipline. Each one has a correct response.
 
@@ -202,18 +215,21 @@ Lies you will tell yourself to skip security discipline. Each one has a correct 
 | "I'll put the token in localStorage, it's easier." | Any XSS becomes account takeover. Use HttpOnly cookies. |
 | "`md5` is fine for this." | Probably not. State what "this" is out loud — if it's a security decision, use a modern hash. |
 
-## Integration with other skills
+## Red Flags
 
-- **Sibling authoring**: `kramme:code:api-design` owns where the trust boundary lives for a given surface — this skill owns what happens at that boundary. When adding a new endpoint, design the contract with `kramme:code:api-design`, then harden it here.
-- **Upstream discipline**: `kramme:code:incremental` — each security-relevant change follows the slice discipline. Splitting a "fix auth + add rate limit + rotate the secret" change into three slices keeps each reviewable.
-- **Downstream review agents** (Claude Code only):
-  - `kramme:auth-reviewer` — verifies auth/authz/CSRF/session checks this skill was supposed to put in place.
-  - `kramme:data-reviewer` — verifies crypto usage, info-disclosure, and DoS bounds.
-  - `kramme:injection-reviewer` — verifies injection/XSS defenses at input→sink paths.
+If any of these appear in your draft, stop and re-author:
 
-A finding from any of the three agents that traces back to code authored with this skill applied is a signal that a rule above was skipped or misapplied — close the loop by updating this skill.
+- A secret, API key, or connection string in the diff.
+- String-interpolated SQL, shell, or template input.
+- Password storage using `md5`, `sha1`, raw `sha256`, or plaintext.
+- Session token written to `localStorage`, `sessionStorage`, or any client-readable cookie.
+- Log line or error response containing a password, token, full auth-route request body, or a stack trace.
+- `Access-Control-Allow-Origin: *` on an endpoint that reads or mutates user data.
+- Auth endpoint with no rate limit.
+- CORS, CSP, or cookie attribute change introduced without an `ASK FIRST` surfacing.
+- A third-party API response flowing into business logic without a `safeParse` (or equivalent) at the boundary.
 
-## Exit checklist
+## Verification
 
 Before declaring a security-sensitive slice done, confirm every box. The extended version with per-item rationale and per-area grouping lives in `references/security-checklist.md`.
 
@@ -234,17 +250,3 @@ Before declaring a security-sensitive slice done, confirm every box. The extende
 - [ ] Would `kramme:auth-reviewer`, `kramme:data-reviewer`, or `kramme:injection-reviewer` flag anything? Run them against the diff before opening the PR.
 
 If any box is unchecked, the slice is not done. Fix the gap or split the slice.
-
-## Red flags in your own draft
-
-If any of these appear in your draft, stop and re-author:
-
-- A secret, API key, or connection string in the diff.
-- String-interpolated SQL, shell, or template input.
-- Password storage using `md5`, `sha1`, raw `sha256`, or plaintext.
-- Session token written to `localStorage`, `sessionStorage`, or any client-readable cookie.
-- Log line or error response containing a password, token, full auth-route request body, or a stack trace.
-- `Access-Control-Allow-Origin: *` on an endpoint that reads or mutates user data.
-- Auth endpoint with no rate limit.
-- CORS, CSP, or cookie attribute change introduced without an `ASK FIRST` surfacing.
-- A third-party API response flowing into business logic without a `safeParse` (or equivalent) at the boundary.

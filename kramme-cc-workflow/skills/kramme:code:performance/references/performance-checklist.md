@@ -1,6 +1,6 @@
 # Performance CI enforcement
 
-The canonical Exit checklist and starting budget defaults live in `SKILL.md`. This file holds the example config files for enforcing the budget in CI.
+The canonical Verification checklist and starting budget defaults live in `SKILL.md`. This file holds the example config files for enforcing the budget in CI.
 
 ## Bundle size — `bundlesize`
 

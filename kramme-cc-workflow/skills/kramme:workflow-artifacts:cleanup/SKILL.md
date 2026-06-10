@@ -50,6 +50,7 @@ Targets fall into two groups. Only targets that exist on disk are deleted or rep
 **Planning artifacts:**
 
 - `PR_PLAN_*.md`
+- `DEPRECATION_PLAN.md`
 
 **SIW tracking artifacts (in `siw/`):**
 
