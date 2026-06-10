@@ -30,7 +30,7 @@ Step 3  Branch handling (on base? Linear? upstream?)
     |
 Step 4  Changes detection ................. abort if nothing to ship
     |
-Step 5  Capture {original-branch} / {original-commit} / {stash-created}
+Step 5  Capture state + decide uncommitted-work handling
     |
 Step 6  Invoke kramme:git:recreate-commits  --> on failure, Step 10 rollback
     |
@@ -46,7 +46,7 @@ Step 9  Success output
 
 ## Workflow rule — do not stop mid-flow
 
-Steps 6 and 7 each invoke a sub-skill via the Skill tool. After a sub-skill returns, **continue to the next step in this skill**. Do not summarize and wait for user input between sub-skills. The only stop points are: a confirmation prompt that explicitly requires input, a `--auto`-suppressed prompt that hits a hard blocker, or a routed-to Step 10 abort.
+Steps 6 and 7 each invoke a sub-skill via the Skill tool. After a sub-skill returns, **continue to the next step in this skill**. Do not summarize and wait for user input between sub-skills. The only stop points are: the Step 5 uncommitted-work decision, a confirmation prompt that explicitly requires input, a `--auto`-suppressed prompt that hits a hard blocker, or a routed-to Step 10 abort.
 
 ## References
 
@@ -82,7 +82,7 @@ Without `--draft`, the PR is created ready for review.
 
 ## Step 1: Pre-Validation
 
-Read the pre-validation checks from `references/pre-validation-checks.md`. Run all four checks (git repo, merge conflicts, rebase/merge in progress, remote configuration) and abort on any failure.
+Read the pre-validation checks from `references/pre-validation-checks.md`. Run all checks (GitHub CLI install/authentication, git repo, merge conflicts, rebase/merge in progress, remote configuration) and abort on any failure.
 
 ---
 
@@ -129,7 +129,7 @@ Nothing to create a PR for. Make some changes first, then run /kramme:pr:create 
 
 ## Step 5: State Preservation
 
-Read `references/state-and-rollback.md` and execute Step 5 (capture `{original-branch}`, `{original-commit}`, `{stash-created}`; stash uncommitted changes if any). Keep these values for the rest of the workflow — they are agent-tracked state, not shell variables.
+Read `references/state-and-rollback.md` and execute Step 5 (capture `{original-branch}` / `{original-commit}`, decide whether uncommitted changes are included or excluded, and capture `{stash-created}` only if exclusion requires a temporary stash). Keep these values for the rest of the workflow — they are agent-tracked state, not shell variables.
 
 ---
 
@@ -194,7 +194,7 @@ What happened:
   {skill error message}
 
 Recovery:
-  1. Your original work is safe — rollback restored the branch and any stash
+  1. Your original work is safe — rollback restored the branch and any included or excluded uncommitted work
   2. Check git status to confirm
   3. Try again with /kramme:pr:create
 ```
@@ -207,7 +207,7 @@ Recovery:
 
 ### 7.1 Invoke the Skill
 
-Invoke `kramme:pr:generate-description` via the Skill tool. Pass `--auto` when `AUTO_MODE=true`, no arguments otherwise.
+Invoke `kramme:pr:generate-description` via the Skill tool. Always pass `--auto --no-update --base {base-branch}` because this orchestrator owns the review/edit gate and the sub-skill must neither prompt mid-flow nor mutate an existing PR before Step 8 confirmation.
 
 The skill will:
 
@@ -220,7 +220,14 @@ When it returns, continue to Step 8. See the "Workflow rule" near the top of thi
 
 ### 7.2 Capture the Title and Description
 
-Capture both the title and the full description for Step 8.
+Capture the generated title, the full description for Step 8, and any uppercase output markers from the generator.
+
+If the generator emits a blocking `MISSING REQUIREMENT:` marker, do **not** proceed to Step 8 or create the PR from the incomplete description. Blocking markers are the generator's database-migration rationale/rollback-plan gap and feature-flag rollout-context gap.
+
+- If `AUTO_MODE=true`, route to Step 10 rollback and surface the marker as the reason.
+- Otherwise, stop before Step 8 and ask the user for the missing context. After the user supplies it, revise `{description}` to include the context before previewing; if the user chooses not to supply it, route to Step 10 rollback.
+
+The non-blocking "no Linear ID" marker may be surfaced in the run output without blocking PR creation.
 
 ### 7.3 Handle Skill Failure
 
@@ -265,13 +272,13 @@ Read `references/confirmation-and-creation.md` and execute Step 8 from that file
 
 ## Step 9: Success Output
 
-Use Step 9 in `references/confirmation-and-creation.md` for the final success message. Preserve the draft-specific wording when `DRAFT_MODE=true`.
+Before printing the final success message, execute Step 9.0 from `references/state-and-rollback.md` so any excluded uncommitted changes are restored or explicitly reported. Then use Step 9 in `references/confirmation-and-creation.md` for the final success message. Preserve the draft-specific wording when `DRAFT_MODE=true`.
 
 ---
 
 ## Step 10: Abort and Rollback Handling
 
-Triggered by an "Abort" choice in Step 8 or a critical failure in Steps 6–8. Execute Step 10 from `references/state-and-rollback.md`, which performs the checkout/reset, restores any stash, and prints the rollback confirmation.
+Triggered by an "Abort" choice in Step 8 or a critical failure in Steps 6–8. Execute Step 10 from `references/state-and-rollback.md`, which performs the checkout/reset, restores included or excluded uncommitted work when needed, and prints the rollback confirmation.
 
 ---
 

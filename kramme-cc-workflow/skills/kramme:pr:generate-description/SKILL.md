@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:generate-description
 description: Write a structured PR title and body from git diff, commit log, and Linear context. Outputs markdown for copy-paste or, when explicitly invoked with --auto, updates an existing PR.
-argument-hint: "[--auto] [--visual] [--base <ref>]"
+argument-hint: "[--auto] [--no-update] [--visual] [--base <ref>]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -13,10 +13,15 @@ user-invocable: true
 Parse `$ARGUMENTS` for flags:
 
 - `--auto`: Preferred hands-off mode for explicit user invocation. Skip clarification prompts (Phase 2.5) and the save-to-file prompt (Phase 4). If a PR already exists for the current branch, update its title/body directly. If no PR exists yet, generate the title and description for copy-paste without pausing for user input.
+- `--no-update`: Output-only automation mode for orchestrators that need generated title/body content but must not mutate an existing PR. Valid with `--auto`; it skips prompts but keeps `DIRECT_UPDATE=false` even if `gh pr view` finds a PR.
 - `--visual`: Delegate demo evidence capture to `kramme:visual:demo-reel` and include the resulting Screenshots/Videos section when local or embeddable evidence is available. If capture cannot run, continue with the placeholder Screenshots/Videos section.
 - `--base <ref>`: Use `<ref>` as the base branch for diff computation instead of auto-detecting.
 
-If `--auto` is present, set `AUTO_MODE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments. If `--visual` is present, set `VISUAL_MODE=true` and remove the flag from remaining arguments. If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the flag and value from remaining arguments.
+If `--auto` is present, set `AUTO_MODE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments. If `--no-update` is present, set `OUTPUT_ONLY=true` and remove the flag from remaining arguments. If `--visual` is present, set `VISUAL_MODE=true` and remove the flag from remaining arguments. If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the flag and value from remaining arguments.
+
+### Sub-Skill Invocation Contract
+
+When another skill invokes this one as an orchestration step, it must pass `--auto` (and should pass `--base <ref>` when it already resolved the base branch). If the caller only needs generated title/body content and owns the eventual publish gate, it must also pass `--no-update`. In `--auto` mode, Phase 2.5 clarification prompts and the Phase 4 save-to-file prompt are skipped. Missing context is surfaced as `MISSING REQUIREMENT:` output instead of prompting mid-orchestration; blocking missing requirements disable direct PR updates and produce copy-paste output.
 
 ## Instructions
 
@@ -103,7 +108,7 @@ Read the guideline keyword glossary from `references/guideline-keywords.md`.
    - **NOTE**: Tier 2 ensures correct scope when the PR targets a non-default branch (e.g., a feature branch stacked on another PR)
    - **CAN** ask user if unclear or override needed
 
-3. **If `AUTO_MODE=true`**, check whether a PR exists for the current branch:
+3. **If `AUTO_MODE=true` and `OUTPUT_ONLY` is not true**, check whether a PR exists for the current branch:
 
    ```bash
    gh pr view --json number,url
@@ -115,6 +120,8 @@ Read the guideline keyword glossary from `references/guideline-keywords.md`.
    - Keep `NON_INTERACTIVE=true` if auto mode is enabled
    - Leave `DIRECT_UPDATE=false`
    - Present the generated title and body for copy-paste in Phase 4
+
+   **If `OUTPUT_ONLY=true`**, skip the PR existence check for direct-update purposes, leave `DIRECT_UPDATE=false`, and continue in generated-output mode. The caller is responsible for any later PR creation or update.
 
 ### Phase 2: Context Gathering
 
@@ -458,7 +465,7 @@ Read the platform-specific notes from `references/platform-notes.md`. Covers mag
 
 ## Notes
 
-- **NOTE**: This skill generates PR title/body content and does NOT create a new PR. When explicitly invoked with `--auto`, an existing PR is found, and no blocking missing requirement is present, it may update that PR's title/body through `gh pr edit`. When saving output, it may write local files under `.kramme-cc-workflow/pr-description/` and add `.kramme-cc-workflow/` to git's local exclude file if missing.
+- **NOTE**: This skill generates PR title/body content and does NOT create a new PR. When explicitly invoked with `--auto`, an existing PR is found, `--no-update` is absent, and no blocking missing requirement is present, it may update that PR's title/body through `gh pr edit`. When saving output, it may write local files under `.kramme-cc-workflow/pr-description/` and add `.kramme-cc-workflow/` to git's local exclude file if missing.
 - **NOTE**: After generation, review the description and adjust as needed before using it
 - **NOTE**: This skill is self-contained. If a downstream installation needs custom PR-title policy, adapt this skill locally instead of depending on repo-root instruction files.
 - **NOTE**: If Linear issue lookup fails, continue anyway and note the issue ID in the summary without detailed context

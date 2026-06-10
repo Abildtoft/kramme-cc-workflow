@@ -472,13 +472,21 @@ multiSelect: false
 
 **If "Skip":** Done.
 
-**If "Generate and update" or "Generate for review":**
+**If "Generate and update":**
+
+Run the sub-skill's direct-update path so it handles backup creation and `--body-file` application:
+
+```yaml
+skill: "kramme:pr:generate-description", args: "--auto --base {BASE_BRANCH}"
+```
+
+If no PR exists or the generated body has a blocking missing requirement, the sub-skill will fall back to copy-paste output instead of publishing.
+
+**If "Generate for review":**
 
 ```
 skill: "kramme:pr:generate-description", args: "--base {BASE_BRANCH}"
 ```
-
-If "Generate and update" was selected and a PR already exists, apply the generated description to the PR. If no PR exists, treat the selection as "Generate for review", emit the generated description inline, and note that no PR was found.
 
 **If skill errors out:** Report error but do not fail the overall assessment.
 
