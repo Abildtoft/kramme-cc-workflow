@@ -1,13 +1,15 @@
 ---
 name: kramme:code:refactor-pass
 description: "Perform a refactor pass focused on simplicity after recent changes. Use when the user asks for a refactor/cleanup pass, simplification, or dead-code removal on a narrow scope and expects build/tests to verify behavior. Applies Chesterton's Fence before removing code, rejects simplifications that require modifying tests, and works one slice at a time."
-disable-model-invocation: false
+disable-model-invocation: true
 user-invocable: true
 ---
 
 # Refactor Pass
 
 Perform a simplification pass on recent changes: remove dead code, straighten logic, drop excessive parameters, and verify with build/tests after each change. One simplification at a time, preserving behavior exactly.
+
+This skill edits files and commits each verified slice, so it runs only after explicit user invocation.
 
 ## When to use
 

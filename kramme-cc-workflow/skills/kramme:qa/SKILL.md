@@ -274,6 +274,8 @@ Prioritize test items by severity impact. Blockers first, then major, then minor
 
 ### Step 5: Execute Tests via Browse
 
+Before performing interaction checks in any mode, identify actions that could mutate shared data, submit forms, send external notifications, change billing, delete records, or otherwise be destructive/non-idempotent. Ask the user before executing those actions; if the runtime cannot ask, mark the interaction `blocked` and continue with read-only evidence.
+
 For each route in the test plan, invoke `/kramme:browse` via the Skill tool:
 
 ```

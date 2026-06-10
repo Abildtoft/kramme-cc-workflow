@@ -2,7 +2,7 @@
 name: kramme:siw:breakdown-findings
 description: Break down unresolved spec-audit or implementation-audit findings into executive summaries, resolution options, and a recommendation without creating SIW issues. Use it after spec-audit, spec-audit:auto-fix, or implementation-audit when you want decision-ready analysis before choosing a follow-up path. Not for product audits or direct issue creation.
 argument-hint: "[audit-report-path] [finding-id(s)]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 

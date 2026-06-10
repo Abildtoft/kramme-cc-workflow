@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:rebase
-description: Rebase current branch onto latest main/master, then force push. Use when your PR is behind the base branch.
+description: Rebase current branch onto latest main/master, auto-resolving bounded conflicts up to 10 rounds, then force push with --force-with-lease. Use when your PR is behind the base branch.
 argument-hint: "[--auto] [--base=<branch>]"
 disable-model-invocation: true
 user-invocable: true
@@ -21,7 +21,7 @@ A feature branch is a cost that compounds every day it stays open. It drifts fro
 - `--auto` - Skip the final force-push confirmation and push immediately with `--force-with-lease` after a successful rebase.
 - `--base=<branch>` - Override auto-detected base branch (e.g., `--base=develop`)
 
-`--auto` only bypasses the final confirmation prompt. It does not bypass conflict handling, red-flag stops, or the requirement to use `--force-with-lease`.
+`--auto` only bypasses the final confirmation prompt when the rebase completes without machine-resolved conflicts. It does not bypass conflict handling, red-flag stops, the auto-resolved-conflict verification/confirmation gate, or the requirement to use `--force-with-lease`.
 
 ## Output markers
 
@@ -113,7 +113,7 @@ git rebase --autostash origin/<base-branch>
 
    The 10-round cap exists because each round reapplies a single commit; beyond that, conflicts almost always indicate semantic drift the auto-resolver can't handle safely — escalate to the user instead of guessing further.
 
-   Track all conflicts and resolutions for the summary. Before resolving each file, re-read the **Red Flags** section below — if any apply (migrations, generated artifacts, files you don't fully understand, deletions that drop semantics), abort instead of resolving.
+   Track all conflicts and resolutions for the summary and set `CONFLICTS_AUTO_RESOLVED=true` once any conflict marker is resolved by the model. Before resolving each file, re-read the **Red Flags** section below — if any apply (migrations, generated artifacts, files you don't fully understand, deletions that drop semantics), abort instead of resolving.
 
    For each round:
 
@@ -172,7 +172,20 @@ Otherwise, present a summary so the user can review what was auto-resolved befor
 
 ### Step 5: Force Push
 
-If `AUTO_MODE=true`, skip the confirmation prompt and push immediately with `--force-with-lease`.
+If `AUTO_MODE=true` and `CONFLICTS_AUTO_RESOLVED` is not true, skip the confirmation prompt and push immediately with `--force-with-lease`.
+
+If `AUTO_MODE=true` and `CONFLICTS_AUTO_RESOLVED=true`, do not push until one of these gates is satisfied:
+
+1. Run the project's verification battery using the `kramme:verify:run` conventions. If verification is available and passes, push with `--force-with-lease`.
+2. If verification is unavailable, fails, or cannot cover the conflict resolution, present the full Conflict Summary and ask the user to confirm before pushing.
+
+If neither gate succeeds, stop before `git push` and report:
+
+- the full Conflict Summary
+- verification command(s) attempted, if any
+- why the branch was not pushed automatically
+
+Use the `UNVERIFIED` marker for every conflict resolution that was not covered by a passing verification run.
 
 Otherwise, before pushing, use `AskUserQuestion` to confirm:
 
@@ -227,7 +240,8 @@ Pause and hand back to the user if any of these are true:
 Before force-pushing, self-check:
 
 - [ ] If conflicts were resolved, the Conflict Summary lists every resolved file with file + conflict + resolution. (No conflicts → this item is N/A.)
+- [ ] If `AUTO_MODE=true` and conflicts were machine-resolved, passing verification or explicit user confirmation happened before `git push`.
 - [ ] The base branch was freshly fetched (Step 2 ran).
-- [ ] The user explicitly confirmed via `AskUserQuestion` (Step 5), or `AUTO_MODE=true`.
+- [ ] The user explicitly confirmed via `AskUserQuestion` (Step 5), or `AUTO_MODE=true` with every required auto-mode gate satisfied.
 - [ ] `--force-with-lease` (not `--force`) is the flag being used.
 - [ ] Post-push `git log --oneline origin/<base>..HEAD` shows the expected linear history.
