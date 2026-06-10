@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:code-review
 description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, performance, slop). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. Use --team for multi-agent cross-validation. Not for UX, visual, or accessibility review -- use kramme:pr:ux-review for those.
-argument-hint: "[aspects] [--emphasize <dim>...] [--base <branch>] [parallel] [--team] [--inline]"
+argument-hint: "[aspects] [--emphasize <dim>...] [--base <branch>] [--parallel] [parallel] [--team] [--inline]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -24,8 +24,9 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - If `--base <branch>` flag → store as explicit base branch override
    - If `--inline` flag → set `INLINE_MODE=true` and remove it from the aspect list
    - If `--team` flag → use Team Mode and remove it from the aspect list
-   - If the bare token `parallel` appears anywhere in `$ARGUMENTS` → set `LAUNCH_MODE=parallel` and remove it from the aspect list. Default is `LAUNCH_MODE=sequential`.
-   - If `--emphasize <dim>...` flag → store dimension names in `EMPHASIZED_DIMENSIONS` list and remove from aspect list. Consume all tokens after `--emphasize` until the next `--` flag, `parallel`, or end of arguments. Each token must be a valid aspect name (`comments`, `tests`, `errors`, `types`, `code`, `slop`, `security`, `performance`, `removal`, `simplify`). Reject `--emphasize all` (emphasizing everything is a no-op).
+   - If `--parallel` appears anywhere in `$ARGUMENTS` → set `LAUNCH_MODE=parallel` and remove it from the aspect list. Default is `LAUNCH_MODE=sequential`.
+   - If the bare token `parallel` appears anywhere in `$ARGUMENTS` → set `LAUNCH_MODE=parallel`, remove it from the aspect list, and treat it as a deprecated alias for `--parallel`.
+   - If `--emphasize <dim>...` flag → store dimension names in `EMPHASIZED_DIMENSIONS` list and remove from aspect list. Consume all tokens after `--emphasize` until the next `--` flag, `--parallel`, `parallel`, or end of arguments. Each token must be a valid aspect name (`comments`, `tests`, `errors`, `types`, `code`, `slop`, `security`, `performance`, `removal`, `simplify`). Reject `--emphasize all` (emphasizing everything is a no-op).
    - Validate remaining positional tokens as aspect names against the same list plus `all`. If any token is not a recognized aspect, stop with an error naming the unrecognized token and listing valid aspects. Do not silently fall through to "run all applicable reviews."
    - If an explicit aspect list was provided and it does not include `all`, every emphasized dimension must also appear in that list. If any emphasized dimension was excluded by the user's aspect filter, stop with an error instead of re-ranking unrelated findings.
    - Default (no aspect tokens, or `all`): Run all applicable reviews **except** `simplify`. The simplifier is opt-in only -- it runs only when `simplify` is explicitly listed (see Step 6).
@@ -179,7 +180,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - **Finding ID:** leave blank for raw reviewer output; the aggregator assigns stable `CR-001`, `CR-002`, ... IDs after dedupe
    - **Severity:** Critical, Important, Suggestion, or FYI using the prefix grammar in Step 11
    - **Location:** concrete `path/to/file:line`, `review-scope`, or `PR description`
-   - **Confidence:** `high`, `medium`, or `low`
+   - **Confidence:** `{0-100}`. During the transition, if a reviewer returns `high`, `medium`, or `low`, map it before aggregation as `high=90`, `medium=60`, `low=30`.
    - **Action class:** `gated_auto`, `manual`, or `advisory` from `references/review-discipline.md`; Critical/Important findings may use only `gated_auto` or `manual`, while Suggestions/FYI use `advisory`
    - **Owner:** resolver, author, maintainer, reviewer, or unknown
    - **Evidence:** concrete location, trace, reproduction, failing expectation, or reason the finding is marked `UNVERIFIED`
@@ -187,7 +188,9 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 
    Launch the agents resolved in Step 6 using `LAUNCH_MODE` from Step 1:
    - `LAUNCH_MODE=sequential` (default): launch one agent, wait for its report, then launch the next. Use this for interactive review where each report should be readable before the next runs.
-   - `LAUNCH_MODE=parallel`: launch all applicable agents simultaneously and collect results together. Use this when the user passed the `parallel` keyword.
+   - `LAUNCH_MODE=parallel`: launch all applicable agents simultaneously and collect results together. Use this when the user passed `--parallel` or the deprecated bare `parallel` alias.
+
+   **Agent failure handling.** If a selected reviewer agent is unavailable, times out, or returns output that cannot be parsed as findings, record the failed agent name, review dimension, and what was attempted. Continue only if at least one selected reviewer succeeded, and include a degraded-coverage banner in the final report: `Coverage degraded: <agent names> failed; findings below exclude <dimensions>.` If all selected reviewers fail, or if the relevance validator fails, stop without writing `REVIEW_OVERVIEW.md`. Do not fabricate findings or present a partial review as complete. If the slop meta-review fails after primary reviewers succeeded, continue with a degraded-coverage banner that names the failed meta-review and notes that slop warnings may be incomplete.
 
 8. **Validate Relevance**
 
@@ -210,11 +213,11 @@ If `REVIEW_OVERVIEW.md` was found in Step 5:
 
 - Cross-reference the full validated finding set against previously addressed findings
 - **Only filter** if the finding is essentially the same issue:
-  - For file-scoped findings: same file
-  - For file-scoped findings: similar line number (within ~10 lines, accounting for code shifts)
+  - Same file
+  - Same enclosing function, component, or block (do not rely on raw line distance; refactors and formatters shift line numbers)
+  - Same underlying issue (semantic match on root cause)
   - For `review-scope` findings: both findings use location `review-scope`
   - For PR description findings: both findings use location `PR description`
-  - Same underlying issue (semantic match on root cause)
 - **Do NOT filter** (keep as active finding) if:
   - The issue description is substantively different (different root cause)
   - The severity escalated (was suggestion, now critical)
@@ -231,7 +234,7 @@ After validation, slop meta-review, and previous-response filtering, dedupe and 
 - Keep the highest severity across merged duplicates, combine evidence, and preserve all source agents.
 - Promote confidence only when independent reviewers identify the same issue with the same location/root cause. Two weak findings about similar symptoms are not enough.
 - Do not merge contradictory findings. Record contradictions as open questions with action class `manual`; if the contradiction blocks approval, place it in Critical or Important based on impact.
-- Findings labeled `UNVERIFIED` can be retained, but they must keep `low` or `medium` confidence and use `manual` or `advisory` unless the concrete risk is separately proven.
+- Findings labeled `UNVERIFIED` can be retained, but they must keep confidence below 60 and use `manual` or `advisory` unless the concrete risk is separately proven.
 - Drop or separate findings that only share a broad theme but require different fixes.
 
 After validation, slop meta-review, and previous-response filtering, apply emphasis adjustments if `EMPHASIZED_DIMENSIONS` is non-empty. Only use findings from agents that actually ran in Step 7 when deciding what is emphasized vs non-emphasized.
@@ -337,6 +340,9 @@ Before posting (whether to `REVIEW_OVERVIEW.md` or inline), run the pre-posting 
 
 ```
 /kramme:pr:code-review all parallel
+# Deprecated alias for --parallel
+
+/kramme:pr:code-review all --parallel
 # LAUNCH_MODE=parallel; spawns all applicable agents simultaneously
 ```
 

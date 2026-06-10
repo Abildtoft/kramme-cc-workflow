@@ -62,6 +62,7 @@ If no review content was provided in Step 0:
 - `REVIEW_OVERVIEW.md` (from `/kramme:pr:code-review`)
 - `UX_REVIEW_OVERVIEW.md` (from `/kramme:pr:ux-review`)
 - `PRODUCT_REVIEW_OVERVIEW.md` (from `/kramme:pr:product-review`)
+- `COPY_REVIEW_OVERVIEW.md` (from `/kramme:pr:copy-review`)
 
 When parsing these files, accept the structured `- Location:` field, `**Location:**`, and legacy `**File:**` labels.
 
@@ -72,7 +73,7 @@ When parsing these files, accept the structured `- Location:` field, `**Location
 
 **By source mode:**
 
-1. `REVIEW_SOURCE=local` — read `REVIEW_OVERVIEW.md` only. If missing, ask the user to provide review content, switch to `--source online`, or run `/kramme:pr:code-review` first.
+1. `REVIEW_SOURCE=local` — read local review files from the list above. If exactly one exists, use it. If multiple exist, ask which one to resolve. If none exist, ask the user to provide review content, switch to `--source online`, or run one of the PR review producers first.
 2. `REVIEW_SOURCE=online` — fetch from GitHub.
 3. `REVIEW_SOURCE=auto` — try local files first (if multiple exist, ask which to resolve). If none, scan chat for review content or a PR URL. If still nothing, fetch from GitHub.
 
@@ -87,6 +88,7 @@ For local review files that include the structured `/kramme:pr:code-review` find
 - `Action class: advisory` is optional. Do not implement it from local auto-discovery unless the user explicitly asks to resolve suggestions or names that finding.
 - `review-scope`, `PR description`, and other non-file locations are process-level findings. Defer them with a concrete manual recommendation.
 - Legacy local findings without an action class keep the previous location/severity behavior, but do not infer `gated_auto` from a file location when an action class is present.
+- For `UX_REVIEW_OVERVIEW.md`, accept legacy per-agent finding IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) from older UX audit reports as source identifiers during the transition to artifact-scoped `UX-NNN` IDs.
 
 ### Step 2: Evaluate findings
 
@@ -263,20 +265,34 @@ Each commit should be self-contained and pass linting/formatting on its own. If 
 - **Reply behavior**:
   - `REVIEW_SOURCE=local` or `ANSWER_AND_RESOLVE` unset: do not post replies or resolve threads on GitHub.
   - `ANSWER_AND_RESOLVE=true` on an external review: print `Posting N replies and resolving M threads on PR #X` before any `gh` write so the user can interrupt. Then post a reply for each addressed comment and resolve those threads. For disagreements or out-of-scope findings, post a rationale reply but do not resolve the thread.
-- **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `UX_REVIEW_OVERVIEW.md` or `PRODUCT_REVIEW_OVERVIEW.md`, update that file in place. If the source was `REVIEW_OVERVIEW.md` or an external/chat review, write to `REVIEW_OVERVIEW.md`.
+- **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, or `COPY_REVIEW_OVERVIEW.md`, update that file in place. If the source was `REVIEW_OVERVIEW.md` or an external/chat review, write to `REVIEW_OVERVIEW.md`.
 - **Restore the checkpoint** — If a stash was created in Step 2.5, apply and drop the exact recorded stash now so the user's pre-existing uncommitted work is restored:
 
   ```bash
   . "$CHECKPOINT_FILE"
+  CHECKPOINT_RESTORE_STATUS=not-needed
   if [ -n "$CHECKPOINT_STASH_SHA" ]; then
     CHECKPOINT_STASH_REF=$(git stash list --format='%gd %H' | awk -v sha="$CHECKPOINT_STASH_SHA" '$2 == sha { print $1; exit }')
     if git stash apply --index "$CHECKPOINT_STASH_SHA"; then
       [ -n "$CHECKPOINT_STASH_REF" ] && git stash drop "$CHECKPOINT_STASH_REF"
+      CHECKPOINT_RESTORE_STATUS=restored
+    else
+      CHECKPOINT_RESTORE_STATUS=conflicted
     fi
   fi
   ```
 
   If `git stash apply` reports conflicts, leave the stash in place, keep `CHECKPOINT_FILE`, and tell the user to resolve manually with `git stash apply --index "$CHECKPOINT_STASH_SHA"`. After conflicts are resolved, re-resolve the matching stash ref with `git stash list --format='%gd %H'` and drop that ref.
+
+- **Clean up the consumed checkpoint** — After validation, summary writing, and stash restoration have completed successfully, delete the checkpoint created for this run:
+
+  ```bash
+  if [ "${CHECKPOINT_RESTORE_STATUS:-not-needed}" != "conflicted" ]; then
+    [ -n "${CHECKPOINT_FILE:-}" ] && rm -f "$CHECKPOINT_FILE"
+  fi
+  ```
+
+  Keep the checkpoint only when validation failed, rollback is still being considered, or stash restoration ended in conflicts.
 
 ## Guidelines
 
@@ -305,6 +321,7 @@ Write resolutions to the appropriate file in the project root:
 
 - If the source review was `UX_REVIEW_OVERVIEW.md` → update `UX_REVIEW_OVERVIEW.md` in place
 - If the source review was `PRODUCT_REVIEW_OVERVIEW.md` → update `PRODUCT_REVIEW_OVERVIEW.md` in place
+- If the source review was `COPY_REVIEW_OVERVIEW.md` → update `COPY_REVIEW_OVERVIEW.md` in place
 - Otherwise → create or update `REVIEW_OVERVIEW.md`
 
 Updates are **in place**: for each addressed finding, replace its `Action taken:` (and any other resolution fields) inside the existing entry. Findings present in the source but not addressed in this run (severity-filtered, out-of-scope) stay verbatim — never delete entries. If the source did not exist (review came from chat or `gh`), create a fresh `REVIEW_OVERVIEW.md` containing every processed finding.

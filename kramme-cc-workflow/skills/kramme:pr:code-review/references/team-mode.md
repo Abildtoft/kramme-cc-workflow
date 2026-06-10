@@ -134,6 +134,7 @@ While teammates work:
 - Monitor task progress via TaskList
 - Relay any questions teammates have about the codebase or PR context
 - If a teammate gets stuck, provide additional context or redirect
+- If a selected primary reviewer teammate is unavailable, times out, or returns output that cannot be parsed as findings, record the teammate name, review dimension, and what was attempted. Continue only if at least one primary reviewer succeeded, and include the standard `## Coverage Status` degraded-coverage banner in the final report. If all primary reviewers fail, or if the relevance validator fails, stop without writing `REVIEW_OVERVIEW.md`. If the slop meta-review fails after primary reviewers succeeded, continue with degraded coverage and note that slop warnings may be incomplete. Do not fabricate findings or present a partial team review as complete.
 
 ### Step 5: Collect and Aggregate Results
 

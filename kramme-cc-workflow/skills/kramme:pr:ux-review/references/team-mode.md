@@ -83,6 +83,7 @@ While teammates work:
 - Monitor task progress via the platform's task-listing primitive
 - Relay any questions teammates have about the codebase or PR context
 - If a teammate gets stuck, provide additional context or redirect
+- If a selected reviewer teammate is unavailable, times out, or returns output that cannot be parsed as findings, record the teammate name, category, and what was attempted. Continue only if at least one selected reviewer succeeded, and include the `## Coverage Status` degraded-coverage banner in the final report. If all selected reviewers fail, or if the relevance validator fails, stop without writing `UX_REVIEW_OVERVIEW.md`. Do not fabricate findings or present a partial team audit as complete.
 
 ### Step 5: Collect and Aggregate Results
 
@@ -114,13 +115,17 @@ Otherwise, write the aggregated audit to `UX_REVIEW_OVERVIEW.md` using the same 
 - X findings filtered (pre-existing or out-of-scope)
 - X findings filtered (previously addressed)
 
+## Coverage Status (omit when complete)
+
+Coverage degraded: {agent names} failed; findings below exclude {categories}.
+
 ## Critical UX Issues (X found)
 
-### {PREFIX}-NNN: {Brief title}
+### UX-NNN: {Brief title}
 
 **Agent:** {kramme:ux-reviewer | kramme:product-reviewer | kramme:visual-reviewer | kramme:a11y-auditor} **Category:** {specific category within agent's domain} **File:** `path/to/file.tsx:42` **Confidence:** {0-100} **User Impact:** {High | Medium | Low}
 
-`{PREFIX}` is the agent's short code: `UX`, `PROD`, `VIS`, `A11Y`. Numbering is sequential within each prefix.
+All UX audit findings use the artifact-scoped `UX` prefix (`UX-001`, `UX-002`, ...), numbered sequentially across the report regardless of source agent. Older per-agent IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) in `UX_REVIEW_OVERVIEW.md` remain valid only for previously-addressed matching during the transition.
 
 **Issue:** {Description}
 

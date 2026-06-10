@@ -24,7 +24,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 2. If `--categories` flag → parse comma-separated list. Valid values: `a11y`, `ux`, `product`, `visual`, `all`
 3. If `--threshold N` → store as `custom_threshold` (0-100). Overrides each agent's default confidence threshold. Only findings with confidence >= N will be reported. Default thresholds if not specified: a11y = 90, ux/product/visual = 70.
 4. If `--base <branch>` → store as explicit base branch override
-5. If `--parallel` (or bare `parallel` for backward compatibility) → launch agents in parallel instead of sequentially
+5. If `--parallel` (or deprecated bare `parallel` for backward compatibility) → launch agents in parallel instead of sequentially
 6. If `--team` → use Team Mode and remove it from the remaining arguments
 7. If `--inline` → set `INLINE_MODE=true` and do not write `UX_REVIEW_OVERVIEW.md`
 8. Default: all applicable categories, sequential, default thresholds
@@ -124,6 +124,7 @@ No UI/UX changes detected to audit.
 If `UX_REVIEW_OVERVIEW.md` exists in the project root:
 
 - Parse previously addressed findings (file path, line number, issue description, action taken)
+- Accept legacy per-agent finding IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) from older UX audit reports as previously addressed identifiers for one release; new UX audit reports use artifact-scoped `UX-NNN` IDs.
 - Store for filtering in Step 9
 
 ### Step 5: Determine Which Agents to Launch
@@ -210,6 +211,8 @@ For each applicable agent, launch the reviewer using the platform's agent-invoca
 
 **Mode field:** If `app_url` was provided, set `Mode` to `Visual + Code` in the output template; otherwise `Code-only`.
 
+**Agent failure handling.** If a selected reviewer agent is unavailable, times out, or returns output that cannot be parsed as findings, record the failed agent name and what was attempted. Continue only if at least one selected reviewer succeeded, and include a degraded-coverage banner in the final report: `Coverage degraded: <agent names> failed; findings below exclude <categories>.` If all selected reviewers fail, or if the relevance validator fails, stop without writing `UX_REVIEW_OVERVIEW.md`. Do not fabricate findings or present a partial audit as complete.
+
 ### Step 8: Validate Relevance
 
 After collecting findings from all agents:
@@ -226,8 +229,8 @@ If `UX_REVIEW_OVERVIEW.md` was found in Step 4:
 - Cross-reference validated findings against previously addressed findings
 - **Only filter** if the finding is the same issue:
   - Same file
-  - Same enclosing function, component, or block (do not rely on raw line distance — refactors and formatters shift line numbers)
-  - Same underlying issue (semantic match)
+  - Same enclosing function, component, or block (do not rely on raw line distance; refactors and formatters shift line numbers)
+  - Same underlying issue (semantic match on root cause)
 - **Do NOT filter** if:
   - The issue is substantively different
   - Severity escalated
@@ -267,13 +270,17 @@ Otherwise, write to `UX_REVIEW_OVERVIEW.md` in the project root:
 - X findings filtered (pre-existing or out-of-scope)
 - X findings filtered (previously addressed)
 
+## Coverage Status (omit when complete)
+
+Coverage degraded: {agent names} failed; findings below exclude {categories}.
+
 ## Critical UX Issues (X found)
 
-### {PREFIX}-NNN: {Brief title}
+### UX-NNN: {Brief title}
 
 **Agent:** {kramme:ux-reviewer | kramme:product-reviewer | kramme:visual-reviewer | kramme:a11y-auditor} **Category:** {specific category within agent's domain} **File:** `path/to/file.tsx:42` **Confidence:** {0-100} **User Impact:** {High | Medium | Low}
 
-`{PREFIX}` is the agent's short code: `UX` (ux-reviewer), `PROD` (product-reviewer), `VIS` (visual-reviewer), `A11Y` (a11y-auditor). Numbering is sequential within each prefix (`UX-001`, `UX-002`, `PROD-001`, ...).
+All UX audit findings use the artifact-scoped `UX` prefix (`UX-001`, `UX-002`, ...), numbered sequentially across the report regardless of source agent. Older per-agent IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) in `UX_REVIEW_OVERVIEW.md` remain valid only for previously-addressed matching during the transition.
 
 **Issue:** {Description}
 
@@ -362,14 +369,14 @@ If Critical or Important issues found, suggest running `/kramme:pr:resolve-revie
 **Parallel execution:**
 
 ```
-/kramme:pr:ux-review parallel
+/kramme:pr:ux-review --parallel
 # All applicable agents run simultaneously
 ```
 
 **Combined:**
 
 ```
-/kramme:pr:ux-review http://localhost:4200 --categories ux,visual --threshold 85 parallel
+/kramme:pr:ux-review http://localhost:4200 --categories ux,visual --threshold 85 --parallel
 ```
 
 **Inline report (no markdown file):**

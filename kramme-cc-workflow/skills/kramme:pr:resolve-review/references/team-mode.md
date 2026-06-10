@@ -34,7 +34,7 @@ Then stop.
 Same as `/kramme:pr:resolve-review` Steps 0-1:
 
 1. Check for arguments, including source flags, severity filters, granular commits, review content, instructions, or URL
-2. Check for `REVIEW_OVERVIEW.md`, `UX_REVIEW_OVERVIEW.md`, and `PRODUCT_REVIEW_OVERVIEW.md`
+2. Check for `REVIEW_OVERVIEW.md`, `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, and `COPY_REVIEW_OVERVIEW.md`
 3. Check chat context
 4. Fetch from current branch's PR if nothing else found
 5. List all findings
@@ -131,7 +131,7 @@ After all agents complete:
    - `REVIEW_SOURCE=local`, or neither `AUTO_MODE` nor `ANSWER_AND_RESOLVE` is set: do not post replies or resolve threads on GitHub.
    - `AUTO_MODE=true` or `ANSWER_AND_RESOLVE=true` on an external review: print the summary line (`Posting N replies and resolving M threads on PR #X`), then post a reply for each addressed comment and resolve those threads. For disagreements or out-of-scope findings, post a rationale reply but do not resolve the thread.
 
-4. Write resolutions to the appropriate file (if the source was `UX_REVIEW_OVERVIEW.md` or `PRODUCT_REVIEW_OVERVIEW.md`, update that file in place; otherwise write to `REVIEW_OVERVIEW.md`), using the same format as `/kramme:pr:resolve-review` Step 4 and Output format (in-place updates, never delete entries), with an additional note about parallel resolution:
+4. Write resolutions to the appropriate file (if the source was `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, or `COPY_REVIEW_OVERVIEW.md`, update that file in place; otherwise write to `REVIEW_OVERVIEW.md`), using the same format as `/kramme:pr:resolve-review` Step 4 and Output format (in-place updates, never delete entries), with an additional note about parallel resolution:
 
 ```markdown
 ## Resolution Summary

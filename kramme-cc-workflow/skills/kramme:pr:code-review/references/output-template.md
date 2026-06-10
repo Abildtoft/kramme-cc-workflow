@@ -1,6 +1,6 @@
 # Output template: REVIEW_OVERVIEW.md
 
-Use this structure verbatim when writing `REVIEW_OVERVIEW.md` (or the inline reply with `--inline`). Include every required section even if empty — emit `(0 found)` rather than omitting the section. The only conditional sections are `## Emphasis Applied`, which appears only when emphasis was requested, and `## Dead Code`, which appears only when there are dead-code findings to summarize.
+Use this structure verbatim when writing `REVIEW_OVERVIEW.md` (or the inline reply with `--inline`). Include every required section even if empty — emit `(0 found)` rather than omitting the section. The only conditional sections are `## Coverage Status`, which appears only when coverage is degraded, `## Emphasis Applied`, which appears only when emphasis was requested, and `## Dead Code`, which appears only when there are dead-code findings to summarize.
 
 ```markdown
 # PR Review Summary
@@ -10,6 +10,10 @@ Use this structure verbatim when writing `REVIEW_OVERVIEW.md` (or the inline rep
 - X findings validated as PR-caused
 - X findings filtered (pre-existing or out-of-scope)
 - X findings filtered (previously addressed in REVIEW_OVERVIEW.md)
+
+## Coverage Status (omit when complete)
+
+Coverage degraded: {agent names} failed; findings below exclude {dimensions}.
 
 ## Emphasis Applied (omit section if no emphasis)
 
@@ -21,7 +25,7 @@ Use this structure verbatim when writing `REVIEW_OVERVIEW.md` (or the inline rep
 - **Critical:** [agent-name]: Issue description [location]
   - Finding ID: CR-001
   - Location: `path/to/file.ts:123` | `review-scope` | `PR description`
-  - Confidence: high | medium | low
+  - Confidence: 0-100
   - Action class: gated_auto | manual
   - Owner: resolver | author | maintainer | reviewer | unknown
   - Evidence: concrete trace, reproduction, failed expectation, or UNVERIFIED reason
@@ -31,7 +35,7 @@ Use this structure verbatim when writing `REVIEW_OVERVIEW.md` (or the inline rep
 - [agent-name]: Issue description [location]
   - Finding ID: CR-002
   - Location: `path/to/file.ts:123` | `review-scope` | `PR description`
-  - Confidence: high | medium | low
+  - Confidence: 0-100
   - Action class: gated_auto | manual
   - Owner: resolver | author | maintainer | reviewer | unknown
   - Evidence: concrete trace, reproduction, failed expectation, or UNVERIFIED reason
@@ -41,14 +45,14 @@ Use this structure verbatim when writing `REVIEW_OVERVIEW.md` (or the inline rep
 - **Nit:** [agent-name]: Suggestion [location]
   - Finding ID: CR-003
   - Location: `path/to/file.ts:123` | `review-scope` | `PR description`
-  - Confidence: high | medium | low
+  - Confidence: 0-100
   - Action class: advisory
   - Owner: author | maintainer | reviewer | unknown
   - Evidence: concrete context or UNVERIFIED reason
 - **Consider:** [agent-name]: Suggestion [location]
   - Finding ID: CR-004
   - Location: `path/to/file.ts:123` | `review-scope` | `PR description`
-  - Confidence: high | medium | low
+  - Confidence: 0-100
   - Action class: advisory
   - Owner: author | maintainer | reviewer | unknown
   - Evidence: concrete context or UNVERIFIED reason
@@ -98,7 +102,7 @@ Approve if the change definitely improves overall code health.
 - **Location** — emit the structured `Location` field for every active finding. Use `path/to/file.ts:123` when the finding maps to a specific line. Use `review-scope` for PR-wide findings. Use `PR description` when the finding is about an inaccurate PR title or body. Keep the inline `[location]` text only as a human-readable duplicate for legacy readers.
 - **Critical:** prefix mirrors the section; the redundancy is intentional so a finding is still parseable when lifted out of its section (e.g., pasted into an inline comment).
 - **Finding ID** — assign stable IDs in report order (`CR-001`, `CR-002`, ...). Keep the ID with the finding if it moves between severity buckets so callers can hand off the exact item to `/kramme:pr:resolve-review`.
-- **Confidence** — use `high` only when the behavior was traced, reproduced, or independently confirmed by another reviewer on the same root cause. Use `low` with the `UNVERIFIED` marker for plausible but untraced findings.
+- **Confidence** — use a 0-100 score. Use 90+ only when the behavior was traced, reproduced, or independently confirmed by another reviewer on the same root cause. Use scores below 60 with the `UNVERIFIED` marker for plausible but untraced findings. During the transition, map reviewer tiers before writing the report as `high=90`, `medium=60`, `low=30`.
 - **Action class** — use `gated_auto` only for code-backed Critical/Important findings with a concrete location and fix path. Use `manual` for Critical/Important product/process decisions, PR-description updates, missing requirements, contradictions, or unresolved context. Use `advisory` only for Suggestions and FYI observations.
 - **Owner** — name the next actor, not the original source of the finding. Use `resolver` only when `/kramme:pr:resolve-review` can act safely.
 - **Evidence** — cite the concrete trace, reproduction, failed expectation, or why the finding remains `UNVERIFIED`.
