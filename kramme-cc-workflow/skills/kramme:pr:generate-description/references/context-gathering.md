@@ -2,7 +2,7 @@
 
 **ALWAYS** gather comprehensive context from all available sources.
 
-**IMPORTANT**: Use `origin/$BASE_BRANCH` for all comparisons to ensure you compare against the remote's state, not a potentially stale local branch.
+**IMPORTANT**: Use the resolved `BASE_REF` for all comparisons to ensure you compare against the remote's state, not a potentially stale local branch.
 
 **IMPORTANT**: Spec files and conversation history are for YOUR analysis only to understand implementation decisions. The final PR description should ONLY reference Linear issues as the source of original requirements, since reviewers have access to Linear but not to spec files or conversation history.
 
@@ -11,16 +11,16 @@
 1. **ALWAYS** get the diff between current branch and base branch:
 
    ```bash
-   git diff origin/$BASE_BRANCH...HEAD
+   git diff "$BASE_REF"...HEAD
    ```
 
    - **NOTE**: Use three dots (`...`) to compare from merge base
-   - **NOTE**: Use `origin/` prefix to compare against remote state
+   - **NOTE**: `BASE_REF` is the remote tracking ref resolved in Phase 1
 
 2. **ALWAYS** get the list of changed files with stats:
 
    ```bash
-   git diff origin/$BASE_BRANCH...HEAD --stat
+   git diff "$BASE_REF"...HEAD --stat
    ```
 
    - Use this for analysis and scoping only. Do not reproduce the changed-file list in the final PR body unless a specific file is a non-obvious review landmark.
@@ -42,13 +42,13 @@
 1. **ALWAYS** get commit history for the current branch:
 
    ```bash
-   git log origin/$BASE_BRANCH..HEAD --oneline
+   git log "$BASE_REF"..HEAD --oneline
    ```
 
 2. **ALWAYS** get detailed commit messages:
 
    ```bash
-   git log origin/$BASE_BRANCH..HEAD --format="%h %s%n%b%n"
+   git log "$BASE_REF"..HEAD --format="%h %s%n%b%n"
    ```
 
 3. **ALWAYS** analyze commits to understand:

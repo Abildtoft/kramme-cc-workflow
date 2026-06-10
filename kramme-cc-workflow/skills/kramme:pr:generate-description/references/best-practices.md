@@ -3,8 +3,8 @@
 ## Context Gathering
 
 - **ALWAYS** resolve the base branch with `references/base-branch-resolution.md` before comparing changes. This ensures correct scope when a PR targets a non-default branch and avoids comparing against a stale local tracking branch.
-- **ALWAYS** use `git diff origin/$BASE_BRANCH...HEAD` (three dots, `origin/` prefix) to compare from merge base against the remote's state
-- **NEVER** use local branch names like `main` or `master` directly - always use `origin/` prefix to avoid comparing against stale local branches
+- **ALWAYS** use `git diff "$BASE_REF"...HEAD` (three dots) to compare from merge base against the remote state resolved in Phase 1
+- **NEVER** use local branch names like `main` or `master` directly - always use the resolved `BASE_REF` to avoid comparing against stale local branches
 - **ALWAYS** look at both commit messages and code changes - they tell different stories
 - **NEVER** skip Linear issue lookup if the branch name contains an issue ID and a Linear integration is available
 - **PREFER** using available issue-tracker integration capabilities over bash commands when available for richer data

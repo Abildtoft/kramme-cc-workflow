@@ -703,6 +703,16 @@ function convertCodexHookPlugin(plugin) {
         targetDir: path.join("scripts", "dev-server"),
       },
     ],
+    sharedScriptFiles: [
+      {
+        sourceFile: path.join(plugin.root, "scripts", "resolve-base.sh"),
+        targetPath: path.join("scripts", "resolve-base.sh"),
+      },
+      {
+        sourceFile: path.join(plugin.root, "scripts", "collect-review-diff.sh"),
+        targetPath: path.join("scripts", "collect-review-diff.sh"),
+      },
+    ],
   };
 }
 
@@ -856,23 +866,42 @@ function rewriteCodexAgentFileReferences(text, knownAgentSkills) {
   return text.replace(agentPathPattern, toSkillReference);
 }
 
-function codexSharedScriptReplacements(codexRoot, sharedScriptDirs = []) {
-  return sharedScriptDirs.map((sharedScriptDir) => ({
-    sourcePrefix: `\${CLAUDE_PLUGIN_ROOT}/${sharedScriptDir.targetDir
-      .split(path.sep)
-      .join("/")}/`,
-    targetPrefix: `${shellQuotePath(
-      path.join(codexRoot, sharedScriptDir.targetDir),
-    )}/`,
-  }));
+function codexSharedScriptReplacements(
+  codexRoot,
+  sharedScriptDirs = [],
+  sharedScriptFiles = [],
+) {
+  return [
+    ...sharedScriptDirs.map((sharedScriptDir) => ({
+      sourcePrefix: `\${CLAUDE_PLUGIN_ROOT}/${sharedScriptDir.targetDir
+        .split(path.sep)
+        .join("/")}/`,
+      targetPrefix: `${shellQuotePath(
+        path.join(codexRoot, sharedScriptDir.targetDir),
+      )}/`,
+    })),
+    ...sharedScriptFiles.map((sharedScriptFile) => ({
+      sourceText: `\${CLAUDE_PLUGIN_ROOT}/${sharedScriptFile.targetPath
+        .split(path.sep)
+        .join("/")}`,
+      targetText: shellQuotePath(
+        path.join(codexRoot, sharedScriptFile.targetPath),
+      ),
+    })),
+  ];
 }
 
 function rewriteCodexSharedScriptReferences(text, replacements = []) {
   let result = text;
   for (const replacement of replacements) {
-    result = result
-      .split(replacement.sourcePrefix)
-      .join(replacement.targetPrefix);
+    if (replacement.sourcePrefix) {
+      result = result
+        .split(replacement.sourcePrefix)
+        .join(replacement.targetPrefix);
+    }
+    if (replacement.sourceText) {
+      result = result.split(replacement.sourceText).join(replacement.targetText);
+    }
   }
   return result;
 }
@@ -1369,6 +1398,7 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   );
   await ensureDir(codexRoot);
   const sharedScriptDirs = bundle.codexPlugin?.sharedScriptDirs ?? [];
+  const sharedScriptFiles = bundle.codexPlugin?.sharedScriptFiles ?? [];
   for (const sharedScriptDir of sharedScriptDirs) {
     if (await pathExists(sharedScriptDir.sourceDir)) {
       await copyDir(
@@ -1377,9 +1407,18 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
       );
     }
   }
+  for (const sharedScriptFile of sharedScriptFiles) {
+    if (await pathExists(sharedScriptFile.sourceFile)) {
+      await copyFile(
+        sharedScriptFile.sourceFile,
+        path.join(codexRoot, sharedScriptFile.targetPath),
+      );
+    }
+  }
   const sharedScriptReplacements = codexSharedScriptReplacements(
     codexRoot,
     sharedScriptDirs,
+    sharedScriptFiles,
   );
 
   const promptsDir = path.join(codexRoot, "prompts");
@@ -1649,6 +1688,14 @@ async function writeCodexHookPluginTree(targetRoot, codexPlugin) {
       await copyDir(
         sharedScriptDir.sourceDir,
         path.join(targetRoot, sharedScriptDir.targetDir),
+      );
+    }
+  }
+  for (const sharedScriptFile of codexPlugin.sharedScriptFiles ?? []) {
+    if (await pathExists(sharedScriptFile.sourceFile)) {
+      await copyFile(
+        sharedScriptFile.sourceFile,
+        path.join(targetRoot, sharedScriptFile.targetPath),
       );
     }
   }
@@ -2315,6 +2362,11 @@ async function copyDir(sourceDir, targetDir) {
       await fs.copyFile(sourcePath, targetPath);
     }
   }
+}
+
+async function copyFile(sourcePath, targetPath) {
+  await ensureDir(path.dirname(targetPath));
+  await fs.copyFile(sourcePath, targetPath);
 }
 
 async function bootstrapHookScripts(

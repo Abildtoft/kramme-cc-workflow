@@ -22,15 +22,16 @@ This rewrites history and requires a force-push to sync any remote. It is user-t
 
 ## Steps
 
-1. **Validate and resolve the base** — resolve `SKILL_DIR` to the directory containing this `SKILL.md`, then run the resolution script from the user's current repository. Do not `cd` into the skill directory; the script intentionally inspects and mutates the current git repository. Pass through the skill's `--base`/`--after`/`--force-backup` values as `BASE_FLAG`/`AFTER_ARG`/`FORCE_BACKUP`. It determines the base ref, validates every precondition, fast-forwards a matching local base branch to its remote, and creates a recovery backup of the current tip **before anything destructive happens**:
+1. **Validate and resolve the base** — run the shared resolution script from the user's current repository. Do not `cd` into the plugin directory; the script intentionally inspects and mutates the current git repository in `--backup` mode. Pass through the skill's `--base`/`--after`/`--force-backup` values as `BASE_FLAG`/`AFTER_ARG`/`FORCE_BACKUP`. It determines the base ref, validates every precondition, fast-forwards a matching local base branch to its remote, and creates a recovery backup of the current tip **before anything destructive happens**:
 
    ```bash
    ARGS=()
+   ARGS+=(--backup)
    [ -n "${BASE_FLAG:-}" ] && ARGS+=(--base "$BASE_FLAG")
    [ -n "${AFTER_ARG:-}" ] && ARGS+=(--after "$AFTER_ARG")
    [ "${FORCE_BACKUP:-0}" = "1" ] && ARGS+=(--force-backup)
 
-   RESOLVED=$("$SKILL_DIR/scripts/resolve-base.sh" "${ARGS[@]}") || {
+   RESOLVED=$(${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh "${ARGS[@]}") || {
      echo "Base resolution failed; see the message above and stop." >&2
      exit 1
    }
