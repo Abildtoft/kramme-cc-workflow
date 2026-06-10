@@ -110,7 +110,7 @@ If `COPY_REVIEW_OVERVIEW.md` exists in the project root:
 
 ### Step 5: Launch Copy Reviewer Agent
 
-Launch **kramme:copy-reviewer** via the Task tool with:
+Launch **kramme:copy-reviewer** using the platform's agent-invocation primitive with:
 
 - The resolved `BASE_BRANCH` from Step 3
 - Project conventions extracted from the discovered instruction files and established UI patterns
@@ -126,12 +126,12 @@ Launch **kramme:copy-reviewer** via the Task tool with:
 
 After collecting findings from the copy reviewer:
 
-- Launch **kramme:pr-relevance-validator** with all findings and the resolved `BASE_BRANCH`
+- Launch **kramme:pr-relevance-validator** using the same agent-invocation primitive with all findings and the resolved `BASE_BRANCH`
 - Cross-reference each finding against the full review scope (committed PR diff + staged/unstaged/untracked local changes)
 - Filter pre-existing issues and out-of-scope problems
 - Return only findings caused by this combined scope
 
-**Agent failure handling.** If the copy reviewer or relevance validator is unavailable, times out, or returns output that cannot be parsed as findings, surface the failure to the user with the agent name and what was attempted, then stop without writing `COPY_REVIEW_OVERVIEW.md`. Do not fabricate findings or silently continue with an empty result.
+If no separate agent runtime is available, perform the same copy review and relevance validation directly in the main thread. If an invoked copy reviewer or relevance validator is unavailable, times out, or returns output that cannot be parsed as findings, surface the failure to the user with the agent name and what was attempted, then stop without writing `COPY_REVIEW_OVERVIEW.md`. Do not fabricate findings or silently continue with an empty result.
 
 ### Step 7: Filter Previously Addressed Findings
 

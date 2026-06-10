@@ -62,6 +62,8 @@ Skip if `$ARGUMENTS` already provides a clear description.
 > B) **Claude Code only** (uses Agent Teams or other Claude Code features)
 > C) **Specific combination** (specify which)
 
+Default to harness-neutral phrasing with a declared fallback. Add `kramme-platforms` only when the skill depends on a true platform feature with no sensible fallback, such as a platform-specific agent runtime, MCP provider surface, hook system, or environment variable.
+
 ### Question 6: External inspiration
 
 > Is this skill derived from external inspiration — another agent-skills repository, a script, a paper, a book, a blog post, official framework docs?
@@ -235,6 +237,7 @@ After scaffolding, verify the skill against these checks:
 - [ ] `description` includes a negative trigger
 - [ ] `argument-hint` present only if the skill accepts arguments
 - [ ] `kramme-platforms` present only if platform-restricted
+- [ ] Platform-specific tool names, environment variables, MCP prefixes, hook systems, or agent runtimes are either written with a declared fallback or gated with `kramme-platforms` when no sensible fallback exists
 
 ### Content
 

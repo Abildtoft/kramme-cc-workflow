@@ -33,13 +33,13 @@ Scan the codebase for unnecessary UI text. Finds labels, descriptions, placehold
 
 ### Phase 2 — Scan
 
-Launch **kramme:copy-reviewer** in audit mode via the Task tool with:
+Launch **kramme:copy-reviewer** in audit mode using the platform's agent-invocation primitive with:
 
 - The list of UI-relevant files in scope
 - Project conventions from the discovered instruction files and established UI patterns
 - Instruction: **"You are in audit mode. Scan all provided files for copy redundancy. Flag all issues regardless of when they were introduced."**
 
-If scope exceeds 50 files, split into batches and launch multiple Task agents in parallel, each scanning a subset.
+If no separate agent runtime is available, perform the same scan directly in the main thread. If scope exceeds 50 files and an agent-invocation primitive supports parallelism, split into batches and launch multiple reviewer agents in parallel, each scanning a subset; otherwise scan the batches sequentially.
 
 ### Phase 3 — Synthesis
 

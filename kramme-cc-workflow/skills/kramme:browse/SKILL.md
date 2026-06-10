@@ -338,7 +338,7 @@ Pause and resolve before continuing if any of these are true:
 
 Before handing back results, confirm:
 
-- [ ] The detected browser MCP probe returned a success signal.
+- [ ] Browser MCP provider tools were detected by available-tool presence, not by probe invocation.
 - [ ] The target URL returned 2xx/3xx (or the 4xx warning was surfaced in the result).
 - [ ] Every enabled capture (`--screenshot` / `--console` / `--network`) produced output, or failure was reported.
 - [ ] All page-sourced text returned to the caller is wrapped in `<page-content>` boundary markers.

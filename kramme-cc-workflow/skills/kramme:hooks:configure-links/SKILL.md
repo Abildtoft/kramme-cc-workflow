@@ -4,6 +4,7 @@ description: Configure the context-links hook by updating hooks/context-links.co
 argument-hint: "[show|reset|KEY=VALUE ...]"
 disable-model-invocation: true
 user-invocable: true
+kramme-platforms: [claude-code]
 ---
 
 # Configure Context Links
