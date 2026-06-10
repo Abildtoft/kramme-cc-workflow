@@ -1,13 +1,15 @@
 ---
 name: kramme:docs:ubiquitous-language
 description: "Extract a DDD-style ubiquitous language glossary from the current conversation, flagging ambiguities and proposing canonical terms. Saves to UBIQUITOUS_LANGUAGE.md at the repo root. Use when the user wants to define domain terms, build a glossary, harden terminology, or mentions 'ubiquitous language' or 'DDD'. Not for general programming concepts (array, function, endpoint), code-level type/class glossaries, or per-feature naming inside a single module."
-disable-model-invocation: false
+disable-model-invocation: true
 user-invocable: true
 ---
 
 # Ubiquitous Language
 
 Extract a project's domain vocabulary into a single canonical glossary at `UBIQUITOUS_LANGUAGE.md`. Flag overloaded terms (one word, two concepts) and synonyms (two words, one concept). Pick canonicals; list rejected aliases.
+
+This skill writes or updates a repo-root glossary, so it runs only after explicit user invocation.
 
 ## When to use
 
@@ -35,7 +37,7 @@ Before drafting, check whether the project already has a glossary at the repo ro
    - Aliases already listed as "to avoid" (preserve them).
 3. If `GLOSSARY.md` exists instead, emit a `CONFUSION` marker and ask the user whether to migrate it to `UBIQUITOUS_LANGUAGE.md` or keep the existing filename.
 
-If no glossary exists, state the target path (`UBIQUITOUS_LANGUAGE.md` at the repo root) and a brief outline of the terms you will capture before writing the new file.
+If no glossary exists, state the target path (`UBIQUITOUS_LANGUAGE.md` at the repo root) and a brief outline of the terms you will capture, then ask the user to confirm before writing the new file. If the runtime cannot ask, stop before writing and return the proposed outline inline.
 
 ## Output format
 

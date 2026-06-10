@@ -2,13 +2,15 @@
 name: kramme:docs:adr
 description: "Author Architecture Decision Records for significant, long-lived decisions. Creates ADRs in docs/decisions/ with sequential numbering and lifecycle states (PROPOSED / ACCEPTED / SUPERSEDED / DEPRECATED). Detects and preserves existing ADR format when one is in use; falls back to a Nygard-style template otherwise. Use when adopting a new pattern, committing to a dependency, changing a public interface, changing the data model, or rejecting an alternative a future maintainer might reasonably re-propose. For in-project decisions during a tracked SIW initiative use /kramme:siw:close's decision log instead."
 argument-hint: "[decision title]"
-disable-model-invocation: false
+disable-model-invocation: true
 user-invocable: true
 ---
 
 # Architecture Decision Record
 
 Author an ADR for a significant, long-lived decision: state the problem, the choice, the alternatives rejected, and the consequences. Preserve predecessors; never delete history.
+
+This skill writes ADR files and may update predecessor ADRs, so it runs only after explicit user invocation.
 
 ## When to use
 
