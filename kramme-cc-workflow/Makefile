@@ -1,4 +1,24 @@
-.PHONY: test test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-git-clean-gone test-git-worktree install-test-deps check-deps
+.PHONY: lint lint-shell lint-python test test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-git-clean-gone test-git-worktree install-test-deps check-deps
+
+SHELLCHECK ?= shellcheck
+SHELLCHECK_SEVERITY ?= error
+RUFF ?= ruff
+
+SHELLCHECK_FILES = \
+	hooks/*.sh \
+	hooks/lib/*.sh \
+	scripts/*.sh \
+	scripts/dev-server/*.sh \
+	skills/*/scripts/*.sh
+
+# Start at error severity; ratchet toward warnings after existing scripts are cleaned up.
+lint: lint-shell lint-python
+
+lint-shell:
+	@$(SHELLCHECK) --severity=$(SHELLCHECK_SEVERITY) $(SHELLCHECK_FILES)
+
+lint-python:
+	@$(RUFF) check .
 
 # Default target - run all tests
 test:

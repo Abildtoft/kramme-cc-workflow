@@ -222,7 +222,7 @@ def process_file(filepath):
             return result, None
         else:
             return None, filepath
-    except (OSError, IOError) as e:
+    except (OSError, IOError):
         return None, filepath
 
 
