@@ -241,45 +241,7 @@ If `resolved_arguments` starts with "discover" or "interview":
 
 If `AUTO_MODE=true` and Phase 2 would run, stop before asking with `MISSING REQUIREMENT: project context required for --auto; pass a spec file, folder, discovery brief, or use discover <topic>`.
 
-Use AskUserQuestion to gather context:
-
-```yaml
-header: "Project Context"
-question: "In one sentence, what are you building or working on?"
-freeform: true
-```
-
-Store the response as `project_description`.
-
-Use AskUserQuestion to capture urgency and outcome:
-
-```yaml
-header: "Why Now"
-question: "Why does this work matter now, and what outcome matters most?"
-freeform: true
-```
-
-Store the response as `why_now`.
-
-Use AskUserQuestion to capture scope boundaries:
-
-```yaml
-header: "Non-Goals"
-question: "What should stay out of scope for this first pass?"
-freeform: true
-```
-
-Store the response as `out_of_scope_non_goals`.
-
-Use AskUserQuestion to capture decision boundaries:
-
-```yaml
-header: "Decision Scope"
-question: "What decisions should this spec lock down now, and what should be left to implementation?"
-freeform: true
-```
-
-Store the response as `decision_boundaries_notes`.
+Read the Phase 2 templates from `references/interviews.md`, use them to gather project context, urgency and outcome, scope boundaries, and decision boundaries, then store the responses as `project_description`, `why_now`, `out_of_scope_non_goals`, and `decision_boundaries_notes`.
 
 ## Phase 2.5: Confirm Linked Sources
 
@@ -306,35 +268,11 @@ These files remain the source of truth. The SIW spec will link to them.
 
 ### Ask About File Location
 
-If `AUTO_MODE=true`, choose **Keep in place**. Otherwise use AskUserQuestion:
-
-```yaml
-header: "File Location"
-question: "Should these files be moved into the siw/ folder, or kept in their current location?"
-options:
-  - label: "Keep in place"
-    description: "Files stay where they are; SIW spec links to current paths"
-  - label: "Move to siw/"
-    description: "Move files into siw/ folder for co-location"
-  - label: "Copy to siw/"
-    description: "Copy files to siw/ (creates duplicates - not recommended)"
-```
+If `AUTO_MODE=true`, choose **Keep in place**. Otherwise read the Phase 2.5 file-location template from `references/interviews.md` and use AskUserQuestion.
 
 ### Handle File Location Choice
 
-For both **"Move to siw/"** and **"Copy to siw/"**, before transferring each file, check the target path with `[ -e "siw/{filename}" ]`. If a file already exists at the target, use AskUserQuestion before overwriting:
-
-```yaml
-header: "Target File Exists"
-question: "siw/{filename} already exists. How should I proceed for this file?"
-options:
-  - label: "Overwrite"
-    description: "Replace siw/{filename} with the incoming file"
-  - label: "Rename incoming"
-    description: "Keep siw/{filename} and write the new file as siw/{filename-stem}-imported{ext}"
-  - label: "Skip"
-    description: "Leave both files where they are and reference the original path"
-```
+For both **"Move to siw/"** and **"Copy to siw/"**, before transferring each file, check the target path with `[ -e "siw/{filename}" ]`. If a file already exists at the target, read the Phase 2.5 collision template from `references/interviews.md` and use AskUserQuestion before overwriting.
 
 Apply the user's choice per file, then:
 
@@ -353,14 +291,7 @@ Apply the user's choice per file, then:
 
 **Only executed if `linked_spec_files` exists.**
 
-If `AUTO_MODE=true`, use the inferred default value. Otherwise use AskUserQuestion:
-
-```yaml
-header: "Project Context"
-question: "Based on the linked files, what is this project about? (One sentence summary)"
-freeform: true
-defaultValue: "{inferred from file titles}"
-```
+If `AUTO_MODE=true`, use the inferred default value. Otherwise read the Phase 2.6 project-context template from `references/interviews.md` and use AskUserQuestion.
 
 Store the response as `project_description`.
 
@@ -388,27 +319,7 @@ Based on `project_description` (or `discovered_content` topic), use the keyword 
 
 ### Ask User
 
-If `AUTO_MODE=true`, choose the auto-detected profile. Otherwise use AskUserQuestion:
-
-```yaml
-header: "Work Context"
-question: "What type of work is this? This adjusts how spec audits, product reviews, and phase generation behave."
-options:
-  - label: "{auto-detected profile} (Recommended)"
-    description: "{one-line description from profile}"
-  - label: "Production Feature"
-    description: "Full rigor across all quality dimensions"
-  - label: "Prototype / Spike"
-    description: "Focus on actionability and technical design; skip commercial viability"
-  - label: "Internal Tool"
-    description: "Focus on actionability and clarity; skip value proposition"
-  - label: "Tech Debt / Refactor"
-    description: "Focus on technical design and testability; skip value proposition and scope"
-  - label: "Documentation / Process"
-    description: "Focus on clarity and completeness; skip technical design"
-```
-
-**Note:** Deduplicate — if the auto-detected profile is Production Feature, do not show it twice. Show one "Production Feature (Recommended)" option instead.
+If `AUTO_MODE=true`, choose the auto-detected profile. Otherwise read the Phase 2.8 work-context template from `references/interviews.md`, deduplicate options as documented there, and use AskUserQuestion.
 
 Store the selected profile as `work_context_profile` with all attribute values from the reference file (work_type, maturity, priority_dimensions, deprioritized, notes).
 
@@ -425,45 +336,13 @@ Based on `project_description`, auto-detect the most appropriate spec filename:
 - Keywords like "system", "architecture", "design" → `SYSTEM_DESIGN.md`
 - Default fallback → `PROJECT_PLAN.md`
 
-**Confirm with user:**
-
-If `AUTO_MODE=true`, choose `{detected_name}` automatically.
-
-Otherwise:
-
-```yaml
-header: "Specification Document"
-question: "I'll create a specification document. Which name fits best?"
-options:
-  - label: "{detected_name}"
-    description: "Recommended based on your description"
-  - label: "FEATURE_SPECIFICATION.md"
-    description: "For feature implementations"
-  - label: "API_DESIGN.md"
-    description: "For API design work"
-  - label: "PROJECT_PLAN.md"
-    description: "For general projects"
-  - label: "Custom name"
-    description: "Enter your own filename"
-```
-
-If "Custom name" selected, use AskUserQuestion to get the filename.
+**Confirm with user:** If `AUTO_MODE=true`, choose `{detected_name}` automatically. Otherwise read the Phase 3 specification-document template from `references/interviews.md` and use AskUserQuestion. If "Custom name" is selected, use AskUserQuestion to get the filename.
 
 Store as `spec_filename`.
 
 ## Phase 3.5: Ask About Supporting Specs
 
-If `AUTO_MODE=true`, choose **No - single spec file is enough**. Otherwise use AskUserQuestion:
-
-```yaml
-header: "Supporting Specifications"
-question: "Will this project need detailed supporting specifications? (For large projects with separate data model, API, UI specs, etc.)"
-options:
-  - label: "Yes - create supporting-specs folder"
-    description: "For complex projects with multiple spec domains"
-  - label: "No - single spec file is enough"
-    description: "For simpler projects"
-```
+If `AUTO_MODE=true`, choose **No - single spec file is enough**. Otherwise read the Phase 3.5 supporting-specifications template from `references/interviews.md` and use AskUserQuestion.
 
 Store as `use_supporting_specs`.
 
@@ -475,61 +354,7 @@ When `strategy_context` exists, include a concise `## Product Strategy Context` 
 
 ## Phase 5: Report Success
 
-Display summary:
-
-```
-Structured Implementation Workflow Initialized
-
-Created:
-  siw/{spec_filename}          - Main specification (permanent)
-  siw/supporting-specs/        - Detailed specifications (permanent) [if enabled]
-  siw/LOG.md                   - Progress and decisions (temporary)
-  siw/OPEN_ISSUES_OVERVIEW.md  - Issue tracking (temporary)
-  siw/issues/                  - Individual issue files (temporary)
-
-Next Steps:
-  1. Run /kramme:siw:generate-phases to decompose spec into phase-based issues
-     OR /kramme:siw:issue-define to create issues one at a time
-  2. Run /kramme:siw:issue-implement <G-XXX or P1-XXX> to start implementing
-
-Tips:
-  - The spec file is permanent; keep it updated as your source of truth
-  - siw/LOG.md and siw/issues are temporary; delete them when work is complete
-  - Use /kramme:workflow-artifacts:cleanup to remove temporary files when done
-```
-
-**If external files were linked, also show:**
-
-```
-Linked Specifications:
-  {If kept in place:}
-  - {file1} (external)
-  - {file2} (external)
-  These files remain the source of truth. The SIW spec references them.
-
-  {If moved to siw/:}
-  - siw/{file1} (moved)
-  - siw/{file2} (moved)
-  Files were moved into siw/ for co-location.
-```
-
-**If content was discovered via interview, also show:**
-
-```
-Discovery:
-  Spec populated from discovery interview.
-  {n} key decisions documented.
-  {n} open questions to address during implementation.
-```
-
-**If supporting specs enabled, also show:**
-
-```
-Supporting Specs:
-  - Create files in siw/supporting-specs/ with naming: NN-descriptor.md
-  - Example: 01-data-model.md, 02-api-specification.md
-  - Update the TOC in the main spec when adding new supporting specs
-```
+Read the Phase 5 success-report templates from `references/success-report.md`, display the applicable summary sections, then stop.
 
 **STOP HERE.** Wait for the user's next instruction.
 
