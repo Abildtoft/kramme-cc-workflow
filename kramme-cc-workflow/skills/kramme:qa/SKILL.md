@@ -113,58 +113,7 @@ If route detection fails, fall back to testing only the landing page (`/`).
 
 **diff-aware mode:**
 
-Resolve the base branch using a 3-tier strategy:
-
-**Tier 1: Explicit override** If `--base <branch>` was provided, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
-
-**Tier 2: PR target branch detection**
-
-```bash
-BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2> /dev/null)
-```
-
-**Tier 3: Fallback**
-
-```bash
-BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@')
-[ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
-```
-
-Normalize before using `origin/$BASE_BRANCH`:
-
-```bash
-BASE_BRANCH=${BASE_BRANCH#refs/heads/}
-BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
-BASE_BRANCH=${BASE_BRANCH#origin/}
-if [ -z "$BASE_BRANCH" ]; then
-  echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
-  exit 1
-fi
-if ! git check-ref-format --branch "$BASE_BRANCH" > /dev/null 2>&1; then
-  echo "Error: Base branch '$BASE_BRANCH' is not a valid branch name. Re-run with --base <branch>." >&2
-  exit 1
-fi
-if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2> /dev/null; then
-  echo "Error: Failed to fetch origin/$BASE_BRANCH. Check remote access and re-run with --base <branch>." >&2
-  exit 1
-fi
-if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null; then
-  echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <branch>." >&2
-  exit 1
-fi
-```
-
-Identify changed UI files:
-
-```bash
-BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
-{
-  git diff --name-only "$BASE_REF"...HEAD  # committed PR diff
-  git diff --name-only --cached            # staged local changes
-  git diff --name-only                     # unstaged local changes
-  git ls-files --others --exclude-standard # untracked local files
-} | sed '/^$/d' | sort -u
-```
+Read `references/diff-scope.md` to resolve `BASE_BRANCH` and identify changed files, then continue with UI-relevant filtering below.
 
 Filter for UI-relevant files:
 
@@ -193,16 +142,7 @@ Map changed UI files to routes/pages:
 - Config-based routing: search router config for imports/references to the changed files
 - If mapping is ambiguous, include the likely route with a note
 
-Create a branch-diff-to-journey matrix before building the test checklist. Read `references/diff-aware-journey-matrix.md` and populate one row per route/screen and meaningful user journey:
-
-- **Route / screen** — derived route, named screen, or `UNVERIFIED: {likely route}` for uncertain mappings
-- **Journey** — concrete user task affected by the diff
-- **Changed files** — files that made the row relevant
-- **State / data setup** — auth, role, feature flag, seeded data, empty/error state, or other prerequisite
-- **Expected behavior** — observable success condition for the changed behavior
-- **Evidence** — screenshot, console/network note, a11y tree note, code-only evidence, or skipped reason
-- **Result** — pass, fail, blocked, skipped, or code-only
-- **Follow-up** — QA finding ID, issue reference, or `none`
+Create a branch-diff-to-journey matrix before building the test checklist. Read `references/diff-aware-journey-matrix.md` and populate one row per route/screen and meaningful user journey using the columns defined there.
 
 Mark speculative route mappings as `UNVERIFIED` rather than silently treating them as known routes. If a journey would mutate shared data, send external notifications, change billing, delete records, or otherwise be destructive, ask the user before executing it; if the runtime cannot ask, mark the row `blocked`.
 
@@ -313,15 +253,15 @@ Then analyze the selected files for potential issues:
 
 Report all findings as "code-only mode" with a clear warning:
 
-   ```
-   Warning: No browser MCP detected. Running in code-only mode.
-   Findings are based on static code analysis only — no live testing performed.
+```
+Warning: No browser MCP detected. Running in code-only mode.
+Findings are based on static code analysis only — no live testing performed.
 
-   For full QA with screenshots and live testing, install a browser MCP:
-     - Claude in Chrome extension (recommended)
-     - Chrome DevTools MCP
-     - Playwright MCP
-   ```
+For full QA with screenshots and live testing, install a browser MCP:
+  - Claude in Chrome extension (recommended)
+  - Chrome DevTools MCP
+  - Playwright MCP
+```
 
 ### Step 6: Capture Evidence
 
@@ -365,8 +305,8 @@ When assessing, consider:
 Read `references/health-score-rubric.md` and compute a weighted health score (0-100).
 
 1. Assign each finding to one category: Console, Network, Visual, Functional, Data, Interaction, Content, or Accessibility
-2. For each category, start at 100 and deduct per finding: Blocker -25, Major -15, Minor -8, Info -3 (minimum 0)
-3. Compute the weighted average using the rubric weights
+2. Apply the rubric's per-severity deductions and category weights
+3. Compute the weighted average using the rubric formula
 
 **Clean-console rule:** if any console error is present and `LEGACY_CONSOLE_MODE` is false, the Console category receives an automatic Blocker deduction in addition to per-finding deductions. Warnings follow the rule set in Step 4 (Minor/Major by default, Info under `--legacy-console`).
 
@@ -439,47 +379,7 @@ Add a `## Regression` section to the QA report:
 
 After regression comparison (or if skipped), save a machine-readable baseline for future runs. This runs regardless of `INLINE_MODE` — `--inline` suppresses only `QA_REPORT.md`, not the baseline, so regression comparisons keep working across runs.
 
-Write `QA_BASELINE.json` at the project root:
-
-```json
-{
-  "date": "{ISO 8601 timestamp}",
-  "url": "{TARGET_URL}",
-  "mode": "{TEST_MODE}",
-  "framework": "{DETECTED_FRAMEWORK or null}",
-  "browserMcp": "{BROWSER_MCP or 'code-only'}",
-  "healthScore": {HEALTH_SCORE},
-  "healthLabel": "{HEALTH_LABEL}",
-  "routesTested": {N},
-  "journeyMatrix": [
-    {
-      "routeOrScreen": "{route or screen}",
-      "journey": "{user task}",
-      "changedFiles": ["{path}"],
-      "stateOrDataSetup": "{state}",
-      "expectedBehavior": "{expected result}",
-      "evidence": "{screenshot, console/network note, a11y note, code-only note, or skipped reason}",
-      "result": "{pass|fail|blocked|skipped|code-only}",
-      "followUp": "{QA-NNN|issue|none}"
-    }
-  ],
-  "findings": [
-    {
-      "id": "QA-001",
-      "title": "{title}",
-      "severity": "{Blocker|Major|Minor|Info}",
-      "category": "{Console|Network|Visual|Functional|Data|Interaction|Content|Accessibility}",
-      "route": "{URL path}"
-    }
-  ],
-  "severityCounts": {
-    "blocker": {N},
-    "major": {N},
-    "minor": {N},
-    "info": {N}
-  }
-}
-```
+Write `QA_BASELINE.json` at the project root using the shape in `assets/qa-baseline-schema.md`.
 
 This file is a working artifact. It will be cleaned up by `/kramme:workflow-artifacts:cleanup`.
 

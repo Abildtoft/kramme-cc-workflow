@@ -1,6 +1,6 @@
 ---
 name: kramme:linear:issue-implement
-description: Start implementing a Linear issue with branch setup, context gathering, and guided workflow
+description: Requires Linear MCP. Start implementing a Linear issue with branch setup, planning, and guided or --auto workflows. For SIW-tracked work, use kramme:siw:issue-implement instead.
 argument-hint: "<ISSUE-ID> [--auto]"
 disable-model-invocation: true
 user-invocable: true
@@ -345,22 +345,7 @@ Perform these steps even if the issue seems straightforward:
 
 After exploration, present findings to the user:
 
-```
-Codebase Exploration Results:
-
-Relevant Files Found:
-- {file 1} - {why relevant}
-- {file 2} - {why relevant}
-
-Existing Patterns:
-- {pattern description} in {location}
-
-Similar Implementations:
-- {feature} in {files} - could serve as reference
-
-Suggested Approach:
-{brief technical approach based on findings}
-```
+Read the Codebase Exploration Results template from `references/display-templates.md`.
 
 ---
 
@@ -382,39 +367,7 @@ Review the issue and exploration results to identify:
 
 Use AskUserQuestion for each unclear aspect before proceeding. In `AUTO_MODE`, first choose conservative defaults when the codebase and issue text clearly support them: prefer the smallest in-scope implementation, prefer the existing local pattern with the strongest precedent, and prefer the narrowest test set that covers the acceptance criteria. If an ambiguity would change product scope, data model, security posture, public API, or user-visible behavior, ask even in `AUTO_MODE`.
 
-**Example questions to consider:**
-
-```yaml
-header: "Implementation Scope"
-question: "The issue mentions {feature}. Should this include {related functionality} or just the core feature?"
-options:
-  - label: "Core feature only"
-    description: "Minimal implementation as described"
-  - label: "Include {related functionality}"
-    description: "Broader scope with additional features"
-```
-
-```yaml
-header: "Technical Approach"
-question: "I found two patterns in the codebase for similar features. Which approach should we follow?"
-options:
-  - label: "Pattern A - {description}"
-    description: "Used in {files}"
-  - label: "Pattern B - {description}"
-    description: "Used in {files}"
-```
-
-```yaml
-header: "Testing Requirements"
-question: "What level of test coverage is expected?"
-options:
-  - label: "Unit tests only"
-    description: "Test individual functions/methods"
-  - label: "Unit + integration tests"
-    description: "Also test component interactions"
-  - label: "Full coverage including E2E"
-    description: "Complete test suite"
-```
+Read example question patterns from `references/question-examples.md` when composing prompts.
 
 ### 5.3 Create Technical Plan
 
@@ -458,20 +411,7 @@ Read the implementation workflow for the selected approach from `references/impl
 
 After setup is complete:
 
-```
-Linear Issue Implementation Started
-
-Issue: {identifier} - {title}
-Branch: {branchName} ✓ (already active)
-Approach: {selected approach}
-
-{Approach-specific next steps from Step 7}
-
-Quick Commands:
-- `/kramme:verify:run` - Run verification checks
-- `/kramme:pr:create` - Create PR when ready
-- `/kramme:pr:code-review` - Review changes for issues
-```
+Read the Success Output template from `references/display-templates.md`.
 
 ---
 
