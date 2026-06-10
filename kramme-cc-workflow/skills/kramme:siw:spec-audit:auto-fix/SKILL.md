@@ -1,6 +1,6 @@
 ---
 name: kramme:siw:spec-audit:auto-fix
-description: Auto-fix mechanical spec-audit findings that have a single obvious correct resolution — cross-reference errors, terminology inconsistencies, numbering mistakes, formatting issues, and weasel words replaceable with specifics already in the spec. Run after spec-audit.
+description: Canonical auto-fix procedure for mechanical spec-audit findings and kramme:siw:spec-audit --apply. Fixes only issues with a single obvious resolution — cross-reference errors, terminology inconsistencies, numbering mistakes, formatting issues, and weasel words replaceable with specifics already in the spec. Run after spec-audit.
 argument-hint: "[audit-report-path] [--auto] [--dry-run] [--threshold 60-100] [--allow-dirty]"
 disable-model-invocation: true
 user-invocable: true
@@ -8,7 +8,7 @@ user-invocable: true
 
 # Auto-Fix Safe Spec Audit Findings
 
-Apply deterministic and clearly-best fixes to spec-audit findings that can be corrected safely from the spec itself. This skill runs after `/kramme:siw:spec-audit` (including `--team` runs) and directly edits spec files to resolve mechanical issues plus higher-confidence cleanup that still stays within the existing spec meaning.
+Apply deterministic and clearly-best fixes to spec-audit findings that can be corrected safely from the spec itself. This skill is the canonical direct-update procedure for standalone auto-fix runs and for `/kramme:siw:spec-audit --apply` (including `--team` runs). It directly edits spec files to resolve mechanical issues plus higher-confidence cleanup that still stays within the existing spec meaning.
 
 Findings that require product decisions, stakeholder input, or still lack a clearly best fix are left untouched for `/kramme:siw:resolve-audit`.
 
@@ -25,7 +25,7 @@ Findings that require product decisions, stakeholder input, or still lack a clea
 
 **NEVER** auto-fix a safety-capped finding regardless of threshold. Critical findings in Completeness, Scope, or Value Proposition dimensions always require decisions. Findings whose recommendations use decision-signal language ("consider", "decide whether", "choose between", "discuss with", "evaluate options"), change scope, or define success-criteria substance always require decisions.
 
-**NEVER** auto-fix a finding when any sub-score is below 15. See `references/classification-rubric.md` (Auto-Fix Guardrails) for the authoritative rule and its rationale.
+**NEVER** auto-fix a finding when any sub-score is below 15. See `references/classification-rubric.md` (Auto-Fix Guardrails) for the authoritative rule and its rationale; this rubric is also the canonical scoring model for `/kramme:siw:spec-audit --apply`.
 
 **NEVER** apply a fix that changes the meaning, scope, or intent of any requirement. Fixes correct form, not substance.
 
@@ -54,7 +54,7 @@ Findings that require product decisions, stakeholder input, or still lack a clea
 [Step 5: Apply Fixes] -> Edit spec files, spot-check each fix
     |
     v
-[Step 6: Update Audit Report] -> Annotate fixed findings
+[Step 6: Update Audit Report and SIW Log] -> Annotate fixed findings, record progress when SIW is active
     |
     v
 [Step 7: Summary]
@@ -154,7 +154,7 @@ For each finding, extract:
 **Skip findings that match any of:**
 
 - Already marked `**Status:** [Auto-fixed]` (from a previous run)
-- Already marked `**Status:** [Applied directly]` (from `/kramme:siw:spec-audit --apply`)
+- Already marked `**Status:** [Applied directly]` (legacy marker from `/kramme:siw:spec-audit --apply`)
 - Contains `Existing issue:` note (already tracked via SIW)
 
 If no actionable findings remain:
@@ -163,7 +163,7 @@ If no actionable findings remain:
 No actionable findings to process.
 
 {If all auto-fixed:} All {N} findings were previously auto-fixed.
-{If all applied directly:} All {N} findings were previously applied directly.
+{If all legacy-applied:} All {N} findings were previously applied directly with the legacy marker.
 {If all have issues:} All {N} findings already have SIW issues.
 ```
 
@@ -388,6 +388,16 @@ Update the `**Overall Assessment:**` line (in the report's Summary section, form
 - Only uncapped Minor findings remain (or zero findings remain).
 
 When those conditions hold, replace the existing value with `Ready for implementation`. Otherwise, leave the existing value untouched.
+
+### 6.5 Optional SIW Log Update
+
+If `siw/LOG.md` exists and at least one finding was auto-fixed, append one concise entry under `## Current Progress` / `### Last Completed`:
+
+```markdown
+- {YYYY-MM-DD}: Auto-fixed {N} spec-audit finding(s) in {spec_file_list}; {remaining_count} finding(s) still require decisions. Report: {report_path}
+```
+
+Do not create `siw/LOG.md` if it is missing. Do not update the log during `--dry-run` or when no findings were auto-fixed. If `siw/LOG.md` exists but does not contain a recognizable `## Current Progress` section, leave it unchanged and include `SIW log: not updated (missing Current Progress section)` in the summary.
 
 ---
 

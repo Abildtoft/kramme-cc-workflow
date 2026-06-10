@@ -29,7 +29,7 @@ Then stop.
 
 Same as `/kramme:siw:spec-audit` Steps 1-2:
 
-1. Parse `$ARGUMENTS` — extract `--auto`, optional `--apply` / `--apply-now` direct-update mode, `--model` flag (default: `opus`), optional `--inline` output mode, abort before reading specs if `INLINE_MODE=true` and `APPLY_MODE=true`, then resolve spec file paths or auto-detect from `siw/`
+1. Parse `$ARGUMENTS` — extract `--auto`, optional `--apply` / `--apply-now` auto-fix mode, `--model` flag (default: `opus`), optional `--inline` output mode, abort before reading specs if `INLINE_MODE=true` and `APPLY_MODE=true`, then resolve spec file paths or auto-detect from `siw/`
 2. Read every spec file end-to-end
 3. Extract structural elements (overview, scope, success criteria, requirements, design decisions, tasks, testing, edge cases, out of scope, technical architecture)
 4. Present extraction summary
@@ -271,7 +271,7 @@ Tag findings discovered via cross-validation with `[Cross-validated]`.
 
 ### Step 8: Optionally Apply Findings or Create SIW Issues
 
-Same as `/kramme:siw:spec-audit` Step 6. Inline runs are read-only and skip this step; `INLINE_MODE=true` with `APPLY_MODE=true` must already have aborted in Step 1. If `APPLY_MODE=true` or the user chooses **Apply now**, follow `references/apply-now.md`, update spec files directly for eligible findings, and create no `G-*` issues. Otherwise, create SIW issues for actionable findings if SIW workflow is active. If `AUTO_MODE=true`, use the standard auto-mode issue creation behavior.
+Same as `/kramme:siw:spec-audit` Step 6. Inline runs are read-only and skip this step; `INLINE_MODE=true` with `APPLY_MODE=true` must already have aborted in Step 1. If `APPLY_MODE=true` or the user chooses **Apply now**, follow `references/apply-now.md` to run the canonical auto-fix procedure, and create no `G-*` issues. Otherwise, create SIW issues for actionable findings if SIW workflow is active. If `AUTO_MODE=true`, use the standard auto-mode issue creation behavior.
 
 ### Step 9: Report Summary
 

@@ -6,6 +6,8 @@ A finding's **fix confidence** (0-100) measures how deterministic and safe an au
 
 Score all four conditions. Sum the scores (0-100). Compare against the active threshold (60-100, default 80). Findings at or above the threshold are auto-fixable only if they are not safety-capped and all four conditions score at least 15.
 
+Technical Design findings are typically lower confidence than Coherence or Clarity findings because the fix depth and meaning preservation are more subjective.
+
 ### Condition 1: Determinism (0-25)
 
 | Score | Criteria |
