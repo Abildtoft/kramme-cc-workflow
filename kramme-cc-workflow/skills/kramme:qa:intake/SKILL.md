@@ -77,7 +77,17 @@ If none of the three sinks is writable (no Linear MCP with a resolved team, no c
 1. Look for `UBIQUITOUS_LANGUAGE.md` at the project root and one level up. If present, read it and treat its canonical terms as the first source of vocabulary.
 2. If absent, do not invent one. Domain language will instead be inferred per-issue by the background Explore agent in Step 3b.
 
-### 1c. Optional starting context
+### 1c. Prior-artifact probe
+
+Before opening the session, probe the selected ticket sink for earlier intake output and surface the result to the user:
+
+- **Linear**: search/list recent issues in `LINEAR_TEAM` whose title starts with `QA:`. When starting context is provided, also exact-match both the issue title derived from `$ARGUMENTS` and `QA: {derived title}` so legacy unprefixed intake tickets are found. If exact prefix search is unavailable, list recent team issues and filter titles locally.
+- **SIW fallback**: list `siw/issues/ISSUE-G-*-qa-*.md` by modified time, newest first.
+- **Local fallback**: list `intake-issues/*.md` by modified time, newest first.
+
+Print at most 10 matches as `Prior intake artifacts:` with ticket ID/path and title. If none are found, print `Prior intake artifacts: none found.` Keep this list in memory and refresh it after each ticket is filed during the current run.
+
+### 1d. Optional starting context
 
 If `$ARGUMENTS` is non-empty, treat it as the user's first issue description and skip directly to Step 3a for the first iteration. Otherwise, proceed to Step 2.
 
@@ -93,7 +103,7 @@ Do not ask for a list, do not ask the user to pre-categorize. One issue at a tim
 
 Run this loop until the user says they are done.
 
-This skill does not dedup against tickets from a previous run. If you are resuming after an interrupted session, the user may already have some issues filed — confirm what is already logged before re-filing, since re-running creates duplicates (Linear: silent duplicate issues; SIW/local: fresh `{NNN}` numbers under new IDs).
+Before filing each ticket, compare the proposed title and user-visible symptom with the prior-artifact probe results and tickets created earlier in this run. If there is an exact match, do not create another ticket; report `Skipped - already logged: {ticket-id-or-path}` and ask for the next issue. If there is a probable but not exact match, ask one short confirmation question before filing. Do not rely on the user's memory alone when a concrete probe is available.
 
 ### 3a. Listen and lightly clarify
 
@@ -148,9 +158,11 @@ Once confirmed, file the parent container first, then file child issues in **dep
 
 Apply the **Durability Rule** and the **Domain-Language Rule** (below) when composing each body.
 
+Before any Linear create call or local/SIW file write, re-apply the prior-artifact skip rule against the current sink. For Linear, use an exact normalized title match against both `{title}` and `QA: {title}` in the resolved team; for SIW/local sinks, also skip if the derived target slug already exists on disk.
+
 Derive `{slug}` from the issue title: lowercase, kebab-case, ASCII alphanumerics and hyphens only — strip path separators, dots, and whitespace so the slug is always a safe single path segment.
 
-- **Linear**: call the available Linear issue creation tool with `title`, `description` (the markdown body from the templates below), `team: LINEAR_TEAM`, and any priority suggested by the user (`low`, `medium`, `high`, `urgent`). In Claude Code, create with `mcp__linear__create_issue` and update with `mcp__linear__update_issue`. In Codex, create with `save_issue` without `id`, update the just-created parent with `save_issue` plus `id`, and map priority names to the numeric `priority` field: `urgent` = 1, `high` = 2, `medium`/`normal` = 3, `low`/`minor`/`not urgent` = 4. Use `labels` only for real Linear labels. If the user said the issue is "minor" or "not urgent" and did not give an explicit priority, set low priority or attach an explicit low-priority marker — do not file unlabeled. For a breakdown, after all child IDs exist, update only the just-created parent to add the final `## Child issues` list.
+- **Linear**: call the available Linear issue creation tool with `title: QA: {title}` (unless the title already starts with `QA:`), `description` (the markdown body from the templates below), `team: LINEAR_TEAM`, and any priority suggested by the user (`low`, `medium`, `high`, `urgent`). In Claude Code, create with `mcp__linear__create_issue` and update with `mcp__linear__update_issue`. In Codex, create with `save_issue` without `id`, update the just-created parent with `save_issue` plus `id`, and map priority names to the numeric `priority` field: `urgent` = 1, `high` = 2, `medium`/`normal` = 3, `low`/`minor`/`not urgent` = 4. Use `labels` only for real Linear labels. If the user said the issue is "minor" or "not urgent" and did not give an explicit priority, set low priority or attach an explicit low-priority marker — do not file unlabeled. For a breakdown, after all child IDs exist, update only the just-created parent to add the final `## Child issues` list.
 - **SIW**: write `siw/issues/ISSUE-G-{NNN}-qa-{slug}.md` using a SIW-compatible wrapper around the body:
   - Header: `# ISSUE-G-{NNN}: QA: {title}`
   - Status line: `**Status:** Ready | **Priority:** {Low|Medium|High|Urgent} | **Size:** XS | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential after <ticket-id> | Needs coordination} | **Related:** QA intake`. Use `Safe to parallelize` only when the ticket can start without blockers; dependent child issues with a `Blocked by` line must use `Must be sequential after <ticket-id>`.

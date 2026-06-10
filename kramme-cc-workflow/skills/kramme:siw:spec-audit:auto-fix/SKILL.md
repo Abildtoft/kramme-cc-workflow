@@ -154,6 +154,7 @@ For each finding, extract:
 **Skip findings that match any of:**
 
 - Already marked `**Status:** [Auto-fixed]` (from a previous run)
+- Already marked `**Status:** [Applied directly]` (from `/kramme:siw:spec-audit --apply`)
 - Contains `Existing issue:` note (already tracked via SIW)
 
 If no actionable findings remain:
@@ -162,6 +163,7 @@ If no actionable findings remain:
 No actionable findings to process.
 
 {If all auto-fixed:} All {N} findings were previously auto-fixed.
+{If all applied directly:} All {N} findings were previously applied directly.
 {If all have issues:} All {N} findings already have SIW issues.
 ```
 

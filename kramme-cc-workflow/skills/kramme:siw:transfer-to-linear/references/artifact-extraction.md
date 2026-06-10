@@ -84,13 +84,22 @@ For each issue file, extract:
 
 - SIW ID from the heading or filename, such as `G-001`, `P1-002`, or `ISSUE-G-001`.
 - Title from the first heading after the ID.
+- Normalized planned Linear issue title for retry matching.
 - Status from the `**Status:**` metadata line. Normalize casing for one release — legacy issue files may use `Ready` while the tracker/legend uses `READY`; treat them as the same value (READY, IN PROGRESS, IN REVIEW, DONE).
 - Priority, size, phase, parallelization, mode, and related values from the same metadata line when present.
 - Milestone assignment from the issue phase metadata or the overview section containing the issue. For `G-*` issues, set milestone assignment to empty regardless of section text.
 - Body sections: Problem, Context, Scope, Decision Boundaries, Acceptance Criteria, Edge Cases, Technical Notes, Resolution.
+- Linear transfer marker, if a `## Linear Transfer` section exists:
+  - Linear issue identifier and URL from `- Linear issue: ...`
+  - Linear project URL from `- Linear project: ...`
+  - Transfer date from `- Transferred: ...`
 - Source path.
 
 Normalize SIW IDs to short form (`G-001`, `P1-002`) for mapping. Preserve the full source filename in the transfer report.
+
+Build a duplicate-title set from the normalized planned Linear issue titles for source issues that do not already have a `## Linear Transfer` marker. Preserve duplicate groups in the transfer report so retry planning can avoid collapsing distinct SIW issues onto one Linear title match.
+
+Treat a populated `## Linear Transfer` section as evidence that the source issue was already transferred. The retry plan can use the recorded Linear issue identifier/URL for `skip-existing` actions without querying by title first.
 
 ## Tracker Extraction
 
@@ -102,4 +111,4 @@ Read `OPEN_ISSUES_OVERVIEW.md` to supplement issue metadata:
 
 If an issue appears in the overview but the corresponding issue file is missing, mark it `needs decision` in the plan. The user can choose to create a Linear issue from the overview row only, skip it, or stop and repair SIW tracking.
 
-This migration is one-way and persists no `LINEAR_TRANSFER.md`. There is no prior-run mapping to read; every run extracts from the SIW artifacts as the sole source.
+This migration is one-way and persists no standalone `LINEAR_TRANSFER.md`. Prior-run mapping lives only in per-issue `## Linear Transfer` sections, so every run extracts retry state from the SIW issue files themselves.

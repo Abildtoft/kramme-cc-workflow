@@ -2,7 +2,7 @@
 
 Read this file from `Phase 4: Build Migration Plan` in `SKILL.md`.
 
-This is a one-way migration. No SIW marker is added to Linear records and no rerun mapping is persisted, so there is no cross-run duplicate detection for issues. Milestones are matched by name only, to avoid creating duplicate milestones when `--project` points at an existing project.
+This is a one-way migration. No SIW marker is added to Linear records and no standalone rerun mapping is persisted. Per-issue transfer markers support interrupted issue retries; project documents and milestones are matched by name/title only when retry flags are used, to avoid duplicate planning artifacts when `--project` points at an existing project.
 
 ## Project Mapping
 
@@ -47,6 +47,10 @@ Create one Linear Document under the project for:
 
 If the Linear MCP cannot create Documents, fall back to embedding the main spec summary in the project description and record which supporting specs could not be captured. In that case the migration is not "clean", so removal of `siw/` must not be prompted (see SKILL.md Phase 7).
 
+**Retry duplicate detection (title-based only):**
+
+When `--skip-existing` or `--retry` is set, an existing Linear Document is the same target when its title matches the planned document title exactly, or after normalizing case, spaces, and punctuation, and no other document shares that normalized title. If exactly one match exists, plan `skip-existing`. If multiple match, mark `needs decision`. If none match, plan `create`.
+
 ## Milestone Mapping
 
 Create or update Linear project milestones from SIW phase candidates.
@@ -79,6 +83,10 @@ Skip milestone creation when:
 ## Issue Title and Description
 
 Use the SIW issue title directly as the Linear issue title. Do not add a `[SIW:id]` prefix — SIW identity is intentionally abandoned after migration.
+
+**Retry duplicate detection (title-based fallback):**
+
+When `--skip-existing` or `--retry` is set, title fallback applies only to source issues without a `Linear Transfer` marker whose normalized planned Linear title is unique among unmarked source issues. If multiple source issue files share the same normalized title, mark each unmarked source issue `needs decision` instead of `skip-existing`, even when exactly one Linear issue has that title; otherwise a retry can collapse distinct SIW issues onto one Linear record. For a unique source title, an existing Linear issue is the same target when its title matches exactly, or after normalizing case, spaces, and punctuation, and no other Linear issue shares that normalized title. If exactly one Linear issue matches, plan `skip-existing`; if multiple match, mark `needs decision`; if none match, plan `create`.
 
 Preserve the SIW issue content in the description in this order when present:
 

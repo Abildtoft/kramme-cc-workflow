@@ -102,16 +102,24 @@ Before creating any issues:
 
 For each selected finding:
 
-1. Determine next available `G-` issue number from `siw/issues/`.
-2. Create issue file `siw/issues/ISSUE-G-{NNN}-fix-{slugified-title}.md` using the template in `assets/siw-issue-template.md`.
+1. Apply the standard handled-finding skip rule before creating anything. Skip the finding and report the matched artifact if any of these are true:
+   - The `Existing-Issue Cross-Reference` section from Step 6.5 has a row for this finding with an existing issue that resolves to an existing file under `siw/issues/` (for example, `G-012` or `ISSUE-G-012` resolves to `siw/issues/ISSUE-G-012*.md`).
+   - The finding entry carries an `Existing issue:` annotation that resolves to an existing `siw/issues/ISSUE-G-*.md` file.
+   - The finding is marked `**Status:** [Auto-fixed]` or `**Status:** [Applied directly]`.
+   - A file matching `siw/issues/ISSUE-G-*-{finding-id}-*.md` exists.
+
+   Treat unresolved `Existing issue:` annotations as stale metadata: warn in the completion summary, but do not skip the finding.
+2. Determine next available `G-` issue number from `siw/issues/`.
+3. Create issue file `siw/issues/ISSUE-G-{NNN}-fix-{finding-id}-{slugified-title}.md` using the template in `assets/siw-issue-template.md`.
    - Assign each issue an explicit `Size` (`XS|S|M|L`) and `Parallelization` category (`Safe to parallelize | Must be sequential | Needs coordination`) so the generated SIW issue matches the current tracker schema.
    - Assign each issue an explicit `Mode`. **Default `AUTO`.** Most divergence/extension fixes are AUTO. Set `HITL — <one-line reason>` only when the fix requires a concrete human-input step: an unsettled architectural/product decision, design review, a judgment call, manual testing that can't be automated, or external-system access. When unclear, choose `AUTO`.
 
-3. Update `siw/OPEN_ISSUES_OVERVIEW.md` with new issue rows.
+4. Update `siw/OPEN_ISSUES_OVERVIEW.md` with new issue rows.
    - For a brand-new modern section, use the 7-column modern schema including the `Mode` column (`# | Title | Status | Size | Priority | Mode | Related`); the `Mode` cell is `AUTO` or `HITL` (the reason lives in the issue body, not the table).
    - When a section already exists, match its column count exactly (legacy 5-col / pre-Mode 6-col / modern 7-col) and preserve it in place — do not migrate layouts or add a `Mode` column to a section that lacks one.
    - If `## General` already has a section-level `**Parallelization:**` line, treat that line as a roll-up summary for the whole section rather than a per-issue mirror.
    - Recompute it from all real `G-*` issue files after adding the new issue: if every issue shares the same section-level category/gating note, keep that shared summary; otherwise set it to `Mixed — see issue files for exact guidance`.
    - If the General section is still in its empty placeholder state (`_None_` row / no real issues yet), replace the default summary from `siw:init` with the first real issue's category.
    - If an existing legacy General section has no `**Parallelization:**` line, preserve that absence instead of inserting one.
-4. Update `siw/LOG.md` Current Progress section using `assets/log-last-completed.md`.
+5. Annotate the source report entry for this finding with `Existing issue: G-{NNN}` immediately after the issue is created. If the report cannot be edited, warn in the completion summary and include the finding id plus created issue id.
+6. Update `siw/LOG.md` Current Progress section using `assets/log-last-completed.md`.

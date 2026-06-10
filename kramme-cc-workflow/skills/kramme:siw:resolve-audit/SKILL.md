@@ -122,7 +122,8 @@ Ignore:
 - Fully implemented section
 - Summary totals
 - Non-actionable uncertain rows unless explicitly requested
-- Findings marked `[Auto-fixed]` (already resolved by /kramme:siw:spec-audit:auto-fix)
+- Findings marked `**Status:** [Auto-fixed]` (already resolved by /kramme:siw:spec-audit:auto-fix)
+- Findings marked `**Status:** [Applied directly]` (already resolved by /kramme:siw:spec-audit --apply)
 
 ## Step 3: Select Scope
 
@@ -134,7 +135,14 @@ If the parsed arguments include finding ids (example: `DIV-002 EXT-001 SPEC-003`
 
 **Severity-inheritance rule (referenced by issue templates):** map a SPEC/PROD finding's effective priority from its `Severity Note` — `from Critical` → High, `from Major` → Medium, otherwise the finding's own severity.
 
-**Skip findings that already have an issue.** If a finding's "Existing issue" note references a `G-*` issue that exists on disk under `siw/issues/`, drop it from the queue and list it in the Step 7 summary under "Skipped — already has issue". This keeps re-runs idempotent.
+**Standard handled-finding skip rule.** Before creating an issue for a finding, skip it if any of these are true:
+
+- The finding carries an `Existing issue:` annotation that references a `G-*` / `ISSUE-G-*` issue and that issue resolves to an existing file under `siw/issues/` (for example, `G-012` resolves to `siw/issues/ISSUE-G-012*.md`).
+- The finding is marked `**Status:** [Auto-fixed]`.
+- The finding is marked `**Status:** [Applied directly]`.
+- A file matching `siw/issues/ISSUE-G-*-{finding-id}-*.md` exists.
+
+Drop skipped findings from the queue and report each skip with the matched verified issue file, status marker, or issue file in the Step 7 summary under "Skipped - already handled". If an `Existing issue:` annotation points to no file on disk, treat it as stale metadata, keep the finding in the queue, and mention the stale annotation in the summary. This keeps re-runs idempotent across resolve-audit, spec-audit apply, and auto-fix without suppressing unresolved findings.
 
 **Unknown finding ids.** For each `DIV-*`/`EXT-*`/`SPEC-*`/`PROD-*`/legacy id passed in `$ARGUMENTS` that does not appear in the active report, list it in the Step 7 summary under "Skipped — not in report". If none of the requested ids match any finding, stop before Step 4 with a clear error naming the missing ids and the report path.
 
@@ -287,17 +295,18 @@ Prerequisites:
 
 Issue creation:
 
-1. Determine next `G-` issue number from `siw/issues/ISSUE-G-*.md`.
-2. Create file:
+1. Re-check the standard handled-finding skip rule for this finding. If it now matches, do not create an issue; report the matched artifact in the completion message and Step 7 summary.
+2. Determine next `G-` issue number from `siw/issues/ISSUE-G-*.md`.
+3. Create file:
    - `siw/issues/ISSUE-G-{NNN}-resolve-{finding-id}-{slug}.md`
-3. Use the matching template based on finding type (read the template file and substitute placeholders):
+4. Use the matching template based on finding type (read the template file and substitute placeholders):
    - DIV-_/EXT-_ (and legacy DISC-_/MISS-_): `assets/issue-div-ext.md.template`
    - SPEC-\*: `assets/issue-spec.md.template`
    - PROD-\*: `assets/issue-prod.md.template`
    - When the finding has a `Severity Note`, copy it verbatim into the issue body and apply the severity-inheritance rule from Step 3 to set `Priority`.
    - Set the `Mode` field. **Default `AUTO`.** Most resolutions an autonomous agent can implement and verify are AUTO. Set `HITL — <one-line reason>` only when the chosen option carries a concrete human-input requirement: an unsettled architectural/product decision, design review, a judgment call, manual testing that can't be automated, or external-system access. When unclear, choose `AUTO`. (A finding's severity does not by itself make it HITL.)
 
-4. Add row to `siw/OPEN_ISSUES_OVERVIEW.md` with status `READY`.
+5. Add row to `siw/OPEN_ISSUES_OVERVIEW.md` with status `READY`.
    - For a brand-new modern section, use the 7-column modern schema including the `Mode` column; the `Mode` cell is `AUTO` or `HITL` (the reason lives in the issue body, not the table):
 
      ```markdown
@@ -313,7 +322,15 @@ Issue creation:
    - If the General section is still in its empty placeholder state (`_None_` row / no real issues yet), replace the default summary from `siw:init` with the first real issue's category.
    - If an existing legacy General section has no `**Parallelization:**` line, preserve that absence instead of inserting one.
 
-5. Append a one-line entry to `siw/LOG.md` under the `## Current Progress` section (in `### Last Completed`). Include finding id, selected option, and created issue id. Example:
+6. Annotate the source report entry for this finding with the created issue:
+
+   ```markdown
+   Existing issue: G-{NNN}
+   ```
+
+   Add the annotation in the finding block after any status or severity metadata. If the active source is inline content or the report cannot be edited, do not fail the run; include a warning in the final summary naming the finding and created issue.
+
+7. Append a one-line entry to `siw/LOG.md` under the `## Current Progress` section (in `### Last Completed`). Include finding id, selected option, and created issue id. Example:
 
    ```markdown
    - {YYYY-MM-DD} G-{NNN}: resolved {finding_id} via Option {X} ({one-line option name})
@@ -339,8 +356,8 @@ At the end, report:
 - Findings processed count
 - Issues created (`G-xxx` list)
 - Findings intentionally deferred
-- Skipped — already has issue (finding ids + existing `G-*`)
-- Skipped — not in report (finding ids passed in arguments that did not match the active report)
+- Skipped - already handled (finding ids + matched `Existing issue`, status marker, or issue file)
+- Skipped - not in report (finding ids passed in arguments that did not match the active report)
 - Recommended first implementation issue to start with
 
 This final summary is allowed only after all selected findings complete the full Steps 4-5 cycle.
