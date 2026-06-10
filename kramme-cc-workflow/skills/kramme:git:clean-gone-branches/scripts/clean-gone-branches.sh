@@ -10,16 +10,17 @@ DELETE=0
 YES=0
 FORCE=0
 PRUNE=0
+CONFIRMED_BRANCHES=()
 
 usage() {
 	cat <<'USAGE'
-Usage: clean-gone-branches.sh [--prune] [--delete --yes] [--force] [--help]
+Usage: clean-gone-branches.sh [--prune] [--delete --yes <branch>...] [--force] [--help]
 
 Lists local branches whose upstream tracking branch is gone.
 
 Options:
   --prune   Run git fetch --prune before discovery
-  --delete  Delete safe candidate branches
+  --delete  Delete only the confirmed branch names passed as arguments
   --yes     Required with --delete; indicates explicit user confirmation
   --force   Use git branch -D instead of git branch -d
   --help    Show this help
@@ -44,10 +45,21 @@ while [ $# -gt 0 ]; do
 		usage
 		exit 0
 		;;
-	*)
+	--)
+		shift
+		while [ $# -gt 0 ]; do
+			CONFIRMED_BRANCHES+=("$1")
+			shift
+		done
+		break
+		;;
+	-*)
 		echo "Unknown argument: $1" >&2
 		usage >&2
 		exit 2
+		;;
+	*)
+		CONFIRMED_BRANCHES+=("$1")
 		;;
 	esac
 	shift
@@ -61,6 +73,22 @@ fi
 if [ "$DELETE" -eq 1 ] && [ "$YES" -ne 1 ]; then
 	echo "Refusing to delete without --yes. Run discovery first, confirm the plan, then pass --delete --yes." >&2
 	exit 1
+fi
+
+if [ "$DELETE" -ne 1 ] && [ "${#CONFIRMED_BRANCHES[@]}" -gt 0 ]; then
+	echo "Branch names are only accepted with --delete --yes after confirmation." >&2
+	usage >&2
+	exit 2
+fi
+
+if [ "$DELETE" -eq 1 ] && [ "${#CONFIRMED_BRANCHES[@]}" -eq 0 ]; then
+	echo "Refusing to delete without confirmed branch names. Run discovery first, confirm the exact branches, then pass them after --delete --yes." >&2
+	exit 1
+fi
+
+if [ "$DELETE" -eq 1 ] && [ "$PRUNE" -eq 1 ]; then
+	echo "Ignoring --prune in delete mode; prune only before discovery so the confirmed delete set cannot change." >&2
+	PRUNE=0
 fi
 
 if [ "$PRUNE" -eq 1 ]; then
@@ -114,29 +142,62 @@ is_conductor_path() {
 	esac
 }
 
-git for-each-ref --format='%(refname:short)|%(upstream:short)|%(upstream:track)' refs/heads |
-	while IFS='|' read -r branch upstream track; do
-		[ "$track" = "[gone]" ] || continue
-		worktree_path=$(worktree_for_branch "$branch")
-		flags=""
-		if [ "$branch" = "$current_branch" ]; then
-			flags="${flags} current"
+append_branch_row() {
+	local branch="$1"
+	local upstream="${2:-}"
+	local flags="${3:-}"
+	local worktree_path
+
+	worktree_path=$(worktree_for_branch "$branch")
+	if [ "$branch" = "$current_branch" ]; then
+		flags="${flags} current"
+	fi
+	if [ -n "$worktree_path" ]; then
+		flags="${flags} checked-out"
+	fi
+	if is_conductor_path "$worktree_path"; then
+		flags="${flags} conductor-workspace"
+	fi
+	printf '%s\t%s\t%s\t%s\n' "$branch" "${upstream:-"-"}" "${flags# }" "$worktree_path" >>"$GONE_FILE"
+}
+
+if [ "$DELETE" -eq 1 ]; then
+	for branch in "${CONFIRMED_BRANCHES[@]}"; do
+		if ! git check-ref-format --branch "$branch" >/dev/null 2>&1; then
+			printf '%s\t%s\t%s\t%s\n' "$branch" "-" "invalid" "" >>"$GONE_FILE"
+			continue
 		fi
-		if [ -n "$worktree_path" ]; then
-			flags="${flags} checked-out"
+		if ! git show-ref --verify --quiet "refs/heads/$branch"; then
+			printf '%s\t%s\t%s\t%s\n' "$branch" "-" "missing" "" >>"$GONE_FILE"
+			continue
 		fi
-		if is_conductor_path "$worktree_path"; then
-			flags="${flags} conductor-workspace"
+		ref_info=$(git for-each-ref --format='%(upstream:short)|%(upstream:track)' "refs/heads/$branch")
+		upstream=${ref_info%%|*}
+		track=${ref_info#*|}
+		if [ "$track" != "[gone]" ]; then
+			append_branch_row "$branch" "$upstream" "not-gone"
+			continue
 		fi
-		printf '%s\t%s\t%s\t%s\n' "$branch" "$upstream" "${flags# }" "$worktree_path" >>"$GONE_FILE"
+		append_branch_row "$branch" "$upstream"
 	done
+else
+	git for-each-ref --format='%(refname:short)|%(upstream:short)|%(upstream:track)' refs/heads |
+		while IFS='|' read -r branch upstream track; do
+			[ "$track" = "[gone]" ] || continue
+			append_branch_row "$branch" "$upstream"
+		done
+fi
 
 if [ ! -s "$GONE_FILE" ]; then
 	echo "No local branches have a gone upstream."
 	exit 0
 fi
 
-echo "Local branches with gone upstreams:"
+if [ "$DELETE" -eq 1 ]; then
+	echo "Confirmed branches selected for deletion:"
+else
+	echo "Local branches with gone upstreams:"
+fi
 printf '%-34s %-34s %-34s %s\n' "Branch" "Upstream" "Flags" "Worktree"
 printf '%-34s %-34s %-34s %s\n' "------" "--------" "-----" "--------"
 while IFS=$'\t' read -r branch upstream flags worktree_path; do
@@ -147,7 +208,7 @@ done <"$GONE_FILE"
 
 if [ "$DELETE" -ne 1 ]; then
 	echo
-	echo "Discovery only. Re-run with --delete --yes after explicit confirmation."
+	echo "Discovery only. Re-run with --delete --yes and the confirmed branch names after explicit confirmation."
 	exit 0
 fi
 
@@ -163,6 +224,23 @@ while IFS=$'\t' read -r branch upstream flags worktree_path; do
 		skipped=$((skipped + 1))
 		continue
 	fi
+	case " $flags " in
+	*" invalid "*)
+		echo "SKIP invalid branch name: $branch"
+		skipped=$((skipped + 1))
+		continue
+		;;
+	*" missing "*)
+		echo "SKIP missing branch: $branch"
+		skipped=$((skipped + 1))
+		continue
+		;;
+	*" not-gone "*)
+		echo "SKIP branch no longer has a gone upstream: $branch"
+		skipped=$((skipped + 1))
+		continue
+		;;
+	esac
 	if [ -n "$worktree_path" ]; then
 		echo "SKIP checked-out branch: $branch ($worktree_path)"
 		skipped=$((skipped + 1))

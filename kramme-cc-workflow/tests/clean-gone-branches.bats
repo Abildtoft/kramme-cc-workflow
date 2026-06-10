@@ -59,7 +59,7 @@ make_gone_branch() {
 @test "deletes safe merged gone branches after confirmation" {
 	make_gone_branch "stale/delete"
 
-	run "$SCRIPT" --delete --yes
+	run "$SCRIPT" --delete --yes "stale/delete"
 
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Summary: deleted=1 skipped=0 failed=0"* ]]
@@ -67,11 +67,35 @@ make_gone_branch() {
 	[ "$status" -eq 1 ]
 }
 
+@test "refuses deletion without confirmed branch names" {
+	make_gone_branch "stale/no-confirmed-set"
+
+	run "$SCRIPT" --delete --yes
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Refusing to delete without confirmed branch names"* ]]
+	git show-ref --verify --quiet refs/heads/stale/no-confirmed-set
+}
+
+@test "deletes only confirmed branch names" {
+	make_gone_branch "stale/confirmed"
+	make_gone_branch "stale/unconfirmed"
+
+	run "$SCRIPT" --delete --yes "stale/confirmed"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Summary: deleted=1 skipped=0 failed=0"* ]]
+	[[ "$output" != *"stale/unconfirmed"* ]]
+	run git show-ref --verify --quiet refs/heads/stale/confirmed
+	[ "$status" -eq 1 ]
+	git show-ref --verify --quiet refs/heads/stale/unconfirmed
+}
+
 @test "skips gone branches checked out in a worktree" {
 	make_gone_branch "stale/worktree"
 	git worktree add "$TMP_DIR/linked-worktree" stale/worktree >/dev/null 2>&1
 
-	run "$SCRIPT" --delete --yes
+	run "$SCRIPT" --delete --yes "stale/worktree"
 
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"checked-out"* ]]

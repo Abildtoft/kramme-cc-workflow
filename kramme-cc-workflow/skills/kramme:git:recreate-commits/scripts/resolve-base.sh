@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Resolve and validate the base ref for kramme:git:recreate-commits.
 #
-# Usage: resolve-base.sh [--base <ref>] [--after <commit>]
+# Usage: resolve-base.sh [--base <ref>] [--after <commit>] [--force-backup]
 #
 # On success, prints the resolved values as shell-quoted KEY=VALUE lines to
 # stdout (consume with `eval "$(resolve-base.sh ...)"`):
@@ -19,19 +19,31 @@
 # on a dirty tree before mutating any branch state.
 set -euo pipefail
 
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 BASE_FLAG=""
 AFTER_ARG=""
+FORCE_BACKUP=0
 while [ $# -gt 0 ]; do
 	case "$1" in
 	--base)
-		BASE_FLAG="${2:-}"
-		shift
-		if [ $# -gt 0 ]; then shift; fi
+		if [ $# -lt 2 ]; then
+			echo "--base requires a ref value" >&2
+			exit 1
+		fi
+		BASE_FLAG="$2"
+		shift 2
 		;;
 	--after)
-		AFTER_ARG="${2:-}"
+		if [ $# -lt 2 ]; then
+			echo "--after requires a commit value" >&2
+			exit 1
+		fi
+		AFTER_ARG="$2"
+		shift 2
+		;;
+	--force-backup)
+		FORCE_BACKUP=1
 		shift
-		if [ $# -gt 0 ]; then shift; fi
 		;;
 	*)
 		echo "Unknown argument: $1" >&2
@@ -39,6 +51,17 @@ while [ $# -gt 0 ]; do
 		;;
 	esac
 done
+
+if ! REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null); then
+	echo "Not inside a git repository; run from the user's repo, not the skill directory" >&2
+	exit 1
+fi
+REPO_ROOT=$(cd "$REPO_ROOT" && pwd -P)
+if [ "$SCRIPT_DIR" = "$REPO_ROOT" ] || [[ "$SCRIPT_DIR" == "$REPO_ROOT"/* ]]; then
+	echo "Refusing to run against the repository that contains this skill script." >&2
+	echo 'Run from the user repository with "$SKILL_DIR/scripts/resolve-base.sh"; do not cd into the skill directory.' >&2
+	exit 1
+fi
 
 # Refuse to run on a dirty tree before touching any branch state.
 if ! git diff --quiet || ! git diff --cached --quiet; then
@@ -175,7 +198,19 @@ else
 fi
 ORIGINAL_TIP=$(git rev-parse HEAD)
 BACKUP_REF="${CURRENT_BRANCH}-recreate-backup"
-git branch -f "$BACKUP_REF" "$ORIGINAL_TIP" >/dev/null
+if git show-ref --verify --quiet "refs/heads/$BACKUP_REF"; then
+	EXISTING_BACKUP_TIP=$(git rev-parse "refs/heads/$BACKUP_REF")
+	if [ "$FORCE_BACKUP" -ne 1 ]; then
+		echo "Backup branch '$BACKUP_REF' already exists at $EXISTING_BACKUP_TIP; refusing to move it." >&2
+		echo "Inspect it with: git log --oneline --decorate -n 5 $BACKUP_REF" >&2
+		echo "Recover with: git reset --hard $BACKUP_REF" >&2
+		echo "After confirming it is safe to replace, rerun with --force-backup." >&2
+		exit 1
+	fi
+	git branch -f "$BACKUP_REF" "$ORIGINAL_TIP" >/dev/null
+else
+	git branch "$BACKUP_REF" "$ORIGINAL_TIP" >/dev/null
+fi
 
 printf 'BASE_REF=%q\n' "$BASE_REF"
 printf 'BASE_BRANCH=%q\n' "$BASE_BRANCH"

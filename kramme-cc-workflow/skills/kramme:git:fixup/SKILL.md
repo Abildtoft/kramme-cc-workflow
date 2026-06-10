@@ -66,9 +66,44 @@ Before proceeding with the workflow, check if the user provided additional instr
    4. If none work, fail with a clear error:
       > "Could not auto-detect base branch. Use `--base=<branch>` to specify. Run `git branch` to see available branches."
 
-   The `--base=<branch>` option always overrides auto-detection.
+   Store the resolved branch name as `BASE_BRANCH`. The `--base=<branch>` option always overrides auto-detection.
 
-2. **Check for staged changes:**
+2. **Check branch rewrite safety:**
+
+   Confirm `HEAD` is attached to a feature branch before any history-rewriting work:
+
+   ```bash
+   CURRENT_BRANCH=$(git symbolic-ref --quiet --short HEAD) || {
+     echo "HEAD is detached; switch to the feature branch before running fixup."
+     exit 1
+   }
+   ```
+
+   If `$CURRENT_BRANCH` is the resolved base branch, abort:
+
+   ```bash
+   if [ "$CURRENT_BRANCH" = "$BASE_BRANCH" ]; then
+     echo "Current branch is the base branch '$BASE_BRANCH'; fixup rewrites feature-branch history only."
+     exit 1
+   fi
+   ```
+
+   Check whether the upstream tracking branch has commits that are not in local `HEAD`:
+
+   ```bash
+   UPSTREAM=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)
+   UPSTREAM_REWRITE_WARNING=0
+   if [ -n "$UPSTREAM" ] && git rev-parse --verify --quiet "$UPSTREAM" >/dev/null; then
+     if ! git merge-base --is-ancestor "$UPSTREAM" HEAD; then
+       echo "Upstream '$UPSTREAM' is ahead of or diverged from local HEAD; autosquash would rewrite shared history."
+       UPSTREAM_REWRITE_WARNING=1
+     fi
+   fi
+   ```
+
+   If `UPSTREAM_REWRITE_WARNING=1`, treat it as a stop-and-confirm moment: ask whether collaborators are coordinated and whether to proceed with rewriting local branch history. Under `--no-confirm`, abort instead of asking.
+
+3. **Check for staged changes:**
 
    ```bash
    git diff --cached --name-only
@@ -82,7 +117,7 @@ Before proceeding with the workflow, check if the user provided additional instr
 
    If including staged changes, unstage them first (`git reset HEAD <files>`) so they flow through the normal mapping process.
 
-3. **Check for unstaged and untracked changes:**
+4. **Check for unstaged and untracked changes:**
 
    Detect tracked changes (with rename detection) and untracked files separately — `git diff` alone omits untracked files:
 
@@ -95,7 +130,7 @@ Before proceeding with the workflow, check if the user provided additional instr
 
    If there is nothing to process (no tracked changes, no untracked files, and no staged changes being included), inform the user and exit.
 
-4. **Check branch has commits ahead of base:**
+5. **Check branch has commits ahead of base:**
 
    ```bash
    git log --oneline <base>..HEAD
@@ -103,7 +138,7 @@ Before proceeding with the workflow, check if the user provided additional instr
 
    If no commits, inform user this command requires existing commits to fixup into.
 
-5. **Check for leftover fixup commits:**
+6. **Check for leftover fixup commits:**
 
    ```bash
    git log <base>..HEAD --oneline --grep '^fixup!'
