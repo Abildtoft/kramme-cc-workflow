@@ -40,7 +40,7 @@ When executing those phases, read and follow `references/execution-approaches.md
 
 ## Status Update Procedure
 
-Every status change (to "In Progress", "IN REVIEW", or "DONE") must update all three tracking files atomically. Skipping any file leaves the tracking state inconsistent.
+Every status change (to "IN PROGRESS", "IN REVIEW", or "DONE") must update all three tracking files atomically. Skipping any file leaves the tracking state inconsistent.
 
 **Required updates:**
 
@@ -390,13 +390,13 @@ Run the workflow that matches the user's selection from Step 6:
 - **Option 2 — Context-only:** prepare context and starting points; user drives.
 - **Option 3 — Autonomous:** complete end-to-end with verification and decision sync.
 
-Read and follow `references/execution-approaches.md` for the selected workflow's task list, status-update points, and presentation templates. All three workflows must run the Status Update Procedure (top of skill) when transitioning to "In Progress".
+Read and follow `references/execution-approaches.md` for the selected workflow's task list, status-update points, and presentation templates. All three workflows must run the Status Update Procedure (top of skill) when transitioning to "IN PROGRESS".
 
 ---
 
 ## Step 8: Verify Status Update Completed
 
-Confirm the Status Update Procedure ran during Step 7 and that all three tracking files now show "In Progress" per the checklist at the top of this skill. Re-run the procedure for any file that wasn't updated. Do not proceed to Step 9 until all three files reflect "In Progress".
+Confirm the Status Update Procedure ran during Step 7 and that all three tracking files now show "IN PROGRESS" per the checklist at the top of this skill. Re-run the procedure for any file that wasn't updated. Do not proceed to Step 9 until all three files reflect "IN PROGRESS".
 
 ---
 

@@ -14,7 +14,7 @@ Exhaustively compare the codebase implementation against specification documents
 
 - **Spec quality review** — use `/kramme:siw:spec-audit` to audit the spec itself for ambiguity, gaps, or contradictions before comparing against code.
 - **User/product audit** — use `/kramme:siw:product-audit` to evaluate whether the spec describes the right product.
-- **PR-scoped review** — use `/kramme:pr:code-review` for code quality on a specific diff; this skill compares the *full* implementation against the *full* spec.
+- **PR-scoped review** — use `/kramme:pr:code-review` for code quality on a specific diff; this skill compares the _full_ implementation against the _full_ spec.
 
 ## Platform note
 
@@ -108,7 +108,8 @@ Auto-detect spec files from the `siw/` directory:
 
 2. Find spec files (exclude workflow files):
    - Use Glob to find `siw/*.md`
-   - Exclude: `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `SPEC_STRENGTHENING_PLAN.md`, `DISCOVERY_BRIEF.md`, `AUDIT_.*\.md`
+   - Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.
+   - Exclude that workflow-artifact set before treating any top-level `siw/*.md` file as a spec. When the filter excludes every candidate, report the excluded filenames and ask for an explicit spec path instead of silently proceeding.
 
 3. Find supporting specs:
    - Use Glob to find `siw/supporting-specs/*.md`
@@ -123,6 +124,8 @@ Auto-detect spec files from the `siw/` directory:
 6. Store files as `spec_files`.
 
 ### 1.4 If No Spec Files Found
+
+If auto-detection found no spec files because every top-level `siw/*.md` candidate was excluded by the workflow-artifact filter, report the excluded filenames and ask the user for explicit spec path(s). Validate provided paths with the explicit-path flow from Step 1.2 and continue when valid. If the user provides no path, then emit the generic error below and abort.
 
 ```
 Error: No specification files found.

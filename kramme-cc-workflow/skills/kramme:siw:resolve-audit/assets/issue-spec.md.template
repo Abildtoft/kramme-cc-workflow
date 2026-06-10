@@ -1,6 +1,6 @@
 # ISSUE-G-{NNN}: Spec: {finding_id} - {short title}
 
-**Status:** Ready | **Priority:** {High/Medium/Low — see Step 3 severity-inheritance rule} | **Size:** {XS|S|M|L} | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Mode:** {AUTO | HITL — <reason>; default AUTO — see Step 5} | **Related:** Spec Audit Report
+**Status:** READY | **Priority:** {High/Medium/Low — see Step 3 severity-inheritance rule} | **Size:** {XS|S|M|L} | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Mode:** {AUTO | HITL — <reason>; default AUTO — see Step 5} | **Related:** Spec Audit Report
 
 ## Problem
 

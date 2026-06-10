@@ -110,7 +110,7 @@ Assign each phase issue to the mapped Linear milestone for its SIW phase when a 
 
 ## Status Mapping
 
-Use the team's issue statuses and match by state `type` (`backlog`, `unstarted`, `started`, `completed`, `canceled`) or closest exact name. Normalize SIW status casing first — the issue-file metadata line uses `Ready` while the tracker/legend uses `READY`; treat them as the same value.
+Use the team's issue statuses and match by state `type` (`backlog`, `unstarted`, `started`, `completed`, `canceled`) or closest exact name. Normalize SIW status casing first for one release — legacy issue-file metadata may use `Ready` while the tracker/legend uses `READY`; treat them as the same value.
 
 | SIW status | Preferred Linear state type |
 | --- | --- |

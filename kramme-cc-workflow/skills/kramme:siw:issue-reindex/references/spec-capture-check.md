@@ -8,7 +8,7 @@ Use this check after the user confirms the reindex plan and before deleting any 
 - The original issue-id map, including every DONE issue selected for deletion.
 - The DONE issue files from `siw/issues/`.
 - `siw/LOG.md` when present.
-- Active specification files directly under `siw/`, excluding `siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/SPEC_STRENGTHENING_PLAN.md`, `siw/DISCOVERY_BRIEF.md`, and `siw/AUDIT_*.md`.
+- Active specification files directly under `siw/`, excluding the synced SIW spec-exclusion contract: `siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/DISCOVERY_BRIEF.md`, `siw/SPEC_STRENGTHENING_PLAN.md`, `siw/AUDIT_*.md`, `siw/PRODUCT_AUDIT.md`, and `siw/SIW_*.md`.
 - Supporting specification files under `siw/supporting-specs/` when present.
 
 ## Capture Procedure
