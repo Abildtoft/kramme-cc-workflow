@@ -95,3 +95,12 @@ Pause and reshape the commit if any of these are true:
 - You're about to use `--no-verify` because hooks fail; fix the hook failure first.
 - You're about to amend a commit that has already been pushed to a shared branch.
 - The body explains _how_ instead of _why_.
+
+## Verification
+
+Before returning a commit message, self-check:
+
+- [ ] The subject is plain English unless the user explicitly asked for another format.
+- [ ] The message describes one logical change.
+- [ ] The body explains why when the subject alone is not enough.
+- [ ] No AI attribution or hidden co-author trailer is present.

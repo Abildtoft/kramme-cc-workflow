@@ -346,9 +346,13 @@ Use these uppercase markers when reasoning about the description generation. The
 - **CONFUSION** — diff evidence that contradicts the commit log or Linear issue. `CONFUSION: commits say "add feature flag", but the diff toggles it on by default`.
 - **MISSING REQUIREMENT** — context the user must provide before a faithful description can be generated. `MISSING REQUIREMENT: no Linear ID in branch name and no issue mentioned in commits — confirm the intended ticket or proceed without one`.
 
-## Common Rationalizations and Red Flags
+## Common Rationalizations
 
-Read `references/red-flags.md` before finalizing. Covers common rationalizations that under-serve the reviewer and stop-and-regenerate red flags (vague summary nouns, file-list mirroring, missing migration warnings, automated-only Test Plan, spec-file references, AI-attribution badges).
+Read `references/red-flags.md` before finalizing. It covers common rationalizations that under-serve the reviewer.
+
+## Red Flags
+
+Read `references/red-flags.md` before finalizing. Stop and regenerate when the draft uses vague summary nouns, mirrors a file list, hides migration risk, has an automated-only Test Plan, references spec files, or includes AI-attribution badges.
 
 ## Verification
 

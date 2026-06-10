@@ -158,6 +158,14 @@ These are the lies you will tell yourself to skip or distort the glossary. Each 
 - _"I'll add every noun from the conversation to be thorough."_ → Domain relevance only. Generic programming nouns rot the glossary and train readers to skim it.
 - _"Let me just overwrite the existing file with my fresher version."_ → Read-then-merge. Committed canonicals are decisions; treat them like ADRs.
 
+## Red Flags
+
+Stop and ask before writing if any of these are true:
+
+- The conversation does not contain enough domain context to distinguish terms.
+- Updating an existing glossary would rename a committed canonical without explicit confirmation.
+- The generated glossary would mix domain language with generic implementation jargon.
+
 ## Verification
 
 Before declaring the glossary done, self-check:

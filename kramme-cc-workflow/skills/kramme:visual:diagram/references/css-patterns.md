@@ -1195,7 +1195,7 @@ details.collapsible .collapsible__body {
 
 ## Generated Images
 
-For AI-generated illustrations embedded as base64 data URIs via `surf gemini --generate-image`. Use sparingly — hero banners, conceptual illustrations, educational diagrams, decorative accents.
+For AI-generated illustrations embedded as base64 data URIs (produced by whatever image tool is available in the environment). Use sparingly — hero banners, conceptual illustrations, educational diagrams, decorative accents.
 
 ### Hero Banner
 
