@@ -149,7 +149,7 @@ If `PRODUCT_REVIEW_OVERVIEW.md` was found in Step 4:
 - Cross-reference validated findings against previously addressed findings
 - **Only filter** if the finding is essentially the same issue:
   - Same file
-  - Similar line number (within ~10 lines, accounting for code shifts)
+  - Same enclosing function, component, or block (do not rely on raw line distance; refactors and formatters shift line numbers)
   - Same underlying issue (semantic match on root cause)
 - **Do NOT filter** (keep as active finding) if:
   - The issue description is substantively different (different root cause)
@@ -183,7 +183,7 @@ Otherwise:
 - Write to `PRODUCT_REVIEW_OVERVIEW.md` in the project root using the report format from `assets/product-review-report-format.md`
 - Include all sections even if empty (with count of 0)
 - Treat the file as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
-- If `PRODUCT_REVIEW_OVERVIEW.md` is not already listed in `.gitignore` (or any `.gitignore` in a parent directory), append the entry and mention the addition to the user. This prevents accidental commits of the working artifact.
+- If `PRODUCT_REVIEW_OVERVIEW.md` is not already listed in `.gitignore` (or any `.gitignore` in a parent directory), ask the user whether to add it before changing `.gitignore`. If the user declines or the workflow is non-interactive, do not mutate `.gitignore`; mention that the artifact remains unignored.
 
 ### Step 9: Provide Action Plan
 
@@ -206,7 +206,7 @@ Emit the terminal output below. When there are Critical or Important findings, t
 Report output: {inline reply | PRODUCT_REVIEW_OVERVIEW.md}
 
 To resolve findings:
-- If file output was used: `/kramme:pr:resolve-review --local`
+- If file output was used: `/kramme:pr:resolve-review`
 - If inline output was used: `/kramme:pr:resolve-review <paste inline report>`
 ```
 

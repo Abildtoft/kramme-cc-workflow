@@ -24,7 +24,7 @@ Every active finding must include these fields before it is posted:
 | Finding ID | `CR-001`, `CR-002`, ... | Gives downstream workflows a stable source identifier for handoffs and resolution summaries. |
 | Severity | Critical, Important, Suggestion, FYI | Describes merge impact. Use the prefix grammar from `output-template.md`. |
 | Location | `path/to/file:line`, `review-scope`, or `PR description` | Lets downstream workflows distinguish auto-fixable code findings from manual/process findings. |
-| Confidence | `high`, `medium`, `low` | States how directly the reviewer traced the issue. |
+| Confidence | `0-100` | States how directly the reviewer traced the issue. During the transition, map reviewer tiers as `high=90`, `medium=60`, `low=30`. |
 | Action class | `gated_auto`, `manual`, `advisory` | Separates urgency from safe ownership. |
 | Owner | resolver, author, maintainer, reviewer, unknown | Names who can act next. |
 | Evidence | concrete trace, location, reproduction, failed expectation, or `UNVERIFIED` reason | Prevents unsupported findings from becoming gatekeeping. |
@@ -44,9 +44,9 @@ Every active finding must include these fields before it is posted:
 
 ## Confidence and merge rules
 
-- **High confidence** means the reviewer traced the behavior to the changed code, reproduced it, or tied it to a concrete failing expectation.
-- **Medium confidence** means the issue is strongly indicated by the diff but still depends on a nearby assumption, framework behavior, or untested runtime state.
-- **Low confidence** means the issue is plausible but not traced. Keep the `UNVERIFIED` marker visible and avoid merge-blocking language unless another reviewer proves the same risk.
+- **90-100 confidence** means the reviewer traced the behavior to the changed code, reproduced it, or tied it to a concrete failing expectation.
+- **60-89 confidence** means the issue is strongly indicated by the diff but still depends on a nearby assumption, framework behavior, or untested runtime state.
+- **0-59 confidence** means the issue is plausible but not traced. Keep the `UNVERIFIED` marker visible and avoid merge-blocking language unless another reviewer proves the same risk.
 - Merge duplicate findings only when they identify the same concrete location or review scope and the same root cause.
 - Promote confidence only when independent reviewers agree on the same issue, not merely the same broad concern.
 - Keep contradictory findings separate and record the conflict as `CONFUSION` or `MISSING REQUIREMENT` with action class `manual`.

@@ -76,4 +76,4 @@
 3. Discuss open questions with product owner
 4. Re-run after fixes
 
-**To resolve findings, run:** `/kramme:pr:resolve-review --local`
+**To resolve findings, run:** `/kramme:pr:resolve-review`

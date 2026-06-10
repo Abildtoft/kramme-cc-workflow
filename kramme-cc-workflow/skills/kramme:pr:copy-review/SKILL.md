@@ -131,6 +131,8 @@ After collecting findings from the copy reviewer:
 - Filter pre-existing issues and out-of-scope problems
 - Return only findings caused by this combined scope
 
+**Agent failure handling.** If the copy reviewer or relevance validator is unavailable, times out, or returns output that cannot be parsed as findings, surface the failure to the user with the agent name and what was attempted, then stop without writing `COPY_REVIEW_OVERVIEW.md`. Do not fabricate findings or silently continue with an empty result.
+
 ### Step 7: Filter Previously Addressed Findings
 
 If `COPY_REVIEW_OVERVIEW.md` was found in Step 4:
@@ -138,7 +140,7 @@ If `COPY_REVIEW_OVERVIEW.md` was found in Step 4:
 - Cross-reference validated findings against previously addressed findings
 - **Only filter** if the finding is essentially the same issue:
   - Same file
-  - Similar line number (within ~10 lines, accounting for code shifts)
+  - Same enclosing function, component, or block (do not rely on raw line distance; refactors and formatters shift line numbers)
   - Same underlying issue (semantic match on root cause)
 - **Do NOT filter** (keep as active finding) if:
   - The issue description is substantively different (different root cause)
@@ -175,7 +177,7 @@ Otherwise:
 
 If Critical or Important findings were found:
 
-- When `INLINE_MODE=false`, suggest running `/kramme:pr:resolve-review` and point it at `COPY_REVIEW_OVERVIEW.md` (e.g., pass the file contents or run in the same session so chat context contains the report).
+- When `INLINE_MODE=false`, suggest running `/kramme:pr:resolve-review`; auto/local discovery will find `COPY_REVIEW_OVERVIEW.md` and ask which overview to resolve if multiple local review files exist.
 - When `INLINE_MODE=true`, suggest re-running with the inline report content passed as the argument: `/kramme:pr:resolve-review <paste report>` — or invoke it in the same session so chat context contains the report.
 
 Organize findings summary in the terminal output:
