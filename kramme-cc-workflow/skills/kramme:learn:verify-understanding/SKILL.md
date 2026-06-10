@@ -1,5 +1,5 @@
 ---
-name: kramme:verify-understanding
+name: kramme:learn:verify-understanding
 description: Guides topic-level understanding verification for a PR, branch, feature, document, spec, design decision, bug fix, or other concrete subject. Use when the user asks to confirm, quiz, drill, teach-and-check, or verify that they understand a topic. Maintains a topic-specific checklist artifact and requires demonstrated understanding before marking the topic complete. Not for ordinary explanations without verification, end-of-session summaries, or code/test correctness checks.
 argument-hint: "[topic: PR, branch, feature, document, spec, etc.]"
 disable-model-invocation: true

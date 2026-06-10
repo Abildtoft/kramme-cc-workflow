@@ -1,6 +1,6 @@
 ---
 name: kramme:visual:diff-review
-description: Generate a visual HTML diff review with before/after architecture comparison, KPI dashboard, Mermaid dependency graphs, and code review analysis
+description: Use when you want a shareable visual walkthrough of an existing branch, PR, commit, or range diff. Generates a self-contained HTML artifact with before/after architecture comparison, KPI dashboard, Mermaid dependency graphs, explanatory review notes, and decision log. Not an actionable PR/code review workflow; use kramme:pr:code-review for inline code findings or kramme:pr:ux-review for live UX/product review.
 argument-hint: "[branch|commit|PR#|range]"
 disable-model-invocation: true
 user-invocable: true
@@ -10,6 +10,8 @@ kramme-platforms: [claude-code]
 # Visual Diff Review
 
 Generate a comprehensive visual diff review as a self-contained HTML page.
+
+This produces a visual before/after artifact. It is not an actionable code review workflow: use `kramme:pr:code-review` for fix-oriented code findings and `kramme:pr:ux-review` for live UX, product, visual, and accessibility review.
 
 **Arguments:** "$ARGUMENTS"
 
@@ -82,7 +84,7 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 5. **Flow diagrams** — Mermaid flowchart, sequence, or state diagrams for new lifecycle/pipeline/interaction patterns. Same zoom controls.
 6. **File map** — full tree with color-coded new/modified/deleted indicators. Use `<details>` collapsed by default.
 7. **Test coverage** — before/after test file counts and what's covered.
-8. **Code review** — structured Good/Bad/Ugly analysis:
+8. **Review notes** — explanatory Good/Bad/Ugly analysis for the visual artifact, not authoritative inline findings. For actionable code review, use `kramme:pr:code-review`; for live UX/product review, use `kramme:pr:ux-review`.
    - **Good**: Solid choices, improvements, clean patterns
    - **Bad**: Bugs, regressions, missing error handling, logic errors
    - **Ugly**: Tech debt introduced, maintainability concerns
