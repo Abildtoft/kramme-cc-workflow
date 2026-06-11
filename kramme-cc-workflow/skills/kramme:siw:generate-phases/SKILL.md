@@ -474,7 +474,7 @@ For each issue, create `siw/issues/ISSUE-{prefix}-{number}-{title}.md`:
 
 ### 6.2 Update Overview Table
 
-Read `references/tracker-schema.md` and apply its modern and legacy schema rules when updating `siw/OPEN_ISSUES_OVERVIEW.md`.
+Read `references/tracker-schema.md` and apply its modern and legacy schema rules when updating `siw/OPEN_ISSUES_OVERVIEW.md`. The synced tracker status vocabulary is `READY | IN PROGRESS | IN REVIEW | DONE`.
 
 ## Phase 7: Summary
 
