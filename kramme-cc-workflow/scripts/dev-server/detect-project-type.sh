@@ -13,7 +13,7 @@
 #   multiple:<type>@<dir>,<type>@<dir>
 #   unknown
 
-set -u
+set -euo pipefail
 
 TARGET_PATH="${1:-}"
 
@@ -27,7 +27,7 @@ if [ -n "$TARGET_PATH" ]; then
     exit 1
   }
 else
-  REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+  REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
   if [ -z "$REPO_ROOT" ]; then
     echo "ERROR: not in a git repository and no path argument provided" >&2
     exit 1

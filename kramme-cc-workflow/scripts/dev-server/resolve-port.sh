@@ -9,7 +9,7 @@
 # wins, then framework config, Rails/Procfile/Docker/package metadata, env
 # files, and finally framework defaults.
 
-set -u
+set -euo pipefail
 
 PROJECT_ROOT=""
 PROJ_TYPE=""
@@ -48,7 +48,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$PROJECT_ROOT" ]; then
-  PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+  PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
   if [ -z "$PROJECT_ROOT" ]; then
     echo "ERROR: not in a git repository and no path provided" >&2
     exit 1
@@ -78,7 +78,7 @@ emit_if_port() {
 
 parse_script_port() {
   local script="$1"
-  printf '%s' "$script" | grep -Eo '(^|[[:space:]])(-p[= ]*|--port[= ]+)[0-9]+' | head -1 | grep -Eo '[0-9]+'
+  printf '%s' "$script" | grep -Eo '(^|[[:space:]])(-p[= ]*|--port[= ]+)[0-9]+' | head -1 | grep -Eo '[0-9]+' || true
 }
 
 should_probe() {
@@ -121,7 +121,7 @@ parse_env_port() {
   fi
 
   local line value
-  line=$(grep -E '^PORT=' "$envfile" 2>/dev/null | tail -1)
+  line=$(grep -E '^PORT=' "$envfile" 2>/dev/null | tail -1 || true)
   if [ -z "$line" ]; then
     return 0
   fi
@@ -212,14 +212,14 @@ parse_puma_port() {
   fi
 
   local line puma_port
-  line=$(grep -E '^[[:space:]]*port[[:space:]]+' "$puma_file" 2>/dev/null | head -1)
-  puma_port=$(printf '%s' "$line" | grep -Eo 'port[[:space:]]+["'"'"']?[0-9]+' | head -1 | grep -Eo '[0-9]+')
+  line=$(grep -E '^[[:space:]]*port[[:space:]]+' "$puma_file" 2>/dev/null | head -1 || true)
+  puma_port=$(printf '%s' "$line" | grep -Eo 'port[[:space:]]+["'"'"']?[0-9]+' | head -1 | grep -Eo '[0-9]+' || true)
   if is_port "$puma_port"; then
     printf '%s' "$puma_port"
     return 0
   fi
 
-  puma_port=$(printf '%s' "$line" | grep -Eo 'ENV\.fetch\([^)]*,[[:space:]]*[0-9]+' | head -1 | grep -Eo '[0-9]+' | tail -1)
+  puma_port=$(printf '%s' "$line" | grep -Eo 'ENV\.fetch\([^)]*,[[:space:]]*[0-9]+' | head -1 | grep -Eo '[0-9]+' | tail -1 || true)
   if is_port "$puma_port"; then
     printf '%s' "$puma_port"
   fi
@@ -254,10 +254,10 @@ if should_probe "$PROJ_TYPE" "framework-config"; then
     "$PROJECT_ROOT"/astro.config.cjs; do
     [ -f "$cfg" ] || continue
 
-    local_line=$(grep -E 'port:[[:space:]]*["'"'"']?[0-9]+' "$cfg" 2>/dev/null | head -1)
+    local_line=$(grep -E 'port:[[:space:]]*["'"'"']?[0-9]+' "$cfg" 2>/dev/null | head -1 || true)
     [ -n "$local_line" ] || continue
 
-    local_port=$(printf '%s' "$local_line" | grep -Eo 'port:[[:space:]]*["'"'"']?[0-9]+["'"'"']?' | head -1 | grep -Eo '[0-9]+')
+    local_port=$(printf '%s' "$local_line" | grep -Eo 'port:[[:space:]]*["'"'"']?[0-9]+["'"'"']?' | head -1 | grep -Eo '[0-9]+' || true)
     [ -n "$local_port" ] || continue
 
     local_after=$(printf '%s' "$local_line" | sed "s/.*port:[[:space:]]*[\"']*${local_port}[\"']*//")
@@ -278,9 +278,9 @@ fi
 if should_probe "$PROJ_TYPE" "procfile"; then
   for procfile in "$PROJECT_ROOT/Procfile.dev" "$PROJECT_ROOT/Procfile"; do
     [ -f "$procfile" ] || continue
-    web_line=$(grep -E '^web:' "$procfile" 2>/dev/null | head -1)
+    web_line=$(grep -E '^web:' "$procfile" 2>/dev/null | head -1 || true)
     if [ -n "$web_line" ]; then
-      proc_port=$(printf '%s' "$web_line" | grep -Eo '(-p[= ]*|--port[= ]+)[0-9]+' | head -1 | grep -Eo '[0-9]+')
+      proc_port=$(printf '%s' "$web_line" | grep -Eo '(-p[= ]*|--port[= ]+)[0-9]+' | head -1 | grep -Eo '[0-9]+' || true)
       emit_if_port "$proc_port"
     fi
   done
@@ -305,7 +305,7 @@ if should_probe "$PROJ_TYPE" "package-json"; then
       done
     else
       for script_name in dev start; do
-        script_line=$(grep -E "\"${script_name}\"[[:space:]]*:" "$pkg_file" 2>/dev/null | head -1)
+        script_line=$(grep -E "\"${script_name}\"[[:space:]]*:" "$pkg_file" 2>/dev/null | head -1 || true)
         pkg_port=$(parse_script_port "$script_line")
         emit_if_port "$pkg_port"
       done

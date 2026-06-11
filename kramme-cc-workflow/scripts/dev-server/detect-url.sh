@@ -9,7 +9,7 @@
 #   __NO_RUNNING_SERVER__        - no reachable dev server was found
 #   __MULTIPLE_URLS__ + lines    - multiple reachable URLs need disambiguation
 
-set -u
+set -euo pipefail
 
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 PROJECT_ROOT=""
@@ -67,7 +67,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$PROJECT_ROOT" ]; then
-  PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+  PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
   if [ -z "$PROJECT_ROOT" ]; then
     echo "ERROR: not in a git repository and no path provided" >&2
     exit 1

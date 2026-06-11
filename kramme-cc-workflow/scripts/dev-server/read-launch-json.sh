@@ -7,7 +7,7 @@
 #
 # Read .claude/launch.json and emit the selected configuration as compact JSON.
 
-set -u
+set -euo pipefail
 
 PROJECT_ROOT=""
 REQUESTED_NAME=""
@@ -40,7 +40,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$PROJECT_ROOT" ]; then
-  PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+  PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
   if [ -z "$PROJECT_ROOT" ]; then
     echo "ERROR: not in a git repository and no --root provided" >&2
     exit 1

@@ -9,7 +9,7 @@
 #   line 1: npm | pnpm | yarn | bun | __NO_PACKAGE_JSON__
 #   line 2: canonical command tail for running a dev script, when applicable.
 
-set -u
+set -euo pipefail
 
 TARGET_PATH="${1:-}"
 
@@ -19,7 +19,7 @@ if [ -n "$TARGET_PATH" ]; then
     exit 1
   fi
 else
-  TARGET_PATH=$(git rev-parse --show-toplevel 2>/dev/null)
+  TARGET_PATH=$(git rev-parse --show-toplevel 2>/dev/null || true)
   if [ -z "$TARGET_PATH" ]; then
     echo "ERROR: not in a git repository and no path argument provided" >&2
     exit 1
