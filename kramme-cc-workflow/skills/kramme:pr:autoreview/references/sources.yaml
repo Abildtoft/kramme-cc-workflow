@@ -1,0 +1,7 @@
+sources:
+  - id: openclaw-autoreview
+    url: https://github.com/openclaw/agent-skills/blob/main/skills/autoreview/SKILL.md
+    title: "OpenClaw agent-skills - autoreview"
+    rationale: "The closeout review contract, advisory-finding discipline, and rerun-after-fix loop are adapted into this Kramme wrapper skill."
+    last_reviewed_at: 2026-06-11
+    baseline_hash: ""
