@@ -31,6 +31,19 @@ jobs:
       - name: Run tests
         run: make -C kramme-cc-workflow test
 
+  hooks-required:
+    name: Run hook tests
+    runs-on: ubuntu-latest
+    needs: hooks
+    if: ${{ always() }}
+    steps:
+      - name: Check matrix hook tests
+        run: |
+          if [ "${{ needs.hooks.result }}" != "success" ]; then
+            echo "Hook test matrix did not pass: ${{ needs.hooks.result }}"
+            exit 1
+          fi
+
   lint:
     name: Run static checks
     runs-on: ubuntu-latest
