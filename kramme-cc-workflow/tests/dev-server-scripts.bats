@@ -36,6 +36,13 @@ setup() {
   [ "$output" = "next@apps/web" ]
 }
 
+@test "detect-project-type emits unknown when no project signatures exist" {
+  run "$SCRIPT_DIR/detect-project-type.sh" "$WORK_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "unknown" ]
+}
+
 @test "resolve-package-manager prefers pnpm lockfile" {
   touch "$WORK_DIR/package.json"
   touch "$WORK_DIR/package-lock.json"
@@ -46,6 +53,13 @@ setup() {
   [ "$status" -eq 0 ]
   [ "${lines[0]}" = "pnpm" ]
   [ "${lines[1]}" = "dev" ]
+}
+
+@test "resolve-package-manager emits sentinel when package.json is missing" {
+  run "$SCRIPT_DIR/resolve-package-manager.sh" "$WORK_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "__NO_PACKAGE_JSON__" ]
 }
 
 @test "resolve-port reads framework config before env default" {
@@ -146,6 +160,13 @@ YAML
   [ "$output" = "4000" ]
 }
 
+@test "resolve-port falls back to default port when no project metadata exists" {
+  run "$SCRIPT_DIR/resolve-port.sh" "$WORK_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "3000" ]
+}
+
 @test "read-launch-json selects named configuration" {
   mkdir -p "$WORK_DIR/.claude"
   cat >"$WORK_DIR/.claude/launch.json" <<'JSON'
@@ -180,6 +201,13 @@ JSON
   [ "$output" = "__CONFIG_NOT_FOUND__" ]
 }
 
+@test "read-launch-json emits sentinel when launch file is missing" {
+  run "$SCRIPT_DIR/read-launch-json.sh" --root "$WORK_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "__NO_LAUNCH_JSON__" ]
+}
+
 @test "value-bearing flags fail when missing values" {
   run "$SCRIPT_DIR/detect-url.sh" "$WORK_DIR" --url
   [ "$status" -eq 1 ]
@@ -207,6 +235,20 @@ SH
   chmod +x "$MOCK_BIN/curl"
 
   PATH="$MOCK_BIN:$PATH" run "$SCRIPT_DIR/detect-url.sh" "$WORK_DIR" --port 1234
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "__NO_RUNNING_SERVER__" ]
+}
+
+@test "detect-url emits no-server sentinel when no fallback port is reachable" {
+  mkdir -p "$MOCK_BIN"
+  cat >"$MOCK_BIN/curl" <<'SH'
+#!/usr/bin/env bash
+printf '000'
+SH
+  chmod +x "$MOCK_BIN/curl"
+
+  PATH="$MOCK_BIN:$PATH" run "$SCRIPT_DIR/detect-url.sh" "$WORK_DIR"
 
   [ "$status" -eq 0 ]
   [ "$output" = "__NO_RUNNING_SERVER__" ]
