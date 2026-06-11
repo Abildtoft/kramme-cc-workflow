@@ -15,7 +15,6 @@ Options:
 
 import argparse
 import json
-import os
 import re
 import subprocess
 import sys
@@ -256,8 +255,8 @@ def main() -> int:
         print(f"\nRelease branch {branch_name} created.")
         print("\nNext steps:")
         print(f"  1. Push branch: git push origin {branch_name}")
-        print(f"  2. Create PR to main")
-        print(f"  3. After PR merge, tag and release will be created automatically")
+        print("  2. Create PR to main")
+        print("  3. After PR merge, tag and release will be created automatically")
 
     return 0
 
