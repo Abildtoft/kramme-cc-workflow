@@ -1,10 +1,18 @@
 #!/bin/bash
+set -uo pipefail
+# Policy: -u/-pipefail only. No -e: hook exit codes are semantic (exit 2 blocks the tool call); errors must be handled explicitly.
 # Hook: Confirm before committing review artifact files
 # Blocks git commit when configured review artifacts are staged, asking for confirmation
 #
 # Check if hook is enabled
 source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
-exit_if_hook_disabled "confirm-review-responses"
+exit_if_hook_disabled "confirm-review-responses" ""
+
+if ! command -v jq > /dev/null 2>&1; then
+  echo "confirm-review-responses hook: jq not found; allowing command unchanged." >&2
+  [ ! -t 0 ] && cat > /dev/null
+  exit 0
+fi
 
 ARTIFACT_LIST_FILE="${CONFIRM_REVIEW_ARTIFACT_LIST_FILE:-${CLAUDE_PLUGIN_ROOT}/hooks/confirm-review-artifacts.txt}"
 COMMAND_SUBSTITUTION_TOKEN="__CMD_SUBST_"

@@ -1,10 +1,18 @@
 #!/bin/bash
+set -uo pipefail
+# Policy: -u/-pipefail only. No -e: hook exit codes are semantic (exit 2 blocks the tool call); errors must be handled explicitly.
 # Hook: Block git commands that open interactive editors
 # Forces non-interactive alternatives for rebase, commit, merge, cherry-pick, and add
 #
 # Check if hook is enabled
 source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
-exit_if_hook_disabled "noninteractive-git"
+exit_if_hook_disabled "noninteractive-git" ""
+
+if ! command -v jq > /dev/null 2>&1; then
+  echo "noninteractive-git hook: jq not found; allowing command unchanged." >&2
+  [ ! -t 0 ] && cat > /dev/null
+  exit 0
+fi
 
 input=$(cat)
 command=$(echo "$input" | jq -r '.tool_input.command // empty')
