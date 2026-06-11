@@ -1,4 +1,6 @@
 #!/bin/bash
+set -uo pipefail
+# Policy: -u/-pipefail only. No -e: hook exit codes are semantic (exit 2 blocks the tool call); errors must be handled explicitly.
 # Context Links Hook - displays active PR and Linear issue links at end of messages
 #
 # Check if hook is enabled

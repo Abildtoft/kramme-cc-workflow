@@ -1,4 +1,6 @@
 #!/bin/bash
+set -uo pipefail
+# Policy: -u/-pipefail only. No -e: hook exit codes are semantic (exit 2 blocks the tool call); errors must be handled explicitly.
 # Hook: Record skill usage statistics from prompt and skill-tool events.
 #
 # This hook is intentionally silent. It writes local JSONL records and returns

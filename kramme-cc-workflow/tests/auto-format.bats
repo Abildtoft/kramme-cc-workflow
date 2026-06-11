@@ -152,6 +152,20 @@ run_format_hook() {
 	[[ "$output" == *'Formatted'* ]] || [[ "$output" == *'No formatter'* ]]
 }
 
+@test "stores detection cache under XDG_CACHE_HOME" {
+	export XDG_CACHE_HOME="$BATS_TEST_TMPDIR/xdg-cache"
+	rm -rf "$XDG_CACHE_HOME"
+
+	echo '{}' >package.json
+	touch test.xyz
+	run run_format_hook "$TEST_DIR/test.xyz"
+
+	[ "$status" -eq 0 ]
+	has_system_message
+	[ -d "$XDG_CACHE_HOME/claude-format" ]
+	[ "$(find "$XDG_CACHE_HOME/claude-format" -type f -name '*.cache.json' | wc -l)" -eq 1 ]
+}
+
 # ============================================================================
 # PROJECT ROOT DETECTION
 # ============================================================================
@@ -454,6 +468,8 @@ EOF
 # ============================================================================
 
 @test "creates cache file after detection" {
+	export XDG_CACHE_HOME="$BATS_TEST_TMPDIR/xdg-cache"
+	cache_dir="$XDG_CACHE_HOME/claude-format"
 	if command -v md5 &>/dev/null; then
 		cache_key=$(echo "$TEST_DIR" | md5)
 	elif command -v md5sum &>/dev/null; then
@@ -461,7 +477,7 @@ EOF
 	else
 		cache_key=$(echo "$TEST_DIR" | tr '/' '_' | tail -c 64)
 	fi
-	cache_file="/tmp/claude-format-cache/$cache_key.cache.json"
+	cache_file="$cache_dir/$cache_key.cache.json"
 	rm -f "$cache_file"
 
 	echo '{"devDependencies": {"prettier": "^3.0.0"}}' >package.json
@@ -489,6 +505,8 @@ EOF
 }
 
 @test "invalid cache booleans are ignored without executing commands" {
+	export XDG_CACHE_HOME="$BATS_TEST_TMPDIR/xdg-cache"
+	cache_dir="$XDG_CACHE_HOME/claude-format"
 	if command -v md5 &>/dev/null; then
 		cache_key=$(echo "$TEST_DIR" | md5)
 	elif command -v md5sum &>/dev/null; then
@@ -496,9 +514,10 @@ EOF
 	else
 		cache_key=$(echo "$TEST_DIR" | tr '/' '_' | tail -c 64)
 	fi
-	cache_file="/tmp/claude-format-cache/$cache_key.cache.json"
+	cache_file="$cache_dir/$cache_key.cache.json"
 	marker_file="$TEST_DIR/cache-command-executed.marker"
 
+	mkdir -p "$cache_dir"
 	cat >"$cache_file" <<EOF
 {"HAS_PRETTIER":false,"HAS_BIOME":"touch $marker_file","HAS_ESLINT":false,"HAS_BLACK":false,"HAS_RUFF":false,"HAS_NX":false,"FORMAT_SCRIPT_NAME":"","CLAUDE_FORMATTER":""}
 EOF

@@ -12,6 +12,18 @@ run_hook() {
 	make_bash_input "$1" | bash "$HOOK"
 }
 
+run_hook_without_jq() {
+	local cmd="$1"
+	local fake_bin="$BATS_TEST_TMPDIR/no-jq-bin"
+	local json_input
+	rm -rf "$fake_bin"
+	mkdir -p "$fake_bin"
+	ln -s "$(command -v bash)" "$fake_bin/bash"
+	ln -s "$(command -v cat)" "$fake_bin/cat"
+	json_input="$(make_bash_input "$cmd")"
+	env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK" <<<"$json_input"
+}
+
 run_hook_without_python() {
 	local cmd="$1"
 	local fake_bin="$BATS_TEST_TMPDIR/no-python-bin"
@@ -38,6 +50,13 @@ run_hook_without_python() {
 	run bash "$HOOK" <<<'{"other":"data"}'
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
+}
+
+@test "allows command unchanged when jq is unavailable" {
+	run run_hook_without_jq "git commit"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"jq not found"* ]]
+	[[ "$output" == *"allowing command unchanged"* ]]
 }
 
 @test "allows non-git commands" {

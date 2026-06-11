@@ -1,4 +1,6 @@
 #!/bin/bash
+set -uo pipefail
+# Policy: -u/-pipefail only. No -e: hook exit codes are semantic (exit 2 blocks the tool call); errors must be handled explicitly.
 # Hook: Auto-format code after Write/Edit operations
 #
 # Check if hook is enabled
@@ -13,7 +15,7 @@ exit_if_hook_disabled "auto-format" "json"
 # 5. Tries file-specific formatting, falls back to project-wide
 # 6. Returns systemMessage about what happened
 #
-# Caching: Detection results are cached in /tmp/claude-format-cache/ and
+# Caching: Detection results are cached in the user cache directory and
 # invalidated when config files (CLAUDE.md, package.json, etc.) change.
 #
 # Input: JSON on stdin with tool_input.file_path
@@ -161,7 +163,7 @@ EXT=$(get_extension "$file_path")
 # ============================================================================
 # CACHING LAYER
 # ============================================================================
-CACHE_DIR="/tmp/claude-format-cache"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/claude-format"
 mkdir -p "$CACHE_DIR" 2> /dev/null
 
 # Create cache key from project root (use md5 or fallback to simple hash)
