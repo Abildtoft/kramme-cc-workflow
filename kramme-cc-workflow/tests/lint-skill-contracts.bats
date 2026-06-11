@@ -116,6 +116,345 @@ EOF
   [[ "$output" == *"sync all registered copies"* ]]
 }
 
+@test "multiline text contract drift fails" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
+---
+name: test-skill-a
+description: Test skill A
+disable-model-invocation: false
+user-invocable: true
+---
+```bash
+COLLECT_ARGS=(--strict)
+[ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
+
+RESOLVED=$(${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh "${COLLECT_ARGS[@]}") || {
+  echo "Base/diff collection failed; see the message above and stop." >&2
+  exit 1
+}
+eval "$RESOLVED"
+```
+EOF
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/b/SKILL.md" <<'EOF'
+---
+name: test-skill-b
+description: Test skill B
+disable-model-invocation: false
+user-invocable: true
+---
+```bash
+COLLECT_ARGS=(--strict)
+[ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
+
+RESOLVED=$(${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh "${COLLECT_ARGS[@]}") || {
+  echo "Base/diff collection failed; see the message above and stop." >&2
+  exit 2
+}
+eval "$RESOLVED"
+```
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "text_contracts": [
+    {
+      "name": "sample-multiline-text-contract",
+      "extract_regex": "(?s)(COLLECT_ARGS=\\(--strict\\).*?eval \"\\$RESOLVED\")",
+      "paths": [
+        "kramme-cc-workflow/skills/a/SKILL.md",
+        "kramme-cc-workflow/skills/b/SKILL.md"
+      ]
+    }
+  ]
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"sample-multiline-text-contract"* ]]
+  [[ "$output" == *"differs"* ]]
+}
+
+@test "linewise multiline text contract catches line-boundary drift" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
+---
+name: test-skill-a
+description: Test skill A
+disable-model-invocation: false
+user-invocable: true
+---
+```bash
+COLLECT_ARGS=(--strict)
+[ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
+
+RESOLVED=$(${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh "${COLLECT_ARGS[@]}") || {
+  echo "Base/diff collection failed; see the message above and stop." >&2
+  exit 1
+}
+eval "$RESOLVED"
+```
+EOF
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/b/SKILL.md" <<'EOF'
+---
+name: test-skill-b
+description: Test skill B
+disable-model-invocation: false
+user-invocable: true
+---
+```bash
+COLLECT_ARGS=(--strict)
+[ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
+
+RESOLVED=$(${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh "${COLLECT_ARGS[@]}") || {
+  echo "Base/diff collection failed; see the message above and stop." >&2
+  exit 1
+} eval "$RESOLVED"
+```
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "text_contracts": [
+    {
+      "name": "sample-linewise-multiline-text-contract",
+      "extract_regex": "(?s)(COLLECT_ARGS=\\(--strict\\).*?eval \"\\$RESOLVED\")",
+      "normalizer": "linewise",
+      "paths": [
+        "kramme-cc-workflow/skills/a/SKILL.md",
+        "kramme-cc-workflow/skills/b/SKILL.md"
+      ]
+    }
+  ]
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"sample-linewise-multiline-text-contract"* ]]
+  [[ "$output" == *"differs"* ]]
+}
+
+@test "malformed hooks json fails" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/hooks/hooks.json" <<'EOF'
+{"hooks":
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "hooks_json": {
+    "path": "kramme-cc-workflow/hooks/hooks.json"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"hooks json"* ]]
+  [[ "$output" == *"invalid JSON"* ]]
+}
+
+@test "unknown hooks json event fails" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/hooks/hooks.json" <<'EOF'
+{
+  "hooks": {
+    "BadEvent": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo ok"
+          }
+        ]
+      }
+    ]
+  }
+}
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "hooks_json": {
+    "path": "kramme-cc-workflow/hooks/hooks.json"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"unknown event 'BadEvent'"* ]]
+}
+
+@test "hook entry missing command fails" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/hooks/hooks.json" <<'EOF'
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  }
+}
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "hooks_json": {
+    "path": "kramme-cc-workflow/hooks/hooks.json"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"must define a non-empty command"* ]]
+}
+
+@test "hook command missing local plugin path fails" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/hooks/hooks.json" <<'EOF'
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/missing.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "hooks_json": {
+    "path": "kramme-cc-workflow/hooks/hooks.json",
+    "plugin_root": "kramme-cc-workflow"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"command references missing path kramme-cc-workflow/hooks/missing.sh"* ]]
+}
+
+@test "skill directory missing from readme fails" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" "# Sample"
+  write_file "$TMP_ROOT/README.md" <<'EOF'
+# Test README
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "readme_skill_sync": {
+    "readme": "README.md",
+    "skills_dir": "kramme-cc-workflow/skills"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"readme skill sync"* ]]
+  [[ "$output" == *"missing skill 'kramme:sample'"* ]]
+}
+
+@test "readme sync requires exact documented skill rows" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/kramme:qa/SKILL.md" "# QA"
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/kramme:qa:intake/SKILL.md" "# QA intake"
+  write_file "$TMP_ROOT/README.md" <<'EOF'
+# Test README
+
+Try /kramme:qa for live checks.
+
+| Skill | Description |
+| --- | --- |
+| `/kramme:qa:intake` | QA intake. |
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "readme_skill_sync": {
+    "readme": "README.md",
+    "skills_dir": "kramme-cc-workflow/skills"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"readme skill sync"* ]]
+  [[ "$output" == *"missing skill 'kramme:qa'"* ]]
+}
+
+@test "readme sync accepts background skill rows but ignores agent rows" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/kramme:background/SKILL.md" "# Background"
+  write_file "$TMP_ROOT/README.md" <<'EOF'
+# Test README
+
+### Background Skills
+
+| Skill | Trigger Condition |
+| --- | --- |
+| `kramme:background` | Runs in the background. |
+
+## Agents
+
+| Agent | Description |
+| --- | --- |
+| `kramme:missing-agent` | Agent, not a skill. |
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "readme_skill_sync": {
+    "readme": "README.md",
+    "skills_dir": "kramme-cc-workflow/skills"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
+@test "readme ghost skill fails" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/kramme:real/SKILL.md" "# Real"
+  write_file "$TMP_ROOT/README.md" <<'EOF'
+# Test README
+
+| Skill | Description |
+| --- | --- |
+| `/kramme:real` | Real skill. |
+| `/kramme:ghost` | Ghost skill. |
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "readme_skill_sync": {
+    "readme": "README.md",
+    "skills_dir": "kramme-cc-workflow/skills"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"documents 'kramme:ghost'"* ]]
+  [[ "$output" == *"does not exist"* ]]
+}
+
 @test "marker manifest empty field fails unless allowlisted" {
   write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" "SIMPLICITY CHECK: minimum viable change"
   write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/references/sources.yaml" <<'EOF'

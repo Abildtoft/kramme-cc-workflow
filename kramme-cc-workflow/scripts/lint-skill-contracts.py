@@ -80,6 +80,8 @@ def is_empty_value(value: str | None) -> bool:
 
 def normalize_value(value: str, normalizer: str | None) -> str:
     value = value.replace("`", "").strip()
+    if normalizer == "linewise":
+        return "\n".join(line.strip() for line in value.splitlines())
     if normalizer == "status_vocabulary":
         parts = [part.strip().upper() for part in re.split(r"\s*(?:\||,)\s*", value)]
         return " | ".join(part for part in parts if part)
@@ -251,6 +253,168 @@ def check_mechanical(root: Path, registry: dict[str, Any], failures: list[str]) 
             )
 
 
+def check_hooks_json(root: Path, registry: dict[str, Any], failures: list[str]) -> None:
+    config = registry.get("hooks_json")
+    if not config:
+        return
+
+    relative_path = config.get("path", "kramme-cc-workflow/hooks/hooks.json")
+    path = resolve(root, relative_path)
+    if not path.exists():
+        failures.append(f"hooks json: registered path is missing: {relative_path}")
+        return
+
+    try:
+        data = json.loads(read_text(path))
+    except json.JSONDecodeError as exc:
+        failures.append(
+            f"hooks json: {relative_path} is invalid JSON at line {exc.lineno}, "
+            f"column {exc.colno}: {exc.msg}"
+        )
+        return
+
+    if not isinstance(data, dict):
+        failures.append(f"hooks json: {relative_path} must contain a JSON object")
+        return
+
+    hooks = data.get("hooks")
+    if not isinstance(hooks, dict):
+        failures.append(f"hooks json: {relative_path} must contain an object field 'hooks'")
+        return
+
+    allowed_events = set(
+        config.get(
+            "allowed_events",
+            ["PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "Stop"],
+        )
+    )
+    matcher_required_events = set(config.get("matcher_required_events", ["PreToolUse", "PostToolUse"]))
+    allowed_hook_types = set(config.get("allowed_hook_types", ["command"]))
+    plugin_root = config.get("plugin_root", "kramme-cc-workflow")
+    command_path_regex = config.get(
+        "command_path_regex",
+        r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\"'\s]+)",
+    )
+
+    for event, entries in hooks.items():
+        if event not in allowed_events:
+            failures.append(f"hooks json: {relative_path} has unknown event {event!r}")
+        if not isinstance(entries, list):
+            failures.append(f"hooks json: {relative_path} event {event!r} must be a list")
+            continue
+
+        for entry_index, entry in enumerate(entries, start=1):
+            entry_label = f"{relative_path} {event}[{entry_index}]"
+            if not isinstance(entry, dict):
+                failures.append(f"hooks json: {entry_label} must be an object")
+                continue
+
+            matcher = entry.get("matcher")
+            if event in matcher_required_events and not isinstance(matcher, str):
+                failures.append(f"hooks json: {entry_label} must define a string matcher")
+            elif event in matcher_required_events and is_empty_value(matcher):
+                failures.append(f"hooks json: {entry_label} must define a non-empty matcher")
+            elif "matcher" in entry and (not isinstance(matcher, str) or is_empty_value(matcher)):
+                failures.append(f"hooks json: {entry_label} matcher must be a non-empty string when present")
+
+            hook_entries = entry.get("hooks")
+            if not isinstance(hook_entries, list) or not hook_entries:
+                failures.append(f"hooks json: {entry_label} must define a non-empty hooks list")
+                continue
+
+            for hook_index, hook_entry in enumerate(hook_entries, start=1):
+                hook_label = f"{entry_label}.hooks[{hook_index}]"
+                if not isinstance(hook_entry, dict):
+                    failures.append(f"hooks json: {hook_label} must be an object")
+                    continue
+
+                hook_type = hook_entry.get("type")
+                if not isinstance(hook_type, str) or hook_type not in allowed_hook_types:
+                    failures.append(
+                        f"hooks json: {hook_label} has unsupported type {hook_type!r}; "
+                        f"expected one of {sorted(allowed_hook_types)!r}"
+                    )
+
+                command = hook_entry.get("command")
+                if not isinstance(command, str) or is_empty_value(command):
+                    failures.append(f"hooks json: {hook_label} must define a non-empty command")
+                    continue
+
+                for plugin_relative in re.findall(command_path_regex, command):
+                    command_path = resolve(root, f"{plugin_root}/{plugin_relative}")
+                    if not command_path.exists():
+                        failures.append(
+                            f"hooks json: {hook_label} command references missing path "
+                            f"{plugin_root}/{plugin_relative}"
+                        )
+
+
+def check_readme_skill_sync(root: Path, registry: dict[str, Any], failures: list[str]) -> None:
+    config = registry.get("readme_skill_sync")
+    if not config:
+        return
+
+    readme_relative = config.get("readme", "README.md")
+    skills_relative = config.get("skills_dir", "kramme-cc-workflow/skills")
+    readme_path = resolve(root, readme_relative)
+    skills_dir = resolve(root, skills_relative)
+
+    if not readme_path.exists():
+        failures.append(f"readme skill sync: registered path is missing: {readme_relative}")
+        return
+    if not skills_dir.exists():
+        failures.append(f"readme skill sync: registered path is missing: {skills_relative}")
+        return
+
+    readme = read_text(readme_path)
+    skill_names = sorted(
+        path.name
+        for path in skills_dir.iterdir()
+        if path.is_dir() and (path / "SKILL.md").is_file()
+    )
+    skills = set(skill_names)
+    documented_regex = re.compile(
+        config.get("documented_skill_regex", r"^\|\s*`/(?P<name>kramme:[A-Za-z0-9:_-]+)`\s*\|")
+    )
+    background_regex = re.compile(
+        config.get("background_skill_regex", r"^\|\s*`(?P<name>kramme:[A-Za-z0-9:_-]+)`\s*\|")
+    )
+    background_heading = config.get("background_section_heading", "### Background Skills")
+    in_background_section = False
+    documented_skills: dict[str, int] = {}
+    for line_no, line in enumerate(readme.splitlines(), start=1):
+        stripped = line.strip()
+        if stripped == background_heading:
+            in_background_section = True
+            continue
+        if in_background_section and re.match(r"^#{1,3}\s+\S", stripped):
+            in_background_section = False
+
+        match = documented_regex.search(line)
+        if not match and in_background_section:
+            match = background_regex.search(line)
+        if not match:
+            continue
+        name = match.group("name") if "name" in match.groupdict() else match.group(1)
+        documented_skills.setdefault(name, line_no)
+
+    for name in skill_names:
+        if name not in documented_skills:
+            failures.append(
+                f"readme skill sync: {readme_relative} is missing skill {name!r} "
+                f"from {skills_relative}"
+            )
+
+    allow_readme_only = set(config.get("allow_readme_only_skills", []))
+    for name, line_no in documented_skills.items():
+        if name in skills or name in allow_readme_only:
+            continue
+        failures.append(
+            f"readme skill sync: {readme_relative}:{line_no} documents {name!r}, "
+            f"but {skills_relative}/{name}/SKILL.md does not exist"
+        )
+
+
 def parse_sources_manifest(path: Path) -> list[dict[str, Any]]:
     entries: list[dict[str, Any]] = []
     current: dict[str, Any] | None = None
@@ -395,6 +559,8 @@ def run(root: Path, registry: dict[str, Any]) -> list[str]:
     check_file_identity(root, registry, failures)
     check_marker_manifests(root, registry, failures)
     check_epilogue_order(root, registry, failures)
+    check_hooks_json(root, registry, failures)
+    check_readme_skill_sync(root, registry, failures)
     check_mechanical(root, registry, failures)
     return failures
 
