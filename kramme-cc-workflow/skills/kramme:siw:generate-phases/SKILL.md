@@ -401,6 +401,8 @@ Incorporate valid findings into the draft plan before Phase 5. Preserve all exis
 
 Present the proposed structure clearly, prefixed with the `PLAN:` output marker so downstream tooling can parse this block as the generated plan. Show each issue's size and Mode inline, and include one `Parallelization:` line per task group. HITL tasks include the one-line reason in the bracket:
 
+**Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
+
 ```
 PLAN: Phase Plan for {Project Name}
 ═══════════════════════════════════
