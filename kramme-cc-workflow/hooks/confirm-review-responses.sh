@@ -140,19 +140,23 @@ context_has_dynamic_repo_selection() {
   # core.fsmonitor=$(...) which achieves RCE). Refuse to replay such
   # args regardless of which flag they sit behind.
   local arg assignment key value
-  for arg in "${git_prefix_args[@]}"; do
-    if contains_command_substitution_token "$arg"; then
-      return 0
-    fi
-  done
+  if [ ${#git_prefix_args[@]} -gt 0 ]; then
+    for arg in "${git_prefix_args[@]}"; do
+      if contains_command_substitution_token "$arg"; then
+        return 0
+      fi
+    done
+  fi
 
-  for assignment in "${git_env_assignments[@]}"; do
-    key="${assignment%%=*}"
-    value="${assignment#*=}"
-    if should_replay_git_env "$key" && contains_command_substitution_token "$value"; then
-      return 0
-    fi
-  done
+  if [ ${#git_env_assignments[@]} -gt 0 ]; then
+    for assignment in "${git_env_assignments[@]}"; do
+      key="${assignment%%=*}"
+      value="${assignment#*=}"
+      if should_replay_git_env "$key" && contains_command_substitution_token "$value"; then
+        return 0
+      fi
+    done
+  fi
 
   return 1
 }
@@ -163,15 +167,25 @@ list_staged_files_for_commit_context() {
   # Reconstruct only repo/index selection. Replaying config-bearing git
   # prefixes like `-c` or `--config-env` would execute attacker-controlled
   # commands while we inspect the index.
-  build_safe_git_prefix_args "${git_prefix_args[@]}"
+  if [ ${#git_prefix_args[@]} -gt 0 ]; then
+    build_safe_git_prefix_args "${git_prefix_args[@]}"
+  else
+    build_safe_git_prefix_args
+  fi
 
   (
     unset "${REPLAY_GIT_ENV_VARS[@]}"
     unset GIT_EXTERNAL_DIFF GIT_PAGER PAGER
-    for assignment in "${git_env_assignments[@]}"; do
-      export "$assignment"
-    done
-    git --no-pager "${safe_git_prefix_args[@]}" -c core.fsmonitor=false diff --cached --name-only --no-ext-diff
+    if [ ${#git_env_assignments[@]} -gt 0 ]; then
+      for assignment in "${git_env_assignments[@]}"; do
+        export "$assignment"
+      done
+    fi
+    if [ ${#safe_git_prefix_args[@]} -gt 0 ]; then
+      git --no-pager "${safe_git_prefix_args[@]}" -c core.fsmonitor=false diff --cached --name-only --no-ext-diff
+    else
+      git --no-pager -c core.fsmonitor=false diff --cached --name-only --no-ext-diff
+    fi
   )
 }
 
@@ -190,13 +204,18 @@ remove_git_env_assignment() {
   local key="$1"
   local assignment filtered=()
 
-  for assignment in "${git_env[@]}"; do
-    if [ "${assignment%%=*}" != "$key" ]; then
-      filtered+=("$assignment")
-    fi
-  done
+  if [ ${#git_env[@]} -gt 0 ]; then
+    for assignment in "${git_env[@]}"; do
+      if [ "${assignment%%=*}" != "$key" ]; then
+        filtered+=("$assignment")
+      fi
+    done
+  fi
 
-  git_env=("${filtered[@]}")
+  git_env=()
+  if [ ${#filtered[@]} -gt 0 ]; then
+    git_env=("${filtered[@]}")
+  fi
 }
 
 clear_git_env_assignments() {
@@ -218,13 +237,18 @@ remove_shell_git_env_assignment() {
   local key="$1"
   local assignment filtered=()
 
-  for assignment in "${shell_git_env[@]}"; do
-    if [ "${assignment%%=*}" != "$key" ]; then
-      filtered+=("$assignment")
-    fi
-  done
+  if [ ${#shell_git_env[@]} -gt 0 ]; then
+    for assignment in "${shell_git_env[@]}"; do
+      if [ "${assignment%%=*}" != "$key" ]; then
+        filtered+=("$assignment")
+      fi
+    done
+  fi
 
-  shell_git_env=("${filtered[@]}")
+  shell_git_env=()
+  if [ ${#filtered[@]} -gt 0 ]; then
+    shell_git_env=("${filtered[@]}")
+  fi
 }
 
 clear_shell_git_env_assignments() {
@@ -246,25 +270,32 @@ remove_shell_git_var_assignment() {
   local key="$1"
   local assignment filtered=()
 
-  for assignment in "${shell_git_vars[@]}"; do
-    if [ "${assignment%%=*}" != "$key" ]; then
-      filtered+=("$assignment")
-    fi
-  done
+  if [ ${#shell_git_vars[@]} -gt 0 ]; then
+    for assignment in "${shell_git_vars[@]}"; do
+      if [ "${assignment%%=*}" != "$key" ]; then
+        filtered+=("$assignment")
+      fi
+    done
+  fi
 
-  shell_git_vars=("${filtered[@]}")
+  shell_git_vars=()
+  if [ ${#filtered[@]} -gt 0 ]; then
+    shell_git_vars=("${filtered[@]}")
+  fi
 }
 
 find_shell_git_var_assignment() {
   local key="$1"
   local assignment
 
-  for assignment in "${shell_git_vars[@]}"; do
-    if [ "${assignment%%=*}" = "$key" ]; then
-      printf '%s\n' "$assignment"
-      return 0
-    fi
-  done
+  if [ ${#shell_git_vars[@]} -gt 0 ]; then
+    for assignment in "${shell_git_vars[@]}"; do
+      if [ "${assignment%%=*}" = "$key" ]; then
+        printf '%s\n' "$assignment"
+        return 0
+      fi
+    done
+  fi
 
   return 1
 }
@@ -309,14 +340,16 @@ segment_command_substitution_indexes() {
     remainder="$token"
     while [[ "$remainder" =~ ${COMMAND_SUBSTITUTION_TOKEN}([0-9]+)__ ]]; do
       index="${BASH_REMATCH[1]}"
-      if ! array_contains "$index" "${indexes[@]}"; then
+      if [ ${#indexes[@]} -eq 0 ] || ! array_contains "$index" "${indexes[@]}"; then
         indexes+=("$index")
       fi
       remainder="${remainder#*"${BASH_REMATCH[0]}"}"
     done
   done
 
-  printf '%s\n' "${indexes[@]}"
+  if [ ${#indexes[@]} -gt 0 ]; then
+    printf '%s\n' "${indexes[@]}"
+  fi
 }
 
 collect_current_git_env_assignments() {
@@ -410,6 +443,7 @@ parse_git_commit_segment_fallback() {
   local shell_git_vars=()
   local shell_env_persists=true
   local pending_shell_git_vars=()
+  local nested_git_args nested_git_env
 
   PARSED_SEGMENT_CONTEXT_LINES=""
   PARSED_SEGMENT_PERSISTED_GIT_ENV="$prefix_git_env"
@@ -436,7 +470,10 @@ EOF
 $prefix_shell_git_vars
 EOF
 
-  git_env=("${shell_git_env[@]}")
+  git_env=()
+  if [ ${#shell_git_env[@]} -gt 0 ]; then
+    git_env=("${shell_git_env[@]}")
+  fi
 
   while [ $# -gt 0 ] && is_shell_keyword_token "$1"; do
     if [ "$(strip_wrapping_quotes "$1")" = "(" ]; then
@@ -453,10 +490,18 @@ EOF
   done
 
   if [ $# -eq 0 ]; then
-    merge_shell_git_var_assignments "${pending_shell_git_vars[@]}"
+    if [ ${#pending_shell_git_vars[@]} -gt 0 ]; then
+      merge_shell_git_var_assignments "${pending_shell_git_vars[@]}"
+    fi
     if [ "$shell_env_persists" = "true" ]; then
-      PARSED_SEGMENT_PERSISTED_GIT_ENV="$(printf '%s\n' "${shell_git_env[@]}")"
-      PARSED_SEGMENT_PERSISTED_GIT_VARS="$(printf '%s\n' "${shell_git_vars[@]}")"
+      PARSED_SEGMENT_PERSISTED_GIT_ENV=""
+      PARSED_SEGMENT_PERSISTED_GIT_VARS=""
+      if [ ${#shell_git_env[@]} -gt 0 ]; then
+        PARSED_SEGMENT_PERSISTED_GIT_ENV="$(printf '%s\n' "${shell_git_env[@]}")"
+      fi
+      if [ ${#shell_git_vars[@]} -gt 0 ]; then
+        PARSED_SEGMENT_PERSISTED_GIT_VARS="$(printf '%s\n' "${shell_git_vars[@]}")"
+      fi
     else
       PARSED_SEGMENT_PERSISTED_GIT_ENV="$prefix_git_env"
       PARSED_SEGMENT_PERSISTED_GIT_VARS="$prefix_shell_git_vars"
@@ -528,7 +573,9 @@ EOF
         done
         ;;
       export)
-        merge_shell_git_var_assignments "${pending_shell_git_vars[@]}"
+        if [ ${#pending_shell_git_vars[@]} -gt 0 ]; then
+          merge_shell_git_var_assignments "${pending_shell_git_vars[@]}"
+        fi
         pending_shell_git_vars=()
         shift
         while [ $# -gt 0 ]; do
@@ -674,17 +721,31 @@ EOF
       sh | bash | zsh | dash | ksh)
         shift
         if inline_command="$(extract_shell_inline_command "$@")"; then
+          nested_git_args=""
+          nested_git_env=""
+          if [ ${#git_args[@]} -gt 0 ]; then
+            nested_git_args="$(printf '%s\n' "${git_args[@]}")"
+          fi
+          if [ ${#git_env[@]} -gt 0 ]; then
+            nested_git_env="$(printf '%s\n' "${git_env[@]}")"
+          fi
           PARSED_SEGMENT_CONTEXT_LINES="$(
             parse_git_commit_contexts_fallback \
               "$inline_command" \
-              "$(printf '%s\n' "${git_args[@]}")" \
-              "$(printf '%s\n' "${git_env[@]}")" \
-              "$(printf '%s\n' "${git_env[@]}")"
+              "$nested_git_args" \
+              "$nested_git_env" \
+              "$nested_git_env"
           )"
         fi
         if [ "$shell_env_persists" = "true" ]; then
-          PARSED_SEGMENT_PERSISTED_GIT_ENV="$(printf '%s\n' "${shell_git_env[@]}")"
-          PARSED_SEGMENT_PERSISTED_GIT_VARS="$(printf '%s\n' "${shell_git_vars[@]}")"
+          PARSED_SEGMENT_PERSISTED_GIT_ENV=""
+          PARSED_SEGMENT_PERSISTED_GIT_VARS=""
+          if [ ${#shell_git_env[@]} -gt 0 ]; then
+            PARSED_SEGMENT_PERSISTED_GIT_ENV="$(printf '%s\n' "${shell_git_env[@]}")"
+          fi
+          if [ ${#shell_git_vars[@]} -gt 0 ]; then
+            PARSED_SEGMENT_PERSISTED_GIT_VARS="$(printf '%s\n' "${shell_git_vars[@]}")"
+          fi
         else
           PARSED_SEGMENT_PERSISTED_GIT_ENV="$prefix_git_env"
           PARSED_SEGMENT_PERSISTED_GIT_VARS="$prefix_shell_git_vars"
@@ -698,8 +759,14 @@ EOF
           break
         fi
         if [ "$shell_env_persists" = "true" ]; then
-          PARSED_SEGMENT_PERSISTED_GIT_ENV="$(printf '%s\n' "${shell_git_env[@]}")"
-          PARSED_SEGMENT_PERSISTED_GIT_VARS="$(printf '%s\n' "${shell_git_vars[@]}")"
+          PARSED_SEGMENT_PERSISTED_GIT_ENV=""
+          PARSED_SEGMENT_PERSISTED_GIT_VARS=""
+          if [ ${#shell_git_env[@]} -gt 0 ]; then
+            PARSED_SEGMENT_PERSISTED_GIT_ENV="$(printf '%s\n' "${shell_git_env[@]}")"
+          fi
+          if [ ${#shell_git_vars[@]} -gt 0 ]; then
+            PARSED_SEGMENT_PERSISTED_GIT_VARS="$(printf '%s\n' "${shell_git_vars[@]}")"
+          fi
         else
           PARSED_SEGMENT_PERSISTED_GIT_ENV="$prefix_git_env"
           PARSED_SEGMENT_PERSISTED_GIT_VARS="$prefix_shell_git_vars"
@@ -711,8 +778,14 @@ EOF
 
   if [ "$saw_git" != "true" ]; then
     if [ "$shell_env_persists" = "true" ]; then
-      PARSED_SEGMENT_PERSISTED_GIT_ENV="$(printf '%s\n' "${shell_git_env[@]}")"
-      PARSED_SEGMENT_PERSISTED_GIT_VARS="$(printf '%s\n' "${shell_git_vars[@]}")"
+      PARSED_SEGMENT_PERSISTED_GIT_ENV=""
+      PARSED_SEGMENT_PERSISTED_GIT_VARS=""
+      if [ ${#shell_git_env[@]} -gt 0 ]; then
+        PARSED_SEGMENT_PERSISTED_GIT_ENV="$(printf '%s\n' "${shell_git_env[@]}")"
+      fi
+      if [ ${#shell_git_vars[@]} -gt 0 ]; then
+        PARSED_SEGMENT_PERSISTED_GIT_VARS="$(printf '%s\n' "${shell_git_vars[@]}")"
+      fi
     else
       PARSED_SEGMENT_PERSISTED_GIT_ENV="$prefix_git_env"
       PARSED_SEGMENT_PERSISTED_GIT_VARS="$prefix_shell_git_vars"
@@ -772,8 +845,14 @@ EOF
   fi
 
   if [ "$shell_env_persists" = "true" ]; then
-    PARSED_SEGMENT_PERSISTED_GIT_ENV="$(printf '%s\n' "${shell_git_env[@]}")"
-    PARSED_SEGMENT_PERSISTED_GIT_VARS="$(printf '%s\n' "${shell_git_vars[@]}")"
+    PARSED_SEGMENT_PERSISTED_GIT_ENV=""
+    PARSED_SEGMENT_PERSISTED_GIT_VARS=""
+    if [ ${#shell_git_env[@]} -gt 0 ]; then
+      PARSED_SEGMENT_PERSISTED_GIT_ENV="$(printf '%s\n' "${shell_git_env[@]}")"
+    fi
+    if [ ${#shell_git_vars[@]} -gt 0 ]; then
+      PARSED_SEGMENT_PERSISTED_GIT_VARS="$(printf '%s\n' "${shell_git_vars[@]}")"
+    fi
   else
     PARSED_SEGMENT_PERSISTED_GIT_ENV="$prefix_git_env"
     PARSED_SEGMENT_PERSISTED_GIT_VARS="$prefix_shell_git_vars"
@@ -807,7 +886,10 @@ parse_git_commit_contexts_fallback() {
   fi
 
   sanitized_command="$SANITIZED_COMMAND"
-  substitutions=("${COMMAND_SUBSTITUTIONS[@]}")
+  substitutions=()
+  if [ ${#COMMAND_SUBSTITUTIONS[@]} -gt 0 ]; then
+    substitutions=("${COMMAND_SUBSTITUTIONS[@]}")
+  fi
 
   if ! tokenized="$(shell_tokenize "$sanitized_command" true)"; then
     emit_parse_error_context
@@ -822,21 +904,29 @@ parse_git_commit_contexts_fallback() {
       segment_input_env="$current_git_env"
       segment_input_shell_vars="$current_shell_git_vars"
       segment_substitution_indexes=()
-      while IFS= read -r substitution; do
-        [ -z "$substitution" ] && continue
-        segment_substitution_indexes+=("$substitution")
-      done < <(segment_command_substitution_indexes "${segment[@]}")
-      for substitution in "${segment_substitution_indexes[@]}"; do
-        if ! array_contains "$substitution" "${used_substitution_indexes[@]}"; then
-          used_substitution_indexes+=("$substitution")
-        fi
-        parse_git_commit_contexts_fallback \
-          "${substitutions[$substitution]}" \
-          "$prefix_git_args" \
-          "$segment_input_env" \
-          "$segment_input_shell_vars"
-      done
-      parse_git_commit_segment_fallback "$prefix_git_args" "$current_git_env" "$current_shell_git_vars" "${segment[@]}"
+      if [ ${#segment[@]} -gt 0 ]; then
+        while IFS= read -r substitution; do
+          [ -z "$substitution" ] && continue
+          segment_substitution_indexes+=("$substitution")
+        done < <(segment_command_substitution_indexes "${segment[@]}")
+      fi
+      if [ ${#segment_substitution_indexes[@]} -gt 0 ]; then
+        for substitution in "${segment_substitution_indexes[@]}"; do
+          if [ ${#used_substitution_indexes[@]} -eq 0 ] || ! array_contains "$substitution" "${used_substitution_indexes[@]}"; then
+            used_substitution_indexes+=("$substitution")
+          fi
+          parse_git_commit_contexts_fallback \
+            "${substitutions[$substitution]}" \
+            "$prefix_git_args" \
+            "$segment_input_env" \
+            "$segment_input_shell_vars"
+        done
+      fi
+      if [ ${#segment[@]} -gt 0 ]; then
+        parse_git_commit_segment_fallback "$prefix_git_args" "$current_git_env" "$current_shell_git_vars" "${segment[@]}"
+      else
+        parse_git_commit_segment_fallback "$prefix_git_args" "$current_git_env" "$current_shell_git_vars"
+      fi
       if [ -n "$PARSED_SEGMENT_CONTEXT_LINES" ]; then
         printf '%s\n' "$PARSED_SEGMENT_CONTEXT_LINES"
       fi
@@ -858,28 +948,36 @@ EOF
   segment_input_env="$current_git_env"
   segment_input_shell_vars="$current_shell_git_vars"
   segment_substitution_indexes=()
-  while IFS= read -r substitution; do
-    [ -z "$substitution" ] && continue
-    segment_substitution_indexes+=("$substitution")
-  done < <(segment_command_substitution_indexes "${segment[@]}")
-  for substitution in "${segment_substitution_indexes[@]}"; do
-    if ! array_contains "$substitution" "${used_substitution_indexes[@]}"; then
-      used_substitution_indexes+=("$substitution")
-    fi
-    parse_git_commit_contexts_fallback \
-      "${substitutions[$substitution]}" \
-      "$prefix_git_args" \
-      "$segment_input_env" \
-      "$segment_input_shell_vars"
-  done
+  if [ ${#segment[@]} -gt 0 ]; then
+    while IFS= read -r substitution; do
+      [ -z "$substitution" ] && continue
+      segment_substitution_indexes+=("$substitution")
+    done < <(segment_command_substitution_indexes "${segment[@]}")
+  fi
+  if [ ${#segment_substitution_indexes[@]} -gt 0 ]; then
+    for substitution in "${segment_substitution_indexes[@]}"; do
+      if [ ${#used_substitution_indexes[@]} -eq 0 ] || ! array_contains "$substitution" "${used_substitution_indexes[@]}"; then
+        used_substitution_indexes+=("$substitution")
+      fi
+      parse_git_commit_contexts_fallback \
+        "${substitutions[$substitution]}" \
+        "$prefix_git_args" \
+        "$segment_input_env" \
+        "$segment_input_shell_vars"
+    done
+  fi
 
-  parse_git_commit_segment_fallback "$prefix_git_args" "$current_git_env" "$current_shell_git_vars" "${segment[@]}"
+  if [ ${#segment[@]} -gt 0 ]; then
+    parse_git_commit_segment_fallback "$prefix_git_args" "$current_git_env" "$current_shell_git_vars" "${segment[@]}"
+  else
+    parse_git_commit_segment_fallback "$prefix_git_args" "$current_git_env" "$current_shell_git_vars"
+  fi
   if [ -n "$PARSED_SEGMENT_CONTEXT_LINES" ]; then
     printf '%s\n' "$PARSED_SEGMENT_CONTEXT_LINES"
   fi
 
   for ((substitution = 0; substitution < ${#substitutions[@]}; substitution += 1)); do
-    if array_contains "$substitution" "${used_substitution_indexes[@]}"; then
+    if [ ${#used_substitution_indexes[@]} -gt 0 ] && array_contains "$substitution" "${used_substitution_indexes[@]}"; then
       continue
     fi
     parse_git_commit_contexts_fallback \
@@ -1720,17 +1818,22 @@ if [ ${#blocked_files[@]} -gt 0 ]; then
   deduped_blocked_files=()
   for blocked_file in "${blocked_files[@]}"; do
     already_seen=false
-    for existing_blocked_file in "${deduped_blocked_files[@]}"; do
-      if [ "$existing_blocked_file" = "$blocked_file" ]; then
-        already_seen=true
-        break
-      fi
-    done
+    if [ ${#deduped_blocked_files[@]} -gt 0 ]; then
+      for existing_blocked_file in "${deduped_blocked_files[@]}"; do
+        if [ "$existing_blocked_file" = "$blocked_file" ]; then
+          already_seen=true
+          break
+        fi
+      done
+    fi
     if [ "$already_seen" != "true" ]; then
       deduped_blocked_files+=("$blocked_file")
     fi
   done
-  blocked_files=("${deduped_blocked_files[@]}")
+  blocked_files=()
+  if [ ${#deduped_blocked_files[@]} -gt 0 ]; then
+    blocked_files=("${deduped_blocked_files[@]}")
+  fi
 
   blocked_file_list=$(
     IFS=', '

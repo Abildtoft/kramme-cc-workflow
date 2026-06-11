@@ -432,14 +432,16 @@ segment_command_substitution_indexes() {
     remainder="$token"
     while [[ "$remainder" =~ __CMD_SUBST_([0-9]+)__ ]]; do
       index="${BASH_REMATCH[1]}"
-      if ! array_contains "$index" "${indexes[@]}"; then
+      if [ ${#indexes[@]} -eq 0 ] || ! array_contains "$index" "${indexes[@]}"; then
         indexes+=("$index")
       fi
       remainder="${remainder#*"${BASH_REMATCH[0]}"}"
     done
   done
 
-  printf '%s\n' "${indexes[@]}"
+  if [ ${#indexes[@]} -gt 0 ]; then
+    printf '%s\n' "${indexes[@]}"
+  fi
 }
 
 control_token_preserves_shell_env() {
@@ -655,10 +657,16 @@ evaluate_find_exec_segments() {
           shift
         done
         reason="$(
-          evaluate_simple_git_segment \
-            "$inherited_has_git_editor" \
-            "$inherited_has_git_sequence_editor" \
-            "${exec_segment[@]}"
+          if [ ${#exec_segment[@]} -gt 0 ]; then
+            evaluate_simple_git_segment \
+              "$inherited_has_git_editor" \
+              "$inherited_has_git_sequence_editor" \
+              "${exec_segment[@]}"
+          else
+            evaluate_simple_git_segment \
+              "$inherited_has_git_editor" \
+              "$inherited_has_git_sequence_editor"
+          fi
         )"
         if [ "$reason" != "__ALLOW__" ]; then
           printf '%s\n' "$reason"
@@ -972,7 +980,10 @@ fallback_noninteractive_reason() {
   fi
 
   sanitized_command="$SANITIZED_COMMAND"
-  substitutions=("${COMMAND_SUBSTITUTIONS[@]}")
+  substitutions=()
+  if [ ${#COMMAND_SUBSTITUTIONS[@]} -gt 0 ]; then
+    substitutions=("${COMMAND_SUBSTITUTIONS[@]}")
+  fi
 
   local tokenized
   if ! tokenized="$(shell_tokenize "$sanitized_command" true)"; then
@@ -990,27 +1001,40 @@ fallback_noninteractive_reason() {
       segment_input_shell_has_git_editor="$shell_has_git_editor"
       segment_input_shell_has_git_sequence_editor="$shell_has_git_sequence_editor"
       segment_substitution_indexes=()
-      while IFS= read -r substitution; do
-        [ -z "$substitution" ] && continue
-        segment_substitution_indexes+=("$substitution")
-      done < <(segment_command_substitution_indexes "${segment[@]}")
-      for substitution in "${segment_substitution_indexes[@]}"; do
-        if ! array_contains "$substitution" "${used_substitution_indexes[@]}"; then
-          used_substitution_indexes+=("$substitution")
-        fi
-        reason="$(fallback_noninteractive_reason "${substitutions[$substitution]}" "$segment_input_has_git_editor" "$segment_input_has_git_sequence_editor")"
-        if [ "$reason" != "__ALLOW__" ]; then
-          printf '%s\n' "$reason"
-          return
-        fi
-      done
-      apply_exported_editor_env_segment \
-        "$has_git_editor" \
-        "$has_git_sequence_editor" \
-        "$shell_has_git_editor" \
-        "$shell_has_git_sequence_editor" \
-        "${segment[@]}"
-      reason="$(evaluate_simple_git_segment "$has_git_editor" "$has_git_sequence_editor" "${segment[@]}")"
+      if [ ${#segment[@]} -gt 0 ]; then
+        while IFS= read -r substitution; do
+          [ -z "$substitution" ] && continue
+          segment_substitution_indexes+=("$substitution")
+        done < <(segment_command_substitution_indexes "${segment[@]}")
+      fi
+      if [ ${#segment_substitution_indexes[@]} -gt 0 ]; then
+        for substitution in "${segment_substitution_indexes[@]}"; do
+          if [ ${#used_substitution_indexes[@]} -eq 0 ] || ! array_contains "$substitution" "${used_substitution_indexes[@]}"; then
+            used_substitution_indexes+=("$substitution")
+          fi
+          reason="$(fallback_noninteractive_reason "${substitutions[$substitution]}" "$segment_input_has_git_editor" "$segment_input_has_git_sequence_editor")"
+          if [ "$reason" != "__ALLOW__" ]; then
+            printf '%s\n' "$reason"
+            return
+          fi
+        done
+      fi
+      if [ ${#segment[@]} -gt 0 ]; then
+        apply_exported_editor_env_segment \
+          "$has_git_editor" \
+          "$has_git_sequence_editor" \
+          "$shell_has_git_editor" \
+          "$shell_has_git_sequence_editor" \
+          "${segment[@]}"
+        reason="$(evaluate_simple_git_segment "$has_git_editor" "$has_git_sequence_editor" "${segment[@]}")"
+      else
+        apply_exported_editor_env_segment \
+          "$has_git_editor" \
+          "$has_git_sequence_editor" \
+          "$shell_has_git_editor" \
+          "$shell_has_git_sequence_editor"
+        reason="$(evaluate_simple_git_segment "$has_git_editor" "$has_git_sequence_editor")"
+      fi
       if [ "$reason" != "__ALLOW__" ]; then
         printf '%s\n' "$reason"
         return
@@ -1035,35 +1059,48 @@ $tokenized
 EOF
 
   segment_substitution_indexes=()
-  while IFS= read -r substitution; do
-    [ -z "$substitution" ] && continue
-    segment_substitution_indexes+=("$substitution")
-  done < <(segment_command_substitution_indexes "${segment[@]}")
-  for substitution in "${segment_substitution_indexes[@]}"; do
-    if ! array_contains "$substitution" "${used_substitution_indexes[@]}"; then
-      used_substitution_indexes+=("$substitution")
-    fi
-    reason="$(fallback_noninteractive_reason "${substitutions[$substitution]}" "$has_git_editor" "$has_git_sequence_editor")"
-    if [ "$reason" != "__ALLOW__" ]; then
-      printf '%s\n' "$reason"
-      return
-    fi
-  done
+  if [ ${#segment[@]} -gt 0 ]; then
+    while IFS= read -r substitution; do
+      [ -z "$substitution" ] && continue
+      segment_substitution_indexes+=("$substitution")
+    done < <(segment_command_substitution_indexes "${segment[@]}")
+  fi
+  if [ ${#segment_substitution_indexes[@]} -gt 0 ]; then
+    for substitution in "${segment_substitution_indexes[@]}"; do
+      if [ ${#used_substitution_indexes[@]} -eq 0 ] || ! array_contains "$substitution" "${used_substitution_indexes[@]}"; then
+        used_substitution_indexes+=("$substitution")
+      fi
+      reason="$(fallback_noninteractive_reason "${substitutions[$substitution]}" "$has_git_editor" "$has_git_sequence_editor")"
+      if [ "$reason" != "__ALLOW__" ]; then
+        printf '%s\n' "$reason"
+        return
+      fi
+    done
+  fi
 
-  apply_exported_editor_env_segment \
-    "$has_git_editor" \
-    "$has_git_sequence_editor" \
-    "$shell_has_git_editor" \
-    "$shell_has_git_sequence_editor" \
-    "${segment[@]}"
-  reason="$(evaluate_simple_git_segment "$has_git_editor" "$has_git_sequence_editor" "${segment[@]}")"
+  if [ ${#segment[@]} -gt 0 ]; then
+    apply_exported_editor_env_segment \
+      "$has_git_editor" \
+      "$has_git_sequence_editor" \
+      "$shell_has_git_editor" \
+      "$shell_has_git_sequence_editor" \
+      "${segment[@]}"
+    reason="$(evaluate_simple_git_segment "$has_git_editor" "$has_git_sequence_editor" "${segment[@]}")"
+  else
+    apply_exported_editor_env_segment \
+      "$has_git_editor" \
+      "$has_git_sequence_editor" \
+      "$shell_has_git_editor" \
+      "$shell_has_git_sequence_editor"
+    reason="$(evaluate_simple_git_segment "$has_git_editor" "$has_git_sequence_editor")"
+  fi
   if [ "$reason" != "__ALLOW__" ]; then
     printf '%s\n' "$reason"
     return
   fi
 
   for substitution in "${!substitutions[@]}"; do
-    if array_contains "$substitution" "${used_substitution_indexes[@]}"; then
+    if [ ${#used_substitution_indexes[@]} -gt 0 ] && array_contains "$substitution" "${used_substitution_indexes[@]}"; then
       continue
     fi
     reason="$(fallback_noninteractive_reason "${substitutions[$substitution]}" "$inherited_has_git_editor" "$inherited_has_git_sequence_editor")"
