@@ -17,6 +17,8 @@ Build main-spec candidates from markdown files directly under the SIW directory,
 
 If exactly one candidate exists, use it. If multiple exist, prefer the file whose first `#` heading matches the project title in `LOG.md`; otherwise present the candidates and ask the user which one is the main spec.
 
+Candidates that lose the tiebreak stay in the Document set: they are still source-of-truth planning documents (a developer brief, for example) and must be migrated as Linear Documents, not dropped.
+
 Read supporting specs from `supporting-specs/*.md` when present.
 
 ## Document Sources
@@ -25,8 +27,14 @@ The migration captures planning documents as Linear Documents so they survive af
 
 - The main spec.
 - Each `supporting-specs/*.md` file.
+- Each non-selected main-spec candidate.
+- `LOG.md` — the canonical decision register. Issue bodies cite it as `D-0xx`; without it as a Document, every citation dangles after `siw/` removal.
 
-For each, record a title (first `#` heading, else the filename without extension) and the file body. Preserve the body as-is. This content feeds Document Mapping in `references/linear-mapping.md`.
+For each, record a title (first `#` heading, else the filename without extension; Document Mapping appends the original filename) and the file body. Preserve the body as-is. This content feeds Document Mapping in `references/linear-mapping.md`.
+
+## Non-Markdown Artifacts
+
+Enumerate non-`.md` files under the SIW directory (recursively) — `.pptx` storyboards, images, spreadsheets, anything a Linked Specifications table may cite. These cannot become Linear Documents. Surface each one in the migration plan as `cannot migrate — needs relocation`, and gate the Phase 7 removal prompt on them: the prompt may not green-light deleting a cited source artifact that exists nowhere but `siw/`. When Linear attachment-upload tools are available (such as `prepare_attachment_upload` / `create_attachment_from_upload`), offer uploading them instead.
 
 ## Project Identity
 
@@ -34,6 +42,7 @@ Extract these fields:
 
 - **Name**: first `#` heading in the main spec. Fall back to the spec filename without extension.
 - **Summary**: first useful paragraph under `## Overview`, `## Summary`, or `## Problem Statement`.
+- **Problem and value**: the plain-language problem statement, who it affects, and the intended outcome, from sections like `## Problem Statement`, `## Goals`, `## Why`, `## Value Proposition`, or the success criteria. This feeds the stakeholder-facing Summary and Value sections of the project description in `references/linear-mapping.md`, so favor outcome language over implementation detail.
 - **Scope**: bullets under `## Scope`, including explicit in-scope and out-of-scope sections.
 - **Success criteria**: bullets or checklist items under `## Success Criteria`, `## Acceptance Criteria`, or similar headings.
 - **Work context**: table or bullets under `## Work Context`, if present.
@@ -52,7 +61,7 @@ From `LOG.md`, extract:
 - Guiding principles.
 - Rejected alternatives.
 
-Use the log to enrich the Linear project description, not to create extra issues unless the log explicitly lists deferred work that is not already represented by an SIW issue.
+Use the log to enrich the Linear project description, not to create extra issues unless the log explicitly lists deferred work that is not already represented by an SIW issue. The log's full content additionally migrates as a Linear Document (see Document Sources) — description enrichment is a summary, not a substitute.
 
 ## Milestone Discovery
 
@@ -89,6 +98,7 @@ For each issue file, extract:
 - Priority, size, phase, parallelization, mode, and related values from the same metadata line when present.
 - Milestone assignment from the issue phase metadata or the overview section containing the issue. For `G-*` issues, set milestone assignment to empty regardless of section text.
 - Body sections: Problem, Context, Scope, Decision Boundaries, Acceptance Criteria, Edge Cases, Technical Notes, Resolution.
+- Dependency edges from the `Blocked by:` / `Blocks:` lines (under `Technical Notes > Dependencies`), with `None` treated as empty and ranges like `P3-002..P3-007` expanded into individual SIW IDs. These drive the native-relation pass in `references/linear-mapping.md` > Dependencies.
 - Linear transfer marker, if a `## Linear Transfer` section exists:
   - Linear issue identifier and URL from `- Linear issue: ...`
   - Linear project URL from `- Linear project: ...`

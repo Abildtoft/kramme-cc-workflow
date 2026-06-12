@@ -1,6 +1,6 @@
 ---
 name: kramme:siw:transfer-to-linear
-description: One-way migration of a local SIW project into Linear. Creates one Linear project, migrates the main spec and supporting specs as Linear Documents, creates milestones from SIW phases and issues from SIW issues, writes minimal Linear transfer markers back to migrated source issues for retry safety, then prompts to retire the local siw/ files via /kramme:siw:remove. Linear becomes the source of truth; this is not a two-way sync. Use when moving a planned SIW initiative into Linear for good. Not for implementing issues, defining new SIW issues, or generating an issue breakdown.
+description: One-way migration of a local SIW project into Linear. Creates one Linear project, migrates the main spec, supporting specs, and decision log as Linear Documents, creates milestones from SIW phases and issues from SIW issues (with native blocking relations when the Linear tooling supports them), writes minimal Linear transfer markers back to migrated source issues for retry safety, then prompts to retire the local siw/ files via /kramme:siw:remove. Linear becomes the source of truth; this is not a two-way sync. Use when moving a planned SIW initiative into Linear for good. Not for implementing issues, defining new SIW issues, or generating an issue breakdown.
 argument-hint: "[siw-dir] [--project <name-or-id>] [--team <team>] [--dry-run] [--skip-done] [--skip-existing|--retry]"
 disable-model-invocation: true
 user-invocable: true
@@ -14,8 +14,8 @@ Migrate an existing Structured Implementation Workflow project into Linear in on
 
 **This command migrates tracking and planning artifacts into Linear, then hands off removal.**
 
-- **DOES**: Read SIW markdown artifacts, create or update one Linear project, migrate the main spec and supporting specs as Linear Documents under that project, create project milestones from SIW phases, create Linear issues for local SIW issues, record dependencies as text in issue descriptions, write Linear issue markers back to migrated source issue files, verify the writes, and prompt the user to run `/kramme:siw:remove`.
-- **DOES NOT**: Implement code, define new SIW issues, generate an issue breakdown, delete `siw/` files itself, create live Linear issue relations, keep a two-way sync, or silently overwrite unrelated Linear work.
+- **DOES**: Read SIW markdown artifacts, create or update one Linear project, migrate the main spec, supporting specs, and decision log as Linear Documents under that project, create project milestones from SIW phases, create Linear issues for local SIW issues, record dependencies as text in issue descriptions and as native issue relations when the Linear tooling supports them, inventory non-markdown SIW artifacts that cannot be migrated, write Linear issue markers back to migrated source issue files, verify the writes, and prompt the user to run `/kramme:siw:remove`.
+- **DOES NOT**: Implement code, define new SIW issues, generate an issue breakdown, delete `siw/` files itself, keep a two-way sync, or silently overwrite unrelated Linear work.
 
 **Linear Migration Override**: Invoking this command is explicit instruction to create or update the Linear project, documents, milestones, and issues after the user approves the migration plan. Always present the plan before any write unless `--dry-run` is passed, in which case no Linear writes occur.
 
@@ -42,6 +42,7 @@ If a positional argument is an existing directory, treat it as `siw-dir`. If it 
 3. Verify Linear tools are available:
    - Read tools: list teams, list projects, list milestones, list issue labels, list issue statuses.
    - Write tools: project create/update, milestone create/update, and issue create/update. Document create is optional — the spec migration falls back to the project description when it is unavailable. Linear tool names and prefixes vary across hosts and catalogs — discover the available Linear tools at runtime rather than assuming exact names.
+   - Discover capabilities, not just names: inspect the issue create/update tool schema for relation parameters (such as `blockedBy` / `blocks` / `relatedTo`) and check for attachment-upload tools. Relation support upgrades the dependency handling in Phases 4 and 6 from text-only to native relations; never assume support is absent just because an older catalog lacked it.
 4. If the core Linear write tools (project, milestone, issue) are unavailable and `--dry-run` is not set, stop. If `--dry-run` is set, continue with an offline plan and mark all Linear metadata as `UNVERIFIED`.
 
 ## Phase 2: Extract SIW Artifacts
@@ -51,10 +52,12 @@ Read the artifact extraction rules from `references/artifact-extraction.md`.
 Extract:
 
 - Project identity, summary, scope, success criteria, work context, and phase structure from the main spec and supporting specs.
-- The full text of the main spec and each `supporting-specs/*.md` file, to migrate as Linear Documents.
+- The full text of the main spec, each `supporting-specs/*.md` file, each non-selected main-spec candidate, and `LOG.md`, to migrate as Linear Documents.
 - Current project status, decisions, and completed/deferred work from `LOG.md`.
 - Milestone candidates from phase sections, milestones, and explicit phase target dates.
 - Issue list, sections, statuses, priorities, sizes, modes, related work, milestone assignment, source paths, and existing `Linear Transfer` markers from `OPEN_ISSUES_OVERVIEW.md` and `issues/ISSUE-*.md`.
+- The dependency graph from each issue file's `Blocked by:` / `Blocks:` lines, with ranges like `P3-002..P3-007` expanded, for the relation pass in Phase 6.
+- An inventory of non-markdown files under the SIW directory (for example `.pptx` storyboards or images). These cannot be migrated as Documents and must be surfaced in the plan and gate the removal prompt.
 
 If `--skip-done` is set, drop DONE issues from the issue list before planning.
 
@@ -84,11 +87,12 @@ Read the Linear mapping rules from `references/linear-mapping.md`.
 Build a plan with:
 
 - Project action: `create`, `update`, or `reuse`.
-- Document actions: `create` by default for each spec file (main spec + each supporting spec). When the target project already exists and exactly one existing project document matches the planned normalized title, mark it `skip-existing` and carry its URL into the result summary. Mark `needs decision` when duplicate title matches make the target ambiguous.
+- Document actions: `create` by default for each document source (main spec, each supporting spec, each non-selected main-spec candidate, and `LOG.md`). When the target project already exists and exactly one existing project document matches the planned normalized title, mark it `skip-existing` and carry its URL into the result summary. Mark `needs decision` when duplicate title matches make the target ambiguous.
 - Milestone actions: `create`, `update`, `reuse`, `skip`, or `needs decision`, matched by normalized name per `references/linear-mapping.md`; there is no SIW marker.
 - Issue actions: `create` by default. Mark `skip-existing` when the source issue already has a `Linear Transfer` marker (every run), or when the `--skip-existing` / `--retry` title fallback matched per `references/linear-mapping.md`. Mark `needs decision` when an issue appears in `OPEN_ISSUES_OVERVIEW.md` but its issue file is missing, or when title matching is ambiguous on either side.
 - Metadata mappings for milestone, state, priority, labels, and project.
-- Dependencies recorded as text in the issue description (the `Related` field and the SIW metadata block). Do not plan a relation-linking pass — the Linear MCP cannot create issue relations.
+- Dependencies recorded as text in the issue description (the `Related` field and the SIW metadata block) on every run. When Phase 1 found relation parameters on the issue write tool, additionally plan a relation pass: after all issues are created, resolve each issue's `Blocked by:` / `Blocks:` edges through the SIW-ID-to-Linear-ID transfer ledger and write them as native relations per `references/linear-mapping.md`. Report the planned edge count and any edges that reference unknown SIW IDs.
+- Non-markdown SIW artifacts listed as `cannot migrate — needs relocation`, naming each file. When Phase 1 found Linear attachment-upload tools, offer uploading them as issue or project attachments instead.
 
 Whenever the plan contains `skip-existing` actions, include a "Skipped existing" section naming each skipped document or issue source item and the matched Linear record ID/URL, marker, or title-match reason.
 
@@ -100,14 +104,17 @@ Present the migration plan before any write:
 SIW -> Linear Migration Plan
 Project: {create/update/reuse} {project name}
 Team: {team}
-Documents: {create_count} create, {skip_existing_count} skip-existing, {decision_count} need decision  (main spec + supporting specs)
+Documents: {create_count} create, {skip_existing_count} skip-existing, {decision_count} need decision  (main spec + supporting specs + decision log)
 Milestones: {create_count} create, {update_count} update, {skip_count} skip, {decision_count} need decision
 Issues: {create_count} create, {skip_existing_count} skip-existing, {skip_count} skip, {decision_count} need decision  (DONE: {included/skipped})
+Relations: {edge_count} dependency edges (as blocked-by) {planned as native relations | recorded as text only — no relation support}
+Non-markdown artifacts: {count} cannot migrate — needs relocation
 After migration: prompt to run /kramme:siw:remove (no files deleted by this command)
 
 {document list}
 {milestone action table}
 {issue action table}
+{non-markdown artifact list}
 ```
 
 If `--dry-run` is set, stop after printing the plan.
@@ -121,7 +128,7 @@ Execute in this order:
 1. Create or update the Linear project (a project requires at least one team).
 2. Create planned Linear Documents under the project and skip `skip-existing` document actions, carrying the matched document URL into the result summary. If document creation is unavailable, fall back to embedding the main spec summary in the project description and record which supporting specs could not become Documents.
 3. Create or update all planned project milestones.
-4. Create all planned issues, assigning each to its mapped milestone when available and applying any mapped existing labels. `G-*` issues get no milestone. Record dependencies as text only.
+4. Create all planned issues, assigning each to its mapped milestone when available and applying any mapped existing labels. `G-*` issues get no milestone. Record dependencies as text in every issue body regardless of relation support.
    - Skip `skip-existing` issue actions and carry the matched Linear ID/URL into the result summary.
    - After each successful issue create, immediately append or update this section in the source SIW issue file:
 
@@ -133,21 +140,23 @@ Execute in this order:
      - Transferred: {YYYY-MM-DD}
      ```
 
-   - Maintain an in-memory transfer ledger with one row per source issue: source item, title, Linear ID/URL, and status `CREATED`, `CREATED_NO_MARKER`, `SKIPPED_EXISTING`, or `PENDING`.
+   - Maintain an in-memory transfer ledger with one row per source issue: source item, SIW ID, title, Linear ID/URL, and status `CREATED`, `CREATED_NO_MARKER`, `SKIPPED_EXISTING`, or `PENDING`.
 
-5. Capture each Linear project, document, milestone, and issue identifier and URL for the result summary.
+5. Relation pass (only when the plan includes one): after all issues exist, resolve each planned `Blocked by:` / `Blocks:` edge from SIW IDs to Linear IDs via the transfer ledger and write the native relations. Relation parameters are append-only, so re-running the pass is safe. Report any edges left unresolved.
+6. If the plan deferred milestone ordering text until after issue creation, update those milestone descriptions now per `references/linear-mapping.md` > Milestone Mapping, using the Linear identifiers from the transfer ledger.
+7. Capture each Linear project, document, milestone, and issue identifier and URL for the result summary.
 
 For each write, use only the current migration plan. Do not widen scope to unrelated Linear projects or issues discovered during execution.
 
 ## Phase 7: Verify and Prompt Removal
 
-1. Verify the migration: every planned write returned a Linear identifier and URL, the transfer ledger contains no `PENDING` or `CREATED_NO_MARKER` rows, and each created issue's source file carries its `Linear Transfer` marker.
+1. Verify the migration: every planned write returned a Linear identifier and URL, the transfer ledger contains no `PENDING` or `CREATED_NO_MARKER` rows, each created issue's source file carries its `Linear Transfer` marker, and every planned relation edge was written. When spot-checking migrated Document content, compare normalized content, not bytes — Linear normalizes markdown on save (bullet style, table dashes, bold spans, auto-linked bare domains), so a content-identical document is a pass even when it is not byte-identical.
 2. Report:
    - Linear project URL.
    - Counts of created/updated milestones, documents, and issues, plus any skipped or unresolved items.
 3. Removal prompt:
-   - If the migration completed cleanly (no errored writes, no unresolved in-scope issues, and the design docs are captured as Documents or via the description fallback), prompt: `Migration complete and verified. Run /kramme:siw:remove to retire the local siw/ directory.`
-   - If anything errored, was skipped due to failure, or any supporting spec could not be captured in Linear, **do not** prompt removal. Name exactly what is still local-only so the user does not delete uncaptured work.
+   - If the migration completed cleanly (no errored writes, no unresolved in-scope issues, and the design docs are captured as Documents or via the description fallback) and the SIW directory contains no unrelocated non-markdown artifacts, prompt: `Migration complete and verified. Run /kramme:siw:remove to retire the local siw/ directory.`
+   - If anything errored, was skipped due to failure, any supporting spec could not be captured in Linear, or any non-markdown artifact has not been relocated or uploaded, **do not** prompt removal. Name exactly what is still local-only so the user does not delete uncaptured work.
 
 End the workflow here. Do not delete files and do not start implementation. A relevant follow-up for a newly created Linear issue is `/kramme:linear:issue-implement {issue-id}`.
 
@@ -159,6 +168,8 @@ End the workflow here. Do not delete files and do not start implementation. A re
 - **Document creation unavailable**: fall back to embedding spec content in the project description, warn that supporting specs could not become standalone Documents, and withhold the removal prompt.
 - **Milestone write failure**: stop before writing dependent issues unless the user explicitly chooses to continue without milestone assignment; withhold the removal prompt.
 - **Marker write-back failure**: if appending the `## Linear Transfer` section to a source file fails after a successful Linear issue create, set that ledger row to `CREATED_NO_MARKER`, continue with the remaining issues, include the row in the retry ledger, and withhold the removal prompt.
+- **OAuth token expiry mid-run**: long migrations can outlive the Linear OAuth token. If a write fails with an authorization error partway through, ask the user to re-authorize, then resume — markers already written keep completed issues skip-safe.
+- **Relation write failure**: issues and their text dependencies are already complete, so do not roll anything back. Report the unwritten edges and note that re-running the relation pass is safe (relation parameters are append-only).
 - **Issue write failure**: stop after reporting the failed action, withhold the removal prompt, and print a machine-usable retry ledger in this exact fenced shape:
 
   ```text
