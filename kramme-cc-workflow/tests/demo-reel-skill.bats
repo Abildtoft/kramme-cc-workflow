@@ -20,7 +20,7 @@
     grep -qF "Do not upload, attach, or publish artifacts unless the user explicitly asks" "$skill/SKILL.md"
     grep -qF "\${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh" "$skill/SKILL.md"
     grep -qF "DEMO_REEL_SKILL_DIR" "$skill/SKILL.md"
-    ! grep -qF "\${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:demo-reel" "$skill/SKILL.md"
+    grep -qF "\${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:demo-reel" "$skill/SKILL.md"
     grep -qF "Test output is verification evidence, not demo evidence" "$skill/SKILL.md"
     grep -qF "Static screenshots" "$skill/references/capture-tiers.md"
     grep -qF "Before/after screenshots" "$skill/references/capture-tiers.md"
@@ -32,7 +32,7 @@
 	[ "$status" -eq 0 ]
 }
 
-@test "visual demo reel helper compiles and recommends tiers" {
+@test "visual demo reel helper compiles and runs preflight" {
 	if ! command -v python3 >/dev/null 2>&1; then
 		skip "python3 is required for demo reel helper tests"
 	fi
@@ -43,14 +43,13 @@
     script="skills/kramme:visual:demo-reel/scripts/demo_reel_helper.py"
 
     python3 -m py_compile "$script"
-    browser_output=$(python3 "$script" recommend --project-type web-app --change-type motion --agent-browser available --tools-json "{\"ffmpeg\": true}")
-    printf "%s" "$browser_output" | grep -qF "\"recommended\": \"browser-reel\""
 
-    before_after_output=$(python3 "$script" recommend --project-type web-app --change-type fix --agent-browser available)
-    printf "%s" "$before_after_output" | grep -qF "\"recommended\": \"before-after\""
+    preflight_output=$(python3 "$script" preflight)
+    printf "%s" "$preflight_output" | grep -qF "\"vhs\""
+    printf "%s" "$preflight_output" | grep -qF "\"ffmpeg\""
 
-    static_output=$(python3 "$script" recommend --project-type web-app --change-type motion --agent-browser missing)
-    printf "%s" "$static_output" | grep -qF "\"recommended\": \"static\""
+    # The recommend subcommand was removed as dead code; tier selection is manual.
+    ! grep -qF "recommend" "$script"
   '
 
 	[ "$status" -eq 0 ]

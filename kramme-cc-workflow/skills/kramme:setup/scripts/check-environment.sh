@@ -9,6 +9,17 @@
 # repository context without installing packages, editing config, or fetching.
 set -euo pipefail
 
+# Resolve the plugin root from this script's own location
+# (<plugin-root>/skills/kramme:setup/scripts/check-environment.sh), so
+# plugin-shipped files are found regardless of the caller's working directory.
+# Uses parameter expansion instead of dirname so it works under minimal PATHs.
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+case "$SCRIPT_PATH" in
+*/*) SCRIPT_DIR="$(cd "${SCRIPT_PATH%/*}" && pwd)" ;;
+*) SCRIPT_DIR="$(pwd)" ;;
+esac
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+
 OUTPUT_FORMAT="text"
 
 usage() {
@@ -28,7 +39,7 @@ while [ $# -gt 0 ]; do
 	--json)
 		OUTPUT_FORMAT="json"
 		;;
-	--help|-h)
+	--help | -h)
 		usage
 		exit 0
 		;;
@@ -152,11 +163,11 @@ if [ "$OUTPUT_FORMAT" = "json" ]; then
 	tool_status "git" "Install Xcode Command Line Tools or git" "git --version"
 	printf '],'
 	printf '"recommended":['
-	tool_status "gh" "brew install gh" "gh --version"
+	tool_status "gh" "brew install gh (macOS) or apt install gh (Linux)" "gh --version"
 	printf ','
-	tool_status "jq" "brew install jq" "jq --version"
+	tool_status "jq" "brew install jq (macOS) or apt install jq (Linux)" "jq --version"
 	printf ','
-	tool_status "node" "brew install node" "node --version"
+	tool_status "node" "brew install node (macOS) or apt install nodejs (Linux)" "node --version"
 	printf ','
 	tool_status "npm" "bundled with Node.js" "npm --version"
 	printf '],'
@@ -165,9 +176,9 @@ if [ "$OUTPUT_FORMAT" = "json" ]; then
 	printf ','
 	tool_status "rtk" "install rtk if this workspace requires it" "rtk --version"
 	printf ','
-	tool_status "bats" "brew install bats-core" "bats --version"
+	tool_status "bats" "brew install bats-core (macOS) or apt install bats (Linux)" "bats --version"
 	printf ','
-	tool_status "trash" "brew install trash" "trash --version"
+	tool_status "trash" "brew install trash (macOS) or apt install trash-cli (Linux)" "trash --version"
 	printf ','
 	tool_status "uvx" "brew install uv or pipx install uv" "uvx --version"
 	printf ','
@@ -195,7 +206,7 @@ if [ "$OUTPUT_FORMAT" = "json" ]; then
 	printf ','
 	repo_value ".worktreeinclude" "$(detect_file ".worktreeinclude")"
 	printf ','
-	repo_value "hookConfig" "$(detect_file "kramme-cc-workflow/hooks/hooks.json")"
+	repo_value "hookConfig" "$(detect_file "${PLUGIN_ROOT}/hooks/hooks.json")"
 	printf ']'
 	printf '}\n'
 	exit 0
@@ -207,16 +218,16 @@ echo "Required"
 tool_status "git" "Install Xcode Command Line Tools or git" "git --version"
 echo
 echo "Recommended"
-tool_status "gh" "brew install gh" "gh --version"
-tool_status "jq" "brew install jq" "jq --version"
-tool_status "node" "brew install node" "node --version"
+tool_status "gh" "brew install gh (macOS) or apt install gh (Linux)" "gh --version"
+tool_status "jq" "brew install jq (macOS) or apt install jq (Linux)" "jq --version"
+tool_status "node" "brew install node (macOS) or apt install nodejs (Linux)" "node --version"
 tool_status "npm" "bundled with Node.js" "npm --version"
 echo
 echo "Optional"
 tool_status "bun" "brew install oven-sh/bun/bun" "bun --version"
 tool_status "rtk" "install rtk if this workspace requires it" "rtk --version"
-tool_status "bats" "brew install bats-core" "bats --version"
-tool_status "trash" "brew install trash" "trash --version"
+tool_status "bats" "brew install bats-core (macOS) or apt install bats (Linux)" "bats --version"
+tool_status "trash" "brew install trash (macOS) or apt install trash-cli (Linux)" "trash --version"
 tool_status "uvx" "brew install uv or pipx install uv" "uvx --version"
 tool_status "markitdown" "uvx markitdown or pip install markitdown" "markitdown --version"
 tool_status "surf" "install surf-cli if using visual diagram image generation" "surf --version"
@@ -233,4 +244,4 @@ repo_value "Conductor" "$(detect_conductor)"
 repo_value ".context" "$(detect_file ".context")"
 repo_value "conductor.json" "$(detect_file "conductor.json")"
 repo_value ".worktreeinclude" "$(detect_file ".worktreeinclude")"
-repo_value "Hook config" "$(detect_file "kramme-cc-workflow/hooks/hooks.json")"
+repo_value "Hook config" "$(detect_file "${PLUGIN_ROOT}/hooks/hooks.json")"
