@@ -86,7 +86,7 @@ No UI/UX changes detected to audit.
 If `UX_REVIEW_OVERVIEW.md` exists in the project root:
 
 - Parse previously addressed findings (file path, line number, issue description, action taken)
-- Accept legacy per-agent finding IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) from older UX audit reports as previously addressed identifiers for one release; new UX audit reports use artifact-scoped `UX-NNN` IDs.
+- Accept legacy per-agent finding IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) from older UX audit reports as previously addressed identifiers; new UX audit reports use artifact-scoped `UX-NNN` IDs. Remove this legacy-ID acceptance once existing `UX_REVIEW_OVERVIEW.md` artifacts contain only `UX-NNN` IDs (i.e., once reports generated before the `UX-NNN` switch are no longer in circulation).
 - Store for filtering in Step 9
 
 ### Step 5: Determine Which Agents to Launch
@@ -184,7 +184,7 @@ For each applicable agent, launch the reviewer using the platform's agent-invoca
 
 After collecting findings from all agents:
 
-- Launch **kramme:pr-relevance-validator** (mission from `agents/kramme:pr-relevance-validator.md`) with all findings and the resolved `BASE_BRANCH`
+- Launch **kramme:pr-relevance-validator** with all findings and the resolved `BASE_BRANCH`
 - Cross-reference each finding against the full audit scope (PR diff + staged/unstaged/untracked local changes)
 - Filter pre-existing issues and out-of-scope problems
 - Return only findings caused by this combined scope
@@ -221,74 +221,10 @@ After validation and filtering, organize findings:
 
 If `INLINE_MODE=true`:
 
-- Reply with the full audit inline using the format below
+- Reply with the full audit inline using the report format from `assets/ux-review-report-format.md`
 - Do **not** create or update `UX_REVIEW_OVERVIEW.md`
 
-Otherwise, write to `UX_REVIEW_OVERVIEW.md` in the project root:
-
-```markdown
-# UX Audit Summary
-
-**Mode:** {Code-only | Visual + Code} **Agents Run:** {list of agents that ran} **Categories:** {list of categories audited}
-
-## Relevance Filter
-
-- X findings validated as in-scope (PR/local)
-- X findings filtered (pre-existing or out-of-scope)
-- X findings filtered (previously addressed)
-
-## Coverage Status (omit when complete)
-
-Coverage degraded: {agent names} failed; findings below exclude {categories}.
-
-## Critical UX Issues (X found)
-
-### UX-NNN: {Brief title}
-
-**Agent:** {kramme:ux-reviewer | kramme:product-reviewer | kramme:visual-reviewer | kramme:a11y-auditor} **Category:** {specific category within agent's domain} **File:** `path/to/file.tsx:42` **Confidence:** {0-100} **User Impact:** {High | Medium | Low}
-
-All UX audit findings use the artifact-scoped `UX` prefix (`UX-001`, `UX-002`, ...), numbered sequentially across the report regardless of source agent. Older per-agent IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) in `UX_REVIEW_OVERVIEW.md` remain valid only for previously-addressed matching during the transition.
-
-**Issue:** {Description}
-
-**Recommendation:** {Specific fix}
-
----
-
-## Important UX Issues (X found)
-
-{Same format}
-
-## UX Suggestions (X found)
-
-{Same format}
-
-## Filtered (Pre-existing/Out-of-scope)
-
-<collapsed>
-- [file:line]: Brief description - Reason filtered
-</collapsed>
-
-## Filtered (Previously Addressed)
-
-<collapsed>
-- [file:line]: Brief description
-  Matched: UX_REVIEW_OVERVIEW.md - [action taken summary]
-</collapsed>
-
-## UX Strengths
-
-- {What's well-done from a UX perspective}
-
-## Recommended Action
-
-1. Fix critical issues first
-2. Address important issues
-3. Consider suggestions
-4. Re-run audit after fixes
-
-**To resolve findings, run:** `/kramme:pr:resolve-review`
-```
+Otherwise, write to `UX_REVIEW_OVERVIEW.md` in the project root using the report format from `assets/ux-review-report-format.md`. Include all sections even if empty (with count of 0).
 
 When file output is used, `UX_REVIEW_OVERVIEW.md` is a working artifact — it should NOT be committed. It is intended to be cleaned up by `/kramme:workflow-artifacts:cleanup` when that skill is installed.
 
