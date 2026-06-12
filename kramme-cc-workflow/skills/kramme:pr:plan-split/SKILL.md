@@ -14,53 +14,24 @@ This skill is a **planning aid**. It reads the diff, names seams, and proposes o
 
 ## Workflow
 
-Before Step 1, parse `$ARGUMENTS` as shell-style arguments. If `--auto` is present, set `AUTO_MODE=true` and remove it before base-branch parsing. `--auto` skips the slice-confirmation prompt when the skill recommends `SPLIT`; it does not bypass base-branch validation, empty-diff stops, or the `KEEP AS ONE` outcome.
+Before Step 1, parse `$ARGUMENTS` as shell-style arguments. If `--auto` is present, set `AUTO_MODE=true` and remove it before base-branch parsing. If `--base <branch>` is present, set `BASE_BRANCH_OVERRIDE=<branch>` and remove the flag and value. `--auto` skips the slice-confirmation prompt when the skill recommends `SPLIT`; it does not bypass base-branch validation, empty-diff stops, or the `KEEP AS ONE` outcome.
 
 ### 1. Resolve Base Branch
 
-3-tier resolution.
-
-**Tier 1: Explicit override** If `--base <branch>` was provided, use it directly.
-
-**Tier 2: PR target detection**
+Use the shared plugin script. It uses the same 3-tier strategy: explicit `--base`, PR target branch (via `gh`), then `origin/HEAD`/`origin/main`/`origin/master`. Invoke it with `--tolerate-fetch-failure` so a failed fetch falls back to the cached local `origin/<base>` ref with a warning instead of stopping (the script still errors when no cached ref exists):
 
 ```bash
-BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2> /dev/null)
-```
+RESOLVE_ARGS=(--tolerate-fetch-failure)
+[ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
 
-**Tier 3: Fallback**
-
-```bash
-BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@')
-[ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
-```
-
-Normalize, validate, and fetch:
-
-```bash
-BASE_BRANCH=${BASE_BRANCH#refs/heads/}
-BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
-BASE_BRANCH=${BASE_BRANCH#origin/}
-
-if [ -z "$BASE_BRANCH" ]; then
-  echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
-  exit 1
-fi
-BASE_STALE=0
-if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2> /dev/null; then
-  if git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null; then
-    BASE_STALE=1
-    echo "Warning: Failed to fetch origin/$BASE_BRANCH; using cached local ref (may be stale)." >&2
-  else
-    echo "Error: Failed to fetch origin/$BASE_BRANCH and no local copy exists. Check remote access and re-run with --base <branch>." >&2
-    exit 1
-  fi
-fi
-git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null || {
-  echo "Error: origin/$BASE_BRANCH not found. Re-run with --base <branch>." >&2
+RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}") || {
+  echo "Error: Could not resolve base branch; see the message above. Re-run with --base <branch>." >&2
   exit 1
 }
+eval "$RESOLVED"
 ```
+
+The script exports `BASE_REF`, `BASE_BRANCH`, and `MERGE_BASE`. If the script printed its stale-ref warning (`Warning: failed to fetch ...; using existing ...`), set `BASE_STALE=1` so later steps can flag that the diff was computed against a possibly stale base.
 
 Then capture the **reference branch** — the branch this skill is run in, which holds the changes being split. Every generated plan extracts its files from this branch.
 
@@ -76,12 +47,11 @@ fi
 
 ### 2. Build the Change Set
 
-Combine committed, staged, unstaged, and untracked changes:
+Combine committed, staged, unstaged, and untracked changes, using the `MERGE_BASE` exported by the resolve script in step 1:
 
 ```bash
-BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
 {
-  git diff --name-only "$BASE_REF"...HEAD
+  git diff --name-only "$MERGE_BASE"...HEAD
   git diff --name-only --cached
   git diff --name-only
   git ls-files --others --exclude-standard
@@ -92,7 +62,7 @@ If the deduplicated change set is empty, stop and reply with a single line — `
 
 For each file, capture:
 
-- Insertions / deletions (`git diff --numstat "$BASE_REF"...HEAD` plus `git diff --numstat HEAD` for local).
+- Insertions / deletions (`git diff --numstat "$MERGE_BASE"...HEAD` plus `git diff --numstat HEAD` for local).
 - Whether it's new, modified, deleted, or renamed.
 - File category — source, test, config, lock file, snapshot, generated.
 
@@ -100,7 +70,7 @@ Use one combined numstat pass so untracked files are included in per-file slice 
 
 ```bash
 {
-  git diff --numstat "$BASE_REF"...HEAD
+  git diff --numstat "$MERGE_BASE"...HEAD
   git diff --numstat HEAD
   git ls-files --others --exclude-standard -z \
     | while IFS= read -r -d '' file; do
@@ -135,7 +105,7 @@ awk 'NF >= 3 { ins += ($1 == "-" ? 0 : $1); del += ($2 == "-" ? 0 : $2) } END { 
 Read the actual diff content for source and test files:
 
 ```bash
-git diff "$BASE_REF"...HEAD
+git diff "$MERGE_BASE"...HEAD
 git diff --cached
 git diff
 ```
@@ -149,7 +119,7 @@ sed -n '1,240p' path/to/untracked-source-file
 
 Skip lock files, snapshots, and generated files when interpreting intent — they travel with their owning slice rather than defining one.
 
-**Large-diff guardrail.** If the branch total from step 2 exceeds **~2000 source lines** (excluding lock files, snapshots, and generated files), do not read the diff as one blob. Instead, group files by module/directory from step 4's categorization and read each group's diff separately (e.g., `git diff "$BASE_REF"...HEAD -- src/auth/`), prioritizing source over tests and skipping snapshots. State in the final report that the diff was read in groups and which groups, if any, were sampled rather than read in full — reviewers need to know which slices were assessed from full content vs. summary.
+**Large-diff guardrail.** If the branch total from step 2 exceeds **~2000 source lines** (excluding lock files, snapshots, and generated files), do not read the diff as one blob. Instead, group files by module/directory from step 4's categorization and read each group's diff separately (e.g., `git diff "$MERGE_BASE"...HEAD -- src/auth/`), prioritizing source over tests and skipping snapshots. State in the final report that the diff was read in groups and which groups, if any, were sampled rather than read in full — reviewers need to know which slices were assessed from full content vs. summary.
 
 ### 4. Categorize Changes
 

@@ -52,7 +52,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 
 - If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag before processing remaining arguments.
 - If `$ARGUMENTS` contains `--inline`, set `INLINE_MODE=true` and remove the flag before processing remaining arguments.
-- If `$ARGUMENTS` contains `--team`, use Team Mode and remove the flag before processing remaining arguments.
+- `--team` was already handled by the Team Mode section above and never reaches this step.
 
 **Extract `--model` flag next (Claude Code only — ignored on other platforms):**
 
@@ -388,6 +388,17 @@ Complete the section matrix for every audited section with:
 - Evidence references for row totals
 
 If the matrix is incomplete, audit is **BLOCKED** and no final report may be produced.
+
+### 6.7 Assign Final Finding IDs
+
+If a previous report exists (`siw/AUDIT_IMPLEMENTATION_REPORT.md`, or `AUDIT_IMPLEMENTATION_REPORT.md` in the project root), read it and parse the previously reported finding IDs (`DIV-NNN` / `EXT-NNN`), recording the highest of each as `previous_max_id`:
+
+- Findings that match a previously reported finding (same issue, even if reworded) retain their existing `DIV-NNN` / `EXT-NNN` IDs.
+- New findings get sequential IDs starting at `previous_max_id + 1` within their prefix.
+
+If no previous report exists, number findings `DIV-001`, `EXT-001`, etc. from scratch.
+
+This keeps IDs stable across re-runs so commits, SIW issues (e.g. `/kramme:siw:resolve-audit` filenames `ISSUE-G-XXX-{finding-id}-*.md`), and external references stay valid.
 
 ---
 

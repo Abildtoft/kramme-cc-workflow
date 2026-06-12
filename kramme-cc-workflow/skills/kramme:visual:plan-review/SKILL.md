@@ -71,6 +71,8 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 - Every behavior description: what the code currently does vs. what the plan proposes
 - For each, cite the source: the plan section or the file:line where you read it
 - If something cannot be verified, mark it as uncertain
+- Do not embed secrets, credentials, tokens, or personal data surfaced in the plan or source. Summarize sensitive areas instead of quoting them — the output is written to disk and opened in a browser
+- Escape repo-derived text (code snippets, names, paths) before embedding it in HTML
 
 ## Page Sections
 
@@ -120,7 +122,7 @@ Write to `~/.kramme-cc-workflow/diagrams/plan-review-{descriptive-name}.html`. C
 
 - macOS: `open ~/.kramme-cc-workflow/diagrams/{filename}.html`
 - Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html`
-- Windows: `start "" ~/.kramme-cc-workflow/diagrams/{filename}.html`
+- Windows: `start "" "%USERPROFILE%\.kramme-cc-workflow\diagrams\{filename}.html"`
 
 Report the file path to the user. Include responsive section navigation.
 

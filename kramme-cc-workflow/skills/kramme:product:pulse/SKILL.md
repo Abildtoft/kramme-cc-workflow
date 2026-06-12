@@ -16,6 +16,7 @@ Generate a compact, time-windowed report about what users experienced and how th
    - Interpret the first non-flag argument as the lookback window.
    - Default to `24h` when no window is supplied.
    - Accept simple windows such as `1h`, `24h`, `7d`, `14d`, and `30d`.
+   - If the window token cannot be parsed (e.g. `weekly`, `last sprint`), warn that the token was not understood and default to `24h`.
    - If `--inline` is present, reply with the report and do not write a file.
 
 2. **Resolve product grounding.**

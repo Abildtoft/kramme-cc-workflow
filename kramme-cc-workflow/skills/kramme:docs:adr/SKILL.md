@@ -8,7 +8,7 @@ user-invocable: true
 
 # Architecture Decision Record
 
-Author an ADR for a significant, long-lived decision: state the problem, the choice, the alternatives rejected, and the consequences. Preserve predecessors; never delete history.
+Author an ADR for a significant, long-lived decision: state the problem, the choice, the alternatives rejected, and the consequences.
 
 This skill writes ADR files and may update predecessor ADRs, so it runs only after explicit user invocation.
 
@@ -193,7 +193,7 @@ Emit a `PLAN` marker first. Then:
 1. In the new ADR's header, set Status to `PROPOSED` by default and add a line noting the intended predecessor, such as `Proposed successor to #MMMM`.
 2. If the decision is already adopted, set the new ADR's Status to `ACCEPTED` and replace that note with `Supersedes #MMMM`.
 3. Once the new ADR is `ACCEPTED`, update the old ADR (#MMMM): change Status to `SUPERSEDED by #NNNN` and add a line referencing the successor. Do not edit any other content of the predecessor.
-4. Keep both files. Never delete the predecessor.
+4. Keep both files (see Preservation rule).
 
 If the predecessor was authored by someone else, emit `ASK FIRST` before proceeding.
 
@@ -216,7 +216,6 @@ These are the lies you will tell yourself to skip or distort the ADR. Each has a
 
 - _"It's just a tactical choice, not worth an ADR."_ → Apply the **When to use** significance test. If any criterion there matches, it warrants an ADR.
 - _"We'll capture the reasoning in the README."_ → READMEs rot and get edited without attribution. ADRs are dated, numbered, and preserved.
-- _"This supersedes the old one, so delete it."_ → Preservation rule. SUPERSEDED stays. The rejected previous approach is load-bearing context for the current one.
 - _"I'll backdate the ADR to when we actually decided."_ → Date the writing, not the decision. Honesty beats revisionism. Backdated ADRs erode trust in the whole log.
 - _"Everyone already knows why."_ → Nobody who joins next year knows why. The ADR is for them, not you.
 - _"I'll skip Alternatives — we never really considered any."_ → Every decision rejected alternatives, even implicit ones ("do nothing", "keep what we have"). Name at least one.
@@ -226,13 +225,10 @@ These are the lies you will tell yourself to skip or distort the ADR. Each has a
 
 Rejection criteria. If any of these are true, revert the ADR (delete a newly created file, or undo the predecessor edit when superseding) and re-plan:
 
-- **Silently deleting a prior ADR** instead of marking it SUPERSEDED or DEPRECATED.
-- **ACCEPTED status with no deciders named.** An unattributed decision is an anonymous decree.
-- **No Alternatives section.** Every architectural decision has rejected paths — list at least one.
 - **Decision paragraph longer than the Context paragraph.** A decision without problem framing is a preference, not an ADR.
 - **Editing a SUPERSEDED ADR's content** instead of writing a new one. The predecessor is frozen; capture the new thinking in a new ADR.
 - **Claims in Context or Consequences with no `UNVERIFIED` marker and no source.** Build on evidence or mark the gap.
-- **Bundling multiple separable decisions into one ADR.** One decision per ADR. If `CONFUSION` fires during drafting, split.
+- **Anything the Verification checklist below would reject** — deleted predecessors, missing deciders, missing alternatives, or multiple separable decisions bundled into one ADR.
 
 ## Verification
 
@@ -246,6 +242,7 @@ Before declaring the ADR done, self-check:
 - [ ] Decision stated in one clear paragraph.
 - [ ] Consequences cover positive **and** negative effects (neutral/follow-on optional).
 - [ ] At least one rejected alternative with a reason.
+- [ ] Exactly one decision covered — separable decisions split into separate ADRs.
 - [ ] If superseding: predecessor marked `SUPERSEDED by #NNNN` with forward-reference; predecessor content otherwise untouched.
 - [ ] No prior ADR deleted.
 - [ ] Every unverifiable claim carries an `UNVERIFIED` marker.

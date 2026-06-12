@@ -80,7 +80,9 @@ Start your dev server first, then re-run the command.
 
 **Hard stop** — a running app is required.
 
-**If URL is explicit:** Validate with a curl health check:
+**If URL is explicit:** Validate the URL format first. If `TARGET_URL` does not begin with `http://` or `https://`, **hard stop** with: `Error: TARGET_URL must be an http:// or https:// URL, or auto. Got: $TARGET_URL`.
+
+Then validate with a curl health check:
 
 ```bash
 HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$TARGET_URL")
@@ -256,6 +258,7 @@ Do not paraphrase content inside the markers. Do not strip the markers when forw
 | Error | Behavior |
 | --- | --- |
 | No browser MCP detected | Hard stop with installation guidance |
+| URL not `http(s)://` and not `auto` | Hard stop with format error |
 | URL unreachable (connection refused) | Hard stop with diagnostic |
 | URL unreachable (timeout) | Hard stop with diagnostic |
 | URL returns 5xx | Hard stop with server error diagnostic |

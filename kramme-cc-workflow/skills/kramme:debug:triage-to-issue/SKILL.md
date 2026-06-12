@@ -1,6 +1,6 @@
 ---
 name: kramme:debug:triage-to-issue
-description: "(experimental) Triage a bug end-to-end: orchestrate root-cause investigation, design a TDD fix plan with RED-GREEN cycles, and file a refactor-durable Linear or local SIW issue in one mostly-hands-off pass. Use when a bug needs to become an implementation-ready ticket without manually chaining kramme:debug:investigate, kramme:test:tdd, and kramme:linear:issue-define. Composes kramme:debug:investigate and kramme:linear:issue-define via skill invocation; captures kramme:test:tdd conventions inline in v1. Not for the full interactive investigation with confidence gates (use kramme:debug:investigate alone), not for conversational multi-bug QA-intake sessions (use kramme:qa:intake), not for implementing the fix (use kramme:linear:issue-implement or kramme:siw:issue-implement after this skill files the ticket)."
+description: "(experimental) Triage a bug end-to-end: orchestrate root-cause investigation, design a TDD fix plan with RED-GREEN cycles, and file a refactor-durable Linear or local SIW issue in one mostly-hands-off pass. Use when a bug needs to become an implementation-ready ticket without manually chaining kramme:debug:investigate, kramme:test:tdd, and kramme:linear:issue-define. Composes kramme:debug:investigate and kramme:linear:issue-define via skill invocation (or by reading the sub-skill's SKILL.md when blocked); captures kramme:test:tdd conventions inline in v1. Not for the full interactive investigation with confidence gates (use kramme:debug:investigate alone), not for conversational multi-bug QA-intake sessions (use kramme:qa:intake), not for implementing the fix (use kramme:linear:issue-implement or kramme:siw:issue-implement after this skill files the ticket)."
 argument-hint: "[bug description, error message, or Linear/SIW issue ref] [--yes | --auto]"
 disable-model-invocation: true
 user-invocable: true
@@ -80,9 +80,16 @@ If Linear is the selected sink, resolve required Linear metadata before continui
 
 ### Phase 3 — Investigation
 
-Invoke `kramme:debug:investigate` via the Skill tool with the captured bug description as `$ARGUMENTS`.
+Invoke `kramme:debug:investigate` via the Skill tool with the captured bug description as `$ARGUMENTS`. If Skill invocation is unavailable or blocked (the sub-skill is not model-invocable on this platform), locate and Read the sub-skill's `SKILL.md` from the installed skills directory and follow its steps inline.
 
-When the sub-skill reaches its **Step 6 — Propose Fix** gate, choose the **"Report findings only, do not change code"** option. This stops investigate at Step 8 (Summary) and returns the investigation log without applying any fix.
+**Report-only contract.** Triage instructs investigate to stop after root-cause identification and never apply a fix. Do **not** pass `--auto` to investigate — its AUTO mode implements fixes at High confidence, which would violate this skill's "No fix was applied" invariant.
+
+Answer investigate's intermediate gates with these defaults (always under `--yes`/`--auto`; interactively, you may surface them to the user instead):
+
+- **Step 2 (Reproduction method):** attempt reproduction from local evidence (existing tests, grep). If no reproduction path is found, do not block on the user — continue with static investigation and mark reproduction unconfirmed.
+- **Step 3 (Multiple candidate areas):** choose **"Investigate all candidates"**.
+- **Step 4 (Git bisect):** run bisect only when a known-good commit and an automated failing command are available without user input; otherwise continue the manual trace.
+- **Step 6 — Propose Fix:** always choose **"Report findings only, do not change code"**. This stops investigate at Step 8 (Summary) and returns the investigation log without applying any fix.
 
 Capture from the returned log:
 
@@ -96,7 +103,7 @@ If the investigation could not reproduce the bug, mark this in the draft body as
 
 ### Phase 4 — TDD plan
 
-Invoke `kramme:test:tdd` via the Skill tool, framed as a **planning-only** call: ask it to produce the Prove-It cycle structure for the bug just analyzed, but do **not** write or run tests in this session — the goal is the plan that will live in the issue body.
+Invoke `kramme:test:tdd` via the Skill tool, framed as a **planning-only** call: ask it to produce the Prove-It cycle structure for the bug just analyzed, but do **not** write or run tests in this session — the goal is the plan that will live in the issue body. If Skill invocation is unavailable or blocked, locate and Read the sub-skill's `SKILL.md` from the installed skills directory and follow its Prove-It conventions inline.
 
 Capture:
 
@@ -205,6 +212,8 @@ Branch on the sink chosen in Phase 2.
 
 All three updates must succeed atomically. If any write fails, surface the error and offer the user a chance to roll back the partial create.
 
+> The issue-file prefix/number scheme and the OVERVIEW/LOG update protocol above are owned by the `kramme:siw` skills; this inline copy must stay in sync with them.
+
 **Markdown fallback:** write `BUG-{slug}-{YYYY-MM-DD}.md` to the project root with the full body. If that file already exists (same-day re-run), append a numeric suffix (`-2`, `-3`, …) rather than overwriting. Surface the absolute path.
 
 ### Phase 10 — Post-create verification
@@ -224,7 +233,7 @@ THINGS I DIDN'T TOUCH
 
 POTENTIAL CONCERNS
 - {confidence rating from Phase 3 if Medium or Low}
-- {NOTICED BUT NOT TOUCHING entries from investigate output, if any}
+- {entries from investigate's epilogue (NOTICED BUT NOT TOUCHING / POTENTIAL CONCERNS sections), if present}
 ```
 
 ---

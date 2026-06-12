@@ -44,11 +44,11 @@ If no question or topic remains, ask one concise question: "What do you want to 
    - Start narrow. Widen only when the first search returns no plausible sessions and the user's question warrants a wider window.
 
 3. Discover sessions and extract metadata.
-   - Run the discovery pipeline from this skill directory:
+   - Resolve `SKILL_DIR` once to the directory containing this `SKILL.md`, then invoke the scripts by absolute path from the user's current workspace. Do not `cd` into the skill directory — the scratch output in Step 5 must land in the user's repo, not the plugin tree.
      ```bash
-     bash scripts/discover-sessions.sh "$REPO_NAME" "$DAYS" [--platform "$PLATFORM"] \
+     bash "$SKILL_DIR/scripts/discover-sessions.sh" "$REPO_NAME" "$DAYS" [--platform "$PLATFORM"] \
        | tr '\n' '\0' \
-       | xargs -0 python3 scripts/extract-metadata.py --cwd-filter "$REPO_NAME"
+       | xargs -0 python3 "$SKILL_DIR/scripts/extract-metadata.py" --cwd-filter "$REPO_NAME"
      ```
    - Each non-meta line is one session JSON object. The final `_meta` line reports `files_processed` and `parse_errors`.
    - If `files_processed` is `0`, return `no relevant prior sessions`.
@@ -63,18 +63,18 @@ If no question or topic remains, ask one concise question: "What do you want to 
    - Deep-dive at most 5 sessions total.
 
 5. Create scratch output.
-   - Create a durable per-run scratch directory under `.context/session-search/<timestamp>/`.
+   - Create a durable per-run scratch directory under `$REPO_ROOT/.context/session-search/<timestamp>/`.
    - Write only extracted skeleton/error files there. Do not write raw transcripts.
    - Keep this scratch directory for the workspace session so other agents can inspect the same safe excerpts.
 
 6. Extract selected sessions.
    - For each selected session:
      ```bash
-     python3 scripts/extract-skeleton.py --output "$SCRATCH/<session-id>.skeleton.txt" < "$SESSION_FILE"
+     python3 "$SKILL_DIR/scripts/extract-skeleton.py" --output "$SCRATCH/<session-id>.skeleton.txt" < "$SESSION_FILE"
      ```
    - Extract errors only when failed commands or debugging dead ends are relevant:
      ```bash
-     python3 scripts/extract-errors.py --output "$SCRATCH/<session-id>.errors.txt" < "$SESSION_FILE"
+     python3 "$SKILL_DIR/scripts/extract-errors.py" --output "$SCRATCH/<session-id>.errors.txt" < "$SESSION_FILE"
      ```
    - If an extractor reports an output-write failure, stop and surface the error.
    - If an extractor reports parse errors, include that in the synthesis prompt or direct answer.

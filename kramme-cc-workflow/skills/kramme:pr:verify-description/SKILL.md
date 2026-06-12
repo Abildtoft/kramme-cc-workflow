@@ -84,39 +84,20 @@ Classify each potential drift point against the rubric below. Severity drives th
    git branch --show-current
    ```
 
-3. Detect the base branch using a 3-tier strategy:
-
-   **Tier 1 — Explicit override:** if `BASE_BRANCH_OVERRIDE` is set from `--base`, use it.
-
-   **Tier 2 — PR target branch:**
+3. Resolve the base branch with the shared plugin script. It uses the same 3-tier strategy: explicit `--base` override, PR target branch, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message instead of being silently swallowed:
 
    ```bash
-   BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2> /dev/null)
-   ```
+   RESOLVE_ARGS=(--strict)
+   [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
 
-   **Tier 3 — Repo default:**
-
-   ```bash
-   BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@')
-   [ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
-   ```
-
-   Normalize and validate:
-
-   ```bash
-   BASE_BRANCH=${BASE_BRANCH#refs/heads/}
-   BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
-   BASE_BRANCH=${BASE_BRANCH#origin/}
-   if [ -z "$BASE_BRANCH" ]; then
-     echo "Error: Could not determine base branch. Re-run with --base <ref>." >&2
+   RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}") || {
+     echo "Error: Could not resolve base branch; see the message above. Re-run with --base <ref>." >&2
      exit 1
-   fi
-   git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2> /dev/null || true
-   if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null; then
-     echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <ref>." >&2
-     exit 1
-   fi
+   }
+   eval "$RESOLVED"
    ```
+
+   The script exports `BASE_REF`, `BASE_BRANCH`, and `MERGE_BASE` for the diff commands in Phase 2.
 
 4. **ALWAYS** confirm a PR exists for the current branch and is in an open state:
 

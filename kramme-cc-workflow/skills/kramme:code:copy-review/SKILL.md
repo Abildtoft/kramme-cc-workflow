@@ -29,7 +29,7 @@ Scan the codebase for unnecessary UI text. Finds labels, descriptions, placehold
    - **Templates**: `*.html`, `*.hbs`, `*.ejs`, `*.pug`
    - **Views/Pages**: Files in `pages/`, `views/`, `screens/`, `routes/`, `app/` directories
    - **i18n/translations**: `*.json` files in `locales/`, `i18n/`, `translations/` directories
-5. Count files in scope — report the count to the user before proceeding.
+5. Count files in scope — report the count to the user before proceeding. If the count is zero, stop with a one-line "no UI-relevant files in scope" message instead of launching a reviewer.
 
 ### Phase 2 — Scan
 
@@ -50,7 +50,7 @@ If no separate agent runtime is available, perform the same scan directly in the
 
 ### Phase 4 — Report
 
-Write report to `COPY_REVIEW_OVERVIEW.md` in the project root:
+Write report to `COPY_REVIEW_OVERVIEW.md` in the project root. Overwrite any prior `COPY_REVIEW_OVERVIEW.md` — the file represents the latest scan only.
 
 ```markdown
 # Copy Review — Codebase Audit

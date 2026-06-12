@@ -3,7 +3,6 @@ name: kramme:siw:reset
 description: Reset SIW workflow state while preserving the spec - migrates log decisions to spec, clears issues and log
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
 ---
 
 # Reset Structured Implementation Workflow
@@ -58,7 +57,16 @@ Check for required SIW files:
 
 ```bash
 ls siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/issues/ 2> /dev/null
-ls siw/*SPEC*.md siw/*SPECIFICATION*.md siw/*PLAN*.md siw/*DESIGN*.md 2> /dev/null
+# Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.
+find siw -maxdepth 1 -type f \( -name "*SPEC*.md" -o -name "*SPECIFICATION*.md" -o -name "*PLAN*.md" -o -name "*DESIGN*.md" \) \
+  ! -name "LOG.md" \
+  ! -name "OPEN_ISSUES_OVERVIEW.md" \
+  ! -name "DISCOVERY_BRIEF.md" \
+  ! -name "SPEC_STRENGTHENING_PLAN.md" \
+  ! -name "AUDIT_*.md" \
+  ! -name "PRODUCT_AUDIT.md" \
+  ! -name "SIW_*.md" \
+  2> /dev/null
 ```
 
 **If siw/LOG.md doesn't exist:**
@@ -315,9 +323,9 @@ Replace content with empty table:
 
 **Parallelization:** Needs coordination
 
-| # | Title | Status | Size | Priority | Related |
-| --- | --- | --- | --- | --- | --- |
-| _None_ | _Use `/kramme:siw:issue-define` to create first issue (G-001)_ |  |  |  |  |
+| # | Title | Status | Size | Priority | Mode | Related |
+| --- | --- | --- | --- | --- | --- | --- |
+| _None_ | _Use `/kramme:siw:issue-define` to create first issue (G-001)_ |  |  |  |  |  |
 
 **Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
 

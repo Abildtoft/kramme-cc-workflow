@@ -22,7 +22,7 @@ The `Mode` field gates the HITL safety logic in Step 3.1 and Step 6.1. If `Mode`
 
 ## Team Mode
 
-If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments.
+If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments. `--auto` is team-mode-only: it skips the plan confirmation and starts the proposed parallel implementation plan immediately (full semantics in `references/team-mode.md`); ignore it in the standard workflow.
 
 ## Process Overview
 

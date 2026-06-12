@@ -43,10 +43,13 @@ If no configuration specifies commands, detect the project type:
 - **Nx workspace**: Check for `nx.json` or `project.json`
 - **C#/.NET**: Check for `*.csproj` or `*.sln` files
 - **Node.js**: Check for `package.json`
+- **Python**: Check for `pyproject.toml` or `pytest.ini` (defaults: `pytest`, `ruff check`)
+- **Go**: Check for `go.mod` (defaults: `go test ./...`, `go vet ./...`)
+- **Rust**: Check for `Cargo.toml` (defaults: `cargo test`, `cargo clippy`, `cargo fmt --check`)
 
 If none of these match and no commands were found in steps 1-2, report "No verification commands found" with the locations checked, then stop. Do not invent commands.
 
-This skill relies on `git`, plus the toolchain for the detected project type (`nx`, `dotnet`, or `npm`) and `jq` for the JSON-inspection snippets below. If a required tool is missing, mark the checks that need it as `SKIPPED` with the reason (same handling as a missing target) rather than failing the run.
+This skill relies on `git`, plus the toolchain for the detected project type (`nx`, `dotnet`, `npm`, `pytest`/`ruff`, `go`, or `cargo`) and `jq` for the JSON-inspection snippets below. If a required tool is missing, mark the checks that need it as `SKIPPED` with the reason (same handling as a missing target) rather than failing the run.
 
 ### 4. Determine Base Branch
 
@@ -101,7 +104,7 @@ Run checks in this order (continue through ALL checks even if some fail):
 
 ## Default Commands by Project Type
 
-When project instructions and CI config don't specify commands, read `references/commands-by-project-type.md` for default check-only command sets (Nx, C#/.NET, Node.js) and per-ecosystem test-suite discovery. Read only the section for the project type you detected in step 3, and use the `$BASE_BRANCH` from step 4.
+When project instructions and CI config don't specify commands, read `references/commands-by-project-type.md` for default check-only command sets (Nx, C#/.NET, Node.js, Python, Go, Rust) and per-ecosystem test-suite discovery. Read only the section for the project type you detected in step 3, and use the `$BASE_BRANCH` from step 4.
 
 ## Critical Requirements
 

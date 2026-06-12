@@ -74,6 +74,8 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 - Every behavior description: what code does, what changed, before vs. after
 - For each, cite the source: the git command output or the file:line where you read it
 - If something cannot be verified, mark it as uncertain rather than stating it as fact
+- Do not embed secrets, credentials, tokens, or personal data surfaced in diffs, commit messages, or source. Summarize sensitive areas instead of quoting them — the output is written to disk and opened in a browser
+- Escape repo-derived text (code snippets, names, paths, commit messages) before embedding it in HTML
 
 ## Page Sections
 

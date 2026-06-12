@@ -96,7 +96,7 @@ Portless auto-detects common frameworks and injects the correct `--port`/`--host
 
 ```jsonc
 "dev:local": {
-  "command": "portless keep-calm-and-quiz-on next dev",
+  "command": "portless my-app next dev",
   "options": { "cwd": "packages/app" }
 }
 ```

@@ -2,7 +2,7 @@
 name: kramme:pr:copy-review
 description: Review PR and local changes for unnecessary, redundant, or duplicative UI text — labels, descriptions, placeholders, tooltips, and instructions that the UI already communicates through its structure. Supports inline report output with --inline.
 argument-hint: "[--base <branch>] [--threshold 0-100] [--inline]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 

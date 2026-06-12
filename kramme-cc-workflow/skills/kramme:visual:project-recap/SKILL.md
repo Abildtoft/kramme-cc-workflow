@@ -11,7 +11,7 @@ kramme-platforms: [claude-code]
 
 Generate a comprehensive visual project recap as a self-contained HTML page to rebuild mental model when returning to a project.
 
-Use this when returning to a project you already know and need to reload context. For first-time orientation in an unfamiliar codebase, an onboarding walkthrough fits better than a recap.
+Use this when returning to a project you already know and need to reload context. For first-time orientation in an unfamiliar codebase, use `kramme:visual:onboarding` instead — an onboarding walkthrough fits better than a recap.
 
 **Arguments:** "$ARGUMENTS"
 
@@ -117,7 +117,7 @@ Open in the browser, then report the file path to the user:
 
 - macOS: `open <path>`
 - Linux: `xdg-open <path>`
-- Windows: `start "" <path>`
+- Windows: `start "" "%USERPROFILE%\.kramme-cc-workflow\diagrams\project-recap-{project-name}.html"` (`~` does not expand under cmd.exe)
 
 If no opener is available (headless, CI, or the command fails), just report the path — the file is the deliverable.
 

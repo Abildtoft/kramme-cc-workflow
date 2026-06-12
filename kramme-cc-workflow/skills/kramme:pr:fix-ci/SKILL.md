@@ -43,7 +43,7 @@ If no PR exists for the current branch, stop and inform the user. Keep `PR_NUMBE
 
 ### Step 2: Confirm the branch is in sync with the base
 
-A stale branch will produce CI failures unrelated to the PR, wasting iteration cycles. Catch this before iterating.
+A stale branch can produce CI failures unrelated to the PR, wasting iteration cycles. Catch this before iterating.
 
 ```bash
 BASE=$(gh pr view --json baseRefName --jq .baseRefName)
@@ -51,7 +51,15 @@ git fetch origin "$BASE"
 git rev-list --left-right --count "origin/$BASE"...HEAD
 ```
 
-If the left count is non-zero (the base has commits not in the branch), stop and ask the user to rebase before proceeding.
+If the left count is non-zero (the base has commits not in the branch), inspect what moved (`git log --name-only HEAD.."origin/$BASE"`). Only stop if the base movement plausibly affects CI for this PR — it touches the same files or directories the branch changes, CI workflow/config files, lockfiles, or shared build tooling. In that case, point the user at `/kramme:pr:rebase` before proceeding. Otherwise note the drift and continue iterating.
+
+Before starting the fix loop, snapshot the pre-existing working-tree state so Step 8 can keep it out of fix commits:
+
+```bash
+git status --porcelain
+```
+
+Record this output as the **pre-existing dirty state**. Any file already modified or untracked here was not produced by the fix loop and must never be swept into a `[FIX PIPELINE]` commit.
 
 ### Step 3: Check CI status first
 
@@ -61,14 +69,7 @@ gh pr checks --json name,state,bucket,link,workflow
 
 The `bucket` field categorizes state into: `pass`, `fail`, `pending`, `skipping`, or `cancel`.
 
-**Important:** If any of these checks are still `pending`, wait before proceeding:
-
-- `sentry` / `sentry-io`
-- `codecov`
-- `cursor` / `bugbot` / `seer`
-- Any linter or code analysis checks
-
-These bots may post additional feedback comments once their checks complete. Waiting avoids duplicate work.
+**Important:** If any **post-hoc review-commenting bots** still have `pending` checks, wait before proceeding. These are services that post additional feedback comments to the PR once their checks complete — error trackers, coverage reporters, AI review bots, and hosted linter/code-analysis services (e.g. Sentry, Codecov, Cursor Bugbot, Seer). Key the wait on the category — does this check belong to a service that comments after completion? — not on any specific bot name. Waiting avoids duplicate work.
 
 ### Step 4: Gather review feedback
 
@@ -123,11 +124,15 @@ Make minimal, targeted code changes. Only fix what is actually broken.
 
 **Default (no flag):**
 
+Stage only the files the fix loop actually edited in Step 7 — never `git add -A`, which would sweep pre-existing uncommitted work (including untracked `.env`-style files) into pushed commits:
+
 ```bash
-git add -A
+git add <file1> <file2> ...
 git commit -m "[FIX PIPELINE] <descriptive message of what was fixed>"
 git push origin "$(git branch --show-current)"
 ```
+
+Compare `git status --porcelain` against the pre-existing dirty state snapshot from Step 2: files that were already modified or untracked before the loop started stay uncommitted. If such pre-existing state exists, warn the user (once) that it is being left untouched.
 
 The `[FIX PIPELINE]` prefix marks commits as iteration fixes from CI or review feedback, making them easy to identify and consolidate later (see Step 11).
 
@@ -198,7 +203,7 @@ If disablement is genuinely warranted — a confirmed false positive, a test tha
 **Stop Immediately:**
 
 - No PR exists for the current branch
-- Branch is out of sync and needs rebase (inform user)
+- Branch is out of sync in a way that plausibly affects CI (point the user at `/kramme:pr:rebase`)
 
 ---
 

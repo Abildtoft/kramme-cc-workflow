@@ -22,8 +22,6 @@ If you're on `main` or `master`, ask the user to create a new branch first.
 
 ## Format
 
-Do not use conventional commit format (`type: message` or `type(scope): message`) for regular commits. Conventional commits are only used for merge commits (PR titles), not for individual commits on a branch.
-
 Write clear, descriptive commit messages in plain English:
 
 ```
@@ -39,13 +37,12 @@ Some external guides (e.g. Addy Osmani's `git-workflow-and-versioning`) require 
 
 ## Pre-commit checklist
 
-Before running `git commit`, confirm all six:
+Before running `git commit`, confirm all five:
 
 - [ ] **One logical change, independently reviewable.** If the diff spans two concerns, split it now — not "in a follow-up".
 - [ ] **Verified the change.** Tests, typecheck, or lint ran against the staged state; failures were resolved or are deliberately called out in the body.
 - [ ] **Subject under 72 characters.** Plain-English, imperative mood, no trailing period, no Conventional Commit prefix.
 - [ ] **Body explains the _why_** when non-obvious — motivation, previous behavior, constraint that forced the shape. Omit the body if the subject is self-explanatory.
-- [ ] **No AI attribution** in subject, body, or trailers. No `Co-Authored-By: Claude`, no "Generated with Claude Code".
 - [ ] **Repository left in a working state.** This commit should not break `main` if it were the tip.
 
 ## Body Guidelines
@@ -103,4 +100,3 @@ Before returning a commit message, self-check:
 - [ ] The subject is plain English unless the user explicitly asked for another format.
 - [ ] The message describes one logical change.
 - [ ] The body explains why when the subject alone is not enough.
-- [ ] No AI attribution or hidden co-author trailer is present.

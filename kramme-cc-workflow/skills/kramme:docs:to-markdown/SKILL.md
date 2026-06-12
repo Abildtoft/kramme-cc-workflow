@@ -27,6 +27,8 @@ uvx --from 'markitdown[all]' markitdown input.docx > output.md
 cat input.pdf | uvx --from 'markitdown[all]' markitdown -x .pdf > output.md
 ```
 
+Before passing `-o` (or redirecting to a file), check whether the output path exists; if it does, confirm with the user or choose a new name before writing.
+
 ## Supported Formats
 
 - **Documents**: PDF, Word (.docx), PowerPoint (.pptx), Excel (.xlsx, .xls)
@@ -71,7 +73,7 @@ markitdown reads files and fetches URLs (YouTube, HTML, remote URIs) with the cu
 ## Notes
 
 - Output preserves document structure: headings, tables, lists, links
-- `-o` overwrites the target file silently; pick a fresh path to avoid clobbering edited files
+- `-o` overwrites the target file silently; check whether the output path exists first, and if it does, confirm with the user or choose a new name before passing `-o`
 - First run caches dependencies; subsequent runs are faster
 - On a missing-dependency error for a format, confirm the `[all]` extras are present (or install just the per-format extra, e.g. `'markitdown[pdf]'`); for complex PDFs with poor extraction, use `-d` with Azure Document Intelligence
 - When piping via stdin, prefer `-x` (and optionally `-m`/`-c`) for better detection

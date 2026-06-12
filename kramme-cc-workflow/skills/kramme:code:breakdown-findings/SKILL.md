@@ -10,6 +10,8 @@ user-invocable: true
 
 Cluster validated findings from reviews, audits, or scans into PR-sized themes. Generate a self-contained implementation plan for each theme and an index linking them all.
 
+This skill generates PR plan **files**; for decision-ready analysis of audit findings without writing files, route to `kramme:siw:breakdown-findings`.
+
 **Accepted sources**
 
 - An auto-detected overview/audit report in the project root (see Phase 1)
@@ -33,8 +35,11 @@ Before doing anything else, list any existing `PR_PLAN_*.md` files (including `P
     {list of files}
 
   Re-running would risk silent overwrite of plans whose slugs match new themes, and would leave stale plans whose slugs do not match.
-  Run `/kramme:workflow-artifacts:cleanup` to clear them, then re-run this skill.
+  Options:
+    - cleanup — run `/kramme:workflow-artifacts:cleanup` to clear them, then re-run this skill
+    - resume — regenerate only the missing plans against the same source
   ```
+- On **resume**: re-run Phases 1-2 against the same source, keep existing plan files untouched, and generate only the plans (and index entries) that are missing.
 - Do not delete, rename, or overwrite the files yourself.
 
 ### Phase 1: Locate Findings
@@ -65,7 +70,7 @@ When the source is a pre-clustered handoff:
 
 - **Skip the per-finding parse in step 2.** Capture each declared theme verbatim: its name, file list (with line counts if given), dependency relationship, rationale, and test plan. Do not invent severities — a delegated theme is a unit of work, not a finding.
 - **Capture the shared Implementation Setup block, if present.** A handoff may include one `## Implementation Setup` block meant for every plan (e.g. worktree / reference-branch instructions). Hold it for Phase 3; do not alter its wording.
-- **Do not re-cluster** (see Phase 2). The themes are fixed; map each to exactly one plan.
+- **Do not re-cluster** — the canonical handoff rule lives in Phase 2.
 - **Adapt the findings vocabulary to themes.** A handoff has no findings and no exclusions: in Phase 4 write `All themes included.` in the index's Excluded section, and in Phase 5 report theme counts (not "findings processed"/"findings excluded") and name the delegated handoff as the source.
 - Report the theme count: `Found N pre-clustered themes from {source}. Proceeding to plan (no re-clustering).`
 
@@ -213,7 +218,7 @@ Recommended first PR: PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md -- {one-line rationale
 - **Large input (30+ findings)**: cluster aggressively. Aim for 5-10 themes maximum. Split oversized themes into a series with sequencing notes.
 - **Conflicting findings**: do not pick a side. Flag the conflict as an open question and present both positions.
 - **Ambiguous severity**: infer from context (security = critical, style = low). State the inference in the plan.
-- **Pre-clustered handoff**: when the source already declares PR-sized themes (a delegated split or plan), preserve them 1:1 — do not re-cluster, add, drop, or reinterpret themes. Skip severity inference. Render any supplied Implementation Setup block verbatim and identical in every plan.
+- **Pre-clustered handoff**: follow the canonical rule in Phase 2; skip severity inference.
 
 ## Guidelines
 
@@ -248,7 +253,7 @@ Watch for these justifications that signal you are about to skip a hard gate:
 
 ## Red Flags
 
-The clustering and sizing flags below **do not apply to a pre-clustered handoff** — the caller owns grouping and sizing, so surface any concern as an open question in the affected plan instead of re-clustering or splitting.
+The clustering and sizing flags below **do not apply to a pre-clustered handoff** (see the Phase 2 rule).
 
 Stop and re-cluster if any of these appear:
 
@@ -264,7 +269,7 @@ Stop and re-cluster if any of these appear:
 
 Before reporting Phase 5, verify:
 
-- Every theme is sized ≤L (except a pre-clustered handoff, whose seams are preserved as-is — an oversized theme carries an open question instead of being split).
+- Every theme is sized ≤L (except a pre-clustered handoff — see the handoff item below).
 - Re-read each generated plan and confirm no section refers back to the source (no phrasings like "see the review", "per the audit", "finding #N", "as described above the cut", or any other back-reference that would break the self-contained rule).
 - Every generated plan filename and title includes its execution label.
 - Every blocked plan names its blocker labels in the title, index row, dependency map, and Dependencies and Sequencing section.

@@ -14,6 +14,8 @@ Use `kramme:code:source-driven` for the official-doc grounding discipline inside
 
 Skip for: patch or minor version bumps with no breaking changes, isolated single-package upgrades, runtime-only changes (e.g. bumping `.nvmrc` without language/API changes), and routine dependency updates — use `kramme:deps:audit` or `kramme:pr:create` directly instead.
 
+Wherever this skill says "ask the user", ask via the structured question tool when available, otherwise in plain prose, and wait for an explicit choice before proceeding.
+
 Parse `$ARGUMENTS` for `--auto` before Step 1.
 
 - If present, set `AUTO_MODE=true` and remove the flag from the remaining input.
@@ -58,10 +60,9 @@ Parse `$ARGUMENTS` for `--auto` before Step 1.
 1. **Working tree must be clean.** Run `git status --porcelain`.
    - If output is non-empty:
      - If `AUTO_MODE=true`, abort with: `Working tree is dirty. Commit or stash changes before running --auto migration. Files: {list}`.
-     - Otherwise:
+     - Otherwise, ask the user:
 
 ```
-AskUserQuestion
 header: Working Tree Not Clean
 question: Uncommitted changes will be carried onto the migration branch, mixing pre-existing work with migration changes. How to proceed?
 options:
@@ -74,10 +75,9 @@ options:
    - If neither: continue to Step 1.
    - If a prior plan or branch exists:
      - If `AUTO_MODE=true`, abort with: `Prior migration artifacts detected ({plan-file} / {branch-name}). Auto mode will not overwrite. Remove artifacts or run without --auto to choose.`
-     - Otherwise:
+     - Otherwise, ask the user:
 
 ```
-AskUserQuestion
 header: Prior Migration Detected
 question: Found existing migration artifacts ({plan-file} / {branch-name}). How to proceed?
 options:
@@ -86,7 +86,7 @@ options:
   - Abort — leave artifacts untouched, stop here
 ```
 
-   - On **Resume**: load the existing plan, check out the branch, AskUserQuestion for the phase number to start from, then jump to Step 6 with that phase.
+   - On **Resume**: load the existing plan, check out the branch, ask the user for the phase number to start from, then jump to Step 6 with that phase.
    - On **Restart**: confirm branch deletion explicitly before deleting; then continue to Step 1.
 
 ---
@@ -97,10 +97,9 @@ options:
    - Examples: `Angular 19`, `React 19`, `Node 22`, `Next.js 15`, `TypeScript 5.5`
    - If empty or ambiguous and `AUTO_MODE=true`:
      - Abort with: `Auto mode requires an explicit migration target such as "Angular 19" or "Node 22".`
-   - If empty or ambiguous and `AUTO_MODE` is false:
+   - If empty or ambiguous and `AUTO_MODE` is false, ask the user:
 
 ```
-AskUserQuestion
 header: Migration Target
 question: What framework/library and version do you want to migrate to?
 options:
@@ -119,7 +118,7 @@ options:
    - Same version → report "Already on target version" and STOP.
    - Downgrade:
      - If `AUTO_MODE=true`, abort with a warning instead of prompting.
-     - Otherwise warn, AskUserQuestion to confirm.
+     - Otherwise warn and ask the user to confirm.
 
 4. Report: `Current: {framework} {current} → Target: {framework} {target}`
 
@@ -162,7 +161,7 @@ For each breaking change from Step 2:
    - **Semi-automated** — pattern-based find-and-replace with review
    - **Manual** — requires understanding context
 
-For large codebases (50+ affected files), use the `Task` tool with `subagent_type: Explore` to parallelize analysis.
+For large codebases (50+ affected files), use the platform's subagent primitive when available to parallelize analysis; otherwise analyze serially.
 
 4. **Impact summary:**
 
@@ -184,7 +183,7 @@ Create a phased plan:
 
 **Phase 0: Pre-Migration** (Quick)
 
-- Create migration branch from current HEAD
+- Create migration branch `migrate/{slug}` from current HEAD — `{slug}` follows the same derivation rules as the plan filename below. This naming is mandatory: Step 0 resume detection looks for `migrate/*` branches.
 - Run `/kramme:deps:audit` if available
 - Capture test baseline (pass/fail counts)
 - Verification: branch exists, baseline captured
@@ -235,7 +234,7 @@ Write plan to `migration-plan-{slug}.md` in the project root, where `{slug}` is 
 
 Examples: `Angular 19` → `angular-19`, `Next.js 15` → `next-js-15`, `Node 22` → `node-22`. Reject the input and abort if the slug is empty after normalization.
 
-Refuse to write outside the project root. If a file already exists at the target path, the Step 0 preflight should have handled it — if it slips through, AskUserQuestion (overwrite / abort), or abort under `AUTO_MODE`.
+Refuse to write outside the project root. If a file already exists at the target path, the Step 0 preflight should have handled it — if it slips through, ask the user (overwrite / abort), or abort under `AUTO_MODE`.
 
 ---
 
@@ -243,10 +242,9 @@ Refuse to write outside the project root. If a file already exists at the target
 
 If `AUTO_MODE=true`, skip this prompt and choose **Execute full plan — all phases with verification gates**.
 
-Otherwise:
+Otherwise, ask the user:
 
 ```
-AskUserQuestion
 header: Migration Plan Ready
 question: How would you like to proceed?
 options:
@@ -281,10 +279,9 @@ For each phase:
 
 If `AUTO_MODE=true`, skip the prompt below after the 3 failed attempts, print the errors, and abort while keeping changes made so far.
 
-Otherwise:
+Otherwise, ask the user:
 
 ```
-AskUserQuestion
 header: Verification Failed — Phase {N}
 question: Phase {N} verification failed after 3 attempts. How to proceed?
 options:
@@ -296,10 +293,9 @@ options:
 
 5. **Phase-by-phase mode:** pause after each successful phase:
 
-Skip this checkpoint entirely when `AUTO_MODE=true`.
+Skip this checkpoint entirely when `AUTO_MODE=true`. Otherwise, ask the user:
 
 ```
-AskUserQuestion
 header: Phase {N} Complete
 question: Continue to Phase {N+1}?
 options:
@@ -350,9 +346,9 @@ Next Steps:
 | --- | --- |
 | No migration guide found | Proceed with codebase analysis, warn about manual research |
 | Target version doesn't exist | Abort: `Version {target} not found for {framework}` |
-| Current version not detected | If `AUTO_MODE=true`, abort with a clear error. Otherwise AskUserQuestion for current version |
+| Current version not detected | If `AUTO_MODE=true`, abort with a clear error. Otherwise ask the user for the current version |
 | Codemod fails | Capture error, skip to manual approach, log failure |
 | Codemod produces invalid code | Revert affected files, fall back to manual |
 | Verification gate fails 3 times | If `AUTO_MODE=true`, print errors and abort while keeping changes so far. Otherwise escalate to user with options |
 | Conflicting peer dependencies | Report conflicts, suggest resolution order |
-| Migration branch exists | If `AUTO_MODE=true`, abort with a clear error. Otherwise AskUserQuestion: use existing, create new, or abort |
+| Migration branch exists | If `AUTO_MODE=true`, abort with a clear error. Otherwise ask the user: use existing, create new, or abort |

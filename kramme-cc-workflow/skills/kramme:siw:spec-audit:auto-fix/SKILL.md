@@ -357,7 +357,7 @@ The audit report's Summary section contains a fixed-schema severity table:
 | **Total** | **{total}** |
 ```
 
-Insert a new `Auto-fixed` row **immediately before the `**Total**` row** so it slots into the existing two-column schema:
+If an `Auto-fixed` row already exists (from a previous auto-fix run), update its count in place to the total number of findings now annotated `**Status:** [Auto-fixed]`. Otherwise insert a new `Auto-fixed` row **immediately before the `**Total**` row** so it slots into the existing two-column schema:
 
 ```
 | Auto-fixed | {count}     |

@@ -296,7 +296,7 @@ Prerequisites:
 Issue creation:
 
 1. Re-check the standard handled-finding skip rule for this finding. If it now matches, do not create an issue; report the matched artifact in the completion message and Step 7 summary.
-2. Determine next `G-` issue number from `siw/issues/ISSUE-G-*.md`.
+2. Determine the next `G-` issue number: parse `siw/OPEN_ISSUES_OVERVIEW.md` for the highest `G-` number, compute candidate = highest + 1 (padded to 3 digits), then verify no on-disk collision by globbing `siw/issues/ISSUE-G-{candidate}-*.md`. If any file matches, the tracker is out of sync with `siw/issues/`; increment the candidate and re-check until no file matches, then warn that the tracker may need `/kramme:siw:issue-reindex`.
 3. Create file:
    - `siw/issues/ISSUE-G-{NNN}-resolve-{finding-id}-{slug}.md`
 4. Use the matching template based on finding type (read the template file and substitute placeholders):

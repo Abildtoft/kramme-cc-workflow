@@ -39,27 +39,32 @@ Defaults: `IMPLEMENT=plan-only`, `POST=false`, `RESOLVE=false`, `INLINE=false`, 
 
 ## Step 1: Identify the PR
 
-1. If the payload contains a GitHub PR URL or number, set `PR_SELECTOR` to that value. Otherwise leave `PR_SELECTOR` empty so `gh pr view` uses the current branch.
-2. Capture the PR context:
+1. Confirm required tooling before any GitHub call. `gh` must be installed and authenticated, and `jq` must be available because every step below parses `gh` output with it:
 
    ```bash
-   if [ -n "$PR_SELECTOR" ]; then
-     PR_CONTEXT_JSON=$(gh pr view "$PR_SELECTOR" --json number,url,title,baseRefName,headRefName,reviewDecision,author)
-     PR_NUMBER=$(printf '%s\n' "$PR_CONTEXT_JSON" | jq -r '.number // empty')
-     PR_URL=$(printf '%s\n' "$PR_CONTEXT_JSON" | jq -r '.url // empty')
-     BASE_BRANCH=$(printf '%s\n' "$PR_CONTEXT_JSON" | jq -r '.baseRefName // empty')
-     PR_AUTHOR=$(printf '%s\n' "$PR_CONTEXT_JSON" | jq -r '.author.login // empty')
-   else
-     PR_CONTEXT_JSON=$(gh pr view --json number,url,title,baseRefName,headRefName,reviewDecision,author)
-     PR_NUMBER=$(printf '%s\n' "$PR_CONTEXT_JSON" | jq -r '.number // empty')
-     PR_URL=$(printf '%s\n' "$PR_CONTEXT_JSON" | jq -r '.url // empty')
-     BASE_BRANCH=$(printf '%s\n' "$PR_CONTEXT_JSON" | jq -r '.baseRefName // empty')
-     PR_AUTHOR=$(printf '%s\n' "$PR_CONTEXT_JSON" | jq -r '.author.login // empty')
+   if ! command -v gh > /dev/null; then
+     echo "gh CLI not installed. Install from https://cli.github.com and run \`gh auth login\`." >&2
+     exit 1
+   fi
+   if ! command -v jq > /dev/null; then
+     echo "jq not installed. Install it first (e.g. \`brew install jq\` or \`apt-get install jq\`)." >&2
+     exit 1
    fi
    ```
 
-3. If no PR is found, or `PR_NUMBER`, `BASE_BRANCH`, `PR_URL`, or `PR_AUTHOR` is empty, ask the user for a PR URL and stop.
-4. Capture repository and actor context. Derive `OWNER` and `REPO` from `PR_URL` so a URL for another repository does not accidentally target the current checkout's repository:
+2. If the payload contains a GitHub PR URL or number, set `PR_SELECTOR` to that value. Otherwise leave `PR_SELECTOR` empty so `gh pr view` uses the current branch.
+3. Capture the PR context:
+
+   ```bash
+   PR_CONTEXT_JSON=$(gh pr view ${PR_SELECTOR:+"$PR_SELECTOR"} --json number,url,title,baseRefName,headRefName,reviewDecision,author)
+   PR_NUMBER=$(printf '%s\n' "$PR_CONTEXT_JSON" | jq -r '.number // empty')
+   PR_URL=$(printf '%s\n' "$PR_CONTEXT_JSON" | jq -r '.url // empty')
+   BASE_BRANCH=$(printf '%s\n' "$PR_CONTEXT_JSON" | jq -r '.baseRefName // empty')
+   PR_AUTHOR=$(printf '%s\n' "$PR_CONTEXT_JSON" | jq -r '.author.login // empty')
+   ```
+
+4. If no PR is found, or `PR_NUMBER`, `BASE_BRANCH`, `PR_URL`, or `PR_AUTHOR` is empty, ask the user for a PR URL and stop.
+5. Capture repository and actor context. Derive `OWNER` and `REPO` from `PR_URL` so a URL for another repository does not accidentally target the current checkout's repository:
 
    ```bash
    REPO_NWO=$(printf '%s\n' "$PR_URL" | sed -E 's#^https://github.com/([^/]+/[^/]+)/pull/[0-9]+.*#\1#')
@@ -72,7 +77,7 @@ Defaults: `IMPLEMENT=plan-only`, `POST=false`, `RESOLVE=false`, `INLINE=false`, 
    SELF=$(gh api user --jq .login)
    ```
 
-5. Fetch the PR base branch if available so local code inspection has the same context as the reviewer:
+6. Fetch the PR base branch if available so local code inspection has the same context as the reviewer:
 
    ```bash
    git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}"
@@ -252,6 +257,8 @@ PR: <title> (#<number>) URL: <url>
 ```
 
 If `--inline` is set, return the same structure in chat and do not create the file.
+
+Treat `GITHUB_REVIEW_REPLY_PLAN.md` and the reply payload files under `.context/github-review-replies/` (Step 9) as working artifacts that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`.
 
 ## Step 8: Confirm Before GitHub Writes
 

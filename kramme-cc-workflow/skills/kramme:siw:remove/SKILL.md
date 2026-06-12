@@ -19,6 +19,8 @@ If you want to preserve accumulated knowledge as permanent documentation, use `/
 - `siw/OPEN_ISSUES_OVERVIEW.md` — Issue tracking table
 - `siw/AUDIT_IMPLEMENTATION_REPORT.md` — Spec compliance audit report
 - `siw/AUDIT_SPEC_REPORT.md` — Spec quality audit report
+- `siw/PRODUCT_AUDIT.md` — Product audit report
+- `siw/SIW_*.md` — Other temporary SIW artifacts
 - `siw/SPEC_STRENGTHENING_PLAN.md` — Refinement discovery output (this command deletes it, unlike `/kramme:siw:close`)
 - `siw/DISCOVERY_BRIEF.md` — Greenfield discovery output
 - `siw/issues/` — Individual issue files
@@ -26,7 +28,7 @@ If you want to preserve accumulated knowledge as permanent documentation, use `/
 
 **Permanent (optional, requires explicit confirmation):**
 
-- Specification files in `siw/` matching `*SPEC*.md`, `*SPECIFICATION*.md`, `*PLAN*.md`, or `*DESIGN*.md`, excluding `SPEC_STRENGTHENING_PLAN.md` and `DISCOVERY_BRIEF.md`
+- Specification files in `siw/` matching `*SPEC*.md`, `*SPECIFICATION*.md`, `*PLAN*.md`, or `*DESIGN*.md`, excluding `SPEC_STRENGTHENING_PLAN.md`, `DISCOVERY_BRIEF.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, and `SIW_*.md`
 - `siw/supporting-specs/` — Numbered supporting specs
 
 Only files discovered in Step 1 are deleted, listed in the confirmation prompt, or reported as deleted. Items in the lists above that do not exist on disk are ignored.
@@ -41,10 +43,13 @@ Discover what exists. Record two lists from the output:
 - `found_permanent` — spec/permanent files plus `siw/supporting-specs/` if present
 
 ```bash
-ls -d siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues siw/qa-intake 2> /dev/null
+ls -d siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/PRODUCT_AUDIT.md siw/SIW_*.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues siw/qa-intake 2> /dev/null
 find siw -maxdepth 1 -type f \( -name "*SPEC*.md" -o -name "*SPECIFICATION*.md" -o -name "*PLAN*.md" -o -name "*DESIGN*.md" \) \
   ! -name "SPEC_STRENGTHENING_PLAN.md" \
   ! -name "DISCOVERY_BRIEF.md" \
+  ! -name "AUDIT_*.md" \
+  ! -name "PRODUCT_AUDIT.md" \
+  ! -name "SIW_*.md" \
   2> /dev/null
 ls -d siw/supporting-specs 2> /dev/null
 ```

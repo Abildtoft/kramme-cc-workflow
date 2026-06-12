@@ -15,7 +15,7 @@ Claiming work is complete without verification is dishonesty, not efficiency.
 
 **Violating the letter of this rule is violating the spirit of this rule.**
 
-This skill runs your project's own verification commands (tests, build, lint) and gates claims on their output. It produces no artifact and changes no code, except the optional regression red-green check below, which temporarily reverts a fix.
+This skill runs your project's own verification commands (tests, build, lint) and gates claims on their output. To discover and run the project's checks, use `kramme:verify:run`. It produces no artifact and changes no code, except the optional regression red-green check below, which temporarily reverts a fix.
 
 ## The Iron Law
 
@@ -92,9 +92,11 @@ The rule covers exact phrases, paraphrases, synonyms, and **ANY wording implying
 **Regression tests (TDD Red-Green):**
 
 ```
-✅ Write → Run (pass) → Revert fix via VCS (git stash) → Run (MUST FAIL) → Restore (git stash pop) → Run (pass)
+✅ Write → Run (pass) → Revert fix via VCS (git stash push -- <files changed by the fix>) → Run (MUST FAIL) → Restore (git stash pop) → Run (pass)
 ❌ "I've written a regression test" (without red-green verification)
 ```
+
+Scope the stash to the files the fix changed so unrelated working-tree changes stay untouched. If `git stash pop` conflicts, resolve the conflict preserving the fix — or abort and tell the user the tree needs manual attention.
 
 **Build:**
 

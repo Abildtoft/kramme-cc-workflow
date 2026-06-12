@@ -22,12 +22,34 @@ Every active finding must include these fields before it is posted:
 | Field | Values | Purpose |
 | --- | --- | --- |
 | Finding ID | `CR-001`, `CR-002`, ... | Gives downstream workflows a stable source identifier for handoffs and resolution summaries. |
-| Severity | Critical, Important, Suggestion, FYI | Describes merge impact. Use the prefix grammar from `output-template.md`. |
+| Severity | Critical, Important, Suggestion, FYI | Describes merge impact. Use the severity prefix grammar below. |
 | Location | `path/to/file:line`, `review-scope`, or `PR description` | Lets downstream workflows distinguish auto-fixable code findings from manual/process findings. |
 | Confidence | `0-100` | States how directly the reviewer traced the issue. During the transition, map reviewer tiers as `high=90`, `medium=60`, `low=30`. |
 | Action class | `gated_auto`, `manual`, `advisory` | Separates urgency from safe ownership. |
 | Owner | resolver, author, maintainer, reviewer, unknown | Names who can act next. |
 | Evidence | concrete trace, location, reproduction, failed expectation, or `UNVERIFIED` reason | Prevents unsupported findings from becoming gatekeeping. |
+
+## Severity prefix grammar
+
+Label every finding within each bucket using Addy's prefixes so downstream tooling can parse severity at the finding level, not only the section level:
+
+| Prefix | Meaning | Bucket |
+| --- | --- | --- |
+| _(no prefix)_ | Required | Important |
+| **Critical:** | Blocks merge | Critical |
+| **Nit:** | Optional; reviewer preference | Suggestion |
+| **Optional:** / **Consider:** | Suggested, not required | Suggestion |
+| **FYI** | Informational; no action expected | Strengths |
+
+The report section headers (`## Critical Issues`, `## Important Issues`, `## Suggestions`) remain — the prefix is the finer-grained label inside each section.
+
+## Dead-code ask shape
+
+When `kramme:removal-planner` flags removable code, emit Addy's ask-shape verbatim so removals are never presented as silent deletions:
+
+> `DEAD CODE IDENTIFIED: [comma-separated list]. Safe to remove these?`
+
+This applies whether the finding lands in Critical, Important, or Suggestions.
 
 ## Action classes
 

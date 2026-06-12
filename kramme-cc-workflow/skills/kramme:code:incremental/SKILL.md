@@ -2,11 +2,13 @@
 name: kramme:code:incremental
 description: "(experimental) Deliver changes in small, verified slices with scope discipline, incremental verification between slices, and feature-flag guardrails for incomplete work. Use when implementing any change that spans more than one file or commit. Enforces one-thing-at-a-time, rollback-friendly commits, and explicit separation of in-scope work from noticed-but-untouched observations. Includes a refactor mode (opt-in via --refactor or after kramme:code:refactor-opportunities) that adds an interview-driven Decision Document and a Fowler-style tiny-commits plan where every intermediate state leaves the codebase working."
 argument-hint: "[--refactor]"
-disable-model-invocation: false
+disable-model-invocation: true
 user-invocable: true
 ---
 
 # Incremental Implementation
+
+This skill edits files and commits each verified slice, so it runs only after explicit user invocation.
 
 Deliver changes in small, verified slices with scope discipline, incremental verification between slices, and feature-flag guardrails for incomplete work. This is the procedural expression of the rule "don't add features beyond what the task requires": turn implementation into a loop of small, verified, rollback-friendly increments where out-of-scope observations are logged but never silently fixed.
 

@@ -87,7 +87,9 @@ Do not proceed past this gate on the assumption that "we can fix it during canar
 
 The sequence is six staged gates. Each gate has a monitoring window and a set of thresholds that must pass before advancing. Do not compress the sequence to save time — the windows are the whole point.
 
-**The launch ticket** referenced throughout is wherever this rollout is tracked — your team's Linear/Jira/GitHub issue for the release. If none exists, create a `LAUNCH.md` at the repo root and use it as the ticket. The sequence, the thresholds table, and the rollback plan all get written there.
+**The launch ticket** referenced throughout is wherever this rollout is tracked — your team's Linear/Jira/GitHub issue for the release. If none exists, create a `LAUNCH.md` at the repo root and use it as the ticket. The sequence, the thresholds table, and the rollback plan all get written there. Archive or delete `LAUNCH.md` as part of the final flag-cleanup gate once the rollout completes — it is a working artifact, not permanent documentation.
+
+**Re-entry:** if this skill is re-invoked mid-rollout, read the launch ticket first and resume at the gate it records as current — do not restart from staging or re-run monitoring windows for gates that already passed.
 
 ```
 1. DEPLOY to staging

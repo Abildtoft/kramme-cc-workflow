@@ -12,7 +12,7 @@ Turn unresolved findings from a spec-audit or implementation-audit report into a
 
 ## Workflow Boundaries
 
-**This command is analysis-only.** It reads a spec-audit or implementation-audit report, identifies unresolved supported findings, explains each one, presents 2-3 resolution options, recommends one, and routes the user toward the next command. Issue creation stays separate and happens later via `/kramme:siw:resolve-audit` or `/kramme:siw:issue-define`.
+**This command is analysis-only.** It reads a spec-audit or implementation-audit report, identifies unresolved supported findings, explains each one, presents 2-3 resolution options, recommends one, and routes the user toward the next command. Issue creation stays separate and happens later via `/kramme:siw:resolve-audit` or `/kramme:siw:issue-define`. This skill writes no files; for generating PR plan files from findings, route to `/kramme:code:breakdown-findings` instead.
 
 ## Hard Constraints
 
@@ -44,7 +44,7 @@ Turn unresolved findings from a spec-audit or implementation-audit report into a
 
 1. Parse `$ARGUMENTS` as shell-style arguments so quoted paths remain intact.
 2. Treat markdown path tokens as candidate report paths.
-3. Treat `SPEC-*`, `DIV-*`, `EXT-*`, `DISC-*`, and `MISS-*` tokens as explicit finding filters.
+3. Treat `SPEC-*`, `DIV-*`, `EXT-*`, `DISC-*`, and `MISS-*` tokens as explicit finding filters (`DISC-*` and `MISS-*` are legacy implementation-audit prefixes, still supported).
    - If any remaining token looks like an audit finding id but does not use a supported prefix (for example `PROD-001`), stop and list the unsupported ids. Say this command supports only `SPEC-*`, `DIV-*`, `EXT-*`, `DISC-*`, and `MISS-*`.
 4. If more than one markdown path is supplied, stop and ask the user to provide only one report path.
 5. If a report path is supplied:
@@ -75,7 +75,7 @@ Read the active audit run fully enough to extract every supported finding and it
 Supported findings:
 
 - Spec audit: `SPEC-*`
-- Implementation audit: `DIV-*`, `EXT-*`, `DISC-*`, `MISS-*`
+- Implementation audit: `DIV-*`, `EXT-*`, plus the legacy `DISC-*`, `MISS-*` prefixes (still supported)
 
 For each finding, collect:
 
@@ -124,7 +124,7 @@ Treat a finding as already tracked when an issue references the same finding id 
 
 - `DONE`
 
-Every other state — including but not limited to `READY`, `IN PROGRESS`, `IN REVIEW`, `BLOCKED`, `DEFERRED`, `DRAFT`, and any unrecognized state — counts as still open. When in doubt, treat the issue as open so the finding is filtered out by default rather than re-surfaced in error.
+Every other state — `READY`, `IN PROGRESS`, `IN REVIEW`, and any unrecognized state — counts as still open. When in doubt, treat the issue as open so the finding is filtered out by default rather than re-surfaced in error.
 
 If live SIW state is missing or inconclusive, fall back to report annotations:
 

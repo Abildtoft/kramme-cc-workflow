@@ -1,6 +1,6 @@
 ---
 name: kramme:siw:discovery
-description: Deep discovery interview that uncovers what you actually want, not what you think you should want. Works pre-spec or on existing specs until 95% confident. Pass --decision-tree, or ask to walk depth-first, to resolve tightly coupled decisions one at a time.
+description: Deep discovery interview that uncovers what you actually want, not what you think you should want. Works pre-spec or on existing specs until 90% confident. Pass --decision-tree, or ask to walk depth-first, to resolve tightly coupled decisions one at a time.
 argument-hint: "[topic | spec-file(s) | 'siw'] [--apply] [--decision-tree]"
 disable-model-invocation: true
 user-invocable: true
@@ -9,7 +9,7 @@ kramme-platforms: [claude-code]
 
 # SIW Discovery
 
-> "Interview me until you have 95% confidence about what I actually want, not what I think I should want."
+> "Interview me until you have 90% confidence about what I actually want, not what I think I should want."
 
 The gap between what someone says they want and what they actually need is where most failed projects begin. This skill makes the AI the interviewer — probing, challenging, and digging until it genuinely understands the work before a single line of spec or code is written.
 
@@ -78,7 +78,7 @@ Parse `$ARGUMENTS` as shell-style arguments so quoted paths stay intact.
 
 Detect mode automatically. First classify the current `siw/` state:
 
-- `has_spec_files`: `siw/*.md` excluding the synced SIW spec-exclusion contract. Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): LOG.md, OPEN_ISSUES_OVERVIEW.md, DISCOVERY_BRIEF.md, SPEC_STRENGTHENING_PLAN.md, AUDIT_*.md, PRODUCT_AUDIT.md, SIW_*.md.
+- `has_spec_files`: `siw/*.md` excluding the synced SIW spec-exclusion contract. Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.
 - `has_discovery_brief`: `siw/DISCOVERY_BRIEF.md` exists
 - `has_strengthening_plan`: `siw/SPEC_STRENGTHENING_PLAN.md` exists
 
@@ -122,7 +122,7 @@ freeform: true
   4. If no explicit files were provided and spec files exist, include `siw/*.md` except the synced SIW spec-exclusion contract from mode detection. Also include `siw/supporting-specs/*.md`.
   5. If no explicit files were provided, no spec files exist, but `siw/DISCOVERY_BRIEF.md` does, target that brief so no-argument reruns resume the saved discovery output.
   6. If nothing is found, switch to greenfield mode.
-- Check `.out-of-scope/` for prior matches against the topic. Two-step protocol: (a) list filenames in `.out-of-scope/` (skip silently if the directory is absent or empty); (b) read the body of any file whose slug plausibly matches `topic_hint` (greenfield) or the resolved spec scope (refinement). When a match is found, surface as "This is similar to `.out-of-scope/<slug>.md` (decided <date>) — we rejected this before because <one-line summary>. Continue, or honor the prior rejection?" and route the answer through AskUserQuestion. If the user honors the prior rejection, stop; otherwise continue and note the prior rejection in the discovery brief output. See `/kramme:docs:out-of-scope` for the storage skill.
+- Check `.out-of-scope/` for prior matches against the topic. Two-step protocol: (a) list filenames in `.out-of-scope/` (skip silently if the directory is absent or empty); (b) read the body of any file whose slug plausibly matches `topic_hint` (greenfield) or the resolved spec scope (refinement). When a match is found, surface as "This is similar to `.out-of-scope/<slug>.md` (decided <date>) — we rejected this before because <one-line summary>. Continue, or honor the prior rejection?" and route the answer through AskUserQuestion. If the user honors the prior rejection, stop; otherwise continue and note the prior rejection in the discovery brief output. If `/kramme:docs:out-of-scope` is installed in this environment, mention it as the storage skill; omit the mention otherwise.
 - If `siw/AUDIT_SPEC_REPORT.md` exists, read it and lower the matching confidence dimension to Low for every section the audit flagged as missing, vague, or contradictory before starting the interview.
 
 ### 1.4 Extract Work Context (Refinement only)
@@ -157,7 +157,7 @@ Before Step 2, check for `STRATEGY.md` at the project root:
 - If it exists, read it and extract target problem, approach, who it is for, key metrics, active tracks, milestones if present, and non-goals.
 - Store this as `STRATEGY_CONTEXT` and use it as product grounding for the interview and synthesized artifact.
 - If its `last_updated` frontmatter is older than 90 days, mark relevant strategy context as `STALE:` in the initial hypothesis and treat it as a question to verify.
-- If no `STRATEGY.md` exists, proceed silently for narrow refinement. For greenfield product discovery or broad repo-level direction work, emit `MISSING PRODUCT CONTEXT:` once and suggest `/kramme:product:strategy` as an optional precursor without blocking discovery.
+- If no `STRATEGY.md` exists, proceed silently for narrow refinement. For greenfield product discovery or broad repo-level direction work, emit `MISSING PRODUCT CONTEXT:` once; if `/kramme:product:strategy` is installed in this environment, suggest it as an optional precursor without blocking discovery, and omit the suggestion otherwise.
 
 ## Step 2: Autonomous Framing
 
@@ -248,7 +248,7 @@ Before asking any question in either mode, decide whether the answer can be foun
 
 ### ADR-Offer Hook
 
-After each resolved decision in either mode, evaluate the ADR test. Offer `/kramme:docs:adr` only when all three are true:
+After each resolved decision in either mode, evaluate the ADR test. Offer `/kramme:docs:adr` only when it is installed in this environment (skip the hook entirely otherwise) and all three are true:
 
 1. The decision is hard to reverse.
 2. It would be surprising later without context.

@@ -89,7 +89,7 @@ ls siw/OPEN_ISSUES_OVERVIEW.md 2> /dev/null
 **Otherwise:** Glob for candidate spec files (anything under `siw/` that is not a workflow artifact):
 
 ```bash
-# Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): LOG.md, OPEN_ISSUES_OVERVIEW.md, DISCOVERY_BRIEF.md, SPEC_STRENGTHENING_PLAN.md, AUDIT_*.md, PRODUCT_AUDIT.md, SIW_*.md.
+# Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.
 ls siw/*.md 2> /dev/null | grep -v -E '/(LOG|OPEN_ISSUES_OVERVIEW|DISCOVERY_BRIEF|SPEC_STRENGTHENING_PLAN|PRODUCT_AUDIT)\.md$|/AUDIT_.*\.md$|/SIW_.*\.md$'
 ```
 
@@ -107,7 +107,7 @@ ls siw/supporting-specs/*.md 2> /dev/null
 
 ### 1.3 Check Implementation Status
 
-Implementation is considered in progress when **either** signal is present. For one release, normalize legacy title-case `In Progress` to `IN PROGRESS` before checking these signals:
+Implementation is considered in progress when **either** signal is present. Normalize legacy title-case `In Progress` to `IN PROGRESS` before checking these signals:
 
 - Any row in `siw/OPEN_ISSUES_OVERVIEW.md` has status `IN PROGRESS` or `IN REVIEW`.
 - `siw/LOG.md` contains an entry dated within the last 7 days under `## Current Progress` or an active task list.
@@ -282,7 +282,7 @@ Record the chosen category per group (e.g., "Phase 1 tasks: Safe to parallelize 
 
 Launch a Task subagent to review the proposed breakdown:
 
-**Before the prompt, include the synced Task Sizing Grammar below. It is copied from `references/task-sizing.md` so the subagent does not rely on a working-directory-relative read.**
+**Before launching the subagent, read `references/task-sizing.md` (already read in Phase 3.2) and substitute its full contents — the Task Sizing, Break-down triggers, Vertical vs horizontal slicing, and Parallelization taxonomy sections — for the `{task_sizing_grammar}` placeholder below. The subagent must receive the grammar inline; it cannot rely on a working-directory-relative read.**
 
 **Prompt:**
 
@@ -293,45 +293,7 @@ Before evaluating the plan, use this Task Sizing Grammar as the source of truth 
 
 Task Sizing Grammar:
 
-## Task Sizing
-
-| Size | Scope | Notes |
-| --- | --- | --- |
-| XS | 1 file, single function |  |
-| S | 1–2 files, one endpoint |  |
-| M | 3–5 files, one feature slice |  |
-| L | 6–8 files, multi-component |  |
-| **XL** | 9+ files | **"Too large — break it down further"** |
-
-Every generated task must land at XS, S, M, or L. XL is never an acceptable final state — when a task sizes XL, decompose it further before Phase 5 user approval.
-
-## Break-down triggers
-
-A task must be broken down when any of the following are true:
-
-- Estimated >1 focused day of work for one engineer.
-- Can't describe acceptance criteria in ≤3 bullets.
-- Bundles multiple independently reviewable outcomes into one task.
-- Title contains "and" because it often signals multiple deliverables. Split unless both halves are inseparable.
-
-## Vertical vs horizontal slicing
-
-- For user-facing feature work:
-  - ❌ Horizontal: "Build entire DB schema → build all APIs → build all UI".
-  - ✅ Vertical: "User can create account (schema + API + UI, end-to-end)".
-- For documentation, architecture, refactors, or process work:
-  - ❌ Horizontal: "Document all data models → document all APIs → document all UI flows".
-  - ✅ End-to-end: "Document account creation end-to-end, including constraints, API contract, and UI behavior".
-
-Each task should leave behind the smallest reviewable end-to-end outcome for its work context. For feature work that usually means a vertical slice; for docs/refactors/process work it means one coherent deliverable that can be reviewed or demonstrated on its own. Horizontal layer-by-layer tasks still defer integration risk and should be avoided.
-
-## Parallelization taxonomy
-
-When Phase 3.4 annotates task groups, use these three categories:
-
-- **Safe to parallelize**: independent slices, tests, docs.
-- **Must be sequential**: migrations, shared-state changes.
-- **Needs coordination**: shared API contract → define contract first, then parallelize consumers.
+{task_sizing_grammar}
 
 Work Context: {work_context.work_type}
 - Verify phase count and granularity match the work type

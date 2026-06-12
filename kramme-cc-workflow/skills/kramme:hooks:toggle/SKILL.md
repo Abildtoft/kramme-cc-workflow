@@ -36,7 +36,7 @@ The canonical hook list is the set of names each script passes to `exit_if_hook_
 
 ## Implementation
 
-The state file is at `${CLAUDE_PLUGIN_ROOT}/hooks/hook-state.json`. `status` and `reset` are reserved subcommands and take precedence over a hook of the same name.
+The state file is at `${CLAUDE_PLUGIN_ROOT}/hooks/hook-state.json`. Because it lives inside the installed plugin tree, toggles do not survive a plugin update or reinstall — safety hooks re-enable themselves, and deliberate disables vanish. `status` and `reset` are reserved subcommands and take precedence over a hook of the same name.
 
 Whenever you read the state file: a missing file means all hooks are enabled (proceed as if `{"disabled": []}`). If the file exists but is not valid JSON, do not guess — report it and offer `reset` to restore a clean state.
 

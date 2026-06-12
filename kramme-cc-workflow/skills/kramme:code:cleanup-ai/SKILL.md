@@ -11,6 +11,8 @@ kramme-platforms: [claude-code]
 
 This skill uses the `kramme:deslop-reviewer` agent to identify AI slop in the branch's diff against a base, then applies the agent's recommended fixes.
 
+Sibling: this is the AI-slop-specific pass via `kramme:deslop-reviewer`; for a general simplification pass on the same post-feature branch, use `kramme:code:refactor-pass`.
+
 Parse `$ARGUMENTS` before the preconditions. If `--auto` is present, set `AUTO_MODE=true` and remove the flag before base-branch resolution. `--auto` applies medium-confidence cleanup findings automatically; it does not bypass dirty-worktree protection or behavior/API/test-expectation safeguards.
 
 ## Preconditions
@@ -35,6 +37,8 @@ Run `git status --porcelain`. If the working tree is dirty and `AUTO_MODE=true`,
    On failure, stop and ask the user to re-run with the base branch as the skill argument.
 
 2. **Scan for slop**
+
+   If `git diff origin/$BASE_BRANCH...HEAD` is empty, report "no branch changes to review" and stop.
 
    Launch `kramme:deslop-reviewer` in code review mode against `git diff origin/$BASE_BRANCH...HEAD`.
 

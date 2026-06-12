@@ -27,7 +27,7 @@ Guide manual git worktree operations with conservative checks.
 
 3. Before `create`, verify:
    - The target path is intentional and not already populated.
-   - The branch name is not the current branch unless the user is only listing.
+   - The branch is not checked out in any existing worktree (the helper script enforces this).
    - The base ref resolves to a commit when provided.
    - The operation does not rename any existing branch.
 
