@@ -3,6 +3,48 @@
 ## Unreleased
 
 ### Changed
+## [0.62.0] - 2026-06-12
+
+### Added
+- Add autoreview skill (#498)
+- Add demo reel evidence capture (#477)
+- Add work-from-plan adapter (#476)
+- Add spec-audit apply mode (#474)
+- Add document review skill (#475)
+- Add release communication workflows (#473)
+- Add measured optimization workflow (#469)
+- Add setup and git maintenance helpers (#468)
+- Add shared auto URL detection (#467)
+- Add safe prior-session search (#466)
+- Add product strategy feedback loops (#465)
+
+### Changed
+- Clarify Linear transfer retry rules (#502)
+- Clarify workflow skill guidance (#501)
+- Extract shared base and diff helpers (#493)
+- Trim oversized skills into references (#492)
+- Centralize direct-update logic in auto-fix (#490)
+- Clarify platform-aware instructions (#489)
+- Trim oversized PR and QA workflows (#488)
+- Normalize ported code skill epilogues (#487)
+- Add source reference snapshots (#486)
+- Clarify skill namespaces and diff-review scope (#485)
+- Harden invocation safety (#483)
+- Harden review contracts (#482)
+- Make audit retries idempotent (#480)
+- Harden PR creation flow (#481)
+- Sync shared workflow contracts (#479)
+- Tighten deletion safety (#478)
+- Add solution note workflows (#472)
+- Tighten phase generation gates (#471)
+- Add structured review handoffs (#470)
+- Codify external adaptation guardrails (#464)
+
+### Fixed
+- Harden hook error handling (#499)
+- Harden helper script fallbacks (#500)
+- Harden destructive workflow safeguards (#484)
+
 - Rename `/kramme:pr:design-pipeline` to `/kramme:ci:design-pipeline` so CI/CD pipeline design no longer appears in PR review namespaces.
 - Rename `/kramme:verify-understanding` to `/kramme:learn:verify-understanding` to separate human comprehension checks from code verification skills.
 - Clarify that `/kramme:visual:diff-review` produces a visual diff artifact, not an actionable PR/code review workflow.
@@ -416,6 +458,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+[0.62.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.61.0...v0.62.0
 [0.61.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.60.0...v0.61.0
 [0.60.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.59.0...v0.60.0
 [0.59.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.58.0...v0.59.0
