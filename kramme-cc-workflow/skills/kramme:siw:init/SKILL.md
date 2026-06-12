@@ -65,7 +65,7 @@ find siw -maxdepth 1 \( \
 \) -print 2> /dev/null
 # Permanent SIW spec detection (referenced as `permanent-spec find` elsewhere in this skill).
 # Case-insensitive so lowercase/mixed-case filenames like `feature_spec.md` are not missed.
-# Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): LOG.md, OPEN_ISSUES_OVERVIEW.md, DISCOVERY_BRIEF.md, SPEC_STRENGTHENING_PLAN.md, AUDIT_*.md, PRODUCT_AUDIT.md, SIW_*.md.
+# Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.
 find siw -maxdepth 1 -type f \( -iname "*SPEC*.md" -o -iname "*SPECIFICATION*.md" -o -iname "*PLAN*.md" -o -iname "*DESIGN*.md" \) \
   ! -iname "LOG.md" \
   ! -iname "OPEN_ISSUES_OVERVIEW.md" \

@@ -4,7 +4,7 @@ Use this prompt for `/kramme:siw:product-audit` Step 4. Fill in `{list of spec f
 
 ## Launch
 
-Launch a single `kramme:product-reviewer` Explore agent via the Task tool (`subagent_type=Explore`, `model=opus`).
+Launch a single agent via the Task tool (`subagent_type=kramme:product-reviewer`, `model=opus`).
 
 No relevance validation step is needed because the entire spec is the scope.
 

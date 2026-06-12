@@ -37,7 +37,7 @@ Do not record destructive product flows. Prefer a seeded/local/demo account, a d
 
 ### Step 2: Create Artifact Directory
 
-Resolve `DEMO_REEL_SKILL_DIR` to the directory containing this `SKILL.md`. Skill-local helpers live beside the installed skill; shared plugin scripts are handled separately.
+Resolve `DEMO_REEL_SKILL_DIR` to the directory containing this `SKILL.md`: `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:demo-reel` (the Codex converter rewrites `CLAUDE_PLUGIN_ROOT` at install time). Skill-local helpers live beside the installed skill; shared plugin scripts are handled separately.
 
 Run:
 

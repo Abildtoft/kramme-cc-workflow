@@ -138,7 +138,15 @@ Before proceeding with the workflow, check if the user provided additional instr
 
    If no commits, inform user this command requires existing commits to fixup into.
 
-6. **Check for leftover fixup commits:**
+6. **Check for merge commits on the branch:**
+
+   ```bash
+   git log --merges --oneline <base>..HEAD
+   ```
+
+   If non-empty, stop and confirm with the user before proceeding: the autosquash rebase in Step 5 (`GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash`) silently linearizes merge commits, rewriting the branch topology. Under `--no-confirm`, abort. (Preserving merges via `--rebase-merges` is out of scope for this skill.)
+
+7. **Check for leftover fixup commits:**
 
    ```bash
    git log <base>..HEAD --oneline --grep '^fixup!'
@@ -253,7 +261,7 @@ If the rebase fails (conflicts), see Error Handling below.
 
 ### Step 6: Update REVIEW_OVERVIEW.md (if present)
 
-If `REVIEW_OVERVIEW.md` exists in the project root:
+If `REVIEW_OVERVIEW.md` (produced by the `kramme:pr:code-review` skill) exists in the project root:
 
 1. **Update commit hashes** — For each finding that was addressed, update its `**Commit:**` field with the short hash of the commit containing the fix
 2. **Do not commit this file** — `REVIEW_OVERVIEW.md` is a working document for tracking review responses; it should never be committed
@@ -281,7 +289,7 @@ git push --force-with-lease
 `.git/index.lock` may be stale, or it may be held by a running git process — deleting it while a process is active can corrupt the index. Do not remove it blindly:
 
 1. Confirm no git operation is in progress (active commit/rebase/merge, IDE git extension, file watcher).
-2. Only once you have confirmed none are active, ask the user before deleting `.git/index.lock` (skip the prompt under `--no-confirm`), then retry once.
+2. Only once you have confirmed none are active, ask the user before deleting `.git/index.lock`, then retry once. Under `--no-confirm`, abort instead of deleting — never remove a lock file unattended (consistent with never rewriting history over failing checks unattended).
 3. If it persists, stop and ask the user to close other git processes (VS Code, IDE extensions, file watchers, etc.).
 
 ### Validation failures
@@ -319,7 +327,7 @@ If the rebase fails mid-way due to conflicts:
 - `--skip-build` - Skip build validation
 - `--skip-lint` - Skip lint/format validation
 - `--skip-all` - Skip all validations
-- `--no-confirm` - Skip confirmation prompts. Defaults: staged changes are included, orphan files are skipped, validation failures abort, and leftover fixup commits are autosquashed.
+- `--no-confirm` - Skip confirmation prompts. Defaults: staged changes are included, orphan files are skipped, validation failures abort, merge commits on the branch abort, stale lock files abort, and leftover fixup commits are autosquashed.
 - `--base=<branch>` - Override auto-detected base branch
 
 **Custom Instructions:** Any text after the command (and flags) is treated as custom instructions that influence the workflow. These instructions are applied contextually throughout the process.

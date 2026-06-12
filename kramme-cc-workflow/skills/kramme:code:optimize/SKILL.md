@@ -42,7 +42,7 @@ Stop and ask for the missing requirement before experiments run when any conditi
 
 ## Artifact Layout
 
-Use `.context/code-optimize/<spec-name>/` for local scratch state. These files are gitignored and are the source of truth for the optimization run:
+Use `.context/code-optimize/<spec-name>/` for local scratch state. These files must be gitignored (verified during Set Up Spec) and are the source of truth for the optimization run:
 
 | File | Purpose |
 | --- | --- |
@@ -70,7 +70,8 @@ Use `references/experiment-log-schema.yaml` when writing or validating `experime
    - If it exists and differs, stop and ask whether to resume with the existing spec, write a new spec name, or archive the existing directory.
    - If `spec.yaml` exists but `experiment-log.yaml` does not, treat the directory as partial setup; verify the spec and continue from measurement validation without deleting files.
    - If `experiment-log.yaml` exists, use the Resume workflow before any new writes.
-4. Write `spec.yaml` to `.context/code-optimize/<spec-name>/spec.yaml`, then read it back and confirm the expected `name`, metric, measurement command, and scope are present before continuing.
+4. Verify the artifact directory is actually ignored: run `git check-ignore .context/code-optimize/` (or equivalent). If it is not ignored, warn the user and offer to add a `.context/code-optimize/` entry to `.gitignore` — apply it only with explicit user approval.
+5. Write `spec.yaml` to `.context/code-optimize/<spec-name>/spec.yaml`, then read it back and confirm the expected `name`, metric, measurement command, and scope are present before continuing.
 
 ### 2. Validate Measurement
 

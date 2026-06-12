@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:resolve-review
-description: Resolve findings from code reviews by implementing fixes and documenting changes. Use --team to resolve independent findings in parallel by file area.
-argument-hint: "[--team] [--auto] [--implement-only] [--granular] [--severity ...] [--source local|online] [review|url|instructions]"
+description: Resolve findings from code reviews by implementing fixes and documenting changes. Implements fixes as commits on the current branch; with --post it may also post replies and resolve threads on the PR. Use --team to resolve independent findings in parallel by file area.
+argument-hint: "[--team] [--post] [--implement-only] [--granular] [--severity ...] [--source local|online] [review|url|instructions]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -25,8 +25,9 @@ Parse `$ARGUMENTS` for flags. After extracting all flags, the remainder is the *
 **Flags:**
 
 - `--source local|online` (aliases `--local`, `--online`) → `REVIEW_SOURCE`. Default `auto`. If both are selected, or `--source` is given an unknown value, ask the user to pick one and stop.
-- `--auto` → `ANSWER_AND_RESOLVE=true`. Permits posting replies and resolving addressed threads on the PR (external reviews only).
-- `--implement-only` → `IMPLEMENT_ONLY=true`. Pure code-fix engine mode for callers that own the reply/resolution phase (e.g. `kramme:pr:github-review-reply`): implement and validate fixes but make no GitHub writes, write no review file, and draft no replies (see Step 4). Mutually exclusive with `--auto` and `--team`; if a conflicting flag is given, ask the user to pick one and stop.
+- `--post` → `ANSWER_AND_RESOLVE=true`. Permits posting replies and resolving addressed threads on the PR (external reviews only). Matches the `kramme:pr:github-review-reply` flag convention.
+- `--auto` → Not a supported flag here. Elsewhere in the `kramme:pr` family `--auto` means "skip prompts", but this skill historically used it for posting/resolving. If `--auto` is passed, stop and ask the user whether they meant `--post`; do not silently treat it as either.
+- `--implement-only` → `IMPLEMENT_ONLY=true`. Pure code-fix engine mode for callers that own the reply/resolution phase (e.g. `kramme:pr:github-review-reply`): implement and validate fixes but make no GitHub writes, write no review file, and draft no replies (see Step 4). Mutually exclusive with `--post` and `--team`; if a conflicting flag is given, ask the user to pick one and stop.
 - `--team` → Team Mode (see top of file).
 - `--granular` → `GRANULAR_COMMITS=true`. One commit per finding.
 - `--severity <list>` → `SEVERITY_FILTER`. Comma-separated values from `critical`, `important`, `suggestion`. Findings outside the filter are skipped with **Action taken: Skipped — outside severity filter.**
@@ -88,7 +89,7 @@ For local review files that include the structured `/kramme:pr:code-review` find
 - `Action class: advisory` is optional. Do not implement it from local auto-discovery unless the user explicitly asks to resolve suggestions or names that finding.
 - `review-scope`, `PR description`, and other non-file locations are process-level findings. Defer them with a concrete manual recommendation.
 - Legacy local findings without an action class keep the previous location/severity behavior, but do not infer `gated_auto` from a file location when an action class is present.
-- For `UX_REVIEW_OVERVIEW.md`, accept legacy per-agent finding IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) from older UX audit reports as source identifiers during the transition to artifact-scoped `UX-NNN` IDs.
+- For `UX_REVIEW_OVERVIEW.md`, accept legacy per-agent finding IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) from older UX audit reports as source identifiers during the transition to artifact-scoped `UX-NNN` IDs. Remove this legacy-ID acceptance once `kramme:pr:ux-review` drops its own legacy-ID compatibility and existing `UX_REVIEW_OVERVIEW.md` artifacts contain only `UX-NNN` IDs.
 
 ### Step 2: Evaluate findings
 

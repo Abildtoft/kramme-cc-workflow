@@ -59,7 +59,7 @@ options:
 Read `siw/OPEN_ISSUES_OVERVIEW.md` and check for issues not marked DONE:
 
 ```bash
-grep -E "\| (READY|IN PROGRESS|IN REVIEW) \|" siw/OPEN_ISSUES_OVERVIEW.md 2> /dev/null
+grep -iE "\| (READY|IN PROGRESS|IN REVIEW) \|" siw/OPEN_ISSUES_OVERVIEW.md 2> /dev/null
 ```
 
 **If open issues found:**
@@ -116,8 +116,12 @@ The feature name determines the output directory `docs/<feature-name>/`.
    - `siw/LOG.md`
    - `siw/OPEN_ISSUES_OVERVIEW.md`
    - `siw/AUDIT_*.md`
+   - `siw/PRODUCT_AUDIT.md`
+   - `siw/SIW_*.md`
    - `siw/SPEC_STRENGTHENING_PLAN.md`
    - `siw/DISCOVERY_BRIEF.md`
+
+   Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.
 2. If no spec candidates are found, follow the "No spec file found" edge case.
 3. If multiple spec candidates are found and `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: multiple spec candidates found; pass through an interactive close to choose the main spec`. Otherwise use AskUserQuestion to select the main one:
    ```yaml
@@ -333,6 +337,8 @@ In `AUTO_MODE`, `trash` was already verified during Step 2.3 before documentatio
 - `siw/LOG.md`
 - `siw/OPEN_ISSUES_OVERVIEW.md`
 - `siw/AUDIT_*.md`
+- `siw/PRODUCT_AUDIT.md`
+- `siw/SIW_*.md`
 - `siw/DISCOVERY_BRIEF.md`
 - `siw/issues/` (entire directory)
 - `siw/qa-intake/` (QA intake parent summaries)

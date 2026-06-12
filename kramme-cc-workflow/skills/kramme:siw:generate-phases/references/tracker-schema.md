@@ -62,4 +62,4 @@ Legacy compatibility example when appending to an older 5-column tracker:
 | P1-002 | {Title} | READY  | Medium   | P1-001  |
 ```
 
-When reading existing tracker rows in append mode, accept legacy title-case `Ready` and `In Progress` as `READY` and `IN PROGRESS` for one release. Emit uppercase statuses for all new or updated rows.
+When reading existing tracker rows in append mode, accept legacy title-case `Ready` and `In Progress` as `READY` and `IN PROGRESS`. Emit uppercase statuses for all new or updated rows.

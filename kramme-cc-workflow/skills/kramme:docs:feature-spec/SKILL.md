@@ -49,7 +49,7 @@ Phase 3: Approval gate
 [User revises]  → Loop to Phase 2 (do not restart Phase 1)
 ```
 
-## Phase 1: Assumptions
+## Phase 0: Strategy Grounding (optional)
 
 Before drafting assumptions, check for repo-root `STRATEGY.md`.
 
@@ -57,6 +57,8 @@ Before drafting assumptions, check for repo-root `STRATEGY.md`.
 - If its `last_updated` frontmatter is older than 90 days, mark relevant strategy facts as `STALE:` when presenting assumptions.
 - If the proposed feature conflicts with an active track or strategy non-goal, emit `CONFUSION:` with the concrete conflict and ask whether the feature is intended to change strategy or should be scoped differently.
 - If no `STRATEGY.md` exists, proceed silently for narrow features. For broad product-direction work, emit `MISSING PRODUCT CONTEXT:` and suggest `/kramme:product:strategy` as an optional precursor without blocking this skill.
+
+## Phase 1: Assumptions
 
 Before drafting anything, state what you are assuming about the feature. Emit this block verbatim, filling each bullet:
 
@@ -224,14 +226,14 @@ These markers are deliberate. Keep them verbatim — tooling and downstream skil
 | "The assumptions block is noise, the user knows what they want." | The block costs one turn and catches misalignment before you've drafted six areas of the wrong spec. |
 | "One ambiguous area is fine, we'll figure it out in code." | No. Emit `MISSING REQUIREMENT:` and stop. Ambiguous specs produce ambiguous code. |
 | "The user said yes in a previous turn, that's approval." | Approval is explicit and scoped to the current spec version. Re-confirm after each revision. |
-| "I should always synthesize — the user prefers fewer questions." | Synthesis is only safe when at least 4 of 6 areas — including Objective and Success Criteria — are grounded in the current conversation. Below that threshold, synthesis produces a confidently-wrong spec, which costs more cycles than the assumptions round-trip would have. |
+| "I should always synthesize — the user prefers fewer questions." | Synthesis is only safe when the Synthesize-mode preconditions hold. Below that threshold, synthesis produces a confidently-wrong spec, which costs more cycles than the assumptions round-trip would have. |
 
 ## Red Flags — STOP
 
 - Implementation starts before the user explicitly approves the spec.
 - Scope creep mid-draft (new areas appearing without updating Phase 1 assumptions).
 - The Assumptions block is skipped or collapsed into the draft (without `--synthesize`/`--auto`/trigger phrase AND preconditions met).
-- Synthesizing with fewer than 4 of 6 areas grounded, or with Objective or Success Criteria ungrounded.
+- Synthesizing when the Synthesize-mode preconditions are not met.
 - Claims inside the spec are presented as fact when they are inference — any such claim must be prefixed `UNVERIFIED:`.
 - The skill begins writing `siw/`, `LOG.md`, or issue files. That's out of scope — use `/kramme:siw:init` instead.
 - The user asks for phased breakdown — route to `/kramme:siw:init <spec-file>` after approval, then `/kramme:siw:generate-phases`; do not inline phases here.

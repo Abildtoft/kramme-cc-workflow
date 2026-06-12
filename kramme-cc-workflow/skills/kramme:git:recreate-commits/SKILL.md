@@ -1,6 +1,6 @@
 ---
 name: kramme:git:recreate-commits
-description: Use when asked to recreate commits with narrative-quality history on the current branch.
+description: Use when asked to recreate commits with narrative-quality history on the current branch. Not for merged branches or shared branches others have based work on — it rewrites history and force-pushes with --force-with-lease.
 argument-hint: "[--auto|--granular] [--base <branch>] [--after <commit>] [--force-backup]"
 disable-model-invocation: true
 user-invocable: true
@@ -31,7 +31,7 @@ This rewrites history and requires a force-push to sync any remote. It is user-t
    [ -n "${AFTER_ARG:-}" ] && ARGS+=(--after "$AFTER_ARG")
    [ "${FORCE_BACKUP:-0}" = "1" ] && ARGS+=(--force-backup)
 
-   RESOLVED=$(${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh "${ARGS[@]}") || {
+   RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${ARGS[@]}") || {
      echo "Base resolution failed; see the message above and stop." >&2
      exit 1
    }

@@ -32,7 +32,7 @@ Add the Hard-Cut Greenfield Policy section to the project's agent instructions f
    ## Hard-Cut Greenfield Policy
 
    - This application currently has no external installed user base; optimize for one canonical current-state implementation, not compatibility with historical local states.
-   - Do not preserve or introduce compatibility bridges, migration shims, fallback paths, compact adapters, or dual behavior for old local states unless the user explicitly asks for that support.
+   - Do not preserve or introduce compatibility bridges, migration shims, fallback paths, compat adapters, or dual behavior for old local states unless the user explicitly asks for that support.
    - Prefer:
      - one canonical current-state codepath
      - fail-fast diagnostics
@@ -48,6 +48,9 @@ Add the Hard-Cut Greenfield Policy section to the project's agent instructions f
      - exact deletion criteria
      - the issue/ticket that tracks its removal
    - Default stance across the app: delete old-state compatibility code rather than carrying it forward.
+   - Remove this section once the application has external users — it asserts a no-user-base premise that stops being true at that point.
    ```
+
+   Retirement of the section is manual: no tooling removes it, so when the application gains external users the team deletes the section by hand per its own retirement line.
 
 6. **Confirm result** — Report which file was modified (or created) and that the Hard-Cut Greenfield Policy section was added successfully.

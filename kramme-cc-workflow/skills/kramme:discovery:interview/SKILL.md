@@ -211,98 +211,13 @@ Before each question in either coverage or decision-tree mode, decide whether th
 - Ask only for confirmation or correction if the source is stale, ambiguous, or incomplete.
 - Skip exploration when the question is about priorities, appetite, ownership, or other context only the user can provide.
 
-### Using AskUserQuestion Correctly
+### Question Mechanics and Dimensions
 
-The AskUserQuestion tool requires **2-4 predefined options** per question. Users can always select "Other" to provide free-text input.
+Before crafting the first interview round, read `references/question-dimensions.md`. It covers:
 
-**Tool structure:**
-
-- `header`: Short label (max 12 chars) shown as chip/tag, e.g., "Error handling"
-- `question`: The full question text
-- `options`: 2-4 choices, each with `label` (short) and `description` (explains tradeoff)
-- `multiSelect`: Set `true` when choices aren't mutually exclusive
-
-### Question Context Pattern
-
-For **every question**, provide context before asking:
-
-1. **Why this matters** — 1-2 sentences on relevance, impact, and what could go wrong
-2. **Recommendation** — Your suggested approach with brief rationale, or "No strong preference—depends on your priorities" if genuinely neutral
-
-This transforms the interview from interrogation into collaborative exploration.
-
-**Example - Complete question with context:**
-
-```
-**Why this matters:** Rate limiting strategy directly affects both user experience and
-system stability. Getting this wrong could either frustrate users with unnecessary
-failures or overwhelm downstream services during traffic spikes.
-
-**Recommendation:** For user-facing operations, I'd lean toward graceful degradation—
-partial success is usually better than total failure. However, if data consistency is
-critical (e.g., financial transactions), fail-fast with clear messaging may be safer.
-
-Question: "How should the system handle rate limit exhaustion?"
-Options:
-- Queue requests and retry (preserves all actions, adds latency)
-- Fail immediately with clear error (fast feedback, user retries)
-- Degrade gracefully by skipping non-essential operations (partial success)
-```
-
-**Craft thoughtful options that represent real alternatives, not straw men.**
-
-**Example - Bad (no context, weak options):**
-
-```
-Question: "Should we handle errors?"
-Options:
-- Yes, handle errors (obviously correct)
-- No, crash the application (straw man)
-- Maybe (meaningless)
-```
-
-### Question Dimensions by Topic Type
-
-#### For Software Features
-
-- **User / Why Now**: target user, job-to-be-done, urgency, business value
-- **Architecture**: Component boundaries, data flow, state ownership
-- **Data Model**: Entities, relationships, constraints, migrations
-- **API Design**: Endpoints, payloads, versioning, error responses
-- **User Experience**: Flows, edge cases, loading states, error recovery
-- **Integration**: Existing features affected, backward compatibility
-- **Performance**: Scale expectations, caching needs, async operations
-- **Security**: Authentication, authorization, data sensitivity
-- **Non-Goals**: deferred work, excluded edge cases, follow-up issues, and why each is excluded
-
-#### For Process/Workflow
-
-- **User / Why Now**: who is blocked today, urgency, business reason
-- **Triggers**: What initiates the process, frequency, urgency
-- **Steps**: Sequence, parallelism, dependencies
-- **Roles**: Who does what, handoffs, approvals
-- **Exceptions**: What can go wrong, escalation paths
-- **Tooling**: Systems involved, automation opportunities
-- **Metrics**: Success criteria, monitoring needs
-- **Non-Goals**: what process complexity should stay out of scope for now, and why
-
-#### For Architecture Decisions
-
-- **Decision Ownership**: what is a product/business decision vs architecture decision
-- **Options**: What alternatives exist, pros/cons of each
-- **Constraints**: Non-negotiables, deadlines, budget
-- **Tradeoffs**: What you gain/lose with each option
-- **Reversibility**: How hard to change course later
-- **Migration**: Path from current to target state
-- **Risk**: What could go wrong, mitigation strategies
-
-#### For Documentation/Proposal
-
-- **Clarity**: What's ambiguous or underspecified
-- **Completeness**: What's missing that should be addressed
-- **Feasibility**: What seems unrealistic or risky
-- **Actionability**: Can someone implement this as-is?
-- **Assumptions**: What's implied but not stated
+- **AskUserQuestion structure** — 2-4 predefined options per question, `header`/`question`/`options`/`multiSelect` fields.
+- **Question Context Pattern** — every question is preceded by "Why this matters" and a recommendation, with complete good/bad examples.
+- **Question Dimensions by Topic Type** — the per-topic dimension catalogs (Software Feature, Process/Workflow, Architecture Decision, Documentation/Proposal) that drive round planning and the coverage tracking in Step 4.
 
 ## Step 4: Interview Execution
 
@@ -356,7 +271,31 @@ After each resolved decision, offer `/kramme:docs:adr` only when all three crite
 2. It would be surprising later without context.
 3. It came from a real tradeoff, not a default.
 
-Prompt once and state the three criteria inline. Do not author the ADR inside this skill.
+Surface the offer via AskUserQuestion with this payload, replacing each `{...}` evidence placeholder with a concrete one-line reason from the interview:
+
+```yaml
+AskUserQuestion
+header: "ADR offer"
+question: |
+  This decision looks ADR-worthy:
+  - Hard to reverse: {hard_to_reverse_evidence}
+  - Surprising without context: {surprising_without_context_evidence}
+  - Result of a real tradeoff: {real_tradeoff_evidence}
+
+  Record as an ADR?
+options:
+  - label: "Author ADR"
+    description: "Invoke /kramme:docs:adr now"
+  - label: "Skip"
+    description: "Don't author, and don't ask again about this decision"
+  - label: "Defer"
+    description: "Don't author now; allow re-offer if the decision recurs"
+multiSelect: false
+```
+
+Prompt at most once per decision: track which decisions have already been offered in the current session (by title or stable identifier) and do not re-offer them. `Skip` and `Defer` differ here — `Skip` suppresses re-offers of that decision for the lifetime of the session; `Defer` allows a re-offer only if the same decision resurfaces in a later workflow step.
+
+On "Author ADR", hand off to `/kramme:docs:adr` (optionally pre-loading a decision title and short context summary as its arguments). Do not author the ADR inside this skill.
 
 ### Progress Tracking
 

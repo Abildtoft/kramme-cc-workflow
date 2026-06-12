@@ -50,13 +50,11 @@ If any of these are happening, stop. Write the contract, then continue.
 
 ### Rule 2 — Validate at boundaries, not between internals
 
-Validation belongs at the points where untrusted data enters your trusted code, and nowhere else.
+Validation belongs at the points where untrusted data enters your trusted code — once — and nowhere else; internal functions trust their inputs. The full trust-boundary doctrine (what counts as a boundary, the validate-once pattern, third-party responses) lives in `/kramme:code:harden-security`.
 
-- **YES, validate at**: API routes, form submissions, external service responses, environment-variable loading.
-- **NO, do NOT validate between**: internal functions, utility functions, data sourced from your own database. Trust inside the boundary.
-- **Third-party API responses** are untrusted data — always validate them, even if the integration has been stable.
+### Convention detection (before Rules 3–5)
 
-Validating between internal functions duplicates work, hides the real boundary, and gives false confidence that unvalidated paths are safe. If you feel the urge to validate inside the boundary, the boundary is probably in the wrong place.
+Before applying Rules 3–5, scan the project's existing API surfaces for an established error shape, naming style, or pagination envelope. If a consistent convention exists, match it — consistency with existing callers beats the canonical shapes below (Hyrum's Law has already locked the existing shape in). The canonical shapes in Rules 3–5 apply only to greenfield surfaces with no established convention.
 
 ### Rule 3 — Consistent error shape
 

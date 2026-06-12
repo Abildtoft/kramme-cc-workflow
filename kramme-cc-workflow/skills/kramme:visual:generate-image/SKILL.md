@@ -2,7 +2,7 @@
 name: kramme:visual:generate-image
 description: Generate and edit images using Google's Gemini 3 Pro Image API. Use when the user asks to generate, create, edit, modify, change, alter, or update images. Also use when user references an existing image file and asks to modify it in any way (e.g., "modify this image", "change the background", "replace X with Y"). Supports both text-to-image generation and image-to-image editing with configurable resolution (1K default, 2K, or 4K for high resolution). DO NOT read the image file first - use this skill directly with the --input-image parameter.
 argument-hint: "[prompt or editing instructions]"
-disable-model-invocation: false
+disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code, codex]
 ---
@@ -64,13 +64,15 @@ Map user requests to API parameters:
 
 The script reads the key from the `--api-key` argument first, then the `GEMINI_API_KEY` environment variable. **Prefer the environment variable** — values passed as command arguments are visible in process listings, shell history, and logs.
 
-Set it inline for a single command so it is not stored as a named flag or persisted in the session:
+If `GEMINI_API_KEY` is already set in the environment, run the command with no key argument or prefix at all — never echo the literal key into a command when the environment variable exists.
+
+If the key is not in the environment (e.g., the user pastes it in chat), set it as an inline prefix for the single command. This keeps the key out of `ps` process listings, but like any command it still appears in shell history and the session transcript:
 
 ```bash
 GEMINI_API_KEY="<key>" uv run ${PLUGIN_ROOT}/skills/kramme:visual:generate-image/scripts/generate_image.py --prompt "..." --filename "..."
 ```
 
-Use `--api-key` only when the environment variable cannot be set. If the user pastes a key in chat, prefer the inline prefix above.
+Use `--api-key` only when neither of the above is possible.
 
 If no key is available, the script exits with an error.
 

@@ -21,7 +21,7 @@ Find repeated work in recent agent sessions and turn only the practical patterns
 Before Step 1, parse `$ARGUMENTS` for `--auto`. Treat `--auto` as an alias for `--create`: remove it from the remaining source arguments and scaffold the selected candidates after the usefulness gate. It does not bypass missing session-source handling or existing-destination protection.
 
 1. Resolve the shared session-search substrate.
-   - Use the scripts from `skills/kramme:session:search/scripts/` in the source checkout, or the installed sibling skill's `scripts/` directory when running from an installed plugin.
+   - Resolve `<skills-root>` as the `skills/` directory containing this skill (this skill lives at `<skills-root>/kramme:session:automate-repeats/`), then use the scripts at `<skills-root>/kramme:session:search/scripts/`. The same pattern works in both the source checkout and an installed plugin.
    - Required scripts: `discover-sessions.sh`, `extract-metadata.py`, `extract-skeleton.py`, and `extract-errors.py`.
    - If the script set is unavailable, stop with `MISSING REQUIREMENT: kramme:session:search scripts are not installed`.
 
@@ -30,6 +30,7 @@ Before Step 1, parse `$ARGUMENTS` for `--auto`. Treat `--auto` as an alias for `
    - If `$ARGUMENTS` includes `--recent N`, discover sessions for the current repo, sort metadata by `last_ts`/`ts`/mtime, and keep the N most recent readable sessions.
    - Otherwise, discover sessions for the current repo over the last 30 days:
      ```bash
+     REPO_NAME=$(basename "$(git rev-parse --show-toplevel)")
      bash <session-search-scripts>/discover-sessions.sh "$REPO_NAME" 30 \
        | tr '\n' '\0' \
        | xargs -0 python3 <session-search-scripts>/extract-metadata.py --cwd-filter "$REPO_NAME"

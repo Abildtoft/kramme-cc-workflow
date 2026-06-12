@@ -32,7 +32,7 @@ Run a non-mutating environment check and report what is ready, missing, or only 
    - `Optional`: tools used only by specific skills or local maintenance paths.
    - `Context`: repository, Conductor workspace, and local configuration signals.
 
-4. If a tool is missing, provide the install command from the report as guidance only. Do not run installs unless the user explicitly asks in a separate follow-up.
+4. If a tool is missing, provide the install command from the report as guidance only. Install hints assume macOS/Homebrew with Linux (apt) alternates where they exist; adapt to the user's platform and package manager. Do not run installs unless the user explicitly asks in a separate follow-up.
 
 5. For integrations that are not reliably inspectable from the shell, report them as `manual-check` instead of inventing a status. This includes authenticated app connectors such as Linear and Figma unless their local configuration is directly visible.
 

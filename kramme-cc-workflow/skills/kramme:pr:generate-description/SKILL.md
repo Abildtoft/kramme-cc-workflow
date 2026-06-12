@@ -57,7 +57,7 @@ Read the guideline keyword glossary from `references/guideline-keywords.md`.
 
 ### Phase 1: Branch Setup
 
-Read `references/base-branch-resolution.md` and follow it to confirm the current branch and compute `BASE_BRANCH`.
+1. Read `references/base-branch-resolution.md` and follow it to confirm the current branch and compute `BASE_BRANCH`.
 
 2. **If `AUTO_MODE=true` and `OUTPUT_ONLY` is not true**, check whether a PR exists for the current branch:
 
@@ -187,19 +187,19 @@ Generate a PR title using [Conventional Commits](https://www.conventionalcommits
    **Format options:**
 
    ```markdown
-   Fixes WAN-521
+   Fixes ABC-123
    ```
 
    or
 
    ```markdown
-   Closes https://linear.app/consensusaps/issue/WAN-521/title
+   Closes https://linear.app/your-workspace/issue/ABC-123/title
    ```
 
    or (for related but not closing):
 
    ```markdown
-   Related to WAN-521
+   Related to ABC-123
    ```
 
    - **PREFER** `Fixes` or `Closes` when the PR completes the work for the issue
@@ -302,7 +302,7 @@ Here is your generated PR:
 
 After presenting the description, ask: "Would you like me to save this description to a markdown file?"
 
-If yes, save to `$REPO_ROOT/.kramme-cc-workflow/pr-description/PR_DESCRIPTION.md` where `REPO_ROOT=$(git rev-parse --show-toplevel)`. Add `.kramme-cc-workflow/` to git's local exclude file first if it is not already listed (use the same idempotent check as the `DIRECT_UPDATE` block above), so the saved file is not accidentally committed without mutating tracked files. Confirm the absolute file path after saving.
+If yes, save to `$REPO_ROOT/.kramme-cc-workflow/pr-description/PR_DESCRIPTION.md` where `REPO_ROOT=$(git rev-parse --show-toplevel)`. Add `.kramme-cc-workflow/` to git's local exclude file first if it is not already listed (use the same idempotent check as step 1 of `references/direct-update.md`), so the saved file is not accidentally committed without mutating tracked files. Confirm the absolute file path after saving.
 
 ### Phase 5: Pre-publish Verification
 

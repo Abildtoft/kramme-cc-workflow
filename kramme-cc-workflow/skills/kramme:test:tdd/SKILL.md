@@ -134,7 +134,7 @@ If you recognize any anti-pattern in the current session — horizontal slices o
 
 ## Output markers
 
-Use these markers so the user can skim status at a glance. They are a **plugin-wide convention** — other kramme skills should adopt the same vocabulary over time. Use them verbatim (uppercase, no decoration), one marker per line.
+Use these markers so the user can skim status at a glance. Sibling kramme skills use the same vocabulary. Use them verbatim (uppercase, no decoration), one marker per line.
 
 - **STACK DETECTED** — I've identified the language, framework, and test runner. `STACK DETECTED: TypeScript + Vitest, tests co-located as *.test.ts`.
 - **UNVERIFIED** — I'm asserting something but haven't confirmed it yet. `UNVERIFIED: assumed the API returns ISO-8601 dates; I'll check before implementing`.

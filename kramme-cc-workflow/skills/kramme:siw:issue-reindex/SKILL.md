@@ -4,7 +4,6 @@ description: Remove all DONE issues and renumber remaining issues within each pr
 argument-hint: "[--auto]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
 ---
 
 # Reindex Issues
@@ -126,7 +125,7 @@ For each row, extract:
 - Mode when present in the 7-column schema (`AUTO` or `HITL`)
 - Related tasks
 
-For one release, normalize legacy title-case `Ready` and `In Progress` to `READY` and `IN PROGRESS` before categorizing. Rebuilt overview rows must emit uppercase statuses.
+Normalize legacy title-case `Ready` and `In Progress` to `READY` and `IN PROGRESS` before categorizing. Rebuilt overview rows must emit uppercase statuses.
 
 Categorize issues **by prefix group**:
 

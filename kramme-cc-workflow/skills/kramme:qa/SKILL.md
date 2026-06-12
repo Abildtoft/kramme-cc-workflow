@@ -25,8 +25,8 @@ Extract from `$ARGUMENTS`:
    - `targeted <route>` — test a specific route/page
 3. **Flags**:
    - `--base <branch>` — explicit base branch for diff-aware mode
-   - `--regression` — compare results against previous QA baseline (see Step 8b)
-   - `--inline` — reply with the QA report inline instead of writing `QA_REPORT.md` (still writes `QA_BASELINE.json`, which regression depends on; see Step 9)
+   - `--regression` — compare results against previous QA baseline (see Step 8)
+   - `--inline` — reply with the QA report inline instead of writing `QA_REPORT.md` (still writes `QA_BASELINE.json`, which regression depends on; see Step 10)
    - `--legacy-console` — relax the clean-console standard for legacy apps with known noisy consoles (see Step 4)
 
 Store parsed values:
@@ -312,36 +312,11 @@ Read `references/health-score-rubric.md` and compute a weighted health score (0-
 
 Store as `HEALTH_SCORE` and `HEALTH_LABEL` (Excellent/Good/Fair/Poor/Critical).
 
-### Step 8: Write QA Report or Reply Inline
-
-Use the template from `assets/qa-report-template.md`.
-
-Populate all sections:
-
-- Fill in mode, URL, date, browser MCP type
-- List all tested routes with descriptions
-- Include the journey matrix for `diff-aware` runs, with route/screen, journey, state, expected behavior, evidence, result, and follow-up
-- Document each finding with severity, repro steps, expected vs actual, and recommended fix
-- Calculate summary counts per severity level
-- Provide overall recommendation (ready / not ready / ready with caveats)
-
-**Numbering convention:** Findings are numbered `QA-001`, `QA-002`, etc.
-
-QA does not auto-fix or auto-commit findings in the default flow. Record recommended fixes and follow-up issue references, then leave implementation to the user or a separate fix workflow.
-
-If `INLINE_MODE=true`:
-
-- Reply with the full populated QA report inline
-- Do **not** create or update `QA_REPORT.md`
-
-Otherwise:
-
-- Write `QA_REPORT.md` at the project root
-- Treat it as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
-
-### Step 8b: Regression Comparison (conditional)
+### Step 8: Regression Comparison (conditional)
 
 **Skip if** `REGRESSION_MODE` is false.
+
+This runs **before** the report is written (Step 9) so the comparison can be included in it.
 
 Check if `QA_BASELINE.json` exists from a previous run:
 
@@ -355,7 +330,7 @@ Check if `QA_BASELINE.json` exists from a previous run:
 3. **New issues:** findings in the current run that are NOT in the baseline
 4. **Persistent issues:** findings present in both runs
 
-Add a `## Regression` section to the QA report:
+Prepare a `## Regression` section for the QA report (rendered in Step 9):
 
 ```markdown
 ## Regression (vs. baseline from {baseline_date})
@@ -375,7 +350,35 @@ Add a `## Regression` section to the QA report:
 - QA-{NNN}: {title} ({severity})
 ```
 
-### Step 9: Save Baseline
+### Step 9: Write QA Report or Reply Inline
+
+Use the template from `assets/qa-report-template.md`.
+
+Populate all sections:
+
+- Fill in mode, URL, date, browser MCP type
+- List all tested routes with descriptions
+- Include the journey matrix for `diff-aware` runs, with route/screen, journey, state, expected behavior, evidence, result, and follow-up
+- Document each finding with severity, repro steps, expected vs actual, and recommended fix
+- Include the `## Regression` section prepared in Step 8 when a regression comparison ran
+- Calculate summary counts per severity level
+- Provide overall recommendation (ready / not ready / ready with caveats)
+
+**Numbering convention:** Findings are numbered `QA-001`, `QA-002`, etc.
+
+QA does not auto-fix or auto-commit findings in the default flow. Record recommended fixes and follow-up issue references, then leave implementation to the user or a separate fix workflow.
+
+If `INLINE_MODE=true`:
+
+- Reply with the full populated QA report inline
+- Do **not** create or update `QA_REPORT.md`
+
+Otherwise:
+
+- Write `QA_REPORT.md` at the project root
+- Treat it as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
+
+### Step 10: Save Baseline
 
 After regression comparison (or if skipped), save a machine-readable baseline for future runs. This runs regardless of `INLINE_MODE` — `--inline` suppresses only `QA_REPORT.md`, not the baseline, so regression comparisons keep working across runs.
 
@@ -383,7 +386,7 @@ Write `QA_BASELINE.json` at the project root using the shape in `assets/qa-basel
 
 This file is a working artifact. It will be cleaned up by `/kramme:workflow-artifacts:cleanup`.
 
-### Step 10: Output Summary
+### Step 11: Output Summary
 
 After writing the report, display an inline summary:
 

@@ -2,7 +2,7 @@
 
 `kramme:siw:generate-phases` reads this file during Phase 3.2 (Break Into Atomic Tasks) and Phase 4 (Subagent Review) to size each generated task against a shared grammar and to decide when a task must be decomposed further. The sizing vocabulary, the break-down triggers, and the vertical-vs-horizontal slicing rule below are load-bearing — they are what turn subjective "atomic" judgements into repeatable gates.
 
-This file is the canonical local source for the synced Task Sizing Grammar copied into `SKILL.md` Phase 4 and sibling SIW issue-definition prompts.
+This file is the canonical local source for the Task Sizing Grammar. `SKILL.md` Phase 4 interpolates its contents into the subagent review prompt at runtime, and sibling SIW issue-definition prompts sync from it.
 
 ## Task Sizing
 

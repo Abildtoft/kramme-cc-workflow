@@ -71,7 +71,7 @@ Vary the choice each time. If the last diagram was dark and technical, make the 
 
 **Mermaid zoom controls:** Always add zoom controls (+/-/reset buttons) to every `.mermaid-wrap` container. Complex diagrams render at small sizes and need zoom to be readable. Include Ctrl/Cmd+scroll zoom on the container. See the zoom controls pattern in `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/references/css-patterns.md` and the reference template at `${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:diagram/assets/mermaid-flowchart.html`.
 
-**AI-generated illustrations (optional).** If [surf-cli](https://github.com/nicobailon/surf-cli) is available, you can generate images via Gemini and embed them in the page for creative, illustrative, explanatory, educational, or decorative purposes. Check availability with `which surf`. If available:
+**AI-generated illustrations (optional).** If [surf-cli](https://github.com/nicobailon/surf-cli) is available, you can generate images via Gemini and embed them in the page for creative, illustrative, explanatory, educational, or decorative purposes. Side effects: each `surf gemini` call shells the prompt out to an external Gemini-backed CLI that makes a paid Google Gemini API call over the network and consumes API quota. Check availability with `which surf`. If available:
 
 ```bash
 # Generate to a unique temp file — one per image, never a fixed shared name
@@ -142,7 +142,7 @@ Apply these principles to every diagram:
 
 ### 4. Deliver
 
-**Output location:** Write to `~/.kramme-cc-workflow/diagrams/`. Create the directory if it doesn't exist. Use a descriptive filename based on content: `modem-architecture.html`, `pipeline-flow.html`, `schema-overview.html`. The directory persists across sessions.
+**Output location:** Write to `~/.kramme-cc-workflow/diagrams/`. Create the directory if it doesn't exist. Use a descriptive filename based on content: `modem-architecture.html`, `pipeline-flow.html`, `schema-overview.html`. The directory persists across sessions. Re-running with the same descriptive filename overwrites the previous file by design — vary the name only when you want to keep an earlier diagram.
 
 **Open in browser** — only when the user explicitly asked for a visual. For proactively-rendered tables, skip this and just report the path.
 

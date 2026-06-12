@@ -204,6 +204,8 @@ Delete any stale overview file so a failed run cannot be misread:
 rm -f REVIEW_OVERVIEW.md
 ```
 
+Note: deleting the overview also discards the producer's previously-addressed-findings memory, so findings dismissed in earlier runs may re-appear on finalize re-runs — stale-file avoidance wins this tradeoff.
+
 Invoke via Skill tool (never pass `--inline` — this skill requires the file output):
 
 ```
@@ -237,6 +239,8 @@ See [Error Handling](#error-handling) for skill-error treatment.
 rm -f PRODUCT_REVIEW_OVERVIEW.md
 ```
 
+Same tradeoff as Step 6: this discards the previously-addressed-findings memory, so previously dismissed findings may re-appear on re-runs.
+
 Invoke via Skill tool (do not pass `--inline`):
 
 ```
@@ -261,7 +265,15 @@ See [Error Handling](#error-handling) for skill-error treatment.
 rm -f UX_REVIEW_OVERVIEW.md
 ```
 
-Invoke via Skill tool (do not pass `--inline`):
+Same tradeoff as Step 6: this discards the previously-addressed-findings memory, so previously dismissed findings may re-appear on re-runs.
+
+Invoke via Skill tool (do not pass `--inline`). When product review also ran (Step 7 was not skipped), pass `--categories ux,visual,a11y` so the `kramme:product-reviewer` agent — which ux-review otherwise always launches — does not review the same diff twice and get its findings double-counted in Step 10:
+
+```
+skill: "kramme:pr:ux-review", args: "--base {BASE_BRANCH} --categories ux,visual,a11y"
+```
+
+If product review was skipped (`product-review` in `SKIP_LIST` or `COULD NOT RUN`), invoke without `--categories` so ux-review keeps its full default coverage:
 
 ```
 skill: "kramme:pr:ux-review", args: "--base {BASE_BRANCH}"

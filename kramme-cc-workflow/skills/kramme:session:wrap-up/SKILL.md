@@ -1,6 +1,6 @@
 ---
 name: kramme:session:wrap-up
-description: End-of-session checklist to capture progress, ensure quality, and document next steps
+description: End-of-session checklist to capture progress, ensure quality, and document next steps. Writes a session summary to SESSION_NOTES.md at the repo root (creating or appending), or appends to siw/LOG.md when an SIW project exists.
 argument-hint: [quick]
 disable-model-invocation: true
 user-invocable: true
@@ -30,21 +30,30 @@ Uncommitted changes:
 git diff --unified=0 | grep -E "^\+.*TODO"
 ```
 
-Recent commits (the fallback guards against histories shorter than the window):
+Recent commits — prefer the session's actual start point when determinable (the merge-base with the base branch); otherwise fall back to the last 5 commits:
 
 ```bash
-base=$(git rev-parse --verify --quiet HEAD~5 || git rev-list --max-parents=0 HEAD | head -1)
+default=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/@@')
+base=""
+if [ -n "$default" ]; then
+  base=$(git merge-base HEAD "$default" 2>/dev/null || true)
+  [ "$base" = "$(git rev-parse HEAD)" ] && base=""  # on the base branch itself; no branch scope
+fi
+scope="this session"
+if [ -z "$base" ]; then
+  base=$(git rev-parse --verify --quiet HEAD~5 || git rev-list --max-parents=0 HEAD | head -1)
+  scope="last 5 commits"
+fi
 git diff "$base" --unified=0 | grep -E "^\+.*TODO"
 ```
 
-Report any TODOs found with file locations.
+Report any TODOs found with file locations. When the `HEAD~5` fallback was used, label the findings "last 5 commits" (from `$scope`) instead of "this session" — the window is a proxy, not the actual session start.
 
 ### WIP Detection
 
-Scan recent changes for explicit markers:
+Scan recent changes for explicit markers, reusing `$base` and `$scope` from TODO detection:
 
 ```bash
-base=$(git rev-parse --verify --quiet HEAD~5 || git rev-list --max-parents=0 HEAD | head -1)
 git diff "$base" --unified=0 | grep -E "^\+.*(WIP|FIXME|XXX)"
 ```
 

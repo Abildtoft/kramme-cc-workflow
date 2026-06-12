@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:rebase
 description: Rebase current branch onto latest main/master, auto-resolving bounded conflicts up to 10 rounds, then force push with --force-with-lease. Use when your PR is behind the base branch.
-argument-hint: "[--auto] [--base=<branch>]"
+argument-hint: "[--auto] [--base <branch>]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -19,7 +19,7 @@ A feature branch is a cost that compounds every day it stays open. It drifts fro
 **Flags:**
 
 - `--auto` - Skip the final force-push confirmation and push immediately with `--force-with-lease` after a successful rebase.
-- `--base=<branch>` - Override auto-detected base branch (e.g., `--base=develop`)
+- `--base <branch>` - Override auto-detected base branch (e.g., `--base develop`)
 
 `--auto` only bypasses the final confirmation prompt when the rebase completes without machine-resolved conflicts. It does not bypass conflict handling, red-flag stops, the auto-resolved-conflict verification/confirmation gate, or the requirement to use `--force-with-lease`.
 
@@ -39,7 +39,7 @@ Use these uppercase markers when reasoning about the rebase and reporting progre
 
 ### Step 0: Parse Arguments
 
-If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag from remaining arguments before processing `--base=<branch>`.
+If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag from remaining arguments. If `--base <branch>` is present, set `BASE_BRANCH_OVERRIDE=<branch>` and remove the flag and value from remaining arguments.
 
 ### Step 1: Validate Prerequisites
 
@@ -53,31 +53,22 @@ If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag from
 
    > "A rebase or merge is already in progress. Complete or abort it first with `git rebase --abort` or `git merge --abort`."
 
-2. **Detect base branch:**
+2. **Resolve base branch:**
 
-   If `--base=<branch>` was provided, use that value directly.
+   Use the shared plugin script to resolve the base branch. It uses the same 3-tier strategy as the sibling review skills: explicit `--base`, PR target branch (via `gh`), then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode and fetches the resolved base, so fetch failures stop the workflow with the script's stderr message.
 
-   Otherwise, try these methods in order:
-   1. Check `origin/HEAD` (most reliable - reflects remote's default branch):
+   ```bash
+   RESOLVE_ARGS=(--strict)
+   [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
 
-      ```bash
-      git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@'
-      ```
+   RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}") || {
+     echo "Base resolution failed; see the message above. Re-run with --base <branch>." >&2
+     exit 1
+   }
+   eval "$RESOLVED"
+   ```
 
-   2. If that fails, check if `main` branch exists on remote:
-
-      ```bash
-      git show-ref --verify --quiet refs/remotes/origin/main
-      ```
-
-   3. If that fails, check if `master` branch exists on remote:
-
-      ```bash
-      git show-ref --verify --quiet refs/remotes/origin/master
-      ```
-
-   4. If none work, fail with a clear error:
-      > "Could not auto-detect base branch. Use `--base=<branch>` to specify explicitly."
+   The script exports `BASE_REF`, `BASE_BRANCH`, and `MERGE_BASE`. Use `BASE_BRANCH` wherever `<base-branch>` appears below.
 
 3. **Verify current branch is not the base branch:**
 
@@ -91,7 +82,7 @@ If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag from
 
 ### Step 2: Fetch Latest
 
-Fetch the latest commits from the remote:
+The resolve script in Step 1 already fetched `origin/<base-branch>`. If meaningful time has passed since Step 1 (e.g., after a long conflict round or user pause), refresh it before rebasing:
 
 ```bash
 git fetch origin <base-branch>

@@ -137,9 +137,9 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 
    Instruct every reviewer to return these fields for each finding:
    - **Finding ID:** leave blank for raw reviewer output; the aggregator assigns stable `CR-001`, `CR-002`, ... IDs after dedupe
-   - **Severity:** Critical, Important, Suggestion, or FYI using the prefix grammar in Step 11
+   - **Severity:** Critical, Important, Suggestion, or FYI using the severity prefix grammar in `references/review-discipline.md`
    - **Location:** concrete `path/to/file:line`, `review-scope`, or `PR description`
-   - **Confidence:** `{0-100}`. During the transition, if a reviewer returns `high`, `medium`, or `low`, map it before aggregation as `high=90`, `medium=60`, `low=30`.
+   - **Confidence:** `{0-100}`. During the transition, if a reviewer returns `high`, `medium`, or `low`, map it before aggregation as `high=90`, `medium=60`, `low=30`. Remove this mapping shim once all bundled review agents emit numeric 0-100 confidence natively.
    - **Action class:** `gated_auto`, `manual`, or `advisory` from `references/review-discipline.md`; Critical/Important findings may use only `gated_auto` or `manual`, while Suggestions/FYI use `advisory`
    - **Owner:** resolver, author, maintainer, reviewer, or unknown
    - **Evidence:** concrete location, trace, reproduction, failing expectation, or reason the finding is marked `UNVERIFIED`
@@ -233,23 +233,7 @@ PR description findings should use the same severity rules as code findings. A m
 
 The recommended fix for a `PR description` finding is always to update the title/body to match the diff. The diff is the source of truth; the description is the suspect (PR descriptions drift, get written ahead of the final code, or are copied from earlier iterations). If a reviewer believes the code itself is wrong because it does not match the description's stated intent, raise that as a separate code-level finding with a `file:line` location.
 
-**Severity prefix grammar** — label every finding within each bucket using Addy's prefixes so downstream tooling can parse severity at the finding level, not only the section level:
-
-| Prefix | Meaning | Bucket |
-| --- | --- | --- |
-| _(no prefix)_ | Required | Important |
-| **Critical:** | Blocks merge | Critical |
-| **Nit:** | Optional; reviewer preference | Suggestion |
-| **Optional:** / **Consider:** | Suggested, not required | Suggestion |
-| **FYI** | Informational; no action expected | Strengths |
-
-The section headers (`## Critical Issues`, `## Important Issues`, `## Suggestions`) remain — the prefix is the finer-grained label inside each section.
-
-**Dead code shape** — when `kramme:removal-planner` flags removable code, emit Addy's ask-shape verbatim so removals are never presented as silent deletions:
-
-> `DEAD CODE IDENTIFIED: [comma-separated list]. Safe to remove these?`
-
-This applies whether the finding lands in Critical, Important, or Suggestions.
+**Severity prefix grammar and dead-code ask shape** — label every finding within each bucket using the severity prefix grammar, and emit removal-planner findings using the verbatim dead-code ask shape; both are defined in `references/review-discipline.md`. The section headers (`## Critical Issues`, `## Important Issues`, `## Suggestions`) remain — the prefix is the finer-grained label inside each section.
 
 12. **Write Findings or Reply Inline**
 

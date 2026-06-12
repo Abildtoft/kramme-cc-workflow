@@ -75,3 +75,43 @@ npm run test:e2e         # E2E tests (if available)
 ```
 
 **Test-suite discovery:** read the `scripts` section of `package.json` for test variations.
+
+## Python Project
+
+```bash
+# Linting and formatting (ruff, if installed/configured)
+ruff check .
+ruff format --check . # Formatting check (if ruff is the formatter)
+
+# Tests
+pytest
+```
+
+**Test-suite discovery:** check `pyproject.toml` (`[tool.pytest.ini_options]`) or `pytest.ini` for configured test paths and markers (e.g., `pytest -m integration` only when such markers are defined). If `ruff` is not installed or configured, mark linting as SKIPPED rather than substituting another tool.
+
+## Go Project
+
+```bash
+# Static analysis
+go vet ./...
+
+# Tests
+go test ./...
+```
+
+**Test-suite discovery:** integration/E2E tests are often gated behind build tags (`//go:build integration`) or `testing.Short()`. Run the plain `go test ./...` suite by default and mark tagged suites SKIPPED unless the environment is prepared.
+
+## Rust Project
+
+```bash
+# Formatting
+cargo fmt --check
+
+# Linting (clippy, if installed)
+cargo clippy
+
+# Tests
+cargo test
+```
+
+**Test-suite discovery:** check `Cargo.toml` for `[[test]]` targets and a `tests/` directory (integration tests run as part of `cargo test`). If `clippy` is not installed, mark linting as SKIPPED with the install hint (`rustup component add clippy`).

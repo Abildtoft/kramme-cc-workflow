@@ -111,6 +111,7 @@ Return to step 1 with the new committed baseline. Do not accumulate simplificati
 
 - **Verification**: Step 4 delegates to `kramme:verify:run`.
 - **Sibling — slice discipline**: `kramme:code:incremental` applies the same one-thing-at-a-time rule to feature work. Refactor passes obey the same six rules; this skill is the refactor-flavored loop.
+- **Sibling — AI slop**: this is the general simplification pass for post-feature branch cleanup; for an AI-slop-specific pass via the `kramme:deslop-reviewer` agent, use `kramme:code:cleanup-ai`.
 - **Alternative — scrap and rewrite**: if the recent code is inelegant enough that simplification would touch more than ~50% of it, stop and use `kramme:code:rewrite-clean` instead. A mediocre implementation is sometimes best scrapped rather than patched.
 - **Broader scan**: if the simplification opportunities extend beyond the recent diff, stop and suggest `kramme:code:refactor-opportunities` for a codebase-wide scan.
 

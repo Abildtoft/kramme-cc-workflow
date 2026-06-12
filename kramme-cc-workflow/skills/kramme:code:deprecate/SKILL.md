@@ -72,20 +72,29 @@ Use during Step 1's dependent audit when grep turns up adjacent code that also l
 UNVERIFIED: <assumption that has no source>
 ```
 
-Flag anything you accepted without checking: "no one imports this module anymore" (did you check the build graph, tests, and config?), "no one uses this endpoint" (did you read access logs?), "this flag is off in production" (did you query the flag service?), "the documented contract covers all observables" (Hyrum's Law says no). Every `UNVERIFIED` must be resolved before Step 4.4 (remove old) — verifying that something is dead is the removal's whole purpose.
+Flag anything you accepted without checking: "no one imports this module anymore" (did you check the build graph, tests, and config?), "no one uses this endpoint" (did you read access logs?), "this flag is off in production" (did you query the flag service?), "the documented contract covers all observables" (Hyrum's Law says no). Verifying that something is dead is the removal's whole purpose.
 
 ```
 ASK FIRST: <which boundary you're about to cross>
 Plan: <what you intend to do>
 ```
 
-Use before: deprecating a public API, removing an externally-consumed endpoint, deprecating code whose owner is unknown (see zombie-code gate below), compressing the announcement window on a Compulsory deprecation, or executing Step 4.4 (remove old) while any `UNVERIFIED` is still open.
+Use before: deprecating a public API, removing an externally-consumed endpoint, deprecating code whose owner is unknown (see zombie-code gate below), or compressing the announcement window on a Compulsory deprecation.
 
 ---
 
 ## Deprecation plan artifact
 
-Create or update `DEPRECATION_PLAN.md` in the repository root before Step 1 finishes. This is the working artifact for the deprecation workflow; after the deprecation closes, delete it or archive the final decision in durable project docs.
+Create or update `DEPRECATION_PLAN_<slug>.md` in the repository root before Step 1 finishes, where `<slug>` is derived from the deprecation target (symbol / feature / API name) normalized as:
+
+- lowercase
+- non-alphanumeric runs collapsed to a single `-`
+- leading/trailing `-` trimmed
+- truncated to 60 characters
+
+Examples: `Billing v1 API` → `billing-v1-api`, `LegacyAuthAdapter` → `legacyauthadapter`. Reject the input and abort if the slug is empty after normalization. Per-target naming keeps concurrent deprecations from colliding on one plan file.
+
+This is the working artifact for the deprecation workflow; after the deprecation closes, delete it or archive the final decision in durable project docs.
 
 Minimum template:
 
@@ -130,7 +139,7 @@ Current step: <Step 1 | Step 2 | Step 3 | Step 4.1 | Step 4.2 | Step 4.3 | Step 
 - [ ] Observation window elapsed without incident.
 ```
 
-On re-invocation, read `DEPRECATION_PLAN.md` first. Use `## Step Status`, `## Open Markers`, and `## Completion Gates` to find the earliest incomplete exit criterion across Step 1 through Step 4.4 and the overall completion gates, then resume there. If an existing plan lacks a status field for a required gate, treat that gate as incomplete until the evidence is recorded. Do not jump straight to removal because a previous session announced the deprecation.
+On re-invocation, list all `DEPRECATION_PLAN_*.md` files in the repository root first. If exactly one matches the current target's slug, read it; if several plans exist and the target is ambiguous, list them and ask the user which deprecation to resume. Then use `## Step Status`, `## Open Markers`, and `## Completion Gates` to find the earliest incomplete exit criterion across Step 1 through Step 4.4 and the overall completion gates, then resume there. If an existing plan lacks a status field for a required gate, treat that gate as incomplete until the evidence is recorded. Do not jump straight to removal because a previous session announced the deprecation.
 
 ## Step 1 — Decide whether to deprecate
 
@@ -144,7 +153,7 @@ Answer the five-question checklist. Extended signals and a decision tree live in
 
 Emit `SIMPLICITY CHECK: <smallest coherent removal>` once the answers are in.
 
-Record the five answers in `DEPRECATION_PLAN.md` under `## Decisions`.
+Record the five answers in `DEPRECATION_PLAN_<slug>.md` under `## Decisions`.
 
 ## Step 2 — Classify: Advisory vs Compulsory
 
@@ -171,7 +180,7 @@ The reason: zombie code is often load-bearing in non-obvious ways (the original 
 
 ## Step 3 — Pick a migration pattern
 
-Pick one named pattern and record it in `DEPRECATION_PLAN.md`'s header. Short descriptions inline; full examples + phasing guidance in `references/migration-patterns.md`.
+Pick one named pattern and record it in `DEPRECATION_PLAN_<slug>.md`'s header. Short descriptions inline; full examples + phasing guidance in `references/migration-patterns.md`.
 
 - **Strangler** — route to old or new behind a façade; migrate callers one slice at a time. Use when callers are many and the migration window spans months.
 - **Adapter** — thin shim that translates the old API shape to the new (or vice versa) during transition. Use when the shape changed but the migration is largely mechanical.
@@ -264,7 +273,6 @@ If you see any of these, stop and re-author:
 - Removing code with no deprecation notice having been published first.
 - Deprecating a public API with no migration guide.
 - Zombie code being removed without the ownership gate having cleared.
-- Step 4.4 (remove old) being executed while `UNVERIFIED` markers remain open.
 - Dependent audit based on grep alone — no import/build graph, no telemetry where required, and no package/docs/consumer inventory for the chosen surface.
 - Announcement window under 30 days on a Compulsory deprecation without `ASK FIRST`.
 - "Replacement parity" claimed without a contract or characterization test.
@@ -276,10 +284,10 @@ If you see any of these, stop and re-author:
 
 Before declaring the deprecation complete, self-check:
 
-- [ ] Five-question checklist answered; answers recorded in `DEPRECATION_PLAN.md`.
+- [ ] Five-question checklist answered; answers recorded in `DEPRECATION_PLAN_<slug>.md`.
 - [ ] Classification (Advisory / Compulsory) recorded.
 - [ ] Zombie-code gate explicitly cleared (owner identified) — not silently bypassed.
-- [ ] Named migration pattern recorded in `DEPRECATION_PLAN.md`.
+- [ ] Named migration pattern recorded in `DEPRECATION_PLAN_<slug>.md`.
 - [ ] Replacement covers every observable on the contract-plus-Hyrum map, verified by a contract or characterization test and by the CI/build/test or deployed monitoring surface that applies.
 - [ ] Announcement published on every surface the audience uses (code notice, CHANGELOG, internal migration note, external comms, API headers as applicable).
 - [ ] Migration guide or upgrade note validated against at least one real migration when caller migration is required.

@@ -1,6 +1,6 @@
 ---
 name: kramme:linear:issue-define
-description: "Create or improve a well-structured Linear issue through guided refinement. Use with --quick to create one new Linear issue from rough input using light clarification, duplicate checking, metadata selection, and approval instead of the full interview. Not for implementing Linear issues (use kramme:linear:issue-implement), multi-bug QA intake (use kramme:qa:intake), or root-cause bug triage (use kramme:debug:triage-to-issue)."
+description: "Requires the Linear MCP server. Create or improve a well-structured Linear issue through guided refinement. Use with --quick to create one new Linear issue from rough input using light clarification, duplicate checking, metadata selection, and approval instead of the full interview. Not for implementing Linear issues (use kramme:linear:issue-implement), multi-bug QA intake (use kramme:qa:intake), or root-cause bug triage (use kramme:debug:triage-to-issue)."
 argument-hint: "[issue-id] or [description and/or file paths for context] [--quick]"
 disable-model-invocation: true
 user-invocable: true
@@ -68,6 +68,8 @@ First parse flags:
 
 - If `$ARGUMENTS` contains `--quick`, remove it from the working description and set `quick_create = true`.
 - `--quick` is only valid for new Linear issues. If the remaining input identifies an existing Linear issue, stop and ask the user to rerun without `--quick` for improvement mode.
+
+**Prerequisite check:** before detecting mode or fetching an existing issue, if the `mcp__linear__*` tools are unavailable, the Linear MCP server is not connected. Stop here and tell the user to connect it — do not start the interview or issue lookup without a working Linear connection.
 
 ### Step 1: Detect Mode
 
@@ -480,18 +482,4 @@ Read the comprehensive issue template from `assets/comprehensive-template.md`. I
 
 ## Important Guidelines
 
-1. **Lead with "Why"** - Problem and value proposition are the most important parts. Don't settle for vague justifications.
-2. **Make non-goals explicit** - A focused issue is stronger than an aspirational one. If something should wait, say so.
-3. **Infer before asking** - Use repo context, existing issues, and provided files to draft the likely answer before asking the user to fill in basics.
-4. **Separate product calls from engineering choices** - Capture the decision that needs alignment, not detailed implementation instructions.
-5. **Write for Product Team first** - The issue should be compelling to non-technical stakeholders. They read Problem, Value, Goal, Scope, and Acceptance Criteria.
-6. **Technical details are secondary** - Keep implementation proposals high-level. Engineers determine the detailed how.
-7. **Code examples only when necessary** - Only for specific bugs or concrete fixes. New features don't need code examples.
-8. **Check for duplicates first** - Always search existing issues before creating new ones.
-9. **Exhaust the interview** - Don't rush through questions. Especially Round 1 (Problem & Value) for comprehensive issues.
-10. **Use exploration findings strategically** - Reference patterns and affected areas, but don't dump implementation details.
-11. **Craft real options** - Every AskUserQuestion option should be a legitimate choice.
-12. **Connect the dots** - Show how different decisions interact and affect each other.
-13. **Challenge diplomatically** - If scope seems too broad, suggest splitting.
-14. **Get user approval** - Always show the draft before creating the issue.
-15. **Keep simple bugs simple** - Don't over-engineer the issue definition. If root cause and fix are clear, the simple template is sufficient.
+Read the 15 issue-writing guidelines from `references/writing-guidelines.md` and apply them throughout the interview and composition phases. They cover leading with "why", explicit non-goals, inferring before asking, product-first writing, duplicate checking, and keeping simple bugs simple.

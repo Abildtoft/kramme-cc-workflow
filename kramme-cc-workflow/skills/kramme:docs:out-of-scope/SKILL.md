@@ -30,7 +30,7 @@ Route elsewhere if:
 
 1. Parse `$ARGUMENTS` by spaces. The first token is the subcommand.
 2. Recognize `record`, `check`, `append`, `reconsider` as exclusive subcommands.
-3. The remaining tokens form the concept. For `append`, the last token is the issue reference and the rest form the concept.
+3. The remaining tokens form the concept. For `append`, the last token is the issue reference and the rest form the concept — but only when the last token looks like an issue reference (`#123`, `ABC-123`, or a URL). If it does not (e.g. `append dark mode`), treat all remaining tokens as the concept and ask the user for the issue reference instead of guessing.
 4. If no arguments are given or the subcommand is unknown, print the supported subcommands and stop.
 
 ## Slug rule
@@ -47,7 +47,7 @@ Capture a settled rejection.
 
 1. Slug the concept.
 2. If `.out-of-scope/<slug>.md` already exists, ask whether the user meant `append`. Stop unless overridden.
-3. **Settled-vs-deferral gate** via AskUserQuestion:
+3. **Settled-vs-deferral gate** — ask the user (via the structured question tool when available, otherwise in plain prose) and wait for an explicit choice:
 
    ```yaml
    header: "Is this a settled rejection?"
@@ -71,7 +71,7 @@ Capture a settled rejection.
    - `{name or role}` → decider.
    - "Why this is out of scope" → substantive reason.
    - "Prior requests" → bullet list of issue references with one-line context each.
-7. If `.gitignore` would hide `.out-of-scope/`, ask once per record run (via AskUserQuestion) whether to keep it gitignored or remove the ignore rule. Default recommendation: committed (institutional memory).
+7. If `.gitignore` would hide `.out-of-scope/`, ask once per record run (via the structured question tool when available, otherwise in plain prose — wait for an explicit choice) whether to keep it gitignored or remove the ignore rule. Default recommendation: committed (institutional memory).
 8. Print `recorded .out-of-scope/<slug>.md`.
 
 ### `check <concept>`
@@ -87,7 +87,7 @@ Look up whether a concept has been rejected before.
    This is similar to `.out-of-scope/<slug>.md` (decided <date>) — we rejected this before because <one-line summary of "Why this is out of scope">. Continue, or honor the prior rejection?
    ```
 
-5. Route the answer through AskUserQuestion:
+5. Ask the user (via the structured question tool when available, otherwise in plain prose) and wait for an explicit choice:
 
    ```yaml
    header: "Honor prior rejection?"
@@ -118,7 +118,7 @@ Remove a rejection that no longer applies.
 1. Slug the concept; locate `.out-of-scope/<slug>.md`.
 2. If absent, print `no rejection recorded for <concept>` and stop.
 3. Read the file and surface its content so the user sees what is being removed.
-4. Confirm via AskUserQuestion:
+4. Confirm with the user (via the structured question tool when available, otherwise in plain prose) and wait for an explicit choice:
 
    ```yaml
    header: "Remove this rejection?"
@@ -149,7 +149,7 @@ Skills that read `.out-of-scope/` during their context-gathering phase — disco
 1. **Cheap-list filenames first.** Run `ls .out-of-scope/` (or equivalent). If absent or empty, skip silently.
 2. **Read file bodies only on plausible match.** Concept similarity is judgmental, not fuzzy. Read at most a handful of files per session.
 3. **Surface format:** `This is similar to .out-of-scope/<slug>.md (decided <date>) — we rejected this before because <one-line summary>. Continue, or honor the prior rejection?`
-4. **User is the gate.** Never auto-fail; route through AskUserQuestion and let the user override.
+4. **User is the gate.** Never auto-fail; ask the user (via the structured question tool when available, otherwise in plain prose) and let them override.
 
 ## Verification
 
@@ -159,4 +159,3 @@ Skills that read `.out-of-scope/` during their context-gathering phase — disco
 - `append` grows the "Prior requests" list by one bullet per new issue reference; a duplicate reference is rejected, not re-appended.
 - An empty slug (missing or fully stripped concept) errors out before any file operation.
 - `reconsider` deletes the matching file and prints a confirmation.
-- `description` field is ≤ 1024 chars; this SKILL.md is ≤ 500 lines.

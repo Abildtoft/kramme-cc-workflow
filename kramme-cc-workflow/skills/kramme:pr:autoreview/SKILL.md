@@ -38,7 +38,7 @@ Do not use this for UX, visual, accessibility, or product review. Use `kramme:pr
 
 2. **Run the delegated review**
    - Invoke `/kramme:pr:code-review $ARGUMENTS`.
-   - If slash-skill invocation is unavailable, read the sibling skill file at `../kramme:pr:code-review/SKILL.md` and follow that workflow with the same arguments.
+   - If slash-skill invocation is unavailable, locate and read the `kramme:pr:code-review` skill definition in the installed skills directory and follow that workflow with the same arguments.
    - Do not duplicate the reviewer taxonomy, diff collection, relevance validation, or report formatting here; those belong to `kramme:pr:code-review`.
 
 3. **Read the review result**

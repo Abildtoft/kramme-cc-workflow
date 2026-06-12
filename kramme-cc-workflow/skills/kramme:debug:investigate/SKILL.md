@@ -234,13 +234,17 @@ Root Cause: {one-line summary}
 Confidence: High / Medium / Low
 Location: {file}:{line}
 
-Fix Applied: Yes / No
-  Files Modified: {list}
-  Regression Test: {test file path}
+CHANGES MADE
+- Fix Applied: Yes / No
+- Files Modified: {list, or "none"}
+- Regression Test: {test file path, or "none"}
+- Verification: Tests PASS / FAIL, Build PASS / FAIL
 
-Verification:
-  Tests: PASS / FAIL
-  Build: PASS / FAIL
+THINGS I DIDN'T TOUCH
+- {NOTICED BUT NOT TOUCHING entries — out-of-scope issues spotted during investigation, or "none"}
+
+POTENTIAL CONCERNS
+- {unverified assumptions, unconfirmed reproduction, skipped regression test, or Low/Medium confidence caveats, or "none"}
 
 Investigation Log:
   (include the completed log from Step 5)

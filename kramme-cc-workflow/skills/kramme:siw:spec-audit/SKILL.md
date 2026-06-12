@@ -308,7 +308,9 @@ Read `references/post-processing-rules.md` once at the start of Step 4 and apply
 
 ### 4.2 Assign Global Finding IDs
 
-Re-number all findings as `SPEC-001`, `SPEC-002`, etc. in severity order (Critical first, then Major, then Minor).
+If a previous report exists at the target path from Step 5.1 (`siw/AUDIT_SPEC_REPORT.md`, or `AUDIT_SPEC_REPORT.md` in the project root), read it and record the highest previously reported `SPEC-NNN` as `previous_max_id`. Findings that match a previously reported finding (same issue, even if reworded) retain their existing IDs; new findings get sequential IDs starting at `previous_max_id + 1`, ordered by severity (Critical first, then Major, then Minor). If no previous report exists, number all findings `SPEC-001`, `SPEC-002`, etc. in severity order.
+
+This keeps IDs stable across re-runs so commits, SIW issues (e.g. `/kramme:siw:resolve-audit` filenames `ISSUE-G-XXX-{finding-id}-*.md`), and external references stay valid.
 
 ### 4.3 Assign Severity
 

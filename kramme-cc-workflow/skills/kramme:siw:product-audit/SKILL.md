@@ -261,7 +261,7 @@ If `siw/PRODUCT_AUDIT.md` (or `PRODUCT_AUDIT.md` in project root) exists:
 
 ## Step 4: Launch Product Reviewer Agent
 
-Read `references/product-reviewer-prompt.md`, fill in the placeholders, including `PRODUCT_LOOP_CONTEXT`, and launch one `kramme:product-reviewer` Explore agent with that prompt. No relevance validation step is needed because the entire spec set is the audit scope.
+Read `references/product-reviewer-prompt.md`, fill in the placeholders, including `PRODUCT_LOOP_CONTEXT`, and launch one agent via the Task tool (`subagent_type=kramme:product-reviewer`, `model=opus`) with that prompt. No relevance validation step is needed because the entire spec set is the audit scope.
 
 ---
 
@@ -389,7 +389,7 @@ Before creating any issues:
 For each selected finding:
 
 1. Apply the standard handled-finding skip rule. Skip the finding and report the matched artifact if it carries an `Existing issue:` annotation that resolves to an existing `siw/issues/ISSUE-G-*.md` file, is marked `**Status:** [Auto-fixed]` or `**Status:** [Applied directly]`, or a file matching `siw/issues/ISSUE-G-*-{finding-id}-*.md` exists. Treat unresolved `Existing issue:` annotations as stale metadata: warn in the final summary, but do not skip the finding.
-2. Determine next available `G-` issue number from `siw/issues/`.
+2. Determine the next available `G-` issue number: parse `siw/OPEN_ISSUES_OVERVIEW.md` for the highest `G-` number, compute candidate = highest + 1 (padded to 3 digits), then verify no on-disk collision by globbing `siw/issues/ISSUE-G-{candidate}-*.md`. If any file matches, the tracker is out of sync with `siw/issues/`; increment the candidate and re-check until no file matches, then warn that the tracker may need `/kramme:siw:issue-reindex`.
 3. Create issue file `siw/issues/ISSUE-G-{NNN}-product-{finding-id}-{slugified-title}.md`. Give it a status line carrying explicit `Size` (`XS|S|M|L`), `Parallelization` (`Safe to parallelize | Must be sequential | Needs coordination`), and `Mode` metadata so it matches the current tracker schema:
 
    ```markdown

@@ -23,7 +23,7 @@ Extract from `$ARGUMENTS`:
 2. **Flags** (optional):
    - `--flows <flow1,flow2,...>` — comma-separated list of flow names to scope the review (e.g., `onboarding,settings,billing`)
    - `--focus <dimension>` — specific review dimension to emphasize (e.g., `discoverability`, `consistency`, `trust-safety`)
-   - `--inline` — reply with the full report inline instead of writing `PRODUCT_AUDIT_OVERVIEW.md`
+   - `--inline` — reply with the full report inline instead of writing `PRODUCT_AUDIT_OVERVIEW.md`. Note: inline runs do not update the overview file, so previous-review deduplication and "Resolved since last review" tracking (Step 3b) only accrue across file-mode runs.
 
 Store parsed values:
 
@@ -87,7 +87,7 @@ HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$TARGET_URL"
 
 **Check for browser MCP:**
 
-A browser MCP is required (same detection as `/kramme:browse`). Check for available tools in priority order:
+A browser MCP is required (same detection as `/kramme:browse`). The detection contract — provider list and priority order — is owned by `/kramme:browse` Step 2; this copy must match it. Check for available tools in priority order:
 
 1. `mcp__claude-in-chrome__*` tools
 2. `mcp__chrome-devtools__*` tools

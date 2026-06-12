@@ -144,7 +144,6 @@ Otherwise:
 - Write to `PRODUCT_REVIEW_OVERVIEW.md` in the project root using the report format from `assets/product-review-report-format.md`
 - Include all sections even if empty (with count of 0)
 - Treat the file as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
-- If `PRODUCT_REVIEW_OVERVIEW.md` is not already listed in `.gitignore` (or any `.gitignore` in a parent directory), ask the user whether to add it before changing `.gitignore`. If the user declines or the workflow is non-interactive, do not mutate `.gitignore`; mention that the artifact remains unignored.
 
 ### Step 9: Provide Action Plan
 
