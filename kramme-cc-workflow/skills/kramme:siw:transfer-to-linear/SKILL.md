@@ -19,7 +19,7 @@ Migrate an existing Structured Implementation Workflow project into Linear in on
 
 **Linear Migration Override**: Invoking this command is explicit instruction to create or update the Linear project, documents, milestones, and issues after the user approves the migration plan. Always present the plan before any write unless `--dry-run` is passed, in which case no Linear writes occur.
 
-**One-way with retry markers**: This skill is still a one-shot migration, not an idempotent sync. To make interrupted runs recoverable, write a minimal `Linear Transfer` marker back to each SIW issue file immediately after its Linear issue is created. Re-running after a partial failure must use `--skip-existing` or `--retry`, which skips source issues that already carry a marker, reuses existing project documents by exact title, and falls back to exact Linear issue-title matching only for records whose source title is unique.
+**One-way with retry markers**: This skill is still a one-shot migration, not an idempotent sync. To make interrupted runs recoverable, write a minimal `Linear Transfer` marker back to each SIW issue file immediately after its Linear issue is created. On every run, source issues that already carry a marker are skipped, and existing project documents and milestones are reused by normalized title whenever the target project already exists. `--skip-existing` (alias `--retry`) additionally matches unmarked source issues against existing Linear issues by exact title, and only when the source title is unique among unmarked source issues.
 
 ## Input Handling
 
@@ -30,10 +30,10 @@ Migrate an existing Structured Implementation Workflow project into Linear in on
 - `--team <team>`: Linear team name, key, or UUID.
 - `--dry-run`: build and print the migration plan without creating or updating Linear records and without prompting for removal.
 - `--skip-done`: omit issues whose SIW status is DONE. Default is to migrate everything, including DONE issues.
-- `--skip-existing`: before planning creates, skip source issues that already have a `Linear Transfer` marker or an unambiguous exact title match in the target Linear team/project for a unique source title, and skip project documents with exact title matches.
+- `--skip-existing`: additionally match unmarked source issues against existing Linear issues in the target team/project by exact normalized title, for source titles that are unique among unmarked source issues. Marker-based issue skips and document/milestone title reuse happen on every run and do not require this flag.
 - `--retry`: alias for `--skip-existing`, intended for resuming after a partial issue-write failure.
 
-If an argument is ambiguous, treat it as `siw-dir` when it is an existing directory; otherwise treat it as a project-name hint.
+If a positional argument is an existing directory, treat it as `siw-dir`. If it contains a path separator but does not exist, stop and report the missing path instead of reinterpreting it. Otherwise treat it as a project-name hint.
 
 ## Phase 1: Validate Prerequisites
 
@@ -41,7 +41,7 @@ If an argument is ambiguous, treat it as `siw-dir` when it is an existing direct
 2. Verify at least one permanent spec file or `OPEN_ISSUES_OVERVIEW.md` exists under the SIW directory. If not found, stop and suggest `/kramme:siw:init`.
 3. Verify Linear tools are available:
    - Read tools: list teams, list projects, list milestones, list issue labels, list issue statuses.
-   - Write tools: project create/update, milestone create/update, and issue create/update. Document create is optional — the spec migration falls back to the project description when it is unavailable. In Claude Code use the `mcp__linear__*` tools exposed by the Linear MCP server; in Codex use the equivalent `save_project` / `save_milestone` / `save_issue` tools. Tool names vary across catalogs — discover the available Linear tools at runtime rather than assuming exact names.
+   - Write tools: project create/update, milestone create/update, and issue create/update. Document create is optional — the spec migration falls back to the project description when it is unavailable. Linear tool names and prefixes vary across hosts and catalogs — discover the available Linear tools at runtime rather than assuming exact names.
 4. If the core Linear write tools (project, milestone, issue) are unavailable and `--dry-run` is not set, stop. If `--dry-run` is set, continue with an offline plan and mark all Linear metadata as `UNVERIFIED`.
 
 ## Phase 2: Extract SIW Artifacts
@@ -74,8 +74,8 @@ If no local issue files exist, migrate the Linear project and documents only, an
    - Otherwise derive a project name from the main spec title and prepare a create action.
 6. Fetch milestones for the chosen project when the project already exists. If the project will be created, defer milestone lookup until after project creation and treat all phase milestones as planned creates.
 7. Fetch labels. Use existing labels only. Do not create labels unless the user explicitly asks during the plan review.
-8. If `--skip-existing` or `--retry` is set and the target project already exists, fetch existing Linear Documents under that project when the tool catalog supports it. Match planned documents by exact normalized title only; if multiple documents match the same normalized title, mark the document `needs decision` instead of guessing.
-9. If `--skip-existing` or `--retry` is set, fetch candidate existing Linear issues for the resolved team and project when possible. Before title matching, group unmarked source issues by normalized planned Linear title. If more than one unmarked source issue shares the same normalized title, mark those source issues `needs decision` instead of title-matching; title fallback is only safe when the source title is unique. For unique source titles, match by exact normalized title only; if multiple Linear issues match the same normalized title, mark the source issue `needs decision` instead of guessing.
+8. If the target project already exists, fetch existing Linear Documents under it when the tool catalog supports it, for title-based reuse per the duplicate-detection rules in `references/linear-mapping.md`.
+9. If `--skip-existing` or `--retry` is set, fetch candidate existing Linear issues for the resolved team and project when possible, for the issue title fallback defined in `references/linear-mapping.md`.
 
 ## Phase 4: Build Migration Plan
 
@@ -84,13 +84,13 @@ Read the Linear mapping rules from `references/linear-mapping.md`.
 Build a plan with:
 
 - Project action: `create`, `update`, or `reuse`.
-- Document actions: `create` by default for each spec file (main spec + each supporting spec). When `--skip-existing` or `--retry` found exactly one existing project document with the same normalized title, mark it `skip-existing` and carry its URL into the result summary. Mark `needs decision` when duplicate document title matches make the retry target ambiguous.
-- Milestone actions: `create`, `update`, `reuse`, `skip`, or `needs decision`. Match existing milestones by name only (case/space/punctuation-normalized); there is no SIW marker. If multiple milestones share a normalized name, mark `needs decision`.
-- Issue actions: `create` by default. Mark `skip-existing` when the source issue already has a `Linear Transfer` marker, or when `--skip-existing` / `--retry` found exactly one existing Linear issue with the same normalized title for a source title that is unique among unmarked source issues. Mark `needs decision` when an issue appears in `OPEN_ISSUES_OVERVIEW.md` but its issue file is missing, when duplicate source titles make title fallback ambiguous, or when duplicate Linear title matches make the retry target ambiguous.
+- Document actions: `create` by default for each spec file (main spec + each supporting spec). When the target project already exists and exactly one existing project document matches the planned normalized title, mark it `skip-existing` and carry its URL into the result summary. Mark `needs decision` when duplicate title matches make the target ambiguous.
+- Milestone actions: `create`, `update`, `reuse`, `skip`, or `needs decision`, matched by normalized name per `references/linear-mapping.md`; there is no SIW marker.
+- Issue actions: `create` by default. Mark `skip-existing` when the source issue already has a `Linear Transfer` marker (every run), or when the `--skip-existing` / `--retry` title fallback matched per `references/linear-mapping.md`. Mark `needs decision` when an issue appears in `OPEN_ISSUES_OVERVIEW.md` but its issue file is missing, or when title matching is ambiguous on either side.
 - Metadata mappings for milestone, state, priority, labels, and project.
 - Dependencies recorded as text in the issue description (the `Related` field and the SIW metadata block). Do not plan a relation-linking pass — the Linear MCP cannot create issue relations.
 
-When `--skip-existing` or `--retry` is not set, surface that issue actions default to `create`. When either flag is set, include a "Skipped existing" section naming each skipped document or issue source item and the matched Linear record ID/URL or title-match reason.
+Whenever the plan contains `skip-existing` actions, include a "Skipped existing" section naming each skipped document or issue source item and the matched Linear record ID/URL, marker, or title-match reason.
 
 ## Phase 5: Review Plan
 
@@ -133,7 +133,7 @@ Execute in this order:
      - Transferred: {YYYY-MM-DD}
      ```
 
-   - Maintain an in-memory transfer ledger with one row per source issue: source item, title, Linear ID/URL, and status `CREATED`, `SKIPPED_EXISTING`, or `PENDING`.
+   - Maintain an in-memory transfer ledger with one row per source issue: source item, title, Linear ID/URL, and status `CREATED`, `CREATED_NO_MARKER`, `SKIPPED_EXISTING`, or `PENDING`.
 
 5. Capture each Linear project, document, milestone, and issue identifier and URL for the result summary.
 
@@ -141,7 +141,7 @@ For each write, use only the current migration plan. Do not widen scope to unrel
 
 ## Phase 7: Verify and Prompt Removal
 
-1. Verify that every in-scope project, document, milestone, and issue was created or updated as planned.
+1. Verify the migration: every planned write returned a Linear identifier and URL, the transfer ledger contains no `PENDING` or `CREATED_NO_MARKER` rows, and each created issue's source file carries its `Linear Transfer` marker.
 2. Report:
    - Linear project URL.
    - Counts of created/updated milestones, documents, and issues, plus any skipped or unresolved items.
@@ -158,6 +158,7 @@ End the workflow here. Do not delete files and do not start implementation. A re
 - **No team can be resolved**: ask once; if still unresolved, stop.
 - **Document creation unavailable**: fall back to embedding spec content in the project description, warn that supporting specs could not become standalone Documents, and withhold the removal prompt.
 - **Milestone write failure**: stop before writing dependent issues unless the user explicitly chooses to continue without milestone assignment; withhold the removal prompt.
+- **Marker write-back failure**: if appending the `## Linear Transfer` section to a source file fails after a successful Linear issue create, set that ledger row to `CREATED_NO_MARKER`, continue with the remaining issues, include the row in the retry ledger, and withhold the removal prompt.
 - **Issue write failure**: stop after reporting the failed action, withhold the removal prompt, and print a machine-usable retry ledger in this exact fenced shape:
 
   ```text
@@ -166,7 +167,7 @@ End the workflow here. Do not delete files and do not start implementation. A re
 
   | Source item | Title | Linear ID | Status |
   | --- | --- | --- | --- |
-  | {issue-file} | {title} | {LIN-123 or PENDING} | {CREATED|SKIPPED_EXISTING|PENDING} |
+  | {issue-file} | {title} | {LIN-123 or PENDING} | {CREATED|CREATED_NO_MARKER|SKIPPED_EXISTING|PENDING} |
   ```
 
-  The retry path must skip rows whose source files now carry `Linear Transfer` markers, reuse existing project documents by exact normalized title, and use exact issue-title matching only as a fallback for issue rows that were created before the marker could be written and whose normalized title is unique among unmarked source issues. Duplicate source titles must become `needs decision` items unless the retry ledger or another user-provided source-item mapping disambiguates them.
+  The retry path follows the duplicate-detection rules in `references/linear-mapping.md`. Rows that the rules mark `needs decision` may be disambiguated by this retry ledger or another user-provided source-item mapping.

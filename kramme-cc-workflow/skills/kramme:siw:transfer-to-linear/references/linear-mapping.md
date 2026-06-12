@@ -1,8 +1,23 @@
 # Linear Mapping Rules
 
-Read this file from `Phase 4: Build Migration Plan` in `SKILL.md`.
+Read this file from `Phase 3: Resolve Linear Context` (when matching existing records) and `Phase 4: Build Migration Plan` in `SKILL.md`.
 
-This is a one-way migration. No SIW marker is added to Linear records and no standalone rerun mapping is persisted. Per-issue transfer markers support interrupted issue retries; project documents and milestones are matched by name/title only when retry flags are used, to avoid duplicate planning artifacts when `--project` points at an existing project.
+This is a one-way migration. No SIW marker is added to Linear records and no standalone rerun mapping is persisted. Per-issue transfer markers support interrupted issue retries; project documents and milestones are matched by name/title whenever the target project already exists, to avoid duplicate planning artifacts.
+
+## Duplicate Detection and Retry Matching
+
+These rules are the single source of truth for matching planned records against existing Linear records. Other sections and `SKILL.md` reference them rather than restating them.
+
+**Normalized match**: two titles or names match when they are equal exactly, or after normalizing case, spaces, and punctuation. Exactly one match → reuse the existing record (`skip-existing` for documents and issues, `update`/`reuse` for milestones). Multiple matches → `needs decision`. No match → `create`.
+
+**Documents** (every run, when the target project already exists): match each planned document against existing project documents by normalized title.
+
+**Milestones** (every run, when the project already exists): match each planned milestone against existing project milestones by normalized name.
+
+**Issues**:
+
+- A source issue with a populated `## Linear Transfer` marker is always `skip-existing`, on every run, using the recorded identifier/URL — no title query needed.
+- Title fallback applies only when `--skip-existing` or `--retry` is set, and only to unmarked source issues whose normalized planned Linear title is unique among unmarked source issues. If multiple unmarked source issues share a normalized title, mark each `needs decision` even when exactly one Linear issue carries that title — otherwise a retry can collapse distinct SIW issues onto one Linear record. For a unique source title, apply the normalized-match rule against existing Linear issues.
 
 ## Project Mapping
 
@@ -47,9 +62,7 @@ Create one Linear Document under the project for:
 
 If the Linear MCP cannot create Documents, fall back to embedding the main spec summary in the project description and record which supporting specs could not be captured. In that case the migration is not "clean", so removal of `siw/` must not be prompted (see SKILL.md Phase 7).
 
-**Retry duplicate detection (title-based only):**
-
-When `--skip-existing` or `--retry` is set, an existing Linear Document is the same target when its title matches the planned document title exactly, or after normalizing case, spaces, and punctuation, and no other document shares that normalized title. If exactly one match exists, plan `skip-existing`. If multiple match, mark `needs decision`. If none match, plan `create`.
+Existing-document reuse follows Duplicate Detection and Retry Matching above.
 
 ## Milestone Mapping
 
@@ -69,9 +82,9 @@ Use the phase goal, outcome, validation notes, and relevant success criteria whe
 
 Set `targetDate` only when a concrete date exists in the SIW artifacts. Do not invent target dates from phase ordering.
 
-**Duplicate detection (name-based only):**
+**Duplicate detection:**
 
-An existing Linear milestone is the same target when its name matches the planned name exactly, or after normalizing case, spaces, and punctuation, and no other milestone shares that normalized name. If exactly one match exists, plan an update or reuse. If multiple match, mark `needs decision`. If none match, plan a create.
+Existing-milestone matching follows Duplicate Detection and Retry Matching above (normalized name; one match → update/reuse, multiple → `needs decision`, none → create).
 
 **Skip rules:**
 
@@ -84,9 +97,9 @@ Skip milestone creation when:
 
 Use the SIW issue title directly as the Linear issue title. Do not add a `[SIW:id]` prefix — SIW identity is intentionally abandoned after migration.
 
-**Retry duplicate detection (title-based fallback):**
+**Retry duplicate detection:**
 
-When `--skip-existing` or `--retry` is set, title fallback applies only to source issues without a `Linear Transfer` marker whose normalized planned Linear title is unique among unmarked source issues. If multiple source issue files share the same normalized title, mark each unmarked source issue `needs decision` instead of `skip-existing`, even when exactly one Linear issue has that title; otherwise a retry can collapse distinct SIW issues onto one Linear record. For a unique source title, an existing Linear issue is the same target when its title matches exactly, or after normalizing case, spaces, and punctuation, and no other Linear issue shares that normalized title. If exactly one Linear issue matches, plan `skip-existing`; if multiple match, mark `needs decision`; if none match, plan `create`.
+Marker-based skips and the `--skip-existing` / `--retry` title fallback follow the issue rules in Duplicate Detection and Retry Matching above.
 
 Preserve the SIW issue content in the description in this order when present:
 
@@ -118,7 +131,7 @@ Assign each phase issue to the mapped Linear milestone for its SIW phase when a 
 
 ## Status Mapping
 
-Use the team's issue statuses and match by state `type` (`backlog`, `unstarted`, `started`, `completed`, `canceled`) or closest exact name. Normalize SIW status casing first for one release — legacy issue-file metadata may use `Ready` while the tracker/legend uses `READY`; treat them as the same value.
+Use the team's issue statuses and match by state `type` (`backlog`, `unstarted`, `started`, `completed`, `canceled`) or closest exact name. Compare SIW status values case-insensitively — legacy issue-file metadata may use `Ready` while the tracker/legend uses `READY`; treat them as the same value.
 
 | SIW status | Preferred Linear state type |
 | --- | --- |
