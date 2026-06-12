@@ -2,7 +2,7 @@
 
 Read this file from `Phase 3: Resolve Linear Context` (when matching existing records) and `Phase 4: Build Migration Plan` in `SKILL.md`.
 
-This is a one-way migration. No SIW marker is added to Linear records and no standalone rerun mapping is persisted. Per-issue transfer markers support interrupted issue retries; project documents and milestones are matched by name/title whenever the target project already exists, to avoid duplicate planning artifacts.
+This is a one-way migration. No machine-readable rerun marker is added to Linear records and no standalone rerun mapping is persisted (the human-readable `SIW ID` line in each issue's metadata block exists for readers, not for matching). Per-issue transfer markers support interrupted issue retries; project documents and milestones are matched by name/title whenever the target project already exists, to avoid duplicate planning artifacts.
 
 ## Duplicate Detection and Retry Matching
 
@@ -10,14 +10,14 @@ These rules are the single source of truth for matching planned records against 
 
 **Normalized match**: two titles or names match when they are equal exactly, or after normalizing case, spaces, and punctuation. Exactly one match → reuse the existing record (`skip-existing` for documents and issues, `update`/`reuse` for milestones). Multiple matches → `needs decision`. No match → `create`.
 
-**Documents** (every run, when the target project already exists): match each planned document against existing project documents by normalized title.
+**Documents** (every run, when the target project already exists): match each planned document against existing project documents by normalized title. Also treat the ` ({filename})` suffix as optional during matching, so documents created before the filename-suffix convention still match.
 
 **Milestones** (every run, when the project already exists): match each planned milestone against existing project milestones by normalized name.
 
 **Issues**:
 
 - A source issue with a populated `## Linear Transfer` marker is always `skip-existing`, on every run, using the recorded identifier/URL — no title query needed.
-- Title fallback applies only when `--skip-existing` or `--retry` is set, and only to unmarked source issues whose normalized planned Linear title is unique among unmarked source issues. If multiple unmarked source issues share a normalized title, mark each `needs decision` even when exactly one Linear issue carries that title — otherwise a retry can collapse distinct SIW issues onto one Linear record. For a unique source title, apply the normalized-match rule against existing Linear issues.
+- Title fallback applies only when `--skip-existing` or `--retry` is set, and only to unmarked source issues whose normalized planned Linear title is unique among unmarked source issues. If multiple unmarked source issues share a normalized title, mark each `needs decision` even when exactly one Linear issue carries that title — otherwise a retry can collapse distinct SIW issues onto one Linear record. For a unique source title, apply the normalized-match rule against existing Linear issues, treating a trailing decision citation like `(D-052)` / `(OD-003)` as optional on either side — planned titles strip citations, but issues created by earlier runs may still carry them.
 
 ## Project Mapping
 
@@ -30,18 +30,34 @@ Create or update one Linear project for the SIW project. A project requires at l
 
 **Description:**
 
-Keep the project description short. The full spec and supporting specs are migrated as Linear Documents (see Document Mapping), so the description only needs an orienting summary:
+Keep the project description short. The full spec, supporting specs, and decision log are migrated as Linear Documents (see Document Mapping), so the description only needs an orienting summary plus a notation legend. Migrated bodies are full of SIW notation that resolves to nothing inside Linear — the legend is what makes the project understandable to a Linear-only reader.
+
+Write the Summary and Value sections for non-technical stakeholders: plain language, no SIW or implementation jargon, no file paths or ID notation. A manager or customer-facing colleague landing on the project page should understand what problem is being solved, why, and what the value is without opening any Document. Pull this from the spec's problem statement, goals, and success criteria — summarize outcomes, not architecture:
 
 ```markdown
 ## Summary
 
-{overview/problem summary, 1–3 sentences}
+{1–3 sentences in plain language: what problem this project solves, for whom, and why it matters now}
+
+## Value
+
+{1–3 bullets: the concrete outcome when this ships — what users, the business, or the team gain}
+
+## How to read this project
+
+- `D-0xx` / `OD-0xx` citations refer to entries in the attached "{decision log document title}" Document.
+- `{main-spec-filename} > Section` pointers refer to the attached "{main spec document title}" Document.
+- `Pn-NNN` IDs are the original SIW issue IDs; every issue carries its own ID in its `SIW Metadata` block, so they resolve via project search.
+- Mode `AUTO` means an agent can implement the issue autonomously; `HITL` means human-in-the-loop checkpoints are required.
+- `siw/` paths refer to the retired local planning directory this project was migrated from.
 
 ## SIW Context
 
 - Migrated from local SIW markdown artifacts in `{siw-dir}`.
-- Main spec and supporting specs are attached as Linear Documents.
+- Main spec, supporting specs, and decision log are attached as Linear Documents.
 ```
+
+Include only legend lines whose notation actually appears in the migrated content.
 
 **State:**
 
@@ -55,10 +71,12 @@ Create one Linear Document under the project for:
 
 - The main spec.
 - Each `supporting-specs/*.md` file.
+- Each non-selected main-spec candidate (a file that lost the main-spec tiebreak is still a source-of-truth document, not disposable).
+- `LOG.md`. In a mature SIW project the log is the canonical decision register — issue bodies cite it heavily (`D-0xx`), and excluding it would orphan every citation once `siw/` is removed.
 
-**Title:** the document's first `#` heading, falling back to the filename without extension.
+**Title:** the document's first `#` heading, falling back to the filename without extension, with the original filename appended in parentheses — e.g. `ChallengeCraft Decision Log (LOG.md)`. Stale path references in migrated bodies (like `siw/LOG.md`) then still ring a bell.
 
-**Body:** the file's markdown content, preserved as-is.
+**Body:** the file's markdown content, preserved as-is. Linear normalizes markdown on save (bullet style, table dashes, bold spans, auto-linked bare domains), so verify round-trips by normalized content, not bytes.
 
 If the Linear MCP cannot create Documents, fall back to embedding the main spec summary in the project description and record which supporting specs could not be captured. In that case the migration is not "clean", so removal of `siw/` must not be prompted (see SKILL.md Phase 7).
 
@@ -72,11 +90,16 @@ Create or update Linear project milestones from SIW phase candidates.
 
 - Use `Phase N: {title}` for numbered SIW phases.
 - Use the explicit SIW milestone heading for non-phase milestones.
+- Strip trailing decision citations like `(D-052)` from the name; the citation stays in the description where the project legend explains it.
 - Keep names stable so name-based matching works on a reused project.
 
 **Description:**
 
-Use the phase goal, outcome, validation notes, and relevant success criteria when available. Keep descriptions concise; issue-level details belong in the Linear issues.
+Write a short, succinct synthesis of the work the milestone contains: what this phase delivers, what state the project is in when it is done, and any validation gate it must pass. Use the phase goal, outcome, validation notes, and relevant success criteria as source material.
+
+Do not restate or enumerate the milestone's issues — Linear already lists them under the milestone, so a description that mirrors the issue list adds nothing. Issue-level details belong in the Linear issues.
+
+Never copy section `Parallelization:` lines or other ordering guidance verbatim — they carry raw SIW IDs (`P2-005→{P2-006, P2-007}`) that resolve to nothing in Linear. Include ordering guidance only when it changes how the milestone should be worked (a hard gate or a critical path), rewritten using issue titles, or updated after issue creation to use Linear identifiers (`{TEAM}-N` mentions auto-link in milestone descriptions).
 
 **Target date:**
 
@@ -95,7 +118,7 @@ Skip milestone creation when:
 
 ## Issue Title and Description
 
-Use the SIW issue title directly as the Linear issue title. Do not add a `[SIW:id]` prefix — SIW identity is intentionally abandoned after migration.
+Use the SIW issue title directly as the Linear issue title, minus any trailing decision citation like `(D-052)` — the citation stays in the body, where the project legend explains it. Do not add a `[SIW:id]` prefix — SIW identity moves to the metadata block, not the title.
 
 **Retry duplicate detection:**
 
@@ -112,11 +135,12 @@ Preserve the SIW issue content in the description in this order when present:
 7. Technical Notes
 8. Resolution
 
-Append a compact metadata block:
+Append a compact metadata block. `SIW ID` is mandatory: migrated bodies keep textual cross-references like "Blocked by: P3-004", and the stamp is the only thing that makes them resolvable via project search after `siw/` is gone.
 
 ```markdown
 ## SIW Metadata
 
+- SIW ID: {id}
 - Status: {SIW status}
 - Priority: {priority}
 - Size: {size}
@@ -168,12 +192,21 @@ Do not create labels automatically. If useful labels are missing, mention them i
 
 ## Dependencies
 
-The Linear MCP server exposes no issue-relation tool, so this migration does not create live Linear relations. Record SIW dependencies as text only:
+Always record SIW dependencies as text:
 
 - Keep the `Related: {ids}` line in the SIW metadata block.
 - When an SIW issue states it depends on, blocks, or relates to another issue, reflect that in the issue body text.
 
-For reference, if relations are ever added later via raw GraphQL (`issueRelationCreate`, requiring a separate Linear API key), the relation enum is `blocks` / `related` / `similar` / `duplicate` — there is no `blockedBy` (invert a `blocks` relation) and no `relatedTo` (use `related`).
+**Native relations** (when Phase 1 capability discovery found relation parameters such as `blockedBy` / `blocks` / `relatedTo` on the issue write tool):
+
+Plan a two-phase issue migration. Create all issues first, collecting the SIW-ID-to-Linear-ID map from the transfer ledger, then run a relation pass driven by each issue file's `Blocked by:` / `Blocks:` lines:
+
+- Expand ranges like `P3-002..P3-007` into individual edges.
+- Write each `Blocked by:` edge as `blockedBy` on the downstream issue (or as an inverted `blocks`, depending on which parameters the tool exposes). Deduplicate edges that appear on both sides.
+- Relation parameters are append-only — re-running the pass cannot remove or corrupt existing relations, so it is retry-safe.
+- Report edges that reference SIW IDs absent from the ledger (for example, dependencies on issues excluded by `--skip-done`) instead of failing.
+
+When no relation parameters exist, text is the only record. For reference, relations can be added later via raw GraphQL (`issueRelationCreate`, requiring a separate Linear API key); that enum is `blocks` / `related` / `similar` / `duplicate` — there is no `blockedBy` (invert a `blocks` relation) and no `relatedTo` (use `related`).
 
 ## Skip Rules
 

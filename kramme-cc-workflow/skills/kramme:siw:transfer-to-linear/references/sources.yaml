@@ -8,14 +8,14 @@ sources:
   - id: linear-mcp
     url: https://linear.app/docs/mcp
     title: "Linear — Model Context Protocol (MCP) server"
-    rationale: "The skill targets the official Linear MCP server for project, milestone, document, and issue writes; the Feb 2026 MCP update is why milestone and document creation are assumed available."
-    last_reviewed_at: 2026-06-05
+    rationale: "The skill targets the official Linear MCP server for project, milestone, document, and issue writes; the Feb 2026 MCP update is why milestone and document creation are assumed available. Phase 1's capability discovery (relation parameters on issue writes, attachment-upload tools) exists because the MCP tool surface keeps growing across releases."
+    last_reviewed_at: 2026-06-12
     baseline_hash: ""
   - id: linear-issue-relations
     url: https://linear.app/docs/issue-relations
     title: "Linear — Issue relations"
-    rationale: "Justifies the text-only dependency decision: relations (blocks/related/similar/duplicate) exist in the API but are not exposed via the MCP server, so the skill records dependencies as text rather than live links."
-    last_reviewed_at: 2026-06-05
+    rationale: "Grounds the native-relation pass in references/linear-mapping.md (Dependencies): current MCP issue writes accept append-only blockedBy/blocks/relatedTo parameters, so the skill writes native relations when capability discovery finds them and falls back to text-only dependencies otherwise."
+    last_reviewed_at: 2026-06-12
     baseline_hash: ""
   - id: linear-priority
     url: https://linear.app/docs/priority
