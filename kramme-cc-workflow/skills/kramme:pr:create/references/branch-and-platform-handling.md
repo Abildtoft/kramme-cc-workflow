@@ -60,6 +60,8 @@ Capture the result as `{base-branch}` — used in later display strings, the `gi
 
 ### Branch Decision
 
+Track `{linear-issue-id}` as nullable workflow state. When a Linear-style issue ID is supplied by the user or detected in the current branch name, normalize it to uppercase and capture it as `{linear-issue-id}`. Use the generic pattern `[A-Z]{2,5}-\d+` case-insensitively; do not hard-code team prefixes. If no issue ID is found, leave `{linear-issue-id}` empty.
+
 **If the current branch equals `{base-branch}`:**
 
 #### Check for Linear Issue
@@ -89,6 +91,8 @@ multiSelect: false
    options: []
    ```
 
+   Normalize the supplied ID to uppercase and capture it as `{linear-issue-id}`.
+
 2. Fetch issue details using Linear MCP:
 
    ```
@@ -105,7 +109,7 @@ multiSelect: false
    Falling back to file-based branch naming.
    ```
 
-   Continue with file-based naming.
+   Continue with file-based naming. Keep `{linear-issue-id}` captured from the user's input for PR description linking.
 
 4. **If fetch succeeds and `branchName` is available:**
    - Use the `branchName` directly from the Linear response as `{branchName}`
@@ -200,7 +204,7 @@ multiSelect: false
    git checkout -b {chosen-branch-name}
    ```
 
-**If already on a feature branch:** Continue with current branch, but validate upstream configuration first.
+**If already on a feature branch:** Continue with current branch, but first scan the branch name for a Linear-style issue ID using `[A-Z]{2,5}-\d+` case-insensitively. If found, normalize it to uppercase and capture it as `{linear-issue-id}`. Then validate upstream configuration.
 
 ### No-Upstream Handling
 

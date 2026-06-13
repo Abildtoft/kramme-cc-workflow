@@ -6,6 +6,7 @@
     cd "'"$BATS_TEST_DIRNAME"'/.."
     create="skills/kramme:pr:create/SKILL.md"
     preflight="skills/kramme:pr:create/references/pre-validation-checks.md"
+    branch="skills/kramme:pr:create/references/branch-and-platform-handling.md"
     confirmation="skills/kramme:pr:create/references/confirmation-and-creation.md"
 
     grep -qF "MISSING REQUIREMENT: gh CLI not installed" "$preflight"
@@ -22,6 +23,19 @@
     grep -qF "If the generator emits a blocking \`MISSING REQUIREMENT:\` marker" "$create"
     grep -qF "do **not** proceed to Step 8 or create the PR" "$create"
     grep -qF "The non-blocking \"no Linear ID\" marker" "$create"
+    grep -qF "Default to \`Closes {linear-issue-id}\`" "$create"
+    grep -qF "replace that line with \`Closes {linear-issue-id}\`" "$create"
+    grep -qF "already linked \`{linear-issue-id}\` with a non-closing keyword" "$create"
+    grep -qF "do not add a separate \`Closes {linear-issue-id}\` line" "$create"
+    grep -qF "Do not override an explicit user instruction to use a different keyword" "$create"
+    grep -qF "Carry \`{linear-issue-id}\` into Step 8" "$create"
+    grep -qF "Apply the same \`{linear-issue-id}\` normalization from Step 7.2 to the fallback description" "$create"
+    grep -qF "has no auto-close line or non-closing link for that issue" "$create"
+    grep -qF "append \`Closes {linear-issue-id}\` before continuing" "$create"
+
+    grep -qF "Track \`{linear-issue-id}\` as nullable workflow state" "$branch"
+    grep -qF "Normalize the supplied ID to uppercase and capture it as \`{linear-issue-id}\`" "$branch"
+    grep -qF "scan the branch name for a Linear-style issue ID" "$branch"
 
     grep -qF "PR_TITLE_FILE=\$(mktemp \"\${TMPDIR:-/tmp}/pr-title.XXXXXX\")" "$confirmation"
     grep -qF "PR_BODY_FILE=\$(mktemp \"\${TMPDIR:-/tmp}/pr-body.XXXXXX\")" "$confirmation"
@@ -33,6 +47,9 @@
     ! grep -q -- "--body \"\$(cat <<" "$confirmation"
     grep -qF "Before showing manual creation instructions, execute Step 9.0" "$confirmation"
     grep -qF "Do not run Step 10 here" "$confirmation"
+    grep -qF "After each description edit, if \`{linear-issue-id}\` is present" "$confirmation"
+    grep -qF "unless the user explicitly asked for that alternative keyword" "$confirmation"
+    grep -qF "If the edited description links the same issue with a non-closing keyword" "$confirmation"
   '
 
 	[ "$status" -eq 0 ]
