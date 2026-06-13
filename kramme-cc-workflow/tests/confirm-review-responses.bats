@@ -384,6 +384,13 @@ REVIEW_SUMMARY.md"
 	[[ "$output" == *"COPY_REVIEW_OVERVIEW.md"* ]]
 }
 
+@test "blocks git commit when GITHUB_PR_REVIEW_OVERVIEW.md is staged" {
+	mock_git_staged "GITHUB_PR_REVIEW_OVERVIEW.md"
+	run run_hook "git commit -m 'github pr review staged'"
+	is_blocked
+	[[ "$output" == *"GITHUB_PR_REVIEW_OVERVIEW.md"* ]]
+}
+
 @test "blocks git commit when PR plan artifact matching glob is staged" {
 	mock_git_staged "PR_PLAN_ADD_API_ERROR_HANDLING.md"
 	run run_hook "git commit -m 'plan staged'"
