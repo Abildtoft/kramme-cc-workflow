@@ -303,7 +303,17 @@ def normalize_path($repo_root):
 def finding_rule_id:
 	(.rule_id // .ruleId // .id // .rule // "");
 
-def finding_paths($repo_root):
+def finding_path_candidates($repo_root; $skill_repo_rel):
+	normalize_path($repo_root) as $path
+	| if ($path | length) == 0 then
+		empty
+	elif ($path == $skill_repo_rel) or ($path | startswith($skill_repo_rel + "/")) then
+		[$path]
+	else
+		[$path, ($skill_repo_rel + "/" + $path)]
+	end;
+
+def finding_paths($repo_root; $skill_repo_rel):
 	[
 		.path?,
 		.file_path?,
@@ -318,7 +328,8 @@ def finding_paths($repo_root):
 		.locations[]?.physicalLocation?.artifactLocation?.uri?,
 		.source?.path?
 	]
-	| map(normalize_path($repo_root))
+	| map(finding_path_candidates($repo_root; $skill_repo_rel))
+	| flatten
 	| map(select(length > 0))
 	| unique;
 
@@ -331,9 +342,9 @@ def active_accepted_entries($policy; $today):
 	($policy[0].accepted_findings // [])
 	| map(select((. | accepted_entry_cutoff) >= $today));
 
-def is_accepted($policy; $repo_root; $today):
+def is_accepted($policy; $repo_root; $skill_repo_rel; $today):
 	finding_rule_id as $rule
-	| finding_paths($repo_root) as $paths
+	| finding_paths($repo_root; $skill_repo_rel) as $paths
 	| any(active_accepted_entries($policy; $today)[];
 		. as $entry
 		| ($entry.rule_id == $rule)
@@ -350,6 +361,7 @@ finding_count() {
 
 accepted_finding_count() {
 	local json_file="$1"
+	local skill_repo_rel="$2"
 
 	if [ -z "$ACCEPTED_FINDINGS_FILE" ]; then
 		printf '0\n'
@@ -358,16 +370,18 @@ accepted_finding_count() {
 
 	jq \
 		--arg repo_root "$REPO_ROOT" \
+		--arg skill_repo_rel "$skill_repo_rel" \
 		--arg today "$TODAY" \
 		--slurpfile policy "$ACCEPTED_FINDINGS_FILE" \
 		"$(policy_jq_filter)"'
-		[.issues[]? | select(is_accepted($policy; $repo_root; $today))] | length
+		[.issues[]? | select(is_accepted($policy; $repo_root; $skill_repo_rel; $today))] | length
 		' "$json_file"
 }
 
 enforceable_severity_count() {
 	local json_file="$1"
 	local severity="$2"
+	local skill_repo_rel="$3"
 
 	if [ -z "$ACCEPTED_FINDINGS_FILE" ]; then
 		severity_count "$json_file" "$severity"
@@ -376,6 +390,7 @@ enforceable_severity_count() {
 
 	jq \
 		--arg repo_root "$REPO_ROOT" \
+		--arg skill_repo_rel "$skill_repo_rel" \
 		--arg today "$TODAY" \
 		--arg severity "$severity" \
 		--slurpfile policy "$ACCEPTED_FINDINGS_FILE" \
@@ -383,7 +398,7 @@ enforceable_severity_count() {
 		[
 			.issues[]?
 			| select(((.severity // "") | ascii_upcase) == $severity)
-			| select(is_accepted($policy; $repo_root; $today) | not)
+			| select(is_accepted($policy; $repo_root; $skill_repo_rel; $today) | not)
 		] | length
 		' "$json_file"
 }
@@ -391,6 +406,7 @@ enforceable_severity_count() {
 threshold_failed_for_report() {
 	local json_file="$1"
 	local threshold="$2"
+	local skill_repo_rel="$3"
 	local high_count=0
 	local critical_count=0
 
@@ -398,13 +414,13 @@ threshold_failed_for_report() {
 		return 1
 	fi
 
-	critical_count=$(enforceable_severity_count "$json_file" "CRITICAL")
+	critical_count=$(enforceable_severity_count "$json_file" "CRITICAL" "$skill_repo_rel")
 	if [ "$threshold" = "critical" ]; then
 		[ "$critical_count" -gt 0 ]
 		return
 	fi
 
-	high_count=$(enforceable_severity_count "$json_file" "HIGH")
+	high_count=$(enforceable_severity_count "$json_file" "HIGH" "$skill_repo_rel")
 	[ "$critical_count" -gt 0 ] || [ "$high_count" -gt 0 ]
 }
 
@@ -559,6 +575,7 @@ echo "Skills: ${#SKILL_DIRS[@]}"
 SCAN_FAILED=0
 THRESHOLD_FAILED=0
 for skill_dir in "${SKILL_DIRS[@]}"; do
+	skill_repo_rel=${skill_dir#"$REPO_ROOT"/}
 	stem=$(report_stem_for_skill "$skill_dir")
 	json_report="$OUTPUT_DIR/$stem.json"
 	log_file="$OUTPUT_DIR/$stem.log"
@@ -573,7 +590,7 @@ for skill_dir in "${SKILL_DIRS[@]}"; do
 	echo "  JSON report: $json_report"
 
 	total_findings=$(finding_count "$json_report")
-	accepted_findings=$(accepted_finding_count "$json_report")
+	accepted_findings=$(accepted_finding_count "$json_report" "$skill_repo_rel")
 	enforceable_findings=$((total_findings - accepted_findings))
 	echo "  Findings: total=$total_findings accepted=$accepted_findings enforceable=$enforceable_findings"
 
@@ -585,7 +602,7 @@ for skill_dir in "${SKILL_DIRS[@]}"; do
 		echo "  $FORMAT report: $primary_report"
 	fi
 
-	if threshold_failed_for_report "$json_report" "$FAIL_ON"; then
+	if threshold_failed_for_report "$json_report" "$FAIL_ON" "$skill_repo_rel"; then
 		echo "  Findings meet --fail-on $FAIL_ON threshold"
 		THRESHOLD_FAILED=1
 	fi

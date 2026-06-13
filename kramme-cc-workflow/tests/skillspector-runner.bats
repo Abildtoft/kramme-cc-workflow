@@ -176,7 +176,7 @@ count_invocations() {
 
 @test "matching accepted finding is excluded from threshold failure" {
 	local policy_file="$REPO/kramme-cc-workflow/config/skillspector-accepted-findings.json"
-	export MOCK_SKILLSPECTOR_JSON='{"issues":[{"severity":"HIGH","rule_id":"E4","path":"kramme-cc-workflow/skills/kramme:one/SKILL.md"}]}'
+	export MOCK_SKILLSPECTOR_JSON='{"issues":[{"severity":"HIGH","id":"E4","location":{"file":"SKILL.md","start_line":1}}]}'
 	write_policy "$policy_file" '{
   "accepted_findings": [
     {
@@ -189,8 +189,9 @@ count_invocations() {
     }
   ]
 }'
+	printf 'local edit\n' >>"kramme-cc-workflow/skills/kramme:one/SKILL.md"
 
-	run "$SCRIPT" --all --fail-on high --output-dir "$REPORT_DIR"
+	run "$SCRIPT" --changed --base main --fail-on high --output-dir "$REPORT_DIR"
 
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Accepted findings:"*"/kramme-cc-workflow/config/skillspector-accepted-findings.json"* ]]
@@ -200,7 +201,7 @@ count_invocations() {
 
 @test "same rule on a different path is not accepted" {
 	local policy_file="$TMP_DIR/accepted-findings.json"
-	export MOCK_SKILLSPECTOR_JSON='{"issues":[{"severity":"HIGH","rule_id":"E4","path":"kramme-cc-workflow/skills/kramme:one/SKILL.md"}]}'
+	export MOCK_SKILLSPECTOR_JSON='{"issues":[{"severity":"HIGH","id":"E4","location":{"file":"SKILL.md","start_line":1}}]}'
 	write_policy "$policy_file" '{
   "accepted_findings": [
     {
@@ -213,8 +214,9 @@ count_invocations() {
     }
   ]
 }'
+	printf 'local edit\n' >>"kramme-cc-workflow/skills/kramme:one/SKILL.md"
 
-	run "$SCRIPT" --all --fail-on high --accepted-findings "$policy_file" --output-dir "$REPORT_DIR"
+	run "$SCRIPT" --changed --base main --fail-on high --accepted-findings "$policy_file" --output-dir "$REPORT_DIR"
 
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"Findings: total=1 accepted=0 enforceable=1"* ]]
@@ -223,7 +225,7 @@ count_invocations() {
 
 @test "different rule on the same path is not accepted" {
 	local policy_file="$TMP_DIR/accepted-findings.json"
-	export MOCK_SKILLSPECTOR_JSON='{"issues":[{"severity":"HIGH","rule_id":"E4","path":"kramme-cc-workflow/skills/kramme:one/SKILL.md"}]}'
+	export MOCK_SKILLSPECTOR_JSON='{"issues":[{"severity":"HIGH","id":"E4","location":{"file":"SKILL.md","start_line":1}}]}'
 	write_policy "$policy_file" '{
   "accepted_findings": [
     {
@@ -236,8 +238,9 @@ count_invocations() {
     }
   ]
 }'
+	printf 'local edit\n' >>"kramme-cc-workflow/skills/kramme:one/SKILL.md"
 
-	run "$SCRIPT" --all --fail-on high --accepted-findings "$policy_file" --output-dir "$REPORT_DIR"
+	run "$SCRIPT" --changed --base main --fail-on high --accepted-findings "$policy_file" --output-dir "$REPORT_DIR"
 
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"Findings: total=1 accepted=0 enforceable=1"* ]]
