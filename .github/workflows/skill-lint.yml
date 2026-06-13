@@ -3,6 +3,9 @@ name: Skill Lint
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   skill-lint:
     name: Validate synced skill contracts
@@ -18,3 +21,89 @@ jobs:
 
       - name: Run skill contract lint
         run: python3 kramme-cc-workflow/scripts/lint-skill-contracts.py
+
+  skillspector:
+    name: SkillSpector static skill scan
+    runs-on: ubuntu-latest
+    env:
+      BASE_REF: origin/${{ github.base_ref }}
+      SKILLSPECTOR_COMMIT: cff7ecc4f2881d9e23ea4bb801a6353e1dbe39e6
+      SKILLSPECTOR_FAIL_ON: none
+      SKILLSPECTOR_FORMAT: markdown
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install SkillSpector
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install "git+https://github.com/NVIDIA/SkillSpector.git@$SKILLSPECTOR_COMMIT"
+
+      - name: Run changed skill static scan
+        run: make -C kramme-cc-workflow skill-security-changed
+
+      - name: Summarize SkillSpector reports
+        if: ${{ always() }}
+        run: |
+          python3 - <<'PY'
+          from collections import Counter
+          import json
+          import os
+          from pathlib import Path
+
+          report_dir = Path(os.environ["RUNNER_TEMP"]) / "skillspector"
+          reports = sorted(report_dir.glob("*.json"))
+
+          if not reports:
+              print(f"No SkillSpector JSON reports found in {report_dir}.")
+              print("Artifact name: skillspector-reports")
+              raise SystemExit(0)
+
+          print("SkillSpector severity counts:")
+          for report in reports:
+              try:
+                  data = json.loads(report.read_text())
+              except (OSError, json.JSONDecodeError) as exc:
+                  print(f"{report.name}: unable to read JSON report: {exc}")
+                  continue
+
+              issues = data.get("issues")
+              if not isinstance(issues, list):
+                  issues = []
+
+              counts = Counter()
+              for issue in issues:
+                  severity = "UNKNOWN"
+                  if isinstance(issue, dict):
+                      severity = str(issue.get("severity") or "UNKNOWN").upper()
+                  counts[severity] += 1
+
+              print(
+                  f"{report.stem}: "
+                  f"critical={counts['CRITICAL']} "
+                  f"high={counts['HIGH']} "
+                  f"medium={counts['MEDIUM']} "
+                  f"low={counts['LOW']} "
+                  f"info={counts['INFO']} "
+                  f"unknown={counts['UNKNOWN']}"
+              )
+
+          print(f"Report directory: {report_dir}")
+          print("Artifact name: skillspector-reports")
+          PY
+
+      - name: Upload SkillSpector reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: skillspector-reports
+          path: ${{ runner.temp }}/skillspector
+          if-no-files-found: ignore
