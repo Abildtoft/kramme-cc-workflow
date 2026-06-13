@@ -1,5 +1,8 @@
 name: Release
 
+env:
+  SKILLSPECTOR_REF: cff7ecc4f2881d9e23ea4bb801a6353e1dbe39e6
+
 on:
   workflow_dispatch:
     inputs:
@@ -41,6 +44,49 @@ jobs:
           sudo apt-get update && sudo apt-get install -y bats jq
           make -C kramme-cc-workflow test
 
+      - name: Set up Python for SkillSpector
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install SkillSpector
+        run: python3 -m pip install "git+https://github.com/NVIDIA/SkillSpector.git@${SKILLSPECTOR_REF}"
+
+      - name: Run SkillSpector release scan
+        env:
+          SKILLSPECTOR_FAIL_ON: none
+          SKILLSPECTOR_FORMAT: markdown
+        run: |
+          set -o pipefail
+          SCAN_LOG="$RUNNER_TEMP/skillspector-release-scan.log"
+          SUMMARY_FILE="$RUNNER_TEMP/skillspector-summary.md"
+
+          make -C kramme-cc-workflow skill-security 2>&1 | tee "$SCAN_LOG"
+
+          {
+            echo "Static-only full-tree SkillSpector scan completed before release creation."
+            echo
+            sed -n '1,/^Skills: /p' "$SCAN_LOG"
+            echo
+            echo "Findings are advisory in this release gate; scanner setup and execution errors fail the workflow."
+            echo "Full reports are attached as the \`skillspector-release-report\` workflow artifact."
+          } > "$SUMMARY_FILE"
+
+      - name: Upload SkillSpector report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: skillspector-release-report
+          path: |
+            ${{ runner.temp }}/skillspector
+            ${{ runner.temp }}/skillspector-summary.md
+          if-no-files-found: warn
+
+      - name: Set up Python for release script
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
@@ -49,13 +95,13 @@ jobs:
       - name: Run release script
         id: release
         run: |
-          DRY_RUN_ARGS=""
+          RELEASE_ARGS=("${{ inputs.version_type }}" --ci)
           if [ "${{ inputs.dry_run }}" = "true" ]; then
-            DRY_RUN_ARGS="--dry-run"
+            RELEASE_ARGS+=(--dry-run)
           fi
-          python3 kramme-cc-workflow/scripts/release.py ${{ inputs.version_type }} --ci $DRY_RUN_ARGS
+          python3 kramme-cc-workflow/scripts/release.py "${RELEASE_ARGS[@]}"
           VERSION=$(python3 -c "import json; print(json.load(open('kramme-cc-workflow/.claude-plugin/plugin.json'))['version'])")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Create Pull Request
         if: ${{ !inputs.dry_run }}
@@ -74,17 +120,29 @@ jobs:
           print(match.group(0).strip() if match else '')
           " "$VERSION" 2>/dev/null || echo "")
 
-          # Create PR with changelog in body
-          gh pr create \
-            --title "chore: release v${VERSION}" \
-            --body "$(cat <<EOF
+          if [ -f "$RUNNER_TEMP/skillspector-summary.md" ]; then
+            SKILLSPECTOR_SUMMARY=$(cat "$RUNNER_TEMP/skillspector-summary.md")
+          else
+            SKILLSPECTOR_SUMMARY="SkillSpector summary was not found. Check the workflow artifact for scan output."
+          fi
+
+          PR_BODY="$RUNNER_TEMP/release-pr-body.md"
+          cat > "$PR_BODY" <<EOF
           ## Release v${VERSION}
 
           ${CHANGELOG_SECTION}
 
+          ### SkillSpector release scan
+
+          ${SKILLSPECTOR_SUMMARY}
+
           ---
           Automated release PR
           EOF
-          )" \
+
+          # Create PR with changelog and SkillSpector evidence in body
+          gh pr create \
+            --title "chore: release v${VERSION}" \
+            --body-file "$PR_BODY" \
             --base main \
             --head "release/v${VERSION}"

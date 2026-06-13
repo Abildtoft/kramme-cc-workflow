@@ -578,6 +578,8 @@ make -C kramme-cc-workflow test-skill-usage
 
 SkillSpector scans are optional local checks that complement tests, linting, and human review. Run them for new or materially changed skills, before installing third-party skills, and as a full-tree check for release candidates. Static-only scanning is the default; semantic analysis is opt-in.
 
+The GitHub Actions release workflow runs the full-tree static scan before creating a release branch or Pull Request. Release scan findings are advisory for now, but SkillSpector installation or execution errors fail the release workflow. The workflow uploads the full report as the `skillspector-release-report` artifact and includes a concise scan summary in the generated release Pull Request body.
+
 ```bash
 # Scan every plugin skill
 make -C kramme-cc-workflow skill-security
