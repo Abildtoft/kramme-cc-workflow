@@ -28,7 +28,7 @@ jobs:
     env:
       BASE_REF: origin/${{ github.base_ref }}
       SKILLSPECTOR_COMMIT: cff7ecc4f2881d9e23ea4bb801a6353e1dbe39e6
-      SKILLSPECTOR_FAIL_ON: none
+      SKILLSPECTOR_FAIL_ON: high
       SKILLSPECTOR_FORMAT: markdown
     steps:
       - name: Checkout
