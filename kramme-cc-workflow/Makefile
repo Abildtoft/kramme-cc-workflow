@@ -1,8 +1,11 @@
-.PHONY: lint lint-shell lint-python test test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-git-clean-gone test-git-worktree install-test-deps check-deps
+.PHONY: lint lint-shell lint-python test test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-git-clean-gone test-git-worktree skill-security skill-security-changed skill-security-semantic install-test-deps check-deps
 
 SHELLCHECK ?= shellcheck
 SHELLCHECK_SEVERITY ?= error
 RUFF ?= ruff
+SKILLSPECTOR_FORMAT ?= markdown
+SKILLSPECTOR_FAIL_ON ?= none
+SKILLSPECTOR_BASE ?= $(if $(BASE_REF),$(BASE_REF),origin/main)
 
 SHELLCHECK_FILES = \
 	hooks/*.sh \
@@ -70,6 +73,15 @@ test-git-clean-gone:
 # Run only worktree helper tests
 test-git-worktree:
 	@bats tests/worktree-helper.bats
+
+skill-security:
+	@./scripts/run-skillspector.sh --all --format "$(SKILLSPECTOR_FORMAT)" --fail-on "$(SKILLSPECTOR_FAIL_ON)"
+
+skill-security-changed:
+	@./scripts/run-skillspector.sh --changed --base "$(SKILLSPECTOR_BASE)" --format "$(SKILLSPECTOR_FORMAT)" --fail-on "$(SKILLSPECTOR_FAIL_ON)"
+
+skill-security-semantic:
+	@./scripts/run-skillspector.sh --all --semantic --format "$(SKILLSPECTOR_FORMAT)" --fail-on "$(SKILLSPECTOR_FAIL_ON)"
 
 # Install test dependencies
 install-test-deps:

@@ -509,6 +509,7 @@ CLI tools that enhance the plugin experience. Some are required for specific com
 | `trash` | Safe file deletion (used by block-rm-rf hook) | `brew install trash` (macOS) / `apt install trash-cli` (Linux) |
 | `jq` | JSON parsing (internal use) | `brew install jq` |
 | `markitdown` | Document conversion skill | `uvx markitdown` or `pip install markitdown` |
+| `skillspector` | Optional security scanning for local skill directories | [NVIDIA/SkillSpector](https://github.com/NVIDIA/SkillSpector) |
 | `surf` | AI-generated illustrations in visual diagrams (optional) | [surf-cli](https://github.com/nicobailon/surf-cli) |
 
 ## Contributing
@@ -571,6 +572,23 @@ make -C kramme-cc-workflow test-format
 make -C kramme-cc-workflow test-skill-usage
 ```
 
+### Skill Security Scans
+
+SkillSpector scans are optional local checks. Static-only scanning is the default; semantic analysis is opt-in.
+
+```bash
+# Scan every plugin skill
+make -C kramme-cc-workflow skill-security
+
+# Scan only skill directories changed against BASE_REF, defaulting to origin/main
+make -C kramme-cc-workflow skill-security-changed
+
+# Scan every plugin skill with SkillSpector semantic analysis enabled
+make -C kramme-cc-workflow skill-security-semantic
+```
+
+Reports are written to `.context/skillspector/` by default, or `$RUNNER_TEMP/skillspector` in CI. Override behavior with `SKILLSPECTOR_FORMAT`, `SKILLSPECTOR_FAIL_ON`, and `SKILLSPECTOR_BASE`.
+
 ### Test Structure
 
 ```
@@ -587,6 +605,7 @@ kramme-cc-workflow/tests/
 ├── agent-description-length.bats # Tests Codex-compatible agent descriptions
 ├── pr-generate-description-guidance.bats # Tests PR description skill guidance
 ├── skill-resource-references.bats # Tests skill-local resource references
+├── skillspector-runner.bats # Tests SkillSpector scan wrapper
 ├── skill-usage-stats.bats    # Tests for skill usage stats hook
 └── noninteractive-git.bats   # Tests for noninteractive-git hook
 ```
