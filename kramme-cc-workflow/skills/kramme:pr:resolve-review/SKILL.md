@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:resolve-review
-description: Resolve findings from code reviews by implementing fixes and documenting changes. Implements fixes as commits on the current branch; with --post it may also post replies and resolve threads on the PR. Use --team to resolve independent findings in parallel by file area.
-argument-hint: "[--team] [--post] [--implement-only] [--granular] [--severity ...] [--source local|online] [review|url|instructions]"
+description: Resolve findings from code reviews by implementing fixes and documenting changes. Implements fixes as commits on the current branch. Use --team to resolve independent findings in parallel by file area.
+argument-hint: "[--team] [--implement-only] [--granular] [--severity ...] [--source local|online] [review|url|instructions]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -12,7 +12,7 @@ user-invocable: true
 
 ## Team Mode
 
-If `$ARGUMENTS` contains both `--team` and `--implement-only`, stop and ask the user to choose one mode. `--implement-only` is a single-run code-fix engine for callers that own reply handling; team mode owns its own review summary and reply behavior.
+If `$ARGUMENTS` contains both `--team` and `--implement-only`, stop and ask the user to choose one mode. `--implement-only` is a single-run code-fix engine for callers that own reply handling; team mode writes its own review summary and cannot satisfy implement-only's no-output/no-reply contract.
 
 If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments.
 
@@ -25,9 +25,9 @@ Parse `$ARGUMENTS` for flags. After extracting all flags, the remainder is the *
 **Flags:**
 
 - `--source local|online` (aliases `--local`, `--online`) → `REVIEW_SOURCE`. Default `auto`. If both are selected, or `--source` is given an unknown value, ask the user to pick one and stop.
-- `--post` → `ANSWER_AND_RESOLVE=true`. Permits posting replies and resolving addressed threads on the PR (external reviews only). Matches the `kramme:pr:github-review-reply` flag convention.
-- `--auto` → Not a supported flag here. Elsewhere in the `kramme:pr` family `--auto` means "skip prompts", but this skill historically used it for posting/resolving. If `--auto` is passed, stop and ask the user whether they meant `--post`; do not silently treat it as either.
-- `--implement-only` → `IMPLEMENT_ONLY=true`. Pure code-fix engine mode for callers that own the reply/resolution phase (e.g. `kramme:pr:github-review-reply`): implement and validate fixes but make no GitHub writes, write no review file, and draft no replies (see Step 4). Mutually exclusive with `--post` and `--team`; if a conflicting flag is given, ask the user to pick one and stop.
+- `--post` → Not supported. Stop with: `--post is not supported by kramme:pr:resolve-review.`
+- `--auto` → Not a supported flag here. Stop with: `--auto is not supported by kramme:pr:resolve-review.`
+- `--implement-only` → `IMPLEMENT_ONLY=true`. Pure code-fix engine mode for callers that own the reply/resolution phase (e.g. `kramme:pr:github-review-reply`): implement and validate fixes but make no GitHub writes, write no review file, and draft no replies (see Step 4). Mutually exclusive with `--team`; if a conflicting flag is given, ask the user to pick one and stop.
 - `--team` → Team Mode (see top of file).
 - `--granular` → `GRANULAR_COMMITS=true`. One commit per finding.
 - `--severity <list>` → `SEVERITY_FILTER`. Comma-separated values from `critical`, `important`, `suggestion`. Findings outside the filter are skipped with **Action taken: Skipped — outside severity filter.**
@@ -165,7 +165,7 @@ Not every finding deserves a code change. Dismiss findings that meet ALL of thes
 - The suggestion is subjective (style, naming preference, alternative approach that isn't clearly better)
 - Implementing it would churn code without measurable improvement
 
-For dismissed findings, document them in the output with **Action taken: Acknowledged — no change.** and a one-line rationale. For external reviews with `ANSWER_AND_RESOLVE=true`, post a polite reply explaining why no change was made, but do NOT mark the thread as resolved (let the reviewer decide).
+For dismissed findings, document them in the output with **Action taken: Acknowledged — no change.** and a one-line rationale. For external reviews, include the rationale in the generated review summary; do not post replies or resolve GitHub threads.
 
 ### Step 2.5: Create rollback checkpoint
 
@@ -262,10 +262,7 @@ Each commit should be self-contained and pass linting/formatting on its own. If 
   }
   ```
 
-  `blocked-implementation` means the fix could not be completed. `blocked-validation` means a fix was attempted but validation failed. Then skip the Reply behavior and Generate summary bullets below.
-- **Reply behavior**:
-  - `REVIEW_SOURCE=local` or `ANSWER_AND_RESOLVE` unset: do not post replies or resolve threads on GitHub.
-  - `ANSWER_AND_RESOLVE=true` on an external review: print `Posting N replies and resolving M threads on PR #X` before any `gh` write so the user can interrupt. Then post a reply for each addressed comment and resolve those threads. For disagreements or out-of-scope findings, post a rationale reply but do not resolve the thread.
+  `blocked-implementation` means the fix could not be completed. `blocked-validation` means a fix was attempted but validation failed. Then skip the Generate summary bullet below.
 - **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, or `COPY_REVIEW_OVERVIEW.md`, update that file in place. If the source was `REVIEW_OVERVIEW.md` or an external/chat review, write to `REVIEW_OVERVIEW.md`.
 - **Restore the checkpoint** — If a stash was created in Step 2.5, apply and drop the exact recorded stash now so the user's pre-existing uncommitted work is restored:
 
