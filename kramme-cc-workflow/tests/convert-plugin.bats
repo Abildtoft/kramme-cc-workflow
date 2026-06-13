@@ -508,7 +508,7 @@ MD
 	run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
 	[ "$status" -eq 0 ]
 
-	run grep -REn '\bAskUserQuestion\b|\bTask tool\b|\bSkill tool\b|\bTodoWrite\b|\bTodoRead\b|\bsubagent_type[[:space:]]*[:=][[:space:]]*Explore\b' "$TMP_DIR/.codex/skills"
+	run grep -REn '\bAskUserQuestion\b|\bTask (tool|subagent|sub-agent|agent)\b|\bSkill tool\b|\bTodoWrite\b|\bTodoRead\b|\bsubagent_type\b|\bmodel=opus\b|\bmodel=sonnet\b' "$TMP_DIR/.codex/skills"
 	if [ "$status" -ne 1 ]; then
 		printf 'Unexpected matches (status=%s):\n%s\n' "$status" "$output" >&2
 	fi

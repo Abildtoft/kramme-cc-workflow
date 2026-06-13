@@ -4,7 +4,7 @@ description: "Scan the full codebase, current PR, a named file/folder, or a name
 disable-model-invocation: false
 user-invocable: true
 argument-hint: "[full | pr | path <file-or-folder> | feature <name>]"
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # Refactor Opportunities

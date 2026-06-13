@@ -4,7 +4,7 @@ description: (experimental) Whole-product review across flows and surfaces. Requ
 argument-hint: "<url|auto> [--flows <flow1,flow2,...>] [--focus <dimension>] [--inline]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # Whole-Product Review
@@ -61,7 +61,7 @@ Usage:
 
 ### Step 2: Validate Prerequisites
 
-**If URL is `auto`:** Resolve it with the shared dev-server detector:
+**If URL is `auto`:** Resolve it with the shared dev-server detector used by `kramme:browse`:
 
 ```bash
 ${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh auto
@@ -85,23 +85,16 @@ HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$TARGET_URL"
 - `5xx` — **hard stop**: `Error: Server error ($HTTP_STATUS) at $TARGET_URL. Fix the server error before reviewing.`
 - `4xx` — warn but proceed (page may require authentication or interaction to render)
 
-**Check for browser MCP:**
+**Check for live browser automation:**
 
-A browser MCP is required (same detection as `/kramme:browse`). The detection contract — provider list and priority order — is owned by `/kramme:browse` Step 2; this copy must match it. Check for available tools in priority order:
-
-1. `mcp__claude-in-chrome__*` tools
-2. `mcp__chrome-devtools__*` tools
-3. `mcp__playwright__*` tools
+A browser automation provider is required. Do not duplicate provider names or priority order here; load `kramme:browse` and follow its current detection contract for the active host runtime.
 
 If none found, **hard stop**:
 
 ```
-Error: No browser automation MCP detected. Product review requires live browser inspection.
+Error: No browser automation provider detected. Product review requires live browser inspection.
 
-Install one of:
-  - Claude in Chrome extension (recommended)
-  - Chrome DevTools MCP
-  - Playwright MCP
+Install or enable one of the browser automation providers supported by kramme:browse, then re-run.
 ```
 
 **Authentication note:** If the app returns a login page or redirect, warn the user:
@@ -149,7 +142,7 @@ Previously reported findings that no longer appear (the issue was fixed) should 
 
 ### Step 4: Discover Application Structure
 
-Invoke `/kramme:browse` via the Skill tool to navigate to the root URL and take a snapshot:
+Run the `kramme:browse` skill using the current host runtime's skill-invocation mechanism to navigate to the root URL and take a snapshot:
 
 ```
 /kramme:browse $TARGET_URL
@@ -184,7 +177,7 @@ For each flow in `REVIEW_FLOWS`:
 
 **5a. Navigate and capture evidence**
 
-Invoke `/kramme:browse` via the Skill tool to navigate to the flow's URL with full capture:
+Run the `kramme:browse` skill using the current host runtime's skill-invocation mechanism to navigate to the flow's URL with full capture:
 
 ```
 /kramme:browse $FLOW_URL
@@ -196,7 +189,7 @@ This captures the page snapshot, screenshot, console messages, and network reque
 
 **5b. Launch product reviewer agent**
 
-Launch the `kramme:product-reviewer` agent via the Task tool with the following context:
+Launch the `kramme:product-reviewer` agent using the current host runtime's subagent mechanism. If no subagent mechanism is available, perform the same review inline in the main thread with the following context:
 
 ```
 You are reviewing the overall product experience of a live application, not a branch diff.
@@ -268,7 +261,7 @@ The per-flow reviews in Step 5 each saw only one flow, so cross-flow dimensions 
 
 If fewer than two flows were reviewed successfully, skip this step (there is nothing to compare) and note in the report that cross-flow synthesis was not run.
 
-Otherwise, build a digest from every reviewed flow — its `Observed Patterns` block plus a one-line evidence summary — and launch the `kramme:product-reviewer` agent via the Task tool with:
+Otherwise, build a digest from every reviewed flow — its `Observed Patterns` block plus a one-line evidence summary — and launch the `kramme:product-reviewer` agent using the current host runtime's subagent mechanism. If no subagent mechanism is available, perform the synthesis inline in the main thread with:
 
 ```
 You are performing the CROSS-FLOW SYNTHESIS pass of a whole-product audit.
@@ -445,7 +438,7 @@ Key patterns:
 | `auto` finds no running server | Hard stop with instructions to start app |
 | URL not `http(s)://` and not `auto` | Hard stop with format error |
 | Unknown `--focus` token | Warn, emphasize as free text, review all dimensions |
-| No browser MCP detected | Hard stop with installation guidance |
+| No browser automation provider detected | Hard stop with installation guidance |
 | App not running (connection refused) | Hard stop with instructions to start app |
 | App timeout | Hard stop with diagnostic |
 | App returns 5xx | Hard stop with server error diagnostic |

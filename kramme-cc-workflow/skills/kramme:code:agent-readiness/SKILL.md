@@ -4,7 +4,7 @@ description: "Audit a codebase for agent-nativeness — score how well-optimized
 argument-hint: "[--auto]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # Agent-Native Audit

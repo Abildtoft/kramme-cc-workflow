@@ -4,7 +4,7 @@ description: (experimental) Final PR readiness orchestration. Coordinates verify
 argument-hint: "[--auto] [--fix] [--skip <skill,...>] [--app-url <url>] [--base <branch>]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # PR Finalize — Readiness Orchestration

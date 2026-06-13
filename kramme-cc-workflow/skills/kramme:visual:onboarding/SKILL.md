@@ -4,7 +4,7 @@ description: "Generate an interactive HTML onboarding guide for newcomers to a c
 argument-hint: "[focus-area or audience]"
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # Visual Onboarding Guide
