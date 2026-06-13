@@ -119,6 +119,15 @@ When project instructions and CI config don't specify commands, read `references
 
 Before running tests, discover which suites exist so you can run only those and mark the rest `SKIPPED`. Per-ecosystem discovery commands are in `references/commands-by-project-type.md`.
 
+### Skill Security Scan Discovery
+
+Before running checks, inspect changed and untracked paths for skill directories in top-level or nested plugin roots (`skills/*/SKILL.md`, `*/skills/*/SKILL.md`, `*/skills/*/references/**`, `*/skills/*/assets/**`, or `*/skills/*/scripts/**`). When skill files changed, include a static-only SkillSpector scan in the verification set:
+
+- Prefer a project wrapper when present, such as `make -C kramme-cc-workflow skill-security-changed`, because wrappers can map nested plugin paths like `kramme-cc-workflow/skills/...` to the owning skill directory.
+- Otherwise run `skillspector scan <changed-skill-dir> --no-llm` for each changed skill directory when the CLI is available.
+- Mark the scan `SKIPPED` when no skill files changed, the scanner is unavailable, or no safe static-only command is discoverable.
+- Do not run semantic scanning unless the user explicitly asks and confirms the provider/privacy tradeoff.
+
 ### Handling Failures
 
 - Run ALL verification steps even if earlier steps fail

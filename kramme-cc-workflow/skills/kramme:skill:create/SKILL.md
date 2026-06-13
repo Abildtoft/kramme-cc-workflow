@@ -254,6 +254,13 @@ After scaffolding, verify the skill against these checks:
 - [ ] If the skill writes durable artifacts, the artifact path, producer, consumer, refresh trigger, and retirement path are documented.
 - [ ] If the skill adapts a long upstream workflow, it is decomposed into local skills or direct references instead of copied as one monolithic SKILL.md.
 
+### Security scanning
+
+- [ ] Run a static-only SkillSpector scan for the new skill when the scanner is available, using a repository wrapper such as `make skill-security-changed` when present or `skillspector scan skills/{skill-name} --no-llm`.
+- [ ] Triage high and critical findings before declaring the skill ready. Treat the scan as complementary to this checklist, not as a replacement for manual review.
+- [ ] Apply extra scrutiny when the skill includes scripts, network access, file access, package installation, MCP/tool instructions, or agent-control behavior.
+- [ ] Use semantic scanning only when the user intentionally configured provider credentials and confirms the skill contents may be sent to that provider.
+
 Report any failing checks to the user with specific remediation steps.
 
 ## Phase 7: Documentation Reminder (optional)
@@ -288,9 +295,10 @@ Files:
 Next steps:
   1. Fill in TODO markers in SKILL.md and resource files
   2. Test locally: claude /plugin install /path/to/plugin
-  3. Validate with LLM-assisted review (see references/best-practices.md)
-  4. Add the row to the plugin's skills index documentation (if applicable)
-  5. Commit the new skill files using your project's commit-message convention
+  3. Run a static-only SkillSpector scan or report why it was skipped
+  4. Validate with LLM-assisted review (see references/best-practices.md)
+  5. Add the row to the plugin's skills index documentation (if applicable)
+  6. Commit the new skill files using your project's commit-message convention
 ```
 
 ---
