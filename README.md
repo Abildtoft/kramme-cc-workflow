@@ -601,6 +601,25 @@ Reports are written to `.context/skillspector/` by default, or `$RUNNER_TEMP/ski
 
 Triage high and critical findings before installation, release, or merge. Enable semantic scanning only when provider credentials are intentionally configured and the skill contents are acceptable to send to that provider.
 
+Accepted findings live in `kramme-cc-workflow/config/skillspector-accepted-findings.json`. Keep this registry small: add an entry only when a finding has been reviewed and the risk is intentionally accepted or proven to be scanner noise. Each entry must name the exact repo-relative `path`, `rule_id`, `reason`, `owner`, `accepted_at`, and either `expires_at` or `review_after`.
+
+```json
+{
+  "accepted_findings": [
+    {
+      "path": "kramme-cc-workflow/skills/kramme:example/SKILL.md",
+      "rule_id": "E4",
+      "reason": "Reviewed scanner false positive; command is documented-only.",
+      "owner": "Security",
+      "accepted_at": "2026-06-13",
+      "expires_at": "2026-09-13"
+    }
+  ]
+}
+```
+
+Accepted findings are excluded from `--fail-on` threshold calculations only when both path and rule match and the entry is still active. They are still counted in runner output as accepted findings, and the JSON reports remain unchanged. Entries past `expires_at` or `review_after` fail blocking scans (`SKILLSPECTOR_FAIL_ON=high` or `critical`) and warn in advisory scans. Use `--accepted-findings <path>` to test a policy file other than the default registry.
+
 ### Test Structure
 
 ```
