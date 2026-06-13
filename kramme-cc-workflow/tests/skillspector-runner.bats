@@ -65,6 +65,13 @@ commit_file() {
 	git commit -m "$message" >/dev/null
 }
 
+write_policy() {
+	local file="$1"
+	local body="$2"
+	mkdir -p "$(dirname "$file")"
+	printf '%s\n' "$body" >"$file"
+}
+
 count_invocations() {
 	if [ ! -f "$MOCK_SKILLSPECTOR_LOG" ]; then
 		printf '0\n'
@@ -165,6 +172,181 @@ count_invocations() {
 
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"Findings meet --fail-on high threshold"* ]]
+}
+
+@test "matching accepted finding is excluded from threshold failure" {
+	local policy_file="$REPO/kramme-cc-workflow/config/skillspector-accepted-findings.json"
+	export MOCK_SKILLSPECTOR_JSON='{"issues":[{"severity":"HIGH","id":"E4","location":{"file":"SKILL.md","start_line":1}}]}'
+	write_policy "$policy_file" '{
+  "accepted_findings": [
+    {
+      "path": "kramme-cc-workflow/skills/kramme:one/SKILL.md",
+      "rule_id": "E4",
+      "reason": "Reviewed false positive in test fixture.",
+      "owner": "Security",
+      "accepted_at": "2026-06-13",
+      "expires_at": "2999-01-01"
+    }
+  ]
+}'
+	printf 'local edit\n' >>"kramme-cc-workflow/skills/kramme:one/SKILL.md"
+
+	run "$SCRIPT" --changed --base main --fail-on high --output-dir "$REPORT_DIR"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Accepted findings:"*"/kramme-cc-workflow/config/skillspector-accepted-findings.json"* ]]
+	[[ "$output" == *"Findings: total=1 accepted=1 enforceable=0"* ]]
+	[[ "$output" != *"Findings meet --fail-on high threshold"* ]]
+}
+
+@test "same rule on a different path is not accepted" {
+	local policy_file="$TMP_DIR/accepted-findings.json"
+	export MOCK_SKILLSPECTOR_JSON='{"issues":[{"severity":"HIGH","id":"E4","location":{"file":"SKILL.md","start_line":1}}]}'
+	write_policy "$policy_file" '{
+  "accepted_findings": [
+    {
+      "path": "kramme-cc-workflow/skills/kramme:two/SKILL.md",
+      "rule_id": "E4",
+      "reason": "Reviewed finding for the second skill only.",
+      "owner": "Security",
+      "accepted_at": "2026-06-13",
+      "expires_at": "2999-01-01"
+    }
+  ]
+}'
+	printf 'local edit\n' >>"kramme-cc-workflow/skills/kramme:one/SKILL.md"
+
+	run "$SCRIPT" --changed --base main --fail-on high --accepted-findings "$policy_file" --output-dir "$REPORT_DIR"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Findings: total=1 accepted=0 enforceable=1"* ]]
+	[[ "$output" == *"Findings meet --fail-on high threshold"* ]]
+}
+
+@test "different rule on the same path is not accepted" {
+	local policy_file="$TMP_DIR/accepted-findings.json"
+	export MOCK_SKILLSPECTOR_JSON='{"issues":[{"severity":"HIGH","id":"E4","location":{"file":"SKILL.md","start_line":1}}]}'
+	write_policy "$policy_file" '{
+  "accepted_findings": [
+    {
+      "path": "kramme-cc-workflow/skills/kramme:one/SKILL.md",
+      "rule_id": "E5",
+      "reason": "Reviewed a different rule only.",
+      "owner": "Security",
+      "accepted_at": "2026-06-13",
+      "expires_at": "2999-01-01"
+    }
+  ]
+}'
+	printf 'local edit\n' >>"kramme-cc-workflow/skills/kramme:one/SKILL.md"
+
+	run "$SCRIPT" --changed --base main --fail-on high --accepted-findings "$policy_file" --output-dir "$REPORT_DIR"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Findings: total=1 accepted=0 enforceable=1"* ]]
+	[[ "$output" == *"Findings meet --fail-on high threshold"* ]]
+}
+
+@test "accepted finding policy requires review metadata" {
+	local policy_file="$TMP_DIR/accepted-findings.json"
+	write_policy "$policy_file" '{
+  "accepted_findings": [
+    {
+      "path": "kramme-cc-workflow/skills/kramme:one/SKILL.md",
+      "rule_id": "E4",
+      "reason": "Missing required owner and expiry metadata.",
+      "accepted_at": "2026-06-13"
+    }
+  ]
+}'
+
+	run "$SCRIPT" --all --accepted-findings "$policy_file" --output-dir "$REPORT_DIR"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Accepted-findings policy is invalid"* ]]
+	[[ "$output" == *"accepted_findings[0].owner is required"* ]]
+	[[ "$output" == *"accepted_findings[0] requires expires_at or review_after"* ]]
+	[ "$(count_invocations)" = "0" ]
+}
+
+@test "changed scan validates accepted finding policy before no-skill early exit" {
+	local policy_file="$TMP_DIR/accepted-findings.json"
+	write_policy "$policy_file" 'not json'
+
+	run "$SCRIPT" --changed --base main --accepted-findings "$policy_file" --output-dir "$REPORT_DIR"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Accepted-findings policy is not valid JSON"* ]]
+	[ "$(count_invocations)" = "0" ]
+}
+
+@test "expired accepted finding fails in blocking mode" {
+	local policy_file="$TMP_DIR/accepted-findings.json"
+	write_policy "$policy_file" '{
+  "accepted_findings": [
+    {
+      "path": "kramme-cc-workflow/skills/kramme:one/SKILL.md",
+      "rule_id": "E4",
+      "reason": "Expired test exception.",
+      "owner": "Security",
+      "accepted_at": "2026-06-13",
+      "expires_at": "2000-01-01"
+    }
+  ]
+}'
+
+	run "$SCRIPT" --all --fail-on high --accepted-findings "$policy_file" --output-dir "$REPORT_DIR"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Accepted-findings policy contains expired entries"* ]]
+	[[ "$output" == *"expired accepted finding: kramme-cc-workflow/skills/kramme:one/SKILL.md E4 expired on 2000-01-01"* ]]
+	[ "$(count_invocations)" = "0" ]
+}
+
+@test "expired accepted finding warns in advisory mode and does not accept" {
+	local policy_file="$TMP_DIR/accepted-findings.json"
+	export MOCK_SKILLSPECTOR_JSON='{"issues":[{"severity":"HIGH","rule_id":"E4","path":"kramme-cc-workflow/skills/kramme:one/SKILL.md"}]}'
+	write_policy "$policy_file" '{
+  "accepted_findings": [
+    {
+      "path": "kramme-cc-workflow/skills/kramme:one/SKILL.md",
+      "rule_id": "E4",
+      "reason": "Expired test exception.",
+      "owner": "Security",
+      "accepted_at": "2026-06-13",
+      "expires_at": "2000-01-01"
+    }
+  ]
+}'
+
+	run "$SCRIPT" --all --accepted-findings "$policy_file" --output-dir "$REPORT_DIR"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"WARNING: expired accepted finding: kramme-cc-workflow/skills/kramme:one/SKILL.md E4 expired on 2000-01-01"* ]]
+	[[ "$output" == *"Findings: total=1 accepted=0 enforceable=1"* ]]
+}
+
+@test "review_after due accepted finding warns in advisory mode and does not accept" {
+	local policy_file="$TMP_DIR/accepted-findings.json"
+	export MOCK_SKILLSPECTOR_JSON='{"issues":[{"severity":"HIGH","rule_id":"E4","path":"kramme-cc-workflow/skills/kramme:one/SKILL.md"}]}'
+	write_policy "$policy_file" '{
+  "accepted_findings": [
+    {
+      "path": "kramme-cc-workflow/skills/kramme:one/SKILL.md",
+      "rule_id": "E4",
+      "reason": "Review due test exception.",
+      "owner": "Security",
+      "accepted_at": "2026-06-13",
+      "review_after": "2000-01-01"
+    }
+  ]
+}'
+
+	run "$SCRIPT" --all --accepted-findings "$policy_file" --output-dir "$REPORT_DIR"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"WARNING: expired accepted finding: kramme-cc-workflow/skills/kramme:one/SKILL.md E4 expired on 2000-01-01"* ]]
+	[[ "$output" == *"Findings: total=1 accepted=0 enforceable=1"* ]]
 }
 
 @test "primary markdown format writes markdown and json reports" {
