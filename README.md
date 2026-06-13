@@ -583,11 +583,12 @@ make -C kramme-cc-workflow skill-security
 # Scan only skill directories changed against BASE_REF, defaulting to origin/main
 make -C kramme-cc-workflow skill-security-changed
 
-# Scan every plugin skill with SkillSpector semantic analysis enabled
+# Scan every plugin skill with SkillSpector semantic analysis enabled.
+# Defaults to JSON to avoid running a second LLM-backed companion report.
 make -C kramme-cc-workflow skill-security-semantic
 ```
 
-Reports are written to `.context/skillspector/` by default, or `$RUNNER_TEMP/skillspector` in CI. Override behavior with `SKILLSPECTOR_FORMAT`, `SKILLSPECTOR_FAIL_ON`, and `SKILLSPECTOR_BASE`.
+Reports are written to `.context/skillspector/` by default, or `$RUNNER_TEMP/skillspector` in CI. Override behavior with `SKILLSPECTOR_FORMAT`, `SKILLSPECTOR_SEMANTIC_FORMAT`, `SKILLSPECTOR_FAIL_ON`, and `SKILLSPECTOR_BASE`.
 
 ### Test Structure
 

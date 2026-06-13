@@ -4,6 +4,7 @@ SHELLCHECK ?= shellcheck
 SHELLCHECK_SEVERITY ?= error
 RUFF ?= ruff
 SKILLSPECTOR_FORMAT ?= markdown
+SKILLSPECTOR_SEMANTIC_FORMAT ?= json
 SKILLSPECTOR_FAIL_ON ?= none
 SKILLSPECTOR_BASE ?= $(if $(BASE_REF),$(BASE_REF),origin/main)
 
@@ -81,7 +82,7 @@ skill-security-changed:
 	@./scripts/run-skillspector.sh --changed --base "$(SKILLSPECTOR_BASE)" --format "$(SKILLSPECTOR_FORMAT)" --fail-on "$(SKILLSPECTOR_FAIL_ON)"
 
 skill-security-semantic:
-	@./scripts/run-skillspector.sh --all --semantic --format "$(SKILLSPECTOR_FORMAT)" --fail-on "$(SKILLSPECTOR_FAIL_ON)"
+	@./scripts/run-skillspector.sh --all --semantic --format "$(SKILLSPECTOR_SEMANTIC_FORMAT)" --fail-on "$(SKILLSPECTOR_FAIL_ON)"
 
 # Install test dependencies
 install-test-deps:
