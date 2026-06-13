@@ -1,0 +1,37 @@
+sources:
+  - id: github-cli-pr-commands
+    url: https://cli.github.com/manual/gh_pr
+    title: "GitHub CLI gh pr command reference"
+    rationale: "The skill uses this source for listing review-requested PRs (gh pr list --search), reading PR context (gh pr view), and the gh CLI conventions used throughout the workflow."
+    last_reviewed_at: 2026-06-13
+    baseline_hash: ""
+  - id: github-search-review-requested
+    url: https://docs.github.com/en/search-github/searching-on-github/searching-issues-and-pull-requests
+    title: "GitHub search syntax for issues and pull requests"
+    rationale: "The skill uses this source for the user-review-requested:@me search qualifier that surfaces PRs awaiting the user's direct review."
+    last_reviewed_at: 2026-06-13
+    baseline_hash: ""
+  - id: github-rest-pull-reviews
+    url: https://docs.github.com/en/rest/pulls/reviews
+    title: "GitHub REST API endpoints for pull request reviews"
+    rationale: "The skill uses this source for reading prior review verdicts and for the optional manual-posting appendix that submits a PR review with a body, event, and inline comments."
+    last_reviewed_at: 2026-06-13
+    baseline_hash: ""
+  - id: github-rest-pull-review-comments
+    url: https://docs.github.com/en/rest/pulls/comments
+    title: "GitHub REST API endpoints for pull request review comments"
+    rationale: "The skill uses this source for listing existing inline review comments and for the manual-posting appendix that replies to an existing review thread."
+    last_reviewed_at: 2026-06-13
+    baseline_hash: ""
+  - id: github-graphql-pull-review-threads
+    url: https://docs.github.com/en/graphql/reference/pulls
+    title: "GitHub GraphQL Pull requests reference"
+    rationale: "The skill uses this source for reviewThreads metadata and resolution state when mapping an ongoing review conversation."
+    last_reviewed_at: 2026-06-13
+    baseline_hash: ""
+  - id: github-rest-issue-comments
+    url: https://docs.github.com/en/rest/issues/comments
+    title: "GitHub REST API endpoints for issue comments"
+    rationale: "The skill uses this source for listing the PR's general (non-inline) discussion comments when mapping an ongoing review conversation."
+    last_reviewed_at: 2026-06-13
+    baseline_hash: ""
