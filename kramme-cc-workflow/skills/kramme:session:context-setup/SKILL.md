@@ -139,7 +139,6 @@ Load from an MCP source only when that source is the authoritative answer. Pulli
 
 - **Upstream of task work.** Call this skill (or perform its steps manually) before starting a real task. The tax is small; the cost of proceeding on the wrong context is large.
 - **Triggers `kramme:docs:update-agents-md`.** When L1 verification finds a missing or stale rules file, hand off to that skill for repair.
-- **Partnered with `kramme:session:wrap-up`.** This skill is the session-start bookend; `wrap-up` is the end-of-session bookend. Together they frame a session with explicit context setup and explicit context capture.
 - **Scope boundary.** This skill owns _when_ to fetch context — rules files, specs, source, errors, MCP sources. `kramme:code:source-driven` owns _how_ to ground external library/framework decisions in official docs and how to cite that evidence once fetched. If the partition ever collapses to one skill, restate the boundary there.
 
 ---

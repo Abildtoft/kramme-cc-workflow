@@ -25,7 +25,7 @@ kramme:{domain}:{action}[:{qualifier}...]
 | `hooks` | Plugin hook management | `hooks:toggle`, `hooks:configure-links` |
 | `verify` | Verification, testing | `verify:run`, `verify:before-completion` |
 | `workflow-artifacts` | Artifact management | `workflow-artifacts:cleanup` |
-| `session` | Session lifecycle | `session:wrap-up` |
+| `session` | Session lifecycle | `session:context-setup` |
 | `changelog` | Release notes | `changelog:generate` |
 | `nx` | Nx workspace tooling | `nx:setup-portless` |
 | `skill` | Plugin skill tooling | `skill:create` |
