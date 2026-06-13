@@ -4,7 +4,7 @@ description: (experimental) Product audit of SIW specs and plans before implemen
 argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--inline]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # Product Audit of SIW Specs
@@ -261,7 +261,7 @@ If `siw/PRODUCT_AUDIT.md` (or `PRODUCT_AUDIT.md` in project root) exists:
 
 ## Step 4: Launch Product Reviewer Agent
 
-Read `references/product-reviewer-prompt.md`, fill in the placeholders, including `PRODUCT_LOOP_CONTEXT`, and launch one agent via the Task tool (`subagent_type=kramme:product-reviewer`, `model=opus`) with that prompt. No relevance validation step is needed because the entire spec set is the audit scope.
+Read `references/product-reviewer-prompt.md`, fill in the placeholders, including `PRODUCT_LOOP_CONTEXT`, and run one product-reviewer pass with that prompt. Use the current host runtime's subagent mechanism when it exposes the `kramme:product-reviewer` reviewer; otherwise perform the same review inline in the main thread. No relevance validation step is needed because the entire spec set is the audit scope.
 
 ---
 

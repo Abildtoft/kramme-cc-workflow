@@ -4,7 +4,7 @@ description: Break spec into atomic, phase-based issues with tests and validatio
 argument-hint: "[spec-file-path] [--auto]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # Generate Phases from Specification
@@ -280,9 +280,9 @@ Record the chosen category per group (e.g., "Phase 1 tasks: Safe to parallelize 
 
 ## Phase 4: Subagent Review
 
-Launch a Task subagent to review the proposed breakdown:
+Run a host-neutral review pass over the proposed breakdown. Use the current host runtime's subagent mechanism when available; if no subagent mechanism is available, perform the same review inline in the main thread:
 
-**Before launching the subagent, read `references/task-sizing.md` (already read in Phase 3.2) and substitute its full contents — the Task Sizing, Break-down triggers, Vertical vs horizontal slicing, and Parallelization taxonomy sections — for the `{task_sizing_grammar}` placeholder below. The subagent must receive the grammar inline; it cannot rely on a working-directory-relative read.**
+**Before running the review pass, read `references/task-sizing.md` (already read in Phase 3.2) and substitute its full contents — the Task Sizing, Break-down triggers, Vertical vs horizontal slicing, and Parallelization taxonomy sections — for the `{task_sizing_grammar}` placeholder below. The reviewer must receive the grammar inline; it cannot rely on a working-directory-relative read.**
 
 **Prompt:**
 
@@ -322,13 +322,13 @@ If the breakdown looks good, confirm it's ready.
 
 **Incorporate feedback:** Update the phase plan based on subagent suggestions.
 
-**Loopback gate (max 3 iterations):** If the subagent reports any XL task, any context-inappropriate horizontal / over-bundled slice, or any Mode-coverage issue per criterion 9 (unlabeled task, HITL-without-reason, or HITL whose reason is too weak to justify it), re-run Phase 3.2 decomposition and re-submit to the subagent. Only proceed to Phase 5 once the subagent confirms zero XL tasks, zero slicing-shape issues, and complete, correctly-defaulted Mode coverage.
+**Loopback gate (max 3 iterations):** If the review pass reports any XL task, any context-inappropriate horizontal / over-bundled slice, or any Mode-coverage issue per criterion 9 (unlabeled task, HITL-without-reason, or HITL whose reason is too weak to justify it), re-run Phase 3.2 decomposition and re-run the review pass. Only proceed to Phase 5 once the review confirms zero XL tasks, zero slicing-shape issues, and complete, correctly-defaulted Mode coverage.
 
 If the gate is still failing after **3 review passes**, stop looping. Surface the remaining flagged items to the user as `POTENTIAL CONCERNS` and use AskUserQuestion to choose: "Proceed to Phase 5 with remaining concerns" / "Abort and let me edit the spec first". Do not loop a fourth time.
 
 If `AUTO_MODE=true`, do not proceed with remaining concerns after 3 failed review passes. Stop and report the unresolved `POTENTIAL CONCERNS`.
 
-**Subagent failure handling:** If the Task subagent does not return structured feedback (empty response, unstructured text, or tool error), surface the raw response, treat the iteration as inconclusive, and ask the user how to proceed via AskUserQuestion: "Re-run review" / "Proceed without review" / "Abort". Re-runs count toward the 3-iteration cap.
+**Review failure handling:** If the review pass does not return structured feedback (empty response, unstructured text, or tool error), surface the raw response, treat the iteration as inconclusive, and ask the user how to proceed via AskUserQuestion: "Re-run review" / "Proceed without review" / "Abort". Re-runs count toward the 3-iteration cap.
 
 If `AUTO_MODE=true` and the subagent response is inconclusive, re-run once if the 3-iteration cap leaves room; otherwise stop. Never proceed without review in auto mode.
 
@@ -355,7 +355,7 @@ After Phase 4 passes the hard gates and before Phase 5 user approval, decide whe
 - missing rollback, rollout, migration, security, or data-safety treatment when relevant,
 - whether any split, deletion, or reordering would accidentally renumber existing issue IDs.
 
-Use the smallest useful review surface. Prefer a single focused Task subagent when the risk is mostly sequencing/decomposition; add a specialist only when the risk maps directly to that domain (for example security, data migration, performance, or architecture). In the prompt, pass the risk signals, the proposed phase plan, any `UNVERIFIED` assumptions, and the specific questions above. Ask for concrete plan improvements only; no implementation code or shell commands.
+Use the smallest useful review surface. Prefer a single focused subagent review when the risk is mostly sequencing/decomposition and the host exposes subagents; otherwise perform the same focused pass inline. Add a specialist subagent only when the host exposes one and the risk maps directly to that domain (for example security, data migration, performance, or architecture); otherwise perform the specialist check inline. In the prompt, pass the risk signals, the proposed phase plan, any `UNVERIFIED` assumptions, and the specific questions above. Ask for concrete plan improvements only; no implementation code or shell commands.
 
 Incorporate valid findings into the draft plan before Phase 5. Preserve all existing append-mode IDs. If a new draft task splits from another new draft task before file creation, keep the original ID on the original concept and assign the split-out concept the next unused draft number in that prefix group. If the deepening pass changes, splits, deletes, or reorders any task, loop back through Phase 4 with the revised plan before Phase 5; the final user-facing plan must be the same plan that passed Phase 4's hard gates. If the pass surfaces a true product or scope blocker, use `MISSING REQUIREMENT:` or `CONFUSION:` and stop for user input; in `AUTO_MODE=true`, stop instead of inventing assumptions.
 

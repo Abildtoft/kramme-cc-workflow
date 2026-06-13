@@ -4,7 +4,7 @@ description: Deep product review of branch and local changes. Evaluates user-val
 argument-hint: "[--base <branch>] [--threshold 0-100] [--inline]"
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # Product Review for Pull Request and Local Changes

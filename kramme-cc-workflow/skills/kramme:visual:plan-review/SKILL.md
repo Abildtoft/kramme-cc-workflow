@@ -4,7 +4,7 @@ description: Generate a visual HTML plan review comparing current codebase state
 argument-hint: "[plan-file-path] [codebase-path]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # Visual Plan Review

@@ -4,7 +4,7 @@ description: Use when you want a shareable visual walkthrough of an existing bra
 argument-hint: "[branch|commit|PR#|range]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # Visual Diff Review

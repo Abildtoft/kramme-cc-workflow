@@ -4,7 +4,7 @@ description: Generate a visual HTML project recap to rebuild mental model when r
 argument-hint: "[time-window: 2w|30d|3m]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # Visual Project Recap

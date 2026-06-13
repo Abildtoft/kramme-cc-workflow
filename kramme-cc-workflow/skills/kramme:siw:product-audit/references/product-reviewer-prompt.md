@@ -4,7 +4,7 @@ Use this prompt for `/kramme:siw:product-audit` Step 4. Fill in `{list of spec f
 
 ## Launch
 
-Launch a single agent via the Task tool (`subagent_type=kramme:product-reviewer`, `model=opus`).
+Run a single product-reviewer pass. Use the current host runtime's subagent mechanism when it exposes the `kramme:product-reviewer` reviewer; otherwise perform the same review inline in the main thread.
 
 No relevance validation step is needed because the entire spec is the scope.
 

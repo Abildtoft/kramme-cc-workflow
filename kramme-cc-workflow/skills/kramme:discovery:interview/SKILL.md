@@ -4,7 +4,7 @@ description: Conduct an in-depth interview about a topic/proposal to uncover req
 argument-hint: "[file-path or topic description] [--ideate] [--decision-tree] [--research]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # Deep Exploration Interview
@@ -158,7 +158,7 @@ Read `references/research-agents.md` for the per-classification agent prompt tem
 - **Process/Workflow** → Codebase agent only
 - **Documentation/Proposal** → Codebase + Docs agents
 
-Spawn them via the Task tool with `subagent_type: Explore` (or `general-purpose` when the agent needs WebSearch / WebFetch / Context7 MCP). Each agent's prompt comes from the reference file.
+Spawn them with the current host runtime's subagent mechanism when available. For codebase research, use an Explore/explorer-style agent; for docs or web research, use a research-capable agent if the host exposes one, otherwise perform that research inline in the main thread with the available docs and web tools. Each agent's prompt comes from the reference file.
 
 **Research the problem, not the proposal.** If the input includes a proposed solution, every agent should investigate the underlying problem independently before evaluating the proposal.
 

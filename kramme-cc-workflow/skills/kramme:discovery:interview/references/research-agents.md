@@ -1,8 +1,8 @@
 # Phase R Agent Prompts
 
-Spawn each agent via the Task tool. Pick the agent set matching the topic type from Step 2, then send each agent a self-contained prompt — the agent has no access to the parent conversation.
+Spawn each agent with the current host runtime's subagent mechanism when available. Pick the agent set matching the topic type from Step 2, then send each agent a self-contained prompt — the agent has no access to the parent conversation. If a required subagent type is not available, run that research pass inline in the main thread.
 
-For codebase agents, prefer `subagent_type: Explore`. For docs/web agents that need WebSearch, WebFetch, or Context7 MCP tools, use `subagent_type: general-purpose`.
+For codebase agents, prefer an Explore/explorer-style agent. For docs/web agents that need WebSearch, WebFetch, or Context7 MCP tools, use a research-capable agent when the host exposes one; otherwise use the available docs and web tools inline.
 
 When the proposed input contains a stated solution, every agent below must investigate the underlying problem first; the proposal is one candidate answer, not the framing.
 

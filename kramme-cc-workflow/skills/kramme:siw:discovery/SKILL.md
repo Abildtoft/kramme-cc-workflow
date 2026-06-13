@@ -4,7 +4,7 @@ description: Deep discovery interview that uncovers what you actually want, not 
 argument-hint: "[topic | spec-file(s) | 'siw'] [--apply] [--decision-tree]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # SIW Discovery
