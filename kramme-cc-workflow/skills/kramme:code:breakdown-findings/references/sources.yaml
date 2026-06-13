@@ -3,5 +3,8 @@ sources:
     url: https://github.com/addyosmani/agent-skills/tree/main/skills/git-workflow-and-versioning
     title: "Addy Osmani agent-skills - git workflow and versioning"
     rationale: "The end-of-turn triplet convention is adapted for plan-generation output from Addy's git workflow conventions."
+    upstream_path: "skills/git-workflow-and-versioning"
     last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    baseline_commit: "unknown"
+    license: "Repository license should be checked before copying code, assets, or substantial prose; this skill adapts the output convention only and does not copy upstream files."
+    baseline_hash: "not-applicable-no-copied-files"

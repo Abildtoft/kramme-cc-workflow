@@ -1,14 +1,14 @@
 # PR Plan Index
 
-**Generated:** {{date}} **Source:** {{source file or description}} **Total findings:** {{N}} | **Plans generated:** {{M}} | **Excluded:** {{X}}
+**Generated:** {{date}} **Source:** {{source file or description}} **Source type:** {{findings report / pre-clustered handoff}} **Total scope:** {{N findings / N themes}} | **Plans generated:** {{M}} | **Scope status:** {{findings mode: X excluded; handoff mode: all themes included}}
 
 ---
 
 ## Plans
 
-| Label | File | Plan Name | Findings | Sequencing | Summary |
+| Label | File | Plan Name | Scope | Sequencing | Summary |
 | --- | --- | --- | --- | --- | --- |
-| `{{W##L}}` | `PR_PLAN_{{EXECUTION_LABEL}}_{{SLUG}}.md` | {{W##L theme-name (parallel in W## / blocked by W##L / blocks W##L)}} | {{count}} | {{parallel in W## / blocked by W##L / blocks W##L}} | {{2-4 sentence summary}} |
+| `{{W##L}}` | `PR_PLAN_{{EXECUTION_LABEL}}_{{SLUG}}.md` | {{W##L theme-name (parallel in W## / blocked by W##L / blocks W##L)}} | {{findings count or "1 delegated theme"}} | {{parallel in W## / blocked by W##L / blocks W##L}} | {{2-4 sentence summary}} |
 
 ## Recommended Implementation Order
 
@@ -29,10 +29,12 @@ W01A PR_PLAN_W01A_DEFINE_ERROR_TYPES.md (blocks W02A)
 W01B PR_PLAN_W01B_REMOVE_DEAD_EXPORTS.md (parallel in W01; independent)
 ```
 
-## Excluded Findings
+## Excluded or Included Scope
 
 {{If any findings were excluded from all plans, list each one on its own line with the marker prefix and reason.}}
 
 NOTICED BUT NOT TOUCHING: {{description}} -- {{why excluded: duplicate / already resolved / not actionable / ambiguous}}
 
 {{If no findings were excluded, write: "All findings were included in plans."}}
+
+{{For a pre-clustered handoff, write exactly: "All themes included."}}
