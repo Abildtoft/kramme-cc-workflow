@@ -576,7 +576,7 @@ make -C kramme-cc-workflow test-skill-usage
 
 ### Skill Security Scans
 
-SkillSpector scans are optional local checks. Static-only scanning is the default; semantic analysis is opt-in.
+SkillSpector scans are optional local checks that complement tests, linting, and human review. Run them for new or materially changed skills, before installing third-party skills, and as a full-tree check for release candidates. Static-only scanning is the default; semantic analysis is opt-in.
 
 ```bash
 # Scan every plugin skill
@@ -590,7 +590,16 @@ make -C kramme-cc-workflow skill-security-changed
 make -C kramme-cc-workflow skill-security-semantic
 ```
 
+For third-party skill intake, scan the source before installing it:
+
+```bash
+# Scan an external Git URL, zip, directory, or SKILL.md without LLM analysis
+skillspector scan <url-or-path> --no-llm
+```
+
 Reports are written to `.context/skillspector/` by default, or `$RUNNER_TEMP/skillspector` in CI. Override behavior with `SKILLSPECTOR_FORMAT`, `SKILLSPECTOR_SEMANTIC_FORMAT`, `SKILLSPECTOR_FAIL_ON`, and `SKILLSPECTOR_BASE`.
+
+Triage high and critical findings before installation, release, or merge. Enable semantic scanning only when provider credentials are intentionally configured and the skill contents are acceptable to send to that provider.
 
 ### Test Structure
 

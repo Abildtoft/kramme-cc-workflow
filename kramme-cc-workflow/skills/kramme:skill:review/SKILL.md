@@ -31,17 +31,24 @@ Review one or more skills against the skill-authoring rubric. This is a read-onl
    - Treat `skill-cleaner` output as supporting evidence only: loaded prompt cost, long-description candidates, duplicated or unused skills, loaded roots, and prompt-budget pressure.
    - Do not fetch, install, or run external analyzer code in this review. If no analyzer is available, continue with the normal rubric and note that ecosystem evidence was not checked; analyzer setup or execution belongs in a separate non-review task.
 
-4. **Extract the skill contract**
+4. **Gather SkillSpector evidence when applicable**
+   - For a repo-backed skill directory or `SKILL.md` path, run a static-only SkillSpector scan when the local CLI is available and the invocation does not call external services or modify repository files, using `skillspector scan <skill-path> --no-llm`.
+   - If the scanner is unavailable, the target is pasted text, or the local invocation would write files, ask for existing SkillSpector output or mark scanner evidence as not checked.
+   - Do not run semantic scanning unless the user explicitly asks for it and confirms provider credentials and privacy tradeoffs. If semantic output is supplied, treat description-behavior mismatch as a contract finding.
+   - Treat high and critical static findings as review findings unless direct inspection shows they are false positives.
+
+5. **Extract the skill contract**
    - Identify the skill's job, trigger conditions, negative triggers, expected arguments, inputs, outputs, side effects, resource dependencies, platform assumptions, failure modes, source-attribution requirements, and durable artifact lifecycle.
    - If the contract is unclear, treat that as a review finding instead of guessing intent.
 
-5. **Review against the rubric**
+6. **Review against the rubric**
    - **Focused and composable**: The skill owns one coherent job, avoids bundling unrelated workflows, and composes with other skills by reference instead of duplicating their responsibilities.
    - **Prompt footprint**: The frontmatter description preserves trigger nouns while staying compact; `SKILL.md` contains only essential workflow; generic advice, repeated examples, and information the agent can infer are removed or moved out of the loaded path.
    - **Ecosystem fit**: When ecosystem evidence is available, the skill is not an unnecessary duplicate, unused loaded skill, or root/configuration mismatch.
    - **Progressively disclosed**: Core workflow stays in `SKILL.md`; optional detail lives in directly referenced resource files; references are loaded just in time.
    - **Harness-agnostic and portable**: Instructions avoid hard-coded Claude/Codex/OpenCode tool names unless platform-gated. Paths are relative, assumptions are declared, and platform-specific behavior is marked in frontmatter or prose.
    - **Secure**: Side effects are explicit; destructive operations require confirmation; secrets are not printed; external input is validated; external commands and network calls have clear trust boundaries.
+   - **Security scanner evidence**: SkillSpector output is reviewed when available; high and critical findings are triaged; semantic mismatch evidence is checked only when the user intentionally provides or requests semantic scanning.
    - **Idempotent and retry-safe**: Re-running the skill has defined behavior for existing files, duplicate output, partial completion, temporary files, and failed external operations.
    - **Explicit error handling**: Missing files, malformed arguments, unavailable tools, conflicting sources, partial failures, and unsupported environments have clear handling.
    - **External-source integrity**: External inspiration is captured in `references/sources.yaml`; copied scripts or assets retain source, upstream path, commit/release when known, and license notes; adapted prose is rewritten in local vocabulary; long upstream workflows are decomposed instead of direct-ported as monolithic skill bodies.
@@ -49,17 +56,19 @@ Review one or more skills against the skill-authoring rubric. This is a read-onl
    - **Self-describing boundaries**: The frontmatter and body say when to use the skill, when not to use it, what it may touch, and what it will produce.
    - **Well-documented**: Arguments, outputs, validation steps, resource files, and source-attribution requirements are documented without auxiliary README-style files.
 
-6. **Report findings first**
+7. **Report findings first**
    - Order findings by severity: Critical, Major, Minor, Nit.
    - For each finding, include location, problem, why it matters, and a concrete fix.
    - For prompt-footprint findings, identify the exact content to remove, shorten, merge, or move to `references/`, and name any trigger nouns that must be preserved.
+   - For SkillSpector findings, include the reported severity, whether it was validated or judged a false positive, and the required triage before installation or merge.
    - For source-integrity findings, identify the missing manifest entry, copied file header, upstream path, license note, or direct-port section that needs correction.
    - Use file and line references when reviewing files. For pasted drafts, reference the nearest heading or frontmatter field.
    - Do not pad the report with style preferences. If a skill passes a rubric area, note it in the summary rather than creating a non-finding.
 
-7. **Summarize the result**
+8. **Summarize the result**
    - Include a compact rubric snapshot with `Pass`, `Watch`, or `Fail` for each rubric area.
    - Mark `Ecosystem fit` as `N/A` when no cleaner report, local analyzer, or comparable repository evidence was used.
+   - Mark `Security scanner evidence` as `N/A` for pasted drafts or when SkillSpector was unavailable and no prior scan output was supplied.
    - Include open questions only when they block a confident recommendation.
    - If no findings are found, say so clearly and mention any residual risk from unread resources or unrun validation.
 
