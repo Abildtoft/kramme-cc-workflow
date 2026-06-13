@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:github-review-reply
 description: Maps human GitHub PR review feedback, including inline review threads, review-summary comments, and general PR comments; facilitates needed code changes; drafts and humanizes action-based responses; and optionally posts replies or resolves addressed inline threads with gh. Use when reviewers left GitHub comments that need triage, implementation, or response. Not for fixing CI, generating internal review findings, or resolving local REVIEW_OVERVIEW.md findings.
-argument-hint: "[--implement|--no-implement] [--post] [--resolve] [--inline] [--include-bots] [--all] [--only <login>] [pr-url|instructions]"
+argument-hint: "[--auto] [--implement|--no-implement] [--post] [--resolve] [--inline] [--include-bots] [--all] [--only <login>] [pr-url|instructions]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -22,6 +22,7 @@ Parse `$ARGUMENTS` before fetching data.
 
 **Flags:**
 
+- `--auto` - implement needed code changes, post ready replies/comments, and resolve inline threads marked safe after posting. Equivalent to `--implement --post --resolve`.
 - `--post` - after drafting, post approved replies to GitHub.
 - `--resolve` - after posting, resolve inline threads that are fully addressed. If used without `--post`, ask for explicit confirmation before resolving existing addressed inline threads.
 - `--implement` - implement code-change items before drafting replies.
@@ -33,7 +34,9 @@ Parse `$ARGUMENTS` before fetching data.
 
 The remaining payload may be a PR URL, PR number, or additional instructions such as "only reply to Sarah" or "do not resolve design comments."
 
-Defaults: `IMPLEMENT=plan-only`, `POST=false`, `RESOLVE=false`, `INLINE=false`, `INCLUDE_BOTS=false`, `INCLUDE_ALL=false`.
+Defaults: `AUTO=false`, `IMPLEMENT=plan-only`, `POST=false`, `RESOLVE=false`, `INLINE=false`, `INCLUDE_BOTS=false`, `INCLUDE_ALL=false`.
+
+If `--auto` is present, set `AUTO=true`, `IMPLEMENT=implement`, `POST=true`, and `RESOLVE=true`. If both `--auto` and `--no-implement` are present, stop and ask the user to choose one mode; `--auto` owns implementation because it posts completion replies and resolves addressed threads.
 
 `IMPLEMENT=plan-only` is the default: map feedback and draft replies, but do not edit code. Implement needed code changes only when `--implement` is set or the request explicitly asks to address, handle, or fix the feedback (e.g. "address these comments", "fix Sarah's findings"). A bare invocation — just a PR URL, or no payload — never edits code. `--implement` forces implementation; `--no-implement` is the explicit form of the plan-only default.
 
@@ -281,7 +284,7 @@ Treat `GITHUB_REVIEW_REPLY_PLAN.md` and the reply payload files under `.context/
 
 ## Step 8: Confirm Before GitHub Writes
 
-If neither `--post` nor `--resolve` is set, stop after writing or returning the plan.
+If `POST=false` and `RESOLVE=false`, stop after writing or returning the plan.
 
 Before any GitHub write, show:
 
@@ -289,7 +292,7 @@ Before any GitHub write, show:
 Posting <N> replies/comments and resolving <M> inline review threads on <PR URL>.
 ```
 
-Then ask for explicit confirmation unless the user's current message clearly requested posting now and the flags include `--post`. For REST-only fallback, always ask for explicit confirmation before posting because resolution state is unknown; `--post` alone does not waive this confirmation.
+Then ask for explicit confirmation unless the user's current message clearly requested posting now and the flags include `--post` or `--auto`. For REST-only fallback, always ask for explicit confirmation before posting because resolution state is unknown; `--post` and `--auto` do not waive this confirmation.
 
 Do not post replies for items classified as `needs-code-change` or with `Implementation status: blocked|not attempted` unless the user explicitly asks to post acknowledgement replies.
 

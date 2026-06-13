@@ -6,10 +6,10 @@ This reference is loaded by `/kramme:pr:resolve-review --team`; assume `--team` 
 
 Parse `$ARGUMENTS` for `--auto`, `--post`, and `--implement-only` before Step 1.
 
-- If `--implement-only` is present, stop and ask the user to rerun without `--team` or without `--implement-only`. Team mode writes its own review summary and applies its own reply behavior, so it cannot satisfy implement-only's no-output/no-reply contract.
+- If `--implement-only` is present, stop and ask the user to rerun without `--team` or without `--implement-only`. Team mode writes its own review summary, so it cannot satisfy implement-only's no-output/no-reply contract.
+- If `--post` is present, stop with: `--post is not supported by kramme:pr:resolve-review --team.`
 - If `--auto` is present, set `AUTO_MODE=true` and remove the flag from the remaining input.
 - `--auto` means the lead skips the plan confirmation in Step 4 and proceeds directly with the parallel plan whenever the grouping shows real parallelism. It does not permit GitHub writes.
-- If `--post` is present, set `ANSWER_AND_RESOLVE=true` and remove the flag from the remaining input. `--post` permits posting replies and resolving addressed external review threads after the fixes land, same as the standard skill.
 
 ## Prerequisites
 
@@ -128,9 +128,7 @@ After all agents complete:
    - Ask the responsible agent to fix it (resume its session)
    - Fix it directly as the lead
 
-3. Apply the same reply behavior as `/kramme:pr:resolve-review` Step 4:
-   - `REVIEW_SOURCE=local`, or `ANSWER_AND_RESOLVE` is not set: do not post replies or resolve threads on GitHub.
-   - `ANSWER_AND_RESOLVE=true` on an external review: print the summary line (`Posting N replies and resolving M threads on PR #X`), then post a reply for each addressed comment and resolve those threads. For disagreements or out-of-scope findings, post a rationale reply but do not resolve the thread.
+3. Do not post replies or resolve threads on GitHub.
 
 4. Write resolutions to the appropriate file (if the source was `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, or `COPY_REVIEW_OVERVIEW.md`, update that file in place; otherwise write to `REVIEW_OVERVIEW.md`), using the same format as `/kramme:pr:resolve-review` Step 4 and Output format (in-place updates, never delete entries), with an additional note about parallel resolution:
 
