@@ -2,7 +2,7 @@
 
 Use this reference for `/kramme:pr:create` Steps 8–9 after the branch is prepared, commits are finalized, and the PR title/body have been generated.
 
-`{base-branch}` is the value captured in Steps 2–3. `{feature-branch}` is the current branch. `{title}` and `{description}` come from Step 7 (the generator skill or its fallback). Substitute literal values when emitting commands and messages — these are agent-tracked, not shell variables.
+`{base-branch}` is the value captured in Steps 2–3. `{feature-branch}` is the current branch. `{title}` and `{description}` come from Step 7 (the generator skill or its fallback). `{linear-issue-id}` may be captured during branch handling. Substitute literal values when emitting commands and messages — these are agent-tracked, not shell variables.
 
 ## Step 8: Confirmation and Creation
 
@@ -103,6 +103,8 @@ If **"Edit description first"** selected, run the edit loop below before re-prom
    ```
 
 3. Apply the chosen edit (capture new `{title}` and/or `{description}`), then return to Step 8.1 to re-preview and re-confirm. Loop until the user selects **"Create PR"** / **"Create Draft PR"** or **"Abort"**.
+
+After each description edit, if `{linear-issue-id}` is present, keep the default Linear closing line as `Closes {linear-issue-id}`. Replace `Fixes {linear-issue-id}` or `Resolves {linear-issue-id}` with `Closes {linear-issue-id}` unless the user explicitly asked for that alternative keyword in the edit request. If the edited description links the same issue with a non-closing keyword (`Related to`, `Refs`, or `References`), preserve that link and do not add a separate closing line.
 
 ### 8.3 Push Branch
 

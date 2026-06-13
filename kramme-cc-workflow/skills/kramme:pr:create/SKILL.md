@@ -222,6 +222,14 @@ When it returns, continue to Step 8. See the "Workflow rule" near the top of thi
 
 Capture the generated title, the full description for Step 8, and any uppercase output markers from the generator.
 
+If `{linear-issue-id}` is captured from branch handling, normalize the generated description before preview:
+
+- Default to `Closes {linear-issue-id}` for the Linear auto-close line.
+- If the generator used `Fixes {linear-issue-id}` or `Resolves {linear-issue-id}`, replace that line with `Closes {linear-issue-id}`.
+- If the generator already linked `{linear-issue-id}` with a non-closing keyword (`Related to`, `Refs`, or `References`), preserve that link and do not add a separate `Closes {linear-issue-id}` line.
+- If the description has no auto-close line for `{linear-issue-id}`, add `Closes {linear-issue-id}` in the issue-linking location used by the generated body, or append it at the end if no better location exists.
+- Do not override an explicit user instruction to use a different keyword (`Fixes`, `Resolves`, `Refs`, `Related to`, etc.).
+
 If the generator emits a blocking `MISSING REQUIREMENT:` marker, do **not** proceed to Step 8 or create the PR from the incomplete description. Blocking markers are the generator's database-migration rationale/rollback-plan gap and feature-flag rollout-context gap.
 
 - If `AUTO_MODE=true`, route to Step 10 rollback and surface the marker as the reason.
@@ -260,13 +268,16 @@ If the skill returns no usable output, build a fallback:
 None
 ```
 
+Apply the same `{linear-issue-id}` normalization from Step 7.2 to the fallback description before preview. If `{linear-issue-id}` is present and the fallback body has no auto-close line or non-closing link for that issue, append `Closes {linear-issue-id}` before continuing unless the user explicitly instructed a different keyword.
+
 Continue to Step 8 with the fallback title and description. When `AUTO_MODE=true`, prefer fallback (1) or (2) over prompting.
 
 ---
 
 ## Step 8: Confirmation and Creation
 
-Read `references/confirmation-and-creation.md` and execute Step 8 from that file. It contains the preview format, confirmation prompt, the "Edit description first" loop, draft-mode substitutions, push command, `gh pr create` invocation, and failure fallbacks. Substitute `{base-branch}`, `{original-branch}`, the captured title, and the generated description when emitting commands.
+Read `references/confirmation-and-creation.md` and execute Step 8 from that file. It contains the preview format, confirmation prompt, the "Edit description first" loop, draft-mode substitutions, push command, `gh pr create` invocation, and failure fallbacks. Substitute `{base-branch}`, `{original-branch}`, the captured title, and the generated or fallback description when emitting commands.
+Carry `{linear-issue-id}` into Step 8 if captured so edited descriptions still follow the Linear closing-keyword policy.
 
 ---
 
