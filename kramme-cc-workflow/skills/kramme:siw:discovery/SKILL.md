@@ -37,7 +37,7 @@ Do NOT use for: implementation planning (use `generate-phases`), issue definitio
     │
     ▼
 [Step 4: Discovery interview loop]
-    │   ├─ Coverage mode: pick dimensions, ask 1-3 questions, update confidence
+    │   ├─ Coverage mode: maintain an evidence ledger, pick dimensions, ask 1-3 questions, update confidence
     │   ├─ Decision-tree mode: resolve dependencies one question at a time
     │   ├─ Check whether the codebase already answers each question
     │   ├─ Offer ADR handoff for durable tradeoff decisions
@@ -238,6 +238,10 @@ Read `references/probing-techniques.md` for the technique library and selection 
 
 Use **Coverage mode** by default. Use **Decision-Tree mode** when selected in Step 1.5.
 
+### Evidence Ledger Rule
+
+Use the evidence ledger in `references/confidence-framework.md` for every active dimension. The synthesis floor is: critical dimensions need direct validation plus a stress probe; normal dimensions need direct validation unless fully answered by artifacts and immaterial to tradeoffs; deprioritized dimensions need source evidence or one direct answer. The interview must include a priority/scope tradeoff, negative-space probe, and late restatement challenge before synthesis. If the user stops early, preserve uncovered ledger items as `MISSING REQUIREMENT:` instead of treating them as resolved.
+
 ### Codebase-as-Answer-Source Rule
 
 Before asking any question in either mode, decide whether the answer can be found by exploring the workspace, target spec, existing SIW docs, or provided artifacts.
@@ -262,11 +266,14 @@ Repeat until confidence target is met (see "When to Stop" in framework reference
 
 #### 4.1 Select Focus
 
-Pick the 1-2 lowest-confidence dimensions, weighted by criticality:
+Pick the 1-2 highest-value focus dimensions, weighted by coverage gaps before confidence score:
 
-1. Critical dimensions below Confident (always first)
-2. Normal dimensions below High
-3. Deprioritized dimensions below Medium (only if others are satisfied)
+1. Critical dimensions missing direct validation or a stress probe
+2. Normal dimensions missing direct validation
+3. Dimensions whose evidence contradicts another answer or artifact
+4. Critical dimensions below Confident
+5. Normal dimensions below High
+6. Deprioritized dimensions below Medium or missing any evidence (only if others are satisfied)
 
 #### 4.2 Select Technique
 
@@ -280,7 +287,7 @@ Late rounds (7+): prefer **Restatement Challenge**, **Inversion**, and **Stakeho
 
 #### 4.3 Ask Questions
 
-Use AskUserQuestion. Ask 1-3 high-value questions per round. For each question:
+Use AskUserQuestion. Ask 1-3 high-value questions per round; default to 2 when the questions are independent, and 1 when the answer changes the next question. Keep rounds small, but do not compress discovery into one broad batch. For each question:
 
 - Apply the Codebase-as-Answer-Source Rule before asking.
 - **State why you're asking** (1 sentence — which dimension this targets)
@@ -288,6 +295,7 @@ Use AskUserQuestion. Ask 1-3 high-value questions per round. For each question:
 - **Offer concrete options** when forcing tradeoffs (2-4 options + "Other")
 - **Use freeform** when probing for narrative or motivation
 - For high-stakes questions where the answer shapes the next question, ask only one question in the round.
+- If a round would only ask confirmation questions, replace one with a stress probe unless the coverage floor is already satisfied.
 
 When the technique calls for it, deliberately restate something the user said earlier — slightly differently — to test whether your model matches theirs.
 
@@ -301,9 +309,10 @@ After each round:
    - Implementation details without problem statement → apply Solution Stripping next round
    - Enthusiasm doesn't match stated priority → name the discrepancy
 3. If divergence detected, reset affected dimension to at most Medium until reconciled
-4. Update confidence levels using rubric indicators
-5. If a dimension remains unanswerable because the required information isn't in the spec or the user's answers, emit `MISSING REQUIREMENT:` before asking the targeted follow-up.
-6. Run the ADR-Offer Hook for any resolved decision.
+4. Update the evidence ledger. Mark a stress probe only when the answer tested a tradeoff, boundary, inversion, past failure, why-chain, or restatement challenge; a simple "yes, correct" does not count.
+5. Update confidence levels using rubric indicators and ledger coverage.
+6. If a dimension remains unanswerable because the required information isn't in the spec or the user's answers, emit `MISSING REQUIREMENT:` before asking the targeted follow-up.
+7. Run the ADR-Offer Hook for any resolved decision.
 
 #### 4.5 Display Updated Dashboard
 
@@ -322,7 +331,8 @@ If confidence dropped on any dimension (due to contradiction or revelation), not
 - All critical dimensions at Confident (90%+)
 - All normal dimensions at High (70%+)
 - All deprioritized dimensions at Medium (40%+)
-- Last 2 rounds produced confirmations, not revelations
+- The coverage ledger floor is satisfied
+- Last 2 rounds produced confirmations, not revelations, after the required stress probes have already run
 
 **Also stop when:**
 
@@ -332,8 +342,11 @@ If confidence dropped on any dimension (due to contradiction or revelation), not
 **Continue when:**
 
 - Any critical dimension below Confident
+- Any critical dimension lacks direct validation or a stress probe
+- Any normal dimension lacks direct validation and materially affects scope, outcome, constraints, risk, or priority
 - A contradiction was just discovered
 - Stated and actual wants haven't been reconciled
+- The interview has not yet forced a priority/scope tradeoff, tested negative space, and run a restatement challenge
 
 ### Decision-Tree Mode Loop
 
@@ -360,7 +373,7 @@ If the answer changes the root decision, redraw the active dependency tree befor
 
 #### 4D.4 Check ADR and Mode Exit
 
-Run the ADR-Offer Hook for each resolved durable decision. Exit Decision-Tree mode when the coupled branch is resolved; continue in Coverage mode for independent confidence gaps.
+Run the ADR-Offer Hook for each resolved durable decision. Exit Decision-Tree mode when the coupled branch is resolved; continue in Coverage mode for independent confidence gaps and any unmet evidence-ledger floor.
 
 ### Interview Pacing
 
@@ -368,6 +381,7 @@ Run the ADR-Offer Hook for each resolved durable decision. Exit Decision-Tree mo
 - Rounds 3-5: sharpening. Focus on Scope Boundaries, Priority Alignment, and Constraint Awareness.
 - Rounds 6+: validating. Stress-test with Restatement Challenge and Inversion. Fill remaining gaps.
 - If a round produces a surprise, pause the plan and follow the surprise — it's higher signal than the next planned question.
+- Greenfield discovery should rarely synthesize before 4 rounds unless the user stops early. Refinement should rarely synthesize before 2 rounds unless the target artifacts already answer most dimensions and the interview only validates narrow gaps.
 
 ## Step 5: Synthesize Findings
 
@@ -409,8 +423,7 @@ If `apply_changes=true` or the user asks to apply:
 6. After the target documents and optional log updates are complete, remove `siw/SPEC_STRENGTHENING_PLAN.md` using a trash-first, verified deletion:
    - If `trash` is installed, run `trash siw/SPEC_STRENGTHENING_PLAN.md` without suppressing errors.
    - If `trash` is missing, warn that the file will be permanently deleted and ask for explicit confirmation before running `rm -f siw/SPEC_STRENGTHENING_PLAN.md`.
-   - After deletion, verify `[ ! -e siw/SPEC_STRENGTHENING_PLAN.md ]`. Report a failure if the file still exists instead of claiming it was removed.
-   This prevents future runs from treating the applied plan as unresolved state while keeping deletion recoverable when possible.
+   - After deletion, verify `[ ! -e siw/SPEC_STRENGTHENING_PLAN.md ]`. Report a failure if the file still exists instead of claiming it was removed. This prevents future runs from treating the applied plan as unresolved state while keeping deletion recoverable when possible.
 
 **Greenfield mode:**
 
@@ -456,6 +469,7 @@ Do NOT finish with generic advice like "improve clarity" or "add more detail." I
 
 - _"Confidence is high enough to stop."_ — High confidence means nothing if it's high on the wrong dimensions. Re-check which dimensions are Critical for the current Work Context before stopping.
 - _"The user agreed with my hypothesis, so we're aligned."_ — Agreement is cheap. Restatement Challenge is cheaper than re-doing the project. Verify at least once mid-interview.
+- _"I asked three good questions, so the interview is done."_ — Question count is not coverage. Check the evidence ledger and keep going until the active dimensions have direct validation and probes.
 - _"Stated and actual wants are the same here."_ — They rarely are. If you haven't surfaced _any_ divergence by round 4, you probably haven't probed hard enough.
 - _"The spec covers it, so the dimension is Confident."_ — A section can exist and still be vague. Score on specificity and actionability, not presence.
 
@@ -463,6 +477,7 @@ Do NOT finish with generic advice like "improve clarity" or "add more detail." I
 
 - The user answers every question with "yes, that's right" and never corrects you. Likely you're asking leading questions or they're deferring. Force a tradeoff.
 - You're about to write the brief and can't quote a single surprising thing the user said. The interview didn't do its job.
+- You're about to synthesize after one question batch. Unless the user stopped you, that is almost always a coverage failure.
 - You're defaulting a dimension to a guess instead of asking. Emit `MISSING REQUIREMENT:` and ask.
 - The "What You Don't Want" list is empty or has no rationales. Non-goals without reasons become scope creep later.
 - You're continuing past round 10 without a signal that anything new will surface. Suggest stopping.
@@ -472,7 +487,9 @@ Do NOT finish with generic advice like "improve clarity" or "add more detail." I
 Before writing the brief or strengthening plan, confirm:
 
 - [ ] All critical dimensions reached Confident; all normal dimensions reached High; all deprioritized dimensions reached Medium.
+- [ ] The coverage ledger floor is complete, or uncovered items are preserved as `MISSING REQUIREMENT:`.
 - [ ] Stated-vs-actual divergence was either surfaced and documented, or explicitly ruled out during the interview.
+- [ ] The interview included a forced tradeoff, negative-space probe, and restatement challenge unless the user stopped early.
 - [ ] Every entry in "What You Don't Want" has a rationale.
 - [ ] Every unanswered dimension in the output carries a `MISSING REQUIREMENT:` marker, not a fabricated answer.
 - [ ] The `PLAN:` marker is present at hand-off.
