@@ -325,6 +325,7 @@ Linear issue tracking integration.
 | --- | --- | --- | --- |
 | `/kramme:linear:issue-define` | User | `[issue-id] or [description and/or file paths] [--quick]` | Create or improve a Linear issue through guided refinement. Requires the Linear MCP server.<br><br>Can start from scratch, refine an existing issue by ID, or use `--quick` for a fast new-issue path with light clarification and duplicate checking. |
 | `/kramme:linear:issue-implement` | User | `<ISSUE-ID>` | Start implementing a Linear issue with branch setup, context gathering, and guided workflow.<br><br>Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
+| `/kramme:linear:select-next` | User | `[team] [--interest <work preference>] [--mine\|--unassigned\|--both] [--project <name>] [--label <name>] [--limit <n>]` | Select the most valuable available issue to start from a Linear team. Requires the Linear MCP server.<br><br>Compares issues assigned to the logged-in user and unassigned issues, ranks value/readiness plus optional work preferences, and highlights independent issues that can be worked in parallel. |
 
 #### Visual
 
@@ -472,7 +473,7 @@ These MCP servers enhance the plugin's capabilities. See [docs/mcp-servers.md](k
 
 | Server | Purpose |
 | --- | --- |
-| **Linear** | Issue tracking for `/kramme:linear:issue-implement` and `/kramme:linear:issue-define` |
+| **Linear** | Issue tracking for `/kramme:linear:issue-implement`, `/kramme:linear:issue-define`, and `/kramme:linear:select-next` |
 | **Context7** | Up-to-date library documentation retrieval |
 | **Nx MCP** | Nx monorepo tools for `/kramme:verify:run` in Nx workspaces |
 | **Chrome DevTools** | Browser automation and debugging |
