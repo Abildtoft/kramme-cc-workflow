@@ -2,6 +2,26 @@
 
 Track understanding across 7 dimensions. The interview continues until overall confidence reaches the target threshold (default: 90% — all critical dimensions at Confident, normal dimensions at High or above, and deprioritized dimensions at Medium or above).
 
+Confidence is evidence-based, not vibes-based. Track a lightweight evidence ledger for each active dimension:
+
+- `source evidence`: what artifacts or code already establish
+- `direct validation`: what the user explicitly confirmed, corrected, or rejected
+- `stress probe`: a question that tested the answer through tradeoff, negative space, inversion, past failure, why-chain, or restatement challenge
+- `remaining gap`: what still has to be asked or carried forward as `MISSING REQUIREMENT:`
+
+Do not raise a critical dimension to **Confident** without direct validation and a stress probe. Do not raise any dimension to **High** based only on a heading or vague artifact section.
+
+Coverage floor before synthesis:
+
+- Every critical dimension needs direct validation and a stress probe.
+- Every normal dimension needs direct validation unless it is fully answered by the target artifact and not material to any unresolved tradeoff.
+- Every deprioritized dimension needs either source evidence or one direct answer.
+- At least one question must force a priority/scope tradeoff.
+- At least one question must test negative space: excluded, deferred, or explicitly unwanted work.
+- At least one late question must restate the emerging understanding and invite correction.
+
+If the user stops early, preserve every uncovered ledger item as `MISSING REQUIREMENT:` in the output artifact instead of treating it as resolved.
+
 ## Dimensions
 
 ### 1. Problem Understanding
@@ -162,21 +182,26 @@ Bar segments: each █ = ~10%. Use ░ for unfilled. Mark focus areas with ◄.
 - Critical dimensions are at Confident (90%+)
 - Normal dimensions are at High (70%+)
 - Deprioritized dimensions are at Medium (40%+)
-- Probing questions produce confirmations, not revelations
+- The evidence ledger floor from `SKILL.md` is satisfied
+- Probing questions produce confirmations, not revelations, after the required stress probes have already run
 
 **Continue when ANY of:**
 
 - Any critical dimension is below Confident
+- Any critical dimension lacks direct validation or a stress probe
+- Any normal dimension lacks direct validation and materially affects scope, outcome, constraints, risk, or priority
 - Recent answers revealed something surprising or contradictory
 - Stated wants and probed underlying needs don't align
 - The user's initial framing and discovered reality have diverged significantly
+- Required tradeoff, negative-space, or restatement probes have not happened yet
 
 ## Updating Confidence
 
 After each interview round:
 
 1. Review answers against dimension rubrics
-2. Adjust levels up (or down if answers revealed confusion)
-3. Note any dimension where stated vs. actual wants diverged — this resets that dimension to at most Medium until reconciled
-4. Display updated dashboard
-5. Select next focus dimensions (lowest confidence first, weighted by criticality)
+2. Update the evidence ledger before changing scores
+3. Adjust levels up (or down if answers revealed confusion)
+4. Note any dimension where stated vs. actual wants diverged — this resets that dimension to at most Medium until reconciled
+5. Display updated dashboard
+6. Select next focus dimensions (coverage gaps first, then lowest confidence weighted by criticality)
