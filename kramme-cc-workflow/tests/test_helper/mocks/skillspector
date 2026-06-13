@@ -1,0 +1,72 @@
+#!/bin/sh
+
+set -eu
+
+if [ "$#" -lt 2 ] || [ "$1" != "scan" ]; then
+	echo "unexpected skillspector invocation: $*" >&2
+	exit 2
+fi
+
+input_path="$2"
+format="terminal"
+output_file=""
+no_llm="false"
+shift 2
+
+while [ "$#" -gt 0 ]; do
+	case "$1" in
+	--format)
+		format="$2"
+		shift 2
+		;;
+	--output | -o)
+		output_file="$2"
+		shift 2
+		;;
+	--no-llm)
+		no_llm="true"
+		shift
+		;;
+	*)
+		echo "unexpected skillspector argument: $1" >&2
+		exit 2
+		;;
+	esac
+done
+
+if [ -n "${MOCK_SKILLSPECTOR_LOG:-}" ]; then
+	printf 'input=%s format=%s output=%s no_llm=%s\n' "$input_path" "$format" "$output_file" "$no_llm" >>"$MOCK_SKILLSPECTOR_LOG"
+fi
+
+if [ "${MOCK_SKILLSPECTOR_WRITE_OUTPUT:-1}" != "0" ] && [ -n "$output_file" ]; then
+	mkdir -p "$(dirname "$output_file")"
+	case "$format" in
+	json)
+		if [ -n "${MOCK_SKILLSPECTOR_JSON:-}" ]; then
+			printf '%s\n' "$MOCK_SKILLSPECTOR_JSON" >"$output_file"
+		else
+			cat >"$output_file" <<'JSON'
+{
+  "risk_assessment": {
+    "score": 0,
+    "severity": "LOW",
+    "recommendation": "SAFE"
+  },
+  "issues": []
+}
+JSON
+		fi
+		;;
+	markdown)
+		printf '# Mock SkillSpector Report\n' >"$output_file"
+		;;
+	sarif)
+		printf '{"version":"2.1.0","runs":[]}\n' >"$output_file"
+		;;
+	terminal)
+		printf 'Mock SkillSpector terminal report\n' >"$output_file"
+		;;
+	esac
+fi
+
+exit "${MOCK_SKILLSPECTOR_EXIT:-0}"
