@@ -1,6 +1,6 @@
 # Auto-detect candidates for findings sources
 
-When the skill is invoked with no `$ARGUMENTS`, check these paths in order (relative to the project root). Use the first one that exists. The list is also the answer set when reporting multiple matches to the user.
+When the skill is invoked with no `$ARGUMENTS`, check these paths in order (relative to the project root). If exactly one path exists, use it. If multiple paths exist, list every match in this order and ask the user which one to use.
 
 1. `REVIEW_OVERVIEW.md`
 2. `REFACTOR_OPPORTUNITIES_OVERVIEW.md`

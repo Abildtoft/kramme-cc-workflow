@@ -1,6 +1,6 @@
 ---
-name: kramme:code:breakdown-findings
-description: "Cluster validated findings into PR-sized themes and generate self-contained implementation plans. Use after review, audit, scan, or QA workflows that produce findings reports. Also accepts a pre-clustered handoff from a delegating skill (themes already grouped, mapped one-to-one to plans) plus an optional shared implementation-setup block rendered into every plan. Not for raw bug lists without severity or location structure, and not for triaging a single issue."
+name: "kramme:code:breakdown-findings"
+description: Cluster validated findings into PR-sized themes and generate self-contained implementation plans. Use after review, audit, scan, or QA workflows that produce findings reports. Also accepts a pre-clustered handoff from a delegating skill, with themes already grouped one-to-one to plans and an optional shared implementation-setup block. Not for raw bug lists without severity or location structure, and not for triaging a single issue.
 argument-hint: "[source-file-or-content] [--auto]"
 disable-model-invocation: true
 user-invocable: true
@@ -17,6 +17,7 @@ This skill generates PR plan **files**; for decision-ready analysis of audit fin
 - An auto-detected overview/audit report in the project root (see Phase 1)
 - A path to any markdown file containing findings (non-standard names are fine)
 - Inline findings text pasted as the argument
+- Suitable findings already present in the current dialogue
 
 **Arguments:** "$ARGUMENTS"
 
@@ -36,10 +37,10 @@ Before doing anything else, list any existing `PR_PLAN_*.md` files (including `P
 
   Re-running would risk silent overwrite of plans whose slugs match new themes, and would leave stale plans whose slugs do not match.
   Options:
-    - cleanup — run `/kramme:workflow-artifacts:cleanup` to clear them, then re-run this skill
-    - resume — regenerate only the missing plans against the same source
+    - cleanup — run `$kramme:workflow-artifacts:cleanup` to clear them, then re-run this skill
+    - resume — regenerate only missing plan files after confirming these artifacts came from the same source
   ```
-- On **resume**: re-run Phases 1-2 against the same source, keep existing plan files untouched, and generate only the plans (and index entries) that are missing.
+- On **resume**: require the existing `PR_PLAN_INDEX.md` to identify the same source. Re-run Phases 1-2 against that source, compare the expected filenames against existing plan files, keep existing plan files untouched, and generate only missing plan files. Do not modify `PR_PLAN_INDEX.md` unless the user explicitly confirms updating the index after seeing the missing-file list; if confirmation is not available, write no replacement index and report the stale index entries that need manual update.
 - Do not delete, rename, or overwrite the files yourself.
 
 ### Phase 1: Locate Findings
@@ -47,8 +48,12 @@ Before doing anything else, list any existing `PR_PLAN_*.md` files (including `P
 1. Resolve the findings source from `$ARGUMENTS`:
    - **Resolvable file path** (resolves on disk, any filename): read it as the source.
    - **Non-empty, not a path**: treat the argument as inline findings text.
-   - **Empty**: auto-detect by checking the candidates in `references/auto-detect-sources.md` (use the first one that exists). If multiple exist, list them and ask which one to use — process exactly one source per run.
-   - **Empty and nothing auto-detected**: stop and tell the user: "No findings source found. Provide a file path (any markdown file with findings will work), paste findings as the next message, or run a report-producing skill first (for example `/kramme:pr:code-review`, `/kramme:code:copy-review`, `/kramme:code:refactor-opportunities`, `/kramme:code:agent-readiness`, `/kramme:product:review`, `/kramme:qa`, or `/kramme:siw:spec-audit`)."
+   - **Empty**: auto-detect by checking all candidates in `references/auto-detect-sources.md`. If exactly one candidate exists, use it. If multiple candidates exist, list all matches and ask which one to use — process exactly one source per run.
+   - **Empty and nothing auto-detected**: inspect the existing dialogue for a suitable findings source before stopping. A suitable dialogue source is a recent, bounded set of review/audit/scan/QA findings with enough structure to extract description, location, severity or severity context, and suggested fix where available; or a pre-clustered handoff as defined below.
+     - If exactly one suitable findings set is present, treat that dialogue excerpt as inline findings and use `current dialogue` as the source description.
+     - If multiple suitable findings sets are present, list them briefly and ask which one to use — process exactly one source per run.
+     - If the dialogue only contains vague issues, a single triage topic, or raw bug ideas without severity/location structure, do not treat it as a source.
+   - **Empty, nothing auto-detected, and no suitable dialogue findings**: stop and tell the user: "No findings source found. Provide a file path (any markdown file with findings will work), paste findings as the next message, keep a structured findings set in the dialogue, or run a report-producing skill first (for example `$kramme:pr:code-review`, `$kramme:code:copy-review`, `$kramme:qa`, or `$kramme:siw:spec-audit`)."
 
 2. Parse the findings source into a normalized list. For each finding, extract:
    - **Description** of the issue (the full problem statement, not a reference ID)
@@ -71,7 +76,7 @@ When the source is a pre-clustered handoff:
 - **Skip the per-finding parse in step 2.** Capture each declared theme verbatim: its name, file list (with line counts if given), dependency relationship, rationale, and test plan. Do not invent severities — a delegated theme is a unit of work, not a finding.
 - **Capture the shared Implementation Setup block, if present.** A handoff may include one `## Implementation Setup` block meant for every plan (e.g. worktree / reference-branch instructions). Hold it for Phase 3; do not alter its wording.
 - **Do not re-cluster** — the canonical handoff rule lives in Phase 2.
-- **Adapt the findings vocabulary to themes.** A handoff has no findings and no exclusions: in Phase 4 write `All themes included.` in the index's Excluded section, and in Phase 5 report theme counts (not "findings processed"/"findings excluded") and name the delegated handoff as the source.
+- **Adapt the findings vocabulary to themes.** A handoff has no findings and no exclusions. In Phase 3 use theme-based plan metadata, in Phase 4 write `All themes included.` in the index's Excluded or Included Scope section, and in Phase 5 report theme counts (not "findings processed"/"findings excluded") and name the delegated handoff as the source.
 - Report the theme count: `Found N pre-clustered themes from {source}. Proceeding to plan (no re-clustering).`
 
 ### Phase 2: Cluster into Themes
@@ -105,7 +110,7 @@ Otherwise, group findings into PR-sized themes. A theme is a set of findings tha
 
 3. **Singleton themes are fine**: if a finding does not cluster with others, it becomes its own single-finding theme.
 
-4. **Exclusions**: if any finding should be excluded from all plans (e.g., duplicates, already resolved, not actionable), record it with a reason. These go into the index under "Excluded Findings" as one marker-prefixed line per finding. If nothing is excluded, write a plain sentence with no marker.
+4. **Exclusions**: if any finding should be excluded from all plans (e.g., duplicates, already resolved, not actionable), record it with a reason. These go into the index under "Excluded or Included Scope" as one marker-prefixed line per finding. If nothing is excluded, write a plain sentence with no marker.
 
 5. **Conflicts**: if two findings contradict each other (e.g., "add abstraction" vs. "remove abstraction" for the same code), flag the conflict as an open question in the relevant plan(s) and do not assume a resolution.
 
@@ -160,6 +165,7 @@ For each confirmed theme:
    - Use multiple labels when needed, e.g. `blocked by W01A, W01B`.
 6. Keep the title, filename, Dependencies and Sequencing section, index row, dependency map, and final summary aligned. The same blocker/dependent labels must appear in all of them.
 7. **If Phase 1 captured a shared Implementation Setup block** (delegated handoff), render it verbatim as the template's `## Implementation Setup` section in **every** plan — same wording in each, with any branch names or paths the caller already resolved left exactly as given. When no block was supplied, omit that section entirely.
+8. **If the source is a pre-clustered handoff**, replace all finding-count language in the template with theme language: `Source themes: 1 delegated theme mapped to this plan`, index statistics as `Total themes` / `Plans generated`, and summary lines as `Themes processed` / `Themes included`. Do not write `Source findings`, `Findings processed`, `Findings excluded`, or inferred severities for handoff-mode output.
 
 #### Plan content requirements
 
@@ -176,13 +182,13 @@ Populate every section in the template — no empty headings, no "N/A". The temp
    - **Plan listing**: execution label, filename, full plan display name, blocking status, parallel group, and a 2-4 sentence summary for each plan.
    - **Recommended implementation order**: ordered by wave and dependency, with rationale (dependencies, risk reduction, quick wins first). Explicitly group same-wave plans as parallel.
    - **Dependency map**: which labeled plans depend on which labeled blockers, and which plans are independent.
-   - **Excluded findings**: any findings not included in any plan, with the reason. Emit each excluded entry on its own line prefixed with `NOTICED BUT NOT TOUCHING:` so downstream tooling can parse it reliably. If there are no exclusions, write `All findings were included in plans.` with no marker line.
+   - **Excluded or included scope**: for findings-mode input, list any findings not included in any plan with the reason. Emit each excluded entry on its own line prefixed with `NOTICED BUT NOT TOUCHING:` so downstream tooling can parse it reliably. If there are no exclusions, write `All findings were included in plans.` with no marker line. For handoff-mode input, write `All themes included.`
    - **Source**: the findings source file or description used as input.
-   - **Statistics**: total findings, plans generated, findings per plan, excluded count.
+   - **Statistics**: total findings, plans generated, findings per plan, excluded count. For a pre-clustered handoff, use total themes, plans generated, themes per plan, and included theme count instead.
 
 ### Phase 5: Summary
 
-Report to the user using this end-of-turn template:
+For findings-mode input, report to the user using this end-of-turn template:
 
 ```
 PR Plan Generation Complete
@@ -210,6 +216,33 @@ POTENTIAL CONCERNS:
 Recommended first PR: PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md -- {one-line rationale including what it unblocks}
 ```
 
+For a pre-clustered handoff, use this theme-based variant:
+
+```
+PR Plan Generation Complete
+
+Source: {source file or description}
+Themes processed: N
+Plans generated: M
+Themes included: N
+
+PLANS GENERATED:
+  PR_PLAN_INDEX.md
+  PR_PLAN_{EXECUTION_LABEL}_{SLUG_1}.md -- {execution label} {theme name} (1 delegated theme; {parallel in W## / blocked by W##L / blocks W##L})
+  PR_PLAN_{EXECUTION_LABEL}_{SLUG_2}.md -- {execution label} {theme name} (1 delegated theme; {parallel in W## / blocked by W##L / blocks W##L})
+  ...
+
+THINGS I DIDN'T TOUCH:
+  • The source handoff file or dialogue excerpt
+  • Theme boundaries supplied by the delegating workflow
+
+POTENTIAL CONCERNS:
+  • {Any unusual theme size or dependency question surfaced as MISSING REQUIREMENT}
+  • {If none, state: "None"}
+
+Recommended first PR: PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md -- {one-line rationale including what it unblocks}
+```
+
 ## Edge Cases
 
 - **Single finding**: create one plan and one index. Do not skip sections.
@@ -228,7 +261,9 @@ Recommended first PR: PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md -- {one-line rationale
 - **Dependency-readable naming.** Plan titles, filenames, index rows, and the final summary must make sequencing obvious without reading the full plan. Use `W01A`/`W01B` for parallel first-wave plans, higher wave numbers for blocked follow-up plans, and explicit `blocked by`/`blocks` labels wherever a dependency exists.
 - **Respect the source.** Do not add findings that were not in the input. Do not reinterpret findings. If a finding is unclear, flag it as an open question.
 - **Match verification to the work.** Do not force code-only requirements onto documentation, copy, QA, audit, or workflow changes. Generated plans should require the evidence that actually proves the theme is complete.
-- **Clean output files.** The generated markdown files are working artifacts. They can be cleaned up with `/kramme:workflow-artifacts:cleanup`.
+- **Clean output files.** The generated markdown files are working artifacts. They can be cleaned up with `$kramme:workflow-artifacts:cleanup`.
+
+Before Phase 5, run the concise verification checklist in `references/generation-checks.md`. Load that file only after files have been generated or when debugging a failed generation pass.
 
 ## Output Markers
 
@@ -242,38 +277,3 @@ Use these markers as prefixes when surfacing specific kinds of information so ou
 - `PLANS GENERATED / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS` — end-of-turn triplet used in Phase 5 Summary.
 
 Use these markers verbatim where applicable. Do not invent alternate spellings or rename them — downstream tooling matches the exact strings.
-
-## Common Rationalizations
-
-Watch for these justifications that signal you are about to skip a hard gate:
-
-- "All findings in one PR is faster." — A sprawling PR is harder to review and more likely to stall. Split the theme.
-- "This theme is slightly XL but the engineer will manage." — XL is "split into a series," not "try harder."
-- "Conflicting findings can both be addressed together." — If two findings contradict, surface the conflict as an open question. Do not paper over it.
-
-## Red Flags
-
-The clustering and sizing flags below **do not apply to a pre-clustered handoff** (see the Phase 2 rule).
-
-Stop and re-cluster if any of these appear:
-
-- Any theme lands at 9+ findings, or a single plan touches 9+ files.
-- Any generated plan filename or title lacks an execution label such as `W01A`.
-- A blocked plan's title, index row, or dependency section omits the label of the plan blocking it.
-- Same-wave plans are described as sequential instead of parallel.
-- Conflicting findings were silently reconciled instead of flagged as an open question.
-- The index excludes nothing even though some findings are duplicates, already resolved, or not actionable — likely a missed exclusion pass.
-- A plan references "the review" or "finding #3" (violates self-contained rule).
-
-## Verification
-
-Before reporting Phase 5, verify:
-
-- Every theme is sized ≤L (except a pre-clustered handoff — see the handoff item below).
-- Re-read each generated plan and confirm no section refers back to the source (no phrasings like "see the review", "per the audit", "finding #N", "as described above the cut", or any other back-reference that would break the self-contained rule).
-- Every generated plan filename and title includes its execution label.
-- Every blocked plan names its blocker labels in the title, index row, dependency map, and Dependencies and Sequencing section.
-- Every same-wave group is marked as parallel in the index and summary.
-- Every conflict between findings is surfaced as an open question, not resolved unilaterally.
-- Every plan has all template sections populated with concrete content (no "N/A").
-- For a pre-clustered handoff: every declared theme maps to exactly one plan (none merged, split, added, or dropped), and any supplied Implementation Setup block appears verbatim and identical in every plan.

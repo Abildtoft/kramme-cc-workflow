@@ -1,6 +1,6 @@
 # PR Plan {{execution-label}}: {{theme-name}} ({{parallel in W## / blocked by W##L / blocks W##L}})
 
-**File:** `PR_PLAN_{{EXECUTION_LABEL}}_{{SLUG}}.md` **Execution label:** `{{W##L}}` **Parallel group:** {{Wave W##; name sibling labels that can run in parallel, or "None - only plan in wave."}} **Blocked by:** {{Execution labels and content of prerequisite plans, or "None."}} **Blocks:** {{Execution labels and content of dependent plans, or "None."}} **Date:** {{date}} **Source findings:** {{count}} findings clustered into this theme **Estimated scope:** {{small / medium / large}} PR
+**File:** `PR_PLAN_{{EXECUTION_LABEL}}_{{SLUG}}.md` **Execution label:** `{{W##L}}` **Parallel group:** {{Wave W##; name sibling labels that can run in parallel, or "None - only plan in wave."}} **Blocked by:** {{Execution labels and content of prerequisite plans, or "None."}} **Blocks:** {{Execution labels and content of dependent plans, or "None."}} **Date:** {{date}} **Source scope:** {{findings mode: count findings clustered into this theme; handoff mode: 1 delegated theme mapped to this plan}} **Estimated scope:** {{small / medium / large}} PR
 
 ---
 
@@ -10,7 +10,7 @@
 
 ## Why These Belong Together
 
-{{Explain the shared root cause, affected area, or implementation dependency that groups these findings into one PR.}}
+{{Explain the shared root cause, affected area, or implementation dependency that groups these findings or delegated work into one PR.}}
 
 ## Goals
 
