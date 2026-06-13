@@ -159,6 +159,42 @@
     ],
     "allow_empty_fields": [
       {
+        "path": "kramme-cc-workflow/skills/kramme:pr:github-review/references/sources.yaml",
+        "entry_id": "github-cli-pr-commands",
+        "field": "baseline_hash",
+        "reason": "New skill; baseline hash pending first kramme:skill:audit-sources run."
+      },
+      {
+        "path": "kramme-cc-workflow/skills/kramme:pr:github-review/references/sources.yaml",
+        "entry_id": "github-search-review-requested",
+        "field": "baseline_hash",
+        "reason": "New skill; baseline hash pending first kramme:skill:audit-sources run."
+      },
+      {
+        "path": "kramme-cc-workflow/skills/kramme:pr:github-review/references/sources.yaml",
+        "entry_id": "github-rest-pull-reviews",
+        "field": "baseline_hash",
+        "reason": "New skill; baseline hash pending first kramme:skill:audit-sources run."
+      },
+      {
+        "path": "kramme-cc-workflow/skills/kramme:pr:github-review/references/sources.yaml",
+        "entry_id": "github-rest-pull-review-comments",
+        "field": "baseline_hash",
+        "reason": "New skill; baseline hash pending first kramme:skill:audit-sources run."
+      },
+      {
+        "path": "kramme-cc-workflow/skills/kramme:pr:github-review/references/sources.yaml",
+        "entry_id": "github-graphql-pull-review-threads",
+        "field": "baseline_hash",
+        "reason": "New skill; baseline hash pending first kramme:skill:audit-sources run."
+      },
+      {
+        "path": "kramme-cc-workflow/skills/kramme:pr:github-review/references/sources.yaml",
+        "entry_id": "github-rest-issue-comments",
+        "field": "baseline_hash",
+        "reason": "New skill; baseline hash pending first kramme:skill:audit-sources run."
+      },
+      {
         "path": "kramme-cc-workflow/skills/kramme:browse/references/sources.yaml",
         "entry_id": "addy-browser-testing-devtools",
         "field": "baseline_hash",
