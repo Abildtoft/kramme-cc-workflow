@@ -3,6 +3,23 @@
 ## Unreleased
 
 ### Changed
+## [0.63.0] - 2026-06-14
+
+### Added
+- Add accepted findings policy (#517)
+- Add GitHub PR reviewer skill (#508)
+- Add next issue selector skill (#507)
+
+### Changed
+- Add Codex support metadata (#516)
+- Document SkillSpector scanning (#513)
+- Remove wrap-up skill docs (#511)
+- Move review posting to reply skill (#510)
+- Clarify handoff planning flow (#509)
+- Require discovery evidence coverage (#506)
+- Default Linear links to Closes (#505)
+- Document Linear transfer safeguards (#504)
+
 ## [0.62.0] - 2026-06-12
 
 ### Added
@@ -458,6 +475,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+[0.63.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.62.0...v0.63.0
 [0.62.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.61.0...v0.62.0
 [0.61.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.60.0...v0.61.0
 [0.60.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.59.0...v0.60.0
