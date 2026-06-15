@@ -219,7 +219,7 @@ Before drafting the body, decide what the PR description adds beyond GitHub's re
 - Non-obvious implementation decisions and trade-offs
 - Scope boundaries and deliberate exclusions
 - Risks, rollout constraints, migrations, feature-flag defaults, or partial coverage
-- Test scenarios reviewers or QA should run
+- Manual test scenarios reviewers or QA should perform
 - Review landmarks only when the diff has a non-obvious entry point or coupled files that should be reviewed together
 
 **NEVER** include description content whose main value is already provided by GitHub:
@@ -352,7 +352,7 @@ Read `references/red-flags.md` before finalizing. It covers common rationalizati
 
 ## Red Flags
 
-Read `references/red-flags.md` before finalizing. Stop and regenerate when the draft uses vague summary nouns, mirrors a file list, hides migration risk, has an automated-only Test Plan, references spec files, or includes AI-attribution badges.
+Read `references/red-flags.md` before finalizing. Stop and regenerate when the draft uses vague summary nouns, mirrors a file list, hides migration risk, includes automated testing instructions in the Test Plan, references spec files, or includes AI-attribution badges.
 
 ## Verification
 

@@ -49,12 +49,12 @@
 ## Test Plans
 
 - **ALWAYS** make test scenarios actionable (steps anyone can follow)
-- **ALWAYS** lead with manual or reviewer-run scenarios that exercise the changed behavior
+- **ALWAYS** lead with manual reviewer/QA scenarios that exercise the changed behavior
 - **PREFER** checklist format for test scenarios
 - **NEVER** write "test thoroughly" without specific scenarios
 - **NEVER** substitute the verification commands you ran for the manual steps reviewers or QA need
-- **OMIT** `### Automated verification` when it would only repeat routine checks already covered by CI, such as format, lint, typecheck, build, or the standard unit-test suite
-- **CAN** include commands already run only in a separate `### Automated verification` subsection after the scenarios when they add PR-specific signal beyond CI
-- **NEVER** list missing command targets under automated verification; only mention a missing target when it creates a real coverage risk, and put that in `### Potential concerns` or the Manual QA rationale
-- **ALWAYS** explain why manual QA is not applicable when a change has no meaningful manual path, then provide the closest reviewer-run validation path
+- **NEVER** include `### Automated`, `### Automated verification`, automated testing instructions, command checklists, or unit/lint/build targets in the PR body
+- **ASSUME** CI reports automated test, lint, typecheck, build, and formatting status
+- **NEVER** list missing automated test targets; only mention a missing target when it creates a real coverage risk, and put that in `### Potential concerns`
+- **ALWAYS** explain why manual QA is not applicable when a change has no meaningful manual path, then provide the closest manual validation path
 - **ALWAYS** include edge cases and error scenarios, not just happy paths

@@ -20,7 +20,7 @@ Run this before presenting copy-paste output, before `gh pr edit`, and before sa
 - [ ] Implementation approach explains key decisions. Divergences from the Linear issue have a clear rationale.
 - [ ] The GitHub UI Duplication Guard from Phase 3.1.5 was applied.
 - [ ] File names appear only when they identify a non-obvious entry point, migration, generated artifact, or cross-area coupling.
-- [ ] Test Plan leads with reviewer/QA scenarios. `### Automated verification` is omitted unless the listed commands add signal beyond CI; missing targets are not listed as verification.
+- [ ] Test Plan contains only reviewer/QA scenarios or manual validation notes. Automated testing instructions, command checklists, and missing test targets are omitted from the PR body.
 - [ ] Breaking changes section is present (`None` is a valid value after consideration).
 - [ ] Screenshots/Videos section is included - populated when `--visual` produced embeddable remote assets, local-only table when copy-paste output can reference captured files, placeholder when capture failed or direct-update mode only has local files.
 

@@ -131,7 +131,7 @@ The redirect runs before the platform picker renders, so single-platform users d
 
 This only proves what the agent already ran. It does not tell reviewers or QA how to exercise the changed behavior.
 
-### ✅ CORRECT: Manual Scenarios First, Commands Separate
+### ✅ CORRECT: Manual Scenarios Only
 
 ```markdown
 ## Test Plan
@@ -152,9 +152,6 @@ This only proves what the agent already ran. It does not tell reviewers or QA ho
 - [ ] Verify platform picker page displays
 - [ ] Verify all platforms are listed
 
-### Automated verification
-
-- `npm test -- platform-picker -- --runInBand` (targeted regression run; CI does not isolate this guard path)
 ```
 
 ---

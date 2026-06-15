@@ -151,14 +151,14 @@ The Linear issue originally requested only redirecting single-platform users. Du
 
 The Test Plan is for future reviewer or QA execution. It is not a transcript of the verification commands the agent already ran.
 
-**ALWAYS** include actionable manual or reviewer-run testing steps before any automated verification:
+**ALWAYS** include actionable manual reviewer/QA testing steps. Do not include automated testing instructions, command checklists, or an automated verification subsection; CI owns routine automated checks.
 
 1. **Setup steps** (if needed):
    - Environment configuration
    - Test data requirements
    - User permissions needed
 
-2. **Manual or reviewer-run test scenarios** (organized by priority):
+2. **Manual reviewer/QA test scenarios** (organized by priority):
    - **Happy path**: Normal expected flow
    - **Edge cases**: Boundary conditions
    - **Error cases**: What happens when things go wrong
@@ -167,13 +167,9 @@ The Test Plan is for future reviewer or QA execution. It is not a transcript of 
    - Expected outcomes for each scenario
    - What to check in the UI, database, logs, etc.
 
-4. **Automated verification** (optional, after the scenarios):
-   - Include commands already run only when they add PR-specific signal beyond CI
-   - Omit this subsection when it would only repeat routine CI-owned checks such as format, lint, typecheck, build, or the standard unit-test suite
-   - Label them `### Automated verification` so reviewers can distinguish evidence from test instructions
-   - Never make test, lint, typecheck, or build commands the entire Test Plan
-   - Do not list missing command targets such as "No unit-test target exists"; put meaningful coverage risk in `### Potential concerns` or the Manual QA rationale instead
-   - If no manual scenario applies, include a `### Manual QA` note explaining why and give the closest reviewer-run validation path
+4. **Manual QA fallback**:
+   - If no meaningful manual scenario applies, include a `### Manual QA` note explaining why and give the closest manual validation path
+   - Do not list missing automated test targets such as "No unit-test target exists"; put meaningful coverage risk in `### Potential concerns` instead
 
 **PREFER** using a checklist format for clarity:
 
@@ -214,9 +210,6 @@ The Test Plan is for future reviewer or QA execution. It is not a transcript of 
 - [ ] Log in as a new user with no platforms
 - [ ] Verify appropriate message/redirect to onboarding
 
-### Automated verification
-
-- `npm test -- platform-picker -- --runInBand` (targeted regression run; the standard CI suite does not isolate this guard path)
 ```
 
 ## Breaking Changes Section
