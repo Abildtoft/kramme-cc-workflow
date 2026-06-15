@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:fix-ci
 description: Iterate on a PR until CI passes. Use when you need to fix CI failures, address review feedback, or continuously push fixes until all checks are green. Automates the feedback-fix-push-wait cycle.
-argument-hint: "[--fixup] [--no-consolidate|--auto]"
+argument-hint: "[--fixup] [--auto] [--no-consolidate]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -26,7 +26,9 @@ The fix-CI loop is the **CI Failure Feedback Loop** pattern: read the failure, m
 
 - `--fixup` - Use fixup commits to amend existing branch commits instead of creating new commits. Requires force push. Orphan files (not touched by any branch commit, including files last modified on the base branch) are committed as new.
 - `--no-consolidate` - Skip the consolidation prompt after CI passes. Use for scripting or when you want to keep `[FIX PIPELINE]` commits separate.
-- `--auto` - Alias for `--no-consolidate`. Runs the CI fix loop unattended where possible and keeps `[FIX PIPELINE]` commits separate instead of prompting for history rewrite.
+- `--auto` - Run the CI fix loop unattended where possible. After CI passes, automatically consolidate `[FIX PIPELINE]` commits using the automated consolidation flow instead of prompting. If consolidation cannot be completed safely, stop with `MISSING REQUIREMENT` rather than leaving fix commits separate.
+
+Before Step 1, parse `$ARGUMENTS`. If `--fixup` is present, set `FIXUP_MODE=true`; if `--auto` is present, set `AUTO_MODE=true`; if `--no-consolidate` is present, set `NO_CONSOLIDATE=true`. If both `--auto` and `--no-consolidate` are present, stop with `MISSING REQUIREMENT: choose either --auto to consolidate fix commits or --no-consolidate to keep them separate`.
 
 ---
 
@@ -159,11 +161,11 @@ Return to Step 3 if:
 
 Continue until all checks pass and no unaddressed feedback remains.
 
-### Step 11: Consolidation phase (default mode only)
+### Step 11: Consolidation phase
 
-**Skip this step if:** `--fixup` mode was used, or `--no-consolidate` / `--auto` flag is set.
+**Skip this step if:** `--fixup` mode was used, or `--no-consolidate` flag is set.
 
-Read and follow the consolidation flow from `references/consolidation-flow.md`. This covers detecting `[FIX PIPELINE]` commits, prompting the user for consolidation options (automated, interactive, or keep separate), mapping commits to targets, executing rebase, and force pushing. On shared branches, consolidation requires explicit coordination before any history rewrite.
+Read and follow the consolidation flow from `references/consolidation-flow.md`. This covers detecting `[FIX PIPELINE]` commits, choosing consolidation mode, mapping commits to targets, executing rebase, and force pushing. If `AUTO_MODE=true`, choose **Automated** without prompting; do not choose "Keep separate". On shared branches, consolidation still requires explicit coordination before any history rewrite.
 
 ---
 
@@ -218,7 +220,9 @@ If disablement is genuinely warranted — a confirmed false positive, a test tha
 **Choosing a mode:**
 
 - **Default**: Working with others, want visible iteration history, prefer to consolidate at the end
+- **`--auto`**: Working unattended, want `[FIX PIPELINE]` commits automatically consolidated once CI and review feedback are clear
 - **`--fixup`**: Working alone, want clean history throughout, comfortable with force push
+- **`--no-consolidate`**: Working in a context where history rewrite is undesirable and `[FIX PIPELINE]` commits should remain visible
 
 ---
 
