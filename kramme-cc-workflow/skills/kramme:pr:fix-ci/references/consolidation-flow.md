@@ -4,6 +4,13 @@
 
 When all CI checks pass and no unaddressed feedback remains, offer to consolidate the `[FIX PIPELINE]` commits into the original branch commits.
 
+If `AUTO_MODE=true`, do not offer "Keep separate". Before any automated rebase, confirm one of these is true:
+
+- The branch is not shared.
+- The user explicitly confirmed collaborators are coordinated for a history rewrite.
+
+If neither can be confirmed safely, stop with `MISSING REQUIREMENT: automated consolidation rewrites history; confirm collaborator coordination or rerun with --no-consolidate`. Do not rebase, force-push, or silently preserve separate fix commits.
+
 ## Step 11.1: Detect [FIX PIPELINE] Commits
 
 Determine the base branch (reuse logic from fixup-flow.md Step 8b.1) and find pipeline fix commits:
@@ -20,9 +27,12 @@ FIX_COMMITS=$(git log "$BASE_REF..HEAD" --format="%H %s" | grep "\[FIX PIPELINE\
 
 If no `[FIX PIPELINE]` commits exist, skip to success exit.
 
-## Step 11.2: Prompt for Consolidation
+## Step 11.2: Choose Consolidation Mode
 
-Present the user with a summary and options:
+If `AUTO_MODE=true`, apply the pre-rebase safety gate above, then select **Automated** and continue with Steps 11.3-11.5, then 11.7-11.8. Do not prompt and do not keep `[FIX PIPELINE]` commits separate as an automatic fallback.
+
+Otherwise, present the user with a summary and options:
+
 
 ```
 CI checks passed! Found N [FIX PIPELINE] commits:
@@ -147,7 +157,7 @@ After successful rebase, confirm one of these is true before pushing:
 - The branch is not shared.
 - The user explicitly confirmed collaborators are coordinated for a history rewrite.
 
-If neither is true, stop here. Keep the rebased result local, tell the user not to push it yet, and recommend either coordinating first or resetting back to the pre-consolidation state and choosing "Keep separate".
+If neither is true, stop here. Keep the rebased result local and tell the user not to push it yet. In interactive/default mode, recommend either coordinating first or resetting back to the pre-consolidation state and choosing "Keep separate". In `AUTO_MODE`, stop with `MISSING REQUIREMENT` instead of recommending "Keep separate".
 
 If one of those conditions is true:
 

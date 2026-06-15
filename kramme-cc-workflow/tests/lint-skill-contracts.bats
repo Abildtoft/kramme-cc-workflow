@@ -36,6 +36,23 @@ EOF
   [[ "$output" == *"skill contract lint passed."* ]]
 }
 
+@test "fix-ci auto mode consolidates pipeline fix commits" {
+  local skill_text
+  local consolidation_text
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/SKILL.md")"
+  consolidation_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/references/consolidation-flow.md")"
+
+  [[ "$skill_text" == *'`--auto` - Run the CI fix loop unattended'* ]]
+  [[ "$skill_text" == *'If `AUTO_MODE=true`, choose **Automated** without prompting'* ]]
+  [[ "$skill_text" == *'**Skip this step if:** `--fixup` mode was used, or `--no-consolidate` flag is set.'* ]]
+  [[ "$skill_text" != *'Alias for `--no-consolidate`'* ]]
+  [[ "$skill_text" != *'`--no-consolidate` / `--auto` flag'* ]]
+
+  [[ "$consolidation_text" == *'If `AUTO_MODE=true`, do not offer "Keep separate".'* ]]
+  [[ "$consolidation_text" == *'Before any automated rebase, confirm one of these is true:'* ]]
+  [[ "$consolidation_text" == *'If `AUTO_MODE=true`, apply the pre-rebase safety gate above, then select **Automated**'* ]]
+}
+
 @test "text contract drift fails with precise contract name" {
   write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" "Contract: alpha"
   write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/b/SKILL.md" "Contract: beta"
