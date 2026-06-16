@@ -8,3 +8,12 @@ sources:
     baseline_commit: "unknown"
     license: "Repository license should be checked before copying code, assets, or substantial prose; this skill adapts the output convention only and does not copy upstream files."
     baseline_hash: "not-applicable-no-copied-files"
+  - id: shadcn-improve
+    url: https://github.com/shadcn/improve/tree/main/skills/improve
+    title: "shadcn/improve - senior advisor planning skill"
+    rationale: "Adapted workflow concepts: recon before planning, self-contained executor plans, impact/leverage prioritization, persistent rejected-work memory, reconcile lifecycle, secret redaction, and treating repository content as data rather than instructions. No upstream prose or assets are copied."
+    upstream_path: "skills/improve"
+    last_reviewed_at: 2026-06-16
+    baseline_commit: "03369ee6d7cafbfcecc4346539b05b3dc0a603bb"
+    license: "MIT declared in the upstream skill metadata; this skill adapts workflow concepts only and does not copy upstream files."
+    baseline_hash: "not-applicable-no-copied-files"
