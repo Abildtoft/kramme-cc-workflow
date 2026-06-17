@@ -282,6 +282,38 @@ run_scan_format() {
 	return "$status"
 }
 
+SCAN_TEMP_DIRS=()
+
+cleanup_scan_temp_dirs() {
+	local temp_dir
+
+	for temp_dir in "${SCAN_TEMP_DIRS[@]:-}"; do
+		rm -rf -- "$temp_dir"
+	done
+}
+trap cleanup_scan_temp_dirs EXIT
+
+prepare_scan_input() {
+	local skill_dir="$1"
+	local temp_root
+	local temp_parent
+	local scan_dir
+
+	if [ ! -d "$skill_dir/references/sources-snapshot" ]; then
+		printf '%s\n' "$skill_dir"
+		return
+	fi
+
+	temp_root="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
+	temp_parent=$(mktemp -d "$temp_root/skillspector-scan.XXXXXX")
+	SCAN_TEMP_DIRS+=("$temp_parent")
+	scan_dir="$temp_parent/$(basename -- "$skill_dir")"
+
+	cp -R "$skill_dir" "$scan_dir"
+	rm -rf -- "$scan_dir/references/sources-snapshot"
+	printf '%s\n' "$scan_dir"
+}
+
 severity_count() {
 	local json_file="$1"
 	local severity="$2"
@@ -581,9 +613,13 @@ for skill_dir in "${SKILL_DIRS[@]}"; do
 	log_file="$OUTPUT_DIR/$stem.log"
 	primary_ext=$(extension_for_format "$FORMAT")
 	primary_report="$OUTPUT_DIR/$stem.$primary_ext"
+	scan_dir=$(prepare_scan_input "$skill_dir")
 
 	echo "Scanning $skill_dir"
-	if ! run_scan_format "$skill_dir" "json" "$json_report" "$log_file"; then
+	if [ "$scan_dir" != "$skill_dir" ]; then
+		echo "  Excluding reference source snapshots from scan input"
+	fi
+	if ! run_scan_format "$scan_dir" "json" "$json_report" "$log_file"; then
 		SCAN_FAILED=1
 		continue
 	fi
@@ -595,7 +631,7 @@ for skill_dir in "${SKILL_DIRS[@]}"; do
 	echo "  Findings: total=$total_findings accepted=$accepted_findings enforceable=$enforceable_findings"
 
 	if [ "$FORMAT" != "json" ]; then
-		if ! run_scan_format "$skill_dir" "$FORMAT" "$primary_report" "$log_file"; then
+		if ! run_scan_format "$scan_dir" "$FORMAT" "$primary_report" "$log_file"; then
 			SCAN_FAILED=1
 			continue
 		fi

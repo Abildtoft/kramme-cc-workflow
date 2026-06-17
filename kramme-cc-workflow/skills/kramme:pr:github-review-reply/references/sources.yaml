@@ -3,23 +3,23 @@ sources:
     url: https://docs.github.com/en/rest/pulls/comments
     title: "GitHub REST API endpoints for pull request review comments"
     rationale: "The skill uses this source for listing review comments and posting replies to pull request review comments."
-    last_reviewed_at: 2026-06-05
-    baseline_hash: ""
+    last_reviewed_at: 2026-06-17
+    baseline_hash: "sha256:861cb767042b0b43b251b9412caac42cdbe07e717091140d53c4fca30c70befe"
   - id: github-rest-pull-reviews
     url: https://docs.github.com/en/rest/pulls/reviews
     title: "GitHub REST API endpoints for pull request reviews"
     rationale: "The skill uses this source for listing review-summary comments and reviewer verdicts on pull requests."
-    last_reviewed_at: 2026-06-13
-    baseline_hash: ""
+    last_reviewed_at: 2026-06-17
+    baseline_hash: "sha256:f38e7c959a6e53b6547aa933702f38eacd69189e776ad8b062bab9da5b95b635"
   - id: github-graphql-pull-review-threads
     url: https://docs.github.com/en/graphql/reference/pulls
     title: "GitHub GraphQL Pull requests reference"
     rationale: "The skill uses this source for reviewThreads metadata and the resolveReviewThread mutation."
-    last_reviewed_at: 2026-06-05
-    baseline_hash: ""
+    last_reviewed_at: 2026-06-17
+    baseline_hash: "sha256:d19e7b9140abf8e8665bf71624f490d0a41193a0c43b3a0e1e929a65aa5b8683"
   - id: github-rest-issue-comments
     url: https://docs.github.com/en/rest/issues/comments
     title: "GitHub REST API endpoints for issue comments"
     rationale: "The skill uses this source for listing and posting top-level PR comments, which GitHub exposes through issue comments."
-    last_reviewed_at: 2026-06-13
-    baseline_hash: ""
+    last_reviewed_at: 2026-06-17
+    baseline_hash: "sha256:577153288587d6916d8e51150a7de1738b6f27381f1a93d31824222ecb8a009c"

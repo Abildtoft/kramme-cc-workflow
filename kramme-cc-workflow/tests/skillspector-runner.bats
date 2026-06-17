@@ -100,6 +100,17 @@ count_invocations() {
 	grep -q "kramme-cc-workflow/skills/kramme:one format=json" "$MOCK_SKILLSPECTOR_LOG"
 }
 
+@test "scan excludes source snapshots from scanner input" {
+	commit_file "kramme-cc-workflow/skills/kramme:one/references/sources-snapshot/upstream.md" "upstream docs" "add source snapshot"
+
+	run "$SCRIPT" --changed --base main --output-dir "$REPORT_DIR"
+
+	[ "$status" -eq 0 ]
+	[ "$(count_invocations)" = "1" ]
+	grep -q "snapshot_exists=no" "$MOCK_SKILLSPECTOR_LOG"
+	[ -f "$REPO/kramme-cc-workflow/skills/kramme:one/references/sources-snapshot/upstream.md" ]
+}
+
 @test "changed scan de-duplicates multiple changed files in one skill" {
 	commit_file "kramme-cc-workflow/skills/kramme:one/references/one.md" "one" "change first resource"
 	commit_file "kramme-cc-workflow/skills/kramme:one/references/two.md" "two" "change second resource"
