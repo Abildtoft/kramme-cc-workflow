@@ -46,22 +46,51 @@ SELF=$(gh api user -q .login)
 
 ## Step 2: Identify the PR
 
-If `PR_SELECTOR` is empty, show the open PRs awaiting your review and let the user choose one. Do not guess.
+If `PR_SELECTOR` is empty, first assume the current branch may be the PR to review. Use GitHub's branch-aware PR lookup and continue without asking only when the current branch has an open PR authored by someone else and directly review-requested from you.
 
 ```bash
-gh pr list --search "user-review-requested:@me" --state open \
-  --json number,title,author,url,updatedAt \
-  --template '{{range .}}#{{.number}}  {{.title}}  (@{{.author.login}})  {{.url}}{{"\n"}}{{end}}'
+PR_JSON=""
+CURRENT_BRANCH=$(git branch --show-current 2> /dev/null || true)
+
+if [ -z "${PR_SELECTOR:-}" ] && [ -n "$CURRENT_BRANCH" ]; then
+  BRANCH_PR_JSON=$(gh pr view \
+    --json number,url,title,author,state,baseRefName,headRefName,headRefOid,additions,deletions,changedFiles,reviewDecision,reviewRequests \
+    2> /dev/null || true)
+
+  if [ -n "$BRANCH_PR_JSON" ]; then
+    BRANCH_AUTHOR=$(printf '%s' "$BRANCH_PR_JSON" | jq -r '.author.login')
+    BRANCH_STATE=$(printf '%s' "$BRANCH_PR_JSON" | jq -r '.state')
+    BRANCH_REVIEW_REQUESTED=$(printf '%s' "$BRANCH_PR_JSON" | jq --arg self "$SELF" -r 'any(.reviewRequests[]?; .__typename == "User" and .login == $self)')
+    if [ "$BRANCH_STATE" = "OPEN" ] && [ "$BRANCH_AUTHOR" != "$SELF" ] && [ "$BRANCH_REVIEW_REQUESTED" = "true" ]; then
+      PR_JSON="$BRANCH_PR_JSON"
+      PR_SELECTOR=$(printf '%s' "$PR_JSON" | jq -r '.number')
+    elif [ "$BRANCH_STATE" = "OPEN" ]; then
+      echo "The current branch's open PR is not directly review-requested from you, so it is not the default target for this reviewer workflow." >&2
+    fi
+  fi
+fi
 ```
 
-If the list is empty, report that no PRs are currently requesting your review and stop. Otherwise stop and wait for the user's choice — do not run the next block until `PR_SELECTOR` is set to the PR they name.
-
-Fetch the PR context:
+Only ask which PR to review when no qualifying review-requested PR was found for the current branch. Show the open PRs awaiting your review first:
 
 ```bash
-PR_JSON=$(gh pr view ${PR_SELECTOR:+"$PR_SELECTOR"} \
-  --json number,url,title,author,baseRefName,headRefName,headRefOid,additions,deletions,changedFiles,reviewDecision) \
-  || { echo "PR not found. Pass a PR number or URL." >&2; exit 1; }
+if [ -z "$PR_JSON" ] && [ -z "${PR_SELECTOR:-}" ]; then
+  gh pr list --search "user-review-requested:@me" --state open \
+    --json number,title,author,url,updatedAt \
+    --template '{{range .}}#{{.number}}  {{.title}}  (@{{.author.login}})  {{.url}}{{"\n"}}{{end}}'
+fi
+```
+
+If the list is empty, say that no PRs are currently requesting your review and ask the user for a PR number or URL. Otherwise stop and wait for the user's choice. Do not run the next block until `PR_SELECTOR` is set to the PR they name.
+
+Fetch the PR context unless it was already resolved from the current branch:
+
+```bash
+if [ -z "$PR_JSON" ]; then
+  PR_JSON=$(gh pr view ${PR_SELECTOR:+"$PR_SELECTOR"} \
+    --json number,url,title,author,baseRefName,headRefName,headRefOid,additions,deletions,changedFiles,reviewDecision) \
+    || { echo "PR not found. Pass a PR number or URL." >&2; exit 1; }
+fi
 
 PR_NUMBER=$(printf '%s' "$PR_JSON" | jq -r '.number')
 PR_URL=$(printf '%s'    "$PR_JSON" | jq -r '.url')
@@ -250,7 +279,7 @@ End by telling the user: the recommended verdict, the count of findings per seve
 ```text
 /kramme:pr:github-review 482
 /kramme:pr:github-review https://github.com/acme/app/pull/482
-/kramme:pr:github-review               # no arg → lists PRs requesting your review, then asks
+/kramme:pr:github-review               # no arg → uses current branch's open PR if it is directly review-requested from you
 /kramme:pr:github-review 482 --code-only
 /kramme:pr:github-review 482 --categories a11y,visual
 /kramme:pr:github-review 482 --inline --keep-worktree
