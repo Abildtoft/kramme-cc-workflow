@@ -1,14 +1,14 @@
 ---
 name: kramme:pr:github-review-reply
-description: Maps human GitHub PR review feedback, including inline review threads, review-summary comments, and general PR comments; facilitates needed code changes; drafts and humanizes action-based responses; and optionally posts replies or resolves addressed inline threads with gh. Use when reviewers left GitHub comments that need triage, implementation, or response. Not for fixing CI, generating internal review findings, or resolving local REVIEW_OVERVIEW.md findings.
-argument-hint: "[--auto] [--implement|--no-implement] [--post] [--resolve] [--inline] [--include-bots] [--all] [--only <login>] [pr-url|instructions]"
+description: Maps GitHub PR review feedback from humans, bots, and apps, including inline review threads, review-summary comments, and general PR comments; facilitates needed code changes; drafts and humanizes action-based responses; and optionally posts replies or resolves addressed inline threads with gh. Use when reviewers left GitHub comments that need triage, implementation, or response. Not for fixing CI, generating internal review findings, or resolving local REVIEW_OVERVIEW.md findings.
+argument-hint: "[--auto] [--implement|--no-implement] [--post] [--resolve] [--inline] [--human-only|--include-bots] [--all] [--only <login>] [pr-url|instructions]"
 disable-model-invocation: true
 user-invocable: true
 ---
 
 # GitHub Review Reply Handler
 
-Map human GitHub pull request review feedback, facilitate needed code changes, draft clear action-based replies, and optionally post replies or resolve addressed inline threads.
+Map GitHub pull request review feedback from humans, bots, and apps; facilitate needed code changes; draft clear action-based replies; and optionally post replies or resolve addressed inline threads.
 
 ## Scope
 
@@ -22,19 +22,22 @@ Parse `$ARGUMENTS` before fetching data.
 
 **Flags:**
 
-- `--auto` - implement needed code changes, post ready replies/comments, and resolve inline threads marked safe after posting. Equivalent to `--implement --post --resolve`.
-- `--post` - after drafting, post approved replies to GitHub.
+- `--auto` - implement needed code changes, post ready replies/comments after required confirmation, and resolve inline threads marked safe after posting. Equivalent to `--implement --post --resolve`, but it never waives mandatory confirmation for human-origin feedback.
+- `--post` - after drafting, post approved replies to GitHub. For human-origin feedback, confirmation is still mandatory before posting.
 - `--resolve` - after posting, resolve inline threads that are fully addressed. If used without `--post`, ask for explicit confirmation before resolving existing addressed inline threads.
 - `--implement` - implement code-change items before drafting replies.
 - `--no-implement` - skip implementation and produce a reply plan only.
 - `--inline` - reply in chat only; do not write `GITHUB_REVIEW_REPLY_PLAN.md`.
-- `--include-bots` - include bot and app review comments. Default: human reviewers only.
+- `--include-bots` - include bot and app review comments. This is the default and the flag is retained for compatibility.
+- `--human-only` - exclude bot/app-only feedback. Keep mixed-origin items only for their human non-author feedback.
 - `--all` - include resolved inline threads, comments already answered by the branch author, and older summary/general comments. Default: unresolved and awaiting-author feedback only.
-- `--only <login>` - include only feedback whose latest non-author human comment is from this login.
+- `--only <login>` - include only feedback whose latest applicable non-author comment is from this login. With `--human-only`, "applicable" means the latest human non-author feedback; bot/app comments are context only.
 
 The remaining payload may be a PR URL, PR number, or additional instructions such as "only reply to Sarah" or "do not resolve design comments."
 
-Defaults: `AUTO=false`, `IMPLEMENT=plan-only`, `POST=false`, `RESOLVE=false`, `INLINE=false`, `INCLUDE_BOTS=false`, `INCLUDE_ALL=false`.
+Defaults: `AUTO=false`, `IMPLEMENT=plan-only`, `POST=false`, `RESOLVE=false`, `INLINE=false`, `INCLUDE_BOTS=true`, `HUMAN_ONLY=false`, `INCLUDE_ALL=false`.
+
+If `--human-only` is present, set `HUMAN_ONLY=true` and `INCLUDE_BOTS=false`. If both `--human-only` and `--include-bots` are present, stop and ask the user to choose one filter mode; bot and app comments are included by default.
 
 If `--auto` is present, set `AUTO=true`, `IMPLEMENT=implement`, `POST=true`, and `RESOLVE=true`. If both `--auto` and `--no-implement` are present, stop and ask the user to choose one mode; `--auto` owns implementation because it posts completion replies and resolves addressed threads.
 
@@ -148,13 +151,14 @@ Group feedback into actionable items.
 2. Treat the first comment in a GraphQL thread as the root comment. For REST-only fallback, group by `in_reply_to_id` where present; root comments have no `in_reply_to_id`.
 3. Treat each review summary with a non-empty body as a single `review-summary` item. Ignore empty approval/comment shells with no actionable body.
 4. Treat each general PR comment as a single `general-comment` item.
-5. Identify the latest non-author comment in each item, where author means `PR_AUTHOR`.
-6. Drop items whose only human comments are from `SELF` or `PR_AUTHOR`. Keep items that contain reviewer feedback even when `SELF` or `PR_AUTHOR` also participated.
-7. Unless `--include-bots` is set, exclude authors whose GraphQL `__typename` is `Bot` or whose REST user `type` is `Bot`.
-8. Unless `--all` is set, exclude inline threads that are already resolved or whose latest non-author comment is older than a later reply from `PR_AUTHOR`; exclude review-summary and general-comment items when a later author reply clearly answers them. In REST-only fallback, Step 2 has already excluded inline threads unless `--all` was set, so still apply the author-reply filter to review-summary and general-comment items.
-9. Apply `--only <login>` after all other filtering.
+5. Record the original comment author and author type for every item: the root inline-thread comment author for inline threads, the review author for review-summary items, and the issue comment author for general-comment items. Also record whether the item contains human-origin feedback that the draft reply/comment will answer. `Human confirmation required: yes` whenever any human non-author feedback is being answered, including human replies inside bot/app-rooted inline threads. This derived confirmation field controls the mandatory posting confirmation in Step 8.
+6. Identify the latest non-author comment in each item, where author means `PR_AUTHOR`. Also identify the latest human non-author comment separately, because `--human-only` keeps mixed-origin items for their human feedback while treating bot/app comments as context.
+7. Drop items whose only comments are from `SELF` or `PR_AUTHOR`. Keep items that contain reviewer feedback from any other human, bot, or app even when `SELF` or `PR_AUTHOR` also participated.
+8. If `HUMAN_ONLY=true`, exclude items with no human non-author feedback. For mixed-origin items, keep the item but answer only the human non-author feedback; use bot/app comments only as context when needed.
+9. Unless `--all` is set, exclude inline threads that are already resolved or whose latest non-author comment is older than a later reply from `PR_AUTHOR`; exclude review-summary and general-comment items when a later author reply clearly answers them. In REST-only fallback, Step 2 has already excluded inline threads unless `--all` was set, so still apply the author-reply filter to review-summary and general-comment items.
+10. Apply `--only <login>` after all other filtering. If `HUMAN_ONLY=true`, compare `<login>` against the latest human non-author comment so a later bot/app comment does not drop selected human feedback from a mixed-origin thread; otherwise compare against the latest non-author comment.
 
-If no items remain after filtering, report that no unanswered human review feedback was found and stop.
+If no items remain after filtering, report that no unanswered review feedback was found and stop.
 
 ## Step 4: Classify Each Item
 
@@ -244,7 +248,7 @@ If the humanizer changes meaning, adds unsupported warmth, removes necessary tec
 - Do not resolve `disagree`, `question-for-reviewer`, or `out-of-scope` items. Let the reviewer decide.
 - Do not resolve REST-only fallback threads because the GraphQL thread ID is unavailable.
 - Do not resolve review-summary or general-comment items; GitHub does not expose them as review threads.
-- Do not resolve any inline thread whose latest human comment asks a direct question that the draft does not answer.
+- Do not resolve any inline thread whose latest non-author comment asks a direct question that the draft does not answer.
 
 ## Step 7: Write the Plan
 
@@ -257,7 +261,7 @@ PR: <title> (#<number>) URL: <url>
 
 ## Summary
 
-- Human review feedback items found: <count>
+- Review feedback items found: <count>
 - Inline threads: <count>
 - Review-summary comments: <count>
 - General PR comments: <count>
@@ -271,7 +275,7 @@ PR: <title> (#<number>) URL: <url>
 
 ### Item 1: @<reviewer> `<path>:<line or review-summary|general-comment>`
 
-**Kind:** `inline-thread|review-summary|general-comment` **Thread ID:** `<graphql-thread-id or unavailable|n/a>` **Root comment ID:** `<rest-root-comment-id or n/a>` **Comment ID:** `<review id or issue comment id, when applicable>` **Status:** `<classification>` **Implementation status:** `not needed|implemented|not attempted|blocked` **Action executed:** <specific change, or "none"> **Reply target:** `inline-reply|top-level-comment|none` **Resolve after posting:** `yes|no` **Reviewer comment:** <short quote or paraphrase> **Assessment:** <why this classification is correct> **Evidence checked:** <files, diff, tests, or "not verified"> **Humanized:** `yes|no` **Draft reply:**
+**Kind:** `inline-thread|review-summary|general-comment` **Thread ID:** `<graphql-thread-id or unavailable|n/a>` **Root comment ID:** `<rest-root-comment-id or n/a>` **Comment ID:** `<review id or issue comment id, when applicable>` **Original author:** `@<login>` **Original author type:** `human|bot|app|unknown` **Human confirmation required:** `yes|no` **Status:** `<classification>` **Implementation status:** `not needed|implemented|not attempted|blocked` **Action executed:** <specific change, or "none"> **Reply target:** `inline-reply|top-level-comment|none` **Resolve after posting:** `yes|no` **Reviewer comment:** <short quote or paraphrase> **Assessment:** <why this classification is correct> **Evidence checked:** <files, diff, tests, or "not verified"> **Humanized:** `yes|no` **Draft reply:**
 
 > <reply>
 
@@ -292,36 +296,28 @@ Before any GitHub write, show:
 Posting <N> replies/comments and resolving <M> inline review threads on <PR URL>.
 ```
 
-Then ask for explicit confirmation unless the user's current message clearly requested posting now and the flags include `--post` or `--auto`. For REST-only fallback, always ask for explicit confirmation before posting because resolution state is unknown; `--post` and `--auto` do not waive this confirmation.
+If any reply/comment has `Human confirmation required: yes`, always ask for explicit confirmation before posting that reply/comment. This applies to inline-thread replies, review-summary responses, and general PR comment responses, including mixed-origin inline threads where a bot/app opened the thread and a human added feedback later. The user's current message, `--post`, and `--auto` do not waive this confirmation. Show the exact reply body or bodies that would be posted for those items, wait for the user's approval, and only post the approved subset.
+
+For remaining bot/app-origin replies or comments, ask for explicit confirmation unless the user's current message clearly requested posting now and the flags include `--post` or `--auto`. For REST-only fallback, always ask for explicit confirmation before posting because resolution state is unknown; `--post` and `--auto` do not waive this confirmation.
 
 Do not post replies for items classified as `needs-code-change` or with `Implementation status: blocked|not attempted` unless the user explicitly asks to post acknowledgement replies.
 
 ## Step 9: Post Replies
 
-For each approved inline-thread reply, write the body to a temporary JSON file under `.context/github-review-replies/` and post it with the root REST review comment ID:
+For each approved inline-thread reply, JSON-encode the body to a temporary file under `.context/github-review-replies/` and post it with the root REST review comment ID:
 
 ```bash
+jq -n --arg body "$DRAFT_REPLY" '{body: $body}' > .context/github-review-replies/reply-THREAD.json
 gh api -X POST "repos/$OWNER/$REPO/pulls/$PR_NUMBER/comments/$ROOT_COMMENT_ID/replies" --input .context/github-review-replies/reply-THREAD.json
-```
-
-The JSON file must be:
-
-```json
-{ "body": "<draft reply>" }
 ```
 
 If a reply post fails, stop posting further replies, preserve the plan file, and report the failed item and GitHub error.
 
-For each approved review-summary or general-comment response, write the body to a temporary JSON file under `.context/github-review-replies/` and post it as a top-level PR comment:
+For each approved review-summary or general-comment response, JSON-encode the body to a temporary file under `.context/github-review-replies/` and post it as a top-level PR comment:
 
 ```bash
+jq -n --arg body "$DRAFT_REPLY" '{body: $body}' > .context/github-review-replies/reply-ITEM.json
 gh api -X POST "repos/$OWNER/$REPO/issues/$PR_NUMBER/comments" --input .context/github-review-replies/reply-ITEM.json
-```
-
-Use the same JSON shape:
-
-```json
-{ "body": "<draft reply>" }
 ```
 
 If posting a top-level comment fails, stop posting further replies/comments, preserve the plan file, and report the failed item and GitHub error.
