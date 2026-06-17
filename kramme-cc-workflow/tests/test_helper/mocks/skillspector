@@ -35,7 +35,11 @@ while [ "$#" -gt 0 ]; do
 done
 
 if [ -n "${MOCK_SKILLSPECTOR_LOG:-}" ]; then
-	printf 'input=%s format=%s output=%s no_llm=%s\n' "$input_path" "$format" "$output_file" "$no_llm" >>"$MOCK_SKILLSPECTOR_LOG"
+	snapshot_exists="no"
+	if [ -e "$input_path/references/sources-snapshot" ]; then
+		snapshot_exists="yes"
+	fi
+	printf 'input=%s format=%s output=%s no_llm=%s snapshot_exists=%s\n' "$input_path" "$format" "$output_file" "$no_llm" "$snapshot_exists" >>"$MOCK_SKILLSPECTOR_LOG"
 fi
 
 if [ "${MOCK_SKILLSPECTOR_WRITE_OUTPUT:-1}" != "0" ] && [ -n "$output_file" ]; then
