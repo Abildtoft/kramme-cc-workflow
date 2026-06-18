@@ -257,30 +257,61 @@ Unless `--inline` is set, create or update `GITHUB_REVIEW_REPLY_PLAN.md` in the 
 ```markdown
 # GitHub Review Reply Plan
 
-PR: <title> (#<number>) URL: <url>
+**PR:** [<title> (#<number>)](<url>)
 
 ## Summary
 
-- Review feedback items found: <count>
-- Inline threads: <count>
-- Review-summary comments: <count>
-- General PR comments: <count>
-- Ready to reply: <count>
-- Needs code changes: <count>
-- Code changes implemented: <count>
-- Safe to resolve after reply: <count>
-- Skipped: <count and reason summary>
+| Metric | Count |
+| --- | ---: |
+| Review feedback items found | <count> |
+| Inline threads | <count> |
+| Review-summary comments | <count> |
+| General PR comments | <count> |
+| Ready to reply | <count> |
+| Needs code changes | <count> |
+| Code changes implemented | <count> |
+| Safe to resolve after reply | <count> |
+
+**Skipped:** <count and reason summary, or "0">
 
 ## Feedback
 
-### Item 1: @<reviewer> `<path>:<line or review-summary|general-comment>`
+### 1. @<reviewer> - `<path>:<line or review-summary|general-comment>` - `<classification>`
 
-**Kind:** `inline-thread|review-summary|general-comment` **Thread ID:** `<graphql-thread-id or unavailable|n/a>` **Root comment ID:** `<rest-root-comment-id or n/a>` **Comment ID:** `<review id or issue comment id, when applicable>` **Original author:** `@<login>` **Original author type:** `human|bot|app|unknown` **Human confirmation required:** `yes|no` **Status:** `<classification>` **Implementation status:** `not needed|implemented|not attempted|blocked` **Action executed:** <specific change, or "none"> **Reply target:** `inline-reply|top-level-comment|none` **Resolve after posting:** `yes|no` **Reviewer comment:** <short quote or paraphrase> **Assessment:** <why this classification is correct> **Evidence checked:** <files, diff, tests, or "not verified"> **Humanized:** `yes|no` **Draft reply:**
+| Field | Value |
+| --- | --- |
+| Kind | one of `inline-thread`, `review-summary`, `general-comment` |
+| Thread ID | `<graphql-thread-id, unavailable, or n/a>` |
+| Root comment ID | `<rest-root-comment-id or n/a>` |
+| Comment ID | `<review id or issue comment id, when applicable>` |
+| Original author | `@<login>` |
+| Original author type | one of `human`, `bot`, `app`, `unknown` |
+| Human confirmation required | `yes` or `no` |
+| Implementation status | one of `not needed`, `implemented`, `not attempted`, `blocked` |
+| Action executed | <specific change, or "none"> |
+| Reply target | one of `inline-reply`, `top-level-comment`, `none` |
+| Resolve after posting | `yes` or `no` |
+| Humanized | `yes` or `no` |
+| Post status | one of `not posted`, `posted`, `posted and resolved`, `posted, resolve failed` |
+
+**Reviewer comment**
+
+<short quote or paraphrase>
+
+**Assessment**
+
+<why this classification is correct>
+
+**Evidence checked**
+
+- <file, diff, test, or "not verified">
+
+**Draft reply**
 
 > <reply>
-
-**Post status:** `not posted`
 ```
+
+Use this readable layout exactly: keep status in the item heading, metadata in the table, and prose fields in their own short sections. Do not collapse item metadata into one paragraph. Use bullets for `Evidence checked` when there is more than one evidence source.
 
 If `--inline` is set, return the same structure in chat and do not create the file.
 
@@ -337,7 +368,7 @@ mutation($threadId: ID!) {
 }'
 ```
 
-After each successful resolve, update the plan's `Post status:` to `posted and resolved`. If a resolve fails after the reply posted, leave the reply in place, mark `Post status: posted, resolve failed`, and report the GitHub error.
+After each successful resolve, update the plan's `Post status` field to `posted and resolved`. If a resolve fails after the reply posted, leave the reply in place, mark the `Post status` field as `posted, resolve failed`, and report the GitHub error.
 
 ## Step 11: Final Output
 
