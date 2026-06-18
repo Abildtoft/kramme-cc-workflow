@@ -22,7 +22,7 @@
   run bash -c '
     set -euo pipefail
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    make -n skill-eval-skill-review > "$BATS_TEST_TMPDIR/make.txt"
+    make --no-print-directory -n skill-eval-skill-review > "$BATS_TEST_TMPDIR/make.txt"
     grep -Fx "node evals/skill-review/run-eval.js --split all --json" "$BATS_TEST_TMPDIR/make.txt"
   '
 
@@ -33,7 +33,7 @@
   run bash -c '
     set -euo pipefail
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    make -n test-skill-review-eval > "$BATS_TEST_TMPDIR/make.txt"
+    make --no-print-directory -n test-skill-review-eval > "$BATS_TEST_TMPDIR/make.txt"
     grep -Fx "bats tests/skill-review-eval.bats" "$BATS_TEST_TMPDIR/make.txt"
   '
 
@@ -44,7 +44,7 @@
   run bash -c '
     set -euo pipefail
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    env -u BASE_REF make -n skillopt-candidate-check > "$BATS_TEST_TMPDIR/make.txt"
+    env -u BASE_REF -u SKILLSPECTOR_BASE make --no-print-directory -n skillopt-candidate-check > "$BATS_TEST_TMPDIR/make.txt"
     node -e "
       const fs = require(\"fs\");
       const lines = fs.readFileSync(process.argv[1], \"utf8\").trim().split(/\n+/);
