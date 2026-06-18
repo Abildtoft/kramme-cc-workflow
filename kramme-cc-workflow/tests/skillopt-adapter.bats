@@ -27,7 +27,7 @@
     set -euo pipefail
     cd "'"$BATS_TEST_DIRNAME"'/.."
     before=$(shasum "skills/kramme:skill:review/SKILL.md")
-    env -u SKILLOPT_REPO bash evals/skillopt/scripts/run-skillopt-skill-review.sh --dry-run --run-id bats-dry-run > "$BATS_TEST_TMPDIR/out.txt"
+    env -u SKILLOPT_REPO -u SKILLOPT_CMD bash evals/skillopt/scripts/run-skillopt-skill-review.sh --dry-run --run-id bats-dry-run > "$BATS_TEST_TMPDIR/out.txt"
     after=$(shasum "skills/kramme:skill:review/SKILL.md")
     test "$before" = "$after"
     grep -q "DRY RUN: SkillOpt command preview" "$BATS_TEST_TMPDIR/out.txt"
@@ -77,7 +77,7 @@
     mkdir -p "$fake_repo/scripts" "$fake_repo/skillopt"
     printf "#!/usr/bin/env python3\n" > "$fake_repo/scripts/train.py"
 
-    if SKILLOPT_REPO="$fake_repo" bash evals/skillopt/scripts/run-skillopt-skill-review.sh --run-id bats-missing-env > "$BATS_TEST_TMPDIR/out.txt" 2> "$BATS_TEST_TMPDIR/err.txt"; then
+    if env -u SKILLOPT_CMD SKILLOPT_REPO="$fake_repo" bash evals/skillopt/scripts/run-skillopt-skill-review.sh --run-id bats-missing-env > "$BATS_TEST_TMPDIR/out.txt" 2> "$BATS_TEST_TMPDIR/err.txt"; then
       exit 1
     fi
     grep -q "requires SkillOpt environment '\''kramme_skill_review'\''" "$BATS_TEST_TMPDIR/err.txt"
