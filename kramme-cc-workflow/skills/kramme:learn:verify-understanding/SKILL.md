@@ -1,7 +1,7 @@
 ---
 name: kramme:learn:verify-understanding
-description: Guides topic-level understanding verification for a PR, branch, feature, document, spec, design decision, bug fix, or other concrete subject. Use when the user asks to confirm, quiz, drill, teach-and-check, or verify that they understand a topic. Maintains a topic-specific checklist artifact and requires demonstrated understanding before marking the topic complete. Not for ordinary explanations without verification, end-of-session summaries, or code/test correctness checks.
-argument-hint: "[topic: PR, branch, feature, document, spec, etc.]"
+description: Guides topic-level understanding verification for a PR, branch, feature, document, spec, design decision, bug fix, or other concrete subject. Use when the user asks to confirm, quiz, drill, teach-and-check, or verify that they understand a topic. Supports optional answer choices for quiz prompts. Maintains a topic-specific checklist artifact and requires demonstrated understanding before marking the topic complete. Not for ordinary explanations without verification, end-of-session summaries, or code/test correctness checks.
+argument-hint: "[topic: PR, branch, feature, document, spec, etc.] [--answer-options|--choices]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -16,7 +16,13 @@ Use a running markdown artifact to track what the human should understand, what 
 
 Treat the invocation argument or user-provided topic as the topic. In Claude-compatible harnesses, `$ARGUMENTS` is that argument. Topics may be a PR, branch, feature, document, spec, implementation plan, bug, design decision, incident, API, module, or code path.
 
-If no topic argument is provided, infer the topic only when the current conversation has one clear subject. If there are multiple plausible topics, ask the user to name the topic before continuing.
+Before deriving the topic slug, recognize these invocation options in the topic argument and remove them from the stored topic title:
+
+- `--answer-options` or `--choices`: Prefer verification prompts with explicit answer options.
+
+After removing invocation options, use the remaining non-option text as the topic. If no non-option topic remains, infer the topic only when the current conversation has one clear subject. If there are multiple plausible topics, ask the user to name the topic before continuing.
+
+When answer options are enabled, preserve the same standard for demonstrated understanding. Use answer choices for quiz and verification prompts where plausible alternatives can test a real distinction. Prefer 3-5 mutually exclusive options, vary the position of the correct answer, and ask the human to briefly explain their choice. If a checklist area requires tracing, synthesis, debugging, or a personalized restatement, use an open-ended prompt or add an open-ended follow-up after the choice. Do not reveal the answer until the human has answered.
 
 Derive a short slug from the topic and store the artifact at:
 
@@ -91,7 +97,7 @@ Do not write secrets, credentials, tokens, private customer data, raw production
 
 5. **Verify before advancing.** Do not move to the next checklist area until the human demonstrates understanding of the current one. Demonstration can be a restatement, comparison, prediction, code walkthrough, debugger observation, or answer to an open-ended question.
 
-6. **Quiz when useful.** Use open-ended questions for reasoning and multiple-choice questions for discriminating similar concepts. When asking multiple choice, vary the position of the correct answer and do not reveal the answer until the human has answered.
+6. **Quiz when useful.** Use open-ended questions for reasoning and multiple-choice questions for discriminating similar concepts. When `--answer-options` or `--choices` is enabled, default quiz prompts to answer-option format when the topic supports credible alternatives, but still require the human to explain their choice before counting it as demonstrated understanding. When asking multiple choice, vary the position of the correct answer and do not reveal the answer until the human has answered.
 
 7. **Use concrete artifacts.** Show code, diffs, specs, diagrams, examples, debugger steps, logs, or tests when abstractions are not enough. Tie every concrete artifact back to the checklist item it proves or clarifies.
 

@@ -379,7 +379,7 @@ Human comprehension checks and teach-back workflows.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:learn:verify-understanding` | User | `[topic: PR, branch, feature, document, spec, etc.]` | Verify that the user understands a concrete topic such as a PR, branch, feature, document, spec, design decision, bug fix, or code path.<br><br>Creates a topic-specific checklist artifact under `.context/verify-understanding/`, asks for the user's current understanding, fills gaps, and marks checklist items complete only after demonstrated understanding.<br><br>Renamed from `/kramme:verify-understanding` to keep human learning checks separate from the `/kramme:verify:*` code-check family; no alias is kept because the current plugin skill format has no alias mechanism. |
+| `/kramme:learn:verify-understanding` | User | `[topic: PR, branch, feature, document, spec, etc.] [--answer-options\|--choices]` | Verify that the user understands a concrete topic such as a PR, branch, feature, document, spec, design decision, bug fix, or code path.<br><br>Creates a topic-specific checklist artifact under `.context/verify-understanding/`, asks for the user's current understanding, fills gaps, and marks checklist items complete only after demonstrated understanding. Pass `--answer-options` or `--choices` to prefer quiz prompts with explicit answer options while still requiring a brief explanation.<br><br>Renamed from `/kramme:verify-understanding` to keep human learning checks separate from the `/kramme:verify:*` code-check family; no alias is kept because the current plugin skill format has no alias mechanism. |
 
 #### Workflow & Configuration
 

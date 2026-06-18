@@ -36,6 +36,16 @@ EOF
   [[ "$output" == *"skill contract lint passed."* ]]
 }
 
+@test "verify-understanding supports answer option prompts" {
+  local skill_text
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:learn:verify-understanding/SKILL.md")"
+
+  [[ "$skill_text" == *'[--answer-options|--choices]'* ]]
+  [[ "$skill_text" == *'`--answer-options` or `--choices`: Prefer verification prompts with explicit answer options.'* ]]
+  [[ "$skill_text" == *'After removing invocation options, use the remaining non-option text as the topic.'* ]]
+  [[ "$skill_text" == *'still require the human to explain their choice before counting it as demonstrated understanding'* ]]
+}
+
 @test "fix-ci auto mode consolidates pipeline fix commits" {
   local skill_text
   local consolidation_text
