@@ -79,11 +79,16 @@ if [ -z "$out_root" ]; then
   out_root="$repo_root/.context/skillopt-runs/skill-review/$run_id/skillopt-output"
 fi
 
-out_root_real="$(python3 - "$out_root" <<'PY'
+out_root_real="$(python3 - "$repo_root" "$out_root" <<'PY'
 import sys
 from pathlib import Path
 
-print(Path(sys.argv[1]).expanduser().resolve())
+repo_root = Path(sys.argv[1]).resolve()
+out_root = Path(sys.argv[2]).expanduser()
+if not out_root.is_absolute():
+    out_root = repo_root / out_root
+
+print(out_root.resolve())
 PY
 )"
 case "$out_root_real/" in

@@ -39,6 +39,23 @@
   [ "$status" -eq 0 ]
 }
 
+@test "skillopt runner resolves relative output root from repository root" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    repo_root="$(cd .. && pwd -P)"
+    env -u SKILLOPT_REPO bash evals/skillopt/scripts/run-skillopt-skill-review.sh \
+      --dry-run \
+      --run-id bats-relative-out \
+      --out-root .context/skillopt-runs/skill-review/bats-relative-out/custom-output \
+      > "$BATS_TEST_TMPDIR/out.txt"
+
+    grep -Fq "SKILLOPT_OUT_ROOT=$repo_root/.context/skillopt-runs/skill-review/bats-relative-out/custom-output" "$BATS_TEST_TMPDIR/out.txt"
+  '
+
+  [ "$status" -eq 0 ]
+}
+
 @test "skillopt runner rejects real run without SKILLOPT_REPO" {
   run bash -c '
     set -euo pipefail
@@ -64,6 +81,16 @@
       exit 1
     fi
     grep -q "requires SkillOpt environment '\''kramme_skill_review'\''" "$BATS_TEST_TMPDIR/err.txt"
+  '
+
+  [ "$status" -eq 0 ]
+}
+
+@test "skillopt config roots eval command at exported repository root" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    grep -Fq '\''repo_eval_command: make -C "$REPO_ROOT/kramme-cc-workflow" skill-eval-skill-review'\'' evals/skillopt/configs/skill-review.yaml
   '
 
   [ "$status" -eq 0 ]

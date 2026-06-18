@@ -51,5 +51,4 @@ env:
   split_mode: split_dir
   split_dir: evals/skill-review/items
   out_root: .context/skillopt-runs/skill-review
-  repo_eval_command: make -C kramme-cc-workflow skill-eval-skill-review
-
+  repo_eval_command: make -C "$REPO_ROOT/kramme-cc-workflow" skill-eval-skill-review

@@ -28,18 +28,40 @@
 
 ---
 
+#### Finding #4: SkillOpt eval command rooted in external checkout
+
+**Location:** `kramme-cc-workflow/evals/skillopt/configs/skill-review.yaml:54`
+
+**Issue:** `repo_eval_command` used `make -C kramme-cc-workflow`, but the runner changes into `SKILLOPT_REPO` before invoking SkillOpt, so an external adapter running this command would look for the workflow checkout inside the SkillOpt checkout.
+
+**Action taken:** Changed the configured eval command to use the runner-exported `REPO_ROOT`, so the command targets the repository checkout regardless of SkillOpt's current working directory. Added Bats coverage that asserts the config is rooted through `REPO_ROOT`.
+
+---
+
+#### Finding #5: Relative `--out-root` resolved from caller cwd
+
+**Location:** `kramme-cc-workflow/evals/skillopt/scripts/run-skillopt-skill-review.sh:82`
+
+**Issue:** Relative `--out-root` values were resolved against the caller's current directory before the repository `.context` boundary check, so the documented `.context/skillopt-runs/...` path was rejected when invoked from `kramme-cc-workflow/`.
+
+**Action taken:** Resolved relative `--out-root` paths against the repository root before validation. Added a dry-run regression test covering the documented relative output path from the workflow directory.
+
+---
+
 ## Summary
 
-- Addressed 3 findings, deferred 0 findings.
-- Added Bats coverage for missing custom SkillOpt environment registration and the documented candidate-review export path.
+- Addressed 5 findings, deferred 0 findings.
+- Added Bats coverage for missing custom SkillOpt environment registration, the documented candidate-review export path, repository-rooted eval commands, and repository-rooted relative output paths.
 - No breaking config behavior beyond failing earlier with a clearer message when the external SkillOpt checkout is missing the custom environment.
 
 ## Verification
 
 - `bats kramme-cc-workflow/tests/skillopt-adapter.bats`: passed.
 - `bash -n` for all three SkillOpt adapter scripts: passed.
-- `bash kramme-cc-workflow/evals/skillopt/scripts/run-skillopt-skill-review.sh --dry-run --run-id resolve-review-check`: passed.
+- `bash evals/skillopt/scripts/run-skillopt-skill-review.sh --dry-run --run-id resolve-review-check --out-root .context/skillopt-runs/skill-review/resolve-review-check/custom-output`: passed from `kramme-cc-workflow/`.
 - `shellcheck --severity=error` for all three SkillOpt adapter scripts: passed.
 - `make -C kramme-cc-workflow test-skill-review-eval`: passed.
+- `make -C kramme-cc-workflow lint-shell`: passed.
 - `python3 kramme-cc-workflow/scripts/lint-skill-contracts.py`: passed.
 - `make -C kramme-cc-workflow lint-python`: not run successfully because `ruff` is not installed in this environment.
+- `make -C kramme-cc-workflow test`: inconclusive; interrupted after it remained stuck in unrelated `tests/convert-plugin.bats` for over nine minutes.
