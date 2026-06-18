@@ -84,8 +84,28 @@ the fraction of those checks that passed.
 Run the full fixture eval:
 
 ```bash
-node evals/skill-review/run-eval.js --split all --json
+make skill-eval-skill-review
 ```
+
+This prints machine-readable aggregate JSON for the `train`, `val`, and
+`test` splits. To run the focused harness tests:
+
+```bash
+make test-skill-review-eval
+```
+
+Before reviewing a generated candidate skill patch, run the local candidate
+gate:
+
+```bash
+make skillopt-candidate-check
+```
+
+The candidate gate runs skill contract linting, changed-skill SkillSpector
+static checks with JSON output and `high` failure threshold, the full Bats test
+suite, and this eval. Machines without `skillspector` installed fail at the
+SkillSpector step; run the focused eval and test targets above when validating
+only the deterministic harness.
 
 The optional `--skill <path>` argument is accepted and recorded in output for
 later SkillOpt adapter work. This harness still scores only the committed

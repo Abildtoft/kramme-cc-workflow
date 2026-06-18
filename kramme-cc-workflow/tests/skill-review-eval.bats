@@ -18,6 +18,58 @@
   [ "$status" -eq 0 ]
 }
 
+@test "skill review eval Make target uses aggregate JSON command" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    make -n skill-eval-skill-review > "$BATS_TEST_TMPDIR/make.txt"
+    grep -Fx "node evals/skill-review/run-eval.js --split all --json" "$BATS_TEST_TMPDIR/make.txt"
+  '
+
+  [ "$status" -eq 0 ]
+}
+
+@test "skill review eval focused Make target runs this Bats file" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    make -n test-skill-review-eval > "$BATS_TEST_TMPDIR/make.txt"
+    grep -Fx "bats tests/skill-review-eval.bats" "$BATS_TEST_TMPDIR/make.txt"
+  '
+
+  [ "$status" -eq 0 ]
+}
+
+@test "skillopt candidate check Make target keeps deterministic gate order" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    env -u BASE_REF make -n skillopt-candidate-check > "$BATS_TEST_TMPDIR/make.txt"
+    node -e "
+      const fs = require(\"fs\");
+      const lines = fs.readFileSync(process.argv[1], \"utf8\").trim().split(/\n+/);
+      const expected = [
+        \"python3 scripts/lint-skill-contracts.py\",
+        \"./scripts/run-skillspector.sh --changed --base \\\"origin/main\\\" --format json --fail-on high\",
+        \"./tests/run-tests.sh\",
+        \"node evals/skill-review/run-eval.js --split all --json\",
+      ];
+      if (lines.length !== expected.length) {
+        console.error(lines.join(\"\\n\"));
+        process.exit(1);
+      }
+      for (let index = 0; index < expected.length; index += 1) {
+        if (lines[index] !== expected[index]) {
+          console.error(lines.join(\"\\n\"));
+          process.exit(1);
+        }
+      }
+    " "$BATS_TEST_TMPDIR/make.txt"
+  '
+
+  [ "$status" -eq 0 ]
+}
+
 @test "skill review eval runner selects requested split only" {
   run bash -c '
     set -euo pipefail

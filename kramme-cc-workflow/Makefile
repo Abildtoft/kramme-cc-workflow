@@ -1,4 +1,4 @@
-.PHONY: lint lint-shell lint-python test test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-git-clean-gone test-git-worktree skill-security skill-security-changed skill-security-semantic install-test-deps check-deps
+.PHONY: lint lint-shell lint-python test test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps
 
 SHELLCHECK ?= shellcheck
 SHELLCHECK_SEVERITY ?= error
@@ -67,6 +67,10 @@ test-skill-usage:
 test-skill-contracts:
 	@bats tests/lint-skill-contracts.bats
 
+# Run only skill review eval harness tests
+test-skill-review-eval:
+	@bats tests/skill-review-eval.bats
+
 # Run only gone-branch cleanup tests
 test-git-clean-gone:
 	@bats tests/clean-gone-branches.bats
@@ -83,6 +87,15 @@ skill-security-changed:
 
 skill-security-semantic:
 	@./scripts/run-skillspector.sh --all --semantic --format "$(SKILLSPECTOR_SEMANTIC_FORMAT)" --fail-on "$(SKILLSPECTOR_FAIL_ON)"
+
+skill-eval-skill-review:
+	@node evals/skill-review/run-eval.js --split all --json
+
+skillopt-candidate-check:
+	@python3 scripts/lint-skill-contracts.py
+	@./scripts/run-skillspector.sh --changed --base "$(SKILLSPECTOR_BASE)" --format json --fail-on high
+	@./tests/run-tests.sh
+	@node evals/skill-review/run-eval.js --split all --json
 
 # Install test dependencies
 install-test-deps:
