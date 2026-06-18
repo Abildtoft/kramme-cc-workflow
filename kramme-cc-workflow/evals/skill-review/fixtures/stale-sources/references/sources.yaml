@@ -1,0 +1,7 @@
+sources:
+  - id: exampleops-runbook
+    url: https://example.invalid/runbook
+    title: ExampleOps Incident Runbook
+    rationale: Adapted the incident triage checklist structure.
+    last_reviewed_at: 2024-01-01
+    baseline_hash: unknown

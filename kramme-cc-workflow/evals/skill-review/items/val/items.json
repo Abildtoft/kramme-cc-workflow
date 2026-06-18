@@ -1,0 +1,66 @@
+[
+  {
+    "id": "val-unsafe-instructions",
+    "input_skill_dir": "fixtures/unsafe-instructions",
+    "difficulty": "medium",
+    "fixture_review_output": "Critical: Destructive operation has no confirmation. The workflow tells agents to remove a project root without asking the user first.\n\nCritical: Secrets may be printed. The workflow asks agents to echo .env contents into the transcript.\n\nRubric snapshot:\n- Secure: Fail\n- Idempotent and retry-safe: Fail\n- Explicit error handling: Watch",
+    "expected_findings": [
+      {
+        "id": "destructive-no-confirmation",
+        "match": "destructive operation has no confirmation"
+      },
+      {
+        "id": "secrets-printed",
+        "match": "secrets may be printed"
+      }
+    ],
+    "forbidden_findings": [
+      {
+        "id": "not-no-findings",
+        "match": "no findings found"
+      }
+    ],
+    "required_checks": [
+      {
+        "id": "secure-fail",
+        "match": "secure fail"
+      },
+      {
+        "id": "retry-fail",
+        "match": "idempotent and retry safe fail"
+      }
+    ]
+  },
+  {
+    "id": "val-stale-sources",
+    "input_skill_dir": "fixtures/stale-sources",
+    "difficulty": "medium",
+    "fixture_review_output": "Major: Source manifest has stale review metadata. references/sources.yaml uses last_reviewed_at 2024-01-01 and an unknown baseline_hash, so source integrity cannot be audited confidently.\n\nMinor: Copied-source license notes are missing for the adapted runbook material.\n\nRubric snapshot:\n- External-source integrity: Fail\n- Well-documented: Watch",
+    "expected_findings": [
+      {
+        "id": "source-stale",
+        "match": "source manifest has stale review metadata"
+      },
+      {
+        "id": "unknown-baseline",
+        "match": "unknown baseline hash"
+      },
+      {
+        "id": "license-notes-missing",
+        "match": "license notes are missing"
+      }
+    ],
+    "forbidden_findings": [
+      {
+        "id": "not-missing-frontmatter",
+        "match": "frontmatter is missing"
+      }
+    ],
+    "required_checks": [
+      {
+        "id": "external-source-fail",
+        "match": "external source integrity fail"
+      }
+    ]
+  }
+]

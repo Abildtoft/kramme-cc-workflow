@@ -1,0 +1,65 @@
+[
+  {
+    "id": "train-good-skill",
+    "input_skill_dir": "fixtures/good-skill",
+    "difficulty": "easy",
+    "fixture_review_output": "No findings found.\n\nRubric snapshot:\n- Focused and composable: Pass\n- Progressively disclosed: Pass\n- Harness-agnostic and portable: Pass\n- Secure: Pass\n- Explicit error handling: Pass",
+    "expected_findings": [],
+    "forbidden_findings": [
+      {
+        "id": "no-missing-frontmatter",
+        "match": "frontmatter is missing"
+      },
+      {
+        "id": "no-unsafe-side-effects",
+        "match": "unsafe side effects"
+      }
+    ],
+    "required_checks": [
+      {
+        "id": "no-findings",
+        "match": "no findings found"
+      },
+      {
+        "id": "focused-pass",
+        "match": "focused and composable pass"
+      },
+      {
+        "id": "progressive-pass",
+        "match": "progressively disclosed pass"
+      }
+    ]
+  },
+  {
+    "id": "train-missing-frontmatter",
+    "input_skill_dir": "fixtures/missing-frontmatter",
+    "difficulty": "easy",
+    "fixture_review_output": "Major: Frontmatter is missing. The draft has no YAML frontmatter, so the skill cannot declare name, description, disable-model-invocation, or user-invocable.\n\nRubric snapshot:\n- Self-describing boundaries: Fail\n- Well-documented: Watch",
+    "expected_findings": [
+      {
+        "id": "frontmatter-missing",
+        "match": "frontmatter is missing"
+      },
+      {
+        "id": "required-fields-missing",
+        "match": "disable model invocation"
+      },
+      {
+        "id": "boundary-fail",
+        "match": "self describing boundaries fail"
+      }
+    ],
+    "forbidden_findings": [
+      {
+        "id": "not-secure-critical",
+        "match": "critical"
+      }
+    ],
+    "required_checks": [
+      {
+        "id": "severity-major",
+        "match": "major frontmatter is missing"
+      }
+    ]
+  }
+]
