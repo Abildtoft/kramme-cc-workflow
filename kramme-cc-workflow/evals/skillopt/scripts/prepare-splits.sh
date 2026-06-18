@@ -76,4 +76,3 @@ if [ "$check_only" = true ]; then
 fi
 
 echo "prepare-splits: no copy needed; use the printed split_dir with SkillOpt"
-
