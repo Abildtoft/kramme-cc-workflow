@@ -147,6 +147,82 @@ fixture outputs, so changed candidates report `NEEDS_REVIEW` even when the
 fixture scores do not regress. Treat equal baseline/candidate scores as a gate
 status signal, not proof that generated behavior improved.
 
+## Pilot Acceptance Checklist
+
+A SkillOpt candidate for `kramme:skill:review` is eligible for manual source
+application only when all of these are true:
+
+- `prepare-splits.sh --check-only` passes for the committed train, val, and
+  held-out test items.
+- The run output stays under
+  `.context/skillopt-runs/skill-review/<run-id>/` and includes `best_skill.md`.
+- `review-candidate.sh` writes the manual review packet with `baseline.md`,
+  `candidate.md`, `diff.patch`, `score-report.json`, and `review.md`.
+- `score-report.json` shows the patch check passes, baseline and candidate
+  eval commands pass, and hard and soft score deltas do not regress.
+- A human inspects `diff.patch` and `review.md` for scope, instruction quality,
+  source-attribution obligations, and overfitting to fixture or session-derived
+  examples.
+- After manual application in a normal source edit,
+  `make skillopt-candidate-check` passes.
+
+Reject or rerun the candidate when any item fails, when the recommendation is
+`REJECT`, when the candidate weakens safety instructions, or when the change is
+only justified by examples that are not represented in deterministic evals.
+
+## Expansion Criteria
+
+Do not add another skill to this optimization loop until the target skill meets
+all of these criteria:
+
+- High usage or high impact justifies the maintenance cost of an eval split and
+  candidate review process.
+- Output is checkable with deterministic fixtures instead of relying only on
+  subjective review.
+- Train, val, and held-out test items exist and represent distinct examples;
+  test items must not be used for prompt tuning or candidate selection.
+- Fixtures include false-positive cases so optimization cannot win by
+  reporting more findings indiscriminately.
+- The SkillOpt runner can keep generated output under `.context/` and avoid
+  writing to `skills/**`.
+- A candidate gate exists that runs the relevant contracts, tests, static
+  checks, and deterministic evals after manual application.
+- The manual review packet has enough evidence to decide whether the candidate
+  should be accepted, rejected, or sent back for more eval work.
+
+The next candidate skills, in order, are:
+
+1. `kramme:pr:resolve-review` - high leverage because it changes source code in
+   response to review findings and needs strong false-positive protection.
+2. `kramme:pr:code-review` - high usage, but broader finding categories require
+   a larger deterministic split before optimization is safe.
+3. `kramme:session:automate-repeats` - useful after the review skills because
+   it depends on session-mining evidence and needs stricter privacy guardrails.
+
+Each expansion should start with a new deterministic eval split and candidate
+gate. Do not generalize the `skill-review` split or treat the pilot result as
+evidence that another skill is ready.
+
+## SkillOpt-Sleep Trial Guardrails
+
+SkillOpt-Sleep is optional and proposal-only. It may mine prior sessions to
+stage candidate skill edits, but Sleep-derived output cannot be committed,
+auto-applied, or used to bypass the deterministic eval and candidate review
+packet.
+
+For any Sleep trial:
+
+- Keep raw transcripts and private session content out of git.
+- Keep scratch extraction, generated candidates, and run metadata under
+  `.context/`.
+- Use privacy-conscious extracted examples rather than raw session logs.
+- Build or update deterministic train, val, and held-out test fixtures before
+  accepting a candidate.
+- Run the same candidate gate after manual application.
+
+Sleep can help propose what to test next. It does not change the acceptance
+standard.
+
 ## Python Adapters
 
 No Python SkillOpt environment adapter is committed in this PR. SkillOpt's

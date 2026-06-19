@@ -5,6 +5,12 @@ It is intentionally local-only: it does not invoke a model, call SkillOpt, reach
 external services, or modify candidate skills. The committed fixtures are
 synthetic examples used as eval data.
 
+## Pilot Scope
+
+This pilot targets `kramme:skill:review` only. Do not generalize its split,
+fixtures, or scores to another skill without creating a separate deterministic
+train/val/test split and candidate gate for that skill.
+
 ## Layout
 
 ```text
