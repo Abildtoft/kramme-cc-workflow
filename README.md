@@ -24,6 +24,7 @@ A Claude Code plugin providing tooling for daily workflow tasks. The plugin sour
 - [Recommended CLIs](#recommended-clis)
 - [Contributing](#contributing)
 - [Testing](#testing)
+- [SkillOpt Adoption](#skillopt-adoption)
 - [Local Repository Maintenance](#local-repository-maintenance)
 - [Plugin Structure](#plugin-structure)
 - [Adding Components](#adding-components)
@@ -645,6 +646,34 @@ kramme-cc-workflow/tests/
 ├── skill-usage-stats.bats    # Tests for skill usage stats hook
 └── noninteractive-git.bats   # Tests for noninteractive-git hook
 ```
+
+## SkillOpt Adoption
+
+SkillOpt is currently a conservative pilot for `kramme:skill:review` only. The
+deterministic eval split lives in
+`kramme-cc-workflow/evals/skill-review/`, and the repo-local SkillOpt bridge
+lives in `kramme-cc-workflow/evals/skillopt/`. Keep the external SkillOpt
+checkout, model credentials, run output, and candidate review artifacts outside
+tracked source under `.context/`.
+
+The entry points are the split check, dry-run or real SkillOpt runner, candidate
+export, and candidate review packet documented in
+[`evals/skillopt/README.md`](kramme-cc-workflow/evals/skillopt/README.md).
+Generated `best_skill.md` output is never auto-applied. A candidate is eligible
+for a normal source edit only after the manual review packet under
+`.context/skillopt-runs/skill-review/<run-id>/candidate-review/` has been
+inspected, the patch applies cleanly, the eval scores do not regress, and the
+candidate gate passes:
+
+```bash
+make -C kramme-cc-workflow skillopt-candidate-check
+```
+
+Do not add another skill to the optimization loop until it has a deterministic
+train/val/test split, false-positive coverage, a candidate gate, and the same
+manual acceptance model. SkillOpt-Sleep is proposal-only: it may suggest
+candidate edits from prior sessions, but deterministic held-out evals and the
+manual review packet remain the acceptance gate.
 
 ## Local Repository Maintenance
 
