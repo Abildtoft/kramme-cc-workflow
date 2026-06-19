@@ -13,6 +13,7 @@ SHELLCHECK_FILES = \
 	hooks/lib/*.sh \
 	scripts/*.sh \
 	scripts/dev-server/*.sh \
+	evals/skillopt/scripts/*.sh \
 	skills/*/scripts/*.sh
 
 # Start at error severity; ratchet toward warnings after existing scripts are cleaned up.

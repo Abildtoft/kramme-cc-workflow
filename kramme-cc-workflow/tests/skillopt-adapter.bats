@@ -11,6 +11,17 @@
   [ "$status" -eq 0 ]
 }
 
+@test "skillopt adapter scripts are included in shell lint gate" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    make --no-print-directory -n lint-shell > "$BATS_TEST_TMPDIR/lint-shell.txt"
+    grep -Fq "evals/skillopt/scripts/*.sh" "$BATS_TEST_TMPDIR/lint-shell.txt"
+  '
+
+  [ "$status" -eq 0 ]
+}
+
 @test "skillopt split preparation validates committed split files" {
   run bash -c '
     set -euo pipefail
