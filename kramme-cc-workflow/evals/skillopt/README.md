@@ -113,6 +113,40 @@ The helper copies `best_skill.md`, common top-level run metadata, and
 score/eval/result JSON artifacts. It refuses destinations outside a
 `.context/skillopt-runs/` path.
 
+## Candidate Review Packet
+
+After a run writes `best_skill.md`, generate the human review packet:
+
+```bash
+bash evals/skillopt/scripts/review-candidate.sh \
+  .context/skillopt-runs/skill-review/first-pilot/skillopt-output
+```
+
+The script writes these files under
+`.context/skillopt-runs/skill-review/<run-id>/candidate-review/`:
+
+- `baseline.md` - the current committed `kramme:skill:review` skill text.
+- `candidate.md` - the SkillOpt `best_skill.md` candidate text.
+- `diff.patch` - a source-applicable patch for inspection.
+- `score-report.json` - eval status, score deltas, patch-check status, and
+  the review recommendation.
+- `review.md` - the concise human review summary.
+
+`review-candidate.sh` runs `git apply --check` against `diff.patch`, but it
+does not apply the patch or write to `skills/**`. Manual apply only: inspect the
+packet, apply candidate edits in a normal source change, update
+`skills/kramme:skill:review/references/sources.yaml` if the candidate absorbs
+new external patterns, then run:
+
+```bash
+make -C kramme-cc-workflow skillopt-candidate-check
+```
+
+The eval runner currently records the `--skill` path while scoring committed
+fixture outputs, so changed candidates report `NEEDS_REVIEW` even when the
+fixture scores do not regress. Treat equal baseline/candidate scores as a gate
+status signal, not proof that generated behavior improved.
+
 ## Python Adapters
 
 No Python SkillOpt environment adapter is committed in this PR. SkillOpt's
