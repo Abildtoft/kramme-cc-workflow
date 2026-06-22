@@ -1,3 +1,20 @@
 {
-  "accepted_findings": []
+  "accepted_findings": [
+    {
+      "path": "kramme-cc-workflow/skills/kramme:browse/SKILL.md",
+      "rule_id": "P1",
+      "reason": "Pre-existing SkillSpector high finding in unchanged skill prose surfaced by this sources.yaml-only backfill PR.",
+      "owner": "kramme",
+      "accepted_at": "2026-06-22",
+      "review_after": "2026-07-22"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:siw:discovery/SKILL.md",
+      "rule_id": "TM1",
+      "reason": "Pre-existing SkillSpector high finding in unchanged skill prose surfaced by this sources.yaml-only backfill PR.",
+      "owner": "kramme",
+      "accepted_at": "2026-06-22",
+      "review_after": "2026-07-22"
+    }
+  ]
 }
