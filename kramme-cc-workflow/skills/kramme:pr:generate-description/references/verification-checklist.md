@@ -9,6 +9,7 @@ Run this before presenting copy-paste output, before `gh pr edit`, and before sa
 
 ## Summary and Change Summary block
 
+- [ ] GitHub PR template lookup completed against the repository default branch; if a template exists, the body follows its heading order, required prompts, and checklists without duplicating default sections.
 - [ ] Summary restates the _why_ in business terms, not just the _what_.
 - [ ] Linear (or GitHub) issue linked with the correct magic word (`Fixes`, `Closes`, `Resolves`, `Related to`, `Refs`, `References`).
 - [ ] `### Changes made` lists distinct verb-led bullets - no vague verbs (`update`, `improve`) without an object.
