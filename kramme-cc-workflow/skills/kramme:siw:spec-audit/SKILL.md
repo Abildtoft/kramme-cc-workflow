@@ -1,6 +1,6 @@
 ---
 name: kramme:siw:spec-audit
-description: Audit specification documents for quality — coherence, completeness, clarity, scope, actionability, testability, value proposition, and technical design. Catches spec issues before implementation begins. Supports inline report output with --inline; --apply runs the same auto-fix procedure as kramme:siw:spec-audit:auto-fix. Use --team for multi-agent cross-validation.
+description: Audit specification documents for quality — coherence, completeness, clarity, scope, actionability, testability, value proposition, and technical design. Supports --inline and --apply. Use --team for multi-agent cross-validation and codebase pattern review.
 argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--apply] [--model opus|sonnet|haiku] [--inline] [--team]"
 disable-model-invocation: true
 user-invocable: true
@@ -8,7 +8,7 @@ user-invocable: true
 
 # Audit Specification Quality
 
-Evaluate specification documents for quality across 8 dimensions before implementation begins. This is a spec-only analysis — no codebase code is read or compared.
+Evaluate specification documents for quality across 8 dimensions before implementation begins. The standard workflow is spec-only; `--team` also runs a bounded codebase pattern reviewer that checks whether the spec introduces new implementation patterns without rationale.
 
 **IMPORTANT:** This is a thorough quality audit. Do not return early. Do not assume a section is well-written without reading it carefully. Check every part of the specification against quality criteria. The goal is to find ALL weaknesses — a clean report is suspicious, not reassuring.
 
