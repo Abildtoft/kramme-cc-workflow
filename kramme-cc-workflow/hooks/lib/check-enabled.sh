@@ -6,7 +6,7 @@ is_hook_disabled_without_jq() {
   local hook_name="$1"
   local state_file="$2"
   local content=""
-  local line disabled_section entry
+  local line disabled_section entry found=false
   local prefix='{"disabled":['
   local suffix=']}'
 
@@ -32,12 +32,15 @@ is_hook_disabled_without_jq() {
 
   while [ -n "$disabled_section" ]; do
     entry="${disabled_section%%,*}"
-    [ "$entry" = "\"$hook_name\"" ] && return 0
+    [ -z "$entry" ] && return 1
+    [[ "$entry" =~ ^\"[A-Za-z0-9:_-]+\"$ ]] || return 1
+    [ "$entry" = "\"$hook_name\"" ] && found=true
     [ "$entry" = "$disabled_section" ] && break
     disabled_section="${disabled_section#*,}"
+    [ -z "$disabled_section" ] && return 1
   done
 
-  return 1
+  [ "$found" = "true" ]
 }
 
 is_hook_enabled() {
