@@ -158,3 +158,12 @@ run_exit_if_hook_disabled_without_jq() {
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
+
+@test "fails open for non-json content containing disabled state when jq is unavailable" {
+	write_hook_state 'not-json {"disabled":["auto-format"]}'
+
+	run_is_hook_enabled_without_jq "auto-format"
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}

@@ -7,6 +7,8 @@ is_hook_disabled_without_jq() {
   local state_file="$2"
   local content=""
   local line disabled_section entry
+  local prefix='{"disabled":['
+  local suffix=']}'
 
   [ ! -f "$state_file" ] && return 1
 
@@ -19,9 +21,9 @@ is_hook_disabled_without_jq() {
   content="${content//$'\r'/}"
 
   case "$content" in
-    *'"disabled":['*']'*)
-      disabled_section="${content#*\"disabled\":[}"
-      disabled_section="${disabled_section%%]*}"
+    "$prefix"*"$suffix")
+      disabled_section="${content#"$prefix"}"
+      disabled_section="${disabled_section%"$suffix"}"
       ;;
     *)
       return 1
