@@ -37,19 +37,6 @@ MERGE_LONG_OPTIONS_CONSUME_NEXT_VALUE="--message --file --strategy --strategy-op
 
 source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/git-parse-utils.sh"
 
-token_is_assignment() {
-  [[ "$1" =~ ^[A-Za-z_][A-Za-z0-9_]*=.*$ ]]
-}
-
-is_shell_keyword_token() {
-  case "$(strip_wrapping_quotes "$1")" in
-    '!' | if | then | elif | else | fi | do | done | while | until | for | in | case | esac | '{' | '}' | '(' | ')')
-      return 0
-      ;;
-  esac
-  return 1
-}
-
 args_have_short_option() {
   local wanted="$1"
   shift
@@ -329,57 +316,6 @@ commit_has_safe_fixup() {
   return 1
 }
 
-extract_shell_inline_command() {
-  local value
-
-  while [ $# -gt 0 ]; do
-    value="$(strip_wrapping_quotes "$1")"
-    case "$value" in
-      --)
-        return 1
-        ;;
-      -c | --command)
-        shift
-        [ $# -gt 0 ] || return 1
-        printf '%s\n' "$(strip_wrapping_quotes "$1")"
-        return 0
-        ;;
-      --command=*)
-        printf '%s\n' "${value#*=}"
-        return 0
-        ;;
-      --rcfile | --init-file | --startup-file | -o | -O | +O)
-        shift
-        [ $# -gt 0 ] && shift
-        ;;
-      --rcfile=* | --init-file=* | --startup-file=*)
-        shift
-        ;;
-      --*)
-        shift
-        ;;
-      -*)
-        case "${value#-}" in
-          *c*)
-            shift
-            [ $# -gt 0 ] || return 1
-            printf '%s\n' "$(strip_wrapping_quotes "$1")"
-            return 0
-            ;;
-        esac
-        shift
-        ;;
-      +*)
-        shift
-        ;;
-      *)
-        return 1
-        ;;
-    esac
-  done
-  return 1
-}
-
 record_git_editor_env() {
   local assignment="$1"
   local key="${assignment%%=*}"
@@ -408,49 +344,6 @@ unset_git_editor_env() {
 clear_git_editor_env() {
   has_git_editor=false
   has_git_sequence_editor=false
-}
-
-array_contains() {
-  local wanted="$1"
-  shift
-  local value
-
-  for value in "$@"; do
-    if [ "$value" = "$wanted" ]; then
-      return 0
-    fi
-  done
-
-  return 1
-}
-
-segment_command_substitution_indexes() {
-  local token remainder index
-  local indexes=()
-
-  for token in "$@"; do
-    remainder="$token"
-    while [[ "$remainder" =~ __CMD_SUBST_([0-9]+)__ ]]; do
-      index="${BASH_REMATCH[1]}"
-      if [ ${#indexes[@]} -eq 0 ] || ! array_contains "$index" "${indexes[@]}"; then
-        indexes+=("$index")
-      fi
-      remainder="${remainder#*"${BASH_REMATCH[0]}"}"
-    done
-  done
-
-  if [ ${#indexes[@]} -gt 0 ]; then
-    printf '%s\n' "${indexes[@]}"
-  fi
-}
-
-control_token_preserves_shell_env() {
-  case "$1" in
-    ";" | "&&" | "||")
-      return 0
-      ;;
-  esac
-  return 1
 }
 
 apply_exported_editor_env_segment() {
@@ -863,39 +756,19 @@ evaluate_simple_git_segment() {
     esac
   done
 
-  while [ $# -gt 0 ]; do
-    value="$(strip_wrapping_quotes "$1")"
-    case "$value" in
-      --)
-        shift
-        break
-        ;;
-      -C | -c | --config-env | --exec-path | --git-dir | --namespace | --super-prefix | --work-tree)
-        if [ $# -ge 2 ]; then
-          shift 2
-        else
-          shift
-        fi
-        ;;
-      --config-env=* | --exec-path=* | --git-dir=* | --namespace=* | --super-prefix=* | --work-tree=* | -C* | -c*)
-        shift
-        ;;
-      -*)
-        shift
-        ;;
-      *)
-        break
-        ;;
-    esac
-  done
+  parse_git_command_context false false "$@"
 
-  if [ $# -eq 0 ]; then
+  if [ -z "$PARSED_GIT_SUBCOMMAND" ]; then
     printf '__ALLOW__\n'
     return
   fi
 
-  subcmd="$(strip_wrapping_quotes "$1")"
-  shift
+  subcmd="$PARSED_GIT_SUBCOMMAND"
+  if [ ${#PARSED_GIT_SUBCOMMAND_ARGS[@]} -gt 0 ]; then
+    set -- "${PARSED_GIT_SUBCOMMAND_ARGS[@]}"
+  else
+    set --
+  fi
 
   case "$subcmd" in
     commit)

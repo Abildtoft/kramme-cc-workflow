@@ -63,19 +63,6 @@ matches_artifact() {
 
 source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/git-parse-utils.sh"
 
-token_is_assignment() {
-  [[ "$1" =~ ^[A-Za-z_][A-Za-z0-9_]*=.*$ ]]
-}
-
-is_shell_keyword_token() {
-  case "$(strip_wrapping_quotes "$1")" in
-    '!' | if | then | elif | else | fi | do | done | while | until | for | in | case | esac | '{' | '}' | '(' | ')')
-      return 0
-      ;;
-  esac
-  return 1
-}
-
 should_replay_git_env() {
   case "$1" in
     GIT_DIR | GIT_WORK_TREE | GIT_INDEX_FILE | GIT_NAMESPACE | GIT_COMMON_DIR | GIT_OBJECT_DIRECTORY | GIT_ALTERNATE_OBJECT_DIRECTORIES)
@@ -119,15 +106,6 @@ build_safe_git_prefix_args() {
 contains_command_substitution_token() {
   case "$1" in
     *"$COMMAND_SUBSTITUTION_TOKEN"*)
-      return 0
-      ;;
-  esac
-  return 1
-}
-
-control_token_preserves_shell_env() {
-  case "$1" in
-    ";" | "&&" | "||")
       return 0
       ;;
   esac
@@ -318,40 +296,6 @@ export_shell_git_var_assignment() {
   fi
 }
 
-array_contains() {
-  local wanted="$1"
-  shift
-  local value
-
-  for value in "$@"; do
-    if [ "$value" = "$wanted" ]; then
-      return 0
-    fi
-  done
-
-  return 1
-}
-
-segment_command_substitution_indexes() {
-  local token remainder index
-  local indexes=()
-
-  for token in "$@"; do
-    remainder="$token"
-    while [[ "$remainder" =~ ${COMMAND_SUBSTITUTION_TOKEN}([0-9]+)__ ]]; do
-      index="${BASH_REMATCH[1]}"
-      if [ ${#indexes[@]} -eq 0 ] || ! array_contains "$index" "${indexes[@]}"; then
-        indexes+=("$index")
-      fi
-      remainder="${remainder#*"${BASH_REMATCH[0]}"}"
-    done
-  done
-
-  if [ ${#indexes[@]} -gt 0 ]; then
-    printf '%s\n' "${indexes[@]}"
-  fi
-}
-
 collect_current_git_env_assignments() {
   local key
 
@@ -360,58 +304,6 @@ collect_current_git_env_assignments() {
       printf '%s=%s\n' "$key" "${!key}"
     fi
   done
-}
-
-extract_shell_inline_command() {
-  local value
-
-  while [ $# -gt 0 ]; do
-    value="$(strip_wrapping_quotes "$1")"
-    case "$value" in
-      --)
-        return 1
-        ;;
-      -c | --command)
-        shift
-        [ $# -gt 0 ] || return 1
-        printf '%s\n' "$(strip_wrapping_quotes "$1")"
-        return 0
-        ;;
-      --command=*)
-        printf '%s\n' "${value#*=}"
-        return 0
-        ;;
-      --rcfile | --init-file | --startup-file | -o | -O | +O)
-        shift
-        [ $# -gt 0 ] && shift
-        ;;
-      --rcfile=* | --init-file=* | --startup-file=*)
-        shift
-        ;;
-      --*)
-        shift
-        ;;
-      -*)
-        case "${value#-}" in
-          *c*)
-            shift
-            [ $# -gt 0 ] || return 1
-            printf '%s\n' "$(strip_wrapping_quotes "$1")"
-            return 0
-            ;;
-        esac
-        shift
-        ;;
-      +*)
-        shift
-        ;;
-      *)
-        return 1
-        ;;
-    esac
-  done
-
-  return 1
 }
 
 emit_git_commit_context() {
@@ -793,54 +685,12 @@ EOF
     return
   fi
 
-  while [ $# -gt 0 ]; do
-    token="$1"
-    case "$token" in
-      --)
-        shift
-        break
-        ;;
-      -C | -c | --git-dir | --work-tree | --namespace | --exec-path | --config-env)
-        git_args+=("$token")
-        if [ $# -ge 2 ]; then
-          git_args+=("$(strip_wrapping_quotes "$2")")
-          shift 2
-        else
-          shift
-        fi
-        ;;
-      --git-dir=* | --work-tree=* | --namespace=* | --exec-path=* | --config-env=*)
-        git_args+=("${token%%=*}=$(strip_wrapping_quotes "${token#*=}")")
-        shift
-        ;;
-      -C*)
-        git_args+=("-C" "$(strip_wrapping_quotes "${token#-C}")")
-        shift
-        ;;
-      -c*)
-        git_args+=("-c" "$(strip_wrapping_quotes "${token#-c}")")
-        shift
-        ;;
-      -*)
-        git_args+=("$(strip_wrapping_quotes "$token")")
-        shift
-        ;;
-      __CMD_SUBST_*)
-        # A command substitution between `git` and its subcommand
-        # will expand at runtime into unknown flags. Keep scanning
-        # past it so we still emit a commit context; the dynamic-
-        # repo-selection gate (which rejects any arg containing
-        # __CMD_SUBST_) will then block the whole segment.
-        git_args+=("$token")
-        shift
-        ;;
-      *)
-        break
-        ;;
-    esac
-  done
+  parse_git_command_context true true "$@"
+  if [ ${#PARSED_GIT_PREFIX_ARGS[@]} -gt 0 ]; then
+    git_args+=("${PARSED_GIT_PREFIX_ARGS[@]}")
+  fi
 
-  if [ $# -gt 0 ] && [ "$(strip_wrapping_quotes "$1")" = "commit" ]; then
+  if [ "$PARSED_GIT_SUBCOMMAND" = "commit" ]; then
     PARSED_SEGMENT_CONTEXT_LINES="$(emit_git_commit_context)"
   fi
 
