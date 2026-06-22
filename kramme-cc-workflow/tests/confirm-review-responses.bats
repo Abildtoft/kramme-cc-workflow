@@ -106,6 +106,21 @@ run_hook_without_jq() {
 	env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK" <<<"$json_input"
 }
 
+run_hook_without_jq_disabled() {
+	local cmd="$1"
+	local fake_bin="$BATS_TEST_TMPDIR/no-jq-disabled-bin"
+	local plugin_root="$BATS_TEST_TMPDIR/no-jq-disabled-plugin"
+	local json_input
+	rm -rf "$fake_bin" "$plugin_root"
+	mkdir -p "$fake_bin" "$plugin_root/hooks/lib"
+	ln -s "$(command -v bash)" "$fake_bin/bash"
+	ln -s "$(command -v cat)" "$fake_bin/cat"
+	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
+	printf '%s\n' '{"disabled":["confirm-review-responses"]}' >"$plugin_root/hooks/hook-state.json"
+	json_input="$(make_bash_input "$cmd")"
+	env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$plugin_root" "$fake_bin/bash" "$HOOK" <<<"$json_input"
+}
+
 run_hook_with_repo_env() {
 	local repo="$1"
 	local cmd="$2"
@@ -172,11 +187,19 @@ run_hook_without_python_with_real_git() {
 	[ -z "$output" ]
 }
 
-@test "allows command unchanged when jq is unavailable" {
+@test "blocks command when jq is unavailable" {
 	run run_hook_without_jq "git commit -m 'test commit'"
-	[ "$status" -eq 0 ]
+	is_blocked
 	[[ "$output" == *"jq not found"* ]]
-	[[ "$output" == *"allowing command unchanged"* ]]
+	[[ "$output" == *"refusing to run safety hook without JSON parsing"* ]]
+	[[ "$output" == *"Install jq or disable this hook explicitly"* ]]
+	[[ "$output" != *"allowing command unchanged"* ]]
+}
+
+@test "allows disabled hook when jq is unavailable" {
+	run run_hook_without_jq_disabled "git commit -m 'test commit'"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
 }
 
 @test "allows non-git commands" {

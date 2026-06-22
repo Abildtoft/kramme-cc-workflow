@@ -27,6 +27,37 @@ run_exit_if_hook_disabled() {
 			'source "$1"; exit_if_hook_disabled "$2" "$3"; echo continued' _ "$LIB" "$hook_name" "$mode"
 	else
 		run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" bash -c \
+		'source "$1"; exit_if_hook_disabled "$2"; echo continued' _ "$LIB" "$hook_name"
+	fi
+}
+
+run_is_hook_enabled_without_jq() {
+	local hook_name="$1"
+	local fake_bin
+	local bash_path
+	fake_bin="$BATS_TEST_TMPDIR/no-jq-bin"
+	bash_path="$(command -v bash)"
+	mkdir -p "$fake_bin"
+
+	run env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" "$bash_path" -c \
+		'source "$1"; is_hook_enabled "$2"' _ "$LIB" "$hook_name"
+}
+
+run_exit_if_hook_disabled_without_jq() {
+	local hook_name="$1"
+	local mode="${2:-}"
+	local fake_bin
+	local bash_path
+	fake_bin="$BATS_TEST_TMPDIR/no-jq-bin"
+	bash_path="$(command -v bash)"
+	mkdir -p "$fake_bin"
+	ln -sf "$(command -v cat)" "$fake_bin/cat"
+
+	if [ -n "$mode" ]; then
+		run env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" "$bash_path" -c \
+			'source "$1"; exit_if_hook_disabled "$2" "$3"; echo continued' _ "$LIB" "$hook_name" "$mode"
+	else
+		run env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" "$bash_path" -c \
 			'source "$1"; exit_if_hook_disabled "$2"; echo continued' _ "$LIB" "$hook_name"
 	fi
 }
@@ -92,16 +123,37 @@ run_exit_if_hook_disabled() {
 	[ "$output" = "continued" ]
 }
 
-@test "fails open when jq is unavailable" {
-	local fake_bin
-	local bash_path
-	fake_bin="$BATS_TEST_TMPDIR/no-jq-bin"
-	bash_path="$(command -v bash)"
-	mkdir -p "$fake_bin"
+@test "treats hooks absent from disabled state as enabled when jq is unavailable" {
+	write_hook_state '{"disabled":["block-rm-rf"]}'
+
+	run_is_hook_enabled_without_jq "auto-format"
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "returns disabled status when jq is unavailable and hook is listed" {
 	write_hook_state '{"disabled":["auto-format"]}'
 
-	run env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" "$bash_path" -c \
-		'source "$1"; is_hook_enabled "$2"' _ "$LIB" "auto-format"
+	run_is_hook_enabled_without_jq "auto-format"
+
+	[ "$status" -eq 1 ]
+	[ -z "$output" ]
+}
+
+@test "exits silently for disabled plain hooks when jq is unavailable" {
+	write_hook_state '{"disabled":["block-rm-rf"]}'
+
+	run_exit_if_hook_disabled_without_jq "block-rm-rf"
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "fails open for malformed hook state when jq is unavailable" {
+	write_hook_state '{"disabled":['
+
+	run_is_hook_enabled_without_jq "auto-format"
 
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
