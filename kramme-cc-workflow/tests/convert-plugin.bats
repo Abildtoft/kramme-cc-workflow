@@ -81,6 +81,57 @@ exit_if_hook_disabled() {
 SH
 }
 
+@test "frontmatter module parses and formats converter metadata" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	run node -e '
+const assert = require("assert");
+const {
+  codexName,
+  formatFrontmatter,
+  normalizeName,
+  parseFrontmatter,
+  sanitizeDescription,
+} = require(process.argv[1]);
+
+const parsed = parseFrontmatter(`---
+name: Demo Skill
+description: |
+  First line
+  second line
+allowed-tools:
+  - Read
+  - Edit(src/**)
+user-invocable: true
+---
+Body`);
+
+assert.deepStrictEqual(parsed.data["allowed-tools"], ["Read", "Edit(src/**)"]);
+assert.strictEqual(parsed.data.description, "First line\nsecond line");
+assert.strictEqual(parsed.data["user-invocable"], true);
+assert.strictEqual(parsed.body, "Body");
+assert.strictEqual(normalizeName("Kramme: Demo/Skill!"), "kramme-demo-skill");
+assert.strictEqual(codexName("Demo Skill!"), "demo-skill");
+assert.strictEqual(sanitizeDescription(" First\n\nSecond "), "First Second");
+
+const formatted = formatFrontmatter(
+  {
+    name: "demo-skill",
+    "allowed-tools": ["Read", "Edit(src/**)"],
+    "user-invocable": true,
+  },
+  "Body",
+);
+assert.match(formatted, /allowed-tools:\n  - Read\n  - Edit\(src\/\*\*\)/);
+assert.match(formatted, /user-invocable: true/);
+console.log("ok");
+' "$REPO_ROOT/scripts/convert-plugin/frontmatter"
+	[ "$status" -eq 0 ]
+	[ "$output" = "ok" ]
+}
+
 @test "codex conversion creates skills from user-invocable skills" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for converter tests"
