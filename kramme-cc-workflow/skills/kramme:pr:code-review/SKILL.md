@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:code-review
-description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, performance, slop). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. Use --team for multi-agent cross-validation. Not for UX, visual, or accessibility review -- use kramme:pr:ux-review for those.
+description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, performance, slop, refactor fit). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. Use --team for multi-agent cross-validation. Not for UX, visual, or accessibility review -- use kramme:pr:ux-review for those.
 argument-hint: "[aspects] [--emphasize <dim>...] [--base <branch>] [--parallel] [parallel] [--team] [--inline]"
 disable-model-invocation: false
 user-invocable: true
@@ -26,10 +26,10 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - If `--team` flag → use Team Mode and remove it from the aspect list
    - If `--parallel` appears anywhere in `$ARGUMENTS` → set `LAUNCH_MODE=parallel` and remove it from the aspect list. Default is `LAUNCH_MODE=sequential`.
    - If the bare token `parallel` appears anywhere in `$ARGUMENTS` → set `LAUNCH_MODE=parallel`, remove it from the aspect list, and treat it as a deprecated alias for `--parallel`.
-   - If `--emphasize <dim>...` flag → store dimension names in `EMPHASIZED_DIMENSIONS` list and remove from aspect list. Consume all tokens after `--emphasize` until the next `--` flag, `--parallel`, `parallel`, or end of arguments. Each token must be a valid aspect name (`comments`, `tests`, `errors`, `types`, `code`, `slop`, `security`, `performance`, `removal`, `simplify`). Reject `--emphasize all` (emphasizing everything is a no-op).
+   - If `--emphasize <dim>...` flag → store dimension names in `EMPHASIZED_DIMENSIONS` list and remove from aspect list. Consume all tokens after `--emphasize` until the next `--` flag, `--parallel`, `parallel`, or end of arguments. Each token must be a valid aspect name (`comments`, `tests`, `errors`, `types`, `code`, `slop`, `security`, `performance`, `removal`, `refactor`, `simplify`). Reject `--emphasize all` (emphasizing everything is a no-op).
    - Validate remaining positional tokens as aspect names against the same list plus `all`. If any token is not a recognized aspect, stop with an error naming the unrecognized token and listing valid aspects. Do not silently fall through to "run all applicable reviews."
    - If an explicit aspect list was provided and it does not include `all`, every emphasized dimension must also appear in that list. If any emphasized dimension was excluded by the user's aspect filter, stop with an error instead of re-ranking unrelated findings.
-   - Default (no aspect tokens, or `all`): Run all applicable reviews **except** `simplify`. The simplifier is opt-in only -- it runs only when `simplify` is explicitly listed (see Step 6).
+   - Default (no aspect tokens, or `all`): Run all applicable reviews **except** `refactor` and `simplify`. Refactor-fit and simplification review are opt-in only -- they run only when `refactor` or `simplify` is explicitly listed (see Step 6).
 
 2. **Resolve Base Branch and Collect Review Diff**
 
@@ -58,8 +58,9 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - **security** - Security review: injection, auth, data protection, business logic (4 specialized agents)
    - **performance** - Performance and scalability review (algorithmic complexity, query efficiency, memory, caching)
    - **removal** - Identify dead code and create safe removal plans
+   - **refactor** - Review reuse, composition, codebase consistency, and cleanup fit without editing (opt-in only; not part of default `all`)
    - **simplify** - Simplify code for clarity and maintainability (opt-in only; not part of default `all`)
-   - **all** - Run all applicable reviews except `simplify` (default)
+   - **all** - Run all applicable reviews except `refactor` and `simplify` (default)
 
 4. **Identify Changed Files and PR Description**
    - Use the newline-delimited `CHANGED_FILES` exported by Step 2 as the unified change scope.
@@ -105,7 +106,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - `kramme:comment-analyzer` — if comments, docstrings, docs, or explanation-heavy inline text changed
    - `kramme:type-design-analyzer` — if types, schemas, interfaces, data models, or invariants changed
    - `kramme:removal-planner` — if code was deleted, deprecated, consolidated, or refactored enough that safe removal needs verification
-   - `kramme:code-simplifier` — only when `simplify` is explicitly listed in the aspect arguments. The simplifier never runs as part of `all`, because simplification suggestions can conflict with unresolved Critical/Important findings. Run the review first, resolve those, then re-run with `simplify`.
+   - `kramme:code-simplifier` — only when `refactor` or `simplify` is explicitly listed in the aspect arguments. Record the active dimension as `refactor`, `simplify`, or both based on the requested tokens. Use `refactor` for review-only reuse/composition/codebase-fit findings; use `simplify` for broader clarity and maintainability simplification suggestions. Neither runs as part of `all`, because cleanup suggestions can conflict with unresolved Critical/Important findings. Run the review first, resolve those, then re-run with `refactor` or `simplify`.
 
    **Stack-specific conditional reviewers** (activate only when the touched stack has the relevant risk surface):
    - `performance-oracle` — data-heavy paths, loops over large collections, DB queries, caching, hot paths, rendering bottlenecks, or expensive client bundles
@@ -134,6 +135,13 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - Security and data-loss risks may override local style, but the finding must name the concrete exploit path, information disclosure, corruption path, or user-visible failure that justifies stronger defensive handling.
 
    Instruct each spawned reviewer to label findings with the output markers documented in `references/review-discipline.md` (`UNVERIFIED`, `NOTICED BUT NOT TOUCHING`, `CONFUSION`, `MISSING REQUIREMENT`) so the aggregated report is parseable.
+
+   If `refactor` activated `kramme:code-simplifier`, instruct it to operate as a review-only refactor-fit reviewer:
+   - Do not edit files.
+   - Trace the relevant call stack or data flow before making line-level findings when the behavior is non-trivial.
+   - Search nearby and sibling code before judging new helpers, components, hooks, file placement, naming, result/error/loading patterns, styling primitives, or copy patterns.
+   - Prioritize reuse, composition, codebase consistency, and proportional cleanup: duplicated existing flows, grab-bag modules, parameter sprawl, callback/prop plumbing, one-off helpers or exported types, product concepts leaking backing-entity distinctions through intermediate components, and unrelated diff churn.
+   - For each finding, include the existing pattern or code that should be reused when found, why the current change does not fit, and the minimal recommended fix.
 
    Instruct every reviewer to return these fields for each finding:
    - **Finding ID:** leave blank for raw reviewer output; the aggregator assigns stable `CR-001`, `CR-002`, ... IDs after dedupe
@@ -198,7 +206,7 @@ After validation, slop meta-review, and previous-response filtering, dedupe and 
 
 After validation, slop meta-review, and previous-response filtering, apply emphasis adjustments if `EMPHASIZED_DIMENSIONS` is non-empty. Only use findings from agents that actually ran in Step 7 when deciding what is emphasized vs non-emphasized.
 
-**Dimension-to-agent mapping:** `security` → injection-reviewer, auth-reviewer, data-reviewer, logic-reviewer | `errors` → silent-failure-hunter | `tests` → pr-test-analyzer | `comments` → comment-analyzer | `types` → type-design-analyzer | `code` → code-reviewer | `slop` → deslop-reviewer | `performance` → performance-oracle | `removal` → removal-planner | `simplify` → code-simplifier
+**Dimension-to-agent mapping:** `security` → injection-reviewer, auth-reviewer, data-reviewer, logic-reviewer | `errors` → silent-failure-hunter | `tests` → pr-test-analyzer | `comments` → comment-analyzer | `types` → type-design-analyzer | `code` → code-reviewer | `slop` → deslop-reviewer | `performance` → performance-oracle | `removal` → removal-planner | `refactor` → code-simplifier in review-only refactor-fit mode | `simplify` → code-simplifier
 
 **Promotion rules (per finding, based on source agent):**
 
@@ -274,6 +282,9 @@ Before posting (whether to `REVIEW_OVERVIEW.md` or inline), run the pre-posting 
 
 /kramme:pr:code-review performance
 # Performance and scalability review only
+
+/kramme:pr:code-review refactor
+# Review-only reuse, composition, and codebase-fit cleanup findings
 
 /kramme:pr:code-review simplify
 # Opt-in simplifier pass. Run after the main review is clean.

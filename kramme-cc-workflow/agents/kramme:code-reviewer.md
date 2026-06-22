@@ -15,6 +15,14 @@ If PR metadata is provided, read the PR title and body before reviewing. Use it 
 
 Treat the diff as the source of truth and the PR description as the suspect. PR descriptions drift, get written ahead of the final code, or are copy-pasted from earlier iterations. The default fix for a `PR description` finding is to update the description to match what shipped, not to change the code. If a reviewer separately concludes the code itself is wrong, that is a different finding with a `file:line` location.
 
+## Review Process
+
+Before judging individual changed lines, understand how the change is wired:
+
+- Inspect the full diff and identify the affected entry points, callers, data shapes, and side effects.
+- Build the call stack or data flow for non-trivial behavior changes before deciding whether a line-level pattern is wrong.
+- Search nearby and sibling code before flagging new helpers, components, hooks, or patterns as inconsistent; prefer an established flow when a small extension would fit.
+
 ## Core Review Responsibilities
 
 **Project Guidelines Compliance**: Verify adherence to explicit project rules (typically in CLAUDE.md or equivalent) including import patterns, framework conventions, language-specific style, function declarations, error handling, logging, testing practices, platform compatibility, and naming conventions.

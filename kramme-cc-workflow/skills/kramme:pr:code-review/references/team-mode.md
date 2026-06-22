@@ -30,7 +30,7 @@ Then stop.
 Same setup as `/kramme:pr:code-review` Steps 1-7:
 
 1. Check git status to identify changed files
-2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, security, performance, removal, simplify, all), `--emphasize <dim>...`, `--base <ref>` override, and optional `--inline` output mode
+2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, security, performance, removal, refactor, simplify, all), `--emphasize <dim>...`, `--base <ref>` override, and optional `--inline` output mode
 3. Resolve base branch using 3-tier strategy (explicit `--base` → PR target branch → default branch fallback). See `/kramme:pr:code-review` Step 2 for full logic.
 4. Build a unified change scope (committed PR diff + staged + unstaged + untracked):
    ```bash
@@ -103,6 +103,15 @@ Use the same reviewer taxonomy as the standard workflow:
 - **logic-reviewer** -- If security-relevant changes detected (mission from `agents/kramme:logic-reviewer.md`)
 
 When the user passed an explicit aspect filter, spawn only the reviewers matching that filter and the applicable conditions. If `simplify` was explicitly requested, add **code-simplifier** after the main review findings are understood; it remains opt-in and is not part of default `all`.
+If `refactor` was explicitly requested, add **code-simplifier** in review-only refactor-fit mode after the main review findings are understood; it remains opt-in and is not part of default `all`.
+
+For review-only refactor-fit mode, instruct code-simplifier to:
+
+- Do not edit files.
+- Trace the relevant call stack or data flow before making line-level findings when the behavior is non-trivial.
+- Search nearby and sibling code before judging new helpers, components, hooks, file placement, naming, result/error/loading patterns, styling primitives, or copy patterns.
+- Prioritize reuse, composition, codebase consistency, and proportional cleanup: duplicated existing flows, grab-bag modules, parameter sprawl, callback/prop plumbing, one-off helpers or exported types, product concepts leaking backing-entity distinctions through intermediate components, and unrelated diff churn.
+- For each finding, include the existing pattern or code that should be reused when found, why the current change does not fit, and the minimal recommended fix.
 
 ### Step 3: Create and Assign Tasks
 
@@ -179,6 +188,9 @@ Fold team-specific context into the existing schema instead of inventing a separ
 
 /kramme:pr:code-review --team code errors tests
 # Team review focused on specific aspects
+
+/kramme:pr:code-review --team refactor
+# Team review focused on reuse, composition, and codebase fit
 
 /kramme:pr:code-review --team --inline
 # Team review that replies inline instead of writing REVIEW_OVERVIEW.md
