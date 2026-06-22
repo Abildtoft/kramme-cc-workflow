@@ -1,4 +1,4 @@
-.PHONY: lint lint-shell lint-python test test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps
+.PHONY: lint lint-shell lint-python verify test test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps
 
 SHELLCHECK ?= shellcheck
 SHELLCHECK_SEVERITY ?= error
@@ -24,6 +24,13 @@ lint-shell:
 
 lint-python:
 	@$(RUFF) check .
+
+# Pre-PR/release gate: static checks first, then slower suites.
+verify: lint
+	@python3 scripts/lint-skill-contracts.py
+	@./scripts/run-skillspector.sh --changed --base "$(SKILLSPECTOR_BASE)" --format json --fail-on high
+	@./tests/run-tests.sh
+	@node evals/skill-review/run-eval.js --split all --json
 
 # Default target - run all tests
 test:

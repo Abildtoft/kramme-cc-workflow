@@ -577,6 +577,22 @@ make -C kramme-cc-workflow test-format
 make -C kramme-cc-workflow test-skill-usage
 ```
 
+### Pre-PR Verification
+
+`make -C kramme-cc-workflow test` is the fast default Bats suite. Before a
+release candidate or before marking a larger Pull Request ready, run the
+stronger local gate:
+
+```bash
+make -C kramme-cc-workflow verify
+```
+
+The `verify` target runs shell and Python linting, skill-contract linting,
+changed-skill SkillSpector scanning with `--fail-on high`, the Bats suite, and
+the skill-review eval split. It expects the existing local tools used by those
+checks to be installed: `shellcheck`, `ruff`, `skillspector`, `bats`, `jq`, and
+Node.js.
+
 ### Skill Security Scans
 
 SkillSpector scans complement tests, linting, and human review. Run them for new or materially changed skills, before installing third-party skills, and as a full-tree check for release candidates. Static-only scanning is the default; semantic analysis is opt-in.
