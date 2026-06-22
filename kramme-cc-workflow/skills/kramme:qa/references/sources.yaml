@@ -3,23 +3,23 @@ sources:
     url: https://github.com/addyosmani/agent-skills/tree/main/skills/browser-testing-with-devtools
     title: "Addy Osmani agent-skills - browser testing with DevTools"
     rationale: "The QA network triage ladder, clean-console standard, accessibility ladder, and Addy marker conventions are adapted from this source."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-06-22
+    baseline_hash: "sha256:6a14496e413dbdb7b1627fc023c5c0f418a59d4ddcf75750f9839eb912a07471"
   - id: compound-ce-polish-dev-server
     url: https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-polish
     title: "EveryInc compound-engineering-plugin - ce-polish"
     rationale: "The auto URL mode and shared project-type detection guidance reference the shared dev-server detection contract adapted from this source."
-    last_reviewed_at: 2026-06-06
-    baseline_hash: ""
+    last_reviewed_at: 2026-06-22
+    baseline_hash: "sha256:5c668435cee18b45a89f0e6d6e3948f3628e008544f12f1ef27dba4c162fb675"
   - id: compound-ce-dogfood-beta
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-dogfood-beta
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-dogfood-beta
     title: "EveryInc compound-engineering-plugin - ce-dogfood-beta"
     rationale: "The branch-diff-to-journey matrix is adapted from Compound dogfood planning mechanics, while preserving kramme's no-default-auto-fix behavior."
-    last_reviewed_at: 2026-06-07
-    baseline_hash: ""
+    last_reviewed_at: 2026-06-22
+    baseline_hash: "sha256:c5e32dd466b6aa21d6adfa1faeacfc7a74c9f7286d4952a93ad4caad487954ce"
   - id: compound-ce-test-browser
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-test-browser
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-test-browser
     title: "EveryInc compound-engineering-plugin - ce-test-browser"
     rationale: "Browser test matrix conventions for route/screen, state, expected behavior, evidence, result, and follow-up are adapted into kramme QA reports."
-    last_reviewed_at: 2026-06-07
-    baseline_hash: ""
+    last_reviewed_at: 2026-06-22
+    baseline_hash: "sha256:7bf6d812443f1a89eb6a4279d7203f5752e3ffd6a8b2fd79138fd6887f5ad91d"
