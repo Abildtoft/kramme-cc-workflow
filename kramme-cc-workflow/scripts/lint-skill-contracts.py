@@ -447,6 +447,34 @@ def marker_present(text: str, markers: list[str]) -> bool:
     return any(marker in text for marker in markers)
 
 
+def allow_empty_field_keys(config: dict[str, Any], failures: list[str]) -> set[tuple[str, str, str]]:
+    allow_empty: set[tuple[str, str, str]] = set()
+    raw_entries = config.get("allow_empty_fields", [])
+    if not isinstance(raw_entries, list):
+        failures.append("marker manifest: allow_empty_fields must be a list")
+        return allow_empty
+
+    required_keys = ("path", "entry_id", "field", "reason")
+    for index, item in enumerate(raw_entries, start=1):
+        label = f"marker manifest: allow_empty_fields[{index}]"
+        if not isinstance(item, dict):
+            failures.append(f"{label} must be an object")
+            continue
+
+        normalized: dict[str, str] = {}
+        for key in required_keys:
+            value = item.get(key)
+            if not isinstance(value, str) or is_empty_value(value):
+                failures.append(f"{label} must define non-empty {key!r}")
+                continue
+            normalized[key] = strip_quotes(value).strip()
+
+        if all(key in normalized for key in required_keys):
+            allow_empty.add((normalized["path"], normalized["entry_id"], normalized["field"]))
+
+    return allow_empty
+
+
 def check_marker_manifests(root: Path, registry: dict[str, Any], failures: list[str]) -> None:
     config = registry.get("marker_implies_manifest")
     if not config:
@@ -457,10 +485,7 @@ def check_marker_manifests(root: Path, registry: dict[str, Any], failures: list[
     manifest_rel = config.get("manifest", "references/sources.yaml")
     required_fields = config.get("required_fields", [])
     one_of_fields = config.get("one_of_fields", [])
-    allow_empty = {
-        (item["path"], item["entry_id"], item["field"])
-        for item in config.get("allow_empty_fields", [])
-    }
+    allow_empty = allow_empty_field_keys(config, failures)
 
     for path in skill_paths(root, pattern):
         text = read_text(path)
