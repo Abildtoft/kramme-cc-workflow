@@ -217,21 +217,31 @@ def skill_paths(root: Path, pattern: str) -> list[Path]:
     return sorted(path for path in root.glob(pattern) if path.is_file())
 
 
-def check_mechanical(root: Path, registry: dict[str, Any], failures: list[str]) -> None:
+def check_mechanical(
+    root: Path,
+    registry: dict[str, Any],
+    failures: list[str],
+    warnings: list[str],
+) -> None:
     config = registry.get("mechanical", {})
     pattern = config.get("skill_glob", "kramme-cc-workflow/skills/*/SKILL.md")
     max_lines = int(config.get("max_skill_lines", 500))
+    warn_lines = int(config.get("warn_skill_lines", 0) or 0)
+    report_limit = int(config.get("skill_line_report_limit", 20))
     max_description = int(config.get("max_description_chars", 1024))
     required_fields = config.get(
         "required_frontmatter",
         ["name", "description", "disable-model-invocation", "user-invocable"],
     )
     line_allowlist = set(config.get("allow_line_count_over", []))
+    long_skill_entries: list[tuple[int, str]] = []
 
     for path in skill_paths(root, pattern):
         relative = rel(path, root)
         text = read_text(path)
         line_count = len(text.splitlines())
+        if warn_lines > 0 and line_count >= warn_lines:
+            long_skill_entries.append((line_count, relative))
         if line_count > max_lines and relative not in line_allowlist:
             failures.append(
                 f"mechanical: {relative} has {line_count} lines, exceeds {max_lines}; "
@@ -251,6 +261,22 @@ def check_mechanical(root: Path, registry: dict[str, Any], failures: list[str]) 
                 f"mechanical: {relative} description is {len(description)} chars, "
                 f"exceeds {max_description}"
             )
+
+    if warn_lines <= 0:
+        return
+
+    sorted_long_skills = sorted(long_skill_entries, key=lambda item: (-item[0], item[1]))
+    for line_count, relative in sorted_long_skills[:report_limit]:
+        if line_count > max_lines:
+            status = "over hard budget"
+        elif line_count == max_lines:
+            status = "at hard budget"
+        else:
+            status = f"{max_lines - line_count} lines below hard budget"
+        warnings.append(
+            f"mechanical: long-skill burndown: {relative} has {line_count} lines "
+            f"({status}; warn at {warn_lines}, fail above {max_lines})"
+        )
 
 
 def check_hooks_json(root: Path, registry: dict[str, Any], failures: list[str]) -> None:
@@ -552,8 +578,9 @@ def check_epilogue_order(root: Path, registry: dict[str, Any], failures: list[st
             )
 
 
-def run(root: Path, registry: dict[str, Any]) -> list[str]:
+def run(root: Path, registry: dict[str, Any]) -> tuple[list[str], list[str]]:
     failures: list[str] = []
+    warnings: list[str] = []
     check_text_contracts(root, registry, failures)
     check_ordered_heading_contracts(root, registry, failures)
     check_file_identity(root, registry, failures)
@@ -561,15 +588,19 @@ def run(root: Path, registry: dict[str, Any]) -> list[str]:
     check_epilogue_order(root, registry, failures)
     check_hooks_json(root, registry, failures)
     check_readme_skill_sync(root, registry, failures)
-    check_mechanical(root, registry, failures)
-    return failures
+    check_mechanical(root, registry, failures, warnings)
+    return failures, warnings
 
 
 def main() -> int:
     args = parse_cli()
     root = args.repo_root.resolve()
     registry = load_registry(args.registry.resolve())
-    failures = run(root, registry)
+    failures, warnings = run(root, registry)
+    if warnings:
+        print("skill contract lint warnings:")
+        for warning in warnings:
+            print(f"::warning::{warning}")
     if failures:
         print("skill contract lint failed:")
         for failure in failures:

@@ -29,6 +29,14 @@ $body
 EOF
 }
 
+make_body_lines() {
+  local count="$1"
+  local index
+  for ((index = 1; index <= count; index++)); do
+    printf '# body line %03d\n' "$index"
+  done
+}
+
 @test "real synced contract registry passes current tree" {
   run python3 "$SCRIPT"
 
@@ -578,4 +586,65 @@ EOF
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"missing frontmatter field 'user-invocable'"* ]]
+}
+
+@test "mechanical long-skill warning reports near-threshold candidates" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/below/SKILL.md" "$(make_body_lines 4)"
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/near/SKILL.md" "$(make_body_lines 6)"
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/high/SKILL.md" "$(make_body_lines 8)"
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "mechanical": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
+    "max_skill_lines": 20,
+    "warn_skill_lines": 12,
+    "skill_line_report_limit": 2,
+    "max_description_chars": 1024,
+    "required_frontmatter": [
+      "name",
+      "description",
+      "disable-model-invocation",
+      "user-invocable"
+    ],
+    "allow_line_count_over": []
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skill contract lint warnings:"* ]]
+  [[ "$output" == *"::warning::mechanical: long-skill burndown: kramme-cc-workflow/skills/high/SKILL.md has 14 lines"* ]]
+  [[ "$output" == *"::warning::mechanical: long-skill burndown: kramme-cc-workflow/skills/near/SKILL.md has 12 lines"* ]]
+  [[ "$output" != *"kramme-cc-workflow/skills/below/SKILL.md"* ]]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
+@test "mechanical hard line budget still fails above max" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/over/SKILL.md" "$(make_body_lines 15)"
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "mechanical": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
+    "max_skill_lines": 20,
+    "warn_skill_lines": 12,
+    "skill_line_report_limit": 2,
+    "max_description_chars": 1024,
+    "required_frontmatter": [
+      "name",
+      "description",
+      "disable-model-invocation",
+      "user-invocable"
+    ],
+    "allow_line_count_over": []
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"::warning::mechanical: long-skill burndown: kramme-cc-workflow/skills/over/SKILL.md has 21 lines"* ]]
+  [[ "$output" == *"::error::mechanical: kramme-cc-workflow/skills/over/SKILL.md has 21 lines, exceeds 20"* ]]
 }
