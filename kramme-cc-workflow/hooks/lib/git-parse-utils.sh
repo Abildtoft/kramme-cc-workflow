@@ -30,6 +30,196 @@ trim_ascii_whitespace() {
   printf '%s\n' "$value"
 }
 
+token_is_assignment() {
+  [[ "$1" =~ ^[A-Za-z_][A-Za-z0-9_]*=.*$ ]]
+}
+
+is_shell_keyword_token() {
+  case "$(strip_wrapping_quotes "$1")" in
+    '!' | if | then | elif | else | fi | do | done | while | until | for | in | case | esac | '{' | '}' | '(' | ')')
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+array_contains() {
+  local wanted="$1"
+  shift
+  local value
+
+  for value in "$@"; do
+    if [ "$value" = "$wanted" ]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+control_token_preserves_shell_env() {
+  case "$1" in
+    ";" | "&&" | "||")
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+segment_command_substitution_indexes() {
+  local token remainder index
+  local indexes=()
+
+  for token in "$@"; do
+    remainder="$token"
+    while [[ "$remainder" =~ __CMD_SUBST_([0-9]+)__ ]]; do
+      index="${BASH_REMATCH[1]}"
+      if [ ${#indexes[@]} -eq 0 ] || ! array_contains "$index" "${indexes[@]}"; then
+        indexes+=("$index")
+      fi
+      remainder="${remainder#*"${BASH_REMATCH[0]}"}"
+    done
+  done
+
+  if [ ${#indexes[@]} -gt 0 ]; then
+    printf '%s\n' "${indexes[@]}"
+  fi
+}
+
+extract_shell_inline_command() {
+  local value
+
+  while [ $# -gt 0 ]; do
+    value="$(strip_wrapping_quotes "$1")"
+    case "$value" in
+      --)
+        return 1
+        ;;
+      -c | --command)
+        shift
+        [ $# -gt 0 ] || return 1
+        printf '%s\n' "$(strip_wrapping_quotes "$1")"
+        return 0
+        ;;
+      --command=*)
+        printf '%s\n' "${value#*=}"
+        return 0
+        ;;
+      --rcfile | --init-file | --startup-file | -o | -O | +O)
+        shift
+        [ $# -gt 0 ] && shift
+        ;;
+      --rcfile=* | --init-file=* | --startup-file=*)
+        shift
+        ;;
+      --*)
+        shift
+        ;;
+      -*)
+        case "${value#-}" in
+          *c*)
+            shift
+            [ $# -gt 0 ] || return 1
+            printf '%s\n' "$(strip_wrapping_quotes "$1")"
+            return 0
+            ;;
+        esac
+        shift
+        ;;
+      +*)
+        shift
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+  done
+
+  return 1
+}
+
+parse_git_command_context() {
+  # Shared git-command context contract:
+  #   PARSED_GIT_PREFIX_ARGS: normalized git global/prefix args
+  #   PARSED_GIT_SUBCOMMAND: first non-global-option token after `git`
+  #   PARSED_GIT_SUBCOMMAND_ARGS: remaining tokens after the subcommand
+  local collect_prefix_args="${1:-false}"
+  local collect_command_substitution_prefix="${2:-false}"
+  local token value
+  shift 2
+
+  PARSED_GIT_PREFIX_ARGS=()
+  PARSED_GIT_SUBCOMMAND=""
+  PARSED_GIT_SUBCOMMAND_ARGS=()
+
+  while [ $# -gt 0 ]; do
+    token="$1"
+    value="$(strip_wrapping_quotes "$token")"
+    case "$value" in
+      --)
+        shift
+        break
+        ;;
+      -C | -c | --config-env | --exec-path | --git-dir | --namespace | --super-prefix | --work-tree)
+        if [ "$collect_prefix_args" = "true" ]; then
+          PARSED_GIT_PREFIX_ARGS+=("$value")
+        fi
+        if [ $# -ge 2 ]; then
+          if [ "$collect_prefix_args" = "true" ]; then
+            PARSED_GIT_PREFIX_ARGS+=("$(strip_wrapping_quotes "$2")")
+          fi
+          shift 2
+        else
+          shift
+        fi
+        ;;
+      --config-env=* | --exec-path=* | --git-dir=* | --namespace=* | --super-prefix=* | --work-tree=*)
+        if [ "$collect_prefix_args" = "true" ]; then
+          PARSED_GIT_PREFIX_ARGS+=("${value%%=*}=$(strip_wrapping_quotes "${value#*=}")")
+        fi
+        shift
+        ;;
+      -C*)
+        if [ "$collect_prefix_args" = "true" ]; then
+          PARSED_GIT_PREFIX_ARGS+=("-C" "$(strip_wrapping_quotes "${value#-C}")")
+        fi
+        shift
+        ;;
+      -c*)
+        if [ "$collect_prefix_args" = "true" ]; then
+          PARSED_GIT_PREFIX_ARGS+=("-c" "$(strip_wrapping_quotes "${value#-c}")")
+        fi
+        shift
+        ;;
+      -*)
+        if [ "$collect_prefix_args" = "true" ]; then
+          PARSED_GIT_PREFIX_ARGS+=("$value")
+        fi
+        shift
+        ;;
+      __CMD_SUBST_*)
+        if [ "$collect_command_substitution_prefix" = "true" ]; then
+          if [ "$collect_prefix_args" = "true" ]; then
+            PARSED_GIT_PREFIX_ARGS+=("$value")
+          fi
+          shift
+        else
+          break
+        fi
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
+
+  if [ $# -gt 0 ]; then
+    PARSED_GIT_SUBCOMMAND="$(strip_wrapping_quotes "$1")"
+    shift
+    PARSED_GIT_SUBCOMMAND_ARGS=("$@")
+  fi
+}
+
 extract_body_substitutions() {
   # Scan a line for $(...) and `...` substitutions and append them to
   # HEREDOC_BODY_SUBSTITUTIONS. Used for unquoted heredoc bodies, where

@@ -27,6 +27,26 @@ run_strip_heredoc_bodies() {
 	done
 }
 
+run_segment_command_substitution_indexes() {
+	segment_command_substitution_indexes "$@"
+}
+
+run_extract_shell_inline_command() {
+	extract_shell_inline_command "$@"
+}
+
+run_parse_git_command_context() {
+	parse_git_command_context "$@"
+	local prefix_arg subcommand_arg
+	for prefix_arg in "${PARSED_GIT_PREFIX_ARGS[@]}"; do
+		printf 'prefix:%s\n' "$prefix_arg"
+	done
+	printf 'subcmd:%s\n' "$PARSED_GIT_SUBCOMMAND"
+	for subcommand_arg in "${PARSED_GIT_SUBCOMMAND_ARGS[@]}"; do
+		printf 'arg:%s\n' "$subcommand_arg"
+	done
+}
+
 @test "strips wrapping quotes from tokens" {
 	run strip_wrapping_quotes '"git commit"'
 	[ "$status" -eq 0 ]
@@ -49,6 +69,73 @@ run_strip_heredoc_bodies() {
 
 	[ "$status" -eq 0 ]
 	[ "$output" = "git commit -m test" ]
+}
+
+@test "classifies shell assignments and keywords" {
+	run token_is_assignment "GIT_DIR=.git"
+	[ "$status" -eq 0 ]
+
+	run token_is_assignment "1BAD=value"
+	[ "$status" -eq 1 ]
+
+	run is_shell_keyword_token "("
+	[ "$status" -eq 0 ]
+
+	run is_shell_keyword_token "git"
+	[ "$status" -eq 1 ]
+}
+
+@test "extracts inline commands from shell wrappers" {
+	run run_extract_shell_inline_command --noprofile -lc "git commit -m ok"
+	[ "$status" -eq 0 ]
+	[ "$output" = "git commit -m ok" ]
+
+	run run_extract_shell_inline_command -- --noprofile -lc "git commit -m ok"
+	[ "$status" -eq 1 ]
+}
+
+@test "reports unique command substitution placeholder indexes in token order" {
+	run run_segment_command_substitution_indexes \
+		"MSG=__CMD_SUBST_1__" \
+		"__CMD_SUBST_1__" \
+		"x__CMD_SUBST_3__y"
+
+	[ "$status" -eq 0 ]
+	[ "$output" = "1"$'\n'"3" ]
+}
+
+@test "identifies env-persisting shell control tokens" {
+	run control_token_preserves_shell_env "&&"
+	[ "$status" -eq 0 ]
+
+	run control_token_preserves_shell_env "|"
+	[ "$status" -eq 1 ]
+}
+
+@test "parses git prefix args and subcommand context" {
+	run run_parse_git_command_context true true \
+		-C repo \
+		-c core.fsmonitor=false \
+		__CMD_SUBST_0__ \
+		commit -m ok
+
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "prefix:-C" ]
+	[ "${lines[1]}" = "prefix:repo" ]
+	[ "${lines[2]}" = "prefix:-c" ]
+	[ "${lines[3]}" = "prefix:core.fsmonitor=false" ]
+	[ "${lines[4]}" = "prefix:__CMD_SUBST_0__" ]
+	[ "${lines[5]}" = "subcmd:commit" ]
+	[ "${lines[6]}" = "arg:-m" ]
+	[ "${lines[7]}" = "arg:ok" ]
+}
+
+@test "can leave command substitutions as the git subcommand for compatibility" {
+	run run_parse_git_command_context false false __CMD_SUBST_0__ commit
+
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "subcmd:__CMD_SUBST_0__" ]
+	[ "${lines[1]}" = "arg:commit" ]
 }
 
 @test "tokenizes quoted shell words and control operators" {
