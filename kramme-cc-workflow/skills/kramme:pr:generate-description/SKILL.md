@@ -145,9 +145,9 @@ Before drafting, evaluate whether any **MISSING REQUIREMENT** conditions hold (s
 - The diff toggles a feature flag's default but no rollout context is available — blocking for direct update; request the rollout plan.
 - One or more selectable GitHub PR templates are present, no default template is selected, and no template can be selected from user input, existing PR body, branch name, or change type — blocking for direct update; request which template to follow.
 
-Surface the marker even when `NON_INTERACTIVE=true`; do not prompt the user, but make the gap visible in the run output so it appears alongside the generated description.
+Surface the marker even when `NON_INTERACTIVE=true`; in that mode, report the gap in the run output so the caller can collect the missing context before publication.
 
-If any blocking missing requirement is present, set `DIRECT_UPDATE=false` even when `--auto` found an existing PR. Continue by generating copy-paste output so the user can supply the missing context before publication. Do not publish a PR body that invents migration rationale, rollback plans, or rollout context.
+If any blocking missing requirement is present, set `DIRECT_UPDATE=false` even when `--auto` found an existing PR. Generate copy-paste output that names the missing context, and leave publication to the caller or user after they provide it. Do not publish a PR body that invents migration rationale, rollback plans, or rollout context.
 
 (Phase 1 already aborts hard when the base branch cannot be resolved, so there is no Phase 3 trigger for that case.)
 

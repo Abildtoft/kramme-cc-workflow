@@ -76,12 +76,7 @@ None
 
 ## Screenshots / Videos
 
-<!-- Add screenshots or videos here to help reviewers visualize the changes -->
-<!-- Consider including: -->
-<!-- - Before/after UI comparisons -->
-<!-- - New features in action -->
-<!-- - Error states or edge cases -->
-<!-- - Mobile/responsive views -->
+No screenshots included in this example. Add before/after UI comparisons, feature walkthroughs, error states, or responsive views when they help reviewers inspect the change.
 ```
 
 ## Example 2: Full-Stack Feature with Database Migration
