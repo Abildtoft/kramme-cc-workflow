@@ -3,23 +3,23 @@ sources:
     url: https://github.com/addyosmani/agent-skills/tree/main/skills/spec-driven-development
     title: "Addy Osmani agent-skills - spec-driven development"
     rationale: "The lightweight feature-spec workflow and implementation-gating conventions are adapted from this source."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-06-22
+    baseline_hash: "sha256:a068b68120f657970d6becb81f2e1577610320064aa6a78c60dcbac2588da8c0"
   - id: pocock-to-prd
-    url: https://github.com/mattpocock/skills/tree/main/to-prd
+    url: https://github.com/mattpocock/skills/tree/main/skills/engineering/to-prd
     title: "Matt Pocock skills - to-prd"
     rationale: "The synthesize-from-context mode (skip the assumptions block when the conversation already grounds the spec) and its precondition (at least 4 of 6 spec areas grounded before synthesis fires) are adapted from this source."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-06-22
+    baseline_hash: "sha256:478916f2e2ac1a2f89a2c493fe5aec4564d0f6318e912d420546c3dd1b72df6e"
   - id: compound-ce-strategy
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-strategy
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-strategy
     title: "EveryInc compound-engineering-plugin - ce-strategy"
     rationale: "The optional STRATEGY.md grounding, strategy conflict handling, and stale product-context markers before drafting a feature spec are adapted from this source."
-    last_reviewed_at: 2026-06-06
-    baseline_hash: ""
+    last_reviewed_at: 2026-06-22
+    baseline_hash: "sha256:27cbff1cc21d22c23f9a2015fe9bd75434d13e9a128aa640e3e04fe47ba7acb8"
   - id: compound-ce-plan
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-plan
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-plan
     title: "EveryInc compound-engineering-plugin - ce-plan"
     rationale: "The strategy-aware transition from product context into scoped planning artifacts is informed by this source."
-    last_reviewed_at: 2026-06-06
-    baseline_hash: ""
+    last_reviewed_at: 2026-06-22
+    baseline_hash: "sha256:93478c870fa2884376910fb1f7202e85d8524ed63668f513281d1c5b6fd373c3"

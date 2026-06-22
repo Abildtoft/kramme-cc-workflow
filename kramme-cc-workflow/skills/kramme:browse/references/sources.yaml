@@ -3,11 +3,11 @@ sources:
     url: https://github.com/addyosmani/agent-skills/tree/main/skills/browser-testing-with-devtools
     title: "Addy Osmani agent-skills - browser testing with DevTools"
     rationale: "Browser MCP boundaries, evidence capture, JavaScript constraints, and content boundary markers are adapted from this source."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-06-22
+    baseline_hash: "sha256:6a14496e413dbdb7b1627fc023c5c0f418a59d4ddcf75750f9839eb912a07471"
   - id: compound-ce-polish-dev-server
     url: https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-polish
     title: "EveryInc compound-engineering-plugin - ce-polish"
     rationale: "The auto URL mode references the shared dev-server detection contract adapted from this source."
-    last_reviewed_at: 2026-06-06
-    baseline_hash: ""
+    last_reviewed_at: 2026-06-22
+    baseline_hash: "sha256:5c668435cee18b45a89f0e6d6e3948f3628e008544f12f1ef27dba4c162fb675"

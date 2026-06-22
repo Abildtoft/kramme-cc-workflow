@@ -196,18 +196,6 @@
         "reason": "New skill; baseline hash pending first kramme:skill:audit-sources run."
       },
       {
-        "path": "kramme-cc-workflow/skills/kramme:browse/references/sources.yaml",
-        "entry_id": "addy-browser-testing-devtools",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:browse/references/sources.yaml",
-        "entry_id": "compound-ce-polish-dev-server",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
         "path": "kramme-cc-workflow/skills/kramme:ci:design-pipeline/references/sources.yaml",
         "entry_id": "addy-git-workflow-versioning",
         "field": "baseline_hash",
@@ -334,30 +322,6 @@
         "reason": "Pre-existing baseline hash backfill debt before W03C."
       },
       {
-        "path": "kramme-cc-workflow/skills/kramme:docs:feature-spec/references/sources.yaml",
-        "entry_id": "addy-spec-driven-development",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:docs:feature-spec/references/sources.yaml",
-        "entry_id": "pocock-to-prd",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:docs:feature-spec/references/sources.yaml",
-        "entry_id": "compound-ce-strategy",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:docs:feature-spec/references/sources.yaml",
-        "entry_id": "compound-ce-plan",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
         "path": "kramme-cc-workflow/skills/kramme:docs:solution-note/references/sources.yaml",
         "entry_id": "compound-engineering-ce-compound",
         "field": "baseline_hash",
@@ -394,24 +358,6 @@
         "reason": "Pre-existing baseline hash backfill debt before W03C."
       },
       {
-        "path": "kramme-cc-workflow/skills/kramme:pr:code-review/references/sources.yaml",
-        "entry_id": "addy-code-review-quality",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:pr:code-review/references/sources.yaml",
-        "entry_id": "addy-git-workflow-versioning",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:pr:code-review/references/sources.yaml",
-        "entry_id": "compound-ce-code-review",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
         "path": "kramme-cc-workflow/skills/kramme:pr:fix-ci/references/sources.yaml",
         "entry_id": "addy-git-workflow-versioning",
         "field": "baseline_hash",
@@ -426,60 +372,6 @@
       {
         "path": "kramme-cc-workflow/skills/kramme:pr:rebase/references/sources.yaml",
         "entry_id": "addy-git-workflow-versioning",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:qa/references/sources.yaml",
-        "entry_id": "addy-browser-testing-devtools",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:qa/references/sources.yaml",
-        "entry_id": "compound-ce-polish-dev-server",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:qa/references/sources.yaml",
-        "entry_id": "compound-ce-dogfood-beta",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:qa/references/sources.yaml",
-        "entry_id": "compound-ce-test-browser",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:siw:discovery/references/sources.yaml",
-        "entry_id": "pocock-grill-me",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:siw:discovery/references/sources.yaml",
-        "entry_id": "pocock-domain-model",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:siw:discovery/references/sources.yaml",
-        "entry_id": "compound-ce-strategy",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:siw:discovery/references/sources.yaml",
-        "entry_id": "compound-ce-ideate",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:siw:discovery/references/sources.yaml",
-        "entry_id": "compound-ce-brainstorm",
         "field": "baseline_hash",
         "reason": "Pre-existing baseline hash backfill debt before W03C."
       }
