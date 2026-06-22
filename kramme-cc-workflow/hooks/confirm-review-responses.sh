@@ -9,9 +9,9 @@ source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
 exit_if_hook_disabled "confirm-review-responses" ""
 
 if ! command -v jq > /dev/null 2>&1; then
-  echo "confirm-review-responses hook: jq not found; allowing command unchanged." >&2
+  echo "confirm-review-responses hook: jq not found; refusing to run safety hook without JSON parsing. Install jq or disable this hook explicitly." >&2
   [ ! -t 0 ] && cat > /dev/null
-  exit 0
+  exit 2
 fi
 
 ARTIFACT_LIST_FILE="${CONFIRM_REVIEW_ARTIFACT_LIST_FILE:-${CLAUDE_PLUGIN_ROOT}/hooks/confirm-review-artifacts.txt}"
