@@ -1,6 +1,6 @@
-# Quick Create Mode
+# Auto Create Mode
 
-Use this reference when `kramme:linear:issue-define` is invoked with `--quick` and the target is a new Linear issue.
+Use this reference when `kramme:linear:issue-define` is invoked with `--auto` and the target is a new Linear issue.
 
 ## Goal
 
