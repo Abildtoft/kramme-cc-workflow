@@ -351,6 +351,9 @@ MD
 
 	run grep -nE '\$kramme:code-reviewer skill' "$TMP_DIR/.codex/skills/kramme:pr:code-review/references/team-mode.md"
 	[ "$status" -eq 0 ]
+
+	run grep -nE '\$kramme:codebase-pattern-reviewer skill' "$TMP_DIR/.codex/skills/kramme:siw:spec-audit/references/team-mode.md"
+	[ "$status" -eq 0 ]
 }
 
 @test "codex conversion rewrites agent markdown references in copied markdown resources" {
