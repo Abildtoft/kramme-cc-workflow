@@ -50,7 +50,7 @@ Draft the issue following this template:
 
 ## Goal
 
-[What success looks like - the desired outcome] [Clear statement of the end state]
+[What success looks like - the desired outcome] [Concise target result]
 
 ## Scope
 

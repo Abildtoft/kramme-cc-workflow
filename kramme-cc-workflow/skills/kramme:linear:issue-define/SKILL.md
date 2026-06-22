@@ -225,7 +225,7 @@ Before creating a new issue, check for existing Linear issues that may already c
    - Identify issues that could be affected by this work
 
 3. **Present Findings to User**
-   - If `auto_create = true` and a strong duplicate is found, show the issue and ask whether to stop, create anyway, or rerun without `--auto` to improve the existing issue. If the user wants to improve, stop; do not switch into IMPROVE mode during the same auto run.
+   - If `auto_create = true` and a strong duplicate is found, show the issue and ask whether to stop, create anyway, or rerun without `--auto` to improve the existing issue. If the user wants to improve, stop; do not switch into IMPROVE mode during the same invocation.
    - If `auto_create = false` and potential duplicates are found, show them to the user via `AskUserQuestion`:
      - Option to proceed with new issue (if not truly a duplicate)
      - Option to improve an existing issue instead → **Switch to IMPROVE MODE**
