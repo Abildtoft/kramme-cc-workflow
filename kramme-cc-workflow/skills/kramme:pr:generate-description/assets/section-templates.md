@@ -22,6 +22,8 @@ The Summary section is followed immediately by the Change Summary block below.
 
 **ALWAYS** include this block immediately after `## Summary` and before `## Technical Details`.
 
+If a repository GitHub PR template exists, map this block into the closest template prompts instead of duplicating headings or overriding the template order.
+
 1. **Changes made**:
    - Use verb-led bullets (`add`, `extract`, `wire`, `rename`, `remove`, `gate`)
    - Scope each bullet to a feature, implementation area, or user-visible behavior

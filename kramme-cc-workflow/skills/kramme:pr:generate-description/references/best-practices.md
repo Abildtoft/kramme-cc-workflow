@@ -8,6 +8,7 @@
 - **ALWAYS** look at both commit messages and code changes - they tell different stories
 - **NEVER** skip Linear issue lookup if the branch name contains an issue ID and a Linear integration is available
 - **PREFER** using available issue-tracker integration capabilities over bash commands when available for richer data
+- **NEVER** skip GitHub PR template lookup; repository templates define the body structure reviewers expect
 
 ## Writing Style
 
@@ -26,9 +27,19 @@
 - **PREFER** concise sections that preserve the business reason, implementation rationale, risks, scope boundaries, and test instructions over exhaustive narrative
 - **NEVER** pad sections to look comprehensive; omit or shorten content that repeats earlier sections without adding review value
 
+## Repository PR Templates
+
+- **ALWAYS** follow a discovered GitHub PR template before applying this skill's default section order
+- **PREFER** mapping this skill's required content into matching template prompts over adding duplicate headings
+- **PREFER** a single default `pull_request_template.md` or `pull_request_template.txt` over selectable `PULL_REQUEST_TEMPLATE/` files unless user intent, an existing PR body, branch name, or change type clearly selects a different template
+- **NEVER** treat a selectable `PULL_REQUEST_TEMPLATE/` file as automatically applied just because it is the only selectable template
+- **NEVER** delete required template checklists, risk prompts, release prompts, compliance acknowledgements, or screenshot prompts just because the default section templates use different names
+- **NEVER** check a template checkbox unless the diff or gathered context supports the claim
+- **ALWAYS** preserve the repository template's intent while still applying the GitHub UI Duplication Guard and manual-only Test Plan rules
+
 ## Change Summary Block
 
-- **ALWAYS** place `### Changes made`, `### Things I didn't touch`, and `### Potential concerns` immediately after `## Summary` and before `## Technical Details`
+- **By default**, place `### Changes made`, `### Things I didn't touch`, and `### Potential concerns` immediately after `## Summary` and before `## Technical Details`; when a GitHub PR template dictates a different order or names, map these items into the closest template prompts instead of duplicating headings
 - **ALWAYS** make `Changes made` a reviewer-facing outcome summary with one distinct change per bullet
 - **PREFER** 2-5 high-signal bullets in `Changes made`; do not mirror the list of files changed
 - **NEVER** omit one of the three subsections; use `None` only after considering it

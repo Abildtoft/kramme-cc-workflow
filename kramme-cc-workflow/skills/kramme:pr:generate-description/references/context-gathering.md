@@ -37,6 +37,59 @@
 
 4. **CAN** use `gh pr diff` to get branch diffs if a PR already exists.
 
+### 2.1.5 GitHub PR Template Analysis
+
+1. **ALWAYS** check whether the repository has a GitHub pull request template before drafting. GitHub supports a single `pull_request_template.md` or `pull_request_template.txt` file in the repository root, `docs/`, or `.github/`, plus multiple templates in a `PULL_REQUEST_TEMPLATE/` directory under those same locations.
+
+   GitHub applies PR templates from the repository default branch, not from unmerged files in the current worktree. Resolve the default branch and inspect that tree:
+
+   ```bash
+   DEFAULT_BRANCH=$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name' 2> /dev/null || true)
+   if [ -n "$DEFAULT_BRANCH" ]; then
+     git fetch origin "refs/heads/$DEFAULT_BRANCH:refs/remotes/origin/$DEFAULT_BRANCH" 2> /dev/null || true
+     DEFAULT_TEMPLATE_REF="origin/$DEFAULT_BRANCH"
+   else
+     DEFAULT_TEMPLATE_REF=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2> /dev/null || true)
+   fi
+
+   if [ -z "$DEFAULT_TEMPLATE_REF" ] || ! git rev-parse --verify --quiet "$DEFAULT_TEMPLATE_REF^{commit}" > /dev/null; then
+     echo "MISSING REQUIREMENT: unable to resolve default branch for GitHub PR template lookup"
+   else
+     {
+       for path in pull_request_template.md pull_request_template.txt .github/pull_request_template.md .github/pull_request_template.txt docs/pull_request_template.md docs/pull_request_template.txt; do
+         git cat-file -e "$DEFAULT_TEMPLATE_REF:$path" 2> /dev/null && printf '%s\n' "$path"
+       done
+       for dir in PULL_REQUEST_TEMPLATE .github/PULL_REQUEST_TEMPLATE docs/PULL_REQUEST_TEMPLATE; do
+         git ls-tree -r --name-only "$DEFAULT_TEMPLATE_REF" "$dir" 2> /dev/null |
+           awk -v dir="$dir/" 'index($0, dir) == 1 { name = substr($0, length(dir) + 1); if (name !~ /\// && tolower(name) ~ /\.(md|txt)$/) print $0 }'
+       done
+     } | sort -u
+   fi
+   ```
+
+2. Classify discovered templates before selecting one:
+   - **Default templates** are `pull_request_template.md` or `pull_request_template.txt` files in the repository root, `docs/`, or `.github/`. They are the templates GitHub applies automatically to a new PR body when present on the default branch.
+   - **Selectable templates** are files in a `PULL_REQUEST_TEMPLATE/` directory under the repository root, `docs/`, or `.github/`. They require explicit selection through user intent, an existing PR body, branch/change-type evidence, or GitHub's `template` query parameter.
+
+3. **ALWAYS** read the selected template when one unambiguous template is found. Prefer the default template when exactly one default template exists, even if selectable templates are also present. Capture:
+   - Required heading order
+   - Required checklists
+   - Required issue-link, risk, rollout, screenshot, QA, or release prompts
+   - HTML comments that are meant as author instructions
+
+4. **If one or more selectable templates are found and no default template was selected**, select a template only when there is clear evidence:
+   - The user explicitly named one
+   - An existing PR body already follows one template
+   - The branch name or change type clearly maps to a template filename such as `feature`, `fix`, `bug`, `docs`, `release`, or `hotfix`
+
+   Do not treat a single selectable template as selected merely because it is the only file in the directory; GitHub does not auto-apply selectable templates without explicit template selection.
+
+   If a PR already exists for the branch, inspect `gh pr view --json body --jq '.body'` and compare its headings or required checklist text to the discovered templates before asking the user.
+
+   If selection is still ambiguous and `NON_INTERACTIVE=false`, ask which template to follow before drafting. If `NON_INTERACTIVE=true`, emit `MISSING REQUIREMENT: selectable GitHub PR template found but no template selection is available` and set `DIRECT_UPDATE=false`.
+
+5. **If no template is found**, record `PR_TEMPLATE_PATH=<none>` in your working context and use this skill's default PR description structure.
+
 ### 2.2 Commit History Analysis
 
 1. **ALWAYS** get commit history for the current branch:

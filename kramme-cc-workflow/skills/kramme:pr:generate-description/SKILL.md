@@ -79,6 +79,7 @@ Read the guideline keyword glossary from `references/guideline-keywords.md`.
 Read the context-gathering procedure from `references/context-gathering.md` and apply every step in that document before continuing. It covers:
 
 - **2.1 Git Changes Analysis** — diff between current branch and `origin/$BASE_BRANCH`, file categorization, optional GitHub tool use.
+- **2.1.5 GitHub PR Template Analysis** — supported GitHub template locations, template selection, and template-following constraints.
 - **2.2 Commit History Analysis** — commit log and message bodies, narrative arc extraction.
 - **2.3 Linear Issue Context** — branch-name parsing, optional Linear integration lookup, divergence tracking.
 - **2.4 Code Structure Analysis** — scope (frontend/backend/full-stack), change characteristics, breaking-change indicators.
@@ -142,6 +143,7 @@ Before drafting, evaluate whether any **MISSING REQUIREMENT** conditions hold (s
 - The branch name has no detectable issue ID and commits reference none — non-blocking; confirm the intended ticket or proceed without one.
 - The diff contains a database migration but no rationale is present in commits, Linear, or conversation — blocking for direct update; request the migration's purpose/rollback plan.
 - The diff toggles a feature flag's default but no rollout context is available — blocking for direct update; request the rollout plan.
+- One or more selectable GitHub PR templates are present, no default template is selected, and no template can be selected from user input, existing PR body, branch name, or change type — blocking for direct update; request which template to follow.
 
 Surface the marker even when `NON_INTERACTIVE=true`; do not prompt the user, but make the gap visible in the run output so it appears alongside the generated description.
 
@@ -165,6 +167,16 @@ Generate a PR title using [Conventional Commits](https://www.conventionalcommits
 - **Description**: Imperative mood ("add", not "added"), specific, under 50 chars. Total title under 72 chars. No trailing period.
 
 **Examples**: `feat(auth): add OAuth2 support` · `fix: resolve null pointer in user lookup` · `refactor(api): extract validation utilities`
+
+#### 3.0.5 Repository PR Template Contract
+
+If Phase 2 found a GitHub PR template, treat it as the body structure contract before applying default section templates.
+
+- Follow the selected template's heading order, checklist items, and required prompts.
+- Map generated Summary, Change Summary, Technical Details, Test Plan, Breaking Changes, and Screenshots/Videos content into the closest matching template sections instead of creating duplicate default sections.
+- Preserve mandatory checkboxes and compliance prompts; check a box only when the diff or gathered context supports it.
+- Remove instructional HTML comments only when the generated content fully answers them; otherwise keep the prompt or emit a marker outside the PR body.
+- If no GitHub PR template is found, use the standard structure from `assets/section-templates.md`.
 
 #### 3.1 Summary Section
 

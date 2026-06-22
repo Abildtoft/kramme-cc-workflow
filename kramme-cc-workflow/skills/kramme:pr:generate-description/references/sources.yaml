@@ -11,3 +11,9 @@ sources:
     rationale: "The --visual flow delegates proof capture to a demo-evidence workflow and adopts local/remote evidence result formatting from this source."
     last_reviewed_at: 2026-06-08
     baseline_hash: ""
+  - id: github-pr-template-docs
+    url: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/creating-a-pull-request-template-for-your-repository
+    title: "GitHub Docs - Creating a pull request template for your repository"
+    rationale: "Supported GitHub pull request template locations and multiple-template directory behavior are based on this source."
+    last_reviewed_at: 2026-06-22
+    baseline_hash: "sha256:53452c4d146dcdc16dad1bf957047211bbb06d953097dbc9ba0f61db29eda6a7"
