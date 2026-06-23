@@ -23,7 +23,7 @@ If exactly one candidate matches, use it. If zero or multiple candidates remain 
 
 Candidates that lose the tiebreak stay in the Document set: they are still source-of-truth planning documents (a developer brief, for example) and must be migrated as Linear Documents, not dropped.
 
-Read supporting specs from `supporting-specs/*.md` when present.
+Read supporting specs from `supporting-specs/*.md` when present. Detect contract specs under `contracts/*.md` when they are linked from the main spec, supporting specs, `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, issue files, or another migrated document; selected contract specs join the Document Sources set so local contract references can be rewritten to Linear Documents.
 
 ## Document Sources
 
@@ -31,10 +31,11 @@ The migration captures planning documents as Linear Documents so they survive af
 
 - The main spec.
 - Each `supporting-specs/*.md` file.
+- Each selected `contracts/*.md` file.
 - Each non-selected main-spec candidate.
 - `LOG.md` — the canonical decision register. Issue bodies cite it as `D-0xx`; without it as a Document, every citation dangles after `siw/` removal.
 
-For each, record a title (first `#` heading, else the filename without extension; Document Mapping appends the original filename) and the file body. Preserve the body as-is. This content feeds Document Mapping in `references/linear-mapping.md`.
+For each, record the source path, filename, title (first `#` heading, else the filename without extension), and file body. Preserve the body semantically; `references/linear-mapping.md` performs the Linear-bound markdown reference rewrite after document URLs are known. This content feeds Document Mapping and the document reference map in `references/linear-mapping.md`.
 
 ## Non-Markdown Artifacts
 
