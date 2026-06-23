@@ -32,6 +32,17 @@
       ]
     },
     {
+      "name": "siw-main-spec-ambiguity-rule",
+      "extract_regex": "Synced SIW main-spec ambiguity contract \\(keep aligned across SIW spec detectors\\):\\s*(when multiple spec candidates remain after deterministic heading/filename matching, auto mode stops with MISSING REQUIREMENT and interactive mode asks the user which file is the main spec\\.)",
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:issue-implement/references/spec-sync.md",
+        "kramme-cc-workflow/skills/kramme:siw:issue-implement/references/team-mode.md",
+        "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/references/artifact-extraction.md",
+        "kramme-cc-workflow/skills/kramme:siw:close/SKILL.md"
+      ]
+    },
+    {
       "name": "pr-review-collect-review-diff-block",
       "extract_regex": "(?s)(COLLECT_ARGS=\\(--strict --format json\\).*?CHANGED_FILES=\\$\\(parse_review_diff_json changed_files\\) \\|\\| exit 1)",
       "normalizer": "linewise",
