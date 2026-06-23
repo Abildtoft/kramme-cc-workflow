@@ -77,7 +77,7 @@ Time, technology, political, resource, regulatory limits.
 | **Low** | No constraints discussed. |
 | **Medium** | Some constraints known but haven't distinguished hard constraints from preferences. |
 | **High** | Hard constraints vs. preferences are distinguished. Workarounds identified for soft constraints. |
-| **Confident** | Could make tradeoff decisions within known constraints without asking. |
+| **Confident** | Can recommend and justify tradeoff decisions from validated constraints without inventing missing context. |
 
 ### 6. Priority Alignment
 
@@ -88,7 +88,7 @@ When tradeoffs arise, what wins? What can be sacrificed?
 | **Low** | Everything is "important" or "high priority". |
 | **Medium** | Some ordering exists but not tested under pressure. |
 | **High** | Top priorities are explicit, ordered, and have been tested with forced tradeoffs. |
-| **Confident** | Could resolve a scope conflict autonomously and be right. |
+| **Confident** | Can recommend the right resolution to a scope conflict from validated priority evidence. |
 
 ### 7. Risk Awareness
 
