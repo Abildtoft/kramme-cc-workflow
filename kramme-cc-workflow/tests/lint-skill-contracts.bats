@@ -3,6 +3,7 @@
 setup() {
   TMP_ROOT="$(mktemp -d)"
   SCRIPT="$BATS_TEST_DIRNAME/../scripts/lint-skill-contracts.py"
+  VISUAL_GENERATOR="$BATS_TEST_DIRNAME/../scripts/generate-visual-shared-assets.py"
 }
 
 teardown() {
@@ -42,6 +43,13 @@ make_body_lines() {
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"skill contract lint passed."* ]]
+}
+
+@test "visual shared asset generator passes current tree" {
+  run python3 "$VISUAL_GENERATOR" --check
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"visual shared assets are in sync."* ]]
 }
 
 @test "verify-understanding supports answer option prompts" {
@@ -149,6 +157,91 @@ EOF
   [ "$status" -eq 1 ]
   [[ "$output" == *"sample-file-identity"* ]]
   [[ "$output" == *"sync all registered copies"* ]]
+}
+
+@test "visual shared asset generator check succeeds for matching copies" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/kramme:visual:a/references/shared.md" <<'EOF'
+same
+EOF
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/kramme:visual:b/references/shared.md" <<'EOF'
+same
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "file_identity_groups": [
+    {
+      "name": "visual-fixture-shared",
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:visual:a/references/shared.md",
+        "kramme-cc-workflow/skills/kramme:visual:b/references/shared.md"
+      ]
+    }
+  ]
+}
+EOF
+
+  run python3 "$VISUAL_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --check
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"visual shared assets are in sync."* ]]
+}
+
+@test "visual shared asset generator check reports drift" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/kramme:visual:a/references/shared.md" <<'EOF'
+canonical
+EOF
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/kramme:visual:b/references/shared.md" <<'EOF'
+drifted
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "file_identity_groups": [
+    {
+      "name": "visual-fixture-shared",
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:visual:a/references/shared.md",
+        "kramme-cc-workflow/skills/kramme:visual:b/references/shared.md"
+      ]
+    }
+  ]
+}
+EOF
+
+  run python3 "$VISUAL_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --check
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"visual shared asset sync check failed:"* ]]
+  [[ "$output" == *"visual-fixture-shared"* ]]
+  [[ "$output" == *"differs from canonical"* ]]
+  [[ "$output" == *"generate-visual-shared-assets.py --write"* ]]
+}
+
+@test "visual shared asset generator write syncs from canonical copy" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/kramme:visual:a/references/shared.md" <<'EOF'
+canonical
+EOF
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/kramme:visual:b/references/shared.md" <<'EOF'
+drifted
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "file_identity_groups": [
+    {
+      "name": "visual-fixture-shared",
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:visual:a/references/shared.md",
+        "kramme-cc-workflow/skills/kramme:visual:b/references/shared.md"
+      ]
+    }
+  ]
+}
+EOF
+
+  run python3 "$VISUAL_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"synced 1 visual shared asset file(s)."* ]]
+  [ "$(cat "$TMP_ROOT/kramme-cc-workflow/skills/kramme:visual:b/references/shared.md")" = "canonical" ]
 }
 
 @test "multiline text contract drift fails" {
