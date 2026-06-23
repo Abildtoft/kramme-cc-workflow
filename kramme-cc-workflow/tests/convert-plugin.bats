@@ -132,6 +132,91 @@ console.log("ok");
 	[ "$output" = "ok" ]
 }
 
+@test "frontmatter module characterizes supported YAML shapes and nested limitations" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	run node -e '
+const assert = require("assert");
+const { parseFrontmatter } = require(process.argv[1]);
+
+const parsed = parseFrontmatter(`---
+name: "Quoted Skill"
+description: >
+  First line
+  second line
+enabled: false
+attempts: 3
+ratio: -2.5
+empty: null
+fallback: ~
+tags: [alpha, "beta:two", false, 2]
+allowed-tools:
+  - Read
+  - Edit(src/**)
+metadata:
+  owner: platform
+---
+
+Body line one
+---
+Body line two`);
+
+assert.strictEqual(parsed.data.name, "Quoted Skill");
+assert.strictEqual(parsed.data.description, "First line second line");
+assert.strictEqual(parsed.data.enabled, false);
+assert.strictEqual(parsed.data.attempts, 3);
+assert.strictEqual(parsed.data.ratio, -2.5);
+assert.strictEqual(parsed.data.empty, null);
+assert.strictEqual(parsed.data.fallback, null);
+assert.deepStrictEqual(parsed.data.tags, ["alpha", "beta:two", false, 2]);
+assert.deepStrictEqual(parsed.data["allowed-tools"], ["Read", "Edit(src/**)"]);
+assert.deepStrictEqual(parsed.data.metadata, []);
+assert.ok(!Object.hasOwn(parsed.data, "owner"));
+assert.strictEqual(parsed.body, "\nBody line one\n---\nBody line two");
+console.log("ok");
+' "$REPO_ROOT/scripts/convert-plugin/frontmatter"
+	[ "$status" -eq 0 ]
+	[ "$output" = "ok" ]
+}
+
+@test "codex transformer rewrites task calls and known references directly" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	run node -e '
+const assert = require("assert");
+const { transformContentForCodex } = require(process.argv[1]);
+
+const knownCommands = new Set(["kramme:pr:create", "demo-command"]);
+const knownAgentSkills = new Map([
+  ["kramme:reviewer", "kramme:reviewer"],
+  ["support-reviewer", "support-reviewer"],
+]);
+const input = [
+  "Task support-reviewer(review this parser)",
+  "Run /kramme:pr:create, then /unknown, and keep /usr/bin.",
+  "Ask @support-reviewer to inspect the output.",
+  "Use `agents/kramme:reviewer.md` and [reviewer](agents/kramme:reviewer.md).",
+].join("\n");
+
+const output = transformContentForCodex(input, {
+  knownCommands,
+  knownAgentSkills,
+});
+
+assert.match(output, /Use the \$support-reviewer skill to: review this parser/);
+assert.match(output, /Run \$kramme:pr:create, then \/unknown, and keep \/usr\/bin\./);
+assert.match(output, /Ask \$support-reviewer skill to inspect the output\./);
+assert.match(output, /Use \$kramme:reviewer skill and \$kramme:reviewer skill\./);
+console.log("ok");
+' "$REPO_ROOT/scripts/convert-plugin/codex-transformer"
+	[ "$status" -eq 0 ]
+	[ "$output" = "ok" ]
+}
+
 @test "codex conversion creates skills from user-invocable skills" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for converter tests"

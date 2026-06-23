@@ -73,14 +73,7 @@ function parseFrontmatter(raw) {
     return { data: {}, body: raw };
   }
 
-  let endIndex = -1;
-  for (let i = 1; i < lines.length; i += 1) {
-    if (lines[i].trim() === "---") {
-      endIndex = i;
-      break;
-    }
-  }
-
+  const endIndex = findClosingFrontmatterDelimiter(lines);
   if (endIndex === -1) {
     return { data: {}, body: raw };
   }
@@ -91,47 +84,80 @@ function parseFrontmatter(raw) {
   return { data, body };
 }
 
+function findClosingFrontmatterDelimiter(lines) {
+  for (let i = 1; i < lines.length; i += 1) {
+    if (lines[i].trim() === "---") return i;
+  }
+  return -1;
+}
+
 function parseYamlLines(lines) {
   const data = {};
   let currentKey = null;
   for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i];
-    if (!line.trim()) continue;
+    const parsedLine = parseYamlLine(lines[i]);
+    if (parsedLine.type === "empty" || parsedLine.type === "unsupported") {
+      continue;
+    }
 
-    if (line.trim().startsWith("- ")) {
+    if (parsedLine.type === "sequence-item") {
       if (!currentKey) continue;
       if (!Array.isArray(data[currentKey])) {
         data[currentKey] = [];
       }
-      data[currentKey].push(parseYamlValue(line.trim().slice(2)));
+      data[currentKey].push(parseYamlValue(parsedLine.value));
       continue;
     }
 
-    const idx = line.indexOf(":");
-    if (idx === -1) continue;
-    const key = line.slice(0, idx).trim();
-    let value = line.slice(idx + 1).trim();
+    const { key, value } = parsedLine;
     currentKey = key;
     if (!value) {
       data[key] = [];
       continue;
     }
-    if (value === "|" || value === ">") {
-      const blockLines = [];
-      let j = i + 1;
-      while (j < lines.length && /^[ \\t]+/.test(lines[j])) {
-        blockLines.push(lines[j].replace(/^[ \\t]{1,2}/, ""));
-        j += 1;
-      }
-      i = j - 1;
-      const joiner = value === "|" ? "\n" : " ";
-      data[key] = blockLines.join(joiner).trimEnd();
+    if (isBlockScalar(value)) {
+      const block = readYamlBlockScalar(lines, i + 1, value);
+      i = block.nextIndex - 1;
+      data[key] = block.value;
       currentKey = null;
       continue;
     }
     data[key] = parseYamlValue(value);
   }
   return data;
+}
+
+function parseYamlLine(line) {
+  const raw = String(line ?? "");
+  const trimmed = raw.trim();
+  if (!trimmed) return { type: "empty" };
+
+  if (trimmed.startsWith("- ")) {
+    return { type: "sequence-item", value: trimmed.slice(2) };
+  }
+
+  const idx = raw.indexOf(":");
+  if (idx === -1 || /^[ \t]/.test(raw)) return { type: "unsupported" };
+  return {
+    type: "mapping",
+    key: raw.slice(0, idx).trim(),
+    value: raw.slice(idx + 1).trim(),
+  };
+}
+
+function isBlockScalar(value) {
+  return value === "|" || value === ">";
+}
+
+function readYamlBlockScalar(lines, startIndex, style) {
+  const blockLines = [];
+  let index = startIndex;
+  while (index < lines.length && /^[ \t]+/.test(lines[index])) {
+    blockLines.push(lines[index].replace(/^[ \t]{1,2}/, ""));
+    index += 1;
+  }
+  const joiner = style === "|" ? "\n" : " ";
+  return { value: blockLines.join(joiner).trimEnd(), nextIndex: index };
 }
 
 function parseYamlValue(value) {

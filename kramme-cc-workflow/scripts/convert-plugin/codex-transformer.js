@@ -219,19 +219,26 @@ function convertExistingSkillForCodex(skill, knownCommands, knownAgentSkills) {
 
 function transformContentForCodex(body, options = {}) {
   let result = body;
-  const knownCommands = options.knownCommands;
-  const knownAgentSkills = options.knownAgentSkills;
+  result = rewriteTaskCalls(result);
+  result = rewriteSlashCommandReferences(result, options.knownCommands);
+  result = rewriteAgentMentions(result);
+  result = rewriteCodexAgentFileReferences(result, options.knownAgentSkills);
+  return normalizeCodexInstructionText(result);
+}
 
+function rewriteTaskCalls(text) {
   const taskPattern = /^(\s*-?\s*)Task\s+([a-z][a-z0-9-]*)\(([^)]+)\)/gm;
-  result = result.replace(taskPattern, (_match, prefix, agentName, args) => {
+  return text.replace(taskPattern, (_match, prefix, agentName, args) => {
     const skillName = codexName(agentName);
     const trimmedArgs = args.trim();
     return `${prefix}Use the $${skillName} skill to: ${trimmedArgs}`;
   });
+}
 
+function rewriteSlashCommandReferences(text, knownCommands) {
   const slashCommandPattern =
     /(?<![:\w])\/([a-z][a-z0-9_:-]*?)(?=[\s,.`"')\]}]|$)/gi;
-  result = result.replace(slashCommandPattern, (match, commandName) => {
+  return text.replace(slashCommandPattern, (match, commandName) => {
     if (commandName.includes("/")) return match;
     if (
       ["dev", "tmp", "etc", "usr", "var", "bin", "home"].includes(commandName)
@@ -241,19 +248,15 @@ function transformContentForCodex(body, options = {}) {
     if (knownCommands && !knownCommands.has(codexified)) return match;
     return `$${codexified}`;
   });
+}
 
+function rewriteAgentMentions(text) {
   const agentRefPattern =
     /@([a-z][a-z0-9-]*-(?:agent|reviewer|researcher|analyst|specialist|oracle|sentinel|guardian|strategist))/gi;
-  result = result.replace(agentRefPattern, (_match, agentName) => {
+  return text.replace(agentRefPattern, (_match, agentName) => {
     const skillName = codexName(agentName);
     return `$${skillName} skill`;
   });
-
-  result = rewriteCodexAgentFileReferences(result, knownAgentSkills);
-
-  result = normalizeCodexInstructionText(result);
-
-  return result;
 }
 
 function rewriteCodexAgentFileReferences(text, knownAgentSkills) {
