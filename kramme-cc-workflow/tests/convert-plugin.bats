@@ -731,6 +731,7 @@ Use `AskUserQuestion` to confirm the topic.
 Conduct a multi-round interview using `AskUserQuestion`.
 Use the AskUserQuestion tool throughout to gather decisions.
 Surface the offer with `AskUserQuestion`.
+Surface matches via the same `AskUserQuestion` prompt in step 3.
 MD
 
 	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
@@ -743,6 +744,7 @@ MD
 	[[ "$output" == *"Conduct a multi-round interview by asking the user directly in chat."* ]]
 	[[ "$output" == *"Ask the user directly in chat throughout to gather decisions."* ]]
 	[[ "$output" == *"Surface the offer by asking the user directly in chat."* ]]
+	[[ "$output" == *"Surface matches via the same direct chat prompt in step 3."* ]]
 	[[ "$output" != *'direct chat questions`'* ]]
 	[[ "$output" != *'direct chat question`'* ]]
 	[[ "$output" != *"direct chat question tool"* ]]

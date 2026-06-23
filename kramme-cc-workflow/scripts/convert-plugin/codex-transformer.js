@@ -363,6 +363,10 @@ const CODEX_INSTRUCTION_REPLACEMENTS = [
     "by asking the user directly in chat",
   ],
   [
+    /\bthe same `?AskUserQuestion`? prompt\b/g,
+    "the same direct chat prompt",
+  ],
+  [
     /\bAskUserQuestion with (\d+) options\b/g,
     "a direct chat question with $1 concrete options",
   ],
