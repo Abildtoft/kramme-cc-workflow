@@ -23,34 +23,16 @@ Do NOT use for: implementation planning (use `generate-phases`), issue definitio
 
 ## Process Overview
 
-```text
-/kramme:siw:discovery [topic | spec-file(s) | 'siw'] [--apply] [--decision-tree]
-    │
-    ▼
-[Step 1: Detect mode & resolve context]
-    │
-    ▼
-[Step 2: Autonomous framing — draft hypothesis before asking anything]
-    │
-    ▼
-[Step 3: Initial confidence assessment OR root decision map]
-    │
-    ▼
-[Step 4: Discovery interview loop]
-    │   ├─ Coverage mode: maintain an evidence ledger, pick dimensions, ask 1-3 questions, update confidence
-    │   ├─ Decision-tree mode: resolve dependencies one question at a time
-    │   ├─ Check whether the codebase already answers each question
-    │   ├─ Offer ADR handoff for durable tradeoff decisions
-    │   └─ Repeat until target confidence or decision tree closure
-    │
-    ▼
-[Step 5: Synthesize findings]
-    │   ├─ Greenfield → siw/DISCOVERY_BRIEF.md
-    │   └─ Refinement → siw/SPEC_STRENGTHENING_PLAN.md
-    │
-    ▼
-[Step 6: Optional apply (--apply or user request)]
-```
+The executable flow is Step 1 through Step 6 below:
+
+1. Detect mode and resolve context.
+2. Frame an `UNVERIFIED:` hypothesis before asking questions.
+3. Assess confidence or map the decision tree.
+4. Run the interview loop until confidence or decision-tree closure.
+5. Synthesize a discovery brief or strengthening plan.
+6. Optionally apply refinement changes.
+
+Read `references/process-overview.md` only when you need the visual flow diagram or usage examples.
 
 ## Output Markers
 
@@ -408,88 +390,8 @@ If the refinement target is `siw/DISCOVERY_BRIEF.md`, reference sections from th
 
 ## Step 6: Optional Apply
 
-If `apply_changes=true` or the user asks to apply:
+If `apply_changes=true` or the user asks to apply, read `references/apply-protocol.md` and follow it exactly.
 
-**Refinement mode:**
+## Final Quality and Verification
 
-1. Edit the target document(s) using decisions from Step 4
-2. Target documents may be SIW spec files or `siw/DISCOVERY_BRIEF.md`
-3. Preserve structure — add missing sections, don't scatter content
-4. Preserve any `MISSING REQUIREMENT:` markers for unresolved dimensions instead of filling those sections with guesses
-5. If a full SIW workflow exists, update `siw/LOG.md` Decision Log with:
-   - Summary of discovery session
-   - Key decisions and rationale
-   - Remaining open questions
-6. After the target documents and optional log updates are complete, remove `siw/SPEC_STRENGTHENING_PLAN.md` using a trash-first, verified deletion:
-   - If `trash` is installed, run `trash siw/SPEC_STRENGTHENING_PLAN.md` without suppressing errors.
-   - If `trash` is missing, warn that the file will be permanently deleted and ask for explicit confirmation before running `rm -f siw/SPEC_STRENGTHENING_PLAN.md`.
-   - After deletion, verify `[ ! -e siw/SPEC_STRENGTHENING_PLAN.md ]`. Report a failure if the file still exists instead of claiming it was removed. This prevents future runs from treating the applied plan as unresolved state while keeping deletion recoverable when possible.
-
-**Greenfield mode:**
-
-- Apply is not applicable (the brief IS the output)
-- Suggest `/kramme:siw:init siw/DISCOVERY_BRIEF.md` for full workflow setup
-
-## Output Quality Bar
-
-Every finding must be:
-
-- Tied to a specific confidence dimension
-- Grounded in something the user said (quote or paraphrase)
-- Actionable — either a decision made or a question that needs answering
-- Distinguishing stated want from actual want when they diverge
-
-Do NOT finish with generic advice like "improve clarity" or "add more detail." If you can't point to a specific gap grounded in the interview, it's not a real finding.
-
-## Usage
-
-```
-/kramme:siw:discovery
-# Auto-detect mode: greenfield if no spec, refinement if spec exists
-
-/kramme:siw:discovery build a notification system for our platform
-# Greenfield discovery with topic hint
-
-/kramme:siw:discovery siw
-# Refinement: strengthen existing SIW specs
-
-/kramme:siw:discovery siw/FEATURE_SPEC.md
-# Refinement: focus on one spec file
-
-/kramme:siw:discovery siw --apply
-# Refinement: discover and directly apply spec improvements
-
-/kramme:siw:discovery --decision-tree "design the event store schema"
-# Decision-tree discovery: resolve coupled choices depth-first
-```
-
-## Epilogue
-
-### Common Rationalizations
-
-- _"Confidence is high enough to stop."_ — High confidence means nothing if it's high on the wrong dimensions. Re-check which dimensions are Critical for the current Work Context before stopping.
-- _"The user agreed with my hypothesis, so we're aligned."_ — Agreement is cheap. Restatement Challenge is cheaper than re-doing the project. Verify at least once mid-interview.
-- _"I asked three good questions, so the interview is done."_ — Question count is not coverage. Check the evidence ledger and keep going until the active dimensions have direct validation and probes.
-- _"Stated and actual wants are the same here."_ — They rarely are. If you haven't surfaced _any_ divergence by round 4, you probably haven't probed hard enough.
-- _"The spec covers it, so the dimension is Confident."_ — A section can exist and still be vague. Score on specificity and actionability, not presence.
-
-### Red Flags
-
-- The user answers every question with "yes, that's right" and never corrects you. Likely you're asking leading questions or they're deferring. Force a tradeoff.
-- You're about to write the brief and can't quote a single surprising thing the user said. The interview didn't do its job.
-- You're about to synthesize after one question batch. Unless the user stopped you, that is almost always a coverage failure.
-- You're defaulting a dimension to a guess instead of asking. Emit `MISSING REQUIREMENT:` and ask.
-- The "What You Don't Want" list is empty or has no rationales. Non-goals without reasons become scope creep later.
-- You're continuing past round 10 without a signal that anything new will surface. Suggest stopping.
-
-### Verification
-
-Before writing the brief or strengthening plan, confirm:
-
-- [ ] All critical dimensions reached Confident; all normal dimensions reached High; all deprioritized dimensions reached Medium.
-- [ ] The coverage ledger floor is complete, or uncovered items are preserved as `MISSING REQUIREMENT:`.
-- [ ] Stated-vs-actual divergence was either surfaced and documented, or explicitly ruled out during the interview.
-- [ ] The interview included a forced tradeoff, negative-space probe, and restatement challenge unless the user stopped early.
-- [ ] Every entry in "What You Don't Want" has a rationale.
-- [ ] Every unanswered dimension in the output carries a `MISSING REQUIREMENT:` marker, not a fabricated answer.
-- [ ] The `PLAN:` marker is present at hand-off.
+Before writing the brief, strengthening plan, or final hand-off, read `references/synthesis-checklist.md` and apply its output quality bar, red flags, and verification checklist.

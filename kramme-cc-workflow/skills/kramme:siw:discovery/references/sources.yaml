@@ -2,30 +2,45 @@ sources:
   - id: pocock-grill-me
     url: https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me
     title: "Matt Pocock skills - grill-me"
+    upstream_commit: 6eeb81b5fcfeeb5bd531dd47ab2f9f2bbea27461
+    upstream_path: skills/productivity/grill-me
+    license: MIT
     rationale: "The decision-tree mode (depth-first dependency resolution rather than coverage-dimensional batched questioning), one-question-at-a-time pacing for high-stakes decisions, and the codebase-as-answer-source rule (explore the code rather than ask if the answer is there) are adapted from this source."
     last_reviewed_at: 2026-06-22
     baseline_hash: "sha256:6de02f44e92b6d37c82f7005474daee2c4cf691365a72e0b5c40f14808c06f5f"
   - id: pocock-domain-model
     url: https://github.com/mattpocock/skills/tree/main/skills/engineering/domain-modeling
     title: "Matt Pocock skills - domain-model"
+    upstream_commit: 6eeb81b5fcfeeb5bd531dd47ab2f9f2bbea27461
+    upstream_path: skills/engineering/domain-modeling
+    license: MIT
     rationale: "The UBIQUITOUS_LANGUAGE.md priming step (read at session start, surface conflicts when the user uses a non-canonical term) and the inline ADR-offer hook on resolved decisions that meet the 3-criterion test are adapted from this source."
     last_reviewed_at: 2026-06-22
     baseline_hash: "sha256:f6409ae131de1b3c41d6e2f5bf509a7a92fa26c8692f8ec70ce73cbb14bf8b1d"
   - id: compound-ce-strategy
     url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-strategy
     title: "EveryInc compound-engineering-plugin - ce-strategy"
+    upstream_commit: 16442e866edee5c89faa6c1b2754ac49fcecd631
+    upstream_path: skills/ce-strategy
+    license: MIT
     rationale: "The optional STRATEGY.md grounding, strategy fit checks, and stale/missing strategy markers during SIW discovery are adapted from this source."
     last_reviewed_at: 2026-06-22
     baseline_hash: "sha256:27cbff1cc21d22c23f9a2015fe9bd75434d13e9a128aa640e3e04fe47ba7acb8"
   - id: compound-ce-ideate
     url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-ideate
     title: "EveryInc compound-engineering-plugin - ce-ideate"
+    upstream_commit: 16442e866edee5c89faa6c1b2754ac49fcecd631
+    upstream_path: skills/ce-ideate
+    license: MIT
     rationale: "The relationship between product strategy, divergent ideation, and later discovery framing is informed by this source."
     last_reviewed_at: 2026-06-22
     baseline_hash: "sha256:73ed87b437f7cc9bf35a2603479496a1fd9a5066b8a924a39d8c1a196f2a543e"
   - id: compound-ce-brainstorm
     url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-brainstorm
     title: "EveryInc compound-engineering-plugin - ce-brainstorm"
+    upstream_commit: 16442e866edee5c89faa6c1b2754ac49fcecd631
+    upstream_path: skills/ce-brainstorm
+    license: MIT
     rationale: "The strategy-grounded requirements-discovery role and non-blocking conflict checks are informed by this source."
     last_reviewed_at: 2026-06-22
     baseline_hash: "sha256:5bbef7f54006adc8a4edb61e2a7adf75cac9a46caa55f4c504efc38b079ec1d8"
