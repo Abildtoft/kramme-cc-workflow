@@ -239,15 +239,16 @@ Exploration bridges this gap before any code changes.
 
 Run all of the following before drafting the technical plan:
 
-1. **Check supporting specs (if they exist):**
+1. **Check supporting and contract specs (if they exist):**
 
    ```bash
-   ls siw/supporting-specs/ 2> /dev/null
+   ls siw/supporting-specs/ siw/contracts/ 2> /dev/null
    ```
 
-   If supporting specs exist, identify which ones are relevant:
+   If supporting or contract specs exist, identify which ones are relevant:
    - Data model specs for entity-related work
    - API specs for endpoint-related work
+   - Contract specs for interface, data shape, or integration guarantees
    - UI specs for frontend-related work Read relevant sections for detailed requirements.
 
 2. **Search for similar features/patterns:**
@@ -277,6 +278,7 @@ Codebase Exploration Results:
 Supporting Specs Referenced:
 - siw/supporting-specs/01-data-model.md#user-entity (if applicable)
 - siw/supporting-specs/02-api-specification.md#endpoints (if applicable)
+- siw/contracts/01-api-contract.md#request-shape (if applicable)
 
 Relevant Files Found:
 - {file 1} - {why relevant}
@@ -424,17 +426,18 @@ Before marking implementation complete, ensure the specification reflects all de
 
 Check siw/LOG.md for decisions recorded during implementation: new decisions not in the spec, changes to the originally planned approach, discovered constraints, and technical choices that affect future work.
 
-### 10.2 Compare Decisions Against Spec (and Supporting Specs)
+### 10.2 Compare Decisions Against Spec, Supporting Specs, and Contract Specs
 
-For each decision, check whether it aligns with the spec or supporting specs. Identify decisions that contradict (spec needs updating), add new information (spec needs expanding), or clarify ambiguities (spec needs refinement).
+For each decision, check whether it aligns with the spec, supporting specs, or contract specs. Identify decisions that contradict (spec needs updating), add new information (spec needs expanding), or clarify ambiguities (spec needs refinement).
 
-**If supporting specs exist (`siw/supporting-specs/`)**, route decisions by topic:
+**If supporting or contract specs exist (`siw/supporting-specs/`, `siw/contracts/`)**, route decisions by topic:
 
 - Data model decisions → `*-data-model*.md`
 - API decisions → `*-api*.md`
+- Contract/interface decisions → `siw/contracts/*.md`
 - UI/frontend decisions → `*-ui*.md` or `*-frontend*.md`
 - User story updates → `*-user-stories*.md`
-- Default → main spec if no matching supporting spec
+- Default → main spec if no matching supporting or contract spec
 
 ### 10.3 Present Spec Update Candidates and Ask
 
@@ -444,7 +447,7 @@ If misalignments are found, read `references/spec-sync.md`, present them using i
 
 For selected decisions, update the appropriate spec file.
 
-For supporting specs, update the actual spec content (entity definitions, endpoint contracts, component specs, diagrams) — do not just append to a "Design Decisions" section. Supporting specs should always reflect current reality.
+For supporting and contract specs, update the actual spec content (entity definitions, endpoint contracts, component specs, diagrams) — do not just append to a "Design Decisions" section. Supporting and contract specs should always reflect current reality.
 
 Use the main spec's `## Design Decisions` section only for cross-cutting decisions, high-level architectural choices, or decisions that don't map to a specific spec section. For the worked POST → PUT example, per-area routing reminders, and the Design Decisions migration format, read `references/spec-sync.md`.
 

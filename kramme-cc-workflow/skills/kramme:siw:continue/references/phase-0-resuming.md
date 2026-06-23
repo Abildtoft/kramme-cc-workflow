@@ -59,22 +59,23 @@ Then read ~30 lines from that line. Task sections are self-contained.
 - Verification checklist
 - Prerequisites and dependencies
 
-### 3.5. Check for Supporting Specs (if folder exists)
+### 3.5. Check for Supporting or Contract Specs (if folder exists)
 
 ```bash
-ls siw/supporting-specs/ 2> /dev/null
+ls siw/supporting-specs/ siw/contracts/ 2> /dev/null
 ```
 
-**If supporting specs exist:**
+**If supporting or contract specs exist:**
 
 - Check if the current task references a supporting spec (e.g., "See `siw/supporting-specs/02-api-specification.md`")
-- Read only the relevant section of the referenced supporting spec:
+- Check if the current task references a contract spec (e.g., "See `siw/contracts/01-api-contract.md`")
+- Read only the relevant section of the referenced supporting or contract spec:
   ```bash
   grep -n "## Section Name" siw/supporting-specs/02-api-specification.md
   ```
 - Read ~50 lines from that line
 
-**Don't read all supporting specs** - only read the one referenced by your current task.
+**Don't read all supporting or contract specs** - only read the one referenced by your current task.
 
 ### 4. Determine Your Phase
 

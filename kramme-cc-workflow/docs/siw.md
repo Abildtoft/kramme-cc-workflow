@@ -116,6 +116,7 @@ Or start from scratch with an interactive interview:
 | --- | --- | --- |
 | `siw/[YOUR_SPEC].md` | Main specification — single source of truth | **Permanent** |
 | `siw/supporting-specs/*.md` | Detailed specs by domain (data model, API, UI) | **Permanent** |
+| `siw/contracts/*.md` | Contract specs referenced by issues or migrated planning docs | **Permanent** |
 | `siw/DISCOVERY_BRIEF.md` | Greenfield discovery output before `siw:init` creates the full workflow | Temporary |
 | `siw/SPEC_STRENGTHENING_PLAN.md` | Refinement discovery output waiting for review or `--apply` | Temporary |
 | `siw/LOG.md` | Session progress, decision log, guiding principles | Temporary |
@@ -133,6 +134,8 @@ siw/
 │   ├── 01-data-model.md
 │   ├── 02-api-specification.md
 │   └── 03-ui-specification.md
+├── contracts/                        ← Permanent (optional, linked contract specs)
+│   └── 01-api-contract.md
 ├── DISCOVERY_BRIEF.md                ← Temporary (greenfield discovery output)
 ├── SPEC_STRENGTHENING_PLAN.md        ← Temporary (refinement handoff artifact)
 ├── LOG.md                            ← Temporary
@@ -169,6 +172,14 @@ Use `siw/supporting-specs/` when:
 **Naming convention:** `NN-descriptor.md` (e.g., `01-data-model.md`, `02-api-specification.md`)
 
 The main spec references supporting specs via a table of contents. During decision sync (step 10 of `issue-implement`), decisions are routed to the appropriate supporting spec by topic.
+
+### Contract Specs
+
+Use `siw/contracts/` for durable interface, data-shape, or integration contracts that issues or supporting specs need to reference directly.
+
+**Naming convention:** `NN-descriptor.md` (e.g., `01-api-contract.md`, `02-event-payload.md`)
+
+Contract specs are permanent source material. Audit, close, transfer, and implementation workflows should treat referenced contract specs like supporting specs rather than temporary issue context.
 
 ### Generated Documentation
 
@@ -268,7 +279,7 @@ When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW
 | `/kramme:siw:issue-define` | `[issue-id] or [description and/or file paths]` | Create or improve issues with a guided interview. Supports both new issue creation and refinement of existing issues. Explores the codebase to identify relevant patterns. |
 | `/kramme:siw:generate-phases` | `[spec-file-path]` | Decompose a spec into atomic, phase-based issues (`P1-001`, `P2-001`, `G-001`). Each issue is self-contained with tests/validation. Reviews breakdown with a subagent before creating files. |
 | `/kramme:siw:issue-reindex` | — | Remove DONE issues and renumber remaining issues from 001 within each prefix group. Verifies DONE issues are captured in the spec before deletion. |
-| `/kramme:siw:transfer-to-linear` | `[siw-dir] [--project <name-or-id>] [--team <team>] [--dry-run] [--skip-done] [--skip-existing\|--retry]` | One-way migration of an SIW project into Linear. Creates one Linear project, migrates the main spec and supporting specs as Linear Documents, creates milestones from SIW phases and issues from SIW issues (dependencies recorded as text), writes `Linear Transfer` markers back to migrated source issues for retry safety, then prompts `/kramme:siw:remove` to retire the local `siw/` files. Marked issues and title-matched documents/milestones are skipped on re-runs. Add `--skip-done` to omit completed issues; `--dry-run` previews without writing; `--skip-existing`/`--retry` also matches unmarked issues by exact title when resuming a partial run. |
+| `/kramme:siw:transfer-to-linear` | `[siw-dir] [--project <name-or-id>] [--team <team>] [--dry-run] [--skip-done] [--skip-existing\|--retry]` | One-way migration of an SIW project into Linear. Creates one Linear project, migrates the main spec, supporting specs, selected contract specs, and decision log as Linear Documents, rewrites SIW-local markdown references to Linear Document URLs where possible, creates milestones from SIW phases and issues from SIW issues, records dependencies as text and as native Linear relations when the tooling supports them, writes `Linear Transfer` markers back to migrated source issues for retry safety, then prompts `/kramme:siw:remove` to retire the local `siw/` files. Marked issues and title-matched documents/milestones are skipped on re-runs. Add `--skip-done` to omit completed issues; `--dry-run` previews without writing; `--skip-existing`/`--retry` also matches unmarked issues by exact title when resuming a partial run. |
 
 ### Implementation
 

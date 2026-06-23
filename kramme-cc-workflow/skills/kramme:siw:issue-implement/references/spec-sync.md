@@ -94,9 +94,10 @@ Specification(s) Updated
 Main spec ({spec_filename}):
 - Decision #{n}: {title}
 
-Supporting specs:
+Supporting/contract specs:
 - siw/supporting-specs/01-data-model.md: Decision #{n}: {title}
 - siw/supporting-specs/02-api-specification.md: Decision #{n}: {title}
+- siw/contracts/01-api-contract.md: Decision #{n}: {title}
 
 Sections updated:
 - Design Decisions

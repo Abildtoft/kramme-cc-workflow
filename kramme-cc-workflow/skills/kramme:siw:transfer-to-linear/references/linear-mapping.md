@@ -106,8 +106,9 @@ Include the main spec, every `supporting-specs/*.md`, every selected `contracts/
 - Project description if generated or copied content references files.
 - Milestone descriptions if generated or copied content references files.
 - Migrated Document bodies when they link to other migrated SIW markdown files.
+- Current Linear issue or Document bodies before any rewrite-only update to a reused or `skip-existing` record.
 
-Apply the same rewrite to reused or `skip-existing` Linear records when the relevant update tool exists, but include that work as an explicit rewrite-only update in the migration plan before approval. This is a rewrite-only update: do not resync unrelated body edits, statuses, assignees, labels, or other Linear-owned fields.
+Apply the same rewrite to reused or `skip-existing` Linear records only when the relevant read and update tools exist, and include that work as an explicit rewrite-only update in the migration plan before approval. For rewrite-only updates, fetch the current Linear body first and rewrite only matching SIW-local markdown references in that current body; never regenerate the body from the source SIW markdown or resync unrelated body edits, statuses, assignees, labels, or other Linear-owned fields. If the current body cannot be fetched, do not perform the rewrite-only update; report the remaining local reference and withhold the removal prompt when it is required implementation content.
 
 **Reference detection:**
 

@@ -30,6 +30,7 @@ If you want to preserve accumulated knowledge as permanent documentation, use `/
 
 - Specification files in `siw/` matching `*SPEC*.md`, `*SPECIFICATION*.md`, `*PLAN*.md`, or `*DESIGN*.md`, excluding `SPEC_STRENGTHENING_PLAN.md`, `DISCOVERY_BRIEF.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, and `SIW_*.md`
 - `siw/supporting-specs/` — Numbered supporting specs
+- `siw/contracts/` — Contract specs selected by transfer-to-Linear migrations
 
 Only files discovered in Step 1 are deleted, listed in the confirmation prompt, or reported as deleted. Items in the lists above that do not exist on disk are ignored.
 
@@ -40,7 +41,7 @@ Only files discovered in Step 1 are deleted, listed in the confirmation prompt, 
 Discover what exists. Record two lists from the output:
 
 - `found_temporary` — temp files and directories
-- `found_permanent` — spec/permanent files plus `siw/supporting-specs/` if present
+- `found_permanent` — spec/permanent files plus `siw/supporting-specs/` and `siw/contracts/` if present
 
 ```bash
 ls -d siw/LOG.md siw/OPEN_ISSUES_OVERVIEW.md siw/AUDIT_IMPLEMENTATION_REPORT.md siw/AUDIT_SPEC_REPORT.md siw/PRODUCT_AUDIT.md siw/SIW_*.md siw/SPEC_STRENGTHENING_PLAN.md siw/DISCOVERY_BRIEF.md siw/issues siw/qa-intake 2> /dev/null
@@ -51,7 +52,7 @@ find siw -maxdepth 1 -type f \( -name "*SPEC*.md" -o -name "*SPECIFICATION*.md" 
   ! -name "PRODUCT_AUDIT.md" \
   ! -name "SIW_*.md" \
   2> /dev/null
-ls -d siw/supporting-specs 2> /dev/null
+ls -d siw/supporting-specs siw/contracts 2> /dev/null
 ```
 
 **If both lists are empty:**
@@ -128,12 +129,7 @@ After deletion, verify every target with `[ ! -e "$path" ]`. Record only verifie
 
 ### Step 5: Clean Up Empty `siw/`
 
-After deletion, remove leftover `.gitkeep` placeholders only from directories included in the confirmed `delete_set`. Do not remove `.gitkeep` files from directories the user chose to keep. `rmdir` only succeeds on empty directories, so it is safe to call for directories in the confirmed delete set and their now-empty parents.
-
-```bash
-rm -f <.gitkeep files inside directory paths in delete_set> 2> /dev/null
-rmdir <directory paths in delete_set> siw 2> /dev/null
-```
+After deletion, remove leftover `.gitkeep` placeholders only from directories included in the confirmed `delete_set`. Do not remove `.gitkeep` files from directories the user chose to keep. Then remove only directories from the confirmed `delete_set`, plus `siw/` itself, and only when they are empty.
 
 Record whether `siw/` itself was removed for the report.
 
@@ -157,5 +153,5 @@ Failed to delete:
 ## Important Notes
 
 1. **`trash` keeps deletions recoverable** — prefer it over `rm` whenever it is installed.
-2. **Permanent files default to kept** — the "All SIW files" option must be explicitly selected to delete spec files and `siw/supporting-specs/`.
+2. **Permanent files default to kept** — the "All SIW files" option must be explicitly selected to delete spec files, `siw/supporting-specs/`, and `siw/contracts/`.
 3. **Works with `/kramme:siw:init`** — the workflow can be re-initialized after cleanup.
