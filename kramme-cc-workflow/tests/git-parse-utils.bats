@@ -47,6 +47,27 @@ run_parse_git_command_context() {
 	done
 }
 
+run_parse_command_wrapper_token() {
+	parse_command_wrapper_token "$@"
+	printf 'action:%s\n' "$PARSED_WRAPPER_ACTION"
+	printf 'value:%s\n' "$PARSED_WRAPPER_VALUE"
+	printf 'consumed:%s\n' "$PARSED_WRAPPER_CONSUMED"
+}
+
+run_parse_env_wrapper_token() {
+	parse_env_wrapper_token "$@"
+	printf 'action:%s\n' "$PARSED_WRAPPER_ACTION"
+	printf 'value:%s\n' "$PARSED_WRAPPER_VALUE"
+	printf 'consumed:%s\n' "$PARSED_WRAPPER_CONSUMED"
+}
+
+run_parse_sudo_wrapper_token() {
+	parse_sudo_wrapper_token "$@"
+	printf 'action:%s\n' "$PARSED_WRAPPER_ACTION"
+	printf 'value:%s\n' "$PARSED_WRAPPER_VALUE"
+	printf 'consumed:%s\n' "$PARSED_WRAPPER_CONSUMED"
+}
+
 @test "strips wrapping quotes from tokens" {
 	run strip_wrapping_quotes '"git commit"'
 	[ "$status" -eq 0 ]
@@ -128,6 +149,73 @@ run_parse_git_command_context() {
 	[ "${lines[5]}" = "subcmd:commit" ]
 	[ "${lines[6]}" = "arg:-m" ]
 	[ "${lines[7]}" = "arg:ok" ]
+}
+
+@test "parses command wrapper option tokens" {
+	run run_parse_command_wrapper_token -p git status
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "action:option" ]
+	[ "${lines[1]}" = "value:" ]
+	[ "${lines[2]}" = "consumed:1" ]
+
+	run run_parse_command_wrapper_token -- git status
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "action:end_of_options" ]
+	[ "${lines[2]}" = "consumed:1" ]
+
+	run run_parse_command_wrapper_token git status
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "action:command" ]
+	[ "${lines[2]}" = "consumed:0" ]
+}
+
+@test "parses env wrapper assignments and environment options" {
+	run run_parse_env_wrapper_token GIT_DIR=repo/.git git commit
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "action:assignment" ]
+	[ "${lines[1]}" = "value:GIT_DIR=repo/.git" ]
+	[ "${lines[2]}" = "consumed:1" ]
+
+	run run_parse_env_wrapper_token -u GIT_DIR git commit
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "action:unset" ]
+	[ "${lines[1]}" = "value:GIT_DIR" ]
+	[ "${lines[2]}" = "consumed:2" ]
+
+	run run_parse_env_wrapper_token --chdir=repo git commit
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "action:chdir" ]
+	[ "${lines[1]}" = "value:repo" ]
+	[ "${lines[2]}" = "consumed:1" ]
+
+	run run_parse_env_wrapper_token git commit
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "action:command" ]
+	[ "${lines[2]}" = "consumed:0" ]
+}
+
+@test "parses sudo wrapper options and chdir tokens" {
+	run run_parse_sudo_wrapper_token --user root git status
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "action:option" ]
+	[ "${lines[2]}" = "consumed:2" ]
+
+	run run_parse_sudo_wrapper_token --chdir repo git status
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "action:chdir" ]
+	[ "${lines[1]}" = "value:repo" ]
+	[ "${lines[2]}" = "consumed:2" ]
+
+	run run_parse_sudo_wrapper_token --chdir=repo git status
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "action:chdir" ]
+	[ "${lines[1]}" = "value:repo" ]
+	[ "${lines[2]}" = "consumed:1" ]
+
+	run run_parse_sudo_wrapper_token git status
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "action:command" ]
+	[ "${lines[2]}" = "consumed:0" ]
 }
 
 @test "can leave command substitutions as the git subcommand for compatibility" {

@@ -603,49 +603,28 @@ evaluate_simple_git_segment() {
       env)
         shift
         while [ $# -gt 0 ]; do
-          value="$(strip_wrapping_quotes "$1")"
-          case "$value" in
-            --)
-              shift
+          parse_env_wrapper_token "$@"
+          case "$PARSED_WRAPPER_ACTION" in
+            end_of_options)
+              shift "$PARSED_WRAPPER_CONSUMED"
               break
               ;;
-            [A-Za-z_][A-Za-z0-9_]*=*)
-              record_git_editor_env "$value"
-              shift
+            assignment)
+              record_git_editor_env "$PARSED_WRAPPER_VALUE"
+              shift "$PARSED_WRAPPER_CONSUMED"
               ;;
-            -i | --ignore-environment)
+            ignore_environment)
               clear_git_editor_env
-              shift
+              shift "$PARSED_WRAPPER_CONSUMED"
               ;;
-            -u | --unset)
-              shift
-              if [ $# -gt 0 ]; then
-                unset_git_editor_env "$(strip_wrapping_quotes "$1")"
-                shift
-              fi
+            unset)
+              unset_git_editor_env "$PARSED_WRAPPER_VALUE"
+              shift "$PARSED_WRAPPER_CONSUMED"
               ;;
-            --unset=*)
-              unset_git_editor_env "$(strip_wrapping_quotes "${value#*=}")"
-              shift
+            chdir | option)
+              shift "$PARSED_WRAPPER_CONSUMED"
               ;;
-            -u*)
-              unset_git_editor_env "$(strip_wrapping_quotes "${value#-u}")"
-              shift
-              ;;
-            -C | --chdir)
-              if [ $# -ge 2 ]; then
-                shift 2
-              else
-                shift
-              fi
-              ;;
-            --chdir=* | -C*)
-              shift
-              ;;
-            -*)
-              shift
-              ;;
-            *)
+            command)
               break
               ;;
           esac
@@ -654,48 +633,30 @@ evaluate_simple_git_segment() {
       command)
         shift
         while [ $# -gt 0 ]; do
-          value="$(strip_wrapping_quotes "$1")"
-          case "$value" in
-            --)
-              shift
+          parse_command_wrapper_token "$@"
+          case "$PARSED_WRAPPER_ACTION" in
+            end_of_options | option)
+              shift "$PARSED_WRAPPER_CONSUMED"
+              [ "$PARSED_WRAPPER_ACTION" = "end_of_options" ] && break
+              ;;
+            command)
               break
-              ;;
-            -*)
-              shift
-              ;;
-            *)
-              break
-              ;;
           esac
         done
         ;;
       sudo)
         shift
         while [ $# -gt 0 ]; do
-          value="$(strip_wrapping_quotes "$1")"
-          case "$value" in
-            --)
-              shift
+          parse_sudo_wrapper_token "$@"
+          case "$PARSED_WRAPPER_ACTION" in
+            end_of_options)
+              shift "$PARSED_WRAPPER_CONSUMED"
               break
               ;;
-            -u | -[ugpCRTtrh])
-              shift
-              [ $# -gt 0 ] && shift
+            option | chdir)
+              shift "$PARSED_WRAPPER_CONSUMED"
               ;;
-            --user | --group | --host | --prompt | --command-timeout | --close-from | --chdir | --role | --type | --other-user)
-              shift
-              [ $# -gt 0 ] && shift
-              ;;
-            --askpass | --background | --preserve-env | --remove-timestamp | --reset-timestamp | --validate | --version | --list | --non-interactive)
-              shift
-              ;;
-            --host=* | --user=* | --group=* | --prompt=* | --command-timeout=* | --close-from=* | --chdir=* | --role=* | --type=* | --other-user=* | --preserve-env=*)
-              shift
-              ;;
-            -*)
-              shift
-              ;;
-            *)
+            command)
               break
               ;;
           esac

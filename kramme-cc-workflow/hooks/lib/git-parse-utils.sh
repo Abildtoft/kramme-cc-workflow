@@ -138,6 +138,166 @@ extract_shell_inline_command() {
   return 1
 }
 
+parse_command_wrapper_token() {
+  local value
+
+  PARSED_WRAPPER_ACTION=""
+  PARSED_WRAPPER_VALUE=""
+  PARSED_WRAPPER_CONSUMED=0
+
+  [ $# -gt 0 ] || {
+    PARSED_WRAPPER_ACTION="command"
+    return 0
+  }
+
+  value="$(strip_wrapping_quotes "$1")"
+  case "$value" in
+    --)
+      PARSED_WRAPPER_ACTION="end_of_options"
+      PARSED_WRAPPER_CONSUMED=1
+      ;;
+    -*)
+      PARSED_WRAPPER_ACTION="option"
+      PARSED_WRAPPER_CONSUMED=1
+      ;;
+    *)
+      PARSED_WRAPPER_ACTION="command"
+      ;;
+  esac
+}
+
+parse_env_wrapper_token() {
+  local value
+
+  PARSED_WRAPPER_ACTION=""
+  PARSED_WRAPPER_VALUE=""
+  PARSED_WRAPPER_CONSUMED=0
+
+  [ $# -gt 0 ] || {
+    PARSED_WRAPPER_ACTION="command"
+    return 0
+  }
+
+  value="$(strip_wrapping_quotes "$1")"
+  case "$value" in
+    --)
+      PARSED_WRAPPER_ACTION="end_of_options"
+      PARSED_WRAPPER_CONSUMED=1
+      ;;
+    [A-Za-z_][A-Za-z0-9_]*=*)
+      PARSED_WRAPPER_ACTION="assignment"
+      PARSED_WRAPPER_VALUE="$value"
+      PARSED_WRAPPER_CONSUMED=1
+      ;;
+    -i | --ignore-environment)
+      PARSED_WRAPPER_ACTION="ignore_environment"
+      PARSED_WRAPPER_CONSUMED=1
+      ;;
+    -u | --unset)
+      PARSED_WRAPPER_ACTION="unset"
+      PARSED_WRAPPER_CONSUMED=1
+      if [ $# -ge 2 ]; then
+        PARSED_WRAPPER_VALUE="$(strip_wrapping_quotes "$2")"
+        PARSED_WRAPPER_CONSUMED=2
+      fi
+      ;;
+    --unset=*)
+      PARSED_WRAPPER_ACTION="unset"
+      PARSED_WRAPPER_VALUE="$(strip_wrapping_quotes "${value#*=}")"
+      PARSED_WRAPPER_CONSUMED=1
+      ;;
+    -u*)
+      PARSED_WRAPPER_ACTION="unset"
+      PARSED_WRAPPER_VALUE="$(strip_wrapping_quotes "${value#-u}")"
+      PARSED_WRAPPER_CONSUMED=1
+      ;;
+    -C | --chdir)
+      PARSED_WRAPPER_ACTION="chdir"
+      PARSED_WRAPPER_CONSUMED=1
+      if [ $# -ge 2 ]; then
+        PARSED_WRAPPER_VALUE="$(strip_wrapping_quotes "$2")"
+        PARSED_WRAPPER_CONSUMED=2
+      fi
+      ;;
+    --chdir=*)
+      PARSED_WRAPPER_ACTION="chdir"
+      PARSED_WRAPPER_VALUE="$(strip_wrapping_quotes "${value#*=}")"
+      PARSED_WRAPPER_CONSUMED=1
+      ;;
+    -C*)
+      PARSED_WRAPPER_ACTION="chdir"
+      PARSED_WRAPPER_VALUE="$(strip_wrapping_quotes "${value#-C}")"
+      PARSED_WRAPPER_CONSUMED=1
+      ;;
+    -*)
+      PARSED_WRAPPER_ACTION="option"
+      PARSED_WRAPPER_CONSUMED=1
+      ;;
+    *)
+      PARSED_WRAPPER_ACTION="command"
+      ;;
+  esac
+}
+
+parse_sudo_wrapper_token() {
+  local value
+
+  PARSED_WRAPPER_ACTION=""
+  PARSED_WRAPPER_VALUE=""
+  PARSED_WRAPPER_CONSUMED=0
+
+  [ $# -gt 0 ] || {
+    PARSED_WRAPPER_ACTION="command"
+    return 0
+  }
+
+  value="$(strip_wrapping_quotes "$1")"
+  case "$value" in
+    --)
+      PARSED_WRAPPER_ACTION="end_of_options"
+      PARSED_WRAPPER_CONSUMED=1
+      ;;
+    -u | -[ugpCRTtrh])
+      PARSED_WRAPPER_ACTION="option"
+      PARSED_WRAPPER_CONSUMED=1
+      [ $# -ge 2 ] && PARSED_WRAPPER_CONSUMED=2
+      ;;
+    --chdir)
+      PARSED_WRAPPER_ACTION="chdir"
+      PARSED_WRAPPER_CONSUMED=1
+      if [ $# -ge 2 ]; then
+        PARSED_WRAPPER_VALUE="$(strip_wrapping_quotes "$2")"
+        PARSED_WRAPPER_CONSUMED=2
+      fi
+      ;;
+    --user | --group | --host | --prompt | --command-timeout | --close-from | --role | --type | --other-user)
+      PARSED_WRAPPER_ACTION="option"
+      PARSED_WRAPPER_CONSUMED=1
+      [ $# -ge 2 ] && PARSED_WRAPPER_CONSUMED=2
+      ;;
+    --chdir=*)
+      PARSED_WRAPPER_ACTION="chdir"
+      PARSED_WRAPPER_VALUE="$(strip_wrapping_quotes "${value#*=}")"
+      PARSED_WRAPPER_CONSUMED=1
+      ;;
+    --askpass | --background | --preserve-env | --remove-timestamp | --reset-timestamp | --validate | --version | --list | --non-interactive)
+      PARSED_WRAPPER_ACTION="option"
+      PARSED_WRAPPER_CONSUMED=1
+      ;;
+    --host=* | --user=* | --group=* | --prompt=* | --command-timeout=* | --close-from=* | --role=* | --type=* | --other-user=* | --preserve-env=*)
+      PARSED_WRAPPER_ACTION="option"
+      PARSED_WRAPPER_CONSUMED=1
+      ;;
+    -*)
+      PARSED_WRAPPER_ACTION="option"
+      PARSED_WRAPPER_CONSUMED=1
+      ;;
+    *)
+      PARSED_WRAPPER_ACTION="command"
+      ;;
+  esac
+}
+
 parse_git_command_context() {
   # Shared git-command context contract:
   #   PARSED_GIT_PREFIX_ARGS: normalized git global/prefix args
