@@ -205,8 +205,23 @@ run_hook() {
 	is_blocked
 }
 
+@test "blocks rm with command substitution target containing semicolon before flags" {
+	run run_hook 'rm $(echo directory/; echo other/) -rf'
+	is_blocked
+}
+
+@test "blocks rm with command substitution target containing pipe before flags" {
+	run run_hook 'rm $(find . -type d | head -1) -rf'
+	is_blocked
+}
+
 @test "blocks rm with backtick target before flags" {
 	run run_hook 'rm `echo directory/` -rf'
+	is_blocked
+}
+
+@test "blocks command substitution rm with nested command substitution target before flags" {
+	run run_hook 'echo $(rm $(echo directory/) -rf)'
 	is_blocked
 }
 

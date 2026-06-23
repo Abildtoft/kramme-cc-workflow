@@ -76,8 +76,9 @@ rm_prefix='(^|[;&|`]\s*|\$\(\s*)'
 rm_command_prefix='(^|[;&|]\s*)'
 rm_substitution_prefix='(`\s*|\$\(\s*)'
 rm_variants='(sudo\s+)?(command\s+|env\s+|\\)?(/usr)?(/bin)?/?(\.\/)?rm\b'
-rm_command_segment_suffix='[^;&|]*'
-rm_substitution_segment_suffix='[^;&|`)]*'
+rm_segment_suffix='([^;&|`)]|\$\([^)]*\)|`[^`]*`)*'
+rm_command_segment_suffix="$rm_segment_suffix"
+rm_substitution_segment_suffix="$rm_segment_suffix"
 rm_segment_pattern="${rm_command_prefix}${rm_variants}${rm_command_segment_suffix}|${rm_substitution_prefix}${rm_variants}${rm_substitution_segment_suffix}"
 
 has_blocked_rm_segment() {
