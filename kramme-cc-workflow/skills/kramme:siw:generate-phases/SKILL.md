@@ -170,14 +170,25 @@ options:
 
    If output is non-empty, list the dirty paths and re-prompt with AskUserQuestion options "Proceed and discard changes" / "Abort". Abort by default if the user does not pick "Proceed".
 
-2. Delete the issue files. Prefer `trash` for recoverability; fall back to `rm -f` with a warning:
+2. Delete the issue files. Prefer `trash` for recoverability; fall back to an allowlisted Python cleanup with a warning:
 
    ```bash
    if command -v trash &> /dev/null; then
      trash siw/issues/ISSUE-*.md 2> /dev/null
    else
      echo "Warning: 'trash' not found. Files will be permanently deleted. Install with 'brew install trash' (macOS) or your distro's 'trash-cli' package."
-     rm -f siw/issues/ISSUE-*.md
+     python3 - <<'PY'
+from pathlib import Path
+
+issues_dir = Path("siw/issues")
+if not issues_dir.is_dir():
+    raise SystemExit(0)
+
+for path in sorted(issues_dir.glob("ISSUE-*.md")):
+    if path.parent != issues_dir or not path.name.startswith("ISSUE-") or path.suffix != ".md":
+        raise SystemExit(f"Refusing to delete unexpected path: {path}")
+    path.unlink()
+PY
    fi
    ```
 
