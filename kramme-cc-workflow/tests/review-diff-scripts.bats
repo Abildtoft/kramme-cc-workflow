@@ -77,6 +77,46 @@ teardown() {
 	[ "$output" = $'committed.txt\nstaged.txt\ntracked.txt\nuntracked.txt' ]
 }
 
+@test "collect-review-diff parses JSON resolver output without eval" {
+	local fake_scripts="$TMP_DIR/fake-scripts"
+	local pwned="$TMP_DIR/collect-pwned"
+	local merge_base
+	merge_base="$(git merge-base refs/remotes/origin/main HEAD)"
+	mkdir -p "$fake_scripts"
+	cp "$SCRIPT_DIR/collect-review-diff.sh" "$fake_scripts/collect-review-diff.sh"
+	cat >"$fake_scripts/resolve-base.sh" <<'SH'
+#!/usr/bin/env bash
+if [ "${1-}" != "--format" ] || [ "${2-}" != "json" ]; then
+  echo "expected JSON format request" >&2
+  exit 2
+fi
+python3 - <<'PY'
+import json
+import os
+
+print(json.dumps({
+    "base_ref": "refs/remotes/origin/main",
+    "base_branch": "main$(touch${IFS}$PWNED_FILE)",
+    "merge_base": os.environ["MERGE_BASE_FOR_TEST"],
+    "after_commit": "",
+    "reset_point": "",
+    "original_tip": "",
+    "backup_ref": "",
+}, separators=(",", ":")))
+PY
+SH
+	chmod +x "$fake_scripts/resolve-base.sh"
+	export MERGE_BASE_FOR_TEST="$merge_base"
+	export PWNED_FILE="$pwned"
+
+	run "$fake_scripts/collect-review-diff.sh"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"BASE_REF=refs/remotes/origin/main"* ]]
+	[[ "$output" == *"BASE_BRANCH="*"touch"* ]]
+	[ ! -e "$pwned" ]
+}
+
 @test "resolve-base backup mode creates recovery branch" {
 	printf 'committed\n' >committed.txt
 	git add committed.txt

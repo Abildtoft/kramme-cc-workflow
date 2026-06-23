@@ -2,8 +2,10 @@
 #
 # Resolve a PR base ref for workflow skills.
 #
-# Output contract: shell-quoted KEY=VALUE lines suitable for:
+# Default output contract: shell-quoted KEY=VALUE lines suitable for:
 #   eval "$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" ...)"
+# JSON output is available with --format json for structured consumers. The
+# shell format is retained temporarily for existing skill snippets until W03B.
 #
 # Default mode is read-only except for fetching the resolved remote base.
 # Recreate-commits passes --backup to enable clean-tree checks, local base
@@ -18,13 +20,17 @@ AFTER_ARG=""
 FETCH_MODE="strict"
 BACKUP_MODE=0
 FORCE_BACKUP=0
+OUTPUT_FORMAT="shell"
 
 usage() {
 	cat >&2 <<'USAGE'
-Usage: resolve-base.sh [--base <branch-or-ref>] [--strict|--tolerate-fetch-failure] [--backup] [--after <commit>] [--force-backup]
+Usage: resolve-base.sh [--base <branch-or-ref>] [--strict|--tolerate-fetch-failure] [--backup] [--after <commit>] [--force-backup] [--format shell|json]
 
-Outputs shell-quoted assignments:
+Default output is shell-quoted assignments:
   BASE_REF BASE_BRANCH MERGE_BASE AFTER_COMMIT RESET_POINT ORIGINAL_TIP BACKUP_REF
+
+JSON output fields:
+  base_ref base_branch merge_base after_commit reset_point original_tip backup_ref
 USAGE
 }
 
@@ -43,6 +49,56 @@ quote_assignment() {
 	local name="$1"
 	local value="${2-}"
 	printf '%s=%q\n' "$name" "$value"
+}
+
+emit_json() {
+	if ! command -v python3 >/dev/null 2>&1; then
+		echo "python3 is required for --format json" >&2
+		exit 1
+	fi
+
+	BASE_REF="$BASE_REF" \
+		BASE_BRANCH="$BASE_BRANCH" \
+		MERGE_BASE="$MERGE_BASE" \
+		AFTER_COMMIT="$AFTER_COMMIT" \
+		RESET_POINT="$RESET_POINT" \
+		ORIGINAL_TIP="$ORIGINAL_TIP" \
+		BACKUP_REF="$BACKUP_REF" \
+		python3 - <<'PY'
+import json
+import os
+import sys
+
+fields = [
+    ("base_ref", "BASE_REF"),
+    ("base_branch", "BASE_BRANCH"),
+    ("merge_base", "MERGE_BASE"),
+    ("after_commit", "AFTER_COMMIT"),
+    ("reset_point", "RESET_POINT"),
+    ("original_tip", "ORIGINAL_TIP"),
+    ("backup_ref", "BACKUP_REF"),
+]
+
+json.dump({key: os.environ.get(env_name, "") for key, env_name in fields}, sys.stdout, separators=(",", ":"))
+sys.stdout.write("\n")
+PY
+}
+
+emit_output() {
+	case "$OUTPUT_FORMAT" in
+	shell)
+		quote_assignment BASE_REF "$BASE_REF"
+		quote_assignment BASE_BRANCH "$BASE_BRANCH"
+		quote_assignment MERGE_BASE "$MERGE_BASE"
+		quote_assignment AFTER_COMMIT "$AFTER_COMMIT"
+		quote_assignment RESET_POINT "$RESET_POINT"
+		quote_assignment ORIGINAL_TIP "$ORIGINAL_TIP"
+		quote_assignment BACKUP_REF "$BACKUP_REF"
+		;;
+	json)
+		emit_json
+		;;
+	esac
 }
 
 while [ $# -gt 0 ]; do
@@ -72,6 +128,19 @@ while [ $# -gt 0 ]; do
 	--force-backup)
 		FORCE_BACKUP=1
 		shift
+		;;
+	--format)
+		require_value "$1" "${2-}"
+		case "$2" in
+		shell | json)
+			OUTPUT_FORMAT="$2"
+			;;
+		*)
+			echo "--format must be 'shell' or 'json'" >&2
+			exit 1
+			;;
+		esac
+		shift 2
 		;;
 	-h | --help)
 		usage
@@ -283,10 +352,4 @@ if [ "$BACKUP_MODE" -eq 1 ]; then
 	fi
 fi
 
-quote_assignment BASE_REF "$BASE_REF"
-quote_assignment BASE_BRANCH "$BASE_BRANCH"
-quote_assignment MERGE_BASE "$MERGE_BASE"
-quote_assignment AFTER_COMMIT "$AFTER_COMMIT"
-quote_assignment RESET_POINT "$RESET_POINT"
-quote_assignment ORIGINAL_TIP "$ORIGINAL_TIP"
-quote_assignment BACKUP_REF "$BACKUP_REF"
+emit_output
