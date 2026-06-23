@@ -244,6 +244,82 @@ EOF
   [ "$(cat "$TMP_ROOT/kramme-cc-workflow/skills/kramme:visual:b/references/shared.md")" = "canonical" ]
 }
 
+@test "required file contract accepts frontmatter and required text" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" $'PLAN ROUTE: direct\nMISSING REQUIREMENT'
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "required_file_contracts": [
+    {
+      "name": "sample-required-file-contract",
+      "path": "kramme-cc-workflow/skills/a/SKILL.md",
+      "frontmatter": {
+        "name": "test-skill",
+        "user-invocable": "true"
+      },
+      "contains": [
+        "PLAN ROUTE:",
+        "MISSING REQUIREMENT"
+      ]
+    }
+  ]
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
+@test "required file contract frontmatter drift fails with precise field" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" "PLAN ROUTE: direct"
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "required_file_contracts": [
+    {
+      "name": "sample-required-file-contract",
+      "path": "kramme-cc-workflow/skills/a/SKILL.md",
+      "frontmatter": {
+        "name": "expected-skill"
+      },
+      "contains": [
+        "PLAN ROUTE:"
+      ]
+    }
+  ]
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"sample-required-file-contract"* ]]
+  [[ "$output" == *"frontmatter field 'name' expected 'expected-skill'"* ]]
+}
+
+@test "required file contract missing marker fails" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" "PLAN ROUTE: direct"
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "required_file_contracts": [
+    {
+      "name": "sample-required-file-contract",
+      "path": "kramme-cc-workflow/skills/a/SKILL.md",
+      "contains": [
+        "MISSING REQUIREMENT"
+      ]
+    }
+  ]
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"sample-required-file-contract"* ]]
+  [[ "$output" == *"is missing required text 'MISSING REQUIREMENT'"* ]]
+}
+
 @test "multiline text contract drift fails" {
   write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
 ---
