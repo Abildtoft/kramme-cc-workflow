@@ -329,14 +329,25 @@ disable-model-invocation: false
 user-invocable: true
 ---
 ```bash
-COLLECT_ARGS=(--strict)
+COLLECT_ARGS=(--strict --format json)
 [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
 
 RESOLVED=$(${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh "${COLLECT_ARGS[@]}") || {
   echo "Base/diff collection failed; see the message above and stop." >&2
   exit 1
 }
-eval "$RESOLVED"
+
+parse_review_diff_json() {
+  local field="$1"
+  REVIEW_DIFF_JSON="$RESOLVED" REVIEW_DIFF_FIELD="$field" python3 - <<'PY'
+import json
+PY
+}
+
+BASE_REF=$(parse_review_diff_json base_ref) || exit 1
+BASE_BRANCH=$(parse_review_diff_json base_branch) || exit 1
+MERGE_BASE=$(parse_review_diff_json merge_base) || exit 1
+CHANGED_FILES=$(parse_review_diff_json changed_files) || exit 1
 ```
 EOF
   write_file "$TMP_ROOT/kramme-cc-workflow/skills/b/SKILL.md" <<'EOF'
@@ -347,14 +358,25 @@ disable-model-invocation: false
 user-invocable: true
 ---
 ```bash
-COLLECT_ARGS=(--strict)
+COLLECT_ARGS=(--strict --format json)
 [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
 
 RESOLVED=$(${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh "${COLLECT_ARGS[@]}") || {
   echo "Base/diff collection failed; see the message above and stop." >&2
   exit 2
 }
-eval "$RESOLVED"
+
+parse_review_diff_json() {
+  local field="$1"
+  REVIEW_DIFF_JSON="$RESOLVED" REVIEW_DIFF_FIELD="$field" python3 - <<'PY'
+import json
+PY
+}
+
+BASE_REF=$(parse_review_diff_json base_ref) || exit 1
+BASE_BRANCH=$(parse_review_diff_json base_branch) || exit 1
+MERGE_BASE=$(parse_review_diff_json merge_base) || exit 1
+CHANGED_FILES=$(parse_review_diff_json changed_files) || exit 1
 ```
 EOF
   write_file "$TMP_ROOT/registry.yaml" <<'EOF'
@@ -362,7 +384,7 @@ EOF
   "text_contracts": [
     {
       "name": "sample-multiline-text-contract",
-      "extract_regex": "(?s)(COLLECT_ARGS=\\(--strict\\).*?eval \"\\$RESOLVED\")",
+      "extract_regex": "(?s)(COLLECT_ARGS=\\(--strict --format json\\).*?CHANGED_FILES=\\$\\(parse_review_diff_json changed_files\\) \\|\\| exit 1)",
       "paths": [
         "kramme-cc-workflow/skills/a/SKILL.md",
         "kramme-cc-workflow/skills/b/SKILL.md"
@@ -388,14 +410,25 @@ disable-model-invocation: false
 user-invocable: true
 ---
 ```bash
-COLLECT_ARGS=(--strict)
+COLLECT_ARGS=(--strict --format json)
 [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
 
 RESOLVED=$(${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh "${COLLECT_ARGS[@]}") || {
   echo "Base/diff collection failed; see the message above and stop." >&2
   exit 1
 }
-eval "$RESOLVED"
+
+parse_review_diff_json() {
+  local field="$1"
+  REVIEW_DIFF_JSON="$RESOLVED" REVIEW_DIFF_FIELD="$field" python3 - <<'PY'
+import json
+PY
+}
+
+BASE_REF=$(parse_review_diff_json base_ref) || exit 1
+BASE_BRANCH=$(parse_review_diff_json base_branch) || exit 1
+MERGE_BASE=$(parse_review_diff_json merge_base) || exit 1
+CHANGED_FILES=$(parse_review_diff_json changed_files) || exit 1
 ```
 EOF
   write_file "$TMP_ROOT/kramme-cc-workflow/skills/b/SKILL.md" <<'EOF'
@@ -406,13 +439,24 @@ disable-model-invocation: false
 user-invocable: true
 ---
 ```bash
-COLLECT_ARGS=(--strict)
+COLLECT_ARGS=(--strict --format json)
 [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
 
 RESOLVED=$(${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh "${COLLECT_ARGS[@]}") || {
   echo "Base/diff collection failed; see the message above and stop." >&2
   exit 1
-} eval "$RESOLVED"
+}
+
+parse_review_diff_json() {
+  local field="$1"
+  REVIEW_DIFF_JSON="$RESOLVED" REVIEW_DIFF_FIELD="$field" python3 - <<'PY'
+import json
+PY
+}
+
+BASE_REF=$(parse_review_diff_json base_ref) || exit 1
+BASE_BRANCH=$(parse_review_diff_json base_branch) || exit 1
+MERGE_BASE=$(parse_review_diff_json merge_base) || exit 1 CHANGED_FILES=$(parse_review_diff_json changed_files) || exit 1
 ```
 EOF
   write_file "$TMP_ROOT/registry.yaml" <<'EOF'
@@ -420,7 +464,7 @@ EOF
   "text_contracts": [
     {
       "name": "sample-linewise-multiline-text-contract",
-      "extract_regex": "(?s)(COLLECT_ARGS=\\(--strict\\).*?eval \"\\$RESOLVED\")",
+      "extract_regex": "(?s)(COLLECT_ARGS=\\(--strict --format json\\).*?CHANGED_FILES=\\$\\(parse_review_diff_json changed_files\\) \\|\\| exit 1)",
       "normalizer": "linewise",
       "paths": [
         "kramme-cc-workflow/skills/a/SKILL.md",
