@@ -161,94 +161,13 @@ If `auto_create = true`, resolve the create team here because Round 5 is skipped
 
 ## Phase 3: Existing Issue Handling
 
-This phase differs based on mode:
+Read `references/mode-and-review-flow.md` and follow its Phase 3 instructions for the active mode.
 
-### IMPROVE MODE
+Phase 3 must produce:
 
-The target issue was already fetched in Phase 1. Now present it to the user:
-
-1. **Present Current Issue**
-   - Show the issue title, description, labels, and metadata
-   - Format clearly for review
-   - If this is a Dev Ask issue (has "Dev Ask" label):
-     - Note to user: "This issue was created through Linear Asks. The original request will be preserved in an 'Original Dev Ask' section at the bottom of the refined issue."
-
-2. **Resume from prior session triage**
-
-   The fetched issue body may contain AI-authored content from a prior session of this skill — for example an `## Original Dev Ask` block or a prior `## Problem`/`## Value`/`## Scope` set.
-
-   Before launching the interview:
-   - Scan the description for the canonical comprehensive-template section headings.
-   - For each section already populated with substantive prior-session content (not placeholder text or one-line stubs), record which interview round it covered:
-     - `## Problem` / `## Value` → Round 1 (Problem & Value)
-     - `## Scope` / `## Out of Scope` → Round 2 (Scope & Boundaries)
-     - `## Technical Notes` / `## Affected Areas` → Round 3 (Technical Context)
-     - `## Acceptance Criteria` / `## Edge Cases` → Round 4 (Acceptance Criteria)
-     - existing `labels`/`priority`/`project` → Round 5 (Metadata)
-   - Store the parsed sections as `prior_session_context`, keyed by round.
-
-   In Phase 5, the interview must:
-   - Skip rounds whose corresponding section is already populated with substantive prior-session content, unless the user selected that area as an improvement target in Step 3 below.
-   - When skipping, show the user a one-line summary like `Round 2 (Scope & Boundaries): carrying forward from prior session — say "revisit" to re-open` so the user can re-open any round on demand.
-   - Do not re-ask resolved questions. Treat ambiguity in prior content as a reason to surface that section for refinement, not as a reason to start the round from scratch.
-
-3. **Identify Improvement Areas**
-   - Use `AskUserQuestion` to ask what aspects to improve:
-     - Problem statement clarity
-     - Value proposition
-     - Scope definition
-     - Acceptance criteria
-     - Technical context
-     - Metadata (labels, priority, etc.)
-     - All of the above (full refinement)
-   - Store selected areas for focused interview in Phase 5
-   - Selected areas always take precedence over prior-session skips — if the user says "improve scope", run Round 2 even when prior content exists.
-
-4. **Search for Related Issues**
-   - Use `mcp__linear__list_issues` with keywords from the existing issue
-   - Identify issues to link as related or blockers
-
-**Output**: Improvement areas selected, related issues identified, prior-session context recorded.
-
-### CREATE MODE
-
-Before creating a new issue, check for existing Linear issues that may already cover this topic:
-
-1. **Search for Duplicates**
-   - Use `mcp__linear__list_issues` with `query` parameter containing keywords from the description
-   - Search across relevant teams identified in Phase 2
-   - Also check `.out-of-scope/` in the project root: list filenames; read any whose slug plausibly matches the description; surface matches alongside Linear duplicate findings via the same AskUserQuestion prompt in step 3 (option labels: "proceed with new issue", "this matches a prior rejection — stop"). Skip silently if the directory is absent. See `/kramme:docs:out-of-scope` for the storage skill.
-
-2. **Identify Related Issues**
-   - Look for issues that partially overlap with the proposed scope
-   - Find issues that might be blockers or dependencies
-   - Identify issues that could be affected by this work
-
-3. **Present Findings to User**
-   - If `auto_create = true` and a strong duplicate is found, show the issue and ask whether to stop, create anyway, or rerun without `--auto` to improve the existing issue. If the user wants to improve, stop; do not switch into IMPROVE mode during the same invocation.
-   - If `auto_create = false` and potential duplicates are found, show them to the user via `AskUserQuestion`:
-     - Option to proceed with new issue (if not truly a duplicate)
-     - Option to improve an existing issue instead → **Switch to IMPROVE MODE**
-     - Option to link as related issue
-   - If related issues found, note them for the Dependencies section
-
-4. **Decision Point**
-   - If user confirms this is a duplicate → Stop and direct to existing issue
-   - If `auto_create = false` and user wants to improve existing issue → Fetch that issue with `mcp__linear__get_issue`, switch to IMPROVE MODE, and restart from Phase 3
-   - If `auto_create = true` and user confirms a new issue is needed → Continue to AUTO CREATE MODE below
-   - If `auto_create = false` and user confirms a new issue is needed → Continue to Phase 4
-   - Store any related issues for later linking
-
-**Output**: List of related issues to reference, confirmation to proceed.
-
-### AUTO CREATE MODE
-
-If `auto_create = true` and mode is CREATE:
-
-1. Complete Phase 2 team resolution and Phase 3 duplicate handling first.
-2. Read the auto-create workflow from `references/auto-create.md`.
-3. Follow that workflow to clarify, draft, approve, create, and return the Linear URL.
-4. Skip Phases 4-7 below and stop after returning the created Linear issue.
+- **Improve mode**: current issue presented, Dev Ask preservation noted when relevant, `prior_session_context` recorded, improvement areas selected, and related issues identified.
+- **Create mode**: duplicate and related issue search completed, `.out-of-scope/` matches surfaced when relevant, user decision recorded, and any related issues stored for later linking.
+- **Auto create mode**: after Phase 2 team resolution and duplicate handling, read `references/auto-create.md`; clarify, draft, approve, create, return the Linear URL, skip Phases 4-7, and stop.
 
 ## Phase 4: Codebase Exploration
 
@@ -406,79 +325,9 @@ Read the comprehensive issue template from `assets/comprehensive-template.md`. I
 
 ## Phase 7: Review & Create/Update
 
-### 1. Present Draft
+Read `references/mode-and-review-flow.md` and follow its Phase 7 instructions.
 
-**IMPROVE MODE:**
-
-- Show the updated issue with change indicators
-- Highlight what changed vs. original content
-- Show before/after for significant modifications
-
-**CREATE MODE:**
-
-- Show the complete issue (title, description, metadata)
-- Format clearly for review
-
-### 2. Allow Refinements
-
-- Ask if any changes are needed
-- Iterate on feedback until user is satisfied
-
-### 3. Create or Update Issue
-
-**IMPROVE MODE:**
-
-- Use `mcp__linear__update_issue` with:
-  - `id`: The existing issue ID
-  - `title`: Updated title (if changed)
-  - `description`: The updated markdown description (include "Original Dev Ask" section at the bottom if `is_dev_ask` is true)
-  - `labels`: Updated labels (if changed)
-  - `priority`: Updated priority (if changed)
-  - Other metadata as applicable
-
-**CREATE MODE:**
-
-- Use `mcp__linear__create_issue` with:
-  - `title`: The composed title
-  - `description`: The full markdown description
-  - `team`: Selected team ID or name
-  - `labels`: Array of selected label names
-  - `project`: Selected project (if any)
-  - `priority`: Selected priority (if any)
-
-**If the create or update call fails:**
-
-- Output the full drafted issue markdown (title, description, and intended metadata) to the user so the interview work is not lost
-- Report the error Linear returned
-- Offer to retry; do not silently abandon the draft or proceed to the next step
-
-### 4. Return Result
-
-**IMPROVE MODE:**
-
-- Provide the updated issue URL
-- Summarize what was changed
-
-**CREATE MODE:**
-
-- Provide the created issue URL
-- Confirm successful creation
-
-### 5. Workflow Complete - STOP
-
-**The linear:issue-define workflow is now complete.**
-
-- Do NOT proceed to code implementation
-- Do NOT start working on the issue
-- Do NOT invoke other commands automatically
-
-**Next steps for the user:**
-
-- Review the created/updated issue in Linear
-- If ready to implement, invoke `/kramme:linear:issue-implement {issue-id}`
-- If changes needed, run `/kramme:linear:issue-define {issue-id}` again to refine
-
-**STOP HERE.** Wait for the user's next instruction.
+Always present the draft, allow user refinements, create or update the issue only after approval, report Linear failures with the full drafted issue so work is not lost, return the issue URL, and stop without starting implementation.
 
 ## Important Guidelines
 
