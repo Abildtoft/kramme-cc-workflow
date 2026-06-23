@@ -3,6 +3,38 @@
 ## Unreleased
 
 ### Changed
+## [0.64.0] - 2026-06-23
+
+### Added
+- Enforce required file contracts (#547)
+- Add codebase weakness audit (#546)
+- Report long-skill warnings (#538)
+- Add codebase pattern review (#535)
+- Add local walkthrough generator (#533)
+- Add candidate review packets (#531)
+- Add skill-review pilot adapter (#530)
+- Add answer-option verification prompts (#529)
+- Add split plan updater skill (#527)
+- Include bot feedback (#523)
+
+### Changed
+- Share git command parser (#545)
+- Extract spec resolution reference (#543)
+- Split converter into modules (#541)
+- Honor GitHub PR templates (#540)
+- Rename quick create mode to auto (#536)
+- Add refactor review mode (#534)
+- Document pilot adoption guardrails (#532)
+- Clarify reply plan format (#526)
+- Prefer requested branch PRs (#524)
+- Add reconcile planning workflow (#522)
+- Consolidate pipeline fixes in auto mode (#521)
+- Keep test plans manual-only (#520)
+
+### Fixed
+- Harden safety hooks without jq (#542)
+- Validate empty field allowlist (#537)
+
 ## [0.63.0] - 2026-06-14
 
 ### Added
@@ -475,6 +507,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+[0.64.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.63.0...v0.64.0
 [0.63.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.62.0...v0.63.0
 [0.62.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.61.0...v0.62.0
 [0.61.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.60.0...v0.61.0
