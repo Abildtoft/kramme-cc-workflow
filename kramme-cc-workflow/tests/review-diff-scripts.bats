@@ -77,6 +77,39 @@ teardown() {
 	[ "$output" = $'committed.txt\nstaged.txt\ntracked.txt\nuntracked.txt' ]
 }
 
+@test "collect-review-diff emits JSON for structured consumers" {
+	printf 'committed\n' >committed.txt
+	git add committed.txt
+	git commit -m "feature commit" >/dev/null
+
+	printf 'staged\n' >staged.txt
+	git add staged.txt
+
+	printf 'base\nunstaged\n' >tracked.txt
+	printf 'untracked\n' >untracked.txt
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --format json
+
+	[ "$status" -eq 0 ]
+	COLLECTED_JSON="$output" python3 - <<'PY'
+import json
+import os
+import sys
+
+data = json.loads(os.environ["COLLECTED_JSON"])
+expected_changed_files = [
+    "committed.txt",
+    "staged.txt",
+    "tracked.txt",
+    "untracked.txt",
+]
+assert data["base_ref"] == "refs/remotes/origin/main", data
+assert data["base_branch"] == "main", data
+assert isinstance(data["merge_base"], str) and data["merge_base"], data
+assert data["changed_files"] == expected_changed_files, data
+PY
+}
+
 @test "collect-review-diff parses JSON resolver output without eval" {
 	local fake_scripts="$TMP_DIR/fake-scripts"
 	local pwned="$TMP_DIR/collect-pwned"
@@ -109,11 +142,17 @@ SH
 	export MERGE_BASE_FOR_TEST="$merge_base"
 	export PWNED_FILE="$pwned"
 
-	run "$fake_scripts/collect-review-diff.sh"
+	run "$fake_scripts/collect-review-diff.sh" --format json
 
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"BASE_REF=refs/remotes/origin/main"* ]]
-	[[ "$output" == *"BASE_BRANCH="*"touch"* ]]
+	COLLECTED_JSON="$output" python3 - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["COLLECTED_JSON"])
+assert data["base_ref"] == "refs/remotes/origin/main", data
+assert "touch" in data["base_branch"], data
+PY
 	[ ! -e "$pwned" ]
 }
 

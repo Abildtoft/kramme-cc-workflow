@@ -9,6 +9,19 @@ set -euo pipefail
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 
 RESOLVE_ARGS=(--strict)
+OUTPUT_FORMAT="shell"
+
+usage() {
+	cat >&2 <<'USAGE'
+Usage: collect-review-diff.sh [--base <branch-or-ref>] [--strict|--tolerate-fetch-failure] [--format shell|json]
+
+Default output is shell-quoted assignments:
+  BASE_REF BASE_BRANCH MERGE_BASE CHANGED_FILES
+
+JSON output fields:
+  base_ref base_branch merge_base changed_files
+USAGE
+}
 
 require_value() {
 	local flag="$1"
@@ -25,6 +38,49 @@ quote_assignment() {
 	local name="$1"
 	local value="${2-}"
 	printf '%s=%q\n' "$name" "$value"
+}
+
+emit_json() {
+	if ! command -v python3 >/dev/null 2>&1; then
+		echo "python3 is required for --format json" >&2
+		exit 1
+	fi
+
+	BASE_REF="$BASE_REF" \
+		BASE_BRANCH="$BASE_BRANCH" \
+		MERGE_BASE="$MERGE_BASE" \
+		CHANGED_FILES="$CHANGED_FILES" \
+		python3 - <<'PY'
+import json
+import os
+import sys
+
+json.dump(
+    {
+        "base_ref": os.environ.get("BASE_REF", ""),
+        "base_branch": os.environ.get("BASE_BRANCH", ""),
+        "merge_base": os.environ.get("MERGE_BASE", ""),
+        "changed_files": os.environ.get("CHANGED_FILES", "").splitlines(),
+    },
+    sys.stdout,
+    separators=(",", ":"),
+)
+sys.stdout.write("\n")
+PY
+}
+
+emit_output() {
+	case "$OUTPUT_FORMAT" in
+	shell)
+		quote_assignment BASE_REF "$BASE_REF"
+		quote_assignment BASE_BRANCH "$BASE_BRANCH"
+		quote_assignment MERGE_BASE "$MERGE_BASE"
+		quote_assignment CHANGED_FILES "$CHANGED_FILES"
+		;;
+	json)
+		emit_json
+		;;
+	esac
 }
 
 parse_resolved_json() {
@@ -79,17 +135,26 @@ while [ $# -gt 0 ]; do
 		RESOLVE_ARGS+=(--tolerate-fetch-failure)
 		shift
 		;;
+	--format)
+		require_value "$1" "${2-}"
+		case "$2" in
+		shell | json)
+			OUTPUT_FORMAT="$2"
+			;;
+		*)
+			echo "--format must be 'shell' or 'json'" >&2
+			exit 1
+			;;
+		esac
+		shift 2
+		;;
 	-h | --help)
-		cat >&2 <<'USAGE'
-Usage: collect-review-diff.sh [--base <branch-or-ref>] [--strict|--tolerate-fetch-failure]
-
-Outputs shell-quoted assignments:
-  BASE_REF BASE_BRANCH MERGE_BASE CHANGED_FILES
-USAGE
+		usage
 		exit 0
 		;;
 	*)
 		echo "Unknown argument: $1" >&2
+		usage
 		exit 1
 		;;
 	esac
@@ -108,7 +173,4 @@ CHANGED_FILES=$({
 	git ls-files --others --exclude-standard
 } | sed '/^$/d' | sort -u)
 
-quote_assignment BASE_REF "$BASE_REF"
-quote_assignment BASE_BRANCH "$BASE_BRANCH"
-quote_assignment MERGE_BASE "$MERGE_BASE"
-quote_assignment CHANGED_FILES "$CHANGED_FILES"
+emit_output
