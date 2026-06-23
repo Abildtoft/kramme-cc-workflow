@@ -225,6 +225,16 @@ run_hook() {
 	is_blocked
 }
 
+@test "blocks rm with nested command substitution target before flags" {
+	run run_hook 'rm $(dirname $(pwd)) -rf'
+	is_blocked
+}
+
+@test "blocks command substitution rm with deeply nested command substitution target before flags" {
+	run run_hook 'echo $(rm $(dirname $(pwd)) -rf)'
+	is_blocked
+}
+
 @test "allows command substitution rm without rf followed by outer rf text" {
 	run run_hook 'echo $(rm file.txt) -rf'
 	[ "$status" -eq 0 ]

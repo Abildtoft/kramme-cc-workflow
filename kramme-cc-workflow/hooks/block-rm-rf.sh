@@ -73,23 +73,110 @@ stripped=$(echo "$command" | sed "s/'[^']*'//g" | sed 's/"[^"]*"//g')
 # Catches: rm, /bin/rm, /usr/bin/rm, ./rm, command rm, env rm, \rm, sudo rm
 # ============================================================================
 rm_prefix='(^|[;&|`]\s*|\$\(\s*)'
-rm_command_prefix='(^|[;&|]\s*)'
-rm_substitution_prefix='(`\s*|\$\(\s*)'
-rm_variants='(sudo\s+)?(command\s+|env\s+|\\)?(/usr)?(/bin)?/?(\.\/)?rm\b'
-rm_segment_suffix='([^;&|`)]|\$\([^)]*\)|`[^`]*`)*'
-rm_command_segment_suffix="$rm_segment_suffix"
-rm_substitution_segment_suffix="$rm_segment_suffix"
-rm_segment_pattern="${rm_command_prefix}${rm_variants}${rm_command_segment_suffix}|${rm_substitution_prefix}${rm_variants}${rm_substitution_segment_suffix}"
+rm_command_start_prefix='(^|[;&|][[:space:]]*|`[[:space:]]*|\$\([[:space:]]*)$'
+rm_backtick_substitution_prefix='`[[:space:]]*$'
+rm_variants='(sudo[[:space:]]+)?((command|env)[[:space:]]+|\\)?((/usr)?/?bin/rm|\.\/rm|rm)([[:space:]]|$)'
 
+is_rm_command_start() {
+  local text="$1"
+  local index="$2"
+  local prefix="${text:0:index}"
+  local tail="${text:index}"
+
+  [[ "$prefix" =~ $rm_command_start_prefix ]] && [[ "$tail" =~ ^$rm_variants ]]
+}
+
+is_backtick_substitution_start() {
+  local text="$1"
+  local index="$2"
+  local prefix="${text:0:index}"
+
+  [[ "$prefix" =~ $rm_backtick_substitution_prefix ]]
+}
+
+extract_rm_segment() {
+  local text="$1"
+  local start="$2"
+  local segment=""
+  local i="$start"
+  local length="${#text}"
+  local substitution_depth=0
+  local in_nested_backtick=false
+  local outer_backtick=false
+  local char
+  local next_char
+
+  if is_backtick_substitution_start "$text" "$start"; then
+    outer_backtick=true
+  fi
+
+  while (( i < length )); do
+    char="${text:i:1}"
+    next_char="${text:i+1:1}"
+
+    if [[ "$in_nested_backtick" == true ]]; then
+      segment+="$char"
+      if [[ "$char" == '`' ]]; then
+        in_nested_backtick=false
+      fi
+      ((i++))
+      continue
+    fi
+
+    if [[ "$char" == '$' && "$next_char" == '(' ]]; then
+      segment+='$('
+      ((substitution_depth++))
+      ((i += 2))
+      continue
+    fi
+
+    if [[ "$char" == ')' ]]; then
+      if (( substitution_depth > 0 )); then
+        segment+="$char"
+        ((substitution_depth--))
+        ((i++))
+        continue
+      fi
+      break
+    fi
+
+    if [[ "$char" == '`' ]]; then
+      if (( substitution_depth == 0 )) && [[ "$outer_backtick" == true ]]; then
+        break
+      fi
+      segment+="$char"
+      in_nested_backtick=true
+      ((i++))
+      continue
+    fi
+
+    if (( substitution_depth == 0 )) && { [[ "$char" == ';' ]] || [[ "$char" == '&' ]] || [[ "$char" == '|' ]]; }; then
+      break
+    fi
+
+    segment+="$char"
+    ((i++))
+  done
+
+  printf '%s\n' "$segment"
+}
+
+# Keep flag checks scoped to the rm invocation; nested substitutions may contain
+# shell separators that should not end the outer rm segment.
 has_blocked_rm_segment() {
   local text="$1"
   local segment
+  local i
 
-  while IFS= read -r segment; do
-    if has_rf_flags "$segment"; then
-      return 0
+  for (( i = 0; i < ${#text}; i++ )); do
+    if is_rm_command_start "$text" "$i"; then
+      segment=$(extract_rm_segment "$text" "$i")
+      if has_rf_flags "$segment"; then
+        return 0
+      fi
+      ((i += ${#segment} - 1))
     fi
-  done < <(printf '%s\n' "$text" | grep -oE "$rm_segment_pattern")
+  done
 
   return 1
 }
