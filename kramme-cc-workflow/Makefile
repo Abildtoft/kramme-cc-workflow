@@ -1,4 +1,4 @@
-.PHONY: lint lint-shell lint-python verify test test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps
+.PHONY: lint lint-shell lint-python verify test test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree check-visual-shared-assets sync-visual-shared-assets skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps
 
 SHELLCHECK ?= shellcheck
 SHELLCHECK_SEVERITY ?= error
@@ -86,6 +86,14 @@ test-git-clean-gone:
 # Run only worktree helper tests
 test-git-worktree:
 	@bats tests/worktree-helper.bats
+
+# Check visual shared resources against their canonical identity-group copies
+check-visual-shared-assets:
+	@python3 scripts/generate-visual-shared-assets.py --check
+
+# Sync visual shared resources from their canonical identity-group copies
+sync-visual-shared-assets:
+	@python3 scripts/generate-visual-shared-assets.py --write
 
 skill-security:
 	@./scripts/run-skillspector.sh --all --format "$(SKILLSPECTOR_FORMAT)" --fail-on "$(SKILLSPECTOR_FAIL_ON)"
