@@ -27,6 +27,43 @@ quote_assignment() {
 	printf '%s=%q\n' "$name" "$value"
 }
 
+parse_resolved_json() {
+	local resolved_json="$1"
+	local parsed
+
+	if ! command -v python3 >/dev/null 2>&1; then
+		echo "python3 is required to parse resolve-base JSON output" >&2
+		exit 1
+	fi
+
+	parsed=$(RESOLVED_JSON="$resolved_json" python3 - <<'PY'
+import json
+import os
+import sys
+
+try:
+    data = json.loads(os.environ["RESOLVED_JSON"])
+except (KeyError, json.JSONDecodeError) as exc:
+    print(f"Invalid resolve-base JSON output: {exc}", file=sys.stderr)
+    sys.exit(1)
+
+for key in ("base_ref", "base_branch", "merge_base"):
+    value = data.get(key)
+    if not isinstance(value, str):
+        print(f"resolve-base JSON field '{key}' must be a string", file=sys.stderr)
+        sys.exit(1)
+    print(value)
+PY
+) || {
+		echo "Base resolution returned malformed JSON; stop." >&2
+		exit 1
+	}
+
+	BASE_REF=$(printf '%s\n' "$parsed" | sed -n '1p')
+	BASE_BRANCH=$(printf '%s\n' "$parsed" | sed -n '2p')
+	MERGE_BASE=$(printf '%s\n' "$parsed" | sed -n '3p')
+}
+
 while [ $# -gt 0 ]; do
 	case "$1" in
 	--base)
@@ -58,11 +95,11 @@ USAGE
 	esac
 done
 
-RESOLVED=$("$SCRIPT_DIR/resolve-base.sh" "${RESOLVE_ARGS[@]}") || {
+RESOLVED=$("$SCRIPT_DIR/resolve-base.sh" --format json "${RESOLVE_ARGS[@]}") || {
 	echo "Base resolution failed; see the message above and stop." >&2
 	exit 1
 }
-eval "$RESOLVED"
+parse_resolved_json "$RESOLVED"
 
 CHANGED_FILES=$({
 	git diff --name-only "$MERGE_BASE"...HEAD

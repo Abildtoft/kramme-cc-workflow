@@ -58,6 +58,26 @@ load_assignments() {
 	eval "$assignments"
 }
 
+json_value() {
+	local key="$1"
+	JSON_OUTPUT="$output" python3 - "$key" <<'PY'
+import json
+import os
+import sys
+
+print(json.loads(os.environ["JSON_OUTPUT"])[sys.argv[1]])
+PY
+}
+
+json_keys() {
+	JSON_OUTPUT="$output" python3 - <<'PY'
+import json
+import os
+
+print("\n".join(json.loads(os.environ["JSON_OUTPUT"]).keys()))
+PY
+}
+
 commit_file() {
 	local file="$1"
 	local content="$2"
@@ -91,6 +111,44 @@ delete_origin_head() {
 	[ "$RESET_POINT" = "" ]
 	[ "$ORIGINAL_TIP" = "" ]
 	[ "$BACKUP_REF" = "" ]
+}
+
+@test "json format exports structured fields matching shell compatibility output" {
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	local expected_base_ref="$BASE_REF"
+	local expected_base_branch="$BASE_BRANCH"
+	local expected_merge_base="$MERGE_BASE"
+	local expected_after_commit="$AFTER_COMMIT"
+	local expected_reset_point="$RESET_POINT"
+	local expected_original_tip="$ORIGINAL_TIP"
+	local expected_backup_ref="$BACKUP_REF"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --format json
+
+	[ "$status" -eq 0 ]
+	[ "$(json_keys)" = $'base_ref\nbase_branch\nmerge_base\nafter_commit\nreset_point\noriginal_tip\nbackup_ref' ]
+	[ "$(json_value base_ref)" = "$expected_base_ref" ]
+	[ "$(json_value base_branch)" = "$expected_base_branch" ]
+	[ "$(json_value merge_base)" = "$expected_merge_base" ]
+	[ "$(json_value after_commit)" = "$expected_after_commit" ]
+	[ "$(json_value reset_point)" = "$expected_reset_point" ]
+	[ "$(json_value original_tip)" = "$expected_original_tip" ]
+	[ "$(json_value backup_ref)" = "$expected_backup_ref" ]
+}
+
+@test "json format treats shell metacharacters as data" {
+	local branch='topic-$(touch${IFS}$PWNED_FILE)'
+	export PWNED_FILE="$TMP_DIR/json-pwned"
+	create_remote_branch "$branch"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --format json --base "$branch"
+
+	[ "$status" -eq 0 ]
+	[ "$(json_value base_branch)" = "$branch" ]
+	[ ! -e "$PWNED_FILE" ]
 }
 
 @test "uses GitHub PR base metadata before origin HEAD" {
@@ -460,6 +518,14 @@ delete_origin_head() {
 	run "$SCRIPT_DIR/resolve-base.sh" --after --strict
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"--after requires a value"* ]]
+
+	run "$SCRIPT_DIR/resolve-base.sh" --format
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--format requires a value"* ]]
+
+	run "$SCRIPT_DIR/resolve-base.sh" --format yaml
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--format must be 'shell' or 'json'"* ]]
 
 	run "$SCRIPT_DIR/resolve-base.sh" --bogus
 	[ "$status" -eq 1 ]
