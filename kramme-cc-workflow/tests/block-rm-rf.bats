@@ -110,6 +110,21 @@ run_hook() {
 	[ -z "$output" ]
 }
 
+@test "blocks git rm followed by rm -rf with semicolon" {
+	run run_hook "git rm tracked.md; rm -rf tmpdir"
+	is_blocked
+}
+
+@test "blocks git rm followed by rm -rf with &&" {
+	run run_hook "git rm tracked.md && rm -rf tmpdir"
+	is_blocked
+}
+
+@test "blocks git rm followed by rm -rf with ||" {
+	run run_hook "git rm tracked.md || rm -rf tmpdir"
+	is_blocked
+}
+
 # ============================================================================
 # QUOTED STRINGS (allowed - false positive prevention)
 # ============================================================================
@@ -183,6 +198,22 @@ run_hook() {
 @test "blocks rm --force --recursive" {
 	run run_hook "rm --force --recursive directory/"
 	is_blocked
+}
+
+@test "blocks rm with command substitution target before flags" {
+	run run_hook 'rm $(echo directory/) -rf'
+	is_blocked
+}
+
+@test "blocks rm with backtick target before flags" {
+	run run_hook 'rm `echo directory/` -rf'
+	is_blocked
+}
+
+@test "allows command substitution rm without rf followed by outer rf text" {
+	run run_hook 'echo $(rm file.txt) -rf'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
 }
 
 @test "blocks rm -R -f (uppercase R)" {

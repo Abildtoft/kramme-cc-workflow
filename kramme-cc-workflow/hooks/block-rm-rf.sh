@@ -69,23 +69,32 @@ fi
 stripped=$(echo "$command" | sed "s/'[^']*'//g" | sed 's/"[^"]*"//g')
 
 # ============================================================================
-# ALLOW: git rm (tracked by git, recoverable)
-# ============================================================================
-if echo "$stripped" | grep -qE '(^|[;&|]\s*)git\s+rm\b'; then
-  exit 0
-fi
-
-# ============================================================================
 # BLOCK: rm -rf (and all variants)
 # Catches: rm, /bin/rm, /usr/bin/rm, ./rm, command rm, env rm, \rm, sudo rm
 # ============================================================================
 rm_prefix='(^|[;&|`]\s*|\$\(\s*)'
+rm_command_prefix='(^|[;&|]\s*)'
+rm_substitution_prefix='(`\s*|\$\(\s*)'
 rm_variants='(sudo\s+)?(command\s+|env\s+|\\)?(/usr)?(/bin)?/?(\.\/)?rm\b'
+rm_command_segment_suffix='[^;&|]*'
+rm_substitution_segment_suffix='[^;&|`)]*'
+rm_segment_pattern="${rm_command_prefix}${rm_variants}${rm_command_segment_suffix}|${rm_substitution_prefix}${rm_variants}${rm_substitution_segment_suffix}"
 
-if echo "$stripped" | grep -qE "${rm_prefix}${rm_variants}"; then
-  if has_rf_flags "$stripped"; then
-    block "rm -rf is blocked. Use \`trash\` instead (install: brew install trash). Files go to Trash for recovery."
-  fi
+has_blocked_rm_segment() {
+  local text="$1"
+  local segment
+
+  while IFS= read -r segment; do
+    if has_rf_flags "$segment"; then
+      return 0
+    fi
+  done < <(printf '%s\n' "$text" | grep -oE "$rm_segment_pattern")
+
+  return 1
+}
+
+if has_blocked_rm_segment "$stripped"; then
+  block "rm -rf is blocked. Use \`trash\` instead (install: brew install trash). Files go to Trash for recovery."
 fi
 
 # ============================================================================
