@@ -42,7 +42,11 @@ options:
 
 ## Identifying the Main Spec
 
-The main spec is the project-named uppercase markdown file at the top of `siw/` (chosen at `kramme:siw:init` time — common names include `FEATURE_SPECIFICATION.md`, `API_DESIGN.md`, `SYSTEM_DESIGN.md`, `PROJECT_PLAN.md`). Exclude the synced SIW spec-exclusion contract before selecting a candidate: `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, and `SIW_*.md`. If multiple candidates remain, ask the user which file is the main spec before editing it.
+The main spec is the project-named uppercase markdown file at the top of `siw/` (chosen at `kramme:siw:init` time — common names include `FEATURE_SPECIFICATION.md`, `API_DESIGN.md`, `SYSTEM_DESIGN.md`, `PROJECT_PLAN.md`). Exclude the synced SIW spec-exclusion contract before selecting a candidate: `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, and `SIW_*.md`.
+
+Synced SIW main-spec ambiguity contract (keep aligned across SIW spec detectors): when multiple spec candidates remain after deterministic heading/filename matching, auto mode stops with MISSING REQUIREMENT and interactive mode asks the user which file is the main spec.
+
+Build a deterministic match set by project filename or first `#` heading when available. If exactly one candidate matches, use it. If zero or multiple candidates remain after matching and the current workflow is running in `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: multiple spec candidates found; rerun interactively or pass an explicit main spec path`. Otherwise ask the user which file is the main spec before editing it.
 
 ## Updating Supporting Specs (10.4) — Worked Example
 

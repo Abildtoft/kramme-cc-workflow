@@ -15,7 +15,11 @@ Build main-spec candidates from markdown files directly under the SIW directory,
 - `PRODUCT_AUDIT.md`
 - `SIW_*.md`
 
-If exactly one candidate exists, use it. If multiple exist, prefer the file whose first `#` heading matches the project title in `LOG.md`; otherwise present the candidates and ask the user which one is the main spec.
+If no candidate exists, stop with a missing spec message rather than inventing one. If exactly one candidate exists, use it. If multiple exist, build a deterministic match set from files whose filename or first `#` heading matches the project title in `LOG.md`.
+
+Synced SIW main-spec ambiguity contract (keep aligned across SIW spec detectors): when multiple spec candidates remain after deterministic heading/filename matching, auto mode stops with MISSING REQUIREMENT and interactive mode asks the user which file is the main spec.
+
+If exactly one candidate matches, use it. If zero or multiple candidates remain after matching, this interactive migration presents the candidates and asks the user which one is the main spec.
 
 Candidates that lose the tiebreak stay in the Document set: they are still source-of-truth planning documents (a developer brief, for example) and must be migrated as Linear Documents, not dropped.
 

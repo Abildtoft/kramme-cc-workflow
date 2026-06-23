@@ -33,7 +33,11 @@ Then stop.
 ### Step 1: Read SIW State
 
 1. Read `siw/OPEN_ISSUES_OVERVIEW.md` to understand all issues and their statuses.
-2. Read the main spec file for project context. The main spec is the project-named uppercase markdown file at the top of `siw/` (for example `siw/FEATURE_SPECIFICATION.md`, `siw/API_DESIGN.md`, `siw/PROJECT_PLAN.md`) — the filename is chosen at `kramme:siw:init` time. Exclude the SIW tracking files (`LOG.md`, `OPEN_ISSUES_OVERVIEW.md`) and temporary artifacts (`DISCOVERY_BRIEF.md`). If multiple candidates remain after filtering, ask the user which file is the main spec before continuing.
+2. Read the main spec file for project context. The main spec is the project-named uppercase markdown file at the top of `siw/` (for example `siw/FEATURE_SPECIFICATION.md`, `siw/API_DESIGN.md`, `siw/PROJECT_PLAN.md`) — the filename is chosen at `kramme:siw:init` time. Exclude the SIW tracking files (`LOG.md`, `OPEN_ISSUES_OVERVIEW.md`) and temporary artifacts (`DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`).
+
+   Synced SIW main-spec ambiguity contract (keep aligned across SIW spec detectors): when multiple spec candidates remain after deterministic heading/filename matching, auto mode stops with MISSING REQUIREMENT and interactive mode asks the user which file is the main spec.
+
+   If multiple candidates remain after filtering, build a deterministic match set from candidates whose filename or first `#` heading matches the project title in `siw/LOG.md` (case-insensitive, hyphen/underscore-insensitive). If exactly one candidate matches, use it. If zero or multiple candidates remain after matching and `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: multiple spec candidates found; rerun without --auto to choose the main spec before starting team mode`. If zero or multiple candidates remain after matching and `AUTO_MODE` is false, ask the user which file is the main spec before continuing.
 3. Read `siw/LOG.md` for current progress and decisions.
 4. Capture each issue's `Mode` from the overview table when present, then confirm it from the issue file status line when reading candidates. Treat missing Mode as `HITL — mode missing; requires human triage`.
 

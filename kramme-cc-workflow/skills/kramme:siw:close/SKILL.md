@@ -123,7 +123,13 @@ The feature name determines the output directory `docs/<feature-name>/`.
 
    Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.
 2. If no spec candidates are found, follow the "No spec file found" edge case.
-3. If multiple spec candidates are found and `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: multiple spec candidates found; pass through an interactive close to choose the main spec`. Otherwise use AskUserQuestion to select the main one:
+3. If exactly one spec candidate is found, use it as the main spec.
+4. If multiple spec candidates are found, build a deterministic match set against the project title from `siw/LOG.md` by filename or first `#` heading (case-insensitive, hyphen/underscore-insensitive).
+
+   Synced SIW main-spec ambiguity contract (keep aligned across SIW spec detectors): when multiple spec candidates remain after deterministic heading/filename matching, auto mode stops with MISSING REQUIREMENT and interactive mode asks the user which file is the main spec.
+
+5. If exactly one spec candidate matches, use it as the main spec.
+6. If zero or multiple spec candidates remain after matching and `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: multiple spec candidates found; pass through an interactive close to choose the main spec`. Otherwise use AskUserQuestion to select the main one:
    ```yaml
    header: "Multiple Spec Files Found"
    question: "Which specification file is the main spec for this project?"
@@ -131,9 +137,9 @@ The feature name determines the output directory `docs/<feature-name>/`.
      - label: "{spec_file_1}"
      - label: "{spec_file_2}"
    ```
-4. Read the first `# heading` from the selected spec
-5. Convert to kebab-case: lowercase, replace spaces/underscores with hyphens, strip non-alphanumeric characters
-6. If the heading is too generic (e.g., just "Specification" or "Feature"), fall back to the filename minus suffixes like `_SPECIFICATION`, `_DESIGN`, `_PLAN`, `.md`
+7. Read the first `# heading` from the selected spec
+8. Convert to kebab-case: lowercase, replace spaces/underscores with hyphens, strip non-alphanumeric characters
+9. If the heading is too generic (e.g., just "Specification" or "Feature"), fall back to the filename minus suffixes like `_SPECIFICATION`, `_DESIGN`, `_PLAN`, `.md`
 
 ### 3.2 Confirm with User
 
@@ -375,20 +381,40 @@ After deletion, verify every target with `[ ! -e "$path" ]`. Record only verifie
 After deletion, check if `siw/` is empty:
 
 ```bash
-# Remove .gitkeep only from directories that were part of delete_targets.
-rm -f siw/issues/.gitkeep siw/qa-intake/.gitkeep 2> /dev/null
-if [ "{spec_disposition}" = "remove" ]; then
-  rm -f siw/supporting-specs/.gitkeep 2> /dev/null
-fi
-if [ -z "$(find siw -mindepth 1 ! -name .gitkeep -print -quit 2> /dev/null)" ]; then
-  rm -f siw/.gitkeep 2> /dev/null
-fi
-# Remove empty directories
-rmdir siw/issues siw/qa-intake 2> /dev/null
-if [ "{spec_disposition}" = "remove" ]; then
-  rmdir siw/supporting-specs 2> /dev/null
-fi
-rmdir siw 2> /dev/null
+SPEC_DISPOSITION="{spec_disposition}" python3 - <<'PY'
+from pathlib import Path
+import os
+
+siw = Path("siw")
+gitkeep_paths = [
+    siw / "issues" / ".gitkeep",
+    siw / "qa-intake" / ".gitkeep",
+]
+empty_dirs = [
+    siw / "issues",
+    siw / "qa-intake",
+]
+
+if os.environ.get("SPEC_DISPOSITION") == "remove":
+    gitkeep_paths.append(siw / "supporting-specs" / ".gitkeep")
+    empty_dirs.append(siw / "supporting-specs")
+
+if siw.exists() and not any(path.is_file() and path.name != ".gitkeep" for path in siw.rglob("*")):
+    gitkeep_paths.append(siw / ".gitkeep")
+
+for path in gitkeep_paths:
+    if path.exists():
+        if path.name != ".gitkeep" or path.parts[:1] != ("siw",):
+            raise SystemExit(f"Refusing to delete unexpected path: {path}")
+        path.unlink()
+
+for directory in [*empty_dirs, siw]:
+    if directory.exists() and directory.is_dir():
+        try:
+            directory.rmdir()
+        except OSError:
+            pass
+PY
 ```
 
 If `siw/` still has files (spec kept or other files present), leave it alone.

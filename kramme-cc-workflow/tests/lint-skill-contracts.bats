@@ -104,6 +104,43 @@ EOF
   [[ "$output" == *"differs"* ]]
 }
 
+@test "siw main spec ambiguity contract drift fails with precise contract name" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
+Synced SIW main-spec ambiguity contract (keep aligned across SIW spec detectors): when multiple spec candidates remain after deterministic heading/filename matching, auto mode stops with MISSING REQUIREMENT and interactive mode asks the user which file is the main spec.
+EOF
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/b/SKILL.md" <<'EOF'
+Synced SIW main-spec ambiguity contract (keep aligned across SIW spec detectors): when multiple spec candidates remain after deterministic heading/filename matching, auto mode picks the first candidate and interactive mode asks the user which file is the main spec.
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "text_contracts": [
+    {
+      "name": "siw-main-spec-ambiguity-rule",
+      "extract_regex": "Synced SIW main-spec ambiguity contract \\(keep aligned across SIW spec detectors\\):\\s*(when multiple spec candidates remain after deterministic heading/filename matching, auto mode .*? and interactive mode asks the user which file is the main spec\\.)",
+      "paths": [
+        "kramme-cc-workflow/skills/a/SKILL.md",
+        "kramme-cc-workflow/skills/b/SKILL.md"
+      ]
+    }
+  ]
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"siw-main-spec-ambiguity-rule"* ]]
+  [[ "$output" == *"differs"* ]]
+}
+
+@test "siw main spec ambiguity contract covers issue implement team mode" {
+  local registry_text
+  registry_text="$(cat "$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml")"
+
+  [[ "$registry_text" == *'"name": "siw-main-spec-ambiguity-rule"'* ]]
+  [[ "$registry_text" == *'"kramme-cc-workflow/skills/kramme:siw:issue-implement/references/team-mode.md"'* ]]
+}
+
 @test "ordered heading drift fails" {
   write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" $'## Current Progress\n\n### Last Completed\n\n### Project Status'
   write_file "$TMP_ROOT/registry.yaml" <<'EOF'
