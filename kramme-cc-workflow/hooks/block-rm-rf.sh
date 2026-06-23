@@ -69,23 +69,120 @@ fi
 stripped=$(echo "$command" | sed "s/'[^']*'//g" | sed 's/"[^"]*"//g')
 
 # ============================================================================
-# ALLOW: git rm (tracked by git, recoverable)
-# ============================================================================
-if echo "$stripped" | grep -qE '(^|[;&|]\s*)git\s+rm\b'; then
-  exit 0
-fi
-
-# ============================================================================
 # BLOCK: rm -rf (and all variants)
 # Catches: rm, /bin/rm, /usr/bin/rm, ./rm, command rm, env rm, \rm, sudo rm
 # ============================================================================
 rm_prefix='(^|[;&|`]\s*|\$\(\s*)'
-rm_variants='(sudo\s+)?(command\s+|env\s+|\\)?(/usr)?(/bin)?/?(\.\/)?rm\b'
+rm_command_start_prefix='(^|[;&|][[:space:]]*|`[[:space:]]*|\$\([[:space:]]*)$'
+rm_backtick_substitution_prefix='`[[:space:]]*$'
+rm_variants='(sudo[[:space:]]+)?((command|env)[[:space:]]+|\\)?((/usr)?/?bin/rm|\.\/rm|rm)([[:space:]]|$)'
 
-if echo "$stripped" | grep -qE "${rm_prefix}${rm_variants}"; then
-  if has_rf_flags "$stripped"; then
-    block "rm -rf is blocked. Use \`trash\` instead (install: brew install trash). Files go to Trash for recovery."
+is_rm_command_start() {
+  local text="$1"
+  local index="$2"
+  local prefix="${text:0:index}"
+  local tail="${text:index}"
+
+  [[ "$prefix" =~ $rm_command_start_prefix ]] && [[ "$tail" =~ ^$rm_variants ]]
+}
+
+is_backtick_substitution_start() {
+  local text="$1"
+  local index="$2"
+  local prefix="${text:0:index}"
+
+  [[ "$prefix" =~ $rm_backtick_substitution_prefix ]]
+}
+
+extract_rm_segment() {
+  local text="$1"
+  local start="$2"
+  local segment=""
+  local i="$start"
+  local length="${#text}"
+  local substitution_depth=0
+  local in_nested_backtick=false
+  local outer_backtick=false
+  local char
+  local next_char
+
+  if is_backtick_substitution_start "$text" "$start"; then
+    outer_backtick=true
   fi
+
+  while (( i < length )); do
+    char="${text:i:1}"
+    next_char="${text:i+1:1}"
+
+    if [[ "$in_nested_backtick" == true ]]; then
+      segment+="$char"
+      if [[ "$char" == '`' ]]; then
+        in_nested_backtick=false
+      fi
+      ((i++))
+      continue
+    fi
+
+    if [[ "$char" == '$' && "$next_char" == '(' ]]; then
+      segment+='$('
+      ((substitution_depth++))
+      ((i += 2))
+      continue
+    fi
+
+    if [[ "$char" == ')' ]]; then
+      if (( substitution_depth > 0 )); then
+        segment+="$char"
+        ((substitution_depth--))
+        ((i++))
+        continue
+      fi
+      break
+    fi
+
+    if [[ "$char" == '`' ]]; then
+      if (( substitution_depth == 0 )) && [[ "$outer_backtick" == true ]]; then
+        break
+      fi
+      segment+="$char"
+      in_nested_backtick=true
+      ((i++))
+      continue
+    fi
+
+    if (( substitution_depth == 0 )) && { [[ "$char" == ';' ]] || [[ "$char" == '&' ]] || [[ "$char" == '|' ]]; }; then
+      break
+    fi
+
+    segment+="$char"
+    ((i++))
+  done
+
+  printf '%s\n' "$segment"
+}
+
+# Keep flag checks scoped to the rm invocation; nested substitutions may contain
+# shell separators that should not end the outer rm segment.
+has_blocked_rm_segment() {
+  local text="$1"
+  local segment
+  local i
+
+  for (( i = 0; i < ${#text}; i++ )); do
+    if is_rm_command_start "$text" "$i"; then
+      segment=$(extract_rm_segment "$text" "$i")
+      if has_rf_flags "$segment"; then
+        return 0
+      fi
+      ((i += ${#segment} - 1))
+    fi
+  done
+
+  return 1
+}
+
+if has_blocked_rm_segment "$stripped"; then
+  block "rm -rf is blocked. Use \`trash\` instead (install: brew install trash). Files go to Trash for recovery."
 fi
 
 # ============================================================================

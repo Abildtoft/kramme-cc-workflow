@@ -110,6 +110,21 @@ run_hook() {
 	[ -z "$output" ]
 }
 
+@test "blocks git rm followed by rm -rf with semicolon" {
+	run run_hook "git rm tracked.md; rm -rf tmpdir"
+	is_blocked
+}
+
+@test "blocks git rm followed by rm -rf with &&" {
+	run run_hook "git rm tracked.md && rm -rf tmpdir"
+	is_blocked
+}
+
+@test "blocks git rm followed by rm -rf with ||" {
+	run run_hook "git rm tracked.md || rm -rf tmpdir"
+	is_blocked
+}
+
 # ============================================================================
 # QUOTED STRINGS (allowed - false positive prevention)
 # ============================================================================
@@ -183,6 +198,47 @@ run_hook() {
 @test "blocks rm --force --recursive" {
 	run run_hook "rm --force --recursive directory/"
 	is_blocked
+}
+
+@test "blocks rm with command substitution target before flags" {
+	run run_hook 'rm $(echo directory/) -rf'
+	is_blocked
+}
+
+@test "blocks rm with command substitution target containing semicolon before flags" {
+	run run_hook 'rm $(echo directory/; echo other/) -rf'
+	is_blocked
+}
+
+@test "blocks rm with command substitution target containing pipe before flags" {
+	run run_hook 'rm $(find . -type d | head -1) -rf'
+	is_blocked
+}
+
+@test "blocks rm with backtick target before flags" {
+	run run_hook 'rm `echo directory/` -rf'
+	is_blocked
+}
+
+@test "blocks command substitution rm with nested command substitution target before flags" {
+	run run_hook 'echo $(rm $(echo directory/) -rf)'
+	is_blocked
+}
+
+@test "blocks rm with nested command substitution target before flags" {
+	run run_hook 'rm $(dirname $(pwd)) -rf'
+	is_blocked
+}
+
+@test "blocks command substitution rm with deeply nested command substitution target before flags" {
+	run run_hook 'echo $(rm $(dirname $(pwd)) -rf)'
+	is_blocked
+}
+
+@test "allows command substitution rm without rf followed by outer rf text" {
+	run run_hook 'echo $(rm file.txt) -rf'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
 }
 
 @test "blocks rm -R -f (uppercase R)" {
