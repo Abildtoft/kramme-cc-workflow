@@ -137,6 +137,137 @@
       ]
     }
   ],
+  "required_file_contracts": [
+    {
+      "name": "work-from-plan-invocation-shape",
+      "path": "kramme-cc-workflow/skills/kramme:code:work-from-plan/SKILL.md",
+      "frontmatter": {
+        "name": "kramme:code:work-from-plan",
+        "argument-hint": "[plan path | inline plan]",
+        "disable-model-invocation": "true",
+        "user-invocable": "true"
+      },
+      "contains": [
+        "PR_PLAN_*.md file, pasted plan, or one-off implementation checklist",
+        "PLAN ROUTE:",
+        "MISSING REQUIREMENT",
+        "Read `references/direct-execution.md`"
+      ]
+    },
+    {
+      "name": "siw-issue-implement-invocation-shape",
+      "path": "kramme-cc-workflow/skills/kramme:siw:issue-implement/SKILL.md",
+      "frontmatter": {
+        "name": "kramme:siw:issue-implement",
+        "argument-hint": "<issue-id> | --team [issue-ids | 'phase N'] [--auto]",
+        "disable-model-invocation": "true",
+        "user-invocable": "true"
+      },
+      "contains": [
+        "read `references/team-mode.md`",
+        "siw/issues/ISSUE-{prefix}-{number}-*.md",
+        "siw/OPEN_ISSUES_OVERVIEW.md",
+        "siw/LOG.md",
+        "Run the Status Update Procedure"
+      ]
+    },
+    {
+      "name": "siw-issue-define-artifact-shape",
+      "path": "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md",
+      "frontmatter": {
+        "name": "kramme:siw:issue-define",
+        "argument-hint": "[ISSUE-G-XXX or ISSUE-P1-XXX] or [description and/or file paths for context]",
+        "disable-model-invocation": "true",
+        "user-invocable": "true"
+      },
+      "contains": [
+        "siw/issues/ISSUE-{prefix}-{number}-{sanitized-title}.md",
+        "siw/OPEN_ISSUES_OVERVIEW.md",
+        "Read `references/tracker-schema.md`",
+        "Mode: AUTO"
+      ]
+    },
+    {
+      "name": "pr-code-review-invocation-shape",
+      "path": "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md",
+      "frontmatter": {
+        "name": "kramme:pr:code-review",
+        "argument-hint": "[aspects] [--emphasize <dim>...] [--base <branch>] [--parallel] [parallel] [--team] [--inline]",
+        "disable-model-invocation": "false",
+        "user-invocable": "true"
+      },
+      "contains": [
+        "Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline.",
+        "If `--base <branch>` flag",
+        "If `--parallel` appears anywhere in `$ARGUMENTS`",
+        "COLLECT_ARGS=(--strict)"
+      ]
+    },
+    {
+      "name": "pr-plan-generation-artifact-shape",
+      "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md",
+      "frontmatter": {
+        "name": "kramme:code:breakdown-findings",
+        "argument-hint": "[source-file-or-content] [--auto] [--reconcile]",
+        "disable-model-invocation": "true",
+        "user-invocable": "true"
+      },
+      "contains": [
+        "`PR_PLAN_INDEX.md`, `PR_PLAN_REJECTIONS.md`, and `PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md`",
+        "PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md` in the project root",
+        "PLAN: Proposed themes",
+        "NOTICED BUT NOT TOUCHING"
+      ]
+    },
+    {
+      "name": "pr-plan-template-artifact-names",
+      "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/assets/plan-template.md",
+      "contains": [
+        "**File:** `PR_PLAN_{{EXECUTION_LABEL}}_{{SLUG}}.md`",
+        "**Execution label:** `{{W##L}}`",
+        "git diff --stat {{short-sha}} -- {{space-separated in-scope paths}}",
+        "Do not push, merge, or open a PR unless the operator explicitly asks."
+      ]
+    },
+    {
+      "name": "pr-plan-index-artifact-names",
+      "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/assets/index-template.md",
+      "contains": [
+        "**Rejection record:** `PR_PLAN_REJECTIONS.md`",
+        "`PR_PLAN_{{EXECUTION_LABEL}}_{{SLUG}}.md`",
+        "PR_PLAN_REJECTIONS.md",
+        "NOTICED BUT NOT TOUCHING:"
+      ]
+    },
+    {
+      "name": "pr-plan-rejections-artifact-names",
+      "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/assets/rejections-template.md",
+      "contains": [
+        "# PR Plan Rejections",
+        "REJECTED-001",
+        "NOTICED BUT NOT TOUCHING:",
+        "No findings were rejected or excluded for this generation."
+      ]
+    },
+    {
+      "name": "workflow-artifact-cleanup-names",
+      "path": "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/SKILL.md",
+      "frontmatter": {
+        "name": "kramme:workflow-artifacts:cleanup",
+        "argument-hint": "[--auto]",
+        "disable-model-invocation": "true",
+        "user-invocable": "true"
+      },
+      "contains": [
+        "REVIEW_OVERVIEW.md",
+        "AUDIT_IMPLEMENTATION_REPORT.md",
+        "AUDIT_SPEC_REPORT.md",
+        "PR_PLAN_*.md",
+        "siw/OPEN_ISSUES_OVERVIEW.md",
+        "siw/issues/"
+      ]
+    }
+  ],
   "marker_implies_manifest": {
     "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
     "manifest": "references/sources.yaml",

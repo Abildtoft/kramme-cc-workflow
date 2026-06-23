@@ -193,6 +193,36 @@ def check_file_identity(root: Path, registry: dict[str, Any], failures: list[str
                 )
 
 
+def check_required_file_contracts(root: Path, registry: dict[str, Any], failures: list[str]) -> None:
+    for contract in registry.get("required_file_contracts", []):
+        name = contract["name"]
+        copy = contract["path"]
+        path = resolve(root, copy)
+        if not path.exists():
+            failures.append(f"{name}: registered path is missing: {copy}")
+            continue
+
+        text = read_text(path)
+        frontmatter_contract = contract.get("frontmatter", {})
+        if frontmatter_contract:
+            frontmatter = parse_frontmatter(text)
+            if frontmatter is None:
+                failures.append(f"{name}: {copy} is missing YAML frontmatter")
+            else:
+                for field, expected in frontmatter_contract.items():
+                    actual = frontmatter.get(field)
+                    expected_text = strip_quotes(str(expected))
+                    if actual != expected_text:
+                        failures.append(
+                            f"{name}: {copy} frontmatter field {field!r} expected "
+                            f"{expected_text!r}, got {actual!r}"
+                        )
+
+        for required_text in contract.get("contains", []):
+            if required_text not in text:
+                failures.append(f"{name}: {copy} is missing required text {required_text!r}")
+
+
 def parse_frontmatter(text: str) -> dict[str, str] | None:
     lines = text.splitlines()
     if not lines or lines[0] != "---":
@@ -609,6 +639,7 @@ def run(root: Path, registry: dict[str, Any]) -> tuple[list[str], list[str]]:
     check_text_contracts(root, registry, failures)
     check_ordered_heading_contracts(root, registry, failures)
     check_file_identity(root, registry, failures)
+    check_required_file_contracts(root, registry, failures)
     check_marker_manifests(root, registry, failures)
     check_epilogue_order(root, registry, failures)
     check_hooks_json(root, registry, failures)

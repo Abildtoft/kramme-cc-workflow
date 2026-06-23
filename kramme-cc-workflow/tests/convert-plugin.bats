@@ -143,6 +143,51 @@ console.log("ok");
 	[ ! -d "$TMP_DIR/.codex/prompts" ] || [ -z "$(ls -A "$TMP_DIR/.codex/prompts" 2>/dev/null)" ]
 }
 
+@test "codex conversion preserves representative skill contracts" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+	[ "$status" -eq 0 ]
+
+	local work_from_plan="$TMP_DIR/.codex/skills/kramme:code:work-from-plan/SKILL.md"
+	local siw_issue_implement="$TMP_DIR/.codex/skills/kramme:siw:issue-implement/SKILL.md"
+	local pr_code_review="$TMP_DIR/.codex/skills/kramme:pr:code-review/SKILL.md"
+	local breakdown_findings="$TMP_DIR/.codex/skills/kramme:code:breakdown-findings/SKILL.md"
+	local cleanup="$TMP_DIR/.codex/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
+
+	[ -f "$work_from_plan" ]
+	[ -f "$siw_issue_implement" ]
+	[ -f "$pr_code_review" ]
+	[ -f "$breakdown_findings" ]
+	[ -f "$cleanup" ]
+
+	run grep -nF 'argument-hint: "[plan path | inline plan]"' "$work_from_plan"
+	[ "$status" -eq 0 ]
+	run grep -nF "PLAN ROUTE:" "$work_from_plan"
+	[ "$status" -eq 0 ]
+	run grep -nF "MISSING REQUIREMENT" "$work_from_plan"
+	[ "$status" -eq 0 ]
+
+	run grep -nF "argument-hint: <issue-id> | --team [issue-ids | 'phase N'] [--auto]" "$siw_issue_implement"
+	[ "$status" -eq 0 ]
+	run grep -nF "siw/issues/ISSUE-{prefix}-{number}-*.md" "$siw_issue_implement"
+	[ "$status" -eq 0 ]
+	run grep -nF "siw/OPEN_ISSUES_OVERVIEW.md" "$siw_issue_implement"
+	[ "$status" -eq 0 ]
+
+	run grep -nF "argument-hint: \"[aspects] [--emphasize <dim>...] [--base <branch>] [--parallel] [parallel] [--team] [--inline]\"" "$pr_code_review"
+	[ "$status" -eq 0 ]
+	run grep -nF "REVIEW_OVERVIEW.md" "$pr_code_review"
+	[ "$status" -eq 0 ]
+
+	run grep -nF "PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md" "$breakdown_findings"
+	[ "$status" -eq 0 ]
+	run grep -nF "PR_PLAN_*.md" "$cleanup"
+	[ "$status" -eq 0 ]
+}
+
 @test "codex conversion installs hooks as an enabled plugin bundle" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for converter tests"
