@@ -101,9 +101,11 @@ ls siw/supporting-specs/*.md 2> /dev/null
 
 **Main-spec selection:**
 
+Synced SIW main-spec ambiguity contract (keep aligned across SIW spec detectors): when multiple spec candidates remain after deterministic heading/filename matching, auto mode stops with MISSING REQUIREMENT and interactive mode asks the user which file is the main spec.
+
 - **Zero candidates:** stop. Surface `MISSING REQUIREMENT: no spec file found under siw/` and suggest the user run `/kramme:siw:discovery` or pass an explicit `$ARGUMENTS` path. Do not invent a spec.
 - **One candidate:** use it as the main spec.
-- **Multiple candidates:** read the first `## Project` (or `# `) heading of `siw/LOG.md` to find the initiative name; pick the spec whose filename matches that name (case-insensitive, hyphen/underscore-insensitive). If no match, surface `UNVERIFIED: multiple spec files found, picked {first}` and use the first candidate; the user can re-run with an explicit path.
+- **Multiple candidates:** read the first `## Project` (or `# `) heading of `siw/LOG.md` to find the initiative name; build a deterministic match set from candidates whose filename or first `#` heading matches that name (case-insensitive, hyphen/underscore-insensitive). If exactly one candidate matches, use it. If zero or multiple candidates remain after matching and `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: multiple spec candidates found; rerun without --auto and choose the main spec or pass an explicit $ARGUMENTS path`. If zero or multiple candidates remain after matching and `AUTO_MODE` is false, use AskUserQuestion to present the candidates and ask which file is the main spec. Do not pick the first candidate as a fallback.
 
 ### 1.3 Check Implementation Status
 
@@ -186,7 +188,7 @@ options:
 After finding spec files, look for a `## Work Context` section in the spec files:
 
 1. Parse the markdown table to extract: Work Type, Priority Dimensions, Deprioritized dimensions
-   - If multiple spec files define Work Context, use the main spec file (the one matching the SIW init filename). If ambiguous, use the first found and warn.
+   - If multiple spec files define Work Context, use the selected main spec from Phase 1.2. If Phase 1.2 cannot select one deterministically, it must stop or ask before Phase 2; do not use the first found as a fallback.
 2. If not found or malformed, default to Production Feature (3-5 phases, standard sizing)
 3. Store as `work_context`
 
