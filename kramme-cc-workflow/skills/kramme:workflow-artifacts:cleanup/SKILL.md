@@ -37,6 +37,7 @@ Targets fall into two groups. Only targets that exist on disk are deleted or rep
 - `PRODUCT_AUDIT_OVERVIEW.md`
 - `PRODUCT_AUDIT.md`
 - `COPY_REVIEW_OVERVIEW.md`
+- `CODEBASE_WEAKNESS_REPORT.md`
 - `GITHUB_PR_REVIEW_OVERVIEW.md`
 - `DOC_REVIEW.md`
 - `GITHUB_REVIEW_REPLY_PLAN.md`
@@ -119,10 +120,10 @@ Warning: 'trash' command not found. Files will be permanently deleted.
 Install with `brew install trash` (macOS) or your distro's `trash-cli` package (Linux).
 ```
 
-The fallback must respect this plugin's `block-rm-rf` PreToolUse hook (enabled by default), which blocks `rm` with combined recursive+force flags, `find -delete`, `find -exec rm` with `-rf`, `xargs rm` with `-rf`, `shred`, and `unlink`. Do not improvise around the guardrail (no subshells, no flag tricks). Instead:
+The fallback must respect this plugin's `block-rm-rf` PreToolUse hook (enabled by default), which blocks recursive forced deletion patterns and other destructive removal tools. Do not improvise around the guardrail with subshells, flag tricks, or alternate destructive tools. Instead:
 
-- **Files:** delete each file with a plain per-file `rm <path>` (no `-r`/`-f` flags) — this is not blocked by the hook.
-- **Directories:** there is no permitted fallback while the hook is active. Either ask the user to install `trash`, or — only with the user's explicit consent — have them temporarily disable the guardrail with `/kramme:hooks:toggle block-rm-rf disable`, delete the directories, then re-enable it with `/kramme:hooks:toggle block-rm-rf enable`. If the user declines, skip the directory targets and report them as skipped.
+- **Files:** after the explicit permanent-deletion confirmation, delete each file one at a time using the shell's standard non-recursive file-removal command with no force option.
+- **Directories:** there is no permitted fallback while the guardrail is active. Ask the user to install `trash`; otherwise skip directory targets and report them as skipped.
 
 After deletion, verify every target with `[ ! -e "$path" ]`. Record only verified-absent paths in `deleted_paths`. Record any surviving paths in `failed_delete_paths` with the captured error output; these must be reported as failures instead of "deleted".
 
