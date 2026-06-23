@@ -37,6 +37,7 @@ Targets fall into two groups. Only targets that exist on disk are deleted or rep
 - `PRODUCT_AUDIT_OVERVIEW.md`
 - `PRODUCT_AUDIT.md`
 - `COPY_REVIEW_OVERVIEW.md`
+- `CODEBASE_WEAKNESS_REPORT.md`
 - `GITHUB_PR_REVIEW_OVERVIEW.md`
 - `DOC_REVIEW.md`
 - `GITHUB_REVIEW_REPLY_PLAN.md`

@@ -407,6 +407,13 @@ REVIEW_SUMMARY.md"
 	[[ "$output" == *"COPY_REVIEW_OVERVIEW.md"* ]]
 }
 
+@test "blocks git commit when CODEBASE_WEAKNESS_REPORT.md is staged" {
+	mock_git_staged "CODEBASE_WEAKNESS_REPORT.md"
+	run run_hook "git commit -m 'weakness report staged'"
+	is_blocked
+	[[ "$output" == *"CODEBASE_WEAKNESS_REPORT.md"* ]]
+}
+
 @test "blocks git commit when GITHUB_PR_REVIEW_OVERVIEW.md is staged" {
 	mock_git_staged "GITHUB_PR_REVIEW_OVERVIEW.md"
 	run run_hook "git commit -m 'github pr review staged'"
