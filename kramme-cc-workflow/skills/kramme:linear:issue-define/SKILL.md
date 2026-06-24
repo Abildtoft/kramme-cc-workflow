@@ -17,7 +17,7 @@ Create or improve a Linear issue through exhaustive interactive refinement. Can 
 - **DOES**: Interview user, explore codebase for context, compose well-structured issue, create/update in Linear
 - **DOES NOT**: Write code, implement features, fix bugs, or make any changes to the codebase
 
-**Linear Issue Creation Override**: Invoking this command IS explicit instruction to create or update a Linear issue. When Phase 7 is reached and the user approves the draft, proceed with `mcp__linear__create_issue` or `mcp__linear__update_issue`. This overrides any global rules requiring "explicit instruction" to create/modify Linear issues.
+**Linear Issue Creation Override**: Invoking this command IS explicit instruction to create or update a Linear issue. When Phase 7 is reached and the user approves the draft, proceed with the available Linear create/update operation. Use Claude Code `mcp__linear__create_issue` / `mcp__linear__update_issue`; use Codex `save_issue` without `id` to create or with `id` to update. This overrides any global rules requiring "explicit instruction" to create/modify Linear issues.
 
 **Implementation is a separate workflow.** After this command completes, the user can invoke `/kramme:linear:issue-implement` if they want to start implementing.
 
@@ -69,7 +69,7 @@ First parse flags:
 - If `$ARGUMENTS` contains `--auto`, remove it from the working description and set `auto_create = true`.
 - `--auto` is only valid for new Linear issues. If the remaining input identifies an existing Linear issue, stop and ask the user to rerun without `--auto` for improvement mode.
 
-**Prerequisite check:** before detecting mode or fetching an existing issue, if the `mcp__linear__*` tools are unavailable, the Linear MCP server is not connected. Stop here and tell the user to connect it — do not start the interview or issue lookup without a working Linear connection.
+**Prerequisite check:** before detecting mode or fetching an existing issue, if Linear MCP operations are unavailable, the Linear MCP server is not connected. Stop here and tell the user to connect it — do not start the interview or issue lookup without a working Linear connection.
 
 ### Step 1: Detect Mode
 
@@ -82,7 +82,7 @@ Check if input matches an existing Linear issue:
 **If existing issue detected → IMPROVE MODE:**
 
 1. Extract the issue identifier
-2. Fetch issue details using `mcp__linear__get_issue` with `id` parameter. If the call errors or returns no issue, stop and report the exact identifier that failed — do not continue in IMPROVE mode or silently fall back to CREATE mode.
+2. Fetch issue details using Linear MCP `get_issue` with the `id` parameter (Claude Code `mcp__linear__get_issue`; Codex `get_issue`). If the call errors or returns no issue, stop and report the exact identifier that failed — do not continue in IMPROVE mode or silently fall back to CREATE mode.
 3. Store the existing issue content (title, description, labels, etc.)
 4. Set mode flag to "improve"
 5. **Check for Dev Ask label**
@@ -146,9 +146,9 @@ After determining the mode (and any file context, if provided), classify the iss
 
 Fetch Linear workspace context to enable informed metadata selection:
 
-1. **Teams**: `mcp__linear__list_teams` - Get available teams for assignment
-2. **Labels**: `mcp__linear__list_issue_labels` - Get available labels for classification
-3. **Projects**: `mcp__linear__list_projects` - Get active projects for association
+1. **Teams**: Linear MCP `list_teams` - Get available teams for assignment
+2. **Labels**: Linear MCP `list_issue_labels` - Get available labels for classification
+3. **Projects**: Linear MCP `list_projects` - Get active projects for association
 
 Store this context for use in Phase 5 (Metadata & Classification round).
 

@@ -47,12 +47,12 @@ Emit `PLAN: triage to issue — investigate, design TDD plan, draft, gate, file`
 
 Probe in order:
 
-1. Check for `mcp__linear__create_issue` MCP tool availability.
+1. Check for an available Linear issue creation operation: Claude Code `mcp__linear__create_issue`, or Codex `save_issue` without `id`.
 2. Check for `siw/OPEN_ISSUES_OVERVIEW.md` in the repo root.
 
 Decision table:
 
-| Linear MCP | SIW present | Action |
+| Linear create operation | SIW present | Action |
 | --- | --- | --- |
 | Yes | Yes | Ask the user once which sink (Linear / SIW / Markdown at repo root). |
 | Yes | No | Use Linear, no question. |
@@ -65,7 +65,7 @@ The runtime question (when it fires):
 header: Issue Sink
 question: Both Linear and SIW are available. Where should the issue land?
 options:
-  - Linear — create via mcp__linear__create_issue and return the URL
+  - Linear — create via the available Linear create operation and return the URL
   - SIW — write to siw/issues/ and update OPEN_ISSUES_OVERVIEW.md + LOG.md
   - Markdown — write a standalone file at the repo root and surface the path
 ```
@@ -202,7 +202,7 @@ If the user passed `--yes` or `--auto` and the grep finds prose matches, halt an
 
 Branch on the sink chosen in Phase 2.
 
-**Linear:** before creating, search the team for an open issue with the same title. If one exists, surface it and ask before filing a duplicate; under `--yes` / `--auto`, skip creation and report the existing issue instead of duplicating. Otherwise call `mcp__linear__create_issue` with title, description (the drafted body), required `team: LINEAR_TEAM`, and any auto-detectable labels/project. Return the issue URL.
+**Linear:** before creating, search the team for an open issue with the same title. If one exists, surface it and ask before filing a duplicate; under `--yes` / `--auto`, skip creation and report the existing issue instead of duplicating. Otherwise call the available Linear create operation: Claude Code `mcp__linear__create_issue`, or Codex `save_issue` without `id`. Pass title, description (the drafted body), required `team: LINEAR_TEAM`, and any auto-detectable labels/project. Return the issue URL.
 
 **SIW:** write three files in lockstep:
 
@@ -286,7 +286,7 @@ Watch for these — they signal the durability rule is about to break.
 
 - **`kramme:debug:investigate`** — source of the investigation phase (Steps 1–6 + Step 8 reporting). The orchestrator stops it at the propose-fix gate via the "Report only" option.
 - **`kramme:test:tdd`** — source of the Prove-It cycle conventions and RED-GREEN structure used in Phase 4. v1 captures the patterns; the sub-skill itself may not be invocable as a pure planner (see Phase 4 caveat).
-- **`kramme:linear:issue-define`** — source of issue-creation conventions (title format, template selection, metadata). v1 issues the create call directly via `mcp__linear__create_issue` for predictable interception, but the body shape mirrors the `Simple Bug Template` and `Comprehensive Template` from issue-define's assets. Both skills enforce the same durability constraint: issue-define via its `**Affected area:**` field (module / behavior / contract, not paths or line numbers), this skill via the durability grep.
+- **`kramme:linear:issue-define`** — source of issue-creation conventions (title format, template selection, metadata). v1 issues the create call directly through the available Linear create operation (Claude Code `mcp__linear__create_issue`; Codex `save_issue` without `id`) for predictable interception, but the body shape mirrors the `Simple Bug Template` and `Comprehensive Template` from issue-define's assets. Both skills enforce the same durability constraint: issue-define via its `**Affected area:**` field (module / behavior / contract, not paths or line numbers), this skill via the durability grep.
 - **`kramme:linear:issue-implement` / `kramme:siw:issue-implement`** — downstream consumers. The ticket body produced here is designed to be picked up by these flows without re-investigation.
 
 ---
