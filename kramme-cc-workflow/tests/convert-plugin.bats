@@ -1107,6 +1107,291 @@ MD
 	[ "$output" = "Run /kramme:pr:create later" ]
 }
 
+@test "codex writer preserves untracked same-name skill directories on first install" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	cat >"$TMP_DIR/preserve-untracked-skill-dirs.js" <<'JS'
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+
+const outputRoot = process.argv[2];
+const agentsHome = process.argv[3];
+const writerPath = process.argv[4];
+const { writeCodexBundle } = require(writerPath);
+
+(async () => {
+  const codexSkillDir = path.join(
+    outputRoot,
+    ".codex",
+    "skills",
+    "collision-skill",
+  );
+  const agentSkillDir = path.join(agentsHome, "skills", "collision-agent");
+  fs.mkdirSync(codexSkillDir, { recursive: true });
+  fs.mkdirSync(agentSkillDir, { recursive: true });
+  fs.writeFileSync(path.join(codexSkillDir, "LOCAL-NOTES.md"), "keep codex\n");
+  fs.writeFileSync(path.join(agentSkillDir, "LOCAL-NOTES.md"), "keep agent\n");
+
+  await writeCodexBundle(
+    outputRoot,
+    {
+      prompts: [],
+      skillDirs: [],
+      generatedSkills: [{ name: "collision-skill", content: "Generated" }],
+      agentSkills: [{ name: "collision-agent", content: "Agent" }],
+      mcpServers: {},
+      codexPlugin: null,
+      knownCommands: [],
+      knownAgentSkills: [],
+    },
+    {
+      pluginName: "collision-plugin",
+      agentsHome,
+      confirm: { yes: true },
+    },
+  );
+
+  assert.strictEqual(
+    fs.readFileSync(path.join(codexSkillDir, "LOCAL-NOTES.md"), "utf8"),
+    "keep codex\n",
+  );
+  assert.strictEqual(
+    fs.readFileSync(path.join(agentSkillDir, "LOCAL-NOTES.md"), "utf8"),
+    "keep agent\n",
+  );
+  assert.strictEqual(
+    fs.readFileSync(path.join(codexSkillDir, "SKILL.md"), "utf8"),
+    "Generated\n",
+  );
+  assert.strictEqual(
+    fs.readFileSync(path.join(agentSkillDir, "SKILL.md"), "utf8"),
+    "Agent\n",
+  );
+})();
+JS
+
+	run node "$TMP_DIR/preserve-untracked-skill-dirs.js" "$TMP_DIR" "$TMP_DIR/.agents" "$REPO_ROOT/scripts/convert-plugin/codex-writer"
+	[ "$status" -eq 0 ]
+}
+
+@test "codex writer preserves previous install when replacement bundle fails" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	cat >"$TMP_DIR/failed-replacement-install.js" <<'JS'
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+
+const outputRoot = process.argv[2];
+const agentsHome = process.argv[3];
+const writerPath = process.argv[4];
+const { writeCodexBundle } = require(writerPath);
+
+function bundleWithGeneratedSkill(skill) {
+  return {
+    prompts: [],
+    skillDirs: [],
+    generatedSkills: [skill],
+    agentSkills: [],
+    mcpServers: {},
+    codexPlugin: null,
+    knownCommands: [],
+    knownAgentSkills: [],
+  };
+}
+
+(async () => {
+  const options = {
+    pluginName: "transactional-plugin",
+    agentsHome,
+    confirm: { yes: true },
+  };
+  const stableSkill = path.join(
+    outputRoot,
+    ".codex",
+    "skills",
+    "stable-skill",
+    "SKILL.md",
+  );
+  const statePath = path.join(outputRoot, ".codex", ".kramme-install-state.json");
+  const manifestPath = path.join(
+    outputRoot,
+    ".codex",
+    ".kramme-install-manifests",
+    "transactional-plugin-codex.json",
+  );
+
+  await writeCodexBundle(
+    outputRoot,
+    bundleWithGeneratedSkill({ name: "stable-skill", content: "Stable v1" }),
+    options,
+  );
+  assert.strictEqual(fs.readFileSync(stableSkill, "utf8"), "Stable v1\n");
+  const stateBefore = fs.readFileSync(statePath, "utf8");
+  const manifestBefore = fs.readFileSync(manifestPath, "utf8");
+
+  let failed = false;
+  try {
+    await writeCodexBundle(
+      outputRoot,
+      bundleWithGeneratedSkill({ name: "../invalid-skill", content: "Broken" }),
+      options,
+    );
+  } catch (error) {
+    failed = true;
+    assert.match(error.message, /Invalid skill name/);
+  }
+
+  assert.strictEqual(failed, true, "replacement install should fail");
+  assert.strictEqual(fs.readFileSync(stableSkill, "utf8"), "Stable v1\n");
+  assert.strictEqual(fs.readFileSync(statePath, "utf8"), stateBefore);
+  assert.strictEqual(fs.readFileSync(manifestPath, "utf8"), manifestBefore);
+})();
+JS
+
+	run node "$TMP_DIR/failed-replacement-install.js" "$TMP_DIR" "$TMP_DIR/.agents" "$REPO_ROOT/scripts/convert-plugin/codex-writer"
+	[ "$status" -eq 0 ]
+}
+
+@test "codex writer preserves previous install when finalization is blocked" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	cat >"$TMP_DIR/blocked-finalization-install.js" <<'JS'
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+
+const outputRoot = process.argv[2];
+const agentsHome = process.argv[3];
+const writerPath = process.argv[4];
+const { writeCodexBundle } = require(writerPath);
+
+function bundleWithGeneratedSkills(skills) {
+  return {
+    prompts: [],
+    skillDirs: [],
+    generatedSkills: skills,
+    agentSkills: [],
+    mcpServers: {},
+    codexPlugin: null,
+    knownCommands: [],
+    knownAgentSkills: [],
+  };
+}
+
+(async () => {
+  const options = {
+    pluginName: "finalization-plugin",
+    agentsHome,
+    confirm: { yes: true },
+  };
+  const skillsRoot = path.join(outputRoot, ".codex", "skills");
+  const stableSkill = path.join(skillsRoot, "stable-skill", "SKILL.md");
+  const blockedSkill = path.join(skillsRoot, "blocked-skill");
+  const statePath = path.join(outputRoot, ".codex", ".kramme-install-state.json");
+  const manifestPath = path.join(
+    outputRoot,
+    ".codex",
+    ".kramme-install-manifests",
+    "finalization-plugin-codex.json",
+  );
+
+  await writeCodexBundle(
+    outputRoot,
+    bundleWithGeneratedSkills([{ name: "stable-skill", content: "Stable v1" }]),
+    options,
+  );
+  assert.strictEqual(fs.readFileSync(stableSkill, "utf8"), "Stable v1\n");
+  const stateBefore = fs.readFileSync(statePath, "utf8");
+  const manifestBefore = fs.readFileSync(manifestPath, "utf8");
+
+  fs.writeFileSync(blockedSkill, "blocking file\n");
+
+  let failed = false;
+  try {
+    await writeCodexBundle(
+      outputRoot,
+      bundleWithGeneratedSkills([
+        { name: "blocked-skill", content: "Blocked" },
+        { name: "stable-skill", content: "Stable v2" },
+      ]),
+      options,
+    );
+  } catch (error) {
+    failed = true;
+    assert.match(error.message, /not a directory/);
+  }
+
+  assert.strictEqual(failed, true, "finalization should fail before cleanup");
+  assert.strictEqual(fs.readFileSync(stableSkill, "utf8"), "Stable v1\n");
+  assert.strictEqual(fs.readFileSync(blockedSkill, "utf8"), "blocking file\n");
+  assert.strictEqual(fs.readFileSync(statePath, "utf8"), stateBefore);
+  assert.strictEqual(fs.readFileSync(manifestPath, "utf8"), manifestBefore);
+})();
+JS
+
+	run node "$TMP_DIR/blocked-finalization-install.js" "$TMP_DIR" "$TMP_DIR/.agents" "$REPO_ROOT/scripts/convert-plugin/codex-writer"
+	[ "$status" -eq 0 ]
+}
+
+@test "codex writer removes agent staging when agent skill staging fails" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	cat >"$TMP_DIR/failed-agent-staging.js" <<'JS'
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+
+const outputRoot = process.argv[2];
+const agentsHome = process.argv[3];
+const writerPath = process.argv[4];
+const { writeCodexBundle } = require(writerPath);
+
+(async () => {
+  let failed = false;
+  try {
+    await writeCodexBundle(
+      outputRoot,
+      {
+        prompts: [],
+        skillDirs: [],
+        generatedSkills: [],
+        agentSkills: [{ name: "../invalid-agent-skill", content: "Broken" }],
+        mcpServers: {},
+        codexPlugin: null,
+        knownCommands: [],
+        knownAgentSkills: [],
+      },
+      {
+        pluginName: "agent-staging-plugin",
+        agentsHome,
+        confirm: { yes: true },
+      },
+    );
+  } catch (error) {
+    failed = true;
+    assert.match(error.message, /Invalid agent skill name/);
+  }
+
+  assert.strictEqual(failed, true, "agent skill staging should fail");
+  const stagingRoot = path.join(agentsHome, ".kramme-install-staging");
+  assert.strictEqual(fs.existsSync(stagingRoot), false);
+})();
+JS
+
+	run node "$TMP_DIR/failed-agent-staging.js" "$TMP_DIR" "$TMP_DIR/.agents" "$REPO_ROOT/scripts/convert-plugin/codex-writer"
+	[ "$status" -eq 0 ]
+}
+
 @test "codex conversion cleans stale skills when commands change" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for converter tests"
