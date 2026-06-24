@@ -81,6 +81,82 @@ exit_if_hook_disabled() {
 SH
 }
 
+@test "codex conversion preserves existing config when adding MCP servers" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	FIXTURE_PLUGIN="$TMP_DIR/mcp-plugin"
+	create_fixture_plugin "$FIXTURE_PLUGIN" "mcp-plugin"
+	cat >"$FIXTURE_PLUGIN/.mcp.json" <<'JSON'
+{
+  "demo-server": {
+    "command": "node",
+    "args": ["server.js", "--stdio"],
+    "env": {
+      "DEMO_TOKEN": "placeholder"
+    }
+  }
+}
+JSON
+
+	mkdir -p "$TMP_DIR/.codex"
+	cat >"$TMP_DIR/.codex/config.toml" <<'TOML'
+model = "gpt-5"
+
+[profiles.dev]
+model = "gpt-5-mini"
+
+[mcp_servers.existing]
+command = "existing-server"
+args = ["--keep"]
+
+[mcp_servers."demo-server"]
+command = "old-server"
+
+[mcp_servers."demo-server".env]
+DEMO_TOKEN = "old-placeholder"
+TOML
+
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+	[ "$status" -eq 0 ]
+
+	run grep -nF 'model = "gpt-5"' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+	run grep -nF '[profiles.dev]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+	run grep -nF '[mcp_servers.existing]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+	run grep -nF '[mcp_servers.demo-server]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+	run grep -nF 'command = "node"' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+	run grep -nF 'args = ["server.js", "--stdio"]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+	run grep -nF '[mcp_servers.demo-server.env]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+	run grep -nF 'DEMO_TOKEN = "placeholder"' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+	run grep -nF '[mcp_servers."demo-server"]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 1 ]
+	run grep -nF '[mcp_servers."demo-server".env]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 1 ]
+	run grep -nF 'command = "old-server"' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 1 ]
+	run grep -nF 'DEMO_TOKEN = "old-placeholder"' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 1 ]
+
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+	[ "$status" -eq 0 ]
+
+	run grep -cFx '[mcp_servers.demo-server]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+	[ "$output" = "1" ]
+	run grep -cFx '[mcp_servers.demo-server.env]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+	[ "$output" = "1" ]
+}
+
 @test "frontmatter module parses and formats converter metadata" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for converter tests"
