@@ -73,29 +73,251 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
     "codex",
   );
   await ensureDir(codexRoot);
-  const sharedScriptDirs = bundle.codexPlugin?.sharedScriptDirs ?? [];
-  const sharedScriptFiles = bundle.codexPlugin?.sharedScriptFiles ?? [];
-  for (const sharedScriptDir of sharedScriptDirs) {
-    if (await pathExists(sharedScriptDir.sourceDir)) {
-      await copyDir(
-        sharedScriptDir.sourceDir,
-        path.join(codexRoot, sharedScriptDir.targetDir),
-      );
-    }
-  }
-  for (const sharedScriptFile of sharedScriptFiles) {
-    if (await pathExists(sharedScriptFile.sourceFile)) {
-      await copyFile(
-        sharedScriptFile.sourceFile,
-        path.join(codexRoot, sharedScriptFile.targetPath),
-      );
-    }
-  }
-  const sharedScriptReplacements = codexSharedScriptReplacements(
+  const codexStagingRoot = await createInstallStagingRoot(
     codexRoot,
-    sharedScriptDirs,
-    sharedScriptFiles,
+    pluginName,
+    "codex",
   );
+  let agentStagingRoot = null;
+  try {
+    const stagedBundle = await stageCodexBundleOutput(
+      codexRoot,
+      codexStagingRoot,
+      bundle,
+      previousEntries,
+      pluginName,
+      extraOpts,
+    );
+    agentStagingRoot = stagedBundle.agentStagingRoot;
+    const finalizedBundle = await finalizeCodexBundleOutput(
+      codexRoot,
+      codexStagingRoot,
+      stagedBundle,
+      bundle,
+      previousEntries,
+      extraOpts,
+    );
+
+    const nextEntries = {
+      hookMarketplaces: finalizedBundle.cleanedHookMarketplaces
+        ? stagedBundle.hookMarketplaces
+        : unionEntryLists(
+            previousEntries.hookMarketplaces,
+            stagedBundle.hookMarketplaces,
+      ),
+      pluginCaches: finalizedBundle.cleanedPluginCaches
+        ? stagedBundle.pluginCaches
+        : unionEntryLists(
+            previousEntries.pluginCaches,
+            stagedBundle.pluginCaches,
+          ),
+      prompts: finalizedBundle.cleanedPrompts
+        ? bundle.prompts.map((prompt) => `${prompt.name}.md`)
+        : unionEntryLists(
+            previousEntries.prompts,
+            bundle.prompts.map((prompt) => `${prompt.name}.md`),
+          ),
+      skills: finalizedBundle.cleanedCodexSkills
+        ? [
+            ...bundle.skillDirs.map((skill) => skill.name),
+            ...bundle.generatedSkills.map((skill) => skill.name),
+          ]
+        : unionEntryLists(previousEntries.skills, [
+            ...bundle.skillDirs.map((skill) => skill.name),
+            ...bundle.generatedSkills.map((skill) => skill.name),
+          ]),
+      agentSkills: finalizedBundle.cleanedAgentSkills
+        ? (bundle.agentSkills ?? []).map((skill) => skill.name)
+        : unionEntryLists(
+            previousEntries.agentSkills,
+            (bundle.agentSkills ?? []).map((skill) => skill.name),
+          ),
+      updatedAtMs: Date.now(),
+    };
+    setInstallEntries(installState, pluginName, "codex", nextEntries);
+    await writeInstallState(codexRoot, installState);
+    await writeInstallManifest(codexRoot, pluginName, "codex", nextEntries);
+  } finally {
+    await removeInstallStagingRoot(codexStagingRoot);
+    await removeInstallStagingRoot(agentStagingRoot);
+  }
+}
+
+async function stageCodexBundleOutput(
+  codexRoot,
+  codexStagingRoot,
+  bundle,
+  previousEntries,
+  pluginName,
+  extraOpts,
+) {
+  let agentStagingRoot = null;
+  try {
+    const sharedScriptDirs = bundle.codexPlugin?.sharedScriptDirs ?? [];
+    const sharedScriptFiles = bundle.codexPlugin?.sharedScriptFiles ?? [];
+    for (const sharedScriptDir of sharedScriptDirs) {
+      if (await pathExists(sharedScriptDir.sourceDir)) {
+        await copyDir(
+          sharedScriptDir.sourceDir,
+          path.join(codexStagingRoot, sharedScriptDir.targetDir),
+        );
+      }
+    }
+    for (const sharedScriptFile of sharedScriptFiles) {
+      if (await pathExists(sharedScriptFile.sourceFile)) {
+        await copyFile(
+          sharedScriptFile.sourceFile,
+          path.join(codexStagingRoot, sharedScriptFile.targetPath),
+        );
+      }
+    }
+    const sharedScriptReplacements = codexSharedScriptReplacements(
+      codexRoot,
+      sharedScriptDirs,
+      sharedScriptFiles,
+    );
+
+    const stagedPromptsDir = path.join(codexStagingRoot, "prompts");
+    for (const prompt of bundle.prompts) {
+      await writeText(
+        path.join(stagedPromptsDir, `${prompt.name}.md`),
+        prompt.content + "\n",
+      );
+    }
+
+    const stagedSkillsRoot = path.join(codexStagingRoot, "skills");
+    for (const skill of bundle.skillDirs) {
+      const targetDir = resolveManagedChild(
+        stagedSkillsRoot,
+        skill.name,
+        "skill name",
+      );
+      await copyDir(skill.sourceDir, targetDir);
+      if (skill.content) {
+        const content = rewriteCodexSharedScriptReferences(
+          skill.content,
+          sharedScriptReplacements,
+        );
+        await writeText(path.join(targetDir, "SKILL.md"), content + "\n");
+      }
+      await rewriteCodexMarkdownResourcesFromSource(
+        skill.sourceDir,
+        targetDir,
+        {
+          knownCommands: bundle.knownCommands,
+          knownAgentSkills: bundle.knownAgentSkills,
+          sharedScriptReplacements,
+        },
+      );
+    }
+
+    for (const skill of bundle.generatedSkills) {
+      const targetDir = resolveManagedChild(
+        stagedSkillsRoot,
+        skill.name,
+        "skill name",
+      );
+      const content = rewriteCodexSharedScriptReferences(
+        skill.content,
+        sharedScriptReplacements,
+      );
+      await writeText(path.join(targetDir, "SKILL.md"), content + "\n");
+    }
+
+    let agentsHome = null;
+    let agentSkillsRoot = null;
+    let stagedAgentSkillsRoot = null;
+    if (
+      bundle.agentSkills &&
+      (bundle.agentSkills.length > 0 || previousEntries.agentSkills.length > 0)
+    ) {
+      agentsHome = extraOpts.agentsHome ?? path.join(os.homedir(), ".agents");
+      agentSkillsRoot = path.join(agentsHome, "skills");
+    }
+    if (bundle.agentSkills && bundle.agentSkills.length > 0) {
+      agentsHome = extraOpts.agentsHome ?? path.join(os.homedir(), ".agents");
+      agentSkillsRoot = path.join(agentsHome, "skills");
+      agentStagingRoot = await createInstallStagingRoot(
+        agentsHome,
+        pluginName,
+        "agents",
+      );
+      stagedAgentSkillsRoot = path.join(agentStagingRoot, "skills");
+      for (const skill of bundle.agentSkills) {
+        const targetDir = resolveManagedChild(
+          stagedAgentSkillsRoot,
+          skill.name,
+          "agent skill name",
+        );
+        await writeText(path.join(targetDir, "SKILL.md"), skill.content + "\n");
+      }
+    }
+
+    const hookPluginResult = await stageCodexHookPluginBundle(
+      codexRoot,
+      codexStagingRoot,
+      bundle.codexPlugin,
+      previousEntries,
+      { confirmOptions: extraOpts.confirm },
+    );
+
+    const stagedConfigPath = await stageCodexConfig(
+      codexRoot,
+      codexStagingRoot,
+      bundle,
+      previousEntries,
+      pluginName,
+    );
+
+    return {
+      agentSkillsRoot,
+      agentStagingRoot,
+      hookMarketplaces: hookPluginResult.hookMarketplaces,
+      hookTargets: hookPluginResult.targets,
+      pluginCaches: hookPluginResult.pluginCaches,
+      sharedScriptDirs,
+      sharedScriptFiles,
+      stagedAgentSkillsRoot,
+      stagedConfigPath,
+      stagedPromptsDir,
+      stagedSkillsRoot,
+    };
+  } catch (error) {
+    await removeInstallStagingRoot(agentStagingRoot);
+    throw error;
+  }
+}
+
+async function finalizeCodexBundleOutput(
+  codexRoot,
+  codexStagingRoot,
+  stagedBundle,
+  bundle,
+  previousEntries,
+  extraOpts,
+) {
+  await preflightCodexBundleFinalization(
+    codexRoot,
+    codexStagingRoot,
+    stagedBundle,
+    bundle,
+    previousEntries,
+  );
+
+  for (const sharedScriptDir of stagedBundle.sharedScriptDirs) {
+    await installStagedDir(
+      path.join(codexStagingRoot, sharedScriptDir.targetDir),
+      path.join(codexRoot, sharedScriptDir.targetDir),
+      { replace: false },
+    );
+  }
+  for (const sharedScriptFile of stagedBundle.sharedScriptFiles) {
+    await installStagedFile(
+      path.join(codexStagingRoot, sharedScriptFile.targetPath),
+      path.join(codexRoot, sharedScriptFile.targetPath),
+      { replace: false },
+    );
+  }
 
   const promptsDir = path.join(codexRoot, "prompts");
   const cleanedPrompts = await cleanupInstalledEntries(
@@ -107,9 +329,11 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
     },
   );
   for (const prompt of bundle.prompts) {
-    await writeText(
-      path.join(promptsDir, `${prompt.name}.md`),
-      prompt.content + "\n",
+    const entry = `${prompt.name}.md`;
+    await installStagedFile(
+      path.join(stagedBundle.stagedPromptsDir, entry),
+      path.join(promptsDir, entry),
+      { replace: cleanedPrompts },
     );
   }
 
@@ -130,43 +354,33 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
       confirmOptions: extraOpts.confirm,
     },
   );
-
   for (const skill of bundle.skillDirs) {
-    const targetDir = resolveManagedChild(skillsRoot, skill.name, "skill name");
-    await copyDir(skill.sourceDir, targetDir);
-    if (skill.content) {
-      const content = rewriteCodexSharedScriptReferences(
-        skill.content,
-        sharedScriptReplacements,
-      );
-      await writeText(path.join(targetDir, "SKILL.md"), content + "\n");
-    }
-    await rewriteCodexMarkdownResourcesFromSource(skill.sourceDir, targetDir, {
-      knownCommands: bundle.knownCommands,
-      knownAgentSkills: bundle.knownAgentSkills,
-      sharedScriptReplacements,
-    });
-  }
-
-  for (const skill of bundle.generatedSkills) {
-    const targetDir = resolveManagedChild(skillsRoot, skill.name, "skill name");
-    const content = rewriteCodexSharedScriptReferences(
-      skill.content,
-      sharedScriptReplacements,
+    await installStagedDir(
+      resolveManagedChild(
+        stagedBundle.stagedSkillsRoot,
+        skill.name,
+        "skill name",
+      ),
+      resolveManagedChild(skillsRoot, skill.name, "skill name"),
+      { replace: false },
     );
-    await writeText(path.join(targetDir, "SKILL.md"), content + "\n");
+  }
+  for (const skill of bundle.generatedSkills) {
+    await installStagedDir(
+      resolveManagedChild(
+        stagedBundle.stagedSkillsRoot,
+        skill.name,
+        "skill name",
+      ),
+      resolveManagedChild(skillsRoot, skill.name, "skill name"),
+      { replace: false },
+    );
   }
 
   let cleanedAgentSkills = true;
-  if (
-    bundle.agentSkills &&
-    (bundle.agentSkills.length > 0 || previousEntries.agentSkills.length > 0)
-  ) {
-    const agentsHome =
-      extraOpts.agentsHome ?? path.join(os.homedir(), ".agents");
-    const agentSkillsRoot = path.join(agentsHome, "skills");
+  if (stagedBundle.agentSkillsRoot) {
     cleanedAgentSkills = await cleanupInstalledEntries(
-      agentSkillsRoot,
+      stagedBundle.agentSkillsRoot,
       previousEntries.agentSkills,
       {
         label: "skill",
@@ -174,84 +388,259 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
         confirmOptions: extraOpts.confirm,
       },
     );
-    for (const skill of bundle.agentSkills) {
-      const targetDir = resolveManagedChild(
-        agentSkillsRoot,
+  }
+  for (const skill of bundle.agentSkills ?? []) {
+    await installStagedDir(
+      resolveManagedChild(
+        stagedBundle.stagedAgentSkillsRoot,
         skill.name,
         "agent skill name",
-      );
-      await writeText(path.join(targetDir, "SKILL.md"), skill.content + "\n");
-    }
+      ),
+      resolveManagedChild(
+        stagedBundle.agentSkillsRoot,
+        skill.name,
+        "agent skill name",
+      ),
+      { replace: false },
+    );
   }
 
-  const hookPluginResult = await writeCodexHookPluginBundle(
+  const hookPluginResult = await finalizeCodexHookPluginBundle(
     codexRoot,
+    codexStagingRoot,
     bundle.codexPlugin,
     previousEntries,
+    stagedBundle.hookTargets,
     { confirmOptions: extraOpts.confirm },
   );
 
-  const config = renderCodexConfig(bundle.mcpServers);
-  if (config) {
-    await writeText(path.join(codexRoot, "config.toml"), config);
+  if (stagedBundle.stagedConfigPath) {
+    await installStagedFile(
+      stagedBundle.stagedConfigPath,
+      path.join(codexRoot, "config.toml"),
+      { replace: false },
+    );
   }
+
+  return {
+    cleanedAgentSkills,
+    cleanedCodexSkills,
+    cleanedHookMarketplaces: hookPluginResult.cleanedHookMarketplaces,
+    cleanedPluginCaches: hookPluginResult.cleanedPluginCaches,
+    cleanedPrompts,
+  };
+}
+
+async function preflightCodexBundleFinalization(
+  codexRoot,
+  codexStagingRoot,
+  stagedBundle,
+  bundle,
+  previousEntries,
+) {
+  for (const sharedScriptDir of stagedBundle.sharedScriptDirs) {
+    await preflightStagedDirInstall(
+      path.join(codexStagingRoot, sharedScriptDir.targetDir),
+      path.join(codexRoot, sharedScriptDir.targetDir),
+      {
+        label: `shared script directory ${sharedScriptDir.targetDir}`,
+      },
+    );
+  }
+  for (const sharedScriptFile of stagedBundle.sharedScriptFiles) {
+    await preflightStagedFileInstall(
+      path.join(codexStagingRoot, sharedScriptFile.targetPath),
+      path.join(codexRoot, sharedScriptFile.targetPath),
+      {
+        label: `shared script file ${sharedScriptFile.targetPath}`,
+      },
+    );
+  }
+
+  const previousPrompts = new Set(sanitizeEntryList(previousEntries.prompts));
+  for (const prompt of bundle.prompts) {
+    const entry = `${prompt.name}.md`;
+    await preflightStagedFileInstall(
+      path.join(stagedBundle.stagedPromptsDir, entry),
+      path.join(codexRoot, "prompts", entry),
+      {
+        label: `prompt ${entry}`,
+        replace: previousPrompts.has(entry),
+      },
+    );
+  }
+
+  const previousSkills = new Set(sanitizeEntryList(previousEntries.skills));
+  for (const skill of [...bundle.skillDirs, ...bundle.generatedSkills]) {
+    await preflightStagedDirInstall(
+      resolveManagedChild(
+        stagedBundle.stagedSkillsRoot,
+        skill.name,
+        "skill name",
+      ),
+      resolveManagedChild(
+        path.join(codexRoot, "skills"),
+        skill.name,
+        "skill name",
+      ),
+      {
+        label: `skill ${skill.name}`,
+        replace: previousSkills.has(skill.name),
+      },
+    );
+  }
+
+  const previousAgentSkills = new Set(
+    sanitizeEntryList(previousEntries.agentSkills),
+  );
+  for (const skill of bundle.agentSkills ?? []) {
+    await preflightStagedDirInstall(
+      resolveManagedChild(
+        stagedBundle.stagedAgentSkillsRoot,
+        skill.name,
+        "agent skill name",
+      ),
+      resolveManagedChild(
+        stagedBundle.agentSkillsRoot,
+        skill.name,
+        "agent skill name",
+      ),
+      {
+        label: `agent skill ${skill.name}`,
+        replace: previousAgentSkills.has(skill.name),
+      },
+    );
+  }
+
+  if (stagedBundle.stagedConfigPath) {
+    await preflightStagedFileInstall(
+      stagedBundle.stagedConfigPath,
+      path.join(codexRoot, "config.toml"),
+      {
+        label: "Codex config",
+      },
+    );
+  }
+}
+
+async function stageCodexConfig(
+  codexRoot,
+  codexStagingRoot,
+  bundle,
+  previousEntries,
+  pluginName,
+) {
+  const configPath = path.join(codexRoot, "config.toml");
+  const existing = (await pathExists(configPath)) ? await readText(configPath) : "";
+  const config = renderCodexConfig(bundle.mcpServers);
+  let updated = config;
+
   if (bundle.codexPlugin) {
-    await upsertCodexHookPluginConfig(codexRoot, bundle.codexPlugin);
+    updated = upsertTomlTables(
+      updated ?? existing,
+      renderCodexHookPluginConfigTables(codexRoot, bundle.codexPlugin),
+    );
   } else if (
     previousEntries.pluginCaches.length > 0 ||
     previousEntries.hookMarketplaces.length > 0
   ) {
-    await removeCodexHookPluginConfig(
-      codexRoot,
-      codexHookPluginConfigRef(pluginName),
-    );
+    const hookConfigRef = codexHookPluginConfigRef(pluginName);
+    updated = removeTomlTables(updated ?? existing, [
+      codexMarketplaceTableHeader(hookConfigRef),
+      codexPluginTableHeader(hookConfigRef),
+    ]);
   }
 
-  const nextEntries = {
-    hookMarketplaces: hookPluginResult.cleanedHookMarketplaces
-      ? hookPluginResult.hookMarketplaces
-      : unionEntryLists(
-          previousEntries.hookMarketplaces,
-          hookPluginResult.hookMarketplaces,
-        ),
-    pluginCaches: hookPluginResult.cleanedPluginCaches
-      ? hookPluginResult.pluginCaches
-      : unionEntryLists(
-          previousEntries.pluginCaches,
-          hookPluginResult.pluginCaches,
-        ),
-    prompts: cleanedPrompts
-      ? bundle.prompts.map((prompt) => `${prompt.name}.md`)
-      : unionEntryLists(
-          previousEntries.prompts,
-          bundle.prompts.map((prompt) => `${prompt.name}.md`),
-        ),
-    skills: cleanedCodexSkills
-      ? [
-          ...bundle.skillDirs.map((skill) => skill.name),
-          ...bundle.generatedSkills.map((skill) => skill.name),
-        ]
-      : unionEntryLists(previousEntries.skills, [
-          ...bundle.skillDirs.map((skill) => skill.name),
-          ...bundle.generatedSkills.map((skill) => skill.name),
-        ]),
-    agentSkills: cleanedAgentSkills
-      ? (bundle.agentSkills ?? []).map((skill) => skill.name)
-      : unionEntryLists(
-          previousEntries.agentSkills,
-          (bundle.agentSkills ?? []).map((skill) => skill.name),
-        ),
-    updatedAtMs: Date.now(),
-  };
-  setInstallEntries(installState, pluginName, "codex", nextEntries);
-  await writeInstallState(codexRoot, installState);
-  await writeInstallManifest(codexRoot, pluginName, "codex", nextEntries);
+  if (updated === undefined || updated === null || updated === existing) {
+    return null;
+  }
+
+  const stagedConfigPath = path.join(codexStagingRoot, "config.toml");
+  await writeText(stagedConfigPath, updated);
+  return stagedConfigPath;
 }
 
-async function writeCodexHookPluginBundle(
+async function stageCodexHookPluginBundle(
   codexRoot,
+  codexStagingRoot,
   codexPlugin,
   previousEntries,
+  options = {},
+) {
+  const confirmOptions = options.confirmOptions ?? {};
+  if (!codexPlugin) {
+    return {
+      pluginCaches: [],
+      hookMarketplaces: [],
+      targets: {},
+    };
+  }
+
+  const marketplaceEntry = codexHookMarketplaceEntry(codexPlugin);
+  const marketplaceRoot = codexHookMarketplaceRoot(codexRoot, codexPlugin);
+  const pluginCacheEntry = codexHookPluginCacheEntry(codexPlugin);
+  const pluginCacheRoot = resolveManagedChild(
+    path.join(codexRoot, "plugins"),
+    pluginCacheEntry,
+    "Codex plugin cache entry",
+  );
+  const stagedMarketplaceRoot = resolveManagedChild(
+    codexStagingRoot,
+    marketplaceEntry,
+    "Codex hook marketplace entry",
+  );
+  const stagedMarketplacePluginRoot = path.join(
+    stagedMarketplaceRoot,
+    "plugins",
+    codexPlugin.name,
+  );
+  const stagedPluginCacheRoot = resolveManagedChild(
+    path.join(codexStagingRoot, "plugins"),
+    pluginCacheEntry,
+    "Codex plugin cache entry",
+  );
+
+  const marketplaceTarget = await prepareCodexHookPluginTarget(marketplaceRoot, {
+    label: "Codex hook marketplace",
+    entry: marketplaceEntry,
+    previousEntries: previousEntries.hookMarketplaces,
+    confirmOptions,
+  });
+  const pluginCacheTarget = await prepareCodexHookPluginTarget(pluginCacheRoot, {
+    label: "Codex plugin cache entry",
+    entry: pluginCacheEntry,
+    previousEntries: previousEntries.pluginCaches,
+    confirmOptions,
+  });
+
+  await writeCodexHookPluginTree(stagedMarketplacePluginRoot, codexPlugin);
+  await writeCodexHookPluginTree(stagedPluginCacheRoot, codexPlugin);
+  await writeCodexHookMarketplace(stagedMarketplaceRoot, codexPlugin);
+
+  return {
+    pluginCaches: [pluginCacheEntry],
+    hookMarketplaces: [marketplaceEntry],
+    targets: {
+      marketplace: {
+        finalRoot: marketplaceRoot,
+        overwriteExisting: marketplaceTarget.overwriteExisting,
+        stagedRoot: stagedMarketplaceRoot,
+      },
+      pluginCache: {
+        finalRoot: pluginCacheRoot,
+        overwriteExisting: pluginCacheTarget.overwriteExisting,
+        stagedRoot: stagedPluginCacheRoot,
+      },
+    },
+  };
+}
+
+async function finalizeCodexHookPluginBundle(
+  codexRoot,
+  codexStagingRoot,
+  codexPlugin,
+  previousEntries,
+  targets = {},
   options = {},
 ) {
   const confirmOptions = options.confirmOptions ?? {};
@@ -278,64 +667,68 @@ async function writeCodexHookPluginBundle(
     return {
       cleanedPluginCaches,
       cleanedHookMarketplaces,
-      pluginCaches: [],
-      hookMarketplaces: [],
     };
   }
 
-  const marketplaceEntry = codexHookMarketplaceEntry(codexPlugin);
-  const marketplaceRoot = codexHookMarketplaceRoot(codexRoot, codexPlugin);
-  const marketplacePluginRoot = path.join(
-    marketplaceRoot,
-    "plugins",
-    codexPlugin.name,
-  );
-  const pluginCacheEntry = codexHookPluginCacheEntry(codexPlugin);
-  const pluginCacheRoot = resolveManagedChild(
-    path.join(codexRoot, "plugins"),
-    pluginCacheEntry,
-    "Codex plugin cache entry",
-  );
+  const marketplaceTarget =
+    targets.marketplace ??
+    {
+      finalRoot: codexHookMarketplaceRoot(codexRoot, codexPlugin),
+      overwriteExisting: false,
+      stagedRoot: resolveManagedChild(
+        codexStagingRoot,
+        codexHookMarketplaceEntry(codexPlugin),
+        "Codex hook marketplace entry",
+      ),
+    };
+  const pluginCacheTarget =
+    targets.pluginCache ??
+    {
+      finalRoot: resolveManagedChild(
+        path.join(codexRoot, "plugins"),
+        codexHookPluginCacheEntry(codexPlugin),
+        "Codex plugin cache entry",
+      ),
+      overwriteExisting: false,
+      stagedRoot: resolveManagedChild(
+        path.join(codexStagingRoot, "plugins"),
+        codexHookPluginCacheEntry(codexPlugin),
+        "Codex plugin cache entry",
+      ),
+    };
 
-  await prepareCodexHookPluginTarget(marketplaceRoot, {
-    label: "Codex hook marketplace",
-    entry: marketplaceEntry,
-    previousEntries: previousEntries.hookMarketplaces,
-    cleaned: cleanedHookMarketplaces,
-    confirmOptions,
-  });
-  await prepareCodexHookPluginTarget(pluginCacheRoot, {
-    label: "Codex plugin cache entry",
-    entry: pluginCacheEntry,
-    previousEntries: previousEntries.pluginCaches,
-    cleaned: cleanedPluginCaches,
-    confirmOptions,
-  });
-
-  await writeCodexHookPluginTree(marketplacePluginRoot, codexPlugin);
-  await writeCodexHookPluginTree(pluginCacheRoot, codexPlugin);
-  await writeCodexHookMarketplace(marketplaceRoot, codexPlugin);
+  await installStagedDir(
+    marketplaceTarget.stagedRoot,
+    marketplaceTarget.finalRoot,
+    {
+      replace: cleanedHookMarketplaces || marketplaceTarget.overwriteExisting,
+    },
+  );
+  await installStagedDir(
+    pluginCacheTarget.stagedRoot,
+    pluginCacheTarget.finalRoot,
+    {
+      replace: cleanedPluginCaches || pluginCacheTarget.overwriteExisting,
+    },
+  );
 
   return {
     cleanedPluginCaches,
     cleanedHookMarketplaces,
-    pluginCaches: [pluginCacheEntry],
-    hookMarketplaces: [marketplaceEntry],
   };
 }
 
 async function prepareCodexHookPluginTarget(
   targetRoot,
-  { label, entry, previousEntries, cleaned, confirmOptions },
+  { label, entry, previousEntries, confirmOptions },
 ) {
-  if (!(await pathExists(targetRoot))) return;
+  if (!(await pathExists(targetRoot))) {
+    return { overwriteExisting: false };
+  }
 
   const wasTracked = sanitizeEntryList(previousEntries).includes(entry);
   if (wasTracked) {
-    if (cleaned) {
-      await fs.rm(targetRoot, { recursive: true, force: true });
-    }
-    return;
+    return { overwriteExisting: false };
   }
 
   console.log(`\nFound existing untracked ${label} at ${targetRoot}.`);
@@ -347,7 +740,7 @@ async function prepareCodexHookPluginTarget(
     throw new Error(`Refusing to overwrite existing untracked ${label}.`);
   }
 
-  await fs.rm(targetRoot, { recursive: true, force: true });
+  return { overwriteExisting: true };
 }
 
 async function writeCodexHookPluginTree(targetRoot, codexPlugin) {
@@ -433,31 +826,6 @@ function codexHookPluginCacheEntry(codexPlugin) {
   );
 }
 
-async function upsertCodexHookPluginConfig(codexRoot, codexPlugin) {
-  const configPath = path.join(codexRoot, "config.toml");
-  const existing = (await pathExists(configPath))
-    ? await readText(configPath)
-    : "";
-  const tables = renderCodexHookPluginConfigTables(codexRoot, codexPlugin);
-  const updated = upsertTomlTables(existing, tables);
-  if (updated !== existing) {
-    await writeText(configPath, updated);
-  }
-}
-
-async function removeCodexHookPluginConfig(codexRoot, codexPlugin) {
-  const configPath = path.join(codexRoot, "config.toml");
-  if (!(await pathExists(configPath))) return;
-  const existing = await readText(configPath);
-  const updated = removeTomlTables(existing, [
-    codexMarketplaceTableHeader(codexPlugin),
-    codexPluginTableHeader(codexPlugin),
-  ]);
-  if (updated !== existing) {
-    await writeText(configPath, updated);
-  }
-}
-
 function renderCodexHookPluginConfigTables(codexRoot, codexPlugin) {
   const source = codexHookMarketplaceRoot(codexRoot, codexPlugin);
   const lastUpdated = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -531,6 +899,106 @@ function resolveCodexOutputRoot(outputRoot) {
   return path.basename(outputRoot) === ".codex"
     ? outputRoot
     : path.join(outputRoot, ".codex");
+}
+
+async function createInstallStagingRoot(baseRoot, pluginName, label) {
+  await ensureDir(baseRoot);
+  const nonce = Math.random().toString(16).slice(2);
+  const stagingRoot = path.join(
+    baseRoot,
+    ".kramme-install-staging",
+    `${normalizeName(pluginName)}-${label}-${Date.now()}-${process.pid}-${nonce}`,
+  );
+  await ensureDir(stagingRoot);
+  return stagingRoot;
+}
+
+async function removeInstallStagingRoot(stagingRoot) {
+  if (!stagingRoot) return;
+  await fs.rm(stagingRoot, { recursive: true, force: true });
+  try {
+    await fs.rmdir(path.dirname(stagingRoot));
+  } catch {
+    // Another concurrent install may still have a sibling staging directory.
+  }
+}
+
+async function preflightStagedDirInstall(
+  stagedDir,
+  targetDir,
+  { label = "directory", replace = false } = {},
+) {
+  if (
+    !(await pathExists(stagedDir)) ||
+    replace ||
+    !(await pathExists(targetDir))
+  ) {
+    return;
+  }
+  const targetStats = await fs.lstat(targetDir);
+  if (!targetStats.isDirectory()) {
+    throw new Error(
+      `Cannot install ${label} because ${targetDir} is not a directory.`,
+    );
+  }
+}
+
+async function preflightStagedFileInstall(
+  stagedFile,
+  targetFile,
+  { label = "file", replace = false } = {},
+) {
+  if (
+    !(await pathExists(stagedFile)) ||
+    replace ||
+    !(await pathExists(targetFile))
+  ) {
+    return;
+  }
+  const targetStats = await fs.lstat(targetFile);
+  if (targetStats.isDirectory()) {
+    throw new Error(
+      `Cannot install ${label} because ${targetFile} is a directory.`,
+    );
+  }
+}
+
+async function installStagedDir(stagedDir, targetDir, { replace = false } = {}) {
+  if (!(await pathExists(stagedDir))) return;
+  if (replace) {
+    await fs.rm(targetDir, { recursive: true, force: true });
+  }
+  await ensureDir(path.dirname(targetDir));
+  if (replace || !(await pathExists(targetDir))) {
+    try {
+      await fs.rename(stagedDir, targetDir);
+      return;
+    } catch (error) {
+      if (error.code !== "EXDEV") throw error;
+    }
+  }
+  await copyDir(stagedDir, targetDir);
+  await fs.rm(stagedDir, { recursive: true, force: true });
+}
+
+async function installStagedFile(
+  stagedFile,
+  targetFile,
+  { replace = false } = {},
+) {
+  if (!(await pathExists(stagedFile))) return;
+  if (replace) {
+    await fs.rm(targetFile, { force: true });
+  }
+  await ensureDir(path.dirname(targetFile));
+  try {
+    await fs.rename(stagedFile, targetFile);
+    return;
+  } catch (error) {
+    if (error.code !== "EXDEV") throw error;
+  }
+  await copyFile(stagedFile, targetFile);
+  await fs.rm(stagedFile, { force: true });
 }
 
 function renderCodexConfig(mcpServers) {
