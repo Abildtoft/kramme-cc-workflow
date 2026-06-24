@@ -355,6 +355,10 @@ Otherwise, only if ALL of these conditions are met:
 - `siw/LOG.md` exists or can be created
 - Critical or Major findings were found
 
+### 7.0 SIW Issue-State Protocol
+
+Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
+
 ### 7.1 Ask User
 
 If `AUTO_MODE=true`, skip this prompt and choose **Critical and major only**.
@@ -405,6 +409,8 @@ For each selected finding:
    - When a section already exists, match its column count exactly (legacy 5-col / pre-Mode 6-col / modern 7-col) and preserve it in place — do not migrate layouts or add a `Mode` column to a section that lacks one.
 5. Annotate the source product audit report entry with `Existing issue: G-{NNN}` immediately after the issue is created. If the report cannot be edited, warn in the final summary and include the finding id plus created issue id.
 6. Update `siw/LOG.md` Current Progress section.
+
+If any issue file, overview, source-report annotation, or log write fails after issue creation starts, surface the partial state in the completion summary and offer rollback guidance instead of reporting the issue as cleanly created.
 
 ---
 

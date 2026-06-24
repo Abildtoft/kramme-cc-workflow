@@ -293,6 +293,8 @@ Prerequisites:
 - `siw/issues/` exists (create if missing)
 - `siw/LOG.md` exists (create minimal file with a `## Current Progress` section if missing)
 
+Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
+
 Issue creation:
 
 1. Re-check the standard handled-finding skip rule for this finding. If it now matches, do not create an issue; report the matched artifact in the completion message and Step 7 summary.
@@ -335,6 +337,8 @@ Issue creation:
    ```markdown
    - {YYYY-MM-DD} G-{NNN}: resolved {finding_id} via Option {X} ({one-line option name})
    ```
+
+If any issue file, overview, source-report annotation, or log write fails after issue creation starts, surface the partial state in the completion summary and offer rollback guidance instead of reporting the issue as cleanly created.
 
 ## Step 6: Continue Until Done
 

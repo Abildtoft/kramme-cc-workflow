@@ -79,14 +79,19 @@ If the task references a supporting or contract spec (e.g., "See `siw/supporting
 
 ### 4. Handle New Issues
 
+Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
+
 - Create `siw/issues/ISSUE-{prefix}-XXX-*.md` when blocked
 - Add row to `siw/OPEN_ISSUES_OVERVIEW.md`
   - If you added a non-DONE issue to a phase section currently marked ` (DONE)`, ask the user whether to remove the marker
+- Update `siw/LOG.md` Current Progress with the created issue ID, title, and date
 - Investigate using the template structure
-- Once resolved, document the resolution in the issue file's `## Resolution` section, set status to `IN REVIEW` or `DONE` based on confidence, and update the overview row
+- Once resolved, document the resolution in the issue file's `## Resolution` section, set the issue file's `**Status:**` line to `IN REVIEW` or `DONE` based on confidence, update the overview row to the same status, and update `siw/LOG.md` Current Progress with the resolved issue ID, status, and next step
   - If this was a phase issue (`P1-*`, `P2-*`, etc.) and it was the last open issue in that phase, ask the user whether to mark the phase as DONE by appending ` (DONE)` to the phase section header
 - Document resolution as a decision in siw/LOG.md
 - Update "Current Progress" section with any blockers
+
+If any issue file, overview, or log write fails after issue creation or resolution starts, surface the partial state in the completion summary and offer rollback guidance instead of reporting the issue as cleanly created or resolved.
 
 ### 5. Document Execution Decisions
 

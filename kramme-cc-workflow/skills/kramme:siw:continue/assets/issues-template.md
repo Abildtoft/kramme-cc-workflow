@@ -35,7 +35,7 @@ siw/issues/
 2. **Only read individual issue files when:**
    - You're investigating that specific issue
    - You need the full context/options for a decision
-3. **When resolved:** Document the resolution in the issue file's `## Resolution` section, set status to `IN REVIEW` or `DONE` based on confidence, and update the overview row
+3. **When resolved:** Document the resolution in the issue file's `## Resolution` section, set the issue file's `**Status:**` line to `IN REVIEW` or `DONE` based on confidence, update the overview row to the same status, and update `siw/LOG.md` Current Progress
    - If this was a phase issue (`P1-*`, `P2-*`, etc.) and it was the last open issue in that phase, ask the user whether to mark the phase as DONE in the overview header (append ` (DONE)`).
    - If you later add a new non-DONE issue to a phase marked ` (DONE)`, remove the marker (or ask the user) so the header stays accurate.
 
@@ -140,11 +140,14 @@ _To be filled when decision is made, then document in siw/LOG.md._
 
 ### Creating a New Issue
 
+Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
+
 **If this is the first issue (no issues exist yet):**
 
 1. Create `siw/issues/` directory
 2. Create `siw/OPEN_ISSUES_OVERVIEW.md` using the template above
 3. Create `siw/issues/ISSUE-G-001-short-title.md` using the template above
+4. Update `siw/LOG.md` Current Progress with the created issue ID, title, and date
 
 **If issues already exist:**
 
@@ -154,15 +157,22 @@ _To be filled when decision is made, then document in siw/LOG.md._
 2. Find next available number within that prefix group (check `siw/OPEN_ISSUES_OVERVIEW.md` table)
 3. Create `siw/issues/ISSUE-{prefix}-XXX-short-title.md`
 4. Add row to appropriate section in `siw/OPEN_ISSUES_OVERVIEW.md` table
-5. If you added a non-DONE issue to a phase section currently marked ` (DONE)`, remove the marker (or ask the user)
+5. Update `siw/LOG.md` Current Progress with the created issue ID, title, and date
+6. If you added a non-DONE issue to a phase section currently marked ` (DONE)`, remove the marker (or ask the user)
+
+If any issue file, overview, or log write fails after issue creation starts, surface the partial state in the completion summary and offer rollback guidance instead of reporting the issue as cleanly created.
 
 ### Resolving an Issue
 
 1. Fill in the "Decision" section in the issue file
 2. Copy decision details to siw/LOG.md Decision Log
-3. Mark the issue `DONE` in `siw/OPEN_ISSUES_OVERVIEW.md`
-4. If this was the last open issue in a phase, ask the user if the phase should be marked as DONE by appending ` (DONE)` to the phase section header
-5. Document the resolution in the issue file's `## Resolution` section
+3. Set the issue file's `**Status:**` line to `IN REVIEW` or `DONE` based on confidence, preserving adjacent metadata
+4. Update the issue row in `siw/OPEN_ISSUES_OVERVIEW.md` to the same status
+5. Update `siw/LOG.md` Current Progress with the resolved issue ID, status, and next step
+6. If this was the last open issue in a phase, ask the user if the phase should be marked as DONE by appending ` (DONE)` to the phase section header
+7. Document the resolution in the issue file's `## Resolution` section
+
+If any issue file, overview, or log write fails during resolution, surface the partial state in the completion summary and offer rollback guidance instead of reporting the issue as cleanly resolved.
 
 ### Cleanup at Project Completion
 

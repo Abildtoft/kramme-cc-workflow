@@ -43,6 +43,25 @@
       ]
     },
     {
+      "name": "siw-issue-state-triad",
+      "extract_regex": "Synced SIW issue-state contract \\(keep aligned across SIW issue creators\\):\\s*(every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW\\.md, and siw/LOG\\.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently\\.)",
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:debug:triage-to-issue/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:qa:intake/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:continue/assets/issues-template.md",
+        "kramme-cc-workflow/skills/kramme:siw:continue/references/phase-1-planning.md",
+        "kramme-cc-workflow/skills/kramme:siw:continue/references/phase-2-investigation.md",
+        "kramme-cc-workflow/skills/kramme:siw:continue/references/phase-3-execution.md",
+        "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:issue-implement/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:product-audit/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:resolve-audit/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:spec-audit/references/issue-creation.md",
+        "kramme-cc-workflow/skills/kramme:siw:implementation-audit/references/report-and-issue-output.md"
+      ]
+    },
+    {
       "name": "pr-review-collect-review-diff-block",
       "extract_regex": "(?s)(COLLECT_ARGS=\\(--strict --format json\\).*?CHANGED_FILES=\\$\\(parse_review_diff_json changed_files\\) \\|\\| exit 1)",
       "normalizer": "linewise",

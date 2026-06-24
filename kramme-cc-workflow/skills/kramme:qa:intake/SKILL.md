@@ -67,10 +67,12 @@ Updating a parent ticket created earlier in the same intake run to add its just-
 Run sink detection silently at session start and emit a single `STACK DETECTED` line announcing the chosen sink. Ask a setup question only when required metadata, such as a Linear team, cannot be inferred.
 
 1. **Linear** — if a Linear issue creation tool is available in the tool surface, use Linear. In Claude Code this is usually `mcp__linear__create_issue`; in Codex use `save_issue` without an `id`. Resolve a `LINEAR_TEAM` before the first issue is filed: use an obvious default if the workspace exposes one, use the only team if there is exactly one, otherwise ask one short session-level question for the team and reuse that answer for every issue in the intake run. If no team can be resolved, treat Linear as unavailable and continue to the next sink. (`STACK DETECTED: Linear`)
-2. **SIW fallback** — else, if `siw/OPEN_ISSUES_OVERVIEW.md` and `siw/issues/` exist at the project root, file each issue as a normal General SIW issue: `siw/issues/ISSUE-G-{NNN}-qa-{slug}.md`, where `{NNN}` is the next free real `G-` issue number across both `siw/issues/ISSUE-G-*.md` and `siw/OPEN_ISSUES_OVERVIEW.md`. When scanning the overview, count only real issue rows and ignore placeholder/example text such as the `_None_` row's `(G-001)` hint. Add a matching row to the `## General` section in `siw/OPEN_ISSUES_OVERVIEW.md`, preserving the existing table schema and any section-level metadata rules below. (`STACK DETECTED: SIW (siw/issues/)`)
+2. **SIW fallback** — else, if `siw/OPEN_ISSUES_OVERVIEW.md` and `siw/issues/` exist at the project root, and `siw/LOG.md` exists or can be created, file each issue as a normal General SIW issue: `siw/issues/ISSUE-G-{NNN}-qa-{slug}.md`, where `{NNN}` is the next free real `G-` issue number across both `siw/issues/ISSUE-G-*.md` and `siw/OPEN_ISSUES_OVERVIEW.md`. When scanning the overview, count only real issue rows and ignore placeholder/example text such as the `_None_` row's `(G-001)` hint. Add a matching row to the `## General` section in `siw/OPEN_ISSUES_OVERVIEW.md`, preserving the existing table schema and any section-level metadata rules below. (`STACK DETECTED: SIW (siw/issues/)`)
 3. **Local fallback** — else, file each issue as `intake-issues/{NNN}-{slug}.md` at the project root, creating the `intake-issues/` directory if it does not exist. `{NNN}` is the next free number across existing `intake-issues/*.md` files; pad to 3 digits. (`STACK DETECTED: local intake-issues/`)
 
 If none of the three sinks is writable (no Linear MCP with a resolved team, no complete SIW tracker, working tree is read-only), stop and emit `MISSING REQUIREMENT: no writable ticket sink — Linear MCP unavailable or no Linear team, no complete siw/ tracker, and project root is read-only`.
+
+Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
 
 ### 1b. Domain-language priming
 
@@ -168,8 +170,11 @@ Derive `{slug}` from the issue title: lowercase, kebab-case, ASCII alphanumerics
   - Status line: `**Status:** Ready | **Priority:** {Low|Medium|High|Urgent} | **Size:** XS | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential after <ticket-id> | Needs coordination} | **Related:** QA intake`. Use `Safe to parallelize` only when the ticket can start without blockers; dependent child issues with a `Blocked by` line must use `Must be sequential after <ticket-id>`.
   - Sections: include the user-visible intake body under `## Problem`, and add acceptance criteria only when they follow directly from the user's expected behavior.
   - Overview row: add `G-{NNN}` to the `## General` table in `siw/OPEN_ISSUES_OVERVIEW.md` for every actionable SIW issue; if the existing General section is the empty placeholder, replace it. If the section has a `**Parallelization:**` summary, recompute it from all non-placeholder `G-*` issue files: use the shared guidance when they agree, or `Mixed — see issue files for exact guidance` when they differ. If a legacy General section has no summary line, keep it absent.
+  - Log entry: update `siw/LOG.md` Current Progress for every actionable SIW issue with the created issue ID, title, date, and whether it is standalone or part of a breakdown.
   - Breakdown parent: create `siw/qa-intake/` if needed, then write a non-actionable parent summary as `siw/qa-intake/QA-INTAKE-{NNN}-{slug}.md`, where `{NNN}` is the next free number across existing `siw/qa-intake/QA-INTAKE-*.md`; use `QA-INTAKE-{NNN}` as the parent report ID in child issue bodies. Do not create a `G-*` issue file or overview row for the parent. After child files are written, update the newly-created parent summary so it contains the final `## Child issues` list.
 - **Local**: write `intake-issues/{NNN}-{slug}.md`. For a breakdown, update the newly-created local parent file after child files are written so it contains the final `## Child issues` list.
+
+If an SIW issue file, overview row, or log write fails after SIW issue creation starts, stop the SIW create path, surface the partial state in the completion summary, and offer rollback guidance instead of reporting the issue as cleanly created.
 
 If a create/write call fails partway through a breakdown, stop the breakdown immediately. Report which tickets were filed and which were not, and leave the parent's `## Child issues` list pointing only at children that actually exist — omit the missing links rather than inventing IDs. Do not silently retry into a duplicate.
 
@@ -323,7 +328,7 @@ Pause and resolve before filing if any of these are true:
 - A breakdown has been drafted without a parent issue/container, with child ID placeholders in the final parent body, without final child links on the parent, **or** without `Parent issue/report` lines on the children.
 - The user described an issue as "minor" or "not urgent" but the draft ticket has no low priority, low-priority label, or low-priority marker.
 - The Linear sink is selected but no `LINEAR_TEAM` has been resolved.
-- The SIW sink is selected but the issue file will not have a matching row in `siw/OPEN_ISSUES_OVERVIEW.md`, or the General section's existing `**Parallelization:**` summary will be left stale.
+- The SIW sink is selected but the issue file will not have a matching row in `siw/OPEN_ISSUES_OVERVIEW.md`, the General section's existing `**Parallelization:**` summary will be left stale, or the create will not be recorded in `siw/LOG.md`.
 - The SIW sink is selected and a breakdown parent is about to be created as a `G-*` issue or added to `siw/OPEN_ISSUES_OVERVIEW.md`.
 - A dependent child issue has a `Blocked by` line but its SIW status line still says `**Parallelization:** Safe to parallelize`.
 - The session has produced more than 10 tickets in one sitting and the user has not paused — confirm the user is still doing intentional intake, not piling on.
@@ -336,7 +341,7 @@ Before ending each session, self-check:
 
 - [ ] `STACK DETECTED` was emitted at session start with the resolved sink.
 - [ ] If the sink is Linear, `LINEAR_TEAM` was resolved before the first issue was filed.
-- [ ] If the sink is SIW, every new actionable issue file has a matching `G-{NNN}` row in `siw/OPEN_ISSUES_OVERVIEW.md`, every breakdown parent summary lives outside `siw/issues/` and is absent from the overview, and any existing General `**Parallelization:**` summary was updated or intentionally preserved as absent.
+- [ ] If the sink is SIW, every new actionable issue file has a matching `G-{NNN}` row in `siw/OPEN_ISSUES_OVERVIEW.md`, every breakdown parent summary lives outside `siw/issues/` and is absent from the overview, every created actionable issue is recorded in `siw/LOG.md`, and any existing General `**Parallelization:**` summary was updated or intentionally preserved as absent.
 - [ ] Each issue triggered at most 3 clarifying questions.
 - [ ] Each filed body passes the durability grep: no `:\d+`, no `src/`, no file extensions, no internal helper names.
 - [ ] Each filed body uses domain language from `UBIQUITOUS_LANGUAGE.md` (if present) or the user's own phrasing (if not).

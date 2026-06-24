@@ -41,13 +41,18 @@ Read `assets/spec-guidance.md` for structure details.
 
 Read `assets/issues-template.md` for the full structure.
 
+Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
+
 **When first issue arises:**
 
 1. Create `siw/issues/` directory
 2. Create `siw/OPEN_ISSUES_OVERVIEW.md` with the overview table
 3. Create `siw/issues/ISSUE-G-001-short-title.md` for the first issue
+4. Update `siw/LOG.md` Current Progress with the created issue ID, title, and date
 
-**When resolved:** Document the resolution in the issue file's `## Resolution` section, set status to `IN REVIEW` or `DONE` based on confidence, update the overview row, and document the decision in siw/LOG.md. If it was the last open issue in a phase (`P1-*`, `P2-*`, etc.), ask the user whether to mark the phase as DONE by appending ` (DONE)` to the phase section header.
+**When resolved:** Document the resolution in the issue file's `## Resolution` section, set the issue file's `**Status:**` line to `IN REVIEW` or `DONE` based on confidence, update the overview row to the same status, document the decision in siw/LOG.md, and update `siw/LOG.md` Current Progress with the resolved issue ID, status, and next step. If it was the last open issue in a phase (`P1-*`, `P2-*`, etc.), ask the user whether to mark the phase as DONE by appending ` (DONE)` to the phase section header.
+
+If any issue file, overview, or log write fails after issue creation or resolution starts, surface the partial state in the completion summary and offer rollback guidance instead of reporting the issue as cleanly created or resolved.
 
 ## Step 3: siw/LOG.md
 

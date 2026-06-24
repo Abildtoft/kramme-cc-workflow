@@ -13,6 +13,10 @@ Only create SIW issues if ALL of these conditions are met:
 - `siw/LOG.md` exists or can be created
 - Critical or Major findings were found, or a Minor finding preserves original Critical or Major severity via `**Severity Note:** [Deprioritized — capped at Minor from {original_severity}]`
 
+## SIW Issue-State Protocol
+
+Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
+
 ## 6.1 Ask User
 
 If `AUTO_MODE=true`, skip this prompt and choose **Critical and major only** (this also includes Minor findings whose `Severity Note` preserves original Critical or Major severity).
@@ -71,3 +75,5 @@ For each selected finding:
    - If the General section is still in its empty placeholder state (`_None_` row / no real issues yet), replace the default summary from `siw:init` with the first real issue's category.
    - If an existing legacy General section has no `**Parallelization:**` line, preserve that absence instead of inserting one.
 4. Update `siw/LOG.md` Current Progress section using `assets/spec-log-last-completed.md`.
+
+If any issue file, overview, or log write fails after issue creation starts, surface the partial state in the completion summary and offer rollback guidance instead of reporting the issue as cleanly created.

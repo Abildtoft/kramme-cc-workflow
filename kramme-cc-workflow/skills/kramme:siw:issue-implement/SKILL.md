@@ -42,6 +42,8 @@ When executing those phases, read and follow `references/execution-approaches.md
 
 Every status change (to "IN PROGRESS", "IN REVIEW", or "DONE") must update all three tracking files atomically. Skipping any file leaves the tracking state inconsistent.
 
+Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
+
 **Required updates:**
 
 - [ ] **Issue file** (`siw/issues/ISSUE-{prefix}-{number}-*.md`) — Set the `**Status:**` line to the new status. Preserve the rest of the status line (`Size`, `Parallelization`, `Mode`, `Related`, etc.) — do not delete adjacent metadata.
