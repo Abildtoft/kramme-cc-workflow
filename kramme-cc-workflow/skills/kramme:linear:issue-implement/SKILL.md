@@ -28,6 +28,9 @@ Parse `$ARGUMENTS` before Step 1. If `--auto` is present, set `AUTO_MODE=true` a
 [Branch Setup] -> IMMEDIATELY create/switch to Linear's branchName
     |
     v
+[Reference Mapping] -> Fetch linked Linear issues/docs and record inaccessible assets
+    |
+    v
 [Parse Requirements] -> Extract acceptance criteria from description
     |
     v
@@ -87,8 +90,8 @@ The issue ID should be in the format TEAM-NUMBER (e.g., WAN-521, HEA-456).
 Use the Linear MCP tool to fetch complete issue details. `{ISSUE_ID}` is the human-readable identifier from `$ARGUMENTS` (e.g. `WAN-123`), which `get_issue` accepts directly:
 
 ```
-Claude Code: mcp__linear__get_issue with id: {ISSUE_ID}
-Codex: get_issue with id: {ISSUE_ID}
+Claude Code: mcp__linear__get_issue with id: {ISSUE_ID}, includeRelations: true
+Codex: get_issue with id: {ISSUE_ID}, includeRelations: true
 ```
 
 **If Linear MCP operations are unavailable**, the Linear MCP server is not connected. Stop and tell the user to connect it — do not continue without issue data.
@@ -105,24 +108,10 @@ Codex: get_issue with id: {ISSUE_ID}
 - `url` - Link to issue in Linear
 - `project` - Associated project
 - `priority` - Issue priority
+- Issue relationships - blocking, blocked by, related, duplicate, parent, or child issues when returned
+- Linked resources - attachments, links, documents, or other assets when returned
 
-### 1.3 Fetch Issue Comments
-
-Fetch comments for additional context, using the UUID captured in Step 1.2:
-
-```
-Claude Code: mcp__linear__list_comments with issueId: {issueUuid}
-Codex: list_comments with issueId: {issueUuid}
-```
-
-Comments often contain:
-
-- Clarifications from product/design
-- Technical discussions
-- Updated requirements
-- Scope changes
-
-### 1.4 Handle Missing Issue
+### 1.3 Handle Missing Issue
 
 **If issue not found:**
 
@@ -138,8 +127,6 @@ Try again with /kramme:linear:issue-implement <correct-issue-id>
 ```
 
 **Action:** Abort.
-
----
 
 ## Step 2: Branch Setup (MANDATORY - DO IMMEDIATELY)
 
@@ -243,7 +230,35 @@ Proceeding with issue analysis...
 
 ## Step 3: Parse and Present Issue Context
 
-### 3.1 Parse Issue Description
+### 3.1 Fetch Issue Comments
+
+Fetch comments for additional context, using the UUID captured in Step 1.2:
+
+```
+Claude Code: mcp__linear__list_comments with issueId: {issueUuid}
+Codex: list_comments with issueId: {issueUuid}
+```
+
+Comments often contain:
+
+- Clarifications from product/design
+- Technical discussions
+- Updated requirements
+- Scope changes
+
+### 3.2 Map Referenced Linear Context
+
+Build a `REFERENCE_MAP` from the issue response, issue description, and comments before planning. Include:
+
+- Other Linear issues from relationship fields and inline issue keys.
+- Linear documents from document fields, Linear doc URLs, or stable doc slugs/IDs.
+- Attachments, screenshots, Figma links, external docs, or other assets that may affect implementation.
+
+For each referenced Linear issue, fetch accessible details with `get_issue`/`mcp__linear__get_issue` using `includeRelations: true`. For each referenced Linear document, fetch accessible details with `get_document`/`mcp__linear__get_document` when a stable ID or slug is available. Do not guess document IDs from vague titles.
+
+For every reference, record: `reference`, `type`, `source location`, `access result`, and `implementation relevance`. If a referenced document or asset cannot be opened because of missing permissions, unavailable tools, unsupported file type, expired URL, or missing ID/slug, keep it in `REFERENCE_MAP` as inaccessible and tell the user in Step 3. Do not silently ignore inaccessible referenced context.
+
+### 3.3 Parse Issue Description
 
 Analyze the issue description to extract:
 
@@ -266,7 +281,13 @@ Analyze the issue description to extract:
 - Database changes mentioned
 - Related files or components
 
-### 3.2 Present Issue Summary
+**Referenced Context:**
+
+- Related Linear issues and documents from `REFERENCE_MAP`
+- Accessible details that change requirements, dependencies, or sequencing
+- Inaccessible referenced documents or assets that may require user follow-up
+
+### 3.4 Present Issue Summary
 
 Show the user what was found:
 
@@ -290,6 +311,10 @@ Recommended Branch: {branchName}
 
 Comments: {count} comments found
 {if comments exist: show key points from recent comments}
+
+Referenced Context:
+- Accessible: {related issues/docs/assets fetched and why they matter | "None found"}
+- Inaccessible: {references the agent could not access and why | "None found"}
 
 Requirements Identified:
 - {requirement 1}
@@ -329,16 +354,21 @@ They typically do NOT describe:
 
 Perform these steps even if the issue seems straightforward:
 
-1. **Search for similar features/patterns:**
+1. **Use the reference map as research input:**
+   - Incorporate accessible related issues and Linear documents into the feature description and implementation constraints
+   - Treat inaccessible referenced documents/assets as explicit research gaps
+   - Map dependencies or sequencing implied by related issues before choosing files to edit
+
+2. **Search for similar features/patterns:**
    - Use the available code-search tools (e.g. Glob and Grep) to find related code
    - Look for existing implementations of similar functionality
    - Identify relevant modules, services, or components
 
-2. **Dispatch a codebase-exploration subagent** (or run the search directly if subagents are unavailable):
+3. **Dispatch a codebase-exploration subagent** (or run the search directly if subagents are unavailable):
 
-   Ask it to find existing implementations related to {feature description from issue} and identify the relevant files, patterns, and conventions used in this codebase. In Claude Code this is the `Explore` agent via the Task tool.
+   Ask it to find existing implementations related to {feature description from issue plus accessible reference context} and identify the relevant files, patterns, and conventions used in this codebase. In Claude Code this is the `Explore` agent via the Task tool.
 
-3. **Identify key files and patterns:**
+4. **Identify key files and patterns:**
    - List files that will likely need modification
    - Note existing patterns to follow
    - Find test patterns for similar features
@@ -364,6 +394,7 @@ Review the issue and exploration results to identify:
 - Scope boundaries (what's in/out)
 - Dependencies on other work
 - Testing expectations
+- Referenced documents or assets that could not be accessed and might change implementation
 
 ### 5.2 Ask Clarifying Questions
 

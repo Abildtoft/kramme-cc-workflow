@@ -15,6 +15,12 @@ Existing Patterns:
 Similar Implementations:
 - {feature} in {files} - could serve as reference
 
+Referenced Linear Context Used:
+- {related issue/document/asset} - {how it affected research}
+
+Inaccessible Referenced Context:
+- {document/asset/link} - {why unavailable and whether it may affect implementation}
+
 Suggested Approach:
 {brief technical approach based on findings}
 ```

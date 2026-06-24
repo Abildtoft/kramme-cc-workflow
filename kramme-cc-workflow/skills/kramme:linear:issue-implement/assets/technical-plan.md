@@ -12,6 +12,11 @@ Technical Implementation Plan for {identifier}
 | {user story 1} | {how it will be implemented} |
 | {user story 2} | {how it will be implemented} |
 
+## Referenced Linear Context
+| Reference | Access | Implementation Signal |
+|-----------|--------|-----------------------|
+| {related issue/document/asset or "None found"} | {accessible/inaccessible and why} | {requirement, dependency, risk, or "None"} |
+
 ## Files to Modify/Create
 - {file 1} - {what changes}
 - {file 2} - {what changes}
