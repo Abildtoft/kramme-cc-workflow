@@ -30,7 +30,7 @@ Create or update one Linear project for the SIW project. A project requires at l
 
 **Description:**
 
-Keep the project description short. The full spec, supporting specs, and decision log are migrated as Linear Documents (see Document Mapping), so the description only needs an orienting summary plus a notation legend. Migrated bodies are full of SIW notation that resolves to nothing inside Linear — the legend is what makes the project understandable to a Linear-only reader.
+Keep the project description short. The full spec, supporting specs, selected contract specs, and decision log are migrated as Linear Documents (see Document Mapping), so the description only needs an orienting summary plus a notation legend. Migrated bodies are full of SIW notation that resolves to nothing inside Linear — the legend is what makes the project understandable to a Linear-only reader.
 
 Write the Summary and Value sections for non-technical stakeholders: plain language, no SIW or implementation jargon, no file paths or ID notation. A manager or customer-facing colleague landing on the project page should understand what problem is being solved, why, and what the value is without opening any Document. Pull this from the spec's problem statement, goals, and success criteria — summarize outcomes, not architecture:
 
@@ -49,12 +49,12 @@ Write the Summary and Value sections for non-technical stakeholders: plain langu
 - `{main-spec-filename} > Section` pointers refer to the attached "{main spec document title}" Document.
 - `Pn-NNN` IDs are the original SIW issue IDs; every issue carries its own ID in its `SIW Metadata` block, so they resolve via project search.
 - Mode `AUTO` means an agent can implement the issue autonomously; `HITL` means human-in-the-loop checkpoints are required.
-- `siw/` paths refer to the retired local planning directory this project was migrated from.
+- Source provenance paths under `siw/` identify migrated local artifacts only; they are not implementation references.
 
 ## SIW Context
 
 - Migrated from local SIW markdown artifacts in `{siw-dir}`.
-- Main spec, supporting specs, and decision log are attached as Linear Documents.
+- Main spec, supporting specs, selected contract specs, and decision log are attached as Linear Documents.
 ```
 
 Include only legend lines whose notation actually appears in the migrated content.
@@ -71,16 +71,87 @@ Create one Linear Document under the project for:
 
 - The main spec.
 - Each `supporting-specs/*.md` file.
+- Each `contracts/*.md` file selected for migration, especially any contract markdown linked from an issue, spec, supporting spec, or other migrated document.
 - Each non-selected main-spec candidate (a file that lost the main-spec tiebreak is still a source-of-truth document, not disposable).
 - `LOG.md`. In a mature SIW project the log is the canonical decision register — issue bodies cite it heavily (`D-0xx`), and excluding it would orphan every citation once `siw/` is removed.
 
 **Title:** the document's first `#` heading, falling back to the filename without extension, with the original filename appended in parentheses — e.g. `ChallengeCraft Decision Log (LOG.md)`. Stale path references in migrated bodies (like `siw/LOG.md`) then still ring a bell.
 
-**Body:** the file's markdown content, preserved as-is. Linear normalizes markdown on save (bullet style, table dashes, bold spans, auto-linked bare domains), so verify round-trips by normalized content, not bytes.
+**Body:** the file's markdown content, preserved semantically and then passed through Markdown Reference Rewrite below. Linear normalizes markdown on save (bullet style, table dashes, bold spans, auto-linked bare domains), so verify round-trips by normalized content, not bytes.
 
-If the Linear MCP cannot create Documents, fall back to embedding the main spec summary in the project description and record which supporting specs could not be captured. In that case the migration is not "clean", so removal of `siw/` must not be prompted (see SKILL.md Phase 7).
+If the Linear MCP cannot create Documents, fall back to embedding the main spec summary in the project description and record which supporting specs, selected contract specs, and other document sources could not be captured. In that case the migration is not "clean", so removal of `siw/` must not be prompted (see SKILL.md Phase 7).
 
 Existing-document reuse follows Duplicate Detection and Retry Matching above.
+
+## Markdown Reference Rewrite
+
+Linear-bound content must not leave local SIW markdown paths as required implementation references after migration. Rewrite the content that will be written to Linear after the document reference map has URLs.
+
+**Document reference map:**
+
+Build and maintain one map entry per migrated document source:
+
+- Source path relative to `siw-dir`, normalized as a POSIX path.
+- Filename.
+- First heading/title, falling back to filename without extension.
+- Planned Linear Document title from Document Mapping.
+- Planned action, plus a separate rewrite-only update action when an existing Document needs body rewrites.
+- Created or reused Linear Document URL.
+
+Include the main spec, every `supporting-specs/*.md`, every selected `contracts/*.md`, every non-selected main-spec candidate, and `LOG.md`. Existing documents matched by title fill the URL during planning. Newly created documents fill it during execution. If a map entry has no URL after the document phase, references to it are unresolved local-only references.
+
+**Content to rewrite:**
+
+- Issue descriptions before issue creation.
+- Project description if generated or copied content references files.
+- Milestone descriptions if generated or copied content references files.
+- Migrated Document bodies when they link to other migrated SIW markdown files.
+- Current Linear issue or Document bodies before any rewrite-only update to a reused or `skip-existing` record.
+
+Apply the same rewrite to reused or `skip-existing` Linear records only when the relevant read and update tools exist, and include that work as an explicit rewrite-only update in the migration plan before approval. For rewrite-only updates, fetch the current Linear body first and rewrite only matching SIW-local markdown references in that current body; never regenerate the body from the source SIW markdown or resync unrelated body edits, statuses, assignees, labels, or other Linear-owned fields. If the current body cannot be fetched, do not perform the rewrite-only update; report the remaining local reference and withhold the removal prompt when it is required implementation content.
+
+**Reference detection:**
+
+Detect both Markdown links and plain inline paths:
+
+- Markdown links such as `[Effective scope model](../supporting-specs/01-configuration-data-api.md#effective-scope-model)`.
+- Plain paths in prose or code spans such as `../contracts/05-ufa-query-and-rendering.md`, `siw/supporting-specs/02-api.md#endpoints`, `./LOG.md`, or `LOG.md#decision-log`.
+
+Resolve relative targets from the file that contains the reference. Strip URL query strings, preserve the `#fragment` separately, normalize `.` / `..`, and match the path portion against the document reference map. Treat `siw/` prefixes as relative to `siw-dir`.
+
+**Rewrite format:**
+
+Do not depend on Linear section anchors. Linear Document URLs are stable; heading anchors are not guaranteed. When a reference includes a section fragment, link to the Document URL and keep the section name in visible text.
+
+- Markdown link to a migrated document section:
+  - Input: `[details](../supporting-specs/01-configuration-data-api.md#effective-scope-model)`
+  - Output: `[01 Configuration Data/API > Effective Scope Model]({linear_document_url})`
+- Plain path to a migrated document section:
+  - Input: `../supporting-specs/01-configuration-data-api.md#effective-scope-model`
+  - Output: `Linear Document: [01 Configuration Data/API > Effective Scope Model]({linear_document_url})`
+- Markdown link to a migrated document without a section:
+  - Output visible text: the document display title.
+- Plain path to a migrated document without a section:
+  - Input: `../contracts/05-ufa-query-and-rendering.md`
+  - Output: `Linear Document: [05 UFA Query and Rendering]({linear_document_url})`
+
+Use the document display title (the first heading/title without the filename suffix) for visible text. Convert fragments to title case by replacing hyphens and underscores with spaces, unless the target document contains a heading whose normalized anchor matches the fragment; then use the exact heading text.
+
+**Source provenance:**
+
+Local source paths may remain only as provenance, never as the primary instruction path. Put source paths in metadata or context blocks such as `SIW Metadata` / `SIW Context`, not in Problem, Scope, Acceptance Criteria, Technical Notes, milestone implementation guidance, or project "how to work this" prose. Do not use phrases like "read `siw/supporting-specs/...`" in Linear-bound implementation content after rewrite.
+
+**Unresolved references:**
+
+If a markdown reference points outside the migrated document set, or points to a migrated source with no Linear Document URL, do not invent a target. Move or retain the local path only in source provenance metadata, not as an implementation instruction, and report it in the migration plan as an unresolved local markdown reference with:
+
+- Referencing Linear-bound item (issue, project, milestone, or document).
+- Source artifact containing the reference.
+- Referenced local path and section fragment.
+- Reason it could not be rewritten.
+- Whether it appears in required implementation content or provenance-only content.
+
+When an unresolved reference appears in required implementation content, the migration is not clean. Do not prompt for `siw/` removal while unresolved required local markdown references remain. If the unresolved reference targets an existing SIW markdown file that should be needed after migration, add it to the document source set and rerun planning instead of leaving it local-only.
 
 ## Milestone Mapping
 
@@ -141,6 +212,7 @@ Append a compact metadata block. `SIW ID` is mandatory: migrated bodies keep tex
 ## SIW Metadata
 
 - SIW ID: {id}
+- Source path: {source issue path}
 - Status: {SIW status}
 - Priority: {priority}
 - Size: {size}

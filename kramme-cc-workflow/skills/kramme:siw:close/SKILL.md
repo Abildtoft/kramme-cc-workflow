@@ -200,9 +200,9 @@ Extract:
 - **Technical design** (from `## Technical Design` if present)
 - **Linked specifications** (from `## Linked Specifications` if present)
 
-### 4.2 From Supporting Specs (`siw/supporting-specs/*.md`)
+### 4.2 From Supporting and Contract Specs (`siw/supporting-specs/*.md`, `siw/contracts/*.md`)
 
-For each supporting spec:
+For each supporting or contract spec:
 
 - Extract title and key content
 - Categorize by domain (data model, API, UI, etc.)
@@ -266,7 +266,7 @@ Read the templates from `assets/documentation-templates.md`, substitute placehol
 - `{docs_path}/decisions.md` -- architecture decision records (index, context, rationale, alternatives)
 - `{docs_path}/architecture.md` -- technical design, **only** if any of the following holds:
   - the spec has a `## Technical Design` section, **or**
-  - supporting specs exist with substantive content, **or**
+  - supporting or contract specs exist with substantive content, **or**
   - 5+ decisions are tagged with architecture-related categories
 
 ### Content Rules
@@ -282,11 +282,11 @@ All generated documentation must be:
 
 ## Step 6: Resolve File Dispositions
 
-Decide what happens to the spec, `siw/supporting-specs/`, and `siw/SPEC_STRENGTHENING_PLAN.md`. Read `references/spec-disposition.md` for the prompts, discovery-rich detection rules, and conflict handling.
+Decide what happens to the spec, `siw/supporting-specs/`, `siw/contracts/`, and `siw/SPEC_STRENGTHENING_PLAN.md`. Read `references/spec-disposition.md` for the prompts, discovery-rich detection rules, and conflict handling.
 
 If `AUTO_MODE=true`, do not use the interactive prompts from `references/spec-disposition.md`. Use conservative preservation defaults instead:
 
-- Set `spec_disposition=move` so the main spec and `siw/supporting-specs/` are preserved under `{docs_path}/spec/`.
+- Set `spec_disposition=move` so the main spec, `siw/supporting-specs/`, and `siw/contracts/` are preserved under `{docs_path}/spec/`.
 - If `siw/SPEC_STRENGTHENING_PLAN.md` exists, set `strengthening_plan_disposition=move`; otherwise set `strengthening_plan_disposition=remove`.
 - Before moving anything, verify the relevant destination paths under `{docs_path}/spec/` do not already exist. If any destination would overwrite a file or directory, stop with `MISSING REQUIREMENT: spec disposition target already exists; rerun without --auto to choose how to preserve the source material`.
 - Append the "Original Specification" README note described in `references/spec-disposition.md` after the move. This keeps durable source material while avoiding hidden prompts in auto mode.
@@ -354,6 +354,7 @@ In `AUTO_MODE`, `trash` was already verified during Step 2.3 before documentatio
 - `siw/SPEC_STRENGTHENING_PLAN.md` (only if `strengthening_plan_disposition=remove`)
 - `siw/{spec_filename}` (only if `spec_disposition=remove`; skip when empty)
 - `siw/supporting-specs/` (only if `spec_disposition=remove`)
+- `siw/contracts/` (only if `spec_disposition=remove`)
 
 Build `delete_targets` from the paths above that actually exist. Expand globs before deletion so unmatched globs are never reported as removed. If `delete_targets` is empty, skip the deletion command and continue to reporting. Delete directories by passing them to `trash` as normal path arguments; do not pass recursive flags to `trash`. Do not suppress deletion errors. Capture stderr/stdout so any failure can be reported.
 
@@ -386,18 +387,14 @@ from pathlib import Path
 import os
 
 siw = Path("siw")
-gitkeep_paths = [
-    siw / "issues" / ".gitkeep",
-    siw / "qa-intake" / ".gitkeep",
-]
-empty_dirs = [
-    siw / "issues",
-    siw / "qa-intake",
-]
+gitkeep_paths = [siw / "issues" / ".gitkeep", siw / "qa-intake" / ".gitkeep"]
+empty_dirs = [siw / "issues", siw / "qa-intake"]
 
 if os.environ.get("SPEC_DISPOSITION") == "remove":
     gitkeep_paths.append(siw / "supporting-specs" / ".gitkeep")
+    gitkeep_paths.append(siw / "contracts" / ".gitkeep")
     empty_dirs.append(siw / "supporting-specs")
+    empty_dirs.append(siw / "contracts")
 
 if siw.exists() and not any(path.is_file() and path.name != ".gitkeep" for path in siw.rglob("*")):
     gitkeep_paths.append(siw / ".gitkeep")
@@ -430,7 +427,7 @@ Sections to include:
 - **Documentation generated:** every file written under `{docs_path}/` (always at least `README.md` and `decisions.md`; `architecture.md` when generated).
 - **Removed:** each path verified absent in Step 7.2 (skip lines for files that never existed).
 - **Failed to remove:** each target that still exists after Step 7.2, with the captured error. Omit the section if all targets were removed.
-- **Preserved:** each path that survived (`siw/{spec_filename}`, `siw/supporting-specs/`, `siw/SPEC_STRENGTHENING_PLAN.md`, `{docs_path}/spec/`). Omit the section if nothing was preserved.
+- **Preserved:** each path that survived (`siw/{spec_filename}`, `siw/supporting-specs/`, `siw/contracts/`, `siw/SPEC_STRENGTHENING_PLAN.md`, `{docs_path}/spec/`). Omit the section if nothing was preserved.
 - **Recovery note:** if `trash` was used in Step 7.2, add: `Files moved to Trash and can be restored if needed.`
 - A final line: `The documentation in {docs_path}/ is self-contained and can be read without any SIW context.`
 

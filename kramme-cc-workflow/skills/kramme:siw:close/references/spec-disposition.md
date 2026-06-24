@@ -1,6 +1,6 @@
 # Spec and Strengthening Plan Disposition
 
-Resolve the fate of `siw/SPEC_STRENGTHENING_PLAN.md`, the main spec, and `siw/supporting-specs/` before SIW files are deleted in Step 7.
+Resolve the fate of `siw/SPEC_STRENGTHENING_PLAN.md`, the main spec, `siw/supporting-specs/`, and `siw/contracts/` before SIW files are deleted in Step 7.
 
 Outputs:
 
@@ -54,7 +54,7 @@ options:
   - label: "Move to {docs_path}/spec/"
     description: "Preserve the original spec alongside the generated docs"
   - label: "Keep in siw/"
-    description: "Leave siw/{spec_filename} and siw/supporting-specs/ in place"
+    description: "Leave siw/{spec_filename}, siw/supporting-specs/, and siw/contracts/ in place"
 ```
 
 Store the result as `spec_disposition` with values `move` or `keep`.
@@ -66,9 +66,9 @@ header: "Specification Files"
 question: "What should happen to the SIW specification file(s)?"
 options:
   - label: "Remove"
-    description: "Delete spec and supporting specs (knowledge is captured in {docs_path}/)"
+    description: "Delete spec, supporting specs, and contract specs (knowledge is captured in {docs_path}/)"
   - label: "Keep in siw/"
-    description: "Preserve siw/{spec_filename} and siw/supporting-specs/ as-is"
+    description: "Preserve siw/{spec_filename}, siw/supporting-specs/, and siw/contracts/ as-is"
   - label: "Move to {docs_path}/spec/"
     description: "Move spec file(s) into the documentation directory"
 ```
@@ -95,7 +95,7 @@ Update `strengthening_plan_disposition` to `move` or `remove` based on the answe
 
 ## 5. Move instructions
 
-If `spec_disposition=move`, move `siw/{spec_filename}` and (if present) `siw/supporting-specs/` to `{docs_path}/spec/` after the documentation is generated.
+If `spec_disposition=move`, move `siw/{spec_filename}` and (if present) `siw/supporting-specs/` and `siw/contracts/` to `{docs_path}/spec/` after the documentation is generated.
 
 If `strengthening_plan_disposition=move`, move `siw/SPEC_STRENGTHENING_PLAN.md` to `{docs_path}/spec/`.
 

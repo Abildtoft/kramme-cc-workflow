@@ -60,7 +60,7 @@ Adapt to your context (code/docs/API/etc.):
 - Be explicit about what's out of scope
 - Update task descriptions with final implementation details
 - **NEVER** reference siw/OPEN_ISSUES_OVERVIEW.md or siw/LOG.md
-- **CAN** reference supporting specs (they are permanent)
+- **CAN** reference supporting specs and contract specs (they are permanent)
 
 ---
 

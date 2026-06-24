@@ -27,11 +27,11 @@ Then read ~30 lines from that line.
 - Initial planning (Phase 1)
 - Final review (Phase 4)
 
-### 1.5. Check Supporting Specs (if referenced)
+### 1.5. Check Supporting or Contract Specs (if referenced)
 
-If the task references a supporting spec (e.g., "See `siw/supporting-specs/02-api-specification.md#endpoints`"):
+If the task references a supporting or contract spec (e.g., "See `siw/supporting-specs/02-api-specification.md#endpoints`" or `siw/contracts/01-api-contract.md#request-shape`):
 
-1. **Find the section** in the supporting spec:
+1. **Find the section** in the referenced spec:
 
    ```bash
    grep -n "## Endpoints\|### Endpoints" siw/supporting-specs/02-api-specification.md
@@ -39,13 +39,14 @@ If the task references a supporting spec (e.g., "See `siw/supporting-specs/02-ap
 
 2. **Read just that section** (~50 lines)
 
-3. **Use supporting specs for**:
+3. **Use supporting and contract specs for**:
    - Detailed data model definitions
    - API endpoint contracts
+   - Interface, data shape, or integration guarantees
    - UI component specifications
    - User story acceptance criteria
 
-**Supporting specs are permanent** - they can be referenced in tasks and documentation.
+**Supporting and contract specs are permanent** - they can be referenced in tasks and documentation.
 
 ### 2. Track Progress and Keep Spec Current
 
@@ -70,10 +71,11 @@ If the task references a supporting spec (e.g., "See `siw/supporting-specs/02-ap
 
 - siw/[YOUR_SPEC].md (main spec)
 - siw/supporting-specs/\*.md (supporting specifications)
+- siw/contracts/\*.md (contract specifications)
 
 **For code:** No references to temporary docs in comments, XML docs, JSDoc, error messages, or logs **For documentation:** No references to temporary docs in published content
 
-**NOTE:** Temporary documents (LOG.md, issues/) are deleted after project completion; permanent documents (spec, supporting-specs) are kept.
+**NOTE:** Temporary documents (LOG.md, issues/) are deleted after project completion; permanent documents (spec, supporting-specs, contracts) are kept.
 
 ### 4. Handle New Issues
 

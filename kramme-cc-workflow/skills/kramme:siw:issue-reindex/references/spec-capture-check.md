@@ -10,6 +10,7 @@ Use this check after the user confirms the reindex plan and before deleting any 
 - `siw/LOG.md` when present.
 - Active specification files directly under `siw/`, excluding the synced SIW spec-exclusion contract: `siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/DISCOVERY_BRIEF.md`, `siw/SPEC_STRENGTHENING_PLAN.md`, `siw/AUDIT_*.md`, `siw/PRODUCT_AUDIT.md`, and `siw/SIW_*.md`.
 - Supporting specification files under `siw/supporting-specs/` when present.
+- Contract specification files under `siw/contracts/` when present.
 
 ## Capture Procedure
 
@@ -34,7 +35,7 @@ Use this check after the user confirms the reindex plan and before deleting any 
 ## Spec Update Rules
 
 - Update spec content where the fact belongs; do not create a history dump of completed issue notes.
-- Prefer the most specific supporting spec when one exists.
+- Prefer the most specific supporting or contract spec when one exists.
 - Use the main spec for cross-cutting decisions, scope boundaries, and unresolved open questions.
 - Preserve existing headings, terminology, and formatting style.
 - Keep migrated text concise and current-tense.

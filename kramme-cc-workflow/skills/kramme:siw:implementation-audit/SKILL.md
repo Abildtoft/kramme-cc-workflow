@@ -113,13 +113,14 @@ Auto-detect spec files from the `siw/` directory:
 
 3. Find supporting specs:
    - Use Glob to find `siw/supporting-specs/*.md`
+   - Use Glob to find `siw/contracts/*.md`
 
 4. Check for linked external specs:
-   - Read **every detected spec file** (both `siw/*.md` and `siw/supporting-specs/*.md` candidates).
+   - Read **every detected spec file** (`siw/*.md`, `siw/supporting-specs/*.md`, and `siw/contracts/*.md` candidates).
    - Look for a "Linked Specifications" section with a table containing file paths.
    - Add any linked external paths to the candidate file list (verify each exists).
 
-5. **Use all found spec files by default.** Only ask the user to select if there are files that look unrelated to each other (for example, specs for entirely different features). Do NOT ask when the files are clearly parts of the same specification (main spec + supporting specs).
+5. **Use all found spec files by default.** Only ask the user to select if there are files that look unrelated to each other (for example, specs for entirely different features). Do NOT ask when the files are clearly parts of the same specification (main spec + supporting specs + contract specs).
 
 6. Store files as `spec_files`.
 
@@ -133,6 +134,7 @@ Error: No specification files found.
 Expected locations:
   - siw/*.md (SIW spec files)
   - siw/supporting-specs/*.md (supporting specifications)
+  - siw/contracts/*.md (contract specifications)
 
 Or provide file path(s) directly:
   /kramme:siw:implementation-audit path/to/spec.md
@@ -241,7 +243,7 @@ Group requirements by **spec file or major spec section** (not by abstract domai
 ### 3.1 Determine Grouping
 
 - If there are **1-2 spec files**: One Explore agent per spec file.
-- If there are **3+ spec files**: Group related files (for example, main spec + supporting specs) and assign one agent per group. Aim for 2-4 agents total.
+- If there are **3+ spec files**: Group related files (for example, main spec + supporting specs + contract specs) and assign one agent per group. Aim for 2-4 agents total.
 - If a single spec file has **clearly distinct major sections** (for example, "Data Model", "API Endpoints", "Authentication"): Split into one agent per major section.
 
 ### 3.2 For Each Group, Identify Code Areas

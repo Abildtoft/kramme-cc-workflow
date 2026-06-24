@@ -125,7 +125,7 @@ Generate this file only when the conditions in SKILL.md Step 5 are met. Include 
 
 ## Technical Overview
 
-{From spec's Technical Design section and/or supporting specs}
+{From spec's Technical Design section and/or supporting or contract specs}
 
 ## Data Model
 

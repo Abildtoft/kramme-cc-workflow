@@ -93,10 +93,14 @@ ls siw/OPEN_ISSUES_OVERVIEW.md 2> /dev/null
 ls siw/*.md 2> /dev/null | grep -v -E '/(LOG|OPEN_ISSUES_OVERVIEW|DISCOVERY_BRIEF|SPEC_STRENGTHENING_PLAN|PRODUCT_AUDIT)\.md$|/AUDIT_.*\.md$|/SIW_.*\.md$'
 ```
 
-Also check for supporting specs:
+Also check for supporting and contract specs:
 
 ```bash
-ls siw/supporting-specs/*.md 2> /dev/null
+for dir in siw/supporting-specs siw/contracts; do
+  if [ -d "$dir" ]; then
+    find "$dir" -maxdepth 1 -type f -name "*.md"
+  fi
+done
 ```
 
 **Main-spec selection:**
@@ -170,26 +174,14 @@ options:
 
    If output is non-empty, list the dirty paths and re-prompt with AskUserQuestion options "Proceed and discard changes" / "Abort". Abort by default if the user does not pick "Proceed".
 
-2. Delete the issue files. Prefer `trash` for recoverability; fall back to an allowlisted Python cleanup with a warning:
+2. Delete the issue files with `trash` for recoverability. If `trash` is unavailable, stop instead of falling back to permanent deletion:
 
    ```bash
-   if command -v trash &> /dev/null; then
-     trash siw/issues/ISSUE-*.md 2> /dev/null
-   else
-     echo "Warning: 'trash' not found. Files will be permanently deleted. Install with 'brew install trash' (macOS) or your distro's 'trash-cli' package."
-     python3 - <<'PY'
-from pathlib import Path
-
-issues_dir = Path("siw/issues")
-if not issues_dir.is_dir():
-    raise SystemExit(0)
-
-for path in sorted(issues_dir.glob("ISSUE-*.md")):
-    if path.parent != issues_dir or not path.name.startswith("ISSUE-") or path.suffix != ".md":
-        raise SystemExit(f"Refusing to delete unexpected path: {path}")
-    path.unlink()
-PY
+   if ! command -v trash &> /dev/null; then
+     echo "MISSING REQUIREMENT: trash is required to replace existing SIW issues safely. Install with 'brew install trash' (macOS) or your distro's 'trash-cli' package, then rerun."
+     exit 1
    fi
+   trash siw/issues/ISSUE-*.md 2> /dev/null
    ```
 
 ## Phase 2: Spec Analysis
@@ -205,7 +197,7 @@ After finding spec files, look for a `## Work Context` section in the spec files
 
 ### 2.2 Read Spec Content
 
-Read the main spec file and any supporting specs found in Phase 1.2.
+Read the main spec file and any supporting or contract specs found in Phase 1.2.
 
 **Read failure:** if any spec file fails to read (permission error, missing file, empty file), stop and surface the path and the error. Do not silently skip the file or paraphrase what the spec "probably" said.
 

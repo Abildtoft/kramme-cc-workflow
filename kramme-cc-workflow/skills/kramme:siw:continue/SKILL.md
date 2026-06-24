@@ -40,6 +40,7 @@ Issues use prefix-based numbering:
 | --- | --- | --- |
 | **siw/[YOUR_SPEC].md** | Main specification (single source of truth) | **PERMANENT** |
 | **siw/supporting-specs/\*.md** | Detailed specifications by domain | **PERMANENT** |
+| **siw/contracts/\*.md** | Contract specifications referenced by issues or specs | **PERMANENT** |
 | **siw/DISCOVERY_BRIEF.md** | Greenfield discovery output before `siw:init` creates the full workflow | Temporary |
 | **siw/SPEC_STRENGTHENING_PLAN.md** | Refinement discovery output waiting for review or `--apply` | Temporary |
 | **siw/AUDIT_IMPLEMENTATION_REPORT.md** | Spec compliance audit findings from `/kramme:siw:implementation-audit` | Temporary |
@@ -206,6 +207,8 @@ All workflow files live in the `siw/` folder in the project root:
 │   │   ├── 01-data-model.md
 │   │   ├── 02-api-specification.md
 │   │   └── 03-ui-specification.md
+│   ├── contracts/                  ⚠️ PERMANENT (optional, linked contracts)
+│   │   └── 01-api-contract.md
 │   ├── AUDIT_IMPLEMENTATION_REPORT.md            ⏳ Temporary (audit output)
 │   ├── AUDIT_SPEC_REPORT.md            ⏳ Temporary (audit output)
 │   ├── DISCOVERY_BRIEF.md              ⏳ Temporary (greenfield discovery output)
