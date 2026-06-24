@@ -56,15 +56,44 @@ options:
 
 ### 2.1 Check for Open Issues
 
-Read `siw/OPEN_ISSUES_OVERVIEW.md` and check for issues not marked DONE:
+Read `siw/OPEN_ISSUES_OVERVIEW.md` and check for issues not marked DONE. Treat every non-empty status other than normalized `DONE` as open, including unknown, malformed, or future status values:
 
 ```bash
-grep -iE "\| (READY|IN PROGRESS|IN REVIEW) \|" siw/OPEN_ISSUES_OVERVIEW.md 2> /dev/null
+python3 - <<'PY'
+from pathlib import Path
+
+path = Path("siw/OPEN_ISSUES_OVERVIEW.md")
+if not path.exists():
+    raise SystemExit(0)
+
+status_index = None
+known_statuses = {"READY", "IN PROGRESS", "IN REVIEW", "DONE"}
+
+for line in path.read_text().splitlines():
+    stripped = line.strip()
+    if not stripped.startswith("|") or "---" in stripped:
+        continue
+
+    cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+    normalized_cells = [cell.lower() for cell in cells]
+    if "status" in normalized_cells:
+        status_index = normalized_cells.index("status")
+        continue
+
+    if status_index is None or len(cells) <= status_index:
+        continue
+
+    issue_id = cells[0] if cells else ""
+    status = " ".join(cells[status_index].upper().split())
+    if issue_id and status and status != "DONE":
+        marker = "UNKNOWN" if status not in known_statuses else "OPEN"
+        print(f"{issue_id}: {status} ({marker})")
+PY
 ```
 
 **If open issues found:**
 
-If `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: open SIW issues remain; rerun without --auto to close anyway or abort`.
+If `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: open SIW issues remain; rerun without --auto to close anyway or abort`. If any reported row is marked `UNKNOWN`, include those statuses in the stop message so the user can fix the tracker or close interactively.
 
 Use AskUserQuestion:
 
@@ -178,77 +207,7 @@ If "Choose different directory", re-prompt with freeform AskUserQuestion.
 
 ## Step 4: Extract Knowledge from SIW Artifacts
 
-Read all existing SIW files and extract structured knowledge.
-
-### 4.1 From the Spec (`siw/[YOUR_SPEC].md`)
-
-Extract:
-
-- **Project title** (from `#` heading)
-- **Overview** (from `## Overview`)
-- **Problem statement** (from `## Problem Statement` if present)
-- **Stakeholders** (from `## Who's Affected` if present)
-- **Objectives** (from `## Objectives`)
-- **Scope** (from `## Scope` -- In Scope, Out of Scope, and Deferred)
-- **Success criteria** (from `## Success Criteria`)
-- **Priority tradeoffs** (from `## Priorities & Tradeoffs` if present)
-- **Constraints** (from `## Constraints` if present)
-- **Design decisions** (from `## Design Decisions`)
-- **Decision boundaries** (from `## Decision Boundaries` if present)
-- **Risks** (from `## Risks` if present)
-- **Discovery notes** (from `## Discovery Notes` if present)
-- **Technical design** (from `## Technical Design` if present)
-- **Linked specifications** (from `## Linked Specifications` if present)
-
-### 4.2 From Supporting and Contract Specs (`siw/supporting-specs/*.md`, `siw/contracts/*.md`)
-
-For each supporting or contract spec:
-
-- Extract title and key content
-- Categorize by domain (data model, API, UI, etc.)
-
-### 4.3 From `siw/LOG.md`
-
-Extract:
-
-- **Decision Log entries** -- all decisions with number, title, problem, decision, rationale, alternatives, impact
-- **Guiding Principles** (from `## Guiding Principles`)
-- **Rejected Alternatives Summary** (from the table)
-- **Final project status** (from `## Current Progress`)
-
-### 4.4 From `siw/OPEN_ISSUES_OVERVIEW.md`
-
-Extract:
-
-- Phase structure (from section headers)
-- Issue count and completion percentage
-- All issues with final statuses
-
-### 4.5 From Individual Issue Files (`siw/issues/ISSUE-*.md`)
-
-For DONE issues:
-
-- Title, description, resolution section
-
-For non-DONE issues:
-
-- Title and status (listed as deferred work)
-
-### 4.6 From Audit Reports (if present)
-
-From `siw/AUDIT_IMPLEMENTATION_REPORT.md` and `siw/AUDIT_SPEC_REPORT.md`:
-
-- Note their existence as quality verification evidence
-
-### 4.7 Deduplicate Decisions
-
-Decisions may appear in both LOG.md and the spec's Design Decisions section (from prior resets or syncs):
-
-1. Read decisions from LOG.md (primary, most complete)
-2. Read decisions from spec's Design Decisions section
-3. Match by decision number (`Decision #N`) or title
-4. Prefer the LOG.md version (has full detail: alternatives, impact)
-5. Include any decisions that appear only in the spec
+Read `references/knowledge-extraction.md` and follow it. Extract the structured project knowledge before generating any documentation.
 
 ---
 
@@ -306,186 +265,25 @@ The reference enforces: `strengthening_plan_disposition=keep` requires `spec_dis
 
 ## Step 7: Remove Temporary SIW Files
 
-### 7.1 Verify documentation before deletion
-
-Before removing any SIW files, confirm the generated documentation is present and non-empty. If any required file is missing or zero-byte, abort without deleting anything; the docs must be rewritten before retrying.
-
-```bash
-test -s "{docs_path}/README.md" || {
-  echo "ERROR: {docs_path}/README.md missing or empty"
-  exit 1
-}
-test -s "{docs_path}/decisions.md" || {
-  echo "ERROR: {docs_path}/decisions.md missing or empty"
-  exit 1
-}
-```
-
-If `architecture.md` was generated in Step 5, also require:
-
-```bash
-test -s "{docs_path}/architecture.md" || {
-  echo "ERROR: {docs_path}/architecture.md missing or empty"
-  exit 1
-}
-```
-
-If any `move` disposition from Step 6 applies, confirm the move targets are in place under `{docs_path}/spec/` before deletion.
-
-### 7.2 Remove files
-
-Use `trash` (recoverable). Always quote the spec filename: it can contain spaces or other shell-significant characters.
-
-In `AUTO_MODE`, `trash` was already verified during Step 2.3 before documentation generation or spec moves. If it is missing here anyway, stop with `MISSING REQUIREMENT: trash is required for --auto close; rerun without --auto to confirm permanent deletion`.
-
-**Temporary files (always deleted):**
-
-- `siw/LOG.md`
-- `siw/OPEN_ISSUES_OVERVIEW.md`
-- `siw/AUDIT_*.md`
-- `siw/PRODUCT_AUDIT.md`
-- `siw/SIW_*.md`
-- `siw/DISCOVERY_BRIEF.md`
-- `siw/issues/` (entire directory)
-- `siw/qa-intake/` (QA intake parent summaries)
-
-**Conditional (based on Step 6):**
-
-- `siw/SPEC_STRENGTHENING_PLAN.md` (only if `strengthening_plan_disposition=remove`)
-- `siw/{spec_filename}` (only if `spec_disposition=remove`; skip when empty)
-- `siw/supporting-specs/` (only if `spec_disposition=remove`)
-- `siw/contracts/` (only if `spec_disposition=remove`)
-
-Build `delete_targets` from the paths above that actually exist. Expand globs before deletion so unmatched globs are never reported as removed. If `delete_targets` is empty, skip the deletion command and continue to reporting. Delete directories by passing them to `trash` as normal path arguments; do not pass recursive flags to `trash`. Do not suppress deletion errors. Capture stderr/stdout so any failure can be reported.
-
-```bash
-if command -v trash &> /dev/null; then
-  trash "${delete_targets[@]}"
-else
-  if [ "${AUTO_MODE:-false}" = "true" ]; then
-    echo "MISSING REQUIREMENT: trash is required for --auto close; rerun without --auto to confirm permanent deletion"
-    exit 1
-  fi
-  echo "Warning: 'trash' command not found. Files will be permanently deleted."
-  echo "Consider installing: brew install trash"
-  # Ask for explicit confirmation before running:
-  rm -rf "${delete_targets[@]}"
-fi
-```
-
-After deletion, verify every target with `[ ! -e "$path" ]`. Record only verified-absent paths in `deleted_paths`. Record any surviving paths in `failed_delete_paths` with the captured error output; these must be reported as failures instead of "Removed".
+Read `references/cleanup-procedure.md` and follow sections 1 and 2. Documentation verification must happen before any SIW files are removed.
 
 ---
 
 ## Step 8: Clean Up Empty `siw/` Directory
 
-After deletion, check if `siw/` is empty:
-
-```bash
-SPEC_DISPOSITION="{spec_disposition}" python3 - <<'PY'
-from pathlib import Path
-import os
-
-siw = Path("siw")
-gitkeep_paths = [siw / "issues" / ".gitkeep", siw / "qa-intake" / ".gitkeep"]
-empty_dirs = [siw / "issues", siw / "qa-intake"]
-
-if os.environ.get("SPEC_DISPOSITION") == "remove":
-    gitkeep_paths.append(siw / "supporting-specs" / ".gitkeep")
-    gitkeep_paths.append(siw / "contracts" / ".gitkeep")
-    empty_dirs.append(siw / "supporting-specs")
-    empty_dirs.append(siw / "contracts")
-
-if siw.exists() and not any(path.is_file() and path.name != ".gitkeep" for path in siw.rglob("*")):
-    gitkeep_paths.append(siw / ".gitkeep")
-
-for path in gitkeep_paths:
-    if path.exists():
-        if path.name != ".gitkeep" or path.parts[:1] != ("siw",):
-            raise SystemExit(f"Refusing to delete unexpected path: {path}")
-        path.unlink()
-
-for directory in [*empty_dirs, siw]:
-    if directory.exists() and directory.is_dir():
-        try:
-            directory.rmdir()
-        except OSError:
-            pass
-PY
-```
-
-If `siw/` still has files (spec kept or other files present), leave it alone.
+Read `references/cleanup-procedure.md` and follow section 3. If `siw/` still has files (spec kept or other files present), leave it alone.
 
 ---
 
 ## Step 9: Report Results
 
-Print a closing summary built from what actually happened. Include only lines that apply -- do not emit the `(if …)` annotations themselves.
-
-Sections to include:
-
-- **Documentation generated:** every file written under `{docs_path}/` (always at least `README.md` and `decisions.md`; `architecture.md` when generated).
-- **Removed:** each path verified absent in Step 7.2 (skip lines for files that never existed).
-- **Failed to remove:** each target that still exists after Step 7.2, with the captured error. Omit the section if all targets were removed.
-- **Preserved:** each path that survived (`siw/{spec_filename}`, `siw/supporting-specs/`, `siw/contracts/`, `siw/SPEC_STRENGTHENING_PLAN.md`, `{docs_path}/spec/`). Omit the section if nothing was preserved.
-- **Recovery note:** if `trash` was used in Step 7.2, add: `Files moved to Trash and can be restored if needed.`
-- A final line: `The documentation in {docs_path}/ is self-contained and can be read without any SIW context.`
-
-Example shape (with placeholders for the dynamic content):
-
-```
-SIW Project Closed
-
-Documentation generated:
-  {docs_path}/README.md              - Project summary
-  {docs_path}/decisions.md           - {N} design decisions
-  {docs_path}/architecture.md        - Technical design
-
-Removed:
-  siw/LOG.md
-  siw/OPEN_ISSUES_OVERVIEW.md
-  siw/issues/ ({count} issue files)
-  siw/qa-intake/ ({count} intake summaries)
-
-Preserved:
-  {docs_path}/spec/
-
-Files moved to Trash and can be restored if needed.
-
-The documentation in {docs_path}/ is self-contained and
-can be read without any SIW context.
-```
+Read `assets/close-summary-template.md` and use it to print a closing summary built from what actually happened.
 
 ---
 
 ## Edge Cases
 
-### No spec file found
-
-```yaml
-header: "No Specification Found"
-question: "No specification file was found in siw/ after excluding temporary SIW files. Cannot generate meaningful documentation. How should I proceed?"
-options:
-  - label: "Remove SIW files only"
-    description: "Delete temporary files without generating documentation (same as /kramme:siw:remove)"
-  - label: "Abort"
-    description: "Cancel"
-```
-
-### Linked external specifications
-
-If the spec has a `## Linked Specifications` section referencing files outside `siw/`:
-
-- Include the linked file references in the documentation README
-- Do NOT delete linked files (they are outside `siw/`)
-- Note them in the README under a "Related Documentation" section
-
-### No decisions in LOG.md
-
-If LOG.md has no Decision Log entries:
-
-- `decisions.md` will contain only the note: "No formal design decisions were recorded during this project."
-- README.md "Key Decisions" section replaced with: "No formal decisions were recorded. See the architecture documentation for technical details."
+Read `references/edge-cases.md` when an edge case is encountered. Apply the relevant rule before continuing or stopping.
 
 ## Important Notes
 

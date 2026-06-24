@@ -43,23 +43,33 @@ Notable decisions:
 
 ## Guiding Principles
 
+{If guiding principles were extracted:}
+
 {Principles from LOG.md -- learned wisdom during implementation}
 
 1. {Principle 1}
 2. {Principle 2}
 
+{If no guiding principles were extracted, omit this section.}
+
 ## Implementation Summary
+
+{If issue tracking was available:}
 
 | Metric           | Value                        |
 | ---------------- | ---------------------------- |
 | Issues completed | {done count} / {total count} |
 | Decisions made   | {N}                          |
 
+{If issue tracking was not available, omit the Issues completed row. If no meaningful metrics remain, omit this section.}
+
 {If any issues were not DONE:}
 
 ### Deferred Work
 
 - {Issue title} ({status})
+
+{If no issue files or overview were available, omit Deferred Work.}
 ```
 
 ## `decisions.md` -- Architecture Decision Records
