@@ -330,7 +330,7 @@ Linear issue tracking integration.
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
 | `/kramme:linear:issue-define` | User | `[issue-id] or [description and/or file paths] [--auto]` | Create or improve a Linear issue through guided refinement. Requires the Linear MCP server.<br><br>Can start from scratch, refine an existing issue by ID, or use `--auto` for a fast new-issue path with light clarification and duplicate checking. |
-| `/kramme:linear:issue-implement` | User | `<ISSUE-ID>` | Start implementing a Linear issue with branch setup, context gathering, and guided workflow.<br><br>Fetches issue details, explores codebase for patterns, asks clarifying questions, and creates the recommended branch. |
+| `/kramme:linear:issue-implement` | User | `<ISSUE-ID>` | Start implementing a Linear issue with branch setup, context gathering, and guided workflow.<br><br>Fetches issue details plus referenced Linear issues/documents when accessible, reports inaccessible referenced assets, explores codebase patterns, asks clarifying questions, and creates the recommended branch. |
 | `/kramme:linear:select-next` | User | `[team] [--interest <work preference>] [--mine\|--unassigned\|--both] [--project <name>] [--label <name>] [--limit <n>]` | Select the most valuable available issue to start from a Linear team. Requires the Linear MCP server.<br><br>Compares issues assigned to the logged-in user and unassigned issues, ranks value/readiness plus optional work preferences, and highlights independent issues that can be worked in parallel. |
 
 #### Visual
