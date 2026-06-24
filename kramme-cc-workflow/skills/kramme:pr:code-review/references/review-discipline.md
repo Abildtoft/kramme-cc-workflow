@@ -28,6 +28,8 @@ Every active finding must include these fields before it is posted:
 | Action class | `gated_auto`, `manual`, `advisory` | Separates urgency from safe ownership. |
 | Owner | resolver, author, maintainer, reviewer, unknown | Names who can act next. |
 | Evidence | concrete trace, location, reproduction, failed expectation, or `UNVERIFIED` reason | Prevents unsupported findings from becoming gatekeeping. |
+| Manual blocker | product/UX/architecture/maintainer decision, missing/contradictory requirement, PR-description/process update, cross-team/external ownership, unresolved contradiction, incomplete trace/UNVERIFIED, or dead-code approval | Required only for manual Critical/Important findings. Names why `/kramme:pr:resolve-review` must not act automatically. |
+| Next human decision | one concrete decision, approval, clarification, access grant, or verification step | Required only for manual Critical/Important findings. Makes the manual follow-up actionable instead of a silent skip. |
 
 ## Severity prefix grammar
 
@@ -54,7 +56,7 @@ This applies whether the finding lands in Critical, Important, or Suggestions.
 ## Action classes
 
 - **`gated_auto`** — Code-backed Critical or Important finding with a concrete file/line, an unambiguous fix direction, and enough confidence for `/kramme:pr:resolve-review` to attempt it. Do not use this for PR-description drift, product decisions, missing requirements, or broad process issues.
-- **`manual`** — The finding needs human judgment, a maintainer decision, product clarification, cross-team ownership, a PR-description update, or a trace the reviewer could not complete. Manual findings may still block merge when impact is high.
+- **`manual`** — The finding needs human judgment, a maintainer decision, product clarification, cross-team ownership, external access, a PR-description update, explicit approval, or a trace the reviewer could not complete. Manual findings may still block merge when impact is high, but they must name the manual blocker and next human decision.
 - **`advisory`** — Optional polish, FYI, low-confidence observation, or improvement idea. Advisory findings do not block merge and are not eligible for automatic resolution.
 
 ## Severity and action-class compatibility
@@ -62,7 +64,9 @@ This applies whether the finding lands in Critical, Important, or Suggestions.
 - Critical and Important findings may use only `gated_auto` or `manual`; they must not use `advisory` because those buckets represent blocking or recommended work.
 - Suggestions and FYI observations use `advisory`; do not mark optional work as `manual` just because a human would perform it.
 - If a finding feels optional, put it in Suggestions instead of keeping it in Critical/Important with `advisory`.
-- If a Critical or Important finding cannot be auto-resolved, keep it `manual` and name the decision or owner needed next.
+- Critical or Important PR-caused findings default to `gated_auto` when they have a concrete `path/to/file:line` location, confidence at least 70, concrete evidence, and a clear local fix path.
+- If a Critical or Important finding cannot be auto-resolved, keep it `manual` only with a named manual blocker and a specific next human decision.
+- If a manual Critical/Important finding has a concrete file location, confidence at least 70, and no named manual blocker, reclassify it to `gated_auto`.
 
 ## Confidence and merge rules
 
@@ -105,6 +109,9 @@ Before posting the review, confirm:
 - [ ] Every finding has a severity prefix (`Critical:`, `Nit:`, `Optional:`, `Consider:`, `FYI`, or no prefix for Required).
 - [ ] Every active finding has a stable Finding ID (`CR-001`, `CR-002`, ...).
 - [ ] Every active finding includes Location, Confidence, Action class, Owner, and Evidence.
+- [ ] Every manual Critical/Important finding includes `Manual blocker` and `Next human decision`.
+- [ ] Manual Critical/Important findings have a concrete blocker; otherwise they were reclassified to `gated_auto` or downgraded to advisory.
+- [ ] The Auto-resolution Readiness section counts eligible `gated_auto` Critical/Important findings and manual Critical/Important findings by blocker reason.
 - [ ] Dead-code findings use the verbatim ask shape `DEAD CODE IDENTIFIED: [list]. Safe to remove these?`
 - [ ] The Approval Standard line appears: _"Approve if the change definitely improves overall code health."_
 - [ ] Pre-existing or out-of-scope observations are labeled `NOTICED BUT NOT TOUCHING`.

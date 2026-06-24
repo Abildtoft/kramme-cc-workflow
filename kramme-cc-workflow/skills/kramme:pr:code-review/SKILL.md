@@ -189,7 +189,7 @@ PY
    - **Severity:** Critical, Important, Suggestion, or FYI using the severity prefix grammar in `references/review-discipline.md`
    - **Location:** concrete `path/to/file:line`, `review-scope`, or `PR description`
    - **Confidence:** `{0-100}`. During the transition, if a reviewer returns `high`, `medium`, or `low`, map it before aggregation as `high=90`, `medium=60`, `low=30`. Remove this mapping shim once all bundled review agents emit numeric 0-100 confidence natively.
-   - **Action class:** `gated_auto`, `manual`, or `advisory` from `references/review-discipline.md`; Critical/Important findings may use only `gated_auto` or `manual`, while Suggestions/FYI use `advisory`
+   - **Action class:** `gated_auto`, `manual`, or `advisory` from `references/review-discipline.md`; Critical/Important findings may use only `gated_auto` or `manual`, while Suggestions/FYI use `advisory`. Treat the raw reviewer action class as provisional: the aggregator performs the final action-class normalization in Step 11.
    - **Owner:** resolver, author, maintainer, reviewer, or unknown
    - **Evidence:** concrete location, trace, reproduction, failing expectation, or reason the finding is marked `UNVERIFIED`
    - **Relevance status:** PR-caused, pre-existing/out-of-scope, previously addressed, or unresolved pending validation
@@ -256,6 +256,29 @@ After validation, slop meta-review, and previous-response filtering, apply empha
 
 Track the count of promoted findings for the report.
 
+After emphasis adjustments, run an **action-class normalization pass**. The goal is to make `/kramme:pr:resolve-review` receive every finding it can safely fix, while keeping genuinely human-dependent work explicit.
+
+- Treat raw reviewer action classes as provisional. The aggregator owns the final `Action class`, `Owner`, and any manual-follow-up fields in the report.
+- For every PR-caused Critical or Important finding, default to `gated_auto` with owner `resolver` when all of these are true:
+  - `Location` is a concrete `path/to/file:line`
+  - `Confidence` is at least 70
+  - The evidence names a concrete failing expectation, trace, or local code path
+  - The fix direction is unambiguous and local to changed or nearby code
+  - The finding does not require a manual blocker listed below
+- Keep a Critical or Important finding as `manual` only when at least one concrete manual blocker applies:
+  - Product, UX, architectural, or maintainer judgment is needed before choosing the fix
+  - A requirement is missing or contradictory
+  - The finding is about `PR description`, branch/review process, release coordination, or other non-code state
+  - The fix needs cross-team ownership, external-system access, credentials, or human-only verification before implementation
+  - The finding contains an unresolved contradiction between reviewers or code paths
+  - The trace is incomplete or marked `UNVERIFIED`, and the impact is still high enough to keep in Critical or Important
+  - A dead-code finding uses the required `DEAD CODE IDENTIFIED: ... Safe to remove these?` ask shape and needs author/maintainer approval before deletion
+- Every manual Critical or Important finding must include:
+  - `Manual blocker: <one of the blocker categories above>`
+  - `Next human decision: <the specific decision, approval, access, or clarification needed>`
+- If a manual Critical or Important finding has a concrete file location, confidence at least 70, and no named manual blocker, reclassify it to `gated_auto`.
+- If a finding is optional, stylistic, low-confidence, or a cleanup idea without blocking impact, put it in Suggestions with action class `advisory` instead of Critical/Important with `manual`.
+
 Assign stable `Finding ID` values to every active finding after dedupe, filtering, and emphasis are complete:
 
 - Use `CR-001`, `CR-002`, etc. in final report order, starting with Critical, then Important, then Suggestions.
@@ -264,6 +287,7 @@ Assign stable `Finding ID` values to every active finding after dedupe, filterin
 
 Then summarize:
 
+- **Auto-resolution Readiness** - count eligible `gated_auto` Critical/Important findings and manual Critical/Important findings, grouped by manual blocker reason
 - **Critical Issues** (must fix before merge) - only validated findings
 - **Important Issues** (should fix) - only validated findings
 - **Suggestions** (nice to have) - only validated findings
@@ -275,7 +299,7 @@ Then summarize:
 Every active finding must include its finding ID, location, confidence, action class, owner, and evidence in the final report:
 
 - `gated_auto` — code-backed Critical/Important finding with a concrete file/line, a clear fix, and enough confidence for `/kramme:pr:resolve-review` to attempt it.
-- `manual` — requires a human decision, product/process judgment, PR-description update, cross-team ownership, or more context before a fix is safe.
+- `manual` — requires a named human decision, product/process judgment, PR-description update, cross-team ownership, external access, unresolved trace, or explicit approval before a fix is safe. Every manual Critical/Important finding must include `Manual blocker` and `Next human decision`.
 - `advisory` — optional suggestion, FYI, low-confidence observation, or quality improvement that should not block merge. Do not use this class for Critical or Important findings.
 
 PR description findings should use the same severity rules as code findings. A materially false claim that would mislead merge approval, release notes, rollback planning, or QA is Important or Critical depending on impact. Minor missing detail is at most a Suggestion and should usually be omitted.
@@ -300,7 +324,7 @@ Otherwise:
 
 13. **Provide Action Plan**
 
-If eligible `gated_auto` Critical or Important code-backed issues were found, include a suggestion to run `/kramme:pr:resolve-review` to automatically address them. Manual and advisory findings must remain human follow-up in the report. The template in `references/output-template.md` already includes the **Recommended Action** block and the **Approval Standard** line; do not omit either.
+If eligible `gated_auto` Critical or Important code-backed issues were found, include a suggestion to run `/kramme:pr:resolve-review` to automatically address them. Manual and advisory findings must remain human follow-up in the report, with manual blockers and next decisions named. The template in `references/output-template.md` already includes the **Auto-resolution Readiness**, **Recommended Action**, and **Approval Standard** sections; do not omit them.
 
 Before posting (whether to `REVIEW_OVERVIEW.md` or inline), run the pre-posting verification checklist in `references/review-discipline.md` (severity prefixes, dead-code ask shape, Approval Standard line, `NOTICED BUT NOT TOUCHING` labels on out-of-scope notes, emphasized-dimension coverage, `UNVERIFIED` labels on untraced findings).
 

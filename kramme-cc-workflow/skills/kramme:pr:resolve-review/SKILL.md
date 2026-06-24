@@ -82,10 +82,10 @@ If no review is found for the selected mode, ask the user to provide review cont
 
 Then **list all findings** with location (`file:line` when applicable, otherwise a broader scope label such as `review-scope`) and content. For old `REVIEW_OVERVIEW.md` files without an explicit location field, fall back to inline `[location]` text when present.
 
-For local review files that include the structured `/kramme:pr:code-review` finding schema, also parse `Finding ID`, `Location`, `Action class`, `Confidence`, `Owner`, and `Evidence` for each finding:
+For local review files that include the structured `/kramme:pr:code-review` finding schema, also parse `Finding ID`, `Location`, `Action class`, `Confidence`, `Owner`, `Evidence`, `Manual blocker`, and `Next human decision` for each finding:
 
 - `Action class: gated_auto` with a concrete `path/to/file:line` location is eligible for implementation.
-- `Action class: manual` is not auto-implementable, even when it has a file location. Defer it with a manual follow-up recommendation unless the user supplied a separate explicit implementation payload that changes the scope.
+- `Action class: manual` is not auto-implementable, even when it has a file location. Defer it with a manual follow-up recommendation that preserves the manual blocker and next human decision when present, unless the user supplied a separate explicit implementation payload that changes the scope.
 - `Action class: advisory` is optional. Do not implement it from local auto-discovery unless the user explicitly asks to resolve suggestions or names that finding.
 - `review-scope`, `PR description`, and other non-file locations are process-level findings. Defer them with a concrete manual recommendation.
 - Legacy local findings without an action class keep the previous location/severity behavior, but do not infer `gated_auto` from a file location when an action class is present.
@@ -153,7 +153,7 @@ If `SEVERITY_FILTER` is set, skip any finding whose severity is not in the filte
 When a finding came from a structured local review and includes an action class, apply the action-class gate before implementation:
 
 - Implement only `gated_auto` findings with concrete file locations.
-- Defer `manual` findings with **Action taken: Deferred — manual follow-up required.** Include the owner and evidence when available.
+- Defer `manual` findings with **Action taken: Deferred — manual follow-up required.** Include the owner, evidence, manual blocker, and next human decision when available.
 - Acknowledge `advisory` findings with **Action taken: Acknowledged — advisory.** unless the user explicitly asked to resolve suggestions or named that finding.
 - Never treat `manual`, `advisory`, `review-scope`, or `PR description` findings as implementation candidates just because they are critical or important.
 
@@ -193,18 +193,7 @@ fi
 } > "$CHECKPOINT_FILE"
 ```
 
-If fixes later fail verification (Step 4), offer to roll back:
-
-```bash
-. "$CHECKPOINT_FILE"
-git reset --hard "$CHECKPOINT_SHA"
-if [ -n "$CHECKPOINT_STASH_SHA" ]; then
-  CHECKPOINT_STASH_REF=$(git stash list --format='%gd %H' | awk -v sha="$CHECKPOINT_STASH_SHA" '$2 == sha { print $1; exit }')
-  if git stash apply --index "$CHECKPOINT_STASH_SHA"; then
-    [ -n "$CHECKPOINT_STASH_REF" ] && git stash drop "$CHECKPOINT_STASH_REF"
-  fi
-fi
-```
+If fixes later fail verification (Step 4), offer to roll back. Do not perform a destructive HEAD restore automatically. First report the recorded `CHECKPOINT_SHA`, whether a `CHECKPOINT_STASH_SHA` exists, and the validation failure. If the user explicitly confirms rollback, restore the branch to the recorded checkpoint using the repository's normal destructive restore command, then restore the exact recorded stash object using the Step 4 stash-restore flow below.
 
 Either way, Step 4 restores the exact stash object recorded in `CHECKPOINT_FILE` so the user's pre-existing uncommitted work is restored. Do not use a generic `git stash pop`; it may apply the wrong stash after an interrupted or retried run.
 
@@ -286,7 +275,9 @@ Each commit should be self-contained and pass linting/formatting on its own. If 
 
   ```bash
   if [ "${CHECKPOINT_RESTORE_STATUS:-not-needed}" != "conflicted" ]; then
-    [ -n "${CHECKPOINT_FILE:-}" ] && rm -f "$CHECKPOINT_FILE"
+    if [ -n "${CHECKPOINT_FILE:-}" ]; then
+      rm -f "$CHECKPOINT_FILE"
+    fi
   fi
   ```
 

@@ -79,6 +79,13 @@ Each teammate must also apply this **Codebase Calibration Rule** before making a
 
 Each teammate must return the shared finding schema from `references/review-discipline.md`: severity, location, confidence, action class, owner, evidence, and relevance status. Leave Finding ID blank in raw teammate output; the aggregator assigns stable `CR-001`, `CR-002`, ... IDs after dedupe so team output stays compatible with standard `/kramme:pr:code-review`.
 
+Treat teammate action classes as provisional. The final team aggregator must apply the same action-class normalization pass as standard `/kramme:pr:code-review` Step 11:
+
+- Critical/Important PR-caused findings default to `gated_auto` when they have a concrete `path/to/file:line` location, confidence at least 70, concrete evidence, and a clear local fix path.
+- Keep Critical/Important findings as `manual` only when they name a concrete blocker such as product/UX/architecture/maintainer judgment, missing or contradictory requirements, PR-description/process updates, cross-team or external ownership, unresolved reviewer contradiction, incomplete trace/`UNVERIFIED`, or dead-code approval.
+- Every manual Critical/Important finding must include `Manual blocker` and `Next human decision`.
+- If no manual blocker exists, reclassify the finding to `gated_auto` or downgrade it to an advisory suggestion.
+
 Use the same reviewer taxonomy as the standard workflow:
 
 **Always-on reviewers** (for default `all` reviews):
@@ -156,6 +163,7 @@ After all tasks complete:
 5. Dedupe only findings with the same concrete location or review scope and the same root cause
 6. Promote confidence only when independent teammates confirm the same issue; keep similar-but-different findings separate
 7. Record contradictions as `CONFUSION` or `MISSING REQUIREMENT` with action class `manual`
+8. Apply the standard action-class normalization pass before assigning final Finding IDs and writing the report
 
 ### Step 6: Write REVIEW_OVERVIEW.md or Reply Inline
 
@@ -167,6 +175,8 @@ Keep the output schema-compatible with the standard PR review:
 
 - Keep the same severity prefix grammar (`Critical:`, `Nit:`, `Optional:`, `Consider:`, `FYI`)
 - Include Finding ID, location, confidence, action class, owner, and evidence for every active finding
+- Include `Manual blocker` and `Next human decision` for every manual Critical/Important finding
+- Include the `## Auto-resolution Readiness` section from the standard template
 - Use `NOTICED BUT NOT TOUCHING` for pre-existing or out-of-scope notes
 - Include the `## Approval Standard` section verbatim
 
