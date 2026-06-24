@@ -15,7 +15,7 @@ Break down a specification into atomic, committable issues organized into phases
 
 **This command creates issue files from a specification.**
 
-- **DOES**: Read spec, decompose into phases/tasks, create issue files, update overview table
+- **DOES**: Read spec, decompose into phases/tasks, create issue files, update overview table, update log progress
 - **DOES NOT**: Implement features, write code, or make changes to the codebase
 
 **Implementation is a separate workflow.** After this command completes, use `/kramme:siw:issue-implement` to start implementing.
@@ -38,6 +38,10 @@ Issue IDs are stable once issue files are written.
 - When deleting or replacing a concept outside the explicit Replace flow, leave numbering gaps in place.
 - Intentional cleanup and renumbering belongs to `/kramme:siw:issue-reindex`; do not duplicate that workflow here.
 
+## SIW Issue-State Protocol
+
+Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
+
 ## Process Overview
 
 ```
@@ -59,7 +63,7 @@ Issue IDs are stable once issue files are written.
     ↓
 [Present phase plan to user] -> Confirm or request changes
     ↓
-[Create issue files and update overview]
+[Create issue files and update overview/log]
     ↓
 [Report summary] -> Suggest /kramme:siw:issue-implement
 ```
@@ -442,6 +446,12 @@ For each issue, create `siw/issues/ISSUE-{prefix}-{number}-{title}.md`:
 ### 6.2 Update Overview Table
 
 Read `references/tracker-schema.md` and apply its modern and legacy schema rules when updating `siw/OPEN_ISSUES_OVERVIEW.md`. The synced tracker status vocabulary is `READY | IN PROGRESS | IN REVIEW | DONE`.
+
+### 6.3 Update siw/LOG.md
+
+Update `siw/LOG.md` Current Progress with the generated issue count, affected prefix ranges, and date. If `siw/LOG.md` is missing, create a minimal Current Progress section before reporting success.
+
+If any issue file, overview, or log write fails after issue creation starts, surface the partial state in the completion summary and offer rollback guidance instead of reporting the phase issues as cleanly created.
 
 ## Phase 7: Summary
 

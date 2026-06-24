@@ -204,15 +204,17 @@ Branch on the sink chosen in Phase 2.
 
 **Linear:** before creating, search the team for an open issue with the same title. If one exists, surface it and ask before filing a duplicate; under `--yes` / `--auto`, skip creation and report the existing issue instead of duplicating. Otherwise call the available Linear create operation: Claude Code `mcp__linear__create_issue`, or Codex `save_issue` without `id`. Pass title, description (the drafted body), required `team: LINEAR_TEAM`, and any auto-detectable labels/project. Return the issue URL.
 
-**SIW:** write three files in lockstep:
+**SIW:** follow the SIW-owned issue creation/update protocol from `kramme:siw:issue-define`. Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
 
-1. `siw/issues/ISSUE-{prefix}-{NNN}-{slug}.md` — full issue body. Use the prefix and number scheme already in use in the repo's `siw/issues/` directory (typically `G` for general or `P{N}` for phased; pad to 3 digits). Pick the next unused number for the prefix so a re-run never overwrites an existing issue file. Slug is a kebab-case fragment of the title.
-2. `siw/OPEN_ISSUES_OVERVIEW.md` — append a row to the index table with status `OPEN`.
-3. `siw/LOG.md` — add an entry under the current progress / decision-log section noting the new issue and the date.
+Create `siw/issues/ISSUE-{prefix}-{NNN}-{slug}.md` as a `kramme:siw:issue-define`-compatible issue, not as a raw paste of the drafted Linear body. Use the prefix and number scheme already in use in `siw/issues/` (typically `G` for general or `P{N}` for phased; pad to 3 digits), and use the `kramme:siw:issue-define` title sanitization for the slug. Pick the next unused number for the prefix so a re-run never overwrites an existing issue file. The issue file must include the standard SIW header and status line:
 
-All three updates must succeed atomically. If any write fails, surface the error and offer the user a chance to roll back the partial create.
+```markdown
+# ISSUE-{prefix}-{NNN}: {title}
 
-> The issue-file prefix/number scheme and the OVERVIEW/LOG update protocol above are owned by the `kramme:siw` skills; this inline copy must stay in sync with them.
+**Status:** READY | **Priority:** {High|Medium|Low} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Mode:** AUTO | **Related:** Debug triage
+```
+
+Then place the drafted triage body below that metadata. Add the overview row with status `READY` and the log entry required by the SIW-owned protocol. If any write fails, surface the error and offer the user a chance to roll back the partial create.
 
 **Markdown fallback:** write `BUG-{slug}-{YYYY-MM-DD}.md` to the project root with the full body. If that file already exists (same-day re-run), append a numeric suffix (`-2`, `-3`, …) rather than overwriting. Surface the absolute path.
 

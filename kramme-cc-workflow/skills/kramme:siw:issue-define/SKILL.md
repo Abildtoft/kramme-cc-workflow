@@ -19,11 +19,15 @@ Create or improve a local issue through guided interactive refinement. Can start
 - **DOES**: Interview user, explore codebase for context, compose well-structured issue, create/update issue file
 - **DOES NOT**: Write code, implement features, fix bugs, or make any changes to the codebase
 
-**Implementation is a separate workflow.** This skill ends when the issue file is written and the tracker is updated. After it completes, the user can invoke `/kramme:siw:issue-implement` if they want to start implementing.
+**Implementation is a separate workflow.** This skill ends when the issue file is written and the tracker/log are updated. After it completes, the user can invoke `/kramme:siw:issue-implement` if they want to start implementing.
 
 ## Prerequisites
 
 **Workflow files should exist.** If `siw/OPEN_ISSUES_OVERVIEW.md` doesn't exist, suggest running `/kramme:siw:init` first. If the file is still missing after that suggestion, stop without creating an issue.
+
+## SIW Issue-State Protocol
+
+This skill owns the manual SIW issue creation/update protocol. Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
 
 ## Audience Priority
 
@@ -407,11 +411,17 @@ Issues are grouped by prefix (General, Phase 1, Phase 2, etc.).
 
 **For new issues:** Add a row to the appropriate section. If the section doesn't exist yet, create the section header and table first.
 
-**For updated issues:** Update the existing row if title, priority, status, or mode changed.
+**For updated issues:** Update the existing row if any tracker-visible metadata changed, including title, status, size, priority, mode, related/dependency metadata, or any other field shown in the current table layout.
 
 Read `references/tracker-schema.md` for the column-layout rules (three coexisting layouts, when to use each, when to migrate), the parallelization-summary recomputation rules, and the `(DONE)` phase-marker rules.
 
-### 5. Return Result
+### 5. Update siw/LOG.md
+
+For new issues, add an entry under `## Current Progress` noting the created issue ID, title, and date. For updated issues, add an entry only when tracker-visible metadata changed, naming the issue and changed fields.
+
+If any issue file, overview, or log write fails, stop, surface which file failed, and offer to roll back the partial issue-state update before continuing.
+
+### 6. Return Result
 
 **IMPROVE MODE:**
 
@@ -423,7 +433,7 @@ Read `references/tracker-schema.md` for the column-layout rules (three coexistin
 - Confirm issue file created
 - Show file path
 
-### 6. Workflow Complete
+### 7. Workflow Complete
 
 The skill ends here. Surface the file path and tell the user that if they want to implement next, they can run `/kramme:siw:issue-implement {prefix}-{number}`, or re-run `/kramme:siw:issue-define {prefix}-{number}` to refine. Do not start implementation.
 

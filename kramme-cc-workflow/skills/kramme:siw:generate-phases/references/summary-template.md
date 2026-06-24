@@ -1,6 +1,6 @@
 # Summary Template
 
-Use this template in Phase 7 after creating issue files and updating `siw/OPEN_ISSUES_OVERVIEW.md`.
+Use this template in Phase 7 after creating issue files and updating `siw/OPEN_ISSUES_OVERVIEW.md` and `siw/LOG.md`.
 
 ```
 Phase Generation Complete
@@ -13,9 +13,10 @@ FILES CREATED:
     - Phase 2: {N} issues (P2-001 to P2-{N})
     ...
   • siw/OPEN_ISSUES_OVERVIEW.md (updated)
+  • siw/LOG.md (updated)
 
 THINGS I DIDN'T TOUCH:
-  • Any existing non-issue files under siw/ (LOG.md, spec files, supporting-specs/)
+  • Any existing non-issue files under siw/ other than LOG.md (spec files, supporting-specs/)
   • Source code — implementation is a separate workflow
   • {List any issues explicitly preserved during Append mode}
 

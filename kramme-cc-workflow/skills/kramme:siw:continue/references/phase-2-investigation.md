@@ -8,11 +8,14 @@
 
 If no issues exist yet, read `assets/issues-template.md` for templates.
 
+Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
+
 **If this is the first issue:**
 
 1. Create `siw/issues/` directory
 2. Create `siw/OPEN_ISSUES_OVERVIEW.md` (see template)
 3. Create `siw/issues/ISSUE-G-001-short-title.md`
+4. Update `siw/LOG.md` Current Progress with the created issue ID, title, and date
 
 **If issues already exist:**
 
@@ -20,11 +23,14 @@ If no issues exist yet, read `assets/issues-template.md` for templates.
 2. Find next issue number from `siw/OPEN_ISSUES_OVERVIEW.md` within that prefix group
 3. Create `siw/issues/ISSUE-{prefix}-XXX-short-title.md`
 4. Add row to `siw/OPEN_ISSUES_OVERVIEW.md` table
-5. If you added a non-DONE issue to a phase section currently marked ` (DONE)`, ask the user whether to remove the marker
+5. Update `siw/LOG.md` Current Progress with the created issue ID, title, and date
+6. If you added a non-DONE issue to a phase section currently marked ` (DONE)`, ask the user whether to remove the marker
+
+If any issue file, overview, or log write fails after issue creation or resolution starts, surface the partial state in the completion summary and offer rollback guidance instead of reporting the issue as cleanly created or resolved.
 
 **In the issue file:**
 
-- Mark as IN PROGRESS while actively working on it
+- Set the issue file's `**Status:**` line to `IN PROGRESS` while actively working on it, and update the overview row and `siw/LOG.md` Current Progress to match
 - Document problem statement and context
 - List options being considered with pros/cons
 - Note questions requiring answers
@@ -35,7 +41,7 @@ If no issues exist yet, read `assets/issues-template.md` for templates.
 - Review existing implementations
 - Consider alternatives and trade-offs
 - Update the issue with findings
-- Mark as IN REVIEW if decision requires team input or approval; otherwise proceed to step 3
+- Mark as IN REVIEW if decision requires team input or approval by updating the issue file's `**Status:**` line, the overview row, and `siw/LOG.md` Current Progress; otherwise proceed to step 3
 
 **When checking past decisions (don't read entire siw/LOG.md):**
 
@@ -51,7 +57,7 @@ Then read only that specific decision section (~10 lines per decision) using Rea
 - Choose the best approach
 - Fill in "Decision" section in the issue file
 - Document the resolution in the issue file's `## Resolution` section
-- Set status to `IN REVIEW` or `DONE` based on confidence, update the overview row
+- Set the issue file's `**Status:**` line to `IN REVIEW` or `DONE` based on confidence, update the overview row to the same status, and update `siw/LOG.md` Current Progress with the resolved issue ID, status, and next step
 - If this was a phase issue (`P1-*`, `P2-*`, etc.) and it was the last open issue in that phase, ask the user whether to mark the phase as DONE by appending ` (DONE)` to the phase section header
 - Prepare to document in siw/LOG.md
 
