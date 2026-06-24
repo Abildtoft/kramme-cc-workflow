@@ -51,7 +51,7 @@ Parse `$ARGUMENTS` before Step 1. If `--auto` is present, set `AUTO_MODE=true` a
 ## Step 1: Parse Input
 
 1. If `$ARGUMENTS` matches a **Linear issue pattern** (e.g., `TEAM-123`):
-   - Fetch via the Linear MCP integration (e.g., `mcp__linear__get_issue`).
+   - Fetch via Linear MCP `get_issue` (Claude Code `mcp__linear__get_issue`; Codex `get_issue`).
    - Extract: description, steps to reproduce, expected vs. actual behavior.
    - If Linear MCP unavailable: treat as plain text, ask user to paste issue content.
 

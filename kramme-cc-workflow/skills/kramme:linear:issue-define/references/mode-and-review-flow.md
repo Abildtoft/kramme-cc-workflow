@@ -47,7 +47,7 @@ The target issue was already fetched in Phase 1. Now present it to the user:
    - Selected areas always take precedence over prior-session skips. If the user says "improve scope", run Round 2 even when prior content exists.
 
 4. **Search for Related Issues**
-   - Use `mcp__linear__list_issues` with keywords from the existing issue.
+   - Use Linear MCP `list_issues` with keywords from the existing issue.
    - Identify issues to link as related or blockers.
 
 **Output:** Improvement areas selected, related issues identified, prior-session context recorded.
@@ -57,7 +57,7 @@ The target issue was already fetched in Phase 1. Now present it to the user:
 Before creating a new issue, check for existing Linear issues that may already cover this topic:
 
 1. **Search for Duplicates**
-   - Use `mcp__linear__list_issues` with `query` containing keywords from the description.
+   - Use Linear MCP `list_issues` with `query` containing keywords from the description.
    - Search across relevant teams identified in Phase 2.
    - Also check `.out-of-scope/` in the project root: list filenames; read any whose slug plausibly matches the description; surface matches alongside Linear duplicate findings via the same `AskUserQuestion` prompt in step 3. Use option labels: "proceed with new issue" and "this matches a prior rejection - stop". Skip silently if the directory is absent. See `/kramme:docs:out-of-scope` for the storage skill.
 
@@ -76,7 +76,7 @@ Before creating a new issue, check for existing Linear issues that may already c
 
 4. **Decision Point**
    - If user confirms this is a duplicate, stop and direct to the existing issue.
-   - If `auto_create = false` and user wants to improve an existing issue, fetch that issue with `mcp__linear__get_issue`, switch to improve mode, and restart from Phase 3.
+   - If `auto_create = false` and user wants to improve an existing issue, fetch that issue with Linear MCP `get_issue` (Claude Code `mcp__linear__get_issue`; Codex `get_issue`), switch to improve mode, and restart from Phase 3.
    - If `auto_create = true` and user confirms a new issue is needed, continue to auto create mode below.
    - If `auto_create = false` and user confirms a new issue is needed, continue to Phase 4.
    - Store any related issues for later linking.
@@ -116,7 +116,7 @@ If `auto_create = true` and mode is create:
 
 **Improve mode:**
 
-Use `mcp__linear__update_issue` with:
+Use the available Linear update operation: Claude Code `mcp__linear__update_issue`; Codex `save_issue` with `id`. Pass:
 
 - `id`: The existing issue ID.
 - `title`: Updated title, if changed.
@@ -127,7 +127,7 @@ Use `mcp__linear__update_issue` with:
 
 **Create mode:**
 
-Use `mcp__linear__create_issue` with:
+Use the available Linear create operation: Claude Code `mcp__linear__create_issue`; Codex `save_issue` without `id`. Pass:
 
 - `title`: The composed title.
 - `description`: The full markdown description.

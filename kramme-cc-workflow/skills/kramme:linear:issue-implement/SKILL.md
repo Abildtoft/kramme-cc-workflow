@@ -87,10 +87,11 @@ The issue ID should be in the format TEAM-NUMBER (e.g., WAN-521, HEA-456).
 Use the Linear MCP tool to fetch complete issue details. `{ISSUE_ID}` is the human-readable identifier from `$ARGUMENTS` (e.g. `WAN-123`), which `get_issue` accepts directly:
 
 ```
-mcp__linear__get_issue with id: {ISSUE_ID}
+Claude Code: mcp__linear__get_issue with id: {ISSUE_ID}
+Codex: get_issue with id: {ISSUE_ID}
 ```
 
-**If the `mcp__linear__*` tools are unavailable**, the Linear MCP server is not connected. Stop and tell the user to connect it — do not continue without issue data.
+**If Linear MCP operations are unavailable**, the Linear MCP server is not connected. Stop and tell the user to connect it — do not continue without issue data.
 
 **Capture from issue response:**
 
@@ -110,7 +111,8 @@ mcp__linear__get_issue with id: {ISSUE_ID}
 Fetch comments for additional context, using the UUID captured in Step 1.2:
 
 ```
-mcp__linear__list_comments with issueId: {issueUuid}
+Claude Code: mcp__linear__list_comments with issueId: {issueUuid}
+Codex: list_comments with issueId: {issueUuid}
 ```
 
 Comments often contain:
@@ -145,7 +147,7 @@ Try again with /kramme:linear:issue-implement <correct-issue-id>
 
 ### 2.1 Extract Branch Name from Linear
 
-The `mcp__linear__get_issue` response includes a `branchName` field - this is Linear's recommended branch name.
+The Linear MCP `get_issue` response includes a `branchName` field - this is Linear's recommended branch name.
 
 **Priority:**
 

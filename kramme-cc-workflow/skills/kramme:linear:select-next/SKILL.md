@@ -35,7 +35,7 @@ If mutually exclusive assignee flags are combined, stop and ask the user to choo
 
 1. **Check prerequisites.** If Linear MCP operations are unavailable, stop with `MISSING REQUIREMENT: Linear MCP is required to select the next issue`.
 
-   Tool names vary by harness. This skill names operations by Linear MCP capability (`get_user`, `list_issues`, etc.); in environments that expose namespaced tool IDs, use the matching `mcp__linear__...` tool.
+   Tool names vary by harness. This skill names operations by Linear MCP capability (`get_user`, `list_issues`, etc.); in Codex, use those bare capability names, and in environments that expose namespaced tool IDs, use the matching `mcp__linear__...` tool.
 
 2. **Resolve the user and team.**
    - Call Linear MCP `get_user` with `query: "me"` and store the logged-in user's name/id.
