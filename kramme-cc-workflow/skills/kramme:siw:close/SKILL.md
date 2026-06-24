@@ -387,14 +387,8 @@ from pathlib import Path
 import os
 
 siw = Path("siw")
-gitkeep_paths = [
-    siw / "issues" / ".gitkeep",
-    siw / "qa-intake" / ".gitkeep",
-]
-empty_dirs = [
-    siw / "issues",
-    siw / "qa-intake",
-]
+gitkeep_paths = [siw / "issues" / ".gitkeep", siw / "qa-intake" / ".gitkeep"]
+empty_dirs = [siw / "issues", siw / "qa-intake"]
 
 if os.environ.get("SPEC_DISPOSITION") == "remove":
     gitkeep_paths.append(siw / "supporting-specs" / ".gitkeep")
