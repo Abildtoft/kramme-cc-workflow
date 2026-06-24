@@ -103,6 +103,7 @@ For each issue file, extract:
 - Priority, size, phase, parallelization, mode, and related values from the same metadata line when present.
 - Milestone assignment from the issue phase metadata or the overview section containing the issue. For `G-*` issues, set milestone assignment to empty regardless of section text.
 - Body sections: Problem, Context, Scope, Decision Boundaries, Acceptance Criteria, Edge Cases, Technical Notes, Resolution.
+- Raw substantive body content for duplicate-content preflight. Preserve the body sections separately from generated metadata and transfer markers so `references/linear-mapping.md` can fingerprint the planned Linear issue description before any issue is created.
 - Dependency edges from the `Blocked by:` / `Blocks:` lines (under `Technical Notes > Dependencies`), with `None` treated as empty and ranges like `P3-002..P3-007` expanded into individual SIW IDs. These drive the native-relation pass in `references/linear-mapping.md` > Dependencies.
 - Linear transfer marker, if a `## Linear Transfer` section exists:
   - Linear issue identifier and URL from `- Linear issue: ...`

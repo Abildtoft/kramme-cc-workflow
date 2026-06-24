@@ -100,6 +100,29 @@ make_body_lines() {
   [[ "$skill_text" == *'still require the human to explain their choice before counting it as demonstrated understanding'* ]]
 }
 
+@test "siw transfer-to-linear gates duplicate issue content before creation" {
+  local skill_text
+  local mapping_text
+  local extraction_text
+  local docs_text
+
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:transfer-to-linear/SKILL.md")"
+  mapping_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:transfer-to-linear/references/linear-mapping.md")"
+  extraction_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:transfer-to-linear/references/artifact-extraction.md")"
+  docs_text="$(cat "$BATS_TEST_DIRNAME/../docs/siw.md")"
+
+  [[ "$skill_text" == *'Duplicate-content preflight per `references/linear-mapping.md`'* ]]
+  [[ "$skill_text" == *'Run the final duplicate-content preflight immediately before issue creation'* ]]
+  [[ "$skill_text" == *'If any unresolved duplicate-content group is found, stop before creating any issue'* ]]
+
+  [[ "$mapping_text" == *'**Duplicate content preflight**'* ]]
+  [[ "$mapping_text" == *'do not silently `skip-existing` on content alone'* ]]
+  [[ "$mapping_text" == *'Before creating Linear issues, run the duplicate-content preflight above against the final rewritten issue descriptions.'* ]]
+
+  [[ "$extraction_text" == *'Raw substantive body content for duplicate-content preflight.'* ]]
+  [[ "$docs_text" == *'checks for duplicate issue content before creating Linear issues'* ]]
+}
+
 @test "fix-ci auto mode consolidates pipeline fix commits" {
   local skill_text
   local consolidation_text
