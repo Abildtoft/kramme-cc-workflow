@@ -52,6 +52,44 @@ make_body_lines() {
   [[ "$output" == *"visual shared assets are in sync."* ]]
 }
 
+@test "pr code review exposes resolver readiness contract" {
+  local skill_text
+  local template_text
+  local discipline_text
+  local team_text
+  local resolver_text
+  local emphasis_line
+  local normalization_line
+
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/SKILL.md")"
+  template_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/output-template.md")"
+  discipline_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/review-discipline.md")"
+  team_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/team-mode.md")"
+  resolver_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/SKILL.md")"
+
+  [[ "$skill_text" == *"After emphasis adjustments, run an **action-class normalization pass**."* ]]
+  [[ "$skill_text" == *"default to \`gated_auto\` with owner \`resolver\`"* ]]
+  [[ "$skill_text" == *"\`Manual blocker: <one of the blocker categories above>\`"* ]]
+  [[ "$skill_text" == *"**Auto-resolution Readiness**"* ]]
+  emphasis_line="$(grep -nF "Track the count of promoted findings for the report." <<<"$skill_text" | cut -d: -f1)"
+  normalization_line="$(grep -nF "After emphasis adjustments, run an **action-class normalization pass**." <<<"$skill_text" | cut -d: -f1)"
+  [ "$normalization_line" -gt "$emphasis_line" ]
+
+  [[ "$template_text" == *"## Auto-resolution Readiness"* ]]
+  [[ "$template_text" == *"Manual blockers: product/UX/architecture/maintainer decision X"* ]]
+  [[ "$template_text" == *"Manual blocker: product/UX/architecture/maintainer decision"* ]]
+  [[ "$template_text" == *"Next human decision: concrete decision"* ]]
+
+  [[ "$discipline_text" == *"Critical or Important PR-caused findings default to \`gated_auto\`"* ]]
+  [[ "$discipline_text" == *"Every manual Critical/Important finding includes \`Manual blocker\` and \`Next human decision\`"* ]]
+
+  [[ "$team_text" == *"Treat teammate action classes as provisional."* ]]
+  [[ "$team_text" == *"Include the \`## Auto-resolution Readiness\` section from the standard template"* ]]
+
+  [[ "$resolver_text" == *"\`Manual blocker\`, and \`Next human decision\`"* ]]
+  [[ "$resolver_text" == *"manual blocker, and next human decision when available"* ]]
+}
+
 @test "verify-understanding supports answer option prompts" {
   local skill_text
   skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:learn:verify-understanding/SKILL.md")"
