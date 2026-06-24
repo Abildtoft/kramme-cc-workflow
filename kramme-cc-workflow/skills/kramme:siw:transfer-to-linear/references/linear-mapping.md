@@ -19,6 +19,21 @@ These rules are the single source of truth for matching planned records against 
 - A source issue with a populated `## Linear Transfer` marker is always `skip-existing`, on every run, using the recorded identifier/URL — no title query needed.
 - Title fallback applies only when `--skip-existing` or `--retry` is set, and only to unmarked source issues whose normalized planned Linear title is unique among unmarked source issues. If multiple unmarked source issues share a normalized title, mark each `needs decision` even when exactly one Linear issue carries that title — otherwise a retry can collapse distinct SIW issues onto one Linear record. For a unique source title, apply the normalized-match rule against existing Linear issues, treating a trailing decision citation like `(D-052)` / `(OD-003)` as optional on either side — planned titles strip citations, but issues created by earlier runs may still carry them.
 
+**Duplicate content preflight**:
+
+Run this check for issue actions on every migration, before any Linear issue is created. It is a safety gate, not an idempotent sync mechanism.
+
+1. Render each planned create issue body exactly as it would be sent to Linear after Markdown Reference Rewrite and after the `SIW Metadata` block is appended.
+2. Build a substantive content fingerprint from that rendered body:
+   - Drop generated identity/provenance sections and lines: `## SIW Metadata`, `## Linear Transfer`, `SIW ID`, `Source path`, transfer dates, and Linear issue/project URLs.
+   - Preserve the issue's problem, context, scope, decision boundaries, acceptance criteria, edge cases, technical notes, resolution, and dependency prose.
+   - Normalize line endings, trailing spaces, repeated blank lines, list marker style, checkbox spacing, and repeated spaces outside fenced code. Keep fenced code content exact except for line endings and trailing spaces.
+   - Treat an empty or placeholder-only fingerprint as non-actionable; the Skip Rules handle empty placeholder issues.
+3. Compare fingerprints among all planned create issues. If two or more source issues share the same non-empty fingerprint, mark every issue in that group `needs decision` and remove those rows from the create count until the user resolves the duplication.
+4. Compare each planned create fingerprint against readable existing Linear issue bodies in the resolved team/project. Existing bodies are fingerprinted with the same rules. If one or more existing Linear issues match, mark the source issue `needs decision`; do not silently `skip-existing` on content alone, because an exact body match does not prove the source issue was intentionally transferred.
+5. Report duplicate groups in the migration plan with source issue IDs, planned titles, matching Linear issue identifiers/URLs when available, and whether the match was in-batch or against existing Linear content. If existing Linear issue bodies could not be read, report `existing Linear body check unavailable`; do not claim the content preflight fully passed.
+6. Allowed resolutions are: merge or remove one of the local duplicate issues before re-running, map a source issue to an existing Linear issue as `skip-existing`, skip one source issue with a reason, or explicitly proceed with separate Linear issues. After any resolution, rebuild the plan and run the preflight again before creating issues.
+
 ## Project Mapping
 
 Create or update one Linear project for the SIW project. A project requires at least one team.
@@ -194,6 +209,10 @@ Use the SIW issue title directly as the Linear issue title, minus any trailing d
 **Retry duplicate detection:**
 
 Marker-based skips and the `--skip-existing` / `--retry` title fallback follow the issue rules in Duplicate Detection and Retry Matching above.
+
+**Content duplicate safety gate:**
+
+Before creating Linear issues, run the duplicate-content preflight above against the final rewritten issue descriptions. A content match blocks issue creation as `needs decision` until resolved, even when titles differ.
 
 Preserve the SIW issue content in the description in this order when present:
 
