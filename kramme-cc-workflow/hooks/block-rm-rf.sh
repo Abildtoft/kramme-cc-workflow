@@ -7,6 +7,12 @@ set -uo pipefail
 # Check if hook is enabled
 source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
 exit_if_hook_disabled "block-rm-rf" ""
+
+if ! command -v jq > /dev/null 2>&1; then
+  echo "block-rm-rf hook: jq not found; refusing to run safety hook without JSON parsing. Install jq or disable this hook explicitly." >&2
+  [ ! -t 0 ] && cat > /dev/null
+  exit 2
+fi
 #
 # Blocked patterns:
 # - rm -rf (and variants: /bin/rm, sudo rm, command rm, env rm, \rm, xargs rm)

@@ -12,6 +12,33 @@ run_hook() {
 	make_bash_input "$1" | bash "$HOOK"
 }
 
+run_hook_without_jq() {
+	local cmd="$1"
+	local fake_bin="$BATS_TEST_TMPDIR/no-jq-bin"
+	local json_input
+	rm -rf "$fake_bin"
+	mkdir -p "$fake_bin"
+	ln -s "$(command -v bash)" "$fake_bin/bash"
+	ln -s "$(command -v cat)" "$fake_bin/cat"
+	json_input="$(make_bash_input "$cmd")"
+	env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK" <<<"$json_input"
+}
+
+run_hook_without_jq_disabled() {
+	local cmd="$1"
+	local fake_bin="$BATS_TEST_TMPDIR/no-jq-disabled-bin"
+	local plugin_root="$BATS_TEST_TMPDIR/no-jq-disabled-plugin"
+	local json_input
+	rm -rf "$fake_bin" "$plugin_root"
+	mkdir -p "$fake_bin" "$plugin_root/hooks/lib"
+	ln -s "$(command -v bash)" "$fake_bin/bash"
+	ln -s "$(command -v cat)" "$fake_bin/cat"
+	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
+	printf '%s\n' '{"disabled":["block-rm-rf"]}' >"$plugin_root/hooks/hook-state.json"
+	json_input="$(make_bash_input "$cmd")"
+	env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$plugin_root" "$fake_bin/bash" "$HOOK" <<<"$json_input"
+}
+
 # ============================================================================
 # BASIC ALLOW CASES
 # ============================================================================
@@ -24,6 +51,20 @@ run_hook() {
 
 @test "allows missing tool_input" {
 	run bash "$HOOK" <<<'{"other":"data"}'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "blocks command when jq is unavailable" {
+	run run_hook_without_jq "rm -rf directory/"
+	is_blocked
+	[[ "$output" == *"jq not found"* ]]
+	[[ "$output" == *"refusing to run safety hook without JSON parsing"* ]]
+	[[ "$output" == *"Install jq or disable this hook explicitly"* ]]
+}
+
+@test "allows disabled hook when jq is unavailable" {
+	run run_hook_without_jq_disabled "rm -rf directory/"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
