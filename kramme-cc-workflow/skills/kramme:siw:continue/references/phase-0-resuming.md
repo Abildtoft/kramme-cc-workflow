@@ -62,7 +62,9 @@ Then read ~30 lines from that line. Task sections are self-contained.
 ### 3.5. Check for Supporting or Contract Specs (if folder exists)
 
 ```bash
-ls siw/supporting-specs/ siw/contracts/ 2> /dev/null
+for dir in siw/supporting-specs siw/contracts; do
+  [ -d "$dir" ] && ls "$dir"
+done
 ```
 
 **If supporting or contract specs exist:**

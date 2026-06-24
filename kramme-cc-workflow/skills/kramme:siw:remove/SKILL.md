@@ -52,7 +52,9 @@ find siw -maxdepth 1 -type f \( -name "*SPEC*.md" -o -name "*SPECIFICATION*.md" 
   ! -name "PRODUCT_AUDIT.md" \
   ! -name "SIW_*.md" \
   2> /dev/null
-ls -d siw/supporting-specs siw/contracts 2> /dev/null
+for dir in siw/supporting-specs siw/contracts; do
+  [ -d "$dir" ] && printf '%s\n' "$dir"
+done
 ```
 
 **If both lists are empty:**

@@ -242,7 +242,9 @@ Run all of the following before drafting the technical plan:
 1. **Check supporting and contract specs (if they exist):**
 
    ```bash
-   ls siw/supporting-specs/ siw/contracts/ 2> /dev/null
+   for dir in siw/supporting-specs siw/contracts; do
+     [ -d "$dir" ] && ls "$dir"
+   done
    ```
 
    If supporting or contract specs exist, identify which ones are relevant:
