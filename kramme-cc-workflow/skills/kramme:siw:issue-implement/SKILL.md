@@ -34,7 +34,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 6. Verify status update → success output
 7. **Completion phase:** sync decisions to spec → close issue → check phase completion
 
-When executing those phases, read and follow `references/execution-approaches.md` and `references/spec-sync.md` at the step where each reference is named.
+When executing those phases, read and follow `references/codebase-exploration.md`, `references/question-examples.md`, `references/execution-approaches.md`, and `references/spec-sync.md` at the step where each reference is named.
 
 ---
 
@@ -219,84 +219,7 @@ Technical Notes:
 
 ## Step 4: Codebase Exploration (PLANNING PHASE)
 
-Explore the codebase before proposing a technical approach. Scale the depth to the issue: a tightly-scoped issue that already lists files and patterns needs targeted verification; a broadly-scoped issue needs full exploration.
-
-### 4.1 Why This Phase Is Essential
-
-Issues describe:
-
-- **What** should be accomplished
-- **Why** it matters
-- **Acceptance criteria** for verification
-
-They may not describe:
-
-- Which files/modules to modify
-- What patterns to follow
-- How existing similar features are implemented
-
-Exploration bridges this gap before any code changes.
-
-### 4.2 Exploration Steps
-
-Run all of the following before drafting the technical plan:
-
-1. **Check supporting and contract specs (if they exist):**
-
-   ```bash
-   for dir in siw/supporting-specs siw/contracts; do
-     [ -d "$dir" ] && ls "$dir"
-   done
-   ```
-
-   If supporting or contract specs exist, identify which ones are relevant:
-   - Data model specs for entity-related work
-   - API specs for endpoint-related work
-   - Contract specs for interface, data shape, or integration guarantees
-   - UI specs for frontend-related work Read relevant sections for detailed requirements.
-
-2. **Search for similar features/patterns:**
-   - Use Glob and Grep to find related code
-   - Look for existing implementations of similar functionality
-   - Identify relevant modules, services, or components
-
-3. **Delegate broader exploration to a sub-agent when available:**
-
-   On Claude Code, invoke the Task tool with `subagent_type=Explore`. On Codex or other harnesses, use the equivalent exploration agent if one is available; otherwise continue with direct Glob/Grep. The prompt:
-
-   ```
-   "Find existing implementations related to {feature description from issue}.
-    Identify relevant files, patterns, and conventions used in this codebase."
-   ```
-
-4. **Identify key files and patterns:**
-   - List files that will likely need modification
-   - Note existing patterns to follow
-   - Find test patterns for similar features
-
-### 4.3 Present Findings
-
-```
-Codebase Exploration Results:
-
-Supporting Specs Referenced:
-- siw/supporting-specs/01-data-model.md#user-entity (if applicable)
-- siw/supporting-specs/02-api-specification.md#endpoints (if applicable)
-- siw/contracts/01-api-contract.md#request-shape (if applicable)
-
-Relevant Files Found:
-- {file 1} - {why relevant}
-- {file 2} - {why relevant}
-
-Existing Patterns:
-- {pattern description} in {location}
-
-Similar Implementations:
-- {feature} in {files} - could serve as reference
-
-Suggested Approach:
-{brief technical approach based on findings}
-```
+Explore the codebase before proposing a technical approach. Read `references/codebase-exploration.md` and follow its supporting-spec check, pattern search, optional exploration-agent prompt, key-file identification, and findings template.
 
 ---
 
@@ -316,29 +239,7 @@ Review the issue and exploration results to identify:
 
 ### 5.2 Ask Clarifying Questions
 
-Use AskUserQuestion for each unresolved ambiguity.
-
-**Example questions:**
-
-```yaml
-header: "Implementation Scope"
-question: "The issue mentions {feature}. Should this include {related functionality}?"
-options:
-  - label: "Core feature only"
-    description: "Minimal implementation as described"
-  - label: "Include {related functionality}"
-    description: "Broader scope"
-```
-
-```yaml
-header: "Technical Approach"
-question: "I found two patterns. Which should we follow?"
-options:
-  - label: "Pattern A - {description}"
-    description: "Used in {files}"
-  - label: "Pattern B - {description}"
-    description: "Used in {files}"
-```
+Use AskUserQuestion for each unresolved ambiguity. Read `references/question-examples.md` for prompt patterns when composing implementation-scope or technical-approach questions.
 
 ### 5.3 Create Technical Plan
 
