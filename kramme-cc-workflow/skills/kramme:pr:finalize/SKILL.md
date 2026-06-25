@@ -297,6 +297,8 @@ Render the verdict inline (no artifact file) using the template and per-verdict 
 
 Read `references/qa-and-description-prompts.md` and follow its PR description prompt/invocation flow. If the skill errors out, report the error but do not fail the overall assessment.
 
+Direct update path marker: `skill: "kramme:pr:generate-description", args: "--auto --base {BASE_BRANCH}"`; the sub-skill handles backup creation and `--body-file` application.
+
 ## Explicit Non-Goals
 
 pr:finalize does NOT:
