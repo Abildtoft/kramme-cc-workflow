@@ -112,14 +112,22 @@ make_body_lines() {
   docs_text="$(cat "$BATS_TEST_DIRNAME/../docs/siw.md")"
 
   [[ "$skill_text" == *'Duplicate-content preflight per `references/linear-mapping.md`'* ]]
+  [[ "$skill_text" == *'Cross-reference rewrite plan per `references/linear-mapping.md`'* ]]
   [[ "$skill_text" == *'Run the final duplicate-content preflight immediately before issue creation'* ]]
   [[ "$skill_text" == *'If any unresolved duplicate-content group is found, stop before creating any issue'* ]]
 
   [[ "$mapping_text" == *'**Duplicate content preflight**'* ]]
   [[ "$mapping_text" == *'do not silently `skip-existing` on content alone'* ]]
   [[ "$mapping_text" == *'Before creating Linear issues, run the duplicate-content preflight above against the final rewritten issue descriptions.'* ]]
+  [[ "$mapping_text" == *'**Issue-to-issue references:**'* ]]
+  [[ "$mapping_text" == *'DEV-123 (P4-001)'* ]]
+  [[ "$mapping_text" == *'Do not rewrite IDs embedded in filenames, paths, URLs, markdown link destinations, inline code, fenced code, or source provenance lines'* ]]
+  [[ "$mapping_text" == *'Do not rewrite the issue'\''s own canonical `- SIW ID: {id}` metadata line'* ]]
+  [[ "$mapping_text" == *'Before assembling the Linear description, remove the source issue'\''s inline metadata line'* ]]
+  [[ "$mapping_text" == *'Preserve escaped table pipes (`\|`)'* ]]
 
   [[ "$extraction_text" == *'Raw substantive body content for duplicate-content preflight.'* ]]
+  [[ "$extraction_text" == *'Reference inventory from the body and metadata'* ]]
   [[ "$docs_text" == *'checks for duplicate issue content before creating Linear issues'* ]]
 }
 

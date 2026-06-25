@@ -26,7 +26,7 @@ Run this check for issue actions on every migration, before any Linear issue is 
 1. Render each planned create issue body exactly as it would be sent to Linear after Markdown Reference Rewrite and after the `SIW Metadata` block is appended.
 2. Build a substantive content fingerprint from that rendered body:
    - Drop generated identity/provenance sections and lines: `## SIW Metadata`, `## Linear Transfer`, `SIW ID`, `Source path`, transfer dates, and Linear issue/project URLs.
-   - Preserve the issue's problem, context, scope, decision boundaries, acceptance criteria, edge cases, technical notes, resolution, and dependency prose.
+   - Preserve the issue's problem, context, scope, decision boundaries, acceptance criteria, validation, edge cases, technical notes, resolution, and dependency prose.
    - Normalize line endings, trailing spaces, repeated blank lines, list marker style, checkbox spacing, and repeated spaces outside fenced code. Keep fenced code content exact except for line endings and trailing spaces.
    - Treat an empty or placeholder-only fingerprint as non-actionable; the Skip Rules handle empty placeholder issues.
 3. Compare fingerprints among all planned create issues. If two or more source issues share the same non-empty fingerprint, mark every issue in that group `needs decision` and remove those rows from the create count until the user resolves the duplication.
@@ -92,7 +92,7 @@ Create one Linear Document under the project for:
 
 **Title:** the document's first `#` heading, falling back to the filename without extension, with the original filename appended in parentheses — e.g. `ChallengeCraft Decision Log (LOG.md)`. Stale path references in migrated bodies (like `siw/LOG.md`) then still ring a bell.
 
-**Body:** the file's markdown content, preserved semantically and then passed through Markdown Reference Rewrite below. Linear normalizes markdown on save (bullet style, table dashes, bold spans, auto-linked bare domains), so verify round-trips by normalized content, not bytes.
+**Initial body:** create the Document with the file's markdown content preserved semantically. The rewrite passes below may update the body after Document URLs and issue identifiers are known. Linear normalizes markdown on save (bullet style, table dashes, bold spans, auto-linked bare domains), so verify round-trips by normalized content, not bytes.
 
 If the Linear MCP cannot create Documents, fall back to embedding the main spec summary in the project description and record which supporting specs, selected contract specs, and other document sources could not be captured. In that case the migration is not "clean", so removal of `siw/` must not be prompted (see SKILL.md Phase 7).
 
@@ -100,7 +100,15 @@ Existing-document reuse follows Duplicate Detection and Retry Matching above.
 
 ## Markdown Reference Rewrite
 
-Linear-bound content must not leave local SIW markdown paths as required implementation references after migration. Rewrite the content that will be written to Linear after the document reference map has URLs.
+Linear-bound content must not leave local SIW markdown paths as required implementation references after migration. Rewrite the content that will be written to Linear after the document reference map has URLs, then run a second issue-reference rewrite after Linear issue identifiers exist.
+
+Build all rewrites from an allowlist of entities this migration created or explicitly reused:
+
+- SIW issue ID -> Linear issue identifier and URL.
+- Source document path and filename -> Linear Document title and URL.
+- Register-code family -> owning Linear Document URL when the owning document was migrated.
+
+Leave everything outside that allowlist verbatim except when reporting it as an unresolved required local reference. Do not linkify `README.md`, `AGENTS.md`, evidence paths under `siw/evidence/`, prototype `.html` files, Figma URLs, historical `POT-*` issues, or any path/code whose target was not created or reused by this transfer.
 
 **Document reference map:**
 
@@ -118,39 +126,61 @@ Include the main spec, every `supporting-specs/*.md`, every selected `contracts/
 **Content to rewrite:**
 
 - Issue descriptions before issue creation.
+- Issue descriptions again after issue creation when they contain SIW issue IDs that can now resolve to Linear issue identifiers.
 - Project description if generated or copied content references files.
 - Milestone descriptions if generated or copied content references files.
 - Migrated Document bodies when they link to other migrated SIW markdown files.
+- Migrated Document bodies again after issue creation when they contain SIW issue IDs that should resolve to Linear issue identifiers.
 - Current Linear issue or Document bodies before any rewrite-only update to a reused or `skip-existing` record.
 
 Apply the same rewrite to reused or `skip-existing` Linear records only when the relevant read and update tools exist, and include that work as an explicit rewrite-only update in the migration plan before approval. For rewrite-only updates, fetch the current Linear body first and rewrite only matching SIW-local markdown references in that current body; never regenerate the body from the source SIW markdown or resync unrelated body edits, statuses, assignees, labels, or other Linear-owned fields. If the current body cannot be fetched, do not perform the rewrite-only update; report the remaining local reference and withhold the removal prompt when it is required implementation content.
 
 **Reference detection:**
 
-Detect both Markdown links and plain inline paths:
+Detect Markdown links, plain inline paths, SIW issue IDs, and register-code families:
 
 - Markdown links such as `[Effective scope model](../supporting-specs/01-configuration-data-api.md#effective-scope-model)`.
 - Plain paths in prose or code spans such as `../contracts/05-ufa-query-and-rendering.md`, `siw/supporting-specs/02-api.md#endpoints`, `./LOG.md`, or `LOG.md#decision-log`.
+- SIW issue IDs such as `P4-001` or `G-003`, including ranges like `P3-002..P3-007`.
+- Register-code families such as `D-NNN`, `OD-NNN`, `VER-*`, and `Q-NN`.
 
 Resolve relative targets from the file that contains the reference. Strip URL query strings, preserve the `#fragment` separately, normalize `.` / `..`, and match the path portion against the document reference map. Treat `siw/` prefixes as relative to `siw-dir`.
 
 **Rewrite format:**
 
-Do not depend on Linear section anchors. Linear Document URLs are stable; heading anchors are not guaranteed. When a reference includes a section fragment, link to the Document URL and keep the section name in visible text.
+Do not depend on Linear section anchors. Linear Document URLs are stable; heading anchors are not guaranteed. When a reference includes a section fragment, link to the Document URL and keep the section name in visible text. Use filenames as visible labels for document links; SIW plans often use numbered filenames as their compact vocabulary, and full document titles bloat dense issue bodies and table cells.
 
 - Markdown link to a migrated document section:
   - Input: `[details](../supporting-specs/01-configuration-data-api.md#effective-scope-model)`
-  - Output: `[01 Configuration Data/API > Effective Scope Model]({linear_document_url})`
+  - Output: `[01-configuration-data-api.md > Effective Scope Model]({linear_document_url})`
 - Plain path to a migrated document section:
   - Input: `../supporting-specs/01-configuration-data-api.md#effective-scope-model`
-  - Output: `Linear Document: [01 Configuration Data/API > Effective Scope Model]({linear_document_url})`
+  - Output: `Linear Document: [01-configuration-data-api.md > Effective Scope Model]({linear_document_url})`
 - Markdown link to a migrated document without a section:
-  - Output visible text: the document display title.
+  - Output visible text: the filename.
 - Plain path to a migrated document without a section:
   - Input: `../contracts/05-ufa-query-and-rendering.md`
-  - Output: `Linear Document: [05 UFA Query and Rendering]({linear_document_url})`
+  - Output: `Linear Document: [05-ufa-query-and-rendering.md]({linear_document_url})`
 
-Use the document display title (the first heading/title without the filename suffix) for visible text. Convert fragments to title case by replacing hyphens and underscores with spaces, unless the target document contains a heading whose normalized anchor matches the fragment; then use the exact heading text.
+Convert fragments to title case by replacing hyphens and underscores with spaces, unless the target document contains a heading whose normalized anchor matches the fragment; then use the exact heading text.
+
+**Issue-to-issue references:**
+
+- Rewrite a bare SIW issue reference such as `P4-001` to `{LINEAR-ID} (P4-001)`, for example `DEV-123 (P4-001)`.
+- Preserve the legacy SIW ID because specs, issue files, and project vocabulary continue to use it.
+- Rewrite only standalone issue references in prose or dependency fields.
+- Do not rewrite IDs embedded in filenames, paths, URLs, markdown link destinations, inline code, fenced code, or source provenance lines such as `- Source path: siw/issues/ISSUE-P4-001.md`.
+- Do not rewrite the issue's own canonical `- SIW ID: {id}` metadata line; that line remains the stable legacy identifier for search and audit.
+- Prefer bare Linear identifiers over markdown links in prose because Linear renders them as issue chips. Use the URL only when a context cannot safely carry the bare identifier.
+- Expand and rewrite issue ranges only when every member exists in the ledger. If any member is absent, leave the original range text and report the unresolved target.
+
+**Register-code references:**
+
+- Do not turn every `D-NNN`, `OD-NNN`, `VER-*`, or `Q-NN` occurrence into a link. Linear has no reliable constructible row-level anchors for migrated table rows, and repeated links make dense plans noisy.
+- Keep the codes as searchable text. Add one compact pointer per relevant family in the issue or document body, such as `Register references: [LOG.md](...), [verification-matrix.md](...)`.
+- Add the pointer near the SIW metadata block for issues, and near the top of migrated Documents when the document contains register-code families that resolve elsewhere.
+
+For each body to rewrite, compute expected facts before saving: Linear identifier count, Document URL count, preserved SIW ID count, migrated source-path count after rewrite outside provenance/metadata blocks, register pointer count, and table cell counts. Phase 7 uses these facts to verify the saved Linear body after Linear's markdown normalization.
 
 **Source provenance:**
 
@@ -221,9 +251,14 @@ Preserve the SIW issue content in the description in this order when present:
 3. Scope
 4. Decision Boundaries
 5. Acceptance Criteria
-6. Edge Cases
-7. Technical Notes
-8. Resolution
+6. Validation
+7. Edge Cases
+8. Technical Notes
+9. Resolution
+
+Before assembling the Linear description, remove the source issue's inline metadata line when it is superseded by the generated `## SIW Metadata` block. This includes lines containing fields such as `**Status:**`, `**Priority:**`, `**Size:**`, `**Mode:**`, and `**Related:**`.
+
+When preserving a `Validation` section, drop only generic generated CI checklist items that duplicate normal CI or agent verification, such as "build green", "tests green", or generic `nx affected` checks. Keep manual verification, migration checks, evidence requirements, sign-off steps, gate checks, and domain-specific validation.
 
 Append a compact metadata block. `SIW ID` is mandatory: migrated bodies keep textual cross-references like "Blocked by: P3-004", and the stamp is the only thing that makes them resolvable via project search after `siw/` is gone.
 
@@ -285,8 +320,8 @@ Do not create labels automatically. If useful labels are missing, mention them i
 
 Always record SIW dependencies as text:
 
-- Keep the `Related: {ids}` line in the SIW metadata block.
-- When an SIW issue states it depends on, blocks, or relates to another issue, reflect that in the issue body text.
+- Keep the `Related: {ids}` line in the SIW metadata block. After the post-create issue reference rewrite pass, known SIW IDs should appear as `{LINEAR-ID} ({SIW-ID})`; unknown IDs stay as the original SIW ID. Do not rewrite the canonical `SIW ID` field for the issue itself.
+- When an SIW issue states it depends on, blocks, or relates to another issue, reflect that in the issue body text using the same rewrite rule for known IDs.
 
 **Native relations** (when Phase 1 capability discovery found relation parameters such as `blockedBy` / `blocks` / `relatedTo` on the issue write tool):
 
@@ -298,6 +333,16 @@ Plan a two-phase issue migration. Create all issues first, collecting the SIW-ID
 - Report edges that reference SIW IDs absent from the ledger (for example, dependencies on issues excluded by `--skip-done`) instead of failing.
 
 When no relation parameters exist, text is the only record. For reference, relations can be added later via raw GraphQL (`issueRelationCreate`, requiring a separate Linear API key); that enum is `blocks` / `related` / `similar` / `duplicate` — there is no `blockedBy` (invert a `blocks` relation) and no `relatedTo` (use `related`).
+
+## Markdown Fidelity
+
+Linear normalizes markdown on save. The transfer should preserve meaning and structure rather than bytes.
+
+- Preserve escaped table pipes (`\|`) during extraction, rewriting, and verification. Treat an unescaped `|` as a cell separator and an escaped `\|` as literal cell content.
+- Before rewriting a table row, record its expected cell count. After rewriting, verify the count did not change. If a markdown link label or URL would contain `|`, do not place that link inside the table cell; use a table-safe filename label, a bare Linear URL, or leave the original text.
+- Do not put markdown links inside inline code. Unwrap inline-code paths only when they resolve to migrated Documents or uploaded attachments.
+- Accept harmless Linear save rewrites during verification, including wrapped URL destinations like `<https://...>`, normalized bullet markers, table divider normalization, auto-linked bare domains, and bold-span normalization.
+- Prefer substring and count checks for expected Linear identifiers, Document URLs, section markers, and removed source paths. Do not rely on manual character counting or byte-for-byte round trips.
 
 ## Skip Rules
 
