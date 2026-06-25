@@ -34,23 +34,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Run tests
-        run: |
-          sudo apt-get update && sudo apt-get install -y bats jq
-          make -C kramme-cc-workflow test
-
-      - name: Set up Python for SkillSpector
+      - name: Set up Python for release verification
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install SkillSpector
-        run: python3 -m pip install "git+https://github.com/NVIDIA/SkillSpector.git@${SKILLSPECTOR_REF}"
+      - name: Install release verification dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y bats jq
+          python3 -m pip install ruff==0.15.16 shellcheck-py==0.11.0.1
+          python3 -m pip install "git+https://github.com/NVIDIA/SkillSpector.git@${SKILLSPECTOR_REF}"
+
+      - name: Run release verification
+        run: make -C kramme-cc-workflow verify
 
       - name: Run SkillSpector release scan
         env:
