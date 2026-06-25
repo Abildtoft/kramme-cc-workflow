@@ -37,6 +37,13 @@ The migration captures planning documents as Linear Documents so they survive af
 
 For each, record the source path, filename, title (first `#` heading, else the filename without extension), and file body. Preserve the body semantically; `references/linear-mapping.md` performs the Linear-bound markdown reference rewrite after document URLs are known. This content feeds Document Mapping and the document reference map in `references/linear-mapping.md`.
 
+Also record a reference inventory for each document body:
+
+- Markdown links and inline-code paths that point to markdown files under the SIW directory or to relative paths such as `../contracts/*.md`, `../supporting-specs/*.md`, `FEATURE_SPECIFICATION.md`, and `LOG.md`.
+- SIW issue IDs (`G-NNN`, `Pn-NNN`) and ranges (`P3-002..P3-007`) that may later resolve to Linear issues.
+- Register-code families such as `D-NNN`, `OD-NNN`, `VER-*`, and `Q-NN`; do not attempt to resolve row-level anchors during extraction.
+- Markdown table signatures: for each table, record the source line span and the expected number of cells in each row after respecting escaped pipes (`\|`). These signatures are used after Linear rendering to catch accidental table truncation.
+
 ## Non-Markdown Artifacts
 
 Enumerate non-`.md` files under the SIW directory (recursively) — `.pptx` storyboards, images, spreadsheets, anything a Linked Specifications table may cite. These cannot become Linear Documents. Surface each one in the migration plan as `cannot migrate — needs relocation`, and gate the Phase 7 removal prompt on them: the prompt may not green-light deleting a cited source artifact that exists nowhere but `siw/`. When Linear attachment-upload tools are available (such as `prepare_attachment_upload` / `create_attachment_from_upload`), offer uploading them instead.
@@ -102,9 +109,10 @@ For each issue file, extract:
 - Status from the `**Status:**` metadata line, compared case-insensitively — legacy issue files may use `Ready` while the tracker/legend uses `READY`; treat them as the same value (READY, IN PROGRESS, IN REVIEW, DONE).
 - Priority, size, phase, parallelization, mode, and related values from the same metadata line when present.
 - Milestone assignment from the issue phase metadata or the overview section containing the issue. For `G-*` issues, set milestone assignment to empty regardless of section text.
-- Body sections: Problem, Context, Scope, Decision Boundaries, Acceptance Criteria, Edge Cases, Technical Notes, Resolution.
+- Body sections: Problem, Context, Scope, Decision Boundaries, Acceptance Criteria, Validation, Edge Cases, Technical Notes, Resolution.
 - Raw substantive body content for duplicate-content preflight. Preserve the body sections separately from generated metadata and transfer markers so `references/linear-mapping.md` can fingerprint the planned Linear issue description before any issue is created.
 - Dependency edges from the `Blocked by:` / `Blocks:` lines (under `Technical Notes > Dependencies`), with `None` treated as empty and ranges like `P3-002..P3-007` expanded into individual SIW IDs. These drive the native-relation pass in `references/linear-mapping.md` > Dependencies.
+- Reference inventory from the body and metadata: SIW issue IDs, migrated markdown paths, register-code families, inline-code paths that must be unwrapped before linking, and table signatures with escaped pipes preserved.
 - Linear transfer marker, if a `## Linear Transfer` section exists:
   - Linear issue identifier and URL from `- Linear issue: ...`
   - Linear project URL from `- Linear project: ...`
