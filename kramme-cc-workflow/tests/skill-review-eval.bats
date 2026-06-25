@@ -87,6 +87,137 @@
   [ "$status" -eq 0 ]
 }
 
+@test "skill review eval prediction command receives skill context and scores stdout" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    cat > "$BATS_TEST_TMPDIR/fake-predict.js" <<'"'"'NODE'"'"'
+const fs = require("fs");
+const context = JSON.parse(fs.readFileSync(0, "utf8"));
+
+if (context.skill !== "candidate-skill") {
+  console.error(`unexpected skill: ${context.skill}`);
+  process.exit(2);
+}
+if (!context.skill_path.endsWith("/candidate-skill")) {
+  console.error(`unexpected skill_path: ${context.skill_path}`);
+  process.exit(2);
+}
+if (!context.item.input_skill_path || !context.item.input_skill_file.endsWith("/SKILL.md")) {
+  console.error("missing input skill paths");
+  process.exit(2);
+}
+
+if (context.item.id === "train-good-skill") {
+  console.log(`No findings found.
+
+Rubric snapshot:
+- Focused and composable: Pass
+- Progressively disclosed: Pass`);
+} else if (context.item.id === "train-missing-frontmatter") {
+  console.log(`Major: Frontmatter is missing, including disable model invocation.
+
+Rubric snapshot:
+- Self describing boundaries: Fail`);
+} else {
+  console.error(`unexpected item: ${context.item.id}`);
+  process.exit(2);
+}
+NODE
+
+    node evals/skill-review/run-eval.js \
+      --split train \
+      --skill candidate-skill \
+      --prediction-command "node \"$BATS_TEST_TMPDIR/fake-predict.js\"" \
+      --json > "$BATS_TEST_TMPDIR/train.json"
+    node -e "
+      const fs = require(\"fs\");
+      const data = JSON.parse(fs.readFileSync(process.argv[1], \"utf8\"));
+      if (data.skill !== \"candidate-skill\") process.exit(1);
+      if (!data.items.every((item) => item.prediction.source === \"prediction_command\")) process.exit(1);
+      if (!data.items.every((item) => item.hard === 1)) process.exit(1);
+    " "$BATS_TEST_TMPDIR/train.json"
+  '
+
+  [ "$status" -eq 0 ]
+}
+
+@test "skill review eval scores prediction command output instead of fixture text" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    cat > "$BATS_TEST_TMPDIR/empty-review.js" <<'"'"'NODE'"'"'
+console.log("No findings found.");
+NODE
+
+    node evals/skill-review/run-eval.js \
+      --split train \
+      --prediction-command "node \"$BATS_TEST_TMPDIR/empty-review.js\"" \
+      --json > "$BATS_TEST_TMPDIR/train.json"
+    node -e "
+      const fs = require(\"fs\");
+      const data = JSON.parse(fs.readFileSync(process.argv[1], \"utf8\"));
+      const item = data.items.find((entry) => entry.id === \"train-missing-frontmatter\");
+      if (!item) process.exit(1);
+      if (item.prediction.source !== \"prediction_command\") process.exit(1);
+      if (item.hard !== 0) process.exit(1);
+      if (!item.diagnostics.missing_expected.includes(\"frontmatter-missing\")) process.exit(1);
+    " "$BATS_TEST_TMPDIR/train.json"
+  '
+
+  [ "$status" -eq 0 ]
+}
+
+@test "skill review eval reports prediction command failures as JSON diagnostics" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    if node evals/skill-review/run-eval.js \
+      --split train \
+      --prediction-command "node \"$BATS_TEST_TMPDIR/missing-adapter.js\"" \
+      --json > "$BATS_TEST_TMPDIR/out.json" 2> "$BATS_TEST_TMPDIR/err.txt"; then
+      exit 1
+    fi
+    if [ -s "$BATS_TEST_TMPDIR/err.txt" ]; then
+      cat "$BATS_TEST_TMPDIR/err.txt"
+      exit 1
+    fi
+    node -e "
+      const fs = require(\"fs\");
+      const data = JSON.parse(fs.readFileSync(process.argv[1], \"utf8\"));
+      if (!/prediction command failed for train-good-skill/.test(data.error)) process.exit(1);
+      if (!Array.isArray(data.diagnostics) || data.diagnostics[0] !== data.error) process.exit(1);
+    " "$BATS_TEST_TMPDIR/out.json"
+  '
+
+  [ "$status" -eq 0 ]
+}
+
+@test "skill review eval rejects blank prediction command values" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    if node evals/skill-review/run-eval.js \
+      --split train \
+      --prediction-command "  " \
+      --json > "$BATS_TEST_TMPDIR/out.json" 2> "$BATS_TEST_TMPDIR/err.txt"; then
+      exit 1
+    fi
+    if [ -s "$BATS_TEST_TMPDIR/err.txt" ]; then
+      cat "$BATS_TEST_TMPDIR/err.txt"
+      exit 1
+    fi
+    node -e "
+      const fs = require(\"fs\");
+      const data = JSON.parse(fs.readFileSync(process.argv[1], \"utf8\"));
+      if (data.error !== \"--prediction-command requires a command\") process.exit(1);
+      if (!Array.isArray(data.diagnostics) || data.diagnostics[0] !== data.error) process.exit(1);
+    " "$BATS_TEST_TMPDIR/out.json"
+  '
+
+  [ "$status" -eq 0 ]
+}
+
 @test "skill review eval includes a passing clean fixture" {
   run bash -c '
     set -euo pipefail
