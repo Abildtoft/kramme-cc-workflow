@@ -3,6 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 const { aggregateScores, scoreItem } = require('./scorer');
 
 const VALID_SPLITS = new Set(['train', 'val', 'test', 'all']);
@@ -12,6 +13,7 @@ function parseArgs(argv) {
     split: 'all',
     json: false,
     skill: null,
+    predictionCommand: null,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -30,6 +32,12 @@ function parseArgs(argv) {
         throw new Error('--skill requires a path');
       }
       options.skill = argv[index];
+    } else if (arg === '--prediction-command') {
+      index += 1;
+      if (index >= argv.length || argv[index].trim() === '') {
+        throw new Error('--prediction-command requires a command');
+      }
+      options.predictionCommand = argv[index];
     } else if (arg === '--help' || arg === '-h') {
       options.help = true;
     } else {
@@ -42,9 +50,10 @@ function parseArgs(argv) {
 
 function usage() {
   return [
-    'Usage: node evals/skill-review/run-eval.js [--split train|val|test|all] [--skill <path>] [--json]',
+    'Usage: node evals/skill-review/run-eval.js [--split train|val|test|all] [--skill <path>] [--prediction-command <cmd>] [--json]',
     '',
-    'Scores committed fixture review output only; --skill is recorded for later adapter work.',
+    'By default, scores committed fixture review output.',
+    'With --prediction-command, sends item context JSON on stdin and scores stdout.',
   ].join('\n');
 }
 
@@ -120,23 +129,99 @@ function loadItemsForSplit(split, evalRoot) {
   return splits.flatMap((splitName) => readSplit(splitName, evalRoot));
 }
 
+function adapterContextForItem(item, options) {
+  const evalRoot = options.evalRoot || __dirname;
+  const skill = options.skill || null;
+  const context = {
+    adapter_version: 1,
+    eval_root: evalRoot,
+    skill,
+    skill_path: skill ? path.resolve(skill) : null,
+    item: {
+      id: item.id,
+      split: item.split || options.split || null,
+      difficulty: item.difficulty || null,
+      input_skill_dir: item.input_skill_dir || null,
+      input_skill_text: item.input_skill_text || null,
+    },
+  };
+
+  if (item.input_skill_dir) {
+    const inputSkillPath = resolveInside(evalRoot, item.input_skill_dir);
+    context.item.input_skill_path = inputSkillPath;
+    context.item.input_skill_file = path.join(inputSkillPath, 'SKILL.md');
+  }
+
+  return context;
+}
+
+function runPredictionCommand(item, options) {
+  const command = options.predictionCommand;
+  const context = adapterContextForItem(item, options);
+  const result = spawnSync(command, {
+    input: `${JSON.stringify(context)}\n`,
+    encoding: 'utf8',
+    shell: true,
+    maxBuffer: 10 * 1024 * 1024,
+    env: {
+      ...process.env,
+      SKILL_REVIEW_EVAL_ITEM_ID: item.id,
+      SKILL_REVIEW_EVAL_SKILL: options.skill || '',
+    },
+  });
+
+  if (result.error) {
+    throw new Error(`prediction command failed for ${item.id}: ${result.error.message}`);
+  }
+  if (result.status !== 0) {
+    const detail = (result.stderr || result.stdout || '').trim();
+    const suffix = detail ? `: ${detail}` : '';
+    throw new Error(`prediction command failed for ${item.id} with exit ${result.status}${suffix}`);
+  }
+
+  return result.stdout.trimEnd();
+}
+
+function predictionForItem(item, options = {}) {
+  if (options.predictionCommand) {
+    return {
+      source: 'prediction_command',
+      text: runPredictionCommand(item, options),
+    };
+  }
+
+  return {
+    source: 'fixture_review_output',
+    text: item.fixture_review_output,
+  };
+}
+
 function evaluateItems(items, options = {}) {
   const evalRoot = options.evalRoot || __dirname;
   const split = options.split || 'custom';
   const skill = options.skill || null;
+  const predictionCommand = options.predictionCommand || null;
 
   for (const item of items) {
     validateItem(item, evalRoot);
   }
 
-  const itemResults = items.map((item) => ({
-    ...scoreItem(item, item.fixture_review_output, {
-      predictionSource: 'fixture_review_output',
-    }),
-    split: item.split || split,
-    input_skill_dir: item.input_skill_dir || null,
-    difficulty: item.difficulty || null,
-  }));
+  const itemResults = items.map((item) => {
+    const prediction = predictionForItem(item, {
+      evalRoot,
+      split,
+      skill,
+      predictionCommand,
+    });
+    return {
+      ...scoreItem(item, prediction.text, {
+        predictionSource: prediction.source,
+      }),
+      split: item.split || split,
+      input_skill_dir: item.input_skill_dir || null,
+      difficulty: item.difficulty || null,
+    };
+  });
   const aggregate = aggregateScores(itemResults);
 
   return {
@@ -155,6 +240,7 @@ function runEval(options, evalRoot = __dirname) {
     evalRoot,
     split: options.split,
     skill: options.skill,
+    predictionCommand: options.predictionCommand,
   });
 }
 
@@ -211,9 +297,11 @@ if (require.main === module) {
 }
 
 module.exports = {
+  adapterContextForItem,
   evaluateItems,
   loadItemsForSplit,
   parseArgs,
+  predictionForItem,
   runEval,
   validateItem,
 };
