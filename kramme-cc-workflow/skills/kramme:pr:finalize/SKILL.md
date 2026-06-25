@@ -33,10 +33,11 @@ Coordinate all pre-merge quality checks and produce a single readiness verdict. 
 
 `--fix` means:
 
-- after the initial verdict, if eligible `gated_auto` code-backed critical or important findings exist, automatically run `kramme:pr:resolve-review` to address them
+- after the initial verdict, if eligible `gated_auto` code-backed critical or important findings exist, hand only that bounded payload to `kramme:pr:resolve-review` in its gated implement-only path
 - re-run verification after fixes to produce an updated verdict
 - does NOT fix suggestions, manual findings, advisory findings, or process-only blockers — only eligible `gated_auto` code-backed critical/important findings
 - does NOT resolve process-only blockers; those remain manual follow-up
+- does NOT bypass the resolver's rollback checkpoint, verification, or human-input safety gates
 
 ### Step 2: Pre-Validation
 
@@ -117,66 +118,7 @@ Set `HAS_UI_CHANGES=true` if ANY changed file matches. Otherwise `HAS_UI_CHANGES
 
 ### Step 4: Present Execution Plan
 
-Display the plan before running:
-
-```
-PR Finalize Plan
-
-Branch: {CURRENT_BRANCH} -> {BASE_BRANCH}
-Changed files: {FILE_COUNT}
-UI changes detected: {yes/no}
-
-Steps to run:
-  1. verify:run            [always]
-  2. pr:code-review        [always]
-  3. pr:product-review     [always]
-  4. pr:ux-review          [if UI changes detected]
-  5. qa                    [if UI changes + app URL provided]
-  6. pr:resolve-review     [if --fix and critical/important findings]
-  7. re-verify             [if --fix applied fixes]
-  8. pr:generate-description [if no blockers]
-
-Auto-fix: {yes/no}
-Skipped: {any --skip items, or "none"}
-```
-
-If `AUTO_MODE=true`, skip this prompt and execute the plan as displayed.
-
-Otherwise use AskUserQuestion to confirm:
-
-```yaml
-header: "PR Finalize Plan"
-question: "Proceed with this plan?"
-options:
-  - label: "Run all"
-    description: "Execute all applicable steps as shown"
-  - label: "Skip QA"
-    description: "Run everything except QA testing"
-  - label: "Customize"
-    description: "Let me choose which steps to run"
-  - label: "Abort"
-    description: "Cancel without running anything"
-multiSelect: false
-```
-
-**If "Abort":** Stop immediately.
-
-**If "Skip QA":** Add `qa` to `SKIP_LIST`.
-
-**If "Customize":** Use AskUserQuestion with multiSelect to let user pick steps:
-
-```yaml
-header: "Select steps"
-question: "Which steps should run?"
-options:
-  - label: "verify:run"
-  - label: "pr:code-review"
-  - label: "pr:product-review"
-  - label: "pr:ux-review"
-  - label: "qa"
-  - label: "pr:generate-description"
-multiSelect: true
-```
+Read `references/execution-plan-prompts.md`, display the populated plan, and apply its confirmation/customization flow. If `AUTO_MODE=true`, skip only this plan confirmation; still honor every downstream safety gate, missing-requirement stop, and sub-skill confirmation for destructive or high-impact operations.
 
 ### Step 5: Execute Verification
 
@@ -214,20 +156,7 @@ skill: "kramme:pr:code-review", args: "--base {BASE_BRANCH}"
 
 After completion, if `REVIEW_OVERVIEW.md` does not exist in the project root, treat as `COULD NOT RUN: overview file not produced`. Otherwise parse it:
 
-- Count findings by severity: critical, important, suggestion
-- Inspect each critical/important code-review finding's action class and structured `Location` field:
-  - Prefer the explicit `Location:` field from the structured finding schema
-  - If `Location:` is missing, fall back to inline `[location]` text only for legacy reports
-  - `Action class: gated_auto` with `path/to/file:line` = code-backed finding, eligible for `/kramme:pr:resolve-review`
-  - `Action class: manual` = manual follow-up, even when the finding has a file location
-  - `Action class: advisory` on a critical/important finding = invalid review schema; treat as manual follow-up and record a `COULD NOT AUTO-FIX: invalid action class` caveat
-  - `review-scope` (or any broader non-file scope label) = process-level blocker, manual follow-up
-  - Missing action class in a legacy report = manual follow-up unless the finding is explicitly identified as auto-resolvable
-  - Missing location after both explicit-field and legacy-inline parsing = manual follow-up; record `COULD NOT AUTO-FIX: missing Location`
-- Keep separate tallies for eligible `gated_auto` code-backed vs manual/process-level critical/important code-review findings
-- Store each eligible `gated_auto` finding as `ELIGIBLE_REVIEW_FIXES` with `Finding ID` as source id, severity, location, finding text, action class, owner, confidence, and evidence
-- If an eligible finding has no `Finding ID`, do not invent one from position or prose. Treat it as manual follow-up and record `COULD NOT AUTO-FIX: missing Finding ID`.
-- Critical findings = blockers
+Read `references/review-result-parsing.md` and apply its code-review parsing rules, including `ELIGIBLE_REVIEW_FIXES` construction and blocker classification.
 
 See [Error Handling](#error-handling) for skill-error treatment.
 
@@ -249,8 +178,7 @@ skill: "kramme:pr:product-review", args: "--base {BASE_BRANCH}"
 
 After completion, if `PRODUCT_REVIEW_OVERVIEW.md` does not exist, treat as `COULD NOT RUN: overview file not produced`. Otherwise parse it:
 
-- Count findings by severity: critical, important, suggestion
-- Critical findings = blockers
+Read `references/review-result-parsing.md` and apply its product-review overview parsing rules.
 
 See [Error Handling](#error-handling) for skill-error treatment.
 
@@ -294,42 +222,7 @@ See [Error Handling](#error-handling) for skill-error treatment.
 - `HAS_UI_CHANGES` is false
 - `APP_URL` was not provided
 
-If `AUTO_MODE=true`, skip this prompt and run diff-aware QA:
-
-```yaml
-skill: "kramme:qa", args: "{APP_URL} diff-aware --base {BASE_BRANCH}"
-```
-
-Otherwise confirm with user:
-
-```yaml
-header: "QA Testing"
-question: "Run QA testing against {APP_URL}? A browser MCP enables live checks; otherwise QA falls back to code-only analysis."
-options:
-  - label: "Run QA quick"
-    description: "Quick smoke test of changed UI areas"
-  - label: "Run QA diff-aware"
-    description: "Thorough test focused on changed files and their impact"
-  - label: "Skip QA"
-    description: "Skip QA testing for now"
-multiSelect: false
-```
-
-**If "Skip QA":** Record as skipped. Continue.
-
-**If "Run QA quick":**
-
-```
-skill: "kramme:qa", args: "{APP_URL} quick"
-```
-
-**If "Run QA diff-aware":**
-
-```
-skill: "kramme:qa", args: "{APP_URL} diff-aware --base {BASE_BRANCH}"
-```
-
-Parse QA results for blockers, major issues, and minor issues.
+Read `references/qa-and-description-prompts.md` and follow its QA prompt/invocation flow. Parse QA results for blockers, major issues, and minor issues.
 
 See [Error Handling](#error-handling) for skill-error treatment.
 
@@ -402,46 +295,7 @@ Render the verdict inline (no artifact file) using the template and per-verdict 
 
 **Skip if** `generate-description` is in `SKIP_LIST`.
 
-If verdict is **READY** or **READY WITH CAVEATS** and `AUTO_MODE=true`, run:
-
-```yaml
-skill: "kramme:pr:generate-description", args: "--auto --base {BASE_BRANCH}"
-```
-
-Otherwise ask:
-
-```yaml
-header: "PR Description"
-question: "Generate or update PR description now?"
-options:
-  - label: "Generate and update"
-    description: "Generate description and update the existing PR (if one exists)"
-  - label: "Generate for review"
-    description: "Generate description for review before applying"
-  - label: "Skip"
-    description: "Skip description generation"
-multiSelect: false
-```
-
-**If "Skip":** Done.
-
-**If "Generate and update":**
-
-Run the sub-skill's direct-update path so it handles backup creation and `--body-file` application:
-
-```yaml
-skill: "kramme:pr:generate-description", args: "--auto --base {BASE_BRANCH}"
-```
-
-If no PR exists or the generated body has a blocking missing requirement, the sub-skill will fall back to copy-paste output instead of publishing.
-
-**If "Generate for review":**
-
-```
-skill: "kramme:pr:generate-description", args: "--base {BASE_BRANCH}"
-```
-
-**If skill errors out:** Report error but do not fail the overall assessment.
+Read `references/qa-and-description-prompts.md` and follow its PR description prompt/invocation flow. If the skill errors out, report the error but do not fail the overall assessment.
 
 ## Explicit Non-Goals
 
