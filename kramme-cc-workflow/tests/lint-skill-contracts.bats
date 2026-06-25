@@ -4,6 +4,7 @@ setup() {
   TMP_ROOT="$(mktemp -d)"
   SCRIPT="$BATS_TEST_DIRNAME/../scripts/lint-skill-contracts.py"
   VISUAL_GENERATOR="$BATS_TEST_DIRNAME/../scripts/generate-visual-shared-assets.py"
+  COMPONENT_GENERATOR="$BATS_TEST_DIRNAME/../scripts/generate-component-reference.py"
 }
 
 teardown() {
@@ -30,6 +31,51 @@ $body
 EOF
 }
 
+write_reference_skill() {
+  local path="$1"
+  local name="$2"
+  local description="$3"
+  local disable_model_invocation="$4"
+  local user_invocable="$5"
+  local argument_hint="${6:-}"
+
+  if [ -n "$argument_hint" ]; then
+    write_file "$path" <<EOF
+---
+name: $name
+description: $description
+argument-hint: $argument_hint
+disable-model-invocation: $disable_model_invocation
+user-invocable: $user_invocable
+---
+# $name
+EOF
+  else
+    write_file "$path" <<EOF
+---
+name: $name
+description: $description
+disable-model-invocation: $disable_model_invocation
+user-invocable: $user_invocable
+---
+# $name
+EOF
+  fi
+}
+
+write_readme_skill_sync_registry() {
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "readme_skill_sync": {
+    "readme": "README.md",
+    "skills_dir": "kramme-cc-workflow/skills",
+    "start_marker": "<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->",
+    "end_marker": "<!-- END SOURCE-SYNCED SKILL ROWS -->"
+  }
+}
+EOF
+}
+
 make_body_lines() {
   local count="$1"
   local index
@@ -50,6 +96,141 @@ make_body_lines() {
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"visual shared assets are in sync."* ]]
+}
+
+@test "readme skill sync accepts source-generated frontmatter rows" {
+  write_reference_skill \
+    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" \
+    "kramme:sample" \
+    "Sample skill description" \
+    "false" \
+    "true" \
+    "[target]"
+  write_file "$TMP_ROOT/README.md" <<'EOF'
+# Fixture
+
+## Skills
+
+<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->
+
+| Skill | Invocation | Arguments | Description |
+| --- | --- | --- | --- |
+| `/kramme:sample` | User, Auto | `[target]` | Sample skill description |
+
+<!-- END SOURCE-SYNCED SKILL ROWS -->
+
+## Agents
+EOF
+  write_readme_skill_sync_registry
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
+@test "readme skill sync catches invocation arguments and description drift" {
+  write_reference_skill \
+    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" \
+    "kramme:sample" \
+    "Sample skill description" \
+    "false" \
+    "true" \
+    "[target]"
+  write_file "$TMP_ROOT/README.md" <<'EOF'
+# Fixture
+
+## Skills
+
+<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->
+
+| Skill | Invocation | Arguments | Description |
+| --- | --- | --- | --- |
+| `/kramme:sample` | User | — | Stale copied description |
+
+<!-- END SOURCE-SYNCED SKILL ROWS -->
+
+## Agents
+EOF
+  write_readme_skill_sync_registry
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"readme skill sync"* ]]
+  [[ "$output" == *"invocation differs from SKILL.md frontmatter"* ]]
+  [[ "$output" == *"arguments differs from SKILL.md frontmatter"* ]]
+  [[ "$output" == *"description differs from SKILL.md frontmatter"* ]]
+}
+
+@test "component reference generator check reports drift and write syncs rows" {
+  write_reference_skill \
+    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" \
+    "kramme:sample" \
+    "Sample skill description" \
+    "false" \
+    "true" \
+    "[target]"
+  write_file "$TMP_ROOT/README.md" <<'EOF'
+# Fixture
+
+## Skills
+
+<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->
+
+| Skill | Invocation | Arguments | Description |
+| --- | --- | --- | --- |
+| `/kramme:sample` | User | — | Stale copied description |
+
+<!-- END SOURCE-SYNCED SKILL ROWS -->
+
+## Agents
+EOF
+  write_readme_skill_sync_registry
+
+  run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --check
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"component reference sync check failed:"* ]]
+
+  run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"updated README.md component reference rows."* ]]
+  [[ "$(cat "$TMP_ROOT/README.md")" == *"| \`/kramme:sample\` | User, Auto | \`[target]\` | Sample skill description |"* ]]
+}
+
+@test "component reference generator check rejects ghost skill rows" {
+  write_reference_skill \
+    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:real/SKILL.md" \
+    "kramme:real" \
+    "Real skill description" \
+    "false" \
+    "true"
+  write_file "$TMP_ROOT/README.md" <<'EOF'
+# Fixture
+
+## Skills
+
+<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->
+
+| Skill | Invocation | Arguments | Description |
+| --- | --- | --- | --- |
+| `/kramme:real` | User, Auto | — | Real skill description |
+| `/kramme:ghost` | User | — | Ghost skill description |
+
+<!-- END SOURCE-SYNCED SKILL ROWS -->
+
+## Agents
+EOF
+  write_readme_skill_sync_registry
+
+  run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --check
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"component reference sync failed:"* ]]
+  [[ "$output" == *"documents 'kramme:ghost'"* ]]
+  [[ "$output" == *"does not exist"* ]]
 }
 
 @test "pr code review exposes resolver readiness contract" {
@@ -703,18 +884,24 @@ EOF
 }
 
 @test "skill directory missing from readme fails" {
-  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" "# Sample"
+  write_reference_skill \
+    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" \
+    "kramme:sample" \
+    "Sample skill description" \
+    "false" \
+    "true"
   write_file "$TMP_ROOT/README.md" <<'EOF'
 # Test README
+
+## Skills
+
+<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->
+
+<!-- END SOURCE-SYNCED SKILL ROWS -->
+
+## Agents
 EOF
-  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
-{
-  "readme_skill_sync": {
-    "readme": "README.md",
-    "skills_dir": "kramme-cc-workflow/skills"
-  }
-}
-EOF
+  write_readme_skill_sync_registry
 
   run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
 
@@ -724,25 +911,36 @@ EOF
 }
 
 @test "readme sync requires exact documented skill rows" {
-  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/kramme:qa/SKILL.md" "# QA"
-  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/kramme:qa:intake/SKILL.md" "# QA intake"
+  write_reference_skill \
+    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:qa/SKILL.md" \
+    "kramme:qa" \
+    "QA skill description" \
+    "false" \
+    "true"
+  write_reference_skill \
+    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:qa:intake/SKILL.md" \
+    "kramme:qa:intake" \
+    "QA intake skill description" \
+    "true" \
+    "true"
   write_file "$TMP_ROOT/README.md" <<'EOF'
 # Test README
 
 Try /kramme:qa for live checks.
 
-| Skill | Description |
-| --- | --- |
-| `/kramme:qa:intake` | QA intake. |
+## Skills
+
+<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->
+
+| Skill | Invocation | Arguments | Description |
+| --- | --- | --- | --- |
+| `/kramme:qa:intake` | User | — | QA intake skill description |
+
+<!-- END SOURCE-SYNCED SKILL ROWS -->
+
+## Agents
 EOF
-  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
-{
-  "readme_skill_sync": {
-    "readme": "README.md",
-    "skills_dir": "kramme-cc-workflow/skills"
-  }
-}
-EOF
+  write_readme_skill_sync_registry
 
   run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
 
@@ -752,15 +950,26 @@ EOF
 }
 
 @test "readme sync accepts background skill rows but ignores agent rows" {
-  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/kramme:background/SKILL.md" "# Background"
+  write_reference_skill \
+    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:background/SKILL.md" \
+    "kramme:background" \
+    "Background skill description" \
+    "false" \
+    "false"
   write_file "$TMP_ROOT/README.md" <<'EOF'
 # Test README
 
+## Skills
+
+<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->
+
 ### Background Skills
 
-| Skill | Trigger Condition |
-| --- | --- |
-| `kramme:background` | Runs in the background. |
+| Skill | Invocation | Arguments | Description |
+| --- | --- | --- | --- |
+| `kramme:background` | Background | — | Background skill description |
+
+<!-- END SOURCE-SYNCED SKILL ROWS -->
 
 ## Agents
 
@@ -768,14 +977,7 @@ EOF
 | --- | --- |
 | `kramme:missing-agent` | Agent, not a skill. |
 EOF
-  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
-{
-  "readme_skill_sync": {
-    "readme": "README.md",
-    "skills_dir": "kramme-cc-workflow/skills"
-  }
-}
-EOF
+  write_readme_skill_sync_registry
 
   run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
 
@@ -784,23 +986,29 @@ EOF
 }
 
 @test "readme ghost skill fails" {
-  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/kramme:real/SKILL.md" "# Real"
+  write_reference_skill \
+    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:real/SKILL.md" \
+    "kramme:real" \
+    "Real skill description" \
+    "false" \
+    "true"
   write_file "$TMP_ROOT/README.md" <<'EOF'
 # Test README
 
-| Skill | Description |
-| --- | --- |
-| `/kramme:real` | Real skill. |
-| `/kramme:ghost` | Ghost skill. |
+## Skills
+
+<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->
+
+| Skill | Invocation | Arguments | Description |
+| --- | --- | --- | --- |
+| `/kramme:real` | User, Auto | — | Real skill description |
+| `/kramme:ghost` | User | — | Ghost skill description |
+
+<!-- END SOURCE-SYNCED SKILL ROWS -->
+
+## Agents
 EOF
-  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
-{
-  "readme_skill_sync": {
-    "readme": "README.md",
-    "skills_dir": "kramme-cc-workflow/skills"
-  }
-}
-EOF
+  write_readme_skill_sync_registry
 
   run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
 
