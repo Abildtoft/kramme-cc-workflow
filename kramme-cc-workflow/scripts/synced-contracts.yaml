@@ -570,6 +570,8 @@
   "readme_skill_sync": {
     "readme": "README.md",
     "skills_dir": "kramme-cc-workflow/skills",
+    "start_marker": "<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->",
+    "end_marker": "<!-- END SOURCE-SYNCED SKILL ROWS -->",
     "documented_skill_regex": "^\\|\\s*`/(?P<name>kramme:[A-Za-z0-9:_-]+)`\\s*\\|",
     "allow_readme_only_skills": [
       "kramme:skill:audit-sources"
