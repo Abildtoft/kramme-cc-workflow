@@ -4,11 +4,15 @@
   "private": true,
   "description": "Converter CLI for kramme-cc-workflow",
   "license": "MIT",
+  "bin": {
+    "kramme-cc-workflow": "scripts/convert-plugin.js"
+  },
   "scripts": {
     "test": "make test",
     "verify": "make verify"
   },
-  "bin": {
-    "kramme-cc-workflow": "scripts/convert-plugin.js"
+  "dependencies": {
+    "smol-toml": "^1.7.0",
+    "yaml": "^2.9.0"
   }
 }

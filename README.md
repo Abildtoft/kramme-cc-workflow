@@ -62,6 +62,7 @@ claude /plugin install /path/to/kramme-cc-workflow/kramme-cc-workflow
 This repo includes a converter CLI (Node.js) that installs the plugin into Codex. Requires Node.js 18+. Use the plugin name from `.claude-plugin/marketplace.json` (here: `kramme-cc-workflow`).
 
 ```bash
+npm install
 node kramme-cc-workflow/scripts/convert-plugin.js install kramme-cc-workflow
 ```
 
@@ -77,7 +78,7 @@ Local dev from this repo:
 ./kramme-cc-workflow/scripts/install-codex.sh
 ```
 
-Helper scripts forward additional args to the converter (e.g., `--codex-home`, `--agents-home`).
+Helper scripts install missing converter runtime dependencies and forward additional args to the converter (e.g., `--codex-home`, `--agents-home`).
 
 Codex output defaults to `~/.codex` (`prompts/` and `skills/`).
 

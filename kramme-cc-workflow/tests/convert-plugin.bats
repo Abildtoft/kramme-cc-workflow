@@ -81,6 +81,88 @@ exit_if_hook_disabled() {
 SH
 }
 
+resolve_node_package_dir() {
+	node -e '
+const fs = require("fs");
+const path = require("path");
+let current = path.dirname(require.resolve(process.argv[1]));
+while (current !== path.dirname(current)) {
+  if (fs.existsSync(path.join(current, "package.json"))) {
+    console.log(current);
+    process.exit(0);
+  }
+  current = path.dirname(current);
+}
+process.exit(1);
+' "$1"
+}
+
+@test "install-codex helper bootstraps missing converter dependencies" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	local yaml_dir smol_toml_dir
+	yaml_dir="$(resolve_node_package_dir yaml)"
+	smol_toml_dir="$(resolve_node_package_dir smol-toml)"
+
+	local isolated="$TMP_DIR/isolated"
+	mkdir -p "$isolated/.claude-plugin"
+	mkdir -p "$isolated/kramme-cc-workflow/.claude-plugin"
+	mkdir -p "$isolated/kramme-cc-workflow/scripts"
+	cp "$REPO_ROOT/scripts/install-codex.sh" "$isolated/kramme-cc-workflow/scripts/install-codex.sh"
+	cp "$REPO_ROOT/scripts/convert-plugin.js" "$isolated/kramme-cc-workflow/scripts/convert-plugin.js"
+	cp -R "$REPO_ROOT/scripts/convert-plugin" "$isolated/kramme-cc-workflow/scripts/convert-plugin"
+
+	cat >"$isolated/package.json" <<'JSON'
+{
+  "dependencies": {
+    "smol-toml": "^1.7.0",
+    "yaml": "^2.9.0"
+  }
+}
+JSON
+	cat >"$isolated/.claude-plugin/marketplace.json" <<'JSON'
+{
+  "plugins": [
+    {
+      "name": "kramme-cc-workflow",
+      "source": "kramme-cc-workflow"
+    }
+  ]
+}
+JSON
+	cat >"$isolated/kramme-cc-workflow/.claude-plugin/plugin.json" <<'JSON'
+{
+  "name": "kramme-cc-workflow",
+  "version": "1.0.0",
+  "agents": [],
+  "commands": [],
+  "skills": []
+}
+JSON
+
+	local fakebin="$TMP_DIR/fakebin"
+	mkdir -p "$fakebin"
+	cat >"$fakebin/npm" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >"$NPM_CALLED"
+mkdir -p node_modules
+ln -s "$YAML_MODULE_DIR" node_modules/yaml
+ln -s "$SMOL_TOML_MODULE_DIR" node_modules/smol-toml
+SH
+	chmod +x "$fakebin/npm"
+
+	run bash -c 'cd "$1" && PATH="$2:$PATH" NPM_CALLED="$3" YAML_MODULE_DIR="$4" SMOL_TOML_MODULE_DIR="$5" "$1/kramme-cc-workflow/scripts/install-codex.sh" --codex-home "$1/output" --agents-home "$1/.agents" --yes' _ "$isolated" "$fakebin" "$TMP_DIR/npm-called" "$yaml_dir" "$smol_toml_dir"
+	[ "$status" -eq 0 ]
+	[ -f "$TMP_DIR/npm-called" ]
+	run cat "$TMP_DIR/npm-called"
+	[ "$status" -eq 0 ]
+	[ "$output" = "install --omit=dev --no-audit --no-fund" ]
+	[ -d "$isolated/output/.codex" ]
+}
+
 @test "codex conversion preserves existing config when adding MCP servers" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for converter tests"
@@ -111,11 +193,23 @@ model = "gpt-5-mini"
 command = "existing-server"
 args = ["--keep"]
 
-[mcp_servers."demo-server"]
+[mcp_servers."demo-server"] # old managed table
 command = "old-server"
 
-[mcp_servers."demo-server".env]
+[mcp_servers."demo-server".env] # old managed env table
 DEMO_TOKEN = "old-placeholder"
+
+[[history_entries]]
+name = "keep-array-table"
+
+[mcp_servers.demo-server-extra]
+command = "keep-extra"
+
+[mcp_servers.demo-server.env_extra]
+SENTINEL = "keep-prefix"
+
+[profiles.after]
+model = "gpt-5"
 TOML
 
 	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
@@ -125,7 +219,21 @@ TOML
 	[ "$status" -eq 0 ]
 	run grep -nF '[profiles.dev]' "$TMP_DIR/.codex/config.toml"
 	[ "$status" -eq 0 ]
+	run grep -nF '[profiles.after]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+	run grep -nF '[[history_entries]]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+	run grep -nF 'name = "keep-array-table"' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
 	run grep -nF '[mcp_servers.existing]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+	run grep -nF '[mcp_servers.demo-server-extra]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+	run grep -nF 'command = "keep-extra"' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+	run grep -nF '[mcp_servers.demo-server.env_extra]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
+	run grep -nF 'SENTINEL = "keep-prefix"' "$TMP_DIR/.codex/config.toml"
 	[ "$status" -eq 0 ]
 	run grep -nF '[mcp_servers.demo-server]' "$TMP_DIR/.codex/config.toml"
 	[ "$status" -eq 0 ]
@@ -176,31 +284,61 @@ const parsed = parseFrontmatter(`---
 name: Demo Skill
 description: |
   First line
+  Usage: keep exactly
   second line
+argument-hint: [aspects] [--base <branch>]
+summary: [experimental] Capture local behavior: screenshots, terminal output
 allowed-tools:
   - Read
   - Edit(src/**)
+examples:
+  - Capture: screenshots
 user-invocable: true
 ---
 Body`);
 
 assert.deepStrictEqual(parsed.data["allowed-tools"], ["Read", "Edit(src/**)"]);
-assert.strictEqual(parsed.data.description, "First line\nsecond line");
+assert.deepStrictEqual(parsed.data.examples, ["Capture: screenshots"]);
+assert.strictEqual(
+  parsed.data.description,
+  "First line\nUsage: keep exactly\nsecond line",
+);
+assert.strictEqual(
+  parsed.data.summary,
+  "[experimental] Capture local behavior: screenshots, terminal output",
+);
+assert.strictEqual(parsed.data["argument-hint"], "[aspects] [--base <branch>]");
 assert.strictEqual(parsed.data["user-invocable"], true);
 assert.strictEqual(parsed.body, "Body");
 assert.strictEqual(normalizeName("Kramme: Demo/Skill!"), "kramme-demo-skill");
 assert.strictEqual(codexName("Demo Skill!"), "demo-skill");
 assert.strictEqual(sanitizeDescription(" First\n\nSecond "), "First Second");
 
+const bracketHint = parseFrontmatter(`---
+name: Demo Skill
+argument-hint: [path]
+disable-model-invocation: { true|false }
+---
+Body`);
+assert.strictEqual(bracketHint.data["argument-hint"], "[path]");
+assert.strictEqual(
+  bracketHint.data["disable-model-invocation"],
+  "{ true|false }",
+);
+
 const formatted = formatFrontmatter(
   {
     name: "demo-skill",
+    "argument-hint": bracketHint.data["argument-hint"],
     "allowed-tools": ["Read", "Edit(src/**)"],
+    metadata: { owner: "platform" },
     "user-invocable": true,
   },
   "Body",
 );
+assert.match(formatted, /argument-hint: "\[path\]"/);
 assert.match(formatted, /allowed-tools:\n  - Read\n  - Edit\(src\/\*\*\)/);
+assert.match(formatted, /metadata:\n  owner: platform/);
 assert.match(formatted, /user-invocable: true/);
 console.log("ok");
 ' "$REPO_ROOT/scripts/convert-plugin/frontmatter"
@@ -208,7 +346,7 @@ console.log("ok");
 	[ "$output" = "ok" ]
 }
 
-@test "frontmatter module characterizes supported YAML shapes and nested limitations" {
+@test "frontmatter module parses supported YAML shapes and nested metadata" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for converter tests"
 	fi
@@ -233,6 +371,14 @@ allowed-tools:
   - Edit(src/**)
 metadata:
   owner: platform
+  channels:
+    - cli
+    - codex
+examples:
+  - name: Capture
+    description: Capture local behavior: screenshots
+  - name: Replay
+    description: Replay terminal output
 ---
 
 Body line one
@@ -248,7 +394,20 @@ assert.strictEqual(parsed.data.empty, null);
 assert.strictEqual(parsed.data.fallback, null);
 assert.deepStrictEqual(parsed.data.tags, ["alpha", "beta:two", false, 2]);
 assert.deepStrictEqual(parsed.data["allowed-tools"], ["Read", "Edit(src/**)"]);
-assert.deepStrictEqual(parsed.data.metadata, []);
+assert.deepStrictEqual(parsed.data.metadata, {
+  owner: "platform",
+  channels: ["cli", "codex"],
+});
+assert.deepStrictEqual(parsed.data.examples, [
+  {
+    name: "Capture",
+    description: "Capture local behavior: screenshots",
+  },
+  {
+    name: "Replay",
+    description: "Replay terminal output",
+  },
+]);
 assert.ok(!Object.hasOwn(parsed.data, "owner"));
 assert.strictEqual(parsed.body, "\nBody line one\n---\nBody line two");
 console.log("ok");

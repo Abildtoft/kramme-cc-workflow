@@ -4,12 +4,16 @@
   "private": true,
   "description": "Root entrypoint for npx GitHub installs",
   "license": "MIT",
+  "bin": {
+    "kramme-cc-workflow": "kramme-cc-workflow/scripts/convert-plugin.js"
+  },
   "scripts": {
     "test": "make -C kramme-cc-workflow test",
     "verify": "make -C kramme-cc-workflow verify"
   },
-  "bin": {
-    "kramme-cc-workflow": "kramme-cc-workflow/scripts/convert-plugin.js"
+  "dependencies": {
+    "smol-toml": "^1.7.0",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
