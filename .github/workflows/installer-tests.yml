@@ -24,8 +24,6 @@ jobs:
           plugins=(kramme-cc-workflow)
 
           for plugin in "${plugins[@]}"; do
-            eval "$(node ./kramme-cc-workflow/scripts/convert-plugin.js stats "$plugin" | sed 's/^/EXPECTED_/')"
-
             echo "::group::${plugin} -> codex"
 
             WORK_DIR="$RUNNER_TEMP/${plugin}-codex"
@@ -38,6 +36,8 @@ jobs:
               --non-interactive \
               --codex-home "$CODEX_HOME" \
               --agents-home "$AGENTS_HOME"
+
+            eval "$(node ./kramme-cc-workflow/scripts/convert-plugin.js stats "$plugin" | sed 's/^/EXPECTED_/')"
 
             if [ -d "$CODEX_HOME/skills" ]; then
               CODEX_SKILLS=$(find "$CODEX_HOME/skills" -name "SKILL.md" | wc -l)
