@@ -1,6 +1,20 @@
 "use strict";
 
+const YAML = require("yaml");
+const { Scalar, isMap, isScalar, isSeq } = YAML;
+
 const CODEX_DESCRIPTION_MAX_LENGTH = 1024;
+const YAML_PARSE_OPTIONS = { prettyErrors: false };
+const YAML_STRINGIFY_OPTIONS = { lineWidth: 0 };
+const LEGACY_STRING_FLOW_KEYS = new Set([
+  "argument-hint",
+  "description",
+  "disable-model-invocation",
+  "model",
+  "name",
+  "summary",
+  "user-invocable",
+]);
 
 function stripWrappingQuotes(value) {
   const trimmed = String(value ?? "").trim();
@@ -80,7 +94,7 @@ function parseFrontmatter(raw) {
 
   const yamlLines = lines.slice(1, endIndex);
   const body = lines.slice(endIndex + 1).join("\n");
-  const data = parseYamlLines(yamlLines);
+  const data = parseYamlDocument(yamlLines.join("\n"));
   return { data, body };
 }
 
@@ -91,99 +105,204 @@ function findClosingFrontmatterDelimiter(lines) {
   return -1;
 }
 
-function parseYamlLines(lines) {
-  const data = {};
-  let currentKey = null;
-  for (let i = 0; i < lines.length; i += 1) {
-    const parsedLine = parseYamlLine(lines[i]);
-    if (parsedLine.type === "empty" || parsedLine.type === "unsupported") {
-      continue;
-    }
-
-    if (parsedLine.type === "sequence-item") {
-      if (!currentKey) continue;
-      if (!Array.isArray(data[currentKey])) {
-        data[currentKey] = [];
-      }
-      data[currentKey].push(parseYamlValue(parsedLine.value));
-      continue;
-    }
-
-    const { key, value } = parsedLine;
-    currentKey = key;
-    if (!value) {
-      data[key] = [];
-      continue;
-    }
-    if (isBlockScalar(value)) {
-      const block = readYamlBlockScalar(lines, i + 1, value);
-      i = block.nextIndex - 1;
-      data[key] = block.value;
-      currentKey = null;
-      continue;
-    }
-    data[key] = parseYamlValue(value);
-  }
-  return data;
-}
-
-function parseYamlLine(line) {
-  const raw = String(line ?? "");
-  const trimmed = raw.trim();
-  if (!trimmed) return { type: "empty" };
-
-  if (trimmed.startsWith("- ")) {
-    return { type: "sequence-item", value: trimmed.slice(2) };
+function parseYamlDocument(source) {
+  if (!String(source ?? "").trim()) return {};
+  const normalizedSource = normalizeLegacyPlainScalars(source);
+  const document = YAML.parseDocument(normalizedSource, YAML_PARSE_OPTIONS);
+  if (document.errors.length > 0) {
+    throw new Error(`Invalid frontmatter YAML: ${document.errors[0].message}`);
   }
 
-  const idx = raw.indexOf(":");
-  if (idx === -1 || /^[ \t]/.test(raw)) return { type: "unsupported" };
-  return {
-    type: "mapping",
-    key: raw.slice(0, idx).trim(),
-    value: raw.slice(idx + 1).trim(),
-  };
-}
-
-function isBlockScalar(value) {
-  return value === "|" || value === ">";
-}
-
-function readYamlBlockScalar(lines, startIndex, style) {
-  const blockLines = [];
-  let index = startIndex;
-  while (index < lines.length && /^[ \t]+/.test(lines[index])) {
-    blockLines.push(lines[index].replace(/^[ \t]{1,2}/, ""));
-    index += 1;
+  const value = yamlNodeToValue(document.contents);
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
   }
-  const joiner = style === "|" ? "\n" : " ";
-  return { value: blockLines.join(joiner).trimEnd(), nextIndex: index };
-}
-
-function parseYamlValue(value) {
-  if (
-    (value.startsWith('"') && value.endsWith('"')) ||
-    (value.startsWith("'") && value.endsWith("'"))
-  ) {
-    return value.slice(1, -1);
-  }
-  if (value.startsWith("[") && value.endsWith("]")) {
-    const inner = value.slice(1, -1).trim();
-    if (!inner) return [];
-    return inner.split(",").map((item) => parseYamlValue(item.trim()));
-  }
-  if (value === "true") return true;
-  if (value === "false") return false;
-  if (value === "null" || value === "~") return null;
-  if (/^-?\d+(\.\d+)?$/.test(value)) return Number(value);
   return value;
 }
 
+function normalizeLegacyPlainScalars(source) {
+  const normalized = [];
+  let blockScalarParentIndent = null;
+
+  const lines = String(source ?? "").split("\n");
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (blockScalarParentIndent !== null) {
+      if (
+        !String(line ?? "").trim() ||
+        leadingWhitespaceLength(line) > blockScalarParentIndent
+      ) {
+        normalized.push(line);
+        continue;
+      }
+      blockScalarParentIndent = null;
+    }
+
+    normalized.push(
+      normalizeLegacyPlainScalarLine(line, {
+        treatSequenceItemAsMap: shouldTreatSequenceItemAsMap(lines, index),
+      }),
+    );
+    if (startsYamlBlockScalar(line)) {
+      blockScalarParentIndent = leadingWhitespaceLength(line);
+    }
+  }
+
+  return normalized.join("\n");
+}
+
+function startsYamlBlockScalar(line) {
+  const value = yamlLineValue(line);
+  if (!value) return false;
+  const compactMapping = parseCompactMappingValue(value);
+  const scalar = compactMapping ? compactMapping.value : value;
+  return /^[|>][+-]?\d*(?:\s+#.*)?$/.test(scalar);
+}
+
+function yamlLineValue(line) {
+  const raw = String(line ?? "");
+  if (!raw.trim() || raw.trimStart().startsWith("#")) return null;
+
+  const mappingMatch = raw.match(/^(\s*[^#\s][^:]*:\s+)(.+)$/);
+  if (mappingMatch) return mappingMatch[2].trim();
+
+  const sequenceMatch = raw.match(/^(\s*-\s+)(.+)$/);
+  if (sequenceMatch) return sequenceMatch[2].trim();
+
+  return null;
+}
+
+function leadingWhitespaceLength(line) {
+  const match = String(line ?? "").match(/^[ \t]*/);
+  return match ? match[0].length : 0;
+}
+
+function normalizeLegacyPlainScalarLine(line, options = {}) {
+  if (!String(line ?? "").trim() || String(line).trimStart().startsWith("#")) {
+    return line;
+  }
+
+  const sequenceMatch = String(line).match(/^(\s*-\s+)(.+)$/);
+  if (sequenceMatch) {
+    const compactMapping = parseCompactMappingValue(sequenceMatch[2]);
+    if (compactMapping && options.treatSequenceItemAsMap) {
+      const value = compactMapping.value
+        ? ` ${quoteLegacyPlainScalar(compactMapping.value, {
+            key: compactMapping.key,
+          })}`
+        : "";
+      return `${sequenceMatch[1]}${compactMapping.key}:${value}`;
+    }
+    return sequenceMatch[1] + quoteLegacyPlainScalar(sequenceMatch[2]);
+  }
+
+  const mappingMatch = String(line).match(/^(\s*([^#\s][^:]*):\s+)(.+)$/);
+  if (mappingMatch) {
+    return (
+      mappingMatch[1] +
+      quoteLegacyPlainScalar(mappingMatch[3], { key: mappingMatch[2] })
+    );
+  }
+
+  return line;
+}
+
+function shouldTreatSequenceItemAsMap(lines, index) {
+  const line = String(lines[index] ?? "");
+  const sequenceMatch = line.match(/^(\s*)-\s+(.+)$/);
+  if (!sequenceMatch || !parseCompactMappingValue(sequenceMatch[2])) {
+    return false;
+  }
+
+  const next = nextSignificantYamlLine(lines, index + 1);
+  return Boolean(
+    next && leadingWhitespaceLength(next) > leadingWhitespaceLength(line),
+  );
+}
+
+function nextSignificantYamlLine(lines, startIndex) {
+  for (let index = startIndex; index < lines.length; index += 1) {
+    const line = String(lines[index] ?? "");
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    return line;
+  }
+  return null;
+}
+
+function parseCompactMappingValue(value) {
+  const match = String(value ?? "").match(/^([^#\s][^:]*):(.*)$/);
+  if (!match) return null;
+  const separator = match[2];
+  if (separator && !/^\s+/.test(separator)) return null;
+  return { key: match[1].trim(), value: separator.trim() };
+}
+
+function quoteLegacyPlainScalar(value, options = {}) {
+  const trimmed = String(value ?? "").trim();
+  if (!shouldQuoteLegacyPlainScalar(trimmed, options)) return value;
+  return JSON.stringify(trimmed);
+}
+
+function shouldQuoteLegacyPlainScalar(value, options = {}) {
+  if (!value) return false;
+  if (/^["']/.test(value)) return false;
+  if (/^[\[{]/.test(value)) {
+    if (LEGACY_STRING_FLOW_KEYS.has(String(options.key ?? "").trim())) {
+      return true;
+    }
+    return !isValidYamlFlowCollection(value);
+  }
+  if (/^[|>]/.test(value)) return false;
+  if (value === "true" || value === "false") return false;
+  if (value === "null" || value === "~") return false;
+  if (/^-?\d+(\.\d+)?$/.test(value)) return false;
+  return true;
+}
+
+function isValidYamlFlowCollection(value) {
+  const trimmed = String(value ?? "").trim();
+  const isSequence = trimmed.startsWith("[");
+  const isMapping = trimmed.startsWith("{");
+  if (!isSequence && !isMapping) return false;
+  if (isSequence && !trimmed.endsWith("]")) return false;
+  if (isMapping && !trimmed.endsWith("}")) return false;
+
+  const document = YAML.parseDocument(trimmed, YAML_PARSE_OPTIONS);
+  if (document.errors.length > 0) return false;
+  return isSequence ? isSeq(document.contents) : isMap(document.contents);
+}
+
+function yamlNodeToValue(node) {
+  if (!node) return null;
+  if (isScalar(node)) return yamlScalarToValue(node);
+  if (isSeq(node)) return node.items.map((item) => yamlNodeToValue(item));
+  if (isMap(node)) {
+    const data = {};
+    for (const pair of node.items) {
+      if (!pair?.key) continue;
+      const key = yamlNodeToValue(pair.key);
+      if (key === undefined || key === null) continue;
+      data[String(key)] = yamlNodeToValue(pair.value);
+    }
+    return data;
+  }
+  return node.toJSON ? node.toJSON() : undefined;
+}
+
+function yamlScalarToValue(node) {
+  if (
+    typeof node.value === "string" &&
+    (node.type === Scalar.BLOCK_FOLDED || node.type === Scalar.BLOCK_LITERAL)
+  ) {
+    return node.value.trimEnd();
+  }
+  return node.value;
+}
+
 function formatFrontmatter(data, body) {
-  const yaml = Object.entries(data)
-    .filter(([, value]) => value !== undefined)
-    .map(([key, value]) => formatYamlLine(key, value))
-    .join("\n");
+  const frontmatter = stripUndefinedEntries(data);
+  const yaml = YAML.stringify(frontmatter, YAML_STRINGIFY_OPTIONS).trimEnd();
 
   if (yaml.trim().length === 0) {
     return body;
@@ -192,29 +311,14 @@ function formatFrontmatter(data, body) {
   return ["---", yaml, "---", "", body].join("\n");
 }
 
-function formatYamlLine(key, value) {
-  if (Array.isArray(value)) {
-    const items = value.map((item) => `  - ${formatYamlValue(item)}`);
-    return [key + ":", ...items].join("\n");
+function stripUndefinedEntries(data) {
+  const result = {};
+  for (const [key, value] of Object.entries(data ?? {})) {
+    if (value !== undefined) {
+      result[key] = value;
+    }
   }
-  return `${key}: ${formatYamlValue(value)}`;
-}
-
-function formatYamlValue(value) {
-  if (value === null || value === undefined) return "";
-  if (typeof value === "number" || typeof value === "boolean")
-    return String(value);
-  const raw = String(value);
-  if (raw.includes("\n")) {
-    return `|\n${raw
-      .split("\n")
-      .map((line) => `  ${line}`)
-      .join("\n")}`;
-  }
-  if (raw.includes(":") || raw.startsWith("[") || raw.startsWith("{")) {
-    return JSON.stringify(raw);
-  }
-  return raw;
+  return result;
 }
 
 module.exports = {

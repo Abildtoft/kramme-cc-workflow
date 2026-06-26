@@ -1,6 +1,7 @@
 "use strict";
 
 const path = require("path");
+const { parse: parseToml } = require("smol-toml");
 const { normalizeName } = require("./frontmatter");
 const {
   pathExists,
@@ -17,7 +18,9 @@ async function stageCodexConfig(
   pluginName,
 ) {
   const configPath = path.join(codexRoot, "config.toml");
-  const existing = (await pathExists(configPath)) ? await readText(configPath) : "";
+  const existing = (await pathExists(configPath))
+    ? await readText(configPath)
+    : "";
   const config = renderCodexConfigTables(bundle.mcpServers);
   let updated = existing;
 
@@ -114,39 +117,169 @@ function upsertTomlTables(existing, tables, { removeHeaders } = {}) {
   const headers = removeHeaders ?? tables.map((table) => table.header);
   const withoutExisting = removeTomlTables(existing, headers).trimEnd();
   const renderedTables = tables.map((table) => table.content.trimEnd());
-  return (
-    [withoutExisting, ...renderedTables].filter(Boolean).join("\n\n") + "\n"
-  );
+  const updated =
+    [withoutExisting, ...renderedTables].filter(Boolean).join("\n\n") + "\n";
+  validateTomlDocument(updated, "updated Codex config");
+  return updated;
 }
 
 function removeTomlTables(existing, headers) {
-  let result = existing;
-  for (const header of headers) {
-    result = removeTomlTable(result, header);
-  }
-  return (
-    result.replace(/\n{3,}/g, "\n\n").trimEnd() + (result.trim() ? "\n" : "")
-  );
-}
-
-function removeTomlTable(existing, header) {
+  const removePaths = tomlHeaderPathKeys(headers);
   const lines = String(existing ?? "").split(/\r?\n/);
   const kept = [];
   let skipping = false;
+
   for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed === header) {
-      skipping = true;
-      continue;
-    }
-    if (skipping && /^\[/.test(trimmed)) {
-      skipping = false;
+    const header = parseTomlTableHeader(line);
+    if (header) {
+      skipping = removePaths.has(tomlPathKey(header.path));
+      if (skipping) continue;
     }
     if (!skipping) {
       kept.push(line);
     }
   }
-  return kept.join("\n");
+
+  const updated = normalizeTomlWhitespace(kept.join("\n"));
+  validateTomlDocument(updated, "updated Codex config");
+  return updated;
+}
+
+function tomlHeaderPathKeys(headers) {
+  const paths = new Set();
+  for (const header of headers) {
+    const parsed = parseTomlTableHeader(header);
+    if (!parsed) {
+      throw new Error(`Invalid managed TOML table header: ${header}`);
+    }
+    paths.add(tomlPathKey(parsed.path));
+  }
+  return paths;
+}
+
+function parseTomlTableHeader(line) {
+  const trimmed = String(line ?? "").trim();
+  const isArrayTable = trimmed.startsWith("[[");
+  if (!trimmed.startsWith("[")) return null;
+
+  const closeIndex = findTomlHeaderClose(trimmed, { isArrayTable });
+  if (closeIndex === -1) return null;
+
+  const trailing = trimmed.slice(closeIndex + (isArrayTable ? 2 : 1)).trim();
+  if (trailing && !trailing.startsWith("#")) return null;
+
+  const path = parseTomlDottedKey(
+    trimmed.slice(isArrayTable ? 2 : 1, closeIndex).trim(),
+  );
+  return path && path.length > 0 ? { path } : null;
+}
+
+function findTomlHeaderClose(value, { isArrayTable } = {}) {
+  let quote = null;
+  let escaping = false;
+  for (let index = isArrayTable ? 2 : 1; index < value.length; index += 1) {
+    const char = value[index];
+    if (quote) {
+      if (quote === '"' && char === "\\" && !escaping) {
+        escaping = true;
+        continue;
+      }
+      if (char === quote && !escaping) {
+        quote = null;
+      }
+      escaping = false;
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      quote = char;
+      continue;
+    }
+    if (char === "]") {
+      if (!isArrayTable) return index;
+      if (value[index + 1] === "]") return index;
+    }
+  }
+  return -1;
+}
+
+function parseTomlDottedKey(value) {
+  const parts = [];
+  let current = "";
+  let quote = null;
+  let escaping = false;
+
+  for (const char of value) {
+    if (quote) {
+      current += char;
+      if (quote === '"' && char === "\\" && !escaping) {
+        escaping = true;
+        continue;
+      }
+      if (char === quote && !escaping) {
+        quote = null;
+      }
+      escaping = false;
+      continue;
+    }
+
+    if (char === '"' || char === "'") {
+      quote = char;
+      current += char;
+      continue;
+    }
+    if (char === ".") {
+      const part = parseTomlKeyPart(current);
+      if (part === null) return null;
+      parts.push(part);
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+
+  if (quote) return null;
+  const part = parseTomlKeyPart(current);
+  if (part === null) return null;
+  parts.push(part);
+  return parts;
+}
+
+function parseTomlKeyPart(value) {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    try {
+      return JSON.parse(trimmed);
+    } catch (_error) {
+      return null;
+    }
+  }
+  if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
+    return trimmed.slice(1, -1);
+  }
+  if (/^[A-Za-z0-9_-]+$/.test(trimmed)) return trimmed;
+  return null;
+}
+
+function tomlPathKey(pathParts) {
+  return JSON.stringify(pathParts);
+}
+
+function normalizeTomlWhitespace(value) {
+  const content = String(value ?? "");
+  return (
+    content.replace(/\n{3,}/g, "\n\n").trimEnd() + (content.trim() ? "\n" : "")
+  );
+}
+
+function validateTomlDocument(value, label) {
+  const content = String(value ?? "");
+  if (!content.trim()) return;
+  try {
+    parseToml(content);
+  } catch (error) {
+    throw new Error(`Invalid ${label}: ${error.message}`);
+  }
 }
 
 function renderCodexConfigTables(mcpServers) {
