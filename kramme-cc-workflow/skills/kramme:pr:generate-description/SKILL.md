@@ -241,6 +241,7 @@ Before drafting the body, decide what the PR description adds beyond GitHub's re
 - A commit-by-commit changelog
 - Branch, author, or review metadata already visible in the PR chrome
 - A generic "Changes by Area" section that only groups modified files by Frontend/Backend/Tests
+- Local environment failure notes such as missing `node_modules`, unavailable Postgres, missing services, or other reasons a command could not run on the agent machine; CI is the source of truth for build, lint, typecheck, formatting, and automated test status
 
 If a section would merely prove that files changed, omit it or replace it with one or two review-relevant notes that explain behavior, coupling, risk, or review order.
 
