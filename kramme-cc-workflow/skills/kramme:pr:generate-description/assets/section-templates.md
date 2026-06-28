@@ -155,6 +155,8 @@ The Test Plan is for future reviewer or QA execution. It is not a transcript of 
 
 **ALWAYS** include actionable manual reviewer/QA testing steps. Do not include automated testing instructions, command checklists, or an automated verification subsection; CI owns routine automated checks.
 
+Do not include local setup or infrastructure failure notes such as missing `node_modules`, failed package install, unavailable Postgres, absent Docker services, or port conflicts. Those details belong in the skill's run output when relevant, never in the PR description.
+
 1. **Setup steps** (if needed):
    - Environment configuration
    - Test data requirements

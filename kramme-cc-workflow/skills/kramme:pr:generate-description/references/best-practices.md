@@ -66,6 +66,7 @@
 - **NEVER** substitute the verification commands you ran for the manual steps reviewers or QA need
 - **NEVER** include `### Automated`, `### Automated verification`, automated testing instructions, command checklists, or unit/lint/build targets in the PR body
 - **ASSUME** CI reports automated test, lint, typecheck, build, and formatting status
+- **NEVER** mention local setup or infrastructure failures that prevented agent-side commands from running, including missing `node_modules`, missing package installs, unavailable Postgres, absent Docker services, or port conflicts. These are run-output details, not PR body content.
 - **NEVER** list missing automated test targets; only mention a missing target when it creates a real coverage risk, and put that in `### Potential concerns`
 - **ALWAYS** explain why manual QA is not applicable when a change has no meaningful manual path, then provide the closest manual validation path
 - **ALWAYS** include edge cases and error scenarios, not just happy paths

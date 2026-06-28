@@ -10,6 +10,7 @@ Watch for these — they signal the description is about to under-serve the revi
 - _"I'll fold the migration warning into the body text."_ → `Potential concerns` is a dedicated block for a reason; a buried warning is a missed warning.
 - _"The tests passed, so the Test Plan can just list the commands I ran."_ → Passing commands are evidence, not reviewer/QA instructions. Leave automated checks to CI.
 - _"I ran format and lint locally, so I should include them."_ → CI reports automated checks; listing them in the PR body adds noise.
+- _"Local tests could not run because dependencies or services were missing, so I should warn reviewers."_ → Missing `node_modules`, unavailable Postgres, absent Docker services, and similar local setup failures belong in run output only. CI is the automated verification source of truth.
 - _"A longer description is safer because it covers everything."_ → Length is not coverage. Keep the why, risks, scope boundaries, and manual reviewer/QA tests; remove repetition and filler.
 
 ## Red Flags — STOP
@@ -23,6 +24,7 @@ Pause and regenerate the description if any of these are true:
 - The body includes a "Changes by Area" section whose bullets could be reconstructed from GitHub's file tree without reading the prose.
 - A migration, feature-flag default, or breaking change is present in the diff but absent from `Potential concerns`.
 - The Test Plan includes automated commands, an automated testing subsection, or CI-owned checks such as format, lint, typecheck, build, or the standard unit-test suite.
+- The body mentions local setup failures such as missing `node_modules`, failed package installs, unavailable Postgres, absent Docker services, or port conflicts.
 - The Test Plan lists missing targets such as "No unit-test target exists" instead of surfacing a real coverage risk in `Potential concerns` or omitting the noise.
 - The description references spec files, conversation history, or `siw/LOG.md` (reviewers can't see them).
 - An AI-attribution badge is about to land in the body.

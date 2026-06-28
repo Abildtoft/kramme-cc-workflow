@@ -131,6 +131,17 @@ The redirect runs before the platform picker renders, so single-platform users d
 
 This only proves what the agent already ran. It does not tell reviewers or QA how to exercise the changed behavior.
 
+### ❌ WRONG: Local Environment Noise
+
+```markdown
+## Test Plan
+
+- Could not run Yarn because `node_modules` is not installed.
+- Could not run integration tests because Postgres is not available locally.
+```
+
+These are agent run-output details. PR reviewers get build, lint, typecheck, formatting, and automated test status from CI.
+
 ### ✅ CORRECT: Manual Scenarios Only
 
 ```markdown
