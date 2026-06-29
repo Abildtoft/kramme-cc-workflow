@@ -121,6 +121,17 @@ run_hook_without_jq_disabled() {
 	env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$plugin_root" "$fake_bin/bash" "$HOOK" <<<"$json_input"
 }
 
+run_hook_missing_python_parser() {
+	local cmd="$1"
+	local plugin_root="$BATS_TEST_TMPDIR/missing-python-parser-plugin"
+	rm -rf "$plugin_root"
+	mkdir -p "$plugin_root/hooks/lib"
+	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
+	cp "$BATS_TEST_DIRNAME/../hooks/lib/git-parse-utils.sh" "$plugin_root/hooks/lib/git-parse-utils.sh"
+	cp "$BATS_TEST_DIRNAME/../hooks/confirm-review-artifacts.txt" "$plugin_root/hooks/confirm-review-artifacts.txt"
+	make_bash_input "$cmd" | env CLAUDE_PLUGIN_ROOT="$plugin_root" bash "$HOOK"
+}
+
 run_hook_with_repo_env() {
 	local repo="$1"
 	local cmd="$2"
@@ -249,6 +260,12 @@ assert_review_parser_fixture_decision() {
 	run run_hook_without_jq_disabled "git commit -m 'test commit'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
+}
+
+@test "blocks when python parser file is unavailable" {
+	run run_hook_missing_python_parser "git commit -m 'test commit'"
+	is_blocked
+	[[ "$output" == *"Unable to safely parse command"* ]]
 }
 
 @test "allows non-git commands" {
