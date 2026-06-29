@@ -81,10 +81,33 @@ async function copyFile(sourcePath, targetPath) {
   await fs.copyFile(sourcePath, targetPath);
 }
 
+async function listRelativeFiles(rootDir) {
+  if (!(await pathExists(rootDir))) return [];
+  return walkRelativeFiles(rootDir);
+}
+
+async function walkRelativeFiles(rootDir, prefix = "") {
+  const entries = await fs.readdir(rootDir, { withFileTypes: true });
+  entries.sort((left, right) => left.name.localeCompare(right.name));
+
+  const files = [];
+  for (const entry of entries) {
+    const fullPath = path.join(rootDir, entry.name);
+    const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      files.push(...(await walkRelativeFiles(fullPath, relativePath)));
+    } else if (entry.isFile()) {
+      files.push(relativePath);
+    }
+  }
+  return files;
+}
+
 module.exports = {
   copyDir,
   copyFile,
   ensureDir,
+  listRelativeFiles,
   pathExists,
   readJson,
   readText,

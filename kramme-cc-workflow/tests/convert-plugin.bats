@@ -1342,6 +1342,275 @@ MD
 	[ "$output" = "Run /kramme:pr:create later" ]
 }
 
+@test "codex writer removes stale managed skill files when cleanup is skipped" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	cat >"$TMP_DIR/stale-managed-skill-files.js" <<'JS'
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+
+const outputRoot = process.argv[2];
+const agentsHome = process.argv[3];
+const writerPath = process.argv[4];
+const { writeCodexBundle } = require(writerPath);
+
+const sourceDir = path.join(outputRoot, "source-skill");
+const options = {
+  pluginName: "managed-file-plugin",
+  agentsHome,
+  confirm: { yes: true },
+};
+
+function writeSourceSkill(files) {
+  fs.rmSync(sourceDir, { recursive: true, force: true });
+  for (const [relativePath, content] of Object.entries(files)) {
+    const filePath = path.join(sourceDir, relativePath);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, content);
+  }
+}
+
+function bundle() {
+  return {
+    prompts: [],
+    skillDirs: [
+      {
+        name: "fixture-managed",
+        sourceDir,
+        content: null,
+      },
+    ],
+    generatedSkills: [{ name: "fixture-generated", content: "Generated" }],
+    agentSkills: [{ name: "fixture-agent", content: "Agent" }],
+    mcpServers: {},
+    codexPlugin: null,
+    knownCommands: [],
+    knownAgentSkills: [],
+  };
+}
+
+function readManifest() {
+  return JSON.parse(
+    fs.readFileSync(
+      path.join(
+        outputRoot,
+        ".codex",
+        ".kramme-install-manifests",
+        "managed-file-plugin-codex.json",
+      ),
+      "utf8",
+    ),
+  );
+}
+
+(async () => {
+  writeSourceSkill({
+    "SKILL.md": "Managed v1\n",
+    "references/OLD.md": "old managed file\n",
+  });
+
+  await writeCodexBundle(outputRoot, bundle(), options);
+
+  const skillDir = path.join(outputRoot, ".codex", "skills", "fixture-managed");
+  const oldManagedFile = path.join(skillDir, "references", "OLD.md");
+  const newManagedFile = path.join(skillDir, "references", "NEW.md");
+  const localNotes = path.join(skillDir, "LOCAL-NOTES.md");
+  assert.strictEqual(fs.existsSync(oldManagedFile), true);
+
+  let manifest = readManifest();
+  assert.deepStrictEqual(manifest.skillFiles["fixture-managed"], [
+    "SKILL.md",
+    "references/OLD.md",
+  ]);
+  assert.deepStrictEqual(manifest.skillFiles["fixture-generated"], [
+    "SKILL.md",
+  ]);
+  assert.deepStrictEqual(manifest.agentSkillFiles["fixture-agent"], [
+    "SKILL.md",
+  ]);
+
+  fs.writeFileSync(localNotes, "keep local notes\n");
+  writeSourceSkill({
+    "SKILL.md": "Managed v2\n",
+    "references/NEW.md": "new managed file\n",
+  });
+
+  await writeCodexBundle(outputRoot, bundle(), {
+    ...options,
+    confirm: { nonInteractive: true },
+  });
+
+  assert.strictEqual(fs.existsSync(oldManagedFile), false);
+  assert.strictEqual(fs.existsSync(newManagedFile), true);
+  assert.strictEqual(fs.readFileSync(localNotes, "utf8"), "keep local notes\n");
+
+  manifest = readManifest();
+  assert.deepStrictEqual(manifest.skillFiles["fixture-managed"], [
+    "SKILL.md",
+    "references/NEW.md",
+  ]);
+  assert.deepStrictEqual(manifest.skillFiles["fixture-generated"], [
+    "SKILL.md",
+  ]);
+  assert.deepStrictEqual(manifest.agentSkillFiles["fixture-agent"], [
+    "SKILL.md",
+  ]);
+})();
+JS
+
+	run node "$TMP_DIR/stale-managed-skill-files.js" "$TMP_DIR" "$TMP_DIR/.agents" "$REPO_ROOT/scripts/convert-plugin/codex-writer"
+	[ "$status" -eq 0 ]
+}
+
+@test "codex writer preserves previous skill files when stale pruning preflight fails" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	cat >"$TMP_DIR/stale-prune-conflict.js" <<'JS'
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+
+const outputRoot = process.argv[2];
+const agentsHome = process.argv[3];
+const writerPath = process.argv[4];
+const { writeCodexBundle } = require(writerPath);
+
+const sourceDir = path.join(outputRoot, "source-skill");
+const options = {
+  pluginName: "managed-prune-conflict-plugin",
+  agentsHome,
+  confirm: { yes: true },
+};
+
+function writeSourceSkill(files) {
+  fs.rmSync(sourceDir, { recursive: true, force: true });
+  for (const [relativePath, content] of Object.entries(files)) {
+    const filePath = path.join(sourceDir, relativePath);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, content);
+  }
+}
+
+function bundle() {
+  return {
+    prompts: [],
+    skillDirs: [
+      {
+        name: "fixture-managed",
+        sourceDir,
+        content: null,
+      },
+    ],
+    generatedSkills: [],
+    agentSkills: [],
+    mcpServers: {},
+    codexPlugin: null,
+    knownCommands: [],
+    knownAgentSkills: [],
+  };
+}
+
+(async () => {
+  writeSourceSkill({
+    "SKILL.md": "Managed v1\n",
+    "OLD.md": "old managed file\n",
+  });
+
+  await writeCodexBundle(outputRoot, bundle(), options);
+
+  const skillDir = path.join(outputRoot, ".codex", "skills", "fixture-managed");
+  const oldManagedFile = path.join(skillDir, "OLD.md");
+  const blockingFile = path.join(skillDir, "conflict");
+  const statePath = path.join(outputRoot, ".codex", ".kramme-install-state.json");
+  const manifestPath = path.join(
+    outputRoot,
+    ".codex",
+    ".kramme-install-manifests",
+    "managed-prune-conflict-plugin-codex.json",
+  );
+  const stateBefore = fs.readFileSync(statePath, "utf8");
+  const manifestBefore = fs.readFileSync(manifestPath, "utf8");
+  fs.writeFileSync(blockingFile, "local blocker\n");
+
+  writeSourceSkill({
+    "SKILL.md": "Managed v2\n",
+    "conflict/NEW.md": "new managed file\n",
+  });
+
+  let failed = false;
+  try {
+    await writeCodexBundle(outputRoot, bundle(), {
+      ...options,
+      confirm: { nonInteractive: true },
+    });
+  } catch (error) {
+    failed = true;
+    assert.match(error.message, /conflicts with staged directory conflict/);
+  }
+
+  assert.strictEqual(failed, true, "replacement install should fail");
+  assert.strictEqual(fs.existsSync(oldManagedFile), true);
+  assert.strictEqual(
+    fs.readFileSync(path.join(skillDir, "SKILL.md"), "utf8"),
+    "Managed v1\n",
+  );
+  assert.strictEqual(fs.readFileSync(blockingFile, "utf8"), "local blocker\n");
+  assert.strictEqual(fs.readFileSync(statePath, "utf8"), stateBefore);
+  assert.strictEqual(fs.readFileSync(manifestPath, "utf8"), manifestBefore);
+})();
+JS
+
+	run node "$TMP_DIR/stale-prune-conflict.js" "$TMP_DIR" "$TMP_DIR/.agents" "$REPO_ROOT/scripts/convert-plugin/codex-writer"
+	[ "$status" -eq 0 ]
+}
+
+@test "install staging does not prune stale files through symlinked ancestors" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	cat >"$TMP_DIR/prune-symlink-ancestor.js" <<'JS'
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+
+const outputRoot = process.argv[2];
+const stagingPath = process.argv[3];
+const { pruneStaleManagedFiles } = require(stagingPath);
+
+(async () => {
+  const skillDir = path.join(outputRoot, "skill");
+  const outsideDir = path.join(outputRoot, "outside");
+  fs.mkdirSync(skillDir, { recursive: true });
+  fs.mkdirSync(outsideDir, { recursive: true });
+
+  const outsideFile = path.join(outsideDir, "OLD.md");
+  fs.writeFileSync(outsideFile, "outside\n");
+  fs.symlinkSync(outsideDir, path.join(skillDir, "references"), "dir");
+
+  await pruneStaleManagedFiles(
+    skillDir,
+    ["references/OLD.md"],
+    ["SKILL.md"],
+  );
+
+  assert.strictEqual(fs.readFileSync(outsideFile, "utf8"), "outside\n");
+  assert.strictEqual(
+    fs.lstatSync(path.join(skillDir, "references")).isSymbolicLink(),
+    true,
+  );
+})();
+JS
+
+	run node "$TMP_DIR/prune-symlink-ancestor.js" "$TMP_DIR" "$REPO_ROOT/scripts/convert-plugin/install-staging"
+	[ "$status" -eq 0 ]
+}
+
 @test "codex writer preserves untracked same-name skill directories on first install" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for converter tests"
