@@ -35,4 +35,3 @@ For each issue found, provide:
 
 If the breakdown looks good, confirm it's ready.
 ```
-

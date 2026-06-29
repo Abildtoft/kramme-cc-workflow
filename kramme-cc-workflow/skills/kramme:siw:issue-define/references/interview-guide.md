@@ -99,4 +99,3 @@ For Mode:
 - **HITL**: human-in-the-loop is required by a concrete need: an unsettled architectural decision, design review, a genuine product/judgment call, manual testing that cannot be automated, or external system access. HITL requires a one-line reason naming that need.
 
 If the answer is not supplied, infer Mode from the issue type and exploration findings. Default to `AUTO`; only choose `HITL` when you can name a specific blocking human requirement, and confirm before composing.
-

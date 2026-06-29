@@ -51,4 +51,3 @@ options:
   - label: "{spec_file_2}"
   - label: "Don't migrate (reset only)"
 ```
-

@@ -85,4 +85,3 @@ options:
 ```
 
 If the user selects nothing, treat that as "skip migration" and proceed to Step 4. Log content will be lost on the `LOG.md` reset if the user confirms.
-

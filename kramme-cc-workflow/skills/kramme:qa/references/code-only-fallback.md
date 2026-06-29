@@ -28,4 +28,3 @@ For full QA with screenshots and live testing, install a browser MCP:
   - Chrome DevTools MCP
   - Playwright MCP
 ```
-

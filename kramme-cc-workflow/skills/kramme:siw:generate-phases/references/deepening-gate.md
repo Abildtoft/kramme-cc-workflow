@@ -36,4 +36,3 @@ Incorporate valid findings into the draft plan before Phase 5. Preserve all exis
 If the deepening pass changes, splits, deletes, or reorders any task, loop back through Phase 4 with the revised plan before Phase 5; the final user-facing plan must be the same plan that passed Phase 4's hard gates.
 
 If the pass surfaces a true product or scope blocker, use `MISSING REQUIREMENT:` or `CONFUSION:` and stop for user input. In `AUTO_MODE=true`, stop instead of inventing assumptions.
-

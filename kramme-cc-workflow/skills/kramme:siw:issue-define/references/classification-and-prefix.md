@@ -73,4 +73,3 @@ options:
 If `{recommended_prefix}` is `G`, omit the separate "Use G-" option to avoid duplicates.
 
 Store `issue_prefix` based on the selection without the trailing dash, for example `P1`, `P2`, or `G`.
-

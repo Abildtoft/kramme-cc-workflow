@@ -59,4 +59,3 @@ Add to `## Design Decisions` or `## Rejected Approaches`:
 | ------------ | --------- | ------------ |
 | {approach 1} | {purpose} | {reason}     |
 ```
-

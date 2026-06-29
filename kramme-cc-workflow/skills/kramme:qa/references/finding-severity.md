@@ -13,4 +13,3 @@ When assessing, consider:
 - Is the issue visible to users or only in developer tools?
 - Does the issue block a workflow or is it cosmetic?
 - Is this a regression in diff-aware mode or pre-existing?
-

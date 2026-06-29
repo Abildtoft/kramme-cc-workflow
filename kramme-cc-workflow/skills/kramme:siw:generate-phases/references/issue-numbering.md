@@ -15,4 +15,3 @@ Issue IDs are stable once issue files are written.
 - When splitting an existing concept, keep the original ID on the original concept and assign the next unused number in that prefix group to the split-out concept.
 - When deleting or replacing a concept outside the explicit Replace flow, leave numbering gaps in place.
 - Intentional cleanup and renumbering belongs to `/kramme:siw:issue-reindex`; do not duplicate that workflow here.
-

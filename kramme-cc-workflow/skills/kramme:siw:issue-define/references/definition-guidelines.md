@@ -11,4 +11,3 @@ Use these guidelines throughout issue definition:
 7. **Keep simple bugs simple** - Do not over-engineer.
 8. **Exhaust the interview** - Especially Round 1 for complex issues.
 9. **Get user approval** - Always show draft before creating.
-

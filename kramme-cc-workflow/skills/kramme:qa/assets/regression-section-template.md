@@ -19,4 +19,3 @@ Use this section in `QA_REPORT.md` when a regression comparison ran.
 
 - QA-{NNN}: {title} ({severity})
 ```
-

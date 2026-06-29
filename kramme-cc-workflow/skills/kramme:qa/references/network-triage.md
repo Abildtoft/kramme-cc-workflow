@@ -9,4 +9,3 @@ Apply this ladder to every failed or anomalous request:
 | CORS failure | Origin or headers mismatch | Capture origin + `Access-Control-*` response headers; Major |
 | Timeout | Response exceeded the time budget, default > 3s | Capture URL + elapsed; Major unless route is known-slow |
 | Missing | A request that was expected never fired | Capture route context; Major, often a regression signal |
-

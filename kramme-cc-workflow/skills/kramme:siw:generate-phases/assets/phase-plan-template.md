@@ -38,4 +38,3 @@ Phase 2: {Goal} ({N} tasks)
 Total: {X} issues across {Y} phases + {Z} general
 AUTO: {n} | HITL: {m}
 ```
-

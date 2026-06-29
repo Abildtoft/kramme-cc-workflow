@@ -27,4 +27,3 @@
 /kramme:qa http://localhost:3000 --regression                 # compare against previous baseline
 /kramme:qa http://localhost:3000 --inline                     # reply inline, no QA_REPORT.md
 ```
-

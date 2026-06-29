@@ -31,4 +31,3 @@ Fixed: {N} | New: {N} | Persistent: {N}
 Report output: {inline reply | QA_REPORT.md}
 {If blockers found: "Fix blockers and re-run: /kramme:qa <url>"}
 ```
-

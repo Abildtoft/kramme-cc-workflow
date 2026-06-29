@@ -73,4 +73,3 @@ _Previous decisions migrated to {spec_filename}. New decisions will be documente
 - Spec: `{spec_filename}`
 - Issues: `siw/OPEN_ISSUES_OVERVIEW.md`
 ```
-
