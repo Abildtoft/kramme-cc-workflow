@@ -319,85 +319,21 @@ For each auto-fixable finding in order:
 
 ## Step 6: Update Audit Report
 
-### 6.1 Annotate Fixed Findings
+Read `references/report-update.md`, then update the audit report and optional SIW log exactly as specified there.
 
-For each successfully fixed finding, add annotations to its report entry:
+Required outcomes:
 
-After the `**Severity:**` line, add:
+- Each successfully fixed finding has `**Status:** [Auto-fixed]`, final `**Fix Confidence:**`, and `**Fix applied:**` annotations.
+- The summary table's `Auto-fixed` count is updated when the severity table has the expected schema.
+- Failed verification is documented in `## Auto-Fix Notes`.
+- `**Overall Assessment:**` changes to `Ready for implementation` only under the reference's all-clear conditions.
+- `siw/LOG.md` is updated only when it already exists, has a recognizable Current Progress section, and at least one finding was auto-fixed.
 
-```
-**Status:** [Auto-fixed]
-```
+---
 
-Then handle `Fix Confidence` as follows:
+## Error Handling
 
-- If the entry already contains `**Fix Confidence:**`, replace that line with the final score and tier from the auto-fix pass.
-- If the entry does not contain `**Fix Confidence:**` (legacy report), insert:
-
-```
-**Fix Confidence:** {score}/100 ({tier})
-```
-
-After the confidence line, add:
-
-```
-**Fix applied:** {one-line description of the change}
-```
-
-### 6.2 Update Summary Counts
-
-The audit report's Summary section contains a fixed-schema severity table:
-
-```
-| Severity  | Count       |
-| --------- | ----------- |
-| Critical  | {count}     |
-| Major     | {count}     |
-| Minor     | {count}     |
-| **Total** | **{total}** |
-```
-
-If an `Auto-fixed` row already exists (from a previous auto-fix run), update its count in place to the total number of findings now annotated `**Status:** [Auto-fixed]`. Otherwise insert a new `Auto-fixed` row **immediately before the `**Total**` row** so it slots into the existing two-column schema:
-
-```
-| Auto-fixed | {count}     |
-```
-
-Leave the Critical / Major / Minor counts unchanged — the per-finding `**Status:** [Auto-fixed]` annotation from Step 6.1 carries the resolution state.
-
-If the table schema does not match the expected shape (e.g., extra columns, missing `Total` row), skip this step and log: `Severity table schema unrecognized — per-finding annotations applied; summary table left unchanged.`
-
-### 6.3 Document Failures
-
-If any findings failed verification and were reclassified, add a section at the end of the report:
-
-```markdown
-## Auto-Fix Notes
-
-The following findings were initially classified as mechanical but failed verification and have been reclassified as requiring decisions:
-
-- **{SPEC-NNN}:** {failure reason}
-```
-
-### 6.4 Update Overall Assessment
-
-Update the `**Overall Assessment:**` line (in the report's Summary section, format defined by `kramme:siw:spec-audit`: one of `Ready for implementation`, `Needs revision`, `Significant gaps`) only if **all** of the following hold:
-
-- All Critical and Major findings were auto-fixed.
-- No remaining Minor finding carries `**Severity Note:** [Deprioritized — capped at Minor from Critical]` (or any other preserved-critical cap).
-- Only uncapped Minor findings remain (or zero findings remain).
-
-When those conditions hold, replace the existing value with `Ready for implementation`. Otherwise, leave the existing value untouched.
-
-### 6.5 Optional SIW Log Update
-
-If `siw/LOG.md` exists and at least one finding was auto-fixed, append one concise entry under `## Current Progress` / `### Last Completed`:
-
-```markdown
-- {YYYY-MM-DD}: Auto-fixed {N} spec-audit finding(s) in {spec_file_list}; {remaining_count} finding(s) still require decisions. Report: {report_path}
-```
-
-Do not create `siw/LOG.md` if it is missing. Do not update the log during `--dry-run` or when no findings were auto-fixed. If `siw/LOG.md` exists but does not contain a recognizable `## Current Progress` section, leave it unchanged and include `SIW log: not updated (missing Current Progress section)` in the summary.
+For report-parse failures, missing spec files, edit conflicts, and all-fixes-fail outcomes, read `references/usage-and-errors.md` and use the matching error handling branch.
 
 ---
 
@@ -406,69 +342,3 @@ Do not create `siw/LOG.md` if it is missing. Do not update the log during `--dry
 Use the summary template from `assets/auto-fix-summary.md`.
 
 **STOP HERE.** Wait for the user's next instruction.
-
----
-
-## Usage Examples
-
-```bash
-# Default (balanced — fixes mechanical + high-confidence findings)
-/kramme:siw:spec-audit:auto-fix
-
-# Stricter pass (higher confidence bar)
-/kramme:siw:spec-audit:auto-fix --threshold 90
-
-# Most permissive allowed threshold
-/kramme:siw:spec-audit:auto-fix --threshold 60
-
-# Preview what the lowest threshold would fix
-/kramme:siw:spec-audit:auto-fix --dry-run --threshold 60
-
-# Auto-apply all auto-fixable findings without asking
-/kramme:siw:spec-audit:auto-fix --auto
-
-# Auto-apply with lower threshold
-/kramme:siw:spec-audit:auto-fix --auto --threshold 70
-```
-
----
-
-## Error Handling
-
-### Report Format Unexpected
-
-If the report does not contain `### SPEC-NNN:` headings, stop:
-
-```
-Could not parse findings from {report_path}.
-Expected format: ### SPEC-NNN: {title}
-
-The report may be from an incompatible version. Re-run /kramme:siw:spec-audit.
-```
-
-### Spec File Missing
-
-If a spec file referenced in the report no longer exists:
-
-- Warn: `Spec file not found: {path} — skipping {N} findings for this file`
-- Skip all findings referencing that file
-- Continue with remaining findings
-
-### Edit Conflict
-
-If the Edit tool fails (e.g., old_string not found because the spec was modified since the audit):
-
-- Warn: `Edit failed for SPEC-{NNN}: text has changed since audit`
-- Skip this finding and reclassify as `REQUIRES_DECISION`
-- Continue with remaining findings
-
-### All Fixes Fail
-
-If every auto-fixable fix fails verification:
-
-```
-All {N} auto-fixable fixes failed verification.
-The spec may have changed significantly since the audit.
-
-Recommended: Re-run /kramme:siw:spec-audit to get a fresh report.
-```
