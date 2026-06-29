@@ -193,8 +193,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Release kramme-cc-workflow plugin")
     parser.add_argument(
         "version_type",
-        choices=["patch", "minor", "major"],
         nargs="?",
+        metavar="version_type",
         help="Version bump type or explicit version (e.g., 1.0.0)",
     )
     parser.add_argument(
@@ -204,17 +204,17 @@ def main() -> int:
         "--ci", action="store_true", help="CI mode (skip prompts, auto-push)"
     )
 
-    args, remaining = parser.parse_known_args()
+    args = parser.parse_args()
 
-    # Handle explicit version as positional arg
-    if remaining and re.match(r"^\d+\.\d+\.\d+$", remaining[0]):
-        args.version_type = remaining[0]
-    elif not args.version_type:
+    if not args.version_type:
         args.version_type = "patch"
 
     repo_root = get_repo_root()
     current_version = get_current_version(repo_root)
-    new_version = bump_version(current_version, args.version_type)
+    try:
+        new_version = bump_version(current_version, args.version_type)
+    except ValueError as exc:
+        parser.error(str(exc))
 
     print(f"Release: {current_version} -> {new_version}")
     if args.dry_run:
