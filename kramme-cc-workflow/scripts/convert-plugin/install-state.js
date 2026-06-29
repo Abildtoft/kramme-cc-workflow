@@ -23,7 +23,9 @@ function sanitizeInstallRecord(record) {
     prompts: sanitizeEntryList(record?.prompts),
     pluginCaches: sanitizeEntryList(record?.pluginCaches),
     skills: sanitizeEntryList(record?.skills),
+    skillFiles: sanitizeManagedFileMap(record?.skillFiles),
     agentSkills: sanitizeEntryList(record?.agentSkills),
+    agentSkillFiles: sanitizeManagedFileMap(record?.agentSkillFiles),
     updatedAtMs: sanitizeInstallTimestamp(record?.updatedAtMs),
   };
 }
@@ -210,6 +212,44 @@ function sanitizeEntryList(entries) {
   return entries.map((entry) => String(entry ?? "").trim()).filter(Boolean);
 }
 
+function sanitizeManagedFileMap(filesByEntry) {
+  if (
+    !filesByEntry ||
+    typeof filesByEntry !== "object" ||
+    Array.isArray(filesByEntry)
+  ) {
+    return {};
+  }
+
+  const result = {};
+  for (const [entry, files] of Object.entries(filesByEntry)) {
+    const normalizedEntry = String(entry ?? "").trim();
+    if (!normalizedEntry) continue;
+    result[normalizedEntry] = sanitizeManagedFileList(files);
+  }
+  return result;
+}
+
+function sanitizeManagedFileList(files) {
+  if (!Array.isArray(files)) return [];
+  return Array.from(
+    new Set(files.map((file) => normalizeManagedFilePath(file)).filter(Boolean)),
+  ).sort();
+}
+
+function normalizeManagedFilePath(file) {
+  const normalized = String(file ?? "")
+    .trim()
+    .replace(/\\/g, "/");
+  if (!normalized || path.posix.isAbsolute(normalized)) return null;
+
+  const parts = normalized.split("/");
+  if (parts.some((part) => !part || part === "." || part === "..")) {
+    return null;
+  }
+  return parts.join("/");
+}
+
 function unionEntryLists(...lists) {
   return Array.from(
     new Set(lists.flatMap((entries) => sanitizeEntryList(entries))),
@@ -220,6 +260,7 @@ module.exports = {
   getPreviousInstallEntries,
   loadInstallState,
   sanitizeEntryList,
+  sanitizeManagedFileList,
   setInstallEntries,
   unionEntryLists,
   writeInstallManifest,

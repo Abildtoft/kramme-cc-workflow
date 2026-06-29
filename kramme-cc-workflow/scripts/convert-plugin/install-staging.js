@@ -4,7 +4,10 @@ const fs = require("fs/promises");
 const path = require("path");
 const { normalizeName } = require("./frontmatter");
 const { confirm } = require("./confirm");
-const { sanitizeEntryList } = require("./install-state");
+const {
+  sanitizeEntryList,
+  sanitizeManagedFileList,
+} = require("./install-state");
 const {
   copyDir,
   copyFile,
@@ -38,7 +41,12 @@ async function removeInstallStagingRoot(stagingRoot) {
 async function preflightStagedDirInstall(
   stagedDir,
   targetDir,
-  { label = "directory", replace = false } = {},
+  {
+    currentManagedFiles,
+    label = "directory",
+    previousManagedFiles,
+    replace = false,
+  } = {},
 ) {
   if (
     !(await pathExists(stagedDir)) ||
@@ -53,6 +61,14 @@ async function preflightStagedDirInstall(
       `Cannot install ${label} because ${targetDir} is not a directory.`,
     );
   }
+
+  await preflightStagedDirMerge(stagedDir, targetDir, "", {
+    label,
+    staleManagedFiles: staleManagedFileSet(
+      previousManagedFiles,
+      currentManagedFiles,
+    ),
+  });
 }
 
 async function preflightStagedFileInstall(
@@ -91,6 +107,209 @@ async function installStagedDir(stagedDir, targetDir, { replace = false } = {}) 
   }
   await copyDir(stagedDir, targetDir);
   await fs.rm(stagedDir, { recursive: true, force: true });
+}
+
+async function pruneStaleManagedFiles(
+  targetDir,
+  previousFiles,
+  currentFiles,
+  { label = "directory" } = {},
+) {
+  for (const relativeFile of staleManagedFileSet(previousFiles, currentFiles)) {
+    const targetPath = resolveManagedChild(
+      targetDir,
+      relativeFile,
+      `${label} managed file`,
+    );
+    if (!(await hasSafeManagedAncestorDirs(targetDir, targetPath))) continue;
+
+    let stats;
+    try {
+      stats = await fs.lstat(targetPath);
+    } catch (error) {
+      if (error.code === "ENOENT") continue;
+      throw error;
+    }
+
+    if (!stats.isFile() && !stats.isSymbolicLink()) continue;
+    await fs.rm(targetPath, { force: true });
+    await removeEmptyAncestorDirs(path.dirname(targetPath), targetDir);
+  }
+}
+
+function staleManagedFileSet(previousFiles, currentFiles) {
+  const currentFileSet = new Set(sanitizeManagedFileList(currentFiles));
+  return new Set(
+    sanitizeManagedFileList(previousFiles).filter(
+      (relativeFile) => !currentFileSet.has(relativeFile),
+    ),
+  );
+}
+
+async function preflightStagedDirMerge(
+  stagedDir,
+  targetDir,
+  prefix,
+  { label, staleManagedFiles },
+) {
+  const entries = await fs.readdir(stagedDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const stagedPath = path.join(stagedDir, entry.name);
+    const targetPath = path.join(targetDir, entry.name);
+    const targetStats = await lstatAfterManagedPrune(
+      targetPath,
+      relativePath,
+      staleManagedFiles,
+    );
+
+    if (entry.isDirectory()) {
+      if (!targetStats) continue;
+      if (!targetStats.isDirectory()) {
+        throw new Error(
+          `Cannot install ${label} because ${targetPath} conflicts with staged directory ${relativePath}.`,
+        );
+      }
+      await preflightStagedDirMerge(stagedPath, targetPath, relativePath, {
+        label,
+        staleManagedFiles,
+      });
+      continue;
+    }
+
+    if (!entry.isFile() || !targetStats?.isDirectory()) continue;
+
+    const removableDirectory = await directoryRemovedByManagedPrune(
+      targetPath,
+      relativePath,
+      staleManagedFiles,
+    );
+    if (!removableDirectory) {
+      throw new Error(
+        `Cannot install ${label} because ${targetPath} conflicts with staged file ${relativePath}.`,
+      );
+    }
+  }
+}
+
+async function lstatAfterManagedPrune(
+  targetPath,
+  relativePath,
+  staleManagedFiles,
+) {
+  let stats;
+  try {
+    stats = await fs.lstat(targetPath);
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+  if (
+    staleManagedFiles.has(relativePath) &&
+    (stats.isFile() || stats.isSymbolicLink())
+  ) {
+    return null;
+  }
+  return stats;
+}
+
+async function directoryRemovedByManagedPrune(
+  dirPath,
+  relativeDir,
+  staleManagedFiles,
+) {
+  const result = await inspectDirectoryForManagedPrune(
+    dirPath,
+    relativeDir,
+    staleManagedFiles,
+  );
+  return result.removed;
+}
+
+async function inspectDirectoryForManagedPrune(
+  dirPath,
+  relativeDir,
+  staleManagedFiles,
+) {
+  const entries = await fs.readdir(dirPath, { withFileTypes: true });
+  let hasStaleManagedFile = false;
+  for (const entry of entries) {
+    const relativePath = `${relativeDir}/${entry.name}`;
+    const fullPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      const child = await inspectDirectoryForManagedPrune(
+        fullPath,
+        relativePath,
+        staleManagedFiles,
+      );
+      if (!child.removed) return { removed: false };
+      hasStaleManagedFile = hasStaleManagedFile || child.hasStaleManagedFile;
+      continue;
+    }
+
+    if (
+      (entry.isFile() || entry.isSymbolicLink()) &&
+      staleManagedFiles.has(relativePath)
+    ) {
+      hasStaleManagedFile = true;
+      continue;
+    }
+
+    return { removed: false };
+  }
+
+  return {
+    hasStaleManagedFile,
+    removed: hasStaleManagedFile,
+  };
+}
+
+async function hasSafeManagedAncestorDirs(rootDir, targetPath) {
+  const resolvedRoot = path.resolve(rootDir);
+  const targetDir = path.dirname(path.resolve(targetPath));
+  const dirs = [];
+
+  try {
+    const rootStats = await fs.lstat(resolvedRoot);
+    if (!rootStats.isDirectory()) return false;
+  } catch (error) {
+    if (error.code === "ENOENT") return false;
+    throw error;
+  }
+
+  let current = targetDir;
+  while (current !== resolvedRoot) {
+    if (!current.startsWith(resolvedRoot + path.sep)) return false;
+    dirs.push(current);
+    current = path.dirname(current);
+  }
+
+  for (const dir of dirs.reverse()) {
+    let stats;
+    try {
+      stats = await fs.lstat(dir);
+    } catch (error) {
+      if (error.code === "ENOENT") return false;
+      throw error;
+    }
+    if (!stats.isDirectory()) return false;
+  }
+
+  return true;
+}
+
+async function removeEmptyAncestorDirs(startDir, rootDir) {
+  const resolvedRoot = path.resolve(rootDir);
+  let current = path.resolve(startDir);
+
+  while (current !== resolvedRoot && current.startsWith(resolvedRoot + path.sep)) {
+    try {
+      await fs.rmdir(current);
+    } catch {
+      return;
+    }
+    current = path.dirname(current);
+  }
 }
 
 async function installStagedFile(
@@ -200,5 +419,6 @@ module.exports = {
   installStagedFile,
   preflightStagedDirInstall,
   preflightStagedFileInstall,
+  pruneStaleManagedFiles,
   removeInstallStagingRoot,
 };
