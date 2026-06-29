@@ -95,74 +95,15 @@ Check if input matches an existing issue:
 
 ### Step 3: Issue Type Classification
 
-Auto-detect from context and suggest to the user (they can override):
-
-**Issue Types:**
-
-- **Bug (Simple)**: Root cause is known or easily identified, fix is localized, no architectural decisions needed
-- **Bug (Complex)**: Unknown root cause, affects multiple components, requires investigation
-- **Feature**: New functionality
-- **Improvement**: Enhance existing functionality
-
-**Detection Heuristics:**
-
-- Keywords like "bug", "fix", "broken", "doesn't work", "error" → suggest Bug
-- If user provides root cause and specific file(s) → suggest Bug (Simple)
-- If scope is unclear, multiple components mentioned → suggest Bug (Complex)
-- Keywords like "add", "new", "implement", "create" → suggest Feature
-- Keywords like "improve", "refactor", "enhance", "optimize" → suggest Improvement
-
-**Present classification to user via `AskUserQuestion`:**
-
-- Show detected type with reasoning
-- Allow override to any type
-- Store `issue_type` for conditional behavior
-
-**For Bug (Simple), store:**
-
-- `is_simple_bug = true`
-- This enables streamlined interview and simple template
+Read `references/classification-and-prefix.md`, then auto-detect issue type from context, present the detected type with reasoning, allow user override, and store `issue_type`. For Bug (Simple), store `is_simple_bug = true` so Phase 4 and Phase 5 use the streamlined path.
 
 ### Step 4: Phase Recommendation (Create Mode)
 
 Only for CREATE MODE. Skip for IMPROVE MODE.
 
-Goal: recommend a phase prefix (`P1-`, `P2-`, etc.) when the issue clearly fits an **active** (not completed) phase. If the issue doesn't suit a phase well, or the relevant phase is completed, recommend `G` (General, i.e., IDs like `G-001`).
+Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.
 
-**Inputs to check:**
-
-1. `siw/` spec file created by `/kramme:siw:init` (phase breakdown and tasks).
-2. `siw/LOG.md` for phase completion notes (e.g., "Phase 1 complete", "Status: DONE").
-3. `siw/OPEN_ISSUES_OVERVIEW.md` for existing phase sections and active work.
-
-If multiple candidate spec files exist under `siw/`, ask the user which one is the main spec. Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.
-
-**Heuristics:**
-
-- Map the issue description and any referenced tasks to the most relevant phase in the spec.
-- If the phase is explicitly marked complete in the spec or log, do **not** recommend that phase.
-- If the phase section header in `siw/OPEN_ISSUES_OVERVIEW.md` is marked with ` (DONE)`, treat the phase as completed.
-- If `siw/OPEN_ISSUES_OVERVIEW.md` has a Phase N section and all issues in that phase are `DONE`, treat the phase as completed.
-- If no phase info exists or mapping is unclear (or the issue doesn't suit a phase well), default to `G`.
-- If the user explicitly supplied a prefix (`requested_prefix`), treat it as preferred, but warn if the phase appears completed and offer alternatives.
-
-**AskUserQuestion (recommendation + confirmation):**
-
-```
-header: "Choose Issue Prefix"
-question: "Which prefix should we use? Recommendation: {recommended_prefix}- ({reason})."
-options:
-  - label: "Use {recommended_prefix}- (recommended)"
-    description: "Matches the spec/tasks and the phase isn't completed"
-  - label: "Use a different phase prefix"
-    description: "Pick P1-, P2-, P3-, etc."
-  - label: "Use G- (General)"
-    description: "Standalone or doesn't fit a phase well"
-```
-
-If `{recommended_prefix}` is `G`, omit the separate "Use G-" option to avoid duplicates.
-
-Store `issue_prefix` based on the selection **without the trailing dash** (e.g., `P1`, `P2`, `G`).
+Use the phase-prefix recommendation flow in `references/classification-and-prefix.md`. It defines the spec/log/overview inputs to check, completed-phase heuristics, the prefix confirmation prompt, and how to store `issue_prefix`.
 
 ## Phase 2: Existing Issue Handling
 
@@ -243,128 +184,7 @@ Use these as assumptions to validate instead of asking the user to restate obvio
 
 ## Phase 4: Interview
 
-The interview adapts based on issue type.
-
-### Simple Bug Interview (if `is_simple_bug = true`)
-
-Streamlined 2-round interview:
-
-**Round 1: Problem & Reproduction**
-
-- What's the bug? (brief description)
-- Steps to reproduce (numbered list ending with "Bug: [what happens]")
-- What should happen instead?
-
-**Round 2: Root Cause & Fix**
-
-- What's causing the bug? (if known)
-- What needs to change to fix it?
-- Which area(s) are affected? If specific files are known, use them as private context for exploration, but translate them into durable module/behavior language in the issue body.
-
-**If root cause unknown after Round 2:**
-
-- Confirm the reclassification with the user via `AskUserQuestion` (one question, defaulting to "reclassify as Bug (Complex)").
-- Run the previously-skipped Phase 3 (Codebase Exploration).
-- Restart the standard interview at Round 1, pre-filling answers from the Round 1/Round 2 simple-bug pass so the user only refines what's new.
-
-Then run a streamlined **Metadata pass** and store the answers for Phase 5:
-
-- Priority (default Medium unless the user indicated urgency)
-- Size (default XS/S for localized simple bugs)
-- Related issues or blockers, if any
-- Parallelization category (default Safe to parallelize for localized fixes unless shared-state or sequencing concerns exist)
-- Mode:
-  - Default `AUTO`. Localized simple bugs with a known fix and automatable verification are the canonical AUTO case.
-  - Use `HITL — <one-line reason>` only when the fix has a concrete human-input requirement (external access, manual testing that can't be automated, design review, or an unsettled architectural/judgment call). When unclear, choose `AUTO`.
-
-Confirm inferred metadata with the user before composing. Then proceed to Phase 5 with the simple template.
-
-### Standard Interview (for all other types)
-
-Multi-round interview using `AskUserQuestion`.
-
-**IMPROVE MODE:** Focus on selected improvement areas. Show current content first.
-
-**CREATE MODE:** Follow standard flow below.
-
-### Round 1: Problem & Context (Most Important)
-
-**Questions:**
-
-- What specific problem or pain point does this solve?
-- Who is affected (end users, internal teams)?
-- How significant is the impact?
-- What happens if we don't address this?
-
-**Dig deep:**
-
-- Don't accept vague answers
-- Push for concrete impact
-
-### Round 2: Scope & Boundaries
-
-**Questions:**
-
-- What is explicitly in scope?
-- What is explicitly out of scope?
-- Are there related changes that should be separate issues?
-- What is the minimum viable implementation?
-
-### Round 3: Technical Context
-
-**Questions:**
-
-- Which components/areas are affected?
-- Are there dependencies or blocking issues?
-- What existing patterns should be followed?
-- Are there technical constraints?
-
-**Leverage exploration findings:**
-
-- Present discovered patterns as options
-- Highlight related code
-
-### Round 4: Acceptance Criteria
-
-**Questions:**
-
-- What defines "done"?
-- How should this be tested/verified?
-- Are there specific edge cases?
-- What quality criteria must be met?
-
-**Guide toward testable criteria:**
-
-- Each criterion should be verifiable
-- Include both happy path and error scenarios
-
-### Round 5: Priority, Related Work & Mode
-
-**Questions:**
-
-- What priority level? (High/Medium/Low)
-- What size best fits this issue? (XS/S/M/L)
-
-  | Size | Scope | Notes |
-  | --- | --- | --- |
-  | XS | 1 file, single function |  |
-  | S | 1–2 files, one endpoint |  |
-  | M | 3–5 files, one feature slice |  |
-  | L | 6–8 files, multi-component |  |
-  | **XL** | 9+ files | **"Too large — break it down further"** |
-
-  Every generated task must land at XS, S, M, or L. XL is never an acceptable final state — when a task sizes XL, decompose it before composing the issue.
-- Are there related issues or tasks?
-- Does this block or depend on other work?
-- What parallelization category fits this work?
-  - Safe to parallelize
-  - Must be sequential
-  - Needs coordination
-- What **Mode** fits this issue?
-  - **AUTO** (default) — an autonomous agent can implement, verify, and prepare for review without human input
-  - **HITL** — human-in-the-loop is required by a concrete need: an unsettled architectural decision, design review, a genuine product/judgment call, manual testing that can't be automated, or external system access. HITL requires a one-line reason naming that need.
-
-If the answer isn't supplied, infer Mode from the issue type and exploration findings. **Default to `AUTO`**; only choose `HITL` when you can name a specific blocking human requirement, and confirm before composing.
+Read `references/interview-guide.md` and follow the simple-bug or standard interview path based on `issue_type` and `is_simple_bug`. Store priority, size, related work, blockers, parallelization category, and Mode for Phase 5. Confirm inferred metadata before composing.
 
 ## Phase 5: Issue Composition
 
@@ -439,12 +259,4 @@ The skill ends here. Surface the file path and tell the user that if they want t
 
 ## Guidelines
 
-1. **Lead with "Why"** — Problem statement is most important.
-2. **Make non-goals explicit** — A tighter issue is more actionable than a broad wish list.
-3. **Infer before asking** — Use codebase and workflow context to draft likely answers before asking the user for basics.
-4. **Separate product calls from implementation details** — Capture the decision that needs alignment, not low-level how-to.
-5. **Be specific** — Vague issues lead to vague implementations.
-6. **Check for similar issues** — Don't create duplicates.
-7. **Keep simple bugs simple** — Don't over-engineer.
-8. **Exhaust the interview** — Especially Round 1 for complex issues.
-9. **Get user approval** — Always show draft before creating.
+Read `references/definition-guidelines.md` and apply it throughout the workflow.
