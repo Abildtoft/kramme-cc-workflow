@@ -22,21 +22,11 @@ Break down a specification into atomic, committable issues organized into phases
 
 ## Issue Numbering Scheme
 
-Use **phase-prefixed numbering** for clear organization:
-
-- Phase 1 tasks: `ISSUE-P1-001`, `ISSUE-P1-002`, `ISSUE-P1-003`...
-- Phase 2 tasks: `ISSUE-P2-001`, `ISSUE-P2-002`...
-- General tasks: `ISSUE-G-001`, `ISSUE-G-002`... (cross-cutting concerns like setup, tooling, documentation)
+Use **phase-prefixed numbering** for clear organization: `ISSUE-G-001` for general tasks, `ISSUE-P1-001` for Phase 1, `ISSUE-P2-001` for Phase 2, and so on. Read `references/issue-numbering.md` before assigning, splitting, replacing, or appending issue IDs.
 
 ## Issue Identifier Stability
 
-Issue IDs are stable once issue files are written.
-
-- During draft planning (before Phase 6 writes files), proposed IDs may be reshaped as the plan is reviewed.
-- After files exist, ordinary append, refinement, deletion, splitting, or deepening must not renumber existing issues just to close gaps.
-- When splitting an existing concept, keep the original ID on the original concept and assign the next unused number in that prefix group to the split-out concept.
-- When deleting or replacing a concept outside the explicit Replace flow, leave numbering gaps in place.
-- Intentional cleanup and renumbering belongs to `/kramme:siw:issue-reindex`; do not duplicate that workflow here.
+Issue IDs are stable once issue files are written. Preserve existing append-mode IDs, leave numbering gaps in place, and use `/kramme:siw:issue-reindex` for intentional cleanup instead of renumbering here. `references/issue-numbering.md` is the local authority for details.
 
 ## SIW Issue-State Protocol
 
@@ -291,43 +281,7 @@ Record the chosen category per group (e.g., "Phase 1 tasks: Safe to parallelize 
 
 Run a host-neutral review pass over the proposed breakdown. Use the current host runtime's subagent mechanism when available; if no subagent mechanism is available, perform the same review inline in the main thread:
 
-**Before running the review pass, read `references/task-sizing.md` (already read in Phase 3.2) and substitute its full contents — the Task Sizing, Break-down triggers, Vertical vs horizontal slicing, and Parallelization taxonomy sections — for the `{task_sizing_grammar}` placeholder below. The reviewer must receive the grammar inline; it cannot rely on a working-directory-relative read.**
-
-**Prompt:**
-
-```
-Review this phase/task breakdown for a software project or adjacent documentation/process deliverable.
-
-Before evaluating the plan, use this Task Sizing Grammar as the source of truth for task sizing, break-down triggers, slicing shape, and parallelization categories.
-
-Task Sizing Grammar:
-
-{task_sizing_grammar}
-
-Work Context: {work_context.work_type}
-- Verify phase count and granularity match the work type
-- For prototypes, do not flag broad task scope or missing test tasks
-- For refactors, verify each task has rollback safety
-- For documentation/process work, interpret "end-to-end" as the smallest reviewable deliverable for that workflow rather than schema + API + UI
-
-Evaluate:
-
-1. **Atomicity**: Is each task truly independent and committable on its own?
-2. **Testability**: Does each task have clear, verifiable acceptance criteria?
-3. **Dependencies**: Are dependencies correctly identified? Any missing?
-4. **Completeness**: Are any tasks missing to achieve the phase goals?
-5. **Phase coherence**: Does each phase result in a demoable or reviewable outcome that matches the work context?
-6. **Sizing (hard gate)**: apply the XS/S/M/L grammar and the XL-is-not-acceptable rule from the Task Sizing Grammar above. Flag any XL task explicitly.
-7. **Slicing shape**: apply the vertical-vs-horizontal rule from the Task Sizing Grammar above for the declared Work Context. Flag layer-by-layer tasks and tasks that bundle multiple independent deliverables.
-8. **Parallelization**: Are parallelization categories (Safe / Must be sequential / Needs coordination) correctly assigned? Flag any safely-parallel work serialized unnecessarily, or any shared-state change marked parallel.
-9. **Mode (AUTO vs HITL)**: The default is `AUTO`; `HITL` is the exception. Does every task carry a Mode label? Does every HITL task include a one-line reason naming a concrete human-input requirement (unsettled architectural decision, design review, genuine judgment call, non-automatable manual testing, external-system access)? Flag any unlabeled task, any HITL-without-reason, and any task marked HITL whose reason is weak or speculative rather than a real blocking requirement (it should be AUTO). Also flag the reverse: a task that genuinely needs human input but is marked AUTO (e.g., requires manual UAT).
-
-For each issue found, provide:
-- What's wrong
-- Specific suggestion to fix it
-
-If the breakdown looks good, confirm it's ready.
-```
+Before running the review pass, read `references/breakdown-review-prompt.md`. It contains the prompt template and the required substitution rule for inlining `references/task-sizing.md` into `{task_sizing_grammar}`.
 
 **Incorporate feedback:** Update the phase plan based on subagent suggestions.
 
@@ -343,71 +297,11 @@ If `AUTO_MODE=true` and the subagent response is inconclusive, re-run once if th
 
 ### Phase 4.5: Planning Confidence Deepening Gate
 
-After Phase 4 passes the hard gates and before Phase 5 user approval, decide whether a targeted confidence deepening pass is needed. This gate is selective; small, clear plans with no risk signals proceed directly to Phase 5.
-
-**Risk signals that trigger deepening:**
-
-- Large or complex breakdown: more than 4 phases, more than 10 issues, several `L` tasks, or dense dependency chains.
-- Cross-cutting architecture, shared API/CLI/schema contracts, multi-surface parity, or other work where an early sequencing mistake would cause churn.
-- Security, auth, privacy, payments, data migrations, backfills, persistent data changes, rollout, monitoring, or operational risk.
-- Uncertain plan input: multiple `UNVERIFIED` assumptions, any unresolved `CONFUSION`, missing technical design needed for decomposition, or unclear prerequisites.
-- Coordination-heavy plan: any phase or group marked `Needs coordination` where the contract-defining issue and consumers are not clearly separated.
-
-**If no signal is present:** continue to Phase 5. Do not run a broad review out of habit.
-
-**If any signal is present:** run one targeted deepening pass over the risky sections before Phase 5. The pass checks:
-
-- sequencing and hidden prerequisites,
-- hidden cross-phase or cross-issue dependencies,
-- oversized tasks that escaped Phase 4 despite not being XL,
-- insufficient verification for risky work,
-- missing rollback, rollout, migration, security, or data-safety treatment when relevant,
-- whether any split, deletion, or reordering would accidentally renumber existing issue IDs.
-
-Use the smallest useful review surface. Prefer a single focused subagent review when the risk is mostly sequencing/decomposition and the host exposes subagents; otherwise perform the same focused pass inline. Add a specialist subagent only when the host exposes one and the risk maps directly to that domain (for example security, data migration, performance, or architecture); otherwise perform the specialist check inline. In the prompt, pass the risk signals, the proposed phase plan, any `UNVERIFIED` assumptions, and the specific questions above. Ask for concrete plan improvements only; no implementation code or shell commands.
-
-Incorporate valid findings into the draft plan before Phase 5. Preserve all existing append-mode IDs. If a new draft task splits from another new draft task before file creation, keep the original ID on the original concept and assign the split-out concept the next unused draft number in that prefix group. If the deepening pass changes, splits, deletes, or reorders any task, loop back through Phase 4 with the revised plan before Phase 5; the final user-facing plan must be the same plan that passed Phase 4's hard gates. If the pass surfaces a true product or scope blocker, use `MISSING REQUIREMENT:` or `CONFUSION:` and stop for user input; in `AUTO_MODE=true`, stop instead of inventing assumptions.
+After Phase 4 passes the hard gates and before Phase 5 user approval, read `references/deepening-gate.md` and apply its selective risk-signal check. Small, clear plans with no risk signals proceed directly to Phase 5; risky plans get exactly one targeted confidence deepening pass unless the reference's loopback or blocker rules apply.
 
 ## Phase 5: User Approval
 
-Present the proposed structure clearly, prefixed with the `PLAN:` output marker so downstream tooling can parse this block as the generated plan. Show each issue's size and Mode inline, and include one `Parallelization:` line per task group. HITL tasks include the one-line reason in the bracket:
-
-**Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
-
-```
-PLAN: Phase Plan for {Project Name}
-═══════════════════════════════════
-
-General Tasks ({N} tasks)
-─────────────────────────
-  Parallelization: {Safe to parallelize | Must be sequential | Needs coordination}
-  ISSUE-G-001: {Title} [READY | Size: XS|S|M|L | AUTO]
-  ISSUE-G-002: {Title} [READY | Size: XS|S|M|L | HITL — needs architectural decision]
-
-Phase 1: {Goal} ({N} tasks)
-───────────────────────────
-  Parallelization: {Safe to parallelize after P1-001 | Must be sequential | Needs coordination}
-  ISSUE-P1-001: {Title} [READY | Size: XS|S|M|L | AUTO]
-  ISSUE-P1-002: {Title} [Blocked by P1-001 | Size: XS|S|M|L | AUTO]
-  ISSUE-P1-003: {Title} [READY | Size: XS|S|M|L | HITL — needs design review]
-
-  Outcome: {What can be demonstrated or reviewed}
-  Tests: {What tests validate this phase}
-
-Phase 2: {Goal} ({N} tasks)
-───────────────────────────
-  Parallelization: {Safe to parallelize | Must be sequential after Phase 1 | Needs coordination}
-  ISSUE-P2-001: {Title} [Blocked by Phase 1 | Size: XS|S|M|L | HITL — manual UAT]
-  ISSUE-P2-002: {Title} [READY | Size: XS|S|M|L | AUTO]
-
-  Outcome: {What can be demonstrated or reviewed}
-  Tests: {What tests validate this phase}
-
-...
-
-Total: {X} issues across {Y} phases + {Z} general
-AUTO: {n} | HITL: {m}
-```
+Present the proposed structure using `assets/phase-plan-template.md`. Preserve the `PLAN:` output marker, include each issue's size and Mode inline, include one `Parallelization:` line per task group, and include HITL reasons in brackets.
 
 Use AskUserQuestion:
 

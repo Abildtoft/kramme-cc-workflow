@@ -179,36 +179,9 @@ If a framework is detected, store as `DETECTED_FRAMEWORK` and read `references/f
 
 ### Step 4: Build Test Plan
 
-For each identified page/route, read the QA rubric from `references/qa-rubric.md`.
+For each identified page/route, read the QA rubric from `references/qa-rubric.md` and use its route checklist, clean-console standard, accessibility ladder, and health categories.
 
 For `diff-aware` mode, build the checklist from the journey matrix rows created in Step 3. Prioritize matrix rows whose changed files are closest to user-facing behavior, then rows covering edge states. Keep uncertain rows in the plan with `UNVERIFIED` assumptions so the final report shows what was and was not proven.
-
-Create a test checklist for each route:
-
-1. **Page loads without errors** — no blank page, no stuck spinner, no crash
-2. **Console is clean** — apply the clean-console standard below
-3. **Network requests succeed** — use the network triage ladder in Step 6
-4. **Key interactions work** — buttons respond, forms submit, navigation works
-5. **Visual state is reasonable** — no overflow, no broken images, readable text
-6. **Edge states** — empty states handled, error states if triggerable
-7. **Accessibility ladder** — run the five checks below
-
-**Clean-console standard:**
-
-- Default: zero console errors, zero console warnings. Every error and every warning is a finding.
-- `LEGACY_CONSOLE_MODE` (true): zero console errors is still required; warnings demote to Info-level findings rather than Minor/Major.
-
-**Accessibility ladder** (run for every tested route):
-
-1. **Accessibility tree** — read the a11y tree; flag interactive elements without an accessible name (buttons, links, form controls).
-2. **Heading hierarchy** — exactly one `h1`; heading levels do not skip.
-3. **Focus order** — tab through the page; focus follows visual order and no focus traps.
-4. **Color contrast** — sample primary text and interactive elements against WCAG AA (4.5:1 for body text, 3:1 for large text and UI components).
-5. **Dynamic content announcement** — live regions, toasts, and modal open/close announce to assistive tech.
-
-Each failed a11y check becomes a finding in the `Accessibility` category (see `references/health-score-rubric.md`).
-
-Prioritize test items by severity impact. Blockers first, then major, then minor.
 
 **If `DETECTED_FRAMEWORK` is set:** Add framework-specific checks from `references/framework-hints.md` to the test plan. For example, if Next.js is detected, add hydration error checks and `_next/data` monitoring.
 
@@ -236,32 +209,7 @@ After navigation, perform basic interaction checks:
 
 **If browse fails (no browser MCP available):**
 
-Degrade to code-only analysis. First select which source files to read, by mode:
-
-- **diff-aware** — read the changed UI files identified in Step 3.
-- **targeted** — map `TARGET_ROUTE` back to its source file(s) by reversing the Step 3 route-detection logic (file-based routing: route → file path; config-based routing: search the router config for the route, then read the component it references).
-- **quick** — for each route selected in Step 3, map it back to its source file(s) the same way. If a route cannot be mapped to a file, note it as skipped (no source located) rather than silently dropping it.
-
-Then analyze the selected files for potential issues:
-
-- Missing error boundaries or error handling
-- Missing loading states
-- Hardcoded strings or missing i18n
-- Unhandled null/undefined access
-- Missing form validation
-- Accessibility issues visible in markup
-
-Report all findings as "code-only mode" with a clear warning:
-
-```
-Warning: No browser MCP detected. Running in code-only mode.
-Findings are based on static code analysis only — no live testing performed.
-
-For full QA with screenshots and live testing, install a browser MCP:
-  - Claude in Chrome extension (recommended)
-  - Chrome DevTools MCP
-  - Playwright MCP
-```
+Degrade to code-only analysis using `references/code-only-fallback.md`. Preserve its source-selection rules and warning text.
 
 ### Step 6: Capture Evidence
 
@@ -274,31 +222,13 @@ For each tested page/route, collect:
 
 **Network triage ladder** (apply to every failed or anomalous request):
 
-| Signal | Interpretation | Action |
-| --- | --- | --- |
-| `4xx` | Client sent wrong data (shape, auth, validation) | Capture the request payload + route; Major unless expected (e.g. 401 on a logged-out probe) |
-| `5xx` | Server error | Capture the response body after redacting tokens; Blocker |
-| CORS failure | Origin or headers mismatch | Capture origin + `Access-Control-*` response headers; Major |
-| Timeout | Response exceeded the time budget (> 3s default) | Capture URL + elapsed; Major unless route is known-slow |
-| Missing | A request that was expected never fired | Capture route context; Major — this is often a regression signal |
+Read `references/network-triage.md` and classify every failed or anomalous request using its ladder.
 
 Store evidence per route for inclusion in the QA report.
 
 ### Step 7: Assess Findings
 
-Rate each issue found using severity levels:
-
-- **Blocker**: Page crash, data loss, broken core flow, JavaScript error that prevents rendering, critical API failure that blocks functionality
-- **Major**: Significant functionality broken, console errors on page load, form submission fails, navigation dead-ends, key feature not working
-- **Minor**: Visual glitch, warning in console, slow response (> 3 seconds), minor layout issue, non-critical feature broken
-- **Info**: Observation without clear user impact, optimization opportunity, deprecation warning, minor inconsistency
-
-When assessing, consider:
-
-- Does the issue affect the critical user path?
-- Is the issue visible to users or only in developer tools?
-- Does the issue block a workflow or is it cosmetic?
-- Is this a regression (diff-aware mode) or pre-existing?
+Read `references/finding-severity.md` and rate each issue found using its severity definitions and assessment questions.
 
 ### Step 7b: Compute Health Score
 
@@ -330,25 +260,7 @@ Check if `QA_BASELINE.json` exists from a previous run:
 3. **New issues:** findings in the current run that are NOT in the baseline
 4. **Persistent issues:** findings present in both runs
 
-Prepare a `## Regression` section for the QA report (rendered in Step 9):
-
-```markdown
-## Regression (vs. baseline from {baseline_date})
-
-**Score delta:** {current_score} vs. {baseline_score} ({+N / -N})
-
-### Fixed ({N})
-
-- QA-{NNN}: {title} (was {severity})
-
-### New ({N})
-
-- QA-{NNN}: {title} ({severity})
-
-### Persistent ({N})
-
-- QA-{NNN}: {title} ({severity})
-```
+Prepare a `## Regression` section for the QA report using `assets/regression-section-template.md`. Step 9 renders that section when a regression comparison ran.
 
 ### Step 9: Write QA Report or Reply Inline
 
@@ -388,37 +300,7 @@ This file is a working artifact. It will be cleaned up by `/kramme:workflow-arti
 
 ### Step 11: Output Summary
 
-After writing the report, display an inline summary:
-
-```
-## QA Summary: $TARGET_URL
-
-**Mode:** {quick | diff-aware | targeted}
-**Routes Tested:** {N}
-**Journey Matrix Rows:** {N, if diff-aware}
-**Browser:** {claude-in-chrome | chrome-devtools | playwright | code-only}
-**Framework:** {DETECTED_FRAMEWORK or "not detected"}
-**Health Score:** {HEALTH_SCORE}/100 ({HEALTH_LABEL})
-
-### Verdict: {READY | NOT READY | READY WITH CAVEATS}
-
-{If NOT READY: list blockers with brief description}
-{If READY WITH CAVEATS: list major issues with brief description}
-{If READY: confirm no blockers or major issues found}
-
-- Blockers: {N}
-- Major: {N}
-- Minor: {N}
-- Info: {N}
-
-{If REGRESSION_MODE and baseline found:}
-### Regression vs. {baseline_date}
-Score: {baseline_score} -> {current_score} ({+N / -N})
-Fixed: {N} | New: {N} | Persistent: {N}
-
-Report output: {inline reply | QA_REPORT.md}
-{If blockers found: "Fix blockers and re-run: /kramme:qa <url>"}
-```
+After writing the report, display the inline summary using `assets/qa-summary-template.md`.
 
 ## Conventions — output markers and verification
 
@@ -429,28 +311,8 @@ Before producing the QA report, read `references/addy-conventions.md` and apply:
 
 ## Error Handling Summary
 
-| Error | Behavior |
-| --- | --- |
-| No URL provided | Hard stop with usage instructions |
-| `auto` finds no running server | Hard stop with instructions to start app |
-| URL unreachable (connection refused) | Hard stop with diagnostic |
-| URL unreachable (timeout) | Hard stop with diagnostic |
-| URL returns 5xx | Hard stop with server error diagnostic |
-| URL returns 4xx | Warn and proceed |
-| No browser MCP | Degrade to code-only analysis |
-| Browse fails on a route | Log error, continue with remaining routes |
-| No UI changes (diff-aware) | Report and stop |
-| Base branch not found | Hard stop, suggest --base flag |
-| Route detection fails (quick) | Fall back to landing page only |
+For the full error handling table, read `references/usage-and-errors.md` when needed.
 
 ## Usage Examples
 
-```
-/kramme:qa http://localhost:3000                              # quick smoke test (default)
-/kramme:qa auto                                               # auto-detect a running local dev server
-/kramme:qa http://localhost:4200 diff-aware --base develop    # test routes affected by changes
-/kramme:qa http://localhost:3000 targeted /settings/profile  # one specific route
-/kramme:qa https://staging.myapp.com                          # staging URL
-/kramme:qa http://localhost:3000 --regression                # compare against previous baseline
-/kramme:qa http://localhost:3000 --inline                    # reply inline, no QA_REPORT.md
-```
+For invocation examples, read `references/usage-and-errors.md` when needed.
