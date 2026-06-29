@@ -328,72 +328,9 @@ If eligible `gated_auto` Critical or Important code-backed issues were found, in
 
 Before posting (whether to `REVIEW_OVERVIEW.md` or inline), run the pre-posting verification checklist in `references/review-discipline.md` (severity prefixes, dead-code ask shape, Approval Standard line, `NOTICED BUT NOT TOUCHING` labels on out-of-scope notes, emphasized-dimension coverage, `UNVERIFIED` labels on untraced findings).
 
-## Usage Examples:
+## Usage Examples
 
-**Full review (default):**
-
-```
-/kramme:pr:code-review
-```
-
-**Specific aspects:**
-
-```
-/kramme:pr:code-review tests errors
-# Reviews only test coverage and error handling
-
-/kramme:pr:code-review comments
-# Reviews only code comments
-
-/kramme:pr:code-review performance
-# Performance and scalability review only
-
-/kramme:pr:code-review refactor
-# Review-only reuse, composition, and codebase-fit cleanup findings
-
-/kramme:pr:code-review simplify
-# Opt-in simplifier pass. Run after the main review is clean.
-```
-
-**Parallel review:**
-
-```
-/kramme:pr:code-review all parallel
-# Deprecated alias for --parallel
-
-/kramme:pr:code-review all --parallel
-# LAUNCH_MODE=parallel; spawns all applicable agents simultaneously
-```
-
-**Emphasize specific dimensions:**
-
-```
-/kramme:pr:code-review --emphasize security
-# Run all applicable agents, elevating security findings without downgrading other validated issues
-
-/kramme:pr:code-review --emphasize security errors
-# Elevate both security and error-handling findings
-
-/kramme:pr:code-review tests errors --emphasize errors
-# Run only test+error agents, elevate error findings
-
-/kramme:pr:code-review comments --emphasize security
-# Invalid: security is not in the active review set, so the command should stop with an error
-```
-
-**Custom base branch (for PRs targeting non-default branches):**
-
-```
-/kramme:pr:code-review --base develop
-# Diffs against develop instead of auto-detecting the base
-```
-
-**Inline report (no markdown file):**
-
-```
-/kramme:pr:code-review --inline
-# Replies with the full report instead of writing REVIEW_OVERVIEW.md
-```
+For command examples covering default, aspect-filtered, parallel, emphasized, custom-base, and inline modes, read `references/usage-examples.md`. Keep argument behavior governed by Step 1 and do not treat examples as additional accepted syntax.
 
 ## Review discipline
 

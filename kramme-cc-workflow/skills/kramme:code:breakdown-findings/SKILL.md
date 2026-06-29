@@ -128,81 +128,11 @@ Before clustering, run a small read-only recon pass so the generated plans respe
 
 ### Phase 2: Cluster into Themes
 
-**Pre-clustered handoff:** if Phase 1 identified the source as a pre-clustered handoff, do **not** re-cluster — the themes are already the intended PR seams, and re-grouping would destroy the caller's analysis. Skip the clustering rules and clustering process below, **including the file-count sizing grammar and the 9-file XL gate**: the caller sized these seams deliberately (often by review time, not file count), so do not split or merge a theme. If a theme looks unusually large, note it as an open question in that plan rather than re-cutting it. Still build the dependency graph from the declared `depends on` / `blocks` / `parallel with` relationships and assign execution labels (clustering-process steps 3–5). Print the 1:1 mapping (the `PLAN:`-prefixed block) for visibility, but do **not** block on the `Proceed? (yes / adjust)` prompt — a pre-clustered handoff has already been confirmed by its caller and has no clustering left to adjust. (The Phase 0 artifact guard still applies.)
+**Pre-clustered handoff:** if Phase 1 identified the source as a pre-clustered handoff, do **not** re-cluster — the themes are already the intended PR seams, and re-grouping would destroy the caller's analysis. Skip the clustering rules and process in `references/clustering.md`, **including the file-count sizing grammar and the 9-file XL gate**: the caller sized these seams deliberately (often by review time, not file count), so do not split or merge a theme. If a theme looks unusually large, note it as an open question in that plan rather than re-cutting it. Still build the dependency graph from the declared `depends on` / `blocks` / `parallel with` relationships and assign execution labels using the dependency and labeling rules in `references/clustering.md`. Print the 1:1 mapping with the `PLAN:` marker for visibility, but do **not** block on the `Proceed? (yes / adjust)` prompt — a pre-clustered handoff has already been confirmed by its caller and has no clustering left to adjust. (The Phase 0 artifact guard still applies.)
 
-Otherwise, group findings into PR-sized themes. A theme is a set of findings that should be fixed together because they share one or more of:
+Otherwise, read `references/clustering.md` and group findings into PR-sized themes. A theme is a set of findings that should be fixed together because they share root cause, affected area, implementation dependency, conceptual cohesion, or impact/leverage profile.
 
-- **Root cause** -- same underlying problem manifesting in multiple places
-- **Affected area** -- same file, module, or subsystem
-- **Implementation dependency** -- fixing one requires or enables fixing another
-- **Conceptual cohesion** -- same type of change (e.g., "add error handling to all API endpoints")
-- **Impact/leverage profile** -- findings are best landed together because their combined user value, risk reduction, or quick-win value makes a coherent PR
-
-#### Clustering rules
-
-1. **Target size**: each theme should map to a realistic single PR (roughly 1-8 findings, touching a bounded set of files). If a theme grows beyond what a single PR can cover, split it into a short series and note the dependency.
-
-   Apply this sizing grammar when sizing themes:
-
-   | Size   | Scope                              |
-   | ------ | ---------------------------------- |
-   | XS     | 1 file, single finding             |
-   | S      | 1–2 files                          |
-   | M      | 3–5 files                          |
-   | L      | 6–8 files                          |
-   | **XL** | **9+ files — split into a series** |
-
-   Aim for S/M themes. Any theme that sizes XL MUST split before generating plans.
-
-2. **Avoid overlap**: every finding belongs to exactly one theme. If a finding could fit multiple themes, assign it to the one where it shares the strongest implementation dependency.
-
-3. **Singleton themes are fine**: if a finding does not cluster with others, it becomes its own single-finding theme.
-
-4. **Exclusions**: if any finding should be excluded from all plans (e.g., duplicates, already resolved, not actionable), record it with a reason. These go into the index under "Excluded or Included Scope" as one marker-prefixed line per finding. If nothing is excluded, write a plain sentence with no marker.
-
-5. **Conflicts**: if two findings contradict each other (e.g., "add abstraction" vs. "remove abstraction" for the same code), flag the conflict as an open question in the relevant plan(s) and do not assume a resolution.
-
-6. **Prioritization metadata**: every theme must receive a normalized Impact and Leverage value. Use the highest confirmed impact among included findings, then adjust leverage by effort, fix risk, confidence, dependency value, and whether the theme unblocks later work. If the value is inferred, prefix it with `UNVERIFIED:`.
-
-#### Clustering process
-
-1. Read all findings. Identify natural groupings by scanning for shared files, shared root causes, and shared fix patterns.
-2. Draft theme names using the pattern `verb-noun` in kebab-case (e.g., `add-api-error-handling`, `consolidate-config-parsing`, `remove-dead-code`).
-3. Build a dependency graph across themes before naming files:
-   - A dependency exists when a theme cannot start until another theme lands, or when landing one theme materially reduces risk for another.
-   - A blocker exists when a theme must land before one or more downstream themes.
-   - Themes with no direct or transitive dependency between them are parallel candidates.
-   - If dependency direction is unclear, add an open question and choose the most conservative ordering.
-4. Assign impact/leverage values and use them to order independent themes within each wave:
-   - Put dependency blockers first.
-   - Among independent same-wave themes, prefer higher leverage, then higher impact, then lower risk/effort.
-   - Do not let leverage ordering override a real dependency.
-5. Assign every theme an execution label before generating files:
-   - Use `W##L` where `##` is a zero-padded wave number and `L` is an uppercase lane letter, such as `W01A`, `W01B`, `W02A`.
-   - Same wave number means the plans can run in parallel.
-   - A later wave number means the plan is blocked by at least one earlier-wave plan, and the exact blocker labels must be named in the plan title, index, and summary.
-   - Independent single-plan work still receives `W01A`.
-6. Keep the theme slug separate from the execution label: derive `{SLUG}` from the theme name only, then prefix it with `{EXECUTION_LABEL}` only in the final filename. Example: execution label `W01A` plus theme slug `define-error-types` becomes `PR_PLAN_W01A_DEFINE_ERROR_TYPES.md`.
-7. Verify no theme is too large (touches 9+ files per the sizing grammar above). Split if needed.
-8. Verify no two themes overlap in affected files without an explicit dependency note.
-
-Present the clustering to the user before generating files. Prefix the block with the `PLAN:` output marker so downstream tooling can parse the proposed clustering:
-
-```
-PLAN: Proposed themes
-  Wave W01 (parallel):
-    W01A add-api-error-handling (4 findings, size M, impact HIGH, leverage HIGH) -- blocks W02A -- files: src/api/*.ts
-    W01B remove-dead-exports (2 findings, size S, impact LOW, leverage MED) -- independent -- files: src/lib/*.ts
-  Wave W02:
-    W02A consolidate-config-parsing (3 findings, size S, impact MED, leverage HIGH) -- blocked by W01A -- files: src/config/*, src/utils/config.ts
-  0 excluded findings
-
-Proceed? (yes / adjust)
-```
-
-Wait for user confirmation. If the user requests adjustments, re-cluster accordingly.
-
-If `AUTO_MODE=true`, do not ask for confirmation. Print the same `PLAN:` block, add `AUTO: proceeding with the proposed clustering`, and continue directly to Phase 3. Still stop before Phase 3 if the plan contains an unresolved contradiction that would make the generated plan misleading rather than merely conservative.
+Apply the reference's sizing grammar, overlap/exclusion/conflict rules, dependency graph rules, execution-label rules, and confirmation block exactly. The confirmation block must begin with the exact marker line `PLAN: Proposed themes`. If `AUTO_MODE=true`, print the same `PLAN:` block, add `AUTO: proceeding with the proposed clustering`, and continue directly to Phase 3 unless an unresolved contradiction would make the generated plan misleading rather than merely conservative.
 
 ### Phase 3: Generate Plans
 
@@ -232,22 +162,7 @@ For each confirmed theme:
 
 #### Plan content requirements
 
-Populate every section in the template — no empty headings, no "N/A". The template's inline guidance covers what each section needs. A few non-obvious points that the template cannot enforce:
-
-- **Problem Statement**: Restate the full problem in the plan's own words. Do NOT reference finding IDs, report names, or prior documents — the plan must be readable in isolation.
-- **Repo Context and Tradeoffs**: Include relevant conventions, architecture boundaries, product/strategy constraints, ADRs, rejected approaches, and verification commands discovered during Phase 1.5. Cite concrete files/lines when available. If a source finding conflicts with a documented tradeoff, surface the conflict as `CONFUSION:` or `MISSING REQUIREMENT:`.
-- **Impact and Leverage**: Include normalized Impact and Leverage values plus the rationale. If either value is inferred, prefix it with `UNVERIFIED:` and explain what evidence would firm it up.
-- **Executor Instructions and Drift Check**: Include `PLANNED_AT_SHA`, a scoped working-tree-aware drift check (`git diff --stat <sha> -- <in-scope paths>` plus `git status --short -- <in-scope paths>`), and an explicit expected result. The in-scope path list must match the Scope section.
-- **Current State**: Re-open every cited file yourself before writing the plan. Inline short current-code excerpts or concrete current-state descriptions with `file:line` markers. Source report line numbers are leads, not facts. If the current state includes secrets, cite only the file/line and secret type, never the value.
-- **Commands You Will Need**: Use exact commands discovered from the repo or source report. Include expected success results. Do not invent a typecheck/test/lint command; if a command is absent, name the verification gap.
-- **Scope**: Split scope into explicit **In Scope** and **Out of Scope** lists. Anything likely to tempt executor scope creep belongs in Out of Scope with a reason.
-- **Finding metadata**: Carry source effort, fix risk, confidence, suggested verification, and scope notes into the plan. Use the most conservative value when grouped findings disagree, and explain the conflict in Risks or Open Questions.
-- **Dependencies and Sequencing**: Name the execution label, the parallel wave, the exact blocker labels, and the exact dependent labels. Describe both the labels and the content of each dependency so the relationship is clear without cross-reading other plans.
-- **Implementation Plan**: Each step must name exact files/symbols and end with a verification command plus expected result. Avoid open-ended instructions such as "clean up related code."
-- **Test and Verification Plan**: Match verification to the work. Include automated tests when code changes; use manual validation, re-runs of the source audit/review, docs/build checks, or screenshots when the work is non-code.
-- **Completion Criteria**: Make criteria machine-checkable where possible, including `git status --short` scope compliance.
-- **STOP Conditions**: Include plan-specific STOP conditions: drift mismatch, repeated verification failure, need to touch out-of-scope files, missing prerequisites, and any fragile assumption unique to the plan.
-- **Maintenance and Review Notes**: Tell reviewers what to scrutinize and which follow-ups were deliberately deferred.
+Before filling the template, read `references/plan-content-requirements.md` and apply every requirement. Every plan must be self-contained, concretely scoped, drift-checkable, and populated with live current-state evidence, impact/leverage rationale, exact verification commands, plan-specific STOP conditions, and maintenance notes.
 
 ### Phase 4: Generate Index
 
@@ -272,63 +187,7 @@ Populate every section in the template — no empty headings, no "N/A". The temp
 
 ### Phase 5: Summary
 
-For findings-mode input, report to the user using this end-of-turn template:
-
-```
-PR Plan Generation Complete
-
-Source: {source file or description}
-Findings processed: N
-Plans generated: M
-Findings excluded: X
-
-PLANS GENERATED:
-  PR_PLAN_INDEX.md
-  PR_PLAN_REJECTIONS.md
-  PR_PLAN_{EXECUTION_LABEL}_{SLUG_1}.md -- {execution label} {theme name} ({n} findings, size {XS|S|M|L}; {parallel in W## / blocked by W##L / blocks W##L})
-  PR_PLAN_{EXECUTION_LABEL}_{SLUG_2}.md -- {execution label} {theme name} ({n} findings, size {XS|S|M|L}; {parallel in W## / blocked by W##L / blocks W##L})
-  ...
-
-THINGS I DIDN'T TOUCH:
-  • The source findings file (read-only for this skill)
-  • Findings listed under "Excluded" in the index and `PR_PLAN_REJECTIONS.md`
-
-POTENTIAL CONCERNS:
-  • {Any conflicting-findings CONFUSION markers that remained unresolved}
-  • {Any inferred severities, impact values, or leverage values flagged UNVERIFIED}
-  • {If none, state: "None"}
-
-Recommended first PR: PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md -- {one-line rationale including what it unblocks and why its leverage/impact comes first}
-```
-
-For a pre-clustered handoff, use this theme-based variant:
-
-```
-PR Plan Generation Complete
-
-Source: {source file or description}
-Themes processed: N
-Plans generated: M
-Themes included: N
-
-PLANS GENERATED:
-  PR_PLAN_INDEX.md
-  PR_PLAN_REJECTIONS.md
-  PR_PLAN_{EXECUTION_LABEL}_{SLUG_1}.md -- {execution label} {theme name} (1 delegated theme; {parallel in W## / blocked by W##L / blocks W##L})
-  PR_PLAN_{EXECUTION_LABEL}_{SLUG_2}.md -- {execution label} {theme name} (1 delegated theme; {parallel in W## / blocked by W##L / blocks W##L})
-  ...
-
-THINGS I DIDN'T TOUCH:
-  • The source handoff file or dialogue excerpt
-  • Theme boundaries supplied by the delegating workflow
-  • Rejection decisions recorded in `PR_PLAN_REJECTIONS.md`
-
-POTENTIAL CONCERNS:
-  • {Any unusual theme size or dependency question surfaced as MISSING REQUIREMENT}
-  • {If none, state: "None"}
-
-Recommended first PR: PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md -- {one-line rationale including what it unblocks and why its leverage/impact comes first}
-```
+Read `references/summary-templates.md` and report to the user with the findings-mode template or the pre-clustered handoff template as appropriate. Preserve the `PLANS GENERATED`, `THINGS I DIDN'T TOUCH`, and `POTENTIAL CONCERNS` triplet exactly.
 
 ### Phase 6: Reconcile Existing Plan Set
 
