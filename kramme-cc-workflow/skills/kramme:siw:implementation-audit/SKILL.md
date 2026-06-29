@@ -72,78 +72,15 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 2. **Keyword `siw`**: Explicitly requests auto-detection
 3. **Empty**: Default to auto-detection
 
-### 1.2 If File Paths Provided
+Read `references/spec-resolution.md`, then resolve `spec_files` using the explicit-path flow or the SIW auto-detection flow that matches the remaining arguments.
 
-1. Parse `$ARGUMENTS` as shell-style arguments so quoted paths stay intact.
-   - Respect quotes and escaped spaces.
-   - Do **not** naively split on spaces.
-2. For each parsed path:
-   - Verify file exists with `ls {path}`
-   - If path is a directory, scan for markdown files:
-     ```bash
-     find {path} -maxdepth 2 -type f -name "*.md" 2> /dev/null
-     ```
-   - If file doesn't exist, warn and skip.
-3. Store verified paths as `spec_files`.
+Required behavior from the reference:
 
-**If no valid files remain after verification:**
-
-```
-Error: No valid specification files found at the provided path(s).
-
-Provided: {arguments}
-```
-
-**Action:** Abort.
-
-### 1.3 If No Arguments or `siw` Keyword
-
-Auto-detect spec files from the `siw/` directory:
-
-1. Check if `siw/` exists:
-
-   ```bash
-   ls siw/ 2> /dev/null
-   ```
-
-2. Find spec files (exclude workflow files):
-   - Use Glob to find `siw/*.md`
-   - Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.
-   - Exclude that workflow-artifact set before treating any top-level `siw/*.md` file as a spec. When the filter excludes every candidate, report the excluded filenames and ask for an explicit spec path instead of silently proceeding.
-
-3. Find supporting specs:
-   - Use Glob to find `siw/supporting-specs/*.md`
-   - Use Glob to find `siw/contracts/*.md`
-
-4. Check for linked external specs:
-   - Read **every detected spec file** (`siw/*.md`, `siw/supporting-specs/*.md`, and `siw/contracts/*.md` candidates).
-   - Look for a "Linked Specifications" section with a table containing file paths.
-   - Add any linked external paths to the candidate file list (verify each exists).
-
-5. **Use all found spec files by default.** Only ask the user to select if there are files that look unrelated to each other (for example, specs for entirely different features). Do NOT ask when the files are clearly parts of the same specification (main spec + supporting specs + contract specs).
-
-6. Store files as `spec_files`.
-
-### 1.4 If No Spec Files Found
-
-If auto-detection found no spec files because every top-level `siw/*.md` candidate was excluded by the workflow-artifact filter, report the excluded filenames and ask the user for explicit spec path(s). Validate provided paths with the explicit-path flow from Step 1.2 and continue when valid. If the user provides no path, then emit the generic error below and abort.
-
-```
-Error: No specification files found.
-
-Expected locations:
-  - siw/*.md (SIW spec files)
-  - siw/supporting-specs/*.md (supporting specifications)
-  - siw/contracts/*.md (contract specifications)
-
-Or provide file path(s) directly:
-  /kramme:siw:implementation-audit path/to/spec.md
-  /kramme:siw:implementation-audit docs/spec1.md docs/spec2.md
-
-To initialize a workflow with a spec, run /kramme:siw:init
-```
-
-**Action:** Abort.
+- Preserve quoted paths and escaped spaces when explicit paths are provided.
+- Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.
+- Include supporting specs, contract specs, and verified linked external specs.
+- Ask for explicit paths instead of silently proceeding when auto-detection finds only workflow artifacts.
+- Abort with the reference's error message when no valid spec files remain.
 
 ---
 
@@ -432,32 +369,4 @@ Use the summary template from `assets/audit-complete-summary.md`.
 
 ## Error Handling
 
-### Spec File Errors
-
-- File not found: Warn and skip, continue with remaining files.
-- File empty or unreadable: Warn, suggest checking file path.
-
-### No Requirements Extracted
-
-- If spec has no clear structure: Offer best-effort scan or abort.
-- If all requirements fall into a single group: Proceed with one agent instead of many.
-
-### Explore Agent Failures
-
-- If an agent returns incomplete results: Note affected requirements as "Uncertain" in the report.
-- If an agent times out: Report which spec section was affected, suggest re-running with narrower scope.
-- If Pass B2 is required but fails to run: mark audit BLOCKED and do not write report.
-
-### Conflicting Findings
-
-- If contradictions remain after tie-break: mark audit BLOCKED and do not write report.
-
-### Incomplete Coverage Matrix
-
-- If any section row is incomplete: mark audit BLOCKED and do not write report.
-
-### SIW Workflow Not Active
-
-- Skip issue creation (Step 9).
-- Report file goes to project root instead of `siw/`.
-- All other steps work the same.
+For spec file errors, no-requirements cases, Explore agent failures, unresolved conflicts, incomplete coverage, and inactive SIW workflow handling, read `references/error-handling.md` and apply the matching branch.

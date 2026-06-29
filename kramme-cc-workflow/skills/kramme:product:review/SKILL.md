@@ -329,7 +329,7 @@ Collect all findings from every per-flow review and from the cross-flow synthesi
 
 If `INLINE_MODE=true`:
 
-- Reply with the full report inline using the structure below
+- Reply with the full report inline using the template in `assets/report-template.md`
 - Do **not** create or update `PRODUCT_AUDIT_OVERVIEW.md`
 
 Otherwise:
@@ -337,136 +337,14 @@ Otherwise:
 - Write `PRODUCT_AUDIT_OVERVIEW.md` at the project root
 - Treat it as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
 
-**Report structure:**
+When using the template:
 
-```markdown
-# Product Review Overview
+- Include every non-conditional section from `assets/report-template.md`.
+- Omit `Previously Reported` and `Resolved Since Last Review` only when no previous review exists.
+- Keep final finding IDs sequential (`PROD-001`, `PROD-002`, ...), matching Step 7.
 
-**Application:** $TARGET_URL **Date:** {current date} **Flows reviewed:** {list of flow names} **Focus:** {FOCUS_DIMENSION or "All dimensions"}
-
-## Executive Summary
-
-{3-5 sentence high-level assessment of the product's overall experience quality. Highlight the most significant patterns — both strengths and weaknesses. State the overall product maturity level: early/developing/mature/polished.}
-
-## Review Scope
-
-| Flow        | URL        | Status                      |
-| ----------- | ---------- | --------------------------- |
-| {flow_name} | {flow_url} | Reviewed / Skipped (reason) |
-
-## Critical Findings
-
-{All Critical findings, organized by dimension. Each finding in PROD-NNN format.}
-
-{If no critical findings: "No critical findings identified."}
-
-## Important Findings
-
-{All Important findings, organized by dimension. Each finding in PROD-NNN format.}
-
-{If no important findings: "No important findings identified."}
-
-## Suggestions
-
-{All Suggestion findings, organized by dimension. Each finding in PROD-NNN format.}
-
-{If no suggestions: "No suggestions identified."}
-
-## Cross-Flow Patterns
-
-{Patterns observed across multiple flows:}
-
-- **Recurring issues:** {issues that appear in 2+ flows}
-- **Inconsistencies:** {where flows behave differently for similar actions}
-- **Navigation gaps:** {flows that should connect but don't}
-- **Terminology:** {inconsistent terms across flows}
-
-## Strategy and Pulse Alignment
-
-{How the reviewed flows support, conflict with, or lack evidence against STRATEGY.md and recent pulse reports. Include MISSING PRODUCT CONTEXT or STALE markers when applicable.}
-
-## Previously Reported (from prior review)
-
-{If PREVIOUS_FINDINGS exists:} {Findings that match a previous review run — same flow, dimension, and root cause. Listed with their original PROD-NNN ID and current status.}
-
-{If no previous review: omit this section entirely.}
-
-## Resolved Since Last Review
-
-{If PREVIOUS_FINDINGS exists:} {Findings from the previous review that are no longer present — the issues have been fixed.}
-
-{If no previous review: omit this section entirely.}
-
-## Strengths
-
-{What the product does well from a product experience perspective. Bulleted list of 3-5 specific strengths observed during the review.}
-
-## Recommended Actions
-
-{Ordered list of recommendations, most impactful first. Group by effort level: quick wins, medium effort, larger initiatives.}
-
-### Quick Wins
-
-1. {Specific, actionable recommendation}
-
-### Medium Effort
-
-1. {Specific, actionable recommendation}
-
-### Larger Initiatives
-
-1. {Specific, actionable recommendation}
-```
-
-After writing the report, confirm completion:
-
-```
-Product review complete. Report output: {inline reply | PRODUCT_AUDIT_OVERVIEW.md}.
-
-Reviewed {N} flows at $TARGET_URL.
-Found: {X} critical, {Y} important, {Z} suggestions.
-
-Key patterns:
-- {Top 1-3 cross-flow patterns or most significant findings}
-```
+After generating the report or inline reply, read `references/usage-and-errors.md` and use its completion confirmation format.
 
 ## Error Handling Summary
 
-| Error | Behavior |
-| --- | --- |
-| No URL provided | Hard stop with usage instructions |
-| `auto` finds no running server | Hard stop with instructions to start app |
-| URL not `http(s)://` and not `auto` | Hard stop with format error |
-| Unknown `--focus` token | Warn, emphasize as free text, review all dimensions |
-| No browser automation provider detected | Hard stop with installation guidance |
-| App not running (connection refused) | Hard stop with instructions to start app |
-| App timeout | Hard stop with diagnostic |
-| App returns 5xx | Hard stop with server error diagnostic |
-| App returns 4xx | Warn and proceed (may need auth) |
-| Authentication required | Warn user to authenticate manually first |
-| Deeper interaction blocked (auth/data) | Note coverage gap for the flow, stop descending |
-| Individual flow navigation fails | Skip flow, log as Critical finding, continue |
-| Agent timeout on a flow | Skip flow, log warning, continue |
-| Fewer than 2 flows reviewed | Skip cross-flow synthesis, note in report |
-| All flows fail | Report with only infrastructure findings |
-
-## Usage Examples
-
-**Review a local development server:**
-
-```
-/kramme:product:review http://localhost:3000
-/kramme:product:review auto
-```
-
-**Scope to specific flows and focus a dimension:**
-
-```
-/kramme:product:review http://localhost:4200 --flows checkout,payment --focus trust-safety
-```
-
-**Reply inline instead of writing a report file:**
-
-```
-/kramme:product:review https://staging.myapp.com --inline
-```
+For the full error table and invocation examples, read `references/usage-and-errors.md` only when needed.
