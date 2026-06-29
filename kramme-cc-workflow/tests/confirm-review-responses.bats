@@ -171,6 +171,55 @@ run_hook_without_python_with_real_git() {
 	make_bash_input "$cmd" | env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK"
 }
 
+PARSER_FIXTURES="$BATS_TEST_DIRNAME/fixtures/git-command-parser-cases.json"
+
+setup_review_parser_fixture_mock() {
+	local case_json="$1"
+	local review_mock
+	review_mock="$(printf '%s\n' "$case_json" | jq -r '.reviewMock')"
+
+	case "$review_mock" in
+		stagedArtifact)
+			mock_git_staged "REVIEW_OVERVIEW.md"
+			;;
+		repoArtifact)
+			mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
+			;;
+		repoArtifactWithDefaultNotes)
+			mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md" "notes.txt"
+			;;
+		*)
+			printf 'Unknown review fixture mock "%s"\n' "$review_mock" >&2
+			return 1
+			;;
+	esac
+}
+
+assert_review_parser_fixture_decision() {
+	local case_name="$1"
+	local mode="$2"
+	local expected="$3"
+
+	case "$expected" in
+		allow)
+			if [ "$status" -ne 0 ] || [ -n "$output" ]; then
+				printf 'Expected fixture "%s" (%s) to be allowed, got status %s and output: %s\n' "$case_name" "$mode" "$status" "$output" >&2
+				return 1
+			fi
+			;;
+		block)
+			if ! is_blocked; then
+				printf 'Expected fixture "%s" (%s) to be blocked, got status %s and output: %s\n' "$case_name" "$mode" "$status" "$output" >&2
+				return 1
+			fi
+			;;
+		*)
+			printf 'Unknown fixture expectation "%s" for "%s"\n' "$expected" "$case_name" >&2
+			return 1
+			;;
+	esac
+}
+
 # ============================================================================
 # BASIC ALLOW CASES
 # ============================================================================
@@ -230,6 +279,34 @@ run_hook_without_python_with_real_git() {
 	run run_hook "git diff"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
+}
+
+@test "shared parser fixtures match review-response artifact decisions" {
+	local case_json case_name command expected mode
+
+	# Common shell/git parser cases belong in the shared fixture file so parser
+	# consolidation can compare both hook consumers against the same baseline.
+	while IFS= read -r case_json; do
+		case_name="$(printf '%s\n' "$case_json" | jq -r '.name')"
+		command="$(printf '%s\n' "$case_json" | jq -r '.command')"
+		expected="$(printf '%s\n' "$case_json" | jq -r '.reviewResponseExpected')"
+		while IFS= read -r mode; do
+			setup_review_parser_fixture_mock "$case_json"
+			case "$mode" in
+				python)
+					run run_hook "$command"
+					;;
+				noPython)
+					run run_hook_without_python "$command"
+					;;
+				*)
+					printf 'Unknown fixture python mode "%s" for "%s"\n' "$mode" "$case_name" >&2
+					return 1
+					;;
+			esac
+			assert_review_parser_fixture_decision "$case_name" "$mode" "$expected"
+		done < <(printf '%s\n' "$case_json" | jq -r '.pythonModes[]')
+	done < <(jq -c '.cases[] | select(.reviewResponseExpected != null)' "$PARSER_FIXTURES")
 }
 
 # ============================================================================
