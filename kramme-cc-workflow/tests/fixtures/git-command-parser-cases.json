@@ -1,0 +1,68 @@
+{
+  "cases": [
+    {
+      "name": "safe non-git command",
+      "command": "ls -la",
+      "pythonModes": ["python", "noPython"],
+      "noninteractiveExpected": "allow",
+      "reviewResponseExpected": "allow",
+      "reviewMock": "stagedArtifact"
+    },
+    {
+      "name": "git commit without message",
+      "command": "git commit",
+      "pythonModes": ["python", "noPython"],
+      "noninteractiveExpected": "block",
+      "reviewResponseExpected": "block",
+      "reviewMock": "stagedArtifact"
+    },
+    {
+      "name": "git commit with message",
+      "command": "git commit -m 'test message'",
+      "pythonModes": ["python", "noPython"],
+      "noninteractiveExpected": "allow",
+      "reviewResponseExpected": "block",
+      "reviewMock": "stagedArtifact"
+    },
+    {
+      "name": "shell-wrapped git commit",
+      "command": "sh -c 'git commit -m \"test\"'",
+      "pythonModes": ["python", "noPython"],
+      "noninteractiveExpected": "allow",
+      "reviewResponseExpected": "block",
+      "reviewMock": "stagedArtifact"
+    },
+    {
+      "name": "safe command substitution before git commit",
+      "command": "MSG=$(cat /tmp/msg) git commit -m 'test message'",
+      "pythonModes": ["python", "noPython"],
+      "noninteractiveExpected": "allow",
+      "reviewResponseExpected": "block",
+      "reviewMock": "stagedArtifact"
+    },
+    {
+      "name": "git -C selected repo commit",
+      "command": "git -C repo commit -m 'test'",
+      "pythonModes": ["python", "noPython"],
+      "noninteractiveExpected": "allow",
+      "reviewResponseExpected": "block",
+      "reviewMock": "repoArtifact"
+    },
+    {
+      "name": "env -u clears selected repo before commit",
+      "command": "GIT_DIR=repo/.git GIT_WORK_TREE=repo env -u GIT_DIR -u GIT_WORK_TREE git commit -m 'test'",
+      "pythonModes": ["python", "noPython"],
+      "noninteractiveExpected": "allow",
+      "reviewResponseExpected": "allow",
+      "reviewMock": "repoArtifactWithDefaultNotes"
+    },
+    {
+      "name": "sudo chdir selected repo commit",
+      "command": "sudo --chdir repo git commit -m 'test'",
+      "pythonModes": ["python", "noPython"],
+      "noninteractiveExpected": "allow",
+      "reviewResponseExpected": "block",
+      "reviewMock": "repoArtifact"
+    }
+  ]
+}
