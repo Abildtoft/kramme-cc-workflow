@@ -2,6 +2,35 @@
 
 Defines what to verify at each level during QA testing.
 
+## Route Checklist
+
+For each route, verify:
+
+1. **Page loads without errors** - no blank page, no stuck spinner, no crash
+2. **Console is clean** - apply the clean-console standard below
+3. **Network requests succeed** - use `references/network-triage.md`
+4. **Key interactions work** - buttons respond, forms submit, navigation works
+5. **Visual state is reasonable** - no overflow, no broken images, readable text
+6. **Edge states** - empty states handled, error states if triggerable
+7. **Accessibility ladder** - run the checks below
+
+Prioritize test items by severity impact. Blockers first, then major, then minor.
+
+## Clean-Console Standard
+
+- Default: zero console errors, zero console warnings. Every error and every warning is a finding.
+- `LEGACY_CONSOLE_MODE` true: zero console errors is still required; warnings demote to Info-level findings rather than Minor/Major.
+
+## Accessibility Ladder
+
+Run these checks for every tested route. Each failed check becomes a finding in the `Accessibility` category from `references/health-score-rubric.md`.
+
+1. **Accessibility tree** - read the a11y tree; flag interactive elements without an accessible name (buttons, links, form controls).
+2. **Heading hierarchy** - exactly one `h1`; heading levels do not skip.
+3. **Focus order** - tab through the page; focus follows visual order and no focus traps.
+4. **Color contrast** - sample primary text and interactive elements against WCAG AA (4.5:1 for body text, 3:1 for large text and UI components).
+5. **Dynamic content announcement** - live regions, toasts, and modal open/close announce to assistive tech.
+
 ## Page Health
 
 - Page loads completely without JavaScript errors
@@ -23,7 +52,7 @@ Defines what to verify at each level during QA testing.
 ## Visual Health
 
 - No content overflow or clipping
-- Text is readable (no overlapping, no truncation without indication)
+- Text is readable, with overlap avoided and intentional overflow handling
 - Images load (no broken image placeholders)
 - Responsive behavior is reasonable at the current viewport
 - No elements positioned off-screen or hidden unexpectedly
@@ -38,7 +67,7 @@ Defines what to verify at each level during QA testing.
 
 ## Console and Network
 
-- Console is clean: every error and every warning is a finding by default (warnings demote to Info only under `--legacy-console`). See the clean-console standard in SKILL.md Step 4.
+- Console is clean: every error and every warning is a finding by default (warnings demote to Info only under `--legacy-console`).
 - All API calls return expected status codes
 - No CORS errors
 - No mixed content warnings
