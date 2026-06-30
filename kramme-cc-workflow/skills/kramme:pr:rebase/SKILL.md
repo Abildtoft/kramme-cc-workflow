@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:rebase
-description: Rebase current branch onto latest main/master, auto-resolving bounded conflicts up to 10 rounds, then force push with --force-with-lease. Use when your PR is behind the base branch.
-argument-hint: "[--auto] [--base <branch>]"
+description: Rebase current branch onto latest main/master, auto-resolving conflicts with safe defaults unless dangerous --auto is used, then force push with --force-with-lease. Use when your PR is behind the base branch.
+argument-hint: "[--auto] [--force-push] [--base <branch>]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -18,10 +18,13 @@ A feature branch is a cost that compounds every day it stays open. It drifts fro
 
 **Flags:**
 
-- `--auto` - Skip the final force-push confirmation and push immediately with `--force-with-lease` after a successful rebase.
+- `--auto` - Dangerous unattended mode. Continue through risky cases, bypass verification and confirmation gates, and push immediately with `--force-with-lease` after any completed rebase.
+- `--force-push` - Safe unattended push mode. Skip only the final force-push confirmation and push immediately with `--force-with-lease` after a successful rebase, while keeping all conflict, red-flag, and verification gates.
 - `--base <branch>` - Override auto-detected base branch (e.g., `--base develop`)
 
-`--auto` only bypasses the final confirmation prompt when the rebase completes without machine-resolved conflicts. It does not bypass conflict handling, red-flag stops, the auto-resolved-conflict verification/confirmation gate, or the requirement to use `--force-with-lease`.
+`--force-push` is the safe replacement for the old `--auto` behavior. It only bypasses the final confirmation prompt when the rebase completes without unresolved risk.
+
+`--auto` is intentionally dangerous. It means: keep going through risky conflict resolution cases, do not stop for red-flag review, do not require verification before pushing, and push at the end once the rebase has completed. It still uses `--force-with-lease`; if the lease is rejected or the rebase cannot be completed mechanically, report that failure instead of inventing a new history.
 
 ## Output markers
 
@@ -39,7 +42,9 @@ Use these uppercase markers when reasoning about the rebase and reporting progre
 
 ### Step 0: Parse Arguments
 
-If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag from remaining arguments. If `--base <branch>` is present, set `BASE_BRANCH_OVERRIDE=<branch>` and remove the flag and value from remaining arguments.
+If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag from remaining arguments. If `$ARGUMENTS` contains `--force-push`, set `FORCE_PUSH_MODE=true` and remove the flag from remaining arguments. If `--base <branch>` is present, set `BASE_BRANCH_OVERRIDE=<branch>` and remove the flag and value from remaining arguments.
+
+If both `--auto` and `--force-push` are present, `--auto` wins because it is the broader dangerous mode. Continue with `AUTO_MODE=true` and ignore `FORCE_PUSH_MODE`.
 
 ### Step 1: Validate Prerequisites
 
@@ -100,11 +105,11 @@ git rebase --autostash origin/<base-branch>
 
 **If rebase fails (conflicts):**
 
-1. **Attempt automatic resolution (up to 10 conflict rounds):**
+1. **Attempt automatic resolution:**
 
-   The 10-round cap exists because each round reapplies a single commit; beyond that, conflicts almost always indicate semantic drift the auto-resolver can't handle safely — escalate to the user instead of guessing further.
+   The 10-round cap exists because each round reapplies a single commit; beyond that, conflicts almost always indicate semantic drift the auto-resolver can't handle safely. In normal and `--force-push` modes, escalate to the user instead of guessing further. In `--auto` mode, keep resolving until either the rebase completes or Git reaches a conflict the model cannot mechanically resolve.
 
-   Track all conflicts and resolutions for the summary and set `CONFLICTS_AUTO_RESOLVED=true` once any conflict marker is resolved by the model. Before resolving each file, re-read the **Red Flags** section below — if any apply (migrations, generated artifacts, files you don't fully understand, deletions that drop semantics), abort instead of resolving.
+   Track all conflicts and resolutions for the summary and set `CONFLICTS_AUTO_RESOLVED=true` once any conflict marker is resolved by the model. Before resolving each file, re-read the **Red Flags** section below. In normal and `--force-push` modes, abort instead of resolving when a red flag applies. In `--auto` mode, record that the red flag was bypassed and continue.
 
    For each round:
 
@@ -131,7 +136,7 @@ git rebase --autostash origin/<base-branch>
 
    e. If new conflicts arise, repeat from (a)
 
-2. **If resolution fails** (after 10 rounds or unresolvable conflict):
+2. **If resolution fails** (after 10 rounds in normal or `--force-push` mode, or after an unresolvable conflict in any mode):
 
    Abort the rebase:
 
@@ -151,7 +156,7 @@ git rebase --autostash origin/<base-branch>
 
 If the rebase completed without conflicts, skip to Step 5.
 
-Otherwise, present a summary so the user can review what was auto-resolved before force pushing:
+Otherwise, present a summary of what was auto-resolved. In normal and `--force-push` modes, this is review context before force pushing. In `--auto` mode, this is informational and does not block the push.
 
 > **Conflicts resolved during rebase:**
 >
@@ -163,14 +168,26 @@ Otherwise, present a summary so the user can review what was auto-resolved befor
 
 ### Step 5: Force Push
 
-If `AUTO_MODE=true` and `CONFLICTS_AUTO_RESOLVED` is not true, skip the confirmation prompt and push immediately with `--force-with-lease`.
+All force-push paths in this step must use this validated push procedure:
 
-If `AUTO_MODE=true` and `CONFLICTS_AUTO_RESOLVED=true`, do not push until one of these gates is satisfied:
+```bash
+CURRENT_BRANCH=$(git branch --show-current)
+git check-ref-format --branch "$CURRENT_BRANCH" >/dev/null
+git push --force-with-lease origin "$CURRENT_BRANCH"
+```
 
-1. Run the project's verification battery using the `kramme:verify:run` conventions. If verification is available and passes, push with `--force-with-lease`.
+If `AUTO_MODE=true`, use the validated push procedure immediately after the rebase completes. Do this even if conflicts were auto-resolved, red flags were bypassed, or verification is unavailable/failing. Report the conflicts, bypassed red flags, and verification status after the push attempt. After this push attempt, skip the remaining confirmation gates and proceed to Step 6.
+
+Before any `FORCE_PUSH_MODE=true` push, re-read the **Red Flags** section below. If any red flag applies, stop instead of pushing automatically and report `MISSING REQUIREMENT: --force-push cannot bypass red-flag review; rerun without --force-push after addressing the concern.` This applies even when the rebase completed without conflicts.
+
+If `FORCE_PUSH_MODE=true` and `CONFLICTS_AUTO_RESOLVED` is not true, skip the confirmation prompt, use the validated push procedure immediately, then proceed to Step 6.
+
+If `FORCE_PUSH_MODE=true` and `CONFLICTS_AUTO_RESOLVED=true`, do not push until one of these gates is satisfied:
+
+1. Run the project's verification battery using the `kramme:verify:run` conventions. If verification is available and passes, use the validated push procedure.
 2. If verification is unavailable, fails, or cannot cover the conflict resolution, present the full Conflict Summary and ask the user to confirm before pushing.
 
-If neither gate succeeds, stop before `git push` and report:
+For the `FORCE_PUSH_MODE=true` conflict path, if neither gate succeeds, stop before `git push` and report:
 
 - the full Conflict Summary
 - verification command(s) attempted, if any
@@ -178,7 +195,7 @@ If neither gate succeeds, stop before `git push` and report:
 
 Use the `UNVERIFIED` marker for every conflict resolution that was not covered by a passing verification run.
 
-Otherwise, before pushing, use `AskUserQuestion` to confirm:
+If no earlier branch in this step has already pushed or stopped, use `AskUserQuestion` to confirm:
 
 > "Ready to force push rebased branch. This will overwrite the remote branch history. Continue?"
 >
@@ -187,11 +204,7 @@ Otherwise, before pushing, use `AskUserQuestion` to confirm:
 > - **Yes, force push** - Push with `--force-with-lease`
 > - **Do not push** - Keep local rebase but don't push
 
-If confirmed, push the rebased branch:
-
-```bash
-git push --force-with-lease origin $(git branch --show-current)
-```
+If confirmed, use the validated push procedure.
 
 **Note:** `--force-with-lease` refuses to overwrite remote commits you haven't fetched, providing safety against overwriting others' work.
 
@@ -214,7 +227,7 @@ Lies you'll tell yourself mid-rebase. Each has a correct response:
 - _"I'll just merge `main` in instead — it's faster."_ → Faster now, harder to review later. Merges hide drift; rebases resolve it.
 - _"The auto-conflict resolution looks right — I don't need to re-run tests."_ → Conflict resolution is a code change. Re-run the verify battery or surface it as `UNVERIFIED`.
 - _"Force-push is fine; no one else is on this branch."_ → If the branch is pushed, assume someone has it. `--force-with-lease` is the floor, not the ceiling — still warn the user.
-- _"Ten rounds of auto-resolve failed — I'll just pick one side."_ → The skill aborts after 10 rounds for a reason. Escalate to the user; don't guess.
+- _"Ten rounds of auto-resolve failed — I'll just pick one side."_ → In normal and `--force-push` modes, the skill aborts after 10 rounds for a reason. Escalate to the user; don't guess. In `--auto` mode, continue only while the conflict remains mechanically resolvable.
 
 ## Red Flags — STOP
 
@@ -226,13 +239,17 @@ Pause and hand back to the user if any of these are true:
 - The branch hadn't been fetched recently and the base has moved significantly (>20 commits).
 - Any conflict was resolved by deleting a block instead of merging semantics.
 
+Exception: `--auto` bypasses these red-flag stops. When bypassing a red flag in `--auto` mode, record it in the end-of-run summary under **POTENTIAL CONCERNS**.
+
 ## Verification
 
 Before force-pushing, self-check:
 
 - [ ] If conflicts were resolved, the Conflict Summary lists every resolved file with file + conflict + resolution. (No conflicts → this item is N/A.)
-- [ ] If `AUTO_MODE=true` and conflicts were machine-resolved, passing verification or explicit user confirmation happened before `git push`.
+- [ ] If `FORCE_PUSH_MODE=true` and conflicts were machine-resolved, passing verification or explicit user confirmation happened before `git push`.
+- [ ] If `FORCE_PUSH_MODE=true`, no red flags applied before the automatic push.
+- [ ] If `AUTO_MODE=true`, all bypassed red flags and verification gaps are reported under **POTENTIAL CONCERNS** after the push attempt.
 - [ ] The base branch was freshly fetched (Step 2 ran).
-- [ ] The user explicitly confirmed via `AskUserQuestion` (Step 5), or `AUTO_MODE=true` with every required auto-mode gate satisfied.
+- [ ] The user explicitly confirmed via `AskUserQuestion` (Step 5), or `FORCE_PUSH_MODE=true` / `AUTO_MODE=true` allowed skipping confirmation.
 - [ ] `--force-with-lease` (not `--force`) is the flag being used.
 - [ ] Post-push `git log --oneline origin/<base>..HEAD` shows the expected linear history.
