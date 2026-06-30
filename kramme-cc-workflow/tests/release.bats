@@ -48,3 +48,104 @@ teardown() {
   [[ "$output" == *"Invalid bump type: banana"* ]]
   [[ "$output" != *"Traceback"* ]]
 }
+
+@test "release checks dependencies before mutating files" {
+  MOCK_BIN="$TMP_ROOT/bin"
+  mkdir -p "$MOCK_BIN"
+  cat >"$MOCK_BIN/make" <<'SH'
+#!/bin/sh
+if [ "$*" = "check-deps" ]; then
+  echo "missing release dependency" >&2
+  exit 42
+fi
+
+echo "unexpected make args: $*" >&2
+exit 2
+SH
+  chmod +x "$MOCK_BIN/make"
+
+  run env PATH="$MOCK_BIN:$PATH" python3 "$PLUGIN_ROOT/scripts/release.py" patch
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Release verification dependencies are missing. Aborting before changing files."* ]]
+  grep -q '"version": "0.64.0"' "$PLUGIN_ROOT/.claude-plugin/plugin.json"
+  grep -q '"version": "0.64.0"' "$PLUGIN_ROOT/package.json"
+  ! grep -q '## \[0.64.1\]' "$PLUGIN_ROOT/CHANGELOG.md"
+}
+
+@test "release verifies generated files after mutation before branch commit" {
+  MOCK_BIN="$TMP_ROOT/bin"
+  RELEASE_MAKE_LOG="$TMP_ROOT/make.log"
+  mkdir -p "$MOCK_BIN"
+  cat >"$MOCK_BIN/make" <<'SH'
+#!/bin/sh
+set -e
+
+current_branch="$(git rev-parse --abbrev-ref HEAD)"
+
+if [ "$*" = "check-deps" ]; then
+  printf 'check-deps branch=%s\n' "$current_branch" >>"$RELEASE_MAKE_LOG"
+  exit 0
+fi
+
+if [ "$*" != "verify" ]; then
+  echo "unexpected make args: $*" >&2
+  exit 2
+fi
+
+printf 'verify branch=%s\n' "$current_branch" >>"$RELEASE_MAKE_LOG"
+
+if [ "$current_branch" = "release/v0.64.1" ]; then
+  echo "verification ran after release branch creation" >&2
+  exit 3
+fi
+grep -q '"version": "0.64.1"' .claude-plugin/plugin.json
+grep -q '"version": "0.64.1"' package.json
+grep -q '## \[0.64.1\]' CHANGELOG.md
+SH
+  chmod +x "$MOCK_BIN/make"
+
+  run env PATH="$MOCK_BIN:$PATH" RELEASE_MAKE_LOG="$RELEASE_MAKE_LOG" bash -c 'printf "y\n" | python3 "$1" patch' _ "$PLUGIN_ROOT/scripts/release.py"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"2. Generating changelog..."*"3. Running release verification..."*"4. Creating release branch..."* ]]
+  grep -q '^check-deps branch=' "$RELEASE_MAKE_LOG"
+  grep -q '^verify branch=' "$RELEASE_MAKE_LOG"
+  ! grep -q '^verify branch=release/v0.64.1$' "$RELEASE_MAKE_LOG"
+  [ "$(git -C "$TMP_ROOT" rev-parse --abbrev-ref HEAD)" = "release/v0.64.1" ]
+  [ "$(git -C "$TMP_ROOT" log -1 --pretty=%s)" = "Release v0.64.1" ]
+}
+
+@test "release restores generated files when verification fails" {
+  MOCK_BIN="$TMP_ROOT/bin"
+  mkdir -p "$MOCK_BIN"
+  cat >"$MOCK_BIN/make" <<'SH'
+#!/bin/sh
+set -e
+
+if [ "$*" = "check-deps" ]; then
+  exit 0
+fi
+
+if [ "$*" != "verify" ]; then
+  echo "unexpected make args: $*" >&2
+  exit 2
+fi
+
+grep -q '"version": "0.64.1"' .claude-plugin/plugin.json
+grep -q '"version": "0.64.1"' package.json
+grep -q '## \[0.64.1\]' CHANGELOG.md
+exit 9
+SH
+  chmod +x "$MOCK_BIN/make"
+
+  run env PATH="$MOCK_BIN:$PATH" bash -c 'printf "y\n" | python3 "$1" patch' _ "$PLUGIN_ROOT/scripts/release.py"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Restored release files to their pre-release state."* ]]
+  grep -q '"version": "0.64.0"' "$PLUGIN_ROOT/.claude-plugin/plugin.json"
+  grep -q '"version": "0.64.0"' "$PLUGIN_ROOT/package.json"
+  ! grep -q '## \[0.64.1\]' "$PLUGIN_ROOT/CHANGELOG.md"
+  [ -z "$(git -C "$TMP_ROOT" branch --list release/v0.64.1)" ]
+  git -C "$TMP_ROOT" diff --quiet
+}

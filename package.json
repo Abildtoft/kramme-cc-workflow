@@ -8,8 +8,11 @@
     "kramme-cc-workflow": "kramme-cc-workflow/scripts/convert-plugin.js"
   },
   "scripts": {
+    "format:check": "make -C kramme-cc-workflow format-check",
+    "preflight": "make -C kramme-cc-workflow preflight",
     "test": "make -C kramme-cc-workflow test",
-    "verify": "make -C kramme-cc-workflow verify"
+    "verify": "make -C kramme-cc-workflow verify",
+    "verify:pr": "make -C kramme-cc-workflow pr-verify"
   },
   "dependencies": {
     "smol-toml": "^1.7.0",

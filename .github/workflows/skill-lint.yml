@@ -20,7 +20,7 @@ jobs:
           python-version: "3.11"
 
       - name: Run skill contract lint
-        run: python3 kramme-cc-workflow/scripts/lint-skill-contracts.py
+        run: make -C kramme-cc-workflow skill-contracts
 
   skillspector:
     name: SkillSpector static skill scan
