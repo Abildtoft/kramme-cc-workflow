@@ -1,6 +1,7 @@
 # Dev Server Detection
 
-Auto-detect a running development server for live inspection. This skill uses the shared plugin contract in `${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/README.md`; do not duplicate the port cascade here.
+Auto-detect a running development server for live inspection. The detector
+resolves an already running local app; it does not start a server.
 
 ## Command
 
@@ -10,7 +11,35 @@ Run:
 ${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh auto
 ```
 
-The detector does not start a server. It resolves an already running local app by using explicit caller values when present, `.claude/launch.json`, framework config, Procfile/Docker/package metadata, env `PORT=`, framework defaults, and finally a common-port listener scan.
+Optional caller inputs:
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh --url http://localhost:3000
+${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh --port 5173
+${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh --launch-config web
+```
+
+## Detection Order
+
+Use explicit caller values first. If no explicit URL or port is provided, the
+detector resolves candidates in this order:
+
+1. `.claude/launch.json` `port` from the selected launch configuration. If
+   multiple launch configs exist and no config is selected, only configured
+   launch ports are considered.
+2. Framework config files such as `next.config.*`, `vite.config.*`,
+   `nuxt.config.*`, and `astro.config.*`.
+3. Rails `config/puma.rb`.
+4. `Procfile.dev` web command.
+5. `docker-compose.yml` port mappings.
+6. `package.json` `dev` or `start` script flags.
+7. `.env.local`, `.env.development`, then `.env` `PORT=`.
+8. Framework defaults.
+9. Common-port listener scan as the final running-server fallback.
+
+Do not scan prose files such as `AGENTS.md`, `CLAUDE.md`, READMEs, or issue
+text for ports. Those files often contain examples and stale troubleshooting
+notes.
 
 ## Output Handling
 
@@ -20,3 +49,9 @@ The detector does not start a server. It resolves an already running local app b
 - `ERROR: ...` on stderr -> stop and show the diagnostic.
 
 After a URL is selected, still run the normal curl health check from the parent skill. That preserves the explicit 4xx warning and 5xx hard-stop behavior.
+
+## Maintenance Source
+
+The implementation source of truth is
+`${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/`. Keep this reference self-contained
+for runtime use, and update it when the detector contract changes.

@@ -110,6 +110,11 @@ Restart Claude Code after updating for changes to take effect.
 
 Three common workflows to try after installation:
 
+For repository work, start with [CONTRIBUTING.md](CONTRIBUTING.md), then use
+[docs/architecture.md](kramme-cc-workflow/docs/architecture.md) and
+[docs/code-map.md](kramme-cc-workflow/docs/code-map.md) to find the relevant
+subsystem and tests.
+
 ### Plan and implement with SIW
 
 SIW (Structured Implementation Workflow) breaks non-trivial work into spec-driven issues tracked in local markdown files.
@@ -529,6 +534,9 @@ CLI tools that enhance the plugin experience. Some are required for specific com
 
 ## Contributing
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor and agent workflow,
+including source maps, verification commands, and documentation expectations.
+
 ### PR Title Format
 
 PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/):
@@ -751,6 +759,9 @@ See [CLAUDE.md](CLAUDE.md) for detailed conventions. Quick reference:
 - [Plugins Reference](https://code.claude.com/docs/en/plugins-reference)
 - [Hooks Reference](https://code.claude.com/docs/en/hooks)
 - [Skills Documentation](https://code.claude.com/docs/en/skills)
+- [Repository Architecture](kramme-cc-workflow/docs/architecture.md)
+- [Repository Code Map](kramme-cc-workflow/docs/code-map.md)
+- [Decision Index](kramme-cc-workflow/docs/decisions/README.md)
 - [SIW Workflow Reference](kramme-cc-workflow/docs/siw.md)
 
 ## Releases
