@@ -12,6 +12,9 @@ const {
   sanitizeDescription,
   uniqueName,
 } = require("./frontmatter");
+const {
+  skillFrontmatterFieldByLoaderProperty,
+} = require("../schemas/skill-contracts");
 
 /**
  * @typedef {Object} ClaudeAgent
@@ -79,6 +82,23 @@ const {
  * @property {Set<string>} [knownCommands]
  * @property {Map<string, string>} [knownAgentSkills]
  */
+
+const ARGUMENT_HINT_FIELD = skillFrontmatterFieldByLoaderProperty(
+  "argumentHint",
+  "argument-hint",
+);
+const DISABLE_MODEL_INVOCATION_FIELD = skillFrontmatterFieldByLoaderProperty(
+  "disableModelInvocation",
+  "disable-model-invocation",
+);
+const USER_INVOCABLE_FIELD = skillFrontmatterFieldByLoaderProperty(
+  "userInvocable",
+  "user-invocable",
+);
+const PLATFORMS_FIELD = skillFrontmatterFieldByLoaderProperty(
+  "platforms",
+  "kramme-platforms",
+);
 
 /**
  * @param {ClaudeSkill[]} skills
@@ -252,13 +272,13 @@ function convertCommandSkill(command, knownCommands, name, knownAgentSkills) {
     description: sanitizeDescription(
       command.description ?? `Converted from Claude command ${command.name}`,
     ),
-    "argument-hint": command.argumentHint,
+    [ARGUMENT_HINT_FIELD]: command.argumentHint,
     "allowed-tools":
       command.allowedTools && command.allowedTools.length > 0
         ? command.allowedTools
         : undefined,
-    "disable-model-invocation": command.disableModelInvocation,
-    "user-invocable": true,
+    [DISABLE_MODEL_INVOCATION_FIELD]: command.disableModelInvocation,
+    [USER_INVOCABLE_FIELD]: true,
   };
   const transformedBody = transformContentForCodex(command.body.trim(), {
     knownCommands,
@@ -278,14 +298,14 @@ function convertExistingSkillForCodex(skill, knownCommands, knownAgentSkills) {
     description: sanitizeDescription(
       skill.description ?? `Converted from Claude skill ${skill.name}`,
     ),
-    "argument-hint": skill.argumentHint,
+    [ARGUMENT_HINT_FIELD]: skill.argumentHint,
     "allowed-tools":
       skill.allowedTools && skill.allowedTools.length > 0
         ? skill.allowedTools
         : undefined,
-    "disable-model-invocation": skill.disableModelInvocation,
-    "user-invocable": skill.userInvocable,
-    "kramme-platforms":
+    [DISABLE_MODEL_INVOCATION_FIELD]: skill.disableModelInvocation,
+    [USER_INVOCABLE_FIELD]: skill.userInvocable,
+    [PLATFORMS_FIELD]:
       skill.platforms && skill.platforms.length > 0
         ? skill.platforms
         : undefined,

@@ -113,6 +113,7 @@ process.exit(1);
 	cp "$REPO_ROOT/scripts/install-codex.sh" "$isolated/kramme-cc-workflow/scripts/install-codex.sh"
 	cp "$REPO_ROOT/scripts/convert-plugin.js" "$isolated/kramme-cc-workflow/scripts/convert-plugin.js"
 	cp -R "$REPO_ROOT/scripts/convert-plugin" "$isolated/kramme-cc-workflow/scripts/convert-plugin"
+	cp -R "$REPO_ROOT/scripts/schemas" "$isolated/kramme-cc-workflow/scripts/schemas"
 
 	cat >"$isolated/package.json" <<'JSON'
 {
@@ -609,6 +610,31 @@ const { loadClaudePlugin } = require(process.argv[1]);
 	[ "$status" -eq 1 ]
 	run grep -RFn 'disable-model-invocation: "true"' "$TMP_DIR/.codex/skills"
 	[ "$status" -eq 1 ]
+}
+
+@test "converter normalizes boolean frontmatter fields from shared schema" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	run node -e '
+const assert = require("assert");
+const schema = require(process.argv[1]);
+const { normalizeFrontmatterField } = require(process.argv[2]);
+
+const fields = schema.skill_frontmatter.fields;
+for (const [field, contract] of Object.entries(fields)) {
+  if (contract.type === "boolean") {
+    assert.strictEqual(normalizeFrontmatterField(field, "true"), true, field);
+    assert.strictEqual(normalizeFrontmatterField(field, "false"), false, field);
+  } else {
+    assert.strictEqual(normalizeFrontmatterField(field, "true"), "true", field);
+  }
+}
+console.log("ok");
+' "$REPO_ROOT/scripts/schemas/skill-contracts.json" "$REPO_ROOT/scripts/convert-plugin/loader"
+	[ "$status" -eq 0 ]
+	[ "$output" = "ok" ]
 }
 
 @test "codex conversion preserves representative skill contracts" {

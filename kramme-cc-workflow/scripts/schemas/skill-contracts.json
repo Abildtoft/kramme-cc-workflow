@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "skill_frontmatter": {
+    "fields": {
+      "name": {
+        "type": "string",
+        "required": true
+      },
+      "description": {
+        "type": "string",
+        "required": true
+      },
+      "argument-hint": {
+        "type": "string",
+        "required": false,
+        "loader_property": "argumentHint"
+      },
+      "disable-model-invocation": {
+        "type": "boolean",
+        "required": true,
+        "loader_property": "disableModelInvocation"
+      },
+      "user-invocable": {
+        "type": "boolean",
+        "required": true,
+        "loader_property": "userInvocable"
+      },
+      "kramme-platforms": {
+        "type": "string_array",
+        "required": false,
+        "loader_property": "platforms"
+      }
+    }
+  },
+  "source_manifest": {
+    "required_fields": [
+      "id",
+      "title",
+      "rationale",
+      "last_reviewed_at",
+      "baseline_hash"
+    ],
+    "one_of_fields": [
+      "url",
+      "context7_library"
+    ]
+  }
+}

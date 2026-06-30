@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "contract_schema": "kramme-cc-workflow/scripts/schemas/skill-contracts.json",
   "notes": [
     "This file is JSON-compatible YAML so scripts/lint-skill-contracts.py can parse it with Python stdlib only.",
     "allow_empty_fields records pre-existing baseline_hash debt. Remove entries as kramme:skill:audit-sources backfills hashes.",
@@ -310,17 +311,6 @@
       "## Rationalizations",
       "### Common Rationalizations"
     ],
-    "required_fields": [
-      "id",
-      "title",
-      "rationale",
-      "last_reviewed_at",
-      "baseline_hash"
-    ],
-    "one_of_fields": [
-      "url",
-      "context7_library"
-    ],
     "allow_empty_fields": [
       {
         "path": "kramme-cc-workflow/skills/kramme:pr:github-review/references/sources.yaml",
@@ -542,12 +532,6 @@
     "warn_skill_lines": 400,
     "skill_line_report_limit": 20,
     "max_description_chars": 1024,
-    "required_frontmatter": [
-      "name",
-      "description",
-      "disable-model-invocation",
-      "user-invocable"
-    ],
     "allow_line_count_over": [
       "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
       "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md",
