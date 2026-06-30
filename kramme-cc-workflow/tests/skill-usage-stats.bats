@@ -143,3 +143,26 @@ run_usage_hook() {
 	[ "$(echo "$output" | jq -r 'length')" = "1" ]
 	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:pr:create" ]
 }
+
+@test "scan prunes dependency and generated directories" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for skill usage tests"
+	fi
+
+	SCAN_ROOT="$BATS_TEST_TMPDIR/project"
+	mkdir -p "$SCAN_ROOT/transcripts" "$SCAN_ROOT/node_modules/pkg" "$SCAN_ROOT/dist"
+	printf '%s\n' \
+		'{"type":"user","message":{"content":"Use /kramme:pr:create"},"session_id":"session-1"}' \
+		>"$SCAN_ROOT/transcripts/session.jsonl"
+	printf '%s\n' \
+		'{"type":"user","message":{"content":"Use /kramme:ignored-dependency"},"session_id":"session-2"}' \
+		>"$SCAN_ROOT/node_modules/pkg/session.jsonl"
+	printf '%s\n' \
+		'{"type":"user","message":{"content":"Use /kramme:ignored-generated"},"session_id":"session-3"}' \
+		>"$SCAN_ROOT/dist/session.jsonl"
+
+	run node "$SCRIPT" scan "$SCAN_ROOT" --json
+	[ "$status" -eq 0 ]
+	[ "$(echo "$output" | jq -r 'length')" = "1" ]
+	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:pr:create" ]
+}

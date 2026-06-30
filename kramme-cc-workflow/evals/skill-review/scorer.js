@@ -135,6 +135,5 @@ function aggregateScores(itemResults) {
 
 module.exports = {
   aggregateScores,
-  normalizeText,
   scoreItem,
 };

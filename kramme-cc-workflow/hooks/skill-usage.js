@@ -12,6 +12,21 @@ const STATE_DIR = path.join(
 const DEFAULT_USAGE_FILE = path.join(STATE_DIR, "skill-usage.jsonl");
 const SLASH_SKILL_PATTERN = /(?:^|\s)\/(kramme:[A-Za-z0-9:_-]+)/g;
 const DIRECT_SKILL_PATTERN = /^\/?(kramme:[A-Za-z0-9:_-]+)(?:\s|$)/;
+const SCAN_PRUNED_DIRS = new Set([
+  ".cache",
+  ".git",
+  ".hg",
+  ".next",
+  ".npm",
+  ".pnpm-store",
+  ".svn",
+  ".turbo",
+  ".yarn",
+  "build",
+  "coverage",
+  "dist",
+  "node_modules",
+]);
 
 function main() {
   const [command, ...args] = process.argv.slice(2);
@@ -416,6 +431,7 @@ function scanPath(entry) {
   if (!fs.existsSync(entry)) return [];
   const stat = fs.statSync(entry);
   if (stat.isDirectory()) {
+    if (shouldPruneScanDirectory(entry)) return [];
     return fs
       .readdirSync(entry)
       .flatMap((child) => scanPath(path.join(entry, child)));
@@ -423,6 +439,10 @@ function scanPath(entry) {
   if (!stat.isFile()) return [];
 
   return scanFile(entry);
+}
+
+function shouldPruneScanDirectory(entry) {
+  return SCAN_PRUNED_DIRS.has(path.basename(entry));
 }
 
 function scanFile(file) {
