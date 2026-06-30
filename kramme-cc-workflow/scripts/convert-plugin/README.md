@@ -11,9 +11,14 @@ source of truth.
 | --- | --- |
 | `../convert-plugin.js` | CLI entry point for `install` and `stats`; resolves target and root options. |
 | `loader.js` | Resolves plugin input, reads manifests, loads agents, skills, legacy commands, hooks, and MCP servers. |
-| `codex-transformer.js` | Converts Claude skills, invocable commands, agents, hooks, and shared script references into a Codex bundle. |
-| `codex-writer.js` | Writes the converted bundle, stages output, rewrites installed shared-script paths, updates managed state, and finalizes files. |
+| `codex-transformer.js` | Converts Claude skills, invocable commands, agents, hooks, and instruction text into a Codex bundle. |
+| `ask-user-question-parser.js` | Parses and rewrites structured `AskUserQuestion` prompt blocks into direct-chat instructions. |
+| `codex-writer.js` | Coordinates converted bundle output, managed install state, and AGENTS.md tool-map updates. |
+| `codex-bundle-output.js` | Stages and finalizes prompts, skills, agent skills, shared scripts, config, and hook plugin output. |
 | `codex-config.js` | Upserts and removes managed TOML tables for MCP servers and converted hook plugin config. |
+| `codex-hook-plugin-writer.js` | Builds converted Codex hook plugin trees, marketplaces, plugin cache entries, and hook bootstrap scripts. |
+| `codex-markdown-resources.js` | Rewrites copied Markdown resource files with Codex instruction and shared-script references. |
+| `codex-shared-scripts.js` | Builds and applies shared-script path rewrites for installed Codex output. |
 | `install-staging.js` | Provides staged install, preflight conflict checks, stale managed-file pruning, and cleanup. |
 | `install-state.js` | Reads, sanitizes, rebuilds, and writes install state and per-plugin manifests. |
 | `filesystem.js` | Shared safe filesystem helpers for path containment, JSON/text I/O, copies, and directory listing. |
