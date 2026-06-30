@@ -64,6 +64,17 @@ Example shape:
 
 {{Describe the target behavior after this PR lands. Contrast with current behavior where helpful.}}
 
+## Product / Quality Bar
+
+{{State the concrete product, workflow, maintainer, reviewer, security, reliability, or data-integrity outcome this PR must achieve. Name the beneficiary, what should improve, what must remain stable, and how a reviewer will know the outcome is better rather than merely different.}}
+
+| Dimension | Bar |
+| --- | --- |
+| Beneficiary / workflow | {{Who benefits and what workflow or maintenance path improves}} |
+| Better outcome | {{Observable behavior, reliability, security, maintainability, or workflow result}} |
+| Must remain stable | {{User-visible behavior, API contract, data shape, performance, compatibility, or process that must not regress}} |
+| Evidence required | {{Tests, manual QA, audit rerun, screenshot, metric, reviewer check, or other proof needed before completion}} |
+
 ## Commands You Will Need
 
 {{Use exact commands discovered from the repo, not guesses. Include only commands relevant to this plan. If no command exists, say which verification gap exists and include the closest available check.}}

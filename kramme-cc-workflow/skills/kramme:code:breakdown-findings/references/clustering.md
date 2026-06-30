@@ -1,6 +1,6 @@
 # Clustering rules and process
 
-Load this during Phase 2 for findings-mode input. For a pre-clustered handoff, use only the dependency graph, execution-label, and `PLAN:` mapping guidance; do not apply sizing flags or split/merge themes.
+Load this during Phase 2 for findings-mode input. For a pre-clustered handoff, use only the dependency graph, execution-label, and `PLAN:` mapping guidance; do not split or merge themes. Handoff validity and oversized-theme confirmation are handled in `SKILL.md` before Phase 3.
 
 ## Rules
 
@@ -17,6 +17,8 @@ Load this during Phase 2 for findings-mode input. For a pre-clustered handoff, u
    | **XL** | **9+ files - split into a series** |
 
    Aim for S/M themes. Any theme that sizes XL MUST split before generating plans.
+
+   Size is not only file count. Increase the size one level when a theme crosses architectural layers, changes public APIs or persisted data, touches generated snapshots or fixtures, alters verification infrastructure, or requires coordination with migration, rollout, or compatibility constraints. Treat a theme as XL, even under 9 files, when it combines a public contract change with broad call-site updates, a data migration/backfill, or unrelated subsystems that cannot be reviewed as one coherent PR.
 
 2. **Avoid overlap**: every finding belongs to exactly one theme. If a finding could fit multiple themes, assign it to the one where it shares the strongest implementation dependency.
 3. **Singleton themes are fine**: if a finding does not cluster with others, it becomes its own single-finding theme.
