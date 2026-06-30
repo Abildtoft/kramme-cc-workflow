@@ -842,6 +842,7 @@ def check_marker_manifests(root: Path, registry: dict[str, Any], failures: list[
     required_fields = config.get("required_fields", [])
     one_of_fields = config.get("one_of_fields", [])
     allow_empty = allow_empty_field_keys(config, failures)
+    used_allow_empty: set[tuple[str, str, str]] = set()
 
     for path in skill_paths(root, pattern):
         text = read_text(path)
@@ -868,17 +869,27 @@ def check_marker_manifests(root: Path, registry: dict[str, Any], failures: list[
                         f"marker manifest: {manifest_relative} entry {entry_id!r} is missing {field!r}"
                     )
                     continue
-                if is_empty_value(value) and (manifest_relative, entry_id, field) not in allow_empty:
-                    line = entry.get("_lines", {}).get(field, "?")
-                    failures.append(
-                        f"marker manifest: {manifest_relative}:{line} entry {entry_id!r} "
-                        f"has empty {field!r}"
-                    )
+                if is_empty_value(value):
+                    allow_key = (manifest_relative, entry_id, field)
+                    if allow_key in allow_empty:
+                        used_allow_empty.add(allow_key)
+                    else:
+                        line = entry.get("_lines", {}).get(field, "?")
+                        failures.append(
+                            f"marker manifest: {manifest_relative}:{line} entry {entry_id!r} "
+                            f"has empty {field!r}"
+                        )
             if one_of_fields and not any(not is_empty_value(entry.get(field)) for field in one_of_fields):
                 failures.append(
                     f"marker manifest: {manifest_relative} entry {entry_id!r} must define one of "
                     + ", ".join(repr(field) for field in one_of_fields)
                 )
+
+    for manifest_relative, entry_id, field in sorted(allow_empty - used_allow_empty):
+        failures.append(
+            f"marker manifest: allow_empty_fields entry for {manifest_relative} entry {entry_id!r} "
+            f"field {field!r} does not match an empty required field"
+        )
 
 
 def canonical_epilogue_heading(line: str) -> str | None:
