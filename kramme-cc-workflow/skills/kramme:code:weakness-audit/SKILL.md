@@ -1,7 +1,7 @@
 ---
 name: kramme:code:weakness-audit
-description: "Identify the biggest codebase weaknesses across maintainability, readability, and correctness, then write a ranked CODEBASE_WEAKNESS_REPORT.md. Use when the user asks for top weaknesses, codebase health risks, maintainability/readability/correctness audit, or where to invest cleanup effort. Use --team for multi-agent cross-validation. Not for PR-only review, implementation, security-specific audits, or broad refactor opportunity inventories."
-argument-hint: "[full | path <file-or-folder> | feature <name>] [--output <path>] [--max-findings N] [--team]"
+description: "Identify the biggest codebase weaknesses across maintainability, readability, and correctness using a multi-agent audit team by default, then write a ranked CODEBASE_WEAKNESS_REPORT.md. Use when the user asks for top weaknesses, codebase health risks, maintainability/readability/correctness audit, or where to invest cleanup effort. Use --solo only for a faster single-threaded fallback. Not for PR-only review, implementation, security-specific audits, or broad refactor opportunity inventories."
+argument-hint: "[full | path <file-or-folder> | feature <name>] [--output <path>] [--max-findings N] [--solo]"
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code, codex]
@@ -15,21 +15,26 @@ Identify the highest-leverage weaknesses in a codebase across maintainability, r
 
 **What it touches:** writes one report file, `CODEBASE_WEAKNESS_REPORT.md` by default. Read-only otherwise. Do not modify implementation code.
 
-## Team Mode
+## Execution Mode
 
-If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments.
+Team mode is the standard workflow. Unless `$ARGUMENTS` contains `--solo`, remove an optional compatibility `--team` flag if present, read `references/team-mode.md`, and follow that workflow instead of the solo fallback below. Pass the remaining arguments through as the team-mode arguments.
+
+If `$ARGUMENTS` contains `--solo`, remove that flag and follow the solo fallback workflow below. Use `--solo` only for small scopes, constrained runtimes, or when multi-agent execution is unavailable.
 
 ## Inputs
 
 - **Scope selector**: defaults to `full`. Accept `full`, `path <file-or-folder>`, `feature <name>`, `--scope full`, `--scope path <file-or-folder>`, or `--scope feature <name>`.
 - **Output path**: optional `--output <path>`. Default is `CODEBASE_WEAKNESS_REPORT.md` in the project root. Refuse paths outside the working tree unless the user explicitly confirms.
-- **Finding cap**: optional `--max-findings N`. Default is `12`; cap at `20` unless the user explicitly asks for a broader inventory.
+- **Finding cap**: optional `--max-findings N`. Default is `20`; cap at `30` unless the user explicitly asks for a broader inventory. Team mode should collect a broader raw candidate pool before final filtering; this cap applies only to active ranked findings in the final report.
 - **Base branch**: optional `--base <ref>` only for change-history context. This skill is not PR scoped; use `/kramme:pr:code-review` for PR-only review.
-- **Team mode**: optional `--team`. Handled by the Team Mode section above and removed before normal input parsing.
+- **Team mode**: default. Optional `--team` is accepted as a no-op compatibility flag and removed before parsing.
+- **Solo mode**: optional `--solo`. Handled by the Execution Mode section above and removed before normal input parsing.
 
 If the arguments contain multiple scope selectors, pause and ask for one scope. If a path-shaped argument does not resolve, ask for clarification instead of treating it as a feature name.
 
-## Workflow
+## Solo Fallback Workflow
+
+This workflow is only for explicit `--solo` runs or constrained runtimes. Default audits should use the multi-agent workflow in `references/team-mode.md`.
 
 ### 1. Orient
 
@@ -59,7 +64,7 @@ If the arguments contain multiple scope selectors, pause and ask for one scope. 
 
 Read `references/audit-rubric.md` before recording findings.
 
-Scan through three lenses in the main thread. For multi-agent cross-validation, use `--team`.
+Scan through three lenses in the main thread. Default multi-agent audits use `references/team-mode.md`; this section is intentionally lower coverage.
 
 - **Maintainability lens**: module boundaries, coupling, duplication, complexity, ownership clarity, change blast radius, operational friction, and testability.
 - **Readability lens**: naming, local comprehension, control-flow clarity, domain language, file organization, comment quality, and traversability from entry points to implementation.
