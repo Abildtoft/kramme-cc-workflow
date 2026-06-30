@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 const path = require("path");
@@ -12,6 +13,78 @@ const {
   uniqueName,
 } = require("./frontmatter");
 
+/**
+ * @typedef {Object} ClaudeAgent
+ * @property {string} name
+ * @property {string | undefined} [description]
+ * @property {string[] | undefined} [capabilities]
+ * @property {string} body
+ * @property {string | undefined} [sourcePath]
+ *
+ * @typedef {Object} ClaudeCommand
+ * @property {string} name
+ * @property {string | undefined} [description]
+ * @property {string | undefined} [argumentHint]
+ * @property {string[] | undefined} [allowedTools]
+ * @property {boolean | string | undefined} [disableModelInvocation]
+ * @property {string} body
+ * @property {string | undefined} [sourcePath]
+ *
+ * @typedef {Object} ClaudeSkill
+ * @property {string} name
+ * @property {string | undefined} [description]
+ * @property {string | undefined} [argumentHint]
+ * @property {string[] | undefined} [allowedTools]
+ * @property {boolean | string | undefined} [disableModelInvocation]
+ * @property {boolean | string | undefined} [userInvocable]
+ * @property {string[] | undefined} [platforms]
+ * @property {string} body
+ * @property {string} sourceDir
+ *
+ * @typedef {Object} ClaudePlugin
+ * @property {ClaudeAgent[]} agents
+ * @property {ClaudeCommand[]} commands
+ * @property {ClaudeSkill[]} skills
+ * @property {Record<string, any>} manifest
+ * @property {string} root
+ * @property {unknown} [hooks]
+ * @property {unknown} [mcpServers]
+ *
+ * @typedef {Object} CodexSkillFile
+ * @property {string} name
+ * @property {string} content
+ * @property {string} [sourceDir]
+ *
+ * @typedef {Object} CodexHookPlugin
+ * @property {string} name
+ * @property {string} marketplaceName
+ * @property {string} version
+ * @property {Record<string, any>} manifest
+ * @property {unknown} hooks
+ * @property {string} hookSourceDir
+ * @property {{ sourceDir: string, targetDir: string }[]} sharedScriptDirs
+ * @property {{ sourceFile: string, targetPath: string }[]} sharedScriptFiles
+ *
+ * @typedef {Object} CodexBundle
+ * @property {{ name: string, content: string }[]} prompts
+ * @property {CodexSkillFile[]} skillDirs
+ * @property {CodexSkillFile[]} generatedSkills
+ * @property {CodexSkillFile[]} agentSkills
+ * @property {Set<string>} knownCommands
+ * @property {Map<string, string>} knownAgentSkills
+ * @property {unknown} [mcpServers]
+ * @property {CodexHookPlugin | undefined} [codexPlugin]
+ *
+ * @typedef {Object} CodexTransformOptions
+ * @property {Set<string>} [knownCommands]
+ * @property {Map<string, string>} [knownAgentSkills]
+ */
+
+/**
+ * @param {ClaudeSkill[]} skills
+ * @param {ClaudeCommand[]} commands
+ * @param {string} platform
+ */
 function filterByPlatform(skills, commands, platform) {
   const excluded = new Set();
   for (const skill of skills) {
@@ -28,6 +101,10 @@ function filterByPlatform(skills, commands, platform) {
   };
 }
 
+/**
+ * @param {ClaudePlugin} plugin
+ * @returns {CodexBundle}
+ */
 function convertClaudeToCodex(plugin) {
   const { skills, commands } = filterByPlatform(
     plugin.skills,
@@ -125,6 +202,11 @@ function convertCodexHookPlugin(plugin) {
   };
 }
 
+/**
+ * @param {ClaudeAgent} agent
+ * @param {Set<string>} usedNames
+ * @returns {CodexSkillFile}
+ */
 function convertAgentSkill(agent, usedNames) {
   const name = uniqueName(codexName(agent.name), usedNames);
   const description = sanitizeDescription(
@@ -219,6 +301,11 @@ function convertExistingSkillForCodex(skill, knownCommands, knownAgentSkills) {
   return { name: skill.name, sourceDir: skill.sourceDir, content };
 }
 
+/**
+ * @param {string} body
+ * @param {CodexTransformOptions} [options]
+ * @returns {string}
+ */
 function transformContentForCodex(body, options = {}) {
   let result = body;
   result = rewriteTaskCalls(result);
@@ -278,6 +365,7 @@ function rewriteCodexAgentFileReferences(text, knownAgentSkills) {
   return text.replace(agentPathPattern, toSkillReference);
 }
 
+/** @type {Array<[RegExp, string]>} */
 const CODEX_INSTRUCTION_REPLACEMENTS = [
   [/### Using AskUserQuestion Correctly\b/g, "### Asking Questions in Codex"],
   [

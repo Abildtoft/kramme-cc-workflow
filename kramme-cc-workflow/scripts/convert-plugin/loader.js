@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 const fs = require("fs/promises");
@@ -10,6 +11,48 @@ const {
   resolveWithinRoot,
 } = require("./filesystem");
 
+/**
+ * @typedef {Object} ClaudeAgent
+ * @property {string} name
+ * @property {string | undefined} [description]
+ * @property {string[] | undefined} [capabilities]
+ * @property {string | undefined} [model]
+ * @property {string} body
+ * @property {string} sourcePath
+ *
+ * @typedef {Object} ClaudeCommand
+ * @property {string} name
+ * @property {string | undefined} [description]
+ * @property {string | undefined} [argumentHint]
+ * @property {string | undefined} [model]
+ * @property {string[] | undefined} [allowedTools]
+ * @property {boolean | string | undefined} [disableModelInvocation]
+ * @property {string} body
+ * @property {string} sourcePath
+ *
+ * @typedef {Object} ClaudeSkill
+ * @property {string} name
+ * @property {string | undefined} [description]
+ * @property {string | undefined} [argumentHint]
+ * @property {string | undefined} [model]
+ * @property {string[] | undefined} [allowedTools]
+ * @property {boolean | string | undefined} [disableModelInvocation]
+ * @property {boolean | string | undefined} [userInvocable]
+ * @property {string[] | undefined} [platforms]
+ * @property {string} body
+ * @property {string} sourceDir
+ * @property {string} skillPath
+ *
+ * @typedef {Object} ClaudePlugin
+ * @property {string} root
+ * @property {Record<string, any>} manifest
+ * @property {ClaudeAgent[]} agents
+ * @property {ClaudeCommand[]} commands
+ * @property {ClaudeSkill[]} skills
+ * @property {unknown} [hooks]
+ * @property {unknown} [mcpServers]
+ */
+
 function normalizeFrontmatterBoolean(value) {
   if (typeof value === "boolean") return value;
   if (typeof value !== "string") return value;
@@ -20,6 +63,10 @@ function normalizeFrontmatterBoolean(value) {
   return value;
 }
 
+/**
+ * @param {unknown} input
+ * @returns {Promise<string>}
+ */
 async function resolvePluginInput(input) {
   const directPath = path.resolve(String(input));
   if (await pathExists(directPath)) return directPath;
@@ -67,6 +114,10 @@ async function resolveMarketplacePlugin(root, slug) {
   return resolveWithinRoot(root, source, "marketplace plugin source");
 }
 
+/**
+ * @param {string} inputPath
+ * @returns {Promise<ClaudePlugin>}
+ */
 async function loadClaudePlugin(inputPath) {
   const root = await resolveClaudeRoot(inputPath);
   const manifestPath = path.join(root, ".claude-plugin", "plugin.json");

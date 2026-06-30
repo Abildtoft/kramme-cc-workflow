@@ -1,4 +1,4 @@
-.PHONY: lint lint-shell lint-python format-check preflight pr-verify verify test test-bats test-node test-python test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage coverage-node coverage-python check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-shell-deps check-ruff-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
+.PHONY: lint lint-shell lint-python lint-js format-check preflight pr-verify verify test test-bats test-node test-python test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage coverage-node coverage-python check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-shell-deps check-ruff-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
 
 SHELLCHECK ?= shellcheck
 SHELLCHECK_SEVERITY ?= error
@@ -6,6 +6,7 @@ RUFF ?= ruff
 ROOT_DIR := $(abspath ..)
 PLUGIN_REL := $(notdir $(CURDIR))
 PRETTIER ?= $(ROOT_DIR)/node_modules/.bin/prettier
+TSC ?= $(ROOT_DIR)/node_modules/.bin/tsc
 SKILLSPECTOR_FORMAT ?= markdown
 SKILLSPECTOR_SEMANTIC_FORMAT ?= json
 SKILLSPECTOR_FAIL_ON ?= none
@@ -32,13 +33,16 @@ SHELLCHECK_FILES = \
 	skills/*/scripts/*.sh
 
 # Start at error severity; ratchet toward warnings after existing scripts are cleaned up.
-lint: lint-shell lint-python
+lint: lint-shell lint-python lint-js
 
 lint-shell: check-shell-deps
 	@$(SHELLCHECK) --severity=$(SHELLCHECK_SEVERITY) $(SHELLCHECK_FILES)
 
 lint-python: check-python-deps check-ruff-deps
 	@$(RUFF) check .
+
+lint-js: check-js-deps
+	@"$(TSC)" -p jsconfig.json
 
 format-check: check-format-deps
 	@cd "$(ROOT_DIR)" && "$(PRETTIER)" --check $(FORMAT_CHECK_FILES)
@@ -183,7 +187,11 @@ check-shell-deps:
 check-ruff-deps:
 	@command -v $(RUFF) >/dev/null 2>&1 || { echo "$(RUFF) not found. Install ruff before running lint or verify."; exit 1; }
 
-check-static-deps: check-python-deps check-shell-deps check-ruff-deps
+check-js-deps:
+	@command -v node >/dev/null 2>&1 || { echo "node not found. Install Node.js before running lint-js or verify."; exit 1; }
+	@command -v "$(TSC)" >/dev/null 2>&1 || { echo "TypeScript not found at $(TSC). Run 'npm ci' from the repository root or set TSC to an executable command."; exit 1; }
+
+check-static-deps: check-python-deps check-shell-deps check-ruff-deps check-js-deps
 
 check-test-deps: check-bats-deps check-node-deps check-python-deps
 
