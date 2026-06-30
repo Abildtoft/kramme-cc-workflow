@@ -559,11 +559,12 @@ Regular branch commits should use plain-English commit messages (no Conventional
 
 ## Testing
 
-The hooks are tested using [BATS](https://github.com/bats-core/bats-core) (Bash Automated Testing System). The test suite also requires `jq` for JSON parsing in hooks.
+The hooks are tested using [BATS](https://github.com/bats-core/bats-core) (Bash Automated Testing System). Pure JavaScript and Python helper modules also have focused unit test runners. The Bats suite requires `jq` for JSON parsing in hooks.
 
 ### Setup
 
 ```bash
+npm ci --no-audit --no-fund
 make -C kramme-cc-workflow install-test-deps
 ```
 
@@ -572,6 +573,18 @@ make -C kramme-cc-workflow install-test-deps
 ```bash
 # Run all tests
 make -C kramme-cc-workflow test
+
+# Run only Bats integration tests
+make -C kramme-cc-workflow test-bats
+
+# Run only Node unit tests
+make -C kramme-cc-workflow test-node
+
+# Run only Python unit tests
+make -C kramme-cc-workflow test-python
+
+# Run unit coverage reports without enforcing thresholds
+make -C kramme-cc-workflow coverage
 
 # Run with verbose output (show test names)
 make -C kramme-cc-workflow test-verbose
@@ -597,19 +610,20 @@ make -C kramme-cc-workflow test-skill-usage
 
 ### Pre-PR Verification
 
-`make -C kramme-cc-workflow test` is the fast default Bats suite. Before a
-release candidate or before marking a larger Pull Request ready, run the
-stronger local gate:
+`make -C kramme-cc-workflow test` is the fast default suite. It runs the Node
+unit tests, Python unit tests, and Bats integration tests. Before a release
+candidate or before marking a larger Pull Request ready, run the stronger local
+gate:
 
 ```bash
 make -C kramme-cc-workflow verify
 ```
 
 The `verify` target runs shell and Python linting, skill-contract linting,
-changed-skill SkillSpector scanning with `--fail-on high`, the Bats suite, and
-the skill-review eval split. It expects the existing local tools used by those
-checks to be installed: `shellcheck`, `ruff`, `skillspector`, `bats`, `jq`, and
-Node.js.
+changed-skill SkillSpector scanning with `--fail-on high`, the full fast test
+suite, and the skill-review eval split. It expects the existing local tools used
+by those checks to be installed: `shellcheck`, `ruff`, `skillspector`, `bats`,
+`jq`, Python 3, and Node.js.
 
 ### Skill Security Scans
 

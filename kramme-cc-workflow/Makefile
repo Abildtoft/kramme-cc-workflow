@@ -1,4 +1,4 @@
-.PHONY: lint lint-shell lint-python format-check preflight pr-verify verify test test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-python-deps check-shell-deps check-ruff-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
+.PHONY: lint lint-shell lint-python format-check preflight pr-verify verify test test-bats test-node test-python test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage coverage-node coverage-python check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-shell-deps check-ruff-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
 
 SHELLCHECK ?= shellcheck
 SHELLCHECK_SEVERITY ?= error
@@ -10,6 +10,11 @@ SKILLSPECTOR_FORMAT ?= markdown
 SKILLSPECTOR_SEMANTIC_FORMAT ?= json
 SKILLSPECTOR_FAIL_ON ?= none
 SKILLSPECTOR_BASE ?= $(if $(BASE_REF),$(BASE_REF),origin/main)
+NODE_TEST_FILES = tests/node/*.test.js
+PYTHON_TEST_DIR = tests/python
+PYTHON_TEST_PATTERN = test_*.py
+PYTHON_TRACE_IGNORE_DIRS := $(shell python3 -c 'import os, sysconfig; print(os.pathsep.join(path for path in {sysconfig.get_path("stdlib"), sysconfig.get_path("platstdlib")} if path))' 2>/dev/null)
+PYTHON_TRACE_IGNORE_ARGS = $(if $(PYTHON_TRACE_IGNORE_DIRS),--ignore-dir '$(PYTHON_TRACE_IGNORE_DIRS)',)
 
 FORMAT_CHECK_FILES = \
 	package.json \
@@ -52,8 +57,19 @@ skill-contracts: check-python-deps
 	@python3 scripts/lint-skill-contracts.py
 
 # Default target - run all tests
-test: check-test-deps
+test: check-test-deps test-node test-python test-bats
+
+# Run all Bats integration tests
+test-bats: check-bats-deps
 	@./tests/run-tests.sh
+
+# Run Node unit tests
+test-node: check-node-deps
+	@node --test $(NODE_TEST_FILES)
+
+# Run Python unit tests
+test-python: check-python-deps
+	@python3 -m unittest discover -s $(PYTHON_TEST_DIR) -p '$(PYTHON_TEST_PATTERN)'
 
 # Verbose output (shows each test name)
 test-verbose:
@@ -132,6 +148,14 @@ skillopt-candidate-check:
 	@./tests/run-tests.sh
 	@node evals/skill-review/run-eval.js --split all --json
 
+coverage: coverage-node coverage-python
+
+coverage-node: check-node-deps
+	@node --test --experimental-test-coverage $(NODE_TEST_FILES)
+
+coverage-python: check-python-deps
+	@coverage_dir=$$(mktemp -d); python3 -m trace --count --missing --summary --coverdir "$$coverage_dir" $(PYTHON_TRACE_IGNORE_ARGS) --module unittest discover -s $(PYTHON_TEST_DIR) -p '$(PYTHON_TEST_PATTERN)'; status=$$?; rm -rf "$$coverage_dir"; exit $$status
+
 # Install test dependencies
 install-test-deps:
 	@echo "Installing BATS..."
@@ -141,6 +165,14 @@ install-test-deps:
 # Check verification prerequisites
 check-deps: check-static-deps check-test-deps check-format-deps check-security-changed-deps
 	@echo "All verification dependencies installed."
+
+check-bats-deps:
+	@command -v bats >/dev/null 2>&1 || { echo "BATS not found. Run 'make install-test-deps'"; exit 1; }
+	@command -v jq >/dev/null 2>&1 || { echo "jq not found. Run 'make install-test-deps'"; exit 1; }
+
+check-node-deps:
+	@command -v node >/dev/null 2>&1 || { echo "node not found. Install Node.js before running Node unit tests or coverage."; exit 1; }
+	@node -e "require.resolve('yaml')" >/dev/null 2>&1 || { echo "Node dependencies not installed. Run 'npm ci' from the repository root before running Node unit tests or coverage."; exit 1; }
 
 check-python-deps:
 	@command -v python3 >/dev/null 2>&1 || { echo "python3 not found."; exit 1; }
@@ -153,9 +185,7 @@ check-ruff-deps:
 
 check-static-deps: check-python-deps check-shell-deps check-ruff-deps
 
-check-test-deps:
-	@command -v bats >/dev/null 2>&1 || { echo "BATS not found. Run 'make install-test-deps'"; exit 1; }
-	@command -v jq >/dev/null 2>&1 || { echo "jq not found. Run 'make install-test-deps'"; exit 1; }
+check-test-deps: check-bats-deps check-node-deps check-python-deps
 
 check-format-deps:
 	@command -v node >/dev/null 2>&1 || { echo "node not found. Install Node.js before running format-check or verify."; exit 1; }

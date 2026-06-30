@@ -8,9 +8,12 @@
     "kramme-cc-workflow": "scripts/convert-plugin.js"
   },
   "scripts": {
+    "coverage": "make coverage",
     "format:check": "make format-check",
     "preflight": "make preflight",
     "test": "make test",
+    "test:node": "make test-node",
+    "test:python": "make test-python",
     "verify": "make verify",
     "verify:pr": "make pr-verify"
   },
