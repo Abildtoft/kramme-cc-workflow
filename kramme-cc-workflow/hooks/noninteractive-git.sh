@@ -599,6 +599,10 @@ evaluate_simple_git_segment() {
   while [ $# -gt 0 ]; do
     token="$1"
     base="$(token_basename "$token")"
+    if token_is_shell_alias_builtin "$token"; then
+      printf '%s\n' "$PARSE_ERROR_REASON"
+      return
+    fi
     case "$base" in
       env)
         shift
@@ -630,7 +634,7 @@ evaluate_simple_git_segment() {
           esac
         done
         ;;
-      command)
+      command | builtin)
         shift
         while [ $# -gt 0 ]; do
           parse_command_wrapper_token "$@"

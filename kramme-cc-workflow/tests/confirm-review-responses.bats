@@ -720,6 +720,20 @@ REVIEW_SUMMARY.md"
 	is_blocked
 }
 
+@test "blocks shell alias git commit when parser cannot prove target" {
+	mock_git_staged "REVIEW_OVERVIEW.md"
+	run run_hook $'shopt -s expand_aliases\nalias g=git\ng commit -m test'
+	is_blocked
+	[[ "$output" == *"Unable to safely parse command"* ]]
+}
+
+@test "blocks nested shell commit contexts when later context stages artifact" {
+	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md" "notes.txt"
+	run run_hook "sh -c 'git commit -m \"default\"; git -C repo commit -m \"selected\"'"
+	is_blocked
+	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
 @test "blocks git commit inside command substitution when exported repo selection is inherited" {
 	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
 	run run_hook "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && out=\$(git commit -m 'test')"
@@ -734,6 +748,15 @@ REVIEW_SUMMARY.md"
 EOF"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
+}
+
+@test "blocks git commit inside unquoted heredoc command substitution" {
+	mock_git_staged "REVIEW_OVERVIEW.md"
+	run run_hook "cat <<EOF
+\$(git commit -m 'test')
+EOF"
+	is_blocked
+	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
 }
 
 @test "blocks git commit with prefixed command substitution when artifact is staged" {
@@ -917,6 +940,20 @@ EOF"
 	is_blocked
 }
 
+@test "blocks shell alias git commit when parser cannot prove target without python3" {
+	mock_git_staged "REVIEW_OVERVIEW.md"
+	run run_hook_without_python $'shopt -s expand_aliases\nalias g=git\ng commit -m test'
+	is_blocked
+	[[ "$output" == *"Unable to safely parse command"* ]]
+}
+
+@test "blocks nested shell commit contexts when later context stages artifact without python3" {
+	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md" "notes.txt"
+	run run_hook_without_python "sh -c 'git commit -m \"default\"; git -C repo commit -m \"selected\"'"
+	is_blocked
+	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
 @test "blocks git commit inside command substitution when exported repo selection is inherited without python3" {
 	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
 	run run_hook_without_python "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && out=\$(git commit -m 'test')"
@@ -931,6 +968,15 @@ EOF"
 EOF"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
+}
+
+@test "blocks git commit inside unquoted heredoc command substitution without python3" {
+	mock_git_staged "REVIEW_OVERVIEW.md"
+	run run_hook_without_python "cat <<EOF
+\$(git commit -m 'test')
+EOF"
+	is_blocked
+	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
 }
 
 @test "blocks git commit with prefixed command substitution when artifact is staged without python3" {

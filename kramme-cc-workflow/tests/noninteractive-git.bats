@@ -148,6 +148,18 @@ assert_parser_fixture_decision() {
 	done < <(jq -c '.cases[] | select(.noninteractiveExpected != null)' "$PARSER_FIXTURES")
 }
 
+@test "blocks shell alias git command" {
+	run run_hook $'shopt -s expand_aliases\nalias g=git\ng commit'
+	is_blocked
+	[[ "$output" == *"Unable to safely parse command"* ]]
+}
+
+@test "blocks shell alias git command when python3 is unavailable" {
+	run run_hook_without_python $'shopt -s expand_aliases\nalias g=git\ng commit'
+	is_blocked
+	[[ "$output" == *"Unable to safely parse command"* ]]
+}
+
 @test "allows git status when python3 is unavailable" {
 	run run_hook_without_python "git status"
 	[ "$status" -eq 0 ]
@@ -360,6 +372,15 @@ EOF"
 
 	[ "$status" -eq 0 ]
 	is_allowed
+}
+
+@test "blocks git commit inside unquoted heredoc command substitution when python3 is unavailable" {
+	run run_hook_without_python "cat <<EOF
+\$(git commit)
+EOF"
+
+	is_blocked
+	[[ "$output" == *"git commit -m"* ]]
 }
 
 @test "allows sudo arguments mentioning git when python3 is unavailable" {
@@ -1312,6 +1333,14 @@ EOF"
 EOF"
 	[ "$status" -eq 0 ]
 	is_allowed
+}
+
+@test "blocks git commit inside unquoted heredoc command substitution" {
+	run run_hook "cat <<EOF
+\$(git commit)
+EOF"
+	is_blocked
+	[[ "$output" == *"git commit -m"* ]]
 }
 
 @test "blocks git commit inside if condition" {
