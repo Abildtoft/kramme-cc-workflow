@@ -463,6 +463,102 @@ console.log("ok");
 	[ ! -d "$TMP_DIR/.codex/prompts" ] || [ -z "$(ls -A "$TMP_DIR/.codex/prompts" 2>/dev/null)" ]
 }
 
+@test "codex conversion normalizes quoted boolean skill frontmatter" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	FIXTURE_PLUGIN="$TMP_DIR/boolean-plugin"
+	create_fixture_plugin "$FIXTURE_PLUGIN" "boolean-plugin"
+
+	mkdir -p "$FIXTURE_PLUGIN/skills/quoted-hidden"
+	cat >"$FIXTURE_PLUGIN/skills/quoted-hidden/SKILL.md" <<'MD'
+---
+name: quoted-hidden
+description: Quoted hidden skill
+disable-model-invocation: "true"
+user-invocable: "false"
+---
+Hidden body.
+MD
+
+	mkdir -p "$FIXTURE_PLUGIN/skills/literal-hidden"
+	cat >"$FIXTURE_PLUGIN/skills/literal-hidden/SKILL.md" <<'MD'
+---
+name: literal-hidden
+description: Literal hidden skill
+disable-model-invocation: true
+user-invocable: false
+---
+Hidden body.
+MD
+
+	mkdir -p "$FIXTURE_PLUGIN/skills/quoted-enabled"
+	cat >"$FIXTURE_PLUGIN/skills/quoted-enabled/SKILL.md" <<'MD'
+---
+name: quoted-enabled
+description: Quoted enabled skill
+disable-model-invocation: "false"
+user-invocable: "true"
+---
+Enabled body.
+MD
+
+	mkdir -p "$FIXTURE_PLUGIN/skills/literal-enabled"
+	cat >"$FIXTURE_PLUGIN/skills/literal-enabled/SKILL.md" <<'MD'
+---
+name: literal-enabled
+description: Literal enabled skill
+disable-model-invocation: false
+user-invocable: true
+---
+Enabled body.
+MD
+
+	run node -e '
+const assert = require("assert");
+const { loadClaudePlugin } = require(process.argv[1]);
+
+(async () => {
+  const plugin = await loadClaudePlugin(process.argv[2]);
+  const commandNames = plugin.commands.map((command) => command.name).sort();
+  assert.deepStrictEqual(commandNames, ["literal-enabled", "quoted-enabled"]);
+
+  const skills = Object.fromEntries(
+    plugin.skills.map((skill) => [skill.name, skill]),
+  );
+  assert.strictEqual(skills["quoted-hidden"].userInvocable, false);
+  assert.strictEqual(skills["literal-hidden"].userInvocable, false);
+  assert.strictEqual(skills["quoted-enabled"].userInvocable, true);
+  assert.strictEqual(skills["literal-enabled"].userInvocable, true);
+  assert.strictEqual(skills["quoted-hidden"].disableModelInvocation, true);
+  assert.strictEqual(skills["quoted-enabled"].disableModelInvocation, false);
+  console.log("ok");
+})().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+' "$REPO_ROOT/scripts/convert-plugin/loader" "$FIXTURE_PLUGIN"
+	[ "$status" -eq 0 ]
+	[ "$output" = "ok" ]
+
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+	[ "$status" -eq 0 ]
+
+	run grep -nF 'disable-model-invocation: true' "$TMP_DIR/.codex/skills/quoted-hidden/SKILL.md"
+	[ "$status" -eq 0 ]
+	run grep -nF 'user-invocable: false' "$TMP_DIR/.codex/skills/quoted-hidden/SKILL.md"
+	[ "$status" -eq 0 ]
+	run grep -nF 'disable-model-invocation: false' "$TMP_DIR/.codex/skills/quoted-enabled/SKILL.md"
+	[ "$status" -eq 0 ]
+	run grep -nF 'user-invocable: true' "$TMP_DIR/.codex/skills/quoted-enabled/SKILL.md"
+	[ "$status" -eq 0 ]
+	run grep -RFn 'user-invocable: "false"' "$TMP_DIR/.codex/skills"
+	[ "$status" -eq 1 ]
+	run grep -RFn 'disable-model-invocation: "true"' "$TMP_DIR/.codex/skills"
+	[ "$status" -eq 1 ]
+}
+
 @test "codex conversion preserves representative skill contracts" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for converter tests"

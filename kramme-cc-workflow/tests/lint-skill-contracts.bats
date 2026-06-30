@@ -129,6 +129,44 @@ EOF
   [[ "$output" == *"skill contract lint passed."* ]]
 }
 
+@test "readme skill sync normalizes quoted boolean frontmatter rows" {
+  write_reference_skill \
+    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:hidden/SKILL.md" \
+    "kramme:hidden" \
+    "Hidden quoted skill" \
+    '"true"' \
+    '"false"'
+  write_reference_skill \
+    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:user-only/SKILL.md" \
+    "kramme:user-only" \
+    "User-only quoted skill" \
+    '"true"' \
+    '"true"' \
+    "[target]"
+  write_file "$TMP_ROOT/README.md" <<'EOF'
+# Fixture
+
+## Skills
+
+<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->
+
+| Skill | Invocation | Arguments | Description |
+| --- | --- | --- | --- |
+| `kramme:hidden` | Hidden | — | Hidden quoted skill |
+| `/kramme:user-only` | User | `[target]` | User-only quoted skill |
+
+<!-- END SOURCE-SYNCED SKILL ROWS -->
+
+## Agents
+EOF
+  write_readme_skill_sync_registry
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
 @test "readme skill sync catches invocation arguments and description drift" {
   write_reference_skill \
     "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" \
