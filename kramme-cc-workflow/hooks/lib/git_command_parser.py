@@ -42,6 +42,7 @@ def run_noninteractive(command: str) -> int:
     }
     SHELL_EXECUTABLES = {"sh", "bash", "zsh", "dash", "ksh"}
     SHELL_OPTIONS_WITH_VALUE = {"--command", "--rcfile", "--init-file", "--startup-file", "-o", "-O", "+O"}
+    PARSE_ERROR_SUBCOMMAND = "__parse_error__"
 
     XARGS_OPTIONS_WITH_VALUE = {
         "-d",
@@ -532,7 +533,7 @@ def run_noninteractive(command: str) -> int:
                     break
                 continue
 
-            if token == "command":
+            if token in {"command", "builtin"}:
                 idx += 1
                 while idx < len(tokens):
                     command_token = tokens[idx]
@@ -644,6 +645,13 @@ def run_noninteractive(command: str) -> int:
             return None
 
         exec_token = tokens[idx]
+        if basename(exec_token) == "alias":
+            return {
+                "env": env,
+                "subcmd": PARSE_ERROR_SUBCOMMAND,
+                "args": [],
+            }
+
         if basename(exec_token) in SHELL_EXECUTABLES:
             nested_command = extract_shell_c_command(tokens[idx + 1 :])
             if nested_command is None:
@@ -946,6 +954,9 @@ def run_noninteractive(command: str) -> int:
             subcmd = parsed["subcmd"]
             args = parsed["args"]
             env = parsed["env"]
+
+            if subcmd == PARSE_ERROR_SUBCOMMAND:
+                return PARSE_ERROR_REASON
 
             if subcmd == "__shell_c__":
                 try:
@@ -1538,7 +1549,7 @@ def run_commit_contexts(command: str, parse_error_reason: str) -> int:
 
         while idx < len(tokens):
             base = os.path.basename(tokens[idx])
-            if base == "command":
+            if base in {"command", "builtin"}:
                 idx += 1
                 while idx < len(tokens):
                     token = tokens[idx]
@@ -1550,6 +1561,9 @@ def run_commit_contexts(command: str, parse_error_reason: str) -> int:
                         continue
                     break
                 continue
+
+            if base == "alias":
+                raise ParseError("shell alias definitions are not supported")
 
             if base == "sudo":
                 idx += 1

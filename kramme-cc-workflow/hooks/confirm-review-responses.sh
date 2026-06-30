@@ -403,8 +403,12 @@ EOF
 
   while [ $# -gt 0 ]; do
     token="$1"
+    if token_is_shell_alias_builtin "$token"; then
+      PARSED_SEGMENT_CONTEXT_LINES="$(emit_parse_error_context)"
+      return
+    fi
     case "$(token_basename "$token")" in
-      command)
+      command | builtin)
         shift
         while [ $# -gt 0 ]; do
           parse_command_wrapper_token "$@"

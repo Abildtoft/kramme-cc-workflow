@@ -34,6 +34,10 @@ token_is_assignment() {
   [[ "$1" =~ ^[A-Za-z_][A-Za-z0-9_]*=.*$ ]]
 }
 
+token_is_shell_alias_builtin() {
+  [ "$(token_basename "$1")" = "alias" ]
+}
+
 is_shell_keyword_token() {
   case "$(strip_wrapping_quotes "$1")" in
     '!' | if | then | elif | else | fi | do | done | while | until | for | in | case | esac | '{' | '}' | '(' | ')')
