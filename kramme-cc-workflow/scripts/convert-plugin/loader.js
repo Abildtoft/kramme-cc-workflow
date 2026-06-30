@@ -10,6 +10,16 @@ const {
   resolveWithinRoot,
 } = require("./filesystem");
 
+function normalizeFrontmatterBoolean(value) {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return value;
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true") return true;
+  if (normalized === "false") return false;
+  return value;
+}
+
 async function resolvePluginInput(input) {
   const directPath = path.resolve(String(input));
   if (await pathExists(directPath)) return directPath;
@@ -139,7 +149,9 @@ async function loadCommands(commandsDirs) {
       argumentHint: data["argument-hint"],
       model: data.model,
       allowedTools,
-      disableModelInvocation: data["disable-model-invocation"],
+      disableModelInvocation: normalizeFrontmatterBoolean(
+        data["disable-model-invocation"],
+      ),
       body: body.trim(),
       sourcePath: file,
     });
@@ -164,8 +176,10 @@ async function loadSkills(skillsDirs) {
       argumentHint: data["argument-hint"],
       model: data.model,
       allowedTools,
-      disableModelInvocation: data["disable-model-invocation"],
-      userInvocable: data["user-invocable"],
+      disableModelInvocation: normalizeFrontmatterBoolean(
+        data["disable-model-invocation"],
+      ),
+      userInvocable: normalizeFrontmatterBoolean(data["user-invocable"]),
       platforms: parsePlatforms(data["kramme-platforms"]),
       body: body.trim(),
       sourceDir: path.dirname(file),
