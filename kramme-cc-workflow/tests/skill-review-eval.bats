@@ -40,6 +40,26 @@
   [ "$status" -eq 0 ]
 }
 
+@test "skill review eval modules export only cross-module helpers" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    node <<'"'"'NODE'"'"'
+const assert = require("assert");
+assert.deepStrictEqual(
+  Object.keys(require("./evals/skill-review/run-eval.js")).sort(),
+  ["evaluateItems", "loadItemsForSplit"],
+);
+assert.deepStrictEqual(
+  Object.keys(require("./evals/skill-review/scorer.js")).sort(),
+  ["aggregateScores", "scoreItem"],
+);
+NODE
+  '
+
+  [ "$status" -eq 0 ]
+}
+
 @test "skillopt candidate check Make target keeps deterministic gate order" {
   run bash -c '
     set -euo pipefail

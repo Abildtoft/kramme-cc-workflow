@@ -297,11 +297,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  adapterContextForItem,
   evaluateItems,
   loadItemsForSplit,
-  parseArgs,
-  predictionForItem,
-  runEval,
-  validateItem,
 };

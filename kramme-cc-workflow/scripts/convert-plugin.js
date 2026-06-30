@@ -14,14 +14,6 @@ const {
   writeCodexBundle,
 } = require("./convert-plugin/codex-writer");
 
-const targets = {
-  codex: {
-    name: "codex",
-    convert: convertClaudeToCodex,
-    write: writeCodexBundle,
-  },
-};
-
 const REMOVED_OPENCODE_INSTALL_OPTIONS = [
   {
     keys: ["output", "o"],
@@ -73,7 +65,7 @@ async function main() {
 
 async function runInstall(parsed) {
   const pluginInput = parsed._[0] ?? process.cwd();
-  const { targetName, target } = resolveTarget(parsed);
+  const targetName = resolveTargetName(parsed);
 
   rejectRemovedOpenCodeInstallOptions(parsed);
 
@@ -102,7 +94,7 @@ async function runInstall(parsed) {
     ),
   };
 
-  const bundle = target.convert(plugin);
+  const bundle = convertClaudeToCodex(plugin);
   if (!bundle) {
     throw new Error(`Target ${targetName} did not return a bundle.`);
   }
@@ -116,18 +108,17 @@ async function runInstall(parsed) {
     },
   };
 
-  await target.write(codexRoot, bundle, writeOptions);
+  await writeCodexBundle(codexRoot, bundle, writeOptions);
   console.log(`Installed ${plugin.manifest.name} to ${codexRoot}`);
   await ensureCodexAgentsFile(codexRoot);
 }
 
-function resolveTarget(parsed) {
+function resolveTargetName(parsed) {
   const targetName = String(parsed.to ?? "codex");
-  const target = targets[targetName];
-  if (!target) {
+  if (targetName !== "codex") {
     throw new Error(`Unknown target: ${targetName}`);
   }
-  return { targetName, target };
+  return targetName;
 }
 
 function rejectRemovedOpenCodeInstallOptions(parsed) {
@@ -140,11 +131,11 @@ function rejectRemovedOpenCodeInstallOptions(parsed) {
 
 async function runStats(parsed) {
   const pluginInput = parsed._[0] ?? process.cwd();
-  const { target } = resolveTarget(parsed);
+  resolveTargetName(parsed);
   const resolvedPluginPath = await resolvePluginInput(pluginInput);
   const plugin = await loadClaudePlugin(resolvedPluginPath);
 
-  const codexBundle = target.convert(plugin);
+  const codexBundle = convertClaudeToCodex(plugin);
   const stats = {
     codex_skills:
       codexBundle.skillDirs.length + codexBundle.generatedSkills.length,
