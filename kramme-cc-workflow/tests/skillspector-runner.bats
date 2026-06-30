@@ -10,6 +10,7 @@ setup() {
 	REPORT_DIR="$TMP_DIR/reports"
 	MOCK_SOURCE="$BATS_TEST_DIRNAME/test_helper/mocks/skillspector"
 	mkdir -p "$REPO/kramme-cc-workflow/scripts" "$BIN_DIR" "$REPORT_DIR"
+	cp "$BATS_TEST_DIRNAME/../Makefile" "$REPO/kramme-cc-workflow/Makefile"
 	cp "$SOURCE_SCRIPT" "$REPO/kramme-cc-workflow/scripts/run-skillspector.sh"
 	chmod +x "$REPO/kramme-cc-workflow/scripts/run-skillspector.sh"
 	ln -s "$MOCK_SOURCE" "$BIN_DIR/skillspector"
@@ -88,6 +89,13 @@ count_invocations() {
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"No changed skill directories found against main"* ]]
 	[ "$(count_invocations)" = "0" ]
+}
+
+@test "changed scan Make target does not require scanner when no skill directories changed" {
+	run env PATH="/usr/bin:/bin" BASE_REF=HEAD make -C "$REPO/kramme-cc-workflow" --no-print-directory skill-security-changed
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"No changed skill directories found against HEAD."* ]]
 }
 
 @test "changed scan maps resource changes to the owning skill directory" {

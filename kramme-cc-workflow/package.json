@@ -8,8 +8,11 @@
     "kramme-cc-workflow": "scripts/convert-plugin.js"
   },
   "scripts": {
+    "format:check": "make format-check",
+    "preflight": "make preflight",
     "test": "make test",
-    "verify": "make verify"
+    "verify": "make verify",
+    "verify:pr": "make pr-verify"
   },
   "dependencies": {
     "smol-toml": "^1.7.0",

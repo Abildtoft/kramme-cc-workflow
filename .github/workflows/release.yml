@@ -34,7 +34,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python for release verification
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Node dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Set up Python for release automation
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -45,7 +53,11 @@ jobs:
           python3 -m pip install ruff==0.15.16 shellcheck-py==0.11.0.1
           python3 -m pip install "git+https://github.com/NVIDIA/SkillSpector.git@${SKILLSPECTOR_REF}"
 
-      - name: Run release verification
+      - name: Check release verification dependencies
+        run: make -C kramme-cc-workflow check-deps
+
+      - name: Run dry-run release verification
+        if: ${{ inputs.dry_run }}
         run: make -C kramme-cc-workflow verify
 
       - name: Run SkillSpector release scan
@@ -77,11 +89,6 @@ jobs:
             ${{ runner.temp }}/skillspector
             ${{ runner.temp }}/skillspector-summary.md
           if-no-files-found: warn
-
-      - name: Set up Python for release script
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
 
       - name: Configure Git
         run: |

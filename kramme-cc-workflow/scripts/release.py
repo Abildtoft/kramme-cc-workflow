@@ -13,6 +13,8 @@ Options:
     --ci         Running in CI (skip interactive prompts, no gh release)
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import re
@@ -120,10 +122,48 @@ def update_version_files(repo_root: Path, new_version: str, dry_run: bool) -> No
             print(f"  Updated {path}")
 
 
-def run_tests(repo_root: Path) -> bool:
-    """Run the test suite."""
-    print("\nRunning tests...")
-    result = subprocess.run(["make", "test"], cwd=repo_root)
+def get_release_mutation_paths(repo_root: Path) -> list[Path]:
+    """Return files the release flow may mutate before verification completes."""
+    paths = get_version_files(repo_root) + get_sibling_version_files()
+    paths.append(repo_root / "CHANGELOG.md")
+
+    unique_paths = []
+    seen = set()
+    for path in paths:
+        resolved = path.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        unique_paths.append(path)
+    return unique_paths
+
+
+def snapshot_files(paths: list[Path]) -> dict[Path, bytes | None]:
+    """Capture file contents so release mutations can be rolled back on failure."""
+    return {path: path.read_bytes() if path.exists() else None for path in paths}
+
+
+def restore_files(snapshot: dict[Path, bytes | None]) -> None:
+    """Restore files captured by snapshot_files."""
+    for path, contents in snapshot.items():
+        if contents is None:
+            if path.exists():
+                path.unlink()
+            continue
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(contents)
+
+
+def run_verification(repo_root: Path) -> bool:
+    """Run the full release verification gate."""
+    result = subprocess.run(["make", "verify"], cwd=repo_root)
+    return result.returncode == 0
+
+
+def check_release_dependencies(repo_root: Path) -> bool:
+    """Check release verification dependencies before mutating files."""
+    result = subprocess.run(["make", "check-deps"], cwd=repo_root)
     return result.returncode == 0
 
 
@@ -220,10 +260,13 @@ def main() -> int:
     if args.dry_run:
         print("(dry run - no changes will be made)\n")
 
-    # Run tests first
     if not args.dry_run:
-        if not run_tests(repo_root):
-            print("\nTests failed. Aborting release.")
+        print("\nChecking release verification dependencies...")
+        if not check_release_dependencies(repo_root):
+            print(
+                "\nRelease verification dependencies are missing. "
+                "Aborting before changing files."
+            )
             return 1
 
     # Confirm in interactive mode
@@ -232,6 +275,10 @@ def main() -> int:
         if response.lower() != "y":
             print("Aborted.")
             return 0
+
+    release_snapshot = None
+    if not args.dry_run:
+        release_snapshot = snapshot_files(get_release_mutation_paths(repo_root))
 
     print("\nSteps:")
 
@@ -245,8 +292,19 @@ def main() -> int:
     if not changelog_updated and not args.dry_run:
         print("  Changelog already up to date or no changes found")
 
-    # 3. Git commit and push branch
-    print("3. Creating release branch...")
+    # 3. Verify the final generated release state before committing or pushing.
+    print("3. Running release verification...")
+    if args.dry_run:
+        print("  Would run: make verify")
+    elif not run_verification(repo_root):
+        if release_snapshot is not None:
+            restore_files(release_snapshot)
+            print("  Restored release files to their pre-release state.")
+        print("\nRelease verification failed. Aborting before creating release branch.")
+        return 1
+
+    # 4. Git commit and push branch
+    print("4. Creating release branch...")
     branch_name = git_commit_and_push_branch(repo_root, new_version, args.dry_run, args.ci)
 
     if args.ci:
