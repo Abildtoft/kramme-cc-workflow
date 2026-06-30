@@ -1,3 +1,4 @@
+// @ts-check
 "use strict";
 
 const path = require("path");
@@ -25,6 +26,40 @@ const {
   writeText,
 } = require("./filesystem");
 
+/**
+ * @typedef {Object} CodexPrompt
+ * @property {string} name
+ * @property {string} content
+ *
+ * @typedef {Object} CodexSkillDir
+ * @property {string} name
+ * @property {string} content
+ * @property {string} [sourceDir]
+ *
+ * @typedef {Object} CodexHookPlugin
+ * @property {string} name
+ * @property {string} marketplaceName
+ * @property {Record<string, any>} manifest
+ * @property {unknown} hooks
+ * @property {string} hookSourceDir
+ * @property {{ sourceDir: string, targetDir: string }[]} [sharedScriptDirs]
+ * @property {{ sourceFile: string, targetPath: string }[]} [sharedScriptFiles]
+ *
+ * @typedef {Object} CodexBundle
+ * @property {CodexPrompt[]} prompts
+ * @property {CodexSkillDir[]} skillDirs
+ * @property {CodexSkillDir[]} generatedSkills
+ * @property {CodexSkillDir[]} [agentSkills]
+ * @property {Set<string>} [knownCommands]
+ * @property {Map<string, string>} [knownAgentSkills]
+ * @property {CodexHookPlugin | undefined} [codexPlugin]
+ *
+ * @typedef {Object} WriteCodexOptions
+ * @property {string} [pluginName]
+ * @property {string} [agentsHome]
+ * @property {Object} [confirm]
+ */
+
 function hasOwnEntry(object, entry) {
   return Object.prototype.hasOwnProperty.call(object ?? {}, entry);
 }
@@ -46,6 +81,12 @@ function buildNextManagedFileMap(
   return result;
 }
 
+/**
+ * @param {string} outputRoot
+ * @param {CodexBundle} bundle
+ * @param {WriteCodexOptions} [extraOpts]
+ * @returns {Promise<void>}
+ */
 async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   const codexRoot = resolveCodexOutputRoot(outputRoot);
   const pluginName = extraOpts.pluginName ?? "plugin";

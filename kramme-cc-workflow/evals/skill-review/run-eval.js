@@ -1,16 +1,51 @@
 #!/usr/bin/env node
-'use strict';
+// @ts-check
+"use strict";
 
-const fs = require('fs');
-const path = require('path');
-const { spawnSync } = require('child_process');
-const { aggregateScores, scoreItem } = require('./scorer');
+const fs = require("fs");
+const path = require("path");
+const { spawnSync } = require("child_process");
+const { aggregateScores, scoreItem } = require("./scorer");
 
-const VALID_SPLITS = new Set(['train', 'val', 'test', 'all']);
+const VALID_SPLITS = new Set(["train", "val", "test", "all"]);
 
+/**
+ * @typedef {Object} EvalCliOptions
+ * @property {string} split
+ * @property {boolean} json
+ * @property {string | null} skill
+ * @property {string | null} predictionCommand
+ * @property {boolean} [help]
+ *
+ * @typedef {Object} EvalItem
+ * @property {string} id
+ * @property {string} fixture_review_output
+ * @property {string} [input_skill_dir]
+ * @property {string} [input_skill_text]
+ * @property {string} [split]
+ * @property {string} [difficulty]
+ *
+ * @typedef {Object} Prediction
+ * @property {"prediction_command" | "fixture_review_output"} source
+ * @property {string} text
+ *
+ * @typedef {Object} EvalResult
+ * @property {string} split
+ * @property {string | null} skill
+ * @property {number} hard
+ * @property {number} soft
+ * @property {string[]} diagnostics
+ * @property {Array<Record<string, any>>} items
+ */
+
+/**
+ * @param {string[]} argv
+ * @returns {EvalCliOptions}
+ */
 function parseArgs(argv) {
+  /** @type {EvalCliOptions} */
   const options = {
-    split: 'all',
+    split: "all",
     json: false,
     skill: null,
     predictionCommand: null,
@@ -18,27 +53,27 @@ function parseArgs(argv) {
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
-    if (arg === '--json') {
+    if (arg === "--json") {
       options.json = true;
-    } else if (arg === '--split') {
+    } else if (arg === "--split") {
       index += 1;
       if (index >= argv.length) {
-        throw new Error('--split requires a value');
+        throw new Error("--split requires a value");
       }
       options.split = argv[index];
-    } else if (arg === '--skill') {
+    } else if (arg === "--skill") {
       index += 1;
       if (index >= argv.length) {
-        throw new Error('--skill requires a path');
+        throw new Error("--skill requires a path");
       }
       options.skill = argv[index];
-    } else if (arg === '--prediction-command') {
+    } else if (arg === "--prediction-command") {
       index += 1;
-      if (index >= argv.length || argv[index].trim() === '') {
-        throw new Error('--prediction-command requires a command');
+      if (index >= argv.length || argv[index].trim() === "") {
+        throw new Error("--prediction-command requires a command");
       }
       options.predictionCommand = argv[index];
-    } else if (arg === '--help' || arg === '-h') {
+    } else if (arg === "--help" || arg === "-h") {
       options.help = true;
     } else {
       throw new Error(`unknown argument: ${arg}`);
@@ -50,16 +85,16 @@ function parseArgs(argv) {
 
 function usage() {
   return [
-    'Usage: node evals/skill-review/run-eval.js [--split train|val|test|all] [--skill <path>] [--prediction-command <cmd>] [--json]',
-    '',
-    'By default, scores committed fixture review output.',
-    'With --prediction-command, sends item context JSON on stdin and scores stdout.',
-  ].join('\n');
+    "Usage: node evals/skill-review/run-eval.js [--split train|val|test|all] [--skill <path>] [--prediction-command <cmd>] [--json]",
+    "",
+    "By default, scores committed fixture review output.",
+    "With --prediction-command, sends item context JSON on stdin and scores stdout.",
+  ].join("\n");
 }
 
 function readJsonFile(filePath) {
   try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
   } catch (error) {
     throw new Error(`failed to read JSON ${filePath}: ${error.message}`);
   }
@@ -68,47 +103,60 @@ function readJsonFile(filePath) {
 function resolveInside(rootDir, relativePath) {
   const resolved = path.resolve(rootDir, relativePath);
   const relative = path.relative(rootDir, resolved);
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new Error(`path escapes eval root: ${relativePath}`);
   }
   return resolved;
 }
 
+/**
+ * @param {EvalItem} item
+ * @param {string} evalRoot
+ * @returns {void}
+ */
 function validateItem(item, evalRoot) {
-  if (!item || typeof item !== 'object') {
-    throw new Error('eval item must be an object');
+  if (!item || typeof item !== "object") {
+    throw new Error("eval item must be an object");
   }
-  if (typeof item.id !== 'string' || item.id.trim() === '') {
-    throw new Error('eval item id must be a non-empty string');
+  if (typeof item.id !== "string" || item.id.trim() === "") {
+    throw new Error("eval item id must be a non-empty string");
   }
-  if (typeof item.fixture_review_output !== 'string') {
+  if (typeof item.fixture_review_output !== "string") {
     throw new Error(`${item.id}.fixture_review_output must be a string`);
   }
   if (!item.input_skill_dir && !item.input_skill_text) {
-    throw new Error(`${item.id} must define input_skill_dir or input_skill_text`);
+    throw new Error(
+      `${item.id} must define input_skill_dir or input_skill_text`,
+    );
   }
   if (item.input_skill_dir) {
-    if (typeof item.input_skill_dir !== 'string') {
+    if (typeof item.input_skill_dir !== "string") {
       throw new Error(`${item.id}.input_skill_dir must be a string`);
     }
 
     const fixturePath = resolveInside(evalRoot, item.input_skill_dir);
     if (!fs.existsSync(fixturePath)) {
-      throw new Error(`missing fixture for ${item.id}: ${item.input_skill_dir}`);
+      throw new Error(
+        `missing fixture for ${item.id}: ${item.input_skill_dir}`,
+      );
     }
     const stat = fs.statSync(fixturePath);
     if (!stat.isDirectory()) {
-      throw new Error(`${item.id}.input_skill_dir is not a directory: ${item.input_skill_dir}`);
+      throw new Error(
+        `${item.id}.input_skill_dir is not a directory: ${item.input_skill_dir}`,
+      );
     }
-    const skillPath = path.join(fixturePath, 'SKILL.md');
+    const skillPath = path.join(fixturePath, "SKILL.md");
     if (!fs.existsSync(skillPath)) {
-      throw new Error(`missing SKILL.md for ${item.id}: ${item.input_skill_dir}`);
+      throw new Error(
+        `missing SKILL.md for ${item.id}: ${item.input_skill_dir}`,
+      );
     }
   }
 }
 
 function readSplit(split, evalRoot) {
-  const filePath = path.join(evalRoot, 'items', split, 'items.json');
+  const filePath = path.join(evalRoot, "items", split, "items.json");
   const items = readJsonFile(filePath);
   if (!Array.isArray(items)) {
     throw new Error(`${filePath} must contain an array`);
@@ -120,12 +168,19 @@ function readSplit(split, evalRoot) {
   return items.map((item) => ({ ...item, split }));
 }
 
+/**
+ * @param {string} split
+ * @param {string} evalRoot
+ * @returns {EvalItem[]}
+ */
 function loadItemsForSplit(split, evalRoot) {
   if (!VALID_SPLITS.has(split)) {
-    throw new Error(`invalid split "${split}"; expected train, val, test, or all`);
+    throw new Error(
+      `invalid split "${split}"; expected train, val, test, or all`,
+    );
   }
 
-  const splits = split === 'all' ? ['train', 'val', 'test'] : [split];
+  const splits = split === "all" ? ["train", "val", "test"] : [split];
   return splits.flatMap((splitName) => readSplit(splitName, evalRoot));
 }
 
@@ -149,7 +204,7 @@ function adapterContextForItem(item, options) {
   if (item.input_skill_dir) {
     const inputSkillPath = resolveInside(evalRoot, item.input_skill_dir);
     context.item.input_skill_path = inputSkillPath;
-    context.item.input_skill_file = path.join(inputSkillPath, 'SKILL.md');
+    context.item.input_skill_file = path.join(inputSkillPath, "SKILL.md");
   }
 
   return context;
@@ -160,45 +215,59 @@ function runPredictionCommand(item, options) {
   const context = adapterContextForItem(item, options);
   const result = spawnSync(command, {
     input: `${JSON.stringify(context)}\n`,
-    encoding: 'utf8',
+    encoding: "utf8",
     shell: true,
     maxBuffer: 10 * 1024 * 1024,
     env: {
       ...process.env,
       SKILL_REVIEW_EVAL_ITEM_ID: item.id,
-      SKILL_REVIEW_EVAL_SKILL: options.skill || '',
+      SKILL_REVIEW_EVAL_SKILL: options.skill || "",
     },
   });
 
   if (result.error) {
-    throw new Error(`prediction command failed for ${item.id}: ${result.error.message}`);
+    throw new Error(
+      `prediction command failed for ${item.id}: ${result.error.message}`,
+    );
   }
   if (result.status !== 0) {
-    const detail = (result.stderr || result.stdout || '').trim();
-    const suffix = detail ? `: ${detail}` : '';
-    throw new Error(`prediction command failed for ${item.id} with exit ${result.status}${suffix}`);
+    const detail = (result.stderr || result.stdout || "").trim();
+    const suffix = detail ? `: ${detail}` : "";
+    throw new Error(
+      `prediction command failed for ${item.id} with exit ${result.status}${suffix}`,
+    );
   }
 
   return result.stdout.trimEnd();
 }
 
+/**
+ * @param {EvalItem} item
+ * @param {{ predictionCommand?: string | null, evalRoot?: string, split?: string, skill?: string | null }} [options]
+ * @returns {Prediction}
+ */
 function predictionForItem(item, options = {}) {
   if (options.predictionCommand) {
     return {
-      source: 'prediction_command',
+      source: "prediction_command",
       text: runPredictionCommand(item, options),
     };
   }
 
   return {
-    source: 'fixture_review_output',
+    source: "fixture_review_output",
     text: item.fixture_review_output,
   };
 }
 
+/**
+ * @param {EvalItem[]} items
+ * @param {{ evalRoot?: string, split?: string, skill?: string | null, predictionCommand?: string | null }} [options]
+ * @returns {EvalResult}
+ */
 function evaluateItems(items, options = {}) {
   const evalRoot = options.evalRoot || __dirname;
-  const split = options.split || 'custom';
+  const split = options.split || "custom";
   const skill = options.skill || null;
   const predictionCommand = options.predictionCommand || null;
 
@@ -234,6 +303,11 @@ function evaluateItems(items, options = {}) {
   };
 }
 
+/**
+ * @param {EvalCliOptions} options
+ * @param {string} [evalRoot]
+ * @returns {EvalResult}
+ */
 function runEval(options, evalRoot = __dirname) {
   const items = loadItemsForSplit(options.split, evalRoot);
   return evaluateItems(items, {
@@ -254,8 +328,12 @@ function printHuman(result) {
 }
 
 function main(argv) {
+  /** @type {EvalCliOptions} */
   let options = {
-    json: argv.includes('--json'),
+    split: "all",
+    json: argv.includes("--json"),
+    skill: null,
+    predictionCommand: null,
   };
 
   try {

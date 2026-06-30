@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 "use strict";
 
 const fs = require("fs");
@@ -27,6 +28,27 @@ const SCAN_PRUNED_DIRS = new Set([
   "dist",
   "node_modules",
 ]);
+
+/**
+ * @typedef {Object} ParsedArgs
+ * @property {string[]} _
+ * @property {boolean} [json]
+ * @property {string} [file]
+ * @property {string} [since]
+ * @property {string} [kind]
+ * @property {string} [limit]
+ *
+ * @typedef {Object} UsageRecord
+ * @property {1} schemaVersion
+ * @property {string} recordedAt
+ * @property {string} sessionId
+ * @property {string} cwd
+ * @property {string} platform
+ * @property {string} event
+ * @property {string} skill
+ * @property {"explicit" | "tool"} kind
+ * @property {"prompt" | "tool_input"} source
+ */
 
 function main() {
   const [command, ...args] = process.argv.slice(2);
@@ -82,7 +104,12 @@ Examples:
   process.exit(exitCode);
 }
 
+/**
+ * @param {string[]} args
+ * @returns {ParsedArgs}
+ */
 function parseArgs(args) {
+  /** @type {ParsedArgs} */
   const parsed = { _: [] };
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
@@ -161,8 +188,13 @@ function record(args) {
   process.stdout.write("{}\n");
 }
 
+/**
+ * @param {Record<string, any>} input
+ * @returns {UsageRecord[]}
+ */
 function buildUsageRecords(input) {
   const recordedAt = new Date().toISOString();
+  /** @type {Omit<UsageRecord, "skill" | "kind" | "source">} */
   const base = {
     schemaVersion: 1,
     recordedAt,
@@ -179,6 +211,7 @@ function buildUsageRecords(input) {
     ),
   };
 
+  /** @type {UsageRecord[]} */
   const records = [];
   for (const skill of extractPromptSkills(input)) {
     records.push({
@@ -343,6 +376,10 @@ function unique(values) {
   return [...new Set(values.filter(Boolean))];
 }
 
+/**
+ * @param {UsageRecord[]} records
+ * @returns {UsageRecord[]}
+ */
 function dedupeRecords(records) {
   const seen = new Set();
   const deduped = [];
