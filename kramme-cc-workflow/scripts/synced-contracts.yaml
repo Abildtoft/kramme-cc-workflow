@@ -239,7 +239,7 @@
       "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md",
       "frontmatter": {
         "name": "kramme:code:breakdown-findings",
-        "argument-hint": "[source-file-or-content] [--auto] [--reconcile]",
+        "argument-hint": "[source-file-or-content] [--auto] [--resume] [--reconcile]",
         "disable-model-invocation": "true",
         "user-invocable": "true"
       },
@@ -256,6 +256,7 @@
       "contains": [
         "**File:** `PR_PLAN_{{EXECUTION_LABEL}}_{{SLUG}}.md`",
         "**Execution label:** `{{W##L}}`",
+        "## Product / Quality Bar",
         "git diff --stat {{short-sha}} -- {{space-separated in-scope paths}}",
         "Do not push, merge, or open a PR unless the operator explicitly asks."
       ]
