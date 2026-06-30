@@ -452,6 +452,58 @@ console.log("ok");
 	[ "$output" = "ok" ]
 }
 
+@test "ask user question parser reads structured prompt blocks" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	run node -e '
+const assert = require("assert");
+const { parseAskUserQuestionBlock } = require(process.argv[1]);
+
+const parsed = parseAskUserQuestionBlock(`
+AskUserQuestion
+header: "Release scope"
+question: |
+  Which release scopes should this include?
+  Choose every applicable area.
+multiSelect: "true"
+options:
+  - label: "Converter"
+    description: "Converter behavior and tests"
+  - (freeform) Something else
+`);
+
+assert.deepStrictEqual(parsed, {
+  header: "Release scope",
+  question: "Which release scopes should this include?\nChoose every applicable area.",
+  multiSelect: true,
+  options: [
+    {
+      label: "Converter",
+      description: "Converter behavior and tests",
+    },
+    {
+      label: "Something else",
+      description: "",
+    },
+  ],
+});
+
+const folded = parseAskUserQuestionBlock(`
+question: >
+  Pick the route
+  for this plan.
+options: []
+`);
+assert.strictEqual(folded.question, "Pick the route for this plan.");
+assert.strictEqual(parseAskUserQuestionBlock("plain markdown"), null);
+console.log("ok");
+' "$REPO_ROOT/scripts/convert-plugin/ask-user-question-parser"
+	[ "$status" -eq 0 ]
+	[ "$output" = "ok" ]
+}
+
 @test "codex conversion creates skills from user-invocable skills" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for converter tests"
