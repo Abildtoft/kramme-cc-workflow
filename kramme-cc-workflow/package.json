@@ -10,6 +10,7 @@
   "scripts": {
     "coverage": "make coverage",
     "format:check": "make format-check",
+    "lint-js": "make lint-js",
     "preflight": "make preflight",
     "test": "make test",
     "test:node": "make test-node",
@@ -20,5 +21,9 @@
   "dependencies": {
     "smol-toml": "^1.7.0",
     "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.130",
+    "typescript": "^6.0.3"
   }
 }

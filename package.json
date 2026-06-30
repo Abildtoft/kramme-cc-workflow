@@ -9,6 +9,7 @@
   },
   "scripts": {
     "format:check": "make -C kramme-cc-workflow format-check",
+    "lint-js": "make -C kramme-cc-workflow lint-js",
     "preflight": "make -C kramme-cc-workflow preflight",
     "test": "make -C kramme-cc-workflow test",
     "verify": "make -C kramme-cc-workflow verify",
@@ -20,7 +21,9 @@
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
+    "@types/node": "^18.19.130",
     "prettier-plugin-packagejson": "^3.0.2",
-    "prettier-plugin-sh": "^0.18.1"
+    "prettier-plugin-sh": "^0.18.1",
+    "typescript": "^6.0.3"
   }
 }

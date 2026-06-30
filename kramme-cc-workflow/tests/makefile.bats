@@ -23,6 +23,7 @@ setup_check_deps_repo() {
     create_fake_tool "$CHECK_DEPS_BIN/$tool"
   done
   create_fake_tool "$CHECK_DEPS_REPO/node_modules/.bin/prettier"
+  create_fake_tool "$CHECK_DEPS_REPO/node_modules/.bin/tsc"
 
   cat >"$CHECK_DEPS_REPO/kramme-cc-workflow/skills/kramme:test/SKILL.md" <<'MD'
 ---
