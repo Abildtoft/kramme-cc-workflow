@@ -1107,6 +1107,56 @@ EOF
   [[ "$output" == *"skill contract lint passed."* ]]
 }
 
+@test "marker manifest rejects stale empty-field allowance" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" "SIMPLICITY CHECK: minimum viable change"
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/references/sources.yaml" <<'EOF'
+sources:
+  - id: source-a
+    url: https://example.com/source-a
+    title: Source A
+    rationale: Used for test fixture.
+    last_reviewed_at: 2026-06-10
+    baseline_hash: sha256:abc123
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "marker_implies_manifest": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
+    "manifest": "references/sources.yaml",
+    "markers": [
+      "SIMPLICITY CHECK"
+    ],
+    "required_fields": [
+      "id",
+      "title",
+      "rationale",
+      "last_reviewed_at",
+      "baseline_hash"
+    ],
+    "one_of_fields": [
+      "url",
+      "context7_library"
+    ],
+    "allow_empty_fields": [
+      {
+        "path": "kramme-cc-workflow/skills/a/references/sources.yaml",
+        "entry_id": "source-a",
+        "field": "baseline_hash",
+        "reason": "Historical baseline hash debt in this fixture."
+      }
+    ]
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"marker manifest"* ]]
+  [[ "$output" == *"allow_empty_fields entry"* ]]
+  [[ "$output" == *"does not match an empty required field"* ]]
+}
+
 @test "marker manifest allowlisted empty field requires reason" {
   write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" "SIMPLICITY CHECK: minimum viable change"
   write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/references/sources.yaml" <<'EOF'
