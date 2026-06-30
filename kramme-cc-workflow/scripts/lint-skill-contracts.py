@@ -17,6 +17,11 @@ from pathlib import Path
 from typing import Any
 
 
+DEFAULT_CONTRACT_SCHEMA_PATH = (
+    Path(__file__).resolve().parent / "schemas" / "skill-contracts.json"
+)
+
+
 @dataclass(frozen=True)
 class SkillReference:
     name: str
@@ -59,6 +64,102 @@ def load_registry(path: Path) -> dict[str, Any]:
         raise SystemExit(
             f"{path}: registry must be JSON-compatible YAML for stdlib parsing: {exc}"
         ) from exc
+
+
+def load_contract_schema_file(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_default_contract_schema() -> dict[str, Any]:
+    try:
+        return load_contract_schema_file(DEFAULT_CONTRACT_SCHEMA_PATH)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+DEFAULT_CONTRACT_SCHEMA = load_default_contract_schema()
+
+
+def contract_schema_path(root: Path, registry: dict[str, Any]) -> Path:
+    raw_path = registry.get("contract_schema")
+    if isinstance(raw_path, str) and raw_path.strip():
+        return resolve(root, raw_path)
+    return DEFAULT_CONTRACT_SCHEMA_PATH
+
+
+def load_contract_schema(
+    root: Path,
+    registry: dict[str, Any],
+    failures: list[str],
+) -> dict[str, Any]:
+    path = contract_schema_path(root, registry)
+    try:
+        schema = load_contract_schema_file(path)
+    except OSError as exc:
+        failures.append(f"contract schema: cannot read {rel(path, root)}: {exc}")
+        return DEFAULT_CONTRACT_SCHEMA
+    except json.JSONDecodeError as exc:
+        failures.append(f"contract schema: {rel(path, root)} is invalid JSON: {exc}")
+        return DEFAULT_CONTRACT_SCHEMA
+    if not isinstance(schema, dict):
+        failures.append(f"contract schema: {rel(path, root)} must be a JSON object")
+        return DEFAULT_CONTRACT_SCHEMA
+    return schema
+
+
+def schema_skill_frontmatter_fields(
+    schema: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    contracts = schema or DEFAULT_CONTRACT_SCHEMA
+    frontmatter = contracts.get("skill_frontmatter", {})
+    fields = frontmatter.get("fields", {}) if isinstance(frontmatter, dict) else {}
+    return fields if isinstance(fields, dict) else {}
+
+
+def skill_frontmatter_fields_by_type(
+    type_name: str,
+    schema: dict[str, Any] | None = None,
+) -> list[str]:
+    return [
+        field
+        for field, contract in schema_skill_frontmatter_fields(schema).items()
+        if isinstance(contract, dict) and contract.get("type") == type_name
+    ]
+
+
+def skill_frontmatter_required_fields(schema: dict[str, Any] | None = None) -> list[str]:
+    return [
+        field
+        for field, contract in schema_skill_frontmatter_fields(schema).items()
+        if isinstance(contract, dict) and contract.get("required") is True
+    ]
+
+
+def skill_frontmatter_field_by_loader_property(
+    loader_property: str,
+    fallback: str,
+    schema: dict[str, Any] | None = None,
+) -> str:
+    for field, contract in schema_skill_frontmatter_fields(schema).items():
+        if isinstance(contract, dict) and contract.get("loader_property") == loader_property:
+            return field
+    return fallback
+
+
+def schema_source_manifest(schema: dict[str, Any] | None = None) -> dict[str, Any]:
+    contracts = schema or DEFAULT_CONTRACT_SCHEMA
+    manifest = contracts.get("source_manifest", {})
+    return manifest if isinstance(manifest, dict) else {}
+
+
+def source_manifest_required_fields(schema: dict[str, Any] | None = None) -> list[str]:
+    fields = schema_source_manifest(schema).get("required_fields", [])
+    return [str(field) for field in fields] if isinstance(fields, list) else []
+
+
+def source_manifest_one_of_fields(schema: dict[str, Any] | None = None) -> list[str]:
+    fields = schema_source_manifest(schema).get("one_of_fields", [])
+    return [str(field) for field in fields] if isinstance(fields, list) else []
 
 
 def rel(path: Path, root: Path) -> str:
@@ -153,9 +254,25 @@ def parse_frontmatter_bool(frontmatter: dict[str, str], field: str) -> bool:
     return strip_quotes(frontmatter.get(field, "")).lower() == "true"
 
 
-def expected_invocation(frontmatter: dict[str, str]) -> str:
-    user_invocable = parse_frontmatter_bool(frontmatter, "user-invocable")
-    model_invocation_enabled = not parse_frontmatter_bool(frontmatter, "disable-model-invocation")
+def expected_invocation(
+    frontmatter: dict[str, str],
+    schema: dict[str, Any] | None = None,
+) -> str:
+    user_invocable_field = skill_frontmatter_field_by_loader_property(
+        "userInvocable",
+        "user-invocable",
+        schema,
+    )
+    disable_model_invocation_field = skill_frontmatter_field_by_loader_property(
+        "disableModelInvocation",
+        "disable-model-invocation",
+        schema,
+    )
+    user_invocable = parse_frontmatter_bool(frontmatter, user_invocable_field)
+    model_invocation_enabled = not parse_frontmatter_bool(
+        frontmatter,
+        disable_model_invocation_field,
+    )
     if user_invocable and model_invocation_enabled:
         return "User, Auto"
     if user_invocable:
@@ -165,22 +282,46 @@ def expected_invocation(frontmatter: dict[str, str]) -> str:
     return "Hidden"
 
 
-def expected_arguments(frontmatter: dict[str, str]) -> str:
-    if not parse_frontmatter_bool(frontmatter, "user-invocable"):
+def expected_arguments(
+    frontmatter: dict[str, str],
+    schema: dict[str, Any] | None = None,
+) -> str:
+    user_invocable_field = skill_frontmatter_field_by_loader_property(
+        "userInvocable",
+        "user-invocable",
+        schema,
+    )
+    argument_hint_field = skill_frontmatter_field_by_loader_property(
+        "argumentHint",
+        "argument-hint",
+        schema,
+    )
+    if not parse_frontmatter_bool(frontmatter, user_invocable_field):
         return "—"
-    argument_hint = frontmatter.get("argument-hint")
+    argument_hint = frontmatter.get(argument_hint_field)
     if is_empty_value(argument_hint):
         return "—"
     return strip_quotes(str(argument_hint))
 
 
-def skill_reference_from_frontmatter(name: str, frontmatter: dict[str, str]) -> SkillReference:
-    display_name = f"/{name}" if parse_frontmatter_bool(frontmatter, "user-invocable") else name
+def skill_reference_from_frontmatter(
+    name: str,
+    frontmatter: dict[str, str],
+    schema: dict[str, Any] | None = None,
+) -> SkillReference:
+    user_invocable_field = skill_frontmatter_field_by_loader_property(
+        "userInvocable",
+        "user-invocable",
+        schema,
+    )
+    display_name = (
+        f"/{name}" if parse_frontmatter_bool(frontmatter, user_invocable_field) else name
+    )
     return SkillReference(
         name=name,
         display_name=display_name,
-        invocation=expected_invocation(frontmatter),
-        arguments=expected_arguments(frontmatter),
+        invocation=expected_invocation(frontmatter, schema),
+        arguments=expected_arguments(frontmatter, schema),
         description=frontmatter.get("description", ""),
     )
 
@@ -361,6 +502,7 @@ def skill_paths(root: Path, pattern: str) -> list[Path]:
 def check_mechanical(
     root: Path,
     registry: dict[str, Any],
+    schema: dict[str, Any],
     failures: list[str],
     warnings: list[str],
 ) -> None:
@@ -370,10 +512,14 @@ def check_mechanical(
     warn_lines = int(config.get("warn_skill_lines", 0) or 0)
     report_limit = int(config.get("skill_line_report_limit", 20))
     max_description = int(config.get("max_description_chars", 1024))
-    required_fields = config.get(
-        "required_frontmatter",
-        ["name", "description", "disable-model-invocation", "user-invocable"],
-    )
+    if "contract_schema" in registry and "required_frontmatter" in config:
+        failures.append(
+            "mechanical: required_frontmatter must come from contract_schema, "
+            "not synced-contracts.yaml"
+        )
+    required_fields = config.get("required_frontmatter")
+    if required_fields is None:
+        required_fields = skill_frontmatter_required_fields(schema)
     line_allowlist = set(config.get("allow_line_count_over", []))
     long_skill_entries: list[tuple[int, str]] = []
 
@@ -606,6 +752,7 @@ def load_skill_references(
     root: Path,
     skills_relative: str,
     failures: list[str],
+    schema: dict[str, Any] | None = None,
 ) -> dict[str, SkillReference]:
     skills_dir = resolve(root, skills_relative)
     if not skills_dir.exists():
@@ -631,7 +778,7 @@ def load_skill_references(
                 f"does not match skill directory {name!r}"
             )
             continue
-        references[name] = skill_reference_from_frontmatter(name, frontmatter)
+        references[name] = skill_reference_from_frontmatter(name, frontmatter, schema)
     return references
 
 
@@ -653,7 +800,12 @@ def check_readme_extra_skill_rows(
             )
 
 
-def check_readme_skill_sync(root: Path, registry: dict[str, Any], failures: list[str]) -> None:
+def check_readme_skill_sync(
+    root: Path,
+    registry: dict[str, Any],
+    schema: dict[str, Any],
+    failures: list[str],
+) -> None:
     config = registry.get("readme_skill_sync")
     if not config:
         return
@@ -667,7 +819,7 @@ def check_readme_skill_sync(root: Path, registry: dict[str, Any], failures: list
         return
 
     readme = read_text(readme_path)
-    references = load_skill_references(root, skills_relative, failures)
+    references = load_skill_references(root, skills_relative, failures, schema)
     documented_skills = readme_skill_rows(readme, config, failures)
 
     for name in sorted(references):
@@ -726,6 +878,7 @@ def check_readme_skill_sync(root: Path, registry: dict[str, Any], failures: list
 
 def render_readme_skill_sync(root: Path, registry: dict[str, Any]) -> tuple[str | None, list[str]]:
     failures: list[str] = []
+    schema = load_contract_schema(root, registry, failures)
     config = registry.get("readme_skill_sync")
     if not config:
         return None, ["readme skill sync: registry has no readme_skill_sync config"]
@@ -737,7 +890,7 @@ def render_readme_skill_sync(root: Path, registry: dict[str, Any]) -> tuple[str 
         return None, [f"readme skill sync: registered path is missing: {readme_relative}"]
 
     readme = read_text(readme_path)
-    references = load_skill_references(root, skills_relative, failures)
+    references = load_skill_references(root, skills_relative, failures, schema)
     documented_skills = readme_skill_rows(readme, config, failures)
     allow_readme_only = set(config.get("allow_readme_only_skills", []))
     for name in sorted(references):
@@ -831,7 +984,12 @@ def allow_empty_field_keys(config: dict[str, Any], failures: list[str]) -> set[t
     return allow_empty
 
 
-def check_marker_manifests(root: Path, registry: dict[str, Any], failures: list[str]) -> None:
+def check_marker_manifests(
+    root: Path,
+    registry: dict[str, Any],
+    schema: dict[str, Any],
+    failures: list[str],
+) -> None:
     config = registry.get("marker_implies_manifest")
     if not config:
         return
@@ -839,8 +997,19 @@ def check_marker_manifests(root: Path, registry: dict[str, Any], failures: list[
     pattern = config.get("skill_glob", "kramme-cc-workflow/skills/*/SKILL.md")
     markers = config.get("markers", [])
     manifest_rel = config.get("manifest", "references/sources.yaml")
-    required_fields = config.get("required_fields", [])
-    one_of_fields = config.get("one_of_fields", [])
+    if "contract_schema" in registry:
+        for key in ("required_fields", "one_of_fields"):
+            if key in config:
+                failures.append(
+                    f"marker manifest: {key} must come from contract_schema, "
+                    "not synced-contracts.yaml"
+                )
+    required_fields = config.get("required_fields")
+    if required_fields is None:
+        required_fields = source_manifest_required_fields(schema)
+    one_of_fields = config.get("one_of_fields")
+    if one_of_fields is None:
+        one_of_fields = source_manifest_one_of_fields(schema)
     allow_empty = allow_empty_field_keys(config, failures)
     used_allow_empty: set[tuple[str, str, str]] = set()
 
@@ -947,15 +1116,16 @@ def check_epilogue_order(root: Path, registry: dict[str, Any], failures: list[st
 def run(root: Path, registry: dict[str, Any]) -> tuple[list[str], list[str]]:
     failures: list[str] = []
     warnings: list[str] = []
+    schema = load_contract_schema(root, registry, failures)
     check_text_contracts(root, registry, failures)
     check_ordered_heading_contracts(root, registry, failures)
     check_file_identity(root, registry, failures)
     check_required_file_contracts(root, registry, failures)
-    check_marker_manifests(root, registry, failures)
+    check_marker_manifests(root, registry, schema, failures)
     check_epilogue_order(root, registry, failures)
     check_hooks_json(root, registry, failures)
-    check_readme_skill_sync(root, registry, failures)
-    check_mechanical(root, registry, failures, warnings)
+    check_readme_skill_sync(root, registry, schema, failures)
+    check_mechanical(root, registry, schema, failures, warnings)
     return failures, warnings
 
 

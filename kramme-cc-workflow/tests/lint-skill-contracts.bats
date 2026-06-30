@@ -201,6 +201,79 @@ EOF
   [[ "$output" == *"description differs from SKILL.md frontmatter"* ]]
 }
 
+@test "readme skill sync uses frontmatter fields from shared schema" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/kramme:custom/SKILL.md" <<'EOF'
+---
+name: kramme:custom
+description: Custom schema skill
+prompt: "[topic]"
+no-ai: true
+manual: true
+---
+# kramme:custom
+EOF
+  write_file "$TMP_ROOT/schema.json" <<'EOF'
+{
+  "skill_frontmatter": {
+    "fields": {
+      "name": {"type": "string", "required": true},
+      "description": {"type": "string", "required": true},
+      "prompt": {
+        "type": "string",
+        "required": false,
+        "loader_property": "argumentHint"
+      },
+      "no-ai": {
+        "type": "boolean",
+        "required": true,
+        "loader_property": "disableModelInvocation"
+      },
+      "manual": {
+        "type": "boolean",
+        "required": true,
+        "loader_property": "userInvocable"
+      }
+    }
+  },
+  "source_manifest": {
+    "required_fields": [],
+    "one_of_fields": []
+  }
+}
+EOF
+  write_file "$TMP_ROOT/README.md" <<'EOF'
+# Fixture
+
+## Skills
+
+<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->
+
+| Skill | Invocation | Arguments | Description |
+| --- | --- | --- | --- |
+| `/kramme:custom` | User | `[topic]` | Custom schema skill |
+
+<!-- END SOURCE-SYNCED SKILL ROWS -->
+
+## Agents
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "contract_schema": "schema.json",
+  "readme_skill_sync": {
+    "readme": "README.md",
+    "skills_dir": "kramme-cc-workflow/skills",
+    "start_marker": "<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->",
+    "end_marker": "<!-- END SOURCE-SYNCED SKILL ROWS -->"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
 @test "component reference generator check reports drift and write syncs rows" {
   write_reference_skill \
     "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" \
@@ -1243,6 +1316,99 @@ EOF
   [[ "$output" == *"marker manifest"* ]]
   [[ "$output" == *"allow_empty_fields[1]"* ]]
   [[ "$output" == *"non-empty 'reason'"* ]]
+}
+
+@test "marker manifest required fields come from shared schema" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" "SIMPLICITY CHECK: minimum viable change"
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/references/sources.yaml" <<'EOF'
+sources:
+  - id: source-a
+    url: https://example.com/source-a
+    title: Source A
+EOF
+  write_file "$TMP_ROOT/schema.json" <<'EOF'
+{
+  "skill_frontmatter": {
+    "fields": {
+      "name": {"type": "string", "required": true}
+    }
+  },
+  "source_manifest": {
+    "required_fields": [
+      "id",
+      "title",
+      "audit_token"
+    ],
+    "one_of_fields": [
+      "url"
+    ]
+  }
+}
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "contract_schema": "schema.json",
+  "marker_implies_manifest": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
+    "manifest": "references/sources.yaml",
+    "markers": [
+      "SIMPLICITY CHECK"
+    ],
+    "allow_empty_fields": []
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"marker manifest"* ]]
+  [[ "$output" == *"missing 'audit_token'"* ]]
+}
+
+@test "schema-backed marker manifest rejects duplicate registry field lists" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" "SIMPLICITY CHECK: minimum viable change"
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/references/sources.yaml" <<'EOF'
+sources:
+  - id: source-a
+    url: https://example.com/source-a
+    title: Source A
+EOF
+  write_file "$TMP_ROOT/schema.json" <<'EOF'
+{
+  "skill_frontmatter": {
+    "fields": {
+      "name": {"type": "string", "required": true}
+    }
+  },
+  "source_manifest": {
+    "required_fields": ["id", "title"],
+    "one_of_fields": ["url"]
+  }
+}
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "contract_schema": "schema.json",
+  "marker_implies_manifest": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
+    "manifest": "references/sources.yaml",
+    "markers": [
+      "SIMPLICITY CHECK"
+    ],
+    "required_fields": [
+      "id"
+    ],
+    "allow_empty_fields": []
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"marker manifest"* ]]
+  [[ "$output" == *"required_fields must come from contract_schema"* ]]
 }
 
 @test "epilogue order drift fails" {

@@ -5,6 +5,10 @@ const fs = require("fs/promises");
 const path = require("path");
 const { normalizeName, parseFrontmatter } = require("./frontmatter");
 const {
+  SKILL_FRONTMATTER_BOOLEAN_FIELDS,
+  skillFrontmatterFieldByLoaderProperty,
+} = require("../schemas/skill-contracts");
+const {
   pathExists,
   readJson,
   readText,
@@ -53,6 +57,23 @@ const {
  * @property {unknown} [mcpServers]
  */
 
+const ARGUMENT_HINT_FIELD = skillFrontmatterFieldByLoaderProperty(
+  "argumentHint",
+  "argument-hint",
+);
+const DISABLE_MODEL_INVOCATION_FIELD = skillFrontmatterFieldByLoaderProperty(
+  "disableModelInvocation",
+  "disable-model-invocation",
+);
+const USER_INVOCABLE_FIELD = skillFrontmatterFieldByLoaderProperty(
+  "userInvocable",
+  "user-invocable",
+);
+const PLATFORMS_FIELD = skillFrontmatterFieldByLoaderProperty(
+  "platforms",
+  "kramme-platforms",
+);
+
 function normalizeFrontmatterBoolean(value) {
   if (typeof value === "boolean") return value;
   if (typeof value !== "string") return value;
@@ -61,6 +82,11 @@ function normalizeFrontmatterBoolean(value) {
   if (normalized === "true") return true;
   if (normalized === "false") return false;
   return value;
+}
+
+function normalizeFrontmatterField(field, value) {
+  if (!SKILL_FRONTMATTER_BOOLEAN_FIELDS.has(field)) return value;
+  return normalizeFrontmatterBoolean(value);
 }
 
 /**
@@ -197,11 +223,12 @@ async function loadCommands(commandsDirs) {
     commands.push({
       name,
       description: data.description,
-      argumentHint: data["argument-hint"],
+      argumentHint: data[ARGUMENT_HINT_FIELD],
       model: data.model,
       allowedTools,
-      disableModelInvocation: normalizeFrontmatterBoolean(
-        data["disable-model-invocation"],
+      disableModelInvocation: normalizeFrontmatterField(
+        DISABLE_MODEL_INVOCATION_FIELD,
+        data[DISABLE_MODEL_INVOCATION_FIELD],
       ),
       body: body.trim(),
       sourcePath: file,
@@ -224,14 +251,18 @@ async function loadSkills(skillsDirs) {
     skills.push({
       name,
       description: data.description,
-      argumentHint: data["argument-hint"],
+      argumentHint: data[ARGUMENT_HINT_FIELD],
       model: data.model,
       allowedTools,
-      disableModelInvocation: normalizeFrontmatterBoolean(
-        data["disable-model-invocation"],
+      disableModelInvocation: normalizeFrontmatterField(
+        DISABLE_MODEL_INVOCATION_FIELD,
+        data[DISABLE_MODEL_INVOCATION_FIELD],
       ),
-      userInvocable: normalizeFrontmatterBoolean(data["user-invocable"]),
-      platforms: parsePlatforms(data["kramme-platforms"]),
+      userInvocable: normalizeFrontmatterField(
+        USER_INVOCABLE_FIELD,
+        data[USER_INVOCABLE_FIELD],
+      ),
+      platforms: parsePlatforms(data[PLATFORMS_FIELD]),
       body: body.trim(),
       sourceDir: path.dirname(file),
       skillPath: file,
@@ -413,5 +444,6 @@ function parsePlatforms(value) {
 
 module.exports = {
   loadClaudePlugin,
+  normalizeFrontmatterField,
   resolvePluginInput,
 };
