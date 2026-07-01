@@ -21,6 +21,8 @@ FETCH_MODE="strict"
 BACKUP_MODE=0
 FORCE_BACKUP=0
 OUTPUT_FORMAT="shell"
+RESOLVE_BASE_FETCH_TIMEOUT_SECONDS="${RESOLVE_BASE_FETCH_TIMEOUT_SECONDS:-30}"
+RESOLVE_BASE_GH_LOOKUP_TIMEOUT_SECONDS="${RESOLVE_BASE_GH_LOOKUP_TIMEOUT_SECONDS:-10}"
 
 usage() {
 	cat >&2 <<'USAGE'
@@ -99,6 +101,39 @@ emit_output() {
 		emit_json
 		;;
 	esac
+}
+
+run_with_timeout() {
+	local timeout_seconds="$1"
+	shift
+
+	perl -MTime::HiRes=alarm -e '
+		my $timeout = shift @ARGV;
+		my $pid = fork();
+		die "failed to fork command: $!\n" unless defined $pid;
+
+		if ($pid == 0) {
+			setpgrp(0, 0) or die "failed to create command process group: $!\n";
+			exec @ARGV;
+			die "failed to exec command: $!\n";
+		}
+
+		my $timed_out = 0;
+		local $SIG{ALRM} = sub {
+			$timed_out = 1;
+			kill "KILL", -$pid;
+		};
+
+		alarm($timeout);
+		my $waited = waitpid($pid, 0);
+		my $status = $?;
+		alarm(0);
+
+		exit 124 if $timed_out;
+		die "failed to wait for command: $!\n" if $waited == -1;
+		exit(128 + ($status & 127)) if $status & 127;
+		exit(($status >> 8) & 255);
+	' "$timeout_seconds" "$@"
 }
 
 while [ $# -gt 0 ]; do
@@ -189,14 +224,35 @@ fetch_remote_branch() {
 	local branch="$2"
 	local label="$3"
 	local remote_ref="refs/remotes/${remote}/${branch}"
+	local fetch_status=0
+	local fetch_stderr
 
-	if git fetch "$remote" "refs/heads/${branch}:${remote_ref}"; then
+	fetch_stderr=$(mktemp "${TMPDIR:-/tmp}/resolve-base-fetch-stderr.XXXXXX")
+	if run_with_timeout "$RESOLVE_BASE_FETCH_TIMEOUT_SECONDS" env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never git fetch "$remote" "refs/heads/${branch}:${remote_ref}" 2>"$fetch_stderr"; then
+		if ! grep -q '^fatal:' "$fetch_stderr"; then
+			cat "$fetch_stderr" >&2
+			rm -f "$fetch_stderr"
+			return 0
+		fi
+		fetch_status=1
+	else
+		fetch_status=$?
+	fi
+	cat "$fetch_stderr" >&2
+	rm -f "$fetch_stderr"
+
+	if [ "$FETCH_MODE" = "tolerate" ] && git rev-parse --verify --quiet "${remote_ref}^{commit}" >/dev/null; then
+		if [ "$fetch_status" -eq 124 ] || [ "$fetch_status" -eq 142 ]; then
+			echo "Warning: timed out fetching ${remote}/${branch}; using existing ${remote_ref}" >&2
+		else
+			echo "Warning: failed to fetch ${remote}/${branch}; using existing ${remote_ref}" >&2
+		fi
 		return 0
 	fi
 
-	if [ "$FETCH_MODE" = "tolerate" ] && git rev-parse --verify --quiet "${remote_ref}^{commit}" >/dev/null; then
-		echo "Warning: failed to fetch ${remote}/${branch}; using existing ${remote_ref}" >&2
-		return 0
+	if [ "$fetch_status" -eq 124 ] || [ "$fetch_status" -eq 142 ]; then
+		echo "Timed out fetching ${remote}/${branch}${label:+ for $label} after ${RESOLVE_BASE_FETCH_TIMEOUT_SECONDS}s" >&2
+		exit 1
 	fi
 
 	echo "Failed to fetch ${remote}/${branch}${label:+ for $label}" >&2
@@ -254,7 +310,7 @@ if [ -n "$BASE_FLAG" ]; then
 	BASE_REF="refs/remotes/${BASE_REMOTE}/${BASE_BRANCH}"
 else
 	if command -v gh >/dev/null 2>&1; then
-		BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null || true)
+		BASE_BRANCH=$(run_with_timeout "$RESOLVE_BASE_GH_LOOKUP_TIMEOUT_SECONDS" env GH_PROMPT_DISABLED=1 gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null || true)
 	fi
 	if [ -z "$BASE_BRANCH" ]; then
 		BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || true)

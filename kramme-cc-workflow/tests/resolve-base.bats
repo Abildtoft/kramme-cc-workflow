@@ -44,12 +44,54 @@ write_gh_base() {
 	cat >"$BIN_DIR/gh" <<GH
 #!/bin/sh
 if [ "\$*" = "pr view --json baseRefName --jq .baseRefName" ]; then
+  if [ "\${GH_PROMPT_DISABLED:-}" != "1" ]; then
+    exit 3
+  fi
   printf '%s\n' "$branch"
   exit 0
 fi
 exit 1
 GH
 	chmod +x "$BIN_DIR/gh"
+}
+
+write_git_fetch_env_assertion() {
+	local real_git
+	real_git="${CONDUCTOR_REAL_GIT_PATH:-$(command -v git)}"
+	cat >"$BIN_DIR/git" <<GIT
+#!/bin/sh
+if [ "\$1" = "fetch" ]; then
+  if [ "\${GIT_TERMINAL_PROMPT:-}" != "0" ]; then
+    echo "missing GIT_TERMINAL_PROMPT=0" >&2
+    exit 86
+  fi
+  if [ "\${GCM_INTERACTIVE:-}" != "Never" ]; then
+    echo "missing GCM_INTERACTIVE=Never" >&2
+    exit 86
+  fi
+fi
+exec "$real_git" "\$@"
+GIT
+	chmod +x "$BIN_DIR/git"
+}
+
+write_slow_git_fetch() {
+	local real_git
+	real_git="${CONDUCTOR_REAL_GIT_PATH:-$(command -v git)}"
+	cat >"$BIN_DIR/git" <<GIT
+#!/bin/sh
+if [ "\$1" = "fetch" ]; then
+  if [ -n "\${MOCK_GIT_FETCH_CHILD_MARKER:-}" ]; then
+    sh -c 'sleep "\$1"; printf alive > "\$2"' sh "\${MOCK_GIT_FETCH_CHILD_SLEEP_SECONDS:-0.2}" "\$MOCK_GIT_FETCH_CHILD_MARKER" &
+    wait
+    exit 87
+  fi
+  sleep "\${MOCK_GIT_FETCH_SLEEP_SECONDS:-1}"
+  exit 87
+fi
+exec "$real_git" "\$@"
+GIT
+	chmod +x "$BIN_DIR/git"
 }
 
 load_assignments() {
@@ -161,6 +203,17 @@ delete_origin_head() {
 	load_assignments
 	[ "$BASE_REF" = "refs/remotes/origin/develop" ]
 	[ "$BASE_BRANCH" = "develop" ]
+}
+
+@test "fetch disables interactive credential prompts" {
+	write_git_fetch_env_assertion
+
+	run "$SCRIPT_DIR/resolve-base.sh" --base main
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/main" ]
+	[ "$BASE_BRANCH" = "main" ]
 }
 
 @test "falls back to origin main when origin HEAD is missing" {
@@ -295,6 +348,21 @@ delete_origin_head() {
 	[[ "$output" == *"Failed to fetch origin/main"* ]]
 }
 
+@test "strict mode fails when fetching the resolved base times out" {
+	write_slow_git_fetch
+	export RESOLVE_BASE_FETCH_TIMEOUT_SECONDS="0.05"
+	export MOCK_GIT_FETCH_SLEEP_SECONDS="1"
+	export MOCK_GIT_FETCH_CHILD_MARKER="$TMP_DIR/leaked-fetch-child"
+	export MOCK_GIT_FETCH_CHILD_SLEEP_SECONDS="0.2"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --strict
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Timed out fetching origin/main after 0.05s"* ]]
+	sleep 0.3
+	[ ! -e "$MOCK_GIT_FETCH_CHILD_MARKER" ]
+}
+
 @test "tolerates fetch failure when a cached remote ref exists" {
 	git fetch origin main >/dev/null 2>&1
 	git remote set-url origin "$TMP_DIR/missing-origin.git"
@@ -303,6 +371,20 @@ delete_origin_head() {
 
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Warning: failed to fetch origin/main; using existing refs/remotes/origin/main"* ]]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/main" ]
+	[ "$BASE_BRANCH" = "main" ]
+}
+
+@test "tolerates fetch timeout when a cached remote ref exists" {
+	write_slow_git_fetch
+	export RESOLVE_BASE_FETCH_TIMEOUT_SECONDS="0.05"
+	export MOCK_GIT_FETCH_SLEEP_SECONDS="1"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --tolerate-fetch-failure
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Warning: timed out fetching origin/main; using existing refs/remotes/origin/main"* ]]
 	load_assignments
 	[ "$BASE_REF" = "refs/remotes/origin/main" ]
 	[ "$BASE_BRANCH" = "main" ]

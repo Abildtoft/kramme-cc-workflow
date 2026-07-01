@@ -43,8 +43,42 @@ resolve_context_links_config_file() {
   printf '%s\n' "$legacy_config_file"
 }
 
+run_with_timeout() {
+  local timeout_seconds="$1"
+  shift
+
+  perl -MTime::HiRes=alarm -e '
+    my $timeout = shift @ARGV;
+    my $pid = fork();
+    die "failed to fork command: $!\n" unless defined $pid;
+
+    if ($pid == 0) {
+      setpgrp(0, 0) or die "failed to create command process group: $!\n";
+      exec @ARGV;
+      die "failed to exec command: $!\n";
+    }
+
+    my $timed_out = 0;
+    local $SIG{ALRM} = sub {
+      $timed_out = 1;
+      kill "KILL", -$pid;
+    };
+
+    alarm($timeout);
+    my $waited = waitpid($pid, 0);
+    my $status = $?;
+    alarm(0);
+
+    exit 124 if $timed_out;
+    die "failed to wait for command: $!\n" if $waited == -1;
+    exit(128 + ($status & 127)) if $status & 127;
+    exit(($status >> 8) & 255);
+  ' "$timeout_seconds" "$@"
+}
+
 # Optional org-specific configuration. This file is not tracked and can override defaults.
 CONTEXT_LINKS_CONFIG_FILE="$(resolve_context_links_config_file)"
+CONTEXT_LINKS_PR_LOOKUP_TIMEOUT_SECONDS="${CONTEXT_LINKS_PR_LOOKUP_TIMEOUT_SECONDS:-5}"
 CONTEXT_LINKS_CONFIG_LINEAR_WORKSPACE_SLUG=""
 CONTEXT_LINKS_CONFIG_LINEAR_TEAM_KEYS=""
 CONTEXT_LINKS_CONFIG_LINEAR_ISSUE_REGEX=""
@@ -145,7 +179,7 @@ fi
 # Check for open PR
 REMOTE_URL=$(git remote get-url origin 2> /dev/null)
 if echo "$REMOTE_URL" | grep -q "github.com"; then
-  PR_JSON=$(gh pr view --json url,number 2> /dev/null)
+  PR_JSON=$(run_with_timeout "$CONTEXT_LINKS_PR_LOOKUP_TIMEOUT_SECONDS" env GH_PROMPT_DISABLED=1 gh pr view --json url,number 2> /dev/null)
   if [ $? -eq 0 ] && [ -n "$PR_JSON" ]; then
     PR_URL=$(echo "$PR_JSON" | grep -o '"url":"[^"]*"' | cut -d'"' -f4)
     if [ -n "$PR_URL" ]; then

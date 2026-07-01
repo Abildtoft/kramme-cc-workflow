@@ -17,6 +17,11 @@ setup() {
 	export MOCK_GIT_REMOTE=""
 	export MOCK_GH_PR_EXISTS=""
 	export MOCK_GH_PR_NUMBER=""
+	export MOCK_GH_REQUIRE_PROMPT_DISABLED=""
+	export MOCK_GH_SLEEP_SECONDS=""
+	export MOCK_GH_CHILD_MARKER=""
+	export MOCK_GH_CHILD_SLEEP_SECONDS=""
+	export CONTEXT_LINKS_PR_LOOKUP_TIMEOUT_SECONDS=""
 	export CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG=""
 	export CONTEXT_LINKS_LINEAR_TEAM_KEYS=""
 	export CONTEXT_LINKS_LINEAR_ISSUE_REGEX=""
@@ -206,6 +211,33 @@ setup() {
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"linear.app"* ]]
 	[[ "$output" != *"GitHub:"* ]]
+}
+
+@test "GitHub PR lookup disables interactive prompts" {
+	export MOCK_GIT_BRANCH="feature/no-issue-number"
+	export MOCK_GIT_REMOTE="https://github.com/user/repo.git"
+	export MOCK_GH_PR_EXISTS="true"
+	export MOCK_GH_PR_NUMBER="77"
+	export MOCK_GH_REQUIRE_PROMPT_DISABLED="true"
+	run bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"GitHub:"* ]]
+	[[ "$output" == *"pull/77"* ]]
+}
+
+@test "GitHub PR lookup timeout degrades to empty hook output" {
+	export MOCK_GIT_BRANCH="feature/no-issue-number"
+	export MOCK_GIT_REMOTE="https://github.com/user/repo.git"
+	export MOCK_GH_PR_EXISTS="true"
+	export MOCK_GH_SLEEP_SECONDS="1"
+	export MOCK_GH_CHILD_MARKER="$BATS_TEST_TMPDIR/leaked-gh-child"
+	export MOCK_GH_CHILD_SLEEP_SECONDS="0.2"
+	export CONTEXT_LINKS_PR_LOOKUP_TIMEOUT_SECONDS="0.05"
+	run bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
+	sleep 0.3
+	[ ! -e "$MOCK_GH_CHILD_MARKER" ]
 }
 
 # ============================================================================

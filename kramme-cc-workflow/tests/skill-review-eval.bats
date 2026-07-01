@@ -213,6 +213,41 @@ NODE
   [ "$status" -eq 0 ]
 }
 
+@test "skill review eval bounds hanging prediction commands" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    cat > "$BATS_TEST_TMPDIR/hanging-review.js" <<'"'"'NODE'"'"'
+const fs = require("fs");
+const marker = process.argv[2];
+setTimeout(() => fs.writeFileSync(marker, "alive"), 200);
+setTimeout(() => {}, 1000);
+NODE
+
+    if SKILL_REVIEW_EVAL_PREDICTION_TIMEOUT_MS=25 \
+      node evals/skill-review/run-eval.js \
+      --split train \
+      --prediction-command "node \"$BATS_TEST_TMPDIR/hanging-review.js\" \"$BATS_TEST_TMPDIR/leaked-child\" & wait" \
+      --json > "$BATS_TEST_TMPDIR/out.json" 2> "$BATS_TEST_TMPDIR/err.txt"; then
+      exit 1
+    fi
+    if [ -s "$BATS_TEST_TMPDIR/err.txt" ]; then
+      cat "$BATS_TEST_TMPDIR/err.txt"
+      exit 1
+    fi
+    node -e "
+      const fs = require(\"fs\");
+      const data = JSON.parse(fs.readFileSync(process.argv[1], \"utf8\"));
+      if (!/prediction command timed out for train-good-skill after 25ms/.test(data.error)) process.exit(1);
+      if (!Array.isArray(data.diagnostics) || data.diagnostics[0] !== data.error) process.exit(1);
+    " "$BATS_TEST_TMPDIR/out.json"
+    sleep 0.3
+    [ ! -e "$BATS_TEST_TMPDIR/leaked-child" ]
+  '
+
+  [ "$status" -eq 0 ]
+}
+
 @test "skill review eval rejects blank prediction command values" {
   run bash -c '
     set -euo pipefail

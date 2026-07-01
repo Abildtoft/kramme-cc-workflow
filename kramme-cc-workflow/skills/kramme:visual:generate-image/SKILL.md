@@ -4,6 +4,8 @@ description: Generate and edit images using Google's Gemini 3 Pro Image API. Use
 argument-hint: "[prompt or editing instructions]"
 disable-model-invocation: true
 user-invocable: true
+permissions:
+  - env
 kramme-platforms: [claude-code, codex]
 ---
 
@@ -93,7 +95,7 @@ Examples:
 - Prompt "A serene Japanese garden" → `2025-11-23-14-23-05-japanese-garden.png`
 - Prompt "sunset over mountains" → `2025-11-23-15-30-12-sunset-mountains.png`
 - Prompt "create an image of a robot" → `2025-11-23-16-45-33-robot.png`
-- Unclear context → `2025-11-23-17-12-48-x9k2.png`
+- Ambiguous prompt → `2025-11-23-17-12-48-x9k2.png`
 
 ## Image Editing
 
