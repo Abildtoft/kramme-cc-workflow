@@ -23,6 +23,14 @@
       "owner": "kramme",
       "accepted_at": "2026-06-30",
       "review_after": "2026-07-30"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:visual:generate-image/scripts/generate_image.py",
+      "rule_id": "E2",
+      "reason": "Reviewed intentional GEMINI_API_KEY lookup for the image-generation skill. The script reads this single named environment variable only when --api-key is absent, never logs it, and passes it directly to the Gemini client.",
+      "owner": "kramme",
+      "accepted_at": "2026-07-01",
+      "review_after": "2026-08-01"
     }
   ]
 }

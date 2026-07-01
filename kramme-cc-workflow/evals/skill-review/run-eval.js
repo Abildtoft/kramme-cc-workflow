@@ -270,6 +270,13 @@ function stripPredictionTimeoutSentinel(stderr) {
     .trim();
 }
 
+function spawnErrorCode(error) {
+  if (error && typeof error === "object" && "code" in error) {
+    return /** @type {{ code?: unknown }} */ (error).code;
+  }
+  return undefined;
+}
+
 function runShellCommandWithTimeout(command, options) {
   if (process.platform === "win32") {
     return spawnSync(command, {
@@ -313,7 +320,7 @@ function runPredictionCommand(item, options) {
   });
 
   if (result.error) {
-    if (result.error.code === "ETIMEDOUT") {
+    if (spawnErrorCode(result.error) === "ETIMEDOUT") {
       throw new Error(
         `prediction command timed out for ${item.id} after ${timeout}ms`,
       );

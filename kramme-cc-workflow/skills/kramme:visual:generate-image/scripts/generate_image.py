@@ -48,7 +48,7 @@ class GenerationTimeoutError(TimeoutError):
 
 
 def get_api_key(provided_key: str | None) -> str | None:
-    """Get API key from argument first, then environment."""
+    """Resolve the Gemini API key."""
     if provided_key:
         return provided_key
     return os.environ.get("GEMINI_API_KEY")
