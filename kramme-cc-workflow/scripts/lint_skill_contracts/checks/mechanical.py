@@ -53,6 +53,9 @@ def check_mechanical(context: LintContext) -> CheckResult:
                 f"exceeds {max_description}"
             )
 
+    agent_result = check_agent_frontmatter_names(context)
+    result.failures.extend(agent_result.failures)
+
     if warn_lines <= 0:
         return result
 
@@ -68,4 +71,29 @@ def check_mechanical(context: LintContext) -> CheckResult:
             f"mechanical: long-skill burndown: {relative} has {line_count} lines "
             f"({status}; warn at {warn_lines}, fail above {max_lines})"
         )
+    return result
+
+
+def check_agent_frontmatter_names(context: LintContext) -> CheckResult:
+    result = CheckResult()
+    config = context.registry.get("mechanical", {})
+    pattern = config.get("agent_glob", "kramme-cc-workflow/agents/*.md")
+
+    for path in skill_paths(context.root, pattern):
+        relative = rel(path, context.root)
+        frontmatter = parse_frontmatter(read_text(path))
+        if frontmatter is None:
+            result.failures.append(f"mechanical: {relative} is missing YAML frontmatter")
+            continue
+
+        expected_name = path.stem
+        actual_name = frontmatter.get("name")
+        if actual_name is None:
+            result.failures.append(f"mechanical: {relative} is missing frontmatter field 'name'")
+            continue
+        if actual_name != expected_name:
+            result.failures.append(
+                f"mechanical: {relative} frontmatter name {actual_name!r} "
+                f"does not match agent filename {expected_name!r}"
+            )
     return result

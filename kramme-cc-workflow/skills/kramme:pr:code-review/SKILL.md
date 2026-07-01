@@ -166,7 +166,7 @@ PY
    - `kramme:code-simplifier` — only when `refactor` or `simplify` is explicitly listed in the aspect arguments. Record the active dimension as `refactor`, `simplify`, or both based on the requested tokens. Use `refactor` for review-only reuse/composition/codebase-fit findings; use `simplify` for broader clarity and maintainability simplification suggestions. Neither runs as part of `all`, because cleanup suggestions can conflict with unresolved Critical/Important findings. Run the review first, resolve those, then re-run with `refactor` or `simplify`.
 
    **Stack-specific conditional reviewers** (activate only when the touched stack has the relevant risk surface):
-   - `performance-oracle` — data-heavy paths, loops over large collections, DB queries, caching, hot paths, rendering bottlenecks, or expensive client bundles
+   - `kramme:performance-oracle` — data-heavy paths, loops over large collections, DB queries, caching, hot paths, rendering bottlenecks, or expensive client bundles
    - Security reviewer bundle — API routes, auth logic, authorization checks, DB queries, external calls, user input handling, crypto, secrets, session state, or business-rule enforcement. Launch `kramme:injection-reviewer`, `kramme:auth-reviewer`, `kramme:data-reviewer`, and `kramme:logic-reviewer` together.
 
    Build `ACTIVE_REVIEW_DIMENSIONS` from the agents that will actually run after aspect filtering and applicability checks. If any emphasized dimension has no active agent in this set, stop with an error telling the user which emphasized dimensions are inactive. Do not cap unrelated findings when the emphasized review never ran.
