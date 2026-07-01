@@ -16,11 +16,11 @@ kramme-cc-workflow/            # General workflow plugin
 
 ### Agents
 
-Create `agents/<agent-name>.md`:
+Create `kramme-cc-workflow/agents/kramme:<agent-name>.md`:
 
 ```yaml
 ---
-name: kramme:agent-name
+name: kramme:<agent-name>
 description: When and how to use this agent (shown in Task tool)
 model: sonnet
 color: blue
@@ -30,11 +30,11 @@ color: blue
 
 ### Skills
 
-Create `skills/<skill-name>/SKILL.md`:
+Create `kramme-cc-workflow/skills/kramme:<domain>:<skill-name>/SKILL.md`:
 
 ```yaml
 ---
-name: skill-name
+name: kramme:<domain>:<skill-name>
 description: When to auto-trigger this skill
 argument-hint: [optional-argument]
 disable-model-invocation: false
@@ -54,7 +54,7 @@ user-invocable: true
 **Skill directory structure** (follows [Agent Skills spec](https://agentskills.io/specification)):
 
 ```
-skill-name/
+kramme:<domain>:<skill-name>/
 ├── SKILL.md           # Core instructions (required, target under 500 lines)
 ├── references/        # Docs, prompts, examples agents read (loaded on demand)
 ├── assets/            # Output templates, code templates, static resources
@@ -79,7 +79,7 @@ exit_if_hook_disabled "hook-name" "json" # For PostToolUse/Stop hooks
 
 ## Conventions
 
-- Use kebab-case for file and directory names
+- Use namespaced `kramme:` component names with kebab-case name segments
 - Components are markdown files with YAML frontmatter
 - Keep instructions concise and actionable
 - **Document all components in README.md** - Every command, skill, agent, and hook must be documented in the README with a description of what it does and when to use it
@@ -89,7 +89,7 @@ exit_if_hook_disabled "hook-name" "json" # For PostToolUse/Stop hooks
 - **Skill prose burndown** - `python3 kramme-cc-workflow/scripts/lint-skill-contracts.py` reports warning-only `long-skill burndown` entries for `SKILL.md` files at or above 400 lines, sorted by length. Use the first warning as the next extraction target, keeping the 500-line hard failure budget unchanged. For W02C, the W01E baseline target is `kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md`; success means moving reference material to `references/`, templates to `assets/`, and executable behavior to `scripts/` until the target drops meaningfully below the warning threshold without changing skill behavior.
 - **Explicit skill frontmatter** - Every skill SKILL.md must declare all frontmatter fields explicitly (`name`, `description`, `disable-model-invocation`, `user-invocable`). Never rely on defaults.
 - **ALWAYS** keep every skill and agent `description` frontmatter field at or below 1024 characters for Codex compatibility. Move examples and extended trigger guidance into the body instead of frontmatter.
-- **ALWAYS** resolve skill edits to the in-repo source path: plugin skills live under `kramme-cc-workflow/skills/<skill-name>/`, and repository-maintenance skills live under `.agents/skills/<skill-name>/`.
+- **ALWAYS** resolve skill edits to the in-repo source path: plugin skills live under `kramme-cc-workflow/skills/kramme:<skill-name>/`, and repository-maintenance skills live under `.agents/skills/<skill-name>/`.
 - **NEVER** edit installed skill copies under `~/.codex/skills`, `~/.agents/skills`, `~/.claude/skills`, app bundles, or generated install output when the goal is to change this repository's skill behavior.
 - **Skills must be self-contained** - `SKILL.md` files and skill resources must not cite, link to, or instruct reading repository-level docs (including this repo's `CLAUDE.md`, `README.md`, or shared `docs/` files). Reason: skills run after installation in downstream environments, and cross-references create hidden coupling and brittle behavior. Every skill must contain its runtime policy within its own folder (`SKILL.md` + local `references/`/`assets/`).
 - **Skill security scanning** - Run SkillSpector for new or materially changed skills. Use static-only scans by default: `make -C kramme-cc-workflow skill-security-changed` for branch changes, `make -C kramme-cc-workflow skill-security` for release-candidate full-tree checks, and `skillspector scan <url-or-path> --no-llm` before installing third-party skills. Semantic scans are optional and only appropriate when provider credentials are intentionally configured and the skill contents are acceptable to send to that provider. Treat SkillSpector as an additional scanner that complements tests, linting, and human review; triage high and critical findings before merge or installation.

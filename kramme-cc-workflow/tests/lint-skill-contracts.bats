@@ -1470,6 +1470,30 @@ EOF
   [[ "$output" == *"missing frontmatter field 'user-invocable'"* ]]
 }
 
+@test "mechanical agent frontmatter name must match filename" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/agents/kramme:sample-agent.md" <<'EOF'
+---
+name: sample-agent
+description: Test agent
+model: inherit
+color: blue
+---
+# Test
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "mechanical": {
+    "agent_glob": "kramme-cc-workflow/agents/*.md"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"frontmatter name 'sample-agent' does not match agent filename 'kramme:sample-agent'"* ]]
+}
+
 @test "mechanical long-skill warning reports near-threshold candidates" {
   write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/below/SKILL.md" "$(make_body_lines 4)"
   write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/near/SKILL.md" "$(make_body_lines 6)"

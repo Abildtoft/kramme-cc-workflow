@@ -1,5 +1,5 @@
 ---
-name: performance-oracle
+name: kramme:performance-oracle
 description: "Use this agent to review code for performance and scalability risks, including algorithmic complexity, query efficiency, memory use, caching, contention, and bottlenecks. Use it after implementing data-heavy features or when investigating slow paths; not for general code quality review."
 model: inherit
 color: orange

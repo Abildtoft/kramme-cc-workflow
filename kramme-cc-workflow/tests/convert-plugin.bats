@@ -1514,7 +1514,7 @@ MD
 	[ "$status" -eq 0 ]
 	[ ! -d "$TMP_DIR/.agents/skills/kramme:architecture-strategist" ]
 	[ ! -d "$TMP_DIR/.agents/skills/kramme:silent-failure-hunter" ]
-	[ ! -d "$TMP_DIR/.agents/skills/performance-oracle" ]
+	[ ! -d "$TMP_DIR/.agents/skills/kramme:performance-oracle" ]
 }
 
 @test "codex conversion skips cleanup in non-interactive mode without --yes" {
@@ -2208,7 +2208,7 @@ MD
 	[ "$status" -eq 0 ]
 	[ ! -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
 	[ ! -d "$TMP_DIR/.agents/skills/kramme:architecture-strategist" ]
-	[ ! -d "$TMP_DIR/.agents/skills/performance-oracle" ]
+	[ ! -d "$TMP_DIR/.agents/skills/kramme:performance-oracle" ]
 }
 
 @test "codex conversion cleans old impl- prefixed skills on upgrade" {
@@ -2257,7 +2257,7 @@ MD
 	[ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
 	[ -f "$TMP_DIR/.codex/skills/kramme:fixture:review/SKILL.md" ]
 	[ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
-	[ -f "$TMP_DIR/.agents/skills/performance-oracle/SKILL.md" ]
+	[ -f "$TMP_DIR/.agents/skills/kramme:performance-oracle/SKILL.md" ]
 }
 
 @test "codex conversion preserves existing workflow skills when reinstalling another plugin without state" {

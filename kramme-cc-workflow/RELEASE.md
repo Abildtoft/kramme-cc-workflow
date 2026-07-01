@@ -2,6 +2,8 @@
 
 This document describes how to release a new version of kramme-cc-workflow.
 
+Run the commands in this document from the plugin root (`kramme-cc-workflow/`). In this file, `.claude-plugin/plugin.json` is the plugin manifest and `package.json` is the plugin package. The repository-root `package.json` is the npm installer entrypoint and is not bumped by the plugin release flow.
+
 ## Version Numbering
 
 - **Patch** (0.2.0 → 0.2.1): Bug fixes, documentation updates, minor improvements
@@ -23,7 +25,7 @@ Trigger a release from the GitHub UI:
 The workflow will:
 
 - Run tests
-- Bump version in `.claude-plugin/plugin.json` and `package.json`
+- Bump version in the plugin manifest `.claude-plugin/plugin.json` and plugin package `package.json`
 - Create a release branch and commit
 - Create a Pull Request to main
 - After PR merge, automatically create git tag and GitHub Release
@@ -53,7 +55,7 @@ The script will:
 
 - Run tests
 - Prompt for confirmation
-- Bump version in `.claude-plugin/plugin.json` and `package.json`
+- Bump version in the plugin manifest `.claude-plugin/plugin.json` and plugin package `package.json`
 - Create a release branch and commit
 
 After running, push the branch and create a PR:
@@ -93,7 +95,7 @@ git checkout -b release/vX.Y.Z
 
 ### 4. Bump Version
 
-Update `.claude-plugin/plugin.json` and `package.json`:
+Update the plugin manifest `.claude-plugin/plugin.json` and plugin package `package.json`:
 
 ```json
 {
