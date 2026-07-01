@@ -25,10 +25,86 @@ git_root=$(git rev-parse --show-toplevel 2> /dev/null) || {
 
 worktree_dir="$git_root/.worktrees"
 
+validate_spec_name() {
+  local spec_name="${1:?Error: spec_name required}"
+
+  if [[ ! "$spec_name" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+    echo -e "${red}Error: spec_name must be lowercase kebab-case: $spec_name${nc}" >&2
+    return 1
+  fi
+}
+
+validate_exp_index() {
+  local exp_index="${1:?Error: exp_index required}"
+
+  if [[ ! "$exp_index" =~ ^[0-9]+$ ]]; then
+    echo -e "${red}Error: exp_index must be a nonnegative integer: $exp_index${nc}" >&2
+    return 1
+  fi
+}
+
+format_exp_index() {
+  local exp_index="${1:?Error: exp_index required}"
+  validate_exp_index "$exp_index" || return 1
+
+  local normalized="$exp_index"
+  while [[ "$normalized" == 0* && "${#normalized}" -gt 1 ]]; do
+    normalized="${normalized#0}"
+  done
+
+  case "${#normalized}" in
+    1)
+      echo "00$normalized"
+      ;;
+    2)
+      echo "0$normalized"
+      ;;
+    *)
+      echo "$normalized"
+      ;;
+  esac
+}
+
 experiment_branch_name() {
   local spec_name="${1:?Error: spec_name required}"
   local padded_index="${2:?Error: padded_index required}"
   echo "optimize-exp/${spec_name}/exp-${padded_index}"
+}
+
+experiment_worktree_name() {
+  local spec_name="${1:?Error: spec_name required}"
+  local padded_index="${2:?Error: padded_index required}"
+  echo "optimize-${spec_name}-exp-${padded_index}"
+}
+
+is_expected_experiment_worktree_name() {
+  local spec_name="${1:?Error: spec_name required}"
+  local worktree_name="${2:?Error: worktree_name required}"
+  local prefix="optimize-${spec_name}-exp-"
+  local index_str
+
+  if [[ "$worktree_name" != "$prefix"* ]]; then
+    return 1
+  fi
+
+  index_str="${worktree_name#$prefix}"
+  [[ "$index_str" =~ ^[0-9]{3,}$ ]]
+}
+
+validate_cleanup_worktree_path() {
+  local worktree_path="${1:?Error: worktree_path required}"
+  local spec_name="${2:?Error: spec_name required}"
+  local worktree_name="${worktree_path##*/}"
+
+  if [ "$worktree_path" != "$worktree_dir/$worktree_name" ]; then
+    echo -e "${red}Error: cleanup path must be a direct child of $worktree_dir: $worktree_path${nc}" >&2
+    return 1
+  fi
+
+  if ! is_expected_experiment_worktree_name "$spec_name" "$worktree_name"; then
+    echo -e "${red}Error: cleanup path does not match optimize-${spec_name}-exp-<NNN>: $worktree_path${nc}" >&2
+    return 1
+  fi
 }
 
 ensure_worktree_exclude() {
@@ -44,7 +120,12 @@ ensure_worktree_exclude() {
 is_registered_worktree() {
   local worktree_path="${1:?Error: worktree_path required}"
   git worktree list --porcelain | awk -v target="$worktree_path" '
-    $1 == "worktree" && $2 == target { found = 1 }
+    $1 == "worktree" {
+      path = substr($0, 10)
+      if (path == target) {
+        found = 1
+      }
+    }
     END { exit(found ? 0 : 1) }
   '
 }
@@ -53,9 +134,54 @@ is_branch_checked_out() {
   local branch_name="${1:?Error: branch_name required}"
   local branch_ref="refs/heads/$branch_name"
   git worktree list --porcelain | awk -v target="$branch_ref" '
-    $1 == "branch" && $2 == target { found = 1 }
+    $1 == "branch" {
+      branch = substr($0, 8)
+      if (branch == target) {
+        found = 1
+      }
+    }
     END { exit(found ? 0 : 1) }
   '
+}
+
+registered_experiment_worktrees() {
+  local spec_name="${1:?Error: spec_name required}"
+  local prefix="optimize-${spec_name}-exp-"
+
+  git worktree list --porcelain | awk -v root="$worktree_dir" -v prefix="$prefix" '
+    $1 == "worktree" {
+      path = substr($0, 10)
+      name = path
+      sub(/^.*\//, "", name)
+
+      if (path == root "/" name && index(name, prefix) == 1) {
+        index_str = substr(name, length(prefix) + 1)
+        if (index_str ~ /^[0-9][0-9][0-9][0-9]*$/) {
+          print path
+        }
+      }
+    }
+  '
+}
+
+remove_registered_worktree() {
+  local worktree_path="${1:?Error: worktree_path required}"
+  local branch_name="${2:?Error: branch_name required}"
+  local spec_name="${3:?Error: spec_name required}"
+
+  validate_cleanup_worktree_path "$worktree_path" "$spec_name" || return 1
+
+  if ! is_registered_worktree "$worktree_path"; then
+    echo -e "${red}Error: cleanup target is not a registered git worktree: $worktree_path${nc}" >&2
+    return 1
+  fi
+
+  if ! git worktree remove "$worktree_path" --force; then
+    echo -e "${red}Error: failed to remove registered worktree: $worktree_path${nc}" >&2
+    return 1
+  fi
+
+  git branch -D "$branch_name" > /dev/null 2>&1 || true
 }
 
 validate_shared_file_path() {
@@ -92,14 +218,12 @@ create_worktree() {
   local base_branch="${3:?Error: base_branch required}"
   shift 3
 
-  if [[ ! "$spec_name" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
-    echo -e "${red}Error: spec_name must be lowercase kebab-case: $spec_name${nc}" >&2
-    return 1
-  fi
+  validate_spec_name "$spec_name" || return 1
 
   local padded_index
-  padded_index=$(printf "%03d" "$exp_index")
-  local worktree_name="optimize-${spec_name}-exp-${padded_index}"
+  padded_index=$(format_exp_index "$exp_index") || return 1
+  local worktree_name
+  worktree_name=$(experiment_worktree_name "$spec_name" "$padded_index")
   local branch_name
   branch_name=$(experiment_branch_name "$spec_name" "$padded_index")
   local worktree_path="$worktree_dir/$worktree_name"
@@ -148,26 +272,34 @@ create_worktree() {
 cleanup_worktree() {
   local spec_name="${1:?Error: spec_name required}"
   local exp_index="${2:?Error: exp_index required}"
+  validate_spec_name "$spec_name" || return 1
+
   local padded_index
-  padded_index=$(printf "%03d" "$exp_index")
-  local worktree_name="optimize-${spec_name}-exp-${padded_index}"
+  padded_index=$(format_exp_index "$exp_index") || return 1
+  local worktree_name
+  worktree_name=$(experiment_worktree_name "$spec_name" "$padded_index")
   local branch_name
   branch_name=$(experiment_branch_name "$spec_name" "$padded_index")
   local worktree_path="$worktree_dir/$worktree_name"
 
-  if [ -d "$worktree_path" ]; then
-    git worktree remove "$worktree_path" --force 2> /dev/null || {
-      rm -rf "$worktree_path" 2> /dev/null || true
-      git worktree prune 2> /dev/null || true
-    }
+  validate_cleanup_worktree_path "$worktree_path" "$spec_name" || return 1
+
+  if is_registered_worktree "$worktree_path"; then
+    remove_registered_worktree "$worktree_path" "$branch_name" "$spec_name" || return 1
+  elif [ -e "$worktree_path" ]; then
+    echo -e "${red}Error: cleanup target exists but is not a registered git worktree: $worktree_path${nc}" >&2
+    return 1
+  else
+    git branch -D "$branch_name" > /dev/null 2>&1 || true
   fi
 
-  git branch -D "$branch_name" 2> /dev/null || true
   echo -e "${green}Cleaned up: $worktree_name${nc}" >&2
 }
 
 cleanup_all() {
   local spec_name="${1:?Error: spec_name required}"
+  validate_spec_name "$spec_name" || return 1
+
   local prefix="optimize-${spec_name}-exp-"
   local count=0
 
@@ -176,19 +308,20 @@ cleanup_all() {
     return 0
   fi
 
-  for worktree_path in "$worktree_dir"/${prefix}*; do
-    if [ -d "$worktree_path" ]; then
-      local worktree_name
-      worktree_name=$(basename "$worktree_path")
-      local index_str="${worktree_name#$prefix}"
-      local branch_name
-      branch_name=$(experiment_branch_name "$spec_name" "$index_str")
+  while IFS= read -r worktree_path; do
+    [ -n "$worktree_path" ] || continue
 
-      git worktree remove "$worktree_path" --force 2> /dev/null || rm -rf "$worktree_path" 2> /dev/null || true
-      git branch -D "$branch_name" 2> /dev/null || true
-      count=$((count + 1))
-    fi
-  done
+    local worktree_name
+    worktree_name=$(basename "$worktree_path")
+    validate_cleanup_worktree_path "$worktree_path" "$spec_name" || return 1
+
+    local index_str="${worktree_name#$prefix}"
+    local branch_name
+    branch_name=$(experiment_branch_name "$spec_name" "$index_str")
+
+    remove_registered_worktree "$worktree_path" "$branch_name" "$spec_name" || return 1
+    count=$((count + 1))
+  done < <(registered_experiment_worktrees "$spec_name")
 
   git worktree prune 2> /dev/null || true
   if [ -d "$worktree_dir" ] && [ -z "$(ls -A "$worktree_dir" 2> /dev/null)" ]; then

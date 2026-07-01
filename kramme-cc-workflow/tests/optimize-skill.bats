@@ -90,3 +90,161 @@
 
 	[ "$status" -eq 0 ]
 }
+
+@test "code optimize worktree cleanup rejects unsafe names and indexes" {
+	run bash -c '
+    set -euo pipefail
+    repo="$BATS_TEST_TMPDIR/optimize-cleanup-invalid-repo"
+    mkdir -p "$repo"
+    cd "$repo"
+    git init -q
+    git config user.email "test@example.com"
+    git config user.name "Test User"
+    touch tracked.txt
+    git add tracked.txt
+    git commit -qm init
+
+    helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
+    for spec_name in "*" "safe/spec" "../safe"; do
+      if "$helper" cleanup "$spec_name" 1; then
+        echo "expected cleanup to reject spec_name: $spec_name"
+        exit 1
+      fi
+    done
+
+    for exp_index in abc "1/../../main"; do
+      if "$helper" cleanup safe-spec "$exp_index"; then
+        echo "expected cleanup to reject exp_index: $exp_index"
+        exit 1
+      fi
+    done
+
+    for spec_name in "*" "safe/spec" "../safe"; do
+      if "$helper" cleanup-all "$spec_name"; then
+        echo "expected cleanup-all to reject spec_name: $spec_name"
+        exit 1
+      fi
+    done
+  '
+
+	[ "$status" -eq 0 ]
+}
+
+@test "code optimize worktree cleanup-all does not expand wildcard specs" {
+	run bash -c '
+    set -euo pipefail
+    repo="$BATS_TEST_TMPDIR/optimize-cleanup-wildcard-repo"
+    mkdir -p "$repo"
+    cd "$repo"
+    git init -q
+    git config user.email "test@example.com"
+    git config user.name "Test User"
+    touch tracked.txt
+    git add tracked.txt
+    git commit -qm init
+
+    helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
+    worktree_path=$("$helper" create safe-spec 1 HEAD)
+
+    if "$helper" cleanup-all "*"; then
+      echo "expected wildcard cleanup-all to fail"
+      exit 1
+    fi
+
+    test -d "$worktree_path"
+    git show-ref --verify --quiet refs/heads/optimize-exp/safe-spec/exp-001
+  '
+
+	[ "$status" -eq 0 ]
+}
+
+@test "code optimize worktree cleanup removes one registered experiment" {
+	run bash -c '
+    set -euo pipefail
+    repo="$BATS_TEST_TMPDIR/optimize-cleanup-one-repo"
+    mkdir -p "$repo"
+    cd "$repo"
+    git init -q
+    git config user.email "test@example.com"
+    git config user.name "Test User"
+    touch tracked.txt
+    git add tracked.txt
+    git commit -qm init
+
+    helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
+    worktree_path=$("$helper" create safe-spec 1 HEAD)
+
+    test -d "$worktree_path"
+    git show-ref --verify --quiet refs/heads/optimize-exp/safe-spec/exp-001
+
+    "$helper" cleanup safe-spec 1
+
+    test ! -e "$worktree_path"
+    ! git show-ref --verify --quiet refs/heads/optimize-exp/safe-spec/exp-001
+  '
+
+	[ "$status" -eq 0 ]
+}
+
+@test "code optimize worktree cleanup-all removes only registered matching experiments" {
+	run bash -c '
+    set -euo pipefail
+    repo="$BATS_TEST_TMPDIR/optimize-cleanup-all-repo"
+    mkdir -p "$repo"
+    cd "$repo"
+    git init -q
+    git config user.email "test@example.com"
+    git config user.name "Test User"
+    touch tracked.txt
+    git add tracked.txt
+    git commit -qm init
+
+    helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
+    first_path=$("$helper" create safe-spec 1 HEAD)
+    second_path=$("$helper" create safe-spec 2 HEAD)
+    other_path=$("$helper" create other-spec 1 HEAD)
+    unregistered_path="$repo/.worktrees/optimize-safe-spec-exp-999"
+    mkdir -p "$unregistered_path"
+
+    "$helper" cleanup-all safe-spec
+
+    test ! -e "$first_path"
+    test ! -e "$second_path"
+    test -d "$other_path"
+    test -d "$unregistered_path"
+    ! git show-ref --verify --quiet refs/heads/optimize-exp/safe-spec/exp-001
+    ! git show-ref --verify --quiet refs/heads/optimize-exp/safe-spec/exp-002
+    git show-ref --verify --quiet refs/heads/optimize-exp/other-spec/exp-001
+  '
+
+	[ "$status" -eq 0 ]
+}
+
+@test "code optimize worktree cleanup fails closed when git removal fails" {
+	run bash -c '
+    set -euo pipefail
+    repo="$BATS_TEST_TMPDIR/optimize-cleanup-remove-failure-repo"
+    mkdir -p "$repo"
+    cd "$repo"
+    git init -q
+    git config user.email "test@example.com"
+    git config user.name "Test User"
+    touch tracked.txt
+    git add tracked.txt
+    git commit -qm init
+
+    helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
+    worktree_path=$("$helper" create safe-spec 1 HEAD)
+    git worktree lock "$worktree_path"
+
+    if "$helper" cleanup safe-spec 1; then
+      echo "expected cleanup to fail for locked worktree"
+      exit 1
+    fi
+
+    test -d "$worktree_path"
+    git show-ref --verify --quiet refs/heads/optimize-exp/safe-spec/exp-001
+  '
+
+	[ "$status" -eq 0 ]
+}
