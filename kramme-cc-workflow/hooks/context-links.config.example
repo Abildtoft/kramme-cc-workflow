@@ -1,5 +1,6 @@
 # Optional overrides for hooks/context-links.sh.
-# Copy this file to hooks/context-links.config and uncomment/edit values as needed.
+# Copy this file to ${XDG_CONFIG_HOME:-$HOME/.config}/kramme-cc-workflow/context-links.config
+# and uncomment/edit values as needed.
 
 # Linear workspace slug used in generated issue links.
 # CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG="your-workspace"

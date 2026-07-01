@@ -8,7 +8,7 @@ cross-hook parsing and toggle behavior here.
 
 | File | Responsibility |
 | --- | --- |
-| `check-enabled.sh` | Reads `hooks/hook-state.json`, honors disabled hooks, drains stdin on disabled hooks, and optionally emits `{}` for JSON hook events. |
+| `check-enabled.sh` | Reads the resolved hook state file, honors disabled hooks, drains stdin on disabled hooks, and optionally emits `{}` for JSON hook events. |
 | `git-parse-utils.sh` | Shell helpers for token cleanup, wrapper parsing, command-substitution tracking, and simple git command classification used by hook tests and shell hooks. |
 | `git_command_parser.py` | Broad parser for command-safety hooks. It handles shell wrappers, environment propagation, command substitutions, heredocs, and git subcommands, then emits JSON with allow/block details. |
 

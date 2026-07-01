@@ -6,16 +6,22 @@ load 'test_helper/common'
 setup() {
 	LIB="$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh"
 	TEST_PLUGIN_ROOT="$BATS_TEST_TMPDIR/plugin"
+	TEST_XDG_STATE_HOME="$BATS_TEST_TMPDIR/xdg-state"
 	mkdir -p "$TEST_PLUGIN_ROOT/hooks"
 }
 
 write_hook_state() {
+	mkdir -p "$TEST_XDG_STATE_HOME/kramme-cc-workflow"
+	printf '%s\n' "$1" >"$TEST_XDG_STATE_HOME/kramme-cc-workflow/hook-state.json"
+}
+
+write_legacy_hook_state() {
 	printf '%s\n' "$1" >"$TEST_PLUGIN_ROOT/hooks/hook-state.json"
 }
 
 run_is_hook_enabled() {
 	local hook_name="$1"
-	run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" bash -c \
+	run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" XDG_STATE_HOME="$TEST_XDG_STATE_HOME" bash -c \
 		'source "$1"; is_hook_enabled "$2"' _ "$LIB" "$hook_name"
 }
 
@@ -23,10 +29,10 @@ run_exit_if_hook_disabled() {
 	local hook_name="$1"
 	local mode="${2:-}"
 	if [ -n "$mode" ]; then
-		run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" bash -c \
+		run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" XDG_STATE_HOME="$TEST_XDG_STATE_HOME" bash -c \
 			'source "$1"; exit_if_hook_disabled "$2" "$3"; echo continued' _ "$LIB" "$hook_name" "$mode"
 	else
-		run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" bash -c \
+		run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" XDG_STATE_HOME="$TEST_XDG_STATE_HOME" bash -c \
 		'source "$1"; exit_if_hook_disabled "$2"; echo continued' _ "$LIB" "$hook_name"
 	fi
 }
@@ -39,7 +45,7 @@ run_is_hook_enabled_without_jq() {
 	bash_path="$(command -v bash)"
 	mkdir -p "$fake_bin"
 
-	run env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" "$bash_path" -c \
+	run env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" XDG_STATE_HOME="$TEST_XDG_STATE_HOME" "$bash_path" -c \
 		'source "$1"; is_hook_enabled "$2"' _ "$LIB" "$hook_name"
 }
 
@@ -54,15 +60,55 @@ run_exit_if_hook_disabled_without_jq() {
 	ln -sf "$(command -v cat)" "$fake_bin/cat"
 
 	if [ -n "$mode" ]; then
-		run env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" "$bash_path" -c \
+		run env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" XDG_STATE_HOME="$TEST_XDG_STATE_HOME" "$bash_path" -c \
 			'source "$1"; exit_if_hook_disabled "$2" "$3"; echo continued' _ "$LIB" "$hook_name" "$mode"
 	else
-		run env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" "$bash_path" -c \
+		run env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" XDG_STATE_HOME="$TEST_XDG_STATE_HOME" "$bash_path" -c \
 			'source "$1"; exit_if_hook_disabled "$2"; echo continued' _ "$LIB" "$hook_name"
 	fi
 }
 
 @test "treats missing hook state as enabled" {
+	run_is_hook_enabled "auto-format"
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "reads hook state from XDG state home by default" {
+	write_hook_state '{"disabled":["auto-format"]}'
+
+	run_is_hook_enabled "auto-format"
+
+	[ "$status" -eq 1 ]
+	[ -z "$output" ]
+}
+
+@test "KRAMME_HOOK_STATE_FILE overrides default hook state path" {
+	local override_file="$BATS_TEST_TMPDIR/override-state.json"
+	write_hook_state '{"disabled":["block-rm-rf"]}'
+	printf '%s\n' '{"disabled":["auto-format"]}' >"$override_file"
+
+	run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" XDG_STATE_HOME="$TEST_XDG_STATE_HOME" KRAMME_HOOK_STATE_FILE="$override_file" bash -c \
+		'source "$1"; is_hook_enabled "$2"' _ "$LIB" "auto-format"
+
+	[ "$status" -eq 1 ]
+	[ -z "$output" ]
+}
+
+@test "falls back to legacy hook state when XDG state is absent" {
+	write_legacy_hook_state '{"disabled":["auto-format"]}'
+
+	run_is_hook_enabled "auto-format"
+
+	[ "$status" -eq 1 ]
+	[ -z "$output" ]
+}
+
+@test "prefers XDG hook state over legacy hook state" {
+	write_hook_state '{"disabled":["block-rm-rf"]}'
+	write_legacy_hook_state '{"disabled":["auto-format"]}'
+
 	run_is_hook_enabled "auto-format"
 
 	[ "$status" -eq 0 ]

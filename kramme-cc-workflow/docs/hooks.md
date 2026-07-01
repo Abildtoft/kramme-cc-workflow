@@ -23,7 +23,7 @@ Use `/kramme:hooks:toggle` to enable or disable hooks:
 /kramme:hooks:toggle reset
 ```
 
-State is stored in `hooks/hook-state.json` (gitignored) and persists across sessions. When a hook is disabled, the hook script drains stdin before exiting to avoid broken-pipe errors if the runner is piping JSON input.
+State is stored in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json` by default, with `KRAMME_HOOK_STATE_FILE` override support and legacy fallback to `hooks/hook-state.json`. When a hook is disabled, the hook script drains stdin before exiting to avoid broken-pipe errors if the runner is piping JSON input.
 
 For `confirm-review-responses`, edit `hooks/confirm-review-artifacts.txt` to configure which staged files should trigger confirmation. Entries support shell-style glob patterns, so generated artifacts like `PR_PLAN_*.md` can be guarded without listing every file explicitly.
 
@@ -60,7 +60,8 @@ The hook is silent and fail-open. If Node.js is unavailable, if the payload cann
 
 ```bash
 # Optional: create local hook config overrides
-cp hooks/context-links.config.example hooks/context-links.config
+mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/kramme-cc-workflow"
+cp hooks/context-links.config.example "${XDG_CONFIG_HOME:-$HOME/.config}/kramme-cc-workflow/context-links.config"
 ```
 
 You can also configure this via skill:
@@ -76,7 +77,7 @@ Supported variables:
 - `CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG` - Linear workspace slug used in issue URLs (default: `consensusaps`)
 - `CONTEXT_LINKS_LINEAR_TEAM_KEYS` - Comma/space separated team keys used for branch parsing (default: `WAN,HEA,MEL,POT,FIR,FEG`)
 - `CONTEXT_LINKS_LINEAR_ISSUE_REGEX` - Optional regex override for issue extraction (takes precedence over team keys)
-- `CONTEXT_LINKS_CONFIG_FILE` - Optional path to a config file (default: `${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config`)
+- `CONTEXT_LINKS_CONFIG_FILE` - Optional path to a config file (default: `${XDG_CONFIG_HOME:-$HOME/.config}/kramme-cc-workflow/context-links.config`, with legacy fallback to `${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config`)
 
 ## block-rm-rf
 

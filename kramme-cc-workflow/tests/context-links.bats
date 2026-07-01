@@ -7,6 +7,8 @@ setup() {
 	HOOK="$BATS_TEST_DIRNAME/../hooks/context-links.sh"
 	# Prepend mocks to PATH
 	export PATH="$BATS_TEST_DIRNAME/test_helper/mocks:$PATH"
+	export XDG_CONFIG_HOME="$BATS_TEST_TMPDIR/xdg-config"
+	export KRAMME_HOOK_STATE_FILE="${BATS_TEST_TMPDIR}/missing-hook-state.json"
 	# Prevent accidental pickup of a developer's local hooks/context-links.config.
 	export CONTEXT_LINKS_CONFIG_FILE="${BATS_TEST_TMPDIR}/context-links.test.config"
 	rm -f "$CONTEXT_LINKS_CONFIG_FILE"
@@ -250,6 +252,40 @@ EOF
 	run bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"https://linear.app/custom-workspace/issue/XYZ-77"* ]]
+}
+
+@test "context-links config loads from XDG config home by default" {
+	local config_file="$XDG_CONFIG_HOME/kramme-cc-workflow/context-links.config"
+	mkdir -p "$(dirname "$config_file")"
+	cat >"$config_file" <<'EOF'
+CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG="xdg-workspace"
+CONTEXT_LINKS_LINEAR_TEAM_KEYS="XYZ"
+EOF
+
+	unset CONTEXT_LINKS_CONFIG_FILE
+	export MOCK_GIT_BRANCH="feature/XYZ-77-test"
+	export MOCK_GIT_REMOTE="https://github.com/user/repo.git"
+	run bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"https://linear.app/xdg-workspace/issue/XYZ-77"* ]]
+}
+
+@test "context-links config falls back to legacy hook config when XDG config is absent" {
+	local plugin_root="$BATS_TEST_TMPDIR/plugin-root"
+	mkdir -p "$plugin_root/hooks/lib"
+	ln -s "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
+	cat >"$plugin_root/hooks/context-links.config" <<'EOF'
+CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG="legacy-workspace"
+CONTEXT_LINKS_LINEAR_TEAM_KEYS="XYZ"
+EOF
+
+	unset CONTEXT_LINKS_CONFIG_FILE
+	export CLAUDE_PLUGIN_ROOT="$plugin_root"
+	export MOCK_GIT_BRANCH="feature/XYZ-77-test"
+	export MOCK_GIT_REMOTE="https://github.com/user/repo.git"
+	run bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"https://linear.app/legacy-workspace/issue/XYZ-77"* ]]
 }
 
 @test "env vars take precedence over context-links config file" {

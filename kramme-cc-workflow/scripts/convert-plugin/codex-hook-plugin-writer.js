@@ -20,6 +20,11 @@ const {
   writeText,
 } = require("./filesystem");
 
+const EXCLUDED_HOOK_SOURCE_FILES = new Set([
+  "context-links.config",
+  "hook-state.json",
+]);
+
 async function stageCodexHookPluginBundle(
   codexRoot,
   codexStagingRoot,
@@ -164,6 +169,9 @@ async function finalizeCodexHookPluginBundle(
       replace: cleanedHookMarketplaces || marketplaceTarget.overwriteExisting,
     },
   );
+  await removeExcludedHookSourceFiles(
+    path.join(marketplaceTarget.finalRoot, "plugins", codexPlugin.name),
+  );
   await installStagedDir(
     pluginCacheTarget.stagedRoot,
     pluginCacheTarget.finalRoot,
@@ -171,6 +179,7 @@ async function finalizeCodexHookPluginBundle(
       replace: cleanedPluginCaches || pluginCacheTarget.overwriteExisting,
     },
   );
+  await removeExcludedHookSourceFiles(pluginCacheTarget.finalRoot);
 
   return {
     cleanedPluginCaches,
@@ -210,7 +219,9 @@ async function writeCodexHookPluginTree(targetRoot, codexPlugin) {
   );
   const hooksRoot = path.join(targetRoot, "hooks");
   if (await pathExists(codexPlugin.hookSourceDir)) {
-    await copyDir(codexPlugin.hookSourceDir, hooksRoot);
+    await copyDir(codexPlugin.hookSourceDir, hooksRoot, {
+      filter: shouldCopyHookSourceFile,
+    });
   }
   for (const sharedScriptDir of codexPlugin.sharedScriptDirs ?? []) {
     if (await pathExists(sharedScriptDir.sourceDir)) {
@@ -230,6 +241,19 @@ async function writeCodexHookPluginTree(targetRoot, codexPlugin) {
   }
   await writeJson(path.join(hooksRoot, "hooks.json"), codexPlugin.hooks);
   await bootstrapHookScripts(hooksRoot, targetRoot);
+}
+
+function shouldCopyHookSourceFile({ entry, relativePath }) {
+  return !entry.isFile() || !EXCLUDED_HOOK_SOURCE_FILES.has(relativePath);
+}
+
+async function removeExcludedHookSourceFiles(pluginRoot) {
+  const hooksRoot = path.join(pluginRoot, "hooks");
+  await Promise.all(
+    Array.from(EXCLUDED_HOOK_SOURCE_FILES, (relativePath) =>
+      fs.rm(path.join(hooksRoot, relativePath), { force: true }),
+    ),
+  );
 }
 
 async function writeCodexHookMarketplace(marketplaceRoot, codexPlugin) {

@@ -46,7 +46,8 @@ start a server.
 
 ## State and Generated Output
 
-- Hook toggle state is stored in `hooks/hook-state.json` and is gitignored.
+- Hook toggle state defaults to
+  `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json`.
 - Skill usage events default to
   `~/.local/state/kramme-cc-workflow/skill-usage.jsonl`.
 - Codex conversion writes managed entries under the selected Codex root,

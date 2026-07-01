@@ -36,19 +36,25 @@ The canonical hook list is the set of names each script passes to `exit_if_hook_
 
 ## Implementation
 
-The state file is at `${CLAUDE_PLUGIN_ROOT}/hooks/hook-state.json`. Because it lives inside the installed plugin tree, toggles do not survive a plugin update or reinstall — safety hooks re-enable themselves, and deliberate disables vanish. `status` and `reset` are reserved subcommands and take precedence over a hook of the same name.
+Resolve the state file the same way `hooks/lib/check-enabled.sh` does, and use that resolved path for every read and write:
+
+1. If `KRAMME_HOOK_STATE_FILE` is set, use that path.
+2. Otherwise use `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json` when it exists, or when the legacy file does not exist.
+3. Fall back to `${CLAUDE_PLUGIN_ROOT}/hooks/hook-state.json` only when the XDG state file is absent and that legacy file exists.
+
+The preferred default state file lives outside the installed plugin tree, so toggles survive plugin updates and reinstalls. `status` and `reset` are reserved subcommands and take precedence over a hook of the same name.
 
 Whenever you read the state file: a missing file means all hooks are enabled (proceed as if `{"disabled": []}`). If the file exists but is not valid JSON, do not guess — report it and offer `reset` to restore a clean state.
 
 ### For `status` command:
 
-1. Read `hooks/hook-state.json` (missing file = all enabled)
+1. Read the resolved state file (missing file = all enabled)
 2. List all hooks with their enabled/disabled state
 3. Format as a table
 
 ### For toggle/enable/disable:
 
-1. Read `hooks/hook-state.json` (missing file = all enabled)
+1. Read the resolved state file (missing file = all enabled)
 2. Parse the argument to get hook name and optional action. If the action is present and is not `enable` or `disable`, stop and show the valid forms.
 3. Validate the hook name against the available hooks list. If it is unknown, stop and list the valid hook names.
 4. If the change disables a safety guardrail (`block-rm-rf`, `confirm-review-responses`, `noninteractive-git`), warn the user which protection is being removed and confirm before writing.
@@ -61,7 +67,7 @@ Whenever you read the state file: a missing file means all hooks are enabled (pr
 
 ### For `reset` command:
 
-1. Write `{"disabled": []}` to `hooks/hook-state.json`
+1. Write `{"disabled": []}` to the resolved state file
 2. Confirm all hooks are now enabled
 
 ### State File Format
