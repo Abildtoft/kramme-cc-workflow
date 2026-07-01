@@ -45,6 +45,28 @@
 	[ "$status" -eq 0 ]
 }
 
+@test "code optimize skill declares shell permissions" {
+	run bash -c '
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill="skills/kramme:code:optimize/SKILL.md"
+    grep -q "^permissions:" "$skill"
+    grep -q "^  - shell$" "$skill"
+  '
+
+	[ "$status" -eq 0 ]
+}
+
+@test "code optimize worktree helper avoids force deletion patterns" {
+	run bash -c '
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    helper="skills/kramme:code:optimize/scripts/experiment-worktree.sh"
+    ! grep -Eq "rm[[:space:]]+-[^[:space:]]*f" "$helper"
+    ! grep -Fq "rmdir \"\$worktree_dir\"" "$helper"
+  '
+
+	[ "$status" -eq 0 ]
+}
+
 @test "code optimize worktree helper does not copy env files implicitly" {
 	run bash -c '
     set -euo pipefail

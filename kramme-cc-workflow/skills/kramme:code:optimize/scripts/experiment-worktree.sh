@@ -261,8 +261,12 @@ create_worktree() {
       cp "$git_root/$shared_file" "$worktree_path/$shared_file"
     elif [ -d "$git_root/$shared_file" ]; then
       mkdir -p "$(dirname "$worktree_path/$shared_file")"
-      rm -rf "$worktree_path/$shared_file"
-      cp -R "$git_root/$shared_file" "$worktree_path/$shared_file"
+      if [ -e "$worktree_path/$shared_file" ] && [ ! -d "$worktree_path/$shared_file" ]; then
+        echo -e "${red}Error: shared directory target exists and is not a directory: $shared_file${nc}" >&2
+        return 1
+      fi
+      mkdir -p "$worktree_path/$shared_file"
+      cp -R "$git_root/$shared_file/." "$worktree_path/$shared_file/"
     fi
   done
 
@@ -324,9 +328,6 @@ cleanup_all() {
   done < <(registered_experiment_worktrees "$spec_name")
 
   git worktree prune 2> /dev/null || true
-  if [ -d "$worktree_dir" ] && [ -z "$(ls -A "$worktree_dir" 2> /dev/null)" ]; then
-    rmdir "$worktree_dir" 2> /dev/null || true
-  fi
 
   echo -e "${green}Cleaned up $count experiment worktree(s) for $spec_name${nc}" >&2
 }
