@@ -3,6 +3,56 @@
 ## Unreleased
 
 ### Changed
+## [0.65.0] - 2026-07-01
+
+### Added
+- Generate README skill rows (#573)
+- Add prediction command eval mode (#572)
+- Gate duplicate Linear issue content (#565)
+
+### Changed
+- Reuse previous review artifacts (#598)
+- Split auto and force-push modes (#597)
+- Share skill schema definitions (#596)
+- Strengthen plan quality gates (#595)
+- Make team audits default (#594)
+- Clarify skill source edit paths (#593)
+- Split Codex output helpers (#592)
+- Add repository contributor maps (#588)
+- Tighten skill tooling surfaces (#587)
+- Extract shared git parser (#583)
+- Extract reference guidance (#581)
+- Extract workflow references (#582)
+- Extract bulky skill references (#579)
+- Link source comments (#576)
+- Omit local test caveats (#575)
+- Reduce long skill footprints (#571)
+- Split writer modules (#569)
+- Harden Linear reference rewrites (#568)
+- Synchronize issue-state contract (#567)
+- Map referenced issue context (#566)
+- Extract close workflow references (#563)
+- Clarify Linear MCP operations (#561)
+- Support contract specs in workflows (#559)
+- Extract issue review flow reference (#555)
+- Align main spec ambiguity handling (#556)
+- Share wrapper token parsing (#554)
+- Extract discovery references (#552)
+
+### Fixed
+- Verify generated release state (#589)
+- Block alias-hidden git commands (#586)
+- Normalize quoted skill booleans (#585)
+- Accept explicit semantic versions (#580)
+- Preserve managed skill installs (#577)
+- Harden Codex install parsing (#574)
+- Expose auto-resolution readiness (#564)
+- Preserve Codex config on MCP install (#562)
+- Fail closed without jq (#560)
+- Stage Codex installs transactionally (#558)
+- Detect rm -rf after substitutions (#557)
+- Avoid eval in diff collection (#553)
+
 ## [0.64.0] - 2026-06-23
 
 ### Added
@@ -507,6 +557,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+[0.65.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.64.0...v0.65.0
 [0.64.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.63.0...v0.64.0
 [0.63.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.62.0...v0.63.0
 [0.62.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.61.0...v0.62.0
