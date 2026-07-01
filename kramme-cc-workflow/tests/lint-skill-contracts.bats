@@ -380,6 +380,9 @@ EOF
 
   [[ "$resolver_text" == *"\`Manual blocker\`, and \`Next human decision\`"* ]]
   [[ "$resolver_text" == *"manual blocker, and next human decision when available"* ]]
+  [[ "$resolver_text" == *"Findings outside the filter are not processed and keep their existing \`Resolution status\` and \`Action taken\` fields unchanged"* ]]
+  [[ "$resolver_text" == *"A finding skipped only because it was outside a previous severity filter remains eligible"* ]]
+  [[ "$resolver_text" != *"Findings outside the filter are skipped with **Resolution status: skipped**"* ]]
 }
 
 @test "verify-understanding supports answer option prompts" {
