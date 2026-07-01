@@ -2,19 +2,26 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 
-SCRIPT_PATH = (
-    Path(__file__).resolve().parents[2] / "scripts" / "lint-skill-contracts.py"
-)
-SPEC = importlib.util.spec_from_file_location("lint_skill_contracts", SCRIPT_PATH)
-assert SPEC is not None
-assert SPEC.loader is not None
-lint_skill_contracts = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = lint_skill_contracts
-SPEC.loader.exec_module(lint_skill_contracts)
+SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
+SCRIPT_PATH = SCRIPTS_DIR / "lint-skill-contracts.py"
+sys.path.insert(0, str(SCRIPTS_DIR))
+
+import lint_skill_contracts  # noqa: E402
+
+
+def load_compat_script():
+    spec = importlib.util.spec_from_file_location("lint_skill_contracts_cli", SCRIPT_PATH)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 class MarkdownTableHelpersTest(unittest.TestCase):
@@ -81,6 +88,117 @@ class FrontmatterContractHelpersTest(unittest.TestCase):
             ),
             "[path]",
         )
+
+
+class CheckRegistryTest(unittest.TestCase):
+    def test_registry_preserves_cli_check_order(self) -> None:
+        self.assertEqual(
+            [name for name, _check in lint_skill_contracts.CHECKS],
+            [
+                "text_contracts",
+                "ordered_heading_contracts",
+                "file_identity",
+                "required_file_contracts",
+                "marker_manifests",
+                "epilogue_order",
+                "hooks_json",
+                "readme_skill_sync",
+                "mechanical",
+            ],
+        )
+
+    def test_run_checks_accumulates_results_in_registry_order(self) -> None:
+        context = lint_skill_contracts.LintContext(
+            root=Path("/tmp/repo"),
+            registry={},
+            schema={},
+        )
+
+        def first(_context):
+            return lint_skill_contracts.CheckResult(
+                failures=["first failure"],
+                warnings=["first warning"],
+            )
+
+        def second(_context):
+            return lint_skill_contracts.CheckResult(
+                failures=["second failure"],
+                warnings=["second warning"],
+            )
+
+        result = lint_skill_contracts.run_checks(
+            context,
+            checks=(("first", first), ("second", second)),
+        )
+
+        self.assertEqual(result.failures, ["first failure", "second failure"])
+        self.assertEqual(result.warnings, ["first warning", "second warning"])
+
+
+class MechanicalCheckTest(unittest.TestCase):
+    def test_mechanical_returns_structured_warnings_and_failures(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            skill_path = root / "skills" / "example" / "SKILL.md"
+            skill_path.parent.mkdir(parents=True)
+            skill_path.write_text(
+                "\n".join(
+                    [
+                        "---",
+                        "name: example",
+                        "description: Example skill",
+                        "disable-model-invocation: true",
+                        "---",
+                        "one",
+                        "two",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            context = lint_skill_contracts.LintContext(
+                root=root,
+                registry={
+                    "mechanical": {
+                        "skill_glob": "skills/*/SKILL.md",
+                        "max_skill_lines": 6,
+                        "warn_skill_lines": 5,
+                        "skill_line_report_limit": 1,
+                        "required_frontmatter": [
+                            "name",
+                            "description",
+                            "disable-model-invocation",
+                            "user-invocable",
+                        ],
+                    }
+                },
+                schema={},
+            )
+
+            result = lint_skill_contracts.check_mechanical(context)
+
+        self.assertEqual(
+            result.failures,
+            [
+                "mechanical: skills/example/SKILL.md has 7 lines, exceeds 6; "
+                "move reference material out of SKILL.md or add a registry burndown entry",
+                "mechanical: skills/example/SKILL.md is missing frontmatter field 'user-invocable'",
+            ],
+        )
+        self.assertEqual(
+            result.warnings,
+            [
+                "mechanical: long-skill burndown: skills/example/SKILL.md has 7 lines "
+                "(over hard budget; warn at 5, fail above 6)"
+            ],
+        )
+
+
+class CompatibilityEntryPointTest(unittest.TestCase):
+    def test_legacy_script_reexports_package_api(self) -> None:
+        compat = load_compat_script()
+
+        self.assertEqual(compat.CHECKS[-1][0], "mechanical")
+        self.assertIsNotNone(compat.main)
 
 
 if __name__ == "__main__":
