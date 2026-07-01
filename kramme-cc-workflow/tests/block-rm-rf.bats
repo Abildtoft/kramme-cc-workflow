@@ -385,6 +385,21 @@ run_hook_without_jq_disabled() {
 	[ -z "$output" ]
 }
 
+@test "blocks xargs bash -c 'rm -rf'" {
+	run run_hook "xargs bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks xargs option-prefixed bash -c 'rm -rf'" {
+	run run_hook "xargs -I{} bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks xargs macOS replacement option before bash -c 'rm -rf'" {
+	run run_hook "xargs -J % bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
 # ============================================================================
 # SUBSHELL EXECUTION
 # ============================================================================
@@ -404,8 +419,210 @@ run_hook_without_jq_disabled() {
 	is_blocked
 }
 
+@test "blocks bash -lc 'rm -rf'" {
+	run run_hook "bash -lc 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks bash -ec 'rm -rf'" {
+	run run_hook "bash -ec 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks bash -c -- 'rm -rf'" {
+	run run_hook "bash -c -- 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks bash option operand before -c 'rm -rf'" {
+	run run_hook "bash -O extglob -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks bash -c with ANSI-C quoted payload" {
+	run run_hook "bash -c \$'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks zsh -fc 'rm -rf'" {
+	run run_hook "zsh -fc 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks bash --command 'rm -rf'" {
+	run run_hook "bash --command 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks env bash -c 'rm -rf'" {
+	run run_hook "env bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks env option-prefixed bash -c 'rm -rf'" {
+	run run_hook "env -u FOO bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks env split-string bash -c 'rm -rf'" {
+	run run_hook "env -S \"bash -c 'rm -rf directory/'\""
+	is_blocked
+}
+
+@test "blocks env split-string equals bash -c 'rm -rf'" {
+	run run_hook "env --split-string=\"bash -c 'rm -rf directory/'\""
+	is_blocked
+}
+
+@test "blocks sudo bash -c 'rm -rf'" {
+	run run_hook "sudo bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks sudo option-prefixed bash -c 'rm -rf'" {
+	run run_hook "sudo -E bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks sudo option operand before bash -c 'rm -rf'" {
+	run run_hook "sudo -u root bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks sudo combined option operand before bash -c 'rm -rf'" {
+	run run_hook "sudo -Eu root bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks assignment-prefixed bash -c 'rm -rf'" {
+	run run_hook "FOO=bar bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks command-substitution assignment before bash -c 'rm -rf'" {
+	run run_hook "FOO=\$(id) bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks time bash -c 'rm -rf'" {
+	run run_hook "time bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks time option-prefixed bash -c 'rm -rf'" {
+	run run_hook "time -p bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks nice bash -c 'rm -rf'" {
+	run run_hook "nice bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks nice option-prefixed bash -c 'rm -rf'" {
+	run run_hook "nice -n 10 bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks timeout bash -c 'rm -rf'" {
+	run run_hook "timeout 1 bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks timeout option-prefixed bash -c 'rm -rf'" {
+	run run_hook "timeout -s KILL 1 bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks command bash -c 'rm -rf'" {
+	run run_hook "command bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks bash -c 'rm -rf' after shell control word" {
+	run run_hook "if bash -c 'rm -rf directory/'; then :; fi"
+	is_blocked
+}
+
+@test "blocks rm -rf after shell control word in bash -c payload" {
+	run run_hook "bash -c 'if true; then rm -rf directory/; fi'"
+	is_blocked
+}
+
+@test "blocks rm -rf in case arm in bash -c payload" {
+	run run_hook "bash -c 'case x in x) rm -rf directory/;; esac'"
+	is_blocked
+}
+
+@test "blocks command-substituted bash -c payload with rm -rf text" {
+	run run_hook 'bash -c "$(echo rm -rf directory/)"'
+	is_blocked
+}
+
+@test "blocks eval rm -rf in bash -c payload" {
+	run run_hook 'bash -c "eval rm -rf directory/"'
+	is_blocked
+}
+
+@test "blocks eval quoted rm -rf in bash -c payload" {
+	run run_hook "bash -c 'eval \"rm -rf directory/\"'"
+	is_blocked
+}
+
+@test "allows eval echo with rm -rf text" {
+	run run_hook "bash -c 'eval echo rm -rf is dangerous'"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "blocks local bash path -c 'rm -rf'" {
+	run run_hook "/opt/homebrew/bin/bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks local zsh path -c 'rm -rf'" {
+	run run_hook "/usr/local/bin/zsh -c 'rm -rf directory/'"
+	is_blocked
+}
+
 @test "allows sh -c with safe command" {
 	run run_hook 'sh -c "echo hello"'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "allows bash -lc with safe command" {
+	run run_hook 'bash -lc "echo hello"'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "allows env bash -c with safe command" {
+	run run_hook 'env bash -c "echo hello"'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "allows bash -lc with quoted rm -rf text" {
+	run run_hook 'bash -lc "echo \"rm -rf is dangerous\""'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "allows quoted shell wrapper text" {
+	run run_hook "echo \"bash -lc 'rm -rf directory/'\""
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "allows shell control words as plain command arguments" {
+	run run_hook "echo then rm -rf is dangerous"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "allows unquoted shell wrapper text as plain command arguments" {
+	run run_hook "echo bash -c 'rm -rf directory/'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
@@ -443,6 +660,16 @@ run_hook_without_jq_disabled() {
 
 @test "blocks find -exec rm -rf with +" {
 	run run_hook "find . -type d -exec rm -rf {} +"
+	is_blocked
+}
+
+@test "blocks find -exec bash -c 'rm -rf'" {
+	run run_hook "find . -type d -exec bash -c 'rm -rf directory/' \\;"
+	is_blocked
+}
+
+@test "blocks find -execdir bash -c 'rm -rf'" {
+	run run_hook "find . -type d -execdir bash -c 'rm -rf directory/' \\;"
 	is_blocked
 }
 
@@ -531,14 +758,68 @@ run_hook_without_jq_disabled() {
 	is_blocked
 }
 
+@test "blocks rm -rf in double-quoted command substitution" {
+	run run_hook 'echo "$(rm -rf directory/)"'
+	is_blocked
+}
+
+@test "allows double-quoted safe command substitution with rm -rf text" {
+	run run_hook 'echo "$(echo rm -rf is dangerous)"'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
 @test "blocks rm -rf in backticks" {
 	run run_hook 'echo `rm -rf directory/`'
 	is_blocked
 }
 
+@test "blocks rm -rf in double-quoted backticks" {
+	run run_hook 'echo "`rm -rf directory/`"'
+	is_blocked
+}
+
+@test "allows double-quoted safe backticks with rm -rf text" {
+	run run_hook 'echo "`echo rm -rf is dangerous`"'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "blocks rm -rf in process substitution" {
+	run run_hook 'bash -c "cat <(rm -rf directory/)"'
+	is_blocked
+}
+
+@test "blocks rm -rf in output process substitution" {
+	run run_hook 'bash -c "cat >(rm -rf directory/)"'
+	is_blocked
+}
+
+@test "allows quoted process substitution text" {
+	run run_hook 'bash -c "echo \"<(rm -rf directory/)\""'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
 # ============================================================================
 # EDGE CASES
 # ============================================================================
+
+@test "allows non-shell heredoc containing rm -rf text" {
+	run run_hook $'cat > script.sh <<\'EOF\'\nrm -rf "$tmp"\nEOF'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "blocks shell heredoc containing rm -rf" {
+	run run_hook $'bash <<\'EOF\'\nrm -rf directory/\nEOF'
+	is_blocked
+}
+
+@test "blocks rm -rf after quoted heredoc marker text" {
+	run run_hook $'echo "<<EOF"\nrm -rf directory/\nEOF'
+	is_blocked
+}
 
 @test "allows command with 'rm' in path but not rm command" {
 	run run_hook "ls /var/run/rm-safe/"
