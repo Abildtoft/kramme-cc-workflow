@@ -43,9 +43,41 @@ is_hook_disabled_without_jq() {
   [ "$found" = "true" ]
 }
 
+default_hook_state_file() {
+  local state_home="${XDG_STATE_HOME:-}"
+
+  if [ -z "$state_home" ]; then
+    state_home="${HOME:-}/.local/state"
+  fi
+
+  printf '%s\n' "${state_home}/kramme-cc-workflow/hook-state.json"
+}
+
+resolve_hook_state_file() {
+  local default_state_file
+  local legacy_state_file
+
+  if [ -n "${KRAMME_HOOK_STATE_FILE:-}" ]; then
+    printf '%s\n' "$KRAMME_HOOK_STATE_FILE"
+    return 0
+  fi
+
+  default_state_file="$(default_hook_state_file)"
+  legacy_state_file="${CLAUDE_PLUGIN_ROOT}/hooks/hook-state.json"
+
+  if [ -f "$default_state_file" ] || [ ! -f "$legacy_state_file" ]; then
+    printf '%s\n' "$default_state_file"
+    return 0
+  fi
+
+  printf '%s\n' "$legacy_state_file"
+}
+
 is_hook_enabled() {
   local hook_name="$1"
-  local state_file="${CLAUDE_PLUGIN_ROOT}/hooks/hook-state.json"
+  local state_file
+
+  state_file="$(resolve_hook_state_file)"
 
   # If jq is not available, only honor the simple state file shape this
   # plugin writes. Unknown or malformed content still fails open.

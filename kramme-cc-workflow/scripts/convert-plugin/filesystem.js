@@ -61,14 +61,23 @@ async function pathExists(filePath) {
   }
 }
 
-async function copyDir(sourceDir, targetDir) {
+async function copyDir(sourceDir, targetDir, options = {}) {
+  const filter = options.filter ?? (() => true);
+  await copyDirEntries(sourceDir, targetDir, "", filter);
+}
+
+async function copyDirEntries(sourceDir, targetDir, prefix, filter) {
   await ensureDir(targetDir);
   const entries = await fs.readdir(sourceDir, { withFileTypes: true });
   for (const entry of entries) {
     const sourcePath = path.join(sourceDir, entry.name);
     const targetPath = path.join(targetDir, entry.name);
+    const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (!(await filter({ entry, relativePath, sourcePath, targetPath }))) {
+      continue;
+    }
     if (entry.isDirectory()) {
-      await copyDir(sourcePath, targetPath);
+      await copyDirEntries(sourcePath, targetPath, relativePath, filter);
     } else if (entry.isFile()) {
       await ensureDir(path.dirname(targetPath));
       await fs.copyFile(sourcePath, targetPath);

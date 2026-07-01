@@ -774,6 +774,44 @@ console.log("ok");
 	[ "$output" = "false" ]
 }
 
+@test "codex hook conversion excludes local hook state and config files" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	FIXTURE_PLUGIN="$TMP_DIR/hook-local-state-plugin"
+	create_hook_fixture_plugin "$FIXTURE_PLUGIN" "hook-local-state-plugin" "alpha-hook"
+	printf '%s\n' '{"disabled":["alpha-hook"]}' >"$FIXTURE_PLUGIN/hooks/hook-state.json"
+	printf '%s\n' 'CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG="local"' >"$FIXTURE_PLUGIN/hooks/context-links.config"
+	printf '%s\n' 'CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG="example"' >"$FIXTURE_PLUGIN/hooks/context-links.config.example"
+
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+	[ "$status" -eq 0 ]
+
+	local marketplace_hooks="$TMP_DIR/.codex/.kramme-plugin-marketplaces/hook-local-state-plugin/plugins/hook-local-state-plugin/hooks"
+	local cache_hooks="$TMP_DIR/.codex/plugins/cache/hook-local-state-plugin/hook-local-state-plugin/1.0.0/hooks"
+
+	[ -f "$cache_hooks/alpha-hook.sh" ]
+	[ -f "$cache_hooks/context-links.config.example" ]
+	[ ! -f "$cache_hooks/hook-state.json" ]
+	[ ! -f "$cache_hooks/context-links.config" ]
+	[ ! -f "$marketplace_hooks/hook-state.json" ]
+	[ ! -f "$marketplace_hooks/context-links.config" ]
+
+	printf '%s\n' '{"disabled":["alpha-hook"]}' >"$cache_hooks/hook-state.json"
+	printf '%s\n' 'CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG="stale-cache"' >"$cache_hooks/context-links.config"
+	printf '%s\n' '{"disabled":["alpha-hook"]}' >"$marketplace_hooks/hook-state.json"
+	printf '%s\n' 'CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG="stale-marketplace"' >"$marketplace_hooks/context-links.config"
+
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+	[ "$status" -eq 0 ]
+
+	[ ! -f "$cache_hooks/hook-state.json" ]
+	[ ! -f "$cache_hooks/context-links.config" ]
+	[ ! -f "$marketplace_hooks/hook-state.json" ]
+	[ ! -f "$marketplace_hooks/context-links.config" ]
+}
+
 @test "codex hook plugin manifest description is sanitized" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for converter tests"

@@ -1,6 +1,6 @@
 ---
 name: kramme:hooks:configure-links
-description: Configure the context-links hook by updating hooks/context-links.config with workspace, team key, and issue regex overrides. Use when end users want to set up or change context-links behavior without manually editing files.
+description: Configure the context-links hook by updating its persistent config file with workspace, team key, and issue regex overrides. Use when end users want to set up or change context-links behavior without manually editing files.
 argument-hint: "[show|reset|KEY=VALUE ...]"
 disable-model-invocation: true
 user-invocable: true
@@ -11,9 +11,12 @@ kramme-platforms: [claude-code]
 
 Configure the `context-links` hook using a local config file.
 
-- **Config file:** `${CONTEXT_LINKS_CONFIG_FILE:-${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config}` — resolve this once and use the result as the target for every read, write, and delete below (referred to as "the config file"). Honor the `CONTEXT_LINKS_CONFIG_FILE` override: the hook reads from this same resolved path, so editing any other path has no effect.
+- **Config file:** resolve this exactly as `hooks/context-links.sh` does, then use that one resolved path as the target for every read, write, and delete below (referred to as "the config file"):
+  1. If `CONTEXT_LINKS_CONFIG_FILE` is set, use that path.
+  2. Otherwise use `${XDG_CONFIG_HOME:-$HOME/.config}/kramme-cc-workflow/context-links.config` when it exists, or when the legacy file does not exist.
+  3. Fall back to `${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config` only when the XDG config file is absent and that legacy file exists.
 - **Template:** `${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config.example`
-- **Git status:** the default config file is git-ignored, so its contents are local-only and not recoverable from version control once deleted.
+- **Git status:** the preferred default config file is local-only outside the plugin tree, so its contents are not recoverable from version control once deleted.
 
 Do not use this skill to enable or disable the hook itself (that is the hook toggle system), or to edit any other hook.
 
@@ -36,9 +39,9 @@ Do not use this skill to enable or disable the hook itself (that is the hook tog
 
 - `/kramme:hooks:configure-links reset`:
   - Print the current config file contents so the user can recover values
-  - Ask the user to confirm deletion (the file is git-ignored and cannot be recovered afterward)
+  - Ask the user to confirm deletion (the file is local-only and cannot be recovered afterward)
   - On confirmation, delete the config file if present
-  - Report that the hook will now use its built-in defaults from `hooks/context-links.sh`
+  - Resolve the config path again and report what the hook will read next: an env override, a fallback legacy config, or the built-in defaults from `hooks/context-links.sh`
 
 - `/kramme:hooks:configure-links KEY=VALUE [KEY=VALUE ...]`:
   - Upsert each supported key into the config file
@@ -79,7 +82,7 @@ If no arguments are provided:
   - keys changed
   - keys unchanged
   - keys rejected (if any)
-- For `reset`, after deletion, report that the hook will use its built-in defaults from `hooks/context-links.sh`.
+- For `reset`, after deletion, report what config source the hook will use next.
 
 ## Examples
 

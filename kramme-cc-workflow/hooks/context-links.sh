@@ -13,8 +13,38 @@ exit_if_hook_disabled "context-links" "json"
 #
 # Outputs JSON with systemMessage containing plain URLs (markdown not rendered in CLI).
 
+default_context_links_config_file() {
+  local config_home="${XDG_CONFIG_HOME:-}"
+
+  if [ -z "$config_home" ]; then
+    config_home="${HOME:-}/.config"
+  fi
+
+  printf '%s\n' "${config_home}/kramme-cc-workflow/context-links.config"
+}
+
+resolve_context_links_config_file() {
+  local default_config_file
+  local legacy_config_file
+
+  if [ -n "${CONTEXT_LINKS_CONFIG_FILE:-}" ]; then
+    printf '%s\n' "$CONTEXT_LINKS_CONFIG_FILE"
+    return 0
+  fi
+
+  default_config_file="$(default_context_links_config_file)"
+  legacy_config_file="${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config"
+
+  if [ -f "$default_config_file" ] || [ ! -f "$legacy_config_file" ]; then
+    printf '%s\n' "$default_config_file"
+    return 0
+  fi
+
+  printf '%s\n' "$legacy_config_file"
+}
+
 # Optional org-specific configuration. This file is not tracked and can override defaults.
-CONTEXT_LINKS_CONFIG_FILE="${CONTEXT_LINKS_CONFIG_FILE:-${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config}"
+CONTEXT_LINKS_CONFIG_FILE="$(resolve_context_links_config_file)"
 CONTEXT_LINKS_CONFIG_LINEAR_WORKSPACE_SLUG=""
 CONTEXT_LINKS_CONFIG_LINEAR_TEAM_KEYS=""
 CONTEXT_LINKS_CONFIG_LINEAR_ISSUE_REGEX=""
@@ -68,7 +98,7 @@ load_context_links_config "$CONTEXT_LINKS_CONFIG_FILE"
 
 # Configuration precedence (highest -> lowest):
 # 1) CONTEXT_LINKS_* env vars
-# 2) Same vars from hooks/context-links.config
+# 2) Same vars from context-links config file
 # 3) Legacy LINEAR_* env vars (backward compatibility)
 # 4) Defaults
 LINEAR_WORKSPACE_SLUG="${CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG:-${CONTEXT_LINKS_CONFIG_LINEAR_WORKSPACE_SLUG:-${LINEAR_WORKSPACE_SLUG:-consensusaps}}}"
