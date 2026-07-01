@@ -4,6 +4,8 @@ description: "(experimental) Run metric-driven optimization experiments. Use whe
 argument-hint: "[spec.yaml | optimization goal] [--auto]"
 disable-model-invocation: true
 user-invocable: true
+permissions:
+  - shell
 ---
 
 # Measured Optimization
