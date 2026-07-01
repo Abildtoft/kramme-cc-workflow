@@ -15,6 +15,14 @@
       "owner": "kramme",
       "accepted_at": "2026-06-22",
       "review_after": "2026-07-22"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:pr:rebase/SKILL.md",
+      "rule_id": "TM1",
+      "reason": "Reviewed intentional TM1 finding for this user-triggered rebase skill: explicit dangerous --auto mode may force-push with --force-with-lease after bypassing red-flag and verification gates. Safe --force-push and manual paths keep red-flag/verification gates, and all pushes validate and quote the current branch.",
+      "owner": "kramme",
+      "accepted_at": "2026-06-30",
+      "review_after": "2026-07-30"
     }
   ]
 }
