@@ -13,10 +13,38 @@ Usage:
     uv run generate_image.py --prompt "your image description" --filename "output.png" [--resolution 1K|2K|4K] [--api-key KEY]
 """
 
+from __future__ import annotations
+
 import argparse
 import os
+import signal
 import sys
+import threading
+import time
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
+
+
+MODEL_NAME = "gemini-3-pro-image-preview"
+GENERATION_TIMEOUT_ENV = "GENERATE_IMAGE_TIMEOUT_SECONDS"
+GENERATION_MAX_RETRIES_ENV = "GENERATE_IMAGE_MAX_RETRIES"
+GENERATION_RETRY_DELAY_ENV = "GENERATE_IMAGE_RETRY_DELAY_SECONDS"
+DEFAULT_GENERATION_TIMEOUT_SECONDS = 120.0
+DEFAULT_GENERATION_MAX_RETRIES = 2
+DEFAULT_GENERATION_RETRY_DELAY_SECONDS = 1.0
+RETRYABLE_STATUS_CODES = {408, 409, 425, 429, 500, 502, 503, 504}
+RETRYABLE_CODE_NAMES = {
+    "DEADLINE_EXCEEDED",
+    "INTERNAL",
+    "RESOURCE_EXHAUSTED",
+    "SERVICE_UNAVAILABLE",
+    "UNAVAILABLE",
+}
+
+
+class GenerationTimeoutError(TimeoutError):
+    """Raised when a generation request exceeds the configured timeout."""
 
 
 def get_api_key(provided_key: str | None) -> str | None:
@@ -24,6 +52,161 @@ def get_api_key(provided_key: str | None) -> str | None:
     if provided_key:
         return provided_key
     return os.environ.get("GEMINI_API_KEY")
+
+
+def positive_float_from_env(name: str, default: float) -> float:
+    raw_value = os.environ.get(name)
+    if raw_value is None or raw_value == "":
+        return default
+
+    try:
+        value = float(raw_value)
+    except ValueError as error:
+        raise ValueError(f"{name} must be a positive number") from error
+
+    if value <= 0:
+        raise ValueError(f"{name} must be a positive number")
+    return value
+
+
+def nonnegative_float_from_env(name: str, default: float) -> float:
+    raw_value = os.environ.get(name)
+    if raw_value is None or raw_value == "":
+        return default
+
+    try:
+        value = float(raw_value)
+    except ValueError as error:
+        raise ValueError(f"{name} must be a non-negative number") from error
+
+    if value < 0:
+        raise ValueError(f"{name} must be a non-negative number")
+    return value
+
+
+def nonnegative_int_from_env(name: str, default: int) -> int:
+    raw_value = os.environ.get(name)
+    if raw_value is None or raw_value == "":
+        return default
+
+    try:
+        value = int(raw_value)
+    except ValueError as error:
+        raise ValueError(f"{name} must be a non-negative integer") from error
+
+    if value < 0:
+        raise ValueError(f"{name} must be a non-negative integer")
+    return value
+
+
+def call_with_timeout(callback: Callable[[], Any], timeout_seconds: float) -> Any:
+    if (
+        threading.current_thread() is not threading.main_thread()
+        or not hasattr(signal, "SIGALRM")
+        or not hasattr(signal, "setitimer")
+    ):
+        return callback()
+
+    previous_handler = signal.getsignal(signal.SIGALRM)
+
+    def raise_timeout(_signum: int, _frame: Any) -> None:
+        raise GenerationTimeoutError(
+            f"generation request timed out after {timeout_seconds:g}s"
+        )
+
+    signal.signal(signal.SIGALRM, raise_timeout)
+    signal.setitimer(signal.ITIMER_REAL, timeout_seconds)
+    try:
+        return callback()
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
+
+
+def retryable_error_code(error: Exception) -> str | int | None:
+    status_code = getattr(error, "status_code", None)
+    if isinstance(status_code, int):
+        return status_code
+
+    code = getattr(error, "code", None)
+    if callable(code):
+        try:
+            code = code()
+        except Exception:
+            code = None
+    if isinstance(code, (int, str)):
+        return code
+
+    return None
+
+
+def is_retryable_generation_error(error: Exception) -> bool:
+    if isinstance(error, (TimeoutError, ConnectionError)):
+        return True
+
+    code = retryable_error_code(error)
+    if isinstance(code, int):
+        return code in RETRYABLE_STATUS_CODES
+    if isinstance(code, str):
+        return code.upper() in RETRYABLE_CODE_NAMES
+
+    error_name = error.__class__.__name__.lower()
+    return "timeout" in error_name or "temporar" in error_name
+
+
+def generate_content_once(
+    client: Any,
+    genai_types: Any,
+    contents: Any,
+    output_resolution: str,
+) -> Any:
+    return client.models.generate_content(
+        model=MODEL_NAME,
+        contents=contents,
+        config=genai_types.GenerateContentConfig(
+            response_modalities=["TEXT", "IMAGE"],
+            image_config=genai_types.ImageConfig(image_size=output_resolution),
+        ),
+    )
+
+
+def generate_content_with_retries(
+    client: Any,
+    genai_types: Any,
+    contents: Any,
+    output_resolution: str,
+    *,
+    timeout_seconds: float,
+    max_retries: int,
+    retry_delay_seconds: float,
+    sleep: Callable[[float], None] = time.sleep,
+) -> Any:
+    max_attempts = max_retries + 1
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return call_with_timeout(
+                lambda: generate_content_once(
+                    client,
+                    genai_types,
+                    contents,
+                    output_resolution,
+                ),
+                timeout_seconds,
+            )
+        except Exception as error:
+            if attempt >= max_attempts or not is_retryable_generation_error(error):
+                raise
+
+            print(
+                "Warning: image generation attempt "
+                f"{attempt} failed: {error}; retrying...",
+                file=sys.stderr,
+            )
+            if retry_delay_seconds > 0:
+                sleep(retry_delay_seconds)
+
+    raise RuntimeError("image generation retry loop exhausted unexpectedly")
 
 
 def main():
@@ -56,6 +239,23 @@ def main():
     )
 
     args = parser.parse_args()
+
+    try:
+        timeout_seconds = positive_float_from_env(
+            GENERATION_TIMEOUT_ENV,
+            DEFAULT_GENERATION_TIMEOUT_SECONDS,
+        )
+        max_retries = nonnegative_int_from_env(
+            GENERATION_MAX_RETRIES_ENV,
+            DEFAULT_GENERATION_MAX_RETRIES,
+        )
+        retry_delay_seconds = nonnegative_float_from_env(
+            GENERATION_RETRY_DELAY_ENV,
+            DEFAULT_GENERATION_RETRY_DELAY_SECONDS,
+        )
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
     # Get API key
     api_key = get_api_key(args.api_key)
@@ -111,15 +311,14 @@ def main():
         print(f"Generating image with resolution {output_resolution}...")
 
     try:
-        response = client.models.generate_content(
-            model="gemini-3-pro-image-preview",
-            contents=contents,
-            config=types.GenerateContentConfig(
-                response_modalities=["TEXT", "IMAGE"],
-                image_config=types.ImageConfig(
-                    image_size=output_resolution
-                )
-            )
+        response = generate_content_with_retries(
+            client,
+            types,
+            contents,
+            output_resolution,
+            timeout_seconds=timeout_seconds,
+            max_retries=max_retries,
+            retry_delay_seconds=retry_delay_seconds,
         )
 
         # Process response and convert to PNG

@@ -8,6 +8,44 @@ const { spawnSync } = require("child_process");
 const { aggregateScores, scoreItem } = require("./scorer");
 
 const VALID_SPLITS = new Set(["train", "val", "test", "all"]);
+const DEFAULT_PREDICTION_TIMEOUT_MS = 120000;
+const PREDICTION_TIMEOUT_ENV = "SKILL_REVIEW_EVAL_PREDICTION_TIMEOUT_MS";
+const PREDICTION_TIMEOUT_SENTINEL =
+  "__SKILL_REVIEW_EVAL_PREDICTION_TIMEOUT__";
+const PROCESS_GROUP_TIMEOUT_RUNNER = String.raw`
+my $timeout = shift @ARGV;
+my $sentinel = shift @ARGV;
+my $command = shift @ARGV;
+
+my $pid = fork();
+die "failed to fork prediction command: $!\n" unless defined $pid;
+
+if ($pid == 0) {
+  setpgrp(0, 0) or die "failed to create prediction process group: $!\n";
+  exec "/bin/sh", "-c", $command;
+  die "failed to exec prediction shell: $!\n";
+}
+
+my $timed_out = 0;
+local $SIG{ALRM} = sub {
+  $timed_out = 1;
+  kill "KILL", -$pid;
+};
+
+alarm($timeout);
+my $waited = waitpid($pid, 0);
+my $status = $?;
+alarm(0);
+
+if ($timed_out) {
+  print STDERR "$sentinel\n";
+  exit 124;
+}
+
+die "failed to wait for prediction command: $!\n" if $waited == -1;
+exit(128 + ($status & 127)) if $status & 127;
+exit(($status >> 8) & 255);
+`;
 
 /**
  * @typedef {Object} EvalCliOptions
@@ -210,14 +248,63 @@ function adapterContextForItem(item, options) {
   return context;
 }
 
+function predictionTimeoutMs() {
+  const rawValue = process.env[PREDICTION_TIMEOUT_ENV];
+  if (!rawValue) {
+    return DEFAULT_PREDICTION_TIMEOUT_MS;
+  }
+
+  const value = Number(rawValue);
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error(`${PREDICTION_TIMEOUT_ENV} must be a positive integer`);
+  }
+
+  return value;
+}
+
+function stripPredictionTimeoutSentinel(stderr) {
+  return (stderr || "")
+    .split(/\r?\n/)
+    .filter((line) => line !== PREDICTION_TIMEOUT_SENTINEL)
+    .join("\n")
+    .trim();
+}
+
+function runShellCommandWithTimeout(command, options) {
+  if (process.platform === "win32") {
+    return spawnSync(command, {
+      ...options,
+      shell: true,
+      timeout: options.timeout,
+      killSignal: "SIGKILL",
+    });
+  }
+
+  // Run the shell in its own process group so timeout cleanup reaches children.
+  const { timeout, ...spawnOptions } = options;
+  return spawnSync(
+    "perl",
+    [
+      "-MTime::HiRes=alarm",
+      "-e",
+      PROCESS_GROUP_TIMEOUT_RUNNER,
+      String(timeout / 1000),
+      PREDICTION_TIMEOUT_SENTINEL,
+      command,
+    ],
+    spawnOptions,
+  );
+}
+
 function runPredictionCommand(item, options) {
   const command = options.predictionCommand;
   const context = adapterContextForItem(item, options);
-  const result = spawnSync(command, {
+  const timeout = predictionTimeoutMs();
+  const result = runShellCommandWithTimeout(command, {
     input: `${JSON.stringify(context)}\n`,
     encoding: "utf8",
-    shell: true,
     maxBuffer: 10 * 1024 * 1024,
+    timeout,
     env: {
       ...process.env,
       SKILL_REVIEW_EVAL_ITEM_ID: item.id,
@@ -226,12 +313,27 @@ function runPredictionCommand(item, options) {
   });
 
   if (result.error) {
+    if (result.error.code === "ETIMEDOUT") {
+      throw new Error(
+        `prediction command timed out for ${item.id} after ${timeout}ms`,
+      );
+    }
     throw new Error(
       `prediction command failed for ${item.id}: ${result.error.message}`,
     );
   }
+  if (
+    result.status === 124 &&
+    (result.stderr || "").split(/\r?\n/).includes(PREDICTION_TIMEOUT_SENTINEL)
+  ) {
+    throw new Error(
+      `prediction command timed out for ${item.id} after ${timeout}ms`,
+    );
+  }
   if (result.status !== 0) {
-    const detail = (result.stderr || result.stdout || "").trim();
+    const detail =
+      stripPredictionTimeoutSentinel(result.stderr) ||
+      (result.stdout || "").trim();
     const suffix = detail ? `: ${detail}` : "";
     throw new Error(
       `prediction command failed for ${item.id} with exit ${result.status}${suffix}`,
