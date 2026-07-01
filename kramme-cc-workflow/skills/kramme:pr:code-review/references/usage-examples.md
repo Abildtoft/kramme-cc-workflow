@@ -60,6 +60,13 @@ Load this only when the user asks for examples or when validating argument parsi
 # Diffs against develop instead of auto-detecting the base
 ```
 
+## Previous review artifact
+
+```text
+/kramme:pr:code-review --previous-review ../old-workspace/REVIEW_OVERVIEW.md
+# Uses an explicit previous-cycle report for addressed-finding filtering and open-finding carry-forward
+```
+
 ## Inline report
 
 ```text

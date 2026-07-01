@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:code-review
 description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, performance, slop, refactor fit). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. Use --team for multi-agent cross-validation. Not for UX, visual, or accessibility review -- use kramme:pr:ux-review for those.
-argument-hint: "[aspects] [--emphasize <dim>...] [--base <branch>] [--parallel] [parallel] [--team] [--inline]"
+argument-hint: "[aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--parallel] [parallel] [--team] [--inline]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -22,6 +22,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - Check git status to identify changed files
    - Parse arguments to see if user requested specific review aspects
    - If `--base <branch>` flag → store as `BASE_BRANCH_OVERRIDE`
+   - If `--previous-review <path>` flag → store as `PREVIOUS_REVIEW_PATH` and remove it and its value from the aspect list. Reject the flag if the path is missing, points to a directory, or cannot be read. Do not silently fall back to `REVIEW_OVERVIEW.md` when an explicit previous-review path is invalid.
    - If `--inline` flag → set `INLINE_MODE=true` and remove it from the aspect list
    - If `--team` flag → use Team Mode and remove it from the aspect list
    - If `--parallel` appears anywhere in `$ARGUMENTS` → set `LAUNCH_MODE=parallel` and remove it from the aspect list. Default is `LAUNCH_MODE=sequential`.
@@ -118,18 +119,33 @@ PY
    - Compare the PR description against the current review scope. If it claims behavior, files, migrations, tests, risks, rollout status, or follow-up work that no longer matches the code, report that as a normal finding with location `PR description`.
    - Do not report missing polish in the description unless it would mislead reviewers, release managers, or future maintainers about the current state of the code.
 
-5. **Check for Previous Review Responses**
+5. **Check for Previous Review Context**
 
-   If `REVIEW_OVERVIEW.md` exists in the project root:
-   - Parse the file to extract previously addressed findings
-   - Extract for each finding: location (`file:line`, `review-scope`, or `PR description`), issue description, action taken
-   - Accept the structured `- Location:` field, `**Location:**`, and legacy `**File:**` labels when parsing existing entries, and normalize any of them to the same `location` field
-   - If the file exists but contains no parseable addressed findings (stale draft, unrelated content, or missing expected sections), treat the previous-response set as empty and continue. Do not abort the review.
-   - Store this context for filtering in Step 10
+   Determine the previous-review source:
+   - If `PREVIOUS_REVIEW_PATH` was set in Step 1, use that exact file.
+   - Otherwise, use `REVIEW_OVERVIEW.md` in the project root when it exists.
+   - Do not search `.context`, other workspaces, or alternate filenames unless the user passed `--previous-review <path>`; implicit discovery beyond the project root is too likely to pick up stale review state.
 
-   Previously addressed findings have the format:
+   If a previous-review source exists:
+   - Parse the file to extract all parseable prior findings, not only addressed ones.
+   - Extract for each finding: finding ID, location (`file:line`, `review-scope`, or `PR description`), issue description, resolution status, action taken, and evidence when available.
+   - Accept the structured `- Location:` field, `**Location:**`, and legacy `**File:**` labels when parsing existing entries, and normalize any of them to the same `location` field.
+   - Accept `Resolution status:` and `**Resolution status:**` when present. Normalize values to one of: `open`, `addressed`, `deferred`, `acknowledged`, or `skipped`.
+   - If no explicit resolution status is present, infer it conservatively:
+     - `Action taken:` describing an implemented fix → `addressed`
+     - `Action taken: Deferred ...` or `Reason deferred:` → `deferred`
+     - `Action taken: Acknowledged ...` or `Action taken: No action ...` → `acknowledged`
+     - `Action taken: Skipped ...` → `skipped`
+     - No action/resolution field → `open`
+   - Treat `deferred`, `acknowledged`, `skipped`, and `open` as not addressed. They may be carried forward if still relevant; they must not be filtered as previously addressed.
+   - If the file exists but contains no parseable findings (stale draft, unrelated content, or missing expected sections), treat the previous-review set as empty and continue. Do not abort the review unless the user passed an explicit `--previous-review <path>` that is unreadable or invalid.
+   - Store previous-review source path, parseable count, addressed count, open/deferred/acknowledged/skipped count, and unparseable count for the final `Previous Review Context` report section.
+
+   Parseable previous findings have the preferred format:
+   - `- Finding ID: CR-001`
    - `- Location: path/to/file.ts:123`, `review-scope`, or `PR description`
    - Legacy compatibility: `**Location:** path/to/file.ts:123` and `**File:** path/to/file.ts:123` should be treated the same as the structured `Location` field
+   - `- Resolution status: open|addressed|deferred|acknowledged|skipped`
    - **Issue/Finding:** [description]
    - **Action taken:** [what was done]
 
@@ -215,28 +231,38 @@ PY
    - Flags suggestions that would introduce slop if implemented, especially defensive programming that does not match local codebase practice or lacks a concrete failure path
    - Adds slop warnings to flagged suggestions (does not remove them)
 
-10. **Filter Previously Addressed Findings**
+10. **Apply Previous Review Context**
 
-If `REVIEW_OVERVIEW.md` was found in Step 5:
+If a previous-review source was found in Step 5:
 
-- Cross-reference the full validated finding set against previously addressed findings
-- **Only filter** if the finding is essentially the same issue:
+- Cross-reference the full validated finding set against previous findings.
+- **Filter as previously addressed** only when the previous finding has `Resolution status: addressed` and the current finding is essentially the same issue:
   - Same file
   - Same enclosing function, component, or block (do not rely on raw line distance; refactors and formatters shift line numbers)
   - Same underlying issue (semantic match on root cause)
   - For `review-scope` findings: both findings use location `review-scope`
   - For PR description findings: both findings use location `PR description`
+- **Carry forward as active** when a previous finding with `Resolution status: open`, `deferred`, `acknowledged`, or `skipped` still applies to the current diff:
+  - Preserve the previous finding ID when the root cause is the same.
+  - Refresh the location, severity, confidence, owner, and evidence from the current review when the current run has better data.
+  - Keep the previous status visible by setting `Resolution status: open` in the active finding and adding evidence that it was carried forward from the previous-review source.
+- For previous non-addressed findings that do not match any current reviewer finding, perform a lightweight revalidation against the current review scope:
+  - If the finding's file or scope is no longer present or the old root cause cannot be found, do not carry it forward.
+  - If the root cause is still present in changed code, carry it forward as an active finding with the previous ID and evidence that it was revalidated from the previous-review source.
+  - If revalidation is uncertain, do not fabricate a finding; mention the uncertainty in `Previous Review Context` instead of treating it as resolved.
 - **Do NOT filter** (keep as active finding) if:
   - The issue description is substantively different (different root cause)
   - The severity escalated (was suggestion, now critical)
   - The finding identifies a problem with the fix itself
-  - The previous action was "No action" or a deferral
-- When uncertain, err on the side of keeping the finding active
-- Add filtered findings to "Previously Addressed" section
+  - The previous action was "No action", a deferral, an acknowledgement, a skip, or is missing
+- When uncertain, err on the side of keeping the finding active.
+- Add filtered findings to `Filtered (Previously Addressed)`.
+- Add still-relevant non-addressed matches to active issue sections, not to `Filtered (Previously Addressed)`.
+- Track carried-forward and not-carried-forward counts for `Previous Review Context`.
 
 11. **Aggregate Results**
 
-After validation, slop meta-review, and previous-response filtering, dedupe and merge findings before applying emphasis:
+After validation, slop meta-review, and previous-review processing, dedupe and merge findings before applying emphasis:
 
 - Merge only findings that name the same concrete location or review scope and the same root cause.
 - Keep the highest severity across merged duplicates, combine evidence, and preserve all source agents.
@@ -245,7 +271,7 @@ After validation, slop meta-review, and previous-response filtering, dedupe and 
 - Findings labeled `UNVERIFIED` can be retained, but they must keep confidence below 60 and use `manual` or `advisory` unless the concrete risk is separately proven.
 - Drop or separate findings that only share a broad theme but require different fixes.
 
-After validation, slop meta-review, and previous-response filtering, apply emphasis adjustments if `EMPHASIZED_DIMENSIONS` is non-empty. Only use findings from agents that actually ran in Step 7 when deciding what is emphasized vs non-emphasized.
+After validation, slop meta-review, and previous-review processing, apply emphasis adjustments if `EMPHASIZED_DIMENSIONS` is non-empty. Only use findings from agents that actually ran in Step 7 when deciding what is emphasized vs non-emphasized.
 
 **Dimension-to-agent mapping:** `security` → injection-reviewer, auth-reviewer, data-reviewer, logic-reviewer | `errors` → silent-failure-hunter | `tests` → pr-test-analyzer | `comments` → comment-analyzer | `types` → type-design-analyzer | `code` → code-reviewer | `slop` → deslop-reviewer | `performance` → performance-oracle | `removal` → removal-planner | `refactor` → code-simplifier in review-only refactor-fit mode | `simplify` → code-simplifier
 
@@ -282,8 +308,9 @@ After emphasis adjustments, run an **action-class normalization pass**. The goal
 Assign stable `Finding ID` values to every active finding after dedupe, filtering, and emphasis are complete:
 
 - Use `CR-001`, `CR-002`, etc. in final report order, starting with Critical, then Important, then Suggestions.
-- Preserve an existing ID if a finding is carried forward from a previous `REVIEW_OVERVIEW.md` and still describes the same root cause.
+- Preserve an existing ID if a finding is carried forward from the previous-review source and still describes the same root cause.
 - Include the ID in the final report so callers such as `/kramme:pr:finalize` can pass exact findings to `/kramme:pr:resolve-review`.
+- Set `Resolution status: open` on every active finding emitted by this review. Only `/kramme:pr:resolve-review` or a human follow-up should change that status to `addressed`, `deferred`, `acknowledged`, or `skipped`.
 
 Then summarize:
 
@@ -294,9 +321,10 @@ Then summarize:
 - **Slop Warnings** - suggestions flagged as potentially introducing slop
 - **Positive Observations** (what's good)
 - **Filtered Issues** (pre-existing or out-of-scope) - shown separately
-- **Previously Addressed** (findings matching REVIEW_OVERVIEW.md) - shown separately
+- **Previously Addressed** (findings matching the previous-review source) - shown separately
+- **Previous Review Context** - source path and parse/carry-forward/filter counts, shown even when no previous-review source was found
 
-Every active finding must include its finding ID, location, confidence, action class, owner, and evidence in the final report:
+Every active finding must include its finding ID, location, confidence, action class, owner, resolution status, and evidence in the final report:
 
 - `gated_auto` — code-backed Critical/Important finding with a concrete file/line, a clear fix, and enough confidence for `/kramme:pr:resolve-review` to attempt it.
 - `manual` — requires a named human decision, product/process judgment, PR-description update, cross-team ownership, external access, unresolved trace, or explicit approval before a fix is safe. Every manual Critical/Important finding must include `Manual blocker` and `Next human decision`.

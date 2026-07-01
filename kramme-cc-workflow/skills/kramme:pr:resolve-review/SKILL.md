@@ -30,7 +30,7 @@ Parse `$ARGUMENTS` for flags. After extracting all flags, the remainder is the *
 - `--implement-only` → `IMPLEMENT_ONLY=true`. Pure code-fix engine mode for callers that own the reply/resolution phase (e.g. `kramme:pr:github-review-reply`): implement and validate fixes but make no GitHub writes, write no review file, and draft no replies (see Step 4). Mutually exclusive with `--team`; if a conflicting flag is given, ask the user to pick one and stop.
 - `--team` → Team Mode (see top of file).
 - `--granular` → `GRANULAR_COMMITS=true`. One commit per finding.
-- `--severity <list>` → `SEVERITY_FILTER`. Comma-separated values from `critical`, `important`, `suggestion`. Findings outside the filter are skipped with **Action taken: Skipped — outside severity filter.**
+- `--severity <list>` → `SEVERITY_FILTER`. Comma-separated values from `critical`, `important`, `suggestion`. Findings outside the filter are not processed and keep their existing `Resolution status` and `Action taken` fields unchanged so a later run can resolve them.
 
 **Payload classification:**
 
@@ -82,8 +82,10 @@ If no review is found for the selected mode, ask the user to provide review cont
 
 Then **list all findings** with location (`file:line` when applicable, otherwise a broader scope label such as `review-scope`) and content. For old `REVIEW_OVERVIEW.md` files without an explicit location field, fall back to inline `[location]` text when present.
 
-For local review files that include the structured `/kramme:pr:code-review` finding schema, also parse `Finding ID`, `Location`, `Action class`, `Confidence`, `Owner`, `Evidence`, `Manual blocker`, and `Next human decision` for each finding:
+For local review files that include the structured `/kramme:pr:code-review` finding schema, also parse `Finding ID`, `Location`, `Action class`, `Confidence`, `Owner`, `Resolution status`, `Evidence`, `Manual blocker`, and `Next human decision` for each finding:
 
+- `Resolution status: addressed`, `acknowledged`, `deferred`, or `skipped` means the finding has already been processed. Do not implement it again unless the user explicitly names that finding and asks to reopen it. A finding skipped only because it was outside a previous severity filter remains eligible; treat that legacy action as unprocessed.
+- `Resolution status: open` or a missing resolution status means the finding is eligible for normal evaluation.
 - `Action class: gated_auto` with a concrete `path/to/file:line` location is eligible for implementation.
 - `Action class: manual` is not auto-implementable, even when it has a file location. Defer it with a manual follow-up recommendation that preserves the manual blocker and next human decision when present, unless the user supplied a separate explicit implementation payload that changes the scope.
 - `Action class: advisory` is optional. Do not implement it from local auto-discovery unless the user explicitly asks to resolve suggestions or names that finding.
@@ -146,15 +148,15 @@ For internal reviews (self-generated): Skip this substep and proceed directly to
 - **important**: Performance problems, maintainability concerns, missing error handling
 - **suggestion**: Style preferences, naming suggestions, minor refactors
 
-If `SEVERITY_FILTER` is set, skip any finding whose severity is not in the filter. Document skipped findings with **Action taken: Skipped — outside severity filter.**
+If `SEVERITY_FILTER` is set, do not process findings whose severity is not in the filter. Leave their `Resolution status` and `Action taken` fields unchanged and mention the count in the summary; they remain eligible for later runs.
 
 #### 2d. Apply action-class eligibility
 
 When a finding came from a structured local review and includes an action class, apply the action-class gate before implementation:
 
 - Implement only `gated_auto` findings with concrete file locations.
-- Defer `manual` findings with **Action taken: Deferred — manual follow-up required.** Include the owner, evidence, manual blocker, and next human decision when available.
-- Acknowledge `advisory` findings with **Action taken: Acknowledged — advisory.** unless the user explicitly asked to resolve suggestions or named that finding.
+- Defer `manual` findings with **Resolution status: deferred** and **Action taken: Deferred — manual follow-up required.** Include the owner, evidence, manual blocker, and next human decision when available.
+- Acknowledge `advisory` findings with **Resolution status: acknowledged** and **Action taken: Acknowledged — advisory.** unless the user explicitly asked to resolve suggestions or named that finding.
 - Never treat `manual`, `advisory`, `review-scope`, or `PR description` findings as implementation candidates just because they are critical or important.
 
 #### 2e. Dismiss nitpicks with judgment
@@ -165,7 +167,7 @@ Not every finding deserves a code change. Dismiss findings that meet ALL of thes
 - The suggestion is subjective (style, naming preference, alternative approach that isn't clearly better)
 - Implementing it would churn code without measurable improvement
 
-For dismissed findings, document them in the output with **Action taken: Acknowledged — no change.** and a one-line rationale. For external reviews, include the rationale in the generated review summary; do not post replies or resolve GitHub threads.
+For dismissed findings, document them in the output with **Resolution status: acknowledged**, **Action taken: Acknowledged — no change.**, and a one-line rationale. For external reviews, include the rationale in the generated review summary; do not post replies or resolve GitHub threads.
 
 ### Step 2.5: Create rollback checkpoint
 
@@ -253,6 +255,9 @@ Each commit should be self-contained and pass linting/formatting on its own. If 
 
   `blocked-implementation` means the fix could not be completed. `blocked-validation` means a fix was attempted but validation failed. Then skip the Generate summary bullet below.
 - **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, or `COPY_REVIEW_OVERVIEW.md`, update that file in place. If the source was `REVIEW_OVERVIEW.md` or an external/chat review, write to `REVIEW_OVERVIEW.md`.
+  - Use `Resolution status: addressed` only when the finding was implemented, already satisfied by the current code, or otherwise fully resolved.
+  - Use `Resolution status: open` when implementation or validation failed, is blocked, or needs another run before it can be considered resolved.
+  - Use `deferred`, `acknowledged`, or `skipped` for the non-implementation outcomes defined in Step 2, but do not use `skipped` for severity-filtered findings that were never processed.
 - **Restore the checkpoint** — If a stash was created in Step 2.5, apply and drop the exact recorded stash now so the user's pre-existing uncommitted work is restored:
 
   ```bash
@@ -313,7 +318,7 @@ Write resolutions to the appropriate file in the project root:
 - If the source review was `COPY_REVIEW_OVERVIEW.md` → update `COPY_REVIEW_OVERVIEW.md` in place
 - Otherwise → create or update `REVIEW_OVERVIEW.md`
 
-Updates are **in place**: for each addressed finding, replace its `Action taken:` (and any other resolution fields) inside the existing entry. Findings present in the source but not addressed in this run (severity-filtered, out-of-scope) stay verbatim — never delete entries. If the source did not exist (review came from chat or `gh`), create a fresh `REVIEW_OVERVIEW.md` containing every processed finding.
+Updates are **in place**: for each processed finding, replace or add its `Resolution status:` and `Action taken:` fields inside the existing entry. Findings present in the source but not addressed in this run (severity-filtered, out-of-scope, already processed, or unrelated) stay verbatim — never delete entries. If the source did not exist (review came from chat or `gh`), create a fresh `REVIEW_OVERVIEW.md` containing every processed finding.
 
 ### For external reviews
 
@@ -331,7 +336,9 @@ Use this format for each comment:
 
 **Rationale:** [Why you agree or disagree with this feedback]
 
-**Action taken:** [Description of the fix implemented, or "No action" with explanation]
+**Resolution status:** open | addressed | deferred | acknowledged | skipped
+
+**Action taken:** [Description of the fix implemented, deferral/acknowledgement/skip, or why the finding remains open]
 
 **Draft reply:**
 
@@ -349,7 +356,9 @@ Use this simplified format for each finding:
 
 **Issue:** [Description of the issue]
 
-**Action taken:** [Description of the fix implemented]
+**Resolution status:** open | addressed | deferred | acknowledged | skipped
+
+**Action taken:** [Description of the fix implemented, deferral/acknowledgement/skip, or why the finding remains open]
 
 ---
 
@@ -365,7 +374,11 @@ If any findings were identified as scope creep, document them:
 
 > [Quote the original finding/comment]
 
+**Resolution status:** deferred
+
 **Reason deferred:** [Why this is out of scope for this PR]
+
+**Action taken:** Deferred — out of scope.
 
 **Recommendation:** [Suggested follow-up: create a separate PR, open an issue, discuss with team, etc.]
 
