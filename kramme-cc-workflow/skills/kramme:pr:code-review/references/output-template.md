@@ -9,7 +9,17 @@ Use this structure verbatim when writing `REVIEW_OVERVIEW.md` (or the inline rep
 
 - X findings validated as PR-caused
 - X findings filtered (pre-existing or out-of-scope)
-- X findings filtered (previously addressed in REVIEW_OVERVIEW.md)
+- X findings filtered (previously addressed in previous-review source)
+- X findings carried forward from a previous review
+
+## Previous Review Context
+
+- Source: `REVIEW_OVERVIEW.md` | `path/from/--previous-review` | none
+- Parseable previous findings: X
+- Previously addressed filtered: X
+- Open/deferred/acknowledged/skipped carried forward: X
+- Open/deferred/acknowledged/skipped not carried forward: X
+- Ignored or unparseable previous entries: X
 
 ## Auto-resolution Readiness
 
@@ -34,6 +44,7 @@ Coverage degraded: {agent names} failed; findings below exclude {dimensions}.
   - Confidence: 0-100
   - Action class: gated_auto | manual
   - Owner: resolver | author | maintainer | reviewer | unknown
+  - Resolution status: open
   - Evidence: concrete trace, reproduction, failed expectation, or UNVERIFIED reason
   - Manual blocker: product/UX/architecture/maintainer decision | missing/contradictory requirement | PR-description/process update | cross-team/external ownership | unresolved contradiction | incomplete trace/UNVERIFIED | dead-code approval (omit when gated_auto)
   - Next human decision: concrete decision, approval, clarification, access grant, or verification needed (omit when gated_auto)
@@ -46,6 +57,7 @@ Coverage degraded: {agent names} failed; findings below exclude {dimensions}.
   - Confidence: 0-100
   - Action class: gated_auto | manual
   - Owner: resolver | author | maintainer | reviewer | unknown
+  - Resolution status: open
   - Evidence: concrete trace, reproduction, failed expectation, or UNVERIFIED reason
   - Manual blocker: product/UX/architecture/maintainer decision | missing/contradictory requirement | PR-description/process update | cross-team/external ownership | unresolved contradiction | incomplete trace/UNVERIFIED | dead-code approval (omit when gated_auto)
   - Next human decision: concrete decision, approval, clarification, access grant, or verification needed (omit when gated_auto)
@@ -58,6 +70,7 @@ Coverage degraded: {agent names} failed; findings below exclude {dimensions}.
   - Confidence: 0-100
   - Action class: advisory
   - Owner: author | maintainer | reviewer | unknown
+  - Resolution status: open
   - Evidence: concrete context or UNVERIFIED reason
 - **Consider:** [agent-name]: Suggestion [location]
   - Finding ID: CR-004
@@ -65,6 +78,7 @@ Coverage degraded: {agent names} failed; findings below exclude {dimensions}.
   - Confidence: 0-100
   - Action class: advisory
   - Owner: author | maintainer | reviewer | unknown
+  - Resolution status: open
   - Evidence: concrete context or UNVERIFIED reason
 
 ## Slop Warnings (X found)
@@ -86,7 +100,7 @@ Coverage degraded: {agent names} failed; findings below exclude {dimensions}.
 
 <collapsed>
 - [location]: Brief description
-  Matched: REVIEW_OVERVIEW.md - [action taken summary]
+  Matched: previous-review source - [action taken summary]
 </collapsed>
 
 ## Strengths
@@ -115,9 +129,11 @@ Approve if the change definitely improves overall code health.
 - **Confidence** — use a 0-100 score. Use 90+ only when the behavior was traced, reproduced, or independently confirmed by another reviewer on the same root cause. Use scores below 60 with the `UNVERIFIED` marker for plausible but untraced findings. During the transition, map reviewer tiers before writing the report as `high=90`, `medium=60`, `low=30`.
 - **Action class** — Critical/Important PR-caused findings default to `gated_auto` when they have a concrete `path/to/file:line` location, confidence at least 70, concrete evidence, and a clear local fix path. Use `manual` only when a named manual blocker prevents safe automatic resolution. Use `advisory` only for Suggestions and FYI observations.
 - **Owner** — name the next actor, not the original source of the finding. Use `resolver` only when `/kramme:pr:resolve-review` can act safely.
+- **Resolution status** — `/kramme:pr:code-review` emits `open` for every active finding. `/kramme:pr:resolve-review` or human follow-up may later update it to `addressed`, `deferred`, `acknowledged`, or `skipped`. Previous-review parsing relies on this field when present and falls back to `Action taken` for legacy reports.
 - **Evidence** — cite the concrete trace, reproduction, failed expectation, or why the finding remains `UNVERIFIED`.
 - **Manual blocker / Next human decision** — required for every manual Critical/Important finding and omitted for `gated_auto` findings. If no manual blocker exists, reclassify the finding as `gated_auto` or downgrade it to an advisory suggestion.
 - **Auto-resolution Readiness** — count only Critical/Important findings. Suggestions and FYI items are not automatic resolution candidates. If there are no manual blockers, write `Manual blockers: none`.
+- **Previous Review Context** — always include this section. Use `Source: none` and zero counts when no previous-review source was found. When `--previous-review <path>` was used, display that path so cross-workspace handoffs are auditable.
 - **Dead Code** — keep dead-code findings in the severity bucket that matches their impact, and use the ask shape verbatim. Example: `[agent-name]: DEAD CODE IDENTIFIED: [location, location, ...]. Safe to remove these?` Never rewrite as "delete these files" or "remove unused imports."
 - **Emphasis** — emphasis may promote matching suggestions, but other validated findings keep their original severities.
 - **Approval Standard** — always include; it's the exit-criteria statement, not boilerplate.

@@ -671,7 +671,7 @@ console.log("ok");
 	run grep -nF "siw/OPEN_ISSUES_OVERVIEW.md" "$siw_issue_implement"
 	[ "$status" -eq 0 ]
 
-	run grep -nF "argument-hint: \"[aspects] [--emphasize <dim>...] [--base <branch>] [--parallel] [parallel] [--team] [--inline]\"" "$pr_code_review"
+	run grep -nF "argument-hint: \"[aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--parallel] [parallel] [--team] [--inline]\"" "$pr_code_review"
 	[ "$status" -eq 0 ]
 	run grep -nF "REVIEW_OVERVIEW.md" "$pr_code_review"
 	[ "$status" -eq 0 ]

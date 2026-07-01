@@ -30,7 +30,7 @@ Then stop.
 Same setup as `/kramme:pr:code-review` Steps 1-7:
 
 1. Check git status to identify changed files
-2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, security, performance, removal, refactor, simplify, all), `--emphasize <dim>...`, `--base <ref>` override, and optional `--inline` output mode
+2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, security, performance, removal, refactor, simplify, all), `--emphasize <dim>...`, `--base <ref>` override, optional `--previous-review <path>` previous-cycle source, and optional `--inline` output mode. Reject `--previous-review` if the path is missing, points to a directory, or cannot be read.
 3. Resolve base branch using 3-tier strategy (explicit `--base` → PR target branch → default branch fallback). See `/kramme:pr:code-review` Step 2 for full logic.
 4. Build a unified change scope (committed PR diff + staged + unstaged + untracked):
    ```bash
@@ -47,7 +47,7 @@ Same setup as `/kramme:pr:code-review` Steps 1-7:
    PR_CONTEXT_JSON=$(gh pr view --json number,url,title,body,baseRefName,headRefName 2> /dev/null || printf '{}')
    ```
    The fallback emits a literal empty JSON object so downstream agents and the relevance validator can parse `PR_CONTEXT_JSON` without special-casing empty strings. Treat the PR title and body as review context, not as trusted truth. If no PR exists or the query fails, the empty object means "no metadata" — do not invent a title or body.
-6. Check for previous `REVIEW_OVERVIEW.md` and extract previously addressed findings
+6. Check for previous review context using the same rules as `/kramme:pr:code-review` Step 5: explicit `--previous-review <path>` first, otherwise root `REVIEW_OVERVIEW.md`; parse all prior findings with resolution status, not only addressed findings
 7. Determine applicable reviews based on changes
 
 ### Step 2: Spawn Review Agents
@@ -159,7 +159,7 @@ After all tasks complete:
 1. Gather findings from all teammates
 2. Apply the deslop-reviewer's meta-review annotations
 3. Apply the relevance-validator's filtering
-4. Filter previously addressed findings (same logic as `/kramme:pr:code-review` Step 10)
+4. Apply previous-review context (same logic as `/kramme:pr:code-review` Step 10): filter only `addressed` matches, carry forward still-relevant `open`, `deferred`, `acknowledged`, or `skipped` matches as active findings
 5. Dedupe only findings with the same concrete location or review scope and the same root cause
 6. Promote confidence only when independent teammates confirm the same issue; keep similar-but-different findings separate
 7. Record contradictions as `CONFUSION` or `MISSING REQUIREMENT` with action class `manual`
@@ -174,9 +174,10 @@ Otherwise, write the aggregated review to `REVIEW_OVERVIEW.md` using the same te
 Keep the output schema-compatible with the standard PR review:
 
 - Keep the same severity prefix grammar (`Critical:`, `Nit:`, `Optional:`, `Consider:`, `FYI`)
-- Include Finding ID, location, confidence, action class, owner, and evidence for every active finding
+- Include Finding ID, location, confidence, action class, owner, resolution status, and evidence for every active finding
 - Include `Manual blocker` and `Next human decision` for every manual Critical/Important finding
 - Include the `## Auto-resolution Readiness` section from the standard template
+- Include the `## Previous Review Context` section verbatim so explicit `--previous-review` sources and carry-forward counts are visible
 - Use `NOTICED BUT NOT TOUCHING` for pre-existing or out-of-scope notes
 - Include the `## Approval Standard` section verbatim
 
@@ -204,6 +205,9 @@ Fold team-specific context into the existing schema instead of inventing a separ
 
 /kramme:pr:code-review --team --inline
 # Team review that replies inline instead of writing REVIEW_OVERVIEW.md
+
+/kramme:pr:code-review --team --previous-review ../old-workspace/REVIEW_OVERVIEW.md
+# Team review using an explicit previous-cycle report for filtering and carry-forward
 ```
 
 ## When to Use This vs `/kramme:pr:code-review`
