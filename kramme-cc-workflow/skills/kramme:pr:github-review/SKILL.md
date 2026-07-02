@@ -142,7 +142,7 @@ The worktree is a working artifact. **Once it exists, any failure or stop before
 
 From inside the worktree, build the unified change scope with the shared plugin script. Because the worktree is a clean checkout of the PR head, the scope is exactly the PR's committed diff against its base.
 
-Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use scripts/resolve-base.sh for base refs; use scripts/collect-review-diff.sh for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
+Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
 
 ```bash
 RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --base "$BASE_REF_ARG" --strict) || {

@@ -21,7 +21,7 @@ Run `git status --porcelain`. If the working tree is dirty and `AUTO_MODE=true`,
 
 ## Process
 
-Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use scripts/resolve-base.sh for base refs; use scripts/collect-review-diff.sh for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
+Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
 
 1. **Resolve the base branch** — use the shared plugin script. The optional positional base argument becomes `BASE_BRANCH_OVERRIDE`; otherwise let the script resolve the PR target branch and remote default fallback chain.
 

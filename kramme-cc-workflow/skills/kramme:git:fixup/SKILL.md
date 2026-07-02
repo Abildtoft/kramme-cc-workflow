@@ -45,7 +45,7 @@ Before proceeding with the workflow, check if the user provided additional instr
 
 1. **Resolve base branch:**
 
-   Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use scripts/resolve-base.sh for base refs; use scripts/collect-review-diff.sh for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
+   Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
 
    Use the shared plugin script. The `--base=<branch>` option sets `BASE_BRANCH_OVERRIDE`; otherwise let the script resolve the PR target branch and remote default fallback chain.
 

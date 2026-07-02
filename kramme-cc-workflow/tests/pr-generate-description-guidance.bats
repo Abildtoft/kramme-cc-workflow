@@ -71,7 +71,7 @@
     base_ref="skills/kramme:pr:generate-description/references/base-branch-resolution.md"
 
     grep -qF "Synced base/diff scope contract" "$base_ref"
-    grep -qF "scripts/resolve-base.sh" "$base_ref"
+    grep -qF "shared resolve-base.sh script" "$base_ref"
     grep -qF "BASE_REF" "$base_ref"
     grep -qF "BASE_BRANCH" "$base_ref"
     grep -qF "MERGE_BASE" "$base_ref"

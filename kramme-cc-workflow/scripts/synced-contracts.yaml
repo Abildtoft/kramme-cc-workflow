@@ -75,7 +75,7 @@
     },
     {
       "name": "canonical-base-diff-scope-rule",
-      "extract_regex": "Synced base/diff scope contract \\(keep aligned across base-aware and diff-aware skills\\):\\s*(use scripts/resolve-base\\.sh for base refs; use scripts/collect-review-diff\\.sh for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE\\.\\.\\.HEAD plus staged, unstaged, and untracked paths\\.)",
+      "extract_regex": "Synced base/diff scope contract \\(keep aligned across base-aware and diff-aware skills\\):\\s*(use the shared resolve-base\\.sh script for base refs; use the shared collect-review-diff\\.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE\\.\\.\\.HEAD plus staged, unstaged, and untracked paths\\.)",
       "paths": [
         "kramme-cc-workflow/skills/kramme:pr:generate-description/references/base-branch-resolution.md",
         "kramme-cc-workflow/skills/kramme:qa/references/diff-scope.md",
