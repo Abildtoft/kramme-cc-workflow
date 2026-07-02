@@ -100,6 +100,7 @@ class CheckRegistryTest(unittest.TestCase):
                 "file_identity",
                 "required_file_contracts",
                 "base_diff_scope",
+                "ui_relevance_contracts",
                 "marker_manifests",
                 "epilogue_order",
                 "hooks_json",
@@ -173,6 +174,123 @@ class BaseDiffScopeCheckTest(unittest.TestCase):
             self.assertIn("manual-base-fetch", failures)
             self.assertIn("manual-origin-base-merge-base", failures)
             self.assertIn("manual-origin-base-diff", failures)
+
+
+class UIRelevanceContractTest(unittest.TestCase):
+    def test_ui_relevance_matcher_classifies_fixture_paths(self) -> None:
+        matcher = {
+            "extensions": [".tsx", ".astro", ".mdx", ".htm", ".hbs", ".css", ".styl"],
+            "basename_prefixes": ["tailwind.config.", "theme."],
+            "directory_segments": ["design-tokens", "pages", "component", "components", "ui"],
+            "asset_directory_segments": ["public", "assets"],
+            "asset_extensions": [".svg", ".webp"],
+        }
+
+        self.assertTrue(
+            lint_skill_contracts.is_ui_relevant_path("src/components/Button.tsx", matcher)
+        )
+        self.assertTrue(
+            lint_skill_contracts.is_ui_relevant_path("tailwind.config.ts", matcher)
+        )
+        self.assertTrue(
+            lint_skill_contracts.is_ui_relevant_path(
+                "packages/ui/design-tokens/colors.json",
+                matcher,
+            )
+        )
+        self.assertTrue(
+            lint_skill_contracts.is_ui_relevant_path("public/logo.svg", matcher)
+        )
+        self.assertTrue(
+            lint_skill_contracts.is_ui_relevant_path("src/components/Button.TSX", matcher)
+        )
+        self.assertTrue(
+            lint_skill_contracts.is_ui_relevant_path("src/Page.astro", matcher)
+        )
+        self.assertTrue(
+            lint_skill_contracts.is_ui_relevant_path("docs/component.mdx", matcher)
+        )
+        self.assertTrue(
+            lint_skill_contracts.is_ui_relevant_path("public/index.htm", matcher)
+        )
+        self.assertTrue(
+            lint_skill_contracts.is_ui_relevant_path("src/styles/theme.styl", matcher)
+        )
+        self.assertTrue(
+            lint_skill_contracts.is_ui_relevant_path("src/ui/Button.ts", matcher)
+        )
+        self.assertTrue(
+            lint_skill_contracts.is_ui_relevant_path("src/component/Button.ts", matcher)
+        )
+        self.assertTrue(
+            lint_skill_contracts.is_ui_relevant_path("public/Logo.SVG", matcher)
+        )
+        self.assertFalse(
+            lint_skill_contracts.is_ui_relevant_path("src/assets/data.json", matcher)
+        )
+        self.assertFalse(
+            lint_skill_contracts.is_ui_relevant_path("src/server/user.ts", matcher)
+        )
+
+    def test_ui_relevance_contract_reports_missing_terms_and_fixture_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir).resolve()
+            canonical = root / "canonical.md"
+            local = root / "skill.md"
+            canonical.write_text(
+                "\n".join(
+                    [
+                        "UI relevance path contract: ui-relevance-path-contract-v1",
+                        "Required terms: *.tsx, assets/",
+                        "| Path | Expected |",
+                        "| --- | --- |",
+                        "| `src/components/Button.tsx` | Non-UI |",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            local.write_text(
+                "UI relevance path contract: ui-relevance-path-contract-v1\n"
+                "Required terms: *.tsx\n",
+                encoding="utf-8",
+            )
+            context = lint_skill_contracts.LintContext(
+                root=root,
+                registry={
+                    "ui_relevance_contracts": [
+                        {
+                            "name": "fixture-ui-contract",
+                            "contract_id": "ui-relevance-path-contract-v1",
+                            "canonical_path": "canonical.md",
+                            "paths": ["skill.md"],
+                            "required_terms": ["*.tsx", "assets/"],
+                            "matcher": {
+                                "extensions": [".tsx"],
+                                "asset_directory_segments": ["assets"],
+                                "asset_extensions": [".svg"],
+                            },
+                            "fixtures": [
+                                {
+                                    "path": "src/components/Button.tsx",
+                                    "ui_relevant": True,
+                                }
+                            ],
+                        }
+                    ]
+                },
+                schema={},
+            )
+
+            result = lint_skill_contracts.check_ui_relevance_contracts(context)
+
+        self.assertEqual(
+            result.failures,
+            [
+                "fixture-ui-contract: skill.md is missing UI relevance term 'assets/'",
+                "fixture-ui-contract: canonical.md fixture 'src/components/Button.tsx' "
+                "documents False; expected True",
+            ],
+        )
 
 
 class VerifyRunGuidanceTest(unittest.TestCase):

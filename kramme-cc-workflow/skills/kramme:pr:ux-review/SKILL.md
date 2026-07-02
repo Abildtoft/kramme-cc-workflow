@@ -99,14 +99,18 @@ CHANGED_FILES=$(parse_review_diff_json changed_files) || exit 1
 
 The JSON parsing block sets `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES`. Use `CHANGED_FILES` for the file filtering below.
 
-Filter for UI-relevant files:
+Filter for UI-relevant files using this contract marker: UI relevance path contract: `ui-relevance-path-contract-v1`.
 
-- **Components**: `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.component.ts`, `*.component.html`
-- **Templates**: `*.html`, `*.hbs`, `*.ejs`, `*.pug`
-- **Styles**: `*.css`, `*.scss`, `*.sass`, `*.less`, `*.styled.ts`, `*.module.css`
-- **Views/Pages**: Files in `pages/`, `views/`, `screens/`, `routes/`, `app/` directories
-- **Config**: Tailwind config, theme files, design token files
-- **Assets**: SVG files, icon sets
+A file is UI-relevant when it matches any of these categories:
+
+- **Components**: `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.astro`, `*.mdx`, `*.component.ts`, `*.component.html`
+- **Templates**: `*.html`, `*.htm`, `*.hbs`, `*.ejs`, `*.pug`
+- **Styles**: `*.css`, `*.scss`, `*.sass`, `*.less`, `*.styl`, `*.styled.ts`, `*.styled.js`, `*.module.css`, `*.module.scss`
+- **Configuration**: `tailwind.config.*`, `theme.*`, files under `design-tokens/`
+- **View and route directories**: files under `pages/`, `views/`, `screens/`, `routes/`, or `app/`
+- **UI component directories**: files under `component/`, `components/`, `ui/`, `widgets/`, `layouts/`, or `templates/`
+- **Style directories**: files under `styles/` or `css/`
+- **Static asset directories**: image or SVG files under `public/`, `static/`, or `assets/` (`*.svg`, `*.png`, `*.jpg`, `*.jpeg`, `*.gif`, `*.webp`, `*.avif`, `*.ico`)
 
 After identifying the changed UI files, discover any additional nested instruction files that apply to those files (for example `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or tool-specific equivalents) and merge those constraints into the conventions from Step 2 before launching reviewer agents.
 

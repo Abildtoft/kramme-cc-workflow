@@ -134,6 +134,216 @@
       }
     ]
   },
+  "ui_relevance_contracts": [
+    {
+      "name": "pr-ui-relevance-path-contract",
+      "contract_id": "ui-relevance-path-contract-v1",
+      "canonical_path": "kramme-cc-workflow/skills/kramme:pr:finalize/references/ui-relevance-heuristics.md",
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:pr:ux-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:qa/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md"
+      ],
+      "required_terms": [
+        "*.tsx",
+        "*.jsx",
+        "*.vue",
+        "*.svelte",
+        "*.astro",
+        "*.mdx",
+        "*.component.ts",
+        "*.component.html",
+        "*.html",
+        "*.htm",
+        "*.hbs",
+        "*.ejs",
+        "*.pug",
+        "*.css",
+        "*.scss",
+        "*.sass",
+        "*.less",
+        "*.styl",
+        "*.styled.ts",
+        "*.styled.js",
+        "*.module.css",
+        "*.module.scss",
+        "tailwind.config.*",
+        "theme.*",
+        "design-tokens/",
+        "pages/",
+        "views/",
+        "screens/",
+        "routes/",
+        "app/",
+        "component/",
+        "components/",
+        "ui/",
+        "widgets/",
+        "layouts/",
+        "templates/",
+        "styles/",
+        "css/",
+        "public/",
+        "static/",
+        "assets/",
+        "*.svg",
+        "*.png",
+        "*.jpg",
+        "*.jpeg",
+        "*.gif",
+        "*.webp",
+        "*.avif",
+        "*.ico"
+      ],
+      "matcher": {
+        "extensions": [
+          ".tsx",
+          ".jsx",
+          ".vue",
+          ".svelte",
+          ".astro",
+          ".mdx",
+          ".component.ts",
+          ".component.html",
+          ".html",
+          ".htm",
+          ".hbs",
+          ".ejs",
+          ".pug",
+          ".css",
+          ".scss",
+          ".sass",
+          ".less",
+          ".styl",
+          ".styled.ts",
+          ".styled.js",
+          ".module.css",
+          ".module.scss"
+        ],
+        "basename_prefixes": [
+          "tailwind.config.",
+          "theme."
+        ],
+        "directory_segments": [
+          "design-tokens",
+          "pages",
+          "views",
+          "screens",
+          "routes",
+          "app",
+          "component",
+          "components",
+          "ui",
+          "widgets",
+          "layouts",
+          "templates",
+          "styles",
+          "css"
+        ],
+        "asset_directory_segments": [
+          "public",
+          "static",
+          "assets"
+        ],
+        "asset_extensions": [
+          ".svg",
+          ".png",
+          ".jpg",
+          ".jpeg",
+          ".gif",
+          ".webp",
+          ".avif",
+          ".ico"
+        ]
+      },
+      "fixtures": [
+        {
+          "path": "src/components/Button.tsx",
+          "ui_relevant": true
+        },
+        {
+          "path": "app/dashboard/page.tsx",
+          "ui_relevant": true
+        },
+        {
+          "path": "src/templates/card.hbs",
+          "ui_relevant": true
+        },
+        {
+          "path": "src/styles/global.css",
+          "ui_relevant": true
+        },
+        {
+          "path": "src/App.TSX",
+          "ui_relevant": true
+        },
+        {
+          "path": "src/Page.astro",
+          "ui_relevant": true
+        },
+        {
+          "path": "docs/component.mdx",
+          "ui_relevant": true
+        },
+        {
+          "path": "public/index.htm",
+          "ui_relevant": true
+        },
+        {
+          "path": "src/styles/theme.styl",
+          "ui_relevant": true
+        },
+        {
+          "path": "src/ui/Button.ts",
+          "ui_relevant": true
+        },
+        {
+          "path": "src/component/Button.ts",
+          "ui_relevant": true
+        },
+        {
+          "path": "theme.colors.ts",
+          "ui_relevant": true
+        },
+        {
+          "path": "tailwind.config.ts",
+          "ui_relevant": true
+        },
+        {
+          "path": "packages/ui/design-tokens/colors.json",
+          "ui_relevant": true
+        },
+        {
+          "path": "public/logo.svg",
+          "ui_relevant": true
+        },
+        {
+          "path": "public/Logo.SVG",
+          "ui_relevant": true
+        },
+        {
+          "path": "static/hero.webp",
+          "ui_relevant": true
+        },
+        {
+          "path": "src/assets/data.json",
+          "ui_relevant": false
+        },
+        {
+          "path": "src/server/user.ts",
+          "ui_relevant": false
+        },
+        {
+          "path": "docs/button-guidelines.md",
+          "ui_relevant": false
+        },
+        {
+          "path": "package.json",
+          "ui_relevant": false
+        }
+      ]
+    }
+  ],
   "ordered_heading_contracts": [
     {
       "name": "siw-log-current-progress-headings",

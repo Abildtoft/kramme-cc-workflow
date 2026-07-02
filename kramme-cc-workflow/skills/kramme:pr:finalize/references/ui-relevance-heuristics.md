@@ -1,48 +1,46 @@
 # UI Relevance Heuristics
 
-File patterns that indicate UI-relevant changes. Used to determine whether UX review and QA testing are applicable.
+Canonical path contract for deciding whether UX review and diff-aware QA are applicable.
 
-## File Extension Patterns
+UI relevance path contract: `ui-relevance-path-contract-v1`
 
-### Components
+## Path Rules
 
-- `*.tsx`, `*.jsx` — React components
-- `*.vue` — Vue components
-- `*.svelte` — Svelte components
-- `*.component.ts`, `*.component.html` — Angular components
+A change is UI-relevant when any changed file matches one of these categories:
 
-### Templates
+- **Components**: `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.astro`, `*.mdx`, `*.component.ts`, `*.component.html`
+- **Templates**: `*.html`, `*.htm`, `*.hbs`, `*.ejs`, `*.pug`
+- **Styles**: `*.css`, `*.scss`, `*.sass`, `*.less`, `*.styl`, `*.styled.ts`, `*.styled.js`, `*.module.css`, `*.module.scss`
+- **Configuration**: `tailwind.config.*`, `theme.*`, files under `design-tokens/`
+- **View and route directories**: files under `pages/`, `views/`, `screens/`, `routes/`, or `app/`
+- **UI component directories**: files under `component/`, `components/`, `ui/`, `widgets/`, `layouts/`, or `templates/`
+- **Style directories**: files under `styles/` or `css/`
+- **Static asset directories**: image or SVG files under `public/`, `static/`, or `assets/` (`*.svg`, `*.png`, `*.jpg`, `*.jpeg`, `*.gif`, `*.webp`, `*.avif`, `*.ico`)
 
-- `*.html` — HTML templates
-- `*.hbs` — Handlebars templates
-- `*.ejs` — EJS templates
-- `*.pug` — Pug templates
+When no UI-relevant files are found, UX review and diff-aware QA are skipped with a note explaining why.
 
-### Styles
+## Fixture Matrix
 
-- `*.css`, `*.scss`, `*.sass`, `*.less` — Stylesheets
-- `*.styled.ts`, `*.styled.js` — Styled components
-- `*.module.css`, `*.module.scss` — CSS modules
-
-### Configuration
-
-- `tailwind.config.*` — Tailwind configuration
-- `theme.*` — Theme files
-- `**/design-tokens/**` — Design token files
-
-## Directory Patterns
-
-Files in these directories are considered UI-relevant regardless of extension:
-
-- `pages/`, `views/`, `screens/` — Page/view files
-- `routes/`, `app/` — Route definitions
-- `components/`, `widgets/` — UI components
-- `layouts/`, `templates/` — Layout files
-- `styles/`, `css/` — Style directories
-- `public/`, `static/`, `assets/` — Static assets (only if SVG or image files changed)
-
-## Detection Logic
-
-A change is considered UI-relevant if ANY changed file matches the extension patterns above or resides in a UI-relevant directory.
-
-When no UI-relevant files are found, UX review and QA testing are skipped with a note explaining why.
+| Path | Expected | Rule |
+| --- | --- | --- |
+| `src/components/Button.tsx` | UI | Component extension and component directory |
+| `app/dashboard/page.tsx` | UI | Route directory |
+| `src/templates/card.hbs` | UI | Template extension |
+| `src/styles/global.css` | UI | Style extension and style directory |
+| `src/App.TSX` | UI | Component extension, matched case-insensitively |
+| `src/Page.astro` | UI | Astro component/page extension |
+| `docs/component.mdx` | UI | MDX component documentation extension |
+| `public/index.htm` | UI | HTML template extension |
+| `src/styles/theme.styl` | UI | Stylus style extension |
+| `src/ui/Button.ts` | UI | UI directory |
+| `src/component/Button.ts` | UI | Singular component directory |
+| `theme.colors.ts` | UI | Theme configuration file |
+| `tailwind.config.ts` | UI | Tailwind configuration file |
+| `packages/ui/design-tokens/colors.json` | UI | Design token directory |
+| `public/logo.svg` | UI | Static image asset |
+| `public/Logo.SVG` | UI | Static image asset, matched case-insensitively |
+| `static/hero.webp` | UI | Static image asset |
+| `src/assets/data.json` | Non-UI | Static asset directory with non-image data |
+| `src/server/user.ts` | Non-UI | Backend code outside UI paths |
+| `docs/button-guidelines.md` | Non-UI | Documentation-only path |
+| `package.json` | Non-UI | Package metadata only |
