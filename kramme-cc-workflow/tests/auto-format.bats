@@ -9,6 +9,8 @@ setup() {
 	TEST_DIR=$(mktemp -d)
 	ORIG_PWD="$PWD"
 	cd "$TEST_DIR"
+	KRAMME_AUTOFORMAT_TRUST_FILE="$TEST_DIR/autoformat-trusted-roots"
+	export KRAMME_AUTOFORMAT_TRUST_FILE
 }
 
 teardown() {
@@ -19,6 +21,10 @@ teardown() {
 # Helper to run hook with given file_path
 run_format_hook() {
 	make_format_input "$1" | bash "$HOOK"
+}
+
+trust_current_project() {
+	printf '%s\n' "$TEST_DIR" >"$KRAMME_AUTOFORMAT_TRUST_FILE"
 }
 
 # ============================================================================
@@ -212,6 +218,7 @@ run_format_hook() {
 
 @test "uses CLAUDE.md format command" {
 	echo 'format: echo formatted' >CLAUDE.md
+	trust_current_project
 	touch test.js
 	run run_format_hook "$TEST_DIR/test.js"
 	[ "$status" -eq 0 ]
@@ -221,6 +228,7 @@ run_format_hook() {
 
 @test "uses CLAUDE.md formatter directive" {
 	echo 'formatter: echo formatted' >CLAUDE.md
+	trust_current_project
 	touch test.ts
 	run run_format_hook "$TEST_DIR/test.ts"
 	[ "$status" -eq 0 ]
@@ -230,6 +238,7 @@ run_format_hook() {
 
 @test "reports CLAUDE.md command failure" {
 	echo 'format: false' >CLAUDE.md
+	trust_current_project
 	touch test.js
 	run run_format_hook "$TEST_DIR/test.js"
 	[ "$status" -eq 0 ]
@@ -239,6 +248,7 @@ run_format_hook() {
 
 @test "blocks CLAUDE.md formatter with shell metacharacters" {
 	echo 'format: echo formatted | cat' >CLAUDE.md
+	trust_current_project
 	touch test.js
 	run run_format_hook "$TEST_DIR/test.js"
 	[ "$status" -eq 0 ]
@@ -248,6 +258,7 @@ run_format_hook() {
 
 @test "allows CLAUDE.md formatter with brace expansion" {
 	echo 'format: printf "%s\n" test.{js,ts}' >CLAUDE.md
+	trust_current_project
 	touch test.js
 	run run_format_hook "$TEST_DIR/test.js"
 	[ "$status" -eq 0 ]
@@ -258,6 +269,7 @@ run_format_hook() {
 @test "allows CLAUDE.md formatter with environment variable expansion" {
 	export FORMAT_TEST_VALUE="formatted"
 	echo 'format: test "$FORMAT_TEST_VALUE" = "formatted"' >CLAUDE.md
+	trust_current_project
 	touch test.js
 	run run_format_hook "$TEST_DIR/test.js"
 	[ "$status" -eq 0 ]
@@ -267,11 +279,77 @@ run_format_hook() {
 
 @test "blocks CLAUDE.md formatter with command substitution" {
 	echo 'format: echo $(pwd)' >CLAUDE.md
+	trust_current_project
 	touch test.js
 	run run_format_hook "$TEST_DIR/test.js"
 	[ "$status" -eq 0 ]
 	has_system_message
 	[[ "$output" == *'Format command failed (CLAUDE.md:'* ]]
+}
+
+@test "skips untrusted CLAUDE.md format command and falls through" {
+	echo 'format: touch untrusted.marker' >CLAUDE.md
+	touch test.xyz
+	run run_format_hook "$TEST_DIR/test.xyz"
+	[ "$status" -eq 0 ]
+	has_system_message
+	has_no_formatter
+	[ ! -f untrusted.marker ]
+	[[ "$output" == *'CLAUDE.md formatter not run'* ]]
+	[[ "$output" == *"$KRAMME_AUTOFORMAT_TRUST_FILE"* ]]
+}
+
+@test "skips CLAUDE.md format command when trust file lists different root" {
+	echo "$TEST_DIR/other-project" >"$KRAMME_AUTOFORMAT_TRUST_FILE"
+	echo 'format: touch wrong-root.marker' >CLAUDE.md
+	touch test.xyz
+	run run_format_hook "$TEST_DIR/test.xyz"
+	[ "$status" -eq 0 ]
+	has_system_message
+	has_no_formatter
+	[ ! -f wrong-root.marker ]
+	[[ "$output" == *'CLAUDE.md formatter not run'* ]]
+}
+
+@test "skips npm format script after untrusted CLAUDE.md directive" {
+	cat >package.json <<'EOF'
+{"scripts": {"format": "touch npm-format.marker"}}
+EOF
+	echo 'format: touch claude-format.marker' >CLAUDE.md
+	touch test.xyz
+	run run_format_hook "$TEST_DIR/test.xyz"
+	[ "$status" -eq 0 ]
+	has_system_message
+	has_no_formatter
+	[ ! -f claude-format.marker ]
+	[ ! -f npm-format.marker ]
+	[[ "$output" == *'CLAUDE.md formatter not run'* ]]
+}
+
+@test "parses CLAUDE.md trust file comments blank lines and whitespace" {
+	cat >"$KRAMME_AUTOFORMAT_TRUST_FILE" <<EOF
+
+# trusted test roots
+  $TEST_DIR
+
+EOF
+	echo 'format: touch trusted.marker' >CLAUDE.md
+	touch test.js
+	run run_format_hook "$TEST_DIR/test.js"
+	[ "$status" -eq 0 ]
+	has_system_message
+	[ -f trusted.marker ]
+	[[ "$output" == *'Formatted (CLAUDE.md:'* ]]
+	[[ "$output" != *'CLAUDE.md formatter not run'* ]]
+}
+
+@test "does not append CLAUDE.md trust notice when no directive exists" {
+	touch test.xyz
+	run run_format_hook "$TEST_DIR/test.xyz"
+	[ "$status" -eq 0 ]
+	has_system_message
+	has_no_formatter
+	[[ "$output" != *'CLAUDE.md formatter not run'* ]]
 }
 
 # ============================================================================
