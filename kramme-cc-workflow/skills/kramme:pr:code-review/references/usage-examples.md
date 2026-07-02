@@ -6,6 +6,7 @@ Load this only when the user asks for examples or when validating argument parsi
 
 ```text
 /kramme:pr:code-review
+# Runs all applicable reviewers, including lean/refactor/simplify cleanup dimensions
 ```
 
 ## Specific aspects
@@ -20,11 +21,14 @@ Load this only when the user asks for examples or when validating argument parsi
 /kramme:pr:code-review performance
 # Performance and scalability review only
 
+/kramme:pr:code-review lean
+# Deletion-focused review: existing-code, stdlib, native, dependency, and YAGNI opportunities
+
 /kramme:pr:code-review refactor
-# Review-only reuse, composition, and codebase-fit cleanup findings
+# Focus only on reuse, composition, and codebase-fit cleanup findings
 
 /kramme:pr:code-review simplify
-# Opt-in simplifier pass. Run after the main review is clean.
+# Focus only on clarity and maintainability simplification findings
 ```
 
 ## Parallel review

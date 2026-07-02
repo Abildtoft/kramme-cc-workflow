@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:code-review
-description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, performance, slop, refactor fit). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. Use --team for multi-agent cross-validation. Not for UX, visual, or accessibility review -- use kramme:pr:ux-review for those.
+description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, performance, slop, lean deletion, refactor fit, simplification). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. Use --team for multi-agent cross-validation. Not for UX, visual, or accessibility review -- use kramme:pr:ux-review for those.
 argument-hint: "[aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--parallel] [parallel] [--team] [--inline]"
 disable-model-invocation: false
 user-invocable: true
@@ -27,10 +27,10 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - If `--team` flag → use Team Mode and remove it from the aspect list
    - If `--parallel` appears anywhere in `$ARGUMENTS` → set `LAUNCH_MODE=parallel` and remove it from the aspect list. Default is `LAUNCH_MODE=sequential`.
    - If the bare token `parallel` appears anywhere in `$ARGUMENTS` → set `LAUNCH_MODE=parallel`, remove it from the aspect list, and treat it as a deprecated alias for `--parallel`.
-   - If `--emphasize <dim>...` flag → store dimension names in `EMPHASIZED_DIMENSIONS` list and remove from aspect list. Consume all tokens after `--emphasize` until the next `--` flag, `--parallel`, `parallel`, or end of arguments. Each token must be a valid aspect name (`comments`, `tests`, `errors`, `types`, `code`, `slop`, `security`, `performance`, `removal`, `refactor`, `simplify`). Reject `--emphasize all` (emphasizing everything is a no-op).
+   - If `--emphasize <dim>...` flag → store dimension names in `EMPHASIZED_DIMENSIONS` list and remove from aspect list. Consume all tokens after `--emphasize` until the next `--` flag, `--parallel`, `parallel`, or end of arguments. Each token must be a valid aspect name (`comments`, `tests`, `errors`, `types`, `code`, `slop`, `security`, `performance`, `removal`, `lean`, `refactor`, `simplify`). Reject `--emphasize all` (emphasizing everything is a no-op). Cleanup emphasis (`lean`, `refactor`, `simplify`) never overrides the precedence pass or the action-class normalization rule that optional cleanup stays advisory.
    - Validate remaining positional tokens as aspect names against the same list plus `all`. If any token is not a recognized aspect, stop with an error naming the unrecognized token and listing valid aspects. Do not silently fall through to "run all applicable reviews."
    - If an explicit aspect list was provided and it does not include `all`, every emphasized dimension must also appear in that list. If any emphasized dimension was excluded by the user's aspect filter, stop with an error instead of re-ranking unrelated findings.
-   - Default (no aspect tokens, or `all`): Run all applicable reviews **except** `refactor` and `simplify`. Refactor-fit and simplification review are opt-in only -- they run only when `refactor` or `simplify` is explicitly listed (see Step 6).
+   - Default (no aspect tokens, or `all`): Run all applicable reviews, including the cleanup dimensions `lean`, `refactor`, and `simplify`. These cleanup dimensions are lower-priority than unresolved correctness, security, error-handling, and test findings when recommendations collide; the precedence pass in Step 11 suppresses or demotes cleanup advice that would undermine an open higher-priority finding.
 
 2. **Resolve Base Branch and Collect Review Diff**
 
@@ -100,9 +100,10 @@ PY
    - **security** - Security review: injection, auth, data protection, business logic (4 specialized agents)
    - **performance** - Performance and scalability review (algorithmic complexity, query efficiency, memory, caching)
    - **removal** - Identify dead code and create safe removal plans
-   - **refactor** - Review reuse, composition, codebase consistency, and cleanup fit without editing (opt-in only; not part of default `all`)
-   - **simplify** - Simplify code for clarity and maintainability (opt-in only; not part of default `all`)
-   - **all** - Run all applicable reviews except `refactor` and `simplify` (default)
+   - **lean** - Deletion-focused review: avoid owned code when existing code, stdlib, native platform features, or installed dependencies cover the need
+   - **refactor** - Review reuse, composition, codebase consistency, and cleanup fit without editing
+   - **simplify** - Simplify code for clarity and maintainability
+   - **all** - Run all applicable reviews, including `lean`, `refactor`, and `simplify` (default)
 
 4. **Identify Changed Files and PR Description**
    - Use the newline-delimited `CHANGED_FILES` set by Step 2 as the unified change scope.
@@ -163,7 +164,8 @@ PY
    - `kramme:comment-analyzer` — if comments, docstrings, docs, or explanation-heavy inline text changed
    - `kramme:type-design-analyzer` — if types, schemas, interfaces, data models, or invariants changed
    - `kramme:removal-planner` — if code was deleted, deprecated, consolidated, or refactored enough that safe removal needs verification
-   - `kramme:code-simplifier` — only when `refactor` or `simplify` is explicitly listed in the aspect arguments. Record the active dimension as `refactor`, `simplify`, or both based on the requested tokens. Use `refactor` for review-only reuse/composition/codebase-fit findings; use `simplify` for broader clarity and maintainability simplification suggestions. Neither runs as part of `all`, because cleanup suggestions can conflict with unresolved Critical/Important findings. Run the review first, resolve those, then re-run with `refactor` or `simplify`.
+   - `kramme:lean-reviewer` — for default `all` reviews or when `lean` is explicitly listed. It finds code the PR can avoid owning: deletions, existing-helper reuse, stdlib/native replacements, avoidable dependencies, and YAGNI abstractions.
+   - `kramme:code-simplifier` — for default `all` reviews or when `refactor` or `simplify` is explicitly listed. Record the active dimension as `refactor`, `simplify`, or both based on the requested tokens; for default `all`, record both. Use `refactor` for review-only reuse/composition/codebase-fit findings; use `simplify` for broader clarity and maintainability simplification suggestions.
 
    **Stack-specific conditional reviewers** (activate only when the touched stack has the relevant risk surface):
    - `kramme:performance-oracle` — data-heavy paths, loops over large collections, DB queries, caching, hot paths, rendering bottlenecks, or expensive client bundles
@@ -193,12 +195,20 @@ PY
 
    Instruct each spawned reviewer to label findings with the output markers documented in `references/review-discipline.md` (`UNVERIFIED`, `NOTICED BUT NOT TOUCHING`, `CONFUSION`, `MISSING REQUIREMENT`) so the aggregated report is parseable.
 
-   If `refactor` activated `kramme:code-simplifier`, instruct it to operate as a review-only refactor-fit reviewer:
+   If `lean` activated `kramme:lean-reviewer`, instruct it to operate as a deletion-focused reviewer:
+   - Do not edit files.
+   - Search for existing helpers, components, hooks, scripts, framework features, standard-library APIs, native platform features, and installed dependencies before recommending newly owned code.
+   - Prioritize `delete`, `stdlib`, `native`, `existing`, `dependency`, `yagni`, and `shrink` findings.
+   - Do not recommend removing trust-boundary validation, auth/security controls, error handling that prevents silent failure or data loss, accessibility behavior, or tests that protect non-trivial behavior.
+   - If a lean finding could collide with a correctness, security, error-handling, or test finding, label it `COLLIDES WITH CORRECTNESS/SECURITY`, keep it advisory, and state that the higher-priority finding must be resolved first.
+
+   If `refactor` or `simplify` activated `kramme:code-simplifier`, instruct it to operate as a review-only cleanup reviewer:
    - Do not edit files.
    - Trace the relevant call stack or data flow before making line-level findings when the behavior is non-trivial.
    - Search nearby and sibling code before judging new helpers, components, hooks, file placement, naming, result/error/loading patterns, styling primitives, or copy patterns.
    - Prioritize reuse, composition, codebase consistency, and proportional cleanup: duplicated existing flows, grab-bag modules, parameter sprawl, callback/prop plumbing, one-off helpers or exported types, product concepts leaking backing-entity distinctions through intermediate components, and unrelated diff churn.
    - For each finding, include the existing pattern or code that should be reused when found, why the current change does not fit, and the minimal recommended fix.
+   - If a refactor/simplify finding could collide with a correctness, security, error-handling, or test finding, label it `COLLIDES WITH CORRECTNESS/SECURITY`, keep it advisory, and state that the higher-priority finding must be resolved first.
 
    Instruct every reviewer to return these fields for each finding:
    - **Finding ID:** leave blank for raw reviewer output; the aggregator assigns stable `CR-001`, `CR-002`, ... IDs after dedupe
@@ -271,14 +281,28 @@ After validation, slop meta-review, and previous-review processing, dedupe and m
 - Findings labeled `UNVERIFIED` can be retained, but they must keep confidence below 60 and use `manual` or `advisory` unless the concrete risk is separately proven.
 - Drop or separate findings that only share a broad theme but require different fixes.
 
+Then apply the **correctness/security precedence pass** before emphasis:
+
+- Treat findings from `kramme:lean-reviewer` and cleanup-mode `kramme:code-simplifier` as cleanup-dimension findings (`lean`, `refactor`, `simplify`).
+- Treat unresolved Critical or Important findings from `kramme:code-reviewer`, `kramme:silent-failure-hunter`, `kramme:pr-test-analyzer`, `kramme:type-design-analyzer`, `kramme:injection-reviewer`, `kramme:auth-reviewer`, `kramme:data-reviewer`, and `kramme:logic-reviewer` as higher-priority correctness/security findings when they are still active after previous-review processing.
+- A cleanup finding collides when its recommended deletion, replacement, abstraction removal, simplification, or reuse would remove or weaken validation, auth, authorization, injection protection, data protection, error propagation, test coverage, type invariants, or the concrete fix path of an unresolved correctness/security finding.
+- If a cleanup finding collides with an unresolved correctness/security finding:
+  - Do not promote it through `--emphasize`.
+  - Do not classify it as Critical or Important.
+  - Do not assign `gated_auto`.
+  - Either drop it as redundant/no longer safe, or keep it only as an advisory Suggestion with evidence: `Blocked by the matching correctness/security finding; revisit after that finding is resolved.` After final IDs are assigned, reference the blocking `CR-XXX` in the cleanup finding's evidence.
+  - Preserve the correctness/security finding unchanged, and append the cleanup collision as supporting context only when it helps the resolver avoid the unsafe cleanup path.
+- If the cleanup recommendation remains valid after the higher-priority fix is applied, keep it as an advisory Suggestion with the dependency named. If it would only be valid by choosing a different correctness/security fix, record a `CONFUSION` manual finding instead of silently choosing the cleanup path.
+
 After validation, slop meta-review, and previous-review processing, apply emphasis adjustments if `EMPHASIZED_DIMENSIONS` is non-empty. Only use findings from agents that actually ran in Step 7 when deciding what is emphasized vs non-emphasized.
 
-**Dimension-to-agent mapping:** `security` → injection-reviewer, auth-reviewer, data-reviewer, logic-reviewer | `errors` → silent-failure-hunter | `tests` → pr-test-analyzer | `comments` → comment-analyzer | `types` → type-design-analyzer | `code` → code-reviewer | `slop` → deslop-reviewer | `performance` → performance-oracle | `removal` → removal-planner | `refactor` → code-simplifier in review-only refactor-fit mode | `simplify` → code-simplifier
+**Dimension-to-agent mapping:** `security` → injection-reviewer, auth-reviewer, data-reviewer, logic-reviewer | `errors` → silent-failure-hunter | `tests` → pr-test-analyzer | `comments` → comment-analyzer | `types` → type-design-analyzer | `code` → code-reviewer | `slop` → deslop-reviewer | `performance` → performance-oracle | `removal` → removal-planner | `lean` → lean-reviewer | `refactor` → code-simplifier in review-only refactor-fit mode | `simplify` → code-simplifier
 
 **Promotion rules (per finding, based on source agent):**
 
 - Emphasized agent findings: Suggestion → promoted to Important. Critical and Important unchanged.
 - Non-emphasized agent findings: Keep their original severities. Do not demote validated findings just because they were not emphasized.
+- Cleanup-dimension findings (`lean`, `refactor`, `simplify`) may be promoted only provisionally. The action-class normalization pass below wins: if the cleanup finding is optional, stylistic, low-confidence, or lacks concrete merge-blocking impact, move it back to Suggestions with action class `advisory`.
 
 Track the count of promoted findings for the report.
 
@@ -311,6 +335,7 @@ Assign stable `Finding ID` values to every active finding after dedupe, filterin
 - Preserve an existing ID if a finding is carried forward from the previous-review source and still describes the same root cause.
 - Include the ID in the final report so callers such as `/kramme:pr:finalize` can pass exact findings to `/kramme:pr:resolve-review`.
 - Set `Resolution status: open` on every active finding emitted by this review. Only `/kramme:pr:resolve-review` or a human follow-up should change that status to `addressed`, `deferred`, `acknowledged`, or `skipped`.
+- After IDs are assigned, revisit any kept cleanup-collision Suggestions and replace their provisional blocker text with the final blocking `CR-XXX` ID. Do not promote or reclassify cleanup findings during this ID reconciliation.
 
 Then summarize:
 
