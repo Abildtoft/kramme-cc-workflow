@@ -313,42 +313,6 @@
     ],
     "allow_empty_fields": [
       {
-        "path": "kramme-cc-workflow/skills/kramme:pr:github-review/references/sources.yaml",
-        "entry_id": "github-cli-pr-commands",
-        "field": "baseline_hash",
-        "reason": "New skill; baseline hash pending first kramme:skill:audit-sources run."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:pr:github-review/references/sources.yaml",
-        "entry_id": "github-search-review-requested",
-        "field": "baseline_hash",
-        "reason": "New skill; baseline hash pending first kramme:skill:audit-sources run."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:pr:github-review/references/sources.yaml",
-        "entry_id": "github-rest-pull-reviews",
-        "field": "baseline_hash",
-        "reason": "New skill; baseline hash pending first kramme:skill:audit-sources run."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:pr:github-review/references/sources.yaml",
-        "entry_id": "github-rest-pull-review-comments",
-        "field": "baseline_hash",
-        "reason": "New skill; baseline hash pending first kramme:skill:audit-sources run."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:pr:github-review/references/sources.yaml",
-        "entry_id": "github-graphql-pull-review-threads",
-        "field": "baseline_hash",
-        "reason": "New skill; baseline hash pending first kramme:skill:audit-sources run."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:pr:github-review/references/sources.yaml",
-        "entry_id": "github-rest-issue-comments",
-        "field": "baseline_hash",
-        "reason": "New skill; baseline hash pending first kramme:skill:audit-sources run."
-      },
-      {
         "path": "kramme-cc-workflow/skills/kramme:ci:design-pipeline/references/sources.yaml",
         "entry_id": "addy-git-workflow-versioning",
         "field": "baseline_hash",
@@ -357,18 +321,6 @@
       {
         "path": "kramme-cc-workflow/skills/kramme:code:api-design/references/sources.yaml",
         "entry_id": "pocock-design-an-interface",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:code:deprecate/references/sources.yaml",
-        "entry_id": "addy-deprecation-and-migration",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:code:deprecate/references/sources.yaml",
-        "entry_id": "hyrums-law",
         "field": "baseline_hash",
         "reason": "Pre-existing baseline hash backfill debt before W03C."
       },
@@ -477,12 +429,6 @@
       {
         "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/sources.yaml",
         "entry_id": "compound-ce-demo-reel",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:pr:rebase/references/sources.yaml",
-        "entry_id": "addy-git-workflow-versioning",
         "field": "baseline_hash",
         "reason": "Pre-existing baseline hash backfill debt before W03C."
       }
