@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:github-review
-description: "Review a GitHub pull request where you are the assigned reviewer, not the author or assignee. Fetches the PR into an isolated git worktree (your branch untouched), runs code-quality agents plus UX/accessibility agents when the PR touches UI, and writes a reviewer-facing report with file:line-anchored findings, draft inline comments phrased as concise, humanized Socratic questions, and a recommended verdict. Supports ongoing reviews: maps existing author and reviewer comments, drafts replies to threads awaiting you (including replies to your own earlier comments), and skips findings already raised in the conversation. Read-only toward GitHub: never posts and never auto-approves — you submit the review yourself. Triggers on reviewing someone else's PR or a review-requested PR. Not for reviewing your own branch before shipping (use kramme:pr:code-review), responding to reviewers on your own PR (use kramme:pr:github-review-reply), or resolving review findings (use kramme:pr:resolve-review)."
+description: "Review a GitHub pull request where you are the assigned reviewer, not the author or assignee. Fetches the PR into an isolated git worktree (your branch untouched), runs code-quality agents plus UX/accessibility agents when the PR touches UI, and writes a reviewer-facing report with file:line-anchored findings, draft inline comments phrased as concise, humanized Socratic questions, and a recommended verdict. Supports ongoing reviews: maps existing author and reviewer comments, drafts replies to threads awaiting you (including replies to your own earlier comments), and skips findings already raised in the conversation. Read-only toward GitHub: it does not post comments or review decisions; you submit the review yourself. Triggers on reviewing someone else's PR or a review-requested PR. Not for reviewing your own branch before shipping (use kramme:pr:code-review), responding to reviewers on your own PR (use kramme:pr:github-review-reply), or resolving review findings (use kramme:pr:resolve-review)."
 argument-hint: "[pr-number|pr-url] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--fresh] [--include-bots] [--all-threads] [--inline] [--keep-worktree]"
 disable-model-invocation: true
 user-invocable: true
@@ -10,7 +10,7 @@ user-invocable: true
 
 Carry out a review of a GitHub pull request you have been asked to review. You are the reviewer, not the author or assignee. The skill fetches the PR into a throwaway git worktree, runs the appropriate review agents against the PR's real diff, and produces a reviewer-facing assessment you can transcribe into a GitHub review.
 
-This skill is **read-only toward GitHub**: it never posts comments, never submits a review, and never approves on your behalf. It drafts a recommended verdict; you make the final call and post it yourself.
+This skill is **read-only toward GitHub**: it does not post comments or submit review decisions. It drafts a recommended verdict; you make the final call and post it yourself.
 
 ## Step 0: Parse Arguments
 
@@ -128,7 +128,11 @@ git fetch --quiet origin "pull/${PR_NUMBER}/head" || { echo "Could not fetch pul
 
 TMP_PARENT=$(mktemp -d "${TMPDIR:-/tmp}/kramme-review-pr-${PR_NUMBER}.XXXXXX")
 WORKTREE_DIR="$TMP_PARENT/wt"
-git worktree add --quiet --detach "$WORKTREE_DIR" FETCH_HEAD || { echo "Failed to create review worktree." >&2; rm -rf "$TMP_PARENT"; exit 1; }
+if ! git worktree add --quiet --detach "$WORKTREE_DIR" FETCH_HEAD; then
+  echo "Failed to create review worktree." >&2
+  rmdir -- "$TMP_PARENT" || true
+  exit 1
+fi
 cd "$WORKTREE_DIR"
 ```
 
@@ -139,11 +143,13 @@ The worktree is a working artifact. **Once it exists, any failure or stop before
 From inside the worktree, build the unified change scope with the shared plugin script. Because the worktree is a clean checkout of the PR head, the scope is exactly the PR's committed diff against its base.
 
 ```bash
-RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --base "$BASE_REF_ARG" --strict) || {
+if ! RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --base "$BASE_REF_ARG" --strict); then
   echo "Base/diff collection failed; see the message above." >&2
-  cd "$ORIG_ROOT"; git worktree remove --force "$WORKTREE_DIR" 2> /dev/null; rm -rf "$TMP_PARENT" 2> /dev/null
+  cd "$ORIG_ROOT"
+  git worktree remove "$WORKTREE_DIR" 2> /dev/null || true
+  rmdir -- "$TMP_PARENT" || true
   exit 1
-}
+fi
 eval "$RESOLVED"
 ```
 
@@ -201,8 +207,8 @@ cd "$ORIG_ROOT"
 if [ "${KEEP_WORKTREE:-false}" = "true" ]; then
   echo "Worktree kept at: $WORKTREE_DIR"
 else
-  git worktree remove --force "$WORKTREE_DIR" 2> /dev/null
-  rm -rf "$TMP_PARENT" 2> /dev/null
+  git worktree remove "$WORKTREE_DIR" 2> /dev/null || true
+  rmdir -- "$TMP_PARENT" || true
   git worktree prune
 fi
 ```

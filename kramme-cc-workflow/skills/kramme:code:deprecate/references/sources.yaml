@@ -1,13 +1,13 @@
 sources:
   - id: addy-deprecation-and-migration
-    url: https://github.com/addyosmani/agent-skills/tree/main/skills/deprecation-and-migration
+    url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/deprecation-and-migration/SKILL.md
     title: "Addy Osmani agent-skills - deprecation and migration"
     rationale: "The deprecation decision workflow, migration framing, and removal guardrails are adapted from this source."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-01
+    baseline_hash: "sha256:bf2d9b4e3bc635b32e8de70b0ab41e4395d7b585e6474347c53ce89d45fbdb75"
   - id: hyrums-law
     url: https://www.hyrumslaw.com/
     title: "Hyrum's Law"
     rationale: "The removal risk model treats every observable behavior as potentially depended on, following Hyrum's Law."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-01
+    baseline_hash: "sha256:f9a0109d82e67400a2e4f724993ffec7908234f75e8f52a6b154656811702673"
