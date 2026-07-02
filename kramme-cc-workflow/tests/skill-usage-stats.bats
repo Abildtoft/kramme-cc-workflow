@@ -7,12 +7,23 @@ setup() {
 	HOOK="$BATS_TEST_DIRNAME/../hooks/skill-usage-stats.sh"
 	SCRIPT="$BATS_TEST_DIRNAME/../scripts/skill-usage.js"
 	USAGE_FILE="$BATS_TEST_TMPDIR/skill-usage.jsonl"
+	DIAGNOSTIC_FILE="$BATS_TEST_TMPDIR/skill-usage-diagnostics.log"
 	export KRAMME_SKILL_USAGE_FILE="$USAGE_FILE"
-	rm -f "$USAGE_FILE"
+	export KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE="$DIAGNOSTIC_FILE"
+	unset KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES
+	rm -f "$USAGE_FILE" "$DIAGNOSTIC_FILE"
 }
 
 run_usage_hook() {
 	printf '%s' "$1" | bash "$HOOK"
+}
+
+create_usage_plugin_root() {
+	local plugin_root="$1"
+	mkdir -p "$plugin_root/hooks/lib" "$plugin_root/scripts"
+	cp "$HOOK" "$plugin_root/hooks/skill-usage-stats.sh"
+	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
+	cp "$SCRIPT" "$plugin_root/scripts/skill-usage.js"
 }
 
 @test "records explicit slash skill invocations from prompts" {
@@ -142,6 +153,72 @@ run_usage_hook() {
 	[ "$status" -eq 0 ]
 	[ "$(echo "$output" | jq -r 'length')" = "1" ]
 	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:pr:create" ]
+}
+
+@test "legacy hooks skill-usage entry delegates to scripts implementation" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for skill usage tests"
+	fi
+
+	LEGACY_SCRIPT="$BATS_TEST_DIRNAME/../hooks/skill-usage.js"
+	run bash -c 'printf "%s" "$1" | node "$2" record --file "$3"' _ \
+		'{"prompt":"/kramme:legacy-wrapper","session_id":"session-legacy"}' \
+		"$LEGACY_SCRIPT" \
+		"$USAGE_FILE"
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
+
+	run node "$SCRIPT" report --file "$USAGE_FILE" --json
+	[ "$status" -eq 0 ]
+	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:legacy-wrapper" ]
+}
+
+@test "usage hook records through scripts implementation path" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for skill usage tests"
+	fi
+
+	PLUGIN_ROOT="$BATS_TEST_TMPDIR/plugin"
+	create_usage_plugin_root "$PLUGIN_ROOT"
+	printf '%s\n' '#!/usr/bin/env node' 'process.exit(64);' >"$PLUGIN_ROOT/hooks/skill-usage.js"
+
+	run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" bash "$2/hooks/skill-usage-stats.sh"' _ \
+		'{"prompt":"/kramme:script-owner","session_id":"session-script"}' \
+		"$PLUGIN_ROOT" \
+		"$USAGE_FILE"
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
+
+	run node "$SCRIPT" report --file "$USAGE_FILE" --json
+	[ "$status" -eq 0 ]
+	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:script-owner" ]
+}
+
+@test "usage hook writes bounded diagnostics when recorder fails" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for skill usage tests"
+	fi
+
+	PLUGIN_ROOT="$BATS_TEST_TMPDIR/plugin"
+	create_usage_plugin_root "$PLUGIN_ROOT"
+	printf '%s\n' '#!/usr/bin/env node' 'process.exit(42);' >"$PLUGIN_ROOT/scripts/skill-usage.js"
+	export KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES=2
+
+	for skill in one two three; do
+		run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE="$4" KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES="$5" bash "$2/hooks/skill-usage-stats.sh"' _ \
+			"{\"prompt\":\"/kramme:$skill\",\"session_id\":\"session-diag\"}" \
+			"$PLUGIN_ROOT" \
+			"$USAGE_FILE" \
+			"$DIAGNOSTIC_FILE" \
+			"$KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES"
+		[ "$status" -eq 0 ]
+		[ "$output" = "{}" ]
+	done
+
+	[ ! -f "$USAGE_FILE" ]
+	[ "$(wc -l <"$DIAGNOSTIC_FILE" | tr -d ' ')" = "2" ]
+	run grep -F "skill-usage-stats: record failed status=42" "$DIAGNOSTIC_FILE"
+	[ "$status" -eq 0 ]
 }
 
 @test "scan prunes dependency and generated directories" {

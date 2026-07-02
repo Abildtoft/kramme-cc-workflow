@@ -99,6 +99,10 @@ const PLATFORMS_FIELD = skillFrontmatterFieldByLoaderProperty(
   "platforms",
   "kramme-platforms",
 );
+const REQUIRED_HOOK_CONTROL_SKILLS = [
+  "kramme:hooks:toggle",
+  "kramme:hooks:configure-links",
+];
 
 /**
  * @param {ClaudeSkill[]} skills
@@ -173,8 +177,23 @@ function convertClaudeToCodex(plugin) {
     knownCommands: knownCommandNames,
     knownAgentSkills,
     mcpServers: plugin.mcpServers,
-    codexPlugin: plugin.hooks ? convertCodexHookPlugin(plugin) : undefined,
+    codexPlugin: codexHookPluginFor(plugin, skills),
   };
+}
+
+function codexHookPluginFor(plugin, codexSkills) {
+  if (!plugin.hooks) return undefined;
+  if (!hasRequiredHookControlSkills(codexSkills)) return undefined;
+  return convertCodexHookPlugin(plugin);
+}
+
+function hasRequiredHookControlSkills(skills) {
+  const installedSkillNames = new Set(
+    skills.map((skill) => normalizeName(skill.name)),
+  );
+  return REQUIRED_HOOK_CONTROL_SKILLS.every((skillName) =>
+    installedSkillNames.has(normalizeName(skillName)),
+  );
 }
 
 function convertCodexHookPlugin(plugin) {
@@ -217,6 +236,10 @@ function convertCodexHookPlugin(plugin) {
       {
         sourceFile: path.join(plugin.root, "scripts", "collect-review-diff.sh"),
         targetPath: path.join("scripts", "collect-review-diff.sh"),
+      },
+      {
+        sourceFile: path.join(plugin.root, "scripts", "skill-usage.js"),
+        targetPath: path.join("scripts", "skill-usage.js"),
       },
     ],
   };

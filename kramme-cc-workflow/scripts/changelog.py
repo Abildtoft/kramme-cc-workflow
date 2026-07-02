@@ -147,6 +147,12 @@ class CommitParser:
         """Format message for changelog (capitalize first letter)."""
         if not message:
             return message
+        breaking_prefix = "**BREAKING:** "
+        if message.startswith(breaking_prefix):
+            description = message[len(breaking_prefix) :]
+            if not description:
+                return message
+            return f"{breaking_prefix}{description[0].upper()}{description[1:]}"
         return message[0].upper() + message[1:]
 
 
@@ -254,7 +260,7 @@ class ChangelogGenerator:
 class ChangelogUpdater:
     """Updates CHANGELOG.md file idempotently."""
 
-    VERSION_HEADER_PATTERN = re.compile(r"^## \[(\d+\.\d+\.\d+)\]")
+    VERSION_HEADER_PATTERN = re.compile(r"^## \[(\d+\.\d+\.\d+)\]", re.MULTILINE)
     LINK_PATTERN = re.compile(r"^\[(\d+\.\d+\.\d+)\]:")
 
     def __init__(self, changelog_path: Path):
@@ -306,23 +312,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         content = self.read()
         lines = content.split("\n")
 
-        # Find insertion point (after header, before first version)
-        insert_idx = 0
+        # Find insertion point before the first released version.
+        insert_idx = len(lines)
+        needs_leading_blank = False
         for i, line in enumerate(lines):
             if self.VERSION_HEADER_PATTERN.match(line):
                 insert_idx = i
                 break
-            if line.strip() and not line.startswith("#") and "format" not in line.lower():
-                insert_idx = i
-                break
         else:
-            # No existing versions, insert at end of header section
-            insert_idx = len(lines)
+            # No existing versions, insert after any existing header content.
             while insert_idx > 0 and not lines[insert_idx - 1].strip():
                 insert_idx -= 1
+            needs_leading_blank = insert_idx > 0
 
         # Insert version section
         version_lines = version_section.strip().split("\n")
+        if needs_leading_blank:
+            version_lines = [""] + version_lines
         lines[insert_idx:insert_idx] = version_lines + [""]
 
         # Find and update link references section
