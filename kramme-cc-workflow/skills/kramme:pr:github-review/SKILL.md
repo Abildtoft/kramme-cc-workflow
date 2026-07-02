@@ -128,7 +128,11 @@ git fetch --quiet origin "pull/${PR_NUMBER}/head" || { echo "Could not fetch pul
 
 TMP_PARENT=$(mktemp -d "${TMPDIR:-/tmp}/kramme-review-pr-${PR_NUMBER}.XXXXXX")
 WORKTREE_DIR="$TMP_PARENT/wt"
-git worktree add --quiet --detach "$WORKTREE_DIR" FETCH_HEAD || { echo "Failed to create review worktree." >&2; rm -rf "$TMP_PARENT"; exit 1; }
+if ! git worktree add --quiet --detach "$WORKTREE_DIR" FETCH_HEAD; then
+  echo "Failed to create review worktree." >&2
+  echo "Temporary parent left for inspection: $TMP_PARENT" >&2
+  exit 1
+fi
 cd "$WORKTREE_DIR"
 ```
 
@@ -143,7 +147,11 @@ Synced base/diff scope contract (keep aligned across base-aware and diff-aware s
 ```bash
 RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --base "$BASE_REF_ARG" --strict) || {
   echo "Base/diff collection failed; see the message above." >&2
-  cd "$ORIG_ROOT"; git worktree remove --force "$WORKTREE_DIR" 2> /dev/null; rm -rf "$TMP_PARENT" 2> /dev/null
+  cd "$ORIG_ROOT"
+  if ! git worktree remove "$WORKTREE_DIR" 2> /dev/null; then
+    :
+  fi
+  echo "Temporary parent left for inspection: $TMP_PARENT" >&2
   exit 1
 }
 eval "$RESOLVED"
@@ -203,8 +211,10 @@ cd "$ORIG_ROOT"
 if [ "${KEEP_WORKTREE:-false}" = "true" ]; then
   echo "Worktree kept at: $WORKTREE_DIR"
 else
-  git worktree remove --force "$WORKTREE_DIR" 2> /dev/null
-  rm -rf "$TMP_PARENT" 2> /dev/null
+  if ! git worktree remove "$WORKTREE_DIR" 2> /dev/null; then
+    echo "Could not remove worktree automatically: $WORKTREE_DIR" >&2
+  fi
+  echo "Temporary parent left for inspection: $TMP_PARENT"
   git worktree prune
 fi
 ```

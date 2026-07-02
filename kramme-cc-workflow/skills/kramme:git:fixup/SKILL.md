@@ -270,11 +270,7 @@ git log --oneline "$BASE_REF"..HEAD
 
 Confirm success and show any remaining unstaged/untracked files.
 
-**Remind user:** If this branch was already pushed, they'll need to force push:
-
-```bash
-git push --force-with-lease
-```
+**Remind user:** If this branch was already pushed, the remote branch must be updated manually with the repository's history-rewrite policy after the user confirms that collaborators are coordinated.
 
 ## Error Handling
 
