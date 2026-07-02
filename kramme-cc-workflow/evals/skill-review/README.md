@@ -139,7 +139,7 @@ make skillopt-candidate-check
 ```
 
 The candidate gate runs skill contract linting, changed-skill SkillSpector
-static checks with JSON output and `high` failure threshold, the full Bats test
-suite, and this eval. Machines without `skillspector` installed fail at the
-SkillSpector step; run the focused eval and test targets above when validating
-only the deterministic harness.
+static checks with JSON output and `high` failure threshold, Node unit tests,
+Python unit tests, the full Bats test suite, and this eval. Machines without
+`skillspector` installed fail at the SkillSpector step; run the focused eval and
+test targets above when validating only the deterministic harness.

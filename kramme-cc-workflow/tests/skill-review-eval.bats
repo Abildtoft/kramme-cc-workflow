@@ -11,6 +11,8 @@
       if (data.split !== \"all\") process.exit(1);
       if (typeof data.hard !== \"number\" || typeof data.soft !== \"number\") process.exit(1);
       if (!Array.isArray(data.items) || data.items.length < 5) process.exit(1);
+      const splits = new Set(data.items.map((item) => item.split));
+      if (![\"train\", \"val\", \"test\"].every((split) => splits.has(split))) process.exit(1);
       if (!Array.isArray(data.diagnostics)) process.exit(1);
     " "$BATS_TEST_TMPDIR/out.json"
   '
@@ -71,20 +73,172 @@ NODE
       const expected = [
         \"python3 scripts/lint-skill-contracts.py\",
         \"./scripts/run-skillspector.sh --changed --base \\\"origin/main\\\" --format json --fail-on high\",
+        \"node --test tests/node/*.test.js\",
+        \"python3 -m unittest discover -s tests/python -p '\''test_*.py'\''\",
         \"./tests/run-tests.sh\",
         \"node evals/skill-review/run-eval.js --split all --json\",
       ];
-      if (lines.length !== expected.length) {
-        console.error(lines.join(\"\\n\"));
-        process.exit(1);
-      }
+      let searchFrom = 0;
       for (let index = 0; index < expected.length; index += 1) {
-        if (lines[index] !== expected[index]) {
+        const nextIndex = lines.indexOf(expected[index], searchFrom);
+        if (nextIndex === -1) {
           console.error(lines.join(\"\\n\"));
           process.exit(1);
         }
+        searchFrom = nextIndex + 1;
+      }
+      const fullEvalLines = lines.filter((line) => line === \"node evals/skill-review/run-eval.js --split all --json\");
+      if (fullEvalLines.length !== 1) {
+        console.error(lines.join(\"\\n\"));
+        process.exit(1);
       }
     " "$BATS_TEST_TMPDIR/make.txt"
+  '
+
+  [ "$status" -eq 0 ]
+}
+
+@test "skillopt candidate check keeps blocking scan when shared scan is also requested" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    env -u BASE_REF -u SKILLSPECTOR_BASE make --no-print-directory -n skill-security-changed skillopt-candidate-check > "$BATS_TEST_TMPDIR/make.txt"
+    node -e "
+      const fs = require(\"fs\");
+      const lines = fs.readFileSync(process.argv[1], \"utf8\").trim().split(/\n+/);
+      const sharedScan = \"./scripts/run-skillspector.sh --changed --base \\\"origin/main\\\" --format \\\"markdown\\\" --fail-on \\\"none\\\"\";
+      const candidateScan = \"./scripts/run-skillspector.sh --changed --base \\\"origin/main\\\" --format json --fail-on high\";
+      if (lines.filter((line) => line === sharedScan).length !== 1) {
+        console.error(lines.join(\"\\n\"));
+        process.exit(1);
+      }
+      if (lines.filter((line) => line === candidateScan).length !== 1) {
+        console.error(lines.join(\"\\n\"));
+        process.exit(1);
+      }
+    " "$BATS_TEST_TMPDIR/make.txt"
+  '
+
+  [ "$status" -eq 0 ]
+}
+
+@test "skillopt candidate check ignores global skillspector reporting overrides" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    env -u BASE_REF -u SKILLSPECTOR_BASE make --no-print-directory -n skillopt-candidate-check SKILLSPECTOR_FORMAT=markdown SKILLSPECTOR_FAIL_ON=none > "$BATS_TEST_TMPDIR/make.txt"
+    grep -Fx "./scripts/run-skillspector.sh --changed --base \"origin/main\" --format json --fail-on high" "$BATS_TEST_TMPDIR/make.txt"
+  '
+
+  [ "$status" -eq 0 ]
+}
+
+@test "skillopt candidate check stays serial under parallel make" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+
+    test_repo="$BATS_TEST_TMPDIR/repo"
+    mock_bin="$test_repo/bin"
+    mkdir -p "$mock_bin" "$test_repo/scripts" "$test_repo/tests"
+    cp Makefile "$test_repo/Makefile"
+    cat > "$mock_bin/guarded-command" <<'"'"'SH'"'"'
+#!/usr/bin/env bash
+set -euo pipefail
+
+name=$(basename "$0")
+log_file="${GATE_LOG:?}"
+lock_dir="${GATE_LOCK:?}"
+
+if [ "$name" = "python3" ] && [ "${1-}" = "-c" ]; then
+  exit 0
+fi
+if [ "$name" = "node" ] && [ "${1-}" = "-e" ]; then
+  exit 0
+fi
+
+if ! mkdir "$lock_dir" 2> /dev/null; then
+  printf "overlap:%s %s\n" "$name" "$*" >> "$log_file"
+  exit 42
+fi
+trap '"'"'rmdir "$lock_dir"'"'"' EXIT
+
+printf "start:%s %s\n" "$name" "$*" >> "$log_file"
+sleep 0.05
+printf "end:%s %s\n" "$name" "$*" >> "$log_file"
+SH
+    chmod +x "$mock_bin/guarded-command"
+    ln -s guarded-command "$mock_bin/python3"
+    ln -s guarded-command "$mock_bin/node"
+    ln -s guarded-command "$mock_bin/bats"
+    ln -s guarded-command "$mock_bin/jq"
+    ln -s ../bin/guarded-command "$test_repo/scripts/run-skillspector.sh"
+    ln -s ../bin/guarded-command "$test_repo/tests/run-tests.sh"
+
+    export PATH="$mock_bin:$PATH"
+    export GATE_LOG="$BATS_TEST_TMPDIR/gate.log"
+    export GATE_LOCK="$BATS_TEST_TMPDIR/gate.lock"
+    cd "$test_repo"
+    env -u BASE_REF -u SKILLSPECTOR_BASE make --no-print-directory -j4 skillopt-candidate-check
+
+    ! grep -q "^overlap:" "$GATE_LOG"
+    grep -F "start:python3 scripts/lint-skill-contracts.py" "$GATE_LOG"
+    grep -F "start:run-skillspector.sh --changed --base origin/main --format json --fail-on high" "$GATE_LOG"
+    grep -F "start:node --test tests/node/*.test.js" "$GATE_LOG"
+    grep -F "start:python3 -m unittest discover -s tests/python -p test_*.py" "$GATE_LOG"
+    grep -F "start:run-tests.sh" "$GATE_LOG"
+    grep -F "start:node evals/skill-review/run-eval.js --split all --json" "$GATE_LOG"
+  '
+
+  [ "$status" -eq 0 ]
+}
+
+@test "skillopt candidate serialization does not disable unrelated parallel targets" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+
+    test_repo="$BATS_TEST_TMPDIR/repo"
+    mock_bin="$test_repo/bin"
+    mkdir -p "$mock_bin"
+    cp Makefile "$test_repo/Makefile"
+    cat > "$mock_bin/guarded-command" <<'"'"'SH'"'"'
+#!/usr/bin/env bash
+set -euo pipefail
+
+name=$(basename "$0")
+log_file="${GATE_LOG:?}"
+lock_dir="${GATE_LOCK:?}"
+
+if [ "$name" = "python3" ] && [ "${1-}" = "-c" ]; then
+  exit 0
+fi
+if [ "$name" = "node" ] && [ "${1-}" = "-e" ]; then
+  exit 0
+fi
+
+if ! mkdir "$lock_dir" 2> /dev/null; then
+  printf "overlap:%s %s\n" "$name" "$*" >> "$log_file"
+  sleep 0.1
+  exit 0
+fi
+trap '"'"'rmdir "$lock_dir"'"'"' EXIT
+
+printf "start:%s %s\n" "$name" "$*" >> "$log_file"
+sleep 0.1
+printf "end:%s %s\n" "$name" "$*" >> "$log_file"
+SH
+    chmod +x "$mock_bin/guarded-command"
+    ln -s guarded-command "$mock_bin/python3"
+    ln -s guarded-command "$mock_bin/node"
+
+    export PATH="$mock_bin:$PATH"
+    export GATE_LOG="$BATS_TEST_TMPDIR/gate.log"
+    export GATE_LOCK="$BATS_TEST_TMPDIR/gate.lock"
+    cd "$test_repo"
+    make --no-print-directory -j4 test-node test-python
+
+    grep -q "^overlap:" "$GATE_LOG"
   '
 
   [ "$status" -eq 0 ]
