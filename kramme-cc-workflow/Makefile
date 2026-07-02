@@ -1,4 +1,4 @@
-.PHONY: lint lint-shell lint-python lint-js format-check preflight pr-verify verify test test-bats test-node test-python test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage coverage-node coverage-python check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-shell-deps check-ruff-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
+.PHONY: lint lint-shell lint-python lint-js format-check preflight pr-verify verify test test-bats test-node test-python test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage unit-coverage coverage-node coverage-python check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-shell-deps check-ruff-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
 
 SHELLCHECK ?= shellcheck
 SHELLCHECK_SEVERITY ?= error
@@ -149,10 +149,15 @@ skill-eval-skill-review:
 skillopt-candidate-check:
 	@python3 scripts/lint-skill-contracts.py
 	@./scripts/run-skillspector.sh --changed --base "$(SKILLSPECTOR_BASE)" --format json --fail-on high
+	@node --test $(NODE_TEST_FILES)
+	@python3 -m unittest discover -s $(PYTHON_TEST_DIR) -p '$(PYTHON_TEST_PATTERN)'
 	@./tests/run-tests.sh
 	@node evals/skill-review/run-eval.js --split all --json
 
-coverage: coverage-node coverage-python
+coverage: unit-coverage
+
+# Unit coverage only; Bats integration coverage is not measured here.
+unit-coverage: coverage-node coverage-python
 
 coverage-node: check-node-deps
 	@node --test --experimental-test-coverage $(NODE_TEST_FILES)

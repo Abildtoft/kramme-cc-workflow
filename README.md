@@ -583,7 +583,10 @@ make -C kramme-cc-workflow test-node
 # Run only Python unit tests
 make -C kramme-cc-workflow test-python
 
-# Run unit coverage reports without enforcing thresholds
+# Run Node/Python unit coverage reports without enforcing thresholds
+make -C kramme-cc-workflow unit-coverage
+
+# Backward-compatible alias for the same unit coverage gate
 make -C kramme-cc-workflow coverage
 
 # Run with verbose output (show test names)
@@ -611,19 +614,30 @@ make -C kramme-cc-workflow test-skill-usage
 ### Pre-PR Verification
 
 `make -C kramme-cc-workflow test` is the fast default suite. It runs the Node
-unit tests, Python unit tests, and Bats integration tests. Before a release
-candidate or before marking a larger Pull Request ready, run the stronger local
-gate:
+unit tests, Python unit tests, and Bats integration tests. For ordinary Pull
+Request verification, run:
+
+```bash
+make -C kramme-cc-workflow pr-verify
+```
+
+The `pr-verify` target runs dependency preflight checks, shell/Python/JS linting,
+format checks, skill-contract linting, changed-skill SkillSpector scanning with
+`--fail-on high`, and the fast test suite. It does not add a separate
+`skill-eval-skill-review` pass beyond the skill-review eval coverage already
+exercised by the Bats suite.
+
+Before a release candidate or before marking a larger Pull Request ready, run the
+stronger local gate:
 
 ```bash
 make -C kramme-cc-workflow verify
 ```
 
-The `verify` target runs shell and Python linting, skill-contract linting,
-changed-skill SkillSpector scanning with `--fail-on high`, the full fast test
-suite, and the skill-review eval split. It expects the existing local tools used
-by those checks to be installed: `shellcheck`, `ruff`, `skillspector`, `bats`,
-`jq`, Python 3, and Node.js.
+The `verify` target runs `pr-verify` plus the standalone full skill-review eval
+split. These verification targets expect the existing local tools used by those
+checks to be installed: `shellcheck`, `ruff`, `skillspector`, `bats`, `jq`,
+Python 3, and Node.js.
 
 ### Skill Security Scans
 
@@ -717,6 +731,10 @@ candidate gate passes:
 ```bash
 make -C kramme-cc-workflow skillopt-candidate-check
 ```
+
+The candidate gate runs skill contract linting, changed-skill SkillSpector
+scanning with JSON output and `--fail-on high`, Node unit tests, Python unit
+tests, Bats integration tests, and the full skill-review eval split.
 
 Do not add another skill to the optimization loop until it has a deterministic
 train/val/test split, false-positive coverage, a candidate gate, and the same
