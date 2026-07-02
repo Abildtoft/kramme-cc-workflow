@@ -3,23 +3,288 @@
 
 from __future__ import annotations
 
+import re
+import shlex
 import sys
+
+
+CONTROL_TOKENS = {";", "&&", "||", "|", "|&", "&"}
+HEREDOC_START = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+
+
+def read_dollar_substitution(command, start):
+    inner = []
+    depth = 1
+    idx = start + 2
+    in_single = False
+    in_double = False
+    escaped = False
+
+    while idx < len(command):
+        char = command[idx]
+
+        if escaped:
+            inner.append(char)
+            escaped = False
+            idx += 1
+            continue
+
+        if char == "\\" and not in_single:
+            inner.append(char)
+            escaped = True
+            idx += 1
+            continue
+
+        if char == "'" and not in_double:
+            in_single = not in_single
+            inner.append(char)
+            idx += 1
+            continue
+
+        if char == '"' and not in_single:
+            in_double = not in_double
+            inner.append(char)
+            idx += 1
+            continue
+
+        if not in_single and not in_double and command.startswith("$" + "(", idx):
+            nested_inner, idx = read_dollar_substitution(command, idx)
+            inner.append("$" + "(" + nested_inner + ")")
+            continue
+
+        if not in_single and not in_double and char == ")":
+            depth -= 1
+            if depth == 0:
+                return "".join(inner), idx + 1
+
+        inner.append(char)
+        idx += 1
+
+    raise ValueError("Unterminated command substitution.")
+
+
+def read_backtick_substitution(command, start):
+    inner = []
+    idx = start + 1
+    escaped = False
+
+    while idx < len(command):
+        char = command[idx]
+
+        if escaped:
+            inner.append(char)
+            escaped = False
+            idx += 1
+            continue
+
+        if char == "\\":
+            inner.append(char)
+            escaped = True
+            idx += 1
+            continue
+
+        if char == chr(96):
+            return "".join(inner), idx + 1
+
+        inner.append(char)
+        idx += 1
+
+    raise ValueError("Unterminated backtick command substitution.")
+
+
+def _extract_body_substitutions(line):
+    # Collect $(...) / `...` contents from an unquoted heredoc body line.
+    # Mirrors the bash extract_body_substitutions helper.
+    subs = []
+    idx = 0
+    length = len(line)
+    while idx < length:
+        ch = line[idx]
+        if ch == "$" and idx + 1 < length and line[idx + 1] == "(":
+            inner, idx = read_dollar_substitution(line, idx)
+            subs.append(inner)
+            continue
+        if ch == chr(96):
+            inner, idx = read_backtick_substitution(line, idx)
+            subs.append(inner)
+            continue
+        idx += 1
+    return subs
+
+
+def strip_heredoc_bodies(command):
+    lines = command.splitlines(keepends=True)
+    stripped_lines = []
+    delimiter = None
+    is_quoted = False
+    is_dashed = False
+    extracted = []
+
+    for line in lines:
+        if delimiter is not None:
+            # Strip trailing newline for comparison only.
+            compare = line[:-1] if line.endswith("\n") else line
+            if is_dashed:
+                # POSIX: <<- strips leading TABs only (never spaces).
+                compare = compare.lstrip("\t")
+            if compare == delimiter:
+                stripped_lines.append(line)
+                delimiter = None
+                is_quoted = False
+                is_dashed = False
+                continue
+            if not is_quoted:
+                # Unquoted heredoc bodies still expand $(...) and `...`.
+                body_line = line[:-1] if line.endswith("\n") else line
+                extracted.extend(_extract_body_substitutions(body_line))
+            if line.endswith("\n"):
+                stripped_lines.append("\n")
+            else:
+                stripped_lines.append("")
+            continue
+
+        match = HEREDOC_START.search(line)
+        if match is not None:
+            delimiter = match.group(2)
+            is_quoted = match.group(1) != ""
+            is_dashed = match.group(0).startswith("<<-")
+        stripped_lines.append(line)
+
+    return "".join(stripped_lines), extracted
+
+
+def normalize_newlines(command):
+    command, _ = strip_heredoc_bodies(command)
+    normalized = []
+    in_single = False
+    in_double = False
+    escaped = False
+
+    for char in command:
+        if char in ("\n", "\r") and not in_single and not in_double:
+            normalized.append(";")
+            escaped = False
+            continue
+
+        normalized.append(char)
+
+        if escaped:
+            escaped = False
+            continue
+
+        if char == "\\" and not in_single:
+            escaped = True
+            continue
+
+        if char == "'" and not in_double:
+            in_single = not in_single
+            continue
+
+        if char == '"' and not in_single:
+            in_double = not in_double
+
+    return "".join(normalized)
+
+
+def tokenize(command):
+    lexer = shlex.shlex(normalize_newlines(command), posix=True, punctuation_chars="()|&;")
+    lexer.whitespace_split = True
+    lexer.commenters = ""
+    return list(lexer)
+
+
+def split_segments(tokens):
+    current = []
+    for token in tokens:
+        if token in CONTROL_TOKENS:
+            if current:
+                yield current, token
+                current = []
+            continue
+        current.append(token)
+    if current:
+        yield current, None
+
+
+def replace_command_substitutions(command):
+    command, heredoc_body_substitutions = strip_heredoc_bodies(command)
+    # Start with any substitutions extracted from unquoted heredoc
+    # bodies - they're still executed by the shell and need inspection.
+    substitutions = list(heredoc_body_substitutions)
+    result = []
+    idx = 0
+    in_single = False
+    in_double = False
+    escaped = False
+
+    while idx < len(command):
+        char = command[idx]
+
+        if escaped:
+            result.append(char)
+            escaped = False
+            idx += 1
+            continue
+
+        if char == "\\" and not in_single:
+            result.append(char)
+            escaped = True
+            idx += 1
+            continue
+
+        if char == "'" and not in_double:
+            in_single = not in_single
+            result.append(char)
+            idx += 1
+            continue
+
+        if char == '"' and not in_single:
+            in_double = not in_double
+            result.append(char)
+            idx += 1
+            continue
+
+        if not in_single and command.startswith("$" + "(", idx):
+            inner, idx = read_dollar_substitution(command, idx)
+            substitutions.append(inner)
+            result.append(f"__CMD_SUBST_{len(substitutions) - 1}__")
+            continue
+
+        if not in_single and char == chr(96):
+            inner, idx = read_backtick_substitution(command, idx)
+            substitutions.append(inner)
+            result.append(f"__CMD_SUBST_{len(substitutions) - 1}__")
+            continue
+
+        result.append(char)
+        idx += 1
+
+    return "".join(result), substitutions
+
+
+def extract_placeholder_indexes(tokens):
+    indexes = []
+    seen = set()
+    for token in tokens:
+        for match in re.finditer(r"__CMD_SUBST_(\d+)__", token):
+            index = int(match.group(1))
+            if index not in seen:
+                seen.add(index)
+                indexes.append(index)
+    return indexes
 
 
 def run_noninteractive(command: str) -> int:
     import json
     import os
     import re
-    import shlex
 
     PARSE_ERROR_REASON = (
         "Unable to safely parse command. Refusing potentially interactive git command."
     )
 
-    CONTROL_TOKENS = {";", "&&", "||", "|", "|&", "&"}
     ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
     ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
-    HEREDOC_START = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
     SHELL_KEYWORDS = {
         "!",
         "if",
@@ -71,258 +336,8 @@ def run_noninteractive(command: str) -> int:
         "--work-tree",
     }
 
-
-    def _extract_body_substitutions(line):
-        # Collect $(...) / `...` contents from an unquoted heredoc body line.
-        # Mirrors the bash extract_body_substitutions helper.
-        subs = []
-        idx = 0
-        length = len(line)
-        while idx < length:
-            ch = line[idx]
-            if ch == "$" and idx + 1 < length and line[idx + 1] == "(":
-                inner, idx = read_dollar_substitution(line, idx)
-                subs.append(inner)
-                continue
-            if ch == chr(96):
-                inner, idx = read_backtick_substitution(line, idx)
-                subs.append(inner)
-                continue
-            idx += 1
-        return subs
-
-
-    def strip_heredoc_bodies(command):
-        lines = command.splitlines(keepends=True)
-        stripped_lines = []
-        delimiter = None
-        is_quoted = False
-        is_dashed = False
-        extracted = []
-
-        for line in lines:
-            if delimiter is not None:
-                compare = line[:-1] if line.endswith("\n") else line
-                if is_dashed:
-                    # POSIX: <<- strips leading TABs only (never spaces).
-                    compare = compare.lstrip("\t")
-                if compare == delimiter:
-                    stripped_lines.append(line)
-                    delimiter = None
-                    is_quoted = False
-                    is_dashed = False
-                    continue
-                if not is_quoted:
-                    # Unquoted heredoc bodies still expand $(...) and `...`.
-                    body_line = line[:-1] if line.endswith("\n") else line
-                    extracted.extend(_extract_body_substitutions(body_line))
-                if line.endswith("\n"):
-                    stripped_lines.append("\n")
-                else:
-                    stripped_lines.append("")
-                continue
-
-            match = HEREDOC_START.search(line)
-            if match is not None:
-                delimiter = match.group(2)
-                is_quoted = match.group(1) != ""
-                is_dashed = match.group(0).startswith("<<-")
-            stripped_lines.append(line)
-
-        return "".join(stripped_lines), extracted
-
-
-    def normalize_newlines(command):
-        command, _ = strip_heredoc_bodies(command)
-        normalized = []
-        in_single = False
-        in_double = False
-        escaped = False
-
-        for char in command:
-            if char in ("\n", "\r") and not in_single and not in_double:
-                normalized.append(";")
-                escaped = False
-                continue
-
-            normalized.append(char)
-
-            if escaped:
-                escaped = False
-                continue
-
-            if char == "\\" and not in_single:
-                escaped = True
-                continue
-
-            if char == "'" and not in_double:
-                in_single = not in_single
-                continue
-
-            if char == '"' and not in_single:
-                in_double = not in_double
-
-        return "".join(normalized)
-
-
-    def tokenize(command):
-        lexer = shlex.shlex(normalize_newlines(command), posix=True, punctuation_chars="()|&;")
-        lexer.whitespace_split = True
-        lexer.commenters = ""
-        return list(lexer)
-
-
-    def split_segments(tokens):
-        current = []
-        for token in tokens:
-            if token in CONTROL_TOKENS:
-                if current:
-                    yield current, token
-                    current = []
-                continue
-            current.append(token)
-        if current:
-            yield current, None
-
-
     def is_assignment(token):
         return ASSIGNMENT.match(token) is not None
-
-
-    def read_dollar_substitution(command, start):
-        inner = []
-        depth = 1
-        idx = start + 2
-        in_single = False
-        in_double = False
-        escaped = False
-
-        while idx < len(command):
-            char = command[idx]
-
-            if escaped:
-                inner.append(char)
-                escaped = False
-                idx += 1
-                continue
-
-            if char == "\\" and not in_single:
-                inner.append(char)
-                escaped = True
-                idx += 1
-                continue
-
-            if char == "'" and not in_double:
-                in_single = not in_single
-                inner.append(char)
-                idx += 1
-                continue
-
-            if char == '"' and not in_single:
-                in_double = not in_double
-                inner.append(char)
-                idx += 1
-                continue
-
-            if not in_single and not in_double and command.startswith("$" + "(", idx):
-                nested_inner, idx = read_dollar_substitution(command, idx)
-                inner.append("$" + "(" + nested_inner + ")")
-                continue
-
-            if not in_single and not in_double and char == ")":
-                depth -= 1
-                if depth == 0:
-                    return "".join(inner), idx + 1
-
-            inner.append(char)
-            idx += 1
-
-        raise ValueError("Unterminated command substitution.")
-
-
-    def read_backtick_substitution(command, start):
-        inner = []
-        idx = start + 1
-        escaped = False
-
-        while idx < len(command):
-            char = command[idx]
-
-            if escaped:
-                inner.append(char)
-                escaped = False
-                idx += 1
-                continue
-
-            if char == "\\":
-                inner.append(char)
-                escaped = True
-                idx += 1
-                continue
-
-            if char == chr(96):
-                return "".join(inner), idx + 1
-
-            inner.append(char)
-            idx += 1
-
-        raise ValueError("Unterminated backtick command substitution.")
-
-
-    def replace_command_substitutions(command):
-        command, heredoc_body_substitutions = strip_heredoc_bodies(command)
-        # Start with any substitutions extracted from unquoted heredoc
-        # bodies — they're still executed by the shell and need inspection.
-        substitutions = list(heredoc_body_substitutions)
-        result = []
-        idx = 0
-        in_single = False
-        in_double = False
-        escaped = False
-
-        while idx < len(command):
-            char = command[idx]
-
-            if escaped:
-                result.append(char)
-                escaped = False
-                idx += 1
-                continue
-
-            if char == "\\" and not in_single:
-                result.append(char)
-                escaped = True
-                idx += 1
-                continue
-
-            if char == "'" and not in_double:
-                in_single = not in_single
-                result.append(char)
-                idx += 1
-                continue
-
-            if char == '"' and not in_single:
-                in_double = not in_double
-                result.append(char)
-                idx += 1
-                continue
-
-            if not in_single and command.startswith("$" + "(", idx):
-                inner, idx = read_dollar_substitution(command, idx)
-                substitutions.append(inner)
-                result.append(f"__CMD_SUBST_{len(substitutions) - 1}__")
-                continue
-
-            if not in_single and char == chr(96):
-                inner, idx = read_backtick_substitution(command, idx)
-                substitutions.append(inner)
-                result.append(f"__CMD_SUBST_{len(substitutions) - 1}__")
-                continue
-
-            result.append(char)
-            idx += 1
-
-        return "".join(result), substitutions
 
 
     def basename(token):
@@ -373,19 +388,6 @@ def run_noninteractive(command: str) -> int:
     def unset_editor_env(env, key):
         if key in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
             env.pop(key, None)
-
-
-    def extract_placeholder_indexes(tokens):
-        indexes = []
-        seen = set()
-        for token in tokens:
-            for match in re.finditer(r"__CMD_SUBST_(\d+)__", token):
-                index = int(match.group(1))
-                if index not in seen:
-                    seen.add(index)
-                    indexes.append(index)
-        return indexes
-
 
     def apply_exported_editor_env(tokens, inherited_env=None, inherited_shell_vars=None):
         env = dict(inherited_env or {})
@@ -1076,10 +1078,8 @@ def run_commit_contexts(command: str, parse_error_reason: str) -> int:
     import json
     import os
     import re
-    import shlex
 
     ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
-    CONTROL_TOKENS = {";", "&&", "||", "|", "|&", "&"}
     ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
     SHELL_KEYWORDS = {
         "!",
@@ -1101,7 +1101,6 @@ def run_commit_contexts(command: str, parse_error_reason: str) -> int:
         "(",
         ")",
     }
-    HEREDOC_START = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
     ENV_OPTIONS_WITH_VALUE = {"-u", "--unset", "-C", "--chdir"}
     GIT_OPTIONS_WITH_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env"}
     REPLAY_ENV_VARS = {
@@ -1128,253 +1127,6 @@ def run_commit_contexts(command: str, parse_error_reason: str) -> int:
     }
     SHELL_EXECUTABLES = {"sh", "bash", "zsh", "dash", "ksh"}
     SHELL_OPTIONS_WITH_VALUE = {"--command", "--rcfile", "--init-file", "--startup-file", "-o", "-O", "+O"}
-
-
-    def normalize_newlines(command):
-        command, _ = strip_heredoc_bodies(command)
-        normalized = []
-        in_single = False
-        in_double = False
-        escaped = False
-
-        for char in command:
-            if char in ("\n", "\r") and not in_single and not in_double:
-                normalized.append(";")
-                escaped = False
-                continue
-
-            normalized.append(char)
-
-            if escaped:
-                escaped = False
-                continue
-
-            if char == "\\" and not in_single:
-                escaped = True
-                continue
-
-            if char == "'" and not in_double:
-                in_single = not in_single
-                continue
-
-            if char == '"' and not in_single:
-                in_double = not in_double
-
-        return "".join(normalized)
-
-
-    def _extract_body_substitutions(line):
-        # Collect $(...) / `...` contents from an unquoted heredoc body line.
-        # Mirrors the bash extract_body_substitutions helper.
-        subs = []
-        idx = 0
-        length = len(line)
-        while idx < length:
-            ch = line[idx]
-            if ch == "$" and idx + 1 < length and line[idx + 1] == "(":
-                inner, idx = read_dollar_substitution(line, idx)
-                subs.append(inner)
-                continue
-            if ch == chr(96):
-                inner, idx = read_backtick_substitution(line, idx)
-                subs.append(inner)
-                continue
-            idx += 1
-        return subs
-
-
-    def strip_heredoc_bodies(command):
-        lines = command.splitlines(keepends=True)
-        stripped_lines = []
-        delimiter = None
-        is_quoted = False
-        is_dashed = False
-        extracted = []
-
-        for line in lines:
-            if delimiter is not None:
-                # Strip trailing newline for comparison only.
-                compare = line[:-1] if line.endswith("\n") else line
-                if is_dashed:
-                    # POSIX: <<- strips leading TABs only (never spaces).
-                    compare = compare.lstrip("\t")
-                if compare == delimiter:
-                    stripped_lines.append(line)
-                    delimiter = None
-                    is_quoted = False
-                    is_dashed = False
-                    continue
-                if not is_quoted:
-                    # Unquoted heredoc bodies still expand $(...) and `...`.
-                    body_line = line[:-1] if line.endswith("\n") else line
-                    extracted.extend(_extract_body_substitutions(body_line))
-                if line.endswith("\n"):
-                    stripped_lines.append("\n")
-                else:
-                    stripped_lines.append("")
-                continue
-
-            match = HEREDOC_START.search(line)
-            if match is not None:
-                delimiter = match.group(2)
-                is_quoted = match.group(1) != ""
-                is_dashed = match.group(0).startswith("<<-")
-            stripped_lines.append(line)
-
-        return "".join(stripped_lines), extracted
-
-
-    def read_dollar_substitution(command, start):
-        inner = []
-        depth = 1
-        idx = start + 2
-        in_single = False
-        in_double = False
-        escaped = False
-
-        while idx < len(command):
-            char = command[idx]
-
-            if escaped:
-                escaped = False
-                idx += 1
-                continue
-
-            if char == "\\" and not in_single:
-                escaped = True
-                idx += 1
-                continue
-
-            if char == "'" and not in_double:
-                in_single = not in_single
-                idx += 1
-                continue
-
-            if char == '"' and not in_single:
-                in_double = not in_double
-                idx += 1
-                continue
-
-            if not in_single and not in_double and command.startswith("$" + "(", idx):
-                nested_inner, idx = read_dollar_substitution(command, idx)
-                inner.append("$" + "(" + nested_inner + ")")
-                continue
-
-            if not in_single and not in_double and char == ")":
-                depth -= 1
-                if depth == 0:
-                    return "".join(inner), idx + 1
-
-            inner.append(char)
-            idx += 1
-
-        raise ValueError("Unterminated command substitution.")
-
-
-    def read_backtick_substitution(command, start):
-        inner = []
-        idx = start + 1
-        escaped = False
-
-        while idx < len(command):
-            char = command[idx]
-
-            if escaped:
-                escaped = False
-                inner.append(char)
-                idx += 1
-                continue
-
-            if char == "\\":
-                escaped = True
-                inner.append(char)
-                idx += 1
-                continue
-
-            if char == chr(96):
-                return "".join(inner), idx + 1
-
-            inner.append(char)
-            idx += 1
-
-        raise ValueError("Unterminated backtick command substitution.")
-
-
-    def replace_command_substitutions(command):
-        command, heredoc_body_substitutions = strip_heredoc_bodies(command)
-        # Start with any substitutions extracted from unquoted heredoc
-        # bodies — they're still executed by the shell and need inspection.
-        substitutions = list(heredoc_body_substitutions)
-        result = []
-        idx = 0
-        in_single = False
-        in_double = False
-        escaped = False
-
-        while idx < len(command):
-            char = command[idx]
-
-            if escaped:
-                result.append(char)
-                escaped = False
-                idx += 1
-                continue
-
-            if char == "\\" and not in_single:
-                result.append(char)
-                escaped = True
-                idx += 1
-                continue
-
-            if char == "'" and not in_double:
-                in_single = not in_single
-                result.append(char)
-                idx += 1
-                continue
-
-            if char == '"' and not in_single:
-                in_double = not in_double
-                result.append(char)
-                idx += 1
-                continue
-
-            if not in_single and command.startswith("$" + "(", idx):
-                inner, idx = read_dollar_substitution(command, idx)
-                substitutions.append(inner)
-                result.append(f"__CMD_SUBST_{len(substitutions) - 1}__")
-                continue
-
-            if not in_single and char == chr(96):
-                inner, idx = read_backtick_substitution(command, idx)
-                substitutions.append(inner)
-                result.append(f"__CMD_SUBST_{len(substitutions) - 1}__")
-                continue
-
-            result.append(char)
-            idx += 1
-
-        return "".join(result), substitutions
-
-
-    def tokenize(command):
-        lexer = shlex.shlex(normalize_newlines(command), posix=True, punctuation_chars="()|&;")
-        lexer.whitespace_split = True
-        lexer.commenters = ""
-        return list(lexer)
-
-
-    def split_segments(tokens):
-        current = []
-        for token in tokens:
-            if token in CONTROL_TOKENS:
-                if current:
-                    yield current, token
-                    current = []
-                continue
-            current.append(token)
-        if current:
-            yield current, None
-
 
     def parse_shell_inline_command(args):
         idx = 0
@@ -1430,19 +1182,6 @@ def run_commit_contexts(command: str, parse_error_reason: str) -> int:
 
     class ParseError(Exception):
         pass
-
-
-    def extract_placeholder_indexes(tokens):
-        indexes = []
-        seen = set()
-        for token in tokens:
-            for match in re.finditer(r"__CMD_SUBST_(\d+)__", token):
-                index = int(match.group(1))
-                if index not in seen:
-                    seen.add(index)
-                    indexes.append(index)
-        return indexes
-
 
     def parse_commit_contexts(command, inherited_git_args=None, inherited_git_env=None, inherited_shell_git_vars=None, depth=0):
         # Cap recursion so pathological nesting can't hit Python's stack limit
