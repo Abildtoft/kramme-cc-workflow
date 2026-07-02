@@ -152,36 +152,6 @@ run_hook_without_python() {
 	make_bash_input "$cmd" | env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK"
 }
 
-run_hook_without_python_with_repo_env() {
-	local repo="$1"
-	local cmd="$2"
-	local fake_bin="$BATS_TEST_TMPDIR/no-python-bin"
-	rm -rf "$fake_bin"
-	mkdir -p "$fake_bin"
-	ln -s "$(command -v bash)" "$fake_bin/bash"
-	ln -s "$(command -v jq)" "$fake_bin/jq"
-	ln -s "$(command -v cat)" "$fake_bin/cat"
-	ln -s "$(command -v grep)" "$fake_bin/grep"
-	ln -s "$(command -v sed)" "$fake_bin/sed"
-	ln -s "$MOCK_DIR/git" "$fake_bin/git"
-	make_bash_input "$cmd" | env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" GIT_DIR="$repo/.git" GIT_WORK_TREE="$repo" "$fake_bin/bash" "$HOOK"
-}
-
-run_hook_without_python_with_real_git() {
-	local cmd="$1"
-	local fake_bin="$BATS_TEST_TMPDIR/no-python-bin-real-git"
-	rm -rf "$fake_bin"
-	mkdir -p "$fake_bin"
-	ln -s "$(command -v bash)" "$fake_bin/bash"
-	ln -s "$(command -v jq)" "$fake_bin/jq"
-	ln -s "$(command -v cat)" "$fake_bin/cat"
-	ln -s "$(command -v grep)" "$fake_bin/grep"
-	ln -s "$(command -v sed)" "$fake_bin/sed"
-	ln -s "$(command -v git)" "$fake_bin/git"
-	ln -s "$(command -v env)" "$fake_bin/env"
-	make_bash_input "$cmd" | env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK"
-}
-
 PARSER_FIXTURES="$BATS_TEST_DIRNAME/fixtures/git-command-parser-cases.json"
 
 setup_review_parser_fixture_mock() {
@@ -268,6 +238,14 @@ assert_review_parser_fixture_decision() {
 	[[ "$output" == *"Unable to safely parse command"* ]]
 }
 
+@test "blocks commands when python3 is unavailable" {
+	run run_hook_without_python "ls -la"
+	is_blocked
+	[[ "$output" == *"python3 not found"* ]]
+	[[ "$output" == *"refusing to run safety hook without the shared git command parser"* ]]
+	[[ "$output" == *"Install python3 or disable this hook explicitly"* ]]
+}
+
 @test "allows non-git commands" {
 	run run_hook "ls -la"
 	[ "$status" -eq 0 ]
@@ -313,9 +291,6 @@ assert_review_parser_fixture_decision() {
 				python)
 					run run_hook "$command"
 					;;
-				noPython)
-					run run_hook_without_python "$command"
-					;;
 				*)
 					printf 'Unknown fixture python mode "%s" for "%s"\n' "$mode" "$case_name" >&2
 					return 1
@@ -350,24 +325,6 @@ src/component.tsx"
 	git -C "$repo" add file.txt
 
 	run run_hook "git -C $repo -c \"core.fsmonitor=touch $marker; false\" commit -m 'test'"
-	rm -rf "$repo"
-
-	[ "$status" -eq 0 ]
-	[ -z "$output" ]
-	[ ! -f "$marker" ]
-}
-
-@test "ignores config-bearing git prefixes when checking staged files without python3" {
-	local repo marker
-	repo="$(mktemp -d)"
-	marker="$BATS_TEST_TMPDIR/fsmonitor-prefix-marker-no-python"
-	rm -f "$marker"
-
-	git -C "$repo" init -q
-	touch "$repo/file.txt"
-	git -C "$repo" add file.txt
-
-	run run_hook_without_python_with_real_git "git -C $repo -c \"core.fsmonitor=touch $marker; false\" commit -m 'test'"
 	rm -rf "$repo"
 
 	[ "$status" -eq 0 ]
@@ -804,245 +761,6 @@ EOF"
 	[[ "$output" == *"Unable to safely determine the git commit target"* ]]
 }
 
-@test "blocks git -C commit when artifact is staged without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "git -C repo commit -m 'test'"
-	is_blocked
-}
-
-@test "blocks git -C command substitution when repo selection is dynamic without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "git -C \$(printf repo) commit -m 'test'"
-	is_blocked
-	[[ "$output" == *"Unable to safely determine the git commit target"* ]]
-}
-
-@test "blocks GIT_DIR command substitution when repo selection is dynamic without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "GIT_DIR=\$(printf repo/.git) GIT_WORK_TREE=repo git commit -m 'test'"
-	is_blocked
-	[[ "$output" == *"Unable to safely determine the git commit target"* ]]
-}
-
-@test "blocks env --chdir wrapped git commit when artifact is staged without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "env --chdir=repo git commit -m 'test'"
-	is_blocked
-}
-
-@test "allows env -u clearing repo selection before git commit without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md" "notes.txt"
-	run run_hook_without_python "GIT_DIR=repo/.git GIT_WORK_TREE=repo env -u GIT_DIR -u GIT_WORK_TREE git commit -m 'test'"
-	[ "$status" -eq 0 ]
-	[ -z "$output" ]
-}
-
-@test "allows env -i clearing repo selection before git commit without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md" "notes.txt"
-	run run_hook_without_python "GIT_DIR=repo/.git GIT_WORK_TREE=repo env -i git commit -m 'test'"
-	[ "$status" -eq 0 ]
-	[ -z "$output" ]
-}
-
-@test "allows env -u clearing exported repo selection before git commit without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md" "notes.txt"
-	run run_hook_without_python_with_repo_env "repo" "env -u GIT_DIR -u GIT_WORK_TREE git commit -m 'test'"
-	[ "$status" -eq 0 ]
-	[ -z "$output" ]
-}
-
-@test "allows env -i clearing exported repo selection before git commit without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md" "notes.txt"
-	run run_hook_without_python_with_repo_env "repo" "env -i git commit -m 'test'"
-	[ "$status" -eq 0 ]
-	[ -z "$output" ]
-}
-
-@test "checks staged artifacts in repo selected via exported GIT_DIR and GIT_WORK_TREE without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
-	run run_hook_without_python_with_repo_env "repo" "git commit -m 'test'"
-	is_blocked
-}
-
-@test "blocks git commit when repo selection is exported in an earlier shell segment without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && git commit -m 'test'"
-	is_blocked
-}
-
-@test "blocks git commit when repo selection is exported from earlier shell assignments without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "GIT_DIR=repo/.git; GIT_WORK_TREE=repo; export GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
-	is_blocked
-}
-
-@test "blocks git commit after exported repo selection is nameref-unset without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && unset -n GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
-	is_blocked
-}
-
-@test "allows git commit after exported repo selection is unset without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && unset GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
-	[ "$status" -eq 0 ]
-	[ -z "$output" ]
-}
-
-@test "blocks git commit after exported repo selection is function-unset without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && unset -f GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
-	is_blocked
-}
-
-@test "allows git commit when function-unset does not retain prefixed repo selection without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "GIT_DIR=repo/.git GIT_WORK_TREE=repo unset -f nope && export GIT_DIR GIT_WORK_TREE && git commit -m 'test'"
-	[ "$status" -eq 0 ]
-	[ -z "$output" ]
-}
-
-@test "blocks git commit when piped export does not actually retarget the repo without python3" {
-	mock_git_staged_for_repo "repo" "" "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "export GIT_DIR=repo/.git GIT_WORK_TREE=repo | git commit -m 'test'"
-	is_blocked
-	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
-}
-
-@test "blocks git commit when subshell export does not actually retarget the repo without python3" {
-	mock_git_staged_for_repo "repo" "" "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "(export GIT_DIR=repo/.git GIT_WORK_TREE=repo) && git commit -m 'test'"
-	is_blocked
-	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
-}
-
-@test "blocks chained git commit when artifact is staged without python3" {
-	mock_git_staged "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "git status && git commit -m 'test'"
-	is_blocked
-}
-
-@test "blocks git commit inside if condition when artifact is staged without python3" {
-	mock_git_staged "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "if git commit -m 'test'; then echo ok; fi"
-	is_blocked
-}
-
-@test "blocks git commit inside subshell grouping when artifact is staged without python3" {
-	mock_git_staged "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "(git commit -m 'test')"
-	is_blocked
-}
-
-@test "blocks shell-wrapped git commit when artifact is staged without python3" {
-	mock_git_staged "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "sh -c 'git commit -m \"test\"'"
-	is_blocked
-}
-
-@test "blocks shell alias git commit when parser cannot prove target without python3" {
-	mock_git_staged "REVIEW_OVERVIEW.md"
-	run run_hook_without_python $'shopt -s expand_aliases\nalias g=git\ng commit -m test'
-	is_blocked
-	[[ "$output" == *"Unable to safely parse command"* ]]
-}
-
-@test "blocks nested shell commit contexts when later context stages artifact without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md" "notes.txt"
-	run run_hook_without_python "sh -c 'git commit -m \"default\"; git -C repo commit -m \"selected\"'"
-	is_blocked
-	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
-}
-
-@test "blocks git commit inside command substitution when exported repo selection is inherited without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "export GIT_DIR=repo/.git GIT_WORK_TREE=repo && out=\$(git commit -m 'test')"
-	is_blocked
-	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
-}
-
-@test "allows git commit text inside heredoc command substitution without python3" {
-	mock_git_staged "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "cat <<'EOF'
-\$(git commit -m 'test')
-EOF"
-	[ "$status" -eq 0 ]
-	[ -z "$output" ]
-}
-
-@test "blocks git commit inside unquoted heredoc command substitution without python3" {
-	mock_git_staged "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "cat <<EOF
-\$(git commit -m 'test')
-EOF"
-	is_blocked
-	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
-}
-
-@test "blocks git commit with prefixed command substitution when artifact is staged without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "MSG=\$(cat /tmp/msg) git -C repo commit -m 'test'"
-	is_blocked
-}
-
-@test "blocks git commit inside command substitution when artifact is staged without python3" {
-	mock_git_staged "REVIEW_OVERVIEW.md"
-	run run_hook_without_python "out=\$(git commit -m 'test')"
-	is_blocked
-}
-
-@test "blocks git commit inside command substitution when repo selection is inherited through sh -c without python3" {
-	local repo
-	repo="$(mktemp -d)"
-	git -C "$repo" init -q
-	touch "$repo/REVIEW_OVERVIEW.md"
-	git -C "$repo" add REVIEW_OVERVIEW.md
-
-	run run_hook_without_python_with_real_git "env GIT_DIR=$repo/.git GIT_WORK_TREE=$repo sh -c 'echo \$(git commit -m \"test\")'"
-	rm -rf "$repo"
-
-	is_blocked
-}
-
-@test "blocks git -C quoted path with spaces when artifact is staged without python3" {
-	local repo="$BATS_TEST_TMPDIR/repo with space"
-	mkdir -p "$repo"
-	mock_git_staged_for_repo "$repo" "REVIEW_OVERVIEW.md"
-
-	run run_hook_without_python "git -C '$repo' commit -m 'test'"
-
-	is_blocked
-}
-
-@test "blocks git -C empty path commit when artifact is staged without python3" {
-	mock_git_staged_for_repo "" "REVIEW_OVERVIEW.md" "nothing.txt"
-
-	run run_hook_without_python "git -C '' commit -m 'test'"
-
-	is_blocked
-}
-
-@test "blocks git -C escaped path with spaces when artifact is staged without python3" {
-	local repo="$BATS_TEST_TMPDIR/repo with space"
-	mkdir -p "$repo"
-	mock_git_staged_for_repo "$repo" "REVIEW_OVERVIEW.md"
-
-	run run_hook_without_python "git -C ${repo// /\\ } commit -m 'test'"
-
-	is_blocked
-}
-
-@test "blocks git -C mixed quoted path with spaces when artifact is staged without python3" {
-	local repo_base="$BATS_TEST_TMPDIR/base"
-	local repo="$repo_base/repo with space"
-	mkdir -p "$repo_base" "$repo"
-	mock_git_staged_for_repo "$repo" "REVIEW_OVERVIEW.md"
-
-	run run_hook_without_python "git -C $repo_base/'repo with space' commit -m 'test'"
-
-	is_blocked
-}
-
 @test "blocks sudo git commit when artifact is staged" {
 	mock_git_staged "REVIEW_OVERVIEW.md"
 
@@ -1071,50 +789,6 @@ EOF"
 	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
 
 	run run_hook "sudo --chdir=repo git commit -m 'test'"
-
-	is_blocked
-}
-
-@test "blocks sudo git commit when artifact is staged without python3" {
-	mock_git_staged "REVIEW_OVERVIEW.md"
-
-	run run_hook_without_python "sudo git commit -m 'test'"
-
-	is_blocked
-}
-
-@test "blocks sudo --user git commit when artifact is staged without python3" {
-	mock_git_staged "REVIEW_OVERVIEW.md"
-
-	run run_hook_without_python "sudo --user root git commit -m 'test'"
-
-	is_blocked
-}
-
-@test "blocks sudo --chdir git commit when artifact is staged without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
-
-	run run_hook_without_python "sudo --chdir repo git commit -m 'test'"
-
-	is_blocked
-}
-
-@test "blocks sudo --chdir= git commit when artifact is staged without python3" {
-	mock_git_staged_for_repo "repo" "REVIEW_OVERVIEW.md"
-
-	run run_hook_without_python "sudo --chdir=repo git commit -m 'test'"
-
-	is_blocked
-}
-
-@test "blocks absolute-path git commit when artifact is staged without python3" {
-	local absolute_git_dir
-	absolute_git_dir="$(mktemp -d)"
-	ln -s "$MOCK_DIR/git" "$absolute_git_dir/git"
-	mock_git_staged "REVIEW_OVERVIEW.md"
-
-	run run_hook_without_python "$absolute_git_dir/git commit -m 'test'"
-	rm -rf "$absolute_git_dir"
 
 	is_blocked
 }
@@ -1150,52 +824,6 @@ EOF"
 	[ ! -f "$marker" ]
 }
 
-@test "checks staged artifacts via GIT_DIR and GIT_WORK_TREE without python3" {
-	local repo
-	repo="$(mktemp -d)"
-	git -C "$repo" init -q
-	touch "$repo/REVIEW_OVERVIEW.md"
-	git -C "$repo" add REVIEW_OVERVIEW.md
-
-	# Needs real git (not mock) to query staged files from the real repo.
-	local fake_bin="$BATS_TEST_TMPDIR/no-python-bin-real-git"
-	rm -rf "$fake_bin"
-	mkdir -p "$fake_bin"
-	ln -s "$(command -v bash)" "$fake_bin/bash"
-	ln -s "$(command -v jq)" "$fake_bin/jq"
-	ln -s "$(command -v cat)" "$fake_bin/cat"
-	ln -s "$(command -v grep)" "$fake_bin/grep"
-	ln -s "$(command -v sed)" "$fake_bin/sed"
-	ln -s "$(command -v git)" "$fake_bin/git"
-	ln -s "$(command -v env)" "$fake_bin/env"
-
-	run make_bash_input "GIT_DIR=$repo/.git GIT_WORK_TREE=$repo git commit -m 'test'"
-	local json_input="$output"
-
-	run env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK" <<<"$json_input"
-	rm -rf "$repo" "$fake_bin"
-
-	is_blocked
-}
-
-@test "checks staged artifacts via GIT_DIR and GIT_WORK_TREE without python3 or fsmonitor execution" {
-	local repo marker
-	repo="$(mktemp -d)"
-	marker="$BATS_TEST_TMPDIR/fsmonitor-config-marker-no-python"
-	rm -f "$marker"
-
-	git -C "$repo" init -q
-	touch "$repo/REVIEW_OVERVIEW.md"
-	git -C "$repo" add REVIEW_OVERVIEW.md
-	git -C "$repo" config core.fsmonitor "touch $marker; false"
-
-	run run_hook_without_python_with_real_git "GIT_DIR=$repo/.git GIT_WORK_TREE=$repo git commit -m 'test'"
-	rm -rf "$repo"
-
-	is_blocked
-	[ ! -f "$marker" ]
-}
-
 @test "checks staged artifacts via env GIT_DIR wrapper" {
 	local repo
 	repo="$(mktemp -d)"
@@ -1218,20 +846,6 @@ EOF"
 	: >"$repo/alt.index"
 
 	run run_hook "GIT_INDEX_FILE=$repo/alt.index env -u GIT_INDEX_FILE git -C $repo commit -m 'test'"
-	rm -rf "$repo"
-
-	is_blocked
-}
-
-@test "blocks env -u GIT_INDEX_FILE after explicit assignment without python3" {
-	local repo
-	repo="$(mktemp -d)"
-	git -C "$repo" init -q
-	touch "$repo/REVIEW_OVERVIEW.md"
-	git -C "$repo" add REVIEW_OVERVIEW.md
-	: >"$repo/alt.index"
-
-	run run_hook_without_python_with_real_git "GIT_INDEX_FILE=$repo/alt.index env -u GIT_INDEX_FILE git -C $repo commit -m 'test'"
 	rm -rf "$repo"
 
 	is_blocked
