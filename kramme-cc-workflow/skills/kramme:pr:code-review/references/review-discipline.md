@@ -86,7 +86,7 @@ Watch for these excuses — they signal the review is slipping into low-value te
 | "It's just a nit, skip it." | Nits compound across reviews; ship the `Nit:` prefix and let the author decide, or the diff drifts on every PR. |
 | "This doesn't block merge, so it's fine." | "Doesn't block" is not "good." Approve only if the change definitely improves overall code health. |
 | "AI wrote it, and the tests pass." | AI-generated code needs more scrutiny, not less — it's confident even when wrong. Read the diff as if a new hire wrote it under deadline. |
-| "We can clean this up in a follow-up." | Follow-ups are negotiable; the diff on screen is not. Land the cleanup or mark it `Critical:` now. |
+| "We can clean this up in a follow-up." | Follow-ups are negotiable; the diff on screen is not. Land safe cleanup now or mark it clearly, unless it collides with an unresolved correctness/security finding. |
 | "I'll re-review when they push again." | Re-review is a checkpoint, not a finding delivery mechanism. Surface every finding on the first pass or they rot across round-trips. |
 
 ## Red flags — STOP
@@ -117,5 +117,7 @@ Before posting the review, confirm:
 - [ ] Pre-existing or out-of-scope observations are labeled `NOTICED BUT NOT TOUCHING`.
 - [ ] Every emphasized dimension in `--emphasize` actually produced findings in this review (or you noted that it didn't).
 - [ ] No finding is presented as certain when the reviewer didn't trace it — those are labeled `UNVERIFIED`.
+- [ ] Cleanup-dimension findings (`lean`, `refactor`, `simplify`) that collide with unresolved correctness/security findings were suppressed or kept only as advisory suggestions blocked by the higher-priority finding.
+- [ ] Kept cleanup-collision suggestions name the final blocking `CR-XXX` ID after finding IDs are assigned.
 - [ ] `gated_auto` appears only on code-backed findings with a concrete location and a clear fix path.
 - [ ] `advisory` appears only on Suggestions or FYI observations, never on Critical or Important findings.

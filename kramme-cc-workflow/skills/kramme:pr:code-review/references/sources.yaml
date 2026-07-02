@@ -17,3 +17,9 @@ sources:
     rationale: "Reviewer taxonomy, confidence-aware synthesis, action classes, contradiction handling, and protected-artifact discipline are adapted into the kramme PR review workflow."
     last_reviewed_at: 2026-06-22
     baseline_hash: "sha256:172c3247a7413f2b48caaf7812b3d2eb686d7ebaf84bb76267cbdc0367ec3768"
+  - id: ponytail-review
+    url: https://github.com/DietrichGebert/ponytail/blob/main/skills/ponytail-review/SKILL.md
+    title: "Ponytail - ponytail-review"
+    rationale: "The lean review dimension adapts Ponytail's deletion-first over-engineering taxonomy and preference for existing, stdlib, native, or smaller code before new ownership."
+    last_reviewed_at: 2026-07-02
+    baseline_hash: "sha256:97be9e45d9f6ae8e251a363e08896bfd7ede9c1fa4027a183b40292030be53cb"

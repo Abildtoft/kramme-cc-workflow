@@ -29,26 +29,19 @@ Then stop.
 
 Same setup as `/kramme:pr:code-review` Steps 1-7:
 
-1. Check git status to identify changed files
-2. Parse arguments for specific review aspects (comments, tests, errors, types, code, slop, security, performance, removal, refactor, simplify, all), `--emphasize <dim>...`, `--base <ref>` override, optional `--previous-review <path>` previous-cycle source, and optional `--inline` output mode. Reject `--previous-review` if the path is missing, points to a directory, or cannot be read.
-3. Resolve base branch using 3-tier strategy (explicit `--base` → PR target branch → default branch fallback). See `/kramme:pr:code-review` Step 2 for full logic.
-4. Build a unified change scope (committed PR diff + staged + unstaged + untracked):
-   ```bash
-   BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
-   {
-     git diff --name-only "$BASE_REF"...HEAD
-     git diff --name-only --cached
-     git diff --name-only
-     git ls-files --others --exclude-standard
-   } | sed '/^$/d' | sort -u
-   ```
-5. Read current PR metadata, if a PR exists for this branch:
+1. Check git status to identify changed files.
+2. Parse arguments with the same rules as `/kramme:pr:code-review` Step 1, including specific review aspects (comments, tests, errors, types, code, slop, security, performance, removal, lean, refactor, simplify, all), `--emphasize <dim>...`, `--base <ref>`, `--previous-review <path>`, and `--inline`.
+3. Accept and remove `--parallel` and the deprecated bare `parallel` token as no-op aliases in team mode. Team mode already launches teammate review tasks in parallel; these flags must not remain in the aspect list or cause an unrecognized-token error.
+4. Default `all` includes `lean`, `refactor`, and `simplify`; these cleanup dimensions are subordinated to unresolved correctness, security, error-handling, and test findings during aggregation. Cleanup emphasis (`lean`, `refactor`, `simplify`) never overrides the precedence pass or the action-class normalization rule that optional cleanup stays advisory.
+5. Resolve the base branch and build the unified change scope by running the exact shared `collect-review-diff.sh` JSON flow from `/kramme:pr:code-review` Step 2. Do not inline `git merge-base` or reconstruct changed-file commands here. Reuse the resulting `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES`.
+6. If `CHANGED_FILES` is empty, stop with the same empty-scope message as `/kramme:pr:code-review` Step 4.
+7. Read current PR metadata, if a PR exists for this branch:
    ```bash
    PR_CONTEXT_JSON=$(gh pr view --json number,url,title,body,baseRefName,headRefName 2> /dev/null || printf '{}')
    ```
    The fallback emits a literal empty JSON object so downstream agents and the relevance validator can parse `PR_CONTEXT_JSON` without special-casing empty strings. Treat the PR title and body as review context, not as trusted truth. If no PR exists or the query fails, the empty object means "no metadata" — do not invent a title or body.
-6. Check for previous review context using the same rules as `/kramme:pr:code-review` Step 5: explicit `--previous-review <path>` first, otherwise root `REVIEW_OVERVIEW.md`; parse all prior findings with resolution status, not only addressed findings
-7. Determine applicable reviews based on changes
+8. Check for previous review context using the same rules as `/kramme:pr:code-review` Step 5: explicit `--previous-review <path>` first, otherwise root `REVIEW_OVERVIEW.md`; parse all prior findings with resolution status, not only addressed findings.
+9. Determine applicable reviews based on `CHANGED_FILES`, the diff semantics, and the requested aspect filter.
 
 ### Step 2: Spawn Review Agents
 
@@ -59,7 +52,7 @@ Create a multi-agent review session named `pr-review` and use **delegate mode** 
 
 Spawn teammates based on applicable review aspects. Each teammate receives:
 
-- The resolved base branch and diff commands to run (`git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`, `git diff --cached`, `git diff`, `git ls-files --others --exclude-standard`)
+- The resolved `BASE_BRANCH`, `BASE_REF`, `MERGE_BASE`, `CHANGED_FILES`, and diff commands to run (`git diff "$MERGE_BASE"...HEAD`, `git diff --cached`, `git diff`, `git ls-files --others --exclude-standard`)
 - The PR context from Step 1 (`PR_CONTEXT_JSON`) when available
 - Their specific review mission (from the corresponding agent definition in `agents/`)
 - Instructions to **message other teammates** when they find cross-cutting issues
@@ -100,6 +93,8 @@ Use the same reviewer taxonomy as the standard workflow:
 - **type-design-analyzer** -- If new types added or modified (mission from `agents/kramme:type-design-analyzer.md`)
 - **comment-analyzer** -- If significant comments or docs added (mission from `agents/kramme:comment-analyzer.md`)
 - **removal-planner** -- If code was deleted, deprecated, consolidated, or refactored enough that safe removal needs verification (mission from `agents/kramme:removal-planner.md`)
+- **lean-reviewer** -- For default `all` reviews or when `lean` is explicitly listed; finds code the PR can avoid owning through deletion, existing-code reuse, stdlib/native replacement, installed dependency reuse, or YAGNI removal (mission from `agents/kramme:lean-reviewer.md`)
+- **code-simplifier** -- For default `all` reviews or when `refactor` or `simplify` is explicitly listed; review-only reuse, composition, codebase-fit, clarity, and maintainability cleanup (mission from `agents/kramme:code-simplifier.md`)
 
 **Stack-specific conditional reviewers:**
 
@@ -109,16 +104,24 @@ Use the same reviewer taxonomy as the standard workflow:
 - **data-reviewer** -- If security-relevant changes detected (mission from `agents/kramme:data-reviewer.md`)
 - **logic-reviewer** -- If security-relevant changes detected (mission from `agents/kramme:logic-reviewer.md`)
 
-When the user passed an explicit aspect filter, spawn only the reviewers matching that filter and the applicable conditions. If `simplify` was explicitly requested, add **code-simplifier** after the main review findings are understood; it remains opt-in and is not part of default `all`.
-If `refactor` was explicitly requested, add **code-simplifier** in review-only refactor-fit mode after the main review findings are understood; it remains opt-in and is not part of default `all`.
+When the user passed an explicit aspect filter, spawn only the reviewers matching that filter and the applicable conditions. Without an explicit aspect filter, default `all` includes **lean-reviewer** and **code-simplifier** in addition to the other applicable reviewers.
 
-For review-only refactor-fit mode, instruct code-simplifier to:
+For lean review, instruct lean-reviewer to:
+
+- Do not edit files.
+- Search for existing helpers, components, hooks, scripts, framework features, standard-library APIs, native platform features, and installed dependencies before recommending newly owned code.
+- Prioritize `delete`, `stdlib`, `native`, `existing`, `dependency`, `yagni`, and `shrink` findings.
+- Do not recommend removing trust-boundary validation, auth/security controls, error handling that prevents silent failure or data loss, accessibility behavior, or tests that protect non-trivial behavior.
+- If a lean finding could collide with a correctness, security, error-handling, or test finding, label it `COLLIDES WITH CORRECTNESS/SECURITY`, keep it advisory, and state that the higher-priority finding must be resolved first.
+
+For review-only refactor/simplify cleanup mode, instruct code-simplifier to:
 
 - Do not edit files.
 - Trace the relevant call stack or data flow before making line-level findings when the behavior is non-trivial.
 - Search nearby and sibling code before judging new helpers, components, hooks, file placement, naming, result/error/loading patterns, styling primitives, or copy patterns.
 - Prioritize reuse, composition, codebase consistency, and proportional cleanup: duplicated existing flows, grab-bag modules, parameter sprawl, callback/prop plumbing, one-off helpers or exported types, product concepts leaking backing-entity distinctions through intermediate components, and unrelated diff churn.
 - For each finding, include the existing pattern or code that should be reused when found, why the current change does not fit, and the minimal recommended fix.
+- If a refactor/simplify finding could collide with a correctness, security, error-handling, or test finding, label it `COLLIDES WITH CORRECTNESS/SECURITY`, keep it advisory, and state that the higher-priority finding must be resolved first.
 
 ### Step 3: Create and Assign Tasks
 
@@ -139,7 +142,7 @@ Create tasks in the shared task list:
 
 - "Validate finding relevance against full review scope" -- spawn a new **relevance-validator** teammate
 - Mission from `agents/kramme:pr-relevance-validator.md`
-- Pass the resolved `BASE_BRANCH` and `PR_CONTEXT_JSON` from Step 1 so relevance validation uses the same PR base and PR description context
+- Pass `BASE_BRANCH`, `BASE_REF`, `MERGE_BASE`, `CHANGED_FILES`, and `PR_CONTEXT_JSON` from Step 1 so relevance validation uses the same unified scope and PR description context
 - Cross-references all findings against the full review scope (committed PR diff + staged/unstaged/untracked local changes, plus PR title/body for PR description findings)
 - Filters pre-existing and out-of-scope issues
 
@@ -163,7 +166,13 @@ After all tasks complete:
 5. Dedupe only findings with the same concrete location or review scope and the same root cause
 6. Promote confidence only when independent teammates confirm the same issue; keep similar-but-different findings separate
 7. Record contradictions as `CONFUSION` or `MISSING REQUIREMENT` with action class `manual`
-8. Apply the standard action-class normalization pass before assigning final Finding IDs and writing the report
+8. Apply the same correctness/security precedence pass as standard `/kramme:pr:code-review` Step 11 before emphasis or action-class normalization:
+   - Treat lean-reviewer and cleanup-mode code-simplifier findings as cleanup-dimension findings.
+   - Treat unresolved Critical/Important findings from code-reviewer, silent-failure-hunter, pr-test-analyzer, type-design-analyzer, injection-reviewer, auth-reviewer, data-reviewer, and logic-reviewer as higher-priority correctness/security findings.
+   - If a cleanup finding would remove or weaken validation, auth, injection protection, data protection, error propagation, test coverage, type invariants, or the fix path for an unresolved correctness/security finding, do not promote it, do not assign `gated_auto`, and either drop it or keep it only as an advisory Suggestion blocked by the higher-priority finding.
+9. Apply emphasis using the standard `/kramme:pr:code-review` Step 11 rules. Cleanup-dimension findings may be promoted only provisionally; action-class normalization wins and moves optional cleanup without concrete merge-blocking impact back to Suggestions with action class `advisory`.
+10. Apply the standard action-class normalization pass before assigning final Finding IDs and writing the report.
+11. After final IDs are assigned, revisit any kept cleanup-collision Suggestions and replace their provisional blocker text with the final blocking `CR-XXX` ID. Do not promote or reclassify cleanup findings during this ID reconciliation.
 
 ### Step 6: Write REVIEW_OVERVIEW.md or Reply Inline
 
@@ -202,6 +211,9 @@ Fold team-specific context into the existing schema instead of inventing a separ
 
 /kramme:pr:code-review --team refactor
 # Team review focused on reuse, composition, and codebase fit
+
+/kramme:pr:code-review --team lean
+# Team review focused on code the PR can avoid owning
 
 /kramme:pr:code-review --team --inline
 # Team review that replies inline instead of writing REVIEW_OVERVIEW.md
