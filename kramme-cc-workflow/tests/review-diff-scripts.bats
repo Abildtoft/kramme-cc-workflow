@@ -5,6 +5,10 @@ setup() {
 	TMP_DIR="$(mktemp -d)"
 	ORIGIN="$TMP_DIR/origin.git"
 	WORK="$TMP_DIR/work"
+	BIN_DIR="$TMP_DIR/bin"
+	mkdir -p "$BIN_DIR"
+	write_failing_gh
+	export PATH="$BIN_DIR:$PATH"
 
 	git init --bare "$ORIGIN" >/dev/null
 	git clone "$ORIGIN" "$WORK" >/dev/null 2>&1
@@ -24,6 +28,14 @@ teardown() {
 	if [ -n "$TMP_DIR" ] && [ -d "$TMP_DIR" ]; then
 		rm -rf "$TMP_DIR"
 	fi
+}
+
+write_failing_gh() {
+	cat >"$BIN_DIR/gh" <<'GH'
+#!/bin/sh
+exit 1
+GH
+	chmod +x "$BIN_DIR/gh"
 }
 
 @test "resolve-base resolves origin HEAD and merge base" {
