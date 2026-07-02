@@ -130,7 +130,7 @@ TMP_PARENT=$(mktemp -d "${TMPDIR:-/tmp}/kramme-review-pr-${PR_NUMBER}.XXXXXX")
 WORKTREE_DIR="$TMP_PARENT/wt"
 if ! git worktree add --quiet --detach "$WORKTREE_DIR" FETCH_HEAD; then
   echo "Failed to create review worktree." >&2
-  rmdir -- "$TMP_PARENT" || true
+  echo "Temporary parent left for inspection: $TMP_PARENT" >&2
   exit 1
 fi
 cd "$WORKTREE_DIR"
@@ -142,12 +142,16 @@ The worktree is a working artifact. **Once it exists, any failure or stop before
 
 From inside the worktree, build the unified change scope with the shared plugin script. Because the worktree is a clean checkout of the PR head, the scope is exactly the PR's committed diff against its base.
 
+Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
+
 ```bash
 if ! RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --base "$BASE_REF_ARG" --strict); then
   echo "Base/diff collection failed; see the message above." >&2
   cd "$ORIG_ROOT"
-  git worktree remove "$WORKTREE_DIR" 2> /dev/null || true
-  rmdir -- "$TMP_PARENT" || true
+  if ! git worktree remove "$WORKTREE_DIR" 2> /dev/null; then
+    :
+  fi
+  echo "Temporary parent left for inspection: $TMP_PARENT" >&2
   exit 1
 fi
 eval "$RESOLVED"
@@ -207,8 +211,10 @@ cd "$ORIG_ROOT"
 if [ "${KEEP_WORKTREE:-false}" = "true" ]; then
   echo "Worktree kept at: $WORKTREE_DIR"
 else
-  git worktree remove "$WORKTREE_DIR" 2> /dev/null || true
-  rmdir -- "$TMP_PARENT" || true
+  if ! git worktree remove "$WORKTREE_DIR" 2> /dev/null; then
+    echo "Could not remove worktree automatically: $WORKTREE_DIR" >&2
+  fi
+  echo "Temporary parent left for inspection: $TMP_PARENT"
   git worktree prune
 fi
 ```

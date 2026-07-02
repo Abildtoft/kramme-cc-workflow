@@ -1,35 +1,35 @@
 # Default Commands by Project Type
 
-Use these only when no commands were found in project instruction files or CI config. They assume `$BASE_BRANCH` is already set (see SKILL.md step 4). Read only the section for the project type you detected. Every command here is check-only — none modify files, push, or publish.
+Use these only when no commands were found in project instruction files or CI config. They assume `$BASE_REF` is already set (see SKILL.md step 4). Read only the section for the project type you detected. Every command here is check-only - none modify files, push, or publish.
 
 ## Nx Workspace (TypeScript/JavaScript)
 
 ```bash
 # Check affected projects first
-nx show projects --affected --base=$BASE_BRANCH
+nx show projects --affected --base=$BASE_REF
 
 # Formatting (format:check has no --affected flag; it checks files changed from base)
-nx format:check --base=$BASE_BRANCH
+nx format:check --base=$BASE_REF
 
 # Run affected targets (use --parallel for speed)
-nx affected -t lint --parallel --base=$BASE_BRANCH
-nx affected -t typecheck --parallel --base=$BASE_BRANCH # If typecheck target exists
-nx affected -t build --parallel --base=$BASE_BRANCH
+nx affected -t lint --parallel --base=$BASE_REF
+nx affected -t typecheck --parallel --base=$BASE_REF # If typecheck target exists
+nx affected -t build --parallel --base=$BASE_REF
 
 # Tests - run different test targets as available
-nx affected -t test --parallel --base=$BASE_BRANCH           # Unit tests
-nx affected -t component-test --parallel --base=$BASE_BRANCH # Component tests (if exists)
-nx affected -t integration-test --base=$BASE_BRANCH          # Integration tests (if exists)
-nx affected -t e2e --base=$BASE_BRANCH                       # E2E tests (if exists)
+nx affected -t test --parallel --base=$BASE_REF           # Unit tests
+nx affected -t component-test --parallel --base=$BASE_REF # Component tests (if exists)
+nx affected -t integration-test --base=$BASE_REF          # Integration tests (if exists)
+nx affected -t e2e --base=$BASE_REF                       # E2E tests (if exists)
 ```
 
 **Test-suite discovery:** confirm a target exists before running it.
 
 ```bash
-nx show projects --affected --base=$BASE_BRANCH -t test
-nx show projects --affected --base=$BASE_BRANCH -t component-test
-nx show projects --affected --base=$BASE_BRANCH -t integration-test
-nx show projects --affected --base=$BASE_BRANCH -t e2e
+nx show projects --affected --base=$BASE_REF -t test
+nx show projects --affected --base=$BASE_REF -t component-test
+nx show projects --affected --base=$BASE_REF -t integration-test
+nx show projects --affected --base=$BASE_REF -t e2e
 ```
 
 ## C#/.NET Project

@@ -25,6 +25,14 @@
       "review_after": "2026-07-30"
     },
     {
+      "path": "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
+      "rule_id": "TM1",
+      "reason": "Reviewed intentional TM1 finding for this user-triggered fixup skill: it rewrites only branch-local commits after explicit branch/base/upstream/merge checks, aborts unattended mode for merge commits, stale locks, validation failures, and upstream divergence, and reminds users to use force-with-lease only after a successful autosquash.",
+      "owner": "kramme",
+      "accepted_at": "2026-07-02",
+      "review_after": "2026-08-02"
+    },
+    {
       "path": "kramme-cc-workflow/skills/kramme:visual:generate-image/scripts/generate_image.py",
       "rule_id": "E2",
       "reason": "Reviewed intentional GEMINI_API_KEY lookup for the image-generation skill. The script reads this single named environment variable only when --api-key is absent, never logs it, and passes it directly to the Gemini client.",

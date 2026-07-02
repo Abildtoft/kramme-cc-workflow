@@ -74,6 +74,18 @@
       ]
     },
     {
+      "name": "canonical-base-diff-scope-rule",
+      "extract_regex": "Synced base/diff scope contract \\(keep aligned across base-aware and diff-aware skills\\):\\s*(use the shared resolve-base\\.sh script for base refs; use the shared collect-review-diff\\.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE\\.\\.\\.HEAD plus staged, unstaged, and untracked paths\\.)",
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:pr:generate-description/references/base-branch-resolution.md",
+        "kramme-cc-workflow/skills/kramme:qa/references/diff-scope.md",
+        "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:code:cleanup-ai/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md"
+      ]
+    },
+    {
       "name": "copy-review-redundancy-scope",
       "extract_regex": "(Finds labels, descriptions, placeholders, tooltips, and instructions that duplicate what the UI already communicates through structure, icons, or interaction patterns\\.)",
       "paths": [
@@ -90,6 +102,38 @@
       ]
     }
   ],
+  "base_diff_scope": {
+    "paths": [
+      "kramme-cc-workflow/skills/kramme:pr:generate-description/references/base-branch-resolution.md",
+      "kramme-cc-workflow/skills/kramme:qa/references/diff-scope.md",
+      "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md",
+      "kramme-cc-workflow/skills/kramme:code:cleanup-ai/SKILL.md",
+      "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
+      "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md"
+    ],
+    "forbidden_patterns": [
+      {
+        "name": "manual-origin-head-base-detection",
+        "regex": "git\\s+symbolic-ref(?:\\s+--(?:quiet|short))*\\s+refs/remotes/origin/HEAD"
+      },
+      {
+        "name": "manual-main-master-remote-fallback",
+        "regex": "git\\s+branch\\s+-r\\s*\\|\\s*grep\\s+-E\\s+['\\\"]origin/\\(main\\|master\\)"
+      },
+      {
+        "name": "manual-base-fetch",
+        "regex": "git\\s+fetch\\s+origin\\s+[\"']?refs/heads/(?:\\$BASE_BRANCH|\\$\\{BASE_BRANCH\\})(?::refs/remotes/origin/(?:\\$BASE_BRANCH|\\$\\{BASE_BRANCH\\}))?[\"']?"
+      },
+      {
+        "name": "manual-origin-base-merge-base",
+        "regex": "git\\s+merge-base\\s+[\"']?origin/(?:\\$BASE_BRANCH|\\$\\{BASE_BRANCH\\})[\"']?\\s+HEAD"
+      },
+      {
+        "name": "manual-origin-base-diff",
+        "regex": "git\\s+diff\\s+(?:--name-only\\s+)?[\"']?origin/(?:\\$BASE_BRANCH|\\$\\{BASE_BRANCH\\})[\"']?\\.\\.\\.HEAD"
+      }
+    ]
+  },
   "ordered_heading_contracts": [
     {
       "name": "siw-log-current-progress-headings",

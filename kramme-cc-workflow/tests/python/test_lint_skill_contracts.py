@@ -99,6 +99,7 @@ class CheckRegistryTest(unittest.TestCase):
                 "ordered_heading_contracts",
                 "file_identity",
                 "required_file_contracts",
+                "base_diff_scope",
                 "marker_manifests",
                 "epilogue_order",
                 "hooks_json",
@@ -133,6 +134,65 @@ class CheckRegistryTest(unittest.TestCase):
 
         self.assertEqual(result.failures, ["first failure", "second failure"])
         self.assertEqual(result.warnings, ["first warning", "second warning"])
+
+
+class BaseDiffScopeCheckTest(unittest.TestCase):
+    def test_rejects_quoted_and_unquoted_manual_remote_snippets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            skill_path = root / "skills" / "example" / "SKILL.md"
+            skill_path.parent.mkdir(parents=True)
+            skill_path.write_text(
+                "\n".join(
+                    [
+                        "```bash",
+                        "BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null)",
+                        "git fetch origin refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}",
+                        'git merge-base "origin/${BASE_BRANCH}" HEAD',
+                        'git diff --name-only "origin/$BASE_BRANCH"...HEAD',
+                        "```",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            registry = lint_skill_contracts.load_registry(
+                SCRIPTS_DIR / "synced-contracts.yaml"
+            )
+            config = dict(registry["base_diff_scope"])
+            config["paths"] = ["skills/example/SKILL.md"]
+            context = lint_skill_contracts.LintContext(
+                root=root,
+                registry={"base_diff_scope": config},
+                schema={},
+            )
+
+            result = lint_skill_contracts.check_base_diff_scope(context)
+
+            failures = "\n".join(result.failures)
+            self.assertIn("manual-origin-head-base-detection", failures)
+            self.assertIn("manual-base-fetch", failures)
+            self.assertIn("manual-origin-base-merge-base", failures)
+            self.assertIn("manual-origin-base-diff", failures)
+
+
+class VerifyRunGuidanceTest(unittest.TestCase):
+    def test_nx_affected_guidance_uses_resolved_base_ref(self) -> None:
+        plugin_root = SCRIPTS_DIR.parent
+        skill_text = (
+            plugin_root / "skills" / "kramme:verify:run" / "SKILL.md"
+        ).read_text(encoding="utf-8")
+        commands_text = (
+            plugin_root
+            / "skills"
+            / "kramme:verify:run"
+            / "references"
+            / "commands-by-project-type.md"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("Nx `--base=$BASE_REF`", skill_text)
+        self.assertIn("use the `$BASE_REF`", skill_text)
+        self.assertIn("--base=$BASE_REF", commands_text)
+        self.assertNotIn("--base=$BASE_BRANCH", skill_text + commands_text)
 
 
 class MechanicalCheckTest(unittest.TestCase):
