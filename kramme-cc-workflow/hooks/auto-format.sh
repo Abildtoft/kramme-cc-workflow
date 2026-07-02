@@ -62,6 +62,11 @@ fi
 # Helper: Output message and exit
 output_msg() {
   local msg="$1"
+
+  if [ "${SKIPPED_UNTRUSTED_DIRECTIVE:-false}" = "true" ]; then
+    msg="$msg CLAUDE.md formatter not run (project not in $AUTOFORMAT_TRUST_FILE; add $PROJECT_ROOT to enable it)."
+  fi
+
   # Escape special characters for JSON
   msg=$(echo "$msg" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr '\n' ' ')
   echo "{\"systemMessage\": \"$msg\"}"
@@ -79,6 +84,45 @@ resolve_command() {
   fi
 
   command -v "$cmd" 2> /dev/null || true
+}
+
+default_autoformat_trust_file() {
+  local config_home="${XDG_CONFIG_HOME:-}"
+
+  if [ -z "$config_home" ]; then
+    config_home="${HOME:-}/.config"
+  fi
+
+  printf '%s\n' "${config_home}/kramme-cc-workflow/autoformat-trusted-roots"
+}
+
+resolve_autoformat_trust_file() {
+  if [ -n "${KRAMME_AUTOFORMAT_TRUST_FILE:-}" ]; then
+    printf '%s\n' "$KRAMME_AUTOFORMAT_TRUST_FILE"
+    return 0
+  fi
+
+  default_autoformat_trust_file
+}
+
+is_project_trusted_for_claude_formatter() {
+  local project_root="$1"
+  local trust_file="$2"
+  local trusted_root=""
+
+  [ -s "$trust_file" ] || return 1
+
+  while IFS= read -r trusted_root || [ -n "$trusted_root" ]; do
+    trusted_root=$(printf '%s' "$trusted_root" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
+    [ -z "$trusted_root" ] && continue
+    [ "${trusted_root#\#}" != "$trusted_root" ] && continue
+
+    if [ "$trusted_root" = "$project_root" ]; then
+      return 0
+    fi
+  done < "$trust_file"
+
+  return 1
 }
 
 # Helper: Validate boolean-like cache values
@@ -152,6 +196,8 @@ find_project_root() {
 }
 
 PROJECT_ROOT=$(find_project_root "$abs_path")
+AUTOFORMAT_TRUST_FILE="$(resolve_autoformat_trust_file)"
+SKIPPED_UNTRUSTED_DIRECTIVE=false
 
 # Helper: Get file extension (lowercase)
 get_extension() {
@@ -330,13 +376,17 @@ fi
 # STEP 1: Check CLAUDE.md override
 # ============================================================================
 if [ -n "$CLAUDE_FORMATTER" ]; then
-  cd "$PROJECT_ROOT" || exit 0
+  if is_project_trusted_for_claude_formatter "$PROJECT_ROOT" "$AUTOFORMAT_TRUST_FILE"; then
+    cd "$PROJECT_ROOT" || exit 0
 
-  # Try to run the command without eval, suppress stderr
-  if run_safe_command_string "$CLAUDE_FORMATTER" > /dev/null 2>&1; then
-    output_msg "Formatted (CLAUDE.md: $CLAUDE_FORMATTER)"
+    # Try to run the command without eval, suppress stderr
+    if run_safe_command_string "$CLAUDE_FORMATTER" > /dev/null 2>&1; then
+      output_msg "Formatted (CLAUDE.md: $CLAUDE_FORMATTER)"
+    else
+      output_msg "Format command failed (CLAUDE.md: $CLAUDE_FORMATTER)"
+    fi
   else
-    output_msg "Format command failed (CLAUDE.md: $CLAUDE_FORMATTER)"
+    SKIPPED_UNTRUSTED_DIRECTIVE=true
   fi
 fi
 
@@ -447,7 +497,7 @@ fi
 
 # Try npm format script
 if [ -n "$FORMAT_SCRIPT_NAME" ]; then
-  if npm run "$FORMAT_SCRIPT_NAME" > /dev/null 2>&1; then
+  if [ "${SKIPPED_UNTRUSTED_DIRECTIVE:-false}" != "true" ] && npm run "$FORMAT_SCRIPT_NAME" > /dev/null 2>&1; then
     output_msg "Formatted with npm run $FORMAT_SCRIPT_NAME"
   fi
 fi

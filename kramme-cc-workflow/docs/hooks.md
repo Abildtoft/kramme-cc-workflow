@@ -155,7 +155,7 @@ Blocks git commands that would open an interactive editor, forcing the agent to 
 | Shell                 | shfmt         | globally available                 |
 | Nx workspace          | nx format     | nx.json exists                     |
 
-**Priority**: CLAUDE.md override > Biome > Prettier > global tools
+**Priority**: trusted CLAUDE.md override > Biome > Prettier > global tools
 
 ### CLAUDE.md Override
 
@@ -171,13 +171,30 @@ Or use the `formatter:` key:
 formatter: npm run format
 ```
 
+Because this directive is executable project-controlled code, the hook only runs it when the project root is listed in a user-side trust file outside the repository.
+
+Default trust file: `${XDG_CONFIG_HOME:-$HOME/.config}/kramme-cc-workflow/autoformat-trusted-roots`
+
+Override the trust file location with `KRAMME_AUTOFORMAT_TRUST_FILE`.
+
+The trust file format is one absolute project root per line. Blank lines and `#` comments are ignored:
+
+```text
+# auto-format trusts
+/Users/me/src/my-project
+```
+
+If a CLAUDE.md directive exists but the project is not trusted, the hook skips that directive, falls through to detected formatters, and reports how to enable the directive in the system message. Project-wide npm format scripts are also skipped in this case because they are executable project-controlled code.
+
 ### Caching
 
-Detection results are cached in `/tmp/claude-format-cache/` to avoid re-scanning project files on every write. The cache is automatically invalidated when any of these files change:
+Detection results are cached in `${XDG_CACHE_HOME:-$HOME/.cache}/claude-format` to avoid re-scanning project files on every write. The cache is automatically invalidated when any of these files change:
 
 - `CLAUDE.md`, `package.json`, `pyproject.toml`, `nx.json`, `go.mod`, `Cargo.toml`
 
-To clear the cache manually: `trash /tmp/claude-format-cache`
+To clear the default cache manually: `trash ~/.cache/claude-format`
+
+If you install or remove a global formatter binary after the first run, clear the cache manually unless one of the watched project config files also changed.
 
 ### Skipped Files
 
