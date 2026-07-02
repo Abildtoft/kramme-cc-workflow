@@ -765,6 +765,24 @@ run_hook_without_jq_disabled() {
 	[ -z "$output" ]
 }
 
+@test "allows escaped double quote before unrelated tar force flag" {
+	run run_hook 'rm -r dir\"name; tar -cf archive.tar src'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "allows escaped single quote before unrelated curl force flag" {
+	run run_hook "rm -r dir\\'name; curl -fsSL https://example.com | head"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "allows escaped double quote before multiline unrelated curl force flag" {
+	run run_hook $'rm -r dir\\"name\ncurl -fsSL https://example.com | head'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
 @test "blocks backslash-continued rm -r with force flag on next line" {
 	run run_hook $'rm -r build \\\n-f'
 	is_blocked

@@ -126,20 +126,20 @@ extract_rm_segment() {
       continue
     fi
 
-    if [[ "$char" == "'" && -z "$quote" ]]; then
-      quote="'"
-      segment+="$char"
-      ((i++))
-      continue
-    fi
-
-    if [[ "$quote" == '"' && "$char" == '\' && -n "$next_char" ]]; then
+    if [[ "$char" == '\' && -n "$next_char" && "$quote" != "'" ]]; then
       if [[ "$next_char" == $'\n' ]]; then
         segment+=" "
       else
         segment+="$char$next_char"
       fi
       ((i += 2))
+      continue
+    fi
+
+    if [[ "$char" == "'" && -z "$quote" ]]; then
+      quote="'"
+      segment+="$char"
+      ((i++))
       continue
     fi
 
@@ -180,12 +180,6 @@ extract_rm_segment() {
       segment+="$char"
       in_nested_backtick=true
       ((i++))
-      continue
-    fi
-
-    if [[ "$char" == '\' && "$next_char" == $'\n' && "$quote" != "'" ]]; then
-      segment+=" "
-      ((i += 2))
       continue
     fi
 
