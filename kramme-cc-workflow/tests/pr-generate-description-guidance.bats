@@ -64,6 +64,24 @@
 	[ "$status" -eq 0 ]
 }
 
+@test "generate-description base guidance uses canonical resolver contract" {
+	run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    base_ref="skills/kramme:pr:generate-description/references/base-branch-resolution.md"
+
+    grep -qF "Synced base/diff scope contract" "$base_ref"
+    grep -qF "scripts/resolve-base.sh" "$base_ref"
+    grep -qF "BASE_REF" "$base_ref"
+    grep -qF "BASE_BRANCH" "$base_ref"
+    grep -qF "MERGE_BASE" "$base_ref"
+    ! grep -qF "git symbolic-ref refs/remotes/origin/HEAD" "$base_ref"
+    ! grep -qF "gh pr view --json baseRefName" "$base_ref"
+  '
+
+	[ "$status" -eq 0 ]
+}
+
 @test "generate-description PR template discovery reads default branch tree" {
 	run bash -c '
     set -euo pipefail

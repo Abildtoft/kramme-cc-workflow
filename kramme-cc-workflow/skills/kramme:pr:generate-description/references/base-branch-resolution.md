@@ -2,6 +2,8 @@
 
 Use this in Phase 1 to confirm the current branch and compute `BASE_BRANCH`.
 
+Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use scripts/resolve-base.sh for base refs; use scripts/collect-review-diff.sh for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
+
 1. **ALWAYS** confirm the current branch:
 
    ```bash

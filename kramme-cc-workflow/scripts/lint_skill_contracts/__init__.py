@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .checks import CHECKS, CheckFunc, CheckResult, LintContext, run, run_checks
+from .checks.base_diff_scope import check_base_diff_scope
 from .checks.basic import (
     check_file_identity,
     check_ordered_heading_contracts,
@@ -71,6 +72,7 @@ __all__ = [
     "add_arguments",
     "allow_empty_field_keys",
     "canonical_epilogue_heading",
+    "check_base_diff_scope",
     "check_epilogue_order",
     "check_file_identity",
     "check_hooks_json",

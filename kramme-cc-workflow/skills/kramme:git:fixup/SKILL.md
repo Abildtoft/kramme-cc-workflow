@@ -24,6 +24,7 @@ Before proceeding with the workflow, check if the user provided additional instr
 
 1. **Parse arguments and instructions** — If the user wrote `/kramme:git:fixup <something>`:
    - Extract known flags (`--skip-tests`, `--skip-build`, `--skip-lint`, `--skip-all`, `--no-confirm`, `--base=<branch>`)
+   - If `--base=<branch>` is present, set `BASE_BRANCH_OVERRIDE=<branch>`
    - Any remaining text after flags is treated as **custom instructions**
 
 2. **Apply custom instructions throughout** — If the user provided instructions, keep them in mind when:
@@ -42,31 +43,24 @@ Before proceeding with the workflow, check if the user provided additional instr
 
 ### Step 1: Validate Prerequisites
 
-1. **Detect base branch:**
+1. **Resolve base branch:**
 
-   Try these methods in order:
-   1. Check `origin/HEAD` (most reliable - reflects remote's default branch):
+   Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use scripts/resolve-base.sh for base refs; use scripts/collect-review-diff.sh for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
 
-      ```bash
-      git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@'
-      ```
+   Use the shared plugin script. The `--base=<branch>` option sets `BASE_BRANCH_OVERRIDE`; otherwise let the script resolve the PR target branch and remote default fallback chain.
 
-   2. If that fails, check if `main` branch exists locally:
+   ```bash
+   RESOLVE_ARGS=(--strict)
+   [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
 
-      ```bash
-      git show-ref --verify --quiet refs/heads/main
-      ```
+   RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}") || {
+     echo "Base resolution failed; see the message above and stop. Use --base=<branch> if the target branch is ambiguous."
+     exit 1
+   }
+   eval "$RESOLVED"
+   ```
 
-   3. If that fails, check if `master` branch exists locally:
-
-      ```bash
-      git show-ref --verify --quiet refs/heads/master
-      ```
-
-   4. If none work, fail with a clear error:
-      > "Could not auto-detect base branch. Use `--base=<branch>` to specify. Run `git branch` to see available branches."
-
-   Store the resolved branch name as `BASE_BRANCH`. The `--base=<branch>` option always overrides auto-detection.
+   The script exports `BASE_REF`, `BASE_BRANCH`, and `MERGE_BASE`.
 
 2. **Check branch rewrite safety:**
 
@@ -133,7 +127,7 @@ Before proceeding with the workflow, check if the user provided additional instr
 5. **Check branch has commits ahead of base:**
 
    ```bash
-   git log --oneline <base>..HEAD
+   git log --oneline "$BASE_REF"..HEAD
    ```
 
    If no commits, inform user this command requires existing commits to fixup into.
@@ -141,7 +135,7 @@ Before proceeding with the workflow, check if the user provided additional instr
 6. **Check for merge commits on the branch:**
 
    ```bash
-   git log --merges --oneline <base>..HEAD
+   git log --merges --oneline "$BASE_REF"..HEAD
    ```
 
    If non-empty, stop and confirm with the user before proceeding: the autosquash rebase in Step 5 (`GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash`) silently linearizes merge commits, rewriting the branch topology. Under `--no-confirm`, abort. (Preserving merges via `--rebase-merges` is out of scope for this skill.)
@@ -149,7 +143,7 @@ Before proceeding with the workflow, check if the user provided additional instr
 7. **Check for leftover fixup commits:**
 
    ```bash
-   git log <base>..HEAD --oneline --grep '^fixup!'
+   git log "$BASE_REF"..HEAD --oneline --grep '^fixup!'
    ```
 
    Pre-existing `fixup!` commits usually mean a prior run created fixups but did not finish the autosquash rebase. Ask the user whether to resume the autosquash now (skip to Step 5) or abort so they can inspect. Under `--no-confirm`, resume the autosquash.
@@ -188,7 +182,7 @@ Do NOT silently proceed with validation failures.
 For each changed file (modified, deleted, or renamed), find which commit on the branch most recently touched it:
 
 ```bash
-git log <base>..HEAD --oneline -- <file_path>
+git log "$BASE_REF"..HEAD --oneline -- <file_path>
 ```
 
 Take the first (most recent) commit from the output as the target for that file.
@@ -202,7 +196,7 @@ Take the first (most recent) commit from the output as the target for that file.
 Create a mapping and **present everything in one view**:
 
 ```text
-Fixup Plan (base: main):
+Fixup Plan (base: $BASE_BRANCH):
 
 Matched files:
   → abc1234 "Add feature X"
@@ -251,7 +245,7 @@ git commit --fixup=<commit_sha>
 Run an autosquash rebase to squash fixup commits into their targets. Use the branch fork point (merge-base) so this rewrites only branch commits and does not pull newer base-branch commits into the feature branch:
 
 ```bash
-FORK_POINT=$(git merge-base HEAD <base>)
+FORK_POINT="$MERGE_BASE"
 GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash "$FORK_POINT"
 ```
 
@@ -271,7 +265,7 @@ If `REVIEW_OVERVIEW.md` (produced by the `kramme:pr:code-review` skill) exists i
 Show the final commit log:
 
 ```bash
-git log --oneline <base>..HEAD
+git log --oneline "$BASE_REF"..HEAD
 ```
 
 Confirm success and show any remaining unstaged/untracked files.
@@ -313,7 +307,7 @@ If the rebase fails mid-way due to conflicts:
    > "**Your fixup commits are NOT lost** - they still exist on the branch."
 
 4. **Provide resolution options:**
-   - **Retry manually:** User can run `git rebase -i --autosquash "$(git merge-base HEAD <base>)"` and resolve conflicts themselves
+   - **Retry manually:** User can run `git rebase -i --autosquash "$MERGE_BASE"` and resolve conflicts themselves
    - **Abandon fixups:** User can remove the fixup commits with `git reset HEAD~N` (where N = number of fixup commits created)
    - **Re-run this skill:** A subsequent run detects the leftover `fixup!` commits in Step 1 and offers to resume the autosquash, instead of finding no unstaged changes and silently exiting
 
@@ -328,14 +322,14 @@ If the rebase fails mid-way due to conflicts:
 - `--skip-lint` - Skip lint/format validation
 - `--skip-all` - Skip all validations
 - `--no-confirm` - Skip confirmation prompts. Defaults: staged changes are included, orphan files are skipped, validation failures abort, merge commits on the branch abort, stale lock files abort, and leftover fixup commits are autosquashed.
-- `--base=<branch>` - Override auto-detected base branch
+- `--base=<branch>` - Override the resolved base branch
 
 **Custom Instructions:** Any text after the command (and flags) is treated as custom instructions that influence the workflow. These instructions are applied contextually throughout the process.
 
 ## Examples
 
 ```bash
-# Standard usage - auto-detect base, validate and fixup
+# Standard usage - resolve base, validate and fixup
 /kramme:git:fixup
 
 # Skip all validations (already tested manually)
@@ -358,8 +352,8 @@ If the rebase fails mid-way due to conflicts:
 
 ## Notes
 
-- Base branch is auto-detected from `origin/HEAD`, then `main`, then `master`
-- If auto-detection fails, use `--base=<branch>` to specify explicitly
+- Base branch is resolved by the shared script from `--base=<branch>`, PR target branch metadata, then the remote default fallback chain
+- If base resolution fails, use `--base=<branch>` to specify explicitly
 - Handles modified, deleted, and renamed files; untracked (new) files are surfaced as orphans, not fixed up
 - Staged changes prompt for handling before proceeding (included automatically under `--no-confirm`)
 - Orphan files (not touched by branch) require user decision or are skipped with `--no-confirm`

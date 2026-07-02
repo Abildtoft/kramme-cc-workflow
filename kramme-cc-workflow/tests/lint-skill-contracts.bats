@@ -1414,6 +1414,74 @@ EOF
   [[ "$output" == *"required_fields must come from contract_schema"* ]]
 }
 
+@test "base diff scope rejects hand-rolled remote base snippets" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" $'```bash\nBASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null)\ngit fetch origin refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}\ngit merge-base "origin/${BASE_BRANCH}" HEAD\ngit diff --name-only "origin/$BASE_BRANCH"...HEAD\n```'
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "base_diff_scope": {
+    "paths": [
+      "kramme-cc-workflow/skills/a/SKILL.md"
+    ],
+    "forbidden_patterns": [
+      {
+        "name": "manual-origin-head-base-detection",
+        "regex": "git\\s+symbolic-ref(?:\\s+--(?:quiet|short))*\\s+refs/remotes/origin/HEAD"
+      },
+      {
+        "name": "manual-base-fetch",
+        "regex": "git\\s+fetch\\s+origin\\s+[\"']?refs/heads/(?:\\$BASE_BRANCH|\\$\\{BASE_BRANCH\\})(?::refs/remotes/origin/(?:\\$BASE_BRANCH|\\$\\{BASE_BRANCH\\}))?[\"']?"
+      },
+      {
+        "name": "manual-origin-base-merge-base",
+        "regex": "git\\s+merge-base\\s+[\"']?origin/(?:\\$BASE_BRANCH|\\$\\{BASE_BRANCH\\})[\"']?\\s+HEAD"
+      },
+      {
+        "name": "manual-origin-base-diff",
+        "regex": "git\\s+diff\\s+(?:--name-only\\s+)?[\"']?origin/(?:\\$BASE_BRANCH|\\$\\{BASE_BRANCH\\})[\"']?\\.\\.\\.HEAD"
+      }
+    ]
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"base-diff-scope"* ]]
+  [[ "$output" == *"manual-origin-head-base-detection"* ]]
+  [[ "$output" == *"manual-base-fetch"* ]]
+  [[ "$output" == *"manual-origin-base-merge-base"* ]]
+  [[ "$output" == *"manual-origin-base-diff"* ]]
+}
+
+@test "base diff scope accepts canonical shared script snippets" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" $'```bash\nRESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" --strict)\nRESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --strict)\n```'
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "base_diff_scope": {
+    "paths": [
+      "kramme-cc-workflow/skills/a/SKILL.md"
+    ],
+    "forbidden_patterns": [
+      {
+        "name": "manual-origin-head-base-detection",
+        "regex": "git\\s+symbolic-ref(?:\\s+--(?:quiet|short))*\\s+refs/remotes/origin/HEAD"
+      },
+      {
+        "name": "manual-origin-base-diff",
+        "regex": "git\\s+diff\\s+(?:--name-only\\s+)?[\"']?origin/(?:\\$BASE_BRANCH|\\$\\{BASE_BRANCH\\})[\"']?\\.\\.\\.HEAD"
+      }
+    ]
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
 @test "epilogue order drift fails" {
   write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" $'## Common Rationalizations\n\n## Verification'
   write_file "$TMP_ROOT/registry.yaml" <<'EOF'

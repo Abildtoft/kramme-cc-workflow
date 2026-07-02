@@ -2,59 +2,28 @@
 
 Use this during `diff-aware` mode before filtering for UI-relevant files.
 
-## Base Branch
+Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use scripts/resolve-base.sh for base refs; use scripts/collect-review-diff.sh for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
 
-Resolve the base branch using a 3-tier strategy:
+## Base And Changed Files
 
-**Tier 1: Explicit override** If `--base <branch>` was provided, use that value directly as `BASE_BRANCH`. Skip Tier 2 and 3.
-
-**Tier 2: PR target branch detection**
+If `--base <branch>` was provided, set `BASE_BRANCH_OVERRIDE` before running the shared script. Otherwise let the script resolve the PR target branch, then the remote default branch fallback chain. Do not duplicate the fallback logic in this skill.
 
 ```bash
-BASE_BRANCH=$(gh pr view --json baseRefName --jq '.baseRefName' 2> /dev/null)
+COLLECT_ARGS=(--strict)
+[ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
+
+RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" "${COLLECT_ARGS[@]}") || {
+  echo "Base/diff collection failed; see the message above. Re-run with --base <branch> if the target branch is ambiguous." >&2
+  exit 1
+}
+eval "$RESOLVED"
 ```
 
-**Tier 3: Fallback**
+The script exports:
 
-```bash
-BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@')
-[ -z "$BASE_BRANCH" ] && BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@')
-```
+- `BASE_REF`: remote tracking ref for the resolved base.
+- `BASE_BRANCH`: normalized base branch name.
+- `MERGE_BASE`: merge base between the resolved base and `HEAD`.
+- `CHANGED_FILES`: newline-delimited committed PR diff, staged changes, unstaged changes, and untracked files.
 
-Normalize before using `origin/$BASE_BRANCH`:
-
-```bash
-BASE_BRANCH=${BASE_BRANCH#refs/heads/}
-BASE_BRANCH=${BASE_BRANCH#refs/remotes/origin/}
-BASE_BRANCH=${BASE_BRANCH#origin/}
-if [ -z "$BASE_BRANCH" ]; then
-  echo "Error: Could not determine base branch. Re-run with --base <branch>." >&2
-  exit 1
-fi
-if ! git check-ref-format --branch "$BASE_BRANCH" > /dev/null 2>&1; then
-  echo "Error: Base branch '$BASE_BRANCH' is not a valid branch name. Re-run with --base <branch>." >&2
-  exit 1
-fi
-if ! git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" 2> /dev/null; then
-  echo "Error: Failed to fetch origin/$BASE_BRANCH. Check remote access and re-run with --base <branch>." >&2
-  exit 1
-fi
-if ! git rev-parse --verify --quiet "origin/$BASE_BRANCH" > /dev/null; then
-  echo "Error: Base branch 'origin/$BASE_BRANCH' not found. Re-run with --base <branch>." >&2
-  exit 1
-fi
-```
-
-## Changed Files
-
-Identify changed UI files:
-
-```bash
-BASE_REF=$(git merge-base origin/$BASE_BRANCH HEAD)
-{
-  git diff --name-only "$BASE_REF"...HEAD  # committed PR diff
-  git diff --name-only --cached            # staged local changes
-  git diff --name-only                     # unstaged local changes
-  git ls-files --others --exclude-standard # untracked local files
-} | sed '/^$/d' | sort -u
-```
+Use `CHANGED_FILES` for UI-relevant filtering below. Use `MERGE_BASE` or `BASE_REF` for any later diff commands instead of local branch names.

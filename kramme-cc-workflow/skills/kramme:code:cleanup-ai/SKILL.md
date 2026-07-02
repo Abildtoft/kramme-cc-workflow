@@ -13,7 +13,7 @@ This skill uses the `kramme:deslop-reviewer` agent to identify AI slop in the br
 
 Sibling: this is the AI-slop-specific pass via `kramme:deslop-reviewer`; for a general simplification pass on the same post-feature branch, use `kramme:code:refactor-pass`.
 
-Parse `$ARGUMENTS` before the preconditions. If `--auto` is present, set `AUTO_MODE=true` and remove the flag before base-branch resolution. `--auto` applies medium-confidence cleanup findings automatically; it does not bypass dirty-worktree protection or behavior/API/test-expectation safeguards.
+Parse `$ARGUMENTS` before the preconditions. If `--auto` is present, set `AUTO_MODE=true` and remove the flag before base-branch resolution. If one non-option argument remains, set `BASE_BRANCH_OVERRIDE` to that value. `--auto` applies medium-confidence cleanup findings automatically; it does not bypass dirty-worktree protection or behavior/API/test-expectation safeguards.
 
 ## Preconditions
 
@@ -21,26 +21,28 @@ Run `git status --porcelain`. If the working tree is dirty and `AUTO_MODE=true`,
 
 ## Process
 
-1. **Resolve the base branch** — try these sources in order; use the first non-empty value:
-   - The argument passed to this skill.
-   - `gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null`
-   - `git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'`
+Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use scripts/resolve-base.sh for base refs; use scripts/collect-review-diff.sh for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
 
-   Assign the result to `BASE_BRANCH` with any leading `origin/` stripped, then validate and fetch:
+1. **Resolve the base branch** — use the shared plugin script. The optional positional base argument becomes `BASE_BRANCH_OVERRIDE`; otherwise let the script resolve the PR target branch and remote default fallback chain.
 
    ```bash
-   git check-ref-format --branch "$BASE_BRANCH" && \
-     git fetch origin "refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" && \
-     git rev-parse --verify --quiet "origin/$BASE_BRANCH"
+   RESOLVE_ARGS=(--strict)
+   [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
+
+   RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}") || {
+     echo "Base resolution failed; see the message above and stop. Re-run with a base branch argument if the target branch is ambiguous." >&2
+     exit 1
+   }
+   eval "$RESOLVED"
    ```
 
-   On failure, stop and ask the user to re-run with the base branch as the skill argument.
+   The script exports `BASE_REF`, `BASE_BRANCH`, and `MERGE_BASE`.
 
 2. **Scan for slop**
 
-   If `git diff origin/$BASE_BRANCH...HEAD` is empty, report "no branch changes to review" and stop.
+   If `git diff "$MERGE_BASE"...HEAD` is empty, report "no branch changes to review" and stop.
 
-   Launch `kramme:deslop-reviewer` in code review mode against `git diff origin/$BASE_BRANCH...HEAD`.
+   Launch `kramme:deslop-reviewer` in code review mode against `git diff "$MERGE_BASE"...HEAD`.
 
 3. **Filter the findings**
 

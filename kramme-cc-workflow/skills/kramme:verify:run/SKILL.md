@@ -55,24 +55,24 @@ This skill relies on `git`, plus the toolchain for the detected project type (`n
 
 For affected detection and format checks, determine the base branch:
 
-1. **Check the applicable project instruction files** (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or equivalent) for a specified base branch
-2. **Check `nx.json`** for `defaultBase` setting (Nx projects)
-3. **Auto-detect from git**: read `origin/HEAD`
-4. **Fallback**: if `origin/HEAD` is unset, use `main` if it exists, otherwise `master`
+Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use scripts/resolve-base.sh for base refs; use scripts/collect-review-diff.sh for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
+
+1. **Check the applicable project instruction files** (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or equivalent) for a specified base branch. If one is specified, set `BASE_BRANCH_OVERRIDE` to that value.
+2. **Check `nx.json`** for `defaultBase` setting (Nx projects). If present and no project instruction already specified a base, set `BASE_BRANCH_OVERRIDE` to that value.
+3. **Resolve with the shared plugin script.** Let the script perform PR-target and remote-default fallback detection; do not duplicate that logic in this skill.
 
 ```bash
-# Auto-detect base branch. --short strips the refs/remotes/origin/ prefix.
-# Branch off git's own exit status, not the pipeline's, so the fallback fires when origin/HEAD is unset.
-BASE_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2> /dev/null)
-BASE_BRANCH=${BASE_BRANCH#origin/}
-if [ -z "$BASE_BRANCH" ]; then
-  if git show-ref --verify --quiet refs/heads/main; then
-    BASE_BRANCH=main
-  else
-    BASE_BRANCH=master
-  fi
-fi
+RESOLVE_ARGS=(--strict)
+[ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
+
+RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}") || {
+  echo "Base resolution failed; see the message above and stop." >&2
+  exit 1
+}
+eval "$RESOLVED"
 ```
+
+The script exports `BASE_REF`, `BASE_BRANCH`, and `MERGE_BASE`. Use `BASE_REF` for affected comparisons (for example Nx `--base=$BASE_REF`), because it is the fetched remote-tracking ref that the resolver guarantees exists. Use `BASE_BRANCH` only for display or tools that truly require a branch name.
 
 ### 5. Discover Available Targets (Nx)
 
@@ -104,7 +104,7 @@ Run checks in this order (continue through ALL checks even if some fail):
 
 ## Default Commands by Project Type
 
-When project instructions and CI config don't specify commands, read `references/commands-by-project-type.md` for default check-only command sets (Nx, C#/.NET, Node.js, Python, Go, Rust) and per-ecosystem test-suite discovery. Read only the section for the project type you detected in step 3, and use the `$BASE_BRANCH` from step 4.
+When project instructions and CI config don't specify commands, read `references/commands-by-project-type.md` for default check-only command sets (Nx, C#/.NET, Node.js, Python, Go, Rust) and per-ecosystem test-suite discovery. Read only the section for the project type you detected in step 3, and use the `$BASE_REF` from step 4 for affected comparisons.
 
 ## Critical Requirements
 
@@ -209,7 +209,7 @@ Issues Found: 2 steps failed - see errors above for details
 - Always prefer explicitly documented commands from the applicable project instruction files over defaults
 - Use `--affected` or equivalent to minimize scope when possible
 - Do NOT automatically fix issues - this is a verification command only
-- If any applicable project instruction file specifies a base branch for affected detection, use it; otherwise auto-detect (see step 4)
+- If any applicable project instruction file specifies a base branch for affected detection, pass it to the shared resolver as `BASE_BRANCH_OVERRIDE`; otherwise let the shared resolver auto-detect in step 4
 - If a test suite/target doesn't exist, mark it as SKIPPED, don't fail
 - Always verify targets exist before running them to avoid confusing errors
 - Integration and E2E suites often mutate state (databases, queues) or require running services. Treat them as potentially side-effecting: skip them when the environment isn't prepared, and confirm with the user before running them when in doubt. E2E can also be skipped for faster iteration.

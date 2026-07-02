@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from ..schema import load_contract_schema
+from .base_diff_scope import check_base_diff_scope
 from .basic import (
     check_file_identity,
     check_ordered_heading_contracts,
@@ -22,6 +23,7 @@ CHECKS: tuple[tuple[str, CheckFunc], ...] = (
     ("ordered_heading_contracts", check_ordered_heading_contracts),
     ("file_identity", check_file_identity),
     ("required_file_contracts", check_required_file_contracts),
+    ("base_diff_scope", check_base_diff_scope),
     ("marker_manifests", check_marker_manifests),
     ("epilogue_order", check_epilogue_order),
     ("hooks_json", check_hooks_json),
