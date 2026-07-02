@@ -163,12 +163,50 @@ The script exports `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimite
 
 Decide whether to run the UI review pass. If `CODE_ONLY=true`, skip this and set `RUN_UI=false`.
 
+Use this contract marker for UI relevance: UI relevance path contract: `ui-relevance-path-contract-v1`.
+
+A file is UI-relevant when it matches any of these categories:
+
+- **Components**: `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.astro`, `*.mdx`, `*.component.ts`, `*.component.html`
+- **Templates**: `*.html`, `*.htm`, `*.hbs`, `*.ejs`, `*.pug`
+- **Styles**: `*.css`, `*.scss`, `*.sass`, `*.less`, `*.styl`, `*.styled.ts`, `*.styled.js`, `*.module.css`, `*.module.scss`
+- **Configuration**: `tailwind.config.*`, `theme.*`, files under `design-tokens/`
+- **View and route directories**: files under `pages/`, `views/`, `screens/`, `routes/`, or `app/`
+- **UI component directories**: files under `component/`, `components/`, `ui/`, `widgets/`, `layouts/`, or `templates/`
+- **Style directories**: files under `styles/` or `css/`
+- **Static asset directories**: image or SVG files under `public/`, `static/`, or `assets/` (`*.svg`, `*.png`, `*.jpg`, `*.jpeg`, `*.gif`, `*.webp`, `*.avif`, `*.ico`)
+
 ```bash
-UI_REGEX='\.(tsx|jsx|vue|svelte|css|scss|sass|less|styl|html?|astro|mdx)$|/(components?|ui|pages|views|screens|styles|layouts)/'
-if [ "${CODE_ONLY:-false}" != "true" ] && printf '%s\n' "$CHANGED_FILES" | grep -Eiq "$UI_REGEX"; then
-  RUN_UI=true
-else
-  RUN_UI=false
+is_ui_relevant_path() {
+  local path
+  path=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')
+
+  case "$path" in
+    *.tsx|*.jsx|*.vue|*.svelte|*.astro|*.mdx|*.component.ts|*.component.html) return 0 ;;
+    *.html|*.htm|*.hbs|*.ejs|*.pug) return 0 ;;
+    *.css|*.scss|*.sass|*.less|*.styl|*.styled.ts|*.styled.js|*.module.css|*.module.scss) return 0 ;;
+    tailwind.config.*|*/tailwind.config.*|theme.*|*/theme.*|design-tokens/*|*/design-tokens/*) return 0 ;;
+    pages/*|*/pages/*|views/*|*/views/*|screens/*|*/screens/*|routes/*|*/routes/*|app/*|*/app/*) return 0 ;;
+    component/*|*/component/*|components/*|*/components/*|ui/*|*/ui/*|widgets/*|*/widgets/*|layouts/*|*/layouts/*|templates/*|*/templates/*) return 0 ;;
+    styles/*|*/styles/*|css/*|*/css/*) return 0 ;;
+    public/*.svg|public/*.png|public/*.jpg|public/*.jpeg|public/*.gif|public/*.webp|public/*.avif|public/*.ico) return 0 ;;
+    static/*.svg|static/*.png|static/*.jpg|static/*.jpeg|static/*.gif|static/*.webp|static/*.avif|static/*.ico) return 0 ;;
+    assets/*.svg|assets/*.png|assets/*.jpg|assets/*.jpeg|assets/*.gif|assets/*.webp|assets/*.avif|assets/*.ico) return 0 ;;
+    */public/*.svg|*/public/*.png|*/public/*.jpg|*/public/*.jpeg|*/public/*.gif|*/public/*.webp|*/public/*.avif|*/public/*.ico) return 0 ;;
+    */static/*.svg|*/static/*.png|*/static/*.jpg|*/static/*.jpeg|*/static/*.gif|*/static/*.webp|*/static/*.avif|*/static/*.ico) return 0 ;;
+    */assets/*.svg|*/assets/*.png|*/assets/*.jpg|*/assets/*.jpeg|*/assets/*.gif|*/assets/*.webp|*/assets/*.avif|*/assets/*.ico) return 0 ;;
+  esac
+  return 1
+}
+
+RUN_UI=false
+if [ "${CODE_ONLY:-false}" != "true" ]; then
+  while IFS= read -r changed_file; do
+    if is_ui_relevant_path "$changed_file"; then
+      RUN_UI=true
+      break
+    fi
+  done <<< "$CHANGED_FILES"
 fi
 ```
 
