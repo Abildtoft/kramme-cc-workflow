@@ -47,6 +47,32 @@ Fixture skill body.
 MD
 }
 
+add_hook_control_skill_fixtures() {
+	local plugin_dir="$1"
+
+	mkdir -p "$plugin_dir/skills/kramme:hooks:toggle" "$plugin_dir/skills/kramme:hooks:configure-links"
+	cat >"$plugin_dir/skills/kramme:hooks:toggle/SKILL.md" <<'MD'
+---
+name: kramme:hooks:toggle
+description: Toggle fixture hooks.
+disable-model-invocation: true
+user-invocable: true
+kramme-platforms: [claude-code, codex]
+---
+Toggle fixture hooks.
+MD
+	cat >"$plugin_dir/skills/kramme:hooks:configure-links/SKILL.md" <<'MD'
+---
+name: kramme:hooks:configure-links
+description: Configure fixture hook links.
+disable-model-invocation: true
+user-invocable: true
+kramme-platforms: [claude-code, codex]
+---
+Configure fixture hook links.
+MD
+}
+
 create_hook_fixture_plugin() {
 	local plugin_dir="$1"
 	local plugin_name="$2"
@@ -54,6 +80,7 @@ create_hook_fixture_plugin() {
 	local hook_command="${4:-bash \${CLAUDE_PLUGIN_ROOT}/hooks/${script_name}.sh}"
 	local script_body="${5:-#!/bin/bash
 exit 0}"
+	local include_controls="${6:-true}"
 
 	create_fixture_plugin "$plugin_dir" "$plugin_name"
 	mkdir -p "$plugin_dir/hooks/lib"
@@ -79,6 +106,10 @@ exit_if_hook_disabled() {
   return 0
 }
 SH
+
+	if [ "$include_controls" != "false" ]; then
+		add_hook_control_skill_fixtures "$plugin_dir"
+	fi
 }
 
 resolve_node_package_dir() {
@@ -701,6 +732,7 @@ console.log("ok");
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/dev-server/detect-url.sh" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/resolve-base.sh" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/collect-review-diff.sh" ]
+	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/skill-usage.js" ]
 	[ ! -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/install-codex.sh" ]
 	[ -f "$cache_root/.codex-plugin/plugin.json" ]
 	[ -f "$cache_root/hooks/block-rm-rf.sh" ]
@@ -708,10 +740,14 @@ console.log("ok");
 	[ -f "$cache_root/scripts/dev-server/detect-url.sh" ]
 	[ -f "$cache_root/scripts/resolve-base.sh" ]
 	[ -f "$cache_root/scripts/collect-review-diff.sh" ]
+	[ -f "$cache_root/scripts/skill-usage.js" ]
 	[ ! -f "$cache_root/scripts/install-codex.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/dev-server/detect-url.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/resolve-base.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/collect-review-diff.sh" ]
+	[ -f "$TMP_DIR/.codex/scripts/skill-usage.js" ]
+	[ -f "$TMP_DIR/.codex/skills/kramme:hooks:toggle/SKILL.md" ]
+	[ -f "$TMP_DIR/.codex/skills/kramme:hooks:configure-links/SKILL.md" ]
 
 	run grep -RFn '${CLAUDE_PLUGIN_ROOT}/scripts/dev-server' "$TMP_DIR/.codex/skills"
 	[ "$status" -eq 1 ]
@@ -721,6 +757,9 @@ console.log("ok");
 
 	run grep -RFn '${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh' "$TMP_DIR/.codex/skills"
 	[ "$status" -eq 1 ]
+
+	run grep -nF 'node "$recorder" record' "$cache_root/hooks/skill-usage-stats.sh"
+	[ "$status" -eq 0 ]
 
 	run grep -RFn "'$TMP_DIR/.codex/scripts/dev-server'/detect-url.sh auto" "$TMP_DIR/.codex/skills"
 	[ "$status" -eq 0 ]
@@ -772,6 +811,25 @@ console.log("ok");
 	run jq -r 'has("plugins") or has("hooks")' "$TMP_DIR/.codex/.kramme-install-manifests/kramme-cc-workflow-codex.json"
 	[ "$status" -eq 0 ]
 	[ "$output" = "false" ]
+}
+
+@test "codex hook conversion omits runtime when controls are absent" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	FIXTURE_PLUGIN="$TMP_DIR/hook-without-controls-plugin"
+	create_hook_fixture_plugin "$FIXTURE_PLUGIN" "hook-without-controls-plugin" "alpha-hook" \
+		'bash ${CLAUDE_PLUGIN_ROOT}/hooks/alpha-hook.sh' \
+		'#!/bin/bash
+exit 0' \
+		false
+
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+	[ "$status" -eq 0 ]
+
+	[ ! -d "$TMP_DIR/.codex/.kramme-plugin-marketplaces/hook-without-controls-plugin" ]
+	[ ! -d "$TMP_DIR/.codex/plugins/cache/hook-without-controls-plugin" ]
 }
 
 @test "codex hook conversion excludes local hook state and config files" {
