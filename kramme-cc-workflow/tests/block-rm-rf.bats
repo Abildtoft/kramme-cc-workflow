@@ -753,6 +753,51 @@ run_hook_without_jq_disabled() {
 	is_blocked
 }
 
+@test "allows multiline rm -r before unrelated tar force flag" {
+	run run_hook $'rm -r build\ntar -cf archive.tar src'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "allows multiline rm -r before unrelated curl force flag" {
+	run run_hook $'rm -r build\ncurl -fsSL https://example.com | head'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "allows escaped double quote before unrelated tar force flag" {
+	run run_hook 'rm -r dir\"name; tar -cf archive.tar src'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "allows escaped single quote before unrelated curl force flag" {
+	run run_hook "rm -r dir\\'name; curl -fsSL https://example.com | head"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "allows escaped double quote before multiline unrelated curl force flag" {
+	run run_hook $'rm -r dir\\"name\ncurl -fsSL https://example.com | head'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "blocks backslash-continued rm -r with force flag on next line" {
+	run run_hook $'rm -r build \\\n-f'
+	is_blocked
+}
+
+@test "blocks rm -r with force flag after multiline double-quoted argument" {
+	run run_hook $'rm -r "dir\nname" -f'
+	is_blocked
+}
+
+@test "blocks rm -rf in middle of multiline command" {
+	run run_hook $'echo start\nrm -rf build\necho done'
+	is_blocked
+}
+
 @test "blocks rm -rf in command substitution" {
 	run run_hook 'echo $(rm -rf directory/)'
 	is_blocked

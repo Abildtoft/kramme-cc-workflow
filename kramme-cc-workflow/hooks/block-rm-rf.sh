@@ -98,6 +98,7 @@ extract_rm_segment() {
   local substitution_depth=0
   local in_nested_backtick=false
   local outer_backtick=false
+  local quote=""
   local char
   local next_char
 
@@ -118,6 +119,41 @@ extract_rm_segment() {
       continue
     fi
 
+    if [[ "$quote" == "'" ]]; then
+      segment+="$char"
+      [[ "$char" == "'" ]] && quote=""
+      ((i++))
+      continue
+    fi
+
+    if [[ "$char" == '\' && -n "$next_char" && "$quote" != "'" ]]; then
+      if [[ "$next_char" == $'\n' ]]; then
+        segment+=" "
+      else
+        segment+="$char$next_char"
+      fi
+      ((i += 2))
+      continue
+    fi
+
+    if [[ "$char" == "'" && -z "$quote" ]]; then
+      quote="'"
+      segment+="$char"
+      ((i++))
+      continue
+    fi
+
+    if [[ "$char" == '"' ]]; then
+      if [[ "$quote" == '"' ]]; then
+        quote=""
+      elif [[ -z "$quote" ]]; then
+        quote='"'
+      fi
+      segment+="$char"
+      ((i++))
+      continue
+    fi
+
     if [[ "$char" == '$' && "$next_char" == '(' ]]; then
       segment+='$('
       ((substitution_depth++))
@@ -132,7 +168,9 @@ extract_rm_segment() {
         ((i++))
         continue
       fi
-      break
+      if [[ -z "$quote" ]]; then
+        break
+      fi
     fi
 
     if [[ "$char" == '`' ]]; then
@@ -145,7 +183,7 @@ extract_rm_segment() {
       continue
     fi
 
-    if (( substitution_depth == 0 )) && { [[ "$char" == ';' ]] || [[ "$char" == '&' ]] || [[ "$char" == '|' ]]; }; then
+    if [[ -z "$quote" ]] && (( substitution_depth == 0 )) && { [[ "$char" == ';' ]] || [[ "$char" == '&' ]] || [[ "$char" == '|' ]] || [[ "$char" == $'\n' ]]; }; then
       break
     fi
 
