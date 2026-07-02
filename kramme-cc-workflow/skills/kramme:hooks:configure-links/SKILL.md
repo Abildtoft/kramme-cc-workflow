@@ -4,7 +4,7 @@ description: Configure the context-links hook by updating its persistent config 
 argument-hint: "[show|reset|KEY=VALUE ...]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # Configure Context Links
@@ -17,6 +17,8 @@ Configure the `context-links` hook using a local config file.
   3. Fall back to `${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config` only when the XDG config file is absent and that legacy file exists.
 - **Template:** `${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config.example`
 - **Git status:** the preferred default config file is local-only outside the plugin tree, so its contents are not recoverable from version control once deleted.
+
+In Codex installs, do not write config under the copied skill directory. Use the XDG/default config path unless `CONTEXT_LINKS_CONFIG_FILE` is set or an existing legacy config is explicitly resolved from the installed hook plugin root. If the template is not reachable from the installed hook plugin root, create the config file with a short header comment instead.
 
 Do not use this skill to enable or disable the hook itself (that is the hook toggle system), or to edit any other hook.
 

@@ -4,7 +4,7 @@ description: Enable, disable, list, or reset hook toggles for the kramme-cc-work
 argument-hint: "<status|reset|hook-name> [enable|disable]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code]
+kramme-platforms: [claude-code, codex]
 ---
 
 # Toggle Hook
@@ -43,6 +43,8 @@ Resolve the state file the same way `hooks/lib/check-enabled.sh` does, and use t
 3. Fall back to `${CLAUDE_PLUGIN_ROOT}/hooks/hook-state.json` only when the XDG state file is absent and that legacy file exists.
 
 The preferred default state file lives outside the installed plugin tree, so toggles survive plugin updates and reinstalls. `status` and `reset` are reserved subcommands and take precedence over a hook of the same name.
+
+In Codex installs, do not write state under the copied skill directory. Use the XDG/default state path unless `KRAMME_HOOK_STATE_FILE` is set or an existing legacy hook-state file is explicitly resolved from the installed hook plugin root.
 
 Whenever you read the state file: a missing file means all hooks are enabled (proceed as if `{"disabled": []}`). If the file exists but is not valid JSON, do not guess — report it and offer `reset` to restore a clean state.
 
