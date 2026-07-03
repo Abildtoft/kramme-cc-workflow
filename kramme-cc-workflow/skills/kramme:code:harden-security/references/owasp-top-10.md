@@ -1,125 +1,148 @@
-# OWASP Top 10 — author-time patterns
+# OWASP Top 10:2025 - author-time patterns
 
-Purpose: the OWASP Top 10 is the canonical list of web-app vulnerability classes. Most write-ups describe them at review or incident time. This file describes each category _at author time_ — the pattern to reach for when writing the relevant code, so the category never materializes.
+Purpose: the OWASP Top 10 is the canonical awareness document for web-app vulnerability classes. Most write-ups describe them at review or incident time. This file maps the 2025 categories to author-time patterns so the category does not materialize in the first place.
 
 Not a review checklist. Review coverage lives in the three reviewer agents (`kramme:auth-reviewer`, `kramme:data-reviewer`, `kramme:injection-reviewer`).
 
 ---
 
-## 1. Injection (SQL, command, template)
-
-**Pattern at author time**: parameterize, escape, validate — in that order of preference.
-
-- SQL / NoSQL: always parameterized queries. The ORM's raw-interpolation escape hatch is a smell; the one legitimate use case (dynamic identifier) solves with allow-lists, not string building.
-- Command execution: explicit-args form (`spawn(cmd, [arg1, arg2])`). No `shell: true`, no shell-interpreted string.
-- Template engines: the default-escaping mode is on. Do not reach for the raw/unsafe helper.
-- Input validation is defense-in-depth, not a substitute — a bad validator plus a parameterized query is still safe; a good validator plus string concatenation is not.
-
-Downstream review: `kramme:injection-reviewer`.
-
-## 2. Broken authentication
-
-**Pattern at author time**: use the vetted primitives, rotate session IDs on privilege change, set cookie flags correctly.
-
-- Password hashing: bcrypt / scrypt / argon2 with a non-trivial work factor. Never SHA-256 alone.
-- Session token: server-issued, high-entropy, rotated on login / logout / password change / role change.
-- Cookies: `Secure` + `HttpOnly` + `SameSite=Lax` (or `Strict`).
-- Timing-safe comparison for secret equality (`crypto.timingSafeEqual`, `hmac.compare_digest`, etc.).
-- MFA is a first-class option for privileged actions; designing it in later costs 10×.
-
-Any new auth flow is an `ASK FIRST` situation — do not invent a new method in-scope.
-
-## 3. Sensitive data exposure
-
-**Pattern at author time**: encrypt at rest, TLS in transit, mask in logs, redact in API responses.
-
-- In transit: TLS everywhere. No "it's internal so plaintext is fine".
-- At rest: AES-GCM (or ecosystem equivalent) for credentials, PII, financial, health data.
-- Keys: from a secret manager, never hardcoded. Rotation path defined before launch.
-- Logs: structured, field-level allow-list. Redact before the log line is emitted.
-- API responses: filter fields before serialization; never spread the whole database row into the response.
-
-Downstream review: `kramme:data-reviewer`.
-
-## 4. XML External Entities (XXE) / XSS
-
-**Pattern at author time**: strict parsers, output escaping, CSP.
-
-- XXE: disable external-entity resolution on every XML parser the app instantiates. Most modern parsers default safe — confirm, don't assume.
-- XSS (stored, reflected, DOM): `textContent` over `innerHTML`; framework defaults (React's auto-escape, Vue's `{{ }}`, Angular's `[textContent]`) over bypass-escape forms (`dangerouslySetInnerHTML`, `v-html`, `[innerHTML]`, `[safeHtml]`).
-- Content Security Policy: start strict (`default-src 'self'`; no `'unsafe-inline'`, no `'unsafe-eval'`); widen only with a ticket.
-- Sanitizer library for "user HTML" input — with an allow-list, not a block-list.
-
-## 5. Broken access control
+## A01: Broken Access Control
 
 **Pattern at author time**: authorize every action at the data layer, default deny, check resource ownership on every read and write.
 
 - Every handler that touches a resource asks, for the current principal: _are you allowed to see this row?_
-- Enforcement at the **data layer**, not only at the handler layer. A handler-only check that falls through to a shared helper is the IDOR shape.
+- Enforcement belongs at the data layer as well as the handler layer. A handler-only check that falls through to a shared helper is the IDOR shape.
 - Default deny: explicit allow-lists, not implicit "unless denied".
-- Object-level access: never trust a client-supplied ID without mapping it through an ownership or permission check.
-- Admin actions require an explicit admin predicate — not "whoever is logged in can hit this URL".
+- Object-level access: never trust a client-supplied ID without mapping it through ownership or permission checks.
+- SSRF risk belongs here in 2025: user-controlled URLs, redirects, callbacks, and fetch targets need allow-listed schemes, hosts, and network ranges.
 
 Downstream review: `kramme:auth-reviewer`.
 
-## 6. Security misconfiguration
+## A02: Security Misconfiguration
 
 **Pattern at author time**: secure defaults, no verbose errors in prod, least-privileged service accounts.
 
 - Error responses in production expose only a generic message and a correlation ID; stack traces, library versions, and internal paths stay server-side.
-- Debug and verbose modes off by default. Separate dev and prod config, not a single file with a `NODE_ENV` branch you can forget to flip.
-- Default credentials changed before launch. Default ports for admin interfaces firewalled.
-- Unused features disabled. Every exposed endpoint is justified.
-- Secure-header defaults on (HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy).
+- Debug and verbose modes are off by default. Separate dev and prod config instead of one file with a branch that can be forgotten.
+- Default credentials are changed before launch. Admin interfaces are firewalled.
+- Unused features are disabled. Every exposed endpoint is justified.
+- Secure-header defaults are on: HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and an appropriate CSP.
+- XML parsers are configured safely; external entity resolution stays disabled unless there is a documented, isolated reason.
 
-## 7. Cross-site scripting (XSS)
+## A03: Software Supply Chain Failures
 
-**Pattern at author time**: escape at output boundaries, prefer safe DOM APIs, use CSP.
+**Pattern at author time**: lock inputs, know what ships, scan continuously, and minimize trusted automation.
 
-- Output escaping per context: HTML-body, HTML-attribute, URL, JS-string, CSS each have different escape rules — use the framework's per-context helpers, don't hand-roll.
-- `textContent` over `innerHTML`. Framework-native templating over dynamic HTML construction.
-- User-supplied URLs: validate protocol against an allow-list (`http`, `https`, `mailto` as applicable) before rendering or linking.
-- DOM-based XSS: avoid `document.write`, `.innerHTML`, `eval`, `new Function(...)`, `setTimeout("...")` with a string body.
+- Lock files (`package-lock.json`, `yarn.lock`, `poetry.lock`, `Cargo.lock`, `go.sum`) are committed.
+- Dependency scanners (`npm audit`, `pip-audit`, `go vuln`, ecosystem equivalent) run in CI and block on high or critical findings.
+- SBOM or dependency inventory exists for customer-shipped artifacts.
+- Build, release, and package-publish credentials use least privilege and have rotation paths.
+- CI actions, container base images, and installer scripts are pinned to trusted versions or digests where practical.
+- Transitive dependencies are scanned too; most interesting CVEs live below the direct dependency layer.
 
-## 8. Insecure deserialization
+Downstream review: `kramme:data-reviewer`.
 
-**Pattern at author time**: validate the shape _before_ deserializing into an object graph.
+## A04: Cryptographic Failures
 
-- JSON is safe to parse but not safe to _trust_. Parse first, validate shape with a schema (Zod / Pydantic / equivalent) next, convert to domain types last.
-- Language-native binary deserialization (`pickle`, `unserialize`, Java serialization) on untrusted input is a remote-code-execution primitive. Prefer JSON or a typed binary format like Protobuf.
-- Class allow-lists for any deserializer that instantiates types from the payload.
-- Signed payloads for inter-service messages that carry instructions.
+**Pattern at author time**: encrypt at rest, TLS in transit, use vetted primitives, and keep secrets out of logs and source.
 
-## 9. Using components with known vulnerabilities
+- In transit: TLS everywhere. No "it's internal so plaintext is fine".
+- At rest: AES-GCM or an ecosystem-equivalent AEAD for credentials, PII, financial, and health data.
+- Passwords: bcrypt, scrypt, or argon2 with a non-trivial work factor. Never SHA-256 alone.
+- Secret comparisons use constant-time primitives (`crypto.timingSafeEqual`, `hmac.compare_digest`, etc.).
+- Keys come from a secret manager or equivalent, never hardcoded. Rotation path is defined before launch.
+- API responses filter fields before serialization; never spread an entire database row into the response.
 
-**Pattern at author time**: lock files committed, scanner in CI, upgrade on a cadence.
+Downstream review: `kramme:data-reviewer`.
 
-- Lock files (`package-lock.json`, `yarn.lock`, `poetry.lock`, `Cargo.lock`, `go.sum`) committed.
-- `npm audit` / `pip-audit` / `go vuln` / ecosystem-equivalent runs in CI and blocks on high-or-critical findings.
-- Dependency updates on a cadence — small, frequent upgrades are cheaper than annual big-bang ones.
-- Transitive dependencies scanned too — most interesting CVEs live a few layers deep.
-- SBOM generation for anything shipping to customers.
+## A05: Injection
 
-## 10. Insufficient logging and monitoring
+**Pattern at author time**: parameterize, escape, validate - in that order of preference.
 
-**Pattern at author time**: log auth events, privilege changes, and administrative actions with enough context to reconstruct the timeline — without logging the credentials themselves.
+- SQL / NoSQL: always parameterized queries. The ORM raw-interpolation escape hatch is a smell; the legitimate dynamic-identifier case uses allow-lists.
+- Command execution: explicit-args form (`spawn(cmd, [arg1, arg2])`). No `shell: true`, no shell-interpreted strings.
+- Templates and DOM: framework defaults and output escaping stay on. Do not reach for raw/unsafe helpers.
+- XSS sits under injection risk: use `textContent` over `innerHTML`; avoid `dangerouslySetInnerHTML`, `v-html`, `[innerHTML]`, and sanitizer bypasses with user data.
+- User-supplied URLs need protocol allow-lists before rendering, redirecting, or linking.
+- Input validation is defense in depth, not a substitute for safe sinks.
 
-- Auth events logged: login success / failure, password change, MFA enrollment, MFA prompt, role change, permission grant / revoke.
-- Every log line for a user-scoped event includes a principal ID and a correlation ID. Never the password, never the token, never the raw request body from an auth endpoint.
-- Log format is structured (JSON or key-value), not free-text — parseable by the observability stack without regex.
-- Alerts defined for the events that matter: repeated auth failures from one source, sudden privilege escalation, secret-scanner hits in CI.
-- Retention policy that balances forensic needs against the blast radius of a log-store compromise.
+Downstream review: `kramme:injection-reviewer`.
+
+## A06: Insecure Design
+
+**Pattern at author time**: make the abuse case explicit before writing the happy path.
+
+- State the trust boundary and the simplest control with `SIMPLICITY CHECK` before adding layers.
+- For high-value actions, design authorization, replay protection, rate limits, audit events, and rollback behavior before the handler lands.
+- Do not rely on "the UI won't expose that" as a control; APIs are the product surface.
+- Model failure modes: duplicate submissions, partial writes, stale permissions, expired tokens, and retries.
+- New auth flows, CORS changes, upload endpoints, elevated-permission additions, and third-party integrations stay in `ASK FIRST` territory.
+
+Downstream review: choose `kramme:auth-reviewer`, `kramme:data-reviewer`, or `kramme:injection-reviewer` based on the boundary.
+
+## A07: Authentication Failures
+
+**Pattern at author time**: use the vetted primitives, rotate session IDs on privilege change, set cookie flags correctly.
+
+- Session tokens are server-issued, high-entropy, and rotated on login, logout, password change, and role change.
+- Cookies carry `Secure`, `HttpOnly`, and `SameSite=Lax` or `Strict` for pure first-party flows.
+- MFA is a first-class option for privileged actions; designing it in later costs more.
+- Expiration has absolute and idle timeouts enforced server-side.
+- Auth endpoints have tighter rate limits than general APIs and do not reveal whether a username exists.
+
+Any new auth flow is an `ASK FIRST` situation.
+
+Downstream review: `kramme:auth-reviewer`.
+
+## A08: Software or Data Integrity Failures
+
+**Pattern at author time**: verify provenance before trusting code, config, models, updates, and serialized data.
+
+- Signed payloads for inter-service messages that carry instructions or state transitions.
+- Webhook handlers verify provider signatures and timestamps before parsing business data.
+- Auto-update, plugin, model, and config-loading paths validate signatures, checksums, or trusted origins.
+- Do not deserialize untrusted data into rich object graphs. Parse to plain data, validate shape, then convert to domain types.
+- CI/CD paths require protected branches, scoped tokens, and review gates before production-affecting changes.
+
+Downstream review: `kramme:data-reviewer`.
+
+## A09: Security Logging and Alerting Failures
+
+**Pattern at author time**: log security events with enough context to reconstruct the timeline - without logging credentials.
+
+- Auth events logged: login success/failure, password change, MFA enrollment, MFA prompt, role change, permission grant/revoke.
+- Every user-scoped event includes a principal ID and a correlation ID. Never the password, token, cookie, or raw auth-route request body.
+- Logs are structured JSON or key-value, not free text that needs fragile regex parsing.
+- Alerts exist for repeated auth failures, sudden privilege escalation, secret-scanner hits in CI, and suspicious admin actions.
+- Retention balances forensic needs against the blast radius of log-store compromise.
+
+Downstream review: `kramme:data-reviewer`.
+
+## A10: Mishandling of Exceptional Conditions
+
+**Pattern at author time**: fail closed, preserve invariants, and make retries safe.
+
+- Every external call and async job has a timeout, retry policy, and terminal failure path.
+- Partial writes are transactional or compensating; a failure halfway through does not leave elevated access, orphaned money movement, or hidden data exposure.
+- Authorization and validation failures fail closed, not "continue with defaults".
+- Error handlers do not swallow security-relevant failures; they emit safe logs and return generic user-facing errors.
+- Retry paths are idempotent and bounded. Duplicate webhooks, queued jobs, or form submissions do not double-apply state changes.
+- Exceptional states are tested: expired credentials, missing upstream records, malformed provider responses, and aborted uploads.
+
+Downstream review: choose the reviewer that matches the failed boundary.
 
 ---
 
 ## How the categories compose
 
-A single feature — "let users upload a CSV and kick off a job" — touches at least:
+A single feature - "let users upload a CSV and kick off a job" - touches at least:
 
-- #1 (injection) if the CSV parser is used with string-interpolation or if row data flows into SQL.
-- #3 (sensitive data) if any PII crosses into the job's storage.
-- #5 (access control) if jobs must be owned by the uploader.
-- #8 (deserialization) if the parser materializes rich objects.
-- #10 (logging) for the upload event.
+- A01 (access control) if jobs must be owned by the uploader.
+- A03 (supply chain) if the parser or worker image introduces new dependencies.
+- A04 (cryptographic failures) if any PII crosses into storage.
+- A05 (injection) if row data flows into SQL, shell, templates, or generated files.
+- A08 (integrity failures) if the upload triggers signed jobs or imported state.
+- A09 (logging) for the upload and job events.
+- A10 (exceptional conditions) for parser crashes, partial imports, and retry behavior.
 
-A single feature rarely lives in a single category. Walk the list mentally, and satisfy the categories that apply before the slice is done.
+A single feature rarely lives in one category. Walk the list mentally, and satisfy the categories that apply before the slice is done.

@@ -750,7 +750,6 @@ For connections that aren't simple vertical/horizontal, use an absolutely positi
     stroke-width="1.5"
     stroke-dasharray="4 3"
   />
-  <!-- Arrowhead -->
   <polygon points="348,195 352,205 356,195" fill="var(--accent)" />
 </svg>
 ```

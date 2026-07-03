@@ -139,7 +139,7 @@ Any change that introduces a new auth method, IdP, or role model is `ASK FIRST` 
 
 The review-time `kramme:injection-reviewer` agent catches these at PR stage; this section prevents them in the first draft.
 
-Read `references/owasp-top-10.md` when a slice touches injection, XSS, parser, authentication, access-control, dependency, logging, or security-misconfiguration risk; it maps the OWASP categories to author-time prevention patterns.
+Read `references/owasp-top-10.md` when a slice touches injection, XSS, parser, authentication, access-control, dependency, supply-chain, integrity, logging, exceptional-condition, or security-misconfiguration risk; it maps the OWASP Top 10:2025 categories to author-time prevention patterns.
 
 - **SQL / NoSQL** — parameterize every query. Never `"SELECT * FROM users WHERE id = " + userId`. If the ORM exposes a raw-interpolation escape hatch, that's a code smell; the one good reason is usually not present.
 - **Command execution** — don't. If you must, use the explicit-args form (`spawn(cmd, [arg1, arg2])`), never shell-interpreted strings, never `shell: true`.
