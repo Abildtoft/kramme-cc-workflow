@@ -20,6 +20,17 @@ Break down a specification into atomic, committable issues organized into phases
 
 **Implementation is a separate workflow.** After this command completes, use `/kramme:siw:issue-implement` to start implementing.
 
+### Artifact Readiness Contract
+
+Use this shared vocabulary when gating inputs and describing outputs:
+
+- `product-only`: problem/user/outcome context exists, but testable requirements are missing.
+- `requirements-only`: scope and success criteria exist, but the spec lacks enough technical context, dependencies, or planning detail to create issue slices.
+- `planning-ready`: the spec is concrete enough to decompose into phases and atomic issues.
+- `implementation-ready`: generated issue files have bounded scope, dependencies, acceptance criteria, Mode, and verification. This skill produces implementation-ready artifacts only after the reviewed issue files are written.
+
+If the input is `product-only` or `requirements-only`, stop before decomposition and route to `/kramme:siw:discovery` or spec hardening. Do not create issue files from an artifact that cannot support planning-ready decomposition.
+
 ## Issue Numbering Scheme
 
 Use **phase-prefixed numbering** for clear organization: `ISSUE-G-001` for general tasks, `ISSUE-P1-001` for Phase 1, `ISSUE-P2-001` for Phase 2, and so on. Read `references/issue-numbering.md` before assigning, splitting, replacing, or appending issue IDs.
@@ -206,6 +217,8 @@ Identify and extract:
 - **Existing task breakdowns** - Any phases or tasks already defined
 - **Implementation phases** - Natural groupings or milestones
 
+Classify input readiness after extraction across the selected spec set: the main spec plus any supporting or contract specs found in Phase 1.2. Proceed only when that full set is `planning-ready`: concrete objective, scope/non-goals, success criteria, relevant technical context, and no blocking open questions that would force invented issue scope. Supporting and contract specs may satisfy technical context, dependencies, API, data-model, or planning-detail requirements; do not reject a main spec solely because those details live in the supporting documents. If the selected spec set is `product-only` or `requirements-only`, stop with `MISSING REQUIREMENT` and recommend the smallest spec-hardening step.
+
 ## Phase 3: Phase Decomposition
 
 ### 3.1 Identify Phase Boundaries
@@ -222,6 +235,15 @@ Analyze the spec to find natural phase boundaries:
   - **Documentation / Process**: Phases map to document sections or workflow stages. Each phase produces a reviewable deliverable.
 - Identify cross-cutting concerns for the "General" category (setup, tooling, docs)
 
+### 3.1.5 Detect Prefactoring Needs
+
+Before finalizing phase boundaries, check whether a behavior-preserving prefactoring slice should be first:
+
+- Add a prefactoring issue when current structure would otherwise force an L/XL task, duplicate implementation work, broad cross-module edits, or hidden refactor scope inside a feature slice.
+- Make the prefactoring issue the earliest dependency that unlocks cleaner feature work, usually `G` for cross-cutting prep or `P1` when it belongs to the first phase.
+- Acceptance criteria must prove behavior is preserved and the later work is easier to slice; do not include new product behavior in the prefactoring issue.
+- Do not add speculative cleanup. If the prep work is nice-to-have rather than unlocking cleaner implementation, leave it out or mark it as a separate non-blocking follow-up.
+
 ### 3.2 Break Into Atomic Tasks
 
 For each phase, decompose into atomic tasks:
@@ -233,6 +255,7 @@ For each phase, decompose into atomic tasks:
 - **Sized XS, S, M, or L** per `references/task-sizing.md`. XL tasks MUST be decomposed further before approval.
 - **Clearly defined** - Unambiguous scope with explicit boundaries
 - **Mode-tagged** - `AUTO` or `HITL` (see Mode taxonomy below)
+- **Prefactoring-aware** - Any necessary preparatory refactor is explicit as its own first slice or dependency, not hidden inside a feature task
 
 **Mode taxonomy (AUTO vs HITL — load-bearing for autonomous-agent pickup):**
 
@@ -253,6 +276,7 @@ Read sizing grammar, break-down triggers, and the context-appropriate slicing ru
 
 - Which tasks block other tasks within the same phase?
 - Which phases depend on completing previous phases?
+- Does a prefactoring task need to block later feature or migration tasks?
 
 ### 3.3 Generate Phase Plan Structure
 
@@ -285,7 +309,7 @@ Before running the review pass, read `references/breakdown-review-prompt.md`. It
 
 **Incorporate feedback:** Update the phase plan based on subagent suggestions.
 
-**Loopback gate (max 3 iterations):** If the review pass reports any XL task, any context-inappropriate horizontal / over-bundled slice, or any Mode-coverage issue per criterion 9 (unlabeled task, HITL-without-reason, or HITL whose reason is too weak to justify it), re-run Phase 3.2 decomposition and re-run the review pass. Only proceed to Phase 5 once the review confirms zero XL tasks, zero slicing-shape issues, and complete, correctly-defaulted Mode coverage.
+**Loopback gate (max 3 iterations):** If the review pass reports any XL task, any context-inappropriate horizontal / over-bundled slice, any missing prefactoring-first split where prep work is necessary, or any Mode-coverage issue per criterion 9 (unlabeled task, HITL-without-reason, or HITL whose reason is too weak to justify it), re-run Phase 3.2 decomposition and re-run the review pass. Only proceed to Phase 5 once the review confirms zero XL tasks, zero slicing-shape issues, no required hidden prefactoring, and complete, correctly-defaulted Mode coverage.
 
 If the gate is still failing after **3 review passes**, stop looping. Surface the remaining flagged items to the user as `POTENTIAL CONCERNS` and use AskUserQuestion to choose: "Proceed to Phase 5 with remaining concerns" / "Abort and let me edit the spec first". Do not loop a fourth time.
 

@@ -50,7 +50,7 @@ Before reporting Phase 7, verify:
 
 - Any task title containing the word "and" is justified because both halves are inseparable; otherwise split it.
 - Every task carries an explicit size; no XL survived Phase 4.
-- Phase 4 subagent prompt ran with all nine criteria (including Vertical slicing, Parallelization, and Mode coverage) against the final plan after any Phase 4.5 changes.
+- Phase 4 subagent prompt ran with all ten criteria (including Vertical slicing, Parallelization, Mode coverage, and Prefactoring-first) against the final plan after any Phase 4.5 changes.
 - Parallelization categories are recorded for each task group.
 - The Phase 5 `PLAN:` block shows every issue size and every group-level `Parallelization:` note.
 - Existing append-mode issue IDs were preserved, with new work assigned to the next unused number in each prefix group.
