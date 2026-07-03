@@ -1,10 +1,10 @@
 sources:
   - id: owasp-top-10
-    url: https://owasp.org/www-project-top-ten/
-    title: "OWASP Top 10"
-    rationale: "The author-time category pattern guide in references/owasp-top-10.md follows the OWASP Top 10 vulnerability taxonomy."
-    last_reviewed_at: 2026-06-10
-    baseline_hash: ""
+    url: https://owasp.org/Top10/2025/
+    title: "OWASP Top 10:2025"
+    rationale: "The author-time category pattern guide in references/owasp-top-10.md follows the OWASP Top 10:2025 vulnerability taxonomy."
+    last_reviewed_at: 2026-07-03
+    baseline_hash: "sha256:545e65007afdd168218f5c3c883db802ccf9d61d53b80e01a002d81b4e8da10f"
   - id: addy-security-and-hardening
     url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/security-and-hardening/SKILL.md
     title: "Addy Osmani agent-skills - security and hardening"

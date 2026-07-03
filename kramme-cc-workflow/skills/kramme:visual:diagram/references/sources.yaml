@@ -5,3 +5,15 @@ sources:
     rationale: "Visual explanation workflow, diagram composition, and browser-rendered artifact conventions are adapted from this project."
     last_reviewed_at: 2026-05-28
     baseline_hash: "8f1d0e38ab0f265632a31d2fd032f7b730c98c15"
+  - id: mermaid-flowchart-docs
+    url: https://mermaid.js.org/syntax/flowchart.html
+    title: "Mermaid Flowcharts Syntax"
+    rationale: "Mermaid flowchart syntax guidance, including shape syntax, Markdown Strings, classDef usage, and parser caveats, is derived from the official Mermaid docs."
+    last_reviewed_at: 2026-07-03
+    baseline_hash: ""
+  - id: mermaid-usage-config
+    url: https://mermaid.js.org/config/usage.html
+    title: "Mermaid Usage and Configuration"
+    rationale: "Mermaid integration guidance for securityLevel and rendering behavior is derived from the official Mermaid usage docs."
+    last_reviewed_at: 2026-07-03
+    baseline_hash: ""

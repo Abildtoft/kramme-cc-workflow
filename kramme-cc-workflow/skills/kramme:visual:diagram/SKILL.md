@@ -71,6 +71,14 @@ Vary the choice each time. If the last diagram was dark and technical, make the 
 
 **Mermaid theming:** Always use `theme: 'base'` with custom `themeVariables` so colors match your page palette. Use `look: 'handDrawn'` for sketch aesthetic or `look: 'classic'` for clean lines. Use `layout: 'elk'` for complex graphs (requires the `@mermaid-js/layout-elk` package — see `references/libraries.md` for the CDN import). Override Mermaid's SVG classes with CSS for pixel-perfect control. See `references/libraries.md` for full theming guide.
 
+**Mermaid syntax guardrails:** Keep these parser and integration gotchas in mind before rendering:
+
+- Flowcharts treat lowercase `end` as a subgraph terminator. If a node label must say it, quote it or change the case (`End`, `END`) before rendering.
+- Expanded shape syntax such as `A@{ shape: rect }` requires Mermaid v11.3.0 or newer. Use older bracket shapes when the page pins an older Mermaid build.
+- Markdown Strings support bold/italic formatting and automatic wrapping in labels when the label text is wrapped in backticks inside quotes, e.g. ``A["`**Title** details`"]``. Use them for rich labels, but preview wrapping at mobile widths.
+- Keep Mermaid's default `securityLevel` for untrusted diagram source. Set `securityLevel: 'loose'` only when the diagram text is trusted and click handlers or HTML labels are required.
+- `classDef` is Mermaid styling applied inside the diagram source. Use it for stable node/edge classes, then use page CSS overrides on generated SVG classes only for final visual polish.
+
 **Mermaid zoom controls:** Always add zoom controls (+/-/reset buttons) to every `.mermaid-wrap` container. Complex diagrams render at small sizes and need zoom to be readable. Include Ctrl/Cmd+scroll zoom on the container. See the zoom controls pattern in `references/css-patterns.md` and the reference template at `assets/mermaid-flowchart.html`.
 
 **AI-generated illustrations (optional).** If [surf-cli](https://github.com/nicobailon/surf-cli) is available, you can generate images via Gemini and embed them in the page for creative, illustrative, explanatory, educational, or decorative purposes. Side effects: each `surf gemini` call shells the prompt out to an external Gemini-backed CLI that makes a paid Google Gemini API call over the network and consumes API quota. Check availability with `which surf`. If available:
