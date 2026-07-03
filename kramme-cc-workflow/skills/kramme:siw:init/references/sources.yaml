@@ -1,30 +1,30 @@
 sources:
   - id: compound-ce-strategy
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-strategy
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-strategy
     title: "EveryInc compound-engineering-plugin - ce-strategy"
     rationale: "The optional STRATEGY.md grounding and propagation of product strategy context into planning artifacts are adapted from this source."
     last_reviewed_at: 2026-06-06
     baseline_hash: ""
   - id: compound-ce-plan
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-plan
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-plan
     title: "EveryInc compound-engineering-plugin - ce-plan"
     rationale: "The strategy-aware planning handoff and non-blocking treatment of strategy conflicts are informed by this source."
     last_reviewed_at: 2026-06-06
     baseline_hash: ""
   - id: compound-ce-brainstorm
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-brainstorm
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-brainstorm
     title: "EveryInc compound-engineering-plugin - ce-brainstorm"
     rationale: "The use of product strategy as grounding for requirement capture before planning is informed by this source."
     last_reviewed_at: 2026-06-06
     baseline_hash: ""
   - id: compound-ce-ideate
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-ideate
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-ideate
     title: "EveryInc compound-engineering-plugin - ce-ideate"
     rationale: "The product-direction handoff from ideation into planning context is informed by this source."
     last_reviewed_at: 2026-06-06
     baseline_hash: ""
   - id: compound-ce-product-pulse
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-product-pulse
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-product-pulse
     title: "EveryInc compound-engineering-plugin - ce-product-pulse"
     rationale: "The feedback-loop relationship between pulse reports and future planning context is informed by this source."
     last_reviewed_at: 2026-06-06
