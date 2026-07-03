@@ -1,19 +1,19 @@
 sources:
   - id: pocock-design-an-interface
-    url: https://github.com/mattpocock/skills/tree/main/design-an-interface
+    url: https://github.com/mattpocock/skills/tree/main/skills/deprecated/design-an-interface
     title: "Matt Pocock skills - design-an-interface"
     rationale: "The Design It Twice parallel sub-agent mode (3+ radically different interface designs with assigned constraints — minimize methods, maximize flexibility, optimize common case, ports & adapters — then comparison by depth, locality, and seam placement) is adapted from this source."
     last_reviewed_at: 2026-04-25
     baseline_hash: ""
   - id: pocock-improve-codebase-architecture-deepening
-    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/improve-codebase-architecture/DEEPENING.md
-    title: "Matt Pocock skills - improve-codebase-architecture (DEEPENING.md)"
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/codebase-design/DEEPENING.md
+    title: "Matt Pocock skills - codebase-design (DEEPENING.md)"
     rationale: "The dependency-category framing for choosing test stand-ins and adapter strategy (in-process, local-substitutable, remote-but-owned, true-external) is operationalized in references/design-it-twice.md as a 'Dependency categories' subsection that gates constraint #4 (Ports & adapters) and is required output in the per-sub-agent prompt template's 'Dependency strategy' section."
-    last_reviewed_at: 2026-05-05
-    baseline_hash: "sha256:9577485f4fc32c0267639a9151bb41c8af0f8f6086e4bf8b84d5b236e30604e9"
+    last_reviewed_at: 2026-07-03
+    baseline_hash: "sha256:125e6b77413ad2bc7cf7a772bc74336d580a50f9e797db2178ed133d62333d06"
   - id: pocock-improve-codebase-architecture-interface-design
-    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/improve-codebase-architecture/INTERFACE-DESIGN.md
-    title: "Matt Pocock skills - improve-codebase-architecture (INTERFACE-DESIGN.md)"
-    rationale: "The Design It Twice framing and sub-agent output shape in references/design-it-twice.md are cross-checked against this source's interface-design process."
-    last_reviewed_at: 2026-05-05
-    baseline_hash: "sha256:678c3e34f1339015053212b3316bf0b676c70aa251050a0613667d4e755fb35e"
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/codebase-design/DESIGN-IT-TWICE.md
+    title: "Matt Pocock skills - codebase-design (DESIGN-IT-TWICE.md)"
+    rationale: "The Design It Twice framing and sub-agent output shape in references/design-it-twice.md are cross-checked against this source's Design It Twice process."
+    last_reviewed_at: 2026-07-03
+    baseline_hash: "sha256:21c3264953bd30ee87b181a3ccaf0e70649f461e5ffd7dc654acee4ba1788b31"

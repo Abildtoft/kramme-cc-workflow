@@ -1,6 +1,6 @@
 sources:
   - id: pocock-to-issues
-    url: https://github.com/mattpocock/skills/tree/main/to-issues
+    url: https://github.com/mattpocock/skills/tree/main/skills/engineering/to-issues
     title: "Matt Pocock skills - to-issues"
     rationale: "The HITL/AUTO mode tag on issue files (originally HITL/AFK in Pocock) is adapted from this source."
     last_reviewed_at: 2026-04-25

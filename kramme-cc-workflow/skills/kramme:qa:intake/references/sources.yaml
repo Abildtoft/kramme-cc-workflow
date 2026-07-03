@@ -1,7 +1,7 @@
 sources:
   - id: pocock-qa
-    url: https://github.com/mattpocock/skills/tree/main/qa
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/deprecated/qa/SKILL.md
     title: "Matt Pocock skills - qa"
     rationale: "The conversational multi-bug intake workflow, the at-most-2-3-clarifying-questions cap, background codebase exploration for domain language, single-issue-vs-breakdown decision logic, and the durable issue-body conventions are adapted from this source."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: "6a87ed07b027d3485dcc77fddff628b62d4e4a9b"
+    last_reviewed_at: 2026-07-03
+    baseline_hash: "sha256:d9727aac6503981bf69bdd8b37e0d85b32b8fbd353a57528c252dac1337ab761"

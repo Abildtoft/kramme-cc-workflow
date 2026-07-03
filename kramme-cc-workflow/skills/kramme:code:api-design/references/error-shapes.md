@@ -78,7 +78,7 @@ GET /me                ← no Authorization header
 **403 — Not authorized.** Credentials are valid but this user is not allowed to do this.
 
 ```
-DELETE /tasks/abc      ← task belongs to another user
+Request targets /tasks/abc with the removal method, but the task belongs to another user.
 
 → 403
 { "code": "forbidden", "message": "You do not have permission to delete this task." }
