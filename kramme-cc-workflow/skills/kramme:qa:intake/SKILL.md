@@ -99,7 +99,7 @@ Print a one-line greeting and ask:
 
 > What's the first issue?
 
-Do not ask for a list, do not ask the user to pre-categorize. One issue at a time keeps the loop tight and the tickets clean.
+Keep the opening prompt narrow: ask for one issue at a time rather than a full list or category labels. This keeps the loop tight and the tickets clean.
 
 ## Step 3: Per-Issue Loop
 

@@ -14,7 +14,7 @@ Reference material for Rule 4 of `kramme:code:api-design`. The default conventio
 
 ## Why these specifically
 
-- **Plural nouns in URLs**: the URL names a collection; the HTTP method names the action. Putting verbs in the URL duplicates the method and forces hyphenation or casing decisions that never agree. `POST /tasks` creates; `GET /tasks` lists; `DELETE /tasks/:id` deletes. The path stays stable as methods evolve.
+- **Plural nouns in URLs**: the URL names a collection; the HTTP method names the action. Putting verbs in the URL duplicates the method and forces hyphenation or casing decisions that never agree. `POST /tasks` creates; `GET /tasks` lists; the removal method applied to `/tasks/:id` deletes. The path stays stable as methods evolve.
 - **camelCase for params and fields**: matches idiomatic JavaScript/TypeScript property access without mapping layers. Consumers can `response.data.assigneeId` directly.
 - **`is` / `has` / `can` on booleans**: makes the field self-describing at the call site. `if (user.archived)` reads like a noun ("the user's archived"); `if (user.isArchived)` reads like a predicate.
 - **`UPPER_SNAKE` enum values**: distinguishes enum values from user-entered strings and object keys at a glance. Also resists accidental i18n — an `UPPER_SNAKE` value is obviously a code, not display copy.
