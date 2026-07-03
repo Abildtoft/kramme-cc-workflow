@@ -15,10 +15,10 @@ This skill is an adapter, not a full autonomous pipeline. It does not create bra
 ## Process Overview
 
 1. Parse the plan input.
-2. Read `references/routing.md` and classify the plan.
+2. Read `references/routing.md`, classify artifact readiness, and classify the plan route.
 3. Gather enough codebase context to validate the route.
 4. Delegate to Linear or SIW when the plan is already tracked there.
-5. Recommend SIW when the plan is too large or multi-phase for direct execution.
+5. Recommend SIW or spec hardening when the artifact is not implementation-ready.
 6. Read `references/direct-execution.md` and proceed directly only for bounded current-branch work.
 7. Verify and close out with changes, verification, and remaining risks.
 
@@ -53,18 +53,32 @@ Build a concise plan intake summary:
 - Acceptance or completion criteria.
 - Verification plan.
 - Open questions, risks, and blockers.
+- Artifact readiness: `product-only`, `requirements-only`, `planning-ready`, or `implementation-ready`.
 
 Do not fill missing fields with guesses. Mark missing fields that affect safe execution as `MISSING REQUIREMENT`.
 
+### Artifact Readiness Vocabulary
+
+Classify the source artifact before choosing a route:
+
+- `product-only`: explains the desired outcome, users, problem, or opportunity, but lacks testable scope, success criteria, or implementation constraints.
+- `requirements-only`: defines objective, scope, boundaries, and success criteria, but lacks issue-level decomposition, dependencies, affected areas, or an executable verification plan.
+- `planning-ready`: has stable requirements and enough technical/contextual detail to generate SIW phases or define issues, but is not itself an implementation issue.
+- `implementation-ready`: names a bounded unit of work with clear scope, dependencies, affected modules or files, acceptance criteria, and local verification.
+
+Only `implementation-ready` artifacts can route to `direct` or `siw` implementation. `product-only` and `requirements-only` artifacts must be rejected for direct execution and routed to `/kramme:docs:feature-spec`, `/kramme:siw:discovery`, or another spec-hardening step depending on the missing layer. `planning-ready` artifacts route to `recommend-siw` unless they are already an executable SIW issue; for tracked SIW specs, recommend the next planning step (`/kramme:siw:generate-phases` for phased work or `/kramme:siw:issue-define` for one coherent issue).
+
 ## Step 3: Route The Plan
 
-Read `references/routing.md`, then classify the plan as exactly one of:
+Read `references/routing.md`, classify artifact readiness, then classify the plan as exactly one of:
 
 - `linear`: the plan references a Linear issue and should be delegated.
 - `siw`: the plan is already part of SIW or references an SIW issue.
 - `recommend-siw`: the plan is large, multi-phase, ambiguous, or durable enough to need local tracking before implementation.
 - `direct`: the plan is bounded enough to implement on the current branch.
 - `blocked`: required context is missing or contradictory.
+
+If the source is `product-only` or `requirements-only`, do not choose `direct`, even if the requested change sounds small. Explain the missing readiness layer and recommend the smallest hardening step instead. If the source is `planning-ready` but lacks issue-level scope or verification, choose `recommend-siw` even when the artifact already lives under `siw/`; a tracked spec still needs `/kramme:siw:generate-phases` or `/kramme:siw:issue-define` before `/kramme:siw:issue-implement`.
 
 Show the route decision before editing files:
 
@@ -89,9 +103,10 @@ Before editing code:
 
 1. Check the current branch and dirty state.
 2. Confirm the plan does not require branch creation, PR creation, pushing, deployment, or CI watching.
-3. Confirm the planned work fits the affected files and completion criteria.
-4. Confirm verification commands are discoverable from project instructions, package scripts, Makefile, CI, or existing test patterns.
-5. Identify at least one similar local pattern when the plan adds or changes workflow behavior.
+3. Confirm the source artifact is `implementation-ready`.
+4. Confirm the planned work fits the affected files and completion criteria.
+5. Confirm verification commands are discoverable from project instructions, package scripts, Makefile, CI, or existing test patterns.
+6. Identify at least one similar local pattern when the plan adds or changes workflow behavior.
 
 If uncommitted changes exist, inspect whether they overlap with the plan's files. Continue only when the changes are related or the user confirms it is acceptable to work alongside them.
 

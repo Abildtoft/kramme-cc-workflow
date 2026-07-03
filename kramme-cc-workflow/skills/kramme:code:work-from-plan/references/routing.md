@@ -22,19 +22,17 @@ MISSING REQUIREMENT: Linear issue identifier is required before implementation.
 
 ### SIW
 
-Use `siw` when any of these are true:
+Use `siw` only when the source identifies an executable SIW issue:
 
-- The plan path is under `siw/`.
 - The plan names an SIW issue identifier such as `ISSUE-G-001`, `G-001`, `ISSUE-P1-002`, or `P1-002`.
-- The plan says the source of truth is an SIW spec, SIW issue, phase, or local structured workflow.
+- The plan path is an issue file under `siw/issues/ISSUE-*.md`.
+- The plan says the source of truth is a specific SIW issue.
 
 Delegate to `kramme:siw:issue-implement` so status updates, spec sync, and issue closeout stay consistent.
 
-If the plan mentions SIW but no issue can be found or identified, stop with:
+If the plan mentions SIW but no issue can be found or identified, route to `recommend-siw` instead of `siw` so the user gets the next planning step rather than an implementation handoff that cannot run.
 
-```
-MISSING REQUIREMENT: SIW issue identifier or issue file is required before implementation.
-```
+Tracked SIW specs, `siw/DISCOVERY_BRIEF.md`, `siw/SPEC_STRENGTHENING_PLAN.md`, phase plans, and other non-issue SIW artifacts are not implementation-ready. Recommend `/kramme:siw:generate-phases`, `/kramme:siw:issue-define`, or `/kramme:siw:discovery` based on artifact readiness.
 
 ### Recommend SIW
 
