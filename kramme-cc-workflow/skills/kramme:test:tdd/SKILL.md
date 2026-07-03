@@ -34,6 +34,8 @@ Write a test that **fails because the behavior doesn't exist yet**, not because 
 
 - If no test runner is configured (greenfield project), set one up — or surface `MISSING REQUIREMENT` if the choice needs a decision — before writing the first test. There's nothing to run a RED test against otherwise.
 - Keep the test focused: one behavior per test.
+- Test through the public seam that callers actually use: exported functions, user-visible UI behavior, CLI output, API responses, or persisted side effects. Avoid reaching into private helpers just because they are easier to assert.
+- Derive expected values independently from the implementation. Use a hand-calculated example, a spec table, a fixture from the bug report, or a trusted external oracle; do not copy the production algorithm into the test.
 - Use a concrete example first (`formatDate("2026-04-20") → "Apr 20, 2026"`). Avoid parameterized or property-based tests until the behavior exists.
 - Run the test immediately. Confirm it fails, and read the failure message.
 
@@ -59,6 +61,11 @@ Once the test is green, refactor freely:
 Run tests after each non-trivial refactor step. If a refactor turns a test red, undo it. (Or undo the test, if the behavior genuinely needed to change — but then it's not a refactor, it's a behavior change, and deserves its own RED step.)
 
 **Stop refactoring when**: no duplication remains, names read cleanly, and the next thing you'd change is speculative. Don't carve out abstractions for tests you haven't written.
+
+### Test run discipline
+
+- Do not rerun the same test command repeatedly when no code, test, fixture, dependency, or environment state changed. Re-reading identical failures is not progress; inspect the failure, change something relevant, then run again.
+- Keep the final verification fresh: after the last code or test change, run the focused test and the project's broader verification target before declaring the cycle complete.
 
 ---
 
@@ -179,6 +186,8 @@ If any of these are true, pause and resolve before continuing:
 - You're copy-pasting test bodies instead of parameterizing behavior that belongs to the code under test.
 - You wrote the implementation first and are now "backfilling" tests to match.
 - The test duplicates the current algorithm or simply restates the implementation instead of checking behavior.
+- The test bypasses the public seam and asserts private implementation details that callers cannot observe.
+- The test's expected value was produced by the same algorithm or code path under test instead of an independent oracle.
 - The Prove-It test passes without the fix in place (the bug wasn't reproduced).
 - The test file is growing faster than the code file on a straightforward feature.
 - A test is marked `skip`/`xit`/`pending` and has been for more than one session.
@@ -190,8 +199,10 @@ If any of these are true, pause and resolve before continuing:
 Before declaring a TDD cycle complete, confirm:
 
 - [ ] Every new behavior has a test that would fail without the new code.
-- [ ] No new test simply restates the implementation; each one verifies observable behavior, a contract, an edge case, or a regression.
+- [ ] No new test simply restates the implementation; each one verifies observable behavior through a public seam, a contract, an edge case, or a regression.
+- [ ] Expected values come from an independent oracle: spec, fixture, hand calculation, reference implementation, or bug report.
 - [ ] The full test suite is green, not only the new tests.
+- [ ] You avoided redundant reruns of unchanged commands and ran fresh verification after the final relevant change.
 - [ ] No test is marked `skip`/`xit`/`pending`.
 - [ ] For bug fixes: the Prove-It test fails against the pre-fix commit (checkout and prove, or rely on CI history).
 - [ ] Refactor commits do not touch test expectations (if they do, they are behavior changes, not refactors).
