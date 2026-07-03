@@ -23,12 +23,12 @@ contract test in the same PR.
 
 | Host surface | Status | Source of truth | Output or runtime surface | Contract |
 | --- | --- | --- | --- | --- |
-| Claude Code plugin | `canonical` | `.claude-plugin/plugin.json`, `skills/`, `agents/`, `hooks/`, `mcp.json` | Claude Code plugin install | Author plugin behavior here first. |
-| Codex skills, prompts, and MCP config | `generated` | `scripts/convert-plugin.js`, `scripts/convert-plugin/codex-transformer.js`, `scripts/convert-plugin/codex-bundle-output.js`, `scripts/convert-plugin/codex-config.js` | `~/.codex/skills/`, `~/.codex/prompts/`, managed Codex config tables | Generated from Claude plugin source and converter modules. |
+| Claude Code plugin | `canonical` | `.claude-plugin/plugin.json`, `skills/`, `agents/`, `hooks/`, `manifest.mcpServers`, `.mcp.json` | Claude Code plugin install | Author plugin behavior here first. |
+| Codex skills, prompts, and MCP config | `generated` | `skills/`, `commands/`, `manifest.mcpServers`, `.mcp.json`, `scripts/convert-plugin.js`, `scripts/convert-plugin/codex-transformer.js`, `scripts/convert-plugin/codex-bundle-output.js`, `scripts/convert-plugin/codex-config.js` | `~/.codex/skills/`, `~/.codex/prompts/`, managed Codex config tables | Generated from Claude plugin source and converter modules. |
 | Codex agent skills | `generated` | `agents/`, `scripts/convert-plugin/codex-transformer.js`, `scripts/convert-plugin/codex-bundle-output.js` | `.agents/skills/` under the selected agents home | Generated from Claude agents. Do not hand-maintain installed agent skill copies. |
-| Codex hook plugin and shared scripts | `generated`, `thin adapter` | `hooks/`, `scripts/resolve-base.sh`, `scripts/collect-review-diff.sh`, `scripts/dev-server/`, `scripts/convert-plugin/codex-hook-plugin-writer.js`, `scripts/convert-plugin/codex-shared-scripts.js` | Managed Codex plugin marketplace/cache entries and hook config | Converts Claude hook behavior into Codex plugin packaging without expanding hook support promises. |
+| Codex hook plugin and shared scripts | `generated`, `thin adapter` | `hooks/`, `scripts/resolve-base.sh`, `scripts/collect-review-diff.sh`, `scripts/skill-usage.js`, `scripts/dev-server/`, `scripts/convert-plugin/codex-hook-plugin-writer.js`, `scripts/convert-plugin/codex-shared-scripts.js` | Managed Codex plugin marketplace/cache entries and hook config | Converts Claude hook behavior into Codex plugin packaging without expanding hook support promises. |
 | Codex `AGENTS.md` tool map | `instruction-only` | `scripts/convert-plugin/codex-writer.js` | Managed block in `~/.codex/AGENTS.md` | Maps Claude-oriented tool names to Codex behavior for agent instructions only. |
-| Local repository-maintenance skills | `local-only` | `.agents/skills/` and local exposure through `.claude/skills/` | This repository checkout | Used to maintain this repo and not shipped as plugin runtime behavior. |
+| Local repository-maintenance skills | `local-only` | Repository-local `./.agents/skills/` and local exposure through `./.claude/skills/` | This repository checkout | Used to maintain this repo and not shipped as plugin runtime behavior. |
 | Other hosts | `unsupported` | None | None | Unsupported unless a future row names source files, generated outputs, and tests. |
 
 ## Converter Contract
@@ -39,11 +39,14 @@ responsibilities:
 - `prompts`: generated Codex prompt files.
 - `skillDirs`: converted canonical skill directories.
 - `generatedSkills`: command-backed generated Codex skills.
-- `agentSkills`: generated agent skills for `.agents/skills/`.
+- `agentSkills`: generated agent skills for the selected agents home's `skills/`
+  directory.
 - `mcpServers`: managed Codex MCP config input.
 - `codexPlugin`: generated Codex hook plugin packaging when hook control skills
   are available.
 
-Installed output under `~/.codex`, `.agents/skills`, plugin caches, or generated
-hook marketplaces is not source behavior. Change canonical source or converter
-modules, then regenerate.
+Installed output under `~/.codex`, the selected agents home's `skills/`
+directory, plugin caches, or generated hook marketplaces is not source behavior.
+Repository-local `./.agents/skills/` remains the local-only source for
+maintenance skills. Change canonical source or converter modules, then
+regenerate.
