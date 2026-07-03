@@ -793,6 +793,7 @@ See [CLAUDE.md](CLAUDE.md) for detailed conventions. Quick reference:
 - [Skills Documentation](https://code.claude.com/docs/en/skills)
 - [Repository Architecture](kramme-cc-workflow/docs/architecture.md)
 - [Repository Code Map](kramme-cc-workflow/docs/code-map.md)
+- [Agent Portability Matrix](kramme-cc-workflow/docs/agent-portability.md)
 - [Decision Index](kramme-cc-workflow/docs/decisions/README.md)
 - [SIW Workflow Reference](kramme-cc-workflow/docs/siw.md)
 
