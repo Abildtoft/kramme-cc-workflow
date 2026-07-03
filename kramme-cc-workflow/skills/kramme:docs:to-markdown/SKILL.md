@@ -1,6 +1,6 @@
 ---
 name: kramme:docs:to-markdown
-description: Convert documents and files to Markdown using markitdown. Use when converting PDF, Word (.docx), PowerPoint (.pptx), Excel (.xlsx, .xls), HTML, CSV, JSON, XML, images (with EXIF/OCR), audio (with transcription), ZIP archives, YouTube URLs, or EPubs to Markdown format for LLM processing or text analysis.
+description: Convert documents and files to Markdown using markitdown. Use when converting PDF, Word (.docx), PowerPoint (.pptx), Excel (.xlsx, .xls), HTML, CSV, JSON, XML, images (with EXIF/OCR), audio (with transcription), video via Azure Content Understanding, ZIP archives, YouTube URLs, or EPubs to Markdown format for LLM processing or text analysis.
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -33,7 +33,7 @@ Before passing `-o` (or redirecting to a file), check whether the output path ex
 
 - **Documents**: PDF, Word (.docx), PowerPoint (.pptx), Excel (.xlsx, .xls)
 - **Web/Data**: HTML, CSV, JSON, XML
-- **Media**: Images (EXIF + OCR), Audio (EXIF + transcription)
+- **Media**: Images (EXIF + OCR), Audio (EXIF + transcription), Video (via Azure Content Understanding)
 - **Other**: ZIP (iterates contents), YouTube URLs, EPub
 
 ## Options
