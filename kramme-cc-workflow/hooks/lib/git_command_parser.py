@@ -6,10 +6,42 @@ from __future__ import annotations
 import re
 import shlex
 import sys
+import os
+import json
 
 
-CONTROL_TOKENS = {";", "&&", "||", "|", "|&", "&"}
-HEREDOC_START = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+CONTROL_TOKENS = {";", ";;", "&&", "||", "|", "|&", "&"}
+ASSIGNMENT_WORD = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
+SHELL_FUNCTION_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+SHELL_EXECUTABLES = {"sh", "bash", "zsh", "dash", "ksh"}
+SHELL_RESERVED_COMMAND_WORDS = {
+    "!",
+    "if",
+    "then",
+    "elif",
+    "else",
+    "fi",
+    "do",
+    "done",
+    "while",
+    "until",
+    "for",
+    "in",
+    "case",
+    "esac",
+    "{",
+    "}",
+    "(",
+}
+SHELL_OPTIONS_WITH_VALUE = {
+    "--command",
+    "--rcfile",
+    "--init-file",
+    "--startup-file",
+    "-o",
+    "-O",
+    "+O",
+}
 
 
 def read_dollar_substitution(command, start):
@@ -112,43 +144,500 @@ def _extract_body_substitutions(line):
     return subs
 
 
+def _basename(token):
+    return os.path.basename(token.lstrip("\\"))
+
+
+def _is_assignment(token):
+    return ASSIGNMENT_WORD.match(token) is not None
+
+
+def _is_shell_function_name(token):
+    return SHELL_FUNCTION_NAME.match(token) is not None
+
+
+def _skip_empty_function_parens(tokens, idx):
+    if idx < len(tokens) and tokens[idx] == "()":
+        return idx + 1
+    if idx + 1 < len(tokens) and tokens[idx] == "(" and tokens[idx + 1] == ")":
+        return idx + 2
+    return idx
+
+
+def _function_body_start(tokens, idx):
+    token = tokens[idx]
+
+    if token == "function":
+        if idx + 1 >= len(tokens) or not _is_shell_function_name(tokens[idx + 1]):
+            return None
+        body_idx = _skip_empty_function_parens(tokens, idx + 2)
+        if body_idx < len(tokens) and tokens[body_idx] == "{":
+            return body_idx
+        return None
+
+    if not _is_shell_function_name(token):
+        return None
+
+    body_idx = _skip_empty_function_parens(tokens, idx + 1)
+    if body_idx == idx + 1:
+        return None
+    if body_idx < len(tokens) and tokens[body_idx] == "{":
+        return body_idx
+    return None
+
+
+def _collect_heredocs(line):
+    heredocs = []
+    idx = 0
+    quote = None
+    length = len(line)
+
+    while idx < length:
+        char = line[idx]
+        next_char = line[idx + 1] if idx + 1 < length else ""
+
+        if quote == "'":
+            if char == "'":
+                quote = None
+            idx += 1
+            continue
+
+        if quote == '"':
+            if char == '"':
+                quote = None
+            elif char == "\\" and next_char:
+                idx += 2
+                continue
+            idx += 1
+            continue
+
+        if char in {"'", '"'}:
+            quote = char
+            idx += 1
+            continue
+
+        if char == "\\" and next_char:
+            idx += 2
+            continue
+
+        if char != "<" or next_char != "<":
+            idx += 1
+            continue
+
+        if idx + 2 < length and line[idx + 2] == "<":
+            idx += 3
+            continue
+
+        start = idx
+        strip_tabs = False
+        idx += 2
+        if idx < length and line[idx] == "-":
+            strip_tabs = True
+            idx += 1
+
+        while idx < length and line[idx] in {" ", "\t"}:
+            idx += 1
+
+        token = []
+        quoted = False
+        if idx < length and line[idx] in {"'", '"'}:
+            quoted = True
+            delimiter_quote = line[idx]
+            idx += 1
+            while idx < length:
+                char = line[idx]
+                if char == delimiter_quote:
+                    idx += 1
+                    break
+                token.append(char)
+                idx += 1
+        else:
+            while idx < length:
+                char = line[idx]
+                if char in {" ", "\t", "\n", "\r", ";", "|", "&", "<", ">"}:
+                    break
+                if char == "\\" and idx + 1 < length:
+                    idx += 1
+                    char = line[idx]
+                token.append(char)
+                idx += 1
+
+        delimiter = "".join(token)
+        if delimiter:
+            heredocs.append(
+                {
+                    "delimiter": delimiter,
+                    "quoted": quoted,
+                    "strip_tabs": strip_tabs,
+                    "start": start,
+                }
+            )
+
+    return heredocs
+
+
+def _tokenize_heredoc_prefix(line):
+    lexer = shlex.shlex(line, posix=True, punctuation_chars="()|&;")
+    lexer.whitespace_split = True
+    lexer.commenters = ""
+    return list(lexer)
+
+
+def _tokens_for_heredoc_command(tokens):
+    start = 0
+    for idx, token in enumerate(tokens):
+        if token in CONTROL_TOKENS:
+            start = idx + 1
+
+    command_tokens = []
+    idx = start
+    while idx < len(tokens):
+        token = tokens[idx]
+        if token in {"<", ">", ">>", "<>", ">|", "<&", ">&"}:
+            idx += 2
+            continue
+        if re.match(r"^\d*(?:<<-?|<<<|<>|>>?|>\||<&|>&)", token):
+            idx += 1
+            continue
+        command_tokens.append(token)
+        idx += 1
+
+    return command_tokens
+
+
+def _shell_has_c_option(word):
+    return word.startswith("-") and not word.startswith("--") and "c" in word[1:]
+
+
+def _shell_invocation_reads_stdin(args):
+    idx = 0
+    skip_option_operand = False
+
+    while idx < len(args):
+        word = args[idx]
+
+        if skip_option_operand:
+            skip_option_operand = False
+            idx += 1
+            continue
+
+        if word in {"-c", "--command"} or word.startswith("--command="):
+            return False
+
+        if _shell_has_c_option(word):
+            return False
+
+        if word in SHELL_OPTIONS_WITH_VALUE:
+            skip_option_operand = True
+            idx += 1
+            continue
+
+        if any(
+            word.startswith(prefix + "=")
+            for prefix in ("--rcfile", "--init-file", "--startup-file")
+        ):
+            idx += 1
+            continue
+
+        if word == "--":
+            idx += 1
+            continue
+
+        if word.startswith("-") or word.startswith("+"):
+            idx += 1
+            continue
+
+        return False
+
+    return True
+
+
+def _skip_prefixed_command_options(tokens, idx, command_name):
+    if command_name in {"command", "builtin"}:
+        idx += 1
+        while idx < len(tokens):
+            token = tokens[idx]
+            if token == "--":
+                return idx + 1
+            if token.startswith("-"):
+                idx += 1
+                continue
+            return idx
+        return idx
+
+    if command_name == "env":
+        idx += 1
+        while idx < len(tokens):
+            token = tokens[idx]
+            if _is_assignment(token):
+                idx += 1
+                continue
+            if token == "--":
+                return idx + 1
+            if token in {"-u", "--unset", "-C", "--chdir"}:
+                idx += 2
+                continue
+            if token.startswith("--unset=") or token.startswith("--chdir="):
+                idx += 1
+                continue
+            if token.startswith("-u") and token != "-u":
+                idx += 1
+                continue
+            if token.startswith("-C") and token != "-C":
+                idx += 1
+                continue
+            if token.startswith("-"):
+                idx += 1
+                continue
+            return idx
+        return idx
+
+    if command_name == "sudo":
+        idx += 1
+        sudo_options_with_value = {
+            "-u",
+            "-g",
+            "-h",
+            "-p",
+            "-C",
+            "-D",
+            "-R",
+            "-T",
+            "-U",
+            "-r",
+            "-t",
+        }
+        sudo_long_options_with_value = {
+            "--user",
+            "--group",
+            "--host",
+            "--prompt",
+            "--command-timeout",
+            "--close-from",
+            "--chdir",
+            "--chroot",
+            "--login-class",
+            "--role",
+            "--type",
+            "--other-user",
+        }
+        while idx < len(tokens):
+            token = tokens[idx]
+            if token == "--":
+                return idx + 1
+            if token in sudo_options_with_value or token in sudo_long_options_with_value:
+                idx += 2
+                continue
+            if any(
+                token.startswith(prefix + "=")
+                for prefix in (
+                    "--user",
+                    "--group",
+                    "--host",
+                    "--prompt",
+                    "--command-timeout",
+                    "--close-from",
+                    "--chdir",
+                    "--chroot",
+                    "--login-class",
+                    "--role",
+                    "--type",
+                    "--other-user",
+                )
+            ):
+                idx += 1
+                continue
+            if token.startswith("-") and not token.startswith("--"):
+                value_option_seen = False
+                for position, letter in enumerate(token[1:]):
+                    if letter in {
+                        "u",
+                        "g",
+                        "h",
+                        "p",
+                        "C",
+                        "D",
+                        "R",
+                        "T",
+                        "U",
+                        "r",
+                        "t",
+                    }:
+                        idx += 2 if position == len(token[1:]) - 1 else 1
+                        value_option_seen = True
+                        break
+                if value_option_seen:
+                    continue
+                idx += 1
+                continue
+            if token.startswith("-"):
+                idx += 1
+                continue
+            return idx
+        return idx
+
+    if command_name == "nice":
+        idx += 1
+        while idx < len(tokens):
+            token = tokens[idx]
+            if token == "--":
+                return idx + 1
+            if token in {"-n", "--adjustment"}:
+                idx += 2
+                continue
+            if token.startswith("--adjustment="):
+                idx += 1
+                continue
+            if token.startswith("-"):
+                idx += 1
+                continue
+            return idx
+        return idx
+
+    if command_name == "timeout":
+        idx += 1
+        while idx < len(tokens):
+            token = tokens[idx]
+            if token == "--":
+                idx += 1
+                if idx < len(tokens):
+                    idx += 1
+                break
+            if token in {"-s", "--signal", "-k", "--kill-after"}:
+                idx += 2
+                continue
+            if token.startswith("--signal=") or token.startswith("--kill-after="):
+                idx += 1
+                continue
+            if token.startswith("-"):
+                idx += 1
+                continue
+            idx += 1
+            break
+        return idx
+
+    if command_name == "time":
+        idx += 1
+        while idx < len(tokens):
+            token = tokens[idx]
+            if token == "--":
+                return idx + 1
+            if token in {"-o", "-f", "--output", "--format"}:
+                idx += 2
+                continue
+            if token.startswith("--output=") or token.startswith("--format="):
+                idx += 1
+                continue
+            if token.startswith("-"):
+                idx += 1
+                continue
+            return idx
+        return idx
+
+    if command_name == "nohup":
+        idx += 1
+        if idx < len(tokens) and tokens[idx] == "--":
+            return idx + 1
+        return idx
+
+    if command_name == "exec":
+        idx += 1
+        while idx < len(tokens):
+            token = tokens[idx]
+            if token == "--":
+                return idx + 1
+            if token == "-a":
+                idx += 2
+                continue
+            if token.startswith("-"):
+                idx += 1
+                continue
+            return idx
+        return idx
+
+    return idx
+
+
+def _line_has_supported_shell_stdin_heredoc(line, heredoc_start):
+    try:
+        tokens = _tokens_for_heredoc_command(
+            _tokenize_heredoc_prefix(line[:heredoc_start])
+        )
+    except ValueError:
+        return False
+
+    idx = 0
+    while idx < len(tokens):
+        token = tokens[idx]
+        base = _basename(token)
+
+        if _is_assignment(token) or token in SHELL_RESERVED_COMMAND_WORDS:
+            idx += 1
+            continue
+
+        if base in {
+            "command",
+            "builtin",
+            "env",
+            "sudo",
+            "nice",
+            "timeout",
+            "time",
+            "nohup",
+            "exec",
+        }:
+            next_idx = _skip_prefixed_command_options(tokens, idx, base)
+            if next_idx == idx:
+                return False
+            idx = next_idx
+            continue
+
+        if base in SHELL_EXECUTABLES:
+            return _shell_invocation_reads_stdin(tokens[idx + 1 :])
+
+        return False
+
+    return False
+
+
 def strip_heredoc_bodies(command):
     lines = command.splitlines(keepends=True)
     stripped_lines = []
-    delimiter = None
-    is_quoted = False
-    is_dashed = False
+    pending_heredocs = []
     extracted = []
 
     for line in lines:
-        if delimiter is not None:
+        if pending_heredocs:
+            current = pending_heredocs[0]
             # Strip trailing newline for comparison only.
             compare = line[:-1] if line.endswith("\n") else line
-            if is_dashed:
+            if current["strip_tabs"]:
                 # POSIX: <<- strips leading TABs only (never spaces).
                 compare = compare.lstrip("\t")
-            if compare == delimiter:
+            if compare == current["delimiter"]:
                 stripped_lines.append(line)
-                delimiter = None
-                is_quoted = False
-                is_dashed = False
+                pending_heredocs.pop(0)
                 continue
-            if not is_quoted:
-                # Unquoted heredoc bodies still expand $(...) and `...`.
-                body_line = line[:-1] if line.endswith("\n") else line
-                extracted.extend(_extract_body_substitutions(body_line))
-            if line.endswith("\n"):
+            if current["keep_body"]:
+                stripped_lines.append(line)
+            elif line.endswith("\n"):
                 stripped_lines.append("\n")
             else:
                 stripped_lines.append("")
+            if not current["quoted"] and not current["keep_body"]:
+                # Unquoted heredoc bodies still expand $(...) and `...`.
+                body_line = line[:-1] if line.endswith("\n") else line
+                extracted.extend(_extract_body_substitutions(body_line))
             continue
 
-        match = HEREDOC_START.search(line)
-        if match is not None:
-            delimiter = match.group(2)
-            is_quoted = match.group(1) != ""
-            is_dashed = match.group(0).startswith("<<-")
         stripped_lines.append(line)
+        heredocs = _collect_heredocs(line)
+        if heredocs:
+            for heredoc in heredocs:
+                keep_body = _line_has_supported_shell_stdin_heredoc(
+                    line, heredoc["start"]
+                )
+                pending_heredocs.append({**heredoc, "keep_body": keep_body})
 
     return "".join(stripped_lines), extracted
 
@@ -159,29 +648,50 @@ def normalize_newlines(command):
     in_single = False
     in_double = False
     escaped = False
+    idx = 0
 
-    for char in command:
+    while idx < len(command):
+        char = command[idx]
         if char in ("\n", "\r") and not in_single and not in_double:
+            if escaped:
+                if normalized and normalized[-1] == "\\":
+                    normalized.pop()
+                escaped = False
+                idx += 1
+                continue
             normalized.append(";")
             escaped = False
+            idx += 1
+            continue
+
+        if char in ("\n", "\r") and escaped:
+            if normalized and normalized[-1] == "\\":
+                normalized.pop()
+            escaped = False
+            idx += 1
             continue
 
         normalized.append(char)
 
         if escaped:
             escaped = False
+            idx += 1
             continue
 
         if char == "\\" and not in_single:
             escaped = True
+            idx += 1
             continue
 
         if char == "'" and not in_double:
             in_single = not in_single
+            idx += 1
             continue
 
         if char == '"' and not in_single:
             in_double = not in_double
+
+        idx += 1
 
     return "".join(normalized)
 
@@ -324,7 +834,19 @@ def run_noninteractive(command: str) -> int:
         "--max-procs",
         "--replace",
     }
-    SUDO_OPTIONS_WITH_VALUE = {"-u", "-g", "-h", "-p", "-C", "-T", "-r", "-t"}
+    SUDO_OPTIONS_WITH_VALUE = {
+        "-u",
+        "-g",
+        "-h",
+        "-p",
+        "-C",
+        "-D",
+        "-R",
+        "-T",
+        "-U",
+        "-r",
+        "-t",
+    }
     GIT_OPTIONS_WITH_VALUE = {
         "-C",
         "-c",
@@ -566,6 +1088,8 @@ def run_noninteractive(command: str) -> int:
                         "--command-timeout",
                         "--close-from",
                         "--chdir",
+                        "--chroot",
+                        "--login-class",
                         "--role",
                         "--type",
                         "--other-user",
@@ -583,6 +1107,8 @@ def run_noninteractive(command: str) -> int:
                             "--command-timeout",
                             "--close-from",
                             "--chdir",
+                            "--chroot",
+                            "--login-class",
                             "--role",
                             "--type",
                             "--other-user",
@@ -1074,6 +1600,463 @@ def run_noninteractive(command: str) -> int:
     return 0
 
 
+RM_RF_REASON = (
+    "rm -rf is blocked. Use `trash` instead (install: brew install trash). "
+    "Files go to Trash for recovery."
+)
+XARGS_RM_RF_REASON = "xargs rm -rf is blocked. Use `trash` instead."
+FIND_DELETE_REASON = (
+    "find -delete is blocked. Use `trash` instead for recoverable deletion."
+)
+FIND_EXEC_RM_RF_REASON = "find -exec rm -rf is blocked. Use `trash` instead."
+SHRED_REASON = "shred is blocked. Use `trash` instead for recoverable deletion."
+UNLINK_REASON = "unlink is blocked. Use `trash` instead for recoverable deletion."
+
+
+def _extract_shell_c_command(args):
+    def normalize_payload(payload):
+        if payload.startswith("$") and any(char.isspace() for char in payload[1:]):
+            return payload[1:]
+        return payload
+
+    idx = 0
+    while idx < len(args):
+        arg = args[idx]
+        if arg in ("-c", "--command"):
+            idx += 1
+            if idx < len(args) and args[idx] == "--" and idx + 1 < len(args):
+                return normalize_payload(args[idx + 1])
+            if idx < len(args):
+                return normalize_payload(args[idx])
+            return None
+        if arg.startswith("--command="):
+            return normalize_payload(arg.split("=", 1)[1])
+        if arg in SHELL_OPTIONS_WITH_VALUE:
+            idx += 2
+            continue
+        if any(
+            arg.startswith(prefix + "=")
+            for prefix in ("--rcfile", "--init-file", "--startup-file")
+        ):
+            idx += 1
+            continue
+        if arg == "--":
+            return None
+        if arg.startswith("-") and not arg.startswith("--"):
+            if "c" in arg[1:]:
+                idx += 1
+                if idx < len(args) and args[idx] == "--" and idx + 1 < len(args):
+                    return normalize_payload(args[idx + 1])
+                if idx < len(args):
+                    return normalize_payload(args[idx])
+                return None
+            idx += 1
+            continue
+        if arg.startswith("+"):
+            idx += 1
+            continue
+        return None
+    return None
+
+
+def _has_rf_flags(args):
+    has_recursive = False
+    has_force = False
+
+    for arg in args:
+        if arg in {"--recursive", "--directories"}:
+            has_recursive = True
+            continue
+        if arg == "--force":
+            has_force = True
+            continue
+        if not arg.startswith("-") or arg == "-" or arg.startswith("--"):
+            continue
+        option_letters = arg[1:]
+        if "r" in option_letters or "R" in option_letters:
+            has_recursive = True
+        if "f" in option_letters:
+            has_force = True
+
+    return has_recursive and has_force
+
+
+def _has_literal_rm_rf_text(text):
+    if re.search(r"(^|[^A-Za-z0-9_])rm([^A-Za-z0-9_]|$)", text) is None:
+        return False
+    has_recursive = re.search(r"(-[A-Za-z]*[rR]|--recursive)", text) is not None
+    has_force = re.search(r"(-[A-Za-z]*f|--force)", text) is not None
+    return has_recursive and has_force
+
+
+def _placeholder_indexes_in_text(text):
+    return [
+        int(match.group(1))
+        for match in re.finditer(r"__CMD_SUBST_(\d+)__", text)
+    ]
+
+
+def _literal_placeholder_reason(text, substitutions):
+    for placeholder_index in _placeholder_indexes_in_text(text):
+        if placeholder_index < len(substitutions) and _has_literal_rm_rf_text(
+            substitutions[placeholder_index]
+        ):
+            return RM_RF_REASON
+    return None
+
+
+def _join_tokens_as_command(tokens):
+    return " ".join(tokens)
+
+
+def _detect_process_substitutions(tokens, substitutions, depth):
+    idx = 0
+    while idx < len(tokens) - 1:
+        if tokens[idx] not in {"<", ">"} or tokens[idx + 1] != "(":
+            idx += 1
+            continue
+
+        nested_depth = 1
+        end = idx + 2
+        while end < len(tokens):
+            if tokens[end] == "(":
+                nested_depth += 1
+            elif tokens[end] == ")":
+                nested_depth -= 1
+                if nested_depth == 0:
+                    break
+            end += 1
+
+        if nested_depth == 0:
+            reason = _detect_rm_rf_segment(tokens[idx + 2 : end], substitutions, depth + 1)
+            if reason is not None:
+                return reason
+            idx = end + 1
+            continue
+
+        idx += 1
+
+    return None
+
+
+def _skip_rm_rf_prefixes(tokens, idx, substitutions, depth):
+    while idx < len(tokens):
+        token = tokens[idx]
+        base = _basename(token)
+
+        if _is_assignment(token):
+            idx += 1
+            continue
+
+        if base == "env":
+            env_idx = idx + 1
+            while env_idx < len(tokens):
+                env_token = tokens[env_idx]
+                if _is_assignment(env_token):
+                    env_idx += 1
+                    continue
+                if env_token == "--":
+                    env_idx += 1
+                    break
+                if env_token in {"-S", "--split-string"}:
+                    if env_idx + 1 >= len(tokens):
+                        return len(tokens), None
+                    try:
+                        split_tokens = shlex.split(tokens[env_idx + 1], posix=True)
+                    except ValueError:
+                        return len(tokens), RM_RF_REASON
+                    reason = _detect_rm_rf_segment(
+                        split_tokens + tokens[env_idx + 2 :], substitutions, depth + 1
+                    )
+                    return len(tokens), reason
+                if env_token.startswith("--split-string="):
+                    try:
+                        split_tokens = shlex.split(env_token.split("=", 1)[1], posix=True)
+                    except ValueError:
+                        return len(tokens), RM_RF_REASON
+                    reason = _detect_rm_rf_segment(
+                        split_tokens + tokens[env_idx + 1 :], substitutions, depth + 1
+                    )
+                    return len(tokens), reason
+                if env_token in {"-u", "--unset", "-C", "--chdir"}:
+                    env_idx += 2
+                    continue
+                if env_token.startswith("--unset=") or env_token.startswith("--chdir="):
+                    env_idx += 1
+                    continue
+                if env_token.startswith("-u") and env_token != "-u":
+                    env_idx += 1
+                    continue
+                if env_token.startswith("-C") and env_token != "-C":
+                    env_idx += 1
+                    continue
+                if env_token.startswith("-"):
+                    env_idx += 1
+                    continue
+                break
+            idx = env_idx
+            continue
+
+        if base in {
+            "command",
+            "builtin",
+            "sudo",
+            "nice",
+            "timeout",
+            "time",
+            "nohup",
+            "exec",
+        }:
+            next_idx = _skip_prefixed_command_options(tokens, idx, base)
+            if next_idx == idx:
+                return idx, None
+            idx = next_idx
+            continue
+
+        return idx, None
+
+    return idx, None
+
+
+def _detect_xargs(args, substitutions, depth):
+    idx = 0
+    xargs_options_with_value = {
+        "-d",
+        "-E",
+        "-I",
+        "-i",
+        "-J",
+        "-L",
+        "-P",
+        "-a",
+        "-n",
+        "-s",
+        "--arg-file",
+        "--delimiter",
+        "--eof",
+        "--max-args",
+        "--max-chars",
+        "--max-lines",
+        "--max-procs",
+        "--process-slot-var",
+        "--replace",
+    }
+    xargs_long_attached = (
+        "--arg-file=",
+        "--delimiter=",
+        "--eof=",
+        "--max-args=",
+        "--max-chars=",
+        "--max-lines=",
+        "--max-procs=",
+        "--process-slot-var=",
+        "--replace=",
+    )
+    xargs_short_attached = (
+        "-a",
+        "-d",
+        "-E",
+        "-I",
+        "-i",
+        "-J",
+        "-L",
+        "-P",
+        "-n",
+        "-s",
+    )
+
+    while idx < len(args):
+        token = args[idx]
+        if token == "--":
+            idx += 1
+            break
+        if token in xargs_options_with_value:
+            idx += 2
+            continue
+        if token.startswith(xargs_long_attached):
+            idx += 1
+            continue
+        if any(token.startswith(prefix) and token != prefix for prefix in xargs_short_attached):
+            idx += 1
+            continue
+        if token.startswith("-"):
+            idx += 1
+            continue
+        break
+
+    if idx >= len(args):
+        return None
+
+    if _basename(args[idx]) == "rm" and _has_rf_flags(args[idx + 1 :]):
+        return XARGS_RM_RF_REASON
+
+    return _detect_command_at(args, idx, substitutions, depth + 1)
+
+
+def _find_exec_tokens(args, start):
+    exec_tokens = []
+    idx = start
+    while idx < len(args):
+        token = args[idx]
+        if token in {";", "+", ";;"}:
+            break
+        exec_tokens.append(token)
+        idx += 1
+    return exec_tokens
+
+
+def _detect_find(args, substitutions, depth):
+    idx = 0
+    while idx < len(args):
+        token = args[idx]
+        if token == "-delete":
+            return FIND_DELETE_REASON
+        if token in {"-exec", "-execdir"}:
+            exec_tokens = _find_exec_tokens(args, idx + 1)
+            if exec_tokens and _basename(exec_tokens[0]) == "rm" and _has_rf_flags(
+                exec_tokens[1:]
+            ):
+                return FIND_EXEC_RM_RF_REASON
+            reason = _detect_rm_rf_segment(exec_tokens, substitutions, depth + 1)
+            if reason is not None:
+                return reason
+            idx += len(exec_tokens) + 1
+            continue
+        idx += 1
+    return None
+
+
+def _detect_command_at(tokens, idx, substitutions, depth):
+    idx, prefix_reason = _skip_rm_rf_prefixes(tokens, idx, substitutions, depth)
+    if prefix_reason is not None:
+        return prefix_reason
+    if idx >= len(tokens):
+        return None
+
+    token = tokens[idx]
+    base = _basename(token)
+
+    if base in SHELL_EXECUTABLES:
+        payload = _extract_shell_c_command(tokens[idx + 1 :])
+        if payload is None:
+            return None
+        literal_reason = _literal_placeholder_reason(payload, substitutions)
+        if literal_reason is not None:
+            return literal_reason
+        return _detect_rm_rf_command(payload, depth + 1)
+
+    if base == "eval":
+        payload = _join_tokens_as_command(tokens[idx + 1 :])
+        literal_reason = _literal_placeholder_reason(payload, substitutions)
+        if literal_reason is not None:
+            return literal_reason
+        if payload:
+            return _detect_rm_rf_command(payload, depth + 1)
+        return None
+
+    if base == "xargs":
+        return _detect_xargs(tokens[idx + 1 :], substitutions, depth)
+
+    if base == "find":
+        return _detect_find(tokens[idx + 1 :], substitutions, depth)
+
+    if base == "shred":
+        return SHRED_REASON
+
+    if base == "unlink":
+        return UNLINK_REASON
+
+    if base == "rm" and _has_rf_flags(tokens[idx + 1 :]):
+        return RM_RF_REASON
+
+    return None
+
+
+def _detect_rm_rf_segment(tokens, substitutions, depth):
+    if depth > 5:
+        return None
+
+    process_reason = _detect_process_substitutions(tokens, substitutions, depth)
+    if process_reason is not None:
+        return process_reason
+
+    idx = 0
+    command_context = True
+    while idx < len(tokens):
+        token = tokens[idx]
+
+        if token == ")":
+            command_context = True
+            idx += 1
+            continue
+
+        if not command_context:
+            idx += 1
+            continue
+
+        if token in SHELL_RESERVED_COMMAND_WORDS or _is_assignment(token):
+            command_context = True
+            idx += 1
+            continue
+
+        function_body_idx = _function_body_start(tokens, idx)
+        if function_body_idx is not None:
+            idx = function_body_idx + 1
+            command_context = True
+            continue
+
+        reason = _detect_command_at(tokens, idx, substitutions, depth)
+        if reason is not None:
+            return reason
+
+        command_context = False
+        idx += 1
+
+    return None
+
+
+def _detect_rm_rf_command(command, depth=0):
+    if depth > 5:
+        return None
+
+    sanitized_command, substitutions = replace_command_substitutions(command)
+    tokens = tokenize(sanitized_command)
+    used_placeholder_indexes = set()
+
+    for segment, _separator in split_segments(tokens):
+        for placeholder_index in extract_placeholder_indexes(segment):
+            used_placeholder_indexes.add(placeholder_index)
+            if placeholder_index < len(substitutions):
+                reason = _detect_rm_rf_command(
+                    substitutions[placeholder_index], depth + 1
+                )
+                if reason is not None:
+                    return reason
+
+        reason = _detect_rm_rf_segment(segment, substitutions, depth)
+        if reason is not None:
+            return reason
+
+    for placeholder_index, substitution in enumerate(substitutions):
+        if placeholder_index in used_placeholder_indexes:
+            continue
+        reason = _detect_rm_rf_command(substitution, depth + 1)
+        if reason is not None:
+            return reason
+
+    return None
+
+
+def run_rm_rf(command: str) -> int:
+    try:
+        reason = _detect_rm_rf_command(command)
+    except (RecursionError, ValueError):
+        reason = RM_RF_REASON
+
+    print(json.dumps({"block": reason}))
+    return 0
+
+
 def run_commit_contexts(command: str, parse_error_reason: str) -> int:
     import json
     import os
@@ -1112,7 +2095,19 @@ def run_commit_contexts(command: str, parse_error_reason: str) -> int:
         "GIT_OBJECT_DIRECTORY",
         "GIT_ALTERNATE_OBJECT_DIRECTORIES",
     }
-    SUDO_OPTIONS_WITH_VALUE = {"-u", "-g", "-p", "-C", "-R", "-T", "-t", "-r", "-h"}
+    SUDO_OPTIONS_WITH_VALUE = {
+        "-u",
+        "-g",
+        "-p",
+        "-C",
+        "-D",
+        "-R",
+        "-T",
+        "-U",
+        "-t",
+        "-r",
+        "-h",
+    }
     SUDO_LONG_OPTIONS_WITH_VALUE = {
         "--user",
         "--group",
@@ -1121,6 +2116,8 @@ def run_commit_contexts(command: str, parse_error_reason: str) -> int:
         "--command-timeout",
         "--close-from",
         "--chdir",
+        "--chroot",
+        "--login-class",
         "--role",
         "--type",
         "--other-user",
@@ -1331,6 +2328,8 @@ def run_commit_contexts(command: str, parse_error_reason: str) -> int:
                             "--prompt=",
                             "--command-timeout=",
                             "--close-from=",
+                            "--chroot=",
+                            "--login-class=",
                             "--role=",
                             "--type=",
                             "--other-user=",
@@ -1557,7 +2556,7 @@ def run_commit_contexts(command: str, parse_error_reason: str) -> int:
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print(
-            "usage: git_command_parser.py <noninteractive|commit-contexts> "
+            "usage: git_command_parser.py <noninteractive|commit-contexts|rm-rf> "
             "<command> [parse-error-reason]",
             file=sys.stderr,
         )
@@ -1572,6 +2571,9 @@ def main(argv: list[str]) -> int:
     if mode == "commit-contexts":
         parse_error_reason = argv[2] if len(argv) > 2 else "Unable to safely parse command."
         return run_commit_contexts(command, parse_error_reason)
+
+    if mode == "rm-rf":
+        return run_rm_rf(command)
 
     print(f"unknown parser mode: {mode}", file=sys.stderr)
     return 2
