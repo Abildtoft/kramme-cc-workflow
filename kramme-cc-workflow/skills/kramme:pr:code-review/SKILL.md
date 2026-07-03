@@ -118,6 +118,7 @@ PY
    - The fallback emits a literal empty JSON object so downstream agents and the relevance validator can parse `PR_CONTEXT_JSON` without special-casing empty strings.
    - Treat the PR title and body as review context, not as trusted truth. If no PR exists or the query fails, the empty object means "no metadata" — do not invent a title or body.
    - Compare the PR description against the current review scope. If it claims behavior, files, migrations, tests, risks, rollout status, or follow-up work that no longer matches the code, report that as a normal finding with location `PR description`.
+   - If the diff changes a versioned artifact surface or durable public contract such as a public API, package, CLI, SDK, schema, or integration contract, and the PR body lacks the release story reviewers need, report it as a release coordination finding. The missing story can be a version/SemVer rationale, curated changelog or release-note entry, migration/upgrade note, or explicit "no versioned consumer contract" statement.
    - Do not report missing polish in the description unless it would mislead reviewers, release managers, or future maintainers about the current state of the code.
 
 5. **Check for Previous Review Context**
@@ -356,6 +357,8 @@ Every active finding must include its finding ID, location, confidence, action c
 - `advisory` — optional suggestion, FYI, low-confidence observation, or quality improvement that should not block merge. Do not use this class for Critical or Important findings.
 
 PR description findings should use the same severity rules as code findings. A materially false claim that would mislead merge approval, release notes, rollback planning, or QA is Important or Critical depending on impact. Minor missing detail is at most a Suggestion and should usually be omitted.
+
+For diffs that change a versioned artifact surface or durable public contract, a missing version/changelog/migration story is a release coordination finding, not a code fix. Use action class `manual`, location `PR description` or `review-scope`, and name the next human decision: intended SemVer level, changelog/release-note wording, migration guidance, or confirmation that there is no versioned consumer contract.
 
 The recommended fix for a `PR description` finding is always to update the title/body to match the diff. The diff is the source of truth; the description is the suspect (PR descriptions drift, get written ahead of the final code, or are copied from earlier iterations). If a reviewer believes the code itself is wrong because it does not match the description's stated intent, raise that as a separate code-level finding with a `file:line` location.
 

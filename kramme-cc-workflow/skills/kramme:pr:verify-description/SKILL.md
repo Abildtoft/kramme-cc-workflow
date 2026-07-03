@@ -41,8 +41,10 @@ Classify each potential drift point against the rubric below. Severity drives th
 | Drift type | Severity | Visible in loose mode |
 | --- | --- | --- |
 | Body contradicts diff (flag default flipped, "no migration" claim refuted, "no breaking changes" claim with a rename in the diff) | Critical | Yes |
-| Undisclosed migration, breaking API rename, or new required env var | Critical | Yes |
+| Undisclosed migration, breaking API rename, missing required migration note, or new required env var | Critical | Yes |
+| Undisclosed SemVer-major implication, or body claims no breaking changes when a versioned artifact surface or durable public contract breaks | Critical | Yes |
 | Undisclosed new endpoint, dependency, feature flag, or removed code path | Important | Yes |
+| Versioned artifact or durable public contract change lacks release impact, SemVer, changelog, or migration story needed for release-note accuracy | Important | Yes |
 | `Potential concerns: None` despite a migration, flag flip, partial coverage, or known follow-up | Important | Yes |
 | Stale claim — body describes work that was removed or refactored away | Important | Yes |
 | `Things I didn't touch` excludes adjacent work the diff did touch | Important | Yes |
@@ -142,6 +144,8 @@ Classify each potential drift point against the rubric below. Severity drives th
    - New or removed dependencies (package.json, requirements.txt, go.mod, etc.)
    - Feature-flag definitions or default flips
    - Public API surface changes (exported symbols renamed, removed, or new)
+   - Versioned artifact surfaces (package/CLI/API/SDK/schema/integration contracts) and their SemVer implications
+   - Changelog, release-note, tag/version, or migration-guide files
    - Env var additions
    - Test additions / removals
    - Documentation changes
@@ -155,6 +159,8 @@ Walk the description body section-by-section and the diff in parallel. Classify 
 - **Severity** — from the rubric column.
 - **Evidence** — what the body says vs. what the diff shows (cite file paths and a hunk summary, not full diffs).
 - **Recommended fix** — concrete text edit or "regenerate via `kramme:pr:generate-description --auto`".
+
+For diffs that change a versioned artifact surface or durable public contract, verify that the body either states the release impact or explicitly explains why there is no versioned consumer contract. Flag undisclosed SemVer implications, missing migration/upgrade notes for breaking changes, missing curated changelog/release-note expectations, and release-impact claims that are not supported by the diff or gathered PR context.
 
 In loose mode, suppress any finding whose rubric row says "Strict only" or "Never". In `--strict` mode, surface those too.
 
@@ -249,6 +255,7 @@ Watch for these — each one means a finding is about to be wrongly suppressed:
 - *"The diff is small, the description doesn't need to cover everything."* → Size doesn't excuse contradictions. A two-line diff that flips a default still needs that line in the body.
 - *"The reviewer can see the migration in the file tree."* → The body's `Potential concerns` block is the contract; visible-in-diff does not equal disclosed.
 - *"The title says `fix` but it's basically a fix."* → Conventional Commit type drives changelogs and release notes. If the dominant change is a feature, the title is wrong regardless of how the author thinks of it.
+- *"SemVer can wait until release day."* → SemVer is the consumer promise. A PR that changes a public contract must disclose the version and migration implications while reviewers can still evaluate them.
 - *"`Things I didn't touch: None` is fine — the author probably considered it."* → Only fine when nothing adjacent was changed. If the diff touches adjacent files, the block needs an entry.
 - *"The author will rewrite the description before merge anyway."* → Maybe — but the point of this skill is to remove that step or to make it explicit now, not to assume future cleanup.
 
@@ -257,6 +264,7 @@ Watch for these — each one means a finding is about to be wrongly suppressed:
 Pause and re-examine the diff if any of these are true while drafting the report:
 
 - You're about to return `Accurate` but the diff contains a migration, feature-flag default, or breaking change.
+- You're about to return `Accurate` but the diff changes a versioned artifact surface or durable public contract such as a public API, package, CLI, integration contract, or schema, and the body has no release impact, SemVer, changelog, or migration story.
 - You're tempted to soften a Critical finding to Important because "the author probably knows".
 - The report has more `Not flagged` entries than `Findings` — that usually means the bar is set too low; reconsider whether several of the skipped items are actually material.
 - You're about to invoke `kramme:pr:generate-description --auto` without explicit user confirmation.
