@@ -98,6 +98,7 @@ Read the context-gathering procedure from `references/context-gathering.md` and 
      - Key technical decisions identified
      - **Any divergences from Linear issue description**
      - Any breaking changes detected
+     - Release impact when the diff changes a versioned artifact surface or durable public contract such as a public API, package, CLI, integration contract, or data contract
 
 2. **Ask clarification questions**:
    - **ALWAYS** ask the user if there's anything specific they want emphasized
@@ -143,6 +144,7 @@ Before drafting, evaluate whether any **MISSING REQUIREMENT** conditions hold (s
 - The branch name has no detectable issue ID and commits reference none — non-blocking; confirm the intended ticket or proceed without one.
 - The diff contains a database migration but no rationale is present in commits, Linear, or conversation — blocking for direct update; request the migration's purpose/rollback plan.
 - The diff toggles a feature flag's default but no rollout context is available — blocking for direct update; request the rollout plan.
+- The diff changes a versioned artifact surface or durable public contract such as a public API, package, CLI, integration contract, or data contract, and a breaking change is present, but no SemVer rationale or migration/upgrade note is available — blocking for direct update; request the intended version impact and consumer migration guidance.
 - One or more selectable GitHub PR templates are present, no default template is selected, and no template can be selected from user input, existing PR body, branch name, or change type — blocking for direct update; request which template to follow.
 
 Surface the marker even when `NON_INTERACTIVE=true`; in that mode, report the gap in the run output so the caller can collect the missing context before publication.
@@ -230,7 +232,7 @@ Before drafting the body, decide what the PR description adds beyond GitHub's re
 - Why the change exists
 - Non-obvious implementation decisions and trade-offs
 - Scope boundaries and deliberate exclusions
-- Risks, rollout constraints, migrations, feature-flag defaults, or partial coverage
+- Risks, release impact, rollout constraints, migrations, feature-flag defaults, SemVer implications, or partial coverage
 - Manual test scenarios reviewers or QA should perform
 - Review landmarks only when the diff has a non-obvious entry point or coupled files that should be reviewed together
 
@@ -244,6 +246,17 @@ Before drafting the body, decide what the PR description adds beyond GitHub's re
 - Local environment failure notes such as missing `node_modules`, unavailable Postgres, missing services, or other reasons a command could not run on the agent machine; CI is the source of truth for build, lint, typecheck, formatting, and automated test status
 
 If a section would merely prove that files changed, omit it or replace it with one or two review-relevant notes that explain behavior, coupling, risk, or review order.
+
+#### 3.1.6 Release Impact Contract
+
+When the diff changes a versioned artifact surface or durable public contract, make the release story explicit in the PR body:
+
+- State the release impact in reviewer language: public API behavior, package/CLI surface, integration contract, or schema/data contract.
+- Name the SemVer implication when the repo publishes a versioned artifact (`patch`, `minor`, or `major`) and explain breaking-change rationale when applicable.
+- Include migration or upgrade notes for breaking changes, removed behavior, required env/config changes, or consumer action.
+- Mention the curated changelog/release-note entry when the PR is expected to feed one, but do not paste a raw commit log.
+
+If there is no versioned artifact or durable public contract change, say so briefly only when reviewers might otherwise infer a release impact.
 
 #### 3.2 Change Summary Pattern
 

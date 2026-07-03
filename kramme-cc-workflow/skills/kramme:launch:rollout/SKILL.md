@@ -89,6 +89,15 @@ The sequence is six staged gates. Each gate has a monitoring window and a set of
 
 **The launch ticket** referenced throughout is wherever this rollout is tracked — your team's Linear/Jira/GitHub issue for the release. If none exists, create a `LAUNCH.md` at the repo root and use it as the ticket. The sequence, the thresholds table, and the rollback plan all get written there. Archive or delete `LAUNCH.md` as part of the final flag-cleanup gate once the rollout completes — it is a working artifact, not permanent documentation.
 
+Add a **release identity** block to the launch ticket before step 1 when the rollout publishes a versioned artifact or changes a durable public contract such as a public API, package, CLI, SDK, schema, or integration contract:
+
+- Version bump and SemVer rationale (`patch`, `minor`, or `major`) as the consumer promise.
+- Immutable release tag and the artifact/build/deploy identifier derived from that tag. If the tag is not created yet, record the owner and exact gate where it will be created; do not plan to edit a tag after publication.
+- Curated changelog or release-note entry for the shipped behavior, not a raw commit log.
+- Migration or upgrade note for breaking changes, required configuration changes, removed behavior, or consumer action.
+
+If the rollout has no versioned artifact or public contract change, write `Release identity: N/A — no versioned consumer contract` in the launch ticket so the omission is deliberate.
+
 **Re-entry:** if this skill is re-invoked mid-rollout, read the launch ticket first and resume at the gate it records as current — do not restart from staging or re-run monitoring windows for gates that already passed.
 
 ```

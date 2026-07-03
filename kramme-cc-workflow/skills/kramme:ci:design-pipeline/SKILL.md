@@ -127,6 +127,19 @@ For the canary → full-rollout sequence, short summary. If the design requires 
 
 ---
 
+## Step 6: Release contract gates
+
+For repositories that publish versioned artifacts, packages, CLIs, APIs, SDKs, schemas, or integrations, design a release-readiness gate in addition to the PR quality gates. The gate must verify the release contract without publishing from ordinary PR CI:
+
+- **SemVer check** — consumer-facing changes have an explicit patch/minor/major version decision, and breaking changes cannot pass as patch/minor.
+- **Immutable tag mapping** — the release artifact version is derived from the git tag or release ref; tags are treated as immutable after publication.
+- **Changelog gate** — a curated changelog/release-note entry exists for consumer-visible changes. Do not substitute a raw commit log.
+- **Migration gate** — breaking changes, removed behavior, required env/config changes, or data-contract changes include an upgrade or migration note before release.
+
+If the repo has no external consumers and no versioned artifact, record that in the pipeline design instead of adding a fake release gate.
+
+---
+
 ## Exit checklist
 
 A pipeline is ready to land when every box is checked:
@@ -138,6 +151,7 @@ A pipeline is ready to land when every box is checked:
 - [ ] A rollback mechanism exists and has been exercised at least once (not a theoretical runbook).
 - [ ] Total pipeline runtime under 10 minutes on a fresh PR with a cold cache.
 - [ ] Every feature flag has a named removal criterion.
+- [ ] Versioned consumer-facing releases have SemVer, immutable tag/artifact mapping, curated changelog, and migration-note gates.
 - [ ] For each gate, it is clear whether it already existed in the repo or is new (no silent replacements).
 
 ---
@@ -165,7 +179,7 @@ Watch for these excuses — they signal the design is about to regress:
 | "We'll remove the flag later." | "Later" is where dead flags live forever. Every flag ships with a named removal criterion or it doesn't ship. |
 | "Integration tests are slow, skip them on PR." | Skipping is how regressions ship. Parallelize, shard, or gate-per-change — don't remove the gate. |
 | "We don't need branch protection, the team is small." | Small teams make small mistakes at high velocity. Branch protection costs nothing and catches the one 2am push that otherwise lands unreviewed. |
-| "The pipeline is 18 minutes but nobody complains." | People route around slow pipelines — smaller PRs get batched, tests get skipped locally, `--no-verify` creeps in. The complaint surfaces as erosion, not a bug report. |
+| "The pipeline is 18 minutes but nobody complains." | People route around slow pipelines — smaller PRs get batched, tests get skipped locally, hook bypasses creep in. The complaint surfaces as erosion, not a bug report. |
 
 ---
 
