@@ -39,6 +39,19 @@ run_hook_without_jq_disabled() {
 	env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$plugin_root" "$fake_bin/bash" "$HOOK" <<<"$json_input"
 }
 
+run_hook_without_python3() {
+	local cmd="$1"
+	local fake_bin="$BATS_TEST_TMPDIR/no-python-bin"
+	local json_input
+	rm -rf "$fake_bin"
+	mkdir -p "$fake_bin"
+	ln -s "$(command -v bash)" "$fake_bin/bash"
+	ln -s "$(command -v cat)" "$fake_bin/cat"
+	ln -s "$(command -v jq)" "$fake_bin/jq"
+	json_input="$(make_bash_input "$cmd")"
+	env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK" <<<"$json_input"
+}
+
 # ============================================================================
 # BASIC ALLOW CASES
 # ============================================================================
@@ -67,6 +80,14 @@ run_hook_without_jq_disabled() {
 	run run_hook_without_jq_disabled "rm -rf directory/"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
+}
+
+@test "blocks command when python3 is unavailable" {
+	run run_hook_without_python3 "rm -rf directory/"
+	is_blocked
+	[[ "$output" == *"python3 not found"* ]]
+	[[ "$output" == *"refusing to run safety hook without the shared command parser"* ]]
+	[[ "$output" == *"Install python3 or disable this hook explicitly"* ]]
 }
 
 @test "allows simple ls command" {
@@ -379,6 +400,11 @@ run_hook_without_jq_disabled() {
 	is_blocked
 }
 
+@test "blocks xargs arg-file option before rm -rf" {
+	run run_hook "xargs --arg-file files rm -rf"
+	is_blocked
+}
+
 @test "allows xargs rm (without -rf)" {
 	run run_hook "find . -name '*.tmp' | xargs rm"
 	[ "$status" -eq 0 ]
@@ -489,6 +515,16 @@ run_hook_without_jq_disabled() {
 	is_blocked
 }
 
+@test "blocks sudo directory option before bash -c 'rm -rf'" {
+	run run_hook "sudo -D /tmp bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks sudo chroot option before bash -c 'rm -rf'" {
+	run run_hook "sudo --chroot /tmp bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
 @test "blocks sudo combined option operand before bash -c 'rm -rf'" {
 	run run_hook "sudo -Eu root bash -c 'rm -rf directory/'"
 	is_blocked
@@ -514,6 +550,16 @@ run_hook_without_jq_disabled() {
 	is_blocked
 }
 
+@test "blocks time output option before bash -c 'rm -rf'" {
+	run run_hook "time -o out bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
+@test "blocks nohup bash -c 'rm -rf'" {
+	run run_hook "nohup bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
 @test "blocks nice bash -c 'rm -rf'" {
 	run run_hook "nice bash -c 'rm -rf directory/'"
 	is_blocked
@@ -534,6 +580,11 @@ run_hook_without_jq_disabled() {
 	is_blocked
 }
 
+@test "blocks timeout option terminator before bash -c 'rm -rf'" {
+	run run_hook "timeout -- 1 bash -c 'rm -rf directory/'"
+	is_blocked
+}
+
 @test "blocks command bash -c 'rm -rf'" {
 	run run_hook "command bash -c 'rm -rf directory/'"
 	is_blocked
@@ -551,6 +602,16 @@ run_hook_without_jq_disabled() {
 
 @test "blocks rm -rf in case arm in bash -c payload" {
 	run run_hook "bash -c 'case x in x) rm -rf directory/;; esac'"
+	is_blocked
+}
+
+@test "blocks rm -rf in shell function body" {
+	run run_hook "bash -c 'f(){ rm -rf directory/; }; f'"
+	is_blocked
+}
+
+@test "blocks rm -rf in function keyword body" {
+	run run_hook "bash -c 'function f { rm -rf directory/; }; f'"
 	is_blocked
 }
 
@@ -858,6 +919,32 @@ run_hook_without_jq_disabled() {
 
 @test "blocks shell heredoc containing rm -rf" {
 	run run_hook $'bash <<\'EOF\'\nrm -rf directory/\nEOF'
+	is_blocked
+}
+
+@test "blocks shell heredoc after command list containing rm -rf" {
+	run run_hook $'echo ok; bash <<\'EOF\'\nrm -rf directory/\nEOF'
+	is_blocked
+}
+
+@test "blocks shell heredoc after pipeline containing rm -rf" {
+	run run_hook $'cat /dev/null | bash <<\'EOF\'\nrm -rf directory/\nEOF'
+	is_blocked
+}
+
+@test "blocks second heredoc when it belongs to shell command" {
+	run run_hook $'cat <<A; bash <<B\nsafe\nA\nrm -rf directory/\nB'
+	is_blocked
+}
+
+@test "allows later non-shell heredoc body after shell heredoc" {
+	run run_hook $'bash <<A; cat > script.sh <<B\necho safe\nA\nrm -rf "$tmp"\nB'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "blocks shell heredoc after stdout redirection containing rm -rf" {
+	run run_hook $'bash > out <<\'EOF\'\nrm -rf directory/\nEOF'
 	is_blocked
 }
 

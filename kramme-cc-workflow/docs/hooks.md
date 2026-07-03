@@ -81,6 +81,8 @@ Supported variables:
 
 ## block-rm-rf
 
+`block-rm-rf` requires both `jq` and `python3` at runtime. If either binary is missing, the hook fails closed and blocks the Bash tool call until the dependency is installed or the hook is explicitly disabled.
+
 ### Blocked Patterns
 
 **Direct commands:**

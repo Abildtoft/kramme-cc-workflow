@@ -129,6 +129,107 @@ test("transformer filters non-codex skills and paired commands before conversion
   assert.match(bundle.generatedSkills[0].content, /\$codex-tool/);
 });
 
+test("agent portability document names stable adapter statuses and surfaces", async () => {
+  const doc = await readText(
+    path.join(__dirname, "..", "..", "docs", "agent-portability.md"),
+  );
+  const requiredContractText = [
+    "`canonical`",
+    "`generated`",
+    "`thin adapter`",
+    "`instruction-only`",
+    "`local-only`",
+    "`unsupported`",
+    "Claude Code plugin",
+    "Codex skills, prompts, and MCP config",
+    "Codex agent skills",
+    "Codex hook plugin and shared scripts",
+    "Codex `AGENTS.md` tool map",
+    "Local repository-maintenance skills",
+    "Other hosts",
+    "`prompts`",
+    "`skillDirs`",
+    "`generatedSkills`",
+    "`agentSkills`",
+    "`mcpServers`",
+    "`codexPlugin`",
+  ];
+
+  for (const text of requiredContractText) {
+    assert.equal(
+      doc.includes(text),
+      true,
+      `missing portability contract text: ${text}`,
+    );
+  }
+});
+
+test("transformer exposes documented Codex generated surface fields", () => {
+  const mcpServers = { "demo-server": { command: "demo" } };
+  const bundle = convertClaudeToCodex({
+    agents: [
+      {
+        body: "Review changes.",
+        description: "Reviews changes.",
+        name: "Reviewer",
+        sourcePath: "/plugin/agents/reviewer.md",
+      },
+    ],
+    commands: [
+      {
+        body: "Run the extra workflow.",
+        name: "Extra Command",
+        sourcePath: "/plugin/commands/extra-command.md",
+      },
+    ],
+    hooks: { PreToolUse: [] },
+    manifest: {
+      description: "Demo plugin.",
+      name: "demo-plugin",
+      version: "1.0.0",
+    },
+    mcpServers,
+    root: "/plugin",
+    skills: [
+      {
+        body: "Toggle hooks.",
+        description: "Toggles hooks.",
+        name: "kramme:hooks:toggle",
+        sourceDir: "/plugin/skills/kramme-hooks-toggle",
+      },
+      {
+        body: "Configure hook links.",
+        description: "Configures hook links.",
+        name: "kramme:hooks:configure-links",
+        sourceDir: "/plugin/skills/kramme-hooks-configure-links",
+      },
+      {
+        body: "Codex instructions.",
+        description: "Available in Codex.",
+        name: "Codex Tool",
+        sourceDir: "/plugin/skills/codex-tool",
+      },
+    ],
+  });
+
+  assert.equal(Array.isArray(bundle.prompts), true);
+  assert.equal(Array.isArray(bundle.skillDirs), true);
+  assert.equal(Array.isArray(bundle.generatedSkills), true);
+  assert.equal(Array.isArray(bundle.agentSkills), true);
+  assert.deepEqual(bundle.mcpServers, mcpServers);
+  assert.ok(bundle.codexPlugin);
+  assert.equal(bundle.codexPlugin.name, "demo-plugin");
+  assert.equal(bundle.codexPlugin.hookSourceDir, "/plugin/hooks");
+  assert.deepEqual(
+    bundle.generatedSkills.map((skill) => skill.name),
+    ["extra-command"],
+  );
+  assert.deepEqual(
+    bundle.agentSkills.map((skill) => skill.name),
+    ["reviewer"],
+  );
+});
+
 test("install staging treats stale managed files as removable without overwriting local files", async () => {
   await withTempDir(async (root) => {
     const stagedDir = path.join(root, "staged");
