@@ -6,14 +6,14 @@ sources:
     last_reviewed_at: 2026-04-25
     baseline_hash: ""
   - id: pocock-improve-codebase-architecture-deepening
-    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/improve-codebase-architecture/DEEPENING.md
-    title: "Matt Pocock skills - improve-codebase-architecture (DEEPENING.md)"
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/codebase-design/DEEPENING.md
+    title: "Matt Pocock skills - codebase-design (DEEPENING.md)"
     rationale: "The deletion-test heuristic, adapter-count seam rule (one adapter = hypothetical seam, two = real seam), and replace-don't-layer test-migration rule in references/architecture-language.md are adapted from this source."
-    last_reviewed_at: 2026-05-05
-    baseline_hash: "sha256:9577485f4fc32c0267639a9151bb41c8af0f8f6086e4bf8b84d5b236e30604e9"
+    last_reviewed_at: 2026-07-03
+    baseline_hash: "sha256:125e6b77413ad2bc7cf7a772bc74336d580a50f9e797db2178ed133d62333d06"
   - id: pocock-improve-codebase-architecture-language
-    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/improve-codebase-architecture/LANGUAGE.md
-    title: "Matt Pocock skills - improve-codebase-architecture (LANGUAGE.md)"
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/codebase-design/SKILL.md
+    title: "Matt Pocock skills - codebase-design (SKILL.md)"
     rationale: "The architectural glossary (Module/Interface/Implementation/Depth/Seam/Adapter/Leverage/Locality) used in references/architecture-language.md is adapted from this source."
-    last_reviewed_at: 2026-05-05
-    baseline_hash: "sha256:6feca2140439c54a774749e8367f18350899ff69c777144ed2248cd4407949fa"
+    last_reviewed_at: 2026-07-03
+    baseline_hash: "sha256:a8d50abac5a4018f60e1d911d4b6f4e36454ca14d6c390c0695a578c7de65dad"
