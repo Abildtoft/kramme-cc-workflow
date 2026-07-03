@@ -14,10 +14,19 @@ Created:
   siw/OPEN_ISSUES_OVERVIEW.md  - Issue tracking (temporary)
   siw/issues/                  - Individual issue files (temporary)
 
+Artifact readiness: {product-only|requirements-only|planning-ready} - {one-line reason}
+
 Next Steps:
+  {If product-only or requirements-only:}
+  1. Run /kramme:siw:discovery to harden the spec before phase or issue creation
+
+  {If planning-ready and the work should be phased:}
   1. Run /kramme:siw:generate-phases to decompose spec into phase-based issues
-     OR /kramme:siw:issue-define to create issues one at a time
-  2. Run /kramme:siw:issue-implement <G-XXX or P1-XXX> to start implementing
+  2. Run /kramme:siw:issue-implement <G-XXX or P1-XXX> after issues exist
+
+  {If planning-ready and the work is one coherent issue:}
+  1. Run /kramme:siw:issue-define to create the first issue
+  2. Run /kramme:siw:issue-implement <G-XXX or P1-XXX> after the issue exists
 
 Tips:
   - The spec file is permanent; keep it updated as your source of truth
