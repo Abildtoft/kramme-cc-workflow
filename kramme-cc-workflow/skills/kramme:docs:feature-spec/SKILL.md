@@ -32,6 +32,17 @@ Route elsewhere if:
 - **DOES**: Emit an assumptions block, wait for correction, draft a six-area spec markdown, gate implementation on explicit approval.
 - **DOES NOT**: Create tracked SIW artifacts (no `siw/`, no `LOG.md`, no issue files). Does not decompose the spec into phases. Does not start implementation. Does not edit `AGENTS.md` or `CLAUDE.md`.
 
+### Artifact Readiness Contract
+
+Use this shared vocabulary when describing the output:
+
+- `product-only`: objective or user/problem context exists, but scope, success criteria, or boundaries are still missing.
+- `requirements-only`: the six spec areas are populated, but unresolved open questions or thin technical context prevent phase or issue planning.
+- `planning-ready`: the approved spec has concrete scope, boundaries, testing strategy, testable success criteria, and relevant technical context/dependencies or planning detail, with no blocking open questions.
+- `implementation-ready`: an issue or task is scoped for execution with dependencies, affected areas, and verification. This skill never produces implementation-ready artifacts.
+
+This skill's normal output is `requirements-only` while drafting and `planning-ready` only after explicit approval and the verification checks pass.
+
 ## Process Overview
 
 ```
@@ -144,7 +155,7 @@ If the user passed an explicit path as the argument, honor it only when it still
 - Reject reserved destinations: `AGENTS.md`, `CLAUDE.md`, and any path under `siw/`.
 - If the path is reserved or otherwise unclear, emit `CONFUSION:` and ask for a different destination before writing.
 
-Before writing, check whether the destination file already exists. If it does, do not overwrite it blindly — emit `CONFUSION:` naming the existing path and ask the user to choose: overwrite it, revise it in place, or write to a different slug. This guard runs before the Phase 3 approval gate, so an existing spec is never clobbered without consent.
+Before writing, check whether the destination file already exists. If it does, do not overwrite it blindly — emit `CONFUSION:` naming the existing path and ask the user to choose: overwrite it, revise it in place, or write to a different slug. This guard runs before the Phase 3 approval gate, so an existing spec is never clobbered without an explicit user choice.
 
 Copy the six-area structure from `assets/feature-spec-template.md` and fill each area. The areas are:
 
@@ -200,8 +211,8 @@ On revision:
 On approval:
 
 - Confirm the file path.
-- State that implementation is now unblocked.
-- Optionally point to next-step skills: `/kramme:siw:init <spec-file>` if the spec should be promoted to tracked phased work. After SIW is initialized, the next step is `/kramme:siw:generate-phases`. For a single-sitting change, point straight to implementation instead.
+- State the artifact readiness: `planning-ready` when all six areas are concrete, relevant technical context/dependencies or planning detail are present, and no blocking open questions remain; otherwise name the remaining `product-only` or `requirements-only` gap.
+- Optionally point to next-step skills: `/kramme:siw:init <spec-file>` when the spec should be promoted to local tracking. After SIW is initialized, the next step is `/kramme:siw:generate-phases` for phased work or `/kramme:siw:issue-define` for one coherent issue. For a single-sitting change, point straight to implementation only when the approved spec plus current context is already `implementation-ready`.
 
 ## Conventions — output markers used in this skill
 
@@ -249,5 +260,6 @@ Before claiming the spec is complete:
 5. Any explicit destination path resolves inside the current repository root and stays out of `AGENTS.md`, `CLAUDE.md`, and `siw/`.
 6. If the destination already existed before this run, the user explicitly chose to overwrite or revise it — no spec was clobbered silently.
 7. The user has explicitly approved — not "sounds good" from an earlier turn, but a current-turn approval of the current spec version.
+8. The final handoff names the readiness classification and does not call a requirements-only artifact implementation-ready.
 
 If any check fails, stay in Phase 2 or Phase 3; do not hand off downstream.

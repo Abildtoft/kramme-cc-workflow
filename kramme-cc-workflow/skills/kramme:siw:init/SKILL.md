@@ -17,7 +17,18 @@ Set up the three-document system for tracking complex implementations locally, w
 - **DOES**: Create siw/ folder, spec file, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, siw/issues/, and optionally siw/supporting-specs/
 - **DOES NOT**: Define issues, implement features, or make code changes
 
-**Issue definition is a separate workflow.** After this command completes, invoke `/kramme:siw:issue-define` to create your first issue. **Spec hardening is a separate workflow.** To strengthen an existing SIW spec, use `/kramme:siw:discovery`.
+**Issue definition is a separate workflow.** After this command completes, invoke `/kramme:siw:issue-define` to create your first issue, or `/kramme:siw:generate-phases` when the spec should be decomposed into phased issues. **Spec hardening is a separate workflow.** To strengthen an existing SIW spec, use `/kramme:siw:discovery`.
+
+### Artifact Readiness Contract
+
+Use this shared vocabulary in setup summaries and handoffs:
+
+- `product-only`: the source explains the problem, user, or desired outcome but still lacks testable scope or success criteria.
+- `requirements-only`: scope and success criteria exist, but implementation planning still lacks phase boundaries, dependencies, or enough technical context.
+- `planning-ready`: the SIW spec is concrete enough for `/kramme:siw:generate-phases` or `/kramme:siw:issue-define`.
+- `implementation-ready`: an issue file has executable scope, dependencies, acceptance criteria, and verification. This skill never produces implementation-ready artifacts.
+
+`siw:init` creates the tracked planning container. It may preserve a `product-only` or `requirements-only` source as context, or produce a `planning-ready` SIW spec when the imported/discovered content is concrete enough; it must not imply implementation is ready until issues exist.
 
 ## Process Overview
 
@@ -42,7 +53,7 @@ Set up the three-document system for tracking complex implementations locally, w
     ↓
 [Create documents] -> siw/spec, siw/LOG.md, siw/issues/, (supporting-specs/)
     ↓
-[Report success] -> Suggest /kramme:siw:issue-define
+[Report success] -> Suggest next readiness-gated skill
 ```
 
 Before Phase 1, parse `$ARGUMENTS` as shell-style arguments. If `--auto` is present, set `AUTO_MODE=true` and remove it from the remaining input. `--auto` uses safe initialization defaults when enough context is already supplied: keep linked files in place, use all discovered files from an explicit folder, choose the auto-detected work context and spec filename, and create a single spec file without supporting specs. It does not bypass required project context, existing-workflow protection, deletion confirmation, file overwrite checks, or fresh discovery topic requirements.
@@ -160,9 +171,11 @@ If `resolved_arguments` contains file path(s):
    - **Skip Phase 2**, continue to Phase 2.8 (Work Context Selection)
 3. For any other file paths provided:
    - Verify file exists with `ls {path}`
-   - Read file to extract only: title/name (from first heading)
+   - Read file to extract the title/name from the first heading
+   - Read enough content to classify readiness without duplicating the source: whether objective/scope/success criteria are present, whether technical context/dependencies/planning detail are present, and whether blocking open questions remain
+   - Store only concise readiness notes as `linked_spec_readiness_context`; linked files remain the source of truth and their body content is not copied into the generated SIW spec
    - If file doesn't exist, warn and skip it
-4. Store file paths as `linked_spec_files` (do NOT extract full content - these remain the source of truth)
+4. Store file paths as `linked_spec_files` (do NOT copy full content into the SIW spec - these remain the source of truth)
 5. Extract a brief project name from the file titles for `project_description`
 6. **Continue to Phase 2.5** (Confirm Linked Sources)
 
@@ -190,7 +203,10 @@ If `resolved_arguments` is a directory (verified with `ls -d`):
    ```
 
 3. If "None - start fresh" selected: Set `resolved_arguments` empty, **continue to Phase 2**
-4. If "All files" or specific files selected: Store selected paths as `linked_spec_files`
+4. If "All files" or specific files selected:
+   - Store selected paths as `linked_spec_files`
+   - For each selected file, read the first heading for title inference and enough content to classify readiness without duplicating the source
+   - Store concise readiness notes as `linked_spec_readiness_context`
 5. **Continue to Phase 2.5** (Confirm Linked Sources)
 
 ### Case 3: "discover" Mode
@@ -222,7 +238,9 @@ If `resolved_arguments` starts with "discover" or "interview":
    ```
 6. If "Use existing specs":
    - Store the detected paths as `linked_spec_files`
-   - Read only the first heading from each file to infer titles
+   - Read the first heading from each file to infer titles
+   - Read enough content to classify readiness without duplicating the source
+   - Store concise readiness notes as `linked_spec_readiness_context`
    - Set `project_description` from those titles
    - Continue to Phase 2.5
 7. If "Abort": stop this command without changing files.
@@ -348,6 +366,17 @@ Store as `use_supporting_specs`.
 
 ## Phase 4: Create Documents
 
+Before creating documents, classify the initialized artifact using the Artifact Readiness Contract and store:
+
+- `artifact_readiness`: `product-only`, `requirements-only`, or `planning-ready`
+- `readiness_reason`: one concise reason
+- `readiness_next_steps`: the exact next-step lines for generated `siw/LOG.md` and the success report
+- `open_issues_empty_message`: the placeholder message for the empty `siw/OPEN_ISSUES_OVERVIEW.md` table
+
+When `linked_spec_files` exists, base the classification on `linked_spec_readiness_context`. If the available linked-source context does not prove scope, success criteria, technical context/dependencies, and absence of blocking open questions, do not infer `planning-ready`; classify the artifact as `product-only` or `requirements-only` and route to discovery/spec hardening.
+
+For `product-only` or `requirements-only`, generated tracking files must point to `/kramme:siw:discovery` and must not imply issue definition or implementation is ready. For `planning-ready`, choose either the phased path (`/kramme:siw:generate-phases`, then implementation after issues exist) or the single-issue path (`/kramme:siw:issue-define`, then implementation after the issue exists).
+
 Read `references/document-creation.md` and follow it to create `siw/`, `siw/{spec_filename}`, `siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/issues/`, and optional `siw/supporting-specs/`.
 
 When `strategy_context` exists, include a concise `## Product Strategy Context` section in the generated SIW spec using the relevant placeholders from `assets/spec-templates.md`. Keep it to strategy facts and conflicts; do not duplicate the entire `STRATEGY.md`.
@@ -355,6 +384,14 @@ When `strategy_context` exists, include a concise `## Product Strategy Context` 
 ## Phase 5: Report Success
 
 Read the Phase 5 success-report templates from `references/success-report.md`, display the applicable summary sections, then stop.
+
+Include one readiness line in the success report:
+
+```
+Artifact readiness: <product-only|requirements-only|planning-ready> — <one-line reason and next skill>
+```
+
+If the result is `product-only` or `requirements-only`, point to `/kramme:siw:discovery` before phase or issue creation. If it is `planning-ready`, point to `/kramme:siw:generate-phases` for phased work or `/kramme:siw:issue-define` for a single first issue.
 
 **STOP HERE.** Wait for the user's next instruction.
 
@@ -365,5 +402,5 @@ Read the Phase 5 success-report templates from `references/success-report.md`, d
 3. **Offer file relocation** - Ask if linked files should be moved into siw/ or kept in place
 4. **Thorough discovery** - When using discover mode, conduct comprehensive interview before creating spec
 5. **Smart defaults** - Auto-detect spec type but always confirm
-6. **Clear next steps** - Always point user to `/kramme:siw:issue-define`
+6. **Clear next steps** - Always point user to the next skill implied by readiness: discovery for hardening, generate-phases for phased planning, or issue-define for a single issue
 7. **Respect existing work** - Never overwrite without explicit confirmation

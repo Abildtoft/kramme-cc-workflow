@@ -2,7 +2,7 @@
 
 ## Current Progress
 
-**Last Updated:** {current date} **Quick Summary:** Project initialized, ready for issue definition.
+**Last Updated:** {current date} **Quick Summary:** Project initialized. Artifact readiness: {artifact_readiness} - {readiness_reason}
 
 ### Project Status
 
@@ -14,9 +14,9 @@
 
 ### Next Steps
 
-1. Define first issue with `/kramme:siw:issue-define`
-2. Begin implementation with `/kramme:siw:issue-implement`
-3. **Blockers:** None
+{readiness_next_steps}
+
+**Blockers:** {readiness_blockers}
 
 ---
 

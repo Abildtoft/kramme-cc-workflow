@@ -1,6 +1,6 @@
 # Document Creation
 
-Use this procedure during Phase 4 after `spec_filename`, `use_supporting_specs`, and any optional `linked_spec_files` or `discovered_content` values are set.
+Use this procedure during Phase 4 after `spec_filename`, `use_supporting_specs`, `artifact_readiness`, `readiness_reason`, `readiness_next_steps`, `open_issues_empty_message`, and any optional `linked_spec_files` or `discovered_content` values are set.
 
 ## Phase 4: Create Documents
 
@@ -41,7 +41,31 @@ Read the spec template for the appropriate path from `assets/spec-templates.md`.
 
 ### 4.2 Create siw/LOG.md
 
-Read the template from `assets/log-template.md`. Populate `{spec_filename}` and `{current date}`, then write to `siw/LOG.md`.
+Read the template from `assets/log-template.md`. Populate `{spec_filename}`, `{current date}`, `{artifact_readiness}`, `{readiness_reason}`, `{readiness_next_steps}`, and `{readiness_blockers}`, then write to `siw/LOG.md`.
+
+Set `{readiness_blockers}` from readiness:
+
+- `product-only`: `Needs testable scope and success criteria before issue creation.`
+- `requirements-only`: `Needs planning detail before phase or issue creation.`
+- `planning-ready`: `None`
+
+Set `{readiness_next_steps}` from readiness:
+
+- `product-only` or `requirements-only`:
+  ```markdown
+  1. Harden the spec with `/kramme:siw:discovery`
+  2. Create phases or issues only after the artifact is planning-ready
+  ```
+- `planning-ready` and phased work:
+  ```markdown
+  1. Generate phase issues with `/kramme:siw:generate-phases`
+  2. Begin implementation with `/kramme:siw:issue-implement` after issues exist
+  ```
+- `planning-ready` and one coherent issue:
+  ```markdown
+  1. Define the first issue with `/kramme:siw:issue-define`
+  2. Begin implementation with `/kramme:siw:issue-implement` after the issue exists
+  ```
 
 ### 4.3 Create siw/OPEN_ISSUES_OVERVIEW.md
 
@@ -56,7 +80,7 @@ Create `siw/OPEN_ISSUES_OVERVIEW.md`:
 
 | # | Title | Status | Size | Priority | Mode | Related |
 | --- | --- | --- | --- | --- | --- | --- |
-| _None_ | _Use `/kramme:siw:issue-define` to create first issue (G-001)_ |  |  |  |  |  |
+| _None_ | _{open_issues_empty_message}_ |  |  |  |  |  |
 
 **Status Legend:** READY | IN PROGRESS | IN REVIEW | DONE
 
@@ -64,6 +88,12 @@ Create `siw/OPEN_ISSUES_OVERVIEW.md`:
 
 **Details:** See `siw/issues/ISSUE-{prefix}-XXX-*.md` files.
 ```
+
+Set `{open_issues_empty_message}` from readiness:
+
+- `product-only` or `requirements-only`: `Harden the spec with /kramme:siw:discovery before creating issues`
+- `planning-ready` and phased work: `Use /kramme:siw:generate-phases to create phase issues`
+- `planning-ready` and one coherent issue: `Use /kramme:siw:issue-define to create first issue (G-001)`
 
 ### 4.4 Create siw/issues/ Directory
 

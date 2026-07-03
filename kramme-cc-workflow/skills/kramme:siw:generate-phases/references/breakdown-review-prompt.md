@@ -28,6 +28,7 @@ Evaluate:
 7. Slicing shape: apply the vertical-vs-horizontal rule from the Task Sizing Grammar above for the declared Work Context. Flag layer-by-layer tasks and tasks that bundle multiple independent deliverables.
 8. Parallelization: Are parallelization categories (Safe / Must be sequential / Needs coordination) correctly assigned? Flag any safely-parallel work serialized unnecessarily, or any shared-state change marked parallel.
 9. Mode (AUTO vs HITL): The default is AUTO; HITL is the exception. Does every task carry a Mode label? Does every HITL task include a one-line reason naming a concrete human-input requirement (unsettled architectural decision, design review, genuine judgment call, non-automatable manual testing, external-system access)? Flag any unlabeled task, any HITL-without-reason, and any task marked HITL whose reason is weak or speculative rather than a real blocking requirement (it should be AUTO). Also flag the reverse: a task that genuinely needs human input but is marked AUTO (e.g., requires manual UAT).
+10. Prefactoring-first: Does the breakdown hide behavior-preserving prep work inside a feature task? Flag any case where a first prefactoring slice or blocker is needed to avoid an L/XL task, duplicated implementation work, broad cross-module edits, or hidden refactor scope.
 
 For each issue found, provide:
 - What's wrong

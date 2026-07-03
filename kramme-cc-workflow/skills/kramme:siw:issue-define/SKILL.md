@@ -25,6 +25,17 @@ Create or improve a local issue through guided interactive refinement. Can start
 
 **Workflow files should exist.** If `siw/OPEN_ISSUES_OVERVIEW.md` doesn't exist, suggest running `/kramme:siw:init` first. If the file is still missing after that suggestion, stop without creating an issue.
 
+## Artifact Readiness Contract
+
+Use this shared vocabulary while deciding whether an issue can be written:
+
+- `product-only`: only the problem, user, or desired outcome is known.
+- `requirements-only`: scope and success criteria exist, but issue-level dependencies, affected areas, or verification are not clear.
+- `planning-ready`: enough context exists to define one or more SIW issues, but the current artifact is not yet executable.
+- `implementation-ready`: the issue has bounded scope, dependencies/blockers, acceptance criteria, Mode, and verification.
+
+This skill turns `planning-ready` input into an `implementation-ready` local issue. If the interview cannot harden a `product-only` or `requirements-only` request into a single executable issue, stop and route to `/kramme:siw:discovery` or spec hardening instead of writing a vague issue. Route to `/kramme:siw:generate-phases` only when the artifact is `planning-ready` but too broad for one issue.
+
 ## SIW Issue-State Protocol
 
 This skill owns the manual SIW issue creation/update protocol. Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
@@ -179,12 +190,13 @@ Before the interview, synthesize a working hypothesis for:
 - why this matters now
 - what should be explicitly deferred or split into another issue
 - which choices belong in the issue versus which should stay implementation-level
+- whether behavior-preserving prefactoring should be a first issue or blocker before the requested feature/change
 
 Use these as assumptions to validate instead of asking the user to restate obvious context.
 
 ## Phase 4: Interview
 
-Read `references/interview-guide.md` and follow the simple-bug or standard interview path based on `issue_type` and `is_simple_bug`. Store priority, size, related work, blockers, parallelization category, and Mode for Phase 5. Confirm inferred metadata before composing.
+Read `references/interview-guide.md` and follow the simple-bug or standard interview path based on `issue_type` and `is_simple_bug`. Store priority, size, related work, blockers, parallelization category, prefactoring need, and Mode for Phase 5. Confirm inferred metadata before composing.
 
 ## Phase 5: Issue Composition
 
@@ -194,6 +206,13 @@ Read `references/issue-templates.md` and select the appropriate template:
 - Use the **Comprehensive Template** otherwise.
 
 Both templates include the `Mode:` field. When emitting the issue, fill `Mode: AUTO` or `Mode: HITL — <one-line reason>` from Round 5.
+
+Apply the prefactoring-first rule before finalizing the draft:
+
+- If behavior-preserving prep work materially unlocks the requested work, define that prefactoring as its own issue first or add it as a blocker/dependency on the requested issue.
+- Prefactoring issues must have acceptance criteria that prove behavior is preserved and must not include the new feature behavior.
+- Do not hide preparatory refactors inside a feature issue. If the user wants both in one issue, explain the split and ask whether to create the prefactoring issue now or defer it as an explicit blocker.
+- Do not create speculative cleanup. Only split prefactoring when it reduces real implementation risk or avoids an over-large/over-bundled issue.
 
 The references file also defines the **Durability rule**: issue bodies must describe modules, behaviors, and contracts — not file paths, line numbers, or internal helper/class names. Apply it to every section of the composed issue (Problem, Context, Technical Notes, References).
 

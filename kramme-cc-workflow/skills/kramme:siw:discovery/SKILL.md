@@ -21,6 +21,17 @@ The gap between what someone says they want and what they actually need is where
 
 Do NOT use for: implementation planning (use `generate-phases`), issue definition (use `issue-define`), or spec quality auditing (use `spec-audit`).
 
+## Artifact Readiness Contract
+
+Use this shared vocabulary when synthesizing handoff artifacts:
+
+- `product-only`: the artifact clarifies problem, users, desired outcomes, or strategy fit, but lacks testable requirements.
+- `requirements-only`: scope, boundaries, and success criteria are present, but the artifact still needs SIW planning before execution.
+- `planning-ready`: discovery has resolved enough product and technical uncertainty for `/kramme:siw:init`, `/kramme:siw:generate-phases`, or `/kramme:siw:issue-define` to create tracked implementation work.
+- `implementation-ready`: an issue-level artifact is scoped for execution with dependencies and verification. Discovery never produces implementation-ready artifacts directly.
+
+If unresolved `MISSING REQUIREMENT` items remain, classify the output as `product-only` or `requirements-only` and route to another discovery/refinement pass instead of implementation.
+
 ## Process Overview
 
 The executable flow is Step 1 through Step 6 below:
@@ -373,6 +384,8 @@ In either mode, if a dimension remains unanswered, keep the relevant placeholder
 
 Create `siw/` if it does not already exist. Then read `assets/discovery-brief-template.md`, populate it from the interview, and write the result to `siw/DISCOVERY_BRIEF.md`. Emit `PLAN: Written to siw/DISCOVERY_BRIEF.md.` at hand-off.
 
+Also emit `Artifact readiness: <product-only|requirements-only|planning-ready> — <one-line reason>`. Use `planning-ready` only when the brief has concrete scope, boundaries, success criteria, relevant technical context/dependencies or planning detail, and no blocking `MISSING REQUIREMENT` markers.
+
 After writing, suggest next steps:
 
 - `/kramme:siw:init siw/DISCOVERY_BRIEF.md` — to bootstrap a full SIW workflow from this brief
@@ -380,11 +393,13 @@ After writing, suggest next steps:
 
 ### Optional plan-mode handoff
 
-When the host runtime supports it (Claude Code) and the user wants to move directly into implementation planning rather than the SIW spec/issue workflow, offer to call `EnterPlanMode` so the brief becomes the seed of an interactive plan. Ask once via AskUserQuestion (`Enter plan mode now` / `Stick with SIW`) — don't auto-trigger. If the runtime doesn't expose `EnterPlanMode`, skip this step silently.
+When the host runtime supports it (Claude Code), the output is `planning-ready`, and the user wants to move directly into implementation planning rather than the SIW spec/issue workflow, offer to call `EnterPlanMode` so the brief becomes the seed of an interactive plan. Ask once via AskUserQuestion (`Enter plan mode now` / `Stick with SIW`) — don't auto-trigger. If the runtime doesn't expose `EnterPlanMode`, skip this step silently.
 
 ### Refinement Mode → SPEC_STRENGTHENING_PLAN.md
 
 Read `assets/spec-strengthening-plan-template.md`, populate it from the interview, and write the result to `siw/SPEC_STRENGTHENING_PLAN.md`. Emit `PLAN: Written to siw/SPEC_STRENGTHENING_PLAN.md.` at hand-off.
+
+Also emit `Artifact readiness: requirements-only` unless the plan clearly resolves enough scope, acceptance, and technical uncertainty to make the target spec `planning-ready` after apply. Never label the strengthening plan itself `implementation-ready`.
 
 If the refinement target is `siw/DISCOVERY_BRIEF.md`, reference sections from the brief in the patch plan and treat the brief as the target document for optional apply. Treat `siw/SPEC_STRENGTHENING_PLAN.md` as a temporary handoff artifact: it should remain only while waiting for review or manual application, and it should be removed once the plan has been applied.
 
