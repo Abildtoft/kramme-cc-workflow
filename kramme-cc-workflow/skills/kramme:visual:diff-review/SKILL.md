@@ -38,7 +38,9 @@ Read the local `references/` and `assets/` files just-in-time, as step 2 below d
 
 3. **Style.** Use typography, palette, and depth to clearly distinguish before, after, neutral context, and risks. Avoid generic default styling. Respect `prefers-reduced-motion`.
 
-4. **Deliver.** Write a single self-contained HTML file to `~/.kramme-cc-workflow/diagrams/`, open it in the browser, and report the file path to the user.
+4. **Generate and fact-check.** After composing the artifact, compare the rendered claims back to the fact sheet and source evidence before reporting it. Verify counts, file references, function/type names, Mermaid labels, before/after statements, and review notes. If polish introduced a new claim, add source evidence or remove the claim.
+
+5. **Deliver.** Open the fact-checked artifact in the browser and report the file path to the user.
 
 ## Scope Detection
 
@@ -76,6 +78,7 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 - If something cannot be verified, mark it as uncertain rather than stating it as fact
 - Do not embed secrets, credentials, tokens, or personal data surfaced in diffs, commit messages, or source. Summarize sensitive areas instead of quoting them — the output is written to disk and opened in a browser
 - Escape repo-derived text (code snippets, names, paths, commit messages) before embedding it in HTML
+- Re-check the final HTML against this fact sheet before delivery; every visible count, path, diagram label, and behavioral claim must trace back to source evidence or be marked uncertain
 
 ## Page Sections
 
@@ -109,7 +112,7 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 
 ## Output
 
-Write to `~/.kramme-cc-workflow/diagrams/diff-review-{descriptive-name}.html`. Create the directory if needed. Re-running with the same scope reuses the same descriptive name and overwrites the previous file by design — vary the name only when you want to keep an earlier review.
+Write a user-requested HTML deliverable to `~/.kramme-cc-workflow/diagrams/diff-review-{descriptive-name}.html`. Create the directory if needed, and choose a descriptive name for the current review scope.
 
 Open in browser:
 

@@ -35,7 +35,9 @@ Use a blueprint/editorial aesthetic with current-state vs. planned-state panels,
 
 3. **Style.** Use typography, palette, and depth to separate current state, planned state, and risk. Avoid default app styling. Use CSS custom properties, atmospheric backgrounds, and motion only where it helps comprehension.
 
-4. **Deliver.** Write the HTML file and open it in the browser as described in **Output** below.
+4. **Generate and fact-check.** After composing the artifact, compare the rendered claims back to the fact sheet and source evidence before reporting it. Verify counts, file references, plan references, function/type names, Mermaid labels, current/planned behavior statements, and risk labels. If polish introduced a new claim, add source evidence or remove the claim.
+
+5. **Deliver.** Open the fact-checked artifact in the browser as described in **Output** below.
 
 ## Inputs
 
@@ -73,6 +75,7 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 - If something cannot be verified, mark it as uncertain
 - Do not embed secrets, credentials, tokens, or personal data surfaced in the plan or source. Summarize sensitive areas instead of quoting them — the output is written to disk and opened in a browser
 - Escape repo-derived text (code snippets, names, paths) before embedding it in HTML
+- Re-check the final HTML against this fact sheet before delivery; every visible count, path, diagram label, and behavior or risk claim must trace back to source evidence or be marked uncertain
 
 ## Page Sections
 
@@ -118,7 +121,7 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 
 ## Output
 
-Write to `~/.kramme-cc-workflow/diagrams/plan-review-{descriptive-name}.html`. Create the directory if needed. Re-running with the same `{descriptive-name}` overwrites the prior file in place — regenerating the report is the intended behavior. Open in browser:
+Write a user-requested HTML deliverable to `~/.kramme-cc-workflow/diagrams/plan-review-{descriptive-name}.html`. Create the directory if needed, and choose a descriptive name for the current plan review scope. Open in browser:
 
 - macOS: `open ~/.kramme-cc-workflow/diagrams/{filename}.html`
 - Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html`

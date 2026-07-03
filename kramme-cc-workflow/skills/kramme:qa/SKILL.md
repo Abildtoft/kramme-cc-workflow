@@ -146,6 +146,8 @@ Map changed UI files to routes/pages:
 - Config-based routing: search router config for imports/references to the changed files
 - If mapping is ambiguous, include the likely route with a note
 
+For complex changed flows, sketch the user flow first as a compact flowchart before building the matrix. Include entry points, decision points, state transitions, and exit/error states so the matrix is grounded in the workflow rather than a flat file list.
+
 Create a branch-diff-to-journey matrix before building the test checklist. Read `references/diff-aware-journey-matrix.md` and populate one row per route/screen and meaningful user journey using the columns defined there.
 
 Mark speculative route mappings as `UNVERIFIED` rather than silently treating them as known routes. If a journey would mutate shared data, send external notifications, change billing, delete records, or otherwise be destructive, ask the user before executing it; if the runtime cannot ask, mark the row `blocked`.
@@ -276,6 +278,7 @@ Populate all sections:
 - List all tested routes with descriptions
 - Include the journey matrix for `diff-aware` runs, with route/screen, journey, state, expected behavior, evidence, result, and follow-up
 - Document each finding with severity, repro steps, expected vs actual, and recommended fix
+- Call out persona-visible paper cuts: small friction, confusing copy, awkward ordering, missing feedback, or visual inconsistencies that a realistic user persona would notice even when the route technically works
 - Include the `## Regression` section prepared in Step 8 when a regression comparison ran
 - Calculate summary counts per severity level
 - Provide overall recommendation (ready / not ready / ready with caveats)
