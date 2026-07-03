@@ -121,7 +121,7 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 
 ## Output
 
-Write to `~/.kramme-cc-workflow/diagrams/plan-review-{descriptive-name}.html`. Create the directory if needed. Re-running with the same `{descriptive-name}` overwrites the prior file in place — regenerating the report is the intended behavior. Open in browser:
+Write a user-requested HTML deliverable to `~/.kramme-cc-workflow/diagrams/plan-review-{descriptive-name}.html`. Create the directory if needed, and choose a descriptive name for the current plan review scope. Open in browser:
 
 - macOS: `open ~/.kramme-cc-workflow/diagrams/{filename}.html`
 - Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/{filename}.html`

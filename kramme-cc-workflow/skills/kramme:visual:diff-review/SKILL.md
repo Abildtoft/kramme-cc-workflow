@@ -112,7 +112,7 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 
 ## Output
 
-Write to `~/.kramme-cc-workflow/diagrams/diff-review-{descriptive-name}.html`. Create the directory if needed. Re-running with the same scope reuses the same descriptive name and overwrites the previous file by design — vary the name only when you want to keep an earlier review.
+Write a user-requested HTML deliverable to `~/.kramme-cc-workflow/diagrams/diff-review-{descriptive-name}.html`. Create the directory if needed, and choose a descriptive name for the current review scope.
 
 Open in browser:
 

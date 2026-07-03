@@ -40,7 +40,7 @@ Use a warm editorial or paper/ink aesthetic with muted blues and greens. Vary fo
 
 4. **Generate and fact-check.** After composing the artifact, compare the rendered claims back to the fact sheet and source evidence before reporting it. Verify counts, file references, module names, Mermaid labels, timeline summaries, decision log entries, and cognitive debt labels. If polish introduced a new claim, add source evidence or remove the claim.
 
-5. **Deliver.** Open the fact-checked artifact. See the Output section for the path, overwrite behavior, and how to open it.
+5. **Deliver.** Open the fact-checked artifact. See the Output section for the path and browser-opening guidance.
 
 ## Time Window
 
@@ -114,7 +114,7 @@ Before generating HTML, produce a structured fact sheet of every claim you will 
 
 ## Output
 
-Write to `~/.kramme-cc-workflow/diagrams/project-recap-{project-name}.html`, where `{project-name}` is the manifest name or, failing that, the working-directory name. Create the directory if needed. Re-running overwrites the existing recap for this project.
+Write a user-requested HTML deliverable to `~/.kramme-cc-workflow/diagrams/project-recap-{project-name}.html`, where `{project-name}` is the manifest name or, failing that, the working-directory name. Create the directory if needed.
 
 Open in the browser, then report the file path to the user:
 
