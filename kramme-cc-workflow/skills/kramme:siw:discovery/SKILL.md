@@ -382,7 +382,9 @@ In either mode, if a dimension remains unanswered, keep the relevant placeholder
 
 ### Greenfield Mode → DISCOVERY_BRIEF.md
 
-Create `siw/` if it does not already exist. Then read `assets/discovery-brief-template.md`, populate it from the interview, and write the result to `siw/DISCOVERY_BRIEF.md`. Emit `PLAN: Written to siw/DISCOVERY_BRIEF.md.` at hand-off.
+Create `siw/` if it does not already exist. Before writing, check whether `siw/DISCOVERY_BRIEF.md` exists. If it exists, stop and ask whether to refine the existing brief. If the user wants a separate discovery thread, tell them to archive/remove the existing SIW files first or use a different workspace, then stop. Never overwrite an existing `siw/DISCOVERY_BRIEF.md`.
+
+If `siw/DISCOVERY_BRIEF.md` does not exist, read `assets/discovery-brief-template.md`, populate it from the interview, and write the result to `siw/DISCOVERY_BRIEF.md`. Emit `PLAN: Written to siw/DISCOVERY_BRIEF.md.` at hand-off.
 
 Also emit `Artifact readiness: <product-only|requirements-only|planning-ready> — <one-line reason>`. Use `planning-ready` only when the brief has concrete scope, boundaries, success criteria, relevant technical context/dependencies or planning detail, and no blocking `MISSING REQUIREMENT` markers.
 

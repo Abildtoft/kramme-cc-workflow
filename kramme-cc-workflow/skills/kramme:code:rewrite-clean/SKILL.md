@@ -114,7 +114,7 @@ These are the lies you will tell yourself to justify scrapping code that should 
 Rejection criteria. If any of these are true, revert the rewrite:
 
 - **The rewrite requires modifying tests to pass.** Tests encode behavior. If the rewrite changes test expectations, it is a behavior change, not an elegant refactor. Revert or reclassify.
-- **The rewrite is longer than the original.** If "elegant" turned out longer, the original was probably fine. Discard the rewrite.
+- **The rewrite is longer without a stated clarity gain.** Longer code is acceptable only when it reads more clearly top-to-bottom. If "elegant" turned out longer and you cannot articulate the clarity gain, the original was probably fine. Discard the rewrite.
 - **Rewriting for personal preference, not codebase consistency.** If the old shape matched the codebase and the new shape matches your taste, the old shape wins.
 - **Removing defensive checks without proving they're unreachable.** If you cannot prove a check is dead (via types, invariants, or caller analysis), keep it. The mediocre version may have encoded a lesson.
 
