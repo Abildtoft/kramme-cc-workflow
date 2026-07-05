@@ -22,7 +22,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from changelog import generate_changelog
+from changelog import ChangelogHistoryError, generate_changelog
 
 
 def get_repo_root() -> Path:
@@ -155,6 +155,125 @@ def restore_files(snapshot: dict[Path, bytes | None]) -> None:
         path.write_bytes(contents)
 
 
+def get_current_git_branch(git_root: Path) -> str | None:
+    """Return the current branch name, or None when detached or unavailable."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        cwd=git_root,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+
+    branch = result.stdout.strip()
+    if not branch or branch == "HEAD":
+        return None
+    return branch
+
+
+def get_current_git_head(git_root: Path) -> str | None:
+    """Return the current commit hash, or None when unavailable."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", "HEAD"],
+        cwd=git_root,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+
+    head = result.stdout.strip()
+    return head or None
+
+
+def _git_paths(git_root: Path, paths: list[Path]) -> list[str]:
+    git_root = git_root.resolve()
+    relative_paths = []
+    for path in paths:
+        resolved = path.resolve()
+        try:
+            relative_paths.append(str(resolved.relative_to(git_root)))
+        except ValueError:
+            relative_paths.append(str(resolved))
+    return relative_paths
+
+
+def reset_git_index(git_root: Path, paths: list[Path]) -> None:
+    """Best-effort reset for release paths that may have been staged."""
+    git_paths = _git_paths(git_root, paths)
+    if not git_paths:
+        return
+
+    subprocess.run(
+        ["git", "reset", "--", *git_paths],
+        cwd=git_root,
+        capture_output=True,
+    )
+
+
+def checkout_branch(git_root: Path, branch: str) -> bool:
+    """Best-effort branch checkout for release rollback."""
+    result = subprocess.run(
+        ["git", "checkout", branch],
+        cwd=git_root,
+        capture_output=True,
+        text=True,
+    )
+    return result.returncode == 0
+
+
+def checkout_detached_head(git_root: Path, head: str) -> bool:
+    """Best-effort detached checkout for release rollback."""
+    result = subprocess.run(
+        ["git", "checkout", "--detach", head],
+        cwd=git_root,
+        capture_output=True,
+        text=True,
+    )
+    return result.returncode == 0
+
+
+def restore_release_state(
+    snapshot: dict[Path, bytes | None],
+    start_branch: str | None,
+    start_head: str | None,
+) -> None:
+    """Restore release files and best-effort Git state after release failure."""
+    git_root = get_git_root()
+    snapshot_paths = list(snapshot.keys())
+
+    restore_files(snapshot)
+
+    current_branch = get_current_git_branch(git_root)
+    if start_branch and current_branch and current_branch != start_branch:
+        if start_head:
+            subprocess.run(
+                ["git", "reset", "--mixed", start_head],
+                cwd=git_root,
+                capture_output=True,
+            )
+            restore_files(snapshot)
+        if not checkout_branch(git_root, start_branch):
+            reset_git_index(git_root, snapshot_paths)
+            checkout_branch(git_root, start_branch)
+        restore_files(snapshot)
+    elif start_head and current_branch:
+        subprocess.run(
+            ["git", "reset", "--mixed", start_head],
+            cwd=git_root,
+            capture_output=True,
+        )
+        restore_files(snapshot)
+        if not checkout_detached_head(git_root, start_head):
+            reset_git_index(git_root, snapshot_paths)
+            checkout_detached_head(git_root, start_head)
+        restore_files(snapshot)
+
+    reset_git_index(git_root, snapshot_paths)
+    print("  Restored release files to their pre-release state.")
+
+
 def run_verification(repo_root: Path) -> bool:
     """Run the full release verification gate."""
     result = subprocess.run(["make", "verify"], cwd=repo_root)
@@ -277,35 +396,74 @@ def main() -> int:
             return 0
 
     release_snapshot = None
+    release_start_branch = None
+    release_start_head = None
     if not args.dry_run:
+        git_root = get_git_root()
+        release_start_branch = get_current_git_branch(git_root)
+        release_start_head = get_current_git_head(git_root)
         release_snapshot = snapshot_files(get_release_mutation_paths(repo_root))
 
-    print("\nSteps:")
+    try:
+        print("\nSteps:")
 
-    # 1. Update version
-    print("1. Updating version...")
-    update_version_files(repo_root, new_version, args.dry_run)
+        # 1. Update version
+        print("1. Updating version...")
+        update_version_files(repo_root, new_version, args.dry_run)
 
-    # 2. Generate changelog
-    print("2. Generating changelog...")
-    changelog_updated = generate_changelog(repo_root, new_version, dry_run=args.dry_run)
-    if not changelog_updated and not args.dry_run:
-        print("  Changelog already up to date or no changes found")
+        # 2. Generate changelog
+        print("2. Generating changelog...")
+        changelog_updated = generate_changelog(
+            repo_root,
+            new_version,
+            dry_run=args.dry_run,
+            fail_on_history_error=True,
+        )
+        if not changelog_updated and not args.dry_run:
+            print("  Changelog already up to date or no changes found")
 
-    # 3. Verify the final generated release state before committing or pushing.
-    print("3. Running release verification...")
-    if args.dry_run:
-        print("  Would run: make verify")
-    elif not run_verification(repo_root):
+        # 3. Verify the final generated release state before committing or pushing.
+        print("3. Running release verification...")
+        if args.dry_run:
+            print("  Would run: make verify")
+        elif not run_verification(repo_root):
+            if release_snapshot is not None:
+                restore_release_state(
+                    release_snapshot,
+                    release_start_branch,
+                    release_start_head,
+                )
+            print("\nRelease verification failed. Aborting before creating release branch.")
+            return 1
+
+        # 4. Git commit and push branch
+        print("4. Creating release branch...")
+        branch_name = git_commit_and_push_branch(
+            repo_root, new_version, args.dry_run, args.ci
+        )
+    except ChangelogHistoryError as exc:
         if release_snapshot is not None:
-            restore_files(release_snapshot)
-            print("  Restored release files to their pre-release state.")
-        print("\nRelease verification failed. Aborting before creating release branch.")
+            restore_release_state(
+                release_snapshot, release_start_branch, release_start_head
+            )
+        print(f"\nRelease changelog generation failed: {exc}")
+        print("Aborting after restoring release files.")
         return 1
-
-    # 4. Git commit and push branch
-    print("4. Creating release branch...")
-    branch_name = git_commit_and_push_branch(repo_root, new_version, args.dry_run, args.ci)
+    except subprocess.CalledProcessError as exc:
+        if release_snapshot is not None:
+            restore_release_state(
+                release_snapshot, release_start_branch, release_start_head
+            )
+        command = " ".join(str(part) for part in exc.cmd)
+        print(f"\nRelease git step failed: {command}")
+        print("Aborting after restoring release files.")
+        return 1
+    except Exception:
+        if release_snapshot is not None:
+            restore_release_state(
+                release_snapshot, release_start_branch, release_start_head
+            )
+        raise
 
     if args.ci:
         print(f"\nRelease branch {branch_name} pushed. PR will be created by workflow.")

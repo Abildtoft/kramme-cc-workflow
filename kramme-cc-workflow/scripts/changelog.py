@@ -32,6 +32,28 @@ class ChangelogEntry:
     pr_number: Optional[str] = None
 
 
+class ChangelogHistoryError(RuntimeError):
+    """Raised when git history cannot be read for changelog generation."""
+
+
+def _git_log_error_message(exc: subprocess.CalledProcessError) -> str:
+    details = (exc.stderr or exc.stdout or "").strip()
+    lower_details = details.lower()
+    if (
+        "does not have any commits" in lower_details
+        or "ambiguous argument 'head'" in lower_details
+        or "unknown revision or path not in the working tree" in lower_details
+    ):
+        return (
+            "No commits found in repository history; create an initial commit "
+            "before generating a changelog."
+        )
+
+    if details:
+        return f"Unable to read git history: {details}"
+    return "Unable to read git history."
+
+
 class CommitParser:
     """Parses git commit messages into changelog entries."""
 
@@ -172,13 +194,16 @@ class ChangelogGenerator:
         else:
             range_spec = "HEAD"
 
-        result = subprocess.run(
-            ["git", "log", range_spec, "--format=%H%x00%s%x00%b%x1e"],
-            cwd=self.repo_root,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
+        try:
+            result = subprocess.run(
+                ["git", "log", range_spec, "--format=%H%x00%s%x00%b%x1e"],
+                cwd=self.repo_root,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as exc:
+            raise ChangelogHistoryError(_git_log_error_message(exc)) from exc
 
         commits = []
         for entry in result.stdout.strip().split("\x1e"):
@@ -381,11 +406,15 @@ def generate_changelog(
     version: str,
     repo_url: Optional[str] = None,
     dry_run: bool = False,
+    *,
+    fail_on_history_error: bool = False,
 ) -> bool:
     """
     Main entry point for changelog generation.
 
     Returns True if changelog was updated, False if version already exists.
+    When fail_on_history_error is true, git history read failures are raised so
+    callers that require a changelog can abort instead of treating them as no-op.
     """
     changelog_path = repo_root / "CHANGELOG.md"
 
@@ -402,7 +431,13 @@ def generate_changelog(
 
     # Get commits since last tag
     last_tag = generator.get_latest_tag()
-    commits = generator.get_commits_since_tag(last_tag)
+    try:
+        commits = generator.get_commits_since_tag(last_tag)
+    except ChangelogHistoryError as exc:
+        if fail_on_history_error:
+            raise
+        print(f"  {exc}")
+        return False
 
     if not commits:
         print("  No commits found since last tag")
