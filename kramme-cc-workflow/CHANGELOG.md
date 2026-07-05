@@ -1,8 +1,13 @@
 # Changelog
 
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+This changelog is maintained from v0.38.0 onward. For earlier releases, see the [GitHub releases](https://github.com/Abildtoft/kramme-cc-workflow/releases).
+
 ## Unreleased
 
-### Changed
 ## [0.65.0] - 2026-07-01
 
 ### Added
@@ -552,10 +557,6 @@
 ### Fixed
 
 - Preserve skill resources in conversion (#222)
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 [0.65.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.64.0...v0.65.0
 [0.64.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.63.0...v0.64.0

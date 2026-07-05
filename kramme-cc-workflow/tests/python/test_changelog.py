@@ -4,6 +4,7 @@ import contextlib
 from datetime import date
 import importlib.util
 import io
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -111,6 +112,50 @@ class CommitParserTest(unittest.TestCase):
 
 
 class ChangelogGeneratorTest(unittest.TestCase):
+    def test_generate_changelog_handles_empty_git_history(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            subprocess.run(
+                ["git", "init"],
+                cwd=tmp_dir,
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                updated = changelog.generate_changelog(
+                    Path(tmp_dir),
+                    "1.0.0",
+                    repo_url="https://github.com/example/repo",
+                    dry_run=True,
+                )
+
+            self.assertFalse(updated)
+            self.assertIn(
+                "No commits found in repository history", output.getvalue()
+            )
+            self.assertNotIn("fatal:", output.getvalue())
+
+    def test_generate_changelog_can_raise_empty_history_for_release(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            subprocess.run(
+                ["git", "init"],
+                cwd=tmp_dir,
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
+            with self.assertRaises(changelog.ChangelogHistoryError):
+                changelog.generate_changelog(
+                    Path(tmp_dir),
+                    "1.0.0",
+                    repo_url="https://github.com/example/repo",
+                    dry_run=True,
+                    fail_on_history_error=True,
+                )
+
     def test_formats_version_section_in_category_order_with_pr_references(self) -> None:
         generator = changelog.ChangelogGenerator(Path("."))
         section = generator.format_version_section(
