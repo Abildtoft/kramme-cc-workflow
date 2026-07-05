@@ -127,7 +127,6 @@ run_hook_missing_python_parser() {
 	rm -rf "$plugin_root"
 	mkdir -p "$plugin_root/hooks/lib"
 	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
-	cp "$BATS_TEST_DIRNAME/../hooks/lib/git-parse-utils.sh" "$plugin_root/hooks/lib/git-parse-utils.sh"
 	cp "$BATS_TEST_DIRNAME/../hooks/confirm-review-artifacts.txt" "$plugin_root/hooks/confirm-review-artifacts.txt"
 	make_bash_input "$cmd" | env CLAUDE_PLUGIN_ROOT="$plugin_root" bash "$HOOK"
 }

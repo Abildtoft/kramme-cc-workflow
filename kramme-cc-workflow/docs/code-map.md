@@ -14,7 +14,7 @@ and [Makefile](../Makefile).
 | Agents | `kramme-cc-workflow/agents/*.md` | `bats kramme-cc-workflow/tests/agent-description-length.bats`, `make -C kramme-cc-workflow test-convert` |
 | Hook manifest and hooks | `kramme-cc-workflow/hooks/hooks.json`, `kramme-cc-workflow/hooks/*.sh` | `bats kramme-cc-workflow/tests/{auto-format,block-rm-rf,check-enabled,confirm-review-responses,context-links,noninteractive-git,skill-usage-stats}.bats`, plus the hook-specific tests below |
 | Hook enablement | `kramme-cc-workflow/hooks/lib/check-enabled.sh`, hook scripts that source it | `bats kramme-cc-workflow/tests/check-enabled.bats` |
-| Git command safety parsing | `kramme-cc-workflow/hooks/lib/git-parse-utils.sh`, `kramme-cc-workflow/hooks/lib/git_command_parser.py`, `kramme-cc-workflow/hooks/noninteractive-git.sh`, `kramme-cc-workflow/hooks/confirm-review-responses.sh`, `kramme-cc-workflow/hooks/block-rm-rf.sh` | `bats kramme-cc-workflow/tests/git-parse-utils.bats kramme-cc-workflow/tests/noninteractive-git.bats kramme-cc-workflow/tests/confirm-review-responses.bats kramme-cc-workflow/tests/block-rm-rf.bats` |
+| Git command safety parsing | `kramme-cc-workflow/hooks/lib/git_command_parser.py`, `kramme-cc-workflow/hooks/noninteractive-git.sh`, `kramme-cc-workflow/hooks/confirm-review-responses.sh`, `kramme-cc-workflow/hooks/block-rm-rf.sh` | `python3 -m unittest discover -s kramme-cc-workflow/tests/python -p test_git_command_parser.py`, `bats kramme-cc-workflow/tests/noninteractive-git.bats kramme-cc-workflow/tests/confirm-review-responses.bats kramme-cc-workflow/tests/block-rm-rf.bats` |
 | Auto-format hook | `kramme-cc-workflow/hooks/auto-format.sh` | `make -C kramme-cc-workflow test-format` |
 | Context links hook | `kramme-cc-workflow/hooks/context-links.sh`, `kramme-cc-workflow/hooks/context-links.config.example` | `make -C kramme-cc-workflow test-context` |
 | Skill usage stats | `kramme-cc-workflow/hooks/skill-usage-stats.sh`, `kramme-cc-workflow/hooks/skill-usage.js`, `kramme-cc-workflow/scripts/skill-usage.js` | `make -C kramme-cc-workflow test-skill-usage` |
@@ -36,9 +36,8 @@ referenced local files under the same skill directory. Check
 description length, platform filtering, or self-contained resource policy.
 
 When a hook blocks or misses a command, inspect the hook script, then the shared
-helpers under `hooks/lib/`. The Python parser is the broad parser for complex
-shell and git command shapes; the shell helper remains for direct hook utility
-tests and compatibility.
+helpers under `hooks/lib/`. `git_command_parser.py` is the production parser for
+complex shell and git command shapes used by the command-safety hooks.
 
 When Codex output is wrong, read `scripts/convert-plugin.js` first, then follow
 the boundary in `scripts/convert-plugin/README.md`: loader, transformer, writer,

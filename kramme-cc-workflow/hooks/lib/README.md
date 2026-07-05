@@ -9,8 +9,7 @@ cross-hook parsing and toggle behavior here.
 | File | Responsibility |
 | --- | --- |
 | `check-enabled.sh` | Reads the resolved hook state file, honors disabled hooks, drains stdin on disabled hooks, and optionally emits `{}` for JSON hook events. |
-| `git-parse-utils.sh` | Shell helpers for token cleanup, wrapper parsing, command-substitution tracking, and simple git command classification used by hook tests and shell hooks. |
-| `git_command_parser.py` | Broad parser for command-safety hooks. It handles shell wrappers, environment propagation, command substitutions, heredocs, and git subcommands, then emits JSON with allow/block details. |
+| `git_command_parser.py` | Production parser for command-safety hooks. It handles shell wrappers, environment propagation, command substitutions, heredocs, and git subcommands, then emits JSON with allow/block details. |
 
 ## Boundary Rules
 
@@ -29,11 +28,12 @@ cross-hook parsing and toggle behavior here.
 Run the helper tests after touching this directory:
 
 ```bash
-bats kramme-cc-workflow/tests/check-enabled.bats kramme-cc-workflow/tests/git-parse-utils.bats
+bats kramme-cc-workflow/tests/check-enabled.bats
 ```
 
 For parser behavior, also run the consuming hook suites:
 
 ```bash
+python3 -m unittest discover -s kramme-cc-workflow/tests/python -p test_git_command_parser.py
 bats kramme-cc-workflow/tests/noninteractive-git.bats kramme-cc-workflow/tests/confirm-review-responses.bats kramme-cc-workflow/tests/block-rm-rf.bats
 ```
