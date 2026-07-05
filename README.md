@@ -23,7 +23,7 @@ A Claude Code plugin providing tooling for daily workflow tasks. The plugin sour
 - [Recommended MCP Servers](#recommended-mcp-servers)
 - [Recommended CLIs](#recommended-clis)
 - [Contributing](#contributing)
-- [Testing](#testing)
+- [Running the Tests](#running-the-tests)
 - [SkillOpt Adoption](#skillopt-adoption)
 - [Local Repository Maintenance](#local-repository-maintenance)
 - [Plugin Structure](#plugin-structure)
@@ -141,6 +141,18 @@ See [docs/siw.md](kramme-cc-workflow/docs/siw.md) for the full workflow referenc
 /kramme:pr:create              # restructure commits and open the PR
 /kramme:pr:fix-ci              # iterate until CI passes
 ```
+
+Which review skill should you use?
+
+| Need | Use |
+| --- | --- |
+| Code-quality findings on your local branch | `/kramme:pr:code-review` |
+| Final code-review pass before commit, ship, or closeout | `/kramme:pr:autoreview` |
+| Product-value, flow, copy, and edge-case review | `/kramme:pr:product-review` |
+| UI, UX, visual, and accessibility review | `/kramme:pr:ux-review` |
+| Review someone else's GitHub PR as the assigned reviewer | `/kramme:pr:github-review` |
+| Triage and respond to review comments on your own PR | `/kramme:pr:github-review-reply` |
+| Implement fixes from local review findings | `/kramme:pr:resolve-review` |
 
 ### Inspect and test a live app
 
@@ -440,6 +452,7 @@ Specialized subagents for PR review and UX audit tasks. Invoked by `/kramme:pr:c
 | --- | --- |
 | `kramme:code-reviewer` | Reviews code for bugs, style violations, and CLAUDE.md compliance. Uses confidence scoring (0-100) to filter issues. |
 | `kramme:code-simplifier` | Simplifies code for clarity and maintainability while preserving functionality. |
+| `kramme:codebase-pattern-reviewer` | Use this agent during spec or design review to detect whether a proposed implementation introduces new codebase patterns, conventions, dependencies, file structures, or abstractions without rationale. Best for pre-implementation SIW spec audits; not for line-level code review or implementation conformance checks. |
 | `kramme:lean-reviewer` | Reviews PR changes for code that can be deleted, avoided, or replaced by existing code, standard library, native platform features, or installed dependencies. |
 | `kramme:design-iterator` | Iterative UI/UX design refinement — screenshots, analysis, improvements, repeat N times. |
 | `kramme:comment-analyzer` | Analyzes code comments for accuracy, completeness, and maintainability. |
@@ -558,7 +571,7 @@ The PR title becomes the merge commit message and is used for automatic changelo
 
 Regular branch commits should use plain-English commit messages (no Conventional Commit prefix).
 
-## Testing
+## Running the Tests
 
 The hooks are tested using [BATS](https://github.com/bats-core/bats-core) (Bash Automated Testing System). Pure JavaScript and Python helper modules also have focused unit test runners. The Bats suite requires `jq` for JSON parsing in hooks.
 
