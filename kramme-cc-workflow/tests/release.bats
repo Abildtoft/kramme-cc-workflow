@@ -262,3 +262,41 @@ SH
   git -C "$TMP_ROOT" diff --quiet
   git -C "$TMP_ROOT" diff --cached --quiet
 }
+
+@test "release restores detached checkout when push fails" {
+  INITIAL_HEAD="$(git -C "$TMP_ROOT" rev-parse HEAD)"
+  git -C "$TMP_ROOT" checkout --detach "$INITIAL_HEAD" >/dev/null 2>&1
+  MOCK_BIN="$TMP_ROOT/bin"
+  mkdir -p "$MOCK_BIN"
+  cat >"$MOCK_BIN/make" <<'SH'
+#!/bin/sh
+set -e
+
+if [ "$*" = "check-deps" ]; then
+  exit 0
+fi
+
+if [ "$*" != "verify" ]; then
+  echo "unexpected make args: $*" >&2
+  exit 2
+fi
+
+grep -q '"version": "0.64.1"' .claude-plugin/plugin.json
+grep -q '"version": "0.64.1"' package.json
+grep -q '## \[0.64.1\]' CHANGELOG.md
+SH
+  chmod +x "$MOCK_BIN/make"
+
+  run env PATH="$MOCK_BIN:$PATH" python3 "$PLUGIN_ROOT/scripts/release.py" patch --ci
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Restored release files to their pre-release state."* ]]
+  [[ "$output" == *"Release git step failed: git push origin release/v0.64.1"* ]]
+  grep -q '"version": "0.64.0"' "$PLUGIN_ROOT/.claude-plugin/plugin.json"
+  grep -q '"version": "0.64.0"' "$PLUGIN_ROOT/package.json"
+  ! grep -q '## \[0.64.1\]' "$PLUGIN_ROOT/CHANGELOG.md"
+  [ "$(git -C "$TMP_ROOT" rev-parse --abbrev-ref HEAD)" = "HEAD" ]
+  [ "$(git -C "$TMP_ROOT" rev-parse HEAD)" = "$INITIAL_HEAD" ]
+  git -C "$TMP_ROOT" diff --quiet
+  git -C "$TMP_ROOT" diff --cached --quiet
+}

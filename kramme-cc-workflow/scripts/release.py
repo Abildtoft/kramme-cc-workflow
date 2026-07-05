@@ -223,6 +223,17 @@ def checkout_branch(git_root: Path, branch: str) -> bool:
     return result.returncode == 0
 
 
+def checkout_detached_head(git_root: Path, head: str) -> bool:
+    """Best-effort detached checkout for release rollback."""
+    result = subprocess.run(
+        ["git", "checkout", "--detach", head],
+        cwd=git_root,
+        capture_output=True,
+        text=True,
+    )
+    return result.returncode == 0
+
+
 def restore_release_state(
     snapshot: dict[Path, bytes | None],
     start_branch: str | None,
@@ -246,6 +257,17 @@ def restore_release_state(
         if not checkout_branch(git_root, start_branch):
             reset_git_index(git_root, snapshot_paths)
             checkout_branch(git_root, start_branch)
+        restore_files(snapshot)
+    elif start_head and current_branch:
+        subprocess.run(
+            ["git", "reset", "--mixed", start_head],
+            cwd=git_root,
+            capture_output=True,
+        )
+        restore_files(snapshot)
+        if not checkout_detached_head(git_root, start_head):
+            reset_git_index(git_root, snapshot_paths)
+            checkout_detached_head(git_root, start_head)
         restore_files(snapshot)
 
     reset_git_index(git_root, snapshot_paths)
