@@ -14,14 +14,21 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 import lint_skill_contracts  # noqa: E402
 
 
-def load_compat_script():
-    spec = importlib.util.spec_from_file_location("lint_skill_contracts_cli", SCRIPT_PATH)
+def load_compat_script(module_name="lint_skill_contracts_cli"):
+    spec = importlib.util.spec_from_file_location(module_name, SCRIPT_PATH)
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
+    previous = sys.modules.get(module_name)
     sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
+    try:
+        spec.loader.exec_module(module)
+        return module
+    finally:
+        if previous is None:
+            sys.modules.pop(module_name, None)
+        else:
+            sys.modules[module_name] = previous
 
 
 class MarkdownTableHelpersTest(unittest.TestCase):
@@ -374,6 +381,12 @@ class MechanicalCheckTest(unittest.TestCase):
 class CompatibilityEntryPointTest(unittest.TestCase):
     def test_legacy_script_reexports_package_api(self) -> None:
         compat = load_compat_script()
+
+        self.assertEqual(compat.CHECKS[-1][0], "mechanical")
+        self.assertIsNotNone(compat.main)
+
+    def test_legacy_script_reexports_when_loaded_as_package_name(self) -> None:
+        compat = load_compat_script("lint_skill_contracts")
 
         self.assertEqual(compat.CHECKS[-1][0], "mechanical")
         self.assertIsNotNone(compat.main)

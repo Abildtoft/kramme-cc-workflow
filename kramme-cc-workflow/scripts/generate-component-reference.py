@@ -8,7 +8,6 @@ metadata in each `SKILL.md`. Pass --write to update the rows in place.
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -47,14 +46,13 @@ def parse_cli() -> argparse.Namespace:
 
 
 def load_lint_module(script_dir: Path) -> Any:
-    lint_path = script_dir / "lint-skill-contracts.py"
-    spec = importlib.util.spec_from_file_location("lint_skill_contracts", lint_path)
-    if spec is None or spec.loader is None:
-        raise SystemExit(f"unable to load {lint_path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
+    script_dir_text = str(script_dir)
+    if script_dir_text not in sys.path:
+        sys.path.insert(0, script_dir_text)
+
+    import lint_skill_contracts
+
+    return lint_skill_contracts
 
 
 def load_registry(path: Path) -> dict[str, Any]:
