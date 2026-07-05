@@ -22,8 +22,8 @@ Create `kramme-cc-workflow/agents/kramme:<agent-name>.md`:
 ---
 name: kramme:<agent-name>
 description: When and how to use this agent (shown in Task tool)
-model: sonnet
-color: blue
+model: inherit
+color: <appropriate-color>
 ---
 # Agent mission and expected output
 ```
@@ -86,7 +86,7 @@ exit_if_hook_disabled "hook-name" "json" # For PostToolUse/Stop hooks
 - Use "Pull Request" (PR) terminology consistently.
 - **Commit/PR title policy (canonical)** - Use plain-English commit messages for normal branch commits (no Conventional Commit prefix). Use [Conventional Commits](https://www.conventionalcommits.org/) format for PR titles (`feat:`, `fix:`, `docs:`, etc.). PR titles are validated by CI, become merge commit messages, and feed changelog generation.
 - **SKILL.md target under 500 lines** - Keep new or refactored skills under ~500 lines by moving reference material, templates, and examples to supporting files. Legacy skills may temporarily exceed this target until migrated.
-- **Skill prose burndown** - `python3 kramme-cc-workflow/scripts/lint-skill-contracts.py` reports warning-only `long-skill burndown` entries for `SKILL.md` files at or above 400 lines, sorted by length. Use the first warning as the next extraction target, keeping the 500-line hard failure budget unchanged. For W02C, the W01E baseline target is `kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md`; success means moving reference material to `references/`, templates to `assets/`, and executable behavior to `scripts/` until the target drops meaningfully below the warning threshold without changing skill behavior.
+- **Skill prose burndown** - `python3 kramme-cc-workflow/scripts/lint-skill-contracts.py` reports warning-only `long-skill burndown` entries for `SKILL.md` files at or above 400 lines, sorted by length. Use the first warning in the current output as the next extraction target, keeping the 500-line hard failure budget unchanged. Success means moving reference material to `references/`, templates to `assets/`, and executable behavior to `scripts/` until the target drops meaningfully below the warning threshold without changing skill behavior.
 - **Explicit skill frontmatter** - Every skill SKILL.md must declare all frontmatter fields explicitly (`name`, `description`, `disable-model-invocation`, `user-invocable`). Never rely on defaults.
 - **ALWAYS** keep every skill and agent `description` frontmatter field at or below 1024 characters for Codex compatibility. Move examples and extended trigger guidance into the body instead of frontmatter.
 - **ALWAYS** resolve skill edits to the in-repo source path: plugin skills live under `kramme-cc-workflow/skills/kramme:<skill-name>/`, and repository-maintenance skills live under `.agents/skills/<skill-name>/`.

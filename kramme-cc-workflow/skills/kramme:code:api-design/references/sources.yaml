@@ -1,10 +1,10 @@
 sources:
   - id: pocock-design-an-interface
-    url: https://github.com/mattpocock/skills/tree/main/skills/deprecated/design-an-interface
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/deprecated/design-an-interface/SKILL.md
     title: "Matt Pocock skills - design-an-interface"
     rationale: "The Design It Twice parallel sub-agent mode (3+ radically different interface designs with assigned constraints — minimize methods, maximize flexibility, optimize common case, ports & adapters — then comparison by depth, locality, and seam placement) is adapted from this source."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-05
+    baseline_hash: "sha256:a2596e9fa2d50e23ba014f64a5b8f9df4eb56b846a52cad152899ef5eb97b085"
   - id: pocock-improve-codebase-architecture-deepening
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/codebase-design/DEEPENING.md
     title: "Matt Pocock skills - codebase-design (DEEPENING.md)"

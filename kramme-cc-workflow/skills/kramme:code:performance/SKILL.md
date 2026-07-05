@@ -1,6 +1,6 @@
 ---
 name: kramme:code:performance
-description: "(experimental) Measure-first performance discipline tied to Core Web Vitals (LCP, INP, CLS). Use when users or monitoring report slowness, CWV scores miss thresholds, performance requirements exist in the spec, you suspect a recent change introduced a regression, or you're building features that handle large datasets or high traffic. Enforces baseline measurement, single-bottleneck fixes, verification, and regression guards. Complements the review-time `performance-oracle` agent."
+description: "(experimental) Measure-first performance discipline tied to Core Web Vitals (LCP, INP, CLS). Use when users or monitoring report slowness, CWV scores miss thresholds, performance requirements exist in the spec, you suspect a recent change introduced a regression, or you're building features that handle large datasets or high traffic. Enforces baseline measurement, single-bottleneck fixes, verification, and regression guards. Complements the review-time `kramme:performance-oracle` agent."
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -168,7 +168,7 @@ Budgets are floors, not ceilings — a PR that adds 30 KB to the bundle without 
 
 If these siblings are installed:
 
-- **Downstream review** — the `performance-oracle` agent verifies measurements and bottleneck identification post-hoc. Following MEASURE/VERIFY discipline here makes that review mechanical.
+- **Downstream review** — the `kramme:performance-oracle` agent verifies measurements and bottleneck identification post-hoc. Following MEASURE/VERIFY discipline here makes that review mechanical.
 - **Companion** — `kramme:code:incremental`: each optimization is one slice through the incremental loop. The five-step workflow fits inside a single increment; the budget becomes the increment's exit criterion.
 - **Boundary** — `kramme:code:optimize` owns repeatable harness-driven experiments across multiple variants; this skill owns one-shot review-and-fix performance passes where the bottleneck and fix are measured directly.
 

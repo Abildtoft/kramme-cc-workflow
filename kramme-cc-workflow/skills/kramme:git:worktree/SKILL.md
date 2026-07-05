@@ -10,6 +10,10 @@ user-invocable: true
 
 Guide manual git worktree operations with conservative checks.
 
+## When to Use
+
+Use this skill when a user asks to list git worktrees, create a separate checkout for parallel local work, or remove a worktree after review. Start with `list` when the target path or branch state is uncertain. For Conductor-created workspaces, prefer Conductor's archive flow unless the user explicitly confirms removal outside Conductor.
+
 ## Workflow
 
 1. Parse `$ARGUMENTS`.
