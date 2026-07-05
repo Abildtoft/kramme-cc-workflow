@@ -221,6 +221,34 @@ create_usage_plugin_root() {
 	[ "$status" -eq 0 ]
 }
 
+@test "usage hook preserves diagnostic file permissions when pruning" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for skill usage tests"
+	fi
+
+	PLUGIN_ROOT="$BATS_TEST_TMPDIR/plugin"
+	create_usage_plugin_root "$PLUGIN_ROOT"
+	printf '%s\n' '#!/usr/bin/env node' 'process.exit(42);' >"$PLUGIN_ROOT/scripts/skill-usage.js"
+	export KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES=2
+	printf 'existing\n' >"$DIAGNOSTIC_FILE"
+	chmod 600 "$DIAGNOSTIC_FILE"
+
+	for skill in one two three; do
+		run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE="$4" KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES="$5" bash "$2/hooks/skill-usage-stats.sh"' _ \
+			"{\"prompt\":\"/kramme:$skill\",\"session_id\":\"session-diag\"}" \
+			"$PLUGIN_ROOT" \
+			"$USAGE_FILE" \
+			"$DIAGNOSTIC_FILE" \
+			"$KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES"
+		[ "$status" -eq 0 ]
+		[ "$output" = "{}" ]
+	done
+
+	[ "$(wc -l <"$DIAGNOSTIC_FILE" | tr -d ' ')" = "2" ]
+	diagnostic_mode="$(stat -c "%a" "$DIAGNOSTIC_FILE" 2>/dev/null || stat -f "%Lp" "$DIAGNOSTIC_FILE")"
+	[ "$diagnostic_mode" = "600" ]
+}
+
 @test "scan prunes dependency and generated directories" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for skill usage tests"
