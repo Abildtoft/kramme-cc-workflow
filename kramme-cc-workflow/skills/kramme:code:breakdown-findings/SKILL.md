@@ -1,5 +1,5 @@
 ---
-name: "kramme:code:breakdown-findings"
+name: kramme:code:breakdown-findings
 description: Cluster validated review/audit/QA findings into PR-sized implementation plans with index, rejection record, repo recon, sequencing, and reconcile/resume support. Accepts structured findings, report files, current-dialogue findings, or marked/inferred pre-clustered handoffs. Not for raw bug lists, single issues, or unvalidated triage.
 argument-hint: "[source-file-or-content] [--auto] [--resume] [--reconcile]"
 disable-model-invocation: true
