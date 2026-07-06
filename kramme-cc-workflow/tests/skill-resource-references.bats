@@ -30,6 +30,9 @@ function walkMarkdownFiles(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
+      if (entry.name === "sources-snapshot") {
+        continue;
+      }
       files.push(...walkMarkdownFiles(fullPath));
     } else if (entry.isFile() && entry.name.endsWith(".md")) {
       files.push(fullPath);

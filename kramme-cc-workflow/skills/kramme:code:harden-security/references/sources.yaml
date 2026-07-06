@@ -9,5 +9,5 @@ sources:
     url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/security-and-hardening/SKILL.md
     title: "Addy Osmani agent-skills - security and hardening"
     rationale: "The Three-Tier Boundary System, ASK FIRST gating, and security-hardening marker vocabulary are adapted from this source."
-    last_reviewed_at: 2026-06-10
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-06
+    baseline_hash: "sha256:8fed058a520281384ed1bbfddbfb3d2b12479459231c67ae0d1f0d765bb52f95"
