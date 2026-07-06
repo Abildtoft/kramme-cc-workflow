@@ -18,6 +18,7 @@ migration steps.
 | Dev-server detection resolves running servers only. | Browser workflows may auto-detect a reachable local URL, but the detector does not start a server. | `scripts/dev-server/README.md`, `tests/dev-server-scripts.bats` |
 | Skill security scanning is part of meaningful skill changes. | Run changed-skill SkillSpector scans for new or materially changed skills; high and critical enforceable findings should block merge unless explicitly accepted. | `README.md#skill-security-scans`, `scripts/run-skillspector.sh` |
 | Skill quality uses dogfooding-first QA with a capped SkillOpt pilot. | Keep committed behavior eval investment at the `kramme:skill:review` pilot, and run a lightweight top-five smoke ritual after model-generation upgrades. | `2026-07-06-skill-quality-regime.md`, `README.md#skillopt-adoption`, `evals/skillopt/README.md` |
+| Skill library growth and pruning should be usage-informed. | Consult the 30-day and 90-day skill usage reports before adding new skills or pruning existing ones; use quarterly reviews to separate core, emerging, observe, and sunset candidates. | `docs/decisions/2026-07-06-skill-usage-portrait.md` |
 | Local maintenance skills are not shipped. | `.agents/skills/` supports maintaining this repo and is exposed locally through `.claude/skills`; it is separate from plugin skills under `kramme-cc-workflow/skills/`. | `README.md#local-repository-maintenance` |
 
 ## Adding Decisions
