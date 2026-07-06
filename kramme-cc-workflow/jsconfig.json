@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "allowJs": true,
-    "checkJs": false,
+    "checkJs": true,
     "ignoreDeprecations": "6.0",
     "lib": ["ES2022"],
     "module": "commonjs",
@@ -14,10 +14,11 @@
     "useUnknownInCatchVariables": false
   },
   "include": [
-    "scripts/convert-plugin/loader.js",
-    "scripts/convert-plugin/codex-transformer.js",
-    "scripts/convert-plugin/codex-writer.js",
+    "scripts/convert-plugin.js",
+    "scripts/convert-plugin/**/*.js",
+    "scripts/skill-usage.js",
     "hooks/skill-usage.js",
-    "evals/skill-review/run-eval.js"
+    "evals/skill-review/*.js",
+    "tests/node/*.test.js"
   ]
 }

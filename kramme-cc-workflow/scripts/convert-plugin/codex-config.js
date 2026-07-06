@@ -10,6 +10,19 @@ const {
   writeText,
 } = require("./filesystem");
 
+/**
+ * @typedef {Object} TomlTable
+ * @property {string} header
+ * @property {string} content
+ *
+ * @typedef {Object} CodexMcpServer
+ * @property {string} [command]
+ * @property {string[]} [args]
+ * @property {Record<string, string>} [env]
+ * @property {string} [url]
+ * @property {Record<string, string>} [headers]
+ */
+
 async function stageCodexConfig(
   codexRoot,
   codexStagingRoot,
@@ -113,6 +126,11 @@ function codexPluginTableHeader(codexPlugin) {
   return `[plugins.${formatTomlKey(`${codexPlugin.name}@${codexPlugin.marketplaceName}`)}]`;
 }
 
+/**
+ * @param {string} existing
+ * @param {TomlTable[]} tables
+ * @param {{ removeHeaders?: string[] }} [options]
+ */
 function upsertTomlTables(existing, tables, { removeHeaders } = {}) {
   const headers = removeHeaders ?? tables.map((table) => table.header);
   const withoutExisting = removeTomlTables(existing, headers).trimEnd();
@@ -174,6 +192,10 @@ function parseTomlTableHeader(line) {
   return path && path.length > 0 ? { path } : null;
 }
 
+/**
+ * @param {string} value
+ * @param {{ isArrayTable?: boolean }} [options]
+ */
 function findTomlHeaderClose(value, { isArrayTable } = {}) {
   let quote = null;
   let escaping = false;
@@ -282,6 +304,10 @@ function validateTomlDocument(value, label) {
   }
 }
 
+/**
+ * @param {Record<string, CodexMcpServer> | null | undefined} mcpServers
+ * @returns {{ tables: TomlTable[], removeHeaders: string[] }}
+ */
 function renderCodexConfigTables(mcpServers) {
   if (!mcpServers || Object.keys(mcpServers).length === 0) {
     return { tables: [], removeHeaders: [] };

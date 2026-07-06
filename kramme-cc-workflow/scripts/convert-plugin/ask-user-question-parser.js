@@ -223,7 +223,8 @@ function readIndentedBlock(lines, startIndex, parentIndent) {
 }
 
 function leadingWhitespaceLength(value) {
-  return String(value ?? "").match(/^[ \t]*/)[0].length;
+  const match = String(value ?? "").match(/^[ \t]*/);
+  return match ? match[0].length : 0;
 }
 
 function foldBlockScalar(value) {
