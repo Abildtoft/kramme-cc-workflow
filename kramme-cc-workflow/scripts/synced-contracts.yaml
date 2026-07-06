@@ -122,7 +122,7 @@
     {
       "name": "pr-ui-relevance-path-contract",
       "contract_id": "ui-relevance-path-contract-v1",
-      "canonical_path": "kramme-cc-workflow/skills/kramme:pr:finalize/references/ui-relevance-heuristics.md",
+      "canonical_path": "kramme-cc-workflow/skills/kramme:pr:ux-review/references/ui-relevance-heuristics.md",
       "paths": [
         "kramme-cc-workflow/skills/kramme:pr:ux-review/SKILL.md",
         "kramme-cc-workflow/skills/kramme:qa/SKILL.md",
@@ -569,14 +569,6 @@
         "git stash pop \"$STASH_REF\"",
         "No PR changes remain after excluding uncommitted work",
         "before any post-push PR creation failure output"
-      ]
-    },
-    {
-      "name": "pr-finalize-description-delegation",
-      "path": "kramme-cc-workflow/skills/kramme:pr:finalize/SKILL.md",
-      "contains": [
-        "skill: \"kramme:pr:generate-description\", args: \"--auto --base {BASE_BRANCH}\"",
-        "handles backup creation and `--body-file` application"
       ]
     },
     {

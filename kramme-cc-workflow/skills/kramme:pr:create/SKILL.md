@@ -12,7 +12,7 @@ Orchestrate the creation of a clean, well-documented PR by validating git state,
 
 ## When NOT to use this skill
 
-- Branch already has an open PR — update it directly (or use `kramme:pr:finalize` / `kramme:pr:generate-description` to refresh the description) instead of running the full creation flow.
+- Branch already has an open PR — update it directly (or use `kramme:pr:generate-description` to refresh the description) instead of running the full creation flow.
 - Hotfix / cherry-pick that must preserve exact commit boundaries — `recreate-commits` will reorganize history. Push and `gh pr create` manually.
 - Working in a stacked-PR setup where the base is another feature branch — this skill assumes the repo default branch (resolved via `origin/HEAD`) as the PR base.
 - The current branch hasn't diverged from the base branch — Step 4 will abort, but skip running the skill in the first place.

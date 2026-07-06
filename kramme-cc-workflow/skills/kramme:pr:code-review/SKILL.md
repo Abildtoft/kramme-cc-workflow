@@ -334,7 +334,7 @@ Assign stable `Finding ID` values to every active finding after dedupe, filterin
 
 - Use `CR-001`, `CR-002`, etc. in final report order, starting with Critical, then Important, then Suggestions.
 - Preserve an existing ID if a finding is carried forward from the previous-review source and still describes the same root cause.
-- Include the ID in the final report so callers such as `/kramme:pr:finalize` can pass exact findings to `/kramme:pr:resolve-review`.
+- Include the ID in the final report so follow-up workflows can pass exact findings to `/kramme:pr:resolve-review`.
 - Set `Resolution status: open` on every active finding emitted by this review. Only `/kramme:pr:resolve-review` or a human follow-up should change that status to `addressed`, `deferred`, `acknowledged`, or `skipped`.
 - After IDs are assigned, revisit any kept cleanup-collision Suggestions and replace their provisional blocker text with the final blocking `CR-XXX` ID. Do not promote or reclassify cleanup findings during this ID reconciliation.
 

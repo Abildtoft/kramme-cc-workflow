@@ -66,21 +66,3 @@ PY
 
 	[ "$status" -eq 0 ]
 }
-
-@test "finalize delegates direct PR updates to generate-description auto mode" {
-	run bash -c '
-    set -e
-    cd "'"$BATS_TEST_DIRNAME"'/.."
-    finalize="skills/kramme:pr:finalize/SKILL.md"
-    generator="skills/kramme:pr:generate-description/SKILL.md"
-
-    ! grep -qF "apply the generated description to the PR" "$finalize"
-    grep -qF "### Sub-Skill Invocation Contract" "$generator"
-  '
-
-	assert_required_contracts_registered \
-		pr-finalize-description-delegation \
-		pr-generate-description-subskill-contract
-
-	[ "$status" -eq 0 ]
-}
