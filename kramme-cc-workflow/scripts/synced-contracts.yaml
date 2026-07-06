@@ -714,6 +714,26 @@
       "kramme:skill:audit-sources"
     ]
   },
+  "readme_agent_sync": {
+    "readme": "README.md",
+    "agents_dir": "kramme-cc-workflow/agents",
+    "start_marker": "<!-- BEGIN SOURCE-SYNCED AGENT ROWS -->",
+    "end_marker": "<!-- END SOURCE-SYNCED AGENT ROWS -->"
+  },
+  "readme_hook_sync": {
+    "readme": "README.md",
+    "hooks_json": "kramme-cc-workflow/hooks/hooks.json",
+    "start_marker": "<!-- BEGIN SOURCE-SYNCED HOOK ROWS -->",
+    "end_marker": "<!-- END SOURCE-SYNCED HOOK ROWS -->",
+    "descriptions": {
+      "block-rm-rf": "Blocks destructive file deletion commands and recommends `trash` instead.",
+      "confirm-review-responses": "Confirms before committing review artifact files.",
+      "noninteractive-git": "Blocks git commands that open an interactive editor.",
+      "skill-usage-stats": "Records local skill usage statistics.",
+      "auto-format": "Auto-formats code after file modifications using detected project formatter.",
+      "context-links": "Displays PR and Linear issue links at end of messages."
+    }
+  },
   "mechanical": {
     "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
     "max_skill_lines": 500,

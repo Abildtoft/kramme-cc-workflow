@@ -18,7 +18,6 @@ from .readme_sync import check_readme_skill_sync
 from .types import CheckFunc, CheckResult, LintContext
 from .ui_relevance import check_ui_relevance_contracts
 
-
 CHECKS: tuple[tuple[str, CheckFunc], ...] = (
     ("text_contracts", check_text_contracts),
     ("ordered_heading_contracts", check_ordered_heading_contracts),

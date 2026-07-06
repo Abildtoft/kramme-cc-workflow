@@ -175,6 +175,7 @@ function isHelp(value) {
 }
 
 function parseArgs(argv) {
+  /** @type {Record<string, string | boolean | string[]> & { _: string[] }} */
   const result = { _: [] };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];

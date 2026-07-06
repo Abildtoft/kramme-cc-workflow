@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import contextlib
-from datetime import date
 import importlib.util
 import io
 import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
-
 
 SCRIPT_PATH = Path(__file__).resolve().parents[2] / "scripts" / "changelog.py"
 SPEC = importlib.util.spec_from_file_location("changelog", SCRIPT_PATH)

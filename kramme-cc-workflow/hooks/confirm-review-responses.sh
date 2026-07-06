@@ -56,8 +56,13 @@ matches_artifact() {
   # Artifact entries are shell-style globs.
   # Basename patterns (e.g. REVIEW_OVERVIEW.md, PR_PLAN_*.md) match any folder.
   # Path patterns (e.g. siw/LOG.md) match exact/suffix paths.
-  [[ "$staged_file" == $artifact ]] && return 0
-  [[ "$staged_file" == */$artifact ]] && return 0
+  # shellcheck disable=SC2254
+  # Artifact entries intentionally support shell-style globs.
+  case "$staged_file" in
+    $artifact | */$artifact)
+      return 0
+      ;;
+  esac
   return 1
 }
 
@@ -153,7 +158,7 @@ list_staged_files_for_commit_context() {
     unset GIT_EXTERNAL_DIFF GIT_PAGER PAGER
     if [ ${#git_env_assignments[@]} -gt 0 ]; then
       for assignment in "${git_env_assignments[@]}"; do
-        export "$assignment"
+        export "${assignment?}"
       done
     fi
     if [ ${#safe_git_prefix_args[@]} -gt 0 ]; then

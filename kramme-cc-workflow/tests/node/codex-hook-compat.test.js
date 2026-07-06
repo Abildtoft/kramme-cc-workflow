@@ -438,6 +438,7 @@ function finalPluginCacheHooksRoot(codexRoot, codexPlugin) {
 }
 
 function isolatedHookEnv(root) {
+  /** @type {NodeJS.ProcessEnv} */
   const env = {
     ...process.env,
     HOME: path.join(root, "home"),

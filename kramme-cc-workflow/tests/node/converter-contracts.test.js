@@ -44,7 +44,7 @@ const {
 const {
   writeCodexBundle,
 } = require("../../scripts/convert-plugin/codex-writer");
-const skillContracts = require("../../scripts/schemas/skill-contracts.json");
+const { skillContracts } = require("../../scripts/schemas/skill-contracts");
 
 test("frontmatter module parses and formats converter metadata", () => {
   const parsed = parseFrontmatter(`---
@@ -200,6 +200,7 @@ question: >
   for this plan.
 options: []
 `);
+  assert.ok(folded);
   assert.equal(folded.question, "Pick the route for this plan.");
   assert.equal(parseAskUserQuestionBlock("plain markdown"), null);
 });
@@ -415,6 +416,7 @@ test("hook plugin conversion requires controls and sanitizes manifest descriptio
   };
   const codexPlugin = convertClaudeToCodex(withControls).codexPlugin;
 
+  assert.ok(codexPlugin);
   assert.equal(codexPlugin.name, "hook-description-plugin");
   assert.equal(codexPlugin.manifest.hooks, "./hooks/hooks.json");
   assert.match(codexPlugin.manifest.description, /^First line second line /);
@@ -837,6 +839,7 @@ test("bundle output stages prompts, skills, generated skills, and agent skills",
       new Set(["SKILL.md"]),
     );
     assert.equal(stagedBundle.agentSkillsRoot, path.join(agentsHome, "skills"));
+    assert.ok(stagedBundle.stagedAgentSkillsRoot);
     assert.equal(
       await readText(
         path.join(
@@ -956,7 +959,7 @@ test("writer prunes stale managed skill files without deleting local files when 
     function bundle() {
       return {
         agentSkills: [{ content: "Agent", name: "fixture-agent" }],
-        codexPlugin: null,
+        codexPlugin: undefined,
         generatedSkills: [
           { content: "Generated", name: "fixture-generated" },
         ],
@@ -966,7 +969,7 @@ test("writer prunes stale managed skill files without deleting local files when 
         prompts: [],
         skillDirs: [
           {
-            content: null,
+            content: "",
             name: "fixture-managed",
             sourceDir,
           },
@@ -1051,7 +1054,7 @@ test("writer preserves previous skill files when stale pruning preflight fails",
     function bundle() {
       return {
         agentSkills: [],
-        codexPlugin: null,
+        codexPlugin: undefined,
         generatedSkills: [],
         knownAgentSkills: new Map(),
         knownCommands: new Set(),
@@ -1059,7 +1062,7 @@ test("writer preserves previous skill files when stale pruning preflight fails",
         prompts: [],
         skillDirs: [
           {
-            content: null,
+            content: "",
             name: "fixture-managed",
             sourceDir,
           },
@@ -1156,11 +1159,10 @@ test("writer preserves untracked same-name skill directories on first install", 
       root,
       {
         agentSkills: [{ content: "Agent", name: "collision-agent" }],
-        codexPlugin: null,
+        codexPlugin: undefined,
         generatedSkills: [{ content: "Generated", name: "collision-skill" }],
         knownAgentSkills: new Map(),
         knownCommands: new Set(),
-        mcpServers: {},
         prompts: [],
         skillDirs: [],
       },
@@ -1197,7 +1199,7 @@ test("writer preserves previous install when replacement bundle fails", async ()
     };
     const bundleWithGeneratedSkill = (skill) => ({
       agentSkills: [],
-      codexPlugin: null,
+      codexPlugin: undefined,
       generatedSkills: [skill],
       knownAgentSkills: new Map(),
       knownCommands: new Set(),
@@ -1263,11 +1265,10 @@ test("writer removes agent staging when agent skill staging fails", async () => 
             agentSkills: [
               { content: "Broken", name: "../invalid-agent-skill" },
             ],
-            codexPlugin: null,
+            codexPlugin: undefined,
             generatedSkills: [],
             knownAgentSkills: new Map(),
             knownCommands: new Set(),
-            mcpServers: {},
             prompts: [],
             skillDirs: [],
           },
@@ -1297,7 +1298,7 @@ test("writer preserves previous install when finalization is blocked", async () 
     };
     const bundleWithGeneratedSkills = (skills) => ({
       agentSkills: [],
-      codexPlugin: null,
+      codexPlugin: undefined,
       generatedSkills: skills,
       knownAgentSkills: new Map(),
       knownCommands: new Set(),
