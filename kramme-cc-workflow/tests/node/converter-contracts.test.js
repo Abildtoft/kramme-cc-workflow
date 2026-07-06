@@ -1038,6 +1038,82 @@ test("writer prunes stale managed skill files without deleting local files when 
   });
 });
 
+test("writer preserves previous skill files when stale pruning preflight fails", async () => {
+  await withTempDir(async (root) => {
+    const agentsHome = path.join(root, "agents-home");
+    const sourceDir = path.join(root, "source-skill");
+    const options = {
+      agentsHome,
+      confirm: { yes: true },
+      pluginName: "managed-prune-conflict-plugin",
+    };
+
+    function bundle() {
+      return {
+        agentSkills: [],
+        codexPlugin: null,
+        generatedSkills: [],
+        knownAgentSkills: new Map(),
+        knownCommands: new Set(),
+        mcpServers: {},
+        prompts: [],
+        skillDirs: [
+          {
+            content: null,
+            name: "fixture-managed",
+            sourceDir,
+          },
+        ],
+      };
+    }
+
+    await writeSourceSkill(sourceDir, {
+      "OLD.md": "old managed file\n",
+      "SKILL.md": "Managed v1\n",
+    });
+    await writeCodexBundle(root, bundle(), options);
+
+    const skillDir = path.join(
+      root,
+      ".codex",
+      "skills",
+      "fixture-managed",
+    );
+    const oldManagedFile = path.join(skillDir, "OLD.md");
+    const blockingFile = path.join(skillDir, "conflict");
+    const statePath = path.join(root, ".codex", ".kramme-install-state.json");
+    const manifestPath = path.join(
+      root,
+      ".codex",
+      ".kramme-install-manifests",
+      "managed-prune-conflict-plugin-codex.json",
+    );
+    const stateBefore = await readText(statePath);
+    const manifestBefore = await readText(manifestPath);
+    await writeFile(blockingFile, "local blocker\n");
+
+    await writeSourceSkill(sourceDir, {
+      "SKILL.md": "Managed v2\n",
+      "conflict/NEW.md": "new managed file\n",
+    });
+
+    await assert.rejects(
+      () =>
+        writeCodexBundle(root, bundle(), {
+          ...options,
+          confirm: { nonInteractive: true },
+        }),
+      /conflicts with staged directory conflict/,
+    );
+
+    assert.equal(await pathExists(oldManagedFile), true);
+    assert.equal(await readText(path.join(skillDir, "SKILL.md")), "Managed v1\n");
+    assert.equal(await readText(blockingFile), "local blocker\n");
+    assert.equal(await readText(statePath), stateBefore);
+    assert.equal(await readText(manifestPath), manifestBefore);
+  });
+});
+
 test("install staging does not prune stale files through symlinked ancestors", async () => {
   await withTempDir(async (root) => {
     const skillDir = path.join(root, "skill");

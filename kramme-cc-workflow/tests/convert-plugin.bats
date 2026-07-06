@@ -254,6 +254,21 @@ SH
 	[ "$status" -eq 0 ]
 	run grep -nF "DETECTED_PROJECT_TYPE=$('$TMP_DIR/.codex/scripts/dev-server'/detect-project-type.sh 2> /dev/null)" "$TMP_DIR/.codex/skills/kramme:qa/SKILL.md"
 	[ "$status" -eq 0 ]
+	run grep -REn '\bAskUserQuestion\b|\bTask (tool|subagent|sub-agent|agent)\b|\bSkill tool\b|\bTodoWrite\b|\bTodoRead\b|\bsubagent_type\b|\bmodel=opus\b|\bmodel=sonnet\b' "$TMP_DIR/.codex/skills"
+	if [ "$status" -ne 1 ]; then
+		printf 'Unexpected Claude-only references (status=%s):\n%s\n' "$status" "$output" >&2
+	fi
+	[ "$status" -eq 1 ]
+	run grep -REn 'direct chat questions`|direct chat question`' "$TMP_DIR/.codex/skills"
+	if [ "$status" -ne 1 ]; then
+		printf 'Unexpected malformed direct-chat references (status=%s):\n%s\n' "$status" "$output" >&2
+	fi
+	[ "$status" -eq 1 ]
+	run grep -REn 'direct chat question tool' "$TMP_DIR/.codex/skills"
+	if [ "$status" -ne 1 ]; then
+		printf 'Unexpected direct-chat tool references (status=%s):\n%s\n' "$status" "$output" >&2
+	fi
+	[ "$status" -eq 1 ]
 }
 
 @test "codex conversion installs hooks as an enabled plugin bundle" {
