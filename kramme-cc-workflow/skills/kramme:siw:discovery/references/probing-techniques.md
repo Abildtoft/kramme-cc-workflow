@@ -62,6 +62,91 @@ Pick techniques based on which confidence dimension needs work:
 | Priority Alignment | Forced Tradeoff, Inversion | Minimum Viable Test |
 | Risk Awareness | Inversion, Past Failure | Stakeholder Lens |
 
+## Question Round Contract
+
+Use AskUserQuestion. Ask 1-3 high-value questions per round; default to 2 when the questions are independent, and 1 when the answer changes the next question. Keep rounds small; run more rounds instead of one large batch.
+
+For each question:
+
+- Apply the Codebase-as-Answer-Source Rule before asking.
+- State why you're asking in one sentence, naming the confidence dimension it targets.
+- Include your current assumption so the user can correct instead of explain from scratch.
+- Offer concrete options when forcing tradeoffs: 2-4 options plus Other.
+- Use freeform when probing for narrative or motivation.
+- For high-stakes questions where the answer shapes the next question, ask only one question in the round.
+- If a round would only ask confirmation questions, replace one with a stress probe unless the coverage floor is already satisfied.
+
+When the technique calls for it, deliberately restate something the user said earlier with slightly different emphasis to test whether your model matches theirs.
+
+## Codebase-as-Answer-Source Rule
+
+Before asking any question in either mode, decide whether the answer can be found by exploring the workspace, target spec, existing SIW docs, or provided artifacts.
+
+- If yes, explore first, report the finding with the source, and ask only for confirmation or correction if meaningful uncertainty remains.
+- If no, ask the user.
+- Skip exploration when the question is genuinely preference-, priority-, or business-context-based and no artifact could answer it.
+
+## ADR-Offer Hook
+
+After each resolved decision in either mode, evaluate the ADR test. Offer `/kramme:docs:adr` only when it is installed in the environment; otherwise skip the hook silently.
+
+Offer once when all three are true:
+
+1. The decision is hard to reverse.
+2. It would be surprising later without context.
+3. It came from a real tradeoff, not a default.
+
+Prompt once: "This looks ADR-worthy because it is hard to reverse, surprising without context, and tradeoff-driven. Record it via `/kramme:docs:adr`?" Do not author the ADR inside this skill.
+
+## Coverage Mode Loop
+
+Repeat until the confidence target is met, the user explicitly says "that's enough" or "I think you've got it", or 10+ rounds are complete. At 10+ rounds, suggest stopping without forcing it, and offer to continue if the user wants.
+
+### Select Focus
+
+Pick the 1-2 highest-value focus dimensions, weighted by coverage gaps before confidence score:
+
+1. Critical dimensions missing direct validation or a stress probe
+2. Normal dimensions missing direct validation
+3. Dimensions whose evidence contradicts another answer or artifact
+4. Critical dimensions below Confident
+5. Normal dimensions below High
+6. Deprioritized dimensions below Medium or missing any evidence, only if others are satisfied
+
+### Select Technique
+
+Use the technique selection guide to pick 1-2 techniques appropriate for the focus dimensions.
+
+- Early rounds 1-3: prefer Solution Stripping, Why Chain, and Minimum Viable Test.
+- Middle rounds 4-6: prefer Forced Tradeoff, Negative Space, and Constraint Removal.
+- Late rounds 7+: prefer Restatement Challenge, Inversion, and Stakeholder Lens.
+
+### Process Answers
+
+After each round:
+
+1. Map answers to confidence dimensions.
+2. Check for stated-vs-actual want divergence:
+   - Answer contradicts earlier answer -> emit `CONFUSION:` and probe.
+   - Implementation details without problem statement -> apply Solution Stripping next round.
+   - Enthusiasm does not match stated priority -> name the discrepancy.
+3. If divergence is detected, reset affected dimensions to at most Medium until reconciled.
+4. Update the evidence ledger. Mark a stress probe only when the answer tested a tradeoff, boundary, inversion, past failure, why-chain, or restatement challenge; a simple "yes, correct" does not count.
+5. Update confidence levels using rubric indicators and ledger coverage.
+6. If a dimension remains unanswerable because the required information is not in the spec or user answers, emit `MISSING REQUIREMENT:` before asking the targeted follow-up.
+7. Run the ADR-Offer Hook for any resolved decision.
+
+Show the confidence dashboard after each round. Mark focus areas for next round with `◄`, include round number and overall percentage, and explicitly note any dimension that dropped because of contradiction or new information.
+
+## Interview Pacing
+
+- Rounds 1-2: broad, establishing. Cover Problem Understanding and Outcome Vision first.
+- Rounds 3-5: sharpening. Focus on Scope Boundaries, Priority Alignment, and Constraint Awareness.
+- Rounds 6+: validating. Stress-test with Restatement Challenge and Inversion. Fill remaining gaps.
+- If a round produces a surprise, pause the plan and follow the surprise.
+- Greenfield discovery should rarely synthesize before 4 rounds unless the user stops early.
+- Refinement should rarely synthesize before 2 rounds unless the target artifacts already answer most dimensions and the interview only validates narrow gaps.
+
 ## Anti-Patterns
 
 ### Do NOT:

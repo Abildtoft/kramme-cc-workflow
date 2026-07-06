@@ -105,6 +105,15 @@ Deduplicate the options. If the auto-detected profile is Production Feature, sho
 
 ## Phase 3: Specification Document
 
+Auto-detect the most appropriate spec filename from `project_description`:
+
+- Keywords like `feature`, `add`, `implement`, `new` -> `FEATURE_SPECIFICATION.md`
+- Keywords like `api`, `endpoint`, `service` -> `API_DESIGN.md`
+- Keywords like `doc`, `documentation`, `guide` -> `DOCUMENTATION_SPEC.md`
+- Keywords like `tutorial`, `learn`, `teach` -> `TUTORIAL_PLAN.md`
+- Keywords like `system`, `architecture`, `design` -> `SYSTEM_DESIGN.md`
+- Default fallback -> `PROJECT_PLAN.md`
+
 Use this question to confirm the generated spec filename.
 
 ```yaml

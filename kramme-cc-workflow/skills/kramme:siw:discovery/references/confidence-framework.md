@@ -182,7 +182,7 @@ Bar segments: each █ = ~10%. Use ░ for unfilled. Mark focus areas with ◄.
 - Critical dimensions are at Confident (90%+)
 - Normal dimensions are at High (70%+)
 - Deprioritized dimensions are at Medium (40%+)
-- The evidence ledger floor from `SKILL.md` is satisfied
+- The evidence ledger floor from this reference is satisfied
 - Probing questions produce confirmations, not revelations, after the required stress probes have already run
 
 **Continue when ANY of:**

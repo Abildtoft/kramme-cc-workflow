@@ -129,4 +129,60 @@ If "Abort":
 
 ## Any other workflow files
 
-If any other workflow files exist, show the existing workflow prompt from `SKILL.md`.
+Trigger this branch when any other workflow files exist.
+
+If `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: SIW workflow files already exist; rerun without --auto to resume, start fresh, or abort`. Do not delete existing workflow files in auto mode.
+
+Use AskUserQuestion:
+
+```yaml
+header: "Existing Workflow Files Found"
+question: "Workflow files already exist in this directory. How would you like to proceed?"
+options:
+  - label: "Resume existing workflow"
+    description: "Continue with current files (invokes kramme:siw:continue skill)"
+  - label: "Start fresh"
+    description: "Delete existing workflow files and create new ones"
+  - label: "Abort"
+    description: "Cancel and keep existing files"
+```
+
+If "Resume existing workflow":
+
+- Stop this command.
+- Inform the user that the `kramme:siw:continue` skill will auto-trigger when they start working.
+- Suggest reading `siw/LOG.md` for current progress.
+
+If "Start fresh":
+
+1. Before deleting `siw/issues/`, count any existing issue files:
+
+   ```bash
+   ls siw/issues/ISSUE-*.md 2> /dev/null | wc -l
+   ```
+
+2. If the count is greater than zero, surface a second confirmation using AskUserQuestion before deleting:
+
+   ```yaml
+   header: "Delete Existing Issues"
+   question: "{n} issue file(s) in siw/issues/ will be deleted. This cannot be undone."
+   options:
+     - label: "Delete all issues"
+       description: "Proceed with Start fresh; all issue files are removed"
+     - label: "Abort"
+       description: "Stop so I can back up or move issues out of siw/issues/ first"
+   ```
+
+3. If the user aborts, stop without changing any files.
+4. Delete existing temporary workflow files: `siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/issues/`, `siw/DISCOVERY_BRIEF.md`, `siw/SPEC_STRENGTHENING_PLAN.md`, `siw/AUDIT_IMPLEMENTATION_REPORT.md`, `siw/AUDIT_SPEC_REPORT.md`, `siw/PRODUCT_AUDIT.md`, and `siw/SIW_*.md`.
+5. Preserve permanent SIW spec files matched by the `permanent-spec find` from Phase 1: `*SPEC*.md`, `*SPECIFICATION*.md`, `*PLAN*.md`, and `*DESIGN*.md`, case-insensitive. The permanent-spec find already excludes the synced SIW spec-exclusion contract.
+6. Use `trash` without recursive flags when available so the deleted workflow files are recoverable from the system Trash.
+7. If `trash` is missing, warn that deletion will be permanent and ask for explicit confirmation before running `rm -rf`.
+8. After deletion, verify each target with `[ ! -e "$path" ]`; report any surviving path as a deletion failure instead of continuing as if Start fresh succeeded.
+9. Continue to Phase 1.5.
+
+If "Abort", stop without changing any files.
+
+## No workflow files
+
+Continue to Phase 1.5.

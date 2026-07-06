@@ -191,190 +191,20 @@ If `STRATEGY_CONTEXT` exists and the target work appears to conflict with an act
 
 ## Step 3: Initial Assessment
 
-Read `references/confidence-framework.md` for dimension definitions and scoring rubrics.
+Read `references/confidence-framework.md` and use its dimension definitions, scoring rubrics, Work Context mapping, dashboard format, evidence ledger, and stop/continue rules.
 
-In **Decision-Tree mode**, also read `references/decision-tree-mode.md`, then replace the initial confidence dashboard with:
-
-1. Identify the root decision.
-2. List first-level dependencies that must be resolved before downstream questions are meaningful.
-3. Mark any branch that the codebase or target spec already answers, with file references where available.
-4. Keep unresolved confidence dimensions visible so synthesis still produces the normal SIW artifact.
-
-### Greenfield
-
-Start all 7 dimensions at **Low**, unless the topic hint is rich enough to justify Medium on specific dimensions.
-
-### Refinement
-
-Map spec content to confidence dimensions using the mapping table in the framework reference. Score each:
-
-- Section missing → Low
-- Section present but vague → Medium
-- Section concrete and specific → High
-- Confident requires interview validation — never start higher than High from spec alone
-
-### Apply Work Context
-
-If Work Context exists, apply the adjustments from the framework reference:
-
-- Mark critical dimensions (must reach Confident)
-- Mark deprioritized dimensions (only need Medium)
-- Normal dimensions must reach High
-
-### Display Initial Dashboard
-
-In Coverage mode, show the confidence dashboard (format in `references/confidence-framework.md`) with initial scores and overall percentage. In Decision-Tree mode, show the root decision, unresolved dependency branches, and any confidence dimensions that still need coverage before synthesis.
+- **Coverage mode:** run the initial confidence assessment from the framework. Greenfield starts all dimensions Low unless the topic hint justifies Medium; refinement maps spec sections to dimensions and never starts above High from spec alone.
+- **Decision-Tree mode:** also read `references/decision-tree-mode.md`, identify the root decision, list prerequisite branches, mark branches answered by artifacts with file references, and keep unresolved confidence dimensions visible for synthesis.
 
 ## Step 4: Discovery Interview Loop
 
-Read `references/probing-techniques.md` for the technique library and selection guide.
-
 Use **Coverage mode** by default. Use **Decision-Tree mode** when selected in Step 1.5.
 
-### Evidence Ledger Rule
+Read `references/probing-techniques.md` for the technique library, question-round contract, answer-processing rules, Codebase-as-Answer-Source Rule, ADR-Offer Hook, and interview pacing.
 
-Use the evidence ledger in `references/confidence-framework.md` for every active dimension. The synthesis floor is: critical dimensions need direct validation plus a stress probe; normal dimensions need direct validation unless fully answered by artifacts and immaterial to tradeoffs; deprioritized dimensions need source evidence or one direct answer. The interview must include a priority/scope tradeoff, negative-space probe, and late restatement challenge before synthesis. If the user stops early, preserve uncovered ledger items as `MISSING REQUIREMENT:` instead of treating them as resolved.
+In Coverage mode, repeat the coverage loop from `references/probing-techniques.md` until the stop conditions in `references/confidence-framework.md` are met or the user stops early. Keep the confidence dashboard visible after each round.
 
-### Codebase-as-Answer-Source Rule
-
-Before asking any question in either mode, decide whether the answer can be found by exploring the workspace, target spec, existing SIW docs, or provided artifacts.
-
-- If yes, explore first, report the finding with the source, and ask only for confirmation or correction if meaningful uncertainty remains.
-- If no, ask the user.
-- Skip exploration when the question is genuinely preference-, priority-, or business-context-based and no artifact could answer it.
-
-### ADR-Offer Hook
-
-After each resolved decision in either mode, evaluate the ADR test. Offer `/kramme:docs:adr` only when it is installed in this environment (skip the hook entirely otherwise) and all three are true:
-
-1. The decision is hard to reverse.
-2. It would be surprising later without context.
-3. It came from a real tradeoff, not a default.
-
-Prompt once: "This looks ADR-worthy because it is hard to reverse, surprising without context, and tradeoff-driven. Record it via `/kramme:docs:adr`?" Do not author the ADR inside this skill.
-
-### Coverage Mode Loop
-
-Repeat until confidence target is met (see "When to Stop" in framework reference):
-
-#### 4.1 Select Focus
-
-Pick the 1-2 highest-value focus dimensions, weighted by coverage gaps before confidence score:
-
-1. Critical dimensions missing direct validation or a stress probe
-2. Normal dimensions missing direct validation
-3. Dimensions whose evidence contradicts another answer or artifact
-4. Critical dimensions below Confident
-5. Normal dimensions below High
-6. Deprioritized dimensions below Medium or missing any evidence (only if others are satisfied)
-
-#### 4.2 Select Technique
-
-Use the technique selection guide to pick 1-2 techniques appropriate for the focus dimensions.
-
-Early rounds (1-3): prefer **Solution Stripping**, **Why Chain**, and **Minimum Viable Test** — these establish the foundation.
-
-Middle rounds (4-6): prefer **Forced Tradeoff**, **Negative Space**, and **Constraint Removal** — these sharpen boundaries.
-
-Late rounds (7+): prefer **Restatement Challenge**, **Inversion**, and **Stakeholder Lens** — these validate and stress-test understanding.
-
-#### 4.3 Ask Questions
-
-Use AskUserQuestion. Ask 1-3 high-value questions per round; default to 2 when the questions are independent, and 1 when the answer changes the next question. Keep rounds small, but do not compress discovery into one broad batch. For each question:
-
-- Apply the Codebase-as-Answer-Source Rule before asking.
-- **State why you're asking** (1 sentence — which dimension this targets)
-- **Include your current assumption** (what you think the answer is, so the user can correct rather than explain from scratch)
-- **Offer concrete options** when forcing tradeoffs (2-4 options + "Other")
-- **Use freeform** when probing for narrative or motivation
-- For high-stakes questions where the answer shapes the next question, ask only one question in the round.
-- If a round would only ask confirmation questions, replace one with a stress probe unless the coverage floor is already satisfied.
-
-When the technique calls for it, deliberately restate something the user said earlier — slightly differently — to test whether your model matches theirs.
-
-#### 4.4 Process Answers
-
-After each round:
-
-1. Map answers to confidence dimensions
-2. Check for stated vs. actual want divergence:
-   - Answer contradicts earlier answer → emit `CONFUSION:` and probe
-   - Implementation details without problem statement → apply Solution Stripping next round
-   - Enthusiasm doesn't match stated priority → name the discrepancy
-3. If divergence detected, reset affected dimension to at most Medium until reconciled
-4. Update the evidence ledger. Mark a stress probe only when the answer tested a tradeoff, boundary, inversion, past failure, why-chain, or restatement challenge; a simple "yes, correct" does not count.
-5. Update confidence levels using rubric indicators and ledger coverage.
-6. If a dimension remains unanswerable because the required information isn't in the spec or the user's answers, emit `MISSING REQUIREMENT:` before asking the targeted follow-up.
-7. Run the ADR-Offer Hook for any resolved decision.
-
-#### 4.5 Display Updated Dashboard
-
-Show the confidence dashboard with updated scores. Mark focus areas for next round with ◄. Include round number and overall percentage.
-
-If confidence dropped on any dimension (due to contradiction or revelation), note it:
-
-```text
-⚠ Scope Boundaries dropped from High to Medium — your answer about [X] suggests the scope is wider than the spec indicates.
-```
-
-#### 4.6 Check Stop Conditions
-
-**Stop when:**
-
-- All critical dimensions at Confident (90%+)
-- All normal dimensions at High (70%+)
-- All deprioritized dimensions at Medium (40%+)
-- The coverage ledger floor is satisfied
-- Last 2 rounds produced confirmations, not revelations, after the required stress probes have already run
-
-**Also stop when:**
-
-- User explicitly says "that's enough" or "I think you've got it"
-- 10+ rounds completed (suggest stopping, don't force — offer to continue if user wants)
-
-**Continue when:**
-
-- Any critical dimension below Confident
-- Any critical dimension lacks direct validation or a stress probe
-- Any normal dimension lacks direct validation and materially affects scope, outcome, constraints, risk, or priority
-- A contradiction was just discovered
-- Stated and actual wants haven't been reconciled
-- The interview has not yet forced a priority/scope tradeoff, tested negative space, and run a restatement challenge
-
-### Decision-Tree Mode Loop
-
-Read `references/decision-tree-mode.md` for the detailed process. Then repeat until the active decision tree is resolved or remaining gaps are independent enough for Coverage mode:
-
-#### 4D.1 Pick Next Branch
-
-Choose the highest-dependency unresolved branch: the decision that unlocks the most downstream choices. Do not ask about downstream branches until their prerequisite decision is settled.
-
-#### 4D.2 Resolve One Question
-
-Ask one question at a time by default. Batch only routine sibling questions that are independent and low-stakes. Apply the Codebase-as-Answer-Source Rule before asking.
-
-#### 4D.3 Process the Answer
-
-Record:
-
-- The decision or non-decision
-- The dependencies it unlocks or invalidates
-- The tradeoff accepted
-- Any confidence dimensions affected
-
-If the answer changes the root decision, redraw the active dependency tree before asking again.
-
-#### 4D.4 Check ADR and Mode Exit
-
-Run the ADR-Offer Hook for each resolved durable decision. Exit Decision-Tree mode when the coupled branch is resolved; continue in Coverage mode for independent confidence gaps and any unmet evidence-ledger floor.
-
-### Interview Pacing
-
-- Rounds 1-2: broad, establishing. Cover Problem Understanding and Outcome Vision first.
-- Rounds 3-5: sharpening. Focus on Scope Boundaries, Priority Alignment, and Constraint Awareness.
-- Rounds 6+: validating. Stress-test with Restatement Challenge and Inversion. Fill remaining gaps.
-- If a round produces a surprise, pause the plan and follow the surprise — it's higher signal than the next planned question.
-- Greenfield discovery should rarely synthesize before 4 rounds unless the user stops early. Refinement should rarely synthesize before 2 rounds unless the target artifacts already answer most dimensions and the interview only validates narrow gaps.
+In Decision-Tree mode, follow `references/decision-tree-mode.md`: resolve the highest-dependency branch first, ask one question at a time unless siblings are routine and independent, update the tree after each answer, run the ADR hook for durable tradeoffs, and return to Coverage mode for independent confidence gaps.
 
 ## Step 5: Synthesize Findings
 
