@@ -3,8 +3,8 @@ sources:
     url: https://addyosmani.com/agents/17-agent-skills/
     title: "Addy Osmani - Agent skills reusable knowledge for agents"
     rationale: "The Rule of 500 automation trigger for large refactors is attributed to Addy's guidance on skill-driven coding workflows."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-06
+    baseline_hash: "sha256:2399a67f0b25ad7c0cc8d67c51c6b0c2f210bd007e0842d06820d55f1aecc759"
   - id: pocock-improve-codebase-architecture-deepening
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/codebase-design/DEEPENING.md
     title: "Matt Pocock skills - codebase-design (DEEPENING.md)"

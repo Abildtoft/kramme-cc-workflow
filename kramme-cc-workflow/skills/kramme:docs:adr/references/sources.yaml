@@ -1,16 +1,16 @@
 sources:
   - id: addy-documentation-and-adrs
-    url: https://github.com/addyosmani/agent-skills/tree/main/skills/documentation-and-adrs
+    url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/documentation-and-adrs/SKILL.md
     title: "Addy Osmani agent-skills - documentation and ADRs"
     rationale: "ADR lifecycle states, preservation rules, and drafting markers are adapted from this source."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-06
+    baseline_hash: "sha256:7fed35f9c5b95d8e3623ad24d78d209c3267ab62d7157fc03954c76a7e58adf4"
   - id: nygard-architecture-decisions
     url: https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions
     title: "Michael Nygard - Documenting Architecture Decisions"
     rationale: "The fallback ADR template and decision-record framing are based on the Nygard-style ADR pattern."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-06
+    baseline_hash: "sha256:85b65c94c5001da6ff36c7240c40bbb4485f10090c62950aec629ab22aa1ef9f"
   - id: pocock-domain-model
     url: https://github.com/mattpocock/skills/tree/main/skills/engineering/domain-modeling
     title: "Matt Pocock skills - domain-model"

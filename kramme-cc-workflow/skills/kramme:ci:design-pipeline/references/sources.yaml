@@ -1,7 +1,7 @@
 sources:
   - id: addy-git-workflow-versioning
-    url: https://github.com/addyosmani/agent-skills/tree/main/skills/git-workflow-and-versioning
+    url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/git-workflow-and-versioning/SKILL.md
     title: "Addy Osmani agent-skills - git workflow and versioning"
     rationale: "The uppercase output marker convention used by this pipeline is adapted from Addy's git workflow conventions."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-06
+    baseline_hash: "sha256:51677cf03845dd29d08ea4d3125665057b720aea3dccc572f25d8b172409ece6"
