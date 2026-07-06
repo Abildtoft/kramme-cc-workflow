@@ -1175,6 +1175,42 @@ test("writer preserves previous install when replacement bundle fails", async ()
   });
 });
 
+test("writer removes agent staging when agent skill staging fails", async () => {
+  await withTempDir(async (root) => {
+    const agentsHome = path.join(root, "agents-home");
+
+    await assert.rejects(
+      () =>
+        writeCodexBundle(
+          root,
+          {
+            agentSkills: [
+              { content: "Broken", name: "../invalid-agent-skill" },
+            ],
+            codexPlugin: null,
+            generatedSkills: [],
+            knownAgentSkills: new Map(),
+            knownCommands: new Set(),
+            mcpServers: {},
+            prompts: [],
+            skillDirs: [],
+          },
+          {
+            agentsHome,
+            confirm: { yes: true },
+            pluginName: "agent-staging-plugin",
+          },
+        ),
+      /Invalid agent skill name/,
+    );
+
+    assert.equal(
+      await pathExists(path.join(agentsHome, ".kramme-install-staging")),
+      false,
+    );
+  });
+});
+
 test("writer preserves previous install when finalization is blocked", async () => {
   await withTempDir(async (root) => {
     const agentsHome = path.join(root, "agents-home");

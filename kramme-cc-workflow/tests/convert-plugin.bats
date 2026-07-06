@@ -293,6 +293,13 @@ SH
 
 	run grep -nF '[plugins."hook-plugin@hook-plugin"]' "$TMP_DIR/.codex/config.toml"
 	[ "$status" -eq 0 ]
+	run awk '
+		$0 == "[plugins.\"hook-plugin@hook-plugin\"]" { in_table = 1; next }
+		in_table && /^\[/ { exit }
+		in_table && $0 == "enabled = true" { found = 1 }
+		END { exit found ? 0 : 1 }
+	' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 0 ]
 	run jq -r '.pluginCaches[0]' "$TMP_DIR/.codex/.kramme-install-manifests/hook-plugin-codex.json"
 	[ "$status" -eq 0 ]
 	[ "$output" = "cache/hook-plugin/hook-plugin/1.0.0" ]
@@ -369,6 +376,62 @@ SH
 	[ -f "$TMP_DIR/.agents/skills/kramme:temp-agent/SKILL.md" ]
 	[[ "$output" == *"non-interactive mode"* ]]
 	[[ "$output" == *"Skipping skill cleanup."* ]]
+}
+
+@test "codex conversion preserves other plugin outputs after install state is rebuilt" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	FIXTURE_PLUGIN="$TMP_DIR/fixture-plugin"
+	create_cleanup_fixture_plugin "$FIXTURE_PLUGIN" "fixture-plugin" "kramme:fixture:review" "kramme:fixture-agent"
+
+	run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+	[ "$status" -eq 0 ]
+	[ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
+	[ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
+
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+	[ "$status" -eq 0 ]
+	[ -f "$TMP_DIR/.codex/skills/kramme:fixture:review/SKILL.md" ]
+	[ -f "$TMP_DIR/.agents/skills/kramme:fixture-agent/SKILL.md" ]
+
+	rm "$TMP_DIR/.codex/.kramme-install-state.json"
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+	[ "$status" -eq 0 ]
+	[ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
+	[ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
+	[ -f "$TMP_DIR/.codex/skills/kramme:fixture:review/SKILL.md" ]
+	[ -f "$TMP_DIR/.agents/skills/kramme:fixture-agent/SKILL.md" ]
+}
+
+@test "codex conversion cleans stale same-plugin skills after install state is rebuilt" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	PLUGIN_DIR="$TMP_DIR/state-loss-plugin"
+	create_command_fixture_plugin "$PLUGIN_DIR" "state-loss-plugin" "kramme:old-skill"
+
+	run node "$SCRIPT" install "$PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+	[ "$status" -eq 0 ]
+	[ -f "$TMP_DIR/.codex/skills/kramme:old-skill/SKILL.md" ]
+
+	rm "$TMP_DIR/.codex/.kramme-install-state.json"
+	rm "$PLUGIN_DIR/commands/kramme-old-skill.md"
+	cat >"$PLUGIN_DIR/commands/kramme-new-skill.md" <<'MD'
+---
+name: kramme:new-skill
+description: New skill
+---
+
+New skill.
+MD
+
+	run node "$SCRIPT" install "$PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+	[ "$status" -eq 0 ]
+	[ ! -f "$TMP_DIR/.codex/skills/kramme:old-skill/SKILL.md" ]
+	[ -f "$TMP_DIR/.codex/skills/kramme:new-skill/SKILL.md" ]
 }
 
 @test "converter resolves marketplace slug from parent repo root" {
