@@ -641,6 +641,11 @@ format checks, skill-contract linting, changed-skill SkillSpector scanning with
 `skill-eval-skill-review` pass beyond the skill-review eval coverage already
 exercised by the Bats suite.
 
+GitHub Actions also runs the standalone skill-review eval as a separate
+path-filtered, scheduled, and manual workflow. That workflow uploads the
+aggregate JSON result as the `skill-review-eval` artifact and is meant to catch
+harness or fixture regressions without treating score movement as a merge gate.
+
 Before a release candidate or before marking a larger Pull Request ready, run the
 stronger local gate:
 
@@ -652,6 +657,11 @@ The `verify` target runs `pr-verify` plus the standalone full skill-review eval
 split. These verification targets expect the existing local tools used by those
 checks to be installed: `shellcheck`, `ruff`, `skillspector`, `bats`, `jq`,
 Python 3, and Node.js.
+
+Python development tool pins used by CI live in `requirements-dev.txt`. First
+party `actions/*` workflow actions are pinned to commit SHAs with a trailing
+comment naming the major tag used for lookup. Refresh them with `git ls-remote`
+against the upstream action repository before updating the SHA.
 
 ### Skill Security Scans
 
