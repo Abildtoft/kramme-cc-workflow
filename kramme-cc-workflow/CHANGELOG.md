@@ -8,6 +8,45 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 ## Unreleased
 
+## [0.66.0] - 2026-07-06
+
+### Added
+- Add kramme:discovery:strategic-inquiry (#641)
+- Sync README agents and hooks (#635)
+- Add lean cleanup reviewer (#617)
+
+### Changed
+- Extract shared rubric (#644)
+- Split init and discovery references (#642)
+- Clarify review and test docs (#631)
+- Tighten SIW and rewrite guidance (#630)
+- Clean component metadata nits (#629)
+- Add artifact readiness gates (#627)
+- Refresh external source guidance (#626)
+- Clarify release contract guidance (#625)
+- Refresh external skill baselines (#624)
+- Tighten review and testing guidance (#623)
+- Add host adapter contract (#618)
+- Share git command parser helpers (#614)
+- Canonicalize UI relevance scope (#612)
+- Consolidate git parser source (#608)
+- Modularize linter (#604)
+- Isolate local hook state (#600)
+
+### Fixed
+- Abort on changelog history failures (#633)
+- Load lint wrapper package (#632)
+- Update compound engineering source URLs (#621)
+- Correct compound engineering source links (#622)
+- Harden rm-rf command parsing (#619)
+- Bound rm parsing across lines and quotes (#616)
+- Gate project formatter overrides (#615)
+- Preserve first-release spacing (#609)
+- Package skill usage runtime (#607)
+- Bound external command execution (#605)
+- Detect shell payload bypasses (#602)
+- Harden experiment worktree cleanup (#601)
+
 ## [0.65.0] - 2026-07-01
 
 ### Added
@@ -558,6 +597,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - Preserve skill resources in conversion (#222)
 
+[0.66.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.65.0...v0.66.0
 [0.65.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.64.0...v0.65.0
 [0.64.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.63.0...v0.64.0
 [0.63.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.62.0...v0.63.0
