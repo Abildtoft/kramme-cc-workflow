@@ -8,9 +8,11 @@ user-invocable: true
 
 # Copy Review — Codebase Scan
 
-Scan the codebase for unnecessary UI text. Finds labels, descriptions, placeholders, tooltips, and instructions that duplicate what the UI already communicates through structure, icons, or interaction patterns.
+Scan the codebase for unnecessary UI text using the shared rubric in `references/copy-review-rubric.md`.
 
 **Arguments:** "$ARGUMENTS"
+
+**Shared rubric:** Read `references/copy-review-rubric.md` before filtering files or launching reviewers. It defines UI-relevant file rules, redundancy categories, confidence/severity rules, finding format, and exclusions.
 
 ## Inputs
 
@@ -24,17 +26,14 @@ Scan the codebase for unnecessary UI text. Finds labels, descriptions, placehold
 1. Parse the optional scope path from `$ARGUMENTS`. If non-empty, store it as `TARGET_SCOPE`. Otherwise set `TARGET_SCOPE` to the repo root.
 2. Read `package.json` / build config to understand the stack and directory layout.
 3. Discover project instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents) and read the relevant ones for project conventions and target audience.
-4. Determine the effective scan scope from `TARGET_SCOPE`. Filter to UI-relevant files only:
-   - **Components**: `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.component.ts`, `*.component.html`
-   - **Templates**: `*.html`, `*.hbs`, `*.ejs`, `*.pug`
-   - **Views/Pages**: Files in `pages/`, `views/`, `screens/`, `routes/`, `app/` directories
-   - **i18n/translations**: `*.json` files in `locales/`, `i18n/`, `translations/` directories
+4. Determine the effective scan scope from `TARGET_SCOPE`. Filter files using the UI-relevant file rules in `references/copy-review-rubric.md`.
 5. Count files in scope — report the count to the user before proceeding. If the count is zero, stop with a one-line "no UI-relevant files in scope" message instead of launching a reviewer.
 
 ### Phase 2 — Scan
 
 Launch **kramme:copy-reviewer** in audit mode using the platform's agent-invocation primitive with:
 
+- The loaded rubric from `references/copy-review-rubric.md`
 - The list of UI-relevant files in scope
 - Project conventions from the discovered instruction files and established UI patterns
 - Instruction: **"You are in audit mode. Scan all provided files for copy redundancy. Flag all issues regardless of when they were introduced."**
@@ -92,6 +91,7 @@ Treat `COPY_REVIEW_OVERVIEW.md` as a working artifact — it should **not** be c
 
 ## Guidelines
 
+- **Apply the shared rubric.** Use `references/copy-review-rubric.md` as the source of truth for categories, exclusions, confidence, severity, and finding format.
 - **Evidence over speculation.** Every finding must reference a concrete file and line. Do not flag hypothetical issues.
 - **Respect project conventions.** If the project intentionally uses a content strategy (documented in project instruction files or established by consistent usage), do not flag it.
 - **No false positives over completeness.** It is better to miss a borderline case than to suggest removing text that serves a purpose.

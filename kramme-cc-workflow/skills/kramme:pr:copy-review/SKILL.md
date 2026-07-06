@@ -8,9 +8,11 @@ user-invocable: true
 
 # Copy Review for Pull Request and Local Changes
 
-Review branch changes and local work for unnecessary UI text. Finds labels, descriptions, placeholders, tooltips, and instructions that duplicate what the UI already communicates through structure, icons, or interaction patterns.
+Review branch changes and local work for unnecessary UI text using the shared rubric in `references/copy-review-rubric.md`.
 
 **Arguments:** "$ARGUMENTS"
+
+**Shared rubric:** Read `references/copy-review-rubric.md` before filtering files or launching reviewers. It defines UI-relevant file rules, redundancy categories, confidence/severity rules, finding format, and exclusions.
 
 ## Review Workflow
 
@@ -21,11 +23,12 @@ Review branch changes and local work for unnecessary UI text. Finds labels, desc
 3. If `--inline` flag provided, set `INLINE_MODE=true`
 4. If neither flag is present, use defaults
 
-### Step 2: Load Project Review Conventions
+### Step 2: Load Rubric and Project Review Conventions
 
-1. Read any repo-root project instruction files if present (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in repo-root `.claude/`, or equivalents).
-2. Extract initial UI stack, component library, design system, target audience, and content strategy conventions from those repo-root instruction files and the surrounding UI code.
-3. Pass the merged conventions to the reviewer agent and instruct it to prioritize documented conventions over generic best practices.
+1. Read the local copy-review rubric at `references/copy-review-rubric.md`.
+2. Read any repo-root project instruction files if present (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in repo-root `.claude/`, or equivalents).
+3. Extract initial UI stack, component library, design system, target audience, and content strategy conventions from those repo-root instruction files and the surrounding UI code.
+4. Pass the rubric and merged conventions to the reviewer agent, and instruct it to prioritize documented conventions over generic best practices.
 
 ### Step 3: Resolve Base Branch and Identify UI-Relevant Changed Files
 
@@ -85,12 +88,7 @@ CHANGED_FILES=$(parse_review_diff_json changed_files) || exit 1
 
 The JSON parsing block sets `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES`. Use `CHANGED_FILES` for the file filtering below.
 
-Filter for UI-relevant files only:
-
-- **Components**: `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.component.ts`, `*.component.html`
-- **Templates**: `*.html`, `*.hbs`, `*.ejs`, `*.pug`
-- **Views/Pages**: Files in `pages/`, `views/`, `screens/`, `routes/`, `app/` directories
-- **i18n/translations**: `*.json` files in `locales/`, `i18n/`, `translations/` directories
+Filter changed paths using the UI-relevant file rules in `references/copy-review-rubric.md`.
 
 After identifying the changed UI files, discover any additional nested instruction files that apply to those files (for example `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or tool-specific equivalents) and merge those constraints into the conventions from Step 2 before launching the reviewer agent.
 
@@ -115,6 +113,7 @@ If `COPY_REVIEW_OVERVIEW.md` exists in the project root:
 
 Launch **kramme:copy-reviewer** using the platform's agent-invocation primitive with:
 
+- The loaded rubric from `references/copy-review-rubric.md`
 - The resolved `BASE_BRANCH`, `BASE_REF`, and `MERGE_BASE` from Step 3
 - Project conventions extracted from the discovered instruction files and established UI patterns
 - The list of UI-relevant changed files
@@ -123,7 +122,7 @@ Launch **kramme:copy-reviewer** using the platform's agent-invocation primitive 
 - Unstaged local diff: `git diff`
 - Untracked local files list: `git ls-files --others --exclude-standard` (agent should treat these as new files and review full file content)
 - Instruct the agent to apply the confidence threshold: "Only report findings with confidence >= {custom_threshold}"
-- Focus instruction: **"Focus on text redundancy introduced by this diff. For each text element in changed code, evaluate whether the UI already communicates the same information through its structure, icons, or interaction patterns."**
+- Focus instruction: **"Focus on text redundancy introduced by this diff. Apply the shared copy-review rubric to each text element in changed code."**
 
 ### Step 6: Validate Relevance
 

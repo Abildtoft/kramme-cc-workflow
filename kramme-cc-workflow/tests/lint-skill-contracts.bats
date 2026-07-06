@@ -151,6 +151,19 @@ make_body_lines() {
   [[ "$output" == *"skill contract lint passed."* ]]
 }
 
+@test "copy review rubric is synced as a skill-local resource" {
+  local registry="$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml"
+  local code_rubric="$BATS_TEST_DIRNAME/../skills/kramme:code:copy-review/references/copy-review-rubric.md"
+  local pr_rubric="$BATS_TEST_DIRNAME/../skills/kramme:pr:copy-review/references/copy-review-rubric.md"
+
+  test -f "$code_rubric"
+  test -f "$pr_rubric"
+  cmp -s "$code_rubric" "$pr_rubric"
+  grep -qF '"name": "copy-review-rubric"' "$registry"
+  ! grep -qF '"name": "copy-review-redundancy-scope"' "$registry"
+  ! grep -qF '"name": "copy-review-ui-relevant-file-types"' "$registry"
+}
+
 @test "visual shared asset generator passes current tree" {
   run python3 "$VISUAL_GENERATOR" --check
 
