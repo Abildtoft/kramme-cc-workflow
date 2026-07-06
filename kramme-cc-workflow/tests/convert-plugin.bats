@@ -220,11 +220,39 @@ SH
 
 	run node "$SCRIPT" install "$REPO_ROOT" --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
 	[ "$status" -eq 0 ]
+
+	local plugin_version
+	plugin_version="$(jq -r '.version' "$REPO_ROOT/.claude-plugin/plugin.json")"
+	local marketplace_root="$TMP_DIR/.codex/.kramme-plugin-marketplaces/kramme-cc-workflow"
+	local cache_root="$TMP_DIR/.codex/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/$plugin_version"
+
 	[ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
 	[ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
 	[ -f "$TMP_DIR/.codex/AGENTS.md" ]
+	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/dev-server/detect-url.sh" ]
+	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/resolve-base.sh" ]
+	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/collect-review-diff.sh" ]
+	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/skill-usage.js" ]
+	[ ! -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/install-codex.sh" ]
+	[ -f "$cache_root/scripts/dev-server/detect-url.sh" ]
+	[ -f "$cache_root/scripts/resolve-base.sh" ]
+	[ -f "$cache_root/scripts/collect-review-diff.sh" ]
+	[ -f "$cache_root/scripts/skill-usage.js" ]
+	[ ! -f "$cache_root/scripts/install-codex.sh" ]
+	[ -f "$TMP_DIR/.codex/scripts/dev-server/detect-url.sh" ]
+	[ -f "$TMP_DIR/.codex/scripts/resolve-base.sh" ]
+	[ -f "$TMP_DIR/.codex/scripts/collect-review-diff.sh" ]
+	[ -f "$TMP_DIR/.codex/scripts/skill-usage.js" ]
 
 	run grep -n 'TodoWrite/TodoRead: use update_plan' "$TMP_DIR/.codex/AGENTS.md"
+	[ "$status" -eq 0 ]
+	run grep -RFn '${CLAUDE_PLUGIN_ROOT}/scripts/dev-server' "$TMP_DIR/.codex/skills"
+	[ "$status" -eq 1 ]
+	run grep -nF "RESOLVED=$('$TMP_DIR/.codex/scripts/collect-review-diff.sh' \"\${COLLECT_ARGS[@]}\")" "$TMP_DIR/.codex/skills/kramme:pr:code-review/SKILL.md"
+	[ "$status" -eq 0 ]
+	run grep -nF "RESOLVED=$('$TMP_DIR/.codex/scripts/resolve-base.sh' \"\${ARGS[@]}\")" "$TMP_DIR/.codex/skills/kramme:git:recreate-commits/SKILL.md"
+	[ "$status" -eq 0 ]
+	run grep -nF "DETECTED_PROJECT_TYPE=$('$TMP_DIR/.codex/scripts/dev-server'/detect-project-type.sh 2> /dev/null)" "$TMP_DIR/.codex/skills/kramme:qa/SKILL.md"
 	[ "$status" -eq 0 ]
 }
 
@@ -287,6 +315,37 @@ SH
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"Refusing to overwrite existing untracked Codex hook marketplace."* ]]
 	[ -f "$TMP_DIR/.codex/.kramme-plugin-marketplaces/untracked-hook-marketplace-plugin/sentinel.txt" ]
+}
+
+@test "codex conversion removes managed hook plugin output when hooks are removed" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	FIXTURE_PLUGIN="$TMP_DIR/hookless-upgrade-plugin"
+	create_hook_fixture_plugin "$FIXTURE_PLUGIN" "hookless-upgrade-plugin" "alpha-hook"
+
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
+	[ "$status" -eq 0 ]
+	[ -d "$TMP_DIR/.codex/.kramme-plugin-marketplaces/hookless-upgrade-plugin" ]
+	[ -d "$TMP_DIR/.codex/plugins/cache/hookless-upgrade-plugin/hookless-upgrade-plugin/1.0.0" ]
+
+	rm -r "$FIXTURE_PLUGIN/hooks"
+	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
+	[ "$status" -eq 0 ]
+	[ ! -d "$TMP_DIR/.codex/.kramme-plugin-marketplaces/hookless-upgrade-plugin" ]
+	[ ! -d "$TMP_DIR/.codex/plugins/cache/hookless-upgrade-plugin/hookless-upgrade-plugin/1.0.0" ]
+
+	run grep -nF '[plugins."hookless-upgrade-plugin@hookless-upgrade-plugin"]' "$TMP_DIR/.codex/config.toml"
+	[ "$status" -eq 1 ]
+
+	run jq -r '.hookMarketplaces | length' "$TMP_DIR/.codex/.kramme-install-manifests/hookless-upgrade-plugin-codex.json"
+	[ "$status" -eq 0 ]
+	[ "$output" = "0" ]
+
+	run jq -r '.pluginCaches | length' "$TMP_DIR/.codex/.kramme-install-manifests/hookless-upgrade-plugin-codex.json"
+	[ "$status" -eq 0 ]
+	[ "$output" = "0" ]
 }
 
 @test "codex conversion skips cleanup in non-interactive mode without --yes" {
