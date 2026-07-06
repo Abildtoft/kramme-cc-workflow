@@ -1,0 +1,7 @@
+sources:
+  - id: klein-premortem
+    url: https://hbr.org/2007/09/performing-a-project-premortem
+    title: "Performing a Project Premortem (Gary Klein, Harvard Business Review)"
+    rationale: "The pre-mortem lens in references/inquiry-lenses.md adapts Klein's prospective-hindsight technique of assuming the project has already failed and independently enumerating causes."
+    last_reviewed_at: 2026-07-06
+    baseline_hash: ""
