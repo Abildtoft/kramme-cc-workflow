@@ -1,7 +1,7 @@
 .PHONY: lint lint-shell lint-python lint-js format-check preflight pr-verify verify test test-bats test-node test-python test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage unit-coverage coverage-node coverage-python check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-shell-deps check-ruff-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
 
 SHELLCHECK ?= shellcheck
-SHELLCHECK_SEVERITY ?= error
+SHELLCHECK_SEVERITY ?= warning
 RUFF ?= ruff
 ROOT_DIR := $(abspath ..)
 PLUGIN_REL := $(notdir $(CURDIR))
@@ -32,7 +32,7 @@ SHELLCHECK_FILES = \
 	evals/skillopt/scripts/*.sh \
 	skills/*/scripts/*.sh
 
-# Start at error severity; ratchet toward warnings after existing scripts are cleaned up.
+# Keep ShellCheck warning-clean by default so new shell risks stay visible.
 lint: lint-shell lint-python lint-js
 
 lint-shell: check-shell-deps
