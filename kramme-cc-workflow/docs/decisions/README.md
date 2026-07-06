@@ -14,7 +14,7 @@ needs tradeoffs, rejected alternatives, or migration steps.
 | Host adapters remain thin and documented. | Use the portability matrix as the operational contract for canonical, generated, instruction-only, local-only, and unsupported host surfaces. | `docs/agent-portability.md`, `tests/node/converter-contracts.test.js` |
 | Dev-server detection resolves running servers only. | Browser workflows may auto-detect a reachable local URL, but the detector does not start a server. | `scripts/dev-server/README.md`, `tests/dev-server-scripts.bats` |
 | Skill security scanning is part of meaningful skill changes. | Run changed-skill SkillSpector scans for new or materially changed skills; high and critical enforceable findings should block merge unless explicitly accepted. | `README.md#skill-security-scans`, `scripts/run-skillspector.sh` |
-| SkillOpt remains a constrained pilot. | Only `kramme:skill:review` is in the SkillOpt loop until another skill has deterministic splits, a candidate gate, and manual acceptance. | `README.md#skillopt-adoption`, `evals/skillopt/README.md` |
+| Skill quality uses dogfooding-first QA with a capped SkillOpt pilot. | Keep committed behavior eval investment at the `kramme:skill:review` pilot, and run a lightweight top-five smoke ritual after model-generation upgrades. | `2026-07-06-skill-quality-regime.md`, `README.md#skillopt-adoption`, `evals/skillopt/README.md` |
 | Local maintenance skills are not shipped. | `.agents/skills/` supports maintaining this repo and is exposed locally through `.claude/skills`; it is separate from plugin skills under `kramme-cc-workflow/skills/`. | `README.md#local-repository-maintenance` |
 
 ## Adding Decisions
