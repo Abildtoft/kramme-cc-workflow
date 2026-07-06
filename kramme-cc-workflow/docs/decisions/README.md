@@ -1,11 +1,14 @@
 # Decision Index
 
-This index records settled repository decisions and points to their source of
-truth. It is not a full ADR archive yet; add a dated ADR when a future decision
-needs tradeoffs, rejected alternatives, or migration steps.
+This index records repository decisions and points to their source of truth. Add
+a dated ADR when a future decision needs tradeoffs, rejected alternatives, or
+migration steps.
+
+## Settled Decisions
 
 | Decision | Current rule | Source |
 | --- | --- | --- |
+| Audience model for kramme-cc-workflow. | Treat the repository as a practice arena / showcase; release, security, CI, portability, and documentation machinery are deliberate exercises, not adoption-justified product taxes. | [0001-audience-model.md](0001-audience-model.md) |
 | Root README is canonical public documentation. | Keep install, usage, component listings, testing, and release links in the root `README.md`. | `README.md`, `CLAUDE.md` |
 | Skills must be self-contained at runtime. | Skill `SKILL.md` files and skill resources must not require repository-level docs after installation. Runtime policy belongs inside the skill directory. | `CLAUDE.md`, `tests/skill-resource-references.bats` |
 | PR titles use Conventional Commits; branch commits do not have to. | Use plain-English branch commit messages. Use Conventional Commits for PR titles because they become merge commits and feed changelog generation. | `README.md#contributing`, `CLAUDE.md` |
