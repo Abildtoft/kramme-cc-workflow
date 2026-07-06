@@ -898,6 +898,52 @@ EOF
   [[ "$output" == *"is missing required text 'MISSING REQUIREMENT'"* ]]
 }
 
+@test "migrated guidance contracts stay registered" {
+  run python3 - "$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml" <<'PY'
+import json
+import pathlib
+import sys
+
+registry = json.loads(pathlib.Path(sys.argv[1]).read_text())
+registered = {contract["name"] for contract in registry.get("required_file_contracts", [])}
+required = {
+    "pr-create-gh-prevalidation",
+    "pr-create-description-generation-contract",
+    "pr-create-linear-id-normalization",
+    "pr-create-branch-linear-state",
+    "pr-create-body-file-contract",
+    "pr-create-edit-loop-linear-normalization",
+    "pr-create-state-restoration-contract",
+    "pr-finalize-description-delegation",
+    "pr-generate-description-subskill-contract",
+    "pr-generate-description-main-guidance",
+    "pr-generate-description-template-discovery",
+    "pr-generate-description-template-and-test-plan-rules",
+    "pr-generate-description-section-template-rules",
+    "pr-generate-description-output-cleanliness",
+    "pr-generate-description-antipattern-examples",
+    "pr-generate-description-red-flag-examples",
+    "pr-generate-description-visual-capture-safety",
+    "pr-generate-description-direct-update-safety",
+    "linear-issue-implement-reference-mapping",
+    "linear-issue-implement-display-template",
+    "linear-issue-implement-plan-template",
+    "linear-issue-implement-readme-note",
+    "visual-demo-reel-guidance",
+    "visual-demo-reel-capture-tiers",
+    "visual-demo-reel-source-manifest",
+    "code-optimize-shell-permission",
+    "code-optimize-source-manifest",
+    "workflow-artifact-cleanup-names",
+}
+missing = sorted(required - registered)
+if missing:
+    raise SystemExit("missing migrated contracts: " + ", ".join(missing))
+PY
+
+  [ "$status" -eq 0 ]
+}
+
 @test "multiline text contract drift fails" {
   write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
 ---

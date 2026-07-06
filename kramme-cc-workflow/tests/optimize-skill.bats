@@ -1,5 +1,20 @@
 #!/usr/bin/env bats
 
+assert_required_contracts_registered() {
+	cd "$BATS_TEST_DIRNAME/.."
+	python3 - "$@" <<'PY'
+import json
+import pathlib
+import sys
+
+registry = json.loads(pathlib.Path("scripts/synced-contracts.yaml").read_text())
+registered = {contract["name"] for contract in registry.get("required_file_contracts", [])}
+missing = sorted(set(sys.argv[1:]) - registered)
+if missing:
+    raise SystemExit(f"missing required_file_contracts: {', '.join(missing)}")
+PY
+}
+
 @test "code optimize helper scripts pass bash syntax checks" {
 	run bash -c '
     cd "'"$BATS_TEST_DIRNAME"'/.."
@@ -48,26 +63,11 @@
 }
 
 @test "code optimize source manifest cites ce-optimize" {
-	run bash -c '
-    cd "'"$BATS_TEST_DIRNAME"'/.."
-    manifest="skills/kramme:code:optimize/references/sources.yaml"
-    grep -q "compound-ce-optimize" "$manifest"
-    grep -q "ce-optimize" "$manifest"
-    grep -q "6f9ab03a031c054a8046659926251fb6c149269f" "$manifest"
-  '
-
-	[ "$status" -eq 0 ]
+	assert_required_contracts_registered code-optimize-source-manifest
 }
 
 @test "code optimize skill declares shell permissions" {
-	run bash -c '
-    cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:code:optimize/SKILL.md"
-    grep -q "^permissions:" "$skill"
-    grep -q "^  - shell$" "$skill"
-  '
-
-	[ "$status" -eq 0 ]
+	assert_required_contracts_registered code-optimize-shell-permission
 }
 
 @test "code optimize worktree helper avoids force deletion patterns" {
