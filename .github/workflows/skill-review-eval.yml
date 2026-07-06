@@ -1,0 +1,49 @@
+name: Skill Review Eval
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/skill-review-eval.yml"
+      - "kramme-cc-workflow/Makefile"
+      - "kramme-cc-workflow/evals/skill-review/**"
+      - "kramme-cc-workflow/skills/kramme:skill:review/**"
+      - "package.json"
+      - "package-lock.json"
+  schedule:
+    - cron: "23 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  skill-review-eval:
+    name: Run skill-review eval
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install Node dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run aggregate skill-review eval
+        run: |
+          set -o pipefail
+          cd kramme-cc-workflow
+          node evals/skill-review/run-eval.js --split all --json | tee "$RUNNER_TEMP/skill-review-eval.json"
+
+      - name: Upload eval result
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: skill-review-eval
+          path: ${{ runner.temp }}/skill-review-eval.json
+          if-no-files-found: error

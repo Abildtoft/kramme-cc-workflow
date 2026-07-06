@@ -20,9 +20,7 @@ PYTHON_TRACE_IGNORE_ARGS = $(if $(PYTHON_TRACE_IGNORE_DIRS),--ignore-dir '$(PYTH
 FORMAT_CHECK_FILES = \
 	package.json \
 	kramme-cc-workflow/package.json \
-	.github/workflows/tests.yml \
-	.github/workflows/skill-lint.yml \
-	.github/workflows/release.yml
+	.github/workflows/*.yml
 
 SHELLCHECK_FILES = \
 	hooks/*.sh \
