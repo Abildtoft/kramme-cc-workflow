@@ -7,14 +7,28 @@ const path = require("path");
 const test = require("node:test");
 
 const {
+  parseAskUserQuestionBlock,
+} = require("../../scripts/convert-plugin/ask-user-question-parser");
+const {
   stageCodexBundleOutput,
 } = require("../../scripts/convert-plugin/codex-bundle-output");
+const {
+  stageCodexConfig,
+} = require("../../scripts/convert-plugin/codex-config");
 const {
   stageCodexHookPluginBundle,
 } = require("../../scripts/convert-plugin/codex-hook-plugin-writer");
 const {
   convertClaudeToCodex,
+  transformContentForCodex,
 } = require("../../scripts/convert-plugin/codex-transformer");
+const {
+  codexName,
+  formatFrontmatter,
+  normalizeName,
+  parseFrontmatter,
+  sanitizeDescription,
+} = require("../../scripts/convert-plugin/frontmatter");
 const {
   installStagedDir,
   preflightStagedDirInstall,
@@ -23,6 +37,485 @@ const {
 const {
   loadInstallState,
 } = require("../../scripts/convert-plugin/install-state");
+const {
+  loadClaudePlugin,
+  normalizeFrontmatterField,
+} = require("../../scripts/convert-plugin/loader");
+const {
+  writeCodexBundle,
+} = require("../../scripts/convert-plugin/codex-writer");
+const { skillContracts } = require("../../scripts/schemas/skill-contracts");
+
+test("frontmatter module parses and formats converter metadata", () => {
+  const parsed = parseFrontmatter(`---
+name: Demo Skill
+description: |
+  First line
+  Usage: keep exactly
+  second line
+argument-hint: [aspects] [--base <branch>]
+summary: [experimental] Capture local behavior: screenshots, terminal output
+allowed-tools:
+  - Read
+  - Edit(src/**)
+examples:
+  - Capture: screenshots
+user-invocable: true
+---
+Body`);
+
+  assert.deepEqual(parsed.data["allowed-tools"], ["Read", "Edit(src/**)"]);
+  assert.deepEqual(parsed.data.examples, ["Capture: screenshots"]);
+  assert.equal(
+    parsed.data.description,
+    "First line\nUsage: keep exactly\nsecond line",
+  );
+  assert.equal(
+    parsed.data.summary,
+    "[experimental] Capture local behavior: screenshots, terminal output",
+  );
+  assert.equal(parsed.data["argument-hint"], "[aspects] [--base <branch>]");
+  assert.equal(parsed.data["user-invocable"], true);
+  assert.equal(parsed.body, "Body");
+  assert.equal(normalizeName("Kramme: Demo/Skill!"), "kramme-demo-skill");
+  assert.equal(codexName("Demo Skill!"), "demo-skill");
+  assert.equal(sanitizeDescription(" First\n\nSecond "), "First Second");
+
+  const bracketHint = parseFrontmatter(`---
+name: Demo Skill
+argument-hint: [path]
+disable-model-invocation: { true|false }
+---
+Body`);
+  assert.equal(bracketHint.data["argument-hint"], "[path]");
+  assert.equal(bracketHint.data["disable-model-invocation"], "{ true|false }");
+
+  const formatted = formatFrontmatter(
+    {
+      name: "demo-skill",
+      "argument-hint": bracketHint.data["argument-hint"],
+      "allowed-tools": ["Read", "Edit(src/**)"],
+      metadata: { owner: "platform" },
+      "user-invocable": true,
+    },
+    "Body",
+  );
+  assert.match(formatted, /argument-hint: "\[path\]"/);
+  assert.match(formatted, /allowed-tools:\n  - Read\n  - Edit\(src\/\*\*\)/);
+  assert.match(formatted, /metadata:\n  owner: platform/);
+  assert.match(formatted, /user-invocable: true/);
+});
+
+test("frontmatter module parses supported YAML shapes and nested metadata", () => {
+  const parsed = parseFrontmatter(`---
+name: "Quoted Skill"
+description: >
+  First line
+  second line
+enabled: false
+attempts: 3
+ratio: -2.5
+empty: null
+fallback: ~
+tags: [alpha, "beta:two", false, 2]
+allowed-tools:
+  - Read
+  - Edit(src/**)
+metadata:
+  owner: platform
+  channels:
+    - cli
+    - codex
+examples:
+  - name: Capture
+    description: Capture local behavior: screenshots
+  - name: Replay
+    description: Replay terminal output
+---
+
+Body line one
+---
+Body line two`);
+
+  assert.equal(parsed.data.name, "Quoted Skill");
+  assert.equal(parsed.data.description, "First line second line");
+  assert.equal(parsed.data.enabled, false);
+  assert.equal(parsed.data.attempts, 3);
+  assert.equal(parsed.data.ratio, -2.5);
+  assert.equal(parsed.data.empty, null);
+  assert.equal(parsed.data.fallback, null);
+  assert.deepEqual(parsed.data.tags, ["alpha", "beta:two", false, 2]);
+  assert.deepEqual(parsed.data["allowed-tools"], ["Read", "Edit(src/**)"]);
+  assert.deepEqual(parsed.data.metadata, {
+    owner: "platform",
+    channels: ["cli", "codex"],
+  });
+  assert.deepEqual(parsed.data.examples, [
+    {
+      name: "Capture",
+      description: "Capture local behavior: screenshots",
+    },
+    {
+      name: "Replay",
+      description: "Replay terminal output",
+    },
+  ]);
+  assert.equal(Object.hasOwn(parsed.data, "owner"), false);
+  assert.equal(parsed.body, "\nBody line one\n---\nBody line two");
+});
+
+test("ask user question parser reads structured prompt blocks", () => {
+  const parsed = parseAskUserQuestionBlock(`
+AskUserQuestion
+header: "Release scope"
+question: |
+  Which release scopes should this include?
+  Choose every applicable area.
+multiSelect: "true"
+options:
+  - label: "Converter"
+    description: "Converter behavior and tests"
+  - (freeform) Something else
+`);
+
+  assert.deepEqual(parsed, {
+    header: "Release scope",
+    question: "Which release scopes should this include?\nChoose every applicable area.",
+    multiSelect: true,
+    options: [
+      {
+        label: "Converter",
+        description: "Converter behavior and tests",
+      },
+      {
+        label: "Something else",
+        description: "",
+      },
+    ],
+  });
+
+  const folded = parseAskUserQuestionBlock(`
+question: >
+  Pick the route
+  for this plan.
+options: []
+`);
+  assert.ok(folded);
+  assert.equal(folded.question, "Pick the route for this plan.");
+  assert.equal(parseAskUserQuestionBlock("plain markdown"), null);
+});
+
+test("transformer rewrites task calls, references, and AskUserQuestion guidance", () => {
+  const knownCommands = new Set(["kramme:pr:create", "demo-command"]);
+  const knownAgentSkills = new Map([
+    ["kramme:reviewer", "kramme:reviewer"],
+    ["support-reviewer", "support-reviewer"],
+  ]);
+  const input = [
+    "Task support-reviewer(review this parser)",
+    "Run /kramme:pr:create, then /unknown, and keep /usr/bin.",
+    "Ask @support-reviewer to inspect the output.",
+    "Use `agents/kramme:reviewer.md` and [reviewer](agents/kramme:reviewer.md).",
+    "1. Ask for the issue ID:",
+    "   ````yaml",
+    "   header: \"Linear issue\"",
+    "   question: \"Enter the Linear issue ID (e.g., WAN-521):\"",
+    "   options: []",
+    "   ````",
+    "### Using AskUserQuestion Correctly",
+    "",
+    "The AskUserQuestion tool requires **2-4 predefined options** per question.",
+    'Users can always select "Other" to provide free-text input.',
+    "- `header`: Short label",
+    "- `question`: The full question text",
+    "- `multiSelect`: Set `true` for non-exclusive choices",
+  ].join("\n");
+
+  const output = transformContentForCodex(input, {
+    knownCommands,
+    knownAgentSkills,
+  });
+
+  assert.match(output, /Use the \$support-reviewer skill to: review this parser/);
+  assert.match(output, /Run \$kramme:pr:create, then \/unknown, and keep \/usr\/bin\./);
+  assert.match(output, /Ask \$support-reviewer skill to inspect the output\./);
+  assert.match(output, /Use \$kramme:reviewer skill and \$kramme:reviewer skill\./);
+  assert.match(
+    output,
+    /1\. Ask for the issue ID:\n   Ask the user directly in chat:\n   Question label: Linear issue\n   Question: Enter the Linear issue ID \(e\.g\., WAN-521\):/,
+  );
+  assert.match(output, /### Asking Questions in Codex/);
+  assert.match(
+    output,
+    /When asking directly in chat, offer a small set of concrete options/,
+  );
+  assert.match(output, /Users can always ignore the suggested options/);
+  assert.match(output, /- `Label`: Short label/);
+  assert.match(output, /- `Question`: The full question text/);
+  assert.match(output, /- `Multi-select`: Use this style only/);
+  assert.doesNotMatch(output, /AskUserQuestion|````yaml/);
+});
+
+test("loader derives invocable skill commands and normalizes boolean fields", async () => {
+  await withTempDir(async (root) => {
+    const pluginRoot = path.join(root, "boolean-plugin");
+    await createFixturePlugin(pluginRoot, "boolean-plugin");
+
+    await writeSkillFile(
+      pluginRoot,
+      "quoted-hidden",
+      `---
+name: quoted-hidden
+description: Quoted hidden skill
+disable-model-invocation: "true"
+user-invocable: "false"
+---
+Hidden body.
+`,
+    );
+    await writeSkillFile(
+      pluginRoot,
+      "literal-hidden",
+      `---
+name: literal-hidden
+description: Literal hidden skill
+disable-model-invocation: true
+user-invocable: false
+---
+Hidden body.
+`,
+    );
+    await writeSkillFile(
+      pluginRoot,
+      "quoted-enabled",
+      `---
+name: quoted-enabled
+description: Quoted enabled skill
+disable-model-invocation: "false"
+user-invocable: "true"
+---
+Enabled body.
+`,
+    );
+    await writeSkillFile(
+      pluginRoot,
+      "literal-enabled",
+      `---
+name: literal-enabled
+description: Literal enabled skill
+disable-model-invocation: false
+user-invocable: true
+---
+Enabled body.
+`,
+    );
+
+    const plugin = await loadClaudePlugin(pluginRoot);
+    assert.deepEqual(
+      plugin.commands.map((command) => command.name).sort(),
+      ["literal-enabled", "quoted-enabled"],
+    );
+
+    const skills = Object.fromEntries(
+      plugin.skills.map((skill) => [skill.name, skill]),
+    );
+    assert.equal(skills["quoted-hidden"].userInvocable, false);
+    assert.equal(skills["literal-hidden"].userInvocable, false);
+    assert.equal(skills["quoted-enabled"].userInvocable, true);
+    assert.equal(skills["literal-enabled"].userInvocable, true);
+    assert.equal(skills["quoted-hidden"].disableModelInvocation, true);
+    assert.equal(skills["quoted-enabled"].disableModelInvocation, false);
+  });
+
+  const fields = skillContracts.skill_frontmatter.fields;
+  for (const [field, contract] of Object.entries(fields)) {
+    if (contract.type === "boolean") {
+      assert.equal(normalizeFrontmatterField(field, "true"), true, field);
+      assert.equal(normalizeFrontmatterField(field, "false"), false, field);
+    } else {
+      assert.equal(normalizeFrontmatterField(field, "true"), "true", field);
+    }
+  }
+});
+
+test("conversion preserves skill and generated command frontmatter contracts", () => {
+  const bundle = convertClaudeToCodex({
+    agents: [],
+    commands: [
+      {
+        allowedTools: ["Read", "Edit(src/**)"],
+        body: "Use /kramme:demo-command.",
+        description: "Demo command",
+        disableModelInvocation: true,
+        name: "kramme:demo-command",
+        sourcePath: "/plugin/commands/demo-command.md",
+      },
+    ],
+    manifest: { name: "contract-plugin", version: "1.0.0" },
+    root: "/plugin",
+    skills: [
+      {
+        allowedTools: ["Read", "Edit(src/**)"],
+        body: "Use /kramme:demo-command.",
+        description: "Demo skill",
+        disableModelInvocation: false,
+        name: "demo-skill",
+        platforms: ["codex"],
+        sourceDir: "/plugin/skills/demo",
+        userInvocable: true,
+      },
+    ],
+  });
+
+  const skill = parseFrontmatter(bundle.skillDirs[0].content).data;
+  assert.equal(skill.name, "demo-skill");
+  assert.deepEqual(skill["allowed-tools"], ["Read", "Edit(src/**)"]);
+  assert.equal(skill["disable-model-invocation"], false);
+  assert.equal(skill["user-invocable"], true);
+  assert.deepEqual(skill["kramme-platforms"], ["codex"]);
+
+  const generated = parseFrontmatter(bundle.generatedSkills[0].content).data;
+  assert.equal(generated.name, "kramme:demo-command");
+  assert.deepEqual(generated["allowed-tools"], ["Read", "Edit(src/**)"]);
+  assert.equal(generated["disable-model-invocation"], true);
+  assert.equal(generated["user-invocable"], true);
+});
+
+test("hook plugin conversion requires controls and sanitizes manifest description", () => {
+  const plugin = {
+    agents: [],
+    commands: [],
+    hooks: { hooks: { PreToolUse: [] } },
+    manifest: {
+      description: `First line\nsecond line ${"x".repeat(1100)}`,
+      name: "hook-description-plugin",
+      version: "1.0.0",
+    },
+    root: "/plugin",
+    skills: [],
+  };
+
+  assert.equal(convertClaudeToCodex(plugin).codexPlugin, undefined);
+
+  const withControls = {
+    ...plugin,
+    skills: [
+      {
+        body: "Toggle hooks.",
+        description: "Toggle hooks.",
+        name: "kramme:hooks:toggle",
+        sourceDir: "/plugin/skills/toggle",
+      },
+      {
+        body: "Configure hooks.",
+        description: "Configure hooks.",
+        name: "kramme:hooks:configure-links",
+        sourceDir: "/plugin/skills/configure",
+      },
+    ],
+  };
+  const codexPlugin = convertClaudeToCodex(withControls).codexPlugin;
+
+  assert.ok(codexPlugin);
+  assert.equal(codexPlugin.name, "hook-description-plugin");
+  assert.equal(codexPlugin.manifest.hooks, "./hooks/hooks.json");
+  assert.match(codexPlugin.manifest.description, /^First line second line /);
+  assert.match(codexPlugin.manifest.description, /\.\.\.$/);
+  assert.equal(codexPlugin.manifest.description.includes("\n"), false);
+  assert.ok(codexPlugin.manifest.description.length <= 1024);
+});
+
+test("codex config staging replaces managed MCP tables without disturbing adjacent config", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, "codex-home");
+    const codexStagingRoot = path.join(root, "codex-staging");
+    await writeFile(
+      path.join(codexRoot, "config.toml"),
+      `model = "gpt-5"
+
+[profiles.dev]
+model = "gpt-5-mini"
+
+[mcp_servers.existing]
+command = "existing-server"
+args = ["--keep"]
+
+[mcp_servers."demo-server"] # old managed table
+command = "old-server"
+
+[mcp_servers."demo-server".env] # old managed env table
+DEMO_TOKEN = "old-placeholder"
+
+[[history_entries]]
+name = "keep-array-table"
+
+[mcp_servers.demo-server-extra]
+command = "keep-extra"
+
+[mcp_servers.demo-server.env_extra]
+SENTINEL = "keep-prefix"
+
+[profiles.after]
+model = "gpt-5"
+`,
+    );
+
+    const stagedConfigPath = await stageCodexConfig(
+      codexRoot,
+      codexStagingRoot,
+      {
+        mcpServers: {
+          "demo-server": {
+            args: ["server.js", "--stdio"],
+            command: "node",
+            env: { DEMO_TOKEN: "placeholder" },
+          },
+        },
+      },
+      emptyPreviousEntries(),
+      "demo-plugin",
+    );
+
+    const output = await readText(stagedConfigPath);
+    assert.match(output, /model = "gpt-5"/);
+    assert.match(output, /\[profiles\.dev\]/);
+    assert.match(output, /\[profiles\.after\]/);
+    assert.match(output, /\[\[history_entries\]\]/);
+    assert.match(output, /name = "keep-array-table"/);
+    assert.match(output, /\[mcp_servers\.existing\]/);
+    assert.match(output, /\[mcp_servers\.demo-server-extra\]/);
+    assert.match(output, /command = "keep-extra"/);
+    assert.match(output, /\[mcp_servers\.demo-server\.env_extra\]/);
+    assert.match(output, /SENTINEL = "keep-prefix"/);
+    assert.match(output, /\[mcp_servers\.demo-server\]/);
+    assert.match(output, /command = "node"/);
+    assert.match(output, /args = \["server.js", "--stdio"\]/);
+    assert.match(output, /\[mcp_servers\.demo-server\.env\]/);
+    assert.match(output, /DEMO_TOKEN = "placeholder"/);
+    assert.doesNotMatch(output, /\[mcp_servers\."demo-server"\]/);
+    assert.doesNotMatch(output, /\[mcp_servers\."demo-server"\.env\]/);
+    assert.doesNotMatch(output, /command = "old-server"/);
+    assert.doesNotMatch(output, /DEMO_TOKEN = "old-placeholder"/);
+
+    await writeFile(path.join(codexRoot, "config.toml"), output);
+    const restagedConfigPath = await stageCodexConfig(
+      codexRoot,
+      codexStagingRoot,
+      {
+        mcpServers: {
+          "demo-server": {
+            args: ["server.js", "--stdio"],
+            command: "node",
+            env: { DEMO_TOKEN: "placeholder" },
+          },
+        },
+      },
+      emptyPreviousEntries(),
+      "demo-plugin",
+    );
+    assert.equal(restagedConfigPath, null);
+  });
+});
 
 test("install state rebuild sanitizes legacy manifests and managed file paths", async () => {
   await withTempDir(async (root) => {
@@ -285,7 +778,14 @@ test("bundle output stages prompts, skills, generated skills, and agent skills",
     await writeFile(path.join(sourceSkillDir, "SKILL.md"), "original skill\n");
     await writeFile(
       path.join(sourceSkillDir, "notes.md"),
-      "Run /extra-command before review.\n",
+      [
+        "Run /extra-command before review.",
+        "Use agents/reviewer.md in copied resources.",
+        "Use colon punctuation agents/reviewer.md: copied resources.",
+        "Keep anchored paths like agents/reviewer.md#usage.",
+        "Keep parent paths like ../agents/reviewer.md.",
+        "",
+      ].join("\n"),
     );
 
     const stagedBundle = await stageCodexBundleOutput(
@@ -304,7 +804,7 @@ test("bundle output stages prompts, skills, generated skills, and agent skills",
             name: "extra-command",
           },
         ],
-        knownAgentSkills: new Map(),
+        knownAgentSkills: new Map([["reviewer", "review-agent"]]),
         knownCommands: new Set(["extra-command"]),
         prompts: [{ content: "Prompt body", name: "daily" }],
         skillDirs: [
@@ -330,12 +830,6 @@ test("bundle output stages prompts, skills, generated skills, and agent skills",
       ),
       /\$extra-command/,
     );
-    assert.equal(
-      await readText(
-        path.join(codexStagingRoot, "skills", "source-skill", "notes.md"),
-      ),
-      "Run $extra-command before review.\n",
-    );
     assert.deepEqual(
       new Set(stagedBundle.stagedSkillFiles["source-skill"]),
       new Set(["SKILL.md", "notes.md"]),
@@ -356,6 +850,17 @@ test("bundle output stages prompts, skills, generated skills, and agent skills",
       ),
       "---\nname: review-agent\n---\n\nAgent instructions.\n",
     );
+    const notes = await readText(
+      path.join(codexStagingRoot, "skills", "source-skill", "notes.md"),
+    );
+    assert.match(notes, /Run \$extra-command before review\./);
+    assert.match(notes, /Use \$review-agent skill in copied resources\./);
+    assert.match(
+      notes,
+      /Use colon punctuation \$review-agent skill: copied resources\./,
+    );
+    assert.match(notes, /agents\/reviewer\.md#usage/);
+    assert.match(notes, /\.\.\/agents\/reviewer\.md/);
     assert.equal(
       await pathExists(path.join(codexRoot, "prompts", "daily.md")),
       false,
@@ -441,6 +946,410 @@ test("hook plugin staging excludes local hook state and config files", async () 
   });
 });
 
+test("writer prunes stale managed skill files without deleting local files when cleanup is skipped", async () => {
+  await withTempDir(async (root) => {
+    const agentsHome = path.join(root, "agents-home");
+    const sourceDir = path.join(root, "source-skill");
+    const options = {
+      agentsHome,
+      confirm: { yes: true },
+      pluginName: "managed-file-plugin",
+    };
+
+    function bundle() {
+      return {
+        agentSkills: [{ content: "Agent", name: "fixture-agent" }],
+        codexPlugin: undefined,
+        generatedSkills: [
+          { content: "Generated", name: "fixture-generated" },
+        ],
+        knownAgentSkills: new Map(),
+        knownCommands: new Set(),
+        mcpServers: {},
+        prompts: [],
+        skillDirs: [
+          {
+            content: "",
+            name: "fixture-managed",
+            sourceDir,
+          },
+        ],
+      };
+    }
+
+    await writeSourceSkill(sourceDir, {
+      "SKILL.md": "Managed v1\n",
+      "references/OLD.md": "old managed file\n",
+    });
+    await writeCodexBundle(root, bundle(), options);
+
+    const skillDir = path.join(
+      root,
+      ".codex",
+      "skills",
+      "fixture-managed",
+    );
+    const oldManagedFile = path.join(skillDir, "references", "OLD.md");
+    const newManagedFile = path.join(skillDir, "references", "NEW.md");
+    const localNotes = path.join(skillDir, "LOCAL-NOTES.md");
+    assert.equal(await pathExists(oldManagedFile), true);
+
+    let manifest = await readJson(
+      path.join(
+        root,
+        ".codex",
+        ".kramme-install-manifests",
+        "managed-file-plugin-codex.json",
+      ),
+    );
+    assert.deepEqual(manifest.skillFiles["fixture-managed"], [
+      "SKILL.md",
+      "references/OLD.md",
+    ]);
+    assert.deepEqual(manifest.skillFiles["fixture-generated"], ["SKILL.md"]);
+    assert.deepEqual(manifest.agentSkillFiles["fixture-agent"], ["SKILL.md"]);
+
+    await writeFile(localNotes, "keep local notes\n");
+    await writeSourceSkill(sourceDir, {
+      "SKILL.md": "Managed v2\n",
+      "references/NEW.md": "new managed file\n",
+    });
+
+    await writeCodexBundle(root, bundle(), {
+      ...options,
+      confirm: { nonInteractive: true },
+    });
+
+    assert.equal(await pathExists(oldManagedFile), false);
+    assert.equal(await pathExists(newManagedFile), true);
+    assert.equal(await readText(localNotes), "keep local notes\n");
+
+    manifest = await readJson(
+      path.join(
+        root,
+        ".codex",
+        ".kramme-install-manifests",
+        "managed-file-plugin-codex.json",
+      ),
+    );
+    assert.deepEqual(manifest.skillFiles["fixture-managed"], [
+      "SKILL.md",
+      "references/NEW.md",
+    ]);
+    assert.deepEqual(manifest.skillFiles["fixture-generated"], ["SKILL.md"]);
+    assert.deepEqual(manifest.agentSkillFiles["fixture-agent"], ["SKILL.md"]);
+  });
+});
+
+test("writer preserves previous skill files when stale pruning preflight fails", async () => {
+  await withTempDir(async (root) => {
+    const agentsHome = path.join(root, "agents-home");
+    const sourceDir = path.join(root, "source-skill");
+    const options = {
+      agentsHome,
+      confirm: { yes: true },
+      pluginName: "managed-prune-conflict-plugin",
+    };
+
+    function bundle() {
+      return {
+        agentSkills: [],
+        codexPlugin: undefined,
+        generatedSkills: [],
+        knownAgentSkills: new Map(),
+        knownCommands: new Set(),
+        mcpServers: {},
+        prompts: [],
+        skillDirs: [
+          {
+            content: "",
+            name: "fixture-managed",
+            sourceDir,
+          },
+        ],
+      };
+    }
+
+    await writeSourceSkill(sourceDir, {
+      "OLD.md": "old managed file\n",
+      "SKILL.md": "Managed v1\n",
+    });
+    await writeCodexBundle(root, bundle(), options);
+
+    const skillDir = path.join(
+      root,
+      ".codex",
+      "skills",
+      "fixture-managed",
+    );
+    const oldManagedFile = path.join(skillDir, "OLD.md");
+    const blockingFile = path.join(skillDir, "conflict");
+    const statePath = path.join(root, ".codex", ".kramme-install-state.json");
+    const manifestPath = path.join(
+      root,
+      ".codex",
+      ".kramme-install-manifests",
+      "managed-prune-conflict-plugin-codex.json",
+    );
+    const stateBefore = await readText(statePath);
+    const manifestBefore = await readText(manifestPath);
+    await writeFile(blockingFile, "local blocker\n");
+
+    await writeSourceSkill(sourceDir, {
+      "SKILL.md": "Managed v2\n",
+      "conflict/NEW.md": "new managed file\n",
+    });
+
+    await assert.rejects(
+      () =>
+        writeCodexBundle(root, bundle(), {
+          ...options,
+          confirm: { nonInteractive: true },
+        }),
+      /conflicts with staged directory conflict/,
+    );
+
+    assert.equal(await pathExists(oldManagedFile), true);
+    assert.equal(await readText(path.join(skillDir, "SKILL.md")), "Managed v1\n");
+    assert.equal(await readText(blockingFile), "local blocker\n");
+    assert.equal(await readText(statePath), stateBefore);
+    assert.equal(await readText(manifestPath), manifestBefore);
+  });
+});
+
+test("install staging does not prune stale files through symlinked ancestors", async () => {
+  await withTempDir(async (root) => {
+    const skillDir = path.join(root, "skill");
+    const outsideDir = path.join(root, "outside");
+    await fs.mkdir(skillDir, { recursive: true });
+    await fs.mkdir(outsideDir, { recursive: true });
+
+    const outsideFile = path.join(outsideDir, "OLD.md");
+    await writeFile(outsideFile, "outside\n");
+    await fs.symlink(outsideDir, path.join(skillDir, "references"), "dir");
+
+    await pruneStaleManagedFiles(
+      skillDir,
+      ["references/OLD.md"],
+      ["SKILL.md"],
+    );
+
+    assert.equal(await readText(outsideFile), "outside\n");
+    assert.equal(
+      (await fs.lstat(path.join(skillDir, "references"))).isSymbolicLink(),
+      true,
+    );
+  });
+});
+
+test("writer preserves untracked same-name skill directories on first install", async () => {
+  await withTempDir(async (root) => {
+    const agentsHome = path.join(root, "agents-home");
+    const codexSkillDir = path.join(
+      root,
+      ".codex",
+      "skills",
+      "collision-skill",
+    );
+    const agentSkillDir = path.join(agentsHome, "skills", "collision-agent");
+    await writeFile(path.join(codexSkillDir, "LOCAL-NOTES.md"), "keep codex\n");
+    await writeFile(path.join(agentSkillDir, "LOCAL-NOTES.md"), "keep agent\n");
+
+    await writeCodexBundle(
+      root,
+      {
+        agentSkills: [{ content: "Agent", name: "collision-agent" }],
+        codexPlugin: undefined,
+        generatedSkills: [{ content: "Generated", name: "collision-skill" }],
+        knownAgentSkills: new Map(),
+        knownCommands: new Set(),
+        prompts: [],
+        skillDirs: [],
+      },
+      {
+        agentsHome,
+        confirm: { yes: true },
+        pluginName: "collision-plugin",
+      },
+    );
+
+    assert.equal(
+      await readText(path.join(codexSkillDir, "LOCAL-NOTES.md")),
+      "keep codex\n",
+    );
+    assert.equal(
+      await readText(path.join(agentSkillDir, "LOCAL-NOTES.md")),
+      "keep agent\n",
+    );
+    assert.equal(
+      await readText(path.join(codexSkillDir, "SKILL.md")),
+      "Generated\n",
+    );
+    assert.equal(await readText(path.join(agentSkillDir, "SKILL.md")), "Agent\n");
+  });
+});
+
+test("writer preserves previous install when replacement bundle fails", async () => {
+  await withTempDir(async (root) => {
+    const agentsHome = path.join(root, "agents-home");
+    const options = {
+      agentsHome,
+      confirm: { yes: true },
+      pluginName: "transactional-plugin",
+    };
+    const bundleWithGeneratedSkill = (skill) => ({
+      agentSkills: [],
+      codexPlugin: undefined,
+      generatedSkills: [skill],
+      knownAgentSkills: new Map(),
+      knownCommands: new Set(),
+      mcpServers: {},
+      prompts: [],
+      skillDirs: [],
+    });
+    const stableSkill = path.join(
+      root,
+      ".codex",
+      "skills",
+      "stable-skill",
+      "SKILL.md",
+    );
+    const statePath = path.join(root, ".codex", ".kramme-install-state.json");
+    const manifestPath = path.join(
+      root,
+      ".codex",
+      ".kramme-install-manifests",
+      "transactional-plugin-codex.json",
+    );
+
+    await writeCodexBundle(
+      root,
+      bundleWithGeneratedSkill({
+        content: "Stable v1",
+        name: "stable-skill",
+      }),
+      options,
+    );
+    assert.equal(await readText(stableSkill), "Stable v1\n");
+    const stateBefore = await readText(statePath);
+    const manifestBefore = await readText(manifestPath);
+
+    await assert.rejects(
+      () =>
+        writeCodexBundle(
+          root,
+          bundleWithGeneratedSkill({
+            content: "Broken",
+            name: "../invalid-skill",
+          }),
+          options,
+        ),
+      /Invalid skill name/,
+    );
+
+    assert.equal(await readText(stableSkill), "Stable v1\n");
+    assert.equal(await readText(statePath), stateBefore);
+    assert.equal(await readText(manifestPath), manifestBefore);
+  });
+});
+
+test("writer removes agent staging when agent skill staging fails", async () => {
+  await withTempDir(async (root) => {
+    const agentsHome = path.join(root, "agents-home");
+
+    await assert.rejects(
+      () =>
+        writeCodexBundle(
+          root,
+          {
+            agentSkills: [
+              { content: "Broken", name: "../invalid-agent-skill" },
+            ],
+            codexPlugin: undefined,
+            generatedSkills: [],
+            knownAgentSkills: new Map(),
+            knownCommands: new Set(),
+            prompts: [],
+            skillDirs: [],
+          },
+          {
+            agentsHome,
+            confirm: { yes: true },
+            pluginName: "agent-staging-plugin",
+          },
+        ),
+      /Invalid agent skill name/,
+    );
+
+    assert.equal(
+      await pathExists(path.join(agentsHome, ".kramme-install-staging")),
+      false,
+    );
+  });
+});
+
+test("writer preserves previous install when finalization is blocked", async () => {
+  await withTempDir(async (root) => {
+    const agentsHome = path.join(root, "agents-home");
+    const options = {
+      agentsHome,
+      confirm: { yes: true },
+      pluginName: "finalization-plugin",
+    };
+    const bundleWithGeneratedSkills = (skills) => ({
+      agentSkills: [],
+      codexPlugin: undefined,
+      generatedSkills: skills,
+      knownAgentSkills: new Map(),
+      knownCommands: new Set(),
+      mcpServers: {},
+      prompts: [],
+      skillDirs: [],
+    });
+    const skillsRoot = path.join(root, ".codex", "skills");
+    const stableSkill = path.join(skillsRoot, "stable-skill", "SKILL.md");
+    const blockedSkill = path.join(skillsRoot, "blocked-skill");
+    const statePath = path.join(root, ".codex", ".kramme-install-state.json");
+    const manifestPath = path.join(
+      root,
+      ".codex",
+      ".kramme-install-manifests",
+      "finalization-plugin-codex.json",
+    );
+
+    await writeCodexBundle(
+      root,
+      bundleWithGeneratedSkills([
+        { content: "Stable v1", name: "stable-skill" },
+      ]),
+      options,
+    );
+    assert.equal(await readText(stableSkill), "Stable v1\n");
+    const stateBefore = await readText(statePath);
+    const manifestBefore = await readText(manifestPath);
+
+    await writeFile(blockedSkill, "blocking file\n");
+
+    await assert.rejects(
+      () =>
+        writeCodexBundle(
+          root,
+          bundleWithGeneratedSkills([
+            { content: "Blocked", name: "blocked-skill" },
+            { content: "Stable v2", name: "stable-skill" },
+          ]),
+          options,
+        ),
+      /not a directory/,
+    );
+
+    assert.equal(await readText(stableSkill), "Stable v1\n");
+    assert.equal(await readText(blockedSkill), "blocking file\n");
+    assert.equal(await readText(statePath), stateBefore);
+    assert.equal(await readText(manifestPath), manifestBefore);
+  });
+});
+
 function emptyPreviousEntries() {
   return {
     agentSkillFiles: {},
@@ -464,6 +1373,34 @@ async function withTempDir(fn) {
 
 async function writeJson(file, data) {
   await writeFile(file, JSON.stringify(data, null, 2) + "\n");
+}
+
+async function readJson(file) {
+  return JSON.parse(await readText(file));
+}
+
+async function createFixturePlugin(pluginRoot, pluginName = "fixture-plugin") {
+  await writeJson(path.join(pluginRoot, ".claude-plugin", "plugin.json"), {
+    agents: [],
+    commands: [],
+    name: pluginName,
+    skills: [],
+    version: "1.0.0",
+  });
+}
+
+async function writeSkillFile(pluginRoot, skillDir, content) {
+  await writeFile(
+    path.join(pluginRoot, "skills", skillDir, "SKILL.md"),
+    content,
+  );
+}
+
+async function writeSourceSkill(sourceDir, files) {
+  await fs.rm(sourceDir, { force: true, recursive: true });
+  for (const [relativePath, content] of Object.entries(files)) {
+    await writeFile(path.join(sourceDir, relativePath), content);
+  }
 }
 
 async function writeFile(file, content) {
