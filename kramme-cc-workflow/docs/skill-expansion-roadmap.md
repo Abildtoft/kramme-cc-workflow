@@ -9,7 +9,7 @@ The goals are:
 1. Add deeper product-focused review capabilities.
 2. Add a reusable browser foundation for live product inspection.
 3. Add a structured QA layer on top of browser capabilities.
-4. Add a final PR readiness step that orchestrates existing and new skills.
+4. Keep PR readiness validation split across focused review, QA, verification, and description skills.
 
 This roadmap explicitly does **not** include a retrospective skill.
 
@@ -23,7 +23,7 @@ The main inspirations are:
 - the diff-aware, evidence-first testing model behind gstack's `qa` skill
 - the idea of focused workflow entry points instead of one broad, generic command
 - the split between planning-time review, change-scoped review, and broader product review
-- the concept of a final workflow step that helps determine whether work is ready to move forward
+- the concept of focused validation entry points that help determine whether work is ready to move forward
 
 This roadmap does **not** aim to copy gstack literally.
 
@@ -32,14 +32,13 @@ Instead, it adapts the underlying ideas to fit `kramme-cc-workflow`:
 - reuse existing agents and review infrastructure already in this repo
 - prefer MCP-based browser orchestration over custom browser infrastructure
 - keep naming and workflow structure aligned with existing `pr:` and `siw:` conventions
-- treat `pr:finalize` as orchestration around existing skills, not as a one-command shipping pipeline
+- keep PR shipping workflows compositional instead of introducing one command that owns the whole lifecycle
 
 More specifically:
 
 - `/kramme:browse` takes inspiration from gstack's dedicated browser skill, but should be implemented as a wrapper around available browser MCP tools rather than a custom compiled browser runtime.
 - `/kramme:qa` takes inspiration from gstack's QA workflow, especially the emphasis on screenshots, evidence, and changed-flow validation, but should be smaller and more incremental in V1.
 - `/kramme:pr:product-review`, `/kramme:siw:product-audit`, and `/kramme:product:review` take inspiration from gstack's use of different cognitive modes for different kinds of review, but should be expressed as a shared product-review family integrated into this repo's existing skill structure.
-- `/kramme:pr:finalize` is conceptually inspired by gstack's end-of-workflow automation, but should remain PR-centered and compositional rather than trying to own merge or deploy behavior.
 
 ## Skills In Scope
 
@@ -50,13 +49,12 @@ More specifically:
 | `/kramme:browse` | Browser operator skill for inspecting and interacting with a live app | Live product / debugging / QA | Browser MCP availability |
 | `/kramme:qa` | Structured QA testing with evidence and reports | Live product / branch validation | `/kramme:browse` |
 | `/kramme:product:review` | Whole-product review across flows and surfaces | Live product / broader experience review | Shared product-review core + `/kramme:browse` |
-| `/kramme:pr:finalize` | Final PR readiness orchestration | Pull requests | Existing PR skills + `/kramme:pr:product-review` + `/kramme:qa` |
 
 ## Out Of Scope
 
 - `/kramme:retro:weekly`
 - A custom browser binary or external browser daemon
-- Automated merge-to-main or deploy-to-production behavior inside `pr:finalize`
+- Automated merge-to-main or deploy-to-production behavior inside PR review or QA skills
 - Replacing existing `pr:create`, `pr:fix-ci`, `pr:code-review`, or `pr:ux-review`
 
 ## Guiding Design Principles
@@ -71,15 +69,17 @@ The product-review family should share one underlying rubric and one agent found
 
 The repo should not contain three unrelated product-review implementations.
 
-### 2. Orchestration Over Duplication
+### 2. Composable PR Readiness
 
-`/kramme:pr:finalize` should orchestrate existing skills and only add decision logic where needed.
+PR readiness should stay distributed across focused commands instead of a single orchestration skill.
 
-It must not become:
+The review and validation flow should keep these responsibilities separate:
 
-- a second PR creation skill
-- a second CI fixer
-- a second broad code review skill
+- PR creation
+- CI repair
+- code review
+- UX/product review
+- QA
 
 ### 3. Browser MCP Wrapper, Not Custom Infrastructure
 
@@ -106,7 +106,6 @@ The recommended order is:
 3. `browse`
 4. `qa`
 5. `product:review`
-6. `pr:finalize`
 
 ## Existing Components To Reuse
 
@@ -322,7 +321,7 @@ Build a structured QA layer on top of `browse`.
 ### Why This Phase Comes Fourth
 
 - It depends directly on browse
-- It provides the strongest practical validation layer before `pr:finalize`
+- It provides the strongest practical validation layer before merge
 - It creates a reusable evidence artifact for PR readiness
 
 ### Implementation Goals
@@ -356,13 +355,13 @@ Each QA run should capture:
 - New QA skill
 - Report template if needed
 - README updates
-- Integration plan for `pr:finalize`
+- README guidance for pairing QA with PR review skills
 
 ### Success Criteria
 
 - The skill produces evidence, not just impressions
 - It can validate changed flows with reasonable operator consistency
-- Its artifacts are useful inputs to `pr:finalize`
+- Its artifacts are useful inputs to PR reviews
 
 ## Phase 5: `/kramme:product:review`
 
@@ -408,68 +407,6 @@ The audit should evaluate:
 - It can analyze a live product in a structured way
 - It produces output that product or engineering leads can act on
 
-## Phase 6: `/kramme:pr:finalize`
-
-### Objective
-
-Create a final PR readiness command that coordinates the existing workflow and the new skills.
-
-### Why This Phase Comes Last
-
-- It depends on the other new capabilities
-- Its value is highest after the building blocks exist
-- It should be designed around orchestration, not invention
-
-### Implementation Goals
-
-- Add `skills/kramme:pr:finalize/SKILL.md`
-- Reuse existing skills rather than embedding their logic
-- Produce a final “ready / not ready / ready with caveats” outcome
-- Be explicit about blockers versus optional polish
-
-### Expected Orchestration Responsibilities
-
-Depending on context, `pr:finalize` should coordinate:
-
-- `/kramme:verify:run`
-- `/kramme:pr:code-review`
-- `/kramme:pr:product-review`
-- `/kramme:pr:ux-review` when UI/UX review is relevant
-- `/kramme:qa` when UI-facing changes are detected
-- `/kramme:pr:generate-description`
-
-### Explicit Non-Goals
-
-`pr:finalize` should not:
-
-- create the PR itself
-- fix CI loops
-- merge code
-- replace detailed review commands
-- silently mutate the branch without clear user awareness
-
-### Output Goals
-
-The command should tell the user:
-
-- what is blocking PR readiness
-- what is recommended but optional
-- whether UI-specific validation was run
-- whether the PR description is in good shape
-- the next best command to run if not ready
-
-### Deliverables
-
-- New skill file
-- README updates
-- Documentation on how it fits the PR lifecycle
-
-### Success Criteria
-
-- It shortens the final “is this branch ready?” decision
-- It does not duplicate the behavior of `pr:create` or `pr:fix-ci`
-- It clearly branches based on whether the change is UI-heavy or not
-
 ## Cross-Phase Testing Strategy
 
 The repository currently has strong hook and converter tests but limited skill-level contract testing.
@@ -496,7 +433,7 @@ The README should explain the intended lifecycle:
 
 - product thinking before implementation
 - live inspection and QA during validation
-- final PR readiness at the end
+- focused pre-merge review and QA before opening or updating PRs
 
 ## Naming Decisions
 
@@ -507,7 +444,6 @@ The README should explain the intended lifecycle:
 - `/kramme:browse`
 - `/kramme:qa`
 - `/kramme:product:review`
-- `/kramme:pr:finalize`
 
 ### Naming Notes
 
@@ -518,13 +454,11 @@ If broader non-SIW plan review becomes important later, a `plan:` alias can be a
 ## Key Risks
 
 - Browser MCP availability may vary between environments, which can make `browse`, `qa`, and `product:review` feel inconsistent unless failure behavior is very clear.
-- `pr:finalize` can become bloated if it starts absorbing logic that should remain in `verify`, `review`, or `qa`.
 - `pr:product-review` may overlap with `pr:ux-review` unless the product-review rubric is kept sharply focused on product value and flow logic.
 - `siw:product-audit` can drift into generic spec audit behavior unless its product lens remains explicit.
 
 ## Open Decisions
 
-- Whether `pr:finalize` should automatically invoke `qa` only for UI-relevant changes, or always ask first.
 - Whether `product:review` should support screenshots as an alternative to live browser review in V1.
 - Whether `qa` should write one standard artifact name or support user-specified output paths immediately.
 

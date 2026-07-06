@@ -1,6 +1,6 @@
 ---
 name: kramme:launch:rollout
-description: Execute a post-merge launch with staged rollout, numeric decision thresholds, and rollback triggers. Sequence — staging → prod (flag OFF) → team enable → 5% canary → 25→50→100% gradual → full rollout + 1-week monitor + flag cleanup. Use after merging a user-facing change that needs safe rollout. Complements kramme:pr:finalize (pre-merge readiness) with post-merge verification, canary gates, and rollback paths. Not for PR creation, CI debugging, or pre-merge checks.
+description: Execute a post-merge launch with staged rollout, numeric decision thresholds, and rollback triggers. Sequence — staging → prod (flag OFF) → team enable → 5% canary → 25→50→100% gradual → full rollout + 1-week monitor + flag cleanup. Use after merging a user-facing change that needs safe rollout. Complements pre-merge review, verification, and QA with post-merge verification, canary gates, and rollback paths. Not for PR creation, CI debugging, or pre-merge checks.
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -13,10 +13,10 @@ Execute a staged, reversible, observable post-merge launch. The goal is not just
 
 This skill owns the **post-merge** half of the shipping lifecycle. It begins at "the PR has landed on main" and ends at "the flag has been cleaned up and the feature is permanent."
 
-- **Pre-merge readiness** — owned by `kramme:pr:finalize`. Covers code-review verdict, UX review, QA run, description generation. Ends at a `READY` verdict.
+- **Pre-merge readiness** — owned by review, verification, QA, and PR description skills before merge.
 - **Post-merge launch** — owned by this skill. Covers staged rollout, canary gates, monitoring, rollback triggers, and flag cleanup.
 
-The handoff between the two is the merge commit. If you are still running finalize, you are not yet in rollout territory.
+The handoff between the two is the merge commit. If the PR has not landed yet, you are not yet in rollout territory.
 
 ## When to use
 
@@ -30,7 +30,7 @@ The handoff between the two is the merge commit. If you are still running finali
 
 - Fixing a failing CI pipeline — use `kramme:pr:fix-ci`.
 - Creating the PR itself — use `kramme:pr:create`.
-- Pre-merge readiness audit — use `kramme:pr:finalize`.
+- Pre-merge readiness audit — use `kramme:verify:run`, `kramme:pr:code-review`, `kramme:pr:product-review`, `kramme:pr:ux-review`, or `kramme:qa` as appropriate.
 - Resolving review findings — use `kramme:pr:resolve-review`.
 - Pure refactors with no behavioral change — the test suite is the gate, not a canary.
 - Emergency hotfixes that must reach 100% immediately — document the exception and still capture first-hour verification after the fact.
@@ -255,7 +255,7 @@ This template replaces handwavy "launch looks good" posts. It documents what hap
 
 ## Integration with other skills
 
-- **Pre-merge** — `kramme:pr:finalize` produces the `READY` verdict that gates merge. This skill picks up at the merge commit.
+- **Pre-merge** — review, verification, QA, and PR description checks happen before merge. This skill picks up at the merge commit.
 - **Verification sub-skills** — the pre-launch checklist touches security / performance / accessibility territory owned by sibling skills. The content here is inlined deliberately (self-contained rule). If a sibling skill has deeper content, read it during pre-flight and bring the conclusions back; do not reach into sibling skill files at runtime.
 - **Future siblings** — `kramme:launch:monitor` (post-launch canary surveillance via browser MCP) and `kramme:launch:rollback` (execute a rollback when thresholds are breached) are deferred until demand appears. Both would extend this skill, not replace it.
 

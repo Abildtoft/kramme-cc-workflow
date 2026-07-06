@@ -108,9 +108,9 @@ After each description edit, if `{linear-issue-id}` is present, keep the default
 
 ### 8.3 Push Branch
 
-```bash
-git push -u origin {feature-branch}
-```
+Before pushing, validate `{feature-branch}` before using it as a git ref. It must be the current branch captured from `git branch --show-current`, pass `git check-ref-format --branch`, contain no shell metacharacters or whitespace, and must not begin with `-`. Do not push if validation fails.
+
+After validation, push the current `HEAD` to `origin` using an explicit `refs/heads/{feature-branch}` destination and set upstream tracking for that branch. Use quoted, already-validated arguments only; do not interpolate an unvalidated branch name into a shell command string.
 
 If push fails:
 
@@ -123,10 +123,10 @@ Possible causes:
   - Network connectivity issues
 
 Manual push command:
-  git push -u origin {branch-name}
+  Repeat the validated push procedure above for the current branch.
 
 If branch exists remotely:
-  git push -u origin {branch-name} --force-with-lease
+  Coordinate before rewriting history, then push with lease protection using the validated current branch only.
 
 The generated description is saved. You can create the PR manually.
 ```

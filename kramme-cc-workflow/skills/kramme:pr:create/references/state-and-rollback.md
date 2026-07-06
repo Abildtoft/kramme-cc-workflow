@@ -145,10 +145,9 @@ Execute when the user aborts at any confirmation, or when a critical failure pat
 
 ### 10.1 Return to Original State
 
-```bash
-git checkout {original-branch}
-git reset --hard {original-commit}
-```
+Before checkout/reset, validate `{original-branch}` and `{original-commit}` exactly as the captured Step 5 values. `{original-branch}` must pass `git check-ref-format --branch`, contain no whitespace or shell metacharacters, and must not begin with `-`. `{original-commit}` must be a full 40-character lowercase hex commit ID that exists locally. If either value fails validation, stop and surface the captured values for manual recovery instead of running checkout or reset.
+
+After validation, switch back to the validated original branch and restore the branch tip, worktree, and index to the validated original commit. Use quoted, already-validated arguments only; do not interpolate captured branch or commit values into a shell command string.
 
 `recreate-commits` rewrites history on the current branch in place, so resetting to `{original-commit}` is what restores the pre-skill commit graph. Do **not** delete any branches here — this skill does not create temporary branches.
 

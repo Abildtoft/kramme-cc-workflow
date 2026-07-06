@@ -927,7 +927,6 @@ required = {
     "pr-create-body-file-contract",
     "pr-create-edit-loop-linear-normalization",
     "pr-create-state-restoration-contract",
-    "pr-finalize-description-delegation",
     "pr-generate-description-subskill-contract",
     "pr-generate-description-main-guidance",
     "pr-generate-description-template-discovery",

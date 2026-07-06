@@ -99,7 +99,7 @@ CHANGED_FILES=$(parse_review_diff_json changed_files) || exit 1
 
 The JSON parsing block sets `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES`. Use `CHANGED_FILES` for the file filtering below.
 
-Filter for UI-relevant files using this contract marker: UI relevance path contract: `ui-relevance-path-contract-v1`.
+Read `references/ui-relevance-heuristics.md`, then filter for UI-relevant files using this contract marker: UI relevance path contract: `ui-relevance-path-contract-v1`.
 
 A file is UI-relevant when it matches any of these categories:
 
