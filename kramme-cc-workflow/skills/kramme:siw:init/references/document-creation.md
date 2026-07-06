@@ -2,6 +2,19 @@
 
 Use this procedure during Phase 4 after `spec_filename`, `use_supporting_specs`, `artifact_readiness`, `readiness_reason`, `readiness_next_steps`, `open_issues_empty_message`, and any optional `linked_spec_files` or `discovered_content` values are set.
 
+## Readiness Classification
+
+Before creating documents, classify the initialized artifact using the Artifact Readiness Contract and store:
+
+- `artifact_readiness`: `product-only`, `requirements-only`, or `planning-ready`
+- `readiness_reason`: one concise reason
+- `readiness_next_steps`: the exact next-step lines for generated `siw/LOG.md` and the success report
+- `open_issues_empty_message`: the placeholder message for the empty `siw/OPEN_ISSUES_OVERVIEW.md` table
+
+When `linked_spec_files` exists, base the classification on `linked_spec_readiness_context`. If the available linked-source context does not prove scope, success criteria, technical context/dependencies, and absence of blocking open questions, do not infer `planning-ready`; classify the artifact as `product-only` or `requirements-only` and route to discovery/spec hardening.
+
+For `product-only` or `requirements-only`, generated tracking files must point to `/kramme:siw:discovery` and must not imply issue definition or implementation is ready. For `planning-ready`, choose either the phased path (`/kramme:siw:generate-phases`, then implementation after issues exist) or the single-issue path (`/kramme:siw:issue-define`, then implementation after the issue exists).
+
 ## Phase 4: Create Documents
 
 Create the `siw/` directory if it doesn't already exist.

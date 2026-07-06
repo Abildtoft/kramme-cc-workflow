@@ -90,168 +90,9 @@ find siw -maxdepth 1 -type f \( -iname "*SPEC*.md" -o -iname "*SPECIFICATION*.md
 
 Read `references/existing-workflow-handling.md` and follow the first matching branch for `siw/DISCOVERY_BRIEF.md` only, `siw/DISCOVERY_BRIEF.md` + `siw/SPEC_STRENGTHENING_PLAN.md`, `siw/SPEC_STRENGTHENING_PLAN.md` only, other workflow files, or no files.
 
-**If other workflow files exist:**
-
-If `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: SIW workflow files already exist; rerun without --auto to resume, start fresh, or abort`. Do not delete existing workflow files in auto mode.
-
-Use AskUserQuestion:
-
-```yaml
-header: "Existing Workflow Files Found"
-question: "Workflow files already exist in this directory. How would you like to proceed?"
-options:
-  - label: "Resume existing workflow"
-    description: "Continue with current files (invokes kramme:siw:continue skill)"
-  - label: "Start fresh"
-    description: "Delete existing workflow files and create new ones"
-  - label: "Abort"
-    description: "Cancel and keep existing files"
-```
-
-**If "Resume existing workflow":**
-
-- Stop this command
-- Inform user that the `kramme:siw:continue` skill will auto-trigger when they start working
-- Suggest reading siw/LOG.md for current progress
-
-**If "Start fresh":**
-
-- Before deleting `siw/issues/`, count any existing issue files:
-
-  ```bash
-  ls siw/issues/ISSUE-*.md 2> /dev/null | wc -l
-  ```
-
-  If the count is greater than zero, surface a second confirmation using AskUserQuestion before deleting:
-
-  ```yaml
-  header: "Delete Existing Issues"
-  question: "{n} issue file(s) in siw/issues/ will be deleted. This cannot be undone."
-  options:
-    - label: "Delete all issues"
-      description: "Proceed with Start fresh; all issue files are removed"
-    - label: "Abort"
-      description: "Stop so I can back up or move issues out of siw/issues/ first"
-  ```
-
-  If "Abort", stop this command without changing any files.
-
-- Delete existing temporary workflow files (`siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/issues/`, `siw/DISCOVERY_BRIEF.md`, `siw/SPEC_STRENGTHENING_PLAN.md`, `siw/AUDIT_IMPLEMENTATION_REPORT.md`, `siw/AUDIT_SPEC_REPORT.md`, `siw/PRODUCT_AUDIT.md`, and `siw/SIW_*.md`), but preserve any permanent SIW spec files matched by the `permanent-spec find` from earlier in Phase 1 (`*SPEC*.md`, `*SPECIFICATION*.md`, `*PLAN*.md`, `*DESIGN*.md`, case-insensitive; the permanent-spec find already excludes the synced SIW spec-exclusion contract). Use `trash` without recursive flags when available so the deleted workflow files are recoverable from the system Trash. If `trash` is missing, warn that deletion will be permanent and ask for explicit confirmation before running `rm -rf`. After deletion, verify each target with `[ ! -e "$path" ]`; report any surviving path as a deletion failure instead of continuing as if Start fresh succeeded.
-- Continue to Phase 1.5
-
-**If no files exist:** Continue to Phase 1.5
-
 ## Phase 1.5: Handle Arguments
 
-`$ARGUMENTS` contains any text the user provided after `/kramme:siw:init`.
-
-Use `resolved_arguments` as the effective Phase 1.5 input. If no Phase 1 branch already set `resolved_arguments`, default it to `$ARGUMENTS` now.
-
-### Argument Parsing
-
-Parse `resolved_arguments` to detect the input type:
-
-1. **File path(s)**: Contains `.md`, `.txt`, or other file extensions
-2. **Folder path**: A directory path (verify with `ls -d {path}`)
-3. **"discover" keyword**: Starts with "discover" or "interview"
-4. **Empty**: No arguments provided
-
-If `resolved_arguments` is empty because the user ran plain `/kramme:siw:init`, but Phase 1 found only `siw/DISCOVERY_BRIEF.md`, treat that file as the single file-path input and follow Case 1.
-
-### Case 1: File Path(s) Provided
-
-If `resolved_arguments` contains file path(s):
-
-1. Split arguments by spaces to get individual paths
-2. If exactly one provided path ends with `DISCOVERY_BRIEF.md`:
-   - Verify the file exists with `ls {path}`
-   - Read the full file
-   - Follow `references/discovery-brief-import.md` to extract sections and map them into `discovered_content`
-   - Set `project_description` from the brief title or `What You Actually Want`
-   - **Skip Phase 2**, continue to Phase 2.8 (Work Context Selection)
-3. For any other file paths provided:
-   - Verify file exists with `ls {path}`
-   - Read file to extract the title/name from the first heading
-   - Read enough content to classify readiness without duplicating the source: whether objective/scope/success criteria are present, whether technical context/dependencies/planning detail are present, and whether blocking open questions remain
-   - Store only concise readiness notes as `linked_spec_readiness_context`; linked files remain the source of truth and their body content is not copied into the generated SIW spec
-   - If file doesn't exist, warn and skip it
-4. Store file paths as `linked_spec_files` (do NOT copy full content into the SIW spec - these remain the source of truth)
-5. Extract a brief project name from the file titles for `project_description`
-6. **Continue to Phase 2.5** (Confirm Linked Sources)
-
-### Case 2: Folder Path Provided
-
-If `resolved_arguments` is a directory (verified with `ls -d`):
-
-1. Scan folder for relevant specification files:
-
-   ```bash
-   find {folder} -maxdepth 2 -type f \( -name "*.md" -o -name "*.txt" \) 2> /dev/null
-   ```
-
-2. Present found files to user. If `AUTO_MODE=true`, select **All files** automatically. Otherwise use AskUserQuestion:
-
-   ```yaml
-   header: "Select Source Files"
-   question: "Found these files in {folder}. Which should I use as linked sources?"
-   multiSelect: true
-   options:
-     - "{file1}"
-     - "{file2}"
-     - "All files"
-     - "None - start fresh"
-   ```
-
-3. If "None - start fresh" selected: Set `resolved_arguments` empty, **continue to Phase 2**
-4. If "All files" or specific files selected:
-   - Store selected paths as `linked_spec_files`
-   - For each selected file, read the first heading for title inference and enough content to classify readiness without duplicating the source
-   - Store concise readiness notes as `linked_spec_readiness_context`
-5. **Continue to Phase 2.5** (Confirm Linked Sources)
-
-### Case 3: "discover" Mode
-
-If `resolved_arguments` starts with "discover" or "interview":
-
-1. Extract optional topic from remaining `resolved_arguments`:
-   - `discover authentication system` → topic = "authentication system"
-   - `discover` alone → ask for topic
-
-2. If no topic provided and `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: discovery topic required for --auto`. If no topic provided and `AUTO_MODE` is false, use AskUserQuestion:
-
-   ```yaml
-   header: "Discovery Topic"
-   question: "What topic should we explore? Describe what you're building or the problem you're solving."
-   freeform: true
-   ```
-3. Do **not** run the legacy inline interview path here.
-4. Before launching discovery, re-run the `permanent-spec find` from Phase 1 to check for permanent SIW spec files left in `siw/`.
-5. If permanent spec files still exist, do **not** run greenfield discovery. If `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: permanent SIW spec files already exist; rerun without --auto to choose whether to use them`. Otherwise use AskUserQuestion:
-   ```yaml
-   header: "Existing Spec Files Found"
-   question: "Permanent SIW spec files still exist in siw/. A fresh discovery run would treat this as refinement, not a new project. How should I proceed?"
-   options:
-     - label: "Use existing specs"
-       description: "Treat the existing spec files as linked sources instead of running discovery"
-     - label: "Abort"
-       description: "Stop so I can archive or remove the old spec files before running fresh discovery"
-   ```
-6. If "Use existing specs":
-   - Store the detected paths as `linked_spec_files`
-   - Read the first heading from each file to infer titles
-   - Read enough content to classify readiness without duplicating the source
-   - Store concise readiness notes as `linked_spec_readiness_context`
-   - Set `project_description` from those titles
-   - Continue to Phase 2.5
-7. If "Abort": stop this command without changing files.
-8. If no permanent spec files exist, read `references/greenfield-discovery-handoff.md` and follow it to run the greenfield discovery handoff. That handoff must produce `siw/DISCOVERY_BRIEF.md` before returning here.
-9. Set `resolved_arguments=siw/DISCOVERY_BRIEF.md`.
-10. Follow the import procedure from `references/discovery-brief-import.md` to populate `discovered_content`.
-11. **Skip Phase 2**, continue to Phase 2.8 (Work Context Selection)
-
-### Case 4: No Arguments
-
-**Continue to Phase 2** (structured brief interview for overview, why-now, non-goals, and decision boundaries).
+Read `references/argument-handling.md` and follow the matching case for file paths, folder paths, `discover` / `interview`, or no arguments. This phase sets `linked_spec_files`, `linked_spec_readiness_context`, `discovered_content`, `project_description`, or `resolved_arguments` for later phases.
 
 ## Phase 2: Brief Interview
 
@@ -266,8 +107,6 @@ Read the Phase 2 templates from `references/interviews.md`, use them to gather p
 **Only executed if `linked_spec_files` exists from Phase 1.5 (file/folder import).**
 
 **Skip this phase if `discovered_content` exists (discover mode already has confirmation built in).**
-
-### Present Linked Files
 
 Show the files that will be linked:
 
@@ -284,11 +123,7 @@ The following files will be referenced (not duplicated) in the SIW spec:
 These files remain the source of truth. The SIW spec will link to them.
 ```
 
-### Ask About File Location
-
 If `AUTO_MODE=true`, choose **Keep in place**. Otherwise read the Phase 2.5 file-location template from `references/interviews.md` and use AskUserQuestion.
-
-### Handle File Location Choice
 
 For both **"Move to siw/"** and **"Copy to siw/"**, before transferring each file, check the target path with `[ -e "siw/{filename}" ]`. If a file already exists at the target, read the Phase 2.5 collision template from `references/interviews.md` and use AskUserQuestion before overwriting.
 
@@ -313,48 +148,23 @@ If `AUTO_MODE=true`, use the inferred default value. Otherwise read the Phase 2.
 
 Store the response as `project_description`.
 
-### Alternative: Skip Context
-
 If user provides empty response or selects "Skip", use a generic description derived from the linked file names.
 
 ## Phase 2.8: Work Context Selection
 
-Before selecting the work context, check for repo-root `STRATEGY.md`.
-
-- If it exists, read it and extract target problem, approach, who it is for, key metrics, active tracks, and non-goals.
-- Store this as `strategy_context`.
-- If its `last_updated` frontmatter is older than 90 days, mark relevant context `STALE:` in the generated spec.
-- If the initialized work conflicts with an active track or non-goal, surface the conflict before asking about Work Context. Do not block initialization; the user may be intentionally changing strategy.
-- If no `STRATEGY.md` exists, do not block or mention it for narrow work. For broad product-direction work, include `MISSING PRODUCT CONTEXT: no STRATEGY.md found` in the generated spec's strategy context note and suggest `/kramme:product:strategy` after initialization.
+Before selecting the work context, check for repo-root `STRATEGY.md`. If it exists, read it, store concise `strategy_context`, mark stale context with `STALE:` when `last_updated` is older than 90 days, and surface conflicts with active tracks or non-goals without blocking initialization. If no strategy exists, stay silent for narrow work; for broad product-direction work, include `MISSING PRODUCT CONTEXT: no STRATEGY.md found` in the generated spec's strategy context note and suggest `/kramme:product:strategy` after initialization.
 
 Select a work context profile that tells downstream tools (spec-audit, product-review, discovery, generate-phases) how to adapt their rigor and focus.
 
 Read the profile definitions and auto-detection heuristics from `references/work-context-profiles.md`.
 
-### Auto-detect Suggested Profile
-
-Based on `project_description` (or `discovered_content` topic), use the keyword heuristics from the reference file to suggest a profile. Default to Production Feature.
-
-### Ask User
-
-If `AUTO_MODE=true`, choose the auto-detected profile. Otherwise read the Phase 2.8 work-context template from `references/interviews.md`, deduplicate options as documented there, and use AskUserQuestion.
+Based on `project_description` or `discovered_content` topic, use the keyword heuristics from the reference file to suggest a profile. If `AUTO_MODE=true`, choose the auto-detected profile; otherwise read the Phase 2.8 work-context template from `references/interviews.md`, deduplicate options as documented there, and use AskUserQuestion.
 
 Store the selected profile as `work_context_profile` with all attribute values from the reference file (work_type, maturity, priority_dimensions, deprioritized, notes).
 
 ## Phase 3: Auto-detect Spec Type and Confirm
 
-Based on `project_description`, auto-detect the most appropriate spec filename:
-
-**Detection heuristics:**
-
-- Keywords like "feature", "add", "implement", "new" → `FEATURE_SPECIFICATION.md`
-- Keywords like "api", "endpoint", "service" → `API_DESIGN.md`
-- Keywords like "doc", "documentation", "guide" → `DOCUMENTATION_SPEC.md`
-- Keywords like "tutorial", "learn", "teach" → `TUTORIAL_PLAN.md`
-- Keywords like "system", "architecture", "design" → `SYSTEM_DESIGN.md`
-- Default fallback → `PROJECT_PLAN.md`
-
-**Confirm with user:** If `AUTO_MODE=true`, choose `{detected_name}` automatically. Otherwise read the Phase 3 specification-document template from `references/interviews.md` and use AskUserQuestion. If "Custom name" is selected, use AskUserQuestion to get the filename.
+Use the Phase 3 filename detection heuristics in `references/interviews.md` to auto-detect the most appropriate spec filename. If `AUTO_MODE=true`, choose it automatically. Otherwise read the Phase 3 specification-document template from `references/interviews.md` and use AskUserQuestion; if "Custom name" is selected, use AskUserQuestion to get the filename.
 
 Store as `spec_filename`.
 
@@ -366,18 +176,7 @@ Store as `use_supporting_specs`.
 
 ## Phase 4: Create Documents
 
-Before creating documents, classify the initialized artifact using the Artifact Readiness Contract and store:
-
-- `artifact_readiness`: `product-only`, `requirements-only`, or `planning-ready`
-- `readiness_reason`: one concise reason
-- `readiness_next_steps`: the exact next-step lines for generated `siw/LOG.md` and the success report
-- `open_issues_empty_message`: the placeholder message for the empty `siw/OPEN_ISSUES_OVERVIEW.md` table
-
-When `linked_spec_files` exists, base the classification on `linked_spec_readiness_context`. If the available linked-source context does not prove scope, success criteria, technical context/dependencies, and absence of blocking open questions, do not infer `planning-ready`; classify the artifact as `product-only` or `requirements-only` and route to discovery/spec hardening.
-
-For `product-only` or `requirements-only`, generated tracking files must point to `/kramme:siw:discovery` and must not imply issue definition or implementation is ready. For `planning-ready`, choose either the phased path (`/kramme:siw:generate-phases`, then implementation after issues exist) or the single-issue path (`/kramme:siw:issue-define`, then implementation after the issue exists).
-
-Read `references/document-creation.md` and follow it to create `siw/`, `siw/{spec_filename}`, `siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/issues/`, and optional `siw/supporting-specs/`.
+Read `references/document-creation.md`, apply its readiness classification procedure, and follow it to create `siw/`, `siw/{spec_filename}`, `siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/issues/`, and optional `siw/supporting-specs/`.
 
 When `strategy_context` exists, include a concise `## Product Strategy Context` section in the generated SIW spec using the relevant placeholders from `assets/spec-templates.md`. Keep it to strategy facts and conflicts; do not duplicate the entire `STRATEGY.md`.
 
