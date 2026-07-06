@@ -866,56 +866,8 @@
     ],
     "allow_empty_fields": [
       {
-        "path": "kramme-cc-workflow/skills/kramme:ci:design-pipeline/references/sources.yaml",
-        "entry_id": "addy-git-workflow-versioning",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:code:harden-security/references/sources.yaml",
-        "entry_id": "addy-security-and-hardening",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:code:incremental/references/sources.yaml",
-        "entry_id": "pocock-request-refactor-plan",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:code:incremental/references/sources.yaml",
-        "entry_id": "addy-incremental-implementation",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:code:refactor-opportunities/references/sources.yaml",
-        "entry_id": "addy-agent-skills-lesson",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:code:source-driven/references/sources.yaml",
-        "entry_id": "addy-source-driven-development",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
         "path": "kramme-cc-workflow/skills/kramme:debug:triage-to-issue/references/sources.yaml",
         "entry_id": "pocock-triage-issue",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:docs:adr/references/sources.yaml",
-        "entry_id": "addy-documentation-and-adrs",
-        "field": "baseline_hash",
-        "reason": "Pre-existing baseline hash backfill debt before W03C."
-      },
-      {
-        "path": "kramme-cc-workflow/skills/kramme:docs:adr/references/sources.yaml",
-        "entry_id": "nygard-architecture-decisions",
         "field": "baseline_hash",
         "reason": "Pre-existing baseline hash backfill debt before W03C."
       },
