@@ -33,7 +33,7 @@ def _load_impl() -> ModuleType:
 _IMPL = _load_impl()
 __all__ = list(getattr(_IMPL, "__all__", []))
 globals().update({name: getattr(_IMPL, name) for name in __all__})
-main = getattr(_IMPL, "main")
+main = _IMPL.main
 
 
 if __name__ == "__main__":

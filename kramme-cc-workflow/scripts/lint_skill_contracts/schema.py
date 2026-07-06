@@ -6,7 +6,6 @@ from typing import Any
 
 from .io import rel, resolve
 
-
 DEFAULT_CONTRACT_SCHEMA_PATH = (
     Path(__file__).resolve().parent.parent / "schemas" / "skill-contracts.json"
 )

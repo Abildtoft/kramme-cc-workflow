@@ -8,7 +8,6 @@ import sys
 import unittest
 from pathlib import Path
 
-
 PARSER_PATH = (
     Path(__file__).resolve().parents[2] / "hooks" / "lib" / "git_command_parser.py"
 )
