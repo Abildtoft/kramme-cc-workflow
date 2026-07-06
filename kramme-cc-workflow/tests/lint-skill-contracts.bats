@@ -76,6 +76,66 @@ write_readme_skill_sync_registry() {
 EOF
 }
 
+write_reference_agent() {
+  local path="$1"
+  local name="$2"
+  local description="$3"
+
+  write_file "$path" <<EOF
+---
+name: $name
+description: $description
+model: opus
+color: green
+---
+# $name
+EOF
+}
+
+write_hook_manifest() {
+  local path="$1"
+  local hook_name="$2"
+  local event="${3:-PreToolUse}"
+  local matcher="${4:-Bash}"
+
+  if [ -n "$matcher" ]; then
+    write_file "$path" <<EOF
+{
+  "hooks": {
+    "$event": [
+      {
+        "matcher": "$matcher",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \${CLAUDE_PLUGIN_ROOT}/hooks/$hook_name.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+EOF
+  else
+    write_file "$path" <<EOF
+{
+  "hooks": {
+    "$event": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \${CLAUDE_PLUGIN_ROOT}/hooks/$hook_name.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+EOF
+  fi
+}
+
 make_body_lines() {
   local count="$1"
   local index
@@ -342,6 +402,123 @@ EOF
   [[ "$output" == *"component reference sync failed:"* ]]
   [[ "$output" == *"documents 'kramme:ghost'"* ]]
   [[ "$output" == *"does not exist"* ]]
+}
+
+@test "readme agent sync catches missing source agent rows" {
+  write_reference_agent \
+    "$TMP_ROOT/kramme-cc-workflow/agents/kramme:reviewer.md" \
+    "kramme:reviewer" \
+    "Reviews fixture code"
+  write_file "$TMP_ROOT/README.md" <<'EOF'
+# Fixture
+
+## Agents
+
+<!-- BEGIN SOURCE-SYNCED AGENT ROWS -->
+| Agent | Description |
+| --- | --- |
+<!-- END SOURCE-SYNCED AGENT ROWS -->
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "readme_agent_sync": {
+    "readme": "README.md",
+    "agents_dir": "kramme-cc-workflow/agents",
+    "start_marker": "<!-- BEGIN SOURCE-SYNCED AGENT ROWS -->",
+    "end_marker": "<!-- END SOURCE-SYNCED AGENT ROWS -->"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"readme agent sync"* ]]
+  [[ "$output" == *"missing agent 'kramme:reviewer'"* ]]
+}
+
+@test "readme hook sync catches missing hook rows" {
+  write_hook_manifest "$TMP_ROOT/kramme-cc-workflow/hooks/hooks.json" "sample-hook"
+  write_file "$TMP_ROOT/README.md" <<'EOF'
+# Fixture
+
+## Hooks
+
+<!-- BEGIN SOURCE-SYNCED HOOK ROWS -->
+| Hook | Event | Description |
+| --- | --- | --- |
+<!-- END SOURCE-SYNCED HOOK ROWS -->
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "readme_hook_sync": {
+    "readme": "README.md",
+    "hooks_json": "kramme-cc-workflow/hooks/hooks.json",
+    "start_marker": "<!-- BEGIN SOURCE-SYNCED HOOK ROWS -->",
+    "end_marker": "<!-- END SOURCE-SYNCED HOOK ROWS -->",
+    "descriptions": {
+      "sample-hook": "Runs a sample hook"
+    }
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"readme hook sync"* ]]
+  [[ "$output" == *"missing hook 'sample-hook'"* ]]
+}
+
+@test "component reference generator writes agent and hook rows" {
+  write_reference_agent \
+    "$TMP_ROOT/kramme-cc-workflow/agents/kramme:reviewer.md" \
+    "kramme:reviewer" \
+    "Reviews fixture code"
+  write_hook_manifest "$TMP_ROOT/kramme-cc-workflow/hooks/hooks.json" "sample-hook" "PostToolUse" "Write|Edit"
+  write_file "$TMP_ROOT/README.md" <<'EOF'
+# Fixture
+
+## Agents
+
+<!-- BEGIN SOURCE-SYNCED AGENT ROWS -->
+| Agent | Description |
+| --- | --- |
+<!-- END SOURCE-SYNCED AGENT ROWS -->
+
+## Hooks
+
+<!-- BEGIN SOURCE-SYNCED HOOK ROWS -->
+| Hook | Event | Description |
+| --- | --- | --- |
+<!-- END SOURCE-SYNCED HOOK ROWS -->
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "readme_agent_sync": {
+    "readme": "README.md",
+    "agents_dir": "kramme-cc-workflow/agents",
+    "start_marker": "<!-- BEGIN SOURCE-SYNCED AGENT ROWS -->",
+    "end_marker": "<!-- END SOURCE-SYNCED AGENT ROWS -->"
+  },
+  "readme_hook_sync": {
+    "readme": "README.md",
+    "hooks_json": "kramme-cc-workflow/hooks/hooks.json",
+    "start_marker": "<!-- BEGIN SOURCE-SYNCED HOOK ROWS -->",
+    "end_marker": "<!-- END SOURCE-SYNCED HOOK ROWS -->",
+    "descriptions": {
+      "sample-hook": "Runs a sample hook"
+    }
+  }
+}
+EOF
+
+  run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"updated README.md component reference rows."* ]]
+  [[ "$(cat "$TMP_ROOT/README.md")" == *"| \`kramme:reviewer\` | Reviews fixture code |"* ]]
+  [[ "$(cat "$TMP_ROOT/README.md")" == *"| \`sample-hook\` | PostToolUse (Write\\|Edit) | Runs a sample hook |"* ]]
 }
 
 @test "pr code review exposes resolver readiness contract" {

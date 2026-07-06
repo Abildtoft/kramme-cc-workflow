@@ -448,44 +448,48 @@ Auto-triggered by Claude based on context. These don't appear in the `/` menu.
 
 Specialized subagents for PR review and UX audit tasks. Invoked by `/kramme:pr:code-review`, `/kramme:pr:ux-review`, or directly via the Task tool.
 
+<!-- BEGIN SOURCE-SYNCED AGENT ROWS -->
 | Agent | Description |
 | --- | --- |
-| `kramme:code-reviewer` | Reviews code for bugs, style violations, and CLAUDE.md compliance. Uses confidence scoring (0-100) to filter issues. |
-| `kramme:code-simplifier` | Simplifies code for clarity and maintainability while preserving functionality. |
+| `kramme:a11y-auditor` | Use this agent to audit UI code for WCAG 2.1 AA accessibility issues, including semantics, ARIA, keyboard navigation, focus handling, screen reader support, and contrast. Use it when accessibility is an explicit requirement or when reviewing forms, dialogs, and other interactive flows; not for general UX or visual consistency review. |
+| `kramme:architecture-strategist` | Use this agent to review code changes from an architectural perspective, focusing on system boundaries, dependency direction, layering, abstractions, service interfaces, and alignment with existing patterns. Best for structural refactors, new services, or cross-cutting features; not for style-only or narrowly local implementation feedback. |
+| `kramme:auth-reviewer` | Use this agent to review code for authentication, authorization, CSRF, and session management vulnerabilities. Checks that protected operations have proper auth checks, access control is enforced, and sessions are securely managed. |
+| `kramme:code-reviewer` | Use this agent to review recent code against project guidelines, CLAUDE.md conventions, and established patterns. It is best used after writing or modifying code, especially before commits or PRs, and should be pointed at the relevant files or diff scope; not for deep product, accessibility, or performance-specific review. |
+| `kramme:code-simplifier` | Use this agent after writing or modifying code to simplify the recent changes for clarity, consistency, and maintainability while preserving behavior. It focuses on the modified files or diff scope and is best for cleanup after a working implementation; not for semantic rewrites or feature changes. |
 | `kramme:codebase-pattern-reviewer` | Use this agent during spec or design review to detect whether a proposed implementation introduces new codebase patterns, conventions, dependencies, file structures, or abstractions without rationale. Best for pre-implementation SIW spec audits; not for line-level code review or implementation conformance checks. |
-| `kramme:lean-reviewer` | Reviews PR changes for code that can be deleted, avoided, or replaced by existing code, standard library, native platform features, or installed dependencies. |
-| `kramme:design-iterator` | Iterative UI/UX design refinement — screenshots, analysis, improvements, repeat N times. |
-| `kramme:comment-analyzer` | Analyzes code comments for accuracy, completeness, and maintainability. |
-| `kramme:deslop-reviewer` | Detects AI-generated code patterns ("slop") in code review and meta-review modes. |
-| `kramme:pr-relevance-validator` | Validates that review findings are caused by the PR, not pre-existing issues. |
-| `kramme:pr-test-analyzer` | Reviews test coverage quality and completeness. |
-| `kramme:silent-failure-hunter` | Identifies silent failures, inadequate error handling, and swallowed errors. |
-| `kramme:type-design-analyzer` | Analyzes type design for encapsulation, invariant expression, and enforcement. |
-| `kramme:architecture-strategist` | Reviews code from an architectural perspective — component boundaries and design patterns. |
-| `kramme:performance-oracle` | Analyzes performance issues, bottlenecks, and scalability. |
-| `kramme:removal-planner` | Identifies dead code and unused dependencies with structured removal plans. |
-| `kramme:injection-reviewer` | Reviews for injection vulnerabilities (SQL, command, template, header) and XSS. |
-| `kramme:auth-reviewer` | Reviews authentication, authorization, CSRF, and session management. |
-| `kramme:data-reviewer` | Reviews for cryptographic misuse, information disclosure, and DoS vulnerabilities. |
-| `kramme:logic-reviewer` | Reviews for business logic flaws, race conditions, and TOCTOU bugs. |
-| `kramme:a11y-auditor` | Audits accessibility (WCAG 2.1 AA): ARIA, semantic HTML, color contrast, keyboard nav, focus management. |
-| `kramme:ux-reviewer` | Reviews usability (Nielsen's 10 heuristics) and interaction states (loading, error, empty, feedback). |
-| `kramme:product-reviewer` | Reviews product experience in PR mode (diff-scoped), spec mode (plan-scoped), or audit mode (live-product): feature discoverability, user flow completeness, edge cases, copy quality, target user clarity, problem/solution fit, trust/safety, design judgment, and post-action experience. |
-| `kramme:copy-reviewer` | Reviews UI text for redundancy — finds labels, descriptions, placeholders, and tooltips that duplicate what the UI already communicates through structure, icons, or interaction patterns. |
-| `kramme:visual-reviewer` | Reviews visual consistency (design tokens, spacing, typography, color) and responsive design. |
+| `kramme:comment-analyzer` | Use this agent to review code comments for accuracy, necessity, completeness, and long-term maintainability. Use it after adding or editing docstrings, inline comments, or PR documentation changes; not for reviewing code behavior unrelated to comments. |
+| `kramme:copy-reviewer` | Use this agent to review UI text for redundancy and remove labels, helper copy, tooltips, and instructions that merely restate what the interface already communicates. Use it for PRs or audits where copy minimalism matters; not for grammar, tone, brand voice, or broader UX review. |
+| `kramme:data-reviewer` | Use this agent to review code for cryptographic misuse, information disclosure, and denial-of-service vulnerabilities. Checks for proper use of cryptographic primitives, prevention of sensitive data leaks, and protection against resource exhaustion. |
+| `kramme:design-iterator` | Use this agent when a design still feels off after an initial pass or two and needs iterative refinement. It reviews screenshots, applies improvements, and repeats for multiple rounds to improve hierarchy, spacing, color balance, and overall polish; not for one-off code changes that are already visually solid. |
+| `kramme:deslop-reviewer` | Use this agent to detect AI-generated code slop in code changes or in review findings. In code-review mode it flags unnecessary comments, defensive noise, weak typing, and style inconsistencies in the diff; in meta-review mode it flags review suggestions that would introduce the same patterns. |
+| `kramme:injection-reviewer` | Use this agent to review code for injection vulnerabilities (SQL, command, template, header injection) and cross-site scripting (XSS). Checks that all user inputs are properly sanitized and all outputs are correctly escaped. |
+| `kramme:lean-reviewer` | Use this agent to review PR changes for code that can be deleted, avoided, or replaced by existing code, the standard library, native platform features, or installed dependencies. It is a deletion-focused review pass, not a general correctness or style review. |
+| `kramme:logic-reviewer` | Use this agent to review code for business logic flaws and race conditions. Checks for state machine violations, numeric overflow, edge cases in validation, and TOCTOU (time-of-check-time-of-use) bugs. |
+| `kramme:performance-oracle` | Use this agent to review code for performance and scalability risks, including algorithmic complexity, query efficiency, memory use, caching, contention, and bottlenecks. Use it after implementing data-heavy features or when investigating slow paths; not for general code quality review. |
+| `kramme:pr-relevance-validator` | Validates that review findings are actually caused by the current review scope (committed PR diff + staged/unstaged/untracked local changes, plus PR description findings when PR metadata is provided). Use this agent after collecting findings from other review agents to filter out pre-existing issues and problems outside the in-scope changes. This prevents scope creep in code reviews by ensuring reviewers only see issues they should address. |
+| `kramme:pr-test-analyzer` | Use this agent to review a pull request for test coverage quality and important gaps. It checks whether new behavior, edge cases, and regressions are exercised before a PR is marked ready; not for writing tests or doing general code review. |
+| `kramme:product-reviewer` | Use this agent to review PRs, specs, or live-product flows from a product perspective. It checks discoverability, flow completeness, edge cases, information architecture, copy, target user clarity, problem-solution fit, prioritization, trust and safety, and post-action experience, and makes autonomous product calls when context is incomplete. |
+| `kramme:removal-planner` | Use this agent to identify dead code, unused dependencies, deprecated paths, and leftover migration artifacts that can be removed safely. It produces structured removal plans with verification steps; not for broad refactors where the code still serves an active purpose. |
+| `kramme:silent-failure-hunter` | Use this agent to review recent code for silent failures, swallowed errors, weak error propagation, and misleading fallback behavior. Use it for PRs or recent changes involving try-catch blocks, retries, fallbacks, or error-handling refactors; not for general logic review. |
+| `kramme:type-design-analyzer` | Use this agent to review new or changed types for encapsulation, invariant expression, usefulness, and enforcement. Best for PRs that add data models, domain types, or type-heavy refactors; not for general code review when type design is not the main concern. |
+| `kramme:ux-reviewer` | Use this agent to review code changes for usability issues using Nielsen's heuristics and interaction design best practices. It looks for missing states, confusing flows, poor feedback, preventable errors, and weak recovery paths; not for accessibility compliance or visual consistency checks. |
+| `kramme:visual-reviewer` | Use this agent to review code changes for visual consistency and responsive behavior, including design token usage, spacing, typography, color, component-library conformance, layout reflow, and breakpoint behavior. Use it for UI PRs with custom styling or layout changes; not for accessibility or product strategy review. |
+<!-- END SOURCE-SYNCED AGENT ROWS -->
 
 ## Hooks
 
 Event handlers that run automatically at specific points in the Claude Code lifecycle. For detailed configuration, pattern lists, and formatter tables, see [docs/hooks.md](kramme-cc-workflow/docs/hooks.md).
 
+<!-- BEGIN SOURCE-SYNCED HOOK ROWS -->
 | Hook | Event | Description |
 | --- | --- | --- |
 | `block-rm-rf` | PreToolUse (Bash) | Blocks destructive file deletion commands and recommends `trash` instead. |
 | `confirm-review-responses` | PreToolUse (Bash) | Confirms before committing review artifact files. |
 | `noninteractive-git` | PreToolUse (Bash) | Blocks git commands that open an interactive editor. |
-| `skill-usage-stats` | UserPromptSubmit, PreToolUse (Skill) | Records local skill usage statistics. |
-| `context-links` | Stop | Displays PR and Linear issue links at end of messages. |
+| `skill-usage-stats` | PreToolUse (Skill), UserPromptSubmit | Records local skill usage statistics. |
 | `auto-format` | PostToolUse (Write\|Edit) | Auto-formats code after file modifications using detected project formatter. |
+| `context-links` | Stop | Displays PR and Linear issue links at end of messages. |
+<!-- END SOURCE-SYNCED HOOK ROWS -->
 
 Use `/kramme:hooks:toggle` to enable/disable hooks. State persists in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json` by default, with `KRAMME_HOOK_STATE_FILE` override support and legacy fallback to `kramme-cc-workflow/hooks/hook-state.json`.
 

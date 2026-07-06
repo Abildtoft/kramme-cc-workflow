@@ -77,18 +77,25 @@ def main() -> int:
     registry = load_registry(registry_path)
     lint_module = load_lint_module(Path(__file__).resolve().parent)
 
-    rendered, failures = lint_module.render_readme_skill_sync(root, registry)
+    rendered, failures = lint_module.render_readme_component_sync(root, registry)
     if failures:
         report_failures("component reference sync failed:", failures)
         return 1
     if rendered is None:
         report_failures(
             "component reference sync failed:",
-            ["readme skill sync did not produce rendered content"],
+            ["component reference sync did not produce rendered content"],
         )
         return 1
 
-    readme_relative = registry["readme_skill_sync"].get("readme", "README.md")
+    path_failures: list[str] = []
+    readme_relative = lint_module.readme_relative_for_component_sync(registry, path_failures)
+    if readme_relative is None:
+        report_failures(
+            "component reference sync failed:",
+            path_failures or ["component reference sync did not resolve a README path"],
+        )
+        return 1
     readme_path = (root / readme_relative).resolve()
     current = readme_path.read_text(encoding="utf-8")
 

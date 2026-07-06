@@ -58,6 +58,83 @@ class MarkdownTableHelpersTest(unittest.TestCase):
             r"| `/kramme:test` | User | `[left\|right]` | Use a \| b |",
         )
 
+    def test_render_agent_and_hook_reference_rows_escape_table_cells(self) -> None:
+        self.assertEqual(
+            lint_skill_contracts.render_agent_reference_row(
+                lint_skill_contracts.AgentReference(
+                    name="kramme:reviewer",
+                    description="Use a | b",
+                )
+            ),
+            r"| `kramme:reviewer` | Use a \| b |",
+        )
+        self.assertEqual(
+            lint_skill_contracts.render_hook_reference_row(
+                lint_skill_contracts.HookReference(
+                    name="sample-hook",
+                    event="PostToolUse (Write|Edit)",
+                    description="Use a | b",
+                )
+            ),
+            r"| `sample-hook` | PostToolUse (Write\|Edit) | Use a \| b |",
+        )
+
+    def test_load_hook_references_aggregates_duplicate_hook_events(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            hooks_path = root / "hooks" / "hooks.json"
+            hooks_path.parent.mkdir(parents=True)
+            hooks_path.write_text(
+                """
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/sample-hook.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/sample-hook.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+""".strip(),
+                encoding="utf-8",
+            )
+            failures: list[str] = []
+
+            references = lint_skill_contracts.load_hook_references(
+                root,
+                {
+                    "hooks_json": "hooks/hooks.json",
+                    "descriptions": {"sample-hook": "Runs a sample hook"},
+                },
+                failures,
+            )
+
+        self.assertEqual(failures, [])
+        self.assertEqual(
+            references["sample-hook"],
+            lint_skill_contracts.HookReference(
+                name="sample-hook",
+                event="PreToolUse (Skill), UserPromptSubmit",
+                description="Runs a sample hook",
+            ),
+        )
+
 
 class FrontmatterContractHelpersTest(unittest.TestCase):
     def test_expected_invocation_distinguishes_user_and_background_modes(self) -> None:
