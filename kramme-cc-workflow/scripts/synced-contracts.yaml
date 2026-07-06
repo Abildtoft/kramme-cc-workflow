@@ -84,22 +84,6 @@
         "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
         "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md"
       ]
-    },
-    {
-      "name": "copy-review-redundancy-scope",
-      "extract_regex": "(Finds labels, descriptions, placeholders, tooltips, and instructions that duplicate what the UI already communicates through structure, icons, or interaction patterns\\.)",
-      "paths": [
-        "kramme-cc-workflow/skills/kramme:code:copy-review/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:copy-review/SKILL.md"
-      ]
-    },
-    {
-      "name": "copy-review-ui-relevant-file-types",
-      "extract_regex": "(?s)(- \\*\\*Components\\*\\*: \\*\\.tsx, \\*\\.jsx, \\*\\.vue, \\*\\.svelte, \\*\\.component\\.ts, \\*\\.component\\.html.*?- \\*\\*i18n/translations\\*\\*: \\*\\.json files in locales/, i18n/, translations/ directories)",
-      "paths": [
-        "kramme-cc-workflow/skills/kramme:code:copy-review/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:copy-review/SKILL.md"
-      ]
     }
   ],
   "base_diff_scope": {
@@ -361,6 +345,13 @@
     }
   ],
   "file_identity_groups": [
+    {
+      "name": "copy-review-rubric",
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:code:copy-review/references/copy-review-rubric.md",
+        "kramme-cc-workflow/skills/kramme:pr:copy-review/references/copy-review-rubric.md"
+      ]
+    },
     {
       "name": "visual-css-patterns",
       "paths": [
