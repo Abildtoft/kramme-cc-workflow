@@ -16,6 +16,37 @@ const {
   resolveManagedChild,
 } = require("./filesystem");
 
+/**
+ * @typedef {Object} ConfirmOptions
+ * @property {boolean} [yes]
+ * @property {boolean} [nonInteractive]
+ *
+ * @typedef {Object} StagedDirInstallOptions
+ * @property {string[]} [currentManagedFiles]
+ * @property {string} [label]
+ * @property {string[]} [previousManagedFiles]
+ * @property {boolean} [replace]
+ *
+ * @typedef {Object} StagedFileInstallOptions
+ * @property {string} [label]
+ * @property {boolean} [replace]
+ *
+ * @typedef {Object} PruneStaleManagedFilesOptions
+ * @property {string} [label]
+ *
+ * @typedef {Object} CleanupKrammeComponentsOptions
+ * @property {string} [label]
+ * @property {(entry: import("fs").Dirent) => boolean} [filter]
+ * @property {boolean} [recursive]
+ * @property {string[]} [prefixes]
+ * @property {ConfirmOptions} [confirmOptions]
+ *
+ * @typedef {Object} CleanupInstalledEntriesOptions
+ * @property {string} [label]
+ * @property {boolean} [recursive]
+ * @property {ConfirmOptions} [confirmOptions]
+ */
+
 async function createInstallStagingRoot(baseRoot, pluginName, label) {
   await ensureDir(baseRoot);
   const nonce = Math.random().toString(16).slice(2);
@@ -38,6 +69,11 @@ async function removeInstallStagingRoot(stagingRoot) {
   }
 }
 
+/**
+ * @param {string} stagedDir
+ * @param {string} targetDir
+ * @param {StagedDirInstallOptions} [options]
+ */
 async function preflightStagedDirInstall(
   stagedDir,
   targetDir,
@@ -71,6 +107,11 @@ async function preflightStagedDirInstall(
   });
 }
 
+/**
+ * @param {string} stagedFile
+ * @param {string} targetFile
+ * @param {StagedFileInstallOptions} [options]
+ */
 async function preflightStagedFileInstall(
   stagedFile,
   targetFile,
@@ -109,6 +150,12 @@ async function installStagedDir(stagedDir, targetDir, { replace = false } = {}) 
   await fs.rm(stagedDir, { recursive: true, force: true });
 }
 
+/**
+ * @param {string} targetDir
+ * @param {string[] | undefined} previousFiles
+ * @param {string[] | undefined} currentFiles
+ * @param {PruneStaleManagedFilesOptions} [options]
+ */
 async function pruneStaleManagedFiles(
   targetDir,
   previousFiles,
@@ -332,6 +379,10 @@ async function installStagedFile(
   await fs.rm(stagedFile, { force: true });
 }
 
+/**
+ * @param {string} dir
+ * @param {CleanupKrammeComponentsOptions} [options]
+ */
 async function cleanupKrammeComponents(
   dir,
   {
@@ -345,7 +396,7 @@ async function cleanupKrammeComponents(
   if (!(await pathExists(dir))) return;
   const entries = await fs.readdir(dir, { withFileTypes: true });
   const matched = entries
-    .filter(filter)
+    .filter(/** @type {(entry: import("fs").Dirent) => boolean} */ (filter))
     .filter((entry) => prefixes.some((prefix) => entry.name.startsWith(prefix)))
     .map((entry) => entry.name);
 
@@ -373,6 +424,11 @@ async function cleanupKrammeComponents(
   console.log(`Deleted ${matched.length} ${label}(s).`);
 }
 
+/**
+ * @param {string} dir
+ * @param {string[] | undefined} entries
+ * @param {CleanupInstalledEntriesOptions} [options]
+ */
 async function cleanupInstalledEntries(
   dir,
   entries,

@@ -345,6 +345,7 @@ test("bundle output stages prompts, skills, generated skills, and agent skills",
       new Set(["SKILL.md"]),
     );
     assert.equal(stagedBundle.agentSkillsRoot, path.join(agentsHome, "skills"));
+    assert.ok(stagedBundle.stagedAgentSkillsRoot);
     assert.equal(
       await readText(
         path.join(
