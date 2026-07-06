@@ -1,5 +1,20 @@
 #!/usr/bin/env bats
 
+assert_required_contracts_registered() {
+	cd "$BATS_TEST_DIRNAME/.."
+	python3 - "$@" <<'PY'
+import json
+import pathlib
+import sys
+
+registry = json.loads(pathlib.Path("scripts/synced-contracts.yaml").read_text())
+registered = {contract["name"] for contract in registry.get("required_file_contracts", [])}
+missing = sorted(set(sys.argv[1:]) - registered)
+if missing:
+    raise SystemExit(f"missing required_file_contracts: {', '.join(missing)}")
+PY
+}
+
 @test "visual demo reel skill has required local evidence guidance" {
 	run bash -c '
     set -e
@@ -16,18 +31,14 @@
     test -f "$skill/references/sources.yaml"
     test -f "$skill/scripts/demo_reel_helper.py"
 
-    grep -qF ".context/demo-reels/<timestamp>/" "$skill/SKILL.md"
-    grep -qF "Do not upload, attach, or publish artifacts unless the user explicitly asks" "$skill/SKILL.md"
-    grep -qF "\${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh" "$skill/SKILL.md"
-    grep -qF "DEMO_REEL_SKILL_DIR" "$skill/SKILL.md"
-    grep -qF "\${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:demo-reel" "$skill/SKILL.md"
-    grep -qF "Test output is verification evidence, not demo evidence" "$skill/SKILL.md"
-    grep -qF "Static screenshots" "$skill/references/capture-tiers.md"
-    grep -qF "Before/after screenshots" "$skill/references/capture-tiers.md"
-    grep -qF "Browser reel" "$skill/references/capture-tiers.md"
-    grep -qF "Terminal recording" "$skill/references/capture-tiers.md"
-    grep -qF "compound-ce-demo-reel" "$skill/references/sources.yaml"
+    grep -q "^## Workflow" "$skill/SKILL.md"
+    grep -q "^## Selection Rules" "$skill/references/capture-tiers.md"
   '
+
+	assert_required_contracts_registered \
+		visual-demo-reel-guidance \
+		visual-demo-reel-capture-tiers \
+		visual-demo-reel-source-manifest
 
 	[ "$status" -eq 0 ]
 }
@@ -81,11 +92,5 @@
 }
 
 @test "workflow cleanup includes demo reel artifacts" {
-	run bash -c '
-    set -e
-    cd "'"$BATS_TEST_DIRNAME"'/.."
-    grep -qF ".context/demo-reels/" "skills/kramme:workflow-artifacts:cleanup/SKILL.md"
-  '
-
-	[ "$status" -eq 0 ]
+	assert_required_contracts_registered workflow-artifact-cleanup-names
 }

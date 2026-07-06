@@ -490,6 +490,300 @@
       ]
     },
     {
+      "name": "pr-create-gh-prevalidation",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/pre-validation-checks.md",
+      "contains": [
+        "MISSING REQUIREMENT: gh CLI not installed",
+        "ORIGIN_URL=$(git remote get-url origin",
+        "git@*:*)",
+        "GH_HOST=${ORIGIN_URL#git@}",
+        "GH_HOST=${GH_HOST%%:*}",
+        "GH_HOST=${GH_HOST##*@}",
+        "gh auth status --active --hostname \"$GH_HOST\"",
+        "gh auth login --hostname $GH_HOST",
+        "Do not invoke `kramme:git:recreate-commits`"
+      ]
+    },
+    {
+      "name": "pr-create-description-generation-contract",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+      "contains": [
+        "Always pass `--auto --no-update --base {base-branch}`",
+        "If the generator emits a blocking `MISSING REQUIREMENT:` marker",
+        "do **not** proceed to Step 8 or create the PR",
+        "The non-blocking \"no Linear ID\" marker"
+      ]
+    },
+    {
+      "name": "pr-create-linear-id-normalization",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+      "contains": [
+        "Default to `Closes {linear-issue-id}`",
+        "replace that line with `Closes {linear-issue-id}`",
+        "already linked `{linear-issue-id}` with a non-closing keyword",
+        "do not add a separate `Closes {linear-issue-id}` line",
+        "Do not override an explicit user instruction to use a different keyword",
+        "Apply the same `{linear-issue-id}` normalization from Step 7.2 to the fallback description",
+        "append `Closes {linear-issue-id}` before continuing"
+      ]
+    },
+    {
+      "name": "pr-create-branch-linear-state",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/branch-and-platform-handling.md",
+      "contains": [
+        "Track `{linear-issue-id}` as nullable workflow state",
+        "Normalize the supplied ID to uppercase and capture it as `{linear-issue-id}`",
+        "scan the branch name for a Linear-style issue ID"
+      ]
+    },
+    {
+      "name": "pr-create-body-file-contract",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
+      "contains": [
+        "PR_TITLE_FILE=$(mktemp \"${TMPDIR:-/tmp}/pr-title.XXXXXX\")",
+        "PR_BODY_FILE=$(mktemp \"${TMPDIR:-/tmp}/pr-body.XXXXXX\")",
+        "--title \"$(cat \"{pr-title-file}\")\"",
+        "--body-file \"{pr-body-file}\"",
+        "PR_CREATE_STATUS=$?",
+        "Before showing manual creation instructions, execute Step 9.0",
+        "Do not run Step 10 here"
+      ]
+    },
+    {
+      "name": "pr-create-edit-loop-linear-normalization",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
+      "contains": [
+        "After each description edit, if `{linear-issue-id}` is present",
+        "unless the user explicitly asked for that alternative keyword",
+        "If the edited description links the same issue with a non-closing keyword"
+      ]
+    },
+    {
+      "name": "pr-create-state-restoration-contract",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/state-and-rollback.md",
+      "contains": [
+        "do **not** silently stash, commit, or ignore them",
+        "Commit and include",
+        "Exclude from PR",
+        "excluded-and-stashed",
+        "if ! git stash push --include-untracked -m \"$STASH_MESSAGE\"; then",
+        "Failed to stash excluded uncommitted changes",
+        "printf 'STASH_MESSAGE=%s\\n' \"$STASH_MESSAGE\"",
+        "printf 'POST_STASH_COMMIT_COUNT=%s\\n'",
+        "Do not infer either value from unlabeled `git stash push` output",
+        "if ! git commit -m \"Include uncommitted changes for PR creation\"; then",
+        "Failed to create temporary include commit",
+        "if git cherry-pick --no-commit {include-commit}; then",
+        "CHERRY_PICK_STATUS=$?",
+        "git stash pop \"$STASH_REF\"",
+        "No PR changes remain after excluding uncommitted work",
+        "before any post-push PR creation failure output"
+      ]
+    },
+    {
+      "name": "pr-finalize-description-delegation",
+      "path": "kramme-cc-workflow/skills/kramme:pr:finalize/SKILL.md",
+      "contains": [
+        "skill: \"kramme:pr:generate-description\", args: \"--auto --base {BASE_BRANCH}\"",
+        "handles backup creation and `--body-file` application"
+      ]
+    },
+    {
+      "name": "pr-generate-description-subskill-contract",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md",
+      "contains": [
+        "### Sub-Skill Invocation Contract",
+        "it must pass `--auto`",
+        "must also pass `--no-update`",
+        "OUTPUT_ONLY=true"
+      ]
+    },
+    {
+      "name": "pr-generate-description-main-guidance",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md",
+      "contains": [
+        "When drafting the Test Plan, apply the Test Plan section in `assets/section-templates.md` and the Test Plans rules in `references/best-practices.md`.",
+        "Read `references/direct-update.md` and follow it.",
+        "Run the consolidated checklist in `references/verification-checklist.md`.",
+        "GitHub PR Template Analysis",
+        "Repository PR Template Contract",
+        "One or more selectable GitHub PR templates are present, no default template is selected",
+        "blocking for direct update",
+        "set `DIRECT_UPDATE=false` even when `--auto` found an existing PR",
+        "local exclude file",
+        "Local environment failure notes such as missing `node_modules`, unavailable Postgres, missing services"
+      ]
+    },
+    {
+      "name": "pr-generate-description-template-discovery",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/context-gathering.md",
+      "contains": [
+        "ALWAYS** check whether the repository has a GitHub pull request template before drafting",
+        "GitHub applies PR templates from the repository default branch",
+        "DEFAULT_TEMPLATE_REF=\"origin/$DEFAULT_BRANCH\"",
+        "git cat-file -e \"$DEFAULT_TEMPLATE_REF:$path\"",
+        "git ls-tree -r --name-only \"$DEFAULT_TEMPLATE_REF\" \"$dir\"",
+        "**Default templates**",
+        "**Selectable templates**",
+        "Do not treat a single selectable template as selected merely because it is the only file in the directory",
+        "MISSING REQUIREMENT: selectable GitHub PR template found but no template selection is available"
+      ]
+    },
+    {
+      "name": "pr-generate-description-template-and-test-plan-rules",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/best-practices.md",
+      "contains": [
+        "NEVER** skip GitHub PR template lookup",
+        "Repository PR Templates",
+        "PREFER** a single default `pull_request_template.md` or `pull_request_template.txt`",
+        "NEVER** treat a selectable `PULL_REQUEST_TEMPLATE/` file as automatically applied",
+        "NEVER** substitute the verification commands you ran",
+        "NEVER** include `### Automated`, `### Automated verification`, automated testing instructions, command checklists, or unit/lint/build targets in the PR body",
+        "ASSUME** CI reports automated test, lint, typecheck, build, and formatting status",
+        "NEVER** mention local setup or infrastructure failures",
+        "missing `node_modules`, missing package installs, unavailable Postgres, absent Docker services, or port conflicts",
+        "NEVER** list missing automated test targets",
+        "NEVER** skip Linear issue lookup if the branch name contains an issue ID and a Linear integration is available",
+        "run a final conciseness pass"
+      ]
+    },
+    {
+      "name": "pr-generate-description-section-template-rules",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/assets/section-templates.md",
+      "contains": [
+        "map this block into the closest template prompts instead of duplicating headings",
+        "The Test Plan is for future reviewer or QA execution. It is not a transcript",
+        "Do not include automated testing instructions, command checklists, or an automated verification subsection",
+        "Do not include local setup or infrastructure failure notes"
+      ]
+    },
+    {
+      "name": "pr-generate-description-output-cleanliness",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/verification-checklist.md",
+      "contains": [
+        "GitHub PR template lookup completed against the repository default branch",
+        "placeholder when capture failed or direct-update mode only has local files",
+        "Local setup or infrastructure failures such as missing `node_modules`, failed package installs, unavailable Postgres, absent Docker services, and port conflicts are omitted from the PR body",
+        "Final conciseness pass",
+        "Removed repeated phrasing or duplicated facts"
+      ]
+    },
+    {
+      "name": "pr-generate-description-antipattern-examples",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/anti-patterns.md",
+      "contains": [
+        "Local Environment Noise",
+        "CORRECT: Manual Scenarios Only",
+        "This only proves what the agent already ran"
+      ]
+    },
+    {
+      "name": "pr-generate-description-red-flag-examples",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/red-flags.md",
+      "contains": [
+        "I ran format and lint locally, so I should include them",
+        "Local tests could not run because dependencies or services were missing",
+        "The body mentions local setup failures",
+        "A longer description is safer"
+      ]
+    },
+    {
+      "name": "pr-generate-description-visual-capture-safety",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/visual-capture.md",
+      "contains": [
+        "Never print full env-file contents or any non-port variables"
+      ]
+    },
+    {
+      "name": "pr-generate-description-direct-update-safety",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/direct-update.md",
+      "contains": [
+        "do not mutate tracked files"
+      ]
+    },
+    {
+      "name": "linear-issue-implement-reference-mapping",
+      "path": "kramme-cc-workflow/skills/kramme:linear:issue-implement/SKILL.md",
+      "contains": [
+        "[Reference Mapping] -> Fetch linked Linear issues/docs and record inaccessible assets",
+        "includeRelations: true",
+        "### 3.2 Map Referenced Linear Context",
+        "Build a `REFERENCE_MAP` from the issue response, issue description, and comments before planning",
+        "Do not silently ignore inaccessible referenced context",
+        "Referenced Context:",
+        "Treat inaccessible referenced documents/assets as explicit research gaps",
+        "Referenced documents or assets that could not be accessed and might change implementation"
+      ]
+    },
+    {
+      "name": "linear-issue-implement-display-template",
+      "path": "kramme-cc-workflow/skills/kramme:linear:issue-implement/references/display-templates.md",
+      "contains": [
+        "Referenced Linear Context Used:",
+        "Inaccessible Referenced Context:"
+      ]
+    },
+    {
+      "name": "linear-issue-implement-plan-template",
+      "path": "kramme-cc-workflow/skills/kramme:linear:issue-implement/assets/technical-plan.md",
+      "contains": [
+        "## Referenced Linear Context"
+      ]
+    },
+    {
+      "name": "linear-issue-implement-readme-note",
+      "path": "README.md",
+      "contains": [
+        "Fetches issue details plus referenced Linear issues/documents when accessible, reports inaccessible referenced assets"
+      ]
+    },
+    {
+      "name": "visual-demo-reel-guidance",
+      "path": "kramme-cc-workflow/skills/kramme:visual:demo-reel/SKILL.md",
+      "contains": [
+        ".context/demo-reels/<timestamp>/",
+        "Do not upload, attach, or publish artifacts unless the user explicitly asks",
+        "${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh",
+        "DEMO_REEL_SKILL_DIR",
+        "${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:demo-reel",
+        "Test output is verification evidence, not demo evidence"
+      ]
+    },
+    {
+      "name": "visual-demo-reel-capture-tiers",
+      "path": "kramme-cc-workflow/skills/kramme:visual:demo-reel/references/capture-tiers.md",
+      "contains": [
+        "Static screenshots",
+        "Before/after screenshots",
+        "Browser reel",
+        "Terminal recording"
+      ]
+    },
+    {
+      "name": "visual-demo-reel-source-manifest",
+      "path": "kramme-cc-workflow/skills/kramme:visual:demo-reel/references/sources.yaml",
+      "contains": [
+        "compound-ce-demo-reel"
+      ]
+    },
+    {
+      "name": "code-optimize-shell-permission",
+      "path": "kramme-cc-workflow/skills/kramme:code:optimize/SKILL.md",
+      "contains": [
+        "permissions:",
+        "  - shell"
+      ]
+    },
+    {
+      "name": "code-optimize-source-manifest",
+      "path": "kramme-cc-workflow/skills/kramme:code:optimize/references/sources.yaml",
+      "contains": [
+        "compound-ce-optimize",
+        "ce-optimize",
+        "6f9ab03a031c054a8046659926251fb6c149269f"
+      ]
+    },
+    {
       "name": "pr-plan-generation-artifact-shape",
       "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md",
       "frontmatter": {
@@ -547,9 +841,14 @@
       },
       "contains": [
         "REVIEW_OVERVIEW.md",
+        ".context/demo-reels/",
+        ".context/github-review-replies/",
+        "CODEBASE_WEAKNESS_REPORT.md",
         "AUDIT_IMPLEMENTATION_REPORT.md",
         "AUDIT_SPEC_REPORT.md",
         "PR_PLAN_*.md",
+        "DEPRECATION_PLAN.md",
+        "DEPRECATION_PLAN_*.md",
         "siw/OPEN_ISSUES_OVERVIEW.md",
         "siw/issues/"
       ]
