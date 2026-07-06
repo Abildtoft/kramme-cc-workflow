@@ -6,7 +6,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
 SCRIPT_PATH = SCRIPTS_DIR / "lint-skill-contracts.py"
 sys.path.insert(0, str(SCRIPTS_DIR))

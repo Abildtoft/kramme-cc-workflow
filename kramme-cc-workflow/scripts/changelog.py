@@ -5,12 +5,13 @@ Changelog generator for kramme-cc-workflow plugin.
 Generates "Keep a Changelog" format entries from conventional commits.
 """
 
+from __future__ import annotations
+
+import re
+import subprocess
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Optional
-import re
-import subprocess
 
 
 @dataclass
@@ -20,7 +21,7 @@ class Commit:
     hash: str
     subject: str
     body: str
-    pr_number: Optional[str] = None
+    pr_number: str | None = None
 
 
 @dataclass
@@ -29,7 +30,7 @@ class ChangelogEntry:
 
     category: str  # Added, Changed, Fixed, Removed, Security, Deprecated
     message: str
-    pr_number: Optional[str] = None
+    pr_number: str | None = None
 
 
 class ChangelogHistoryError(RuntimeError):
@@ -98,7 +99,7 @@ class CommitParser:
         "Security": ["security", "vulnerability", "cve"],
     }
 
-    def parse(self, commit: Commit) -> Optional[ChangelogEntry]:
+    def parse(self, commit: Commit) -> ChangelogEntry | None:
         """Parse a commit into a changelog entry."""
         subject = commit.subject.strip()
 
@@ -142,8 +143,8 @@ class CommitParser:
         return self._categorize_by_keywords(clean_subject, pr_number)
 
     def _categorize_by_keywords(
-        self, subject: str, pr_number: Optional[str]
-    ) -> Optional[ChangelogEntry]:
+        self, subject: str, pr_number: str | None
+    ) -> ChangelogEntry | None:
         """Categorize non-conventional commits by keywords."""
         lower_subject = subject.lower()
 
@@ -187,7 +188,7 @@ class ChangelogGenerator:
         self.repo_root = repo_root
         self.parser = CommitParser()
 
-    def get_commits_since_tag(self, tag: Optional[str] = None) -> list[Commit]:
+    def get_commits_since_tag(self, tag: str | None = None) -> list[Commit]:
         """Get commits since the specified tag (or all commits if no tag)."""
         if tag:
             range_spec = f"{tag}..HEAD"
@@ -222,7 +223,7 @@ class ChangelogGenerator:
 
         return commits
 
-    def get_latest_tag(self) -> Optional[str]:
+    def get_latest_tag(self) -> str | None:
         """Get the most recent version tag."""
         result = subprocess.run(
             ["git", "describe", "--tags", "--abbrev=0", "--match", "v*"],
@@ -252,7 +253,7 @@ class ChangelogGenerator:
         self,
         version: str,
         entries: dict[str, list[ChangelogEntry]],
-        release_date: Optional[date] = None,
+        release_date: date | None = None,
     ) -> str:
         """Format entries as a changelog version section."""
         if release_date is None:
@@ -273,7 +274,7 @@ class ChangelogGenerator:
         return "\n".join(lines)
 
     def format_link_reference(
-        self, version: str, repo_url: str, prev_version: Optional[str] = None
+        self, version: str, repo_url: str, prev_version: str | None = None
     ) -> str:
         """Generate the link reference for the version."""
         if prev_version:
@@ -313,7 +314,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         content = self.read()
         return f"## [{version}]" in content
 
-    def get_previous_version(self) -> Optional[str]:
+    def get_previous_version(self) -> str | None:
         """Get the most recent version from the changelog."""
         content = self.read()
         match = self.VERSION_HEADER_PATTERN.search(content)
@@ -404,7 +405,7 @@ def get_repo_url(repo_root: Path) -> str:
 def generate_changelog(
     repo_root: Path,
     version: str,
-    repo_url: Optional[str] = None,
+    repo_url: str | None = None,
     dry_run: bool = False,
     *,
     fail_on_history_error: bool = False,
