@@ -50,3 +50,25 @@ directory, plugin caches, or generated hook marketplaces is not source behavior.
 Repository-local `./.agents/skills/` remains the local-only source for
 maintenance skills. Change canonical source or converter modules, then
 regenerate.
+
+## Codex Usage Decision
+
+As of 2026-07-06, keep Codex output first-class. Local Codex evidence showed
+recent sessions using generated `kramme:*` skills:
+
+- `~/.codex/skills/` contained 105 managed `kramme*` skill directories, while
+  `~/.codex/prompts/` was absent. The managed install state and manifest were
+  last updated on 2026-06-23 at 15:03:42 +0200.
+- The packaged usage runtime had 684 `kramme:*` records in
+  `~/.local/state/kramme-cc-workflow/skill-usage.jsonl`, spanning
+  2026-05-28 through 2026-07-06.
+- Codex logs contained 312 pre-audit reads of installed
+  `~/.codex/skills/kramme:*` files from 2026-06-27 through 2026-07-06; 262 of
+  those reads were tied to 74 distinct Codex thread IDs.
+- Shell history contained 169 `codex` CLI invocations since 2026-05-24, with
+  the latest on 2026-07-06 at 12:48:34 +0200.
+
+Maintain a quarterly end-to-end Codex dogfood check: regenerate/install into
+`~/.codex`, start a Codex session, invoke at least one `kramme:*` skill, verify
+the usage JSONL record and Codex log hit, and keep installer CI in the required
+path while that check keeps passing.
