@@ -41,7 +41,7 @@ for env_assignment in "$@"; do
     echo "Error: environment argument must be KEY=VALUE: $env_assignment" >&2
     exit 2
   fi
-  export "$env_assignment"
+  export "${env_assignment?}"
 done
 
 cd "$working_directory" || {

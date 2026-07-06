@@ -11,6 +11,20 @@
 	[ "$status" -eq 0 ]
 }
 
+@test "code optimize measurement runner forwards environment assignments" {
+	run bash -c '
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skills/kramme:code:optimize/scripts/measure.sh \
+      "printf \"%s\\n\" \"\$OPTIMIZE_MEASURE_TOKEN\"" \
+      5 \
+      . \
+      OPTIMIZE_MEASURE_TOKEN=forwarded
+  '
+
+	[ "$status" -eq 0 ]
+	[ "$output" = "forwarded" ]
+}
+
 @test "code optimize examples include required schema sections" {
 	run bash -c '
     cd "'"$BATS_TEST_DIRNAME"'/.."
