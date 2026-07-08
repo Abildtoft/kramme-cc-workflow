@@ -75,7 +75,7 @@ Each teammate must return the shared finding schema from `references/review-disc
 Treat teammate action classes as provisional. The final team aggregator must apply the same action-class normalization pass as standard `/kramme:pr:code-review` Step 11:
 
 - Critical/Important PR-caused findings default to `gated_auto` when they have a concrete `path/to/file:line` location, confidence at least 70, concrete evidence, and a clear local fix path.
-- Keep Critical/Important findings as `manual` only when they name a concrete blocker such as product/UX/architecture/maintainer judgment, missing or contradictory requirements, PR-description/process updates, cross-team or external ownership, unresolved reviewer contradiction, incomplete trace/`UNVERIFIED`, or dead-code approval.
+- Keep Critical/Important findings as `manual` only under the **manual blocker tests** in `references/review-discipline.md`, and apply that section's tiebreaker and manual-heavy re-test exactly as written: a finding matching a named blocker never "plausibly fits both", and dead-code findings always stay `manual` until the ask is answered.
 - Every manual Critical/Important finding must include `Manual blocker` and `Next human decision`.
 - If no manual blocker exists, reclassify the finding to `gated_auto` or downgrade it to an advisory suggestion.
 

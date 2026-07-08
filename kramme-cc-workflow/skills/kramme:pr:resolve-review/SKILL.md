@@ -88,7 +88,7 @@ For local review files that include the structured `/kramme:pr:code-review` find
 - `Resolution status: open` or a missing resolution status means the finding is eligible for normal evaluation.
 - `Action class: gated_auto` with a concrete `path/to/file:line` location is eligible for implementation.
 - `Action class: manual` is not auto-implementable, even when it has a file location. Defer it with a manual follow-up recommendation that preserves the manual blocker and next human decision when present, unless the user supplied a separate explicit implementation payload that changes the scope.
-- `Action class: advisory` is optional. Do not implement it from local auto-discovery unless the user explicitly asks to resolve suggestions or names that finding.
+- `Action class: advisory` is optional. Implement it only when it passes the safe-advisory test in Step 2d; acknowledge the rest. Step 2d also defines the explicit-request path that widens candidacy.
 - `review-scope`, `PR description`, and other non-file locations are process-level findings. Defer them with a concrete manual recommendation.
 - Legacy local findings without an action class keep the previous location/severity behavior, but do not infer `gated_auto` from a file location when an action class is present.
 - For `UX_REVIEW_OVERVIEW.md`, accept legacy per-agent finding IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) from older UX audit reports as source identifiers during the transition to artifact-scoped `UX-NNN` IDs. Remove this legacy-ID acceptance once `kramme:pr:ux-review` drops its own legacy-ID compatibility and existing `UX_REVIEW_OVERVIEW.md` artifacts contain only `UX-NNN` IDs.
@@ -154,10 +154,15 @@ If `SEVERITY_FILTER` is set, do not process findings whose severity is not in th
 
 When a finding came from a structured local review and includes an action class, apply the action-class gate before implementation:
 
-- Implement only `gated_auto` findings with concrete file locations.
+- Implement `gated_auto` findings with concrete file locations.
 - Defer `manual` findings with **Resolution status: deferred** and **Action taken: Deferred — manual follow-up required.** Include the owner, evidence, manual blocker, and next human decision when available.
-- Acknowledge `advisory` findings with **Resolution status: acknowledged** and **Action taken: Acknowledged — advisory.** unless the user explicitly asked to resolve suggestions or named that finding.
-- Never treat `manual`, `advisory`, `review-scope`, or `PR description` findings as implementation candidates just because they are critical or important.
+- Implement an `advisory` finding without an explicit user request only when it passes the **safe-advisory test** — all of:
+  - `Location` is a concrete `path/to/file:line` and the finding is in scope per Step 2a
+  - The fix is mechanical with one obvious implementation — no design choice, API change, or behavior change a reviewer could reasonably contest — and it clearly improves the code rather than trading one valid style for another
+  - It is not a dead-code removal ask (`DEAD CODE IDENTIFIED: ... Safe to remove these?`) — deletions always need the author's answer first, regardless of severity
+  - It does not touch code covered by an unresolved Critical/Important finding in the same review
+- Acknowledge the remaining `advisory` findings with **Resolution status: acknowledged** and **Action taken: Acknowledged — advisory.**, naming which part of the safe-advisory test failed. An explicit user request — asking in chat to resolve suggestions or naming the finding; a `--severity` filter is scoping only and never counts — widens candidacy to every in-scope advisory finding, still subject to the Step 2e nitpick judgment and to the dead-code and unresolved-Critical/Important conditions above, which no request path bypasses.
+- Never treat `manual`, `review-scope`, or `PR description` findings as implementation candidates just because they are critical or important.
 
 #### 2e. Dismiss nitpicks with judgment
 

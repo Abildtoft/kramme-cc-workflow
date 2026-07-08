@@ -53,7 +53,7 @@ Do not use this for UX, visual, accessibility, or product review. Use `kramme:pr
    - Treat Suggestions and FYI as optional unless the user asked for a stricter cleanup pass.
 
 5. **Resolve accepted findings**
-   - For verified `gated_auto` Critical or Important findings, use `/kramme:pr:resolve-review` when it fits the report's recommended action.
+   - For verified `gated_auto` Critical or Important findings, use `/kramme:pr:resolve-review --severity critical,important` when it fits the report's recommended action. The severity filter keeps this loop from processing suggestion-severity advisory findings it never triaged.
    - If `--inline` was used, pass the inline review content to `/kramme:pr:resolve-review` or make the smallest scoped fix directly; do not rely on local review-file discovery.
    - For verified findings that need hand edits, make the smallest scoped fix directly.
    - Do not resolve manual findings without enough product, ownership, or reviewer context.

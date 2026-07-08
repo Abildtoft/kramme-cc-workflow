@@ -37,6 +37,10 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    Use the shared plugin script to resolve the base branch and build the unified change scope (committed PR diff + staged + unstaged + untracked). It uses the same 3-tier strategy: explicit `--base`, PR target branch, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
 
    ```bash
+   [ -x "${CLAUDE_PLUGIN_ROOT:-}/scripts/collect-review-diff.sh" ] || {
+     echo "collect-review-diff.sh not found under CLAUDE_PLUGIN_ROOT — is the kramme-cc-workflow plugin installed?" >&2
+     exit 1
+   }
    COLLECT_ARGS=(--strict --format json)
    [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
 
@@ -315,20 +319,15 @@ After emphasis adjustments, run an **action-class normalization pass**. The goal
   - `Confidence` is at least 70
   - The evidence names a concrete failing expectation, trace, or local code path
   - The fix direction is unambiguous and local to changed or nearby code
-  - The finding does not require a manual blocker listed below
-- Keep a Critical or Important finding as `manual` only when at least one concrete manual blocker applies:
-  - Product, UX, architectural, or maintainer judgment is needed before choosing the fix
-  - A requirement is missing or contradictory
-  - The finding is about `PR description`, branch/review process, release coordination, or other non-code state
-  - The fix needs cross-team ownership, external-system access, credentials, or human-only verification before implementation
-  - The finding contains an unresolved contradiction between reviewers or code paths
-  - The trace is incomplete or marked `UNVERIFIED`, and the impact is still high enough to keep in Critical or Important
-  - A dead-code finding uses the required `DEAD CODE IDENTIFIED: ... Safe to remove these?` ask shape and needs author/maintainer approval before deletion
+  - The finding does not match a manual blocker
+- Keep a Critical or Important finding as `manual` only when a blocker applies under the **manual blocker tests** in `references/review-discipline.md` (maintainer judgment with named competing options, uninferable missing/contradictory requirement, non-code state, cross-team/external ownership, unresolved contradiction, resource-blocked incomplete trace/`UNVERIFIED`, or dead-code approval). `manual` is the exception, not the safe default.
+- Apply that section's tiebreaker: a finding that plausibly fits both classes becomes `gated_auto`, but a finding matching a named blocker never fits both — dead-code findings always stay `manual` until the ask is answered.
 - Every manual Critical or Important finding must include:
   - `Manual blocker: <one of the blocker categories above>`
   - `Next human decision: <the specific decision, approval, access, or clarification needed>`
 - If a manual Critical or Important finding has a concrete file location, confidence at least 70, and no named manual blocker, reclassify it to `gated_auto`.
 - If a finding is optional, stylistic, low-confidence, or a cleanup idea without blocking impact, put it in Suggestions with action class `advisory` instead of Critical/Important with `manual`.
+- Before finalizing, if more than half of the Critical/Important findings are `manual`, re-test each one against the blocker list above. A manual-heavy report usually means blockers were named loosely, not that the PR needs that much human intervention.
 
 Assign stable `Finding ID` values to every active finding after dedupe, filtering, and emphasis are complete:
 
@@ -353,7 +352,7 @@ Then summarize:
 Every active finding must include its finding ID, location, confidence, action class, owner, resolution status, and evidence in the final report:
 
 - `gated_auto` — code-backed Critical/Important finding with a concrete file/line, a clear fix, and enough confidence for `/kramme:pr:resolve-review` to attempt it.
-- `manual` — requires a named human decision, product/process judgment, PR-description update, cross-team ownership, external access, unresolved trace, or explicit approval before a fix is safe. Every manual Critical/Important finding must include `Manual blocker` and `Next human decision`.
+- `manual` — requires a named human decision, product/process judgment, PR-description update, cross-team ownership, external access, unresolved trace, or explicit approval before a fix is safe. Every manual Critical/Important finding must include `Manual blocker` and `Next human decision`. When a finding plausibly fits both `gated_auto` and `manual`, use `gated_auto`.
 - `advisory` — optional suggestion, FYI, low-confidence observation, or quality improvement that should not block merge. Do not use this class for Critical or Important findings.
 
 PR description findings should use the same severity rules as code findings. A materially false claim that would mislead merge approval, release notes, rollback planning, or QA is Important or Critical depending on impact. Minor missing detail is at most a Suggestion and should usually be omitted.
@@ -380,7 +379,7 @@ Otherwise:
 
 13. **Provide Action Plan**
 
-If eligible `gated_auto` Critical or Important code-backed issues were found, include a suggestion to run `/kramme:pr:resolve-review` to automatically address them. Manual and advisory findings must remain human follow-up in the report, with manual blockers and next decisions named. The template in `references/output-template.md` already includes the **Auto-resolution Readiness**, **Recommended Action**, and **Approval Standard** sections; do not omit them.
+If eligible `gated_auto` Critical or Important code-backed issues were found, include a suggestion to run `/kramme:pr:resolve-review` to automatically address them. Manual findings must remain human follow-up in the report, with manual blockers and next decisions named. Advisory findings stay optional in the report; `/kramme:pr:resolve-review` applies its own safe-advisory test when deciding whether to pick one up. The template in `references/output-template.md` already includes the **Auto-resolution Readiness**, **Recommended Action**, and **Approval Standard** sections; do not omit them.
 
 Before posting (whether to `REVIEW_OVERVIEW.md` or inline), run the pre-posting verification checklist in `references/review-discipline.md` (severity prefixes, dead-code ask shape, Approval Standard line, `NOTICED BUT NOT TOUCHING` labels on out-of-scope notes, emphasized-dimension coverage, `UNVERIFIED` labels on untraced findings).
 
