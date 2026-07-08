@@ -55,9 +55,9 @@ This applies whether the finding lands in Critical, Important, or Suggestions.
 
 ## Action classes
 
-- **`gated_auto`** — Code-backed Critical or Important finding with a concrete file/line, an unambiguous fix direction, and enough confidence for `/kramme:pr:resolve-review` to attempt it. Do not use this for PR-description drift, product decisions, missing requirements, or broad process issues.
-- **`manual`** — The finding needs human judgment, a maintainer decision, product clarification, cross-team ownership, external access, a PR-description update, explicit approval, or a trace the reviewer could not complete. Manual findings may still block merge when impact is high, but they must name the manual blocker and next human decision.
-- **`advisory`** — Optional polish, FYI, low-confidence observation, or improvement idea. Advisory findings do not block merge and are not eligible for automatic resolution.
+- **`gated_auto`** — Code-backed Critical or Important finding with a concrete file/line, an unambiguous fix direction, and enough confidence for `/kramme:pr:resolve-review` to attempt it. Do not use this for PR-description drift, product decisions, missing requirements, dead-code removals awaiting approval, or broad process issues.
+- **`manual`** — The finding needs a human decision before a fix is safe, for one of the reasons in the manual blocker tests below. Manual findings may still block merge when impact is high, but they must name the manual blocker and next human decision. `manual` is the exception, not the safe default: "a human should look at this" or "the fix touches important code" is not a blocker.
+- **`advisory`** — Optional polish, FYI, low-confidence observation, or improvement idea. Advisory findings do not block merge and are not counted as auto-resolution candidates; `/kramme:pr:resolve-review` applies its own safe-advisory test when deciding whether to pick one up.
 
 ## Severity and action-class compatibility
 
@@ -67,6 +67,22 @@ This applies whether the finding lands in Critical, Important, or Suggestions.
 - Critical or Important PR-caused findings default to `gated_auto` when they have a concrete `path/to/file:line` location, confidence at least 70, concrete evidence, and a clear local fix path.
 - If a Critical or Important finding cannot be auto-resolved, keep it `manual` only with a named manual blocker and a specific next human decision.
 - If a manual Critical/Important finding has a concrete file location, confidence at least 70, and no named manual blocker, reclassify it to `gated_auto`.
+
+## Manual blocker tests
+
+Keep a Critical or Important finding as `manual` only when at least one blocker below applies under its narrow test:
+
+- **Product/UX/architecture/maintainer judgment** — only when two or more materially different fix directions exist with different user-visible behavior, API contracts, or data semantics, and the finding names those competing options. Choosing an implementation detail (which guard, a name, an error message, which nearby pattern) is not maintainer judgment.
+- **Missing or contradictory requirement** — only when the correct behavior genuinely cannot be inferred from the diff, nearby code, tests, or the PR description. Merely undocumented behavior with one obvious reading is not a missing requirement.
+- **Non-code state** — the finding is about `PR description`, branch/review process, or release coordination.
+- **Cross-team/external ownership** — the fix needs cross-team ownership, external-system access, credentials, or human-only verification before implementation.
+- **Unresolved contradiction** — between reviewers or code paths.
+- **Incomplete trace/`UNVERIFIED`** — only after the reviewer attempted to complete the trace and verification requires resources the resolver also lacks (runtime-only behavior, external systems, production data). A merely skipped trace is not a blocker; complete it or lower confidence and downgrade.
+- **Dead-code approval** — the finding uses the `DEAD CODE IDENTIFIED: ... Safe to remove these?` ask shape and needs the author's or maintainer's answer before deletion.
+
+**Tiebreaker:** when a finding plausibly fits both `gated_auto` and `manual`, choose `gated_auto` — resolver fixes land as reviewable local commits with validation and rollback, so a wrong `gated_auto` costs one rejected patch, while a wrong `manual` silently removes the finding from automation. A finding matching any blocker above does not "plausibly fit both"; in particular, dead-code findings always stay `manual` until the ask is answered.
+
+**Manual-heavy re-test:** if more than half of the Critical/Important findings are `manual`, re-test each one against the blockers above once. If every manual finding passes its blocker test, keep them all — a majority-manual report is then correct (release-coordination reviews are often legitimately manual-heavy).
 
 ## Confidence and merge rules
 
@@ -111,6 +127,7 @@ Before posting the review, confirm:
 - [ ] Every active finding includes Location, Confidence, Action class, Owner, and Evidence.
 - [ ] Every manual Critical/Important finding includes `Manual blocker` and `Next human decision`.
 - [ ] Manual Critical/Important findings have a concrete blocker; otherwise they were reclassified to `gated_auto` or downgraded to advisory.
+- [ ] If more than half of the Critical/Important findings are `manual`, each one was re-tested once against the manual blocker tests; findings whose blocker held stayed `manual` (a majority-manual report is then correct).
 - [ ] The Auto-resolution Readiness section counts eligible `gated_auto` Critical/Important findings and manual Critical/Important findings by blocker reason.
 - [ ] Dead-code findings use the verbatim ask shape `DEAD CODE IDENTIFIED: [list]. Safe to remove these?`
 - [ ] The Approval Standard line appears: _"Approve if the change definitely improves overall code health."_
