@@ -4,9 +4,9 @@ sources:
     title: "Addy Osmani agent-skills - git workflow and versioning"
     rationale: "The end-of-turn triplet convention is adapted for plan-generation output from Addy's git workflow conventions."
     upstream_path: "skills/git-workflow-and-versioning"
-    last_reviewed_at: 2026-04-25
-    baseline_commit: "unknown"
-    license: "Repository license should be checked before copying code, assets, or substantial prose; this skill adapts the output convention only and does not copy upstream files."
+    last_reviewed_at: 2026-07-08
+    baseline_commit: "70b7506ce90e200cb47645ddb3f6b8e84fecc047"
+    license: "MIT license verified from upstream LICENSE on 2026-07-08; this skill adapts the output convention only and does not copy upstream files."
     baseline_hash: "not-applicable-no-copied-files"
   - id: shadcn-improve
     url: https://github.com/shadcn/improve/tree/main/skills/improve

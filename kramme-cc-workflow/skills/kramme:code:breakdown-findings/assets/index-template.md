@@ -1,6 +1,6 @@
 # PR Plan Index
 
-**Generated:** {{date}} **Source:** {{source file or description}} **Source type:** {{findings report / pre-clustered handoff}} **Planned at:** commit `{{short-sha}}` **Total scope:** {{N findings / N themes}} | **Plans generated:** {{M}} | **Scope status:** {{findings mode: X excluded; handoff mode: all themes included}} | **Rejection record:** `PR_PLAN_REJECTIONS.md`
+**Generated:** {{date}} **Sources:** {{source file(s) or description(s)}} **Source type:** {{findings report(s) / pre-clustered handoff}} **Planned at:** commit `{{short-sha}}` **Total scope:** {{N findings / N themes}} | **Plans generated:** {{M}} | **Scope status:** {{findings mode: X excluded; handoff mode: all themes included}} | **Rejection record:** `PR_PLAN_REJECTIONS.md`
 
 ---
 
@@ -12,7 +12,7 @@
 
 ## Executor Handoff Rules
 
-Every plan is written for an executor that has not seen the source report or this planning session. Before editing, the executor must run the plan's scoped drift check:
+Every plan is written for an executor that has not seen the source report(s) or this planning session. Before editing, the executor must run the plan's scoped drift check:
 
 ```bash
 git diff --stat {{short-sha}} -- <plan in-scope paths>

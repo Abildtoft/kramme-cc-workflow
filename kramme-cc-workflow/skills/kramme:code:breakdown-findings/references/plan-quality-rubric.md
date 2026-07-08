@@ -43,7 +43,7 @@ Use repo recon and current-state inspection before asking the user questions. If
 
 Use `kramme:discovery:interview` when at least one of these is true:
 
-- The plan's product outcome, non-goals, or success signal cannot be inferred from the findings source or repo context.
+- The plan's product outcome, non-goals, or success signal cannot be inferred from the findings source set or repo context.
 - Multiple plausible implementation paths have meaningfully different user or business tradeoffs.
 - The plan would otherwise contain a `MISSING REQUIREMENT:` that blocks implementation.
 - The plan touches user-visible UX, workflow semantics, policy, permissions, billing, data retention, rollout, or public API behavior and the intended outcome is unclear.
