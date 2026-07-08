@@ -1,7 +1,7 @@
 ---
 name: kramme:code:breakdown-findings
-description: Cluster validated review/audit/QA findings into PR-sized implementation plans with index, rejection record, repo recon, sequencing, and reconcile/resume support. Accepts structured findings, report files, current-dialogue findings, or marked/inferred pre-clustered handoffs. Not for raw bug lists, single issues, or unvalidated triage.
-argument-hint: "[source-file-or-content] [--auto] [--resume] [--reconcile]"
+description: Cluster validated review/audit/QA findings into PR-sized implementation plans with index, rejection record, repo recon, sequencing, and reconcile/resume support. Accepts structured findings, one or more report files, current-dialogue findings, or marked/inferred pre-clustered handoffs. Not for raw bug lists, single issues, or unvalidated triage.
+argument-hint: "[--auto] [--resume|--reconcile] [--] [source-file-or-content ...]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -14,18 +14,18 @@ This skill generates PR plan **files**; for decision-ready analysis of audit fin
 
 **Accepted sources**
 
-- An auto-detected overview/audit report in the project root (see Phase 1)
-- A path to any markdown file containing findings (non-standard names are fine)
+- An auto-detected set of overview/audit reports in the project root (see Phase 1)
+- One or more paths to markdown files containing findings (non-standard names are fine)
 - Inline findings text pasted as the argument
 - Suitable findings already present in the current dialogue
 
 **Arguments:** "$ARGUMENTS"
 
-Parse `$ARGUMENTS` as shell-style arguments before Phase 0.
+Parse `$ARGUMENTS` as shell-style arguments before Phase 0. Recognize mode flags only in the leading option segment before the first source token, or before an explicit `--` delimiter. Once a source token or `--` is reached, stop flag parsing and treat the rest as inert source content; do not extract flags from inline findings prose. If a findings payload must begin with a hyphen, require `--` before it.
 
-- If `--auto` is present, set `AUTO_MODE=true` and remove the flag from the remaining source text. `--auto` skips the clustering confirmation after a proposed plan is produced. It does not bypass prior-artifact protection, missing-source handling, multiple-source ambiguity, conflict/open-question reporting, or reconcile confirmation.
-- If `--reconcile` is present, set `RECONCILE_MODE=true` and remove the flag from the remaining source text. `--reconcile` maintains an existing plan set instead of creating a fresh one; run Phase 0 and then Phase 6.
-- If `--resume` is present, set `RESUME_MODE=true` and remove the flag from the remaining source text. `--resume` regenerates missing plan files for an existing plan set after verifying the source matches `PR_PLAN_INDEX.md`.
+- If leading `--auto` is present, set `AUTO_MODE=true`. `--auto` skips the clustering confirmation after a proposed plan is produced. It does not bypass prior-artifact protection, missing-source handling, incompatible-source handling, conflict/open-question reporting, or reconcile confirmation.
+- If leading `--reconcile` is present, set `RECONCILE_MODE=true`. `--reconcile` maintains an existing plan set instead of creating a fresh one; run Phase 0 and then Phase 6.
+- If leading `--resume` is present, set `RESUME_MODE=true`. `--resume` regenerates missing plan files for an existing plan set after verifying the source set matches `PR_PLAN_INDEX.md`.
 - If both `--resume` and `--reconcile` are present, stop and ask the user to choose one mode. Resume fills missing files from the original generation; reconcile classifies and refreshes an existing plan set.
 
 ## Hard Safety Rules
@@ -54,26 +54,33 @@ Before doing anything else, list any existing `PR_PLAN_*.md` files in the projec
   Re-running would risk silent overwrite of plans whose slugs match new themes, and would leave stale plans whose slugs do not match.
   Options:
     - cleanup — run `$kramme:workflow-artifacts:cleanup` to clear them, then re-run this skill
-    - resume — regenerate only missing plan files after confirming these artifacts came from the same source
+    - resume — regenerate only missing plan files after confirming these artifacts came from the same source set
     - reconcile — re-run this skill with `--reconcile` to classify drift, done/blocked status, and stale plans
   ```
-- On `--resume`: compare the resolved source description and, when available, file path against the source recorded in `PR_PLAN_INDEX.md`. If they do not match, stop before writing and report both sources. If all expected plan files already exist, write nothing and report that the plan set is complete. If files are missing, print a `RESUME:` block listing expected files, existing files, and files to generate. Generate only the missing plan files after confirmation; `AUTO_MODE=true` does not bypass this confirmation. Update `PR_PLAN_INDEX.md` or `PR_PLAN_REJECTIONS.md` only after a second explicit confirmation that names the exact metadata changes.
-- Do not delete, rename, or overwrite the files yourself.
+- On `--resume`: compare the resolved source set description and, when available, file paths against the source set recorded in `PR_PLAN_INDEX.md`. If they do not match, stop before writing and report both source sets. If all expected plan files already exist, write nothing and report that the plan set is complete. If files are missing, print a `RESUME:` block listing expected files, existing files, and files to generate. Generate only the missing plan files after confirmation; `AUTO_MODE=true` does not bypass this confirmation. Update `PR_PLAN_INDEX.md` or `PR_PLAN_REJECTIONS.md` only after a second explicit confirmation that names the exact metadata changes.
+- Do not delete or rename the files yourself. Do not overwrite existing plan artifacts outside the explicitly confirmed `--resume` metadata updates and `--reconcile` refreshes described below.
 
 ### Phase 1: Locate Findings
 
-1. Resolve the findings source from `$ARGUMENTS`:
-   - **Resolvable file path** (resolves on disk, any filename): read it as the source.
-   - **Probable file path that does not resolve**: if the remaining source is a single shell argument and that argument contains `/`, starts with `.`, `~`, or an absolute-path prefix, ends in a structured data extension such as `.md`, `.txt`, `.json`, `.yaml`, or `.yml`, or exactly matches a known auto-detect report filename from `references/auto-detect-sources.md`, stop and say: "Findings source path not found: {argument}. Provide the correct path, paste the findings text, or rerun with no arguments for auto-detection." Do not treat probable missing paths as inline findings text. Do not apply this missing-path rule to multi-line or prose findings text that cites file paths; treat that as inline findings text.
-   - **Non-empty, not a path**: treat the argument as inline findings text.
-   - **Empty**: auto-detect by checking all candidates in `references/auto-detect-sources.md`. If exactly one candidate exists, use it. If multiple candidates exist, list all matches and ask which one to use — process exactly one source per run.
-   - **Empty and nothing auto-detected**: inspect the existing dialogue for a suitable findings source before stopping. A suitable dialogue source is a recent, bounded set of review/audit/scan/QA findings with enough structure to extract description, location, severity or severity context, and suggested fix where available; or a pre-clustered handoff as defined below.
-     - If exactly one suitable findings set is present, treat that dialogue excerpt as inline findings and use `current dialogue` as the source description.
-     - If multiple suitable findings sets are present, list them briefly and ask which one to use — process exactly one source per run.
+1. Resolve the findings source set from `$ARGUMENTS`:
+   - **One or more resolvable file paths** (each remaining shell argument resolves on disk, any filename): read all of them as a single source set, preserving argument order. Assign stable source IDs in that order (`SRC-01`, `SRC-02`, ...).
+   - **Resolvable path(s) mixed with non-path prose**: stop and say: "Mixed source arguments are ambiguous: {arguments}. Provide only file paths, paste inline findings without path arguments, or save the inline findings to a file and pass all files together." Do not guess which words belong to inline findings.
+   - **Probable file path that does not resolve**: if any remaining source argument contains `/`, starts with `.`, `~`, or an absolute-path prefix, ends in a structured data extension such as `.md`, `.txt`, `.json`, `.yaml`, or `.yml`, or exactly matches a known auto-detect report filename from `references/auto-detect-sources.md`, stop and say: "Findings source path not found: {argument}. Provide the correct path, paste the findings text, or rerun with no arguments for auto-detection." Do not treat probable missing paths as inline findings text. Do not apply this missing-path rule to multi-line or prose findings text that cites file paths; treat that as inline findings text.
+   - **Non-empty, not a path set**: treat the remaining source text as one inline findings source. Use `inline findings` as the source description.
+   - **Empty**: auto-detect by checking all candidates in `references/auto-detect-sources.md`. If one or more candidates exist, use every matching findings-mode report as one source set in candidate order. This is the default multi-report workflow; for example, if `REFACTOR_OPPORTUNITIES_OVERVIEW.md`, `AGENT_NATIVE_AUDIT.md`, and `CODEBASE_WEAKNESS_REPORT.md` all exist, read all three together. If a matching candidate is a pre-clustered handoff, it cannot be combined with any other source; stop and ask the user to pass that handoff alone or provide a merged handoff.
+   - **Empty and nothing auto-detected**: inspect the existing dialogue for suitable findings sources before stopping. A suitable dialogue source is a recent, bounded set of review/audit/scan/QA findings with enough structure to extract description, location, severity or severity context, and suggested fix where available; or a pre-clustered handoff as defined below.
+     - If one suitable findings set is present, treat that dialogue excerpt as one inline source and use `current dialogue` as the source description.
+     - If multiple suitable findings sets are present and they are all findings-mode sources from the current request context, combine them as a source set and assign dialogue source IDs (`SRC-01`, `SRC-02`, ...). If they span unrelated tasks, older context, or include any pre-clustered handoff, list them briefly and ask which source or compatible set to use.
      - If the dialogue only contains vague issues, a single triage topic, or raw bug ideas without severity/location structure, do not treat it as a source.
-   - **Empty, nothing auto-detected, and no suitable dialogue findings**: stop and tell the user: "No findings source found. Provide a file path (any markdown file with findings will work), paste findings as the next message, keep a structured findings set in the dialogue, or run a report-producing skill first (for example `$kramme:pr:code-review`, `$kramme:code:copy-review`, `$kramme:qa`, or `$kramme:siw:spec-audit`)."
+   - **Empty, nothing auto-detected, and no suitable dialogue findings**: stop and tell the user: "No findings source found. Provide one or more file paths (any markdown files with findings will work), paste findings as the next message, keep a structured findings set in the dialogue, or run report-producing skills first (for example `$kramme:pr:code-review`, `$kramme:code:refactor-opportunities`, `$kramme:code:agent-readiness`, `$kramme:code:weakness-audit`, `$kramme:qa`, or `$kramme:siw:spec-audit`)."
 
-2. Parse the findings source into a normalized list. For each finding, extract:
+2. Validate source-set compatibility before parsing:
+   - Findings-mode reports can be combined freely.
+   - A pre-clustered handoff is exclusive. If any source is a pre-clustered handoff and the source set contains more than that one source, stop and ask for either a single handoff source or a new merged handoff that deliberately combines the themes.
+   - If two sources describe mutually exclusive scopes, base commits, or generated-at contexts in a way that would make the combined plan misleading, stop and report the conflict instead of silently blending them.
+
+3. Parse every findings-mode source into one normalized list. For each finding, extract:
+   - **Source reference** (`SRC-##` plus file/section/line where available)
    - **Description** of the issue (the full problem statement, not a reference ID)
    - **Location** (file paths, line ranges, modules)
    - **Severity** (critical / high / medium / low / suggestion -- normalize to these levels)
@@ -89,9 +96,11 @@ Before doing anything else, list any existing `PR_PLAN_*.md` files in the projec
 
    Prefer structured sections named `Breakdown-Ready Finding Data` or `Breakdown-Ready Action Data` when present. These sections are designed to be the highest-fidelity source for implementation planning. Use severity tables and summaries only to fill gaps.
 
-3. Count findings and report to the user before proceeding:
+   When the same finding appears in multiple sources, merge it into one normalized finding when the location and problem match. Preserve all source references, keep the strongest supported severity/impact, and keep the most conservative effort/risk/confidence values. If sources contradict each other, keep both positions in the normalized finding and surface a `CONFUSION:` open question during clustering.
+
+4. Count findings and report to the user before proceeding:
    ```
-   Found N findings from {source}. Proceeding to cluster.
+   Found N findings from M sources: {source set}. Proceeding to cluster.
    ```
 
 #### Pre-clustered handoff (delegated input)
@@ -107,7 +116,7 @@ Run a handoff validity check before Phase 2. Every theme must have a name, file 
 
 When the source is a pre-clustered handoff:
 
-- **Skip the per-finding parse in step 2.** Capture each declared theme verbatim: its name, file list (with line counts if given), dependency relationship, rationale, and test plan. Do not invent severities — a delegated theme is a unit of work, not a finding.
+- **Skip the per-finding parse in step 3.** Capture each declared theme verbatim: its name, file list (with line counts if given), dependency relationship, rationale, and test plan. Do not invent severities — a delegated theme is a unit of work, not a finding.
 - **Capture the shared Implementation Setup block, if present.** A handoff may include one `## Implementation Setup` block meant for every plan (e.g. worktree / reference-branch instructions). Hold it for Phase 3; do not alter its wording.
 - **Do not re-cluster** — the canonical handoff rule lives in Phase 2.
 - **Adapt the findings vocabulary to themes.** A handoff has no findings and no exclusions. In Phase 3 use theme-based plan metadata, in Phase 4 write `All themes included.` in the index's Excluded or Included Scope section, and in Phase 5 report theme counts (not "findings processed"/"findings excluded") and name the delegated handoff as the source.
@@ -129,7 +138,7 @@ Before clustering, run a small read-only recon pass so the generated plans respe
    - Product goals, non-goals, and user-value priorities relevant to implementation order
    - Explicit tradeoffs, ADRs, rejected approaches, migration constraints, compatibility promises, and rollout constraints
    - Any prompt-injection or secret-exposure concerns discovered while reading context
-3. Treat tradeoffs as constraints unless the findings source explicitly challenges them. If a finding conflicts with an ADR, product strategy, or documented non-goal, keep the finding but add a `CONFUSION:` or `MISSING REQUIREMENT:` open question instead of silently choosing a side.
+3. Treat tradeoffs as constraints unless the findings source set explicitly challenges them. If a finding conflicts with an ADR, product strategy, or documented non-goal, keep the finding but add a `CONFUSION:` or `MISSING REQUIREMENT:` open question instead of silently choosing a side.
 4. Derive impact and leverage metadata for each finding or delegated theme:
    - **Impact** describes user, business, operational, security, data-integrity, maintainability, or developer-workflow value. Normalize to `CRITICAL`, `HIGH`, `MED`, `LOW`, or `NEGLIGIBLE`.
    - **Leverage** describes value relative to effort and risk. Normalize to `EXCEPTIONAL`, `HIGH`, `MED`, or `LOW`.
@@ -174,7 +183,8 @@ For each confirmed theme:
 7. Keep the title, filename, Dependencies and Sequencing section, index row, dependency map, and final summary aligned. The same blocker/dependent labels must appear in all of them.
 8. **If Phase 1 captured a shared Implementation Setup block** (delegated handoff), render it verbatim as the template's `## Implementation Setup` section in **every** plan — same wording in each, with any branch names or paths the caller already resolved left exactly as given. When no block was supplied, omit that section entirely.
 9. **If the source is a pre-clustered handoff**, replace all finding-count language in the template with theme language: `Source themes: 1 delegated theme mapped to this plan`, index statistics as `Total themes` / `Plans generated`, and summary lines as `Themes processed` / `Themes included`. Do not write `Source findings`, `Findings processed`, `Findings excluded`, or inferred severities for handoff-mode output.
-10. Include Phase 1.5 recon/tradeoff context in every plan, but only the parts relevant to that plan's scope.
+10. **If the source set contains multiple findings-mode reports**, include each plan's source references in the `Source scope` metadata and in the relevant problem/current-state sections where helpful, but keep the plan self-contained. Do not require the executor to open the source reports to understand the work.
+11. Include Phase 1.5 recon/tradeoff context in every plan, but only the parts relevant to that plan's scope.
 
 #### Plan content requirements
 
@@ -186,7 +196,7 @@ Before writing final plan files or the index, read `references/plan-quality-rubr
 
 - Add the template's **Product / Quality Bar** section with concrete product, workflow, maintainer, or reviewer outcomes and the evidence required to prove improvement.
 - Revise any plan with weak product grounding, generic implementation steps, loose scope, missing reviewability rationale, or validation that does not address the real risk.
-- If the quality gate surfaces a blocking product or quality question, first try to answer it from the findings source, current-state code, and Phase 1.5 recon. If the answer is not discoverable and must come from a user or stakeholder, the plan may use `$kramme:discovery:interview` during formulation. Create a concise discovery brief with the theme, current assumptions, and exact decisions needed; ask the user whether to run discovery unless they already requested it for this run. Incorporate discovery answers into the plan, or keep the plan blocked with `MISSING REQUIREMENT:` if discovery is declined, unavailable, or inconclusive.
+- If the quality gate surfaces a blocking product or quality question, first try to answer it from the findings source set, current-state code, and Phase 1.5 recon. If the answer is not discoverable and must come from a user or stakeholder, the plan may use `$kramme:discovery:interview` during formulation. Create a concise discovery brief with the theme, current assumptions, and exact decisions needed; ask the user whether to run discovery unless they already requested it for this run. Incorporate discovery answers into the plan, or keep the plan blocked with `MISSING REQUIREMENT:` if discovery is declined, unavailable, or inconclusive.
 - Do not use discovery for implementation details the executor can safely decide, questions the codebase can answer, or mechanical fixes whose product/quality outcome is already explicit in the finding.
 - Stop instead of writing final artifacts if a plan still fails the rubric's stop conditions after revision.
 
@@ -202,7 +212,7 @@ Before writing final plan files or the index, read `references/plan-quality-rubr
    - **Dependency map**: which labeled plans depend on which labeled blockers, and which plans are independent.
    - **Excluded or included scope**: for findings-mode input, list any findings not included in any plan with the reason. Emit each excluded entry on its own line prefixed with `NOTICED BUT NOT TOUCHING:` so downstream tooling can parse it reliably. If there are no exclusions, write `All findings were included in plans.` with no marker line. For handoff-mode input, write `All themes included.`
    - **Persistent rejection record**: name `PR_PLAN_REJECTIONS.md` as the durable record for excluded, duplicate, resolved, contradictory, out-of-scope, or non-actionable findings.
-   - **Source**: the findings source file or description used as input.
+   - **Sources**: the findings source set used as input. For file sources, list every path in source-ID order. For dialogue or inline sources, list the stable source descriptions.
    - **Statistics**: total findings, plans generated, findings per plan, excluded count. For a pre-clustered handoff, use total themes, plans generated, themes per plan, and included theme count instead.
 4. Write `PR_PLAN_REJECTIONS.md` in the project root:
    - Include one stable row for every excluded finding and every plan candidate deliberately rejected during clustering.
@@ -217,54 +227,9 @@ Read `references/summary-templates.md` and report to the user with the findings-
 
 ### Phase 6: Reconcile Existing Plan Set
 
-Run this phase only when `RECONCILE_MODE=true`. Reconcile mode maintains planning artifacts; it does not create a new plan set from scratch and it never edits source code.
+Run this phase only when `RECONCILE_MODE=true`. Reconcile mode maintains an existing plan set; it does not create a new plan set from scratch and it never edits source code.
 
-1. Load `PR_PLAN_INDEX.md`, all `PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md` files referenced by the index, and `PR_PLAN_REJECTIONS.md` if it exists.
-2. Reconstruct the plan graph:
-   - Execution label, filename, title, impact, leverage, status, blockers, dependents, in-scope paths, planned-at SHA, and drift-check command for every plan.
-   - Rejection IDs, source references, reasons, statuses, and reconsideration triggers for every rejected/excluded item.
-3. Classify each plan:
-   - `READY` — plan exists, dependencies are satisfied or independent, and scoped drift check is clean.
-   - `BLOCKED` — a prerequisite plan is not marked `DONE`, a required answer is missing, or a `MISSING REQUIREMENT:` remains unresolved.
-   - `DRIFTED` — the scoped diff/status drift check shows in-scope changes after the plan's `Planned at` SHA.
-   - `MISSING` — the index references a plan file that is absent.
-   - `STALE` — the live code no longer matches the plan's **Current State** excerpts, the verification commands changed, or recon/tradeoff context has materially changed.
-   - `DONE` — the index or plan is explicitly marked `DONE`, and no obvious drift contradicts that status. Do not infer `DONE` solely because source files changed.
-   - `SUPERSEDED` — the index, rejection record, or user explicitly marks the plan as replaced by another plan/PR.
-   Status lifecycle:
-   - The index `Status` column is the source of truth. If a plan header has a conflicting status, preserve the index value and add a reconcile note describing the mismatch.
-   - Valid active statuses are `TODO`, `READY`, `BLOCKED`, `DRIFTED`, and `STALE`. `MISSING` is valid only in `PR_PLAN_INDEX.md` rows because an absent plan file has no header to update. Terminal statuses are `DONE` and `SUPERSEDED`.
-   - Reconcile may move `TODO` or `READY` to `BLOCKED`, `DRIFTED`, or `STALE` based on evidence. Reconcile must not mark a plan `DONE` unless the index, plan, or user already explicitly says it is done and validation does not contradict that claim.
-   - Executors, not this planning skill, mark implementation completion. They may mark `DONE` only after the plan's completion criteria and verification checks have passed.
-   - A terminal `DONE` or `SUPERSEDED` plan stays terminal unless the user explicitly reopens it or reconcile finds drift that contradicts the terminal state.
-4. Reconcile rejection records:
-   - Keep stable rejection IDs. Do not renumber.
-   - Mark rejected items as `RESOLVED_OUTSIDE_PLAN` only when the source finding is clearly no longer true.
-   - Mark rejected items as `RECONSIDER` when their reconsideration trigger is met, their source conflict is resolved, or new recon/tradeoff context changes the decision.
-   - Keep secret-value redaction rules intact.
-5. Print a `RECONCILE:` status report before writing any updates:
-   ```
-   RECONCILE: Plan status
-     READY: W01A, W01B
-     BLOCKED: W02A (blocked by W01A not DONE)
-     DRIFTED: W03A (src/api/orders.ts changed since PLANNED_AT_SHA)
-     MISSING: W04A (PR_PLAN_W04A_...)
-     RECONSIDERED REJECTIONS: REJECTED-002
-
-   Proposed artifact updates:
-     - Update PR_PLAN_INDEX.md statuses and drift notes
-     - Refresh PR_PLAN_W03A_...md current-state excerpts
-     - Update PR_PLAN_REJECTIONS.md status for REJECTED-002
-
-   Proceed? (yes / adjust)
-   ```
-6. Wait for confirmation. `AUTO_MODE=true` does not bypass reconcile confirmation because reconcile may rewrite existing planning artifacts.
-7. When confirmed, update only planning artifacts:
-   - Update `PR_PLAN_INDEX.md` with status, drift, dependency, impact/leverage, and recommended-order changes.
-   - Refresh only `DRIFTED` or `STALE` plan files whose current-state evidence can be safely re-read and whose scope remains valid.
-   - Keep `DONE` and `SUPERSEDED` plan files untouched unless the user explicitly asks to annotate them.
-   - Update `PR_PLAN_REJECTIONS.md` without renumbering existing rejection IDs.
-8. Stop instead of updating if recon reveals a source/plan conflict that would require re-clustering or changing theme boundaries. Report the conflict and recommend either cleanup plus a fresh run, or a user-confirmed resume/recluster.
+Read `references/reconcile-workflow.md` and follow it exactly. Always print a `RECONCILE:` status report and wait for confirmation before updating artifacts. `AUTO_MODE=true` does not bypass reconcile confirmation because reconcile may rewrite existing planning artifacts. Update only `PR_PLAN_INDEX.md`, affected non-terminal plan files, and `PR_PLAN_REJECTIONS.md`; stop if recon reveals a source/plan conflict that would require re-clustering or changing theme boundaries.
 
 ## Edge Cases
 
@@ -273,6 +238,7 @@ Run this phase only when `RECONCILE_MODE=true`. Reconcile mode maintains plannin
 - **No actionable findings**: if all findings are duplicates, resolved, or not actionable, write no PR implementation plan files. Write `PR_PLAN_INDEX.md` and `PR_PLAN_REJECTIONS.md` only if doing so records the excluded findings clearly and the user has confirmed artifact creation; otherwise report the rejection set and stop.
 - **Large input (30+ findings)**: cluster aggressively. Aim for 5-10 themes maximum. Split oversized themes into a series with sequencing notes.
 - **Conflicting findings**: do not pick a side. Flag the conflict as an open question and present both positions.
+- **Multiple reports**: combine compatible findings-mode reports into one source set, deduplicate by problem and location, preserve all source references, and cluster across reports when shared root cause or affected area makes one PR-sized theme. Do not combine a pre-clustered handoff with any other source.
 - **Ambiguous severity**: infer from context (security = critical, style = low). State the inference in the plan.
 - **Ambiguous impact/leverage**: infer conservatively, prefix with `UNVERIFIED:`, and include what evidence would change the priority.
 - **Pre-clustered handoff**: follow the canonical rule in Phase 2; skip severity inference.
@@ -284,7 +250,7 @@ Run this phase only when `RECONCILE_MODE=true`. Reconcile mode maintains plannin
 - **Actionable specificity.** "Improve error handling" is not a plan step. "Add try-catch to `fetchUser()` in `src/api/users.ts:45` that catches `NetworkError` and returns a typed error result" is.
 - **Conservative sizing.** No theme should land at XL. When in doubt, size down — a focused M theme (200-line PR) is better than a stretched L that inches toward an 800-line sprawl.
 - **Dependency-readable naming.** Plan titles, filenames, index rows, and the final summary must make sequencing obvious without reading the full plan. Use `W01A`/`W01B` for parallel first-wave plans, higher wave numbers for blocked follow-up plans, and explicit `blocked by`/`blocks` labels wherever a dependency exists.
-- **Respect the source.** Do not add findings that were not in the input. Do not reinterpret findings. If a finding is unclear, flag it as an open question.
+- **Respect the source set.** Do not add findings that were not in the input. Do not reinterpret findings. If a finding is unclear, flag it as an open question. When multiple reports describe the same issue, merge provenance rather than duplicating work.
 - **Respect local tradeoffs.** Treat repo decisions, ADRs, strategy docs, and non-goals as planning constraints. If the findings conflict with them, surface the conflict; do not quietly override the local decision.
 - **Prioritize by leverage after dependencies.** Dependency blockers come first. Among independent work, prefer high leverage and high impact before cosmetic or low-confidence work.
 - **Persist rejected work.** Every duplicate, resolved, non-actionable, out-of-scope, contradicted, or deliberately deferred finding needs a stable rejection record so future runs do not rediscover the same work without context.

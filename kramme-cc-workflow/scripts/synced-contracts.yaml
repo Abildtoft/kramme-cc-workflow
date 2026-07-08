@@ -771,7 +771,7 @@
       "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md",
       "frontmatter": {
         "name": "kramme:code:breakdown-findings",
-        "argument-hint": "[source-file-or-content] [--auto] [--resume] [--reconcile]",
+        "argument-hint": "[--auto] [--resume|--reconcile] [--] [source-file-or-content ...]",
         "disable-model-invocation": "true",
         "user-invocable": "true"
       },

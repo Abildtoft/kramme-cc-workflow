@@ -10,6 +10,7 @@ These are stop signs, not exceptions:
 - "This theme is slightly XL but the engineer will manage." XL means split into a series.
 - "The handoff gave us this theme, so size no longer matters." Delegated themes must stay intact, but oversized or under-specified handoffs still need confirmation or correction before plan generation.
 - "The argument looks like a missing report path, but it can be inline text." Probable missing paths must stop with a clear missing-source message.
+- "Multiple auto-detected reports are ambiguous, so I should ask which one to use." Compatible findings-mode reports are intentionally combined into one source set.
 - "Conflicting findings can both be addressed together." Surface the conflict as an open question.
 - "Recon is optional because the findings already say what to do." The executor still needs repo conventions, tradeoffs, and verification commands.
 - "The plan is technically correct, so product context is optional." Every plan needs a concrete product, workflow, maintainer, reviewer, security, reliability, or data-integrity outcome.
@@ -33,6 +34,8 @@ Stop and correct the generation pass if any of these appear:
 - An inferred handoff skips user confirmation, or a marked handoff with oversized/fragile themes proceeds without explicit size confirmation.
 - A delegated theme lacks a name, bounded scope/file list, dependency relationship, rationale, or verification plan.
 - A missing probable source path is treated as inline findings text.
+- Multiple compatible findings-mode reports are present but only one is processed.
+- Duplicate findings from multiple sources are emitted as duplicate plan work instead of one merged finding with multiple `SRC-##` references.
 - A generated plan lacks a `Planned at` commit, scoped drift check, or explicit expected drift result.
 - A generated plan lacks **Repo Context and Tradeoffs** with relevant recon notes.
 - A generated plan lacks Impact and Leverage metadata and rationale.
@@ -59,6 +62,7 @@ Verify:
 - Every blocked plan names blocker labels in the title, index row, dependency map, and Dependencies and Sequencing section.
 - Every same-wave group is marked as parallel in the index and summary.
 - Every conflict between findings is surfaced as an open question.
+- Every generated artifact lists the complete source set, and every merged finding preserves all relevant `SRC-##` references.
 - Every plan has all template sections populated with concrete content and no `N/A`.
 - Every plan includes a `Planned at` commit SHA or a clear `not-a-git-repo` caveat with a `MISSING REQUIREMENT:` concern in the final summary.
 - Every plan's drift-check paths match its **In Scope** file list.

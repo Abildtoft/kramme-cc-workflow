@@ -7,8 +7,9 @@ Load this during Phase 5 and use the matching summary shape verbatim.
 ```text
 PR Plan Generation Complete
 
-Source: {source file or description}
+Sources: {source file(s) or description(s)}
 Findings processed: N
+Sources processed: S
 Plans generated: M
 Findings excluded: X
 
@@ -20,7 +21,7 @@ PLANS GENERATED:
   ...
 
 THINGS I DIDN'T TOUCH:
-  - The source findings file (read-only for this skill)
+  - The source findings file(s) or dialogue excerpt(s) (read-only for this skill)
   - Findings listed under "Excluded" in the index and `PR_PLAN_REJECTIONS.md`
 
 POTENTIAL CONCERNS:

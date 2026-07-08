@@ -1,6 +1,6 @@
 # PR Plan Rejections
 
-**Generated:** {{date}} **Source:** {{source file or description}} **Source type:** {{findings report / pre-clustered handoff}} **Planned at:** commit `{{short-sha}}`
+**Generated:** {{date}} **Sources:** {{source file(s) or description(s)}} **Source type:** {{findings report(s) / pre-clustered handoff}} **Planned at:** commit `{{short-sha}}`
 
 This file is the persistent record for findings or plan candidates deliberately left out of the generated PR plans. Keep IDs stable during reconcile; append new records instead of renumbering old ones.
 
@@ -10,7 +10,7 @@ This file is the persistent record for findings or plan candidates deliberately 
 
 | ID | Status | Source reference | Description | Reason | Evidence | Reconsider when |
 | --- | --- | --- | --- | --- | --- | --- |
-| `REJECTED-001` | ACTIVE | {{source path / section / line}} | NOTICED BUT NOT TOUCHING: {{short description}} | {{duplicate / already resolved / not actionable / out of scope / contradicted / deferred}} | {{evidence and relevant file:line, redacted if secret-related}} | {{condition that should reopen this item, or "Never unless source finding changes."}} |
+| `REJECTED-001` | ACTIVE | {{SRC-## source path / section / line}} | NOTICED BUT NOT TOUCHING: {{short description}} | {{duplicate / already resolved / not actionable / out of scope / contradicted / deferred}} | {{evidence and relevant file:line, redacted if secret-related}} | {{condition that should reopen this item, or "Never unless source finding changes."}} |
 
 ## Reconcile Notes
 

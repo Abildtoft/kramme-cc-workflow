@@ -1,6 +1,6 @@
 # PR Plan {{execution-label}}: {{theme-name}} ({{parallel in W## / blocked by W##L / blocks W##L}})
 
-**File:** `PR_PLAN_{{EXECUTION_LABEL}}_{{SLUG}}.md` **Status:** TODO **Execution label:** `{{W##L}}` **Parallel group:** {{Wave W##; name sibling labels that can run in parallel, or "None - only plan in wave."}} **Blocked by:** {{Execution labels and content of prerequisite plans, or "None."}} **Blocks:** {{Execution labels and content of dependent plans, or "None."}} **Planned at:** commit `{{short-sha}}`, {{date}} **Source scope:** {{findings mode: count findings clustered into this theme; handoff mode: 1 delegated theme mapped to this plan}} **Estimated scope:** {{small / medium / large}} PR **Risk:** {{LOW / MED / HIGH}} **Impact:** {{CRITICAL / HIGH / MED / LOW / NEGLIGIBLE, with UNVERIFIED: prefix if inferred}} **Leverage:** {{EXCEPTIONAL / HIGH / MED / LOW, with UNVERIFIED: prefix if inferred}}
+**File:** `PR_PLAN_{{EXECUTION_LABEL}}_{{SLUG}}.md` **Status:** TODO **Execution label:** `{{W##L}}` **Parallel group:** {{Wave W##; name sibling labels that can run in parallel, or "None - only plan in wave."}} **Blocked by:** {{Execution labels and content of prerequisite plans, or "None."}} **Blocks:** {{Execution labels and content of dependent plans, or "None."}} **Planned at:** commit `{{short-sha}}`, {{date}} **Source scope:** {{findings mode: count findings clustered into this theme plus SRC-## references; handoff mode: 1 delegated theme mapped to this plan}} **Estimated scope:** {{small / medium / large}} PR **Risk:** {{LOW / MED / HIGH}} **Impact:** {{CRITICAL / HIGH / MED / LOW / NEGLIGIBLE, with UNVERIFIED: prefix if inferred}} **Leverage:** {{EXCEPTIONAL / HIGH / MED / LOW, with UNVERIFIED: prefix if inferred}}
 
 ---
 
@@ -19,7 +19,7 @@ Expected result: both commands produce no output, confirming no committed, stage
 
 ## Problem Statement
 
-{{Restate the full problem. Do not reference any earlier report, summary, or finding number. An engineer reading only this document must understand the issue completely.}}
+{{Restate the full problem. Do not reference any earlier report, summary, or finding number. An engineer reading only this document must understand the issue completely. Source IDs may be included as provenance in parentheses only after the problem is fully explained.}}
 
 ## Repo Context and Tradeoffs
 
@@ -49,7 +49,7 @@ Expected result: both commands produce no output, confirming no committed, stage
 
 ## Current State
 
-{{Inline the facts the executor needs. Include relevant files, their roles, and short current-code excerpts with file:line markers. If a source finding referenced a location, verify and quote/summarize the live code yourself before writing the plan. Do not write "see the audit" or "as described in the report." If the current state involves a secret, cite only the file:line and secret type; never include the value.}}
+{{Inline the facts the executor needs. Include relevant files, their roles, and short current-code excerpts with file:line markers. If a source finding referenced a location, verify and quote/summarize the live code yourself before writing the plan. Preserve source IDs such as SRC-01/SRC-02 where they help trace merged findings, but do not write "see the audit" or "as described in the report." If the current state involves a secret, cite only the file:line and secret type; never include the value.}}
 
 Example shape:
 
