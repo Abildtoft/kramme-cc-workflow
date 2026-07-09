@@ -8,6 +8,6 @@ sources:
   - id: pocock-to-tickets
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/to-tickets/SKILL.md
     title: "Matt Pocock skills - to-tickets"
-    rationale: "The tracer-bullet vertical-slice rule, explicit blocking edges, and frontier-based issue sequencing are adapted from this source; the local HITL/AUTO mode tag preserves earlier Pocock HITL/AFK lineage."
+    rationale: "The tracer-bullet vertical-slice rule, wide-refactor expand-contract exception, explicit blocking edges, and frontier-based issue sequencing are adapted from this source; the local HITL/AUTO mode tag preserves earlier Pocock HITL/AFK lineage."
     last_reviewed_at: 2026-07-09
     baseline_hash: "sha256:918bdefab9313100cb1f7ccb412e2a773fe2f2801dd20d44f6b2acf7a42ca456"

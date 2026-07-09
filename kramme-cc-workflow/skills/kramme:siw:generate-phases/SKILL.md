@@ -270,13 +270,14 @@ Tag each task during decomposition. **Default to `AUTO`**; reserve `HITL` for ta
 
 Read sizing grammar, break-down triggers, and the context-appropriate slicing rule from `references/task-sizing.md` and apply them during decomposition. Every task gets an explicit size (XS/S/M/L); any task that hits a break-down trigger — especially one that bundles multiple independently reviewable outcomes — splits before leaving this step.
 
-**Slicing shape (context-aware — load-bearing):** apply the vertical-vs-horizontal rule from `references/task-sizing.md` to each task in the chosen Work Context. Each task must leave the smallest reviewable end-to-end outcome for its context.
+**Slicing shape (context-aware — load-bearing):** apply the vertical-vs-horizontal rule and wide-refactor exception from `references/task-sizing.md` to each task in the chosen Work Context. Each task must leave the smallest reviewable end-to-end outcome for its context.
 
 **Identify dependencies:**
 
 - Which tasks block other tasks within the same phase?
 - Which phases depend on completing previous phases?
 - Does a prefactoring task need to block later feature or migration tasks?
+- Does a wide-refactor sequence need explicit expand, migrate, and contract blockers?
 
 ### 3.3 Generate Phase Plan Structure
 
@@ -309,7 +310,7 @@ Before running the review pass, read `references/breakdown-review-prompt.md`. It
 
 **Incorporate feedback:** Update the phase plan based on subagent suggestions.
 
-**Loopback gate (max 3 iterations):** If the review pass reports any XL task, any context-inappropriate horizontal / over-bundled slice, any missing prefactoring-first split where prep work is necessary, or any Mode-coverage issue per criterion 9 (unlabeled task, HITL-without-reason, or HITL whose reason is too weak to justify it), re-run Phase 3.2 decomposition and re-run the review pass. Only proceed to Phase 5 once the review confirms zero XL tasks, zero slicing-shape issues, no required hidden prefactoring, and complete, correctly-defaulted Mode coverage.
+**Loopback gate (max 3 iterations):** If the review pass reports any XL task, any context-inappropriate horizontal / over-bundled slice, any wide-refactor sequencing error, any missing prefactoring-first split where prep work is necessary, or any Mode-coverage issue per criterion 9 (unlabeled task, HITL-without-reason, or HITL whose reason is too weak to justify it), re-run Phase 3.2 decomposition and re-run the review pass. Only proceed to Phase 5 once the review confirms zero XL tasks, zero slicing-shape issues, no required hidden prefactoring, and complete, correctly-defaulted Mode coverage.
 
 If the gate is still failing after **3 review passes**, stop looping. Surface the remaining flagged items to the user as `POTENTIAL CONCERNS` and use AskUserQuestion to choose: "Proceed to Phase 5 with remaining concerns" / "Abort and let me edit the spec first". Do not loop a fourth time.
 
