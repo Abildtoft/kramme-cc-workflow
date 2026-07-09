@@ -281,6 +281,7 @@ Product critique and design-direction skills.
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
 | `/kramme:product:design-critic` | User, Auto | `[file-path, screenshot, URL, or product question]` | (experimental) Sharpen product design judgment for software UI/UX, interaction flows, jobs-to-be-done, hierarchy, trust, governance surfacing, and competitor-informed critique. Use when critiquing or shaping a product surface, card, panel, workflow, chat experience, or design strategy instead of merely suggesting visual polish. |
+| `/kramme:prototype` | User | `[design question or prototype goal]` | Builds a clearly throwaway logic/state or UI prototype to answer one design question before implementation hardens. Use when the user wants to sanity-check a state model, data shape, API surface, page layout, component direction, or interaction idea with disposable code. Not for production implementation, polished demos, visual diff reports, permanent routes, or broad design-system work. |
 
 #### Code Quality & Review
 
