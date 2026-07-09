@@ -1,0 +1,7 @@
+sources:
+  - id: pocock-research
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/research/SKILL.md
+    title: "Matt Pocock skills - research"
+    rationale: "The primary-source research primitive, cited Markdown artifact requirement, and model-invoked reading-legwork trigger are adapted from this source."
+    last_reviewed_at: 2026-07-09
+    baseline_hash: "sha256:af378829f015775a3bcd65ff466826722e99359017ae6bae227ca4c9bd14049c"
