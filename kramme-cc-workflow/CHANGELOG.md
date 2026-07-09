@@ -8,6 +8,18 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 ## Unreleased
 
+## [0.67.0] - 2026-07-08
+
+### Added
+- Support multi-source planning (#652)
+
+### Changed
+- Tighten manual finding handling (#651)
+- Record Codex usage decision (#649)
+- Add usage portrait (#648)
+- Record audience model (#647)
+- Record skill quality QA regime (#646)
+
 ## [0.66.0] - 2026-07-06
 
 ### Added
@@ -597,6 +609,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - Preserve skill resources in conversion (#222)
 
+[0.67.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.66.0...v0.67.0
 [0.66.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.65.0...v0.66.0
 [0.65.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.64.0...v0.65.0
 [0.64.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.63.0...v0.64.0
