@@ -1,0 +1,7 @@
+sources:
+  - id: pocock-prototype
+    url: https://github.com/mattpocock/skills/tree/main/skills/engineering/prototype
+    title: "Matt Pocock skills - prototype"
+    rationale: "The throwaway prototype lifecycle, logic/UI branch split, state visibility rule, and delete-or-absorb cleanup requirement are adapted from this source."
+    last_reviewed_at: 2026-07-09
+    baseline_hash: ""
