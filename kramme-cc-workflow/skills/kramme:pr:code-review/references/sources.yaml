@@ -11,6 +11,12 @@ sources:
     rationale: "The uppercase output marker convention for PR review summaries follows Addy's git workflow conventions."
     last_reviewed_at: 2026-06-22
     baseline_hash: "sha256:f1bd1cf32992fc3751c2563e2551add75ca0206048d4dc84dfed60627d1d8bab"
+  - id: pocock-code-review
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/code-review/SKILL.md
+    title: "Matt Pocock skills - code-review"
+    rationale: "The advisory Fowler smell baseline for code/refactor/simplify PR review dimensions is adapted from this source's Standards-axis smell baseline."
+    last_reviewed_at: 2026-07-09
+    baseline_hash: "sha256:6a65cc61114f96db07ec41e3920e67c9c5bf70dd6e0901eb9460ebcb2bdc209f"
   - id: compound-ce-code-review
     url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-code-review
     title: "EveryInc compound-engineering-plugin - ce-code-review"

@@ -200,6 +200,8 @@ PY
 
    Instruct each spawned reviewer to label findings with the output markers documented in `references/review-discipline.md` (`UNVERIFIED`, `NOTICED BUT NOT TOUCHING`, `CONFUSION`, `MISSING REQUIREMENT`) so the aggregated report is parseable.
 
+   If any of `code`, `refactor`, or `simplify` is active, read `references/fowler-smell-baseline.md` once and pass it only to the corresponding `kramme:code-reviewer` and/or `kramme:code-simplifier` reviewers as advisory vocabulary after documented repo standards, the Codebase Calibration Rule, and concrete diff evidence. Each smell finding must name the smell, cite the changed location, explain why it matters in this diff, and recommend the smallest local fix; do not report smells as hard violations, duplicate tooling-enforced issues, or promote optional cleanup unless it creates concrete blocking impact under the action-class rules.
+
    If `lean` activated `kramme:lean-reviewer`, instruct it to operate as a deletion-focused reviewer:
    - Do not edit files.
    - Search for existing helpers, components, hooks, scripts, framework features, standard-library APIs, native platform features, and installed dependencies before recommending newly owned code.
@@ -211,6 +213,7 @@ PY
    - Do not edit files.
    - Trace the relevant call stack or data flow before making line-level findings when the behavior is non-trivial.
    - Search nearby and sibling code before judging new helpers, components, hooks, file placement, naming, result/error/loading patterns, styling primitives, or copy patterns.
+   - Use the smell baseline as a shared vocabulary for refactor/simplify findings, but only when it sharpens a concrete changed-code concern instead of expanding the review into a broad cleanup mandate.
    - Prioritize reuse, composition, codebase consistency, and proportional cleanup: duplicated existing flows, grab-bag modules, parameter sprawl, callback/prop plumbing, one-off helpers or exported types, product concepts leaking backing-entity distinctions through intermediate components, and unrelated diff churn.
    - For each finding, include the existing pattern or code that should be reused when found, why the current change does not fit, and the minimal recommended fix.
    - If a refactor/simplify finding could collide with a correctness, security, error-handling, or test finding, label it `COLLIDES WITH CORRECTNESS/SECURITY`, keep it advisory, and state that the higher-priority finding must be resolved first.
