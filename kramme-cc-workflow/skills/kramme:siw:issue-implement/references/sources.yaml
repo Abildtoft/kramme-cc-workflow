@@ -1,7 +1,7 @@
 sources:
-  - id: pocock-to-issues
-    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/to-issues/SKILL.md
-    title: "Matt Pocock skills - to-issues"
-    rationale: "The HITL/AUTO issue-mode gate and autonomous-agent readiness checks are adapted from this source's HITL/AFK slice classification. Reviewed against upstream commit d75217795ce77e7aa65898d6d4056263521ced22."
-    last_reviewed_at: 2026-06-10
-    baseline_hash: "sha256:0e6a2973fa5bdf32570227c578f7e474d945dd9281615d31439664c3ef016fce"
+  - id: pocock-to-tickets
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/to-tickets/SKILL.md
+    title: "Matt Pocock skills - to-tickets"
+    rationale: "The HITL/AUTO implementation gates, blocker-aware team-mode batching, and autonomous-agent readiness checks are adapted from this source's agent-grabbable ticket workflow, frontier sequencing, and earlier HITL/AFK lineage."
+    last_reviewed_at: 2026-07-09
+    baseline_hash: "sha256:918bdefab9313100cb1f7ccb412e2a773fe2f2801dd20d44f6b2acf7a42ca456"
