@@ -62,6 +62,7 @@ Dig deep: do not accept vague answers; push for concrete impact.
 - Are there dependencies or blocking issues?
 - What existing patterns should be followed?
 - Are there technical constraints?
+- Is this a wide mechanical refactor, such as a shared rename or type/contract replacement, where expand-contract sequencing is safer than one normal issue?
 
 Leverage exploration findings by presenting discovered patterns as options and highlighting related code.
 
