@@ -24,7 +24,7 @@ Every active finding must include these fields before it is posted:
 | Finding ID | `CR-001`, `CR-002`, ... | Gives downstream workflows a stable source identifier for handoffs and resolution summaries. |
 | Severity | Critical, Important, Suggestion, FYI | Describes merge impact. Use the severity prefix grammar below. |
 | Location | `path/to/file:line`, `review-scope`, or `PR description` | Lets downstream workflows distinguish auto-fixable code findings from manual/process findings. |
-| Confidence | `0-100` | States how directly the reviewer traced the issue. During the transition, map reviewer tiers as `high=90`, `medium=60`, `low=30`. |
+| Confidence | `0-100` | States how directly the reviewer traced the issue. During the transition, map reviewer tiers as `high=80`, `medium=60`, `low=30`. |
 | Action class | `gated_auto`, `manual`, `advisory` | Separates urgency from safe ownership. |
 | Owner | resolver, author, maintainer, reviewer, unknown | Names who can act next. |
 | Evidence | concrete trace, location, reproduction, failed expectation, or `UNVERIFIED` reason | Prevents unsupported findings from becoming gatekeeping. |
@@ -51,11 +51,23 @@ When `kramme:removal-planner` flags removable code, emit Addy's ask-shape verbat
 
 > `DEAD CODE IDENTIFIED: [comma-separated list]. Safe to remove these?`
 
-This applies whether the finding lands in Critical, Important, or Suggestions.
+This applies whether the finding lands in Critical, Important, or Suggestions — the ask shape is a display convention that keeps every deletion visible in the report, independent of action class. For a high-confidence (`gated_auto`) dead-code finding, the question is retained only for visibility: `/kramme:pr:resolve-review` treats it as pre-approved and does not wait for an answer. The interrogative wording acts as an approval gate only for low-confidence (`manual`) findings.
+
+### High-confidence dead code is auto-removable
+
+Only **low-confidence** dead-code findings require the author's or maintainer's answer before deletion. A dead-code finding is **high-confidence** when all of these hold:
+
+- `Confidence` is at least 70.
+- The reviewer traced every reference and callsite (including dynamic imports, reflection, string-based config references, and external/public-API consumers) and found none remaining — the `kramme:removal-planner` **Safe to Remove Now** tier, not **Requires Investigation**.
+- The finding carries no `UNVERIFIED` marker, and removal is a mechanical deletion with an obvious, local fix path.
+
+A high-confidence dead-code finding is `gated_auto` (or, in Suggestions, passes the safe-advisory test): `/kramme:pr:resolve-review` may delete it without a separate approval. A dead-code finding that misses any bar above is **low-confidence** and stays `manual` with the `dead-code approval` blocker until the ask is answered.
+
+Because `high` maps to 80, an auto-removable dead-code finding usually sits in the 60-89 confidence band rather than 90-100, and that is intended. The bands under **Confidence and merge rules** below score how fully a finding's *runtime behavior* was traced; dead-code removal safety instead turns on *static reference completeness* — no remaining references anywhere. A removal can be fully traced against every reference yet still carry residual dynamic-reference risk, so a complete reference trace at `Confidence` at least 70 — not 90 — is the intended auto-removal bar here.
 
 ## Action classes
 
-- **`gated_auto`** — Code-backed Critical or Important finding with a concrete file/line, an unambiguous fix direction, and enough confidence for `/kramme:pr:resolve-review` to attempt it. Do not use this for PR-description drift, product decisions, missing requirements, dead-code removals awaiting approval, or broad process issues.
+- **`gated_auto`** — Code-backed Critical or Important finding with a concrete file/line, an unambiguous fix direction, and enough confidence for `/kramme:pr:resolve-review` to attempt it. Do not use this for PR-description drift, product decisions, missing requirements, low-confidence dead-code removals still awaiting approval (see **High-confidence dead code is auto-removable** above), or broad process issues.
 - **`manual`** — The finding needs a human decision before a fix is safe, for one of the reasons in the manual blocker tests below. Manual findings may still block merge when impact is high, but they must name the manual blocker and next human decision. `manual` is the exception, not the safe default: "a human should look at this" or "the fix touches important code" is not a blocker.
 - **`advisory`** — Optional polish, FYI, low-confidence observation, or improvement idea. Advisory findings do not block merge and are not counted as auto-resolution candidates; `/kramme:pr:resolve-review` applies its own safe-advisory test when deciding whether to pick one up.
 
@@ -78,9 +90,9 @@ Keep a Critical or Important finding as `manual` only when at least one blocker 
 - **Cross-team/external ownership** — the fix needs cross-team ownership, external-system access, credentials, or human-only verification before implementation.
 - **Unresolved contradiction** — between reviewers or code paths.
 - **Incomplete trace/`UNVERIFIED`** — only after the reviewer attempted to complete the trace and verification requires resources the resolver also lacks (runtime-only behavior, external systems, production data). A merely skipped trace is not a blocker; complete it or lower confidence and downgrade.
-- **Dead-code approval** — the finding uses the `DEAD CODE IDENTIFIED: ... Safe to remove these?` ask shape and needs the author's or maintainer's answer before deletion.
+- **Dead-code approval** — the finding is a **low-confidence** dead-code removal per **High-confidence dead code is auto-removable** above (confidence below 70, references not fully traced, `UNVERIFIED`, or not a mechanical deletion) and needs the author's or maintainer's answer before deletion. A high-confidence, fully traced dead-code finding does not qualify for this blocker; classify it `gated_auto`.
 
-**Tiebreaker:** when a finding plausibly fits both `gated_auto` and `manual`, choose `gated_auto` — resolver fixes land as reviewable local commits with validation and rollback, so a wrong `gated_auto` costs one rejected patch, while a wrong `manual` silently removes the finding from automation. A finding matching any blocker above does not "plausibly fit both"; in particular, dead-code findings always stay `manual` until the ask is answered.
+**Tiebreaker:** when a finding plausibly fits both `gated_auto` and `manual`, choose `gated_auto` — resolver fixes land as reviewable local commits with validation and rollback, so a wrong `gated_auto` costs one rejected patch, while a wrong `manual` silently removes the finding from automation. A finding matching any blocker above does not "plausibly fit both"; in particular, a **low-confidence** dead-code finding stays `manual` until the ask is answered, while a **high-confidence, fully traced** dead-code finding (per **High-confidence dead code is auto-removable** above) is `gated_auto`.
 
 **Manual-heavy re-test:** if more than half of the Critical/Important findings are `manual`, re-test each one against the blockers above once. If every manual finding passes its blocker test, keep them all — a majority-manual report is then correct (release-coordination reviews are often legitimately manual-heavy).
 

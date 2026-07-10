@@ -222,7 +222,7 @@ PY
    - **Finding ID:** leave blank for raw reviewer output; the aggregator assigns stable `CR-001`, `CR-002`, ... IDs after dedupe
    - **Severity:** Critical, Important, Suggestion, or FYI using the severity prefix grammar in `references/review-discipline.md`
    - **Location:** concrete `path/to/file:line`, `review-scope`, or `PR description`
-   - **Confidence:** `{0-100}`. During the transition, if a reviewer returns `high`, `medium`, or `low`, map it before aggregation as `high=90`, `medium=60`, `low=30`. Remove this mapping shim once all bundled review agents emit numeric 0-100 confidence natively.
+   - **Confidence:** `{0-100}`. During the transition, if a reviewer returns `high`, `medium`, or `low`, map it before aggregation as `high=80`, `medium=60`, `low=30`. Remove this mapping shim once all bundled review agents emit numeric 0-100 confidence natively.
    - **Action class:** `gated_auto`, `manual`, or `advisory` from `references/review-discipline.md`; Critical/Important findings may use only `gated_auto` or `manual`, while Suggestions/FYI use `advisory`. Treat the raw reviewer action class as provisional: the aggregator performs the final action-class normalization in Step 11.
    - **Owner:** resolver, author, maintainer, reviewer, or unknown
    - **Evidence:** concrete location, trace, reproduction, failing expectation, or reason the finding is marked `UNVERIFIED`
@@ -324,7 +324,7 @@ After emphasis adjustments, run an **action-class normalization pass**. The goal
   - The fix direction is unambiguous and local to changed or nearby code
   - The finding does not match a manual blocker
 - Keep a Critical or Important finding as `manual` only when a blocker applies under the **manual blocker tests** in `references/review-discipline.md` (maintainer judgment with named competing options, uninferable missing/contradictory requirement, non-code state, cross-team/external ownership, unresolved contradiction, resource-blocked incomplete trace/`UNVERIFIED`, or dead-code approval). `manual` is the exception, not the safe default.
-- Apply that section's tiebreaker: a finding that plausibly fits both classes becomes `gated_auto`, but a finding matching a named blocker never fits both — dead-code findings always stay `manual` until the ask is answered.
+- Apply that section's tiebreaker: a finding that plausibly fits both classes becomes `gated_auto`, but a finding matching a named blocker never fits both — a low-confidence dead-code finding stays `manual` until the ask is answered, while a high-confidence, fully traced dead-code finding (confidence at least 70, no remaining references, no `UNVERIFIED`) is `gated_auto`.
 - Every manual Critical or Important finding must include:
   - `Manual blocker: <one of the blocker categories above>`
   - `Next human decision: <the specific decision, approval, access, or clarification needed>`
