@@ -1,6 +1,8 @@
 # {{WF_ID}}: {{TICKET_NAME}}
 
 - **Map:** [{{MAP_NAME}}]({{RELATIVE_MAP_PATH}})
+- **Map ID:** {{MAP_ID}}
+- **Canonical map path:** `{{CANONICAL_MAP_PATH}}`
 - **Type:** {{research_OR_prototype_OR_grilling_OR_task}}
 - **Mode:** {{AFK_OR_HITL}}
 - **HITL reason:** {{REASON_OR_NOT_APPLICABLE}}

@@ -6,13 +6,13 @@ Use parallel Conductor workspaces only for independent frontier tickets. Each wo
 
 ### Same workspace, multiple agents
 
-Use one canonical map directory. Assign one map owner. The owner assigns one claimed ticket to each worker; workers never claim for themselves. Each worker edits only its assigned ticket, while the owner reconciles the ticket index and newly surfaced work.
+Use one canonical map directory. Assign one map owner. The owner assigns one claimed ticket to each worker; workers never claim for themselves. Workers return handoff packets, while the owner applies canonical ticket updates, reconciles the ticket index, and records newly surfaced work.
 
 ### Separate Conductor workspaces
 
 Choose one of these explicitly:
 
-1. **Approved shared root:** Keep the canonical map under a user-approved shared path, such as `$CONDUCTOR_ROOT_PATH/.context/wayfinder/<map-slug>/`. Workers write only their claimed ticket or a handoff packet; the map owner edits `MAP.md`.
+1. **Approved shared root:** Keep the canonical map under a user-approved shared path, such as `$CONDUCTOR_ROOT_PATH/.context/wayfinder/<map-slug>/`. Workers write only handoff packets; the map owner edits canonical tickets and `MAP.md`.
 2. **Coordinator copies:** Keep the canonical map in one coordinator workspace. Give a worker a read-only map snapshot plus one ticket, then return a resolution packet for reconciliation.
 
 Do not begin parallel work until the user knows which path is canonical. Do not commit `.context` artifacts merely to move them between branches.
@@ -34,10 +34,11 @@ One ticket belongs to one worker session. A second worker skips any claimed tick
 
 ## Worker Handoff
 
-When the worker cannot safely edit the canonical ticket directly, create the temporary resolution packet that the main workflow selected and fill it with:
+When a worker starts its assigned ticket, create the temporary resolution packet that the main workflow selected and fill it with:
 
 - the canonical map and ticket identity;
 - the claim token observed before work;
+- the ticket question, resolution conditions, and observed ticket version before work;
 - the direct answer and evidence links;
 - proposed decision gist;
 - new ticket, blocker, fog, and scope consequences;
@@ -49,7 +50,7 @@ Return the packet through the approved shared root or copy it into the coordinat
 
 The map owner must:
 
-1. Verify that the handoff matches the current claim token and ticket question.
+1. Verify that the handoff matches the current claim token, ticket question, resolution conditions, and observed ticket version. If the canonical ticket changed, keep the handoff pending and ask the claimant, owner, or named decision-maker to reconcile before changing canonical state.
 2. Detect whether another resolution or map change landed first.
 3. Copy the accepted full resolution into the canonical ticket.
 4. Update the map gist, status, blockers, frontier, fog, and scope in retry-safe order.

@@ -26,7 +26,7 @@ Find a route through an initiative that is too large or uncertain for one agent 
 1. Parse `$ARGUMENTS` as either:
    - an initiative description for **chart mode**; or
    - an existing `MAP.md` path, optionally followed by a ticket ID, for **work mode**.
-2. Resolve a directory argument to `<directory>/MAP.md` only when that file exists.
+2. Resolve a directory argument to `<directory>/MAP.md` when that file exists. If the directory contains `tickets/WF-*.md` but no `MAP.md`, treat it as interrupted-chart recovery and enter the directory-without-map rule in `references/storage.md`.
 3. Infer the mode from an explicit initiative or map already supplied in the current request when no arguments are present. Otherwise ask for either the initiative or the existing map path.
 4. Stop with `WAYFINDER NOT NEEDED` when the route is already clear and the whole planning problem fits in one session. Recommend the smallest matching downstream workflow.
 5. Stop with `UNSUPPORTED BACKEND` when the user wants an external tracker to be canonical. Explain that this version is local-only and leave Linear-native blocking as a future extension.
@@ -44,15 +44,15 @@ Run this step only in chart mode.
 1. Read the map contract from `references/map-format.md` and the type rules from `references/ticket-types.md`.
 2. Name one destination: the planning state Wayfinder must make reachable, not a bundle of implementation tasks.
 3. Explore breadth-first. Surface consequential decisions takeable now and keep indistinct areas under **Not yet specified**. Stop with `WAYFINDER NOT NEEDED` before creating files if no meaningful fog remains.
-4. Copy `assets/ticket-template.md` and create every currently specifiable ticket with a stable `WF-###` ID before wiring blockers. Ticket files are authoritative; if interruption leaves tickets without `MAP.md`, recover only through the directory-without-map rule in `references/storage.md`.
-5. Copy `assets/map-template.md` and publish `MAP.md` last. Validate its index against the tickets, promote it from `DRAFT` to `ACTIVE`, report the canonical path and frontier, then stop without claiming a ticket.
+4. Assign stable `WF-###` IDs, names, blockers, and initial `READY` or `BLOCKED` states before writing files. Then copy `assets/ticket-template.md` and create every currently specifiable ticket with its complete initial metadata, including map identity and canonical path. Ticket files are authoritative; if interruption leaves tickets without `MAP.md`, recover only through the directory-without-map rule in `references/storage.md`.
+5. Copy `assets/map-template.md` and publish `MAP.md` last. Build its index from the ticket metadata, validate it against every same-map ticket file, promote it from `DRAFT` to `ACTIVE`, report the canonical path and frontier, then stop without claiming a ticket.
 
 ### Step 4: Reconcile and claim one frontier ticket
 
 Run this step only in work mode.
 
 1. Read the lifecycle from `references/work-through-map.md` and the type rules from `references/ticket-types.md`; load the map at low resolution and reconcile its derived index before selection.
-2. When separate agents or workspaces are involved, read `references/conductor-parallel-handoffs.md`. Require one map owner to serialize claims; stop if no owner is identified. Copy `assets/resolution-handoff-template.md` only when a worker cannot safely edit the canonical ticket.
+2. When separate agents or workspaces are involved, read `references/conductor-parallel-handoffs.md`. Require one map owner to serialize claims; stop if no owner is identified. Copy `assets/resolution-handoff-template.md` for any non-owner worker in a parallel run.
 3. Honor a named ticket only when it is frontier work; otherwise report its exact unavailable state and stop. With no named ticket, select the first frontier row in map order.
 4. Claim before investigation using the lifecycle's solo or owner-mediated sequence. Never infer abandonment from elapsed time or clear another session's claim without its release or explicit user confirmation.
 
@@ -60,7 +60,7 @@ Run this step only in work mode.
 
 1. Work only the claimed question and follow its type in `references/ticket-types.md`. Load related ticket bodies only when their full detail is necessary.
 2. Record the full answer and linked evidence without copying secrets, credentials, private data, or sensitive logs; record safe locations or redacted facts instead.
-3. Commit the resolution in the role-specific, retry-safe order from `references/work-through-map.md`. In a parallel run, also follow `references/conductor-parallel-handoffs.md`; a non-owner worker must not edit `MAP.md`.
+3. Commit the resolution in the role-specific, retry-safe order from `references/work-through-map.md`. In a parallel run, also follow `references/conductor-parallel-handoffs.md`; a non-owner worker must not edit the canonical ticket or `MAP.md`.
 4. Close mis-scoped work as `OUT OF SCOPE`, link it from the map's **Out of scope** section, and omit it from **Decisions so far**.
 
 ### Step 6: Stop or hand off

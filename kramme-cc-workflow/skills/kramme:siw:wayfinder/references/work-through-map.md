@@ -4,11 +4,11 @@ Resolve one ticket per session. Preserve the ticket as the detailed record and t
 
 ## 1. Load Low-Resolution State
 
-Read the map's destination, notes, decision gists, ticket index, fog, and out-of-scope sections. Do not read every ticket body. Compare index rows with the frontmatter-style metadata blocks of only the tickets needed to verify frontier state.
+Read the map's destination, notes, decision gists, ticket index, fog, and out-of-scope sections. Do not read every ticket body. Enumerate `tickets/WF-*.md` and read only their frontmatter-style metadata blocks so the complete same-map ticket set can be compared with the index.
 
-Repair stale rows from ticket metadata before selection. Report any repair that changes status, blockers, or claims.
+Repair stale or missing rows from ticket metadata before selection. Quarantine ticket files whose map ID or canonical map path does not match, and report any repair that changes status, blockers, claims, or index membership.
 
-If the map's `Status` is `DRAFT`, treat it as an interrupted chart: reconcile every index row against the ticket files, then promote the map to `ACTIVE` before selecting work, and report the promotion.
+If the map's `Status` is `DRAFT`, treat it as an interrupted chart: rebuild the complete index from every same-map ticket file, validate blockers and initial statuses from ticket metadata, then promote the map to `ACTIVE` before selecting work, and report the promotion.
 
 ## 2. Select the Frontier
 
@@ -16,7 +16,7 @@ Treat a ticket as frontier work only when:
 
 - its status is `READY`;
 - every listed blocker is `RESOLVED`;
-- its claim is empty; and
+- its claim is `—` or empty; and
 - it remains inside the destination's scope.
 
 When the user names a ticket, honor it only when it meets those conditions. If it is blocked, claimed, resolved, out of scope, or missing, stop and report that exact reason; do not silently fall back to a different ticket. When no ticket was named, take the first frontier row in map order. Do not skip ahead to a blocked ticket merely because it looks more interesting.
@@ -56,14 +56,14 @@ Never turn the ticket into implementation of the destination. A prerequisite `ta
 
 ## 5. Commit the Resolution to Local State
 
-If you are a non-owner worker in a coordinator-copy parallel run, write only the resolution handoff packet and stop; the map owner performs all canonical writes. In an approved shared-root parallel run, a non-owner worker may complete step 1 only when the owner explicitly assigned direct ticket editing and the worker first re-reads the canonical ticket and map row, verifies that the active `Claim token` exactly matches this workspace or session, and stops if it does not. The map owner performs steps 2–6. See `conductor-parallel-handoffs.md`. The ordering below applies to a solo session or the map owner, plus the guarded direct-ticket write described above.
+If you are a non-owner worker in any parallel run, write only the resolution handoff packet and stop; the map owner performs all canonical writes. See `conductor-parallel-handoffs.md`. The ordering below applies only to a solo session or the map owner.
 
 Update in this order:
 
 1. Write the complete resolution in the ticket, set `Status: RESOLVED`, clear the active claim, and record resolution metadata.
 2. Update the map row to `RESOLVED` and append or revise one linked decision gist when the result is decision-bearing.
-3. Create stable files for newly precise questions, then add their index rows.
-4. Wire new or changed blockers and recompute `READY` versus `BLOCKED`.
+3. Plan newly precise questions and blocker changes together, then create stable ticket files only after each new ticket has final initial `Blocked by` and `READY` or `BLOCKED` metadata.
+4. Recompute `READY` versus `BLOCKED` for every affected ticket, then rebuild the map index rows from ticket metadata.
 5. Remove fog lines that graduated into tickets; add only newly visible but still-imprecise areas.
 6. Move any revealed beyond-destination work to **Out of scope** and mark affected tickets `OUT OF SCOPE`.
 

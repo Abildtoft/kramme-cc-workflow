@@ -4,6 +4,9 @@
 - **Canonical ticket:** `{{CANONICAL_TICKET_PATH}}`
 - **Worker workspace/session:** {{WORKSPACE_OR_SESSION}}
 - **Claim token observed:** {{CLAIM_TOKEN}}
+- **Observed ticket question:** {{QUESTION_AT_START}}
+- **Observed resolution conditions:** {{RESOLUTION_CONDITIONS_AT_START}}
+- **Observed ticket version:** {{UPDATED_AT_CONTENT_HASH_OR_FILE_MTIME}}
 - **Handoff status:** PENDING RECONCILIATION
 
 ## Direct answer
@@ -29,6 +32,7 @@
 ## Reconciliation
 
 - [ ] Claim token still matches the canonical ticket.
+- [ ] Canonical question, resolution conditions, and observed version still match or owner escalated the difference.
 - [ ] Full resolution copied into the canonical ticket.
 - [ ] Map index, decision gist, frontier, fog, and scope reconciled.
 - [ ] Handoff packet removed after canonical state was verified.

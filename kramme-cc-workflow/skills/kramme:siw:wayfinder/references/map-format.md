@@ -41,7 +41,7 @@ Apply these rules:
 - Keep ticket IDs stable after file creation. Do not renumber closed or removed entries.
 - Use `READY`, `BLOCKED`, `CLAIMED`, `RESOLVED`, or `OUT OF SCOPE`.
 - Set `READY` only when every blocker is `RESOLVED`.
-- Treat the frontier as `READY` tickets with no claim, in table order.
+- Treat the frontier as `READY` tickets whose Claim column is `—` or empty, in table order.
 - When a ticket is claimed, store the exact `Claim token` in the Claim column so the map row can be matched against the ticket metadata.
 - Keep blocked tickets in the index; keep indistinct future work in **Not yet specified** instead of inventing ticket boundaries.
 - Link each row by its readable ticket name. Keep the ID visible for stable local identity.
@@ -65,7 +65,7 @@ Use **Out of scope** when work sits beyond the destination. If an existing ticke
 ## Consistency and Retry Rules
 
 - Treat a ticket file as authoritative for that ticket's metadata and resolution; treat the map row as a derived index entry.
-- Publish `MAP.md` only after every indexed ticket file exists. Keep a freshly charted map at `Status: DRAFT` until its index validates against the ticket files, then promote it to `ACTIVE`. Treat a `DRAFT` map found later as an interrupted chart: rebuild and validate the index from the ticket files before trusting or using it.
+- Publish `MAP.md` only after every same-map ticket file exists with complete initial metadata and the index matches that ticket set. Keep a freshly charted map at `Status: DRAFT` until its index validates against the ticket files, then promote it to `ACTIVE`. Treat a `DRAFT` map found later as an interrupted chart: rebuild and validate the complete index from the ticket files before trusting or using it.
 - Update the ticket before its map row. On restart, reconcile the row from the ticket rather than repeating work.
 - Never duplicate a full resolution on the map.
 - Never delete a resolved ticket merely because a later answer supersedes it. Mark the superseding relationship in both affected tickets and update the current gist.
