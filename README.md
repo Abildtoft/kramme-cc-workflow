@@ -108,12 +108,25 @@ Restart Claude Code after updating for changes to take effect.
 
 ## Getting Started
 
-Three common workflows to try after installation:
+These skills cover the full lifecycle of a change. Most work runs through the middle phases; only the situational **Chart** phase up front is reached for when a task is too big or foggy to plan in one pass.
+
+| Phase | When to use it | Skills |
+| --- | --- | --- |
+| **Chart** (situational) | Huge or foggy initiatives whose route can't fit in one session | `/kramme:siw:wayfinder` |
+| **Clarify** | Requirements are vague, contested, or half-formed | `/kramme:siw:discovery`, `/kramme:discovery:interview` |
+| **Spec** | Turn intent into a written source of truth | `/kramme:docs:feature-spec`, `/kramme:siw:init` |
+| **Break down** | Split the spec into tracked issues | `/kramme:siw:generate-phases` |
+| **Implement** | Build one issue at a time | `/kramme:siw:issue-implement` |
+| **Review & verify** | Check quality before shipping | `/kramme:pr:code-review`, `/kramme:verify:run` |
+
+Most tasks begin at Clarify or Spec and flow straight into SIW. Two supporting primitives slot in wherever a phase needs them, not as required gates: `/kramme:research` produces a cited answer from primary sources before you commit to an approach, and `/kramme:prototype` builds throwaway code to settle one design question.
 
 For repository work, start with [CONTRIBUTING.md](CONTRIBUTING.md), then use
 [docs/architecture.md](kramme-cc-workflow/docs/architecture.md) and
 [docs/code-map.md](kramme-cc-workflow/docs/code-map.md) to find the relevant
 subsystem and tests.
+
+Three common workflows walk through the hands-on parts:
 
 ### Plan and implement with SIW
 

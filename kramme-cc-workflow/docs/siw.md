@@ -37,6 +37,8 @@ The core idea: a **specification** is the permanent source of truth. Issues, log
 - Trivial updates or simple refactoring
 - Single-file changes with obvious scope
 
+For huge or foggy initiatives whose route can't fit in one session, start with `/kramme:siw:wayfinder` to chart the work into a decision map, then hand the resolved plan to SIW for tracked implementation.
+
 ## Quick Start
 
 ```
