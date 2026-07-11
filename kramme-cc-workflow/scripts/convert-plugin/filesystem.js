@@ -56,9 +56,24 @@ async function pathExists(filePath) {
   try {
     await fs.access(filePath);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if (error?.code === "ENOENT") return false;
+    throw contextualizeFilesystemError("check path", filePath, error);
   }
+}
+
+function contextualizeFilesystemError(operation, filePath, error) {
+  const detail = error instanceof Error ? error.message : String(error);
+  const contextualError = Object.assign(
+    new Error(`Failed to ${operation} ${filePath}: ${detail}`, {
+      cause: error,
+    }),
+    {
+      code: typeof error?.code === "string" ? error.code : undefined,
+      path: filePath,
+    },
+  );
+  return contextualError;
 }
 
 async function copyDir(sourceDir, targetDir, options = {}) {
@@ -115,6 +130,7 @@ async function walkRelativeFiles(rootDir, prefix = "") {
 module.exports = {
   copyDir,
   copyFile,
+  contextualizeFilesystemError,
   ensureDir,
   listRelativeFiles,
   pathExists,
