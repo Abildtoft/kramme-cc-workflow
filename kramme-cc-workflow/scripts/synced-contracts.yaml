@@ -823,17 +823,33 @@
         "user-invocable": "true"
       },
       "contains": [
+        "references/disposable-artifacts.yaml",
+        "single source of truth",
+        "siw/OPEN_ISSUES_OVERVIEW.md",
+        "siw/issues/"
+      ]
+    },
+    {
+      "name": "workflow-artifact-cleanup-registry",
+      "path": "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml",
+      "contains": [
         "REVIEW_OVERVIEW.md",
-        ".context/demo-reels/",
-        ".context/github-review-replies/",
+        "REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+        "AGENT_NATIVE_AUDIT.md",
         "CODEBASE_WEAKNESS_REPORT.md",
         "AUDIT_IMPLEMENTATION_REPORT.md",
         "AUDIT_SPEC_REPORT.md",
         "PR_PLAN_*.md",
         "DEPRECATION_PLAN.md",
         "DEPRECATION_PLAN_*.md",
+        ".context/demo-reels/",
+        ".context/github-review-replies/",
+        ".context/session-search/",
         "siw/OPEN_ISSUES_OVERVIEW.md",
-        "siw/issues/"
+        "siw/FEATURE_SPECIFICATION.md",
+        "disposable",
+        "permanent-spec",
+        "shared-diagram"
       ]
     }
   ],

@@ -1,0 +1,315 @@
+{
+  "version": 1,
+  "notes": [
+    "Single source of truth for kramme:workflow-artifacts:cleanup targets. Add a producer's fixed default output here once; cleanup discovery (SKILL.md Step 1) and the cleanup fixture test both derive their inventory from this list, so no separate prose inventory is maintained.",
+    "JSON-compatible YAML so the skill and tests parse it with the Python stdlib (json.loads); do not use YAML-only syntax.",
+    "category: working-dir (in the project working tree), shared-diagram (global, shared across sessions and projects), or permanent-spec (durable SIW specification).",
+    "retention: disposable (deleted after confirmation) or permanent (kept unless the user explicitly opts in).",
+    "type: file (literal path), glob (shell pattern; expand before deleting), or dir (whole directory).",
+    "condition: a marker path that must exist for the entry to become a candidate. expected_contents: a glob every child of a conditional dir must match, otherwise the dir is skipped and reported.",
+    "--auto deletes only working-dir disposables; it never selects shared-diagram or permanent-spec entries.",
+    "Register only fixed default producer outputs here. Never register user-supplied or custom output paths."
+  ],
+  "artifacts": [
+    {
+      "id": "review-overview",
+      "path": "REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:code-review"
+    },
+    {
+      "id": "ux-review-overview",
+      "path": "UX_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:ux-review"
+    },
+    {
+      "id": "product-review-overview",
+      "path": "PRODUCT_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:product-review"
+    },
+    {
+      "id": "product-audit-overview",
+      "path": "PRODUCT_AUDIT_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:product-audit"
+    },
+    {
+      "id": "product-audit",
+      "path": "PRODUCT_AUDIT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:product-audit"
+    },
+    {
+      "id": "copy-review-overview",
+      "path": "COPY_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:copy-review"
+    },
+    {
+      "id": "codebase-weakness-report",
+      "path": "CODEBASE_WEAKNESS_REPORT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:weakness-audit"
+    },
+    {
+      "id": "refactor-opportunities-overview",
+      "path": "REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:refactor-opportunities"
+    },
+    {
+      "id": "agent-native-audit",
+      "path": "AGENT_NATIVE_AUDIT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:agent-readiness"
+    },
+    {
+      "id": "github-pr-review-overview",
+      "path": "GITHUB_PR_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:github-review"
+    },
+    {
+      "id": "doc-review",
+      "path": "DOC_REVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:docs:review"
+    },
+    {
+      "id": "github-review-reply-plan",
+      "path": "GITHUB_REVIEW_REPLY_PLAN.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:github-review-reply"
+    },
+    {
+      "id": "qa-report",
+      "path": "QA_REPORT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:qa"
+    },
+    {
+      "id": "qa-baseline",
+      "path": "QA_BASELINE.json",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:qa"
+    },
+    {
+      "id": "audit-implementation-report",
+      "path": "AUDIT_IMPLEMENTATION_REPORT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:implementation-audit"
+    },
+    {
+      "id": "audit-spec-report",
+      "path": "AUDIT_SPEC_REPORT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:spec-audit"
+    },
+    {
+      "id": "siw-product-audit",
+      "path": "siw/PRODUCT_AUDIT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:product-audit"
+    },
+    {
+      "id": "siw-audit-implementation-report",
+      "path": "siw/AUDIT_IMPLEMENTATION_REPORT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:implementation-audit"
+    },
+    {
+      "id": "siw-audit-spec-report",
+      "path": "siw/AUDIT_SPEC_REPORT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:spec-audit"
+    },
+    {
+      "id": "siw-log",
+      "path": "siw/LOG.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:continue"
+    },
+    {
+      "id": "siw-open-issues-overview",
+      "path": "siw/OPEN_ISSUES_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:continue"
+    },
+    {
+      "id": "pr-plans",
+      "path": "PR_PLAN_*.md",
+      "type": "glob",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:breakdown-findings"
+    },
+    {
+      "id": "deprecation-plan-legacy",
+      "path": "DEPRECATION_PLAN.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:breakdown-findings"
+    },
+    {
+      "id": "deprecation-plans",
+      "path": "DEPRECATION_PLAN_*.md",
+      "type": "glob",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:breakdown-findings"
+    },
+    {
+      "id": "demo-reels",
+      "path": ".context/demo-reels/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:visual:demo-reel"
+    },
+    {
+      "id": "verify-understanding",
+      "path": ".context/verify-understanding/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:learn:verify-understanding"
+    },
+    {
+      "id": "github-review-replies",
+      "path": ".context/github-review-replies/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:github-review-reply"
+    },
+    {
+      "id": "session-search",
+      "path": ".context/session-search/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:session:search"
+    },
+    {
+      "id": "siw-issues",
+      "path": "siw/issues/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:issue-define",
+      "condition": "siw/OPEN_ISSUES_OVERVIEW.md",
+      "expected_contents": "ISSUE-*.md"
+    },
+    {
+      "id": "siw-qa-intake",
+      "path": "siw/qa-intake/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:qa:intake",
+      "condition": "siw/OPEN_ISSUES_OVERVIEW.md",
+      "expected_contents": "QA-INTAKE-*.md"
+    },
+    {
+      "id": "visual-diagrams",
+      "path": "~/.kramme-cc-workflow/diagrams/*.html",
+      "type": "glob",
+      "category": "shared-diagram",
+      "retention": "disposable",
+      "producer": "kramme:visual:*"
+    },
+    {
+      "id": "siw-feature-specification",
+      "path": "siw/FEATURE_SPECIFICATION.md",
+      "type": "file",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:init"
+    },
+    {
+      "id": "siw-project-plan",
+      "path": "siw/PROJECT_PLAN.md",
+      "type": "file",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:generate-phases"
+    },
+    {
+      "id": "siw-api-design",
+      "path": "siw/API_DESIGN.md",
+      "type": "file",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:api-design"
+    },
+    {
+      "id": "siw-documentation-spec",
+      "path": "siw/DOCUMENTATION_SPEC.md",
+      "type": "file",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:documentation-spec"
+    },
+    {
+      "id": "siw-system-design",
+      "path": "siw/SYSTEM_DESIGN.md",
+      "type": "file",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:system-design"
+    },
+    {
+      "id": "siw-tutorial-plan",
+      "path": "siw/TUTORIAL_PLAN.md",
+      "type": "file",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:tutorial-plan"
+    }
+  ]
+}
