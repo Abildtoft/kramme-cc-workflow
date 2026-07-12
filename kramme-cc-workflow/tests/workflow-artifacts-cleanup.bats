@@ -271,6 +271,22 @@ os.makedirs(work, exist_ok=True)
 os.makedirs(home, exist_ok=True)
 
 artifacts = c.load(registry)
+visual_diagrams = [a for a in artifacts if a["id"] == "visual-diagrams"]
+if len(visual_diagrams) != 1:
+    raise SystemExit(f"expected one visual-diagrams entry, found {len(visual_diagrams)}")
+visual_diagram = visual_diagrams[0]
+expected_visual_contract = {
+    "path": "~/.kramme-cc-workflow/diagrams/*.html",
+    "category": "shared-diagram",
+    "retention": "disposable",
+}
+actual_visual_contract = {
+    field: visual_diagram.get(field) for field in expected_visual_contract
+}
+if actual_visual_contract != expected_visual_contract:
+    raise SystemExit(
+        f"visual-diagrams contract changed: {actual_visual_contract!r}"
+    )
 for entry in artifacts:
     c.materialize(entry, work, home)
 
@@ -289,6 +305,8 @@ for entry in auto:
     c.delete(entry, work, home)
 
 errors = []
+if not c.remaining(visual_diagram, work, home):
+    errors.append("auto wrongly deleted shared visual diagrams")
 for entry in auto:
     if c.remaining(entry, work, home):
         errors.append(f"auto disposable survived: {entry['id']} ({entry['path']})")
