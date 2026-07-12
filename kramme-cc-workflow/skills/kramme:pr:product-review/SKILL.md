@@ -53,17 +53,17 @@ REVIEW_DIFF_FIELDS=$(mktemp "${TMPDIR:-/tmp}/review-diff.XXXXXX") || {
   exit 1
 }
 ${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh --decode-json \
-  <<<"$RESOLVED" >"$REVIEW_DIFF_FIELDS" || {
+  <<< "$RESOLVED" > "$REVIEW_DIFF_FIELDS" || {
   rm -f "$REVIEW_DIFF_FIELDS"
   echo "Base/diff decoding failed; see the message above and stop." >&2
   exit 1
 }
 if ! {
-  IFS= read -r -d '' BASE_REF &&
-    IFS= read -r -d '' BASE_BRANCH &&
-    IFS= read -r -d '' MERGE_BASE &&
-    IFS= read -r -d '' CHANGED_FILES
-} <"$REVIEW_DIFF_FIELDS"; then
+  IFS= read -r -d '' BASE_REF \
+    && IFS= read -r -d '' BASE_BRANCH \
+    && IFS= read -r -d '' MERGE_BASE \
+    && IFS= read -r -d '' CHANGED_FILES
+} < "$REVIEW_DIFF_FIELDS"; then
   rm -f "$REVIEW_DIFF_FIELDS"
   echo "Decoded review-diff fields were incomplete; stop." >&2
   exit 1
