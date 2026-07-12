@@ -695,6 +695,152 @@ EOF
   [[ "$registry_text" == *'"kramme-cc-workflow/skills/kramme:siw:issue-implement/references/team-mode.md"'* ]]
 }
 
+@test "siw issue implement team mode makes the lead the sole shared-state writer" {
+  local team_text
+  team_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-implement/references/team-mode.md")"
+
+  [[ "$team_text" == *'The issue file, `siw/OPEN_ISSUES_OVERVIEW.md`, and `siw/LOG.md` are tracking state owned exclusively by the lead; treat all three as read-only.'* ]]
+  [[ "$team_text" == *'`Issue ID`: canonical SIW ID'* ]]
+  [[ "$team_text" == *'`Final status`: recommended IN REVIEW or DONE'* ]]
+  [[ "$team_text" == *'`Resolution`: complete Markdown content for the issue file'* ]]
+  [[ "$team_text" == *'`Log event`: one-line meaningful completion event for `Last Completed`'* ]]
+  [[ "$team_text" == *'`Decisions`: decisions requiring spec or log synchronization, or `None`'* ]]
+  [[ "$team_text" == *'Immediately before assigning any issue to a teammate — whether spawning a new teammate or reusing an idle one — the lead must claim that issue by publishing its `IN PROGRESS` transition **serially, one issue at a time**'* ]]
+  [[ "$team_text" == *'maintain an `**Issue States:**` field that lists every issue assigned in this team session and its tracker-visible status'* ]]
+  [[ "$team_text" == *'Do not assign the issue to its teammate until the status agrees across all three files.'* ]]
+  [[ "$team_text" == *"For each Batch 2 issue, run the Step 5 claim procedure, then assign it to an idle teammate or spawn a new one."* ]]
+  [[ "$team_text" == *'Never reuse an idle teammate before that issue is `IN PROGRESS` across all three tracking files.'* ]]
+  [[ "$team_text" == *"do not rerun the standard workflow's IN PROGRESS Status Update Procedure"* ]]
+  [[ "$team_text" == *"Do not run the standard workflow's Sync Decisions to Spec step"* ]]
+  [[ "$team_text" == *'If a field is absent, is invalid for the assigned issue, or contradicts the verification results, reject the handoff'* ]]
+  [[ "$team_text" == *'Review the `Decisions` in every accepted handoff before publishing any final status.'* ]]
+  [[ "$team_text" == *'Do not publish an affected issue as `DONE` until its required spec synchronization completes or the user explicitly chooses to skip that update.'* ]]
+  [[ "$team_text" == *'publish accepted handoffs **serially, one at a time**'* ]]
+  [[ "$team_text" == *'Immediately before writing, re-read the issue file, `siw/OPEN_ISSUES_OVERVIEW.md`, and `siw/LOG.md`'* ]]
+  [[ "$team_text" == *'verify the issue status agrees across them and that the log retains every completion and decision published so far'* ]]
+  [[ "$team_text" == *'Preserve the exact `Log event` and non-`None` `Decisions` entries from every accepted handoff'* ]]
+  [[ "$team_text" != *'Update ALL THREE tracking files atomically'* ]]
+}
+
+@test "siw issue implement team mode preserves interleaved worker completions" {
+  run python3 - "$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-implement/references/team-mode.md" <<'PY'
+import pathlib
+import sys
+
+team_text = pathlib.Path(sys.argv[1]).read_text()
+required_protocol = (
+    "tracking state owned exclusively by the lead",
+    "whether spawning a new teammate or reusing an idle one",
+    "publishing its `IN PROGRESS` transition **serially, one issue at a time**",
+    "Do not assign the issue to its teammate until the status agrees across all three files",
+    "For each Batch 2 issue, run the Step 5 claim procedure",
+    "Never reuse an idle teammate before that issue is `IN PROGRESS`",
+    "Do not run the standard workflow's Sync Decisions to Spec step",
+    "Review the `Decisions` in every accepted handoff before publishing any final status",
+    "Do not publish an affected issue as `DONE` until its required spec synchronization completes",
+    "publish accepted handoffs **serially, one at a time**",
+    "Immediately before writing, re-read",
+    "maintain an `**Issue States:**` field",
+    "update only that issue's `Issue States` entry",
+    "without discarding entries published for earlier handoffs",
+    "retains every completion and decision published so far",
+    "Preserve the exact `Log event` and non-`None` `Decisions` entries",
+)
+missing = [marker for marker in required_protocol if marker not in team_text]
+if missing:
+    raise SystemExit("missing serialized-publication guidance: " + ", ".join(missing))
+
+# The lead claims each issue serially before spawning it. Both workers then
+# finish from revision 2 and return handoffs rather than writing tracking state;
+# the lead re-reads and publishes all three tracking files serially.
+shared = {
+    "revision": 0,
+    "issue_status": {},
+    "overview": {},
+    "log_status": {},
+    "log_events": [],
+    "decisions": [],
+}
+for issue_id in ("P1-001", "P1-002"):
+    current = shared.copy()
+    current["issue_status"] = shared["issue_status"].copy()
+    current["overview"] = shared["overview"].copy()
+    current["log_status"] = shared["log_status"].copy()
+    current["log_events"] = shared["log_events"].copy()
+    current["decisions"] = shared["decisions"].copy()
+    current["issue_status"][issue_id] = "IN PROGRESS"
+    current["overview"][issue_id] = "IN PROGRESS"
+    current["log_status"][issue_id] = "IN PROGRESS"
+    current["revision"] += 1
+    shared = current
+
+assert shared["overview"] == {
+    "P1-001": "IN PROGRESS",
+    "P1-002": "IN PROGRESS",
+}
+assert shared["issue_status"] == shared["overview"]
+assert shared["issue_status"] == shared["log_status"]
+assert shared["revision"] == 2
+
+handoffs = [
+    {
+        "Issue ID": "P1-002",
+        "Final status": "IN REVIEW",
+        "Resolution": "Implemented beta",
+        "Log event": "P1-002 implementation completed",
+        "Decisions": "Use beta compatibility mode",
+        "worker_revision": 2,
+    },
+    {
+        "Issue ID": "P1-001",
+        "Final status": "DONE",
+        "Resolution": "Implemented alpha",
+        "Log event": "P1-001 implementation completed",
+        "Decisions": "None",
+        "worker_revision": 2,
+    },
+]
+
+for handoff in handoffs:
+    current = shared.copy()
+    current["issue_status"] = shared["issue_status"].copy()
+    current["overview"] = shared["overview"].copy()
+    current["log_status"] = shared["log_status"].copy()
+    current["log_events"] = shared["log_events"].copy()
+    current["decisions"] = shared["decisions"].copy()
+    current["issue_status"][handoff["Issue ID"]] = handoff["Final status"]
+    current["overview"][handoff["Issue ID"]] = handoff["Final status"]
+    current["log_status"][handoff["Issue ID"]] = handoff["Final status"]
+    current["log_events"].append(handoff["Log event"])
+    if handoff["Decisions"] != "None":
+        current["decisions"].append(handoff["Decisions"])
+    current["revision"] += 1
+    shared = current
+
+assert shared["overview"] == {"P1-002": "IN REVIEW", "P1-001": "DONE"}
+assert shared["issue_status"] == shared["overview"]
+assert shared["issue_status"] == shared["log_status"]
+assert shared["log_events"] == [
+    "P1-002 implementation completed",
+    "P1-001 implementation completed",
+]
+assert shared["decisions"] == ["Use beta compatibility mode"]
+assert shared["revision"] == 4
+
+# Final session summarization preserves the accepted handoff records instead
+# of rebuilding them from generic issue titles or cross-cutting decisions only.
+summary = shared.copy()
+summary["log_events"] = shared["log_events"].copy()
+summary["decisions"] = shared["decisions"].copy()
+summary["quick_summary"] = "Parallel implementation of 2 issues"
+summary["completed_this_session"] = ["P1-002", "P1-001"]
+assert summary["log_events"] == shared["log_events"]
+assert summary["decisions"] == shared["decisions"]
+PY
+
+  [ "$status" -eq 0 ]
+}
+
 @test "ordered heading drift fails" {
   write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" $'## Current Progress\n\n### Last Completed\n\n### Project Status'
   write_file "$TMP_ROOT/registry.yaml" <<'EOF'

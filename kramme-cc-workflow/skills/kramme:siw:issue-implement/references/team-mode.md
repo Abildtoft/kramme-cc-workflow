@@ -114,22 +114,38 @@ Create a multi-agent implementation session named `siw-implement`.
 - **Claude Code:** create an Agent Team.
 - **Codex:** launch equivalent parallel implementation agents via multi-agent mode.
 
+Immediately before assigning any issue to a teammate — whether spawning a new teammate or reusing an idle one — the lead must claim that issue by publishing its `IN PROGRESS` transition **serially, one issue at a time**:
+
+1. Re-read the issue file, `siw/OPEN_ISSUES_OVERVIEW.md`, and `siw/LOG.md`.
+2. Update the issue file status, overview row, and current log to `IN PROGRESS` as one issue-state change. In the log's `### Project Status`, maintain an `**Issue States:**` field that lists every issue assigned in this team session and its tracker-visible status (for example, `P1-001 — IN PROGRESS; P1-002 — IN PROGRESS`). Update only the claimed issue's entry; preserve claims, completions, decisions, and other accurate progress already published for this batch.
+3. Re-read all three files and verify that the issue is `IN PROGRESS` everywhere. Do not assign the issue to its teammate until the status agrees across all three files.
+
 For each issue in Batch 1, spawn a teammate with:
 
 **Precondition:** Every issue in the batch is `AUTO`, or the user explicitly confirmed inclusion of that specific HITL issue after seeing its reason in Step 4.
 
 1. **Issue content**: Full text of the issue file
 2. **Spec context**: Relevant sections of the main spec and any supporting specs
-3. **File ownership**: "You have exclusive write access to: [files]. Do NOT modify files outside this list without messaging the lead first."
+3. **File ownership**: "You have exclusive write access to: [implementation files]. Do NOT modify files outside this list without messaging the lead first. The issue file, `siw/OPEN_ISSUES_OVERVIEW.md`, and `siw/LOG.md` are tracking state owned exclusively by the lead; treat all three as read-only."
 4. **Workflow**: "Follow the `kramme:siw:issue-implement` workflow using the Autonomous Implementation approach:
    - Explore codebase for patterns
    - Create technical plan
    - Implement iteratively
    - Run `kramme:verify:run`
-   - Document resolution in the issue file's `## Resolution` section (summary, changes, key decisions)
-   - Set issue status to IN REVIEW or DONE based on confidence
-   - Update ALL THREE tracking files atomically: issue file status, `siw/OPEN_ISSUES_OVERVIEW.md` row, and `siw/LOG.md` current progress
-   - Message the lead when complete"
+   - Prepare the complete content for the issue file's `## Resolution` section (summary, changes, key decisions), but do not write it
+   - Recommend IN REVIEW or DONE based on confidence, but do not change the issue status
+   - The lead already published the IN PROGRESS transition; do not rerun the standard workflow's IN PROGRESS Status Update Procedure
+   - Do not run the standard workflow's Sync Decisions to Spec step; report every decision in the completion handoff so the lead can serialize spec synchronization before publishing the final status
+   - Do not update the issue file, `siw/OPEN_ISSUES_OVERVIEW.md`, or `siw/LOG.md`; the lead serializes all three tracking-file updates
+   - Return a completion handoff to the lead with every field in this exact schema:
+     - `Issue ID`: canonical SIW ID
+     - `Issue file`: path to the lead-owned issue file
+     - `Final status`: recommended IN REVIEW or DONE
+     - `Resolution`: complete Markdown content for the issue file's `## Resolution` section
+     - `Log event`: one-line meaningful completion event for `Last Completed`
+     - `Decisions`: decisions requiring spec or log synchronization, or `None`
+     - `Verification`: commands run and their outcomes
+   - Message the lead when complete; the work is not published until the lead accepts the handoff"
 5. **Plan approval**: Require plan approval before implementation begins. The lead reviews each teammate's technical plan and approves or rejects with feedback.
 
 Create one task per issue: "Implement [issue-id]: [title]"
@@ -144,7 +160,7 @@ While teammates work:
    - Appropriate patterns and conventions
    - Approve or reject with specific feedback
 
-2. **Track completion**: Monitor TaskList for completed tasks
+2. **Track completion**: Monitor TaskList for completed tasks. A completed task must include every completion-handoff field from Step 5. If a field is absent, is invalid for the assigned issue, or contradicts the verification results, reject the handoff and resume the teammate to correct it; do not infer missing tracking-state content.
 
 3. **Handle file conflicts**: If a teammate discovers it needs a file outside its ownership:
    - Check if the owning teammate is done with that file
@@ -160,10 +176,17 @@ While teammates work:
 
 When all Batch 1 tasks complete:
 
-1. Update `siw/LOG.md` with Batch 1 completions
-2. Check if Batch 2 issues are now unblocked (both SIW dependency and file ownership)
-3. Assign Batch 2 issues to idle teammates or spawn new ones
-4. Repeat monitoring until all batches complete
+1. Collect and validate every completion handoff. Do not publish an incomplete handoff.
+2. Review the `Decisions` in every accepted handoff before publishing any final status. If a decision needs a spec update, follow `kramme:siw:issue-implement` Step 10 (Sync Decisions to Spec) now, using the handoff as the decision source. Do not publish an affected issue as `DONE` until its required spec synchronization completes or the user explicitly chooses to skip that update.
+3. As the sole shared-state writer, publish accepted handoffs **serially, one at a time**. For each handoff:
+   1. Immediately before writing, re-read the issue file, `siw/OPEN_ISSUES_OVERVIEW.md`, and `siw/LOG.md`; never publish from the shared-state snapshot captured at session or batch start.
+   2. Confirm the handoff belongs to the assigned issue and that the issue is still `IN PROGRESS` across all three tracking files. Resolve any stale or unexpected state before publishing it.
+   3. Write the handoff's `Resolution` and `Final status` to the issue file, update that issue's overview row, update only that issue's `Issue States` entry in the log, and merge its `Log event` and `Decisions` into the current log as one issue-state change without discarding entries published for earlier handoffs. The lead is the only agent permitted to write any of the three tracking files.
+   4. Re-read all three files and verify the issue status agrees across them and that the log retains every completion and decision published so far. Stop and repair the stale view before accepting or publishing another handoff.
+4. After all Batch 1 handoffs are published, update the remaining Batch 1 summary fields in `siw/LOG.md` without replacing the per-issue events just verified.
+5. Check if Batch 2 issues are now unblocked (both SIW dependency and file ownership).
+6. For each Batch 2 issue, run the Step 5 claim procedure, then assign it to an idle teammate or spawn a new one. Never reuse an idle teammate before that issue is `IN PROGRESS` across all three tracking files.
+7. Repeat monitoring, pre-publication spec synchronization, and serialized publication until all batches complete.
 
 ### Step 8: Final Verification
 
@@ -173,7 +196,7 @@ After all issues are implemented:
 2. If verification fails:
    - Identify which teammate's changes caused the failure
    - Either resume that teammate to fix, or fix directly
-3. Update `siw/LOG.md` with session summary:
+3. Merge the session summary into the current `siw/LOG.md` progress block. Preserve the exact `Log event` and non-`None` `Decisions` entries from every accepted handoff; do not rebuild those sections from issue titles or restrict them to cross-cutting decisions:
 
 ```markdown
 ## Current Progress
@@ -182,17 +205,17 @@ After all issues are implemented:
 
 ### Project Status
 
-- **Status:** IN PROGRESS | **Completed this session:** {issue-ids}
+- **Status:** IN PROGRESS | **Issue States:** {issue-id — final status; ...} | **Completed this session:** {issue-ids}
 
 ### Last Completed
 
-- {issue-id}: {title} (Batch 1)
-- {issue-id}: {title} (Batch 1)
-- {issue-id}: {title} (Batch 2)
+- {accepted Log event for issue in Batch 1}
+- {accepted Log event for issue in Batch 1}
+- {accepted Log event for issue in Batch 2}
 
 ### Decisions Made
 
-- [Any cross-cutting decisions discovered during parallel implementation]
+- {every non-None decision from accepted handoffs, plus any session-level decision}
 
 ### Next Steps
 
@@ -203,7 +226,7 @@ After all issues are implemented:
 
 ### Step 9: Spec Sync
 
-Review all decisions logged by teammates. If any need spec updates, follow `kramme:siw:issue-implement` Step 10 (Sync Decisions to Spec).
+Confirm that every decision reported in teammate completion handoffs was handled by the pre-publication spec-sync gate in Step 7. If final verification introduced a new decision, follow `kramme:siw:issue-implement` Step 10 (Sync Decisions to Spec) before cleanup and repair any affected issue status rather than leaving it `DONE` with stale specifications.
 
 ### Step 10: Cleanup
 
@@ -215,11 +238,12 @@ Review all decisions logged by teammates. If any need spec updates, follow `kram
 This skill uses a multi-layer approach:
 
 1. **Pre-analysis**: Before spawning, the lead reads each issue's affected areas and builds a file ownership map
-2. **Exclusive ownership**: Each agent gets an explicit list of files it can write to
+2. **Exclusive ownership**: Each agent gets an explicit list of implementation files it can write to; all three SIW tracking files are always lead-owned and excluded
 3. **Batching**: Issues with file overlaps go into sequential batches
 4. **Plan approval**: Lead reviews each teammate's plan to catch file conflicts early
 5. **Runtime messaging**: Agents message the lead if they discover they need files outside their set
-6. **Post-verification**: `kramme:verify:run` catches any integration issues after all implementations
+6. **Single-writer publication**: The lead validates handoffs, re-reads current shared state, and publishes one completion at a time
+7. **Post-verification**: `kramme:verify:run` catches any integration issues after all implementations
 
 ## Usage
 
