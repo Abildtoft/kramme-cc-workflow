@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..frontmatter import parse_frontmatter
+from ..frontmatter import frontmatter_type_errors, parse_frontmatter
 from ..io import read_text, rel, skill_paths
 from ..schema import skill_frontmatter_required_fields
 from .types import CheckResult, LintContext
@@ -46,6 +46,11 @@ def check_mechanical(context: LintContext) -> CheckResult:
                 result.failures.append(
                     f"mechanical: {relative} is missing frontmatter field {field!r}"
                 )
+        for field, expected_type in frontmatter_type_errors(text, context.schema):
+            result.failures.append(
+                f"mechanical: {relative} frontmatter field {field!r} "
+                f"must be {expected_type}"
+            )
         description = frontmatter.get("description")
         if description is not None and len(description) > max_description:
             result.failures.append(

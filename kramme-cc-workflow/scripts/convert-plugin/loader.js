@@ -6,6 +6,7 @@ const path = require("path");
 const { normalizeName, parseFrontmatter } = require("./frontmatter");
 const {
   SKILL_FRONTMATTER_BOOLEAN_FIELDS,
+  skillContracts,
   skillFrontmatterFieldByLoaderProperty,
 } = require("../schemas/skill-contracts");
 const {
@@ -87,6 +88,48 @@ function normalizeFrontmatterBoolean(value) {
 function normalizeFrontmatterField(field, value) {
   if (!SKILL_FRONTMATTER_BOOLEAN_FIELDS.has(field)) return value;
   return normalizeFrontmatterBoolean(value);
+}
+
+function validateSkillFrontmatter(data, file) {
+  const fields = skillContracts.skill_frontmatter?.fields ?? {};
+  for (const [field, contract] of Object.entries(fields)) {
+    if (!Object.hasOwn(data, field)) continue;
+    const value = data[field];
+    let expectedType;
+    if (contract.type === "string" && !isNonEmptyString(value)) {
+      expectedType = "non-empty string";
+    } else if (contract.type === "boolean" && !isFrontmatterBoolean(value)) {
+      expectedType = 'boolean ("true" or "false")';
+    } else if (
+      contract.type === "string_array" &&
+      !isNonEmptyStringArray(value)
+    ) {
+      expectedType = "non-empty array of non-empty strings";
+    }
+    if (expectedType) {
+      throw new Error(
+        `${file}: frontmatter field "${field}" must be a ${expectedType}.`,
+      );
+    }
+  }
+}
+
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isFrontmatterBoolean(value) {
+  if (typeof value === "boolean") return true;
+  if (typeof value !== "string") return false;
+  return ["true", "false"].includes(value.trim().toLowerCase());
+}
+
+function isNonEmptyStringArray(value) {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((item) => isNonEmptyString(item))
+  );
 }
 
 /**
@@ -246,6 +289,7 @@ async function loadSkills(skillsDirs) {
   for (const file of skillFiles) {
     const raw = await readText(file);
     const { data, body } = parseFrontmatter(raw);
+    validateSkillFrontmatter(data, file);
     const name = data.name ?? path.basename(path.dirname(file));
     const allowedTools = parseAllowedTools(data["allowed-tools"]);
     skills.push({
@@ -433,12 +477,6 @@ function parsePlatforms(value) {
   if (!value) return undefined;
   if (Array.isArray(value))
     return value.map((item) => String(item).toLowerCase());
-  if (typeof value === "string") {
-    return value
-      .split(/,/)
-      .map((item) => item.trim().toLowerCase())
-      .filter(Boolean);
-  }
   return undefined;
 }
 

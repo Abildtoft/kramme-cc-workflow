@@ -1773,6 +1773,216 @@ EOF
   [[ "$output" == *"missing frontmatter field 'user-invocable'"* ]]
 }
 
+@test "mechanical frontmatter accepts every schema-declared primitive type" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
+---
+name: test-skill
+description: Test skill
+argument-hint: "[target]"
+disable-model-invocation: "false"
+user-invocable: true
+kramme-platforms: [claude-code, "codex"]
+---
+# Test
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "mechanical": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
+@test "mechanical frontmatter accepts block arrays after comments and blank lines" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
+---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms:
+  # Supported targets
+
+  - claude-code
+  - codex
+---
+# Test
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "mechanical": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
+@test "mechanical frontmatter accepts an indented continued string" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
+---
+name: test-skill
+description:
+  Test skill continued on the next line
+disable-model-invocation: false
+user-invocable: true
+---
+# Test
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "mechanical": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
+@test "mechanical frontmatter rejects empty block scalar strings" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
+---
+name: test-skill
+description: |
+disable-model-invocation: false
+user-invocable: true
+---
+# Test
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "mechanical": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"frontmatter field 'description' must be a non-empty string"* ]]
+}
+
+@test "mechanical frontmatter reports every invalid schema-declared primitive type" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
+---
+name: false
+description:
+argument-hint: false
+disable-model-invocation: maybe
+user-invocable: 0
+kramme-platforms: codex
+---
+# Test
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "mechanical": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"skills/a/SKILL.md frontmatter field 'name' must be a non-empty string"* ]]
+  [[ "$output" == *"skills/a/SKILL.md frontmatter field 'description' must be a non-empty string"* ]]
+  [[ "$output" == *"skills/a/SKILL.md frontmatter field 'argument-hint' must be a non-empty string"* ]]
+  [[ "$output" == *"skills/a/SKILL.md frontmatter field 'disable-model-invocation' must be a boolean"* ]]
+  [[ "$output" == *"skills/a/SKILL.md frontmatter field 'user-invocable' must be a boolean"* ]]
+  [[ "$output" == *"skills/a/SKILL.md frontmatter field 'kramme-platforms' must be a non-empty array of non-empty strings"* ]]
+}
+
+@test "mechanical frontmatter rejects non-string nodes in arrays" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
+---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms: [codex, [nested]]
+---
+# Test
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "mechanical": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"frontmatter field 'kramme-platforms' must be a non-empty array of non-empty strings"* ]]
+
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
+---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms: [codex, .5]
+---
+# Test
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"frontmatter field 'kramme-platforms' must be a non-empty array of non-empty strings"* ]]
+
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
+---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms: [codex, 0x10]
+---
+# Test
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"frontmatter field 'kramme-platforms' must be a non-empty array of non-empty strings"* ]]
+
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
+---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms:
+  - codex
+  - [nested]
+---
+# Test
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"frontmatter field 'kramme-platforms' must be a non-empty array of non-empty strings"* ]]
+}
+
 @test "mechanical agent frontmatter name must match filename" {
   write_file "$TMP_ROOT/kramme-cc-workflow/agents/kramme:sample-agent.md" <<'EOF'
 ---

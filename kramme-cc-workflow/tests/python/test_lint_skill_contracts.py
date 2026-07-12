@@ -11,6 +11,7 @@ SCRIPT_PATH = SCRIPTS_DIR / "lint-skill-contracts.py"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import lint_skill_contracts  # noqa: E402
+from lint_skill_contracts.frontmatter import frontmatter_type_errors  # noqa: E402
 
 
 def load_compat_script(module_name="lint_skill_contracts_cli"):
@@ -137,6 +138,114 @@ class MarkdownTableHelpersTest(unittest.TestCase):
 
 
 class FrontmatterContractHelpersTest(unittest.TestCase):
+    def test_type_errors_match_converter_legacy_numeric_strings(self) -> None:
+        text = """---
+name: +1
+description: 1e3
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms:
+  - -1e2
+---
+"""
+
+        self.assertEqual(frontmatter_type_errors(text), [])
+
+    def test_type_errors_decode_quoted_yaml_before_checking_emptiness(self) -> None:
+        text = r'''---
+name: test-skill
+description: "\n"
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms: [codex, "\x20"]
+---
+'''
+
+        self.assertEqual(
+            frontmatter_type_errors(text),
+            [
+                ("description", "a non-empty string"),
+                (
+                    "kramme-platforms",
+                    "a non-empty array of non-empty strings",
+                ),
+            ],
+        )
+
+    def test_type_errors_accept_escaped_quotes_in_flow_arrays(self) -> None:
+        text = r'''---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms: ["claude\",code", codex]
+---
+'''
+
+        self.assertEqual(frontmatter_type_errors(text), [])
+
+    def test_type_errors_reject_nested_and_empty_block_array_values(self) -> None:
+        nested_mapping = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms:
+  - target:
+      name: codex
+---
+"""
+        empty_block_scalar = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms:
+  - |
+---
+"""
+        expected = [
+            (
+                "kramme-platforms",
+                "a non-empty array of non-empty strings",
+            )
+        ]
+
+        self.assertEqual(frontmatter_type_errors(nested_mapping), expected)
+        self.assertEqual(frontmatter_type_errors(empty_block_scalar), expected)
+
+    def test_type_errors_accepts_an_indented_continued_string(self) -> None:
+        text = """---
+name: test-skill
+description:
+  Test skill continued on the next line
+disable-model-invocation: false
+user-invocable: true
+---
+"""
+
+        self.assertEqual(frontmatter_type_errors(text), [])
+
+    def test_type_errors_rejects_a_leading_dot_number_in_a_string_array(self) -> None:
+        text = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms: [codex, .5]
+---
+"""
+
+        self.assertEqual(
+            frontmatter_type_errors(text),
+            [
+                (
+                    "kramme-platforms",
+                    "a non-empty array of non-empty strings",
+                )
+            ],
+        )
+
     def test_expected_invocation_distinguishes_user_and_background_modes(self) -> None:
         self.assertEqual(
             lint_skill_contracts.expected_invocation(
