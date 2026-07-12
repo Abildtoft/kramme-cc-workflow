@@ -10,6 +10,7 @@
 setup() {
 	PLUGIN_ROOT="$BATS_TEST_DIRNAME/.."
 	REGISTRY="$PLUGIN_ROOT/skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
+	CLEANUP_SKILL="$PLUGIN_ROOT/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
 	AUTODETECT="$PLUGIN_ROOT/skills/kramme:code:breakdown-findings/references/auto-detect-sources.md"
 	CONTRACTS="$PLUGIN_ROOT/scripts/synced-contracts.yaml"
 	HELPER="$BATS_TEST_TMPDIR/cleanup_registry.py"
@@ -93,6 +94,25 @@ def autodetect_sources(path):
     text = pathlib.Path(path).read_text()
     return re.findall(r"^\s*\d+\.\s+`([^`]+)`", text, re.M)
 PY
+}
+
+@test "cleanup skill retains registry safety policies" {
+	run python3 - "$CLEANUP_SKILL" <<'PY'
+import pathlib
+import sys
+
+text = pathlib.Path(sys.argv[1]).read_text()
+policies = {
+    "conditional-directory gate": "any entry's `condition` marker",
+    "permanent-spec retention": "every `permanent-spec` entry",
+    "auto-mode isolation": (
+        "Never include shared diagram files or permanent specs in the auto-selected artifact set."
+    ),
+}
+missing = [name for name, phrase in policies.items() if phrase not in text]
+raise SystemExit("missing cleanup safety policies: " + ", ".join(missing) if missing else 0)
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
 @test "both cleanup contracts are registered" {

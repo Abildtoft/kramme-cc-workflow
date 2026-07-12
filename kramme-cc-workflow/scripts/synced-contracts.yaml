@@ -825,6 +825,9 @@
       "contains": [
         "references/disposable-artifacts.yaml",
         "single source of truth",
+        "any entry's `condition` marker",
+        "every `permanent-spec` entry",
+        "Never include shared diagram files or permanent specs in the auto-selected artifact set.",
         "siw/OPEN_ISSUES_OVERVIEW.md",
         "siw/issues/"
       ]
