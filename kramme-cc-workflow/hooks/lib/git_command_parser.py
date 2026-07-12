@@ -44,6 +44,136 @@ SHELL_OPTIONS_WITH_VALUE = {
 }
 
 
+def _decode_ansi_c_string(value):
+    """Decode the escape sequences supported by shell ANSI-C quoting."""
+    simple_escapes = {
+        "a": "\a",
+        "b": "\b",
+        "e": "\x1b",
+        "E": "\x1b",
+        "f": "\f",
+        "n": "\n",
+        "r": "\r",
+        "t": "\t",
+        "v": "\v",
+        "\\": "\\",
+        "'": "'",
+        '"': '"',
+        "?": "?",
+    }
+    decoded = []
+    idx = 0
+    while idx < len(value):
+        if value[idx] != "\\":
+            decoded.append(value[idx])
+            idx += 1
+            continue
+
+        if idx + 1 >= len(value):
+            decoded.append("\\")
+            break
+
+        escape = value[idx + 1]
+        if escape in simple_escapes:
+            decoded.append(simple_escapes[escape])
+            idx += 2
+            continue
+        if escape in "01234567":
+            end = idx + 2
+            while end < min(idx + 4, len(value)) and value[end] in "01234567":
+                end += 1
+            decoded.append(chr(int(value[idx + 1 : end], 8)))
+            idx = end
+            continue
+        if escape in {"x", "u", "U"}:
+            max_digits = {"x": 2, "u": 4, "U": 8}[escape]
+            start = idx + 2
+            end = start
+            while (
+                end < min(start + max_digits, len(value))
+                and value[end] in "0123456789abcdefABCDEF"
+            ):
+                end += 1
+            if end == start:
+                decoded.extend(("\\", escape))
+                idx += 2
+                continue
+            try:
+                decoded.append(chr(int(value[start:end], 16)))
+            except ValueError as exc:
+                raise ValueError("Invalid ANSI-C Unicode escape.") from exc
+            idx = end
+            continue
+        if escape == "c" and idx + 2 < len(value):
+            decoded.append(chr(ord(value[idx + 2].upper()) & 0x1F))
+            idx += 3
+            continue
+        if escape in {"\n", "\r"}:
+            idx += 2
+            continue
+
+        decoded.extend(("\\", escape))
+        idx += 2
+
+    return "".join(decoded)
+
+
+def _expand_ansi_c_quoted_strings(command):
+    """Replace unquoted $'...' forms with equivalent shlex-safe strings."""
+    expanded = []
+    idx = 0
+    quote = None
+    while idx < len(command):
+        char = command[idx]
+
+        if quote == "'":
+            expanded.append(char)
+            if char == "'":
+                quote = None
+            idx += 1
+            continue
+
+        if quote == '"':
+            expanded.append(char)
+            if char == "\\" and idx + 1 < len(command):
+                expanded.append(command[idx + 1])
+                idx += 2
+                continue
+            if char == '"':
+                quote = None
+            idx += 1
+            continue
+
+        if command.startswith("$'", idx):
+            value = []
+            end = idx + 2
+            while end < len(command):
+                if command[end] == "\\" and end + 1 < len(command):
+                    value.extend((command[end], command[end + 1]))
+                    end += 2
+                    continue
+                if command[end] == "'":
+                    break
+                value.append(command[end])
+                end += 1
+            if end >= len(command):
+                raise ValueError("Unterminated ANSI-C quoted string.")
+            expanded.append(shlex.quote(_decode_ansi_c_string("".join(value))))
+            idx = end + 1
+            continue
+
+        expanded.append(char)
+        if char in {"'", '"'}:
+            quote = char
+        elif char == "\\" and idx + 1 < len(command):
+            expanded.append(command[idx + 1])
+            idx += 2
+            continue
+        idx += 1
+
+    return "".join(expanded)
+
+
 def read_dollar_substitution(command, start):
     inner = []
     depth = 1
@@ -697,7 +827,8 @@ def normalize_newlines(command):
 
 
 def tokenize(command):
-    lexer = shlex.shlex(normalize_newlines(command), posix=True, punctuation_chars="()|&;")
+    command = _expand_ansi_c_quoted_strings(normalize_newlines(command))
+    lexer = shlex.shlex(command, posix=True, punctuation_chars="()|&;")
     lexer.whitespace_split = True
     lexer.commenters = ""
     return list(lexer)
@@ -1614,23 +1745,18 @@ UNLINK_REASON = "unlink is blocked. Use `trash` instead for recoverable deletion
 
 
 def _extract_shell_c_command(args):
-    def normalize_payload(payload):
-        if payload.startswith("$") and any(char.isspace() for char in payload[1:]):
-            return payload[1:]
-        return payload
-
     idx = 0
     while idx < len(args):
         arg = args[idx]
         if arg in ("-c", "--command"):
             idx += 1
             if idx < len(args) and args[idx] == "--" and idx + 1 < len(args):
-                return normalize_payload(args[idx + 1])
+                return args[idx + 1]
             if idx < len(args):
-                return normalize_payload(args[idx])
+                return args[idx]
             return None
         if arg.startswith("--command="):
-            return normalize_payload(arg.split("=", 1)[1])
+            return arg.split("=", 1)[1]
         if arg in SHELL_OPTIONS_WITH_VALUE:
             idx += 2
             continue
@@ -1646,9 +1772,9 @@ def _extract_shell_c_command(args):
             if "c" in arg[1:]:
                 idx += 1
                 if idx < len(args) and args[idx] == "--" and idx + 1 < len(args):
-                    return normalize_payload(args[idx + 1])
+                    return args[idx + 1]
                 if idx < len(args):
-                    return normalize_payload(args[idx])
+                    return args[idx]
                 return None
             idx += 1
             continue

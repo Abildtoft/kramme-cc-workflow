@@ -470,6 +470,29 @@ run_hook_without_python3() {
 	is_blocked
 }
 
+@test "normalizes ANSI-C shell payloads across wrapper forms" {
+	local command
+	for command in \
+		$'bash -c $\'echo ok\nrm -rf directory/\'' \
+		"bash -c \$'rm\\x20-rf directory/'" \
+		"bash -c \$'rm\\t-rf directory/'" \
+		"bash -O extglob -c \$'rm -rf directory/'" \
+		"env FOO=bar bash -c \$'rm -rf directory/'"
+	do
+		run run_hook "$command"
+		is_blocked
+	done
+
+	run run_hook "bash -c \$'echo safe'"
+	[ "$status" -eq 0 ]
+	is_allowed
+}
+
+@test "fails closed for malformed ANSI-C destructive shell payload" {
+	run run_hook "bash -c \$'rm -rf directory/"
+	is_blocked
+}
+
 @test "blocks zsh -fc 'rm -rf'" {
 	run run_hook "zsh -fc 'rm -rf directory/'"
 	is_blocked

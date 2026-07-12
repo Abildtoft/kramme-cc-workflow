@@ -924,6 +924,30 @@ EOF"
 	is_allowed
 }
 
+@test "normalizes ANSI-C shell payloads before checking git commands" {
+	local command
+	for command in \
+		"bash -c \$'git commit'" \
+		"bash -c \$'git\\x20commit'" \
+		"bash -c \$'git\\tcommit'" \
+		$'bash -c $\'echo ok\ngit commit\'' \
+		"bash -O extglob -c \$'git commit'" \
+		"env FOO=bar bash -c \$'git commit'"
+	do
+		run run_hook "$command"
+		is_blocked
+	done
+
+	run run_hook "bash -c \$'git commit -m test'"
+	[ "$status" -eq 0 ]
+	is_allowed
+}
+
+@test "fails closed for malformed ANSI-C shell payload" {
+	run run_hook "bash -c \$'git commit"
+	is_blocked
+}
+
 @test "blocks chained git commit without message" {
 	run run_hook "git status && git commit"
 	is_blocked
