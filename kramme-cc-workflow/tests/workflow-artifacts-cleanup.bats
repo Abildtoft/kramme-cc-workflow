@@ -46,7 +46,7 @@ def materialize(entry, workroot, homeroot):
         child = entry.get("expected_contents", "artifact.txt").replace("*", "SAMPLE")
         open(os.path.join(target, os.path.basename(child)), "w").close()
     else:
-        concrete = _concrete(target)
+        concrete = _concrete(target) if entry["type"] == "glob" else target
         parent = os.path.dirname(concrete)
         if parent:
             os.makedirs(parent, exist_ok=True)
@@ -76,7 +76,8 @@ def delete(entry, workroot, homeroot):
         if os.path.isdir(target):
             shutil.rmtree(target)
         return
-    for match in glob.glob(target):
+    matches = glob.glob(target) if entry["type"] == "glob" else [target]
+    for match in matches:
         if os.path.isdir(match):
             shutil.rmtree(match)
         elif os.path.exists(match):
@@ -87,7 +88,9 @@ def remaining(entry, workroot, homeroot):
     target = resolve(entry, workroot, homeroot)
     if entry["type"] == "dir":
         return os.path.isdir(target)
-    return bool(glob.glob(target))
+    if entry["type"] == "glob":
+        return bool(glob.glob(target))
+    return os.path.exists(target)
 
 
 def autodetect_sources(path):
@@ -132,6 +135,7 @@ PY
 
 @test "every registry entry declares required fields and known vocabulary" {
 	run python3 - "$REGISTRY" <<'PY'
+import glob
 import json
 import pathlib
 import sys
@@ -156,8 +160,17 @@ for entry in artifacts:
         errors.append(f"{ident}: bad retention {entry.get('retention')!r}")
     if entry.get("type") not in types:
         errors.append(f"{ident}: bad type {entry.get('type')!r}")
+    path = entry.get("path", "")
+    if glob.has_magic(path) != (entry.get("type") == "glob"):
+        errors.append(f"{ident}: path/type mismatch for {path!r}")
     if "condition" in entry and "expected_contents" not in entry:
         errors.append(f"{ident}: condition without expected_contents")
+    if "condition" in entry:
+        marker = next((candidate for candidate in artifacts if candidate.get("path") == entry["condition"]), None)
+        if marker is None:
+            errors.append(f"{ident}: condition is not a registered artifact")
+        elif marker.get("type") != "file":
+            errors.append(f"{ident}: condition must reference a literal file")
     if entry.get("category") == "permanent-spec" and entry.get("retention") != "permanent":
         errors.append(f"{ident}: permanent-spec must be retention permanent")
 raise SystemExit("\n".join(errors) if errors else 0)
@@ -211,7 +224,8 @@ spec = importlib.util.spec_from_file_location("cleanup_registry", helper)
 c = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(c)
 
-entries = [a for a in c.load(registry) if "condition" in a]
+artifacts = c.load(registry)
+entries = [a for a in artifacts if "condition" in a]
 errors = []
 for entry in entries:
     work = os.path.join(tmp, entry["id"])
@@ -221,8 +235,17 @@ for entry in entries:
     if c.candidates([entry], work, home):
         errors.append(f"selected without marker: {entry['id']}")
 
-    marker = {"path": entry["condition"], "type": "file"}
+    marker = next(a for a in artifacts if a["path"] == entry["condition"])
     c.materialize(marker, work, home)
+    selected = c.candidates([entry], work, home)
+    if selected != [entry]:
+        errors.append(f"not selected with marker and expected contents: {entry['id']}")
+    else:
+        c.delete(entry, work, home)
+        if c.remaining(entry, work, home):
+            errors.append(f"selected conditional directory survived cleanup: {entry['id']}")
+
+    c.materialize(entry, work, home)
     open(os.path.join(c.resolve(entry, work, home), "unexpected.txt"), "w").close()
     if c.candidates([entry], work, home):
         errors.append(f"selected with unexpected contents: {entry['id']}")

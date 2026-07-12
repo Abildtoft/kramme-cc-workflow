@@ -41,7 +41,7 @@
       "type": "file",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:siw:product-audit"
+      "producer": "kramme:product:review"
     },
     {
       "id": "product-audit",
@@ -193,7 +193,7 @@
       "type": "file",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:code:breakdown-findings"
+      "producer": "kramme:code:deprecate"
     },
     {
       "id": "deprecation-plans",
@@ -201,7 +201,7 @@
       "type": "glob",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:code:breakdown-findings"
+      "producer": "kramme:code:deprecate"
     },
     {
       "id": "demo-reels",
@@ -277,7 +277,7 @@
       "type": "file",
       "category": "permanent-spec",
       "retention": "permanent",
-      "producer": "kramme:siw:generate-phases"
+      "producer": "kramme:siw:init"
     },
     {
       "id": "siw-api-design",
@@ -285,7 +285,7 @@
       "type": "file",
       "category": "permanent-spec",
       "retention": "permanent",
-      "producer": "kramme:siw:api-design"
+      "producer": "kramme:siw:init"
     },
     {
       "id": "siw-documentation-spec",
@@ -293,7 +293,7 @@
       "type": "file",
       "category": "permanent-spec",
       "retention": "permanent",
-      "producer": "kramme:siw:documentation-spec"
+      "producer": "kramme:siw:init"
     },
     {
       "id": "siw-system-design",
@@ -301,7 +301,7 @@
       "type": "file",
       "category": "permanent-spec",
       "retention": "permanent",
-      "producer": "kramme:siw:system-design"
+      "producer": "kramme:siw:init"
     },
     {
       "id": "siw-tutorial-plan",
@@ -309,7 +309,7 @@
       "type": "file",
       "category": "permanent-spec",
       "retention": "permanent",
-      "producer": "kramme:siw:tutorial-plan"
+      "producer": "kramme:siw:init"
     }
   ]
 }
