@@ -150,12 +150,16 @@ function convertClaudeToCodex(plugin) {
       return { command, skillName };
     });
 
-  const agentSkills = plugin.agents.map((agent) =>
-    convertAgentSkill(agent, usedSkillNames),
-  );
+  const agentSkillDefinitions = plugin.agents.map((agent) => ({
+    agent,
+    name: uniqueName(codexName(agent.name), usedSkillNames),
+  }));
   const knownAgentSkills = buildKnownAgentSkillNames(
     plugin.agents,
-    agentSkills,
+    agentSkillDefinitions,
+  );
+  const agentSkills = agentSkillDefinitions.map(({ agent, name }) =>
+    convertAgentSkill(agent, name, knownCommandNames, knownAgentSkills),
   );
   const commandSkills = commandSkillDefinitions.map(({ command, skillName }) =>
     convertCommandSkill(
@@ -247,17 +251,24 @@ function convertCodexHookPlugin(plugin) {
 
 /**
  * @param {ClaudeAgent} agent
- * @param {Set<string>} usedNames
+ * @param {string} name
+ * @param {Set<string>} knownCommands
+ * @param {Map<string, string>} knownAgentSkills
  * @returns {CodexSkillFile}
  */
-function convertAgentSkill(agent, usedNames) {
-  const name = uniqueName(codexName(agent.name), usedNames);
+function convertAgentSkill(agent, name, knownCommands, knownAgentSkills) {
   const description = sanitizeDescription(
-    agent.description ?? `Converted from Claude agent ${agent.name}`,
+    transformAgentContentForCodex(
+      agent.description ?? `Converted from Claude agent ${agent.name}`,
+      { knownCommands, knownAgentSkills },
+    ),
   );
   const frontmatter = { name, description };
 
-  let body = agent.body.trim();
+  let body = transformAgentContentForCodex(agent.body.trim(), {
+    knownCommands,
+    knownAgentSkills,
+  });
   if (agent.capabilities && agent.capabilities.length > 0) {
     const capabilities = agent.capabilities
       .map((capability) => `- ${capability}`)
@@ -356,6 +367,30 @@ function transformContentForCodex(body, options = {}) {
   result = rewriteAgentMentions(result);
   result = rewriteCodexAgentFileReferences(result, options.knownAgentSkills);
   return normalizeCodexInstructionText(result);
+}
+
+function transformAgentContentForCodex(body, options) {
+  const transformed = transformContentForCodex(body, options);
+  if (
+    !/`?CLAUDE\.md`?/.test(transformed) ||
+    /`?AGENTS\.md`?/.test(transformed)
+  ) {
+    return transformed;
+  }
+  const instructionFiles =
+    "`AGENTS.md`, `CLAUDE.md`, and closest nested equivalents";
+  return transformed
+    .replace(
+      /`?CLAUDE\.md`? conventions/g,
+      `conventions from ${instructionFiles}`,
+    )
+    .replace(
+      /`?CLAUDE\.md`? or equivalent/g,
+      "`AGENTS.md`, `CLAUDE.md`, or closest nested equivalent",
+    )
+    .replace(/`?CLAUDE\.md`? violation/g, `violation of ${instructionFiles}`)
+    .replace(/`?CLAUDE\.md`? rule/g, `rule from ${instructionFiles}`)
+    .replace(/`?CLAUDE\.md`?/g, instructionFiles);
 }
 
 function rewriteTaskCalls(text) {
@@ -495,10 +530,7 @@ const CODEX_INSTRUCTION_REPLACEMENTS = [
     /\bvia `?AskUserQuestion`?(?=[:\s.,)]|$)/g,
     "by asking the user directly in chat",
   ],
-  [
-    /\bthe same `?AskUserQuestion`? prompt\b/g,
-    "the same direct chat prompt",
-  ],
+  [/\bthe same `?AskUserQuestion`? prompt\b/g, "the same direct chat prompt"],
   [
     /\bAskUserQuestion with (\d+) options\b/g,
     "a direct chat question with $1 concrete options",
@@ -554,6 +586,18 @@ const CODEX_INSTRUCTION_REPLACEMENTS = [
     "using a subagent when available; otherwise in the main thread",
   ],
   [/\bTask tool\b/g, "subagent workflow"],
+  [
+    /\bMonitor task progress via `?TaskList`?(?=[\s.,:;)]|$)/g,
+    "Monitor task progress with list_agents",
+  ],
+  [
+    /\bMonitor `?TaskList`? for\b/g,
+    "Monitor agent progress with list_agents for",
+  ],
+  [/\busing `?SendMessage`?(?=[\s.,:;)]|$)/g, "using send_message"],
+  [/\bvia `?SendMessage`?(?=[\s.,:;)]|$)/g, "with send_message"],
+  [/\bSendMessage tool\b/g, "send_message"],
+  [/\bTaskList tool\b/g, "list_agents"],
   [/\bvia the Skill tool to\b/g, "using the corresponding Codex skill to"],
   [/\busing the Skill tool to\b/g, "using the corresponding Codex skill to"],
   [/\bInvoke via Skill tool\b/g, "Invoke using the corresponding Codex skill"],
