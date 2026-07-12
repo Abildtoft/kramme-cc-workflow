@@ -27,6 +27,21 @@ trust_current_project() {
 	printf '%s\n' "$TEST_DIR" >"$KRAMME_AUTOFORMAT_TRUST_FILE"
 }
 
+create_fake_command() {
+	local name="$1"
+	local exit_status="${2:-0}"
+	local fake_bin="$TEST_DIR/fake-bin"
+
+	mkdir -p "$fake_bin"
+	cat >"$fake_bin/$name" <<EOF
+#!/bin/bash
+printf '%s %s\n' '$name' "\$*" >>"\$FORMATTER_LOG"
+exit $exit_status
+EOF
+	chmod +x "$fake_bin/$name"
+	export PATH="$fake_bin:$PATH"
+}
+
 # ============================================================================
 # SKIP CASES - Binary and generated files
 # ============================================================================
@@ -386,6 +401,55 @@ EOF
 	has_system_message
 }
 
+@test "prefers Biome over Prettier for supported files" {
+	export FORMATTER_LOG="$TEST_DIR/formatter.log"
+	create_fake_command biome
+	create_fake_command prettier
+	cat >package.json <<'EOF'
+{"devDependencies": {"@biomejs/biome": "^1.0.0", "prettier": "^3.0.0"}}
+EOF
+	touch test.ts
+
+	run run_format_hook "$TEST_DIR/test.ts"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'Formatted with Biome:'* ]]
+	[ "$(wc -l <"$FORMATTER_LOG")" -eq 1 ]
+	[[ "$(cat "$FORMATTER_LOG")" == biome* ]]
+}
+
+@test "tries Prettier after Biome fails" {
+	export FORMATTER_LOG="$TEST_DIR/formatter.log"
+	create_fake_command biome 1
+	create_fake_command prettier
+	cat >package.json <<'EOF'
+{"devDependencies": {"@biomejs/biome": "^1.0.0", "prettier": "^3.0.0"}}
+EOF
+	touch test.ts
+
+	run run_format_hook "$TEST_DIR/test.ts"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'Formatted with Prettier:'* ]]
+	[ "$(sed -n '1p' "$FORMATTER_LOG")" = "biome format --write $TEST_DIR/test.ts" ]
+	[ "$(sed -n '2p' "$FORMATTER_LOG")" = "prettier --write $TEST_DIR/test.ts" ]
+}
+
+@test "falls through when detected formatters are unavailable" {
+	export FORMATTER_LOG="$TEST_DIR/formatter.log"
+	create_fake_command biome 127
+	create_fake_command prettier 127
+	cat >package.json <<'EOF'
+{"devDependencies": {"@biomejs/biome": "^1.0.0"}}
+EOF
+	touch test.ts
+
+	run run_format_hook "$TEST_DIR/test.ts"
+
+	[ "$status" -eq 0 ]
+	has_no_formatter
+}
+
 # ============================================================================
 # PYTHON FORMATTER DETECTION
 # ============================================================================
@@ -541,6 +605,24 @@ EOF
 	has_system_message
 }
 
+@test "tries Nx before the npm project fallback" {
+	export FORMATTER_LOG="$TEST_DIR/formatter.log"
+	create_fake_command nx 1
+	create_fake_command npm
+	echo '{}' >nx.json
+	cat >package.json <<'EOF'
+{"scripts": {"format": "echo formatted"}}
+EOF
+	touch test.xyz
+
+	run run_format_hook "$TEST_DIR/test.xyz"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'Formatted with npm run format'* ]]
+	[ "$(sed -n '1p' "$FORMATTER_LOG")" = "nx format:write --files=test.xyz" ]
+	[ "$(sed -n '2p' "$FORMATTER_LOG")" = "npm run format" ]
+}
+
 # ============================================================================
 # CACHING TESTS
 # ============================================================================
@@ -563,6 +645,27 @@ EOF
 	run run_format_hook "$TEST_DIR/test.js"
 	[ "$status" -eq 0 ]
 	[ -f "$cache_file" ]
+}
+
+@test "uses a valid formatter cache without repeating detection" {
+	export XDG_CACHE_HOME="$BATS_TEST_TMPDIR/xdg-cache"
+	export FORMATTER_LOG="$TEST_DIR/formatter.log"
+	create_fake_command prettier
+
+	echo '{"devDependencies": {"prettier": "^3.0.0"}}' >package.json
+	touch test.js
+	run run_format_hook "$TEST_DIR/test.js"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'Formatted with Prettier:'* ]]
+
+	: >"$FORMATTER_LOG"
+	echo '{}' >package.json
+	touch -t 200001010000 package.json
+	run run_format_hook "$TEST_DIR/test.js"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'Formatted with Prettier:'* ]]
+	[ "$(wc -l <"$FORMATTER_LOG")" -eq 1 ]
 }
 
 @test "cache is invalidated when package.json changes" {
