@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 import tempfile
 import unittest
@@ -11,6 +12,7 @@ SCRIPT_PATH = SCRIPTS_DIR / "lint-skill-contracts.py"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import lint_skill_contracts  # noqa: E402
+from lint_skill_contracts.frontmatter import frontmatter_type_errors  # noqa: E402
 
 
 def load_compat_script(module_name="lint_skill_contracts_cli"):
@@ -136,7 +138,249 @@ class MarkdownTableHelpersTest(unittest.TestCase):
         )
 
 
+FRONTMATTER_TYPE_CASES = json.loads(
+    (
+        Path(__file__).resolve().parents[1]
+        / "fixtures"
+        / "frontmatter-type-cases.json"
+    ).read_text(encoding="utf-8")
+)["cases"]
+
+
+class FrontmatterTypeContractTest(unittest.TestCase):
+    """Pin the Python linter to the shared converter oracle fixtures."""
+
+    def test_shared_fixtures_are_non_empty(self) -> None:
+        self.assertGreater(len(FRONTMATTER_TYPE_CASES), 0)
+
+    def test_type_errors_match_shared_converter_fixtures(self) -> None:
+        for case in FRONTMATTER_TYPE_CASES:
+            with self.subTest(case=case["name"]):
+                fields = sorted(
+                    field for field, _ in frontmatter_type_errors(case["text"])
+                )
+                self.assertEqual(fields, sorted(case["invalidFields"]))
+
+
 class FrontmatterContractHelpersTest(unittest.TestCase):
+    def test_type_errors_strip_comments_from_quoted_block_array_items(self) -> None:
+        empty_item_with_comment = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms:
+  - "" # placeholder
+---
+"""
+        valid_items_with_comment = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms:
+  - "codex" # primary
+  - claude-code
+---
+"""
+
+        self.assertEqual(
+            frontmatter_type_errors(empty_item_with_comment),
+            [
+                (
+                    "kramme-platforms",
+                    "a non-empty array of non-empty strings",
+                )
+            ],
+        )
+        self.assertEqual(frontmatter_type_errors(valid_items_with_comment), [])
+
+    def test_type_errors_match_converter_legacy_numeric_strings(self) -> None:
+        text = """---
+name: +1
+description: 1e3
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms:
+  - -1e2
+---
+"""
+
+        self.assertEqual(frontmatter_type_errors(text), [])
+
+    def test_type_errors_decode_quoted_yaml_before_checking_emptiness(self) -> None:
+        text = r'''---
+name: test-skill
+description: "\n"
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms: [codex, "\x20"]
+---
+'''
+
+        self.assertEqual(
+            frontmatter_type_errors(text),
+            [
+                ("description", "a non-empty string"),
+                (
+                    "kramme-platforms",
+                    "a non-empty array of non-empty strings",
+                ),
+            ],
+        )
+
+    def test_type_errors_accept_escaped_quotes_in_flow_arrays(self) -> None:
+        text = r'''---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms: ["claude\",code", codex]
+---
+'''
+
+        self.assertEqual(frontmatter_type_errors(text), [])
+
+    def test_type_errors_read_complete_multiline_quoted_scalars(self) -> None:
+        whitespace_string = """---
+name: test-skill
+description: "
+  "
+disable-model-invocation: false
+user-invocable: true
+---
+"""
+        multiline_boolean = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: "true
+  "
+---
+"""
+
+        self.assertEqual(
+            frontmatter_type_errors(whitespace_string),
+            [("description", "a non-empty string")],
+        )
+        self.assertEqual(frontmatter_type_errors(multiline_boolean), [])
+
+        quoted_boolean_with_comment = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: "true" # Remains user invocable
+---
+"""
+        self.assertEqual(frontmatter_type_errors(quoted_boolean_with_comment), [])
+
+    def test_type_errors_accept_a_trailing_flow_array_comma(self) -> None:
+        text = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms: [codex,]
+---
+"""
+
+        self.assertEqual(frontmatter_type_errors(text), [])
+
+    def test_type_errors_reject_non_string_flow_tags_and_aliases(self) -> None:
+        invalid_values = ['!!int "1"', "*target", "&target 1"]
+
+        for value in invalid_values:
+            with self.subTest(value=value):
+                text = f"""---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms: [codex, {value}]
+---
+"""
+                self.assertEqual(
+                    frontmatter_type_errors(text),
+                    [
+                        (
+                            "kramme-platforms",
+                            "a non-empty array of non-empty strings",
+                        )
+                    ],
+                )
+
+        explicitly_tagged_string = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms: [!!str 1, &target codex]
+---
+"""
+        self.assertEqual(frontmatter_type_errors(explicitly_tagged_string), [])
+
+    def test_type_errors_reject_nested_and_empty_block_array_values(self) -> None:
+        nested_mapping = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms:
+  - target:
+      name: codex
+---
+"""
+        empty_block_scalar = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms:
+  - |
+---
+"""
+        expected = [
+            (
+                "kramme-platforms",
+                "a non-empty array of non-empty strings",
+            )
+        ]
+
+        self.assertEqual(frontmatter_type_errors(nested_mapping), expected)
+        self.assertEqual(frontmatter_type_errors(empty_block_scalar), expected)
+
+    def test_type_errors_accepts_an_indented_continued_string(self) -> None:
+        text = """---
+name: test-skill
+description:
+  Test skill continued on the next line
+disable-model-invocation: false
+user-invocable: true
+---
+"""
+
+        self.assertEqual(frontmatter_type_errors(text), [])
+
+    def test_type_errors_rejects_a_leading_dot_number_in_a_string_array(self) -> None:
+        text = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms: [codex, .5]
+---
+"""
+
+        self.assertEqual(
+            frontmatter_type_errors(text),
+            [
+                (
+                    "kramme-platforms",
+                    "a non-empty array of non-empty strings",
+                )
+            ],
+        )
+
     def test_expected_invocation_distinguishes_user_and_background_modes(self) -> None:
         self.assertEqual(
             lint_skill_contracts.expected_invocation(

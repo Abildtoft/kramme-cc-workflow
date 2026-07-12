@@ -6,6 +6,7 @@ const path = require("path");
 const { normalizeName, parseFrontmatter } = require("./frontmatter");
 const {
   SKILL_FRONTMATTER_BOOLEAN_FIELDS,
+  skillContracts,
   skillFrontmatterFieldByLoaderProperty,
 } = require("../schemas/skill-contracts");
 const {
@@ -87,6 +88,60 @@ function normalizeFrontmatterBoolean(value) {
 function normalizeFrontmatterField(field, value) {
   if (!SKILL_FRONTMATTER_BOOLEAN_FIELDS.has(field)) return value;
   return normalizeFrontmatterBoolean(value);
+}
+
+function frontmatterTypeError(type, value) {
+  if (type === "string" && !isNonEmptyString(value)) {
+    return "non-empty string";
+  }
+  if (type === "boolean" && !isFrontmatterBoolean(value)) {
+    return 'boolean ("true" or "false")';
+  }
+  if (type === "string_array" && !isNonEmptyStringArray(value)) {
+    return "non-empty array of non-empty strings";
+  }
+  return undefined;
+}
+
+// Collect-all counterpart of the linter's frontmatter_type_errors so both
+// engines can be pinned to the same shared fixtures. validateSkillFrontmatter
+// throws on the first entry; this returns every mismatch in schema order.
+function skillFrontmatterTypeErrors(data) {
+  const fields = skillContracts.skill_frontmatter?.fields ?? {};
+  const errors = [];
+  for (const [field, contract] of Object.entries(fields)) {
+    if (!Object.hasOwn(data, field)) continue;
+    const expectedType = frontmatterTypeError(contract.type, data[field]);
+    if (expectedType) errors.push({ field, expectedType });
+  }
+  return errors;
+}
+
+function validateSkillFrontmatter(data, file) {
+  const [firstError] = skillFrontmatterTypeErrors(data);
+  if (firstError) {
+    throw new Error(
+      `${file}: frontmatter field "${firstError.field}" must be a ${firstError.expectedType}.`,
+    );
+  }
+}
+
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isFrontmatterBoolean(value) {
+  if (typeof value === "boolean") return true;
+  if (typeof value !== "string") return false;
+  return ["true", "false"].includes(value.trim().toLowerCase());
+}
+
+function isNonEmptyStringArray(value) {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((item) => isNonEmptyString(item))
+  );
 }
 
 /**
@@ -246,6 +301,7 @@ async function loadSkills(skillsDirs) {
   for (const file of skillFiles) {
     const raw = await readText(file);
     const { data, body } = parseFrontmatter(raw);
+    validateSkillFrontmatter(data, file);
     const name = data.name ?? path.basename(path.dirname(file));
     const allowedTools = parseAllowedTools(data["allowed-tools"]);
     skills.push({
@@ -433,12 +489,6 @@ function parsePlatforms(value) {
   if (!value) return undefined;
   if (Array.isArray(value))
     return value.map((item) => String(item).toLowerCase());
-  if (typeof value === "string") {
-    return value
-      .split(/,/)
-      .map((item) => item.trim().toLowerCase())
-      .filter(Boolean);
-  }
   return undefined;
 }
 
@@ -446,4 +496,5 @@ module.exports = {
   loadClaudePlugin,
   normalizeFrontmatterField,
   resolvePluginInput,
+  skillFrontmatterTypeErrors,
 };

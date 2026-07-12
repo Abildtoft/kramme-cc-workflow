@@ -43,6 +43,7 @@ const {
 const {
   loadClaudePlugin,
   normalizeFrontmatterField,
+  skillFrontmatterTypeErrors,
 } = require("../../scripts/convert-plugin/loader");
 const {
   writeCodexBundle,
@@ -338,6 +339,163 @@ Enabled body.
     } else {
       assert.equal(normalizeFrontmatterField(field, "true"), "true", field);
     }
+  }
+});
+
+test("loader accepts every schema-declared primitive frontmatter type", async () => {
+  await withTempDir(async (root) => {
+    const pluginRoot = path.join(root, "typed-plugin");
+    await createFixturePlugin(pluginRoot, "typed-plugin");
+    await writeSkillFile(
+      pluginRoot,
+      "typed-skill",
+      `---
+name: typed-skill
+description: Typed skill
+argument-hint: "[target]"
+disable-model-invocation: "false"
+user-invocable: true
+kramme-platforms: [Claude-Code, "CODEX"]
+---
+Typed body.
+`,
+    );
+
+    const plugin = await loadClaudePlugin(pluginRoot);
+    assert.equal(plugin.skills[0].argumentHint, "[target]");
+    assert.equal(plugin.skills[0].disableModelInvocation, false);
+    assert.equal(plugin.skills[0].userInvocable, true);
+    assert.deepEqual(plugin.skills[0].platforms, ["claude-code", "codex"]);
+  });
+});
+
+test("loader accepts legacy numeric strings and escaped quotes", async () => {
+  await withTempDir(async (root) => {
+    const pluginRoot = path.join(root, "legacy-scalars-plugin");
+    await createFixturePlugin(pluginRoot, "legacy-scalars-plugin");
+    await writeSkillFile(
+      pluginRoot,
+      "legacy-scalars-skill",
+      String.raw`---
+name: +1
+description: 1e3
+disable-model-invocation: false
+user-invocable: true
+kramme-platforms:
+  - -1e2
+  - "claude\",code"
+---
+Typed body.
+`,
+    );
+
+    const plugin = await loadClaudePlugin(pluginRoot);
+    assert.equal(plugin.skills[0].name, "+1");
+    assert.equal(plugin.skills[0].description, "1e3");
+    assert.deepEqual(plugin.skills[0].platforms, ["-1e2", 'claude",code']);
+  });
+});
+
+test("loader rejects decoded-empty and nested block array values", async () => {
+  const invalidFrontmatter = [
+    String.raw`description: "\n"`,
+    `description: Typed skill
+kramme-platforms:
+  - target:
+      name: codex`,
+    `description: Typed skill
+kramme-platforms:
+  - |`,
+  ];
+
+  for (const fields of invalidFrontmatter) {
+    await withTempDir(async (root) => {
+      const pluginRoot = path.join(root, "invalid-block-plugin");
+      await createFixturePlugin(pluginRoot, "invalid-block-plugin");
+      await writeSkillFile(
+        pluginRoot,
+        "invalid-block-skill",
+        `---
+name: invalid-block-skill
+${fields}
+disable-model-invocation: false
+user-invocable: true
+---
+Typed body.
+`,
+      );
+
+      await assert.rejects(loadClaudePlugin(pluginRoot), /must be a/);
+    });
+  }
+});
+
+test("loader rejects invalid schema-declared primitive frontmatter types", async () => {
+  const cases = [
+    ["name", "false", "non-empty string"],
+    ["description", "", "non-empty string"],
+    ["argument-hint", "false", "non-empty string"],
+    ["disable-model-invocation", "maybe", "boolean"],
+    ["user-invocable", "0", "boolean"],
+    ["kramme-platforms", "codex", "non-empty array of non-empty strings"],
+  ];
+
+  for (const [field, value, expectedType] of cases) {
+    await withTempDir(async (root) => {
+      const pluginRoot = path.join(root, "invalid-plugin");
+      await createFixturePlugin(pluginRoot, "invalid-plugin");
+      const fields = {
+        name: "typed-skill",
+        description: "Typed skill",
+        "argument-hint": '"[target]"',
+        "disable-model-invocation": "false",
+        "user-invocable": "true",
+        "kramme-platforms": "[claude-code, codex]",
+      };
+      fields[field] = value;
+      const frontmatter = Object.entries(fields)
+        .map(([key, entry]) => `${key}: ${entry}`)
+        .join("\n");
+      await writeSkillFile(
+        pluginRoot,
+        "typed-skill",
+        `---\n${frontmatter}\n---\nTyped body.\n`,
+      );
+
+      await assert.rejects(
+        loadClaudePlugin(pluginRoot),
+        (error) => {
+          assert.ok(error instanceof Error);
+          assert.match(error.message, /skills[/\\]typed-skill[/\\]SKILL\.md/);
+          assert.match(error.message, new RegExp(`frontmatter field "${field}"`));
+          assert.match(error.message, new RegExp(`must be a ${expectedType}`));
+          return true;
+        },
+      );
+    });
+  }
+});
+
+test("loader frontmatter type verdicts match the shared converter oracle", async () => {
+  const fixturePath = path.join(
+    __dirname,
+    "..",
+    "fixtures",
+    "frontmatter-type-cases.json",
+  );
+  const { cases } = JSON.parse(await fs.readFile(fixturePath, "utf8"));
+  assert.ok(cases.length > 0, "expected shared frontmatter fixtures");
+
+  for (const testCase of cases) {
+    const { data } = parseFrontmatter(testCase.text);
+    const fields = skillFrontmatterTypeErrors(data)
+      .map((error) => error.field)
+      .sort();
+    assert.deepEqual(
+      fields,
+      [...testCase.invalidFields].sort(),
+      `frontmatter type verdict drifted for fixture: ${testCase.name}`,
+    );
   }
 });
 
