@@ -11,12 +11,6 @@ make_bash_input() {
   jq -n --arg cmd "$cmd" '{tool_input:{command:$cmd}}'
 }
 
-# Helper: Run block-rm-rf hook with a command
-run_block_hook() {
-  local cmd="$1"
-  make_bash_input "$cmd" | bash "$HOOKS_DIR/block-rm-rf.sh"
-}
-
 # Helper: Check if output indicates a block decision (exit 2 + stderr message)
 is_blocked() {
   [ "$status" -eq 2 ] && [ -n "$output" ]
@@ -36,11 +30,6 @@ make_format_input() {
 # Helper: Check if output contains systemMessage
 has_system_message() {
   [[ "$output" == *'"systemMessage"'* ]]
-}
-
-# Helper: Check if output indicates formatting happened
-is_formatted() {
-  [[ "$output" == *'Formatted'* ]]
 }
 
 # Helper: Check if output indicates no formatter

@@ -1,4 +1,4 @@
-.PHONY: lint lint-shell lint-python lint-js format-check preflight pr-verify verify test test-bats test-node test-python test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage unit-coverage coverage-node coverage-python check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-shell-deps check-ruff-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
+.PHONY: lint lint-shell lint-python lint-js format-check preflight pr-verify verify test test-smoke test-bats test-node test-node-watch test-node-file test-python test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage unit-coverage coverage-node coverage-python coverage-bats-contract check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-shell-deps check-ruff-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
 
 SHELLCHECK ?= shellcheck
 SHELLCHECK_SEVERITY ?= warning
@@ -12,8 +12,16 @@ SKILLSPECTOR_SEMANTIC_FORMAT ?= json
 SKILLSPECTOR_FAIL_ON ?= none
 SKILLSPECTOR_BASE ?= $(if $(BASE_REF),$(BASE_REF),origin/main)
 NODE_TEST_FILES = tests/node/*.test.js
+SMOKE_NODE_TEST_FILES = tests/node/frontmatter.test.js tests/node/scorer.test.js
+SMOKE_PYTHON_TEST_FILE = tests/python/test_git_command_parser.py
+SMOKE_BATS_TEST_FILE = tests/linear-issue-implement-guidance.bats
 PYTHON_TEST_DIR = tests/python
 PYTHON_TEST_PATTERN = test_*.py
+PYTHON_MAINTENANCE_TEST_DIR = ../.agents/skills/kramme:skill:audit-sources/scripts
+NODE_COVERAGE_LINES ?= 80
+NODE_COVERAGE_BRANCHES ?= 70
+NODE_COVERAGE_FUNCTIONS ?= 80
+PYTHON_COVERAGE_MIN ?= 35
 PYTHON_TRACE_IGNORE_DIRS := $(shell python3 -c 'import os, sysconfig; print(os.pathsep.join(path for path in {sysconfig.get_path("stdlib"), sysconfig.get_path("platstdlib")} if path))' 2>/dev/null)
 PYTHON_TRACE_IGNORE_ARGS = $(if $(PYTHON_TRACE_IGNORE_DIRS),--ignore-dir '$(PYTHON_TRACE_IGNORE_DIRS)',)
 
@@ -61,6 +69,12 @@ skill-contracts: check-python-deps
 # Default target - run all tests
 test: check-test-deps test-node test-python test-bats
 
+# Representative cross-language loop; measured locally at 8.9 seconds.
+test-smoke: check-test-deps
+	@node --test $(SMOKE_NODE_TEST_FILES)
+	@python3 -m unittest $(SMOKE_PYTHON_TEST_FILE)
+	@bats $(SMOKE_BATS_TEST_FILE)
+
 # Run all Bats integration tests
 test-bats: check-bats-deps
 	@./tests/run-tests.sh
@@ -69,9 +83,19 @@ test-bats: check-bats-deps
 test-node: check-node-deps
 	@node --test $(NODE_TEST_FILES)
 
+# Re-run affected Node tests as their files or dependencies change.
+test-node-watch: check-node-deps
+	@node --test --watch $(NODE_TEST_FILES)
+
+# Run the Node test file mapped from a changed source file.
+test-node-file: check-node-deps
+	@test -n "$(NODE_TEST_FILE)" || { echo "NODE_TEST_FILE is required (for example: tests/node/frontmatter.test.js)"; exit 2; }
+	@node --test "$(NODE_TEST_FILE)"
+
 # Run Python unit tests
 test-python: check-python-deps
 	@python3 -m unittest discover -s $(PYTHON_TEST_DIR) -p '$(PYTHON_TEST_PATTERN)'
+	@python3 -m unittest discover -s $(PYTHON_MAINTENANCE_TEST_DIR) -p '$(PYTHON_TEST_PATTERN)'
 
 # Verbose output (shows each test name)
 test-verbose:
@@ -152,16 +176,53 @@ skillopt-candidate-check:
 	@./tests/run-tests.sh
 	@node evals/skill-review/run-eval.js --split all --json
 
-coverage: unit-coverage
+coverage: unit-coverage coverage-bats-contract
 
-# Unit coverage only; Bats integration coverage is not measured here.
+# Node/Python line coverage gates; Bats integration behavior uses an inventory proxy.
 unit-coverage: coverage-node coverage-python
 
+# Native coverage thresholds were added after the Node 20 version used in CI,
+# so enforce its built-in report here. See https://nodejs.org/api/cli.html#--test-coverage-linesthreshold
 coverage-node: check-node-deps
-	@node --test --experimental-test-coverage $(NODE_TEST_FILES)
+	@tmpdir=$$(mktemp -d); report="$$tmpdir/node-coverage.txt"; \
+		node --test --experimental-test-coverage $(NODE_TEST_FILES) >"$$report" 2>&1; status=$$?; \
+		cat "$$report"; \
+		if [ $$status -ne 0 ]; then rm -rf "$$tmpdir"; exit $$status; fi; \
+		awk -F '|' -v min_lines="$(NODE_COVERAGE_LINES)" -v min_branches="$(NODE_COVERAGE_BRANCHES)" -v min_functions="$(NODE_COVERAGE_FUNCTIONS)" ' \
+			/all files/ { \
+				lines=$$2; branches=$$3; functions=$$4; \
+				gsub(/[^0-9.]/, "", lines); gsub(/[^0-9.]/, "", branches); gsub(/[^0-9.]/, "", functions); \
+				found=1; \
+				if (lines + 0 < min_lines || branches + 0 < min_branches || functions + 0 < min_functions) { \
+					printf "Node coverage below baseline: lines %.2f/%.2f, branches %.2f/%.2f, functions %.2f/%.2f\n", lines, min_lines, branches, min_branches, functions, min_functions > "/dev/stderr"; \
+					exit 1; \
+				} \
+			} \
+			END { if (!found) { print "Node coverage summary not found" > "/dev/stderr"; exit 1 } }' "$$report"; \
+		status=$$?; rm -rf "$$tmpdir"; exit $$status
 
-coverage-python: check-python-deps
-	@coverage_dir=$$(mktemp -d); python3 -m trace --count --missing --summary --coverdir "$$coverage_dir" $(PYTHON_TRACE_IGNORE_ARGS) --module unittest discover -s $(PYTHON_TEST_DIR) -p '$(PYTHON_TEST_PATTERN)'; status=$$?; rm -rf "$$coverage_dir"; exit $$status
+coverage-python: check-python-deps test-python
+	@tmpdir=$$(mktemp -d); counts="$$tmpdir/counts"; coverdir="$$tmpdir/report-files"; report="$$tmpdir/python-coverage.txt"; \
+		python3 -c 'import pickle, sys; pickle.dump(({}, {}, {}), open(sys.argv[1], "wb"), 1)' "$$counts"; \
+		python3 -m trace --count --file "$$counts" --coverdir "$$coverdir" $(PYTHON_TRACE_IGNORE_ARGS) --module unittest discover -s $(PYTHON_TEST_DIR) -p '$(PYTHON_TEST_PATTERN)' || { status=$$?; rm -rf "$$tmpdir"; exit $$status; }; \
+		python3 -m trace --count --file "$$counts" --missing --summary --coverdir "$$coverdir" $(PYTHON_TRACE_IGNORE_ARGS) --module unittest discover -s $(PYTHON_MAINTENANCE_TEST_DIR) -p '$(PYTHON_TEST_PATTERN)' >"$$report" 2>&1; status=$$?; \
+		cat "$$report"; \
+		if [ $$status -ne 0 ]; then rm -rf "$$tmpdir"; exit $$status; fi; \
+		awk -v minimum="$(PYTHON_COVERAGE_MIN)" ' \
+			$$1 ~ /^[0-9]+$$/ && $$2 ~ /^[0-9]+%$$/ && $$0 !~ /\/tests\// && $$3 !~ /(^|\.)test_/ { \
+				percent=$$2; sub(/%/, "", percent); lines += $$1; weighted += $$1 * percent \
+			} \
+			END { \
+				if (!lines) { print "Python production coverage summary not found" > "/dev/stderr"; exit 1 } \
+				coverage=weighted / lines; printf "Python production aggregate: %.2f%% (%d executable lines)\n", coverage, lines; \
+				if (coverage < minimum) { printf "Python coverage below baseline: %.2f/%.2f\n", coverage, minimum > "/dev/stderr"; exit 1 } \
+			}' "$$report"; \
+		status=$$?; rm -rf "$$tmpdir"; exit $$status
+
+coverage-bats-contract:
+	@set -- tests/*.bats; file_count=$$#; test_count=$$(grep -h '^@test ' tests/*.bats | wc -l | tr -d ' '); \
+		test "$$file_count" -gt 0 && test "$$test_count" -gt 0 || { echo "Bats contract inventory is empty"; exit 1; }; \
+		echo "Bats contract inventory: $$file_count files, $$test_count tests (all top-level tests/*.bats are discovered by tests/run-tests.sh)."
 
 # Install test dependencies
 install-test-deps:

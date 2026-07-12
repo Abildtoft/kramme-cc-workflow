@@ -18,6 +18,8 @@ and [Makefile](../Makefile).
 | Auto-format hook | `kramme-cc-workflow/hooks/auto-format.sh` | `make -C kramme-cc-workflow test-format` |
 | Context links hook | `kramme-cc-workflow/hooks/context-links.sh`, `kramme-cc-workflow/hooks/context-links.config.example` | `make -C kramme-cc-workflow test-context` |
 | Skill usage stats | `kramme-cc-workflow/hooks/skill-usage-stats.sh`, `kramme-cc-workflow/hooks/skill-usage.js`, `kramme-cc-workflow/scripts/skill-usage.js` | `make -C kramme-cc-workflow test-skill-usage` |
+| Converter frontmatter | `kramme-cc-workflow/scripts/convert-plugin/frontmatter.js` | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/frontmatter.test.js` |
+| Converter contracts and Codex hook output | `kramme-cc-workflow/scripts/convert-plugin/*.js`, `kramme-cc-workflow/hooks/hooks.json`, `kramme-cc-workflow/docs/hooks.md` | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/converter-contracts.test.js`, `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/codex-hook-compat.test.js` |
 | Codex converter | `scripts/convert-plugin.js`, `scripts/convert-plugin/`, `scripts/install-codex.sh` | `make -C kramme-cc-workflow test-convert` |
 | Dev-server detection | `scripts/dev-server/*.sh`, `scripts/dev-server/README.md` | `bats kramme-cc-workflow/tests/dev-server-scripts.bats` |
 | PR diff and base helpers | `scripts/resolve-base.sh`, `scripts/collect-review-diff.sh` | `bats kramme-cc-workflow/tests/resolve-base.bats kramme-cc-workflow/tests/review-diff-scripts.bats` |
@@ -25,6 +27,7 @@ and [Makefile](../Makefile).
 | Skill contract linting | `kramme-cc-workflow/scripts/lint-skill-contracts.py`, skill and agent frontmatter | `make -C kramme-cc-workflow test-skill-contracts`, `python3 kramme-cc-workflow/scripts/lint-skill-contracts.py` |
 | SkillSpector runner | `kramme-cc-workflow/scripts/run-skillspector.sh`, `kramme-cc-workflow/config/skillspector-accepted-findings.json` | `bats kramme-cc-workflow/tests/skillspector-runner.bats` |
 | Skill-review eval | `kramme-cc-workflow/evals/skill-review/` | `make -C kramme-cc-workflow test-skill-review-eval`, `make -C kramme-cc-workflow skill-eval-skill-review` |
+| Skill-review scorer | `kramme-cc-workflow/evals/skill-review/scorer.js` | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/scorer.test.js` |
 | SkillOpt adapter | `kramme-cc-workflow/evals/skillopt/` | `bats kramme-cc-workflow/tests/skillopt-adapter.bats kramme-cc-workflow/tests/skillopt-candidate-review.bats` |
 | Visual shared assets | `kramme-cc-workflow/scripts/generate-visual-shared-assets.py`, visual skill shared assets | `make -C kramme-cc-workflow check-visual-shared-assets` |
 

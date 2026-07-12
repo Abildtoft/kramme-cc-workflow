@@ -43,8 +43,14 @@ jobs:
             exit 1
           fi
 
+      - name: Run measured smoke suite
+        run: time make -C kramme-cc-workflow test-smoke
+
       - name: Run tests
         run: make -C kramme-cc-workflow test
+
+      - name: Run coverage gates
+        run: make -C kramme-cc-workflow coverage
 
   hooks-required:
     name: Run hook tests
