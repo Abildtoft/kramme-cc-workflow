@@ -204,10 +204,7 @@
           ".module.css",
           ".module.scss"
         ],
-        "basename_prefixes": [
-          "tailwind.config.",
-          "theme."
-        ],
+        "basename_prefixes": ["tailwind.config.", "theme."],
         "directory_segments": [
           "design-tokens",
           "pages",
@@ -224,11 +221,7 @@
           "styles",
           "css"
         ],
-        "asset_directory_segments": [
-          "public",
-          "static",
-          "assets"
-        ],
+        "asset_directory_segments": ["public", "static", "assets"],
         "asset_extensions": [
           ".svg",
           ".png",
@@ -680,9 +673,7 @@
     {
       "name": "pr-generate-description-direct-update-safety",
       "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/direct-update.md",
-      "contains": [
-        "do not mutate tracked files"
-      ]
+      "contains": ["do not mutate tracked files"]
     },
     {
       "name": "linear-issue-implement-reference-mapping",
@@ -709,9 +700,7 @@
     {
       "name": "linear-issue-implement-plan-template",
       "path": "kramme-cc-workflow/skills/kramme:linear:issue-implement/assets/technical-plan.md",
-      "contains": [
-        "## Referenced Linear Context"
-      ]
+      "contains": ["## Referenced Linear Context"]
     },
     {
       "name": "linear-issue-implement-readme-note",
@@ -745,17 +734,12 @@
     {
       "name": "visual-demo-reel-source-manifest",
       "path": "kramme-cc-workflow/skills/kramme:visual:demo-reel/references/sources.yaml",
-      "contains": [
-        "compound-ce-demo-reel"
-      ]
+      "contains": ["compound-ce-demo-reel"]
     },
     {
       "name": "code-optimize-shell-permission",
       "path": "kramme-cc-workflow/skills/kramme:code:optimize/SKILL.md",
-      "contains": [
-        "permissions:",
-        "  - shell"
-      ]
+      "contains": ["permissions:", "  - shell"]
     },
     {
       "name": "code-optimize-source-manifest",
@@ -949,13 +933,8 @@
       "SessionStart",
       "Stop"
     ],
-    "matcher_required_events": [
-      "PreToolUse",
-      "PostToolUse"
-    ],
-    "allowed_hook_types": [
-      "command"
-    ]
+    "matcher_required_events": ["PreToolUse", "PostToolUse"],
+    "allowed_hook_types": ["command"]
   },
   "readme_skill_sync": {
     "readme": "README.md",
@@ -963,9 +942,7 @@
     "start_marker": "<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->",
     "end_marker": "<!-- END SOURCE-SYNCED SKILL ROWS -->",
     "documented_skill_regex": "^\\|\\s*`/(?P<name>kramme:[A-Za-z0-9:_-]+)`\\s*\\|",
-    "allow_readme_only_skills": [
-      "kramme:skill:audit-sources"
-    ]
+    "allow_readme_only_skills": ["kramme:skill:audit-sources"]
   },
   "readme_agent_sync": {
     "readme": "README.md",
