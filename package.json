@@ -8,6 +8,7 @@
     "kramme-cc-workflow": "kramme-cc-workflow/scripts/convert-plugin.js"
   },
   "scripts": {
+    "check:pre-commit": "make -C kramme-cc-workflow pre-commit",
     "format:check": "make -C kramme-cc-workflow format-check",
     "lint-js": "make -C kramme-cc-workflow lint-js",
     "preflight": "make -C kramme-cc-workflow preflight",

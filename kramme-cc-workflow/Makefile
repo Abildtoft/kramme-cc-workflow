@@ -1,4 +1,4 @@
-.PHONY: lint lint-shell lint-python lint-js format-check preflight pr-verify verify test test-smoke test-bats test-node test-node-watch test-node-file test-python test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage unit-coverage coverage-node coverage-python coverage-bats-contract check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-shell-deps check-ruff-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
+.PHONY: lint lint-shell lint-python lint-js format-check pre-commit preflight pr-verify verify test test-smoke test-bats test-node test-node-watch test-node-file test-python test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage unit-coverage coverage-node coverage-python coverage-bats-contract check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-shell-deps check-ruff-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
 
 SHELLCHECK ?= shellcheck
 SHELLCHECK_SEVERITY ?= warning
@@ -25,10 +25,8 @@ PYTHON_COVERAGE_MIN ?= 35
 PYTHON_TRACE_IGNORE_DIRS := $(shell python3 -c 'import os, sysconfig; print(os.pathsep.join(path for path in {sysconfig.get_path("stdlib"), sysconfig.get_path("platstdlib")} if path))' 2>/dev/null)
 PYTHON_TRACE_IGNORE_ARGS = $(if $(PYTHON_TRACE_IGNORE_DIRS),--ignore-dir '$(PYTHON_TRACE_IGNORE_DIRS)',)
 
-FORMAT_CHECK_FILES = \
-	package.json \
-	kramme-cc-workflow/package.json \
-	.github/workflows/*.yml
+FORMAT_BASE ?= $(if $(GITHUB_BASE_REF),origin/$(GITHUB_BASE_REF),origin/main)
+FORMAT_FILE_PATTERNS = '*.js' '*.mjs' '*.json' '*.md' '*.sh' '*.yaml' '*.yml'
 
 SHELLCHECK_FILES = \
 	hooks/*.sh \
@@ -51,7 +49,22 @@ lint-js: check-js-deps
 	@"$(TSC)" -p jsconfig.json
 
 format-check: check-format-deps
-	@cd "$(ROOT_DIR)" && "$(PRETTIER)" --check $(FORMAT_CHECK_FILES)
+	@cd "$(ROOT_DIR)" && \
+		files=$$( \
+			if git rev-parse --verify --quiet "$(FORMAT_BASE)^{commit}" >/dev/null; then \
+				git diff --name-only --diff-filter=ACMR "$(FORMAT_BASE)...HEAD" -- $(FORMAT_FILE_PATTERNS); \
+			fi; \
+			git diff --name-only --diff-filter=ACMR HEAD -- $(FORMAT_FILE_PATTERNS); \
+			git ls-files --others --exclude-standard -- $(FORMAT_FILE_PATTERNS); \
+		) && files=$$(printf '%s\n' "$$files" | sed '/^$$/d' | sort -u) && \
+		if [ -n "$$files" ]; then \
+			"$(PRETTIER)" --check --ignore-unknown $$files; \
+		else \
+			echo "No changed maintained files to format-check."; \
+		fi
+
+# Optional contributor gate; this does not install or modify repository Git hooks.
+pre-commit: format-check lint test-smoke
 
 preflight: check-deps
 

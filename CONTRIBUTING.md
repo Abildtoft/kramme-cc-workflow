@@ -1,8 +1,6 @@
 # Contributing
 
-This repository ships the `kramme-cc-workflow` Claude Code plugin. The root
-[README.md](README.md) is the canonical public documentation; plugin source and
-tests live under [kramme-cc-workflow/](kramme-cc-workflow/).
+This repository ships the `kramme-cc-workflow` Claude Code plugin. The root [README.md](README.md) is the canonical public documentation; plugin source and tests live under [kramme-cc-workflow/](kramme-cc-workflow/).
 
 ## Start Here
 
@@ -33,8 +31,7 @@ Install Bats and `jq` for the shell test suite:
 make -C kramme-cc-workflow install-test-deps
 ```
 
-That target uses Homebrew because the project is developed primarily on macOS.
-On Linux, install equivalent packages with the system package manager.
+That target uses Homebrew because the project is developed primarily on macOS. On Linux, install equivalent packages with the system package manager.
 
 ## Change Guidelines
 
@@ -47,8 +44,7 @@ On Linux, install equivalent packages with the system package manager.
 
 ## Verification
 
-Choose the smallest meaningful check first, then broaden when the change has
-shared behavior or release impact.
+Choose the smallest meaningful check first, then broaden when the change has shared behavior or release impact.
 
 ```bash
 # Fast default suite
@@ -61,6 +57,14 @@ make -C kramme-cc-workflow lint
 make -C kramme-cc-workflow verify
 ```
 
-Focused targets are listed in [README.md](README.md#running-the-tests). Use
-[docs/code-map.md](kramme-cc-workflow/docs/code-map.md) to map files to likely
-tests.
+Focused targets are listed in [README.md](README.md#running-the-tests). Use [docs/code-map.md](kramme-cc-workflow/docs/code-map.md) to map files to likely tests.
+
+### Optional pre-commit check
+
+Run the fast contributor gate before committing:
+
+```bash
+npm run check:pre-commit
+```
+
+It checks formatting for maintained JavaScript, shell, Markdown, JSON, and YAML files changed from the base branch, then runs lint and the cross-language smoke suite. The command is opt-in and does not install or modify Git hooks.
