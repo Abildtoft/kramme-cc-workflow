@@ -90,27 +90,39 @@ function normalizeFrontmatterField(field, value) {
   return normalizeFrontmatterBoolean(value);
 }
 
-function validateSkillFrontmatter(data, file) {
+function frontmatterTypeError(type, value) {
+  if (type === "string" && !isNonEmptyString(value)) {
+    return "non-empty string";
+  }
+  if (type === "boolean" && !isFrontmatterBoolean(value)) {
+    return 'boolean ("true" or "false")';
+  }
+  if (type === "string_array" && !isNonEmptyStringArray(value)) {
+    return "non-empty array of non-empty strings";
+  }
+  return undefined;
+}
+
+// Collect-all counterpart of the linter's frontmatter_type_errors so both
+// engines can be pinned to the same shared fixtures. validateSkillFrontmatter
+// throws on the first entry; this returns every mismatch in schema order.
+function skillFrontmatterTypeErrors(data) {
   const fields = skillContracts.skill_frontmatter?.fields ?? {};
+  const errors = [];
   for (const [field, contract] of Object.entries(fields)) {
     if (!Object.hasOwn(data, field)) continue;
-    const value = data[field];
-    let expectedType;
-    if (contract.type === "string" && !isNonEmptyString(value)) {
-      expectedType = "non-empty string";
-    } else if (contract.type === "boolean" && !isFrontmatterBoolean(value)) {
-      expectedType = 'boolean ("true" or "false")';
-    } else if (
-      contract.type === "string_array" &&
-      !isNonEmptyStringArray(value)
-    ) {
-      expectedType = "non-empty array of non-empty strings";
-    }
-    if (expectedType) {
-      throw new Error(
-        `${file}: frontmatter field "${field}" must be a ${expectedType}.`,
-      );
-    }
+    const expectedType = frontmatterTypeError(contract.type, data[field]);
+    if (expectedType) errors.push({ field, expectedType });
+  }
+  return errors;
+}
+
+function validateSkillFrontmatter(data, file) {
+  const [firstError] = skillFrontmatterTypeErrors(data);
+  if (firstError) {
+    throw new Error(
+      `${file}: frontmatter field "${firstError.field}" must be a ${firstError.expectedType}.`,
+    );
   }
 }
 
@@ -484,4 +496,5 @@ module.exports = {
   loadClaudePlugin,
   normalizeFrontmatterField,
   resolvePluginInput,
+  skillFrontmatterTypeErrors,
 };

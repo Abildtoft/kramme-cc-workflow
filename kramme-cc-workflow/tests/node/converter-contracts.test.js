@@ -40,6 +40,7 @@ const {
 const {
   loadClaudePlugin,
   normalizeFrontmatterField,
+  skillFrontmatterTypeErrors,
 } = require("../../scripts/convert-plugin/loader");
 const {
   writeCodexBundle,
@@ -469,6 +470,29 @@ test("loader rejects invalid schema-declared primitive frontmatter types", async
         },
       );
     });
+  }
+});
+
+test("loader frontmatter type verdicts match the shared converter oracle", async () => {
+  const fixturePath = path.join(
+    __dirname,
+    "..",
+    "fixtures",
+    "frontmatter-type-cases.json",
+  );
+  const { cases } = JSON.parse(await fs.readFile(fixturePath, "utf8"));
+  assert.ok(cases.length > 0, "expected shared frontmatter fixtures");
+
+  for (const testCase of cases) {
+    const { data } = parseFrontmatter(testCase.text);
+    const fields = skillFrontmatterTypeErrors(data)
+      .map((error) => error.field)
+      .sort();
+    assert.deepEqual(
+      fields,
+      [...testCase.invalidFields].sort(),
+      `frontmatter type verdict drifted for fixture: ${testCase.name}`,
+    );
   }
 });
 
