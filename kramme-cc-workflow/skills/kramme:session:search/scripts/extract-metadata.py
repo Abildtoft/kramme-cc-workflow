@@ -17,6 +17,7 @@ Auto-detects platform from the JSONL structure.
 Outputs one JSON object per file, one per line.
 Includes a final _meta line with processing stats.
 """
+
 import sys
 import itertools
 import json
@@ -178,30 +179,27 @@ def _iter_user_assistant_text(filepath):
 
 
 class KeywordCounter:
-    """Incrementally count non-overlapping matches for one lowercased keyword."""
+    """Count non-overlapping matches without retaining the complete transcript."""
 
     def __init__(self, keyword):
         self.keyword = keyword
-        self.prefix = [0] * len(keyword)
-        self.matched = 0
+        self.remainder = ""
         self.count = 0
-        candidate = 0
-        for index in range(1, len(keyword)):
-            while candidate and keyword[index] != keyword[candidate]:
-                candidate = self.prefix[candidate - 1]
-            if keyword[index] == keyword[candidate]:
-                candidate += 1
-                self.prefix[index] = candidate
 
     def feed(self, text):
-        for character in text:
-            while self.matched and character != self.keyword[self.matched]:
-                self.matched = self.prefix[self.matched - 1]
-            if character == self.keyword[self.matched]:
-                self.matched += 1
-                if self.matched == len(self.keyword):
-                    self.count += 1
-                    self.matched = 0
+        combined = self.remainder + text
+        search_from = 0
+        while True:
+            match_at = combined.find(self.keyword, search_from)
+            if match_at < 0:
+                break
+            self.count += 1
+            search_from = match_at + len(self.keyword)
+
+        # Starts before this suffix have already been searched completely. Keep
+        # only enough text for a keyword that spans the next chunk boundary.
+        suffix_start = max(search_from, len(combined) - len(self.keyword) + 1)
+        self.remainder = combined[suffix_start:]
 
 
 def count_keyword_matches(filepath, keywords):

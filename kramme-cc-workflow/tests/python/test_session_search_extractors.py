@@ -46,13 +46,14 @@ CODEX_ERRORS = """\
 
 
 class SessionExtractorTests(unittest.TestCase):
-    def run_script(self, name, stdin="", *args):
+    def run_script(self, name, stdin="", *args, timeout=None):
         return subprocess.run(
             [sys.executable, str(SCRIPTS / name), *map(str, args)],
             input=stdin,
             text=True,
             capture_output=True,
             check=False,
+            timeout=timeout,
         )
 
     def test_skeleton_golden_output_and_atomic_output_parity(self):
@@ -63,9 +64,7 @@ class SessionExtractorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             output_path = Path(directory) / "skeleton.txt"
             output_path.write_text("previous content", encoding="utf-8")
-            written = self.run_script(
-                "extract-skeleton.py", CODEX_SESSION, "--output", output_path
-            )
+            written = self.run_script("extract-skeleton.py", CODEX_SESSION, "--output", output_path)
             self.assertEqual(written.returncode, 0, written.stderr)
             self.assertEqual(output_path.read_text(encoding="utf-8"), CODEX_SKELETON)
             status = json.loads(written.stdout)
@@ -80,9 +79,7 @@ class SessionExtractorTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             output_path = Path(directory) / "errors.txt"
-            written = self.run_script(
-                "extract-errors.py", CODEX_SESSION, "--output", output_path
-            )
+            written = self.run_script("extract-errors.py", CODEX_SESSION, "--output", output_path)
             self.assertEqual(written.returncode, 0, written.stderr)
             self.assertEqual(output_path.read_text(encoding="utf-8"), CODEX_ERRORS)
             status = json.loads(written.stdout)
@@ -125,15 +122,9 @@ class SessionExtractorTests(unittest.TestCase):
 
     def test_metadata_streams_unicode_keyword_counts_for_each_platform(self):
         sessions = {
-            "codex.jsonl": CODEX_SESSION.replace(
-                "authentication script carefully", "CAFÉ café carefully"
-            ),
-            "claude.jsonl": CLAUDE_SESSION.replace(
-                "synthetic Claude session", "CAFÉ café Claude session"
-            ),
-            "cursor.jsonl": CURSOR_SESSION.replace(
-                "synthetic Cursor session", "CAFÉ café Cursor session"
-            ),
+            "codex.jsonl": CODEX_SESSION.replace("authentication script carefully", "CAFÉ café carefully"),
+            "claude.jsonl": CLAUDE_SESSION.replace("synthetic Claude session", "CAFÉ café Claude session"),
+            "cursor.jsonl": CURSOR_SESSION.replace("synthetic Cursor session", "CAFÉ café Cursor session"),
         }
         with tempfile.TemporaryDirectory() as directory:
             paths = []
@@ -142,18 +133,14 @@ class SessionExtractorTests(unittest.TestCase):
                 path.write_text(content, encoding="utf-8")
                 paths.append(path)
 
-            result = self.run_script(
-                "extract-metadata.py", "", "--keyword", "café", *paths
-            )
+            result = self.run_script("extract-metadata.py", "", "--keyword", "café", *paths)
             self.assertEqual(result.returncode, 0, result.stderr)
             records = [json.loads(line) for line in result.stdout.splitlines()]
             self.assertEqual(
                 [record["platform"] for record in records[:-1]],
                 ["codex", "claude", "cursor"],
             )
-            self.assertEqual(
-                [record["match_count"] for record in records[:-1]], [2, 4, 4]
-            )
+            self.assertEqual([record["match_count"] for record in records[:-1]], [2, 4, 4])
             self.assertEqual(records[-1]["files_matched"], 3)
             self.assertNotIn("CAFÉ", result.stdout)
 
@@ -162,9 +149,41 @@ class SessionExtractorTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         records = [json.loads(line) for line in result.stdout.splitlines()]
         self.assertEqual(records[0]["platform"], "codex")
-        self.assertEqual(
-            records[-1], {"_meta": True, "files_processed": 1, "parse_errors": 0}
-        )
+        self.assertEqual(records[-1], {"_meta": True, "files_processed": 1, "parse_errors": 0})
+
+    def test_metadata_multi_keyword_scan_stays_responsive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "large.jsonl"
+            payload = "needle " + ("x" * 16300)
+            event = json.dumps(
+                {
+                    "timestamp": "2026-06-06T10:03:00Z",
+                    "type": "response_item",
+                    "payload": {
+                        "type": "message",
+                        "role": "assistant",
+                        "content": [{"type": "output_text", "text": payload}],
+                    },
+                }
+            )
+            with path.open("w", encoding="utf-8") as fixture:
+                fixture.write(CODEX_SESSION.splitlines()[0] + "\n")
+                while fixture.tell() < 4 * 1024 * 1024:
+                    fixture.write(event + "\n")
+
+            keywords = "needle,missing-one,missing-two,missing-three,missing-four"
+            result = self.run_script(
+                "extract-metadata.py",
+                "",
+                "--keyword",
+                keywords,
+                path,
+                timeout=3,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            records = [json.loads(line) for line in result.stdout.splitlines()]
+            self.assertGreater(records[0]["match_count"], 0)
+            self.assertEqual(records[-1]["files_matched"], 1)
 
     @unittest.skipUnless(hasattr(os, "wait4"), "RSS accounting requires os.wait4")
     def test_large_synthetic_transcripts_have_bounded_rss(self):
