@@ -204,10 +204,7 @@
           ".module.css",
           ".module.scss"
         ],
-        "basename_prefixes": [
-          "tailwind.config.",
-          "theme."
-        ],
+        "basename_prefixes": ["tailwind.config.", "theme."],
         "directory_segments": [
           "design-tokens",
           "pages",
@@ -224,11 +221,7 @@
           "styles",
           "css"
         ],
-        "asset_directory_segments": [
-          "public",
-          "static",
-          "assets"
-        ],
+        "asset_directory_segments": ["public", "static", "assets"],
         "asset_extensions": [
           ".svg",
           ".png",
@@ -680,9 +673,7 @@
     {
       "name": "pr-generate-description-direct-update-safety",
       "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/direct-update.md",
-      "contains": [
-        "do not mutate tracked files"
-      ]
+      "contains": ["do not mutate tracked files"]
     },
     {
       "name": "linear-issue-implement-reference-mapping",
@@ -709,9 +700,7 @@
     {
       "name": "linear-issue-implement-plan-template",
       "path": "kramme-cc-workflow/skills/kramme:linear:issue-implement/assets/technical-plan.md",
-      "contains": [
-        "## Referenced Linear Context"
-      ]
+      "contains": ["## Referenced Linear Context"]
     },
     {
       "name": "linear-issue-implement-readme-note",
@@ -745,17 +734,12 @@
     {
       "name": "visual-demo-reel-source-manifest",
       "path": "kramme-cc-workflow/skills/kramme:visual:demo-reel/references/sources.yaml",
-      "contains": [
-        "compound-ce-demo-reel"
-      ]
+      "contains": ["compound-ce-demo-reel"]
     },
     {
       "name": "code-optimize-shell-permission",
       "path": "kramme-cc-workflow/skills/kramme:code:optimize/SKILL.md",
-      "contains": [
-        "permissions:",
-        "  - shell"
-      ]
+      "contains": ["permissions:", "  - shell"]
     },
     {
       "name": "code-optimize-source-manifest",
@@ -823,17 +807,36 @@
         "user-invocable": "true"
       },
       "contains": [
+        "references/disposable-artifacts.yaml",
+        "single source of truth",
+        "any entry's `condition` marker",
+        "every `permanent-spec` entry",
+        "Never include shared diagram files or permanent specs in the auto-selected artifact set.",
+        "siw/OPEN_ISSUES_OVERVIEW.md",
+        "siw/issues/"
+      ]
+    },
+    {
+      "name": "workflow-artifact-cleanup-registry",
+      "path": "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml",
+      "contains": [
         "REVIEW_OVERVIEW.md",
-        ".context/demo-reels/",
-        ".context/github-review-replies/",
+        "REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+        "AGENT_NATIVE_AUDIT.md",
         "CODEBASE_WEAKNESS_REPORT.md",
         "AUDIT_IMPLEMENTATION_REPORT.md",
         "AUDIT_SPEC_REPORT.md",
         "PR_PLAN_*.md",
         "DEPRECATION_PLAN.md",
         "DEPRECATION_PLAN_*.md",
+        ".context/demo-reels/",
+        ".context/github-review-replies/",
+        ".context/session-search/",
         "siw/OPEN_ISSUES_OVERVIEW.md",
-        "siw/issues/"
+        "siw/FEATURE_SPECIFICATION.md",
+        "disposable",
+        "permanent-spec",
+        "shared-diagram"
       ]
     }
   ],
@@ -930,13 +933,8 @@
       "SessionStart",
       "Stop"
     ],
-    "matcher_required_events": [
-      "PreToolUse",
-      "PostToolUse"
-    ],
-    "allowed_hook_types": [
-      "command"
-    ]
+    "matcher_required_events": ["PreToolUse", "PostToolUse"],
+    "allowed_hook_types": ["command"]
   },
   "readme_skill_sync": {
     "readme": "README.md",
@@ -944,9 +942,7 @@
     "start_marker": "<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->",
     "end_marker": "<!-- END SOURCE-SYNCED SKILL ROWS -->",
     "documented_skill_regex": "^\\|\\s*`/(?P<name>kramme:[A-Za-z0-9:_-]+)`\\s*\\|",
-    "allow_readme_only_skills": [
-      "kramme:skill:audit-sources"
-    ]
+    "allow_readme_only_skills": ["kramme:skill:audit-sources"]
   },
   "readme_agent_sync": {
     "readme": "README.md",
