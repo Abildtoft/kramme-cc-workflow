@@ -1,6 +1,8 @@
 #!/usr/bin/env bats
 
 setup() {
+  export RELEASE_REAL_GIT="$(command -v git)"
+  export RELEASE_TEST_PATH="$PATH"
   TMP_ROOT="$(mktemp -d)"
   SCRIPT="$BATS_TEST_DIRNAME/../scripts/release.py"
   PLUGIN_ROOT="$TMP_ROOT/kramme-cc-workflow"
@@ -31,6 +33,29 @@ EOF
 
 teardown() {
   rm -rf "$TMP_ROOT"
+}
+
+install_release_make_mock() {
+  MOCK_BIN="$TMP_ROOT/bin"
+  mkdir -p "$MOCK_BIN"
+  cat >"$MOCK_BIN/make" <<'SH'
+#!/bin/sh
+set -e
+
+if [ "$*" = "check-deps" ]; then
+  exit 0
+fi
+
+if [ "$*" != "verify" ]; then
+  echo "unexpected make args: $*" >&2
+  exit 2
+fi
+
+grep -q '"version": "0.64.1"' .claude-plugin/plugin.json
+grep -q '"version": "0.64.1"' package.json
+grep -q '## \[0.64.1\]' CHANGELOG.md
+SH
+  chmod +x "$MOCK_BIN/make"
 }
 
 @test "release dry run accepts explicit semantic version" {
@@ -299,4 +324,163 @@ SH
   [ "$(git -C "$TMP_ROOT" rev-parse HEAD)" = "$INITIAL_HEAD" ]
   git -C "$TMP_ROOT" diff --quiet
   git -C "$TMP_ROOT" diff --cached --quiet
+}
+
+@test "release rollback preserves pre-existing staged and working file states" {
+  install_release_make_mock
+  printf 'tracked\n' >"$TMP_ROOT/unrelated.txt"
+  git -C "$TMP_ROOT" add unrelated.txt
+  git -C "$TMP_ROOT" commit -m "add unrelated file" >/dev/null
+  git -C "$TMP_ROOT" update-index --skip-worktree unrelated.txt
+  printf 'intent to add\n' >"$TMP_ROOT/intent.txt"
+  git -C "$TMP_ROOT" add -N intent.txt
+  printf '# Changelog\nstaged state\n' >"$PLUGIN_ROOT/CHANGELOG.md"
+  git -C "$TMP_ROOT" add kramme-cc-workflow/CHANGELOG.md
+  printf '# Changelog\nworking state\n' >"$PLUGIN_ROOT/CHANGELOG.md"
+  chmod 664 "$TMP_ROOT/.git/index"
+  cp "$TMP_ROOT/.git/index" "$TMP_ROOT/index.before"
+  INDEX_MODE_BEFORE="$(python3 -c 'import os, sys; print(os.stat(sys.argv[1]).st_mode & 0o777)' "$TMP_ROOT/.git/index")"
+
+  run env PATH="$MOCK_BIN:$RELEASE_TEST_PATH" python3 "$PLUGIN_ROOT/scripts/release.py" patch --ci
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Restored release files to their pre-release state."* ]]
+  [ "$(git hash-object "$TMP_ROOT/index.before")" = "$(git hash-object "$TMP_ROOT/.git/index")" ]
+  [ "$(python3 -c 'import os, sys; print(os.stat(sys.argv[1]).st_mode & 0o777)' "$TMP_ROOT/.git/index")" = "$INDEX_MODE_BEFORE" ]
+  grep -q '^working state$' "$PLUGIN_ROOT/CHANGELOG.md"
+  git -C "$TMP_ROOT" show :kramme-cc-workflow/CHANGELOG.md | grep -q '^staged state$'
+}
+
+@test "release rollback retries transient reset and branch checkout failures" {
+  INITIAL_BRANCH="$(git -C "$TMP_ROOT" rev-parse --abbrev-ref HEAD)"
+  install_release_make_mock
+  RELEASE_GIT_LOG="$TMP_ROOT/git.log"
+  cat >"$MOCK_BIN/git" <<'SH'
+#!/bin/sh
+set -e
+
+if [ "$1" = "reset" ] && [ "$2" = "--mixed" ]; then
+  echo reset >>"$RELEASE_GIT_LOG"
+  if [ ! -e "$RELEASE_RESET_FAILED" ]; then
+    : >"$RELEASE_RESET_FAILED"
+    exit 71
+  fi
+fi
+if [ "$1" = "checkout" ] && [ "$2" = "$RELEASE_START_BRANCH" ]; then
+  echo checkout >>"$RELEASE_GIT_LOG"
+  if [ ! -e "$RELEASE_CHECKOUT_FAILED" ]; then
+    : >"$RELEASE_CHECKOUT_FAILED"
+    exit 72
+  fi
+fi
+exec "$RELEASE_REAL_GIT" "$@"
+SH
+  chmod +x "$MOCK_BIN/git"
+
+  run env PATH="$MOCK_BIN:$RELEASE_TEST_PATH" \
+    RELEASE_GIT_LOG="$RELEASE_GIT_LOG" \
+    RELEASE_RESET_FAILED="$TMP_ROOT/reset-failed" \
+    RELEASE_CHECKOUT_FAILED="$TMP_ROOT/checkout-failed" \
+    RELEASE_START_BRANCH="$INITIAL_BRANCH" \
+    python3 "$PLUGIN_ROOT/scripts/release.py" patch --ci
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Restored release files to their pre-release state."* ]]
+  [ "$(grep -c '^reset$' "$RELEASE_GIT_LOG")" -eq 2 ]
+  [ "$(grep -c '^checkout$' "$RELEASE_GIT_LOG")" -eq 2 ]
+  [ "$(git -C "$TMP_ROOT" rev-parse --abbrev-ref HEAD)" = "$INITIAL_BRANCH" ]
+}
+
+@test "release reports incomplete rollback when branch checkout retries fail" {
+  INITIAL_BRANCH="$(git -C "$TMP_ROOT" rev-parse --abbrev-ref HEAD)"
+  install_release_make_mock
+  cat >"$MOCK_BIN/git" <<'SH'
+#!/bin/sh
+if [ "$1" = "checkout" ] && [ "$2" = "$RELEASE_START_BRANCH" ]; then
+  exit 73
+fi
+exec "$RELEASE_REAL_GIT" "$@"
+SH
+  chmod +x "$MOCK_BIN/git"
+
+  run env PATH="$MOCK_BIN:$RELEASE_TEST_PATH" \
+    RELEASE_START_BRANCH="$INITIAL_BRANCH" \
+    python3 "$PLUGIN_ROOT/scripts/release.py" patch --ci
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"Automatic rollback was incomplete."* ]]
+  [[ "$output" == *"git -C $TMP_ROOT checkout $INITIAL_BRANCH"* ]]
+  [[ "$output" == *"Aborting with incomplete rollback."* ]]
+  [[ "$output" != *"Restored release files to their pre-release state."* ]]
+}
+
+@test "release reports incomplete rollback when reset retries fail" {
+  install_release_make_mock
+  cat >"$MOCK_BIN/git" <<'SH'
+#!/bin/sh
+if [ "$1" = "reset" ] && [ "$2" = "--mixed" ]; then
+  exit 75
+fi
+exec "$RELEASE_REAL_GIT" "$@"
+SH
+  chmod +x "$MOCK_BIN/git"
+
+  run env PATH="$MOCK_BIN:$RELEASE_TEST_PATH" python3 "$PLUGIN_ROOT/scripts/release.py" patch --ci
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"Automatic rollback was incomplete."* ]]
+  [[ "$output" == *"git -C $TMP_ROOT reset --mixed"* ]]
+  [[ "$output" != *"Restored release files to their pre-release state."* ]]
+}
+
+@test "release reports incomplete rollback when detached checkout retries fail" {
+  INITIAL_HEAD="$(git -C "$TMP_ROOT" rev-parse HEAD)"
+  git -C "$TMP_ROOT" checkout --detach "$INITIAL_HEAD" >/dev/null 2>&1
+  install_release_make_mock
+  cat >"$MOCK_BIN/git" <<'SH'
+#!/bin/sh
+if [ "$1" = "checkout" ] && [ "$2" = "--detach" ]; then
+  exit 74
+fi
+exec "$RELEASE_REAL_GIT" "$@"
+SH
+  chmod +x "$MOCK_BIN/git"
+
+  run env PATH="$MOCK_BIN:$RELEASE_TEST_PATH" python3 "$PLUGIN_ROOT/scripts/release.py" patch --ci
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"git -C $TMP_ROOT checkout --detach $INITIAL_HEAD"* ]]
+  [[ "$output" != *"Restored release files to their pre-release state."* ]]
+}
+
+@test "release reports incomplete rollback when the index cannot be restored" {
+  install_release_make_mock
+  cp "$TMP_ROOT/.git/index" "$TMP_ROOT/index.before"
+  cat >"$MOCK_BIN/git" <<'SH'
+#!/bin/sh
+if [ "$1" = "push" ] && [ "$3" = "release/v0.64.1" ]; then
+  rm -f "$RELEASE_GIT_DIR/index"
+  mkdir "$RELEASE_GIT_DIR/index"
+  exit 76
+fi
+exec "$RELEASE_REAL_GIT" "$@"
+SH
+  chmod +x "$MOCK_BIN/git"
+
+  run env PATH="$MOCK_BIN:$RELEASE_TEST_PATH" \
+    RELEASE_GIT_DIR="$TMP_ROOT/.git" \
+    python3 "$PLUGIN_ROOT/scripts/release.py" patch --ci
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"Automatic rollback was incomplete."* ]]
+  [[ "$output" == *"$TMP_ROOT/.git/index"* ]]
+  [[ "$output" != *"Restored release files to their pre-release state."* ]]
+
+  recovery_commands="$(printf '%s\n' "$output" | sed -n '/^    /s/^    //p')"
+  while IFS= read -r recovery_command; do
+    eval "$recovery_command"
+  done <<<"$recovery_commands"
+
+  [ -f "$TMP_ROOT/.git/index" ]
+  [ "$(git hash-object "$TMP_ROOT/index.before")" = "$(git hash-object "$TMP_ROOT/.git/index")" ]
 }
