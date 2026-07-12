@@ -20,7 +20,6 @@ import fnmatch
 import json
 import os
 import pathlib
-import re
 import shutil
 
 
@@ -93,9 +92,6 @@ def remaining(entry, workroot, homeroot):
     return os.path.exists(target)
 
 
-def autodetect_sources(path):
-    text = pathlib.Path(path).read_text()
-    return re.findall(r"^\s*\d+\.\s+`([^`]+)`", text, re.M)
 PY
 }
 
@@ -144,6 +140,10 @@ artifacts = json.loads(pathlib.Path(sys.argv[1]).read_text())["artifacts"]
 categories = {"working-dir", "shared-diagram", "permanent-spec"}
 retentions = {"disposable", "permanent"}
 types = {"file", "glob", "dir"}
+conditional_contracts = {
+    "siw/issues/": "ISSUE-*.md",
+    "siw/qa-intake/": "QA-INTAKE-*.md",
+}
 errors = []
 seen = set()
 for entry in artifacts:
@@ -161,6 +161,12 @@ for entry in artifacts:
     if entry.get("type") not in types:
         errors.append(f"{ident}: bad type {entry.get('type')!r}")
     path = entry.get("path", "")
+    if entry.get("category") != "shared-diagram":
+        path_parts = path.split("/")
+        if pathlib.PurePosixPath(path).is_absolute() or any(
+            part in {".", ".."} for part in path_parts
+        ):
+            errors.append(f"{ident}: project-local path escapes its workspace: {path!r}")
     if glob.has_magic(path) != (entry.get("type") == "glob"):
         errors.append(f"{ident}: path/type mismatch for {path!r}")
     if path.endswith("/") != (entry.get("type") == "dir"):
@@ -174,6 +180,13 @@ for entry in artifacts:
     if "condition" in entry and "expected_contents" not in entry:
         errors.append(f"{ident}: condition without expected_contents")
     if "condition" in entry:
+        expected_contents = conditional_contracts.get(path)
+        if expected_contents is None:
+            errors.append(f"{ident}: unknown conditional directory contract for {path!r}")
+        elif entry.get("expected_contents") != expected_contents:
+            errors.append(
+                f"{ident}: expected_contents must be {expected_contents!r}"
+            )
         if entry["condition"] != "siw/OPEN_ISSUES_OVERVIEW.md":
             errors.append(f"{ident}: condition must use the SIW issue-state marker")
         marker = next((candidate for candidate in artifacts if candidate.get("path") == entry["condition"]), None)
