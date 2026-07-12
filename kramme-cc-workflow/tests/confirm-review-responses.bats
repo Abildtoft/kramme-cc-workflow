@@ -676,6 +676,30 @@ REVIEW_SUMMARY.md"
 	is_blocked
 }
 
+@test "normalizes ANSI-C shell payloads before checking commit contexts" {
+	local command
+	mock_git_staged "REVIEW_OVERVIEW.md"
+	for command in \
+		"bash -c \$'git commit -m test'" \
+		"bash -c \$'git\\x20commit -m test'" \
+		$'bash -c $\'echo ok\ngit commit -m test\'' \
+		"bash -O extglob -c \$'git commit -m test'" \
+		"env FOO=bar bash -c \$'git commit -m test'"
+	do
+		run run_hook "$command"
+		is_blocked
+	done
+
+	run run_hook "bash -c \$'echo safe'"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "fails closed for malformed ANSI-C shell commit payload" {
+	run run_hook "bash -c \$'git commit -m test"
+	is_blocked
+}
+
 @test "blocks shell alias git commit when parser cannot prove target" {
 	mock_git_staged "REVIEW_OVERVIEW.md"
 	run run_hook $'shopt -s expand_aliases\nalias g=git\ng commit -m test'

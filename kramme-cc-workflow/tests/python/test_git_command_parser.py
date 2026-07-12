@@ -159,11 +159,29 @@ class GitCommandLexerTest(unittest.TestCase):
             "read_backtick_substitution",
             "replace_command_substitutions",
             "extract_placeholder_indexes",
+            "_decode_ansi_c_string",
+            "_expand_ansi_c_quoted_strings",
         ]
 
         for helper in helpers:
             with self.subTest(helper=helper):
                 self.assertEqual(source.count(f"def {helper}"), 1)
+
+    def test_expand_ansi_c_quoted_strings_decodes_shell_escapes(self) -> None:
+        cases = [
+            (r"bash -c $'git\x20commit'", "bash -c 'git commit'"),
+            (r"bash -c $'git\tcommit'", "bash -c 'git\tcommit'"),
+            (r"bash -c $'echo ok\ngit commit'", "bash -c 'echo ok\ngit commit'"),
+            (r"printf $'it\'s safe'", 'printf \'it\'"\'"\'s safe\''),
+            (r'''bash -c "$'git\x20commit'"''', r'''bash -c "$'git\x20commit'"'''),
+            (r"bash -c '$git commit'", r"bash -c '$git commit'"),
+        ]
+
+        for command, expected in cases:
+            with self.subTest(command=command):
+                self.assertEqual(
+                    PARSER._expand_ansi_c_quoted_strings(command), expected
+                )
 
 
 class GitCommandParserCliTest(unittest.TestCase):
@@ -243,6 +261,48 @@ class GitCommandParserCliTest(unittest.TestCase):
             json_line([{"git_args": [], "git_env": []}]),
         ),
         (
+            "shell inline commit without message",
+            "bash -c 'git commit'",
+            json_line({"block": INTERACTIVE_COMMIT_REASON}),
+            json_line([{"git_args": [], "git_env": []}]),
+        ),
+        (
+            "ansi c shell inline commit",
+            "bash -c $'git commit'",
+            json_line({"block": INTERACTIVE_COMMIT_REASON}),
+            json_line([{"git_args": [], "git_env": []}]),
+        ),
+        (
+            "ansi c hex escaped shell inline commit",
+            r"bash -c $'git\x20commit'",
+            json_line({"block": INTERACTIVE_COMMIT_REASON}),
+            json_line([{"git_args": [], "git_env": []}]),
+        ),
+        (
+            "multiline ansi c shell inline commit",
+            "bash -c $'echo ok\ngit commit'",
+            json_line({"block": INTERACTIVE_COMMIT_REASON}),
+            json_line([{"git_args": [], "git_env": []}]),
+        ),
+        (
+            "option bearing ansi c shell inline commit",
+            "bash -O extglob -c $'git commit'",
+            json_line({"block": INTERACTIVE_COMMIT_REASON}),
+            json_line([{"git_args": [], "git_env": []}]),
+        ),
+        (
+            "environment wrapped ansi c shell inline commit",
+            "env FOO=bar bash -c $'git commit'",
+            json_line({"block": INTERACTIVE_COMMIT_REASON}),
+            json_line([{"git_args": [], "git_env": []}]),
+        ),
+        (
+            "safe ansi c shell inline command",
+            "bash -c $'echo safe'",
+            json_line({"block": None}),
+            json_line([]),
+        ),
+        (
             "env command with git index",
             "env GIT_INDEX_FILE=/tmp/index git commit -m x",
             json_line({"block": None}),
@@ -293,6 +353,29 @@ class GitCommandParserCliTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 0)
                 self.assertEqual(result.stderr, "")
                 self.assertEqual(result.stdout, expected_stdout)
+
+    def test_malformed_shell_payloads_fail_closed(self) -> None:
+        command = "bash -c $'git commit"
+
+        noninteractive = self.run_parser("noninteractive", command)
+        commit_contexts = self.run_parser("commit-contexts", command)
+
+        self.assertEqual(noninteractive.returncode, 0)
+        self.assertEqual(
+            noninteractive.stdout,
+            json_line(
+                {
+                    "block": "Unable to safely parse command. Refusing potentially interactive git command."
+                }
+            ),
+        )
+        self.assertEqual(commit_contexts.returncode, 0)
+        self.assertEqual(
+            commit_contexts.stdout,
+            json_line(
+                [{"parse_error": "parse failed"}]
+            ),
+        )
 
 
 class RmRfParserCliTest(unittest.TestCase):
@@ -373,6 +456,36 @@ class RmRfParserCliTest(unittest.TestCase):
             "nested sh command",
             "sh -c 'rm -rf directory/'",
             json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "ansi c shell command",
+            "bash -c $'rm -rf directory/'",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "ansi c hex escaped shell command",
+            r"bash -c $'rm\x20-rf directory/'",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "multiline ansi c shell command",
+            "bash -c $'echo ok\nrm -rf directory/'",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "option bearing ansi c shell command",
+            "bash -O extglob -c $'rm -rf directory/'",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "environment wrapped ansi c shell command",
+            "env FOO=bar bash -c $'rm -rf directory/'",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "safe ansi c shell command",
+            "bash -c $'echo safe'",
+            json_line({"block": None}),
         ),
         (
             "sudo directory option shell command",
