@@ -244,35 +244,32 @@ get_mtime() {
   fi
 }
 
-# Check if cache is valid
-cache_valid=false
-if [ -f "$CACHE_FILE" ]; then
-  cache_mtime=$(get_mtime "$CACHE_FILE")
-  cache_valid=true
+# Load cached formatter availability and commands when the cache is current.
+load_formatter_cache() {
+  local bool_value=""
+  local cache_has_biome=""
+  local cache_has_black=""
+  local cache_has_eslint=""
+  local cache_has_nx=""
+  local cache_has_prettier=""
+  local cache_has_ruff=""
+  local cache_mtime=""
+  local cf=""
+  local cf_mtime=""
 
+  [ -f "$CACHE_FILE" ] || return 1
+
+  cache_mtime=$(get_mtime "$CACHE_FILE")
   for cf in "${CONFIG_FILES[@]}"; do
     if [ -f "$cf" ]; then
       cf_mtime=$(get_mtime "$cf")
       if [ "$cf_mtime" -gt "$cache_mtime" ]; then
-        cache_valid=false
-        break
+        return 1
       fi
     fi
   done
-fi
 
-# Initialize formatter variables
-HAS_PRETTIER=false
-HAS_BIOME=false
-HAS_ESLINT=false
-HAS_BLACK=false
-HAS_RUFF=false
-HAS_NX=false
-FORMAT_SCRIPT_NAME=""
-CLAUDE_FORMATTER=""
-
-if [ "$cache_valid" = "true" ]; then
-  # Load from cache data (never source shell)
+  # Load from cache data (never source shell).
   cache_has_prettier=$(jq -r '.HAS_PRETTIER // false | tostring' "$CACHE_FILE" 2> /dev/null)
   cache_has_biome=$(jq -r '.HAS_BIOME // false | tostring' "$CACHE_FILE" 2> /dev/null)
   cache_has_eslint=$(jq -r '.HAS_ESLINT // false | tostring' "$CACHE_FILE" 2> /dev/null)
@@ -281,31 +278,25 @@ if [ "$cache_valid" = "true" ]; then
   cache_has_nx=$(jq -r '.HAS_NX // false | tostring' "$CACHE_FILE" 2> /dev/null)
 
   for bool_value in "$cache_has_prettier" "$cache_has_biome" "$cache_has_eslint" "$cache_has_black" "$cache_has_ruff" "$cache_has_nx"; do
-    if ! is_bool_string "$bool_value"; then
-      cache_valid=false
-      break
-    fi
+    is_bool_string "$bool_value" || return 1
   done
 
-  if [ "$cache_valid" = "true" ]; then
-    HAS_PRETTIER="$cache_has_prettier"
-    HAS_BIOME="$cache_has_biome"
-    HAS_ESLINT="$cache_has_eslint"
-    HAS_BLACK="$cache_has_black"
-    HAS_RUFF="$cache_has_ruff"
-    HAS_NX="$cache_has_nx"
-    FORMAT_SCRIPT_NAME=$(jq -r '.FORMAT_SCRIPT_NAME // ""' "$CACHE_FILE" 2> /dev/null)
-    CLAUDE_FORMATTER=$(jq -r '.CLAUDE_FORMATTER // ""' "$CACHE_FILE" 2> /dev/null)
-  fi
-fi
+  HAS_PRETTIER="$cache_has_prettier"
+  HAS_BIOME="$cache_has_biome"
+  HAS_ESLINT="$cache_has_eslint"
+  HAS_BLACK="$cache_has_black"
+  HAS_RUFF="$cache_has_ruff"
+  HAS_NX="$cache_has_nx"
+  FORMAT_SCRIPT_NAME=$(jq -r '.FORMAT_SCRIPT_NAME // ""' "$CACHE_FILE" 2> /dev/null)
+  CLAUDE_FORMATTER=$(jq -r '.CLAUDE_FORMATTER // ""' "$CACHE_FILE" 2> /dev/null)
+}
 
-if [ "$cache_valid" != "true" ]; then
-  # ============================================================================
-  # DETECT FORMATTERS
-  # ============================================================================
+detect_formatters() {
+  local claude_md="$PROJECT_ROOT/CLAUDE.md"
+  local pkg_content=""
+  local toml_content=""
 
   # Check CLAUDE.md for format command
-  claude_md="$PROJECT_ROOT/CLAUDE.md"
   if [ -f "$claude_md" ]; then
     CLAUDE_FORMATTER=$(grep -iE '^\s*(format|formatter)\s*[:=]' "$claude_md" | head -1 | sed 's/^[^:=]*[:=]\s*//' | sed 's/`//g' | xargs 2> /dev/null)
   fi
@@ -349,7 +340,9 @@ if [ "$cache_valid" != "true" ]; then
       HAS_RUFF=true
     fi
   fi
+}
 
+write_formatter_cache() {
   # Write cache as JSON data
   jq -n \
     --argjson has_prettier "$(to_json_bool "$HAS_PRETTIER")" \
@@ -370,6 +363,124 @@ if [ "$cache_valid" != "true" ]; then
             FORMAT_SCRIPT_NAME: $format_script_name,
             CLAUDE_FORMATTER: $claude_formatter
         }' > "$CACHE_FILE"
+}
+
+format_file() {
+  case "$EXT" in
+    # JavaScript/TypeScript/JSON/CSS/HTML/Markdown
+    js | jsx | ts | tsx | mjs | cjs | json | css | scss | less | html | htm | md | mdx | yaml | yml | graphql | gql | vue | svelte)
+      if [ "$HAS_BIOME" = "true" ] && [ -n "$BIOME_CMD" ]; then
+        if "$BIOME_CMD" format --write "$abs_path" > /dev/null 2>&1; then
+          output_msg "Formatted with Biome: $file_path"
+        fi
+      fi
+      if [ "$HAS_PRETTIER" = "true" ] && [ -n "$PRETTIER_CMD" ]; then
+        if "$PRETTIER_CMD" --write "$abs_path" > /dev/null 2>&1; then
+          output_msg "Formatted with Prettier: $file_path"
+        fi
+      elif [ -n "$PRETTIER_CMD" ]; then
+        # Fallback: formatter exists globally but package.json does not declare it
+        if "$PRETTIER_CMD" --write "$abs_path" > /dev/null 2>&1; then
+          output_msg "Formatted with global Prettier: $file_path"
+        fi
+      fi
+      ;;
+
+    # Python
+    py | pyi)
+      if [ "$HAS_RUFF" = "true" ] && [ -n "$RUFF_CMD" ]; then
+        if "$RUFF_CMD" format "$abs_path" > /dev/null 2>&1; then
+          output_msg "Formatted with Ruff: $file_path"
+        fi
+      fi
+      if [ "$HAS_BLACK" = "true" ] && [ -n "$BLACK_CMD" ]; then
+        if "$BLACK_CMD" "$abs_path" > /dev/null 2>&1; then
+          output_msg "Formatted with Black: $file_path"
+        fi
+      fi
+      # Fallback: check for global tools
+      if [ -n "$RUFF_CMD" ]; then
+        if "$RUFF_CMD" format "$abs_path" > /dev/null 2>&1; then
+          output_msg "Formatted with global Ruff: $file_path"
+        fi
+      fi
+      if [ -n "$BLACK_CMD" ]; then
+        if "$BLACK_CMD" "$abs_path" > /dev/null 2>&1; then
+          output_msg "Formatted with global Black: $file_path"
+        fi
+      fi
+      ;;
+
+    # Go
+    go)
+      if [ -n "$GOFMT_CMD" ]; then
+        if "$GOFMT_CMD" -w "$abs_path" > /dev/null 2>&1; then
+          output_msg "Formatted with gofmt: $file_path"
+        fi
+      fi
+      ;;
+
+    # Rust
+    rs)
+      if [ -n "$RUSTFMT_CMD" ]; then
+        if "$RUSTFMT_CMD" "$abs_path" > /dev/null 2>&1; then
+          output_msg "Formatted with rustfmt: $file_path"
+        fi
+      fi
+      ;;
+
+    # C#
+    cs)
+      if [ -n "$DOTNET_CMD" ]; then
+        if "$DOTNET_CMD" format --include "$abs_path" > /dev/null 2>&1; then
+          output_msg "Formatted with dotnet format: $file_path"
+        fi
+      fi
+      ;;
+
+    # Shell scripts
+    sh | bash)
+      if [ -n "$SHFMT_CMD" ]; then
+        if "$SHFMT_CMD" -w "$abs_path" > /dev/null 2>&1; then
+          output_msg "Formatted with shfmt: $file_path"
+        fi
+      fi
+      ;;
+  esac
+}
+
+run_project_fallbacks() {
+  local rel_path=""
+
+  # Try Nx format for affected file
+  if [ "$HAS_NX" = "true" ]; then
+    rel_path="${abs_path#$PROJECT_ROOT/}"
+    if [ -n "$NX_CMD" ] && "$NX_CMD" format:write --files="$rel_path" > /dev/null 2>&1; then
+      output_msg "Formatted with Nx: $file_path"
+    fi
+  fi
+
+  # Try npm format script
+  if [ -n "$FORMAT_SCRIPT_NAME" ]; then
+    if [ "${SKIPPED_UNTRUSTED_DIRECTIVE:-false}" != "true" ] && [ -n "$NPM_CMD" ] && "$NPM_CMD" run "$FORMAT_SCRIPT_NAME" > /dev/null 2>&1; then
+      output_msg "Formatted with npm run $FORMAT_SCRIPT_NAME"
+    fi
+  fi
+}
+
+# Initialize formatter availability and detected commands consistently.
+HAS_PRETTIER=false
+HAS_BIOME=false
+HAS_ESLINT=false
+HAS_BLACK=false
+HAS_RUFF=false
+HAS_NX=false
+FORMAT_SCRIPT_NAME=""
+CLAUDE_FORMATTER=""
+
+if ! load_formatter_cache; then
+  detect_formatters
+  write_formatter_cache
 fi
 
 # ============================================================================
@@ -396,111 +507,16 @@ cd "$PROJECT_ROOT" || exit 0
 BIOME_CMD=$(resolve_command "biome")
 PRETTIER_CMD=$(resolve_command "prettier")
 NX_CMD=$(resolve_command "nx")
+RUFF_CMD=$(command -v ruff 2> /dev/null || true)
+BLACK_CMD=$(command -v black 2> /dev/null || true)
+GOFMT_CMD=$(command -v gofmt 2> /dev/null || true)
+RUSTFMT_CMD=$(command -v rustfmt 2> /dev/null || true)
+DOTNET_CMD=$(command -v dotnet 2> /dev/null || true)
+SHFMT_CMD=$(command -v shfmt 2> /dev/null || true)
+NPM_CMD=$(command -v npm 2> /dev/null || true)
 
-# ============================================================================
-# STEP 2: Try file-specific formatting based on extension
-# ============================================================================
-case "$EXT" in
-  # JavaScript/TypeScript/JSON/CSS/HTML/Markdown
-  js | jsx | ts | tsx | mjs | cjs | json | css | scss | less | html | htm | md | mdx | yaml | yml | graphql | gql | vue | svelte)
-    if [ "$HAS_BIOME" = "true" ] && [ -n "$BIOME_CMD" ]; then
-      if "$BIOME_CMD" format --write "$abs_path" > /dev/null 2>&1; then
-        output_msg "Formatted with Biome: $file_path"
-      fi
-    fi
-    if [ "$HAS_PRETTIER" = "true" ] && [ -n "$PRETTIER_CMD" ]; then
-      if "$PRETTIER_CMD" --write "$abs_path" > /dev/null 2>&1; then
-        output_msg "Formatted with Prettier: $file_path"
-      fi
-    elif [ -n "$PRETTIER_CMD" ]; then
-      # Fallback: formatter exists globally but package.json does not declare it
-      if "$PRETTIER_CMD" --write "$abs_path" > /dev/null 2>&1; then
-        output_msg "Formatted with global Prettier: $file_path"
-      fi
-    fi
-    ;;
-
-  # Python
-  py | pyi)
-    if [ "$HAS_RUFF" = "true" ]; then
-      if ruff format "$abs_path" > /dev/null 2>&1; then
-        output_msg "Formatted with Ruff: $file_path"
-      fi
-    fi
-    if [ "$HAS_BLACK" = "true" ]; then
-      if black "$abs_path" > /dev/null 2>&1; then
-        output_msg "Formatted with Black: $file_path"
-      fi
-    fi
-    # Fallback: check for global tools
-    if command -v ruff &> /dev/null; then
-      if ruff format "$abs_path" > /dev/null 2>&1; then
-        output_msg "Formatted with global Ruff: $file_path"
-      fi
-    fi
-    if command -v black &> /dev/null; then
-      if black "$abs_path" > /dev/null 2>&1; then
-        output_msg "Formatted with global Black: $file_path"
-      fi
-    fi
-    ;;
-
-  # Go
-  go)
-    if command -v gofmt &> /dev/null; then
-      if gofmt -w "$abs_path" > /dev/null 2>&1; then
-        output_msg "Formatted with gofmt: $file_path"
-      fi
-    fi
-    ;;
-
-  # Rust
-  rs)
-    if command -v rustfmt &> /dev/null; then
-      if rustfmt "$abs_path" > /dev/null 2>&1; then
-        output_msg "Formatted with rustfmt: $file_path"
-      fi
-    fi
-    ;;
-
-  # C#
-  cs)
-    if command -v dotnet &> /dev/null; then
-      if dotnet format --include "$abs_path" > /dev/null 2>&1; then
-        output_msg "Formatted with dotnet format: $file_path"
-      fi
-    fi
-    ;;
-
-  # Shell scripts
-  sh | bash)
-    if command -v shfmt &> /dev/null; then
-      if shfmt -w "$abs_path" > /dev/null 2>&1; then
-        output_msg "Formatted with shfmt: $file_path"
-      fi
-    fi
-    ;;
-esac
-
-# ============================================================================
-# STEP 3: Fallback to project-wide format command
-# ============================================================================
-
-# Try Nx format for affected file
-if [ "$HAS_NX" = "true" ]; then
-  # Get relative path from project root
-  rel_path="${abs_path#$PROJECT_ROOT/}"
-  if [ -n "$NX_CMD" ] && "$NX_CMD" format:write --files="$rel_path" > /dev/null 2>&1; then
-    output_msg "Formatted with Nx: $file_path"
-  fi
-fi
-
-# Try npm format script
-if [ -n "$FORMAT_SCRIPT_NAME" ]; then
-  if [ "${SKIPPED_UNTRUSTED_DIRECTIVE:-false}" != "true" ] && npm run "$FORMAT_SCRIPT_NAME" > /dev/null 2>&1; then
-    output_msg "Formatted with npm run $FORMAT_SCRIPT_NAME"
-  fi
-fi
+format_file
+run_project_fallbacks
 
 # ============================================================================
 # STEP 4: No formatter found
