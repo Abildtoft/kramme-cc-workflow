@@ -1,5 +1,7 @@
 # Skill Expansion Roadmap
 
+**Status: completed (historical record).** Every skill in this roadmap has shipped: `/kramme:pr:product-review`, `/kramme:siw:product-audit`, `/kramme:browse`, `/kramme:qa`, and `/kramme:product:review`. This document is kept as a record of the original plan and rationale, not a list of pending work. For the current skill catalog, see the root [README.md](../../README.md#skills).
+
 ## Overview
 
 This document defines the roadmap for the next skill expansion of `kramme-cc-workflow`.

@@ -14,7 +14,9 @@ cross-hook parsing and toggle behavior here.
 ## Boundary Rules
 
 - Every hook script should source `check-enabled.sh` and call
-  `exit_if_hook_disabled` before doing real work.
+  `exit_if_hook_disabled` before doing real work. This is the "every hook
+  supports toggling" decision; see
+  [docs/decisions/README.md](../../docs/decisions/README.md).
 - Helpers must fail open only where the hook policy already treats missing or
   malformed local state as non-blocking.
 - Parser changes need regression tests for the hook that consumes the parser,

@@ -80,7 +80,7 @@ Local dev from this repo:
 
 Helper scripts install missing converter runtime dependencies and forward additional args to the converter (e.g., `--codex-home`, `--agents-home`).
 
-Codex output defaults to `~/.codex` (`prompts/` and `skills/`).
+Codex output defaults to `~/.codex`. Beyond `prompts/` and `skills/`, the converter also generates agent skills (under the agents home, set with `--agents-home`), a converted hook plugin, and a managed tool-map block in the Codex `AGENTS.md`. For plugins that declare MCP servers, it also writes managed MCP config tables. See the [Agent Portability Matrix](kramme-cc-workflow/docs/agent-portability.md) for the exact source-to-output mapping.
 
 ### Updating
 

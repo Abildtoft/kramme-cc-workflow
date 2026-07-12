@@ -36,8 +36,9 @@ referenced local files under the same skill directory. Check
 description length, platform filtering, or self-contained resource policy.
 
 When a hook blocks or misses a command, inspect the hook script, then the shared
-helpers under `hooks/lib/`. `git_command_parser.py` is the production parser for
-complex shell and git command shapes used by the command-safety hooks.
+helpers under `hooks/lib/` (see `hooks/lib/README.md` for the helper
+responsibility map). `git_command_parser.py` is the production parser for complex
+shell and git command shapes used by the command-safety hooks.
 
 When Codex output is wrong, read `scripts/convert-plugin.js` first, then follow
 the boundary in `scripts/convert-plugin/README.md`: loader, transformer, writer,
