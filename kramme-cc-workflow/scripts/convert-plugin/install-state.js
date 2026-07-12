@@ -2,7 +2,12 @@
 
 const fs = require("fs/promises");
 const path = require("path");
-const { pathExists, readJson, writeJson } = require("./filesystem");
+const {
+  contextualizeFilesystemError,
+  pathExists,
+  readJson,
+  writeJson,
+} = require("./filesystem");
 
 function createInstallState() {
   return {
@@ -123,30 +128,52 @@ async function loadInstallState(root) {
     return {
       state: await rebuildInstallStateFromManifests(root),
       fromDisk: false,
+      recoveryReason: "missing",
     };
   }
 
+  let state;
   try {
-    const state = await readJson(filePath);
-    if (
-      state &&
-      typeof state === "object" &&
-      state.plugins &&
-      typeof state.plugins === "object"
-    ) {
+    state = await readJson(filePath);
+  } catch (error) {
+    if (error?.code === "ENOENT") {
       return {
-        state,
-        fromDisk: true,
+        state: await rebuildInstallStateFromManifests(root),
+        fromDisk: false,
+        recoveryReason: "missing",
       };
     }
-  } catch {
-    // Ignore invalid state and rebuild from the current install.
+    if (!(error instanceof SyntaxError)) {
+      throw contextualizeFilesystemError("read install state", filePath, error);
+    }
+    return {
+      state: await rebuildInstallStateFromManifests(root),
+      fromDisk: false,
+      recoveryReason: "malformed-json",
+    };
+  }
+
+  if (isInstallState(state)) {
+    return {
+      state,
+      fromDisk: true,
+      recoveryReason: null,
+    };
   }
 
   return {
     state: await rebuildInstallStateFromManifests(root),
     fromDisk: false,
+    recoveryReason: "invalid-shape",
   };
+}
+
+function isInstallState(state) {
+  return isRecord(state) && isRecord(state.plugins);
+}
+
+function isRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function getInstallManifestPath(root, pluginName, targetName) {
@@ -162,12 +189,16 @@ async function loadInstallManifest(root, pluginName, targetName) {
   if (!(await pathExists(filePath))) return null;
 
   try {
-    return sanitizeInstallRecord(await readJson(filePath));
-  } catch {
-    // Ignore invalid manifests and rebuild from the current install.
+    const manifest = await readJson(filePath);
+    return isRecord(manifest) ? sanitizeInstallRecord(manifest) : null;
+  } catch (error) {
+    if (error?.code === "ENOENT" || error instanceof SyntaxError) return null;
+    throw contextualizeFilesystemError(
+      "read install manifest",
+      filePath,
+      error,
+    );
   }
-
-  return null;
 }
 
 async function writeInstallManifest(root, pluginName, targetName, entries) {

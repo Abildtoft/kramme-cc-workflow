@@ -38,6 +38,9 @@ const {
   loadInstallState,
 } = require("../../scripts/convert-plugin/install-state");
 const {
+  pathExists: converterPathExists,
+} = require("../../scripts/convert-plugin/filesystem");
+const {
   loadClaudePlugin,
   normalizeFrontmatterField,
 } = require("../../scripts/convert-plugin/loader");
@@ -552,9 +555,10 @@ test("install state rebuild sanitizes legacy manifests and managed file paths", 
       },
     );
 
-    const { fromDisk, state } = await loadInstallState(root);
+    const { fromDisk, recoveryReason, state } = await loadInstallState(root);
 
     assert.equal(fromDisk, false);
+    assert.equal(recoveryReason, "missing");
     assert.deepEqual(state.plugins["Demo Plugin"].codex, {
       agentSkillFiles: {
         reviewer: ["SKILL.md", "notes.md"],
@@ -570,6 +574,143 @@ test("install state rebuild sanitizes legacy manifests and managed file paths", 
       skills: ["alpha", "beta"],
       updatedAtMs: 42,
     });
+  });
+});
+
+test("converter path checks treat only ENOENT as absence", async () => {
+  await withTempDir(async (root) => {
+    const missingPath = path.join(root, "missing");
+    assert.equal(await converterPathExists(missingPath), false);
+
+    const originalAccess = fs.access;
+    const accessError = Object.assign(new Error("permission denied"), {
+      code: "EACCES",
+    });
+    fs.access = async () => {
+      throw accessError;
+    };
+    try {
+      await assert.rejects(
+        () => converterPathExists(missingPath),
+        (error) => {
+          assertFilesystemError(error, {
+            cause: accessError,
+            code: "EACCES",
+            message: /Failed to check path/,
+            path: missingPath,
+          });
+          return true;
+        },
+      );
+    } finally {
+      fs.access = originalAccess;
+    }
+  });
+});
+
+test("install state records corrupt-data recovery provenance", async () => {
+  await withTempDir(async (root) => {
+    const statePath = path.join(root, ".kramme-install-state.json");
+    await writeFile(statePath, "{not json\n");
+
+    let loaded = await loadInstallState(root);
+    assert.equal(loaded.fromDisk, false);
+    assert.equal(loaded.recoveryReason, "malformed-json");
+    assert.deepEqual(loaded.state.plugins, {});
+
+    await writeJson(statePath, []);
+    loaded = await loadInstallState(root);
+    assert.equal(loaded.fromDisk, false);
+    assert.equal(loaded.recoveryReason, "invalid-shape");
+    assert.deepEqual(loaded.state.plugins, {});
+  });
+});
+
+test("install state rebuild skips malformed and invalid-shape manifests", async () => {
+  await withTempDir(async (root) => {
+    const manifestsDir = path.join(root, ".kramme-install-manifests");
+    await writeFile(path.join(manifestsDir, "malformed-codex.json"), "{bad\n");
+    await writeJson(path.join(manifestsDir, "invalid-codex.json"), []);
+
+    const loaded = await loadInstallState(root);
+
+    assert.equal(loaded.fromDisk, false);
+    assert.equal(loaded.recoveryReason, "missing");
+    assert.deepEqual(loaded.state.plugins, {});
+  });
+});
+
+test("install state rethrows operational read failures without mutation", async () => {
+  await withTempDir(async (root) => {
+    const statePath = path.join(root, ".kramme-install-state.json");
+    await writeJson(statePath, { plugins: {}, version: 1 });
+
+    const originalReadFile = fs.readFile;
+    const readError = Object.assign(new Error("input/output error"), {
+      code: "EIO",
+    });
+    fs.readFile = /** @type {typeof fs.readFile} */ (
+      async (file, ...args) => {
+        if (file === statePath) throw readError;
+        return originalReadFile(file, ...args);
+      }
+    );
+    try {
+      await assert.rejects(
+        () => loadInstallState(root),
+        (error) => {
+          assertFilesystemError(error, {
+            cause: readError,
+            code: "EIO",
+            message: /Failed to read install state/,
+            path: statePath,
+          });
+          return true;
+        },
+      );
+    } finally {
+      fs.readFile = originalReadFile;
+    }
+
+    assert.deepEqual(await fs.readdir(root), [".kramme-install-state.json"]);
+  });
+});
+
+test("install manifest rethrows operational read failures", async () => {
+  await withTempDir(async (root) => {
+    const manifestPath = path.join(
+      root,
+      ".kramme-install-manifests",
+      "demo-codex.json",
+    );
+    await writeJson(manifestPath, { skills: ["demo"] });
+
+    const originalReadFile = fs.readFile;
+    const readError = Object.assign(new Error("input/output error"), {
+      code: "EIO",
+    });
+    fs.readFile = /** @type {typeof fs.readFile} */ (
+      async (file, ...args) => {
+        if (file === manifestPath) throw readError;
+        return originalReadFile(file, ...args);
+      }
+    );
+    try {
+      await assert.rejects(
+        () => loadInstallState(root),
+        (error) => {
+          assertFilesystemError(error, {
+            cause: readError,
+            code: "EIO",
+            message: /Failed to read install manifest/,
+            path: manifestPath,
+          });
+          return true;
+        },
+      );
+    } finally {
+      fs.readFile = originalReadFile;
+    }
   });
 });
 
@@ -1419,4 +1560,13 @@ async function pathExists(file) {
   } catch {
     return false;
   }
+}
+
+function assertFilesystemError(error, { cause, code, message, path: file }) {
+  assert.ok(error instanceof Error);
+  const filesystemError = /** @type {NodeJS.ErrnoException} */ (error);
+  assert.equal(filesystemError.code, code);
+  assert.equal(filesystemError.path, file);
+  assert.equal(filesystemError.cause, cause);
+  assert.match(filesystemError.message, message);
 }
