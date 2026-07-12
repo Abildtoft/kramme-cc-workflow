@@ -48,50 +48,30 @@ RESOLVED=$(${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh "${COLLECT_ARGS[
   exit 1
 }
 
-parse_review_diff_json() {
-  local field="$1"
-
-  if ! command -v python3 >/dev/null 2>&1; then
-    echo "python3 is required to parse collect-review-diff JSON output" >&2
-    return 1
-  fi
-
-  REVIEW_DIFF_JSON="$RESOLVED" REVIEW_DIFF_FIELD="$field" python3 - <<'PY'
-import json
-import os
-import sys
-
-field = os.environ["REVIEW_DIFF_FIELD"]
-
-try:
-    data = json.loads(os.environ["REVIEW_DIFF_JSON"])
-except (KeyError, json.JSONDecodeError) as exc:
-    print(f"Invalid collect-review-diff JSON output: {exc}", file=sys.stderr)
-    sys.exit(1)
-
-if field == "changed_files":
-    value = data.get(field)
-    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
-        print(f"collect-review-diff JSON field '{field}' must be a string list", file=sys.stderr)
-        sys.exit(1)
-    sys.stdout.write("\n".join(value))
-    sys.exit(0)
-
-value = data.get(field)
-if not isinstance(value, str):
-    print(f"collect-review-diff JSON field '{field}' must be a string", file=sys.stderr)
-    sys.exit(1)
-sys.stdout.write(value)
-PY
+REVIEW_DIFF_FIELDS=$(mktemp "${TMPDIR:-/tmp}/review-diff.XXXXXX") || {
+  echo "Could not create temporary review-diff file; stop." >&2
+  exit 1
 }
-
-BASE_REF=$(parse_review_diff_json base_ref) || exit 1
-BASE_BRANCH=$(parse_review_diff_json base_branch) || exit 1
-MERGE_BASE=$(parse_review_diff_json merge_base) || exit 1
-CHANGED_FILES=$(parse_review_diff_json changed_files) || exit 1
+${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh --decode-json \
+  <<<"$RESOLVED" >"$REVIEW_DIFF_FIELDS" || {
+  rm -f "$REVIEW_DIFF_FIELDS"
+  echo "Base/diff decoding failed; see the message above and stop." >&2
+  exit 1
+}
+if ! {
+  IFS= read -r -d '' BASE_REF &&
+    IFS= read -r -d '' BASE_BRANCH &&
+    IFS= read -r -d '' MERGE_BASE &&
+    IFS= read -r -d '' CHANGED_FILES
+} <"$REVIEW_DIFF_FIELDS"; then
+  rm -f "$REVIEW_DIFF_FIELDS"
+  echo "Decoded review-diff fields were incomplete; stop." >&2
+  exit 1
+fi
+rm -f "$REVIEW_DIFF_FIELDS"
 ```
 
-The JSON parsing block sets `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES`. All changed files in `CHANGED_FILES` are relevant for product review -- no file-type filtering.
+The shared JSON decoder sets `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES`. All changed files in `CHANGED_FILES` are relevant for product review -- no file-type filtering.
 
 After identifying the changed files, discover any additional nested instruction files that apply to those files (for example `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or tool-specific equivalents) and merge those constraints into the conventions from Step 2 before launching the reviewer agent.
 

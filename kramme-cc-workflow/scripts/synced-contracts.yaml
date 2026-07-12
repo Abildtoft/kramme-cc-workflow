@@ -64,7 +64,7 @@
     },
     {
       "name": "pr-review-collect-review-diff-block",
-      "extract_regex": "(?s)(COLLECT_ARGS=\\(--strict --format json\\).*?CHANGED_FILES=\\$\\(parse_review_diff_json changed_files\\) \\|\\| exit 1)",
+      "extract_regex": "(?s)(COLLECT_ARGS=\\(--strict --format json\\).*?fi\\s*rm -f \"\\$REVIEW_DIFF_FIELDS\")",
       "normalizer": "linewise",
       "paths": [
         "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md",
@@ -470,7 +470,8 @@
         "If `--base <branch>` flag",
         "If `--parallel` appears anywhere in `$ARGUMENTS`",
         "COLLECT_ARGS=(--strict --format json)",
-        "parse_review_diff_json"
+        "collect-review-diff.sh --decode-json",
+        "IFS= read -r -d '' CHANGED_FILES"
       ]
     },
     {
