@@ -17,9 +17,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+import shlex
+import stat
 import subprocess
 import sys
+import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 from changelog import ChangelogHistoryError, generate_changelog
@@ -187,35 +192,47 @@ def get_current_git_head(git_root: Path) -> str | None:
     return head or None
 
 
-def _git_paths(git_root: Path, paths: list[Path]) -> list[str]:
-    git_root = git_root.resolve()
-    relative_paths = []
-    for path in paths:
-        resolved = path.resolve()
-        try:
-            relative_paths.append(str(resolved.relative_to(git_root)))
-        except ValueError:
-            relative_paths.append(str(resolved))
-    return relative_paths
+def get_git_index_path(git_root: Path) -> Path:
+    """Return the index path for the current repository or linked worktree."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--git-path", "index"],
+        cwd=git_root,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError("Could not locate the Git index before release.")
+
+    raw_path = Path(result.stdout.strip())
+    if not raw_path.is_absolute():
+        raw_path = git_root / raw_path
+    return raw_path.resolve()
 
 
-def reset_git_index(git_root: Path, paths: list[Path]) -> None:
-    """Best-effort reset for release paths that may have been staged."""
-    git_paths = _git_paths(git_root, paths)
-    if not git_paths:
+def restore_git_index(path: Path, contents: bytes | None, mode: int | None) -> None:
+    """Atomically restore the exact captured Git index contents."""
+    if contents is None:
+        if path.exists():
+            path.unlink()
         return
 
-    subprocess.run(
-        ["git", "reset", "--", *git_paths],
-        cwd=git_root,
-        capture_output=True,
-    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as temporary:
+        temporary.write(contents)
+        temporary_path = Path(temporary.name)
+    try:
+        if mode is not None:
+            temporary_path.chmod(mode)
+        os.replace(temporary_path, path)
+    finally:
+        if temporary_path.exists():
+            temporary_path.unlink()
 
 
-def checkout_branch(git_root: Path, branch: str) -> bool:
-    """Best-effort branch checkout for release rollback."""
+def run_git_recovery_command(git_root: Path, args: list[str]) -> bool:
+    """Run one recovery command and report whether Git accepted it."""
     result = subprocess.run(
-        ["git", "checkout", branch],
+        ["git", *args],
         cwd=git_root,
         capture_output=True,
         text=True,
@@ -223,55 +240,170 @@ def checkout_branch(git_root: Path, branch: str) -> bool:
     return result.returncode == 0
 
 
-def checkout_detached_head(git_root: Path, head: str) -> bool:
-    """Best-effort detached checkout for release rollback."""
-    result = subprocess.run(
-        ["git", "checkout", "--detach", head],
-        cwd=git_root,
-        capture_output=True,
-        text=True,
+@dataclass(frozen=True)
+class ReleaseStateSnapshot:
+    """Repository state that must be observed after a release rollback."""
+
+    files: dict[Path, bytes | None]
+    branch: str | None
+    head: str | None
+    index_path: Path
+    index_contents: bytes | None
+    index_mode: int | None
+
+
+@dataclass(frozen=True)
+class RecoveryCommandOutcome:
+    """Observed result of a checked, optionally retried recovery command."""
+
+    args: tuple[str, ...]
+    attempts: int
+    succeeded: bool
+
+
+@dataclass(frozen=True)
+class RollbackResult:
+    """Command and final-state evidence for a release rollback."""
+
+    commands: tuple[RecoveryCommandOutcome, ...]
+    state_matches: bool
+
+    @property
+    def succeeded(self) -> bool:
+        return self.state_matches and all(command.succeeded for command in self.commands)
+
+
+def capture_release_state(repo_root: Path) -> ReleaseStateSnapshot:
+    """Capture release files, checkout, HEAD, and the complete Git index."""
+    git_root = get_git_root()
+    head = get_current_git_head(git_root)
+    index_path = get_git_index_path(git_root)
+
+    return ReleaseStateSnapshot(
+        files=snapshot_files(get_release_mutation_paths(repo_root)),
+        branch=get_current_git_branch(git_root),
+        head=head,
+        index_path=index_path,
+        index_contents=index_path.read_bytes() if index_path.exists() else None,
+        index_mode=(stat.S_IMODE(index_path.stat().st_mode) if index_path.exists() else None),
     )
-    return result.returncode == 0
+
+
+def _retry_recovery_command(git_root: Path, args: list[str]) -> RecoveryCommandOutcome:
+    """Retry a checked recovery command once for transient Git failures."""
+    if run_git_recovery_command(git_root, args):
+        return RecoveryCommandOutcome(tuple(args), attempts=1, succeeded=True)
+    return RecoveryCommandOutcome(
+        tuple(args),
+        attempts=2,
+        succeeded=run_git_recovery_command(git_root, args),
+    )
+
+
+def _files_match_snapshot(snapshot: dict[Path, bytes | None]) -> bool:
+    for path, expected in snapshot.items():
+        if expected is None:
+            if path.exists():
+                return False
+        elif not path.exists() or path.read_bytes() != expected:
+            return False
+    return True
+
+
+def _write_recovery_backups(snapshot: dict[Path, bytes | None]) -> dict[Path, Path]:
+    """Persist original file bytes so printed manual commands are actionable."""
+    backup_root = Path(tempfile.mkdtemp(prefix="release-recovery-"))
+    backups = {}
+    for index, (path, contents) in enumerate(snapshot.items()):
+        if contents is None:
+            continue
+        backup = backup_root / f"{index}-{path.name}"
+        backup.write_bytes(contents)
+        backups[path] = backup
+    return backups
+
+
+def _shell_command(parts: list[str | Path]) -> str:
+    return " ".join(shlex.quote(str(part)) for part in parts)
+
+
+def print_manual_recovery(git_root: Path, snapshot: ReleaseStateSnapshot) -> None:
+    """Print exact, quoted commands that reproduce the captured state."""
+    backups = _write_recovery_backups(snapshot.files)
+    index_backup = None
+    if snapshot.index_contents is not None:
+        index_backup = next(iter(backups.values()), None)
+        backup_root = (
+            index_backup.parent if index_backup is not None else Path(tempfile.mkdtemp(prefix="release-recovery-"))
+        )
+        index_backup = backup_root / "git-index"
+        index_backup.write_bytes(snapshot.index_contents)
+    print("  Automatic rollback was incomplete. Run these recovery commands:")
+    print("    " + _shell_command(["rm", "-rf", "--", snapshot.index_path]))
+    if snapshot.head is not None:
+        print("    " + _shell_command(["git", "-C", git_root, "reset", "--mixed", snapshot.head]))
+        if snapshot.branch is None:
+            checkout = ["git", "-C", git_root, "checkout", "--detach", snapshot.head]
+        else:
+            checkout = ["git", "-C", git_root, "checkout", snapshot.branch]
+        print("    " + _shell_command(checkout))
+    if index_backup is None:
+        print("    " + _shell_command(["rm", "-f", "--", snapshot.index_path]))
+    else:
+        print("    " + _shell_command(["cp", "--", index_backup, snapshot.index_path]))
+        if snapshot.index_mode is not None:
+            print("    " + _shell_command(["chmod", f"{snapshot.index_mode:o}", snapshot.index_path]))
+    for path, contents in snapshot.files.items():
+        if contents is None:
+            print("    " + _shell_command(["rm", "-f", "--", path]))
+        else:
+            print("    " + _shell_command(["cp", "--", backups[path], path]))
 
 
 def restore_release_state(
-    snapshot: dict[Path, bytes | None],
-    start_branch: str | None,
-    start_head: str | None,
-) -> None:
-    """Restore release files and best-effort Git state after release failure."""
+    snapshot: ReleaseStateSnapshot,
+) -> RollbackResult:
+    """Restore and verify all captured release state after a failure."""
     git_root = get_git_root()
-    snapshot_paths = list(snapshot.keys())
+    command_outcomes = []
+    file_operations_ok = True
 
-    restore_files(snapshot)
+    try:
+        restore_files(snapshot.files)
 
-    current_branch = get_current_git_branch(git_root)
-    if start_branch and current_branch and current_branch != start_branch:
-        if start_head:
-            subprocess.run(
-                ["git", "reset", "--mixed", start_head],
-                cwd=git_root,
-                capture_output=True,
-            )
-            restore_files(snapshot)
-        if not checkout_branch(git_root, start_branch):
-            reset_git_index(git_root, snapshot_paths)
-            checkout_branch(git_root, start_branch)
-        restore_files(snapshot)
-    elif start_head and current_branch:
-        subprocess.run(
-            ["git", "reset", "--mixed", start_head],
-            cwd=git_root,
-            capture_output=True,
+        if snapshot.head is not None and get_current_git_head(git_root) != snapshot.head:
+            command_outcomes.append(_retry_recovery_command(git_root, ["reset", "--mixed", snapshot.head]))
+            restore_files(snapshot.files)
+
+        current_branch = get_current_git_branch(git_root)
+        if snapshot.branch is not None and current_branch != snapshot.branch:
+            command_outcomes.append(_retry_recovery_command(git_root, ["checkout", snapshot.branch]))
+        elif snapshot.branch is None and (
+            current_branch is not None or get_current_git_head(git_root) != snapshot.head
+        ):
+            command_outcomes.append(_retry_recovery_command(git_root, ["checkout", "--detach", snapshot.head]))
+
+        restore_files(snapshot.files)
+        restore_git_index(snapshot.index_path, snapshot.index_contents, snapshot.index_mode)
+    except OSError:
+        file_operations_ok = False
+
+    try:
+        state_matches = file_operations_ok and (
+            get_current_git_branch(git_root) == snapshot.branch
+            and get_current_git_head(git_root) == snapshot.head
+            and (snapshot.index_path.read_bytes() if snapshot.index_path.exists() else None) == snapshot.index_contents
+            and _files_match_snapshot(snapshot.files)
         )
-        restore_files(snapshot)
-        if not checkout_detached_head(git_root, start_head):
-            reset_git_index(git_root, snapshot_paths)
-            checkout_detached_head(git_root, start_head)
-        restore_files(snapshot)
+    except OSError:
+        state_matches = False
+    result = RollbackResult(tuple(command_outcomes), state_matches)
+    if result.succeeded:
+        print("  Restored release files to their pre-release state.")
+        return result
 
-    reset_git_index(git_root, snapshot_paths)
-    print("  Restored release files to their pre-release state.")
+    print_manual_recovery(git_root, snapshot)
+    return result
 
 
 def run_verification(repo_root: Path) -> bool:
@@ -286,9 +418,7 @@ def check_release_dependencies(repo_root: Path) -> bool:
     return result.returncode == 0
 
 
-def git_commit_and_push_branch(
-    repo_root: Path, version: str, dry_run: bool, ci_mode: bool
-) -> str:
+def git_commit_and_push_branch(repo_root: Path, version: str, dry_run: bool, ci_mode: bool) -> str:
     """Create release branch with version bump commit. Returns branch name."""
     branch_name = f"release/v{version}"
     git_root = get_git_root()
@@ -322,9 +452,7 @@ def git_commit_and_push_branch(
         )
 
         # Create release branch
-        subprocess.run(
-            ["git", "checkout", "-b", branch_name], cwd=git_root, check=True
-        )
+        subprocess.run(["git", "checkout", "-b", branch_name], cwd=git_root, check=True)
 
         # Stage and commit
         subprocess.run(
@@ -332,14 +460,10 @@ def git_commit_and_push_branch(
             cwd=git_root,
             check=True,
         )
-        subprocess.run(
-            ["git", "commit", "-m", f"Release v{version}"], cwd=git_root, check=True
-        )
+        subprocess.run(["git", "commit", "-m", f"Release v{version}"], cwd=git_root, check=True)
 
         if ci_mode:
-            subprocess.run(
-                ["git", "push", "origin", branch_name], cwd=git_root, check=True
-            )
+            subprocess.run(["git", "push", "origin", branch_name], cwd=git_root, check=True)
             print(f"  Pushed branch {branch_name}")
         else:
             print(f"  Created branch {branch_name}")
@@ -356,12 +480,8 @@ def main() -> int:
         metavar="version_type",
         help="Version bump type or explicit version (e.g., 1.0.0)",
     )
-    parser.add_argument(
-        "--dry-run", action="store_true", help="Show what would be done"
-    )
-    parser.add_argument(
-        "--ci", action="store_true", help="CI mode (skip prompts, auto-push)"
-    )
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be done")
+    parser.add_argument("--ci", action="store_true", help="CI mode (skip prompts, auto-push)")
 
     args = parser.parse_args()
 
@@ -382,10 +502,7 @@ def main() -> int:
     if not args.dry_run:
         print("\nChecking release verification dependencies...")
         if not check_release_dependencies(repo_root):
-            print(
-                "\nRelease verification dependencies are missing. "
-                "Aborting before changing files."
-            )
+            print("\nRelease verification dependencies are missing. Aborting before changing files.")
             return 1
 
     # Confirm in interactive mode
@@ -396,13 +513,8 @@ def main() -> int:
             return 0
 
     release_snapshot = None
-    release_start_branch = None
-    release_start_head = None
     if not args.dry_run:
-        git_root = get_git_root()
-        release_start_branch = get_current_git_branch(git_root)
-        release_start_head = get_current_git_head(git_root)
-        release_snapshot = snapshot_files(get_release_mutation_paths(repo_root))
+        release_snapshot = capture_release_state(repo_root)
 
     try:
         print("\nSteps:")
@@ -428,41 +540,41 @@ def main() -> int:
             print("  Would run: make verify")
         elif not run_verification(repo_root):
             if release_snapshot is not None:
-                restore_release_state(
-                    release_snapshot,
-                    release_start_branch,
-                    release_start_head,
-                )
+                if not restore_release_state(release_snapshot).succeeded:
+                    print("\nRelease verification failed and rollback was incomplete.")
+                    return 2
             print("\nRelease verification failed. Aborting before creating release branch.")
             return 1
 
         # 4. Git commit and push branch
         print("4. Creating release branch...")
-        branch_name = git_commit_and_push_branch(
-            repo_root, new_version, args.dry_run, args.ci
-        )
+        branch_name = git_commit_and_push_branch(repo_root, new_version, args.dry_run, args.ci)
     except ChangelogHistoryError as exc:
         if release_snapshot is not None:
-            restore_release_state(
-                release_snapshot, release_start_branch, release_start_head
-            )
+            if not restore_release_state(release_snapshot).succeeded:
+                print(f"\nRelease changelog generation failed: {exc}")
+                print("Aborting with incomplete rollback.")
+                return 2
         print(f"\nRelease changelog generation failed: {exc}")
         print("Aborting after restoring release files.")
         return 1
     except subprocess.CalledProcessError as exc:
         if release_snapshot is not None:
-            restore_release_state(
-                release_snapshot, release_start_branch, release_start_head
-            )
+            if not restore_release_state(release_snapshot).succeeded:
+                command = " ".join(str(part) for part in exc.cmd)
+                print(f"\nRelease git step failed: {command}")
+                print("Aborting with incomplete rollback.")
+                return 2
         command = " ".join(str(part) for part in exc.cmd)
         print(f"\nRelease git step failed: {command}")
         print("Aborting after restoring release files.")
         return 1
-    except Exception:
+    except Exception as exc:
         if release_snapshot is not None:
-            restore_release_state(
-                release_snapshot, release_start_branch, release_start_head
-            )
+            if not restore_release_state(release_snapshot).succeeded:
+                print(f"\nRelease failed: {exc}")
+                print("Aborting with incomplete rollback.")
+                return 2
         raise
 
     if args.ci:
