@@ -163,16 +163,24 @@ for entry in artifacts:
     path = entry.get("path", "")
     if glob.has_magic(path) != (entry.get("type") == "glob"):
         errors.append(f"{ident}: path/type mismatch for {path!r}")
+    if path.endswith("/") != (entry.get("type") == "dir"):
+        errors.append(f"{ident}: directory path/type mismatch for {path!r}")
+    if path.startswith("~/") != (entry.get("category") == "shared-diagram"):
+        errors.append(f"{ident}: global path/category mismatch for {path!r}")
+    if (entry.get("retention") == "permanent") != (
+        entry.get("category") == "permanent-spec"
+    ):
+        errors.append(f"{ident}: category/retention mismatch")
     if "condition" in entry and "expected_contents" not in entry:
         errors.append(f"{ident}: condition without expected_contents")
     if "condition" in entry:
+        if entry["condition"] != "siw/OPEN_ISSUES_OVERVIEW.md":
+            errors.append(f"{ident}: condition must use the SIW issue-state marker")
         marker = next((candidate for candidate in artifacts if candidate.get("path") == entry["condition"]), None)
         if marker is None:
             errors.append(f"{ident}: condition is not a registered artifact")
         elif marker.get("type") != "file":
             errors.append(f"{ident}: condition must reference a literal file")
-    if entry.get("category") == "permanent-spec" and entry.get("retention") != "permanent":
-        errors.append(f"{ident}: permanent-spec must be retention permanent")
 raise SystemExit("\n".join(errors) if errors else 0)
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }

@@ -169,7 +169,7 @@
       "type": "file",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:siw:continue"
+      "producer": "kramme:siw:init"
     },
     {
       "id": "siw-open-issues-overview",
@@ -177,7 +177,7 @@
       "type": "file",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:siw:continue"
+      "producer": "kramme:siw:init"
     },
     {
       "id": "pr-plans",
