@@ -14,7 +14,10 @@
     "preflight": "make preflight",
     "test": "make test",
     "test:node": "make test-node",
+    "test:node:file": "node --test",
+    "test:node:watch": "make test-node-watch",
     "test:python": "make test-python",
+    "test:smoke": "make test-smoke",
     "verify": "make verify",
     "verify:pr": "make pr-verify"
   },

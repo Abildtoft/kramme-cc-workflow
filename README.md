@@ -608,19 +608,28 @@ make -C kramme-cc-workflow install-test-deps
 # Run all tests
 make -C kramme-cc-workflow test
 
+# Run the measured cross-language smoke loop (8.9 seconds locally; budget: under 30 seconds)
+make -C kramme-cc-workflow test-smoke
+
 # Run only Bats integration tests
 make -C kramme-cc-workflow test-bats
 
 # Run only Node unit tests
 make -C kramme-cc-workflow test-node
 
+# Re-run affected Node tests when their files or dependencies change
+make -C kramme-cc-workflow test-node-watch
+
+# Run the closest Node test for a changed source file
+make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/frontmatter.test.js
+
 # Run only Python unit tests
 make -C kramme-cc-workflow test-python
 
-# Run Node/Python unit coverage reports without enforcing thresholds
+# Enforce conservative Node/Python coverage baselines
 make -C kramme-cc-workflow unit-coverage
 
-# Backward-compatible alias for the same unit coverage gate
+# Run the unit gates and report the discovered Bats contract inventory
 make -C kramme-cc-workflow coverage
 
 # Run with verbose output (show test names)
@@ -644,6 +653,20 @@ make -C kramme-cc-workflow test-format
 # Run only skill usage stats tests
 make -C kramme-cc-workflow test-skill-usage
 ```
+
+The initial coverage baselines are 80% lines, 70% branches, and 80% functions
+for Node, plus a 35% production-line aggregate for Python. They sit below the
+measured local results (84.26%/75.56%/86.38% for Node and 36.46% for Python)
+and should only ratchet upward. Bats exercises shell integration behavior, so
+`coverage` reports its complete top-level `tests/*.bats` file/test inventory as
+a contract proxy rather than claiming line coverage.
+
+For Node changes, `test-node-watch` uses the [built-in test runner's dependency
+watching](https://nodejs.org/docs/latest-v20.x/api/test.html#watch-mode). For a
+focused change-to-test loop, use `test-node-file` with the closest mapping in
+`kramme-cc-workflow/docs/code-map.md`; the equivalent npm command is
+`npm run test:node:file -- kramme-cc-workflow/tests/node/<file>.test.js` from
+the repository root.
 
 ### Pre-PR Verification
 

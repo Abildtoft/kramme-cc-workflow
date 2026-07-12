@@ -12,6 +12,9 @@
     "lint-js": "make -C kramme-cc-workflow lint-js",
     "preflight": "make -C kramme-cc-workflow preflight",
     "test": "make -C kramme-cc-workflow test",
+    "test:node:file": "node --test",
+    "test:node:watch": "make -C kramme-cc-workflow test-node-watch",
+    "test:smoke": "make -C kramme-cc-workflow test-smoke",
     "verify": "make -C kramme-cc-workflow verify",
     "verify:pr": "make -C kramme-cc-workflow pr-verify"
   },
