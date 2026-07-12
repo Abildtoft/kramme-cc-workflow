@@ -1,2 +1,21 @@
-*.bats
+# Dependencies and local state
+node_modules/
 .context/
+.kramme-cc-workflow/
+
+# Generated and build output
+build/
+coverage/
+dist/
+vendor/
+**/__pycache__/
+*.pyc
+package-lock.json
+
+# Intentional fixtures and verbatim upstream snapshots
+*.bats
+kramme-cc-workflow/evals/**/fixtures/
+kramme-cc-workflow/skills/**/references/sources-snapshot/
+
+# Vendored browser asset
+kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/d3.v7.9.0.min.js
