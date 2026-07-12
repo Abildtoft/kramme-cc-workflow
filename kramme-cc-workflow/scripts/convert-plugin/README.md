@@ -3,7 +3,10 @@
 This directory contains the implementation behind
 `scripts/convert-plugin.js`. The boundary is conversion and installation of the
 Claude plugin into Codex-compatible output; it should not become a second plugin
-source of truth.
+source of truth. This implements the "Codex support is generated from the Claude
+plugin" and "host adapters remain thin and documented" decisions; see
+[docs/decisions/README.md](../../docs/decisions/README.md) and the
+[agent portability matrix](../../docs/agent-portability.md).
 
 ## Module Map
 
