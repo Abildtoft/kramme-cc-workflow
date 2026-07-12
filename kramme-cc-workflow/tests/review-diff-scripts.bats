@@ -122,6 +122,104 @@ assert data["changed_files"] == expected_changed_files, data
 PY
 }
 
+@test "collect-review-diff decodes validated JSON fields once without evaluating content" {
+	local decoded="$TMP_DIR/decoded-fields"
+	local pwned="$TMP_DIR/decoder-pwned"
+	local fixture
+	fixture=$(PWNED_FILE="$pwned" python3 - <<'PY'
+import json
+import os
+
+print(json.dumps({
+    "base_ref": "refs/remotes/origin/main",
+    "base_branch": "main branch\n$(touch${IFS}" + os.environ["PWNED_FILE"] + ")",
+    "merge_base": "abc 123",
+    "changed_files": ["space name.txt", "nested/line\nbreak.txt", "$(false)"],
+}, separators=(",", ":")))
+PY
+)
+
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json >"$3"' \
+		_ "$fixture" "$SCRIPT_DIR/collect-review-diff.sh" "$decoded"
+
+	[ "$status" -eq 0 ]
+	run bash -c '
+    if ! {
+      IFS= read -r -d "" base_ref &&
+        IFS= read -r -d "" base_branch &&
+        IFS= read -r -d "" merge_base &&
+        IFS= read -r -d "" changed_files
+    } <"$1"; then
+      exit 1
+    fi
+    [ "$base_ref" = "$2" ]
+    [ "$base_branch" = "$3" ]
+    [ "$merge_base" = "$4" ]
+    [ "$changed_files" = "$5" ]
+  ' _ "$decoded" \
+		'refs/remotes/origin/main' \
+		$'main branch\n$(touch${IFS}'"$pwned"')' \
+		'abc 123' \
+		$'space name.txt\nnested/line\nbreak.txt\n$(false)'
+	[ "$status" -eq 0 ]
+	DECODED_FILE="$decoded" PWNED_FILE="$pwned" python3 - <<'PY'
+import os
+from pathlib import Path
+
+fields = Path(os.environ["DECODED_FILE"]).read_bytes().split(b"\0")
+assert fields == [
+    b"refs/remotes/origin/main",
+    b"main branch\n$(touch${IFS}" + os.environ["PWNED_FILE"].encode() + b")",
+    b"abc 123",
+    b"space name.txt\nnested/line\nbreak.txt\n$(false)",
+    b"",
+], fields
+assert not Path(os.environ["PWNED_FILE"]).exists()
+PY
+}
+
+@test "collect-review-diff decoder rejects malformed and missing JSON fields" {
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json' \
+		_ '{not-json' "$SCRIPT_DIR/collect-review-diff.sh"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Invalid collect-review-diff JSON output"* ]]
+
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json' \
+		_ '{"base_ref":"origin/main","base_branch":"main","changed_files":[]}' \
+		"$SCRIPT_DIR/collect-review-diff.sh"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"field 'merge_base' must be a string"* ]]
+}
+
+@test "collect-review-diff decoder rejects wrong field types" {
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json' \
+		_ '{"base_ref":[],"base_branch":"main","merge_base":"abc","changed_files":[]}' \
+		"$SCRIPT_DIR/collect-review-diff.sh"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"field 'base_ref' must be a string"* ]]
+
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json' \
+		_ '{"base_ref":"origin/main","base_branch":"main","merge_base":"abc","changed_files":["ok",7]}' \
+		"$SCRIPT_DIR/collect-review-diff.sh"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"field 'changed_files' must be a string list"* ]]
+
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json' \
+		_ '{"base_ref":"origin/main","base_branch":"main\u0000evil","merge_base":"abc","changed_files":[]}' \
+		"$SCRIPT_DIR/collect-review-diff.sh"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"field 'base_branch' must not contain NUL"* ]]
+}
+
+@test "collect-review-diff propagates resolver failure" {
+	git remote set-url origin "$TMP_DIR/missing-origin.git"
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --strict --format json
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Base resolution failed; see the message above and stop."* ]]
+}
+
 @test "collect-review-diff parses JSON resolver output without eval" {
 	local fake_scripts="$TMP_DIR/fake-scripts"
 	local pwned="$TMP_DIR/collect-pwned"
