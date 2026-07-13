@@ -184,6 +184,100 @@ class GitCommandLexerTest(unittest.TestCase):
                 )
 
 
+class GitCommandParserBoundaryTest(unittest.TestCase):
+    def test_parse_env_wrapped_segment_exposes_wrapper_state(self) -> None:
+        result = PARSER.parse_env_wrapped_segment(
+            [
+                "env",
+                "GIT_EDITOR=true",
+                "sudo",
+                "-D",
+                "/tmp",
+                "bash",
+                "-c",
+                "git commit",
+            ],
+            inherited_env={"GIT_SEQUENCE_EDITOR": "false"},
+        )
+
+        self.assertEqual(
+            result,
+            PARSER.NoninteractiveParseResult(
+                env={"GIT_SEQUENCE_EDITOR": "false", "GIT_EDITOR": "true"},
+                subcmd="__shell_c__",
+                args=["git commit"],
+            ),
+        )
+
+    def test_parse_env_wrapped_segment_marks_aliases_as_parse_errors(self) -> None:
+        result = PARSER.parse_env_wrapped_segment(["alias", "git=git -c alias.x=commit"])
+
+        self.assertEqual(
+            result,
+            PARSER.NoninteractiveParseResult(
+                env={},
+                subcmd=PARSER.NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND,
+                args=[],
+            ),
+        )
+
+    def test_parse_commit_segment_exposes_commit_and_persisted_state(self) -> None:
+        result = PARSER.parse_commit_segment(
+            ["env", "GIT_DIR=/tmp/repo", "git", "-C", "worktree", "commit"],
+            git_args=[],
+            git_env=[],
+            shell_git_vars=[],
+        )
+
+        self.assertEqual(
+            result,
+            PARSER.CommitSegmentResult(
+                contexts=[
+                    {
+                        "git_args": ["-C", "worktree"],
+                        "git_env": ["GIT_DIR=/tmp/repo"],
+                    }
+                ],
+                persisted_git_env=[],
+                persisted_shell_git_vars=[],
+            ),
+        )
+
+    def test_parse_commit_segment_does_not_mutate_git_args(self) -> None:
+        git_args = ["--literal-pathspecs"]
+
+        result = PARSER.parse_commit_segment(
+            ["git", "-C", "worktree", "commit"],
+            git_args=git_args,
+            git_env=[],
+            shell_git_vars=[],
+        )
+
+        self.assertEqual(git_args, ["--literal-pathspecs"])
+        self.assertEqual(
+            result.contexts[0]["git_args"],
+            ["--literal-pathspecs", "-C", "worktree"],
+        )
+        self.assertIsNot(result.contexts[0]["git_args"], git_args)
+
+    def test_parse_commit_segment_exposes_exported_replay_state(self) -> None:
+        result = PARSER.parse_commit_segment(
+            ["export", "GIT_DIR=/tmp/repo"],
+            git_args=[],
+            git_env=[],
+            shell_git_vars=[],
+        )
+
+        self.assertEqual(
+            result,
+            PARSER.CommitSegmentResult(
+                contexts=[],
+                persisted_git_env=["GIT_DIR=/tmp/repo"],
+                persisted_shell_git_vars=["GIT_DIR=/tmp/repo"],
+            ),
+        )
+
+
 class GitCommandParserCliTest(unittest.TestCase):
     maxDiff = None
 
