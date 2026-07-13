@@ -99,9 +99,10 @@ async function runInstall(parsed) {
     throw new Error(`Target ${targetName} did not return a bundle.`);
   }
 
+  const pluginName = String(plugin.manifest.name ?? "plugin");
   const writeOptions = {
     agentsHome,
-    pluginName: plugin.manifest.name,
+    pluginName,
     confirm: {
       yes: confirmOptions.yes,
       nonInteractive: confirmOptions.nonInteractive,
@@ -109,7 +110,7 @@ async function runInstall(parsed) {
   };
 
   await writeCodexBundle(codexRoot, bundle, writeOptions);
-  console.log(`Installed ${plugin.manifest.name} to ${codexRoot}`);
+  console.log(`Installed ${pluginName} to ${codexRoot}`);
   await ensureCodexAgentsFile(codexRoot);
 }
 

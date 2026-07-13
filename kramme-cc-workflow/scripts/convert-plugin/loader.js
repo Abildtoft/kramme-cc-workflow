@@ -11,52 +11,13 @@ const {
 } = require("../schemas/skill-contracts");
 const {
   pathExists,
-  readJson,
+  readJsonObject,
   readText,
+  requireJsonObject,
   resolveWithinRoot,
 } = require("./filesystem");
 
-/**
- * @typedef {Object} ClaudeAgent
- * @property {string} name
- * @property {string | undefined} [description]
- * @property {string[] | undefined} [capabilities]
- * @property {string | undefined} [model]
- * @property {string} body
- * @property {string} sourcePath
- *
- * @typedef {Object} ClaudeCommand
- * @property {string} name
- * @property {string | undefined} [description]
- * @property {string | undefined} [argumentHint]
- * @property {string | undefined} [model]
- * @property {string[] | undefined} [allowedTools]
- * @property {boolean | string | undefined} [disableModelInvocation]
- * @property {string} body
- * @property {string} sourcePath
- *
- * @typedef {Object} ClaudeSkill
- * @property {string} name
- * @property {string | undefined} [description]
- * @property {string | undefined} [argumentHint]
- * @property {string | undefined} [model]
- * @property {string[] | undefined} [allowedTools]
- * @property {boolean | string | undefined} [disableModelInvocation]
- * @property {boolean | string | undefined} [userInvocable]
- * @property {string[] | undefined} [platforms]
- * @property {string} body
- * @property {string} sourceDir
- * @property {string} skillPath
- *
- * @typedef {Object} ClaudePlugin
- * @property {string} root
- * @property {Record<string, any>} manifest
- * @property {ClaudeAgent[]} agents
- * @property {ClaudeCommand[]} commands
- * @property {ClaudeSkill[]} skills
- * @property {unknown} [hooks]
- * @property {unknown} [mcpServers]
- */
+/** @typedef {import("./contracts").ClaudePlugin} ClaudePlugin */
 
 const ARGUMENT_HINT_FIELD = skillFrontmatterFieldByLoaderProperty(
   "argumentHint",
@@ -187,7 +148,10 @@ function resolveScriptRoot() {
 async function resolveMarketplacePlugin(root, slug) {
   const marketplacePath = path.join(root, ".claude-plugin", "marketplace.json");
   if (!(await pathExists(marketplacePath))) return null;
-  const marketplace = await readJson(marketplacePath);
+  const marketplace = await readJsonObject(
+    marketplacePath,
+    "Marketplace manifest",
+  );
   const plugins = Array.isArray(marketplace.plugins) ? marketplace.plugins : [];
   const entry = plugins.find((plugin) => plugin?.name === slug);
   if (!entry) return null;
@@ -202,7 +166,7 @@ async function resolveMarketplacePlugin(root, slug) {
 async function loadClaudePlugin(inputPath) {
   const root = await resolveClaudeRoot(inputPath);
   const manifestPath = path.join(root, ".claude-plugin", "plugin.json");
-  const manifest = await readJson(manifestPath);
+  const manifest = await readJsonObject(manifestPath, "Plugin manifest");
 
   const agents = await loadAgents(
     resolveComponentDirs(root, "agents", manifest.agents),
@@ -254,6 +218,7 @@ async function loadAgents(agentsDirs) {
   for (const file of files) {
     const raw = await readText(file);
     const { data, body } = parseFrontmatter(raw);
+    validateAgentFrontmatter(data, file);
     const name = data.name ?? path.basename(file, ".md");
     agents.push({
       name,
@@ -265,6 +230,26 @@ async function loadAgents(agentsDirs) {
     });
   }
   return agents;
+}
+
+function validateAgentFrontmatter(data, file) {
+  if (
+    Object.hasOwn(data, "description") &&
+    typeof data.description !== "string"
+  ) {
+    throw new Error(
+      `${file}: frontmatter field "description" must be a string.`,
+    );
+  }
+  if (
+    Object.hasOwn(data, "capabilities") &&
+    (!Array.isArray(data.capabilities) ||
+      !data.capabilities.every((capability) => typeof capability === "string"))
+  ) {
+    throw new Error(
+      `${file}: frontmatter field "capabilities" must be an array of strings.`,
+    );
+  }
 }
 
 async function loadCommands(commandsDirs) {
@@ -359,10 +344,10 @@ function deriveInvocableCommands(legacyCommands, skills) {
 }
 
 async function loadHooks(root, hooksField) {
-  const hookConfigs = [];
+  const hookEventMaps = [];
   const defaultPath = path.join(root, "hooks", "hooks.json");
   if (await pathExists(defaultPath)) {
-    hookConfigs.push(await readJson(defaultPath));
+    hookEventMaps.push(await readHookEvents(defaultPath));
   }
 
   if (hooksField) {
@@ -371,16 +356,37 @@ async function loadHooks(root, hooksField) {
       for (const hookPath of hookPaths) {
         const resolved = resolveWithinRoot(root, hookPath, "hooks path");
         if (await pathExists(resolved)) {
-          hookConfigs.push(await readJson(resolved));
+          hookEventMaps.push(await readHookEvents(resolved));
         }
       }
     } else {
-      hookConfigs.push(hooksField);
+      const manifestPath = path.join(root, ".claude-plugin", "plugin.json");
+      hookEventMaps.push(
+        extractHookEvents(
+          requireJsonObject(
+            hooksField,
+            `${manifestPath}: Plugin manifest hooks field`,
+          ),
+          `${manifestPath}: Plugin manifest hooks`,
+        ),
+      );
     }
   }
 
-  if (hookConfigs.length === 0) return undefined;
-  return mergeHooks(hookConfigs);
+  if (hookEventMaps.length === 0) return undefined;
+  return mergeHooks(hookEventMaps);
+}
+
+async function readHookEvents(file) {
+  return extractHookEvents(
+    await readJsonObject(file, "Hooks config"),
+    `${file}: Hooks config`,
+  );
+}
+
+function extractHookEvents(config, label) {
+  if (!Object.hasOwn(config, "hooks")) return {};
+  return requireJsonObject(config.hooks, `${label} field "hooks"`);
 }
 
 async function loadMcpServers(root, manifest) {
@@ -389,12 +395,15 @@ async function loadMcpServers(root, manifest) {
     if (typeof field === "string" || Array.isArray(field)) {
       return mergeMcpConfigs(await loadMcpPaths(root, field));
     }
-    return field;
+    return requireJsonObject(
+      field,
+      `${path.join(root, ".claude-plugin", "plugin.json")}: Plugin manifest mcpServers field`,
+    );
   }
 
   const mcpPath = path.join(root, ".mcp.json");
   if (await pathExists(mcpPath)) {
-    return readJson(mcpPath);
+    return readJsonObject(mcpPath, "MCP config");
   }
 
   return undefined;
@@ -443,10 +452,13 @@ async function walkFiles(dir) {
   return files;
 }
 
-function mergeHooks(hooksList) {
+function mergeHooks(hookEventMaps) {
   const merged = { hooks: {} };
-  for (const hooks of hooksList) {
-    for (const [event, matchers] of Object.entries(hooks.hooks ?? {})) {
+  for (const events of hookEventMaps) {
+    for (const [event, matchers] of Object.entries(events)) {
+      if (!Array.isArray(matchers)) {
+        throw new Error(`Hooks config event "${event}" must be an array.`);
+      }
       if (!merged.hooks[event]) {
         merged.hooks[event] = [];
       }
@@ -461,7 +473,7 @@ async function loadMcpPaths(root, value) {
   for (const entry of toPathList(value)) {
     const resolved = resolveWithinRoot(root, entry, "mcpServers path");
     if (await pathExists(resolved)) {
-      configs.push(await readJson(resolved));
+      configs.push(await readJsonObject(resolved, "MCP config"));
     }
   }
   return configs;

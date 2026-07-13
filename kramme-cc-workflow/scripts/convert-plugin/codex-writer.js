@@ -19,45 +19,11 @@ const {
   createInstallStagingRoot,
   removeInstallStagingRoot,
 } = require("./install-staging");
-const {
-  ensureDir,
-  pathExists,
-  readText,
-  writeText,
-} = require("./filesystem");
+const { ensureDir, pathExists, readText, writeText } = require("./filesystem");
 
 /**
- * @typedef {Object} CodexPrompt
- * @property {string} name
- * @property {string} content
- *
- * @typedef {Object} CodexSkillDir
- * @property {string} name
- * @property {string} content
- * @property {string} [sourceDir]
- *
- * @typedef {Object} CodexHookPlugin
- * @property {string} name
- * @property {string} marketplaceName
- * @property {Record<string, any>} manifest
- * @property {unknown} hooks
- * @property {string} hookSourceDir
- * @property {{ sourceDir: string, targetDir: string }[]} [sharedScriptDirs]
- * @property {{ sourceFile: string, targetPath: string }[]} [sharedScriptFiles]
- *
- * @typedef {Object} CodexBundle
- * @property {CodexPrompt[]} prompts
- * @property {CodexSkillDir[]} skillDirs
- * @property {CodexSkillDir[]} generatedSkills
- * @property {CodexSkillDir[]} [agentSkills]
- * @property {Set<string>} [knownCommands]
- * @property {Map<string, string>} [knownAgentSkills]
- * @property {CodexHookPlugin | undefined} [codexPlugin]
- *
- * @typedef {Object} WriteCodexOptions
- * @property {string} [pluginName]
- * @property {string} [agentsHome]
- * @property {Object} [confirm]
+ * @typedef {import("./contracts").CodexBundle} CodexBundle
+ * @typedef {import("./contracts").WriteCodexOptions} WriteCodexOptions
  */
 
 function hasOwnEntry(object, entry) {
@@ -142,7 +108,7 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
         : unionEntryLists(
             previousEntries.hookMarketplaces,
             stagedBundle.hookMarketplaces,
-      ),
+          ),
       pluginCaches: finalizedBundle.cleanedPluginCaches
         ? stagedBundle.pluginCaches
         : unionEntryLists(

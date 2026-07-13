@@ -3,6 +3,8 @@
 const fs = require("fs/promises");
 const path = require("path");
 
+/** @typedef {import("./contracts").JsonObject} JsonObject */
+
 function resolveManagedChild(root, entry, label) {
   const resolvedRoot = path.resolve(root);
   const resolvedPath = path.resolve(root, entry);
@@ -38,9 +40,48 @@ async function writeText(file, content) {
   await fs.writeFile(file, content, "utf8");
 }
 
+/**
+ * @param {string} file
+ * @returns {Promise<unknown>}
+ */
 async function readJson(file) {
   const raw = await readText(file);
   return JSON.parse(raw);
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is JsonObject}
+ */
+function isJsonObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/**
+ * @param {unknown} value
+ * @param {string} label
+ * @returns {JsonObject}
+ */
+function requireJsonObject(value, label) {
+  if (isJsonObject(value)) return value;
+  throw new Error(
+    `${label} must be a JSON object; received ${jsonValueKind(value)}.`,
+  );
+}
+
+/**
+ * @param {string} file
+ * @param {string} [label]
+ * @returns {Promise<JsonObject>}
+ */
+async function readJsonObject(file, label = "JSON document") {
+  return requireJsonObject(await readJson(file), `${file}: ${label}`);
+}
+
+function jsonValueKind(value) {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  return typeof value;
 }
 
 async function writeJson(file, data) {
@@ -135,7 +176,9 @@ module.exports = {
   listRelativeFiles,
   pathExists,
   readJson,
+  readJsonObject,
   readText,
+  requireJsonObject,
   resolveManagedChild,
   resolveWithinRoot,
   writeJson,

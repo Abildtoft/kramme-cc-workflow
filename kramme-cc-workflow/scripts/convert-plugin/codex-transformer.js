@@ -17,70 +17,14 @@ const {
 } = require("../schemas/skill-contracts");
 
 /**
- * @typedef {Object} ClaudeAgent
- * @property {string} name
- * @property {string | undefined} [description]
- * @property {string[] | undefined} [capabilities]
- * @property {string} body
- * @property {string | undefined} [sourcePath]
- *
- * @typedef {Object} ClaudeCommand
- * @property {string} name
- * @property {string | undefined} [description]
- * @property {string | undefined} [argumentHint]
- * @property {string[] | undefined} [allowedTools]
- * @property {boolean | string | undefined} [disableModelInvocation]
- * @property {string} body
- * @property {string | undefined} [sourcePath]
- *
- * @typedef {Object} ClaudeSkill
- * @property {string} name
- * @property {string | undefined} [description]
- * @property {string | undefined} [argumentHint]
- * @property {string[] | undefined} [allowedTools]
- * @property {boolean | string | undefined} [disableModelInvocation]
- * @property {boolean | string | undefined} [userInvocable]
- * @property {string[] | undefined} [platforms]
- * @property {string} body
- * @property {string} sourceDir
- *
- * @typedef {Object} ClaudePlugin
- * @property {ClaudeAgent[]} agents
- * @property {ClaudeCommand[]} commands
- * @property {ClaudeSkill[]} skills
- * @property {Record<string, any>} manifest
- * @property {string} root
- * @property {unknown} [hooks]
- * @property {unknown} [mcpServers]
- *
- * @typedef {Object} CodexSkillFile
- * @property {string} name
- * @property {string} content
- * @property {string} [sourceDir]
- *
- * @typedef {Object} CodexHookPlugin
- * @property {string} name
- * @property {string} marketplaceName
- * @property {string} version
- * @property {Record<string, any>} manifest
- * @property {unknown} hooks
- * @property {string} hookSourceDir
- * @property {{ sourceDir: string, targetDir: string }[]} sharedScriptDirs
- * @property {{ sourceFile: string, targetPath: string }[]} sharedScriptFiles
- *
- * @typedef {Object} CodexBundle
- * @property {{ name: string, content: string }[]} prompts
- * @property {CodexSkillFile[]} skillDirs
- * @property {CodexSkillFile[]} generatedSkills
- * @property {CodexSkillFile[]} agentSkills
- * @property {Set<string>} knownCommands
- * @property {Map<string, string>} knownAgentSkills
- * @property {unknown} [mcpServers]
- * @property {CodexHookPlugin | undefined} [codexPlugin]
- *
- * @typedef {Object} CodexTransformOptions
- * @property {Set<string>} [knownCommands]
- * @property {Map<string, string>} [knownAgentSkills]
+ * @typedef {import("./contracts").ClaudeAgent} ClaudeAgent
+ * @typedef {import("./contracts").ClaudeCommand} ClaudeCommand
+ * @typedef {import("./contracts").ClaudeSkill} ClaudeSkill
+ * @typedef {import("./contracts").ClaudePlugin} ClaudePlugin
+ * @typedef {import("./contracts").CodexSkillFile} CodexSkillFile
+ * @typedef {import("./contracts").CodexBundle} CodexBundle
+ * @typedef {import("./contracts").CodexTransformOptions} CodexTransformOptions
+ * @typedef {import("./contracts").JsonObject} JsonObject
  */
 
 const ARGUMENT_HINT_FIELD = skillFrontmatterFieldByLoaderProperty(
@@ -254,11 +198,15 @@ function convertCodexHookPlugin(plugin) {
  * @returns {CodexSkillFile}
  */
 function convertAgentSkill(agent, name, knownCommands, knownAgentSkills) {
+  const descriptionSource =
+    agent.description == null
+      ? `Converted from Claude agent ${agent.name}`
+      : agent.description;
   const description = sanitizeDescription(
-    transformAgentContentForCodex(
-      agent.description ?? `Converted from Claude agent ${agent.name}`,
-      { knownCommands, knownAgentSkills },
-    ),
+    transformAgentContentForCodex(descriptionSource, {
+      knownCommands,
+      knownAgentSkills,
+    }),
   );
   const frontmatter = { name, description };
 
@@ -641,6 +589,10 @@ function normalizeCodexInstructionText(text) {
   return result;
 }
 
+/**
+ * @param {JsonObject} value
+ * @returns {JsonObject}
+ */
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
 }

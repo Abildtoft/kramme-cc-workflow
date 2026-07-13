@@ -8,10 +8,11 @@ metadata in each `SKILL.md`. Pass --write to update the rows in place.
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 from typing import Any
+
+from json_object import load_json_object
 
 
 def parse_cli() -> argparse.Namespace:
@@ -56,12 +57,7 @@ def load_lint_module(script_dir: Path) -> Any:
 
 
 def load_registry(path: Path) -> dict[str, Any]:
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise SystemExit(
-            f"{path}: registry must be JSON-compatible YAML for stdlib parsing: {exc}"
-        ) from exc
+    return load_json_object(path, "registry")
 
 
 def report_failures(header: str, failures: list[str]) -> None:
