@@ -35,6 +35,162 @@ const {
   writeText,
 } = require("./filesystem");
 
+/**
+ * @typedef {Object} SkillGroupDescriptor
+ * @property {Record<string, string[]>} currentManagedFiles
+ * @property {Array<{name: string}>} entries
+ * @property {string} label
+ * @property {string} nameLabel
+ * @property {string[]} previousEntries
+ * @property {Record<string, string[]>} previousManagedFiles
+ * @property {string | null} stagedRoot
+ * @property {((skill: any, targetDir: string) => Promise<void>)} [stageEntry]
+ * @property {string | null} targetRoot
+ */
+
+/**
+ * @param {Partial<SkillGroupDescriptor> & Pick<SkillGroupDescriptor, "currentManagedFiles" | "label" | "nameLabel" | "stagedRoot">} descriptor
+ * @returns {SkillGroupDescriptor}
+ */
+function createSkillGroupDescriptor(descriptor) {
+  return {
+    ...descriptor,
+    entries: descriptor.entries ?? [],
+    previousEntries: descriptor.previousEntries ?? [],
+    previousManagedFiles: descriptor.previousManagedFiles ?? {},
+    targetRoot: descriptor.targetRoot ?? null,
+  };
+}
+
+/** @param {SkillGroupDescriptor} group */
+async function stageSkillGroup(group) {
+  const stageEntry = group.stageEntry;
+  if (!stageEntry) {
+    if (group.entries.length > 0) {
+      throw new Error(`Missing staging callback for ${group.label} group.`);
+    }
+    return;
+  }
+  for (const skill of group.entries) {
+    const targetDir = resolveManagedChild(
+      requireSkillGroupRoot(group.stagedRoot, group, "staging"),
+      skill.name,
+      group.nameLabel,
+    );
+    await stageEntry(skill, targetDir);
+    group.currentManagedFiles[skill.name] = await listRelativeFiles(targetDir);
+  }
+}
+
+/**
+ * @param {SkillGroupDescriptor} group
+ * @param {{includeManagedFiles?: boolean}} [options]
+ */
+async function preflightSkillGroup(
+  group,
+  { includeManagedFiles = false } = {},
+) {
+  const previousEntries = new Set(sanitizeEntryList(group.previousEntries));
+  for (const skill of group.entries) {
+    const options =
+      /** @type {{currentManagedFiles?: string[], label: string, previousManagedFiles?: string[], replace?: boolean}} */ ({
+        label: `${group.label} ${skill.name}`,
+      });
+    if (includeManagedFiles) {
+      options.currentManagedFiles = group.currentManagedFiles?.[skill.name];
+      options.previousManagedFiles = group.previousManagedFiles?.[skill.name];
+    } else {
+      options.replace = previousEntries.has(skill.name);
+    }
+    await preflightStagedDirInstall(
+      resolveManagedChild(
+        requireSkillGroupRoot(group.stagedRoot, group, "staging"),
+        skill.name,
+        group.nameLabel,
+      ),
+      resolveManagedChild(
+        requireSkillGroupRoot(group.targetRoot, group, "target"),
+        skill.name,
+        group.nameLabel,
+      ),
+      options,
+    );
+  }
+}
+
+/** @param {SkillGroupDescriptor} group */
+async function finalizeSkillGroup(group) {
+  for (const skill of group.entries) {
+    const stagedDir = resolveManagedChild(
+      requireSkillGroupRoot(group.stagedRoot, group, "staging"),
+      skill.name,
+      group.nameLabel,
+    );
+    const targetDir = resolveManagedChild(
+      requireSkillGroupRoot(group.targetRoot, group, "target"),
+      skill.name,
+      group.nameLabel,
+    );
+    await pruneStaleManagedFiles(
+      targetDir,
+      group.previousManagedFiles?.[skill.name],
+      group.currentManagedFiles?.[skill.name],
+      { label: `${group.label} ${skill.name}` },
+    );
+    await installStagedDir(stagedDir, targetDir, { replace: false });
+  }
+}
+
+/**
+ * @param {string | null} root
+ * @param {SkillGroupDescriptor} group
+ * @param {string} kind
+ * @returns {string}
+ */
+function requireSkillGroupRoot(root, group, kind) {
+  if (!root) throw new Error(`Missing ${kind} root for ${group.label} group.`);
+  return root;
+}
+
+function createFinalizationSkillGroups(
+  codexRoot,
+  stagedBundle,
+  bundle,
+  previousEntries,
+) {
+  const codexGroupFields = {
+    currentManagedFiles: stagedBundle.stagedSkillFiles,
+    label: "skill",
+    nameLabel: "skill name",
+    previousEntries: previousEntries.skills,
+    previousManagedFiles: previousEntries.skillFiles,
+    stagedRoot: stagedBundle.stagedSkillsRoot,
+    targetRoot: path.join(codexRoot, "skills"),
+  };
+  return {
+    agentSkillGroup: createSkillGroupDescriptor({
+      currentManagedFiles: stagedBundle.stagedAgentSkillFiles,
+      entries: bundle.agentSkills,
+      label: "agent skill",
+      nameLabel: "agent skill name",
+      previousEntries: previousEntries.agentSkills,
+      previousManagedFiles: previousEntries.agentSkillFiles,
+      stagedRoot: stagedBundle.stagedAgentSkillsRoot,
+      targetRoot: stagedBundle.agentSkillsRoot,
+    }),
+    codexSkillGroups: [
+      createSkillGroupDescriptor({
+        ...codexGroupFields,
+        entries: bundle.skillDirs,
+      }),
+      createSkillGroupDescriptor({
+        ...codexGroupFields,
+        entries: bundle.generatedSkills,
+      }),
+    ],
+  };
+}
+
 async function stageCodexBundleOutput(
   codexRoot,
   codexStagingRoot,
@@ -78,51 +234,56 @@ async function stageCodexBundleOutput(
     }
 
     const stagedSkillsRoot = path.join(codexStagingRoot, "skills");
-    const stagedSkillFiles = {};
-    for (const skill of bundle.skillDirs) {
-      const targetDir = resolveManagedChild(
-        stagedSkillsRoot,
-        skill.name,
-        "skill name",
-      );
-      await copyDir(skill.sourceDir, targetDir);
-      if (skill.content) {
-        const content = rewriteCodexSharedScriptReferences(
-          skill.content,
-          sharedScriptReplacements,
-        );
-        await writeText(path.join(targetDir, "SKILL.md"), content + "\n");
-      }
-      await rewriteCodexMarkdownResourcesFromSource(
-        skill.sourceDir,
-        targetDir,
-        {
-          knownCommands: bundle.knownCommands,
-          knownAgentSkills: bundle.knownAgentSkills,
-          sharedScriptReplacements,
+    const stagedSkillFiles = /** @type {Record<string, string[]>} */ ({});
+    await stageSkillGroup(
+      createSkillGroupDescriptor({
+        currentManagedFiles: stagedSkillFiles,
+        entries: bundle.skillDirs,
+        label: "skill",
+        nameLabel: "skill name",
+        stagedRoot: stagedSkillsRoot,
+        stageEntry: async (skill, targetDir) => {
+          await copyDir(skill.sourceDir, targetDir);
+          if (skill.content) {
+            const content = rewriteCodexSharedScriptReferences(
+              skill.content,
+              sharedScriptReplacements,
+            );
+            await writeText(path.join(targetDir, "SKILL.md"), content + "\n");
+          }
+          await rewriteCodexMarkdownResourcesFromSource(
+            skill.sourceDir,
+            targetDir,
+            {
+              knownCommands: bundle.knownCommands,
+              knownAgentSkills: bundle.knownAgentSkills,
+              sharedScriptReplacements,
+            },
+          );
         },
-      );
-      stagedSkillFiles[skill.name] = await listRelativeFiles(targetDir);
-    }
-
-    for (const skill of bundle.generatedSkills) {
-      const targetDir = resolveManagedChild(
-        stagedSkillsRoot,
-        skill.name,
-        "skill name",
-      );
-      const content = rewriteCodexSharedScriptReferences(
-        skill.content,
-        sharedScriptReplacements,
-      );
-      await writeText(path.join(targetDir, "SKILL.md"), content + "\n");
-      stagedSkillFiles[skill.name] = await listRelativeFiles(targetDir);
-    }
+      }),
+    );
+    await stageSkillGroup(
+      createSkillGroupDescriptor({
+        currentManagedFiles: stagedSkillFiles,
+        entries: bundle.generatedSkills,
+        label: "skill",
+        nameLabel: "skill name",
+        stagedRoot: stagedSkillsRoot,
+        stageEntry: async (skill, targetDir) => {
+          const content = rewriteCodexSharedScriptReferences(
+            skill.content,
+            sharedScriptReplacements,
+          );
+          await writeText(path.join(targetDir, "SKILL.md"), content + "\n");
+        },
+      }),
+    );
 
     let agentsHome = null;
     let agentSkillsRoot = null;
     let stagedAgentSkillsRoot = null;
-    const stagedAgentSkillFiles = {};
+    const stagedAgentSkillFiles = /** @type {Record<string, string[]>} */ ({});
     if (
       bundle.agentSkills &&
       (bundle.agentSkills.length > 0 || previousEntries.agentSkills.length > 0)
@@ -139,15 +300,21 @@ async function stageCodexBundleOutput(
         "agents",
       );
       stagedAgentSkillsRoot = path.join(agentStagingRoot, "skills");
-      for (const skill of bundle.agentSkills) {
-        const targetDir = resolveManagedChild(
-          stagedAgentSkillsRoot,
-          skill.name,
-          "agent skill name",
-        );
-        await writeText(path.join(targetDir, "SKILL.md"), skill.content + "\n");
-        stagedAgentSkillFiles[skill.name] = await listRelativeFiles(targetDir);
-      }
+      await stageSkillGroup(
+        createSkillGroupDescriptor({
+          currentManagedFiles: stagedAgentSkillFiles,
+          entries: bundle.agentSkills,
+          label: "agent skill",
+          nameLabel: "agent skill name",
+          stagedRoot: stagedAgentSkillsRoot,
+          stageEntry: async (skill, targetDir) => {
+            await writeText(
+              path.join(targetDir, "SKILL.md"),
+              skill.content + "\n",
+            );
+          },
+        }),
+      );
     }
 
     const hookPluginResult = await stageCodexHookPluginBundle(
@@ -198,6 +365,12 @@ async function finalizeCodexBundleOutput(
   await preflightCodexBundleFinalization(
     codexRoot,
     codexStagingRoot,
+    stagedBundle,
+    bundle,
+    previousEntries,
+  );
+  const { agentSkillGroup, codexSkillGroups } = createFinalizationSkillGroups(
+    codexRoot,
     stagedBundle,
     bundle,
     previousEntries,
@@ -254,51 +427,12 @@ async function finalizeCodexBundleOutput(
     },
   );
   if (!cleanedCodexSkills) {
-    for (const skill of [...bundle.skillDirs, ...bundle.generatedSkills]) {
-      await preflightStagedDirInstall(
-        resolveManagedChild(
-          stagedBundle.stagedSkillsRoot,
-          skill.name,
-          "skill name",
-        ),
-        resolveManagedChild(skillsRoot, skill.name, "skill name"),
-        {
-          currentManagedFiles: stagedBundle.stagedSkillFiles?.[skill.name],
-          label: `skill ${skill.name}`,
-          previousManagedFiles: previousEntries.skillFiles?.[skill.name],
-        },
-      );
+    for (const skillGroup of codexSkillGroups) {
+      await preflightSkillGroup(skillGroup, { includeManagedFiles: true });
     }
   }
-  for (const skill of bundle.skillDirs) {
-    const stagedDir = resolveManagedChild(
-      stagedBundle.stagedSkillsRoot,
-      skill.name,
-      "skill name",
-    );
-    const targetDir = resolveManagedChild(skillsRoot, skill.name, "skill name");
-    await pruneStaleManagedFiles(
-      targetDir,
-      previousEntries.skillFiles?.[skill.name],
-      stagedBundle.stagedSkillFiles?.[skill.name],
-      { label: `skill ${skill.name}` },
-    );
-    await installStagedDir(stagedDir, targetDir, { replace: false });
-  }
-  for (const skill of bundle.generatedSkills) {
-    const stagedDir = resolveManagedChild(
-      stagedBundle.stagedSkillsRoot,
-      skill.name,
-      "skill name",
-    );
-    const targetDir = resolveManagedChild(skillsRoot, skill.name, "skill name");
-    await pruneStaleManagedFiles(
-      targetDir,
-      previousEntries.skillFiles?.[skill.name],
-      stagedBundle.stagedSkillFiles?.[skill.name],
-      { label: `skill ${skill.name}` },
-    );
-    await installStagedDir(stagedDir, targetDir, { replace: false });
+  for (const skillGroup of codexSkillGroups) {
+    await finalizeSkillGroup(skillGroup);
   }
 
   let cleanedAgentSkills = true;
@@ -314,45 +448,11 @@ async function finalizeCodexBundleOutput(
     );
   }
   if (!cleanedAgentSkills) {
-    for (const skill of bundle.agentSkills ?? []) {
-      await preflightStagedDirInstall(
-        resolveManagedChild(
-          stagedBundle.stagedAgentSkillsRoot,
-          skill.name,
-          "agent skill name",
-        ),
-        resolveManagedChild(
-          stagedBundle.agentSkillsRoot,
-          skill.name,
-          "agent skill name",
-        ),
-        {
-          currentManagedFiles: stagedBundle.stagedAgentSkillFiles?.[skill.name],
-          label: `agent skill ${skill.name}`,
-          previousManagedFiles: previousEntries.agentSkillFiles?.[skill.name],
-        },
-      );
-    }
+    await preflightSkillGroup(agentSkillGroup, {
+      includeManagedFiles: true,
+    });
   }
-  for (const skill of bundle.agentSkills ?? []) {
-    const stagedDir = resolveManagedChild(
-      stagedBundle.stagedAgentSkillsRoot,
-      skill.name,
-      "agent skill name",
-    );
-    const targetDir = resolveManagedChild(
-      stagedBundle.agentSkillsRoot,
-      skill.name,
-      "agent skill name",
-    );
-    await pruneStaleManagedFiles(
-      targetDir,
-      previousEntries.agentSkillFiles?.[skill.name],
-      stagedBundle.stagedAgentSkillFiles?.[skill.name],
-      { label: `agent skill ${skill.name}` },
-    );
-    await installStagedDir(stagedDir, targetDir, { replace: false });
-  }
+  await finalizeSkillGroup(agentSkillGroup);
 
   const hookPluginResult = await finalizeCodexHookPluginBundle(
     codexRoot,
@@ -419,46 +519,14 @@ async function preflightCodexBundleFinalization(
     );
   }
 
-  const previousSkills = new Set(sanitizeEntryList(previousEntries.skills));
-  for (const skill of [...bundle.skillDirs, ...bundle.generatedSkills]) {
-    await preflightStagedDirInstall(
-      resolveManagedChild(
-        stagedBundle.stagedSkillsRoot,
-        skill.name,
-        "skill name",
-      ),
-      resolveManagedChild(
-        path.join(codexRoot, "skills"),
-        skill.name,
-        "skill name",
-      ),
-      {
-        label: `skill ${skill.name}`,
-        replace: previousSkills.has(skill.name),
-      },
-    );
-  }
-
-  const previousAgentSkills = new Set(
-    sanitizeEntryList(previousEntries.agentSkills),
+  const { agentSkillGroup, codexSkillGroups } = createFinalizationSkillGroups(
+    codexRoot,
+    stagedBundle,
+    bundle,
+    previousEntries,
   );
-  for (const skill of bundle.agentSkills ?? []) {
-    await preflightStagedDirInstall(
-      resolveManagedChild(
-        stagedBundle.stagedAgentSkillsRoot,
-        skill.name,
-        "agent skill name",
-      ),
-      resolveManagedChild(
-        stagedBundle.agentSkillsRoot,
-        skill.name,
-        "agent skill name",
-      ),
-      {
-        label: `agent skill ${skill.name}`,
-        replace: previousAgentSkills.has(skill.name),
-      },
-    );
+  for (const skillGroup of [...codexSkillGroups, agentSkillGroup]) {
+    await preflightSkillGroup(skillGroup);
   }
 
   if (stagedBundle.stagedConfigPath) {
