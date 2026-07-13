@@ -1,12 +1,6 @@
 # Convert Plugin Module
 
-This directory contains the implementation behind
-`scripts/convert-plugin.js`. The boundary is conversion and installation of the
-Claude plugin into Codex-compatible output; it should not become a second plugin
-source of truth. This implements the "Codex support is generated from the Claude
-plugin" and "host adapters remain thin and documented" decisions; see
-[docs/decisions/README.md](../../docs/decisions/README.md) and the
-[agent portability matrix](../../docs/agent-portability.md).
+This directory contains the implementation behind `scripts/convert-plugin.js`. The boundary is conversion and installation of the Claude plugin into Codex-compatible output; it should not become a second plugin source of truth. This implements the "Codex support is generated from the Claude plugin" and "host adapters remain thin and documented" decisions; see [docs/decisions/README.md](../../docs/decisions/README.md) and the [agent portability matrix](../../docs/agent-portability.md).
 
 ## Module Map
 
@@ -25,20 +19,17 @@ plugin" and "host adapters remain thin and documented" decisions; see
 | `install-staging.js` | Provides staged install, preflight conflict checks, stale managed-file pruning, and cleanup. |
 | `install-state.js` | Reads, sanitizes, rebuilds, and writes install state and per-plugin manifests. |
 | `filesystem.js` | Shared safe filesystem helpers for path containment, JSON/text I/O, copies, and directory listing. |
+| `contracts.d.ts` | Shared converter input/output declarations used by loader, transformer, and writer boundaries. |
 | `frontmatter.js` | Parses and renders frontmatter, normalizes names, and sanitizes descriptions. |
 | `confirm.js` | Handles interactive and non-interactive cleanup confirmations. |
 
 ## Invariants
 
 - Load from the Claude plugin source; do not hand-maintain Codex copies.
-- Keep path containment checks in shared filesystem helpers before writing or
-  deleting managed children.
-- Stage writes before finalizing installs so failed installs do not leave a
-  partially updated bundle.
-- Preserve user-owned files unless they are tracked as managed entries from a
-  previous converter run.
-- Keep platform filtering in the transformer so `kramme-platforms` has one
-  conversion meaning.
+- Keep path containment checks in shared filesystem helpers before writing or deleting managed children.
+- Stage writes before finalizing installs so failed installs do not leave a partially updated bundle.
+- Preserve user-owned files unless they are tracked as managed entries from a previous converter run.
+- Keep platform filtering in the transformer so `kramme-platforms` has one conversion meaning.
 
 ## Verification
 
@@ -48,8 +39,7 @@ Run the focused converter suite after changing this module:
 make -C kramme-cc-workflow test-convert
 ```
 
-For TOML/frontmatter/parser changes, also run the full Bats suite before
-shipping:
+For TOML/frontmatter/parser changes, also run the full Bats suite before shipping:
 
 ```bash
 make -C kramme-cc-workflow test

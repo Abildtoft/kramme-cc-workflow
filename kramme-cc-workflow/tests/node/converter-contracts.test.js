@@ -38,17 +38,179 @@ const {
   loadInstallState,
 } = require("../../scripts/convert-plugin/install-state");
 const {
+  readJson: readConverterJson,
+  readJsonObject,
   pathExists: converterPathExists,
 } = require("../../scripts/convert-plugin/filesystem");
 const {
   loadClaudePlugin,
   normalizeFrontmatterField,
+  resolvePluginInput,
   skillFrontmatterTypeErrors,
 } = require("../../scripts/convert-plugin/loader");
 const {
   writeCodexBundle,
 } = require("../../scripts/convert-plugin/codex-writer");
 const { skillContracts } = require("../../scripts/schemas/skill-contracts");
+
+const NON_OBJECT_JSON_CASES = [
+  { kind: "null", source: "null", value: null },
+  { kind: "array", source: "[]", value: [] },
+  { kind: "number", source: "42", value: 42 },
+];
+
+test("filesystem keeps generic JSON reads and validates object reads", async () => {
+  await withTempDir(async (root) => {
+    for (const testCase of NON_OBJECT_JSON_CASES) {
+      const file = path.join(root, `${testCase.kind}.json`);
+      await writeFile(file, `${testCase.source}\n`);
+
+      assert.deepEqual(await readConverterJson(file), testCase.value);
+      await assert.rejects(readJsonObject(file, "Fixture config"), (error) => {
+        assertJsonObjectBoundaryError(
+          error,
+          file,
+          "Fixture config",
+          testCase.kind,
+        );
+        return true;
+      });
+    }
+  });
+});
+
+test("loader rejects non-object plugin manifests at the file boundary", async () => {
+  for (const testCase of NON_OBJECT_JSON_CASES) {
+    await withTempDir(async (root) => {
+      const pluginRoot = path.join(root, "invalid-manifest-plugin");
+      const manifestPath = path.join(
+        pluginRoot,
+        ".claude-plugin",
+        "plugin.json",
+      );
+      await writeFile(manifestPath, `${testCase.source}\n`);
+
+      await assert.rejects(loadClaudePlugin(pluginRoot), (error) => {
+        assertJsonObjectBoundaryError(
+          error,
+          manifestPath,
+          "Plugin manifest",
+          testCase.kind,
+        );
+        return true;
+      });
+    });
+  }
+});
+
+test("loader rejects non-object marketplace manifests at the file boundary", async () => {
+  for (const testCase of NON_OBJECT_JSON_CASES) {
+    await withTempDir(async (root) => {
+      const marketplacePath = path.join(
+        root,
+        ".claude-plugin",
+        "marketplace.json",
+      );
+      await writeFile(marketplacePath, `${testCase.source}\n`);
+      const previousCwd = process.cwd();
+      process.chdir(root);
+      try {
+        await assert.rejects(resolvePluginInput("fixture-plugin"), (error) => {
+          assertJsonObjectBoundaryError(
+            error,
+            marketplacePath,
+            "Marketplace manifest",
+            testCase.kind,
+          );
+          return true;
+        });
+      } finally {
+        process.chdir(previousCwd);
+      }
+    });
+  }
+});
+
+test("loader rejects non-object hooks and MCP config files", async () => {
+  for (const testCase of NON_OBJECT_JSON_CASES) {
+    for (const boundary of [
+      { label: "Hooks config", relativePath: path.join("hooks", "hooks.json") },
+      { label: "MCP config", relativePath: ".mcp.json" },
+    ]) {
+      await withTempDir(async (root) => {
+        const pluginRoot = path.join(root, "invalid-config-plugin");
+        await createFixturePlugin(pluginRoot, "invalid-config-plugin");
+        const configPath = path.join(pluginRoot, boundary.relativePath);
+        await writeFile(configPath, `${testCase.source}\n`);
+
+        await assert.rejects(loadClaudePlugin(pluginRoot), (error) => {
+          assertJsonObjectBoundaryError(
+            error,
+            configPath,
+            boundary.label,
+            testCase.kind,
+          );
+          return true;
+        });
+      });
+    }
+  }
+});
+
+test("loader rejects non-object nested hooks maps", async () => {
+  for (const testCase of NON_OBJECT_JSON_CASES) {
+    await withTempDir(async (root) => {
+      const pluginRoot = path.join(root, "invalid-hooks-map-plugin");
+      await createFixturePlugin(pluginRoot, "invalid-hooks-map-plugin");
+      const configPath = path.join(pluginRoot, "hooks", "hooks.json");
+      await writeJson(configPath, { hooks: testCase.value });
+
+      await assert.rejects(loadClaudePlugin(pluginRoot), (error) => {
+        assertJsonObjectBoundaryError(
+          error,
+          configPath,
+          'Hooks config field "hooks"',
+          testCase.kind,
+        );
+        return true;
+      });
+    });
+  }
+});
+
+test("loader rejects non-object inline config with manifest path context", async () => {
+  for (const boundary of [
+    { field: "hooks", label: "Plugin manifest hooks field" },
+    { field: "mcpServers", label: "Plugin manifest mcpServers field" },
+  ]) {
+    await withTempDir(async (root) => {
+      const pluginRoot = path.join(root, "invalid-inline-config-plugin");
+      const manifestPath = path.join(
+        pluginRoot,
+        ".claude-plugin",
+        "plugin.json",
+      );
+      await writeJson(manifestPath, {
+        agents: [],
+        commands: [],
+        name: "invalid-inline-config-plugin",
+        skills: [],
+        version: "1.0.0",
+        [boundary.field]: 42,
+      });
+
+      await assert.rejects(loadClaudePlugin(pluginRoot), (error) => {
+        assertJsonObjectBoundaryError(
+          error,
+          manifestPath,
+          boundary.label,
+          "number",
+        );
+        return true;
+      });
+    });
+  }
+});
 
 test("frontmatter module parses and formats converter metadata", () => {
   const parsed = parseFrontmatter(`---
@@ -399,6 +561,81 @@ Typed body.
     assert.equal(plugin.skills[0].disableModelInvocation, false);
     assert.equal(plugin.skills[0].userInvocable, true);
     assert.deepEqual(plugin.skills[0].platforms, ["claude-code", "codex"]);
+  });
+});
+
+test("loader validates agent descriptions and capabilities before conversion", async () => {
+  const invalidAgents = [
+    {
+      expected: 'frontmatter field "description" must be a string',
+      frontmatter: `description:
+  nested: value`,
+    },
+    {
+      expected: 'frontmatter field "capabilities" must be an array of strings',
+      frontmatter: `description: Reviews changes.
+capabilities: Read`,
+    },
+    {
+      expected: 'frontmatter field "capabilities" must be an array of strings',
+      frontmatter: `description: Reviews changes.
+capabilities:
+  - Read
+  - target:
+      name: Write`,
+    },
+  ];
+
+  for (const [index, invalidAgent] of invalidAgents.entries()) {
+    await withTempDir(async (root) => {
+      const pluginRoot = path.join(root, `invalid-agent-plugin-${index}`);
+      await createFixturePlugin(pluginRoot, `invalid-agent-plugin-${index}`);
+      const agentPath = path.join(pluginRoot, "agents", "reviewer.md");
+      await writeFile(
+        agentPath,
+        `---
+name: reviewer
+${invalidAgent.frontmatter}
+---
+Review changes.
+`,
+      );
+
+      await assert.rejects(loadClaudePlugin(pluginRoot), (error) => {
+        assert.ok(error instanceof Error);
+        assert.ok(error.message.includes(agentPath));
+        assert.match(error.message, new RegExp(invalidAgent.expected));
+        return true;
+      });
+    });
+  }
+
+  await withTempDir(async (root) => {
+    const pluginRoot = path.join(root, "valid-agent-plugin");
+    await createFixturePlugin(pluginRoot, "valid-agent-plugin");
+    await writeFile(
+      path.join(pluginRoot, "agents", "reviewer.md"),
+      `---
+name: reviewer
+description: Reviews changes.
+capabilities:
+  - Read
+  - Write
+---
+Review changes.
+`,
+    );
+
+    const plugin = await loadClaudePlugin(pluginRoot);
+    const bundle = convertClaudeToCodex(plugin);
+    assert.match(
+      bundle.agentSkills[0].content,
+      /description: Reviews changes\./,
+    );
+    assert.match(
+      bundle.agentSkills[0].content,
+      /## Capabilities\n- Read\n- Write/,
+    );
   });
 });
 
@@ -1889,6 +2126,13 @@ function emptyPreviousEntries() {
     skillFiles: {},
     skills: [],
   };
+}
+
+function assertJsonObjectBoundaryError(error, file, label, kind) {
+  assert.ok(error instanceof Error);
+  assert.ok(error.message.includes(file));
+  assert.match(error.message, new RegExp(`${label} must be a JSON object`));
+  assert.match(error.message, new RegExp(`received ${kind}`));
 }
 
 async function withTempDir(fn) {

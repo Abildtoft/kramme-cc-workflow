@@ -151,6 +151,23 @@ make_body_lines() {
   [[ "$output" == *"skill contract lint passed."* ]]
 }
 
+@test "registry consumers reject every non-object JSON kind with path context" {
+  local consumer
+  local fixture
+
+  for consumer in "$SCRIPT" "$COMPONENT_GENERATOR" "$VISUAL_GENERATOR"; do
+    for fixture in "null" "[]" '"scalar"' "false" "42"; do
+      printf '%s\n' "$fixture" >"$TMP_ROOT/registry.yaml"
+
+      run python3 "$consumer" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+      [ "$status" -eq 1 ]
+      [[ "$output" == *"$TMP_ROOT/registry.yaml"* ]]
+      [[ "$output" == *"registry must be a JSON object"* ]]
+    done
+  done
+}
+
 @test "copy review rubric is synced as a skill-local resource" {
   local registry="$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml"
   local code_rubric="$BATS_TEST_DIRNAME/../skills/kramme:code:copy-review/references/copy-review-rubric.md"

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 from typing import Any
+
+from json_object import load_json_object
 
 from .checks import run
 
@@ -35,12 +36,7 @@ def parse_cli() -> argparse.Namespace:
 
 
 def load_registry(path: Path) -> dict[str, Any]:
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise SystemExit(
-            f"{path}: registry must be JSON-compatible YAML for stdlib parsing: {exc}"
-        ) from exc
+    return load_json_object(path, "registry")
 
 
 def main() -> int:
