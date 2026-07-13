@@ -181,6 +181,8 @@ def _iter_user_assistant_text(filepath):
 class KeywordCounter:
     """Count non-overlapping matches without retaining the complete transcript."""
 
+    _MARKERS = ("\0", "\x01", "\x02", "\x03", "\ufffe", "\uffff")
+
     def __init__(self, keyword):
         self.keyword = keyword
         self.remainder = ""
@@ -188,6 +190,18 @@ class KeywordCounter:
 
     def feed(self, text):
         combined = self.remainder + text
+        marker = next((candidate for candidate in self._MARKERS if candidate not in combined), None)
+        if marker is None:
+            self._feed_without_marker(combined)
+            return
+
+        collapsed = combined.replace(self.keyword, marker)
+        self.count += collapsed.count(marker)
+        unmatched_tail = collapsed[collapsed.rfind(marker) + 1 :]
+        self.remainder = unmatched_tail[-len(self.keyword) + 1 :] if len(self.keyword) > 1 else ""
+
+    def _feed_without_marker(self, combined):
+        """Fall back when unusually broad text contains every reserved marker."""
         search_from = 0
         while True:
             match_at = combined.find(self.keyword, search_from)
@@ -196,8 +210,6 @@ class KeywordCounter:
             self.count += 1
             search_from = match_at + len(self.keyword)
 
-        # Starts before this suffix have already been searched completely. Keep
-        # only enough text for a keyword that spans the next chunk boundary.
         suffix_start = max(search_from, len(combined) - len(self.keyword) + 1)
         self.remainder = combined[suffix_start:]
 

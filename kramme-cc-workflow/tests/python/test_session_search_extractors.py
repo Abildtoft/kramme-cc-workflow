@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -56,6 +57,45 @@ class SessionExtractorTests(unittest.TestCase):
             timeout=timeout,
         )
 
+    def run_atomic_output_script(self, name, output_path):
+        process = subprocess.Popen(
+            [sys.executable, str(SCRIPTS / name), "--output", str(output_path)],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+        def cleanup_process():
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+            for stream in (process.stdin, process.stdout, process.stderr):
+                if stream and not stream.closed:
+                    stream.close()
+
+        self.addCleanup(cleanup_process)
+        process.stdin.write(CODEX_SESSION)
+        process.stdin.flush()
+
+        deadline = time.monotonic() + 2
+        temporary_pattern = f".{output_path.name}.*"
+        while time.monotonic() < deadline:
+            if output_path.read_text(encoding="utf-8") != "previous content":
+                break
+            if any(output_path.parent.glob(temporary_pattern)):
+                break
+            time.sleep(0.01)
+
+        self.assertIsNone(process.poll(), "extractor exited before stdin closed")
+        self.assertEqual(output_path.read_text(encoding="utf-8"), "previous content")
+
+        process.stdin.close()
+        stdout = process.stdout.read()
+        stderr = process.stderr.read()
+        returncode = process.wait(timeout=5)
+        return subprocess.CompletedProcess(process.args, returncode, stdout, stderr)
+
     def test_skeleton_golden_output_and_atomic_output_parity(self):
         inline = self.run_script("extract-skeleton.py", CODEX_SESSION)
         self.assertEqual(inline.returncode, 0, inline.stderr)
@@ -64,7 +104,7 @@ class SessionExtractorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             output_path = Path(directory) / "skeleton.txt"
             output_path.write_text("previous content", encoding="utf-8")
-            written = self.run_script("extract-skeleton.py", CODEX_SESSION, "--output", output_path)
+            written = self.run_atomic_output_script("extract-skeleton.py", output_path)
             self.assertEqual(written.returncode, 0, written.stderr)
             self.assertEqual(output_path.read_text(encoding="utf-8"), CODEX_SKELETON)
             status = json.loads(written.stdout)
@@ -79,7 +119,8 @@ class SessionExtractorTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             output_path = Path(directory) / "errors.txt"
-            written = self.run_script("extract-errors.py", CODEX_SESSION, "--output", output_path)
+            output_path.write_text("previous content", encoding="utf-8")
+            written = self.run_atomic_output_script("extract-errors.py", output_path)
             self.assertEqual(written.returncode, 0, written.stderr)
             self.assertEqual(output_path.read_text(encoding="utf-8"), CODEX_ERRORS)
             status = json.loads(written.stdout)
@@ -183,6 +224,36 @@ class SessionExtractorTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             records = [json.loads(line) for line in result.stdout.splitlines()]
             self.assertGreater(records[0]["match_count"], 0)
+            self.assertEqual(records[-1]["files_matched"], 1)
+
+    def test_metadata_dense_keyword_scan_stays_responsive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "dense.jsonl"
+            payload = "x" * (16 * 1024 * 1024)
+            event = json.dumps(
+                {
+                    "timestamp": "2026-06-06T10:03:00Z",
+                    "type": "response_item",
+                    "payload": {
+                        "type": "message",
+                        "role": "assistant",
+                        "content": [{"type": "output_text", "text": payload}],
+                    },
+                }
+            )
+            path.write_text(CODEX_SESSION.splitlines()[0] + "\n" + event + "\n", encoding="utf-8")
+
+            result = self.run_script(
+                "extract-metadata.py",
+                "",
+                "--keyword",
+                "x",
+                path,
+                timeout=2,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            records = [json.loads(line) for line in result.stdout.splitlines()]
+            self.assertEqual(records[0]["match_count"], len(payload))
             self.assertEqual(records[-1]["files_matched"], 1)
 
     @unittest.skipUnless(hasattr(os, "wait4"), "RSS accounting requires os.wait4")
