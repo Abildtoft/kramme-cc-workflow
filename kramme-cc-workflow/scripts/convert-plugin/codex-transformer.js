@@ -154,10 +154,7 @@ function convertClaudeToCodex(plugin) {
     agent,
     name: uniqueName(codexName(agent.name), usedSkillNames),
   }));
-  const knownAgentSkills = buildKnownAgentSkillNames(
-    plugin.agents,
-    agentSkillDefinitions,
-  );
+  const knownAgentSkills = buildKnownAgentSkillNames(agentSkillDefinitions);
   const agentSkills = agentSkillDefinitions.map(({ agent, name }) =>
     convertAgentSkill(agent, name, knownCommandNames, knownAgentSkills),
   );
@@ -283,19 +280,18 @@ function convertAgentSkill(agent, name, knownCommands, knownAgentSkills) {
   return { name, content };
 }
 
-function buildKnownAgentSkillNames(agents, agentSkills) {
+function buildKnownAgentSkillNames(agentSkillDefinitions) {
   const knownAgentSkills = new Map();
-  for (let index = 0; index < agents.length; index += 1) {
-    const agent = agents[index];
-    const skill = agentSkills[index];
-    if (!agent || !skill) continue;
-    knownAgentSkills.set(codexName(agent.name), skill.name);
+  for (const { agent, name } of agentSkillDefinitions) {
     if (agent.sourcePath) {
       knownAgentSkills.set(
         codexName(path.basename(agent.sourcePath, ".md")),
-        skill.name,
+        name,
       );
     }
+  }
+  for (const { agent, name } of agentSkillDefinitions) {
+    knownAgentSkills.set(codexName(agent.name), name);
   }
   return knownAgentSkills;
 }
@@ -384,7 +380,7 @@ function transformAgentContentForCodex(body, options) {
       const currentClause =
         transformed
           .slice(0, offset)
-          .split(/[\n.!?;:]/)
+          .split(/[\n!?;:]|\.(?!md\b)/i)
           .at(-1) ?? "";
       if (/`?AGENTS\.md`?/.test(currentClause)) return match;
 

@@ -1104,6 +1104,48 @@ test("agent transformations use collision-resolved skill names", () => {
   );
 });
 
+test("canonical agent names take precedence over filename aliases", () => {
+  const bundle = convertClaudeToCodex({
+    agents: [
+      {
+        body: "Review changes.",
+        description: "Reviews changes.",
+        name: "Support Reviewer",
+        sourcePath: "/plugin/agents/review-helper.md",
+      },
+      {
+        body: "Review other changes.",
+        description: "Reviews other changes.",
+        name: "Other Reviewer",
+        sourcePath: "/plugin/agents/support-reviewer.md",
+      },
+      {
+        body: [
+          "Task support-reviewer(review this parser)",
+          "Ask @support-reviewer to verify the result.",
+        ].join("\n"),
+        description: "Coordinates review.",
+        name: "Review Coordinator",
+        sourcePath: "/plugin/agents/review-coordinator.md",
+      },
+    ],
+    commands: [],
+    manifest: { name: "fixture-plugin", version: "1.0.0" },
+    mcpServers: {},
+    root: "/plugin",
+    skills: [],
+  });
+
+  assert.match(
+    bundle.agentSkills[2].content,
+    /Use the \$support-reviewer skill to: review this parser/,
+  );
+  assert.match(
+    bundle.agentSkills[2].content,
+    /Ask \$support-reviewer skill to verify the result/,
+  );
+});
+
 test("converted skill roots contain no executable Claude controls and honor instruction files", async () => {
   await withTempDir(async (root) => {
     const agentsHome = path.join(root, "agents-home");
@@ -1126,6 +1168,7 @@ test("converted skill roots contain no executable Claude controls and honor inst
         {
           body: [
             "Read AGENTS.md first. Follow CLAUDE.md conventions.",
+            "Read repo-root `AGENTS.md` and `CLAUDE.md` when present.",
             "Treat an explicit CLAUDE.md violation as a high-confidence finding.",
             "Project rules are typically in CLAUDE.md or equivalent.",
             "Flag each specific CLAUDE.md rule that the change violates.",
@@ -1204,6 +1247,10 @@ test("converted skill roots contain no executable Claude controls and honor inst
     assert.match(agentFrontmatter.data.description, /conventions from/);
     assert.match(agentFrontmatter.body, /AGENTS\.md/);
     assert.match(agentFrontmatter.body, /CLAUDE\.md/);
+    assert.match(
+      agentFrontmatter.body,
+      /Read repo-root `AGENTS\.md` and `CLAUDE\.md` when present\./,
+    );
     assert.match(agentFrontmatter.body, /closest nested equivalents/);
     assert.match(agentFrontmatter.body, /conventions from/);
     assert.match(agentFrontmatter.body, /violation of/);
