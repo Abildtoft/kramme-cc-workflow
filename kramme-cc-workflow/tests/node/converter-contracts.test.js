@@ -1722,7 +1722,7 @@ test("hook plugin staging excludes local hook state and config files", async () 
   });
 });
 
-test("writer prunes stale managed skill files without deleting local files when cleanup is skipped", async () => {
+test("writer preserves exact skill group outputs across pruning and removal", async () => {
   await withTempDir(async (root) => {
     const agentsHome = path.join(root, "agents-home");
     const sourceDir = path.join(root, "source-skill");
@@ -1732,11 +1732,13 @@ test("writer prunes stale managed skill files without deleting local files when 
       pluginName: "managed-file-plugin",
     };
 
-    function bundle() {
+    function bundle(version) {
       return {
-        agentSkills: [{ content: "Agent", name: "fixture-agent" }],
+        agentSkills: [{ content: `Agent ${version}`, name: "fixture-agent" }],
         codexPlugin: undefined,
-        generatedSkills: [{ content: "Generated", name: "fixture-generated" }],
+        generatedSkills: [
+          { content: `Generated ${version}`, name: "fixture-generated" },
+        ],
         knownAgentSkills: new Map(),
         knownCommands: new Set(),
         mcpServers: {},
@@ -1755,36 +1757,63 @@ test("writer prunes stale managed skill files without deleting local files when 
       "SKILL.md": "Managed v1\n",
       "references/OLD.md": "old managed file\n",
     });
-    await writeCodexBundle(root, bundle(), options);
+    await writeCodexBundle(root, bundle("v1"), options);
 
     const skillDir = path.join(root, ".codex", "skills", "fixture-managed");
+    const generatedSkillDir = path.join(
+      root,
+      ".codex",
+      "skills",
+      "fixture-generated",
+    );
+    const agentSkillDir = path.join(agentsHome, "skills", "fixture-agent");
     const oldManagedFile = path.join(skillDir, "references", "OLD.md");
     const newManagedFile = path.join(skillDir, "references", "NEW.md");
     const localNotes = path.join(skillDir, "LOCAL-NOTES.md");
+    const manifestPath = path.join(
+      root,
+      ".codex",
+      ".kramme-install-manifests",
+      "managed-file-plugin-codex.json",
+    );
     assert.equal(await pathExists(oldManagedFile), true);
 
-    let manifest = await readJson(
-      path.join(
-        root,
-        ".codex",
-        ".kramme-install-manifests",
-        "managed-file-plugin-codex.json",
-      ),
-    );
+    let manifest = await readJson(manifestPath);
     assert.deepEqual(manifest.skillFiles["fixture-managed"], [
       "SKILL.md",
       "references/OLD.md",
     ]);
     assert.deepEqual(manifest.skillFiles["fixture-generated"], ["SKILL.md"]);
     assert.deepEqual(manifest.agentSkillFiles["fixture-agent"], ["SKILL.md"]);
+    assert.deepEqual(await readFileTree(path.join(root, ".codex", "skills")), {
+      "fixture-generated/SKILL.md": "Generated v1\n",
+      "fixture-managed/SKILL.md": "Managed v1\n",
+      "fixture-managed/references/OLD.md": "old managed file\n",
+    });
+    assert.deepEqual(await readFileTree(path.join(agentsHome, "skills")), {
+      "fixture-agent/SKILL.md": "Agent v1\n",
+    });
 
     await writeFile(localNotes, "keep local notes\n");
+    await writeFile(path.join(generatedSkillDir, "OLD.md"), "old generated\n");
+    await writeFile(path.join(agentSkillDir, "OLD.md"), "old agent\n");
+
+    const statePath = path.join(root, ".codex", ".kramme-install-state.json");
+    const state = await readJson(statePath);
+    const entries = state.plugins["managed-file-plugin"].codex;
+    entries.skillFiles["fixture-generated"] = ["OLD.md", "SKILL.md"];
+    entries.agentSkillFiles["fixture-agent"] = ["OLD.md", "SKILL.md"];
+    await writeJson(statePath, state);
+    manifest.skillFiles["fixture-generated"] = ["OLD.md", "SKILL.md"];
+    manifest.agentSkillFiles["fixture-agent"] = ["OLD.md", "SKILL.md"];
+    await writeJson(manifestPath, manifest);
+
     await writeSourceSkill(sourceDir, {
       "SKILL.md": "Managed v2\n",
       "references/NEW.md": "new managed file\n",
     });
 
-    await writeCodexBundle(root, bundle(), {
+    await writeCodexBundle(root, bundle("v2"), {
       ...options,
       confirm: { nonInteractive: true },
     });
@@ -1793,20 +1822,44 @@ test("writer prunes stale managed skill files without deleting local files when 
     assert.equal(await pathExists(newManagedFile), true);
     assert.equal(await readText(localNotes), "keep local notes\n");
 
-    manifest = await readJson(
-      path.join(
-        root,
-        ".codex",
-        ".kramme-install-manifests",
-        "managed-file-plugin-codex.json",
-      ),
-    );
+    manifest = await readJson(manifestPath);
     assert.deepEqual(manifest.skillFiles["fixture-managed"], [
       "SKILL.md",
       "references/NEW.md",
     ]);
     assert.deepEqual(manifest.skillFiles["fixture-generated"], ["SKILL.md"]);
     assert.deepEqual(manifest.agentSkillFiles["fixture-agent"], ["SKILL.md"]);
+    assert.deepEqual(await readFileTree(path.join(root, ".codex", "skills")), {
+      "fixture-generated/SKILL.md": "Generated v2\n",
+      "fixture-managed/LOCAL-NOTES.md": "keep local notes\n",
+      "fixture-managed/SKILL.md": "Managed v2\n",
+      "fixture-managed/references/NEW.md": "new managed file\n",
+    });
+    assert.deepEqual(await readFileTree(path.join(agentsHome, "skills")), {
+      "fixture-agent/SKILL.md": "Agent v2\n",
+    });
+
+    await writeCodexBundle(
+      root,
+      {
+        ...bundle("removed"),
+        agentSkills: [],
+        generatedSkills: [],
+        skillDirs: [],
+      },
+      options,
+    );
+
+    manifest = await readJson(manifestPath);
+    assert.deepEqual(
+      await readFileTree(path.join(root, ".codex", "skills")),
+      {},
+    );
+    assert.deepEqual(await readFileTree(path.join(agentsHome, "skills")), {});
+    assert.deepEqual(manifest.skills, []);
+    assert.deepEqual(manifest.skillFiles, {});
+    assert.deepEqual(manifest.agentSkills, []);
+    assert.deepEqual(manifest.agentSkillFiles, {});
   });
 });
 
@@ -1908,6 +1961,13 @@ test("install staging does not prune stale files through symlinked ancestors", a
 test("writer preserves untracked same-name skill directories on first install", async () => {
   await withTempDir(async (root) => {
     const agentsHome = path.join(root, "agents-home");
+    const sourceDir = path.join(root, "source-skill");
+    const sourceSkillDir = path.join(
+      root,
+      ".codex",
+      "skills",
+      "collision-source",
+    );
     const codexSkillDir = path.join(
       root,
       ".codex",
@@ -1915,6 +1975,11 @@ test("writer preserves untracked same-name skill directories on first install", 
       "collision-skill",
     );
     const agentSkillDir = path.join(agentsHome, "skills", "collision-agent");
+    await writeFile(path.join(sourceDir, "SKILL.md"), "Source\n");
+    await writeFile(
+      path.join(sourceSkillDir, "LOCAL-NOTES.md"),
+      "keep source\n",
+    );
     await writeFile(path.join(codexSkillDir, "LOCAL-NOTES.md"), "keep codex\n");
     await writeFile(path.join(agentSkillDir, "LOCAL-NOTES.md"), "keep agent\n");
 
@@ -1927,7 +1992,7 @@ test("writer preserves untracked same-name skill directories on first install", 
         knownAgentSkills: new Map(),
         knownCommands: new Set(),
         prompts: [],
-        skillDirs: [],
+        skillDirs: [{ content: "", name: "collision-source", sourceDir }],
       },
       {
         agentsHome,
@@ -1937,12 +2002,20 @@ test("writer preserves untracked same-name skill directories on first install", 
     );
 
     assert.equal(
+      await readText(path.join(sourceSkillDir, "LOCAL-NOTES.md")),
+      "keep source\n",
+    );
+    assert.equal(
       await readText(path.join(codexSkillDir, "LOCAL-NOTES.md")),
       "keep codex\n",
     );
     assert.equal(
       await readText(path.join(agentSkillDir, "LOCAL-NOTES.md")),
       "keep agent\n",
+    );
+    assert.equal(
+      await readText(path.join(sourceSkillDir, "SKILL.md")),
+      "Source\n",
     );
     assert.equal(
       await readText(path.join(codexSkillDir, "SKILL.md")),
@@ -2197,6 +2270,22 @@ async function readMarkdownTree(root) {
     }
   }
   return markdown;
+}
+
+async function readFileTree(root, prefix = "") {
+  const tree = {};
+  const entries = await fs.readdir(root, { withFileTypes: true });
+  entries.sort((left, right) => left.name.localeCompare(right.name));
+  for (const entry of entries) {
+    const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const file = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      Object.assign(tree, await readFileTree(file, relativePath));
+    } else if (entry.isFile()) {
+      tree[relativePath] = await readText(file);
+    }
+  }
+  return tree;
 }
 
 async function pathExists(file) {
