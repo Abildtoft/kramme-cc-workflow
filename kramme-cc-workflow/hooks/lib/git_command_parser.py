@@ -8,6 +8,7 @@ import shlex
 import sys
 import os
 import json
+from dataclasses import dataclass
 
 
 CONTROL_TOKENS = {";", ";;", "&&", "||", "|", "|&", "&"}
@@ -42,6 +43,85 @@ SHELL_OPTIONS_WITH_VALUE = {
     "-O",
     "+O",
 }
+
+NONINTERACTIVE_ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
+NONINTERACTIVE_ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
+NONINTERACTIVE_SHELL_KEYWORDS = {
+    "!",
+    "if",
+    "then",
+    "elif",
+    "else",
+    "fi",
+    "do",
+    "done",
+    "while",
+    "until",
+    "for",
+    "in",
+    "case",
+    "esac",
+    "{",
+    "}",
+    "(",
+    ")",
+}
+NONINTERACTIVE_SHELL_EXECUTABLES = {"sh", "bash", "zsh", "dash", "ksh"}
+NONINTERACTIVE_SHELL_OPTIONS_WITH_VALUE = {
+    "--command",
+    "--rcfile",
+    "--init-file",
+    "--startup-file",
+    "-o",
+    "-O",
+    "+O",
+}
+NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND = "__parse_error__"
+NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE = {
+    "-d",
+    "-E",
+    "-I",
+    "-L",
+    "-P",
+    "-n",
+    "-s",
+    "--delimiter",
+    "--eof",
+    "--max-args",
+    "--max-chars",
+    "--max-procs",
+    "--replace",
+}
+NONINTERACTIVE_SUDO_OPTIONS_WITH_VALUE = {
+    "-u",
+    "-g",
+    "-h",
+    "-p",
+    "-C",
+    "-D",
+    "-R",
+    "-T",
+    "-U",
+    "-r",
+    "-t",
+}
+NONINTERACTIVE_GIT_OPTIONS_WITH_VALUE = {
+    "-C",
+    "-c",
+    "--config-env",
+    "--exec-path",
+    "--git-dir",
+    "--namespace",
+    "--super-prefix",
+    "--work-tree",
+}
+
+
+@dataclass
+class NoninteractiveParseResult:
+    env: dict
+    subcmd: str
+    args: list
 
 
 def _decode_ansi_c_string(value):
@@ -915,305 +995,251 @@ def extract_placeholder_indexes(tokens):
     return indexes
 
 
-def run_noninteractive(command: str) -> int:
-    import json
-    import os
-    import re
-
-    PARSE_ERROR_REASON = (
-        "Unable to safely parse command. Refusing potentially interactive git command."
-    )
-
-    ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
-    ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
-    SHELL_KEYWORDS = {
-        "!",
-        "if",
-        "then",
-        "elif",
-        "else",
-        "fi",
-        "do",
-        "done",
-        "while",
-        "until",
-        "for",
-        "in",
-        "case",
-        "esac",
-        "{",
-        "}",
-        "(",
-        ")",
-    }
-    SHELL_EXECUTABLES = {"sh", "bash", "zsh", "dash", "ksh"}
-    SHELL_OPTIONS_WITH_VALUE = {"--command", "--rcfile", "--init-file", "--startup-file", "-o", "-O", "+O"}
-    PARSE_ERROR_SUBCOMMAND = "__parse_error__"
-
-    XARGS_OPTIONS_WITH_VALUE = {
-        "-d",
-        "-E",
-        "-I",
-        "-L",
-        "-P",
-        "-n",
-        "-s",
-        "--delimiter",
-        "--eof",
-        "--max-args",
-        "--max-chars",
-        "--max-procs",
-        "--replace",
-    }
-    SUDO_OPTIONS_WITH_VALUE = {
-        "-u",
-        "-g",
-        "-h",
-        "-p",
-        "-C",
-        "-D",
-        "-R",
-        "-T",
-        "-U",
-        "-r",
-        "-t",
-    }
-    GIT_OPTIONS_WITH_VALUE = {
-        "-C",
-        "-c",
-        "--config-env",
-        "--exec-path",
-        "--git-dir",
-        "--namespace",
-        "--super-prefix",
-        "--work-tree",
-    }
-
-    def is_assignment(token):
-        return ASSIGNMENT.match(token) is not None
+def _noninteractive_is_assignment(token):
+    return NONINTERACTIVE_ASSIGNMENT.match(token) is not None
 
 
-    def basename(token):
-        return os.path.basename(token)
+def _noninteractive_basename(token):
+    return os.path.basename(token)
 
 
-    def is_git_exec(token):
-        return basename(token) == "git"
+def _noninteractive_is_git_exec(token):
+    return _noninteractive_basename(token) == "git"
 
 
-    def extract_shell_c_command(args):
-        idx = 0
-        while idx < len(args):
-            arg = args[idx]
-            if arg in ("-c", "--command"):
+def _extract_noninteractive_shell_c_command(args):
+    idx = 0
+    while idx < len(args):
+        arg = args[idx]
+        if arg in ("-c", "--command"):
+            if idx + 1 < len(args):
+                return args[idx + 1]
+            return None
+        if arg.startswith("--command="):
+            return arg.split("=", 1)[1]
+        if arg in NONINTERACTIVE_SHELL_OPTIONS_WITH_VALUE:
+            idx += 2
+            continue
+        if any(arg.startswith(prefix + "=") for prefix in ("--rcfile", "--init-file", "--startup-file")):
+            idx += 1
+            continue
+        if arg == "--":
+            return None
+        if arg.startswith("-") and not arg.startswith("--"):
+            if "c" in arg[1:]:
                 if idx + 1 < len(args):
                     return args[idx + 1]
                 return None
-            if arg.startswith("--command="):
-                return arg.split("=", 1)[1]
-            if arg in SHELL_OPTIONS_WITH_VALUE:
+            idx += 1
+            continue
+        if arg.startswith("+"):
+            idx += 1
+            continue
+        return None
+    return None
+
+
+def _clear_editor_env(env):
+    env.pop("GIT_EDITOR", None)
+    env.pop("GIT_SEQUENCE_EDITOR", None)
+
+
+def _unset_editor_env(env, key):
+    if key in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
+        env.pop(key, None)
+
+
+def _apply_exported_editor_env(tokens, inherited_env=None, inherited_shell_vars=None):
+    env = dict(inherited_env or {})
+    shell_vars = dict(inherited_shell_vars or env)
+    idx = 0
+    shell_env_persists = True
+    pending_shell_vars = {}
+
+    while idx < len(tokens) and tokens[idx] in NONINTERACTIVE_SHELL_KEYWORDS:
+        if tokens[idx] == "(":
+            shell_env_persists = False
+        idx += 1
+
+    while idx < len(tokens) and _noninteractive_is_assignment(tokens[idx]):
+        key, value = tokens[idx].split("=", 1)
+        if key in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
+            pending_shell_vars[key] = value
+        idx += 1
+
+    if idx >= len(tokens):
+        if shell_env_persists:
+            shell_vars.update(pending_shell_vars)
+        return env, shell_vars
+
+    if not shell_env_persists:
+        return env, shell_vars
+
+    command_name = _noninteractive_basename(tokens[idx])
+    if command_name == "export":
+        shell_vars.update(pending_shell_vars)
+        idx += 1
+        while idx < len(tokens):
+            token = tokens[idx]
+            if token == "--":
+                idx += 1
+                break
+            if token == "-n":
+                if idx + 1 < len(tokens):
+                    _unset_editor_env(env, tokens[idx + 1])
                 idx += 2
                 continue
-            if any(arg.startswith(prefix + "=") for prefix in ("--rcfile", "--init-file", "--startup-file")):
+            if token.startswith("-n") and token != "-n":
+                _unset_editor_env(env, token[2:])
                 idx += 1
                 continue
-            if arg == "--":
-                return None
-            if arg.startswith("-") and not arg.startswith("--"):
-                if "c" in arg[1:]:
-                    if idx + 1 < len(args):
-                        return args[idx + 1]
-                    return None
+            if _noninteractive_is_assignment(token):
+                key, value = token.split("=", 1)
+                if key in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
+                    shell_vars[key] = value
+                    env[key] = value
                 idx += 1
                 continue
-            if arg.startswith("+"):
+            if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", token):
+                if token in shell_vars and token in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
+                    env[token] = shell_vars[token]
                 idx += 1
                 continue
-            return None
-        return None
+            if token.startswith("-"):
+                idx += 1
+                continue
+            break
+        return env, shell_vars
 
-
-    def clear_editor_env(env):
-        env.pop("GIT_EDITOR", None)
-        env.pop("GIT_SEQUENCE_EDITOR", None)
-
-
-    def unset_editor_env(env, key):
-        if key in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
-            env.pop(key, None)
-
-    def apply_exported_editor_env(tokens, inherited_env=None, inherited_shell_vars=None):
-        env = dict(inherited_env or {})
-        shell_vars = dict(inherited_shell_vars or env)
-        idx = 0
-        shell_env_persists = True
-        pending_shell_vars = {}
-
-        while idx < len(tokens) and tokens[idx] in SHELL_KEYWORDS:
-            if tokens[idx] == "(":
-                shell_env_persists = False
+    if command_name == "unset":
+        unset_targets_variables = True
+        idx += 1
+        while idx < len(tokens):
+            token = tokens[idx]
+            if token == "--":
+                idx += 1
+                break
+            if token in {"-f", "-n"}:
+                unset_targets_variables = False
+                idx += 1
+                continue
+            if token == "-v":
+                unset_targets_variables = True
+                idx += 1
+                continue
+            if token.startswith("-"):
+                option_flags = token[1:]
+                if "f" in option_flags or "n" in option_flags:
+                    unset_targets_variables = False
+                elif "v" in option_flags:
+                    unset_targets_variables = True
+                idx += 1
+                continue
+            if unset_targets_variables and token in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
+                env.pop(token, None)
+                shell_vars.pop(token, None)
             idx += 1
+        return env, shell_vars
 
-        while idx < len(tokens) and is_assignment(tokens[idx]):
-            key, value = tokens[idx].split("=", 1)
-            if key in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
-                pending_shell_vars[key] = value
-            idx += 1
+    return env, shell_vars
 
-        if idx >= len(tokens):
-            if shell_env_persists:
-                shell_vars.update(pending_shell_vars)
-            return env, shell_vars
 
-        if not shell_env_persists:
-            return env, shell_vars
+def parse_env_wrapped_segment(tokens, inherited_env=None):
+    env = dict(inherited_env or {})
+    idx = 0
 
-        command_name = basename(tokens[idx])
-        if command_name == "export":
-            shell_vars.update(pending_shell_vars)
+    # Support git commands nested in simple shell structures, e.g.:
+    # if git commit; then ...
+    while idx < len(tokens) and tokens[idx] in NONINTERACTIVE_SHELL_KEYWORDS:
+        idx += 1
+
+    while idx < len(tokens) and _noninteractive_is_assignment(tokens[idx]):
+        key, value = tokens[idx].split("=", 1)
+        env[key] = value
+        idx += 1
+
+    while idx < len(tokens):
+        token = _noninteractive_basename(tokens[idx])
+        if token == "env":
             idx += 1
             while idx < len(tokens):
-                token = tokens[idx]
-                if token == "--":
+                env_token = tokens[idx]
+                if env_token == "--":
                     idx += 1
                     break
-                if token == "-n":
+                if _noninteractive_is_assignment(env_token):
+                    key, value = env_token.split("=", 1)
+                    env[key] = value
+                    idx += 1
+                    continue
+                if env_token in ("-i", "--ignore-environment"):
+                    _clear_editor_env(env)
+                    idx += 1
+                    continue
+                if env_token in ("-u", "--unset"):
                     if idx + 1 < len(tokens):
-                        unset_editor_env(env, tokens[idx + 1])
+                        _unset_editor_env(env, tokens[idx + 1])
                     idx += 2
                     continue
-                if token.startswith("-n") and token != "-n":
-                    unset_editor_env(env, token[2:])
+                if env_token.startswith("-u") and env_token != "-u":
+                    _unset_editor_env(env, env_token[2:])
                     idx += 1
                     continue
-                if is_assignment(token):
-                    key, value = token.split("=", 1)
-                    if key in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
-                        shell_vars[key] = value
-                        env[key] = value
+                if env_token.startswith("--unset="):
+                    _unset_editor_env(env, env_token.split("=", 1)[1])
                     idx += 1
                     continue
-                if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", token):
-                    if token in shell_vars and token in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
-                        env[token] = shell_vars[token]
-                    idx += 1
-                    continue
-                if token.startswith("-"):
+                if env_token.startswith("-"):
                     idx += 1
                     continue
                 break
-            return env, shell_vars
+            continue
 
-        if command_name == "unset":
-            unset_targets_variables = True
+        if token in {"command", "builtin"}:
             idx += 1
             while idx < len(tokens):
-                token = tokens[idx]
-                if token == "--":
+                command_token = tokens[idx]
+                if command_token == "--":
                     idx += 1
                     break
-                if token in {"-f", "-n"}:
-                    unset_targets_variables = False
+                if command_token.startswith("-"):
                     idx += 1
                     continue
-                if token == "-v":
-                    unset_targets_variables = True
-                    idx += 1
-                    continue
-                if token.startswith("-"):
-                    option_flags = token[1:]
-                    if "f" in option_flags or "n" in option_flags:
-                        unset_targets_variables = False
-                    elif "v" in option_flags:
-                        unset_targets_variables = True
-                    idx += 1
-                    continue
-                if unset_targets_variables and token in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
-                    env.pop(token, None)
-                    shell_vars.pop(token, None)
-                idx += 1
-            return env, shell_vars
+                break
+            continue
 
-        return env, shell_vars
-
-
-    def parse_env_wrapped_segment(tokens, inherited_env=None):
-        env = dict(inherited_env or {})
-        idx = 0
-
-        # Support git commands nested in simple shell structures, e.g.:
-        # if git commit; then ...
-        while idx < len(tokens) and tokens[idx] in SHELL_KEYWORDS:
+        if token == "sudo":
             idx += 1
-
-        while idx < len(tokens) and is_assignment(tokens[idx]):
-            key, value = tokens[idx].split("=", 1)
-            env[key] = value
-            idx += 1
-
-        while idx < len(tokens):
-            token = basename(tokens[idx])
-            if token == "env":
-                idx += 1
-                while idx < len(tokens):
-                    env_token = tokens[idx]
-                    if env_token == "--":
-                        idx += 1
-                        break
-                    if is_assignment(env_token):
-                        key, value = env_token.split("=", 1)
-                        env[key] = value
-                        idx += 1
-                        continue
-                    if env_token in ("-i", "--ignore-environment"):
-                        clear_editor_env(env)
-                        idx += 1
-                        continue
-                    if env_token in ("-u", "--unset"):
-                        if idx + 1 < len(tokens):
-                            unset_editor_env(env, tokens[idx + 1])
-                        idx += 2
-                        continue
-                    if env_token.startswith("-u") and env_token != "-u":
-                        unset_editor_env(env, env_token[2:])
-                        idx += 1
-                        continue
-                    if env_token.startswith("--unset="):
-                        unset_editor_env(env, env_token.split("=", 1)[1])
-                        idx += 1
-                        continue
-                    if env_token.startswith("-"):
-                        idx += 1
-                        continue
+            while idx < len(tokens):
+                sudo_token = tokens[idx]
+                if sudo_token == "--":
+                    idx += 1
                     break
-                continue
-
-            if token in {"command", "builtin"}:
-                idx += 1
-                while idx < len(tokens):
-                    command_token = tokens[idx]
-                    if command_token == "--":
-                        idx += 1
-                        break
-                    if command_token.startswith("-"):
-                        idx += 1
-                        continue
-                    break
-                continue
-
-            if token == "sudo":
-                idx += 1
-                while idx < len(tokens):
-                    sudo_token = tokens[idx]
-                    if sudo_token == "--":
-                        idx += 1
-                        break
-                    if sudo_token in SUDO_OPTIONS_WITH_VALUE:
-                        idx += 2
-                        continue
-                    if sudo_token in {
-                        "--user",
-                        "--group",
+                if sudo_token in NONINTERACTIVE_SUDO_OPTIONS_WITH_VALUE:
+                    idx += 2
+                    continue
+                if sudo_token in {
+                    "--user",
+                    "--group",
+                    "--host",
+                    "--prompt",
+                    "--command-timeout",
+                    "--close-from",
+                    "--chdir",
+                    "--chroot",
+                    "--login-class",
+                    "--role",
+                    "--type",
+                    "--other-user",
+                }:
+                    idx += 2
+                    continue
+                if sudo_token.startswith("--user=") or sudo_token.startswith("--group="):
+                    idx += 1
+                    continue
+                if any(
+                    sudo_token.startswith(prefix + "=")
+                    for prefix in (
                         "--host",
                         "--prompt",
                         "--command-timeout",
@@ -1224,198 +1250,184 @@ def run_noninteractive(command: str) -> int:
                         "--role",
                         "--type",
                         "--other-user",
-                    }:
-                        idx += 2
-                        continue
-                    if sudo_token.startswith("--user=") or sudo_token.startswith("--group="):
-                        idx += 1
-                        continue
-                    if any(
-                        sudo_token.startswith(prefix + "=")
-                        for prefix in (
-                            "--host",
-                            "--prompt",
-                            "--command-timeout",
-                            "--close-from",
-                            "--chdir",
-                            "--chroot",
-                            "--login-class",
-                            "--role",
-                            "--type",
-                            "--other-user",
-                        )
-                    ):
-                        idx += 1
-                        continue
-                    if sudo_token.startswith("-"):
-                        idx += 1
-                        continue
-                    break
-                continue
-
-            if token == "xargs":
-                idx += 1
-                while idx < len(tokens):
-                    xargs_token = tokens[idx]
-                    if xargs_token == "--":
-                        idx += 1
-                        break
-                    if xargs_token in XARGS_OPTIONS_WITH_VALUE:
-                        idx += 2
-                        continue
-                    if any(
-                        xargs_token.startswith(prefix)
-                        for prefix in (
-                            "--delimiter=",
-                            "--eof=",
-                            "--max-args=",
-                            "--max-chars=",
-                            "--max-procs=",
-                            "--replace=",
-                        )
-                    ):
-                        idx += 1
-                        continue
-                    if xargs_token.startswith("-"):
-                        idx += 1
-                        continue
-                    break
-                continue
-
-            if token == "find":
-                idx += 1
-                while idx < len(tokens):
-                    if tokens[idx] in ("-exec", "-execdir"):
-                        idx += 1
-                        break
+                    )
+                ):
                     idx += 1
-                continue
-
-            if tokens[idx] in ("-exec", "-execdir"):
-                idx += 1
-                continue
-
-            break
-
-        while idx < len(tokens) and tokens[idx] in SHELL_KEYWORDS:
-            idx += 1
-
-        if idx >= len(tokens):
-            return None
-
-        exec_token = tokens[idx]
-        if basename(exec_token) == "alias":
-            return {
-                "env": env,
-                "subcmd": PARSE_ERROR_SUBCOMMAND,
-                "args": [],
-            }
-
-        if basename(exec_token) in SHELL_EXECUTABLES:
-            nested_command = extract_shell_c_command(tokens[idx + 1 :])
-            if nested_command is None:
-                return None
-            return {
-                "env": env,
-                "subcmd": "__shell_c__",
-                "args": [nested_command],
-            }
-
-        if not is_git_exec(exec_token):
-            return None
-
-        git_argv = tokens[idx + 1:]
-        if not git_argv:
-            return None
-
-        git_idx = 0
-        while git_idx < len(git_argv):
-            token = git_argv[git_idx]
-            if token == "--":
-                git_idx += 1
+                    continue
+                if sudo_token.startswith("-"):
+                    idx += 1
+                    continue
                 break
-            if token in GIT_OPTIONS_WITH_VALUE:
-                git_idx += 2
-                continue
-            if any(
-                token.startswith(prefix + "=")
-                for prefix in (
-                    "--config-env",
-                    "--exec-path",
-                    "--git-dir",
-                    "--namespace",
-                    "--super-prefix",
-                    "--work-tree",
-                )
-            ):
-                git_idx += 1
-                continue
-            if token.startswith("-C") and token != "-C":
-                git_idx += 1
-                continue
-            if token.startswith("-c") and token != "-c":
-                git_idx += 1
-                continue
-            if token.startswith("-"):
-                git_idx += 1
-                continue
-            break
+            continue
 
-        if git_idx >= len(git_argv):
+        if token == "xargs":
+            idx += 1
+            while idx < len(tokens):
+                xargs_token = tokens[idx]
+                if xargs_token == "--":
+                    idx += 1
+                    break
+                if xargs_token in NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE:
+                    idx += 2
+                    continue
+                if any(
+                    xargs_token.startswith(prefix)
+                    for prefix in (
+                        "--delimiter=",
+                        "--eof=",
+                        "--max-args=",
+                        "--max-chars=",
+                        "--max-procs=",
+                        "--replace=",
+                    )
+                ):
+                    idx += 1
+                    continue
+                if xargs_token.startswith("-"):
+                    idx += 1
+                    continue
+                break
+            continue
+
+        if token == "find":
+            idx += 1
+            while idx < len(tokens):
+                if tokens[idx] in ("-exec", "-execdir"):
+                    idx += 1
+                    break
+                idx += 1
+            continue
+
+        if tokens[idx] in ("-exec", "-execdir"):
+            idx += 1
+            continue
+
+        break
+
+    while idx < len(tokens) and tokens[idx] in NONINTERACTIVE_SHELL_KEYWORDS:
+        idx += 1
+
+    if idx >= len(tokens):
+        return None
+
+    exec_token = tokens[idx]
+    if _noninteractive_basename(exec_token) == "alias":
+        return NoninteractiveParseResult(
+            env=env,
+            subcmd=NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND,
+            args=[],
+        )
+
+    if _noninteractive_basename(exec_token) in NONINTERACTIVE_SHELL_EXECUTABLES:
+        nested_command = _extract_noninteractive_shell_c_command(tokens[idx + 1 :])
+        if nested_command is None:
             return None
+        return NoninteractiveParseResult(
+            env=env,
+            subcmd="__shell_c__",
+            args=[nested_command],
+        )
 
-        return {
-            "env": env,
-            "subcmd": git_argv[git_idx],
-            "args": git_argv[git_idx + 1 :],
-        }
+    if not _noninteractive_is_git_exec(exec_token):
+        return None
 
+    git_argv = tokens[idx + 1 :]
+    if not git_argv:
+        return None
 
-    def parse_git_commands(command, inherited_env=None, inherited_shell_vars=None):
-        sanitized_command, raw_substitutions = replace_command_substitutions(command)
-        tokens = tokenize(sanitized_command)
-        parsed_commands = []
-        substitutions = []
-        current_env = dict(inherited_env or {})
-        current_shell_vars = dict(inherited_shell_vars or current_env)
-        used_placeholder_indexes = set()
-        for segment, separator in split_segments(tokens):
-            segment_env = dict(current_env)
-            segment_shell_vars = dict(current_shell_vars)
-            for placeholder_index in extract_placeholder_indexes(segment):
-                used_placeholder_indexes.add(placeholder_index)
-                substitutions.append(
-                    {
-                        "command": raw_substitutions[placeholder_index],
-                        "env": dict(segment_env),
-                    }
-                )
-            persisted_env, persisted_shell_vars = apply_exported_editor_env(
-                segment,
-                inherited_env=segment_env,
-                inherited_shell_vars=segment_shell_vars,
+    git_idx = 0
+    while git_idx < len(git_argv):
+        token = git_argv[git_idx]
+        if token == "--":
+            git_idx += 1
+            break
+        if token in NONINTERACTIVE_GIT_OPTIONS_WITH_VALUE:
+            git_idx += 2
+            continue
+        if any(
+            token.startswith(prefix + "=")
+            for prefix in (
+                "--config-env",
+                "--exec-path",
+                "--git-dir",
+                "--namespace",
+                "--super-prefix",
+                "--work-tree",
             )
-            parsed = parse_env_wrapped_segment(segment, inherited_env=persisted_env)
-            if parsed is not None:
-                parsed_commands.append(parsed)
-            if separator in ENV_PERSISTING_CONTROL_TOKENS:
-                current_env = persisted_env
-                current_shell_vars = persisted_shell_vars
-            else:
-                current_env = segment_env
-                current_shell_vars = segment_shell_vars
+        ):
+            git_idx += 1
+            continue
+        if token.startswith("-C") and token != "-C":
+            git_idx += 1
+            continue
+        if token.startswith("-c") and token != "-c":
+            git_idx += 1
+            continue
+        if token.startswith("-"):
+            git_idx += 1
+            continue
+        break
 
-        for index, substitution in enumerate(raw_substitutions):
-            if index in used_placeholder_indexes:
-                continue
+    if git_idx >= len(git_argv):
+        return None
+
+    return NoninteractiveParseResult(
+        env=env,
+        subcmd=git_argv[git_idx],
+        args=git_argv[git_idx + 1 :],
+    )
+
+
+def _parse_noninteractive_git_commands(command, inherited_env=None, inherited_shell_vars=None):
+    sanitized_command, raw_substitutions = replace_command_substitutions(command)
+    tokens = tokenize(sanitized_command)
+    parsed_commands = []
+    substitutions = []
+    current_env = dict(inherited_env or {})
+    current_shell_vars = dict(inherited_shell_vars or current_env)
+    used_placeholder_indexes = set()
+    for segment, separator in split_segments(tokens):
+        segment_env = dict(current_env)
+        segment_shell_vars = dict(current_shell_vars)
+        for placeholder_index in extract_placeholder_indexes(segment):
+            used_placeholder_indexes.add(placeholder_index)
             substitutions.append(
                 {
-                    "command": substitution,
-                    "env": dict(inherited_env or {}),
+                    "command": raw_substitutions[placeholder_index],
+                    "env": dict(segment_env),
                 }
             )
-        return parsed_commands, substitutions
+        persisted_env, persisted_shell_vars = _apply_exported_editor_env(
+            segment,
+            inherited_env=segment_env,
+            inherited_shell_vars=segment_shell_vars,
+        )
+        parsed = parse_env_wrapped_segment(segment, inherited_env=persisted_env)
+        if parsed is not None:
+            parsed_commands.append(parsed)
+        if separator in NONINTERACTIVE_ENV_PERSISTING_CONTROL_TOKENS:
+            current_env = persisted_env
+            current_shell_vars = persisted_shell_vars
+        else:
+            current_env = segment_env
+            current_shell_vars = segment_shell_vars
 
+    for index, substitution in enumerate(raw_substitutions):
+        if index in used_placeholder_indexes:
+            continue
+        substitutions.append(
+            {
+                "command": substitution,
+                "env": dict(inherited_env or {}),
+            }
+        )
+    return parsed_commands, substitutions
+
+
+def run_noninteractive(command: str) -> int:
+    PARSE_ERROR_REASON = (
+        "Unable to safely parse command. Refusing potentially interactive git command."
+    )
 
     def has_long_option(args, *names):
         names_set = set(names)
@@ -1598,7 +1610,7 @@ def run_noninteractive(command: str) -> int:
 
         for substitution in substitutions:
             try:
-                nested_commands, nested_substitutions = parse_git_commands(
+                nested_commands, nested_substitutions = _parse_noninteractive_git_commands(
                     substitution["command"],
                     inherited_env=substitution["env"],
                     inherited_shell_vars=substitution["env"],
@@ -1610,16 +1622,16 @@ def run_noninteractive(command: str) -> int:
                 return reason
 
         for parsed in parsed_commands:
-            subcmd = parsed["subcmd"]
-            args = parsed["args"]
-            env = parsed["env"]
+            subcmd = parsed.subcmd
+            args = parsed.args
+            env = parsed.env
 
-            if subcmd == PARSE_ERROR_SUBCOMMAND:
+            if subcmd == NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND:
                 return PARSE_ERROR_REASON
 
             if subcmd == "__shell_c__":
                 try:
-                    nested_commands, nested_substitutions = parse_git_commands(
+                    nested_commands, nested_substitutions = _parse_noninteractive_git_commands(
                         args[0],
                         inherited_env=env,
                         inherited_shell_vars=env,
@@ -1721,7 +1733,7 @@ def run_noninteractive(command: str) -> int:
 
 
     try:
-        parsed_commands, substitutions = parse_git_commands(command)
+        parsed_commands, substitutions = _parse_noninteractive_git_commands(command)
     except ValueError:
         print(json.dumps({"block": PARSE_ERROR_REASON}))
         return 0
@@ -2183,498 +2195,526 @@ def run_rm_rf(command: str) -> int:
     return 0
 
 
-def run_commit_contexts(command: str, parse_error_reason: str) -> int:
-    import json
-    import os
-    import re
+COMMIT_ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
+COMMIT_ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
+COMMIT_SHELL_KEYWORDS = {
+    "!",
+    "if",
+    "then",
+    "elif",
+    "else",
+    "fi",
+    "do",
+    "done",
+    "while",
+    "until",
+    "for",
+    "in",
+    "case",
+    "esac",
+    "{",
+    "}",
+    "(",
+    ")",
+}
+COMMIT_ENV_OPTIONS_WITH_VALUE = {"-u", "--unset", "-C", "--chdir"}
+COMMIT_GIT_OPTIONS_WITH_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env"}
+COMMIT_REPLAY_ENV_VARS = {
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_NAMESPACE",
+    "GIT_COMMON_DIR",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+}
+COMMIT_SUDO_OPTIONS_WITH_VALUE = {
+    "-u",
+    "-g",
+    "-p",
+    "-C",
+    "-D",
+    "-R",
+    "-T",
+    "-U",
+    "-t",
+    "-r",
+    "-h",
+}
+COMMIT_SUDO_LONG_OPTIONS_WITH_VALUE = {
+    "--user",
+    "--group",
+    "--host",
+    "--prompt",
+    "--command-timeout",
+    "--close-from",
+    "--chdir",
+    "--chroot",
+    "--login-class",
+    "--role",
+    "--type",
+    "--other-user",
+}
+COMMIT_SHELL_EXECUTABLES = {"sh", "bash", "zsh", "dash", "ksh"}
+COMMIT_SHELL_OPTIONS_WITH_VALUE = {"--command", "--rcfile", "--init-file", "--startup-file", "-o", "-O", "+O"}
 
-    ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
-    ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
-    SHELL_KEYWORDS = {
-        "!",
-        "if",
-        "then",
-        "elif",
-        "else",
-        "fi",
-        "do",
-        "done",
-        "while",
-        "until",
-        "for",
-        "in",
-        "case",
-        "esac",
-        "{",
-        "}",
-        "(",
-        ")",
-    }
-    ENV_OPTIONS_WITH_VALUE = {"-u", "--unset", "-C", "--chdir"}
-    GIT_OPTIONS_WITH_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env"}
-    REPLAY_ENV_VARS = {
-        "GIT_DIR",
-        "GIT_WORK_TREE",
-        "GIT_INDEX_FILE",
-        "GIT_NAMESPACE",
-        "GIT_COMMON_DIR",
-        "GIT_OBJECT_DIRECTORY",
-        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-    }
-    SUDO_OPTIONS_WITH_VALUE = {
-        "-u",
-        "-g",
-        "-p",
-        "-C",
-        "-D",
-        "-R",
-        "-T",
-        "-U",
-        "-t",
-        "-r",
-        "-h",
-    }
-    SUDO_LONG_OPTIONS_WITH_VALUE = {
-        "--user",
-        "--group",
-        "--host",
-        "--prompt",
-        "--command-timeout",
-        "--close-from",
-        "--chdir",
-        "--chroot",
-        "--login-class",
-        "--role",
-        "--type",
-        "--other-user",
-    }
-    SHELL_EXECUTABLES = {"sh", "bash", "zsh", "dash", "ksh"}
-    SHELL_OPTIONS_WITH_VALUE = {"--command", "--rcfile", "--init-file", "--startup-file", "-o", "-O", "+O"}
-
-    def parse_shell_inline_command(args):
-        idx = 0
-        while idx < len(args):
-            arg = args[idx]
-            if arg in ("-c", "--command"):
+def parse_shell_inline_command(args):
+    idx = 0
+    while idx < len(args):
+        arg = args[idx]
+        if arg in ("-c", "--command"):
+            if idx + 1 < len(args):
+                return args[idx + 1]
+            return None
+        if arg.startswith("--command="):
+            return arg.split("=", 1)[1]
+        if arg in COMMIT_SHELL_OPTIONS_WITH_VALUE:
+            idx += 2
+            continue
+        if any(arg.startswith(prefix + "=") for prefix in ("--rcfile", "--init-file", "--startup-file")):
+            idx += 1
+            continue
+        if arg == "--":
+            return None
+        if arg.startswith("-") and not arg.startswith("--"):
+            if "c" in arg[1:]:
                 if idx + 1 < len(args):
                     return args[idx + 1]
                 return None
-            if arg.startswith("--command="):
-                return arg.split("=", 1)[1]
-            if arg in SHELL_OPTIONS_WITH_VALUE:
-                idx += 2
-                continue
-            if any(arg.startswith(prefix + "=") for prefix in ("--rcfile", "--init-file", "--startup-file")):
-                idx += 1
-                continue
-            if arg == "--":
-                return None
-            if arg.startswith("-") and not arg.startswith("--"):
-                if "c" in arg[1:]:
-                    if idx + 1 < len(args):
-                        return args[idx + 1]
-                    return None
-                idx += 1
-                continue
-            if arg.startswith("+"):
-                idx += 1
-                continue
-            return None
+            idx += 1
+            continue
+        if arg.startswith("+"):
+            idx += 1
+            continue
         return None
+    return None
 
 
-    def unset_replay_env(git_env, key):
-        git_env[:] = [assignment for assignment in git_env if assignment.split("=", 1)[0] != key]
+def unset_replay_env(git_env, key):
+    git_env[:] = [assignment for assignment in git_env if assignment.split("=", 1)[0] != key]
 
 
-    def set_replay_env(git_env, key, value):
-        unset_replay_env(git_env, key)
-        git_env.append(f"{key}={value}")
+def set_replay_env(git_env, key, value):
+    unset_replay_env(git_env, key)
+    git_env.append(f"{key}={value}")
 
 
-    def clear_replay_env(git_env):
-        git_env[:] = []
+def clear_replay_env(git_env):
+    git_env[:] = []
 
 
-    def inherited_replay_env_from_process():
-        return [f"{key}={os.environ[key]}" for key in REPLAY_ENV_VARS if key in os.environ]
+def inherited_replay_env_from_process():
+    return [f"{key}={os.environ[key]}" for key in COMMIT_REPLAY_ENV_VARS if key in os.environ]
 
 
-    PARSE_ERROR_REASON = parse_error_reason
+class ParseError(Exception):
+    pass
 
 
-    class ParseError(Exception):
-        pass
+@dataclass
+class CommitSegmentResult:
+    contexts: list
+    persisted_git_env: list
+    persisted_shell_git_vars: list
 
-    def parse_commit_contexts(command, inherited_git_args=None, inherited_git_env=None, inherited_shell_git_vars=None, depth=0):
-        # Cap recursion so pathological nesting can't hit Python's stack limit
-        # and convert a ValueError into an uncaught RecursionError (which would
-        # exit the interpreter non-zero and the shell would fail open).
-        if depth > 4:
-            raise ParseError("command substitution nesting too deep")
 
-        contexts = []
-        if inherited_git_env is None:
-            inherited_git_env = inherited_replay_env_from_process()
-        if inherited_shell_git_vars is None:
-            inherited_shell_git_vars = list(inherited_git_env)
-        try:
-            sanitized_command, substitutions = replace_command_substitutions(command)
-            tokens = tokenize(sanitized_command)
-        except ValueError as exc:
-            raise ParseError(str(exc)) from exc
+def parse_commit_contexts(command, inherited_git_args=None, inherited_git_env=None, inherited_shell_git_vars=None, depth=0):
+    # Cap recursion so pathological nesting can't hit Python's stack limit
+    # and convert a ValueError into an uncaught RecursionError (which would
+    # exit the interpreter non-zero and the shell would fail open).
+    if depth > 4:
+        raise ParseError("command substitution nesting too deep")
 
-        current_git_env = list(inherited_git_env or [])
-        current_shell_git_vars = list(inherited_shell_git_vars or [])
-        used_placeholder_indexes = set()
-        for segment, separator in split_segments(tokens):
-            segment_input_env = list(current_git_env)
-            segment_input_shell_git_vars = list(current_shell_git_vars)
-            for placeholder_index in extract_placeholder_indexes(segment):
-                used_placeholder_indexes.add(placeholder_index)
-                contexts.extend(
-                    parse_commit_contexts(
-                        substitutions[placeholder_index],
-                        inherited_git_args=inherited_git_args,
-                        inherited_git_env=segment_input_env,
-                        inherited_shell_git_vars=segment_input_shell_git_vars,
-                        depth=depth + 1,
-                    )
-                )
-            segment_contexts, segment_persisted_env, segment_persisted_shell_git_vars = parse_commit_segment(
-                segment,
-                list(inherited_git_args or []),
-                list(segment_input_env),
-                list(segment_input_shell_git_vars),
-                depth=depth,
-            )
-            contexts.extend(segment_contexts)
-            if separator in ENV_PERSISTING_CONTROL_TOKENS:
-                current_git_env = segment_persisted_env
-                current_shell_git_vars = segment_persisted_shell_git_vars
-            else:
-                current_git_env = segment_input_env
-                current_shell_git_vars = segment_input_shell_git_vars
+    contexts = []
+    if inherited_git_env is None:
+        inherited_git_env = inherited_replay_env_from_process()
+    if inherited_shell_git_vars is None:
+        inherited_shell_git_vars = list(inherited_git_env)
+    try:
+        sanitized_command, substitutions = replace_command_substitutions(command)
+        tokens = tokenize(sanitized_command)
+    except ValueError as exc:
+        raise ParseError(str(exc)) from exc
 
-        for placeholder_index, substitution in enumerate(substitutions):
-            if placeholder_index in used_placeholder_indexes:
-                continue
+    current_git_env = list(inherited_git_env or [])
+    current_shell_git_vars = list(inherited_shell_git_vars or [])
+    used_placeholder_indexes = set()
+    for segment, separator in split_segments(tokens):
+        segment_input_env = list(current_git_env)
+        segment_input_shell_git_vars = list(current_shell_git_vars)
+        for placeholder_index in extract_placeholder_indexes(segment):
+            used_placeholder_indexes.add(placeholder_index)
             contexts.extend(
                 parse_commit_contexts(
-                    substitution,
+                    substitutions[placeholder_index],
                     inherited_git_args=inherited_git_args,
-                    inherited_git_env=inherited_git_env,
-                    inherited_shell_git_vars=inherited_shell_git_vars,
+                    inherited_git_env=segment_input_env,
+                    inherited_shell_git_vars=segment_input_shell_git_vars,
                     depth=depth + 1,
                 )
             )
-        return contexts
+        segment_result = parse_commit_segment(
+            segment,
+            list(inherited_git_args or []),
+            list(segment_input_env),
+            list(segment_input_shell_git_vars),
+            depth=depth,
+        )
+        contexts.extend(segment_result.contexts)
+        if separator in COMMIT_ENV_PERSISTING_CONTROL_TOKENS:
+            current_git_env = segment_result.persisted_git_env
+            current_shell_git_vars = segment_result.persisted_shell_git_vars
+        else:
+            current_git_env = segment_input_env
+            current_shell_git_vars = segment_input_shell_git_vars
+
+    for placeholder_index, substitution in enumerate(substitutions):
+        if placeholder_index in used_placeholder_indexes:
+            continue
+        contexts.extend(
+            parse_commit_contexts(
+                substitution,
+                inherited_git_args=inherited_git_args,
+                inherited_git_env=inherited_git_env,
+                inherited_shell_git_vars=inherited_shell_git_vars,
+                depth=depth + 1,
+            )
+        )
+    return contexts
 
 
-    def lookup_replay_env(assignments, key):
-        for assignment in assignments:
-            assignment_key, _, assignment_value = assignment.partition("=")
-            if assignment_key == key:
-                return assignment_value
-        return None
+def lookup_replay_env(assignments, key):
+    for assignment in assignments:
+        assignment_key, _, assignment_value = assignment.partition("=")
+        if assignment_key == key:
+            return assignment_value
+    return None
 
 
-    def parse_commit_segment(tokens, git_args, git_env, shell_git_vars, depth=0):
-        idx = 0
-        inherited_shell_git_env = list(git_env)
-        shell_git_env = list(inherited_shell_git_env)
-        inherited_shell_git_vars = list(shell_git_vars)
-        shell_git_vars = list(inherited_shell_git_vars)
-        git_env = list(shell_git_env)
-        shell_env_persists = True
-        pending_shell_git_vars = []
+def parse_commit_segment(tokens, git_args, git_env, shell_git_vars, depth=0):
+    idx = 0
+    git_args = list(git_args)
+    inherited_shell_git_env = list(git_env)
+    shell_git_env = list(inherited_shell_git_env)
+    inherited_shell_git_vars = list(shell_git_vars)
+    shell_git_vars = list(inherited_shell_git_vars)
+    git_env = list(shell_git_env)
+    shell_env_persists = True
+    pending_shell_git_vars = []
 
-        while idx < len(tokens) and tokens[idx] in SHELL_KEYWORDS:
-            if tokens[idx] == "(":
-                shell_env_persists = False
+    while idx < len(tokens) and tokens[idx] in COMMIT_SHELL_KEYWORDS:
+        if tokens[idx] == "(":
+            shell_env_persists = False
+        idx += 1
+
+    while idx < len(tokens) and COMMIT_ASSIGNMENT.match(tokens[idx]):
+        key, value = tokens[idx].split("=", 1)
+        if key in COMMIT_REPLAY_ENV_VARS:
+            set_replay_env(git_env, key, value)
+            set_replay_env(pending_shell_git_vars, key, value)
+        idx += 1
+
+    if idx >= len(tokens):
+        for assignment in pending_shell_git_vars:
+            key, value = assignment.split("=", 1)
+            set_replay_env(shell_git_vars, key, value)
+        persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
+        persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
+        return CommitSegmentResult(
+            contexts=[],
+            persisted_git_env=persisted_shell_git_env,
+            persisted_shell_git_vars=persisted_shell_git_vars,
+        )
+
+    while idx < len(tokens):
+        base = os.path.basename(tokens[idx])
+        if base in {"command", "builtin"}:
             idx += 1
+            while idx < len(tokens):
+                token = tokens[idx]
+                if token == "--":
+                    idx += 1
+                    break
+                if token.startswith("-"):
+                    idx += 1
+                    continue
+                break
+            continue
 
-        while idx < len(tokens) and ASSIGNMENT.match(tokens[idx]):
-            key, value = tokens[idx].split("=", 1)
-            if key in REPLAY_ENV_VARS:
-                set_replay_env(git_env, key, value)
-                set_replay_env(pending_shell_git_vars, key, value)
+        if base == "alias":
+            raise ParseError("shell alias definitions are not supported")
+
+        if base == "sudo":
             idx += 1
+            while idx < len(tokens):
+                token = tokens[idx]
+                if token == "--":
+                    idx += 1
+                    break
+                if token in COMMIT_SUDO_OPTIONS_WITH_VALUE:
+                    idx += 2
+                    continue
+                if token in COMMIT_SUDO_LONG_OPTIONS_WITH_VALUE:
+                    if token == "--chdir" and idx + 1 < len(tokens):
+                        git_args.extend(["-C", tokens[idx + 1]])
+                    idx += 2
+                    continue
+                if token in {"--askpass", "--background", "--preserve-env", "--remove-timestamp", "--reset-timestamp", "--validate", "--version", "--list", "--non-interactive"}:
+                    idx += 1
+                    continue
+                if any(
+                    token.startswith(prefix)
+                    for prefix in (
+                        "--host=",
+                        "--user=",
+                        "--group=",
+                        "--prompt=",
+                        "--command-timeout=",
+                        "--close-from=",
+                        "--chroot=",
+                        "--login-class=",
+                        "--role=",
+                        "--type=",
+                        "--other-user=",
+                        "--preserve-env=",
+                    )
+                ):
+                    idx += 1
+                    continue
+                if token.startswith("--chdir="):
+                    git_args.extend(["-C", token.split("=", 1)[1]])
+                    idx += 1
+                    continue
+                if token.startswith("-"):
+                    idx += 1
+                    continue
+                break
+            continue
 
-        if idx >= len(tokens):
+        if base == "export":
             for assignment in pending_shell_git_vars:
                 key, value = assignment.split("=", 1)
                 set_replay_env(shell_git_vars, key, value)
-            persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
-            persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
-            return [], persisted_shell_git_env, persisted_shell_git_vars
-
-        while idx < len(tokens):
-            base = os.path.basename(tokens[idx])
-            if base in {"command", "builtin"}:
-                idx += 1
-                while idx < len(tokens):
-                    token = tokens[idx]
-                    if token == "--":
-                        idx += 1
-                        break
-                    if token.startswith("-"):
-                        idx += 1
-                        continue
+            pending_shell_git_vars = []
+            idx += 1
+            while idx < len(tokens):
+                token = tokens[idx]
+                if token == "--":
+                    idx += 1
                     break
-                continue
+                if token == "-n":
+                    if idx + 1 < len(tokens):
+                        unset_replay_env(shell_git_env, tokens[idx + 1])
+                        unset_replay_env(git_env, tokens[idx + 1])
+                    idx += 2
+                    continue
+                if token.startswith("-n") and token != "-n":
+                    unset_replay_env(shell_git_env, token[2:])
+                    unset_replay_env(git_env, token[2:])
+                    idx += 1
+                    continue
+                if COMMIT_ASSIGNMENT.match(token):
+                    key, value = token.split("=", 1)
+                    if key in COMMIT_REPLAY_ENV_VARS:
+                        set_replay_env(shell_git_vars, key, value)
+                        set_replay_env(shell_git_env, key, value)
+                        set_replay_env(git_env, key, value)
+                    idx += 1
+                    continue
+                if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", token):
+                    value = lookup_replay_env(shell_git_vars, token)
+                    if value is not None:
+                        set_replay_env(shell_git_env, token, value)
+                        set_replay_env(git_env, token, value)
+                    idx += 1
+                    continue
+                if token.startswith("-"):
+                    idx += 1
+                    continue
+                break
+            continue
 
-            if base == "alias":
-                raise ParseError("shell alias definitions are not supported")
-
-            if base == "sudo":
-                idx += 1
-                while idx < len(tokens):
-                    token = tokens[idx]
-                    if token == "--":
-                        idx += 1
-                        break
-                    if token in SUDO_OPTIONS_WITH_VALUE:
-                        idx += 2
-                        continue
-                    if token in SUDO_LONG_OPTIONS_WITH_VALUE:
-                        if token == "--chdir" and idx + 1 < len(tokens):
-                            git_args.extend(["-C", tokens[idx + 1]])
-                        idx += 2
-                        continue
-                    if token in {"--askpass", "--background", "--preserve-env", "--remove-timestamp", "--reset-timestamp", "--validate", "--version", "--list", "--non-interactive"}:
-                        idx += 1
-                        continue
-                    if any(
-                        token.startswith(prefix)
-                        for prefix in (
-                            "--host=",
-                            "--user=",
-                            "--group=",
-                            "--prompt=",
-                            "--command-timeout=",
-                            "--close-from=",
-                            "--chroot=",
-                            "--login-class=",
-                            "--role=",
-                            "--type=",
-                            "--other-user=",
-                            "--preserve-env=",
-                        )
-                    ):
-                        idx += 1
-                        continue
-                    if token.startswith("--chdir="):
-                        git_args.extend(["-C", token.split("=", 1)[1]])
-                        idx += 1
-                        continue
-                    if token.startswith("-"):
-                        idx += 1
-                        continue
+        if base == "unset":
+            pending_shell_git_vars = []
+            unset_targets_variables = True
+            idx += 1
+            while idx < len(tokens):
+                token = tokens[idx]
+                if token == "--":
+                    idx += 1
                     break
-                continue
-
-            if base == "export":
-                for assignment in pending_shell_git_vars:
-                    key, value = assignment.split("=", 1)
-                    set_replay_env(shell_git_vars, key, value)
-                pending_shell_git_vars = []
+                if token in {"-f", "-n"}:
+                    unset_targets_variables = False
+                    idx += 1
+                    continue
+                if token == "-v":
+                    unset_targets_variables = True
+                    idx += 1
+                    continue
+                if token.startswith("-"):
+                    option_flags = token[1:]
+                    if "f" in option_flags or "n" in option_flags:
+                        unset_targets_variables = False
+                    elif "v" in option_flags:
+                        unset_targets_variables = True
+                    idx += 1
+                    continue
+                if unset_targets_variables:
+                    unset_replay_env(shell_git_vars, token)
+                    unset_replay_env(shell_git_env, token)
+                    unset_replay_env(git_env, token)
                 idx += 1
-                while idx < len(tokens):
-                    token = tokens[idx]
-                    if token == "--":
-                        idx += 1
-                        break
-                    if token == "-n":
+            continue
+
+        if base == "env":
+            idx += 1
+            while idx < len(tokens):
+                token = tokens[idx]
+                if COMMIT_ASSIGNMENT.match(token):
+                    key, value = token.split("=", 1)
+                    if key in COMMIT_REPLAY_ENV_VARS:
+                        set_replay_env(git_env, key, value)
+                    idx += 1
+                    continue
+                if token == "--":
+                    idx += 1
+                    break
+                if token in {"-i", "--ignore-environment"}:
+                    clear_replay_env(git_env)
+                    idx += 1
+                    continue
+                if token in COMMIT_ENV_OPTIONS_WITH_VALUE:
+                    if token in {"-u", "--unset"}:
                         if idx + 1 < len(tokens):
-                            unset_replay_env(shell_git_env, tokens[idx + 1])
                             unset_replay_env(git_env, tokens[idx + 1])
                         idx += 2
                         continue
-                    if token.startswith("-n") and token != "-n":
-                        unset_replay_env(shell_git_env, token[2:])
-                        unset_replay_env(git_env, token[2:])
-                        idx += 1
-                        continue
-                    if ASSIGNMENT.match(token):
-                        key, value = token.split("=", 1)
-                        if key in REPLAY_ENV_VARS:
-                            set_replay_env(shell_git_vars, key, value)
-                            set_replay_env(shell_git_env, key, value)
-                            set_replay_env(git_env, key, value)
-                        idx += 1
-                        continue
-                    if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", token):
-                        value = lookup_replay_env(shell_git_vars, token)
-                        if value is not None:
-                            set_replay_env(shell_git_env, token, value)
-                            set_replay_env(git_env, token, value)
-                        idx += 1
-                        continue
-                    if token.startswith("-"):
-                        idx += 1
-                        continue
-                    break
-                continue
-
-            if base == "unset":
-                pending_shell_git_vars = []
-                unset_targets_variables = True
-                idx += 1
-                while idx < len(tokens):
-                    token = tokens[idx]
-                    if token == "--":
-                        idx += 1
-                        break
-                    if token in {"-f", "-n"}:
-                        unset_targets_variables = False
-                        idx += 1
-                        continue
-                    if token == "-v":
-                        unset_targets_variables = True
-                        idx += 1
-                        continue
-                    if token.startswith("-"):
-                        option_flags = token[1:]
-                        if "f" in option_flags or "n" in option_flags:
-                            unset_targets_variables = False
-                        elif "v" in option_flags:
-                            unset_targets_variables = True
-                        idx += 1
-                        continue
-                    if unset_targets_variables:
-                        unset_replay_env(shell_git_vars, token)
-                        unset_replay_env(shell_git_env, token)
-                        unset_replay_env(git_env, token)
+                    if token in {"-C", "--chdir"} and idx + 1 < len(tokens):
+                        git_args.extend(["-C", tokens[idx + 1]])
+                    idx += 2
+                    continue
+                if token.startswith("--unset="):
+                    unset_replay_env(git_env, token.split("=", 1)[1])
                     idx += 1
-                continue
+                    continue
+                if token.startswith("-u") and token != "-u":
+                    unset_replay_env(git_env, token[2:])
+                    idx += 1
+                    continue
+                if token.startswith("--chdir="):
+                    git_args.extend(["-C", token.split("=", 1)[1]])
+                    idx += 1
+                    continue
+                if token.startswith("-C") and token != "-C":
+                    git_args.extend(["-C", token[2:]])
+                    idx += 1
+                    continue
+                if token.startswith("-"):
+                    idx += 1
+                    continue
+                break
+            continue
 
-            if base == "env":
-                idx += 1
-                while idx < len(tokens):
-                    token = tokens[idx]
-                    if ASSIGNMENT.match(token):
-                        key, value = token.split("=", 1)
-                        if key in REPLAY_ENV_VARS:
-                            set_replay_env(git_env, key, value)
-                        idx += 1
-                        continue
-                    if token == "--":
-                        idx += 1
-                        break
-                    if token in {"-i", "--ignore-environment"}:
-                        clear_replay_env(git_env)
-                        idx += 1
-                        continue
-                    if token in ENV_OPTIONS_WITH_VALUE:
-                        if token in {"-u", "--unset"}:
-                            if idx + 1 < len(tokens):
-                                unset_replay_env(git_env, tokens[idx + 1])
-                            idx += 2
-                            continue
-                        if token in {"-C", "--chdir"} and idx + 1 < len(tokens):
-                            git_args.extend(["-C", tokens[idx + 1]])
-                        idx += 2
-                        continue
-                    if token.startswith("--unset="):
-                        unset_replay_env(git_env, token.split("=", 1)[1])
-                        idx += 1
-                        continue
-                    if token.startswith("-u") and token != "-u":
-                        unset_replay_env(git_env, token[2:])
-                        idx += 1
-                        continue
-                    if token.startswith("--chdir="):
-                        git_args.extend(["-C", token.split("=", 1)[1]])
-                        idx += 1
-                        continue
-                    if token.startswith("-C") and token != "-C":
-                        git_args.extend(["-C", token[2:]])
-                        idx += 1
-                        continue
-                    if token.startswith("-"):
-                        idx += 1
-                        continue
-                    break
-                continue
-
-            if base in SHELL_EXECUTABLES:
-                nested_command = parse_shell_inline_command(tokens[idx + 1 :])
-                if nested_command is None:
-                    persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
-                    persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
-                    return [], persisted_shell_git_env, persisted_shell_git_vars
+        if base in COMMIT_SHELL_EXECUTABLES:
+            nested_command = parse_shell_inline_command(tokens[idx + 1 :])
+            if nested_command is None:
                 persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
                 persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
-                return (
-                    parse_commit_contexts(
-                        nested_command,
-                        inherited_git_args=git_args,
-                        inherited_git_env=git_env,
-                        inherited_shell_git_vars=list(git_env),
-                        depth=depth + 1,
-                    ),
-                    persisted_shell_git_env,
-                    persisted_shell_git_vars,
+                return CommitSegmentResult(
+                    contexts=[],
+                    persisted_git_env=persisted_shell_git_env,
+                    persisted_shell_git_vars=persisted_shell_git_vars,
                 )
-
-            if base == "git":
-                break
-
             persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
             persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
-            return [], persisted_shell_git_env, persisted_shell_git_vars
+            return CommitSegmentResult(
+                contexts=parse_commit_contexts(
+                    nested_command,
+                    inherited_git_args=git_args,
+                    inherited_git_env=git_env,
+                    inherited_shell_git_vars=list(git_env),
+                    depth=depth + 1,
+                ),
+                persisted_git_env=persisted_shell_git_env,
+                persisted_shell_git_vars=persisted_shell_git_vars,
+            )
 
-        if idx >= len(tokens) or os.path.basename(tokens[idx]) != "git":
-            persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
-            persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
-            return [], persisted_shell_git_env, persisted_shell_git_vars
-
-        idx += 1
-        while idx < len(tokens):
-            token = tokens[idx]
-            if token == "--":
-                idx += 1
-                break
-            if token in GIT_OPTIONS_WITH_VALUE:
-                git_args.append(token)
-                if idx + 1 < len(tokens):
-                    git_args.append(tokens[idx + 1])
-                idx += 2
-                continue
-            if any(token.startswith(prefix + "=") for prefix in ("--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env")):
-                git_args.append(token)
-                idx += 1
-                continue
-            if token.startswith("-"):
-                git_args.append(token)
-                idx += 1
-                continue
-            # Command substitution between `git` and its subcommand expands to
-            # unknown flags at runtime; keep scanning so a commit context is
-            # emitted and the dynamic-repo-selection gate can block on the
-            # retained placeholder.
-            if token.startswith("__CMD_SUBST_"):
-                git_args.append(token)
-                idx += 1
-                continue
+        if base == "git":
             break
-
-        if idx < len(tokens) and tokens[idx] == "commit":
-            persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
-            persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
-            return [{"git_args": git_args, "git_env": git_env}], persisted_shell_git_env, persisted_shell_git_vars
 
         persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
         persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
-        return [], persisted_shell_git_env, persisted_shell_git_vars
+        return CommitSegmentResult(
+            contexts=[],
+            persisted_git_env=persisted_shell_git_env,
+            persisted_shell_git_vars=persisted_shell_git_vars,
+        )
+
+    if idx >= len(tokens) or os.path.basename(tokens[idx]) != "git":
+        persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
+        persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
+        return CommitSegmentResult(
+            contexts=[],
+            persisted_git_env=persisted_shell_git_env,
+            persisted_shell_git_vars=persisted_shell_git_vars,
+        )
+
+    idx += 1
+    while idx < len(tokens):
+        token = tokens[idx]
+        if token == "--":
+            idx += 1
+            break
+        if token in COMMIT_GIT_OPTIONS_WITH_VALUE:
+            git_args.append(token)
+            if idx + 1 < len(tokens):
+                git_args.append(tokens[idx + 1])
+            idx += 2
+            continue
+        if any(token.startswith(prefix + "=") for prefix in ("--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env")):
+            git_args.append(token)
+            idx += 1
+            continue
+        if token.startswith("-"):
+            git_args.append(token)
+            idx += 1
+            continue
+        # Command substitution between `git` and its subcommand expands to
+        # unknown flags at runtime; keep scanning so a commit context is
+        # emitted and the dynamic-repo-selection gate can block on the
+        # retained placeholder.
+        if token.startswith("__CMD_SUBST_"):
+            git_args.append(token)
+            idx += 1
+            continue
+        break
+
+    if idx < len(tokens) and tokens[idx] == "commit":
+        persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
+        persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
+        return CommitSegmentResult(
+            contexts=[{"git_args": git_args, "git_env": git_env}],
+            persisted_git_env=persisted_shell_git_env,
+            persisted_shell_git_vars=persisted_shell_git_vars,
+        )
+
+    persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
+    persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
+    return CommitSegmentResult(
+        contexts=[],
+        persisted_git_env=persisted_shell_git_env,
+        persisted_shell_git_vars=persisted_shell_git_vars,
+    )
 
 
+
+
+def run_commit_contexts(command: str, parse_error_reason: str) -> int:
     try:
         result = parse_commit_contexts(command)
     except (ParseError, RecursionError):
         # Emit a sentinel the shell caller recognises and blocks on.
-        result = [{"parse_error": PARSE_ERROR_REASON}]
+        result = [{"parse_error": parse_error_reason}]
     print(json.dumps(result))
     return 0
 
