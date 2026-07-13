@@ -4,7 +4,7 @@
 # Upstream commit reviewed: 6f9ab03a031c054a8046659926251fb6c149269f
 # License: MIT, Copyright (c) 2025 Every.
 #
-"""Extract the conversation skeleton from a Claude Code, Codex, or Cursor JSONL session file.
+"""Build a local event outline from a Claude Code, Codex, or Cursor JSONL session file.
 
 Usage:
   cat <session.jsonl> | python3 extract-skeleton.py
