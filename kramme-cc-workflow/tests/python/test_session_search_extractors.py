@@ -30,6 +30,8 @@ CURSOR_SESSION = """\
 {"role":"assistant","message":{"content":[{"type":"text","text":"I will inspect this synthetic Cursor session now."}]}}
 """
 
+FAILURE_SESSION = '{"type":"user","message":{"content":[1]}}\n'
+
 CODEX_SKELETON = """\
 [2026-06-06T10:02:00] [user] Please debug the authentication script carefully.
 ---
@@ -126,6 +128,18 @@ class SessionExtractorTests(unittest.TestCase):
             status = json.loads(written.stdout)
             self.assertEqual(status["bytes"], len(CODEX_ERRORS.encode()))
             self.assertEqual(status["errors_found"], 1)
+
+    def test_atomic_output_failure_preserves_destination_and_removes_temporary_file(self):
+        for script_name in ("extract-skeleton.py", "extract-errors.py"):
+            with self.subTest(script=script_name), tempfile.TemporaryDirectory() as directory:
+                output_path = Path(directory) / "extract.txt"
+                output_path.write_text("previous content", encoding="utf-8")
+
+                result = self.run_script(script_name, FAILURE_SESSION, "--output", output_path)
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(output_path.read_text(encoding="utf-8"), "previous content")
+                self.assertEqual(list(output_path.parent.glob(f".{output_path.name}.*")), [])
 
     def test_skeleton_detects_each_platform(self):
         expected_markers = (
