@@ -150,12 +150,13 @@ function convertClaudeToCodex(plugin) {
       return { command, skillName };
     });
 
-  const agentSkills = plugin.agents.map((agent) =>
-    convertAgentSkill(agent, usedSkillNames),
-  );
-  const knownAgentSkills = buildKnownAgentSkillNames(
-    plugin.agents,
-    agentSkills,
+  const agentSkillDefinitions = plugin.agents.map((agent) => ({
+    agent,
+    name: uniqueName(codexName(agent.name), usedSkillNames),
+  }));
+  const knownAgentSkills = buildKnownAgentSkillNames(agentSkillDefinitions);
+  const agentSkills = agentSkillDefinitions.map(({ agent, name }) =>
+    convertAgentSkill(agent, name, knownCommandNames, knownAgentSkills),
   );
   const commandSkills = commandSkillDefinitions.map(({ command, skillName }) =>
     convertCommandSkill(
@@ -247,17 +248,24 @@ function convertCodexHookPlugin(plugin) {
 
 /**
  * @param {ClaudeAgent} agent
- * @param {Set<string>} usedNames
+ * @param {string} name
+ * @param {Set<string>} knownCommands
+ * @param {Map<string, string>} knownAgentSkills
  * @returns {CodexSkillFile}
  */
-function convertAgentSkill(agent, usedNames) {
-  const name = uniqueName(codexName(agent.name), usedNames);
+function convertAgentSkill(agent, name, knownCommands, knownAgentSkills) {
   const description = sanitizeDescription(
-    agent.description ?? `Converted from Claude agent ${agent.name}`,
+    transformAgentContentForCodex(
+      agent.description ?? `Converted from Claude agent ${agent.name}`,
+      { knownCommands, knownAgentSkills },
+    ),
   );
   const frontmatter = { name, description };
 
-  let body = agent.body.trim();
+  let body = transformAgentContentForCodex(agent.body.trim(), {
+    knownCommands,
+    knownAgentSkills,
+  });
   if (agent.capabilities && agent.capabilities.length > 0) {
     const capabilities = agent.capabilities
       .map((capability) => `- ${capability}`)
@@ -272,19 +280,18 @@ function convertAgentSkill(agent, usedNames) {
   return { name, content };
 }
 
-function buildKnownAgentSkillNames(agents, agentSkills) {
+function buildKnownAgentSkillNames(agentSkillDefinitions) {
   const knownAgentSkills = new Map();
-  for (let index = 0; index < agents.length; index += 1) {
-    const agent = agents[index];
-    const skill = agentSkills[index];
-    if (!agent || !skill) continue;
-    knownAgentSkills.set(codexName(agent.name), skill.name);
+  for (const { agent, name } of agentSkillDefinitions) {
     if (agent.sourcePath) {
       knownAgentSkills.set(
         codexName(path.basename(agent.sourcePath, ".md")),
-        skill.name,
+        name,
       );
     }
+  }
+  for (const { agent, name } of agentSkillDefinitions) {
+    knownAgentSkills.set(codexName(agent.name), name);
   }
   return knownAgentSkills;
 }
@@ -351,17 +358,54 @@ function convertExistingSkillForCodex(skill, knownCommands, knownAgentSkills) {
  */
 function transformContentForCodex(body, options = {}) {
   let result = body;
-  result = rewriteTaskCalls(result);
+  result = rewriteTaskCalls(result, options.knownAgentSkills);
   result = rewriteSlashCommandReferences(result, options.knownCommands);
-  result = rewriteAgentMentions(result);
+  result = rewriteAgentMentions(result, options.knownAgentSkills);
   result = rewriteCodexAgentFileReferences(result, options.knownAgentSkills);
   return normalizeCodexInstructionText(result);
 }
 
-function rewriteTaskCalls(text) {
+function transformAgentContentForCodex(body, options) {
+  const transformed = transformContentForCodex(body, options);
+  if (!/`?CLAUDE\.md`?/.test(transformed)) return transformed;
+
+  const instructionFiles =
+    "`AGENTS.md`, `CLAUDE.md`, and closest nested equivalents";
+  const claudeInstructionPattern =
+    /`?CLAUDE\.md`?( conventions| or equivalent| violation| rule)?/g;
+
+  return transformed.replace(
+    claudeInstructionPattern,
+    (match, modifier, offset) => {
+      const currentClause =
+        transformed
+          .slice(0, offset)
+          .split(/[\n!?;:]|\.(?!md\b)/i)
+          .at(-1) ?? "";
+      if (/`?AGENTS\.md`?/.test(currentClause)) return match;
+
+      switch (modifier) {
+        case " conventions":
+          return `conventions from ${instructionFiles}`;
+        case " or equivalent":
+          return "`AGENTS.md`, `CLAUDE.md`, or closest nested equivalent";
+        case " violation":
+          return `violation of ${instructionFiles}`;
+        case " rule":
+          return `rule from ${instructionFiles}`;
+        default:
+          return instructionFiles;
+      }
+    },
+  );
+}
+
+function rewriteTaskCalls(text, knownAgentSkills) {
   const taskPattern = /^(\s*-?\s*)Task\s+([a-z][a-z0-9-]*)\(([^)]+)\)/gm;
   return text.replace(taskPattern, (_match, prefix, agentName, args) => {
-    const skillName = codexName(agentName);
+    const normalizedAgentName = codexName(agentName);
+    const skillName =
+      knownAgentSkills?.get(normalizedAgentName) ?? normalizedAgentName;
     const trimmedArgs = args.trim();
     return `${prefix}Use the $${skillName} skill to: ${trimmedArgs}`;
   });
@@ -382,11 +426,13 @@ function rewriteSlashCommandReferences(text, knownCommands) {
   });
 }
 
-function rewriteAgentMentions(text) {
+function rewriteAgentMentions(text, knownAgentSkills) {
   const agentRefPattern =
     /@([a-z][a-z0-9-]*-(?:agent|reviewer|researcher|analyst|specialist|oracle|sentinel|guardian|strategist))/gi;
   return text.replace(agentRefPattern, (_match, agentName) => {
-    const skillName = codexName(agentName);
+    const normalizedAgentName = codexName(agentName);
+    const skillName =
+      knownAgentSkills?.get(normalizedAgentName) ?? normalizedAgentName;
     return `$${skillName} skill`;
   });
 }
@@ -495,10 +541,7 @@ const CODEX_INSTRUCTION_REPLACEMENTS = [
     /\bvia `?AskUserQuestion`?(?=[:\s.,)]|$)/g,
     "by asking the user directly in chat",
   ],
-  [
-    /\bthe same `?AskUserQuestion`? prompt\b/g,
-    "the same direct chat prompt",
-  ],
+  [/\bthe same `?AskUserQuestion`? prompt\b/g, "the same direct chat prompt"],
   [
     /\bAskUserQuestion with (\d+) options\b/g,
     "a direct chat question with $1 concrete options",
@@ -554,6 +597,18 @@ const CODEX_INSTRUCTION_REPLACEMENTS = [
     "using a subagent when available; otherwise in the main thread",
   ],
   [/\bTask tool\b/g, "subagent workflow"],
+  [
+    /\bMonitor task progress via `?TaskList`?(?=[\s.,:;)]|$)/g,
+    "Monitor task progress with list_agents",
+  ],
+  [
+    /\bMonitor `?TaskList`? for\b/g,
+    "Monitor agent progress with list_agents for",
+  ],
+  [/\busing `?SendMessage`?(?=[\s.,:;)]|$)/g, "using send_message"],
+  [/\bvia `?SendMessage`?(?=[\s.,:;)]|$)/g, "with send_message"],
+  [/\bSendMessage tool\b/g, "send_message"],
+  [/\bTaskList tool\b/g, "list_agents"],
   [/\bvia the Skill tool to\b/g, "using the corresponding Codex skill to"],
   [/\busing the Skill tool to\b/g, "using the corresponding Codex skill to"],
   [/\bInvoke via Skill tool\b/g, "Invoke using the corresponding Codex skill"],

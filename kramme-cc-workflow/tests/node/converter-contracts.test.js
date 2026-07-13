@@ -184,7 +184,8 @@ options:
 
   assert.deepEqual(parsed, {
     header: "Release scope",
-    question: "Which release scopes should this include?\nChoose every applicable area.",
+    question:
+      "Which release scopes should this include?\nChoose every applicable area.",
     multiSelect: true,
     options: [
       {
@@ -222,8 +223,8 @@ test("transformer rewrites task calls, references, and AskUserQuestion guidance"
     "Use `agents/kramme:reviewer.md` and [reviewer](agents/kramme:reviewer.md).",
     "1. Ask for the issue ID:",
     "   ````yaml",
-    "   header: \"Linear issue\"",
-    "   question: \"Enter the Linear issue ID (e.g., WAN-521):\"",
+    '   header: "Linear issue"',
+    '   question: "Enter the Linear issue ID (e.g., WAN-521):"',
     "   options: []",
     "   ````",
     "### Using AskUserQuestion Correctly",
@@ -240,10 +241,19 @@ test("transformer rewrites task calls, references, and AskUserQuestion guidance"
     knownAgentSkills,
   });
 
-  assert.match(output, /Use the \$support-reviewer skill to: review this parser/);
-  assert.match(output, /Run \$kramme:pr:create, then \/unknown, and keep \/usr\/bin\./);
+  assert.match(
+    output,
+    /Use the \$support-reviewer skill to: review this parser/,
+  );
+  assert.match(
+    output,
+    /Run \$kramme:pr:create, then \/unknown, and keep \/usr\/bin\./,
+  );
   assert.match(output, /Ask \$support-reviewer skill to inspect the output\./);
-  assert.match(output, /Use \$kramme:reviewer skill and \$kramme:reviewer skill\./);
+  assert.match(
+    output,
+    /Use \$kramme:reviewer skill and \$kramme:reviewer skill\./,
+  );
   assert.match(
     output,
     /1\. Ask for the issue ID:\n   Ask the user directly in chat:\n   Question label: Linear issue\n   Question: Enter the Linear issue ID \(e\.g\., WAN-521\):/,
@@ -258,6 +268,29 @@ test("transformer rewrites task calls, references, and AskUserQuestion guidance"
   assert.match(output, /- `Question`: The full question text/);
   assert.match(output, /- `Multi-select`: Use this style only/);
   assert.doesNotMatch(output, /AskUserQuestion|````yaml/);
+});
+
+test("transformer rewrites Codex-supported team controls without changing code identifiers", () => {
+  const input = [
+    "Monitor task progress via TaskList.",
+    "Monitor TaskList for completed tasks.",
+    "Message them using SendMessage when findings overlap.",
+    "function TaskList() { return <TaskFilters />; }",
+  ].join("\n");
+
+  const output = transformContentForCodex(input);
+
+  assert.match(output, /Monitor task progress with list_agents\./);
+  assert.match(
+    output,
+    /Monitor agent progress with list_agents for completed tasks\./,
+  );
+  assert.match(
+    output,
+    /Message them using send_message when findings overlap\./,
+  );
+  assert.match(output, /function TaskList\(\)/);
+  assert.equal(transformContentForCodex(output), output);
 });
 
 test("loader derives invocable skill commands and normalizes boolean fields", async () => {
@@ -315,10 +348,10 @@ Enabled body.
     );
 
     const plugin = await loadClaudePlugin(pluginRoot);
-    assert.deepEqual(
-      plugin.commands.map((command) => command.name).sort(),
-      ["literal-enabled", "quoted-enabled"],
-    );
+    assert.deepEqual(plugin.commands.map((command) => command.name).sort(), [
+      "literal-enabled",
+      "quoted-enabled",
+    ]);
 
     const skills = Object.fromEntries(
       plugin.skills.map((skill) => [skill.name, skill]),
@@ -462,16 +495,13 @@ test("loader rejects invalid schema-declared primitive frontmatter types", async
         `---\n${frontmatter}\n---\nTyped body.\n`,
       );
 
-      await assert.rejects(
-        loadClaudePlugin(pluginRoot),
-        (error) => {
-          assert.ok(error instanceof Error);
-          assert.match(error.message, /skills[/\\]typed-skill[/\\]SKILL\.md/);
-          assert.match(error.message, new RegExp(`frontmatter field "${field}"`));
-          assert.match(error.message, new RegExp(`must be a ${expectedType}`));
-          return true;
-        },
-      );
+      await assert.rejects(loadClaudePlugin(pluginRoot), (error) => {
+        assert.ok(error instanceof Error);
+        assert.match(error.message, /skills[/\\]typed-skill[/\\]SKILL\.md/);
+        assert.match(error.message, new RegExp(`frontmatter field "${field}"`));
+        assert.match(error.message, new RegExp(`must be a ${expectedType}`));
+        return true;
+      });
     });
   }
 });
@@ -1027,6 +1057,216 @@ test("transformer exposes documented Codex generated surface fields", () => {
   );
 });
 
+test("agent transformations use collision-resolved skill names", () => {
+  const bundle = convertClaudeToCodex({
+    agents: [
+      {
+        body: "Review changes.",
+        description: "Reviews changes.",
+        name: "Support Reviewer",
+        sourcePath: "/plugin/agents/support-reviewer.md",
+      },
+      {
+        body: [
+          "Task support-reviewer(review this parser)",
+          "Ask @support-reviewer to verify the result.",
+        ].join("\n"),
+        description: "Coordinates review.",
+        name: "Review Coordinator",
+        sourcePath: "/plugin/agents/review-coordinator.md",
+      },
+    ],
+    commands: [],
+    manifest: { name: "fixture-plugin", version: "1.0.0" },
+    mcpServers: {},
+    root: "/plugin",
+    skills: [
+      {
+        body: "Existing skill.",
+        description: "Occupies the original agent name.",
+        name: "Support Reviewer",
+        sourceDir: "/plugin/skills/support-reviewer",
+      },
+    ],
+  });
+
+  assert.deepEqual(
+    bundle.agentSkills.map((skill) => skill.name),
+    ["support-reviewer-2", "review-coordinator"],
+  );
+  assert.match(
+    bundle.agentSkills[1].content,
+    /Use the \$support-reviewer-2 skill to: review this parser/,
+  );
+  assert.match(
+    bundle.agentSkills[1].content,
+    /Ask \$support-reviewer-2 skill to verify the result/,
+  );
+});
+
+test("canonical agent names take precedence over filename aliases", () => {
+  const bundle = convertClaudeToCodex({
+    agents: [
+      {
+        body: "Review changes.",
+        description: "Reviews changes.",
+        name: "Support Reviewer",
+        sourcePath: "/plugin/agents/review-helper.md",
+      },
+      {
+        body: "Review other changes.",
+        description: "Reviews other changes.",
+        name: "Other Reviewer",
+        sourcePath: "/plugin/agents/support-reviewer.md",
+      },
+      {
+        body: [
+          "Task support-reviewer(review this parser)",
+          "Ask @support-reviewer to verify the result.",
+        ].join("\n"),
+        description: "Coordinates review.",
+        name: "Review Coordinator",
+        sourcePath: "/plugin/agents/review-coordinator.md",
+      },
+    ],
+    commands: [],
+    manifest: { name: "fixture-plugin", version: "1.0.0" },
+    mcpServers: {},
+    root: "/plugin",
+    skills: [],
+  });
+
+  assert.match(
+    bundle.agentSkills[2].content,
+    /Use the \$support-reviewer skill to: review this parser/,
+  );
+  assert.match(
+    bundle.agentSkills[2].content,
+    /Ask \$support-reviewer skill to verify the result/,
+  );
+});
+
+test("converted skill roots contain no executable Claude controls and honor instruction files", async () => {
+  await withTempDir(async (root) => {
+    const agentsHome = path.join(root, "agents-home");
+    const codexRoot = path.join(root, "codex-home");
+    const codexStagingRoot = path.join(root, "codex-staging");
+    const sourceDir = path.join(root, "plugin", "skills", "fixture-skill");
+    const canonicalResource = [
+      "Message teammates using SendMessage.",
+      "Use the Read tool, Edit/MultiEdit, and Question tool.",
+      "Invoke via Skill tool with subagent_type=Explore.",
+      "",
+    ].join("\n");
+    await writeSourceSkill(sourceDir, {
+      "SKILL.md": "Canonical skill source.\n",
+      "references/team-mode.md": canonicalResource,
+    });
+
+    const bundle = convertClaudeToCodex({
+      agents: [
+        {
+          body: [
+            "Read AGENTS.md first. Follow CLAUDE.md conventions.",
+            "Read repo-root `AGENTS.md` and `CLAUDE.md` when present.",
+            "Treat an explicit CLAUDE.md violation as a high-confidence finding.",
+            "Project rules are typically in CLAUDE.md or equivalent.",
+            "Flag each specific CLAUDE.md rule that the change violates.",
+            "Monitor TaskList for completed tasks.",
+            "Coordinate using SendMessage.",
+          ].join("\n"),
+          description:
+            "Review against CLAUDE.md conventions using the Task tool.",
+          name: "Fixture Reviewer",
+          sourcePath: "/plugin/agents/fixture-reviewer.md",
+        },
+      ],
+      commands: [
+        {
+          body: "Use AskUserQuestion to ask, then use TodoWrite/TodoRead.",
+          description: "Run the fixture workflow.",
+          name: "Fixture Command",
+          sourcePath: "/plugin/commands/fixture-command.md",
+        },
+      ],
+      manifest: { name: "fixture-plugin", version: "1.0.0" },
+      root: path.join(root, "plugin"),
+      skills: [
+        {
+          body: "Monitor task progress via TaskList using the Task tool.",
+          description: "Fixture skill.",
+          name: "Fixture Skill",
+          sourceDir,
+        },
+      ],
+    });
+
+    const staged = await stageCodexBundleOutput(
+      codexRoot,
+      codexStagingRoot,
+      bundle,
+      emptyPreviousEntries(),
+      "fixture-plugin",
+      { agentsHome, confirm: { yes: true } },
+    );
+    assert.ok(staged.stagedAgentSkillsRoot);
+
+    const generatedMarkdown = [
+      ...(await readMarkdownTree(staged.stagedSkillsRoot)),
+      ...(await readMarkdownTree(staged.stagedAgentSkillsRoot)),
+    ];
+    const forbiddenControls = [
+      /AskUserQuestion/,
+      /\bTask tool\b/,
+      /\bSkill tool\b/,
+      /\bTodoWrite\b/,
+      /\bTodoRead\b/,
+      /\bQuestion tool\b/,
+      /\bRead tool\b/,
+      /\bEdit\/MultiEdit\b/,
+      /\bMultiEdit\b/,
+      /\bsubagent_type\s*[=:]\s*Explore\b/,
+      /\bSendMessage\b/,
+      /\bMonitor (?:task progress via )?TaskList\b/,
+    ];
+    for (const { file, text } of generatedMarkdown) {
+      for (const pattern of forbiddenControls) {
+        assert.doesNotMatch(text, pattern, `${file} retained ${pattern}`);
+      }
+      assert.equal(
+        transformContentForCodex(text),
+        text,
+        `${file} is not idempotent`,
+      );
+    }
+
+    const agentContent = bundle.agentSkills[0].content;
+    const agentFrontmatter = parseFrontmatter(agentContent);
+    assert.match(agentFrontmatter.data.description, /AGENTS\.md/);
+    assert.match(agentFrontmatter.data.description, /CLAUDE\.md/);
+    assert.match(agentFrontmatter.data.description, /conventions from/);
+    assert.match(agentFrontmatter.body, /AGENTS\.md/);
+    assert.match(agentFrontmatter.body, /CLAUDE\.md/);
+    assert.match(
+      agentFrontmatter.body,
+      /Read repo-root `AGENTS\.md` and `CLAUDE\.md` when present\./,
+    );
+    assert.match(agentFrontmatter.body, /closest nested equivalents/);
+    assert.match(agentFrontmatter.body, /conventions from/);
+    assert.match(agentFrontmatter.body, /violation of/);
+    assert.match(agentFrontmatter.body, /or closest nested equivalent/);
+    assert.match(agentFrontmatter.body, /rule from/);
+    assert.doesNotMatch(
+      agentContent,
+      /closest nested equivalents (?:conventions|violation|or equivalent)/,
+    );
+    assert.equal(
+      await readText(path.join(sourceDir, "references", "team-mode.md")),
+      canonicalResource,
+    );
+  });
+});
+
 test("install staging treats stale managed files as removable without overwriting local files", async () => {
   await withTempDir(async (root) => {
     const stagedDir = path.join(root, "staged");
@@ -1259,9 +1499,7 @@ test("writer prunes stale managed skill files without deleting local files when 
       return {
         agentSkills: [{ content: "Agent", name: "fixture-agent" }],
         codexPlugin: undefined,
-        generatedSkills: [
-          { content: "Generated", name: "fixture-generated" },
-        ],
+        generatedSkills: [{ content: "Generated", name: "fixture-generated" }],
         knownAgentSkills: new Map(),
         knownCommands: new Set(),
         mcpServers: {},
@@ -1282,12 +1520,7 @@ test("writer prunes stale managed skill files without deleting local files when 
     });
     await writeCodexBundle(root, bundle(), options);
 
-    const skillDir = path.join(
-      root,
-      ".codex",
-      "skills",
-      "fixture-managed",
-    );
+    const skillDir = path.join(root, ".codex", "skills", "fixture-managed");
     const oldManagedFile = path.join(skillDir, "references", "OLD.md");
     const newManagedFile = path.join(skillDir, "references", "NEW.md");
     const localNotes = path.join(skillDir, "LOCAL-NOTES.md");
@@ -1375,12 +1608,7 @@ test("writer preserves previous skill files when stale pruning preflight fails",
     });
     await writeCodexBundle(root, bundle(), options);
 
-    const skillDir = path.join(
-      root,
-      ".codex",
-      "skills",
-      "fixture-managed",
-    );
+    const skillDir = path.join(root, ".codex", "skills", "fixture-managed");
     const oldManagedFile = path.join(skillDir, "OLD.md");
     const blockingFile = path.join(skillDir, "conflict");
     const statePath = path.join(root, ".codex", ".kramme-install-state.json");
@@ -1409,7 +1637,10 @@ test("writer preserves previous skill files when stale pruning preflight fails",
     );
 
     assert.equal(await pathExists(oldManagedFile), true);
-    assert.equal(await readText(path.join(skillDir, "SKILL.md")), "Managed v1\n");
+    assert.equal(
+      await readText(path.join(skillDir, "SKILL.md")),
+      "Managed v1\n",
+    );
     assert.equal(await readText(blockingFile), "local blocker\n");
     assert.equal(await readText(statePath), stateBefore);
     assert.equal(await readText(manifestPath), manifestBefore);
@@ -1427,11 +1658,7 @@ test("install staging does not prune stale files through symlinked ancestors", a
     await writeFile(outsideFile, "outside\n");
     await fs.symlink(outsideDir, path.join(skillDir, "references"), "dir");
 
-    await pruneStaleManagedFiles(
-      skillDir,
-      ["references/OLD.md"],
-      ["SKILL.md"],
-    );
+    await pruneStaleManagedFiles(skillDir, ["references/OLD.md"], ["SKILL.md"]);
 
     assert.equal(await readText(outsideFile), "outside\n");
     assert.equal(
@@ -1484,7 +1711,10 @@ test("writer preserves untracked same-name skill directories on first install", 
       await readText(path.join(codexSkillDir, "SKILL.md")),
       "Generated\n",
     );
-    assert.equal(await readText(path.join(agentSkillDir, "SKILL.md")), "Agent\n");
+    assert.equal(
+      await readText(path.join(agentSkillDir, "SKILL.md")),
+      "Agent\n",
+    );
   });
 });
 
@@ -1709,6 +1939,20 @@ async function writeFile(file, content) {
 
 async function readText(file) {
   return fs.readFile(file, "utf8");
+}
+
+async function readMarkdownTree(root) {
+  const markdown = [];
+  const entries = await fs.readdir(root, { withFileTypes: true });
+  for (const entry of entries) {
+    const file = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      markdown.push(...(await readMarkdownTree(file)));
+    } else if (entry.isFile() && path.extname(entry.name) === ".md") {
+      markdown.push({ file, text: await readText(file) });
+    }
+  }
+  return markdown;
 }
 
 async function pathExists(file) {
