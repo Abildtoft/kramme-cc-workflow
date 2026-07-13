@@ -17,7 +17,9 @@ Auto-detects platform from the JSONL structure.
 Outputs one JSON object per file, one per line.
 Includes a final _meta line with processing stats.
 """
+
 import sys
+import itertools
 import json
 import os
 
@@ -101,8 +103,8 @@ def get_last_timestamp(filepath, size):
     return None
 
 
-def _extract_user_assistant_text(filepath):
-    """Return concatenated user + assistant text content from a session JSONL.
+def _iter_user_assistant_text(filepath):
+    """Yield user + assistant text content from a session JSONL.
 
     Skips JSONL metadata field names and values (sessionId, gitBranch, uuid,
     timestamps, type tags), tool_use blocks (tool names + tool inputs),
@@ -112,7 +114,6 @@ def _extract_user_assistant_text(filepath):
     Without this filtering, common topic words like "session" would match every
     JSONL file via the sessionId field, drowning out real content matches.
     """
-    chunks = []
     try:
         with open(filepath, "r", errors="replace") as f:
             for line in f:
@@ -127,11 +128,11 @@ def _extract_user_assistant_text(filepath):
                     msg = obj.get("message", {})
                     content = msg.get("content")
                     if isinstance(content, str):
-                        chunks.append(content)
+                        yield content
                     elif isinstance(content, list):
                         for block in content:
                             if isinstance(block, dict) and block.get("type") == "text":
-                                chunks.append(block.get("text", ""))
+                                yield block.get("text", "")
                             # Skip tool_result blocks — tool outputs are not user content.
                     continue
                 if t == "assistant":
@@ -140,7 +141,7 @@ def _extract_user_assistant_text(filepath):
                     if isinstance(content, list):
                         for block in content:
                             if isinstance(block, dict) and block.get("type") == "text":
-                                chunks.append(block.get("text", ""))
+                                yield block.get("text", "")
                             # Skip tool_use and thinking blocks.
                     continue
 
@@ -156,14 +157,14 @@ def _extract_user_assistant_text(filepath):
                         msg = p.get("message", "")
                         if isinstance(msg, str):
                             parts = msg.split("</system_instruction>")
-                            chunks.append(parts[-1] if parts else msg)
+                            yield parts[-1] if parts else msg
                     continue
                 if t == "response_item":
                     p = obj.get("payload", {})
                     if p.get("type") == "message" and p.get("role") == "assistant":
                         for block in p.get("content", []):
                             if isinstance(block, dict) and block.get("type") == "output_text":
-                                chunks.append(block.get("text", ""))
+                                yield block.get("text", "")
                     continue
 
                 # Cursor: role-tagged with no top-level type
@@ -171,11 +172,46 @@ def _extract_user_assistant_text(filepath):
                     msg = obj.get("message", {})
                     for block in msg.get("content", []) if isinstance(msg.get("content"), list) else []:
                         if isinstance(block, dict) and block.get("type") == "text":
-                            chunks.append(block.get("text", ""))
+                            yield block.get("text", "")
                     continue
     except (OSError, IOError):
         pass
-    return "\n".join(chunks)
+
+
+class KeywordCounter:
+    """Count non-overlapping matches without retaining the complete transcript."""
+
+    _MARKERS = ("\0", "\x01", "\x02", "\x03", "\ufffe", "\uffff")
+
+    def __init__(self, keyword):
+        self.keyword = keyword
+        self.remainder = ""
+        self.count = 0
+
+    def feed(self, text):
+        combined = self.remainder + text
+        marker = next((candidate for candidate in self._MARKERS if candidate not in combined), None)
+        if marker is None:
+            self._feed_without_marker(combined)
+            return
+
+        collapsed = combined.replace(self.keyword, marker)
+        self.count += collapsed.count(marker)
+        unmatched_tail = collapsed[collapsed.rfind(marker) + 1 :]
+        self.remainder = unmatched_tail[-len(self.keyword) + 1 :] if len(self.keyword) > 1 else ""
+
+    def _feed_without_marker(self, combined):
+        """Fall back when unusually broad text contains every reserved marker."""
+        search_from = 0
+        while True:
+            match_at = combined.find(self.keyword, search_from)
+            if match_at < 0:
+                break
+            self.count += 1
+            search_from = match_at + len(self.keyword)
+
+        suffix_start = max(search_from, len(combined) - len(self.keyword) + 1)
+        self.remainder = combined[suffix_start:]
 
 
 def count_keyword_matches(filepath, keywords):
@@ -186,8 +222,19 @@ def count_keyword_matches(filepath, keywords):
     blocks — so common topic words like "session" do not false-match against
     the sessionId field.
     """
-    text_lower = _extract_user_assistant_text(filepath).lower()
-    return {kw: text_lower.count(kw.lower()) for kw in keywords}
+    counters = {keyword: KeywordCounter(keyword.lower()) for keyword in keywords}
+    first_chunk = True
+    for chunk in _iter_user_assistant_text(filepath):
+        if not isinstance(chunk, str):
+            continue
+        if not first_chunk:
+            for counter in counters.values():
+                counter.feed("\n")
+        lowered_chunk = chunk.lower()
+        for counter in counters.values():
+            counter.feed(lowered_chunk)
+        first_chunk = False
+    return {keyword: counter.count for keyword, counter in counters.items()}
 
 
 def process_file(filepath):
@@ -290,7 +337,7 @@ else:
     if sys.stdin.isatty():
         lines = []
     else:
-        lines = list(sys.stdin)
+        lines = list(itertools.islice(sys.stdin, MAX_LINES))
 
     if not lines:
         # No input at all — zero-file result (clean exit for empty pipelines).

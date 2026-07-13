@@ -4,7 +4,7 @@
 # Upstream commit reviewed: 6f9ab03a031c054a8046659926251fb6c149269f
 # License: MIT, Copyright (c) 2025 Every.
 #
-"""Extract the conversation skeleton from a Claude Code, Codex, or Cursor JSONL session file.
+"""Build a local event outline from a Claude Code, Codex, or Cursor JSONL session file.
 
 Usage:
   cat <session.jsonl> | python3 extract-skeleton.py
@@ -28,11 +28,13 @@ extraction bytes through orchestrator tool results.
 Without --output, extracted content goes to stdout and ends with a _meta line.
 """
 import argparse
-import io
+import atexit
+import itertools
 import os
 import sys
 import json
 import re
+import tempfile
 
 parser = argparse.ArgumentParser(add_help=True)
 parser.add_argument(
@@ -42,12 +44,33 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-# Capture-and-redirect when --output is set: prints in the rest of the script
-# go to the buffer; at the end the buffer is written to PATH and a status
-# line is emitted to the real stdout.
+# Redirect directly to a temporary file when --output is set. The rest of the
+# script can keep using print(), while output memory stays bounded and the
+# destination is replaced atomically only after extraction succeeds.
 _original_stdout = sys.stdout
+_temporary_output_path = None
 if args.output:
-    sys.stdout = io.StringIO()
+    output_dir = os.path.dirname(os.path.abspath(args.output))
+    temporary_output = tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        dir=output_dir,
+        prefix=f".{os.path.basename(args.output)}.",
+        delete=False,
+    )
+    _temporary_output_path = temporary_output.name
+    sys.stdout = temporary_output
+
+
+def cleanup_temporary_output():
+    if _temporary_output_path:
+        try:
+            os.unlink(_temporary_output_path)
+        except FileNotFoundError:
+            pass
+
+
+atexit.register(cleanup_temporary_output)
 
 stats = {"lines": 0, "parse_errors": 0, "user": 0, "assistant": 0, "tool": 0}
 
@@ -346,18 +369,22 @@ def handle_cursor(obj):
                 pending_tools.append({"ts": "", "name": name, "target": redact_sensitive(target)})
 
 
-# Auto-detect platform from first few lines, then process all
+# Auto-detect from a bounded prefix, replay that prefix once, then stream the
+# remaining events without retaining the transcript.
+def nonempty_input_lines():
+    for raw_line in sys.stdin:
+        line = raw_line.strip()
+        if line:
+            stats["lines"] += 1
+            yield line
+
+
 detected = None
-buffer = []
-
-for line in sys.stdin:
-    line = line.strip()
-    if not line:
-        continue
-    buffer.append(line)
-    stats["lines"] += 1
-
-    if not detected and len(buffer) <= 10:
+prefix = []
+lines = nonempty_input_lines()
+for line in itertools.islice(lines, 10):
+    prefix.append(line)
+    if not detected:
         try:
             obj = json.loads(line)
             if obj.get("type") in ("user", "assistant"):
@@ -368,11 +395,13 @@ for line in sys.stdin:
                 detected = "cursor"
         except (json.JSONDecodeError, KeyError):
             pass
+    if detected:
+        break
 
 handlers = {"claude": handle_claude, "codex": handle_codex, "cursor": handle_cursor}
 handler = handlers.get(detected, handle_codex)
 
-for line in buffer:
+for line in itertools.chain(prefix, lines):
     try:
         handler(json.loads(line))
     except (json.JSONDecodeError, KeyError):
@@ -384,9 +413,10 @@ flush_tools()
 print(json.dumps({"_meta": True, **stats}))
 
 if args.output:
-    body = sys.stdout.getvalue()
+    sys.stdout.flush()
+    sys.stdout.close()
     sys.stdout = _original_stdout
-    with open(args.output, "w", encoding="utf-8") as f:
-        f.write(body)
+    os.replace(_temporary_output_path, args.output)
+    _temporary_output_path = None
     bytes_written = os.path.getsize(args.output)
     print(json.dumps({"_meta": True, "wrote": args.output, "bytes": bytes_written, **stats}))
