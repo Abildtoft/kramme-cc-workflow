@@ -31,6 +31,55 @@ $body
 EOF
 }
 
+write_text_contract_inventory_fixture() {
+  write_file "$TMP_ROOT/contracts/a.md" <<'EOF'
+Canonical inventory marker: alpha
+EOF
+  write_file "$TMP_ROOT/contracts/b.md" <<'EOF'
+Canonical inventory marker: alpha
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "text_contracts": [
+    {
+      "name": "sample-inventoried-contract",
+      "extract_regex": "Canonical inventory marker: ([A-Za-z]+)",
+      "inventory": {
+        "glob": "contracts/*.md",
+        "marker": "Canonical inventory marker:"
+      },
+      "paths": [
+        "contracts/a.md",
+        "contracts/b.md"
+      ]
+    }
+  ]
+}
+EOF
+}
+
+siw_spec_exclusion_expected_paths() {
+  printf '%s\n' \
+    "kramme-cc-workflow/skills/kramme:siw:close/SKILL.md" \
+    "kramme-cc-workflow/skills/kramme:siw:continue/SKILL.md" \
+    "kramme-cc-workflow/skills/kramme:siw:discovery/SKILL.md" \
+    "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md" \
+    "kramme-cc-workflow/skills/kramme:siw:implementation-audit/SKILL.md" \
+    "kramme-cc-workflow/skills/kramme:siw:implementation-audit/references/spec-resolution.md" \
+    "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md" \
+    "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md" \
+    "kramme-cc-workflow/skills/kramme:siw:issue-define/references/classification-and-prefix.md" \
+    "kramme-cc-workflow/skills/kramme:siw:issue-implement/references/spec-sync.md" \
+    "kramme-cc-workflow/skills/kramme:siw:issue-implement/references/team-mode.md" \
+    "kramme-cc-workflow/skills/kramme:siw:issue-reindex/references/spec-capture-check.md" \
+    "kramme-cc-workflow/skills/kramme:siw:product-audit/SKILL.md" \
+    "kramme-cc-workflow/skills/kramme:siw:remove/SKILL.md" \
+    "kramme-cc-workflow/skills/kramme:siw:reset/SKILL.md" \
+    "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md" \
+    "kramme-cc-workflow/skills/kramme:siw:spec-audit/references/spec-resolution.md" \
+    "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/references/artifact-extraction.md"
+}
+
 write_reference_skill() {
   local path="$1"
   local name="$2"
@@ -673,6 +722,140 @@ EOF
   [ "$status" -eq 1 ]
   [[ "$output" == *"sample-text-contract"* ]]
   [[ "$output" == *"differs"* ]]
+}
+
+@test "text contract inventory accepts a fully synchronized tree" {
+  write_text_contract_inventory_fixture
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+}
+
+@test "text contract inventory rejects an unregistered marked copy" {
+  write_text_contract_inventory_fixture
+  write_file "$TMP_ROOT/contracts/unregistered.md" <<'EOF'
+Canonical inventory marker: alpha
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"discovered unregistered contract copy: contracts/unregistered.md"* ]]
+  [[ "$output" == *"registered inventory count 2 does not equal discovered count 3"* ]]
+}
+
+@test "text contract inventory rejects a missing registered copy" {
+  write_text_contract_inventory_fixture
+  rm "$TMP_ROOT/contracts/b.md"
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"registered path is missing: contracts/b.md"* ]]
+  [[ "$output" == *"registered contract copy is not discoverable: contracts/b.md"* ]]
+  [[ "$output" == *"registered inventory count 2 does not equal discovered count 1"* ]]
+}
+
+@test "text contract inventory still rejects divergent marked values" {
+  write_text_contract_inventory_fixture
+  write_file "$TMP_ROOT/contracts/b.md" <<'EOF'
+Canonical inventory marker: beta
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"sample-inventoried-contract"* ]]
+  [[ "$output" == *"differs"* ]]
+}
+
+@test "text contract inventory rejects duplicate markers in one copy" {
+  write_text_contract_inventory_fixture
+  write_file "$TMP_ROOT/contracts/b.md" <<'EOF'
+Canonical inventory marker: alpha
+Canonical inventory marker: alpha
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"contracts/b.md contains 2 inventory markers; expected exactly 1"* ]]
+}
+
+@test "siw spec exclusion inventory detects marker removal from every runtime copy" {
+  local repo_root="$BATS_TEST_DIRNAME/../.."
+  local source_registry="$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml"
+  local fixture_root="$TMP_ROOT/siw-inventory"
+  local fixture_registry="$fixture_root/registry.yaml"
+  local expected_paths_file="$fixture_root/expected-paths.txt"
+  local path
+
+  mkdir -p "$fixture_root"
+  siw_spec_exclusion_expected_paths >"$expected_paths_file"
+
+  python3 - \
+    "$source_registry" \
+    "$repo_root" \
+    "$fixture_root" \
+    "$fixture_registry" \
+    "$expected_paths_file" <<'PY'
+import json
+import pathlib
+import shutil
+import sys
+
+source_registry, repo_root, fixture_root, fixture_registry, expected_paths_file = map(
+    pathlib.Path, sys.argv[1:]
+)
+registry = json.loads(source_registry.read_text())
+contract = next(
+    item
+    for item in registry["text_contracts"]
+    if item["name"] == "siw-spec-exclusion-list"
+)
+expected_paths = expected_paths_file.read_text().splitlines()
+if contract["paths"] != expected_paths:
+    raise SystemExit("siw spec exclusion registry does not match the independent test inventory")
+for relative in expected_paths:
+    destination = fixture_root / relative
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(repo_root / relative, destination)
+(fixture_root / "registry.yaml").write_text(
+    json.dumps(
+        {
+            "text_contracts": [contract],
+            "mechanical": {"max_skill_lines": 10000},
+        }
+    )
+)
+PY
+
+  while IFS= read -r path; do
+    python3 - "$source_registry" "$repo_root/$path" "$fixture_root/$path" <<'PY'
+import json
+import pathlib
+import sys
+
+registry_path, source_path, fixture_path = map(pathlib.Path, sys.argv[1:])
+contract = next(
+    item
+    for item in json.loads(registry_path.read_text())["text_contracts"]
+    if item["name"] == "siw-spec-exclusion-list"
+)
+marker = contract["inventory"]["marker"]
+text = source_path.read_text()
+if text.count(marker) != 1:
+    raise SystemExit(f"expected one canonical marker in {source_path}")
+fixture_path.write_text(text.replace(marker, "Unsynchronized SIW spec-exclusion contract:", 1))
+PY
+
+    run python3 "$SCRIPT" --repo-root "$fixture_root" --registry "$fixture_registry"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"$path"* ]]
+    cp "$repo_root/$path" "$fixture_root/$path"
+  done <"$expected_paths_file"
 }
 
 @test "siw main spec ambiguity contract drift fails with precise contract name" {
