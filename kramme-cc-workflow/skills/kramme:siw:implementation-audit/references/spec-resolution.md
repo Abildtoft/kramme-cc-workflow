@@ -38,7 +38,7 @@ Auto-detect spec files from the `siw/` directory:
 
 2. Find spec files:
    - Use Glob to find `siw/*.md`.
-   - Apply the synced SIW spec-exclusion contract: exclude `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, and `SIW_*.md`.
+   - Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.
    - When the filter excludes every candidate, report the excluded filenames and ask for an explicit spec path instead of silently proceeding.
 3. Find supporting specs:
    - Use Glob to find `siw/supporting-specs/*.md`.
