@@ -4,16 +4,9 @@ Read this file from `Phase 2: Extract SIW Artifacts` in `SKILL.md`.
 
 ## Main Spec Detection
 
-Build main-spec candidates from markdown files directly under the SIW directory, excluding:
+Build main-spec candidates from markdown files directly under the SIW directory. Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.
 
-- `LOG.md`
-- `OPEN_ISSUES_OVERVIEW.md`
-- `LINEAR_TRANSFER.md`
-- `DISCOVERY_BRIEF.md`
-- `SPEC_STRENGTHENING_PLAN.md`
-- `AUDIT_*.md`
-- `PRODUCT_AUDIT.md`
-- `SIW_*.md`
+Also exclude `LINEAR_TRANSFER.md`, which is specific to this migration workflow.
 
 If no candidate exists, stop with a missing spec message rather than inventing one. If exactly one candidate exists, use it. If multiple exist, build a deterministic match set from files whose filename or first `#` heading matches the project title in `LOG.md`.
 

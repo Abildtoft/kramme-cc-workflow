@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from ..frontmatter import parse_frontmatter
-from ..io import read_text, resolve, sha256
+from ..io import read_text, rel, resolve, sha256, skill_paths
 from ..strings import normalize_value, strip_quotes
 from .types import CheckResult, LintContext
 
@@ -29,6 +29,12 @@ def check_text_contracts(context: LintContext) -> CheckResult:
         name = group["name"]
         regex = group["extract_regex"]
         normalizer = group.get("normalizer")
+        inventory = group.get("inventory")
+        if inventory is not None:
+            inventory_result = check_text_contract_inventory(
+                context, name, group["paths"], inventory
+            )
+            result.failures.extend(inventory_result.failures)
         reference: tuple[str, str, int] | None = None
         for copy in group["paths"]:
             path = resolve(root, copy)
@@ -49,6 +55,55 @@ def check_text_contracts(context: LintContext) -> CheckResult:
                     f"{name}: {copy}:{line} differs from {ref_path}:{ref_line}; "
                     f"expected {ref_value!r}, got {value!r}"
                 )
+    return result
+
+
+def check_text_contract_inventory(
+    context: LintContext,
+    name: str,
+    registered_paths: list[str],
+    inventory: object,
+) -> CheckResult:
+    result = CheckResult()
+    if not isinstance(inventory, dict):
+        result.failures.append(f"{name}: inventory must be an object")
+        return result
+
+    pattern = inventory.get("glob")
+    marker = inventory.get("marker")
+    if not isinstance(pattern, str) or not pattern:
+        result.failures.append(f"{name}: inventory glob must be a non-empty string")
+        return result
+    if not isinstance(marker, str) or not marker:
+        result.failures.append(f"{name}: inventory marker must be a non-empty string")
+        return result
+
+    registered = set(registered_paths)
+    if len(registered) != len(registered_paths):
+        result.failures.append(f"{name}: registered inventory contains duplicate paths")
+
+    discovered: set[str] = set()
+    for path in skill_paths(context.root, pattern):
+        marker_count = read_text(path).count(marker)
+        if marker_count == 0:
+            continue
+        relative = rel(path, context.root)
+        discovered.add(relative)
+        if marker_count != 1:
+            result.failures.append(
+                f"{name}: {relative} contains {marker_count} inventory markers; expected exactly 1"
+            )
+
+    for path in sorted(discovered - registered):
+        result.failures.append(f"{name}: discovered unregistered contract copy: {path}")
+    for path in sorted(registered - discovered):
+        result.failures.append(f"{name}: registered contract copy is not discoverable: {path}")
+    if len(registered_paths) != len(discovered):
+        result.failures.append(
+            f"{name}: registered inventory count {len(registered_paths)} "
+            f"does not equal discovered count {len(discovered)}"
+        )
+
     return result
 
 

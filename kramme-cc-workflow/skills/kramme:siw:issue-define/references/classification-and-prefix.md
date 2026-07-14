@@ -43,7 +43,7 @@ Goal: recommend a phase prefix (`P1-`, `P2-`, etc.) when the issue clearly fits 
 2. `siw/LOG.md` for phase completion notes such as "Phase 1 complete" or "Status: DONE".
 3. `siw/OPEN_ISSUES_OVERVIEW.md` for existing phase sections and active work.
 
-If multiple candidate spec files exist under `siw/`, ask the user which one is the main spec. Synced SIW spec-exclusion contract: `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.
+If multiple candidate spec files exist under `siw/`, ask the user which one is the main spec. Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.
 
 ### Prefix Heuristics
 

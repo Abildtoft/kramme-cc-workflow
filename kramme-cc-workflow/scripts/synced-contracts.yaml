@@ -11,15 +11,29 @@
     {
       "name": "siw-spec-exclusion-list",
       "extract_regex": "Synced SIW spec-exclusion contract \\(keep aligned across SIW spec detectors\\):\\s*(LOG\\.md,\\s*OPEN_ISSUES_OVERVIEW\\.md,\\s*DISCOVERY_BRIEF\\.md,\\s*SPEC_STRENGTHENING_PLAN\\.md,\\s*AUDIT_\\*\\.md,\\s*PRODUCT_AUDIT\\.md,\\s*SIW_\\*\\.md\\.)",
+      "inventory": {
+        "glob": "kramme-cc-workflow/skills/**/*.md",
+        "marker": "Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors):"
+      },
       "paths": [
+        "kramme-cc-workflow/skills/kramme:siw:close/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:continue/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:discovery/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:implementation-audit/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:implementation-audit/references/spec-resolution.md",
         "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:issue-define/references/classification-and-prefix.md",
+        "kramme-cc-workflow/skills/kramme:siw:issue-implement/references/spec-sync.md",
+        "kramme-cc-workflow/skills/kramme:siw:issue-implement/references/team-mode.md",
+        "kramme-cc-workflow/skills/kramme:siw:issue-reindex/references/spec-capture-check.md",
         "kramme-cc-workflow/skills/kramme:siw:product-audit/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md"
+        "kramme-cc-workflow/skills/kramme:siw:remove/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:reset/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:spec-audit/references/spec-resolution.md",
+        "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/references/artifact-extraction.md"
       ]
     },
     {
