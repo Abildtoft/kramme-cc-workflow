@@ -52,6 +52,30 @@ run_hook_without_python3() {
 	env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK" <<<"$json_input"
 }
 
+run_hook_without_safety_parser() {
+	local cmd="$1"
+	local plugin_root="$BATS_TEST_TMPDIR/no-safety-parser-plugin"
+	mkdir -p "$plugin_root/hooks/lib"
+	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
+	make_bash_input "$cmd" | env CLAUDE_PLUGIN_ROOT="$plugin_root" bash "$HOOK"
+}
+
+run_hook_with_parser_output() {
+	local cmd="$1"
+	local parser_output="$2"
+	local plugin_root="$BATS_TEST_TMPDIR/parser-output-plugin"
+	rm -rf "$plugin_root"
+	mkdir -p "$plugin_root/hooks/lib"
+	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
+	cp "$BATS_TEST_DIRNAME/../hooks/lib/safety-hook-parser.sh" "$plugin_root/hooks/lib/safety-hook-parser.sh"
+	cat >"$plugin_root/hooks/lib/git_command_parser.py" <<'PYTHON'
+import os
+
+print(os.environ["SAFETY_HOOK_TEST_PARSER_OUTPUT"])
+PYTHON
+	make_bash_input "$cmd" | env SAFETY_HOOK_TEST_PARSER_OUTPUT="$parser_output" CLAUDE_PLUGIN_ROOT="$plugin_root" bash "$HOOK"
+}
+
 # ============================================================================
 # BASIC ALLOW CASES
 # ============================================================================
@@ -66,6 +90,18 @@ run_hook_without_python3() {
 	run bash "$HOOK" <<<'{"other":"data"}'
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
+}
+
+@test "blocks malformed hook input" {
+	run bash "$HOOK" <<<'{"tool_input":'
+	is_blocked
+	[[ "$output" == *"Unable to safely parse command metadata"* ]]
+}
+
+@test "blocks malformed parser output" {
+	run run_hook_with_parser_output "rm -rf directory/" 'not-json'
+	is_blocked
+	[[ "$output" == *"Unable to safely parse command metadata"* ]]
 }
 
 @test "blocks command when jq is unavailable" {
@@ -88,6 +124,12 @@ run_hook_without_python3() {
 	[[ "$output" == *"python3 not found"* ]]
 	[[ "$output" == *"refusing to run safety hook without the shared command parser"* ]]
 	[[ "$output" == *"Install python3 or disable this hook explicitly"* ]]
+}
+
+@test "blocks command when shared safety parser is unavailable" {
+	run run_hook_without_safety_parser "rm -rf directory/"
+	is_blocked
+	[[ "$output" == *"Unable to safely parse command metadata"* ]]
 }
 
 @test "allows simple ls command" {

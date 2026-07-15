@@ -10,6 +10,7 @@ cross-hook parsing and toggle behavior here.
 | --- | --- |
 | `check-enabled.sh` | Reads the resolved hook state file, honors disabled hooks, drains stdin on disabled hooks, and optionally emits `{}` for JSON hook events. |
 | `git_command_parser.py` | Production parser for command-safety hooks. It handles shell wrappers, environment propagation, command substitutions, heredocs, and git subcommands, then emits JSON with allow/block details. |
+| `safety-hook-parser.sh` | Provides fail-closed dependency checks, hook input extraction, parser invocation, and parser-output validation for command-safety hook wrappers. |
 
 ## Boundary Rules
 

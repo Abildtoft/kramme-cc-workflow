@@ -127,6 +127,7 @@ run_hook_missing_python_parser() {
 	rm -rf "$plugin_root"
 	mkdir -p "$plugin_root/hooks/lib"
 	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
+	cp "$BATS_TEST_DIRNAME/../hooks/lib/safety-hook-parser.sh" "$plugin_root/hooks/lib/safety-hook-parser.sh"
 	cp "$BATS_TEST_DIRNAME/../hooks/confirm-review-artifacts.txt" "$plugin_root/hooks/confirm-review-artifacts.txt"
 	make_bash_input "$cmd" | env CLAUDE_PLUGIN_ROOT="$plugin_root" bash "$HOOK"
 }
@@ -149,6 +150,23 @@ run_hook_without_python() {
 	ln -s "$(command -v sed)" "$fake_bin/sed"
 	ln -s "$MOCK_DIR/git" "$fake_bin/git"
 	make_bash_input "$cmd" | env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK"
+}
+
+run_hook_with_parser_output() {
+	local cmd="$1"
+	local parser_output="$2"
+	local plugin_root="$BATS_TEST_TMPDIR/parser-output-plugin"
+	rm -rf "$plugin_root"
+	mkdir -p "$plugin_root/hooks/lib"
+	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
+	cp "$BATS_TEST_DIRNAME/../hooks/confirm-review-artifacts.txt" "$plugin_root/hooks/confirm-review-artifacts.txt"
+	cp "$BATS_TEST_DIRNAME/../hooks/lib/safety-hook-parser.sh" "$plugin_root/hooks/lib/safety-hook-parser.sh"
+	cat >"$plugin_root/hooks/lib/git_command_parser.py" <<'PYTHON'
+import os
+
+print(os.environ["SAFETY_HOOK_TEST_PARSER_OUTPUT"])
+PYTHON
+	make_bash_input "$cmd" | env SAFETY_HOOK_TEST_PARSER_OUTPUT="$parser_output" CLAUDE_PLUGIN_ROOT="$plugin_root" bash "$HOOK"
 }
 
 PARSER_FIXTURES="$BATS_TEST_DIRNAME/fixtures/git-command-parser-cases.json"
@@ -214,6 +232,18 @@ assert_review_parser_fixture_decision() {
 	run bash "$HOOK" <<<'{"other":"data"}'
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
+}
+
+@test "blocks malformed hook input" {
+	run bash "$HOOK" <<<'{"tool_input":'
+	is_blocked
+	[[ "$output" == *"Unable to safely parse command"* ]]
+}
+
+@test "blocks malformed parser output" {
+	run run_hook_with_parser_output "git commit -m 'test'" '{}'
+	is_blocked
+	[[ "$output" == *"Unable to safely parse command"* ]]
 }
 
 @test "blocks command when jq is unavailable" {
