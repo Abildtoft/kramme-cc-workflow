@@ -23,10 +23,15 @@ You will receive:
 1. A list of findings from other review agents (usually with file:line references; PR description findings use location `PR description`)
 2. Context about what the PR changes
 3. PR metadata when available (`title`, `body`, `url`, and branch names)
+4. When available, an immutable review scope: `BASE_REF`, `MERGE_BASE`, changed-file list, committed/staged/unstaged diffs, and untracked file list/content
 
 ## Validation Process
 
 ### Step 1: Get the Review Scope Context
+
+**Prefer an immutable caller-supplied scope.** When the caller provides `MERGE_BASE` plus the changed-file list and all committed/staged/unstaged/untracked scope components, validate that `MERGE_BASE` resolves to a commit, then use the supplied scope as authoritative. Do not fetch, resolve the base branch again, recompute the merge base, or replace any supplied diff component. If the caller labels the scope immutable but omits a required component, stop and name the missing component instead of silently reconstructing it.
+
+Only use the resolution flow below when no immutable scope was supplied.
 
 **Determine the base branch.** If the caller provided a specific base branch (e.g., "Use `develop` as the base"), use it directly as `BASE_BRANCH`. Otherwise, resolve it:
 
@@ -198,6 +203,7 @@ Issues in files not modified in this review scope:
 ## Guidelines
 
 - **Err on the side of keeping**: When uncertain, classify as "Likely Related" rather than filtering
+- **Preserve the classification**: The caller decides whether its reporting policy keeps or filters `Likely Related`; do not silently promote it to `Validated`
 - **Be transparent**: Always explain why a finding was filtered
 - **Handle missing line numbers**: If a finding lacks a line number, validate by file presence only
 - **Handle PR description findings**: Validate against the provided PR title/body and current diff. Use location `PR description`.
