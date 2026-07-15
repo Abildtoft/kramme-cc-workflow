@@ -64,6 +64,7 @@ If no review content was provided in Step 0:
 - `UX_REVIEW_OVERVIEW.md` (from `/kramme:pr:ux-review`)
 - `PRODUCT_REVIEW_OVERVIEW.md` (from `/kramme:pr:product-review`)
 - `COPY_REVIEW_OVERVIEW.md` (from `/kramme:pr:copy-review`)
+- `CONVENTION_REVIEW_OVERVIEW.md` (from `/kramme:pr:convention-review`)
 
 When parsing these files, accept the structured `- Location:` field, `**Location:**`, and legacy `**File:**` labels.
 
@@ -259,7 +260,8 @@ Each commit should be self-contained and pass linting/formatting on its own. If 
   ```
 
   `blocked-implementation` means the fix could not be completed. `blocked-validation` means a fix was attempted but validation failed. Then skip the Generate summary bullet below.
-- **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, or `COPY_REVIEW_OVERVIEW.md`, update that file in place. If the source was `REVIEW_OVERVIEW.md` or an external/chat review, write to `REVIEW_OVERVIEW.md`.
+
+- **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, `COPY_REVIEW_OVERVIEW.md`, or `CONVENTION_REVIEW_OVERVIEW.md`, update that file in place. If the source was `REVIEW_OVERVIEW.md` or an external/chat review, write to `REVIEW_OVERVIEW.md`.
   - Use `Resolution status: addressed` only when the finding was implemented, already satisfied by the current code, or otherwise fully resolved.
   - Use `Resolution status: open` when implementation or validation failed, is blocked, or needs another run before it can be considered resolved.
   - Use `deferred`, `acknowledged`, or `skipped` for the non-implementation outcomes defined in Step 2, but do not use `skipped` for severity-filtered findings that were never processed.
@@ -321,6 +323,7 @@ Write resolutions to the appropriate file in the project root:
 - If the source review was `UX_REVIEW_OVERVIEW.md` → update `UX_REVIEW_OVERVIEW.md` in place
 - If the source review was `PRODUCT_REVIEW_OVERVIEW.md` → update `PRODUCT_REVIEW_OVERVIEW.md` in place
 - If the source review was `COPY_REVIEW_OVERVIEW.md` → update `COPY_REVIEW_OVERVIEW.md` in place
+- If the source review was `CONVENTION_REVIEW_OVERVIEW.md` → update `CONVENTION_REVIEW_OVERVIEW.md` in place
 - Otherwise → create or update `REVIEW_OVERVIEW.md`
 
 Updates are **in place**: for each processed finding, replace or add its `Resolution status:` and `Action taken:` fields inside the existing entry. Findings present in the source but not addressed in this run (severity-filtered, out-of-scope, already processed, or unrelated) stay verbatim — never delete entries. If the source did not exist (review came from chat or `gh`), create a fresh `REVIEW_OVERVIEW.md` containing every processed finding.

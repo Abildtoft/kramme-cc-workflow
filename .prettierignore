@@ -10,6 +10,9 @@ dist/
 vendor/
 **/__pycache__/
 *.pyc
+
+# Source-synced documentation tables validated by skill contracts
+README.md
 package-lock.json
 
 # Intentional fixtures and verbatim upstream snapshots
