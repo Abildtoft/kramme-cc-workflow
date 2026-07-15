@@ -50,6 +50,20 @@ test("scoreItem records forbidden findings and missing checks", () => {
   });
 });
 
+test("scoreItem rejects non-string expectation IDs", () => {
+  assert.throws(
+    () =>
+      scoreItem(
+        {
+          id: "review-case",
+          expected_findings: [{ id: 42, match: "missing timeout" }],
+        },
+        "The review flags a missing timeout.",
+      ),
+    /expected_findings\[0\]\.id must be a non-empty string/,
+  );
+});
+
 test("aggregateScores averages hard and soft scores", () => {
   assert.deepEqual(
     aggregateScores([
@@ -57,5 +71,20 @@ test("aggregateScores averages hard and soft scores", () => {
       { hard: 0, soft: 0.3333 },
     ]),
     { hard: 0.5, soft: 0.6666 },
+  );
+});
+
+test("aggregateScores rejects malformed score entries", () => {
+  assert.throws(
+    () => aggregateScores([null]),
+    /itemResults\[0\] must be an object/,
+  );
+  assert.throws(
+    () => aggregateScores([{ hard: "1", soft: 0.5 }]),
+    /itemResults\[0\] hard and soft scores must be finite numbers/,
+  );
+  assert.throws(
+    () => aggregateScores([{ hard: 1, soft: Number.NaN }]),
+    /itemResults\[0\] hard and soft scores must be finite numbers/,
   );
 });

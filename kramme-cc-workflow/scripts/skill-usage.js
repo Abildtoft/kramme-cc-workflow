@@ -48,6 +48,19 @@ const SCAN_PRUNED_DIRS = new Set([
  * @property {string} skill
  * @property {"explicit" | "tool"} kind
  * @property {"prompt" | "tool_input"} source
+ *
+ * @typedef {Omit<UsageRecord, "source"> & { source: "scan", file: string }} ScannedUsageRecord
+ * @typedef {UsageRecord | ScannedUsageRecord} UsageLikeRecord
+ * @typedef {Object} UsageSummaryRow
+ * @property {string} skill
+ * @property {number} total
+ * @property {number} explicit
+ * @property {number} tool
+ * @property {number} sessions
+ * @property {string | null} firstUsedAt
+ * @property {string | null} lastUsedAt
+ *
+ * @typedef {{ skill: string, total: string, explicit: string, tool: string, sessions: string, first: string, last: string }} PrintableUsageRow
  */
 
 function main() {
@@ -82,6 +95,7 @@ function main() {
   printHelp(1);
 }
 
+/** @param {number} exitCode */
 function printHelp(exitCode) {
   const help = `Usage:
   scripts/skill-usage.js record [--file <path>]
@@ -154,6 +168,7 @@ function parseArgs(args) {
   return parsed;
 }
 
+/** @param {ParsedArgs} parsed */
 function usageFile(parsed) {
   return path.resolve(
     parsed.file || process.env.KRAMME_SKILL_USAGE_FILE || DEFAULT_USAGE_FILE,
@@ -164,6 +179,7 @@ function readStdin() {
   return fs.readFileSync(0, "utf8");
 }
 
+/** @param {string[]} args */
 function record(args) {
   const parsed = parseArgs(args);
   const inputText = readStdin();
@@ -189,31 +205,32 @@ function record(args) {
 }
 
 /**
- * @param {Record<string, any>} input
+ * @param {unknown} input
  * @returns {UsageRecord[]}
  */
 function buildUsageRecords(input) {
+  const value = asRecord(input);
   const recordedAt = new Date().toISOString();
   /** @type {Omit<UsageRecord, "skill" | "kind" | "source">} */
   const base = {
     schemaVersion: 1,
     recordedAt,
     sessionId: stringValue(
-      input.session_id ??
-        input.sessionId ??
-        input.conversation_id ??
-        input.conversationId,
+      value.session_id ??
+        value.sessionId ??
+        value.conversation_id ??
+        value.conversationId,
     ),
-    cwd: stringValue(input.cwd ?? input.workspace ?? input.project_dir),
-    platform: stringValue(input.platform ?? process.env.KRAMME_AGENT_PLATFORM),
+    cwd: stringValue(value.cwd ?? value.workspace ?? value.project_dir),
+    platform: stringValue(value.platform ?? process.env.KRAMME_AGENT_PLATFORM),
     event: stringValue(
-      input.hook_event_name ?? input.hookEventName ?? input.event ?? input.type,
+      value.hook_event_name ?? value.hookEventName ?? value.event ?? value.type,
     ),
   };
 
   /** @type {UsageRecord[]} */
   const records = [];
-  for (const skill of extractPromptSkills(input)) {
+  for (const skill of extractPromptSkills(value)) {
     records.push({
       ...base,
       skill,
@@ -222,7 +239,7 @@ function buildUsageRecords(input) {
     });
   }
 
-  for (const skill of extractToolSkills(input)) {
+  for (const skill of extractToolSkills(value)) {
     records.push({
       ...base,
       skill,
@@ -234,12 +251,14 @@ function buildUsageRecords(input) {
   return dedupeRecords(records);
 }
 
+/** @param {Record<string, unknown>} input @returns {string[]} */
 function extractPromptSkills(input) {
+  const payload = asRecord(input.payload);
   const messages = Array.isArray(input.messages)
     ? input.messages[input.messages.length - 1]
     : undefined;
-  const payloadMessages = Array.isArray(input.payload?.messages)
-    ? input.payload.messages[input.payload.messages.length - 1]
+  const payloadMessages = Array.isArray(payload.messages)
+    ? payload.messages[payload.messages.length - 1]
     : undefined;
   const roots = [
     input.prompt,
@@ -248,8 +267,8 @@ function extractPromptSkills(input) {
     input.body,
     input.text,
     input.content,
-    input.payload?.prompt,
-    input.payload?.message,
+    payload.prompt,
+    payload.message,
     payloadMessages,
   ];
   return unique(
@@ -259,22 +278,28 @@ function extractPromptSkills(input) {
   );
 }
 
+/** @param {Record<string, unknown>} input @returns {string[]} */
 function extractScannedPromptSkills(input) {
+  const payload = asRecord(input.payload);
   const message = input.message;
-  const payloadMessage = input.payload?.message;
+  const messageRecord = asRecord(message);
+  const payloadMessage = payload.message;
+  const payloadMessageRecord = asRecord(payloadMessage);
   const roots = [
     input.prompt,
-    typeof message === "string" ? message : [message?.content, message?.text],
+    typeof message === "string"
+      ? message
+      : [messageRecord.content, messageRecord.text],
     input.body,
     input.text,
     input.content,
-    input.payload?.prompt,
+    payload.prompt,
     typeof payloadMessage === "string"
       ? payloadMessage
-      : [payloadMessage?.content, payloadMessage?.text],
-    input.payload?.body,
-    input.payload?.text,
-    input.payload?.content,
+      : [payloadMessageRecord.content, payloadMessageRecord.text],
+    payload.body,
+    payload.text,
+    payload.content,
   ];
 
   return unique(
@@ -284,11 +309,12 @@ function extractScannedPromptSkills(input) {
   );
 }
 
+/** @param {Record<string, unknown>} input @returns {string[]} */
 function extractToolSkills(input) {
   const toolName = stringValue(
     input.tool_name ?? input.toolName ?? input.tool ?? input.name,
   ).toLowerCase();
-  const toolInput = input.tool_input ?? input.toolInput ?? {};
+  const toolInput = asRecord(input.tool_input ?? input.toolInput);
 
   if (toolName !== "skill" && !hasSkillToolShape(toolInput)) {
     return [];
@@ -315,6 +341,7 @@ function extractToolSkills(input) {
   );
 }
 
+/** @param {Record<string, unknown>} toolInput */
 function hasSkillToolShape(toolInput) {
   return Boolean(
     toolInput &&
@@ -323,8 +350,10 @@ function hasSkillToolShape(toolInput) {
   );
 }
 
+/** @param {unknown} text @returns {string[]} */
 function extractSlashSkillNames(text) {
   if (typeof text !== "string") return [];
+  /** @type {string[]} */
   const names = [];
   for (const match of text.matchAll(SLASH_SKILL_PATTERN)) {
     names.push(match[1]);
@@ -332,11 +361,13 @@ function extractSlashSkillNames(text) {
   return names;
 }
 
+/** @param {unknown} text @returns {string[]} */
 function extractDirectSkillName(text) {
   const match = String(text).match(DIRECT_SKILL_PATTERN);
   return match ? [match[1]] : [];
 }
 
+/** @param {unknown} value @param {number} [depth] @returns {string[]} */
 function collectStrings(value, depth = 0) {
   if (value == null || depth > 8) return [];
   if (typeof value === "string") return [value];
@@ -345,11 +376,12 @@ function collectStrings(value, depth = 0) {
   }
   if (typeof value !== "object") return [];
 
-  return Object.values(value).flatMap((entry) =>
+  return Object.values(asRecord(value)).flatMap((entry) =>
     collectStrings(entry, depth + 1),
   );
 }
 
+/** @param {unknown} value @param {number} [depth] @returns {string[]} */
 function collectPromptText(value, depth = 0) {
   if (value == null || depth > 8) return [];
   if (typeof value === "string") return [value];
@@ -358,20 +390,22 @@ function collectPromptText(value, depth = 0) {
   }
   if (typeof value !== "object") return [];
 
-  const blockType = stringValue(value.type).toLowerCase();
+  const record = asRecord(value);
+  const blockType = stringValue(record.type).toLowerCase();
   if (blockType === "tool_result") return [];
   if (blockType === "text" || blockType === "input_text") {
-    return [value.text, value.content].flatMap((entry) =>
+    return [record.text, record.content].flatMap((entry) =>
       collectPromptText(entry, depth + 1),
     );
   }
   if (blockType) return [];
 
-  return [value.text, value.content].flatMap((entry) =>
+  return [record.text, record.content].flatMap((entry) =>
     collectPromptText(entry, depth + 1),
   );
 }
 
+/** @param {string[]} values @returns {string[]} */
 function unique(values) {
   return [...new Set(values.filter(Boolean))];
 }
@@ -392,6 +426,7 @@ function dedupeRecords(records) {
   return deduped;
 }
 
+/** @param {string} file */
 function ensureUsageFile(file) {
   fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
   if (!fs.existsSync(file)) {
@@ -399,12 +434,14 @@ function ensureUsageFile(file) {
   }
 }
 
+/** @param {string} file @param {UsageRecord[]} records */
 function appendJsonLines(file, records) {
   const lines =
     records.map((record) => JSON.stringify(record)).join("\n") + "\n";
   fs.appendFileSync(file, lines, { mode: 0o600 });
 }
 
+/** @param {string[]} args */
 function report(args) {
   const parsed = parseArgs(args);
   const file = usageFile(parsed);
@@ -435,6 +472,7 @@ function report(args) {
   renderTable(summary, file, since, kind);
 }
 
+/** @param {string[]} args */
 function scan(args) {
   const parsed = parseArgs(args);
   const since = parseSince(parsed.since);
@@ -464,6 +502,7 @@ function scan(args) {
   renderTable(summary, parsed._.join(","), since, "explicit");
 }
 
+/** @param {string} entry @returns {ScannedUsageRecord[]} */
 function scanPath(entry) {
   if (!fs.existsSync(entry)) return [];
   const stat = fs.statSync(entry);
@@ -478,10 +517,12 @@ function scanPath(entry) {
   return scanFile(entry);
 }
 
+/** @param {string} entry */
 function shouldPruneScanDirectory(entry) {
   return SCAN_PRUNED_DIRS.has(path.basename(entry));
 }
 
+/** @param {string} file @returns {ScannedUsageRecord[]} */
 function scanFile(file) {
   const content = fs.readFileSync(file, "utf8");
   let parsedJsonLine = false;
@@ -509,54 +550,60 @@ function scanFile(file) {
   }
 }
 
+/** @param {unknown} input @param {string} file @returns {ScannedUsageRecord[]} */
 function recordsFromScannedObject(input, file) {
   if (Array.isArray(input)) {
     return input.flatMap((entry) => recordsFromScannedObject(entry, file));
   }
   if (!input || typeof input !== "object") return [];
+  const record = asRecord(input);
+  const payload = asRecord(record.payload);
 
-  const messages = Array.isArray(input.messages)
-    ? input.messages
-    : Array.isArray(input.payload?.messages)
-      ? input.payload.messages
+  const messages = Array.isArray(record.messages)
+    ? record.messages
+    : Array.isArray(payload.messages)
+      ? payload.messages
       : null;
   if (messages) {
-    return messages.flatMap((message) =>
-      recordsFromScannedObject(
+    return messages.flatMap((message) => {
+      const messageRecord = asRecord(message);
+      return recordsFromScannedObject(
         {
-          ...message,
-          session_id: message.session_id ?? input.session_id,
-          sessionId: message.sessionId ?? input.sessionId,
+          ...messageRecord,
+          session_id: messageRecord.session_id ?? record.session_id,
+          sessionId: messageRecord.sessionId ?? record.sessionId,
         },
         file,
-      ),
-    );
+      );
+    });
   }
 
-  if (!isUserMessage(input)) return [];
+  if (!isUserMessage(record)) return [];
+  const message = asRecord(record.message);
   const recordedAt = firstString(
-    input.recordedAt,
-    input.timestamp,
-    input.created_at,
-    input.createdAt,
-    input.message?.createdAt,
-    input.message?.timestamp,
+    record.recordedAt,
+    record.timestamp,
+    record.created_at,
+    record.createdAt,
+    message.createdAt,
+    message.timestamp,
   );
-  return extractScannedPromptSkills(input).map((skill) =>
+  return extractScannedPromptSkills(record).map((skill) =>
     scannedRecord({
       skill,
       file,
       recordedAt,
       sessionId: firstString(
-        input.session_id,
-        input.sessionId,
-        input.conversation_id,
-        input.conversationId,
+        record.session_id,
+        record.sessionId,
+        record.conversation_id,
+        record.conversationId,
       ),
     }),
   );
 }
 
+/** @param {{ skill: string, file: string, recordedAt?: string, sessionId?: string }} input @returns {ScannedUsageRecord} */
 function scannedRecord({ skill, file, recordedAt = "", sessionId = "" }) {
   return {
     schemaVersion: 1,
@@ -572,11 +619,17 @@ function scannedRecord({ skill, file, recordedAt = "", sessionId = "" }) {
   };
 }
 
+/** @param {Record<string, unknown>} input */
 function isUserMessage(input) {
-  const role = firstString(input.role, input.type, input.message?.role);
+  const role = firstString(
+    input.role,
+    input.type,
+    asRecord(input.message).role,
+  );
   return !role || ["user", "human"].includes(role.toLowerCase());
 }
 
+/** @param {string} file @returns {UsageRecord[]} */
 function readRecords(file) {
   if (!fs.existsSync(file)) return [];
   const content = fs.readFileSync(file, "utf8");
@@ -585,22 +638,42 @@ function readRecords(file) {
     .filter(Boolean)
     .flatMap((line) => {
       try {
-        const record = JSON.parse(line);
-        if (!record || typeof record.skill !== "string") return [];
-        return [record];
+        const record = normalizeUsageRecord(JSON.parse(line));
+        return record ? [record] : [];
       } catch {
         return [];
       }
     });
 }
 
+/** @param {unknown} value @returns {UsageRecord | null} */
+function normalizeUsageRecord(value) {
+  const record = asRecord(value);
+  if (typeof record.skill !== "string") return null;
+  const kind = record.kind === "tool" ? "tool" : "explicit";
+  return {
+    schemaVersion: 1,
+    recordedAt: stringValue(record.recordedAt),
+    sessionId: stringValue(record.sessionId),
+    cwd: stringValue(record.cwd),
+    platform: stringValue(record.platform),
+    event: stringValue(record.event),
+    skill: record.skill,
+    kind,
+    source: kind === "tool" ? "tool_input" : "prompt",
+  };
+}
+
+/** @param {UsageLikeRecord[]} records @param {number | null} limit @returns {UsageSummaryRow[]} */
 function summarize(records, limit) {
+  /** @type {Map<string, Omit<UsageSummaryRow, "sessions"> & { sessions: Set<string> }>} */
   const bySkill = new Map();
 
   for (const record of records) {
     const key = record.skill;
-    if (!bySkill.has(key)) {
-      bySkill.set(key, {
+    let entry = bySkill.get(key);
+    if (!entry) {
+      entry = {
         skill: key,
         total: 0,
         explicit: 0,
@@ -608,10 +681,10 @@ function summarize(records, limit) {
         firstUsedAt: null,
         lastUsedAt: null,
         sessions: new Set(),
-      });
+      };
+      bySkill.set(key, entry);
     }
 
-    const entry = bySkill.get(key);
     entry.total += 1;
     if (record.kind === "tool") entry.tool += 1;
     else entry.explicit += 1;
@@ -638,12 +711,14 @@ function summarize(records, limit) {
   return limit == null ? rows : rows.slice(0, limit);
 }
 
+/** @param {string | undefined} value @returns {Date | null} */
 function parseSince(value) {
   if (!value) return null;
   const match = String(value).match(/^(\d+)([mhdw])$/);
   if (match) {
     const amount = Number(match[1]);
     const unit = match[2];
+    /** @type {Record<string, number>} */
     const multipliers = {
       m: 60 * 1000,
       h: 60 * 60 * 1000,
@@ -660,12 +735,14 @@ function parseSince(value) {
   return parsed;
 }
 
+/** @param {UsageSummaryRow[]} rows @param {string} file @param {Date | null} since @param {string} kind */
 function renderTable(rows, file, since, kind) {
   if (rows.length === 0) {
     process.stdout.write("No skill usage records found.\n");
     return;
   }
 
+  /** @type {PrintableUsageRow[]} */
   const printableRows = rows.map((row) => ({
     skill: row.skill,
     total: String(row.total),
@@ -676,6 +753,7 @@ function renderTable(rows, file, since, kind) {
     last: compactDate(row.lastUsedAt),
   }));
 
+  /** @type {Array<[string, keyof PrintableUsageRow]>} */
   const columns = [
     ["Skill", "skill"],
     ["Total", "total"],
@@ -712,15 +790,18 @@ function renderTable(rows, file, since, kind) {
   );
 }
 
+/** @param {string | null} value */
 function compactDate(value) {
   if (!value) return "-";
   return value.replace("T", " ").replace(/\.\d{3}Z$/, "Z");
 }
 
+/** @param {unknown} value */
 function stringValue(value) {
   return typeof value === "string" ? value : "";
 }
 
+/** @param {...unknown} values */
 function firstString(...values) {
   return values.find((value) => typeof value === "string") || "";
 }
@@ -729,9 +810,16 @@ function runCli() {
   try {
     main();
   } catch (error) {
-    console.error(error.message);
+    console.error(error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
+}
+
+/** @param {unknown} value @returns {Record<string, unknown>} */
+function asRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? /** @type {Record<string, unknown>} */ (value)
+    : {};
 }
 
 if (require.main === module) {

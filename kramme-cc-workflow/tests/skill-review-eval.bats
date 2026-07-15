@@ -605,6 +605,52 @@ NODE
   [ "$status" -eq 0 ]
 }
 
+@test "skill review eval rejects non-string adapter context fields" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    mkdir -p "$BATS_TEST_TMPDIR/eval/items/train"
+    node <<'"'"'NODE'"'"'
+const fs = require("fs");
+const path = require("path");
+const { loadItemsForSplit } = require("./evals/skill-review/run-eval.js");
+
+const itemsPath = path.join(
+  process.env.BATS_TEST_TMPDIR,
+  "eval/items/train/items.json",
+);
+const invalidItems = [
+  {
+    id: "invalid-input-text",
+    fixture_review_output: "No findings found.",
+    input_skill_text: 42,
+  },
+  {
+    id: "invalid-difficulty",
+    difficulty: 7,
+    fixture_review_output: "No findings found.",
+    input_skill_text: "# Skill",
+  },
+];
+
+for (const item of invalidItems) {
+  fs.writeFileSync(itemsPath, JSON.stringify([item]));
+  try {
+    loadItemsForSplit("train", process.env.BATS_TEST_TMPDIR + "/eval");
+    process.exit(1);
+  } catch (error) {
+    if (!new RegExp(`${item.id}\\.(input_skill_text|difficulty) must be a string`).test(error.message)) {
+      console.error(error.message);
+      process.exit(1);
+    }
+  }
+}
+NODE
+  '
+
+  [ "$status" -eq 0 ]
+}
+
 @test "skill review scorer rejects punctuation-only expectations" {
   run bash -c '
     set -euo pipefail
