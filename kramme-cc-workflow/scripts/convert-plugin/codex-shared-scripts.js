@@ -16,14 +16,18 @@ function codexSharedScriptReplacements(
         path.join(codexRoot, sharedScriptDir.targetDir),
       )}/`,
     })),
-    ...sharedScriptFiles.map((sharedScriptFile) => ({
-      sourceText: `\${CLAUDE_PLUGIN_ROOT}/${sharedScriptFile.targetPath
+    ...sharedScriptFiles.flatMap((sharedScriptFile) => {
+      const sourceText = `\${CLAUDE_PLUGIN_ROOT}/${sharedScriptFile.targetPath
         .split(path.sep)
-        .join("/")}`,
-      targetText: shellQuotePath(
+        .join("/")}`;
+      const targetText = shellQuotePath(
         path.join(codexRoot, sharedScriptFile.targetPath),
-      ),
-    })),
+      );
+      return [
+        { sourceText: `"${sourceText}"`, targetText },
+        { sourceText, targetText },
+      ];
+    }),
   ];
 }
 
@@ -36,7 +40,9 @@ function rewriteCodexSharedScriptReferences(text, replacements = []) {
         .join(replacement.targetPrefix);
     }
     if (replacement.sourceText) {
-      result = result.split(replacement.sourceText).join(replacement.targetText);
+      result = result
+        .split(replacement.sourceText)
+        .join(replacement.targetText);
     }
   }
   return result;

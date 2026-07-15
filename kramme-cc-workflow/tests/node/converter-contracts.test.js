@@ -19,6 +19,10 @@ const {
   stageCodexHookPluginBundle,
 } = require("../../scripts/convert-plugin/codex-hook-plugin-writer");
 const {
+  codexSharedScriptReplacements,
+  rewriteCodexSharedScriptReferences,
+} = require("../../scripts/convert-plugin/codex-shared-scripts");
+const {
   convertClaudeToCodex,
   transformContentForCodex,
 } = require("../../scripts/convert-plugin/codex-transformer");
@@ -58,6 +62,26 @@ const NON_OBJECT_JSON_CASES = [
   { kind: "array", source: "[]", value: [] },
   { kind: "number", source: "42", value: 42 },
 ];
+
+test("shared script rewrites preserve shell-safe quoting", () => {
+  const replacements = codexSharedScriptReplacements(
+    "/tmp/Codex Home",
+    [],
+    [{ targetPath: path.join("scripts", "collect-review-diff.sh") }],
+  );
+  const source = [
+    'RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --strict)',
+    "${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh --decode-json",
+  ].join("\n");
+
+  assert.equal(
+    rewriteCodexSharedScriptReferences(source, replacements),
+    [
+      "RESOLVED=$('/tmp/Codex Home/scripts/collect-review-diff.sh' --strict)",
+      "'/tmp/Codex Home/scripts/collect-review-diff.sh' --decode-json",
+    ].join("\n"),
+  );
+});
 
 test("filesystem keeps generic JSON reads and validates object reads", async () => {
   await withTempDir(async (root) => {
