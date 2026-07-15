@@ -232,7 +232,10 @@ acquire_operation_lock() {
     if [ -f "$operation_claim" ] && [ ! -L "$operation_claim" ]; then
       read_claim "$operation_claim"
       case "$recorded_request_key" in
-        operation:[0-9]*:*) operation_pid=${recorded_request_key#operation:}; operation_pid=${operation_pid%%:*} ;;
+        operation:[0-9]*:*)
+          operation_pid=${recorded_request_key#operation:}
+          operation_pid=${operation_pid%%:*}
+          ;;
         *) fail "reservation operation claim is malformed: $operation_claim" ;;
       esac
       case "$operation_pid" in
