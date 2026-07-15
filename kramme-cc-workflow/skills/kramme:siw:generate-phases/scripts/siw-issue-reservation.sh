@@ -87,19 +87,33 @@ resolve_siw_dir() {
 
 read_claim() {
   claim_file=$1
+  missing_policy=${2:-fail}
+  case "$missing_policy" in
+    fail | allow-missing) ;;
+    *) fail "invalid ownership claim read policy: $missing_policy" ;;
+  esac
+  if [ ! -e "$claim_file" ] && [ ! -L "$claim_file" ]; then
+    [ "$missing_policy" = allow-missing ] && return 1
+    fail "ownership claim is not a regular file: $claim_file"
+  fi
   [ ! -L "$claim_file" ] || fail "ownership claim must not be a symlink: $claim_file"
   [ -f "$claim_file" ] || fail "ownership claim is not a regular file: $claim_file"
   recorded_owner=
   recorded_request_key=
   extra_claim_data=
   has_extra_claim_record=
-  {
+  if ! {
     IFS= read -r recorded_owner || true
     IFS= read -r recorded_request_key || true
     if IFS= read -r extra_claim_data || [ -n "$extra_claim_data" ]; then
       has_extra_claim_record=1
     fi
-  } < "$claim_file"
+  } < "$claim_file"; then
+    if [ "$missing_policy" = allow-missing ] && [ ! -e "$claim_file" ] && [ ! -L "$claim_file" ]; then
+      return 1
+    fi
+    fail "could not read ownership claim: $claim_file"
+  fi
   [ -n "$recorded_owner" ] || fail "ownership claim has an empty token: $claim_file"
   validate_owner "$recorded_owner"
   [ -z "$has_extra_claim_record" ] || fail "ownership claim has unexpected data: $claim_file"
@@ -230,7 +244,10 @@ acquire_operation_lock() {
       return
     fi
     if [ -f "$operation_claim" ] && [ ! -L "$operation_claim" ]; then
-      read_claim "$operation_claim"
+      if ! read_claim "$operation_claim" allow-missing; then
+        operation_attempt=$((operation_attempt + 1))
+        continue
+      fi
       case "$recorded_request_key" in
         operation:[0-9]*:*)
           operation_pid=${recorded_request_key#operation:}
