@@ -19,7 +19,7 @@ setup_check_deps_repo() {
     "$CHECK_DEPS_BIN"
   cp "$BATS_TEST_DIRNAME/../Makefile" "$CHECK_DEPS_REPO/kramme-cc-workflow/Makefile"
 
-  for tool in python3 shellcheck ruff bats jq node npm; do
+  for tool in python3 shellcheck ruff mypy bats jq node npm; do
     create_fake_tool "$CHECK_DEPS_BIN/$tool"
   done
   create_fake_tool "$CHECK_DEPS_REPO/node_modules/.bin/prettier"
@@ -94,6 +94,16 @@ SH
 
   [ "$status" -eq 2 ]
   [[ "$output" == *"skillspector not found. Install SkillSpector before running skill-security or verify."* ]]
+}
+
+@test "check-deps requires mypy" {
+  setup_check_deps_repo
+  rm "$CHECK_DEPS_BIN/mypy"
+
+  run env PATH="$CHECK_DEPS_BIN:/usr/bin:/bin" make -C "$CHECK_DEPS_REPO/kramme-cc-workflow" --no-print-directory check-deps SKILLSPECTOR_BASE=main
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"mypy not found. Install development dependencies from requirements-dev.txt before running lint or verify."* ]]
 }
 
 @test "test-python discovers repository and maintenance tests" {

@@ -1,2 +1,3 @@
+mypy==2.3.0
 ruff==0.15.16
 shellcheck-py==0.11.0.1
