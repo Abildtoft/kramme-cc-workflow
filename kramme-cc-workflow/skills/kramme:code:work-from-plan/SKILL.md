@@ -1,6 +1,6 @@
 ---
 name: kramme:code:work-from-plan
-description: "Routes and executes a standalone markdown implementation plan. Use when the user provides a PR_PLAN_*.md file, pasted plan, or one-off implementation checklist that is not already a Linear or SIW issue. Detects when to delegate to kramme:linear:issue-implement or kramme:siw:issue-implement, gathers codebase context, surfaces MISSING REQUIREMENT blockers, and proceeds directly only for bounded current-branch work. Not for planning from scratch, PR creation, CI watching, or large multi-phase initiatives that should become SIW."
+description: "Routes and executes a standalone markdown implementation plan. Use when the user provides a `PR_PLAN_*.md` file, pasted plan, or one-off implementation checklist that is not already a Linear or SIW issue. Detects when to delegate to kramme:linear:issue-implement or kramme:siw:issue-implement, gathers codebase context, surfaces MISSING REQUIREMENT blockers, and proceeds directly only for bounded current-branch work. Not for planning from scratch, PR creation, CI watching, or large multi-phase initiatives that should become SIW."
 argument-hint: "[plan path | inline plan]"
 disable-model-invocation: true
 user-invocable: true

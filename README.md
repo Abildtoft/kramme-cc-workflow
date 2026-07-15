@@ -121,10 +121,7 @@ These skills cover the full lifecycle of a change. Most work runs through the mi
 
 Most tasks begin at Clarify or Spec and flow straight into SIW. Two supporting primitives slot in wherever a phase needs them, not as required gates: `/kramme:research` produces a cited answer from primary sources before you commit to an approach, and `/kramme:prototype` builds throwaway code to settle one design question.
 
-For repository work, start with [CONTRIBUTING.md](CONTRIBUTING.md), then use
-[docs/architecture.md](kramme-cc-workflow/docs/architecture.md) and
-[docs/code-map.md](kramme-cc-workflow/docs/code-map.md) to find the relevant
-subsystem and tests.
+For repository work, start with [CONTRIBUTING.md](CONTRIBUTING.md), then use [docs/architecture.md](kramme-cc-workflow/docs/architecture.md) and [docs/code-map.md](kramme-cc-workflow/docs/code-map.md) to find the relevant subsystem and tests.
 
 Three common workflows walk through the hands-on parts:
 
@@ -178,11 +175,11 @@ Which review skill should you use?
 ### Quick utilities
 
 ```bash
-/kramme:verify:run         # run tests, linting, and type checks for changed code
-/kramme:setup              # report missing local workflow dependencies
-/kramme:visual:diagram     # generate an HTML diagram from any explanation
-/kramme:docs:to-markdown   # convert PDF, Word, Excel, or images to Markdown
-/kramme:code:refactor-pass # simplification pass on recent changes
+/kramme:verify:run          # run tests, linting, and type checks for changed code
+/kramme:setup               # report missing local workflow dependencies
+/kramme:visual:diagram      # generate an HTML diagram from any explanation
+/kramme:docs:to-markdown    # convert PDF, Word, Excel, or images to Markdown
+/kramme:code:refactor-pass  # simplification pass on recent changes
 /kramme:code:work-from-plan # route and execute a standalone implementation plan
 ```
 
@@ -239,7 +236,7 @@ PR creation, review, iteration, and resolution.
 | `/kramme:pr:product-review` | User, Auto | `[--base <branch>] [--threshold 0-100] [--inline]` | Deep product review of branch and local changes. Evaluates user-value alignment, flow completeness, missing states, copy/defaults, permission behavior, adjacent-flow regressions, and prioritization quality. Infers likely user goals and non-goals when rationale is missing. Not for UX heuristics, accessibility, or visual consistency -- use pr:ux-review for those. Supports inline report output with --inline. |
 | `/kramme:pr:code-review` | User, Auto | `[aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--parallel] [parallel] [--team] [--inline]` | Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, performance, slop, lean deletion, refactor fit, simplification). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. Use --team for multi-agent cross-validation. Not for UX, visual, or accessibility review -- use kramme:pr:ux-review for those. |
 | `/kramme:pr:autoreview` | User | `[code-review args] [--base <branch>] [--inline] [--parallel]` | Runs kramme:pr:code-review as a closeout review loop for local or PR branch changes before commit, ship, or final response. Use when the user asks for autoreview, second-model review, or a final code-review pass after non-trivial edits. Not for UX, visual, accessibility, or product review. |
-| `/kramme:pr:resolve-review` | User | `[--team] [--implement-only] [--granular] [--severity ...] [--source local\|online] [review\|url\|instructions]` | Resolve findings from code reviews by implementing fixes and documenting changes. Implements fixes as commits on the current branch. Use --team to resolve independent findings in parallel by file area. |
+| `/kramme:pr:resolve-review` | User | `[--team] [--implement-only] [--granular] [--severity ...] [--source local\|online] [review\|url\|instructions]` | Resolve findings from code reviews by implementing fixes and documenting changes. Implements fixes as commits on the current branch. Manual-class findings are deferred with a recommended resolution and any genuinely distinct alternatives, not a bare deferral. Use --team to resolve independent findings in parallel by file area. |
 | `/kramme:pr:github-review-reply` | User | `[--auto] [--implement\|--no-implement] [--post] [--resolve] [--inline] [--human-only\|--include-bots] [--all] [--only <login>] [pr-url\|instructions]` | Maps GitHub PR review feedback from humans, bots, and apps, including inline review threads, review-summary comments, and general PR comments; facilitates needed code changes; drafts and humanizes action-based responses; and optionally posts replies or resolves addressed inline threads with gh. Use when reviewers left GitHub comments that need triage, implementation, or response. Not for fixing CI, generating internal review findings, or resolving local REVIEW_OVERVIEW.md findings. |
 | `/kramme:pr:github-review` | User | `[pr-number\|pr-url] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--fresh] [--include-bots] [--all-threads] [--inline] [--keep-worktree]` | Review a GitHub pull request where you are the assigned reviewer, not the author or assignee. Fetches the PR into an isolated git worktree, runs code-quality agents plus UX/accessibility agents for UI diffs, maps existing author/reviewer comments, skips findings already raised, drafts concise Socratic inline comments and replies for threads awaiting you, and returns a reviewer-facing report with file:line findings and recommended verdict. Read-only toward GitHub; you submit the review yourself. Triggers on reviewing someone else's PR or a review-requested PR. Not for reviewing your own branch before shipping (use kramme:pr:code-review), responding to reviewers on your own PR (use kramme:pr:github-review-reply), or resolving review findings (use kramme:pr:resolve-review). |
 | `/kramme:pr:fix-ci` | User | `[--fixup] [--auto] [--no-consolidate]` | Iterate on a PR until CI passes. Use when you need to fix CI failures, address review feedback, or continuously push fixes until all checks are green. Automates the feedback-fix-push-wait cycle. |
@@ -250,7 +247,7 @@ PR creation, review, iteration, and resolution.
 | `/kramme:pr:convention-review` | User, Auto | `[--base <branch>] [--threshold 0-100] [--inline]` | Reviews PR and local changes for convention drift and overcaution against documented rules and mined peer-file practice. Use for new patterns, dependencies, abstractions, or defensive complexity that departs from established practice; every finding cites evidence. Supports --inline. Not for general code quality (use kramme:pr:code-review) or spec review (use kramme:siw:spec-audit --team). |
 | `/kramme:pr:ux-review` | User, Auto | `[app-url\|auto] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [--parallel] [--team] [--inline]` | Audit UI, UX, and product experience of PR and local changes using specialized agents for usability heuristics, product thinking, visual consistency, and accessibility. Supports inline report output with --inline. Use --team for multi-agent cross-validation. |
 | `/kramme:pr:rebase` | User | `[--auto] [--force-push] [--base <branch>]` | Rebase current branch onto latest main/master, auto-resolving conflicts with safe defaults unless dangerous --auto is used, then force push with --force-with-lease. Use when your PR is behind the base branch. |
-| `/kramme:pr:plan-split` | User | `[--base <branch>] [--auto]` | Analyze the current branch's diff and break it into smaller, independently mergeable PRs. Categorizes changes by feature, layer, and module; detects coupling; and proposes a concrete seam (vertical, stack, by file group, or horizontal — preferring vertical) for each slice with file lists, line counts, dependency order, test plan, and rationale. Hands the slices to kramme:code:breakdown-findings to write the PR_PLAN_*.md artifacts, supplying a worktree-based implementation setup that extracts each slice's changes from the branch the skill is run in. Use before opening a PR that bundles unrelated work, when a reviewer asks for a split, or when a branch has grown too large to review. Plans only; does not edit source code, create branches, or rewrite git history. |
+| `/kramme:pr:plan-split` | User | `[--base <branch>] [--auto]` | Analyze the current branch's diff and break it into smaller, independently mergeable PRs. Categorizes changes by feature, layer, and module; detects coupling; and proposes a concrete seam (vertical, stack, by file group, or horizontal — preferring vertical) for each slice with file lists, line counts, dependency order, test plan, and rationale. Hands the slices to kramme:code:breakdown-findings to write the `PR_PLAN_*.md` artifacts, supplying a worktree-based implementation setup that extracts each slice's changes from the branch the skill is run in. Use before opening a PR that bundles unrelated work, when a reviewer asks for a split, or when a branch has grown too large to review. Plans only; does not edit source code, create branches, or rewrite git history. |
 | `/kramme:pr:update-split-plans` | User | `[plan-file ... \| --all] [--worktree <path>] [--source <ref>] [--base <ref>] [--auto]` | Updates existing split-PR planning artifacts (`PR_PLAN_INDEX.md`, `PR_PLAN_REJECTIONS.md`, and `PR_PLAN_W##L_*.md`) after individual slices have been implemented, reviewed, rebased, or had follow-up fixes folded in. Use when split plan files are stale, noisy, or inaccurate relative to current slice branches/worktrees. Not for generating a fresh split; use kramme:pr:plan-split or kramme:code:breakdown-findings for new plan creation. |
 
 #### CI
@@ -310,7 +307,7 @@ Code cleanup, refactoring, and bug/security review.
 | `/kramme:code:rewrite-clean` | User | — | Scrap a working-but-mediocre fix and reimplement elegantly. Use after making a fix that works but feels hacky. Applies Chesterton's Fence before scrapping, emits SIMPLICITY CHECK at design time, and rejects rewrites that require modifying tests to pass. |
 | `/kramme:code:refactor-pass` | User | — | Perform a refactor pass focused on simplicity after recent changes. Use when the user asks for a refactor/cleanup pass, simplification, or dead-code removal on a narrow scope and expects build/tests to verify behavior. Applies Chesterton's Fence before removing code, rejects simplifications that require modifying tests, and works one slice at a time. |
 | `/kramme:code:incremental` | User | `[--refactor]` | (experimental) Deliver changes in small, verified slices with scope discipline, incremental verification between slices, and feature-flag guardrails for incomplete work. Use when implementing any change that spans more than one file or commit. Enforces one-thing-at-a-time, rollback-friendly commits, and explicit separation of in-scope work from noticed-but-untouched observations. Includes a refactor mode (opt-in via --refactor or after kramme:code:refactor-opportunities) that adds an interview-driven Decision Document and a Fowler-style tiny-commits plan where every intermediate state leaves the codebase working. |
-| `/kramme:code:work-from-plan` | User | `[plan path \| inline plan]` | Routes and executes a standalone markdown implementation plan. Use when the user provides a PR_PLAN_*.md file, pasted plan, or one-off implementation checklist that is not already a Linear or SIW issue. Detects when to delegate to kramme:linear:issue-implement or kramme:siw:issue-implement, gathers codebase context, surfaces MISSING REQUIREMENT blockers, and proceeds directly only for bounded current-branch work. Not for planning from scratch, PR creation, CI watching, or large multi-phase initiatives that should become SIW. |
+| `/kramme:code:work-from-plan` | User | `[plan path \| inline plan]` | Routes and executes a standalone markdown implementation plan. Use when the user provides a `PR_PLAN_*.md` file, pasted plan, or one-off implementation checklist that is not already a Linear or SIW issue. Detects when to delegate to kramme:linear:issue-implement or kramme:siw:issue-implement, gathers codebase context, surfaces MISSING REQUIREMENT blockers, and proceeds directly only for bounded current-branch work. Not for planning from scratch, PR creation, CI watching, or large multi-phase initiatives that should become SIW. |
 | `/kramme:code:source-driven` | User, Auto | — | (experimental) Ground framework and library decisions in official documentation with explicit citation. Use when touching any external framework, library, CLI tool, or cloud service — especially recent versions where training data may be stale. Fetches via Context7 MCP or direct URLs, implements against documented patterns, and cites deep links with quoted passages when decisions are non-obvious. |
 | `/kramme:code:copy-review` | User, Auto | `[scope — e.g. src/components, or omit for full codebase]` | Scan the codebase (or a specified scope) for unnecessary, redundant, or duplicative UI text. Identifies labels, descriptions, placeholders, tooltips, and instructions that could be removed because the UI already communicates the same information through its structure. |
 | `/kramme:code:breakdown-findings` | User | `[--auto] [--resume\|--reconcile] [--] [source-file-or-content ...]` | Cluster validated review/audit/QA findings into PR-sized implementation plans with index, rejection record, repo recon, sequencing, and reconcile/resume support. Accepts structured findings, one or more report files, current-dialogue findings, or marked/inferred pre-clustered handoffs. Not for raw bug lists, single issues, or unvalidated triage. |
@@ -466,6 +463,7 @@ Auto-triggered by Claude based on context. These don't appear in the `/` menu.
 
 Specialized subagents for PR review and UX audit tasks. Invoked by `/kramme:pr:code-review`, `/kramme:pr:ux-review`, or directly via the Task tool.
 
+<!-- prettier-ignore-start -->
 <!-- BEGIN SOURCE-SYNCED AGENT ROWS -->
 | Agent | Description |
 | --- | --- |
@@ -494,11 +492,13 @@ Specialized subagents for PR review and UX audit tasks. Invoked by `/kramme:pr:c
 | `kramme:ux-reviewer` | Use this agent to review code changes for usability issues using Nielsen's heuristics and interaction design best practices. It looks for missing states, confusing flows, poor feedback, preventable errors, and weak recovery paths; not for accessibility compliance or visual consistency checks. |
 | `kramme:visual-reviewer` | Use this agent to review code changes for visual consistency and responsive behavior, including design token usage, spacing, typography, color, component-library conformance, layout reflow, and breakpoint behavior. Use it for UI PRs with custom styling or layout changes; not for accessibility or product strategy review. |
 <!-- END SOURCE-SYNCED AGENT ROWS -->
+<!-- prettier-ignore-end -->
 
 ## Hooks
 
 Event handlers that run automatically at specific points in the Claude Code lifecycle. For detailed configuration, pattern lists, and formatter tables, see [docs/hooks.md](kramme-cc-workflow/docs/hooks.md).
 
+<!-- prettier-ignore-start -->
 <!-- BEGIN SOURCE-SYNCED HOOK ROWS -->
 | Hook | Event | Description |
 | --- | --- | --- |
@@ -509,6 +509,7 @@ Event handlers that run automatically at specific points in the Claude Code life
 | `auto-format` | PostToolUse (Write\|Edit) | Auto-formats code after file modifications using detected project formatter. |
 | `context-links` | Stop | Displays PR and Linear issue links at end of messages. |
 <!-- END SOURCE-SYNCED HOOK ROWS -->
+<!-- prettier-ignore-end -->
 
 Use `/kramme:hooks:toggle` to enable/disable hooks. State persists in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json` by default, with `KRAMME_HOOK_STATE_FILE` override support and legacy fallback to `kramme-cc-workflow/hooks/hook-state.json`.
 
@@ -571,8 +572,7 @@ CLI tools that enhance the plugin experience. Some are required for specific com
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor and agent workflow,
-including source maps, verification commands, and documentation expectations.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor and agent workflow, including source maps, verification commands, and documentation expectations.
 
 ### PR Title Format
 
@@ -657,57 +657,31 @@ make -C kramme-cc-workflow test-format
 make -C kramme-cc-workflow test-skill-usage
 ```
 
-The initial coverage baselines are 80% lines, 70% branches, and 80% functions
-for Node, plus a 35% production-line aggregate for Python. They sit below the
-measured local results (84.26%/75.56%/86.38% for Node and 36.46% for Python)
-and should only ratchet upward. Bats exercises shell integration behavior, so
-`coverage` reports its complete top-level `tests/*.bats` file/test inventory as
-a contract proxy rather than claiming line coverage.
+The initial coverage baselines are 80% lines, 70% branches, and 80% functions for Node, plus a 35% production-line aggregate for Python. They sit below the measured local results (84.26%/75.56%/86.38% for Node and 36.46% for Python) and should only ratchet upward. Bats exercises shell integration behavior, so `coverage` reports its complete top-level `tests/*.bats` file/test inventory as a contract proxy rather than claiming line coverage.
 
-For Node changes, `test-node-watch` uses the [built-in test runner's dependency
-watching](https://nodejs.org/docs/latest-v20.x/api/test.html#watch-mode). For a
-focused change-to-test loop, use `test-node-file` with the closest mapping in
-`kramme-cc-workflow/docs/code-map.md`; the equivalent npm command is
-`npm run test:node:file -- kramme-cc-workflow/tests/node/<file>.test.js` from
-the repository root.
+For Node changes, `test-node-watch` uses the [built-in test runner's dependency watching](https://nodejs.org/docs/latest-v20.x/api/test.html#watch-mode). For a focused change-to-test loop, use `test-node-file` with the closest mapping in `kramme-cc-workflow/docs/code-map.md`; the equivalent npm command is `npm run test:node:file -- kramme-cc-workflow/tests/node/<file>.test.js` from the repository root.
 
 ### Pre-PR Verification
 
-`make -C kramme-cc-workflow test` is the fast default suite. It runs the Node
-unit tests, Python unit tests, and Bats integration tests. For ordinary Pull
-Request verification, run:
+`make -C kramme-cc-workflow test` is the fast default suite. It runs the Node unit tests, Python unit tests, and Bats integration tests. For ordinary Pull Request verification, run:
 
 ```bash
 make -C kramme-cc-workflow pr-verify
 ```
 
-The `pr-verify` target runs dependency preflight checks, shell/Python/JS linting,
-format checks, skill-contract linting, changed-skill SkillSpector scanning with
-`--fail-on high`, and the fast test suite. It does not add a separate
-`skill-eval-skill-review` pass beyond the skill-review eval coverage already
-exercised by the Bats suite.
+The `pr-verify` target runs dependency preflight checks, shell/Python/JS linting, format checks, skill-contract linting, changed-skill SkillSpector scanning with `--fail-on high`, and the fast test suite. It does not add a separate `skill-eval-skill-review` pass beyond the skill-review eval coverage already exercised by the Bats suite.
 
-GitHub Actions also runs the standalone skill-review eval as a separate
-path-filtered, scheduled, and manual workflow. That workflow uploads the
-aggregate JSON result as the `skill-review-eval` artifact and is meant to catch
-harness or fixture regressions without treating score movement as a merge gate.
+GitHub Actions also runs the standalone skill-review eval as a separate path-filtered, scheduled, and manual workflow. That workflow uploads the aggregate JSON result as the `skill-review-eval` artifact and is meant to catch harness or fixture regressions without treating score movement as a merge gate.
 
-Before a release candidate or before marking a larger Pull Request ready, run the
-stronger local gate:
+Before a release candidate or before marking a larger Pull Request ready, run the stronger local gate:
 
 ```bash
 make -C kramme-cc-workflow verify
 ```
 
-The `verify` target runs `pr-verify` plus the standalone full skill-review eval
-split. These verification targets expect the existing local tools used by those
-checks to be installed: `shellcheck`, `ruff`, `skillspector`, `bats`, `jq`,
-Python 3, and Node.js.
+The `verify` target runs `pr-verify` plus the standalone full skill-review eval split. These verification targets expect the existing local tools used by those checks to be installed: `shellcheck`, `ruff`, `skillspector`, `bats`, `jq`, Python 3, and Node.js.
 
-Python development tool pins used by CI live in `requirements-dev.txt`. First
-party `actions/*` workflow actions are pinned to commit SHAs with a trailing
-comment naming the major tag used for lookup. Refresh them with `git ls-remote`
-against the upstream action repository before updating the SHA.
+Python development tool pins used by CI live in `requirements-dev.txt`. First party `actions/*` workflow actions are pinned to commit SHAs with a trailing comment naming the major tag used for lookup. Refresh them with `git ls-remote` against the upstream action repository before updating the SHA.
 
 ### Skill Security Scans
 
@@ -733,7 +707,7 @@ For third-party skill intake, scan the source before installing it:
 
 ```bash
 # Scan an external Git URL, zip, directory, or SKILL.md without LLM analysis
-skillspector scan <url-or-path> --no-llm
+skillspector scan SOURCE --no-llm
 ```
 
 Reports are written to `.context/skillspector/` by default, or `$RUNNER_TEMP/skillspector` in CI. Override behavior with `SKILLSPECTOR_FORMAT`, `SKILLSPECTOR_SEMANTIC_FORMAT`, `SKILLSPECTOR_FAIL_ON`, and `SKILLSPECTOR_BASE`.
@@ -782,35 +756,17 @@ kramme-cc-workflow/tests/
 
 ## SkillOpt Adoption
 
-SkillOpt is currently a conservative pilot for `kramme:skill:review` only. The
-deterministic eval split lives in
-`kramme-cc-workflow/evals/skill-review/`, and the repo-local SkillOpt bridge
-lives in `kramme-cc-workflow/evals/skillopt/`. Keep the external SkillOpt
-checkout, model credentials, run output, and candidate review artifacts outside
-tracked source under `.context/`.
+SkillOpt is currently a conservative pilot for `kramme:skill:review` only. The deterministic eval split lives in `kramme-cc-workflow/evals/skill-review/`, and the repo-local SkillOpt bridge lives in `kramme-cc-workflow/evals/skillopt/`. Keep the external SkillOpt checkout, model credentials, run output, and candidate review artifacts outside tracked source under `.context/`.
 
-The entry points are the split check, dry-run or real SkillOpt runner, candidate
-export, and candidate review packet documented in
-[`evals/skillopt/README.md`](kramme-cc-workflow/evals/skillopt/README.md).
-Generated `best_skill.md` output is never auto-applied. A candidate is eligible
-for a normal source edit only after the manual review packet under
-`.context/skillopt-runs/skill-review/<run-id>/candidate-review/` has been
-inspected, the patch applies cleanly, the eval scores do not regress, and the
-candidate gate passes:
+The entry points are the split check, dry-run or real SkillOpt runner, candidate export, and candidate review packet documented in [`evals/skillopt/README.md`](kramme-cc-workflow/evals/skillopt/README.md). Generated `best_skill.md` output is never auto-applied. A candidate is eligible for a normal source edit only after the manual review packet under `.context/skillopt-runs/skill-review/<run-id>/candidate-review/` has been inspected, the patch applies cleanly, the eval scores do not regress, and the candidate gate passes:
 
 ```bash
 make -C kramme-cc-workflow skillopt-candidate-check
 ```
 
-The candidate gate runs skill contract linting, changed-skill SkillSpector
-scanning with JSON output and `--fail-on high`, Node unit tests, Python unit
-tests, Bats integration tests, and the full skill-review eval split.
+The candidate gate runs skill contract linting, changed-skill SkillSpector scanning with JSON output and `--fail-on high`, Node unit tests, Python unit tests, Bats integration tests, and the full skill-review eval split.
 
-Do not add another skill to the optimization loop until it has a deterministic
-train/val/test split, false-positive coverage, a candidate gate, and the same
-manual acceptance model. SkillOpt-Sleep is proposal-only: it may suggest
-candidate edits from prior sessions, but deterministic held-out evals and the
-manual review packet remain the acceptance gate.
+Do not add another skill to the optimization loop until it has a deterministic train/val/test split, false-positive coverage, a candidate gate, and the same manual acceptance model. SkillOpt-Sleep is proposal-only: it may suggest candidate edits from prior sessions, but deterministic held-out evals and the manual review packet remain the acceptance gate.
 
 ## Local Repository Maintenance
 

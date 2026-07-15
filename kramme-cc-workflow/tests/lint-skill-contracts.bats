@@ -626,6 +626,8 @@ EOF
   local discipline_text
   local team_text
   local resolver_text
+  local resolver_team_text
+  local resolver_output_text
   local emphasis_line
   local normalization_line
 
@@ -634,6 +636,8 @@ EOF
   discipline_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/review-discipline.md")"
   team_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/team-mode.md")"
   resolver_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/SKILL.md")"
+  resolver_team_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/references/team-mode.md")"
+  resolver_output_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/references/resolution-output.md")"
 
   [[ "$skill_text" == *"After emphasis adjustments, run an **action-class normalization pass**."* ]]
   [[ "$skill_text" == *"default to \`gated_auto\` with owner \`resolver\`"* ]]
@@ -658,6 +662,24 @@ EOF
   [[ "$resolver_text" == *"manual blocker, and next human decision when available"* ]]
   [[ "$resolver_text" == *"Findings outside the filter are not processed and keep their existing \`Resolution status\` and \`Action taken\` fields unchanged"* ]]
   [[ "$resolver_text" == *"A finding skipped only because it was outside a previous severity filter remains eligible"* ]]
+  [[ "$resolver_text" == *"Deferred — manual follow-up required; proposed resolution below."* ]]
+  [[ "$resolver_text" == *"A follow-up user reply that names a manual finding and picks its recommended resolution or one of its alternatives supplies the required human decision"* ]]
+  [[ "$resolver_text" == *"Process handoff"* ]]
+  [[ "$resolver_text" == *"Waiting on"* ]]
+  [[ "$resolver_text" == *"remove the proposal-only \`Manual blocker\`, \`Next human decision\`, \`Recommended resolution\`, \`Alternatives\`, \`To proceed\`, \`Process handoff\`, and \`Waiting on\` fields"* ]]
+  [[ "$resolver_text" == *"Read \`references/resolution-output.md\` before writing or updating manual findings."* ]]
+  [[ "$resolver_output_text" == *"**Recommended resolution:**"* ]]
+  [[ "$resolver_output_text" == *"**Alternatives:** (omit when no genuinely distinct option exists)"* ]]
+  [[ "$resolver_output_text" == *"exactly one next-step field that matches who can act"* ]]
+  [[ "$resolver_output_text" == *"**To proceed:**"* ]]
+  [[ "$resolver_output_text" == *"**Process handoff:**"* ]]
+  [[ "$resolver_output_text" == *"**Waiting on:**"* ]]
+  [[ "$resolver_output_text" == *"**Selected resolution:**"* ]]
+  [[ "$resolver_output_text" == *"**Decision outcome:**"* ]]
+  [[ "$resolver_output_text" == *"Do not leave proposal-only fields on an addressed or acknowledged finding."* ]]
+  [[ "$resolver_team_text" == *"\`manual\` findings are never assigned to resolver agents"* ]]
+  [[ "$resolver_team_text" == *"If no resolver-eligible implementation candidates remain after the action-class gate"* ]]
+  [[ "$resolver_team_text" == *"Do not prompt for a parallel plan or spawn resolver agents for a manual-only review."* ]]
   [[ "$resolver_text" != *"Findings outside the filter are skipped with **Resolution status: skipped**"* ]]
 }
 

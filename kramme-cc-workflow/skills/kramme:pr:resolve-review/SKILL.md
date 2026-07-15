@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:resolve-review
-description: Resolve findings from code reviews by implementing fixes and documenting changes. Implements fixes as commits on the current branch. Use --team to resolve independent findings in parallel by file area.
+description: Resolve findings from code reviews by implementing fixes and documenting changes. Implements fixes as commits on the current branch. Manual-class findings are deferred with a recommended resolution and any genuinely distinct alternatives, not a bare deferral. Use --team to resolve independent findings in parallel by file area.
 argument-hint: "[--team] [--implement-only] [--granular] [--severity ...] [--source local|online] [review|url|instructions]"
 disable-model-invocation: true
 user-invocable: true
@@ -88,9 +88,9 @@ For local review files that include the structured `/kramme:pr:code-review` find
 - `Resolution status: addressed`, `acknowledged`, `deferred`, or `skipped` means the finding has already been processed. Do not implement it again unless the user explicitly names that finding and asks to reopen it. A finding skipped only because it was outside a previous severity filter remains eligible; treat that legacy action as unprocessed.
 - `Resolution status: open` or a missing resolution status means the finding is eligible for normal evaluation.
 - `Action class: gated_auto` with a concrete `path/to/file:line` location is eligible for implementation.
-- `Action class: manual` is not auto-implementable, even when it has a file location. Defer it with a manual follow-up recommendation that preserves the manual blocker and next human decision when present, unless the user supplied a separate explicit implementation payload that changes the scope.
+- `Action class: manual` is not auto-implementable, even when it has a file location. Defer it through the manual-proposal flow in Step 2d, which preserves the manual blocker and next human decision when present, unless the user supplied a separate explicit implementation payload that changes the scope.
 - `Action class: advisory` is optional. Implement it only when it passes the safe-advisory test in Step 2d; acknowledge the rest. Step 2d also defines the explicit-request path that widens candidacy.
-- `review-scope`, `PR description`, and other non-file locations are process-level findings. Defer them with a concrete manual recommendation.
+- `review-scope`, `PR description`, and other non-file locations are process-level findings. Defer them through the same manual-proposal flow in Step 2d; there the recommendation is a concrete process action (proposed PR-description text, a branch-split plan), not a code edit. If the user accepts that recommendation, use the process-handoff path in Step 2d instead of sending the finding through code implementation again.
 - Legacy local findings without an action class keep the previous location/severity behavior, but do not infer `gated_auto` from a file location when an action class is present.
 - For `UX_REVIEW_OVERVIEW.md`, accept legacy per-agent finding IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) from older UX audit reports as source identifiers during the transition to artifact-scoped `UX-NNN` IDs. Remove this legacy-ID acceptance once `kramme:pr:ux-review` drops its own legacy-ID compatibility and existing `UX_REVIEW_OVERVIEW.md` artifacts contain only `UX-NNN` IDs.
 
@@ -156,7 +156,11 @@ If `SEVERITY_FILTER` is set, do not process findings whose severity is not in th
 When a finding came from a structured local review and includes an action class, apply the action-class gate before implementation:
 
 - Implement `gated_auto` findings with concrete file locations.
-- Defer `manual` findings with **Resolution status: deferred** and **Action taken: Deferred — manual follow-up required.** Include the owner, evidence, manual blocker, and next human decision when available.
+- Defer `manual` findings with **Resolution status: deferred** and **Action taken: Deferred — manual follow-up required; proposed resolution below.** Include the owner, evidence, manual blocker, and next human decision when available. Deferral is not the whole job: investigate each manual finding as if you were going to fix it, then record a **Recommended resolution** — a concrete, opinionated answer to its next human decision naming what to change, where, and why that option wins. When genuinely distinct options exist, add an **Alternatives** list with a one-line trade-off for each; omit the list rather than inventing alternatives. Read `references/resolution-output.md` before writing or updating manual findings.
+- A follow-up user reply that names a manual finding and picks its recommended resolution or one of its alternatives supplies the required human decision and counts as the explicit reopen in Step 1: on that run, treat the chosen option as an explicit implementation payload and implement it when it is an in-scope (Step 2a) code change. Decisions only a maintainer, another team, or external access can supply stay deferred — say so in the proposal instead of listing options the user cannot choose.
+- When the user accepts a process-level recommendation, record the selected decision and replace the generic rerun instruction with a concrete **Process handoff** (for example, the proposed `gh pr edit` command or `/kramme:pr:plan-split`). Keep the finding deferred until the process action is completed; when the user confirms completion, mark it addressed. Do not route an accepted process decision back through code implementation.
+- When the decision can only come from a maintainer, another team, external access, or another named owner, omit `Alternatives` and `To proceed`. Add **Waiting on** with the required owner, approval, or access instead; the finding remains deferred until that dependency is supplied.
+- When a reopened manual finding is addressed or acknowledged, remove the proposal-only `Manual blocker`, `Next human decision`, `Recommended resolution`, `Alternatives`, `To proceed`, `Process handoff`, and `Waiting on` fields. Record **Selected resolution** and **Decision outcome** so the entry describes the completed decision instead of retaining stale pending instructions.
 - Implement an `advisory` finding without an explicit user request only when it passes the **safe-advisory test** — all of:
   - `Location` is a concrete `path/to/file:line` and the finding is in scope per Step 2a
   - The fix is mechanical with one obvious implementation — no design choice, API change, or behavior change a reviewer could reasonably contest — and it clearly improves the code rather than trading one valid style for another
@@ -209,7 +213,7 @@ Either way, Step 4 restores the exact stash object recorded in `CHECKPOINT_FILE`
 
 Work through each finding in priority order, applying the guidelines below.
 
-If a finding is process-level and not implementable as an in-place code change, defer it with a concrete manual recommendation instead of attempting a partial code edit.
+If a finding is process-level and not implementable as an in-place code change, defer it through the Step 2d manual-proposal flow instead of attempting a partial code edit.
 
 **If `GRANULAR_COMMITS=true`:** After implementing each finding, create a dedicated commit for it before moving to the next finding:
 
@@ -326,7 +330,7 @@ Write resolutions to the appropriate file in the project root:
 - If the source review was `CONVENTION_REVIEW_OVERVIEW.md` → update `CONVENTION_REVIEW_OVERVIEW.md` in place
 - Otherwise → create or update `REVIEW_OVERVIEW.md`
 
-Updates are **in place**: for each processed finding, replace or add its `Resolution status:` and `Action taken:` fields inside the existing entry. Findings present in the source but not addressed in this run (severity-filtered, out-of-scope, already processed, or unrelated) stay verbatim — never delete entries. If the source did not exist (review came from chat or `gh`), create a fresh `REVIEW_OVERVIEW.md` containing every processed finding.
+Updates are **in place**: for each processed finding, replace or add its `Resolution status:` and `Action taken:` fields inside the existing entry. When a reopened manual finding is completed, also replace its proposal-only fields with `Selected resolution:` and `Decision outcome:` as required by Step 2d. Findings present in the source but not addressed in this run (severity-filtered, out-of-scope, already processed, or unrelated) stay verbatim — never delete entries. If the source did not exist (review came from chat or `gh`), create a fresh `REVIEW_OVERVIEW.md` containing every processed finding.
 
 ### For external reviews
 
@@ -392,11 +396,6 @@ If any findings were identified as scope creep, document them:
 
 ---
 
-### Summary section
+### Manual findings and summary
 
-At the end, include:
-
-- Summary of changes made
-- Count of findings: N addressed, M deferred as out-of-scope
-- Note any breaking changes to API contracts or config behavior
-- Flag areas that need manual verification due to potential edge cases or risk
+Read `references/resolution-output.md` and apply its manual-finding suffix, completed-decision replacement, and final-summary contract.
