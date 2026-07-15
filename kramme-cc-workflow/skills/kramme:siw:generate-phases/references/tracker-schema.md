@@ -2,9 +2,11 @@
 
 Use this schema when updating `siw/OPEN_ISSUES_OVERVIEW.md` in Phase 6.2.
 
+Apply it only while the parent skill holds publication ownership, after re-reading the current overview and reserving final IDs. Derive the edit from that fresh state and verify it against every new issue file and the log before releasing ownership.
+
 Update `siw/OPEN_ISSUES_OVERVIEW.md` with all new issues, grouped by phase. Modern sections keep one group-level `**Parallelization:**` summary line; exact per-issue guidance lives in the issue files. Legacy sections that predate that metadata keep their existing format unless the user is explicitly migrating the tracker schema.
 
-If you add any non-DONE issues to a phase section currently marked ` (DONE)`, remove the marker (or ask the user) so the header stays accurate.
+If you add any non-DONE issues to a phase section currently marked ` (DONE)`, remove the marker so the header stays accurate. This invariant-preserving edit is automatic and must not prompt while publication ownership is held.
 
 **Append-mode compatibility rules:**
 
