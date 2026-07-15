@@ -43,6 +43,8 @@ Issue IDs are stable once issue files are written. Preserve existing append-mode
 
 Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
 
+All final issue creation and tracker publication use this skill's `scripts/siw-issue-reservation.sh` helper. The helper serializes its own invocations, provides an ownership-tokened publication lock, and creates exclusive per-ID reservations using portable atomic hard-link claims. A killed invocation's operation claim is reclaimed only after its recorded process no longer exists. Keep the locked critical section short. Draft IDs remain provisional until Phase 6 acquires publication ownership and reserves final IDs.
+
 ## Process Overview
 
 ```
@@ -169,7 +171,7 @@ options:
 
 **If "Append":** preserve all existing issue IDs exactly as written. New issues use the next unused number within their prefix group based on both `siw/OPEN_ISSUES_OVERVIEW.md` and on-disk `siw/issues/ISSUE-{prefix}-*.md` files. Do not backfill gaps unless the user explicitly runs `/kramme:siw:issue-reindex`.
 
-**If "Replace":** Verify nothing is at risk before deleting.
+**If "Replace":** Verify nothing is at risk, but defer deletion to Phase 6 so no mutation happens before the final serialized publication boundary.
 
 1. Check for uncommitted changes under `siw/issues/`:
 
@@ -179,14 +181,32 @@ options:
 
    If output is non-empty, list the dirty paths and re-prompt with AskUserQuestion options "Proceed and discard changes" / "Abort". Abort by default if the user does not pick "Proceed".
 
-2. Delete the issue files with `trash` for recoverability. If `trash` is unavailable, stop instead of falling back to permanent deletion:
+2. Verify `trash` is available for recoverability. If it is unavailable, stop instead of planning a permanent deletion. Store `REPLACE_MODE=true`; do not delete anything yet:
 
    ```bash
    if ! command -v trash &> /dev/null; then
      echo "MISSING REQUIREMENT: trash is required to replace existing SIW issues safely. Install with 'brew install trash' (macOS) or your distro's 'trash-cli' package, then rerun."
      exit 1
    fi
-   trash siw/issues/ISSUE-*.md 2> /dev/null
+   ```
+
+3. After the user approves Replace (including any dirty-file confirmation), capture `REPLACE_APPROVED_SNAPSHOT` as sorted `git hash-object` plus path pairs for every matching issue file. This records both the approved file set and its contents:
+
+   ```bash
+   REPLACE_APPROVED_SNAPSHOT="$(
+     for path in siw/issues/ISSUE-*.md; do
+       if [ ! -e "$path" ] && [ ! -L "$path" ]; then
+         continue
+       fi
+       if [ -L "$path" ] || [ ! -f "$path" ]; then
+         echo "MISSING REQUIREMENT: replacement issue path must be a non-symlink regular file: $path" >&2
+         exit 1
+       fi
+       path_hash="$(git hash-object "$path")" || exit 1
+       printf '%s  %s\n' "$path_hash" "$path"
+     done
+   )" || exit 1
+   REPLACE_APPROVED_SNAPSHOT="$(printf '%s\n' "$REPLACE_APPROVED_SNAPSHOT" | LC_ALL=C sort)" || exit 1
    ```
 
 ## Phase 2: Spec Analysis
@@ -264,7 +284,7 @@ For each phase, decompose into atomic tasks:
 
 Tag each task during decomposition. **Default to `AUTO`**; reserve `HITL` for tasks with a concrete human-input requirement from the list above, and when unclear choose `AUTO`. The subagent in Phase 4 will flag any task without a Mode label, any HITL task without a reason, and any task marked HITL whose stated reason is weak or speculative rather than a real blocking requirement.
 
-**Draft ID handling:** assign phase-prefixed issue IDs while drafting so dependencies can be reviewed. Existing IDs from append mode are immutable. New draft IDs may still be reordered or reshaped before files are written, but once Phase 6 creates issue files, later refinement must preserve IDs per the Issue Identifier Stability rules above.
+**Draft ID handling:** assign provisional phase-prefixed issue IDs while drafting so dependencies can be reviewed. Existing IDs from append mode are immutable. New draft IDs may still be reordered or reshaped before files are written; Phase 6 remaps them to exclusively reserved final IDs if concurrent publication advanced a prefix. Once Phase 6 creates issue files, later refinement must preserve IDs per the Issue Identifier Stability rules above.
 
 **Sizing and triggers:**
 
@@ -346,6 +366,17 @@ If `AUTO_MODE=true`, do not ask for approval. Print the same `PLAN:` block, add 
 
 ## Phase 6: File Creation
 
+### 6.0 Acquire Publication Ownership and Finalize IDs
+
+Resolve `scripts/siw-issue-reservation.sh` relative to this `SKILL.md`. Generate a collision-resistant owner token once with `sh <helper> new-owner`, retain it in this workflow's session state, and use it for the workflow's full publication and recovery lifetime. During normal contention, never copy or reuse a token observed in an existing lock or reservation.
+
+1. Immediately before the first mutation, run `sh <helper> acquire siw <owner-token> 30`. If it reports that another writer owns publication, preserve the lock and reservations unchanged and stop for owner-guided recovery without exposing its token. For malformed state or operational failures, preserve state and surface the helper's diagnostic exactly instead of describing the failure as contention.
+2. Re-read `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/LOG.md`, and all matching on-disk issue files while holding publication ownership. Never publish from the Phase 1 or draft-plan snapshot.
+3. In append mode, group approved provisional IDs by prefix and call `sh <helper> reserve-batch siw <prefix> <owner-token> 100 <provisional-id>...` once per prefix. Each output line maps one provisional request key to its final ID, and retrying the same batch with the retained token returns the same mappings after interrupted output. Build the complete provisional-to-final map, then update filenames, headings, dependencies, related IDs, overview rows, and log ranges before writing. Each batch scans the prefix high-water mark once, preserves gaps, and retries collisions with exclusive atomic claims. Existing append-mode IDs remain unchanged.
+4. In replace mode, recompute the snapshot under the lock with the exact fail-closed path validation, hash-status checks, and separate sort shown in Phase 1, then compare it with `REPLACE_APPROVED_SNAPSHOT`, regardless of `git status`. If it differs, run `sh <helper> release-publication siw <owner-token>` because no replacement IDs have been reserved yet, list the current issue files, and require fresh explicit approval before deletion; auto mode must stop only after publication ownership is released. After approval, replace `REPLACE_APPROVED_SNAPSHOT` with the newly approved snapshot, reacquire with the retained token, re-read all three SIW views, and recompute the snapshot. If it changed again, release ownership and repeat approval. Reserve every approved replacement ID first with `sh <helper> reserve-exact siw <issue-id> <owner-token>`; the helper accepts either `ISSUE-G-001` or canonical `G-001` form and same-owner retries return the canonical ID. A foreign collision stops publication without deleting anything. Set `REPLACE_DELETION_STARTED=true` immediately before running the newly approved `trash siw/issues/ISSUE-*.md`, then replace the corresponding overview rows in this same publication.
+
+Hold publication ownership only through Phase 6.1-6.3 and the verification/release steps below; never hold it during analysis, review, or user approval.
+
 ### 6.1 Create Issue Files
 
 For each issue, create `siw/issues/ISSUE-{prefix}-{number}-{title}.md`:
@@ -356,7 +387,7 @@ For each issue, create `siw/issues/ISSUE-{prefix}-{number}-{title}.md`:
 - Number: 3-digit padded (001, 002, 003)
 - Title: lowercase, hyphens, max ~40 characters
 
-**Number assignment in append mode:** use the next unused number within each prefix group. Check both the overview table and on-disk issue filenames before assigning. Existing gaps remain gaps unless `/kramme:siw:issue-reindex` is explicitly run.
+**Number assignment in append mode:** use only the final IDs returned by Phase 6.0. Existing gaps remain gaps unless `/kramme:siw:issue-reindex` is explicitly run.
 
 **Path references:** generated issue files must use repo-relative paths for affected files, tests, and pattern references. Do not embed absolute local paths; they break portability across workspaces and teammates.
 
@@ -371,6 +402,12 @@ Read `references/tracker-schema.md` and apply its modern and legacy schema rules
 Update `siw/LOG.md` Current Progress with the generated issue count, affected prefix ranges, and date. If `siw/LOG.md` is missing, create a minimal Current Progress section before reporting success.
 
 If any issue file, overview, or log write fails after issue creation starts, surface the partial state in the completion summary and offer rollback guidance instead of reporting the phase issues as cleanly created.
+
+### 6.4 Verify and Release Publication Ownership
+
+Re-read every created issue file, `siw/OPEN_ISSUES_OVERVIEW.md`, and `siw/LOG.md`. Verify each final ID appears once on disk, every overview row and dependency uses the final mapping, the log records the complete generated set, and accurate entries from other writers remain intact. Release each completed reservation with `sh <helper> release siw <issue-id> <owner-token>`, then run `sh <helper> release-publication siw <owner-token>`. These release commands are postcondition-idempotent, so the retained owner may safely retry them after interrupted output.
+
+Before replacement deletion starts, a failed multi-ID reservation attempt must unwind every exact reservation created by that attempt before releasing publication: run `release` for a replacement ID whose old issue file still exists and `abandon` for an ID with no issue file. Other failures before a reserved issue file exists may use `abandon` while `REPLACE_DELETION_STARTED` is not true. If cleanup fails, preserve the remaining reservation and publication lock for owner-guided recovery instead of reporting the collision as cleanly stopped. Once replacement deletion starts, never abandon any replacement reservation even when its new issue file does not exist: reacquire with the retained token, restore or repair all three views from current state, verify, and then release. A later recovery session may use the retained token only after the user explicitly confirms it is resuming that interrupted workflow. Never delete a reservation based on age or filename, and never clean up a different owner's token.
 
 ## Phase 7: Summary
 

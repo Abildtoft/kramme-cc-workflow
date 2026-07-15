@@ -1,6 +1,8 @@
 # Tracker Schema Rules
 
-Rules for editing `siw/OPEN_ISSUES_OVERVIEW.md`. Read this file from `Phase 6 Step 4` in `SKILL.md` when adding or updating a row.
+Rules for editing `siw/OPEN_ISSUES_OVERVIEW.md`. Read this file from `Phase 6 Step 3` in `SKILL.md` when adding or updating a row.
+
+Apply these rules only after the parent skill acquires publication ownership, re-reads the current overview, and (for creation) reserves the final ID. Derive the edit from that fresh state and verify it against the issue file and log before releasing ownership.
 
 ## Column layouts
 
@@ -52,5 +54,5 @@ Preserve the existing section-level `**Parallelization:**` summary exactly as wr
 
 `(DONE)` suffix on a phase section header signals the entire phase is complete.
 
-- Updating a phase issue to `DONE` and no READY / IN PROGRESS / IN REVIEW remain in that section → ask the user whether to append ` (DONE)` to the section header.
-- Creating or updating a non-`DONE` phase issue under a header currently marked ` (DONE)` → ask the user whether to remove the marker.
+- Updating a phase issue to `DONE` and no READY / IN PROGRESS / IN REVIEW remain in that section → append ` (DONE)` to the section header so the marker matches the tracker state.
+- Creating or updating a non-`DONE` phase issue under a header currently marked ` (DONE)` → remove the marker so the header matches the tracker state.

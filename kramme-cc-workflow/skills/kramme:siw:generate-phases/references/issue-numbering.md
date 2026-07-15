@@ -11,6 +11,7 @@ Use phase-prefixed numbering for clear organization:
 Issue IDs are stable once issue files are written.
 
 - During draft planning before Phase 6 writes files, proposed IDs may be reshaped as the plan is reviewed.
+- Proposed IDs are not reservations. At the final mutation boundary, acquire the skill's publication lock, re-read the overview and disk, reserve final IDs exclusively, and remap new draft dependencies before writing.
 - After files exist, ordinary append, refinement, deletion, splitting, or deepening must not renumber existing issues just to close gaps.
 - When splitting an existing concept, keep the original ID on the original concept and assign the next unused number in that prefix group to the split-out concept.
 - When deleting or replacing a concept outside the explicit Replace flow, leave numbering gaps in place.

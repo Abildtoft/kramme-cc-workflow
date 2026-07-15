@@ -40,6 +40,8 @@ This skill turns `planning-ready` input into an `implementation-ready` local iss
 
 This skill owns the manual SIW issue creation/update protocol. Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
 
+All final issue creation and tracker-visible updates use this skill's `scripts/siw-issue-reservation.sh` helper. The helper serializes its own invocations, provides an ownership-tokened publication lock, and creates exclusive per-ID reservations using portable atomic hard-link claims. A killed invocation's operation claim is reclaimed only after its recorded process no longer exists. Keep the locked critical section short. Draft IDs are provisional; reserve final IDs only at the Phase 6 mutation boundary.
+
 ## Audience Priority
 
 **Primary: Future You** — The issue must be clear enough to understand days or weeks later.
@@ -72,8 +74,8 @@ Check if input matches an existing issue:
 **If existing issue detected → IMPROVE MODE:**
 
 1. Extract the prefix and number (e.g., `G` and `001` from `ISSUE-G-001`, or `P1` and `002` from `P1-002`)
-2. Find and read the issue file from `siw/issues/ISSUE-{prefix}-{number}-*.md`
-3. Store the existing issue content
+2. Resolve exactly one non-symlink regular issue file from `siw/issues/ISSUE-{prefix}-{number}-*.md`; stop on zero matches, duplicate matches, symlinks, or other non-regular paths.
+3. Store the exact issue path and existing content as the interview base, then store `IMPROVE_BASE_HASH` from a successful `git hash-object` call. Stop if the content cannot be hashed.
 4. Set mode flag to "improve"
 
 **If an identifier-like argument was provided but no file exists:**
@@ -151,13 +153,13 @@ Before creating a new issue, check for existing similar issues:
      - Improve existing issue instead → Switch to IMPROVE MODE
      - Abort
 
-3. **Generate Next Issue Number**
+3. **Propose Next Issue Number**
    - Determine `issue_prefix` (from Step 4; fallback to `requested_prefix` if present; otherwise default `G`)
    - Parse `siw/OPEN_ISSUES_OVERVIEW.md` table to find highest issue number **within that prefix group**
    - Compute candidate = highest + 1 (or 001 if no issues with that prefix exist), padded to 3 digits
    - **Verify no on-disk collision:** glob `siw/issues/ISSUE-{issue_prefix}-{candidate}-*.md`. If any file matches, the tracker is out of sync with `siw/issues/`. Increment the candidate and re-check until no file matches, then warn the user that the tracker may need a reindex via `/kramme:siw:issue-reindex`.
-   - Store as `issue_number`
-   - Full ID: `{issue_prefix}-{issue_number}` (e.g., `G-001`, `P1-002`)
+   - Store as provisional `issue_number` for the draft. Do not create a reservation yet; interviews and review must not hold publication ownership.
+   - Provisional full ID: `{issue_prefix}-{issue_number}` (e.g., `G-001`, `P1-002`). Phase 6 may advance it if another creator publishes first.
 
 ## Phase 3: Codebase Exploration
 
@@ -229,38 +231,22 @@ The references file also defines the **Durability rule**: issue bodies must desc
 - Ask if any changes are needed
 - Iterate until user is satisfied
 
-### 3. Write Issue File
+### 3. Reserve and Publish the Issue-State Change
 
-**Create/Update issue file:**
+Resolve `scripts/siw-issue-reservation.sh` relative to this `SKILL.md`. Generate a collision-resistant owner token once with `sh <helper> new-owner`, retain it in this workflow's session state, and use it for the workflow's full publication and recovery lifetime. During normal contention, never copy or reuse a token observed in an existing lock or reservation.
 
-```
-siw/issues/ISSUE-{prefix}-{number}-{sanitized-title}.md
-```
+1. Immediately before the first mutation, run `sh <helper> acquire siw <owner-token> 30`. This bounded wait is the serialization boundary. If it reports that another writer owns publication, preserve the lock and reservations unchanged and stop for owner-guided recovery without exposing its token. For malformed state or operational failures, preserve state and surface the helper's diagnostic exactly instead of describing the failure as contention.
+2. Re-read `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/LOG.md`, and matching on-disk issue files while holding publication ownership. Never publish from the snapshot used during the interview.
+3. In IMPROVE MODE, resolve exactly one current issue path and hash it successfully. Compare both its path and hash with the stored interview base. If either changed, run `sh <helper> release-publication siw <owner-token>` before prompting, rebase the proposed edits onto the fresh issue without discarding concurrent changes, show the revised draft and concurrent delta for explicit approval, replace the stored base path/hash, reacquire publication ownership, and repeat from Step 2. Conflicting edits always require approval; never prompt while holding publication ownership. Proceed only when the under-lock path and hash still match the latest approved base.
+4. In CREATE MODE, run `sh <helper> reserve siw <issue-prefix> <owner-token> 100 issue-create`. The stable `issue-create` request key makes an interrupted call safe to retry with the retained owner token. Treat the returned ID as final, replacing the provisional ID everywhere in the issue body, filename, overview row, and log entry. The helper recomputes the high-water mark across the overview, issue files, and live reservations, preserves gaps, and retries collisions with exclusive atomic claims. In IMPROVE MODE, keep the existing stable ID and do not reserve a new one.
+5. In CREATE MODE, create `siw/issues/ISSUE-{prefix}-{number}-{sanitized-title}.md`. In IMPROVE MODE, update the exact current path verified in Step 3; if an approved title change requires a new sanitized filename, verify the target is absent and rename that file instead of creating a second path for the same ID. Sanitize titles by lowercasing, replacing spaces with hyphens, removing special characters, and limiting them to 40 characters.
+6. From the fresh under-lock state, update `siw/OPEN_ISSUES_OVERVIEW.md`: add a new row in the correct prefix section, or update every changed tracker-visible field for an existing issue. Read `references/tracker-schema.md` for the coexisting layouts, parallelization-summary recomputation, and `(DONE)` phase-marker rules.
+7. From the same fresh state, update `siw/LOG.md`. For new issues, add the created ID, title, and date under `## Current Progress`; for updated issues, add an entry only when tracker-visible metadata changed and name the changed fields.
+8. Re-read all three views and verify the same ID and tracker-visible metadata appear in the issue file, overview, and log without discarding another writer's accurate entries. Only then run `sh <helper> release siw <issue-id> <owner-token>` for a new issue, followed by `sh <helper> release-publication siw <owner-token>`.
 
-**Sanitize title:**
+In CREATE MODE, retry the same request key after an interrupted reservation call to recover its final ID. If a write fails before the issue file exists, the same owner may run `abandon` for its ID and then `release-publication`. If the issue file exists, do not abandon the reservation: reacquire with the retained token, repair the overview/log from current state, verify all three views, then run `release` followed by `release-publication`. These cleanup and publication-release commands are postcondition-idempotent for interruption recovery. In IMPROVE MODE no ID reservation exists: reacquire with the retained token, repair and verify all three views, then run only `release-publication`. A later recovery session may use the retained token only after the user explicitly confirms it is resuming that interrupted workflow. Never delete a reservation based on age or filename, and never clean up a different owner's token.
 
-- Lowercase
-- Replace spaces with hyphens
-- Remove special characters
-- Max 40 characters
-
-### 4. Update siw/OPEN_ISSUES_OVERVIEW.md
-
-Issues are grouped by prefix (General, Phase 1, Phase 2, etc.).
-
-**For new issues:** Add a row to the appropriate section. If the section doesn't exist yet, create the section header and table first.
-
-**For updated issues:** Update the existing row if any tracker-visible metadata changed, including title, status, size, priority, mode, related/dependency metadata, or any other field shown in the current table layout.
-
-Read `references/tracker-schema.md` for the column-layout rules (three coexisting layouts, when to use each, when to migrate), the parallelization-summary recomputation rules, and the `(DONE)` phase-marker rules.
-
-### 5. Update siw/LOG.md
-
-For new issues, add an entry under `## Current Progress` noting the created issue ID, title, and date. For updated issues, add an entry only when tracker-visible metadata changed, naming the issue and changed fields.
-
-If any issue file, overview, or log write fails, stop, surface which file failed, and offer to roll back the partial issue-state update before continuing.
-
-### 6. Return Result
+### 4. Return Result
 
 **IMPROVE MODE:**
 
@@ -272,7 +258,7 @@ If any issue file, overview, or log write fails, stop, surface which file failed
 - Confirm issue file created
 - Show file path
 
-### 7. Workflow Complete
+### 5. Workflow Complete
 
 The skill ends here. Surface the file path and tell the user that if they want to implement next, they can run `/kramme:siw:issue-implement {prefix}-{number}`, or re-run `/kramme:siw:issue-define {prefix}-{number}` to refine. Do not start implementation.
 
