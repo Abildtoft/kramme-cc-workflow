@@ -1,8 +1,9 @@
-.PHONY: lint lint-shell lint-python lint-js format-check pre-commit preflight pr-verify verify test test-smoke test-bats test-node test-node-watch test-node-file test-python test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage unit-coverage coverage-node coverage-python coverage-bats-contract check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-shell-deps check-ruff-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
+.PHONY: lint lint-shell lint-python lint-js typecheck-python format-check pre-commit preflight pr-verify verify test test-smoke test-bats test-node test-node-watch test-node-file test-python test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage unit-coverage coverage-node coverage-python coverage-bats-contract check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-shell-deps check-ruff-deps check-mypy-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
 
 SHELLCHECK ?= shellcheck
 SHELLCHECK_SEVERITY ?= warning
 RUFF ?= ruff
+MYPY ?= mypy
 ROOT_DIR := $(abspath ..)
 PLUGIN_REL := $(notdir $(CURDIR))
 PRETTIER ?= $(ROOT_DIR)/node_modules/.bin/prettier
@@ -18,6 +19,11 @@ SMOKE_BATS_TEST_FILE = tests/linear-issue-implement-guidance.bats
 PYTHON_TEST_DIR = tests/python
 PYTHON_TEST_PATTERN = test_*.py
 PYTHON_MAINTENANCE_TEST_DIR = ../.agents/skills/kramme:skill:audit-sources/scripts
+PYTHON_TYPECHECK_FILES = \
+	hooks/lib/git_command_parser.py \
+	skills/kramme:session:search/scripts/extract-errors.py \
+	skills/kramme:session:search/scripts/extract-metadata.py \
+	skills/kramme:session:search/scripts/extract-skeleton.py
 NODE_COVERAGE_LINES ?= 80
 NODE_COVERAGE_BRANCHES ?= 70
 NODE_COVERAGE_FUNCTIONS ?= 80
@@ -42,8 +48,11 @@ lint: lint-shell lint-python lint-js
 lint-shell: check-shell-deps
 	@$(SHELLCHECK) --severity=$(SHELLCHECK_SEVERITY) $(SHELLCHECK_FILES)
 
-lint-python: check-python-deps check-ruff-deps
+lint-python: check-python-deps check-ruff-deps typecheck-python
 	@$(RUFF) check .
+
+typecheck-python: check-python-deps check-mypy-deps
+	@$(MYPY) --config-file mypy.ini $(PYTHON_TYPECHECK_FILES)
 
 lint-js: check-js-deps
 	@"$(TSC)" -p jsconfig.json
@@ -264,11 +273,14 @@ check-shell-deps:
 check-ruff-deps:
 	@command -v $(RUFF) >/dev/null 2>&1 || { echo "$(RUFF) not found. Install ruff before running lint or verify."; exit 1; }
 
+check-mypy-deps:
+	@command -v $(MYPY) >/dev/null 2>&1 || { echo "$(MYPY) not found. Install development dependencies from requirements-dev.txt before running lint or verify."; exit 1; }
+
 check-js-deps:
 	@command -v node >/dev/null 2>&1 || { echo "node not found. Install Node.js before running lint-js or verify."; exit 1; }
 	@command -v "$(TSC)" >/dev/null 2>&1 || { echo "TypeScript not found at $(TSC). Run 'npm ci' from the repository root or set TSC to an executable command."; exit 1; }
 
-check-static-deps: check-python-deps check-shell-deps check-ruff-deps check-js-deps
+check-static-deps: check-python-deps check-shell-deps check-ruff-deps check-mypy-deps check-js-deps
 
 check-test-deps: check-bats-deps check-node-deps check-python-deps
 

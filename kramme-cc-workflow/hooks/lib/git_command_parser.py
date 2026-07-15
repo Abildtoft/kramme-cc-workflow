@@ -9,6 +9,29 @@ import sys
 import os
 import json
 from dataclasses import dataclass
+from typing import Iterator, Optional, TypedDict, cast
+
+
+class HeredocSpec(TypedDict):
+    delimiter: str
+    quoted: bool
+    strip_tabs: bool
+    start: int
+
+
+class PendingHeredoc(HeredocSpec):
+    keep_body: bool
+
+
+class NoninteractiveSubstitution(TypedDict):
+    command: str
+    env: dict[str, str]
+
+
+class CommitContext(TypedDict, total=False):
+    git_args: list[str]
+    git_env: list[str]
+    parse_error: str
 
 
 CONTROL_TOKENS = {";", ";;", "&&", "||", "|", "|&", "&"}
@@ -119,12 +142,12 @@ NONINTERACTIVE_GIT_OPTIONS_WITH_VALUE = {
 
 @dataclass
 class NoninteractiveParseResult:
-    env: dict
+    env: dict[str, str]
     subcmd: str
-    args: list
+    args: list[str]
 
 
-def _decode_ansi_c_string(value):
+def _decode_ansi_c_string(value: str) -> str:
     """Decode the escape sequences supported by shell ANSI-C quoting."""
     simple_escapes = {
         "a": "\a",
@@ -141,7 +164,7 @@ def _decode_ansi_c_string(value):
         '"': '"',
         "?": "?",
     }
-    decoded = []
+    decoded: list[str] = []
     idx = 0
     while idx < len(value):
         if value[idx] != "\\":
@@ -198,11 +221,11 @@ def _decode_ansi_c_string(value):
     return "".join(decoded)
 
 
-def _expand_ansi_c_quoted_strings(command):
+def _expand_ansi_c_quoted_strings(command: str) -> str:
     """Replace unquoted $'...' forms with equivalent shlex-safe strings."""
-    expanded = []
+    expanded: list[str] = []
     idx = 0
-    quote = None
+    quote: Optional[str] = None
     while idx < len(command):
         char = command[idx]
 
@@ -225,7 +248,7 @@ def _expand_ansi_c_quoted_strings(command):
             continue
 
         if command.startswith("$'", idx):
-            value = []
+            value: list[str] = []
             end = idx + 2
             while end < len(command):
                 if command[end] == "\\" and end + 1 < len(command):
@@ -254,8 +277,8 @@ def _expand_ansi_c_quoted_strings(command):
     return "".join(expanded)
 
 
-def read_dollar_substitution(command, start):
-    inner = []
+def read_dollar_substitution(command: str, start: int) -> tuple[str, int]:
+    inner: list[str] = []
     depth = 1
     idx = start + 2
     in_single = False
@@ -305,8 +328,8 @@ def read_dollar_substitution(command, start):
     raise ValueError("Unterminated command substitution.")
 
 
-def read_backtick_substitution(command, start):
-    inner = []
+def read_backtick_substitution(command: str, start: int) -> tuple[str, int]:
+    inner: list[str] = []
     idx = start + 1
     escaped = False
 
@@ -334,10 +357,10 @@ def read_backtick_substitution(command, start):
     raise ValueError("Unterminated backtick command substitution.")
 
 
-def _extract_body_substitutions(line):
+def _extract_body_substitutions(line: str) -> list[str]:
     # Collect $(...) / `...` contents from an unquoted heredoc body line.
     # Mirrors the bash extract_body_substitutions helper.
-    subs = []
+    subs: list[str] = []
     idx = 0
     length = len(line)
     while idx < length:
@@ -354,19 +377,19 @@ def _extract_body_substitutions(line):
     return subs
 
 
-def _basename(token):
+def _basename(token: str) -> str:
     return os.path.basename(token.lstrip("\\"))
 
 
-def _is_assignment(token):
+def _is_assignment(token: str) -> bool:
     return ASSIGNMENT_WORD.match(token) is not None
 
 
-def _is_shell_function_name(token):
+def _is_shell_function_name(token: str) -> bool:
     return SHELL_FUNCTION_NAME.match(token) is not None
 
 
-def _skip_empty_function_parens(tokens, idx):
+def _skip_empty_function_parens(tokens: list[str], idx: int) -> int:
     if idx < len(tokens) and tokens[idx] == "()":
         return idx + 1
     if idx + 1 < len(tokens) and tokens[idx] == "(" and tokens[idx + 1] == ")":
@@ -374,7 +397,7 @@ def _skip_empty_function_parens(tokens, idx):
     return idx
 
 
-def _function_body_start(tokens, idx):
+def _function_body_start(tokens: list[str], idx: int) -> Optional[int]:
     token = tokens[idx]
 
     if token == "function":
@@ -396,10 +419,10 @@ def _function_body_start(tokens, idx):
     return None
 
 
-def _collect_heredocs(line):
-    heredocs = []
+def _collect_heredocs(line: str) -> list[HeredocSpec]:
+    heredocs: list[HeredocSpec] = []
     idx = 0
-    quote = None
+    quote: Optional[str] = None
     length = len(line)
 
     while idx < length:
@@ -448,7 +471,7 @@ def _collect_heredocs(line):
         while idx < length and line[idx] in {" ", "\t"}:
             idx += 1
 
-        token = []
+        token: list[str] = []
         quoted = False
         if idx < length and line[idx] in {"'", '"'}:
             quoted = True
@@ -486,20 +509,20 @@ def _collect_heredocs(line):
     return heredocs
 
 
-def _tokenize_heredoc_prefix(line):
+def _tokenize_heredoc_prefix(line: str) -> list[str]:
     lexer = shlex.shlex(line, posix=True, punctuation_chars="()|&;")
     lexer.whitespace_split = True
     lexer.commenters = ""
     return list(lexer)
 
 
-def _tokens_for_heredoc_command(tokens):
+def _tokens_for_heredoc_command(tokens: list[str]) -> list[str]:
     start = 0
     for idx, token in enumerate(tokens):
         if token in CONTROL_TOKENS:
             start = idx + 1
 
-    command_tokens = []
+    command_tokens: list[str] = []
     idx = start
     while idx < len(tokens):
         token = tokens[idx]
@@ -515,11 +538,11 @@ def _tokens_for_heredoc_command(tokens):
     return command_tokens
 
 
-def _shell_has_c_option(word):
+def _shell_has_c_option(word: str) -> bool:
     return word.startswith("-") and not word.startswith("--") and "c" in word[1:]
 
 
-def _shell_invocation_reads_stdin(args):
+def _shell_invocation_reads_stdin(args: list[str]) -> bool:
     idx = 0
     skip_option_operand = False
 
@@ -562,7 +585,9 @@ def _shell_invocation_reads_stdin(args):
     return True
 
 
-def _skip_prefixed_command_options(tokens, idx, command_name):
+def _skip_prefixed_command_options(
+    tokens: list[str], idx: int, command_name: str
+) -> int:
     if command_name in {"command", "builtin"}:
         idx += 1
         while idx < len(tokens):
@@ -768,7 +793,9 @@ def _skip_prefixed_command_options(tokens, idx, command_name):
     return idx
 
 
-def _line_has_supported_shell_stdin_heredoc(line, heredoc_start):
+def _line_has_supported_shell_stdin_heredoc(
+    line: str, heredoc_start: int
+) -> bool:
     try:
         tokens = _tokens_for_heredoc_command(
             _tokenize_heredoc_prefix(line[:heredoc_start])
@@ -810,11 +837,11 @@ def _line_has_supported_shell_stdin_heredoc(line, heredoc_start):
     return False
 
 
-def strip_heredoc_bodies(command):
+def strip_heredoc_bodies(command: str) -> tuple[str, list[str]]:
     lines = command.splitlines(keepends=True)
-    stripped_lines = []
-    pending_heredocs = []
-    extracted = []
+    stripped_lines: list[str] = []
+    pending_heredocs: list[PendingHeredoc] = []
+    extracted: list[str] = []
 
     for line in lines:
         if pending_heredocs:
@@ -847,14 +874,16 @@ def strip_heredoc_bodies(command):
                 keep_body = _line_has_supported_shell_stdin_heredoc(
                     line, heredoc["start"]
                 )
-                pending_heredocs.append({**heredoc, "keep_body": keep_body})
+                pending_heredocs.append(
+                    cast(PendingHeredoc, {**heredoc, "keep_body": keep_body})
+                )
 
     return "".join(stripped_lines), extracted
 
 
-def normalize_newlines(command):
+def normalize_newlines(command: str) -> str:
     command, _ = strip_heredoc_bodies(command)
-    normalized = []
+    normalized: list[str] = []
     in_single = False
     in_double = False
     escaped = False
@@ -906,7 +935,7 @@ def normalize_newlines(command):
     return "".join(normalized)
 
 
-def tokenize(command):
+def tokenize(command: str) -> list[str]:
     command = _expand_ansi_c_quoted_strings(normalize_newlines(command))
     lexer = shlex.shlex(command, posix=True, punctuation_chars="()|&;")
     lexer.whitespace_split = True
@@ -914,8 +943,8 @@ def tokenize(command):
     return list(lexer)
 
 
-def split_segments(tokens):
-    current = []
+def split_segments(tokens: list[str]) -> Iterator[tuple[list[str], Optional[str]]]:
+    current: list[str] = []
     for token in tokens:
         if token in CONTROL_TOKENS:
             if current:
@@ -927,12 +956,12 @@ def split_segments(tokens):
         yield current, None
 
 
-def replace_command_substitutions(command):
+def replace_command_substitutions(command: str) -> tuple[str, list[str]]:
     command, heredoc_body_substitutions = strip_heredoc_bodies(command)
     # Start with any substitutions extracted from unquoted heredoc
     # bodies - they're still executed by the shell and need inspection.
     substitutions = list(heredoc_body_substitutions)
-    result = []
+    result: list[str] = []
     idx = 0
     in_single = False
     in_double = False
@@ -983,9 +1012,9 @@ def replace_command_substitutions(command):
     return "".join(result), substitutions
 
 
-def extract_placeholder_indexes(tokens):
-    indexes = []
-    seen = set()
+def extract_placeholder_indexes(tokens: list[str]) -> list[int]:
+    indexes: list[int] = []
+    seen: set[int] = set()
     for token in tokens:
         for match in re.finditer(r"__CMD_SUBST_(\d+)__", token):
             index = int(match.group(1))
@@ -995,19 +1024,19 @@ def extract_placeholder_indexes(tokens):
     return indexes
 
 
-def _noninteractive_is_assignment(token):
+def _noninteractive_is_assignment(token: str) -> bool:
     return NONINTERACTIVE_ASSIGNMENT.match(token) is not None
 
 
-def _noninteractive_basename(token):
+def _noninteractive_basename(token: str) -> str:
     return os.path.basename(token)
 
 
-def _noninteractive_is_git_exec(token):
+def _noninteractive_is_git_exec(token: str) -> bool:
     return _noninteractive_basename(token) == "git"
 
 
-def _extract_noninteractive_shell_c_command(args):
+def _extract_noninteractive_shell_c_command(args: list[str]) -> Optional[str]:
     idx = 0
     while idx < len(args):
         arg = args[idx]
@@ -1039,22 +1068,26 @@ def _extract_noninteractive_shell_c_command(args):
     return None
 
 
-def _clear_editor_env(env):
+def _clear_editor_env(env: dict[str, str]) -> None:
     env.pop("GIT_EDITOR", None)
     env.pop("GIT_SEQUENCE_EDITOR", None)
 
 
-def _unset_editor_env(env, key):
+def _unset_editor_env(env: dict[str, str], key: str) -> None:
     if key in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
         env.pop(key, None)
 
 
-def _apply_exported_editor_env(tokens, inherited_env=None, inherited_shell_vars=None):
-    env = dict(inherited_env or {})
-    shell_vars = dict(inherited_shell_vars or env)
+def _apply_exported_editor_env(
+    tokens: list[str],
+    inherited_env: Optional[dict[str, str]] = None,
+    inherited_shell_vars: Optional[dict[str, str]] = None,
+) -> tuple[dict[str, str], dict[str, str]]:
+    env: dict[str, str] = dict(inherited_env or {})
+    shell_vars: dict[str, str] = dict(inherited_shell_vars or env)
     idx = 0
     shell_env_persists = True
-    pending_shell_vars = {}
+    pending_shell_vars: dict[str, str] = {}
 
     while idx < len(tokens) and tokens[idx] in NONINTERACTIVE_SHELL_KEYWORDS:
         if tokens[idx] == "(":
@@ -1144,8 +1177,10 @@ def _apply_exported_editor_env(tokens, inherited_env=None, inherited_shell_vars=
     return env, shell_vars
 
 
-def parse_env_wrapped_segment(tokens, inherited_env=None):
-    env = dict(inherited_env or {})
+def parse_env_wrapped_segment(
+    tokens: list[str], inherited_env: Optional[dict[str, str]] = None
+) -> Optional[NoninteractiveParseResult]:
+    env: dict[str, str] = dict(inherited_env or {})
     idx = 0
 
     # Support git commands nested in simple shell structures, e.g.:
@@ -1378,14 +1413,18 @@ def parse_env_wrapped_segment(tokens, inherited_env=None):
     )
 
 
-def _parse_noninteractive_git_commands(command, inherited_env=None, inherited_shell_vars=None):
+def _parse_noninteractive_git_commands(
+    command: str,
+    inherited_env: Optional[dict[str, str]] = None,
+    inherited_shell_vars: Optional[dict[str, str]] = None,
+) -> tuple[list[NoninteractiveParseResult], list[NoninteractiveSubstitution]]:
     sanitized_command, raw_substitutions = replace_command_substitutions(command)
     tokens = tokenize(sanitized_command)
-    parsed_commands = []
-    substitutions = []
-    current_env = dict(inherited_env or {})
-    current_shell_vars = dict(inherited_shell_vars or current_env)
-    used_placeholder_indexes = set()
+    parsed_commands: list[NoninteractiveParseResult] = []
+    substitutions: list[NoninteractiveSubstitution] = []
+    current_env: dict[str, str] = dict(inherited_env or {})
+    current_shell_vars: dict[str, str] = dict(inherited_shell_vars or current_env)
+    used_placeholder_indexes: set[int] = set()
     for segment, separator in split_segments(tokens):
         segment_env = dict(current_env)
         segment_shell_vars = dict(current_shell_vars)
@@ -1429,7 +1468,7 @@ def run_noninteractive(command: str) -> int:
         "Unable to safely parse command. Refusing potentially interactive git command."
     )
 
-    def has_long_option(args, *names):
+    def has_long_option(args: list[str], *names: str) -> bool:
         names_set = set(names)
         for arg in args:
             if arg == "--":
@@ -1443,11 +1482,11 @@ def run_noninteractive(command: str) -> int:
         return False
 
 
-    def fixup_value_is_interactive(value):
+    def fixup_value_is_interactive(value: str) -> bool:
         return value.startswith("amend:") or value.startswith("reword:")
 
 
-    def classify_commit_fixup(args):
+    def classify_commit_fixup(args: list[str]) -> str:
         skip_next = False
         expecting_fixup_value = False
         for arg in args:
@@ -1471,11 +1510,11 @@ def run_noninteractive(command: str) -> int:
         return "none"
 
 
-    def merge_edit_is_safe(args):
+    def merge_edit_is_safe(args: list[str]) -> bool:
         return has_long_option(args, "--ff-only") and not has_long_option(args, "--no-ff")
 
 
-    def has_short_option(args, *letters):
+    def has_short_option(args: list[str], *letters: str) -> bool:
         wanted = set(letters)
         for arg in args:
             if arg == "--":
@@ -1515,7 +1554,9 @@ def run_noninteractive(command: str) -> int:
     }
 
 
-    def has_short_option_value_aware(args, wanted, options_with_values):
+    def has_short_option_value_aware(
+        args: list[str], wanted: str, options_with_values: set[str]
+    ) -> bool:
         for arg in args:
             if arg == "--":
                 break
@@ -1529,7 +1570,9 @@ def run_noninteractive(command: str) -> int:
         return False
 
 
-    def short_option_consumes_next_value(arg, options_with_values):
+    def short_option_consumes_next_value(
+        arg: str, options_with_values: set[str]
+    ) -> bool:
         if not arg.startswith("-") or arg == "-" or arg.startswith("--"):
             return False
         letters = arg[1:]
@@ -1540,8 +1583,11 @@ def run_noninteractive(command: str) -> int:
 
 
     def has_long_option_value_aware(
-        args, wanted, short_options_with_values, long_options_with_values
-    ):
+        args: list[str],
+        wanted: str,
+        short_options_with_values: set[str],
+        long_options_with_values: set[str],
+    ) -> bool:
         skip_next = False
         for arg in args:
             if skip_next:
@@ -1559,7 +1605,7 @@ def run_noninteractive(command: str) -> int:
         return False
 
 
-    def has_safe_fixup(args):
+    def has_safe_fixup(args: list[str]) -> bool:
         idx = 0
         while idx < len(args):
             arg = args[idx]
@@ -1575,7 +1621,7 @@ def run_noninteractive(command: str) -> int:
         return False
 
 
-    def commit_requests_editor(args):
+    def commit_requests_editor(args: list[str]) -> bool:
         idx = 0
         while idx < len(args):
             arg = args[idx]
@@ -1604,7 +1650,11 @@ def run_noninteractive(command: str) -> int:
         return False
 
 
-    def evaluate(parsed_commands, substitutions, depth=0):
+    def evaluate(
+        parsed_commands: list[NoninteractiveParseResult],
+        substitutions: list[NoninteractiveSubstitution],
+        depth: int = 0,
+    ) -> Optional[str]:
         if depth > 4:
             return PARSE_ERROR_REASON
 
@@ -1756,7 +1806,7 @@ SHRED_REASON = "shred is blocked. Use `trash` instead for recoverable deletion."
 UNLINK_REASON = "unlink is blocked. Use `trash` instead for recoverable deletion."
 
 
-def _extract_shell_c_command(args):
+def _extract_shell_c_command(args: list[str]) -> Optional[str]:
     idx = 0
     while idx < len(args):
         arg = args[idx]
@@ -1797,7 +1847,7 @@ def _extract_shell_c_command(args):
     return None
 
 
-def _has_rf_flags(args):
+def _has_rf_flags(args: list[str]) -> bool:
     has_recursive = False
     has_force = False
 
@@ -1819,7 +1869,7 @@ def _has_rf_flags(args):
     return has_recursive and has_force
 
 
-def _has_literal_rm_rf_text(text):
+def _has_literal_rm_rf_text(text: str) -> bool:
     if re.search(r"(^|[^A-Za-z0-9_])rm([^A-Za-z0-9_]|$)", text) is None:
         return False
     has_recursive = re.search(r"(-[A-Za-z]*[rR]|--recursive)", text) is not None
@@ -1827,14 +1877,16 @@ def _has_literal_rm_rf_text(text):
     return has_recursive and has_force
 
 
-def _placeholder_indexes_in_text(text):
+def _placeholder_indexes_in_text(text: str) -> list[int]:
     return [
         int(match.group(1))
         for match in re.finditer(r"__CMD_SUBST_(\d+)__", text)
     ]
 
 
-def _literal_placeholder_reason(text, substitutions):
+def _literal_placeholder_reason(
+    text: str, substitutions: list[str]
+) -> Optional[str]:
     for placeholder_index in _placeholder_indexes_in_text(text):
         if placeholder_index < len(substitutions) and _has_literal_rm_rf_text(
             substitutions[placeholder_index]
@@ -1843,11 +1895,13 @@ def _literal_placeholder_reason(text, substitutions):
     return None
 
 
-def _join_tokens_as_command(tokens):
+def _join_tokens_as_command(tokens: list[str]) -> str:
     return " ".join(tokens)
 
 
-def _detect_process_substitutions(tokens, substitutions, depth):
+def _detect_process_substitutions(
+    tokens: list[str], substitutions: list[str], depth: int
+) -> Optional[str]:
     idx = 0
     while idx < len(tokens) - 1:
         if tokens[idx] not in {"<", ">"} or tokens[idx + 1] != "(":
@@ -1877,7 +1931,9 @@ def _detect_process_substitutions(tokens, substitutions, depth):
     return None
 
 
-def _skip_rm_rf_prefixes(tokens, idx, substitutions, depth):
+def _skip_rm_rf_prefixes(
+    tokens: list[str], idx: int, substitutions: list[str], depth: int
+) -> tuple[int, Optional[str]]:
     while idx < len(tokens):
         token = tokens[idx]
         base = _basename(token)
@@ -1956,7 +2012,9 @@ def _skip_rm_rf_prefixes(tokens, idx, substitutions, depth):
     return idx, None
 
 
-def _detect_xargs(args, substitutions, depth):
+def _detect_xargs(
+    args: list[str], substitutions: list[str], depth: int
+) -> Optional[str]:
     idx = 0
     xargs_options_with_value = {
         "-d",
@@ -2031,8 +2089,8 @@ def _detect_xargs(args, substitutions, depth):
     return _detect_command_at(args, idx, substitutions, depth + 1)
 
 
-def _find_exec_tokens(args, start):
-    exec_tokens = []
+def _find_exec_tokens(args: list[str], start: int) -> list[str]:
+    exec_tokens: list[str] = []
     idx = start
     while idx < len(args):
         token = args[idx]
@@ -2043,7 +2101,9 @@ def _find_exec_tokens(args, start):
     return exec_tokens
 
 
-def _detect_find(args, substitutions, depth):
+def _detect_find(
+    args: list[str], substitutions: list[str], depth: int
+) -> Optional[str]:
     idx = 0
     while idx < len(args):
         token = args[idx]
@@ -2064,7 +2124,9 @@ def _detect_find(args, substitutions, depth):
     return None
 
 
-def _detect_command_at(tokens, idx, substitutions, depth):
+def _detect_command_at(
+    tokens: list[str], idx: int, substitutions: list[str], depth: int
+) -> Optional[str]:
     idx, prefix_reason = _skip_rm_rf_prefixes(tokens, idx, substitutions, depth)
     if prefix_reason is not None:
         return prefix_reason
@@ -2110,7 +2172,9 @@ def _detect_command_at(tokens, idx, substitutions, depth):
     return None
 
 
-def _detect_rm_rf_segment(tokens, substitutions, depth):
+def _detect_rm_rf_segment(
+    tokens: list[str], substitutions: list[str], depth: int
+) -> Optional[str]:
     if depth > 5:
         return None
 
@@ -2153,13 +2217,13 @@ def _detect_rm_rf_segment(tokens, substitutions, depth):
     return None
 
 
-def _detect_rm_rf_command(command, depth=0):
+def _detect_rm_rf_command(command: str, depth: int = 0) -> Optional[str]:
     if depth > 5:
         return None
 
     sanitized_command, substitutions = replace_command_substitutions(command)
     tokens = tokenize(sanitized_command)
-    used_placeholder_indexes = set()
+    used_placeholder_indexes: set[int] = set()
 
     for segment, _separator in split_segments(tokens):
         for placeholder_index in extract_placeholder_indexes(segment):
@@ -2258,7 +2322,7 @@ COMMIT_SUDO_LONG_OPTIONS_WITH_VALUE = {
 COMMIT_SHELL_EXECUTABLES = {"sh", "bash", "zsh", "dash", "ksh"}
 COMMIT_SHELL_OPTIONS_WITH_VALUE = {"--command", "--rcfile", "--init-file", "--startup-file", "-o", "-O", "+O"}
 
-def parse_shell_inline_command(args):
+def parse_shell_inline_command(args: list[str]) -> Optional[str]:
     idx = 0
     while idx < len(args):
         arg = args[idx]
@@ -2290,20 +2354,20 @@ def parse_shell_inline_command(args):
     return None
 
 
-def unset_replay_env(git_env, key):
+def unset_replay_env(git_env: list[str], key: str) -> None:
     git_env[:] = [assignment for assignment in git_env if assignment.split("=", 1)[0] != key]
 
 
-def set_replay_env(git_env, key, value):
+def set_replay_env(git_env: list[str], key: str, value: str) -> None:
     unset_replay_env(git_env, key)
     git_env.append(f"{key}={value}")
 
 
-def clear_replay_env(git_env):
+def clear_replay_env(git_env: list[str]) -> None:
     git_env[:] = []
 
 
-def inherited_replay_env_from_process():
+def inherited_replay_env_from_process() -> list[str]:
     return [f"{key}={os.environ[key]}" for key in COMMIT_REPLAY_ENV_VARS if key in os.environ]
 
 
@@ -2313,19 +2377,25 @@ class ParseError(Exception):
 
 @dataclass
 class CommitSegmentResult:
-    contexts: list
-    persisted_git_env: list
-    persisted_shell_git_vars: list
+    contexts: list[CommitContext]
+    persisted_git_env: list[str]
+    persisted_shell_git_vars: list[str]
 
 
-def parse_commit_contexts(command, inherited_git_args=None, inherited_git_env=None, inherited_shell_git_vars=None, depth=0):
+def parse_commit_contexts(
+    command: str,
+    inherited_git_args: Optional[list[str]] = None,
+    inherited_git_env: Optional[list[str]] = None,
+    inherited_shell_git_vars: Optional[list[str]] = None,
+    depth: int = 0,
+) -> list[CommitContext]:
     # Cap recursion so pathological nesting can't hit Python's stack limit
     # and convert a ValueError into an uncaught RecursionError (which would
     # exit the interpreter non-zero and the shell would fail open).
     if depth > 4:
         raise ParseError("command substitution nesting too deep")
 
-    contexts = []
+    contexts: list[CommitContext] = []
     if inherited_git_env is None:
         inherited_git_env = inherited_replay_env_from_process()
     if inherited_shell_git_vars is None:
@@ -2338,7 +2408,7 @@ def parse_commit_contexts(command, inherited_git_args=None, inherited_git_env=No
 
     current_git_env = list(inherited_git_env or [])
     current_shell_git_vars = list(inherited_shell_git_vars or [])
-    used_placeholder_indexes = set()
+    used_placeholder_indexes: set[int] = set()
     for segment, separator in split_segments(tokens):
         segment_input_env = list(current_git_env)
         segment_input_shell_git_vars = list(current_shell_git_vars)
@@ -2383,7 +2453,7 @@ def parse_commit_contexts(command, inherited_git_args=None, inherited_git_env=No
     return contexts
 
 
-def lookup_replay_env(assignments, key):
+def lookup_replay_env(assignments: list[str], key: str) -> Optional[str]:
     for assignment in assignments:
         assignment_key, _, assignment_value = assignment.partition("=")
         if assignment_key == key:
@@ -2391,7 +2461,13 @@ def lookup_replay_env(assignments, key):
     return None
 
 
-def parse_commit_segment(tokens, git_args, git_env, shell_git_vars, depth=0):
+def parse_commit_segment(
+    tokens: list[str],
+    git_args: list[str],
+    git_env: list[str],
+    shell_git_vars: list[str],
+    depth: int = 0,
+) -> CommitSegmentResult:
     idx = 0
     git_args = list(git_args)
     inherited_shell_git_env = list(git_env)
@@ -2400,7 +2476,7 @@ def parse_commit_segment(tokens, git_args, git_env, shell_git_vars, depth=0):
     shell_git_vars = list(inherited_shell_git_vars)
     git_env = list(shell_git_env)
     shell_env_persists = True
-    pending_shell_git_vars = []
+    pending_shell_git_vars: list[str] = []
 
     while idx < len(tokens) and tokens[idx] in COMMIT_SHELL_KEYWORDS:
         if tokens[idx] == "(":
@@ -2522,10 +2598,10 @@ def parse_commit_segment(tokens, git_args, git_env, shell_git_vars, depth=0):
                     idx += 1
                     continue
                 if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", token):
-                    value = lookup_replay_env(shell_git_vars, token)
-                    if value is not None:
-                        set_replay_env(shell_git_env, token, value)
-                        set_replay_env(git_env, token, value)
+                    exported_value = lookup_replay_env(shell_git_vars, token)
+                    if exported_value is not None:
+                        set_replay_env(shell_git_env, token, exported_value)
+                        set_replay_env(git_env, token, exported_value)
                     idx += 1
                     continue
                 if token.startswith("-"):
@@ -2710,6 +2786,7 @@ def parse_commit_segment(tokens, git_args, git_env, shell_git_vars, depth=0):
 
 
 def run_commit_contexts(command: str, parse_error_reason: str) -> int:
+    result: list[CommitContext]
     try:
         result = parse_commit_contexts(command)
     except (ParseError, RecursionError):

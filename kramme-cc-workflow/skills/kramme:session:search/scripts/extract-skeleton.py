@@ -27,6 +27,8 @@ extraction bytes through orchestrator tool results.
 
 Without --output, extracted content goes to stdout and ends with a _meta line.
 """
+from __future__ import annotations
+
 import argparse
 import atexit
 import itertools
@@ -35,6 +37,19 @@ import sys
 import json
 import re
 import tempfile
+from typing import Callable, Dict, Iterator, Literal, Optional, Pattern, TypedDict, cast
+
+JsonObject = Dict[str, object]
+Platform = Literal["claude", "codex", "cursor"]
+EventHandler = Callable[[JsonObject], None]
+
+
+class ToolEntry(TypedDict, total=False):
+    ts: str
+    name: str
+    target: str
+    status: str
+    id: str
 
 parser = argparse.ArgumentParser(add_help=True)
 parser.add_argument(
@@ -48,7 +63,7 @@ args = parser.parse_args()
 # script can keep using print(), while output memory stays bounded and the
 # destination is replaced atomically only after extraction succeeds.
 _original_stdout = sys.stdout
-_temporary_output_path = None
+_temporary_output_path: Optional[str] = None
 if args.output:
     output_dir = os.path.dirname(os.path.abspath(args.output))
     temporary_output = tempfile.NamedTemporaryFile(
@@ -62,7 +77,7 @@ if args.output:
     sys.stdout = temporary_output
 
 
-def cleanup_temporary_output():
+def cleanup_temporary_output() -> None:
     if _temporary_output_path:
         try:
             os.unlink(_temporary_output_path)
@@ -72,7 +87,13 @@ def cleanup_temporary_output():
 
 atexit.register(cleanup_temporary_output)
 
-stats = {"lines": 0, "parse_errors": 0, "user": 0, "assistant": 0, "tool": 0}
+stats: dict[str, int] = {
+    "lines": 0,
+    "parse_errors": 0,
+    "user": 0,
+    "assistant": 0,
+    "tool": 0,
+}
 
 # Claude Code wrapper tags to strip from user message content.
 # Strip entirely (tag + content): framework noise and raw command output.
@@ -84,7 +105,7 @@ _STRIP_BLOCK = re.compile(
 _STRIP_TAG = re.compile(
     r"</?(?:command-message|command-name|command-args|user_query)[^>]*>"
 )
-_SENSITIVE_PATTERNS = [
+_SENSITIVE_PATTERNS: list[Pattern[str]] = [
     re.compile(r"(?i)\b(authorization\s*:\s*bearer\s+)[A-Za-z0-9._~+/=-]{12,}"),
     re.compile(r"(?i)\b((?:api[_-]?key|token|secret|password|passwd|pwd)\s*[:=]\s*)[^\s'\"`;&|]{8,}"),
     re.compile(r"\bsk-[A-Za-z0-9_-]{20,}"),
@@ -95,7 +116,7 @@ _SENSITIVE_PATTERNS = [
 ]
 
 
-def redact_sensitive(text):
+def redact_sensitive(text: object) -> str:
     """Redact common credential shapes before writing extract files."""
     if not isinstance(text, str):
         return ""
@@ -106,7 +127,7 @@ def redact_sensitive(text):
     return redacted
 
 
-def clean_text(text):
+def clean_text(text: str) -> str:
     """Strip framework wrapper tags from message text (Claude and Cursor)."""
     text = _STRIP_BLOCK.sub("", text)
     text = _STRIP_TAG.sub("", text)
@@ -114,16 +135,16 @@ def clean_text(text):
     return redact_sensitive(text)
 
 # Buffer for pending tool entries: [{"ts", "name", "target", "status"}]
-pending_tools = []
+pending_tools: list[ToolEntry] = []
 
 
-def flush_tools():
+def flush_tools() -> None:
     """Print buffered tool entries, collapsing consecutive same-name groups."""
     if not pending_tools:
         return
 
     # Group consecutive entries by tool name
-    groups = []
+    groups: list[list[ToolEntry]] = []
     for entry in pending_tools:
         if groups and groups[-1][0]["name"] == entry["name"]:
             groups[-1].append(entry)
@@ -169,7 +190,7 @@ def flush_tools():
     pending_tools.clear()
 
 
-def _safe_slice(value, n):
+def _safe_slice(value: object, n: int) -> str:
     """Slice value if it is a string; otherwise return ''.
 
     Some Claude Code / MCP tool inputs put structured data (dicts, lists) in
@@ -179,10 +200,11 @@ def _safe_slice(value, n):
     return value[:n] if isinstance(value, str) else ""
 
 
-def summarize_claude_tool(block):
+def summarize_claude_tool(block: JsonObject) -> tuple[str, str]:
     """Extract name and target from a Claude Code tool_use block."""
     name = block.get("name", "unknown")
-    inp = block.get("input", {})
+    name = cast(str, name)
+    inp = cast(JsonObject, block.get("input", {}))
     fp = inp.get("file_path")
     p = inp.get("path")
     target = (
@@ -199,16 +221,16 @@ def summarize_claude_tool(block):
     return name, redact_sensitive(target)
 
 
-def handle_claude(obj):
+def handle_claude(obj: JsonObject) -> None:
     msg_type = obj.get("type")
-    ts = obj.get("timestamp", "")[:19]
+    ts = cast(str, obj.get("timestamp", ""))[:19]
 
     if msg_type == "user":
-        msg = obj.get("message", {})
+        msg = cast(JsonObject, obj.get("message", {}))
         content = msg.get("content", "")
 
         if isinstance(content, list):
-            for block in content:
+            for block in cast(list[JsonObject], content):
                 if block.get("type") == "tool_result":
                     is_error = block.get("is_error", False)
                     status = "error" if is_error else "ok"
@@ -229,10 +251,11 @@ def handle_claude(obj):
 
             texts = [
                 c.get("text", "")
-                for c in content
-                if c.get("type") == "text" and len(c.get("text", "")) > 10
+                for c in cast(list[JsonObject], content)
+                if c.get("type") == "text"
+                and len(cast(str, c.get("text", ""))) > 10
             ]
-            content = " ".join(texts)
+            content = " ".join(cast(list[str], texts))
 
         if isinstance(content, str):
             content = clean_text(content)
@@ -243,13 +266,13 @@ def handle_claude(obj):
                 stats["user"] += 1
 
     elif msg_type == "assistant":
-        msg = obj.get("message", {})
+        msg = cast(JsonObject, obj.get("message", {}))
         content = msg.get("content", [])
         if isinstance(content, list):
             has_text = False
-            for block in content:
+            for block in cast(list[JsonObject], content):
                 if block.get("type") == "text":
-                    text = clean_text(block.get("text", ""))
+                    text = clean_text(cast(str, block.get("text", "")))
                     if len(text) > 20:
                         if not has_text:
                             flush_tools()
@@ -259,19 +282,23 @@ def handle_claude(obj):
                         stats["assistant"] += 1
                 elif block.get("type") == "tool_use":
                     name, target = summarize_claude_tool(block)
-                    entry = {"ts": ts, "name": name, "target": target}
+                    tool_entry: ToolEntry = {
+                        "ts": ts,
+                        "name": name,
+                        "target": target,
+                    }
                     tool_id = block.get("id")
                     if tool_id:
-                        entry["id"] = tool_id
-                    pending_tools.append(entry)
+                        tool_entry["id"] = cast(str, tool_id)
+                    pending_tools.append(tool_entry)
 
 
-def handle_codex(obj):
+def handle_codex(obj: JsonObject) -> None:
     msg_type = obj.get("type")
-    ts = obj.get("timestamp", "")[:19]
+    ts = cast(str, obj.get("timestamp", ""))[:19]
 
     if msg_type == "event_msg":
-        p = obj.get("payload", {})
+        p = cast(JsonObject, obj.get("payload", {}))
         if p.get("type") == "user_message":
             text = p.get("message", "")
             if isinstance(text, str) and len(text) > 15:
@@ -286,9 +313,9 @@ def handle_codex(obj):
 
         elif p.get("type") == "exec_command_end":
             # This is the deduplicated result — has status info
-            command = p.get("command", [])
+            command = cast(list[str], p.get("command", []))
             cmd_str = command[-1] if command else ""
-            output = p.get("aggregated_output", "")
+            output = cast(str, p.get("aggregated_output", ""))
 
             status = "ok"
             if "Process exited with code " in output:
@@ -305,11 +332,11 @@ def handle_codex(obj):
                 pending_tools.append({"ts": ts, "name": "exec", "target": short_cmd, "status": status})
 
     elif msg_type == "response_item":
-        p = obj.get("payload", {})
+        p = cast(JsonObject, obj.get("payload", {}))
         if p.get("type") == "message" and p.get("role") == "assistant":
-            for block in p.get("content", []):
-                if block.get("type") == "output_text" and len(block.get("text", "")) > 20:
-                    text = clean_text(block["text"])
+            for block in cast(list[JsonObject], p.get("content", [])):
+                if block.get("type") == "output_text" and len(cast(str, block.get("text", ""))) > 20:
+                    text = clean_text(cast(str, block["text"]))
                     flush_tools()
                     print(f"[{ts}] [assistant] {text[:800]}")
                     print("---")
@@ -318,16 +345,17 @@ def handle_codex(obj):
         # Skip function_call — exec_command_end is the deduplicated version with status
 
 
-def handle_cursor(obj):
+def handle_cursor(obj: JsonObject) -> None:
     """Cursor agent transcripts: role-based, no timestamps, same content structure as Claude."""
     role = obj.get("role")
-    content = obj.get("message", {}).get("content", [])
+    message = cast(JsonObject, obj.get("message", {}))
+    content = message.get("content", [])
 
     if role == "user":
-        texts = []
-        for block in (content if isinstance(content, list) else []):
+        texts: list[str] = []
+        for block in (cast(list[JsonObject], content) if isinstance(content, list) else []):
             if block.get("type") == "text":
-                texts.append(block.get("text", ""))
+                texts.append(cast(str, block.get("text", "")))
         text = clean_text(" ".join(texts))
         if len(text) > 15:
             flush_tools()
@@ -338,9 +366,9 @@ def handle_cursor(obj):
 
     elif role == "assistant":
         has_text = False
-        for block in (content if isinstance(content, list) else []):
+        for block in (cast(list[JsonObject], content) if isinstance(content, list) else []):
             if block.get("type") == "text":
-                text = clean_text(block.get("text", ""))
+                text = clean_text(cast(str, block.get("text", "")))
                 # Skip [REDACTED] placeholder blocks
                 if len(text) > 20 and text.strip() != "[REDACTED]":
                     if not has_text:
@@ -351,7 +379,7 @@ def handle_cursor(obj):
                     stats["assistant"] += 1
             elif block.get("type") == "tool_use":
                 name = block.get("name", "unknown")
-                inp = block.get("input", {})
+                inp = cast(JsonObject, block.get("input", {}))
                 p = inp.get("path")
                 fp = inp.get("file_path")
                 target = (
@@ -366,12 +394,18 @@ def handle_cursor(obj):
                 if isinstance(target, str) and len(target) > 120:
                     target = target[:120]
                 # No status info available — Cursor doesn't log tool results
-                pending_tools.append({"ts": "", "name": name, "target": redact_sensitive(target)})
+                pending_tools.append(
+                    {
+                        "ts": "",
+                        "name": cast(str, name),
+                        "target": redact_sensitive(target),
+                    }
+                )
 
 
 # Auto-detect from a bounded prefix, replay that prefix once, then stream the
 # remaining events without retaining the transcript.
-def nonempty_input_lines():
+def nonempty_input_lines() -> Iterator[str]:
     for raw_line in sys.stdin:
         line = raw_line.strip()
         if line:
@@ -379,14 +413,14 @@ def nonempty_input_lines():
             yield line
 
 
-detected = None
-prefix = []
+detected: Optional[Platform] = None
+prefix: list[str] = []
 lines = nonempty_input_lines()
 for line in itertools.islice(lines, 10):
     prefix.append(line)
     if not detected:
         try:
-            obj = json.loads(line)
+            obj = cast(JsonObject, json.loads(line))
             if obj.get("type") in ("user", "assistant"):
                 detected = "claude"
             elif obj.get("type") in ("session_meta", "turn_context", "response_item", "event_msg"):
@@ -398,12 +432,16 @@ for line in itertools.islice(lines, 10):
     if detected:
         break
 
-handlers = {"claude": handle_claude, "codex": handle_codex, "cursor": handle_cursor}
-handler = handlers.get(detected, handle_codex)
+handlers: dict[Platform, EventHandler] = {
+    "claude": handle_claude,
+    "codex": handle_codex,
+    "cursor": handle_cursor,
+}
+handler = handlers[detected] if detected is not None else handle_codex
 
 for line in itertools.chain(prefix, lines):
     try:
-        handler(json.loads(line))
+        handler(cast(JsonObject, json.loads(line)))
     except (json.JSONDecodeError, KeyError):
         stats["parse_errors"] += 1
 
@@ -416,7 +454,7 @@ if args.output:
     sys.stdout.flush()
     sys.stdout.close()
     sys.stdout = _original_stdout
-    os.replace(_temporary_output_path, args.output)
+    os.replace(cast(str, _temporary_output_path), args.output)
     _temporary_output_path = None
     bytes_written = os.path.getsize(args.output)
     print(json.dumps({"_meta": True, "wrote": args.output, "bytes": bytes_written, **stats}))

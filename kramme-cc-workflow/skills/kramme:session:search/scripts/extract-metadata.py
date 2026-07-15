@@ -17,19 +17,24 @@ Auto-detects platform from the JSONL structure.
 Outputs one JSON object per file, one per line.
 Includes a final _meta line with processing stats.
 """
+from __future__ import annotations
 
 import sys
 import itertools
 import json
 import os
+from typing import Dict, Iterator, Optional, Sequence, cast
+
+JsonObject = Dict[str, object]
+Metadata = Dict[str, object]
 
 MAX_LINES = 25  # Only need first ~25 lines for metadata
 
 
-def try_claude(lines):
+def try_claude(lines: Sequence[str]) -> Optional[Metadata]:
     for line in lines:
         try:
-            obj = json.loads(line.strip())
+            obj = cast(JsonObject, json.loads(line.strip()))
             if obj.get("type") == "user" and "gitBranch" in obj:
                 return {
                     "platform": "claude",
@@ -42,13 +47,13 @@ def try_claude(lines):
     return None
 
 
-def try_codex(lines):
-    meta = {}
+def try_codex(lines: Sequence[str]) -> Optional[Metadata]:
+    meta: Metadata = {}
     for line in lines:
         try:
-            obj = json.loads(line.strip())
+            obj = cast(JsonObject, json.loads(line.strip()))
             if obj.get("type") == "session_meta":
-                p = obj.get("payload", {})
+                p = cast(JsonObject, obj.get("payload", {}))
                 meta["platform"] = "codex"
                 meta["cwd"] = p.get("cwd", "")
                 meta["session"] = p.get("id", "")
@@ -56,7 +61,7 @@ def try_codex(lines):
                 meta["source"] = p.get("source", "")
                 meta["cli_version"] = p.get("cli_version", "")
             elif obj.get("type") == "turn_context":
-                p = obj.get("payload", {})
+                p = cast(JsonObject, obj.get("payload", {}))
                 meta["model"] = p.get("model", "")
                 meta["cwd"] = meta.get("cwd") or p.get("cwd", "")
         except (json.JSONDecodeError, KeyError):
@@ -64,11 +69,11 @@ def try_codex(lines):
     return meta if meta else None
 
 
-def try_cursor(lines):
+def try_cursor(lines: Sequence[str]) -> Optional[Metadata]:
     """Cursor agent transcripts: role-based entries, no timestamps or metadata fields."""
     for line in lines:
         try:
-            obj = json.loads(line.strip())
+            obj = cast(JsonObject, json.loads(line.strip()))
             # Cursor entries have 'role' at top level but no 'type'
             if obj.get("role") in ("user", "assistant") and "type" not in obj:
                 return {"platform": "cursor"}
@@ -77,14 +82,14 @@ def try_cursor(lines):
     return None
 
 
-def extract_from_lines(lines):
+def extract_from_lines(lines: Sequence[str]) -> Optional[Metadata]:
     return try_claude(lines) or try_codex(lines) or try_cursor(lines)
 
 
 TAIL_BYTES = 16384  # Read last 16KB to find final timestamp past trailing metadata
 
 
-def get_last_timestamp(filepath, size):
+def get_last_timestamp(filepath: str, size: int) -> Optional[object]:
     """Read the tail of a file to find the last message with a timestamp."""
     try:
         with open(filepath, "rb") as f:
@@ -93,7 +98,7 @@ def get_last_timestamp(filepath, size):
             lines = tail.strip().split("\n")
         for line in reversed(lines):
             try:
-                obj = json.loads(line.strip())
+                obj = cast(JsonObject, json.loads(line.strip()))
                 if "timestamp" in obj:
                     return obj["timestamp"]
             except (json.JSONDecodeError, KeyError):
@@ -103,7 +108,7 @@ def get_last_timestamp(filepath, size):
     return None
 
 
-def _iter_user_assistant_text(filepath):
+def _iter_user_assistant_text(filepath: str) -> Iterator[object]:
     """Yield user + assistant text content from a session JSONL.
 
     Skips JSONL metadata field names and values (sessionId, gitBranch, uuid,
@@ -118,28 +123,28 @@ def _iter_user_assistant_text(filepath):
         with open(filepath, "r", errors="replace") as f:
             for line in f:
                 try:
-                    obj = json.loads(line.strip())
+                    obj = cast(JsonObject, json.loads(line.strip()))
                 except (json.JSONDecodeError, ValueError):
                     continue
 
                 # Claude Code: type-tagged top-level
                 t = obj.get("type")
                 if t == "user":
-                    msg = obj.get("message", {})
+                    msg = cast(JsonObject, obj.get("message", {}))
                     content = msg.get("content")
                     if isinstance(content, str):
                         yield content
                     elif isinstance(content, list):
-                        for block in content:
+                        for block in cast(list[JsonObject], content):
                             if isinstance(block, dict) and block.get("type") == "text":
                                 yield block.get("text", "")
                             # Skip tool_result blocks — tool outputs are not user content.
                     continue
                 if t == "assistant":
-                    msg = obj.get("message", {})
+                    msg = cast(JsonObject, obj.get("message", {}))
                     content = msg.get("content", [])
                     if isinstance(content, list):
-                        for block in content:
+                        for block in cast(list[JsonObject], content):
                             if isinstance(block, dict) and block.get("type") == "text":
                                 yield block.get("text", "")
                             # Skip tool_use and thinking blocks.
@@ -147,30 +152,31 @@ def _iter_user_assistant_text(filepath):
 
                 # Codex: payload-typed events
                 if t == "event_msg":
-                    p = obj.get("payload", {})
+                    p = cast(JsonObject, obj.get("payload", {}))
                     if p.get("type") == "user_message":
                         # Strip Codex/Conductor `<system_instruction>...</system_instruction>`
                         # wrapper before counting. Without this, generic wrapper terms
                         # (e.g., "Conductor", environment labels) false-match against
                         # boilerplate the user did not author. Mirrors the same split
                         # used in ce-session-extract/scripts/extract-skeleton.py.
-                        msg = p.get("message", "")
-                        if isinstance(msg, str):
-                            parts = msg.split("</system_instruction>")
-                            yield parts[-1] if parts else msg
+                        codex_message = p.get("message", "")
+                        if isinstance(codex_message, str):
+                            parts = codex_message.split("</system_instruction>")
+                            yield parts[-1] if parts else codex_message
                     continue
                 if t == "response_item":
-                    p = obj.get("payload", {})
+                    p = cast(JsonObject, obj.get("payload", {}))
                     if p.get("type") == "message" and p.get("role") == "assistant":
-                        for block in p.get("content", []):
+                        for block in cast(list[JsonObject], p.get("content", [])):
                             if isinstance(block, dict) and block.get("type") == "output_text":
                                 yield block.get("text", "")
                     continue
 
                 # Cursor: role-tagged with no top-level type
                 if obj.get("role") in ("user", "assistant") and "type" not in obj:
-                    msg = obj.get("message", {})
-                    for block in msg.get("content", []) if isinstance(msg.get("content"), list) else []:
+                    msg = cast(JsonObject, obj.get("message", {}))
+                    content = msg.get("content")
+                    for block in cast(list[JsonObject], content) if isinstance(content, list) else []:
                         if isinstance(block, dict) and block.get("type") == "text":
                             yield block.get("text", "")
                     continue
@@ -183,12 +189,12 @@ class KeywordCounter:
 
     _MARKERS = ("\0", "\x01", "\x02", "\x03", "\ufffe", "\uffff")
 
-    def __init__(self, keyword):
+    def __init__(self, keyword: str) -> None:
         self.keyword = keyword
         self.remainder = ""
         self.count = 0
 
-    def feed(self, text):
+    def feed(self, text: str) -> None:
         combined = self.remainder + text
         marker = next((candidate for candidate in self._MARKERS if candidate not in combined), None)
         if marker is None:
@@ -200,7 +206,7 @@ class KeywordCounter:
         unmatched_tail = collapsed[collapsed.rfind(marker) + 1 :]
         self.remainder = unmatched_tail[-len(self.keyword) + 1 :] if len(self.keyword) > 1 else ""
 
-    def _feed_without_marker(self, combined):
+    def _feed_without_marker(self, combined: str) -> None:
         """Fall back when unusually broad text contains every reserved marker."""
         search_from = 0
         while True:
@@ -214,7 +220,7 @@ class KeywordCounter:
         self.remainder = combined[suffix_start:]
 
 
-def count_keyword_matches(filepath, keywords):
+def count_keyword_matches(filepath: str, keywords: Sequence[str]) -> dict[str, int]:
     """Case-insensitive substring count for each keyword in user/assistant text.
 
     Returns a dict {original_keyword: count}. Scans only content the user or
@@ -237,14 +243,14 @@ def count_keyword_matches(filepath, keywords):
     return {keyword: counter.count for keyword, counter in counters.items()}
 
 
-def process_file(filepath):
+def process_file(filepath: str) -> tuple[Optional[Metadata], Optional[str]]:
     """Extract metadata only. Keyword scanning is done separately so callers
     can apply cheap filters (e.g. --cwd-filter) before paying the full-file
     content scan cost."""
     try:
         size = os.path.getsize(filepath)
         with open(filepath, "r", encoding="utf-8", errors="replace") as f:
-            lines = []
+            lines: list[str] = []
             for i, line in enumerate(f):
                 if i >= MAX_LINES:
                     break
@@ -274,9 +280,9 @@ def process_file(filepath):
 
 
 # Parse arguments: files and optional --cwd-filter / --keyword
-files = []
-cwd_filter = None
-keywords = None
+files: list[str] = []
+cwd_filter: Optional[str] = None
+keywords: Optional[list[str]] = None
 args = sys.argv[1:]
 i = 0
 while i < len(args):
@@ -309,22 +315,28 @@ if files:
             # scan cost — Codex discovery returns sessions across all repos,
             # so without this ordering --keyword would scan files that are
             # immediately discarded.
-            if cwd_filter and result.get("cwd") and cwd_filter not in result["cwd"]:
+            result_cwd = cast(Optional[str], result.get("cwd"))
+            if cwd_filter and result_cwd and cwd_filter not in result_cwd:
                 filtered += 1
                 continue
             # Apply keyword scan only after cheap filters pass.
             if keywords:
                 matches = count_keyword_matches(filepath, keywords)
                 result["keyword_matches"] = matches
-                result["match_count"] = sum(matches.values())
-                if result["match_count"] == 0:
+                match_count = sum(matches.values())
+                result["match_count"] = match_count
+                if match_count == 0:
                     continue
                 matched += 1
             print(json.dumps(result))
         elif error:
             parse_errors += 1
 
-    meta = {"_meta": True, "files_processed": processed, "parse_errors": parse_errors}
+    meta: dict[str, object] = {
+        "_meta": True,
+        "files_processed": processed,
+        "parse_errors": parse_errors,
+    }
     if filtered:
         meta["filtered_by_cwd"] = filtered
     if keywords:
