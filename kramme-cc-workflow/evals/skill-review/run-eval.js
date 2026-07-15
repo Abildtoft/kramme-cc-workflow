@@ -10,8 +10,7 @@ const { aggregateScores, scoreItem } = require("./scorer");
 const VALID_SPLITS = new Set(["train", "val", "test", "all"]);
 const DEFAULT_PREDICTION_TIMEOUT_MS = 120000;
 const PREDICTION_TIMEOUT_ENV = "SKILL_REVIEW_EVAL_PREDICTION_TIMEOUT_MS";
-const PREDICTION_TIMEOUT_SENTINEL =
-  "__SKILL_REVIEW_EVAL_PREDICTION_TIMEOUT__";
+const PREDICTION_TIMEOUT_SENTINEL = "__SKILL_REVIEW_EVAL_PREDICTION_TIMEOUT__";
 const PROCESS_GROUP_TIMEOUT_RUNNER = String.raw`
 my $timeout = shift @ARGV;
 my $sentinel = shift @ARGV;
@@ -62,6 +61,9 @@ exit(($status >> 8) & 255);
  * @property {string} [input_skill_text]
  * @property {string} [split]
  * @property {string} [difficulty]
+ * @property {unknown[]} [expected_findings]
+ * @property {unknown[]} [required_checks]
+ * @property {unknown[]} [forbidden_findings]
  *
  * @typedef {Object} Prediction
  * @property {"prediction_command" | "fixture_review_output"} source
@@ -73,7 +75,29 @@ exit(($status >> 8) & 255);
  * @property {number} hard
  * @property {number} soft
  * @property {string[]} diagnostics
- * @property {Array<Record<string, any>>} items
+ * @property {Array<Record<string, unknown> & { id: string, hard: number, soft: number }>} items
+ *
+ * @typedef {Object} AdapterOptions
+ * @property {string} [evalRoot]
+ * @property {string} [split]
+ * @property {string | null} [skill]
+ * @property {string | null} [predictionCommand]
+ *
+ * @typedef {Object} AdapterContextItem
+ * @property {string} id
+ * @property {string | null} split
+ * @property {string | null} difficulty
+ * @property {string | null} input_skill_dir
+ * @property {string | null} input_skill_text
+ * @property {string} [input_skill_path]
+ * @property {string} [input_skill_file]
+ *
+ * @typedef {Object} AdapterContext
+ * @property {number} adapter_version
+ * @property {string} eval_root
+ * @property {string | null} skill
+ * @property {string | null} skill_path
+ * @property {AdapterContextItem} item
  */
 
 /**
@@ -130,14 +154,22 @@ function usage() {
   ].join("\n");
 }
 
+/**
+ * @param {string} filePath
+ * @returns {unknown}
+ */
 function readJsonFile(filePath) {
   try {
     return JSON.parse(fs.readFileSync(filePath, "utf8"));
   } catch (error) {
-    throw new Error(`failed to read JSON ${filePath}: ${error.message}`);
+    throw new Error(`failed to read JSON ${filePath}: ${errorMessage(error)}`);
   }
 }
 
+/**
+ * @param {string} rootDir
+ * @param {string} relativePath
+ */
 function resolveInside(rootDir, relativePath) {
   const resolved = path.resolve(rootDir, relativePath);
   const relative = path.relative(rootDir, resolved);
@@ -148,30 +180,54 @@ function resolveInside(rootDir, relativePath) {
 }
 
 /**
+ * @param {unknown} item
+ * @returns {asserts item is EvalItem}
+ */
+function assertEvalItemShape(item) {
+  if (!item || typeof item !== "object" || Array.isArray(item)) {
+    throw new Error("eval item must be an object");
+  }
+  const record = /** @type {Record<string, unknown>} */ (item);
+  if (typeof record.id !== "string" || record.id.trim() === "") {
+    throw new Error("eval item id must be a non-empty string");
+  }
+  if (typeof record.fixture_review_output !== "string") {
+    throw new Error(`${record.id}.fixture_review_output must be a string`);
+  }
+  for (const field of [
+    "input_skill_dir",
+    "input_skill_text",
+    "split",
+    "difficulty",
+  ]) {
+    if (record[field] !== undefined && typeof record[field] !== "string") {
+      throw new Error(`${record.id}.${field} must be a string`);
+    }
+  }
+  for (const field of [
+    "expected_findings",
+    "required_checks",
+    "forbidden_findings",
+  ]) {
+    if (record[field] !== undefined && !Array.isArray(record[field])) {
+      throw new Error(`${record.id}.${field} must be an array`);
+    }
+  }
+}
+
+/**
  * @param {EvalItem} item
  * @param {string} evalRoot
  * @returns {void}
  */
 function validateItem(item, evalRoot) {
-  if (!item || typeof item !== "object") {
-    throw new Error("eval item must be an object");
-  }
-  if (typeof item.id !== "string" || item.id.trim() === "") {
-    throw new Error("eval item id must be a non-empty string");
-  }
-  if (typeof item.fixture_review_output !== "string") {
-    throw new Error(`${item.id}.fixture_review_output must be a string`);
-  }
+  assertEvalItemShape(item);
   if (!item.input_skill_dir && !item.input_skill_text) {
     throw new Error(
       `${item.id} must define input_skill_dir or input_skill_text`,
     );
   }
   if (item.input_skill_dir) {
-    if (typeof item.input_skill_dir !== "string") {
-      throw new Error(`${item.id}.input_skill_dir must be a string`);
-    }
-
     const fixturePath = resolveInside(evalRoot, item.input_skill_dir);
     if (!fs.existsSync(fixturePath)) {
       throw new Error(
@@ -193,6 +249,11 @@ function validateItem(item, evalRoot) {
   }
 }
 
+/**
+ * @param {string} split
+ * @param {string} evalRoot
+ * @returns {EvalItem[]}
+ */
 function readSplit(split, evalRoot) {
   const filePath = path.join(evalRoot, "items", split, "items.json");
   const items = readJsonFile(filePath);
@@ -203,7 +264,10 @@ function readSplit(split, evalRoot) {
     throw new Error(`${filePath} must contain at least one item`);
   }
 
-  return items.map((item) => ({ ...item, split }));
+  return items.map((item) => {
+    assertEvalItemShape(item);
+    return { ...item, split };
+  });
 }
 
 /**
@@ -222,9 +286,15 @@ function loadItemsForSplit(split, evalRoot) {
   return splits.flatMap((splitName) => readSplit(splitName, evalRoot));
 }
 
+/**
+ * @param {EvalItem} item
+ * @param {AdapterOptions} options
+ * @returns {AdapterContext}
+ */
 function adapterContextForItem(item, options) {
   const evalRoot = options.evalRoot || __dirname;
   const skill = options.skill || null;
+  /** @type {AdapterContext} */
   const context = {
     adapter_version: 1,
     eval_root: evalRoot,
@@ -262,6 +332,7 @@ function predictionTimeoutMs() {
   return value;
 }
 
+/** @param {string | null | undefined} stderr */
 function stripPredictionTimeoutSentinel(stderr) {
   return (stderr || "")
     .split(/\r?\n/)
@@ -270,6 +341,7 @@ function stripPredictionTimeoutSentinel(stderr) {
     .trim();
 }
 
+/** @param {unknown} error */
 function spawnErrorCode(error) {
   if (error && typeof error === "object" && "code" in error) {
     return /** @type {{ code?: unknown }} */ (error).code;
@@ -277,6 +349,10 @@ function spawnErrorCode(error) {
   return undefined;
 }
 
+/**
+ * @param {string} command
+ * @param {import("child_process").SpawnSyncOptionsWithStringEncoding & { timeout: number }} options
+ */
 function runShellCommandWithTimeout(command, options) {
   if (process.platform === "win32") {
     return spawnSync(command, {
@@ -303,6 +379,10 @@ function runShellCommandWithTimeout(command, options) {
   );
 }
 
+/**
+ * @param {EvalItem} item
+ * @param {AdapterOptions & { predictionCommand: string }} options
+ */
 function runPredictionCommand(item, options) {
   const command = options.predictionCommand;
   const context = adapterContextForItem(item, options);
@@ -359,7 +439,10 @@ function predictionForItem(item, options = {}) {
   if (options.predictionCommand) {
     return {
       source: "prediction_command",
-      text: runPredictionCommand(item, options),
+      text: runPredictionCommand(item, {
+        ...options,
+        predictionCommand: options.predictionCommand,
+      }),
     };
   }
 
@@ -427,6 +510,7 @@ function runEval(options, evalRoot = __dirname) {
   });
 }
 
+/** @param {EvalResult} result */
 function printHuman(result) {
   console.log(
     `skill-review eval split=${result.split} hard=${result.hard.toFixed(4)} soft=${result.soft.toFixed(4)} items=${result.items.length}`,
@@ -436,6 +520,7 @@ function printHuman(result) {
   }
 }
 
+/** @param {string[]} argv */
 function main(argv) {
   /** @type {EvalCliOptions} */
   let options = {
@@ -464,19 +549,24 @@ function main(argv) {
       console.log(
         JSON.stringify(
           {
-            error: error.message,
-            diagnostics: [error.message],
+            error: errorMessage(error),
+            diagnostics: [errorMessage(error)],
           },
           null,
           2,
         ),
       );
     } else {
-      console.error(error.message);
+      console.error(errorMessage(error));
       console.error(usage());
     }
     return 1;
   }
+}
+
+/** @param {unknown} error */
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 if (require.main === module) {

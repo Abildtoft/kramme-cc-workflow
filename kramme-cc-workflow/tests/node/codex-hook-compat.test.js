@@ -17,6 +17,14 @@ const {
 
 const REPO_ROOT = path.join(__dirname, "..", "..");
 
+/**
+ * @typedef {import("../../scripts/convert-plugin/contracts").ClaudeSkill} ClaudeSkill
+ * @typedef {import("../../scripts/convert-plugin/contracts").CodexHookPlugin} CodexHookPlugin
+ * @typedef {import("../../scripts/convert-plugin/contracts").JsonObject} JsonObject
+ * @typedef {JsonObject & { command: string }} CommandHook
+ * @typedef {{ code: number | null, signal: NodeJS.Signals | null, stdout: string, stderr: string }} ProcessResult
+ */
+
 test("source hook commands resolve to bundled POSIX shell scripts", async () => {
   const hookConfig = await readJson(
     path.join(REPO_ROOT, "hooks", "hooks.json"),
@@ -336,12 +344,14 @@ test("generated bootstrap does not wait for open stdin when the hook does not re
   });
 });
 
+/** @param {unknown} value @param {CommandHook[]} [found] @returns {CommandHook[]} */
 function collectCommandHooks(value, found = []) {
   if (!value || typeof value !== "object") return found;
-  if (typeof value.command === "string") {
-    found.push(value);
+  const record = /** @type {JsonObject} */ (value);
+  if (typeof record.command === "string") {
+    found.push(/** @type {CommandHook} */ (record));
   }
-  for (const child of Object.values(value)) {
+  for (const child of Object.values(record)) {
     if (Array.isArray(child)) {
       for (const item of child) collectCommandHooks(item, found);
     } else if (child && typeof child === "object") {
@@ -351,6 +361,7 @@ function collectCommandHooks(value, found = []) {
   return found;
 }
 
+/** @param {{ hookSourceDir: string, hooks: JsonObject }} fixture @returns {CodexHookPlugin} */
 function fixtureCodexHookPlugin({ hookSourceDir, hooks }) {
   return {
     hookSourceDir,
@@ -382,6 +393,7 @@ function minimalCheckEnabledScript() {
   ].join("\n");
 }
 
+/** @param {string} name @returns {ClaudeSkill} */
 function hookControlSkill(name) {
   return {
     body: "Hook control.",
@@ -391,6 +403,7 @@ function hookControlSkill(name) {
   };
 }
 
+/** @returns {{ agentSkillFiles: Record<string, string[]>, agentSkills: string[], hookMarketplaces: string[], pluginCaches: string[], prompts: string[], skillFiles: Record<string, string[]>, skills: string[] }} */
 function emptyPreviousEntries() {
   return {
     agentSkillFiles: {},
@@ -403,6 +416,7 @@ function emptyPreviousEntries() {
   };
 }
 
+/** @param {string} codexStagingRoot @param {CodexHookPlugin} codexPlugin */
 function stagedPluginCacheRoot(codexStagingRoot, codexPlugin) {
   return path.join(
     codexStagingRoot,
@@ -414,6 +428,7 @@ function stagedPluginCacheRoot(codexStagingRoot, codexPlugin) {
   );
 }
 
+/** @param {string} codexRoot @param {CodexHookPlugin} codexPlugin */
 function finalMarketplaceHooksRoot(codexRoot, codexPlugin) {
   return path.join(
     codexRoot,
@@ -425,6 +440,7 @@ function finalMarketplaceHooksRoot(codexRoot, codexPlugin) {
   );
 }
 
+/** @param {string} codexRoot @param {CodexHookPlugin} codexPlugin */
 function finalPluginCacheHooksRoot(codexRoot, codexPlugin) {
   return path.join(
     codexRoot,
@@ -437,6 +453,7 @@ function finalPluginCacheHooksRoot(codexRoot, codexPlugin) {
   );
 }
 
+/** @param {string} root */
 function isolatedHookEnv(root) {
   /** @type {NodeJS.ProcessEnv} */
   const env = {
@@ -449,10 +466,12 @@ function isolatedHookEnv(root) {
   return env;
 }
 
+/** @param {string} scriptPath @param {{ env: NodeJS.ProcessEnv }} options */
 async function runHookScript(scriptPath, { env }) {
   return runProcess("bash", [scriptPath], { env });
 }
 
+/** @param {string} scriptPath @param {{ env: NodeJS.ProcessEnv, timeoutMs: number }} options */
 async function runHookScriptWithOpenStdin(scriptPath, { env, timeoutMs }) {
   return runProcess("bash", [scriptPath], {
     env,
@@ -461,6 +480,12 @@ async function runHookScriptWithOpenStdin(scriptPath, { env, timeoutMs }) {
   });
 }
 
+/**
+ * @param {string} command
+ * @param {string[]} args
+ * @param {{ env: NodeJS.ProcessEnv, keepStdinOpen?: boolean, timeoutMs?: number }} options
+ * @returns {Promise<ProcessResult>}
+ */
 function runProcess(
   command,
   args,
@@ -502,6 +527,7 @@ function runProcess(
       child.stdin.end();
     }
 
+    /** @template T @param {(value: T) => void} callback @param {T} value */
     function finish(callback, value) {
       if (settled) return;
       settled = true;
@@ -511,6 +537,7 @@ function runProcess(
   });
 }
 
+/** @template T @param {(root: string) => Promise<T>} fn @returns {Promise<T>} */
 async function withTempDir(fn) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "codex-hook-compat-"));
   try {
@@ -520,6 +547,7 @@ async function withTempDir(fn) {
   }
 }
 
+/** @template T @param {() => Promise<T>} fn @returns {Promise<T>} */
 async function withMutedConsole(fn) {
   const log = console.log;
   console.log = () => {};
@@ -530,19 +558,23 @@ async function withMutedConsole(fn) {
   }
 }
 
+/** @param {string} file @param {string} content */
 async function writeFile(file, content) {
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(file, content, "utf8");
 }
 
+/** @param {string} file */
 async function readText(file) {
   return fs.readFile(file, "utf8");
 }
 
+/** @param {string} file @returns {Promise<JsonObject>} */
 async function readJson(file) {
-  return JSON.parse(await readText(file));
+  return /** @type {JsonObject} */ (JSON.parse(await readText(file)));
 }
 
+/** @param {string} file */
 async function pathExists(file) {
   try {
     await fs.access(file);

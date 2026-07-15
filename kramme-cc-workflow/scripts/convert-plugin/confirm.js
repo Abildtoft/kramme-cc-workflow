@@ -5,9 +5,12 @@ const readline = require("readline");
 let nonInteractiveReaderInitialized = false;
 let nonInteractiveInputBuffer = "";
 let nonInteractiveStreamEnded = false;
+/** @type {((value: string | undefined) => void) | null} */
 let nonInteractiveAnswerWaiter = null;
+/** @type {string | undefined} */
 let nonInteractiveFallbackAnswer;
 
+/** @param {unknown} answer */
 function parseConfirmationAnswer(answer) {
   const normalized = String(answer ?? "")
     .trim()
@@ -68,6 +71,7 @@ function setupNonInteractiveReader() {
   process.stdin.pause();
 }
 
+/** @returns {Promise<string | undefined>} */
 function readNonInteractiveConfirmationAnswer() {
   setupNonInteractiveReader();
   const queued = readLineFromNonInteractiveBuffer();
@@ -93,6 +97,10 @@ function readNonInteractiveConfirmationAnswer() {
   });
 }
 
+/**
+ * @param {string} message
+ * @param {{ yes?: boolean, nonInteractive?: boolean }} [options]
+ */
 async function confirm(message, options = {}) {
   if (options.yes) {
     return true;

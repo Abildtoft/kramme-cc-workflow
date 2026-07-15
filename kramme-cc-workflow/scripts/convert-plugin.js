@@ -37,6 +37,8 @@ const REMOVED_OPENCODE_INSTALL_OPTIONS = [
   },
 ];
 
+/** @typedef {Record<string, string | boolean | string[]> & { _: string[] }} ParsedArgs */
+
 async function main() {
   const argv = process.argv.slice(2);
   if (argv.length === 0 || isHelp(argv[0])) {
@@ -63,6 +65,7 @@ async function main() {
   }
 }
 
+/** @param {ParsedArgs} parsed */
 async function runInstall(parsed) {
   const pluginInput = parsed._[0] ?? process.cwd();
   const targetName = resolveTargetName(parsed);
@@ -114,6 +117,7 @@ async function runInstall(parsed) {
   await ensureCodexAgentsFile(codexRoot);
 }
 
+/** @param {ParsedArgs} parsed */
 function resolveTargetName(parsed) {
   const targetName = String(parsed.to ?? "codex");
   if (targetName !== "codex") {
@@ -122,6 +126,7 @@ function resolveTargetName(parsed) {
   return targetName;
 }
 
+/** @param {ParsedArgs} parsed */
 function rejectRemovedOpenCodeInstallOptions(parsed) {
   for (const option of REMOVED_OPENCODE_INSTALL_OPTIONS) {
     if (option.keys.some((key) => Object.hasOwn(parsed, key))) {
@@ -130,6 +135,7 @@ function rejectRemovedOpenCodeInstallOptions(parsed) {
   }
 }
 
+/** @param {ParsedArgs} parsed */
 async function runStats(parsed) {
   const pluginInput = parsed._[0] ?? process.cwd();
   resolveTargetName(parsed);
@@ -154,6 +160,7 @@ async function runStats(parsed) {
   }
 }
 
+/** @param {number} exitCode */
 function printHelp(exitCode) {
   const help = `Usage:
   scripts/convert-plugin.js install <plugin-name|path> [options]
@@ -171,12 +178,14 @@ Options:
   if (exitCode) process.exit(exitCode);
 }
 
+/** @param {string | undefined} value */
 function isHelp(value) {
   return value === "-h" || value === "--help";
 }
 
+/** @param {string[]} argv @returns {ParsedArgs} */
 function parseArgs(argv) {
-  /** @type {Record<string, string | boolean | string[]> & { _: string[] }} */
+  /** @type {ParsedArgs} */
   const result = { _: [] };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -214,6 +223,7 @@ function parseArgs(argv) {
   return result;
 }
 
+/** @param {unknown} value @param {boolean} fallback */
 function parseBoolean(value, fallback) {
   if (value === undefined) return fallback;
   if (typeof value === "boolean") return value;
@@ -225,6 +235,7 @@ function parseBoolean(value, fallback) {
   return fallback;
 }
 
+/** @param {unknown} value @param {...string} defaultSegments */
 function resolveRoot(value, ...defaultSegments) {
   if (value && String(value).trim()) {
     return path.resolve(expandHome(String(value).trim()));
@@ -232,6 +243,7 @@ function resolveRoot(value, ...defaultSegments) {
   return path.join(os.homedir(), ...defaultSegments);
 }
 
+/** @param {string} value */
 function expandHome(value) {
   if (value === "~") return os.homedir();
   if (value.startsWith(`~${path.sep}`)) {

@@ -2,6 +2,12 @@
 
 const { stripWrappingQuotes } = require("./frontmatter");
 
+/**
+ * @typedef {{ label: string, description: string }} QuestionOption
+ * @typedef {{ header: string, question: string, multiSelect: boolean, options: QuestionOption[] }} ParsedQuestion
+ */
+
+/** @param {string} text */
 function rewriteAskUserQuestionCodeBlocks(text) {
   const openFencePattern = /(^[ \t]*)(`{3,})([^\n]*)\r?\n/gm;
   let result = "";
@@ -36,6 +42,12 @@ function rewriteAskUserQuestionCodeBlocks(text) {
   return result;
 }
 
+/**
+ * @param {string} text
+ * @param {number} fromIndex
+ * @param {string} openingIndent
+ * @param {number} minimumFenceLength
+ */
 function findAskUserQuestionClosingFence(
   text,
   fromIndex,
@@ -58,6 +70,7 @@ function findAskUserQuestionClosingFence(
   return null;
 }
 
+/** @param {string} body @returns {ParsedQuestion | null} */
 function parseAskUserQuestionBlock(body) {
   const lines = String(body).split(/\r?\n/);
   let index = 0;
@@ -72,7 +85,9 @@ function parseAskUserQuestionBlock(body) {
   let header = "";
   let question = "";
   let multiSelect = false;
+  /** @type {QuestionOption[]} */
   const options = [];
+  /** @type {QuestionOption | null} */
   let currentOption = null;
   let sawStructuredPrompt = false;
 
@@ -168,6 +183,10 @@ function parseAskUserQuestionBlock(body) {
   return { header, question, multiSelect, options };
 }
 
+/**
+ * @param {ParsedQuestion} prompt
+ * @param {{ indent?: string }} [options]
+ */
 function renderDirectChatQuestion(prompt, options = {}) {
   const indent = options.indent ?? "";
   const lines = ["Ask the user directly in chat:"];
@@ -191,6 +210,7 @@ function renderDirectChatQuestion(prompt, options = {}) {
   return lines.map((line) => `${indent}${line}`).join("\n");
 }
 
+/** @param {string[]} lines @param {number} startIndex @param {number} parentIndent */
 function readIndentedBlock(lines, startIndex, parentIndent) {
   const blockLines = [];
   let index = startIndex;
@@ -222,11 +242,13 @@ function readIndentedBlock(lines, startIndex, parentIndent) {
   return { value, nextIndex: index };
 }
 
+/** @param {unknown} value */
 function leadingWhitespaceLength(value) {
   const match = String(value ?? "").match(/^[ \t]*/);
   return match ? match[0].length : 0;
 }
 
+/** @param {string} value */
 function foldBlockScalar(value) {
   return String(value)
     .split(/\n{2,}/)
@@ -234,6 +256,7 @@ function foldBlockScalar(value) {
     .join("\n\n");
 }
 
+/** @param {string[]} lines @param {string} prefix @param {unknown} value */
 function appendPrefixedMultiline(lines, prefix, value) {
   const valueLines = String(value ?? "").split(/\r?\n/);
   lines.push(`${prefix}${valueLines[0] ?? ""}`);

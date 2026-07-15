@@ -14,6 +14,7 @@ const {
   copyDir,
   copyFile,
   ensureDir,
+  filesystemErrorCode,
   pathExists,
   resolveManagedChild,
 } = require("./filesystem");
@@ -26,6 +27,7 @@ const INSTALL_BACKUPS_DIR = ".kramme-install-backups";
 const LOCK_POLL_INTERVAL_MS = 20;
 const MAX_LOCK_POLL_INTERVAL_MS = 250;
 const DEFAULT_LOCK_TIMEOUT_MS = 30_000;
+/** @type {AsyncLocalStorage<InstallTransaction>} */
 const transactionStorage = new AsyncLocalStorage();
 
 /**
@@ -62,6 +64,37 @@ const transactionStorage = new AsyncLocalStorage();
  * @property {string[]} [lockRoots]
  * @property {number} [lockTimeoutMs]
  * @property {string} [pluginName]
+ *
+ * @typedef {Object} InstallLockOwner
+ * @property {number} version
+ * @property {string} token
+ * @property {number} pid
+ * @property {string} pluginName
+ * @property {number} createdAtMs
+ * @property {string[]} [lockRoots]
+ * @property {string} [transactionRoot]
+ * @property {string} journalPath
+ * @property {string} [expectedToken]
+ *
+ * @typedef {Object} InstallLock
+ * @property {string} lockDir
+ * @property {InstallLockOwner} owner
+ *
+ * @typedef {Object} InstallMutationRecord
+ * @property {string} operation
+ * @property {string} target
+ * @property {string | null} backup
+ *
+ * @typedef {Object} InstallTransaction
+ * @property {string} token
+ * @property {string} transactionDir
+ * @property {string} journalPath
+ * @property {InstallMutationRecord[]} records
+ * @property {{ target: string, preservedAt: string }[]} recoveryConflicts
+ * @property {string} status
+ *
+ * @typedef {{ error: unknown, lock: InstallLock }} InstallLockReleaseError
+ * @typedef {{ error: unknown, record: InstallMutationRecord }} InstallRollbackError
  */
 
 /**
@@ -87,8 +120,10 @@ async function withInstallTransaction(root, options, callback) {
     ),
   ).sort();
   const transactionOwner = createLockOwner(root, options.pluginName, lockRoots);
+  /** @type {InstallLock[]} */
   const locks = [];
   let releaseLocks = true;
+  /** @type {unknown} */
   let primaryError = null;
 
   try {
@@ -143,6 +178,12 @@ async function withInstallTransaction(root, options, callback) {
   }
 }
 
+/**
+ * @param {string} root
+ * @param {InstallTransactionOptions} options
+ * @param {InstallLockOwner} transactionOwner
+ * @returns {Promise<InstallLock>}
+ */
 async function acquireInstallLock(root, options, transactionOwner) {
   const lockDir = path.join(root, INSTALL_LOCK_DIR);
   const timeoutMs = options.lockTimeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS;
@@ -201,6 +242,12 @@ async function acquireInstallLock(root, options, transactionOwner) {
   }
 }
 
+/**
+ * @param {string} root
+ * @param {string | undefined} pluginName
+ * @param {string[]} lockRoots
+ * @returns {InstallLockOwner}
+ */
 function createLockOwner(root, pluginName, lockRoots) {
   const resolvedRoot = path.resolve(root);
   const token = `${process.pid}-${Date.now()}-${crypto.randomBytes(8).toString("hex")}`;
@@ -221,6 +268,7 @@ function createLockOwner(root, pluginName, lockRoots) {
   };
 }
 
+/** @param {string} lockDir @returns {Promise<InstallLockOwner | null>} */
 async function readLockOwner(lockDir) {
   try {
     const owner = JSON.parse(
@@ -235,7 +283,7 @@ async function readLockOwner(lockDir) {
       (owner.lockRoots !== undefined &&
         (!Array.isArray(owner.lockRoots) ||
           !owner.lockRoots.every(
-            (lockRoot) =>
+            /** @param {unknown} lockRoot */ (lockRoot) =>
               typeof lockRoot === "string" && path.isAbsolute(lockRoot),
           ))) ||
       (owner.transactionRoot !== undefined &&
@@ -246,24 +294,27 @@ async function readLockOwner(lockDir) {
     ) {
       return null;
     }
-    return owner;
+    return /** @type {InstallLockOwner} */ (owner);
   } catch (error) {
-    if (error?.code === "ENOENT" || error instanceof SyntaxError) return null;
+    if (filesystemErrorCode(error) === "ENOENT" || error instanceof SyntaxError)
+      return null;
     throw error;
   }
 }
 
+/** @param {number} pid */
 async function isProcessAlive(pid) {
   try {
     process.kill(pid, 0);
     return true;
   } catch (error) {
-    if (error?.code === "ESRCH") return false;
-    if (error?.code === "EPERM") return true;
+    if (filesystemErrorCode(error) === "ESRCH") return false;
+    if (filesystemErrorCode(error) === "EPERM") return true;
     throw error;
   }
 }
 
+/** @param {string} root @param {InstallLockOwner} owner */
 async function recoverStaleInstall(root, owner) {
   const { lockRoots, transactionRoot } = await validateRecoveryOwnership(
     root,
@@ -285,7 +336,7 @@ async function recoverStaleInstall(root, owner) {
   try {
     journal = JSON.parse(await fs.readFile(owner.journalPath, "utf8"));
   } catch (error) {
-    if (error?.code === "ENOENT") return;
+    if (filesystemErrorCode(error) === "ENOENT") return;
     throw new Error(
       `Cannot recover stale install journal ${owner.journalPath}.`,
       {
@@ -305,8 +356,9 @@ async function recoverStaleInstall(root, owner) {
       journal.status !== "active" &&
       journal.status !== "committed") ||
     !Array.isArray(journal.records) ||
-    !journal.records.every((record, index) =>
-      isOwnedMutationRecord(record, owner.token, index, lockRoots),
+    !journal.records.every(
+      /** @param {unknown} record @param {number} index */ (record, index) =>
+        isOwnedMutationRecord(record, owner.token, index, lockRoots),
     )
   ) {
     throw new Error(
@@ -318,7 +370,7 @@ async function recoverStaleInstall(root, owner) {
     token: owner.token,
     transactionDir: path.dirname(owner.journalPath),
     journalPath: owner.journalPath,
-    records: journal.records,
+    records: /** @type {InstallMutationRecord[]} */ (journal.records),
     recoveryConflicts:
       /** @type {{target: string, preservedAt: string}[]} */ ([]),
     status: journal.status === "committed" ? "committed" : "active",
@@ -344,6 +396,11 @@ async function recoverStaleInstall(root, owner) {
   }
 }
 
+/**
+ * @param {string} root
+ * @param {InstallLockOwner} owner
+ * @returns {Promise<{ lockRoots: string[], transactionRoot: string }>}
+ */
 async function validateRecoveryOwnership(root, owner) {
   const recoveredRoot = path.resolve(root);
   const transactionRoot = path.resolve(owner.transactionRoot ?? recoveredRoot);
@@ -390,6 +447,11 @@ async function validateRecoveryOwnership(root, owner) {
   return { lockRoots: validatedLockRoots, transactionRoot };
 }
 
+/**
+ * @param {string} root
+ * @param {InstallLockOwner} staleOwner
+ * @returns {Promise<InstallLock | null>}
+ */
 async function acquireRecoveryClaim(root, staleOwner) {
   const claimDir = getRecoveryClaimDir(root, staleOwner);
   await ensureDir(path.dirname(claimDir));
@@ -414,6 +476,7 @@ async function acquireRecoveryClaim(root, staleOwner) {
   }
 }
 
+/** @param {string} root @param {InstallLockOwner} staleOwner */
 async function hasActiveRecoveryClaim(root, staleOwner) {
   const claimDir = getRecoveryClaimDir(root, staleOwner);
   const claimOwner = await readLockOwner(claimDir);
@@ -423,6 +486,7 @@ async function hasActiveRecoveryClaim(root, staleOwner) {
   return false;
 }
 
+/** @param {string} root @param {InstallLockOwner} staleOwner */
 function getRecoveryClaimDir(root, staleOwner) {
   const transactionRoot = staleOwner.transactionRoot ?? path.resolve(root);
   return path.join(
@@ -432,6 +496,11 @@ function getRecoveryClaimDir(root, staleOwner) {
   );
 }
 
+/**
+ * @param {string} root
+ * @param {InstallLockOwner} staleOwner
+ * @returns {InstallLockOwner}
+ */
 function createRecoveryClaimOwner(root, staleOwner) {
   const transactionRoot = staleOwner.transactionRoot ?? path.resolve(root);
   return {
@@ -446,8 +515,15 @@ function createRecoveryClaimOwner(root, staleOwner) {
   };
 }
 
+/**
+ * @param {string} root
+ * @param {string} lockDir
+ * @param {InstallLockOwner} staleOwner
+ * @param {InstallLock} recoveryClaim
+ */
 async function recoverClaimedInstall(root, lockDir, staleOwner, recoveryClaim) {
   let recovered = false;
+  /** @type {unknown} */
   let recoveryError = null;
   try {
     const claimedOwner = await readLockOwner(lockDir);
@@ -464,7 +540,7 @@ async function recoverClaimedInstall(root, lockDir, staleOwner, recoveryClaim) {
   } catch (releaseError) {
     if (recoveryError) {
       throw new Error(
-        `${recoveryError.message} Recovery claim cleanup also failed: ${releaseError.message}`,
+        `${errorMessage(recoveryError)} Recovery claim cleanup also failed: ${errorMessage(releaseError)}`,
         { cause: recoveryError },
       );
     }
@@ -474,6 +550,10 @@ async function recoverClaimedInstall(root, lockDir, staleOwner, recoveryClaim) {
   return recovered;
 }
 
+/**
+ * @param {InstallLockOwner} staleOwner
+ * @param {string} currentLockDir
+ */
 async function reclaimStaleTransactionLocks(staleOwner, currentLockDir) {
   const resolvedCurrentLockDir = path.resolve(currentLockDir);
   const lockDirs = new Set([resolvedCurrentLockDir]);
@@ -495,6 +575,7 @@ async function reclaimStaleTransactionLocks(staleOwner, currentLockDir) {
   return reclaimedCurrent;
 }
 
+/** @param {InstallLock} recoveryClaim */
 async function releaseRecoveryClaim(recoveryClaim) {
   await releaseInstallLock(recoveryClaim);
   try {
@@ -504,6 +585,7 @@ async function releaseRecoveryClaim(recoveryClaim) {
   }
 }
 
+/** @param {string} dir @param {InstallLockOwner} owner */
 async function publishOwnedDirectory(dir, owner) {
   const temporaryDir = `${dir}.tmp-${process.pid}-${crypto.randomBytes(6).toString("hex")}`;
   try {
@@ -513,7 +595,10 @@ async function publishOwnedDirectory(dir, owner) {
       await fs.rename(temporaryDir, dir);
       return true;
     } catch (error) {
-      if (error?.code === "EEXIST" || error?.code === "ENOTEMPTY") {
+      if (
+        filesystemErrorCode(error) === "EEXIST" ||
+        filesystemErrorCode(error) === "ENOTEMPTY"
+      ) {
         return false;
       }
       throw error;
@@ -523,12 +608,13 @@ async function publishOwnedDirectory(dir, owner) {
   }
 }
 
+/** @param {string} lockDir @param {string} label */
 async function quarantineInvalidLock(lockDir, label) {
   const quarantineDir = `${lockDir}.${label}-${process.pid}-${crypto.randomBytes(6).toString("hex")}`;
   try {
     await fs.rename(lockDir, quarantineDir);
   } catch (error) {
-    if (error?.code === "ENOENT") return false;
+    if (filesystemErrorCode(error) === "ENOENT") return false;
     throw error;
   }
 
@@ -550,12 +636,13 @@ async function quarantineInvalidLock(lockDir, label) {
   return true;
 }
 
+/** @param {string} lockDir @param {string} expectedToken @param {string} label */
 async function quarantineOwnedLock(lockDir, expectedToken, label) {
   const quarantineDir = `${lockDir}.${label}-${process.pid}-${crypto.randomBytes(6).toString("hex")}`;
   try {
     await fs.rename(lockDir, quarantineDir);
   } catch (error) {
-    if (error?.code === "ENOENT") return false;
+    if (filesystemErrorCode(error) === "ENOENT") return false;
     throw error;
   }
 
@@ -577,6 +664,7 @@ async function quarantineOwnedLock(lockDir, expectedToken, label) {
   return true;
 }
 
+/** @param {InstallLock} lock */
 async function releaseInstallLock(lock) {
   const released = await quarantineOwnedLock(
     lock.lockDir,
@@ -590,7 +678,9 @@ async function releaseInstallLock(lock) {
   }
 }
 
+/** @param {InstallLock[]} locks @returns {Promise<InstallLockReleaseError[]>} */
 async function releaseInstallLocks(locks) {
+  /** @type {InstallLockReleaseError[]} */
   const errors = [];
   for (const lock of [...locks].reverse()) {
     try {
@@ -602,13 +692,17 @@ async function releaseInstallLocks(locks) {
   return errors;
 }
 
+/**
+ * @param {unknown} primaryError
+ * @param {InstallLockReleaseError[]} releaseErrors
+ */
 function lockReleaseFailureError(primaryError, releaseErrors) {
   const details = releaseErrors
-    .map(({ error, lock }) => `${lock.lockDir}: ${error.message}`)
+    .map(({ error, lock }) => `${lock.lockDir}: ${errorMessage(error)}`)
     .join("; ");
   if (primaryError) {
     return new Error(
-      `${primaryError.message} Install lock cleanup also failed: ${details}`,
+      `${errorMessage(primaryError)} Install lock cleanup also failed: ${details}`,
       { cause: primaryError },
     );
   }
@@ -617,6 +711,7 @@ function lockReleaseFailureError(primaryError, releaseErrors) {
   });
 }
 
+/** @param {InstallLockOwner} owner @returns {Promise<InstallTransaction>} */
 async function createInstallTransaction(owner) {
   const transactionDir = path.dirname(owner.journalPath);
   const transaction = {
@@ -624,6 +719,7 @@ async function createInstallTransaction(owner) {
     transactionDir,
     journalPath: owner.journalPath,
     records: [],
+    recoveryConflicts: [],
     status: "active",
   };
   await ensureDir(transactionDir);
@@ -631,36 +727,46 @@ async function createInstallTransaction(owner) {
   return transaction;
 }
 
+/**
+ * @param {unknown} record
+ * @param {string} token
+ * @param {number} recordIndex
+ * @param {string[]} lockRoots
+ * @returns {record is InstallMutationRecord}
+ */
 function isOwnedMutationRecord(record, token, recordIndex, lockRoots) {
+  const candidate = /** @type {Partial<InstallMutationRecord>} */ (record);
+  const target = candidate.target;
   if (
     !record ||
     typeof record !== "object" ||
-    typeof record.target !== "string" ||
-    !path.isAbsolute(record.target) ||
-    path.resolve(record.target) !== record.target ||
+    typeof target !== "string" ||
+    !path.isAbsolute(target) ||
+    path.resolve(target) !== target ||
     !lockRoots.some((lockRoot) =>
-      record.target.startsWith(path.resolve(lockRoot) + path.sep),
+      target.startsWith(path.resolve(lockRoot) + path.sep),
     )
   ) {
     return false;
   }
-  if (record.operation === "create") return record.backup === null;
+  if (candidate.operation === "create") return candidate.backup === null;
   if (
-    record.operation !== "backup-rename" ||
-    typeof record.backup !== "string" ||
-    !path.isAbsolute(record.backup)
+    candidate.operation !== "backup-rename" ||
+    typeof candidate.backup !== "string" ||
+    !path.isAbsolute(candidate.backup)
   ) {
     return false;
   }
   const expectedBackup = path.join(
-    path.dirname(record.target),
+    path.dirname(target),
     INSTALL_BACKUPS_DIR,
     token,
     String(recordIndex),
   );
-  return record.backup === expectedBackup;
+  return candidate.backup === expectedBackup;
 }
 
+/** @param {InstallTransaction} transaction */
 async function persistInstallJournal(transaction) {
   await writeAtomicJson(transaction.journalPath, {
     version: 1,
@@ -670,6 +776,10 @@ async function persistInstallJournal(transaction) {
   });
 }
 
+/**
+ * @param {string} targetPath
+ * @param {{ preserveExisting?: boolean }} [options]
+ */
 async function prepareTransactionMutation(
   targetPath,
   { preserveExisting = false } = {},
@@ -698,7 +808,7 @@ async function prepareTransactionMutation(
   try {
     stats = await fs.lstat(resolvedTarget);
   } catch (error) {
-    if (error?.code !== "ENOENT") throw error;
+    if (filesystemErrorCode(error) !== "ENOENT") throw error;
   }
 
   const record =
@@ -735,18 +845,25 @@ async function prepareTransactionMutation(
   return true;
 }
 
+/**
+ * @param {InstallTransaction} transaction
+ * @param {{ preserveCurrentTargets?: boolean }} [options]
+ * @returns {Promise<InstallRollbackError[]>}
+ */
 async function rollbackInstallTransaction(
   transaction,
   { preserveCurrentTargets = false } = {},
 ) {
+  /** @type {InstallRollbackError[]} */
   const errors = [];
   const indexedRecords = transaction.records
     .map((record, index) => ({ index, record }))
     .reverse();
   for (const { index, record } of indexedRecords) {
     try {
+      const backupPath = record.backup;
       const backupExists =
-        record.backup && (await rawPathExists(record.backup));
+        backupPath !== null && (await rawPathExists(backupPath));
       if (backupExists) {
         if (preserveCurrentTargets) {
           await preserveRecoveryTarget(transaction, record, index);
@@ -754,7 +871,7 @@ async function rollbackInstallTransaction(
           await fs.rm(record.target, { recursive: true, force: true });
         }
         await ensureDir(path.dirname(record.target));
-        await fs.rename(record.backup, record.target);
+        await fs.rename(backupPath, record.target);
       } else if (record.operation === "create") {
         if (preserveCurrentTargets) {
           await preserveRecoveryTarget(transaction, record, index);
@@ -783,6 +900,11 @@ async function rollbackInstallTransaction(
   return errors;
 }
 
+/**
+ * @param {InstallTransaction} transaction
+ * @param {InstallMutationRecord} record
+ * @param {number} recordIndex
+ */
 async function preserveRecoveryTarget(transaction, record, recordIndex) {
   if (!(await rawPathExists(record.target))) return;
   const conflictRoot = path.join(
@@ -804,23 +926,29 @@ async function preserveRecoveryTarget(transaction, record, recordIndex) {
       });
       return;
     } catch (error) {
-      if (error?.code === "ENOENT") return;
-      if (error?.code === "EEXIST" || error?.code === "ENOTEMPTY") continue;
+      if (filesystemErrorCode(error) === "ENOENT") return;
+      if (
+        filesystemErrorCode(error) === "EEXIST" ||
+        filesystemErrorCode(error) === "ENOTEMPTY"
+      )
+        continue;
       throw error;
     }
   }
 }
 
+/** @param {InstallTransaction} transaction */
 async function markInstallTransactionCommitted(transaction) {
   transaction.status = "committed";
   await persistInstallJournal(transaction);
 }
 
+/** @param {InstallTransaction} transaction */
 async function removeTransactionArtifacts(transaction) {
   const backupRoots = new Set(
     transaction.records
       .map((record) => record.backup)
-      .filter(Boolean)
+      .filter((backup) => backup !== null)
       .map((backup) => path.dirname(backup)),
   );
   for (const backupRoot of backupRoots) {
@@ -839,19 +967,25 @@ async function removeTransactionArtifacts(transaction) {
   }
 }
 
+/**
+ * @param {unknown} originalError
+ * @param {InstallRollbackError[]} rollbackErrors
+ * @param {InstallTransaction} transaction
+ */
 function rollbackFailureError(originalError, rollbackErrors, transaction) {
   const details = rollbackErrors
     .map(
       ({ error, record }) =>
-        `${record.operation} ${record.target}: ${error.message}`,
+        `${record.operation} ${record.target}: ${errorMessage(error)}`,
     )
     .join("; ");
   return new Error(
-    `${originalError.message} Rollback failed for install transaction ${transaction.token}: ${details}`,
+    `${errorMessage(originalError)} Rollback failed for install transaction ${transaction.token}: ${details}`,
     { cause: originalError },
   );
 }
 
+/** @param {string} file @param {unknown} value */
 async function writeAtomicJson(file, value) {
   await ensureDir(path.dirname(file));
   const temporary = `${file}.tmp-${process.pid}-${crypto.randomBytes(6).toString("hex")}`;
@@ -867,20 +1001,32 @@ async function writeAtomicJson(file, value) {
   }
 }
 
+/** @param {string} file */
 async function rawPathExists(file) {
   try {
     await fs.lstat(file);
     return true;
   } catch (error) {
-    if (error?.code === "ENOENT") return false;
+    if (filesystemErrorCode(error) === "ENOENT") return false;
     throw error;
   }
 }
 
+/** @param {number} milliseconds */
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+/** @param {unknown} error */
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * @typedef {{ removed: boolean, hasStaleManagedFile?: boolean }} ManagedPruneInspection
+ */
+
+/** @param {string} baseRoot @param {string} pluginName @param {string} label */
 async function createInstallStagingRoot(baseRoot, pluginName, label) {
   await ensureDir(baseRoot);
   const nonce = Math.random().toString(16).slice(2);
@@ -893,6 +1039,7 @@ async function createInstallStagingRoot(baseRoot, pluginName, label) {
   return stagingRoot;
 }
 
+/** @param {string | null | undefined} stagingRoot */
 async function removeInstallStagingRoot(stagingRoot) {
   if (!stagingRoot) return;
   await fs.rm(stagingRoot, { recursive: true, force: true });
@@ -966,6 +1113,7 @@ async function preflightStagedFileInstall(
   }
 }
 
+/** @param {string} stagedDir @param {string} targetDir @param {{ replace?: boolean }} [options] */
 async function installStagedDir(
   stagedDir,
   targetDir,
@@ -984,7 +1132,7 @@ async function installStagedDir(
       await fs.rename(stagedDir, targetDir);
       return;
     } catch (error) {
-      if (error.code !== "EXDEV") throw error;
+      if (filesystemErrorCode(error) !== "EXDEV") throw error;
     }
   }
   await copyDir(stagedDir, targetDir);
@@ -1016,7 +1164,7 @@ async function pruneStaleManagedFiles(
     try {
       stats = await fs.lstat(targetPath);
     } catch (error) {
-      if (error.code === "ENOENT") continue;
+      if (filesystemErrorCode(error) === "ENOENT") continue;
       throw error;
     }
 
@@ -1026,6 +1174,7 @@ async function pruneStaleManagedFiles(
   }
 }
 
+/** @param {unknown} previousFiles @param {unknown} currentFiles @returns {Set<string>} */
 function staleManagedFileSet(previousFiles, currentFiles) {
   const currentFileSet = new Set(sanitizeManagedFileList(currentFiles));
   return new Set(
@@ -1035,6 +1184,12 @@ function staleManagedFileSet(previousFiles, currentFiles) {
   );
 }
 
+/**
+ * @param {string} stagedDir
+ * @param {string} targetDir
+ * @param {string} prefix
+ * @param {{ label: string, staleManagedFiles: Set<string> }} options
+ */
 async function preflightStagedDirMerge(
   stagedDir,
   targetDir,
@@ -1081,6 +1236,7 @@ async function preflightStagedDirMerge(
   }
 }
 
+/** @param {string} targetPath @param {string} relativePath @param {Set<string>} staleManagedFiles */
 async function lstatAfterManagedPrune(
   targetPath,
   relativePath,
@@ -1090,7 +1246,7 @@ async function lstatAfterManagedPrune(
   try {
     stats = await fs.lstat(targetPath);
   } catch (error) {
-    if (error.code === "ENOENT") return null;
+    if (filesystemErrorCode(error) === "ENOENT") return null;
     throw error;
   }
   if (
@@ -1102,6 +1258,7 @@ async function lstatAfterManagedPrune(
   return stats;
 }
 
+/** @param {string} dirPath @param {string} relativeDir @param {Set<string>} staleManagedFiles */
 async function directoryRemovedByManagedPrune(
   dirPath,
   relativeDir,
@@ -1115,6 +1272,12 @@ async function directoryRemovedByManagedPrune(
   return result.removed;
 }
 
+/**
+ * @param {string} dirPath
+ * @param {string} relativeDir
+ * @param {Set<string>} staleManagedFiles
+ * @returns {Promise<ManagedPruneInspection>}
+ */
 async function inspectDirectoryForManagedPrune(
   dirPath,
   relativeDir,
@@ -1132,7 +1295,8 @@ async function inspectDirectoryForManagedPrune(
         staleManagedFiles,
       );
       if (!child.removed) return { removed: false };
-      hasStaleManagedFile = hasStaleManagedFile || child.hasStaleManagedFile;
+      hasStaleManagedFile =
+        hasStaleManagedFile || Boolean(child.hasStaleManagedFile);
       continue;
     }
 
@@ -1153,6 +1317,7 @@ async function inspectDirectoryForManagedPrune(
   };
 }
 
+/** @param {string} rootDir @param {string} targetPath */
 async function hasSafeManagedAncestorDirs(rootDir, targetPath) {
   const resolvedRoot = path.resolve(rootDir);
   const targetDir = path.dirname(path.resolve(targetPath));
@@ -1162,7 +1327,7 @@ async function hasSafeManagedAncestorDirs(rootDir, targetPath) {
     const rootStats = await fs.lstat(resolvedRoot);
     if (!rootStats.isDirectory()) return false;
   } catch (error) {
-    if (error.code === "ENOENT") return false;
+    if (filesystemErrorCode(error) === "ENOENT") return false;
     throw error;
   }
 
@@ -1178,7 +1343,7 @@ async function hasSafeManagedAncestorDirs(rootDir, targetPath) {
     try {
       stats = await fs.lstat(dir);
     } catch (error) {
-      if (error.code === "ENOENT") return false;
+      if (filesystemErrorCode(error) === "ENOENT") return false;
       throw error;
     }
     if (!stats.isDirectory()) return false;
@@ -1187,6 +1352,7 @@ async function hasSafeManagedAncestorDirs(rootDir, targetPath) {
   return true;
 }
 
+/** @param {string} startDir @param {string} rootDir */
 async function removeEmptyAncestorDirs(startDir, rootDir) {
   const resolvedRoot = path.resolve(rootDir);
   let current = path.resolve(startDir);
@@ -1204,6 +1370,7 @@ async function removeEmptyAncestorDirs(startDir, rootDir) {
   }
 }
 
+/** @param {string} stagedFile @param {string} targetFile @param {{ replace?: boolean }} [options] */
 async function installStagedFile(
   stagedFile,
   targetFile,
@@ -1219,7 +1386,7 @@ async function installStagedFile(
     await fs.rename(stagedFile, targetFile);
     return;
   } catch (error) {
-    if (error.code !== "EXDEV") throw error;
+    if (filesystemErrorCode(error) !== "EXDEV") throw error;
   }
   await copyFile(stagedFile, targetFile);
   await fs.rm(stagedFile, { force: true });

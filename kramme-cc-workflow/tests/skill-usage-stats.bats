@@ -104,6 +104,24 @@ create_usage_plugin_root() {
 	[ "$(echo "$output" | jq -r '.[0].tool')" = "0" ]
 }
 
+@test "report normalizes legacy records and skips records without string skills" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for skill usage tests"
+	fi
+
+	printf '%s\n' \
+		'{"skill":"kramme:legacy-record","kind":"unexpected","sessionId":42}' \
+		'{"skill":42,"kind":"tool"}' \
+		>"$USAGE_FILE"
+
+	run node "$SCRIPT" report --file "$USAGE_FILE" --json
+	[ "$status" -eq 0 ]
+	[ "$(echo "$output" | jq -r 'length')" = "1" ]
+	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:legacy-record" ]
+	[ "$(echo "$output" | jq -r '.[0].explicit')" = "1" ]
+	[ "$(echo "$output" | jq -r '.[0].tool')" = "0" ]
+}
+
 @test "scan summarizes user skill invocations from transcript files" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for skill usage tests"
