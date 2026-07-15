@@ -432,7 +432,7 @@
         "user-invocable": "true"
       },
       "contains": [
-        "PR_PLAN_*.md file, pasted plan, or one-off implementation checklist",
+        "`PR_PLAN_*.md` file, pasted plan, or one-off implementation checklist",
         "PLAN ROUTE:",
         "MISSING REQUIREMENT",
         "Read `references/direct-execution.md`"

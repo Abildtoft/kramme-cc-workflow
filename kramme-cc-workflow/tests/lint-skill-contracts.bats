@@ -626,6 +626,8 @@ EOF
   local discipline_text
   local team_text
   local resolver_text
+  local resolver_team_text
+  local resolver_output_text
   local emphasis_line
   local normalization_line
 
@@ -634,6 +636,8 @@ EOF
   discipline_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/review-discipline.md")"
   team_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/team-mode.md")"
   resolver_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/SKILL.md")"
+  resolver_team_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/references/team-mode.md")"
+  resolver_output_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/references/resolution-output.md")"
 
   [[ "$skill_text" == *"After emphasis adjustments, run an **action-class normalization pass**."* ]]
   [[ "$skill_text" == *"default to \`gated_auto\` with owner \`resolver\`"* ]]
@@ -658,6 +662,44 @@ EOF
   [[ "$resolver_text" == *"manual blocker, and next human decision when available"* ]]
   [[ "$resolver_text" == *"Findings outside the filter are not processed and keep their existing \`Resolution status\` and \`Action taken\` fields unchanged"* ]]
   [[ "$resolver_text" == *"A finding skipped only because it was outside a previous severity filter remains eligible"* ]]
+  [[ "$resolver_text" == *"Deferred — manual follow-up required; proposed resolution below."* ]]
+  [[ "$resolver_text" == *"Also parse these canonical lifecycle fields when present: \`Recommended resolution\`, \`Alternatives\`, \`To proceed\`, \`Process handoff\`, \`Waiting on\`, \`Selected resolution\`, and \`Decision outcome\`."* ]]
+  [[ "$resolver_text" == *"legacy manual deferral eligible for proposal backfill only"* ]]
+  [[ "$resolver_text" == *"confirms its recorded \`Process handoff\` completed"* ]]
+  [[ "$resolver_text" == *"reports its recorded \`Process handoff\` failed"* ]]
+  [[ "$resolver_text" == *"Route a completed process handoff directly to the completed-decision replacement in Step 2d"* ]]
+  [[ "$resolver_text" == *"reports that its recorded **Process handoff** failed"* ]]
+  [[ "$resolver_text" == *"replace the failed handoff with either a corrected **Process handoff** or **Waiting on**"* ]]
+  [[ "$resolver_text" == *"counts as the explicit reopen in Step 1: on that run, treat the chosen option as an explicit implementation payload and implement it when it is an in-scope"* ]]
+  [[ "$resolver_text" == *"supplying the dependency counts as the explicit reopen in Step 1"* ]]
+  [[ "$resolver_text" == *"retain **Selected resolution**, keep **Resolution status: open**, and record the failed attempt in **Action taken**"* ]]
+  [[ "$resolver_text" == *"retry-eligible without asking for the same decision again"* ]]
+  [[ "$resolver_text" == *"replace **To proceed** with **Selected resolution** and a concrete **Process handoff**"* ]]
+  [[ "$resolver_text" == *"Keep the finding deferred until the process action is completed; when the user confirms completion, mark it addressed. Do not route an accepted process decision back through code implementation."* ]]
+  [[ "$resolver_text" == *"Waiting on"* ]]
+  [[ "$resolver_text" == *"apply the completed-decision replacement in \`references/resolution-output.md\`"* ]]
+  [[ "$resolver_text" == *"Read \`references/resolution-output.md\` before writing or updating manual findings."* ]]
+  [[ "$resolver_output_text" == *"**Recommended resolution:**"* ]]
+  [[ "$resolver_output_text" == *"every finding routed through Step 2d's manual-proposal flow"* ]]
+  [[ "$resolver_output_text" == *"process-level external or legacy findings without an action class"* ]]
+  [[ "$resolver_output_text" == *"**Alternatives:** (omit when no genuinely distinct option exists)"* ]]
+  [[ "$resolver_output_text" == *"preserving that entry's field marker and indentation"* ]]
+  [[ "$resolver_output_text" == *"exactly one next-step field that matches who can act"* ]]
+  [[ "$resolver_output_text" == *"For a user-selectable code or process decision"* ]]
+  [[ "$resolver_output_text" == *"accepted process decisions transition to \`Selected resolution\` and \`Process handoff\`"* ]]
+  [[ "$resolver_output_text" == *"For an accepted process decision: record \`Selected resolution\`"* ]]
+  [[ "$resolver_output_text" == *"**Waiting on:**"* ]]
+  [[ "$resolver_output_text" == *"**Selected resolution:**"* ]]
+  [[ "$resolver_output_text" == *"**Decision outcome:**"* ]]
+  [[ "$resolver_output_text" == *"A selected code resolution becomes retry-eligible implementation state, not another pending decision."* ]]
+  [[ "$resolver_output_text" == *"retain **Selected resolution**, keep **Resolution status: open**, and record the failed attempt in **Action taken**"* ]]
+  [[ "$resolver_output_text" == *"Do not leave proposal-only fields on an addressed or acknowledged finding."* ]]
+  [[ "$resolver_output_text" == *"R open selected-resolution retries or blocked implementations, A manual findings awaiting a user decision, P accepted process handoffs awaiting completion, and X manual findings waiting on an external owner"* ]]
+  [[ "$resolver_team_text" == *"Manual findings that Step 2d keeps unresolved or deferred are never assigned to resolver agents"* ]]
+  [[ "$resolver_team_text" == *"Any manual finding that Step 2d classifies as implementation payload remains resolver-eligible"* ]]
+  [[ "$resolver_team_text" == *"Step 2d is the canonical eligibility contract"* ]]
+  [[ "$resolver_team_text" == *"If no resolver-eligible implementation candidates remain after the action-class gate"* ]]
+  [[ "$resolver_team_text" == *"Do not prompt for a parallel plan or spawn resolver agents for a manual-only review."* ]]
   [[ "$resolver_text" != *"Findings outside the filter are skipped with **Resolution status: skipped**"* ]]
 }
 

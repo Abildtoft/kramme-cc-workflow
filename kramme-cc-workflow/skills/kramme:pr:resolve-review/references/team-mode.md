@@ -47,6 +47,9 @@ Same as `/kramme:pr:resolve-review` Step 2:
 1. **Scope check** -- Classify each finding as in-scope, out-of-scope, or gray area
 2. **Validity assessment** -- For external reviews, assess whether you agree
 3. **Severity prioritization** -- critical > important > suggestion
+4. **Action-class gate** -- Apply the standard skill's Step 2d. Manual findings that Step 2d keeps unresolved or deferred are never assigned to resolver agents; the lead records their proposal or next state using the standard skill's manual-findings output format. Any manual finding that Step 2d classifies as implementation payload remains resolver-eligible. Do not re-enumerate those states here; Step 2d is the canonical eligibility contract.
+
+If no resolver-eligible implementation candidates remain after the action-class gate, the lead writes the manual proposals and summary back to the source review, then stops before Step 3. Do not prompt for a parallel plan or spawn resolver agents for a manual-only review.
 
 ### Step 3: Group Findings by File Area
 
