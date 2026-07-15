@@ -264,7 +264,9 @@ function sanitizeManagedFileMap(filesByEntry) {
 function sanitizeManagedFileList(files) {
   if (!Array.isArray(files)) return [];
   return Array.from(
-    new Set(files.map((file) => normalizeManagedFilePath(file)).filter(Boolean)),
+    new Set(
+      files.map((file) => normalizeManagedFilePath(file)).filter(Boolean),
+    ),
   ).sort();
 }
 
@@ -288,6 +290,7 @@ function unionEntryLists(...lists) {
 }
 
 module.exports = {
+  getInstallManifestPath,
   getPreviousInstallEntries,
   loadInstallState,
   sanitizeEntryList,

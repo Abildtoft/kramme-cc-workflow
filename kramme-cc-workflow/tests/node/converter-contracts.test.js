@@ -35,8 +35,10 @@ const {
 } = require("../../scripts/convert-plugin/frontmatter");
 const {
   installStagedDir,
+  installStagedFile,
   preflightStagedDirInstall,
   pruneStaleManagedFiles,
+  withInstallTransaction,
 } = require("../../scripts/convert-plugin/install-staging");
 const {
   loadInstallState,
@@ -2052,6 +2054,38 @@ test("writer preserves untracked same-name skill directories on first install", 
   });
 });
 
+test("writer does not require an agent home for Codex-only installs", async () => {
+  await withTempDir(async (root) => {
+    const agentsHome = path.join(root, "agents-home");
+    await writeFile(agentsHome, "reserved for another use\n");
+
+    await writeCodexBundle(
+      root,
+      {
+        agentSkills: [],
+        codexPlugin: undefined,
+        generatedSkills: [],
+        knownAgentSkills: new Map(),
+        knownCommands: new Set(),
+        mcpServers: {},
+        prompts: [{ content: "Codex only", name: "codex-only" }],
+        skillDirs: [],
+      },
+      {
+        agentsHome,
+        confirm: { yes: true },
+        pluginName: "codex-only-plugin",
+      },
+    );
+
+    assert.equal(await readText(agentsHome), "reserved for another use\n");
+    assert.equal(
+      await readText(path.join(root, ".codex", "prompts", "codex-only.md")),
+      "Codex only\n",
+    );
+  });
+});
+
 test("writer preserves previous install when replacement bundle fails", async () => {
   await withTempDir(async (root) => {
     const agentsHome = path.join(root, "agents-home");
@@ -2213,6 +2247,996 @@ test("writer preserves previous install when finalization is blocked", async () 
   });
 });
 
+test("writer rolls back every finalized phase byte-for-byte", async () => {
+  const phases = [
+    "shared-scripts",
+    "prompts",
+    "codex-skills",
+    "agent-skills",
+    "hooks",
+    "config",
+    "manifest",
+    "state",
+  ];
+
+  for (const [index, phase] of phases.entries()) {
+    await withTempDir(async (root) => {
+      const agentsHome = path.join(root, "agents-home");
+      const options = {
+        agentsHome,
+        confirm: { yes: true },
+        pluginName: "phase-rollback-plugin",
+      };
+      await writeCodexBundle(
+        root,
+        await createTransactionalBundle(root, "v1"),
+        options,
+      );
+      const before = await readTreeSnapshot(root, {
+        exclude: ["fixture-sources"],
+      });
+      const injectedError = Object.assign(
+        new Error(`injected ${phase} failure`),
+        { code: index % 2 === 0 ? "EACCES" : "ENOSPC" },
+      );
+
+      await assert.rejects(
+        async () =>
+          writeCodexBundle(root, await createTransactionalBundle(root, "v2"), {
+            ...options,
+            async onInstallPhase(currentPhase) {
+              if (currentPhase === phase) throw injectedError;
+            },
+          }),
+        (error) => error === injectedError,
+      );
+
+      assert.deepEqual(
+        await readTreeSnapshot(root, { exclude: ["fixture-sources"] }),
+        before,
+        `phase ${phase} must restore the complete prior installation`,
+      );
+    });
+  }
+});
+
+test("writer serializes concurrent installs and publishes matching ownership", async () => {
+  await withTempDir(async (root) => {
+    const agentsHome = path.join(root, "agents-home");
+    const options = {
+      agentsHome,
+      confirm: { yes: true },
+      pluginName: "serialized-plugin",
+    };
+    await writeCodexBundle(
+      root,
+      await createTransactionalBundle(root, "v0"),
+      options,
+    );
+
+    const firstReached = deferred();
+    const releaseFirst = deferred();
+    const secondReached = deferred();
+    const firstInstall = writeCodexBundle(
+      root,
+      await createTransactionalBundle(root, "v1"),
+      {
+        ...options,
+        async onInstallPhase(phase) {
+          if (phase !== "shared-scripts") return;
+          firstReached.resolve();
+          await releaseFirst.promise;
+        },
+      },
+    );
+    await firstReached.promise;
+
+    const originalMkdir = fs.mkdir;
+    let waitingPublicationAttempts = 0;
+    let secondInstall = null;
+    fs.mkdir = /** @type {typeof fs.mkdir} */ (
+      async (dir, mkdirOptions) => {
+        if (String(dir).includes(".kramme-install-lock.tmp-")) {
+          waitingPublicationAttempts += 1;
+        }
+        return originalMkdir(dir, mkdirOptions);
+      }
+    );
+    try {
+      secondInstall = writeCodexBundle(
+        root,
+        await createTransactionalBundle(root, "v2"),
+        {
+          ...options,
+          onInstallPhase(phase) {
+            if (phase === "shared-scripts") secondReached.resolve();
+          },
+        },
+      );
+      assert.equal(
+        await Promise.race([
+          secondReached.promise.then(() => "entered"),
+          delayForTest(100).then(() => "waiting"),
+        ]),
+        "waiting",
+      );
+      assert.equal(waitingPublicationAttempts, 0);
+
+      releaseFirst.resolve();
+      await Promise.all([firstInstall, secondInstall]);
+    } finally {
+      releaseFirst.resolve();
+      fs.mkdir = originalMkdir;
+      await Promise.allSettled(
+        secondInstall ? [firstInstall, secondInstall] : [firstInstall],
+      );
+    }
+    assert.equal(
+      await readText(path.join(root, ".codex", "prompts", "daily.md")),
+      "Prompt v2\n",
+    );
+    assert.equal(
+      await readText(
+        path.join(root, ".codex", "skills", "transaction-skill", "SKILL.md"),
+      ),
+      "Skill v2\n",
+    );
+
+    const state = await readJson(
+      path.join(root, ".codex", ".kramme-install-state.json"),
+    );
+    const manifest = await readJson(
+      path.join(
+        root,
+        ".codex",
+        ".kramme-install-manifests",
+        "serialized-plugin-codex.json",
+      ),
+    );
+    assert.deepEqual(state.plugins["serialized-plugin"].codex, manifest);
+    assert.equal(
+      await pathExists(path.join(root, ".codex", ".kramme-install-lock")),
+      false,
+    );
+  });
+});
+
+test("writer serializes installs from different Codex roots sharing one agent home", async () => {
+  await withTempDir(async (root) => {
+    const firstRoot = path.join(root, "first-output");
+    const secondRoot = path.join(root, "second-output");
+    const agentsHome = path.join(root, "agents-home");
+    const options = {
+      agentsHome,
+      confirm: { yes: true },
+      pluginName: "shared-agent-root-plugin",
+    };
+    await writeCodexBundle(
+      firstRoot,
+      await createTransactionalBundle(path.join(root, "first-source"), "v0"),
+      options,
+    );
+    await writeCodexBundle(
+      secondRoot,
+      await createTransactionalBundle(path.join(root, "second-source"), "v0"),
+      options,
+    );
+
+    const firstReached = deferred();
+    const releaseFirst = deferred();
+    const secondReached = deferred();
+    const firstInstall = writeCodexBundle(
+      firstRoot,
+      await createTransactionalBundle(path.join(root, "first-source"), "v1"),
+      {
+        ...options,
+        async onInstallPhase(phase) {
+          if (phase !== "shared-scripts") return;
+          firstReached.resolve();
+          await releaseFirst.promise;
+        },
+      },
+    );
+    await firstReached.promise;
+
+    const secondInstall = writeCodexBundle(
+      secondRoot,
+      await createTransactionalBundle(path.join(root, "second-source"), "v2"),
+      {
+        ...options,
+        onInstallPhase(phase) {
+          if (phase === "shared-scripts") secondReached.resolve();
+        },
+      },
+    );
+    assert.equal(
+      await Promise.race([
+        secondReached.promise.then(() => "entered"),
+        delayForTest(100).then(() => "waiting"),
+      ]),
+      "waiting",
+    );
+
+    releaseFirst.resolve();
+    await Promise.all([firstInstall, secondInstall]);
+    assert.equal(
+      await readText(
+        path.join(agentsHome, "skills", "transaction-agent", "SKILL.md"),
+      ),
+      "Agent v2\n",
+    );
+    assert.equal(
+      await pathExists(path.join(agentsHome, ".kramme-install-lock")),
+      false,
+    );
+  });
+});
+
+test("writer elects one recovery owner across every stale transaction lock", async () => {
+  await withTempDir(async (root) => {
+    const firstRoot = path.join(root, "a-output");
+    const codexRoot = path.join(firstRoot, ".codex");
+    const agentsHome = path.join(root, "m-agents");
+    const secondRoot = path.join(root, "z-output");
+    const token = "multi-root-stale-transaction";
+    const promptPath = path.join(codexRoot, "prompts", "daily.md");
+    const backupPath = path.join(
+      codexRoot,
+      "prompts",
+      ".kramme-install-backups",
+      token,
+      "0",
+    );
+    const journalPath = path.join(
+      codexRoot,
+      ".kramme-install-transactions",
+      token,
+      "journal.json",
+    );
+    const lockRoots = [codexRoot, agentsHome].sort();
+    const owner = {
+      version: 1,
+      token,
+      pid: 2_147_483_647,
+      pluginName: "multi-root-recovery-plugin",
+      createdAtMs: 1,
+      lockRoots,
+      transactionRoot: codexRoot,
+      journalPath,
+    };
+
+    await writeFile(backupPath, "stable prompt\n");
+    await writeFile(promptPath, "interrupted prompt\n");
+    await writeJson(journalPath, {
+      version: 1,
+      token,
+      status: "active",
+      records: [
+        {
+          operation: "backup-rename",
+          target: promptPath,
+          backup: backupPath,
+        },
+      ],
+    });
+    for (const lockRoot of lockRoots) {
+      await writeJson(
+        path.join(lockRoot, ".kramme-install-lock", "owner.json"),
+        owner,
+      );
+    }
+
+    const firstBundle = await createTransactionalBundle(
+      path.join(root, "first-source"),
+      "v1",
+    );
+    const secondBundle = await createTransactionalBundle(
+      path.join(root, "second-source"),
+      "v2",
+    );
+    const options = {
+      agentsHome,
+      confirm: { yes: true },
+      pluginName: "multi-root-recovery-plugin",
+    };
+    const originalLstat = fs.lstat;
+    let staleBackupChecks = 0;
+    fs.lstat = /** @type {typeof fs.lstat} */ (
+      async (file, lstatOptions) => {
+        if (file === backupPath) {
+          staleBackupChecks += 1;
+          await delayForTest(100);
+        }
+        return originalLstat(file, lstatOptions);
+      }
+    );
+    try {
+      await Promise.all([
+        writeCodexBundle(firstRoot, firstBundle, options),
+        writeCodexBundle(secondRoot, secondBundle, options),
+      ]);
+    } finally {
+      fs.lstat = originalLstat;
+    }
+
+    assert.equal(staleBackupChecks, 1);
+    for (const lockRoot of lockRoots) {
+      assert.equal(
+        await pathExists(path.join(lockRoot, ".kramme-install-lock")),
+        false,
+      );
+    }
+    assert.equal(
+      await pathExists(path.join(codexRoot, ".kramme-install-recovery-claims")),
+      false,
+    );
+  });
+});
+
+test("writer never publishes a lock without complete owner metadata", async () => {
+  await withTempDir(async (root) => {
+    const agentsHome = path.join(root, "agents-home");
+    const codexRoot = path.join(root, ".codex");
+    const lockDir = path.join(codexRoot, ".kramme-install-lock");
+    const options = {
+      agentsHome,
+      confirm: { yes: true },
+      pluginName: "atomic-lock-plugin",
+    };
+    const bundle = await createTransactionalBundle(root, "v1");
+    const originalRename = fs.rename;
+    const publicationError = Object.assign(
+      new Error("injected lock publication failure"),
+      { code: "EIO" },
+    );
+    fs.rename = async (source, target) => {
+      if (target === lockDir && String(source).includes(".tmp-")) {
+        throw publicationError;
+      }
+      return originalRename(source, target);
+    };
+    try {
+      await assert.rejects(
+        () => writeCodexBundle(root, bundle, options),
+        (error) => error === publicationError,
+      );
+    } finally {
+      fs.rename = originalRename;
+    }
+
+    assert.equal(await pathExists(lockDir), false);
+    await writeCodexBundle(root, bundle, options);
+    assert.equal(await pathExists(lockDir), false);
+  });
+});
+
+test("writer rejects stale journals targeting paths outside owned roots", async () => {
+  await withTempDir(async (root) => {
+    const installRoot = path.join(root, "install-root");
+    const victimPath = path.join(root, "outside-victim.txt");
+    const token = "unowned-target-transaction";
+    const journalPath = path.join(
+      installRoot,
+      ".kramme-install-transactions",
+      token,
+      "journal.json",
+    );
+    const owner = {
+      version: 1,
+      token,
+      pid: 2_147_483_647,
+      pluginName: "unowned-target-plugin",
+      createdAtMs: 1,
+      lockRoots: [installRoot],
+      transactionRoot: installRoot,
+      journalPath,
+    };
+
+    await writeFile(victimPath, "must survive\n");
+    await writeJson(journalPath, {
+      version: 1,
+      token,
+      status: "active",
+      records: [
+        {
+          operation: "create",
+          target: victimPath,
+          backup: null,
+        },
+      ],
+    });
+    await writeJson(
+      path.join(installRoot, ".kramme-install-lock", "owner.json"),
+      owner,
+    );
+
+    await assert.rejects(
+      () =>
+        withInstallTransaction(
+          installRoot,
+          { pluginName: "next-plugin" },
+          async () => {},
+        ),
+      /Refusing to recover invalid install journal/,
+    );
+    assert.equal(await readText(victimPath), "must survive\n");
+  });
+});
+
+test("transaction recovers an interrupted partial multi-root lock acquisition", async () => {
+  await withTempDir(async (root) => {
+    const firstRoot = path.join(root, "a-shared-root");
+    const transactionRoot = path.join(root, "z-transaction-root");
+    const token = "partial-lock-acquisition";
+    const journalPath = path.join(
+      transactionRoot,
+      ".kramme-install-transactions",
+      token,
+      "journal.json",
+    );
+    const owner = {
+      version: 1,
+      token,
+      pid: 2_147_483_647,
+      pluginName: "partial-lock-plugin",
+      createdAtMs: 1,
+      lockRoots: [firstRoot, transactionRoot],
+      transactionRoot,
+      journalPath,
+    };
+
+    await writeJson(
+      path.join(firstRoot, ".kramme-install-lock", "owner.json"),
+      owner,
+    );
+
+    let callbackRan = false;
+    await withInstallTransaction(
+      transactionRoot,
+      {
+        lockRoots: [firstRoot],
+        pluginName: "next-plugin",
+      },
+      async () => {
+        callbackRan = true;
+      },
+    );
+
+    assert.equal(callbackRan, true);
+    assert.equal(
+      await pathExists(path.join(firstRoot, ".kramme-install-lock")),
+      false,
+    );
+    assert.equal(
+      await pathExists(path.join(transactionRoot, ".kramme-install-lock")),
+      false,
+    );
+  });
+});
+
+test("writer recovers a stale owned journal before starting a new transaction", async () => {
+  await withTempDir(async (root) => {
+    const agentsHome = path.join(root, "agents-home");
+    const codexRoot = path.join(root, ".codex");
+    const options = {
+      agentsHome,
+      confirm: { yes: true },
+      pluginName: "stale-lock-plugin",
+    };
+    await writeCodexBundle(
+      root,
+      await createTransactionalBundle(root, "v1"),
+      options,
+    );
+    const before = await readTreeSnapshot(root, {
+      exclude: ["fixture-sources"],
+    });
+
+    const token = "stale-owned-transaction";
+    const promptPath = path.join(codexRoot, "prompts", "daily.md");
+    const backupPath = path.join(
+      codexRoot,
+      "prompts",
+      ".kramme-install-backups",
+      token,
+      "0",
+    );
+    await fs.mkdir(path.dirname(backupPath), { recursive: true });
+    await fs.rename(promptPath, backupPath);
+    await writeFile(promptPath, "interrupted output\n");
+    const journalPath = path.join(
+      codexRoot,
+      ".kramme-install-transactions",
+      token,
+      "journal.json",
+    );
+    await writeJson(journalPath, {
+      version: 1,
+      token,
+      records: [
+        {
+          operation: "backup-rename",
+          target: promptPath,
+          backup: backupPath,
+        },
+      ],
+    });
+    await writeJson(
+      path.join(codexRoot, ".kramme-install-lock", "owner.json"),
+      {
+        version: 1,
+        token,
+        pid: 2_147_483_647,
+        pluginName: options.pluginName,
+        createdAtMs: 1,
+        journalPath,
+      },
+    );
+
+    const interruption = Object.assign(new Error("interrupted again"), {
+      code: "EINTR",
+    });
+    await assert.rejects(
+      async () =>
+        writeCodexBundle(root, await createTransactionalBundle(root, "v2"), {
+          ...options,
+          onInstallPhase(phase) {
+            if (phase === "shared-scripts") throw interruption;
+          },
+        }),
+      (error) => error === interruption,
+    );
+    const recoveryConflictsRoot = path.join(
+      codexRoot,
+      "prompts",
+      ".kramme-install-recovery-conflicts",
+    );
+    assert.equal(
+      await readText(path.join(recoveryConflictsRoot, token, "0")),
+      "interrupted output\n",
+    );
+    assert.deepEqual(
+      await readTreeSnapshot(root, {
+        exclude: [
+          "fixture-sources",
+          path.relative(root, recoveryConflictsRoot),
+        ],
+      }),
+      before,
+    );
+  });
+});
+
+test("writer releases the recovery claim when stale recovery fails", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsHome = path.join(root, "agents-home");
+    const token = "invalid-stale-transaction";
+    const journalPath = path.join(
+      codexRoot,
+      ".kramme-install-transactions",
+      token,
+      "journal.json",
+    );
+    const claimPath = path.join(
+      codexRoot,
+      ".kramme-install-recovery-claims",
+      token,
+    );
+    const owner = {
+      version: 1,
+      token,
+      pid: 2_147_483_647,
+      pluginName: "claim-cleanup-plugin",
+      createdAtMs: 1,
+      lockRoots: [codexRoot],
+      transactionRoot: codexRoot,
+      journalPath,
+    };
+    const bundle = {
+      agentSkills: [],
+      codexPlugin: undefined,
+      generatedSkills: [],
+      knownAgentSkills: new Map(),
+      knownCommands: new Set(),
+      mcpServers: {},
+      prompts: [],
+      skillDirs: [],
+    };
+    const options = {
+      agentsHome,
+      confirm: { yes: true },
+      lockTimeoutMs: 100,
+      pluginName: owner.pluginName,
+    };
+
+    await writeJson(journalPath, {
+      version: 999,
+      token,
+      records: [],
+    });
+    await writeJson(
+      path.join(codexRoot, ".kramme-install-lock", "owner.json"),
+      owner,
+    );
+
+    await assert.rejects(
+      () => writeCodexBundle(root, bundle, options),
+      /Refusing to recover invalid install journal/,
+    );
+    assert.equal(await pathExists(claimPath), false);
+
+    await writeJson(journalPath, {
+      version: 1,
+      token,
+      status: "active",
+      records: [],
+    });
+    await writeCodexBundle(root, bundle, options);
+    assert.equal(await pathExists(claimPath), false);
+    assert.equal(
+      await pathExists(path.join(codexRoot, ".kramme-install-lock")),
+      false,
+    );
+  });
+});
+
+test("writer elects one stale-journal recovery owner", async () => {
+  await withTempDir(async (root) => {
+    const agentsHome = path.join(root, "agents-home");
+    const codexRoot = path.join(root, ".codex");
+    const options = {
+      agentsHome,
+      confirm: { yes: true },
+      pluginName: "contended-recovery-plugin",
+    };
+    await writeCodexBundle(
+      root,
+      await createTransactionalBundle(path.join(root, "initial-source"), "v1"),
+      options,
+    );
+
+    const token = "contended-stale-transaction";
+    const promptPath = path.join(codexRoot, "prompts", "daily.md");
+    const backupPath = path.join(
+      codexRoot,
+      "prompts",
+      ".kramme-install-backups",
+      token,
+      "0",
+    );
+    await fs.mkdir(path.dirname(backupPath), { recursive: true });
+    await fs.rename(promptPath, backupPath);
+    await writeFile(promptPath, "interrupted output\n");
+    const journalPath = path.join(
+      codexRoot,
+      ".kramme-install-transactions",
+      token,
+      "journal.json",
+    );
+    await writeJson(journalPath, {
+      version: 1,
+      token,
+      status: "active",
+      records: [
+        {
+          operation: "backup-rename",
+          target: promptPath,
+          backup: backupPath,
+        },
+      ],
+    });
+    await writeJson(
+      path.join(codexRoot, ".kramme-install-lock", "owner.json"),
+      {
+        version: 1,
+        token,
+        pid: 2_147_483_647,
+        pluginName: options.pluginName,
+        createdAtMs: 1,
+        transactionRoot: codexRoot,
+        journalPath,
+      },
+    );
+
+    const firstBundle = await createTransactionalBundle(
+      path.join(root, "first-source"),
+      "v2",
+    );
+    const secondBundle = await createTransactionalBundle(
+      path.join(root, "second-source"),
+      "v3",
+    );
+    const originalLstat = fs.lstat;
+    let staleBackupChecks = 0;
+    fs.lstat = /** @type {typeof fs.lstat} */ (
+      async (file, lstatOptions) => {
+        if (file === backupPath) {
+          staleBackupChecks += 1;
+          await delayForTest(100);
+        }
+        return originalLstat(file, lstatOptions);
+      }
+    );
+    try {
+      await Promise.all([
+        writeCodexBundle(root, firstBundle, options),
+        writeCodexBundle(root, secondBundle, options),
+      ]);
+    } finally {
+      fs.lstat = originalLstat;
+    }
+
+    assert.equal(staleBackupChecks, 1);
+    assert.equal(
+      await pathExists(path.join(codexRoot, ".kramme-install-lock")),
+      false,
+    );
+    assert.equal(
+      await pathExists(path.join(codexRoot, ".kramme-install-recovery-claims")),
+      false,
+    );
+  });
+});
+
+test("writer retains committed recovery state when transaction cleanup fails", async () => {
+  await withTempDir(async (root) => {
+    const agentsHome = path.join(root, "agents-home");
+    const codexRoot = path.join(root, ".codex");
+    const options = {
+      agentsHome,
+      confirm: { yes: true },
+      pluginName: "commit-cleanup-plugin",
+    };
+    await writeCodexBundle(
+      root,
+      await createTransactionalBundle(root, "v1"),
+      options,
+    );
+
+    const originalRm = fs.rm;
+    const cleanupError = Object.assign(new Error("injected cleanup failure"), {
+      code: "EIO",
+    });
+    let failCleanup = false;
+    let cleanupFailed = false;
+    const replacementBundle = await createTransactionalBundle(root, "v2");
+    fs.rm = async (target, rmOptions) => {
+      if (
+        failCleanup &&
+        !cleanupFailed &&
+        String(target).includes(".kramme-install-backups")
+      ) {
+        cleanupFailed = true;
+        throw cleanupError;
+      }
+      return originalRm(target, rmOptions);
+    };
+    try {
+      await assert.rejects(
+        () =>
+          writeCodexBundle(root, replacementBundle, {
+            ...options,
+            onInstallPhase(phase) {
+              if (phase === "state") failCleanup = true;
+            },
+          }),
+        (error) => {
+          assert.ok(error instanceof Error);
+          assert.equal(error.cause, cleanupError);
+          assert.match(error.message, /committed, but cleanup failed/);
+          return true;
+        },
+      );
+    } finally {
+      fs.rm = originalRm;
+    }
+
+    const lockPaths = [
+      path.join(codexRoot, ".kramme-install-lock"),
+      path.join(agentsHome, ".kramme-install-lock"),
+    ];
+    for (const lockPath of lockPaths) {
+      assert.equal(await pathExists(lockPath), true);
+    }
+    const ownerPath = path.join(lockPaths[0], "owner.json");
+    const owner = await readJson(ownerPath);
+    const journal = await readJson(owner.journalPath);
+    assert.equal(journal.status, "committed");
+    assert.equal(
+      await readText(path.join(codexRoot, "prompts", "daily.md")),
+      "Prompt v2\n",
+    );
+
+    for (const lockPath of lockPaths) {
+      const lockOwnerPath = path.join(lockPath, "owner.json");
+      await writeJson(lockOwnerPath, {
+        ...(await readJson(lockOwnerPath)),
+        pid: 2_147_483_647,
+      });
+    }
+    await writeCodexBundle(
+      root,
+      await createTransactionalBundle(root, "v3"),
+      options,
+    );
+    assert.equal(
+      await readText(path.join(codexRoot, "prompts", "daily.md")),
+      "Prompt v3\n",
+    );
+    for (const lockPath of lockPaths) {
+      assert.equal(await pathExists(lockPath), false);
+    }
+  });
+});
+
+test("writer reports rollback failures and retains the owned recovery lock", async () => {
+  await withTempDir(async (root) => {
+    const agentsHome = path.join(root, "agents-home");
+    const options = {
+      agentsHome,
+      confirm: { yes: true },
+      pluginName: "rollback-reporting-plugin",
+    };
+    await writeCodexBundle(
+      root,
+      await createTransactionalBundle(root, "v1"),
+      options,
+    );
+
+    const originalRename = fs.rename;
+    const installError = new Error("injected finalization failure");
+    const rollbackError = Object.assign(
+      new Error("injected rollback I/O failure"),
+      {
+        code: "EIO",
+      },
+    );
+    let failBackupRestore = false;
+    fs.rename = async (source, target) => {
+      if (
+        failBackupRestore &&
+        String(source).includes(".kramme-install-backups")
+      ) {
+        throw rollbackError;
+      }
+      return originalRename(source, target);
+    };
+    try {
+      await assert.rejects(
+        async () =>
+          writeCodexBundle(root, await createTransactionalBundle(root, "v2"), {
+            ...options,
+            onInstallPhase(phase) {
+              if (phase !== "prompts") return;
+              failBackupRestore = true;
+              throw installError;
+            },
+          }),
+        (error) => {
+          assert.ok(error instanceof Error);
+          assert.equal(error.cause, installError);
+          assert.match(
+            error.message,
+            /Rollback failed for install transaction/,
+          );
+          assert.match(error.message, /injected rollback I\/O failure/);
+          return true;
+        },
+      );
+    } finally {
+      fs.rename = originalRename;
+    }
+    assert.equal(
+      await pathExists(path.join(root, ".codex", ".kramme-install-lock")),
+      true,
+    );
+  });
+});
+
+test("transaction preserves the primary error when rollback cleanup fails", async () => {
+  await withTempDir(async (root) => {
+    const targetPath = path.join(root, "target.txt");
+    const stagedPath = path.join(root, "staged.txt");
+    const primaryError = new Error("primary install failure");
+    const cleanupError = Object.assign(new Error("rollback cleanup failure"), {
+      code: "EIO",
+    });
+    const originalRm = fs.rm;
+
+    await writeFile(targetPath, "stable\n");
+    await writeFile(stagedPath, "replacement\n");
+    fs.rm = async (target, rmOptions) => {
+      if (String(target).includes(".kramme-install-backups")) {
+        throw cleanupError;
+      }
+      return originalRm(target, rmOptions);
+    };
+    try {
+      await assert.rejects(
+        () =>
+          withInstallTransaction(
+            root,
+            { pluginName: "rollback-cleanup-plugin" },
+            async () => {
+              await installStagedFile(stagedPath, targetPath, {
+                replace: true,
+              });
+              throw primaryError;
+            },
+          ),
+        (error) => {
+          assert.ok(error instanceof Error);
+          assert.equal(error.cause, primaryError);
+          assert.match(error.message, /primary install failure/);
+          assert.match(error.message, /rollback cleanup failure/);
+          return true;
+        },
+      );
+    } finally {
+      fs.rm = originalRm;
+    }
+
+    assert.equal(await readText(targetPath), "stable\n");
+    assert.equal(
+      await pathExists(path.join(root, ".kramme-install-lock")),
+      true,
+    );
+  });
+});
+
+test("transaction attempts every lock release and preserves the primary error", async () => {
+  await withTempDir(async (root) => {
+    const sharedRoot = path.join(root, "shared-root");
+    const sharedLock = path.join(sharedRoot, ".kramme-install-lock");
+    const primaryError = new Error("primary transaction failure");
+    const releaseError = Object.assign(new Error("lock release failure"), {
+      code: "EIO",
+    });
+    const originalRename = fs.rename;
+
+    fs.rename = async (source, target) => {
+      if (
+        source === sharedLock &&
+        String(target).includes(".kramme-install-lock.release-")
+      ) {
+        throw releaseError;
+      }
+      return originalRename(source, target);
+    };
+    try {
+      await assert.rejects(
+        () =>
+          withInstallTransaction(
+            root,
+            {
+              lockRoots: [sharedRoot],
+              pluginName: "release-cleanup-plugin",
+            },
+            async () => {
+              throw primaryError;
+            },
+          ),
+        (error) => {
+          assert.ok(error instanceof Error);
+          assert.equal(error.cause, primaryError);
+          assert.match(error.message, /primary transaction failure/);
+          assert.match(error.message, /lock release failure/);
+          return true;
+        },
+      );
+    } finally {
+      fs.rename = originalRename;
+    }
+
+    assert.equal(
+      await pathExists(path.join(root, ".kramme-install-lock")),
+      false,
+    );
+    assert.equal(await pathExists(sharedLock), true);
+  });
+});
+
 function emptyPreviousEntries() {
   return {
     agentSkillFiles: {},
@@ -2223,6 +3247,109 @@ function emptyPreviousEntries() {
     skillFiles: {},
     skills: [],
   };
+}
+
+/**
+ * @param {string} root
+ * @param {string} version
+ * @returns {Promise<import("../../scripts/convert-plugin/contracts").CodexBundle>}
+ */
+async function createTransactionalBundle(root, version) {
+  const sourcesRoot = path.join(root, "fixture-sources");
+  const sharedScript = path.join(sourcesRoot, "shared.js");
+  const hookSourceDir = path.join(sourcesRoot, "hooks");
+  await writeFile(
+    sharedScript,
+    `module.exports = ${JSON.stringify(version)};\n`,
+  );
+  await writeFile(
+    path.join(hookSourceDir, "transaction-hook.sh"),
+    `#!/bin/sh\necho ${version}\n`,
+  );
+  const pluginVersion = version.replace(/\D/g, "") || "0";
+  return {
+    agentSkills: [{ content: `Agent ${version}`, name: "transaction-agent" }],
+    codexPlugin: {
+      name: "transaction-hooks",
+      marketplaceName: "transaction-hooks",
+      version: `1.0.${pluginVersion}`,
+      manifest: {
+        name: "transaction-hooks",
+        version: `1.0.${pluginVersion}`,
+        description: `Transaction hooks ${version}`,
+        hooks: "./hooks/hooks.json",
+      },
+      hooks: { PreToolUse: [] },
+      hookSourceDir,
+      sharedScriptDirs: [],
+      sharedScriptFiles: [
+        { sourceFile: sharedScript, targetPath: "scripts/shared.js" },
+      ],
+    },
+    generatedSkills: [
+      { content: `Skill ${version}`, name: "transaction-skill" },
+    ],
+    knownAgentSkills: new Map(),
+    knownCommands: new Set(),
+    mcpServers: {
+      transaction: { command: "echo", args: [version] },
+    },
+    prompts: [{ content: `Prompt ${version}`, name: "daily" }],
+    skillDirs: [],
+  };
+}
+
+/**
+ * @param {string} root
+ * @param {{exclude?: string[]}} [options]
+ * @param {string} [prefix]
+ * @returns {Promise<Record<string, {content?: string, mode?: number, target?: string, type: string}>>}
+ */
+async function readTreeSnapshot(root, { exclude = [] } = {}, prefix = "") {
+  const snapshot =
+    /** @type {Record<string, {content?: string, mode?: number, target?: string, type: string}>} */ ({});
+  const entries = await fs.readdir(root, { withFileTypes: true });
+  entries.sort((left, right) => left.name.localeCompare(right.name));
+  for (const entry of entries) {
+    const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (exclude.includes(relativePath)) continue;
+    const file = path.join(root, entry.name);
+    const stats = await fs.lstat(file);
+    if (entry.isDirectory()) {
+      snapshot[`${relativePath}/`] = { mode: stats.mode & 0o777, type: "dir" };
+      Object.assign(
+        snapshot,
+        await readTreeSnapshot(file, { exclude }, relativePath),
+      );
+    } else if (entry.isSymbolicLink()) {
+      snapshot[relativePath] = {
+        target: await fs.readlink(file),
+        type: "symlink",
+      };
+    } else if (entry.isFile()) {
+      snapshot[relativePath] = {
+        content: (await fs.readFile(file)).toString("base64"),
+        mode: stats.mode & 0o777,
+        type: "file",
+      };
+    }
+  }
+  return snapshot;
+}
+
+/** @returns {{promise: Promise<void>, resolve: () => void}} */
+function deferred() {
+  let resolve = () => {};
+  const promise = /** @type {Promise<void>} */ (
+    new Promise((resolvePromise) => {
+      resolve = () => resolvePromise();
+    })
+  );
+  return { promise, resolve };
+}
+
+function delayForTest(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function assertJsonObjectBoundaryError(error, file, label, kind) {

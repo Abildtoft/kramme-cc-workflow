@@ -390,6 +390,7 @@ async function finalizeCodexBundleOutput(
       { replace: false },
     );
   }
+  await notifyInstallPhase(extraOpts, "shared-scripts");
 
   const promptsDir = path.join(codexRoot, "prompts");
   const cleanedPrompts = await cleanupInstalledEntries(
@@ -408,6 +409,7 @@ async function finalizeCodexBundleOutput(
       { replace: cleanedPrompts },
     );
   }
+  await notifyInstallPhase(extraOpts, "prompts");
 
   const skillsRoot = path.join(codexRoot, "skills");
   await cleanupKrammeComponents(skillsRoot, {
@@ -434,6 +436,7 @@ async function finalizeCodexBundleOutput(
   for (const skillGroup of codexSkillGroups) {
     await finalizeSkillGroup(skillGroup);
   }
+  await notifyInstallPhase(extraOpts, "codex-skills");
 
   let cleanedAgentSkills = true;
   if (stagedBundle.agentSkillsRoot) {
@@ -453,6 +456,7 @@ async function finalizeCodexBundleOutput(
     });
   }
   await finalizeSkillGroup(agentSkillGroup);
+  await notifyInstallPhase(extraOpts, "agent-skills");
 
   const hookPluginResult = await finalizeCodexHookPluginBundle(
     codexRoot,
@@ -462,6 +466,7 @@ async function finalizeCodexBundleOutput(
     stagedBundle.hookTargets,
     { confirmOptions: extraOpts.confirm },
   );
+  await notifyInstallPhase(extraOpts, "hooks");
 
   if (stagedBundle.stagedConfigPath) {
     await installStagedFile(
@@ -470,6 +475,7 @@ async function finalizeCodexBundleOutput(
       { replace: false },
     );
   }
+  await notifyInstallPhase(extraOpts, "config");
 
   return {
     cleanedAgentSkills,
@@ -478,6 +484,12 @@ async function finalizeCodexBundleOutput(
     cleanedPluginCaches: hookPluginResult.cleanedPluginCaches,
     cleanedPrompts,
   };
+}
+
+async function notifyInstallPhase(options, phase) {
+  if (typeof options.onInstallPhase === "function") {
+    await options.onInstallPhase(phase);
+  }
 }
 
 async function preflightCodexBundleFinalization(

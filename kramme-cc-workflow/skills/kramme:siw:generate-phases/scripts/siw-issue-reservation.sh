@@ -97,23 +97,26 @@ read_claim() {
     fail "ownership claim is not a regular file: $claim_file"
   fi
   [ ! -L "$claim_file" ] || fail "ownership claim must not be a symlink: $claim_file"
-  [ -f "$claim_file" ] || fail "ownership claim is not a regular file: $claim_file"
+  if [ ! -f "$claim_file" ]; then
+    if [ "$missing_policy" = allow-missing ] && [ ! -e "$claim_file" ] && [ ! -L "$claim_file" ]; then
+      return 1
+    fi
+    fail "ownership claim is not a regular file: $claim_file"
+  fi
+  if ! exec 3< "$claim_file"; then
+    [ "$missing_policy" = allow-missing ] && return 1
+    fail "could not read ownership claim: $claim_file"
+  fi
   recorded_owner=
   recorded_request_key=
   extra_claim_data=
   has_extra_claim_record=
-  if ! {
-    IFS= read -r recorded_owner || true
-    IFS= read -r recorded_request_key || true
-    if IFS= read -r extra_claim_data || [ -n "$extra_claim_data" ]; then
-      has_extra_claim_record=1
-    fi
-  } < "$claim_file"; then
-    if [ "$missing_policy" = allow-missing ] && [ ! -e "$claim_file" ] && [ ! -L "$claim_file" ]; then
-      return 1
-    fi
-    fail "could not read ownership claim: $claim_file"
+  IFS= read -r recorded_owner <&3 || true
+  IFS= read -r recorded_request_key <&3 || true
+  if IFS= read -r extra_claim_data <&3 || [ -n "$extra_claim_data" ]; then
+    has_extra_claim_record=1
   fi
+  exec 3<&-
   [ -n "$recorded_owner" ] || fail "ownership claim has an empty token: $claim_file"
   validate_owner "$recorded_owner"
   [ -z "$has_extra_claim_record" ] || fail "ownership claim has unexpected data: $claim_file"

@@ -1,12 +1,14 @@
 // @ts-check
 "use strict";
 
+const os = require("os");
 const path = require("path");
 const {
   finalizeCodexBundleOutput,
   stageCodexBundleOutput,
 } = require("./codex-bundle-output");
 const {
+  getInstallManifestPath,
   getPreviousInstallEntries,
   loadInstallState,
   sanitizeEntryList,
@@ -17,13 +19,21 @@ const {
 } = require("./install-state");
 const {
   createInstallStagingRoot,
+  installStagedFile,
   removeInstallStagingRoot,
+  withInstallTransaction,
 } = require("./install-staging");
 const { ensureDir, pathExists, readText, writeText } = require("./filesystem");
+
+const AGENT_HOME_LOCK_REQUIRED = Symbol("agent-home-lock-required");
 
 /**
  * @typedef {import("./contracts").CodexBundle} CodexBundle
  * @typedef {import("./contracts").WriteCodexOptions} WriteCodexOptions
+ * @typedef {WriteCodexOptions & {
+ *   lockTimeoutMs?: number,
+ *   onInstallPhase?: (phase: string) => (void | Promise<void>)
+ * }} TransactionalWriteCodexOptions
  */
 
 function hasOwnEntry(object, entry) {
@@ -50,99 +60,148 @@ function buildNextManagedFileMap(
 /**
  * @param {string} outputRoot
  * @param {CodexBundle} bundle
- * @param {WriteCodexOptions} [extraOpts]
+ * @param {TransactionalWriteCodexOptions} [extraOpts]
  * @returns {Promise<void>}
  */
 async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   const codexRoot = resolveCodexOutputRoot(outputRoot);
+  const agentsHome = extraOpts.agentsHome ?? path.join(os.homedir(), ".agents");
   const pluginName = extraOpts.pluginName ?? "plugin";
-  const { state: installState } = await loadInstallState(codexRoot);
-  const previousEntries = await getPreviousInstallEntries(
-    codexRoot,
-    installState,
-    pluginName,
-    "codex",
-  );
-  await ensureDir(codexRoot);
-  const codexStagingRoot = await createInstallStagingRoot(
-    codexRoot,
-    pluginName,
-    "codex",
-  );
-  let agentStagingRoot = null;
-  try {
-    const stagedBundle = await stageCodexBundleOutput(
-      codexRoot,
-      codexStagingRoot,
-      bundle,
-      previousEntries,
-      pluginName,
-      extraOpts,
-    );
-    agentStagingRoot = stagedBundle.agentStagingRoot;
-    const finalizedBundle = await finalizeCodexBundleOutput(
-      codexRoot,
-      codexStagingRoot,
-      stagedBundle,
-      bundle,
-      previousEntries,
-      extraOpts,
-    );
+  let lockAgentHome = (bundle.agentSkills?.length ?? 0) > 0;
 
-    const currentCodexSkills = [
-      ...bundle.skillDirs.map((skill) => skill.name),
-      ...bundle.generatedSkills.map((skill) => skill.name),
-    ];
-    const currentAgentSkills = (bundle.agentSkills ?? []).map(
-      (skill) => skill.name,
+  while (true) {
+    const result = await withInstallTransaction(
+      codexRoot,
+      {
+        lockRoots: lockAgentHome ? [agentsHome] : [],
+        lockTimeoutMs: extraOpts.lockTimeoutMs,
+        pluginName,
+      },
+      async () => {
+        const { state: installState } = await loadInstallState(codexRoot);
+        const previousEntries = await getPreviousInstallEntries(
+          codexRoot,
+          installState,
+          pluginName,
+          "codex",
+        );
+        if (!lockAgentHome && previousEntries.agentSkills.length > 0) {
+          return AGENT_HOME_LOCK_REQUIRED;
+        }
+        const codexStagingRoot = await createInstallStagingRoot(
+          codexRoot,
+          pluginName,
+          "codex",
+        );
+        let agentStagingRoot = null;
+        try {
+          const stagedBundle = await stageCodexBundleOutput(
+            codexRoot,
+            codexStagingRoot,
+            bundle,
+            previousEntries,
+            pluginName,
+            extraOpts,
+          );
+          agentStagingRoot = stagedBundle.agentStagingRoot;
+          const finalizedBundle = await finalizeCodexBundleOutput(
+            codexRoot,
+            codexStagingRoot,
+            stagedBundle,
+            bundle,
+            previousEntries,
+            extraOpts,
+          );
+
+          const currentCodexSkills = [
+            ...bundle.skillDirs.map((skill) => skill.name),
+            ...bundle.generatedSkills.map((skill) => skill.name),
+          ];
+          const currentAgentSkills = (bundle.agentSkills ?? []).map(
+            (skill) => skill.name,
+          );
+          const nextSkills = finalizedBundle.cleanedCodexSkills
+            ? currentCodexSkills
+            : unionEntryLists(previousEntries.skills, currentCodexSkills);
+          const nextAgentSkills = finalizedBundle.cleanedAgentSkills
+            ? currentAgentSkills
+            : unionEntryLists(previousEntries.agentSkills, currentAgentSkills);
+          const nextEntries = {
+            hookMarketplaces: finalizedBundle.cleanedHookMarketplaces
+              ? stagedBundle.hookMarketplaces
+              : unionEntryLists(
+                  previousEntries.hookMarketplaces,
+                  stagedBundle.hookMarketplaces,
+                ),
+            pluginCaches: finalizedBundle.cleanedPluginCaches
+              ? stagedBundle.pluginCaches
+              : unionEntryLists(
+                  previousEntries.pluginCaches,
+                  stagedBundle.pluginCaches,
+                ),
+            prompts: finalizedBundle.cleanedPrompts
+              ? bundle.prompts.map((prompt) => `${prompt.name}.md`)
+              : unionEntryLists(
+                  previousEntries.prompts,
+                  bundle.prompts.map((prompt) => `${prompt.name}.md`),
+                ),
+            skills: nextSkills,
+            skillFiles: buildNextManagedFileMap(
+              previousEntries.skillFiles,
+              stagedBundle.stagedSkillFiles,
+              nextSkills,
+              finalizedBundle.cleanedCodexSkills,
+            ),
+            agentSkills: nextAgentSkills,
+            agentSkillFiles: buildNextManagedFileMap(
+              previousEntries.agentSkillFiles,
+              stagedBundle.stagedAgentSkillFiles,
+              nextAgentSkills,
+              finalizedBundle.cleanedAgentSkills,
+            ),
+            updatedAtMs: Date.now(),
+          };
+          setInstallEntries(installState, pluginName, "codex", nextEntries);
+
+          await writeInstallManifest(
+            codexStagingRoot,
+            pluginName,
+            "codex",
+            nextEntries,
+          );
+          await writeInstallState(codexStagingRoot, installState);
+          // Publish the recovery manifest first and authoritative state last. A
+          // reader therefore resolves either the old state or the complete new
+          // installation while both files remain backward-compatible.
+          await installStagedFile(
+            getInstallManifestPath(codexStagingRoot, pluginName, "codex"),
+            getInstallManifestPath(codexRoot, pluginName, "codex"),
+            { replace: true },
+          );
+          await notifyInstallPhase(extraOpts, "manifest");
+          await installStagedFile(
+            path.join(codexStagingRoot, ".kramme-install-state.json"),
+            path.join(codexRoot, ".kramme-install-state.json"),
+            { replace: true },
+          );
+          await notifyInstallPhase(extraOpts, "state");
+        } finally {
+          await removeInstallStagingRoot(codexStagingRoot);
+          await removeInstallStagingRoot(agentStagingRoot);
+        }
+      },
     );
-    const nextSkills = finalizedBundle.cleanedCodexSkills
-      ? currentCodexSkills
-      : unionEntryLists(previousEntries.skills, currentCodexSkills);
-    const nextAgentSkills = finalizedBundle.cleanedAgentSkills
-      ? currentAgentSkills
-      : unionEntryLists(previousEntries.agentSkills, currentAgentSkills);
-    const nextEntries = {
-      hookMarketplaces: finalizedBundle.cleanedHookMarketplaces
-        ? stagedBundle.hookMarketplaces
-        : unionEntryLists(
-            previousEntries.hookMarketplaces,
-            stagedBundle.hookMarketplaces,
-          ),
-      pluginCaches: finalizedBundle.cleanedPluginCaches
-        ? stagedBundle.pluginCaches
-        : unionEntryLists(
-            previousEntries.pluginCaches,
-            stagedBundle.pluginCaches,
-          ),
-      prompts: finalizedBundle.cleanedPrompts
-        ? bundle.prompts.map((prompt) => `${prompt.name}.md`)
-        : unionEntryLists(
-            previousEntries.prompts,
-            bundle.prompts.map((prompt) => `${prompt.name}.md`),
-          ),
-      skills: nextSkills,
-      skillFiles: buildNextManagedFileMap(
-        previousEntries.skillFiles,
-        stagedBundle.stagedSkillFiles,
-        nextSkills,
-        finalizedBundle.cleanedCodexSkills,
-      ),
-      agentSkills: nextAgentSkills,
-      agentSkillFiles: buildNextManagedFileMap(
-        previousEntries.agentSkillFiles,
-        stagedBundle.stagedAgentSkillFiles,
-        nextAgentSkills,
-        finalizedBundle.cleanedAgentSkills,
-      ),
-      updatedAtMs: Date.now(),
-    };
-    setInstallEntries(installState, pluginName, "codex", nextEntries);
-    await writeInstallState(codexRoot, installState);
-    await writeInstallManifest(codexRoot, pluginName, "codex", nextEntries);
-  } finally {
-    await removeInstallStagingRoot(codexStagingRoot);
-    await removeInstallStagingRoot(agentStagingRoot);
+    if (result === AGENT_HOME_LOCK_REQUIRED) {
+      lockAgentHome = true;
+      continue;
+    }
+    return;
+  }
+}
+
+async function notifyInstallPhase(options, phase) {
+  if (typeof options.onInstallPhase === "function") {
+    await options.onInstallPhase(phase);
   }
 }
 
