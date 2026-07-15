@@ -35,8 +35,10 @@ const {
 } = require("../../scripts/convert-plugin/frontmatter");
 const {
   installStagedDir,
+  installStagedFile,
   preflightStagedDirInstall,
   pruneStaleManagedFiles,
+  withInstallTransaction,
 } = require("../../scripts/convert-plugin/install-staging");
 const {
   loadInstallState,
@@ -2608,6 +2610,110 @@ test("writer never publishes a lock without complete owner metadata", async () =
   });
 });
 
+test("writer rejects stale journals targeting paths outside owned roots", async () => {
+  await withTempDir(async (root) => {
+    const installRoot = path.join(root, "install-root");
+    const victimPath = path.join(root, "outside-victim.txt");
+    const token = "unowned-target-transaction";
+    const journalPath = path.join(
+      installRoot,
+      ".kramme-install-transactions",
+      token,
+      "journal.json",
+    );
+    const owner = {
+      version: 1,
+      token,
+      pid: 2_147_483_647,
+      pluginName: "unowned-target-plugin",
+      createdAtMs: 1,
+      lockRoots: [installRoot],
+      transactionRoot: installRoot,
+      journalPath,
+    };
+
+    await writeFile(victimPath, "must survive\n");
+    await writeJson(journalPath, {
+      version: 1,
+      token,
+      status: "active",
+      records: [
+        {
+          operation: "create",
+          target: victimPath,
+          backup: null,
+        },
+      ],
+    });
+    await writeJson(
+      path.join(installRoot, ".kramme-install-lock", "owner.json"),
+      owner,
+    );
+
+    await assert.rejects(
+      () =>
+        withInstallTransaction(
+          installRoot,
+          { pluginName: "next-plugin" },
+          async () => {},
+        ),
+      /Refusing to recover invalid install journal/,
+    );
+    assert.equal(await readText(victimPath), "must survive\n");
+  });
+});
+
+test("transaction recovers an interrupted partial multi-root lock acquisition", async () => {
+  await withTempDir(async (root) => {
+    const firstRoot = path.join(root, "a-shared-root");
+    const transactionRoot = path.join(root, "z-transaction-root");
+    const token = "partial-lock-acquisition";
+    const journalPath = path.join(
+      transactionRoot,
+      ".kramme-install-transactions",
+      token,
+      "journal.json",
+    );
+    const owner = {
+      version: 1,
+      token,
+      pid: 2_147_483_647,
+      pluginName: "partial-lock-plugin",
+      createdAtMs: 1,
+      lockRoots: [firstRoot, transactionRoot],
+      transactionRoot,
+      journalPath,
+    };
+
+    await writeJson(
+      path.join(firstRoot, ".kramme-install-lock", "owner.json"),
+      owner,
+    );
+
+    let callbackRan = false;
+    await withInstallTransaction(
+      transactionRoot,
+      {
+        lockRoots: [firstRoot],
+        pluginName: "next-plugin",
+      },
+      async () => {
+        callbackRan = true;
+      },
+    );
+
+    assert.equal(callbackRan, true);
+    assert.equal(
+      await pathExists(path.join(firstRoot, ".kramme-install-lock")),
+      false,
+    );
+    assert.equal(
+      await pathExists(path.join(transactionRoot, ".kramme-install-lock")),
+      false,
+    );
+  });
+});
+
 test("writer recovers a stale owned journal before starting a new transaction", async () => {
   await withTempDir(async (root) => {
     const agentsHome = path.join(root, "agents-home");
@@ -2680,8 +2786,22 @@ test("writer recovers a stale owned journal before starting a new transaction", 
         }),
       (error) => error === interruption,
     );
+    const recoveryConflictsRoot = path.join(
+      codexRoot,
+      "prompts",
+      ".kramme-install-recovery-conflicts",
+    );
+    assert.equal(
+      await readText(path.join(recoveryConflictsRoot, token, "0")),
+      "interrupted output\n",
+    );
     assert.deepEqual(
-      await readTreeSnapshot(root, { exclude: ["fixture-sources"] }),
+      await readTreeSnapshot(root, {
+        exclude: [
+          "fixture-sources",
+          path.relative(root, recoveryConflictsRoot),
+        ],
+      }),
       before,
     );
   });
@@ -3011,6 +3131,107 @@ test("writer reports rollback failures and retains the owned recovery lock", asy
       await pathExists(path.join(root, ".codex", ".kramme-install-lock")),
       true,
     );
+  });
+});
+
+test("transaction preserves the primary error when rollback cleanup fails", async () => {
+  await withTempDir(async (root) => {
+    const targetPath = path.join(root, "target.txt");
+    const stagedPath = path.join(root, "staged.txt");
+    const primaryError = new Error("primary install failure");
+    const cleanupError = Object.assign(new Error("rollback cleanup failure"), {
+      code: "EIO",
+    });
+    const originalRm = fs.rm;
+
+    await writeFile(targetPath, "stable\n");
+    await writeFile(stagedPath, "replacement\n");
+    fs.rm = async (target, rmOptions) => {
+      if (String(target).includes(".kramme-install-backups")) {
+        throw cleanupError;
+      }
+      return originalRm(target, rmOptions);
+    };
+    try {
+      await assert.rejects(
+        () =>
+          withInstallTransaction(
+            root,
+            { pluginName: "rollback-cleanup-plugin" },
+            async () => {
+              await installStagedFile(stagedPath, targetPath, { replace: true });
+              throw primaryError;
+            },
+          ),
+        (error) => {
+          assert.ok(error instanceof Error);
+          assert.equal(error.cause, primaryError);
+          assert.match(error.message, /primary install failure/);
+          assert.match(error.message, /rollback cleanup failure/);
+          return true;
+        },
+      );
+    } finally {
+      fs.rm = originalRm;
+    }
+
+    assert.equal(await readText(targetPath), "stable\n");
+    assert.equal(
+      await pathExists(path.join(root, ".kramme-install-lock")),
+      true,
+    );
+  });
+});
+
+test("transaction attempts every lock release and preserves the primary error", async () => {
+  await withTempDir(async (root) => {
+    const sharedRoot = path.join(root, "shared-root");
+    const sharedLock = path.join(sharedRoot, ".kramme-install-lock");
+    const primaryError = new Error("primary transaction failure");
+    const releaseError = Object.assign(new Error("lock release failure"), {
+      code: "EIO",
+    });
+    const originalRename = fs.rename;
+
+    fs.rename = async (source, target) => {
+      if (
+        source === sharedLock &&
+        String(target).includes(".kramme-install-lock.release-")
+      ) {
+        throw releaseError;
+      }
+      return originalRename(source, target);
+    };
+    try {
+      await assert.rejects(
+        () =>
+          withInstallTransaction(
+            root,
+            {
+              lockRoots: [sharedRoot],
+              pluginName: "release-cleanup-plugin",
+            },
+            async () => {
+              throw primaryError;
+            },
+          ),
+        (error) => {
+          assert.ok(error instanceof Error);
+          assert.equal(error.cause, primaryError);
+          assert.match(error.message, /primary transaction failure/);
+          assert.match(error.message, /lock release failure/);
+          return true;
+        },
+      );
+    } finally {
+      fs.rename = originalRename;
+    }
+
+    assert.equal(
+      await pathExists(path.join(root, ".kramme-install-lock")),
+      false,
+    );
+    assert.equal(await pathExists(sharedLock), true);
   });
 });
 
