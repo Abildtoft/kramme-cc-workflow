@@ -4,7 +4,7 @@
 
 Use this format for every finding deferred by `Action class: manual`.
 
-Extend the existing internal- or external-review entry with the proposal-field suffix below. Keep the entry shape already defined for that review type; do not replace an external comment entry with the internal finding template.
+Extend the existing internal- or external-review entry with the proposal-field suffix below. Append each field inside the existing entry while preserving that entry's field marker and indentation; the bold field names below are semantic placeholders, not a replacement layout. Do not replace an external comment entry with the internal finding template.
 
 **Manual blocker:** [Preserved from the review when present]
 
@@ -18,13 +18,13 @@ Extend the existing internal- or external-review entry with the proposal-field s
 
 End the suffix with exactly one next-step field that matches who can act:
 
-**To proceed:** [For a user-selectable code change: reply naming this finding and the chosen option, then rerun `/kramme:pr:resolve-review`.]
+**To proceed:** [For a user-selectable code or process decision: reply naming this finding and the chosen option, then rerun `/kramme:pr:resolve-review`. Code changes enter implementation; accepted process decisions transition to `Selected resolution` and `Process handoff`.]
 
-**Process handoff:** [For an accepted process decision: the exact command or workflow that applies the decision; keep deferred until completion is confirmed.]
+**Process handoff:** [For an accepted process decision: record `Selected resolution`, then name the exact command or workflow that applies it; keep deferred until completion is confirmed.]
 
 **Waiting on:** [For a decision the user cannot supply: the required owner, approval, or access; do not invite the user to choose an option or rerun.]
 
-After the finding is completed, remove the proposal suffix above and record:
+After the finding is completed, remove the decision-pending fields and any `Process handoff` or `Waiting on` field, retain or record:
 
 **Selected resolution:** [The option or process decision that was chosen]
 
@@ -37,6 +37,6 @@ Do not leave proposal-only fields on an addressed or acknowledged finding.
 At the end, include:
 
 - Summary of changes made.
-- Count of findings: N addressed, M deferred as out-of-scope, K manual findings awaiting a decision (each with a recommended resolution).
+- Count of findings: N addressed, M deferred as out-of-scope, A manual findings awaiting a user decision, P accepted process handoffs awaiting completion, and X manual findings waiting on an external owner, approval, or access.
 - Any breaking changes to API contracts or config behavior.
 - Areas that need manual verification due to potential edge cases or risk.
