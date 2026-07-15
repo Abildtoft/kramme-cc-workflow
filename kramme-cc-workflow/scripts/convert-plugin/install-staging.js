@@ -1,5 +1,7 @@
 "use strict";
 
+const { AsyncLocalStorage } = require("async_hooks");
+const crypto = require("crypto");
 const fs = require("fs/promises");
 const path = require("path");
 const { normalizeName } = require("./frontmatter");
@@ -15,6 +17,15 @@ const {
   pathExists,
   resolveManagedChild,
 } = require("./filesystem");
+
+const INSTALL_LOCK_DIR = ".kramme-install-lock";
+const INSTALL_RECOVERY_CLAIMS_DIR = ".kramme-install-recovery-claims";
+const INSTALL_TRANSACTIONS_DIR = ".kramme-install-transactions";
+const INSTALL_BACKUPS_DIR = ".kramme-install-backups";
+const LOCK_POLL_INTERVAL_MS = 20;
+const MAX_LOCK_POLL_INTERVAL_MS = 250;
+const DEFAULT_LOCK_TIMEOUT_MS = 30_000;
+const transactionStorage = new AsyncLocalStorage();
 
 /**
  * @typedef {Object} ConfirmOptions
@@ -45,7 +56,672 @@ const {
  * @property {string} [label]
  * @property {boolean} [recursive]
  * @property {ConfirmOptions} [confirmOptions]
+ *
+ * @typedef {Object} InstallTransactionOptions
+ * @property {string[]} [lockRoots]
+ * @property {number} [lockTimeoutMs]
+ * @property {string} [pluginName]
  */
+
+/**
+ * Serialize and journal one installation rooted at `root`.
+ *
+ * The lock directory is acquired before the callback reloads ownership state or
+ * performs preflight. Each destructive helper below records a same-filesystem
+ * backup rename before changing its target. On failure, records are replayed in
+ * reverse order; a crashed owner is recovered by the next installer after the
+ * recorded PID is no longer alive.
+ *
+ * @template T
+ * @param {string} root
+ * @param {InstallTransactionOptions} options
+ * @param {() => Promise<T>} callback
+ * @returns {Promise<T>}
+ */
+async function withInstallTransaction(root, options, callback) {
+  await ensureDir(root);
+  const lockRoots = Array.from(
+    new Set(
+      [root, ...(options.lockRoots ?? [])].map((entry) => path.resolve(entry)),
+    ),
+  ).sort();
+  const transactionOwner = createLockOwner(root, options.pluginName, lockRoots);
+  const locks = [];
+  let releaseLocks = true;
+
+  try {
+    for (const lockRoot of lockRoots) {
+      await ensureDir(lockRoot);
+      locks.push(await acquireInstallLock(lockRoot, options, transactionOwner));
+    }
+
+    const transaction = await createInstallTransaction(transactionOwner);
+    let result;
+    try {
+      result = await transactionStorage.run(transaction, callback);
+    } catch (error) {
+      const rollbackErrors = await rollbackInstallTransaction(transaction);
+      if (rollbackErrors.length > 0) {
+        releaseLocks = false;
+        throw rollbackFailureError(error, rollbackErrors, transaction);
+      }
+      throw error;
+    }
+
+    try {
+      await markInstallTransactionCommitted(transaction);
+    } catch (error) {
+      const rollbackErrors = await rollbackInstallTransaction(transaction);
+      if (rollbackErrors.length > 0) {
+        releaseLocks = false;
+        throw rollbackFailureError(error, rollbackErrors, transaction);
+      }
+      throw error;
+    }
+    try {
+      await removeTransactionArtifacts(transaction);
+    } catch (error) {
+      releaseLocks = false;
+      throw new Error(
+        `Install transaction ${transaction.token} committed, but cleanup failed. Recovery state and locks were retained.`,
+        { cause: error },
+      );
+    }
+    return result;
+  } finally {
+    if (releaseLocks) {
+      for (const lock of [...locks].reverse()) {
+        await releaseInstallLock(lock);
+      }
+    }
+  }
+}
+
+async function acquireInstallLock(root, options, transactionOwner) {
+  const lockDir = path.join(root, INSTALL_LOCK_DIR);
+  const timeoutMs = options.lockTimeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS;
+  const deadline = Date.now() + timeoutMs;
+  const owner = { ...transactionOwner };
+  let pollIntervalMs = LOCK_POLL_INTERVAL_MS;
+
+  while (true) {
+    const existingOwner = await readLockOwner(lockDir);
+    let waitingForRecovery = false;
+
+    if (!existingOwner) {
+      if (!(await pathExists(lockDir))) {
+        if (await publishOwnedDirectory(lockDir, owner)) {
+          return { lockDir, owner };
+        }
+        continue;
+      }
+    } else if (!(await isProcessAlive(existingOwner.pid))) {
+      waitingForRecovery = await hasActiveRecoveryClaim(root, existingOwner);
+      if (!waitingForRecovery) {
+        const recoveryClaim = await acquireRecoveryClaim(root, existingOwner);
+        if (recoveryClaim) {
+          const recovered = await recoverClaimedInstall(
+            root,
+            lockDir,
+            existingOwner,
+            recoveryClaim,
+          );
+          if (recovered) continue;
+        }
+      }
+    }
+
+    if (Date.now() >= deadline) {
+      if (waitingForRecovery) {
+        throw new Error(
+          `Timed out waiting for stale install recovery at ${lockDir}.`,
+        );
+      }
+      if (
+        !existingOwner &&
+        (await quarantineInvalidLock(lockDir, "invalid-owner"))
+      ) {
+        continue;
+      }
+      const detail = existingOwner
+        ? `owned by PID ${existingOwner.pid}`
+        : "without valid owner metadata";
+      throw new Error(
+        `Timed out waiting for install lock ${lockDir} ${detail}.`,
+      );
+    }
+    await delay(pollIntervalMs);
+    pollIntervalMs = Math.min(pollIntervalMs * 2, MAX_LOCK_POLL_INTERVAL_MS);
+  }
+}
+
+function createLockOwner(root, pluginName, lockRoots) {
+  const resolvedRoot = path.resolve(root);
+  const token = `${process.pid}-${Date.now()}-${crypto.randomBytes(8).toString("hex")}`;
+  return {
+    version: 1,
+    token,
+    pid: process.pid,
+    pluginName: String(pluginName ?? "plugin"),
+    createdAtMs: Date.now(),
+    lockRoots,
+    transactionRoot: resolvedRoot,
+    journalPath: path.join(
+      resolvedRoot,
+      INSTALL_TRANSACTIONS_DIR,
+      token,
+      "journal.json",
+    ),
+  };
+}
+
+async function readLockOwner(lockDir) {
+  try {
+    const owner = JSON.parse(
+      await fs.readFile(path.join(lockDir, "owner.json"), "utf8"),
+    );
+    if (
+      owner?.version !== 1 ||
+      typeof owner.token !== "string" ||
+      !/^[A-Za-z0-9-]+$/.test(owner.token) ||
+      !Number.isSafeInteger(owner.pid) ||
+      owner.pid <= 0 ||
+      (owner.lockRoots !== undefined &&
+        (!Array.isArray(owner.lockRoots) ||
+          !owner.lockRoots.every(
+            (lockRoot) =>
+              typeof lockRoot === "string" && path.isAbsolute(lockRoot),
+          ))) ||
+      (owner.transactionRoot !== undefined &&
+        (typeof owner.transactionRoot !== "string" ||
+          !path.isAbsolute(owner.transactionRoot))) ||
+      typeof owner.journalPath !== "string" ||
+      !path.isAbsolute(owner.journalPath)
+    ) {
+      return null;
+    }
+    return owner;
+  } catch (error) {
+    if (error?.code === "ENOENT" || error instanceof SyntaxError) return null;
+    throw error;
+  }
+}
+
+async function isProcessAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    if (error?.code === "ESRCH") return false;
+    if (error?.code === "EPERM") return true;
+    throw error;
+  }
+}
+
+async function recoverStaleInstall(root, owner) {
+  const transactionRoot = owner.transactionRoot ?? root;
+  const expectedJournalPath = path.join(
+    transactionRoot,
+    INSTALL_TRANSACTIONS_DIR,
+    owner.token,
+    "journal.json",
+  );
+  if (owner.journalPath !== expectedJournalPath) {
+    throw new Error(
+      `Refusing to recover install lock with unowned journal ${owner.journalPath}.`,
+    );
+  }
+  let journal;
+  try {
+    journal = JSON.parse(await fs.readFile(owner.journalPath, "utf8"));
+  } catch (error) {
+    if (error?.code === "ENOENT") return;
+    throw new Error(
+      `Cannot recover stale install journal ${owner.journalPath}.`,
+      {
+        cause: error,
+      },
+    );
+  }
+  if (
+    journal?.version !== 1 ||
+    journal?.token !== owner.token ||
+    (journal.status !== undefined &&
+      journal.status !== "active" &&
+      journal.status !== "committed") ||
+    !Array.isArray(journal.records) ||
+    !journal.records.every((record) =>
+      isOwnedMutationRecord(record, owner.token),
+    )
+  ) {
+    throw new Error(
+      `Refusing to recover invalid install journal ${owner.journalPath}.`,
+    );
+  }
+
+  const transaction = {
+    token: owner.token,
+    transactionDir: path.dirname(owner.journalPath),
+    journalPath: owner.journalPath,
+    records: journal.records,
+    status: journal.status === "committed" ? "committed" : "active",
+  };
+  if (transaction.status === "committed") {
+    await removeTransactionArtifacts(transaction);
+    return;
+  }
+  const rollbackErrors = await rollbackInstallTransaction(transaction);
+  if (rollbackErrors.length > 0) {
+    throw rollbackFailureError(
+      new Error(`Stale install ${owner.token} requires recovery.`),
+      rollbackErrors,
+      transaction,
+    );
+  }
+}
+
+async function acquireRecoveryClaim(root, staleOwner) {
+  const claimDir = getRecoveryClaimDir(root, staleOwner);
+  await ensureDir(path.dirname(claimDir));
+  while (true) {
+    const claimOwner = createRecoveryClaimOwner(root, staleOwner);
+    if (await publishOwnedDirectory(claimDir, claimOwner)) {
+      return { lockDir: claimDir, owner: claimOwner };
+    }
+
+    const existingClaim = await readLockOwner(claimDir);
+    if (
+      existingClaim?.expectedToken === staleOwner.token &&
+      !(await isProcessAlive(existingClaim.pid))
+    ) {
+      if (
+        await quarantineOwnedLock(claimDir, existingClaim.token, "stale-claim")
+      ) {
+        continue;
+      }
+    }
+    return null;
+  }
+}
+
+async function hasActiveRecoveryClaim(root, staleOwner) {
+  const claimDir = getRecoveryClaimDir(root, staleOwner);
+  const claimOwner = await readLockOwner(claimDir);
+  if (!claimOwner) return pathExists(claimDir);
+  if (await isProcessAlive(claimOwner.pid)) return true;
+  await quarantineOwnedLock(claimDir, claimOwner.token, "stale-claim");
+  return false;
+}
+
+function getRecoveryClaimDir(root, staleOwner) {
+  const transactionRoot = staleOwner.transactionRoot ?? path.resolve(root);
+  return path.join(
+    transactionRoot,
+    INSTALL_RECOVERY_CLAIMS_DIR,
+    staleOwner.token,
+  );
+}
+
+function createRecoveryClaimOwner(root, staleOwner) {
+  const transactionRoot = staleOwner.transactionRoot ?? path.resolve(root);
+  return {
+    version: 1,
+    token: `${process.pid}-${Date.now()}-${crypto.randomBytes(8).toString("hex")}`,
+    pid: process.pid,
+    pluginName: "recovery",
+    createdAtMs: Date.now(),
+    expectedToken: staleOwner.token,
+    transactionRoot,
+    journalPath: staleOwner.journalPath,
+  };
+}
+
+async function recoverClaimedInstall(root, lockDir, staleOwner, recoveryClaim) {
+  let recovered = false;
+  let recoveryError = null;
+  try {
+    const claimedOwner = await readLockOwner(lockDir);
+    if (claimedOwner?.token === staleOwner.token) {
+      await recoverStaleInstall(root, staleOwner);
+      recovered = await reclaimStaleTransactionLocks(staleOwner, lockDir);
+    }
+  } catch (error) {
+    recoveryError = error;
+  }
+
+  try {
+    await releaseRecoveryClaim(recoveryClaim);
+  } catch (releaseError) {
+    if (recoveryError) {
+      throw new Error(
+        `${recoveryError.message} Recovery claim cleanup also failed: ${releaseError.message}`,
+        { cause: recoveryError },
+      );
+    }
+    throw releaseError;
+  }
+  if (recoveryError) throw recoveryError;
+  return recovered;
+}
+
+async function reclaimStaleTransactionLocks(staleOwner, currentLockDir) {
+  const resolvedCurrentLockDir = path.resolve(currentLockDir);
+  const lockDirs = new Set([resolvedCurrentLockDir]);
+  for (const lockRoot of staleOwner.lockRoots ?? []) {
+    lockDirs.add(path.join(path.resolve(lockRoot), INSTALL_LOCK_DIR));
+  }
+
+  let reclaimedCurrent = false;
+  for (const lockDir of [...lockDirs].sort()) {
+    const reclaimed = await quarantineOwnedLock(
+      lockDir,
+      staleOwner.token,
+      "stale",
+    );
+    if (lockDir === resolvedCurrentLockDir) {
+      reclaimedCurrent = reclaimed;
+    }
+  }
+  return reclaimedCurrent;
+}
+
+async function releaseRecoveryClaim(recoveryClaim) {
+  await releaseInstallLock(recoveryClaim);
+  try {
+    await fs.rmdir(path.dirname(recoveryClaim.lockDir));
+  } catch {
+    // Another stale transaction may still own a sibling recovery claim.
+  }
+}
+
+async function publishOwnedDirectory(dir, owner) {
+  const temporaryDir = `${dir}.tmp-${process.pid}-${crypto.randomBytes(6).toString("hex")}`;
+  try {
+    await fs.mkdir(temporaryDir);
+    await writeAtomicJson(path.join(temporaryDir, "owner.json"), owner);
+    try {
+      await fs.rename(temporaryDir, dir);
+      return true;
+    } catch (error) {
+      if (error?.code === "EEXIST" || error?.code === "ENOTEMPTY") {
+        return false;
+      }
+      throw error;
+    }
+  } finally {
+    await fs.rm(temporaryDir, { recursive: true, force: true });
+  }
+}
+
+async function quarantineInvalidLock(lockDir, label) {
+  const quarantineDir = `${lockDir}.${label}-${process.pid}-${crypto.randomBytes(6).toString("hex")}`;
+  try {
+    await fs.rename(lockDir, quarantineDir);
+  } catch (error) {
+    if (error?.code === "ENOENT") return false;
+    throw error;
+  }
+
+  const movedOwner = await readLockOwner(quarantineDir);
+  if (movedOwner) {
+    try {
+      await fs.rename(quarantineDir, lockDir);
+    } catch (restoreError) {
+      throw new Error(
+        `Install lock became owned while reclaiming ${lockDir}.`,
+        {
+          cause: restoreError,
+        },
+      );
+    }
+    return false;
+  }
+  await fs.rm(quarantineDir, { recursive: true, force: true });
+  return true;
+}
+
+async function quarantineOwnedLock(lockDir, expectedToken, label) {
+  const quarantineDir = `${lockDir}.${label}-${process.pid}-${crypto.randomBytes(6).toString("hex")}`;
+  try {
+    await fs.rename(lockDir, quarantineDir);
+  } catch (error) {
+    if (error?.code === "ENOENT") return false;
+    throw error;
+  }
+
+  const movedOwner = await readLockOwner(quarantineDir);
+  if (movedOwner?.token !== expectedToken) {
+    try {
+      await fs.rename(quarantineDir, lockDir);
+    } catch (restoreError) {
+      throw new Error(
+        `Install lock ownership changed while recovering ${lockDir}.`,
+        {
+          cause: restoreError,
+        },
+      );
+    }
+    return false;
+  }
+  await fs.rm(quarantineDir, { recursive: true, force: true });
+  return true;
+}
+
+async function releaseInstallLock(lock) {
+  const released = await quarantineOwnedLock(
+    lock.lockDir,
+    lock.owner.token,
+    "release",
+  );
+  if (!released && (await pathExists(lock.lockDir))) {
+    throw new Error(
+      `Refusing to release unowned install lock ${lock.lockDir}.`,
+    );
+  }
+}
+
+async function createInstallTransaction(owner) {
+  const transactionDir = path.dirname(owner.journalPath);
+  const transaction = {
+    token: owner.token,
+    transactionDir,
+    journalPath: owner.journalPath,
+    records: [],
+    status: "active",
+  };
+  await ensureDir(transactionDir);
+  await persistInstallJournal(transaction);
+  return transaction;
+}
+
+function isOwnedMutationRecord(record, token) {
+  if (
+    !record ||
+    typeof record !== "object" ||
+    !path.isAbsolute(record.target)
+  ) {
+    return false;
+  }
+  if (record.operation === "create") return record.backup === null;
+  if (
+    record.operation !== "backup-rename" ||
+    typeof record.backup !== "string" ||
+    !path.isAbsolute(record.backup)
+  ) {
+    return false;
+  }
+  const backupRoot = path.dirname(record.backup);
+  return (
+    /^\d+$/.test(path.basename(record.backup)) &&
+    path.basename(backupRoot) === token &&
+    path.basename(path.dirname(backupRoot)) === INSTALL_BACKUPS_DIR
+  );
+}
+
+async function persistInstallJournal(transaction) {
+  await writeAtomicJson(transaction.journalPath, {
+    version: 1,
+    token: transaction.token,
+    records: transaction.records,
+    status: transaction.status,
+  });
+}
+
+async function prepareTransactionMutation(
+  targetPath,
+  { preserveExisting = false } = {},
+) {
+  const transaction = transactionStorage.getStore();
+  if (!transaction) return false;
+
+  const resolvedTarget = path.resolve(targetPath);
+  const coveringRecord = transaction.records.find(
+    (record) =>
+      resolvedTarget === record.target ||
+      resolvedTarget.startsWith(record.target + path.sep),
+  );
+  if (coveringRecord) return true;
+  if (
+    transaction.records.some((record) =>
+      record.target.startsWith(resolvedTarget + path.sep),
+    )
+  ) {
+    throw new Error(
+      `Install transaction cannot back up parent after child: ${resolvedTarget}`,
+    );
+  }
+
+  let stats = null;
+  try {
+    stats = await fs.lstat(resolvedTarget);
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+
+  const record =
+    /** @type {{operation: string, target: string, backup: string | null}} */ ({
+      operation: stats ? "backup-rename" : "create",
+      target: resolvedTarget,
+      backup: null,
+    });
+  if (stats) {
+    const backupRoot = path.join(
+      path.dirname(resolvedTarget),
+      INSTALL_BACKUPS_DIR,
+      transaction.token,
+    );
+    record.backup = path.join(backupRoot, String(transaction.records.length));
+  }
+  transaction.records.push(record);
+  await persistInstallJournal(transaction);
+
+  if (!stats) return true;
+  const backupPath = record.backup;
+  if (!backupPath)
+    throw new Error(`Missing transaction backup for ${resolvedTarget}.`);
+  await ensureDir(path.dirname(backupPath));
+  await fs.rename(resolvedTarget, backupPath);
+  await persistInstallJournal(transaction);
+  if (preserveExisting) {
+    await fs.cp(backupPath, resolvedTarget, {
+      recursive: stats.isDirectory(),
+      preserveTimestamps: true,
+      dereference: false,
+    });
+  }
+  return true;
+}
+
+async function rollbackInstallTransaction(transaction) {
+  const errors = [];
+  for (const record of [...transaction.records].reverse()) {
+    try {
+      const backupExists =
+        record.backup && (await rawPathExists(record.backup));
+      if (backupExists) {
+        await fs.rm(record.target, { recursive: true, force: true });
+        await ensureDir(path.dirname(record.target));
+        await fs.rename(record.backup, record.target);
+      } else if (record.operation === "create") {
+        await fs.rm(record.target, { recursive: true, force: true });
+      }
+    } catch (error) {
+      errors.push({ error, record });
+    }
+  }
+  if (errors.length === 0) await removeTransactionArtifacts(transaction);
+  return errors;
+}
+
+async function markInstallTransactionCommitted(transaction) {
+  transaction.status = "committed";
+  await persistInstallJournal(transaction);
+}
+
+async function removeTransactionArtifacts(transaction) {
+  const backupRoots = new Set(
+    transaction.records
+      .map((record) => record.backup)
+      .filter(Boolean)
+      .map((backup) => path.dirname(backup)),
+  );
+  for (const backupRoot of backupRoots) {
+    await fs.rm(backupRoot, { recursive: true, force: true });
+    try {
+      await fs.rmdir(path.dirname(backupRoot));
+    } catch {
+      // Other installs may own sibling backup directories.
+    }
+  }
+  await fs.rm(transaction.transactionDir, { recursive: true, force: true });
+  try {
+    await fs.rmdir(path.dirname(transaction.transactionDir));
+  } catch {
+    // Other installs may own sibling transaction directories.
+  }
+}
+
+function rollbackFailureError(originalError, rollbackErrors, transaction) {
+  const details = rollbackErrors
+    .map(
+      ({ error, record }) =>
+        `${record.operation} ${record.target}: ${error.message}`,
+    )
+    .join("; ");
+  return new Error(
+    `${originalError.message} Rollback failed for install transaction ${transaction.token}: ${details}`,
+    { cause: originalError },
+  );
+}
+
+async function writeAtomicJson(file, value) {
+  await ensureDir(path.dirname(file));
+  const temporary = `${file}.tmp-${process.pid}-${crypto.randomBytes(6).toString("hex")}`;
+  try {
+    await fs.writeFile(
+      temporary,
+      JSON.stringify(value, null, 2) + "\n",
+      "utf8",
+    );
+    await fs.rename(temporary, file);
+  } finally {
+    await fs.rm(temporary, { force: true });
+  }
+}
+
+async function rawPathExists(file) {
+  try {
+    await fs.lstat(file);
+    return true;
+  } catch (error) {
+    if (error?.code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
 
 async function createInstallStagingRoot(baseRoot, pluginName, label) {
   await ensureDir(baseRoot);
@@ -132,9 +808,16 @@ async function preflightStagedFileInstall(
   }
 }
 
-async function installStagedDir(stagedDir, targetDir, { replace = false } = {}) {
+async function installStagedDir(
+  stagedDir,
+  targetDir,
+  { replace = false } = {},
+) {
   if (!(await pathExists(stagedDir))) return;
-  if (replace) {
+  const transactional = await prepareTransactionMutation(targetDir, {
+    preserveExisting: !replace,
+  });
+  if (replace && !transactional) {
     await fs.rm(targetDir, { recursive: true, force: true });
   }
   await ensureDir(path.dirname(targetDir));
@@ -162,6 +845,7 @@ async function pruneStaleManagedFiles(
   currentFiles,
   { label = "directory" } = {},
 ) {
+  await prepareTransactionMutation(targetDir, { preserveExisting: true });
   for (const relativeFile of staleManagedFileSet(previousFiles, currentFiles)) {
     const targetPath = resolveManagedChild(
       targetDir,
@@ -349,7 +1033,10 @@ async function removeEmptyAncestorDirs(startDir, rootDir) {
   const resolvedRoot = path.resolve(rootDir);
   let current = path.resolve(startDir);
 
-  while (current !== resolvedRoot && current.startsWith(resolvedRoot + path.sep)) {
+  while (
+    current !== resolvedRoot &&
+    current.startsWith(resolvedRoot + path.sep)
+  ) {
     try {
       await fs.rmdir(current);
     } catch {
@@ -365,7 +1052,8 @@ async function installStagedFile(
   { replace = false } = {},
 ) {
   if (!(await pathExists(stagedFile))) return;
-  if (replace) {
+  const transactional = await prepareTransactionMutation(targetFile);
+  if (replace && !transactional) {
     await fs.rm(targetFile, { force: true });
   }
   await ensureDir(path.dirname(targetFile));
@@ -419,7 +1107,10 @@ async function cleanupKrammeComponents(
   }
 
   for (const name of matched) {
-    await fs.rm(path.join(dir, name), { recursive, force: true });
+    const targetPath = path.join(dir, name);
+    if (!(await prepareTransactionMutation(targetPath))) {
+      await fs.rm(targetPath, { recursive: true, force: true });
+    }
   }
   console.log(`Deleted ${matched.length} ${label}(s).`);
 }
@@ -461,7 +1152,9 @@ async function cleanupInstalledEntries(
   }
 
   for (const { path: targetPath } of matched) {
-    await fs.rm(targetPath, { recursive, force: true });
+    if (!(await prepareTransactionMutation(targetPath))) {
+      await fs.rm(targetPath, { recursive: true, force: true });
+    }
   }
   console.log(`Deleted ${matched.length} ${label}(s).`);
   return true;
@@ -477,4 +1170,5 @@ module.exports = {
   preflightStagedFileInstall,
   pruneStaleManagedFiles,
   removeInstallStagingRoot,
+  withInstallTransaction,
 };
