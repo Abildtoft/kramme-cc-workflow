@@ -265,8 +265,10 @@ async function isProcessAlive(pid) {
 }
 
 async function recoverStaleInstall(root, owner) {
-  const { lockRoots, transactionRoot } =
-    await validateRecoveryOwnership(root, owner);
+  const { lockRoots, transactionRoot } = await validateRecoveryOwnership(
+    root,
+    owner,
+  );
   owner.lockRoots = lockRoots;
   const expectedJournalPath = path.join(
     transactionRoot,
@@ -317,7 +319,8 @@ async function recoverStaleInstall(root, owner) {
     transactionDir: path.dirname(owner.journalPath),
     journalPath: owner.journalPath,
     records: journal.records,
-    recoveryConflicts: [],
+    recoveryConflicts:
+      /** @type {{target: string, preservedAt: string}[]} */ ([]),
     status: journal.status === "committed" ? "committed" : "active",
   };
   if (transaction.status === "committed") {
@@ -790,7 +793,8 @@ async function preserveRecoveryTarget(transaction, record, recordIndex) {
   await ensureDir(conflictRoot);
 
   for (let suffix = 0; ; suffix += 1) {
-    const name = suffix === 0 ? String(recordIndex) : `${recordIndex}-${suffix}`;
+    const name =
+      suffix === 0 ? String(recordIndex) : `${recordIndex}-${suffix}`;
     const preservedAt = path.join(conflictRoot, name);
     try {
       await fs.rename(record.target, preservedAt);

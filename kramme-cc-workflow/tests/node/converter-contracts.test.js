@@ -3159,7 +3159,9 @@ test("transaction preserves the primary error when rollback cleanup fails", asyn
             root,
             { pluginName: "rollback-cleanup-plugin" },
             async () => {
-              await installStagedFile(stagedPath, targetPath, { replace: true });
+              await installStagedFile(stagedPath, targetPath, {
+                replace: true,
+              });
               throw primaryError;
             },
           ),
