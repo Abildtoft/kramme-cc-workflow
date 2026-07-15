@@ -60,6 +60,14 @@
       "producer": "kramme:pr:copy-review"
     },
     {
+      "id": "convention-review-overview",
+      "path": "CONVENTION_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:convention-review"
+    },
+    {
       "id": "codebase-weakness-report",
       "path": "CODEBASE_WEAKNESS_REPORT.md",
       "type": "file",
