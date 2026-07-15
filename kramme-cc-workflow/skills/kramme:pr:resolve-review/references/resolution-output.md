@@ -24,6 +24,8 @@ End the suffix with exactly one next-step field that matches who can act:
 
 **Waiting on:** [For a decision the user cannot supply: the required owner, approval, or access; do not invite the user to choose an option or rerun.]
 
+A selected code resolution becomes retry-eligible implementation state, not another pending decision. Before implementation, remove the decision-pending fields (`Manual blocker`, `Next human decision`, `Recommended resolution`, `Alternatives`, `To proceed`, and `Waiting on`) and record **Selected resolution**. If implementation or validation fails, retain **Selected resolution**, keep **Resolution status: open**, and record the failed attempt in **Action taken**. On the next run, retry that selected resolution without asking for the same decision again.
+
 After the finding is completed, remove the decision-pending fields and any `Process handoff` or `Waiting on` field, retain or record:
 
 **Selected resolution:** [The option or process decision that was chosen]
