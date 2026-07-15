@@ -2,7 +2,7 @@
 
 ## Manual findings
 
-Use this format for every finding deferred by `Action class: manual`.
+Use this format for every finding routed through Step 2d's manual-proposal flow, including `Action class: manual` findings and process-level external or legacy findings without an action class.
 
 Extend the existing internal- or external-review entry with the proposal-field suffix below. Append each field inside the existing entry while preserving that entry's field marker and indentation; the bold field names below are semantic placeholders, not a replacement layout. Do not replace an external comment entry with the internal finding template.
 
