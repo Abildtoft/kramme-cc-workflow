@@ -34,18 +34,28 @@ const AGENT_HOME_LOCK_REQUIRED = Symbol("agent-home-lock-required");
  *   lockTimeoutMs?: number,
  *   onInstallPhase?: (phase: string) => (void | Promise<void>)
  * }} TransactionalWriteCodexOptions
+ * @typedef {Record<string, string[]>} ManagedFileMap
  */
 
+/** @param {Record<string, unknown>} object @param {string} entry */
 function hasOwnEntry(object, entry) {
   return Object.prototype.hasOwnProperty.call(object ?? {}, entry);
 }
 
+/**
+ * @param {ManagedFileMap} previousFiles
+ * @param {ManagedFileMap} currentFiles
+ * @param {unknown} nextEntries
+ * @param {boolean} cleaned
+ * @returns {ManagedFileMap}
+ */
 function buildNextManagedFileMap(
   previousFiles,
   currentFiles,
   nextEntries,
   cleaned,
 ) {
+  /** @type {ManagedFileMap} */
   const result = {};
   for (const entry of sanitizeEntryList(nextEntries)) {
     if (hasOwnEntry(currentFiles, entry)) {
@@ -205,6 +215,7 @@ async function notifyInstallPhase(options, phase) {
   }
 }
 
+/** @param {string} outputRoot */
 function resolveCodexOutputRoot(outputRoot) {
   return path.basename(outputRoot) === ".codex"
     ? outputRoot
@@ -235,6 +246,7 @@ Tool mapping:
 - ExitPlanMode: ignore
 `;
 
+/** @param {string} codexHome */
 async function ensureCodexAgentsFile(codexHome) {
   await ensureDir(codexHome);
   const filePath = path.join(codexHome, "AGENTS.md");
@@ -260,6 +272,7 @@ function buildCodexAgentsBlock() {
   ].join("\n");
 }
 
+/** @param {string} existing @param {string} block */
 function upsertBlock(existing, block) {
   const startIndex = existing.indexOf(CODEX_AGENTS_BLOCK_START);
   const endIndex = existing.indexOf(CODEX_AGENTS_BLOCK_END);

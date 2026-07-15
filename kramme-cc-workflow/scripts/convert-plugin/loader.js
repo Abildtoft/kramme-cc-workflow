@@ -10,6 +10,7 @@ const {
   skillFrontmatterFieldByLoaderProperty,
 } = require("../schemas/skill-contracts");
 const {
+  isJsonObject,
   pathExists,
   readJsonObject,
   readText,
@@ -17,7 +18,16 @@ const {
   resolveWithinRoot,
 } = require("./filesystem");
 
-/** @typedef {import("./contracts").ClaudePlugin} ClaudePlugin */
+/**
+ * @typedef {import("./contracts").ClaudeAgent} ClaudeAgent
+ * @typedef {import("./contracts").ClaudeCommand} ClaudeCommand
+ * @typedef {import("./contracts").ClaudePlugin} ClaudePlugin
+ * @typedef {import("./contracts").ClaudeSkill} ClaudeSkill
+ * @typedef {import("./contracts").CodexMcpServer} CodexMcpServer
+ * @typedef {import("./contracts").CodexMcpServers} CodexMcpServers
+ * @typedef {import("./contracts").JsonObject} JsonObject
+ * @typedef {{ field: string, expectedType: string }} FrontmatterTypeError
+ */
 
 const ARGUMENT_HINT_FIELD = skillFrontmatterFieldByLoaderProperty(
   "argumentHint",
@@ -36,6 +46,7 @@ const PLATFORMS_FIELD = skillFrontmatterFieldByLoaderProperty(
   "kramme-platforms",
 );
 
+/** @param {unknown} value */
 function normalizeFrontmatterBoolean(value) {
   if (typeof value === "boolean") return value;
   if (typeof value !== "string") return value;
@@ -46,11 +57,13 @@ function normalizeFrontmatterBoolean(value) {
   return value;
 }
 
+/** @param {string} field @param {unknown} value */
 function normalizeFrontmatterField(field, value) {
   if (!SKILL_FRONTMATTER_BOOLEAN_FIELDS.has(field)) return value;
   return normalizeFrontmatterBoolean(value);
 }
 
+/** @param {unknown} type @param {unknown} value */
 function frontmatterTypeError(type, value) {
   if (type === "string" && !isNonEmptyString(value)) {
     return "non-empty string";
@@ -67,8 +80,10 @@ function frontmatterTypeError(type, value) {
 // Collect-all counterpart of the linter's frontmatter_type_errors so both
 // engines can be pinned to the same shared fixtures. validateSkillFrontmatter
 // throws on the first entry; this returns every mismatch in schema order.
+/** @param {Record<string, unknown>} data @returns {FrontmatterTypeError[]} */
 function skillFrontmatterTypeErrors(data) {
   const fields = skillContracts.skill_frontmatter?.fields ?? {};
+  /** @type {FrontmatterTypeError[]} */
   const errors = [];
   for (const [field, contract] of Object.entries(fields)) {
     if (!Object.hasOwn(data, field)) continue;
@@ -78,6 +93,7 @@ function skillFrontmatterTypeErrors(data) {
   return errors;
 }
 
+/** @param {Record<string, unknown>} data @param {string} file */
 function validateSkillFrontmatter(data, file) {
   const [firstError] = skillFrontmatterTypeErrors(data);
   if (firstError) {
@@ -87,16 +103,19 @@ function validateSkillFrontmatter(data, file) {
   }
 }
 
+/** @param {unknown} value @returns {value is string} */
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+/** @param {unknown} value */
 function isFrontmatterBoolean(value) {
   if (typeof value === "boolean") return true;
   if (typeof value !== "string") return false;
   return ["true", "false"].includes(value.trim().toLowerCase());
 }
 
+/** @param {unknown} value @returns {value is string[]} */
 function isNonEmptyStringArray(value) {
   return (
     Array.isArray(value) &&
@@ -145,6 +164,7 @@ function resolveScriptRoot() {
   return path.resolve(__dirname, "..", "..");
 }
 
+/** @param {string} root @param {string} slug */
 async function resolveMarketplacePlugin(root, slug) {
   const marketplacePath = path.join(root, ".claude-plugin", "marketplace.json");
   if (!(await pathExists(marketplacePath))) return null;
@@ -153,9 +173,16 @@ async function resolveMarketplacePlugin(root, slug) {
     "Marketplace manifest",
   );
   const plugins = Array.isArray(marketplace.plugins) ? marketplace.plugins : [];
-  const entry = plugins.find((plugin) => plugin?.name === slug);
+  const entry = plugins.find(
+    (plugin) => isJsonObject(plugin) && plugin.name === slug,
+  );
   if (!entry) return null;
-  const source = entry.source ?? ".";
+  const source = entry.source === undefined ? "." : entry.source;
+  if (typeof source !== "string") {
+    throw new Error(
+      `${marketplacePath}: marketplace plugin "${slug}" source must be a string.`,
+    );
+  }
   return resolveWithinRoot(root, source, "marketplace plugin source");
 }
 
@@ -192,6 +219,7 @@ async function loadClaudePlugin(inputPath) {
   };
 }
 
+/** @param {string} inputPath */
 async function resolveClaudeRoot(inputPath) {
   const absolute = path.resolve(inputPath);
   const manifestAtPath = path.join(absolute, ".claude-plugin", "plugin.json");
@@ -212,8 +240,10 @@ async function resolveClaudeRoot(inputPath) {
   );
 }
 
+/** @param {string[]} agentsDirs @returns {Promise<ClaudeAgent[]>} */
 async function loadAgents(agentsDirs) {
   const files = await collectMarkdownFiles(agentsDirs);
+  /** @type {ClaudeAgent[]} */
   const agents = [];
   for (const file of files) {
     const raw = await readText(file);
@@ -222,8 +252,11 @@ async function loadAgents(agentsDirs) {
     const name = data.name ?? path.basename(file, ".md");
     agents.push({
       name,
-      description: data.description,
-      capabilities: data.capabilities,
+      description:
+        typeof data.description === "string" ? data.description : undefined,
+      capabilities: Array.isArray(data.capabilities)
+        ? /** @type {string[]} */ (data.capabilities)
+        : undefined,
       model: data.model,
       body: body.trim(),
       sourcePath: file,
@@ -232,6 +265,7 @@ async function loadAgents(agentsDirs) {
   return agents;
 }
 
+/** @param {Record<string, unknown>} data @param {string} file */
 function validateAgentFrontmatter(data, file) {
   if (
     Object.hasOwn(data, "description") &&
@@ -252,8 +286,10 @@ function validateAgentFrontmatter(data, file) {
   }
 }
 
+/** @param {string[]} commandsDirs @returns {Promise<ClaudeCommand[]>} */
 async function loadCommands(commandsDirs) {
   const files = await collectMarkdownFiles(commandsDirs);
+  /** @type {ClaudeCommand[]} */
   const commands = [];
   for (const file of files) {
     const raw = await readText(file);
@@ -277,31 +313,41 @@ async function loadCommands(commandsDirs) {
   return commands;
 }
 
+/** @param {string[]} skillsDirs @returns {Promise<ClaudeSkill[]>} */
 async function loadSkills(skillsDirs) {
   const entries = await collectFiles(skillsDirs);
   const skillFiles = entries.filter(
     (file) => path.basename(file) === "SKILL.md",
   );
+  /** @type {ClaudeSkill[]} */
   const skills = [];
   for (const file of skillFiles) {
     const raw = await readText(file);
     const { data, body } = parseFrontmatter(raw);
     validateSkillFrontmatter(data, file);
-    const name = data.name ?? path.basename(path.dirname(file));
+    const name = String(data.name ?? path.basename(path.dirname(file)));
     const allowedTools = parseAllowedTools(data["allowed-tools"]);
     skills.push({
       name,
-      description: data.description,
-      argumentHint: data[ARGUMENT_HINT_FIELD],
+      description:
+        typeof data.description === "string" ? data.description : undefined,
+      argumentHint:
+        typeof data[ARGUMENT_HINT_FIELD] === "string"
+          ? data[ARGUMENT_HINT_FIELD]
+          : undefined,
       model: data.model,
       allowedTools,
-      disableModelInvocation: normalizeFrontmatterField(
-        DISABLE_MODEL_INVOCATION_FIELD,
-        data[DISABLE_MODEL_INVOCATION_FIELD],
+      disableModelInvocation: /** @type {boolean | undefined} */ (
+        normalizeFrontmatterField(
+          DISABLE_MODEL_INVOCATION_FIELD,
+          data[DISABLE_MODEL_INVOCATION_FIELD],
+        )
       ),
-      userInvocable: normalizeFrontmatterField(
-        USER_INVOCABLE_FIELD,
-        data[USER_INVOCABLE_FIELD],
+      userInvocable: /** @type {boolean | undefined} */ (
+        normalizeFrontmatterField(
+          USER_INVOCABLE_FIELD,
+          data[USER_INVOCABLE_FIELD],
+        )
       ),
       platforms: parsePlatforms(data[PLATFORMS_FIELD]),
       body: body.trim(),
@@ -312,7 +358,9 @@ async function loadSkills(skillsDirs) {
   return skills;
 }
 
+/** @param {ClaudeCommand[]} legacyCommands @param {ClaudeSkill[]} skills @returns {ClaudeCommand[]} */
 function deriveInvocableCommands(legacyCommands, skills) {
+  /** @type {ClaudeCommand[]} */
   const commands = [];
   const seen = new Set();
 
@@ -343,7 +391,9 @@ function deriveInvocableCommands(legacyCommands, skills) {
   return commands;
 }
 
+/** @param {string} root @param {unknown} hooksField */
 async function loadHooks(root, hooksField) {
+  /** @type {JsonObject[]} */
   const hookEventMaps = [];
   const defaultPath = path.join(root, "hooks", "hooks.json");
   if (await pathExists(defaultPath)) {
@@ -352,7 +402,7 @@ async function loadHooks(root, hooksField) {
 
   if (hooksField) {
     if (typeof hooksField === "string" || Array.isArray(hooksField)) {
-      const hookPaths = toPathList(hooksField);
+      const hookPaths = toPathList(hooksField, "Plugin manifest hooks field");
       for (const hookPath of hookPaths) {
         const resolved = resolveWithinRoot(root, hookPath, "hooks path");
         if (await pathExists(resolved)) {
@@ -377,6 +427,7 @@ async function loadHooks(root, hooksField) {
   return mergeHooks(hookEventMaps);
 }
 
+/** @param {string} file */
 async function readHookEvents(file) {
   return extractHookEvents(
     await readJsonObject(file, "Hooks config"),
@@ -384,51 +435,72 @@ async function readHookEvents(file) {
   );
 }
 
+/** @param {JsonObject} config @param {string} label @returns {JsonObject} */
 function extractHookEvents(config, label) {
   if (!Object.hasOwn(config, "hooks")) return {};
   return requireJsonObject(config.hooks, `${label} field "hooks"`);
 }
 
+/** @param {string} root @param {JsonObject} manifest */
 async function loadMcpServers(root, manifest) {
   const field = manifest.mcpServers;
+  const manifestPath = path.join(root, ".claude-plugin", "plugin.json");
   if (field) {
     if (typeof field === "string" || Array.isArray(field)) {
-      return mergeMcpConfigs(await loadMcpPaths(root, field));
+      return validateMcpServers(
+        mergeMcpConfigs(await loadMcpPaths(root, field)),
+        `${manifestPath}: Plugin manifest mcpServers field`,
+      );
     }
-    return requireJsonObject(
-      field,
-      `${path.join(root, ".claude-plugin", "plugin.json")}: Plugin manifest mcpServers field`,
-    );
+    const label = `${manifestPath}: Plugin manifest mcpServers field`;
+    return validateMcpServers(requireJsonObject(field, label), label);
   }
 
   const mcpPath = path.join(root, ".mcp.json");
   if (await pathExists(mcpPath)) {
-    return readJsonObject(mcpPath, "MCP config");
+    return validateMcpServers(
+      await readJsonObject(mcpPath, "MCP config"),
+      `${mcpPath}: MCP config`,
+    );
   }
 
   return undefined;
 }
 
+/** @param {string} root @param {string} defaultDir @param {unknown} custom */
 function resolveComponentDirs(root, defaultDir, custom) {
   const dirs = [path.join(root, defaultDir)];
-  for (const entry of toPathList(custom)) {
+  for (const entry of toPathList(
+    custom,
+    `Plugin manifest ${defaultDir} field`,
+  )) {
     dirs.push(resolveWithinRoot(root, entry, `${defaultDir} path`));
   }
   return dirs;
 }
 
-function toPathList(value) {
-  if (!value) return [];
-  if (Array.isArray(value)) return value;
-  return [value];
+/** @param {unknown} value @param {string} label @returns {string[]} */
+function toPathList(value, label) {
+  if (value === undefined || value === null || value === "") return [];
+  if (typeof value === "string") return [value];
+  if (
+    Array.isArray(value) &&
+    value.every((entry) => typeof entry === "string")
+  ) {
+    return value;
+  }
+  throw new Error(`${label} must be a string or an array of strings.`);
 }
 
+/** @param {string[]} dirs @returns {Promise<string[]>} */
 async function collectMarkdownFiles(dirs) {
   const entries = await collectFiles(dirs);
   return entries.filter((file) => file.endsWith(".md"));
 }
 
+/** @param {string[]} dirs @returns {Promise<string[]>} */
 async function collectFiles(dirs) {
+  /** @type {string[]} */
   const files = [];
   for (const dir of dirs) {
     if (!(await pathExists(dir))) continue;
@@ -438,8 +510,10 @@ async function collectFiles(dirs) {
   return files;
 }
 
+/** @param {string} dir @returns {Promise<string[]>} */
 async function walkFiles(dir) {
   const entries = await fs.readdir(dir, { withFileTypes: true });
+  /** @type {string[]} */
   const files = [];
   for (const entry of entries) {
     const full = path.join(dir, entry.name);
@@ -452,7 +526,9 @@ async function walkFiles(dir) {
   return files;
 }
 
+/** @param {JsonObject[]} hookEventMaps @returns {JsonObject} */
 function mergeHooks(hookEventMaps) {
+  /** @type {{ hooks: Record<string, unknown[]> }} */
   const merged = { hooks: {} };
   for (const events of hookEventMaps) {
     for (const [event, matchers] of Object.entries(events)) {
@@ -468,9 +544,11 @@ function mergeHooks(hookEventMaps) {
   return merged;
 }
 
+/** @param {string} root @param {unknown} value @returns {Promise<JsonObject[]>} */
 async function loadMcpPaths(root, value) {
+  /** @type {JsonObject[]} */
   const configs = [];
-  for (const entry of toPathList(value)) {
+  for (const entry of toPathList(value, "Plugin manifest mcpServers field")) {
     const resolved = resolveWithinRoot(root, entry, "mcpServers path");
     if (await pathExists(resolved)) {
       configs.push(await readJsonObject(resolved, "MCP config"));
@@ -479,10 +557,76 @@ async function loadMcpPaths(root, value) {
   return configs;
 }
 
+/** @param {JsonObject[]} configs @returns {JsonObject} */
 function mergeMcpConfigs(configs) {
-  return configs.reduce((acc, config) => ({ ...acc, ...config }), {});
+  return configs.reduce(
+    (acc, config) => ({ ...acc, ...config }),
+    /** @type {JsonObject} */ ({}),
+  );
 }
 
+/** @param {JsonObject} config @param {string} label @returns {CodexMcpServers} */
+function validateMcpServers(config, label) {
+  /** @type {Array<[string, CodexMcpServer]>} */
+  const servers = [];
+  for (const [name, value] of Object.entries(config)) {
+    const serverLabel = `${label} server "${name}"`;
+    const server = requireJsonObject(value, serverLabel);
+    servers.push([
+      name,
+      {
+        ...server,
+        command: optionalStringField(server, "command", serverLabel),
+        args: optionalStringArrayField(server, "args", serverLabel),
+        env: optionalStringMapField(server, "env", serverLabel),
+        url: optionalStringField(server, "url", serverLabel),
+        headers: optionalStringMapField(server, "headers", serverLabel),
+      },
+    ]);
+  }
+  return Object.fromEntries(servers);
+}
+
+/** @param {JsonObject} value @param {string} field @param {string} label */
+function optionalStringField(value, field, label) {
+  const entry = value[field];
+  if (entry === undefined) return undefined;
+  if (typeof entry !== "string") {
+    throw new Error(`${label} field "${field}" must be a string.`);
+  }
+  return entry;
+}
+
+/** @param {JsonObject} value @param {string} field @param {string} label */
+function optionalStringArrayField(value, field, label) {
+  const entry = value[field];
+  if (entry === undefined) return undefined;
+  if (
+    !Array.isArray(entry) ||
+    !entry.every((item) => typeof item === "string")
+  ) {
+    throw new Error(`${label} field "${field}" must be an array of strings.`);
+  }
+  return entry;
+}
+
+/** @param {JsonObject} value @param {string} field @param {string} label */
+function optionalStringMapField(value, field, label) {
+  const entry = value[field];
+  if (entry === undefined) return undefined;
+  const record = requireJsonObject(entry, `${label} field "${field}"`);
+  /** @type {Array<[string, string]>} */
+  const strings = [];
+  for (const [key, item] of Object.entries(record)) {
+    if (typeof item !== "string") {
+      throw new Error(`${label} field "${field}.${key}" must be a string.`);
+    }
+    strings.push([key, item]);
+  }
+  return Object.fromEntries(strings);
+}
+
+/** @param {unknown} value */
 function parseAllowedTools(value) {
   if (!value) return undefined;
   if (Array.isArray(value)) {
@@ -497,6 +641,7 @@ function parseAllowedTools(value) {
   return undefined;
 }
 
+/** @param {unknown} value */
 function parsePlatforms(value) {
   if (!value) return undefined;
   if (Array.isArray(value))

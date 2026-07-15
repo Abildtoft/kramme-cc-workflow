@@ -14,6 +14,7 @@ const {
   copyDir,
   copyFile,
   ensureDir,
+  filesystemErrorCode,
   pathExists,
   resolveManagedChild,
 } = require("./filesystem");
@@ -881,6 +882,11 @@ function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+/**
+ * @typedef {{ removed: boolean, hasStaleManagedFile?: boolean }} ManagedPruneInspection
+ */
+
+/** @param {string} baseRoot @param {string} pluginName @param {string} label */
 async function createInstallStagingRoot(baseRoot, pluginName, label) {
   await ensureDir(baseRoot);
   const nonce = Math.random().toString(16).slice(2);
@@ -893,6 +899,7 @@ async function createInstallStagingRoot(baseRoot, pluginName, label) {
   return stagingRoot;
 }
 
+/** @param {string | null | undefined} stagingRoot */
 async function removeInstallStagingRoot(stagingRoot) {
   if (!stagingRoot) return;
   await fs.rm(stagingRoot, { recursive: true, force: true });
@@ -966,6 +973,7 @@ async function preflightStagedFileInstall(
   }
 }
 
+/** @param {string} stagedDir @param {string} targetDir @param {{ replace?: boolean }} [options] */
 async function installStagedDir(
   stagedDir,
   targetDir,
@@ -984,7 +992,7 @@ async function installStagedDir(
       await fs.rename(stagedDir, targetDir);
       return;
     } catch (error) {
-      if (error.code !== "EXDEV") throw error;
+      if (filesystemErrorCode(error) !== "EXDEV") throw error;
     }
   }
   await copyDir(stagedDir, targetDir);
@@ -1016,7 +1024,7 @@ async function pruneStaleManagedFiles(
     try {
       stats = await fs.lstat(targetPath);
     } catch (error) {
-      if (error.code === "ENOENT") continue;
+      if (filesystemErrorCode(error) === "ENOENT") continue;
       throw error;
     }
 
@@ -1026,6 +1034,7 @@ async function pruneStaleManagedFiles(
   }
 }
 
+/** @param {unknown} previousFiles @param {unknown} currentFiles @returns {Set<string>} */
 function staleManagedFileSet(previousFiles, currentFiles) {
   const currentFileSet = new Set(sanitizeManagedFileList(currentFiles));
   return new Set(
@@ -1035,6 +1044,12 @@ function staleManagedFileSet(previousFiles, currentFiles) {
   );
 }
 
+/**
+ * @param {string} stagedDir
+ * @param {string} targetDir
+ * @param {string} prefix
+ * @param {{ label: string, staleManagedFiles: Set<string> }} options
+ */
 async function preflightStagedDirMerge(
   stagedDir,
   targetDir,
@@ -1081,6 +1096,7 @@ async function preflightStagedDirMerge(
   }
 }
 
+/** @param {string} targetPath @param {string} relativePath @param {Set<string>} staleManagedFiles */
 async function lstatAfterManagedPrune(
   targetPath,
   relativePath,
@@ -1090,7 +1106,7 @@ async function lstatAfterManagedPrune(
   try {
     stats = await fs.lstat(targetPath);
   } catch (error) {
-    if (error.code === "ENOENT") return null;
+    if (filesystemErrorCode(error) === "ENOENT") return null;
     throw error;
   }
   if (
@@ -1102,6 +1118,7 @@ async function lstatAfterManagedPrune(
   return stats;
 }
 
+/** @param {string} dirPath @param {string} relativeDir @param {Set<string>} staleManagedFiles */
 async function directoryRemovedByManagedPrune(
   dirPath,
   relativeDir,
@@ -1115,6 +1132,12 @@ async function directoryRemovedByManagedPrune(
   return result.removed;
 }
 
+/**
+ * @param {string} dirPath
+ * @param {string} relativeDir
+ * @param {Set<string>} staleManagedFiles
+ * @returns {Promise<ManagedPruneInspection>}
+ */
 async function inspectDirectoryForManagedPrune(
   dirPath,
   relativeDir,
@@ -1132,7 +1155,8 @@ async function inspectDirectoryForManagedPrune(
         staleManagedFiles,
       );
       if (!child.removed) return { removed: false };
-      hasStaleManagedFile = hasStaleManagedFile || child.hasStaleManagedFile;
+      hasStaleManagedFile =
+        hasStaleManagedFile || Boolean(child.hasStaleManagedFile);
       continue;
     }
 
@@ -1153,6 +1177,7 @@ async function inspectDirectoryForManagedPrune(
   };
 }
 
+/** @param {string} rootDir @param {string} targetPath */
 async function hasSafeManagedAncestorDirs(rootDir, targetPath) {
   const resolvedRoot = path.resolve(rootDir);
   const targetDir = path.dirname(path.resolve(targetPath));
@@ -1162,7 +1187,7 @@ async function hasSafeManagedAncestorDirs(rootDir, targetPath) {
     const rootStats = await fs.lstat(resolvedRoot);
     if (!rootStats.isDirectory()) return false;
   } catch (error) {
-    if (error.code === "ENOENT") return false;
+    if (filesystemErrorCode(error) === "ENOENT") return false;
     throw error;
   }
 
@@ -1178,7 +1203,7 @@ async function hasSafeManagedAncestorDirs(rootDir, targetPath) {
     try {
       stats = await fs.lstat(dir);
     } catch (error) {
-      if (error.code === "ENOENT") return false;
+      if (filesystemErrorCode(error) === "ENOENT") return false;
       throw error;
     }
     if (!stats.isDirectory()) return false;
@@ -1187,6 +1212,7 @@ async function hasSafeManagedAncestorDirs(rootDir, targetPath) {
   return true;
 }
 
+/** @param {string} startDir @param {string} rootDir */
 async function removeEmptyAncestorDirs(startDir, rootDir) {
   const resolvedRoot = path.resolve(rootDir);
   let current = path.resolve(startDir);
@@ -1204,6 +1230,7 @@ async function removeEmptyAncestorDirs(startDir, rootDir) {
   }
 }
 
+/** @param {string} stagedFile @param {string} targetFile @param {{ replace?: boolean }} [options] */
 async function installStagedFile(
   stagedFile,
   targetFile,
@@ -1219,7 +1246,7 @@ async function installStagedFile(
     await fs.rename(stagedFile, targetFile);
     return;
   } catch (error) {
-    if (error.code !== "EXDEV") throw error;
+    if (filesystemErrorCode(error) !== "EXDEV") throw error;
   }
   await copyFile(stagedFile, targetFile);
   await fs.rm(stagedFile, { force: true });

@@ -9,7 +9,10 @@ const {
 } = require("./codex-config");
 const { confirm } = require("./confirm");
 const { sanitizeEntryList } = require("./install-state");
-const { cleanupInstalledEntries, installStagedDir } = require("./install-staging");
+const {
+  cleanupInstalledEntries,
+  installStagedDir,
+} = require("./install-staging");
 const {
   copyDir,
   copyFile,
@@ -25,6 +28,22 @@ const EXCLUDED_HOOK_SOURCE_FILES = new Set([
   "hook-state.json",
 ]);
 
+/**
+ * @typedef {import("./contracts").CodexHookPlugin} CodexHookPlugin
+ * @typedef {import("./contracts").HookTargets} HookTargets
+ * @typedef {import("./contracts").InstallEntries} InstallEntries
+ * @typedef {{ yes?: boolean, nonInteractive?: boolean }} ConfirmOptions
+ * @typedef {Pick<InstallEntries, "pluginCaches" | "hookMarketplaces">} PreviousHookEntries
+ * @typedef {{ confirmOptions?: ConfirmOptions }} HookWriterOptions
+ */
+
+/**
+ * @param {string} codexRoot
+ * @param {string} codexStagingRoot
+ * @param {CodexHookPlugin | undefined} codexPlugin
+ * @param {PreviousHookEntries} previousEntries
+ * @param {HookWriterOptions} [options]
+ */
 async function stageCodexHookPluginBundle(
   codexRoot,
   codexStagingRoot,
@@ -65,18 +84,24 @@ async function stageCodexHookPluginBundle(
     "Codex plugin cache entry",
   );
 
-  const marketplaceTarget = await prepareCodexHookPluginTarget(marketplaceRoot, {
-    label: "Codex hook marketplace",
-    entry: marketplaceEntry,
-    previousEntries: previousEntries.hookMarketplaces,
-    confirmOptions,
-  });
-  const pluginCacheTarget = await prepareCodexHookPluginTarget(pluginCacheRoot, {
-    label: "Codex plugin cache entry",
-    entry: pluginCacheEntry,
-    previousEntries: previousEntries.pluginCaches,
-    confirmOptions,
-  });
+  const marketplaceTarget = await prepareCodexHookPluginTarget(
+    marketplaceRoot,
+    {
+      label: "Codex hook marketplace",
+      entry: marketplaceEntry,
+      previousEntries: previousEntries.hookMarketplaces,
+      confirmOptions,
+    },
+  );
+  const pluginCacheTarget = await prepareCodexHookPluginTarget(
+    pluginCacheRoot,
+    {
+      label: "Codex plugin cache entry",
+      entry: pluginCacheEntry,
+      previousEntries: previousEntries.pluginCaches,
+      confirmOptions,
+    },
+  );
 
   await writeCodexHookPluginTree(stagedMarketplacePluginRoot, codexPlugin);
   await writeCodexHookPluginTree(stagedPluginCacheRoot, codexPlugin);
@@ -100,6 +125,14 @@ async function stageCodexHookPluginBundle(
   };
 }
 
+/**
+ * @param {string} codexRoot
+ * @param {string} codexStagingRoot
+ * @param {CodexHookPlugin | undefined} codexPlugin
+ * @param {PreviousHookEntries} previousEntries
+ * @param {HookTargets} [targets]
+ * @param {HookWriterOptions} [options]
+ */
 async function finalizeCodexHookPluginBundle(
   codexRoot,
   codexStagingRoot,
@@ -135,32 +168,28 @@ async function finalizeCodexHookPluginBundle(
     };
   }
 
-  const marketplaceTarget =
-    targets.marketplace ??
-    {
-      finalRoot: codexHookMarketplaceRoot(codexRoot, codexPlugin),
-      overwriteExisting: false,
-      stagedRoot: resolveManagedChild(
-        codexStagingRoot,
-        codexHookMarketplaceEntry(codexPlugin),
-        "Codex hook marketplace entry",
-      ),
-    };
-  const pluginCacheTarget =
-    targets.pluginCache ??
-    {
-      finalRoot: resolveManagedChild(
-        path.join(codexRoot, "plugins"),
-        codexHookPluginCacheEntry(codexPlugin),
-        "Codex plugin cache entry",
-      ),
-      overwriteExisting: false,
-      stagedRoot: resolveManagedChild(
-        path.join(codexStagingRoot, "plugins"),
-        codexHookPluginCacheEntry(codexPlugin),
-        "Codex plugin cache entry",
-      ),
-    };
+  const marketplaceTarget = targets.marketplace ?? {
+    finalRoot: codexHookMarketplaceRoot(codexRoot, codexPlugin),
+    overwriteExisting: false,
+    stagedRoot: resolveManagedChild(
+      codexStagingRoot,
+      codexHookMarketplaceEntry(codexPlugin),
+      "Codex hook marketplace entry",
+    ),
+  };
+  const pluginCacheTarget = targets.pluginCache ?? {
+    finalRoot: resolveManagedChild(
+      path.join(codexRoot, "plugins"),
+      codexHookPluginCacheEntry(codexPlugin),
+      "Codex plugin cache entry",
+    ),
+    overwriteExisting: false,
+    stagedRoot: resolveManagedChild(
+      path.join(codexStagingRoot, "plugins"),
+      codexHookPluginCacheEntry(codexPlugin),
+      "Codex plugin cache entry",
+    ),
+  };
 
   await installStagedDir(
     marketplaceTarget.stagedRoot,
@@ -187,6 +216,10 @@ async function finalizeCodexHookPluginBundle(
   };
 }
 
+/**
+ * @param {string} targetRoot
+ * @param {{ label: string, entry: string, previousEntries: string[], confirmOptions: ConfirmOptions }} options
+ */
 async function prepareCodexHookPluginTarget(
   targetRoot,
   { label, entry, previousEntries, confirmOptions },
@@ -212,6 +245,7 @@ async function prepareCodexHookPluginTarget(
   return { overwriteExisting: true };
 }
 
+/** @param {string} targetRoot @param {CodexHookPlugin} codexPlugin */
 async function writeCodexHookPluginTree(targetRoot, codexPlugin) {
   await writeJson(
     path.join(targetRoot, ".codex-plugin", "plugin.json"),
@@ -243,10 +277,12 @@ async function writeCodexHookPluginTree(targetRoot, codexPlugin) {
   await bootstrapHookScripts(hooksRoot, targetRoot);
 }
 
+/** @param {{ entry: import("fs").Dirent, relativePath: string }} context */
 function shouldCopyHookSourceFile({ entry, relativePath }) {
   return !entry.isFile() || !EXCLUDED_HOOK_SOURCE_FILES.has(relativePath);
 }
 
+/** @param {string} pluginRoot */
 async function removeExcludedHookSourceFiles(pluginRoot) {
   const hooksRoot = path.join(pluginRoot, "hooks");
   await Promise.all(
@@ -256,6 +292,7 @@ async function removeExcludedHookSourceFiles(pluginRoot) {
   );
 }
 
+/** @param {string} marketplaceRoot @param {CodexHookPlugin} codexPlugin */
 async function writeCodexHookMarketplace(marketplaceRoot, codexPlugin) {
   const marketplace = {
     name: codexPlugin.marketplaceName,
@@ -284,6 +321,7 @@ async function writeCodexHookMarketplace(marketplaceRoot, codexPlugin) {
   );
 }
 
+/** @param {string} rootDir @param {string} [bundleRootDir] */
 async function bootstrapHookScripts(
   rootDir,
   bundleRootDir = path.dirname(rootDir),

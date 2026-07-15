@@ -65,6 +65,14 @@ const NON_OBJECT_JSON_CASES = [
   { kind: "number", source: "42", value: 42 },
 ];
 
+/**
+ * @typedef {import("../../scripts/convert-plugin/contracts").CodexBundle} CodexBundle
+ * @typedef {import("../../scripts/convert-plugin/contracts").CodexSkillFile} CodexSkillFile
+ * @typedef {import("../../scripts/convert-plugin/contracts").JsonObject} JsonObject
+ * @typedef {{ skills: string[], skillFiles: Record<string, string[]>, agentSkills: string[], agentSkillFiles: Record<string, string[]> }} InstallManifestFixture
+ * @typedef {{ plugins: Record<string, { codex: InstallManifestFixture }> }} InstallStateFixture
+ */
+
 test("shared script rewrites preserve shell-safe quoting", () => {
   const replacements = codexSharedScriptReplacements(
     "/tmp/Codex Home",
@@ -157,6 +165,59 @@ test("loader rejects non-object marketplace manifests at the file boundary", asy
   }
 });
 
+test("loader rejects non-string marketplace plugin sources", async () => {
+  await withTempDir(async (root) => {
+    const marketplacePath = path.join(
+      root,
+      ".claude-plugin",
+      "marketplace.json",
+    );
+    await writeJson(marketplacePath, {
+      plugins: [{ name: "fixture-plugin", source: null }],
+    });
+    const previousCwd = process.cwd();
+    process.chdir(root);
+    try {
+      await assert.rejects(
+        resolvePluginInput("fixture-plugin"),
+        new RegExp(
+          `${escapeRegExp(marketplacePath)}: marketplace plugin "fixture-plugin" source must be a string`,
+        ),
+      );
+    } finally {
+      process.chdir(previousCwd);
+    }
+  });
+});
+
+test("loader rejects invalid manifest component path lists", async () => {
+  const invalidComponentPaths = [
+    { field: "agents", value: 42 },
+    { field: "commands", value: ["commands", null] },
+    { field: "skills", value: { path: "skills" } },
+  ];
+  for (const { field, value } of invalidComponentPaths) {
+    await withTempDir(async (root) => {
+      const pluginRoot = path.join(root, `invalid-${field}-paths-plugin`);
+      await writeJson(path.join(pluginRoot, ".claude-plugin", "plugin.json"), {
+        agents: [],
+        commands: [],
+        name: `invalid-${field}-paths-plugin`,
+        skills: [],
+        version: "1.0.0",
+        [field]: value,
+      });
+
+      await assert.rejects(
+        loadClaudePlugin(pluginRoot),
+        new RegExp(
+          `Plugin manifest ${field} field must be a string or an array of strings`,
+        ),
+      );
+    });
+  }
+});
+
 test("loader rejects non-object hooks and MCP config files", async () => {
   for (const testCase of NON_OBJECT_JSON_CASES) {
     for (const boundary of [
@@ -181,6 +242,62 @@ test("loader rejects non-object hooks and MCP config files", async () => {
       });
     }
   }
+});
+
+test("loader validates MCP server field types", async () => {
+  const invalidConfigs = [
+    {
+      config: { demo: null },
+      message: 'MCP config server "demo" must be a JSON object',
+    },
+    {
+      config: { demo: { args: "--stdio" } },
+      message:
+        'MCP config server "demo" field "args" must be an array of strings',
+    },
+    {
+      config: { demo: { env: { PORT: 3000 } } },
+      message: 'MCP config server "demo" field "env.PORT" must be a string',
+    },
+  ];
+
+  for (const { config, message } of invalidConfigs) {
+    await withTempDir(async (root) => {
+      const pluginRoot = path.join(root, "invalid-mcp-server-plugin");
+      await createFixturePlugin(pluginRoot, "invalid-mcp-server-plugin");
+      const configPath = path.join(pluginRoot, ".mcp.json");
+      await writeJson(configPath, config);
+
+      await assert.rejects(
+        loadClaudePlugin(pluginRoot),
+        new RegExp(`${escapeRegExp(configPath)}: ${escapeRegExp(message)}`),
+      );
+    });
+  }
+});
+
+test("loader preserves special MCP server and string-map keys", async () => {
+  await withTempDir(async (root) => {
+    const pluginRoot = path.join(root, "special-mcp-key-plugin");
+    await createFixturePlugin(pluginRoot, "special-mcp-key-plugin");
+    const configPath = path.join(pluginRoot, ".mcp.json");
+    await writeJson(
+      configPath,
+      JSON.parse(
+        '{"__proto__":{"command":"demo","env":{"__proto__":"env-value"},"headers":{"__proto__":"header-value"}}}',
+      ),
+    );
+
+    const plugin = await loadClaudePlugin(pluginRoot);
+
+    assert.deepEqual(Object.keys(plugin.mcpServers ?? {}), ["__proto__"]);
+    const server = plugin.mcpServers?.__proto__;
+    assert.equal(server?.command, "demo");
+    assert.equal(server?.env?.__proto__, "env-value");
+    assert.equal(server?.headers?.__proto__, "header-value");
+    assert.equal(Object.hasOwn(server?.env ?? {}, "__proto__"), true);
+    assert.equal(Object.hasOwn(server?.headers ?? {}, "__proto__"), true);
+  });
 });
 
 test("loader rejects non-object nested hooks maps", async () => {
@@ -740,6 +857,7 @@ test("loader rejects invalid schema-declared primitive frontmatter types", async
     await withTempDir(async (root) => {
       const pluginRoot = path.join(root, "invalid-plugin");
       await createFixturePlugin(pluginRoot, "invalid-plugin");
+      /** @type {Record<string, string>} */
       const fields = {
         name: "typed-skill",
         description: "Typed skill",
@@ -930,7 +1048,7 @@ model = "gpt-5"
       "demo-plugin",
     );
 
-    const output = await readText(stagedConfigPath);
+    const output = await readText(/** @type {string} */ (stagedConfigPath));
     assert.match(output, /model = "gpt-5"/);
     assert.match(output, /\[profiles\.dev\]/);
     assert.match(output, /\[profiles\.after\]/);
@@ -1074,6 +1192,84 @@ test("install state records corrupt-data recovery provenance", async () => {
     assert.equal(loaded.fromDisk, false);
     assert.equal(loaded.recoveryReason, "invalid-shape");
     assert.deepEqual(loaded.state.plugins, {});
+
+    await writeJson(statePath, { plugins: {}, version: "1" });
+    loaded = await loadInstallState(root);
+    assert.equal(loaded.fromDisk, false);
+    assert.equal(loaded.recoveryReason, "invalid-shape");
+
+    await writeJson(statePath, {
+      plugins: { demo: { codex: [] } },
+      version: 1,
+    });
+    loaded = await loadInstallState(root);
+    assert.equal(loaded.fromDisk, false);
+    assert.equal(loaded.recoveryReason, "invalid-shape");
+  });
+});
+
+test("install state normalizes valid persisted entries before returning them", async () => {
+  await withTempDir(async (root) => {
+    const statePath = path.join(root, ".kramme-install-state.json");
+    await writeJson(statePath, {
+      plugins: {
+        demo: {
+          codex: {
+            agentSkillFiles: null,
+            agentSkills: [" reviewer ", 42],
+            hookMarketplaces: [],
+            pluginCaches: [],
+            prompts: [" prompt.md "],
+            skillFiles: {},
+            skills: [" skill "],
+            updatedAtMs: "42",
+          },
+        },
+      },
+      version: 1,
+    });
+
+    const loaded = await loadInstallState(root);
+
+    assert.equal(loaded.fromDisk, true);
+    assert.equal(loaded.recoveryReason, null);
+    assert.deepEqual(loaded.state.plugins.demo.codex, {
+      agentSkillFiles: {},
+      agentSkills: ["reviewer", "42"],
+      hookMarketplaces: [],
+      pluginCaches: [],
+      prompts: ["prompt.md"],
+      skillFiles: {},
+      skills: ["skill"],
+      updatedAtMs: 42,
+    });
+  });
+});
+
+test("install state preserves special plugin and target keys", async () => {
+  await withTempDir(async (root) => {
+    const statePath = path.join(root, ".kramme-install-state.json");
+    await writeJson(
+      statePath,
+      JSON.parse('{"version":1,"plugins":{"__proto__":{"__proto__":{}}}}'),
+    );
+
+    const loaded = await loadInstallState(root);
+
+    assert.equal(loaded.fromDisk, true);
+    assert.equal(Object.hasOwn(loaded.state.plugins, "__proto__"), true);
+    const targets = loaded.state.plugins.__proto__;
+    assert.equal(Object.hasOwn(targets, "__proto__"), true);
+    assert.deepEqual(targets.__proto__, {
+      agentSkillFiles: {},
+      agentSkills: [],
+      hookMarketplaces: [],
+      pluginCaches: [],
+      prompts: [],
+      skillFiles: {},
+      skills: [],
+      updatedAtMs: undefined,
+    });
   });
 });
 
@@ -1505,9 +1701,18 @@ test("converted skill roots contain no executable Claude controls and honor inst
 
     const agentContent = bundle.agentSkills[0].content;
     const agentFrontmatter = parseFrontmatter(agentContent);
-    assert.match(agentFrontmatter.data.description, /AGENTS\.md/);
-    assert.match(agentFrontmatter.data.description, /CLAUDE\.md/);
-    assert.match(agentFrontmatter.data.description, /conventions from/);
+    assert.match(
+      /** @type {string} */ (agentFrontmatter.data.description),
+      /AGENTS\.md/,
+    );
+    assert.match(
+      /** @type {string} */ (agentFrontmatter.data.description),
+      /CLAUDE\.md/,
+    );
+    assert.match(
+      /** @type {string} */ (agentFrontmatter.data.description),
+      /conventions from/,
+    );
     assert.match(agentFrontmatter.body, /AGENTS\.md/);
     assert.match(agentFrontmatter.body, /CLAUDE\.md/);
     assert.match(
@@ -1758,6 +1963,7 @@ test("writer preserves exact skill group outputs across pruning and removal", as
       pluginName: "managed-file-plugin",
     };
 
+    /** @param {string} version @returns {CodexBundle} */
     function bundle(version) {
       return {
         agentSkills: [{ content: `Agent ${version}`, name: "fixture-agent" }],
@@ -1804,7 +2010,9 @@ test("writer preserves exact skill group outputs across pruning and removal", as
     );
     assert.equal(await pathExists(oldManagedFile), true);
 
-    let manifest = await readJson(manifestPath);
+    let manifest = /** @type {InstallManifestFixture} */ (
+      await readJson(manifestPath)
+    );
     assert.deepEqual(manifest.skillFiles["fixture-managed"], [
       "SKILL.md",
       "references/OLD.md",
@@ -1825,7 +2033,9 @@ test("writer preserves exact skill group outputs across pruning and removal", as
     await writeFile(path.join(agentSkillDir, "OLD.md"), "old agent\n");
 
     const statePath = path.join(root, ".codex", ".kramme-install-state.json");
-    const state = await readJson(statePath);
+    const state = /** @type {InstallStateFixture} */ (
+      await readJson(statePath)
+    );
     const entries = state.plugins["managed-file-plugin"].codex;
     entries.skillFiles["fixture-generated"] = ["OLD.md", "SKILL.md"];
     entries.agentSkillFiles["fixture-agent"] = ["OLD.md", "SKILL.md"];
@@ -1848,7 +2058,9 @@ test("writer preserves exact skill group outputs across pruning and removal", as
     assert.equal(await pathExists(newManagedFile), true);
     assert.equal(await readText(localNotes), "keep local notes\n");
 
-    manifest = await readJson(manifestPath);
+    manifest = /** @type {InstallManifestFixture} */ (
+      await readJson(manifestPath)
+    );
     assert.deepEqual(manifest.skillFiles["fixture-managed"], [
       "SKILL.md",
       "references/NEW.md",
@@ -1876,7 +2088,9 @@ test("writer preserves exact skill group outputs across pruning and removal", as
       options,
     );
 
-    manifest = await readJson(manifestPath);
+    manifest = /** @type {InstallManifestFixture} */ (
+      await readJson(manifestPath)
+    );
     assert.deepEqual(
       await readFileTree(path.join(root, ".codex", "skills")),
       {},
@@ -2094,6 +2308,7 @@ test("writer preserves previous install when replacement bundle fails", async ()
       confirm: { yes: true },
       pluginName: "transactional-plugin",
     };
+    /** @param {CodexSkillFile} skill @returns {CodexBundle} */
     const bundleWithGeneratedSkill = (skill) => ({
       agentSkills: [],
       codexPlugin: undefined,
@@ -2193,6 +2408,7 @@ test("writer preserves previous install when finalization is blocked", async () 
       confirm: { yes: true },
       pluginName: "finalization-plugin",
     };
+    /** @param {CodexSkillFile[]} skills @returns {CodexBundle} */
     const bundleWithGeneratedSkills = (skills) => ({
       agentSkills: [],
       codexPlugin: undefined,
@@ -3237,6 +3453,7 @@ test("transaction attempts every lock release and preserves the primary error", 
   });
 });
 
+/** @returns {{ agentSkillFiles: Record<string, string[]>, agentSkills: string[], hookMarketplaces: string[], pluginCaches: string[], prompts: string[], skillFiles: Record<string, string[]>, skills: string[] }} */
 function emptyPreviousEntries() {
   return {
     agentSkillFiles: {},
@@ -3352,6 +3569,7 @@ function delayForTest(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+/** @param {unknown} error @param {string} file @param {string} label @param {string} kind */
 function assertJsonObjectBoundaryError(error, file, label, kind) {
   assert.ok(error instanceof Error);
   assert.ok(error.message.includes(file));
@@ -3359,6 +3577,12 @@ function assertJsonObjectBoundaryError(error, file, label, kind) {
   assert.match(error.message, new RegExp(`received ${kind}`));
 }
 
+/** @param {string} value */
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** @template T @param {(root: string) => Promise<T>} fn @returns {Promise<T>} */
 async function withTempDir(fn) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "converter-contracts-"));
   try {
@@ -3368,14 +3592,17 @@ async function withTempDir(fn) {
   }
 }
 
+/** @param {string} file @param {unknown} data */
 async function writeJson(file, data) {
   await writeFile(file, JSON.stringify(data, null, 2) + "\n");
 }
 
+/** @param {string} file @returns {Promise<JsonObject>} */
 async function readJson(file) {
-  return JSON.parse(await readText(file));
+  return /** @type {JsonObject} */ (JSON.parse(await readText(file)));
 }
 
+/** @param {string} pluginRoot @param {string} [pluginName] */
 async function createFixturePlugin(pluginRoot, pluginName = "fixture-plugin") {
   await writeJson(path.join(pluginRoot, ".claude-plugin", "plugin.json"), {
     agents: [],
@@ -3386,6 +3613,7 @@ async function createFixturePlugin(pluginRoot, pluginName = "fixture-plugin") {
   });
 }
 
+/** @param {string} pluginRoot @param {string} skillDir @param {string} content */
 async function writeSkillFile(pluginRoot, skillDir, content) {
   await writeFile(
     path.join(pluginRoot, "skills", skillDir, "SKILL.md"),
@@ -3393,6 +3621,7 @@ async function writeSkillFile(pluginRoot, skillDir, content) {
   );
 }
 
+/** @param {string} sourceDir @param {Record<string, string>} files */
 async function writeSourceSkill(sourceDir, files) {
   await fs.rm(sourceDir, { force: true, recursive: true });
   for (const [relativePath, content] of Object.entries(files)) {
@@ -3400,16 +3629,20 @@ async function writeSourceSkill(sourceDir, files) {
   }
 }
 
+/** @param {string} file @param {string} content */
 async function writeFile(file, content) {
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(file, content, "utf8");
 }
 
+/** @param {string} file */
 async function readText(file) {
   return fs.readFile(file, "utf8");
 }
 
+/** @param {string} root @returns {Promise<Array<{ file: string, text: string }>>} */
 async function readMarkdownTree(root) {
+  /** @type {Array<{ file: string, text: string }>} */
   const markdown = [];
   const entries = await fs.readdir(root, { withFileTypes: true });
   for (const entry of entries) {
@@ -3423,7 +3656,9 @@ async function readMarkdownTree(root) {
   return markdown;
 }
 
+/** @param {string} root @param {string} [prefix] @returns {Promise<Record<string, string>>} */
 async function readFileTree(root, prefix = "") {
+  /** @type {Record<string, string>} */
   const tree = {};
   const entries = await fs.readdir(root, { withFileTypes: true });
   entries.sort((left, right) => left.name.localeCompare(right.name));
@@ -3439,6 +3674,7 @@ async function readFileTree(root, prefix = "") {
   return tree;
 }
 
+/** @param {string} file */
 async function pathExists(file) {
   try {
     await fs.access(file);
@@ -3448,6 +3684,7 @@ async function pathExists(file) {
   }
 }
 
+/** @param {unknown} error @param {{ cause: unknown, code: string, message: RegExp, path: string }} expected */
 function assertFilesystemError(error, { cause, code, message, path: file }) {
   assert.ok(error instanceof Error);
   const filesystemError = /** @type {NodeJS.ErrnoException} */ (error);

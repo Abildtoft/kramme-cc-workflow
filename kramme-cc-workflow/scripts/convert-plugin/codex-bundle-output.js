@@ -36,21 +36,51 @@ const {
 } = require("./filesystem");
 
 /**
+ * @typedef {import("./contracts").CodexBundle} CodexBundle
+ * @typedef {import("./contracts").CodexSkillFile} CodexSkillFile
+ * @typedef {import("./contracts").HookTargets} HookTargets
+ * @typedef {import("./contracts").InstallEntries} PreviousInstallEntries
+ * @typedef {import("./contracts").SharedScriptDir} SharedScriptDir
+ * @typedef {import("./contracts").SharedScriptFile} SharedScriptFile
+ * @typedef {import("./contracts").WriteCodexOptions} WriteCodexOptions
+ * @typedef {Object} StagedBundle
+ * @property {string | null} agentSkillsRoot
+ * @property {string | null} agentStagingRoot
+ * @property {string[]} hookMarketplaces
+ * @property {HookTargets} hookTargets
+ * @property {string[]} pluginCaches
+ * @property {SharedScriptDir[]} sharedScriptDirs
+ * @property {SharedScriptFile[]} sharedScriptFiles
+ * @property {string | null} stagedAgentSkillsRoot
+ * @property {Record<string, string[]>} stagedAgentSkillFiles
+ * @property {string | null} stagedConfigPath
+ * @property {string} stagedPromptsDir
+ * @property {Record<string, string[]>} stagedSkillFiles
+ * @property {string} stagedSkillsRoot
+ */
+
+/**
+ * @template {CodexSkillFile} T
  * @typedef {Object} SkillGroupDescriptor
  * @property {Record<string, string[]>} currentManagedFiles
- * @property {Array<{name: string}>} entries
+ * @property {T[]} entries
  * @property {string} label
  * @property {string} nameLabel
  * @property {string[]} previousEntries
  * @property {Record<string, string[]>} previousManagedFiles
  * @property {string | null} stagedRoot
- * @property {((skill: any, targetDir: string) => Promise<void>)} [stageEntry]
+ * @property {((skill: T, targetDir: string) => Promise<void>)} [stageEntry]
  * @property {string | null} targetRoot
  */
 
 /**
- * @param {Partial<SkillGroupDescriptor> & Pick<SkillGroupDescriptor, "currentManagedFiles" | "label" | "nameLabel" | "stagedRoot">} descriptor
- * @returns {SkillGroupDescriptor}
+ * @typedef {Omit<SkillGroupDescriptor<CodexSkillFile>, "entries" | "stageEntry"> & { entries: CodexSkillFile[] }} SkillGroupView
+ */
+
+/**
+ * @template {CodexSkillFile} T
+ * @param {Partial<SkillGroupDescriptor<T>> & Pick<SkillGroupDescriptor<T>, "currentManagedFiles" | "label" | "nameLabel" | "stagedRoot">} descriptor
+ * @returns {SkillGroupDescriptor<T>}
  */
 function createSkillGroupDescriptor(descriptor) {
   return {
@@ -62,7 +92,7 @@ function createSkillGroupDescriptor(descriptor) {
   };
 }
 
-/** @param {SkillGroupDescriptor} group */
+/** @template {CodexSkillFile} T @param {SkillGroupDescriptor<T>} group */
 async function stageSkillGroup(group) {
   const stageEntry = group.stageEntry;
   if (!stageEntry) {
@@ -83,7 +113,7 @@ async function stageSkillGroup(group) {
 }
 
 /**
- * @param {SkillGroupDescriptor} group
+ * @param {SkillGroupView} group
  * @param {{includeManagedFiles?: boolean}} [options]
  */
 async function preflightSkillGroup(
@@ -118,7 +148,7 @@ async function preflightSkillGroup(
   }
 }
 
-/** @param {SkillGroupDescriptor} group */
+/** @param {SkillGroupView} group */
 async function finalizeSkillGroup(group) {
   for (const skill of group.entries) {
     const stagedDir = resolveManagedChild(
@@ -143,7 +173,7 @@ async function finalizeSkillGroup(group) {
 
 /**
  * @param {string | null} root
- * @param {SkillGroupDescriptor} group
+ * @param {SkillGroupView} group
  * @param {string} kind
  * @returns {string}
  */
@@ -152,6 +182,12 @@ function requireSkillGroupRoot(root, group, kind) {
   return root;
 }
 
+/**
+ * @param {string} codexRoot
+ * @param {StagedBundle} stagedBundle
+ * @param {CodexBundle} bundle
+ * @param {PreviousInstallEntries} previousEntries
+ */
 function createFinalizationSkillGroups(
   codexRoot,
   stagedBundle,
@@ -191,6 +227,15 @@ function createFinalizationSkillGroups(
   };
 }
 
+/**
+ * @param {string} codexRoot
+ * @param {string} codexStagingRoot
+ * @param {CodexBundle} bundle
+ * @param {PreviousInstallEntries} previousEntries
+ * @param {string} pluginName
+ * @param {WriteCodexOptions} extraOpts
+ * @returns {Promise<StagedBundle>}
+ */
 async function stageCodexBundleOutput(
   codexRoot,
   codexStagingRoot,
@@ -354,6 +399,14 @@ async function stageCodexBundleOutput(
   }
 }
 
+/**
+ * @param {string} codexRoot
+ * @param {string} codexStagingRoot
+ * @param {StagedBundle} stagedBundle
+ * @param {CodexBundle} bundle
+ * @param {PreviousInstallEntries} previousEntries
+ * @param {WriteCodexOptions} extraOpts
+ */
 async function finalizeCodexBundleOutput(
   codexRoot,
   codexStagingRoot,
@@ -492,6 +545,13 @@ async function notifyInstallPhase(options, phase) {
   }
 }
 
+/**
+ * @param {string} codexRoot
+ * @param {string} codexStagingRoot
+ * @param {StagedBundle} stagedBundle
+ * @param {CodexBundle} bundle
+ * @param {PreviousInstallEntries} previousEntries
+ */
 async function preflightCodexBundleFinalization(
   codexRoot,
   codexStagingRoot,

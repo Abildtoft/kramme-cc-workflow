@@ -22,7 +22,10 @@ const {
  * @typedef {import("./contracts").ClaudeSkill} ClaudeSkill
  * @typedef {import("./contracts").ClaudePlugin} ClaudePlugin
  * @typedef {import("./contracts").CodexSkillFile} CodexSkillFile
+ * @typedef {import("./contracts").CodexSourceSkillFile} CodexSourceSkillFile
  * @typedef {import("./contracts").CodexBundle} CodexBundle
+ * @typedef {import("./contracts").CodexHookManifest} CodexHookManifest
+ * @typedef {import("./contracts").CodexHookPlugin} CodexHookPlugin
  * @typedef {import("./contracts").CodexTransformOptions} CodexTransformOptions
  * @typedef {import("./contracts").JsonObject} JsonObject
  */
@@ -126,12 +129,14 @@ function convertClaudeToCodex(plugin) {
   };
 }
 
+/** @param {ClaudePlugin} plugin @param {ClaudeSkill[]} codexSkills */
 function codexHookPluginFor(plugin, codexSkills) {
   if (!plugin.hooks) return undefined;
   if (!hasRequiredHookControlSkills(codexSkills)) return undefined;
   return convertCodexHookPlugin(plugin);
 }
 
+/** @param {ClaudeSkill[]} skills */
 function hasRequiredHookControlSkills(skills) {
   const installedSkillNames = new Set(
     skills.map((skill) => normalizeName(skill.name)),
@@ -141,6 +146,7 @@ function hasRequiredHookControlSkills(skills) {
   );
 }
 
+/** @param {ClaudePlugin} plugin @returns {CodexHookPlugin} */
 function convertCodexHookPlugin(plugin) {
   const name = normalizeName(plugin.manifest.name);
   const version = String(plugin.manifest.version ?? "local").trim() || "local";
@@ -149,6 +155,7 @@ function convertCodexHookPlugin(plugin) {
     plugin.manifest.description ??
       `Lifecycle hooks converted from ${plugin.manifest.name}.`,
   );
+  /** @type {CodexHookManifest} */
   const manifest = {
     name,
     version,
@@ -165,7 +172,7 @@ function convertCodexHookPlugin(plugin) {
     marketplaceName,
     version,
     manifest,
-    hooks: cloneJson(plugin.hooks),
+    hooks: cloneJson(plugin.hooks ?? {}),
     hookSourceDir: path.join(plugin.root, "hooks"),
     sharedScriptDirs: [
       {
@@ -228,6 +235,10 @@ function convertAgentSkill(agent, name, knownCommands, knownAgentSkills) {
   return { name, content };
 }
 
+/**
+ * @param {Array<{ agent: ClaudeAgent, name: string }>} agentSkillDefinitions
+ * @returns {Map<string, string>}
+ */
 function buildKnownAgentSkillNames(agentSkillDefinitions) {
   const knownAgentSkills = new Map();
   for (const { agent, name } of agentSkillDefinitions) {
@@ -244,6 +255,13 @@ function buildKnownAgentSkillNames(agentSkillDefinitions) {
   return knownAgentSkills;
 }
 
+/**
+ * @param {ClaudeCommand} command
+ * @param {Set<string>} knownCommands
+ * @param {string} name
+ * @param {Map<string, string>} knownAgentSkills
+ * @returns {CodexSkillFile}
+ */
 function convertCommandSkill(command, knownCommands, name, knownAgentSkills) {
   const frontmatter = {
     name,
@@ -270,6 +288,12 @@ function convertCommandSkill(command, knownCommands, name, knownAgentSkills) {
   return { name, content };
 }
 
+/**
+ * @param {ClaudeSkill} skill
+ * @param {Set<string>} knownCommands
+ * @param {Map<string, string>} knownAgentSkills
+ * @returns {CodexSourceSkillFile}
+ */
 function convertExistingSkillForCodex(skill, knownCommands, knownAgentSkills) {
   const frontmatter = {
     name: skill.name,
@@ -313,6 +337,7 @@ function transformContentForCodex(body, options = {}) {
   return normalizeCodexInstructionText(result);
 }
 
+/** @param {string} body @param {CodexTransformOptions} options */
 function transformAgentContentForCodex(body, options) {
   const transformed = transformContentForCodex(body, options);
   if (!/`?CLAUDE\.md`?/.test(transformed)) return transformed;
@@ -348,6 +373,7 @@ function transformAgentContentForCodex(body, options) {
   );
 }
 
+/** @param {string} text @param {Map<string, string> | undefined} knownAgentSkills */
 function rewriteTaskCalls(text, knownAgentSkills) {
   const taskPattern = /^(\s*-?\s*)Task\s+([a-z][a-z0-9-]*)\(([^)]+)\)/gm;
   return text.replace(taskPattern, (_match, prefix, agentName, args) => {
@@ -359,6 +385,7 @@ function rewriteTaskCalls(text, knownAgentSkills) {
   });
 }
 
+/** @param {string} text @param {Set<string> | undefined} knownCommands */
 function rewriteSlashCommandReferences(text, knownCommands) {
   const slashCommandPattern =
     /(?<![:\w])\/([a-z][a-z0-9_:-]*?)(?=[\s,.`"')\]}]|$)/gi;
@@ -374,6 +401,7 @@ function rewriteSlashCommandReferences(text, knownCommands) {
   });
 }
 
+/** @param {string} text @param {Map<string, string> | undefined} knownAgentSkills */
 function rewriteAgentMentions(text, knownAgentSkills) {
   const agentRefPattern =
     /@([a-z][a-z0-9-]*-(?:agent|reviewer|researcher|analyst|specialist|oracle|sentinel|guardian|strategist))/gi;
@@ -385,6 +413,7 @@ function rewriteAgentMentions(text, knownAgentSkills) {
   });
 }
 
+/** @param {string} text @param {Map<string, string> | undefined} knownAgentSkills */
 function rewriteCodexAgentFileReferences(text, knownAgentSkills) {
   if (!knownAgentSkills || knownAgentSkills.size === 0) return text;
   const linkTargetPattern =
@@ -392,6 +421,7 @@ function rewriteCodexAgentFileReferences(text, knownAgentSkills) {
   const autolinkPattern = /<agents\/([a-z][a-z0-9_:-]*)\.md>/gi;
   const agentPathPattern =
     /(?<![\w./\\}:$(-])`?agents\/([a-z][a-z0-9_:-]*)\.md`?(?=$|[\s,.:;`"')\]}])/gi;
+  /** @type {(match: string, agentName: string) => string} */
   const toSkillReference = (match, agentName) => {
     const skillName = knownAgentSkills.get(codexName(agentName));
     if (!skillName) return match;
@@ -577,6 +607,7 @@ const CODEX_INSTRUCTION_REPLACEMENTS = [
   [/\bExplore agent\b/g, "explorer subagent"],
 ];
 
+/** @param {string} text */
 function normalizeCodexInstructionText(text) {
   let result = rewriteAskUserQuestionCodeBlocks(text);
   for (const [pattern, replacement] of CODEX_INSTRUCTION_REPLACEMENTS) {

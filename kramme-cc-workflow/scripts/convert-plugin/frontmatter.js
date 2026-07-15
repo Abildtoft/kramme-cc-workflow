@@ -16,6 +16,9 @@ const LEGACY_STRING_FLOW_KEYS = new Set([
   "user-invocable",
 ]);
 
+/** @typedef {{ key?: unknown, treatSequenceItemAsMap?: boolean }} LegacyScalarOptions */
+
+/** @param {unknown} value */
 function stripWrappingQuotes(value) {
   const trimmed = String(value ?? "").trim();
   if (!trimmed) return "";
@@ -29,6 +32,7 @@ function stripWrappingQuotes(value) {
   return trimmed;
 }
 
+/** @param {unknown} value */
 function normalizeName(value) {
   const trimmed = String(value ?? "").trim();
   if (!trimmed) return "item";
@@ -42,6 +46,7 @@ function normalizeName(value) {
   return normalized || "item";
 }
 
+/** @param {unknown} value */
 function codexName(value) {
   const trimmed = String(value ?? "").trim();
   if (!trimmed) return "item";
@@ -55,6 +60,7 @@ function codexName(value) {
   return normalized || "item";
 }
 
+/** @param {unknown} value @param {number} [maxLength] */
 function sanitizeDescription(value, maxLength = CODEX_DESCRIPTION_MAX_LENGTH) {
   const normalized = String(value ?? "")
     .replace(/\s+/g, " ")
@@ -67,6 +73,7 @@ function sanitizeDescription(value, maxLength = CODEX_DESCRIPTION_MAX_LENGTH) {
   );
 }
 
+/** @param {string} base @param {Set<string>} used */
 function uniqueName(base, used) {
   if (!used.has(base)) {
     used.add(base);
@@ -81,6 +88,7 @@ function uniqueName(base, used) {
   return name;
 }
 
+/** @param {string} raw */
 function parseFrontmatter(raw) {
   const lines = raw.split(/\r?\n/);
   if (lines.length === 0 || lines[0].trim() !== "---") {
@@ -98,6 +106,7 @@ function parseFrontmatter(raw) {
   return { data, body };
 }
 
+/** @param {string[]} lines */
 function findClosingFrontmatterDelimiter(lines) {
   for (let i = 1; i < lines.length; i += 1) {
     if (lines[i].trim() === "---") return i;
@@ -105,6 +114,7 @@ function findClosingFrontmatterDelimiter(lines) {
   return -1;
 }
 
+/** @param {string} source @returns {Record<string, unknown>} */
 function parseYamlDocument(source) {
   if (!String(source ?? "").trim()) return {};
   const normalizedSource = normalizeLegacyPlainScalars(source);
@@ -117,10 +127,12 @@ function parseYamlDocument(source) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
   }
-  return value;
+  return /** @type {Record<string, unknown>} */ (value);
 }
 
+/** @param {string} source */
 function normalizeLegacyPlainScalars(source) {
+  /** @type {string[]} */
   const normalized = [];
   let blockScalarParentIndent = null;
 
@@ -151,6 +163,7 @@ function normalizeLegacyPlainScalars(source) {
   return normalized.join("\n");
 }
 
+/** @param {string} line */
 function startsYamlBlockScalar(line) {
   const value = yamlLineValue(line);
   if (!value) return false;
@@ -159,6 +172,7 @@ function startsYamlBlockScalar(line) {
   return /^[|>][+-]?\d*(?:\s+#.*)?$/.test(scalar);
 }
 
+/** @param {string} line */
 function yamlLineValue(line) {
   const raw = String(line ?? "");
   if (!raw.trim() || raw.trimStart().startsWith("#")) return null;
@@ -172,11 +186,13 @@ function yamlLineValue(line) {
   return null;
 }
 
+/** @param {string} line */
 function leadingWhitespaceLength(line) {
   const match = String(line ?? "").match(/^[ \t]*/);
   return match ? match[0].length : 0;
 }
 
+/** @param {string} line @param {LegacyScalarOptions} [options] */
 function normalizeLegacyPlainScalarLine(line, options = {}) {
   if (!String(line ?? "").trim() || String(line).trimStart().startsWith("#")) {
     return line;
@@ -207,6 +223,7 @@ function normalizeLegacyPlainScalarLine(line, options = {}) {
   return line;
 }
 
+/** @param {string[]} lines @param {number} index */
 function shouldTreatSequenceItemAsMap(lines, index) {
   const line = String(lines[index] ?? "");
   const sequenceMatch = line.match(/^(\s*)-\s+(.+)$/);
@@ -220,6 +237,7 @@ function shouldTreatSequenceItemAsMap(lines, index) {
   );
 }
 
+/** @param {string[]} lines @param {number} startIndex */
 function nextSignificantYamlLine(lines, startIndex) {
   for (let index = startIndex; index < lines.length; index += 1) {
     const line = String(lines[index] ?? "");
@@ -230,6 +248,7 @@ function nextSignificantYamlLine(lines, startIndex) {
   return null;
 }
 
+/** @param {unknown} value */
 function parseCompactMappingValue(value) {
   const match = String(value ?? "").match(/^([^#\s][^:]*):(.*)$/);
   if (!match) return null;
@@ -238,12 +257,14 @@ function parseCompactMappingValue(value) {
   return { key: match[1].trim(), value: separator.trim() };
 }
 
+/** @param {string} value @param {LegacyScalarOptions} [options] */
 function quoteLegacyPlainScalar(value, options = {}) {
   const trimmed = String(value ?? "").trim();
   if (!shouldQuoteLegacyPlainScalar(trimmed, options)) return value;
   return JSON.stringify(trimmed);
 }
 
+/** @param {string} value @param {LegacyScalarOptions} [options] */
 function shouldQuoteLegacyPlainScalar(value, options = {}) {
   if (!value) return false;
   if (/^["']/.test(value)) return false;
@@ -260,6 +281,7 @@ function shouldQuoteLegacyPlainScalar(value, options = {}) {
   return true;
 }
 
+/** @param {unknown} value */
 function isValidYamlFlowCollection(value) {
   const trimmed = String(value ?? "").trim();
   const isSequence = trimmed.startsWith("[");
@@ -273,11 +295,13 @@ function isValidYamlFlowCollection(value) {
   return isSequence ? isSeq(document.contents) : isMap(document.contents);
 }
 
+/** @param {unknown} node @returns {unknown} */
 function yamlNodeToValue(node) {
   if (!node) return null;
   if (isScalar(node)) return yamlScalarToValue(node);
   if (isSeq(node)) return node.items.map((item) => yamlNodeToValue(item));
   if (isMap(node)) {
+    /** @type {Record<string, unknown>} */
     const data = {};
     for (const pair of node.items) {
       if (!pair?.key) continue;
@@ -287,9 +311,14 @@ function yamlNodeToValue(node) {
     }
     return data;
   }
-  return node.toJSON ? node.toJSON() : undefined;
+  if (node && typeof node === "object" && "toJSON" in node) {
+    const toJSON = /** @type {{ toJSON?: unknown }} */ (node).toJSON;
+    if (typeof toJSON === "function") return toJSON.call(node);
+  }
+  return undefined;
 }
 
+/** @param {import("yaml").Scalar} node */
 function yamlScalarToValue(node) {
   if (
     typeof node.value === "string" &&
@@ -300,6 +329,7 @@ function yamlScalarToValue(node) {
   return node.value;
 }
 
+/** @param {Record<string, unknown>} data @param {string} body */
 function formatFrontmatter(data, body) {
   const frontmatter = stripUndefinedEntries(data);
   const yaml = YAML.stringify(frontmatter, YAML_STRINGIFY_OPTIONS).trimEnd();
@@ -311,7 +341,9 @@ function formatFrontmatter(data, body) {
   return ["---", yaml, "---", "", body].join("\n");
 }
 
+/** @param {Record<string, unknown>} data */
 function stripUndefinedEntries(data) {
+  /** @type {Record<string, unknown>} */
   const result = {};
   for (const [key, value] of Object.entries(data ?? {})) {
     if (value !== undefined) {

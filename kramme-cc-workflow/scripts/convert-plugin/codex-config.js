@@ -15,14 +15,22 @@ const {
  * @property {string} header
  * @property {string} content
  *
- * @typedef {Object} CodexMcpServer
- * @property {string} [command]
- * @property {string[]} [args]
- * @property {Record<string, string>} [env]
- * @property {string} [url]
- * @property {Record<string, string>} [headers]
+ * @typedef {import("./contracts").CodexBundle} CodexBundle
+ * @typedef {import("./contracts").CodexHookPlugin} CodexHookPlugin
+ * @typedef {import("./contracts").CodexMcpServer} CodexMcpServer
+ * @typedef {import("./contracts").InstallEntries} InstallEntries
+ * @typedef {Pick<InstallEntries, "pluginCaches" | "hookMarketplaces">} PreviousConfigEntries
+ * @typedef {{ name: string, marketplaceName: string }} CodexHookPluginRef
+ * @typedef {Pick<CodexBundle, "mcpServers" | "codexPlugin">} CodexConfigBundle
  */
 
+/**
+ * @param {string} codexRoot
+ * @param {string} codexStagingRoot
+ * @param {CodexConfigBundle} bundle
+ * @param {PreviousConfigEntries} previousEntries
+ * @param {string} pluginName
+ */
 async function stageCodexConfig(
   codexRoot,
   codexStagingRoot,
@@ -70,15 +78,18 @@ async function stageCodexConfig(
   return stagedConfigPath;
 }
 
+/** @param {string} pluginName @returns {CodexHookPluginRef} */
 function codexHookPluginConfigRef(pluginName) {
   const name = normalizeName(pluginName);
   return { name, marketplaceName: name };
 }
 
+/** @param {CodexHookPluginRef} codexPlugin */
 function codexHookMarketplaceEntry(codexPlugin) {
   return path.join(".kramme-plugin-marketplaces", codexPlugin.marketplaceName);
 }
 
+/** @param {string} codexRoot @param {CodexHookPluginRef} codexPlugin */
 function codexHookMarketplaceRoot(codexRoot, codexPlugin) {
   return resolveManagedChild(
     codexRoot,
@@ -87,6 +98,7 @@ function codexHookMarketplaceRoot(codexRoot, codexPlugin) {
   );
 }
 
+/** @param {CodexHookPlugin} codexPlugin */
 function codexHookPluginCacheEntry(codexPlugin) {
   return path.join(
     "cache",
@@ -96,6 +108,7 @@ function codexHookPluginCacheEntry(codexPlugin) {
   );
 }
 
+/** @param {string} codexRoot @param {CodexHookPlugin} codexPlugin @returns {TomlTable[]} */
 function renderCodexHookPluginConfigTables(codexRoot, codexPlugin) {
   const source = codexHookMarketplaceRoot(codexRoot, codexPlugin);
   const lastUpdated = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -118,10 +131,12 @@ function renderCodexHookPluginConfigTables(codexRoot, codexPlugin) {
   ];
 }
 
+/** @param {CodexHookPluginRef} codexPlugin */
 function codexMarketplaceTableHeader(codexPlugin) {
   return `[marketplaces.${formatTomlKey(codexPlugin.marketplaceName)}]`;
 }
 
+/** @param {CodexHookPluginRef} codexPlugin */
 function codexPluginTableHeader(codexPlugin) {
   return `[plugins.${formatTomlKey(`${codexPlugin.name}@${codexPlugin.marketplaceName}`)}]`;
 }
@@ -141,6 +156,7 @@ function upsertTomlTables(existing, tables, { removeHeaders } = {}) {
   return updated;
 }
 
+/** @param {string} existing @param {string[]} headers */
 function removeTomlTables(existing, headers) {
   const removePaths = tomlHeaderPathKeys(headers);
   const lines = String(existing ?? "").split(/\r?\n/);
@@ -163,6 +179,7 @@ function removeTomlTables(existing, headers) {
   return updated;
 }
 
+/** @param {string[]} headers */
 function tomlHeaderPathKeys(headers) {
   const paths = new Set();
   for (const header of headers) {
@@ -175,6 +192,7 @@ function tomlHeaderPathKeys(headers) {
   return paths;
 }
 
+/** @param {string} line */
 function parseTomlTableHeader(line) {
   const trimmed = String(line ?? "").trim();
   const isArrayTable = trimmed.startsWith("[[");
@@ -224,7 +242,9 @@ function findTomlHeaderClose(value, { isArrayTable } = {}) {
   return -1;
 }
 
+/** @param {string} value @returns {string[] | null} */
 function parseTomlDottedKey(value) {
+  /** @type {string[]} */
   const parts = [];
   let current = "";
   let quote = null;
@@ -266,6 +286,7 @@ function parseTomlDottedKey(value) {
   return parts;
 }
 
+/** @param {string} value @returns {string | null} */
 function parseTomlKeyPart(value) {
   const trimmed = String(value ?? "").trim();
   if (!trimmed) return null;
@@ -283,10 +304,12 @@ function parseTomlKeyPart(value) {
   return null;
 }
 
+/** @param {string[]} pathParts */
 function tomlPathKey(pathParts) {
   return JSON.stringify(pathParts);
 }
 
+/** @param {string} value */
 function normalizeTomlWhitespace(value) {
   const content = String(value ?? "");
   return (
@@ -294,13 +317,15 @@ function normalizeTomlWhitespace(value) {
   );
 }
 
+/** @param {string} value @param {string} label */
 function validateTomlDocument(value, label) {
   const content = String(value ?? "");
   if (!content.trim()) return;
   try {
     parseToml(content);
   } catch (error) {
-    throw new Error(`Invalid ${label}: ${error.message}`);
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`Invalid ${label}: ${detail}`);
   }
 }
 
@@ -359,15 +384,18 @@ function renderCodexConfigTables(mcpServers) {
   return { tables, removeHeaders };
 }
 
+/** @param {string} value */
 function formatTomlString(value) {
   return JSON.stringify(value);
 }
 
+/** @param {string} value */
 function formatTomlKey(value) {
   if (/^[A-Za-z0-9_-]+$/.test(value)) return value;
   return JSON.stringify(value);
 }
 
+/** @param {Record<string, string>} entries */
 function formatTomlInlineTable(entries) {
   const parts = Object.entries(entries).map(
     ([key, value]) => `${formatTomlKey(key)} = ${formatTomlString(value)}`,

@@ -8,6 +8,13 @@ const {
 } = require("./codex-shared-scripts");
 const { readText, writeText } = require("./filesystem");
 
+/**
+ * @typedef {import("./contracts").CodexTransformOptions} CodexTransformOptions
+ * @typedef {import("./contracts").SharedScriptReplacement} SharedScriptReplacement
+ * @typedef {CodexTransformOptions & { sharedScriptReplacements?: SharedScriptReplacement[] }} MarkdownRewriteOptions
+ */
+
+/** @param {string} sourceDir @param {string} targetDir @param {MarkdownRewriteOptions} [options] */
 async function rewriteCodexMarkdownResourcesFromSource(
   sourceDir,
   targetDir,
