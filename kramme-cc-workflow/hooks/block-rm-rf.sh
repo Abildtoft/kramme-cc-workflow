@@ -8,43 +8,15 @@ set -uo pipefail
 source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
 exit_if_hook_disabled "block-rm-rf" ""
 
-if ! command -v jq > /dev/null 2>&1; then
-  echo "block-rm-rf hook: jq not found; refusing to run safety hook without JSON parsing. Install jq or disable this hook explicitly." >&2
+PYTHON_REQUIRED_REASON="block-rm-rf hook: python3 not found; refusing to run safety hook without the shared command parser. Install python3 or disable this hook explicitly."
+PARSER_ERROR_REASON="Unable to safely parse command metadata. Refusing potentially destructive deletion command."
+
+if ! source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/safety-hook-parser.sh"; then
+  echo "$PARSER_ERROR_REASON" >&2
   [ ! -t 0 ] && cat > /dev/null
   exit 2
 fi
 
-input=$(cat)
-command=$(echo "$input" | jq -r '.tool_input.command // empty')
-
-# Exit early if no command.
-[ -z "$command" ] && exit 0
-
-block() {
-  local reason="$1"
-  echo "$reason" >&2
-  exit 2
-}
-
-PYTHON_REQUIRED_REASON="block-rm-rf hook: python3 not found; refusing to run safety hook without the shared command parser. Install python3 or disable this hook explicitly."
-PARSER_ERROR_REASON="Unable to safely parse command metadata. Refusing potentially destructive deletion command."
-
-if ! command -v python3 > /dev/null 2>&1; then
-  block "$PYTHON_REQUIRED_REASON"
-fi
-
-if ! decision=$(
-  python3 "${CLAUDE_PLUGIN_ROOT}/hooks/lib/git_command_parser.py" rm-rf "$command"
-); then
-  block "$PARSER_ERROR_REASON"
-fi
-
-if ! reason=$(printf '%s\n' "$decision" | jq -r 'if type == "object" then .block // "__ALLOW__" else error("expected parser decision object") end'); then
-  block "$PARSER_ERROR_REASON"
-fi
-
-if [ "$reason" != "__ALLOW__" ]; then
-  block "$reason"
-fi
+run_safety_hook_parser "block-rm-rf" "rm-rf" "$PYTHON_REQUIRED_REASON" "$PARSER_ERROR_REASON"
 
 exit 0

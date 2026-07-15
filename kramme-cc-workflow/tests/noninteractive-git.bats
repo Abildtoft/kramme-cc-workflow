@@ -51,6 +51,30 @@ run_hook_without_python() {
 	make_bash_input "$cmd" | env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK"
 }
 
+run_hook_without_safety_parser() {
+	local cmd="$1"
+	local plugin_root="$BATS_TEST_TMPDIR/no-safety-parser-plugin"
+	mkdir -p "$plugin_root/hooks/lib"
+	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
+	make_bash_input "$cmd" | env CLAUDE_PLUGIN_ROOT="$plugin_root" bash "$HOOK"
+}
+
+run_hook_with_parser_output() {
+	local cmd="$1"
+	local parser_output="$2"
+	local plugin_root="$BATS_TEST_TMPDIR/parser-output-plugin"
+	rm -rf "$plugin_root"
+	mkdir -p "$plugin_root/hooks/lib"
+	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
+	cp "$BATS_TEST_DIRNAME/../hooks/lib/safety-hook-parser.sh" "$plugin_root/hooks/lib/safety-hook-parser.sh"
+	cat >"$plugin_root/hooks/lib/git_command_parser.py" <<'PYTHON'
+import os
+
+print(os.environ["SAFETY_HOOK_TEST_PARSER_OUTPUT"])
+PYTHON
+	make_bash_input "$cmd" | env SAFETY_HOOK_TEST_PARSER_OUTPUT="$parser_output" CLAUDE_PLUGIN_ROOT="$plugin_root" bash "$HOOK"
+}
+
 PARSER_FIXTURES="$BATS_TEST_DIRNAME/fixtures/git-command-parser-cases.json"
 
 assert_parser_fixture_decision() {
@@ -94,6 +118,18 @@ assert_parser_fixture_decision() {
 	[ -z "$output" ]
 }
 
+@test "blocks malformed hook input" {
+	run bash "$HOOK" <<<'{"tool_input":'
+	is_blocked
+	[[ "$output" == *"Unable to safely parse command metadata"* ]]
+}
+
+@test "blocks malformed parser output" {
+	run run_hook_with_parser_output "git status" '[]'
+	is_blocked
+	[[ "$output" == *"Unable to safely parse command metadata"* ]]
+}
+
 @test "blocks command when jq is unavailable" {
 	run run_hook_without_jq "git commit"
 	is_blocked
@@ -121,6 +157,12 @@ assert_parser_fixture_decision() {
 	[[ "$output" == *"python3 not found"* ]]
 	[[ "$output" == *"refusing to run safety hook without the shared git command parser"* ]]
 	[[ "$output" == *"Install python3 or disable this hook explicitly"* ]]
+}
+
+@test "blocks command when shared safety parser is unavailable" {
+	run run_hook_without_safety_parser "git commit"
+	is_blocked
+	[[ "$output" == *"Unable to safely parse command metadata"* ]]
 }
 
 @test "shared parser fixtures match noninteractive hook decisions" {

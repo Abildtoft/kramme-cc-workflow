@@ -6,12 +6,7 @@ set -uo pipefail
 # Check if hook is enabled
 source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
 exit_if_hook_disabled "confirm-review-responses" ""
-
-if ! command -v jq > /dev/null 2>&1; then
-  echo "confirm-review-responses hook: jq not found; refusing to run safety hook without JSON parsing. Install jq or disable this hook explicitly." >&2
-  [ ! -t 0 ] && cat > /dev/null
-  exit 2
-fi
+source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/safety-hook-parser.sh"
 
 ARTIFACT_LIST_FILE="${CONFIRM_REVIEW_ARTIFACT_LIST_FILE:-${CLAUDE_PLUGIN_ROOT}/hooks/confirm-review-artifacts.txt}"
 COMMAND_SUBSTITUTION_TOKEN="__CMD_SUBST_"
@@ -169,31 +164,15 @@ list_staged_files_for_commit_context() {
   )
 }
 
-input=$(cat)
-command=$(echo "$input" | jq -r '.tool_input.command // empty')
-
-# Exit early if no command.
-[ -z "$command" ] && exit 0
-
-if ! command -v python3 > /dev/null 2>&1; then
-  echo "$PYTHON_REQUIRED_REASON" >&2
-  exit 2
-fi
-
 # Only check git commit commands. Shell/git command parsing is centralized in
 # git_command_parser.py; this hook only inspects staged artifacts for returned
 # commit contexts.
 if ! commit_contexts="$(
-  python3 "${CLAUDE_PLUGIN_ROOT}/hooks/lib/git_command_parser.py" commit-contexts "$command" "$PARSE_ERROR_REASON"
+  run_safety_hook_parser "confirm-review-responses" "commit-contexts" "$PYTHON_REQUIRED_REASON" "$PARSE_ERROR_REASON"
 )"; then
-  echo "$PARSE_ERROR_REASON" >&2
   exit 2
 fi
-if ! commit_context_count="$(printf '%s\n' "$commit_contexts" | jq -e 'if type == "array" then length else error("expected commit context array") end')"; then
-  echo "$PARSE_ERROR_REASON" >&2
-  exit 2
-fi
-if [ "$commit_context_count" -eq 0 ]; then
+if [ "$(printf '%s\n' "$commit_contexts" | jq 'length')" -eq 0 ]; then
   exit 0
 fi
 
