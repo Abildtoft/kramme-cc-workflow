@@ -667,7 +667,7 @@ EOF
   [[ "$resolver_text" == *"replace **To proceed** with **Selected resolution** and a concrete **Process handoff**"* ]]
   [[ "$resolver_text" == *"Keep the finding deferred until the process action is completed; when the user confirms completion, mark it addressed. Do not route an accepted process decision back through code implementation."* ]]
   [[ "$resolver_text" == *"Waiting on"* ]]
-  [[ "$resolver_text" == *"remove the proposal-only \`Manual blocker\`, \`Next human decision\`, \`Recommended resolution\`, \`Alternatives\`, \`To proceed\`, \`Process handoff\`, and \`Waiting on\` fields"* ]]
+  [[ "$resolver_text" == *"apply the completed-decision replacement in \`references/resolution-output.md\`"* ]]
   [[ "$resolver_text" == *"Read \`references/resolution-output.md\` before writing or updating manual findings."* ]]
   [[ "$resolver_output_text" == *"**Recommended resolution:**"* ]]
   [[ "$resolver_output_text" == *"**Alternatives:** (omit when no genuinely distinct option exists)"* ]]
