@@ -2598,9 +2598,10 @@ test("writer serializes concurrent installs and publishes matching ownership", a
       "Skill v2\n",
     );
 
-    const state = await readJson(
-      path.join(root, ".codex", ".kramme-install-state.json"),
-    );
+    const state =
+      /** @type {{ plugins: Record<string, { codex: unknown }> }} */ (
+        await readJson(path.join(root, ".codex", ".kramme-install-state.json"))
+      );
     const manifest = await readJson(
       path.join(
         root,
@@ -3256,7 +3257,9 @@ test("writer retains committed recovery state when transaction cleanup fails", a
       assert.equal(await pathExists(lockPath), true);
     }
     const ownerPath = path.join(lockPaths[0], "owner.json");
-    const owner = await readJson(ownerPath);
+    const owner = /** @type {{ journalPath: string }} */ (
+      await readJson(ownerPath)
+    );
     const journal = await readJson(owner.journalPath);
     assert.equal(journal.status, "committed");
     assert.equal(
@@ -3565,6 +3568,7 @@ function deferred() {
   return { promise, resolve };
 }
 
+/** @param {number} milliseconds */
 function delayForTest(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }

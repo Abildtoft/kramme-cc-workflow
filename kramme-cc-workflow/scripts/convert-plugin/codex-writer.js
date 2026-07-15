@@ -209,6 +209,7 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   }
 }
 
+/** @param {TransactionalWriteCodexOptions} options @param {string} phase */
 async function notifyInstallPhase(options, phase) {
   if (typeof options.onInstallPhase === "function") {
     await options.onInstallPhase(phase);

@@ -6,12 +6,12 @@
     "lib": ["ES2022"],
     "module": "commonjs",
     "moduleResolution": "node10",
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     "noEmit": true,
     "skipLibCheck": true,
     "target": "ES2022",
     "types": ["node"],
-    "useUnknownInCatchVariables": false
+    "useUnknownInCatchVariables": true
   },
   "include": [
     "scripts/convert-plugin.js",

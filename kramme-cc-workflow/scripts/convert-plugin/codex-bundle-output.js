@@ -43,6 +43,7 @@ const {
  * @typedef {import("./contracts").SharedScriptDir} SharedScriptDir
  * @typedef {import("./contracts").SharedScriptFile} SharedScriptFile
  * @typedef {import("./contracts").WriteCodexOptions} WriteCodexOptions
+ * @typedef {WriteCodexOptions & { onInstallPhase?: (phase: string) => (void | Promise<void>) }} BundleWriteOptions
  * @typedef {Object} StagedBundle
  * @property {string | null} agentSkillsRoot
  * @property {string | null} agentStagingRoot
@@ -539,6 +540,7 @@ async function finalizeCodexBundleOutput(
   };
 }
 
+/** @param {BundleWriteOptions} options @param {string} phase */
 async function notifyInstallPhase(options, phase) {
   if (typeof options.onInstallPhase === "function") {
     await options.onInstallPhase(phase);
