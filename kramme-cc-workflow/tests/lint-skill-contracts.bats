@@ -1563,7 +1563,15 @@ EOF
 
   cat >"$TMP_ROOT/term-bin/ln" <<'EOF'
 #!/bin/sh
-helper_pid=$(ps -o ppid= -p "$PPID" | tr -d ' ')
+operation_token=$(sed -n '2p' "$1")
+case "$operation_token" in
+  operation:[0-9]*:*) helper_pid=${operation_token#operation:} ;;
+  *) exit 1 ;;
+esac
+helper_pid=${helper_pid%%:*}
+case "$helper_pid" in
+  '' | *[!0-9]*) exit 1 ;;
+esac
 kill -TERM "$helper_pid"
 exit 1
 EOF
@@ -1577,7 +1585,15 @@ EOF
   cat >"$TMP_ROOT/kill-bin/ln" <<'EOF'
 #!/bin/sh
 /bin/ln "$@" || exit
-helper_pid=$(ps -o ppid= -p "$PPID" | tr -d ' ')
+operation_token=$(sed -n '2p' "$1")
+case "$operation_token" in
+  operation:[0-9]*:*) helper_pid=${operation_token#operation:} ;;
+  *) exit 1 ;;
+esac
+helper_pid=${helper_pid%%:*}
+case "$helper_pid" in
+  '' | *[!0-9]*) exit 1 ;;
+esac
 kill -KILL "$helper_pid"
 EOF
   chmod +x "$TMP_ROOT/kill-bin/ln"
