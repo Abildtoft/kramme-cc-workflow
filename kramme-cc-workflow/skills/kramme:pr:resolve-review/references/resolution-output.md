@@ -39,6 +39,6 @@ Do not leave proposal-only fields on an addressed or acknowledged finding.
 At the end, include:
 
 - Summary of changes made.
-- Count of findings: N addressed, M deferred as out-of-scope, A manual findings awaiting a user decision, P accepted process handoffs awaiting completion, and X manual findings waiting on an external owner, approval, or access.
+- Count of findings: N addressed, M deferred as out-of-scope, R open selected-resolution retries or blocked implementations, A manual findings awaiting a user decision, P accepted process handoffs awaiting completion, and X manual findings waiting on an external owner, approval, or access.
 - Any breaking changes to API contracts or config behavior.
 - Areas that need manual verification due to potential edge cases or risk.
