@@ -14,6 +14,7 @@ Use these markers so the user (and downstream tooling) can skim status at a glan
 - **NOTICED BUT NOT TOUCHING** — a pre-existing issue or out-of-scope observation surfaced during review. `NOTICED BUT NOT TOUCHING: the whole retry helper swallows errors, but that's outside this PR`.
 - **CONFUSION** — the reviewer can't decide whether something is a bug without more context. `CONFUSION: the nullable return from getUser() is new here; is None a valid result or a missing check?`
 - **MISSING REQUIREMENT** — spec or intent is ambiguous; a product decision is needed before the review can complete. `MISSING REQUIREMENT: no guidance on how to handle the duplicate-email case — ask before approving`.
+- **OVERENGINEERING** — the finding comes from the Overengineering Check and must receive cleanup-dimension precedence regardless of which reviewer emitted it. Put `OVERENGINEERING` on its own line in the raw finding.
 
 ## Finding schema
 
@@ -63,7 +64,7 @@ Only **low-confidence** dead-code findings require the author's or maintainer's 
 
 A high-confidence dead-code finding is `gated_auto` (or, in Suggestions, passes the safe-advisory test): `/kramme:pr:resolve-review` may delete it without a separate approval. A dead-code finding that misses any bar above is **low-confidence** and stays `manual` with the `dead-code approval` blocker until the ask is answered.
 
-Because `high` maps to 80, an auto-removable dead-code finding usually sits in the 60-89 confidence band rather than 90-100, and that is intended. The bands under **Confidence and merge rules** below score how fully a finding's *runtime behavior* was traced; dead-code removal safety instead turns on *static reference completeness* — no remaining references anywhere. A removal can be fully traced against every reference yet still carry residual dynamic-reference risk, so a complete reference trace at `Confidence` at least 70 — not 90 — is the intended auto-removal bar here.
+Because `high` maps to 80, an auto-removable dead-code finding usually sits in the 60-89 confidence band rather than 90-100, and that is intended. The bands under **Confidence and merge rules** below score how fully a finding's _runtime behavior_ was traced; dead-code removal safety instead turns on _static reference completeness_ — no remaining references anywhere. A removal can be fully traced against every reference yet still carry residual dynamic-reference risk, so a complete reference trace at `Confidence` at least 70 — not 90 — is the intended auto-removal bar here.
 
 ## Action classes
 
@@ -116,6 +117,7 @@ Watch for these excuses — they signal the review is slipping into low-value te
 | "AI wrote it, and the tests pass." | AI-generated code needs more scrutiny, not less — it's confident even when wrong. Read the diff as if a new hire wrote it under deadline. |
 | "We can clean this up in a follow-up." | Follow-ups are negotiable; the diff on screen is not. Land safe cleanup now or mark it clearly, unless it collides with an unresolved correctness/security finding. |
 | "I'll re-review when they push again." | Re-review is a checkpoint, not a finding delivery mechanism. Surface every finding on the first pass or they rot across round-trips. |
+| "This will make it easier to extend later." | Speculative flexibility is a real cost today and a guess about tomorrow. Recommend the simplest change that meets the actual requirements; an abstraction earns its keep when the second caller arrives. |
 
 ## Red flags — STOP
 
@@ -126,6 +128,7 @@ If any of these are true, pause and re-scope the review before posting it:
 - You're rewriting the PR in your head instead of reviewing the diff in front of you.
 - You're flagging style issues the project doesn't enforce anywhere else.
 - You're requiring defensive checks, logging, retries, or validation layers that nearby code intentionally does not use, and you cannot point to a concrete new failure path.
+- You're asking for flexibility, configurability, abstraction, or edge-case handling for scenarios the requirements don't include — or a recommended fix adds a layer the smallest direct change doesn't need.
 - You're approving because the CI is green, not because the change definitely improves overall code health.
 - A dead-code finding is phrased as an instruction (`"delete X"`) instead of the ask shape (`DEAD CODE IDENTIFIED: X. Safe to remove these?`).
 - You have no `FYI` in the Strengths section — a review with zero positive observations is usually miscalibrated, not comprehensive.
@@ -146,6 +149,8 @@ Before posting the review, confirm:
 - [ ] Pre-existing or out-of-scope observations are labeled `NOTICED BUT NOT TOUCHING`.
 - [ ] Every emphasized dimension in `--emphasize` actually produced findings in this review (or you noted that it didn't).
 - [ ] No finding is presented as certain when the reviewer didn't trace it — those are labeled `UNVERIFIED`.
+- [ ] Every finding produced by the Overengineering Check is labeled `OVERENGINEERING` before cleanup precedence is applied.
+- [ ] No recommended fix introduces abstractions, layers, or hypothetical edge-case handling beyond what its evidence requires, and overengineering findings without concrete present cost sit in Suggestions as `advisory`.
 - [ ] Cleanup-dimension findings (`lean`, `refactor`, `simplify`) that collide with unresolved correctness/security findings were suppressed or kept only as advisory suggestions blocked by the higher-priority finding.
 - [ ] Kept cleanup-collision suggestions name the final blocking `CR-XXX` ID after finding IDs are assigned.
 - [ ] `gated_auto` appears only on code-backed findings with a concrete location and a clear fix path.

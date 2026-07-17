@@ -143,6 +143,8 @@ For each finding, assign one of:
 
 ## Output Format
 
+Return classifications over the original finding records, not abbreviated replacement findings. Preserve every input field, source-agent identifier, and standalone marker such as `OVERENGINEERING` verbatim; add only the validation classification and evidence described below. The abbreviated examples show the validation fields, not a lossy projection schema.
+
 ```markdown
 ## Review Relevance Validation
 
@@ -203,6 +205,7 @@ Issues in files not modified in this review scope:
 ## Guidelines
 
 - **Err on the side of keeping**: When uncertain, classify as "Likely Related" rather than filtering
+- **Preserve the original record**: Return every raw finding field and standalone marker unchanged so downstream aggregation can still apply precedence, action-class, and marker-specific rules
 - **Preserve the classification**: The caller decides whether its reporting policy keeps or filters `Likely Related`; do not silently promote it to `Validated`
 - **Be transparent**: Always explain why a finding was filtered
 - **Handle missing line numbers**: If a finding lacks a line number, validate by file presence only
