@@ -643,6 +643,9 @@ EOF
   [[ "$skill_text" == *"default to \`gated_auto\` with owner \`resolver\`"* ]]
   [[ "$skill_text" == *"\`Manual blocker: <one of the blocker categories above>\`"* ]]
   [[ "$skill_text" == *"**Auto-resolution Readiness**"* ]]
+  [[ "$skill_text" == *"Label every finding produced by this check with \`OVERENGINEERING\`"* ]]
+  [[ "$skill_text" == *"Treat findings labeled \`OVERENGINEERING\` by any reviewer the same way."* ]]
+  [[ "$skill_text" == *"Overengineering findings default to Suggestion with action class \`advisory\`."* ]]
   emphasis_line="$(grep -nF "Track the count of promoted findings for the report." <<<"$skill_text" | cut -d: -f1)"
   normalization_line="$(grep -nF "After emphasis adjustments, run an **action-class normalization pass**." <<<"$skill_text" | cut -d: -f1)"
   [ "$normalization_line" -gt "$emphasis_line" ]
@@ -654,9 +657,14 @@ EOF
 
   [[ "$discipline_text" == *"Critical or Important PR-caused findings default to \`gated_auto\`"* ]]
   [[ "$discipline_text" == *"Every manual Critical/Important finding includes \`Manual blocker\` and \`Next human decision\`"* ]]
+  [[ "$discipline_text" == *"**OVERENGINEERING** — the finding comes from the Overengineering Check"* ]]
+  [[ "$discipline_text" == *"Every finding produced by the Overengineering Check is labeled \`OVERENGINEERING\`"* ]]
 
   [[ "$team_text" == *"Treat teammate action classes as provisional."* ]]
   [[ "$team_text" == *"Include the \`## Auto-resolution Readiness\` section from the standard template"* ]]
+  [[ "$team_text" == *"Label every finding produced by this check with \`OVERENGINEERING\`"* ]]
+  [[ "$team_text" == *"findings labeled \`OVERENGINEERING\` by any teammate the same way."* ]]
+  [[ "$team_text" == *"Overengineering findings default to Suggestion with action class \`advisory\`."* ]]
 
   [[ "$resolver_text" == *"\`Manual blocker\`, and \`Next human decision\`"* ]]
   [[ "$resolver_text" == *"manual blocker, and next human decision when available"* ]]

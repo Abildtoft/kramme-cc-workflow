@@ -178,7 +178,15 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - If the reviewer cannot prove the failure path from the diff, call it `UNVERIFIED` or `CONFUSION` and keep the recommendation optional.
    - Security and data-loss risks may override local style, but the finding must name the concrete exploit path, information disclosure, corruption path, or user-visible failure that justifies stronger defensive handling.
 
-   Instruct each spawned reviewer to label findings with the output markers documented in `references/review-discipline.md` (`UNVERIFIED`, `NOTICED BUT NOT TOUCHING`, `CONFUSION`, `MISSING REQUIREMENT`) so the aggregated report is parseable.
+   Instruct every reviewer to apply this **Overengineering Check** alongside the calibration rule:
+   - The right solution is the simplest one that fully and reliably meets the specific requirements and fits the existing architecture and established patterns of the codebase. Judge the diff against that bar, and hold every recommended fix to the same bar.
+   - Flag complexity the current task does not require: premature abstractions, unnecessary layers or indirection, speculative generality (configuration, parameters, or extension points with a single real caller or value), handling for purely hypothetical edge cases, and functionality beyond the change's scope. Name the concrete simpler alternative in the finding.
+   - Do not flag handling of real and likely edge cases as overengineering; robustness for failure paths the review scope actually introduces is required work, not speculation. The line is hypothetical future scenarios, not present requirements.
+   - Overengineering findings default to Suggestion with action class `advisory`. Classify one as Important only when the unnecessary complexity has concrete present cost: it conceals or invites a bug, materially obscures the change under review, or creates a public surface other code must adopt.
+   - Never recommend a fix that adds abstractions, layers, or hypothetical edge-case handling beyond what the finding's evidence requires; recommend the smallest direct change that resolves the finding.
+   - Label every finding produced by this check with `OVERENGINEERING` on its own line so aggregation can apply cleanup precedence independently of the source reviewer.
+
+   Instruct each spawned reviewer to label findings with the output markers documented in `references/review-discipline.md` (`UNVERIFIED`, `NOTICED BUT NOT TOUCHING`, `CONFUSION`, `MISSING REQUIREMENT`, `OVERENGINEERING`) so the aggregated report is parseable.
 
    If any of `code`, `refactor`, or `simplify` is active, read `references/fowler-smell-baseline.md` once and pass it only to the corresponding `kramme:code-reviewer` and/or `kramme:code-simplifier` reviewers as advisory vocabulary after documented repo standards, the Codebase Calibration Rule, and concrete diff evidence. Each smell finding must name the smell, cite the changed location, explain why it matters in this diff, and recommend the smallest local fix; do not report smells as hard violations, duplicate tooling-enforced issues, or promote optional cleanup unless it creates concrete blocking impact under the action-class rules.
 
@@ -271,7 +279,7 @@ After validation, slop meta-review, and previous-review processing, dedupe and m
 
 Then apply the **correctness/security precedence pass** before emphasis:
 
-- Treat findings from `kramme:lean-reviewer` and cleanup-mode `kramme:code-simplifier` as cleanup-dimension findings (`lean`, `refactor`, `simplify`).
+- Treat findings from `kramme:lean-reviewer` and cleanup-mode `kramme:code-simplifier` as cleanup-dimension findings (`lean`, `refactor`, `simplify`). Treat findings labeled `OVERENGINEERING` by any reviewer the same way.
 - Treat unresolved Critical or Important findings from `kramme:code-reviewer`, `kramme:silent-failure-hunter`, `kramme:pr-test-analyzer`, `kramme:type-design-analyzer`, `kramme:injection-reviewer`, `kramme:auth-reviewer`, `kramme:data-reviewer`, and `kramme:logic-reviewer` as higher-priority correctness/security findings when they are still active after previous-review processing.
 - A cleanup finding collides when its recommended deletion, replacement, abstraction removal, simplification, or reuse would remove or weaken validation, auth, authorization, injection protection, data protection, error propagation, test coverage, type invariants, or the concrete fix path of an unresolved correctness/security finding.
 - If a cleanup finding collides with an unresolved correctness/security finding:

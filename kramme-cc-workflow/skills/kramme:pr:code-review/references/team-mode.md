@@ -70,6 +70,15 @@ Each teammate must also apply this **Codebase Calibration Rule** before making a
 - If the reviewer cannot prove the failure path from the diff, call it `UNVERIFIED` or `CONFUSION` and keep the recommendation optional.
 - Security and data-loss risks may override local style, but the finding must name the concrete exploit path, information disclosure, corruption path, or user-visible failure that justifies stronger defensive handling.
 
+Each teammate must also apply this **Overengineering Check** alongside the calibration rule:
+
+- The right solution is the simplest one that fully and reliably meets the specific requirements and fits the existing architecture and established patterns of the codebase. Judge the diff against that bar, and hold every recommended fix to the same bar.
+- Flag complexity the current task does not require: premature abstractions, unnecessary layers or indirection, speculative generality (configuration, parameters, or extension points with a single real caller or value), handling for purely hypothetical edge cases, and functionality beyond the change's scope. Name the concrete simpler alternative in the finding.
+- Do not flag handling of real and likely edge cases as overengineering; robustness for failure paths the review scope actually introduces is required work, not speculation. The line is hypothetical future scenarios, not present requirements.
+- Overengineering findings default to Suggestion with action class `advisory`. Classify one as Important only when the unnecessary complexity has concrete present cost: it conceals or invites a bug, materially obscures the change under review, or creates a public surface other code must adopt.
+- Never recommend a fix that adds abstractions, layers, or hypothetical edge-case handling beyond what the finding's evidence requires; recommend the smallest direct change that resolves the finding.
+- Label every finding produced by this check with `OVERENGINEERING` on its own line so aggregation can apply cleanup precedence independently of the source reviewer.
+
 Each teammate must return the shared finding schema from `references/review-discipline.md`: severity, location, confidence, action class, owner, evidence, and relevance status. Leave Finding ID blank in raw teammate output; the aggregator assigns stable `CR-001`, `CR-002`, ... IDs after dedupe so team output stays compatible with standard `/kramme:pr:code-review`.
 
 Treat teammate action classes as provisional. The final team aggregator must apply the same action-class normalization pass as standard `/kramme:pr:code-review` Step 11:
@@ -167,7 +176,7 @@ After all tasks complete:
 6. Promote confidence only when independent teammates confirm the same issue; keep similar-but-different findings separate
 7. Record contradictions as `CONFUSION` or `MISSING REQUIREMENT` with action class `manual`
 8. Apply the same correctness/security precedence pass as standard `/kramme:pr:code-review` Step 11 before emphasis or action-class normalization:
-   - Treat lean-reviewer and cleanup-mode code-simplifier findings as cleanup-dimension findings.
+   - Treat lean-reviewer and cleanup-mode code-simplifier findings as cleanup-dimension findings, and treat findings labeled `OVERENGINEERING` by any teammate the same way.
    - Treat unresolved Critical/Important findings from code-reviewer, silent-failure-hunter, pr-test-analyzer, type-design-analyzer, injection-reviewer, auth-reviewer, data-reviewer, and logic-reviewer as higher-priority correctness/security findings.
    - If a cleanup finding would remove or weaken validation, auth, injection protection, data protection, error propagation, test coverage, type invariants, or the fix path for an unresolved correctness/security finding, do not promote it, do not assign `gated_auto`, and either drop it or keep it only as an advisory Suggestion blocked by the higher-priority finding.
 9. Apply emphasis using the standard `/kramme:pr:code-review` Step 11 rules. Cleanup-dimension findings may be promoted only provisionally; action-class normalization wins and moves optional cleanup without concrete merge-blocking impact back to Suggestions with action class `advisory`.
