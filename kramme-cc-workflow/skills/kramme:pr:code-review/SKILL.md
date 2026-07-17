@@ -228,7 +228,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - Launch **kramme:pr-relevance-validator** with all findings, the resolved `BASE_BRANCH`, and `PR_CONTEXT_JSON` if present
    - Validator cross-references each finding against the full review scope (committed PR diff + staged/unstaged/untracked local changes, plus PR title/body for PR description findings)
    - Filters out pre-existing issues and out-of-scope problems
-   - Returns only findings caused by this review scope
+   - Treat validator output as classifications over the original finding records, not replacement findings. Preserve every raw field, source agent, and standalone marker such as `OVERENGINEERING`; the validator may only add its relevance classification and evidence before returning findings caused by this review scope.
 
 9. **Slop Meta-Review**
 
@@ -236,6 +236,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - Launch a second invocation of **kramme:deslop-reviewer**. Open the prompt with `Operate in meta-review mode.` and pass the list of validated findings/suggestions as the only input -- do not pass a diff. The agent's description documents both modes; the input shape and this directive together select meta-review mode.
    - Flags suggestions that would introduce slop if implemented, especially defensive programming that does not match local codebase practice or lacks a concrete failure path
    - Adds slop warnings to flagged suggestions (does not remove them)
+   - Treat meta-review output as annotations over the original finding records. Preserve every raw field and standalone marker so later precedence and action-class passes receive the same finding identity.
 
 10. **Apply Previous Review Context**
 
@@ -380,7 +381,7 @@ For command examples covering default, aspect-filtered, parallel, emphasized, cu
 
 ## Review discipline
 
-`references/review-discipline.md` holds the reviewer-craft conventions used by every spawned reviewer and by the orchestrator's final-check pass: the output markers (`UNVERIFIED`, `NOTICED BUT NOT TOUCHING`, `CONFUSION`, `MISSING REQUIREMENT`), the common rationalizations to watch for, the red-flag stop list, and the pre-posting verification checklist.
+`references/review-discipline.md` holds the reviewer-craft conventions used by every spawned reviewer and by the orchestrator's final-check pass: the output markers (`UNVERIFIED`, `NOTICED BUT NOT TOUCHING`, `CONFUSION`, `MISSING REQUIREMENT`, `OVERENGINEERING`), the common rationalizations to watch for, the red-flag stop list, and the pre-posting verification checklist.
 
 - **Step 7** must pass the output-marker convention to each spawned reviewer so findings come back labeled consistently.
 - **Step 13** must run the verification checklist before posting the aggregated report.

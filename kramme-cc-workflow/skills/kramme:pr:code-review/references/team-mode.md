@@ -146,6 +146,7 @@ Create tasks in the shared task list:
 - "Cross-review: meta-review all findings for slop" -- assigned to deslop-reviewer
 - Pass the findings list (not a diff) and open the task prompt with `Operate in meta-review mode.` The agent's description documents both modes; the input shape and this directive together select meta-review mode.
 - Messages individual reviewers if their suggestions would introduce slop, especially defensive programming that does not match local codebase practice or lacks a concrete failure path
+- Treat meta-review output as annotations over the original finding records. Preserve every raw field and standalone marker such as `OVERENGINEERING`.
 
 **Phase 3 task (blocked on Phase 2):**
 
@@ -154,6 +155,7 @@ Create tasks in the shared task list:
 - Pass `BASE_BRANCH`, `BASE_REF`, `MERGE_BASE`, `CHANGED_FILES`, and `PR_CONTEXT_JSON` from Step 1 so relevance validation uses the same unified scope and PR description context
 - Cross-references all findings against the full review scope (committed PR diff + staged/unstaged/untracked local changes, plus PR title/body for PR description findings)
 - Filters pre-existing and out-of-scope issues
+- Treat validator output as classifications over the original finding records, not replacement findings. Preserve every raw field, source teammate, and standalone marker; add only the relevance classification and evidence.
 
 ### Step 4: Monitor and Facilitate
 

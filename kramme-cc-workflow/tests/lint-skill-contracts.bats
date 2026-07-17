@@ -625,6 +625,7 @@ EOF
   local template_text
   local discipline_text
   local team_text
+  local relevance_validator_text
   local resolver_text
   local resolver_team_text
   local resolver_output_text
@@ -635,6 +636,7 @@ EOF
   template_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/output-template.md")"
   discipline_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/review-discipline.md")"
   team_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/team-mode.md")"
+  relevance_validator_text="$(cat "$BATS_TEST_DIRNAME/../agents/kramme:pr-relevance-validator.md")"
   resolver_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/SKILL.md")"
   resolver_team_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/references/team-mode.md")"
   resolver_output_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/references/resolution-output.md")"
@@ -646,6 +648,9 @@ EOF
   [[ "$skill_text" == *"Label every finding produced by this check with \`OVERENGINEERING\`"* ]]
   [[ "$skill_text" == *"Treat findings labeled \`OVERENGINEERING\` by any reviewer the same way."* ]]
   [[ "$skill_text" == *"Overengineering findings default to Suggestion with action class \`advisory\`."* ]]
+  [[ "$skill_text" == *"Treat validator output as classifications over the original finding records, not replacement findings."* ]]
+  [[ "$skill_text" == *"Treat meta-review output as annotations over the original finding records."* ]]
+  [[ "$skill_text" == *"\`MISSING REQUIREMENT\`, \`OVERENGINEERING\`"* ]]
   emphasis_line="$(grep -nF "Track the count of promoted findings for the report." <<<"$skill_text" | cut -d: -f1)"
   normalization_line="$(grep -nF "After emphasis adjustments, run an **action-class normalization pass**." <<<"$skill_text" | cut -d: -f1)"
   [ "$normalization_line" -gt "$emphasis_line" ]
@@ -665,6 +670,11 @@ EOF
   [[ "$team_text" == *"Label every finding produced by this check with \`OVERENGINEERING\`"* ]]
   [[ "$team_text" == *"findings labeled \`OVERENGINEERING\` by any teammate the same way."* ]]
   [[ "$team_text" == *"Overengineering findings default to Suggestion with action class \`advisory\`."* ]]
+  [[ "$team_text" == *"Treat meta-review output as annotations over the original finding records."* ]]
+  [[ "$team_text" == *"Treat validator output as classifications over the original finding records, not replacement findings."* ]]
+
+  [[ "$relevance_validator_text" == *"Return classifications over the original finding records, not abbreviated replacement findings."* ]]
+  [[ "$relevance_validator_text" == *"Return every raw finding field and standalone marker unchanged"* ]]
 
   [[ "$resolver_text" == *"\`Manual blocker\`, and \`Next human decision\`"* ]]
   [[ "$resolver_text" == *"manual blocker, and next human decision when available"* ]]
