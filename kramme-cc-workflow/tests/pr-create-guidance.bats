@@ -50,6 +50,20 @@ PY
 	[ "$status" -eq 0 ]
 }
 
+@test "pr-create restores the original index when the include commit fails" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    state="skills/kramme:pr:create/references/state-and-rollback.md"
+
+    grep -qF "INDEX_PATH=\$(git rev-parse --git-path index)" "$state"
+    grep -qF "INDEX_BACKUP=\$(mktemp \"\${INDEX_PATH}.create-pr.XXXXXX\")" "$state"
+    grep -qF "mv -f \"\$INDEX_BACKUP\" \"\$INDEX_PATH\"" "$state"
+  '
+
+	[ "$status" -eq 0 ]
+}
+
 @test "pr-create state and rollback guidance keeps required sections" {
 	run bash -c '
     set -e
