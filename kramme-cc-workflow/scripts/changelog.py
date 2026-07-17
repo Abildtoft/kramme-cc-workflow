@@ -265,7 +265,7 @@ class ChangelogGenerator:
             if category not in entries:
                 continue
 
-            lines.append(f"### {category}")
+            lines.extend([f"### {category}", ""])
             for entry in entries[category]:
                 pr_ref = f" (#{entry.pr_number})" if entry.pr_number else ""
                 lines.append(f"- {entry.message}{pr_ref}")
@@ -358,16 +358,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         lines[insert_idx:insert_idx] = version_lines + [""]
 
         # Find and update link references section
-        link_insert_idx = len(lines)
+        link_insert_idx: int | None = None
         for i, line in enumerate(lines):
             if self.LINK_PATTERN.match(line.strip()):
                 link_insert_idx = i
                 break
 
         # Insert link reference
-        lines.insert(link_insert_idx, link_reference)
+        if link_insert_idx is None:
+            while lines and not lines[-1].strip():
+                lines.pop()
+            lines.extend(["", link_reference])
+        else:
+            lines.insert(link_insert_idx, link_reference)
 
-        new_content = "\n".join(lines)
+        new_content = "\n".join(lines).rstrip() + "\n"
 
         if dry_run:
             print(f"  Would update {self.changelog_path}")
