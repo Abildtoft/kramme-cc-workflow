@@ -2,6 +2,7 @@
 
 setup() {
   export RELEASE_REAL_GIT="$(command -v git)"
+  export RELEASE_PRETTIER="$BATS_TEST_DIRNAME/../../node_modules/.bin/prettier"
   export RELEASE_TEST_PATH="$PATH"
   TMP_ROOT="$(mktemp -d)"
   SCRIPT="$BATS_TEST_DIRNAME/../scripts/release.py"
@@ -127,6 +128,7 @@ fi
 grep -q '"version": "0.64.1"' .claude-plugin/plugin.json
 grep -q '"version": "0.64.1"' package.json
 grep -q '## \[0.64.1\]' CHANGELOG.md
+"$RELEASE_PRETTIER" --check CHANGELOG.md >/dev/null
 SH
   chmod +x "$MOCK_BIN/make"
 
