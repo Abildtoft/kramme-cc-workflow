@@ -11,9 +11,11 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 ## [0.67.0] - 2026-07-08
 
 ### Added
+
 - Support multi-source planning (#652)
 
 ### Changed
+
 - Tighten manual finding handling (#651)
 - Record Codex usage decision (#649)
 - Add usage portrait (#648)
@@ -23,11 +25,13 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 ## [0.66.0] - 2026-07-06
 
 ### Added
+
 - Add kramme:discovery:strategic-inquiry (#641)
 - Sync README agents and hooks (#635)
 - Add lean cleanup reviewer (#617)
 
 ### Changed
+
 - Extract shared rubric (#644)
 - Split init and discovery references (#642)
 - Clarify review and test docs (#631)
@@ -46,6 +50,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 - Isolate local hook state (#600)
 
 ### Fixed
+
 - Abort on changelog history failures (#633)
 - Load lint wrapper package (#632)
 - Update compound engineering source URLs (#621)
@@ -62,11 +67,13 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 ## [0.65.0] - 2026-07-01
 
 ### Added
+
 - Generate README skill rows (#573)
 - Add prediction command eval mode (#572)
 - Gate duplicate Linear issue content (#565)
 
 ### Changed
+
 - Reuse previous review artifacts (#598)
 - Split auto and force-push modes (#597)
 - Share skill schema definitions (#596)
@@ -96,6 +103,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 - Extract discovery references (#552)
 
 ### Fixed
+
 - Verify generated release state (#589)
 - Block alias-hidden git commands (#586)
 - Normalize quoted skill booleans (#585)
@@ -112,6 +120,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 ## [0.64.0] - 2026-06-23
 
 ### Added
+
 - Enforce required file contracts (#547)
 - Add codebase weakness audit (#546)
 - Report long-skill warnings (#538)
@@ -124,6 +133,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 - Include bot feedback (#523)
 
 ### Changed
+
 - Share git command parser (#545)
 - Extract spec resolution reference (#543)
 - Split converter into modules (#541)
@@ -138,17 +148,20 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 - Keep test plans manual-only (#520)
 
 ### Fixed
+
 - Harden safety hooks without jq (#542)
 - Validate empty field allowlist (#537)
 
 ## [0.63.0] - 2026-06-14
 
 ### Added
+
 - Add accepted findings policy (#517)
 - Add GitHub PR reviewer skill (#508)
 - Add next issue selector skill (#507)
 
 ### Changed
+
 - Add Codex support metadata (#516)
 - Document SkillSpector scanning (#513)
 - Remove wrap-up skill docs (#511)
@@ -161,6 +174,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 ## [0.62.0] - 2026-06-12
 
 ### Added
+
 - Add autoreview skill (#498)
 - Add demo reel evidence capture (#477)
 - Add work-from-plan adapter (#476)
@@ -174,6 +188,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 - Add product strategy feedback loops (#465)
 
 ### Changed
+
 - Clarify Linear transfer retry rules (#502)
 - Clarify workflow skill guidance (#501)
 - Extract shared base and diff helpers (#493)
@@ -196,6 +211,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 - Codify external adaptation guardrails (#464)
 
 ### Fixed
+
 - Harden hook error handling (#499)
 - Harden helper script fallbacks (#500)
 - Harden destructive workflow safeguards (#484)
@@ -207,20 +223,24 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 ## [0.61.0] - 2026-06-06
 
 ### Added
+
 - Add verify-understanding workflow (#462)
 - Add GitHub review reply workflow (#461)
 - Add Linear transfer skill (#460)
 - Add quick issue creation mode (#459)
 
 ### Changed
+
 - Add auto modes to workflow skills (#458)
 
 ## [0.60.0] - 2026-06-05
 
 ### Added
+
 - Default issue Mode to AUTO and add Mode column to schema (#454)
 
 ### Changed
+
 - Tighten PR body guidance (#456)
 - Add prompt footprint rubric (#455)
 - Delegate plan-split artifacts to breakdown-findings (#453)
@@ -233,9 +253,11 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 ## [0.59.0] - 2026-05-28
 
 ### Added
+
 - Add pr:verify-description for body/diff drift checks (#371)
 
 ### Changed
+
 - Resolve review findings on kramme:visual:diff-review (#451)
 - Resolve review findings on kramme:visual:diagram (#447)
 - Resolve review findings on kramme:visual:generate-image (#450)
@@ -318,6 +340,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 - Tighten skill:review resolution and N/A rubric handling (#363)
 
 ### Fixed
+
 - Resolve review findings on kramme:docs:to-markdown (#420)
 - Resolve review findings on kramme:siw:resolve-audit (#377)
 - Harden kramme:siw:init destructive paths (#369)
@@ -330,17 +353,20 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 ## [0.58.0] - 2026-05-27
 
 ### Fixed
+
 - Restore skill review workflow (#361)
 
 ## [0.57.0] - 2026-05-27
 
 ### Added
+
 - Add skill usage stats (#355)
 - Install converted hook plugin bundle (#353)
 - Add repeat automation skill (#352)
 - Add skill review workflow (#351)
 
 ### Changed
+
 - Make root README canonical (#359)
 - Support implementation audit breakdowns (#358)
 - Require manual test plans in descriptions (#357)
@@ -350,9 +376,11 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 ## [0.56.0] - 2026-05-19
 
 ### Added
+
 - Calibrate codebase findings (#349)
 
 ### Changed
+
 - Fold team modes into base skills (#344)
 - Extract workflow detail references (#340)
 - Document data URI option (#341)
@@ -362,6 +390,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 - Avoid GitHub UI duplication (#337)
 
 ### Fixed
+
 - Rewrite agent markdown references (#343)
 
 - Breaking: Removed separate team-mode skills (`kramme:pr:code-review:team`, `kramme:pr:resolve-review:team`, `kramme:pr:ux-review:team`, `kramme:siw:issue-implement:team`, `kramme:siw:spec-audit:team`, and `kramme:siw:implementation-audit:team`). Use the base skill with `--team` instead.
