@@ -166,3 +166,20 @@ file_mode() {
 
 	[ "$status" -eq 0 ]
 }
+
+@test "pr-create auto mode includes uncommitted work without prompting" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    create="skills/kramme:pr:create/SKILL.md"
+    state="skills/kramme:pr:create/references/state-and-rollback.md"
+
+    grep -qF "include all uncommitted changes by selecting **Commit and include**" "$create"
+    grep -qF "Step 5 uncommitted-work decision when \`AUTO_MODE=false\`" "$create"
+    grep -qF "If uncommitted changes are present and \`AUTO_MODE=true\`, do not prompt." "$state"
+    grep -qF "Select **Commit and include** and execute that path below." "$state"
+    grep -qF "If uncommitted changes are present and \`AUTO_MODE=false\`" "$state"
+  '
+
+	[ "$status" -eq 0 ]
+}

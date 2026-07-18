@@ -600,6 +600,9 @@
       "name": "pr-create-state-restoration-contract",
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/state-and-rollback.md",
       "contains": [
+        "If uncommitted changes are present and `AUTO_MODE=true`, do not prompt.",
+        "Select **Commit and include** and execute that path below.",
+        "If uncommitted changes are present and `AUTO_MODE=false`",
         "do **not** silently stash, commit, or ignore them",
         "Commit and include",
         "Exclude from PR",

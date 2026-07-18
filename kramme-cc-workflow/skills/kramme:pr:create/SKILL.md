@@ -46,7 +46,7 @@ Step 9  Success output
 
 ## Workflow rule — do not stop mid-flow
 
-Steps 6 and 7 each invoke a sub-skill via the Skill tool. After a sub-skill returns, **continue to the next step in this skill**. Do not summarize and wait for user input between sub-skills. The only stop points are: the Step 5 uncommitted-work decision, a confirmation prompt that explicitly requires input, a `--auto`-suppressed prompt that hits a hard blocker, or a routed-to Step 10 abort.
+Steps 6 and 7 each invoke a sub-skill via the Skill tool. After a sub-skill returns, **continue to the next step in this skill**. Do not summarize and wait for user input between sub-skills. The only stop points are: the Step 5 uncommitted-work decision when `AUTO_MODE=false`, a confirmation prompt that explicitly requires input, a `--auto`-suppressed prompt that hits a hard blocker, or a routed-to Step 10 abort.
 
 ## References
 
@@ -68,6 +68,7 @@ Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`. Flag order is not significant.
 
 - use the recommended commit structure (`Narrative`)
 - invoke downstream skills in non-interactive mode
+- include all uncommitted changes by selecting **Commit and include**
 - skip the final PR confirmation
 - choose the recommended branch-handling path from the shared reference instructions
 - stop only on hard blockers
@@ -276,8 +277,7 @@ Continue to Step 8 with the fallback title and description. When `AUTO_MODE=true
 
 ## Step 8: Confirmation and Creation
 
-Read `references/confirmation-and-creation.md` and execute Step 8 from that file. It contains the preview format, confirmation prompt, the "Edit description first" loop, draft-mode substitutions, push command, `gh pr create` invocation, and failure fallbacks. Substitute `{base-branch}`, `{original-branch}`, the captured title, and the generated or fallback description when emitting commands.
-Carry `{linear-issue-id}` into Step 8 if captured so edited descriptions still follow the Linear closing-keyword policy.
+Read `references/confirmation-and-creation.md` and execute Step 8 from that file. It contains the preview format, confirmation prompt, the "Edit description first" loop, draft-mode substitutions, push command, `gh pr create` invocation, and failure fallbacks. Substitute `{base-branch}`, `{original-branch}`, the captured title, and the generated or fallback description when emitting commands. Carry `{linear-issue-id}` into Step 8 if captured so edited descriptions still follow the Linear closing-keyword policy.
 
 ---
 

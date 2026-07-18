@@ -38,9 +38,9 @@ Initialize state after recording the branch and commit:
 
 If `git status --porcelain` (from Step 4.1) reported no output, continue with the initialized state above.
 
-If uncommitted changes are present, do **not** silently stash, commit, or ignore them. Even when `AUTO_MODE=true`, this is a required user decision because only committed history is rebuilt by `kramme:git:recreate-commits`.
+If uncommitted changes are present and `AUTO_MODE=true`, do not prompt. Select **Commit and include** and execute that path below. Auto mode treats all current tracked, untracked, and unignored working-tree changes as work to include in the PR; the temporary commit makes them available to `kramme:git:recreate-commits`.
 
-Show the current status, then ask:
+If uncommitted changes are present and `AUTO_MODE=false`, do **not** silently stash, commit, or ignore them. Show the current status, then ask:
 
 ```yaml
 header: "Uncommitted work"
