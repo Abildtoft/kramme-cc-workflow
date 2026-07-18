@@ -111,6 +111,45 @@ file_mode() {
 	[ "$(git status --porcelain)" = "$before_status" ]
 }
 
+@test "pr-create preserves the index backup when restoration fails" {
+	state="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/references/state-and-rollback.md"
+	block="$BATS_TEST_TMPDIR/commit-and-include.sh"
+	repo="$BATS_TEST_TMPDIR/repo"
+	fake_bin="$BATS_TEST_TMPDIR/fake-bin"
+	extract_commit_and_include_block "$state" "$block"
+
+	git init "$repo"
+	cd "$repo"
+	git config user.name "Test User"
+	git config user.email "test@example.com"
+	printf 'initial\n' > tracked.txt
+	git add tracked.txt
+	git commit -m "Initial commit"
+	printf '#!/bin/sh\nexit 1\n' > .git/hooks/pre-commit
+	chmod +x .git/hooks/pre-commit
+
+	printf 'staged\n' > staged.txt
+	git add staged.txt
+	printf 'unstaged\n' >> tracked.txt
+	index_path=$(git rev-parse --git-path index)
+	before_head=$(git rev-parse HEAD)
+	before_index=$(git hash-object "$index_path")
+
+	mkdir -p "$fake_bin"
+	printf '#!/bin/sh\nexit 73\n' > "$fake_bin/mv"
+	chmod +x "$fake_bin/mv"
+
+	run env PATH="$fake_bin:$PATH" bash "$block"
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Failed to restore the original Git index. Backup remains at "* ]]
+	[[ "$output" != *"restored the original Git index"* ]]
+	backup_path=${output##*Backup remains at }
+	backup_path=${backup_path%.}
+	[ -f "$backup_path" ]
+	[ "$(git hash-object "$backup_path")" = "$before_index" ]
+	[ "$(git rev-parse HEAD)" = "$before_head" ]
+}
+
 @test "pr-create state and rollback guidance keeps required sections" {
 	run bash -c '
     set -e
