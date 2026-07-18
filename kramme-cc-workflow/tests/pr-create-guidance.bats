@@ -15,6 +15,26 @@ if missing:
 PY
 }
 
+extract_commit_and_include_block() {
+	python3 - "$1" "$2" <<'PY'
+import pathlib
+import sys
+
+source = pathlib.Path(sys.argv[1]).read_text()
+section = source.split('#### If "Commit and include"', 1)[1]
+block = section.split("```bash", 1)[1].split("```", 1)[0].strip()
+pathlib.Path(sys.argv[2]).write_text(f"{block}\n")
+PY
+}
+
+file_mode() {
+	if [ "$(uname -s)" = "Darwin" ]; then
+		stat -f '%Lp' "$1"
+	else
+		stat -c '%a' "$1"
+	fi
+}
+
 @test "pr-create guidance contracts are registered and files are wired" {
 	run bash -c '
     set -e
@@ -51,17 +71,44 @@ PY
 }
 
 @test "pr-create restores the original index when the include commit fails" {
-	run bash -c '
-    set -e
-    cd "'"$BATS_TEST_DIRNAME"'/.."
-    state="skills/kramme:pr:create/references/state-and-rollback.md"
+	state="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/references/state-and-rollback.md"
+	block="$BATS_TEST_TMPDIR/commit-and-include.sh"
+	repo="$BATS_TEST_TMPDIR/repo"
+	extract_commit_and_include_block "$state" "$block"
 
-    grep -qF "INDEX_PATH=\$(git rev-parse --git-path index)" "$state"
-    grep -qF "INDEX_BACKUP=\$(mktemp \"\${INDEX_PATH}.create-pr.XXXXXX\")" "$state"
-    grep -qF "mv -f \"\$INDEX_BACKUP\" \"\$INDEX_PATH\"" "$state"
-  '
+	git init --shared=group "$repo"
+	cd "$repo"
+	git config user.name "Test User"
+	git config user.email "test@example.com"
+	printf 'initial\n' > tracked.txt
+	git add tracked.txt
+	git commit -m "Initial commit"
+	printf '#!/bin/sh\nexit 1\n' > .git/hooks/pre-commit
+	chmod +x .git/hooks/pre-commit
 
-	[ "$status" -eq 0 ]
+	printf 'staged\n' > staged.txt
+	git add staged.txt
+	printf 'unstaged\n' >> tracked.txt
+	printf 'untracked\n' > untracked.txt
+	index_path=$(git rev-parse --git-path index)
+	chmod 0664 "$index_path"
+
+	before_head=$(git rev-parse HEAD)
+	before_index=$(git hash-object "$index_path")
+	before_mode=$(file_mode "$index_path")
+	before_cached=$(git diff --cached --binary)
+	before_unstaged=$(git diff --binary)
+	before_status=$(git status --porcelain)
+
+	run bash "$block"
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"restored the original Git index"* ]]
+	[ "$(git rev-parse HEAD)" = "$before_head" ]
+	[ "$(git hash-object "$index_path")" = "$before_index" ]
+	[ "$(file_mode "$index_path")" = "$before_mode" ]
+	[ "$(git diff --cached --binary)" = "$before_cached" ]
+	[ "$(git diff --binary)" = "$before_unstaged" ]
+	[ "$(git status --porcelain)" = "$before_status" ]
 }
 
 @test "pr-create state and rollback guidance keeps required sections" {

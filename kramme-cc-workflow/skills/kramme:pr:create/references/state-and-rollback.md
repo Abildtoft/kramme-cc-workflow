@@ -65,7 +65,7 @@ if ! INDEX_BACKUP=$(mktemp "${INDEX_PATH}.create-pr.XXXXXX"); then
   echo "Error: Failed to create a backup path for the original Git index." >&2
   exit 1
 fi
-if ! cp "$INDEX_PATH" "$INDEX_BACKUP"; then
+if ! cp -p "$INDEX_PATH" "$INDEX_BACKUP"; then
   rm -f "$INDEX_BACKUP"
   echo "Error: Failed to back up the original Git index." >&2
   exit 1
@@ -85,7 +85,7 @@ fi
 git rev-parse HEAD
 ```
 
-Capture the new commit hash as `{include-commit}` and set `{uncommitted-disposition}` = `committed-for-inclusion`. Before staging, the command block copies the real Git index. If either `git add -A` or the temporary commit fails, it restores that exact index file so the original staged/unstaged split is preserved; if restoration itself fails, it surfaces the backup path for manual recovery. The block exits before printing a hash on any failure. This temporary commit is intentionally plain-English; `kramme:git:recreate-commits` will replace it with the final narrative commits.
+Capture the new commit hash as `{include-commit}` and set `{uncommitted-disposition}` = `committed-for-inclusion`. Before staging, the command block copies the real Git index with its metadata. If either `git add -A` or the temporary commit fails, it restores that exact index file so the original staged/unstaged split and index permissions are preserved; if restoration itself fails, it surfaces the backup path for manual recovery. The block exits before printing a hash on any failure. This temporary commit is intentionally plain-English; `kramme:git:recreate-commits` will replace it with the final narrative commits.
 
 If staging or the commit fails, stop and surface the error. Do not continue into `recreate-commits` with a dirty working tree.
 

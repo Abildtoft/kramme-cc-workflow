@@ -610,6 +610,7 @@
         "printf 'POST_STASH_COMMIT_COUNT=%s\\n'",
         "Do not infer either value from unlabeled `git stash push` output",
         "INDEX_BACKUP=$(mktemp",
+        "cp -p \"$INDEX_PATH\" \"$INDEX_BACKUP\"",
         "if git add -A && git commit -m \"Include uncommitted changes for PR creation\"; then",
         "mv -f \"$INDEX_BACKUP\" \"$INDEX_PATH\"",
         "restored the original Git index",
