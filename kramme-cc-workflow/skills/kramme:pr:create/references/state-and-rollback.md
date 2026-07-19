@@ -38,9 +38,9 @@ Initialize state after recording the branch and commit:
 
 If `git status --porcelain` (from Step 4.1) reported no output, continue with the initialized state above.
 
-If uncommitted changes are present, do **not** silently stash, commit, or ignore them. Even when `AUTO_MODE=true`, this is a required user decision because only committed history is rebuilt by `kramme:git:recreate-commits`.
+If uncommitted changes are present and `AUTO_MODE=true`, do not prompt. Select **Commit and include** and execute that path below. Auto mode treats all current tracked, untracked, and unignored working-tree changes as work to include in the PR; the temporary commit makes them available to `kramme:git:recreate-commits`.
 
-Show the current status, then ask:
+If uncommitted changes are present and `AUTO_MODE=false`, do **not** silently stash, commit, or ignore them. Show the current status, then ask:
 
 ```yaml
 header: "Uncommitted work"
@@ -60,17 +60,34 @@ multiSelect: false
 Run:
 
 ```bash
-git add -A
-if ! git commit -m "Include uncommitted changes for PR creation"; then
-  echo "Error: Failed to create temporary include commit." >&2
+INDEX_PATH=$(git rev-parse --git-path index)
+if ! INDEX_BACKUP=$(mktemp "${INDEX_PATH}.create-pr.XXXXXX"); then
+  echo "Error: Failed to create a backup path for the original Git index." >&2
   exit 1
+fi
+if ! cp -p "$INDEX_PATH" "$INDEX_BACKUP"; then
+  rm -f "$INDEX_BACKUP"
+  echo "Error: Failed to back up the original Git index." >&2
+  exit 1
+fi
+
+if git add -A && git commit -m "Include uncommitted changes for PR creation"; then
+  rm -f "$INDEX_BACKUP"
+else
+  INCLUDE_STATUS=$?
+  if ! mv -f "$INDEX_BACKUP" "$INDEX_PATH"; then
+    echo "Error: Failed to restore the original Git index. Backup remains at $INDEX_BACKUP." >&2
+    exit 1
+  fi
+  echo "Error: Failed to create temporary include commit; restored the original Git index." >&2
+  exit "$INCLUDE_STATUS"
 fi
 git rev-parse HEAD
 ```
 
-Capture the new commit hash as `{include-commit}` and set `{uncommitted-disposition}` = `committed-for-inclusion`. The command block exits before printing a hash if the temporary commit fails. This temporary commit is intentionally plain-English; `kramme:git:recreate-commits` will replace it with the final narrative commits.
+Capture the new commit hash as `{include-commit}` and set `{uncommitted-disposition}` = `committed-for-inclusion`. Before staging, the command block copies the real Git index with its metadata. If either `git add -A` or the temporary commit fails, it restores that exact index file so the original staged/unstaged split and index permissions are preserved; if restoration itself fails, it surfaces the backup path for manual recovery. The block exits before printing a hash on any failure. This temporary commit is intentionally plain-English; `kramme:git:recreate-commits` will replace it with the final narrative commits.
 
-If the commit fails, stop and surface the error. Do not continue into `recreate-commits` with a dirty working tree.
+If staging or the commit fails, stop and surface the error. Do not continue into `recreate-commits` with a dirty working tree.
 
 #### If "Exclude from PR"
 

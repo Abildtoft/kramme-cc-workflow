@@ -15,6 +15,26 @@ if missing:
 PY
 }
 
+extract_commit_and_include_block() {
+	python3 - "$1" "$2" <<'PY'
+import pathlib
+import sys
+
+source = pathlib.Path(sys.argv[1]).read_text()
+section = source.split('#### If "Commit and include"', 1)[1]
+block = section.split("```bash", 1)[1].split("```", 1)[0].strip()
+pathlib.Path(sys.argv[2]).write_text(f"{block}\n")
+PY
+}
+
+file_mode() {
+	if [ "$(uname -s)" = "Darwin" ]; then
+		stat -f '%Lp' "$1"
+	else
+		stat -c '%a' "$1"
+	fi
+}
+
 @test "pr-create guidance contracts are registered and files are wired" {
 	run bash -c '
     set -e
@@ -50,6 +70,86 @@ PY
 	[ "$status" -eq 0 ]
 }
 
+@test "pr-create restores the original index when the include commit fails" {
+	state="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/references/state-and-rollback.md"
+	block="$BATS_TEST_TMPDIR/commit-and-include.sh"
+	repo="$BATS_TEST_TMPDIR/repo"
+	extract_commit_and_include_block "$state" "$block"
+
+	git init --shared=group "$repo"
+	cd "$repo"
+	git config user.name "Test User"
+	git config user.email "test@example.com"
+	printf 'initial\n' > tracked.txt
+	git add tracked.txt
+	git commit -m "Initial commit"
+	printf '#!/bin/sh\nexit 1\n' > .git/hooks/pre-commit
+	chmod +x .git/hooks/pre-commit
+
+	printf 'staged\n' > staged.txt
+	git add staged.txt
+	printf 'unstaged\n' >> tracked.txt
+	printf 'untracked\n' > untracked.txt
+	index_path=$(git rev-parse --git-path index)
+	chmod 0664 "$index_path"
+
+	before_head=$(git rev-parse HEAD)
+	before_index=$(git hash-object "$index_path")
+	before_mode=$(file_mode "$index_path")
+	before_cached=$(git diff --cached --binary)
+	before_unstaged=$(git diff --binary)
+	before_status=$(git status --porcelain)
+
+	run bash "$block"
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"restored the original Git index"* ]]
+	[ "$(git rev-parse HEAD)" = "$before_head" ]
+	[ "$(git hash-object "$index_path")" = "$before_index" ]
+	[ "$(file_mode "$index_path")" = "$before_mode" ]
+	[ "$(git diff --cached --binary)" = "$before_cached" ]
+	[ "$(git diff --binary)" = "$before_unstaged" ]
+	[ "$(git status --porcelain)" = "$before_status" ]
+}
+
+@test "pr-create preserves the index backup when restoration fails" {
+	state="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/references/state-and-rollback.md"
+	block="$BATS_TEST_TMPDIR/commit-and-include.sh"
+	repo="$BATS_TEST_TMPDIR/repo"
+	fake_bin="$BATS_TEST_TMPDIR/fake-bin"
+	extract_commit_and_include_block "$state" "$block"
+
+	git init "$repo"
+	cd "$repo"
+	git config user.name "Test User"
+	git config user.email "test@example.com"
+	printf 'initial\n' > tracked.txt
+	git add tracked.txt
+	git commit -m "Initial commit"
+	printf '#!/bin/sh\nexit 1\n' > .git/hooks/pre-commit
+	chmod +x .git/hooks/pre-commit
+
+	printf 'staged\n' > staged.txt
+	git add staged.txt
+	printf 'unstaged\n' >> tracked.txt
+	index_path=$(git rev-parse --git-path index)
+	before_head=$(git rev-parse HEAD)
+	before_index=$(git hash-object "$index_path")
+
+	mkdir -p "$fake_bin"
+	printf '#!/bin/sh\nexit 73\n' > "$fake_bin/mv"
+	chmod +x "$fake_bin/mv"
+
+	run env PATH="$fake_bin:$PATH" bash "$block"
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Failed to restore the original Git index. Backup remains at "* ]]
+	[[ "$output" != *"restored the original Git index"* ]]
+	backup_path=${output##*Backup remains at }
+	backup_path=${backup_path%.}
+	[ -f "$backup_path" ]
+	[ "$(git hash-object "$backup_path")" = "$before_index" ]
+	[ "$(git rev-parse HEAD)" = "$before_head" ]
+}
+
 @test "pr-create state and rollback guidance keeps required sections" {
 	run bash -c '
     set -e
@@ -63,6 +163,23 @@ PY
   '
 
 	assert_required_contracts_registered pr-create-state-restoration-contract
+
+	[ "$status" -eq 0 ]
+}
+
+@test "pr-create auto mode includes uncommitted work without prompting" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    create="skills/kramme:pr:create/SKILL.md"
+    state="skills/kramme:pr:create/references/state-and-rollback.md"
+
+    grep -qF "include all uncommitted changes by selecting **Commit and include**" "$create"
+    grep -qF "Step 5 uncommitted-work decision when \`AUTO_MODE=false\`" "$create"
+    grep -qF "If uncommitted changes are present and \`AUTO_MODE=true\`, do not prompt." "$state"
+    grep -qF "Select **Commit and include** and execute that path below." "$state"
+    grep -qF "If uncommitted changes are present and \`AUTO_MODE=false\`" "$state"
+  '
 
 	[ "$status" -eq 0 ]
 }
