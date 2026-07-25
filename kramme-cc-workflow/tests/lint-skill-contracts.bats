@@ -1175,7 +1175,7 @@ PY
 }
 
 @test "siw issue reservation generates unique owners and preserves a contended lock" {
-  local siw_dir owner_a owner_b issue_id
+  local hash_backend hash_backend_path hash_log issue_id mock_bin owner_a owner_b siw_dir
   siw_dir="$TMP_ROOT/siw"
   mkdir -p "$siw_dir/issues"
   printf '# Open Issues\n' >"$siw_dir/OPEN_ISSUES_OVERVIEW.md"
@@ -1190,10 +1190,29 @@ PY
   sh "$ISSUE_DEFINE_RESERVATION_HELPER" acquire "$siw_dir" "$owner_a" 1
   issue_id="$(sh "$ISSUE_DEFINE_RESERVATION_HELPER" reserve "$siw_dir" G "$owner_a" 1)"
 
-  run env SIW_RESERVATION_RETRY_DELAY=0 sh "$GENERATE_PHASES_RESERVATION_HELPER" acquire "$siw_dir" "$owner_b" 2
+  hash_log="$TMP_ROOT/hash-calls"
+  mock_bin="$TMP_ROOT/hash-bin"
+  mkdir -p "$mock_bin"
+  if command -v sha256sum >/dev/null 2>&1; then
+    hash_backend=sha256sum
+  elif command -v shasum >/dev/null 2>&1; then
+    hash_backend=shasum
+  else
+    hash_backend=openssl
+  fi
+  hash_backend_path="$(command -v "$hash_backend")"
+  write_file "$mock_bin/$hash_backend" <<EOF
+#!/bin/sh
+printf 'called\n' >>"$hash_log"
+exec "$hash_backend_path" "\$@"
+EOF
+  chmod +x "$mock_bin/$hash_backend"
+
+  run env PATH="$mock_bin:$PATH" SIW_RESERVATION_RETRY_DELAY=0 sh "$GENERATE_PHASES_RESERVATION_HELPER" acquire "$siw_dir" "$owner_b" 2
   [ "$status" -ne 0 ]
   [[ "$output" == *'publication is owned by another writer'* ]]
   [[ "$output" != *"$owner_a"* ]]
+  [ ! -e "$hash_log" ]
   [ "$(sed -n '1p' "$siw_dir/.issue-publication.lock")" = "$owner_a" ]
   [ "$(cat "$siw_dir/.issue-id-reservations/ISSUE-$issue_id")" = "$owner_a" ]
   [ -f "$siw_dir/.issue-publication.lock" ]

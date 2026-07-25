@@ -538,13 +538,7 @@ acquire_publication() {
 
   [ ! -L "$lock_claim" ] || fail "publication lock must not be a symlink: $lock_claim"
   while [ "$attempt" -le "$max_attempts" ]; do
-    calculate_publication_state "$siw_dir"
-    if create_owned_claim "$lock_claim" "$owner" "state:$publication_state_hash"; then
-      clear_stale_publication_receipt "$siw_dir"
-      validate_reservation_state "$siw_dir"
-      return 0
-    fi
-    last_claim_error=$claim_error
+    publication_lock_present=
     if [ -f "$lock_claim" ] && [ ! -L "$lock_claim" ]; then
       read_claim "$lock_claim"
       case "$recorded_request_key" in
@@ -559,6 +553,33 @@ acquire_publication() {
         clear_foreign_publication_receipt "$siw_dir" "$owner"
         validate_reservation_state "$siw_dir"
         return 0
+      fi
+      publication_lock_present=1
+      last_claim_error="publication lock already exists"
+    fi
+    if [ -z "$publication_lock_present" ]; then
+      calculate_publication_state "$siw_dir"
+      if create_owned_claim "$lock_claim" "$owner" "state:$publication_state_hash"; then
+        clear_stale_publication_receipt "$siw_dir"
+        validate_reservation_state "$siw_dir"
+        return 0
+      fi
+      last_claim_error=$claim_error
+      if [ -f "$lock_claim" ] && [ ! -L "$lock_claim" ]; then
+        read_claim "$lock_claim"
+        case "$recorded_request_key" in
+          state:*)
+            publication_baseline_hash=${recorded_request_key#state:}
+            validate_hash "$publication_baseline_hash" "publication baseline hash"
+            ;;
+          '') ;;
+          *) fail "publication ownership claim has an invalid state record: $lock_claim" ;;
+        esac
+        if [ "$recorded_owner" = "$owner" ]; then
+          clear_foreign_publication_receipt "$siw_dir" "$owner"
+          validate_reservation_state "$siw_dir"
+          return 0
+        fi
       fi
     fi
     attempt=$((attempt + 1))
