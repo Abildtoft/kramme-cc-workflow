@@ -5,7 +5,7 @@ SHELLCHECK_SEVERITY ?= warning
 RUFF ?= ruff
 MYPY ?= mypy
 ROOT_DIR := $(abspath ..)
-PLUGIN_REL := $(notdir $(CURDIR))
+PLUGIN_REL := $(shell basename "$(CURDIR)")
 PRETTIER ?= $(ROOT_DIR)/node_modules/.bin/prettier
 TSC ?= $(ROOT_DIR)/node_modules/.bin/tsc
 SKILLSPECTOR_FORMAT ?= markdown
@@ -207,13 +207,17 @@ unit-coverage: coverage-node coverage-python
 # Native coverage thresholds were added after the Node 20 version used in CI,
 # so enforce its built-in report here. See https://nodejs.org/api/cli.html#--test-coverage-linesthreshold
 coverage-node: check-node-deps check-coverage-inventory-deps
-	@tmpdir=$$(mktemp -d); report="$$tmpdir/node-coverage.txt"; expected="$$tmpdir/node-expected.txt"; \
-		jq -er '.javascript.measured[]' "$(COVERAGE_PRODUCTION_INVENTORY)" >"$$expected" || { echo "Production coverage inventory is malformed"; rm -rf "$$tmpdir"; exit 1; }; \
+	@tmpdir=$$(mktemp -d); report="$$tmpdir/node-coverage.txt"; inventory_rows="$$tmpdir/node-inventory.tsv"; \
+		jq -er '.javascript as $$language | select(($$language.measured | type) == "array" and ($$language.measured | length) > 0 and ($$language.contract_only | type) == "object") | (($$language.measured[] | ["measured", .]), ($$language.contract_only | keys[] | ["registered", .])) | @tsv' "$(COVERAGE_PRODUCTION_INVENTORY)" >"$$inventory_rows" || { echo "Production coverage inventory is malformed"; rm -rf "$$tmpdir"; exit 1; }; \
 		node --test --experimental-test-coverage $(NODE_TEST_FILES) >"$$report" 2>&1; status=$$?; \
 		cat "$$report"; \
 		if [ $$status -ne 0 ]; then rm -rf "$$tmpdir"; exit $$status; fi; \
 		awk -F '|' -v plugin="$(PLUGIN_REL)" -v min_lines="$(NODE_COVERAGE_LINES)" -v min_branches="$(NODE_COVERAGE_BRANCHES)" -v min_functions="$(NODE_COVERAGE_FUNCTIONS)" ' \
-			NR == FNR { expected[$$0]=1; order[++expected_count]=$$0; next } \
+			NR == FNR { \
+				split($$0, inventory_entry, "\t"); registered[inventory_entry[2]]=1; \
+				if (inventory_entry[1] == "measured") { expected[inventory_entry[2]]=1; order[++expected_count]=inventory_entry[2] } \
+				next \
+			} \
 			function trim(value) { gsub(/^[[:space:]]+|[[:space:]]+$$/, "", value); return value } \
 			function print_paths(label, count, values,    position, limit) { \
 				limit=count < 10 ? count : 10; \
@@ -247,32 +251,36 @@ coverage-node: check-node-deps check-coverage-inventory-deps
 				if (index(path, plugin "/") != 1) path=plugin "/" path; \
 				if (path ~ /(^|\/)tests\//) next; \
 				seen[path]=1; \
-				if (!(path in expected) && !(path in unexpected)) unexpected_order[++unexpected_count]=path; \
+				if (!(path in registered) && !(path in unexpected)) unexpected_order[++unexpected_count]=path; \
 				unexpected[path]=1 \
 			} \
 			END { \
 				for (position=1; position <= expected_count; position++) if (!(order[position] in seen)) missing[++missing_count]=order[position]; \
 				if (missing_count) { print_paths("Node coverage missing inventory files", missing_count, missing); failed=1 } \
-				if (unexpected_count) { print_paths("Node coverage report has files not listed in javascript.measured", unexpected_count, unexpected_order); failed=1 } \
+				if (unexpected_count) { print_paths("Node coverage report has unregistered production files", unexpected_count, unexpected_order); failed=1 } \
 				if (!found_summary) { print "Node coverage summary not found" > "/dev/stderr"; failed=1 } \
 				else if (lines + 0 < min_lines || branches + 0 < min_branches || functions + 0 < min_functions) { \
 					printf "Node coverage below baseline: lines %.2f/%.2f, branches %.2f/%.2f, functions %.2f/%.2f\n", lines, min_lines, branches, min_branches, functions, min_functions > "/dev/stderr"; \
 					failed=1 \
 				} \
 				exit failed \
-			}' "$$expected" "$$report"; \
+			}' "$$inventory_rows" "$$report"; \
 		status=$$?; rm -rf "$$tmpdir"; exit $$status
 
 coverage-python: check-python-deps check-coverage-inventory-deps test-python
-	@tmpdir=$$(mktemp -d); counts="$$tmpdir/counts"; coverdir="$$tmpdir/report-files"; report="$$tmpdir/python-coverage.txt"; expected="$$tmpdir/python-expected.txt"; \
-		jq -er '.python.measured[]' "$(COVERAGE_PRODUCTION_INVENTORY)" >"$$expected" || { echo "Production coverage inventory is malformed"; rm -rf "$$tmpdir"; exit 1; }; \
+	@tmpdir=$$(mktemp -d); counts="$$tmpdir/counts"; coverdir="$$tmpdir/report-files"; report="$$tmpdir/python-coverage.txt"; inventory_rows="$$tmpdir/python-inventory.tsv"; \
+		jq -er '.python as $$language | select(($$language.measured | type) == "array" and ($$language.measured | length) > 0 and ($$language.contract_only | type) == "object") | (($$language.measured[] | ["measured", .]), ($$language.contract_only | keys[] | ["registered", .])) | @tsv' "$(COVERAGE_PRODUCTION_INVENTORY)" >"$$inventory_rows" || { echo "Production coverage inventory is malformed"; rm -rf "$$tmpdir"; exit 1; }; \
 		python3 -c 'import pickle, sys; pickle.dump(({}, {}, {}), open(sys.argv[1], "wb"), 1)' "$$counts"; \
 		python3 -m trace --count --file "$$counts" --coverdir "$$coverdir" $(PYTHON_TRACE_IGNORE_ARGS) --module unittest discover -s $(PYTHON_TEST_DIR) -p '$(PYTHON_TEST_PATTERN)' || { status=$$?; rm -rf "$$tmpdir"; exit $$status; }; \
 		python3 -m trace --count --file "$$counts" --missing --summary --coverdir "$$coverdir" $(PYTHON_TRACE_IGNORE_ARGS) --module unittest discover -s $(PYTHON_MAINTENANCE_TEST_DIR) -p '$(PYTHON_TEST_PATTERN)' >"$$report" 2>&1; status=$$?; \
 		cat "$$report"; \
 		if [ $$status -ne 0 ]; then rm -rf "$$tmpdir"; exit $$status; fi; \
 		awk -v root="$(ROOT_DIR)" -v plugin="$(PLUGIN_REL)" -v minimum="$(PYTHON_COVERAGE_MIN)" ' \
-			NR == FNR { expected[$$0]=1; order[++expected_count]=$$0; next } \
+			NR == FNR { \
+				split($$0, inventory_entry, "\t"); registered[inventory_entry[2]]=1; \
+				if (inventory_entry[1] == "measured") { expected[inventory_entry[2]]=1; order[++expected_count]=inventory_entry[2] } \
+				next \
+			} \
 			function print_paths(label, count, values,    position, limit) { \
 				limit=count < 10 ? count : 10; \
 				printf "%s (%d): ", label, count > "/dev/stderr"; \
@@ -280,27 +288,33 @@ coverage-python: check-python-deps check-coverage-inventory-deps test-python
 				if (count > limit) printf ", ... (+%d more)", count - limit > "/dev/stderr"; \
 				print "" > "/dev/stderr" \
 			} \
+			function normalize_path(path) { \
+				gsub(/\\/, "/", path); \
+				if (index(path, root "/") == 1) return substr(path, length(root) + 2); \
+				if (index(path, "/.agents/")) { sub("^.*/[.]agents/", ".agents/", path); return path } \
+				if (index(path, "/" plugin "/")) { sub("^.*/" plugin "/", plugin "/", path); return path } \
+				if (index(path, plugin "/") != 1 && index(path, ".agents/") != 1) return plugin "/" path; \
+				return path \
+			} \
 			$$1 ~ /^[0-9]+$$/ && $$2 ~ /^[0-9]+%$$/ && $$0 ~ /\(.*[.]py\)[[:space:]]*$$/ { \
-				path=$$0; sub(/^[^(]*\(/, "", path); sub(/\)[[:space:]]*$$/, "", path); gsub(/\\/, "/", path); \
-				if (index(path, root "/") == 1) path=substr(path, length(root) + 2); \
-				else if (index(path, plugin "/") != 1 && index(path, ".agents/") != 1) path=plugin "/" path; \
+				path=$$0; sub(/^[^(]*\(/, "", path); sub(/\)[[:space:]]*$$/, "", path); path=normalize_path(path); \
 				if (path ~ /(^|\/)tests\// || path ~ /(^|\/)test_[^\/]*[.]py$$/) next; \
 				seen[path]=1; \
-				if (!(path in expected) && !(path in unexpected)) unexpected_order[++unexpected_count]=path; \
+				if (!(path in registered) && !(path in unexpected)) unexpected_order[++unexpected_count]=path; \
 				unexpected[path]=1; \
 				if (path in expected) { percent=$$2; sub(/%/, "", percent); lines += $$1; weighted += $$1 * percent } \
 			} \
 			END { \
 				for (position=1; position <= expected_count; position++) if (!(order[position] in seen)) missing[++missing_count]=order[position]; \
 				if (missing_count) { print_paths("Python coverage missing inventory files", missing_count, missing); failed=1 } \
-				if (unexpected_count) { print_paths("Python coverage report has files not listed in python.measured", unexpected_count, unexpected_order); failed=1 } \
+				if (unexpected_count) { print_paths("Python coverage report has unregistered production files", unexpected_count, unexpected_order); failed=1 } \
 				if (!lines) { print "Python production coverage summary not found" > "/dev/stderr"; failed=1 } \
 				else { \
 					coverage=weighted / lines; printf "Python production aggregate: %.2f%% (%d executable lines)\n", coverage, lines; \
 					if (coverage < minimum) { printf "Python coverage below baseline: %.2f/%.2f\n", coverage, minimum > "/dev/stderr"; failed=1 } \
 				} \
 				exit failed \
-			}' "$$expected" "$$report"; \
+			}' "$$inventory_rows" "$$report"; \
 		status=$$?; rm -rf "$$tmpdir"; exit $$status
 
 coverage-bats-contract: check-coverage-inventory-deps

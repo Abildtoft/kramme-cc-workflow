@@ -262,6 +262,44 @@ REPORT
   [[ "$output" == *"Node coverage missing inventory files (1): plugin/scripts/unloaded.js"* ]]
 }
 
+@test "coverage-node accepts a registered contract-only file in the report" {
+  setup_makefile_contract_repo
+  create_fake_node_coverage_tool
+  printf '"use strict";\n' >"$MAKEFILE_CONTRACT_REPO/plugin/scripts/contract.js"
+  jq '.javascript.contract_only["plugin/scripts/contract.js"] = ["plugin/tests/example.bats"]' \
+    "$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json" \
+    >"$MAKEFILE_CONTRACT_REPO/inventory.json"
+  mv "$MAKEFILE_CONTRACT_REPO/inventory.json" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json"
+  cat >"$MAKEFILE_CONTRACT_REPO/node-coverage.txt" <<'REPORT'
+ℹ scripts          |       |       |       |
+ℹ  contract.js     | 80.00 | 70.00 | 80.00 |
+ℹ  example.js      | 80.00 | 70.00 | 80.00 |
+ℹ all files        | 80.00 | 70.00 | 80.00 |
+REPORT
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+
+  [ "$status" -eq 0 ]
+}
+
+@test "coverage-node rejects an unregistered production file in the report" {
+  setup_makefile_contract_repo
+  create_fake_node_coverage_tool
+  printf '"use strict";\n' >"$MAKEFILE_CONTRACT_REPO/plugin/scripts/unregistered.js"
+  cat >"$MAKEFILE_CONTRACT_REPO/node-coverage.txt" <<'REPORT'
+ℹ scripts          |       |       |       |
+ℹ  example.js      | 80.00 | 70.00 | 80.00 |
+ℹ  unregistered.js | 80.00 | 70.00 | 80.00 |
+ℹ all files        | 80.00 | 70.00 | 80.00 |
+REPORT
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Node coverage report has unregistered production files (1): plugin/scripts/unregistered.js"* ]]
+}
+
 @test "coverage-node rejects a missing summary" {
   setup_makefile_contract_repo
   create_fake_node_coverage_tool
@@ -310,6 +348,41 @@ REPORT
 
   [ "$status" -ne 0 ]
   [[ "$output" == *"Python coverage missing inventory files (1): plugin/hooks/unloaded.py"* ]]
+}
+
+@test "coverage-python accepts a registered contract-only file in the report" {
+  setup_makefile_contract_repo
+  create_fake_python_coverage_tool
+  printf 'VALUE = 2\n' >"$MAKEFILE_CONTRACT_REPO/plugin/hooks/contract.py"
+  jq '.python.contract_only["plugin/hooks/contract.py"] = ["plugin/tests/example.bats"]' \
+    "$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json" \
+    >"$MAKEFILE_CONTRACT_REPO/inventory.json"
+  mv "$MAKEFILE_CONTRACT_REPO/inventory.json" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json"
+  printf '100 35%% hooks.example (%s/plugin/hooks/example.py)\n100 100%% hooks.contract (%s/plugin/hooks/contract.py)\n' \
+    "$MAKEFILE_CONTRACT_REPO" \
+    "$MAKEFILE_CONTRACT_REPO" \
+    >"$MAKEFILE_CONTRACT_REPO/python-coverage.txt"
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" PYTHON_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/python-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-python
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Python production aggregate: 35.00%"* ]]
+}
+
+@test "coverage-python rejects an unregistered production file in the report" {
+  setup_makefile_contract_repo
+  create_fake_python_coverage_tool
+  printf 'VALUE = 2\n' >"$MAKEFILE_CONTRACT_REPO/plugin/hooks/unregistered.py"
+  write_fake_python_coverage_report 35
+  printf '100 100%% hooks.unregistered (%s/plugin/hooks/unregistered.py)\n' \
+    "$MAKEFILE_CONTRACT_REPO" \
+    >>"$MAKEFILE_CONTRACT_REPO/python-coverage.txt"
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" PYTHON_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/python-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-python
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Python coverage report has unregistered production files (1): plugin/hooks/unregistered.py"* ]]
 }
 
 @test "coverage-python accepts a checkout path containing spaces" {

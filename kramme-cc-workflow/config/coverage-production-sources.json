@@ -51,7 +51,6 @@
       "kramme-cc-workflow/scripts/lint_skill_contracts/checks/ui_relevance.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/cli.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/frontmatter.py",
-      "kramme-cc-workflow/scripts/lint_skill_contracts/io.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/markdown.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/readme.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/schema.py",
@@ -66,6 +65,9 @@
         "kramme-cc-workflow/tests/lint-skill-contracts.bats"
       ],
       "kramme-cc-workflow/scripts/lint_skill_contracts/checks/types.py": [
+        "kramme-cc-workflow/tests/lint-skill-contracts.bats"
+      ],
+      "kramme-cc-workflow/scripts/lint_skill_contracts/io.py": [
         "kramme-cc-workflow/tests/lint-skill-contracts.bats"
       ],
       "kramme-cc-workflow/scripts/release.py": [
