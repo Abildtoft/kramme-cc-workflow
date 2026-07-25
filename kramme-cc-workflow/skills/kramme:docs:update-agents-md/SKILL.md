@@ -91,7 +91,7 @@ Add sections as needed for the project:
 
 ### Context Map
 
-Use this when the repo has multiple important docs, skills, scripts, or subsystems:
+Use this authoring example when the repo has multiple important docs, skills, scripts, or subsystems:
 
 ```markdown
 ## Context Map

@@ -354,6 +354,13 @@
   ],
   "file_identity_groups": [
     {
+      "name": "siw-spec-audit-fix-confidence-rubric",
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:siw:spec-audit:auto-fix/references/classification-rubric.md",
+        "kramme-cc-workflow/skills/kramme:siw:spec-audit/references/fix-confidence-rubric.md"
+      ]
+    },
+    {
       "name": "copy-review-rubric",
       "paths": [
         "kramme-cc-workflow/skills/kramme:code:copy-review/references/copy-review-rubric.md",

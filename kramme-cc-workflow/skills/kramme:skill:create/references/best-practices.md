@@ -50,7 +50,7 @@ Keep the context window lean by loading information only when needed.
 - **Keep SKILL.md under 500 lines.** Use it for orchestration only.
 - **Flat directories only.** `references/schema.md` — not `references/db/v1/schema.md`.
 - **References are one level deep.** SKILL.md may instruct the agent to read a file in `references/` or `assets/`. Reference files must NOT instruct the agent to read other reference files. The reason: chained references inflate the agent's context unpredictably and make the skill's true cost-of-load opaque to the author. If a reference file feels like it needs a child reference, restructure: either inline the child content, promote the child to a peer reference loaded directly from SKILL.md, or split the workflow into two skills.
-- **Just-in-time loading.** Explicitly instruct when to read a file:
+- **Just-in-time loading.** Make the load trigger explicit. For example, use this authoring snippet:
   ```
   Read the patterns catalog from `references/patterns.md`.
   ```
