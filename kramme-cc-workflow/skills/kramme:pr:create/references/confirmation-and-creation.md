@@ -2,7 +2,7 @@
 
 Use this reference for `/kramme:pr:create` Steps 8–9 after the branch is prepared, commits are finalized, and the PR title/body have been generated.
 
-`{base-branch}` is the value captured in Steps 2–3. `{feature-branch}` is the current branch. `{title}` and `{description}` come from Step 7 (the generator skill or its fallback). `{linear-issue-id}` may be captured during branch handling. Substitute literal values when emitting commands and messages — these are agent-tracked, not shell variables.
+`{base-branch}` is the value captured in Steps 2–3. `{feature-branch}` is the current branch. `{rollback-origin-ref}` is the remote ref that Step 5 proved absent. `{title}` and `{description}` come from Step 7 (the generator skill or its fallback). `{linear-issue-id}` may be captured during branch handling. Substitute literal values when emitting commands and messages — these are agent-tracked, not shell variables.
 
 ## Step 8: Confirmation and Creation
 
@@ -110,7 +110,21 @@ After each description edit, if `{linear-issue-id}` is present, keep the default
 
 Before pushing, validate `{feature-branch}` before using it as a git ref. It must be the current branch captured from `git branch --show-current`, pass `git check-ref-format --branch`, contain no shell metacharacters or whitespace, and must not begin with `-`. Do not push if validation fails.
 
-After validation, push the current `HEAD` to `origin` using an explicit `refs/heads/{feature-branch}` destination and set upstream tracking for that branch. Use quoted, already-validated arguments only; do not interpolate an unvalidated branch name into a shell command string.
+Immediately before any push, repeat the fail-closed open-Pull-Request check:
+
+```bash
+gh pr list --head "{feature-branch}" --state open --limit 100 --json number,url,state,headRefName
+```
+
+Require this command to succeed. Continue only when the successful response is an empty list. If an open Pull Request appeared after Step 3.5, execute Step 10 from `state-and-rollback.md` and stop without pushing. A matching remote head does not prove that this invocation owns the Pull Request, and neither `AUTO_MODE` nor `AUTHORIZE_HISTORY_REWRITE` may adopt or rewrite it.
+
+Step 5 proved that `{rollback-origin-ref}` was absent. Use the quoted, explicit absence-leased push below and set upstream tracking. If any actor creates the remote branch after Step 5, the lease fails. If this push succeeds, no Pull Request could have existed for that branch at the moment this workflow created it, so a later Pull Request cannot have been rewritten by this invocation:
+
+```bash
+git push --force-with-lease="{rollback-origin-ref}:" -u origin "HEAD:{rollback-origin-ref}"
+```
+
+Do not use plain `--force`, an OID lease for a pre-existing remote ref, an implicit destination, or a tracking ref read after the rewrite as the lease baseline. `kramme:git:recreate-commits --no-push` left the remote absent; this is the workflow's sole remote update before Pull Request creation.
 
 If push fails:
 
@@ -123,10 +137,10 @@ Possible causes:
   - Network connectivity issues
 
 Manual push command:
-  Repeat the validated push procedure above for the current branch.
+  Repeat the absence-leased push procedure above for the current branch.
 
 If branch exists remotely:
-  Coordinate before rewriting history, then push with lease protection using the validated current branch only.
+  Do not rewrite it under this workflow. Coordinate the remote work and use a fresh branch.
 
 The generated description is saved. You can create the PR manually.
 ```

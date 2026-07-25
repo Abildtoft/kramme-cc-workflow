@@ -1,14 +1,14 @@
 ---
 name: kramme:git:recreate-commits
-description: Use when asked to recreate commits with narrative-quality history on the current branch. Not for merged branches or shared branches others have based work on — it rewrites history and force-pushes with --force-with-lease.
-argument-hint: "[--auto|--granular] [--base <branch>] [--after <commit>] [--force-backup]"
+description: Use when asked to recreate commits with narrative-quality history on the current branch. Not for merged branches or shared branches others have based work on — it rewrites history and uses --force-with-lease when remote synchronization is enabled.
+argument-hint: "[--auto|--granular] [--base <branch>] [--after <commit>] [--force-backup] [--no-push] [--authorize-history-rewrite]"
 disable-model-invocation: true
 user-invocable: true
 ---
 
 Reimplement the current branch with a clean, narrative-quality git commit history suitable for reviewer comprehension. By default, recreate commits on the current branch (not a new clean branch).
 
-This rewrites history and requires a force-push to sync any remote. It is user-triggered only (it does not auto-invoke).
+This rewrites history and requires a force-push to sync any existing remote history unless `--no-push` delegates that synchronization to a parent workflow. It is user-triggered only (it does not auto-invoke).
 
 **When not to use:** Don't run this on a branch that is already merged, on a protected or shared base branch, or on a branch other contributors have based active work on without coordinating first — the recreation rewrites history and the remote can only be updated with a force-push.
 
@@ -19,6 +19,8 @@ This rewrites history and requires a force-push to sync any remote. It is user-t
 - `--base <branch>` — Use `<branch>` as the base instead of auto-detecting. Without this flag, the skill tries to detect the base from an existing GitHub pull request, then from `origin/HEAD`, then from `origin/main` or `origin/master`.
 - `--after <commit>` — Only recreate commits after `<commit>`, keeping all earlier history intact. Accepts any valid git ref (SHA, short SHA, `HEAD~3`, etc.). The commit must exist and be an ancestor of `HEAD`. When set, the diff scope becomes `<commit>..HEAD` and the reset point becomes `<commit>` instead of the merge base.
 - `--force-backup` — Allow the resolution script to replace an existing `<branch>-recreate-backup` branch after you have inspected that backup and confirmed it is safe to move. Without this flag, an existing backup makes the script stop so retries cannot destroy the original recovery point.
+- `--no-push` — Rewrite and verify the local branch but do not mutate its remote. Report that synchronization is delegated to the caller. `kramme:pr:create` always uses this mode so description generation and confirmation finish before the only remote update.
+- `--authorize-history-rewrite` — Explicit authorization for this invocation to skip the reset confirmation and, unless `--no-push` is also set, the lease-protected force-push confirmation. It never bypasses backup creation, branch validation, final-tree identity, or force-with-lease. `--auto` alone is not authorization.
 
 ## Steps
 
@@ -30,7 +32,6 @@ This rewrites history and requires a force-push to sync any remote. It is user-t
    [ -n "${BASE_FLAG:-}" ] && ARGS+=(--base "$BASE_FLAG")
    [ -n "${AFTER_ARG:-}" ] && ARGS+=(--after "$AFTER_ARG")
    [ "${FORCE_BACKUP:-0}" = "1" ] && ARGS+=(--force-backup)
-
    RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${ARGS[@]}") || {
      echo "Base resolution failed; see the message above and stop." >&2
      exit 1
@@ -73,7 +74,7 @@ This rewrites history and requires a force-push to sync any remote. It is user-t
    Flatten the tree into a linear commit sequence that tells a coherent narrative — each step should reflect a logical stage of development, as if writing a tutorial.
 
 5. **Reimplement the work**
-   - Confirm with the user that you may rewrite the current branch's history before resetting. The original tip is preserved at `BACKUP_REF`, so this is recoverable, but the reset is destructive to the working tree.
+   - Unless `--authorize-history-rewrite` was passed, confirm with the user that you may rewrite the current branch's history before resetting. The original tip is preserved at `BACKUP_REF`, so this is recoverable, but the reset is destructive to the working tree. Explicit authorization skips only this prompt, not the backup or validation requirements.
    - Reset the branch to the reset point: `git reset --hard "$RESET_POINT"`. (`RESET_POINT` is `AFTER_COMMIT` when `--after` was given, otherwise the merge base.)
    - Rebuild the changes commit by commit. To guarantee a byte-identical end state, source the final content from `$ORIGINAL_TIP` rather than retyping it (retyping is how extra lines and drift creep in):
      - Whole-file commits: `git checkout "$ORIGINAL_TIP" -- <paths>`, then commit.
@@ -89,10 +90,11 @@ This rewrites history and requires a force-push to sync any remote. It is user-t
 
    It is essential that the end state of the branch be byte-identical to the original end state (`$ORIGINAL_TIP`); intermediate commits not building is tolerable, a wrong end state is not.
 
-7. **Sync the remote** (only when needed, and only with confirmation)
+7. **Sync the remote** (only when enabled, with confirmation or explicit authorization)
+   - If `--no-push` was passed, do not run any push command. Report remote synchronization as delegated in `POTENTIAL CONCERNS`, then continue to the final summary.
    - If the branch has no remote tracking ref and no pull request, skip this step — the recreation is local-only.
    - Otherwise the rewritten history has diverged from the remote and a force-push is required. Before pushing:
-     - Confirm with the user, and warn explicitly if others may have based active work on this branch.
+     - Unless `--authorize-history-rewrite` was passed, confirm with the user, and warn explicitly if others may have based active work on this branch. Explicit authorization skips the prompt but not the warning or safety checks.
      - Push with `git push --force-with-lease` (never plain `--force`), so a concurrent remote update aborts the push instead of silently overwriting it.
    - Record the force-push in `POTENTIAL CONCERNS`.
 
@@ -148,7 +150,7 @@ Pause and reshape the storyline if any of these are true:
 
 - The final tree diff against the original end state is non-empty.
 - More than one commit would need the same summary sentence.
-- Force-pushing without `--force-with-lease`, or without first confirming with the user.
+- Force-pushing without `--force-with-lease`, or without either explicit confirmation or `--authorize-history-rewrite`.
 - Any commit message contains AI attribution or `Co-Authored-By: Claude`.
 - The recreated branch has more lines than the original (you introduced code during the rewrite).
 
