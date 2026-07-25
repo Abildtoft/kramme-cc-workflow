@@ -10,6 +10,8 @@ Track these throughout the workflow:
 
 - `{original-branch}` — branch the workflow started on.
 - `{original-commit}` — commit `HEAD` pointed at when the workflow started.
+- `{rollback-origin-ref}` — `refs/heads/{original-branch}`, captured before history rewriting.
+- `{rollback-origin-oid}` — always `<absent>` for a run that may continue; an existing remote ref is a blocker before history rewriting.
 - `{base-branch}` — detected default branch from Step 2 (`main`, `master`, or whatever `git symbolic-ref refs/remotes/origin/HEAD` resolves to).
 - `{uncommitted-disposition}` — `none`, `committed-for-inclusion`, or `excluded-and-stashed`.
 - `{include-commit}` — temporary commit created from uncommitted work when the user chooses to include it; otherwise `<none>`.
@@ -26,6 +28,16 @@ Run each command and capture the output as the named template value:
 git branch --show-current # -> {original-branch}
 git rev-parse HEAD        # -> {original-commit}
 ```
+
+Validate `{original-branch}` before using it as a remote ref: it must pass `git check-ref-format --branch`, contain no whitespace or shell metacharacters, and must not begin with `-`. Set `{rollback-origin-ref}` to the literal `refs/heads/{original-branch}`, then query the authoritative remote state before any history rewrite:
+
+```bash
+git ls-remote --heads origin "{rollback-origin-ref}"
+```
+
+Require the query to succeed and continue only when it returns no matching ref. Capture `<absent>` as `{rollback-origin-oid}`. A network, authentication, repository, or malformed-output failure is a blocker.
+
+If the successful query returns a full OID, stop before `kramme:git:recreate-commits`. A Git ref lease can protect the branch OID, but it cannot atomically prevent another actor from opening a Pull Request between a GitHub PR check and a force-push. This new-Pull-Request workflow therefore never rewrites an existing remote ref, even when its tip is contained in `{original-commit}`. Coordinate any existing remote work and use a fresh branch. Neither `--auto` nor `--authorize-history-rewrite` may bypass the remote-absence requirement.
 
 Initialize state after recording the branch and commit:
 
@@ -219,15 +231,27 @@ Resolve manually when ready.
 
 ### 10.3 Confirm Rollback
 
+Query `{rollback-origin-ref}` again with the same `git ls-remote --heads origin "{rollback-origin-ref}"` procedure. Compare the observed OID (or `<absent>`) with `{rollback-origin-oid}`. This is a read-only proof: never force-push, delete, or recreate the remote ref during automatic rollback.
+
+Classify the result as:
+
+- `unchanged` — the observed OID or absence exactly matches the captured baseline.
+- `diverged` — the observed OID or absence differs from the captured baseline. Report both values and state that automatic rollback restored only the local branch; coordinate before changing the remote.
+- `unverified` — the final remote query failed or returned malformed output. Report the error and do not imply anything about remote restoration.
+
+Use the matching remote-state line in the result instead of claiming that all pre-skill state was restored:
+
 ```
 Operation Aborted
 
-Restored state:
+Restored local state:
   - Branch: {original-branch}
   - Commit: {original-commit}
   - Uncommitted changes: {restored from temporary include commit | restored from excluded-work stash | none to restore}
 
-Your work has been restored to the pre-skill branch state.
+Remote state: {unchanged at captured OID/absence | diverged — expected {rollback-origin-oid}, observed {observed-origin-oid}; not modified automatically | unverified — {remote-query-error}}
+
+The local branch has been restored to its pre-rewrite state. Remote restoration is claimed only when the read-only comparison reports `unchanged`.
 ```
 
 Pick the `Uncommitted changes:` line based on `{uncommitted-disposition}`. If uncommitted work was restored from `{include-commit}`, staging may need to be redone, but the file contents are preserved.

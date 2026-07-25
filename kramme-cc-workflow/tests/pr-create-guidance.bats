@@ -35,6 +35,110 @@ file_mode() {
 	fi
 }
 
+@test "pr-create owns one absence-leased remote publication" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    create="skills/kramme:pr:create/SKILL.md"
+    branch="skills/kramme:pr:create/references/branch-and-platform-handling.md"
+    confirmation="skills/kramme:pr:create/references/confirmation-and-creation.md"
+    recreate="skills/kramme:git:recreate-commits/SKILL.md"
+
+    grep -qF "[--authorize-history-rewrite]" "$create"
+    grep -qF "AUTHORIZE_HISTORY_REWRITE=true" "$create"
+    grep -qF -- "--auto --no-push --authorize-history-rewrite" "$create"
+    grep -qF "Always pass \`--no-push\`" "$create"
+    grep -qF "Neither \`AUTO_MODE\` nor branch handling may publish the pre-rewrite history early" "$branch"
+    ! grep -qF "git push -u origin \$(git branch --show-current)" "$branch"
+    grep -qF "Step 5 proved that \`{rollback-origin-ref}\` was absent" "$confirmation"
+    grep -qF "If any actor creates the remote branch after Step 5, the lease fails" "$confirmation"
+    grep -qF "no Pull Request could have existed for that branch at the moment this workflow created it" "$confirmation"
+    grep -qF "Immediately before any push, repeat the fail-closed open-Pull-Request check" "$confirmation"
+    grep -qF "If an open Pull Request appeared after Step 3.5" "$confirmation"
+    grep -qF "does not prove that this invocation owns the Pull Request" "$confirmation"
+    grep -qF -- "--force-with-lease=\"{rollback-origin-ref}:\"" "$confirmation"
+    ! grep -qF -- "--force-with-lease=\"{rollback-origin-ref}:{rollback-origin-oid}\"" "$confirmation"
+    grep -qF "Do not use plain \`--force\`, an OID lease for a pre-existing remote ref" "$confirmation"
+    grep -qF "workflow'\''s sole remote update before Pull Request creation" "$confirmation"
+    grep -qF "[--no-push] [--authorize-history-rewrite]" "$recreate"
+    grep -qF "If \`--no-push\` was passed, do not run any push command" "$recreate"
+    grep -qF "\`--auto\` alone is not authorization" "$recreate"
+  '
+
+	assert_required_contracts_registered \
+		pr-create-history-rewrite-authorization \
+		pr-create-deferred-upstream-contract \
+		pr-create-absence-lease-contract \
+		pr-create-remote-absence-contract \
+		recreate-commits-deferred-push-contract
+
+	[ "$status" -eq 0 ]
+}
+
+@test "absence lease rejects a concurrently created remote branch" {
+	run bash -c '
+    set -e
+    root="$1"
+    remote="$root/remote.git"
+    publisher="$root/publisher"
+    contender="$root/contender"
+
+    git init --bare "$remote" >/dev/null
+    git init "$publisher" >/dev/null
+    git -C "$publisher" config user.name "Test User"
+    git -C "$publisher" config user.email "test@example.com"
+    printf "base\n" >"$publisher/file.txt"
+    git -C "$publisher" add file.txt
+    git -C "$publisher" commit -m "base" >/dev/null
+    git -C "$publisher" branch -M main
+    git -C "$publisher" remote add origin "$remote"
+    git -C "$publisher" push -u origin main >/dev/null
+    git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
+
+    git clone "$remote" "$contender" >/dev/null
+    git -C "$publisher" checkout -b feature >/dev/null
+    printf "publisher\n" >>"$publisher/file.txt"
+    git -C "$publisher" commit -am "publisher work" >/dev/null
+
+    test -z "$(git -C "$publisher" ls-remote --heads origin refs/heads/feature)"
+    git -C "$contender" checkout -b feature origin/main >/dev/null
+    git -C "$contender" push origin HEAD:refs/heads/feature >/dev/null
+    expected=$(git -C "$contender" rev-parse HEAD)
+
+    if git -C "$publisher" push \
+      --force-with-lease=refs/heads/feature: \
+      origin HEAD:refs/heads/feature >/dev/null 2>&1; then
+      exit 1
+    fi
+
+    actual=$(git -C "$publisher" ls-remote --heads origin refs/heads/feature | awk "{print \$1}")
+    test "$actual" = "$expected"
+  ' _ "$BATS_TEST_TMPDIR"
+
+	[ "$status" -eq 0 ]
+}
+
+@test "existing remote branch stops before history rewriting" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    create="skills/kramme:pr:create/SKILL.md"
+    state="skills/kramme:pr:create/references/state-and-rollback.md"
+    confirmation="skills/kramme:pr:create/references/confirmation-and-creation.md"
+
+    grep -qF "The feature branch already exists on \`origin\`" "$create"
+    grep -qF "continue only when it returns no matching ref" "$state"
+    grep -qF "stop before \`kramme:git:recreate-commits\`" "$state"
+    grep -qF "never rewrites an existing remote ref" "$state"
+    grep -qF "cannot atomically prevent another actor from opening a Pull Request" "$state"
+    grep -qF "Do not use plain \`--force\`, an OID lease for a pre-existing remote ref" "$confirmation"
+    ! grep -qF "git fetch --no-tags origin \"{rollback-origin-ref}\"" "$state"
+    ! grep -qF "git merge-base --is-ancestor \"{rollback-origin-oid}\" \"{original-commit}\"" "$state"
+  '
+
+	[ "$status" -eq 0 ]
+}
+
 @test "pr-create guidance contracts are registered and files are wired" {
 	run bash -c '
     set -e
@@ -53,6 +157,18 @@ file_mode() {
     grep -qF "references/branch-and-platform-handling.md" "$create"
     grep -qF "references/state-and-rollback.md" "$create"
     grep -qF "references/confirmation-and-creation.md" "$create"
+    grep -qF "## Step 3.5: Reject an Existing Pull Request" "$create"
+    grep -qF "Inspect the agent-tracked value directly" "$create"
+    grep -qF "Require the whole string to match \`[A-Za-z0-9][A-Za-z0-9._/-]*\`" "$create"
+    grep -qF "git check-ref-format --branch \"{feature-branch}\"" "$create"
+    grep -qF "gh pr list --head \"{feature-branch}\" --state open" "$create"
+    grep -qF "errors are blockers, not evidence that no Pull Request exists" "$create"
+
+    branch_validation_line=$(grep -nF "Inspect the agent-tracked value directly" "$create" | cut -d: -f1)
+    git_validation_line=$(grep -nF "git check-ref-format --branch \"{feature-branch}\"" "$create" | cut -d: -f1)
+    existing_pr_query_line=$(grep -nF "gh pr list --head \"{feature-branch}\" --state open" "$create" | cut -d: -f1)
+    [ "$branch_validation_line" -lt "$git_validation_line" ]
+    [ "$git_validation_line" -lt "$existing_pr_query_line" ]
 
     ! grep -qF "pr-title.XXXXXX.txt" "$confirmation"
     ! grep -qF "pr-body.XXXXXX.md" "$confirmation"
@@ -61,6 +177,7 @@ file_mode() {
 
 	assert_required_contracts_registered \
 		pr-create-gh-prevalidation \
+		pr-create-existing-pr-preflight \
 		pr-create-description-generation-contract \
 		pr-create-linear-id-normalization \
 		pr-create-branch-linear-state \
@@ -160,9 +277,20 @@ file_mode() {
     grep -q "^## Step 5: State Preservation" "$state"
     grep -q "^## Step 9.0: Restore Excluded Uncommitted Changes" "$state"
     grep -q "^## Step 10: Abort and Rollback" "$state"
+    grep -qF "{rollback-origin-ref}" "$state"
+    grep -qF "{rollback-origin-oid}" "$state"
+    grep -qF "git ls-remote --heads origin \"{rollback-origin-ref}\"" "$state"
+    grep -qF "continue only when it returns no matching ref" "$state"
+    grep -qF "Neither \`--auto\` nor \`--authorize-history-rewrite\` may bypass the remote-absence requirement" "$state"
+    grep -qF "never force-push, delete, or recreate the remote ref during automatic rollback" "$state"
+    grep -qF "Remote state: {unchanged at captured OID/absence | diverged" "$state"
+    grep -qF "Remote restoration is claimed only when the read-only comparison reports \`unchanged\`" "$state"
+    ! grep -qF "Your work has been restored to the pre-skill branch state." "$state"
   '
 
-	assert_required_contracts_registered pr-create-state-restoration-contract
+	assert_required_contracts_registered \
+		pr-create-remote-absence-contract \
+		pr-create-state-restoration-contract
 
 	[ "$status" -eq 0 ]
 }

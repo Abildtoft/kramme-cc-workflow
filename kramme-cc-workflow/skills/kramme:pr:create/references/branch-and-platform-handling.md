@@ -60,13 +60,15 @@ Capture the result as `{base-branch}` — used in later display strings, the `gi
 
 ### Branch Decision
 
-Track `{linear-issue-id}` as nullable workflow state. When a Linear-style issue ID is supplied by the user or detected in the current branch name, normalize it to uppercase and capture it as `{linear-issue-id}`. Use the generic pattern `[A-Z]{2,5}-\d+` case-insensitively; do not hard-code team prefixes. If no issue ID is found, leave `{linear-issue-id}` empty.
+Track `{linear-issue-id}` as nullable workflow state. If `LINEAR_ISSUE_OVERRIDE` was supplied by Step 0, initialize `{linear-issue-id}` from that exact normalized value and do not replace it through branch-name extraction. Otherwise, when a Linear-style issue ID is supplied by the user or detected in the current branch name, normalize it to uppercase and capture it as `{linear-issue-id}`. Legacy branch extraction uses `[A-Z]{2,5}-\d+` case-insensitively; do not hard-code team prefixes. If no issue ID is found, leave `{linear-issue-id}` empty.
 
 **If the current branch equals `{base-branch}`:**
 
 #### Check for Linear Issue
 
-If `AUTO_MODE=true`, skip this question and use the file-based branch naming flow by default.
+If `LINEAR_ISSUE_OVERRIDE` was supplied, skip this question and enter the Linear issue flow below with the exact authoritative `{linear-issue-id}`.
+
+Otherwise, if `AUTO_MODE=true`, skip this question and use the file-based branch naming flow by default.
 
 Otherwise, ask if working on a Linear issue:
 
@@ -81,9 +83,9 @@ options:
 multiSelect: false
 ```
 
-#### If "Yes, I have a Linear issue ID":
+#### If `LINEAR_ISSUE_OVERRIDE` was supplied or "Yes, I have a Linear issue ID":
 
-1. Ask for the issue ID (user enters via "Other" free-text option):
+1. If `LINEAR_ISSUE_OVERRIDE` was supplied, use the existing authoritative `{linear-issue-id}` without prompting. Otherwise, ask for the issue ID (user enters via "Other" free-text option):
 
    ```yaml
    header: "Linear issue"
@@ -91,7 +93,7 @@ multiSelect: false
    options: []
    ```
 
-   Normalize the supplied ID to uppercase and capture it as `{linear-issue-id}`.
+   Normalize the newly supplied ID to uppercase and capture it as `{linear-issue-id}`. Never replace `LINEAR_ISSUE_OVERRIDE`.
 
 2. Fetch issue details using Linear MCP:
 
@@ -204,7 +206,7 @@ multiSelect: false
    git checkout -b {chosen-branch-name}
    ```
 
-**If already on a feature branch:** Continue with current branch, but first scan the branch name for a Linear-style issue ID using `[A-Z]{2,5}-\d+` case-insensitively. If found, normalize it to uppercase and capture it as `{linear-issue-id}`. Then validate upstream configuration.
+**If already on a feature branch:** Continue with current branch. When `{linear-issue-id}` is still empty, scan the branch name for a Linear-style issue ID using `[A-Z]{2,5}-\d+` case-insensitively; if found, normalize it to uppercase and capture it. Never overwrite `LINEAR_ISSUE_OVERRIDE`. Then validate upstream configuration.
 
 ### No-Upstream Handling
 
@@ -214,41 +216,6 @@ Check for an upstream branch:
 git rev-parse --abbrev-ref --symbolic-full-name @{u} 2> /dev/null
 ```
 
-**If upstream exists:** Continue with the current branch.
+**If upstream exists:** Do not push. Continue with the current branch to Step 5, which requires the matching `origin` ref to be absent before history rewriting. If that ref exists, Step 5 stops and requires coordination or a fresh branch.
 
-**If upstream is missing:**
-
-If `AUTO_MODE=true`, set the upstream immediately with:
-
-```bash
-git push -u origin $(git branch --show-current)
-```
-
-Then continue.
-
-Otherwise use AskUserQuestion:
-
-```yaml
-header: "No upstream"
-question: "Current branch has no upstream remote branch. What should I do?"
-options:
-  - label: "Set upstream now"
-    description: "Push and track this branch on origin"
-  - label: "Continue without upstream"
-    description: "Proceed now and handle push/upstream later"
-  - label: "Abort"
-    description: "Stop and let me configure branch tracking manually"
-multiSelect: false
-```
-
-**If "Set upstream now":**
-
-```bash
-git push -u origin $(git branch --show-current)
-```
-
-Continue with the workflow.
-
-**If "Continue without upstream":** Continue, but note that push/create steps may require explicit branch arguments later.
-
-**If "Abort":** Stop the workflow with a clear message.
+**If upstream is missing:** Continue without pushing. Step 5 requires the validated `origin` branch to remain absent, and Step 8 is the sole owner of creating that remote ref and setting upstream tracking. Neither `AUTO_MODE` nor branch handling may publish the pre-rewrite history early.

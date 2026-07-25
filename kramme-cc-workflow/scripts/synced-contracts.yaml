@@ -547,9 +547,168 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
       "contains": [
         "Always pass `--auto --no-update --base {base-branch}`",
+        "also pass `--linear-issue {linear-issue-id}`",
         "If the generator emits a blocking `MISSING REQUIREMENT:` marker",
         "do **not** proceed to Step 8 or create the PR",
-        "The non-blocking \"no Linear ID\" marker"
+        "The non-blocking \"no Linear ID\" marker",
+        "--require-generated-description forbids placeholder fallback"
+      ]
+    },
+    {
+      "name": "pr-create-history-rewrite-authorization",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+      "contains": [
+        "[--authorize-history-rewrite]",
+        "AUTHORIZE_HISTORY_REWRITE=true",
+        "`--auto` alone never does",
+        "Always pass `--no-push`",
+        "--auto --no-push --authorize-history-rewrite",
+        "sole remote-mutation owner"
+      ]
+    },
+    {
+      "name": "pr-create-existing-pr-preflight",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+      "contains": [
+        "## Step 3.5: Reject an Existing Pull Request",
+        "Inspect the agent-tracked value directly",
+        "Require the whole string to match `[A-Za-z0-9][A-Za-z0-9._/-]*`",
+        "git check-ref-format --branch \"{feature-branch}\"",
+        "gh pr list --head \"{feature-branch}\" --state open --limit 100 --json number,url,state,headRefName",
+        "errors are blockers, not evidence that no Pull Request exists",
+        "update it directly or use `kramme:pr:fix-ci --no-consolidate`"
+      ]
+    },
+    {
+      "name": "pr-create-deferred-upstream-contract",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/branch-and-platform-handling.md",
+      "contains": [
+        "If upstream is missing",
+        "Continue without pushing",
+        "Step 5 requires the validated `origin` branch to remain absent",
+        "Step 8 is the sole owner of creating that remote ref",
+        "may publish the pre-rewrite history early"
+      ]
+    },
+    {
+      "name": "pr-create-absence-lease-contract",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
+      "contains": [
+        "Step 5 proved that `{rollback-origin-ref}` was absent",
+        "If any actor creates the remote branch after Step 5, the lease fails",
+        "no Pull Request could have existed for that branch at the moment this workflow created it",
+        "Immediately before any push, repeat the fail-closed open-Pull-Request check",
+        "does not prove that this invocation owns the Pull Request",
+        "--force-with-lease=\"{rollback-origin-ref}:\"",
+        "Do not use plain `--force`, an OID lease for a pre-existing remote ref",
+        "workflow's sole remote update before Pull Request creation"
+      ]
+    },
+    {
+      "name": "pr-create-remote-absence-contract",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/state-and-rollback.md",
+      "contains": [
+        "continue only when it returns no matching ref",
+        "A Git ref lease can protect the branch OID",
+        "cannot atomically prevent another actor from opening a Pull Request",
+        "never rewrites an existing remote ref",
+        "Neither `--auto` nor `--authorize-history-rewrite` may bypass the remote-absence requirement"
+      ]
+    },
+    {
+      "name": "recreate-commits-deferred-push-contract",
+      "path": "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md",
+      "contains": [
+        "[--no-push] [--authorize-history-rewrite]",
+        "If `--no-push` was passed, do not run any push command",
+        "`--auto` alone is not authorization",
+        "without either explicit confirmation or `--authorize-history-rewrite`"
+      ]
+    },
+    {
+      "name": "linear-issue-to-pr-ci-stabilization-contract",
+      "path": "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/references/shipping-contract.md",
+      "contains": [
+        "## Step 6: Prove the Initial Shipped Result",
+        "## Step 7: Stabilize CI and Review Feedback",
+        "kramme:pr:fix-ci --no-consolidate",
+        "Do not combine it with `--auto`",
+        "## Step 8: Prove the Final Pull Request State",
+        "baseRefName,headRefName,headRefOid",
+        "Capture its validated `{base-branch}` as `{expected-base-branch}`",
+        "`baseRefName` to equal `{expected-base-branch}`",
+        "gh pr checks --json name,state,bucket,link,workflow",
+        "Exit status is not a query result here",
+        "exits `1` when a check failed, `8` while checks are pending",
+        "no checks reported",
+        "Record `Checks: none configured` and continue",
+        "After feedback collection, take the final publication snapshot",
+        "Require both GitHub queries to succeed, reading the check query under the exit-status rules in item 2",
+        "run exactly one validation-only final quality round before verification",
+        "kramme:pr:code-review --parallel --inline",
+        "kramme:pr:convention-review --inline",
+        "kramme:code:refactor-opportunities pr",
+        "--authorize-history-rewrite",
+        "has no invocation-owned creation provenance",
+        "do not rerun `kramme:linear:issue-to-pr` or claim a cross-session Step 7 resume",
+        "invoke `kramme:verify:run`",
+        "gh pr view --json reviewDecision",
+        "gh api --paginate \"repos/{owner}/{repo}/pulls/{pr-number}/reviews\"",
+        "gh api --paginate \"repos/{owner}/{repo}/pulls/{pr-number}/comments\"",
+        "gh api --paginate \"repos/{owner}/{repo}/issues/{pr-number}/comments\"",
+        "reviewThreads(first: 100, after: $endCursor)",
+        "include each thread's `id` and `isResolved`",
+        "pageInfo { hasNextPage endCursor }",
+        "unavailable `isResolved`",
+        "no `CHANGES_REQUESTED`",
+        "direct the next invocation to `kramme:pr:fix-ci --no-consolidate`"
+      ]
+    },
+    {
+      "name": "linear-issue-to-pr-parent-review-budget",
+      "path": "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/references/review-convergence.md",
+      "contains": [
+        "parent-owned review-triggered code-edit batch",
+        "Delegated quality gates are read-only",
+        "kramme:pr:code-review --parallel --inline",
+        "consume exactly one parent cycle",
+        "No delegated gate owns an internal fix/rerun loop",
+        "standard mode has no accepted unresolved Critical or Important finding",
+        "strict mode has a disposition for every emitted finding"
+      ]
+    },
+    {
+      "name": "linear-issue-to-pr-artifact-isolation-errors",
+      "path": "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/references/review-convergence.md",
+      "contains": [
+        "MISSING REQUIREMENT: unable to create .context/linear-issue-to-pr/",
+        "Error: git check-ignore failed while validating .context/linear-issue-to-pr/",
+        "MISSING REQUIREMENT: .context/linear-issue-to-pr/ is not gitignored"
+      ]
+    },
+    {
+      "name": "linear-issue-to-pr-nonship-handoff",
+      "path": "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/SKILL.md",
+      "contains": [
+        "SHIP_MODE=false",
+        "Before interpolating `{issue-branch}` into any shell command",
+        "Require the whole string to match `[A-Za-z0-9][A-Za-z0-9._/-]*`",
+        "git check-ref-format --branch \"{issue-branch}\"",
+        "git ls-remote --heads origin \"refs/heads/{issue-branch}\"",
+        "Continue only for the zero-line absent result.",
+        "stop before delegated branch setup",
+        "If `SHIP_MODE=false`, stop without invoking artifact cleanup or `kramme:pr:create`.",
+        "Next: $kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description",
+        "Then: $kramme:pr:fix-ci --no-consolidate"
+      ]
+    },
+    {
+      "name": "linear-issue-to-pr-public-guidance",
+      "path": "README.md",
+      "contains": [
+        "verifies that it has no existing Pull Request or remote branch on `origin`",
+        "During normal remediation rounds it runs applicable gates in this order: `/kramme:pr:code-review`, `/kramme:pr:convention-review`, then `/kramme:code:refactor-opportunities pr`.",
+        "when a bounded stop fires after code changed, one final validation-only round reruns every applicable gate in the same order"
       ]
     },
     {
@@ -570,7 +729,9 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/branch-and-platform-handling.md",
       "contains": [
         "Track `{linear-issue-id}` as nullable workflow state",
-        "Normalize the supplied ID to uppercase and capture it as `{linear-issue-id}`",
+        "Normalize the newly supplied ID to uppercase and capture it as `{linear-issue-id}`",
+        "skip this question and enter the Linear issue flow",
+        "use the existing authoritative `{linear-issue-id}` without prompting",
         "scan the branch name for a Linear-style issue ID"
       ]
     },
@@ -621,7 +782,12 @@
         "CHERRY_PICK_STATUS=$?",
         "git stash pop \"$STASH_REF\"",
         "No PR changes remain after excluding uncommitted work",
-        "before any post-push PR creation failure output"
+        "before any post-push PR creation failure output",
+        "{rollback-origin-ref}",
+        "{rollback-origin-oid}",
+        "git ls-remote --heads origin \"{rollback-origin-ref}\"",
+        "never force-push, delete, or recreate the remote ref during automatic rollback",
+        "Remote restoration is claimed only when the read-only comparison reports `unchanged`"
       ]
     },
     {
@@ -893,6 +1059,9 @@
         ".context/demo-reels/",
         ".context/github-review-replies/",
         ".context/session-search/",
+        ".context/linear-issue-to-pr/REVIEW_OVERVIEW.md",
+        ".context/linear-issue-to-pr/CONVENTION_REVIEW_OVERVIEW.md",
+        ".context/linear-issue-to-pr/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
         "siw/OPEN_ISSUES_OVERVIEW.md",
         "siw/FEATURE_SPECIFICATION.md",
         "disposable",

@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:generate-description
 description: Write a structured PR title and body from git diff, commit log, and Linear context. Outputs markdown for copy-paste or, when explicitly invoked with --auto, updates an existing PR.
-argument-hint: "[--auto] [--no-update] [--visual] [--base <ref>]"
+argument-hint: "[--auto] [--no-update] [--visual] [--base <ref>] [--linear-issue <ISSUE-ID>]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -16,12 +16,13 @@ Parse `$ARGUMENTS` for flags:
 - `--no-update`: Output-only automation mode for orchestrators that need generated title/body content but must not mutate an existing PR. Valid with `--auto`; it skips prompts but keeps `DIRECT_UPDATE=false` even if `gh pr view` finds a PR.
 - `--visual`: Delegate demo evidence capture to `kramme:visual:demo-reel` and include the resulting Screenshots/Videos section when local or embeddable evidence is available. If capture cannot run, continue with the placeholder Screenshots/Videos section.
 - `--base <ref>`: Use `<ref>` as the base branch for diff computation instead of auto-detecting.
+- `--linear-issue <ISSUE-ID>`: Use a caller-validated Linear identifier as the authoritative issue context. Validate `[A-Za-z0-9]+-[0-9]+`, normalize it to uppercase, and do not replace it with a branch-name substring.
 
-If `--auto` is present, set `AUTO_MODE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments. If `--no-update` is present, set `OUTPUT_ONLY=true` and remove the flag from remaining arguments. If `--visual` is present, set `VISUAL_MODE=true` and remove the flag from remaining arguments. If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the flag and value from remaining arguments.
+If `--auto` is present, set `AUTO_MODE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments. If `--no-update` is present, set `OUTPUT_ONLY=true` and remove the flag from remaining arguments. If `--visual` is present, set `VISUAL_MODE=true` and remove the flag from remaining arguments. If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the flag and value from remaining arguments. If `--linear-issue <ISSUE-ID>` is present, set `LINEAR_ISSUE_OVERRIDE` to the validated normalized value and remove the flag and value. Reject a missing or invalid value before Phase 1.
 
 ### Sub-Skill Invocation Contract
 
-When another skill invokes this one as an orchestration step, it must pass `--auto` (and should pass `--base <ref>` when it already resolved the base branch). If the caller only needs generated title/body content and owns the eventual publish gate, it must also pass `--no-update`. In `--auto` mode, Phase 2.5 clarification prompts and the Phase 4 save-to-file prompt are skipped. Missing context is surfaced as `MISSING REQUIREMENT:` output instead of prompting mid-orchestration; blocking missing requirements disable direct PR updates and produce copy-paste output.
+When another skill invokes this one as an orchestration step, it must pass `--auto` (and should pass `--base <ref>` when it already resolved the base branch). If the caller already validated a Linear issue, it should pass `--linear-issue <ISSUE-ID>` so this skill does not depend on lossy branch-name extraction. If the caller only needs generated title/body content and owns the eventual publish gate, it must also pass `--no-update`. In `--auto` mode, Phase 2.5 clarification prompts and the Phase 4 save-to-file prompt are skipped. Missing context is surfaced as `MISSING REQUIREMENT:` output instead of prompting mid-orchestration; blocking missing requirements disable direct PR updates and produce copy-paste output.
 
 ## Instructions
 

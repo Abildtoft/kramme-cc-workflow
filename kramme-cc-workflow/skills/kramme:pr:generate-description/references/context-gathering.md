@@ -51,7 +51,6 @@
    else
      DEFAULT_TEMPLATE_REF=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2> /dev/null || true)
    fi
-
    if [ -z "$DEFAULT_TEMPLATE_REF" ] || ! git rev-parse --verify --quiet "$DEFAULT_TEMPLATE_REF^{commit}" > /dev/null; then
      echo "MISSING REQUIREMENT: unable to resolve default branch for GitHub PR template lookup"
    else
@@ -60,8 +59,8 @@
          git cat-file -e "$DEFAULT_TEMPLATE_REF:$path" 2> /dev/null && printf '%s\n' "$path"
        done
        for dir in PULL_REQUEST_TEMPLATE .github/PULL_REQUEST_TEMPLATE docs/PULL_REQUEST_TEMPLATE; do
-         git ls-tree -r --name-only "$DEFAULT_TEMPLATE_REF" "$dir" 2> /dev/null |
-           awk -v dir="$dir/" 'index($0, dir) == 1 { name = substr($0, length(dir) + 1); if (name !~ /\// && tolower(name) ~ /\.(md|txt)$/) print $0 }'
+         git ls-tree -r --name-only "$DEFAULT_TEMPLATE_REF" "$dir" 2> /dev/null \
+           | awk -v dir="$dir/" 'index($0, dir) == 1 { name = substr($0, length(dir) + 1); if (name !~ /\// && tolower(name) ~ /\.(md|txt)$/) print $0 }'
        done
      } | sort -u
    fi
@@ -111,7 +110,7 @@
 
 ### 2.3 Linear Issue Context
 
-1. **ALWAYS** check if the branch name or commit messages contain a Linear-style issue ID. Match the generic pattern `[A-Z]{2,5}-\d+` (case-insensitive at extraction time; normalize to uppercase). Do not hard-code a team prefix list — accept any prefix that Linear validates in step 2.
+1. **ALWAYS** establish one authoritative Linear issue ID. If `LINEAR_ISSUE_OVERRIDE` is set, use that exact normalized identifier and skip branch-name extraction. Otherwise, check whether the branch name or commit messages contain a Linear-style issue ID using the legacy generic pattern `[A-Z]{2,5}-\d+` (case-insensitive at extraction time; normalize to uppercase). Do not hard-code a team prefix list. A caller override may contain digits or a team-key length that the legacy branch parser cannot recover safely.
    - Branch-name pattern: `{initials}/{team-issue-id}-{description}` or `{team-issue-id}-{description}` at the root.
    - **EXAMPLE**: `mab/wan-521-ensure-platform-picker-only-shown-once` → `WAN-521`.
    - **EXAMPLE**: `jd/hea-123-fix-header-bug` → `HEA-123`.
@@ -139,7 +138,7 @@
    - **ALWAYS** note if the approach differs from what the issue requested.
    - **EXAMPLE**: Issue asked for A, but implementation delivers A + B, or implements A differently.
 
-5. **CAN** scan commit messages for additional issue references using the same generic `[A-Z]{2,5}-\d+` pattern.
+5. **CAN** scan commit messages for additional issue references using the same generic `[A-Z]{2,5}-\d+` pattern, but never replace or truncate `LINEAR_ISSUE_OVERRIDE` with a substring match.
    - **EXAMPLE**: `WAN-123`, `Fixes HEA-456`, `Related to BLOG-789`.
 
 ### 2.4 Code Structure Analysis

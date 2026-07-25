@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:create
 description: Use when creating a PR from the current branch with narrative-quality commits and a generated description. Orchestrates branch setup, commit restructuring via kramme:git:recreate-commits, and description generation via kramme:pr:generate-description before pushing and opening the PR via gh.
-argument-hint: "[--auto] [--draft]"
+argument-hint: "[--auto] [--draft] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -13,6 +13,7 @@ Orchestrate the creation of a clean, well-documented PR by validating git state,
 ## When NOT to use this skill
 
 - Branch already has an open PR — update it directly (or use `kramme:pr:generate-description` to refresh the description) instead of running the full creation flow.
+- The feature branch already exists on `origin`, even without a Pull Request — this new-Pull-Request workflow cannot atomically lock GitHub PR creation while rewriting an existing remote ref. Coordinate and use a fresh branch.
 - Hotfix / cherry-pick that must preserve exact commit boundaries — `recreate-commits` will reorganize history. Push and `gh pr create` manually.
 - Working in a stacked-PR setup where the base is another feature branch — this skill assumes the repo default branch (resolved via `origin/HEAD`) as the PR base.
 - The current branch hasn't diverged from the base branch — Step 4 will abort, but skip running the skill in the first place.
@@ -28,9 +29,11 @@ Step 1  Pre-Validation .................... abort on any failure
 Step 2  Resolve base branch ({base-branch})
 Step 3  Branch handling (on base? Linear? upstream?)
     |
+Step 3.5 Existing-PR check ................. abort before rewriting
+    |
 Step 4  Changes detection ................. abort if nothing to ship
     |
-Step 5  Capture state + decide uncommitted-work handling
+Step 5  Capture local state + require absent remote ref; decide uncommitted-work handling
     |
 Step 6  Invoke kramme:git:recreate-commits  --> on failure, Step 10 rollback
     |
@@ -61,17 +64,23 @@ Parse `$ARGUMENTS` for optional flags before starting:
 
 - `--auto` -> set `AUTO_MODE=true` and remove the flag from the remaining arguments.
 - `--draft` -> set `DRAFT_MODE=true` and remove the flag from the remaining arguments.
+- `--linear-issue <ISSUE-ID>` -> validate the value against `[A-Za-z0-9]+-[0-9]+`, normalize it to uppercase, store it as `LINEAR_ISSUE_OVERRIDE`, and remove the flag and value. Reject a missing or invalid value before pre-validation. This caller-supplied identifier is authoritative and takes precedence over branch-name extraction.
+- `--require-generated-description` -> set `REQUIRE_GENERATED_DESCRIPTION=true` and remove the flag. This orchestration-only safety mode forbids placeholder fallback when `kramme:pr:generate-description` returns no usable output.
+- `--authorize-history-rewrite` -> set `AUTHORIZE_HISTORY_REWRITE=true` and remove the flag. This explicit capability authorizes the current invocation to skip the nested, backup-protected local reset confirmation for the validated feature branch. It does not relax branch, backup, clean-tree, existing-PR, remote-absence, or force-with-lease checks. `kramme:linear:issue-to-pr --ship` supplies this capability; `--auto` alone never does.
 
-Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`. Flag order is not significant.
+Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`, `REQUIRE_GENERATED_DESCRIPTION=false`, `AUTHORIZE_HISTORY_REWRITE=false`. Flag order is not significant.
 
 `--auto` means:
 
 - use the recommended commit structure (`Narrative`)
 - invoke downstream skills in non-interactive mode
 - include all uncommitted changes by selecting **Commit and include**
+- automate downstream workflow choices that do not require separate safety authorization
 - skip the final PR confirmation
 - choose the recommended branch-handling path from the shared reference instructions
 - stop only on hard blockers
+
+`--auto` controls workflow choices only. It does not authorize the destructive local reset, which remains separately confirmed unless `AUTHORIZE_HISTORY_REWRITE=true`.
 
 `--draft` means:
 
@@ -90,6 +99,24 @@ Read the pre-validation checks from `references/pre-validation-checks.md`. Run a
 ## Steps 2-3: Branch Handling
 
 Read the branch handling instructions from `references/branch-and-platform-handling.md`. Validate the branch is a feature branch, detect the base branch (capture as `{base-branch}` — used in later display strings and as the PR base), and handle edge cases (detached HEAD, on base branch, Linear issue integration, no upstream).
+
+---
+
+## Step 3.5: Reject an Existing Pull Request
+
+After branch handling selects `{feature-branch}`, validate it before state capture, history rewriting, or any shell command that interpolates it.
+
+Inspect the agent-tracked value directly. Require the whole string to match `[A-Za-z0-9][A-Za-z0-9._/-]*`; reject a leading `-`, whitespace, shell metacharacters, or any other character outside that allowlist.
+
+Only after that check passes, run `git check-ref-format --branch "{feature-branch}"` and require it to succeed. This intentionally conservative boundary may reject an unusual Git-valid branch rather than execute an untrusted branch value.
+
+With the validated value, query GitHub:
+
+```bash
+gh pr list --head "{feature-branch}" --state open --limit 100 --json number,url,state,headRefName
+```
+
+Require this command to succeed. Authentication, network, repository, rate-limit, and API errors are blockers, not evidence that no Pull Request exists. Continue only when the successful response is an empty list. If an open Pull Request exists, stop and report its URL; update it directly or use `kramme:pr:fix-ci --no-consolidate` instead of running the creation workflow.
 
 ---
 
@@ -130,7 +157,7 @@ Nothing to create a PR for. Make some changes first, then run /kramme:pr:create 
 
 ## Step 5: State Preservation
 
-Read `references/state-and-rollback.md` and execute Step 5 (capture `{original-branch}` / `{original-commit}`, decide whether uncommitted changes are included or excluded, and capture `{stash-created}` only if exclusion requires a temporary stash). Keep these values for the rest of the workflow — they are agent-tracked state, not shell variables.
+Read `references/state-and-rollback.md` and execute Step 5 (capture `{original-branch}` / `{original-commit}` and the authoritative `{rollback-origin-ref}` absence baseline, stop if that ref already exists on `origin`, decide whether uncommitted changes are included or excluded, and capture `{stash-created}` only if exclusion requires a temporary stash). Keep these values for the rest of the workflow — they are agent-tracked state, not shell variables.
 
 ---
 
@@ -157,18 +184,14 @@ multiSelect: false
 
 ### 6.2 Invoke the Skill
 
-**IMPORTANT:** Use the Skill tool to invoke `recreate-commits`:
+**IMPORTANT:** Use the Skill tool to invoke `recreate-commits`. Always pass `--no-push` so this orchestrator remains the sole remote-mutation owner. Also pass `--auto` when `AUTO_MODE=true`, and pass `--authorize-history-rewrite` only when `AUTHORIZE_HISTORY_REWRITE=true`.
 
-If `AUTO_MODE=true`:
+Examples:
 
 ```yaml
-skill: "kramme:git:recreate-commits", args: "--auto"
-```
-
-Otherwise:
-
-```
-skill: "kramme:git:recreate-commits"
+skill: "kramme:git:recreate-commits", args: "--no-push"
+skill: "kramme:git:recreate-commits", args: "--auto --no-push"
+skill: "kramme:git:recreate-commits", args: "--auto --no-push --authorize-history-rewrite"
 ```
 
 This skill will:
@@ -176,6 +199,7 @@ This skill will:
 - Analyze all changes vs `{base-branch}`
 - Plan a logical commit sequence
 - Create narrative-quality commits
+- Leave the remote absent so Step 8 can perform one absence-leased publication after description generation succeeds
 - **NEVER include AI attribution** (no "Generated with Claude Code" or Co-Authored-By)
 
 When it returns, continue to Step 7. See the "Workflow rule" near the top of this skill.
@@ -187,7 +211,7 @@ When it returns, continue to Step 7. See the "Workflow rule" near the top of thi
 ```
 Error: The recreate-commits skill encountered an issue.
 
-Original state preserved:
+Local rollback baseline:
   - Branch: {original-branch}
   - Commit: {original-commit}
 
@@ -195,9 +219,10 @@ What happened:
   {skill error message}
 
 Recovery:
-  1. Your original work is safe — rollback restored the branch and any included or excluded uncommitted work
-  2. Check git status to confirm
-  3. Try again with /kramme:pr:create
+  1. Rollback restored the local branch and any included or excluded uncommitted work
+  2. Check the Step 10 remote-state result; `--no-push` should leave the baseline unchanged, and any unexpected divergence is reported
+  3. Check git status to confirm
+  4. Try again with /kramme:pr:create
 ```
 
 **Action:** Execute Step 10 (rollback via `references/state-and-rollback.md`), then abort.
@@ -208,7 +233,7 @@ Recovery:
 
 ### 7.1 Invoke the Skill
 
-Invoke `kramme:pr:generate-description` via the Skill tool. Always pass `--auto --no-update --base {base-branch}` because this orchestrator owns the review/edit gate and the sub-skill must neither prompt mid-flow nor mutate an existing PR before Step 8 confirmation.
+Invoke `kramme:pr:generate-description` via the Skill tool. Always pass `--auto --no-update --base {base-branch}` because this orchestrator owns the review/edit gate and the sub-skill must neither prompt mid-flow nor mutate an existing PR before Step 8 confirmation. When `{linear-issue-id}` is set, also pass `--linear-issue {linear-issue-id}` so the generator uses the validated identifier instead of re-extracting it from the branch.
 
 The skill will:
 
@@ -240,7 +265,9 @@ The non-blocking "no Linear ID" marker may be surfaced in the run output without
 
 ### 7.3 Handle Skill Failure
 
-If the skill returns no usable output, build a fallback:
+If the skill returns no usable output and `REQUIRE_GENERATED_DESCRIPTION=true`, emit `MISSING REQUIREMENT: generated PR title/body unavailable; --require-generated-description forbids placeholder fallback`, execute Step 10 rollback, and stop before Step 8.
+
+Otherwise, build a fallback:
 
 **Fallback title** — derive in this order, picking the first that works:
 
@@ -277,7 +304,7 @@ Continue to Step 8 with the fallback title and description. When `AUTO_MODE=true
 
 ## Step 8: Confirmation and Creation
 
-Read `references/confirmation-and-creation.md` and execute Step 8 from that file. It contains the preview format, confirmation prompt, the "Edit description first" loop, draft-mode substitutions, push command, `gh pr create` invocation, and failure fallbacks. Substitute `{base-branch}`, `{original-branch}`, the captured title, and the generated or fallback description when emitting commands. Carry `{linear-issue-id}` into Step 8 if captured so edited descriptions still follow the Linear closing-keyword policy.
+Read `references/confirmation-and-creation.md` and execute Step 8 from that file. It contains the preview format, confirmation prompt, the "Edit description first" loop, draft-mode substitutions, absence-leased push command, `gh pr create` invocation, and failure fallbacks. Substitute `{base-branch}`, `{original-branch}`, `{rollback-origin-ref}`, the captured title, and the generated or fallback description when emitting commands. Carry `{linear-issue-id}` into Step 8 if captured so edited descriptions still follow the Linear closing-keyword policy.
 
 ---
 

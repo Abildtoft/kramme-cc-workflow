@@ -84,6 +84,30 @@
       "producer": "kramme:code:refactor-opportunities"
     },
     {
+      "id": "linear-issue-to-pr-code-review",
+      "path": ".context/linear-issue-to-pr/REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:linear:issue-to-pr"
+    },
+    {
+      "id": "linear-issue-to-pr-convention-review",
+      "path": ".context/linear-issue-to-pr/CONVENTION_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:linear:issue-to-pr"
+    },
+    {
+      "id": "linear-issue-to-pr-refactor-review",
+      "path": ".context/linear-issue-to-pr/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:linear:issue-to-pr"
+    },
+    {
       "id": "agent-native-audit",
       "path": "AGENT_NATIVE_AUDIT.md",
       "type": "file",
