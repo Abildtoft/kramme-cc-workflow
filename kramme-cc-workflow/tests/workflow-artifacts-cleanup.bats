@@ -213,6 +213,32 @@ PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+@test "linear issue to PR cleanup registers only known report files" {
+	run python3 - "$REGISTRY" <<'PY'
+import json
+import pathlib
+import sys
+
+artifacts = json.loads(pathlib.Path(sys.argv[1]).read_text())["artifacts"]
+paths = {entry["path"]: entry for entry in artifacts}
+archive = ".context/linear-issue-to-pr/"
+expected = {
+    archive + "REVIEW_OVERVIEW.md",
+    archive + "CONVENTION_REVIEW_OVERVIEW.md",
+    archive + "REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+}
+missing = sorted(expected - paths.keys())
+errors = [f"missing archive report: {path}" for path in missing]
+if archive in paths:
+    errors.append("whole workflow archive must not be registered as disposable")
+for path in expected & paths.keys():
+    if paths[path]["type"] != "file":
+        errors.append(f"archive report must be a file: {path}")
+raise SystemExit("\n".join(errors) if errors else 0)
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
 @test "every auto-detect findings source is a disposable registry entry" {
 	run python3 - "$REGISTRY" "$AUTODETECT" <<'PY'
 import json
