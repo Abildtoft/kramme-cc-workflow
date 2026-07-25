@@ -1,0 +1,190 @@
+{
+  "javascript": {
+    "measured": [
+      "kramme-cc-workflow/evals/skill-review/scorer.js",
+      "kramme-cc-workflow/scripts/convert-plugin/ask-user-question-parser.js",
+      "kramme-cc-workflow/scripts/convert-plugin/codex-bundle-output.js",
+      "kramme-cc-workflow/scripts/convert-plugin/codex-config.js",
+      "kramme-cc-workflow/scripts/convert-plugin/codex-hook-plugin-writer.js",
+      "kramme-cc-workflow/scripts/convert-plugin/codex-markdown-resources.js",
+      "kramme-cc-workflow/scripts/convert-plugin/codex-shared-scripts.js",
+      "kramme-cc-workflow/scripts/convert-plugin/codex-transformer.js",
+      "kramme-cc-workflow/scripts/convert-plugin/codex-writer.js",
+      "kramme-cc-workflow/scripts/convert-plugin/confirm.js",
+      "kramme-cc-workflow/scripts/convert-plugin/filesystem.js",
+      "kramme-cc-workflow/scripts/convert-plugin/frontmatter.js",
+      "kramme-cc-workflow/scripts/convert-plugin/install-staging.js",
+      "kramme-cc-workflow/scripts/convert-plugin/install-state.js",
+      "kramme-cc-workflow/scripts/convert-plugin/loader.js",
+      "kramme-cc-workflow/scripts/schemas/skill-contracts.js"
+    ],
+    "contract_only": {
+      "kramme-cc-workflow/evals/skill-review/run-eval.js": [
+        "kramme-cc-workflow/tests/skill-review-eval.bats"
+      ],
+      "kramme-cc-workflow/hooks/skill-usage.js": [
+        "kramme-cc-workflow/tests/skill-usage-stats.bats"
+      ],
+      "kramme-cc-workflow/scripts/convert-plugin.js": [
+        "kramme-cc-workflow/tests/convert-plugin.bats"
+      ],
+      "kramme-cc-workflow/scripts/skill-usage.js": [
+        "kramme-cc-workflow/tests/skill-usage-stats.bats"
+      ]
+    }
+  },
+  "python": {
+    "measured": [
+      ".agents/skills/kramme:skill:audit-sources/scripts/normalize.py",
+      "kramme-cc-workflow/hooks/lib/git_command_parser.py",
+      "kramme-cc-workflow/scripts/changelog.py",
+      "kramme-cc-workflow/scripts/json_object.py",
+      "kramme-cc-workflow/scripts/lint-skill-contracts.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/checks/base_diff_scope.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/checks/basic.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/checks/epilogue.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/checks/hooks_json.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/checks/marker_manifest.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/checks/mechanical.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/checks/readme_sync.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/checks/registry.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/checks/ui_relevance.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/cli.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/frontmatter.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/io.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/markdown.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/readme.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/schema.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/strings.py",
+      "kramme-cc-workflow/skills/kramme:visual:generate-image/scripts/generate_image.py"
+    ],
+    "contract_only": {
+      "kramme-cc-workflow/scripts/generate-component-reference.py": [
+        "kramme-cc-workflow/tests/lint-skill-contracts.bats"
+      ],
+      "kramme-cc-workflow/scripts/generate-visual-shared-assets.py": [
+        "kramme-cc-workflow/tests/lint-skill-contracts.bats"
+      ],
+      "kramme-cc-workflow/scripts/lint_skill_contracts/checks/types.py": [
+        "kramme-cc-workflow/tests/lint-skill-contracts.bats"
+      ],
+      "kramme-cc-workflow/scripts/release.py": [
+        "kramme-cc-workflow/tests/release.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:pr:walkthrough/scripts/render_walkthrough.py": [
+        "kramme-cc-workflow/tests/pr-walkthrough.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:pr:walkthrough/scripts/validate_walkthrough.py": [
+        "kramme-cc-workflow/tests/pr-walkthrough.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:session:search/scripts/extract-errors.py": [
+        "kramme-cc-workflow/tests/session-search-scripts.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:session:search/scripts/extract-metadata.py": [
+        "kramme-cc-workflow/tests/session-search-scripts.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:session:search/scripts/extract-skeleton.py": [
+        "kramme-cc-workflow/tests/session-search-scripts.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:visual:demo-reel/scripts/demo_reel_helper.py": [
+        "kramme-cc-workflow/tests/demo-reel-skill.bats"
+      ]
+    }
+  },
+  "shell": {
+    "contract_only": {
+      "kramme-cc-workflow/evals/skillopt/scripts/export-candidate.sh": [
+        "kramme-cc-workflow/tests/skillopt-adapter.bats"
+      ],
+      "kramme-cc-workflow/evals/skillopt/scripts/prepare-splits.sh": [
+        "kramme-cc-workflow/tests/skillopt-adapter.bats"
+      ],
+      "kramme-cc-workflow/evals/skillopt/scripts/review-candidate.sh": [
+        "kramme-cc-workflow/tests/skillopt-candidate-review.bats"
+      ],
+      "kramme-cc-workflow/evals/skillopt/scripts/run-skillopt-skill-review.sh": [
+        "kramme-cc-workflow/tests/skillopt-adapter.bats"
+      ],
+      "kramme-cc-workflow/hooks/auto-format.sh": [
+        "kramme-cc-workflow/tests/auto-format.bats"
+      ],
+      "kramme-cc-workflow/hooks/block-rm-rf.sh": [
+        "kramme-cc-workflow/tests/block-rm-rf.bats"
+      ],
+      "kramme-cc-workflow/hooks/confirm-review-responses.sh": [
+        "kramme-cc-workflow/tests/confirm-review-responses.bats"
+      ],
+      "kramme-cc-workflow/hooks/context-links.sh": [
+        "kramme-cc-workflow/tests/context-links.bats"
+      ],
+      "kramme-cc-workflow/hooks/lib/check-enabled.sh": [
+        "kramme-cc-workflow/tests/check-enabled.bats"
+      ],
+      "kramme-cc-workflow/hooks/lib/safety-hook-parser.sh": [
+        "kramme-cc-workflow/tests/block-rm-rf.bats",
+        "kramme-cc-workflow/tests/confirm-review-responses.bats",
+        "kramme-cc-workflow/tests/noninteractive-git.bats"
+      ],
+      "kramme-cc-workflow/hooks/noninteractive-git.sh": [
+        "kramme-cc-workflow/tests/noninteractive-git.bats"
+      ],
+      "kramme-cc-workflow/hooks/skill-usage-stats.sh": [
+        "kramme-cc-workflow/tests/skill-usage-stats.bats"
+      ],
+      "kramme-cc-workflow/scripts/collect-review-diff.sh": [
+        "kramme-cc-workflow/tests/review-diff-scripts.bats"
+      ],
+      "kramme-cc-workflow/scripts/dev-server/detect-project-type.sh": [
+        "kramme-cc-workflow/tests/dev-server-scripts.bats"
+      ],
+      "kramme-cc-workflow/scripts/dev-server/detect-url.sh": [
+        "kramme-cc-workflow/tests/dev-server-scripts.bats"
+      ],
+      "kramme-cc-workflow/scripts/dev-server/read-launch-json.sh": [
+        "kramme-cc-workflow/tests/dev-server-scripts.bats"
+      ],
+      "kramme-cc-workflow/scripts/dev-server/resolve-package-manager.sh": [
+        "kramme-cc-workflow/tests/dev-server-scripts.bats"
+      ],
+      "kramme-cc-workflow/scripts/dev-server/resolve-port.sh": [
+        "kramme-cc-workflow/tests/dev-server-scripts.bats"
+      ],
+      "kramme-cc-workflow/scripts/install-codex.sh": [
+        "kramme-cc-workflow/tests/convert-plugin.bats"
+      ],
+      "kramme-cc-workflow/scripts/resolve-base.sh": [
+        "kramme-cc-workflow/tests/resolve-base.bats"
+      ],
+      "kramme-cc-workflow/scripts/run-skillspector.sh": [
+        "kramme-cc-workflow/tests/skillspector-runner.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:code:optimize/scripts/experiment-worktree.sh": [
+        "kramme-cc-workflow/tests/optimize-skill.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:code:optimize/scripts/measure.sh": [
+        "kramme-cc-workflow/tests/optimize-skill.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:code:optimize/scripts/parallel-probe.sh": [
+        "kramme-cc-workflow/tests/optimize-skill.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:git:clean-gone-branches/scripts/clean-gone-branches.sh": [
+        "kramme-cc-workflow/tests/clean-gone-branches.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:git:worktree/scripts/worktree-helper.sh": [
+        "kramme-cc-workflow/tests/worktree-helper.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:session:search/scripts/discover-sessions.sh": [
+        "kramme-cc-workflow/tests/session-search-scripts.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:setup/scripts/check-environment.sh": [
+        "kramme-cc-workflow/tests/check-environment.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:siw:generate-phases/scripts/siw-issue-reservation.sh": [
+        "kramme-cc-workflow/tests/lint-skill-contracts.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:siw:issue-define/scripts/siw-issue-reservation.sh": [
+        "kramme-cc-workflow/tests/lint-skill-contracts.bats"
+      ]
+    }
+  }
+}

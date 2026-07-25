@@ -42,10 +42,53 @@ MD
 }
 
 setup_makefile_contract_repo() {
-  MAKEFILE_CONTRACT_REPO="$BATS_TEST_TMPDIR/makefile-contract"
+  local repo_name="${1:-makefile-contract}"
+  MAKEFILE_CONTRACT_REPO="$BATS_TEST_TMPDIR/$repo_name"
   MAKEFILE_CONTRACT_BIN="$MAKEFILE_CONTRACT_REPO/bin"
-  mkdir -p "$MAKEFILE_CONTRACT_REPO/plugin" "$MAKEFILE_CONTRACT_BIN"
+  mkdir -p \
+    "$MAKEFILE_CONTRACT_REPO/.agents/skills" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/config" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/evals" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/hooks" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/scripts" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/skills" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/tests" \
+    "$MAKEFILE_CONTRACT_BIN"
   cp "$BATS_TEST_DIRNAME/../Makefile" "$MAKEFILE_CONTRACT_REPO/plugin/Makefile"
+
+  cat >"$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json" <<'JSON'
+{
+  "javascript": {
+    "measured": [
+      "plugin/scripts/example.js"
+    ],
+    "contract_only": {}
+  },
+  "python": {
+    "measured": [
+      "plugin/hooks/example.py"
+    ],
+    "contract_only": {}
+  },
+  "shell": {
+    "contract_only": {
+      "plugin/hooks/example.sh": [
+        "plugin/tests/example.bats"
+      ]
+    }
+  }
+}
+JSON
+  printf '"use strict";\n' >"$MAKEFILE_CONTRACT_REPO/plugin/scripts/example.js"
+  printf 'VALUE = 1\n' >"$MAKEFILE_CONTRACT_REPO/plugin/hooks/example.py"
+  printf '#!/bin/sh\nexit 0\n' >"$MAKEFILE_CONTRACT_REPO/plugin/hooks/example.sh"
+  printf '%s\n' \
+    '#!/usr/bin/env bats' \
+    '' \
+    '@test "example shell contract" {' \
+    '  true' \
+    '}' \
+    >"$MAKEFILE_CONTRACT_REPO/plugin/tests/example.bats"
 }
 
 create_fake_node_coverage_tool() {
@@ -65,6 +108,14 @@ esac
 exit 0
 SH
   chmod +x "$MAKEFILE_CONTRACT_BIN/python3"
+}
+
+write_fake_python_coverage_report() {
+  local percent="$1"
+  printf '100 %s%% hooks.example (%s/plugin/hooks/example.py)\n' \
+    "$percent" \
+    "$MAKEFILE_CONTRACT_REPO" \
+    >"$MAKEFILE_CONTRACT_REPO/python-coverage.txt"
 }
 
 @test "format dependency check accepts PRETTIER command from PATH" {
@@ -149,7 +200,26 @@ SH
 @test "coverage-node accepts values exactly at the baselines" {
   setup_makefile_contract_repo
   create_fake_node_coverage_tool
-  printf 'all files | 80.00 | 70.00 | 80.00 |\n' >"$MAKEFILE_CONTRACT_REPO/node-coverage.txt"
+  cat >"$MAKEFILE_CONTRACT_REPO/node-coverage.txt" <<'REPORT'
+ℹ scripts          |       |       |       |
+ℹ  example.js      | 80.00 | 70.00 | 80.00 |
+ℹ all files        | 80.00 | 70.00 | 80.00 |
+REPORT
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+
+  [ "$status" -eq 0 ]
+}
+
+@test "coverage-node accepts Node 20 TAP rows and ignores test files" {
+  setup_makefile_contract_repo
+  create_fake_node_coverage_tool
+  cat >"$MAKEFILE_CONTRACT_REPO/node-coverage.txt" <<'REPORT'
+# file                         | line % | branch % | funcs % |
+# scripts/example.js           |  80.00 |    70.00 |   80.00 |
+# tests/node/example.test.js   | 100.00 |   100.00 |  100.00 |
+# all files                    |  80.00 |    70.00 |   80.00 |
+REPORT
 
   run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
 
@@ -159,12 +229,37 @@ SH
 @test "coverage-node rejects values below a baseline" {
   setup_makefile_contract_repo
   create_fake_node_coverage_tool
-  printf 'all files | 79.99 | 70.00 | 80.00 |\n' >"$MAKEFILE_CONTRACT_REPO/node-coverage.txt"
+  cat >"$MAKEFILE_CONTRACT_REPO/node-coverage.txt" <<'REPORT'
+ℹ scripts          |       |       |       |
+ℹ  example.js      | 79.99 | 70.00 | 80.00 |
+ℹ all files        | 79.99 | 70.00 | 80.00 |
+REPORT
 
   run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
 
   [ "$status" -ne 0 ]
   [[ "$output" == *"Node coverage below baseline"* ]]
+}
+
+@test "coverage-node rejects an inventoried production file absent from the report" {
+  setup_makefile_contract_repo
+  create_fake_node_coverage_tool
+  printf '"use strict";\n' >"$MAKEFILE_CONTRACT_REPO/plugin/scripts/unloaded.js"
+  jq '.javascript.measured += ["plugin/scripts/unloaded.js"]' \
+    "$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json" \
+    >"$MAKEFILE_CONTRACT_REPO/inventory.json"
+  mv "$MAKEFILE_CONTRACT_REPO/inventory.json" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json"
+  cat >"$MAKEFILE_CONTRACT_REPO/node-coverage.txt" <<'REPORT'
+ℹ scripts          |       |       |       |
+ℹ  example.js      | 80.00 | 70.00 | 80.00 |
+ℹ all files        | 80.00 | 70.00 | 80.00 |
+REPORT
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Node coverage missing inventory files (1): plugin/scripts/unloaded.js"* ]]
 }
 
 @test "coverage-node rejects a missing summary" {
@@ -181,7 +276,7 @@ SH
 @test "coverage-python accepts values exactly at the baseline" {
   setup_makefile_contract_repo
   create_fake_python_coverage_tool
-  printf '100 35%% hooks/example.py\n' >"$MAKEFILE_CONTRACT_REPO/python-coverage.txt"
+  write_fake_python_coverage_report 35
 
   run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" PYTHON_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/python-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-python
 
@@ -192,12 +287,40 @@ SH
 @test "coverage-python rejects values below the baseline" {
   setup_makefile_contract_repo
   create_fake_python_coverage_tool
-  printf '100 34%% hooks/example.py\n' >"$MAKEFILE_CONTRACT_REPO/python-coverage.txt"
+  write_fake_python_coverage_report 34
 
   run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" PYTHON_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/python-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-python
 
   [ "$status" -ne 0 ]
   [[ "$output" == *"Python coverage below baseline"* ]]
+}
+
+@test "coverage-python rejects an inventoried production file absent from the report" {
+  setup_makefile_contract_repo
+  create_fake_python_coverage_tool
+  printf 'VALUE = 2\n' >"$MAKEFILE_CONTRACT_REPO/plugin/hooks/unloaded.py"
+  jq '.python.measured += ["plugin/hooks/unloaded.py"]' \
+    "$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json" \
+    >"$MAKEFILE_CONTRACT_REPO/inventory.json"
+  mv "$MAKEFILE_CONTRACT_REPO/inventory.json" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json"
+  write_fake_python_coverage_report 35
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" PYTHON_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/python-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-python
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Python coverage missing inventory files (1): plugin/hooks/unloaded.py"* ]]
+}
+
+@test "coverage-python accepts a checkout path containing spaces" {
+  setup_makefile_contract_repo "makefile contract"
+  create_fake_python_coverage_tool
+  write_fake_python_coverage_report 35
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" PYTHON_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/python-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-python
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Python production aggregate: 35.00%"* ]]
 }
 
 @test "coverage-python rejects a missing production summary" {
@@ -209,4 +332,52 @@ SH
 
   [ "$status" -ne 0 ]
   [[ "$output" == *"Python production coverage summary not found"* ]]
+}
+
+@test "coverage-bats-contract accepts a complete shell source mapping" {
+  setup_makefile_contract_repo
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-bats-contract
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Shell source-to-contract inventory proxy: 1 production file mapped"* ]]
+  [[ "$output" == *"not measured execution coverage"* ]]
+}
+
+@test "coverage-bats-contract rejects a mapped Bats file outside the discovered suite" {
+  setup_makefile_contract_repo
+  mkdir -p "$MAKEFILE_CONTRACT_REPO/plugin/tests/nested"
+  mv \
+    "$MAKEFILE_CONTRACT_REPO/plugin/tests/example.bats" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/tests/nested/example.bats"
+  jq '.shell.contract_only["plugin/hooks/example.sh"] = ["plugin/tests/nested/example.bats"]' \
+    "$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json" \
+    >"$MAKEFILE_CONTRACT_REPO/inventory.json"
+  mv "$MAKEFILE_CONTRACT_REPO/inventory.json" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json"
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-bats-contract
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Production contract is not discovered by tests/run-tests.sh: plugin/tests/nested/example.bats"* ]]
+}
+
+@test "coverage-bats-contract rejects an unmapped production shell file" {
+  setup_makefile_contract_repo
+  printf '#!/bin/sh\nexit 0\n' >"$MAKEFILE_CONTRACT_REPO/plugin/scripts/unmapped.sh"
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-bats-contract
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Shell production files missing inventory entries (1): plugin/scripts/unmapped.sh"* ]]
+}
+
+@test "coverage-bats-contract rejects malformed production inventory" {
+  setup_makefile_contract_repo
+  printf '{\n' >"$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json"
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-bats-contract
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Production coverage inventory is malformed"* ]]
 }

@@ -632,7 +632,7 @@ make -C kramme-cc-workflow test-python
 # Enforce conservative Node/Python coverage baselines
 make -C kramme-cc-workflow unit-coverage
 
-# Run the unit gates and report the discovered Bats contract inventory
+# Run all coverage gates and validate the production-source inventory
 make -C kramme-cc-workflow coverage
 
 # Run with verbose output (show test names)
@@ -658,6 +658,8 @@ make -C kramme-cc-workflow test-skill-usage
 ```
 
 The initial coverage baselines are 80% lines, 70% branches, and 80% functions for Node, plus a 35% production-line aggregate for Python. They sit below the measured local results (84.26%/75.56%/86.38% for Node and 36.46% for Python) and should only ratchet upward. Bats exercises shell integration behavior, so `coverage` reports its complete top-level `tests/*.bats` file/test inventory as a contract proxy rather than claiming line coverage.
+
+Production sources are registered in `kramme-cc-workflow/config/coverage-production-sources.json`. The `coverage` target reconciles that inventory with executable JavaScript, Python, and shell files under the plugin's `evals/`, `hooks/`, `scripts/`, and skill-local `scripts/` directories, including repository-maintenance skills under `.agents/skills/`. Put JavaScript and Python files in `measured` when the native coverage report includes them; otherwise put them in `contract_only` and map each source to one or more top-level `kramme-cc-workflow/tests/*.bats` contracts. Shell sources use `contract_only`. The Bats runner does not recurse into nested test directories, so mapped contracts must be top-level files. Update the inventory whenever a production source is added, moved, removed, or changes coverage mode.
 
 For Node changes, `test-node-watch` uses the [built-in test runner's dependency watching](https://nodejs.org/docs/latest-v20.x/api/test.html#watch-mode). For a focused change-to-test loop, use `test-node-file` with the closest mapping in `kramme-cc-workflow/docs/code-map.md`; the equivalent npm command is `npm run test:node:file -- kramme-cc-workflow/tests/node/<file>.test.js` from the repository root.
 
