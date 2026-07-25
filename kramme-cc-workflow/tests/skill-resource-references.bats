@@ -21,15 +21,27 @@ const parentResourcePathPattern =
   `(?:\\./)?(?:\\.\\./)+(?:[A-Za-z0-9:_-]+/)*${resourceTailPattern}`;
 const skillResourcePathPattern =
   `(?:\\$\\{(?:CLAUDE_)?PLUGIN_ROOT\\}/)?skills/[A-Za-z0-9:_-]+/${resourceTailPattern}`;
+const resourceReferencePathPattern =
+  `(?:${skillResourcePathPattern}|${parentResourcePathPattern}|${localResourcePathPattern})`;
 const referencePattern =
   new RegExp(
-    `(?:^|[^A-Za-z0-9_./-])((?:${skillResourcePathPattern})|(?:${parentResourcePathPattern})|(?:${localResourcePathPattern}))(?![A-Za-z0-9_./-])`,
+    `(?:^|[^A-Za-z0-9_./-])(${resourceReferencePathPattern})(?![A-Za-z0-9_/-]|\\.[A-Za-z0-9_/-])`,
     "g",
   );
 const loadInstructionPattern =
   /\b(read|follow|load|open|use|see|run|execute|copy|populate|template|from|consult|resolve|import|extract|compare|audit|check)\b/i;
+const inertFenceContextPattern =
+  /\b(?:(?:illustrative\s+)?authoring (?:example|snippet)|explicitly instruct)\b/i;
+const runtimeFenceContextPattern =
+  /\b(read|load|open|run|execute|copy|populate|import|extract)\b/i;
+const markdownResourceLinkPattern = new RegExp(
+  `!?\\[[^\\]\\n]*\\]\\(\\s*<?${resourceReferencePathPattern}(?=$|[\\s)>#?])`,
+);
+const markdownResourceLinkDefinitionPattern = new RegExp(
+  `^\\s*\\[[^\\]\\n]+\\]:\\s*<?${resourceReferencePathPattern}(?=$|[\\s>#?])`,
+);
 const resourceListItemPattern = new RegExp(
-  `^\\s*(?:[-*]|\\|)\\s*\`?(?:${skillResourcePathPattern}|${parentResourcePathPattern}|${localResourcePathPattern})`,
+  `^\\s*(?:[-*]|\\|)\\s*\`?${resourceReferencePathPattern}`,
 );
 
 function walkMarkdownFiles(dir) {
@@ -52,7 +64,8 @@ function walkMarkdownFiles(dir) {
 
 function markdownLines(raw) {
   let activeFence = null;
-  let precedingProse = "";
+  let precedingParagraph = [];
+  let paragraphBreak = false;
 
   return raw.split(/\r?\n/).map((line) => {
     const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
@@ -63,11 +76,17 @@ function markdownLines(raw) {
 
       if (activeFence === null) {
         activeFence = {
-          context: precedingProse,
+          context: precedingParagraph.join("\n"),
+          language: remainder.trim().split(/\s+/, 1)[0].toLowerCase(),
           length: marker.length,
           marker: marker[0],
         };
-        return { fenceContext: "", inFence: false, text: "" };
+        return {
+          fenceContext: "",
+          fenceLanguage: "",
+          inFence: false,
+          text: "",
+        };
       }
 
       if (
@@ -76,24 +95,42 @@ function markdownLines(raw) {
         remainder.trim() === ""
       ) {
         activeFence = null;
-        precedingProse = "";
-        return { fenceContext: "", inFence: false, text: "" };
+        precedingParagraph = [];
+        paragraphBreak = false;
+        return {
+          fenceContext: "",
+          fenceLanguage: "",
+          inFence: false,
+          text: "",
+        };
       }
     }
 
     if (activeFence !== null) {
       return {
         fenceContext: activeFence.context,
+        fenceLanguage: activeFence.language,
         inFence: true,
         text: line,
       };
     }
 
-    if (line.trim() !== "") {
-      precedingProse = line;
+    if (line.trim() === "") {
+      paragraphBreak = precedingParagraph.length > 0;
+    } else {
+      if (paragraphBreak) {
+        precedingParagraph = [];
+      }
+      precedingParagraph.push(line);
+      paragraphBreak = false;
     }
 
-    return { fenceContext: "", inFence: false, text: line };
+    return {
+      fenceContext: "",
+      fenceLanguage: "",
+      inFence: false,
+      text: line,
+    };
   });
 }
 
@@ -106,17 +143,35 @@ function hasLoadInstruction(text) {
   return loadInstructionPattern.test(proseOnly);
 }
 
-function hasInstructionContext(lines, index) {
-  const { fenceContext, inFence, text } = lines[index];
-
-  if (hasLoadInstruction(text) || resourceListItemPattern.test(text)) {
-    return true;
-  }
-
-  return inFence && hasLoadInstruction(fenceContext);
+function hasMarkdownResourceLink(text) {
+  return (
+    markdownResourceLinkPattern.test(text) ||
+    markdownResourceLinkDefinitionPattern.test(text)
+  );
 }
 
-function resolveResourcePath(skillDir, resourcePath) {
+function hasInstructionContext(lines, index) {
+  const { fenceContext, fenceLanguage, inFence, text } = lines[index];
+
+  if (inFence) {
+    if (inertFenceContextPattern.test(fenceContext)) {
+      return false;
+    }
+
+    return (
+      fenceLanguage !== "markdown" ||
+      runtimeFenceContextPattern.test(fenceContext)
+    );
+  }
+
+  return (
+    hasLoadInstruction(text) ||
+    resourceListItemPattern.test(text) ||
+    hasMarkdownResourceLink(text)
+  );
+}
+
+function resolveResourcePath(skillDir, resourcePath, referenceBase = skillDir) {
   const normalizedPath = resourcePath
     .replace(/[),.;:]+$/g, "")
     .split("#")[0]
@@ -132,7 +187,7 @@ function resolveResourcePath(skillDir, resourcePath) {
 
   return {
     resourcePath: normalizedPath,
-    targetPath: path.resolve(skillDir, normalizedPath),
+    targetPath: path.resolve(referenceBase, normalizedPath),
   };
 }
 
@@ -168,16 +223,20 @@ for (const skill of skillDirs) {
       }
 
       for (const match of matches) {
+        const referenceBase = hasMarkdownResourceLink(line.text)
+          ? path.dirname(file)
+          : skillDir;
         const { resourcePath, targetPath } = resolveResourcePath(
           skillDir,
           match[1],
+          referenceBase,
         );
 
         if (!isWithinSkill(skillDir, targetPath)) {
           failures.push(
             `${relativeFile}:${index + 1}: escapes skill directory: ${resourcePath}`,
           );
-        } else if (!line.inFence && !fs.existsSync(targetPath)) {
+        } else if (!fs.existsSync(targetPath)) {
           failures.push(`${relativeFile}:${index + 1}: missing ${resourcePath}`);
         }
       }
@@ -216,6 +275,20 @@ NODE
 	printf '%s\n' \
 		"# Fixture" \
 		"Read ../../other-skill/references/policy.md before continuing." \
+		> "$skills_dir/owner/SKILL.md"
+
+	run resource_reference_check "$skills_dir"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"escapes skill directory: ../../other-skill/references/policy.md"* ]]
+}
+
+@test "punctuated parent-relative runtime resource references cannot escape a skill" {
+	local skills_dir="$BATS_TEST_TMPDIR/punctuated-parent-relative/skills"
+	mkdir -p "$skills_dir/owner"
+	printf '%s\n' \
+		"# Fixture" \
+		"Read ../../other-skill/references/policy.md." \
 		> "$skills_dir/owner/SKILL.md"
 
 	run resource_reference_check "$skills_dir"
@@ -275,6 +348,97 @@ NODE
 	[[ "$output" == *"escapes skill directory: ../../other-skill/references/policy.md"* ]]
 }
 
+@test "wrapped fenced runtime instructions retain the full lead-in paragraph" {
+	local skills_dir="$BATS_TEST_TMPDIR/wrapped-fenced/skills"
+	mkdir -p "$skills_dir/owner"
+	printf '%s\n' \
+		"# Fixture" \
+		"Read the following" \
+		"policy before continuing:" \
+		"" \
+		"\`\`\`text" \
+		"../../other-skill/references/policy.md" \
+		"\`\`\`" \
+		> "$skills_dir/owner/SKILL.md"
+
+	run resource_reference_check "$skills_dir"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"escapes skill directory: ../../other-skill/references/policy.md"* ]]
+}
+
+@test "direct fenced runtime instructions are checked under neutral lead-ins" {
+	local skills_dir="$BATS_TEST_TMPDIR/direct-fenced/skills"
+	mkdir -p "$skills_dir/owner"
+	printf '%s\n' \
+		"# Fixture" \
+		"### Required setup" \
+		"" \
+		"\`\`\`text" \
+		"Read ../../other-skill/references/policy.md before continuing." \
+		"\`\`\`" \
+		> "$skills_dir/owner/SKILL.md"
+
+	run resource_reference_check "$skills_dir"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"escapes skill directory: ../../other-skill/references/policy.md"* ]]
+}
+
+@test "command-only fenced runtime references are checked under neutral lead-ins" {
+	local skills_dir="$BATS_TEST_TMPDIR/command-fenced/skills"
+	mkdir -p "$skills_dir/owner"
+	printf '%s\n' \
+		"# Fixture" \
+		"### Required setup" \
+		"" \
+		"\`\`\`bash" \
+		"node ../../other-skill/scripts/helper.js" \
+		"\`\`\`" \
+		> "$skills_dir/owner/SKILL.md"
+
+	run resource_reference_check "$skills_dir"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"escapes skill directory: ../../other-skill/scripts/helper.js"* ]]
+}
+
+@test "Markdown-labeled fenced runtime references are checked" {
+	local skills_dir="$BATS_TEST_TMPDIR/markdown-runtime-fenced/skills"
+	mkdir -p "$skills_dir/owner"
+	printf '%s\n' \
+		"# Fixture" \
+		"Load the policy from:" \
+		"" \
+		"\`\`\`markdown" \
+		"Read ../../other-skill/references/policy.md" \
+		"\`\`\`" \
+		> "$skills_dir/owner/SKILL.md"
+
+	run resource_reference_check "$skills_dir"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"escapes skill directory: ../../other-skill/references/policy.md"* ]]
+}
+
+@test "missing local resources in fenced runtime instructions are rejected" {
+	local skills_dir="$BATS_TEST_TMPDIR/missing-fenced/skills"
+	mkdir -p "$skills_dir/owner"
+	printf '%s\n' \
+		"# Fixture" \
+		"Load the helper from:" \
+		"" \
+		"\`\`\`text" \
+		"references/missing-policy.md" \
+		"\`\`\`" \
+		> "$skills_dir/owner/SKILL.md"
+
+	run resource_reference_check "$skills_dir"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"missing references/missing-policy.md"* ]]
+}
+
 @test "different fence markers do not close a fenced runtime reference block" {
 	local skills_dir="$BATS_TEST_TMPDIR/mixed-fenced/skills"
 	mkdir -p "$skills_dir/owner"
@@ -306,6 +470,72 @@ NODE
 
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"escapes skill directory: skills/other-skill/references/policy.md"* ]]
+}
+
+@test "cross-skill Markdown links are rejected without instruction verbs" {
+	local skills_dir="$BATS_TEST_TMPDIR/markdown-link/skills"
+	mkdir -p "$skills_dir/owner"
+	printf '%s\n' \
+		"# Fixture" \
+		"[Shared policy](../../other-skill/references/policy.md)" \
+		> "$skills_dir/owner/SKILL.md"
+
+	run resource_reference_check "$skills_dir"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"escapes skill directory: ../../other-skill/references/policy.md"* ]]
+}
+
+@test "reference-style cross-skill Markdown links are rejected" {
+	local skills_dir="$BATS_TEST_TMPDIR/reference-style-link/skills"
+	mkdir -p "$skills_dir/owner"
+	printf '%s\n' \
+		"# Fixture" \
+		"[Shared policy][policy]" \
+		"" \
+		"[policy]: ../../other-skill/references/policy.md" \
+		> "$skills_dir/owner/SKILL.md"
+
+	run resource_reference_check "$skills_dir"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"escapes skill directory: ../../other-skill/references/policy.md"* ]]
+}
+
+@test "nested Markdown links resolve relative to their containing file" {
+	local skills_dir="$BATS_TEST_TMPDIR/nested-markdown-link/skills"
+	mkdir -p "$skills_dir/owner/references" "$skills_dir/owner/assets"
+	printf '%s\n' "# Fixture" > "$skills_dir/owner/SKILL.md"
+	printf '%s\n' \
+		"# Guide" \
+		"[Example asset](../assets/example.json)" \
+		> "$skills_dir/owner/references/guide.md"
+	printf '%s\n' "{}" > "$skills_dir/owner/assets/example.json"
+
+	run resource_reference_check "$skills_dir"
+
+	[ "$status" -eq 0 ]
+}
+
+@test "inert fenced authoring examples remain accepted" {
+	local skills_dir="$BATS_TEST_TMPDIR/inert-fenced/skills"
+	mkdir -p "$skills_dir/owner"
+	printf '%s\n' \
+		"# Fixture" \
+		"An illustrative authoring example follows:" \
+		"\`\`\`" \
+		"Read ../../other-skill/references/policy.md" \
+		"\`\`\`" \
+		"" \
+		"A Markdown authoring snippet follows:" \
+		"\`\`\`markdown" \
+		"Read ../../other-skill/references/policy.md" \
+		"\`\`\`" \
+		> "$skills_dir/owner/SKILL.md"
+
+	run resource_reference_check "$skills_dir"
+
+	[ "$status" -eq 0 ]
 }
 
 @test "valid local references and inert path examples remain accepted" {
