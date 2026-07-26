@@ -39,10 +39,25 @@ const transactionStorage = new AsyncLocalStorage();
  * @property {string[]} [currentManagedFiles]
  * @property {string} [label]
  * @property {string[]} [previousManagedFiles]
+ * @property {string[]} [previousManagedRoots]
  * @property {boolean} [replace]
  *
  * @typedef {Object} StagedFileInstallOptions
+ * @property {ExpectedTargetContent} [expectedTargetContent]
  * @property {string} [label]
+ * @property {string[]} [previousManagedFiles]
+ * @property {boolean} [replace]
+ *
+ * @typedef {Object} InstallStagedDirOptions
+ * @property {ExpectedTargetEntries} [expectedTargetEntries]
+ * @property {string} [label]
+ * @property {boolean} [replace]
+ *
+ * @typedef {Object} InstallStagedFileOptions
+ * @property {ExpectedTargetContent} [expectedTargetContent]
+ * @property {ExpectedTargetIdentity} [expectedTargetIdentity]
+ * @property {string} [label]
+ * @property {boolean} [preserveTargetChangesOnRollback]
  * @property {boolean} [replace]
  *
  * @typedef {Object} PruneStaleManagedFilesOptions
@@ -64,6 +79,7 @@ const transactionStorage = new AsyncLocalStorage();
  * @property {string[]} [lockRoots]
  * @property {number} [lockTimeoutMs]
  * @property {string} [pluginName]
+ * @property {string[]} [preserveInvalidLockRoots]
  *
  * @typedef {Object} InstallLockOwner
  * @property {number} version
@@ -89,10 +105,17 @@ const transactionStorage = new AsyncLocalStorage();
  * @property {string} token
  * @property {string} transactionDir
  * @property {string} journalPath
+ * @property {string[]} lockRoots
  * @property {InstallMutationRecord[]} records
  * @property {{ target: string, preservedAt: string }[]} recoveryConflicts
+ * @property {Set<string>} rollbackDeletedTargets
+ * @property {Map<string, Buffer | null>} rollbackTargetContents
  * @property {string} status
  *
+ * @typedef {Buffer | string | null} ExpectedTargetContent
+ * @typedef {{ device: number, inode: number, links: number }} ExpectedTargetIdentity
+ * @typedef {{ kind: "directory" } | { kind: "file", content: Buffer } | { kind: "missing" }} ExpectedTargetEntry
+ * @typedef {Map<string, ExpectedTargetEntry>} ExpectedTargetEntries
  * @typedef {{ error: unknown, lock: InstallLock }} InstallLockReleaseError
  * @typedef {{ error: unknown, record: InstallMutationRecord }} InstallRollbackError
  */
@@ -114,12 +137,33 @@ const transactionStorage = new AsyncLocalStorage();
  */
 async function withInstallTransaction(root, options, callback) {
   await ensureDir(root);
+  const transactionRoot = await canonicalizeDirectoryPath(root);
   const lockRoots = Array.from(
     new Set(
-      [root, ...(options.lockRoots ?? [])].map((entry) => path.resolve(entry)),
+      await Promise.all(
+        [transactionRoot, ...(options.lockRoots ?? [])].map((entry) =>
+          canonicalizeDirectoryPath(entry),
+        ),
+      ),
     ),
   ).sort();
-  const transactionOwner = createLockOwner(root, options.pluginName, lockRoots);
+  const preserveInvalidLockRoots = new Set(
+    await Promise.all(
+      (options.preserveInvalidLockRoots ?? []).map((entry) =>
+        canonicalizeDirectoryPath(entry),
+      ),
+    ),
+  );
+  preserveInvalidLockRoots.delete(transactionRoot);
+  const transactionOptions = {
+    ...options,
+    preserveInvalidLockRoots: [...preserveInvalidLockRoots],
+  };
+  const transactionOwner = createLockOwner(
+    transactionRoot,
+    options.pluginName,
+    lockRoots,
+  );
   /** @type {InstallLock[]} */
   const locks = [];
   let releaseLocks = true;
@@ -129,7 +173,13 @@ async function withInstallTransaction(root, options, callback) {
   try {
     for (const lockRoot of lockRoots) {
       await ensureDir(lockRoot);
-      locks.push(await acquireInstallLock(lockRoot, options, transactionOwner));
+      locks.push(
+        await acquireInstallLock(
+          lockRoot,
+          transactionOptions,
+          transactionOwner,
+        ),
+      );
     }
 
     const transaction = await createInstallTransaction(transactionOwner);
@@ -138,6 +188,7 @@ async function withInstallTransaction(root, options, callback) {
       result = await transactionStorage.run(transaction, callback);
     } catch (error) {
       const rollbackErrors = await rollbackInstallTransaction(transaction);
+      reportRecoveryConflicts(transaction);
       if (rollbackErrors.length > 0) {
         releaseLocks = false;
         throw rollbackFailureError(error, rollbackErrors, transaction);
@@ -149,6 +200,7 @@ async function withInstallTransaction(root, options, callback) {
       await markInstallTransactionCommitted(transaction);
     } catch (error) {
       const rollbackErrors = await rollbackInstallTransaction(transaction);
+      reportRecoveryConflicts(transaction);
       if (rollbackErrors.length > 0) {
         releaseLocks = false;
         throw rollbackFailureError(error, rollbackErrors, transaction);
@@ -189,6 +241,9 @@ async function acquireInstallLock(root, options, transactionOwner) {
   const timeoutMs = options.lockTimeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS;
   const deadline = Date.now() + timeoutMs;
   const owner = { ...transactionOwner };
+  const preserveInvalidLock = (options.preserveInvalidLockRoots ?? []).includes(
+    path.resolve(root),
+  );
   let pollIntervalMs = LOCK_POLL_INTERVAL_MS;
 
   while (true) {
@@ -201,6 +256,11 @@ async function acquireInstallLock(root, options, transactionOwner) {
           return { lockDir, owner };
         }
         continue;
+      }
+      if (preserveInvalidLock) {
+        throw new Error(
+          `Refusing to reclaim invalid install lock ${lockDir} in an external AGENTS.md directory.`,
+        );
       }
     } else if (!(await isProcessAlive(existingOwner.pid))) {
       waitingForRecovery = await hasActiveRecoveryClaim(root, existingOwner);
@@ -316,63 +376,60 @@ async function isProcessAlive(pid) {
 
 /** @param {string} root @param {InstallLockOwner} owner */
 async function recoverStaleInstall(root, owner) {
-  const { lockRoots, transactionRoot } = await validateRecoveryOwnership(
-    root,
-    owner,
-  );
+  const { journalPath, lockRoots, transactionRoot } =
+    await validateRecoveryOwnership(root, owner);
+  owner.journalPath = journalPath;
   owner.lockRoots = lockRoots;
-  const expectedJournalPath = path.join(
-    transactionRoot,
-    INSTALL_TRANSACTIONS_DIR,
-    owner.token,
-    "journal.json",
-  );
-  if (owner.journalPath !== expectedJournalPath) {
-    throw new Error(
-      `Refusing to recover install lock with unowned journal ${owner.journalPath}.`,
-    );
-  }
+  owner.transactionRoot = transactionRoot;
   let journal;
   try {
-    journal = JSON.parse(await fs.readFile(owner.journalPath, "utf8"));
+    journal = JSON.parse(await fs.readFile(journalPath, "utf8"));
   } catch (error) {
     if (filesystemErrorCode(error) === "ENOENT") return;
-    throw new Error(
-      `Cannot recover stale install journal ${owner.journalPath}.`,
-      {
-        cause: error,
-      },
-    );
+    throw new Error(`Cannot recover stale install journal ${journalPath}.`, {
+      cause: error,
+    });
   }
   if (!lockRoots.includes(transactionRoot)) {
     throw new Error(
       `Refusing to recover install transaction ${owner.token} without its transaction-root lock.`,
     );
   }
+  const recordsValid =
+    Array.isArray(journal?.records) &&
+    (
+      await Promise.all(
+        journal.records.map(
+          /** @param {unknown} record @param {number} index */ (
+            record,
+            index,
+          ) => isOwnedMutationRecord(record, owner.token, index, lockRoots),
+        ),
+      )
+    ).every(Boolean);
   if (
     journal?.version !== 1 ||
     journal?.token !== owner.token ||
     (journal.status !== undefined &&
       journal.status !== "active" &&
       journal.status !== "committed") ||
-    !Array.isArray(journal.records) ||
-    !journal.records.every(
-      /** @param {unknown} record @param {number} index */ (record, index) =>
-        isOwnedMutationRecord(record, owner.token, index, lockRoots),
-    )
+    !recordsValid
   ) {
     throw new Error(
-      `Refusing to recover invalid install journal ${owner.journalPath}.`,
+      `Refusing to recover invalid install journal ${journalPath}.`,
     );
   }
 
   const transaction = {
     token: owner.token,
-    transactionDir: path.dirname(owner.journalPath),
-    journalPath: owner.journalPath,
+    transactionDir: path.dirname(journalPath),
+    journalPath,
+    lockRoots,
     records: /** @type {InstallMutationRecord[]} */ (journal.records),
     recoveryConflicts:
       /** @type {{target: string, preservedAt: string}[]} */ ([]),
+    rollbackDeletedTargets: new Set(),
+    rollbackTargetContents: new Map(),
     status: journal.status === "committed" ? "committed" : "active",
   };
   if (transaction.status === "committed") {
@@ -389,25 +446,25 @@ async function recoverStaleInstall(root, owner) {
       transaction,
     );
   }
-  for (const conflict of transaction.recoveryConflicts) {
-    console.warn(
-      `Preserved interrupted install output ${conflict.target} at ${conflict.preservedAt}.`,
-    );
-  }
+  reportRecoveryConflicts(transaction);
 }
 
 /**
  * @param {string} root
  * @param {InstallLockOwner} owner
- * @returns {Promise<{ lockRoots: string[], transactionRoot: string }>}
+ * @returns {Promise<{ journalPath: string, lockRoots: string[], transactionRoot: string }>}
  */
 async function validateRecoveryOwnership(root, owner) {
-  const recoveredRoot = path.resolve(root);
-  const transactionRoot = path.resolve(owner.transactionRoot ?? recoveredRoot);
+  const recoveredRoot = await canonicalizeDirectoryPath(root);
+  const transactionRoot = await canonicalizeDirectoryPath(
+    owner.transactionRoot ?? recoveredRoot,
+  );
   const lockRoots = Array.from(
     new Set(
-      (owner.lockRoots ?? [transactionRoot]).map((lockRoot) =>
-        path.resolve(lockRoot),
+      await Promise.all(
+        (owner.lockRoots ?? [transactionRoot]).map((lockRoot) =>
+          canonicalizeDirectoryPath(lockRoot),
+        ),
       ),
     ),
   );
@@ -430,11 +487,15 @@ async function validateRecoveryOwnership(root, owner) {
       continue;
     }
     const lockTransactionRoot = lockOwner
-      ? path.resolve(lockOwner.transactionRoot ?? lockRoot)
+      ? await canonicalizeDirectoryPath(lockOwner.transactionRoot ?? lockRoot)
       : null;
+    const lockJournalPath = lockOwner
+      ? await canonicalizeDirectoryPath(lockOwner.journalPath)
+      : null;
+    const ownerJournalPath = await canonicalizeDirectoryPath(owner.journalPath);
     if (
       lockOwner?.token !== owner.token ||
-      lockOwner.journalPath !== owner.journalPath ||
+      lockJournalPath !== ownerJournalPath ||
       lockTransactionRoot !== transactionRoot
     ) {
       if (lockRoot !== recoveredRoot) continue;
@@ -444,7 +505,19 @@ async function validateRecoveryOwnership(root, owner) {
     }
     validatedLockRoots.push(lockRoot);
   }
-  return { lockRoots: validatedLockRoots, transactionRoot };
+  const journalPath = await canonicalizeDirectoryPath(owner.journalPath);
+  const expectedJournalPath = path.join(
+    transactionRoot,
+    INSTALL_TRANSACTIONS_DIR,
+    owner.token,
+    "journal.json",
+  );
+  if (journalPath !== expectedJournalPath) {
+    throw new Error(
+      `Refusing to recover install lock with unowned journal ${owner.journalPath}.`,
+    );
+  }
+  return { journalPath, lockRoots: validatedLockRoots, transactionRoot };
 }
 
 /**
@@ -714,12 +787,17 @@ function lockReleaseFailureError(primaryError, releaseErrors) {
 /** @param {InstallLockOwner} owner @returns {Promise<InstallTransaction>} */
 async function createInstallTransaction(owner) {
   const transactionDir = path.dirname(owner.journalPath);
+  const transactionRoot =
+    owner.transactionRoot ?? path.dirname(path.dirname(transactionDir));
   const transaction = {
     token: owner.token,
     transactionDir,
     journalPath: owner.journalPath,
+    lockRoots: owner.lockRoots ?? [transactionRoot],
     records: [],
     recoveryConflicts: [],
+    rollbackDeletedTargets: new Set(),
+    rollbackTargetContents: new Map(),
     status: "active",
   };
   await ensureDir(transactionDir);
@@ -732,9 +810,9 @@ async function createInstallTransaction(owner) {
  * @param {string} token
  * @param {number} recordIndex
  * @param {string[]} lockRoots
- * @returns {record is InstallMutationRecord}
+ * @returns {Promise<boolean>}
  */
-function isOwnedMutationRecord(record, token, recordIndex, lockRoots) {
+async function isOwnedMutationRecord(record, token, recordIndex, lockRoots) {
   const candidate = /** @type {Partial<InstallMutationRecord>} */ (record);
   const target = candidate.target;
   if (
@@ -742,13 +820,12 @@ function isOwnedMutationRecord(record, token, recordIndex, lockRoots) {
     typeof record !== "object" ||
     typeof target !== "string" ||
     !path.isAbsolute(target) ||
-    path.resolve(target) !== target ||
-    !lockRoots.some((lockRoot) =>
-      target.startsWith(path.resolve(lockRoot) + path.sep),
-    )
+    path.resolve(target) !== target
   ) {
     return false;
   }
+  const canonicalTarget = await canonicalizeTransactionTarget(target);
+  if (!isTargetCoveredByLock(canonicalTarget, lockRoots)) return false;
   if (candidate.operation === "create") return candidate.backup === null;
   if (
     candidate.operation !== "backup-rename" ||
@@ -758,12 +835,13 @@ function isOwnedMutationRecord(record, token, recordIndex, lockRoots) {
     return false;
   }
   const expectedBackup = path.join(
-    path.dirname(target),
+    path.dirname(canonicalTarget),
     INSTALL_BACKUPS_DIR,
     token,
     String(recordIndex),
   );
-  return candidate.backup === expectedBackup;
+  const canonicalBackup = await canonicalizeTransactionTarget(candidate.backup);
+  return canonicalBackup === expectedBackup;
 }
 
 /** @param {InstallTransaction} transaction */
@@ -778,21 +856,84 @@ async function persistInstallJournal(transaction) {
 
 /**
  * @param {string} targetPath
- * @param {{ preserveExisting?: boolean }} [options]
+ * @param {{ expectedTargetContent?: ExpectedTargetContent, expectedTargetEntries?: ExpectedTargetEntries, expectedTargetIdentity?: ExpectedTargetIdentity, label?: string, preserveExisting?: boolean }} [options]
  */
 async function prepareTransactionMutation(
   targetPath,
-  { preserveExisting = false } = {},
+  {
+    expectedTargetContent,
+    expectedTargetEntries,
+    expectedTargetIdentity,
+    label = "install target",
+    preserveExisting = false,
+  } = {},
 ) {
   const transaction = transactionStorage.getStore();
   if (!transaction) return false;
 
-  const resolvedTarget = path.resolve(targetPath);
+  const resolvedTarget = await canonicalizeTransactionTarget(targetPath);
+  if (!isTargetCoveredByLock(resolvedTarget, transaction.lockRoots)) {
+    throw new Error(
+      `Cannot mutate ${resolvedTarget} because it resolves outside the acquired install locks.`,
+    );
+  }
   const coveringRecord = transaction.records.find(
     (record) =>
       resolvedTarget === record.target ||
       resolvedTarget.startsWith(record.target + path.sep),
   );
+
+  let stats = null;
+  try {
+    stats = await fs.lstat(resolvedTarget);
+  } catch (error) {
+    if (filesystemErrorCode(error) !== "ENOENT") throw error;
+  }
+  try {
+    assertExpectedTargetType(
+      resolvedTarget,
+      stats,
+      expectedTargetContent,
+      label,
+    );
+    assertExpectedTargetIdentity(
+      resolvedTarget,
+      stats,
+      expectedTargetIdentity,
+      label,
+    );
+    if (
+      expectedTargetContent !== undefined &&
+      expectedTargetContent !== null &&
+      !(await fileContentEquals(resolvedTarget, expectedTargetContent))
+    ) {
+      throw new Error(
+        `Cannot install ${label} because ${resolvedTarget} changed during installation.`,
+      );
+    }
+    await assertExpectedTargetEntries(
+      resolvedTarget,
+      expectedTargetEntries,
+      label,
+    );
+  } catch (error) {
+    if (coveringRecord && expectedTargetContent !== undefined) {
+      transaction.rollbackTargetContents.set(
+        resolvedTarget,
+        expectedTargetContent === null
+          ? null
+          : expectedContentBuffer(expectedTargetContent),
+      );
+    }
+    if (coveringRecord && expectedTargetEntries) {
+      recordExpectedTreeRollbackTargets(
+        transaction,
+        resolvedTarget,
+        expectedTargetEntries,
+      );
+    }
+    throw error;
+  }
   if (coveringRecord) return true;
   if (
     transaction.records.some((record) =>
@@ -802,13 +943,6 @@ async function prepareTransactionMutation(
     throw new Error(
       `Install transaction cannot back up parent after child: ${resolvedTarget}`,
     );
-  }
-
-  let stats = null;
-  try {
-    stats = await fs.lstat(resolvedTarget);
-  } catch (error) {
-    if (filesystemErrorCode(error) !== "ENOENT") throw error;
   }
 
   const record =
@@ -828,11 +962,74 @@ async function prepareTransactionMutation(
   transaction.records.push(record);
   await persistInstallJournal(transaction);
 
-  if (!stats) return true;
+  if (!stats) {
+    try {
+      const currentResolvedTarget =
+        await canonicalizeTransactionTarget(targetPath);
+      if (
+        currentResolvedTarget !== resolvedTarget ||
+        !isTargetCoveredByLock(currentResolvedTarget, transaction.lockRoots)
+      ) {
+        throw new Error(
+          `Cannot install ${label} because ${resolvedTarget} changed during installation.`,
+        );
+      }
+      const currentStats = await lstatIfExists(resolvedTarget);
+      assertExpectedTargetType(
+        resolvedTarget,
+        currentStats,
+        expectedTargetContent,
+        label,
+      );
+      assertExpectedTargetIdentity(
+        resolvedTarget,
+        currentStats,
+        expectedTargetIdentity,
+        label,
+      );
+      await assertExpectedTargetEntries(
+        resolvedTarget,
+        expectedTargetEntries,
+        label,
+      );
+    } catch (error) {
+      if (transaction.records.at(-1) !== record) {
+        throw new Error(
+          `Cannot discard unapplied install mutation for ${resolvedTarget}.`,
+          { cause: error },
+        );
+      }
+      transaction.records.pop();
+      await persistInstallJournal(transaction);
+      throw error;
+    }
+    return true;
+  }
   const backupPath = record.backup;
   if (!backupPath)
     throw new Error(`Missing transaction backup for ${resolvedTarget}.`);
   await ensureDir(path.dirname(backupPath));
+  const currentStats = await lstatIfExists(resolvedTarget);
+  assertExpectedTargetIdentity(
+    resolvedTarget,
+    currentStats,
+    expectedTargetIdentity,
+    label,
+  );
+  if (
+    expectedTargetContent !== undefined &&
+    expectedTargetContent !== null &&
+    !(await fileContentEquals(resolvedTarget, expectedTargetContent))
+  ) {
+    throw new Error(
+      `Cannot install ${label} because ${resolvedTarget} changed during installation.`,
+    );
+  }
+  await assertExpectedTargetEntries(
+    resolvedTarget,
+    expectedTargetEntries,
+    label,
+  );
   await fs.rename(resolvedTarget, backupPath);
   await persistInstallJournal(transaction);
   if (preserveExisting) {
@@ -861,6 +1058,7 @@ async function rollbackInstallTransaction(
     .reverse();
   for (const { index, record } of indexedRecords) {
     try {
+      await preserveChangedRollbackTargets(transaction, record);
       const backupPath = record.backup;
       const backupExists =
         backupPath !== null && (await rawPathExists(backupPath));
@@ -879,6 +1077,7 @@ async function rollbackInstallTransaction(
           await fs.rm(record.target, { recursive: true, force: true });
         }
       }
+      await reapplyConcurrentRollbackDeletions(transaction, record);
     } catch (error) {
       errors.push({ error, record });
     }
@@ -903,12 +1102,78 @@ async function rollbackInstallTransaction(
 /**
  * @param {InstallTransaction} transaction
  * @param {InstallMutationRecord} record
- * @param {number} recordIndex
  */
-async function preserveRecoveryTarget(transaction, record, recordIndex) {
+async function preserveChangedRollbackTargets(transaction, record) {
+  for (const [target, expectedContent] of transaction.rollbackTargetContents) {
+    if (
+      target !== record.target &&
+      !target.startsWith(record.target + path.sep)
+    ) {
+      continue;
+    }
+    transaction.rollbackTargetContents.delete(target);
+
+    let stats;
+    try {
+      stats = await fs.lstat(target);
+    } catch (error) {
+      if (filesystemErrorCode(error) === "ENOENT") {
+        if (expectedContent !== null) {
+          transaction.rollbackDeletedTargets.add(target);
+        }
+        continue;
+      }
+      throw error;
+    }
+    if (expectedContent !== null && stats.isFile()) {
+      const currentContent = await fs.readFile(target);
+      if (currentContent.equals(expectedContent)) continue;
+    }
+    await preserveRecoveryTarget(
+      transaction,
+      {
+        operation: "rollback-conflict",
+        target,
+        backup: null,
+      },
+      `edited-${transaction.recoveryConflicts.length}`,
+      record.target,
+    );
+  }
+}
+
+/**
+ * @param {InstallTransaction} transaction
+ * @param {InstallMutationRecord} record
+ */
+async function reapplyConcurrentRollbackDeletions(transaction, record) {
+  for (const target of transaction.rollbackDeletedTargets) {
+    if (
+      target !== record.target &&
+      !target.startsWith(record.target + path.sep)
+    ) {
+      continue;
+    }
+    await fs.rm(target, { recursive: true, force: true });
+    transaction.rollbackDeletedTargets.delete(target);
+  }
+}
+
+/**
+ * @param {InstallTransaction} transaction
+ * @param {InstallMutationRecord} record
+ * @param {number | string} recordIndex
+ * @param {string} [rollbackBoundary]
+ */
+async function preserveRecoveryTarget(
+  transaction,
+  record,
+  recordIndex,
+  rollbackBoundary = record.target,
+) {
   if (!(await rawPathExists(record.target))) return;
   const conflictRoot = path.join(
-    path.dirname(record.target),
+    path.dirname(rollbackBoundary),
     INSTALL_RECOVERY_CONFLICTS_DIR,
     transaction.token,
   );
@@ -934,6 +1199,15 @@ async function preserveRecoveryTarget(transaction, record, recordIndex) {
         continue;
       throw error;
     }
+  }
+}
+
+/** @param {InstallTransaction} transaction */
+function reportRecoveryConflicts(transaction) {
+  for (const conflict of transaction.recoveryConflicts) {
+    console.warn(
+      `Preserved interrupted install output ${conflict.target} at ${conflict.preservedAt}.`,
+    );
   }
 }
 
@@ -1012,6 +1286,133 @@ async function rawPathExists(file) {
   }
 }
 
+/** @param {string} directory */
+async function canonicalizeDirectoryPath(directory) {
+  let candidate = path.resolve(directory);
+  const missingEntries = [];
+  while (true) {
+    try {
+      const canonical = await fs.realpath(candidate);
+      return path.join(canonical, ...missingEntries.reverse());
+    } catch (error) {
+      if (filesystemErrorCode(error) !== "ENOENT") throw error;
+      const parent = path.dirname(candidate);
+      if (parent === candidate) throw error;
+      missingEntries.push(path.basename(candidate));
+      candidate = parent;
+    }
+  }
+}
+
+/** @param {string} targetPath */
+async function canonicalizeTransactionTarget(targetPath) {
+  const resolvedTarget = path.resolve(targetPath);
+  const canonicalParent = await canonicalizeDirectoryPath(
+    path.dirname(resolvedTarget),
+  );
+  return path.join(canonicalParent, path.basename(resolvedTarget));
+}
+
+/** @param {string} target @param {string[]} lockRoots */
+function isTargetCoveredByLock(target, lockRoots) {
+  return lockRoots.some((lockRoot) =>
+    target.startsWith(path.resolve(lockRoot) + path.sep),
+  );
+}
+
+/**
+ * @param {string} target
+ * @param {import("fs").Stats | null} stats
+ * @param {ExpectedTargetContent | undefined} expectedTargetContent
+ * @param {string} label
+ */
+function assertExpectedTargetType(target, stats, expectedTargetContent, label) {
+  if (expectedTargetContent === null && stats) {
+    throw new Error(
+      `Cannot install ${label} because ${target} was created during installation.`,
+    );
+  }
+  if (
+    expectedTargetContent !== undefined &&
+    expectedTargetContent !== null &&
+    (!stats || !stats.isFile())
+  ) {
+    throw new Error(
+      `Cannot install ${label} because ${target} changed during installation.`,
+    );
+  }
+}
+
+/**
+ * @param {string} target
+ * @param {import("fs").Stats | null} stats
+ * @param {ExpectedTargetIdentity | undefined} expectedIdentity
+ * @param {string} label
+ */
+function assertExpectedTargetIdentity(target, stats, expectedIdentity, label) {
+  if (!expectedIdentity) return;
+  if (
+    !stats?.isFile() ||
+    stats.dev !== expectedIdentity.device ||
+    stats.ino !== expectedIdentity.inode ||
+    stats.nlink !== expectedIdentity.links
+  ) {
+    throw new Error(
+      `Cannot install ${label} because ${target} changed during installation.`,
+    );
+  }
+}
+
+/**
+ * @param {string} targetRoot
+ * @param {ExpectedTargetEntries | undefined} expectedEntries
+ * @param {string} label
+ */
+async function assertExpectedTargetEntries(targetRoot, expectedEntries, label) {
+  if (!expectedEntries) return;
+  for (const [relativePath, expected] of expectedEntries) {
+    const target = relativePath
+      ? path.join(targetRoot, relativePath)
+      : targetRoot;
+    const stats = await lstatIfExists(target);
+    if (expected.kind === "missing") {
+      if (!stats) continue;
+    } else if (expected.kind === "directory") {
+      if (stats?.isDirectory()) continue;
+    } else if (
+      stats?.isFile() &&
+      (await fileContentEquals(target, expected.content))
+    ) {
+      continue;
+    }
+    throw new Error(
+      `Cannot install ${label} because ${target} changed during installation.`,
+    );
+  }
+}
+
+/**
+ * @param {InstallTransaction} transaction
+ * @param {string} targetRoot
+ * @param {ExpectedTargetEntries} expectedEntries
+ */
+function recordExpectedTreeRollbackTargets(
+  transaction,
+  targetRoot,
+  expectedEntries,
+) {
+  for (const [relativePath, expected] of expectedEntries) {
+    if (expected.kind === "directory") continue;
+    const target = relativePath
+      ? path.join(targetRoot, relativePath)
+      : targetRoot;
+    transaction.rollbackTargetContents.set(
+      target,
+      expected.kind === "file" ? expected.content : null,
+    );
+  }
+}
+
 /** @param {number} milliseconds */
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -1054,6 +1455,7 @@ async function removeInstallStagingRoot(stagingRoot) {
  * @param {string} stagedDir
  * @param {string} targetDir
  * @param {StagedDirInstallOptions} [options]
+ * @returns {Promise<ExpectedTargetEntries | undefined>}
  */
 async function preflightStagedDirInstall(
   stagedDir,
@@ -1062,15 +1464,16 @@ async function preflightStagedDirInstall(
     currentManagedFiles,
     label = "directory",
     previousManagedFiles,
+    previousManagedRoots = [],
     replace = false,
   } = {},
 ) {
-  if (
-    !(await pathExists(stagedDir)) ||
-    replace ||
-    !(await pathExists(targetDir))
-  ) {
-    return;
+  if (!(await pathExists(stagedDir)) || replace) return undefined;
+  /** @type {ExpectedTargetEntries} */
+  const expectedTargetEntries = new Map();
+  if (!(await pathExists(targetDir))) {
+    expectedTargetEntries.set("", { kind: "missing" });
+    return expectedTargetEntries;
   }
   const targetStats = await fs.lstat(targetDir);
   if (!targetStats.isDirectory()) {
@@ -1078,49 +1481,87 @@ async function preflightStagedDirInstall(
       `Cannot install ${label} because ${targetDir} is not a directory.`,
     );
   }
+  expectedTargetEntries.set("", { kind: "directory" });
 
   await preflightStagedDirMerge(stagedDir, targetDir, "", {
+    expectedTargetEntries,
     label,
+    previousManagedFiles: new Set(
+      sanitizeManagedFileList(previousManagedFiles),
+    ),
+    previousManagedRoots,
     staleManagedFiles: staleManagedFileSet(
       previousManagedFiles,
       currentManagedFiles,
     ),
   });
+  return expectedTargetEntries;
 }
 
 /**
  * @param {string} stagedFile
  * @param {string} targetFile
  * @param {StagedFileInstallOptions} [options]
+ * @returns {Promise<Buffer | null | undefined>}
  */
 async function preflightStagedFileInstall(
   stagedFile,
   targetFile,
-  { label = "file", replace = false } = {},
+  {
+    expectedTargetContent,
+    label = "file",
+    previousManagedFiles = [],
+    replace = false,
+  } = {},
 ) {
-  if (
-    !(await pathExists(stagedFile)) ||
-    replace ||
-    !(await pathExists(targetFile))
-  ) {
-    return;
-  }
+  if (!(await pathExists(stagedFile))) return undefined;
+  if (!(await pathExists(targetFile))) return null;
   const targetStats = await fs.lstat(targetFile);
   if (targetStats.isDirectory()) {
     throw new Error(
       `Cannot install ${label} because ${targetFile} is a directory.`,
     );
   }
+  if (!targetStats.isFile()) {
+    throw new Error(
+      `Cannot install ${label} because ${targetFile} is not a regular file.`,
+    );
+  }
+  const targetContent = await fs.readFile(targetFile);
+  if (
+    replace ||
+    (expectedTargetContent !== undefined &&
+      expectedTargetContent !== null &&
+      targetContent.equals(expectedContentBuffer(expectedTargetContent))) ||
+    (await regularFilesAreIdentical(stagedFile, targetFile)) ||
+    (await matchesAnyManagedFile(targetFile, previousManagedFiles))
+  ) {
+    return targetContent;
+  }
+  if (expectedTargetContent !== undefined) {
+    throw new Error(
+      `Cannot install ${label} because ${targetFile} changed during installation.`,
+    );
+  }
+  throw new Error(
+    `Cannot install ${label} because ${targetFile} is a non-identical unowned file.`,
+  );
 }
 
-/** @param {string} stagedDir @param {string} targetDir @param {{ replace?: boolean }} [options] */
+/**
+ * @param {string} stagedDir
+ * @param {string} targetDir
+ * @param {InstallStagedDirOptions} [options]
+ */
 async function installStagedDir(
   stagedDir,
   targetDir,
-  { replace = false } = {},
+  { expectedTargetEntries, label = "directory", replace = false } = {},
 ) {
   if (!(await pathExists(stagedDir))) return;
   const transactional = await prepareTransactionMutation(targetDir, {
+    expectedTargetEntries,
+    label,
     preserveExisting: !replace,
   });
   if (replace && !transactional) {
@@ -1188,13 +1629,19 @@ function staleManagedFileSet(previousFiles, currentFiles) {
  * @param {string} stagedDir
  * @param {string} targetDir
  * @param {string} prefix
- * @param {{ label: string, staleManagedFiles: Set<string> }} options
+ * @param {{ expectedTargetEntries: ExpectedTargetEntries, label: string, previousManagedFiles: Set<string>, previousManagedRoots: string[], staleManagedFiles: Set<string> }} options
  */
 async function preflightStagedDirMerge(
   stagedDir,
   targetDir,
   prefix,
-  { label, staleManagedFiles },
+  {
+    expectedTargetEntries,
+    label,
+    previousManagedFiles,
+    previousManagedRoots,
+    staleManagedFiles,
+  },
 ) {
   const entries = await fs.readdir(stagedDir, { withFileTypes: true });
   for (const entry of entries) {
@@ -1208,31 +1655,125 @@ async function preflightStagedDirMerge(
     );
 
     if (entry.isDirectory()) {
-      if (!targetStats) continue;
+      if (!targetStats) {
+        expectedTargetEntries.set(relativePath, { kind: "missing" });
+        continue;
+      }
       if (!targetStats.isDirectory()) {
         throw new Error(
           `Cannot install ${label} because ${targetPath} conflicts with staged directory ${relativePath}.`,
         );
       }
+      expectedTargetEntries.set(relativePath, { kind: "directory" });
       await preflightStagedDirMerge(stagedPath, targetPath, relativePath, {
+        expectedTargetEntries,
         label,
+        previousManagedFiles,
+        previousManagedRoots,
         staleManagedFiles,
       });
       continue;
     }
 
-    if (!entry.isFile() || !targetStats?.isDirectory()) continue;
-
-    const removableDirectory = await directoryRemovedByManagedPrune(
-      targetPath,
-      relativePath,
-      staleManagedFiles,
-    );
-    if (!removableDirectory) {
+    if (!entry.isFile()) continue;
+    if (!targetStats) {
+      expectedTargetEntries.set(relativePath, { kind: "missing" });
+      continue;
+    }
+    if (targetStats.isDirectory()) {
+      const removableDirectory = await directoryRemovedByManagedPrune(
+        targetPath,
+        relativePath,
+        staleManagedFiles,
+      );
+      if (removableDirectory) {
+        expectedTargetEntries.set(relativePath, { kind: "missing" });
+        continue;
+      }
       throw new Error(
         `Cannot install ${label} because ${targetPath} conflicts with staged file ${relativePath}.`,
       );
     }
+    const targetContent = targetStats.isFile()
+      ? await fs.readFile(targetPath)
+      : null;
+    if (
+      targetContent &&
+      (previousManagedFiles.has(relativePath) ||
+        (await fileContentEquals(stagedPath, targetContent)) ||
+        (await contentMatchesAnyManagedFile(
+          targetContent,
+          previousManagedRoots.map((root) => path.join(root, relativePath)),
+        )))
+    ) {
+      expectedTargetEntries.set(relativePath, {
+        content: targetContent,
+        kind: "file",
+      });
+      continue;
+    }
+    throw new Error(
+      `Cannot install ${label} because ${targetPath} is a non-identical unowned file.`,
+    );
+  }
+}
+
+/** @param {Buffer} targetContent @param {string[]} managedFiles */
+async function contentMatchesAnyManagedFile(targetContent, managedFiles) {
+  for (const managedFile of managedFiles) {
+    const stats = await lstatIfExists(managedFile);
+    if (
+      stats?.isFile() &&
+      (await fileContentEquals(managedFile, targetContent))
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** @param {string} targetFile @param {string[]} managedFiles */
+async function matchesAnyManagedFile(targetFile, managedFiles) {
+  for (const managedFile of managedFiles) {
+    if (await regularFilesAreIdentical(targetFile, managedFile)) return true;
+  }
+  return false;
+}
+
+/** @param {string} leftFile @param {string} rightFile */
+async function regularFilesAreIdentical(leftFile, rightFile) {
+  const [leftStats, rightStats] = await Promise.all([
+    lstatIfExists(leftFile),
+    lstatIfExists(rightFile),
+  ]);
+  if (!leftStats?.isFile() || !rightStats?.isFile()) return false;
+  const [left, right] = await Promise.all([
+    fs.readFile(leftFile),
+    fs.readFile(rightFile),
+  ]);
+  return left.equals(right);
+}
+
+/** @param {string} file @param {Exclude<ExpectedTargetContent, null>} expectedContent */
+async function fileContentEquals(file, expectedContent) {
+  const content = await fs.readFile(file);
+  return content.equals(expectedContentBuffer(expectedContent));
+}
+
+/** @param {Exclude<ExpectedTargetContent, null>} expectedContent */
+function expectedContentBuffer(expectedContent) {
+  return Buffer.isBuffer(expectedContent)
+    ? expectedContent
+    : Buffer.from(expectedContent, "utf8");
+}
+
+/** @param {string} file */
+async function lstatIfExists(file) {
+  try {
+    return await fs.lstat(file);
+  } catch (error) {
+    if (filesystemErrorCode(error) === "ENOENT") return null;
+    throw error;
   }
 }
 
@@ -1370,26 +1911,55 @@ async function removeEmptyAncestorDirs(startDir, rootDir) {
   }
 }
 
-/** @param {string} stagedFile @param {string} targetFile @param {{ replace?: boolean }} [options] */
+/**
+ * @param {string} stagedFile
+ * @param {string} targetFile
+ * @param {InstallStagedFileOptions} [options]
+ */
 async function installStagedFile(
   stagedFile,
   targetFile,
-  { replace = false } = {},
+  {
+    expectedTargetContent,
+    expectedTargetIdentity,
+    label = "file",
+    preserveTargetChangesOnRollback = false,
+    replace = false,
+  } = {},
 ) {
   if (!(await pathExists(stagedFile))) return;
-  const transactional = await prepareTransactionMutation(targetFile);
+  const installedContent = preserveTargetChangesOnRollback
+    ? await fs.readFile(stagedFile)
+    : null;
+  const transactional = await prepareTransactionMutation(targetFile, {
+    expectedTargetContent,
+    expectedTargetIdentity,
+    label,
+  });
   if (replace && !transactional) {
     await fs.rm(targetFile, { force: true });
   }
   await ensureDir(path.dirname(targetFile));
+  let renamed = false;
   try {
     await fs.rename(stagedFile, targetFile);
-    return;
+    renamed = true;
   } catch (error) {
     if (filesystemErrorCode(error) !== "EXDEV") throw error;
   }
-  await copyFile(stagedFile, targetFile);
-  await fs.rm(stagedFile, { force: true });
+  if (!renamed) {
+    await copyFile(stagedFile, targetFile);
+    await fs.rm(stagedFile, { force: true });
+  }
+  if (installedContent) {
+    const transaction = transactionStorage.getStore();
+    if (transaction) {
+      transaction.rollbackTargetContents.set(
+        await canonicalizeTransactionTarget(targetFile),
+        installedContent,
+      );
+    }
+  }
 }
 
 /**

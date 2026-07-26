@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
 const fs = require("fs/promises");
 const os = require("os");
 const path = require("path");
@@ -1032,7 +1033,7 @@ model = "gpt-5"
 `,
     );
 
-    const stagedConfigPath = await stageCodexConfig(
+    const stagedConfig = await stageCodexConfig(
       codexRoot,
       codexStagingRoot,
       {
@@ -1048,7 +1049,12 @@ model = "gpt-5"
       "demo-plugin",
     );
 
-    const output = await readText(/** @type {string} */ (stagedConfigPath));
+    assert.ok(stagedConfig);
+    const output = await readText(stagedConfig.stagedPath);
+    assert.match(
+      /** @type {string} */ (stagedConfig.expectedTargetContent),
+      /command = "old-server"/,
+    );
     assert.match(output, /model = "gpt-5"/);
     assert.match(output, /\[profiles\.dev\]/);
     assert.match(output, /\[profiles\.after\]/);
@@ -1070,7 +1076,7 @@ model = "gpt-5"
     assert.doesNotMatch(output, /DEMO_TOKEN = "old-placeholder"/);
 
     await writeFile(path.join(codexRoot, "config.toml"), output);
-    const restagedConfigPath = await stageCodexConfig(
+    const restagedConfig = await stageCodexConfig(
       codexRoot,
       codexStagingRoot,
       {
@@ -1085,7 +1091,7 @@ model = "gpt-5"
       emptyPreviousEntries(),
       "demo-plugin",
     );
-    assert.equal(restagedConfigPath, null);
+    assert.equal(restagedConfig, null);
   });
 });
 
@@ -2268,6 +2274,1281 @@ test("writer preserves untracked same-name skill directories on first install", 
   });
 });
 
+test("writer rejects non-identical unowned prompt and shared-script files", async () => {
+  for (const collision of ["prompt", "shared-script"]) {
+    await withTempDir(async (root) => {
+      const bundle = await createTransactionalBundle(root, "v1");
+      const codexRoot = path.join(root, ".codex");
+      const targetPath =
+        collision === "prompt"
+          ? path.join(codexRoot, "prompts", "daily.md")
+          : path.join(codexRoot, "scripts", "shared.js");
+      await writeFile(targetPath, `custom ${collision}\n`);
+      const before = await readTreeSnapshot(codexRoot);
+
+      await assert.rejects(
+        () =>
+          writeCodexBundle(root, bundle, {
+            agentsHome: path.join(root, "agents-home"),
+            confirm: { yes: true },
+            pluginName: `${collision}-collision-plugin`,
+          }),
+        /non-identical unowned file/,
+      );
+
+      assert.deepEqual(await readTreeSnapshot(codexRoot), before);
+    });
+  }
+});
+
+test("writer adopts byte-identical unowned prompt and shared-script files", async () => {
+  await withTempDir(async (root) => {
+    const bundle = await createTransactionalBundle(root, "v1");
+    const codexRoot = path.join(root, ".codex");
+    await writeFile(path.join(codexRoot, "prompts", "daily.md"), "Prompt v1\n");
+    await writeFile(
+      path.join(codexRoot, "scripts", "shared.js"),
+      'module.exports = "v1";\n',
+    );
+
+    await writeCodexBundle(root, bundle, {
+      agentsHome: path.join(root, "agents-home"),
+      confirm: { yes: true },
+      pluginName: "identical-collision-plugin",
+    });
+
+    assert.equal(
+      await readText(path.join(codexRoot, "prompts", "daily.md")),
+      "Prompt v1\n",
+    );
+    assert.equal(
+      await readText(path.join(codexRoot, "scripts", "shared.js")),
+      'module.exports = "v1";\n',
+    );
+  });
+});
+
+test("writer rejects edits to adopted prompts made after preflight", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const promptPath = path.join(codexRoot, "prompts", "daily.md");
+    const userEdit = "# User edit after adoption preflight\n";
+    const bundle = await createTransactionalBundle(root, "v1");
+    await writeFile(promptPath, "Prompt v1\n");
+
+    await assert.rejects(
+      () =>
+        writeCodexBundle(root, bundle, {
+          agentsHome: path.join(root, "agents-home"),
+          confirm: { yes: true },
+          pluginName: "prompt-adoption-race-plugin",
+          async onInstallPhase(phase) {
+            if (phase === "shared-scripts") {
+              await writeFile(promptPath, userEdit);
+            }
+          },
+        }),
+      /changed during installation/,
+    );
+
+    assert.equal(await readText(promptPath), userEdit);
+    assert.equal(
+      await pathExists(path.join(codexRoot, ".kramme-install-state.json")),
+      false,
+    );
+  });
+});
+
+test("writer rejects config edits made after config staging", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const configPath = path.join(codexRoot, "config.toml");
+    const userEdit = "# Concurrent config edit\n";
+    await writeFile(configPath, "# Original config\n");
+    const originalWriteFile = fs.writeFile;
+    let injected = false;
+    fs.writeFile = async (file, data, options) => {
+      const result = await originalWriteFile(file, data, options);
+      if (
+        !injected &&
+        path.basename(String(file)) === "AGENTS.md" &&
+        String(file).includes(".kramme-install-staging")
+      ) {
+        injected = true;
+        await originalWriteFile(configPath, userEdit, "utf8");
+      }
+      return result;
+    };
+    try {
+      await assert.rejects(
+        () =>
+          writeCodexBundle(
+            root,
+            {
+              agentSkills: [],
+              codexPlugin: undefined,
+              generatedSkills: [],
+              knownAgentSkills: new Map(),
+              knownCommands: new Set(),
+              mcpServers: { demo: { command: "demo" } },
+              prompts: [],
+              skillDirs: [],
+            },
+            {
+              agentsHome: path.join(root, "agents-home"),
+              confirm: { yes: true },
+              pluginName: "config-staging-race-plugin",
+            },
+          ),
+        /changed during installation/,
+      );
+    } finally {
+      fs.writeFile = originalWriteFile;
+    }
+
+    assert.equal(injected, true);
+    assert.equal(await readText(configPath), userEdit);
+    assert.equal(
+      await pathExists(path.join(codexRoot, ".kramme-install-state.json")),
+      false,
+    );
+  });
+});
+
+test("writer rejects shared-directory edits made after final preflight", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const sourceDir = path.join(root, "shared-directory-source");
+    const targetDir = path.join(codexRoot, "scripts", "dev-server");
+    const targetFile = path.join(targetDir, "detect.sh");
+    const userEdit = "# Concurrent shared-directory edit\n";
+    await writeFile(path.join(sourceDir, "detect.sh"), "# Managed script\n");
+    await writeFile(targetFile, "# Managed script\n");
+    const bundle = await createTransactionalBundle(root, "v1");
+    assert.ok(bundle.codexPlugin);
+    bundle.codexPlugin.sharedScriptDirs = [
+      { sourceDir, targetDir: path.join("scripts", "dev-server") },
+    ];
+
+    const originalMkdir = fs.mkdir;
+    let injected = false;
+    fs.mkdir = /** @type {typeof fs.mkdir} */ (
+      async (dir, options) => {
+        const result = await originalMkdir(dir, options);
+        if (
+          !injected &&
+          String(dir).startsWith(
+            path.join(codexRoot, "scripts", ".kramme-install-backups") +
+              path.sep,
+          )
+        ) {
+          injected = true;
+          await fs.writeFile(targetFile, userEdit, "utf8");
+        }
+        return result;
+      }
+    );
+    try {
+      await assert.rejects(
+        () =>
+          writeCodexBundle(root, bundle, {
+            agentsHome: path.join(root, "agents-home"),
+            confirm: { yes: true },
+            pluginName: "shared-directory-race-plugin",
+          }),
+        /changed during installation/,
+      );
+    } finally {
+      fs.mkdir = originalMkdir;
+    }
+
+    assert.equal(injected, true);
+    assert.equal(await readText(targetFile), userEdit);
+    assert.equal(
+      await pathExists(path.join(codexRoot, ".kramme-install-state.json")),
+      false,
+    );
+  });
+});
+
+test("writer rejects managed output beneath an unlocked symlinked directory", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const externalPrompts = path.join(root, "external-prompts");
+    const promptsLink = path.join(codexRoot, "prompts");
+    await fs.mkdir(codexRoot, { recursive: true });
+    await fs.mkdir(externalPrompts, { recursive: true });
+    await fs.symlink(externalPrompts, promptsLink);
+
+    await assert.rejects(
+      () =>
+        writeCodexBundle(
+          root,
+          {
+            agentSkills: [],
+            codexPlugin: undefined,
+            generatedSkills: [],
+            knownAgentSkills: new Map(),
+            knownCommands: new Set(),
+            mcpServers: {},
+            prompts: [{ content: "Prompt", name: "daily" }],
+            skillDirs: [],
+          },
+          {
+            agentsHome: path.join(root, "agents-home"),
+            confirm: { yes: true },
+            pluginName: "unlocked-symlink-plugin",
+          },
+        ),
+      /outside the acquired install locks/,
+    );
+
+    assert.equal((await fs.lstat(promptsLink)).isSymbolicLink(), true);
+    assert.equal(
+      await pathExists(path.join(externalPrompts, "daily.md")),
+      false,
+    );
+    assert.equal(
+      await pathExists(path.join(codexRoot, ".kramme-install-state.json")),
+      false,
+    );
+  });
+});
+
+test("writer replaces prompt and shared-script files proven by prior install state", async () => {
+  await withTempDir(async (root) => {
+    const options = {
+      agentsHome: path.join(root, "agents-home"),
+      confirm: { yes: true },
+      pluginName: "managed-file-upgrade-plugin",
+    };
+    await writeCodexBundle(
+      root,
+      await createTransactionalBundle(root, "v1"),
+      options,
+    );
+    await writeCodexBundle(
+      root,
+      await createTransactionalBundle(root, "v2"),
+      options,
+    );
+
+    assert.equal(
+      await readText(path.join(root, ".codex", "prompts", "daily.md")),
+      "Prompt v2\n",
+    );
+    assert.equal(
+      await readText(path.join(root, ".codex", "scripts", "shared.js")),
+      'module.exports = "v2";\n',
+    );
+  });
+});
+
+test("writer preflights AGENTS.md directory and permission failures before publication", async () => {
+  for (const failure of ["directory", "permission"]) {
+    await withTempDir(async (root) => {
+      const codexRoot = path.join(root, ".codex");
+      const agentsPath = path.join(codexRoot, "AGENTS.md");
+      const bundle = await createTransactionalBundle(root, "v1");
+      if (failure === "directory") {
+        await writeFile(path.join(agentsPath, "LOCAL.md"), "local\n");
+      } else {
+        await writeFile(agentsPath, "# Local instructions\n");
+      }
+      const before = await readTreeSnapshot(codexRoot);
+      const permissionError = Object.assign(
+        new Error("injected AGENTS.md permission failure"),
+        { code: "EACCES" },
+      );
+      const originalWriteFile = fs.writeFile;
+      if (failure === "permission") {
+        fs.writeFile = async (file, data, options) => {
+          if (
+            path.basename(String(file)) === "AGENTS.md" &&
+            String(file).includes(".kramme-install-staging")
+          ) {
+            throw permissionError;
+          }
+          return originalWriteFile(file, data, options);
+        };
+      }
+      try {
+        await assert.rejects(
+          () =>
+            writeCodexBundle(root, bundle, {
+              agentsHome: path.join(root, "agents-home"),
+              confirm: { yes: true },
+              pluginName: `agents-${failure}-plugin`,
+            }),
+          failure === "directory"
+            ? (error) => {
+                if (!(error instanceof Error)) return false;
+                const filesystemError = /** @type {NodeJS.ErrnoException} */ (
+                  error
+                );
+                return (
+                  filesystemError.code === "EISDIR" ||
+                  /directory/.test(error.message)
+                );
+              }
+            : (error) => error === permissionError,
+        );
+      } finally {
+        fs.writeFile = originalWriteFile;
+      }
+
+      assert.deepEqual(await readTreeSnapshot(codexRoot), before);
+    });
+  }
+});
+
+test("writer preserves the existing AGENTS.md mode on successful publication", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    await writeFile(agentsPath, "# Private local instructions\n");
+    await fs.chmod(agentsPath, 0o600);
+
+    await writeCodexBundle(root, await createTransactionalBundle(root, "v1"), {
+      agentsHome: path.join(root, "agents-home"),
+      confirm: { yes: true },
+      pluginName: "agents-mode-plugin",
+    });
+
+    assert.equal((await fs.stat(agentsPath)).mode & 0o7777, 0o600);
+    assert.match(await readText(agentsPath), /# Private local instructions/);
+    assert.match(await readText(agentsPath), /BEGIN KRAMME CODEX TOOL MAP/);
+  });
+});
+
+test("writer preserves a symlinked AGENTS.md and updates its referent transactionally", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    const referent = path.join(root, "dotfiles", "AGENTS.md");
+    const relativeReferent = path.relative(path.dirname(agentsPath), referent);
+    await writeFile(referent, "# Shared local instructions\n");
+    await fs.chmod(referent, 0o600);
+    await fs.mkdir(path.dirname(agentsPath), { recursive: true });
+    await fs.symlink(relativeReferent, agentsPath);
+
+    await writeCodexBundle(root, await createTransactionalBundle(root, "v1"), {
+      agentsHome: path.join(root, "agents-home"),
+      confirm: { yes: true },
+      pluginName: "agents-symlink-plugin",
+    });
+
+    assert.equal((await fs.lstat(agentsPath)).isSymbolicLink(), true);
+    assert.equal(await fs.readlink(agentsPath), relativeReferent);
+    assert.equal((await fs.stat(referent)).mode & 0o7777, 0o600);
+    assert.match(await readText(referent), /# Shared local instructions/);
+    assert.match(await readText(referent), /BEGIN KRAMME CODEX TOOL MAP/);
+    assert.equal(
+      await pathExists(
+        path.join(path.dirname(referent), ".kramme-install-lock"),
+      ),
+      false,
+    );
+  });
+});
+
+test("writer rolls back when a symlinked AGENTS.md is retargeted during publication", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    const externalRoot = path.join(root, "dotfiles");
+    const originalReferent = path.join(externalRoot, "ORIGINAL.md");
+    const replacementReferent = path.join(externalRoot, "REPLACEMENT.md");
+    await writeFile(originalReferent, "# Original referent\n");
+    await writeFile(replacementReferent, "# Replacement referent\n");
+    await fs.mkdir(codexRoot, { recursive: true });
+    await fs.symlink(originalReferent, agentsPath);
+
+    const originalMkdir = fs.mkdir;
+    let retargeted = false;
+    fs.mkdir = /** @type {typeof fs.mkdir} */ (
+      async (dir, options) => {
+        const result = await originalMkdir(dir, options);
+        if (
+          !retargeted &&
+          String(dir).startsWith(
+            path.join(externalRoot, ".kramme-install-backups") + path.sep,
+          )
+        ) {
+          retargeted = true;
+          await fs.unlink(agentsPath);
+          await fs.symlink(replacementReferent, agentsPath);
+        }
+        return result;
+      }
+    );
+    try {
+      await assert.rejects(
+        () =>
+          writeCodexBundle(
+            root,
+            {
+              agentSkills: [],
+              codexPlugin: undefined,
+              generatedSkills: [],
+              knownAgentSkills: new Map(),
+              knownCommands: new Set(),
+              mcpServers: {},
+              prompts: [],
+              skillDirs: [],
+            },
+            {
+              agentsHome: path.join(root, "agents-home"),
+              confirm: { yes: true },
+              pluginName: "agents-retarget-plugin",
+            },
+          ),
+        /destination changed during installation/,
+      );
+    } finally {
+      fs.mkdir = originalMkdir;
+    }
+
+    assert.equal(retargeted, true);
+    assert.equal(await fs.readlink(agentsPath), replacementReferent);
+    assert.equal(await readText(originalReferent), "# Original referent\n");
+    assert.equal(
+      await readText(replacementReferent),
+      "# Replacement referent\n",
+    );
+    assert.equal(
+      await pathExists(path.join(codexRoot, ".kramme-install-state.json")),
+      false,
+    );
+  });
+});
+
+test("writer preserves invalid lock directories beside external AGENTS.md referents", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    const referent = path.join(root, "dotfiles", "AGENTS.md");
+    const userNote = path.join(
+      path.dirname(referent),
+      ".kramme-install-lock",
+      "user-notes.txt",
+    );
+    await writeFile(referent, "# Shared local instructions\n");
+    await writeFile(userNote, "keep this directory\n");
+    await fs.mkdir(codexRoot, { recursive: true });
+    await fs.symlink(
+      path.relative(path.dirname(agentsPath), referent),
+      agentsPath,
+    );
+
+    await assert.rejects(
+      () =>
+        writeCodexBundle(
+          root,
+          {
+            agentSkills: [],
+            codexPlugin: undefined,
+            generatedSkills: [],
+            knownAgentSkills: new Map(),
+            knownCommands: new Set(),
+            mcpServers: {},
+            prompts: [],
+            skillDirs: [],
+          },
+          {
+            agentsHome: path.join(root, "agents-home"),
+            confirm: { yes: true },
+            lockTimeoutMs: 0,
+            pluginName: "agents-external-lock-plugin",
+          },
+        ),
+      /Refusing to reclaim invalid install lock/,
+    );
+
+    assert.equal(await readText(userNote), "keep this directory\n");
+    assert.equal(await readText(referent), "# Shared local instructions\n");
+    assert.equal(
+      await pathExists(path.join(codexRoot, ".kramme-install-lock")),
+      false,
+    );
+  });
+});
+
+test("writer deduplicates physically identical AGENTS.md lock roots", async () => {
+  await withTempDir(async (root) => {
+    const physicalParent = path.join(root, "physical");
+    const physicalCodexRoot = path.join(physicalParent, ".codex");
+    const linkedParent = path.join(root, "linked");
+    const agentsPath = path.join(physicalCodexRoot, "AGENTS.md");
+    const referent = path.join(physicalCodexRoot, "SHARED.md");
+    await fs.mkdir(physicalCodexRoot, { recursive: true });
+    await fs.symlink(physicalParent, linkedParent);
+    await writeFile(referent, "# Shared local instructions\n");
+    await fs.symlink("SHARED.md", agentsPath);
+
+    await writeCodexBundle(
+      path.join(linkedParent, ".codex"),
+      {
+        agentSkills: [],
+        codexPlugin: undefined,
+        generatedSkills: [],
+        knownAgentSkills: new Map(),
+        knownCommands: new Set(),
+        mcpServers: {},
+        prompts: [],
+        skillDirs: [],
+      },
+      {
+        agentsHome: path.join(root, "agents-home"),
+        confirm: { yes: true },
+        lockTimeoutMs: 100,
+        pluginName: "agents-lock-alias-plugin",
+      },
+    );
+
+    assert.equal((await fs.lstat(agentsPath)).isSymbolicLink(), true);
+    assert.match(await readText(referent), /BEGIN KRAMME CODEX TOOL MAP/);
+    assert.equal(
+      await pathExists(path.join(physicalCodexRoot, ".kramme-install-lock")),
+      false,
+    );
+  });
+});
+
+test("writer recovers legacy stale locks recorded through a symlink alias", async () => {
+  await withTempDir(async (root) => {
+    const physicalParent = path.join(root, "physical");
+    const linkedParent = path.join(root, "linked");
+    const physicalCodexRoot = path.join(physicalParent, ".codex");
+    const linkedCodexRoot = path.join(linkedParent, ".codex");
+    const token = "legacy-alias-stale";
+    const journalPath = path.join(
+      linkedCodexRoot,
+      ".kramme-install-transactions",
+      token,
+      "journal.json",
+    );
+    await fs.mkdir(physicalCodexRoot, { recursive: true });
+    await fs.symlink(physicalParent, linkedParent);
+    await writeJson(journalPath, {
+      version: 1,
+      token,
+      status: "active",
+      records: [],
+    });
+    await writeJson(
+      path.join(physicalCodexRoot, ".kramme-install-lock", "owner.json"),
+      {
+        version: 1,
+        token,
+        pid: 2_147_483_647,
+        pluginName: "legacy-alias-plugin",
+        createdAtMs: 1,
+        lockRoots: [linkedCodexRoot],
+        transactionRoot: linkedCodexRoot,
+        journalPath,
+      },
+    );
+
+    await writeCodexBundle(
+      linkedParent,
+      {
+        agentSkills: [],
+        codexPlugin: undefined,
+        generatedSkills: [],
+        knownAgentSkills: new Map(),
+        knownCommands: new Set(),
+        mcpServers: {},
+        prompts: [],
+        skillDirs: [],
+      },
+      {
+        agentsHome: path.join(root, "agents-home"),
+        confirm: { yes: true },
+        pluginName: "legacy-alias-plugin",
+      },
+    );
+
+    assert.equal(
+      await pathExists(path.join(physicalCodexRoot, ".kramme-install-lock")),
+      false,
+    );
+    assert.match(
+      await readText(path.join(physicalCodexRoot, "AGENTS.md")),
+      /BEGIN KRAMME CODEX TOOL MAP/,
+    );
+  });
+});
+
+test("writer rejects hard-linked AGENTS.md without severing the link", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    const sharedPath = path.join(root, "dotfiles", "AGENTS.md");
+    await writeFile(sharedPath, "# Shared local instructions\n");
+    await fs.mkdir(codexRoot, { recursive: true });
+    await fs.link(sharedPath, agentsPath);
+    const originalInode = (await fs.stat(sharedPath)).ino;
+
+    await assert.rejects(
+      () =>
+        writeCodexBundle(
+          root,
+          {
+            agentSkills: [],
+            codexPlugin: undefined,
+            generatedSkills: [],
+            knownAgentSkills: new Map(),
+            knownCommands: new Set(),
+            mcpServers: {},
+            prompts: [],
+            skillDirs: [],
+          },
+          {
+            agentsHome: path.join(root, "agents-home"),
+            confirm: { yes: true },
+            pluginName: "agents-hard-link-plugin",
+          },
+        ),
+      /hard-linked to another file/,
+    );
+
+    assert.equal((await fs.stat(agentsPath)).ino, originalInode);
+    assert.equal((await fs.stat(sharedPath)).ino, originalInode);
+    assert.equal(await readText(agentsPath), "# Shared local instructions\n");
+    assert.equal(await readText(sharedPath), "# Shared local instructions\n");
+  });
+});
+
+test("writer rejects hard links created after final AGENTS.md staging", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    const lateLink = path.join(root, "late-hard-link.md");
+    await writeFile(agentsPath, "# Local instructions\n");
+    const originalMkdir = fs.mkdir;
+    let armed = false;
+    let injected = false;
+    fs.mkdir = /** @type {typeof fs.mkdir} */ (
+      async (dir, options) => {
+        const result = await originalMkdir(dir, options);
+        if (
+          armed &&
+          !injected &&
+          String(dir).startsWith(
+            path.join(codexRoot, ".kramme-install-backups") + path.sep,
+          )
+        ) {
+          injected = true;
+          await fs.link(agentsPath, lateLink);
+        }
+        return result;
+      }
+    );
+    try {
+      await assert.rejects(
+        () =>
+          writeCodexBundle(
+            root,
+            {
+              agentSkills: [],
+              codexPlugin: undefined,
+              generatedSkills: [],
+              knownAgentSkills: new Map(),
+              knownCommands: new Set(),
+              mcpServers: {},
+              prompts: [],
+              skillDirs: [],
+            },
+            {
+              agentsHome: path.join(root, "agents-home"),
+              confirm: { yes: true },
+              onInstallPhase(phase) {
+                if (phase === "config") armed = true;
+              },
+              pluginName: "agents-late-hard-link-plugin",
+            },
+          ),
+        /changed during installation/,
+      );
+    } finally {
+      fs.mkdir = originalMkdir;
+    }
+
+    assert.equal(injected, true);
+    assert.equal(
+      (await fs.stat(agentsPath)).ino,
+      (await fs.stat(lateLink)).ino,
+    );
+    assert.equal(await readText(agentsPath), "# Local instructions\n");
+    assert.equal(await readText(lateLink), "# Local instructions\n");
+    assert.equal(
+      await pathExists(path.join(codexRoot, ".kramme-install-state.json")),
+      false,
+    );
+  });
+});
+
+test("writer preserves AGENTS.md edits made during bundle finalization", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    await writeFile(agentsPath, "# Original local instructions\n");
+
+    await writeCodexBundle(root, await createTransactionalBundle(root, "v1"), {
+      agentsHome: path.join(root, "agents-home"),
+      confirm: { yes: true },
+      pluginName: "agents-concurrent-edit-plugin",
+      async onInstallPhase(phase) {
+        if (phase === "config") {
+          await writeFile(agentsPath, "# Concurrent user edit\n");
+        }
+      },
+    });
+
+    assert.match(await readText(agentsPath), /# Concurrent user edit/);
+    assert.doesNotMatch(
+      await readText(agentsPath),
+      /# Original local instructions/,
+    );
+    assert.match(await readText(agentsPath), /BEGIN KRAMME CODEX TOOL MAP/);
+  });
+});
+
+test("writer rejects an AGENTS.md edit made after final staging", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    const backupRoot = path.join(codexRoot, ".kramme-install-backups");
+    await writeFile(agentsPath, "# Original local instructions\n");
+    const bundle = await createTransactionalBundle(root, "v1");
+    const originalMkdir = fs.mkdir;
+    let armed = false;
+    let injected = false;
+    fs.mkdir = /** @type {typeof fs.mkdir} */ (
+      async (dir, options) => {
+        const result = await originalMkdir(dir, options);
+        if (
+          armed &&
+          !injected &&
+          String(dir).startsWith(backupRoot + path.sep)
+        ) {
+          injected = true;
+          await fs.writeFile(
+            agentsPath,
+            "# Edit after final staging\n",
+            "utf8",
+          );
+        }
+        return result;
+      }
+    );
+    try {
+      await assert.rejects(
+        () =>
+          writeCodexBundle(root, bundle, {
+            agentsHome: path.join(root, "agents-home"),
+            confirm: { yes: true },
+            pluginName: "agents-late-edit-plugin",
+            onInstallPhase(phase) {
+              if (phase === "config") armed = true;
+            },
+          }),
+        /changed during installation/,
+      );
+    } finally {
+      fs.mkdir = originalMkdir;
+    }
+
+    assert.equal(injected, true);
+    assert.equal(await readText(agentsPath), "# Edit after final staging\n");
+    assert.equal(
+      await pathExists(path.join(codexRoot, ".kramme-install-state.json")),
+      false,
+    );
+  });
+});
+
+test("writer rejects AGENTS.md created after final staging", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    const stagedAgentsSuffix = `${path.sep}.kramme-install-staging`;
+    const userContent = "# Created during installation\n";
+    const originalAccess = fs.access;
+    let armed = false;
+    let stagedAccesses = 0;
+    let injected = false;
+    fs.access = async (file, mode) => {
+      const result = await originalAccess(file, mode);
+      if (
+        armed &&
+        String(file).endsWith(`${path.sep}AGENTS.md`) &&
+        String(file).includes(stagedAgentsSuffix)
+      ) {
+        stagedAccesses += 1;
+        if (stagedAccesses === 2) {
+          injected = true;
+          await writeFile(agentsPath, userContent);
+        }
+      }
+      return result;
+    };
+    try {
+      await assert.rejects(
+        () =>
+          writeCodexBundle(
+            root,
+            {
+              agentSkills: [],
+              codexPlugin: undefined,
+              generatedSkills: [],
+              knownAgentSkills: new Map(),
+              knownCommands: new Set(),
+              mcpServers: {},
+              prompts: [],
+              skillDirs: [],
+            },
+            {
+              agentsHome: path.join(root, "agents-home"),
+              confirm: { yes: true },
+              pluginName: "agents-late-create-plugin",
+              onInstallPhase(phase) {
+                if (phase === "config") armed = true;
+              },
+            },
+          ),
+        /created during installation/,
+      );
+    } finally {
+      fs.access = originalAccess;
+    }
+
+    assert.equal(injected, true);
+    assert.equal(await readText(agentsPath), userContent);
+    assert.equal(
+      await pathExists(path.join(codexRoot, ".kramme-install-state.json")),
+      false,
+    );
+  });
+});
+
+test("transaction revalidates absent targets after journaling create records", async () => {
+  for (const scenario of ["file", "parent-symlink"]) {
+    await withTempDir(async (root) => {
+      const transactionRoot = path.join(root, "transaction-root");
+      const stagedFile = path.join(transactionRoot, "staged.md");
+      const targetParent = path.join(transactionRoot, "managed");
+      const targetFile = path.join(targetParent, "target.md");
+      const userContent = `# Concurrent ${scenario}\n`;
+      await writeFile(stagedFile, "# Installed\n");
+      if (scenario === "file") {
+        await fs.mkdir(targetParent, { recursive: true });
+      } else {
+        const externalRoot = path.join(root, "external");
+        await writeFile(path.join(externalRoot, "target.md"), userContent);
+      }
+
+      const originalRename = fs.rename;
+      let armed = false;
+      let injected = false;
+      fs.rename = async (source, target) => {
+        const result = await originalRename(source, target);
+        if (
+          armed &&
+          !injected &&
+          String(target).endsWith(`${path.sep}journal.json`)
+        ) {
+          injected = true;
+          if (scenario === "file") {
+            await writeFile(targetFile, userContent);
+          } else {
+            await fs.symlink(path.join(root, "external"), targetParent);
+          }
+        }
+        return result;
+      };
+      try {
+        await assert.rejects(
+          () =>
+            withInstallTransaction(
+              transactionRoot,
+              { pluginName: `late-${scenario}-plugin` },
+              async () => {
+                armed = true;
+                await installStagedFile(stagedFile, targetFile, {
+                  expectedTargetContent: null,
+                  label: `late ${scenario}`,
+                });
+              },
+            ),
+          /created during installation|changed during installation/,
+        );
+      } finally {
+        fs.rename = originalRename;
+      }
+
+      assert.equal(injected, true);
+      assert.equal(await readText(targetFile), userContent);
+      assert.equal(
+        await pathExists(path.join(transactionRoot, ".kramme-install-lock")),
+        false,
+      );
+    });
+  }
+});
+
+test("writer rolls back changes to a symlinked AGENTS.md referent", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    const referent = path.join(root, "dotfiles", "AGENTS.md");
+    const relativeReferent = path.relative(path.dirname(agentsPath), referent);
+    await writeFile(referent, "# Shared local instructions\n");
+    await fs.mkdir(path.dirname(agentsPath), { recursive: true });
+    await fs.symlink(relativeReferent, agentsPath);
+    const injectedError = new Error("injected agents phase failure");
+    const bundle = await createTransactionalBundle(root, "v1");
+
+    await assert.rejects(
+      () =>
+        writeCodexBundle(root, bundle, {
+          agentsHome: path.join(root, "agents-home"),
+          confirm: { yes: true },
+          pluginName: "agents-symlink-rollback-plugin",
+          onInstallPhase(phase) {
+            if (phase === "agents") throw injectedError;
+          },
+        }),
+      (error) => error === injectedError,
+    );
+
+    assert.equal((await fs.lstat(agentsPath)).isSymbolicLink(), true);
+    assert.equal(await fs.readlink(agentsPath), relativeReferent);
+    assert.equal(await readText(referent), "# Shared local instructions\n");
+  });
+});
+
+test("writer preserves AGENTS.md edits made after publication when rollback runs", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    const injectedError = new Error("failure after AGENTS.md user edit");
+    await writeFile(agentsPath, "# Original local instructions\n");
+
+    await assert.rejects(
+      () =>
+        writeCodexBundle(
+          root,
+          {
+            agentSkills: [],
+            codexPlugin: undefined,
+            generatedSkills: [],
+            knownAgentSkills: new Map(),
+            knownCommands: new Set(),
+            mcpServers: {},
+            prompts: [],
+            skillDirs: [],
+          },
+          {
+            agentsHome: path.join(root, "agents-home"),
+            confirm: { yes: true },
+            pluginName: "agents-rollback-edit-plugin",
+            async onInstallPhase(phase) {
+              if (phase !== "agents") return;
+              await writeFile(agentsPath, "# User edit after publication\n");
+              throw injectedError;
+            },
+          },
+        ),
+      (error) => error === injectedError,
+    );
+
+    assert.equal(await readText(agentsPath), "# Original local instructions\n");
+    const conflictsRoot = path.join(
+      codexRoot,
+      ".kramme-install-recovery-conflicts",
+    );
+    const conflictTokens = await fs.readdir(conflictsRoot);
+    assert.equal(conflictTokens.length, 1);
+    assert.equal(
+      await readText(path.join(conflictsRoot, conflictTokens[0], "edited-0")),
+      "# User edit after publication\n",
+    );
+  });
+});
+
+test("writer preserves AGENTS.md deletion made after publication when rollback runs", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    const injectedError = new Error("failure after AGENTS.md user deletion");
+    await writeFile(agentsPath, "# Original local instructions\n");
+
+    await assert.rejects(
+      () =>
+        writeCodexBundle(
+          root,
+          {
+            agentSkills: [],
+            codexPlugin: undefined,
+            generatedSkills: [],
+            knownAgentSkills: new Map(),
+            knownCommands: new Set(),
+            mcpServers: {},
+            prompts: [],
+            skillDirs: [],
+          },
+          {
+            agentsHome: path.join(root, "agents-home"),
+            confirm: { yes: true },
+            pluginName: "agents-rollback-delete-plugin",
+            async onInstallPhase(phase) {
+              if (phase !== "agents") return;
+              await fs.rm(agentsPath, { force: true });
+              throw injectedError;
+            },
+          },
+        ),
+      (error) => error === injectedError,
+    );
+
+    assert.equal(await pathExists(agentsPath), false);
+  });
+});
+
+test("transaction preserves rollback conflicts beside external targets", async () => {
+  await withTempDir(async (root) => {
+    const transactionRoot = path.join(root, "transaction-root");
+    const externalRoot = path.join(root, "external-root");
+    const stagedFile = path.join(transactionRoot, "staged-agents.md");
+    const targetFile = path.join(externalRoot, "AGENTS.md");
+    const injectedError = new Error("failure after external target edit");
+    await writeFile(stagedFile, "# Installed\n");
+    await writeFile(targetFile, "# Original\n");
+
+    const originalRename = fs.rename;
+    fs.rename = async (source, target) => {
+      if (
+        String(source).startsWith(externalRoot + path.sep) &&
+        !String(target).startsWith(externalRoot + path.sep)
+      ) {
+        throw Object.assign(new Error("simulated cross-device rename"), {
+          code: "EXDEV",
+        });
+      }
+      return originalRename(source, target);
+    };
+    try {
+      await assert.rejects(
+        () =>
+          withInstallTransaction(
+            transactionRoot,
+            {
+              lockRoots: [externalRoot],
+              pluginName: "external-conflict-plugin",
+            },
+            async () => {
+              await installStagedFile(stagedFile, targetFile, {
+                expectedTargetContent: "# Original\n",
+                preserveTargetChangesOnRollback: true,
+              });
+              await fs.writeFile(targetFile, "# User edit\n", "utf8");
+              throw injectedError;
+            },
+          ),
+        (error) => error === injectedError,
+      );
+    } finally {
+      fs.rename = originalRename;
+    }
+
+    assert.equal(await readText(targetFile), "# Original\n");
+    const conflictsRoot = path.join(
+      externalRoot,
+      ".kramme-install-recovery-conflicts",
+    );
+    const conflictTokens = await fs.readdir(conflictsRoot);
+    assert.equal(conflictTokens.length, 1);
+    assert.equal(
+      await readText(path.join(conflictsRoot, conflictTokens[0], "edited-0")),
+      "# User edit\n",
+    );
+    assert.equal(
+      await pathExists(path.join(transactionRoot, ".kramme-install-lock")),
+      false,
+    );
+    assert.equal(
+      await pathExists(path.join(externalRoot, ".kramme-install-lock")),
+      false,
+    );
+  });
+});
+
+test("transaction enforces file CAS beneath an existing parent mutation", async () => {
+  await withTempDir(async (root) => {
+    const targetDir = path.join(root, "managed");
+    const targetFile = path.join(targetDir, "AGENTS.md");
+    const stagedDir = path.join(root, "staged-directory");
+    const stagedFile = path.join(root, "staged-agents.md");
+    await writeFile(targetFile, "# Original\n");
+    await writeFile(path.join(stagedDir, "shared.js"), "shared\n");
+    await writeFile(stagedFile, "# Original\n\nTOOL MAP\n");
+
+    await assert.rejects(
+      () =>
+        withInstallTransaction(
+          root,
+          { pluginName: "nested-cas-plugin" },
+          async () => {
+            await installStagedDir(stagedDir, targetDir, { replace: false });
+            await writeFile(targetFile, "# Late user edit\n");
+            await installStagedFile(stagedFile, targetFile, {
+              expectedTargetContent: "# Original\n",
+              label: "Codex AGENTS.md tool map",
+              preserveTargetChangesOnRollback: true,
+            });
+          },
+        ),
+      /changed during installation/,
+    );
+
+    assert.equal(await readText(targetFile), "# Original\n");
+    const conflictsRoot = path.join(root, ".kramme-install-recovery-conflicts");
+    const conflictTokens = await fs.readdir(conflictsRoot);
+    assert.equal(conflictTokens.length, 1);
+    assert.equal(
+      await readText(path.join(conflictsRoot, conflictTokens[0], "edited-0")),
+      "# Late user edit\n",
+    );
+  });
+});
+
+test("transaction preserves nested file edits outside an ancestor rollback target", async () => {
+  await withTempDir(async (root) => {
+    const targetDir = path.join(root, "managed");
+    const targetFile = path.join(targetDir, "AGENTS.md");
+    const stagedDir = path.join(root, "staged-directory");
+    const stagedFile = path.join(root, "staged-agents.md");
+    const injectedError = new Error("fail after nested user edit");
+    await writeFile(targetFile, "# Original\n");
+    await writeFile(path.join(stagedDir, "shared.js"), "shared\n");
+    await writeFile(stagedFile, "# Original\n\nTOOL MAP\n");
+
+    await assert.rejects(
+      () =>
+        withInstallTransaction(
+          root,
+          { pluginName: "nested-rollback-conflict-plugin" },
+          async () => {
+            await installStagedDir(stagedDir, targetDir, { replace: false });
+            await installStagedFile(stagedFile, targetFile, {
+              expectedTargetContent: "# Original\n",
+              label: "Codex AGENTS.md tool map",
+              preserveTargetChangesOnRollback: true,
+            });
+            await writeFile(targetFile, "# User edit after publication\n");
+            throw injectedError;
+          },
+        ),
+      (error) => error === injectedError,
+    );
+
+    assert.equal(await readText(targetFile), "# Original\n");
+    const conflictsRoot = path.join(root, ".kramme-install-recovery-conflicts");
+    const conflictTokens = await fs.readdir(conflictsRoot);
+    assert.equal(conflictTokens.length, 1);
+    assert.equal(
+      await readText(path.join(conflictsRoot, conflictTokens[0], "edited-0")),
+      "# User edit after publication\n",
+    );
+  });
+});
+
+test("writer rolls back byte-identical state when the AGENTS.md final write fails", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    const options = {
+      agentsHome: path.join(root, "agents-home"),
+      confirm: { yes: true },
+      pluginName: "agents-final-write-plugin",
+    };
+    await writeCodexBundle(
+      root,
+      await createTransactionalBundle(root, "v1"),
+      options,
+    );
+    await writeFile(agentsPath, "# Local instructions\n");
+    const replacement = await createTransactionalBundle(root, "v2");
+    const before = await readTreeSnapshot(root, {
+      exclude: ["fixture-sources"],
+    });
+    const finalWriteError = Object.assign(
+      new Error("injected AGENTS.md final write failure"),
+      { code: "ENOSPC" },
+    );
+    const originalRename = fs.rename;
+    fs.rename = async (source, target) => {
+      if (
+        target === agentsPath &&
+        String(source).includes(".kramme-install-staging")
+      ) {
+        throw finalWriteError;
+      }
+      return originalRename(source, target);
+    };
+    try {
+      await assert.rejects(
+        () => writeCodexBundle(root, replacement, options),
+        (error) => error === finalWriteError,
+      );
+    } finally {
+      fs.rename = originalRename;
+    }
+
+    assert.deepEqual(
+      await readTreeSnapshot(root, { exclude: ["fixture-sources"] }),
+      before,
+    );
+  });
+});
+
+test("CLI emits no success line when transactional AGENTS.md publication fails", async () => {
+  await withTempDir(async (root) => {
+    const pluginRoot = path.join(root, "plugin");
+    const outputRoot = path.join(root, "output");
+    await createFixturePlugin(pluginRoot, "agents-cli-plugin");
+    await fs.mkdir(path.join(outputRoot, ".codex", "AGENTS.md"), {
+      recursive: true,
+    });
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        path.resolve(__dirname, "../../scripts/convert-plugin.js"),
+        "install",
+        pluginRoot,
+        "--codex-home",
+        outputRoot,
+        "--agents-home",
+        path.join(root, "agents-home"),
+        "--yes",
+      ],
+      { encoding: "utf8" },
+    );
+
+    assert.notEqual(result.status, 0);
+    assert.doesNotMatch(result.stdout, /^Installed .+ to .+$/m);
+    assert.equal(
+      await pathExists(
+        path.join(outputRoot, ".codex", ".kramme-install-state.json"),
+      ),
+      false,
+    );
+  });
+});
+
 test("writer does not require an agent home for Codex-only installs", async () => {
   await withTempDir(async (root) => {
     const agentsHome = path.join(root, "agents-home");
@@ -2471,6 +3752,7 @@ test("writer rolls back every finalized phase byte-for-byte", async () => {
     "agent-skills",
     "hooks",
     "config",
+    "agents",
     "manifest",
     "state",
   ];
@@ -2724,6 +4006,26 @@ test("writer elects one recovery owner across every stale transaction lock", asy
 
     await writeFile(backupPath, "stable prompt\n");
     await writeFile(promptPath, "interrupted prompt\n");
+    for (const { outputRoot, prompts } of [
+      { outputRoot: codexRoot, prompts: ["daily.md"] },
+      { outputRoot: path.join(secondRoot, ".codex"), prompts: [] },
+    ]) {
+      await writeJson(path.join(outputRoot, ".kramme-install-state.json"), {
+        version: 1,
+        plugins: {
+          "multi-root-recovery-plugin": {
+            codex: {
+              ...emptyPreviousEntries(),
+              agentSkillFiles: {
+                "transaction-agent": ["SKILL.md"],
+              },
+              agentSkills: ["transaction-agent"],
+              prompts,
+            },
+          },
+        },
+      });
+    }
     await writeJson(journalPath, {
       version: 1,
       token,

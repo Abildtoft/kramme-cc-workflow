@@ -22,6 +22,7 @@ const {
  * @typedef {Pick<InstallEntries, "pluginCaches" | "hookMarketplaces">} PreviousConfigEntries
  * @typedef {{ name: string, marketplaceName: string }} CodexHookPluginRef
  * @typedef {Pick<CodexBundle, "mcpServers" | "codexPlugin">} CodexConfigBundle
+ * @typedef {{ expectedTargetContent: string | null, stagedPath: string }} StagedCodexConfig
  */
 
 /**
@@ -39,9 +40,8 @@ async function stageCodexConfig(
   pluginName,
 ) {
   const configPath = path.join(codexRoot, "config.toml");
-  const existing = (await pathExists(configPath))
-    ? await readText(configPath)
-    : "";
+  const configExists = await pathExists(configPath);
+  const existing = configExists ? await readText(configPath) : "";
   const config = renderCodexConfigTables(bundle.mcpServers);
   let updated = existing;
 
@@ -75,7 +75,10 @@ async function stageCodexConfig(
 
   const stagedConfigPath = path.join(codexStagingRoot, "config.toml");
   await writeText(stagedConfigPath, updated);
-  return stagedConfigPath;
+  return {
+    expectedTargetContent: configExists ? existing : null,
+    stagedPath: stagedConfigPath,
+  };
 }
 
 /** @param {string} pluginName @returns {CodexHookPluginRef} */

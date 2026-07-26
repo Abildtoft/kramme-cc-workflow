@@ -1,6 +1,7 @@
 // @ts-check
 "use strict";
 
+const fs = require("fs/promises");
 const os = require("os");
 const path = require("path");
 const {
@@ -20,12 +21,21 @@ const {
 const {
   createInstallStagingRoot,
   installStagedFile,
+  preflightStagedFileInstall,
   removeInstallStagingRoot,
   withInstallTransaction,
 } = require("./install-staging");
-const { ensureDir, pathExists, readText, writeText } = require("./filesystem");
+const {
+  filesystemErrorCode,
+  pathExists,
+  readText,
+  writeText,
+} = require("./filesystem");
 
 const AGENT_HOME_LOCK_REQUIRED = Symbol("agent-home-lock-required");
+const AGENTS_DESTINATION_LOCK_REQUIRED = Symbol(
+  "agents-destination-lock-required",
+);
 
 /**
  * @typedef {import("./contracts").CodexBundle} CodexBundle
@@ -35,6 +45,9 @@ const AGENT_HOME_LOCK_REQUIRED = Symbol("agent-home-lock-required");
  *   onInstallPhase?: (phase: string) => (void | Promise<void>)
  * }} TransactionalWriteCodexOptions
  * @typedef {Record<string, string[]>} ManagedFileMap
+ * @typedef {{ device: number, inode: number, target: string }} SymbolicLinkIdentity
+ * @typedef {{ filePath: string, symbolicLink: SymbolicLinkIdentity | null, targetFile: string }} CodexAgentsDestination
+ * @typedef {{ expectedTargetContent: string | null, expectedTargetIdentity?: { device: number, inode: number, links: number }, stagedFile: string, targetFile: string }} StagedCodexAgentsFile
  */
 
 /** @param {Record<string, unknown>} object @param {string} entry */
@@ -78,16 +91,38 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   const agentsHome = extraOpts.agentsHome ?? path.join(os.homedir(), ".agents");
   const pluginName = extraOpts.pluginName ?? "plugin";
   let lockAgentHome = (bundle.agentSkills?.length ?? 0) > 0;
+  let agentsDestination = await resolveCodexAgentsDestination(codexRoot);
 
   while (true) {
+    /** @type {CodexAgentsDestination | null} */
+    let nextAgentsDestination = null;
+    const lockRoots = lockAgentHome ? [agentsHome] : [];
+    const preserveInvalidLockRoots = [];
+    if (agentsDestination.targetFile !== agentsDestination.filePath) {
+      const targetRoot = path.dirname(agentsDestination.targetFile);
+      lockRoots.push(targetRoot);
+      preserveInvalidLockRoots.push(targetRoot);
+    }
     const result = await withInstallTransaction(
       codexRoot,
       {
-        lockRoots: lockAgentHome ? [agentsHome] : [],
+        lockRoots,
         lockTimeoutMs: extraOpts.lockTimeoutMs,
+        preserveInvalidLockRoots,
         pluginName,
       },
       async () => {
+        const currentAgentsDestination =
+          await resolveCodexAgentsDestination(codexRoot);
+        if (
+          !codexAgentsDestinationsMatch(
+            currentAgentsDestination,
+            agentsDestination,
+          )
+        ) {
+          nextAgentsDestination = currentAgentsDestination;
+          return AGENTS_DESTINATION_LOCK_REQUIRED;
+        }
         const { state: installState } = await loadInstallState(codexRoot);
         const previousEntries = await getPreviousInstallEntries(
           codexRoot,
@@ -114,6 +149,11 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
             extraOpts,
           );
           agentStagingRoot = stagedBundle.agentStagingRoot;
+          await stageCodexAgentsFile(
+            codexRoot,
+            codexStagingRoot,
+            agentsDestination,
+          );
           const finalizedBundle = await finalizeCodexBundleOutput(
             codexRoot,
             codexStagingRoot,
@@ -122,6 +162,28 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
             previousEntries,
             extraOpts,
           );
+          const stagedAgentsFile = await stageCodexAgentsFile(
+            codexRoot,
+            codexStagingRoot,
+            agentsDestination,
+          );
+          if (stagedAgentsFile) {
+            await installStagedFile(
+              stagedAgentsFile.stagedFile,
+              stagedAgentsFile.targetFile,
+              {
+                expectedTargetContent: stagedAgentsFile.expectedTargetContent,
+                expectedTargetIdentity: stagedAgentsFile.expectedTargetIdentity,
+                label: "Codex AGENTS.md tool map",
+                preserveTargetChangesOnRollback: true,
+              },
+            );
+          }
+          await assertCodexAgentsDestinationUnchanged(
+            codexRoot,
+            agentsDestination,
+          );
+          await notifyInstallPhase(extraOpts, "agents");
 
           const currentCodexSkills = [
             ...bundle.skillDirs.map((skill) => skill.name),
@@ -205,6 +267,13 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
       lockAgentHome = true;
       continue;
     }
+    if (result === AGENTS_DESTINATION_LOCK_REQUIRED) {
+      if (!nextAgentsDestination) {
+        throw new Error("Missing updated Codex AGENTS.md destination.");
+      }
+      agentsDestination = nextAgentsDestination;
+      continue;
+    }
     return;
   }
 }
@@ -247,21 +316,154 @@ Tool mapping:
 - ExitPlanMode: ignore
 `;
 
-/** @param {string} codexHome */
-async function ensureCodexAgentsFile(codexHome) {
-  await ensureDir(codexHome);
-  const filePath = path.join(codexHome, "AGENTS.md");
-  const block = buildCodexAgentsBlock();
+/**
+ * @param {string} codexHome
+ * @param {string} stagingRoot
+ * @param {CodexAgentsDestination} lockedDestination
+ * @returns {Promise<StagedCodexAgentsFile | null>}
+ */
+async function stageCodexAgentsFile(codexHome, stagingRoot, lockedDestination) {
+  const destination = await resolveCodexAgentsDestination(codexHome);
+  assertMatchingCodexAgentsDestination(destination, lockedDestination);
 
-  if (!(await pathExists(filePath))) {
-    await writeText(filePath, block + "\n");
-    return;
+  const targetExists = await pathExists(destination.targetFile);
+  const existing = targetExists ? await readText(destination.targetFile) : "";
+  const updated = upsertBlock(existing, buildCodexAgentsBlock());
+  if (updated === existing) return null;
+
+  const stagedFile = path.join(stagingRoot, "AGENTS.md");
+  await writeText(stagedFile, updated);
+  let expectedTargetIdentity;
+  if (targetExists) {
+    const existingStats = await fs.lstat(destination.targetFile);
+    if (!existingStats.isFile()) {
+      throw new Error(
+        "Codex AGENTS.md destination changed during installation; retry the install.",
+      );
+    }
+    assertCodexAgentsFileHasSingleLink(destination.filePath, existingStats);
+    await fs.chmod(stagedFile, existingStats.mode & 0o7777);
+    expectedTargetIdentity = {
+      device: existingStats.dev,
+      inode: existingStats.ino,
+      links: existingStats.nlink,
+    };
+  }
+  const expectedTargetContent = targetExists ? existing : null;
+  await preflightStagedFileInstall(stagedFile, destination.targetFile, {
+    expectedTargetContent,
+    label: "Codex AGENTS.md tool map",
+  });
+  return {
+    expectedTargetContent,
+    expectedTargetIdentity,
+    stagedFile,
+    targetFile: destination.targetFile,
+  };
+}
+
+/**
+ * @param {string} codexHome
+ * @returns {Promise<CodexAgentsDestination>}
+ */
+async function resolveCodexAgentsDestination(codexHome) {
+  const filePath = path.join(codexHome, "AGENTS.md");
+  let stats;
+  try {
+    stats = await fs.lstat(filePath);
+  } catch (error) {
+    if (filesystemErrorCode(error) === "ENOENT") {
+      return { filePath, symbolicLink: null, targetFile: filePath };
+    }
+    throw error;
+  }
+  if (!stats.isSymbolicLink()) {
+    assertCodexAgentsFileHasSingleLink(filePath, stats);
+    return { filePath, symbolicLink: null, targetFile: filePath };
   }
 
-  const existing = await readText(filePath);
-  const updated = upsertBlock(existing, block);
-  if (updated !== existing) {
-    await writeText(filePath, updated);
+  const linkTarget = await fs.readlink(filePath);
+  let targetFile;
+  try {
+    targetFile = await fs.realpath(filePath);
+  } catch (error) {
+    if (filesystemErrorCode(error) === "ENOENT") {
+      throw new Error(
+        `Cannot install Codex AGENTS.md tool map because ${filePath} is a dangling symbolic link.`,
+        { cause: error },
+      );
+    }
+    throw error;
+  }
+  const targetStats = await fs.lstat(targetFile);
+  if (!targetStats.isFile()) {
+    throw new Error(
+      `Cannot install Codex AGENTS.md tool map because ${filePath} does not point to a regular file.`,
+    );
+  }
+  assertCodexAgentsFileHasSingleLink(filePath, targetStats);
+  return {
+    filePath,
+    symbolicLink: {
+      device: stats.dev,
+      inode: stats.ino,
+      target: linkTarget,
+    },
+    targetFile,
+  };
+}
+
+/**
+ * @param {string} codexHome
+ * @param {CodexAgentsDestination} expected
+ */
+async function assertCodexAgentsDestinationUnchanged(codexHome, expected) {
+  const current = await resolveCodexAgentsDestination(codexHome);
+  assertMatchingCodexAgentsDestination(current, expected);
+}
+
+/**
+ * @param {CodexAgentsDestination} current
+ * @param {CodexAgentsDestination} expected
+ */
+function assertMatchingCodexAgentsDestination(current, expected) {
+  if (!codexAgentsDestinationsMatch(current, expected)) {
+    throw new Error(
+      "Codex AGENTS.md destination changed during installation; retry the install.",
+    );
+  }
+}
+
+/**
+ * @param {CodexAgentsDestination} left
+ * @param {CodexAgentsDestination} right
+ */
+function codexAgentsDestinationsMatch(left, right) {
+  if (
+    left.filePath !== right.filePath ||
+    left.targetFile !== right.targetFile
+  ) {
+    return false;
+  }
+  if (left.symbolicLink === null || right.symbolicLink === null) {
+    return left.symbolicLink === right.symbolicLink;
+  }
+  return (
+    left.symbolicLink.device === right.symbolicLink.device &&
+    left.symbolicLink.inode === right.symbolicLink.inode &&
+    left.symbolicLink.target === right.symbolicLink.target
+  );
+}
+
+/**
+ * @param {string} filePath
+ * @param {import("fs").Stats} stats
+ */
+function assertCodexAgentsFileHasSingleLink(filePath, stats) {
+  if (stats.isFile() && stats.nlink > 1) {
+    throw new Error(
+      `Cannot install Codex AGENTS.md tool map because ${filePath} is hard-linked to another file.`,
+    );
   }
 }
 
@@ -294,7 +496,6 @@ function upsertBlock(existing, block) {
 }
 
 module.exports = {
-  ensureCodexAgentsFile,
   resolveCodexOutputRoot,
   writeCodexBundle,
 };

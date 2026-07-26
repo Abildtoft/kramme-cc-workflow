@@ -9,7 +9,6 @@ const {
   resolvePluginInput,
 } = require("./convert-plugin/loader");
 const {
-  ensureCodexAgentsFile,
   resolveCodexOutputRoot,
   writeCodexBundle,
 } = require("./convert-plugin/codex-writer");
@@ -114,7 +113,6 @@ async function runInstall(parsed) {
 
   await writeCodexBundle(codexRoot, bundle, writeOptions);
   console.log(`Installed ${pluginName} to ${codexRoot}`);
-  await ensureCodexAgentsFile(codexRoot);
 }
 
 /** @param {ParsedArgs} parsed */
