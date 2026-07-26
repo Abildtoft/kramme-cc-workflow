@@ -164,6 +164,34 @@ JSON
   [ "$output" = "3000" ]
 }
 
+@test "resolve-port ignores SvelteKit HMR websocket port" {
+  cat >"$WORK_DIR/svelte.config.js" <<'JS'
+export default {
+  kit: {
+    vite: {
+      server: {
+        hmr: {
+          port: 24678
+        }
+      }
+    }
+  }
+};
+JS
+  cat >"$WORK_DIR/package.json" <<'JSON'
+{
+  "scripts": {
+    "dev": "vite --port 5173"
+  }
+}
+JSON
+
+  run "$SCRIPT_DIR/resolve-port.sh" "$WORK_DIR" --type sveltekit
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "5173" ]
+}
+
 @test "resolve-port reads root Procfile web port" {
   printf 'web: vite --host 0.0.0.0 --port 4173\n' >"$WORK_DIR/Procfile"
 

@@ -207,7 +207,9 @@ fi
 
 if framework_probe_is_allowed "$PROJ_TYPE" "framework-config"; then
   while IFS='|' read -r framework signature; do
-    [ "$framework" = "remix" ] && continue
+    case "$framework" in
+      remix | sveltekit) continue ;;
+    esac
 
     cfg="$PROJECT_ROOT/$signature"
     [ -f "$cfg" ] || continue
