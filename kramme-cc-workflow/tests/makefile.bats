@@ -250,7 +250,7 @@ SH
   run make -C "$BATS_TEST_DIRNAME/.." --no-print-directory --dry-run test-convert
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"node --test tests/node/converter-contracts.test.js"* ]]
+  [[ "$output" == *"node --test tests/node/converter-core.test.js tests/node/converter-install.test.js tests/node/converter-output.test.js tests/node/converter-integration.test.js"* ]]
   [[ "$output" == *"bats tests/convert-plugin.bats"* ]]
 }
 

@@ -13,7 +13,11 @@ SKILLSPECTOR_SEMANTIC_FORMAT ?= json
 SKILLSPECTOR_FAIL_ON ?= none
 SKILLSPECTOR_BASE ?= $(if $(BASE_REF),$(BASE_REF),origin/main)
 NODE_TEST_FILES = tests/node/*.test.js
-CONVERTER_NODE_TEST_FILES = tests/node/converter-contracts.test.js
+CONVERTER_NODE_TEST_FILES = \
+	tests/node/converter-core.test.js \
+	tests/node/converter-install.test.js \
+	tests/node/converter-output.test.js \
+	tests/node/converter-integration.test.js
 CONVERTER_BATS_TEST_FILE = tests/convert-plugin.bats
 SMOKE_NODE_TEST_FILES = tests/node/frontmatter.test.js tests/node/scorer.test.js
 SMOKE_PYTHON_TEST_FILE = tests/python/test_git_command_parser.py

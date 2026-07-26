@@ -11,7 +11,7 @@ Paths passed through file variables are relative to `kramme-cc-workflow/`.
 | Node | `make -C kramme-cc-workflow test-node` | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/<file>.test.js` |
 | Python | `make -C kramme-cc-workflow test-python` | `make -C kramme-cc-workflow test-python-file PYTHON_TEST_FILE=tests/python/test_<name>.py` |
 | Bats | `make -C kramme-cc-workflow test-bats` | `make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/<name>.bats` |
-| Converter | `make -C kramme-cc-workflow test-convert` (Node converter contracts plus Bats CLI smoke) | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/converter-contracts.test.js` or `make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/convert-plugin.bats` |
+| Converter | `make -C kramme-cc-workflow test-convert` (Node converter contracts plus Bats CLI smoke) | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/converter-core.test.js` (also `converter-install.test.js`, `converter-output.test.js`, or `converter-integration.test.js`) or `make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/convert-plugin.bats` |
 
 ## Source to Test Map
 
@@ -28,7 +28,7 @@ Paths passed through file variables are relative to `kramme-cc-workflow/`.
 | Context links hook | `kramme-cc-workflow/hooks/context-links.sh`, `kramme-cc-workflow/hooks/context-links.config.example` | `make -C kramme-cc-workflow test-context` |
 | Skill usage stats | `kramme-cc-workflow/hooks/skill-usage-stats.sh`, `kramme-cc-workflow/hooks/skill-usage.js`, `kramme-cc-workflow/scripts/skill-usage.js` | `make -C kramme-cc-workflow test-skill-usage` |
 | Converter frontmatter | `kramme-cc-workflow/scripts/convert-plugin/frontmatter.js` | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/frontmatter.test.js` |
-| Converter contracts and Codex hook output | `kramme-cc-workflow/scripts/convert-plugin/*.js`, `kramme-cc-workflow/hooks/hooks.json`, `kramme-cc-workflow/docs/hooks.md` | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/converter-contracts.test.js`, `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/codex-hook-compat.test.js` |
+| Converter contracts and Codex hook output | `kramme-cc-workflow/scripts/convert-plugin/*.js`, `kramme-cc-workflow/hooks/hooks.json`, `kramme-cc-workflow/docs/hooks.md` | `make -C kramme-cc-workflow test-convert`, `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/codex-hook-compat.test.js` |
 | Codex converter | `kramme-cc-workflow/scripts/convert-plugin.js`, `kramme-cc-workflow/scripts/convert-plugin/`, `kramme-cc-workflow/scripts/install-codex.sh` | `make -C kramme-cc-workflow test-convert` |
 | Dev-server detection | `scripts/dev-server/*.sh`, `scripts/dev-server/README.md` | `bats kramme-cc-workflow/tests/dev-server-scripts.bats` |
 | PR diff and base helpers | `scripts/resolve-base.sh`, `scripts/collect-review-diff.sh` | `bats kramme-cc-workflow/tests/resolve-base.bats kramme-cc-workflow/tests/review-diff-scripts.bats` |
