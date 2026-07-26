@@ -88,6 +88,9 @@
       "kramme-cc-workflow/skills/kramme:session:search/scripts/extract-skeleton.py": [
         "kramme-cc-workflow/tests/session-search-scripts.bats"
       ],
+      "kramme-cc-workflow/skills/kramme:session:search/scripts/session_common.py": [
+        "kramme-cc-workflow/tests/session-search-scripts.bats"
+      ],
       "kramme-cc-workflow/skills/kramme:visual:demo-reel/scripts/demo_reel_helper.py": [
         "kramme-cc-workflow/tests/demo-reel-skill.bats"
       ]

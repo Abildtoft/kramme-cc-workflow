@@ -24,17 +24,24 @@ Without --output, extracted content goes to stdout and ends with a _meta line.
 from __future__ import annotations
 
 import argparse
-import atexit
-import itertools
-import os
-import sys
 import json
-import re
-import tempfile
-from typing import Callable, Dict, Iterator, Literal, Optional, Pattern, cast
+import sys
+from typing import Callable
 
-JsonObject = Dict[str, object]
-Platform = Literal["claude", "codex", "cursor"]
+from session_common import (
+    AtomicOutput,
+    JsonObject,
+    Platform,
+    TranscriptDiagnostics,
+    TranscriptShapeError,
+    iter_platform_events,
+    object_field,
+    object_list_field,
+    redact_sensitive,
+    string_field,
+    string_list_field,
+)
+
 EventHandler = Callable[[JsonObject], None]
 
 parser = argparse.ArgumentParser(add_help=True)
@@ -45,53 +52,9 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-_original_stdout = sys.stdout
-_temporary_output_path: Optional[str] = None
-if args.output:
-    output_dir = os.path.dirname(os.path.abspath(args.output))
-    temporary_output = tempfile.NamedTemporaryFile(
-        mode="w",
-        encoding="utf-8",
-        dir=output_dir,
-        prefix=f".{os.path.basename(args.output)}.",
-        delete=False,
-    )
-    _temporary_output_path = temporary_output.name
-    sys.stdout = temporary_output
-
-
-def cleanup_temporary_output() -> None:
-    if _temporary_output_path:
-        try:
-            os.unlink(_temporary_output_path)
-        except FileNotFoundError:
-            pass
-
-
-atexit.register(cleanup_temporary_output)
+output = AtomicOutput(args.output)
 
 stats: dict[str, int] = {"lines": 0, "parse_errors": 0, "errors_found": 0}
-
-_SENSITIVE_PATTERNS: list[Pattern[str]] = [
-    re.compile(r"(?i)\b(authorization\s*:\s*bearer\s+)[A-Za-z0-9._~+/=-]{12,}"),
-    re.compile(r"(?i)\b((?:api[_-]?key|token|secret|password|passwd|pwd)\s*[:=]\s*)[^\s'\"`;&|]{8,}"),
-    re.compile(r"\bsk-[A-Za-z0-9_-]{20,}"),
-    re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{20,}"),
-    re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{20,}"),
-    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
-    re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"),
-]
-
-
-def redact_sensitive(text: object) -> str:
-    """Redact common credential shapes before writing extract files."""
-    if not isinstance(text, str):
-        return ""
-
-    redacted = text
-    for pattern in _SENSITIVE_PATTERNS:
-        redacted = pattern.sub(lambda m: (m.group(1) if m.lastindex else "") + "[REDACTED]", redacted)
-    return redacted
 
 
 def summarize_error(raw: object) -> str:
@@ -107,31 +70,34 @@ def summarize_error(raw: object) -> str:
 
 def handle_claude(obj: JsonObject) -> None:
     if obj.get("type") == "user":
-        message = cast(JsonObject, obj.get("message", {}))
-        content = message.get("content", [])
-        if isinstance(content, list):
-            for block in cast(list[JsonObject], content):
-                if block.get("type") == "tool_result" and block.get("is_error"):
-                    ts = cast(str, obj.get("timestamp", ""))[:19]
-                    summary = summarize_error(block.get("content", ""))
-                    print(f"[{ts}] [error] {summary}")
-                    print("---")
-                    stats["errors_found"] += 1
+        message = object_field(obj, "message")
+        content = message.get("content")
+        if isinstance(content, str) or content is None:
+            return
+        for block in object_list_field(message, "content"):
+            if block.get("type") == "tool_result" and block.get("is_error"):
+                ts = string_field(obj, "timestamp")[:19]
+                summary = summarize_error(block.get("content", ""))
+                print(f"[{ts}] [error] {summary}")
+                print("---")
+                stats["errors_found"] += 1
 
 
 def handle_codex(obj: JsonObject) -> None:
     if obj.get("type") == "event_msg":
-        p = cast(JsonObject, obj.get("payload", {}))
+        p = object_field(obj, "payload")
         if p.get("type") == "exec_command_end":
-            output = cast(str, p.get("aggregated_output", ""))
-            stderr = cast(str, p.get("stderr", ""))
-            command = cast(list[str], p.get("command", []))
+            command_output = string_field(p, "aggregated_output")
+            stderr = string_field(p, "stderr")
+            command = string_list_field(p, "command")
             cmd_str = command[-1] if command else ""
 
             exit_match = None
-            if "Process exited with code " in output:
+            if "Process exited with code " in command_output:
                 try:
-                    code_str = output.split("Process exited with code ")[1].split("\n")[0]
+                    code_str = command_output.split("Process exited with code ")[1].split(
+                        "\n"
+                    )[0]
                     exit_code = int(code_str)
                     if exit_code != 0:
                         exit_match = exit_code
@@ -139,41 +105,12 @@ def handle_codex(obj: JsonObject) -> None:
                     pass
 
             if exit_match is not None or stderr:
-                ts = cast(str, obj.get("timestamp", ""))[:19]
-                error_summary = summarize_error(stderr if stderr else output)
+                ts = string_field(obj, "timestamp")[:19]
+                error_summary = summarize_error(stderr if stderr else command_output)
                 print(f"[{ts}] [error] exit={exit_match} cmd={redact_sensitive(cmd_str[:120])}: {error_summary}")
                 print("---")
                 stats["errors_found"] += 1
 
-
-# Auto-detect from a bounded prefix, replay that prefix once, then stream the
-# remaining events without retaining the transcript.
-def nonempty_input_lines() -> Iterator[str]:
-    for raw_line in sys.stdin:
-        line = raw_line.strip()
-        if line:
-            stats["lines"] += 1
-            yield line
-
-
-detected: Optional[Platform] = None
-prefix: list[str] = []
-lines = nonempty_input_lines()
-for line in itertools.islice(lines, 10):
-    prefix.append(line)
-    if not detected:
-        try:
-            obj = cast(JsonObject, json.loads(line))
-            if obj.get("type") in ("user", "assistant"):
-                detected = "claude"
-            elif obj.get("type") in ("session_meta", "turn_context", "response_item", "event_msg"):
-                detected = "codex"
-            elif obj.get("role") in ("user", "assistant") and "type" not in obj:
-                detected = "cursor"
-        except (json.JSONDecodeError, KeyError):
-            pass
-    if detected:
-        break
 
 # Cursor transcripts don't log tool results — no errors to extract
 def handle_noop(obj: JsonObject) -> None:
@@ -184,21 +121,18 @@ handlers: dict[Platform, EventHandler] = {
     "codex": handle_codex,
     "cursor": handle_noop,
 }
-handler = handlers[detected] if detected is not None else handle_noop
 
-for line in itertools.chain(prefix, lines):
+diagnostics = TranscriptDiagnostics()
+for platform, event in iter_platform_events(sys.stdin, diagnostics):
     try:
-        handler(cast(JsonObject, json.loads(line)))
-    except (json.JSONDecodeError, KeyError):
-        stats["parse_errors"] += 1
+        handlers[platform](event)
+    except TranscriptShapeError:
+        diagnostics.record_parse_error()
 
+stats["lines"] = diagnostics.lines
+stats["parse_errors"] = diagnostics.partial_errors
 print(json.dumps({"_meta": True, **stats}))
 
-if args.output:
-    sys.stdout.flush()
-    sys.stdout.close()
-    sys.stdout = _original_stdout
-    os.replace(cast(str, _temporary_output_path), args.output)
-    _temporary_output_path = None
-    bytes_written = os.path.getsize(args.output)
-    print(json.dumps({"_meta": True, "wrote": args.output, "bytes": bytes_written, **stats}))
+if output.enabled:
+    output_status = output.commit()
+    print(json.dumps({"_meta": True, **output_status, **stats}))

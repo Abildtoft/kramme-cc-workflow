@@ -50,7 +50,7 @@ If no question or topic remains, ask one concise question: "What do you want to 
        | tr '\n' '\0' \
        | xargs -0 python3 "$SKILL_DIR/scripts/extract-metadata.py" --cwd-filter "$REPO_NAME"
      ```
-   - Each non-meta line is one session JSON object. The final `_meta` line reports `files_processed` and `parse_errors`.
+   - Each non-meta line is one session JSON object. The final `_meta` line reports `files_processed` and `parse_errors`. The error count reports failed attempts across header, tail, and keyword passes, so overlapping passes can count the same malformed record more than once.
    - If `files_processed` is `0`, return `no relevant prior sessions`.
    - If parse errors are present, carry a partial-coverage note forward.
 
@@ -88,6 +88,7 @@ If no question or topic remains, ask one concise question: "What do you want to 
 8. Return output.
    - If no extracted session yields relevant content, return `no relevant prior sessions`.
    - Otherwise include:
+
      ```markdown
      **Sessions searched**: <count> (<claude> Claude Code, <codex> Codex, <cursor> Cursor) | <date range>
 
@@ -96,6 +97,7 @@ If no question or topic remains, ask one concise question: "What do you want to 
      - Key decisions
      - Related context
      ```
+
    - Omit empty sections.
    - Add `UNVERIFIED` only for parse errors, inaccessible stores, uncertain date ranges, or stale-session caveats.
 
