@@ -36,7 +36,11 @@ MATRIX
 
 @test "framework registry exposes expected signatures and defaults" {
   local framework signature default_port actual_framework actual_default
-  local registered_signature signature_found
+  local expected_signatures actual_signatures
+
+  expected_signatures=$(framework_signature_matrix | cut -d'|' -f1,2 | sort)
+  actual_signatures=$(printf '%s\n' "$DEV_SERVER_FRAMEWORK_SIGNATURES" | sort)
+  [ "$actual_signatures" = "$expected_signatures" ]
 
   while IFS='|' read -r framework signature default_port; do
     actual_framework=$(framework_type_for_signature "$signature")
@@ -44,16 +48,22 @@ MATRIX
 
     actual_default=$(framework_default_port "$framework")
     [ "$actual_default" = "$default_port" ]
-
-    signature_found=0
-    while IFS= read -r registered_signature; do
-      if [ "$registered_signature" = "$signature" ]; then
-        signature_found=1
-        break
-      fi
-    done < <(framework_signature_files "$framework")
-    [ "$signature_found" -eq 1 ]
   done < <(framework_signature_matrix)
+}
+
+@test "framework registry enforces probe policy for known and unknown types" {
+  local framework probe expected_status
+
+  while IFS='|' read -r framework probe expected_status; do
+    run framework_probe_is_allowed "$framework" "$probe"
+    [ "$status" -eq "$expected_status" ]
+  done <<'MATRIX'
+rails|puma|0
+rails|framework-config|1
+procfile|package-json|1
+vite|package-json|0
+unknown|framework-config|0
+MATRIX
 }
 
 @test "detect-project-type ignores unregistered config extensions" {
@@ -130,6 +140,28 @@ MATRIX
 
   [ "$status" -eq 0 ]
   [ "$output" = "5174" ]
+}
+
+@test "resolve-port ignores Classic Remix internal compiler port" {
+  cat >"$WORK_DIR/remix.config.js" <<'JS'
+module.exports = {
+  dev: {
+    port: 8002
+  }
+};
+JS
+  cat >"$WORK_DIR/package.json" <<'JSON'
+{
+  "scripts": {
+    "dev": "remix dev -c \"remix-serve --port 3000 ./build/index.js\""
+  }
+}
+JSON
+
+  run "$SCRIPT_DIR/resolve-port.sh" "$WORK_DIR" --type remix
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "3000" ]
 }
 
 @test "resolve-port reads root Procfile web port" {

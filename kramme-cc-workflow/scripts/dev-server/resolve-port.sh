@@ -85,27 +85,6 @@ parse_script_port() {
   printf '%s' "$script" | grep -Eo '(^|[[:space:]])(-p[= ]*|--port[= ]+)[0-9]+' | head -1 | grep -Eo '[0-9]+' || true
 }
 
-should_probe() {
-  local ptype="$1"
-  local probe="$2"
-  local probe_status
-
-  if [ -z "$ptype" ]; then
-    return 0
-  fi
-
-  if framework_probe_is_allowed "$ptype" "$probe"; then
-    return 0
-  else
-    probe_status=$?
-  fi
-
-  case "$probe_status" in
-    1) return 1 ;;
-    *) return 0 ;;
-  esac
-}
-
 parse_env_port() {
   local envfile="$1"
   if [ ! -f "$envfile" ]; then
@@ -226,8 +205,10 @@ if [ -n "$EXPLICIT_PORT" ]; then
   exit 0
 fi
 
-if should_probe "$PROJ_TYPE" "framework-config"; then
-  while IFS='|' read -r _framework signature; do
+if framework_probe_is_allowed "$PROJ_TYPE" "framework-config"; then
+  while IFS='|' read -r framework signature; do
+    [ "$framework" = "remix" ] && continue
+
     cfg="$PROJECT_ROOT/$signature"
     [ -f "$cfg" ] || continue
 
@@ -244,7 +225,7 @@ if should_probe "$PROJ_TYPE" "framework-config"; then
   done <<< "$DEV_SERVER_FRAMEWORK_SIGNATURES"
 fi
 
-if should_probe "$PROJ_TYPE" "puma"; then
+if framework_probe_is_allowed "$PROJ_TYPE" "puma"; then
   puma_file="$PROJECT_ROOT/config/puma.rb"
   if [ -f "$puma_file" ]; then
     puma_port=$(parse_puma_port "$puma_file")
@@ -252,7 +233,7 @@ if should_probe "$PROJ_TYPE" "puma"; then
   fi
 fi
 
-if should_probe "$PROJ_TYPE" "procfile"; then
+if framework_probe_is_allowed "$PROJ_TYPE" "procfile"; then
   for procfile in "$PROJECT_ROOT/Procfile.dev" "$PROJECT_ROOT/Procfile"; do
     [ -f "$procfile" ] || continue
     web_line=$(grep -E '^web:' "$procfile" 2> /dev/null | head -1 || true)
@@ -263,7 +244,7 @@ if should_probe "$PROJ_TYPE" "procfile"; then
   done
 fi
 
-if should_probe "$PROJ_TYPE" "docker-compose"; then
+if framework_probe_is_allowed "$PROJ_TYPE" "docker-compose"; then
   compose_file="$PROJECT_ROOT/docker-compose.yml"
   if [ -f "$compose_file" ]; then
     compose_port=$(parse_compose_port "$compose_file")
@@ -271,7 +252,7 @@ if should_probe "$PROJ_TYPE" "docker-compose"; then
   fi
 fi
 
-if should_probe "$PROJ_TYPE" "package-json"; then
+if framework_probe_is_allowed "$PROJ_TYPE" "package-json"; then
   pkg_file="$PROJECT_ROOT/package.json"
   if [ -f "$pkg_file" ]; then
     if command -v jq > /dev/null 2>&1; then
@@ -290,7 +271,7 @@ if should_probe "$PROJ_TYPE" "package-json"; then
   fi
 fi
 
-if should_probe "$PROJ_TYPE" "env"; then
+if framework_probe_is_allowed "$PROJ_TYPE" "env"; then
   for envfile in \
     "$PROJECT_ROOT/.env.local" \
     "$PROJECT_ROOT/.env.development" \
@@ -300,7 +281,7 @@ if should_probe "$PROJ_TYPE" "env"; then
   done
 fi
 
-if should_probe "$PROJ_TYPE" "default"; then
+if framework_probe_is_allowed "$PROJ_TYPE" "default"; then
   default_port=$(framework_default_port "$PROJ_TYPE" || true)
   echo "${default_port:-3000}"
   exit 0

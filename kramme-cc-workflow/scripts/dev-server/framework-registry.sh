@@ -31,20 +31,6 @@ sveltekit|svelte.config.js
 sveltekit|svelte.config.mjs
 sveltekit|svelte.config.ts'
 
-framework_signature_files() {
-  local target_framework="$1"
-  local framework signature found=1
-
-  while IFS='|' read -r framework signature; do
-    if [ "$framework" = "$target_framework" ]; then
-      printf '%s\n' "$signature"
-      found=0
-    fi
-  done <<< "$DEV_SERVER_FRAMEWORK_SIGNATURES"
-
-  return "$found"
-}
-
 framework_type_for_signature() {
   local signature="$1"
   local framework registered_signature
@@ -80,7 +66,7 @@ framework_probe_is_allowed() {
       esac
       ;;
     *)
-      return 2
+      return 0
       ;;
   esac
 }
