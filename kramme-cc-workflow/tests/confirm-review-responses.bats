@@ -8,10 +8,14 @@ setup() {
 	# Create temp directory for git mocking
 	export MOCK_DIR=$(mktemp -d)
 	export PATH="$MOCK_DIR:$PATH"
+	REAL_COMMIT_REPO=""
 }
 
 teardown() {
 	unset CONFIRM_REVIEW_ARTIFACT_LIST_FILE
+	if [ -n "$REAL_COMMIT_REPO" ]; then
+		rm -rf "$REAL_COMMIT_REPO"
+	fi
 	rm -rf "$MOCK_DIR"
 }
 
@@ -32,7 +36,7 @@ has_arg() {
     return 1
 }
 if has_arg diff "\$@" && has_arg --cached "\$@" && has_arg --name-only "\$@"; then
-    echo "$staged_files"
+    printf '%s\0' "$staged_files" | tr '\n' '\0'
     exit 0
 fi
 # Pass through other git commands
@@ -73,15 +77,15 @@ selects_repo_via_prefix() {
     return 1
 }
 if has_arg diff "\$@" && has_arg --cached "\$@" && has_arg --name-only "\$@" && [[ "\$GIT_DIR" == "$repo/.git" && "\$GIT_WORK_TREE" == "$repo" ]]; then
-    echo "$staged_files"
+    printf '%s\0' "$staged_files" | tr '\n' '\0'
     exit 0
 fi
 if has_arg diff "\$@" && has_arg --cached "\$@" && has_arg --name-only "\$@" && selects_repo_via_prefix "\$@"; then
-    echo "$staged_files"
+    printf '%s\0' "$staged_files" | tr '\n' '\0'
     exit 0
 fi
 if has_arg diff "\$@" && has_arg --cached "\$@" && has_arg --name-only "\$@"; then
-    echo "$default_files"
+    printf '%s\0' "$default_files" | tr '\n' '\0'
     exit 0
 fi
 /usr/bin/git "\$@"
@@ -102,6 +106,17 @@ run_hook_with_repo_env() {
 	local repo="$1"
 	local cmd="$2"
 	make_bash_input "$cmd" | env GIT_DIR="$repo/.git" GIT_WORK_TREE="$repo" bash "$HOOK"
+}
+
+setup_real_commit_repo() {
+	REAL_COMMIT_REPO="$(mktemp -d)"
+	git -C "$REAL_COMMIT_REPO" init -q
+	git -C "$REAL_COMMIT_REPO" config user.email test@example.com
+	git -C "$REAL_COMMIT_REPO" config user.name "Hook Test"
+	printf 'base\n' >"$REAL_COMMIT_REPO/notes.txt"
+	printf 'base\n' >"$REAL_COMMIT_REPO/REVIEW_OVERVIEW.md"
+	git -C "$REAL_COMMIT_REPO" add notes.txt REVIEW_OVERVIEW.md
+	git -C "$REAL_COMMIT_REPO" commit -qm "base"
 }
 
 PARSER_FIXTURES="$BATS_TEST_DIRNAME/fixtures/git-command-parser-cases.json"
@@ -179,6 +194,44 @@ assert_review_parser_fixture_decision() {
 	run run_safety_hook_with_parser_output "$HOOK" "git commit -m 'test'" '{}'
 	is_blocked
 	[[ "$output" == *"Unable to safely parse command"* ]]
+}
+
+@test "blocks malformed commit context fields" {
+	run run_safety_hook_with_parser_output \
+		"$HOOK" \
+		"git commit -m 'test'" \
+		'[{"git_args":{},"git_env":[]}]'
+	is_blocked
+	[[ "$output" == *"Unable to safely decode git commit context"* ]]
+}
+
+@test "blocks when decoded commit context count does not match parser count" {
+	local real_jq
+	real_jq="$(command -v jq)"
+	cat >"$MOCK_DIR/jq" <<EOF
+#!/bin/bash
+for arg in "\$@"; do
+	if [ "\$arg" = '.[]' ]; then
+		"$real_jq" "\$@" | sed '\$d'
+		exit "\${PIPESTATUS[0]}"
+	fi
+done
+exec "$real_jq" "\$@"
+EOF
+	chmod +x "$MOCK_DIR/jq"
+
+	run run_safety_hook_with_parser_output \
+		"$HOOK" \
+		"git commit -m 'test'" \
+		'[{"git_args":[],"git_env":[]},{"git_args":[],"git_env":[]}]'
+	is_blocked
+	[[ "$output" == *"Unable to safely decode git commit context"* ]]
+}
+
+@test "commit context decoding does not depend on dev fd process substitution" {
+	run grep -F '< <(' "$HOOK"
+	[ "$status" -eq 1 ]
+	[ -z "$output" ]
 }
 
 @test "blocks command when jq is unavailable" {
@@ -601,9 +654,209 @@ REVIEW_SUMMARY.md"
 }
 
 @test "blocks git commit with -a flag" {
-	mock_git_staged "REVIEW_OVERVIEW.md"
-	run run_hook "git commit -a -m 'auto stage'"
+	setup_real_commit_repo
+	printf 'guarded staged change\n' >>"$REAL_COMMIT_REPO/REVIEW_OVERVIEW.md"
+	git -C "$REAL_COMMIT_REPO" add REVIEW_OVERVIEW.md
+
+	run run_hook "git -C $REAL_COMMIT_REPO commit -a -m 'auto stage'"
+
 	is_blocked
+}
+
+@test "blocks -a when a protected tracked file is only modified in the worktree" {
+	setup_real_commit_repo
+	printf 'guarded change\n' >>"$REAL_COMMIT_REPO/REVIEW_OVERVIEW.md"
+
+	run run_hook "git -C $REAL_COMMIT_REPO commit -a -m 'auto stage'"
+
+	is_blocked
+	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
+@test "selection inspection leaves the real index and object store unchanged" {
+	local index_before index_after objects_before objects_after
+	setup_real_commit_repo
+	printf 'ordinary staged change\n' >>"$REAL_COMMIT_REPO/notes.txt"
+	git -C "$REAL_COMMIT_REPO" add notes.txt
+	printf 'guarded change\n' >>"$REAL_COMMIT_REPO/REVIEW_OVERVIEW.md"
+	index_before="$(git hash-object "$REAL_COMMIT_REPO/.git/index")"
+	objects_before="$(git -C "$REAL_COMMIT_REPO" count-objects -v | sed -n 's/^count: //p')"
+
+	run run_hook "git -C $REAL_COMMIT_REPO commit -a -m 'auto stage'"
+
+	is_blocked
+	index_after="$(git hash-object "$REAL_COMMIT_REPO/.git/index")"
+	objects_after="$(git -C "$REAL_COMMIT_REPO" count-objects -v | sed -n 's/^count: //p')"
+	[ "$index_after" = "$index_before" ]
+	[ "$objects_after" = "$objects_before" ]
+}
+
+@test "allows worktree selection when configured filters are inactive on selected paths" {
+	local clean_marker="$MOCK_DIR/clean-filter-ran"
+	local process_marker="$MOCK_DIR/process-filter-ran"
+	setup_real_commit_repo
+	git -C "$REAL_COMMIT_REPO" config filter.review.clean "touch $clean_marker; cat"
+	git -C "$REAL_COMMIT_REPO" config filter.review.process "touch $process_marker; exit 1"
+	printf 'REVIEW_OVERVIEW.md filter=review\n' >"$REAL_COMMIT_REPO/.gitattributes"
+	printf 'ordinary selected change\n' >>"$REAL_COMMIT_REPO/notes.txt"
+
+	run run_hook "git -C $REAL_COMMIT_REPO commit --only -m 'only notes' notes.txt"
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+	[ ! -e "$clean_marker" ]
+	[ ! -e "$process_marker" ]
+}
+
+@test "fails closed without executing configured clean filters" {
+	local marker="$MOCK_DIR/clean-filter-ran"
+	setup_real_commit_repo
+	git -C "$REAL_COMMIT_REPO" config filter.review.clean "touch $marker; cat"
+	printf '*.md filter=review\n' >"$REAL_COMMIT_REPO/.gitattributes"
+	printf 'guarded change\n' >>"$REAL_COMMIT_REPO/REVIEW_OVERVIEW.md"
+
+	run run_hook "git -C $REAL_COMMIT_REPO commit -a -m 'auto stage'"
+
+	is_blocked
+	[[ "$output" == *"configured clean filters"* ]]
+	[ ! -e "$marker" ]
+}
+
+@test "fails closed without executing configured process filters" {
+	local marker="$MOCK_DIR/process-filter-ran"
+	setup_real_commit_repo
+	git -C "$REAL_COMMIT_REPO" config filter.review.process "touch $marker; exit 1"
+	printf '*.md filter=review\n' >"$REAL_COMMIT_REPO/.gitattributes"
+	printf 'guarded change\n' >>"$REAL_COMMIT_REPO/REVIEW_OVERVIEW.md"
+
+	run run_hook "git -C $REAL_COMMIT_REPO commit -a -m 'auto stage'"
+
+	is_blocked
+	[[ "$output" == *"configured clean filters"* ]]
+	[ ! -e "$marker" ]
+}
+
+@test "blocks --include when it adds an unstaged protected file to staged content" {
+	setup_real_commit_repo
+	printf 'ordinary staged change\n' >>"$REAL_COMMIT_REPO/notes.txt"
+	printf 'guarded included change\n' >>"$REAL_COMMIT_REPO/REVIEW_OVERVIEW.md"
+	git -C "$REAL_COMMIT_REPO" add notes.txt
+
+	run run_hook "git -C $REAL_COMMIT_REPO commit --include -m 'include' REVIEW_OVERVIEW.md"
+
+	is_blocked
+	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
+@test "allows --include to resolve the selected path in an unmerged index" {
+	local base_branch
+	setup_real_commit_repo
+	base_branch="$(git -C "$REAL_COMMIT_REPO" branch --show-current)"
+	git -C "$REAL_COMMIT_REPO" checkout -qb conflict-side
+	printf 'side\n' >"$REAL_COMMIT_REPO/notes.txt"
+	git -C "$REAL_COMMIT_REPO" commit -qam "side"
+	git -C "$REAL_COMMIT_REPO" checkout -q "$base_branch"
+	printf 'main\n' >"$REAL_COMMIT_REPO/notes.txt"
+	git -C "$REAL_COMMIT_REPO" commit -qam "main"
+	git -C "$REAL_COMMIT_REPO" merge conflict-side >/dev/null 2>&1 || true
+	printf 'resolved\n' >"$REAL_COMMIT_REPO/notes.txt"
+
+	run run_hook "git -C $REAL_COMMIT_REPO commit --include -m 'resolve' notes.txt"
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "blocks --only and -o when an unstaged protected file is selected" {
+	local only_flag
+
+	for only_flag in --only -o; do
+		setup_real_commit_repo
+		printf 'ordinary staged change\n' >>"$REAL_COMMIT_REPO/notes.txt"
+		printf 'guarded selected change\n' >>"$REAL_COMMIT_REPO/REVIEW_OVERVIEW.md"
+		git -C "$REAL_COMMIT_REPO" add notes.txt
+
+		run run_hook "git -C $REAL_COMMIT_REPO commit $only_flag -m 'only' REVIEW_OVERVIEW.md"
+
+		if ! is_blocked; then
+			printf 'Expected %s selection to block, got status %s and output: %s\n' "$only_flag" "$status" "$output" >&2
+			return 1
+		fi
+		[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+		rm -rf "$REAL_COMMIT_REPO"
+		REAL_COMMIT_REPO=""
+	done
+}
+
+@test "allows --only when a staged protected file is outside the selected commit set" {
+	setup_real_commit_repo
+	printf 'ordinary selected change\n' >>"$REAL_COMMIT_REPO/notes.txt"
+	printf 'guarded staged change\n' >>"$REAL_COMMIT_REPO/REVIEW_OVERVIEW.md"
+	git -C "$REAL_COMMIT_REPO" add REVIEW_OVERVIEW.md
+
+	run run_hook "git -C $REAL_COMMIT_REPO commit --only -m 'only notes' -- notes.txt"
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "honors pathspecs after the commit option separator" {
+	setup_real_commit_repo
+	printf 'ordinary staged change\n' >>"$REAL_COMMIT_REPO/notes.txt"
+	printf 'guarded selected change\n' >>"$REAL_COMMIT_REPO/REVIEW_OVERVIEW.md"
+	git -C "$REAL_COMMIT_REPO" add notes.txt
+
+	run run_hook "git -C $REAL_COMMIT_REPO commit -m 'selected' -- REVIEW_OVERVIEW.md"
+
+	is_blocked
+	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
+@test "honors line and nul delimited pathspec files" {
+	local pathspec_args
+
+	for pathspec_args in \
+		"--pathspec-from-file=$MOCK_DIR/pathspecs.txt" \
+		"--pathspec-from-file=$MOCK_DIR/pathspecs.bin --pathspec-file-nul"
+	do
+		setup_real_commit_repo
+		printf 'ordinary staged change\n' >>"$REAL_COMMIT_REPO/notes.txt"
+		printf 'guarded selected change\n' >>"$REAL_COMMIT_REPO/REVIEW_OVERVIEW.md"
+		git -C "$REAL_COMMIT_REPO" add notes.txt
+		printf 'REVIEW_OVERVIEW.md\n' >"$MOCK_DIR/pathspecs.txt"
+		printf 'REVIEW_OVERVIEW.md\0' >"$MOCK_DIR/pathspecs.bin"
+
+		run run_hook "git -C $REAL_COMMIT_REPO commit -m 'pathspec file' $pathspec_args"
+
+		if ! is_blocked; then
+			printf 'Expected pathspec selection to block: %s\n' "$pathspec_args" >&2
+			return 1
+		fi
+		[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+		rm -rf "$REAL_COMMIT_REPO"
+		REAL_COMMIT_REPO=""
+	done
+}
+
+@test "blocks unsupported interactive commit selection explicitly" {
+	run run_hook "git commit --patch -m 'partial'"
+
+	is_blocked
+	[[ "$output" == *"Unable to safely inspect git commit content selection"* ]]
+}
+
+@test "blocks dynamic commit pathspec selection" {
+	run run_hook "git commit --only -m 'dynamic' \$(printf REVIEW_OVERVIEW.md)"
+
+	is_blocked
+	[[ "$output" == *"Unable to safely inspect git commit content selection"* ]]
+}
+
+@test "blocks abbreviated long commit options that could consume pathspecs" {
+	run run_hook "git commit --mes notes.txt"
+
+	is_blocked
+	[[ "$output" == *"unrecognized commit option --mes"* ]]
 }
 
 @test "blocks git commit with multiple flags" {
