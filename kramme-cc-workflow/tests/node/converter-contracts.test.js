@@ -2544,6 +2544,58 @@ test("writer replaces prompt and shared-script files proven by prior install sta
   });
 });
 
+test("writer uses a previous marketplace copy when the plugin cache was evicted", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const options = {
+      agentsHome: path.join(root, "agents-home"),
+      confirm: { yes: true },
+      pluginName: "marketplace-provenance-plugin",
+    };
+    await writeCodexBundle(
+      root,
+      await createTransactionalBundle(root, "v1"),
+      options,
+    );
+    await fs.rm(
+      path.join(
+        codexRoot,
+        "plugins",
+        "cache",
+        "transaction-hooks",
+        "transaction-hooks",
+        "1.0.1",
+      ),
+      { recursive: true, force: true },
+    );
+    assert.equal(
+      await readText(
+        path.join(
+          codexRoot,
+          ".kramme-plugin-marketplaces",
+          "transaction-hooks",
+          "plugins",
+          "transaction-hooks",
+          "scripts",
+          "shared.js",
+        ),
+      ),
+      'module.exports = "v1";\n',
+    );
+
+    await writeCodexBundle(
+      root,
+      await createTransactionalBundle(root, "v2"),
+      options,
+    );
+
+    assert.equal(
+      await readText(path.join(codexRoot, "scripts", "shared.js")),
+      'module.exports = "v2";\n',
+    );
+  });
+});
+
 test("writer preflights AGENTS.md directory and permission failures before publication", async () => {
   for (const failure of ["directory", "permission"]) {
     await withTempDir(async (root) => {
@@ -2618,6 +2670,61 @@ test("writer preserves the existing AGENTS.md mode on successful publication", a
     assert.equal((await fs.stat(agentsPath)).mode & 0o7777, 0o600);
     assert.match(await readText(agentsPath), /# Private local instructions/);
     assert.match(await readText(agentsPath), /BEGIN KRAMME CODEX TOOL MAP/);
+  });
+});
+
+test("writer preserves existing AGENTS.md extended attributes", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("extended-attribute fixture is POSIX-only");
+    return;
+  }
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    const attribute =
+      process.platform === "darwin"
+        ? "com.kramme.review-marker"
+        : "user.kramme_review_marker";
+    await writeFile(agentsPath, "# Local instructions\n");
+    const setResult = spawnSync(
+      "python3",
+      [
+        "-c",
+        "import os,sys; os.setxattr(sys.argv[1], sys.argv[2], b'review-marker')",
+        agentsPath,
+        attribute,
+      ],
+      { encoding: "utf8" },
+    );
+    if (
+      setResult.status !== 0 &&
+      /not supported|operation not permitted/i.test(
+        `${setResult.stdout}${setResult.stderr}`,
+      )
+    ) {
+      t.skip("filesystem does not support user extended attributes");
+      return;
+    }
+    assert.equal(setResult.status, 0, setResult.stderr);
+
+    await writeCodexBundle(root, await createTransactionalBundle(root, "v1"), {
+      agentsHome: path.join(root, "agents-home"),
+      confirm: { yes: true },
+      pluginName: "agents-xattr-plugin",
+    });
+
+    const getResult = spawnSync(
+      "python3",
+      [
+        "-c",
+        "import os,sys; sys.stdout.buffer.write(os.getxattr(sys.argv[1], sys.argv[2]))",
+        agentsPath,
+        attribute,
+      ],
+      { encoding: "utf8" },
+    );
+    assert.equal(getResult.status, 0, getResult.stderr);
+    assert.equal(getResult.stdout, "review-marker");
   });
 });
 
@@ -3305,6 +3412,26 @@ test("writer preserves AGENTS.md deletion made after publication when rollback r
             pluginName: "agents-rollback-delete-plugin",
             async onInstallPhase(phase) {
               if (phase !== "agents") return;
+              const transactionRoot = path.join(
+                codexRoot,
+                ".kramme-install-transactions",
+              );
+              const transactionTokens = await fs.readdir(transactionRoot);
+              assert.equal(transactionTokens.length, 1);
+              const journal = await readJson(
+                path.join(
+                  transactionRoot,
+                  transactionTokens[0],
+                  "journal.json",
+                ),
+              );
+              assert.ok(Array.isArray(journal.rollbackTargetExpectations));
+              assert.equal(
+                /** @type {{target?: unknown}[]} */ (
+                  journal.rollbackTargetExpectations
+                )[0]?.target,
+                agentsPath,
+              );
               await fs.rm(agentsPath, { force: true });
               throw injectedError;
             },
@@ -3314,6 +3441,63 @@ test("writer preserves AGENTS.md deletion made after publication when rollback r
     );
 
     assert.equal(await pathExists(agentsPath), false);
+  });
+});
+
+test("writer preserves AGENTS.md metadata edits made before rollback", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    const injectedError = new Error("failure after AGENTS.md mode edit");
+    await writeFile(agentsPath, "# Original local instructions\n");
+    await fs.chmod(agentsPath, 0o600);
+
+    await assert.rejects(
+      () =>
+        writeCodexBundle(
+          root,
+          {
+            agentSkills: [],
+            codexPlugin: undefined,
+            generatedSkills: [],
+            knownAgentSkills: new Map(),
+            knownCommands: new Set(),
+            mcpServers: {},
+            prompts: [],
+            skillDirs: [],
+          },
+          {
+            agentsHome: path.join(root, "agents-home"),
+            confirm: { yes: true },
+            pluginName: "agents-rollback-mode-plugin",
+            async onInstallPhase(phase) {
+              if (phase !== "agents") return;
+              await fs.chmod(agentsPath, 0o644);
+              throw injectedError;
+            },
+          },
+        ),
+      (error) => error === injectedError,
+    );
+
+    assert.equal(await readText(agentsPath), "# Original local instructions\n");
+    assert.equal((await fs.stat(agentsPath)).mode & 0o7777, 0o600);
+    const conflictsRoot = path.join(
+      codexRoot,
+      ".kramme-install-recovery-conflicts",
+    );
+    const conflictTokens = await fs.readdir(conflictsRoot);
+    assert.equal(conflictTokens.length, 1);
+    const preservedAgentsPath = path.join(
+      conflictsRoot,
+      conflictTokens[0],
+      "edited-0",
+    );
+    assert.match(
+      await readText(preservedAgentsPath),
+      /BEGIN KRAMME CODEX TOOL MAP/,
+    );
+    assert.equal((await fs.stat(preservedAgentsPath)).mode & 0o7777, 0o644);
   });
 });
 
@@ -4230,6 +4414,100 @@ test("transaction recovers an interrupted partial multi-root lock acquisition", 
       await pathExists(path.join(transactionRoot, ".kramme-install-lock")),
       false,
     );
+  });
+});
+
+test("stale recovery preserves AGENTS.md deletion recorded after publication", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    const token = "stale-agents-deletion";
+    const backupPath = path.join(
+      codexRoot,
+      ".kramme-install-backups",
+      token,
+      "0",
+    );
+    const journalPath = path.join(
+      codexRoot,
+      ".kramme-install-transactions",
+      token,
+      "journal.json",
+    );
+    const owner = {
+      version: 1,
+      token,
+      pid: 2_147_483_647,
+      pluginName: "stale-agents-deletion-plugin",
+      createdAtMs: 1,
+      lockRoots: [codexRoot],
+      transactionRoot: codexRoot,
+      journalPath,
+    };
+    const installedContent = [
+      "# Original local instructions",
+      "",
+      "<!-- BEGIN KRAMME CODEX TOOL MAP -->",
+      "interrupted install",
+      "<!-- END KRAMME CODEX TOOL MAP -->",
+      "",
+    ].join("\n");
+
+    await writeFile(backupPath, "# Original local instructions\n");
+    await writeJson(journalPath, {
+      version: 1,
+      token,
+      status: "active",
+      records: [
+        {
+          operation: "backup-rename",
+          target: agentsPath,
+          backup: backupPath,
+        },
+      ],
+      rollbackTargetExpectations: [
+        {
+          target: agentsPath,
+          contentBase64: Buffer.from(installedContent).toString("base64"),
+          metadata: null,
+        },
+      ],
+    });
+    await writeJson(
+      path.join(codexRoot, ".kramme-install-lock", "owner.json"),
+      owner,
+    );
+
+    const interruption = new Error("stop after stale AGENTS.md recovery");
+    await assert.rejects(
+      () =>
+        writeCodexBundle(
+          root,
+          {
+            agentSkills: [],
+            codexPlugin: undefined,
+            generatedSkills: [],
+            knownAgentSkills: new Map(),
+            knownCommands: new Set(),
+            mcpServers: {},
+            prompts: [],
+            skillDirs: [],
+          },
+          {
+            agentsHome: path.join(root, "agents-home"),
+            confirm: { yes: true },
+            pluginName: owner.pluginName,
+            onInstallPhase(phase) {
+              if (phase === "shared-scripts") throw interruption;
+            },
+          },
+        ),
+      (error) => error === interruption,
+    );
+
+    assert.equal(await pathExists(agentsPath), false);
+    assert.equal(await pathExists(journalPath), false);
+    assert.equal(await pathExists(backupPath), false);
   });
 });
 

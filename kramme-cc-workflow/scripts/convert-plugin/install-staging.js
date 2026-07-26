@@ -109,11 +109,13 @@ const transactionStorage = new AsyncLocalStorage();
  * @property {InstallMutationRecord[]} records
  * @property {{ target: string, preservedAt: string }[]} recoveryConflicts
  * @property {Set<string>} rollbackDeletedTargets
- * @property {Map<string, Buffer | null>} rollbackTargetContents
+ * @property {Map<string, RollbackTargetExpectation>} rollbackTargetContents
  * @property {string} status
  *
  * @typedef {Buffer | string | null} ExpectedTargetContent
- * @typedef {{ device: number, inode: number, links: number }} ExpectedTargetIdentity
+ * @typedef {{ ctimeMs?: number, device: number, gid?: number, inode: number, links: number, mode?: number, uid?: number }} ExpectedTargetIdentity
+ * @typedef {{ ctimeMs: number, device: number, gid: number, inode: number, links: number, mode: number, uid: number }} RollbackTargetMetadata
+ * @typedef {{ content: Buffer | null, metadata: RollbackTargetMetadata | null }} RollbackTargetExpectation
  * @typedef {{ kind: "directory" } | { kind: "file", content: Buffer } | { kind: "missing" }} ExpectedTargetEntry
  * @typedef {Map<string, ExpectedTargetEntry>} ExpectedTargetEntries
  * @typedef {{ error: unknown, lock: InstallLock }} InstallLockReleaseError
@@ -407,13 +409,21 @@ async function recoverStaleInstall(root, owner) {
         ),
       )
     ).every(Boolean);
+  const rollbackTargetContents = recordsValid
+    ? await parseRollbackTargetExpectations(
+        journal?.rollbackTargetExpectations,
+        lockRoots,
+        /** @type {InstallMutationRecord[]} */ (journal.records),
+      )
+    : null;
   if (
     journal?.version !== 1 ||
     journal?.token !== owner.token ||
     (journal.status !== undefined &&
       journal.status !== "active" &&
       journal.status !== "committed") ||
-    !recordsValid
+    !recordsValid ||
+    rollbackTargetContents === null
   ) {
     throw new Error(
       `Refusing to recover invalid install journal ${journalPath}.`,
@@ -429,7 +439,7 @@ async function recoverStaleInstall(root, owner) {
     recoveryConflicts:
       /** @type {{target: string, preservedAt: string}[]} */ ([]),
     rollbackDeletedTargets: new Set(),
-    rollbackTargetContents: new Map(),
+    rollbackTargetContents,
     status: journal.status === "committed" ? "committed" : "active",
   };
   if (transaction.status === "committed") {
@@ -850,8 +860,92 @@ async function persistInstallJournal(transaction) {
     version: 1,
     token: transaction.token,
     records: transaction.records,
+    rollbackTargetExpectations: [...transaction.rollbackTargetContents].map(
+      ([target, expectation]) => ({
+        target,
+        contentBase64:
+          expectation.content === null
+            ? null
+            : expectation.content.toString("base64"),
+        metadata: expectation.metadata,
+      }),
+    ),
     status: transaction.status,
   });
+}
+
+/**
+ * @param {unknown} value
+ * @param {string[]} lockRoots
+ * @param {InstallMutationRecord[]} records
+ * @returns {Promise<Map<string, RollbackTargetExpectation> | null>}
+ */
+async function parseRollbackTargetExpectations(value, lockRoots, records) {
+  if (value === undefined) return new Map();
+  if (!Array.isArray(value)) return null;
+  /** @type {Map<string, RollbackTargetExpectation>} */
+  const expectations = new Map();
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") return null;
+    const candidate =
+      /** @type {{ contentBase64?: unknown, metadata?: unknown, target?: unknown }} */ (
+        entry
+      );
+    if (
+      typeof candidate.target !== "string" ||
+      !path.isAbsolute(candidate.target) ||
+      path.resolve(candidate.target) !== candidate.target ||
+      expectations.has(candidate.target)
+    ) {
+      return null;
+    }
+    const canonicalTarget = await canonicalizeTransactionTarget(
+      candidate.target,
+    );
+    if (
+      canonicalTarget !== candidate.target ||
+      !isTargetCoveredByLock(canonicalTarget, lockRoots) ||
+      !records.some(
+        (record) =>
+          canonicalTarget === record.target ||
+          canonicalTarget.startsWith(record.target + path.sep),
+      )
+    ) {
+      return null;
+    }
+    let content = null;
+    if (candidate.contentBase64 !== null) {
+      if (typeof candidate.contentBase64 !== "string") return null;
+      content = Buffer.from(candidate.contentBase64, "base64");
+      if (content.toString("base64") !== candidate.contentBase64) return null;
+    }
+    const metadata = parseRollbackTargetMetadata(candidate.metadata);
+    if (candidate.metadata !== null && metadata === null) return null;
+    expectations.set(canonicalTarget, { content, metadata });
+  }
+  return expectations;
+}
+
+/** @param {unknown} value @returns {RollbackTargetMetadata | null} */
+function parseRollbackTargetMetadata(value) {
+  if (value === null) return null;
+  if (!value || typeof value !== "object") return null;
+  const candidate = /** @type {Partial<RollbackTargetMetadata>} */ (value);
+  for (const key of [
+    "ctimeMs",
+    "device",
+    "gid",
+    "inode",
+    "links",
+    "mode",
+    "uid",
+  ]) {
+    const field = candidate[/** @type {keyof RollbackTargetMetadata} */ (key)];
+    if (typeof field !== "number" || !Number.isFinite(field) || field < 0) {
+      return null;
+    }
+  }
+  return /** @type {RollbackTargetMetadata} */ (candidate);
 }
 
 /**
@@ -918,12 +1012,13 @@ async function prepareTransactionMutation(
     );
   } catch (error) {
     if (coveringRecord && expectedTargetContent !== undefined) {
-      transaction.rollbackTargetContents.set(
-        resolvedTarget,
-        expectedTargetContent === null
-          ? null
-          : expectedContentBuffer(expectedTargetContent),
-      );
+      transaction.rollbackTargetContents.set(resolvedTarget, {
+        content:
+          expectedTargetContent === null
+            ? null
+            : expectedContentBuffer(expectedTargetContent),
+        metadata: null,
+      });
     }
     if (coveringRecord && expectedTargetEntries) {
       recordExpectedTreeRollbackTargets(
@@ -1104,7 +1199,7 @@ async function rollbackInstallTransaction(
  * @param {InstallMutationRecord} record
  */
 async function preserveChangedRollbackTargets(transaction, record) {
-  for (const [target, expectedContent] of transaction.rollbackTargetContents) {
+  for (const [target, expectation] of transaction.rollbackTargetContents) {
     if (
       target !== record.target &&
       !target.startsWith(record.target + path.sep)
@@ -1118,16 +1213,22 @@ async function preserveChangedRollbackTargets(transaction, record) {
       stats = await fs.lstat(target);
     } catch (error) {
       if (filesystemErrorCode(error) === "ENOENT") {
-        if (expectedContent !== null) {
+        if (expectation.content !== null) {
           transaction.rollbackDeletedTargets.add(target);
         }
         continue;
       }
       throw error;
     }
-    if (expectedContent !== null && stats.isFile()) {
+    if (expectation.content !== null && stats.isFile()) {
       const currentContent = await fs.readFile(target);
-      if (currentContent.equals(expectedContent)) continue;
+      if (
+        currentContent.equals(expectation.content) &&
+        (!expectation.metadata ||
+          targetMetadataMatches(stats, expectation.metadata))
+      ) {
+        continue;
+      }
     }
     await preserveRecoveryTarget(
       transaction,
@@ -1355,12 +1456,49 @@ function assertExpectedTargetIdentity(target, stats, expectedIdentity, label) {
     !stats?.isFile() ||
     stats.dev !== expectedIdentity.device ||
     stats.ino !== expectedIdentity.inode ||
-    stats.nlink !== expectedIdentity.links
+    stats.nlink !== expectedIdentity.links ||
+    (expectedIdentity.mode !== undefined &&
+      stats.mode !== expectedIdentity.mode) ||
+    (expectedIdentity.uid !== undefined &&
+      stats.uid !== expectedIdentity.uid) ||
+    (expectedIdentity.gid !== undefined &&
+      stats.gid !== expectedIdentity.gid) ||
+    (expectedIdentity.ctimeMs !== undefined &&
+      stats.ctimeMs !== expectedIdentity.ctimeMs)
   ) {
     throw new Error(
       `Cannot install ${label} because ${target} changed during installation.`,
     );
   }
+}
+
+/** @param {import("fs").Stats} stats @returns {RollbackTargetMetadata} */
+function targetMetadata(stats) {
+  return {
+    ctimeMs: stats.ctimeMs,
+    device: stats.dev,
+    gid: stats.gid,
+    inode: stats.ino,
+    links: stats.nlink,
+    mode: stats.mode,
+    uid: stats.uid,
+  };
+}
+
+/**
+ * @param {import("fs").Stats} stats
+ * @param {RollbackTargetMetadata} expected
+ */
+function targetMetadataMatches(stats, expected) {
+  return (
+    stats.ctimeMs === expected.ctimeMs &&
+    stats.dev === expected.device &&
+    stats.gid === expected.gid &&
+    stats.ino === expected.inode &&
+    stats.nlink === expected.links &&
+    stats.mode === expected.mode &&
+    stats.uid === expected.uid
+  );
 }
 
 /**
@@ -1406,10 +1544,10 @@ function recordExpectedTreeRollbackTargets(
     const target = relativePath
       ? path.join(targetRoot, relativePath)
       : targetRoot;
-    transaction.rollbackTargetContents.set(
-      target,
-      expected.kind === "file" ? expected.content : null,
-    );
+    transaction.rollbackTargetContents.set(target, {
+      content: expected.kind === "file" ? expected.content : null,
+      metadata: null,
+    });
   }
 }
 
@@ -1951,13 +2089,17 @@ async function installStagedFile(
     await copyFile(stagedFile, targetFile);
     await fs.rm(stagedFile, { force: true });
   }
-  if (installedContent) {
+  if (installedContent !== null) {
     const transaction = transactionStorage.getStore();
     if (transaction) {
       transaction.rollbackTargetContents.set(
         await canonicalizeTransactionTarget(targetFile),
-        installedContent,
+        {
+          content: installedContent,
+          metadata: targetMetadata(await fs.lstat(targetFile)),
+        },
       );
+      await persistInstallJournal(transaction);
     }
   }
 }

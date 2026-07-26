@@ -26,6 +26,7 @@ const {
   withInstallTransaction,
 } = require("./install-staging");
 const {
+  copyFilePreservingMetadata,
   filesystemErrorCode,
   pathExists,
   readText,
@@ -47,7 +48,7 @@ const AGENTS_DESTINATION_LOCK_REQUIRED = Symbol(
  * @typedef {Record<string, string[]>} ManagedFileMap
  * @typedef {{ device: number, inode: number, target: string }} SymbolicLinkIdentity
  * @typedef {{ filePath: string, symbolicLink: SymbolicLinkIdentity | null, targetFile: string }} CodexAgentsDestination
- * @typedef {{ expectedTargetContent: string | null, expectedTargetIdentity?: { device: number, inode: number, links: number }, stagedFile: string, targetFile: string }} StagedCodexAgentsFile
+ * @typedef {{ expectedTargetContent: string | null, expectedTargetIdentity?: { ctimeMs: number, device: number, gid: number, inode: number, links: number, mode: number, uid: number }, stagedFile: string, targetFile: string }} StagedCodexAgentsFile
  */
 
 /** @param {Record<string, unknown>} object @param {string} entry */
@@ -332,7 +333,6 @@ async function stageCodexAgentsFile(codexHome, stagingRoot, lockedDestination) {
   if (updated === existing) return null;
 
   const stagedFile = path.join(stagingRoot, "AGENTS.md");
-  await writeText(stagedFile, updated);
   let expectedTargetIdentity;
   if (targetExists) {
     const existingStats = await fs.lstat(destination.targetFile);
@@ -342,12 +342,19 @@ async function stageCodexAgentsFile(codexHome, stagingRoot, lockedDestination) {
       );
     }
     assertCodexAgentsFileHasSingleLink(destination.filePath, existingStats);
-    await fs.chmod(stagedFile, existingStats.mode & 0o7777);
+    await copyFilePreservingMetadata(destination.targetFile, stagedFile);
+    await writeText(stagedFile, updated);
     expectedTargetIdentity = {
+      ctimeMs: existingStats.ctimeMs,
       device: existingStats.dev,
+      gid: existingStats.gid,
       inode: existingStats.ino,
       links: existingStats.nlink,
+      mode: existingStats.mode,
+      uid: existingStats.uid,
     };
+  } else {
+    await writeText(stagedFile, updated);
   }
   const expectedTargetContent = targetExists ? existing : null;
   await preflightStagedFileInstall(stagedFile, destination.targetFile, {

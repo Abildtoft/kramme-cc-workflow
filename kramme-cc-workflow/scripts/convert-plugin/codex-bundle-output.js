@@ -602,7 +602,7 @@ async function preflightCodexBundleFinalization(
   bundle,
   previousEntries,
 ) {
-  const previousSharedScriptRoots = sanitizeEntryList(
+  const previousPluginCacheRoots = sanitizeEntryList(
     previousEntries.pluginCaches,
   ).map((entry) =>
     resolveManagedChild(
@@ -611,6 +611,25 @@ async function preflightCodexBundleFinalization(
       "previous Codex plugin cache entry",
     ),
   );
+  const codexPluginName = bundle.codexPlugin?.name;
+  const previousMarketplacePluginRoots = codexPluginName
+    ? sanitizeEntryList(previousEntries.hookMarketplaces).map((entry) => {
+        const marketplaceRoot = resolveManagedChild(
+          codexRoot,
+          entry,
+          "previous Codex hook marketplace entry",
+        );
+        return resolveManagedChild(
+          path.join(marketplaceRoot, "plugins"),
+          codexPluginName,
+          "previous Codex hook marketplace plugin",
+        );
+      })
+    : [];
+  const previousSharedScriptRoots = [
+    ...previousPluginCacheRoots,
+    ...previousMarketplacePluginRoots,
+  ];
   const sharedScriptTargetContents = new Map();
   for (const sharedScriptDir of stagedBundle.sharedScriptDirs) {
     await preflightStagedDirInstall(
