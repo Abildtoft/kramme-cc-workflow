@@ -61,6 +61,9 @@
       "kramme-cc-workflow/scripts/generate-component-reference.py": [
         "kramme-cc-workflow/tests/lint-skill-contracts.bats"
       ],
+      "kramme-cc-workflow/scripts/generate-synced-files.py": [
+        "kramme-cc-workflow/tests/lint-skill-contracts.bats"
+      ],
       "kramme-cc-workflow/scripts/generate-visual-shared-assets.py": [
         "kramme-cc-workflow/tests/lint-skill-contracts.bats"
       ],

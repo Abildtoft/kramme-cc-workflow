@@ -3,6 +3,7 @@
 setup() {
   TMP_ROOT="$(mktemp -d)"
   SCRIPT="$BATS_TEST_DIRNAME/../scripts/lint-skill-contracts.py"
+  SYNCED_FILES_GENERATOR="$BATS_TEST_DIRNAME/../scripts/generate-synced-files.py"
   VISUAL_GENERATOR="$BATS_TEST_DIRNAME/../scripts/generate-visual-shared-assets.py"
   COMPONENT_GENERATOR="$BATS_TEST_DIRNAME/../scripts/generate-component-reference.py"
   ISSUE_DEFINE_RESERVATION_HELPER="$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-define/scripts/siw-issue-reservation.sh"
@@ -17,6 +18,10 @@ write_file() {
   local path="$1"
   mkdir -p "$(dirname "$path")"
   cat >"$path"
+}
+
+file_mode() {
+  python3 -c 'import os, stat, sys; print(f"{stat.S_IMODE(os.stat(sys.argv[1]).st_mode):04o}")' "$1"
 }
 
 write_minimal_skill() {
@@ -2411,6 +2416,389 @@ EOF
   [[ "$output" == *"sync all registered copies"* ]]
 }
 
+@test "synced file generator accepts explicit canonical metadata in any path position" {
+  write_file "$TMP_ROOT/files/canonical.txt" <<'EOF'
+same
+EOF
+  write_file "$TMP_ROOT/files/mirror.txt" <<'EOF'
+same
+EOF
+  chmod 755 "$TMP_ROOT/files/canonical.txt" "$TMP_ROOT/files/mirror.txt"
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "file_identity_groups": [
+    {
+      "name": "sample-files",
+      "canonical": "files/canonical.txt",
+      "paths": [
+        "files/mirror.txt",
+        "files/canonical.txt"
+      ]
+    }
+  ]
+}
+EOF
+
+  run python3 "$SYNCED_FILES_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"declared file mirrors are in sync."* ]]
+
+  run python3 "$SYNCED_FILES_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --check
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"declared file mirrors are in sync."* ]]
+}
+
+@test "synced file generator check reports content mode and missing drift without writes" {
+  write_file "$TMP_ROOT/files/canonical.txt" <<'EOF'
+canonical
+EOF
+  write_file "$TMP_ROOT/files/content.txt" <<'EOF'
+drifted
+EOF
+  write_file "$TMP_ROOT/files/mode.txt" <<'EOF'
+canonical
+EOF
+  chmod 755 "$TMP_ROOT/files/canonical.txt" "$TMP_ROOT/files/content.txt"
+  chmod 644 "$TMP_ROOT/files/mode.txt"
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "file_identity_groups": [
+    {
+      "name": "sample-files",
+      "canonical": "files/canonical.txt",
+      "paths": [
+        "files/canonical.txt",
+        "files/content.txt",
+        "files/mode.txt",
+        "files/missing/nested.txt"
+      ]
+    }
+  ]
+}
+EOF
+
+  run python3 "$SYNCED_FILES_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"sample-files"* ]]
+  [[ "$output" == *"files/content.txt content differs from canonical files/canonical.txt"* ]]
+  [[ "$output" == *"files/mode.txt mode 0644 differs from canonical mode 0755"* ]]
+  [[ "$output" == *"files/missing/nested.txt is missing"* ]]
+  [ "$(cat "$TMP_ROOT/files/content.txt")" = "drifted" ]
+  [ "$(file_mode "$TMP_ROOT/files/mode.txt")" = "0644" ]
+  [ ! -e "$TMP_ROOT/files/missing/nested.txt" ]
+
+  run python3 "$SYNCED_FILES_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --check
+
+  [ "$status" -eq 1 ]
+  [ "$(cat "$TMP_ROOT/files/content.txt")" = "drifted" ]
+  [ "$(file_mode "$TMP_ROOT/files/mode.txt")" = "0644" ]
+  [ ! -e "$TMP_ROOT/files/missing/nested.txt" ]
+}
+
+@test "synced file generator write copies canonical bytes and mode to declared mirrors" {
+  write_file "$TMP_ROOT/files/canonical.txt" <<'EOF'
+canonical
+EOF
+  write_file "$TMP_ROOT/files/content.txt" <<'EOF'
+drifted
+EOF
+  write_file "$TMP_ROOT/files/mode.txt" <<'EOF'
+canonical
+EOF
+  chmod 755 "$TMP_ROOT/files/canonical.txt" "$TMP_ROOT/files/content.txt"
+  chmod 644 "$TMP_ROOT/files/mode.txt"
+  local canonical_hash
+  canonical_hash="$(shasum -a 256 "$TMP_ROOT/files/canonical.txt")"
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "file_identity_groups": [
+    {
+      "name": "sample-files",
+      "canonical": "files/canonical.txt",
+      "paths": [
+        "files/canonical.txt",
+        "files/content.txt",
+        "files/mode.txt",
+        "files/missing/nested.txt"
+      ]
+    }
+  ]
+}
+EOF
+
+  run python3 "$SYNCED_FILES_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"synced 3 file mirror(s)."* ]]
+  [ "$(shasum -a 256 "$TMP_ROOT/files/canonical.txt")" = "$canonical_hash" ]
+  cmp -s "$TMP_ROOT/files/canonical.txt" "$TMP_ROOT/files/content.txt"
+  cmp -s "$TMP_ROOT/files/canonical.txt" "$TMP_ROOT/files/mode.txt"
+  cmp -s "$TMP_ROOT/files/canonical.txt" "$TMP_ROOT/files/missing/nested.txt"
+  [ "$(file_mode "$TMP_ROOT/files/content.txt")" = "0755" ]
+  [ "$(file_mode "$TMP_ROOT/files/mode.txt")" = "0755" ]
+  [ "$(file_mode "$TMP_ROOT/files/missing/nested.txt")" = "0755" ]
+}
+
+@test "synced file generator write replaces a read-only mirror" {
+  write_file "$TMP_ROOT/files/canonical.txt" <<'EOF'
+canonical
+EOF
+  write_file "$TMP_ROOT/files/mirror.txt" <<'EOF'
+canonical
+EOF
+  chmod 755 "$TMP_ROOT/files/canonical.txt"
+  chmod 444 "$TMP_ROOT/files/mirror.txt"
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "file_identity_groups": [
+    {
+      "name": "sample-files",
+      "canonical": "files/canonical.txt",
+      "paths": [
+        "files/canonical.txt",
+        "files/mirror.txt"
+      ]
+    }
+  ]
+}
+EOF
+
+  run python3 "$SYNCED_FILES_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"synced 1 file mirror(s)."* ]]
+  cmp -s "$TMP_ROOT/files/canonical.txt" "$TMP_ROOT/files/mirror.txt"
+  [ "$(file_mode "$TMP_ROOT/files/mirror.txt")" = "0755" ]
+}
+
+@test "synced file generator rejects invalid canonical metadata before writes" {
+  write_file "$TMP_ROOT/files/canonical.txt" <<'EOF'
+canonical
+EOF
+  write_file "$TMP_ROOT/files/mirror.txt" <<'EOF'
+drifted
+EOF
+
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "file_identity_groups": [
+    {
+      "name": "missing-canonical",
+      "paths": ["files/canonical.txt", "files/mirror.txt"]
+    }
+  ]
+}
+EOF
+  run python3 "$SYNCED_FILES_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"canonical must be a non-empty string"* ]]
+  [ "$(cat "$TMP_ROOT/files/mirror.txt")" = "drifted" ]
+
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "file_identity_groups": [
+    {
+      "name": "non-member-canonical",
+      "canonical": "files/other.txt",
+      "paths": ["files/canonical.txt", "files/mirror.txt"]
+    }
+  ]
+}
+EOF
+  run python3 "$SYNCED_FILES_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"canonical path must appear exactly once in paths"* ]]
+  [ "$(cat "$TMP_ROOT/files/mirror.txt")" = "drifted" ]
+
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "file_identity_groups": [
+    {
+      "name": "duplicate-paths",
+      "canonical": "files/canonical.txt",
+      "paths": [
+        "files/canonical.txt",
+        "files/canonical.txt",
+        "files/mirror.txt"
+      ]
+    }
+  ]
+}
+EOF
+  run python3 "$SYNCED_FILES_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"paths must not contain duplicates"* ]]
+  [ "$(cat "$TMP_ROOT/files/mirror.txt")" = "drifted" ]
+}
+
+@test "synced file generator rejects paths shared across identity groups" {
+  write_file "$TMP_ROOT/files/first.txt" <<'EOF'
+first
+EOF
+  write_file "$TMP_ROOT/files/second.txt" <<'EOF'
+second
+EOF
+  write_file "$TMP_ROOT/files/shared.txt" <<'EOF'
+unchanged
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "file_identity_groups": [
+    {
+      "name": "first-group",
+      "canonical": "files/first.txt",
+      "paths": ["files/first.txt", "files/shared.txt"]
+    },
+    {
+      "name": "second-group",
+      "canonical": "files/second.txt",
+      "paths": ["files/second.txt", "files/shared.txt"]
+    }
+  ]
+}
+EOF
+
+  run python3 "$SYNCED_FILES_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"second-group: path files/shared.txt is already registered in group first-group"* ]]
+  [ "$(cat "$TMP_ROOT/files/shared.txt")" = "unchanged" ]
+}
+
+@test "synced file generator rejects absolute and traversal paths before writes" {
+  write_file "$TMP_ROOT/files/canonical.txt" <<'EOF'
+canonical
+EOF
+  write_file "$TMP_ROOT/files/mirror.txt" <<'EOF'
+drifted
+EOF
+  write_file "$TMP_ROOT/outside.txt" <<'EOF'
+outside
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<EOF
+{
+  "file_identity_groups": [
+    {
+      "name": "valid-first",
+      "canonical": "files/canonical.txt",
+      "paths": ["files/canonical.txt", "files/mirror.txt"]
+    },
+    {
+      "name": "absolute-path",
+      "canonical": "$TMP_ROOT/outside.txt",
+      "paths": ["$TMP_ROOT/outside.txt", "files/absolute-mirror.txt"]
+    },
+    {
+      "name": "traversal-path",
+      "canonical": "../outside.txt",
+      "paths": ["../outside.txt", "files/traversal-mirror.txt"]
+    }
+  ]
+}
+EOF
+
+  run python3 "$SYNCED_FILES_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"absolute paths are not allowed"* ]]
+  [[ "$output" == *"parent traversal is not allowed"* ]]
+  [ "$(cat "$TMP_ROOT/files/mirror.txt")" = "drifted" ]
+  [ "$(cat "$TMP_ROOT/outside.txt")" = "outside" ]
+  [ ! -e "$TMP_ROOT/files/absolute-mirror.txt" ]
+  [ ! -e "$TMP_ROOT/files/traversal-mirror.txt" ]
+}
+
+@test "synced file generator rejects symlinks and non-regular files before writes" {
+  write_file "$TMP_ROOT/files/canonical.txt" <<'EOF'
+canonical
+EOF
+  write_file "$TMP_ROOT/files/mirror.txt" <<'EOF'
+drifted
+EOF
+  write_file "$TMP_ROOT/files/symlink-ancestor-canonical.txt" <<'EOF'
+canonical
+EOF
+  write_file "$TMP_ROOT/files/directory-canonical.txt" <<'EOF'
+canonical
+EOF
+  write_file "$TMP_ROOT/files/fifo-canonical.txt" <<'EOF'
+canonical
+EOF
+  write_file "$TMP_ROOT/outside/source.txt" <<'EOF'
+outside
+EOF
+  write_file "$TMP_ROOT/outside/target.txt" <<'EOF'
+outside target
+EOF
+  mkdir -p "$TMP_ROOT/links" "$TMP_ROOT/files/directory.txt"
+  ln -s "$TMP_ROOT/outside/source.txt" "$TMP_ROOT/links/source.txt"
+  ln -s "$TMP_ROOT/outside" "$TMP_ROOT/linked-parent"
+  mkfifo "$TMP_ROOT/files/fifo.txt"
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "file_identity_groups": [
+    {
+      "name": "valid-first",
+      "canonical": "files/canonical.txt",
+      "paths": ["files/canonical.txt", "files/mirror.txt"]
+    },
+    {
+      "name": "symlink-source",
+      "canonical": "links/source.txt",
+      "paths": ["links/source.txt", "files/symlink-mirror.txt"]
+    },
+    {
+      "name": "symlink-ancestor",
+      "canonical": "files/symlink-ancestor-canonical.txt",
+      "paths": ["files/symlink-ancestor-canonical.txt", "linked-parent/target.txt"]
+    },
+    {
+      "name": "directory-mirror",
+      "canonical": "files/directory-canonical.txt",
+      "paths": ["files/directory-canonical.txt", "files/directory.txt"]
+    },
+    {
+      "name": "fifo-mirror",
+      "canonical": "files/fifo-canonical.txt",
+      "paths": ["files/fifo-canonical.txt", "files/fifo.txt"]
+    }
+  ]
+}
+EOF
+
+  run python3 "$SYNCED_FILES_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"must not be a symlink"* ]]
+  [[ "$output" == *"must be a regular file"* ]]
+  [ "$(cat "$TMP_ROOT/files/mirror.txt")" = "drifted" ]
+  [ "$(cat "$TMP_ROOT/outside/target.txt")" = "outside target" ]
+  [ ! -e "$TMP_ROOT/files/symlink-mirror.txt" ]
+}
+
+@test "synced file generator current registry governs the SIW helper mirror" {
+  local registry="$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml"
+  local issue_define_rel="kramme-cc-workflow/skills/kramme:siw:issue-define/scripts/siw-issue-reservation.sh"
+  local generate_phases_rel="kramme-cc-workflow/skills/kramme:siw:generate-phases/scripts/siw-issue-reservation.sh"
+
+  run jq -e \
+    --arg canonical "$issue_define_rel" \
+    --arg mirror "$generate_phases_rel" \
+    '.file_identity_groups[] | select(.name == "siw-issue-reservation-helper") | .canonical == $canonical and (.paths | index($canonical) != null) and (.paths | index($mirror) != null)' \
+    "$registry"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "true" ]
+
+  run python3 "$SYNCED_FILES_GENERATOR" --check
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"declared file mirrors are in sync."* ]]
+}
+
 @test "visual shared asset generator check succeeds for matching copies" {
   write_file "$TMP_ROOT/kramme-cc-workflow/skills/kramme:visual:a/references/shared.md" <<'EOF'
 same
@@ -2423,6 +2811,7 @@ EOF
   "file_identity_groups": [
     {
       "name": "visual-fixture-shared",
+      "canonical": "kramme-cc-workflow/skills/kramme:visual:a/references/shared.md",
       "paths": [
         "kramme-cc-workflow/skills/kramme:visual:a/references/shared.md",
         "kramme-cc-workflow/skills/kramme:visual:b/references/shared.md"
@@ -2450,6 +2839,7 @@ EOF
   "file_identity_groups": [
     {
       "name": "visual-fixture-shared",
+      "canonical": "kramme-cc-workflow/skills/kramme:visual:a/references/shared.md",
       "paths": [
         "kramme-cc-workflow/skills/kramme:visual:a/references/shared.md",
         "kramme-cc-workflow/skills/kramme:visual:b/references/shared.md"
@@ -2480,6 +2870,7 @@ EOF
   "file_identity_groups": [
     {
       "name": "visual-fixture-shared",
+      "canonical": "kramme-cc-workflow/skills/kramme:visual:a/references/shared.md",
       "paths": [
         "kramme-cc-workflow/skills/kramme:visual:a/references/shared.md",
         "kramme-cc-workflow/skills/kramme:visual:b/references/shared.md"
@@ -2494,6 +2885,46 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"synced 1 visual shared asset file(s)."* ]]
   [ "$(cat "$TMP_ROOT/kramme-cc-workflow/skills/kramme:visual:b/references/shared.md")" = "canonical" ]
+}
+
+@test "visual shared asset generator ignores non-visual identity groups" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/kramme:visual:a/references/shared.md" <<'EOF'
+visual
+EOF
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/kramme:visual:b/references/shared.md" <<'EOF'
+visual
+EOF
+  write_file "$TMP_ROOT/policy/canonical.md" <<'EOF'
+policy
+EOF
+  write_file "$TMP_ROOT/policy/mirror.md" <<'EOF'
+drifted
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "file_identity_groups": [
+    {
+      "name": "policy-files",
+      "canonical": "policy/canonical.md",
+      "paths": ["policy/canonical.md", "policy/mirror.md"]
+    },
+    {
+      "name": "visual-fixture-shared",
+      "canonical": "kramme-cc-workflow/skills/kramme:visual:a/references/shared.md",
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:visual:a/references/shared.md",
+        "kramme-cc-workflow/skills/kramme:visual:b/references/shared.md"
+      ]
+    }
+  ]
+}
+EOF
+
+  run python3 "$VISUAL_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"visual shared assets are in sync."* ]]
+  [ "$(cat "$TMP_ROOT/policy/mirror.md")" = "drifted" ]
 }
 
 @test "required file contract accepts frontmatter and required text" {
