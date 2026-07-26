@@ -5,6 +5,66 @@ setup() {
   WORK_DIR="$BATS_TEST_TMPDIR/project"
   MOCK_BIN="$BATS_TEST_TMPDIR/bin"
   mkdir -p "$WORK_DIR"
+  source "$SCRIPT_DIR/framework-registry.sh"
+}
+
+framework_signature_matrix() {
+  cat <<'MATRIX'
+astro|astro.config.cjs|4321
+next|next.config.js|3000
+next|next.config.ts|3000
+next|next.config.mjs|3000
+next|next.config.cjs|3000
+vite|vite.config.js|5173
+vite|vite.config.ts|5173
+vite|vite.config.mjs|5173
+vite|vite.config.cjs|5173
+nuxt|nuxt.config.js|3000
+nuxt|nuxt.config.ts|3000
+nuxt|nuxt.config.mjs|3000
+nuxt|nuxt.config.cjs|3000
+astro|astro.config.js|4321
+astro|astro.config.ts|4321
+astro|astro.config.mjs|4321
+remix|remix.config.js|3000
+remix|remix.config.ts|3000
+sveltekit|svelte.config.js|5173
+sveltekit|svelte.config.mjs|5173
+sveltekit|svelte.config.ts|5173
+MATRIX
+}
+
+@test "framework registry exposes expected signatures and defaults" {
+  local framework signature default_port actual_framework actual_default
+  local registered_signature signature_found
+
+  while IFS='|' read -r framework signature default_port; do
+    actual_framework=$(framework_type_for_signature "$signature")
+    [ "$actual_framework" = "$framework" ]
+
+    actual_default=$(framework_default_port "$framework")
+    [ "$actual_default" = "$default_port" ]
+
+    signature_found=0
+    while IFS= read -r registered_signature; do
+      if [ "$registered_signature" = "$signature" ]; then
+        signature_found=1
+        break
+      fi
+    done < <(framework_signature_files "$framework")
+    [ "$signature_found" -eq 1 ]
+  done < <(framework_signature_matrix)
+}
+
+@test "detect-project-type ignores unregistered config extensions" {
+  mkdir -p "$WORK_DIR/apps/example"
+  touch "$WORK_DIR/astro.config.jsx"
+  touch "$WORK_DIR/apps/example/vite.config.jsx"
+
+  run "$SCRIPT_DIR/detect-project-type.sh" "$WORK_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "unknown" ]
 }
 
 @test "detect-project-type detects root Vite config" {
@@ -160,9 +220,16 @@ YAML
   [ "$output" = "4000" ]
 }
 
-@test "resolve-port falls back to default port when no project metadata exists" {
-  run "$SCRIPT_DIR/resolve-port.sh" "$WORK_DIR"
+@test "resolve-port uses registry defaults when no project metadata exists" {
+  run "$SCRIPT_DIR/resolve-port.sh" "$WORK_DIR" --type vite
+  [ "$status" -eq 0 ]
+  [ "$output" = "5173" ]
 
+  run "$SCRIPT_DIR/resolve-port.sh" "$WORK_DIR" --type astro
+  [ "$status" -eq 0 ]
+  [ "$output" = "4321" ]
+
+  run "$SCRIPT_DIR/resolve-port.sh" "$WORK_DIR"
   [ "$status" -eq 0 ]
   [ "$output" = "3000" ]
 }

@@ -15,6 +15,10 @@
 
 set -euo pipefail
 
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=framework-registry.sh
+source "$SCRIPT_DIR/framework-registry.sh"
+
 TARGET_PATH="${1:-}"
 
 if [ -n "$TARGET_PATH" ]; then
@@ -27,7 +31,7 @@ if [ -n "$TARGET_PATH" ]; then
     exit 1
   }
 else
-  REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
+  REPO_ROOT=$(git rev-parse --show-toplevel 2> /dev/null || true)
   if [ -z "$REPO_ROOT" ]; then
     echo "ERROR: not in a git repository and no path argument provided" >&2
     exit 1
@@ -58,29 +62,11 @@ if [ -f "bin/dev" ] && [ -f "Gemfile" ]; then
   MATCHES+=("rails")
 fi
 
-if [ -f "next.config.js" ] || [ -f "next.config.mjs" ] || [ -f "next.config.ts" ] || [ -f "next.config.cjs" ]; then
-  MATCHES+=("next")
-fi
-
-if [ -f "vite.config.js" ] || [ -f "vite.config.ts" ] || [ -f "vite.config.mjs" ] || [ -f "vite.config.cjs" ]; then
-  MATCHES+=("vite")
-fi
-
-if [ -f "nuxt.config.js" ] || [ -f "nuxt.config.mjs" ] || [ -f "nuxt.config.ts" ]; then
-  MATCHES+=("nuxt")
-fi
-
-if [ -f "astro.config.js" ] || [ -f "astro.config.mjs" ] || [ -f "astro.config.ts" ]; then
-  MATCHES+=("astro")
-fi
-
-if [ -f "remix.config.js" ] || [ -f "remix.config.ts" ]; then
-  MATCHES+=("remix")
-fi
-
-if [ -f "svelte.config.js" ] || [ -f "svelte.config.mjs" ] || [ -f "svelte.config.ts" ]; then
-  MATCHES+=("sveltekit")
-fi
+while IFS='|' read -r framework signature; do
+  if [ -f "$signature" ] && ! has_root_match "$framework"; then
+    MATCHES+=("$framework")
+  fi
+done <<< "$DEV_SERVER_FRAMEWORK_SIGNATURES"
 
 if ! has_root_match "rails"; then
   if [ -f "Procfile" ] || [ -f "Procfile.dev" ]; then
@@ -111,6 +97,16 @@ ${hit}"
 }
 
 scan_signature_files() {
+  local _framework signature
+  local -a signature_predicates=()
+
+  while IFS='|' read -r _framework signature; do
+    if [ "${#signature_predicates[@]}" -gt 0 ]; then
+      signature_predicates+=("-o")
+    fi
+    signature_predicates+=("-name" "$signature")
+  done <<< "$DEV_SERVER_FRAMEWORK_SIGNATURES"
+
   find . \
     \( -path './node_modules' -o -path '*/node_modules' \
     -o -path './.git' -o -path '*/.git' \
@@ -124,12 +120,7 @@ scan_signature_files() {
     -o -path './.turbo' -o -path '*/.turbo' \
     -o -path './tmp' -o -path '*/tmp' \
     -o -path './fixtures' -o -path '*/fixtures' \) -prune \
-    -o \( -name 'next.config.js' -o -name 'next.config.mjs' -o -name 'next.config.ts' -o -name 'next.config.cjs' \
-    -o -name 'vite.config.js' -o -name 'vite.config.ts' -o -name 'vite.config.mjs' -o -name 'vite.config.cjs' \
-    -o -name 'nuxt.config.js' -o -name 'nuxt.config.mjs' -o -name 'nuxt.config.ts' \
-    -o -name 'astro.config.js' -o -name 'astro.config.mjs' -o -name 'astro.config.ts' \
-    -o -name 'remix.config.js' -o -name 'remix.config.ts' \
-    -o -name 'svelte.config.js' -o -name 'svelte.config.mjs' -o -name 'svelte.config.ts' \) -print 2>/dev/null
+    -o \( "${signature_predicates[@]}" \) -print 2> /dev/null
 }
 
 while IFS= read -r file; do
@@ -147,15 +138,9 @@ while IFS= read -r file; do
     continue
   fi
 
-  case "$fname" in
-    next.config.*) ftype="next" ;;
-    vite.config.*) ftype="vite" ;;
-    nuxt.config.*) ftype="nuxt" ;;
-    astro.config.*) ftype="astro" ;;
-    remix.config.*) ftype="remix" ;;
-    svelte.config.*) ftype="sveltekit" ;;
-    *) continue ;;
-  esac
+  if ! ftype=$(framework_type_for_signature "$fname"); then
+    continue
+  fi
 
   add_mono_hit "${ftype}@${fdir}"
 done < <(scan_signature_files | sort)
@@ -178,7 +163,7 @@ done < <(
     -o -path './.git' -o -path '*/.git' \
     -o -path './vendor' -o -path '*/vendor' \
     -o -path './fixtures' -o -path '*/fixtures' \) -prune \
-    -o -name 'Gemfile' -print 2>/dev/null
+    -o -name 'Gemfile' -print 2> /dev/null
 )
 
 MONO_HITS=$(printf '%s\n' "$MONO_HITS" | sed '/^$/d' | sort)

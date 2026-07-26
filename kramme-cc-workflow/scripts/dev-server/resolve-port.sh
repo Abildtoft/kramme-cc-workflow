@@ -11,6 +11,10 @@
 
 set -euo pipefail
 
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=framework-registry.sh
+source "$SCRIPT_DIR/framework-registry.sh"
+
 PROJECT_ROOT=""
 PROJ_TYPE=""
 EXPLICIT_PORT=""
@@ -48,7 +52,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$PROJECT_ROOT" ]; then
-  PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
+  PROJECT_ROOT=$(git rev-parse --show-toplevel 2> /dev/null || true)
   if [ -z "$PROJECT_ROOT" ]; then
     echo "ERROR: not in a git repository and no path provided" >&2
     exit 1
@@ -65,7 +69,7 @@ is_port() {
   case "$value" in
     '' | *[!0-9]*) return 1 ;;
   esac
-  [ "$value" -ge 1 ] 2>/dev/null && [ "$value" -le 65535 ] 2>/dev/null
+  [ "$value" -ge 1 ] 2> /dev/null && [ "$value" -le 65535 ] 2> /dev/null
 }
 
 emit_if_port() {
@@ -84,33 +88,21 @@ parse_script_port() {
 should_probe() {
   local ptype="$1"
   local probe="$2"
+  local probe_status
 
   if [ -z "$ptype" ]; then
     return 0
   fi
 
-  case "$ptype" in
-    rails)
-      case "$probe" in
-        puma | procfile | docker-compose | env | default) return 0 ;;
-        *) return 1 ;;
-      esac
-      ;;
-    next | nuxt | astro | remix | vite | sveltekit)
-      case "$probe" in
-        framework-config | procfile | docker-compose | package-json | env | default) return 0 ;;
-        *) return 1 ;;
-      esac
-      ;;
-    procfile)
-      case "$probe" in
-        procfile | docker-compose | env | default) return 0 ;;
-        *) return 1 ;;
-      esac
-      ;;
-    *)
-      return 0
-      ;;
+  if framework_probe_is_allowed "$ptype" "$probe"; then
+    return 0
+  else
+    probe_status=$?
+  fi
+
+  case "$probe_status" in
+    1) return 1 ;;
+    *) return 0 ;;
   esac
 }
 
@@ -121,7 +113,7 @@ parse_env_port() {
   fi
 
   local line value
-  line=$(grep -E '^PORT=' "$envfile" 2>/dev/null | tail -1 || true)
+  line=$(grep -E '^PORT=' "$envfile" 2> /dev/null | tail -1 || true)
   if [ -z "$line" ]; then
     return 0
   fi
@@ -189,7 +181,7 @@ parse_compose_port() {
         exit
       }
     }
-  ' "$compose_file" 2>/dev/null)
+  ' "$compose_file" 2> /dev/null)
   preferred_port=$(extract_compose_host_port "$preferred_line")
   if is_port "$preferred_port"; then
     printf '%s' "$preferred_port"
@@ -202,7 +194,7 @@ parse_compose_port() {
       printf '%s' "$fallback_port"
       return 0
     fi
-  done < <(grep -E '[0-9]+[[:space:]]*:[[:space:]]*[0-9]+' "$compose_file" 2>/dev/null || true)
+  done < <(grep -E '[0-9]+[[:space:]]*:[[:space:]]*[0-9]+' "$compose_file" 2> /dev/null || true)
 }
 
 parse_puma_port() {
@@ -212,7 +204,7 @@ parse_puma_port() {
   fi
 
   local line puma_port
-  line=$(grep -E '^[[:space:]]*port[[:space:]]+' "$puma_file" 2>/dev/null | head -1 || true)
+  line=$(grep -E '^[[:space:]]*port[[:space:]]+' "$puma_file" 2> /dev/null | head -1 || true)
   puma_port=$(printf '%s' "$line" | grep -Eo 'port[[:space:]]+["'"'"']?[0-9]+' | head -1 | grep -Eo '[0-9]+' || true)
   if is_port "$puma_port"; then
     printf '%s' "$puma_port"
@@ -235,26 +227,11 @@ if [ -n "$EXPLICIT_PORT" ]; then
 fi
 
 if should_probe "$PROJ_TYPE" "framework-config"; then
-  for cfg in \
-    "$PROJECT_ROOT"/next.config.js \
-    "$PROJECT_ROOT"/next.config.ts \
-    "$PROJECT_ROOT"/next.config.mjs \
-    "$PROJECT_ROOT"/next.config.cjs \
-    "$PROJECT_ROOT"/vite.config.js \
-    "$PROJECT_ROOT"/vite.config.ts \
-    "$PROJECT_ROOT"/vite.config.mjs \
-    "$PROJECT_ROOT"/vite.config.cjs \
-    "$PROJECT_ROOT"/nuxt.config.js \
-    "$PROJECT_ROOT"/nuxt.config.ts \
-    "$PROJECT_ROOT"/nuxt.config.mjs \
-    "$PROJECT_ROOT"/nuxt.config.cjs \
-    "$PROJECT_ROOT"/astro.config.js \
-    "$PROJECT_ROOT"/astro.config.ts \
-    "$PROJECT_ROOT"/astro.config.mjs \
-    "$PROJECT_ROOT"/astro.config.cjs; do
+  while IFS='|' read -r _framework signature; do
+    cfg="$PROJECT_ROOT/$signature"
     [ -f "$cfg" ] || continue
 
-    local_line=$(grep -E 'port:[[:space:]]*["'"'"']?[0-9]+' "$cfg" 2>/dev/null | head -1 || true)
+    local_line=$(grep -E 'port:[[:space:]]*["'"'"']?[0-9]+' "$cfg" 2> /dev/null | head -1 || true)
     [ -n "$local_line" ] || continue
 
     local_port=$(printf '%s' "$local_line" | grep -Eo 'port:[[:space:]]*["'"'"']?[0-9]+["'"'"']?' | head -1 | grep -Eo '[0-9]+' || true)
@@ -264,7 +241,7 @@ if should_probe "$PROJ_TYPE" "framework-config"; then
     if [ -z "$local_after" ] || printf '%s' "$local_after" | grep -qE '^[[:space:],})]*$'; then
       emit_if_port "$local_port"
     fi
-  done
+  done <<< "$DEV_SERVER_FRAMEWORK_SIGNATURES"
 fi
 
 if should_probe "$PROJ_TYPE" "puma"; then
@@ -278,7 +255,7 @@ fi
 if should_probe "$PROJ_TYPE" "procfile"; then
   for procfile in "$PROJECT_ROOT/Procfile.dev" "$PROJECT_ROOT/Procfile"; do
     [ -f "$procfile" ] || continue
-    web_line=$(grep -E '^web:' "$procfile" 2>/dev/null | head -1 || true)
+    web_line=$(grep -E '^web:' "$procfile" 2> /dev/null | head -1 || true)
     if [ -n "$web_line" ]; then
       proc_port=$(printf '%s' "$web_line" | grep -Eo '(-p[= ]*|--port[= ]+)[0-9]+' | head -1 | grep -Eo '[0-9]+' || true)
       emit_if_port "$proc_port"
@@ -297,15 +274,15 @@ fi
 if should_probe "$PROJ_TYPE" "package-json"; then
   pkg_file="$PROJECT_ROOT/package.json"
   if [ -f "$pkg_file" ]; then
-    if command -v jq >/dev/null 2>&1; then
+    if command -v jq > /dev/null 2>&1; then
       for script_name in dev start; do
-        script_value=$(jq -r --arg name "$script_name" '.scripts[$name] // empty' "$pkg_file" 2>/dev/null || true)
+        script_value=$(jq -r --arg name "$script_name" '.scripts[$name] // empty' "$pkg_file" 2> /dev/null || true)
         pkg_port=$(parse_script_port "$script_value")
         emit_if_port "$pkg_port"
       done
     else
       for script_name in dev start; do
-        script_line=$(grep -E "\"${script_name}\"[[:space:]]*:" "$pkg_file" 2>/dev/null | head -1 || true)
+        script_line=$(grep -E "\"${script_name}\"[[:space:]]*:" "$pkg_file" 2> /dev/null | head -1 || true)
         pkg_port=$(parse_script_port "$script_line")
         emit_if_port "$pkg_port"
       done
@@ -324,20 +301,8 @@ if should_probe "$PROJ_TYPE" "env"; then
 fi
 
 if should_probe "$PROJ_TYPE" "default"; then
-  case "$PROJ_TYPE" in
-    vite | sveltekit)
-      echo "5173"
-      ;;
-    astro)
-      echo "4321"
-      ;;
-    rails | next | nuxt | remix | procfile | "")
-      echo "3000"
-      ;;
-    *)
-      echo "3000"
-      ;;
-  esac
+  default_port=$(framework_default_port "$PROJ_TYPE" || true)
+  echo "${default_port:-3000}"
   exit 0
 fi
 
