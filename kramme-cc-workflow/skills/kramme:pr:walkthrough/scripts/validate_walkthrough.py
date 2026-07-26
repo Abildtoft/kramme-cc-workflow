@@ -6,11 +6,14 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
+import subprocess
 import sys
 from html.parser import HTMLParser
 from pathlib import Path
 from pathlib import PurePosixPath
 from typing import Any
+from typing import cast
 
 REQUIRED_GRAPH_IDS = ["system-overview", "data-flow", "code-dependency", "user-action"]
 REQUIRED_LABELS = [
@@ -31,6 +34,9 @@ SAFE_DATA_MEDIA_RE = re.compile(
     r"^data:(image/(?:avif|gif|jpe?g|png|webp)|video/(?:mp4|webm));base64,[a-z0-9+/=\s]+$",
     re.IGNORECASE,
 )
+NODE_CHECK_TIMEOUT_SECONDS = 10
+MAX_NODE_CHECK_DIAGNOSTIC_LINES = 6
+MAX_NODE_CHECK_DIAGNOSTIC_CHARS = 1200
 
 
 class WalkthroughParser(HTMLParser):
@@ -181,19 +187,51 @@ def media_source(media: Any) -> Any:
     return None
 
 
-def validate_node_urls(graph_id: Any, node_id: Any, node: dict[str, Any]) -> list[str]:
+def is_non_empty_string(value: Any) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def validate_node_urls(
+    graph_id: str,
+    node_id: str,
+    collections: dict[str, list[Any]],
+) -> list[str]:
     errors: list[str] = []
-    for index, file_entry in enumerate(node.get("files") or []):
-        if isinstance(file_entry, dict) and file_entry.get("url") and not is_safe_href(file_entry["url"]):
+    for index, file_entry in enumerate(collections["files"]):
+        if (
+            isinstance(file_entry, dict)
+            and file_entry.get("url")
+            and not is_safe_href(file_entry["url"])
+        ):
             errors.append(f"{graph_id}/{node_id}: file {index} uses an unsafe URL")
-    for index, link in enumerate(node.get("links") or []):
+    for index, link in enumerate(collections["links"]):
         if isinstance(link, dict) and link.get("url") and not is_safe_href(link["url"]):
             errors.append(f"{graph_id}/{node_id}: link {index} uses an unsafe URL")
-    for index, media in enumerate(node.get("media") or []):
+    for index, media in enumerate(collections["media"]):
         source = media_source(media)
         if source and not is_safe_media_source(source):
             errors.append(f"{graph_id}/{node_id}: media {index} uses an unsafe source URL")
     return errors
+
+
+def validate_node_collections(
+    graph_id: str,
+    node_id: str,
+    node: dict[str, Any],
+) -> tuple[dict[str, list[Any]], list[str]]:
+    collections: dict[str, list[Any]] = {}
+    errors: list[str] = []
+    for key in ("details", "files", "comments", "links", "media"):
+        if key not in node:
+            collections[key] = []
+            continue
+        value = node[key]
+        if not isinstance(value, list):
+            errors.append(f"{graph_id}/{node_id}: {key} must be an array")
+            collections[key] = []
+            continue
+        collections[key] = value
+    return collections, errors
 
 
 def validate_data(data: dict[str, Any]) -> list[str]:
@@ -207,37 +245,53 @@ def validate_data(data: dict[str, Any]) -> list[str]:
     graph_ids = [graph.get("id") for graph in graphs if isinstance(graph, dict)]
     if graph_ids != REQUIRED_GRAPH_IDS:
         errors.append("graphs must appear in exact order: " + ", ".join(REQUIRED_GRAPH_IDS))
-    for graph in graphs:
+    for graph_index, graph in enumerate(graphs):
         if not isinstance(graph, dict):
             errors.append("each graph must be an object")
             continue
-        graph_id = graph.get("id", "<missing>")
-        nodes = graph.get("nodes")
-        edges = graph.get("edges")
-        tour = graph.get("tour")
-        if not isinstance(nodes, list) or not nodes:
+        raw_graph_id = graph.get("id")
+        if is_non_empty_string(raw_graph_id):
+            graph_id = cast(str, raw_graph_id)
+        else:
+            errors.append(f"graph {graph_index} id must be a non-empty string")
+            graph_id = f"graph {graph_index}"
+
+        raw_nodes = graph.get("nodes")
+        raw_edges = graph.get("edges")
+        raw_tour = graph.get("tour")
+        nodes = raw_nodes if isinstance(raw_nodes, list) else []
+        edges = raw_edges if isinstance(raw_edges, list) else []
+        tour = raw_tour if isinstance(raw_tour, list) else []
+
+        if not isinstance(raw_nodes, list) or not nodes:
             errors.append(f"{graph_id}: nodes must be a non-empty array")
-            continue
-        if not isinstance(edges, list):
+        if not isinstance(raw_edges, list):
             errors.append(f"{graph_id}: edges must be an array")
-            edges = []
-        if graph_id != "system-overview" and not edges:
+        elif graph_id != "system-overview" and not edges:
             errors.append(f"{graph_id}: non-overview graph must include directed edges")
-        if not isinstance(tour, list) or not tour:
+        if not isinstance(raw_tour, list) or not tour:
             errors.append(f"{graph_id}: tour must be a non-empty array")
-            tour = []
-        node_ids: set[Any] = set()
-        for node in nodes:
+
+        node_ids: set[str] = set()
+        for node_index, node in enumerate(nodes):
             if not isinstance(node, dict):
                 errors.append(f"{graph_id}: every node must be an object")
                 continue
-            node_id = node.get("id", "<missing>")
-            if not node.get("id"):
-                errors.append(f"{graph_id}: node missing id")
-            elif node_id in node_ids:
-                errors.append(f"{graph_id}: duplicate node id {node_id}")
+            raw_node_id = node.get("id")
+            if is_non_empty_string(raw_node_id):
+                node_id = cast(str, raw_node_id)
+                if node_id in node_ids:
+                    errors.append(f"{graph_id}: duplicate node id {node_id}")
+                else:
+                    node_ids.add(node_id)
             else:
-                node_ids.add(node_id)
+                errors.append(f"{graph_id}: node {node_index} id must be a non-empty string")
+                node_id = f"node {node_index}"
+
+            collections, collection_errors = validate_node_collections(
+                graph_id, node_id, node
+            )
+            errors.extend(collection_errors)
             if not node.get("title"):
                 errors.append(f"{graph_id}/{node_id}: node missing title")
             if not node_text(node):
@@ -248,28 +302,74 @@ def validate_data(data: dict[str, Any]) -> list[str]:
                 errors.append(f"{graph_id}/{node_id}: node needs numeric x and y coordinates")
             if graph_id == "system-overview":
                 for key in ("files", "comments", "media"):
-                    if node.get(key):
+                    if collections[key]:
                         errors.append(f"{graph_id}/{node_id}: overview nodes must not attach {key}")
-            errors.extend(validate_node_urls(graph_id, node_id, node))
-        for edge in edges:
+            errors.extend(validate_node_urls(graph_id, node_id, collections))
+
+        for edge_index, edge in enumerate(edges):
             if not isinstance(edge, dict):
                 errors.append(f"{graph_id}: every edge must be an object")
                 continue
-            if edge.get("source") not in node_ids:
-                errors.append(f"{graph_id}: edge source does not match a node: {edge.get('source')}")
-            if edge.get("target") not in node_ids:
-                errors.append(f"{graph_id}: edge target does not match a node: {edge.get('target')}")
+            if "id" in edge and not is_non_empty_string(edge["id"]):
+                errors.append(f"{graph_id}: edge {edge_index} id must be a non-empty string")
+            source = edge.get("source")
+            target = edge.get("target")
+            if not is_non_empty_string(source):
+                errors.append(f"{graph_id}: edge {edge_index} source must be a non-empty string")
+            elif cast(str, source) not in node_ids:
+                errors.append(f"{graph_id}: edge source does not match a node: {source}")
+            if not is_non_empty_string(target):
+                errors.append(f"{graph_id}: edge {edge_index} target must be a non-empty string")
+            elif cast(str, target) not in node_ids:
+                errors.append(f"{graph_id}: edge target does not match a node: {target}")
             if graph_id != "system-overview" and not edge.get("label"):
                 errors.append(f"{graph_id}: directed edge needs a relationship label")
+
         for index, step in enumerate(tour):
             if not isinstance(step, dict):
                 errors.append(f"{graph_id}: tour step {index} must be an object")
                 continue
-            if step.get("nodeId") not in node_ids:
-                errors.append(f"{graph_id}: tour step {index} points at missing node {step.get('nodeId')}")
+            tour_node_id = step.get("nodeId")
+            if not is_non_empty_string(tour_node_id):
+                errors.append(f"{graph_id}: tour step {index} nodeId must be a non-empty string")
+            elif cast(str, tour_node_id) not in node_ids:
+                errors.append(
+                    f"{graph_id}: tour step {index} points at missing node {tour_node_id}"
+                )
             if not step.get("body") and not step.get("summary"):
                 errors.append(f"{graph_id}: tour step {index} needs explanatory text")
     return errors
+
+
+def validate_runtime_javascript(runtime_scripts: list[str]) -> list[str]:
+    runtime_source = "\n".join(script for script in runtime_scripts if script.strip())
+    if not runtime_source:
+        return ["missing inline walkthrough runtime"]
+
+    node = shutil.which("node")
+    if node is None:
+        return ["node executable is required to validate runtime JavaScript"]
+
+    try:
+        result = subprocess.run(
+            [node, "--check", "-"],
+            input=runtime_source,
+            capture_output=True,
+            text=True,
+            timeout=NODE_CHECK_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return [f"runtime JavaScript syntax check could not run: {exc}"]
+    if result.returncode == 0:
+        return []
+
+    diagnostic = (result.stderr or result.stdout).strip()
+    lines = diagnostic.splitlines()[:MAX_NODE_CHECK_DIAGNOSTIC_LINES]
+    bounded = "\n".join(lines)[:MAX_NODE_CHECK_DIAGNOSTIC_CHARS]
+    if not bounded:
+        bounded = f"node --check exited {result.returncode}"
+    return [f"runtime JavaScript syntax check failed: {bounded}"]
 
 
 def validate_html_surface(
@@ -295,6 +395,7 @@ def main() -> None:
     html_text = load_html(args.html)
     data, errors, runtime_scripts, script_srcs = parse_embedded_data(html_text)
     errors.extend(validate_html_surface(html_text, runtime_scripts, script_srcs))
+    errors.extend(validate_runtime_javascript(runtime_scripts))
     if data is not None:
         errors.extend(validate_data(data))
     if errors:

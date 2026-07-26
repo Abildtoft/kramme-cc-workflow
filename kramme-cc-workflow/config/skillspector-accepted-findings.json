@@ -17,6 +17,22 @@
       "review_after": "2026-08-25"
     },
     {
+      "path": "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/d3.v7.9.0.min.js",
+      "rule_id": "SC3",
+      "reason": "Reviewed intentional SC3 finding for the vendored D3 v7.9.0 minified distribution: the file is pinned to the upstream source and SHA-256 recorded in references/sources.yaml, retains its upstream license notice, and is embedded locally so private Pull Request context never depends on third-party CDN execution.",
+      "owner": "kramme",
+      "accepted_at": "2026-07-26",
+      "review_after": "2026-08-26"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:pr:walkthrough/scripts/validate_walkthrough.py",
+      "rule_id": "OH1",
+      "reason": "Reviewed false-positive OH1 finding for runtime syntax validation: subprocess.run receives a fixed argument vector with shell execution disabled, passes walkthrough runtime text only through stdin to node --check, never executes that text, and bounds returned diagnostics before reporting them.",
+      "owner": "kramme",
+      "accepted_at": "2026-07-26",
+      "review_after": "2026-08-26"
+    },
+    {
       "path": "kramme-cc-workflow/skills/kramme:pr:rebase/SKILL.md",
       "rule_id": "TM1",
       "reason": "Reviewed intentional TM1 finding for this user-triggered rebase skill: explicit dangerous --auto mode may force-push with --force-with-lease after bypassing red-flag and verification gates. Safe --force-push and manual paths keep red-flag/verification gates, and all pushes validate and quote the current branch.",
