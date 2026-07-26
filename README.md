@@ -762,7 +762,10 @@ kramme-cc-workflow/tests/
 ├── run-tests.sh                      # Complete top-level Bats runner
 ├── node/
 │   ├── codex-hook-compat.test.js     # Codex hook conversion contracts
-│   ├── converter-contracts.test.js   # Core converter contracts
+│   ├── converter-core.test.js        # Converter loading and transforms
+│   ├── converter-install.test.js     # Converter install transactions
+│   ├── converter-integration.test.js # Cross-module converter flows
+│   ├── converter-output.test.js      # Converter writers and config
 │   ├── frontmatter.test.js           # Frontmatter unit contracts
 │   └── scorer.test.js                # Skill-review scorer contracts
 ├── python/

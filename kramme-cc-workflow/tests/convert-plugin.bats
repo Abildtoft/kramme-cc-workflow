@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 # CLI smoke tests for scripts/convert-plugin.js. Converter logic lives in
-# tests/node/converter-contracts.test.js.
+# tests/node/converter-*.test.js.
 
 setup() {
 	SCRIPT="$BATS_TEST_DIRNAME/../scripts/convert-plugin.js"
