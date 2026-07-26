@@ -140,10 +140,8 @@ def object_list_field(obj: JsonObject, key: str) -> List[JsonObject]:
     return object_list_value(obj[key], key)
 
 
-def string_value(value: object, field: str, default: str = "") -> str:
-    """Require a string when a value is present."""
-    if value is None:
-        return default
+def string_value(value: object, field: str) -> str:
+    """Require a string value."""
     if not isinstance(value, str):
         raise TranscriptShapeError(f"{field} is not a string")
     return value
@@ -153,7 +151,7 @@ def string_field(obj: JsonObject, key: str, default: str = "") -> str:
     """Read an optional checked string field."""
     if key not in obj:
         return default
-    return string_value(obj[key], key, default)
+    return string_value(obj[key], key)
 
 
 def string_list_field(obj: JsonObject, key: str) -> List[str]:

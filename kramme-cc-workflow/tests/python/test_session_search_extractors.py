@@ -353,6 +353,61 @@ runpy.run_path(script_path, run_name="__main__")
                 meta = json.loads(result.stdout.splitlines()[-1])
                 self.assertEqual(meta["parse_errors"], 4)
 
+    def test_rejected_claude_event_does_not_update_pending_tool_status(self):
+        malformed_result = (
+            '{"type":"user","timestamp":"2026-06-06T11:02:00Z",'
+            '"message":{"content":['
+            '{"type":"tool_result","tool_use_id":"tool-1","is_error":false,"content":"ok"},'
+            '{"type":"text","text":42}]}}'
+        )
+        session = (
+            "\n".join(
+                [
+                    CLAUDE_SESSION.splitlines()[1],
+                    malformed_result,
+                    (
+                        '{"type":"user","timestamp":"2026-06-06T11:03:00Z",'
+                        '"message":{"content":"Please continue after the malformed result."}}'
+                    ),
+                ]
+            )
+            + "\n"
+        )
+
+        result = self.run_script("extract-skeleton.py", session)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("[tool] Read /tmp/example.py", result.stdout)
+        self.assertNotIn("-> ok", result.stdout)
+        meta = json.loads(result.stdout.splitlines()[-1])
+        self.assertEqual(meta["parse_errors"], 1)
+
+    def test_errors_rejects_null_command_elements_and_continues(self):
+        malformed_command = (
+            '{"timestamp":"2026-06-06T10:03:30Z","type":"event_msg",'
+            '"payload":{"type":"exec_command_end","command":[null],'
+            '"aggregated_output":"Process exited with code 1\\nfailed","stderr":"failed"}}'
+        )
+        session = (
+            "\n".join(
+                [
+                    CODEX_SESSION.splitlines()[0],
+                    malformed_command,
+                    CODEX_SESSION.splitlines()[-1],
+                ]
+            )
+            + "\n"
+        )
+
+        result = self.run_script("extract-errors.py", session)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("cmd=:", result.stdout)
+        self.assertIn("cmd=false: failed", result.stdout)
+        meta = json.loads(result.stdout.splitlines()[-1])
+        self.assertEqual(meta["parse_errors"], 1)
+        self.assertEqual(meta["errors_found"], 1)
+
     def test_metadata_counts_shape_read_and_scan_errors_without_suppressing_later_files(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

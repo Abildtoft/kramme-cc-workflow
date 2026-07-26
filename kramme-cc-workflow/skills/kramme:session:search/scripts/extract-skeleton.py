@@ -195,31 +195,38 @@ def handle_claude(obj: JsonObject) -> None:
 
         if isinstance(content, list):
             blocks = object_list_value(content, "content")
+            result_updates: list[tuple[str | None, str]] = []
+            texts: list[str] = []
             for block in blocks:
                 if block.get("type") == "tool_result":
                     is_error = block.get("is_error", False)
                     status = "error" if is_error else "ok"
                     tool_use_id = block.get("tool_use_id")
-                    matched = False
-                    if tool_use_id:
-                        tool_use_id = string_value(tool_use_id, "tool_use_id")
-                        for entry in pending_tools:
-                            if entry.get("id") == tool_use_id:
-                                entry["status"] = status
-                                matched = True
-                                break
-                    if not matched:
-                        # Fallback: assign to earliest pending entry without a status
-                        for entry in pending_tools:
-                            if not entry.get("status"):
-                                entry["status"] = status
-                                break
+                    checked_id = (
+                        string_value(tool_use_id, "tool_use_id")
+                        if tool_use_id
+                        else None
+                    )
+                    result_updates.append((checked_id, status))
+                elif block.get("type") == "text":
+                    text = string_field(block, "text")
+                    if len(text) > 10:
+                        texts.append(text)
 
-            texts = [
-                string_field(block, "text")
-                for block in blocks
-                if block.get("type") == "text" and len(string_field(block, "text")) > 10
-            ]
+            for tool_use_id, status in result_updates:
+                matched = False
+                if tool_use_id:
+                    for entry in pending_tools:
+                        if entry.get("id") == tool_use_id:
+                            entry["status"] = status
+                            matched = True
+                            break
+                if not matched:
+                    # Fallback: assign to earliest pending entry without a status
+                    for entry in pending_tools:
+                        if not entry.get("status"):
+                            entry["status"] = status
+                            break
             content = " ".join(texts)
         elif not isinstance(content, str):
             raise TranscriptShapeError("content is neither text nor a list of objects")
