@@ -21,6 +21,151 @@ is_allowed() {
   [ -z "$output" ] || [ "$output" = "{}" ]
 }
 
+# Helper: Run a command-safety hook with command metadata.
+run_safety_hook() {
+  local hook="$1"
+  local cmd="$2"
+  make_bash_input "$cmd" | bash "$hook"
+}
+
+_prepare_safety_hook_plugin_root() {
+  local plugin_root="$1"
+  local include_parser_wrapper="${2:-false}"
+
+  rm -rf "$plugin_root"
+  mkdir -p "$plugin_root/hooks/lib"
+  cp "$HOOKS_DIR/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
+  if [ "$include_parser_wrapper" = "true" ]; then
+    cp "$HOOKS_DIR/lib/safety-hook-parser.sh" "$plugin_root/hooks/lib/safety-hook-parser.sh"
+  fi
+  if [ -f "$HOOKS_DIR/confirm-review-artifacts.txt" ]; then
+    cp "$HOOKS_DIR/confirm-review-artifacts.txt" "$plugin_root/hooks/confirm-review-artifacts.txt"
+  fi
+}
+
+# Helper: Exercise the fail-closed path when jq is unavailable.
+run_safety_hook_without_jq() {
+  local hook="$1"
+  local cmd="$2"
+  local fake_bin="$BATS_TEST_TMPDIR/no-jq-bin"
+  local json_input
+
+  rm -rf "$fake_bin"
+  mkdir -p "$fake_bin"
+  ln -s "$(command -v bash)" "$fake_bin/bash"
+  ln -s "$(command -v cat)" "$fake_bin/cat"
+  json_input="$(make_bash_input "$cmd")"
+  env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$hook" <<<"$json_input"
+}
+
+# Helper: Exercise the disabled-hook path without requiring jq.
+run_disabled_safety_hook_without_jq() {
+  local hook="$1"
+  local hook_id="$2"
+  local cmd="$3"
+  local fake_bin="$BATS_TEST_TMPDIR/no-jq-disabled-bin"
+  local plugin_root="$BATS_TEST_TMPDIR/no-jq-disabled-plugin"
+  local json_input
+
+  rm -rf "$fake_bin"
+  mkdir -p "$fake_bin"
+  ln -s "$(command -v bash)" "$fake_bin/bash"
+  ln -s "$(command -v cat)" "$fake_bin/cat"
+  _prepare_safety_hook_plugin_root "$plugin_root"
+  printf '%s\n' "{\"disabled\":[\"$hook_id\"]}" >"$plugin_root/hooks/hook-state.json"
+  json_input="$(make_bash_input "$cmd")"
+  env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$plugin_root" "$fake_bin/bash" "$hook" <<<"$json_input"
+}
+
+# Helper: Exercise the fail-closed path when python3 is unavailable.
+run_safety_hook_without_python() {
+  local hook="$1"
+  local cmd="$2"
+  local git_command="${3:-}"
+  local fake_bin="$BATS_TEST_TMPDIR/no-python-bin"
+  local command_name command_path
+
+  rm -rf "$fake_bin"
+  mkdir -p "$fake_bin"
+  for command_name in bash jq cat grep sed; do
+    command_path="$(command -v "$command_name")"
+    ln -s "$command_path" "$fake_bin/$command_name"
+  done
+  if [ -n "$git_command" ]; then
+    ln -s "$git_command" "$fake_bin/git"
+  fi
+  make_bash_input "$cmd" | env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$hook"
+}
+
+# Helper: Exercise a hook whose shared shell parser wrapper is unavailable.
+run_safety_hook_without_shared_parser() {
+  local hook="$1"
+  local cmd="$2"
+  local plugin_root="$BATS_TEST_TMPDIR/no-safety-parser-plugin"
+
+  _prepare_safety_hook_plugin_root "$plugin_root"
+  make_bash_input "$cmd" | env CLAUDE_PLUGIN_ROOT="$plugin_root" bash "$hook"
+}
+
+# Helper: Exercise a hook whose Python parser implementation is unavailable.
+run_safety_hook_without_python_parser() {
+  local hook="$1"
+  local cmd="$2"
+  local plugin_root="$BATS_TEST_TMPDIR/missing-python-parser-plugin"
+
+  _prepare_safety_hook_plugin_root "$plugin_root" "true"
+  make_bash_input "$cmd" | env CLAUDE_PLUGIN_ROOT="$plugin_root" bash "$hook"
+}
+
+# Helper: Exercise parser-output validation without invoking the production parser.
+run_safety_hook_with_parser_output() {
+  local hook="$1"
+  local cmd="$2"
+  local parser_output="$3"
+  local plugin_root="$BATS_TEST_TMPDIR/parser-output-plugin"
+
+  _prepare_safety_hook_plugin_root "$plugin_root" "true"
+  printf '%s\n' \
+    'import os' \
+    '' \
+    'print(os.environ["SAFETY_HOOK_TEST_PARSER_OUTPUT"])' \
+    >"$plugin_root/hooks/lib/git_command_parser.py"
+  make_bash_input "$cmd" |
+    env SAFETY_HOOK_TEST_PARSER_OUTPUT="$parser_output" CLAUDE_PLUGIN_ROOT="$plugin_root" bash "$hook"
+}
+
+# Helper: Emit the supported cross-policy command-prefix matrix for a payload.
+safety_command_prefix_matrix() {
+  local payload="$1"
+
+  printf '%s\n' \
+    "$payload" \
+    "timeout 1 $payload" \
+    "timeout -s KILL 1 $payload" \
+    "nice -n 10 $payload" \
+    "env FOO=bar $payload" \
+    "env -S \"$payload\"" \
+    "env --split-string=\"$payload\"" \
+    "nohup $payload" \
+    "exec $payload" \
+    "exec -c $payload" \
+    "exec -cl $payload" \
+    "sudo FOO=bar $payload" \
+    "time FOO=bar $payload" \
+    "timeout 1 nice -n 10 env FOO=bar bash -c '$payload'"
+}
+
+# Helper: Emit malformed command prefixes that every safety policy rejects.
+safety_malformed_prefix_matrix() {
+  local payload="$1"
+
+  printf '%s\n' \
+    "timeout 1 bash -c \$'$payload" \
+    "nice -n 10 env FOO=bar bash -c \$'$payload" \
+    "env -S '\"$payload'" \
+    "env --split-string='\"$payload'"
+}
+
 # Helper: Create JSON input for auto-format hook
 make_format_input() {
   local path="$1"

@@ -9,71 +9,7 @@ setup() {
 
 # Helper to run hook with given command
 run_hook() {
-	make_bash_input "$1" | bash "$HOOK"
-}
-
-run_hook_without_jq() {
-	local cmd="$1"
-	local fake_bin="$BATS_TEST_TMPDIR/no-jq-bin"
-	local json_input
-	rm -rf "$fake_bin"
-	mkdir -p "$fake_bin"
-	ln -s "$(command -v bash)" "$fake_bin/bash"
-	ln -s "$(command -v cat)" "$fake_bin/cat"
-	json_input="$(make_bash_input "$cmd")"
-	env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK" <<<"$json_input"
-}
-
-run_hook_without_jq_disabled() {
-	local cmd="$1"
-	local fake_bin="$BATS_TEST_TMPDIR/no-jq-disabled-bin"
-	local plugin_root="$BATS_TEST_TMPDIR/no-jq-disabled-plugin"
-	local json_input
-	rm -rf "$fake_bin" "$plugin_root"
-	mkdir -p "$fake_bin" "$plugin_root/hooks/lib"
-	ln -s "$(command -v bash)" "$fake_bin/bash"
-	ln -s "$(command -v cat)" "$fake_bin/cat"
-	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
-	printf '%s\n' '{"disabled":["block-rm-rf"]}' >"$plugin_root/hooks/hook-state.json"
-	json_input="$(make_bash_input "$cmd")"
-	env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$plugin_root" "$fake_bin/bash" "$HOOK" <<<"$json_input"
-}
-
-run_hook_without_python3() {
-	local cmd="$1"
-	local fake_bin="$BATS_TEST_TMPDIR/no-python-bin"
-	local json_input
-	rm -rf "$fake_bin"
-	mkdir -p "$fake_bin"
-	ln -s "$(command -v bash)" "$fake_bin/bash"
-	ln -s "$(command -v cat)" "$fake_bin/cat"
-	ln -s "$(command -v jq)" "$fake_bin/jq"
-	json_input="$(make_bash_input "$cmd")"
-	env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK" <<<"$json_input"
-}
-
-run_hook_without_safety_parser() {
-	local cmd="$1"
-	local plugin_root="$BATS_TEST_TMPDIR/no-safety-parser-plugin"
-	mkdir -p "$plugin_root/hooks/lib"
-	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
-	make_bash_input "$cmd" | env CLAUDE_PLUGIN_ROOT="$plugin_root" bash "$HOOK"
-}
-
-run_hook_with_parser_output() {
-	local cmd="$1"
-	local parser_output="$2"
-	local plugin_root="$BATS_TEST_TMPDIR/parser-output-plugin"
-	rm -rf "$plugin_root"
-	mkdir -p "$plugin_root/hooks/lib"
-	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
-	cp "$BATS_TEST_DIRNAME/../hooks/lib/safety-hook-parser.sh" "$plugin_root/hooks/lib/safety-hook-parser.sh"
-	cat >"$plugin_root/hooks/lib/git_command_parser.py" <<'PYTHON'
-import os
-
-print(os.environ["SAFETY_HOOK_TEST_PARSER_OUTPUT"])
-PYTHON
-	make_bash_input "$cmd" | env SAFETY_HOOK_TEST_PARSER_OUTPUT="$parser_output" CLAUDE_PLUGIN_ROOT="$plugin_root" bash "$HOOK"
+	run_safety_hook "$HOOK" "$1"
 }
 
 # ============================================================================
@@ -99,13 +35,13 @@ PYTHON
 }
 
 @test "blocks malformed parser output" {
-	run run_hook_with_parser_output "rm -rf directory/" 'not-json'
+	run run_safety_hook_with_parser_output "$HOOK" "rm -rf directory/" 'not-json'
 	is_blocked
 	[[ "$output" == *"Unable to safely parse command metadata"* ]]
 }
 
 @test "blocks command when jq is unavailable" {
-	run run_hook_without_jq "rm -rf directory/"
+	run run_safety_hook_without_jq "$HOOK" "rm -rf directory/"
 	is_blocked
 	[[ "$output" == *"jq not found"* ]]
 	[[ "$output" == *"refusing to run safety hook without JSON parsing"* ]]
@@ -113,13 +49,13 @@ PYTHON
 }
 
 @test "allows disabled hook when jq is unavailable" {
-	run run_hook_without_jq_disabled "rm -rf directory/"
+	run run_disabled_safety_hook_without_jq "$HOOK" "block-rm-rf" "rm -rf directory/"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "blocks command when python3 is unavailable" {
-	run run_hook_without_python3 "rm -rf directory/"
+	run run_safety_hook_without_python "$HOOK" "rm -rf directory/"
 	is_blocked
 	[[ "$output" == *"python3 not found"* ]]
 	[[ "$output" == *"refusing to run safety hook without the shared command parser"* ]]
@@ -127,7 +63,7 @@ PYTHON
 }
 
 @test "blocks command when shared safety parser is unavailable" {
-	run run_hook_without_safety_parser "rm -rf directory/"
+	run run_safety_hook_without_shared_parser "$HOOK" "rm -rf directory/"
 	is_blocked
 	[[ "$output" == *"Unable to safely parse command metadata"* ]]
 }
@@ -148,6 +84,44 @@ PYTHON
 	run run_hook "mkdir -p directory/"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
+}
+
+@test "normalizes supported command prefixes before destructive-command policy" {
+	local command
+
+	while IFS= read -r command; do
+		run run_hook "$command"
+		if ! is_blocked; then
+			printf 'Expected prefixed command to be blocked: %s\n' "$command" >&2
+			return 1
+		fi
+		[[ "$output" == *"trash"* ]]
+	done < <(safety_command_prefix_matrix "rm -rf directory/")
+}
+
+@test "preserves safe deletion behavior across supported command prefixes" {
+	local command
+
+	while IFS= read -r command; do
+		run run_hook "$command"
+		if [ "$status" -ne 0 ] || [ -n "$output" ]; then
+			printf 'Expected prefixed command to be allowed: %s\n' "$command" >&2
+			return 1
+		fi
+	done < <(safety_command_prefix_matrix "rm directory/")
+}
+
+@test "fails closed for malformed supported command prefixes" {
+	local command
+
+	while IFS= read -r command; do
+		run run_hook "$command"
+		if ! is_blocked; then
+			printf 'Expected malformed prefixed command to be blocked: %s\n' "$command" >&2
+			return 1
+		fi
+		[[ "$output" == *"trash"* ]]
+	done < <(safety_malformed_prefix_matrix "rm -rf directory/")
 }
 
 @test "allows rm without -rf flags" {
