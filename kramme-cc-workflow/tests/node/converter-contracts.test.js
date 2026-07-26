@@ -2686,15 +2686,10 @@ test("writer preserves existing AGENTS.md extended attributes", async (t) => {
         ? "com.kramme.review-marker"
         : "user.kramme_review_marker";
     await writeFile(agentsPath, "# Local instructions\n");
-    const setResult = spawnSync(
-      "python3",
-      [
-        "-c",
-        "import os,sys; os.setxattr(sys.argv[1], sys.argv[2], b'review-marker')",
-        agentsPath,
-        attribute,
-      ],
-      { encoding: "utf8" },
+    const setResult = setExtendedAttribute(
+      agentsPath,
+      attribute,
+      "review-marker",
     );
     if (
       setResult.status !== 0 &&
@@ -2713,18 +2708,9 @@ test("writer preserves existing AGENTS.md extended attributes", async (t) => {
       pluginName: "agents-xattr-plugin",
     });
 
-    const getResult = spawnSync(
-      "python3",
-      [
-        "-c",
-        "import os,sys; sys.stdout.buffer.write(os.getxattr(sys.argv[1], sys.argv[2]))",
-        agentsPath,
-        attribute,
-      ],
-      { encoding: "utf8" },
-    );
+    const getResult = getExtendedAttribute(agentsPath, attribute);
     assert.equal(getResult.status, 0, getResult.stderr);
-    assert.equal(getResult.stdout, "review-marker");
+    assert.equal(getResult.stdout.trimEnd(), "review-marker");
   });
 });
 
@@ -2741,16 +2727,7 @@ test("writer does not resurrect AGENTS.md attributes removed during finalization
         ? "com.kramme.removed-marker"
         : "user.kramme_removed_marker";
     await writeFile(agentsPath, "# Local instructions\n");
-    const setResult = spawnSync(
-      "python3",
-      [
-        "-c",
-        "import os,sys; os.setxattr(sys.argv[1], sys.argv[2], b'remove-me')",
-        agentsPath,
-        attribute,
-      ],
-      { encoding: "utf8" },
-    );
+    const setResult = setExtendedAttribute(agentsPath, attribute, "remove-me");
     if (
       setResult.status !== 0 &&
       /not supported|operation not permitted/i.test(
@@ -2768,29 +2745,12 @@ test("writer does not resurrect AGENTS.md attributes removed during finalization
       pluginName: "agents-removed-xattr-plugin",
       onInstallPhase(phase) {
         if (phase !== "shared-scripts") return;
-        const removeResult = spawnSync(
-          "python3",
-          [
-            "-c",
-            "import os,sys; os.removexattr(sys.argv[1], sys.argv[2])",
-            agentsPath,
-            attribute,
-          ],
-          { encoding: "utf8" },
-        );
+        const removeResult = removeExtendedAttribute(agentsPath, attribute);
         assert.equal(removeResult.status, 0, removeResult.stderr);
       },
     });
 
-    const listResult = spawnSync(
-      "python3",
-      [
-        "-c",
-        "import os,sys; print('\\n'.join(os.listxattr(sys.argv[1])))",
-        agentsPath,
-      ],
-      { encoding: "utf8" },
-    );
+    const listResult = listExtendedAttributes(agentsPath);
     assert.equal(listResult.status, 0, listResult.stderr);
     assert.doesNotMatch(listResult.stdout, new RegExp(attribute));
   });
@@ -2809,16 +2769,7 @@ test("writer preserves AGENTS.md attributes through cross-device publication", a
         ? "com.kramme.cross-device-marker"
         : "user.kramme_cross_device_marker";
     await writeFile(agentsPath, "# Local instructions\n");
-    const setResult = spawnSync(
-      "python3",
-      [
-        "-c",
-        "import os,sys; os.setxattr(sys.argv[1], sys.argv[2], b'keep-me')",
-        agentsPath,
-        attribute,
-      ],
-      { encoding: "utf8" },
-    );
+    const setResult = setExtendedAttribute(agentsPath, attribute, "keep-me");
     if (
       setResult.status !== 0 &&
       /not supported|operation not permitted/i.test(
@@ -2860,18 +2811,9 @@ test("writer preserves AGENTS.md attributes through cross-device publication", a
     }
 
     assert.equal(injected, true);
-    const getResult = spawnSync(
-      "python3",
-      [
-        "-c",
-        "import os,sys; sys.stdout.buffer.write(os.getxattr(sys.argv[1], sys.argv[2]))",
-        agentsPath,
-        attribute,
-      ],
-      { encoding: "utf8" },
-    );
+    const getResult = getExtendedAttribute(agentsPath, attribute);
     assert.equal(getResult.status, 0, getResult.stderr);
-    assert.equal(getResult.stdout, "keep-me");
+    assert.equal(getResult.stdout.trimEnd(), "keep-me");
   });
 });
 
@@ -5391,6 +5333,72 @@ function delayForTest(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+/** @param {string} file @param {string} attribute @param {string} value */
+function setExtendedAttribute(file, attribute, value) {
+  if (process.platform === "darwin") {
+    return spawnSync("xattr", ["-w", attribute, value, file], {
+      encoding: "utf8",
+    });
+  }
+  return spawnSync(
+    "python3",
+    [
+      "-c",
+      "import os,sys; os.setxattr(sys.argv[1], sys.argv[2], sys.argv[3].encode())",
+      file,
+      attribute,
+      value,
+    ],
+    { encoding: "utf8" },
+  );
+}
+
+/** @param {string} file @param {string} attribute */
+function getExtendedAttribute(file, attribute) {
+  if (process.platform === "darwin") {
+    return spawnSync("xattr", ["-p", attribute, file], { encoding: "utf8" });
+  }
+  return spawnSync(
+    "python3",
+    [
+      "-c",
+      "import os,sys; sys.stdout.buffer.write(os.getxattr(sys.argv[1], sys.argv[2]))",
+      file,
+      attribute,
+    ],
+    { encoding: "utf8" },
+  );
+}
+
+/** @param {string} file @param {string} attribute */
+function removeExtendedAttribute(file, attribute) {
+  if (process.platform === "darwin") {
+    return spawnSync("xattr", ["-d", attribute, file], { encoding: "utf8" });
+  }
+  return spawnSync(
+    "python3",
+    [
+      "-c",
+      "import os,sys; os.removexattr(sys.argv[1], sys.argv[2])",
+      file,
+      attribute,
+    ],
+    { encoding: "utf8" },
+  );
+}
+
+/** @param {string} file */
+function listExtendedAttributes(file) {
+  if (process.platform === "darwin") {
+    return spawnSync("xattr", [file], { encoding: "utf8" });
+  }
+  return spawnSync(
+    "python3",
+    ["-c", "import os,sys; print('\\n'.join(os.listxattr(sys.argv[1])))", file],
+    { encoding: "utf8" },
+  );
+}
+
 /** @param {unknown} error @param {string} file @param {string} label @param {string} kind */
 function assertJsonObjectBoundaryError(error, file, label, kind) {
   assert.ok(error instanceof Error);
@@ -5406,7 +5414,10 @@ function escapeRegExp(value) {
 
 /** @template T @param {(root: string) => Promise<T>} fn @returns {Promise<T>} */
 async function withTempDir(fn) {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "converter-contracts-"));
+  const createdRoot = await fs.mkdtemp(
+    path.join(os.tmpdir(), "converter-contracts-"),
+  );
+  const root = await fs.realpath(createdRoot);
   try {
     return await fn(root);
   } finally {
