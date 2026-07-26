@@ -347,6 +347,125 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
         )
         self.assertIsNot(result.contexts[0]["git_args"], git_args)
 
+    def test_parse_commit_segment_preserves_content_selection(self) -> None:
+        cases = [
+            (
+                "all long",
+                ["git", "commit", "--all", "--message=test"],
+                {"selection_mode": "all", "pathspecs": []},
+            ),
+            (
+                "all short cluster",
+                ["git", "commit", "-am", "test"],
+                {"selection_mode": "all", "pathspecs": []},
+            ),
+            (
+                "include long",
+                ["git", "commit", "--include", "-m", "test", "one.txt"],
+                {"selection_mode": "include", "pathspecs": ["one.txt"]},
+            ),
+            (
+                "include short",
+                ["git", "commit", "-i", "-m", "test", "one.txt"],
+                {"selection_mode": "include", "pathspecs": ["one.txt"]},
+            ),
+            (
+                "only long",
+                ["git", "commit", "--only", "-m", "test", "one.txt"],
+                {"selection_mode": "only", "pathspecs": ["one.txt"]},
+            ),
+            (
+                "only short",
+                ["git", "commit", "-o", "-m", "test", "one.txt"],
+                {"selection_mode": "only", "pathspecs": ["one.txt"]},
+            ),
+            (
+                "implicit pathspec",
+                ["git", "commit", "-m", "test", "one.txt"],
+                {"selection_mode": "only", "pathspecs": ["one.txt"]},
+            ),
+            (
+                "separator preserves option-like pathspec",
+                ["git", "commit", "-m", "test", "--", "-a"],
+                {"selection_mode": "only", "pathspecs": ["-a"]},
+            ),
+            (
+                "line-delimited pathspec file",
+                [
+                    "git",
+                    "commit",
+                    "-m",
+                    "test",
+                    "--pathspec-from-file",
+                    "paths.txt",
+                ],
+                {
+                    "selection_mode": "only",
+                    "pathspecs": [],
+                    "pathspec_from_file": "paths.txt",
+                    "pathspec_file_nul": False,
+                },
+            ),
+            (
+                "nul-delimited pathspec file",
+                [
+                    "git",
+                    "commit",
+                    "-m",
+                    "test",
+                    "--pathspec-from-file=paths.bin",
+                    "--pathspec-file-nul",
+                ],
+                {
+                    "selection_mode": "only",
+                    "pathspecs": [],
+                    "pathspec_from_file": "paths.bin",
+                    "pathspec_file_nul": True,
+                },
+            ),
+        ]
+
+        for name, tokens, expected_selection in cases:
+            with self.subTest(name=name):
+                result = PARSER.parse_commit_segment(
+                    tokens,
+                    git_args=[],
+                    git_env=[],
+                    shell_git_vars=[],
+                )
+
+                self.assertEqual(
+                    result.contexts,
+                    [{"git_args": [], "git_env": [], **expected_selection}],
+                )
+
+    def test_parse_commit_segment_marks_unmodelled_selection(self) -> None:
+        cases = [
+            ["git", "commit", "--patch", "-m", "test"],
+            ["git", "commit", "--interactive", "-m", "test"],
+            ["git", "commit", "--mes", "notes.txt"],
+            ["git", "commit", "--all", "--only", "-m", "test", "one.txt"],
+            [
+                "git",
+                "commit",
+                "-m",
+                "test",
+                "--pathspec-from-file=paths.txt",
+                "one.txt",
+            ],
+        ]
+
+        for tokens in cases:
+            with self.subTest(tokens=tokens):
+                result = PARSER.parse_commit_segment(
+                    tokens,
+                    git_args=[],
+                    git_env=[],
+                    shell_git_vars=[],
+                )
+
+                self.assertIn("selection_error", result.contexts[0])
+
     def test_parse_commit_segment_exposes_exported_replay_state(self) -> None:
         result = PARSER.parse_commit_segment(
             ["export", "GIT_DIR=/tmp/repo"],

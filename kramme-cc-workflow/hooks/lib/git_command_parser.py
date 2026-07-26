@@ -31,6 +31,11 @@ class NoninteractiveSubstitution(TypedDict):
 class CommitContext(TypedDict, total=False):
     git_args: list[str]
     git_env: list[str]
+    selection_mode: str
+    pathspecs: list[str]
+    pathspec_from_file: str
+    pathspec_file_nul: bool
+    selection_error: str
     parse_error: str
 
 
@@ -2355,7 +2360,252 @@ COMMIT_REPLAY_ENV_VARS = {
     "GIT_COMMON_DIR",
     "GIT_OBJECT_DIRECTORY",
     "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_LITERAL_PATHSPECS",
+    "GIT_GLOB_PATHSPECS",
+    "GIT_NOGLOB_PATHSPECS",
+    "GIT_ICASE_PATHSPECS",
 }
+COMMIT_SELECTION_LONG_OPTIONS_WITH_VALUE = {
+    "--author",
+    "--cleanup",
+    "--date",
+    "--file",
+    "--fixup",
+    "--message",
+    "--reedit-message",
+    "--reuse-message",
+    "--squash",
+    "--template",
+    "--trailer",
+}
+COMMIT_SELECTION_LONG_OPTIONS_WITH_OPTIONAL_VALUE = {
+    "--gpg-sign",
+    "--untracked-files",
+}
+COMMIT_SELECTION_LONG_OPTIONS_WITHOUT_VALUE = {
+    "--ahead-behind",
+    "--allow-empty",
+    "--allow-empty-message",
+    "--amend",
+    "--branch",
+    "--dry-run",
+    "--edit",
+    "--long",
+    "--no-ahead-behind",
+    "--no-amend",
+    "--no-branch",
+    "--no-dry-run",
+    "--no-edit",
+    "--no-gpg-sign",
+    "--no-long",
+    "--no-null",
+    "--no-porcelain",
+    "--no-post-rewrite",
+    "--no-quiet",
+    "--no-short",
+    "--no-signoff",
+    "--no-status",
+    "--no-verbose",
+    "--no-verify",
+    "--null",
+    "--porcelain",
+    "--post-rewrite",
+    "--quiet",
+    "--reset-author",
+    "--short",
+    "--signoff",
+    "--status",
+    "--verbose",
+    "--verify",
+}
+COMMIT_SELECTION_SHORT_OPTIONS_WITH_VALUE = {"C", "F", "c", "m", "t"}
+COMMIT_SELECTION_SHORT_OPTIONS_WITH_OPTIONAL_VALUE = {"S", "u"}
+COMMIT_SELECTION_ERROR_PREFIX = (
+    "Unable to safely inspect git commit content selection:"
+)
+
+
+def commit_selection_error(detail: str) -> CommitContext:
+    return {"selection_error": f"{COMMIT_SELECTION_ERROR_PREFIX} {detail}"}
+
+
+def parse_commit_selection(args: list[str]) -> CommitContext:
+    explicit_modes: list[str] = []
+    pathspecs: list[str] = []
+    pathspec_from_file: Optional[str] = None
+    pathspec_file_nul = False
+    after_separator = False
+    idx = 0
+
+    while idx < len(args):
+        arg = args[idx]
+        if after_separator:
+            pathspecs.append(arg)
+            idx += 1
+            continue
+
+        if arg == "--":
+            after_separator = True
+            idx += 1
+            continue
+
+        if arg in {"--patch", "--interactive"}:
+            return commit_selection_error(
+                "--patch and --interactive cannot be modeled without running "
+                "an interactive staging session."
+            )
+
+        if arg in {"--all", "--include", "--only"}:
+            explicit_modes.append(arg[2:])
+            idx += 1
+            continue
+
+        if arg in {"--no-all", "--no-include", "--no-only"}:
+            return commit_selection_error(
+                f"{arg} content-selection negation is unsupported."
+            )
+
+        if arg == "--pathspec-from-file":
+            if idx + 1 >= len(args):
+                return commit_selection_error(
+                    "--pathspec-from-file is missing its file."
+                )
+            pathspec_from_file = args[idx + 1]
+            idx += 2
+            continue
+
+        if arg.startswith("--pathspec-from-file="):
+            pathspec_from_file = arg.split("=", 1)[1]
+            idx += 1
+            continue
+
+        if arg == "--pathspec-file-nul":
+            pathspec_file_nul = True
+            idx += 1
+            continue
+
+        if arg in {"--no-pathspec-from-file", "--no-pathspec-file-nul"}:
+            return commit_selection_error(
+                f"{arg} content-selection negation is unsupported."
+            )
+
+        if arg in COMMIT_SELECTION_LONG_OPTIONS_WITH_VALUE:
+            if idx + 1 >= len(args):
+                return commit_selection_error(f"{arg} is missing its value.")
+            idx += 2
+            continue
+
+        option_name, separator, _ = arg.partition("=")
+        if separator and option_name in COMMIT_SELECTION_LONG_OPTIONS_WITH_VALUE:
+            idx += 1
+            continue
+
+        if (
+            arg in COMMIT_SELECTION_LONG_OPTIONS_WITH_OPTIONAL_VALUE
+            or separator
+            and option_name in COMMIT_SELECTION_LONG_OPTIONS_WITH_OPTIONAL_VALUE
+            or arg in COMMIT_SELECTION_LONG_OPTIONS_WITHOUT_VALUE
+        ):
+            idx += 1
+            continue
+
+        if arg.startswith("--"):
+            return commit_selection_error(
+                f"unrecognized commit option {arg}."
+            )
+
+        if arg.startswith("-") and arg != "-":
+            cluster = arg[1:]
+            consume_next = False
+            for position, letter in enumerate(cluster):
+                if letter == "a":
+                    explicit_modes.append("all")
+                    continue
+                if letter == "i":
+                    explicit_modes.append("include")
+                    continue
+                if letter == "o":
+                    explicit_modes.append("only")
+                    continue
+                if letter == "p":
+                    return commit_selection_error(
+                        "-p cannot be modeled without running an interactive "
+                        "staging session."
+                    )
+                if letter in COMMIT_SELECTION_SHORT_OPTIONS_WITH_VALUE:
+                    consume_next = position == len(cluster) - 1
+                    break
+                if letter in COMMIT_SELECTION_SHORT_OPTIONS_WITH_OPTIONAL_VALUE:
+                    break
+            if consume_next:
+                if idx + 1 >= len(args):
+                    return commit_selection_error(
+                        f"-{cluster[-1]} is missing its value."
+                    )
+                idx += 2
+            else:
+                idx += 1
+            continue
+
+        pathspecs.append(arg)
+        idx += 1
+
+    distinct_modes = set(explicit_modes)
+    if len(distinct_modes) > 1:
+        return commit_selection_error(
+            "conflicting --all, --include, and --only modes are unsupported."
+        )
+    if pathspec_from_file is not None and pathspecs:
+        return commit_selection_error(
+            "--pathspec-from-file cannot be combined with command-line pathspecs."
+        )
+    if pathspec_file_nul and pathspec_from_file is None:
+        return commit_selection_error(
+            "--pathspec-file-nul requires --pathspec-from-file."
+        )
+    if pathspec_from_file == "":
+        return commit_selection_error(
+            "--pathspec-from-file is missing its file."
+        )
+    if pathspec_from_file == "-":
+        return commit_selection_error(
+            "--pathspec-from-file=- depends on consumed hook stdin."
+        )
+    if (
+        any("__CMD_SUBST_" in pathspec for pathspec in pathspecs)
+        or pathspec_from_file is not None
+        and "__CMD_SUBST_" in pathspec_from_file
+    ):
+        return commit_selection_error(
+            "command substitution in a pathspec cannot be replayed safely."
+        )
+
+    selection_mode = (
+        next(iter(distinct_modes))
+        if distinct_modes
+        else "only"
+        if pathspecs or pathspec_from_file is not None
+        else "index"
+    )
+    if selection_mode == "all" and (
+        pathspecs or pathspec_from_file is not None
+    ):
+        return commit_selection_error(
+            "--all cannot be combined with pathspec selection."
+        )
+    if selection_mode == "index":
+        return {}
+
+    selection: CommitContext = {
+        "selection_mode": selection_mode,
+        "pathspecs": pathspecs,
+    }
+    if pathspec_from_file is not None:
+        selection["pathspec_from_file"] = pathspec_from_file
+        selection["pathspec_file_nul"] = pathspec_file_nul
+    return selection
+
+
 def unset_replay_env(git_env: list[str], key: str) -> None:
     git_env[:] = [
         assignment
@@ -2679,10 +2929,12 @@ def parse_commit_segment(
         break
 
     if idx < len(tokens) and tokens[idx] == "commit":
+        context: CommitContext = {"git_args": git_args, "git_env": git_env}
+        context.update(parse_commit_selection(tokens[idx + 1 :]))
         persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
         persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
         return CommitSegmentResult(
-            contexts=[{"git_args": git_args, "git_env": git_env}],
+            contexts=[context],
             persisted_git_env=persisted_shell_git_env,
             persisted_shell_git_vars=persisted_shell_git_vars,
         )
