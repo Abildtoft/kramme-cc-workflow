@@ -244,9 +244,9 @@ context_has_active_clean_filter() {
     return 2
   fi
 
-  while IFS= read -r -d '' _ &&
-    IFS= read -r -d '' _ &&
-    IFS= read -r -d '' filter_value; do
+  while IFS= read -r -d '' _ \
+    && IFS= read -r -d '' _ \
+    && IFS= read -r -d '' filter_value; do
     for filter_driver in "${configured_filter_drivers[@]}"; do
       if [ "$filter_value" = "$filter_driver" ]; then
         return 0
@@ -258,13 +258,20 @@ context_has_active_clean_filter() {
 }
 
 run_context_git() {
-  git \
-    --no-pager \
-    "${safe_git_prefix_args[@]}" \
-    -c core.fsmonitor=false \
-    -c core.hooksPath=/dev/null \
-    "${safe_filter_config_args[@]}" \
-    "$@"
+  local context_git_args=(--no-pager)
+
+  if [ ${#safe_git_prefix_args[@]} -gt 0 ]; then
+    context_git_args+=("${safe_git_prefix_args[@]}")
+  fi
+  context_git_args+=(
+    -c core.fsmonitor=false
+    -c core.hooksPath=/dev/null
+  )
+  if [ ${#safe_filter_config_args[@]} -gt 0 ]; then
+    context_git_args+=("${safe_filter_config_args[@]}")
+  fi
+
+  git "${context_git_args[@]}" "$@"
 }
 
 write_effective_files_for_commit_context() {
