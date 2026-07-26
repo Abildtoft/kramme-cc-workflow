@@ -164,6 +164,12 @@ assert_parser_fixture_decision() {
 	done < <(safety_malformed_prefix_matrix "git commit")
 }
 
+@test "exec -c clears inherited editor overrides" {
+	run run_hook "GIT_SEQUENCE_EDITOR=true exec -cl git rebase -i main"
+	is_blocked
+	[[ "$output" == *"Interactive rebase will open an editor"* ]]
+}
+
 @test "blocks shell alias git command" {
 	run run_hook $'shopt -s expand_aliases\nalias g=git\ng commit'
 	is_blocked

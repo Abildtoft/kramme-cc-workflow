@@ -35,6 +35,7 @@ class CommitContext(TypedDict, total=False):
 
 
 CONTROL_TOKENS = {";", ";;", "&&", "||", "|", "|&", "&"}
+NON_KEYWORD_TIME_SENTINEL = "\0kramme-non-keyword-time\0"
 ASSIGNMENT_WORD = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
 SHELL_FUNCTION_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 SHELL_EXECUTABLES = {"sh", "bash", "zsh", "dash", "ksh"}
@@ -128,6 +129,17 @@ class NoninteractiveParseResult:
     args: list[str]
 
 
+class ShellWord(str):
+    shell_keyword_eligible: bool
+
+    def __new__(
+        cls, value: str, *, shell_keyword_eligible: bool = True
+    ) -> ShellWord:
+        word = super().__new__(cls, value)
+        word.shell_keyword_eligible = shell_keyword_eligible
+        return word
+
+
 def _decode_ansi_c_string(value: str) -> str:
     """Decode the escape sequences supported by shell ANSI-C quoting."""
     simple_escapes = {
@@ -202,6 +214,13 @@ def _decode_ansi_c_string(value: str) -> str:
     return "".join(decoded)
 
 
+def _quote_ansi_c_fragment(value: str) -> str:
+    quoted = shlex.quote(value)
+    if quoted == value:
+        return f"'{value}'"
+    return quoted
+
+
 def _expand_ansi_c_quoted_strings(command: str) -> str:
     """Replace unquoted $'...' forms with equivalent shlex-safe strings."""
     expanded: list[str] = []
@@ -242,7 +261,8 @@ def _expand_ansi_c_quoted_strings(command: str) -> str:
                 end += 1
             if end >= len(command):
                 raise ValueError("Unterminated ANSI-C quoted string.")
-            expanded.append(shlex.quote(_decode_ansi_c_string("".join(value))))
+            decoded = _decode_ansi_c_string("".join(value))
+            expanded.append(_quote_ansi_c_fragment(decoded))
             idx = end + 1
             continue
 
@@ -947,7 +967,11 @@ def normalize_command_prefix(
             # Bare `time` is a shell keyword. Path-qualified or externally
             # selected variants, and GNU-only options, use executable semantics.
             time_is_shell_keyword = (
-                shell_keywords_allowed and working_tokens[idx] == "time"
+                shell_keywords_allowed
+                and working_tokens[idx] == "time"
+                and getattr(
+                    working_tokens[idx], "shell_keyword_eligible", True
+                )
             )
             idx += 1
             while idx < len(working_tokens):
@@ -998,11 +1022,23 @@ def normalize_command_prefix(
                 if token == "--":
                     idx += 1
                     break
-                if token == "-a":
-                    idx += 2
-                    continue
                 if token.startswith("-"):
+                    option_letters = token[1:]
+                    consume_argv0_name = False
+                    for position, letter in enumerate(option_letters):
+                        if letter == "c":
+                            environment.clear()
+                            continue
+                        if letter == "l":
+                            continue
+                        if letter == "a":
+                            consume_argv0_name = (
+                                position == len(option_letters) - 1
+                            )
+                        break
                     idx += 1
+                    if consume_argv0_name:
+                        idx += 1
                     continue
                 break
             continue
@@ -1142,12 +1178,96 @@ def normalize_newlines(command: str) -> str:
     return "".join(normalized)
 
 
+def _replace_nonkeyword_time_word(raw_word: str) -> str:
+    if raw_word == "time" or not any(
+        marker in raw_word for marker in ("'", '"', "\\")
+    ):
+        return raw_word
+    try:
+        parsed_word = shlex.split(raw_word, comments=False, posix=True)
+    except ValueError:
+        return raw_word
+    if parsed_word == ["time"]:
+        return NON_KEYWORD_TIME_SENTINEL
+    return raw_word
+
+
+def _mark_nonkeyword_time_words(command: str) -> str:
+    """Mark shell words that evaluate to `time` but cannot be the keyword."""
+    marked: list[str] = []
+    chunk_start = 0
+    word_start: Optional[int] = None
+    quote: Optional[str] = None
+    escaped = False
+    idx = 0
+
+    while idx < len(command):
+        char = command[idx]
+        is_boundary = char in " \t\r\n()|&;"
+
+        if word_start is None:
+            if is_boundary:
+                idx += 1
+                continue
+            word_start = idx
+
+        if escaped:
+            escaped = False
+            idx += 1
+            continue
+
+        if quote is not None:
+            if char == quote:
+                quote = None
+            elif quote == '"' and char == "\\":
+                escaped = True
+            idx += 1
+            continue
+
+        if char == "\\":
+            escaped = True
+            idx += 1
+            continue
+
+        if char in {"'", '"'}:
+            quote = char
+            idx += 1
+            continue
+
+        if is_boundary:
+            raw_word = command[word_start:idx]
+            replacement = _replace_nonkeyword_time_word(raw_word)
+            if replacement != raw_word:
+                marked.extend((command[chunk_start:word_start], replacement))
+                chunk_start = idx
+            word_start = None
+            continue
+
+        idx += 1
+
+    if word_start is not None:
+        raw_word = command[word_start:]
+        replacement = _replace_nonkeyword_time_word(raw_word)
+        if replacement != raw_word:
+            marked.extend((command[chunk_start:word_start], replacement))
+            chunk_start = len(command)
+
+    marked.append(command[chunk_start:])
+    return "".join(marked)
+
+
 def tokenize(command: str) -> list[str]:
     command = _expand_ansi_c_quoted_strings(normalize_newlines(command))
+    command = _mark_nonkeyword_time_words(command)
     lexer = shlex.shlex(command, posix=True, punctuation_chars="()|&;")
     lexer.whitespace_split = True
     lexer.commenters = ""
-    return list(lexer)
+    return [
+        ShellWord("time", shell_keyword_eligible=False)
+        if token == NON_KEYWORD_TIME_SENTINEL
+        else token
+        for token in lexer
+    ]
 
 
 def split_segments(tokens: list[str]) -> Iterator[tuple[list[str], Optional[str]]]:

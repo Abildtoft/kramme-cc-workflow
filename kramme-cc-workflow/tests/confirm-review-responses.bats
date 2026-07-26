@@ -335,6 +335,28 @@ assert_review_parser_fixture_decision() {
 	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
 }
 
+@test "treats quoted and escaped time as an external command" {
+	local prefix
+	mock_git_staged_for_repo "other" "notes.txt" "REVIEW_OVERVIEW.md"
+
+	while IFS= read -r prefix; do
+		run run_hook "$prefix export GIT_DIR=other/.git GIT_WORK_TREE=other; git commit -m test"
+		if ! is_blocked; then
+			printf 'Expected non-keyword time to leave the current repo selected: %s\n' "$prefix" >&2
+			return 1
+		fi
+		[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+	done < <(printf '%s\n' '\time' '"time"' "'time'")
+}
+
+@test "exec -c clears prefixed repo selection" {
+	mock_git_staged_for_repo "other" "notes.txt" "REVIEW_OVERVIEW.md"
+
+	run run_hook "GIT_DIR=other/.git GIT_WORK_TREE=other exec -c git commit -m test"
+	is_blocked
+	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
 # ============================================================================
 # GIT COMMIT WITHOUT GUARDED ARTIFACTS
 # ============================================================================

@@ -148,6 +148,8 @@ safety_command_prefix_matrix() {
     "env --split-string=\"$payload\"" \
     "nohup $payload" \
     "exec $payload" \
+    "exec -c $payload" \
+    "exec -cl $payload" \
     "sudo FOO=bar $payload" \
     "time FOO=bar $payload" \
     "timeout 1 nice -n 10 env FOO=bar bash -c '$payload'"

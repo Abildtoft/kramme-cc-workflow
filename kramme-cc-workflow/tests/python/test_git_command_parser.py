@@ -233,6 +233,43 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
             ],
         )
 
+    def test_normalize_command_prefix_applies_exec_environment_options(self) -> None:
+        for option in ("-c", "-cl", "-lc"):
+            with self.subTest(option=option):
+                normalized = PARSER.normalize_command_prefix(
+                    ["exec", option, "git", "rebase", "-i", "main"],
+                    inherited_environment=[
+                        "GIT_DIR=/tmp/other/.git",
+                        "GIT_SEQUENCE_EDITOR=true",
+                    ],
+                )
+
+                self.assertEqual(normalized.executable, "git")
+                self.assertEqual(
+                    normalized.arguments, ["rebase", "-i", "main"]
+                )
+                self.assertEqual(normalized.environment, [])
+
+        argv0 = PARSER.normalize_command_prefix(
+            ["exec", "-acommand", "git", "status"],
+            inherited_environment=["GIT_DIR=/tmp/other/.git"],
+        )
+
+        self.assertEqual(argv0.executable, "git")
+        self.assertEqual(argv0.arguments, ["status"])
+        self.assertEqual(
+            argv0.environment, ["GIT_DIR=/tmp/other/.git"]
+        )
+
+        grouped_argv0 = PARSER.normalize_command_prefix(
+            ["exec", "-ca", "custom-name", "git", "status"],
+            inherited_environment=["GIT_DIR=/tmp/other/.git"],
+        )
+
+        self.assertEqual(grouped_argv0.executable, "git")
+        self.assertEqual(grouped_argv0.arguments, ["status"])
+        self.assertEqual(grouped_argv0.environment, [])
+
     def test_normalize_command_prefix_limits_nested_env_split_strings(self) -> None:
         allowed = (
             "--split-string=" * PARSER.MAX_ENV_SPLIT_STRING_EXPANSIONS
@@ -329,6 +366,32 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
 
     def test_external_wrappers_do_not_persist_shell_builtin_state(self) -> None:
         for prefix in ("timeout 1", "nice", "nohup", "env", "sudo", "command time"):
+            with self.subTest(prefix=prefix):
+                contexts = PARSER.parse_commit_contexts(
+                    (
+                        f"{prefix} export GIT_DIR=/tmp/other/.git "
+                        "GIT_WORK_TREE=/tmp/other; git commit -m test"
+                    ),
+                    inherited_git_env=[],
+                    inherited_shell_git_vars=[],
+                )
+
+                self.assertEqual(
+                    contexts,
+                    [{"git_args": [], "git_env": []}],
+                )
+
+    def test_nonbare_time_uses_external_command_semantics(self) -> None:
+        for prefix in (
+            r"\time",
+            '"time"',
+            "'time'",
+            r"t\ime",
+            '"ti"me',
+            "t'i'me",
+            "$'time'",
+            "t$'i'me",
+        ):
             with self.subTest(prefix=prefix):
                 contexts = PARSER.parse_commit_contexts(
                     (
