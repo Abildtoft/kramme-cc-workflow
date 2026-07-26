@@ -333,6 +333,7 @@ async function stageCodexAgentsFile(codexHome, stagingRoot, lockedDestination) {
   if (updated === existing) return null;
 
   const stagedFile = path.join(stagingRoot, "AGENTS.md");
+  await fs.rm(stagedFile, { force: true });
   let expectedTargetIdentity;
   if (targetExists) {
     const existingStats = await fs.lstat(destination.targetFile);

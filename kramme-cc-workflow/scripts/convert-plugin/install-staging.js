@@ -12,7 +12,7 @@ const {
 } = require("./install-state");
 const {
   copyDir,
-  copyFile,
+  copyFilePreservingMetadata,
   ensureDir,
   filesystemErrorCode,
   pathExists,
@@ -108,6 +108,7 @@ const transactionStorage = new AsyncLocalStorage();
  * @property {string[]} lockRoots
  * @property {InstallMutationRecord[]} records
  * @property {{ target: string, preservedAt: string }[]} recoveryConflicts
+ * @property {Set<string>} publicationTemps
  * @property {Set<string>} rollbackDeletedTargets
  * @property {Map<string, RollbackTargetExpectation>} rollbackTargetContents
  * @property {string} status
@@ -118,6 +119,7 @@ const transactionStorage = new AsyncLocalStorage();
  * @typedef {{ content: Buffer | null, metadata: RollbackTargetMetadata | null }} RollbackTargetExpectation
  * @typedef {{ kind: "directory" } | { kind: "file", content: Buffer } | { kind: "missing" }} ExpectedTargetEntry
  * @typedef {Map<string, ExpectedTargetEntry>} ExpectedTargetEntries
+ * @typedef {{ expectedTargetContent?: ExpectedTargetContent, expectedTargetEntries?: ExpectedTargetEntries, expectedTargetIdentity?: ExpectedTargetIdentity, record: InstallMutationRecord, recordIndex: number, target: string, targetExists: boolean }} PreparedTransactionMutation
  * @typedef {{ error: unknown, lock: InstallLock }} InstallLockReleaseError
  * @typedef {{ error: unknown, record: InstallMutationRecord }} InstallRollbackError
  */
@@ -416,6 +418,13 @@ async function recoverStaleInstall(root, owner) {
         /** @type {InstallMutationRecord[]} */ (journal.records),
       )
     : null;
+  const publicationTemps = recordsValid
+    ? await parsePublicationTemps(
+        journal?.publicationTemps,
+        owner.token,
+        /** @type {InstallMutationRecord[]} */ (journal.records),
+      )
+    : null;
   if (
     journal?.version !== 1 ||
     journal?.token !== owner.token ||
@@ -423,7 +432,8 @@ async function recoverStaleInstall(root, owner) {
       journal.status !== "active" &&
       journal.status !== "committed") ||
     !recordsValid ||
-    rollbackTargetContents === null
+    rollbackTargetContents === null ||
+    publicationTemps === null
   ) {
     throw new Error(
       `Refusing to recover invalid install journal ${journalPath}.`,
@@ -438,6 +448,7 @@ async function recoverStaleInstall(root, owner) {
     records: /** @type {InstallMutationRecord[]} */ (journal.records),
     recoveryConflicts:
       /** @type {{target: string, preservedAt: string}[]} */ ([]),
+    publicationTemps,
     rollbackDeletedTargets: new Set(),
     rollbackTargetContents,
     status: journal.status === "committed" ? "committed" : "active",
@@ -806,6 +817,7 @@ async function createInstallTransaction(owner) {
     lockRoots: owner.lockRoots ?? [transactionRoot],
     records: [],
     recoveryConflicts: [],
+    publicationTemps: new Set(),
     rollbackDeletedTargets: new Set(),
     rollbackTargetContents: new Map(),
     status: "active",
@@ -859,6 +871,7 @@ async function persistInstallJournal(transaction) {
   await writeAtomicJson(transaction.journalPath, {
     version: 1,
     token: transaction.token,
+    publicationTemps: [...transaction.publicationTemps],
     records: transaction.records,
     rollbackTargetExpectations: [...transaction.rollbackTargetContents].map(
       ([target, expectation]) => ({
@@ -872,6 +885,37 @@ async function persistInstallJournal(transaction) {
     ),
     status: transaction.status,
   });
+}
+
+/**
+ * @param {unknown} value
+ * @param {string} token
+ * @param {InstallMutationRecord[]} records
+ * @returns {Promise<Set<string> | null>}
+ */
+async function parsePublicationTemps(value, token, records) {
+  if (value === undefined) return new Set();
+  if (!Array.isArray(value)) return null;
+  const allowed = new Set(
+    records.flatMap((record, recordIndex) => [
+      publicationTempPathForRecord(record, token, recordIndex, "previous"),
+      publicationTempPathForRecord(record, token, recordIndex, "staged"),
+    ]),
+  );
+  /** @type {Set<string>} */
+  const publicationTemps = new Set();
+  for (const entry of value) {
+    if (
+      typeof entry !== "string" ||
+      !allowed.has(entry) ||
+      publicationTemps.has(entry) ||
+      (await canonicalizeTransactionTarget(entry)) !== entry
+    ) {
+      return null;
+    }
+    publicationTemps.add(entry);
+  }
+  return publicationTemps;
 }
 
 /**
@@ -1029,7 +1073,17 @@ async function prepareTransactionMutation(
     }
     throw error;
   }
-  if (coveringRecord) return true;
+  if (coveringRecord) {
+    return {
+      expectedTargetContent,
+      expectedTargetEntries,
+      expectedTargetIdentity,
+      record: coveringRecord,
+      recordIndex: transaction.records.indexOf(coveringRecord),
+      target: resolvedTarget,
+      targetExists: stats !== null,
+    };
+  }
   if (
     transaction.records.some((record) =>
       record.target.startsWith(resolvedTarget + path.sep),
@@ -1098,7 +1152,15 @@ async function prepareTransactionMutation(
       await persistInstallJournal(transaction);
       throw error;
     }
-    return true;
+    return {
+      expectedTargetContent,
+      expectedTargetEntries,
+      expectedTargetIdentity,
+      record,
+      recordIndex: transaction.records.length - 1,
+      target: resolvedTarget,
+      targetExists: false,
+    };
   }
   const backupPath = record.backup;
   if (!backupPath)
@@ -1126,6 +1188,24 @@ async function prepareTransactionMutation(
     label,
   );
   await fs.rename(resolvedTarget, backupPath);
+  const backupStats = await lstatIfExists(backupPath);
+  assertExpectedTargetIdentity(
+    backupPath,
+    backupStats,
+    expectedTargetIdentity,
+    label,
+    { ignoreCtime: true },
+  );
+  if (
+    expectedTargetContent !== undefined &&
+    expectedTargetContent !== null &&
+    !(await fileContentEquals(backupPath, expectedTargetContent))
+  ) {
+    throw new Error(
+      `Cannot install ${label} because ${resolvedTarget} changed during installation.`,
+    );
+  }
+  await assertExpectedTargetEntries(backupPath, expectedTargetEntries, label);
   await persistInstallJournal(transaction);
   if (preserveExisting) {
     await fs.cp(backupPath, resolvedTarget, {
@@ -1134,7 +1214,15 @@ async function prepareTransactionMutation(
       dereference: false,
     });
   }
-  return true;
+  return {
+    expectedTargetContent,
+    expectedTargetEntries,
+    expectedTargetIdentity,
+    record,
+    recordIndex: transaction.records.length - 1,
+    target: resolvedTarget,
+    targetExists: false,
+  };
 }
 
 /**
@@ -1321,10 +1409,12 @@ async function markInstallTransactionCommitted(transaction) {
 /** @param {InstallTransaction} transaction */
 async function removeTransactionArtifacts(transaction) {
   const backupRoots = new Set(
-    transaction.records
-      .map((record) => record.backup)
-      .filter((backup) => backup !== null)
-      .map((backup) => path.dirname(backup)),
+    [
+      ...transaction.records
+        .map((record) => record.backup)
+        .filter((backup) => backup !== null),
+      ...transaction.publicationTemps,
+    ].map((artifact) => path.dirname(artifact)),
   );
   for (const backupRoot of backupRoots) {
     await fs.rm(backupRoot, { recursive: true, force: true });
@@ -1449,8 +1539,15 @@ function assertExpectedTargetType(target, stats, expectedTargetContent, label) {
  * @param {import("fs").Stats | null} stats
  * @param {ExpectedTargetIdentity | undefined} expectedIdentity
  * @param {string} label
+ * @param {{ ignoreCtime?: boolean }} [options]
  */
-function assertExpectedTargetIdentity(target, stats, expectedIdentity, label) {
+function assertExpectedTargetIdentity(
+  target,
+  stats,
+  expectedIdentity,
+  label,
+  { ignoreCtime = false } = {},
+) {
   if (!expectedIdentity) return;
   if (
     !stats?.isFile() ||
@@ -1463,7 +1560,8 @@ function assertExpectedTargetIdentity(target, stats, expectedIdentity, label) {
       stats.uid !== expectedIdentity.uid) ||
     (expectedIdentity.gid !== undefined &&
       stats.gid !== expectedIdentity.gid) ||
-    (expectedIdentity.ctimeMs !== undefined &&
+    (!ignoreCtime &&
+      expectedIdentity.ctimeMs !== undefined &&
       stats.ctimeMs !== expectedIdentity.ctimeMs)
   ) {
     throw new Error(
@@ -2050,6 +2148,222 @@ async function removeEmptyAncestorDirs(startDir, rootDir) {
 }
 
 /**
+ * @param {InstallMutationRecord} record
+ * @param {string} token
+ * @param {number} recordIndex
+ * @param {"previous" | "staged"} kind
+ */
+function publicationTempPathForRecord(record, token, recordIndex, kind) {
+  return path.join(
+    path.dirname(record.target),
+    INSTALL_BACKUPS_DIR,
+    token,
+    `publication-${recordIndex}-${kind}`,
+  );
+}
+
+/**
+ * @param {InstallTransaction} transaction
+ * @param {PreparedTransactionMutation} mutation
+ */
+async function markPublicationCollision(transaction, mutation) {
+  if (
+    mutation.record.operation === "create" &&
+    mutation.record.target === mutation.target
+  ) {
+    if (transaction.records.at(-1) !== mutation.record) {
+      throw new Error(
+        `Cannot discard unapplied install mutation for ${mutation.target}.`,
+      );
+    }
+    transaction.records.pop();
+    transaction.rollbackTargetContents.delete(mutation.target);
+    await persistInstallJournal(transaction);
+    return;
+  }
+  transaction.rollbackTargetContents.set(mutation.target, {
+    content: null,
+    metadata: null,
+  });
+  await persistInstallJournal(transaction);
+}
+
+/**
+ * @param {unknown} error
+ * @param {string} target
+ */
+async function isPublicationCollision(error, target) {
+  return (
+    filesystemErrorCode(error) === "EEXIST" ||
+    (await lstatIfExists(target)) !== null
+  );
+}
+
+/**
+ * @param {InstallTransaction} transaction
+ * @param {string} publicationTemp
+ */
+async function removePublicationTemp(transaction, publicationTemp) {
+  await fs.rm(publicationTemp, { force: true });
+  transaction.publicationTemps.delete(publicationTemp);
+  await persistInstallJournal(transaction);
+}
+
+/**
+ * Move a target already covered by an ancestor mutation out of the publication
+ * path, then validate the moved inode. This closes the check-to-replace window
+ * without adding a second rollback record beneath the ancestor.
+ *
+ * @param {InstallTransaction} transaction
+ * @param {PreparedTransactionMutation} mutation
+ * @param {string} label
+ * @returns {Promise<string | null>}
+ */
+async function prepareCoveredPublicationTarget(transaction, mutation, label) {
+  if (!mutation.targetExists || mutation.record.target === mutation.target) {
+    return null;
+  }
+  const publicationTemp = publicationTempPathForRecord(
+    mutation.record,
+    transaction.token,
+    mutation.recordIndex,
+    "previous",
+  );
+  transaction.publicationTemps.add(publicationTemp);
+  await persistInstallJournal(transaction);
+  await fs.rm(publicationTemp, { force: true });
+  await ensureDir(path.dirname(publicationTemp));
+  await fs.rename(mutation.target, publicationTemp);
+
+  try {
+    const stats = await lstatIfExists(publicationTemp);
+    assertExpectedTargetIdentity(
+      publicationTemp,
+      stats,
+      mutation.expectedTargetIdentity,
+      label,
+      { ignoreCtime: true },
+    );
+    if (
+      mutation.expectedTargetContent !== undefined &&
+      mutation.expectedTargetContent !== null &&
+      !(await fileContentEquals(
+        publicationTemp,
+        mutation.expectedTargetContent,
+      ))
+    ) {
+      throw new Error(
+        `Cannot install ${label} because ${mutation.target} changed during installation.`,
+      );
+    }
+    await assertExpectedTargetEntries(
+      publicationTemp,
+      mutation.expectedTargetEntries,
+      label,
+    );
+    return publicationTemp;
+  } catch (error) {
+    await fs.rename(publicationTemp, mutation.target);
+    transaction.publicationTemps.delete(publicationTemp);
+    if (mutation.expectedTargetContent !== undefined) {
+      transaction.rollbackTargetContents.set(mutation.target, {
+        content:
+          mutation.expectedTargetContent === null
+            ? null
+            : expectedContentBuffer(mutation.expectedTargetContent),
+        metadata: null,
+      });
+    }
+    await persistInstallJournal(transaction);
+    throw error;
+  }
+}
+
+/**
+ * @param {string} stagedFile
+ * @param {PreparedTransactionMutation} mutation
+ * @param {string} label
+ */
+async function publishStagedFileAcrossDevices(stagedFile, mutation, label) {
+  const transaction = transactionStorage.getStore();
+  if (!transaction) {
+    await copyFilePreservingMetadata(stagedFile, mutation.target);
+    await fs.rm(stagedFile, { force: true });
+    return;
+  }
+
+  const publicationTemp = publicationTempPathForRecord(
+    mutation.record,
+    transaction.token,
+    mutation.recordIndex,
+    "staged",
+  );
+  transaction.publicationTemps.add(publicationTemp);
+  await persistInstallJournal(transaction);
+  await fs.rm(publicationTemp, { force: true });
+
+  let published = false;
+  try {
+    await copyFilePreservingMetadata(stagedFile, publicationTemp);
+    await fs.link(publicationTemp, mutation.target);
+    published = true;
+    await fs.rm(stagedFile, { force: true });
+    await removePublicationTemp(transaction, publicationTemp);
+  } catch (error) {
+    const collision =
+      !published && (await isPublicationCollision(error, mutation.target));
+    await removePublicationTemp(transaction, publicationTemp);
+    if (collision) {
+      await markPublicationCollision(transaction, mutation);
+      throw new Error(
+        `Cannot install ${label} because ${mutation.target} changed during installation.`,
+        { cause: error },
+      );
+    }
+    throw error;
+  }
+}
+
+/**
+ * @param {string} stagedFile
+ * @param {PreparedTransactionMutation} mutation
+ * @param {string} label
+ */
+async function publishStagedFile(stagedFile, mutation, label) {
+  const transaction = transactionStorage.getStore();
+  const previousTarget = transaction
+    ? await prepareCoveredPublicationTarget(transaction, mutation, label)
+    : null;
+  let published = false;
+  try {
+    await fs.link(stagedFile, mutation.target);
+    published = true;
+    await fs.rm(stagedFile, { force: true });
+    if (transaction && previousTarget) {
+      await removePublicationTemp(transaction, previousTarget);
+    }
+  } catch (error) {
+    if (!published && filesystemErrorCode(error) === "EXDEV") {
+      await publishStagedFileAcrossDevices(stagedFile, mutation, label);
+      if (transaction && previousTarget) {
+        await removePublicationTemp(transaction, previousTarget);
+      }
+      return;
+    }
+    if (!published && (await isPublicationCollision(error, mutation.target))) {
+      if (transaction) {
+        await markPublicationCollision(transaction, mutation);
+      }
+      throw new Error(
+        `Cannot install ${label} because ${mutation.target} changed during installation.`,
+        { cause: error },
+      );
+    }
+    throw error;
+  }
+}
+
+/**
  * @param {string} stagedFile
  * @param {string} targetFile
  * @param {InstallStagedFileOptions} [options]
@@ -2078,27 +2392,26 @@ async function installStagedFile(
     await fs.rm(targetFile, { force: true });
   }
   await ensureDir(path.dirname(targetFile));
-  let renamed = false;
-  try {
-    await fs.rename(stagedFile, targetFile);
-    renamed = true;
-  } catch (error) {
-    if (filesystemErrorCode(error) !== "EXDEV") throw error;
-  }
-  if (!renamed) {
-    await copyFile(stagedFile, targetFile);
-    await fs.rm(stagedFile, { force: true });
-  }
+  const mutation =
+    transactional ||
+    /** @type {PreparedTransactionMutation} */ ({
+      record: {
+        operation: "create",
+        target: path.resolve(targetFile),
+        backup: null,
+      },
+      recordIndex: 0,
+      target: path.resolve(targetFile),
+      targetExists: false,
+    });
+  await publishStagedFile(stagedFile, mutation, label);
   if (installedContent !== null) {
     const transaction = transactionStorage.getStore();
     if (transaction) {
-      transaction.rollbackTargetContents.set(
-        await canonicalizeTransactionTarget(targetFile),
-        {
-          content: installedContent,
-          metadata: targetMetadata(await fs.lstat(targetFile)),
-        },
-      );
+      transaction.rollbackTargetContents.set(mutation.target, {
+        content: installedContent,
+        metadata: targetMetadata(await fs.lstat(targetFile)),
+      });
       await persistInstallJournal(transaction);
     }
   }

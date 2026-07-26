@@ -2728,6 +2728,153 @@ test("writer preserves existing AGENTS.md extended attributes", async (t) => {
   });
 });
 
+test("writer does not resurrect AGENTS.md attributes removed during finalization", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("extended-attribute fixture is POSIX-only");
+    return;
+  }
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    const attribute =
+      process.platform === "darwin"
+        ? "com.kramme.removed-marker"
+        : "user.kramme_removed_marker";
+    await writeFile(agentsPath, "# Local instructions\n");
+    const setResult = spawnSync(
+      "python3",
+      [
+        "-c",
+        "import os,sys; os.setxattr(sys.argv[1], sys.argv[2], b'remove-me')",
+        agentsPath,
+        attribute,
+      ],
+      { encoding: "utf8" },
+    );
+    if (
+      setResult.status !== 0 &&
+      /not supported|operation not permitted/i.test(
+        `${setResult.stdout}${setResult.stderr}`,
+      )
+    ) {
+      t.skip("filesystem does not support user extended attributes");
+      return;
+    }
+    assert.equal(setResult.status, 0, setResult.stderr);
+
+    await writeCodexBundle(root, await createTransactionalBundle(root, "v1"), {
+      agentsHome: path.join(root, "agents-home"),
+      confirm: { yes: true },
+      pluginName: "agents-removed-xattr-plugin",
+      onInstallPhase(phase) {
+        if (phase !== "shared-scripts") return;
+        const removeResult = spawnSync(
+          "python3",
+          [
+            "-c",
+            "import os,sys; os.removexattr(sys.argv[1], sys.argv[2])",
+            agentsPath,
+            attribute,
+          ],
+          { encoding: "utf8" },
+        );
+        assert.equal(removeResult.status, 0, removeResult.stderr);
+      },
+    });
+
+    const listResult = spawnSync(
+      "python3",
+      [
+        "-c",
+        "import os,sys; print('\\n'.join(os.listxattr(sys.argv[1])))",
+        agentsPath,
+      ],
+      { encoding: "utf8" },
+    );
+    assert.equal(listResult.status, 0, listResult.stderr);
+    assert.doesNotMatch(listResult.stdout, new RegExp(attribute));
+  });
+});
+
+test("writer preserves AGENTS.md attributes through cross-device publication", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("extended-attribute fixture is POSIX-only");
+    return;
+  }
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    const attribute =
+      process.platform === "darwin"
+        ? "com.kramme.cross-device-marker"
+        : "user.kramme_cross_device_marker";
+    await writeFile(agentsPath, "# Local instructions\n");
+    const setResult = spawnSync(
+      "python3",
+      [
+        "-c",
+        "import os,sys; os.setxattr(sys.argv[1], sys.argv[2], b'keep-me')",
+        agentsPath,
+        attribute,
+      ],
+      { encoding: "utf8" },
+    );
+    if (
+      setResult.status !== 0 &&
+      /not supported|operation not permitted/i.test(
+        `${setResult.stdout}${setResult.stderr}`,
+      )
+    ) {
+      t.skip("filesystem does not support user extended attributes");
+      return;
+    }
+    assert.equal(setResult.status, 0, setResult.stderr);
+
+    const originalLink = fs.link;
+    let injected = false;
+    fs.link = async (source, target) => {
+      if (
+        !injected &&
+        target === agentsPath &&
+        String(source).includes(".kramme-install-staging")
+      ) {
+        injected = true;
+        throw Object.assign(new Error("simulated cross-device publication"), {
+          code: "EXDEV",
+        });
+      }
+      return originalLink(source, target);
+    };
+    try {
+      await writeCodexBundle(
+        root,
+        await createTransactionalBundle(root, "v1"),
+        {
+          agentsHome: path.join(root, "agents-home"),
+          confirm: { yes: true },
+          pluginName: "agents-cross-device-xattr-plugin",
+        },
+      );
+    } finally {
+      fs.link = originalLink;
+    }
+
+    assert.equal(injected, true);
+    const getResult = spawnSync(
+      "python3",
+      [
+        "-c",
+        "import os,sys; sys.stdout.buffer.write(os.getxattr(sys.argv[1], sys.argv[2]))",
+        agentsPath,
+        attribute,
+      ],
+      { encoding: "utf8" },
+    );
+    assert.equal(getResult.status, 0, getResult.stderr);
+    assert.equal(getResult.stdout, "keep-me");
+  });
+});
+
 test("writer preserves a symlinked AGENTS.md and updates its referent transactionally", async () => {
   await withTempDir(async (root) => {
     const codexRoot = path.join(root, ".codex");
@@ -3305,6 +3452,97 @@ test("transaction revalidates absent targets after journaling create records", a
   }
 });
 
+test("transaction refuses targets created at no-clobber publication", async () => {
+  await withTempDir(async (root) => {
+    const stagedFile = path.join(root, "staged.md");
+    const targetFile = path.join(root, "target.md");
+    const userContent = "# Created at publication\n";
+    await writeFile(stagedFile, "# Installed\n");
+
+    const originalLink = fs.link;
+    let injected = false;
+    fs.link = async (source, target) => {
+      if (!injected && source === stagedFile && target === targetFile) {
+        injected = true;
+        await writeFile(targetFile, userContent);
+      }
+      return originalLink(source, target);
+    };
+    try {
+      await assert.rejects(
+        () =>
+          withInstallTransaction(
+            root,
+            { pluginName: "publication-create-race-plugin" },
+            () =>
+              installStagedFile(stagedFile, targetFile, {
+                expectedTargetContent: null,
+                label: "publication create race",
+              }),
+          ),
+        /changed during installation/,
+      );
+    } finally {
+      fs.link = originalLink;
+    }
+
+    assert.equal(injected, true);
+    assert.equal(await readText(targetFile), userContent);
+    assert.equal(
+      await pathExists(path.join(root, ".kramme-install-lock")),
+      false,
+    );
+  });
+});
+
+test("transaction revalidates existing targets after the backup rename", async () => {
+  await withTempDir(async (root) => {
+    const stagedFile = path.join(root, "staged.md");
+    const targetFile = path.join(root, "target.md");
+    const userContent = "# Edited at backup rename\n";
+    await writeFile(stagedFile, "# Installed\n");
+    await writeFile(targetFile, "# Original\n");
+
+    const originalRename = fs.rename;
+    let injected = false;
+    fs.rename = async (source, target) => {
+      if (
+        !injected &&
+        source === targetFile &&
+        String(target).includes(".kramme-install-backups")
+      ) {
+        injected = true;
+        await writeFile(targetFile, userContent);
+      }
+      return originalRename(source, target);
+    };
+    try {
+      await assert.rejects(
+        () =>
+          withInstallTransaction(
+            root,
+            { pluginName: "backup-rename-race-plugin" },
+            () =>
+              installStagedFile(stagedFile, targetFile, {
+                expectedTargetContent: "# Original\n",
+                label: "backup rename race",
+              }),
+          ),
+        /changed during installation/,
+      );
+    } finally {
+      fs.rename = originalRename;
+    }
+
+    assert.equal(injected, true);
+    assert.equal(await readText(targetFile), userContent);
+    assert.equal(
+      await pathExists(path.join(root, ".kramme-install-lock")),
+      false,
+    );
+  });
+});
+
 test("writer rolls back changes to a symlinked AGENTS.md referent", async () => {
   await withTempDir(async (root) => {
     const codexRoot = path.join(root, ".codex");
@@ -3672,15 +3910,15 @@ test("writer rolls back byte-identical state when the AGENTS.md final write fail
       new Error("injected AGENTS.md final write failure"),
       { code: "ENOSPC" },
     );
-    const originalRename = fs.rename;
-    fs.rename = async (source, target) => {
+    const originalLink = fs.link;
+    fs.link = async (source, target) => {
       if (
         target === agentsPath &&
         String(source).includes(".kramme-install-staging")
       ) {
         throw finalWriteError;
       }
-      return originalRename(source, target);
+      return originalLink(source, target);
     };
     try {
       await assert.rejects(
@@ -3688,7 +3926,7 @@ test("writer rolls back byte-identical state when the AGENTS.md final write fail
         (error) => error === finalWriteError,
       );
     } finally {
-      fs.rename = originalRename;
+      fs.link = originalLink;
     }
 
     assert.deepEqual(
