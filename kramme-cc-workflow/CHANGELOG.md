@@ -8,6 +8,55 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 ## Unreleased
 
+## [0.68.0] - 2026-07-26
+
+### Added
+
+- Add issue-to-PR workflow (#690)
+- Flag overengineering (#687)
+- Complete manual finding lifecycle (#685)
+- Add convention drift review (#681)
+- Enforce synchronized contract inventory (#679)
+- Validate skill frontmatter types in linter and converter (#667)
+- Make team-mode lead the sole shared-state writer (#666)
+- Gate dead-code removal approval on confidence (#662)
+- Add Wayfinder planning skill (#660)
+- Add disposable prototype skill (#659)
+- Add kramme:research primary-source skill (#658)
+
+### Changed
+
+- Remove dead skill contract exports (#696)
+- Enforce strict JavaScript data contracts (#686)
+- Share fail-closed parser wrapper (#682)
+- Consolidate skill group lifecycle (#678)
+- Expose parser boundaries safely (#676)
+- Stream transcript extraction (#674)
+- Centralize artifact registry (#671)
+- Clarify repository guidance (#668)
+- Add lifecycle phase table and wayfinder guidance (#661)
+- Add wide-refactor sequencing (#657)
+- Add Fowler smell baseline (#656)
+- Refresh Pocock source baselines (#655)
+
+### Fixed
+
+- Close transactional install races (#695)
+- Unify safety command-prefix parsing (#694)
+- Gate issue publication with atomic receipts (#693)
+- Enforce self-contained resource references (#692)
+- Preserve index and include work in auto mode (#689)
+- Keep generated changelogs Prettier-clean (#688)
+- Make Codex installs transactional (#683)
+- Reserve issue IDs atomically (#680)
+- Reject malformed configuration objects (#677)
+- Translate agent guidance for Codex (#675)
+- Centralize safe diff decoding (#673)
+- Preserve formatter fallback order (#672)
+- Make rollback state-exact (#665)
+- Parse ANSI-C quoted shell payloads (#664)
+- Surface filesystem read failures (#663)
+
 ## [0.67.0] - 2026-07-08
 
 ### Added
@@ -638,6 +687,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - Preserve skill resources in conversion (#222)
 
+[0.68.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.67.0...v0.68.0
 [0.67.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.66.0...v0.67.0
 [0.66.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.65.0...v0.66.0
 [0.65.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.64.0...v0.65.0
