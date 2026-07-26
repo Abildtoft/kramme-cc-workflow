@@ -1739,7 +1739,7 @@ EOF
   printf -- '- Created %s: receipt stale\n' "$issue_id" >>"$siw_dir/LOG.md"
   sh "$ISSUE_DEFINE_RESERVATION_HELPER" publish-receipt "$siw_dir" owner-a "$issue_id"
 
-  printf -- '- Later partial edit\n' >>"$siw_dir/LOG.md"
+  printf -- '- Updated %s: later partial edit\n' "$issue_id" >>"$siw_dir/LOG.md"
   run sh "$ISSUE_DEFINE_RESERVATION_HELPER" verify-receipt "$siw_dir" owner-a "$issue_id"
   [ "$status" -ne 0 ]
   [[ "$output" == *'publication receipt does not match the current log'* ]]
@@ -1899,6 +1899,84 @@ EOF
 
   sh "$ISSUE_DEFINE_RESERVATION_HELPER" publish-receipt "$siw_dir" owner-a G-001
   sh "$ISSUE_DEFINE_RESERVATION_HELPER" release-publication "$siw_dir" owner-a
+}
+
+@test "siw publication receipt requires a new log entry for tracker-visible updates" {
+  local issue_path siw_dir
+  siw_dir="$TMP_ROOT/siw"
+  issue_path="$siw_dir/issues/ISSUE-G-001-fresh-log.md"
+  mkdir -p "$siw_dir/issues"
+  printf '# ISSUE-G-001: original\n' >"$issue_path"
+  printf '# Open Issues\n| G-001 | original | READY |\n' >"$siw_dir/OPEN_ISSUES_OVERVIEW.md"
+  printf '# Log\n- Created G-001: original\n' >"$siw_dir/LOG.md"
+
+  sh "$ISSUE_DEFINE_RESERVATION_HELPER" acquire "$siw_dir" owner-a 1
+  printf '# ISSUE-G-001: changed\n' >"$issue_path"
+  printf '# Open Issues\n| G-001 | changed | READY |\n' >"$siw_dir/OPEN_ISSUES_OVERVIEW.md"
+
+  run sh "$ISSUE_DEFINE_RESERVATION_HELPER" publish-receipt "$siw_dir" owner-a G-001
+  [ "$status" -ne 0 ]
+  [[ "$output" == *'overview issue row changed without a new log publication entry: G-001'* ]]
+  [ ! -e "$siw_dir/.issue-publication.receipt" ]
+  [ -f "$siw_dir/.issue-publication.lock" ]
+
+  printf -- '- Updated G-001: title\n' >>"$siw_dir/LOG.md"
+  sh "$ISSUE_DEFINE_RESERVATION_HELPER" publish-receipt "$siw_dir" owner-a G-001
+  sh "$ISSUE_DEFINE_RESERVATION_HELPER" release-publication "$siw_dir" owner-a
+
+  sh "$ISSUE_DEFINE_RESERVATION_HELPER" acquire "$siw_dir" owner-b 1
+  printf '\nBody-only detail changed.\n' >>"$issue_path"
+  sh "$ISSUE_DEFINE_RESERVATION_HELPER" publish-receipt "$siw_dir" owner-b G-001
+  sh "$ISSUE_DEFINE_RESERVATION_HELPER" release-publication "$siw_dir" owner-b
+}
+
+@test "siw publication rejects unrelated overview and log mutations beside canonical updates" {
+  local issue_path siw_dir
+  siw_dir="$TMP_ROOT/siw"
+  issue_path="$siw_dir/issues/ISSUE-G-001-attribution.md"
+  mkdir -p "$siw_dir/issues"
+  printf '# ISSUE-G-001: original\n' >"$issue_path"
+  printf '# Open Issues\nProtected overview text.\n| G-001 | original | READY |\n' >"$siw_dir/OPEN_ISSUES_OVERVIEW.md"
+  printf '# Log\nProtected log text.\n- Created G-001: original\n' >"$siw_dir/LOG.md"
+
+  sh "$ISSUE_DEFINE_RESERVATION_HELPER" acquire "$siw_dir" owner-a 1
+  printf '# ISSUE-G-001: changed\n' >"$issue_path"
+  printf '# Open Issues\nProtected overview text.\n| G-001 | changed | READY |\nUnrelated overview mutation.\n' >"$siw_dir/OPEN_ISSUES_OVERVIEW.md"
+  printf '# Log\nProtected log text.\n- Created G-001: original\n- Updated G-001: title\n' >"$siw_dir/LOG.md"
+
+  run sh "$ISSUE_DEFINE_RESERVATION_HELPER" publish-receipt "$siw_dir" owner-a G-001
+  [ "$status" -ne 0 ]
+  [[ "$output" == *'overview changed without a canonical issue-row change'* ]]
+  [ ! -e "$siw_dir/.issue-publication.receipt" ]
+
+  printf '# Open Issues\nProtected overview text.\n| G-001 | changed | READY |\n' >"$siw_dir/OPEN_ISSUES_OVERVIEW.md"
+  printf '# Log\nProtected log text.\n- Created G-001: original\n- Updated G-001: title\nUnrelated log mutation.\n' >"$siw_dir/LOG.md"
+  run sh "$ISSUE_DEFINE_RESERVATION_HELPER" publish-receipt "$siw_dir" owner-a G-001
+  [ "$status" -ne 0 ]
+  [[ "$output" == *'log changed without a recognized publication entry'* ]]
+  [ ! -e "$siw_dir/.issue-publication.receipt" ]
+
+  printf '# Log\nProtected log text.\n- Created G-001: original\n- Updated G-001: title\n' >"$siw_dir/LOG.md"
+  sh "$ISSUE_DEFINE_RESERVATION_HELPER" publish-receipt "$siw_dir" owner-a G-001
+  sh "$ISSUE_DEFINE_RESERVATION_HELPER" release-publication "$siw_dir" owner-a
+}
+
+@test "siw publication permits canonical tracker scaffolding for a new phase" {
+  local siw_dir
+  siw_dir="$TMP_ROOT/siw"
+  mkdir -p "$siw_dir/issues"
+  printf '# Open Issues Overview\n\n## General\n\n**Parallelization:** Safe to parallelize\n\n| # | Title | Status | Size | Priority | Mode | Related |\n| --- | --- | --- | --- | --- | --- | --- |\n| _None_ | No issues | | | | | |\n' >"$siw_dir/OPEN_ISSUES_OVERVIEW.md"
+  printf '# Log\n' >"$siw_dir/LOG.md"
+
+  sh "$GENERATE_PHASES_RESERVATION_HELPER" acquire "$siw_dir" owner-a 1
+  sh "$GENERATE_PHASES_RESERVATION_HELPER" reserve-exact "$siw_dir" P1-001 owner-a
+  printf '# ISSUE-P1-001: first phase issue\n' >"$siw_dir/issues/ISSUE-P1-001-first.md"
+  printf '\n## Phase 1: First goal\n\n**Parallelization:** Must be sequential\n\n| # | Title | Status | Size | Priority | Mode | Related |\n| --- | --- | --- | --- | --- | --- | --- |\n| P1-001 | first phase issue | READY | S | High | AUTO | |\n' >>"$siw_dir/OPEN_ISSUES_OVERVIEW.md"
+  printf '\n## Current Progress\n\n- Created P1-001: first phase issue\n' >>"$siw_dir/LOG.md"
+
+  sh "$GENERATE_PHASES_RESERVATION_HELPER" publish-receipt "$siw_dir" owner-a P1-001
+  sh "$GENERATE_PHASES_RESERVATION_HELPER" release "$siw_dir" P1-001 owner-a
+  sh "$GENERATE_PHASES_RESERVATION_HELPER" release-publication "$siw_dir" owner-a
 }
 
 @test "siw replacement receipts cover canonical IDs removed from every current view" {

@@ -264,6 +264,19 @@ cleanup_state_temp() {
   state_temp=
 }
 
+cleanup_remainder_temps() {
+  if [ -n "${overview_remainder_temp:-}" ] \
+    && { [ -e "$overview_remainder_temp" ] || [ -L "$overview_remainder_temp" ]; }; then
+    unlink "$overview_remainder_temp" 2> /dev/null || true
+  fi
+  if [ -n "${log_remainder_temp:-}" ] \
+    && { [ -e "$log_remainder_temp" ] || [ -L "$log_remainder_temp" ]; }; then
+    unlink "$log_remainder_temp" 2> /dev/null || true
+  fi
+  overview_remainder_temp=
+  log_remainder_temp=
+}
+
 cleanup_baseline_temps() {
   if [ -n "${baseline_temp:-}" ] && { [ -e "$baseline_temp" ] || [ -L "$baseline_temp" ]; }; then
     unlink "$baseline_temp" 2> /dev/null || true
@@ -324,8 +337,8 @@ finish_operation_lock() {
 }
 
 install_cleanup_traps() {
-  trap 'cleanup_claim_temp; cleanup_state_temp; cleanup_baseline_temps; cleanup_hash_temps; cleanup_changed_ids_temp; cleanup_receipt_temp; cleanup_operation_lock' 0
-  trap 'cleanup_claim_temp; cleanup_state_temp; cleanup_baseline_temps; cleanup_hash_temps; cleanup_changed_ids_temp; cleanup_receipt_temp; cleanup_operation_lock; exit 1' 1 2 15
+  trap 'cleanup_claim_temp; cleanup_state_temp; cleanup_remainder_temps; cleanup_baseline_temps; cleanup_hash_temps; cleanup_changed_ids_temp; cleanup_receipt_temp; cleanup_operation_lock' 0
+  trap 'cleanup_claim_temp; cleanup_state_temp; cleanup_remainder_temps; cleanup_baseline_temps; cleanup_hash_temps; cleanup_changed_ids_temp; cleanup_receipt_temp; cleanup_operation_lock; exit 1' 1 2 15
 }
 
 finish_claim_temp() {
@@ -503,6 +516,7 @@ calculate_publication_state() {
   log_path="$publication_siw_dir/LOG.md"
   issues_path="$publication_siw_dir/issues"
   cleanup_state_temp
+  cleanup_remainder_temps
   cleanup_hash_temps
   state_temp=$(umask 077 && mktemp "$publication_siw_dir/.siw-publication-state.XXXXXX") \
     || fail "could not prepare SIW publication state in $publication_siw_dir"
@@ -512,7 +526,6 @@ calculate_publication_state() {
 
   [ -f "$overview_path" ] && [ ! -L "$overview_path" ] \
     || fail "SIW overview must be a non-symlink regular file: $overview_path"
-  set -- "$overview_path"
 
   if [ ! -e "$log_path" ] && [ ! -L "$log_path" ]; then
     publication_log_missing=1
@@ -520,7 +533,67 @@ calculate_publication_state() {
     [ -f "$log_path" ] && [ ! -L "$log_path" ] \
       || fail "SIW log must be a non-symlink regular file: $log_path"
     publication_log_missing=
+  fi
+
+  overview_remainder_temp=$(umask 077 && mktemp "${TMPDIR:-/tmp}/siw-overview-remainder.XXXXXX") \
+    || fail "could not prepare normalized SIW overview"
+  awk '
+    /^[[:space:]]*$/ { next }
+    /^#[[:space:]]+Open Issues([[:space:]]+Overview)?[[:space:]]*$/ { next }
+    /^##[[:space:]]+General([[:space:]]|$)/ { next }
+    /^##[[:space:]]+Phase[[:space:]]+[1-9][0-9]*([[:space:]]|:|$)/ { next }
+    /^[[:space:]]*\*\*Parallelization:\*\*/ { next }
+    /^[[:space:]]*\|/ {
+      token = $0
+      sub(/^[[:space:]]*\|[[:space:]]*/, "", token)
+      sub(/[[:space:]]*\|.*/, "", token)
+      sub(/^ISSUE-/, "", token)
+      if (token ~ /^(G|P[1-9][0-9]*)-[0-9][0-9][0-9]+$/) next
+      if (token == "#" || token == "_None_") next
+      if (token ~ /^[-:]+$/) next
+    }
+    { print }
+  ' "$overview_path" > "$overview_remainder_temp" \
+    || fail "could not normalize SIW overview"
+
+  log_remainder_temp=
+  if [ -z "$publication_log_missing" ]; then
+    log_remainder_temp=$(umask 077 && mktemp "${TMPDIR:-/tmp}/siw-log-remainder.XXXXXX") \
+      || fail "could not prepare normalized SIW log"
+    awk '
+      {
+        line = $0
+        if (line ~ /^[[:space:]]*$/) next
+        if (line ~ /^#[[:space:]]+Log[[:space:]]*$/) next
+        if (line ~ /^##[[:space:]]+Current Progress([[:space:]]|$)/) {
+          in_progress = 1
+          next
+        }
+        if (line ~ /^##[[:space:]]+/) in_progress = 0
+        accepted = (line ~ /^[[:space:]]*-[[:space:]]+(Created|Updated)[[:space:]]+/)
+        if (in_progress && line ~ /^[[:space:]]*-[[:space:]]+/) accepted = 1
+        if (accepted) {
+          rest = line
+          has_issue_id = 0
+          while (match(rest, /(ISSUE-)?(G|P[1-9][0-9]*)-[0-9][0-9][0-9]+/)) {
+            has_issue_id = 1
+            rest = substr(rest, RSTART + RLENGTH)
+          }
+          if (has_issue_id) next
+        }
+        print line
+      }
+    ' "$log_path" > "$log_remainder_temp" \
+      || fail "could not normalize SIW log"
+  fi
+
+  set -- "$overview_path"
+  if [ -z "$publication_log_missing" ]; then
     set -- "$@" "$log_path"
+  fi
+  set -- "$@" "$overview_remainder_temp"
+  if [ -z "$publication_log_missing" ]; then
+    set -- "$@" "$log_remainder_temp"
   fi
 
   if [ -e "$issues_path" ] || [ -L "$issues_path" ]; then
@@ -556,6 +629,21 @@ calculate_publication_state() {
     IFS= read -r log_hash <&3 || fail "missing log hash from batched publication state"
     validate_hash "$log_hash" "calculated log hash"
     printf 'log %s\n' "$log_hash" >> "$state_temp" \
+      || fail "could not write temporary SIW publication state: $state_temp"
+  fi
+  IFS= read -r overview_remainder_hash <&3 \
+    || fail "missing normalized overview hash from batched publication state"
+  validate_hash "$overview_remainder_hash" "calculated normalized overview hash"
+  printf 'overview-remainder %s\n' "$overview_remainder_hash" >> "$state_temp" \
+    || fail "could not write temporary SIW publication state: $state_temp"
+  if [ -n "$publication_log_missing" ]; then
+    printf 'log-remainder missing\n' >> "$state_temp" \
+      || fail "could not write temporary SIW publication state: $state_temp"
+  else
+    IFS= read -r log_remainder_hash <&3 \
+      || fail "missing normalized log hash from batched publication state"
+    validate_hash "$log_remainder_hash" "calculated normalized log hash"
+    printf 'log-remainder %s\n' "$log_remainder_hash" >> "$state_temp" \
       || fail "could not write temporary SIW publication state: $state_temp"
   fi
 
@@ -601,6 +689,7 @@ calculate_publication_state() {
   fi
   exec 3<&-
   cleanup_hash_temps
+  cleanup_remainder_temps
 
   awk '
     {
@@ -1246,16 +1335,24 @@ derive_changed_issue_ids() {
       if (side == "baseline") baseline[key] = baseline[key] line "\n"
       else current[key] = current[key] line "\n"
     }
-    function consume(side, line, kind, id, key) {
+    function consume(side, line, kind, id, key, record_key) {
       kind = $1
       if (kind == "overview" || kind == "log") {
         if (side == "baseline") raw_baseline[kind] = $2
         else raw_current[kind] = $2
+      } else if (kind == "overview-remainder" || kind == "log-remainder") {
+        if (side == "baseline") remainder_baseline[kind] = $2
+        else remainder_current[kind] = $2
       } else if (kind == "overview-general-parallelization") {
         if (side == "baseline") baseline_general_parallelization = baseline_general_parallelization line "\n"
         else current_general_parallelization = current_general_parallelization line "\n"
       } else if (kind == "issue" || kind == "overview-issue" || kind == "log-issue") {
         remember(side, kind, $2, line)
+        if (kind == "log-issue") {
+          record_key = $2 SUBSEP line
+          if (side == "baseline") baseline_log_records[record_key]++
+          else current_log_records[record_key]++
+        }
       } else if (kind == "other-issue") {
         key = line
         all_other[key] = 1
@@ -1266,18 +1363,22 @@ derive_changed_issue_ids() {
     FNR == NR { consume("baseline", $0); next }
     { consume("current", $0) }
     END {
+      for (key in current_log_records) {
+        if (current_log_records[key] > baseline_log_records[key]) {
+          split(key, record_parts, SUBSEP)
+          has_new_log_record[record_parts[1]] = 1
+        }
+      }
       for (id in all_ids) {
         issue_key = "issue" SUBSEP id
         overview_key = "overview-issue" SUBSEP id
         log_key = "log-issue" SUBSEP id
-        if (baseline[issue_key] != current[issue_key]) changed[id] = 1
-        if (baseline[overview_key] != current[overview_key]) {
-          changed[id] = 1
-          overview_attributed = 1
-        }
-        if (baseline[log_key] != current[log_key]) {
-          changed[id] = 1
-          log_attributed = 1
+        issue_changed = baseline[issue_key] != current[issue_key]
+        overview_changed = baseline[overview_key] != current[overview_key]
+        log_changed = baseline[log_key] != current[log_key]
+        if (issue_changed || overview_changed || log_changed) changed[id] = 1
+        if (overview_changed && current[issue_key] != "" && !has_new_log_record[id]) {
+          missing_log_record[id] = 1
         }
       }
       if (baseline_general_parallelization != current_general_parallelization) {
@@ -1287,16 +1388,19 @@ derive_changed_issue_ids() {
             general_parallelization_attributed = 1
           }
         }
-        if (general_parallelization_attributed) overview_attributed = 1
+        if (!general_parallelization_attributed) unattributed_overview = 1
       }
       for (key in all_other) {
         if (baseline_other[key] != current_other[key]) other_changed = 1
       }
       for (id in changed) print id
-      if (raw_baseline["overview"] != raw_current["overview"] && !overview_attributed) {
-        print "__UNATTRIBUTED_OVERVIEW__"
+      for (id in missing_log_record) print "__MISSING_LOG_UPDATE__:" id
+      if (remainder_baseline["overview-remainder"] != remainder_current["overview-remainder"]) {
+        unattributed_overview = 1
       }
-      if (raw_baseline["log"] != raw_current["log"] && !log_attributed) {
+      if (unattributed_overview) print "__UNATTRIBUTED_OVERVIEW__"
+      if (raw_baseline["log"] != "missing" \
+        && remainder_baseline["log-remainder"] != remainder_current["log-remainder"]) {
         print "__UNATTRIBUTED_LOG__"
       }
       if (other_changed) print "__UNATTRIBUTED_ISSUE__"
@@ -1310,6 +1414,10 @@ require_changed_ids_in_receipt() {
   derive_changed_issue_ids "$baseline_state_temp" "$state_temp"
   while IFS= read -r changed_issue_id || [ -n "$changed_issue_id" ]; do
     case "$changed_issue_id" in
+      __MISSING_LOG_UPDATE__:*)
+        missing_log_issue_id=${changed_issue_id#__MISSING_LOG_UPDATE__:}
+        fail "overview issue row changed without a new log publication entry: $missing_log_issue_id"
+        ;;
       __UNATTRIBUTED_OVERVIEW__)
         fail "overview changed without a canonical issue-row change"
         ;;
