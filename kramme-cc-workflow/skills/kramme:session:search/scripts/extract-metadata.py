@@ -83,9 +83,11 @@ def update_codex(
                 "cwd": string_field(payload, "cwd"),
                 "session": session_id,
                 "ts": timestamp,
-                "source": string_field(payload, "source"),
                 "cli_version": string_field(payload, "cli_version"),
             }
+            source = payload.get("source", "")
+            if isinstance(source, str):
+                candidate["source"] = source
         except TranscriptShapeError:
             diagnostics.record_parse_error()
             return False, False
@@ -163,6 +165,10 @@ def get_last_timestamp(
     try:
         with open(filepath, "rb") as session_file:
             start = max(0, size - TAIL_BYTES)
+            starts_mid_record = False
+            if start > 0:
+                session_file.seek(start - 1)
+                starts_mid_record = session_file.read(1) != b"\n"
             session_file.seek(start)
             tail = session_file.read().decode("utf-8", errors="ignore")
     except (OSError, IOError):
@@ -170,7 +176,7 @@ def get_last_timestamp(
         return None, diagnostics
 
     lines = tail.splitlines()
-    if start > 0 and lines:
+    if starts_mid_record and lines:
         lines = lines[1:]
     for line in reversed(lines):
         stripped = line.strip()

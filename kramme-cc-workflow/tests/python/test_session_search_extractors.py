@@ -22,12 +22,13 @@ CODEX_SESSION = """\
 
 CLAUDE_SESSION = """\
 {"type":"user","timestamp":"2026-06-06T11:00:00Z","gitBranch":"main","sessionId":"claude-test-session","message":{"content":"Please inspect the synthetic Claude session."}}
-{"type":"assistant","timestamp":"2026-06-06T11:01:00Z","message":{"content":[{"type":"text","text":"I will inspect this synthetic Claude session now."}]}}
+{"type":"assistant","timestamp":"2026-06-06T11:01:00Z","message":{"content":[{"type":"text","text":"I will inspect this synthetic Claude session now."},{"type":"tool_use","id":"tool-1","name":"Read","input":{"file_path":"/tmp/example.py"}}]}}
+{"type":"user","timestamp":"2026-06-06T11:02:00Z","message":{"content":[{"type":"tool_result","tool_use_id":"tool-1","is_error":false,"content":"ok"}]}}
 """
 
 CURSOR_SESSION = """\
 {"role":"user","message":{"content":[{"type":"text","text":"Please inspect the synthetic Cursor session."}]}}
-{"role":"assistant","message":{"content":[{"type":"text","text":"I will inspect this synthetic Cursor session now."}]}}
+{"role":"assistant","message":{"content":[{"type":"text","text":"I will inspect this synthetic Cursor session now."},{"type":"tool_use","name":"Read","input":{"file_path":"/tmp/example.py"}}]}}
 """
 
 CODEX_SKELETON = """\
@@ -220,16 +221,43 @@ runpy.run_path(script_path, run_name="__main__")
                 self.assertEqual(empty_path.stderr, "")
 
     def test_skeleton_detects_each_platform(self):
-        expected_markers = (
-            (CODEX_SESSION, "[2026-06-06T10:02:00] [user]"),
-            (CLAUDE_SESSION, "[2026-06-06T11:00:00] [user]"),
-            (CURSOR_SESSION, "[user] Please inspect the synthetic Cursor session."),
+        cases = (
+            (
+                CODEX_SESSION,
+                (
+                    "[2026-06-06T10:02:00] [user]",
+                    "[2026-06-06T10:03:00] [assistant]",
+                    "[2026-06-06T10:04:00] [tool] exec false -> error(exit 1)",
+                ),
+            ),
+            (
+                CLAUDE_SESSION,
+                (
+                    "[2026-06-06T11:00:00] [user]",
+                    "[2026-06-06T11:01:00] [assistant]",
+                    "[2026-06-06T11:01:00] [tool] Read /tmp/example.py -> ok",
+                ),
+            ),
+            (
+                CURSOR_SESSION,
+                (
+                    "[user] Please inspect the synthetic Cursor session.",
+                    "[assistant] I will inspect this synthetic Cursor session now.",
+                    "[tool] Read /tmp/example.py",
+                ),
+            ),
         )
-        for session, marker in expected_markers:
-            with self.subTest(marker=marker):
+        for session, markers in cases:
+            with self.subTest(markers=markers):
                 result = self.run_script("extract-skeleton.py", session)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertIn(marker, result.stdout)
+                for marker in markers:
+                    self.assertIn(marker, result.stdout)
+                meta = json.loads(result.stdout.splitlines()[-1])
+                self.assertEqual(
+                    {key: meta[key] for key in ("user", "assistant", "tool")},
+                    {"user": 1, "assistant": 1, "tool": 1},
+                )
 
     def test_errors_accepts_plain_claude_user_content(self):
         result = self.run_script("extract-errors.py", CLAUDE_SESSION)
@@ -238,6 +266,23 @@ runpy.run_path(script_path, run_name="__main__")
         meta = json.loads(result.stdout)
         self.assertEqual(meta["parse_errors"], 0)
         self.assertEqual(meta["errors_found"], 0)
+
+    def test_errors_extracts_claude_tool_failures(self):
+        session = CLAUDE_SESSION.replace(
+            '"is_error":false,"content":"ok"',
+            '"is_error":true,"content":"synthetic Claude failure"',
+        )
+
+        result = self.run_script("extract-errors.py", session)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(
+            "[2026-06-06T11:02:00] [error] synthetic Claude failure",
+            result.stdout,
+        )
+        meta = json.loads(result.stdout.splitlines()[-1])
+        self.assertEqual(meta["errors_found"], 1)
+        self.assertEqual(meta["parse_errors"], 0)
 
     def test_empty_and_malformed_input_keep_metadata_shape(self):
         for name, expected in (
@@ -403,6 +448,109 @@ runpy.run_path(script_path, run_name="__main__")
                 self.assertEqual(records[0], expected)
                 self.assertEqual(records[-1]["parse_errors"], 1)
 
+    def test_metadata_keeps_codex_sessions_with_object_sources(self):
+        session = (
+            "\n".join(
+                [
+                    (
+                        '{"timestamp":"2026-06-06T10:00:00Z","type":"session_meta",'
+                        '"payload":{"cwd":"/tmp/demo-repo","id":"subagent-session",'
+                        '"timestamp":"2026-06-06T10:00:00Z","source":{"subagent":'
+                        '{"thread_spawn":{"parent_thread_id":"parent"}}},'
+                        '"cli_version":"1"}}'
+                    ),
+                    (
+                        '{"type":"turn_context","payload":{"cwd":"/tmp/demo-repo",'
+                        '"model":"gpt-test"}}'
+                    ),
+                ]
+            )
+            + "\n"
+        )
+
+        result = self.run_script("extract-metadata.py", session)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        records = [json.loads(line) for line in result.stdout.splitlines()]
+        self.assertEqual(
+            records[0],
+            {
+                "platform": "codex",
+                "cwd": "/tmp/demo-repo",
+                "session": "subagent-session",
+                "ts": "2026-06-06T10:00:00Z",
+                "cli_version": "1",
+                "model": "gpt-test",
+            },
+        )
+        self.assertEqual(records[-1]["parse_errors"], 0)
+
+    def test_metadata_tail_distinguishes_aligned_and_partial_records(self):
+        session_meta = CODEX_SESSION.splitlines()[0] + "\n"
+
+        def trailing_event(size):
+            prefix = '{"type":"trailing","pad":"'
+            suffix = '"}\n'
+            return prefix + ("x" * (size - len(prefix) - len(suffix))) + suffix
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            aligned = root / "aligned.jsonl"
+            boundary_event = (
+                '{"timestamp":"2026-07-25T23:59:59Z","type":"event_msg",'
+                '"payload":{"type":"task_complete"}}\n'
+            )
+            aligned.write_text(
+                session_meta
+                + boundary_event
+                + trailing_event(16384 - len(boundary_event)),
+                encoding="utf-8",
+            )
+
+            aligned_result = self.run_script(
+                "extract-metadata.py",
+                "",
+                aligned,
+            )
+
+            self.assertEqual(aligned_result.returncode, 0, aligned_result.stderr)
+            aligned_records = [
+                json.loads(line) for line in aligned_result.stdout.splitlines()
+            ]
+            self.assertEqual(
+                aligned_records[0]["last_ts"],
+                "2026-07-25T23:59:59Z",
+            )
+            self.assertEqual(aligned_records[-1]["parse_errors"], 0)
+
+            partial = root / "partial.jsonl"
+            partial_event = (
+                '{"timestamp":"2026-07-25T22:00:00Z","type":"event_msg",'
+                '"payload":{"type":"note","text":"'
+                + ("x" * 500)
+                + '"}}\n'
+            )
+            offset = 100
+            partial.write_text(
+                session_meta
+                + partial_event
+                + trailing_event(16384 - len(partial_event[offset:])),
+                encoding="utf-8",
+            )
+
+            partial_result = self.run_script(
+                "extract-metadata.py",
+                "",
+                partial,
+            )
+
+            self.assertEqual(partial_result.returncode, 0, partial_result.stderr)
+            partial_records = [
+                json.loads(line) for line in partial_result.stdout.splitlines()
+            ]
+            self.assertNotIn("last_ts", partial_records[0])
+            self.assertEqual(partial_records[-1]["parse_errors"], 0)
+
     def test_metadata_keyword_scan_counts_bad_nested_content_and_keeps_valid_matches(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "keyword.jsonl"
@@ -446,6 +594,8 @@ runpy.run_path(script_path, run_name="__main__")
             for name, content in sessions.items():
                 path = Path(directory) / name
                 path.write_text(content, encoding="utf-8")
+                if name == "cursor.jsonl":
+                    os.utime(path, (1_700_000_000, 1_700_000_000))
                 paths.append(path)
 
             result = self.run_script("extract-metadata.py", "", "--keyword", "café", *paths)
@@ -456,6 +606,29 @@ runpy.run_path(script_path, run_name="__main__")
                 ["codex", "claude", "cursor"],
             )
             self.assertEqual([record["match_count"] for record in records[:-1]], [2, 4, 4])
+            by_platform = {
+                record["platform"]: record
+                for record in records[:-1]
+            }
+            self.assertEqual(by_platform["codex"]["session"], "codex-test-session")
+            self.assertEqual(
+                by_platform["codex"]["last_ts"],
+                "2026-06-06T10:04:00Z",
+            )
+            self.assertEqual(by_platform["claude"]["branch"], "main")
+            self.assertEqual(
+                by_platform["claude"]["session"],
+                "claude-test-session",
+            )
+            self.assertEqual(
+                by_platform["claude"]["last_ts"],
+                "2026-06-06T11:02:00Z",
+            )
+            self.assertEqual(by_platform["cursor"]["session"], Path(directory).name)
+            self.assertEqual(
+                by_platform["cursor"]["ts"],
+                "2023-11-14T22:13:20+00:00",
+            )
             self.assertEqual(records[-1]["files_matched"], 3)
             self.assertNotIn("CAFÉ", result.stdout)
 
