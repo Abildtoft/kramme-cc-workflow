@@ -626,6 +626,9 @@ make -C kramme-cc-workflow test-smoke
 # Run only Bats integration tests
 make -C kramme-cc-workflow test-bats
 
+# Run one Bats integration test file
+make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/context-links.bats
+
 # Run only Node unit tests
 make -C kramme-cc-workflow test-node
 
@@ -638,6 +641,9 @@ make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/frontmatter.
 # Run only Python unit tests
 make -C kramme-cc-workflow test-python
 
+# Run one Python unit test file
+make -C kramme-cc-workflow test-python-file PYTHON_TEST_FILE=tests/python/test_git_command_parser.py
+
 # Enforce conservative Node/Python coverage baselines
 make -C kramme-cc-workflow unit-coverage
 
@@ -647,7 +653,7 @@ make -C kramme-cc-workflow coverage
 # Run with verbose output (show test names)
 make -C kramme-cc-workflow test-verbose
 
-# Run only plugin conversion tests
+# Run converter Node contracts and Bats CLI smoke tests
 make -C kramme-cc-workflow test-convert
 
 # Run only non-interactive git tests
@@ -671,6 +677,8 @@ The initial coverage baselines are 80% lines, 70% branches, and 80% functions fo
 Production sources are registered in `kramme-cc-workflow/config/coverage-production-sources.json`. The `coverage` target reconciles that inventory with executable JavaScript, Python, and shell files under the plugin's `evals/`, `hooks/`, `scripts/`, and skill-local `scripts/` directories, including repository-maintenance skills under `.agents/skills/`. Put JavaScript and Python files in `measured` when the native coverage report includes them consistently across supported runtimes; otherwise put them in `contract_only` and map each source to one or more top-level `kramme-cc-workflow/tests/*.bats` contracts. A contract-only source may still appear incidentally in a native report, but the coverage gate does not require it there or include its Python result in the measured aggregate. Shell sources use `contract_only`. The Bats runner does not recurse into nested test directories, so mapped contracts must be top-level files. Update the inventory whenever a production source is added, moved, removed, or changes coverage mode.
 
 For Node changes, `test-node-watch` uses the [built-in test runner's dependency watching](https://nodejs.org/docs/latest-v20.x/api/test.html#watch-mode). For a focused change-to-test loop, use `test-node-file` with the closest mapping in `kramme-cc-workflow/docs/code-map.md`; the equivalent npm command is `npm run test:node:file -- kramme-cc-workflow/tests/node/<file>.test.js` from the repository root.
+
+The `NODE_TEST_FILE`, `PYTHON_TEST_FILE`, and `BATS_TEST_FILE` values are paths relative to `kramme-cc-workflow/`, because `make -C kramme-cc-workflow` enters that directory before running the target. Each single-file target exits with a usage error when its variable is omitted.
 
 ### Pre-PR Verification
 
@@ -746,24 +754,35 @@ Accepted findings are excluded from `--fail-on` threshold calculations only when
 
 ### Test Structure
 
+This is a representative inventory by test language, not an exhaustive list of
+the top-level Bats contracts:
+
 ```
 kramme-cc-workflow/tests/
-├── run-tests.sh              # Main test runner
+├── run-tests.sh                      # Complete top-level Bats runner
+├── node/
+│   ├── codex-hook-compat.test.js     # Codex hook conversion contracts
+│   ├── converter-contracts.test.js   # Core converter contracts
+│   ├── frontmatter.test.js           # Frontmatter unit contracts
+│   └── scorer.test.js                # Skill-review scorer contracts
+├── python/
+│   ├── test_changelog.py
+│   ├── test_generate_image.py
+│   ├── test_git_command_parser.py
+│   ├── test_lint_skill_contracts.py
+│   ├── test_session_search_extractors.py
+│   └── test_session_search_python38.py
+├── fixtures/                         # Shared parser/frontmatter cases
 ├── test_helper/
-│   ├── common.bash           # Shared utilities
-│   └── mocks/                # Mock git, gh commands
-├── auto-format.bats          # Tests for auto-format hook
-├── block-rm-rf.bats          # Tests for block-rm-rf hook
-├── confirm-review-responses.bats # Tests for confirm-review-responses hook
-├── convert-plugin.bats       # Tests for plugin conversion script
-├── context-links.bats        # Tests for context-links hook
-├── agent-description-length.bats # Tests Codex-compatible agent descriptions
-├── pr-generate-description-guidance.bats # Tests PR description skill guidance
-├── skill-resource-references.bats # Tests skill-local resource references
-├── skillspector-runner.bats # Tests SkillSpector scan wrapper
-├── skill-usage-stats.bats    # Tests for skill usage stats hook
-└── noninteractive-git.bats   # Tests for noninteractive-git hook
+│   ├── common.bash                   # Shared Bats utilities
+│   └── mocks/                        # Mock git, gh, and skillspector commands
+├── makefile.bats                      # Make target contracts
+├── convert-plugin.bats                # Converter CLI smoke tests
+└── … other top-level *.bats           # Hook, skill, script, and guidance contracts
 ```
+
+The aggregate Python target also discovers repository-maintenance tests under
+`.agents/skills/kramme:skill:audit-sources/scripts/`.
 
 ## SkillOpt Adoption
 

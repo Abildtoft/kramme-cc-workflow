@@ -1,8 +1,17 @@
 # Code Map
 
-Use this map to choose the first files to read and the closest tests to run.
-The full command list lives in the root [README.md](../../README.md#running-the-tests)
-and [Makefile](../Makefile).
+Use this map to choose the first files to read and the closest tests to run. The full command list lives in the root [README.md](../../README.md#running-the-tests) and [Makefile](../Makefile).
+
+## Test Entry Points
+
+Paths passed through file variables are relative to `kramme-cc-workflow/`.
+
+| Scope | Complete suite | Focused file |
+| --- | --- | --- |
+| Node | `make -C kramme-cc-workflow test-node` | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/<file>.test.js` |
+| Python | `make -C kramme-cc-workflow test-python` | `make -C kramme-cc-workflow test-python-file PYTHON_TEST_FILE=tests/python/test_<name>.py` |
+| Bats | `make -C kramme-cc-workflow test-bats` | `make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/<name>.bats` |
+| Converter | `make -C kramme-cc-workflow test-convert` (Node converter contracts plus Bats CLI smoke) | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/converter-contracts.test.js` or `make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/convert-plugin.bats` |
 
 ## Source to Test Map
 
@@ -14,13 +23,13 @@ and [Makefile](../Makefile).
 | Agents | `kramme-cc-workflow/agents/*.md` | `bats kramme-cc-workflow/tests/agent-description-length.bats`, `make -C kramme-cc-workflow test-convert` |
 | Hook manifest and hooks | `kramme-cc-workflow/hooks/hooks.json`, `kramme-cc-workflow/hooks/*.sh` | `bats kramme-cc-workflow/tests/{auto-format,block-rm-rf,check-enabled,confirm-review-responses,context-links,noninteractive-git,skill-usage-stats}.bats`, plus the hook-specific tests below |
 | Hook enablement | `kramme-cc-workflow/hooks/lib/check-enabled.sh`, hook scripts that source it | `bats kramme-cc-workflow/tests/check-enabled.bats` |
-| Git command safety parsing | `kramme-cc-workflow/hooks/lib/git_command_parser.py`, `kramme-cc-workflow/hooks/noninteractive-git.sh`, `kramme-cc-workflow/hooks/confirm-review-responses.sh`, `kramme-cc-workflow/hooks/block-rm-rf.sh` | `python3 -m unittest discover -s kramme-cc-workflow/tests/python -p test_git_command_parser.py`, `bats kramme-cc-workflow/tests/noninteractive-git.bats kramme-cc-workflow/tests/confirm-review-responses.bats kramme-cc-workflow/tests/block-rm-rf.bats` |
+| Git command safety parsing | `kramme-cc-workflow/hooks/lib/git_command_parser.py`, `kramme-cc-workflow/hooks/noninteractive-git.sh`, `kramme-cc-workflow/hooks/confirm-review-responses.sh`, `kramme-cc-workflow/hooks/block-rm-rf.sh` | `make -C kramme-cc-workflow test-python-file PYTHON_TEST_FILE=tests/python/test_git_command_parser.py`, `bats kramme-cc-workflow/tests/noninteractive-git.bats kramme-cc-workflow/tests/confirm-review-responses.bats kramme-cc-workflow/tests/block-rm-rf.bats` |
 | Auto-format hook | `kramme-cc-workflow/hooks/auto-format.sh` | `make -C kramme-cc-workflow test-format` |
 | Context links hook | `kramme-cc-workflow/hooks/context-links.sh`, `kramme-cc-workflow/hooks/context-links.config.example` | `make -C kramme-cc-workflow test-context` |
 | Skill usage stats | `kramme-cc-workflow/hooks/skill-usage-stats.sh`, `kramme-cc-workflow/hooks/skill-usage.js`, `kramme-cc-workflow/scripts/skill-usage.js` | `make -C kramme-cc-workflow test-skill-usage` |
 | Converter frontmatter | `kramme-cc-workflow/scripts/convert-plugin/frontmatter.js` | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/frontmatter.test.js` |
 | Converter contracts and Codex hook output | `kramme-cc-workflow/scripts/convert-plugin/*.js`, `kramme-cc-workflow/hooks/hooks.json`, `kramme-cc-workflow/docs/hooks.md` | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/converter-contracts.test.js`, `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/codex-hook-compat.test.js` |
-| Codex converter | `scripts/convert-plugin.js`, `scripts/convert-plugin/`, `scripts/install-codex.sh` | `make -C kramme-cc-workflow test-convert` |
+| Codex converter | `kramme-cc-workflow/scripts/convert-plugin.js`, `kramme-cc-workflow/scripts/convert-plugin/`, `kramme-cc-workflow/scripts/install-codex.sh` | `make -C kramme-cc-workflow test-convert` |
 | Dev-server detection | `scripts/dev-server/*.sh`, `scripts/dev-server/README.md` | `bats kramme-cc-workflow/tests/dev-server-scripts.bats` |
 | PR diff and base helpers | `scripts/resolve-base.sh`, `scripts/collect-review-diff.sh` | `bats kramme-cc-workflow/tests/resolve-base.bats kramme-cc-workflow/tests/review-diff-scripts.bats` |
 | Release and changelog | `kramme-cc-workflow/scripts/release.py`, `kramme-cc-workflow/scripts/changelog.py`, `kramme-cc-workflow/RELEASE.md`, `kramme-cc-workflow/CHANGELOG.md` | `bats kramme-cc-workflow/tests/release.bats` |
@@ -33,20 +42,10 @@ and [Makefile](../Makefile).
 
 ## Common Investigation Paths
 
-When a skill behaves incorrectly, start with its `SKILL.md`, then load only the
-referenced local files under the same skill directory. Check
-`scripts/lint-skill-contracts.py` if the issue is frontmatter, naming,
-description length, platform filtering, or self-contained resource policy.
+When a skill behaves incorrectly, start with its `SKILL.md`, then load only the referenced local files under the same skill directory. Check `scripts/lint-skill-contracts.py` if the issue is frontmatter, naming, description length, platform filtering, or self-contained resource policy.
 
-When a hook blocks or misses a command, inspect the hook script, then the shared
-helpers under `hooks/lib/` (see `hooks/lib/README.md` for the helper
-responsibility map). `git_command_parser.py` is the production parser for complex
-shell and git command shapes used by the command-safety hooks.
+When a hook blocks or misses a command, inspect the hook script, then the shared helpers under `hooks/lib/` (see `hooks/lib/README.md` for the helper responsibility map). `git_command_parser.py` is the production parser for complex shell and git command shapes used by the command-safety hooks.
 
-When Codex output is wrong, read `scripts/convert-plugin.js` first, then follow
-the boundary in `scripts/convert-plugin/README.md`: loader, transformer, writer,
-config, staging, and install state.
+When Codex output is wrong, read `scripts/convert-plugin.js` first, then follow the boundary in `scripts/convert-plugin/README.md`: loader, transformer, writer, config, staging, and install state.
 
-When browser or visual skills cannot find an app, read
-`scripts/dev-server/README.md`, the relevant shell detector, and the skill-local
-reference that calls it.
+When browser or visual skills cannot find an app, read `scripts/dev-server/README.md`, the relevant shell detector, and the skill-local reference that calls it.
