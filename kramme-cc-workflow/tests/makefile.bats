@@ -197,6 +197,93 @@ SH
   [[ "$output" == *"arg2=tests/node/path with spaces.test.js"* ]]
 }
 
+@test "test-python-file requires PYTHON_TEST_FILE" {
+  run make -C "$BATS_TEST_DIRNAME/.." --no-print-directory test-python-file
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"PYTHON_TEST_FILE is required"* ]]
+}
+
+@test "test-python-file forwards a path as one argument" {
+  setup_makefile_contract_repo
+  cat >"$MAKEFILE_CONTRACT_BIN/python3" <<'SH'
+#!/bin/sh
+printf 'argc=%s\narg1=%s\narg2=%s\narg3=%s\n' "$#" "$1" "$2" "$3"
+SH
+  chmod +x "$MAKEFILE_CONTRACT_BIN/python3"
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory test-python-file PYTHON_TEST_FILE="tests/python/path with spaces.py"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"argc=3"* ]]
+  [[ "$output" == *"arg1=-m"* ]]
+  [[ "$output" == *"arg2=unittest"* ]]
+  [[ "$output" == *"arg3=tests/python/path with spaces.py"* ]]
+}
+
+@test "test-bats-file requires BATS_TEST_FILE" {
+  run make -C "$BATS_TEST_DIRNAME/.." --no-print-directory test-bats-file BATS_TEST_FILE=
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BATS_TEST_FILE is required"* ]]
+}
+
+@test "test-bats-file forwards a path as one argument" {
+  setup_makefile_contract_repo
+  mkdir -p "$MAKEFILE_CONTRACT_REPO/plugin/tests/test_helper/mocks"
+  touch "$MAKEFILE_CONTRACT_REPO/plugin/tests/test_helper/mocks/git"
+  create_fake_tool "$MAKEFILE_CONTRACT_BIN/jq"
+  cat >"$MAKEFILE_CONTRACT_BIN/bats" <<'SH'
+#!/bin/sh
+printf 'argc=%s\narg1=%s\n' "$#" "$1"
+SH
+  chmod +x "$MAKEFILE_CONTRACT_BIN/bats"
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory test-bats-file BATS_TEST_FILE="tests/path with spaces.bats"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"argc=1"* ]]
+  [[ "$output" == *"arg1=tests/path with spaces.bats"* ]]
+}
+
+@test "test-convert composes Node contracts and the Bats CLI smoke" {
+  run make -C "$BATS_TEST_DIRNAME/.." --no-print-directory --dry-run test-convert
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"node --test tests/node/converter-contracts.test.js"* ]]
+  [[ "$output" == *"bats tests/convert-plugin.bats"* ]]
+}
+
+@test "test-convert fails before the Bats smoke when Node contracts fail" {
+  setup_makefile_contract_repo
+  mkdir -p "$MAKEFILE_CONTRACT_REPO/plugin/tests/test_helper/mocks"
+  touch "$MAKEFILE_CONTRACT_REPO/plugin/tests/test_helper/mocks/git"
+  create_fake_tool "$MAKEFILE_CONTRACT_BIN/jq"
+  cat >"$MAKEFILE_CONTRACT_BIN/node" <<'SH'
+#!/bin/sh
+case "$1" in
+  -e) exit 0 ;;
+  --test)
+    echo "NODE_CONTRACT_FAILED"
+    exit 1
+    ;;
+esac
+exit 0
+SH
+  cat >"$MAKEFILE_CONTRACT_BIN/bats" <<'SH'
+#!/bin/sh
+echo "BATS_SMOKE_RAN"
+exit 0
+SH
+  chmod +x "$MAKEFILE_CONTRACT_BIN/node" "$MAKEFILE_CONTRACT_BIN/bats"
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory test-convert
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"NODE_CONTRACT_FAILED"* ]]
+  [[ "$output" != *"BATS_SMOKE_RAN"* ]]
+}
+
 @test "coverage-node accepts values exactly at the baselines" {
   setup_makefile_contract_repo
   create_fake_node_coverage_tool

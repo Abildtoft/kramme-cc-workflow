@@ -1,4 +1,4 @@
-.PHONY: lint lint-shell lint-python lint-js typecheck-python format-check pre-commit preflight pr-verify verify test test-smoke test-bats test-node test-node-watch test-node-file test-python test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage unit-coverage coverage-node coverage-python coverage-bats-contract check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-coverage-inventory-deps check-shell-deps check-ruff-deps check-mypy-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
+.PHONY: lint lint-shell lint-python lint-js typecheck-python format-check pre-commit preflight pr-verify verify test test-smoke test-bats test-bats-file test-node test-node-watch test-node-file test-python test-python-file test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage unit-coverage coverage-node coverage-python coverage-bats-contract check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-coverage-inventory-deps check-shell-deps check-ruff-deps check-mypy-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
 
 SHELLCHECK ?= shellcheck
 SHELLCHECK_SEVERITY ?= warning
@@ -13,6 +13,8 @@ SKILLSPECTOR_SEMANTIC_FORMAT ?= json
 SKILLSPECTOR_FAIL_ON ?= none
 SKILLSPECTOR_BASE ?= $(if $(BASE_REF),$(BASE_REF),origin/main)
 NODE_TEST_FILES = tests/node/*.test.js
+CONVERTER_NODE_TEST_FILES = tests/node/converter-contracts.test.js
+CONVERTER_BATS_TEST_FILE = tests/convert-plugin.bats
 SMOKE_NODE_TEST_FILES = tests/node/frontmatter.test.js tests/node/scorer.test.js
 SMOKE_PYTHON_TEST_FILE = tests/python/test_git_command_parser.py
 SMOKE_BATS_TEST_FILE = tests/linear-issue-implement-guidance.bats
@@ -102,6 +104,12 @@ test-smoke: check-test-deps
 test-bats: check-bats-deps
 	@./tests/run-tests.sh
 
+# Run one Bats integration test file.
+test-bats-file: check-bats-deps
+	@test -n "$(BATS_TEST_FILE)" || { echo "BATS_TEST_FILE is required (for example: tests/context-links.bats)"; exit 2; }
+	@chmod +x tests/test_helper/mocks/*
+	@bats "$(BATS_TEST_FILE)"
+
 # Run Node unit tests
 test-node: check-node-deps
 	@node --test $(NODE_TEST_FILES)
@@ -120,15 +128,21 @@ test-python: check-python-deps
 	@python3 -m unittest discover -s $(PYTHON_TEST_DIR) -p '$(PYTHON_TEST_PATTERN)'
 	@python3 -m unittest discover -s $(PYTHON_MAINTENANCE_TEST_DIR) -p '$(PYTHON_TEST_PATTERN)'
 
+# Run one Python unit test file.
+test-python-file: check-python-deps
+	@test -n "$(PYTHON_TEST_FILE)" || { echo "PYTHON_TEST_FILE is required (for example: tests/python/test_git_command_parser.py)"; exit 2; }
+	@python3 -m unittest "$(PYTHON_TEST_FILE)"
+
 # Verbose output (shows each test name)
 test-verbose:
 	@chmod +x tests/test_helper/mocks/*
 	@bats tests/*.bats
 
-# Run only plugin conversion tests
-test-convert:
+# Run the converter Node contracts and Bats CLI smoke tests.
+test-convert: check-node-deps check-bats-deps
+	@node --test $(CONVERTER_NODE_TEST_FILES)
 	@chmod +x tests/test_helper/mocks/*
-	@bats tests/convert-plugin.bats
+	@bats $(CONVERTER_BATS_TEST_FILE)
 
 # Run only non-interactive git tests
 test-noninteractive:
