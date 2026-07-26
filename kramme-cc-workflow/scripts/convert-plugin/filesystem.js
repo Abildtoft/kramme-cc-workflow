@@ -1,7 +1,11 @@
 "use strict";
 
+const { execFile } = require("child_process");
 const fs = require("fs/promises");
 const path = require("path");
+const { promisify } = require("util");
+
+const execFileAsync = promisify(execFile);
 
 /** @typedef {import("./contracts").JsonObject} JsonObject */
 /**
@@ -180,6 +184,29 @@ async function copyFile(sourcePath, targetPath) {
   await fs.copyFile(sourcePath, targetPath);
 }
 
+/**
+ * Copy a file while retaining permission metadata, ACLs, and extended
+ * attributes. This is used when a staged inode will replace an existing user
+ * file whose metadata must survive publication.
+ *
+ * @param {string} sourcePath
+ * @param {string} targetPath
+ */
+async function copyFilePreservingMetadata(sourcePath, targetPath) {
+  await ensureDir(path.dirname(targetPath));
+  if (process.platform === "win32") {
+    const sourceStats = await fs.stat(sourcePath);
+    await fs.copyFile(sourcePath, targetPath);
+    await fs.chmod(targetPath, sourceStats.mode & 0o7777);
+    return;
+  }
+  const args =
+    process.platform === "linux"
+      ? ["--preserve=mode,ownership,xattr", "--", sourcePath, targetPath]
+      : ["-p", sourcePath, targetPath];
+  await execFileAsync("/bin/cp", args);
+}
+
 /** @param {string} rootDir @returns {Promise<string[]>} */
 async function listRelativeFiles(rootDir) {
   if (!(await pathExists(rootDir))) return [];
@@ -208,6 +235,7 @@ async function walkRelativeFiles(rootDir, prefix = "") {
 module.exports = {
   copyDir,
   copyFile,
+  copyFilePreservingMetadata,
   contextualizeFilesystemError,
   ensureDir,
   filesystemErrorCode,

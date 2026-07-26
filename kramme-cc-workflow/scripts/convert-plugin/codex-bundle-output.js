@@ -52,12 +52,19 @@ const {
  * @property {string[]} pluginCaches
  * @property {SharedScriptDir[]} sharedScriptDirs
  * @property {SharedScriptFile[]} sharedScriptFiles
+ * @property {string | null | undefined} stagedConfigTargetContent
  * @property {string | null} stagedAgentSkillsRoot
  * @property {Record<string, string[]>} stagedAgentSkillFiles
  * @property {string | null} stagedConfigPath
  * @property {string} stagedPromptsDir
  * @property {Record<string, string[]>} stagedSkillFiles
  * @property {string} stagedSkillsRoot
+ *
+ * @typedef {Object} CodexBundlePreflight
+ * @property {Buffer | null | undefined} configTargetContent
+ * @property {Map<string, Buffer | null | undefined>} promptTargetContents
+ * @property {string[]} previousSharedScriptRoots
+ * @property {Map<string, Buffer | null | undefined>} sharedScriptTargetContents
  */
 
 /**
@@ -371,7 +378,7 @@ async function stageCodexBundleOutput(
       { confirmOptions: extraOpts.confirm },
     );
 
-    const stagedConfigPath = await stageCodexConfig(
+    const stagedConfig = await stageCodexConfig(
       codexRoot,
       codexStagingRoot,
       bundle,
@@ -389,7 +396,8 @@ async function stageCodexBundleOutput(
       sharedScriptFiles,
       stagedAgentSkillsRoot,
       stagedAgentSkillFiles,
-      stagedConfigPath,
+      stagedConfigPath: stagedConfig?.stagedPath ?? null,
+      stagedConfigTargetContent: stagedConfig?.expectedTargetContent,
       stagedPromptsDir,
       stagedSkillFiles,
       stagedSkillsRoot,
@@ -416,7 +424,7 @@ async function finalizeCodexBundleOutput(
   previousEntries,
   extraOpts,
 ) {
-  await preflightCodexBundleFinalization(
+  const preflight = await preflightCodexBundleFinalization(
     codexRoot,
     codexStagingRoot,
     stagedBundle,
@@ -431,17 +439,37 @@ async function finalizeCodexBundleOutput(
   );
 
   for (const sharedScriptDir of stagedBundle.sharedScriptDirs) {
-    await installStagedDir(
-      path.join(codexStagingRoot, sharedScriptDir.targetDir),
-      path.join(codexRoot, sharedScriptDir.targetDir),
-      { replace: false },
+    const stagedDir = path.join(codexStagingRoot, sharedScriptDir.targetDir);
+    const targetDir = path.join(codexRoot, sharedScriptDir.targetDir);
+    const label = `shared script directory ${sharedScriptDir.targetDir}`;
+    const expectedTargetEntries = await preflightStagedDirInstall(
+      stagedDir,
+      targetDir,
+      {
+        label,
+        previousManagedRoots: preflight.previousSharedScriptRoots.map((root) =>
+          path.join(root, sharedScriptDir.targetDir),
+        ),
+      },
     );
+    await installStagedDir(stagedDir, targetDir, {
+      expectedTargetEntries,
+      label,
+      replace: false,
+    });
   }
   for (const sharedScriptFile of stagedBundle.sharedScriptFiles) {
+    const expectedTargetContent = preflight.sharedScriptTargetContents.get(
+      sharedScriptFile.targetPath,
+    );
     await installStagedFile(
       path.join(codexStagingRoot, sharedScriptFile.targetPath),
       path.join(codexRoot, sharedScriptFile.targetPath),
-      { replace: false },
+      {
+        expectedTargetContent,
+        label: `shared script file ${sharedScriptFile.targetPath}`,
+        replace: false,
+      },
     );
   }
   await notifyInstallPhase(extraOpts, "shared-scripts");
@@ -455,12 +483,20 @@ async function finalizeCodexBundleOutput(
       confirmOptions: extraOpts.confirm,
     },
   );
+  const previousPrompts = new Set(sanitizeEntryList(previousEntries.prompts));
   for (const prompt of bundle.prompts) {
     const entry = `${prompt.name}.md`;
     await installStagedFile(
       path.join(stagedBundle.stagedPromptsDir, entry),
       path.join(promptsDir, entry),
-      { replace: cleanedPrompts },
+      {
+        expectedTargetContent:
+          cleanedPrompts && previousPrompts.has(entry)
+            ? null
+            : preflight.promptTargetContents.get(entry),
+        label: `prompt ${entry}`,
+        replace: cleanedPrompts,
+      },
     );
   }
   await notifyInstallPhase(extraOpts, "prompts");
@@ -526,7 +562,11 @@ async function finalizeCodexBundleOutput(
     await installStagedFile(
       stagedBundle.stagedConfigPath,
       path.join(codexRoot, "config.toml"),
-      { replace: false },
+      {
+        expectedTargetContent: preflight.configTargetContent,
+        label: "Codex config",
+        replace: false,
+      },
     );
   }
   await notifyInstallPhase(extraOpts, "config");
@@ -553,6 +593,7 @@ async function notifyInstallPhase(options, phase) {
  * @param {StagedBundle} stagedBundle
  * @param {CodexBundle} bundle
  * @param {PreviousInstallEntries} previousEntries
+ * @returns {Promise<CodexBundlePreflight>}
  */
 async function preflightCodexBundleFinalization(
   codexRoot,
@@ -561,35 +602,77 @@ async function preflightCodexBundleFinalization(
   bundle,
   previousEntries,
 ) {
+  const previousPluginCacheRoots = sanitizeEntryList(
+    previousEntries.pluginCaches,
+  ).map((entry) =>
+    resolveManagedChild(
+      path.join(codexRoot, "plugins"),
+      entry,
+      "previous Codex plugin cache entry",
+    ),
+  );
+  const codexPluginName = bundle.codexPlugin?.name;
+  const previousMarketplacePluginRoots = codexPluginName
+    ? sanitizeEntryList(previousEntries.hookMarketplaces).map((entry) => {
+        const marketplaceRoot = resolveManagedChild(
+          codexRoot,
+          entry,
+          "previous Codex hook marketplace entry",
+        );
+        return resolveManagedChild(
+          path.join(marketplaceRoot, "plugins"),
+          codexPluginName,
+          "previous Codex hook marketplace plugin",
+        );
+      })
+    : [];
+  const previousSharedScriptRoots = [
+    ...previousPluginCacheRoots,
+    ...previousMarketplacePluginRoots,
+  ];
+  const sharedScriptTargetContents = new Map();
   for (const sharedScriptDir of stagedBundle.sharedScriptDirs) {
     await preflightStagedDirInstall(
       path.join(codexStagingRoot, sharedScriptDir.targetDir),
       path.join(codexRoot, sharedScriptDir.targetDir),
       {
         label: `shared script directory ${sharedScriptDir.targetDir}`,
+        previousManagedRoots: previousSharedScriptRoots.map((root) =>
+          path.join(root, sharedScriptDir.targetDir),
+        ),
       },
     );
   }
   for (const sharedScriptFile of stagedBundle.sharedScriptFiles) {
-    await preflightStagedFileInstall(
-      path.join(codexStagingRoot, sharedScriptFile.targetPath),
-      path.join(codexRoot, sharedScriptFile.targetPath),
-      {
-        label: `shared script file ${sharedScriptFile.targetPath}`,
-      },
+    sharedScriptTargetContents.set(
+      sharedScriptFile.targetPath,
+      await preflightStagedFileInstall(
+        path.join(codexStagingRoot, sharedScriptFile.targetPath),
+        path.join(codexRoot, sharedScriptFile.targetPath),
+        {
+          label: `shared script file ${sharedScriptFile.targetPath}`,
+          previousManagedFiles: previousSharedScriptRoots.map((root) =>
+            path.join(root, sharedScriptFile.targetPath),
+          ),
+        },
+      ),
     );
   }
 
   const previousPrompts = new Set(sanitizeEntryList(previousEntries.prompts));
+  const promptTargetContents = new Map();
   for (const prompt of bundle.prompts) {
     const entry = `${prompt.name}.md`;
-    await preflightStagedFileInstall(
-      path.join(stagedBundle.stagedPromptsDir, entry),
-      path.join(codexRoot, "prompts", entry),
-      {
-        label: `prompt ${entry}`,
-        replace: previousPrompts.has(entry),
-      },
+    promptTargetContents.set(
+      entry,
+      await preflightStagedFileInstall(
+        path.join(stagedBundle.stagedPromptsDir, entry),
+        path.join(codexRoot, "prompts", entry),
+        {
+          label: `prompt ${entry}`,
+          replace: previousPrompts.has(entry),
+        },
+      ),
     );
   }
 
@@ -603,15 +686,22 @@ async function preflightCodexBundleFinalization(
     await preflightSkillGroup(skillGroup);
   }
 
-  if (stagedBundle.stagedConfigPath) {
-    await preflightStagedFileInstall(
-      stagedBundle.stagedConfigPath,
-      path.join(codexRoot, "config.toml"),
-      {
-        label: "Codex config",
-      },
-    );
-  }
+  const configTargetContent = stagedBundle.stagedConfigPath
+    ? await preflightStagedFileInstall(
+        stagedBundle.stagedConfigPath,
+        path.join(codexRoot, "config.toml"),
+        {
+          expectedTargetContent: stagedBundle.stagedConfigTargetContent,
+          label: "Codex config",
+        },
+      )
+    : undefined;
+  return {
+    configTargetContent,
+    previousSharedScriptRoots,
+    promptTargetContents,
+    sharedScriptTargetContents,
+  };
 }
 
 module.exports = {
