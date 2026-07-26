@@ -5,6 +5,76 @@ setup() {
   WORK_DIR="$BATS_TEST_TMPDIR/project"
   MOCK_BIN="$BATS_TEST_TMPDIR/bin"
   mkdir -p "$WORK_DIR"
+  source "$SCRIPT_DIR/framework-registry.sh"
+}
+
+framework_signature_matrix() {
+  cat <<'MATRIX'
+astro|astro.config.cjs|4321
+next|next.config.js|3000
+next|next.config.ts|3000
+next|next.config.mjs|3000
+next|next.config.cjs|3000
+vite|vite.config.js|5173
+vite|vite.config.ts|5173
+vite|vite.config.mjs|5173
+vite|vite.config.cjs|5173
+nuxt|nuxt.config.js|3000
+nuxt|nuxt.config.ts|3000
+nuxt|nuxt.config.mjs|3000
+nuxt|nuxt.config.cjs|3000
+astro|astro.config.js|4321
+astro|astro.config.ts|4321
+astro|astro.config.mjs|4321
+remix|remix.config.js|3000
+remix|remix.config.ts|3000
+sveltekit|svelte.config.js|5173
+sveltekit|svelte.config.mjs|5173
+sveltekit|svelte.config.ts|5173
+MATRIX
+}
+
+@test "framework registry exposes expected signatures and defaults" {
+  local framework signature default_port actual_framework actual_default
+  local expected_signatures actual_signatures
+
+  expected_signatures=$(framework_signature_matrix | cut -d'|' -f1,2 | sort)
+  actual_signatures=$(printf '%s\n' "$DEV_SERVER_FRAMEWORK_SIGNATURES" | sort)
+  [ "$actual_signatures" = "$expected_signatures" ]
+
+  while IFS='|' read -r framework signature default_port; do
+    actual_framework=$(framework_type_for_signature "$signature")
+    [ "$actual_framework" = "$framework" ]
+
+    actual_default=$(framework_default_port "$framework")
+    [ "$actual_default" = "$default_port" ]
+  done < <(framework_signature_matrix)
+}
+
+@test "framework registry enforces probe policy for known and unknown types" {
+  local framework probe expected_status
+
+  while IFS='|' read -r framework probe expected_status; do
+    run framework_probe_is_allowed "$framework" "$probe"
+    [ "$status" -eq "$expected_status" ]
+  done <<'MATRIX'
+rails|puma|0
+rails|framework-config|1
+procfile|package-json|1
+vite|package-json|0
+unknown|framework-config|0
+MATRIX
+}
+
+@test "detect-project-type ignores unregistered config extensions" {
+  mkdir -p "$WORK_DIR/apps/example"
+  touch "$WORK_DIR/astro.config.jsx"
+  touch "$WORK_DIR/apps/example/vite.config.jsx"
+
+  run "$SCRIPT_DIR/detect-project-type.sh" "$WORK_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "unknown" ]
 }
 
 @test "detect-project-type detects root Vite config" {
@@ -70,6 +140,56 @@ setup() {
 
   [ "$status" -eq 0 ]
   [ "$output" = "5174" ]
+}
+
+@test "resolve-port ignores Classic Remix internal compiler port" {
+  cat >"$WORK_DIR/remix.config.js" <<'JS'
+module.exports = {
+  dev: {
+    port: 8002
+  }
+};
+JS
+  cat >"$WORK_DIR/package.json" <<'JSON'
+{
+  "scripts": {
+    "dev": "remix dev -c \"remix-serve --port 3000 ./build/index.js\""
+  }
+}
+JSON
+
+  run "$SCRIPT_DIR/resolve-port.sh" "$WORK_DIR" --type remix
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "3000" ]
+}
+
+@test "resolve-port ignores SvelteKit HMR websocket port" {
+  cat >"$WORK_DIR/svelte.config.js" <<'JS'
+export default {
+  kit: {
+    vite: {
+      server: {
+        hmr: {
+          port: 24678
+        }
+      }
+    }
+  }
+};
+JS
+  cat >"$WORK_DIR/package.json" <<'JSON'
+{
+  "scripts": {
+    "dev": "vite --port 5173"
+  }
+}
+JSON
+
+  run "$SCRIPT_DIR/resolve-port.sh" "$WORK_DIR" --type sveltekit
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "5173" ]
 }
 
 @test "resolve-port reads root Procfile web port" {
@@ -160,9 +280,16 @@ YAML
   [ "$output" = "4000" ]
 }
 
-@test "resolve-port falls back to default port when no project metadata exists" {
-  run "$SCRIPT_DIR/resolve-port.sh" "$WORK_DIR"
+@test "resolve-port uses registry defaults when no project metadata exists" {
+  run "$SCRIPT_DIR/resolve-port.sh" "$WORK_DIR" --type vite
+  [ "$status" -eq 0 ]
+  [ "$output" = "5173" ]
 
+  run "$SCRIPT_DIR/resolve-port.sh" "$WORK_DIR" --type astro
+  [ "$status" -eq 0 ]
+  [ "$output" = "4321" ]
+
+  run "$SCRIPT_DIR/resolve-port.sh" "$WORK_DIR"
   [ "$status" -eq 0 ]
   [ "$output" = "3000" ]
 }

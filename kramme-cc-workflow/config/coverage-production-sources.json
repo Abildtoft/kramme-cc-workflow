@@ -136,6 +136,9 @@
       "kramme-cc-workflow/scripts/collect-review-diff.sh": [
         "kramme-cc-workflow/tests/review-diff-scripts.bats"
       ],
+      "kramme-cc-workflow/scripts/dev-server/framework-registry.sh": [
+        "kramme-cc-workflow/tests/dev-server-scripts.bats"
+      ],
       "kramme-cc-workflow/scripts/dev-server/detect-project-type.sh": [
         "kramme-cc-workflow/tests/dev-server-scripts.bats"
       ],
