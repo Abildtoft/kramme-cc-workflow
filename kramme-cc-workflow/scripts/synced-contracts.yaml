@@ -355,6 +355,7 @@
   "file_identity_groups": [
     {
       "name": "siw-spec-audit-fix-confidence-rubric",
+      "canonical": "kramme-cc-workflow/skills/kramme:siw:spec-audit:auto-fix/references/classification-rubric.md",
       "paths": [
         "kramme-cc-workflow/skills/kramme:siw:spec-audit:auto-fix/references/classification-rubric.md",
         "kramme-cc-workflow/skills/kramme:siw:spec-audit/references/fix-confidence-rubric.md"
@@ -362,13 +363,23 @@
     },
     {
       "name": "copy-review-rubric",
+      "canonical": "kramme-cc-workflow/skills/kramme:code:copy-review/references/copy-review-rubric.md",
       "paths": [
         "kramme-cc-workflow/skills/kramme:code:copy-review/references/copy-review-rubric.md",
         "kramme-cc-workflow/skills/kramme:pr:copy-review/references/copy-review-rubric.md"
       ]
     },
     {
+      "name": "siw-issue-reservation-helper",
+      "canonical": "kramme-cc-workflow/skills/kramme:siw:issue-define/scripts/siw-issue-reservation.sh",
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:siw:issue-define/scripts/siw-issue-reservation.sh",
+        "kramme-cc-workflow/skills/kramme:siw:generate-phases/scripts/siw-issue-reservation.sh"
+      ]
+    },
+    {
       "name": "visual-css-patterns",
+      "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/references/css-patterns.md",
       "paths": [
         "kramme-cc-workflow/skills/kramme:visual:diagram/references/css-patterns.md",
         "kramme-cc-workflow/skills/kramme:visual:diff-review/references/css-patterns.md",
@@ -379,6 +390,7 @@
     },
     {
       "name": "visual-libraries",
+      "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/references/libraries.md",
       "paths": [
         "kramme-cc-workflow/skills/kramme:visual:diagram/references/libraries.md",
         "kramme-cc-workflow/skills/kramme:visual:diff-review/references/libraries.md",
@@ -389,6 +401,7 @@
     },
     {
       "name": "visual-responsive-nav",
+      "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/references/responsive-nav.md",
       "paths": [
         "kramme-cc-workflow/skills/kramme:visual:diagram/references/responsive-nav.md",
         "kramme-cc-workflow/skills/kramme:visual:diff-review/references/responsive-nav.md",
@@ -399,6 +412,7 @@
     },
     {
       "name": "visual-asset-architecture-html",
+      "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/assets/architecture.html",
       "paths": [
         "kramme-cc-workflow/skills/kramme:visual:diagram/assets/architecture.html",
         "kramme-cc-workflow/skills/kramme:visual:diff-review/assets/architecture.html",
@@ -409,6 +423,7 @@
     },
     {
       "name": "visual-asset-data-table-html",
+      "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/assets/data-table.html",
       "paths": [
         "kramme-cc-workflow/skills/kramme:visual:diagram/assets/data-table.html",
         "kramme-cc-workflow/skills/kramme:visual:diff-review/assets/data-table.html",
@@ -419,6 +434,7 @@
     },
     {
       "name": "visual-asset-mermaid-flowchart-html",
+      "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/assets/mermaid-flowchart.html",
       "paths": [
         "kramme-cc-workflow/skills/kramme:visual:diagram/assets/mermaid-flowchart.html",
         "kramme-cc-workflow/skills/kramme:visual:diff-review/assets/mermaid-flowchart.html",
