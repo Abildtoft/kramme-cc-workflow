@@ -1172,6 +1172,9 @@ PY
   [[ "$generate_phases_text" == *'separate sort shown in Phase 1'* ]]
   [[ "$generate_phases_text" == *'release-publication siw <owner-token>'*'because no replacement IDs have been reserved yet'* ]]
   [[ "$generate_phases_text" == *'reacquire with the retained token'*'recompute the snapshot'* ]]
+  [[ "$generate_phases_text" == *'REMOVED_ISSUE_IDS'* ]]
+  [[ "$generate_phases_text" == *'append every `REMOVED_ISSUE_IDS` value after the final IDs'* ]]
+  [[ "$generate_phases_text" == *'release only the completed final-ID reservations'* ]]
   [[ "$generate_phases_text" == *'failed multi-ID reservation attempt must unwind every exact reservation created by that attempt'* ]]
   [[ "$generate_phases_text" == *'Once replacement deletion starts, never abandon any replacement reservation'* ]]
   [[ "$generate_phases_text" == *'batches all issue-file digests within each immutable operation snapshot'* ]]
@@ -1896,6 +1899,61 @@ EOF
 
   sh "$ISSUE_DEFINE_RESERVATION_HELPER" publish-receipt "$siw_dir" owner-a G-001
   sh "$ISSUE_DEFINE_RESERVATION_HELPER" release-publication "$siw_dir" owner-a
+}
+
+@test "siw replacement receipts cover canonical IDs removed from every current view" {
+  local siw_dir
+  siw_dir="$TMP_ROOT/siw"
+  mkdir -p "$siw_dir/issues"
+  printf '# ISSUE-G-001: old one\n' >"$siw_dir/issues/ISSUE-G-001-old-one.md"
+  printf '# ISSUE-G-002: old two\n' >"$siw_dir/issues/ISSUE-G-002-old-two.md"
+  printf '# Open Issues\n| G-001 | old one | READY |\n| G-002 | old two | READY |\n' >"$siw_dir/OPEN_ISSUES_OVERVIEW.md"
+  printf '# Log\n- Created G-001: old one\n- Created G-002: old two\n' >"$siw_dir/LOG.md"
+
+  sh "$GENERATE_PHASES_RESERVATION_HELPER" acquire "$siw_dir" owner-a 1
+  sh "$GENERATE_PHASES_RESERVATION_HELPER" reserve-exact "$siw_dir" P1-001 owner-a
+  unlink "$siw_dir/issues/ISSUE-G-001-old-one.md"
+  unlink "$siw_dir/issues/ISSUE-G-002-old-two.md"
+  printf '# ISSUE-P1-001: replacement\n' >"$siw_dir/issues/ISSUE-P1-001-replacement.md"
+  printf '# Open Issues\n| P1-001 | replacement | READY |\n' >"$siw_dir/OPEN_ISSUES_OVERVIEW.md"
+  printf '# Log\n- Created P1-001: replacement\n' >"$siw_dir/LOG.md"
+
+  run sh "$GENERATE_PHASES_RESERVATION_HELPER" publish-receipt "$siw_dir" owner-a P1-001
+  [ "$status" -ne 0 ]
+  [[ "$output" == *'publication receipt omits changed issue ID:'* ]]
+  [ ! -e "$siw_dir/.issue-publication.receipt" ]
+
+  sh "$GENERATE_PHASES_RESERVATION_HELPER" publish-receipt "$siw_dir" owner-a P1-001 G-001 G-002
+  sh "$GENERATE_PHASES_RESERVATION_HELPER" release-batch "$siw_dir" owner-a P1-001
+  sh "$GENERATE_PHASES_RESERVATION_HELPER" release-publication "$siw_dir" owner-a
+  [ ! -e "$siw_dir/.issue-publication.lock" ]
+  [ ! -e "$siw_dir/.issue-publication.receipt" ]
+  [ ! -e "$siw_dir/.issue-publication.baseline" ]
+}
+
+@test "siw publication attributes only a General parallelization summary update to its changed issue" {
+  local issue_path siw_dir
+  siw_dir="$TMP_ROOT/siw"
+  issue_path="$siw_dir/issues/ISSUE-G-001-parallelization.md"
+  mkdir -p "$siw_dir/issues"
+  printf '# ISSUE-G-001: parallelization\n\n**Parallelization:** Safe to parallelize\n' >"$issue_path"
+  printf '# Open Issues\n\n## General\n\n**Parallelization:** Safe to parallelize\n\n| G-001 | parallelization | READY |\n' >"$siw_dir/OPEN_ISSUES_OVERVIEW.md"
+  printf '# Log\n\n## Current Progress\n\n- Created G-001: parallelization\n' >"$siw_dir/LOG.md"
+
+  sh "$ISSUE_DEFINE_RESERVATION_HELPER" acquire "$siw_dir" owner-a 1
+  printf '# ISSUE-G-001: parallelization\n\n**Parallelization:** Must be sequential\n' >"$issue_path"
+  printf '# Open Issues\n\n## General\n\n**Parallelization:** Must be sequential\n\n| G-001 | parallelization | READY |\n' >"$siw_dir/OPEN_ISSUES_OVERVIEW.md"
+  printf '# Log\n\n## Current Progress\n\n- Created G-001: parallelization\n- Updated G-001: parallelization\n' >"$siw_dir/LOG.md"
+  sh "$ISSUE_DEFINE_RESERVATION_HELPER" publish-receipt "$siw_dir" owner-a G-001
+  sh "$ISSUE_DEFINE_RESERVATION_HELPER" release-publication "$siw_dir" owner-a
+
+  sh "$ISSUE_DEFINE_RESERVATION_HELPER" acquire "$siw_dir" owner-b 1
+  printf '\nUnrelated overview edit.\n' >>"$siw_dir/OPEN_ISSUES_OVERVIEW.md"
+  run sh "$ISSUE_DEFINE_RESERVATION_HELPER" publish-receipt "$siw_dir" owner-b G-001
+  [ "$status" -ne 0 ]
+  [[ "$output" == *'overview changed without a canonical issue-row change'* ]]
+  [ ! -e "$siw_dir/.issue-publication.receipt" ]
+  [ -f "$siw_dir/.issue-publication.lock" ]
 }
 
 @test "siw 200-issue publication batches digest processes" {

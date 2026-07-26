@@ -603,6 +603,17 @@ calculate_publication_state() {
   cleanup_hash_temps
 
   awk '
+    {
+      line = $0
+      if (line ~ /^##[[:space:]]+General([[:space:]]|$)/) {
+        in_general = 1
+      } else if (line ~ /^##[[:space:]]+/) {
+        in_general = 0
+      }
+      if (in_general && line ~ /^[[:space:]]*\*\*Parallelization:\*\*/) {
+        print "overview-general-parallelization\t" line
+      }
+    }
     /^[[:space:]]*\|/ {
       row = $0
       token = $0
@@ -1150,7 +1161,9 @@ require_receipt_reservation_coverage() {
 validate_receipt_views() {
   view_state_file=$1
   view_issue_ids=$2
-  if ! view_error=$(awk -v requested="$view_issue_ids" '
+  view_baseline_file=${3:-}
+  [ -n "$view_baseline_file" ] || view_baseline_file=/dev/null
+  if ! view_error=$(awk -v requested="$view_issue_ids" -v baseline_file="$view_baseline_file" '
     BEGIN {
       count = split(requested, values, /[[:space:]]+/)
       for (idx = 1; idx <= count; idx++) {
@@ -1159,6 +1172,17 @@ validate_receipt_views() {
           wanted[values[idx]] = 1
         }
       }
+    }
+    FILENAME == baseline_file {
+      if ($1 == "issue" && wanted[$2]) {
+        baseline_issue_count[$2]++
+        if ($3 == "1") baseline_heading_valid[$2]++
+      } else if ($1 == "overview-issue" && wanted[$2]) {
+        baseline_overview_count[$2]++
+      } else if ($1 == "log-issue" && wanted[$2]) {
+        baseline_log_count[$2]++
+      }
+      next
     }
     $1 == "issue" && wanted[$2] {
       issue_count[$2]++
@@ -1170,6 +1194,14 @@ validate_receipt_views() {
       for (idx = 1; idx <= id_count; idx++) {
         id = ids[idx]
         if (issue_count[id] == 0) {
+          removed_from_current_views = overview_count[id] == 0
+          canonical_in_baseline = baseline_issue_count[id] == 1 \
+            && baseline_heading_valid[id] == 1 \
+            && baseline_overview_count[id] == 1 \
+            && baseline_log_count[id] > 0
+          if (removed_from_current_views && canonical_in_baseline) {
+            continue
+          }
           print "cannot publish receipt before the issue file exists: " id
           exit 1
         }
@@ -1195,7 +1227,7 @@ validate_receipt_views() {
         }
       }
     }
-  ' "$view_state_file"); then
+  ' "$view_baseline_file" "$view_state_file"); then
     fail "$view_error"
   fi
 }
@@ -1219,6 +1251,9 @@ derive_changed_issue_ids() {
       if (kind == "overview" || kind == "log") {
         if (side == "baseline") raw_baseline[kind] = $2
         else raw_current[kind] = $2
+      } else if (kind == "overview-general-parallelization") {
+        if (side == "baseline") baseline_general_parallelization = baseline_general_parallelization line "\n"
+        else current_general_parallelization = current_general_parallelization line "\n"
       } else if (kind == "issue" || kind == "overview-issue" || kind == "log-issue") {
         remember(side, kind, $2, line)
       } else if (kind == "other-issue") {
@@ -1244,6 +1279,15 @@ derive_changed_issue_ids() {
           changed[id] = 1
           log_attributed = 1
         }
+      }
+      if (baseline_general_parallelization != current_general_parallelization) {
+        for (id in all_ids) {
+          issue_key = "issue" SUBSEP id
+          if (id ~ /^G-/ && baseline[issue_key] != current[issue_key]) {
+            general_parallelization_attributed = 1
+          }
+        }
+        if (general_parallelization_attributed) overview_attributed = 1
       }
       for (key in all_other) {
         if (baseline_other[key] != current_other[key]) other_changed = 1
@@ -1353,9 +1397,11 @@ verify_publication_receipt_against_state() {
     esac
   done
   require_receipt_reservation_coverage "$siw_dir" "$owner" "$verified_receipt_issue_ids"
-  validate_receipt_views "$state_temp" "$verified_receipt_issue_ids"
   if [ -n "$publication_baseline_hash" ]; then
     ensure_publication_baseline "$siw_dir" "$owner"
+  fi
+  validate_receipt_views "$state_temp" "$verified_receipt_issue_ids" "${baseline_state_temp:-}"
+  if [ -n "$publication_baseline_hash" ]; then
     require_changed_ids_in_receipt "$verified_receipt_issue_ids"
   fi
 }
@@ -1376,7 +1422,7 @@ publish_receipt() {
     ensure_publication_baseline "$siw_dir" "$owner"
   fi
   require_receipt_reservation_coverage "$siw_dir" "$owner" "$receipt_issue_ids"
-  validate_receipt_views "$state_temp" "$receipt_issue_ids"
+  validate_receipt_views "$state_temp" "$receipt_issue_ids" "${baseline_state_temp:-}"
   if [ -n "$publication_baseline_hash" ]; then
     require_changed_ids_in_receipt "$receipt_issue_ids"
   fi
