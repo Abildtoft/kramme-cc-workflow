@@ -91,82 +91,17 @@ EOF
 
 # Helper to run hook with given command
 run_hook() {
-	make_bash_input "$1" | bash "$HOOK"
-}
-
-run_hook_without_jq() {
-	local cmd="$1"
-	local fake_bin="$BATS_TEST_TMPDIR/no-jq-bin"
-	local json_input
-	rm -rf "$fake_bin"
-	mkdir -p "$fake_bin"
-	ln -s "$(command -v bash)" "$fake_bin/bash"
-	ln -s "$(command -v cat)" "$fake_bin/cat"
-	json_input="$(make_bash_input "$cmd")"
-	env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK" <<<"$json_input"
-}
-
-run_hook_without_jq_disabled() {
-	local cmd="$1"
-	local fake_bin="$BATS_TEST_TMPDIR/no-jq-disabled-bin"
-	local plugin_root="$BATS_TEST_TMPDIR/no-jq-disabled-plugin"
-	local json_input
-	rm -rf "$fake_bin" "$plugin_root"
-	mkdir -p "$fake_bin" "$plugin_root/hooks/lib"
-	ln -s "$(command -v bash)" "$fake_bin/bash"
-	ln -s "$(command -v cat)" "$fake_bin/cat"
-	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
-	printf '%s\n' '{"disabled":["confirm-review-responses"]}' >"$plugin_root/hooks/hook-state.json"
-	json_input="$(make_bash_input "$cmd")"
-	env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$plugin_root" "$fake_bin/bash" "$HOOK" <<<"$json_input"
+	run_safety_hook "$HOOK" "$1"
 }
 
 run_hook_missing_python_parser() {
-	local cmd="$1"
-	local plugin_root="$BATS_TEST_TMPDIR/missing-python-parser-plugin"
-	rm -rf "$plugin_root"
-	mkdir -p "$plugin_root/hooks/lib"
-	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
-	cp "$BATS_TEST_DIRNAME/../hooks/lib/safety-hook-parser.sh" "$plugin_root/hooks/lib/safety-hook-parser.sh"
-	cp "$BATS_TEST_DIRNAME/../hooks/confirm-review-artifacts.txt" "$plugin_root/hooks/confirm-review-artifacts.txt"
-	make_bash_input "$cmd" | env CLAUDE_PLUGIN_ROOT="$plugin_root" bash "$HOOK"
+	run_safety_hook_without_python_parser "$HOOK" "$1"
 }
 
 run_hook_with_repo_env() {
 	local repo="$1"
 	local cmd="$2"
 	make_bash_input "$cmd" | env GIT_DIR="$repo/.git" GIT_WORK_TREE="$repo" bash "$HOOK"
-}
-
-run_hook_without_python() {
-	local cmd="$1"
-	local fake_bin="$BATS_TEST_TMPDIR/no-python-bin"
-	rm -rf "$fake_bin"
-	mkdir -p "$fake_bin"
-	ln -s "$(command -v bash)" "$fake_bin/bash"
-	ln -s "$(command -v jq)" "$fake_bin/jq"
-	ln -s "$(command -v cat)" "$fake_bin/cat"
-	ln -s "$(command -v grep)" "$fake_bin/grep"
-	ln -s "$(command -v sed)" "$fake_bin/sed"
-	ln -s "$MOCK_DIR/git" "$fake_bin/git"
-	make_bash_input "$cmd" | env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT" "$fake_bin/bash" "$HOOK"
-}
-
-run_hook_with_parser_output() {
-	local cmd="$1"
-	local parser_output="$2"
-	local plugin_root="$BATS_TEST_TMPDIR/parser-output-plugin"
-	rm -rf "$plugin_root"
-	mkdir -p "$plugin_root/hooks/lib"
-	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
-	cp "$BATS_TEST_DIRNAME/../hooks/confirm-review-artifacts.txt" "$plugin_root/hooks/confirm-review-artifacts.txt"
-	cp "$BATS_TEST_DIRNAME/../hooks/lib/safety-hook-parser.sh" "$plugin_root/hooks/lib/safety-hook-parser.sh"
-	cat >"$plugin_root/hooks/lib/git_command_parser.py" <<'PYTHON'
-import os
-
-print(os.environ["SAFETY_HOOK_TEST_PARSER_OUTPUT"])
-PYTHON
-	make_bash_input "$cmd" | env SAFETY_HOOK_TEST_PARSER_OUTPUT="$parser_output" CLAUDE_PLUGIN_ROOT="$plugin_root" bash "$HOOK"
 }
 
 PARSER_FIXTURES="$BATS_TEST_DIRNAME/fixtures/git-command-parser-cases.json"
@@ -241,13 +176,13 @@ assert_review_parser_fixture_decision() {
 }
 
 @test "blocks malformed parser output" {
-	run run_hook_with_parser_output "git commit -m 'test'" '{}'
+	run run_safety_hook_with_parser_output "$HOOK" "git commit -m 'test'" '{}'
 	is_blocked
 	[[ "$output" == *"Unable to safely parse command"* ]]
 }
 
 @test "blocks command when jq is unavailable" {
-	run run_hook_without_jq "git commit -m 'test commit'"
+	run run_safety_hook_without_jq "$HOOK" "git commit -m 'test commit'"
 	is_blocked
 	[[ "$output" == *"jq not found"* ]]
 	[[ "$output" == *"refusing to run safety hook without JSON parsing"* ]]
@@ -256,7 +191,7 @@ assert_review_parser_fixture_decision() {
 }
 
 @test "allows disabled hook when jq is unavailable" {
-	run run_hook_without_jq_disabled "git commit -m 'test commit'"
+	run run_disabled_safety_hook_without_jq "$HOOK" "confirm-review-responses" "git commit -m 'test commit'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
@@ -268,7 +203,7 @@ assert_review_parser_fixture_decision() {
 }
 
 @test "blocks commands when python3 is unavailable" {
-	run run_hook_without_python "ls -la"
+	run run_safety_hook_without_python "$HOOK" "ls -la" "$MOCK_DIR/git"
 	is_blocked
 	[[ "$output" == *"python3 not found"* ]]
 	[[ "$output" == *"refusing to run safety hook without the shared git command parser"* ]]
@@ -328,6 +263,76 @@ assert_review_parser_fixture_decision() {
 			assert_review_parser_fixture_decision "$case_name" "$mode" "$expected"
 		done < <(printf '%s\n' "$case_json" | jq -r '.pythonModes[]')
 	done < <(jq -c '.cases[] | select(.reviewResponseExpected != null)' "$PARSER_FIXTURES")
+}
+
+@test "normalizes supported command prefixes before review-artifact policy" {
+	local command
+	mock_git_staged "REVIEW_OVERVIEW.md"
+
+	while IFS= read -r command; do
+		run run_hook "$command"
+		if ! is_blocked; then
+			printf 'Expected prefixed command to be blocked: %s\n' "$command" >&2
+			return 1
+		fi
+		[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+	done < <(safety_command_prefix_matrix "git commit -m test")
+}
+
+@test "preserves unguarded commit behavior across supported command prefixes" {
+	local command
+	mock_git_staged "notes.txt"
+
+	while IFS= read -r command; do
+		run run_hook "$command"
+		if [ "$status" -ne 0 ] || [ -n "$output" ]; then
+			printf 'Expected prefixed command to be allowed: %s\n' "$command" >&2
+			return 1
+		fi
+	done < <(safety_command_prefix_matrix "git commit -m test")
+}
+
+@test "fails closed for malformed supported command prefixes" {
+	local command
+
+	while IFS= read -r command; do
+		run run_hook "$command"
+		if ! is_blocked; then
+			printf 'Expected malformed prefixed command to be blocked: %s\n' "$command" >&2
+			return 1
+		fi
+		[[ "$output" == *"Unable to safely parse command"* ]]
+	done < <(safety_malformed_prefix_matrix "git commit -m test")
+}
+
+@test "does not persist shell builtins through external command prefixes" {
+	local prefix
+	mock_git_staged_for_repo "other" "notes.txt" "REVIEW_OVERVIEW.md"
+
+	while IFS= read -r prefix; do
+		run run_hook "$prefix export GIT_DIR=other/.git GIT_WORK_TREE=other; git commit -m test"
+		if ! is_blocked; then
+			printf 'Expected external-wrapper export to leave the current repo selected: %s\n' "$prefix" >&2
+			return 1
+		fi
+		[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+	done < <(printf '%s\n' "timeout 1" "nice" "nohup" "env" "sudo" "command time")
+}
+
+@test "does not persist prefixed repo selection through a payload-less wrapper" {
+	mock_git_staged_for_repo "other" "notes.txt" "REVIEW_OVERVIEW.md"
+
+	run run_hook "GIT_DIR=other/.git GIT_WORK_TREE=other env -i; export GIT_DIR GIT_WORK_TREE; git commit -m test"
+	is_blocked
+	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
+@test "preserves shell builtin state through the time keyword" {
+	mock_git_staged_for_repo "other" "REVIEW_OVERVIEW.md" "notes.txt"
+
+	run run_hook "time export GIT_DIR=other/.git GIT_WORK_TREE=other; git commit -m test"
+	is_blocked
+	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
 }
 
 # ============================================================================

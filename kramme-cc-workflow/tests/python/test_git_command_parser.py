@@ -209,6 +209,56 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
             ),
         )
 
+    def test_normalize_command_prefix_preserves_large_environment_order(self) -> None:
+        assignments = [f"KEY_{idx}=initial" for idx in range(2_000)]
+        normalized = PARSER.normalize_command_prefix(
+            [
+                *assignments,
+                "env",
+                "KEY_0=updated",
+                "EXTRA=value",
+                "git",
+                "status",
+            ]
+        )
+
+        self.assertEqual(normalized.executable, "git")
+        self.assertEqual(normalized.arguments, ["status"])
+        self.assertEqual(
+            normalized.environment,
+            [
+                *assignments[1:],
+                "KEY_0=updated",
+                "EXTRA=value",
+            ],
+        )
+
+    def test_normalize_command_prefix_limits_nested_env_split_strings(self) -> None:
+        allowed = (
+            "--split-string=" * PARSER.MAX_ENV_SPLIT_STRING_EXPANSIONS
+            + "printf"
+        )
+        normalized = PARSER.normalize_command_prefix(["env", allowed, "safe"])
+
+        self.assertEqual(normalized.executable, "printf")
+        self.assertEqual(normalized.arguments, ["safe"])
+
+        excessive = "--split-string=" + allowed
+        with self.assertRaisesRegex(
+            ValueError, "env split-string expansion limit exceeded"
+        ):
+            PARSER.normalize_command_prefix(["env", excessive, "safe"])
+
+        oversized = "x" * (
+            PARSER.MAX_ENV_SPLIT_STRING_EXPANSION_WORK + 1
+        )
+        with self.assertRaisesRegex(
+            ValueError, "env split-string expansion limit exceeded"
+        ):
+            PARSER.normalize_command_prefix(
+                ["env", f"--split-string={oversized}"]
+            )
+
     def test_parse_env_wrapped_segment_marks_aliases_as_parse_errors(self) -> None:
         result = PARSER.parse_env_wrapped_segment(["alias", "git=git -c alias.x=commit"])
 
@@ -275,6 +325,61 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
                 persisted_git_env=["GIT_DIR=/tmp/repo"],
                 persisted_shell_git_vars=["GIT_DIR=/tmp/repo"],
             ),
+        )
+
+    def test_external_wrappers_do_not_persist_shell_builtin_state(self) -> None:
+        for prefix in ("timeout 1", "nice", "nohup", "env", "sudo", "command time"):
+            with self.subTest(prefix=prefix):
+                contexts = PARSER.parse_commit_contexts(
+                    (
+                        f"{prefix} export GIT_DIR=/tmp/other/.git "
+                        "GIT_WORK_TREE=/tmp/other; git commit -m test"
+                    ),
+                    inherited_git_env=[],
+                    inherited_shell_git_vars=[],
+                )
+
+                self.assertEqual(
+                    contexts,
+                    [{"git_args": [], "git_env": []}],
+                )
+
+    def test_wrapper_without_payload_does_not_persist_prefixed_state(self) -> None:
+        contexts = PARSER.parse_commit_contexts(
+            (
+                "GIT_DIR=/tmp/other/.git GIT_WORK_TREE=/tmp/other env -i; "
+                "export GIT_DIR GIT_WORK_TREE; git commit -m test"
+            ),
+            inherited_git_env=[],
+            inherited_shell_git_vars=[],
+        )
+
+        self.assertEqual(
+            contexts,
+            [{"git_args": [], "git_env": []}],
+        )
+
+    def test_time_keyword_persists_shell_builtin_state(self) -> None:
+        contexts = PARSER.parse_commit_contexts(
+            (
+                "time export GIT_DIR=/tmp/other/.git "
+                "GIT_WORK_TREE=/tmp/other; git commit -m test"
+            ),
+            inherited_git_env=[],
+            inherited_shell_git_vars=[],
+        )
+
+        self.assertEqual(
+            contexts,
+            [
+                {
+                    "git_args": [],
+                    "git_env": [
+                        "GIT_DIR=/tmp/other/.git",
+                        "GIT_WORK_TREE=/tmp/other",
+                    ],
+                }
+            ],
         )
 
 
@@ -448,28 +553,42 @@ class GitCommandParserCliTest(unittest.TestCase):
                 self.assertEqual(result.stderr, "")
                 self.assertEqual(result.stdout, expected_stdout)
 
-    def test_malformed_shell_payloads_fail_closed(self) -> None:
-        command = "bash -c $'git commit"
-
-        noninteractive = self.run_parser("noninteractive", command)
-        commit_contexts = self.run_parser("commit-contexts", command)
-
-        self.assertEqual(noninteractive.returncode, 0)
-        self.assertEqual(
-            noninteractive.stdout,
-            json_line(
-                {
-                    "block": "Unable to safely parse command. Refusing potentially interactive git command."
-                }
-            ),
+    def test_malformed_payloads_fail_closed(self) -> None:
+        excessive_split_string = (
+            "--split-string="
+            * (PARSER.MAX_ENV_SPLIT_STRING_EXPANSIONS + 1)
+            + "printf"
         )
-        self.assertEqual(commit_contexts.returncode, 0)
-        self.assertEqual(
-            commit_contexts.stdout,
-            json_line(
-                [{"parse_error": "parse failed"}]
-            ),
-        )
+        commands = [
+            "bash -c $'git commit",
+            "env -S '\"git commit'",
+            "env --split-string='\"git commit'",
+            f"env {excessive_split_string} safe",
+        ]
+
+        for command in commands:
+            with self.subTest(command=command):
+                noninteractive = self.run_parser("noninteractive", command)
+                commit_contexts = self.run_parser("commit-contexts", command)
+
+                self.assertEqual(noninteractive.returncode, 0)
+                self.assertEqual(noninteractive.stderr, "")
+                self.assertEqual(
+                    noninteractive.stdout,
+                    json_line(
+                        {
+                            "block": "Unable to safely parse command. Refusing potentially interactive git command."
+                        }
+                    ),
+                )
+                self.assertEqual(commit_contexts.returncode, 0)
+                self.assertEqual(commit_contexts.stderr, "")
+                self.assertEqual(
+                    commit_contexts.stdout,
+                    json_line(
+                        [{"parse_error": "parse failed"}]
+                    ),
+                )
 
 
 class RmRfParserCliTest(unittest.TestCase):
@@ -720,3 +839,16 @@ class RmRfParserCliTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 0)
                 self.assertEqual(result.stderr, "")
                 self.assertEqual(result.stdout, expected_stdout)
+
+    def test_split_string_expansion_limit_fails_closed(self) -> None:
+        excessive_split_string = (
+            "--split-string="
+            * (PARSER.MAX_ENV_SPLIT_STRING_EXPANSIONS + 1)
+            + "printf"
+        )
+
+        result = self.run_parser(f"env {excessive_split_string} safe")
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(result.stdout, json_line({"block": RM_RF_REASON}))

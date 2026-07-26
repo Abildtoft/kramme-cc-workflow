@@ -90,15 +90,6 @@ NONINTERACTIVE_SHELL_KEYWORDS = {
     ")",
 }
 NONINTERACTIVE_SHELL_EXECUTABLES = {"sh", "bash", "zsh", "dash", "ksh"}
-NONINTERACTIVE_SHELL_OPTIONS_WITH_VALUE = {
-    "--command",
-    "--rcfile",
-    "--init-file",
-    "--startup-file",
-    "-o",
-    "-O",
-    "+O",
-}
 NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND = "__parse_error__"
 NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE = {
     "-d",
@@ -115,19 +106,6 @@ NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE = {
     "--max-procs",
     "--replace",
 }
-NONINTERACTIVE_SUDO_OPTIONS_WITH_VALUE = {
-    "-u",
-    "-g",
-    "-h",
-    "-p",
-    "-C",
-    "-D",
-    "-R",
-    "-T",
-    "-U",
-    "-r",
-    "-t",
-}
 NONINTERACTIVE_GIT_OPTIONS_WITH_VALUE = {
     "-C",
     "-c",
@@ -138,6 +116,9 @@ NONINTERACTIVE_GIT_OPTIONS_WITH_VALUE = {
     "--super-prefix",
     "--work-tree",
 }
+# Bound recursive env -S reparsing and argv rebuilding so safety hooks stay responsive.
+MAX_ENV_SPLIT_STRING_EXPANSIONS = 64
+MAX_ENV_SPLIT_STRING_EXPANSION_WORK = 100_000
 
 
 @dataclass
@@ -585,212 +566,463 @@ def _shell_invocation_reads_stdin(args: list[str]) -> bool:
     return True
 
 
-def _skip_prefixed_command_options(
-    tokens: list[str], idx: int, command_name: str
+@dataclass
+class NormalizedCommandPrefix:
+    executable: Optional[str]
+    arguments: list[str]
+    environment: list[str]
+    repository_modifiers: list[str]
+    nested_shell_command: Optional[str]
+    shell_builtins_allowed: bool
+
+
+def _set_environment_assignment(
+    environment: dict[str, str], assignment: str
+) -> None:
+    key = assignment.split("=", 1)[0]
+    environment.pop(key, None)
+    environment[key] = assignment
+
+
+def _unset_environment_assignment(
+    environment: dict[str, str], key: str
+) -> None:
+    environment.pop(key, None)
+
+
+def _index_environment_assignments(
+    assignments: list[str],
+) -> dict[str, str]:
+    environment: dict[str, str] = {}
+    for assignment in assignments:
+        _set_environment_assignment(environment, assignment)
+    return environment
+
+
+def _filter_environment_assignments(
+    environment: list[str], allowed_keys: set[str]
+) -> list[str]:
+    return [
+        assignment
+        for assignment in environment
+        if assignment.split("=", 1)[0] in allowed_keys
+    ]
+
+
+def _consume_environment_assignments(
+    tokens: list[str], idx: int, environment: dict[str, str]
 ) -> int:
-    if command_name in {"command", "builtin"}:
+    while idx < len(tokens) and _is_assignment(tokens[idx]):
+        _set_environment_assignment(environment, tokens[idx])
         idx += 1
-        while idx < len(tokens):
-            token = tokens[idx]
-            if token == "--":
-                return idx + 1
-            if token.startswith("-"):
-                idx += 1
-                continue
-            return idx
-        return idx
+    return idx
 
-    if command_name == "env":
-        idx += 1
-        while idx < len(tokens):
-            token = tokens[idx]
-            if _is_assignment(token):
-                idx += 1
-                continue
-            if token == "--":
-                return idx + 1
-            if token in {"-u", "--unset", "-C", "--chdir"}:
-                idx += 2
-                continue
-            if token.startswith("--unset=") or token.startswith("--chdir="):
-                idx += 1
-                continue
-            if token.startswith("-u") and token != "-u":
-                idx += 1
-                continue
-            if token.startswith("-C") and token != "-C":
-                idx += 1
-                continue
-            if token.startswith("-"):
-                idx += 1
-                continue
-            return idx
-        return idx
 
-    if command_name == "sudo":
-        idx += 1
-        sudo_options_with_value = {
-            "-u",
-            "-g",
-            "-h",
-            "-p",
-            "-C",
-            "-D",
-            "-R",
-            "-T",
-            "-U",
-            "-r",
-            "-t",
-        }
-        sudo_long_options_with_value = {
-            "--user",
-            "--group",
-            "--host",
-            "--prompt",
-            "--command-timeout",
-            "--close-from",
-            "--chdir",
-            "--chroot",
-            "--login-class",
-            "--role",
-            "--type",
-            "--other-user",
-        }
-        while idx < len(tokens):
-            token = tokens[idx]
-            if token == "--":
-                return idx + 1
-            if token in sudo_options_with_value or token in sudo_long_options_with_value:
-                idx += 2
-                continue
-            if any(
-                token.startswith(prefix + "=")
-                for prefix in (
-                    "--user",
-                    "--group",
-                    "--host",
-                    "--prompt",
-                    "--command-timeout",
-                    "--close-from",
-                    "--chdir",
-                    "--chroot",
-                    "--login-class",
-                    "--role",
-                    "--type",
-                    "--other-user",
-                )
-            ):
+def _extract_shell_inline_command(args: list[str]) -> Optional[str]:
+    idx = 0
+    while idx < len(args):
+        arg = args[idx]
+        if arg in {"-c", "--command"}:
+            idx += 1
+            if idx < len(args) and args[idx] == "--":
                 idx += 1
-                continue
-            if token.startswith("-") and not token.startswith("--"):
-                value_option_seen = False
-                for position, letter in enumerate(token[1:]):
-                    if letter in {
-                        "u",
-                        "g",
-                        "h",
-                        "p",
-                        "C",
-                        "D",
-                        "R",
-                        "T",
-                        "U",
-                        "r",
-                        "t",
-                    }:
-                        idx += 2 if position == len(token[1:]) - 1 else 1
-                        value_option_seen = True
+            return args[idx] if idx < len(args) else None
+        if arg.startswith("--command="):
+            return arg.split("=", 1)[1]
+        if arg in SHELL_OPTIONS_WITH_VALUE:
+            idx += 2
+            continue
+        if any(
+            arg.startswith(prefix + "=")
+            for prefix in ("--rcfile", "--init-file", "--startup-file")
+        ):
+            idx += 1
+            continue
+        if arg == "--":
+            return None
+        if _shell_has_c_option(arg):
+            idx += 1
+            if idx < len(args) and args[idx] == "--":
+                idx += 1
+            return args[idx] if idx < len(args) else None
+        if arg.startswith("-") or arg.startswith("+"):
+            idx += 1
+            continue
+        return None
+    return None
+
+
+def normalize_command_prefix(
+    tokens: list[str],
+    inherited_environment: Optional[list[str]] = None,
+    inherited_repository_modifiers: Optional[list[str]] = None,
+    shell_keywords_allowed: bool = True,
+) -> NormalizedCommandPrefix:
+    """Normalize wrappers before the executable without applying hook policy."""
+    environment = _index_environment_assignments(
+        inherited_environment or []
+    )
+    repository_modifiers = list(inherited_repository_modifiers or [])
+    working_tokens = list(tokens)
+    # External wrappers resolve their payload as an executable, so shell
+    # builtins and reserved words stop applying once one has been consumed.
+    shell_builtins_allowed = True
+    split_string_expansions = 0
+    split_string_expansion_work = 0
+    idx = 0
+
+    while shell_keywords_allowed and idx < len(working_tokens) and (
+        working_tokens[idx] in SHELL_RESERVED_COMMAND_WORDS
+        or working_tokens[idx] == ")"
+    ):
+        idx += 1
+
+    assignment_start = idx
+    idx = _consume_environment_assignments(working_tokens, idx, environment)
+    if idx != assignment_start:
+        shell_keywords_allowed = False
+
+    while idx < len(working_tokens):
+        command_name = _basename(working_tokens[idx])
+        if command_name in {"command", "builtin"}:
+            shell_keywords_allowed = False
+            idx += 1
+            while idx < len(working_tokens):
+                token = working_tokens[idx]
+                if token == "--":
+                    idx += 1
+                    break
+                if token.startswith("-"):
+                    idx += 1
+                    continue
+                break
+            continue
+
+        if command_name == "env":
+            shell_builtins_allowed = False
+            shell_keywords_allowed = False
+            idx += 1
+            options_allowed = True
+            while idx < len(working_tokens):
+                token = working_tokens[idx]
+                if _is_assignment(token):
+                    _set_environment_assignment(environment, token)
+                    idx += 1
+                    continue
+                if options_allowed and token == "--":
+                    options_allowed = False
+                    idx += 1
+                    continue
+                if not options_allowed:
+                    break
+                if token in {"-i", "--ignore-environment"}:
+                    environment.clear()
+                    idx += 1
+                    continue
+                if token in {"-u", "--unset"}:
+                    if idx + 1 >= len(working_tokens):
+                        idx = len(working_tokens)
                         break
-                if value_option_seen:
+                    _unset_environment_assignment(environment, working_tokens[idx + 1])
+                    idx += 2
+                    continue
+                if token.startswith("--unset="):
+                    _unset_environment_assignment(
+                        environment, token.split("=", 1)[1]
+                    )
+                    idx += 1
+                    continue
+                if token.startswith("-u") and token != "-u":
+                    _unset_environment_assignment(environment, token[2:])
+                    idx += 1
+                    continue
+                if token in {"-C", "--chdir"}:
+                    if idx + 1 >= len(working_tokens):
+                        idx = len(working_tokens)
+                        break
+                    repository_modifiers.extend(
+                        ["-C", working_tokens[idx + 1]]
+                    )
+                    idx += 2
+                    continue
+                if token.startswith("--chdir="):
+                    repository_modifiers.extend(
+                        ["-C", token.split("=", 1)[1]]
+                    )
+                    idx += 1
+                    continue
+                if token.startswith("-C") and token != "-C":
+                    repository_modifiers.extend(["-C", token[2:]])
+                    idx += 1
+                    continue
+                split_string_value: Optional[str] = None
+                split_string_width = 0
+                if token in {"-S", "--split-string"}:
+                    if idx + 1 >= len(working_tokens):
+                        idx = len(working_tokens)
+                        break
+                    split_string_value = working_tokens[idx + 1]
+                    split_string_width = 2
+                elif token.startswith("--split-string="):
+                    split_string_value = token.split("=", 1)[1]
+                    split_string_width = 1
+                if split_string_value is not None:
+                    split_string_expansions += 1
+                    split_string_expansion_work += len(split_string_value)
+                    if (
+                        split_string_expansions
+                        > MAX_ENV_SPLIT_STRING_EXPANSIONS
+                        or split_string_expansion_work
+                        > MAX_ENV_SPLIT_STRING_EXPANSION_WORK
+                    ):
+                        raise ValueError(
+                            "env split-string expansion limit exceeded"
+                        )
+                    split_tokens = shlex.split(split_string_value, posix=True)
+                    working_tokens = (
+                        working_tokens[:idx]
+                        + split_tokens
+                        + working_tokens[idx + split_string_width :]
+                    )
+                    continue
+                if token.startswith("-"):
+                    idx += 1
+                    continue
+                break
+            continue
+
+        if command_name == "sudo":
+            shell_builtins_allowed = False
+            shell_keywords_allowed = False
+            idx += 1
+            sudo_options_with_value = {
+                "-u",
+                "-g",
+                "-h",
+                "-p",
+                "-C",
+                "-D",
+                "-R",
+                "-T",
+                "-U",
+                "-r",
+                "-t",
+            }
+            sudo_long_options_with_value = {
+                "--user",
+                "--group",
+                "--host",
+                "--prompt",
+                "--command-timeout",
+                "--close-from",
+                "--chdir",
+                "--chroot",
+                "--login-class",
+                "--role",
+                "--type",
+                "--other-user",
+            }
+            while idx < len(working_tokens):
+                token = working_tokens[idx]
+                if token == "--":
+                    idx += 1
+                    break
+                if (
+                    token in sudo_options_with_value
+                    or token in sudo_long_options_with_value
+                ):
+                    if idx + 1 >= len(working_tokens):
+                        idx = len(working_tokens)
+                        break
+                    if token == "--chdir":
+                        repository_modifiers.extend(
+                            ["-C", working_tokens[idx + 1]]
+                        )
+                    idx += 2
+                    continue
+                if any(
+                    token.startswith(prefix + "=")
+                    for prefix in (
+                        "--user",
+                        "--group",
+                        "--host",
+                        "--prompt",
+                        "--command-timeout",
+                        "--close-from",
+                        "--chroot",
+                        "--login-class",
+                        "--role",
+                        "--type",
+                        "--other-user",
+                    )
+                ):
+                    idx += 1
+                    continue
+                if token.startswith("--chdir="):
+                    repository_modifiers.extend(
+                        ["-C", token.split("=", 1)[1]]
+                    )
+                    idx += 1
+                    continue
+                if token.startswith("-") and not token.startswith("--"):
+                    value_option_seen = False
+                    option_letters = token[1:]
+                    for position, letter in enumerate(option_letters):
+                        if letter in {
+                            "u",
+                            "g",
+                            "h",
+                            "p",
+                            "C",
+                            "D",
+                            "R",
+                            "T",
+                            "U",
+                            "r",
+                            "t",
+                        }:
+                            if position == len(option_letters) - 1:
+                                idx += 2
+                            else:
+                                idx += 1
+                            value_option_seen = True
+                            break
+                    if value_option_seen:
+                        continue
+                    idx += 1
+                    continue
+                if token.startswith("-"):
+                    idx += 1
+                    continue
+                break
+            idx = _consume_environment_assignments(
+                working_tokens, idx, environment
+            )
+            continue
+
+        if command_name == "nice":
+            shell_builtins_allowed = False
+            shell_keywords_allowed = False
+            idx += 1
+            while idx < len(working_tokens):
+                token = working_tokens[idx]
+                if token == "--":
+                    idx += 1
+                    break
+                if token in {"-n", "--adjustment"}:
+                    idx += 2
+                    continue
+                if token.startswith("--adjustment=") or token.startswith("-"):
+                    idx += 1
+                    continue
+                break
+            continue
+
+        if command_name == "timeout":
+            shell_builtins_allowed = False
+            shell_keywords_allowed = False
+            idx += 1
+            while idx < len(working_tokens):
+                token = working_tokens[idx]
+                if token == "--":
+                    idx += 1
+                    if idx < len(working_tokens):
+                        idx += 1
+                    break
+                if token in {"-s", "--signal", "-k", "--kill-after"}:
+                    idx += 2
+                    continue
+                if (
+                    token.startswith("--signal=")
+                    or token.startswith("--kill-after=")
+                    or token.startswith("-")
+                ):
+                    idx += 1
                     continue
                 idx += 1
-                continue
-            if token.startswith("-"):
-                idx += 1
-                continue
-            return idx
-        return idx
-
-    if command_name == "nice":
-        idx += 1
-        while idx < len(tokens):
-            token = tokens[idx]
-            if token == "--":
-                return idx + 1
-            if token in {"-n", "--adjustment"}:
-                idx += 2
-                continue
-            if token.startswith("--adjustment="):
-                idx += 1
-                continue
-            if token.startswith("-"):
-                idx += 1
-                continue
-            return idx
-        return idx
-
-    if command_name == "timeout":
-        idx += 1
-        while idx < len(tokens):
-            token = tokens[idx]
-            if token == "--":
-                idx += 1
-                if idx < len(tokens):
-                    idx += 1
                 break
-            if token in {"-s", "--signal", "-k", "--kill-after"}:
-                idx += 2
-                continue
-            if token.startswith("--signal=") or token.startswith("--kill-after="):
-                idx += 1
-                continue
-            if token.startswith("-"):
-                idx += 1
-                continue
+            continue
+
+        if command_name == "time":
+            # Bare `time` is a shell keyword. Path-qualified or externally
+            # selected variants, and GNU-only options, use executable semantics.
+            time_is_shell_keyword = (
+                shell_keywords_allowed and working_tokens[idx] == "time"
+            )
             idx += 1
-            break
-        return idx
+            while idx < len(working_tokens):
+                token = working_tokens[idx]
+                if token == "--":
+                    idx += 1
+                    break
+                if token in {"-o", "-f", "--output", "--format"}:
+                    time_is_shell_keyword = False
+                    idx += 2
+                    continue
+                if (
+                    token.startswith("--output=")
+                    or token.startswith("--format=")
+                    or token.startswith("-")
+                ):
+                    if token != "-p":
+                        time_is_shell_keyword = False
+                    idx += 1
+                    continue
+                break
+            if not time_is_shell_keyword:
+                shell_builtins_allowed = False
+            shell_keywords_allowed = time_is_shell_keyword
+            if time_is_shell_keyword:
+                assignment_start = idx
+                idx = _consume_environment_assignments(
+                    working_tokens, idx, environment
+                )
+                if idx != assignment_start:
+                    shell_keywords_allowed = False
+            continue
 
-    if command_name == "time":
-        idx += 1
-        while idx < len(tokens):
-            token = tokens[idx]
-            if token == "--":
-                return idx + 1
-            if token in {"-o", "-f", "--output", "--format"}:
-                idx += 2
-                continue
-            if token.startswith("--output=") or token.startswith("--format="):
+        if command_name == "nohup":
+            shell_builtins_allowed = False
+            shell_keywords_allowed = False
+            idx += 1
+            if idx < len(working_tokens) and working_tokens[idx] == "--":
                 idx += 1
-                continue
-            if token.startswith("-"):
-                idx += 1
-                continue
-            return idx
-        return idx
+            continue
 
-    if command_name == "nohup":
-        idx += 1
-        if idx < len(tokens) and tokens[idx] == "--":
-            return idx + 1
-        return idx
+        if command_name == "exec":
+            shell_builtins_allowed = False
+            shell_keywords_allowed = False
+            idx += 1
+            while idx < len(working_tokens):
+                token = working_tokens[idx]
+                if token == "--":
+                    idx += 1
+                    break
+                if token == "-a":
+                    idx += 2
+                    continue
+                if token.startswith("-"):
+                    idx += 1
+                    continue
+                break
+            continue
 
-    if command_name == "exec":
-        idx += 1
-        while idx < len(tokens):
-            token = tokens[idx]
-            if token == "--":
-                return idx + 1
-            if token == "-a":
-                idx += 2
-                continue
-            if token.startswith("-"):
-                idx += 1
-                continue
-            return idx
-        return idx
+        break
 
-    return idx
+    executable = working_tokens[idx] if idx < len(working_tokens) else None
+    arguments = working_tokens[idx + 1 :] if executable is not None else []
+    nested_shell_command = None
+    if executable is not None and _basename(executable) in SHELL_EXECUTABLES:
+        nested_shell_command = _extract_shell_inline_command(arguments)
+
+    return NormalizedCommandPrefix(
+        executable=executable,
+        arguments=arguments,
+        environment=list(environment.values()),
+        repository_modifiers=repository_modifiers,
+        nested_shell_command=nested_shell_command,
+        shell_builtins_allowed=shell_builtins_allowed,
+    )
 
 
 def _line_has_supported_shell_stdin_heredoc(
@@ -803,38 +1035,13 @@ def _line_has_supported_shell_stdin_heredoc(
     except ValueError:
         return False
 
-    idx = 0
-    while idx < len(tokens):
-        token = tokens[idx]
-        base = _basename(token)
-
-        if _is_assignment(token) or token in SHELL_RESERVED_COMMAND_WORDS:
-            idx += 1
-            continue
-
-        if base in {
-            "command",
-            "builtin",
-            "env",
-            "sudo",
-            "nice",
-            "timeout",
-            "time",
-            "nohup",
-            "exec",
-        }:
-            next_idx = _skip_prefixed_command_options(tokens, idx, base)
-            if next_idx == idx:
-                return False
-            idx = next_idx
-            continue
-
-        if base in SHELL_EXECUTABLES:
-            return _shell_invocation_reads_stdin(tokens[idx + 1 :])
-
+    normalized = normalize_command_prefix(tokens)
+    if (
+        normalized.executable is None
+        or _basename(normalized.executable) not in SHELL_EXECUTABLES
+    ):
         return False
-
-    return False
+    return _shell_invocation_reads_stdin(normalized.arguments)
 
 
 def strip_heredoc_bodies(command: str) -> tuple[str, list[str]]:
@@ -1036,43 +1243,6 @@ def _noninteractive_is_git_exec(token: str) -> bool:
     return _noninteractive_basename(token) == "git"
 
 
-def _extract_noninteractive_shell_c_command(args: list[str]) -> Optional[str]:
-    idx = 0
-    while idx < len(args):
-        arg = args[idx]
-        if arg in ("-c", "--command"):
-            if idx + 1 < len(args):
-                return args[idx + 1]
-            return None
-        if arg.startswith("--command="):
-            return arg.split("=", 1)[1]
-        if arg in NONINTERACTIVE_SHELL_OPTIONS_WITH_VALUE:
-            idx += 2
-            continue
-        if any(arg.startswith(prefix + "=") for prefix in ("--rcfile", "--init-file", "--startup-file")):
-            idx += 1
-            continue
-        if arg == "--":
-            return None
-        if arg.startswith("-") and not arg.startswith("--"):
-            if "c" in arg[1:]:
-                if idx + 1 < len(args):
-                    return args[idx + 1]
-                return None
-            idx += 1
-            continue
-        if arg.startswith("+"):
-            idx += 1
-            continue
-        return None
-    return None
-
-
-def _clear_editor_env(env: dict[str, str]) -> None:
-    env.pop("GIT_EDITOR", None)
-    env.pop("GIT_SEQUENCE_EDITOR", None)
-
-
 def _unset_editor_env(env: dict[str, str], key: str) -> None:
     if key in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
         env.pop(key, None)
@@ -1180,133 +1350,29 @@ def _apply_exported_editor_env(
 def parse_env_wrapped_segment(
     tokens: list[str], inherited_env: Optional[dict[str, str]] = None
 ) -> Optional[NoninteractiveParseResult]:
-    env: dict[str, str] = dict(inherited_env or {})
-    idx = 0
+    inherited_assignments = [
+        f"{key}={value}" for key, value in (inherited_env or {}).items()
+    ]
+    normalized = normalize_command_prefix(
+        tokens, inherited_environment=inherited_assignments
+    )
 
-    # Support git commands nested in simple shell structures, e.g.:
-    # if git commit; then ...
-    while idx < len(tokens) and tokens[idx] in NONINTERACTIVE_SHELL_KEYWORDS:
-        idx += 1
+    while normalized.executable is not None:
+        command_name = _noninteractive_basename(normalized.executable)
+        args = normalized.arguments
+        idx = 0
 
-    while idx < len(tokens) and _noninteractive_is_assignment(tokens[idx]):
-        key, value = tokens[idx].split("=", 1)
-        env[key] = value
-        idx += 1
-
-    while idx < len(tokens):
-        token = _noninteractive_basename(tokens[idx])
-        if token == "env":
-            idx += 1
-            while idx < len(tokens):
-                env_token = tokens[idx]
-                if env_token == "--":
+        if command_name == "xargs":
+            while idx < len(args):
+                token = args[idx]
+                if token == "--":
                     idx += 1
                     break
-                if _noninteractive_is_assignment(env_token):
-                    key, value = env_token.split("=", 1)
-                    env[key] = value
-                    idx += 1
-                    continue
-                if env_token in ("-i", "--ignore-environment"):
-                    _clear_editor_env(env)
-                    idx += 1
-                    continue
-                if env_token in ("-u", "--unset"):
-                    if idx + 1 < len(tokens):
-                        _unset_editor_env(env, tokens[idx + 1])
-                    idx += 2
-                    continue
-                if env_token.startswith("-u") and env_token != "-u":
-                    _unset_editor_env(env, env_token[2:])
-                    idx += 1
-                    continue
-                if env_token.startswith("--unset="):
-                    _unset_editor_env(env, env_token.split("=", 1)[1])
-                    idx += 1
-                    continue
-                if env_token.startswith("-"):
-                    idx += 1
-                    continue
-                break
-            continue
-
-        if token in {"command", "builtin"}:
-            idx += 1
-            while idx < len(tokens):
-                command_token = tokens[idx]
-                if command_token == "--":
-                    idx += 1
-                    break
-                if command_token.startswith("-"):
-                    idx += 1
-                    continue
-                break
-            continue
-
-        if token == "sudo":
-            idx += 1
-            while idx < len(tokens):
-                sudo_token = tokens[idx]
-                if sudo_token == "--":
-                    idx += 1
-                    break
-                if sudo_token in NONINTERACTIVE_SUDO_OPTIONS_WITH_VALUE:
-                    idx += 2
-                    continue
-                if sudo_token in {
-                    "--user",
-                    "--group",
-                    "--host",
-                    "--prompt",
-                    "--command-timeout",
-                    "--close-from",
-                    "--chdir",
-                    "--chroot",
-                    "--login-class",
-                    "--role",
-                    "--type",
-                    "--other-user",
-                }:
-                    idx += 2
-                    continue
-                if sudo_token.startswith("--user=") or sudo_token.startswith("--group="):
-                    idx += 1
-                    continue
-                if any(
-                    sudo_token.startswith(prefix + "=")
-                    for prefix in (
-                        "--host",
-                        "--prompt",
-                        "--command-timeout",
-                        "--close-from",
-                        "--chdir",
-                        "--chroot",
-                        "--login-class",
-                        "--role",
-                        "--type",
-                        "--other-user",
-                    )
-                ):
-                    idx += 1
-                    continue
-                if sudo_token.startswith("-"):
-                    idx += 1
-                    continue
-                break
-            continue
-
-        if token == "xargs":
-            idx += 1
-            while idx < len(tokens):
-                xargs_token = tokens[idx]
-                if xargs_token == "--":
-                    idx += 1
-                    break
-                if xargs_token in NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE:
+                if token in NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE:
                     idx += 2
                     continue
                 if any(
-                    xargs_token.startswith(prefix)
+                    token.startswith(prefix)
                     for prefix in (
                         "--delimiter=",
                         "--eof=",
@@ -1318,34 +1384,36 @@ def parse_env_wrapped_segment(
                 ):
                     idx += 1
                     continue
-                if xargs_token.startswith("-"):
+                if token.startswith("-"):
                     idx += 1
                     continue
                 break
-            continue
-
-        if token == "find":
-            idx += 1
-            while idx < len(tokens):
-                if tokens[idx] in ("-exec", "-execdir"):
-                    idx += 1
-                    break
+        elif command_name == "find":
+            while idx < len(args) and args[idx] not in {"-exec", "-execdir"}:
                 idx += 1
-            continue
+            if idx < len(args):
+                idx += 1
+        elif command_name in {"-exec", "-execdir"}:
+            pass
+        else:
+            break
 
-        if tokens[idx] in ("-exec", "-execdir"):
-            idx += 1
-            continue
+        if idx >= len(args):
+            return None
+        normalized = normalize_command_prefix(
+            args[idx:],
+            inherited_environment=normalized.environment,
+            inherited_repository_modifiers=normalized.repository_modifiers,
+        )
 
-        break
-
-    while idx < len(tokens) and tokens[idx] in NONINTERACTIVE_SHELL_KEYWORDS:
-        idx += 1
-
-    if idx >= len(tokens):
+    if normalized.executable is None:
         return None
 
-    exec_token = tokens[idx]
+    env = {
+        assignment.split("=", 1)[0]: assignment.split("=", 1)[1]
+        for assignment in normalized.environment
+    }
+    exec_token = normalized.executable
     if _noninteractive_basename(exec_token) == "alias":
         return NoninteractiveParseResult(
             env=env,
@@ -1354,7 +1422,7 @@ def parse_env_wrapped_segment(
         )
 
     if _noninteractive_basename(exec_token) in NONINTERACTIVE_SHELL_EXECUTABLES:
-        nested_command = _extract_noninteractive_shell_c_command(tokens[idx + 1 :])
+        nested_command = normalized.nested_shell_command
         if nested_command is None:
             return None
         return NoninteractiveParseResult(
@@ -1366,7 +1434,7 @@ def parse_env_wrapped_segment(
     if not _noninteractive_is_git_exec(exec_token):
         return None
 
-    git_argv = tokens[idx + 1 :]
+    git_argv = normalized.arguments
     if not git_argv:
         return None
 
@@ -1806,47 +1874,6 @@ SHRED_REASON = "shred is blocked. Use `trash` instead for recoverable deletion."
 UNLINK_REASON = "unlink is blocked. Use `trash` instead for recoverable deletion."
 
 
-def _extract_shell_c_command(args: list[str]) -> Optional[str]:
-    idx = 0
-    while idx < len(args):
-        arg = args[idx]
-        if arg in ("-c", "--command"):
-            idx += 1
-            if idx < len(args) and args[idx] == "--" and idx + 1 < len(args):
-                return args[idx + 1]
-            if idx < len(args):
-                return args[idx]
-            return None
-        if arg.startswith("--command="):
-            return arg.split("=", 1)[1]
-        if arg in SHELL_OPTIONS_WITH_VALUE:
-            idx += 2
-            continue
-        if any(
-            arg.startswith(prefix + "=")
-            for prefix in ("--rcfile", "--init-file", "--startup-file")
-        ):
-            idx += 1
-            continue
-        if arg == "--":
-            return None
-        if arg.startswith("-") and not arg.startswith("--"):
-            if "c" in arg[1:]:
-                idx += 1
-                if idx < len(args) and args[idx] == "--" and idx + 1 < len(args):
-                    return args[idx + 1]
-                if idx < len(args):
-                    return args[idx]
-                return None
-            idx += 1
-            continue
-        if arg.startswith("+"):
-            idx += 1
-            continue
-        return None
-    return None
-
-
 def _has_rf_flags(args: list[str]) -> bool:
     has_recursive = False
     has_force = False
@@ -1929,87 +1956,6 @@ def _detect_process_substitutions(
         idx += 1
 
     return None
-
-
-def _skip_rm_rf_prefixes(
-    tokens: list[str], idx: int, substitutions: list[str], depth: int
-) -> tuple[int, Optional[str]]:
-    while idx < len(tokens):
-        token = tokens[idx]
-        base = _basename(token)
-
-        if _is_assignment(token):
-            idx += 1
-            continue
-
-        if base == "env":
-            env_idx = idx + 1
-            while env_idx < len(tokens):
-                env_token = tokens[env_idx]
-                if _is_assignment(env_token):
-                    env_idx += 1
-                    continue
-                if env_token == "--":
-                    env_idx += 1
-                    break
-                if env_token in {"-S", "--split-string"}:
-                    if env_idx + 1 >= len(tokens):
-                        return len(tokens), None
-                    try:
-                        split_tokens = shlex.split(tokens[env_idx + 1], posix=True)
-                    except ValueError:
-                        return len(tokens), RM_RF_REASON
-                    reason = _detect_rm_rf_segment(
-                        split_tokens + tokens[env_idx + 2 :], substitutions, depth + 1
-                    )
-                    return len(tokens), reason
-                if env_token.startswith("--split-string="):
-                    try:
-                        split_tokens = shlex.split(env_token.split("=", 1)[1], posix=True)
-                    except ValueError:
-                        return len(tokens), RM_RF_REASON
-                    reason = _detect_rm_rf_segment(
-                        split_tokens + tokens[env_idx + 1 :], substitutions, depth + 1
-                    )
-                    return len(tokens), reason
-                if env_token in {"-u", "--unset", "-C", "--chdir"}:
-                    env_idx += 2
-                    continue
-                if env_token.startswith("--unset=") or env_token.startswith("--chdir="):
-                    env_idx += 1
-                    continue
-                if env_token.startswith("-u") and env_token != "-u":
-                    env_idx += 1
-                    continue
-                if env_token.startswith("-C") and env_token != "-C":
-                    env_idx += 1
-                    continue
-                if env_token.startswith("-"):
-                    env_idx += 1
-                    continue
-                break
-            idx = env_idx
-            continue
-
-        if base in {
-            "command",
-            "builtin",
-            "sudo",
-            "nice",
-            "timeout",
-            "time",
-            "nohup",
-            "exec",
-        }:
-            next_idx = _skip_prefixed_command_options(tokens, idx, base)
-            if next_idx == idx:
-                return idx, None
-            idx = next_idx
-            continue
-
-        return idx, None
-
-    return idx, None
 
 
 def _detect_xargs(
@@ -2127,17 +2073,16 @@ def _detect_find(
 def _detect_command_at(
     tokens: list[str], idx: int, substitutions: list[str], depth: int
 ) -> Optional[str]:
-    idx, prefix_reason = _skip_rm_rf_prefixes(tokens, idx, substitutions, depth)
-    if prefix_reason is not None:
-        return prefix_reason
-    if idx >= len(tokens):
+    normalized = normalize_command_prefix(tokens[idx:])
+    if normalized.executable is None:
         return None
 
-    token = tokens[idx]
+    token = normalized.executable
+    args = normalized.arguments
     base = _basename(token)
 
     if base in SHELL_EXECUTABLES:
-        payload = _extract_shell_c_command(tokens[idx + 1 :])
+        payload = normalized.nested_shell_command
         if payload is None:
             return None
         literal_reason = _literal_placeholder_reason(payload, substitutions)
@@ -2146,7 +2091,7 @@ def _detect_command_at(
         return _detect_rm_rf_command(payload, depth + 1)
 
     if base == "eval":
-        payload = _join_tokens_as_command(tokens[idx + 1 :])
+        payload = _join_tokens_as_command(args)
         literal_reason = _literal_placeholder_reason(payload, substitutions)
         if literal_reason is not None:
             return literal_reason
@@ -2155,10 +2100,10 @@ def _detect_command_at(
         return None
 
     if base == "xargs":
-        return _detect_xargs(tokens[idx + 1 :], substitutions, depth)
+        return _detect_xargs(args, substitutions, depth)
 
     if base == "find":
-        return _detect_find(tokens[idx + 1 :], substitutions, depth)
+        return _detect_find(args, substitutions, depth)
 
     if base == "shred":
         return SHRED_REASON
@@ -2166,7 +2111,7 @@ def _detect_command_at(
     if base == "unlink":
         return UNLINK_REASON
 
-    if base == "rm" and _has_rf_flags(tokens[idx + 1 :]):
+    if base == "rm" and _has_rf_flags(args):
         return RM_RF_REASON
 
     return None
@@ -2281,7 +2226,6 @@ COMMIT_SHELL_KEYWORDS = {
     "(",
     ")",
 }
-COMMIT_ENV_OPTIONS_WITH_VALUE = {"-u", "--unset", "-C", "--chdir"}
 COMMIT_GIT_OPTIONS_WITH_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env"}
 COMMIT_REPLAY_ENV_VARS = {
     "GIT_DIR",
@@ -2292,79 +2236,17 @@ COMMIT_REPLAY_ENV_VARS = {
     "GIT_OBJECT_DIRECTORY",
     "GIT_ALTERNATE_OBJECT_DIRECTORIES",
 }
-COMMIT_SUDO_OPTIONS_WITH_VALUE = {
-    "-u",
-    "-g",
-    "-p",
-    "-C",
-    "-D",
-    "-R",
-    "-T",
-    "-U",
-    "-t",
-    "-r",
-    "-h",
-}
-COMMIT_SUDO_LONG_OPTIONS_WITH_VALUE = {
-    "--user",
-    "--group",
-    "--host",
-    "--prompt",
-    "--command-timeout",
-    "--close-from",
-    "--chdir",
-    "--chroot",
-    "--login-class",
-    "--role",
-    "--type",
-    "--other-user",
-}
-COMMIT_SHELL_EXECUTABLES = {"sh", "bash", "zsh", "dash", "ksh"}
-COMMIT_SHELL_OPTIONS_WITH_VALUE = {"--command", "--rcfile", "--init-file", "--startup-file", "-o", "-O", "+O"}
-
-def parse_shell_inline_command(args: list[str]) -> Optional[str]:
-    idx = 0
-    while idx < len(args):
-        arg = args[idx]
-        if arg in ("-c", "--command"):
-            if idx + 1 < len(args):
-                return args[idx + 1]
-            return None
-        if arg.startswith("--command="):
-            return arg.split("=", 1)[1]
-        if arg in COMMIT_SHELL_OPTIONS_WITH_VALUE:
-            idx += 2
-            continue
-        if any(arg.startswith(prefix + "=") for prefix in ("--rcfile", "--init-file", "--startup-file")):
-            idx += 1
-            continue
-        if arg == "--":
-            return None
-        if arg.startswith("-") and not arg.startswith("--"):
-            if "c" in arg[1:]:
-                if idx + 1 < len(args):
-                    return args[idx + 1]
-                return None
-            idx += 1
-            continue
-        if arg.startswith("+"):
-            idx += 1
-            continue
-        return None
-    return None
-
-
 def unset_replay_env(git_env: list[str], key: str) -> None:
-    git_env[:] = [assignment for assignment in git_env if assignment.split("=", 1)[0] != key]
+    git_env[:] = [
+        assignment
+        for assignment in git_env
+        if assignment.split("=", 1)[0] != key
+    ]
 
 
 def set_replay_env(git_env: list[str], key: str, value: str) -> None:
     unset_replay_env(git_env, key)
     git_env.append(f"{key}={value}")
-
-
-def clear_replay_env(git_env: list[str]) -> None:
-    git_env[:] = []
 
 
 def inherited_replay_env_from_process() -> list[str]:
@@ -2483,6 +2365,7 @@ def parse_commit_segment(
             shell_env_persists = False
         idx += 1
 
+    assignment_start = idx
     while idx < len(tokens) and COMMIT_ASSIGNMENT.match(tokens[idx]):
         key, value = tokens[idx].split("=", 1)
         if key in COMMIT_REPLAY_ENV_VARS:
@@ -2490,10 +2373,29 @@ def parse_commit_segment(
             set_replay_env(pending_shell_git_vars, key, value)
         idx += 1
 
+    segment_has_command = idx < len(tokens)
+    normalized = normalize_command_prefix(
+        tokens[idx:],
+        inherited_environment=git_env,
+        inherited_repository_modifiers=git_args,
+        shell_keywords_allowed=idx == assignment_start,
+    )
+    git_env = _filter_environment_assignments(
+        normalized.environment, COMMIT_REPLAY_ENV_VARS
+    )
+    git_args = normalized.repository_modifiers
+    tokens = (
+        [normalized.executable, *normalized.arguments]
+        if normalized.executable is not None
+        else []
+    )
+    idx = 0
+
     if idx >= len(tokens):
-        for assignment in pending_shell_git_vars:
-            key, value = assignment.split("=", 1)
-            set_replay_env(shell_git_vars, key, value)
+        if not segment_has_command:
+            for assignment in pending_shell_git_vars:
+                key, value = assignment.split("=", 1)
+                set_replay_env(shell_git_vars, key, value)
         persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
         persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
         return CommitSegmentResult(
@@ -2504,70 +2406,10 @@ def parse_commit_segment(
 
     while idx < len(tokens):
         base = os.path.basename(tokens[idx])
-        if base in {"command", "builtin"}:
-            idx += 1
-            while idx < len(tokens):
-                token = tokens[idx]
-                if token == "--":
-                    idx += 1
-                    break
-                if token.startswith("-"):
-                    idx += 1
-                    continue
-                break
-            continue
-
-        if base == "alias":
+        if base == "alias" and normalized.shell_builtins_allowed:
             raise ParseError("shell alias definitions are not supported")
 
-        if base == "sudo":
-            idx += 1
-            while idx < len(tokens):
-                token = tokens[idx]
-                if token == "--":
-                    idx += 1
-                    break
-                if token in COMMIT_SUDO_OPTIONS_WITH_VALUE:
-                    idx += 2
-                    continue
-                if token in COMMIT_SUDO_LONG_OPTIONS_WITH_VALUE:
-                    if token == "--chdir" and idx + 1 < len(tokens):
-                        git_args.extend(["-C", tokens[idx + 1]])
-                    idx += 2
-                    continue
-                if token in {"--askpass", "--background", "--preserve-env", "--remove-timestamp", "--reset-timestamp", "--validate", "--version", "--list", "--non-interactive"}:
-                    idx += 1
-                    continue
-                if any(
-                    token.startswith(prefix)
-                    for prefix in (
-                        "--host=",
-                        "--user=",
-                        "--group=",
-                        "--prompt=",
-                        "--command-timeout=",
-                        "--close-from=",
-                        "--chroot=",
-                        "--login-class=",
-                        "--role=",
-                        "--type=",
-                        "--other-user=",
-                        "--preserve-env=",
-                    )
-                ):
-                    idx += 1
-                    continue
-                if token.startswith("--chdir="):
-                    git_args.extend(["-C", token.split("=", 1)[1]])
-                    idx += 1
-                    continue
-                if token.startswith("-"):
-                    idx += 1
-                    continue
-                break
-            continue
-
-        if base == "export":
+        if base == "export" and normalized.shell_builtins_allowed:
             for assignment in pending_shell_git_vars:
                 key, value = assignment.split("=", 1)
                 set_replay_env(shell_git_vars, key, value)
@@ -2610,7 +2452,7 @@ def parse_commit_segment(
                 break
             continue
 
-        if base == "unset":
+        if base == "unset" and normalized.shell_builtins_allowed:
             pending_shell_git_vars = []
             unset_targets_variables = True
             idx += 1
@@ -2642,57 +2484,8 @@ def parse_commit_segment(
                 idx += 1
             continue
 
-        if base == "env":
-            idx += 1
-            while idx < len(tokens):
-                token = tokens[idx]
-                if COMMIT_ASSIGNMENT.match(token):
-                    key, value = token.split("=", 1)
-                    if key in COMMIT_REPLAY_ENV_VARS:
-                        set_replay_env(git_env, key, value)
-                    idx += 1
-                    continue
-                if token == "--":
-                    idx += 1
-                    break
-                if token in {"-i", "--ignore-environment"}:
-                    clear_replay_env(git_env)
-                    idx += 1
-                    continue
-                if token in COMMIT_ENV_OPTIONS_WITH_VALUE:
-                    if token in {"-u", "--unset"}:
-                        if idx + 1 < len(tokens):
-                            unset_replay_env(git_env, tokens[idx + 1])
-                        idx += 2
-                        continue
-                    if token in {"-C", "--chdir"} and idx + 1 < len(tokens):
-                        git_args.extend(["-C", tokens[idx + 1]])
-                    idx += 2
-                    continue
-                if token.startswith("--unset="):
-                    unset_replay_env(git_env, token.split("=", 1)[1])
-                    idx += 1
-                    continue
-                if token.startswith("-u") and token != "-u":
-                    unset_replay_env(git_env, token[2:])
-                    idx += 1
-                    continue
-                if token.startswith("--chdir="):
-                    git_args.extend(["-C", token.split("=", 1)[1]])
-                    idx += 1
-                    continue
-                if token.startswith("-C") and token != "-C":
-                    git_args.extend(["-C", token[2:]])
-                    idx += 1
-                    continue
-                if token.startswith("-"):
-                    idx += 1
-                    continue
-                break
-            continue
-
-        if base in COMMIT_SHELL_EXECUTABLES:
-            nested_command = parse_shell_inline_command(tokens[idx + 1 :])
+        if base in SHELL_EXECUTABLES:
+            nested_command = _extract_shell_inline_command(tokens[idx + 1 :])
             if nested_command is None:
                 persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
                 persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
@@ -2789,7 +2582,7 @@ def run_commit_contexts(command: str, parse_error_reason: str) -> int:
     result: list[CommitContext]
     try:
         result = parse_commit_contexts(command)
-    except (ParseError, RecursionError):
+    except (ParseError, RecursionError, ValueError):
         # Emit a sentinel the shell caller recognises and blocks on.
         result = [{"parse_error": parse_error_reason}]
     print(json.dumps(result))
