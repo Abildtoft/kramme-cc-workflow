@@ -1657,6 +1657,10 @@ def _parse_noninteractive_git_commands(
 
 
 def run_noninteractive(command: str) -> int:
+    """Emit the `noninteractive` mode decision.
+
+    See README.md#git-command-parser-mode-contracts.
+    """
     PARSE_ERROR_REASON = (
         "Unable to safely parse command. Refusing potentially interactive git command."
     )
@@ -2320,6 +2324,10 @@ def _detect_rm_rf_command(command: str, depth: int = 0) -> Optional[str]:
 
 
 def run_rm_rf(command: str) -> int:
+    """Emit the `rm-rf` mode decision.
+
+    See README.md#git-command-parser-mode-contracts.
+    """
     try:
         reason = _detect_rm_rf_command(command)
     except (RecursionError, ValueError):
@@ -2951,6 +2959,10 @@ def parse_commit_segment(
 
 
 def run_commit_contexts(command: str, parse_error_reason: str) -> int:
+    """Emit the `commit-contexts` array.
+
+    See README.md#git-command-parser-mode-contracts.
+    """
     result: list[CommitContext]
     try:
         result = parse_commit_contexts(command)
@@ -2962,6 +2974,10 @@ def run_commit_contexts(command: str, parse_error_reason: str) -> int:
 
 
 def main(argv: list[str]) -> int:
+    """Dispatch the command-safety parser modes.
+
+    See README.md#git-command-parser-mode-contracts.
+    """
     if len(argv) < 2:
         print(
             "usage: git_command_parser.py <noninteractive|commit-contexts|rm-rf> "
