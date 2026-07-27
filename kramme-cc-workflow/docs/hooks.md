@@ -50,6 +50,7 @@ Generate a report:
 ```bash
 node scripts/skill-usage.js report --since 30d
 node scripts/skill-usage.js report --kind explicit --json
+node scripts/skill-usage.js report --json --strict
 ```
 
 Scan existing transcript files for historical explicit invocations:
@@ -57,6 +58,13 @@ Scan existing transcript files for historical explicit invocations:
 ```bash
 node scripts/skill-usage.js scan ~/.claude/projects --json
 ```
+
+Reports and scans tolerate degraded input by default. They retain valid totals,
+write skipped-line and read-failure diagnostics to stderr, and exit successfully.
+Healthy `--json` output remains an array. When diagnostics occur, JSON output is
+an object with `summary` and `diagnostics` fields instead. Add `--strict` to
+render the same result but exit nonzero when any input was skipped or could not
+be read.
 
 The hook is silent and fail-open. If Node.js is unavailable, if the payload cannot be parsed, or if recording fails, the hook returns `{}` and does not block the session.
 

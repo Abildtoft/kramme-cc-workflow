@@ -46,7 +46,8 @@ When a skill behaves incorrectly, start with its `SKILL.md`, then load only the 
 
 When a hook blocks or misses a command, inspect the hook script, then the shared helpers under `hooks/lib/` (see `hooks/lib/README.md` for the helper responsibility map). `git_command_parser.py` is the production parser for complex shell and git command shapes used by the command-safety hooks.
 
-Skill usage reports and scans tolerate degraded input by default: valid totals are retained, diagnostics are written to stderr, and degraded JSON output includes `summary` plus diagnostic counters. Add `--strict` when a snapshot must fail rather than accept skipped lines or read failures.
+For skill usage report and scan output, degraded-input diagnostics, and strict
+mode, see [hooks.md](hooks.md#skill-usage-stats).
 
 When Codex output is wrong, read `scripts/convert-plugin.js` first, then follow the boundary in `scripts/convert-plugin/README.md`: loader, transformer, writer, config, staging, and install state.
 
