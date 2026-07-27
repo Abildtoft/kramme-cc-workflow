@@ -66,6 +66,7 @@ create_usage_plugin_root() {
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 
+	touch "$USAGE_FILE"
 	run node "$SCRIPT" report --file "$USAGE_FILE" --json
 	[ "$status" -eq 0 ]
 	[ "$output" = "[]" ]
@@ -114,12 +115,19 @@ create_usage_plugin_root() {
 		'{"skill":42,"kind":"tool"}' \
 		>"$USAGE_FILE"
 
-	run node "$SCRIPT" report --file "$USAGE_FILE" --json
+	REPORT_STDERR="$BATS_TEST_TMPDIR/report-stderr.log"
+	run bash -c 'node "$1" report --file "$2" --json 2>"$3"' _ \
+		"$SCRIPT" \
+		"$USAGE_FILE" \
+		"$REPORT_STDERR"
 	[ "$status" -eq 0 ]
-	[ "$(echo "$output" | jq -r 'length')" = "1" ]
-	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:legacy-record" ]
-	[ "$(echo "$output" | jq -r '.[0].explicit')" = "1" ]
-	[ "$(echo "$output" | jq -r '.[0].tool')" = "0" ]
+	[ "$(echo "$output" | jq -r '.summary | length')" = "1" ]
+	[ "$(echo "$output" | jq -r '.summary[0].skill')" = "kramme:legacy-record" ]
+	[ "$(echo "$output" | jq -r '.summary[0].explicit')" = "1" ]
+	[ "$(echo "$output" | jq -r '.summary[0].tool')" = "0" ]
+	[ "$(echo "$output" | jq -r '.diagnostics.skippedLines')" = "1" ]
+	[ "$(echo "$output" | jq -r '.diagnostics.readFailures')" = "0" ]
+	[ "$(cat "$REPORT_STDERR")" = "skill-usage: skipped 1 invalid usage record line file=$USAGE_FILE" ]
 }
 
 @test "scan summarizes user skill invocations from transcript files" {
@@ -173,25 +181,7 @@ create_usage_plugin_root() {
 	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:pr:create" ]
 }
 
-@test "legacy hooks skill-usage entry delegates to scripts implementation" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for skill usage tests"
-	fi
-
-	LEGACY_SCRIPT="$BATS_TEST_DIRNAME/../hooks/skill-usage.js"
-	run bash -c 'printf "%s" "$1" | node "$2" record --file "$3"' _ \
-		'{"prompt":"/kramme:legacy-wrapper","session_id":"session-legacy"}' \
-		"$LEGACY_SCRIPT" \
-		"$USAGE_FILE"
-	[ "$status" -eq 0 ]
-	[ "$output" = "{}" ]
-
-	run node "$SCRIPT" report --file "$USAGE_FILE" --json
-	[ "$status" -eq 0 ]
-	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:legacy-wrapper" ]
-}
-
-@test "usage hook records through scripts implementation path" {
+@test "usage hook records only through the canonical scripts implementation" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for skill usage tests"
 	fi
@@ -210,6 +200,28 @@ create_usage_plugin_root() {
 	run node "$SCRIPT" report --file "$USAGE_FILE" --json
 	[ "$status" -eq 0 ]
 	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:script-owner" ]
+}
+
+@test "usage hook diagnoses a missing canonical recorder without using a legacy fallback" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for skill usage tests"
+	fi
+
+	PLUGIN_ROOT="$BATS_TEST_TMPDIR/plugin"
+	create_usage_plugin_root "$PLUGIN_ROOT"
+	rm "$PLUGIN_ROOT/scripts/skill-usage.js"
+	printf '%s\n' '#!/usr/bin/env node' 'process.exit(64);' >"$PLUGIN_ROOT/hooks/skill-usage.js"
+
+	run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE="$4" bash "$2/hooks/skill-usage-stats.sh"' _ \
+		'{"prompt":"/kramme:missing-owner","session_id":"session-missing"}' \
+		"$PLUGIN_ROOT" \
+		"$USAGE_FILE" \
+		"$DIAGNOSTIC_FILE"
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
+	[ ! -f "$USAGE_FILE" ]
+	run grep -F "skill-usage-stats: canonical recorder missing" "$DIAGNOSTIC_FILE"
+	[ "$status" -eq 0 ]
 }
 
 @test "usage hook writes bounded diagnostics when recorder fails" {

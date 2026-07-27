@@ -26,7 +26,7 @@ Paths passed through file variables are relative to `kramme-cc-workflow/`.
 | Git command safety parsing | `kramme-cc-workflow/hooks/lib/git_command_parser.py`, `kramme-cc-workflow/hooks/noninteractive-git.sh`, `kramme-cc-workflow/hooks/confirm-review-responses.sh`, `kramme-cc-workflow/hooks/block-rm-rf.sh` | `make -C kramme-cc-workflow test-python-file PYTHON_TEST_FILE=tests/python/test_git_command_parser.py`, `bats kramme-cc-workflow/tests/noninteractive-git.bats kramme-cc-workflow/tests/confirm-review-responses.bats kramme-cc-workflow/tests/block-rm-rf.bats` |
 | Auto-format hook | `kramme-cc-workflow/hooks/auto-format.sh` | `make -C kramme-cc-workflow test-format` |
 | Context links hook | `kramme-cc-workflow/hooks/context-links.sh`, `kramme-cc-workflow/hooks/context-links.config.example` | `make -C kramme-cc-workflow test-context` |
-| Skill usage stats | `kramme-cc-workflow/hooks/skill-usage-stats.sh`, `kramme-cc-workflow/hooks/skill-usage.js`, `kramme-cc-workflow/scripts/skill-usage.js` | `make -C kramme-cc-workflow test-skill-usage` |
+| Skill usage stats | `kramme-cc-workflow/hooks/skill-usage-stats.sh`, `kramme-cc-workflow/scripts/skill-usage.js` | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/skill-usage.test.js`, `make -C kramme-cc-workflow test-skill-usage` |
 | Converter frontmatter | `kramme-cc-workflow/scripts/convert-plugin/frontmatter.js` | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/frontmatter.test.js` |
 | Converter contracts and Codex hook output | `kramme-cc-workflow/scripts/convert-plugin/*.js`, `kramme-cc-workflow/hooks/hooks.json`, `kramme-cc-workflow/docs/hooks.md` | `make -C kramme-cc-workflow test-convert`, `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/codex-hook-compat.test.js` |
 | Codex converter | `kramme-cc-workflow/scripts/convert-plugin.js`, `kramme-cc-workflow/scripts/convert-plugin/`, `kramme-cc-workflow/scripts/install-codex.sh` | `make -C kramme-cc-workflow test-convert` |
@@ -45,6 +45,8 @@ Paths passed through file variables are relative to `kramme-cc-workflow/`.
 When a skill behaves incorrectly, start with its `SKILL.md`, then load only the referenced local files under the same skill directory. Check `scripts/lint-skill-contracts.py` if the issue is frontmatter, naming, description length, platform filtering, or self-contained resource policy.
 
 When a hook blocks or misses a command, inspect the hook script, then the shared helpers under `hooks/lib/` (see `hooks/lib/README.md` for the helper responsibility map). `git_command_parser.py` is the production parser for complex shell and git command shapes used by the command-safety hooks.
+
+For skill usage report and scan output, degraded-input diagnostics, and strict mode, see [hooks.md](hooks.md#skill-usage-stats).
 
 When Codex output is wrong, read `scripts/convert-plugin.js` first, then follow the boundary in `scripts/convert-plugin/README.md`: loader, transformer, writer, config, staging, and install state.
 

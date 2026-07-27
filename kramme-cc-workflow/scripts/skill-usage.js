@@ -11,6 +11,8 @@ const STATE_DIR = path.join(
   "kramme-cc-workflow",
 );
 const DEFAULT_USAGE_FILE = path.join(STATE_DIR, "skill-usage.jsonl");
+const MAX_NON_JSONL_COMPAT_BYTES = 1024 * 1024;
+const MAX_JSONL_LINE_BYTES = 1024 * 1024;
 const SLASH_SKILL_PATTERN = /(?:^|\s)\/(kramme:[A-Za-z0-9:_-]+)/g;
 const DIRECT_SKILL_PATTERN = /^\/?(kramme:[A-Za-z0-9:_-]+)(?:\s|$)/;
 const SCAN_PRUNED_DIRS = new Set([
@@ -37,6 +39,7 @@ const SCAN_PRUNED_DIRS = new Set([
  * @property {string} [since]
  * @property {string} [kind]
  * @property {string} [limit]
+ * @property {boolean} [strict]
  *
  * @typedef {Object} UsageRecord
  * @property {1} schemaVersion
@@ -61,9 +64,12 @@ const SCAN_PRUNED_DIRS = new Set([
  * @property {string | null} lastUsedAt
  *
  * @typedef {{ skill: string, total: string, explicit: string, tool: string, sessions: string, first: string, last: string }} PrintableUsageRow
+ * @typedef {{ skippedLines: number, readFailures: number }} UsageDiagnostics
+ * @typedef {Map<string, Omit<UsageSummaryRow, "sessions"> & { sessions: Set<string> }>} UsageAccumulator
+ * @typedef {{ line: string | null, byteLength: number, overlong: boolean, firstNonWhitespaceByte: number | null }} BoundedLine
  */
 
-function main() {
+async function main() {
   const [command, ...args] = process.argv.slice(2);
 
   if (
@@ -82,12 +88,12 @@ function main() {
   }
 
   if (command === "report") {
-    report(args);
+    await report(args);
     return;
   }
 
   if (command === "scan") {
-    scan(args);
+    await scan(args);
     return;
   }
 
@@ -99,11 +105,17 @@ function main() {
 function printHelp(exitCode) {
   const help = `Usage:
   scripts/skill-usage.js record [--file <path>]
-  scripts/skill-usage.js report [--file <path>] [--since <duration|date>] [--kind <explicit|tool|all>] [--json] [--limit <n>]
-  scripts/skill-usage.js scan <file-or-dir...> [--since <duration|date>] [--json] [--limit <n>]
+  scripts/skill-usage.js report [--file <path>] [--since <duration|date>] [--kind <explicit|tool|all>] [--json] [--limit <n>] [--strict]
+  scripts/skill-usage.js scan <file-or-dir...> [--since <duration|date>] [--json] [--limit <n>] [--strict]
 
 Records are stored in:
   ${DEFAULT_USAGE_FILE}
+
+Report and scan tolerate degraded input by default and expose diagnostic
+counters. Use --strict to return a non-zero status when diagnostics occur.
+JSONL inputs stream incrementally with individual records limited to 1 MiB.
+Whole-document JSON and plaintext compatibility input is limited to 1 MiB
+per file.
 
 Environment:
   KRAMME_SKILL_USAGE_FILE  Override the usage JSONL file path.
@@ -129,6 +141,10 @@ function parseArgs(args) {
     const arg = args[i];
     if (arg === "--json") {
       parsed.json = true;
+      continue;
+    }
+    if (arg === "--strict") {
+      parsed.strict = true;
       continue;
     }
     if (arg === "--file") {
@@ -442,7 +458,7 @@ function appendJsonLines(file, records) {
 }
 
 /** @param {string[]} args */
-function report(args) {
+async function report(args) {
   const parsed = parseArgs(args);
   const file = usageFile(parsed);
   const since = parseSince(parsed.since);
@@ -456,24 +472,33 @@ function report(args) {
     throw new Error(`Invalid --limit value: ${parsed.limit}`);
   }
 
-  const records = readRecords(file).filter((record) => {
-    if (kind !== "all" && record.kind !== kind) return false;
-    if (!since) return true;
-    const recordedAt = Date.parse(record.recordedAt);
-    return Number.isFinite(recordedAt) && recordedAt >= since.getTime();
-  });
+  const diagnostics = createDiagnostics();
+  const accumulator = createUsageAccumulator();
+  const usesExplicitFile =
+    Boolean(parsed.file) || Boolean(process.env.KRAMME_SKILL_USAGE_FILE);
+  await readUsageRecords(
+    file,
+    diagnostics,
+    (record) => {
+      if (kind !== "all" && record.kind !== kind) return;
+      if (since) {
+        const recordedAt = Date.parse(record.recordedAt);
+        if (!Number.isFinite(recordedAt) || recordedAt < since.getTime()) {
+          return;
+        }
+      }
+      addUsageRecord(accumulator, record);
+    },
+    !usesExplicitFile,
+  );
 
-  const summary = summarize(records, limit);
-  if (parsed.json) {
-    process.stdout.write(JSON.stringify(summary, null, 2) + "\n");
-    return;
-  }
-
-  renderTable(summary, file, since, kind);
+  const summary = finishUsageSummary(accumulator, limit);
+  renderResult(summary, diagnostics, parsed.json, file, since, kind);
+  applyStrictMode(parsed, diagnostics);
 }
 
 /** @param {string[]} args */
-function scan(args) {
+async function scan(args) {
   const parsed = parseArgs(args);
   const since = parseSince(parsed.since);
   const limit = parsed.limit == null ? null : Number(parsed.limit);
@@ -485,36 +510,65 @@ function scan(args) {
     throw new Error(`Invalid --limit value: ${parsed.limit}`);
   }
 
-  const records = parsed._.flatMap((entry) =>
-    scanPath(path.resolve(entry)),
-  ).filter((record) => {
-    if (!since) return true;
-    const recordedAt = Date.parse(record.recordedAt);
-    return Number.isFinite(recordedAt) && recordedAt >= since.getTime();
-  });
-  const summary = summarize(records, limit);
+  const diagnostics = createDiagnostics();
+  const accumulator = createUsageAccumulator();
+  for (const entry of parsed._) {
+    for await (const file of scanPath(path.resolve(entry), diagnostics)) {
+      await scanFile(file, diagnostics, (record) => {
+        if (since) {
+          const recordedAt = Date.parse(record.recordedAt);
+          if (!Number.isFinite(recordedAt) || recordedAt < since.getTime()) {
+            return;
+          }
+        }
+        addUsageRecord(accumulator, record);
+      });
+    }
+  }
 
-  if (parsed.json) {
-    process.stdout.write(JSON.stringify(summary, null, 2) + "\n");
+  const summary = finishUsageSummary(accumulator, limit);
+  renderResult(
+    summary,
+    diagnostics,
+    parsed.json,
+    parsed._.join(","),
+    since,
+    "explicit",
+  );
+  applyStrictMode(parsed, diagnostics);
+}
+
+/**
+ * @param {string} entry
+ * @param {UsageDiagnostics} diagnostics
+ * @returns {AsyncGenerator<string, void, void>}
+ */
+async function* scanPath(entry, diagnostics) {
+  let stat;
+  try {
+    stat = await fs.promises.stat(entry);
+  } catch (error) {
+    recordReadFailure(diagnostics, entry, error);
     return;
   }
 
-  renderTable(summary, parsed._.join(","), since, "explicit");
-}
-
-/** @param {string} entry @returns {ScannedUsageRecord[]} */
-function scanPath(entry) {
-  if (!fs.existsSync(entry)) return [];
-  const stat = fs.statSync(entry);
   if (stat.isDirectory()) {
-    if (shouldPruneScanDirectory(entry)) return [];
-    return fs
-      .readdirSync(entry)
-      .flatMap((child) => scanPath(path.join(entry, child)));
+    if (shouldPruneScanDirectory(entry)) return;
+    let children;
+    try {
+      children = await fs.promises.readdir(entry);
+    } catch (error) {
+      recordReadFailure(diagnostics, entry, error);
+      return;
+    }
+    children.sort((left, right) => left.localeCompare(right));
+    for (const child of children) {
+      yield* scanPath(path.join(entry, child), diagnostics);
+    }
+    return;
   }
-  if (!stat.isFile()) return [];
 
-  return scanFile(entry);
+  if (stat.isFile()) yield entry;
 }
 
 /** @param {string} entry */
@@ -522,31 +576,200 @@ function shouldPruneScanDirectory(entry) {
   return SCAN_PRUNED_DIRS.has(path.basename(entry));
 }
 
-/** @param {string} file @returns {ScannedUsageRecord[]} */
-function scanFile(file) {
-  const content = fs.readFileSync(file, "utf8");
-  let parsedJsonLine = false;
-  const lineRecords = content
-    .split(/\r?\n/)
-    .filter(Boolean)
-    .flatMap((line) => {
-      try {
-        const parsed = JSON.parse(line);
-        parsedJsonLine = true;
-        return recordsFromScannedObject(parsed, file);
-      } catch {
-        return [];
-      }
-    });
+/**
+ * @param {string} file
+ * @returns {AsyncGenerator<BoundedLine, void, void>}
+ */
+async function* readBoundedLines(file) {
+  const input = fs.createReadStream(file);
+  /** @type {Buffer[]} */
+  let chunks = [];
+  let bufferedBytes = 0;
+  let byteLength = 0;
+  let overlong = false;
+  /** @type {number | null} */
+  let firstNonWhitespaceByte = null;
 
-  if (parsedJsonLine) return lineRecords;
+  /** @param {Buffer} segment */
+  const appendSegment = (segment) => {
+    byteLength += segment.length;
+    if (firstNonWhitespaceByte == null) {
+      for (const byte of segment) {
+        if (byte !== 0x09 && byte !== 0x0d && byte !== 0x20) {
+          firstNonWhitespaceByte = byte;
+          break;
+        }
+      }
+    }
+    if (overlong || segment.length === 0) return;
+    if (bufferedBytes + segment.length > MAX_JSONL_LINE_BYTES) {
+      chunks = [];
+      bufferedBytes = 0;
+      overlong = true;
+      return;
+    }
+    chunks.push(segment);
+    bufferedBytes += segment.length;
+  };
+
+  /** @param {boolean} hasNewline @returns {BoundedLine} */
+  const finishLine = (hasNewline) => {
+    if (hasNewline) byteLength += 1;
+    let line = null;
+    if (!overlong) {
+      /** @type {Buffer<ArrayBufferLike>} */
+      let buffer = Buffer.alloc(0);
+      if (chunks.length === 1) {
+        buffer = chunks[0];
+      } else if (chunks.length > 1) {
+        buffer = Buffer.concat(chunks, bufferedBytes);
+      }
+      if (buffer.at(-1) === 0x0d) buffer = buffer.subarray(0, -1);
+      line = buffer.toString("utf8");
+    }
+    const result = {
+      line,
+      byteLength,
+      overlong,
+      firstNonWhitespaceByte,
+    };
+    chunks = [];
+    bufferedBytes = 0;
+    byteLength = 0;
+    overlong = false;
+    firstNonWhitespaceByte = null;
+    return result;
+  };
 
   try {
-    return recordsFromScannedObject(JSON.parse(content), file);
-  } catch {
-    return extractSlashSkillNames(content).map((skill) =>
-      scannedRecord({ skill, file }),
+    for await (const value of input) {
+      const chunk = Buffer.isBuffer(value) ? value : Buffer.from(value);
+      let start = 0;
+      while (start < chunk.length) {
+        const newline = chunk.indexOf(0x0a, start);
+        const end = newline === -1 ? chunk.length : newline;
+        appendSegment(chunk.subarray(start, end));
+        if (newline === -1) break;
+        yield finishLine(true);
+        start = newline + 1;
+      }
+    }
+    if (byteLength > 0 || overlong) yield finishLine(false);
+  } finally {
+    input.destroy();
+  }
+}
+
+/**
+ * @param {string} file
+ * @param {UsageDiagnostics} diagnostics
+ * @param {(record: ScannedUsageRecord) => void} onRecord
+ */
+async function scanFile(file, diagnostics, onRecord) {
+  let parsedJsonLines = 0;
+  let malformedLines = 0;
+  let overlongLines = 0;
+  let observedBytes = 0;
+  let nonEmptyLines = 0;
+  let rejectOversizedWholeDocument = false;
+  let startsWithWholeDocumentArray = false;
+  /** @type {string[] | null} */
+  let compatibilityLines = [];
+
+  /** @param {string} line */
+  const processJsonLine = (line) => {
+    try {
+      const parsed = JSON.parse(line);
+      parsedJsonLines += 1;
+      for (const record of recordsFromScannedObject(parsed, file)) {
+        onRecord(record);
+      }
+    } catch {
+      malformedLines += 1;
+    }
+  };
+
+  const startStreamingJsonLines = () => {
+    const bufferedLines = compatibilityLines || [];
+    compatibilityLines = null;
+    if (startsWithWholeDocumentArray) {
+      rejectOversizedWholeDocument = true;
+      return;
+    }
+    for (const line of bufferedLines) processJsonLine(line);
+  };
+
+  try {
+    for await (const boundedLine of readBoundedLines(file)) {
+      observedBytes += boundedLine.byteLength;
+      const line = boundedLine.line || "";
+      const isNonEmpty = boundedLine.overlong || line !== "";
+      if (isNonEmpty) {
+        nonEmptyLines += 1;
+        if (nonEmptyLines === 1) {
+          startsWithWholeDocumentArray =
+            (boundedLine.overlong &&
+              boundedLine.firstNonWhitespaceByte === 0x5b) ||
+            line.trim() === "[";
+        }
+      }
+
+      if (compatibilityLines && observedBytes > MAX_NON_JSONL_COMPAT_BYTES) {
+        startStreamingJsonLines();
+      }
+      if (!isNonEmpty || rejectOversizedWholeDocument) continue;
+
+      if (boundedLine.overlong) {
+        overlongLines += 1;
+      } else if (compatibilityLines) {
+        compatibilityLines.push(line);
+      } else {
+        processJsonLine(line);
+      }
+    }
+  } catch (error) {
+    if (compatibilityLines) startStreamingJsonLines();
+    if (parsedJsonLines > 0) {
+      recordSkippedLines(diagnostics, file, overlongLines, "overlong JSONL");
+      recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
+    }
+    recordReadFailure(diagnostics, file, error);
+    return;
+  }
+
+  if (!compatibilityLines) {
+    if (parsedJsonLines > 0 && !rejectOversizedWholeDocument) {
+      recordSkippedLines(diagnostics, file, overlongLines, "overlong JSONL");
+      recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
+      return;
+    }
+    recordSkippedLines(
+      diagnostics,
+      file,
+      nonEmptyLines,
+      "non-JSONL input beyond the compatibility limit",
     );
+    return;
+  }
+
+  const content = compatibilityLines.join("\n");
+  try {
+    for (const record of recordsFromScannedObject(JSON.parse(content), file)) {
+      onRecord(record);
+    }
+    return;
+  } catch {
+    // Fall through to JSONL or plaintext classification.
+  }
+
+  for (const line of compatibilityLines) processJsonLine(line);
+  if (parsedJsonLines > 0) {
+    recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
+    return;
+  }
+
+  for (const skill of extractSlashSkillNames(content)) {
+    onRecord(scannedRecord({ skill, file }));
   }
 }
 
@@ -629,21 +852,43 @@ function isUserMessage(input) {
   return !role || ["user", "human"].includes(role.toLowerCase());
 }
 
-/** @param {string} file @returns {UsageRecord[]} */
-function readRecords(file) {
-  if (!fs.existsSync(file)) return [];
-  const content = fs.readFileSync(file, "utf8");
-  return content
-    .split(/\r?\n/)
-    .filter(Boolean)
-    .flatMap((line) => {
+/**
+ * @param {string} file
+ * @param {UsageDiagnostics} diagnostics
+ * @param {(record: UsageRecord) => void} onRecord
+ * @param {boolean} ignoreMissing
+ */
+async function readUsageRecords(file, diagnostics, onRecord, ignoreMissing) {
+  let malformedLines = 0;
+  let invalidLines = 0;
+  let overlongLines = 0;
+
+  try {
+    for await (const boundedLine of readBoundedLines(file)) {
+      if (boundedLine.overlong) {
+        overlongLines += 1;
+        continue;
+      }
+      const line = boundedLine.line || "";
+      if (!line) continue;
       try {
         const record = normalizeUsageRecord(JSON.parse(line));
-        return record ? [record] : [];
+        if (record) onRecord(record);
+        else invalidLines += 1;
       } catch {
-        return [];
+        malformedLines += 1;
       }
-    });
+    }
+  } catch (error) {
+    const errorCode = asRecord(error).code;
+    if (!(ignoreMissing && errorCode === "ENOENT")) {
+      recordReadFailure(diagnostics, file, error);
+    }
+  }
+
+  recordSkippedLines(diagnostics, file, overlongLines, "overlong JSONL");
+  recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
+  recordSkippedLines(diagnostics, file, invalidLines, "invalid usage record");
 }
 
 /** @param {unknown} value @returns {UsageRecord | null} */
@@ -664,43 +909,53 @@ function normalizeUsageRecord(value) {
   };
 }
 
-/** @param {UsageLikeRecord[]} records @param {number | null} limit @returns {UsageSummaryRow[]} */
-function summarize(records, limit) {
-  /** @type {Map<string, Omit<UsageSummaryRow, "sessions"> & { sessions: Set<string> }>} */
-  const bySkill = new Map();
+/** @returns {UsageAccumulator} */
+function createUsageAccumulator() {
+  return new Map();
+}
 
-  for (const record of records) {
-    const key = record.skill;
-    let entry = bySkill.get(key);
-    if (!entry) {
-      entry = {
-        skill: key,
-        total: 0,
-        explicit: 0,
-        tool: 0,
-        firstUsedAt: null,
-        lastUsedAt: null,
-        sessions: new Set(),
-      };
-      bySkill.set(key, entry);
-    }
-
-    entry.total += 1;
-    if (record.kind === "tool") entry.tool += 1;
-    else entry.explicit += 1;
-    if (record.sessionId) entry.sessions.add(record.sessionId);
-
-    const timestamp = stringValue(record.recordedAt);
-    if (timestamp) {
-      if (!entry.firstUsedAt || timestamp < entry.firstUsedAt) {
-        entry.firstUsedAt = timestamp;
-      }
-      if (!entry.lastUsedAt || timestamp > entry.lastUsedAt) {
-        entry.lastUsedAt = timestamp;
-      }
-    }
+/**
+ * @param {UsageAccumulator} bySkill
+ * @param {UsageLikeRecord} record
+ */
+function addUsageRecord(bySkill, record) {
+  const key = record.skill;
+  let entry = bySkill.get(key);
+  if (!entry) {
+    entry = {
+      skill: key,
+      total: 0,
+      explicit: 0,
+      tool: 0,
+      firstUsedAt: null,
+      lastUsedAt: null,
+      sessions: new Set(),
+    };
+    bySkill.set(key, entry);
   }
 
+  entry.total += 1;
+  if (record.kind === "tool") entry.tool += 1;
+  else entry.explicit += 1;
+  if (record.sessionId) entry.sessions.add(record.sessionId);
+
+  const timestamp = stringValue(record.recordedAt);
+  if (timestamp) {
+    if (!entry.firstUsedAt || timestamp < entry.firstUsedAt) {
+      entry.firstUsedAt = timestamp;
+    }
+    if (!entry.lastUsedAt || timestamp > entry.lastUsedAt) {
+      entry.lastUsedAt = timestamp;
+    }
+  }
+}
+
+/**
+ * @param {UsageAccumulator} bySkill
+ * @param {number | null} limit
+ * @returns {UsageSummaryRow[]}
+ */
+function finishUsageSummary(bySkill, limit) {
   const rows = [...bySkill.values()]
     .map((entry) => ({
       ...entry,
@@ -709,6 +964,85 @@ function summarize(records, limit) {
     .sort((a, b) => b.total - a.total || a.skill.localeCompare(b.skill));
 
   return limit == null ? rows : rows.slice(0, limit);
+}
+
+/** @returns {UsageDiagnostics} */
+function createDiagnostics() {
+  return {
+    skippedLines: 0,
+    readFailures: 0,
+  };
+}
+
+/** @param {UsageDiagnostics} diagnostics */
+function hasDiagnostics(diagnostics) {
+  return diagnostics.skippedLines > 0 || diagnostics.readFailures > 0;
+}
+
+/**
+ * @param {UsageDiagnostics} diagnostics
+ * @param {string} file
+ * @param {number} count
+ * @param {string} reason
+ */
+function recordSkippedLines(diagnostics, file, count, reason) {
+  if (count === 0) return;
+  diagnostics.skippedLines += count;
+  const noun = count === 1 ? "line" : "lines";
+  process.stderr.write(
+    `skill-usage: skipped ${count} ${reason} ${noun} file=${file}\n`,
+  );
+}
+
+/**
+ * @param {UsageDiagnostics} diagnostics
+ * @param {string} file
+ * @param {unknown} error
+ */
+function recordReadFailure(diagnostics, file, error) {
+  diagnostics.readFailures += 1;
+  const reason =
+    typeof asRecord(error).code === "string"
+      ? String(asRecord(error).code)
+      : "UNKNOWN";
+  process.stderr.write(
+    `skill-usage: read failure file=${file} reason=${reason}\n`,
+  );
+}
+
+/**
+ * @param {UsageSummaryRow[]} summary
+ * @param {UsageDiagnostics} diagnostics
+ * @param {boolean | undefined} json
+ * @param {string} file
+ * @param {Date | null} since
+ * @param {string} kind
+ */
+function renderResult(summary, diagnostics, json, file, since, kind) {
+  if (json) {
+    const result = hasDiagnostics(diagnostics)
+      ? { summary, diagnostics }
+      : summary;
+    process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+    return;
+  }
+
+  renderTable(summary, file, since, kind);
+  if (hasDiagnostics(diagnostics)) {
+    process.stdout.write(
+      `diagnostics skippedLines=${diagnostics.skippedLines} readFailures=${diagnostics.readFailures}\n`,
+    );
+  }
+}
+
+/**
+ * @param {ParsedArgs} parsed
+ * @param {UsageDiagnostics} diagnostics
+ */
+function applyStrictMode(parsed, diagnostics) {
+  if (parsed.strict && hasDiagnostics(diagnostics)) {
+    process.exitCode = 1;
+  }
 }
 
 /** @param {string | undefined} value @returns {Date | null} */
@@ -806,12 +1140,12 @@ function firstString(...values) {
   return values.find((value) => typeof value === "string") || "";
 }
 
-function runCli() {
+async function runCli() {
   try {
-    main();
+    await main();
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
 
@@ -823,7 +1157,7 @@ function asRecord(value) {
 }
 
 if (require.main === module) {
-  runCli();
+  void runCli();
 }
 
 module.exports = {
