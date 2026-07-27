@@ -1,6 +1,6 @@
 # Code Map
 
-Use this map to choose the first files to read and the closest tests to run. The full command list lives in the root [README.md](../../README.md#running-the-tests) and [Makefile](../Makefile).
+Use this map to choose the first files to read and the closest tests to run. The full command list lives in [development.md](development.md#running-the-tests) and the [Makefile](../Makefile).
 
 ## Test Entry Points
 

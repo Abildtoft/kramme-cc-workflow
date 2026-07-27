@@ -1,6 +1,14 @@
 # kramme-cc-workflow
 
-A Claude Code plugin providing tooling for daily workflow tasks. The plugin source lives in `kramme-cc-workflow/`; this root README is the canonical project documentation.
+A Claude Code plugin that automates the daily development lifecycle:
+
+- **Plan** — requirements discovery, feature specs, and local issue tracking with SIW (Structured Implementation Workflow)
+- **Build** — guided implementation of SIW and Linear issues, up to a full issue-to-PR pipeline
+- **Review** — specialized review agents for code quality, conventions, product, UX, and accessibility
+- **Test & verify** — browser-driven QA with evidence capture and project-aware verification runs
+- **Explain** — self-contained HTML diagrams, PR walkthroughs, and codebase onboarding guides
+
+The plugin also runs on Codex: a converter CLI installs the same skills, hooks, and agents there (see [Codex](#codex)).
 
 <!-- prettier-ignore-start -->
 > [!IMPORTANT]
@@ -12,25 +20,30 @@ A Claude Code plugin providing tooling for daily workflow tasks. The plugin sour
 
 ## Table of Contents
 
+Using the plugin:
+
 - [Installation & Updating](#installation--updating)
 - [Getting Started](#getting-started)
 - [Skills](#skills)
-  - [User-Invocable Skills](#user-invocable-skills)
-  - [Background Skills](#background-skills)
 - [Agents](#agents)
 - [Hooks](#hooks)
 - [Suggested Permissions](#suggested-permissions)
 - [Recommended MCP Servers](#recommended-mcp-servers)
 - [Recommended CLIs](#recommended-clis)
-- [Contributing](#contributing)
-- [Running the Tests](#running-the-tests)
-- [SkillOpt Adoption](#skillopt-adoption)
-- [Local Repository Maintenance](#local-repository-maintenance)
+
+Reference:
+
 - [Plugin Structure](#plugin-structure)
-- [Adding Components](#adding-components)
-- [Related Plugins](#related-plugins)
 - [Documentation](#documentation)
+- [Related Plugins](#related-plugins)
 - [Releases](#releases)
+
+Contributing & maintenance:
+
+- [Contributing](#contributing)
+- [Development](#development)
+- [Adding Components](#adding-components)
+- [Local Repository Maintenance](#local-repository-maintenance)
 - [Attribution](#attribution)
 - [License](#license)
 
@@ -38,20 +51,20 @@ A Claude Code plugin providing tooling for daily workflow tasks. The plugin sour
 
 ### Installation
 
-Marketplace install (recommended):
+Marketplace install (recommended) — run inside a Claude Code session:
 
 ```bash
 /plugin marketplace add Abildtoft/kramme-cc-workflow
 /plugin install kramme-cc-workflow@kramme-cc-workflow
 ```
 
-Direct Git install:
+Direct Git install — run from your terminal:
 
 ```bash
 claude /plugin install git+https://github.com/Abildtoft/kramme-cc-workflow
 ```
 
-For local development:
+For local development — run from your terminal:
 
 ```bash
 claude /plugin install /path/to/kramme-cc-workflow/kramme-cc-workflow
@@ -104,7 +117,7 @@ For Codex installs, updating is the same as installing: re-run the converter to 
 
 Restart Claude Code after updating for changes to take effect.
 
-**Auto-update:** Since Claude Code v2.0.70, auto-update can be enabled per-marketplace.
+**Auto-update:** Since Claude Code v2.0.70, auto-update can be enabled per-marketplace from the `/plugin` marketplace settings.
 
 ## Getting Started
 
@@ -119,15 +132,15 @@ These skills cover the full lifecycle of a change. Most work runs through the mi
 | **Implement** | Build one issue at a time | `/kramme:siw:issue-implement` |
 | **Review & verify** | Check quality before shipping | `/kramme:pr:code-review`, `/kramme:verify:run` |
 
-Most tasks begin at Clarify or Spec and flow straight into SIW. Two supporting primitives slot in wherever a phase needs them, not as required gates: `/kramme:research` produces a cited answer from primary sources before you commit to an approach, and `/kramme:prototype` builds throwaway code to settle one design question.
+Most tasks begin at Clarify or Spec and flow straight into SIW — the Structured Implementation Workflow, a local markdown-based system for planning, tracking, and implementing multi-step work. Two supporting primitives slot in wherever a phase needs them, not as required gates: `/kramme:research` produces a cited answer from primary sources before you commit to an approach, and `/kramme:prototype` builds throwaway code to settle one design question.
 
 For repository work, start with [CONTRIBUTING.md](CONTRIBUTING.md), then use [docs/architecture.md](kramme-cc-workflow/docs/architecture.md) and [docs/code-map.md](kramme-cc-workflow/docs/code-map.md) to find the relevant subsystem and tests.
 
-Three common workflows walk through the hands-on parts:
+The workflows below walk through the hands-on parts:
 
 ### Plan and implement with SIW
 
-SIW (Structured Implementation Workflow) breaks non-trivial work into spec-driven issues tracked in local markdown files.
+SIW breaks non-trivial work into spec-driven issues tracked in local markdown files.
 
 ```bash
 /kramme:siw:init            # link or create a spec, set up siw/ directory
@@ -144,22 +157,18 @@ See [docs/siw.md](kramme-cc-workflow/docs/siw.md) for the full workflow referenc
 /kramme:linear:issue-to-pr DISC-202 --strict --ship # implement, review code/conventions, refactor where useful, verify, and open the PR
 ```
 
-Before implementation, the skill validates Linear's target branch and verifies that it has no existing Pull Request or remote branch on `origin`. During normal remediation rounds it runs applicable gates in this order: `/kramme:pr:code-review`, `/kramme:pr:convention-review`, then `/kramme:code:refactor-opportunities pr`. Accepted edits are verified and committed before review restarts, while generated reports move under `.context/` only after the archive is verified as gitignored. A shared three-cycle remediation budget and progress score prevent review churn; when a bounded stop fires after code changed, one final validation-only round reruns every applicable gate in the same order. Optional polish is deferred at diminishing returns, while unresolved correctness or manual blockers stop shipping. With `--ship`, the workflow requires the target branch to remain absent on `origin`, publishes it with an absence lease, opens the Pull Request against the validated base branch, and then runs `/kramme:pr:fix-ci --no-consolidate` until CI and fully paginated review feedback are clear. This fail-closed boundary prevents the narrative rewrite from racing with creation of an unowned Pull Request. Omit `--ship` to stop after implementation, review, and verification. In strict mode, every finding receives an evidence-based disposition rather than blind implementation.
+Before implementation, the skill validates Linear's target branch and verifies that it has no existing Pull Request or remote branch on `origin`. During normal remediation rounds it runs applicable gates in this order: `/kramme:pr:code-review`, `/kramme:pr:convention-review`, then `/kramme:code:refactor-opportunities pr`. A bounded remediation budget prevents review churn; when a bounded stop fires after code changed, one final validation-only round reruns every applicable gate in the same order. With `--ship`, the skill opens the Pull Request against the validated base branch and runs `/kramme:pr:fix-ci --no-consolidate` until CI and review feedback are clear; omit `--ship` to stop after implementation, review, and verification. With `--strict`, every review finding receives an evidence-based disposition rather than blind implementation. The full orchestration contract — preflight checks, remediation budgets, and shipping safeguards — lives in the [skill definition](kramme-cc-workflow/skills/kramme:linear:issue-to-pr/SKILL.md).
 
 ### Review and ship a PR
 
 ```bash
-/kramme:pr:code-review         # run specialized review agents on your branch
-/kramme:pr:autoreview          # run the closeout code-review loop
-/kramme:pr:product-review      # deep product review of your changes
-/kramme:pr:resolve-review      # fix the findings
-/kramme:pr:github-review       # review someone else's GitHub PR as the assigned reviewer
-/kramme:pr:github-review-reply # map and reply to GitHub reviews
-/kramme:pr:create              # restructure commits and open the PR
-/kramme:pr:fix-ci              # iterate until CI passes
+/kramme:pr:code-review    # run specialized review agents on your branch
+/kramme:pr:resolve-review # fix the findings
+/kramme:pr:create         # restructure commits and open the PR
+/kramme:pr:fix-ci         # iterate until CI passes
 ```
 
-Which review skill should you use?
+More review skills cover product, convention, UX, and GitHub-reviewer flows. Which one should you use?
 
 | Need | Use |
 | --- | --- |
@@ -200,10 +209,6 @@ All plugin functionality is delivered through skills. Skills can be user-invoked
 - **User-invocable**: Trigger with `/kramme:skill-name`. Skills that should never auto-run set `disable-model-invocation: true`.
 - **Auto-triggered**: Claude invokes automatically when context matches the skill description.
 - **Background**: Skills with `user-invocable: false` are auto-triggered only and don't appear in the `/` menu.
-
-**Breaking change:** Separate `:team` skills have been removed. Use `--team` on the base skills instead: `/kramme:pr:code-review --team`, `/kramme:pr:resolve-review --team`, `/kramme:pr:ux-review --team`, `/kramme:siw:issue-implement --team`, `/kramme:siw:spec-audit --team`, and `/kramme:siw:implementation-audit --team`.
-
-The skill table rows are generated from `SKILL.md` frontmatter. Run `python3 kramme-cc-workflow/scripts/generate-component-reference.py --write` to refresh them, or `python3 kramme-cc-workflow/scripts/generate-component-reference.py --check` to validate without writing.
 
 <!-- BEGIN SOURCE-SYNCED SKILL ROWS -->
 
@@ -392,14 +397,7 @@ Generate styled, self-contained HTML pages with diagrams, data tables, and inter
 | `/kramme:visual:generate-image` | User | `[prompt or editing instructions]` | Generate and edit images using Google's Gemini 3 Pro Image API. Use when the user asks to generate, create, edit, modify, change, alter, or update images. Also use when user references an existing image file and asks to modify it in any way (e.g., "modify this image", "change the background", "replace X with Y"). Supports both text-to-image generation and image-to-image editing with configurable resolution (1K default, 2K, or 4K for high resolution). DO NOT read the image file first - use this skill directly with the --input-image parameter. |
 | `/kramme:visual:onboarding` | User, Auto | `[focus-area or audience]` | Generate an interactive HTML onboarding guide for newcomers to a codebase — architecture overview, domain model, key flows, conventions, and getting-started walkthrough. |
 
-**API key setup for `/kramme:visual:generate-image`:**
-
-```bash
-# Required for image generation/editing
-export GEMINI_API_KEY="your-api-key-here"
-```
-
-This works in both Claude Code and Codex. If running the script directly, you can also pass `--api-key` instead of using an environment variable.
+`/kramme:visual:generate-image` requires a Gemini API key: `export GEMINI_API_KEY="your-api-key-here"`. This works in both Claude Code and Codex; when running the script directly you can pass `--api-key` instead.
 
 #### Discovery & Documentation
 
@@ -554,10 +552,11 @@ CLI tools that enhance the plugin experience. Some are required for specific com
 
 ### Required
 
-| CLI   | Purpose                        | Install                       |
-| ----- | ------------------------------ | ----------------------------- |
-| `git` | Version control (all commands) | Pre-installed on most systems |
-| `gh`  | GitHub PR workflows            | `brew install gh`             |
+| CLI   | Purpose                          | Install                                                |
+| ----- | -------------------------------- | ------------------------------------------------------ |
+| `git` | Version control (all commands)   | Pre-installed on most systems                          |
+| `gh`  | GitHub PR workflows              | `brew install gh`                                      |
+| `jq`  | JSON parsing (hooks, test suite) | `brew install jq` (macOS) / `apt install jq` (Linux)   |
 
 ### Verification & Build
 
@@ -574,10 +573,56 @@ CLI tools that enhance the plugin experience. Some are required for specific com
 | CLI | Purpose | Install |
 | --- | --- | --- |
 | `trash` | Safe file deletion (used by block-rm-rf hook) | `brew install trash` (macOS) / `apt install trash-cli` (Linux) |
-| `jq` | JSON parsing (internal use) | `brew install jq` |
 | `markitdown` | Document conversion skill | `uvx markitdown` or `pip install markitdown` |
 | `skillspector` | Optional security scanning for local skill directories | [NVIDIA/SkillSpector](https://github.com/NVIDIA/SkillSpector) |
 | `surf` | AI-generated illustrations in visual diagrams (optional) | [surf-cli](https://github.com/nicobailon/surf-cli) |
+
+## Plugin Structure
+
+The plugin source lives in `kramme-cc-workflow/`; this root README is the canonical project documentation.
+
+```
+.
+├── .claude-plugin/
+│   └── marketplace.json     # Root marketplace definition
+├── kramme-cc-workflow/
+│   ├── .claude-plugin/
+│   │   └── plugin.json      # Plugin metadata
+│   ├── agents/              # Specialized subagents
+│   ├── skills/              # Skills (subdirectories with SKILL.md)
+│   ├── hooks/               # Event handlers
+│   │   └── hooks.json
+│   ├── docs/                # Detailed reference docs
+│   └── README.md            # Pointer to this root README
+├── .agents/skills/          # Local repository-maintenance skills
+└── README.md                # Canonical documentation
+```
+
+## Documentation
+
+- [Plugin Documentation](https://code.claude.com/docs/en/plugins)
+- [Plugins Reference](https://code.claude.com/docs/en/plugins-reference)
+- [Hooks Reference](https://code.claude.com/docs/en/hooks)
+- [Skills Documentation](https://code.claude.com/docs/en/skills)
+- [Repository Architecture](kramme-cc-workflow/docs/architecture.md)
+- [Repository Code Map](kramme-cc-workflow/docs/code-map.md)
+- [Agent Portability Matrix](kramme-cc-workflow/docs/agent-portability.md)
+- [Decision Index](kramme-cc-workflow/docs/decisions/README.md)
+- [SIW Workflow Reference](kramme-cc-workflow/docs/siw.md)
+- [Development Guide](kramme-cc-workflow/docs/development.md)
+
+## Related Plugins
+
+| Plugin | Description |
+| --- | --- |
+| [Agent Skills for Context Engineering](https://github.com/muratcankoylan/Agent-Skills-for-Context-Engineering) | Agent Skills focused on context engineering principles for building production-grade AI agent systems. |
+| [adversarial-spec](https://github.com/zscole/adversarial-spec) | Specification refinement through multi-model debate until consensus is reached. |
+
+## Releases
+
+See [CHANGELOG.md](kramme-cc-workflow/CHANGELOG.md) for version history and [GitHub Releases](https://github.com/Abildtoft/kramme-cc-workflow/releases) for release notes.
+
+For maintainers: see [RELEASE.md](kramme-cc-workflow/RELEASE.md) for the release process.
 
 ## Contributing
 
@@ -603,229 +648,23 @@ The PR title becomes the merge commit message and is used for automatic changelo
 
 Regular branch commits should use plain-English commit messages (no Conventional Commit prefix).
 
-## Running the Tests
+## Development
 
-The hooks are tested using [BATS](https://github.com/bats-core/bats-core) (Bash Automated Testing System). Pure JavaScript and Python helper modules also have focused unit test runners. The Bats suite requires `jq` for JSON parsing in hooks.
-
-### Setup
+The full contributor reference — the complete test-target catalog, coverage baselines and the production-source inventory, pre-PR verification, skill security scans, and the SkillOpt eval pilot — lives in [docs/development.md](kramme-cc-workflow/docs/development.md). The short version:
 
 ```bash
+# One-time setup
 npm ci --no-audit --no-fund
 make -C kramme-cc-workflow install-test-deps
-```
 
-### Running Tests
-
-```bash
-# Run all tests
+# Fast default suite (Node + Python + Bats)
 make -C kramme-cc-workflow test
 
-# Run the measured cross-language smoke loop (8.9 seconds locally; budget: under 30 seconds)
-make -C kramme-cc-workflow test-smoke
-
-# Run only Bats integration tests
-make -C kramme-cc-workflow test-bats
-
-# Run one Bats integration test file
-make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/context-links.bats
-
-# Run only Node unit tests
-make -C kramme-cc-workflow test-node
-
-# Re-run affected Node tests when their files or dependencies change
-make -C kramme-cc-workflow test-node-watch
-
-# Run the closest Node test for a changed source file
-make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/frontmatter.test.js
-
-# Run only Python unit tests
-make -C kramme-cc-workflow test-python
-
-# Run one Python unit test file
-make -C kramme-cc-workflow test-python-file PYTHON_TEST_FILE=tests/python/test_git_command_parser.py
-
-# Enforce conservative Node/Python coverage baselines
-make -C kramme-cc-workflow unit-coverage
-
-# Run all coverage gates and validate the production-source inventory
-make -C kramme-cc-workflow coverage
-
-# Run with verbose output (show test names)
-make -C kramme-cc-workflow test-verbose
-
-# Run converter Node contracts and Bats CLI smoke tests
-make -C kramme-cc-workflow test-convert
-
-# Run only non-interactive git tests
-make -C kramme-cc-workflow test-noninteractive
-
-# Run only block-rm-rf tests
-make -C kramme-cc-workflow test-block
-
-# Run only context-links tests
-make -C kramme-cc-workflow test-context
-
-# Run only auto-format tests
-make -C kramme-cc-workflow test-format
-
-# Run only skill usage stats tests
-make -C kramme-cc-workflow test-skill-usage
-```
-
-The initial coverage baselines are 80% lines, 70% branches, and 80% functions for Node, plus a 35% production-line aggregate for Python. They sit below the measured local results (84.26%/75.56%/86.38% for Node and 36.46% for Python) and should only ratchet upward. Bats exercises shell integration behavior, so `coverage` reports its complete top-level `tests/*.bats` file/test inventory as a contract proxy rather than claiming line coverage.
-
-Production sources are registered in `kramme-cc-workflow/config/coverage-production-sources.json`. The `coverage` target reconciles that inventory with executable JavaScript, Python, and shell files under the plugin's `evals/`, `hooks/`, `scripts/`, and skill-local `scripts/` directories, including repository-maintenance skills under `.agents/skills/`. Put JavaScript and Python files in `measured` when the native coverage report includes them consistently across supported runtimes; otherwise put them in `contract_only` and map each source to one or more top-level `kramme-cc-workflow/tests/*.bats` contracts. A contract-only source may still appear incidentally in a native report, but the coverage gate does not require it there or include its Python result in the measured aggregate. Shell sources use `contract_only`. The Bats runner does not recurse into nested test directories, so mapped contracts must be top-level files. Update the inventory whenever a production source is added, moved, removed, or changes coverage mode.
-
-For Node changes, `test-node-watch` uses the [built-in test runner's dependency watching](https://nodejs.org/docs/latest-v20.x/api/test.html#watch-mode). For a focused change-to-test loop, use `test-node-file` with the closest mapping in `kramme-cc-workflow/docs/code-map.md`; the equivalent npm command is `npm run test:node:file -- kramme-cc-workflow/tests/node/<file>.test.js` from the repository root.
-
-The `NODE_TEST_FILE`, `PYTHON_TEST_FILE`, and `BATS_TEST_FILE` values are paths relative to `kramme-cc-workflow/`, because `make -C kramme-cc-workflow` enters that directory before running the target. Each single-file target exits with a usage error when its variable is omitted.
-
-### Pre-PR Verification
-
-`make -C kramme-cc-workflow test` is the fast default suite. It runs the Node unit tests, Python unit tests, and Bats integration tests. For ordinary Pull Request verification, run:
-
-```bash
+# Ordinary Pull Request gate
 make -C kramme-cc-workflow pr-verify
-```
 
-The `pr-verify` target runs dependency preflight checks, shell/Python/JS linting, format checks, skill-contract linting, changed-skill SkillSpector scanning with `--fail-on high`, and the fast test suite. It does not add a separate `skill-eval-skill-review` pass beyond the skill-review eval coverage already exercised by the Bats suite.
-
-GitHub Actions also runs the standalone skill-review eval as a separate path-filtered, scheduled, and manual workflow. That workflow uploads the aggregate JSON result as the `skill-review-eval` artifact and is meant to catch harness or fixture regressions without treating score movement as a merge gate.
-
-Before a release candidate or before marking a larger Pull Request ready, run the stronger local gate:
-
-```bash
+# Stronger release-candidate gate
 make -C kramme-cc-workflow verify
-```
-
-The `verify` target runs `pr-verify` plus the standalone full skill-review eval split. These verification targets expect the existing local tools used by those checks to be installed: `shellcheck`, `ruff`, `skillspector`, `bats`, `jq`, Python 3, and Node.js.
-
-Python development tool pins used by CI live in `requirements-dev.txt`. First party `actions/*` workflow actions are pinned to commit SHAs with a trailing comment naming the major tag used for lookup. Refresh them with `git ls-remote` against the upstream action repository before updating the SHA.
-
-### Skill Security Scans
-
-SkillSpector scans complement tests, linting, and human review. Run them for new or materially changed skills, before installing third-party skills, and as a full-tree check for release candidates. Static-only scanning is the default; semantic analysis is opt-in.
-
-The GitHub Actions release workflow runs the full-tree static scan before creating a release branch or Pull Request. Release scan findings are advisory for now, but SkillSpector installation or execution errors fail the release workflow. The workflow uploads the full report as the `skillspector-release-report` artifact and includes a concise scan summary in the generated release Pull Request body.
-
-The Pull Request workflow runs a static SkillSpector scan for changed skill directories. Pull Requests with no changed skills exit successfully without running the scanner. Changed-skill scans are blocking: enforceable high and critical findings fail `Skill Lint / SkillSpector static skill scan` and should block merge. Repository branch protection should require that check on `main`; if GitHub lists only the job name, require `SkillSpector static skill scan`.
-
-```bash
-# Scan every plugin skill
-make -C kramme-cc-workflow skill-security
-
-# Scan only skill directories changed against BASE_REF, defaulting to origin/main
-make -C kramme-cc-workflow skill-security-changed
-
-# Scan every plugin skill with SkillSpector semantic analysis enabled.
-# Defaults to JSON to avoid running a second LLM-backed companion report.
-make -C kramme-cc-workflow skill-security-semantic
-```
-
-For third-party skill intake, scan the source before installing it:
-
-```bash
-# Scan an external Git URL, zip, directory, or SKILL.md without LLM analysis
-skillspector scan SOURCE --no-llm
-```
-
-Reports are written to `.context/skillspector/` by default, or `$RUNNER_TEMP/skillspector` in CI. Override behavior with `SKILLSPECTOR_FORMAT`, `SKILLSPECTOR_SEMANTIC_FORMAT`, `SKILLSPECTOR_FAIL_ON`, and `SKILLSPECTOR_BASE`.
-
-Triage high and critical findings before installation, release, or merge. In ordinary Pull Requests, fix enforceable high and critical findings or record a specific accepted finding before merging. Enable semantic scanning only when provider credentials are intentionally configured and the skill contents are acceptable to send to that provider; semantic scans remain manual and are not required for ordinary Pull Requests.
-
-Accepted findings live in `kramme-cc-workflow/config/skillspector-accepted-findings.json`. Keep this registry small: add an entry only when a finding has been reviewed and the risk is intentionally accepted or proven to be scanner noise. Each entry must name the exact repo-relative `path`, `rule_id`, `reason`, `owner`, `accepted_at`, and either `expires_at` or `review_after`.
-
-```json
-{
-  "accepted_findings": [
-    {
-      "path": "kramme-cc-workflow/skills/kramme:example/SKILL.md",
-      "rule_id": "E4",
-      "reason": "Reviewed scanner false positive; command is documented-only.",
-      "owner": "Security",
-      "accepted_at": "2026-06-13",
-      "expires_at": "2026-09-13"
-    }
-  ]
-}
-```
-
-Accepted findings are excluded from `--fail-on` threshold calculations only when both path and rule match and the entry is still active. They are still counted in runner output as accepted findings, and the JSON reports remain unchanged. Entries past `expires_at` or `review_after` fail blocking scans (`SKILLSPECTOR_FAIL_ON=high` or `critical`) and warn in advisory scans. Use `--accepted-findings <path>` to test a policy file other than the default registry.
-
-### Test Structure
-
-This is a representative inventory by test language, not an exhaustive list of
-the top-level Bats contracts:
-
-```
-kramme-cc-workflow/tests/
-├── run-tests.sh                      # Complete top-level Bats runner
-├── node/
-│   ├── codex-hook-compat.test.js     # Codex hook conversion contracts
-│   ├── converter-core.test.js        # Converter loading and transforms
-│   ├── converter-install.test.js     # Converter install transactions
-│   ├── converter-integration.test.js # Cross-module converter flows
-│   ├── converter-output.test.js      # Converter writers and config
-│   ├── frontmatter.test.js           # Frontmatter unit contracts
-│   └── scorer.test.js                # Skill-review scorer contracts
-├── python/
-│   ├── test_changelog.py
-│   ├── test_generate_image.py
-│   ├── test_git_command_parser.py
-│   ├── test_lint_skill_contracts.py
-│   ├── test_session_search_extractors.py
-│   └── test_session_search_python38.py
-├── fixtures/                         # Shared parser/frontmatter cases
-├── test_helper/
-│   ├── common.bash                   # Shared Bats utilities
-│   └── mocks/                        # Mock git, gh, and skillspector commands
-├── makefile.bats                      # Make target contracts
-├── convert-plugin.bats                # Converter CLI smoke tests
-└── … other top-level *.bats           # Hook, skill, script, and guidance contracts
-```
-
-The aggregate Python target also discovers repository-maintenance tests under
-`.agents/skills/kramme:skill:audit-sources/scripts/`.
-
-## SkillOpt Adoption
-
-SkillOpt is currently a conservative pilot for `kramme:skill:review` only. The deterministic eval split lives in `kramme-cc-workflow/evals/skill-review/`, and the repo-local SkillOpt bridge lives in `kramme-cc-workflow/evals/skillopt/`. Keep the external SkillOpt checkout, model credentials, run output, and candidate review artifacts outside tracked source under `.context/`.
-
-The entry points are the split check, dry-run or real SkillOpt runner, candidate export, and candidate review packet documented in [`evals/skillopt/README.md`](kramme-cc-workflow/evals/skillopt/README.md). Generated `best_skill.md` output is never auto-applied. A candidate is eligible for a normal source edit only after the manual review packet under `.context/skillopt-runs/skill-review/<run-id>/candidate-review/` has been inspected, the patch applies cleanly, the eval scores do not regress, and the candidate gate passes:
-
-```bash
-make -C kramme-cc-workflow skillopt-candidate-check
-```
-
-The candidate gate runs skill contract linting, changed-skill SkillSpector scanning with JSON output and `--fail-on high`, Node unit tests, Python unit tests, Bats integration tests, and the full skill-review eval split.
-
-Do not add another skill to the optimization loop until it has a deterministic train/val/test split, false-positive coverage, a candidate gate, and the same manual acceptance model. SkillOpt-Sleep is proposal-only: it may suggest candidate edits from prior sessions, but deterministic held-out evals and the manual review packet remain the acceptance gate.
-
-## Local Repository Maintenance
-
-This workspace also includes local maintenance skills under `.agents/skills/`, exposed to Claude Code through the `.claude/skills` symlink. These are for maintaining this repository and are not shipped as part of the public plugin.
-
-| Skill | Description |
-| --- | --- |
-| `/kramme:skill:audit-sources` | Audits one or more skills against declared inspiration sources, bootstraps missing `references/sources.yaml` manifests, compares fetched source snapshots, and writes `.context/skill-source-audit-<timestamp>.md` reports. |
-
-## Plugin Structure
-
-```
-.
-├── .claude-plugin/
-│   └── marketplace.json     # Root marketplace definition
-├── kramme-cc-workflow/
-│   ├── .claude-plugin/
-│   │   └── plugin.json      # Plugin metadata
-│   ├── agents/              # Specialized subagents
-│   ├── skills/              # Skills (subdirectories with SKILL.md)
-│   ├── hooks/               # Event handlers
-│   │   └── hooks.json
-│   ├── docs/                # Detailed reference docs
-│   └── README.md            # Pointer to this root README
-├── .agents/skills/          # Local repository-maintenance skills
-└── README.md                # Canonical documentation
 ```
 
 ## Adding Components
@@ -837,30 +676,15 @@ See [CLAUDE.md](CLAUDE.md) for detailed conventions. Quick reference:
 - **Hooks**: Edit `kramme-cc-workflow/hooks/hooks.json` to add event handlers. Available events: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `SessionStart`, `Stop`.
 - **External sources**: When adapting skills, scripts, docs, or workflows from another project, update the skill's `references/sources.yaml`. Copied scripts or assets must keep upstream source, exact commit or release when known, and license notes in the copied file. Prefer rewriting workflows in local vocabulary and splitting long upstream skills into smaller local skills or references; use `/kramme:skill:create` and `/kramme:skill:review` for the detailed checks.
 
-## Related Plugins
+The skill, agent, and hook table rows in this README are generated from component source metadata. Run `python3 kramme-cc-workflow/scripts/generate-component-reference.py --write` to refresh them, or `python3 kramme-cc-workflow/scripts/generate-component-reference.py --check` to validate without writing.
 
-| Plugin | Description |
+## Local Repository Maintenance
+
+This workspace also includes local maintenance skills under `.agents/skills/`, exposed to Claude Code through the `.claude/skills` symlink. These are for maintaining this repository and are not shipped as part of the public plugin.
+
+| Skill | Description |
 | --- | --- |
-| [Agent Skills for Context Engineering](https://github.com/muratcankoylan/Agent-Skills-for-Context-Engineering) | Agent Skills focused on context engineering principles for building production-grade AI agent systems. |
-| [adversarial-spec](https://github.com/zscole/adversarial-spec) | Specification refinement through multi-model debate until consensus is reached. |
-
-## Documentation
-
-- [Plugin Documentation](https://code.claude.com/docs/en/plugins)
-- [Plugins Reference](https://code.claude.com/docs/en/plugins-reference)
-- [Hooks Reference](https://code.claude.com/docs/en/hooks)
-- [Skills Documentation](https://code.claude.com/docs/en/skills)
-- [Repository Architecture](kramme-cc-workflow/docs/architecture.md)
-- [Repository Code Map](kramme-cc-workflow/docs/code-map.md)
-- [Agent Portability Matrix](kramme-cc-workflow/docs/agent-portability.md)
-- [Decision Index](kramme-cc-workflow/docs/decisions/README.md)
-- [SIW Workflow Reference](kramme-cc-workflow/docs/siw.md)
-
-## Releases
-
-See [CHANGELOG.md](kramme-cc-workflow/CHANGELOG.md) for version history and [GitHub Releases](https://github.com/Abildtoft/kramme-cc-workflow/releases) for release notes.
-
-For maintainers: see [RELEASE.md](kramme-cc-workflow/RELEASE.md) for the release process.
+| `/kramme:skill:audit-sources` | Audits one or more skills against declared inspiration sources, bootstraps missing `references/sources.yaml` manifests, compares fetched source snapshots, and writes `.context/skill-source-audit-<timestamp>.md` reports. |
 
 ## Attribution
 
@@ -868,34 +692,40 @@ Addy Osmani's [`agent-skills`](https://github.com/addyosmani/agent-skills) is a 
 
 Copied scripts and substantial copied assets must preserve upstream source and license notes in the copied file, not only in this README. Adapted workflows should record their source in the skill's `references/sources.yaml`, rewrite the workflow in this plugin's style, and avoid direct ports of long monolithic skill bodies.
 
+### From [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)
+
+- `kramme:docs:feature-spec`: Adapted from [spec-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/spec-driven-development).
+- `kramme:docs:adr`: Adapted from [documentation-and-adrs](https://github.com/addyosmani/agent-skills/tree/main/skills/documentation-and-adrs).
+- `kramme:code:source-driven`: Adapted from [source-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/source-driven-development).
+- `kramme:code:deprecate`: Adapted from [deprecation-and-migration](https://github.com/addyosmani/agent-skills/tree/main/skills/deprecation-and-migration).
+- `kramme:test:tdd`: Adapted from [test-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/test-driven-development).
+- `kramme:browse` security boundaries, JavaScript constraints, content boundary markers, and Addy marker/epilogue conventions: adapted from [browser-testing-with-devtools](https://github.com/addyosmani/agent-skills/tree/main/skills/browser-testing-with-devtools).
+- `kramme:qa` network triage ladder, clean-console standard, accessibility ladder, and Addy marker/epilogue conventions: adapted from [browser-testing-with-devtools](https://github.com/addyosmani/agent-skills/tree/main/skills/browser-testing-with-devtools).
+- `kramme:git:commit-message`, `kramme:pr:generate-description`, `kramme:git:recreate-commits`, `kramme:pr:rebase`: Addy output markers, Change Summary triplet (`CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS`), 3-section epilogue, 6-item pre-commit checklist, and "dev branches are costs" framing adapted from [git-workflow-and-versioning](https://github.com/addyosmani/agent-skills/tree/main/skills/git-workflow-and-versioning). Addy's per-commit Conventional Commits rule is explicitly rejected.
+
+### From [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin)
+
+- `kramme:architecture-strategist`, `kramme:design-iterator`, and `kramme:performance-oracle`: Adapted from the plugin's review agents.
+- `kramme:product:strategy` and `kramme:product:pulse`: Adapted from skills `ce-strategy` and `ce-product-pulse`.
+- `kramme:code:optimize`: Adapted from [ce-optimize](https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-optimize), reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
+- `kramme:session:search` and `kramme:session:automate-repeats`: Adapted from skill `ce-sessions`, including its safe session discovery and extraction substrate reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
+- `kramme:setup`, `kramme:git:clean-gone-branches`, and `kramme:git:worktree`: Adapted from skills `ce-setup`, `ce-clean-gone-branches`, and `ce-worktree`, reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
+- `kramme:docs:solution-note` and `kramme:docs:solution-refresh`: Adapted from skills `ce-compound` and `ce-compound-refresh`, reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
+- `kramme:docs:review`: Adapted from [ce-doc-review](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-doc-review).
+- `kramme:code:work-from-plan`: Adapted from [ce-work](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-work) and [ce-plan](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-plan) as a thin routing adapter, not a full autonomous execution pipeline.
+- `kramme:launch:announce` and `kramme:changelog:generate` release communication modes: Adapted from [ce-promote](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-promote) and [ce-release-notes](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-release-notes).
+- `kramme:visual:demo-reel` and PR visual evidence delegation: Adapted from [ce-demo-reel](https://github.com/EveryInc/compound-engineering-plugin/tree/b6250490bec4c0488d68ad66d72bd99f6edb95fd/plugins/compound-engineering/skills/ce-demo-reel), reviewed at commit `b6250490bec4c0488d68ad66d72bd99f6edb95fd`.
+- Codex converter: Inspired by the plugin's converter approach.
+- External-source adaptation policy, copied-script attribution guardrails, and artifact-lifecycle prompts: Informed by [the repository at commit `6f9ab03a031c054a8046659926251fb6c149269f`](https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f), including representative skills `ce-compound`, `ce-compound-refresh`, `ce-plan`, `ce-code-review`, and `ce-optimize`.
+- Shared dev-server detection scripts and browser-facing auto URL detection contract: Adapted from [ce-polish](https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-polish), reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
+
+### Other sources
+
 - `kramme:docs:update-agents-md`: Inspired by [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/agents-md/SKILL.md).
-- `kramme:architecture-strategist`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - `kramme:git:commit-message`: From [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/commit/SKILL.md).
-- `kramme:design-iterator`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
 - `kramme:text:humanize`: Based on Wikipedia: Signs of AI writing (maintained by WikiProject AI Cleanup) and heavily inspired by [blader/humanizer](https://github.com/blader/humanizer).
-- `kramme:performance-oracle`: From [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
-- `kramme:product:strategy` and `kramme:product:pulse`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin) skills `ce-strategy` and `ce-product-pulse`.
-- `kramme:code:optimize`: Adapted from [EveryInc/compound-engineering-plugin — ce-optimize](https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-optimize), reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
-- `kramme:session:search` and `kramme:session:automate-repeats`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin) skill `ce-sessions`, including its safe session discovery and extraction substrate reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
-- `kramme:setup`, `kramme:git:clean-gone-branches`, and `kramme:git:worktree`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin) skills `ce-setup`, `ce-clean-gone-branches`, and `ce-worktree`, reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
-- `kramme:docs:solution-note` and `kramme:docs:solution-refresh`: Adapted from [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin) skills `ce-compound` and `ce-compound-refresh`, reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
-- `kramme:docs:review`: Adapted from [EveryInc/compound-engineering-plugin - ce-doc-review](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-doc-review).
-- `kramme:code:work-from-plan`: Adapted from [EveryInc/compound-engineering-plugin - ce-work](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-work) and [ce-plan](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-plan) as a thin routing adapter, not a full autonomous execution pipeline.
-- `kramme:launch:announce` and `kramme:changelog:generate` release communication modes: Adapted from [EveryInc/compound-engineering-plugin — ce-promote](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-promote) and [ce-release-notes](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-release-notes).
-- `kramme:visual:demo-reel` and PR visual evidence delegation: Adapted from [EveryInc/compound-engineering-plugin — ce-demo-reel](https://github.com/EveryInc/compound-engineering-plugin/tree/b6250490bec4c0488d68ad66d72bd99f6edb95fd/plugins/compound-engineering/skills/ce-demo-reel), reviewed at commit `b6250490bec4c0488d68ad66d72bd99f6edb95fd`.
-- `kramme:docs:feature-spec`: Adapted from [addyosmani/agent-skills — spec-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/spec-driven-development).
-- `kramme:docs:adr`: Adapted from [addyosmani/agent-skills — documentation-and-adrs](https://github.com/addyosmani/agent-skills/tree/main/skills/documentation-and-adrs).
-- `kramme:code:source-driven`: Adapted from [addyosmani/agent-skills — source-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/source-driven-development).
-- `kramme:code:deprecate`: Adapted from [addyosmani/agent-skills — deprecation-and-migration](https://github.com/addyosmani/agent-skills/tree/main/skills/deprecation-and-migration).
-- Codex converter: Inspired by [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin).
-- Skills authoring patterns: Inspired by [mgechev/skills-best-practices](https://github.com/mgechev/skills-best-practices).
-- External-source adaptation policy, copied-script attribution guardrails, and artifact-lifecycle prompts: Informed by [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f), reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`, including representative skills `ce-compound`, `ce-compound-refresh`, `ce-plan`, `ce-code-review`, and `ce-optimize`.
-- Shared dev-server detection scripts and browser-facing auto URL detection contract: Adapted from [EveryInc/compound-engineering-plugin — ce-polish](https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-polish), reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
 - `kramme:visual:*` skills: Adapted from [nicobailon/visual-explainer](https://github.com/nicobailon/visual-explainer).
-- `kramme:test:tdd`: Adapted from [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills/tree/main/skills/test-driven-development).
-- `kramme:browse` security boundaries, JavaScript constraints, content boundary markers, and Addy marker/epilogue conventions: adapted from [addyosmani/agent-skills — browser-testing-with-devtools](https://github.com/addyosmani/agent-skills/tree/main/skills/browser-testing-with-devtools).
-- `kramme:qa` network triage ladder, clean-console standard, accessibility ladder, and Addy marker/epilogue conventions: adapted from [addyosmani/agent-skills — browser-testing-with-devtools](https://github.com/addyosmani/agent-skills/tree/main/skills/browser-testing-with-devtools).
-- `kramme:git:commit-message`, `kramme:pr:generate-description`, `kramme:git:recreate-commits`, `kramme:pr:rebase`: Addy output markers, Change Summary triplet (`CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS`), 3-section epilogue, 6-item pre-commit checklist, and "dev branches are costs" framing adapted from [addyosmani/agent-skills — git-workflow-and-versioning](https://github.com/addyosmani/agent-skills/tree/main/skills/git-workflow-and-versioning). Addy's per-commit Conventional Commits rule is explicitly rejected.
+- Skills authoring patterns: Inspired by [mgechev/skills-best-practices](https://github.com/mgechev/skills-best-practices).
 - `kramme:pr:github-review-reply`: GitHub review comment listing, review-summary reads, top-level PR comment reads/posts, reply posting, review thread mapping, and thread resolution operations are grounded in official GitHub REST and GraphQL API documentation.
 - `kramme:pr:github-review`: review-requested PR discovery, PR-context reads, `pull/<N>/head` fetch, existing-conversation mapping (REST review comments, GraphQL review threads, issue comments, prior reviews), and the optional review-submission/reply appendix are grounded in the GitHub CLI manual and official GitHub REST/GraphQL/search documentation.
 

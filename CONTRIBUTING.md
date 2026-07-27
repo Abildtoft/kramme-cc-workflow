@@ -57,7 +57,7 @@ make -C kramme-cc-workflow lint
 make -C kramme-cc-workflow verify
 ```
 
-Focused targets are listed in [README.md](README.md#running-the-tests). Use [docs/code-map.md](kramme-cc-workflow/docs/code-map.md) to map files to likely tests.
+Focused targets are listed in [docs/development.md](kramme-cc-workflow/docs/development.md#running-the-tests). Use [docs/code-map.md](kramme-cc-workflow/docs/code-map.md) to map files to likely tests.
 
 ### Optional pre-commit check
 
