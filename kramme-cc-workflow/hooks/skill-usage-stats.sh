@@ -27,7 +27,7 @@ usage_diagnostic_file() {
 usage_diagnostic_max_lines() {
   local max="${KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES:-20}"
   case "$max" in
-    ''|*[!0-9]*) printf '20\n' ;;
+    '' | *[!0-9]*) printf '20\n' ;;
     *)
       if [ "$max" -lt 1 ]; then
         printf '20\n'
@@ -78,7 +78,9 @@ fi
 
 recorder="${CLAUDE_PLUGIN_ROOT}/scripts/skill-usage.js"
 if [ ! -f "$recorder" ]; then
-  recorder="${CLAUDE_PLUGIN_ROOT}/hooks/skill-usage.js"
+  record_usage_diagnostic "canonical recorder missing"
+  echo '{}'
+  exit 0
 fi
 
 output=$(printf '%s' "$input" | node "$recorder" record 2> /dev/null)

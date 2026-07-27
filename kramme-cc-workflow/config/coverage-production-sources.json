@@ -22,9 +22,6 @@
       "kramme-cc-workflow/evals/skill-review/run-eval.js": [
         "kramme-cc-workflow/tests/skill-review-eval.bats"
       ],
-      "kramme-cc-workflow/hooks/skill-usage.js": [
-        "kramme-cc-workflow/tests/skill-usage-stats.bats"
-      ],
       "kramme-cc-workflow/scripts/convert-plugin.js": [
         "kramme-cc-workflow/tests/convert-plugin.bats"
       ],
