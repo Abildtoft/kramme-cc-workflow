@@ -16,7 +16,8 @@ This directory contains the implementation behind `scripts/convert-plugin.js`. T
 | `codex-hook-plugin-writer.js` | Builds converted Codex hook plugin trees, marketplaces, plugin cache entries, and hook bootstrap scripts. |
 | `codex-markdown-resources.js` | Rewrites copied Markdown resource files with Codex instruction and shared-script references. |
 | `codex-shared-scripts.js` | Builds and applies shared-script path rewrites for installed Codex output. |
-| `install-staging.js` | Provides staged install, preflight conflict checks, stale managed-file pruning, and cleanup. |
+| `install-transaction.js` | Owns install locking, journaling, stale-owner recovery, mutation preparation, transaction-aware publication, commit, and rollback. |
+| `install-staging.js` | Orchestrates staged installs, preflight conflict checks, stale managed-file pruning, and cleanup through the transaction API. |
 | `install-state.js` | Reads, sanitizes, rebuilds, and writes install state and per-plugin manifests. |
 | `filesystem.js` | Shared safe filesystem helpers for path containment, JSON/text I/O, copies, and directory listing. |
 | `contracts.d.ts` | Shared converter input/output declarations used by loader, transformer, and writer boundaries. |
@@ -28,6 +29,8 @@ This directory contains the implementation behind `scripts/convert-plugin.js`. T
 - Load from the Claude plugin source; do not hand-maintain Codex copies.
 - Keep path containment checks in shared filesystem helpers before writing or deleting managed children.
 - Stage writes before finalizing installs so failed installs do not leave a partially updated bundle.
+- Keep transaction state private to `install-transaction.js`; staging consumes
+  its narrow API and the transaction module must not import staging.
 - Preserve user-owned files unless they are tracked as managed entries from a previous converter run.
 - Keep platform filtering in the transformer so `kramme-platforms` has one conversion meaning.
 
