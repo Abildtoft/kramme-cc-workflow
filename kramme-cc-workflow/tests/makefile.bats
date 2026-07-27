@@ -55,6 +55,7 @@ setup_makefile_contract_repo() {
     "$MAKEFILE_CONTRACT_REPO/plugin/tests" \
     "$MAKEFILE_CONTRACT_BIN"
   cp "$BATS_TEST_DIRNAME/../Makefile" "$MAKEFILE_CONTRACT_REPO/plugin/Makefile"
+  cp "$BATS_TEST_DIRNAME/../mypy.ini" "$MAKEFILE_CONTRACT_REPO/plugin/mypy.ini"
 
   cat >"$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json" <<'JSON'
 {
@@ -68,7 +69,11 @@ setup_makefile_contract_repo() {
     "measured": [
       "plugin/hooks/example.py"
     ],
-    "contract_only": {}
+    "contract_only": {
+      "plugin/scripts/contract.py": [
+        "plugin/tests/example.bats"
+      ]
+    }
   },
   "shell": {
     "contract_only": {
@@ -81,6 +86,7 @@ setup_makefile_contract_repo() {
 JSON
   printf '"use strict";\n' >"$MAKEFILE_CONTRACT_REPO/plugin/scripts/example.js"
   printf 'VALUE = 1\n' >"$MAKEFILE_CONTRACT_REPO/plugin/hooks/example.py"
+  printf 'VALUE = 2\n' >"$MAKEFILE_CONTRACT_REPO/plugin/scripts/contract.py"
   printf '#!/bin/sh\nexit 0\n' >"$MAKEFILE_CONTRACT_REPO/plugin/hooks/example.sh"
   printf '%s\n' \
     '#!/usr/bin/env bats' \
@@ -128,6 +134,37 @@ write_fake_python_coverage_report() {
   [ "$status" -eq 0 ]
 }
 
+@test "format-check sends changed Python files to Ruff and propagates failures" {
+  setup_check_deps_repo
+  mkdir -p "$CHECK_DEPS_REPO/kramme-cc-workflow/scripts"
+  printf 'VALUE = 0\n' >"$CHECK_DEPS_REPO/kramme-cc-workflow/scripts/modified.py"
+  git -C "$CHECK_DEPS_REPO" add .
+  git -C "$CHECK_DEPS_REPO" commit -m "add base Python source" >/dev/null
+  git -C "$CHECK_DEPS_REPO" branch -f main HEAD
+  printf 'VALUE = 1\n' >"$CHECK_DEPS_REPO/kramme-cc-workflow/scripts/committed.py"
+  git -C "$CHECK_DEPS_REPO" add .
+  git -C "$CHECK_DEPS_REPO" commit -m "add Python source" >/dev/null
+  printf 'VALUE = 2\n' >"$CHECK_DEPS_REPO/kramme-cc-workflow/scripts/modified.py"
+  printf 'VALUE = 2\n' >"$CHECK_DEPS_REPO/kramme-cc-workflow/scripts/untracked.py"
+  cat >"$CHECK_DEPS_BIN/ruff" <<'SH'
+#!/bin/sh
+printf 'ruff-args=%s\n' "$*"
+exit "${RUFF_EXIT_STATUS:-0}"
+SH
+  chmod +x "$CHECK_DEPS_BIN/ruff"
+
+  run env PATH="$CHECK_DEPS_BIN:/usr/bin:/bin" make -C "$CHECK_DEPS_REPO/kramme-cc-workflow" --no-print-directory format-check FORMAT_BASE=main RUFF=ruff
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"ruff-args=format --check --config"*"kramme-cc-workflow/scripts/committed.py"* ]]
+  [[ "$output" == *"kramme-cc-workflow/scripts/modified.py"* ]]
+  [[ "$output" == *"kramme-cc-workflow/scripts/untracked.py"* ]]
+
+  run env PATH="$CHECK_DEPS_BIN:/usr/bin:/bin" RUFF_EXIT_STATUS=7 make -C "$CHECK_DEPS_REPO/kramme-cc-workflow" --no-print-directory format-check FORMAT_BASE=main RUFF=ruff
+
+  [ "$status" -ne 0 ]
+}
+
 @test "check-deps does not require skillspector without changed skill directories" {
   setup_check_deps_repo
 
@@ -165,6 +202,126 @@ write_fake_python_coverage_report() {
   [[ "$output" == *"unittest discover -s ../.agents/skills/kramme:skill:audit-sources/scripts -p 'test_*.py'"* ]]
 }
 
+@test "Python static inventory accepts every registered production module" {
+  setup_makefile_contract_repo
+
+  run make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory check-python-static-inventory
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Python static inventory: 2 production files registered."* ]]
+}
+
+@test "Python static inventory is independent of the caller's collation locale" {
+  setup_makefile_contract_repo
+  jq \
+    '.python.measured += [
+      "plugin/scripts/lint-skill-contracts.py",
+      "plugin/scripts/lint_skill_contracts.py"
+    ]' \
+    "$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json" \
+    >"$MAKEFILE_CONTRACT_REPO/inventory.json"
+  mv \
+    "$MAKEFILE_CONTRACT_REPO/inventory.json" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json"
+  printf 'VALUE = 3\n' >"$MAKEFILE_CONTRACT_REPO/plugin/scripts/lint-skill-contracts.py"
+  printf 'VALUE = 4\n' >"$MAKEFILE_CONTRACT_REPO/plugin/scripts/lint_skill_contracts.py"
+
+  run env -u LC_ALL LANG=en_US.UTF-8 LC_COLLATE=en_US.UTF-8 \
+    make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory check-python-static-inventory
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Python static inventory: 4 production files registered."* ]]
+}
+
+@test "Python static inventory rejects an unlisted production module" {
+  setup_makefile_contract_repo
+  printf 'VALUE = 2\n' >"$MAKEFILE_CONTRACT_REPO/plugin/hooks/unlisted.py"
+
+  run make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory check-python-static-inventory
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Python production files missing static inventory entries (1): plugin/hooks/unlisted.py"* ]]
+}
+
+@test "Python static inventory rejects a registered module that is missing" {
+  setup_makefile_contract_repo
+  rm "$MAKEFILE_CONTRACT_REPO/plugin/scripts/contract.py"
+
+  run make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory check-python-static-inventory
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Python static inventory entries missing production files (1): plugin/scripts/contract.py"* ]]
+}
+
+@test "Python static inventory rejects invalid data under optimized Python" {
+  setup_makefile_contract_repo
+  jq \
+    '.python.contract_only["plugin/hooks/example.py"] = .python.contract_only["plugin/scripts/contract.py"] |
+      .python.measured = []' \
+    "$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json" \
+    >"$MAKEFILE_CONTRACT_REPO/inventory.json"
+  mv \
+    "$MAKEFILE_CONTRACT_REPO/inventory.json" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json"
+
+  run env PYTHONOPTIMIZE=1 make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory check-python-static-inventory
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Python static inventory is malformed"* ]]
+}
+
+@test "typecheck-python checks the production inventory and reports scoped ratchets" {
+  setup_makefile_contract_repo
+  cat >"$MAKEFILE_CONTRACT_BIN/mypy" <<'SH'
+#!/bin/sh
+printf 'mypy-args=%s\n' "$*"
+config_path=
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --config-file)
+      config_path="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+python3 - "$config_path" <<'PY'
+import configparser
+import sys
+
+config = configparser.ConfigParser()
+config.read(sys.argv[1])
+codes = {
+    code.strip()
+    for code in config["mypy-changelog"]["disable_error_code"].split(",")
+}
+assert codes == {"assignment"}
+print("mypy-ratchet-syntax=valid")
+PY
+SH
+  chmod +x "$MAKEFILE_CONTRACT_BIN/mypy"
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory typecheck-python MYPY=mypy
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"mypy ratchet exceptions (owner: repository maintainers):"*"changelog"* ]]
+  [[ "$output" == *"mypy-args=--config-file plugin/mypy.ini plugin/hooks/example.py plugin/scripts/contract.py"* ]]
+  [[ "$output" == *"mypy-ratchet-syntax=valid"* ]]
+}
+
+@test "typecheck-python validates the production inventory before mypy" {
+  setup_makefile_contract_repo
+  create_fake_tool "$MAKEFILE_CONTRACT_BIN/mypy"
+  printf 'VALUE = 3\n' >"$MAKEFILE_CONTRACT_REPO/plugin/hooks/unlisted.py"
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory typecheck-python MYPY=mypy
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Python production files missing static inventory entries (1): plugin/hooks/unlisted.py"* ]]
+}
+
 @test "test-smoke covers representative Node Python and Bats contracts" {
   run make -C "$BATS_TEST_DIRNAME/.." --no-print-directory --dry-run test-smoke
 
@@ -175,7 +332,17 @@ write_fake_python_coverage_report() {
 }
 
 @test "test-node-file requires NODE_TEST_FILE" {
-  run make -C "$BATS_TEST_DIRNAME/.." --no-print-directory test-node-file
+  setup_makefile_contract_repo
+  cat >"$MAKEFILE_CONTRACT_BIN/node" <<'SH'
+#!/bin/sh
+case "$1" in
+  -e) exit 0 ;;
+esac
+exit 0
+SH
+  chmod +x "$MAKEFILE_CONTRACT_BIN/node"
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory test-node-file
 
   [ "$status" -eq 2 ]
   [[ "$output" == *"NODE_TEST_FILE is required"* ]]
@@ -539,5 +706,5 @@ REPORT
   run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-bats-contract
 
   [ "$status" -ne 0 ]
-  [[ "$output" == *"Production coverage inventory is malformed"* ]]
+  [[ "$output" == *"Python static inventory is malformed"* ]]
 }

@@ -6,5 +6,6 @@ select = ["E", "W", "F", "I", "UP", "B"]
 
 [lint.per-file-ignores]
 # Keep this ratchet scoped to the maintained scripts/test surface.
+"../.agents/skills/kramme:skill:audit-sources/scripts/normalize.py" = ["UP045"]
 "hooks/lib/git_command_parser.py" = ["E", "W", "I", "UP", "B"]
 "skills/*/scripts/*.py" = ["E", "W", "I", "UP", "B"]
