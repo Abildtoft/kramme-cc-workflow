@@ -1,4 +1,4 @@
-.PHONY: lint lint-shell lint-python lint-js typecheck-python format-check pre-commit preflight pr-verify verify test test-smoke test-bats test-bats-file test-node test-node-watch test-node-file test-python test-python-file test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage unit-coverage coverage-node coverage-python coverage-bats-contract check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-coverage-inventory-deps check-shell-deps check-ruff-deps check-mypy-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
+.PHONY: lint lint-shell lint-python lint-js typecheck-python format-check pre-commit preflight pr-verify verify test test-smoke test-bats test-bats-file test-node test-node-watch test-node-file test-python test-python-file test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage unit-coverage coverage-node coverage-python coverage-bats-contract check-python-static-inventory check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-coverage-inventory-deps check-shell-deps check-ruff-deps check-mypy-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
 
 SHELLCHECK ?= shellcheck
 SHELLCHECK_SEVERITY ?= warning
@@ -25,11 +25,8 @@ SMOKE_BATS_TEST_FILE = tests/linear-issue-implement-guidance.bats
 PYTHON_TEST_DIR = tests/python
 PYTHON_TEST_PATTERN = test_*.py
 PYTHON_MAINTENANCE_TEST_DIR = ../.agents/skills/kramme:skill:audit-sources/scripts
-PYTHON_TYPECHECK_FILES = \
-	hooks/lib/git_command_parser.py \
-	skills/kramme:session:search/scripts/extract-errors.py \
-	skills/kramme:session:search/scripts/extract-metadata.py \
-	skills/kramme:session:search/scripts/extract-skeleton.py
+PYTHON_MYPY_CONFIG = mypy.ini
+PYTHON_RUFF_CONFIG = .ruff.toml
 NODE_COVERAGE_LINES ?= 80
 NODE_COVERAGE_BRANCHES ?= 70
 NODE_COVERAGE_FUNCTIONS ?= 80
@@ -40,6 +37,7 @@ COVERAGE_PRODUCTION_INVENTORY = config/coverage-production-sources.json
 
 FORMAT_BASE ?= $(if $(GITHUB_BASE_REF),origin/$(GITHUB_BASE_REF),origin/main)
 FORMAT_FILE_PATTERNS = '*.js' '*.mjs' '*.json' '*.md' '*.sh' '*.yaml' '*.yml'
+PYTHON_FORMAT_FILE_PATTERNS = '*.py'
 
 SHELLCHECK_FILES = \
 	hooks/*.sh \
@@ -56,27 +54,72 @@ lint-shell: check-shell-deps
 	@$(SHELLCHECK) --severity=$(SHELLCHECK_SEVERITY) $(SHELLCHECK_FILES)
 
 lint-python: check-python-deps check-ruff-deps typecheck-python
-	@$(RUFF) check .
+	@$(RUFF) check --config "$(PYTHON_RUFF_CONFIG)" . ../.agents/skills/kramme:skill:audit-sources/scripts
 
-typecheck-python: check-python-deps check-mypy-deps
-	@$(MYPY) --config-file mypy.ini $(PYTHON_TYPECHECK_FILES)
+typecheck-python: check-python-deps check-mypy-deps check-python-static-inventory
+	@files=$$(python3 -c 'import json, sys; data = json.load(open(sys.argv[1], encoding="utf-8"))["python"]; print(" ".join(sorted([*data["measured"], *data["contract_only"]])))' "$(COVERAGE_PRODUCTION_INVENTORY)"); \
+		ratchets=$$(sed -n 's/^\[mypy-\(.*\)\]$$/\1/p' "$(PYTHON_MYPY_CONFIG)" | awk '{ printf "%s%s", (NR > 1 ? ", " : ""), $$0 }'); \
+		if test -n "$$ratchets"; then echo "mypy ratchet exceptions (owner: repository maintainers): $$ratchets"; fi; \
+		cd "$(ROOT_DIR)" && $(MYPY) --config-file "$(PLUGIN_REL)/$(PYTHON_MYPY_CONFIG)" $$files
+
+check-python-static-inventory: check-python-deps
+	@tmpdir=$$(mktemp -d); inventory="$(CURDIR)/$(COVERAGE_PRODUCTION_INVENTORY)"; root="$(ROOT_DIR)"; \
+		trap 'rm -rf "$$tmpdir"' EXIT; \
+		if ! python3 -c 'import json, sys; data = json.load(open(sys.argv[1], encoding="utf-8"))["python"]; measured = data["measured"]; contracts = data["contract_only"]; valid = isinstance(measured, list) and bool(measured) and all(isinstance(path, str) and path for path in measured) and isinstance(contracts, dict) and all(isinstance(path, str) and path for path in contracts); sys.exit(1) if not valid else None; paths = [*measured, *contracts]; sys.exit(1) if len(paths) != len(set(paths)) else None; print(*sorted(paths), sep="\n")' "$$inventory" >"$$tmpdir/python.registered" 2>/dev/null; then \
+			echo "Python static inventory is malformed: $(COVERAGE_PRODUCTION_INVENTORY)"; exit 1; \
+		fi; \
+		cd "$$root"; \
+		{ \
+			for directory in "$(PLUGIN_REL)/evals" "$(PLUGIN_REL)/hooks" "$(PLUGIN_REL)/scripts"; do \
+				test ! -d "$$directory" || find "$$directory" -type f -name '*.py' ! -name '__init__.py' ! -name 'test_*.py'; \
+			done; \
+			for directory in "$(PLUGIN_REL)/skills" ".agents/skills"; do \
+				test ! -d "$$directory" || find "$$directory" -type f -path '*/scripts/*.py' ! -name '__init__.py' ! -name 'test_*.py'; \
+			done; \
+		} | sort -u >"$$tmpdir/python.discovered"; \
+		report_paths() { \
+			label="$$1"; file="$$2"; count=$$(wc -l <"$$file" | tr -d ' '); \
+			sample=$$(awk 'NR <= 10 { printf "%s%s", (NR > 1 ? ", " : ""), $$0 }' "$$file"); \
+			if test "$$count" -gt 10; then sample="$$sample, ... (+$$((count - 10)) more)"; fi; \
+			echo "$$label ($$count): $$sample"; \
+		}; \
+		comm -23 "$$tmpdir/python.discovered" "$$tmpdir/python.registered" >"$$tmpdir/python.missing"; \
+		comm -13 "$$tmpdir/python.discovered" "$$tmpdir/python.registered" >"$$tmpdir/python.stale"; \
+		failed=0; \
+		if test -s "$$tmpdir/python.missing"; then report_paths "Python production files missing static inventory entries" "$$tmpdir/python.missing"; failed=1; fi; \
+		if test -s "$$tmpdir/python.stale"; then report_paths "Python static inventory entries missing production files" "$$tmpdir/python.stale"; failed=1; fi; \
+		test "$$failed" -eq 0 || exit 1; \
+		file_count=$$(wc -l <"$$tmpdir/python.registered" | tr -d ' '); file_noun=files; test "$$file_count" -ne 1 || file_noun=file; \
+		echo "Python static inventory: $$file_count production $$file_noun registered."
 
 lint-js: check-js-deps
 	@"$(TSC)" -p jsconfig.json
 
-format-check: check-format-deps
+format-check: check-format-deps check-ruff-deps
 	@cd "$(ROOT_DIR)" && \
-		files=$$( \
+		prettier_files=$$( \
 			if git rev-parse --verify --quiet "$(FORMAT_BASE)^{commit}" >/dev/null; then \
 				git diff --name-only --diff-filter=ACMR "$(FORMAT_BASE)...HEAD" -- $(FORMAT_FILE_PATTERNS); \
 			fi; \
 			git diff --name-only --diff-filter=ACMR HEAD -- $(FORMAT_FILE_PATTERNS); \
 			git ls-files --others --exclude-standard -- $(FORMAT_FILE_PATTERNS); \
-		) && files=$$(printf '%s\n' "$$files" | sed '/^$$/d' | sort -u) && \
-		if [ -n "$$files" ]; then \
-			"$(PRETTIER)" --check --ignore-unknown $$files; \
+		) && prettier_files=$$(printf '%s\n' "$$prettier_files" | sed '/^$$/d' | sort -u) && \
+		python_files=$$( \
+			if git rev-parse --verify --quiet "$(FORMAT_BASE)^{commit}" >/dev/null; then \
+				git diff --name-only --diff-filter=ACMR "$(FORMAT_BASE)...HEAD" -- $(PYTHON_FORMAT_FILE_PATTERNS); \
+			fi; \
+			git diff --name-only --diff-filter=ACMR HEAD -- $(PYTHON_FORMAT_FILE_PATTERNS); \
+			git ls-files --others --exclude-standard -- $(PYTHON_FORMAT_FILE_PATTERNS); \
+		) && python_files=$$(printf '%s\n' "$$python_files" | sed '/^$$/d' | sort -u) && \
+		if [ -n "$$prettier_files" ]; then \
+			"$(PRETTIER)" --check --ignore-unknown $$prettier_files; \
 		else \
-			echo "No changed maintained files to format-check."; \
+			echo "No changed Prettier-maintained files to format-check."; \
+		fi && \
+		if [ -n "$$python_files" ]; then \
+			"$(RUFF)" format --check --config "$(CURDIR)/$(PYTHON_RUFF_CONFIG)" $$python_files; \
+		else \
+			echo "No changed Python files to format-check."; \
 		fi
 
 # Optional contributor gate; this does not install or modify repository Git hooks.
@@ -335,14 +378,13 @@ coverage-python: check-python-deps check-coverage-inventory-deps test-python
 			}' "$$inventory_rows" "$$report"; \
 		status=$$?; rm -rf "$$tmpdir"; exit $$status
 
-coverage-bats-contract: check-coverage-inventory-deps
+coverage-bats-contract: check-coverage-inventory-deps check-python-static-inventory
 	@tmpdir=$$(mktemp -d); inventory="$(CURDIR)/$(COVERAGE_PRODUCTION_INVENTORY)"; root="$(ROOT_DIR)"; \
 		trap 'rm -rf "$$tmpdir"' EXIT; \
 		if ! jq -e 'def string_array: type == "array" and length > 0 and all(.[]; type == "string" and length > 0); def mappings: type == "object" and all(to_entries[]; (.key | type == "string" and length > 0) and (.value | string_array)); (.javascript | type == "object") and (.javascript.measured | string_array) and (.javascript.contract_only | mappings) and (.python | type == "object") and (.python.measured | string_array) and (.python.contract_only | mappings) and (.shell | type == "object") and (.shell.contract_only | mappings) and ([.javascript.measured[], (.javascript.contract_only | keys[])] | length == (unique | length)) and ([.python.measured[], (.python.contract_only | keys[])] | length == (unique | length))' "$$inventory" >/dev/null 2>&1; then \
 			echo "Production coverage inventory is malformed"; exit 1; \
 		fi; \
 		jq -r '.javascript.measured[], (.javascript.contract_only | keys[])' "$$inventory" | sort >"$$tmpdir/javascript.registered"; \
-		jq -r '.python.measured[], (.python.contract_only | keys[])' "$$inventory" | sort >"$$tmpdir/python.registered"; \
 		jq -r '.shell.contract_only | keys[]' "$$inventory" | sort >"$$tmpdir/shell.registered"; \
 		jq -r '.javascript.contract_only, .python.contract_only, .shell.contract_only | to_entries[] | .key as $$source | .value[] | [$$source, .] | @tsv' "$$inventory" >"$$tmpdir/mappings.tsv"; \
 		cd "$$root"; \
@@ -359,14 +401,6 @@ coverage-bats-contract: check-coverage-inventory-deps
 		} | sort -u >"$$tmpdir/javascript.discovered"; \
 		{ \
 			for directory in "$(PLUGIN_REL)/evals" "$(PLUGIN_REL)/hooks" "$(PLUGIN_REL)/scripts"; do \
-				test ! -d "$$directory" || find "$$directory" -type f -name '*.py' ! -name '__init__.py' ! -name 'test_*.py'; \
-			done; \
-			for directory in "$(PLUGIN_REL)/skills" ".agents/skills"; do \
-				test ! -d "$$directory" || find "$$directory" -type f -path '*/scripts/*.py' ! -name '__init__.py' ! -name 'test_*.py'; \
-			done; \
-		} | sort -u >"$$tmpdir/python.discovered"; \
-		{ \
-			for directory in "$(PLUGIN_REL)/evals" "$(PLUGIN_REL)/hooks" "$(PLUGIN_REL)/scripts"; do \
 				test ! -d "$$directory" || find "$$directory" -type f -name '*.sh'; \
 			done; \
 			for directory in "$(PLUGIN_REL)/skills" ".agents/skills"; do \
@@ -380,8 +414,8 @@ coverage-bats-contract: check-coverage-inventory-deps
 			echo "$$label ($$count): $$sample"; \
 		}; \
 		failed=0; \
-		for language in javascript python shell; do \
-			case "$$language" in javascript) label=JavaScript ;; python) label=Python ;; shell) label=Shell ;; esac; \
+		for language in javascript shell; do \
+			case "$$language" in javascript) label=JavaScript ;; shell) label=Shell ;; esac; \
 			comm -23 "$$tmpdir/$$language.discovered" "$$tmpdir/$$language.registered" >"$$tmpdir/$$language.missing"; \
 			comm -13 "$$tmpdir/$$language.discovered" "$$tmpdir/$$language.registered" >"$$tmpdir/$$language.stale"; \
 			if test -s "$$tmpdir/$$language.missing"; then report_paths "$$label production files missing inventory entries" "$$tmpdir/$$language.missing"; failed=1; fi; \

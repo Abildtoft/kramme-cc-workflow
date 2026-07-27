@@ -67,4 +67,4 @@ Run the fast contributor gate before committing:
 npm run check:pre-commit
 ```
 
-It checks formatting for maintained JavaScript, shell, Markdown, JSON, and YAML files changed from the base branch, then runs lint and the cross-language smoke suite. The command is opt-in and does not install or modify Git hooks.
+It checks formatting for maintained Python, JavaScript, shell, Markdown, JSON, and YAML files changed from the base branch, then runs lint and the cross-language smoke suite. The command is opt-in and does not install or modify Git hooks.
