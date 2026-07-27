@@ -192,10 +192,10 @@
         "kramme-cc-workflow/tests/check-environment.bats"
       ],
       "kramme-cc-workflow/skills/kramme:siw:generate-phases/scripts/siw-issue-reservation.sh": [
-        "kramme-cc-workflow/tests/lint-skill-contracts.bats"
+        "kramme-cc-workflow/tests/siw-issue-reservation.bats"
       ],
       "kramme-cc-workflow/skills/kramme:siw:issue-define/scripts/siw-issue-reservation.sh": [
-        "kramme-cc-workflow/tests/lint-skill-contracts.bats"
+        "kramme-cc-workflow/tests/siw-issue-reservation.bats"
       ]
     }
   }
