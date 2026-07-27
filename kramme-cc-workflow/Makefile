@@ -64,6 +64,7 @@ typecheck-python: check-python-deps check-mypy-deps check-python-static-inventor
 
 check-python-static-inventory: check-python-deps
 	@tmpdir=$$(mktemp -d); inventory="$(CURDIR)/$(COVERAGE_PRODUCTION_INVENTORY)"; root="$(ROOT_DIR)"; \
+		LC_ALL=C; export LC_ALL; \
 		trap 'rm -rf "$$tmpdir"' EXIT; \
 		if ! python3 -c 'import json, sys; data = json.load(open(sys.argv[1], encoding="utf-8"))["python"]; measured = data["measured"]; contracts = data["contract_only"]; valid = isinstance(measured, list) and bool(measured) and all(isinstance(path, str) and path for path in measured) and isinstance(contracts, dict) and all(isinstance(path, str) and path for path in contracts); sys.exit(1) if not valid else None; paths = [*measured, *contracts]; sys.exit(1) if len(paths) != len(set(paths)) else None; print(*sorted(paths), sep="\n")' "$$inventory" >"$$tmpdir/python.registered" 2>/dev/null; then \
 			echo "Python static inventory is malformed: $(COVERAGE_PRODUCTION_INVENTORY)"; exit 1; \

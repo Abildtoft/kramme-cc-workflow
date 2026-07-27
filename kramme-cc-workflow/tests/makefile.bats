@@ -211,6 +211,28 @@ SH
   [[ "$output" == *"Python static inventory: 2 production files registered."* ]]
 }
 
+@test "Python static inventory is independent of the caller's collation locale" {
+  setup_makefile_contract_repo
+  jq \
+    '.python.measured += [
+      "plugin/scripts/lint-skill-contracts.py",
+      "plugin/scripts/lint_skill_contracts.py"
+    ]' \
+    "$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json" \
+    >"$MAKEFILE_CONTRACT_REPO/inventory.json"
+  mv \
+    "$MAKEFILE_CONTRACT_REPO/inventory.json" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json"
+  printf 'VALUE = 3\n' >"$MAKEFILE_CONTRACT_REPO/plugin/scripts/lint-skill-contracts.py"
+  printf 'VALUE = 4\n' >"$MAKEFILE_CONTRACT_REPO/plugin/scripts/lint_skill_contracts.py"
+
+  run env -u LC_ALL LANG=en_US.UTF-8 LC_COLLATE=en_US.UTF-8 \
+    make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory check-python-static-inventory
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Python static inventory: 4 production files registered."* ]]
+}
+
 @test "Python static inventory rejects an unlisted production module" {
   setup_makefile_contract_repo
   printf 'VALUE = 2\n' >"$MAKEFILE_CONTRACT_REPO/plugin/hooks/unlisted.py"
