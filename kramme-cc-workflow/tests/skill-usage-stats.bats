@@ -66,6 +66,7 @@ create_usage_plugin_root() {
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 
+	touch "$USAGE_FILE"
 	run node "$SCRIPT" report --file "$USAGE_FILE" --json
 	[ "$status" -eq 0 ]
 	[ "$output" = "[]" ]

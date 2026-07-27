@@ -29,6 +29,48 @@ async function tempDir(t) {
   return root;
 }
 
+/** @param {string} file @param {string} line @param {number} targetBytes */
+async function writeRepeatedFile(file, line, targetBytes) {
+  const chunk = line.repeat(Math.ceil((256 * 1024) / line.length));
+  const handle = await fs.open(file, "w");
+  try {
+    let written = 0;
+    while (written < targetBytes) {
+      await handle.write(chunk);
+      written += Buffer.byteLength(chunk);
+    }
+  } finally {
+    await handle.close();
+  }
+}
+
+/** @param {string[]} args */
+function runUsageWithRss(args) {
+  const wrapper = [
+    `process.argv = [process.execPath, ${JSON.stringify(SCRIPT)}, ...${JSON.stringify(args)}];`,
+    `const { runCli } = require(${JSON.stringify(SCRIPT)});`,
+    "Promise.resolve(runCli()).then(() => {",
+    "  process.stderr.write(`FINAL_RSS=${process.memoryUsage().rss}\\n`);",
+    "});",
+  ].join("\n");
+  return spawnSync(process.execPath, ["-e", wrapper], {
+    encoding: "utf8",
+    maxBuffer: 5 * MIB,
+    timeout: 25_000,
+  });
+}
+
+/** @param {import("node:child_process").SpawnSyncReturns<string>} result */
+function assertBoundedRss(result) {
+  assert.equal(result.status, 0, result.stderr);
+  const match = result.stderr.match(/FINAL_RSS=(\d+)/);
+  assert.ok(match, `missing RSS sample in stderr: ${result.stderr}`);
+  assert.ok(
+    Number(match[1]) < 256 * MIB,
+    `expected RSS below 256 MiB, got ${Number(match[1]) / MIB} MiB`,
+  );
+}
+
 test("report preserves valid JSON output byte-for-byte", async (t) => {
   const root = await tempDir(t);
   const usageFile = path.join(root, "usage.jsonl");
@@ -153,30 +195,33 @@ test("strict mode exits non-zero after rendering a degraded snapshot", async (t)
   );
 });
 
-test("strict reports reject an explicitly missing usage file", async (t) => {
+test("reports diagnose an explicitly missing usage file", async (t) => {
   const root = await tempDir(t);
   const missingFile = path.join(root, "missing.jsonl");
+  const expected = {
+    summary: [],
+    diagnostics: {
+      skippedLines: 0,
+      readFailures: 1,
+    },
+  };
+  const stderr = `skill-usage: read failure file=${missingFile} reason=ENOENT\n`;
 
-  const result = runUsage([
+  const tolerant = runUsage(["report", "--file", missingFile, "--json"]);
+  assert.equal(tolerant.status, 0);
+  assert.deepEqual(JSON.parse(tolerant.stdout), expected);
+  assert.equal(tolerant.stderr, stderr);
+
+  const strict = runUsage([
     "report",
     "--file",
     missingFile,
     "--json",
     "--strict",
   ]);
-
-  assert.equal(result.status, 1);
-  assert.deepEqual(JSON.parse(result.stdout), {
-    summary: [],
-    diagnostics: {
-      skippedLines: 0,
-      readFailures: 1,
-    },
-  });
-  assert.equal(
-    result.stderr,
-    `skill-usage: read failure file=${missingFile} reason=ENOENT\n`,
-  );
+  assert.equal(strict.status, 1);
+  assert.deepEqual(JSON.parse(strict.stdout), expected);
+  assert.equal(strict.stderr, stderr);
 });
 
 test("strict reports preserve empty first-run defaults", async (t) => {
@@ -266,6 +311,80 @@ test("scan keeps the bounded non-JSONL compatibility fallback", async (t) => {
   assert.equal(JSON.parse(result.stdout)[0].skill, "kramme:qa");
 });
 
+test("scan reads a complete JSON document before classifying JSONL", async (t) => {
+  const root = await tempDir(t);
+  const transcript = path.join(root, "transcript.json");
+  const entries = [
+    {
+      type: "user",
+      message: { content: "Use /kramme:first" },
+      session_id: "session-1",
+    },
+    {
+      type: "user",
+      message: { content: "Use /kramme:second" },
+      session_id: "session-2",
+    },
+  ];
+  await fs.writeFile(
+    transcript,
+    `[\n${entries.map((entry) => JSON.stringify(entry)).join(",\n")}\n]\n`,
+  );
+
+  const result = runUsage(["scan", transcript, "--json"]);
+
+  assert.equal(result.status, 0);
+  assert.equal(result.stderr, "");
+  const summary = /** @type {Array<{ skill: string }>} */ (
+    JSON.parse(result.stdout)
+  );
+  assert.deepEqual(
+    summary.map((row) => row.skill),
+    ["kramme:first", "kramme:second"],
+  );
+});
+
+test("scan accepts non-JSONL input exactly at the compatibility limit", async (t) => {
+  const root = await tempDir(t);
+  const notes = path.join(root, "exact-notes.txt");
+  const prefix = "Please run /kramme:qa before wrapping up. ";
+  await fs.writeFile(notes, prefix + "x".repeat(MIB - prefix.length));
+
+  const result = runUsage(["scan", notes, "--json", "--strict"]);
+
+  assert.equal((await fs.stat(notes)).size, MIB);
+  assert.equal(result.status, 0);
+  assert.equal(result.stderr, "");
+  assert.equal(JSON.parse(result.stdout)[0].skill, "kramme:qa");
+});
+
+test("scan measures CRLF compatibility input by actual file size", async (t) => {
+  const root = await tempDir(t);
+  const notes = path.join(root, "large-crlf-notes.txt");
+  const prefix = "Please run /kramme:qa ";
+  const lineLength = 510;
+  const firstLine = prefix + "x".repeat(lineLength - prefix.length);
+  const otherLine = "x".repeat(lineLength);
+  const content = [firstLine, ...Array(2048).fill(otherLine)].join("\r\n");
+  await fs.writeFile(notes, content);
+
+  const result = runUsage(["scan", notes, "--json", "--strict"]);
+
+  assert.ok((await fs.stat(notes)).size > MIB);
+  assert.equal(result.status, 1);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    summary: [],
+    diagnostics: {
+      skippedLines: 2049,
+      readFailures: 0,
+    },
+  });
+  assert.equal(
+    result.stderr,
+    `skill-usage: skipped 2049 non-JSONL input beyond the compatibility limit lines file=${notes}\n`,
+  );
+});
+
 test("scan diagnoses non-JSONL input beyond the compatibility limit", async (t) => {
   const root = await tempDir(t);
   const notes = path.join(root, "large-notes.txt");
@@ -282,8 +401,7 @@ test("scan diagnoses non-JSONL input beyond the compatibility limit", async (t) 
       readFailures: 0,
     },
   };
-  const stderr =
-    `skill-usage: skipped 1 non-JSONL input beyond the compatibility limit line file=${notes}\n`;
+  const stderr = `skill-usage: skipped 1 non-JSONL input beyond the compatibility limit line file=${notes}\n`;
 
   assert.equal(tolerant.status, 0);
   assert.deepEqual(JSON.parse(tolerant.stdout), expected);
@@ -306,38 +424,28 @@ test(
       message: { content: "Use /kramme:qa" },
       session_id: "shared-session",
     })}\n`;
-    const chunk = line.repeat(Math.ceil((256 * 1024) / line.length));
-    const targetBytes = 48 * MIB;
-    const handle = await fs.open(transcript, "w");
-    try {
-      let written = 0;
-      while (written < targetBytes) {
-        await handle.write(chunk);
-        written += Buffer.byteLength(chunk);
-      }
-    } finally {
-      await handle.close();
-    }
+    await writeRepeatedFile(transcript, line, 48 * MIB);
 
-    const wrapper = [
-      `process.argv = [process.execPath, ${JSON.stringify(SCRIPT)}, "scan", ${JSON.stringify(transcript)}, "--json"];`,
-      `const { runCli } = require(${JSON.stringify(SCRIPT)});`,
-      "Promise.resolve(runCli()).then(() => {",
-      "  process.stderr.write(`FINAL_RSS=${process.memoryUsage().rss}\\n`);",
-      "});",
-    ].join("\n");
-    const result = spawnSync(process.execPath, ["-e", wrapper], {
-      encoding: "utf8",
-      maxBuffer: 5 * MIB,
-      timeout: 25_000,
-    });
+    assertBoundedRss(runUsageWithRss(["scan", transcript, "--json"]));
+  },
+);
 
-    assert.equal(result.status, 0, result.stderr);
-    const match = result.stderr.match(/FINAL_RSS=(\d+)/);
-    assert.ok(match, `missing RSS sample in stderr: ${result.stderr}`);
-    assert.ok(
-      Number(match[1]) < 256 * MIB,
-      `expected RSS below 256 MiB, got ${Number(match[1]) / MIB} MiB`,
+test(
+  "report keeps RSS bounded while aggregating a large JSONL usage file",
+  { timeout: 30_000 },
+  async (t) => {
+    const root = await tempDir(t);
+    const usageFile = path.join(root, "large.jsonl");
+    const line = `${JSON.stringify({
+      recordedAt: "2026-07-01T10:00:00.000Z",
+      sessionId: "shared-session",
+      skill: "kramme:qa",
+      kind: "explicit",
+    })}\n`;
+    await writeRepeatedFile(usageFile, line, 48 * MIB);
+
+    assertBoundedRss(
+      runUsageWithRss(["report", "--file", usageFile, "--json"]),
     );
   },
 );

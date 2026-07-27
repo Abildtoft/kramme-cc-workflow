@@ -472,9 +472,9 @@ async function report(args) {
 
   const diagnostics = createDiagnostics();
   const accumulator = createUsageAccumulator();
-  const usesImplicitDefaultFile =
-    !parsed.file && !process.env.KRAMME_SKILL_USAGE_FILE;
-  if (fs.existsSync(file) || (parsed.strict && !usesImplicitDefaultFile)) {
+  const usesExplicitFile =
+    Boolean(parsed.file) || Boolean(process.env.KRAMME_SKILL_USAGE_FILE);
+  if (fs.existsSync(file) || usesExplicitFile) {
     await readUsageRecords(file, diagnostics, (record) => {
       if (kind !== "all" && record.kind !== kind) return;
       if (since) {
@@ -579,10 +579,18 @@ function shouldPruneScanDirectory(entry) {
 async function scanFile(file, diagnostics, onRecord) {
   let parsedJsonLines = 0;
   let malformedLines = 0;
-  let fallbackBytes = 0;
-  let fallbackAvailable = true;
+  let fileSize;
+  try {
+    fileSize = (await fs.promises.stat(file)).size;
+  } catch (error) {
+    recordReadFailure(diagnostics, file, error);
+    return;
+  }
+  const useCompatibilityFallback = fileSize <= MAX_NON_JSONL_COMPAT_BYTES;
   /** @type {string[]} */
-  let fallbackLines = [];
+  const fallbackLines = [];
+  /** @type {ScannedUsageRecord[]} */
+  const bufferedJsonLineRecords = [];
   const input = fs.createReadStream(file, { encoding: "utf8" });
   const lines = readline.createInterface({
     input,
@@ -593,21 +601,16 @@ async function scanFile(file, diagnostics, onRecord) {
     for await (const line of lines) {
       if (!line) continue;
 
-      if (fallbackAvailable) {
-        fallbackBytes += Buffer.byteLength(line) + 1;
-        if (fallbackBytes <= MAX_NON_JSONL_COMPAT_BYTES) {
-          fallbackLines.push(line);
-        } else {
-          fallbackAvailable = false;
-          fallbackLines = [];
-        }
+      if (useCompatibilityFallback) {
+        fallbackLines.push(line);
       }
 
       try {
         const parsed = JSON.parse(line);
         parsedJsonLines += 1;
         for (const record of recordsFromScannedObject(parsed, file)) {
-          onRecord(record);
+          if (useCompatibilityFallback) bufferedJsonLineRecords.push(record);
+          else onRecord(record);
         }
       } catch {
         malformedLines += 1;
@@ -615,6 +618,7 @@ async function scanFile(file, diagnostics, onRecord) {
     }
   } catch (error) {
     if (parsedJsonLines > 0) {
+      for (const record of bufferedJsonLineRecords) onRecord(record);
       recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
     }
     recordReadFailure(diagnostics, file, error);
@@ -624,12 +628,11 @@ async function scanFile(file, diagnostics, onRecord) {
     input.destroy();
   }
 
-  if (parsedJsonLines > 0) {
-    recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
-    return;
-  }
-
-  if (!fallbackAvailable) {
+  if (!useCompatibilityFallback) {
+    if (parsedJsonLines > 0) {
+      recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
+      return;
+    }
     recordSkippedLines(
       diagnostics,
       file,
@@ -644,10 +647,19 @@ async function scanFile(file, diagnostics, onRecord) {
     for (const record of recordsFromScannedObject(JSON.parse(content), file)) {
       onRecord(record);
     }
+    return;
   } catch {
-    for (const skill of extractSlashSkillNames(content)) {
-      onRecord(scannedRecord({ skill, file }));
-    }
+    // Fall through to JSONL or plaintext classification.
+  }
+
+  if (parsedJsonLines > 0) {
+    for (const record of bufferedJsonLineRecords) onRecord(record);
+    recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
+    return;
+  }
+
+  for (const skill of extractSlashSkillNames(content)) {
+    onRecord(scannedRecord({ skill, file }));
   }
 }
 
