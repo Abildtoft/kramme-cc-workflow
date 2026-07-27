@@ -579,46 +579,51 @@ function shouldPruneScanDirectory(entry) {
 async function scanFile(file, diagnostics, onRecord) {
   let parsedJsonLines = 0;
   let malformedLines = 0;
-  let fileSize;
-  try {
-    fileSize = (await fs.promises.stat(file)).size;
-  } catch (error) {
-    recordReadFailure(diagnostics, file, error);
-    return;
-  }
-  const useCompatibilityFallback = fileSize <= MAX_NON_JSONL_COMPAT_BYTES;
-  /** @type {string[]} */
-  const fallbackLines = [];
-  /** @type {ScannedUsageRecord[]} */
-  const bufferedJsonLineRecords = [];
+  /** @type {string[] | null} */
+  let compatibilityLines = [];
   const input = fs.createReadStream(file, { encoding: "utf8" });
   const lines = readline.createInterface({
     input,
     crlfDelay: Infinity,
   });
 
+  /** @param {string} line */
+  const processJsonLine = (line) => {
+    if (line.trimStart().startsWith("[")) {
+      malformedLines += 1;
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(line);
+      parsedJsonLines += 1;
+      for (const record of recordsFromScannedObject(parsed, file)) {
+        onRecord(record);
+      }
+    } catch {
+      malformedLines += 1;
+    }
+  };
+
+  const startStreamingJsonLines = () => {
+    const bufferedLines = compatibilityLines || [];
+    compatibilityLines = null;
+    for (const line of bufferedLines) processJsonLine(line);
+  };
+
   try {
     for await (const line of lines) {
+      if (compatibilityLines && input.bytesRead > MAX_NON_JSONL_COMPAT_BYTES) {
+        startStreamingJsonLines();
+      }
       if (!line) continue;
 
-      if (useCompatibilityFallback) {
-        fallbackLines.push(line);
-      }
-
-      try {
-        const parsed = JSON.parse(line);
-        parsedJsonLines += 1;
-        for (const record of recordsFromScannedObject(parsed, file)) {
-          if (useCompatibilityFallback) bufferedJsonLineRecords.push(record);
-          else onRecord(record);
-        }
-      } catch {
-        malformedLines += 1;
-      }
+      if (compatibilityLines) compatibilityLines.push(line);
+      else processJsonLine(line);
     }
   } catch (error) {
+    if (compatibilityLines) startStreamingJsonLines();
     if (parsedJsonLines > 0) {
-      for (const record of bufferedJsonLineRecords) onRecord(record);
       recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
     }
     recordReadFailure(diagnostics, file, error);
@@ -628,7 +633,7 @@ async function scanFile(file, diagnostics, onRecord) {
     input.destroy();
   }
 
-  if (!useCompatibilityFallback) {
+  if (!compatibilityLines) {
     if (parsedJsonLines > 0) {
       recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
       return;
@@ -642,7 +647,7 @@ async function scanFile(file, diagnostics, onRecord) {
     return;
   }
 
-  const content = fallbackLines.join("\n");
+  const content = compatibilityLines.join("\n");
   try {
     for (const record of recordsFromScannedObject(JSON.parse(content), file)) {
       onRecord(record);
@@ -652,8 +657,8 @@ async function scanFile(file, diagnostics, onRecord) {
     // Fall through to JSONL or plaintext classification.
   }
 
+  for (const line of compatibilityLines) processJsonLine(line);
   if (parsedJsonLines > 0) {
-    for (const record of bufferedJsonLineRecords) onRecord(record);
     recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
     return;
   }

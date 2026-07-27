@@ -22,6 +22,31 @@ function runUsage(args, env) {
   });
 }
 
+/** @param {string} file */
+function runUsageWithGrowingFile(file) {
+  const wrapper = [
+    'const fs = require("node:fs");',
+    "const createReadStream = fs.createReadStream;",
+    'const appendedLine = "Please run /kramme:race " + "x".repeat(6 * 1024 * 1024) + "\\n";',
+    "fs.createReadStream = (inputFile, options) => {",
+    "  const streamOptions = options && typeof options === 'object' ? options : {};",
+    "  const input = createReadStream(inputFile, {",
+    "    ...streamOptions,",
+    "    highWaterMark: 4 * 1024,",
+    "  });",
+    '  input.once("open", () => fs.appendFileSync(inputFile, appendedLine));',
+    "  return input;",
+    "};",
+    `process.argv = [process.execPath, ${JSON.stringify(SCRIPT)}, "scan", ${JSON.stringify(file)}, "--json", "--strict"];`,
+    `const { runCli } = require(${JSON.stringify(SCRIPT)});`,
+    "void runCli();",
+  ].join("\n");
+  return spawnSync(process.execPath, ["-e", wrapper], {
+    encoding: "utf8",
+    maxBuffer: 5 * MIB,
+  });
+}
+
 /** @param {import("node:test").TestContext} t */
 async function tempDir(t) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "skill-usage-test-"));
@@ -344,6 +369,33 @@ test("scan reads a complete JSON document before classifying JSONL", async (t) =
   );
 });
 
+test("scan rejects an oversized minified top-level JSON array", async (t) => {
+  const root = await tempDir(t);
+  const transcript = path.join(root, "oversized-array.json");
+  const entry = {
+    type: "user",
+    message: { content: "Use /kramme:array" },
+    session_id: "shared-session",
+  };
+  await fs.writeFile(transcript, JSON.stringify(Array(16_000).fill(entry)));
+
+  const result = runUsage(["scan", transcript, "--json", "--strict"]);
+
+  assert.ok((await fs.stat(transcript)).size > MIB);
+  assert.equal(result.status, 1);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    summary: [],
+    diagnostics: {
+      skippedLines: 1,
+      readFailures: 0,
+    },
+  });
+  assert.equal(
+    result.stderr,
+    `skill-usage: skipped 1 non-JSONL input beyond the compatibility limit line file=${transcript}\n`,
+  );
+});
+
 test("scan accepts non-JSONL input exactly at the compatibility limit", async (t) => {
   const root = await tempDir(t);
   const notes = path.join(root, "exact-notes.txt");
@@ -411,6 +463,29 @@ test("scan diagnoses non-JSONL input beyond the compatibility limit", async (t) 
   assert.equal(strict.status, 1);
   assert.deepEqual(JSON.parse(strict.stdout), expected);
   assert.equal(strict.stderr, stderr);
+});
+
+test("scan stops compatibility parsing when a file grows beyond the limit", async (t) => {
+  const root = await tempDir(t);
+  const transcript = path.join(root, "growing-notes.txt");
+  const initialLine = `${"x".repeat(1023)}\n`;
+  await fs.writeFile(transcript, initialLine.repeat(1024));
+
+  const result = runUsageWithGrowingFile(transcript);
+
+  assert.ok((await fs.stat(transcript)).size > 7 * MIB);
+  assert.equal(result.status, 1);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    summary: [],
+    diagnostics: {
+      skippedLines: 1025,
+      readFailures: 0,
+    },
+  });
+  assert.equal(
+    result.stderr,
+    `skill-usage: skipped 1025 non-JSONL input beyond the compatibility limit lines file=${transcript}\n`,
+  );
 });
 
 test(
