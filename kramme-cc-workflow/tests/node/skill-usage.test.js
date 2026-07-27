@@ -75,7 +75,7 @@ function runUsageWithRss(args) {
     `process.argv = [process.execPath, ${JSON.stringify(SCRIPT)}, ...${JSON.stringify(args)}];`,
     `const { runCli } = require(${JSON.stringify(SCRIPT)});`,
     "Promise.resolve(runCli()).then(() => {",
-    "  process.stderr.write(`FINAL_RSS=${process.memoryUsage().rss}\\n`);",
+    "  process.stderr.write(`MAX_RSS_KB=${process.resourceUsage().maxRSS}\\n`);",
     "});",
   ].join("\n");
   return spawnSync(process.execPath, ["-e", wrapper], {
@@ -85,14 +85,18 @@ function runUsageWithRss(args) {
   });
 }
 
-/** @param {import("node:child_process").SpawnSyncReturns<string>} result */
-function assertBoundedRss(result) {
-  assert.equal(result.status, 0, result.stderr);
-  const match = result.stderr.match(/FINAL_RSS=(\d+)/);
+/**
+ * @param {import("node:child_process").SpawnSyncReturns<string>} result
+ * @param {number} [expectedStatus]
+ */
+function assertBoundedRss(result, expectedStatus = 0) {
+  assert.equal(result.status, expectedStatus, result.stderr);
+  const match = result.stderr.match(/MAX_RSS_KB=(\d+)/);
   assert.ok(match, `missing RSS sample in stderr: ${result.stderr}`);
+  const peakRssBytes = Number(match[1]) * 1024;
   assert.ok(
-    Number(match[1]) < 256 * MIB,
-    `expected RSS below 256 MiB, got ${Number(match[1]) / MIB} MiB`,
+    peakRssBytes < 256 * MIB,
+    `expected peak RSS below 256 MiB, got ${peakRssBytes / MIB} MiB`,
   );
 }
 
@@ -262,6 +266,73 @@ test("strict reports preserve empty first-run defaults", async (t) => {
   assert.equal(result.stderr, "");
 });
 
+test("strict reports diagnose inaccessible implicit state", async (t) => {
+  if (typeof process.getuid === "function" && process.getuid() === 0) {
+    t.skip("permission checks require a non-root user");
+    return;
+  }
+
+  const root = await tempDir(t);
+  const stateHome = path.join(root, "state");
+  const usageDir = path.join(stateHome, "kramme-cc-workflow");
+  await fs.mkdir(usageDir, { recursive: true });
+  await fs.writeFile(
+    path.join(usageDir, "skill-usage.jsonl"),
+    `${JSON.stringify({ skill: "kramme:hidden", kind: "explicit" })}\n`,
+  );
+  await fs.chmod(stateHome, 0o000);
+
+  let result;
+  try {
+    result = runUsage(["report", "--json", "--strict"], {
+      XDG_STATE_HOME: stateHome,
+      KRAMME_SKILL_USAGE_FILE: "",
+    });
+  } finally {
+    await fs.chmod(stateHome, 0o700);
+  }
+
+  assert.equal(result.status, 1);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    summary: [],
+    diagnostics: {
+      skippedLines: 0,
+      readFailures: 1,
+    },
+  });
+  assert.equal(
+    result.stderr,
+    `skill-usage: read failure file=${path.join(usageDir, "skill-usage.jsonl")} reason=EACCES\n`,
+  );
+});
+
+test("reports diagnose overlong JSONL records", async (t) => {
+  const root = await tempDir(t);
+  const usageFile = path.join(root, "overlong.jsonl");
+  await writeRepeatedFile(usageFile, "x", 2 * MIB);
+
+  const result = runUsage([
+    "report",
+    "--file",
+    usageFile,
+    "--json",
+    "--strict",
+  ]);
+
+  assert.equal(result.status, 1);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    summary: [],
+    diagnostics: {
+      skippedLines: 1,
+      readFailures: 0,
+    },
+  });
+  assert.equal(
+    result.stderr,
+    `skill-usage: skipped 1 overlong JSONL line file=${usageFile}\n`,
+  );
+});
+
 test("scan tolerates corrupt lines and unreadable inputs without losing valid totals", async (t) => {
   const root = await tempDir(t);
   const transcript = path.join(root, "01-mixed.jsonl");
@@ -369,6 +440,47 @@ test("scan reads a complete JSON document before classifying JSONL", async (t) =
   );
 });
 
+test("scan preserves array-valued JSONL records", async (t) => {
+  const root = await tempDir(t);
+  const transcript = path.join(root, "array-records.jsonl");
+  await fs.writeFile(
+    transcript,
+    [
+      JSON.stringify([
+        {
+          type: "assistant",
+          message: { content: "Mention /kramme:assistant-only" },
+          session_id: "assistant-session",
+        },
+      ]),
+      JSON.stringify([
+        {
+          type: "user",
+          message: { content: "Run /kramme:user-only" },
+          session_id: "user-session",
+        },
+      ]),
+      "",
+    ].join("\n"),
+  );
+
+  const result = runUsage(["scan", transcript, "--json"]);
+
+  assert.equal(result.status, 0);
+  assert.equal(result.stderr, "");
+  assert.deepEqual(JSON.parse(result.stdout), [
+    {
+      skill: "kramme:user-only",
+      total: 1,
+      explicit: 1,
+      tool: 0,
+      firstUsedAt: null,
+      lastUsedAt: null,
+      sessions: 1,
+    },
+  ]);
+});
+
 test("scan rejects an oversized minified top-level JSON array", async (t) => {
   const root = await tempDir(t);
   const transcript = path.join(root, "oversized-array.json");
@@ -394,6 +506,40 @@ test("scan rejects an oversized minified top-level JSON array", async (t) => {
     result.stderr,
     `skill-usage: skipped 1 non-JSONL input beyond the compatibility limit line file=${transcript}\n`,
   );
+});
+
+test("scan rejects an oversized multiline top-level JSON array", async (t) => {
+  const root = await tempDir(t);
+  const transcript = path.join(root, "oversized-multiline-array.json");
+  const entries = Array.from({ length: 20_000 }, (_, index) => ({
+    type: "user",
+    message: { content: `Use /kramme:array-${index}` },
+    session_id: `session-${index}`,
+  }));
+  await fs.writeFile(
+    transcript,
+    `[\n${entries.map((entry) => JSON.stringify(entry)).join(",\n")}\n]\n`,
+  );
+  const expected = {
+    summary: [],
+    diagnostics: {
+      skippedLines: entries.length + 2,
+      readFailures: 0,
+    },
+  };
+  const stderr = `skill-usage: skipped ${entries.length + 2} non-JSONL input beyond the compatibility limit lines file=${transcript}\n`;
+
+  assert.ok((await fs.stat(transcript)).size > MIB);
+
+  const tolerant = runUsage(["scan", transcript, "--json"]);
+  assert.equal(tolerant.status, 0);
+  assert.deepEqual(JSON.parse(tolerant.stdout), expected);
+  assert.equal(tolerant.stderr, stderr);
+
+  const strict = runUsage(["scan", transcript, "--json", "--strict"]);
+  assert.equal(strict.status, 1);
+  assert.deepEqual(JSON.parse(strict.stdout), expected);
+  assert.equal(strict.stderr, stderr);
 });
 
 test("scan accepts non-JSONL input exactly at the compatibility limit", async (t) => {
@@ -522,5 +668,26 @@ test(
     assertBoundedRss(
       runUsageWithRss(["report", "--file", usageFile, "--json"]),
     );
+  },
+);
+
+test(
+  "scan keeps RSS bounded for an overlong physical line",
+  { timeout: 30_000 },
+  async (t) => {
+    const root = await tempDir(t);
+    const transcript = path.join(root, "overlong-line.json");
+    await writeRepeatedFile(transcript, "x", 64 * MIB);
+
+    const result = runUsageWithRss(["scan", transcript, "--json", "--strict"]);
+
+    assertBoundedRss(result, 1);
+    assert.deepEqual(JSON.parse(result.stdout), {
+      summary: [],
+      diagnostics: {
+        skippedLines: 1,
+        readFailures: 0,
+      },
+    });
   },
 );

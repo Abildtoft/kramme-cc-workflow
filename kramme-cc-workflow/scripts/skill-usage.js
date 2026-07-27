@@ -5,7 +5,6 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const readline = require("readline");
 
 const STATE_DIR = path.join(
   process.env.XDG_STATE_HOME || path.join(os.homedir(), ".local", "state"),
@@ -13,6 +12,7 @@ const STATE_DIR = path.join(
 );
 const DEFAULT_USAGE_FILE = path.join(STATE_DIR, "skill-usage.jsonl");
 const MAX_NON_JSONL_COMPAT_BYTES = 1024 * 1024;
+const MAX_JSONL_LINE_BYTES = 1024 * 1024;
 const SLASH_SKILL_PATTERN = /(?:^|\s)\/(kramme:[A-Za-z0-9:_-]+)/g;
 const DIRECT_SKILL_PATTERN = /^\/?(kramme:[A-Za-z0-9:_-]+)(?:\s|$)/;
 const SCAN_PRUNED_DIRS = new Set([
@@ -66,6 +66,7 @@ const SCAN_PRUNED_DIRS = new Set([
  * @typedef {{ skill: string, total: string, explicit: string, tool: string, sessions: string, first: string, last: string }} PrintableUsageRow
  * @typedef {{ skippedLines: number, readFailures: number }} UsageDiagnostics
  * @typedef {Map<string, Omit<UsageSummaryRow, "sessions"> & { sessions: Set<string> }>} UsageAccumulator
+ * @typedef {{ line: string | null, byteLength: number, overlong: boolean, firstNonWhitespaceByte: number | null }} BoundedLine
  */
 
 async function main() {
@@ -112,8 +113,9 @@ Records are stored in:
 
 Report and scan tolerate degraded input by default and expose diagnostic
 counters. Use --strict to return a non-zero status when diagnostics occur.
-JSONL scan inputs stream incrementally. Whole-document JSON and plaintext
-compatibility input is limited to 1 MiB per file.
+JSONL inputs stream incrementally with individual records limited to 1 MiB.
+Whole-document JSON and plaintext compatibility input is limited to 1 MiB
+per file.
 
 Environment:
   KRAMME_SKILL_USAGE_FILE  Override the usage JSONL file path.
@@ -474,8 +476,10 @@ async function report(args) {
   const accumulator = createUsageAccumulator();
   const usesExplicitFile =
     Boolean(parsed.file) || Boolean(process.env.KRAMME_SKILL_USAGE_FILE);
-  if (fs.existsSync(file) || usesExplicitFile) {
-    await readUsageRecords(file, diagnostics, (record) => {
+  await readUsageRecords(
+    file,
+    diagnostics,
+    (record) => {
       if (kind !== "all" && record.kind !== kind) return;
       if (since) {
         const recordedAt = Date.parse(record.recordedAt);
@@ -484,8 +488,9 @@ async function report(args) {
         }
       }
       addUsageRecord(accumulator, record);
-    });
-  }
+    },
+    !usesExplicitFile,
+  );
 
   const summary = finishUsageSummary(accumulator, limit);
   renderResult(summary, diagnostics, parsed.json, file, since, kind);
@@ -573,27 +578,106 @@ function shouldPruneScanDirectory(entry) {
 
 /**
  * @param {string} file
+ * @returns {AsyncGenerator<BoundedLine, void, void>}
+ */
+async function* readBoundedLines(file) {
+  const input = fs.createReadStream(file);
+  /** @type {Buffer[]} */
+  let chunks = [];
+  let bufferedBytes = 0;
+  let byteLength = 0;
+  let overlong = false;
+  /** @type {number | null} */
+  let firstNonWhitespaceByte = null;
+
+  /** @param {Buffer} segment */
+  const appendSegment = (segment) => {
+    byteLength += segment.length;
+    if (firstNonWhitespaceByte == null) {
+      for (const byte of segment) {
+        if (byte !== 0x09 && byte !== 0x0d && byte !== 0x20) {
+          firstNonWhitespaceByte = byte;
+          break;
+        }
+      }
+    }
+    if (overlong || segment.length === 0) return;
+    if (bufferedBytes + segment.length > MAX_JSONL_LINE_BYTES) {
+      chunks = [];
+      bufferedBytes = 0;
+      overlong = true;
+      return;
+    }
+    chunks.push(segment);
+    bufferedBytes += segment.length;
+  };
+
+  /** @param {boolean} hasNewline @returns {BoundedLine} */
+  const finishLine = (hasNewline) => {
+    if (hasNewline) byteLength += 1;
+    let line = null;
+    if (!overlong) {
+      /** @type {Buffer<ArrayBufferLike>} */
+      let buffer = Buffer.alloc(0);
+      if (chunks.length === 1) {
+        buffer = chunks[0];
+      } else if (chunks.length > 1) {
+        buffer = Buffer.concat(chunks, bufferedBytes);
+      }
+      if (buffer.at(-1) === 0x0d) buffer = buffer.subarray(0, -1);
+      line = buffer.toString("utf8");
+    }
+    const result = {
+      line,
+      byteLength,
+      overlong,
+      firstNonWhitespaceByte,
+    };
+    chunks = [];
+    bufferedBytes = 0;
+    byteLength = 0;
+    overlong = false;
+    firstNonWhitespaceByte = null;
+    return result;
+  };
+
+  try {
+    for await (const value of input) {
+      const chunk = Buffer.isBuffer(value) ? value : Buffer.from(value);
+      let start = 0;
+      while (start < chunk.length) {
+        const newline = chunk.indexOf(0x0a, start);
+        const end = newline === -1 ? chunk.length : newline;
+        appendSegment(chunk.subarray(start, end));
+        if (newline === -1) break;
+        yield finishLine(true);
+        start = newline + 1;
+      }
+    }
+    if (byteLength > 0 || overlong) yield finishLine(false);
+  } finally {
+    input.destroy();
+  }
+}
+
+/**
+ * @param {string} file
  * @param {UsageDiagnostics} diagnostics
  * @param {(record: ScannedUsageRecord) => void} onRecord
  */
 async function scanFile(file, diagnostics, onRecord) {
   let parsedJsonLines = 0;
   let malformedLines = 0;
+  let overlongLines = 0;
+  let observedBytes = 0;
+  let nonEmptyLines = 0;
+  let rejectOversizedWholeDocument = false;
+  let startsWithWholeDocumentArray = false;
   /** @type {string[] | null} */
   let compatibilityLines = [];
-  const input = fs.createReadStream(file, { encoding: "utf8" });
-  const lines = readline.createInterface({
-    input,
-    crlfDelay: Infinity,
-  });
 
   /** @param {string} line */
   const processJsonLine = (line) => {
-    if (line.trimStart().startsWith("[")) {
-      malformedLines += 1;
-      return;
-    }
-
     try {
       const parsed = JSON.parse(line);
       parsedJsonLines += 1;
@@ -608,40 +692,61 @@ async function scanFile(file, diagnostics, onRecord) {
   const startStreamingJsonLines = () => {
     const bufferedLines = compatibilityLines || [];
     compatibilityLines = null;
+    if (startsWithWholeDocumentArray) {
+      rejectOversizedWholeDocument = true;
+      return;
+    }
     for (const line of bufferedLines) processJsonLine(line);
   };
 
   try {
-    for await (const line of lines) {
-      if (compatibilityLines && input.bytesRead > MAX_NON_JSONL_COMPAT_BYTES) {
+    for await (const boundedLine of readBoundedLines(file)) {
+      observedBytes += boundedLine.byteLength;
+      const line = boundedLine.line || "";
+      const isNonEmpty = boundedLine.overlong || line !== "";
+      if (isNonEmpty) {
+        nonEmptyLines += 1;
+        if (nonEmptyLines === 1) {
+          startsWithWholeDocumentArray =
+            (boundedLine.overlong &&
+              boundedLine.firstNonWhitespaceByte === 0x5b) ||
+            line.trim() === "[";
+        }
+      }
+
+      if (compatibilityLines && observedBytes > MAX_NON_JSONL_COMPAT_BYTES) {
         startStreamingJsonLines();
       }
-      if (!line) continue;
+      if (!isNonEmpty || rejectOversizedWholeDocument) continue;
 
-      if (compatibilityLines) compatibilityLines.push(line);
-      else processJsonLine(line);
+      if (boundedLine.overlong) {
+        overlongLines += 1;
+      } else if (compatibilityLines) {
+        compatibilityLines.push(line);
+      } else {
+        processJsonLine(line);
+      }
     }
   } catch (error) {
     if (compatibilityLines) startStreamingJsonLines();
     if (parsedJsonLines > 0) {
+      recordSkippedLines(diagnostics, file, overlongLines, "overlong JSONL");
       recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
     }
     recordReadFailure(diagnostics, file, error);
     return;
-  } finally {
-    lines.close();
-    input.destroy();
   }
 
   if (!compatibilityLines) {
-    if (parsedJsonLines > 0) {
+    if (parsedJsonLines > 0 && !rejectOversizedWholeDocument) {
+      recordSkippedLines(diagnostics, file, overlongLines, "overlong JSONL");
       recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
       return;
     }
     recordSkippedLines(
       diagnostics,
       file,
-      malformedLines,
+      nonEmptyLines,
       "non-JSONL input beyond the compatibility limit",
     );
     return;
@@ -751,18 +856,20 @@ function isUserMessage(input) {
  * @param {string} file
  * @param {UsageDiagnostics} diagnostics
  * @param {(record: UsageRecord) => void} onRecord
+ * @param {boolean} ignoreMissing
  */
-async function readUsageRecords(file, diagnostics, onRecord) {
+async function readUsageRecords(file, diagnostics, onRecord, ignoreMissing) {
   let malformedLines = 0;
   let invalidLines = 0;
-  const input = fs.createReadStream(file, { encoding: "utf8" });
-  const lines = readline.createInterface({
-    input,
-    crlfDelay: Infinity,
-  });
+  let overlongLines = 0;
 
   try {
-    for await (const line of lines) {
+    for await (const boundedLine of readBoundedLines(file)) {
+      if (boundedLine.overlong) {
+        overlongLines += 1;
+        continue;
+      }
+      const line = boundedLine.line || "";
       if (!line) continue;
       try {
         const record = normalizeUsageRecord(JSON.parse(line));
@@ -773,12 +880,13 @@ async function readUsageRecords(file, diagnostics, onRecord) {
       }
     }
   } catch (error) {
-    recordReadFailure(diagnostics, file, error);
-  } finally {
-    lines.close();
-    input.destroy();
+    const errorCode = asRecord(error).code;
+    if (!(ignoreMissing && errorCode === "ENOENT")) {
+      recordReadFailure(diagnostics, file, error);
+    }
   }
 
+  recordSkippedLines(diagnostics, file, overlongLines, "overlong JSONL");
   recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
   recordSkippedLines(diagnostics, file, invalidLines, "invalid usage record");
 }
