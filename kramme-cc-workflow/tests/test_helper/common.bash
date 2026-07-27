@@ -5,6 +5,13 @@
 export HOOKS_DIR="${BATS_TEST_DIRNAME}/../hooks"
 export CLAUDE_PLUGIN_ROOT="${BATS_TEST_DIRNAME}/.."
 
+# Helper: Write stdin to a file, creating its parent directory first.
+write_file() {
+  local path="$1"
+  mkdir -p "$(dirname "$path")"
+  cat >"$path"
+}
+
 # Helper: Create JSON input for block-rm-rf hook
 make_bash_input() {
   local cmd="$1"
