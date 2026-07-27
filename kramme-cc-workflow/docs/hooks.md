@@ -66,6 +66,11 @@ an object with `summary` and `diagnostics` fields instead. Add `--strict` to
 render the same result but exit nonzero when any input was skipped or could not
 be read.
 
+Scan treats JSONL as its canonical streaming format. Whole-document JSON and
+plaintext use a compatibility fallback limited to 1 MiB per file. Larger
+non-JSONL files are skipped with diagnostics; `--strict` makes that condition
+fail the command after rendering the degraded result.
+
 The hook is silent and fail-open. If Node.js is unavailable, if the payload cannot be parsed, or if recording fails, the hook returns `{}` and does not block the session.
 
 ## context-links Configuration

@@ -12,7 +12,7 @@ const STATE_DIR = path.join(
   "kramme-cc-workflow",
 );
 const DEFAULT_USAGE_FILE = path.join(STATE_DIR, "skill-usage.jsonl");
-const MAX_NON_JSONL_FALLBACK_BYTES = 1024 * 1024;
+const MAX_NON_JSONL_COMPAT_BYTES = 1024 * 1024;
 const SLASH_SKILL_PATTERN = /(?:^|\s)\/(kramme:[A-Za-z0-9:_-]+)/g;
 const DIRECT_SKILL_PATTERN = /^\/?(kramme:[A-Za-z0-9:_-]+)(?:\s|$)/;
 const SCAN_PRUNED_DIRS = new Set([
@@ -112,6 +112,8 @@ Records are stored in:
 
 Report and scan tolerate degraded input by default and expose diagnostic
 counters. Use --strict to return a non-zero status when diagnostics occur.
+JSONL scan inputs stream incrementally. Whole-document JSON and plaintext
+compatibility input is limited to 1 MiB per file.
 
 Environment:
   KRAMME_SKILL_USAGE_FILE  Override the usage JSONL file path.
@@ -593,7 +595,7 @@ async function scanFile(file, diagnostics, onRecord) {
 
       if (fallbackAvailable) {
         fallbackBytes += Buffer.byteLength(line) + 1;
-        if (fallbackBytes <= MAX_NON_JSONL_FALLBACK_BYTES) {
+        if (fallbackBytes <= MAX_NON_JSONL_COMPAT_BYTES) {
           fallbackLines.push(line);
         } else {
           fallbackAvailable = false;
@@ -632,7 +634,7 @@ async function scanFile(file, diagnostics, onRecord) {
       diagnostics,
       file,
       malformedLines,
-      "non-JSONL input beyond the fallback limit",
+      "non-JSONL input beyond the compatibility limit",
     );
     return;
   }

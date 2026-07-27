@@ -254,7 +254,7 @@ test("scan tolerates corrupt lines and unreadable inputs without losing valid to
   );
 });
 
-test("scan keeps the bounded non-JSONL text fallback", async (t) => {
+test("scan keeps the bounded non-JSONL compatibility fallback", async (t) => {
   const root = await tempDir(t);
   const notes = path.join(root, "notes.txt");
   await fs.writeFile(notes, "Please run /kramme:qa before wrapping up.\n");
@@ -264,6 +264,35 @@ test("scan keeps the bounded non-JSONL text fallback", async (t) => {
   assert.equal(result.status, 0);
   assert.equal(result.stderr, "");
   assert.equal(JSON.parse(result.stdout)[0].skill, "kramme:qa");
+});
+
+test("scan diagnoses non-JSONL input beyond the compatibility limit", async (t) => {
+  const root = await tempDir(t);
+  const notes = path.join(root, "large-notes.txt");
+  await fs.writeFile(
+    notes,
+    `Please run /kramme:qa before wrapping up. ${"x".repeat(MIB)}\n`,
+  );
+
+  const tolerant = runUsage(["scan", notes, "--json"]);
+  const expected = {
+    summary: [],
+    diagnostics: {
+      skippedLines: 1,
+      readFailures: 0,
+    },
+  };
+  const stderr =
+    `skill-usage: skipped 1 non-JSONL input beyond the compatibility limit line file=${notes}\n`;
+
+  assert.equal(tolerant.status, 0);
+  assert.deepEqual(JSON.parse(tolerant.stdout), expected);
+  assert.equal(tolerant.stderr, stderr);
+
+  const strict = runUsage(["scan", notes, "--json", "--strict"]);
+  assert.equal(strict.status, 1);
+  assert.deepEqual(JSON.parse(strict.stdout), expected);
+  assert.equal(strict.stderr, stderr);
 });
 
 test(
