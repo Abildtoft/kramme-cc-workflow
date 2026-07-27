@@ -505,7 +505,6 @@ async function finalizeCodexBundleOutput(
   await cleanupKrammeComponents(skillsRoot, {
     label: "skill",
     filter: (e) => e.isDirectory(),
-    recursive: true,
     prefixes: ["impl-"],
     confirmOptions: extraOpts.confirm,
   });
@@ -514,7 +513,6 @@ async function finalizeCodexBundleOutput(
     previousEntries.skills,
     {
       label: "skill",
-      recursive: true,
       confirmOptions: extraOpts.confirm,
     },
   );
@@ -535,7 +533,6 @@ async function finalizeCodexBundleOutput(
       previousEntries.agentSkills,
       {
         label: "skill",
-        recursive: true,
         confirmOptions: extraOpts.confirm,
       },
     );

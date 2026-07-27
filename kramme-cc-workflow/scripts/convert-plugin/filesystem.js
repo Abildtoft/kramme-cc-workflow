@@ -119,6 +119,29 @@ async function pathExists(filePath) {
   }
 }
 
+/** @param {string} file @param {Buffer | string} expectedContent */
+async function fileContentEquals(file, expectedContent) {
+  const content = await fs.readFile(file);
+  return content.equals(expectedContentBuffer(expectedContent));
+}
+
+/** @param {Buffer | string} expectedContent */
+function expectedContentBuffer(expectedContent) {
+  return Buffer.isBuffer(expectedContent)
+    ? expectedContent
+    : Buffer.from(expectedContent, "utf8");
+}
+
+/** @param {string} file */
+async function lstatIfExists(file) {
+  try {
+    return await fs.lstat(file);
+  } catch (error) {
+    if (filesystemErrorCode(error) === "ENOENT") return null;
+    throw error;
+  }
+}
+
 /** @param {string} operation @param {string} filePath @param {unknown} error */
 function contextualizeFilesystemError(operation, filePath, error) {
   const detail = error instanceof Error ? error.message : String(error);
@@ -238,9 +261,12 @@ module.exports = {
   copyFilePreservingMetadata,
   contextualizeFilesystemError,
   ensureDir,
+  expectedContentBuffer,
+  fileContentEquals,
   filesystemErrorCode,
   isJsonObject,
   listRelativeFiles,
+  lstatIfExists,
   pathExists,
   readJson,
   readJsonObject,

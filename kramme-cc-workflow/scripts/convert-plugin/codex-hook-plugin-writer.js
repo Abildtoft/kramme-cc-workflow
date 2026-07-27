@@ -147,7 +147,6 @@ async function finalizeCodexHookPluginBundle(
     previousEntries.pluginCaches,
     {
       label: "Codex plugin cache",
-      recursive: true,
       confirmOptions,
     },
   );
@@ -156,7 +155,6 @@ async function finalizeCodexHookPluginBundle(
     previousEntries.hookMarketplaces,
     {
       label: "Codex hook marketplace",
-      recursive: true,
       confirmOptions,
     },
   );

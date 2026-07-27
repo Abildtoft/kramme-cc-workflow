@@ -15,6 +15,7 @@
       "kramme-cc-workflow/scripts/convert-plugin/frontmatter.js",
       "kramme-cc-workflow/scripts/convert-plugin/install-staging.js",
       "kramme-cc-workflow/scripts/convert-plugin/install-state.js",
+      "kramme-cc-workflow/scripts/convert-plugin/install-transaction.js",
       "kramme-cc-workflow/scripts/convert-plugin/loader.js",
       "kramme-cc-workflow/scripts/schemas/skill-contracts.js"
     ],
