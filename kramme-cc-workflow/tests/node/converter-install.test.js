@@ -5,12 +5,17 @@ const fs = require("fs/promises");
 const path = require("path");
 const test = require("node:test");
 
+const installTransaction = require("../../scripts/convert-plugin/install-transaction");
+const { withInstallTransaction } = installTransaction;
+
 const {
+  cleanupInstalledEntries,
+  cleanupKrammeComponents,
   installStagedDir,
   installStagedFile,
   preflightStagedDirInstall,
   pruneStaleManagedFiles,
-  withInstallTransaction,
+  withInstallTransaction: withStagingInstallTransaction,
 } = require("../../scripts/convert-plugin/install-staging");
 
 const {
@@ -25,6 +30,16 @@ const {
   pathExists,
   assertFilesystemError,
 } = require("./converter-test-helpers");
+
+test("install transaction exposes the narrow staging boundary", () => {
+  assert.deepEqual(Object.keys(installTransaction).sort(), [
+    "prepareTransactionMutation",
+    "publishStagedFile",
+    "recordInstalledTargetForRollback",
+    "withInstallTransaction",
+  ]);
+  assert.equal(withStagingInstallTransaction, withInstallTransaction);
+});
 
 test("install state rebuild sanitizes legacy manifests and managed file paths", async () => {
   await withTempDir(async (root) => {
@@ -325,6 +340,37 @@ test("install staging does not prune stale files through symlinked ancestors", a
       (await fs.lstat(path.join(skillDir, "references"))).isSymbolicLink(),
       true,
     );
+  });
+});
+
+test("cleanup helpers remove files and directories without recursive options", async () => {
+  await withTempDir(async (root) => {
+    const managedRoot = path.join(root, "managed");
+    const managedDir = path.join(managedRoot, "nested");
+    const managedFile = path.join(managedRoot, "prompt.md");
+    const legacyRoot = path.join(root, "legacy");
+    const legacyDir = path.join(legacyRoot, "kramme:old-skill");
+
+    await writeFile(path.join(managedDir, "child.md"), "managed\n");
+    await writeFile(managedFile, "prompt\n");
+    await writeFile(path.join(legacyDir, "SKILL.md"), "legacy\n");
+
+    assert.equal(
+      await cleanupInstalledEntries(managedRoot, ["nested", "prompt.md"], {
+        label: "managed entry",
+        confirmOptions: { yes: true },
+      }),
+      true,
+    );
+    await cleanupKrammeComponents(legacyRoot, {
+      label: "skill",
+      filter: (entry) => entry.isDirectory(),
+      confirmOptions: { yes: true },
+    });
+
+    assert.equal(await pathExists(managedDir), false);
+    assert.equal(await pathExists(managedFile), false);
+    assert.equal(await pathExists(legacyDir), false);
   });
 });
 
