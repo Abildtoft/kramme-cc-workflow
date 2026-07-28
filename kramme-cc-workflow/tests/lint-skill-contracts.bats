@@ -691,6 +691,7 @@ EOF
   [[ "$resolver_text" == *"Waiting on"* ]]
   [[ "$resolver_text" == *"apply the completed-decision replacement in \`references/resolution-output.md\`"* ]]
   [[ "$resolver_text" == *"Read \`references/resolution-output.md\` before writing or updating manual findings."* ]]
+  [[ "$resolver_text" == *"Before generating or updating review output, read \`references/resolution-output.md\`"* ]]
   [[ "$resolver_output_text" == *"**Recommended resolution:**"* ]]
   [[ "$resolver_output_text" == *"every finding routed through Step 2d's manual-proposal flow"* ]]
   [[ "$resolver_output_text" == *"process-level external or legacy findings without an action class"* ]]
@@ -707,6 +708,11 @@ EOF
   [[ "$resolver_output_text" == *"retain **Selected resolution**, keep **Resolution status: open**, and record the failed attempt in **Action taken**"* ]]
   [[ "$resolver_output_text" == *"Do not leave proposal-only fields on an addressed or acknowledged finding."* ]]
   [[ "$resolver_output_text" == *"R open selected-resolution retries or blocked implementations, A manual findings awaiting a user decision, P accepted process handoffs awaiting completion, and X manual findings waiting on an external owner"* ]]
+  [[ "$resolver_output_text" == *'If the source review was `UX_REVIEW_OVERVIEW.md`'* ]]
+  [[ "$resolver_output_text" == *"Findings present in the source but not addressed in this run"*'stay verbatim'* ]]
+  [[ "$resolver_output_text" == *"#### Comment #N: [Brief description]"* ]]
+  [[ "$resolver_output_text" == *"#### Finding #N: [Brief description]"* ]]
+  [[ "$resolver_output_text" == *"#### Deferred: [Brief description]"* ]]
   [[ "$resolver_team_text" == *"Manual findings that Step 2d keeps unresolved or deferred are never assigned to resolver agents"* ]]
   [[ "$resolver_team_text" == *"Any manual finding that Step 2d classifies as implementation payload remains resolver-eligible"* ]]
   [[ "$resolver_team_text" == *"Step 2d is the canonical eligibility contract"* ]]
@@ -1116,16 +1122,21 @@ PY
 }
 
 @test "siw issue creators share the same final-boundary reservation protocol" {
-  local issue_define_text generate_phases_text tracker_schema_text
+  local issue_define_text generate_phases_text publication_recovery_text generate_phases_contract_text tracker_schema_text
   issue_define_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-define/SKILL.md")"
   generate_phases_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:generate-phases/SKILL.md")"
+  publication_recovery_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:generate-phases/references/publication-recovery.md")"
+  generate_phases_contract_text="${generate_phases_text}"$'\n'"${publication_recovery_text}"
   tracker_schema_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-define/references/tracker-schema.md")"
 
   cmp -s "$ISSUE_DEFINE_RESERVATION_HELPER" "$GENERATE_PHASES_RESERVATION_HELPER"
   [ -x "$ISSUE_DEFINE_RESERVATION_HELPER" ]
   [ -x "$GENERATE_PHASES_RESERVATION_HELPER" ]
 
-  for skill_text in "$issue_define_text" "$generate_phases_text"; do
+  [[ "$generate_phases_text" == *'Before approving replacement, read `references/publication-recovery.md`'* ]]
+  [[ "$generate_phases_text" == *'Before Phase 6 performs its first mutation, read `references/publication-recovery.md`'* ]]
+
+  for skill_text in "$issue_define_text" "$generate_phases_contract_text"; do
     [[ "$skill_text" == *'scripts/siw-issue-reservation.sh'* ]]
     [[ "$skill_text" == *'serializes its own invocations'* ]]
     [[ "$skill_text" == *'operation claim is reclaimed only after its recorded process no longer exists'* ]]
@@ -1154,23 +1165,23 @@ PY
   [[ "$issue_define_text" == *'IMPROVE_BASE_HASH'* ]]
   [[ "$issue_define_text" == *'Compare both its path and hash with the stored interview base'* ]]
   [[ "$issue_define_text" == *'Conflicting edits always require approval'* ]]
-  [[ "$generate_phases_text" == *'Build the complete provisional-to-final map'* ]]
-  [[ "$generate_phases_text" == *'reserve-batch siw <prefix> <owner-token> 100 <provisional-id>...'* ]]
-  [[ "$generate_phases_text" == *'release-batch siw <owner-token> <final-issue-id>...'* ]]
-  [[ "$generate_phases_text" == *'update filenames, headings, dependencies, related IDs, overview rows, and log ranges before writing'* ]]
-  [[ "$generate_phases_text" == *'REPLACE_APPROVED_SNAPSHOT'*'git hash-object'* ]]
-  [[ "$generate_phases_text" == *'compare it with `REPLACE_APPROVED_SNAPSHOT`, regardless of `git status`'* ]]
-  [[ "$generate_phases_text" == *'replacement issue path must be a non-symlink regular file'* ]]
-  [[ "$generate_phases_text" == *'path_hash="$(git hash-object "$path")" || exit 1'* ]]
-  [[ "$generate_phases_text" == *'separate sort shown in Phase 1'* ]]
-  [[ "$generate_phases_text" == *'release-publication siw <owner-token>'*'because no replacement IDs have been reserved yet'* ]]
-  [[ "$generate_phases_text" == *'reacquire with the retained token'*'recompute the snapshot'* ]]
-  [[ "$generate_phases_text" == *'REMOVED_ISSUE_IDS'* ]]
-  [[ "$generate_phases_text" == *'append every `REMOVED_ISSUE_IDS` value after the final IDs'* ]]
-  [[ "$generate_phases_text" == *'release only the completed final-ID reservations'* ]]
-  [[ "$generate_phases_text" == *'failed multi-ID reservation attempt must unwind every exact reservation created by that attempt'* ]]
-  [[ "$generate_phases_text" == *'Once replacement deletion starts, never abandon any replacement reservation'* ]]
-  [[ "$generate_phases_text" == *'batches all issue-file digests within each immutable operation snapshot'* ]]
+  [[ "$publication_recovery_text" == *'Build the complete provisional-to-final map'* ]]
+  [[ "$publication_recovery_text" == *'reserve-batch siw <prefix> <owner-token> 100 <provisional-id>...'* ]]
+  [[ "$publication_recovery_text" == *'release-batch siw <owner-token> <final-issue-id>...'* ]]
+  [[ "$publication_recovery_text" == *'update filenames, headings, dependencies, related IDs, overview rows, and log ranges before writing'* ]]
+  [[ "$publication_recovery_text" == *'REPLACE_APPROVED_SNAPSHOT'*'git hash-object'* ]]
+  [[ "$publication_recovery_text" == *'compare it with `REPLACE_APPROVED_SNAPSHOT`, regardless of `git status`'* ]]
+  [[ "$publication_recovery_text" == *'replacement issue path must be a non-symlink regular file'* ]]
+  [[ "$publication_recovery_text" == *'path_hash="$(git hash-object "$path")" || exit 1'* ]]
+  [[ "$publication_recovery_text" == *'separate sort defined in the `Replacement approval snapshot` section above'* ]]
+  [[ "$publication_recovery_text" == *'release-publication siw <owner-token>'*'because no replacement IDs have been reserved yet'* ]]
+  [[ "$publication_recovery_text" == *'reacquire with the retained token'*'recompute the snapshot'* ]]
+  [[ "$publication_recovery_text" == *'REMOVED_ISSUE_IDS'* ]]
+  [[ "$publication_recovery_text" == *'append every `REMOVED_ISSUE_IDS` value after the final IDs'* ]]
+  [[ "$publication_recovery_text" == *'release only the completed final-ID reservations'* ]]
+  [[ "$publication_recovery_text" == *'failed multi-ID reservation attempt must unwind every exact reservation created by that attempt'* ]]
+  [[ "$publication_recovery_text" == *'Once replacement deletion starts, never abandon any replacement reservation'* ]]
+  [[ "$publication_recovery_text" == *'batches all issue-file digests within each immutable operation snapshot'* ]]
   [[ "$tracker_schema_text" == *'Phase 6 Step 3'* ]]
   [[ "$tracker_schema_text" != *'ask the user whether'* ]]
 }
