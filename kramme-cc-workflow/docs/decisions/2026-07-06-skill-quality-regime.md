@@ -6,37 +6,28 @@
 
 ## Context
 
-`kramme-cc-workflow` ships 108 prompt-based skills. Committed deterministic
-behavioral evals currently cover exactly one skill: `kramme:skill:review`,
-through `evals/skill-review/` and the constrained SkillOpt pilot documented in
-`evals/skillopt/README.md`.
+At the time of this decision on 2026-07-06, `kramme-cc-workflow` shipped 108 prompt-based skills. Committed deterministic behavioral evals currently cover exactly one skill: `kramme:skill:review`, through `evals/skill-review/` and the constrained SkillOpt pilot documented in `evals/skillopt/README.md`.
 
-The other verification layers are valuable but do not generally exercise skill
-behavior under a new generation model:
+The other verification layers are valuable but do not generally exercise skill behavior under a new generation model:
 
-- Bats, Node, Python, shell, and type checks cover scripts, adapters, fixtures,
-  and metadata contracts.
-- `scripts/lint-skill-contracts.py` covers frontmatter, naming, references,
-  platform filtering, and self-contained resource policy.
-- SkillSpector covers static skill security risks, and semantic scanning is not
-  part of the default gate.
-- The default `make verify` path runs the `skill-review` fixture eval, but it
-  does not run all top skills through a live model.
+- Bats, Node, Python, shell, and type checks cover scripts, adapters, fixtures, and metadata contracts.
+- `scripts/lint-skill-contracts.py` covers frontmatter, naming, references, platform filtering, and self-contained resource policy.
+- SkillSpector covers static skill security risks, and semantic scanning is not part of the default gate.
+- The default `make verify` path runs the `skill-review` fixture eval, but it does not run all top skills through a live model.
 
 The 90-day local usage report on 2026-07-06 showed the top five skills as:
 
-| Rank | Skill | 90-day uses | Sessions |
-| --- | --- | ---: | ---: |
-| 1 | `kramme:pr:resolve-review` | 204 | 176 |
-| 2 | `kramme:skill:review` | 195 | 190 |
-| 3 | `kramme:pr:code-review` | 44 | 36 |
-| 4 | `kramme:pr:rebase` | 34 | 23 |
-| 5 | `kramme:code:agent-readiness` | 31 | 24 |
+| Rank | Skill                         | 90-day uses | Sessions |
+| ---- | ----------------------------- | ----------: | -------: |
+| 1    | `kramme:pr:resolve-review`    |         204 |      176 |
+| 2    | `kramme:skill:review`         |         195 |      190 |
+| 3    | `kramme:pr:code-review`       |          44 |       36 |
+| 4    | `kramme:pr:rebase`            |          34 |       23 |
+| 5    | `kramme:code:agent-readiness` |          31 |       24 |
 
 ## Risk Table
 
-If a model-generation upgrade silently degraded behavior, these are the existing
-signals and their damage window.
+If a model-generation upgrade silently degraded behavior, these are the existing signals and their damage window.
 
 | Skill | Existing signal likely to catch a model-regression | Damage before signal |
 | --- | --- | --- |
@@ -50,22 +41,17 @@ signals and their damage window.
 
 Use **dogfooding-is-QA** as the skill-quality regime for prompt behavior.
 
-The committed `evals/` investment is explicitly capped at the current
-`kramme:skill:review` pilot:
+The committed `evals/` investment is explicitly capped at the current `kramme:skill:review` pilot:
 
 - exactly one committed behavioral eval target: `evals/skill-review/`
 - exactly one SkillOpt bridge: `evals/skillopt/` for `kramme:skill:review`
-- zero additional committed skill-behavior eval directories, splits, adapters,
-  or candidate gates until a future ADR changes this decision
+- zero additional committed skill-behavior eval directories, splits, adapters, or candidate gates until a future ADR changes this decision
 
-The default quality signal for the rest of the skill catalog is maintainer
-dogfooding plus lightweight post-model-upgrade smoke testing of the current top
-N skills, where `N = 5`.
+The default quality signal for the rest of the skill catalog is maintainer dogfooding plus lightweight post-model-upgrade smoke testing of the current top N skills, where `N = 5`.
 
 ## Post-Model-Upgrade Smoke Ritual
 
-After a model-generation upgrade that could affect skill behavior, run this
-ritual before relying on the affected model for high-leverage skill work:
+After a model-generation upgrade that could affect skill behavior, run this ritual before relying on the affected model for high-leverage skill work:
 
 1. Refresh the top-five list:
 
@@ -74,11 +60,8 @@ ritual before relying on the affected model for high-leverage skill work:
    ```
 
 2. Create a scratch record under `.context/model-upgrade-smoke/<date>/`.
-3. For each top-five skill, run one representative sandbox task and record:
-   prompt, model/version if known, pass/fail, notable drift, and follow-up.
-4. Treat any failed smoke on an editing or history-rewriting skill as a block on
-   production use of that skill with the new model until the prompt, workflow,
-   or model choice is adjusted.
+3. For each top-five skill, run one representative sandbox task and record: prompt, model/version if known, pass/fail, notable drift, and follow-up.
+4. Treat any failed smoke on an editing or history-rewriting skill as a block on production use of that skill with the new model until the prompt, workflow, or model choice is adjusted.
 
 For the 2026-07-06 top five, the smoke cases are:
 
@@ -96,10 +79,7 @@ For the 2026-07-06 top five, the smoke cases are:
 
 Rejected for now.
 
-`evals/skillopt/README.md` already defines the expansion criteria: high
-usage/high impact, deterministic fixtures, distinct train/val/test splits,
-false-positive cases, `.context/` output isolation, a candidate gate, and a
-manual review packet.
+`evals/skillopt/README.md` already defines the expansion criteria: high usage/high impact, deterministic fixtures, distinct train/val/test splits, false-positive cases, `.context/` output isolation, a candidate gate, and a manual review packet.
 
 The current top-five list does not make expansion free:
 
@@ -110,30 +90,23 @@ The current top-five list does not make expansion free:
 | `kramme:pr:rebase` | High impact, but behavior depends on Git state, conflicts, and safety gates. A useful eval would be closer to an integration test matrix than a prompt fixture split. |
 | `kramme:code:agent-readiness` | Medium impact and checkability is subjective. Deterministic score fixtures would need stable fixture repos and rubrics before optimization is credible. |
 
-Expansion remains available later, but each added skill must first satisfy the
-documented SkillOpt expansion criteria and come with its own deterministic split
-and candidate gate.
+Expansion remains available later, but each added skill must first satisfy the documented SkillOpt expansion criteria and come with its own deterministic split and candidate gate.
 
 ## Consequences
 
 Positive:
 
 - Keeps committed eval maintenance size explicit and bounded.
-- Avoids optimizing broad subjective workflows against weak or misleading
-  fixtures.
+- Avoids optimizing broad subjective workflows against weak or misleading fixtures.
 - Makes model-upgrade risk visible through a repeatable smoke ritual.
 - Preserves the existing SkillOpt pilot as the place to learn before scaling.
 
 Negative:
 
 - Most skill behavior regressions are still detected by dogfooding, not by CI.
-- A model regression can affect at least one real task before detection when the
-  smoke ritual is skipped or too narrow.
-- High-leverage editing skills remain dependent on human judgment, tests, and
-  review after they act.
+- A model regression can affect at least one real task before detection when the smoke ritual is skipped or too narrow.
+- High-leverage editing skills remain dependent on human judgment, tests, and review after they act.
 
 Follow-up:
 
-- Revisit this ADR only when a candidate skill has deterministic fixtures,
-  false-positive cases, and a candidate gate that meet the existing SkillOpt
-  expansion criteria.
+- Revisit this ADR only when a candidate skill has deterministic fixtures, false-positive cases, and a candidate gate that meet the existing SkillOpt expansion criteria.

@@ -33,7 +33,7 @@ Paths passed through file variables are relative to `kramme-cc-workflow/`.
 | Dev-server detection | `scripts/dev-server/*.sh`, `scripts/dev-server/README.md` | `bats kramme-cc-workflow/tests/dev-server-scripts.bats` |
 | PR diff and base helpers | `scripts/resolve-base.sh`, `scripts/collect-review-diff.sh` | `bats kramme-cc-workflow/tests/resolve-base.bats kramme-cc-workflow/tests/review-diff-scripts.bats` |
 | Release and changelog | `kramme-cc-workflow/scripts/release.py`, `kramme-cc-workflow/scripts/changelog.py`, `kramme-cc-workflow/RELEASE.md`, `kramme-cc-workflow/CHANGELOG.md` | `bats kramme-cc-workflow/tests/release.bats` |
-| Skill contract linting | `kramme-cc-workflow/scripts/lint-skill-contracts.py`, skill and agent frontmatter | `make -C kramme-cc-workflow test-skill-contracts`, `python3 kramme-cc-workflow/scripts/lint-skill-contracts.py` |
+| Skill contract linting | `kramme-cc-workflow/scripts/lint-skill-contracts.py`, [package responsibility map](../scripts/lint_skill_contracts/README.md), skill and agent frontmatter | `make -C kramme-cc-workflow test-skill-contracts`, `python3 kramme-cc-workflow/scripts/lint-skill-contracts.py` |
 | SkillSpector runner | `kramme-cc-workflow/scripts/run-skillspector.sh`, `kramme-cc-workflow/config/skillspector-accepted-findings.json` | `bats kramme-cc-workflow/tests/skillspector-runner.bats` |
 | Skill-review eval | `kramme-cc-workflow/evals/skill-review/` | `make -C kramme-cc-workflow test-skill-review-eval`, `make -C kramme-cc-workflow skill-eval-skill-review` |
 | Skill-review scorer | `kramme-cc-workflow/evals/skill-review/scorer.js` | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/scorer.test.js` |
