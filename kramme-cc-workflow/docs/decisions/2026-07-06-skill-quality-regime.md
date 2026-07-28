@@ -6,10 +6,10 @@
 
 ## Context
 
-`kramme-cc-workflow` ships 108 prompt-based skills. Committed deterministic
-behavioral evals currently cover exactly one skill: `kramme:skill:review`,
-through `evals/skill-review/` and the constrained SkillOpt pilot documented in
-`evals/skillopt/README.md`.
+At the time of this decision on 2026-07-06, `kramme-cc-workflow` shipped 108
+prompt-based skills. Committed deterministic behavioral evals currently cover
+exactly one skill: `kramme:skill:review`, through `evals/skill-review/` and the
+constrained SkillOpt pilot documented in `evals/skillopt/README.md`.
 
 The other verification layers are valuable but do not generally exercise skill
 behavior under a new generation model:
