@@ -4,7 +4,7 @@ Use this only when `apply_changes=true` or the user asks to apply discovery outp
 
 ## Refinement Mode
 
-1. Edit the target document(s) using decisions from Step 4.
+1. Edit the target document(s) using the validated `INTERVIEW RESULT:` and its artifact impact map, as synthesized in `siw/SPEC_STRENGTHENING_PLAN.md`.
 2. Target documents may be SIW spec files or `siw/DISCOVERY_BRIEF.md`.
 3. Preserve structure: add missing sections, do not scatter content.
 4. Preserve any `MISSING REQUIREMENT:` markers for unresolved dimensions instead of filling those sections with guesses.

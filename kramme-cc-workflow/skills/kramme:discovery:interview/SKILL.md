@@ -47,14 +47,24 @@ A sibling skill may call this skill as the interview engine without changing thi
 - **Synthesis override** — the caller-owned templates, output path, markers, vocabulary, and readiness rules.
 - **Confidence target** — either `topic-coverage` (the standalone default) or an evidence-confidence percentage plus any Work Context profile.
 - **Interview mode** — coverage or decision-tree, including a user-requested mode switch.
+- **Decision-tree context** — optional caller-owned guidance for selecting the root, prioritizing branches, and crediting decisions already answered by source artifacts.
 
 For delegated calls:
 
 1. Treat the brief as the resolved input to Step 0, but verify every referenced artifact is readable.
 2. Run autonomous framing, classification, and the interview loop from this skill. Do not repeat context-resolution questions the caller already answered.
 3. Read `references/probing-techniques.md` for the shared technique library. For an evidence-confidence target, also read `references/confidence-framework.md` and use its ledger, dashboard, and stop rules; otherwise keep the standalone topic-coverage rules from `references/interview-operations.md`.
-4. Apply the synthesis override as a return contract, not as permission to duplicate the caller's domain policy here.
-5. Return `INTERVIEW RESULT:` with the validated hypothesis, classification, decisions and rationales, non-goals, evidence ledger or coverage status, unresolved `MISSING REQUIREMENT` items, risks, and source references. Do not ask for a plan path or write a standalone template when the caller owns synthesis.
+4. When Decision-Tree mode is active, apply any decision-tree context while selecting the root and mapping dependencies. Preserve caller-provided artifact references on branches they already answer.
+5. Apply the synthesis override as a return contract, not as permission to duplicate the caller's domain policy here.
+6. Return `INTERVIEW RESULT:` with all of:
+   - validated hypothesis and topic classification,
+   - decisions with rationales and, for artifact-backed refinement, an impact map from each decision to affected source file/section,
+   - non-goals with rationales and stated-vs-actual divergence (or explicit alignment),
+   - initial confidence, final confidence with overall percentage, and interview-round count,
+   - the evidence ledger for an evidence-confidence profile or topic-coverage status for a topic-coverage profile,
+   - unresolved `MISSING REQUIREMENT` items, risks, and source references.
+
+Do not ask for a plan path, write a standalone template, or emit `PLAN:` when the caller owns synthesis.
 
 If the runtime cannot invoke one skill from another, the caller may read this `SKILL.md` and the references named above and execute Steps 1–4 inline. The same profile and return contract apply.
 
@@ -99,6 +109,8 @@ Before starting the interview, write down a working hypothesis for:
 Treat these as assumptions to validate, not excuses to ask generic setup questions.
 
 **Frame the underlying problem, not the proposed solution.** When the input includes a proposed approach ("let's add X", "we should switch to Y"), separate the problem the proposal is meant to solve from the proposal itself. The proposal may be correct, but the framing — and any research in Phase R — must be about the problem so that alternatives stay visible.
+
+For delegated calls, present the working hypothesis before the first question as a 2–4 sentence `UNVERIFIED:` statement, then continue without waiting unless the user responds. This preserves an early correction point without turning framing into a gate.
 
 If the topic conflicts with active tracks, target users, key metrics, or non-goals in `STRATEGY_CONTEXT`, state the conflict before asking interview questions. Surface it as context, not as a veto: the user may be intentionally changing direction.
 
@@ -206,7 +218,7 @@ Carry research findings forward as context for Step 3. Apply the existing **Code
 
 ## Step 3: Interview Approach
 
-Read `references/interview-operations.md`, `references/question-dimensions.md`, and `references/probing-techniques.md` before crafting the first interview round.
+Read `references/question-dimensions.md` and `references/probing-techniques.md` before crafting the first interview round. For a topic-coverage profile, also read `references/interview-operations.md`. For an evidence-confidence profile, read `references/confidence-framework.md` instead. Do not load the other profile's round, progress, or stop contract.
 
 Use the shared technique library plus the question philosophy, Codebase-as-answer-source rule, and topic-specific dimensions to ask questions that challenge assumptions, expose edge cases, reveal dependencies, quantify tradeoffs, force prioritization, separate decision ownership, and plan the learning loop.
 
@@ -224,6 +236,8 @@ Select one progress profile:
 - **Evidence confidence** — use when a delegated caller supplies a confidence percentage. Read `references/confidence-framework.md`; use the Work Context adjustments, evidence ledger, 1–3-question rounds, dashboard, and target threshold defined there.
 
 In **Decision-Tree mode**, read `references/decision-tree-mode.md`, identify the root decision for the topic type, map first-level dependencies, and resolve branches depth-first. Ask one question at a time by default; batch only routine independent sibling questions. When the active tree is resolved, return to the active progress profile for any remaining independent dimensions.
+
+If the user requests Decision-Tree mode mid-session (for example, "walk this depth-first"), finish processing the current answer, switch the active interview mode, apply any delegated decision-tree context, and continue with the coupled decisions in flight. Do not discard evidence already collected by the coverage profile.
 
 For topic coverage, use `references/interview-operations.md` for round structure, adaptive follow-up behavior, the ADR-offer hook, progress tracking, and completion criteria. For evidence confidence, use the round and answer-processing contracts in `references/probing-techniques.md` and the stop rules in `references/confidence-framework.md`. In either profile, synthesize answers before the next round and stop according to the active profile rather than mixing thresholds.
 
@@ -268,4 +282,5 @@ When the host runtime supports it (Claude Code) and the user wants to move direc
 4. **Challenge diplomatically** - "Have you considered X?" not "X is wrong"
 5. **Depth over breadth** - Better to deeply explore key areas than superficially cover everything
 
-- [ ] The `PLAN:` marker is present at hand-off.
+- [ ] Direct standalone hand-off includes the `PLAN:` marker.
+- [ ] Delegated hand-off includes `INTERVIEW RESULT:` and does not emit `PLAN:`.

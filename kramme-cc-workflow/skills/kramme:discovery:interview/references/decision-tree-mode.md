@@ -24,13 +24,7 @@ Skip the check when the question is about preference, priority, organizational c
 
 ## ADR-Offer Hook
 
-When a resolved decision meets all three criteria, offer to invoke `/kramme:docs:adr`:
-
-1. Hard to reverse.
-2. Surprising without context.
-3. Result of a real tradeoff.
-
-State the three criteria in the offer so the user can audit the trigger. Do not inline-author the ADR from this skill.
+Use the ADR-offer hook owned by the active progress profile: `interview-operations.md` for topic coverage or `probing-techniques.md` for evidence confidence. This mode changes traversal order, not the interaction contract.
 
 ## Switch Back to Coverage
 
