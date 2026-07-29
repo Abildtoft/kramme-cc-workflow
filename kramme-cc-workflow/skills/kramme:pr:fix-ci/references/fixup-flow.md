@@ -95,10 +95,17 @@ After successful rebase (or fallback), confirm one of these is true before pushi
 
 If neither is true, stop here. Keep the rebased result local, tell the user not to push it yet, and recommend either coordinating first or switching back to the default mode for visible iteration commits.
 
-If one of those conditions is true:
+If one of those conditions is true, choose exactly one push path:
 
 ```bash
-git push --force-with-lease origin "$(git branch --show-current)"
+if [ "$IN_STACK" = true ]; then
+  gh stack rebase --upstack --no-trunk
+  gh stack push
+else
+  git push --force-with-lease origin "$(git branch --show-current)"
+fi
 ```
 
 **Note:** `--force-with-lease` is required because the rebase rewrites history. It refuses to overwrite remote commits you haven't fetched, but it is not a substitute for collaborator coordination.
+
+`IN_STACK` was resolved in the parent skill before the loop. A stack rewrite orphans the branches above it, so the stack path restacks locally first and pushes only after that succeeds. Never force-push the rewritten parent branch before the stack-wide atomic push.

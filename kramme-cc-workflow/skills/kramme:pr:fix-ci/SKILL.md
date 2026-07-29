@@ -43,6 +43,18 @@ PR_NUMBER=$(gh pr view --json number --jq .number)
 
 If no PR exists for the current branch, stop and inform the user. Keep `PR_NUMBER` for Step 4.
 
+Resolve stack membership before the loop can create or rewrite commits:
+
+```bash
+STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
+  echo "Stack membership could not be determined; stop before changing the branch." >&2
+  exit 1
+}
+eval "$STACK_RESOLVED"
+```
+
+Set `IN_STACK=true` only for `STACK_MEMBERSHIP=local`; set it false for `none`. If membership is `remote`, stop: the PR is stacked on GitHub but not tracked locally. Install the extension if needed, run `gh stack checkout "$STACK_PR_NUMBER"` from a clean working tree, then retry. Authentication, API, parsing, and unexpected CLI failures must not fall through to the single-branch push flow.
+
 ### Step 2: Confirm the branch is in sync with the base
 
 A stale branch can produce CI failures unrelated to the PR, wasting iteration cycles. Catch this before iterating.
@@ -131,12 +143,24 @@ Stage only the files the fix loop actually edited in Step 7 — never `git add -
 ```bash
 git add <file1> <file2> ...
 git commit -m "[FIX PIPELINE] <descriptive message of what was fixed>"
-git push origin "$(git branch --show-current)"
 ```
 
 Compare `git status --porcelain` against the pre-existing dirty state snapshot from Step 2: files that were already modified or untracked before the loop started stay uncommitted. If such pre-existing state exists, warn the user (once) that it is being left untouched.
 
 The `[FIX PIPELINE]` prefix marks commits as iteration fixes from CI or review feedback, making them easy to identify and consolidate later (see Step 11).
+
+Push only after the branch chain is ready:
+
+```bash
+if [ "$IN_STACK" = true ]; then
+  gh stack rebase --upstack --no-trunk
+  gh stack push
+else
+  git push origin "$(git branch --show-current)"
+fi
+```
+
+For a stack, restacking must succeed before `gh stack push`; never push the changed parent branch first.
 
 ### Step 8b: Fixup commit flow (when `--fixup` is enabled)
 
