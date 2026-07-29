@@ -137,6 +137,9 @@
       "kramme-cc-workflow/hooks/skill-usage-stats.sh": [
         "kramme-cc-workflow/tests/skill-usage-stats.bats"
       ],
+      "kramme-cc-workflow/scripts/benchmark-hook-overhead.sh": [
+        "kramme-cc-workflow/tests/benchmark-hook-overhead.bats"
+      ],
       "kramme-cc-workflow/scripts/bootstrap-dev.sh": [
         "kramme-cc-workflow/tests/bootstrap-dev.bats"
       ],

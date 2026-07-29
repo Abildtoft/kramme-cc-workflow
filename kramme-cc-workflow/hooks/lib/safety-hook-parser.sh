@@ -44,7 +44,10 @@ run_safety_hook_parser() {
   if [ "$parser_mode" = "commit-contexts" ]; then
     parser_args+=("$parser_error_reason")
   fi
-  if ! parser_output=$(python3 "${CLAUDE_PLUGIN_ROOT}/hooks/lib/git_command_parser.py" "${parser_args[@]}"); then
+  if ! parser_output=$(
+    cd -- "${CLAUDE_PLUGIN_ROOT}/hooks/lib" \
+      && PYTHONPATH=. python3 -m git_command_parser "${parser_args[@]}"
+  ); then
     safety_hook_block "$parser_error_reason"
   fi
 
