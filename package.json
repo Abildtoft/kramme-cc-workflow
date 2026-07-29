@@ -8,8 +8,12 @@
     "kramme-cc-workflow": "kramme-cc-workflow/scripts/convert-plugin.js"
   },
   "scripts": {
+    "bootstrap:check": "bash kramme-cc-workflow/scripts/bootstrap-dev.sh --check",
+    "bootstrap:install": "bash kramme-cc-workflow/scripts/bootstrap-dev.sh --install",
     "check:pre-commit": "make -C kramme-cc-workflow pre-commit",
     "format:check": "make -C kramme-cc-workflow format-check",
+    "hooks:install": "pre-commit install",
+    "hooks:uninstall": "pre-commit uninstall",
     "lint-js": "make -C kramme-cc-workflow lint-js",
     "preflight": "make -C kramme-cc-workflow preflight",
     "test": "make -C kramme-cc-workflow test",
@@ -29,5 +33,8 @@
     "prettier-plugin-packagejson": "^3.0.2",
     "prettier-plugin-sh": "^0.18.1",
     "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
