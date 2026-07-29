@@ -81,7 +81,9 @@ Invoke `kramme:discovery:interview` with an `INTERVIEW DELEGATION` brief contain
 
 The engine owns `UNVERIFIED` hypothesis framing, glossary and strategy priming, topic classification, probing techniques, codebase-as-answer-source checks, confidence assessment, evidence tracking, ADR offers, question pacing, and decision-tree traversal. Require an `INTERVIEW RESULT:` return payload containing every field defined by the engine's delegated-call contract, including initial/final confidence, overall percentage, interview-round count, stated-vs-actual divergence, profile-specific evidence or coverage, and an artifact impact map for Refinement/Realignment.
 
-If the runtime cannot invoke another skill and no delegated interview has started, read the `kramme:discovery:interview` skill's `SKILL.md` plus the references it routes to and execute its delegated-call contract inline once. If invocation starts but errors, times out, or returns a payload without the `INTERVIEW RESULT:` marker or any required field, report the concrete delegation failure and stop without replaying the interview, writing an SIW artifact, or emitting `PLAN:`. If the pre-invocation inline fallback fails or returns an invalid payload, report that failure and stop under the same fail-closed rule. When a decision tree closes but independent dimensions remain below 90%, return to the engine's evidence-confidence profile.
+If the runtime cannot invoke `kramme:discovery:interview`, report the concrete capability failure and stop before the interview begins. Do not read the sibling skill's `SKILL.md` or references as an inline substitute.
+
+If invocation starts but errors, times out, or returns a payload without the `INTERVIEW RESULT:` marker or any required field, report the concrete delegation failure and stop without replaying the interview, writing an SIW artifact, or emitting `PLAN:`. When a decision tree closes but independent dimensions remain below 90%, return to the engine's evidence-confidence profile.
 
 ## Step 3: Synthesize SIW Artifacts
 

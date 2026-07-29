@@ -66,7 +66,7 @@ For delegated calls:
 
 Do not ask for a plan path, write a standalone template, or emit `PLAN:` when the caller owns synthesis.
 
-If the runtime cannot invoke one skill from another, the caller may read this `SKILL.md` and the references named above and execute Steps 1–4 inline. The same profile and return contract apply.
+Callers that cannot invoke this skill must stop at the invocation boundary rather than read this skill's internal files. The delegated profile and return contract are available only through the public skill invocation.
 
 ## Step 0: Inputs, Mode, and Glossary
 
