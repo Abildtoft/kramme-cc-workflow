@@ -220,15 +220,21 @@ make_body_lines() {
   done
 }
 
-@test "copy review rubric is synced as a skill-local resource" {
+@test "copy review rubric is owned by the code skill with automatic PR mode" {
   local registry="$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml"
+  local code_skill="$BATS_TEST_DIRNAME/../skills/kramme:code:copy-review/SKILL.md"
   local code_rubric="$BATS_TEST_DIRNAME/../skills/kramme:code:copy-review/references/copy-review-rubric.md"
-  local pr_rubric="$BATS_TEST_DIRNAME/../skills/kramme:pr:copy-review/references/copy-review-rubric.md"
+  local pr_skill="$BATS_TEST_DIRNAME/../skills/kramme:pr:copy-review/SKILL.md"
 
+  test -f "$code_skill"
   test -f "$code_rubric"
-  test -f "$pr_rubric"
-  cmp -s "$code_rubric" "$pr_rubric"
-  grep -qF '"name": "copy-review-rubric"' "$registry"
+  test ! -f "$pr_skill"
+  grep -qF 'Canonical owner: `kramme:code:copy-review`.' "$code_rubric"
+  grep -qF 'If `FORCE_PR_MODE=true`, set `SCAN_MODE=false`' "$code_skill"
+  grep -qF 'equals `BASE_BRANCH`, set `SCAN_MODE=true`' "$code_skill"
+  grep -qF 'differs from `BASE_BRANCH`, set `SCAN_MODE=false`.' "$code_skill"
+  grep -qF 'the repo root for `--all` or automatic base-branch audit mode' "$code_skill"
+  ! grep -qF '"name": "copy-review-rubric"' "$registry"
   ! grep -qF '"name": "copy-review-redundancy-scope"' "$registry"
   ! grep -qF '"name": "copy-review-ui-relevant-file-types"' "$registry"
 }

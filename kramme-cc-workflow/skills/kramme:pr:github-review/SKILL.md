@@ -33,11 +33,23 @@ Defaults: `CODE_ONLY=false`, `SKIP_THREADS=false`, `INCLUDE_BOTS=false`, `INCLUD
 Confirm tooling before any GitHub call.
 
 ```bash
-command -v gh > /dev/null || { echo "gh CLI required. Install from https://cli.github.com and run 'gh auth login'." >&2; exit 1; }
-command -v jq > /dev/null || { echo "jq required. Install it first (e.g. 'brew install jq' or 'apt-get install jq')." >&2; exit 1; }
-gh auth status > /dev/null 2>&1 || { echo "Authenticate first with 'gh auth login'." >&2; exit 1; }
+command -v gh > /dev/null || {
+  echo "gh CLI required. Install from https://cli.github.com and run 'gh auth login'." >&2
+  exit 1
+}
+command -v jq > /dev/null || {
+  echo "jq required. Install it first (e.g. 'brew install jq' or 'apt-get install jq')." >&2
+  exit 1
+}
+gh auth status > /dev/null 2>&1 || {
+  echo "Authenticate first with 'gh auth login'." >&2
+  exit 1
+}
 
-ORIG_ROOT=$(git rev-parse --show-toplevel) || { echo "Run this from inside a git clone of the PR's repository." >&2; exit 1; }
+ORIG_ROOT=$(git rev-parse --show-toplevel) || {
+  echo "Run this from inside a git clone of the PR's repository." >&2
+  exit 1
+}
 LOCAL_NWO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2> /dev/null)
 SELF=$(gh api user -q .login)
 ```
@@ -89,17 +101,20 @@ Fetch the PR context unless it was already resolved from the current branch:
 if [ -z "$PR_JSON" ]; then
   PR_JSON=$(gh pr view ${PR_SELECTOR:+"$PR_SELECTOR"} \
     --json number,url,title,author,baseRefName,headRefName,headRefOid,additions,deletions,changedFiles,reviewDecision) \
-    || { echo "PR not found. Pass a PR number or URL." >&2; exit 1; }
+    || {
+      echo "PR not found. Pass a PR number or URL." >&2
+      exit 1
+    }
 fi
 
 PR_NUMBER=$(printf '%s' "$PR_JSON" | jq -r '.number')
-PR_URL=$(printf '%s'    "$PR_JSON" | jq -r '.url')
-PR_TITLE=$(printf '%s'  "$PR_JSON" | jq -r '.title')
-AUTHOR=$(printf '%s'    "$PR_JSON" | jq -r '.author.login')
+PR_URL=$(printf '%s' "$PR_JSON" | jq -r '.url')
+PR_TITLE=$(printf '%s' "$PR_JSON" | jq -r '.title')
+AUTHOR=$(printf '%s' "$PR_JSON" | jq -r '.author.login')
 PR_BASE_BRANCH=$(printf '%s' "$PR_JSON" | jq -r '.baseRefName')
 BASE_REF_ARG=${BASE_OVERRIDE:-$PR_BASE_BRANCH}
-HEAD_REF=$(printf '%s'  "$PR_JSON" | jq -r '.headRefName')
-HEAD_OID=$(printf '%s'  "$PR_JSON" | jq -r '.headRefOid')
+HEAD_REF=$(printf '%s' "$PR_JSON" | jq -r '.headRefName')
+HEAD_OID=$(printf '%s' "$PR_JSON" | jq -r '.headRefOid')
 ADDITIONS=$(printf '%s' "$PR_JSON" | jq -r '.additions')
 DELETIONS=$(printf '%s' "$PR_JSON" | jq -r '.deletions')
 CHANGED_COUNT=$(printf '%s' "$PR_JSON" | jq -r '.changedFiles')
@@ -123,8 +138,11 @@ PR_NWO=$(printf '%s' "$PR_URL" | sed -E 's#^https://github.com/([^/]+/[^/]+)/pul
 Fetch the PR head, then add a detached worktree. Nothing in the user's current checkout changes. Step 4 resolves and fetches the base ref inside the worktree so `--base main`, `--base origin/main`, and `--base refs/remotes/origin/main` all follow the shared resolver contract.
 
 ```bash
-git worktree prune  # sweep any orphaned registrations from a prior interrupted run
-git fetch --quiet origin "pull/${PR_NUMBER}/head" || { echo "Could not fetch pull/${PR_NUMBER}/head from origin." >&2; exit 1; }
+git worktree prune # sweep any orphaned registrations from a prior interrupted run
+git fetch --quiet origin "pull/${PR_NUMBER}/head" || {
+  echo "Could not fetch pull/${PR_NUMBER}/head from origin." >&2
+  exit 1
+}
 
 TMP_PARENT=$(mktemp -d "${TMPDIR:-/tmp}/kramme-review-pr-${PR_NUMBER}.XXXXXX")
 WORKTREE_DIR="$TMP_PARENT/wt"
@@ -182,19 +200,19 @@ is_ui_relevant_path() {
   path=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')
 
   case "$path" in
-    *.tsx|*.jsx|*.vue|*.svelte|*.astro|*.mdx|*.component.ts|*.component.html) return 0 ;;
-    *.html|*.htm|*.hbs|*.ejs|*.pug) return 0 ;;
-    *.css|*.scss|*.sass|*.less|*.styl|*.styled.ts|*.styled.js|*.module.css|*.module.scss) return 0 ;;
-    tailwind.config.*|*/tailwind.config.*|theme.*|*/theme.*|design-tokens/*|*/design-tokens/*) return 0 ;;
-    pages/*|*/pages/*|views/*|*/views/*|screens/*|*/screens/*|routes/*|*/routes/*|app/*|*/app/*) return 0 ;;
-    component/*|*/component/*|components/*|*/components/*|ui/*|*/ui/*|widgets/*|*/widgets/*|layouts/*|*/layouts/*|templates/*|*/templates/*) return 0 ;;
-    styles/*|*/styles/*|css/*|*/css/*) return 0 ;;
-    public/*.svg|public/*.png|public/*.jpg|public/*.jpeg|public/*.gif|public/*.webp|public/*.avif|public/*.ico) return 0 ;;
-    static/*.svg|static/*.png|static/*.jpg|static/*.jpeg|static/*.gif|static/*.webp|static/*.avif|static/*.ico) return 0 ;;
-    assets/*.svg|assets/*.png|assets/*.jpg|assets/*.jpeg|assets/*.gif|assets/*.webp|assets/*.avif|assets/*.ico) return 0 ;;
-    */public/*.svg|*/public/*.png|*/public/*.jpg|*/public/*.jpeg|*/public/*.gif|*/public/*.webp|*/public/*.avif|*/public/*.ico) return 0 ;;
-    */static/*.svg|*/static/*.png|*/static/*.jpg|*/static/*.jpeg|*/static/*.gif|*/static/*.webp|*/static/*.avif|*/static/*.ico) return 0 ;;
-    */assets/*.svg|*/assets/*.png|*/assets/*.jpg|*/assets/*.jpeg|*/assets/*.gif|*/assets/*.webp|*/assets/*.avif|*/assets/*.ico) return 0 ;;
+    *.tsx | *.jsx | *.vue | *.svelte | *.astro | *.mdx | *.component.ts | *.component.html) return 0 ;;
+    *.html | *.htm | *.hbs | *.ejs | *.pug) return 0 ;;
+    *.css | *.scss | *.sass | *.less | *.styl | *.styled.ts | *.styled.js | *.module.css | *.module.scss) return 0 ;;
+    tailwind.config.* | */tailwind.config.* | theme.* | */theme.* | design-tokens/* | */design-tokens/*) return 0 ;;
+    pages/* | */pages/* | views/* | */views/* | screens/* | */screens/* | routes/* | */routes/* | app/* | */app/*) return 0 ;;
+    component/* | */component/* | components/* | */components/* | ui/* | */ui/* | widgets/* | */widgets/* | layouts/* | */layouts/* | templates/* | */templates/*) return 0 ;;
+    styles/* | */styles/* | css/* | */css/*) return 0 ;;
+    public/*.svg | public/*.png | public/*.jpg | public/*.jpeg | public/*.gif | public/*.webp | public/*.avif | public/*.ico) return 0 ;;
+    static/*.svg | static/*.png | static/*.jpg | static/*.jpeg | static/*.gif | static/*.webp | static/*.avif | static/*.ico) return 0 ;;
+    assets/*.svg | assets/*.png | assets/*.jpg | assets/*.jpeg | assets/*.gif | assets/*.webp | assets/*.avif | assets/*.ico) return 0 ;;
+    */public/*.svg | */public/*.png | */public/*.jpg | */public/*.jpeg | */public/*.gif | */public/*.webp | */public/*.avif | */public/*.ico) return 0 ;;
+    */static/*.svg | */static/*.png | */static/*.jpg | */static/*.jpeg | */static/*.gif | */static/*.webp | */static/*.avif | */static/*.ico) return 0 ;;
+    */assets/*.svg | */assets/*.png | */assets/*.jpg | */assets/*.jpeg | */assets/*.gif | */assets/*.webp | */assets/*.avif | */assets/*.ico) return 0 ;;
   esac
   return 1
 }
@@ -218,7 +236,7 @@ Run all review commands **with the worktree as the working directory** (you are 
 
 2. **UI/UX/visual/accessibility/product — when `RUN_UI=true`.** Delegate to `/kramme:pr:ux-review --base "$BASE_REF" --inline`, appending `--categories <UI_CATEGORIES>` when the user supplied that flag. There is normally no running app for someone else's PR, so the UI pass runs as static, diff-based analysis. Capture its findings.
 
-Do not auto-run the heavier `kramme:pr:product-review` or `kramme:pr:copy-review`. Mention them in the final report as optional deeper passes the user can request.
+Do not auto-run the heavier `kramme:pr:product-review` or `kramme:code:copy-review --pr`. Mention them in the final report as optional deeper passes the user can request.
 
 **Coverage handling.** If a delegated review fails or reports degraded coverage, record which dimensions were not covered and surface that in the report. Do not present a partial review as complete. Continue as long as at least the code review succeeded.
 

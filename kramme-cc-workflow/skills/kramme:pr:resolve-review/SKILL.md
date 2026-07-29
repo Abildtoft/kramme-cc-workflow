@@ -63,7 +63,7 @@ If no review content was provided in Step 0:
 - `REVIEW_OVERVIEW.md` (from `/kramme:pr:code-review`)
 - `UX_REVIEW_OVERVIEW.md` (from `/kramme:pr:ux-review`)
 - `PRODUCT_REVIEW_OVERVIEW.md` (from `/kramme:pr:product-review`)
-- `COPY_REVIEW_OVERVIEW.md` (from `/kramme:pr:copy-review`)
+- `COPY_REVIEW_OVERVIEW.md` (from `/kramme:code:copy-review`)
 - `CONVENTION_REVIEW_OVERVIEW.md` (from `/kramme:pr:convention-review`)
 
 When parsing these files, accept the structured `- Location:` field, `**Location:**`, and legacy `**File:**` labels.

@@ -57,7 +57,7 @@
       "type": "file",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:pr:copy-review"
+      "producer": "kramme:code:copy-review"
     },
     {
       "id": "convention-review-overview",
