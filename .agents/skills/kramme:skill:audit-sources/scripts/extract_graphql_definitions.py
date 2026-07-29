@@ -83,7 +83,9 @@ def _scan_braces(line: str, in_block_string: bool) -> tuple[int, int, bool]:
     return opens, closes, in_block_string
 
 
-def _find_definitions(lines: list[str]) -> tuple[list[DefinitionLocation], dict[int, int | None]]:
+def _find_definitions(
+    lines: list[str],
+) -> tuple[list[DefinitionLocation], dict[int, int | None]]:
     definitions: list[DefinitionLocation] = []
     boundary_indexes: list[int] = []
     depth = 0
@@ -115,9 +117,7 @@ def _find_definitions(lines: list[str]) -> tuple[list[DefinitionLocation], dict[
     if in_block_string:
         raise ValueError("unclosed GraphQL block string")
     next_boundary_indexes = {
-        boundary_index: (
-            boundary_indexes[index + 1] if index + 1 < len(boundary_indexes) else None
-        )
+        boundary_index: (boundary_indexes[index + 1] if index + 1 < len(boundary_indexes) else None)
         for index, boundary_index in enumerate(boundary_indexes)
     }
     return definitions, next_boundary_indexes
