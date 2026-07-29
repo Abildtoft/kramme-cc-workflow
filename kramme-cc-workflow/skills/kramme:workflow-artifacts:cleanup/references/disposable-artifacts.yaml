@@ -76,6 +76,14 @@
       "producer": "kramme:code:weakness-audit"
     },
     {
+      "id": "outside-view-report",
+      "path": "OUTSIDE_VIEW_REPORT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:outside-view"
+    },
+    {
       "id": "refactor-opportunities-overview",
       "path": "REFACTOR_OPPORTUNITIES_OVERVIEW.md",
       "type": "file",

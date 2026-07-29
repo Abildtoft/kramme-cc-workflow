@@ -14,7 +14,7 @@ Use this structure when writing `CODEBASE_WEAKNESS_REPORT.md` or a custom `--out
 ## Scorecard
 
 | Lens | Findings | Highest Severity | Summary |
-| --- | ---: | --- | --- |
+| --- | --: | --- | --- |
 | Maintainability | {N} | {Critical/High/Medium/Low/None} | {one-line summary} |
 | Readability | {N} | {Critical/High/Medium/Low/None} | {one-line summary} |
 | Correctness | {N} | {Critical/High/Medium/Low/None} | {one-line summary} |
@@ -23,7 +23,7 @@ Use this structure when writing `CODEBASE_WEAKNESS_REPORT.md` or a custom `--out
 ## Top Weaknesses
 
 | ID | Score | Severity | Lens | Theme | Primary Location | Why It Matters | First Move |
-| --- | ---: | --- | --- | --- | --- | --- | --- |
+| --- | --: | --- | --- | --- | --- | --- | --- |
 | WA-001 | {score} | {severity} | {lens} | {theme} | {file:line} | {impact summary} | {first fix} |
 
 ## Detailed Findings
@@ -45,9 +45,9 @@ Use this structure when writing `CODEBASE_WEAKNESS_REPORT.md` or a custom `--out
 
 ## Cross-Cutting Themes
 
-| Theme | Findings | Root Cause | Suggested Direction |
-| --- | --- | --- | --- |
-| {theme} | {WA-001, WA-004} | {shared cause} | {direction} |
+| Theme   | Findings         | Root Cause     | Suggested Direction |
+| ------- | ---------------- | -------------- | ------------------- |
+| {theme} | {WA-001, WA-004} | {shared cause} | {direction}         |
 
 ## Recommended Fix Sequence
 
@@ -59,6 +59,12 @@ Use this structure when writing `CODEBASE_WEAKNESS_REPORT.md` or a custom `--out
 
 {Briefly list important observations that were not promoted because evidence was weak, impact was low, the issue contradicted accepted project conventions, or the item belongs in a narrower follow-up audit.}
 
+## Impressions (Unverified)
+
+{Every off-rubric impression reported by reviewers, unfiltered. These answer "what did the rubric not ask about" and "one sentence to the owner"; they are exempt from the evidence bar by design. Treat them as leads for an outside-view run or a rubric amendment, not as ranked findings.}
+
+- **{Reviewer lens or role}:** {impression} — _One sentence to the owner:_ {sentence}
+
 ## Coverage Notes
 
 - **Included:** {scope summary}
@@ -66,4 +72,4 @@ Use this structure when writing `CODEBASE_WEAKNESS_REPORT.md` or a custom `--out
 - **Confidence limits:** {anything that could change the findings, such as missing test commands, unavailable git history, or unresolved feature mapping}
 ```
 
-If no major weakness is found, keep the same header, scorecard, filtered candidates, and coverage notes. Replace the findings sections with: `No major weaknesses met the evidence bar in this scope.`
+If no major weakness is found, keep the same header, scorecard, filtered candidates, impressions, and coverage notes. Replace the findings sections with: `No major weaknesses met the evidence bar in this scope.`

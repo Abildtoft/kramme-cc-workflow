@@ -39,7 +39,7 @@ Use the input parsing and orientation rules from `SKILL.md`:
 
 Create a multi-agent session named `codebase-weakness-audit` and use delegate mode: teammates inspect and report; the orchestrator writes the final report.
 
-Select the active research reviewer set before launching. Default to all eight research reviewers, then run the challenge reviewer after their results are collected. Do not downsize the team for full-codebase or feature audits. For a very small path scope, keep the same roles unless the scope has fewer than five source files; if you reduce reviewers, record the active and omitted reviewer names and note the degraded coverage in the report.
+Select the active research reviewer set before launching. Default to all nine research reviewers, then run the challenge reviewer after their results are collected. Do not downsize the team for full-codebase or feature audits. For a very small path scope, keep the same roles unless the scope has fewer than five source files; if you reduce reviewers, record the active and omitted reviewer names and note the degraded coverage in the report.
 
 Spawn these teammates:
 
@@ -51,6 +51,7 @@ Spawn these teammates:
 - **Test & feedback reviewer**: test coverage shape, source/test mapping, critical untested behaviors, slow or missing feedback loops, brittle fixtures, and verification command reliability.
 - **Readability & traversal reviewer**: naming, domain language, local comprehension, file organization, comment accuracy, code navigation from entry points, and context-pointer quality.
 - **History & change-risk reviewer**: high-churn files, recently unstable areas, repeated bug-fix patterns, TODO/FIXME clusters, large ownership hotspots, and maintenance-cycle risk.
+- **Governance & conventions reviewer**: audits the project's instruction files, ADRs, glossaries, and process docs as artifacts in their own right: conventions that no longer serve the code, rules that exist to manage the coding agent rather than the product, stale or contradictory guidance, convention proliferation, and process weight relative to product value. This reviewer is exempt from the accepted-ADR constraint for its own scope: questioning an accepted decision is in scope when evidence shows the rule now costs more than it protects. Its question is "do the rules serve the code, or has the code started serving the rules?"
 - **Challenge reviewer**: cross-checks raw findings after the active research reviewers finish; tries to falsify weak evidence, spot duplicate root causes, identify accepted-ADR conflicts, catch missing correctness risks, and verify that high-priority findings are worth acting on.
 
 Each research reviewer receives:
@@ -85,6 +86,7 @@ Each research reviewer must return raw candidates using the standard skill schem
 - effort and blast radius
 - filtered/near-miss observations worth mentioning separately
 - reviewed-and-cleared areas with one-line evidence
+- answers to two off-rubric questions: the most important weakness in scope that the assigned lens did not ask about, and the one sentence the reviewer would tell the codebase owner. These bypass the evidence standards and are reported as unverified impressions, never as findings.
 
 Map role-specific findings into the canonical lens vocabulary before returning them: architecture, complexity, duplication, history, test feedback, and operational-maintenance findings usually map to `maintainability`; traversal, naming, and comprehension findings map to `readability`; concrete failure paths, invariant breaks, async/error behavior, and data integrity findings map to `correctness`. Use `mixed` only when a single root cause materially spans more than one lens.
 
@@ -100,9 +102,10 @@ The challenge reviewer must:
 4. Flag disagreements between reviewers.
 5. Promote any missed correctness candidate that has a concrete failure path.
 6. Check whether the raw candidate pool was broad enough for the resolved scope; if not, name the missing research area.
-7. Return a validation summary: kept, dropped, merged, disputed, added, and coverage-gapped candidates.
+7. Pass every off-rubric impression through unfiltered. The challenge reviewer may annotate an impression with corroborating or conflicting evidence but must not drop, merge, or rewrite it; impressions are exempt from the evidence bar by design.
+8. Return a validation summary: kept, dropped, merged, disputed, added, and coverage-gapped candidates.
 
-If the challenge reviewer fails but the research phase met its success quorum, continue with a degraded-coverage note. For the full eight-reviewer set, the quorum is at least six successful research reviewers. For a reduced tiny-scope set, the quorum is every selected research reviewer. If the quorum is not met, stop without writing the report.
+If the challenge reviewer fails but the research phase met its success quorum, continue with a degraded-coverage note. For the full nine-reviewer set, the quorum is at least seven successful research reviewers. For a reduced tiny-scope set, the quorum is every selected research reviewer. If the quorum is not met, stop without writing the report.
 
 ### Step 4: Aggregate and Rank
 
@@ -115,7 +118,8 @@ The orchestrator, not a teammate, owns final ranking and report writing.
 5. Enforce `MAX_FINDINGS`; keep only the highest-ranked findings in the active list.
 6. Group related findings into cross-cutting themes.
 7. Build the recommended fix sequence.
-8. Preserve research breadth in the report summary: raw candidates reviewed, filtered candidates, reviewed-and-cleared areas, and any coverage gaps.
+8. Collect every reviewer's off-rubric impressions into the report's Impressions (Unverified) section. Deduplicate only near-verbatim duplicates; do not filter, score, or rank impressions.
+9. Preserve research breadth in the report summary: raw candidates reviewed, filtered candidates, reviewed-and-cleared areas, and any coverage gaps.
 
 ### Step 5: Write Report
 
