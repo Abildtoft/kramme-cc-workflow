@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:rebase
-description: Rebase current branch onto latest main/master, auto-resolving conflicts with safe defaults unless dangerous --auto is used, then force push with --force-with-lease. Use when your PR is behind the base branch.
+description: Rebase current branch onto latest main/master, auto-resolving conflicts with safe defaults unless dangerous --auto is used, then force push with --force-with-lease. Detects GitHub stacks (gh-stack) and cascade-rebases the whole stack instead of the single branch. Use when your PR is behind the base branch.
 argument-hint: "[--auto] [--force-push] [--base <branch>]"
 disable-model-invocation: true
 user-invocable: true
@@ -65,7 +65,6 @@ If both `--auto` and `--force-push` are present, `--auto` wins because it is the
    ```bash
    RESOLVE_ARGS=(--strict)
    [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
-
    RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}") || {
      echo "Base resolution failed; see the message above. Re-run with --base <branch>." >&2
      exit 1
@@ -84,6 +83,32 @@ If both `--auto` and `--force-push` are present, `--auto` wins because it is the
    If current branch equals base branch, stop with error:
 
    > "You are on the base branch. Switch to a feature branch first."
+
+### Step 1.5: Stack Detection
+
+A branch that belongs to a GitHub stack must not be rebased alone — every branch stacked above it would be left on the old history. Resolve local CLI state and server-side GitHub state before any rewrite:
+
+```bash
+STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
+  echo "Stack membership could not be determined; stop before rebasing." >&2
+  exit 1
+}
+eval "$STACK_RESOLVED"
+```
+
+Route the result explicitly:
+
+- `STACK_MEMBERSHIP=local`: set `IN_STACK=true` and use the stack replacements below.
+- `STACK_MEMBERSHIP=none`: set `IN_STACK=false` and use the single-branch flow.
+- `STACK_MEMBERSHIP=remote`: stop before rewriting. The PR is stacked on GitHub but not tracked locally. Install the extension if needed, run `gh stack checkout "$STACK_PR_NUMBER"` from a clean working tree, then retry.
+
+Any resolver failure is an operational failure, not evidence that the branch is unstacked. Stop rather than falling through to a single-branch rebase.
+
+When `IN_STACK=true`, swap the git commands but keep every gate:
+
+- **Steps 2–3 replacement:** run `gh stack rebase` instead of `git rebase --autostash origin/<base-branch>`. It fetches, fast-forwards the trunk, and cascade-rebases every stack branch onto its updated parent. It has no autostash — if the working tree is dirty, `git stash` first and `git stash pop` after. On conflict (exit code 3), resolve each conflicted file under the same rules, round cap, and red flags as Step 3, then `gh stack rebase --continue`; abort with `gh stack rebase --abort` (restores all branches).
+- **Step 5 replacement:** the validated push procedure becomes `gh stack push` — it pushes all stack branches with `--force-with-lease --atomic`. All Step 5 gates and modes apply unchanged.
+- **Step 6 addition:** report every branch the rebase touched, not just the current one (`gh stack view --json` shows the updated heads and PR states).
 
 ### Step 2: Fetch Latest
 
@@ -172,7 +197,7 @@ All force-push paths in this step must use this validated push procedure:
 
 ```bash
 CURRENT_BRANCH=$(git branch --show-current)
-git check-ref-format --branch "$CURRENT_BRANCH" >/dev/null
+git check-ref-format --branch "$CURRENT_BRANCH" > /dev/null
 git push --force-with-lease origin "$CURRENT_BRANCH"
 ```
 
@@ -210,10 +235,10 @@ If confirmed, use the validated push procedure.
 
 ### Step 6: Report Results
 
-Show the commit log relative to base (substitute the resolved base-branch name for `<base-branch>` — no spaces around the angle brackets, or the shell will read it as redirection):
+Show the commit log relative to the `BASE_BRANCH` resolved in Step 1. Quote the entire revision range so the shell passes it as one argument:
 
 ```bash
-git log --oneline origin/<base-branch>..HEAD
+git log --oneline "origin/$BASE_BRANCH..HEAD"
 ```
 
 Confirm success:
@@ -234,6 +259,7 @@ Lies you'll tell yourself mid-rebase. Each has a correct response:
 Pause and hand back to the user if any of these are true:
 
 - `--force-with-lease` is about to run against `main`, `master`, or `develop`.
+- The branch is part of a stack (Step 1.5) but a plain `git rebase` or single-branch `git push --force-with-lease` is about to run on it.
 - The auto-resolver merged logic from a file it doesn't fully understand.
 - The rebase touched migration files or generated artifacts; auto-resolution is unsafe there.
 - The branch hadn't been fetched recently and the base has moved significantly (>20 commits).
@@ -252,4 +278,5 @@ Before force-pushing, self-check:
 - [ ] The base branch was freshly fetched (Step 2 ran).
 - [ ] The user explicitly confirmed via `AskUserQuestion` (Step 5), or `FORCE_PUSH_MODE=true` / `AUTO_MODE=true` allowed skipping confirmation.
 - [ ] `--force-with-lease` (not `--force`) is the flag being used.
+- [ ] If the branch is in a stack (Step 1.5), `gh stack rebase` / `gh stack push` were used — never a single-branch rebase or push.
 - [ ] Post-push `git log --oneline origin/<base>..HEAD` shows the expected linear history.

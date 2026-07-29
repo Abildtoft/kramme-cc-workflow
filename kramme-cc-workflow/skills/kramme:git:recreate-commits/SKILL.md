@@ -49,6 +49,18 @@ This rewrites history and requires a force-push to sync any existing remote hist
 
    It records two values you rely on later: `ORIGINAL_TIP` (the pre-reset `HEAD`, the byte-identical target end state) and `BACKUP_REF` (a branch pointing at `ORIGINAL_TIP`). Recover the original branch at any time with `git reset --hard "$BACKUP_REF"`. A backup already at `ORIGINAL_TIP` is reused for retry safety. If it points elsewhere, inspect it before retrying; only pass `--force-backup` after confirming the previous recovery point can be replaced.
 
+   Before resetting the branch, resolve local and server-side GitHub stack membership:
+
+   ```bash
+   STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
+     echo "Stack membership could not be determined; stop before rewriting history." >&2
+     exit 1
+   }
+   eval "$STACK_RESOLVED"
+   ```
+
+   Set `IN_STACK=true` only for `STACK_MEMBERSHIP=local`; set it false for `none`. If membership is `remote`, stop before the reset: the PR is stacked on GitHub but not tracked locally. Install the extension if needed, run `gh stack checkout "$STACK_PR_NUMBER"` from a clean working tree, then retry. Authentication, API, parsing, and unexpected CLI failures also stop rather than falling through to the single-branch flow.
+
 2. **Analyze the diff**
    - Study the full diff from `$RESET_POINT..HEAD` (this is `$AFTER_COMMIT..HEAD` when `--after` was given, otherwise `$MERGE_BASE..HEAD`).
    - Form a clear understanding of the final intended state.
@@ -94,13 +106,27 @@ This rewrites history and requires a force-push to sync any existing remote hist
 
    It is essential that the end state of the branch be byte-identical to the original end state (`$ORIGINAL_TIP`); intermediate commits not building is tolerable, a wrong end state is not.
 
-7. **Sync the remote** (only when enabled, with confirmation or explicit authorization)
-   - If `--no-push` was passed, do not run any push command. Report remote synchronization as delegated in `POTENTIAL CONCERNS`, then continue to the final summary.
+7. **Restack locally, then sync the remote** (remote sync only when enabled, with confirmation or explicit authorization)
+   - If `IN_STACK=true`, the rewrite has orphaned every branch stacked above it. Restack the local chain immediately after final-tree verification and **before** any `--no-push` or local-only early exit:
+
+     ```bash
+     gh stack rebase --upstack --no-trunk # rebase the branches above onto the rewritten history
+     ```
+
+     A restack failure stops the workflow. Do not push a partially restacked stack.
+
+   - If `--no-push` was passed, do not run any push command. The local restack above still applies. Report remote synchronization as delegated in `POTENTIAL CONCERNS`, then continue to the final summary.
    - If the branch has no remote tracking ref and no pull request, skip this step — the recreation is local-only.
    - Otherwise the rewritten history has diverged from the remote and a force-push is required. Before pushing:
      - Unless `--authorize-history-rewrite` was passed, confirm with the user, and warn explicitly if others may have based active work on this branch. Explicit authorization skips the prompt but not the warning or safety checks.
-     - Push with `git push --force-with-lease` (never plain `--force`), so a concurrent remote update aborts the push instead of silently overwriting it.
-   - Record the force-push in `POTENTIAL CONCERNS`.
+     - For an unstacked branch, push with `git push --force-with-lease` (never plain `--force`), so a concurrent remote update aborts the push instead of silently overwriting it.
+   - If `IN_STACK=true`, push the already-restacked whole stack instead of a single branch:
+
+     ```bash
+     gh stack push # all stack branches, --force-with-lease --atomic
+     ```
+
+   - Record the force-push (and any stack restack) in `POTENTIAL CONCERNS`.
 
 8. **Emit end-of-run change summary**
 
@@ -155,6 +181,7 @@ Pause and reshape the storyline if any of these are true:
 - The final tree diff against the original end state is non-empty.
 - More than one commit would need the same summary sentence.
 - Force-pushing without `--force-with-lease`, or without either explicit confirmation or `--authorize-history-rewrite`.
+- The branch is part of a GitHub stack and a single-branch force-push is about to run without restacking the branches above (`gh stack rebase --upstack --no-trunk` + `gh stack push`).
 - Any commit message contains AI attribution or `Co-Authored-By: Claude`.
 - The recreated branch has more lines than the original (you introduced code during the rewrite).
 

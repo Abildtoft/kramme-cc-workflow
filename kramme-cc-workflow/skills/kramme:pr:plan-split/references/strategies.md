@@ -58,20 +58,44 @@ git cherry-pick <hash> <hash> <hash>
 
 Use `git cherry-pick -n` to stage without committing if you need to drop or split hunks.
 
-**Stack** — chain worktrees, each branch rooted on the previous; each becomes a PR targeting the previous PR's branch:
+**Stack** — ordered branches, each rooted on the previous; each becomes a PR targeting the previous PR's branch.
+
+Preferred recipe: GitHub's native stacked PRs via the `gh stack` CLI extension (`gh extension install github/gh-stack`; requires the repository to have stacked PRs enabled — private preview as of mid-2026). Build the chain in a single working tree, pulling each layer's files from the reference branch:
 
 ```bash
-git worktree add ../stack-1-schema  -b stack-1-schema  <base-branch>
+# From the repo root, with REFERENCE_BRANCH committed and clean.
+: "${BASE_BRANCH:?set BASE_BRANCH to the target branch}"
+: "${REFERENCE_BRANCH:?set REFERENCE_BRANCH to the branch being split}"
+git check-ref-format --branch "$BASE_BRANCH"
+git check-ref-format --branch "$REFERENCE_BRANCH"
+gh stack init --base "$BASE_BRANCH" stack-1-schema
+git checkout "$REFERENCE_BRANCH" -- db/migrations/ # bring in schema files
+git commit -m "..."
+gh stack add stack-2-service
+git checkout "$REFERENCE_BRANCH" -- src/service/ # bring in service files
+git commit -m "..."
+gh stack add stack-3-ui
+git checkout "$REFERENCE_BRANCH" -- src/ui/ # bring in UI files
+git commit -m "..."
+gh stack submit --auto # pushes all branches, opens chained draft PRs, links the stack
+```
+
+`gh stack submit --auto` derives a single-commit PR's title and description from that commit. For a multi-commit branch, it humanizes the branch name for the title but supplies no commit-derived description; a repository PR template may still populate the body. Treat authoring every layer's real title and description as required follow-up: use `gh pr edit` or run `kramme:pr:generate-description` for each PR. As parents merge, GitHub re-targets the remaining PRs automatically; run `gh stack sync` to cascade-rebase and update local branches.
+
+Fallback when `gh stack` is unavailable: chain worktrees manually, each branch rooted on the previous:
+
+```bash
+git worktree add ../stack-1-schema -b stack-1-schema "$BASE_BRANCH"
 # ... in ../stack-1-schema, bring in schema files, commit ...
 git worktree add ../stack-2-service -b stack-2-service stack-1-schema
 # ... in ../stack-2-service, bring in service files, commit ...
-git worktree add ../stack-3-ui      -b stack-3-ui      stack-2-service
+git worktree add ../stack-3-ui -b stack-3-ui stack-2-service
 # ... in ../stack-3-ui, bring in UI files, commit ...
 ```
 
-Open PRs in order: `stack-1-schema → base`, `stack-2-service → stack-1-schema`, etc. Re-target each downstream PR to `base` after its parent merges.
+Open PRs in order: `stack-1-schema → base`, `stack-2-service → stack-1-schema`, etc. Re-target each downstream PR to `base` after its parent merges. A manually built chain can be adopted into a native GitHub stack later with `gh stack link stack-1-schema stack-2-service stack-3-ui`.
 
-Tooling exists to automate the chain (Graphite, gh-stack, git-spice, Mergify Stacks). This skill doesn't pick one — the author keeps whatever workflow they already use.
+Other tooling automates the same chain (Graphite, git-spice, Mergify Stacks). This skill doesn't pick one — the author keeps whatever workflow they already use.
 
 **Horizontal** — same mechanics as By file group. Only choose this strategy when the layer slice is genuinely standalone (a DB index without callers, a config-only change with no consumers). Otherwise, the early slices ship un-exercised and the later slices land under "well, the rest is already in" pressure.
 
