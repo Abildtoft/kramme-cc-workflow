@@ -3,10 +3,11 @@
 ROOT_DIR := $(abspath ..)
 PLUGIN_REL := $(shell basename "$(CURDIR)")
 DEV_VENV_BIN ?= $(ROOT_DIR)/.venv/bin
-SHELLCHECK ?= $(if $(wildcard $(DEV_VENV_BIN)/shellcheck),$(DEV_VENV_BIN)/shellcheck,shellcheck)
+dev_tool = $(shell if [ -x "$(DEV_VENV_BIN)/$(1)" ]; then printf '%s\n' "$(DEV_VENV_BIN)/$(1)"; else printf '%s\n' "$(1)"; fi)
+SHELLCHECK ?= $(call dev_tool,shellcheck)
 SHELLCHECK_SEVERITY ?= warning
-RUFF ?= $(if $(wildcard $(DEV_VENV_BIN)/ruff),$(DEV_VENV_BIN)/ruff,ruff)
-MYPY ?= $(if $(wildcard $(DEV_VENV_BIN)/mypy),$(DEV_VENV_BIN)/mypy,mypy)
+RUFF ?= $(call dev_tool,ruff)
+MYPY ?= $(call dev_tool,mypy)
 PRETTIER ?= $(ROOT_DIR)/node_modules/.bin/prettier
 TSC ?= $(ROOT_DIR)/node_modules/.bin/tsc
 SKILLSPECTOR_FORMAT ?= markdown
@@ -53,16 +54,16 @@ SHELLCHECK_FILES = \
 lint: lint-shell lint-python lint-js
 
 lint-shell: check-shell-deps
-	@$(SHELLCHECK) --severity=$(SHELLCHECK_SEVERITY) $(SHELLCHECK_FILES)
+	@"$(SHELLCHECK)" --severity=$(SHELLCHECK_SEVERITY) $(SHELLCHECK_FILES)
 
 lint-python: check-python-deps check-ruff-deps typecheck-python
-	@$(RUFF) check --config "$(PYTHON_RUFF_CONFIG)" . ../.agents/skills/kramme:skill:audit-sources/scripts
+	@"$(RUFF)" check --config "$(PYTHON_RUFF_CONFIG)" . ../.agents/skills/kramme:skill:audit-sources/scripts
 
 typecheck-python: check-python-deps check-mypy-deps check-python-static-inventory
 	@files=$$(python3 -c 'import json, sys; data = json.load(open(sys.argv[1], encoding="utf-8"))["python"]; print(" ".join(sorted([*data["measured"], *data["contract_only"]])))' "$(COVERAGE_PRODUCTION_INVENTORY)"); \
 		ratchets=$$(sed -n 's/^\[mypy-\(.*\)\]$$/\1/p' "$(PYTHON_MYPY_CONFIG)" | awk '{ printf "%s%s", (NR > 1 ? ", " : ""), $$0 }'); \
 		if test -n "$$ratchets"; then echo "mypy ratchet exceptions (owner: repository maintainers): $$ratchets"; fi; \
-		cd "$(ROOT_DIR)" && $(MYPY) --config-file "$(PLUGIN_REL)/$(PYTHON_MYPY_CONFIG)" $$files
+		cd "$(ROOT_DIR)" && "$(MYPY)" --config-file "$(PLUGIN_REL)/$(PYTHON_MYPY_CONFIG)" $$files
 
 check-python-static-inventory: check-python-deps
 	@tmpdir=$$(mktemp -d); inventory="$(CURDIR)/$(COVERAGE_PRODUCTION_INVENTORY)"; root="$(ROOT_DIR)"; \
@@ -471,13 +472,13 @@ check-coverage-inventory-deps:
 	@command -v jq >/dev/null 2>&1 || { echo "jq not found. Run 'make install-test-deps'"; exit 1; }
 
 check-shell-deps:
-	@command -v $(SHELLCHECK) >/dev/null 2>&1 || { echo "$(SHELLCHECK) not found. Install shellcheck before running lint or verify."; exit 1; }
+	@command -v "$(SHELLCHECK)" >/dev/null 2>&1 || { echo "$(SHELLCHECK) not found. Install shellcheck before running lint or verify."; exit 1; }
 
 check-ruff-deps:
-	@command -v $(RUFF) >/dev/null 2>&1 || { echo "$(RUFF) not found. Install ruff before running lint or verify."; exit 1; }
+	@command -v "$(RUFF)" >/dev/null 2>&1 || { echo "$(RUFF) not found. Install ruff before running lint or verify."; exit 1; }
 
 check-mypy-deps:
-	@command -v $(MYPY) >/dev/null 2>&1 || { echo "$(MYPY) not found. Install development dependencies from requirements-dev.txt before running lint or verify."; exit 1; }
+	@command -v "$(MYPY)" >/dev/null 2>&1 || { echo "$(MYPY) not found. Install development dependencies from requirements-dev.txt before running lint or verify."; exit 1; }
 
 check-js-deps:
 	@command -v node >/dev/null 2>&1 || { echo "node not found. Install Node.js before running lint-js or verify."; exit 1; }

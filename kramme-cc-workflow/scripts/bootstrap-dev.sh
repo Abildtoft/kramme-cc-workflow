@@ -6,6 +6,8 @@ SCRIPT_DIR="$(cd "${BASH_SOURCE[0]%/*}" && pwd -P)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
 VENV_BIN="$ROOT_DIR/.venv/bin"
 MIN_NODE_MAJOR=20
+MIN_PYTHON_MAJOR=3
+MIN_PYTHON_MINOR=10
 MODE="check"
 CHECKED_NODE_BIN=""
 
@@ -98,6 +100,47 @@ node_major_is_supported() {
   [ "$major" -ge "$MIN_NODE_MAJOR" ]
 }
 
+python_version_for() {
+  local python="$1"
+
+  "$python" -c 'import sys; print(".".join(str(part) for part in sys.version_info[:3]))' 2> /dev/null
+}
+
+python_version_is_supported() {
+  local version="$1"
+  local major="${version%%.*}"
+  local remainder="${version#*.}"
+  local minor="${remainder%%.*}"
+
+  case "$major:$minor" in
+    *[!0-9:]* | :* | *:)
+      return 1
+      ;;
+  esac
+
+  [ "$major" -gt "$MIN_PYTHON_MAJOR" ] \
+    || {
+      [ "$major" -eq "$MIN_PYTHON_MAJOR" ] \
+        && [ "$minor" -ge "$MIN_PYTHON_MINOR" ]
+    }
+}
+
+find_supported_python() {
+  local python=""
+  local version=""
+
+  if ! python="$(command -v python3)"; then
+    return 1
+  fi
+
+  version="$(python_version_for "$python" || true)"
+  if ! python_version_is_supported "$version"; then
+    return 1
+  fi
+
+  printf '%s\n' "$python"
+}
+
 declare -a MISSING_DEPENDENCIES=()
 
 check_tool() {
@@ -142,6 +185,33 @@ check_node() {
   MISSING_DEPENDENCIES+=("Node.js $MIN_NODE_MAJOR+")
 }
 
+check_python() {
+  local python=""
+  local version=""
+
+  if ! python="$(command -v python3)"; then
+    printf 'missing: Python %d.%d+\n' "$MIN_PYTHON_MAJOR" "$MIN_PYTHON_MINOR"
+    MISSING_DEPENDENCIES+=("Python $MIN_PYTHON_MAJOR.$MIN_PYTHON_MINOR+")
+    return
+  fi
+
+  version="$(python_version_for "$python" || true)"
+  if python_version_is_supported "$version"; then
+    printf 'ok: %-20s %s (v%s)\n' \
+      "Python $MIN_PYTHON_MAJOR.$MIN_PYTHON_MINOR+" \
+      "$python" \
+      "$version"
+    return
+  fi
+
+  printf 'missing: Python %d.%d+ (found v%s at %s)\n' \
+    "$MIN_PYTHON_MAJOR" \
+    "$MIN_PYTHON_MINOR" \
+    "${version:-unknown}" \
+    "$python"
+  MISSING_DEPENDENCIES+=("Python $MIN_PYTHON_MAJOR.$MIN_PYTHON_MINOR+")
+}
+
 check_node_dependencies() {
   if [ -z "$CHECKED_NODE_BIN" ]; then
     printf 'skipped: Node dependencies (requires Node.js %d+)\n' "$MIN_NODE_MAJOR"
@@ -150,7 +220,7 @@ check_node_dependencies() {
 
   if (
     cd "$ROOT_DIR"
-    "$CHECKED_NODE_BIN" -e 'for (const dependency of ["@ianvs/prettier-plugin-sort-imports", "prettier", "prettier-plugin-packagejson", "prettier-plugin-sh", "smol-toml", "typescript", "yaml"]) require.resolve(dependency)'
+    "$CHECKED_NODE_BIN" -e 'for (const dependency of ["@ianvs/prettier-plugin-sort-imports", "@types/node", "prettier", "prettier-plugin-packagejson", "prettier-plugin-sh", "smol-toml", "typescript", "yaml"]) require.resolve(dependency)'
   ) > /dev/null 2>&1; then
     printf 'ok: %-20s %s\n' "Node dependencies" "$ROOT_DIR/node_modules"
   else
@@ -170,11 +240,16 @@ print_install_guidance() {
       ;;
     linux)
       printf '  Install Node.js %d+ with npm: https://nodejs.org/en/download/package-manager\n' "$MIN_NODE_MAJOR"
+      printf '  Use Python %d.%d+ (Debian 12+ or Ubuntu 22.04+ provide compatible defaults)\n' \
+        "$MIN_PYTHON_MAJOR" \
+        "$MIN_PYTHON_MINOR"
       printf '  sudo apt-get update\n'
       printf '  sudo apt-get install -y make bats jq python3 python3-venv\n'
       ;;
     *)
-      printf '  Unsupported platform. Install make, Bats, jq, Node.js, npm, and Python 3 manually.\n'
+      printf '  Unsupported platform. Install make, Bats, jq, Node.js, npm, and Python %d.%d+ manually.\n' \
+        "$MIN_PYTHON_MAJOR" \
+        "$MIN_PYTHON_MINOR"
       ;;
   esac
 
@@ -206,6 +281,16 @@ require_supported_linux_node() {
   fi
 }
 
+require_supported_linux_python() {
+  if ! find_supported_python > /dev/null; then
+    printf 'Python %d.%d+ is required before --install on Linux.\n' \
+      "$MIN_PYTHON_MAJOR" \
+      "$MIN_PYTHON_MINOR" >&2
+    printf 'Use Debian 12+, Ubuntu 22.04+, or provide a compatible Python interpreter and rerun this command.\n' >&2
+    exit 1
+  fi
+}
+
 check_dependencies() {
   MISSING_DEPENDENCIES=()
 
@@ -217,7 +302,7 @@ check_dependencies() {
   check_tool "mypy" mypy
   check_node
   check_tool "npm" npm
-  check_tool "Python 3" python3
+  check_python
   check_node_dependencies
 
   if [ "${#MISSING_DEPENDENCIES[@]}" -eq 0 ]; then
@@ -249,6 +334,7 @@ install_host_dependencies() {
     linux)
       local -a apt_command=(apt-get)
       require_supported_linux_node
+      require_supported_linux_python
       if [ "$EUID" -ne 0 ]; then
         if ! command -v sudo > /dev/null 2>&1; then
           printf 'sudo is required for --install on Linux when not running as root.\n' >&2
@@ -260,7 +346,7 @@ install_host_dependencies() {
       "${apt_command[@]}" install -y make bats jq python3 python3-venv
       ;;
     *)
-      printf 'Automatic installation supports macOS and Debian/Ubuntu Linux only.\n' >&2
+      printf 'Automatic installation supports macOS, Debian 12+, and Ubuntu 22.04+ only.\n' >&2
       print_install_guidance >&2
       exit 1
       ;;
@@ -268,10 +354,19 @@ install_host_dependencies() {
 }
 
 install_development_dependencies() {
+  local python=""
+
   install_host_dependencies
 
+  if ! python="$(find_supported_python)"; then
+    printf 'Python %d.%d+ was not available after host dependency installation.\n' \
+      "$MIN_PYTHON_MAJOR" \
+      "$MIN_PYTHON_MINOR" >&2
+    exit 1
+  fi
+
   cd "$ROOT_DIR"
-  python3 -m venv .venv
+  "$python" -m venv .venv
   .venv/bin/python -m pip install --disable-pip-version-check --requirement requirements-dev.txt
   npm ci --no-audit --no-fund
 

@@ -23,10 +23,12 @@ SH
 write_check_tools() {
 	local tool
 
-	for tool in make bats jq shellcheck ruff mypy npm python3; do
+	for tool in make bats jq shellcheck ruff mypy; do
 		write_success_tool "$tool"
 	done
 	write_fake_node
+	write_fake_npm
+	write_fake_python
 }
 
 write_fake_node() {
@@ -40,6 +42,7 @@ case "$1" in
 	script="$2"
 	for dependency in \
 		"@ianvs/prettier-plugin-sort-imports" \
+		"@types/node" \
 		"prettier" \
 		"prettier-plugin-packagejson" \
 		"prettier-plugin-sh" \
@@ -61,6 +64,47 @@ SH
 	chmod +x "$TEST_BIN/node"
 }
 
+write_fake_npm() {
+	cat >"$TEST_BIN/npm" <<'SH'
+#!/bin/sh
+if [ -n "${BOOTSTRAP_COMMAND_LOG:-}" ]; then
+	printf 'npm %s\n' "$*" >>"$BOOTSTRAP_COMMAND_LOG"
+fi
+exit "${MOCK_NPM_STATUS:-0}"
+SH
+	chmod +x "$TEST_BIN/npm"
+}
+
+write_fake_python() {
+	cat >"$TEST_BIN/python3" <<'SH'
+#!/bin/sh
+case "$1" in
+-c)
+	printf '%s\n' "${MOCK_PYTHON_VERSION:-3.10.0}"
+	;;
+-m)
+	module="$2"
+	shift 2
+	if [ -n "${BOOTSTRAP_COMMAND_LOG:-}" ]; then
+		printf '%s -m %s %s\n' "${0##*/}" "$module" "$*" >>"$BOOTSTRAP_COMMAND_LOG"
+	fi
+	case "$module" in
+	venv)
+		/bin/mkdir -p "$1/bin"
+		/bin/cp "$0" "$1/bin/python"
+		/bin/cp "$0" "$1/bin/python3"
+		;;
+	pip)
+		exit "${MOCK_PIP_STATUS:-0}"
+		;;
+	esac
+	;;
+esac
+exit 0
+SH
+	chmod +x "$TEST_BIN/python3"
+}
+
 write_package_manager_sentinels() {
 	local manager
 
@@ -75,15 +119,14 @@ SH
 }
 
 write_linux_install_tools() {
-	write_fake_node
-	write_success_tool npm
+	write_check_tools
 
 	cat >"$TEST_BIN/apt-get" <<'SH'
 #!/bin/sh
 printf 'apt-get %s\n' "$*" >>"$BOOTSTRAP_COMMAND_LOG"
 case "$1" in
 update) exit 0 ;;
-install) exit 73 ;;
+install) exit "${MOCK_APT_INSTALL_STATUS:-73}" ;;
 esac
 exit 74
 SH
@@ -123,9 +166,23 @@ SH
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"missing: Node.js 20+"* ]]
 	[[ "$output" == *"Install Node.js 20+ with npm"* ]]
+	[[ "$output" == *"Use Python 3.10+"* ]]
 	[[ "$output" == *"apt-get install -y make bats jq python3 python3-venv"* ]]
 	[[ "$output" != *"apt-get install -y make bats jq nodejs npm"* ]]
 	[ ! -s "$BOOTSTRAP_COMMAND_LOG" ]
+}
+
+@test "check mode rejects Python versions below 3.10" {
+	write_check_tools
+
+	run env \
+		BOOTSTRAP_DEV_OS=Linux \
+		MOCK_PYTHON_VERSION=3.9.18 \
+		PATH="$TEST_BIN" \
+		/bin/bash "$BOOTSTRAP_SCRIPT" --check
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"missing: Python 3.10+ (found v3.9.18"* ]]
 }
 
 @test "check mode rejects Node versions below 20" {
@@ -142,7 +199,7 @@ SH
 	[[ "$output" == *"skipped: Node dependencies (requires Node.js 20+)"* ]]
 }
 
-@test "Node dependency check covers every configured Prettier plugin" {
+@test "Node dependency check covers every required development module" {
 	write_check_tools
 
 	run env \
@@ -185,6 +242,22 @@ SH
 	[ ! -s "$BOOTSTRAP_COMMAND_LOG" ]
 }
 
+@test "Linux install refuses an unsupported Python before invoking apt" {
+	write_linux_install_tools
+
+	run env \
+		BOOTSTRAP_COMMAND_LOG="$BOOTSTRAP_COMMAND_LOG" \
+		BOOTSTRAP_DEV_OS=Linux \
+		MOCK_NODE_VERSION=20.0.0 \
+		MOCK_PYTHON_VERSION=3.9.18 \
+		PATH="$TEST_BIN" \
+		/bin/bash "$BOOTSTRAP_SCRIPT" --install
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Python 3.10+ is required before --install on Linux."* ]]
+	[ ! -s "$BOOTSTRAP_COMMAND_LOG" ]
+}
+
 @test "Linux install leaves Node to the supported external installation" {
 	write_linux_install_tools
 
@@ -199,6 +272,46 @@ SH
 	grep -Fx "apt-get update" "$BOOTSTRAP_COMMAND_LOG"
 	grep -Fx "apt-get install -y make bats jq python3 python3-venv" "$BOOTSTRAP_COMMAND_LOG"
 	! grep -Eq 'nodejs|(^| )npm( |$)' "$BOOTSTRAP_COMMAND_LOG"
+}
+
+@test "Linux install runs the complete dependency setup and final verification" {
+	write_linux_install_tools
+
+	run env \
+		BOOTSTRAP_COMMAND_LOG="$BOOTSTRAP_COMMAND_LOG" \
+		BOOTSTRAP_DEV_OS=Linux \
+		MOCK_APT_INSTALL_STATUS=0 \
+		MOCK_NODE_VERSION=20.0.0 \
+		MOCK_PYTHON_VERSION=3.10.0 \
+		PATH="$TEST_BIN" \
+		/bin/bash "$BOOTSTRAP_SCRIPT" --install
+
+	[ "$status" -eq 0 ]
+	grep -Fx "apt-get update" "$BOOTSTRAP_COMMAND_LOG"
+	grep -Fx "apt-get install -y make bats jq python3 python3-venv" "$BOOTSTRAP_COMMAND_LOG"
+	grep -Fx "python3 -m venv .venv" "$BOOTSTRAP_COMMAND_LOG"
+	grep -Fx "python -m pip install --disable-pip-version-check --requirement requirements-dev.txt" "$BOOTSTRAP_COMMAND_LOG"
+	grep -Fx "npm ci --no-audit --no-fund" "$BOOTSTRAP_COMMAND_LOG"
+	[[ "$output" == *"Installation finished; verifying dependencies."* ]]
+	[[ "$output" == *"All portable development dependencies are available."* ]]
+}
+
+@test "Linux install propagates pinned Python dependency failures" {
+	write_linux_install_tools
+
+	run env \
+		BOOTSTRAP_COMMAND_LOG="$BOOTSTRAP_COMMAND_LOG" \
+		BOOTSTRAP_DEV_OS=Linux \
+		MOCK_APT_INSTALL_STATUS=0 \
+		MOCK_NODE_VERSION=20.0.0 \
+		MOCK_PIP_STATUS=42 \
+		MOCK_PYTHON_VERSION=3.10.0 \
+		PATH="$TEST_BIN" \
+		/bin/bash "$BOOTSTRAP_SCRIPT" --install
+
+	[ "$status" -eq 42 ]
+	grep -Fx "python -m pip install --disable-pip-version-check --requirement requirements-dev.txt" "$BOOTSTRAP_COMMAND_LOG"
+	! grep -Fq "npm ci --no-audit --no-fund" "$BOOTSTRAP_COMMAND_LOG"
 }
 
 @test "repository ignores the generated virtual environment" {

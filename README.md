@@ -656,7 +656,7 @@ The full contributor reference — the complete test-target catalog, coverage ba
 # Read-only prerequisite check
 bash kramme-cc-workflow/scripts/bootstrap-dev.sh --check
 
-# Explicit macOS or Debian/Ubuntu setup
+# Explicit macOS, Debian 12+, or Ubuntu 22.04+ setup
 bash kramme-cc-workflow/scripts/bootstrap-dev.sh --install
 
 # Fast default suite (Node + Python + Bats)
@@ -669,7 +669,7 @@ make -C kramme-cc-workflow pr-verify
 make -C kramme-cc-workflow verify
 ```
 
-The bootstrap covers Make, Bats, `jq`, ShellCheck, Ruff, mypy, Python, Node.js 20+, and locked Node dependencies. It uses Homebrew on macOS; on Debian/Ubuntu, Node.js 20+ with npm is a prerequisite and the remaining host packages use `apt-get`. It installs pinned Python tools in `.venv` and does not modify Git hooks. Skill changes also require a separate SkillSpector installation for the changed-skill security gate.
+The bootstrap covers Make, Bats, `jq`, ShellCheck, Ruff, mypy, Python 3.10+, Node.js 20+, and locked Node dependencies. It uses Homebrew on macOS; on Debian 12+ and Ubuntu 22.04+, Node.js 20+ with npm and Python 3.10+ are prerequisites before the remaining host packages use `apt-get`. It installs pinned Python tools in `.venv` and does not modify Git hooks. Skill changes also require a separate SkillSpector installation for the changed-skill security gate.
 
 The repository also provides an optional managed pre-commit configuration. After installing `pre-commit`, run `npm run hooks:install` to delegate commits to the existing `npm run check:pre-commit` gate; remove it with `npm run hooks:uninstall`. See [CONTRIBUTING.md](CONTRIBUTING.md#optional-pre-commit-check) for platform prerequisites.
 

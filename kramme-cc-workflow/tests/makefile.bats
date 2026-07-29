@@ -194,6 +194,23 @@ SH
   [[ "$output" == *"mypy not found. Install development dependencies from requirements-dev.txt before running lint or verify."* ]]
 }
 
+@test "lint-shell uses the local virtualenv from repository paths containing spaces" {
+  setup_makefile_contract_repo "repo with spaces"
+  mkdir -p "$MAKEFILE_CONTRACT_REPO/.venv/bin"
+  cat >"$MAKEFILE_CONTRACT_REPO/.venv/bin/shellcheck" <<'SH'
+#!/bin/sh
+printf 'venv-shellcheck=%s\n' "$0"
+exit 0
+SH
+  chmod +x "$MAKEFILE_CONTRACT_REPO/.venv/bin/shellcheck"
+
+  run env PATH="/usr/bin:/bin" \
+    make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory lint-shell
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"repo with spaces/.venv/bin/shellcheck"* ]]
+}
+
 @test "test-python discovers repository and maintenance tests" {
   run make -C "$BATS_TEST_DIRNAME/.." --no-print-directory --dry-run test-python
 

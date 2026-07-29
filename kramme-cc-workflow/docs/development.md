@@ -12,7 +12,7 @@ The hooks are tested using [BATS](https://github.com/bats-core/bats-core) (Bash 
 # Read-only prerequisite check
 bash kramme-cc-workflow/scripts/bootstrap-dev.sh --check
 
-# Explicit setup (Node.js 20+ with npm must already be available on Linux)
+# Explicit setup (Node.js 20+, npm, and Python 3.10+ must already be available on Linux)
 bash kramme-cc-workflow/scripts/bootstrap-dev.sh --install
 ```
 
@@ -100,7 +100,7 @@ Before a release candidate or before marking a larger Pull Request ready, run th
 make -C kramme-cc-workflow verify
 ```
 
-The `verify` target runs `pr-verify` plus the standalone full skill-review eval split. These verification targets expect the existing local tools used by those checks to be installed: `shellcheck`, `ruff`, `skillspector`, `bats`, `jq`, Python 3, and Node.js.
+The `verify` target runs `pr-verify` plus the standalone full skill-review eval split. These verification targets expect the existing local tools used by those checks to be installed: `shellcheck`, `ruff`, `skillspector`, `bats`, `jq`, Python 3.10+, and Node.js.
 
 Python development tool pins used by CI live in `requirements-dev.txt`. First party `actions/*` workflow actions are pinned to commit SHAs with a trailing comment naming the major tag used for lookup. Refresh them with `git ls-remote` against the upstream action repository before updating the SHA.
 

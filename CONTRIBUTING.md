@@ -31,9 +31,9 @@ To install missing dependencies, choose the explicit install mode:
 bash kramme-cc-workflow/scripts/bootstrap-dev.sh --install
 ```
 
-On macOS, installation uses Homebrew for Make, Bats, `jq`, Node.js 20+, and Python. On Debian/Ubuntu Linux, install Node.js 20+ with npm first; the bootstrap then uses `apt-get` for `make`, `bats`, `jq`, `python3`, and `python3-venv`. Both paths create a repository-local `.venv` from the pinned `requirements-dev.txt` and install Node packages with `npm ci`. The Makefile automatically prefers ShellCheck, Ruff, and mypy from `.venv`.
+On macOS, installation uses Homebrew for Make, Bats, `jq`, Node.js 20+, and Python 3.10+. On Debian 12+ and Ubuntu 22.04+, install Node.js 20+ with npm first; Python 3.10+ must also be available before setup mutates the host. The bootstrap then uses `apt-get` for `make`, `bats`, `jq`, `python3`, and `python3-venv`. Both paths create a repository-local `.venv` from the pinned `requirements-dev.txt` and install Node packages with `npm ci`. The Makefile automatically prefers ShellCheck, Ruff, and mypy from `.venv`.
 
-The equivalent npm aliases are `npm run bootstrap:check` and `npm run bootstrap:install` once Node.js 20+ and npm are available. The check mode is the default and never invokes a package manager. Neither mode installs or modifies Git hooks. Skill changes also require SkillSpector for `pr-verify`; install it separately before running the changed-skill security gate.
+The equivalent npm aliases are `npm run bootstrap:check` and `npm run bootstrap:install` once Node.js 20+, npm, and Python 3.10+ are available. The check mode is the default and never invokes a package manager. Neither mode installs or modifies Git hooks. Skill changes also require SkillSpector for `pr-verify`; install it separately before running the changed-skill security gate.
 
 ## Change Guidelines
 
