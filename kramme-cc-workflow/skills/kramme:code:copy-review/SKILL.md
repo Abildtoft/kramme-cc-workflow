@@ -35,7 +35,7 @@ Audit the full codebase for unnecessary UI text when invoked on the resolved bas
    ```bash
    RESOLVE_ARGS=(--strict)
    [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
-
+   
    RESOLVED_BASE=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}") || {
      echo "Base resolution failed; see the message above and stop." >&2
      exit 1

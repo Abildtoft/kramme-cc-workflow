@@ -11,7 +11,7 @@ The report is written for the reviewer to act on, then transcribe into a GitHub 
 - Author: @<author>
 - Branch: <head-ref> → <base-branch>
 - Reviewed head: <head-oid (short)>
-- Files changed: <n>  (+<additions> / -<deletions>)
+- Files changed: <n> (+<additions> / -<deletions>)
 - Dimensions run: code<, ux/visual/a11y/product> | code only
 - Current GitHub review decision: <reviewDecision or "none">
 - Your last review: <APPROVED | CHANGES_REQUESTED | COMMENTED | none>
@@ -87,12 +87,9 @@ _Fresh findings suppressed because the conversation already covers them — list
 
 ## Manual posting
 
-You post the review yourself. Quickest path is the GitHub UI: open the PR, add the
-inline comments above at their `path:line`, paste the verdict rationale as the review
-summary, and choose Approve / Comment / Request changes.
+You post the review yourself. Quickest path is the GitHub UI: open the PR, add the inline comments above at their `path:line`, paste the verdict rationale as the review summary, and choose Approve / Comment / Request changes.
 
-To post from the terminal instead, submit a single review. Set `event` to your decision
-(`APPROVE`, `REQUEST_CHANGES`, or `COMMENT`):
+To post from the terminal instead, submit a single review. Set `event` to your decision (`APPROVE`, `REQUEST_CHANGES`, or `COMMENT`):
 
 ```bash
 gh api -X POST "repos/<owner>/<repo>/pulls/<number>/reviews" \
@@ -100,16 +97,19 @@ gh api -X POST "repos/<owner>/<repo>/pulls/<number>/reviews" \
   -f body='<paste the verdict rationale + summary here>'
 ```
 
-To attach inline comments in the same review, write a JSON payload and submit it with
-`--input`. Each comment needs `path`, `line`, `side` (`RIGHT` for the new version), and
-`body`:
+To attach inline comments in the same review, write a JSON payload and submit it with `--input`. Each comment needs `path`, `line`, `side` (`RIGHT` for the new version), and `body`:
 
 ```json
 {
   "event": "REQUEST_CHANGES",
   "body": "<review summary>",
   "comments": [
-    { "path": "src/foo.ts", "line": 123, "side": "RIGHT", "body": "<inline comment>" }
+    {
+      "path": "src/foo.ts",
+      "line": 123,
+      "side": "RIGHT",
+      "body": "<inline comment>"
+    }
   ]
 }
 ```
@@ -118,8 +118,7 @@ To attach inline comments in the same review, write a JSON payload and submit it
 gh api -X POST "repos/<owner>/<repo>/pulls/<number>/reviews" --input review.json
 ```
 
-To reply to an existing review thread, post to its root comment (the comment ID is in
-the Open Conversation entries):
+To reply to an existing review thread, post to its root comment (the comment ID is in the Open Conversation entries):
 
 ```bash
 gh api -X POST "repos/<owner>/<repo>/pulls/<number>/comments/<root-comment-id>/replies" \
