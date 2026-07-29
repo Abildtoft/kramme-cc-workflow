@@ -458,7 +458,7 @@
       "path": "kramme-cc-workflow/skills/kramme:siw:issue-implement/SKILL.md",
       "frontmatter": {
         "name": "kramme:siw:issue-implement",
-        "argument-hint": "<issue-id> | --team [issue-ids | 'phase N'] [--auto]",
+        "argument-hint": "<issue-id> [--auto] | --team [issue-ids | 'phase N'] [--auto]",
         "disable-model-invocation": "true",
         "user-invocable": "true"
       },

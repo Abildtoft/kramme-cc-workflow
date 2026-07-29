@@ -45,6 +45,7 @@ For huge or foggy initiatives whose route can't fit in one session, start with `
 /kramme:siw:init my-feature-spec.md     # Set up workflow from existing spec
 /kramme:siw:generate-phases             # Break spec into phase-based issues
 /kramme:siw:issue-implement P1-001      # Implement first issue
+/kramme:siw:issue-to-pr P1-001 --ship   # Or take one issue through a clean PR
 /kramme:siw:close                       # Generate docs and clean up
 ```
 
@@ -287,7 +288,8 @@ When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW
 
 | Skill | Arguments | Description |
 | --- | --- | --- |
-| `/kramme:siw:issue-implement` | `<G-001 \| P1-001 \| ISSUE-G-XXX> \| --team [issue-ids \| 'phase N'] [--auto]` | Implement an issue with extensive planning before coding. Explores the codebase, asks clarifying questions, creates a technical plan, then offers three execution modes: **Guided** (step-by-step with verification), **Context-only** (you drive, agent prepares), **Autonomous** (agent implements end-to-end). For a single issue, pass one issue ID. Add `--team` to implement multiple independent issues in parallel; with no team-mode target, it selects ready AUTO issues. In team mode, `--auto` starts the proposed parallel plan immediately. Includes spec sync (step 10) to align decisions back to the spec. |
+| `/kramme:siw:issue-implement` | `<G-001 \| P1-001 \| ISSUE-G-XXX> [--auto] \| --team [issue-ids \| 'phase N'] [--auto]` | Implement an issue with extensive planning before coding. Explores the codebase, asks clarifying questions, creates a technical plan, then offers three execution modes: **Guided** (step-by-step with verification), **Context-only** (you drive, agent prepares), **Autonomous** (agent implements end-to-end). For a single issue, `--auto` selects the autonomous path when no blocker remains. Add `--team` to implement multiple independent issues in parallel; with no team-mode target, it selects ready AUTO issues. Includes spec sync to align decisions back to the spec. |
+| `/kramme:siw:issue-to-pr` | `<G-001 \| P1-001 \| ISSUE-G-XXX> [--strict] [--ship]` | Take one implementation-ready SIW issue through autonomous implementation, synchronized tracker/spec updates, bounded code/convention/refactor review, and final verification on a deterministic unpublished branch. Before the first run, committed `siw/` planning state must match the fetched base so the new branch cannot lose local-only issue or spec changes. Add `--ship` to create the Pull Request and stabilize CI/review feedback; add `--strict` to disposition every emitted finding. |
 
 ### Auditing & Quality
 

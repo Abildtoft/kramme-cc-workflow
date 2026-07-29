@@ -52,6 +52,13 @@ Do not delete the issue file. The issue file is preserved as a record of the wor
 
 ## 11.2 Determine Confidence and Set Status
 
+If `AUTO_MODE=true`, do not ask the confidence question. Choose:
+
+- `DONE` only when every acceptance criterion is satisfied, every applicable automated verification check passed, and no criterion requires outstanding manual or human review.
+- `IN REVIEW` when implementation and automated verification are complete but a criterion, HITL prerequisite, or confidence claim still requires human evidence.
+
+Record the evidence for that choice in the Resolution section and continue to 11.3. `--auto` never converts missing evidence into confidence.
+
 Use AskUserQuestion:
 
 ```yaml
