@@ -25,10 +25,11 @@ sources:
     baseline_hash: "sha256:3ee0319cd6a9c9b35f9219df00c9f74a7475b83a75cf6c68914ca57dccf1f691"
   - id: linear-graphql-schema
     url: https://raw.githubusercontent.com/linear/linear/master/packages/sdk/src/schema.graphql
+    graphql_definitions: [IssueRelationType, ProjectCreateInput, WorkflowState]
     title: "Linear — GraphQL API schema"
     rationale: "Source of the WorkflowState type values (backlog/unstarted/started/completed/canceled) used for status mapping, the ProjectCreateInput contract (teamIds required, statusId is a UUID), and the IssueRelationType enum noted in the Dependencies section."
     last_reviewed_at: 2026-07-29
-    baseline_hash: "sha256:b00d24d8d252a306f5e2088267b1a17dd6e4442f8b793928410b8d4673a7081d"
+    baseline_hash: "sha256:61daaed3150a06edf9c930ee33a6d4a14d548a387146f7b398861c028be33e14"
   - id: linear-rate-limiting
     url: https://linear.app/developers/rate-limiting
     title: "Linear — API rate limiting"

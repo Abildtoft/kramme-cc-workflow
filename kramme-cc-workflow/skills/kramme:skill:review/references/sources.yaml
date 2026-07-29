@@ -6,8 +6,32 @@ sources:
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:32e482ba17945ac7ee1c8d40087346b093193df034391a331da76ca42adeae37"
   - id: compound-engineering-plugin-skill-workflows
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main
-    title: "EveryInc compound-engineering-plugin"
-    rationale: "Review checks for missing external attribution, copied-script license notes, monolithic direct ports, and unclear artifact lifecycles are informed by representative Compound skills including ce-compound, ce-compound-refresh, ce-plan, ce-code-review, and ce-optimize; initially reviewed at commit 6f9ab03a031c054a8046659926251fb6c149269f."
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-code-review/SKILL.md
+    title: "EveryInc compound-engineering-plugin - ce-code-review"
+    rationale: "Review checks for skill-local reviewer orchestration and supporting prompt-resource boundaries are informed by this representative workflow; initially reviewed at commit 6f9ab03a031c054a8046659926251fb6c149269f."
     last_reviewed_at: 2026-07-29
-    baseline_hash: "sha256:d55bf1b4f555472eb93ec542e2ba80323abcd72c7c30f8c877a57b3bf13894f8"
+    baseline_hash: "sha256:954bad94c67eae382e58caf8719cba79f16d2a272b65563af114f398399517d2"
+  - id: compound-ce-compound
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-compound/SKILL.md
+    title: "EveryInc compound-engineering-plugin - ce-compound"
+    rationale: "Review checks for durable artifact production, consumption, and handoff are informed by this representative workflow."
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:acbcbb61459e4c60b3ea7c965487fa64b14b1de2d51d7d8f54a7a4dda8c698f5"
+  - id: compound-ce-compound-refresh
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-compound-refresh/SKILL.md
+    title: "EveryInc compound-engineering-plugin - ce-compound-refresh"
+    rationale: "Review checks for artifact refresh and retirement paths are informed by this representative workflow."
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:b336e779b20268319df2da2f0383c5ea8519ecfaa8c476c8071b09656b19cc16"
+  - id: compound-ce-plan
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-plan/SKILL.md
+    title: "EveryInc compound-engineering-plugin - ce-plan"
+    rationale: "Review checks for monolithic direct ports and supporting-resource decomposition are informed by this representative planning workflow."
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:16e4b8333e0db8dce5ce215d913075d7fb828a2820b1d544dc60e76e1c4e0ef9"
+  - id: compound-ce-optimize
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-optimize/SKILL.md
+    title: "EveryInc compound-engineering-plugin - ce-optimize"
+    rationale: "Review checks for executable helpers, prompt assets, and durable experiment artifacts are informed by this representative workflow."
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:3136d6c4cfdae59d2f7028e35cd8b3b607ae21c84dec20352b888043a1d5fae8"

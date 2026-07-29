@@ -1,7 +1,7 @@
 sources:
   - id: compound-ce-product-pulse
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-product-pulse
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-product-pulse/SKILL.md
     title: "EveryInc compound-engineering-plugin - ce-product-pulse"
     rationale: "The time-windowed product pulse report, partial-source coverage model, strategy feedback loop, and docs/pulse-reports output location are adapted from this source."
     last_reviewed_at: 2026-07-29
-    baseline_hash: "sha256:6725a6b3cf981254d6a1abe75b019c0d63490b79439aa4ce267dc93563b25170"
+    baseline_hash: "sha256:bd61757fdbe1b5441af3d995b3fa50ce89eb8934fcfe38188de7f13b18e9f101"

@@ -85,6 +85,13 @@ const {
  * @typedef {Omit<SkillGroupDescriptor<CodexSkillFile>, "entries" | "stageEntry"> & { entries: CodexSkillFile[] }} SkillGroupView
  */
 
+const SOURCE_SNAPSHOT_DIR = "references/sources-snapshot";
+
+/** @param {{ relativePath: string }} item */
+function isRuntimeSkillResource(item) {
+  return item.relativePath !== SOURCE_SNAPSHOT_DIR;
+}
+
 /**
  * @template {CodexSkillFile} T
  * @param {Partial<SkillGroupDescriptor<T>> & Pick<SkillGroupDescriptor<T>, "currentManagedFiles" | "label" | "nameLabel" | "stagedRoot">} descriptor
@@ -296,7 +303,9 @@ async function stageCodexBundleOutput(
         nameLabel: "skill name",
         stagedRoot: stagedSkillsRoot,
         stageEntry: async (skill, targetDir) => {
-          await copyDir(skill.sourceDir, targetDir);
+          await copyDir(skill.sourceDir, targetDir, {
+            filter: isRuntimeSkillResource,
+          });
           if (skill.content) {
             const content = rewriteCodexSharedScriptReferences(
               skill.content,

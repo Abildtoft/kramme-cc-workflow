@@ -33,6 +33,7 @@
   },
   "python": {
     "measured": [
+      ".agents/skills/kramme:skill:audit-sources/scripts/extract_graphql_definitions.py",
       ".agents/skills/kramme:skill:audit-sources/scripts/normalize.py",
       "kramme-cc-workflow/hooks/lib/git_command_parser.py",
       "kramme-cc-workflow/scripts/changelog.py",

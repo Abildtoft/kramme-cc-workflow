@@ -23,6 +23,7 @@ A skill with no sources to audit may omit the file entirely. An empty file (`sou
 | `rationale` | yes | One sentence: _what in this skill is derived from this source_. Forces curation discipline; if you can't write it, the source isn't an inspiration source. |
 | `last_reviewed_at` | yes | ISO date (`YYYY-MM-DD`) when the baseline was last refreshed. Updated by Phase 5 of the audit skill. |
 | `baseline_hash` | yes after first audit | `sha256:<hex>` of the normalized snapshot content. Empty string on a freshly bootstrapped entry; populated on the first successful fetch. |
+| `graphql_definitions` | no | Ordered list of top-level GraphQL definition names to extract before normalization. Use when only a bounded part of a large schema informs the skill. Missing definitions fail the source audit instead of falling back to the full schema. |
 
 Exactly one of `url` and `context7_library` must be set.
 
@@ -50,6 +51,19 @@ sources:
     rationale: "Hook ordering and call-site rules captured in references/hook-rules.md"
     last_reviewed_at: 2026-04-25
     baseline_hash: "sha256:a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
+```
+
+### Bounded GraphQL source
+
+```yaml
+sources:
+  - id: linear-project-contract
+    url: https://raw.githubusercontent.com/linear/linear/master/packages/sdk/src/schema.graphql
+    graphql_definitions: [ProjectCreateInput, WorkflowState]
+    title: Linear project creation and workflow state contract
+    rationale: "Project creation fields and workflow state values used by the integration."
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:..."
 ```
 
 ### Mixed: skill with multiple sources

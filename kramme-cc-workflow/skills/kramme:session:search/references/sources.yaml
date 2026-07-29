@@ -1,7 +1,25 @@
 sources:
-  - id: compound-ce-sessions
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-compound/scripts/session-history
-    title: "EveryInc compound-engineering-plugin - ce-sessions"
-    rationale: "The session discovery workflow and scripts/discover-sessions.sh, scripts/extract-metadata.py, scripts/extract-skeleton.py, scripts/extract-errors.py, and scripts/session_common.py are adapted from this source; copied script headers record upstream commit 6f9ab03a031c054a8046659926251fb6c149269f and MIT license details."
+  - id: compound-ce-sessions-discover-sessions
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-compound/scripts/session-history/discover-sessions.sh
+    title: "EveryInc compound-engineering-plugin - session discovery"
+    rationale: "scripts/discover-sessions.sh is adapted from this live source; the copied script header records its historical upstream commit and MIT license."
     last_reviewed_at: 2026-07-29
-    baseline_hash: "sha256:da926e8ac41a3b26ec5cb1eb80b84fb851b22fd6476acd0e028c75b4afd389bb"
+    baseline_hash: "sha256:2b00a0147dd33ab0c5d8beac5b2e92800e6de6ec955586861565edfb1b67abe4"
+  - id: compound-ce-sessions-extract-errors
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-compound/scripts/session-history/extract-errors.py
+    title: "EveryInc compound-engineering-plugin - session error extraction"
+    rationale: "scripts/extract-errors.py is adapted from this live source; the copied script header records its historical upstream commit and MIT license."
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:9facb5c524b02a1b30921b27dbdd2f41b1e0a6b1cd0b2ece3fd158ab05f5efc2"
+  - id: compound-ce-sessions-extract-metadata
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-compound/scripts/session-history/extract-metadata.py
+    title: "EveryInc compound-engineering-plugin - session metadata extraction"
+    rationale: "scripts/extract-metadata.py is adapted from this live source; the copied script header records its historical upstream commit and MIT license."
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:4eaf3e25faa3e0b95bf9d85be16e163f60568331edabbe28efb557bb738ffe77"
+  - id: compound-ce-sessions-extract-skeleton
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-compound/scripts/session-history/extract-skeleton.py
+    title: "EveryInc compound-engineering-plugin - session skeleton extraction"
+    rationale: "scripts/extract-skeleton.py is adapted from this live source; the copied script header records its historical upstream commit and MIT license."
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:61ad4a97e9382420434ffc650040f61485663b45d4934fb66cb920489aaf274b"

@@ -156,6 +156,15 @@ test("bundle output stages prompts, skills, generated skills, and agent skills",
         "",
       ].join("\n"),
     );
+    await writeFile(
+      path.join(
+        sourceSkillDir,
+        "references",
+        "sources-snapshot",
+        "upstream.md",
+      ),
+      "repository-maintenance baseline\n",
+    );
 
     const stagedBundle = await stageCodexBundleOutput(
       codexRoot,
@@ -202,6 +211,18 @@ test("bundle output stages prompts, skills, generated skills, and agent skills",
     assert.deepEqual(
       new Set(stagedBundle.stagedSkillFiles["source-skill"]),
       new Set(["SKILL.md", "notes.md"]),
+    );
+    assert.equal(
+      await pathExists(
+        path.join(
+          codexStagingRoot,
+          "skills",
+          "source-skill",
+          "references",
+          "sources-snapshot",
+        ),
+      ),
+      false,
     );
     assert.deepEqual(
       new Set(stagedBundle.stagedSkillFiles["extra-command"]),
