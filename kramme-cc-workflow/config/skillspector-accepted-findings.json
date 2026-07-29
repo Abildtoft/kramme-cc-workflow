@@ -17,6 +17,14 @@
       "review_after": "2026-08-25"
     },
     {
+      "path": "kramme-cc-workflow/skills/kramme:git:commit-message/SKILL.md",
+      "rule_id": "TM1",
+      "reason": "Reviewed false-positive TM1 finding for the commit-readiness warning: the skill explicitly prohibits using --no-verify when hooks fail and instructs the user to fix the hook failure first.",
+      "owner": "kramme",
+      "accepted_at": "2026-07-29",
+      "review_after": "2026-08-29"
+    },
+    {
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
       "rule_id": "TM1",
       "reason": "Reviewed intentional TM1 finding for the Pull Request creation rollback path: the explicit empty-expectation force-with-lease creates only a branch proven absent, after branch-name validation and repeated open-Pull-Request checks, and fails closed if another actor creates the remote ref.",
