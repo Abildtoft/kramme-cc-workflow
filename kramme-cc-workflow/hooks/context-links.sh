@@ -6,6 +6,8 @@ set -uo pipefail
 # Check if hook is enabled
 source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
 exit_if_hook_disabled "context-links" "json"
+# shellcheck source=scripts/lib/shell-helpers.sh
+source "${CLAUDE_PLUGIN_ROOT}/scripts/lib/shell-helpers.sh"
 #
 # This Stop hook detects:
 # - Linear issue ID from branch name (pattern: {prefix}/{TEAM-ID}-description)
@@ -41,39 +43,6 @@ resolve_context_links_config_file() {
   fi
 
   printf '%s\n' "$legacy_config_file"
-}
-
-run_with_timeout() {
-  local timeout_seconds="$1"
-  shift
-
-  perl -MTime::HiRes=alarm -e '
-    my $timeout = shift @ARGV;
-    my $pid = fork();
-    die "failed to fork command: $!\n" unless defined $pid;
-
-    if ($pid == 0) {
-      setpgrp(0, 0) or die "failed to create command process group: $!\n";
-      exec @ARGV;
-      die "failed to exec command: $!\n";
-    }
-
-    my $timed_out = 0;
-    local $SIG{ALRM} = sub {
-      $timed_out = 1;
-      kill "KILL", -$pid;
-    };
-
-    alarm($timeout);
-    my $waited = waitpid($pid, 0);
-    my $status = $?;
-    alarm(0);
-
-    exit 124 if $timed_out;
-    die "failed to wait for command: $!\n" if $waited == -1;
-    exit(128 + ($status & 127)) if $status & 127;
-    exit(($status >> 8) & 255);
-  ' "$timeout_seconds" "$@"
 }
 
 # Optional org-specific configuration. This file is not tracked and can override defaults.
