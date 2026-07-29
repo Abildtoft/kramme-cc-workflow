@@ -8,6 +8,10 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 ## Unreleased
 
+### Changed
+
+- Breaking: Replaced `/kramme:visual:diff-review [branch|commit|PR#|range]` with `/kramme:pr:walkthrough --report [branch|commit|PR#|range]`.
+
 ## [0.68.0] - 2026-07-26
 
 ### Added

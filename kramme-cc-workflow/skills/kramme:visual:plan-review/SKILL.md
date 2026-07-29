@@ -11,7 +11,7 @@ kramme-platforms: [claude-code, codex]
 
 Generate a comprehensive visual plan review as a single-file HTML page, comparing the current codebase against a proposed implementation plan. Diagrams render Mermaid/Chart.js from CDN, so viewing them requires network access.
 
-Use this before implementation, against a plan, spec, or RFC document. To review changes that already exist on a branch or PR, use `kramme:visual:diff-review` instead.
+Use this before implementation, against a plan, spec, or RFC document. To review changes that already exist on a branch or PR, use `/kramme:pr:walkthrough --report` instead.
 
 **Arguments:** "$ARGUMENTS"
 

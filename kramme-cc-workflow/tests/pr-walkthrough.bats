@@ -5,6 +5,7 @@ setup() {
   RENDERER="$ROOT/skills/kramme:pr:walkthrough/scripts/render_walkthrough.py"
   VALIDATOR="$ROOT/skills/kramme:pr:walkthrough/scripts/validate_walkthrough.py"
   RUNTIME="$ROOT/skills/kramme:pr:walkthrough/assets/walkthrough-runtime.js"
+  SKILL="$ROOT/skills/kramme:pr:walkthrough/SKILL.md"
   TMP_DIR="$(mktemp -d)"
   WALKTHROUGH_CHROME_PID=""
 }
@@ -121,6 +122,45 @@ find_chrome() {
     fi
   done
   return 1
+}
+
+@test "PR walkthrough requires report mode for positional scopes" {
+  run python3 - "$SKILL" <<'PY'
+import pathlib
+import sys
+
+text = pathlib.Path(sys.argv[1]).read_text()
+assert (
+    'argument-hint: "[--report [branch|commit|PR#|range] | '
+    '--report --base <ref> | --base <ref>] [--output <path>]"'
+) in text
+assert (
+    "If any positional token or unknown flag remains after parsing those options, "
+    "stop with: `Positional branch, commit, PR, and range scopes require --report.`"
+) in text
+PY
+
+  [ "$status" -eq 0 ]
+}
+
+@test "PR walkthrough rejects ambiguous report scope combinations" {
+  run python3 - "$SKILL" <<'PY'
+import pathlib
+import sys
+
+text = pathlib.Path(sys.argv[1]).read_text()
+assert "Reject unknown flags and multiple positional scopes." in text
+assert (
+    "If both a positional scope and `--base <ref>` are present, stop with: "
+    "`Report mode accepts either one positional scope or --base, not both.`"
+) in text
+assert (
+    "The argument parser above rejects combining a positional scope with `--base` "
+    "rather than silently ignoring either ref"
+) in text
+PY
+
+  [ "$status" -eq 0 ]
 }
 
 @test "PR walkthrough validator rejects unsafe URL schemes" {
