@@ -129,7 +129,7 @@ gh api -X POST "repos/<owner>/<repo>/pulls/<number>/comments/<root-comment-id>/r
 ## Optional deeper passes
 
 - `/kramme:pr:product-review` — deeper product-value and flow-completeness review.
-- `/kramme:pr:copy-review` — UI text redundancy review.
+- `/kramme:code:copy-review --pr` — UI text redundancy review for the Pull Request diff.
 ````
 
 ## Section notes

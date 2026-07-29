@@ -1,14 +1,14 @@
 ---
-name: kramme:pr:copy-review
-description: Review PR and local changes or scan a codebase scope for unnecessary, redundant, or duplicative UI text — labels, descriptions, placeholders, tooltips, and instructions that the UI already communicates through its structure. Defaults to diff review; use --all or a scope path for audit mode. Supports inline report output with --inline.
-argument-hint: "[--base <branch>] [--threshold 0-100] [--inline] [--all | <scope-path>]"
+name: kramme:code:copy-review
+description: Review unnecessary, redundant, or duplicative UI text across a codebase or the current branch diff. Defaults to a full-codebase audit on the base branch and automatically uses PR/local diff review on non-base branches; use --pr to force diff review. Supports scoped audits, confidence thresholds, and inline output.
+argument-hint: "[--pr] [--base <branch>] [--threshold 0-100] [--inline] [--all | <scope-path>]"
 disable-model-invocation: false
 user-invocable: true
 ---
 
-# Copy Review for Pull Request, Local Changes, or Codebase Scope
+# Copy Review for Codebase Scope, Pull Request, or Local Changes
 
-Review branch changes and local work for unnecessary UI text by default, or audit the full codebase or a named scope when requested, using the shared rubric in `references/copy-review-rubric.md`.
+Audit the full codebase for unnecessary UI text when invoked on the resolved base branch. Automatically switch to PR/local diff review on a non-base branch, use `--pr` to force diff review, or pass `--all` or a scope path to force audit mode.
 
 **Arguments:** "$ARGUMENTS"
 
@@ -21,13 +21,35 @@ Review branch changes and local work for unnecessary UI text by default, or audi
 1. If `--base <branch>` flag provided, store as `BASE_BRANCH_OVERRIDE`
 2. If `--threshold N` flag provided, store as `custom_threshold` (0-100). Only findings with confidence >= N will be reported. If not provided, set `custom_threshold=75`.
 3. If `--inline` flag provided, set `INLINE_MODE=true`
-4. Select the review mode:
+4. If `--pr` is provided, set `FORCE_PR_MODE=true`.
+5. Reject invalid combinations before resolving the mode:
+   - If `--pr` is combined with `--all` or a positional scope path, report that PR mode and audit scope cannot be combined, then stop.
+   - If `--all` and a positional scope path are combined, or more than one positional scope path remains, report the conflicting scope arguments and stop.
+   - If `--base` is combined with `--all` or a positional scope path, report that `--base` only applies to PR mode or automatic mode detection, then stop.
+   - If an unknown option is provided, report it and stop.
+6. Select explicit audit mode before branch detection:
    - If `--all` is provided, set `SCAN_MODE=true` and `TARGET_SCOPE` to the repo root.
    - If exactly one positional scope path is provided, set `SCAN_MODE=true` and store it as `TARGET_SCOPE`.
-   - Otherwise, set `SCAN_MODE=false` and use the default PR/local diff review.
-5. If `--all` and a positional scope path are combined, or if more than one positional scope path remains, report the conflicting scope arguments and stop.
-6. If `SCAN_MODE=true` and `--base` is also provided, report that `--base` cannot be combined with `--all` or a scope path and stop.
-7. If an unknown option is provided, report it and stop. Otherwise, use the defaults above for omitted options.
+7. If no explicit audit scope was provided, resolve the base with the shared plugin script:
+
+   ```bash
+   RESOLVE_ARGS=(--strict)
+   [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
+
+   RESOLVED_BASE=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}") || {
+     echo "Base resolution failed; see the message above and stop." >&2
+     exit 1
+   }
+   eval "$RESOLVED_BASE"
+   CURRENT_BRANCH=$(git branch --show-current)
+   ```
+
+8. Select the automatic mode:
+   - If `FORCE_PR_MODE=true`, set `SCAN_MODE=false` and skip the remaining automatic-detection rules.
+   - Otherwise, if `CURRENT_BRANCH` is non-empty and equals `BASE_BRANCH`, set `SCAN_MODE=true` and `TARGET_SCOPE` to the repo root.
+   - Otherwise, if `CURRENT_BRANCH` is non-empty and differs from `BASE_BRANCH`, set `SCAN_MODE=false`.
+   - Otherwise HEAD is detached; compare `git rev-parse HEAD` with `git rev-parse "$BASE_REF"` and use full-codebase audit mode when they match or PR/local diff mode when they differ.
+9. Always report the selected mode before scanning: `Copy review mode: codebase audit ({scope}).` or `Copy review mode: PR/local diff against {BASE_REF}.`
 
 ### Step 2: Load Rubric and Project Review Conventions
 
@@ -36,7 +58,7 @@ Review branch changes and local work for unnecessary UI text by default, or audi
 3. Extract initial UI stack, component library, design system, target audience, and content strategy conventions from those repo-root instruction files and the surrounding UI code.
 4. Pass the rubric and merged conventions to the reviewer agent, and instruct it to prioritize documented conventions over generic best practices.
 
-### Step 3: Diff Review Mode — Resolve Base Branch and Identify UI-Relevant Changed Files
+### Step 3: PR/Local Diff Mode — Resolve Base Branch and Identify UI-Relevant Changed Files
 
 When `SCAN_MODE=false`, run this section. When `SCAN_MODE=true`, skip to Step 6.
 
@@ -99,7 +121,7 @@ In diff review mode, if `COPY_REVIEW_OVERVIEW.md` exists in the project root:
 
 In codebase scan mode, do not use an existing overview to filter audit findings. The new report represents the latest requested scan and replaces the prior overview unless `INLINE_MODE=true`.
 
-### Step 5: Diff Review Mode — Launch Copy Reviewer Agent
+### Step 5: PR/Local Diff Mode — Launch Copy Reviewer Agent
 
 When `SCAN_MODE=false`, launch **kramme:copy-reviewer** using the platform's agent-invocation primitive with:
 
@@ -120,7 +142,7 @@ When `SCAN_MODE=true`, run this section instead of Steps 3 and 5.
 
 #### Orient and Select Files
 
-1. Use the repo root when `TARGET_SCOPE` came from `--all`; otherwise use the positional path exactly as the requested scope.
+1. Use `TARGET_SCOPE` exactly as selected in Step 1: the repo root for `--all` or automatic base-branch audit mode, otherwise the requested positional scope path.
 2. Read `package.json` and relevant build configuration to understand the UI stack and directory layout.
 3. Discover instruction files that apply within `TARGET_SCOPE` and merge their project conventions and target-audience guidance with the conventions from Step 2.
 4. Enumerate files inside `TARGET_SCOPE` and filter them using the UI-relevant file rules in `references/copy-review-rubric.md`. Skip `node_modules`, `dist`, build artifacts, generated files, lock files, and vendored code.
@@ -232,25 +254,25 @@ To resolve findings: `/kramme:pr:resolve-review`
 ## Usage Examples
 
 ```
-/kramme:pr:copy-review
+/kramme:code:copy-review
 ```
 
 ```
-/kramme:pr:copy-review --base develop
+/kramme:code:copy-review --pr
 ```
 
 ```
-/kramme:pr:copy-review --threshold 85
+/kramme:code:copy-review --base develop
 ```
 
 ```
-/kramme:pr:copy-review --inline
+/kramme:code:copy-review --threshold 85 --inline
 ```
 
 ```
-/kramme:pr:copy-review --all
+/kramme:code:copy-review --all
 ```
 
 ```
-/kramme:pr:copy-review src/components
+/kramme:code:copy-review src/components
 ```

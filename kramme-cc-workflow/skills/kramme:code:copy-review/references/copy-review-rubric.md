@@ -2,7 +2,7 @@
 
 This is the shared rubric for copy-review entry points and the `kramme:copy-reviewer` agent. Use it to decide whether UI text earns its place. Entry-point skills still decide scope: PR review evaluates changed UI copy, while codebase audit evaluates all UI copy in the requested scope.
 
-Canonical owner: `kramme:pr:copy-review`. Its default PR mode and optional audit mode both read this skill-local resource.
+Canonical owner: `kramme:code:copy-review`. The default audit mode and automatic or explicit PR mode all read this skill-local resource.
 
 ## Review Goal
 

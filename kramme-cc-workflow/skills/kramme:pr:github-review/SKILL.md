@@ -218,7 +218,7 @@ Run all review commands **with the worktree as the working directory** (you are 
 
 2. **UI/UX/visual/accessibility/product — when `RUN_UI=true`.** Delegate to `/kramme:pr:ux-review --base "$BASE_REF" --inline`, appending `--categories <UI_CATEGORIES>` when the user supplied that flag. There is normally no running app for someone else's PR, so the UI pass runs as static, diff-based analysis. Capture its findings.
 
-Do not auto-run the heavier `kramme:pr:product-review` or `kramme:pr:copy-review`. Mention them in the final report as optional deeper passes the user can request.
+Do not auto-run the heavier `kramme:pr:product-review` or `kramme:code:copy-review --pr`. Mention them in the final report as optional deeper passes the user can request.
 
 **Coverage handling.** If a delegated review fails or reports degraded coverage, record which dimensions were not covered and surface that in the report. Do not present a partial review as complete. Continue as long as at least the code review succeeded.
 
