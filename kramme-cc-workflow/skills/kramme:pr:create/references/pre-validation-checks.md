@@ -30,7 +30,7 @@ case "$ORIGIN_URL" in
   *) GH_HOST=github.com ;;
 esac
 GH_HOST=${GH_HOST##*@}
-if ! gh auth status --active --hostname "$GH_HOST" > /dev/null 2>&1; then
+if ! env GH_PROMPT_DISABLED=1 gh auth status --active --hostname "$GH_HOST" > /dev/null 2>&1; then
   echo "MISSING REQUIREMENT: gh CLI not authenticated for $GH_HOST. Run \`gh auth login --hostname $GH_HOST\` first." >&2
   exit 1
 fi

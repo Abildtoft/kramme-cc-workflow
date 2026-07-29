@@ -15,7 +15,7 @@ COLLECT_OPTION_SEEN=false
 
 usage() {
   cat >&2 << 'USAGE'
-Usage: collect-review-diff.sh [--base <branch-or-ref>] [--strict|--tolerate-fetch-failure] [--format shell|json]
+Usage: collect-review-diff.sh [--base <branch-or-ref>] [--base-commit <40-hex-oid>] [--strict|--tolerate-fetch-failure] [--format shell|json]
        collect-review-diff.sh --decode-json
 
 Default output is shell-quoted assignments:
@@ -193,6 +193,12 @@ while [ $# -gt 0 ]; do
       COLLECT_OPTION_SEEN=true
       require_value "$1" "${2-}"
       RESOLVE_ARGS+=(--base "$2")
+      shift 2
+      ;;
+    --base-commit)
+      COLLECT_OPTION_SEEN=true
+      require_value "$1" "${2-}"
+      RESOLVE_ARGS+=(--base-commit "$2")
       shift 2
       ;;
     --strict)

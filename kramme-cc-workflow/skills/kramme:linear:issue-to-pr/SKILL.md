@@ -38,7 +38,7 @@ Defaults:
 
 `--strict` changes review disposition, not product authority. It does not permit inventing a missing requirement or bypassing a genuine manual blocker.
 
-`--ship` is explicit authorization to retire current-project disposable workflow artifacts through `kramme:workflow-artifacts:cleanup --auto`, let `kramme:pr:create --auto --authorize-history-rewrite` perform the backup-protected local narrative rewrite without a nested reset prompt, create the previously absent remote issue branch once with an exact absence lease, self-assign, and open the Pull Request, then let `kramme:pr:fix-ci --no-consolidate` push validated CI and review-feedback fixes until the checks are green. The cleanup skill keeps permanent specifications and shared diagrams in auto mode. Keeping CI fix commits unconsolidated avoids a post-creation history rewrite. `--ship` does not authorize rewriting an existing remote branch or Pull Request branch, bypassing a lease mismatch, force-pushing unrelated work, merging, or post-merge rollout.
+`--ship` is explicit authorization to retire current-project disposable workflow artifacts through `kramme:workflow-artifacts:cleanup --auto`, let `kramme:pr:create --auto` perform the backup-protected local narrative rewrite without a nested reset prompt, create the previously absent remote issue branch once with an exact absence lease, self-assign, and open the Pull Request, then let `kramme:pr:fix-ci --no-consolidate` push validated CI and review-feedback fixes until the checks are green. The cleanup skill keeps permanent specifications and shared diagrams in auto mode. Keeping CI fix commits unconsolidated avoids a post-creation history rewrite. `--ship` does not authorize rewriting an existing remote branch or Pull Request branch, bypassing a lease mismatch, force-pushing unrelated work, merging, or post-merge rollout.
 
 If validation fails, stop with:
 
@@ -134,7 +134,7 @@ If `SHIP_MODE=true`, read the shipping contract from `references/shipping-contra
 2. Retire current-project disposable workflow artifacts with `kramme:workflow-artifacts:cleanup --auto`.
 3. Require a clean, unambiguous worktree.
 4. Record the verified tree identity.
-5. Invoke `kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description --authorize-history-rewrite`.
+5. Invoke `kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description`.
 6. Prove that the initial remote Pull Request head matches the verified tree.
 7. Invoke `kramme:pr:fix-ci --no-consolidate` until CI is green and review feedback is addressed.
 8. Prove that the final remote Pull Request head matches the clean local result, and rerun project verification if CI remediation changed the tree.

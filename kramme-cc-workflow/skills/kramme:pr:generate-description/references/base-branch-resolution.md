@@ -10,11 +10,12 @@ Synced base/diff scope contract (keep aligned across base-aware and diff-aware s
    git branch --show-current
    ```
 
-2. **ALWAYS** resolve the base/target branch with the shared plugin script. It uses a 3-tier strategy: explicit `BASE_BRANCH_OVERRIDE` from `--base`, PR target branch, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
+2. **ALWAYS** resolve the base/target branch with the shared plugin script. It uses a 3-tier strategy: explicit `BASE_BRANCH_OVERRIDE` from `--base`, PR target branch, then `origin/HEAD`/`origin/main`/`origin/master`. When `BASE_COMMIT_OVERRIDE` is present, it retains the branch metadata but pins all diff calculations to that exact commit. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
 
    ```bash
    RESOLVE_ARGS=(--strict)
    [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
+   [ -n "${BASE_COMMIT_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base-commit "$BASE_COMMIT_OVERRIDE")
 
    RESOLVED=$(${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh "${RESOLVE_ARGS[@]}") || {
      echo "Base resolution failed; see the message above and stop." >&2

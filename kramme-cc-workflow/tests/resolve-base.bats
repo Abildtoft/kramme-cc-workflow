@@ -69,6 +69,22 @@ if [ "\$1" = "fetch" ]; then
     echo "missing GCM_INTERACTIVE=Never" >&2
     exit 86
   fi
+  case "\${GIT_SSH_COMMAND:-}" in
+    *"-oBatchMode=yes"*) ;;
+    *)
+      echo "missing SSH BatchMode" >&2
+      exit 86
+      ;;
+  esac
+  if [ -n "\${EXPECTED_GIT_SSH_COMMAND_FRAGMENT:-}" ]; then
+    case "\${GIT_SSH_COMMAND:-}" in
+      *"\${EXPECTED_GIT_SSH_COMMAND_FRAGMENT}"*) ;;
+      *)
+        echo "missing caller SSH command" >&2
+        exit 86
+        ;;
+    esac
+  fi
 fi
 exec "$real_git" "\$@"
 GIT
@@ -193,6 +209,36 @@ delete_origin_head() {
 	[ ! -e "$PWNED_FILE" ]
 }
 
+@test "pinned base commit skips refetch and remains stable when remote base moves" {
+	local pinned_base
+	pinned_base="$(git rev-parse refs/remotes/origin/main)"
+
+	git switch main >/dev/null 2>&1
+	commit_file "remote-move.txt" "remote move" "move remote main"
+	git push origin main >/dev/null 2>&1
+	git switch feature >/dev/null 2>&1
+
+	write_slow_git_fetch
+	export MOCK_GIT_FETCH_SLEEP_SECONDS=10
+	run "$SCRIPT_DIR/resolve-base.sh" --base main --base-commit "$pinned_base"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "$pinned_base" ]
+	[ "$BASE_BRANCH" = "main" ]
+	[ "$MERGE_BASE" = "$pinned_base" ]
+}
+
+@test "pinned base commit rejects non-full and missing OIDs" {
+	run "$SCRIPT_DIR/resolve-base.sh" --base main --base-commit HEAD
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--base-commit must be a full 40-character lowercase commit OID"* ]]
+
+	run "$SCRIPT_DIR/resolve-base.sh" --base main --base-commit 0000000000000000000000000000000000000000
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Pinned base commit '0000000000000000000000000000000000000000' does not resolve locally"* ]]
+}
+
 @test "uses GitHub PR base metadata before origin HEAD" {
 	create_remote_branch "develop"
 	write_gh_base "develop"
@@ -206,6 +252,8 @@ delete_origin_head() {
 }
 
 @test "fetch disables interactive credential prompts" {
+	export GIT_SSH_COMMAND="custom-ssh --identity test-key"
+	export EXPECTED_GIT_SSH_COMMAND_FRAGMENT="$GIT_SSH_COMMAND"
 	write_git_fetch_env_assertion
 
 	run "$SCRIPT_DIR/resolve-base.sh" --base main
@@ -489,6 +537,47 @@ delete_origin_head() {
 	[ "$(git rev-parse feature-recreate-backup)" = "$feature_tip" ]
 }
 
+@test "backup mode reuses an existing exact-tip recovery branch on retry" {
+	commit_file "feature.txt" "feature" "feature commit"
+	local feature_tip
+	feature_tip="$(git rev-parse HEAD)"
+	git branch feature-recreate-backup "$feature_tip"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$ORIGINAL_TIP" = "$feature_tip" ]
+	[ "$BACKUP_REF" = "feature-recreate-backup" ]
+	[ "$(git rev-parse feature-recreate-backup)" = "$feature_tip" ]
+}
+
+@test "backup mode honors a caller-selected retry-safe backup ref" {
+	commit_file "feature.txt" "feature" "feature commit"
+	local feature_tip
+	feature_tip="$(git rev-parse HEAD)"
+	local backup_ref="feature-recreate-backup-${feature_tip}"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup --backup-ref "$backup_ref"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BACKUP_REF" = "$backup_ref" ]
+	[ "$(git rev-parse "$backup_ref")" = "$feature_tip" ]
+}
+
+@test "backup mode rejects a custom backup ref that aliases the current branch" {
+	commit_file "feature.txt" "feature" "feature commit"
+	local feature_tip
+	feature_tip="$(git rev-parse HEAD)"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup --backup-ref feature
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--backup-ref must not name the current branch being rewritten"* ]]
+	[ "$(git rev-parse feature)" = "$feature_tip" ]
+}
+
 @test "backup mode uses after commit as reset point" {
 	commit_file "one.txt" "one" "feature one"
 	local after_commit
@@ -574,6 +663,13 @@ delete_origin_head() {
 	[[ "$output" == *"--force-backup requires --backup"* ]]
 }
 
+@test "custom backup ref without backup mode is rejected" {
+	run "$SCRIPT_DIR/resolve-base.sh" --backup-ref feature-recovery
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--backup-ref requires --backup"* ]]
+}
+
 @test "backup mode refuses to run from the plugin repository itself" {
 	cd "$SCRIPT_DIR/.."
 
@@ -596,6 +692,14 @@ delete_origin_head() {
 	run "$SCRIPT_DIR/resolve-base.sh" --base
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"--base requires a value"* ]]
+
+	run "$SCRIPT_DIR/resolve-base.sh" --base-commit
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--base-commit requires a value"* ]]
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup-ref
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--backup-ref requires a value"* ]]
 
 	run "$SCRIPT_DIR/resolve-base.sh" --after --strict
 	[ "$status" -eq 1 ]

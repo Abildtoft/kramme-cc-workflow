@@ -7,11 +7,11 @@ Apply this contract only after the caller supplied `--ship`, every applicable ga
 `--ship` authorizes these actions for the current Linear issue branch only:
 
 - Retire current-project disposable workflow artifacts using the safe automatic cleanup path.
-- Let `kramme:pr:create --auto --authorize-history-rewrite` reorganize the branch into narrative commits, including its backup-protected local reset without a nested prompt.
+- Let `kramme:pr:create --auto` reorganize the branch into narrative commits, including its backup-protected local reset without a nested prompt.
 - Create the previously absent remote issue branch once with an exact absence lease, then self-assign and create a ready-for-review Pull Request.
 - Let `kramme:pr:fix-ci --no-consolidate` push targeted fixes for validated CI failures and review feedback until the Pull Request is green.
 
-This authorization is narrower than `--auto`: it applies only when the issue branch is absent on `origin` and has no Pull Request, never bypasses backup creation, remote-absence proof, or lease checks, and expires with this invocation. The no-consolidation mode retains `[FIX PIPELINE]` commits instead of rewriting the open Pull Request's history. This contract does not authorize rewriting an existing remote branch, force-pushing an already-open Pull Request, changing unrelated branches, merging, deleting durable specifications, or performing post-merge rollout.
+These actions remain bounded to the current issue branch. Pull Request creation continues only when the branch is absent on `origin` and has no Pull Request, never bypasses backup creation, remote-absence proof, or lease checks, and expires with this invocation. The no-consolidation mode retains `[FIX PIPELINE]` commits instead of rewriting the open Pull Request's history. This contract does not authorize rewriting an existing remote branch, force-pushing an already-open Pull Request, changing unrelated branches, merging, deleting durable specifications, or performing post-merge rollout.
 
 ## Step 1: Detect an Existing Pull Request
 
@@ -51,7 +51,7 @@ Store the result as `{verified-tree}`. This is the exact source tree covered by 
 
 ## Step 5: Create the Pull Request
 
-Invoke `kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description --authorize-history-rewrite` using the platform's skill mechanism. The explicit issue identifier is authoritative; do not re-extract it from the branch name. `--require-generated-description` makes unusable generator output a rollback-triggering blocker instead of allowing a placeholder fallback body. `--authorize-history-rewrite` carries the user's explicit `--ship` authorization through the backup-protected local reset; the delegated workflow separately requires the remote issue ref to be absent and creates it with an exact absence lease. `--auto` alone does not authorize the local reset.
+Invoke `kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description` using the platform's skill mechanism. The explicit issue identifier is authoritative; do not re-extract it from the branch name. `--require-generated-description` makes unusable generator output a rollback-triggering blocker instead of allowing a placeholder fallback body. `--auto` carries the invocation through the backup-protected local reset without prompting; the delegated workflow separately requires the remote issue ref to be absent and creates it with an exact absence lease.
 
 The delegated skill owns pre-validation, base-branch detection, state preservation, narrative commit recreation, description generation, the sole pre-PR remote push, self-assignment, Pull Request creation, and rollback on failure. Capture its validated `{base-branch}` as `{expected-base-branch}`; if that value is unavailable, stop because the workflow cannot prove that the created Pull Request targets the intended base. Its recreate-commits delegate runs with `--no-push`, so description failure cannot publish rewritten history. Continue after it returns; do not stop at an intermediate sub-skill summary.
 

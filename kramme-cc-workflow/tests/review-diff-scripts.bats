@@ -89,6 +89,23 @@ GH
 	[ "$output" = $'committed.txt\nstaged.txt\ntracked.txt\nuntracked.txt' ]
 }
 
+@test "collect-review-diff keeps a caller-pinned base without refetching" {
+	local pinned_base
+	pinned_base="$(git rev-parse refs/remotes/origin/main)"
+	printf 'committed\n' >committed.txt
+	git add committed.txt
+	git commit -m "feature commit" >/dev/null
+	git remote set-url origin "$TMP_DIR/missing-origin.git"
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --base main --base-commit "$pinned_base"
+
+	[ "$status" -eq 0 ]
+	eval "$output"
+	[ "$BASE_REF" = "$pinned_base" ]
+	[ "$BASE_BRANCH" = "main" ]
+	[ "$CHANGED_FILES" = "committed.txt" ]
+}
+
 @test "collect-review-diff emits JSON for structured consumers" {
 	printf 'committed\n' >committed.txt
 	git add committed.txt
