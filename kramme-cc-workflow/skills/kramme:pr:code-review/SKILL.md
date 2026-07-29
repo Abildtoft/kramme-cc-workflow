@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:code-review
-description: Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, performance, slop, lean deletion, refactor fit, simplification). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. Use --team for multi-agent cross-validation. Not for UX, visual, or accessibility review -- use kramme:pr:ux-review for those.
-argument-hint: "[aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--parallel] [parallel] [--team] [--inline]"
+description: "Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, performance, slop, lean deletion, refactor fit, simplification). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. Use --team for multi-agent cross-validation. Use --loop for autoreview, closeout review, or second-model review that verifies accepted findings, applies scoped fixes, and reruns to convergence. Not for UX, visual, or accessibility review -- use kramme:pr:ux-review for those."
+argument-hint: "[aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--parallel] [parallel] [--team] [--inline] [--loop]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -11,6 +11,8 @@ user-invocable: true
 Run a comprehensive pull request review using multiple specialized agents, each focusing on a different aspect of code quality.
 
 **Review Aspects (optional):** "$ARGUMENTS"
+
+Before selecting a workflow, if `$ARGUMENTS` contains `--loop`, set `LOOP_MODE=true` and remove that flag. Otherwise set `LOOP_MODE=false`. Use the remaining arguments as the normalized review arguments throughout this run and for any review rerun.
 
 ## Team Mode
 
@@ -374,6 +376,10 @@ Otherwise:
 If eligible `gated_auto` Critical or Important code-backed issues were found, include a suggestion to run `/kramme:pr:resolve-review` to automatically address them. Manual findings must remain human follow-up in the report, with manual blockers and next decisions named. Advisory findings stay optional in the report; `/kramme:pr:resolve-review` applies its own safe-advisory test when deciding whether to pick one up. The template in `references/output-template.md` already includes the **Auto-resolution Readiness**, **Recommended Action**, and **Approval Standard** sections; do not omit them.
 
 Before posting (whether to `REVIEW_OVERVIEW.md` or inline), run the pre-posting verification checklist in `references/review-discipline.md` (severity prefixes, dead-code ask shape, Approval Standard line, `NOTICED BUT NOT TOUCHING` labels on out-of-scope notes, emphasized-dimension coverage, `UNVERIFIED` labels on untraced findings).
+
+## Closeout loop
+
+When `LOOP_MODE=true`, after the standard workflow or Team Mode produces its review, read `references/closeout-loop.md` and run its closeout convergence loop. When `LOOP_MODE=false`, stop after the review as before.
 
 ## Usage Examples
 
