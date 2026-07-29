@@ -1860,6 +1860,9 @@ required = {
     "pr-generate-description-red-flag-examples",
     "pr-generate-description-visual-capture-safety",
     "pr-generate-description-direct-update-safety",
+    "pr-plan-reconcile-safety",
+    "pr-plan-reconcile-migration-guidance",
+    "pr-plan-split-reconcile-scope",
     "linear-issue-implement-reference-mapping",
     "linear-issue-implement-display-template",
     "linear-issue-implement-plan-template",
@@ -1874,6 +1877,14 @@ required = {
 missing = sorted(required - registered)
 if missing:
     raise SystemExit("missing migrated contracts: " + ", ".join(missing))
+
+reconcile_path = (
+    "kramme-cc-workflow/skills/kramme:code:breakdown-findings/"
+    "references/reconcile-workflow.md"
+)
+base_diff_paths = set(registry.get("base_diff_scope", {}).get("paths", []))
+if reconcile_path not in base_diff_paths:
+    raise SystemExit("reconcile workflow is missing from base_diff_scope paths")
 PY
 
   [ "$status" -eq 0 ]

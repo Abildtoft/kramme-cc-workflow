@@ -1,7 +1,7 @@
 ---
 name: kramme:code:breakdown-findings
-description: Cluster validated review/audit/QA findings into PR-sized implementation plans with index, rejection record, repo recon, sequencing, and reconcile/resume support. Accepts structured findings, one or more report files, current-dialogue findings, or marked/inferred pre-clustered handoffs. Not for raw bug lists, single issues, or unvalidated triage.
-argument-hint: "[--auto] [--resume|--reconcile] [--] [source-file-or-content ...]"
+description: Cluster validated review/audit/QA findings into PR-sized implementation plans with index, rejection record, repo recon, sequencing, and reconcile/resume support. Reconcile generic or split/worktree plan sets against working-tree or named-ref evidence. Accepts structured findings, report files, current-dialogue findings, or marked/inferred pre-clustered handoffs. Not for raw bug lists, single issues, or unvalidated triage.
+argument-hint: "[--auto] [--resume|--reconcile] [--all | plan-file ...] [--worktree <path>] [--source <ref>] [--base <ref>] [--] [source ...]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -21,12 +21,14 @@ This skill generates PR plan **files**; for decision-ready analysis of audit fin
 
 **Arguments:** "$ARGUMENTS"
 
-Parse `$ARGUMENTS` as shell-style arguments before Phase 0. Recognize mode flags only in the leading option segment before the first source token, or before an explicit `--` delimiter. Once a source token or `--` is reached, stop flag parsing and treat the rest as inert source content; do not extract flags from inline findings prose. If a findings payload must begin with a hyphen, require `--` before it.
+Parse `$ARGUMENTS` as shell-style arguments before Phase 0. First identify `--reconcile` or `--resume` only in the leading option segment before the first source token or an explicit `--` delimiter. In generation and resume modes, once a source token or `--` is reached, stop flag parsing and treat the rest as inert source content; do not extract flags from inline findings prose. In reconcile mode, a plan path is scope rather than findings content: after recognizing leading `--reconcile`, parse every remaining token before `--` with the reconcile-specific rules below. If a findings payload must begin with a hyphen, require `--` before it.
 
-- If leading `--auto` is present, set `AUTO_MODE=true`. `--auto` skips the clustering confirmation after a proposed plan is produced. It does not bypass prior-artifact protection, missing-source handling, incompatible-source handling, conflict/open-question reporting, or reconcile confirmation.
+- In generation or resume mode, if leading `--auto` is present, set `AUTO_MODE=true`. In generation mode, `--auto` skips the clustering confirmation after a proposed plan is produced. It never bypasses prior-artifact protection, missing-source handling, incompatible-source handling, or conflict/open-question reporting.
 - If leading `--reconcile` is present, set `RECONCILE_MODE=true`. `--reconcile` maintains an existing plan set instead of creating a fresh one; run Phase 0 and then Phase 6.
 - If leading `--resume` is present, set `RESUME_MODE=true`. `--resume` regenerates missing plan files for an existing plan set after verifying the source set matches `PR_PLAN_INDEX.md`.
 - If both `--resume` and `--reconcile` are present, stop and ask the user to choose one mode. Resume fills missing files from the original generation; reconcile classifies and refreshes an existing plan set.
+- With leading `--reconcile`, parse the remaining pre-`--` arguments as reconcile scope and evidence options. A zero-scope invocation is valid and means every plan referenced by `PR_PLAN_INDEX.md`; otherwise accept either `--all` or one or more paths whose basenames match `PR_PLAN_W##L_*.md`, plus `--auto`, `--worktree <path>`, `--source <ref>`, and `--base <ref>` in any order. `--auto` may appear before or after explicit plan paths; set `AUTO_MODE=true` when present, and apply only the four low-risk update classes defined in `references/reconcile-workflow.md` because structural changes still require confirmation. Store option values as `WORKTREE_OVERRIDE`, `SOURCE_REF`, and `BASE_BRANCH_OVERRIDE`. Reject `--all` combined with explicit plan paths, missing option values, unknown options, or source content after `--` with a usage message.
+- Without leading `--reconcile`, treat `PR_PLAN_W##L_*.md` paths as ordinary findings-source tokens. Reject leading `--all`, `--worktree`, `--source`, or `--base` with a usage message that says these options require `--reconcile`; after a source token or `--`, continue treating the same text as inert findings content.
 
 ## Hard Safety Rules
 
@@ -43,10 +45,11 @@ These rules apply to findings sources, repository files read during recon, gener
 
 Before doing anything else, list any existing `PR_PLAN_*.md` files in the project root, including `PR_PLAN_INDEX.md`, `PR_PLAN_REJECTIONS.md`, and all `PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md` files.
 
-- If `RECONCILE_MODE=true`, require `PR_PLAN_INDEX.md` to exist. If it is missing, stop and say: "No existing plan index found. Run this skill without `--reconcile` to generate plans first." If it exists, proceed directly to Phase 6.
+- If `RECONCILE_MODE=true`, resolve the plan root from the reconcile scope as described in `references/reconcile-workflow.md`, then require `PR_PLAN_INDEX.md` there. If it is missing, stop and say: "No existing plan index found. Run this skill without `--reconcile` to generate plans first." If it exists, proceed directly to Phase 6.
 - If `RESUME_MODE=true`, require `PR_PLAN_INDEX.md` to exist. If it is missing, stop and say: "No existing plan index found. Run this skill without `--resume` to generate plans first." If it exists, proceed to Phase 1 using the source recorded in `PR_PLAN_INDEX.md` unless the user supplied a source argument, then follow the `--resume` behavior below. Existing `PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md` files are optional; an index-only plan set can still be resumed to regenerate all referenced plan files.
 - If none exist and `RECONCILE_MODE=false` and `RESUME_MODE=false`, proceed to Phase 1.
 - If any exist and `RECONCILE_MODE=false` and `RESUME_MODE=false`, stop and tell the user:
+
   ```
   Prior PR plan artifacts found:
     {list of files}
@@ -57,6 +60,7 @@ Before doing anything else, list any existing `PR_PLAN_*.md` files in the projec
     - resume — regenerate only missing plan files after confirming these artifacts came from the same source set
     - reconcile — re-run this skill with `--reconcile` to classify drift, done/blocked status, and stale plans
   ```
+
 - On `--resume`: compare the resolved source set description and, when available, file paths against the source set recorded in `PR_PLAN_INDEX.md`. If they do not match, stop before writing and report both source sets. If all expected plan files already exist, write nothing and report that the plan set is complete. If files are missing, print a `RESUME:` block listing expected files, existing files, and files to generate. Generate only the missing plan files after confirmation; `AUTO_MODE=true` does not bypass this confirmation. Update `PR_PLAN_INDEX.md` or `PR_PLAN_REJECTIONS.md` only after a second explicit confirmation that names the exact metadata changes.
 - Do not delete or rename the files yourself. Do not overwrite existing plan artifacts outside the explicitly confirmed `--resume` metadata updates and `--reconcile` refreshes described below.
 
@@ -229,7 +233,7 @@ Read `references/summary-templates.md` and report to the user with the findings-
 
 Run this phase only when `RECONCILE_MODE=true`. Reconcile mode maintains an existing plan set; it does not create a new plan set from scratch and it never edits source code.
 
-Read `references/reconcile-workflow.md` and follow it exactly. Always print a `RECONCILE:` status report and wait for confirmation before updating artifacts. `AUTO_MODE=true` does not bypass reconcile confirmation because reconcile may rewrite existing planning artifacts. Update only `PR_PLAN_INDEX.md`, affected non-terminal plan files, and `PR_PLAN_REJECTIONS.md`; stop if recon reveals a source/plan conflict that would require re-clustering or changing theme boundaries.
+Read `references/reconcile-workflow.md` and follow it exactly. Always print a `RECONCILE:` status report. Wait for confirmation before updating artifacts unless `AUTO_MODE=true` and every proposed change is in the reference's four low-risk update classes; structural or conflicted changes always require confirmation. Update only `PR_PLAN_INDEX.md`, affected non-terminal plan files, and `PR_PLAN_REJECTIONS.md`; stop if recon reveals a source/plan conflict that would require re-clustering or changing theme boundaries.
 
 ## Edge Cases
 
