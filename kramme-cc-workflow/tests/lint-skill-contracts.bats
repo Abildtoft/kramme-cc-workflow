@@ -220,15 +220,19 @@ make_body_lines() {
   done
 }
 
-@test "copy review rubric is synced as a skill-local resource" {
+@test "copy review rubric is owned by the consolidated PR skill" {
   local registry="$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml"
-  local code_rubric="$BATS_TEST_DIRNAME/../skills/kramme:code:copy-review/references/copy-review-rubric.md"
+  local code_skill="$BATS_TEST_DIRNAME/../skills/kramme:code:copy-review/SKILL.md"
+  local pr_skill="$BATS_TEST_DIRNAME/../skills/kramme:pr:copy-review/SKILL.md"
   local pr_rubric="$BATS_TEST_DIRNAME/../skills/kramme:pr:copy-review/references/copy-review-rubric.md"
 
-  test -f "$code_rubric"
+  test ! -f "$code_skill"
+  test -f "$pr_skill"
   test -f "$pr_rubric"
-  cmp -s "$code_rubric" "$pr_rubric"
-  grep -qF '"name": "copy-review-rubric"' "$registry"
+  grep -qF 'Canonical owner: `kramme:pr:copy-review`.' "$pr_rubric"
+  grep -qF 'If `--all` is provided' "$pr_skill"
+  grep -qF 'If exactly one positional scope path is provided' "$pr_skill"
+  ! grep -qF '"name": "copy-review-rubric"' "$registry"
   ! grep -qF '"name": "copy-review-redundancy-scope"' "$registry"
   ! grep -qF '"name": "copy-review-ui-relevant-file-types"' "$registry"
 }
