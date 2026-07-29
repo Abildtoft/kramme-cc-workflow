@@ -2,7 +2,7 @@
 
 This is the shared rubric for copy-review entry points and the `kramme:copy-reviewer` agent. Use it to decide whether UI text earns its place. Entry-point skills still decide scope: PR review evaluates changed UI copy, while codebase audit evaluates all UI copy in the requested scope.
 
-Canonical owner: `kramme:code:copy-review`. Other copy-review entry points carry an identical local mirror so each installed skill can read a skill-local resource.
+Canonical owner: `kramme:pr:copy-review`. Its default PR mode and optional audit mode both read this skill-local resource.
 
 ## Review Goal
 
@@ -183,14 +183,9 @@ Use this structure for each finding before the invoking skill aggregates it into
 ```markdown
 ### COPY-NNN: {Brief title}
 
-**Severity:** Critical | Important | Suggestion
-**Category:** {one of the rubric categories}
-**File:** `path/to/file.tsx:42`
-**Confidence:** {0-100}
-**User Impact:** High | Medium | Low
+**Severity:** Critical | Important | Suggestion **Category:** {one of the rubric categories} **File:** `path/to/file.tsx:42` **Confidence:** {0-100} **User Impact:** High | Medium | Low
 
 **Issue:** {what text exists and what visual element, context, or interaction pattern already communicates without it}
 
-**Recommendation:**
-{what to remove or simplify, with before/after code when useful}
+**Recommendation:** {what to remove or simplify, with before/after code when useful}
 ```

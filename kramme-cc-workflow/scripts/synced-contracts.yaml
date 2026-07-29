@@ -362,14 +362,6 @@
       ]
     },
     {
-      "name": "copy-review-rubric",
-      "canonical": "kramme-cc-workflow/skills/kramme:code:copy-review/references/copy-review-rubric.md",
-      "paths": [
-        "kramme-cc-workflow/skills/kramme:code:copy-review/references/copy-review-rubric.md",
-        "kramme-cc-workflow/skills/kramme:pr:copy-review/references/copy-review-rubric.md"
-      ]
-    },
-    {
       "name": "siw-issue-reservation-helper",
       "canonical": "kramme-cc-workflow/skills/kramme:siw:issue-define/scripts/siw-issue-reservation.sh",
       "paths": [

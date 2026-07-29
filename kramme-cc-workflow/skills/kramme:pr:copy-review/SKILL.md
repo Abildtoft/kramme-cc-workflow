@@ -1,14 +1,14 @@
 ---
 name: kramme:pr:copy-review
-description: Review PR and local changes for unnecessary, redundant, or duplicative UI text — labels, descriptions, placeholders, tooltips, and instructions that the UI already communicates through its structure. Supports inline report output with --inline.
-argument-hint: "[--base <branch>] [--threshold 0-100] [--inline]"
+description: Review PR and local changes or scan a codebase scope for unnecessary, redundant, or duplicative UI text — labels, descriptions, placeholders, tooltips, and instructions that the UI already communicates through its structure. Defaults to diff review; use --all or a scope path for audit mode. Supports inline report output with --inline.
+argument-hint: "[--base <branch>] [--threshold 0-100] [--inline] [--all | <scope-path>]"
 disable-model-invocation: false
 user-invocable: true
 ---
 
-# Copy Review for Pull Request and Local Changes
+# Copy Review for Pull Request, Local Changes, or Codebase Scope
 
-Review branch changes and local work for unnecessary UI text using the shared rubric in `references/copy-review-rubric.md`.
+Review branch changes and local work for unnecessary UI text by default, or audit the full codebase or a named scope when requested, using the shared rubric in `references/copy-review-rubric.md`.
 
 **Arguments:** "$ARGUMENTS"
 
@@ -21,7 +21,13 @@ Review branch changes and local work for unnecessary UI text using the shared ru
 1. If `--base <branch>` flag provided, store as `BASE_BRANCH_OVERRIDE`
 2. If `--threshold N` flag provided, store as `custom_threshold` (0-100). Only findings with confidence >= N will be reported. If not provided, set `custom_threshold=75`.
 3. If `--inline` flag provided, set `INLINE_MODE=true`
-4. If neither flag is present, use defaults
+4. Select the review mode:
+   - If `--all` is provided, set `SCAN_MODE=true` and `TARGET_SCOPE` to the repo root.
+   - If exactly one positional scope path is provided, set `SCAN_MODE=true` and store it as `TARGET_SCOPE`.
+   - Otherwise, set `SCAN_MODE=false` and use the default PR/local diff review.
+5. If `--all` and a positional scope path are combined, or if more than one positional scope path remains, report the conflicting scope arguments and stop.
+6. If `SCAN_MODE=true` and `--base` is also provided, report that `--base` cannot be combined with `--all` or a scope path and stop.
+7. If an unknown option is provided, report it and stop. Otherwise, use the defaults above for omitted options.
 
 ### Step 2: Load Rubric and Project Review Conventions
 
@@ -30,7 +36,9 @@ Review branch changes and local work for unnecessary UI text using the shared ru
 3. Extract initial UI stack, component library, design system, target audience, and content strategy conventions from those repo-root instruction files and the surrounding UI code.
 4. Pass the rubric and merged conventions to the reviewer agent, and instruct it to prioritize documented conventions over generic best practices.
 
-### Step 3: Resolve Base Branch and Identify UI-Relevant Changed Files
+### Step 3: Diff Review Mode — Resolve Base Branch and Identify UI-Relevant Changed Files
+
+When `SCAN_MODE=false`, run this section. When `SCAN_MODE=true`, skip to Step 6.
 
 Use the shared plugin script to resolve the base branch and build the unified change scope (committed PR diff + staged + unstaged + untracked). It uses the same 3-tier strategy: explicit `--base`, PR target branch, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
 
@@ -84,14 +92,16 @@ No UI copy to review.
 
 ### Step 4: Check for Previous Review
 
-If `COPY_REVIEW_OVERVIEW.md` exists in the project root:
+In diff review mode, if `COPY_REVIEW_OVERVIEW.md` exists in the project root:
 
 - Parse previously addressed findings (file path, line number, issue description, action taken)
-- Store for filtering in Step 7
+- Store for filtering in Step 8
 
-### Step 5: Launch Copy Reviewer Agent
+In codebase scan mode, do not use an existing overview to filter audit findings. The new report represents the latest requested scan and replaces the prior overview unless `INLINE_MODE=true`.
 
-Launch **kramme:copy-reviewer** using the platform's agent-invocation primitive with:
+### Step 5: Diff Review Mode — Launch Copy Reviewer Agent
+
+When `SCAN_MODE=false`, launch **kramme:copy-reviewer** using the platform's agent-invocation primitive with:
 
 - The loaded rubric from `references/copy-review-rubric.md`
 - The resolved `BASE_BRANCH`, `BASE_REF`, and `MERGE_BASE` from Step 3
@@ -104,20 +114,51 @@ Launch **kramme:copy-reviewer** using the platform's agent-invocation primitive 
 - Instruct the agent to apply the confidence threshold: "Only report findings with confidence >= {custom_threshold}"
 - Focus instruction: **"Focus on text redundancy introduced by this diff. Apply the shared copy-review rubric to each text element in changed code."**
 
-### Step 6: Validate Relevance
+### Step 6: Codebase Scan Mode
+
+When `SCAN_MODE=true`, run this section instead of Steps 3 and 5.
+
+#### Orient and Select Files
+
+1. Use the repo root when `TARGET_SCOPE` came from `--all`; otherwise use the positional path exactly as the requested scope.
+2. Read `package.json` and relevant build configuration to understand the UI stack and directory layout.
+3. Discover instruction files that apply within `TARGET_SCOPE` and merge their project conventions and target-audience guidance with the conventions from Step 2.
+4. Enumerate files inside `TARGET_SCOPE` and filter them using the UI-relevant file rules in `references/copy-review-rubric.md`. Skip `node_modules`, `dist`, build artifacts, generated files, lock files, and vendored code.
+5. Count the resulting files and report `Codebase scan scope: {scope}; UI-relevant files: {count}.` before proceeding.
+6. If the count is zero, reply inline with `No UI-relevant files in scope: {scope}.` and stop without creating or updating `COPY_REVIEW_OVERVIEW.md`.
+
+#### Launch Audit Reviewers
+
+Launch **kramme:copy-reviewer** in audit mode using the platform's agent-invocation primitive with:
+
+- The loaded rubric from `references/copy-review-rubric.md`
+- The list of UI-relevant files in scope
+- Project conventions from the discovered instruction files and established UI patterns
+- The confidence instruction: "Only report findings with confidence >= {custom_threshold}"
+- Instruction: **"You are in audit mode. Scan all provided files for copy redundancy. Flag all issues regardless of when they were introduced."**
+
+If the scope exceeds 50 files, split it into batches. When the agent-invocation primitive supports parallelism, launch the batches in parallel; otherwise scan the batches sequentially.
+
+Collect findings from all batches, deduplicate findings with the same file, line, and underlying issue, and group them by rubric category to identify systemic patterns. Promote findings that appear in three or more locations to at least Important severity. Continue through the shared validation, filtering, and reporting steps below.
+
+### Step 7: Validate Relevance
 
 After collecting findings from the copy reviewer:
+
+If no separate agent runtime is available, perform the same copy review and relevance validation directly in the main thread. If an invoked copy reviewer or relevance validator is unavailable, times out, or returns output that cannot be parsed as findings, surface the failure to the user with the agent name and what was attempted, then stop without writing `COPY_REVIEW_OVERVIEW.md`. Do not fabricate findings or silently continue with an empty result.
+
+When `SCAN_MODE=true`, skip the PR relevance validator: every finding grounded in a file inside the requested audit scope is in scope regardless of when it was introduced. Continue to Step 8.
+
+When `SCAN_MODE=false`:
 
 - Launch **kramme:pr-relevance-validator** using the same agent-invocation primitive with all findings and the resolved `BASE_BRANCH`
 - Cross-reference each finding against the full review scope (committed PR diff + staged/unstaged/untracked local changes)
 - Filter pre-existing issues and out-of-scope problems
 - Return only findings caused by this combined scope
 
-If no separate agent runtime is available, perform the same copy review and relevance validation directly in the main thread. If an invoked copy reviewer or relevance validator is unavailable, times out, or returns output that cannot be parsed as findings, surface the failure to the user with the agent name and what was attempted, then stop without writing `COPY_REVIEW_OVERVIEW.md`. Do not fabricate findings or silently continue with an empty result.
+### Step 8: Filter Previously Addressed Findings
 
-### Step 7: Filter Previously Addressed Findings
-
-If `COPY_REVIEW_OVERVIEW.md` was found in Step 4:
+In diff review mode, if `COPY_REVIEW_OVERVIEW.md` was found in Step 4:
 
 - Cross-reference validated findings against previously addressed findings
 - **Only filter** if the finding is essentially the same issue:
@@ -132,7 +173,9 @@ If `COPY_REVIEW_OVERVIEW.md` was found in Step 4:
 - When uncertain, err on the side of keeping the finding active
 - Add filtered findings to "Previously Addressed" section
 
-### Step 8: Aggregate and Write Results
+In codebase scan mode, do not filter findings as previously addressed; an audit intentionally reports all issues in the requested scope.
+
+### Step 9: Aggregate and Write Results
 
 After validation and filtering, organize findings into severity tiers:
 
@@ -143,19 +186,23 @@ After validation and filtering, organize findings into severity tiers:
 - **Previously Addressed** -- shown separately
 - **Copy Strengths** (what's well-done)
 
+For codebase scan mode, also group findings by rubric category, summarize systemic patterns, and order recommended actions by impact and effort.
+
 If `INLINE_MODE=true`:
 
-- Reply with the full report inline using the report format from `assets/copy-review-report-format.md`
+- Reply with the full report inline using the report format from `assets/copy-review-report-format.md`.
+- In codebase scan mode, replace the report's base-branch metadata with the requested scope and file count, and include a "Patterns & Themes" section.
 - Include all sections even if empty (with count of 0)
 - Do **not** create or update `COPY_REVIEW_OVERVIEW.md`
 
 Otherwise:
 
-- Write to `COPY_REVIEW_OVERVIEW.md` in the project root using the report format from `assets/copy-review-report-format.md`
+- Write to `COPY_REVIEW_OVERVIEW.md` in the project root using the report format from `assets/copy-review-report-format.md`.
+- In codebase scan mode, replace the report's base-branch metadata with the requested scope and file count, include a "Patterns & Themes" section, and overwrite any prior overview because the file represents the latest scan.
 - Include all sections even if empty (with count of 0)
 - Treat the file as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
 
-### Step 9: Provide Action Plan
+### Step 10: Provide Action Plan
 
 If Critical or Important findings were found:
 
@@ -198,4 +245,12 @@ To resolve findings: `/kramme:pr:resolve-review`
 
 ```
 /kramme:pr:copy-review --inline
+```
+
+```
+/kramme:pr:copy-review --all
+```
+
+```
+/kramme:pr:copy-review src/components
 ```
