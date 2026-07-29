@@ -161,6 +161,12 @@
       "kramme-cc-workflow/scripts/dev-server/resolve-port.sh": [
         "kramme-cc-workflow/tests/dev-server-scripts.bats"
       ],
+      "kramme-cc-workflow/scripts/lib/shell-helpers.sh": [
+        "kramme-cc-workflow/tests/dev-server-scripts.bats",
+        "kramme-cc-workflow/tests/resolve-base.bats",
+        "kramme-cc-workflow/tests/review-diff-scripts.bats",
+        "kramme-cc-workflow/tests/skillspector-runner.bats"
+      ],
       "kramme-cc-workflow/scripts/install-codex.sh": [
         "kramme-cc-workflow/tests/convert-plugin.bats"
       ],

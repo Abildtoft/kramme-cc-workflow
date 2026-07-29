@@ -979,6 +979,16 @@ test("hook plugin conversion requires controls and sanitizes manifest descriptio
   assert.match(codexPlugin.manifest.description, /\.\.\.$/);
   assert.equal(codexPlugin.manifest.description.includes("\n"), false);
   assert.ok(codexPlugin.manifest.description.length <= 1024);
+  assert.deepEqual(codexPlugin.sharedScriptDirs, [
+    {
+      sourceDir: path.join("/plugin", "scripts", "dev-server"),
+      targetDir: path.join("scripts", "dev-server"),
+    },
+    {
+      sourceDir: path.join("/plugin", "scripts", "lib"),
+      targetDir: path.join("scripts", "lib"),
+    },
+  ]);
 });
 
 test("converter path checks treat only ENOENT as absence", async () => {

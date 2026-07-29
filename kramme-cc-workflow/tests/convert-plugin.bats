@@ -231,19 +231,26 @@ SH
 	[ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
 	[ -f "$TMP_DIR/.codex/AGENTS.md" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/dev-server/detect-url.sh" ]
+	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/lib/shell-helpers.sh" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/resolve-base.sh" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/collect-review-diff.sh" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/skill-usage.js" ]
 	[ ! -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/install-codex.sh" ]
 	[ -f "$cache_root/scripts/dev-server/detect-url.sh" ]
+	[ -f "$cache_root/scripts/lib/shell-helpers.sh" ]
 	[ -f "$cache_root/scripts/resolve-base.sh" ]
 	[ -f "$cache_root/scripts/collect-review-diff.sh" ]
 	[ -f "$cache_root/scripts/skill-usage.js" ]
 	[ ! -f "$cache_root/scripts/install-codex.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/dev-server/detect-url.sh" ]
+	[ -f "$TMP_DIR/.codex/scripts/lib/shell-helpers.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/resolve-base.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/collect-review-diff.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/skill-usage.js" ]
+
+	run "$TMP_DIR/.codex/scripts/collect-review-diff.sh" --help
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Usage: collect-review-diff.sh"* ]]
 
 	run grep -n 'TodoWrite/TodoRead: use update_plan' "$TMP_DIR/.codex/AGENTS.md"
 	[ "$status" -eq 0 ]

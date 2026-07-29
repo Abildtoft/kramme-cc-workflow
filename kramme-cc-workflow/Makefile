@@ -47,6 +47,7 @@ SHELLCHECK_FILES = \
 	hooks/lib/*.sh \
 	scripts/*.sh \
 	scripts/dev-server/*.sh \
+	scripts/lib/*.sh \
 	evals/skillopt/scripts/*.sh \
 	skills/*/scripts/*.sh
 

@@ -7,6 +7,8 @@
 set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source=lib/shell-helpers.sh
+source "$SCRIPT_DIR/lib/shell-helpers.sh"
 
 RESOLVE_ARGS=(--strict)
 OUTPUT_FORMAT="shell"
@@ -27,23 +29,6 @@ JSON output fields:
 Decoder mode validates JSON from stdin and emits these four fields once as
 NUL-delimited values, with changed_files joined by newlines.
 USAGE
-}
-
-require_value() {
-  local flag="$1"
-  local value="${2-}"
-  case "$value" in
-    "" | --*)
-      echo "$flag requires a value" >&2
-      exit 1
-      ;;
-  esac
-}
-
-quote_assignment() {
-  local name="$1"
-  local value="${2-}"
-  printf '%s=%q\n' "$name" "$value"
 }
 
 emit_json() {
