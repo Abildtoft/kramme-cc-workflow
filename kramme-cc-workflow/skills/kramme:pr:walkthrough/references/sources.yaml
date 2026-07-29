@@ -17,3 +17,9 @@ sources:
     license: "ISC; vendored file retains upstream copyright line."
     last_reviewed_at: 2026-06-21
     baseline_hash: "sha256:f2094bbf6141b359722c4fe454eb6c4b0f0e42cc10cc7af921fc158fceb86539"
+  - id: nicobailon-visual-explainer
+    url: https://github.com/nicobailon/visual-explainer
+    title: "nicobailon/visual-explainer"
+    rationale: "The report style's visual diff flow, explanatory diagram patterns, and artifact rendering conventions are adapted from this project."
+    last_reviewed_at: 2026-05-28
+    baseline_hash: "8f1d0e38ab0f265632a31d2fd032f7b730c98c15"

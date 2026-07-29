@@ -374,7 +374,7 @@
       "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/references/css-patterns.md",
       "paths": [
         "kramme-cc-workflow/skills/kramme:visual:diagram/references/css-patterns.md",
-        "kramme-cc-workflow/skills/kramme:visual:diff-review/references/css-patterns.md",
+        "kramme-cc-workflow/skills/kramme:pr:walkthrough/references/css-patterns.md",
         "kramme-cc-workflow/skills/kramme:visual:onboarding/references/css-patterns.md",
         "kramme-cc-workflow/skills/kramme:visual:plan-review/references/css-patterns.md",
         "kramme-cc-workflow/skills/kramme:visual:project-recap/references/css-patterns.md"
@@ -385,7 +385,7 @@
       "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/references/libraries.md",
       "paths": [
         "kramme-cc-workflow/skills/kramme:visual:diagram/references/libraries.md",
-        "kramme-cc-workflow/skills/kramme:visual:diff-review/references/libraries.md",
+        "kramme-cc-workflow/skills/kramme:pr:walkthrough/references/libraries.md",
         "kramme-cc-workflow/skills/kramme:visual:onboarding/references/libraries.md",
         "kramme-cc-workflow/skills/kramme:visual:plan-review/references/libraries.md",
         "kramme-cc-workflow/skills/kramme:visual:project-recap/references/libraries.md"
@@ -396,7 +396,7 @@
       "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/references/responsive-nav.md",
       "paths": [
         "kramme-cc-workflow/skills/kramme:visual:diagram/references/responsive-nav.md",
-        "kramme-cc-workflow/skills/kramme:visual:diff-review/references/responsive-nav.md",
+        "kramme-cc-workflow/skills/kramme:pr:walkthrough/references/responsive-nav.md",
         "kramme-cc-workflow/skills/kramme:visual:onboarding/references/responsive-nav.md",
         "kramme-cc-workflow/skills/kramme:visual:plan-review/references/responsive-nav.md",
         "kramme-cc-workflow/skills/kramme:visual:project-recap/references/responsive-nav.md"
@@ -407,7 +407,7 @@
       "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/assets/architecture.html",
       "paths": [
         "kramme-cc-workflow/skills/kramme:visual:diagram/assets/architecture.html",
-        "kramme-cc-workflow/skills/kramme:visual:diff-review/assets/architecture.html",
+        "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/architecture.html",
         "kramme-cc-workflow/skills/kramme:visual:onboarding/assets/architecture.html",
         "kramme-cc-workflow/skills/kramme:visual:plan-review/assets/architecture.html",
         "kramme-cc-workflow/skills/kramme:visual:project-recap/assets/architecture.html"
@@ -418,7 +418,7 @@
       "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/assets/data-table.html",
       "paths": [
         "kramme-cc-workflow/skills/kramme:visual:diagram/assets/data-table.html",
-        "kramme-cc-workflow/skills/kramme:visual:diff-review/assets/data-table.html",
+        "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/data-table.html",
         "kramme-cc-workflow/skills/kramme:visual:onboarding/assets/data-table.html",
         "kramme-cc-workflow/skills/kramme:visual:plan-review/assets/data-table.html",
         "kramme-cc-workflow/skills/kramme:visual:project-recap/assets/data-table.html"
@@ -429,7 +429,7 @@
       "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/assets/mermaid-flowchart.html",
       "paths": [
         "kramme-cc-workflow/skills/kramme:visual:diagram/assets/mermaid-flowchart.html",
-        "kramme-cc-workflow/skills/kramme:visual:diff-review/assets/mermaid-flowchart.html",
+        "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/mermaid-flowchart.html",
         "kramme-cc-workflow/skills/kramme:visual:onboarding/assets/mermaid-flowchart.html",
         "kramme-cc-workflow/skills/kramme:visual:plan-review/assets/mermaid-flowchart.html",
         "kramme-cc-workflow/skills/kramme:visual:project-recap/assets/mermaid-flowchart.html"
