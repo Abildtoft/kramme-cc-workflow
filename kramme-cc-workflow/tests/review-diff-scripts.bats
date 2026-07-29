@@ -242,8 +242,9 @@ PY
 	local pwned="$TMP_DIR/collect-pwned"
 	local merge_base
 	merge_base="$(git merge-base refs/remotes/origin/main HEAD)"
-	mkdir -p "$fake_scripts"
+	mkdir -p "$fake_scripts/lib"
 	cp "$SCRIPT_DIR/collect-review-diff.sh" "$fake_scripts/collect-review-diff.sh"
+	cp "$SCRIPT_DIR/lib/shell-helpers.sh" "$fake_scripts/lib/shell-helpers.sh"
 	cat >"$fake_scripts/resolve-base.sh" <<'SH'
 #!/usr/bin/env bash
 if [ "${1-}" != "--format" ] || [ "${2-}" != "json" ]; then

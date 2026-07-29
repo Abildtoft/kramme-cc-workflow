@@ -14,6 +14,8 @@
 set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source=lib/shell-helpers.sh
+source "$SCRIPT_DIR/lib/shell-helpers.sh"
 
 BASE_FLAG=""
 BASE_COMMIT_FLAG=""
@@ -37,23 +39,6 @@ Default output is shell-quoted assignments:
 JSON output fields:
   base_ref base_branch merge_base after_commit reset_point original_tip backup_ref
 USAGE
-}
-
-require_value() {
-  local flag="$1"
-  local value="${2-}"
-  case "$value" in
-    "" | --*)
-      echo "$flag requires a value" >&2
-      exit 1
-      ;;
-  esac
-}
-
-quote_assignment() {
-  local name="$1"
-  local value="${2-}"
-  printf '%s=%q\n' "$name" "$value"
 }
 
 emit_json() {
@@ -104,39 +89,6 @@ emit_output() {
       emit_json
       ;;
   esac
-}
-
-run_with_timeout() {
-  local timeout_seconds="$1"
-  shift
-
-  perl -MTime::HiRes=alarm -e '
-		my $timeout = shift @ARGV;
-		my $pid = fork();
-		die "failed to fork command: $!\n" unless defined $pid;
-
-		if ($pid == 0) {
-			setpgrp(0, 0) or die "failed to create command process group: $!\n";
-			exec @ARGV;
-			die "failed to exec command: $!\n";
-		}
-
-		my $timed_out = 0;
-		local $SIG{ALRM} = sub {
-			$timed_out = 1;
-			kill "KILL", -$pid;
-		};
-
-		alarm($timeout);
-		my $waited = waitpid($pid, 0);
-		my $status = $?;
-		alarm(0);
-
-		exit 124 if $timed_out;
-		die "failed to wait for command: $!\n" if $waited == -1;
-		exit(128 + ($status & 127)) if $status & 127;
-		exit(($status >> 8) & 255);
-	' "$timeout_seconds" "$@"
 }
 
 while [ $# -gt 0 ]; do

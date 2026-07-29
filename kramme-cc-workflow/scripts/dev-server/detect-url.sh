@@ -12,6 +12,8 @@
 set -euo pipefail
 
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=../lib/shell-helpers.sh
+source "$SCRIPT_DIR/../lib/shell-helpers.sh"
 PROJECT_ROOT=""
 EXPLICIT_URL=""
 EXPLICIT_PORT=""
@@ -19,39 +21,28 @@ PROJECT_TYPE=""
 LAUNCH_CONFIG=""
 APP_CANDIDATES=""
 
-require_value() {
-  local flag="$1"
-  local value="${2-}"
-  case "$value" in
-    "" | --*)
-      echo "ERROR: $flag requires a value" >&2
-      exit 1
-      ;;
-  esac
-}
-
 while [ $# -gt 0 ]; do
   case "$1" in
     auto)
       shift
       ;;
     --url)
-      require_value "$1" "${2-}"
+      require_value "$1" "${2-}" 1 "ERROR: "
       EXPLICIT_URL="${2:-}"
       shift 2
       ;;
     --port)
-      require_value "$1" "${2-}"
+      require_value "$1" "${2-}" 1 "ERROR: "
       EXPLICIT_PORT="${2:-}"
       shift 2
       ;;
     --type)
-      require_value "$1" "${2-}"
+      require_value "$1" "${2-}" 1 "ERROR: "
       PROJECT_TYPE="${2:-}"
       shift 2
       ;;
     --launch-config)
-      require_value "$1" "${2-}"
+      require_value "$1" "${2-}" 1 "ERROR: "
       LAUNCH_CONFIG="${2:-}"
       shift 2
       ;;
@@ -67,7 +58,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$PROJECT_ROOT" ]; then
-  PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
+  PROJECT_ROOT=$(git rev-parse --show-toplevel 2> /dev/null || true)
   if [ -z "$PROJECT_ROOT" ]; then
     echo "ERROR: not in a git repository and no path provided" >&2
     exit 1
@@ -84,13 +75,13 @@ is_port() {
   case "$value" in
     '' | *[!0-9]*) return 1 ;;
   esac
-  [ "$value" -ge 1 ] 2>/dev/null && [ "$value" -le 65535 ] 2>/dev/null
+  [ "$value" -ge 1 ] 2> /dev/null && [ "$value" -le 65535 ] 2> /dev/null
 }
 
 verify_url() {
   local url="$1"
   local status
-  status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$url" 2>/dev/null || true)
+  status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$url" 2> /dev/null || true)
   case "$status" in
     2?? | 3?? | 4??) return 0 ;;
     *) return 1 ;;
@@ -140,7 +131,7 @@ fi
 APP_ROOT="$PROJECT_ROOT"
 
 if [ -z "$PROJECT_TYPE" ]; then
-  detected_type=$("$SCRIPT_DIR/detect-project-type.sh" "$PROJECT_ROOT" 2>/dev/null || true)
+  detected_type=$("$SCRIPT_DIR/detect-project-type.sh" "$PROJECT_ROOT" 2> /dev/null || true)
   case "$detected_type" in
     multiple:*)
       APP_CANDIDATES="${detected_type#multiple:}"
@@ -164,10 +155,10 @@ if [ -z "$PROJECT_TYPE" ]; then
 fi
 
 LAUNCH_PORT=""
-if command -v jq >/dev/null 2>&1; then
-  launch_json=$("$SCRIPT_DIR/read-launch-json.sh" --root "$PROJECT_ROOT" "$LAUNCH_CONFIG" 2>/dev/null || true)
+if command -v jq > /dev/null 2>&1; then
+  launch_json=$("$SCRIPT_DIR/read-launch-json.sh" --root "$PROJECT_ROOT" "$LAUNCH_CONFIG" 2> /dev/null || true)
   if printf '%s' "$launch_json" | grep -q '^{'; then
-    LAUNCH_PORT=$(printf '%s' "$launch_json" | jq -r '.port // empty' 2>/dev/null || true)
+    LAUNCH_PORT=$(printf '%s' "$launch_json" | jq -r '.port // empty' 2> /dev/null || true)
   elif printf '%s' "$launch_json" | grep -q '^__MULTIPLE_CONFIGS__$'; then
     launch_urls=""
     while IFS= read -r launch_port; do
@@ -182,7 +173,7 @@ ${launch_url}"
         .configurations[]
         | .port // empty
         | select(type == "number" or type == "string")
-      ' "$PROJECT_ROOT/.claude/launch.json" 2>/dev/null || true
+      ' "$PROJECT_ROOT/.claude/launch.json" 2> /dev/null || true
     )
 
     launch_urls=$(printf '%s\n' "$launch_urls" | sed '/^$/d')
@@ -246,7 +237,7 @@ if [ -n "$APP_CANDIDATES" ]; then
         ;;
     esac
 
-    candidate_port=$("$SCRIPT_DIR/resolve-port.sh" "$candidate_root" --type "$candidate_type" 2>/dev/null || true)
+    candidate_port=$("$SCRIPT_DIR/resolve-port.sh" "$candidate_root" --type "$candidate_type" 2> /dev/null || true)
     candidate_url=$(try_port "$candidate_port" || true)
     if [ -n "$candidate_url" ] && ! printf '%s\n' "$candidate_urls" | grep -Fxq "$candidate_url"; then
       candidate_urls="${candidate_urls}
@@ -271,7 +262,7 @@ ${candidate_url}"
   exit 0
 fi
 
-RESOLVED_PORT=$("$SCRIPT_DIR/resolve-port.sh" "$APP_ROOT" --type "$PROJECT_TYPE" 2>/dev/null || true)
+RESOLVED_PORT=$("$SCRIPT_DIR/resolve-port.sh" "$APP_ROOT" --type "$PROJECT_TYPE" 2> /dev/null || true)
 if is_port "$RESOLVED_PORT"; then
   resolved_url=$(try_port "$RESOLVED_PORT" || true)
   if [ -n "$resolved_url" ]; then
