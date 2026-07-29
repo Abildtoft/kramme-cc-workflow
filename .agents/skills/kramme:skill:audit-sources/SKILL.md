@@ -59,15 +59,17 @@ Goal: fetch each declared source, decide whether it has changed, and on change a
 
 1. Read `references/sources.yaml` for the target skill.
 2. For each source entry:
-   1. **Fetch.** If `context7_library` is set, fetch the library docs via the available docs MCP if present (e.g. Context7's `resolve-library-id` + `query-docs`); otherwise fall back to a web fetch of the library's canonical docs URL. Else if `url` is set, fetch the URL via the runtime's web-fetch tool. On fetch error, record the error in the report and continue to the next source.
-   2. **Apply a declared extractor.** If the entry has `graphql_definitions`, pipe the fetched schema through `scripts/extract_graphql_definitions.py`, passing the listed names in manifest order. Treat a missing or malformed definition as a source error; never fall back to snapshotting the full schema.
-   3. **Normalize and hash.** Pipe the fetched or extracted content through `scripts/normalize.py` (see `references/normalization-rules.md`). Use `--type markdown` for raw Markdown, GraphQL extraction output, GitHub README files, `.md` URLs, and docs-MCP markdown output; use `--type html` for fetched HTML pages. The script writes normalized content to stdout and prints the sha256 hash to stderr.
-   4. **Compare hashes.**
+   1. **Fetch or extract.**
+      - If the entry has `graphql_definitions`, require an HTTPS `url` and run `python3 scripts/extract_graphql_definitions.py --url "<url>" <name>...`, passing the listed names in manifest order. The helper fetches the schema inside the local process so the full response never enters model context; capture only its bounded stdout. Treat a fetch error, missing definition, or malformed definition as a source error. Never call the runtime web-fetch tool for this entry and never fall back to snapshotting the full schema.
+      - Otherwise, if `context7_library` is set, fetch the library docs via the available docs MCP if present (e.g. Context7's `resolve-library-id` + `query-docs`); fall back to a web fetch of the library's canonical docs URL.
+      - Otherwise, fetch the declared `url` via the runtime's web-fetch tool. On fetch error, record the error in the report and continue to the next source.
+   2. **Normalize and hash.** Pipe the fetched or extracted content through `scripts/normalize.py` (see `references/normalization-rules.md`). Use `--type markdown` for raw Markdown, GraphQL extraction output, GitHub README files, `.md` URLs, and docs-MCP markdown output; use `--type html` for fetched HTML pages. The script writes normalized content to stdout and prints the sha256 hash to stderr.
+   3. **Compare hashes.**
       - `baseline_hash` is empty → mark "baseline initialized" in the report. Stage the new snapshot for Phase 5, but skip the LLM step because there is no previous baseline to compare against.
       - Hash matches `baseline_hash` → mark "unchanged" in the report. Skip the LLM step.
       - Hash differs from a non-empty `baseline_hash` → continue.
-   5. **LLM compare (only on change).** Read the comparison prompt from `references/comparison-prompt.md`. Provide it with: (a) the previous baseline snapshot at `references/sources-snapshot/<id>.md` if present, (b) the freshly fetched normalized content, (c) the current `SKILL.md` of the target skill. The model returns a structured suggestion (or "nothing actionable").
-   6. **Stage the new snapshot** in memory (do not write yet — Phase 5 handles persistence).
+   4. **LLM compare (only on change).** Read the comparison prompt from `references/comparison-prompt.md`. Provide it with: (a) the previous baseline snapshot at `references/sources-snapshot/<id>.md` if present, (b) the freshly fetched normalized content, (c) the current `SKILL.md` of the target skill. The model returns a structured suggestion (or "nothing actionable").
+   5. **Stage the new snapshot** in memory (do not write yet — Phase 5 handles persistence).
 3. Append the per-source results to the running audit report.
 
 ## Phase 5: Persist Baselines

@@ -23,7 +23,7 @@ A skill with no sources to audit may omit the file entirely. An empty file (`sou
 | `rationale` | yes | One sentence: _what in this skill is derived from this source_. Forces curation discipline; if you can't write it, the source isn't an inspiration source. |
 | `last_reviewed_at` | yes | ISO date (`YYYY-MM-DD`) when the baseline was last refreshed. Updated by Phase 5 of the audit skill. |
 | `baseline_hash` | yes after first audit | `sha256:<hex>` of the normalized snapshot content. Empty string on a freshly bootstrapped entry; populated on the first successful fetch. |
-| `graphql_definitions` | no | Ordered list of top-level GraphQL definition names to extract before normalization. Use when only a bounded part of a large schema informs the skill. Missing definitions fail the source audit instead of falling back to the full schema. |
+| `graphql_definitions` | no | Ordered list of named GraphQL type-system definitions to extract before normalization. Supported kinds are `enum`, `input`, `interface`, `scalar`, `type`, and `union`, including extensions of a requested name. Use only with an HTTPS `url` when a bounded part of a large schema informs the skill. The local helper fetches the URL without exposing the full schema to model context; missing or malformed definitions fail the source audit instead of falling back to the full schema. |
 
 Exactly one of `url` and `context7_library` must be set.
 
