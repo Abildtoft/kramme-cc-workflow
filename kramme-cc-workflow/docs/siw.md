@@ -66,7 +66,7 @@ Or start from scratch with an interactive interview:
     │                               or spec refinement   │
     │    /kramme:siw:spec-audit     8-dimension quality  │
     │                               check                │
-    │    /kramme:siw:spec-audit:auto-fix                 │
+    │    /kramme:siw:apply-spec-audit-fixes              │
     │                               deterministic fixes  │
     │    /kramme:siw:breakdown-findings                  │
     │                               decision-ready       │

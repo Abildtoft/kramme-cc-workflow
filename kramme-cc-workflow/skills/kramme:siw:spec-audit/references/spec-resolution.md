@@ -27,7 +27,7 @@ Use this when `SKILL.md` reaches Step 1. Resolve `$ARGUMENTS` into mode flags an
 
 `--apply` means:
 
-- write the audit report as usual, then run the same procedure as `/kramme:siw:spec-audit:auto-fix` against that report for findings that clear the canonical auto-fix gates
+- write the audit report as usual, then run the same procedure as `/kramme:siw:apply-spec-audit-fixes` against that report for findings that clear the canonical auto-fix gates
 - skip Step 6 issue creation entirely — do **not** create `G-*` issues, do **not** update `siw/OPEN_ISSUES_OVERVIEW.md`, and do **not** touch `siw/issues/`
 - if combined with `--auto`, pass the same approval behavior to the auto-fix procedure
 

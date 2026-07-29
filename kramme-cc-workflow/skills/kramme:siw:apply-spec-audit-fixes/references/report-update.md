@@ -1,6 +1,6 @@
 # Auto-Fix Report Update Procedure
 
-Use this reference during Step 6 of `/kramme:siw:spec-audit:auto-fix` after all selected fixes have completed their apply-verify cycle.
+Use this reference during Step 6 of `/kramme:siw:apply-spec-audit-fixes` after all selected fixes have completed their apply-verify cycle.
 
 ## Annotate Fixed Findings
 
