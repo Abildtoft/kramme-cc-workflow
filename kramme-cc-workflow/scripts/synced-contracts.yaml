@@ -487,6 +487,25 @@
       ]
     },
     {
+      "name": "refactor-pass-mode-and-recovery-contract",
+      "path": "kramme-cc-workflow/skills/kramme:code:refactor-pass/SKILL.md",
+      "frontmatter": {
+        "name": "kramme:code:refactor-pass",
+        "argument-hint": "[scope ... | --rewrite]",
+        "disable-model-invocation": "true",
+        "user-invocable": "true"
+      },
+      "contains": [
+        "Parse `$ARGUMENTS` before selecting a mode.",
+        "Accept no arguments, exactly one `--rewrite` token, or one or more positional scope tokens with no option-prefixed token.",
+        "Treat accepted positional tokens as the explicit default-mode scope.",
+        "Do not fall through to default mode.",
+        "Every applicable configured build, typecheck, lint, and test gate must pass.",
+        "If any applicable verification box remains unchecked, finish the gap.",
+        "restore the recovery point and surface the failure"
+      ]
+    },
+    {
       "name": "pr-code-review-invocation-shape",
       "path": "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md",
       "frontmatter": {
