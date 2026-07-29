@@ -17,6 +17,14 @@
       "review_after": "2026-08-25"
     },
     {
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/state-and-rollback.md",
+      "rule_id": "TM1",
+      "reason": "Reviewed intentional TM1 finding for the Pull Request creation rollback path: the hard reset restores the feature branch to the full original commit captured before history recreation, runs only after strict branch-name and full-commit-ID validation, and preserves the recreation backup ref for manual recovery.",
+      "owner": "kramme",
+      "accepted_at": "2026-07-29",
+      "review_after": "2026-08-29"
+    },
+    {
       "path": "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/d3.v7.9.0.min.js",
       "rule_id": "SC3",
       "reason": "Reviewed intentional SC3 finding for the vendored D3 v7.9.0 minified distribution: the file is pinned to the upstream source and SHA-256 recorded in references/sources.yaml, retains its upstream license notice, and is embedded locally so private Pull Request context never depends on third-party CDN execution.",

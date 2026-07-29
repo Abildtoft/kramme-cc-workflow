@@ -16,7 +16,6 @@ Synced base/diff scope contract (keep aligned across base-aware and diff-aware s
    RESOLVE_ARGS=(--strict)
    [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
    [ -n "${BASE_COMMIT_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base-commit "$BASE_COMMIT_OVERRIDE")
-
    RESOLVED=$(${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh "${RESOLVE_ARGS[@]}") || {
      echo "Base resolution failed; see the message above and stop." >&2
      exit 1
@@ -26,6 +25,5 @@ Synced base/diff scope contract (keep aligned across base-aware and diff-aware s
    ```
 
    The script exports `BASE_REF`, `BASE_BRANCH`, and `MERGE_BASE` for later context gathering.
-
    - **NOTE**: PR target branch detection ensures correct scope when the PR targets a non-default branch (e.g., a feature branch stacked on another PR)
    - **CAN** ask user if unclear or override needed
