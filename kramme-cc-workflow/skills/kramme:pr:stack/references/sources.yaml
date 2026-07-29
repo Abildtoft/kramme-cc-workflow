@@ -1,0 +1,25 @@
+sources:
+  - id: github-gh-stack-agent-skill
+    url: https://raw.githubusercontent.com/github/gh-stack/main/skills/gh-stack/SKILL.md
+    title: "GitHub gh-stack — official agent skill"
+    rationale: "The non-interactive agent rules, exit-code recovery table, view --json schema, and mid-stack workflow patterns in this skill and references/cli-agent-rules.md are condensed from GitHub's official gh-stack agent skill."
+    last_reviewed_at: 2026-07-29
+    baseline_hash: ""
+  - id: github-stacked-prs-docs
+    url: https://github.github.com/gh-stack/
+    title: "GitHub Stacked Pull Requests — documentation"
+    rationale: "The stack model (server-side stacks, branch protection and CI evaluated against the stack base, cascading merges) and lifecycle workflow are derived from the official documentation."
+    last_reviewed_at: 2026-07-29
+    baseline_hash: ""
+  - id: github-stacked-prs-graphql-api
+    url: https://github.github.com/gh-stack/reference/graphql-api/
+    title: "GitHub Stacked Pull Requests — GraphQL API"
+    rationale: "The fail-closed membership resolver uses the documented PullRequest.stack field to distinguish an unstacked PR from a server-side stack that is not tracked by the local extension."
+    last_reviewed_at: 2026-07-29
+    baseline_hash: ""
+  - id: github-gh-stack-v0.1.0
+    url: https://github.com/github/gh-stack/releases/tag/v0.1.0
+    title: "gh-stack v0.1.0 release"
+    rationale: "The minimum supported CLI version, amended-parent and stale-trunk safety requirements, and non-interactive gh stack merge workflow come from the v0.1.0 release."
+    last_reviewed_at: 2026-07-29
+    baseline_hash: ""
