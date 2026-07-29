@@ -3,8 +3,8 @@ sources:
     url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-plan
     title: "EveryInc compound-engineering-plugin - ce-plan"
     rationale: "Stable issue identifier rules, repo-relative path discipline, and the risk-triggered confidence deepening gate are adapted from ce-plan's stable implementation-unit IDs and confidence-check/deepening workflow."
-    last_reviewed_at: 2026-06-08
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:1dabd0574459bafbae1989be842a176721bb4314fa1d95ede7cdec836b588942"
   - id: pocock-to-tickets
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/to-tickets/SKILL.md
     title: "Matt Pocock skills - to-tickets"

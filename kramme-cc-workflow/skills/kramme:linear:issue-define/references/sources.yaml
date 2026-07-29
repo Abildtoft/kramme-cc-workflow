@@ -1,13 +1,13 @@
 sources:
   - id: pocock-triage-issue
-    url: https://github.com/mattpocock/skills/tree/main/triage-issue
+    url: https://github.com/mattpocock/skills/tree/383b6a06d59c4ce0ffcb14112bfd91265a86cf91/skills/triage-issue
     title: "Matt Pocock skills - triage-issue"
     rationale: "The durability rule for issue bodies (no file paths, no line numbers — describe modules, behaviors, and contracts) is adapted from this source."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:05f43a612b1bbb64b35a61a729856a80a614a14fbf4499ac05ba71764a34472f"
   - id: pocock-github-triage
-    url: https://github.com/mattpocock/skills/tree/main/github-triage
+    url: https://github.com/mattpocock/skills/tree/main/skills/engineering/triage
     title: "Matt Pocock skills - github-triage"
     rationale: "The resume-from-prior-session pattern in IMPROVE MODE (parse prior AI-authored triage notes and continue without re-asking resolved questions) is adapted from this skill's AGENT-BRIEF.md and Resuming Previous Sessions guidance."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:01c0e030f5545c49f164958e0769c005eabf88cf66a91e18b59f889d32a04123"

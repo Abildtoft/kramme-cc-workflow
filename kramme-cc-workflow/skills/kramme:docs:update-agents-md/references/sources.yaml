@@ -3,5 +3,5 @@ sources:
     url: https://skills.sh/getsentry/skills/agents-md
     title: "getsentry/skills - agents-md skill"
     rationale: "AGENTS.md update workflow, local skill discovery, and guideline keyword documentation patterns are inspired by this skill."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:1fbc7423f3cdbfedb06e915c80bcf1b715fc178703ced2d302364344c61906a1"

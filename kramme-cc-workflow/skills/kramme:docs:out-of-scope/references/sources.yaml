@@ -1,7 +1,7 @@
 sources:
   - id: pocock-github-triage-out-of-scope
-    url: https://github.com/mattpocock/skills/tree/main/github-triage
+    url: https://github.com/mattpocock/skills/tree/main/skills/engineering/triage
     title: "Matt Pocock skills - github-triage (.out-of-scope/ knowledge base)"
     rationale: "The .out-of-scope/ directory convention (one markdown file per rejected enhancement concept, with substantive reason and prior-requests list) and the concept-similarity matching for prior-rejection deduplication are adapted from this skill's OUT-OF-SCOPE.md reference."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:01c0e030f5545c49f164958e0769c005eabf88cf66a91e18b59f889d32a04123"

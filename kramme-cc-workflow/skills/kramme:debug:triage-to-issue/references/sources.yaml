@@ -1,7 +1,7 @@
 sources:
   - id: pocock-triage-issue
-    url: https://github.com/mattpocock/skills/tree/main/triage-issue
+    url: https://github.com/mattpocock/skills/tree/383b6a06d59c4ce0ffcb14112bfd91265a86cf91/skills/triage-issue
     title: "Matt Pocock skills - triage-issue"
     rationale: "The hands-off bug-to-issue workflow (single clarifying question, background investigation, RED-GREEN TDD plan in the issue body) and the durability rule for issue bodies (no file paths, no line numbers, describe modules and contracts) are adapted from this source."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:05f43a612b1bbb64b35a61a729856a80a614a14fbf4499ac05ba71764a34472f"

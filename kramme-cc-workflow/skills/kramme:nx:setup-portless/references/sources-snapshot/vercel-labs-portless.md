@@ -1,0 +1,884 @@
+                                                                                                                 GitHub - vercel-labs/portless: Replace port numbers with stable, named local URLs. For humans and agents. · GitHub
+
+ [Sign in](/login?return_to=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fportless)  [Sign up](/signup?ref_cta=Sign+up&ref_loc=header+logged+out&ref_page=%2F%3Cuser-name%3E%2F%3Crepo-name%3E&source=header-repo&source_repo=vercel-labs%2Fportless)
+
+  Appearance settings
+
+  You signed in with another tab or window. Reload to refresh your session. You signed out in another tab or window. Reload to refresh your session. You switched accounts on another tab or window. Reload to refresh your session. Dismiss alert
+
+{{ message }}
+
+###  Uh oh!
+
+There was an error while loading. Please reload this page.
+
+  [/vercel-labs/portless](/vercel-labs/portless)
+
+[Branches](/vercel-labs/portless/branches)[Tags](/vercel-labs/portless/tags)
+
+[/vercel-labs/portless/branches](/vercel-labs/portless/branches)[/vercel-labs/portless/tags](/vercel-labs/portless/tags)
+
+Open more actions menu
+
+## Folders and files
+
+| Name | Name |
+
+Last commit message |
+
+Last commit date  |
+
+|
+
+## Latest commit
+
+## History
+[152 Commits](/vercel-labs/portless/commits/main/)
+
+[/vercel-labs/portless/commits/main/](/vercel-labs/portless/commits/main/)152 Commits  |
+
+|
+
+[.github/workflows](/vercel-labs/portless/tree/main/.github/workflows) |
+
+[.github/workflows](/vercel-labs/portless/tree/main/.github/workflows) |
+
+  |
+
+   |
+
+|
+
+[.husky](/vercel-labs/portless/tree/main/.husky) |
+
+[.husky](/vercel-labs/portless/tree/main/.husky) |
+
+  |
+
+   |
+
+|
+
+[apps/docs](/vercel-labs/portless/tree/main/apps/docs) |
+
+[apps/docs](/vercel-labs/portless/tree/main/apps/docs) |
+
+  |
+
+   |
+
+|
+
+[examples/google-oauth](/vercel-labs/portless/tree/main/examples/google-oauth) |
+
+[examples/google-oauth](/vercel-labs/portless/tree/main/examples/google-oauth) |
+
+  |
+
+   |
+
+|
+
+[packages/portless](/vercel-labs/portless/tree/main/packages/portless) |
+
+[packages/portless](/vercel-labs/portless/tree/main/packages/portless) |
+
+  |
+
+   |
+
+|
+
+[scripts/windows-debug](/vercel-labs/portless/tree/main/scripts/windows-debug) |
+
+[scripts/windows-debug](/vercel-labs/portless/tree/main/scripts/windows-debug) |
+
+  |
+
+   |
+
+|
+
+[skills](/vercel-labs/portless/tree/main/skills) |
+
+[skills](/vercel-labs/portless/tree/main/skills) |
+
+  |
+
+   |
+
+|
+
+[tests/e2e](/vercel-labs/portless/tree/main/tests/e2e) |
+
+[tests/e2e](/vercel-labs/portless/tree/main/tests/e2e) |
+
+  |
+
+   |
+
+|
+
+[.gitignore](/vercel-labs/portless/blob/main/.gitignore) |
+
+[.gitignore](/vercel-labs/portless/blob/main/.gitignore) |
+
+  |
+
+   |
+
+|
+
+[.node-version](/vercel-labs/portless/blob/main/.node-version) |
+
+[.node-version](/vercel-labs/portless/blob/main/.node-version) |
+
+  |
+
+   |
+
+|
+
+[.prettierignore](/vercel-labs/portless/blob/main/.prettierignore) |
+
+[.prettierignore](/vercel-labs/portless/blob/main/.prettierignore) |
+
+  |
+
+   |
+
+|
+
+[.prettierrc](/vercel-labs/portless/blob/main/.prettierrc) |
+
+[.prettierrc](/vercel-labs/portless/blob/main/.prettierrc) |
+
+  |
+
+   |
+
+|
+
+[AGENTS.md](/vercel-labs/portless/blob/main/AGENTS.md) |
+
+[AGENTS.md](/vercel-labs/portless/blob/main/AGENTS.md) |
+
+  |
+
+   |
+
+|
+
+[CHANGELOG.md](/vercel-labs/portless/blob/main/CHANGELOG.md) |
+
+[CHANGELOG.md](/vercel-labs/portless/blob/main/CHANGELOG.md) |
+
+  |
+
+   |
+
+|
+
+[LICENSE](/vercel-labs/portless/blob/main/LICENSE) |
+
+[LICENSE](/vercel-labs/portless/blob/main/LICENSE) |
+
+  |
+
+   |
+
+|
+
+[README.md](/vercel-labs/portless/blob/main/README.md) |
+
+[README.md](/vercel-labs/portless/blob/main/README.md) |
+
+  |
+
+   |
+
+|
+
+[eslint.config.js](/vercel-labs/portless/blob/main/eslint.config.js) |
+
+[eslint.config.js](/vercel-labs/portless/blob/main/eslint.config.js) |
+
+  |
+
+   |
+
+|
+
+[package.json](/vercel-labs/portless/blob/main/package.json) |
+
+[package.json](/vercel-labs/portless/blob/main/package.json) |
+
+  |
+
+   |
+
+|
+
+[pnpm-lock.yaml](/vercel-labs/portless/blob/main/pnpm-lock.yaml) |
+
+[pnpm-lock.yaml](/vercel-labs/portless/blob/main/pnpm-lock.yaml) |
+
+  |
+
+   |
+
+|
+
+[pnpm-workspace.yaml](/vercel-labs/portless/blob/main/pnpm-workspace.yaml) |
+
+[pnpm-workspace.yaml](/vercel-labs/portless/blob/main/pnpm-workspace.yaml) |
+
+  |
+
+   |
+
+|
+
+[turbo.json](/vercel-labs/portless/blob/main/turbo.json) |
+
+[turbo.json](/vercel-labs/portless/blob/main/turbo.json) |
+
+  |
+
+   |
+
+|
+
+  |
+
+## Repository files navigation
+
+# portless
+[#portless](#portless)
+
+Replace port numbers with stable, named .localhost URLs for local development. For humans and agents.
+
+```
+- "dev": "next dev"                  # http://localhost:3000
++ "dev": "portless run next dev"     # https://myapp.localhost
+```
+
+## Install
+[#install](#install)
+
+Global (recommended):
+
+```
+npm install -g portless
+```
+
+Or as a project dev dependency:
+
+```
+npm install -D portless
+```
+
+portless is pre-1.0. When installed per-project, different contributors may run different versions. The state directory format may change between releases, which can require re-running `portless trust`.
+
+## Run your app
+[#run-your-app](#run-your-app)
+
+```
+portless myapp next dev
+# -> https://myapp.localhost
+```
+
+HTTPS with HTTP/2 is enabled by default. On first run, portless generates a local CA, trusts it, and binds port 443 (auto-elevates with sudo on macOS/Linux). Use `--no-tls` for plain HTTP.
+
+The proxy auto-starts when you run an app. A random port (4000-4999) is assigned via the `PORT` environment variable. Most frameworks (Next.js, Express, Nuxt, etc.) respect this automatically. For frameworks that ignore `PORT` (Vite, VitePlus, Astro, React Router, Angular, Expo, React Native), portless auto-injects the right `--port` flag and, when needed, a matching `--host` flag.
+
+When auto-starting, portless reuses the configuration (port, TLS, TLDs) from the most recent proxy run, so a restart or reboot does not silently revert to defaults. Explicit env vars (`PORTLESS_PORT`, `PORTLESS_HTTPS`, etc.) always take priority.
+
+Portless stores per-user state in `~/.portless`. When the proxy runs under sudo, it resolves this path from the invoking user's home so the proxy and unprivileged app processes share the same route registrations.
+
+In non-interactive environments (no TTY, or `CI=1`), portless exits with a descriptive error instead of prompting, so task runners like turborepo and CI scripts fail early with a clear message.
+
+## Configuration
+[#configuration](#configuration)
+
+Bare `portless` works out of the box. It runs the `"dev"` script from `package.json` through the proxy, inferring the app name from the package name, git root, or directory:
+
+```
+portless        # -> runs "dev" script, https://<project>.localhost
+```
+
+Use an optional `portless.json` to override defaults:
+
+```
+{ "name": "myapp" }
+```
+
+```
+portless        # -> runs "dev" script, https://myapp.localhost
+```
+
+The script defaults to `"dev"`. The name is inferred from `package.json` if not set in config.
+
+### Monorepo
+[#monorepo](#monorepo)
+
+One `portless.json` at the repo root covers all workspace packages. Portless discovers packages from `pnpm-workspace.yaml`, or the `"workspaces"` field in `package.json` (npm, yarn, bun):
+
+```
+{
+  "apps": {
+    "apps/web": { "name": "myapp" },
+    "apps/api": { "name": "api.myapp" }
+  }
+}
+```
+
+```
+portless        # from repo root: starts all workspace packages with a "dev" script
+cd apps/web && portless   # start just one package
+```
+
+The `apps` map is optional and only needed for name overrides. Packages not listed still auto-discover with names inferred from their `package.json`.
+
+Without an `apps` map, hostnames follow the `<package>.<project>.localhost` convention. The project name comes from the most common npm scope across workspace packages (e.g. `@myorg/web` and `@myorg/api` produce `myorg`), falling back to the workspace root directory name. If a package's short name matches the project name, it gets the bare `<project>.localhost` without duplication.
+
+### Config fields
+[#config-fields](#config-fields)
+
+ | Field  | Type  | Default  | Description   |
+
+ | `name`  | string  | inferred  | Base app name. Worktree prefix still applies.   |
+
+ | `script`  | string  | `"dev"`  | Name of a `package.json` script to run.   |
+
+ | `appPort`  | number  | auto  | Fixed port for the child process.   |
+
+ | `proxy`  | boolean  | auto  | Whether to route through the proxy. Auto-detected.   |
+
+ | `apps`  | object  |   | Overrides for workspace packages, keyed by relative path.   |
+
+ | `turbo`  | boolean  | `true`  | Set `false` to use direct spawning instead of turborepo.   |
+
+### package.json "portless" key
+[#packagejson-portless-key](#packagejson-portless-key)
+
+Instead of a separate `portless.json`, you can add a `"portless"` key to your `package.json`. A string value is shorthand for setting the name:
+
+```
+{
+  "name": "@myorg/web",
+  "portless": "myapp"
+}
+```
+
+An object supports all per-app fields (`name`, `script`, `appPort`, `proxy`):
+
+```
+{
+  "name": "@myorg/web",
+  "portless": { "name": "myapp", "script": "dev:app" }
+}
+```
+
+The `package.json` `"portless"` key takes precedence over `portless.json` app entries but is overridden by CLI flags.
+
+### --script flag
+[#--script-flag](#--script-flag)
+
+Override the default script for a single invocation:
+
+```
+portless --script start       # run "start" instead of "dev"
+portless --script test        # run "test" instead of "dev"
+```
+
+### Turborepo
+[#turborepo](#turborepo)
+
+To use portless with turborepo, put `portless` as the `dev` script and the real command in a separate script:
+
+```
+{
+  "scripts": {
+    "dev": "portless",
+    "dev:app": "next dev"
+  },
+  "portless": { "name": "myapp", "script": "dev:app" }
+}
+```
+
+Turbo runs each package's `dev` script, which invokes portless. Portless reads the config, detects the package manager, and runs `pnpm run dev:app` (or yarn/bun/npm) through the proxy. No changes to `turbo.json` are needed.
+
+`pnpm dev` at the root works through turbo as usual. People without portless can run `pnpm run dev:app` directly.
+
+## Use in package.json
+[#use-in-packagejson](#use-in-packagejson)
+
+You can still use portless in `package.json` scripts:
+
+```
+{
+  "scripts": {
+    "dev": "portless run next dev"
+  }
+}
+```
+
+With a `portless.json`, you can simplify to:
+
+```
+{
+  "scripts": {
+    "dev": "next dev"
+  }
+}
+```
+
+Then run `portless` or `portless run` to go through the proxy.
+
+## Subdomains
+[#subdomains](#subdomains)
+
+Organize services with subdomains:
+
+```
+portless api.myapp pnpm start
+# -> https://api.myapp.localhost
+
+portless docs.myapp next dev
+# -> https://docs.myapp.localhost
+```
+
+By default, only explicitly registered subdomains are routed (strict mode). Use `--wildcard` when starting the proxy to allow any subdomain of a registered route to fall back to that app (e.g. `tenant1.myapp.localhost` routes to the `myapp` app without extra registration).
+
+## Git Worktrees
+[#git-worktrees](#git-worktrees)
+
+`portless run` automatically detects git worktrees. In a linked worktree, the branch name is prepended as a subdomain so each worktree gets its own URL without any config changes:
+
+```
+# Main worktree (no prefix)
+portless run next dev   # -> https://myapp.localhost
+
+# Linked worktree on branch "fix-ui"
+portless run next dev   # -> https://fix-ui.myapp.localhost
+```
+
+Use `--name` to override the inferred base name while keeping the worktree prefix:
+
+```
+portless run --name myapp next dev   # -> https://fix-ui.myapp.localhost
+```
+
+Put `portless run` in your `package.json` once and it works everywhere. The main checkout uses the plain name, each worktree gets a unique subdomain. No collisions, no `--force`.
+
+## Custom TLD
+[#custom-tld](#custom-tld)
+
+By default, portless uses `.localhost` which auto-resolves to `127.0.0.1` in most browsers. If you prefer a different TLD (e.g. `.test`), use `--tld`:
+
+```
+portless proxy start --tld test
+portless myapp next dev
+# -> https://myapp.test
+```
+
+The proxy auto-syncs `/etc/hosts` for route hostnames (including `.test`), so those domains resolve on your machine.
+
+Repeat `--tld` to serve the same app names under multiple TLDs from one proxy:
+
+```
+portless proxy start --tld localhost --tld test
+portless myapp next dev
+# -> https://myapp.localhost
+# -> https://myapp.test
+```
+
+When multiple TLDs are configured, `PORTLESS_URL` uses the first TLD. `PORTLESS_TLD` also accepts a comma separated list, e.g. `PORTLESS_TLD=localhost,test`.
+
+Recommended: `.test` (IANA-reserved, no collision risk). Avoid `.local` (conflicts with mDNS/Bonjour) and `.dev` (Google-owned, forces HTTPS via HSTS).
+
+### Multi-segment TLDs
+[#multi-segment-tlds](#multi-segment-tlds)
+
+The `--tld` value accepts a lowercase DNS name (one or more dot-separated labels, no trailing dot), so a domain you own can be used as the "TLD". This gives local URLs the same structure as production, which keeps OAuth redirect URIs, cross-subdomain cookies, and host-based routing working the same way in both environments:
+
+```
+portless proxy start --tld dev.example.com
+portless myapp next dev
+# -> https://myapp.dev.example.com
+```
+
+Each label must follow DNS rules: lowercase letters, digits, and interior hyphens, with at most 63 characters per label and 253 characters total. The full hostname (`app.TLD`) is also subject to the 253-character DNS limit.
+
+The proxy auto-syncs `/etc/hosts` for registered hostnames, so `myapp.dev.example.com` resolves to `127.0.0.1` on your machine. This is a loopback-only setup: outside LAN mode the proxy binds only to `127.0.0.1` and `::1` (see below), so a custom TLD is reachable only from the machine running the proxy. Reaching the proxy from other devices requires LAN mode (`--lan`), but LAN mode serves apps under the `.local` TLD and ignores a custom `--tld`, so the two cannot be combined today.
+
+Strict OAuth providers (Google, Apple) reject `.localhost` and `.test` redirect URIs but accept a real domain, so `https://myapp.dev.example.com/api/auth/callback/google` works as a redirect URI.
+
+## How it works
+[#how-it-works](#how-it-works)
+
+```
+flowchart TD
+    Browser["Browser<br>myapp.localhost"]
+    Proxy["portless proxy<br>(port 80 or 443)"]
+    App1[":4123<br>myapp"]
+    App2[":4567<br>api"]
+
+    Browser --> Proxy
+    Proxy --> App1
+    Proxy --> App2
+
+```
+      Loading
+
+1. Start the proxy: auto-starts when you run an app, or start explicitly with `portless proxy start`
+1. Run apps: `portless <name> <command>` assigns a free port and registers with the proxy
+1. Access via URL: `https://<name>.localhost` routes through the proxy to your app
+
+Outside LAN mode, the proxy and its HTTP redirect listener bind only to the IPv4 and IPv6 loopback addresses, `127.0.0.1` and `::1`. They do not accept connections through LAN, VPN, or other network interfaces.
+
+## HTTP/2 + HTTPS
+[#http2--https](#http2--https)
+
+HTTPS with HTTP/2 is enabled by default. Browsers limit HTTP/1.1 to 6 connections per host, which bottlenecks dev servers that serve many unbundled files (Vite, Nuxt, etc.). HTTP/2 multiplexes all requests over a single connection.
+
+WebSockets work over both protocol versions, so dev server HMR (Next.js, Vite, etc.) works through the proxy: HTTP/1.1 `Upgrade` requests are forwarded as-is, and WebSockets opened over an HTTP/2 connection use extended CONNECT (RFC 8441).
+
+On first run, portless generates a local CA and adds it to your system trust store. No browser warnings. No manual setup.
+
+```
+# Use your own certs (e.g., from mkcert)
+portless proxy start --cert ./cert.pem --key ./key.pem
+
+# Disable HTTPS (plain HTTP on port 80)
+portless proxy start --no-tls
+
+# If you skipped the trust prompt on first run, trust the CA later
+portless trust
+```
+
+On Linux, `portless trust` supports Debian/Ubuntu, Arch, Fedora/RHEL/CentOS, and openSUSE (via `update-ca-certificates` or `update-ca-trust`). On Windows, it uses `certutil` to add the CA to the system trust store. On WSL, it updates both the Linux trust store and the Windows current-user Root store so Windows browsers trust portless HTTPS certificates.
+
+## Start at OS startup
+[#start-at-os-startup](#start-at-os-startup)
+
+Install the proxy as an OS startup service so clean HTTPS URLs are available after reboot without starting the proxy from a terminal:
+
+```
+portless service install
+portless service install --lan
+portless service install --wildcard
+PORTLESS_STATE_DIR=~/.portless-lan PORTLESS_LAN=1 portless service install
+portless service status
+portless service uninstall
+```
+
+The service uses portless defaults unless install options or `PORTLESS_*` environment variables are provided: HTTPS on port 443 with `.localhost` names. `service install` accepts the proxy options you would use with `proxy start`, including `--port`, `--no-tls`, `--lan`, `--ip`, `--tld`, `--wildcard`, `--cert`, and `--key`. Use `--state-dir <path>` or `PORTLESS_STATE_DIR=<path>` to choose where service state and logs are written.
+
+The chosen service configuration is written into launchd, systemd, or Task Scheduler and reused after reboot. `portless service status` reports the installed port, HTTPS mode, TLDs, LAN mode, wildcard mode, and state directory. macOS and Linux install a root-owned service so port 443 can bind at boot. Windows installs a Task Scheduler startup task that runs as SYSTEM. Installation and removal may require administrator privileges. `portless clean` automatically removes the service.
+
+## LAN mode
+[#lan-mode](#lan-mode)
+
+```
+portless proxy start --lan
+portless proxy start --lan --https
+portless proxy start --lan --ip 192.168.1.42
+```
+
+`--lan` explicitly binds the proxy to the IPv4 and IPv6 unspecified addresses, `0.0.0.0` and `::`, and switches to mDNS discovery. This makes services available as `<name>.local` to devices on the same network. Portless auto-detects your LAN IP and follows Wi-Fi/IP changes automatically, but you can pin another address with `--ip <address>` or by exporting `PORTLESS_LAN_IP`. Set `PORTLESS_LAN=1` in your shell (0/1 boolean) to make LAN mode the default whenever the proxy starts.
+
+Portless remembers LAN mode via `proxy.lan`, so if you stop a LAN proxy and start it again, it stays in LAN mode. All proxy settings (port, TLS, TLDs, LAN) are persisted and reused on auto-start unless overridden by explicit flags or env vars. Use `PORTLESS_LAN=0` for one start to switch back to `.localhost` mode. If a proxy is already running with different explicit LAN/TLS/TLD settings, portless warns and asks you to stop it first.
+
+LAN mode depends on the system mDNS tools that portless already spawns: macOS ships with `dns-sd`, while Linux uses `avahi-publish-address` from `avahi-utils` (install via `sudo apt install avahi-utils` or your distro’s equivalent). If the command is missing or your network isn’t reachable, `portless proxy start --lan` prints the relevant error and exits.
+
+### Framework notes
+[#framework-notes](#framework-notes)
+
+-
+
+Next.js: add your `.local` hostnames to `allowedDevOrigins`:
+
+```
+// next.config.js
+module.exports = {
+  allowedDevOrigins: ["myapp.local", "*.myapp.local"],
+};
+```
+
+-
+
+Expo / React Native: portless always injects `--port`. React Native also gets `--host 127.0.0.1`. Expo gets `--host localhost` outside LAN mode, but in LAN mode portless leaves Metro on its default LAN host behavior instead of forcing `--host` or `HOST`.
+
+## Tailscale sharing
+[#tailscale-sharing](#tailscale-sharing)
+
+Share your dev server with teammates on your [Tailscale](https://tailscale.com) network:
+
+```
+portless myapp --tailscale next dev
+# -> https://myapp.localhost           (local)
+# -> https://devbox.yourteam.ts.net    (tailnet)
+```
+
+Each `--tailscale` app is root-mounted on its own Tailscale HTTPS port, so no framework `basePath` configuration is needed. The first app gets port 443, subsequent apps get 8443, 8444, etc.
+
+```
+portless myapp --tailscale next dev     # -> https://devbox.ts.net
+portless api --tailscale pnpm start     # -> https://devbox.ts.net:8443
+```
+
+Use `--funnel` to expose your dev server to the public internet via [Tailscale Funnel](https://tailscale.com/kb/1223/funnel/):
+
+```
+portless myapp --funnel next dev
+# -> https://devbox.yourteam.ts.net    (public)
+```
+
+Tailscale HTTPS certificates must be enabled before `--tailscale` or `--funnel` can register HTTPS URLs. Funnel must also be enabled for the tailnet and node before `--funnel` can register the public URL. If either setting is missing, portless exits before starting the child process.
+
+Set `PORTLESS_TAILSCALE=1` in your shell profile or `.env` to share every app by default. `portless list` shows both local and tailnet URLs. Tailscale serve registrations are cleaned up automatically when the app exits.
+
+Requires the Tailscale CLI to be installed and connected (`tailscale up`), with Tailscale HTTPS certificates enabled.
+
+## ngrok sharing
+[#ngrok-sharing](#ngrok-sharing)
+
+Expose your dev server to the public internet with [ngrok](https://ngrok.com):
+
+```
+portless myapp --ngrok next dev
+# -> https://myapp.localhost           (local)
+# -> https://abc123.ngrok.app          (public)
+```
+
+Set `PORTLESS_NGROK=1` in your shell profile or `.env` to enable ngrok by default when portless runs an app. `portless list` shows both local and ngrok URLs. The ngrok tunnel is cleaned up automatically when the app exits.
+
+Requires the ngrok CLI to be installed and authenticated. If ngrok reports an authentication error, run `ngrok config add-authtoken <token>` and try again.
+
+## Commands
+[#commands](#commands)
+
+```
+portless                        # Run dev script through proxy
+portless                        # From monorepo root: run all workspace packages
+portless run [--name <name>] [cmd] [args...]  # Infer name, run through proxy
+portless <name> <cmd> [args...]  # Run app at https://<name>.localhost
+portless alias <name> <port>     # Register a static route (e.g. for Docker)
+portless alias <name> <port> --force  # Overwrite an existing route
+portless alias --remove <name>   # Remove a static route
+portless list                    # Show active routes
+portless doctor                  # Check proxy, routes, DNS, and CA trust
+portless trust                   # Add local CA to system trust store
+portless clean                   # Remove state, CA trust entry, and hosts block
+portless prune                   # Kill orphaned dev servers from crashed sessions
+portless hosts sync              # Add routes to /etc/hosts (fixes Safari)
+portless hosts clean             # Remove portless entries from /etc/hosts
+
+# Disable portless (run command directly)
+PORTLESS=0 pnpm dev              # Bypasses proxy, uses default port
+
+# Proxy control
+portless proxy start             # Start the HTTPS proxy (port 443, daemon)
+portless proxy start --no-tls    # Start without HTTPS (port 80)
+portless proxy start --lan       # Start in LAN mode (mDNS .local for devices)
+portless proxy start -p 1355     # Start on a custom port (no sudo)
+portless proxy start --foreground  # Start in foreground (for debugging)
+portless proxy start --wildcard  # Allow unregistered subdomains to fall back to parent
+portless proxy stop              # Stop the proxy
+
+# OS startup service
+portless service install         # Start HTTPS proxy when the OS starts
+portless service install --lan   # Start service in LAN mode
+portless service install --wildcard  # Persist wildcard routing in the service
+portless service status          # Show service and proxy status
+portless service uninstall       # Remove the startup service
+```
+
+### Options
+[#options](#options)
+
+```
+-p, --port <number>              Port for the proxy (default: 443, or 80 with --no-tls)
+--no-tls                         Disable HTTPS (use plain HTTP on port 80)
+--https                          Enable HTTPS (default, accepted for compatibility)
+--lan                            Enable LAN mode (mDNS .local for real devices)
+--ip <address>                   Pin a specific LAN IP (disables auto-follow; use with --lan)
+--cert <path>                    Use a custom TLS certificate
+--key <path>                     Use a custom TLS private key
+--foreground                     Run proxy in foreground instead of daemon
+--tld <tld>                      Use a custom TLD instead of .localhost; repeat for more
+--wildcard                       Allow unregistered subdomains to fall back to parent route
+--state-dir <path>               Use a custom state directory with service install
+--script <name>                  Run a specific package.json script (default: dev)
+--app-port <number>              Use a fixed port for the app (skip auto-assignment)
+--tailscale                      Share the app on your Tailscale network (tailnet)
+--funnel                         Share the app publicly via Tailscale Funnel
+--ngrok                          Share the app publicly via ngrok
+--force                          Kill the existing process and take over its route
+--name <name>                    Use <name> as the app name
+
+```
+
+### Environment variables
+[#environment-variables](#environment-variables)
+
+```
+# Configuration
+PORTLESS_PORT=<number>           Override the default proxy port
+PORTLESS_APP_PORT=<number>       Use a fixed port for the app (same as --app-port)
+PORTLESS_HTTPS=0                 Disable HTTPS (same as --no-tls)
+PORTLESS_LAN=1                   Enable LAN mode when set to 1 (auto-detects LAN IP)
+PORTLESS_LAN_IP=<address>        Pin a specific LAN IP for LAN mode
+PORTLESS_TLD=<tld>[,<tld>]       Use one or more TLDs (e.g. localhost,test)
+PORTLESS_WILDCARD=1              Allow unregistered subdomains to fall back to parent route
+PORTLESS_SYNC_HOSTS=0            Disable auto-sync of /etc/hosts (on by default)
+PORTLESS_TAILSCALE=1             Share apps on your Tailscale network (same as --tailscale)
+PORTLESS_FUNNEL=1                Share apps publicly via Tailscale Funnel (same as --funnel)
+PORTLESS_NGROK=1                 Share apps publicly via ngrok (same as --ngrok)
+PORTLESS_STATE_DIR=<path>        Override the state directory
+
+# Injected into child processes
+PORT                             Ephemeral port the child should listen on
+HOST                             Usually 127.0.0.1 (omitted for Expo in LAN mode)
+PORTLESS_URL                     Primary public URL (e.g. https://myapp.localhost)
+PORTLESS_TAILSCALE_URL           Tailscale URL of the app (when --tailscale is active)
+PORTLESS_NGROK_URL               ngrok URL of the app (when --ngrok is active)
+NODE_EXTRA_CA_CERTS              Path to the portless CA (when HTTPS is active)
+
+```
+
+Reserved names: `run`, `get`, `alias`, `hosts`, `list`, `doctor`, `trust`, `clean`, `prune`, `proxy`, and `service` are subcommands and cannot be used as app names directly. Use `portless run <cmd>` to infer the name from your project, or `portless --name <name> <cmd>` to force any name including reserved ones.
+
+## Uninstall / reset
+[#uninstall--reset](#uninstall--reset)
+
+To remove portless data from your machine (proxy state under `~/.portless` and the system state directory, the local CA from the OS trust store when portless installed it, and the portless block in `/etc/hosts`):
+
+```
+portless clean
+```
+
+macOS/Linux may prompt for `sudo`. Custom certificate paths passed with `--cert` and `--key` are not deleted. If trust-store removal fails, portless retains its CA certificate and key so a later `portless clean` can safely retry.
+
+## Safari / DNS
+[#safari--dns](#safari--dns)
+
+`.localhost` subdomains auto-resolve to `127.0.0.1` in Chrome, Firefox, and Edge. Safari relies on the system DNS resolver, which may not handle `.localhost` subdomains on all configurations.
+
+If Safari can't find your `.localhost` URL:
+
+```
+portless hosts sync    # Add current routes to /etc/hosts
+portless hosts clean   # Clean up later
+```
+
+Auto-syncs `/etc/hosts` for route hostnames by default (`.localhost`, custom TLDs, LAN `.local`). Set `PORTLESS_SYNC_HOSTS=0` to disable.
+
+## Troubleshooting
+[#troubleshooting](#troubleshooting)
+
+Run `portless doctor` to inspect local health without changing state. It checks Node.js, the state directory, proxy liveness, route entries, HTTPS CA trust, hostname resolution, and LAN mode prerequisites, then prints suggested fixes.
+
+## Proxying Between Portless Apps
+[#proxying-between-portless-apps](#proxying-between-portless-apps)
+
+If your frontend dev server (e.g. Vite, webpack) proxies API requests to another portless app, make sure the proxy rewrites the `Host` header. Without this, portless routes the request back to the frontend in an infinite loop.
+
+Vite (`vite.config.ts`):
+
+```
+server: {
+  proxy: {
+    "/api": {
+      target: "https://api.myapp.localhost",
+      changeOrigin: true,
+      ws: true,
+    },
+  },
+}
+```
+
+webpack-dev-server (`webpack.config.js`):
+
+```
+devServer: {
+  proxy: [{
+    context: ["/api"],
+    target: "https://api.myapp.localhost",
+    changeOrigin: true,
+  }],
+}
+```
+
+Portless automatically sets `NODE_EXTRA_CA_CERTS` in child processes so Node.js trusts the portless CA. If you run a separate Node.js process outside portless, point it at the CA manually: `NODE_EXTRA_CA_CERTS=~/.portless/ca.pem`. Alternatively, use `--no-tls` for plain HTTP.
+
+Portless detects this misconfiguration and responds with `508 Loop Detected` along with a message pointing to this fix.
+
+## Development
+[#development](#development)
+
+This repo is a pnpm workspace monorepo using [Turborepo](https://turbo.build). The publishable package lives in `packages/portless/`.
+
+Use Node.js 24+ and pnpm 11 for repository development. The `.node-version` file pins the Node major for version managers.
+
+```
+pnpm install          # Install all dependencies
+pnpm build            # Build all packages
+pnpm test             # Run tests
+pnpm test:coverage    # Run tests with coverage
+pnpm lint             # Lint all packages
+pnpm type-check       # Type-check all packages
+pnpm format           # Format all files with Prettier
+```
+
+## Requirements
+[#requirements](#requirements)
+
+- Node.js 24+
+- macOS, Linux, or Windows
+- Tailscale CLI (optional, for `--tailscale` and `--funnel`)
+- ngrok CLI (optional, for `--ngrok`)
+
+## About
+
+Replace port numbers with stable, named local URLs. For humans and agents.
+
+[portless.sh](https://portless.sh)
+
+### Resources
+
+[Readme](#readme-ov-file)
+
+[Apache-2.0 license](#Apache-2.0-1-ov-file)
+
+[Activity](/vercel-labs/portless/activity)
+
+[Custom properties](/vercel-labs/portless/custom-properties)
+
+### Stars
+
+[10.3k stars](/vercel-labs/portless/stargazers)
+
+### Watchers
+
+[22 watching](/vercel-labs/portless/watchers)
+
+### Forks
+
+[335 forks](/vercel-labs/portless/forks)
+
+[Report repository](/contact/report-content?content_url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fportless&report=vercel-labs+%28user%29)
+
+## Releases
+
+## Packages
+
+## Used by
+
+## Contributors
+
+## Languages
+
+   You can’t perform that action at this time.

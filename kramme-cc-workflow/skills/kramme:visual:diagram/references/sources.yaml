@@ -6,14 +6,14 @@ sources:
     last_reviewed_at: 2026-05-28
     baseline_hash: "8f1d0e38ab0f265632a31d2fd032f7b730c98c15"
   - id: mermaid-flowchart-docs
-    url: https://mermaid.js.org/syntax/flowchart.html
+    url: https://raw.githubusercontent.com/mermaid-js/mermaid/develop/docs/syntax/flowchart.md
     title: "Mermaid Flowcharts Syntax"
     rationale: "Mermaid flowchart syntax guidance, including shape syntax, Markdown Strings, classDef usage, and parser caveats, is derived from the official Mermaid docs."
-    last_reviewed_at: 2026-07-03
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:b93d95e801310da61a2b68db2612f86c050defc53bed5f13c4cb3504d80706f9"
   - id: mermaid-usage-config
-    url: https://mermaid.js.org/config/usage.html
+    url: https://raw.githubusercontent.com/mermaid-js/mermaid/develop/docs/config/usage.md
     title: "Mermaid Usage and Configuration"
     rationale: "Mermaid integration guidance for securityLevel and rendering behavior is derived from the official Mermaid usage docs."
-    last_reviewed_at: 2026-07-03
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:b4e5ca503a3250f9cfd3430f9fcca4bcfb42c4fb4635c5da646d2cd650550ee9"

@@ -3,17 +3,17 @@ sources:
     url: https://github.com/mgechev/skills-best-practices
     title: "mgechev/skills-best-practices"
     rationale: "Skill scaffolding, frontmatter optimization, and progressive-disclosure guidance are adapted from this project."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:4f946a40643c47cb5212a62be5ce643223341765b991241fa9aff615f5d1bdfe"
   - id: pocock-write-a-skill
-    url: https://github.com/mattpocock/skills/tree/main/write-a-skill
+    url: https://github.com/mattpocock/skills/tree/221ffca96736afefdc08ca7cf0b3965e9ea83f41/skills/productivity/write-a-skill
     title: "Matt Pocock skills - write-a-skill"
     rationale: "The description-as-system-prompt-real-estate framing in Phase 4 (the description is the only thing the agent sees when picking a skill to load), the no-time-sensitive-info validation rule, and the references-one-level-deep validation rule are adapted from this source."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:450f8fbf4ef54e691798ba200b199507049bdaf0a033098f9745e4414b797b03"
   - id: compound-engineering-plugin-skill-workflows
     url: https://github.com/EveryInc/compound-engineering-plugin/tree/main
     title: "EveryInc compound-engineering-plugin"
     rationale: "External-adaptation prompts for copied code versus adapted workflow ideas, artifact-lifecycle questions, and monolithic-skill decomposition guardrails are informed by representative Compound skills including ce-compound, ce-compound-refresh, ce-plan, ce-code-review, and ce-optimize; initially reviewed at commit 6f9ab03a031c054a8046659926251fb6c149269f."
-    last_reviewed_at: 2026-06-06
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:d55bf1b4f555472eb93ec542e2ba80323abcd72c7c30f8c877a57b3bf13894f8"

@@ -3,5 +3,5 @@ sources:
     url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-doc-review
     title: "EveryInc compound-engineering-plugin - ce-doc-review"
     rationale: "Document classification, conditional review-lens selection, severity-ordered finding schema, and synthesis flow are adapted from this source."
-    last_reviewed_at: 2026-06-08
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:e3109bd0a00e1e53a1f0b380810f2996280a3d69eecdf19852eb735f90fb2a3e"

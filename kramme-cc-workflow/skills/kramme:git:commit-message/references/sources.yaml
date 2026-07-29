@@ -3,11 +3,11 @@ sources:
     url: https://agentskills.so/skills/getsentry-skills-commit
     title: "getsentry/skills - commit skill"
     rationale: "Commit message structure and pre-commit checks are derived from this skill."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:1946e97492c13d198b76f86720eec8e499cfbd9c189b2b9a9b8cb202b97ccf25"
   - id: addy-git-workflow-versioning
     url: https://github.com/addyosmani/agent-skills/tree/main/skills/git-workflow-and-versioning
     title: "Addy Osmani agent-skills - git workflow and versioning"
     rationale: "The skill adapts Addy's pre-commit checklist and output marker conventions while explicitly rejecting per-commit Conventional Commits."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:dd933526df614cfaeba8a3c390883ac6af022c37f6060cf8b73aa175307b1e67"
