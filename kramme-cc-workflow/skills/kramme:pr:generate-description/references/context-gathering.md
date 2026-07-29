@@ -2,7 +2,7 @@
 
 **ALWAYS** gather comprehensive context from all available sources.
 
-**IMPORTANT**: Use the resolved `BASE_REF` for all comparisons to ensure you compare against the remote's state, not a potentially stale local branch.
+**IMPORTANT**: Use the resolved `BASE_REF` for all comparisons. It is either the freshly resolved remote-tracking ref or the caller-pinned base commit, never a potentially stale local branch.
 
 **IMPORTANT**: Spec files and conversation history are for YOUR analysis only to understand implementation decisions. The final PR description should ONLY reference Linear issues as the source of original requirements, since reviewers have access to Linear but not to spec files or conversation history.
 
@@ -15,7 +15,7 @@
    ```
 
    - **NOTE**: Use three dots (`...`) to compare from merge base
-   - **NOTE**: `BASE_REF` is the remote tracking ref resolved in Phase 1
+   - **NOTE**: `BASE_REF` is the remote tracking ref or pinned base commit resolved in Phase 1
 
 2. **ALWAYS** get the list of changed files with stats:
 
@@ -41,18 +41,21 @@
 
 1. **ALWAYS** check whether the repository has a GitHub pull request template before drafting. GitHub supports a single `pull_request_template.md` or `pull_request_template.txt` file in the repository root, `docs/`, or `.github/`, plus multiple templates in a `PULL_REQUEST_TEMPLATE/` directory under those same locations.
 
-   GitHub applies PR templates from the repository default branch, not from unmerged files in the current worktree. Resolve the default branch and inspect that tree:
+   GitHub applies PR templates from the repository default branch, not from unmerged files in the current worktree. Resolve the default branch and inspect that tree. Run this network lookup block with the shell tool's bounded timeout; credential or timeout failures must return control without asking for terminal input:
 
    ```bash
-   DEFAULT_BRANCH=$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name' 2> /dev/null || true)
+   DEFAULT_BRANCH=$(env GH_PROMPT_DISABLED=1 gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name' 2> /dev/null || true)
    if [ -n "$DEFAULT_BRANCH" ]; then
-     git fetch origin "refs/heads/$DEFAULT_BRANCH:refs/remotes/origin/$DEFAULT_BRANCH" 2> /dev/null || true
+     NONINTERACTIVE_GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes"
+     env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$NONINTERACTIVE_GIT_SSH_COMMAND" \
+       git fetch origin "refs/heads/$DEFAULT_BRANCH:refs/remotes/origin/$DEFAULT_BRANCH" 2> /dev/null || true
      DEFAULT_TEMPLATE_REF="origin/$DEFAULT_BRANCH"
    else
      DEFAULT_TEMPLATE_REF=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2> /dev/null || true)
    fi
    if [ -z "$DEFAULT_TEMPLATE_REF" ] || ! git rev-parse --verify --quiet "$DEFAULT_TEMPLATE_REF^{commit}" > /dev/null; then
      echo "MISSING REQUIREMENT: unable to resolve default branch for GitHub PR template lookup"
+     DIRECT_UPDATE=false
    else
      {
        for path in pull_request_template.md pull_request_template.txt .github/pull_request_template.md .github/pull_request_template.txt docs/pull_request_template.md docs/pull_request_template.txt; do

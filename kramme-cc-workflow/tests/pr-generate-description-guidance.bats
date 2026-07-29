@@ -33,6 +33,18 @@ PY
 
     ! grep -qF "find . .github docs -maxdepth 2" "$skill/references/context-gathering.md"
     grep -qF "github-pr-template-docs" "$skill/references/sources.yaml"
+    grep -qF "The \"no Linear ID\" condition is the only non-blocking \`MISSING REQUIREMENT:\` marker." "$skill/SKILL.md"
+    grep -qF "Treat every other \`MISSING REQUIREMENT:\` marker" "$skill/SKILL.md"
+    grep -qF "including future marker types not yet listed here" "$skill/SKILL.md"
+    grep -qF "env GH_PROMPT_DISABLED=1 gh repo view" "$skill/references/context-gathering.md"
+    grep -qF "GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never" "$skill/references/context-gathering.md"
+    grep -qF "NONINTERACTIVE_GIT_SSH_COMMAND=\"\${GIT_SSH_COMMAND:-\${GIT_SSH:-ssh}} -oBatchMode=yes\"" "$skill/references/context-gathering.md"
+    grep -qF "GIT_SSH_COMMAND=\"\$NONINTERACTIVE_GIT_SSH_COMMAND\"" "$skill/references/context-gathering.md"
+    grep -qF "credential or timeout failures must return control without asking for terminal input" "$skill/references/context-gathering.md"
+    grep -qF "[--base-commit <oid>]" "$skill/SKILL.md"
+    grep -qF "BASE_COMMIT_OVERRIDE=<oid>" "$skill/SKILL.md"
+    grep -qF -- "--base-commit \"\$BASE_COMMIT_OVERRIDE\"" "$skill/references/base-branch-resolution.md"
+    ! grep -qF "DEFAULT_TEMPLATE_REF=\"\$BASE_REF\"" "$skill/references/context-gathering.md"
     ! grep -qF "### Automated verification" "$skill/assets/section-templates.md"
     ! grep -qF "add PR-specific signal beyond CI" "$skill/assets/section-templates.md"
   '
@@ -92,6 +104,7 @@ PY
     git config user.email test@example.com
     git config user.name Test
     git commit --allow-empty -q -m init
+    git branch release
     [ -z "$(discover_templates main)" ]
 
     mkdir -p .github/PULL_REQUEST_TEMPLATE
@@ -102,6 +115,9 @@ PY
     git switch -q -c feature
     mkdir -p docs
     printf "Unmerged\n" > docs/pull_request_template.md
+    pinned_base="$(git rev-parse release)"
+    [ "$pinned_base" != "$(git rev-parse main)" ]
+    [ -z "$(discover_templates "$pinned_base")" ]
     output="$(discover_templates main)"
     printf "%s\n" "$output" | grep -qF ".github/pull_request_template.md"
     printf "%s\n" "$output" | grep -qF ".github/PULL_REQUEST_TEMPLATE/release.md"

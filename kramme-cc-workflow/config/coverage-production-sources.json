@@ -185,6 +185,9 @@
       "kramme-cc-workflow/skills/kramme:git:worktree/scripts/worktree-helper.sh": [
         "kramme-cc-workflow/tests/worktree-helper.bats"
       ],
+      "kramme-cc-workflow/skills/kramme:pr:create/scripts/validate-branch-name.sh": [
+        "kramme-cc-workflow/tests/pr-create-guidance.bats"
+      ],
       "kramme-cc-workflow/skills/kramme:session:search/scripts/discover-sessions.sh": [
         "kramme-cc-workflow/tests/session-search-scripts.bats"
       ],

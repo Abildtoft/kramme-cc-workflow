@@ -227,6 +227,7 @@ SH
 	local cache_root="$TMP_DIR/.codex/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/$plugin_version"
 
 	[ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
+	[ -x "$TMP_DIR/.codex/skills/kramme:pr:create/scripts/validate-branch-name.sh" ]
 	[ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
 	[ -f "$TMP_DIR/.codex/AGENTS.md" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/dev-server/detect-url.sh" ]

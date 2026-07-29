@@ -46,9 +46,12 @@ file_mode() {
 
     grep -qF "[--authorize-history-rewrite]" "$create"
     grep -qF "AUTHORIZE_HISTORY_REWRITE=true" "$create"
-    grep -qF -- "--auto --no-push --authorize-history-rewrite" "$create"
-    grep -qF "Always pass \`--no-push\`" "$create"
-    grep -qF "Neither \`AUTO_MODE\` nor branch handling may publish the pre-rewrite history early" "$branch"
+    grep -qF "\`--auto\` implies the same capability" "$create"
+    grep -qF -- "--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push --authorize-history-rewrite" "$create"
+    grep -qF "must not pause at the nested reset confirmation" "$create"
+    ! grep -qF "args: \"--auto --no-push\"" "$create"
+    grep -qF "Always pass \`--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push\`" "$create"
+    grep -qF "Do not push or change upstream configuration" "$branch"
     ! grep -qF "git push -u origin \$(git branch --show-current)" "$branch"
     grep -qF "Step 5 proved that \`{rollback-origin-ref}\` was absent" "$confirmation"
     grep -qF "If any actor creates the remote branch after Step 5, the lease fails" "$confirmation"
@@ -57,6 +60,8 @@ file_mode() {
     grep -qF "If an open Pull Request appeared after Step 3.5" "$confirmation"
     grep -qF "does not prove that this invocation owns the Pull Request" "$confirmation"
     grep -qF -- "--force-with-lease=\"{rollback-origin-ref}:\"" "$confirmation"
+    grep -qF "GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never" "$confirmation"
+    grep -qF "authentication failure is a hard blocker, never a reason to wait for terminal input" "$confirmation"
     ! grep -qF -- "--force-with-lease=\"{rollback-origin-ref}:{rollback-origin-oid}\"" "$confirmation"
     grep -qF "Do not use plain \`--force\`, an OID lease for a pre-existing remote ref" "$confirmation"
     grep -qF "workflow'\''s sole remote update before Pull Request creation" "$confirmation"
@@ -69,8 +74,11 @@ file_mode() {
 		pr-create-history-rewrite-authorization \
 		pr-create-deferred-upstream-contract \
 		pr-create-absence-lease-contract \
+		pr-create-push-failure-rollback \
 		pr-create-remote-absence-contract \
-		recreate-commits-deferred-push-contract
+		recreate-commits-deferred-push-contract \
+		recreate-commits-retry-safe-backup \
+		resolve-base-pinned-commit-contract
 
 	[ "$status" -eq 0 ]
 }
@@ -105,7 +113,7 @@ file_mode() {
     git -C "$contender" push origin HEAD:refs/heads/feature >/dev/null
     expected=$(git -C "$contender" rev-parse HEAD)
 
-    if git -C "$publisher" push \
+    if "${CONDUCTOR_REAL_GIT_PATH:-git}" -C "$publisher" push \
       --force-with-lease=refs/heads/feature: \
       origin HEAD:refs/heads/feature >/dev/null 2>&1; then
       exit 1
@@ -128,8 +136,8 @@ file_mode() {
 
     grep -qF "The feature branch already exists on \`origin\`" "$create"
     grep -qF "continue only when it returns no matching ref" "$state"
-    grep -qF "stop before \`kramme:git:recreate-commits\`" "$state"
-    grep -qF "never rewrites an existing remote ref" "$state"
+    grep -qF "stop before branch creation or \`kramme:git:recreate-commits\`" "$state"
+    grep -qF "Never check out or adopt that remote branch" "$state"
     grep -qF "cannot atomically prevent another actor from opening a Pull Request" "$state"
     grep -qF "Do not use plain \`--force\`, an OID lease for a pre-existing remote ref" "$confirmation"
     ! grep -qF "git fetch --no-tags origin \"{rollback-origin-ref}\"" "$state"
@@ -152,6 +160,7 @@ file_mode() {
     test -f "$preflight"
     test -f "$branch"
     test -f "$confirmation"
+    test -x "skills/kramme:pr:create/scripts/validate-branch-name.sh"
 
     grep -qF "references/pre-validation-checks.md" "$create"
     grep -qF "references/branch-and-platform-handling.md" "$create"
@@ -161,12 +170,15 @@ file_mode() {
     grep -qF "Inspect the agent-tracked value directly" "$create"
     grep -qF "Require the whole string to match \`[A-Za-z0-9][A-Za-z0-9._/-]*\`" "$create"
     grep -qF "git check-ref-format --branch \"{feature-branch}\"" "$create"
-    grep -qF "gh pr list --head \"{feature-branch}\" --state open" "$create"
+    grep -qF "env GH_PROMPT_DISABLED=1 gh pr list --head \"{feature-branch}\" --state open" "$create"
     grep -qF "errors are blockers, not evidence that no Pull Request exists" "$create"
+    grep -qF "scripts/validate-branch-name.sh" "$branch"
+    grep -qF "capture it as pinned \`{base-ref}\`" "$branch"
+    grep -qF "pass \`{base-source-ref}\`, \`{base-ref}\`, and \`{base-branch}\` unchanged to both downstream skills" "$branch"
 
     branch_validation_line=$(grep -nF "Inspect the agent-tracked value directly" "$create" | cut -d: -f1)
     git_validation_line=$(grep -nF "git check-ref-format --branch \"{feature-branch}\"" "$create" | cut -d: -f1)
-    existing_pr_query_line=$(grep -nF "gh pr list --head \"{feature-branch}\" --state open" "$create" | cut -d: -f1)
+    existing_pr_query_line=$(grep -nF "env GH_PROMPT_DISABLED=1 gh pr list --head \"{feature-branch}\" --state open" "$create" | cut -d: -f1)
     [ "$branch_validation_line" -lt "$git_validation_line" ]
     [ "$git_validation_line" -lt "$existing_pr_query_line" ]
 
@@ -178,6 +190,8 @@ file_mode() {
 	assert_required_contracts_registered \
 		pr-create-gh-prevalidation \
 		pr-create-existing-pr-preflight \
+		pr-create-ref-trust-boundary \
+		pr-create-branch-validator-script \
 		pr-create-description-generation-contract \
 		pr-create-linear-id-normalization \
 		pr-create-branch-linear-state \
@@ -295,7 +309,7 @@ file_mode() {
 	[ "$status" -eq 0 ]
 }
 
-@test "pr-create auto mode includes uncommitted work without prompting" {
+@test "pr-create auto mode includes uncommitted work and authorizes the protected reset without prompting" {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
@@ -303,6 +317,8 @@ file_mode() {
     state="skills/kramme:pr:create/references/state-and-rollback.md"
 
     grep -qF "include all uncommitted changes by selecting **Commit and include**" "$create"
+    grep -qF "\`--auto\` -> set \`AUTO_MODE=true\`, \`AUTHORIZE_HISTORY_REWRITE=true\`, and \`REQUIRE_GENERATED_DESCRIPTION=true\`" "$create"
+    grep -qF "\`--auto\` is fully non-interactive" "$create"
     grep -qF "Step 5 uncommitted-work decision when \`AUTO_MODE=false\`" "$create"
     grep -qF "If uncommitted changes are present and \`AUTO_MODE=true\`, do not prompt." "$state"
     grep -qF "Select **Commit and include** and execute that path below." "$state"
@@ -310,4 +326,102 @@ file_mode() {
   '
 
 	[ "$status" -eq 0 ]
+}
+
+@test "pr-create auto mode is fail-closed and fully non-interactive" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    create="skills/kramme:pr:create/SKILL.md"
+    branch="skills/kramme:pr:create/references/branch-and-platform-handling.md"
+    state="skills/kramme:pr:create/references/state-and-rollback.md"
+    confirmation="skills/kramme:pr:create/references/confirmation-and-creation.md"
+
+    grep -qF "\`--auto\` is fully non-interactive" "$create"
+    grep -qF "never ask the user a question, wait for free-form user input, or allow Git/GitHub credential prompts" "$create"
+    grep -qF "MISSING REQUIREMENT: generated PR title/body unavailable; placeholder publication is forbidden" "$create"
+    grep -qF "Never create a Pull Request containing placeholder fallback text." "$create"
+    grep -qF "Every other \`MISSING REQUIREMENT:\` marker is blocking" "$create"
+    grep -qF "any future requirement the generator marks as missing" "$create"
+    ! grep -qF "**Fallback description**" "$create"
+    ! grep -qF "**Fallback title**" "$create"
+
+    grep -qF "Do not ask for initials" "$branch"
+    grep -qF "feature/{issue-id-lowercase}-{sanitized-title}" "$branch"
+    grep -qF "If \`AUTO_MODE=true\`, select the first non-empty candidate" "$branch"
+    grep -qF "report a hard blocker without prompting" "$branch"
+    grep -qF "If \`AUTO_MODE=false\`, ask the user to choose from the generated candidates or provide a branch name" "$branch"
+    grep -qF "env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never" "$branch"
+    grep -qF "NONINTERACTIVE_GIT_SSH_COMMAND=\"\${GIT_SSH_COMMAND:-\${GIT_SSH:-ssh}} -oBatchMode=yes\"" "$branch"
+    grep -qF "GIT_SSH_COMMAND=\"\$NONINTERACTIVE_GIT_SSH_COMMAND\"" "$branch"
+    grep -qF "env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never" "$state"
+
+    grep -qF "env GH_PROMPT_DISABLED=1 gh pr list" "$confirmation"
+    grep -qF "env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never" "$confirmation"
+    grep -qF "NONINTERACTIVE_GIT_SSH_COMMAND=\"\${GIT_SSH_COMMAND:-\${GIT_SSH:-ssh}} -oBatchMode=yes\"" "$confirmation"
+    grep -qF "GIT_SSH_COMMAND=\"\$NONINTERACTIVE_GIT_SSH_COMMAND\"" "$confirmation"
+    grep -qF "env GH_PROMPT_DISABLED=1 gh pr create" "$confirmation"
+    grep -qF "shell tool'\''s bounded timeout" "$confirmation"
+    grep -qF "If the push command exits non-zero, its remote outcome is ambiguous" "$confirmation"
+    grep -qF "never continue to \`gh pr create\` after a non-zero push status" "$confirmation"
+    ! grep -qF "The generated description is saved." "$confirmation"
+  '
+
+	[ "$status" -eq 0 ]
+}
+
+@test "branch validator rejects shell-active names that Git itself accepts" {
+	validator="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/validate-branch-name.sh"
+	cd "$BATS_TEST_TMPDIR"
+
+	for hostile in \
+		'feature/x;touch-pwned' \
+		'feature/x$(touch-pwned)' \
+		'feature/x`touch-pwned`' \
+		'feature/x&touch-pwned'; do
+		git check-ref-format --branch "$hostile"
+		run "$validator" "$hostile"
+		[ "$status" -ne 0 ]
+	done
+
+	[ ! -e touch-pwned ]
+	run "$validator" "feature/abc-123_safe"
+	[ "$status" -eq 0 ]
+	[ "$output" = "feature/abc-123_safe" ]
+}
+
+@test "new feature branch starts at immutable entry commit and rollback restores entry checkout" {
+	branch_guidance="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/references/branch-and-platform-handling.md"
+	state_guidance="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/references/state-and-rollback.md"
+	repo="$BATS_TEST_TMPDIR/repo"
+	grep -qF 'git diff --name-only "{base-ref}"...HEAD' "$branch_guidance"
+	grep -qF "stop without deleting any ref" "$state_guidance"
+	grep -qF "{feature-branch}-recreate-backup-{recreate-input-tip}" "$state_guidance"
+	! grep -qF "If branch creation fails, inspect whether Git created the ref" "$state_guidance"
+
+	git init "$repo"
+	git -C "$repo" config user.name "Test User"
+	git -C "$repo" config user.email "test@example.com"
+	printf 'base\n' >"$repo/file.txt"
+	git -C "$repo" add file.txt
+	git -C "$repo" commit -m "base"
+	git -C "$repo" branch -M main
+	printf 'local\n' >>"$repo/file.txt"
+	git -C "$repo" commit -am "local entry work"
+
+	entry_commit=$(git -C "$repo" rev-parse HEAD)
+	git -C "$repo" checkout -b feature/preserved "$entry_commit"
+	original_commit=$(git -C "$repo" rev-parse HEAD)
+	[ "$original_commit" = "$entry_commit" ]
+	[ "$(git -C "$repo" show HEAD:file.txt)" = $'base\nlocal' ]
+
+	printf 'rewritten\n' >"$repo/file.txt"
+	git -C "$repo" commit -am "simulated rewrite"
+	git -C "$repo" reset --hard "$original_commit"
+	git -C "$repo" checkout main
+	git -C "$repo" branch -d feature/preserved
+
+	[ "$(git -C "$repo" branch --show-current)" = "main" ]
+	[ "$(git -C "$repo" rev-parse HEAD)" = "$entry_commit" ]
+	! git -C "$repo" show-ref --verify --quiet refs/heads/feature/preserved
 }

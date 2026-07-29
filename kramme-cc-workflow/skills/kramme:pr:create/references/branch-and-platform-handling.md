@@ -1,221 +1,139 @@
-# Branch Handling
+# Branch and Base Selection
 
-**AUTO MODE:** If the calling skill sets `AUTO_MODE=true`, choose the recommended/default path for each question below instead of asking the user. Only stop for hard blockers that cannot be resolved safely.
+Use this reference for `/kramme:pr:create` Steps 2–3. This phase selects and validates `{base-source-ref}`, pinned `{base-ref}`, `{base-branch}`, and `{feature-branch}` without creating, deleting, or switching branches. Step 5 owns the only branch-creation mutation after all pre-mutation checks pass.
 
-## Branch Handling
+**AUTO MODE:** If `AUTO_MODE=true`, choose documented deterministic defaults instead of asking questions. Stop on ambiguity or a hard blocker.
 
-### Get Current Branch
+## Ref trust boundary
+
+Treat every ref-shaped value from Git metadata, Linear, user input, or generated suggestions as untrusted data.
+
+Before placing a candidate branch name in any shell command:
+
+1. Inspect the agent-tracked value directly. Require the whole string to match `[A-Za-z0-9][A-Za-z0-9._/-]*`; reject a leading `-`, whitespace, shell metacharacters, or any other character outside that allowlist.
+2. Resolve `{pr-create-skill-dir}` as the directory containing this skill's `SKILL.md`. Only after the allowlist passes, run `"{pr-create-skill-dir}/scripts/validate-branch-name.sh" "{validated-candidate}"` and require success. This helper applies Git's structural checks without weakening the agent-side trust boundary.
+3. Quote the validated value in every later command.
+
+Do not put an unvalidated candidate into a shell command even inside quotes: shell substitutions are evaluated before the command runs. A value being Git-valid is not sufficient because Git ref names may contain shell metacharacters.
+
+Apply the same agent-side allowlist to `{base-source-ref}` returned by the shared resolver. Require `{base-source-ref}` to begin with `refs/remotes/` and resolve to a commit before pinning it.
+
+## Capture invocation entry state
+
+Before branch selection, capture immutable entry state:
 
 ```bash
 git branch --show-current
+git rev-parse HEAD
 ```
 
-### Detached HEAD Handling
+Store the outputs as:
 
-If the command above returns an empty value, the repository is in detached HEAD state.
+- `{entry-branch}` — the validated current branch, or `<detached>` when the first command is empty.
+- `{entry-commit}` — a full 40-character lowercase commit ID verified to exist locally.
+- `{feature-branch-created}` — initialize to `false`; Step 5 may change it.
 
-If `AUTO_MODE=true`, create a new feature branch from the current commit using the first generated file-based branch suggestion from the later "No, generate from file changes" path, then continue.
+If the current branch is non-empty, apply the ref trust boundary immediately. Do not continue with an unsafe current branch name.
 
-Otherwise use AskUserQuestion:
+## Resolve one immutable base
 
-```yaml
-header: "Detached HEAD"
-question: "You're currently in detached HEAD state. How should branch handling proceed?"
-options:
-  - label: "Create a new feature branch here"
-    description: "Create and switch to a new branch from the current commit"
-  - label: "Switch to existing branch"
-    description: "Select an existing local branch and continue from there"
-  - label: "Abort"
-    description: "Stop and let me fix branch state manually"
-multiSelect: false
-```
-
-**If "Create a new feature branch here":**
+Run the shared resolver from the user's repository in JSON mode. It safely fetches the remote base with bounded, noninteractive network behavior:
 
 ```bash
-git checkout -b {chosen-branch-name}
+"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" --format json
 ```
 
-Continue with the normal flow.
+Require success. Capture its `base_ref` as `{base-source-ref}` and `base_branch` as `{base-branch}`. Apply the agent-side allowlist to both values before any later interpolation, validate `{base-branch}` with the branch-name helper, and require `{base-source-ref}` to start with `refs/remotes/`.
 
-**If "Switch to existing branch":**
+Resolve `{base-source-ref}` exactly once with:
 
 ```bash
-git branch
-git checkout {existing-branch}
+git rev-parse --verify "{base-source-ref}^{commit}"
 ```
 
-Continue with the normal flow.
+Require a full 40-character lowercase commit ID and capture it as pinned `{base-ref}`. Use this OID for every Step 4 comparison and pass `{base-source-ref}`, `{base-ref}`, and `{base-branch}` unchanged to both downstream skills. Never independently re-resolve or replace the pinned base commit later. A later fetch may move `{base-source-ref}`; it must not change this invocation's diff or reset point.
 
-**If "Abort":** Stop the workflow with a clear message.
+## Select the feature branch
 
-### Determine Base Branch
+Track `{linear-issue-id}` as nullable workflow state. If `LINEAR_ISSUE_OVERRIDE` was supplied by Step 0, initialize it from that exact normalized value and never replace it through branch-name extraction.
 
-```bash
-git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's|refs/remotes/origin/||'
-```
+### Already on a feature branch
 
-Capture the result as `{base-branch}` — used in later display strings, the `git rev-list` check in Step 4, and as the `--base` argument to `gh pr create`. If this command produces no output, fall back to `main`, then `master` (verify each with `git ls-remote --heads origin <name>`); if neither exists, abort with a message asking the user to set `origin/HEAD` or pass a base manually.
+If `{entry-branch}` is neither `<detached>` nor `{base-branch}`, select it as `{feature-branch}`. When `{linear-issue-id}` is empty, scan the validated branch name for `[A-Z]{2,5}-\d+` case-insensitively; normalize a match to uppercase.
 
-### Branch Decision
+Do not push or change upstream configuration. Step 5 requires the corresponding `origin` ref to be absent.
 
-Track `{linear-issue-id}` as nullable workflow state. If `LINEAR_ISSUE_OVERRIDE` was supplied by Step 0, initialize `{linear-issue-id}` from that exact normalized value and do not replace it through branch-name extraction. Otherwise, when a Linear-style issue ID is supplied by the user or detected in the current branch name, normalize it to uppercase and capture it as `{linear-issue-id}`. Legacy branch extraction uses `[A-Z]{2,5}-\d+` case-insensitively; do not hard-code team prefixes. If no issue ID is found, leave `{linear-issue-id}` empty.
+### Detached HEAD or currently on the base
 
-**If the current branch equals `{base-branch}`:**
+Select a new branch name without creating it yet.
 
-#### Check for Linear Issue
+If `LINEAR_ISSUE_OVERRIDE` was supplied, enter the Linear flow below without prompting.
 
-If `LINEAR_ISSUE_OVERRIDE` was supplied, skip this question and enter the Linear issue flow below with the exact authoritative `{linear-issue-id}`.
+Otherwise, if `AUTO_MODE=true` or `{entry-branch}` is `<detached>`, use file-based naming.
 
-Otherwise, if `AUTO_MODE=true`, skip this question and use the file-based branch naming flow by default.
-
-Otherwise, ask if working on a Linear issue:
+Otherwise ask:
 
 ```yaml
 header: "Branch source"
 question: "Are you working on a Linear issue?"
 options:
   - label: "Yes, I have a Linear issue ID"
-    description: "Will use Linear's branch naming convention (e.g., initials/wan-521-description)"
+    description: "Use Linear issue context to select a branch name"
   - label: "No, generate from file changes"
-    description: "Will suggest branch names based on changed files"
+    description: "Suggest a branch name from the changed files"
 multiSelect: false
 ```
 
-#### If `LINEAR_ISSUE_OVERRIDE` was supplied or "Yes, I have a Linear issue ID":
+#### Linear naming
 
-1. If `LINEAR_ISSUE_OVERRIDE` was supplied, use the existing authoritative `{linear-issue-id}` without prompting. Otherwise, ask for the issue ID (user enters via "Other" free-text option):
+1. If `LINEAR_ISSUE_OVERRIDE` is absent, ask for an issue ID, validate it against `[A-Za-z0-9]+-[0-9]+`, normalize it to uppercase, and capture it as `{linear-issue-id}`.
+2. Fetch the issue through the available Linear integration.
+3. If fetch succeeds and `branchName` is present, inspect it with the ref trust boundary before any shell use.
+4. If fetch fails, `branchName` is missing, or the supplied `branchName` fails validation:
+   - Preserve `{linear-issue-id}`.
+   - Sanitize the issue title when available: lowercase, replace non-alphanumeric runs with hyphens, trim hyphens, and limit the title segment to 50 characters.
+   - If the sanitized title is non-empty, use `feature/{issue-id-lowercase}-{sanitized-title}`.
+   - Otherwise fall back to file-based naming.
+5. Apply the ref trust boundary to the final candidate and capture it as `{feature-branch}`.
 
-   ```yaml
-   header: "Linear issue"
-   question: "Enter the Linear issue ID (e.g., WAN-521):"
-   options: []
-   ```
+When `AUTO_MODE=false`, surface a rejected Linear `branchName` before using the deterministic fallback. Do not ask for initials; initials are unnecessary untrusted input.
 
-   Normalize the newly supplied ID to uppercase and capture it as `{linear-issue-id}`. Never replace `LINEAR_ISSUE_OVERRIDE`.
+#### File-based naming
 
-2. Fetch issue details using Linear MCP:
-
-   ```
-   mcp__linear__get_issue with id: {issue-id}
-   ```
-
-3. **If fetch fails (MCP unavailable or issue not found):**
-
-   ```
-   Warning: Could not fetch Linear issue {issue-id}.
-
-   Error: {error message}
-
-   Falling back to file-based branch naming.
-   ```
-
-   Continue with file-based naming. Keep `{linear-issue-id}` captured from the user's input for PR description linking.
-
-4. **If fetch succeeds and `branchName` is available:**
-   - Use the `branchName` directly from the Linear response as `{branchName}`
-
-5. **If fetch succeeds but `branchName` is empty/missing:**
-   - Ask for user initials:
-     ```yaml
-     header: "Initials"
-     question: "Enter your initials for the branch name (e.g., 'jd'):"
-     options: []
-     ```
-   - Generate branch name: `{initials}/{issue-id-lowercase}-{sanitized-title}`
-   - Sanitize title: lowercase, replace spaces/special chars with hyphens, max 50 chars
-   - Use the generated name as `{branchName}`
-
-6. **Check if branch exists (local or remote):**
-
-   ```bash
-   # Check if branch exists locally
-   git rev-parse --verify {branchName} 2> /dev/null
-   # Check if branch exists on remote
-   git ls-remote --heads origin {branchName}
-   ```
-
-   **If branch exists locally:**
-
-   If `AUTO_MODE=true`, switch to the existing local branch.
-
-   Otherwise use AskUserQuestion:
-
-   ```yaml
-   header: "Branch Exists"
-   question: "Branch '{branchName}' already exists locally. What should I do?"
-   options:
-     - label: "Switch to existing branch"
-       description: "Continue work on the existing branch"
-     - label: "Delete and recreate"
-       description: "Start fresh from main/master"
-     - label: "Use different name"
-       description: "Create branch with '-v2' suffix"
-   ```
-
-   **If branch exists only on remote:**
-
-   ```bash
-   git checkout -b {branchName} origin/{branchName}
-   ```
-
-7. **If branch doesn't exist:**
-
-   ```bash
-   git fetch origin {base-branch}
-   git checkout -b {branchName} origin/{base-branch}
-   ```
-
-#### If "No, generate from file changes" (or fallback):
-
-1. Analyze changed files to suggest branch names:
-
-   ```bash
-   # Get changed files (staged + unstaged + untracked)
-   git diff --name-only HEAD
-   git diff --name-only --cached
-   git status --porcelain | grep '^??' | cut -c4-
-   ```
-
-2. Generate suggestions based on file paths:
-   - Files in `apps/` or `libs/` -> extract component name
-   - New files -> prefix with `feature/`
-   - Test files only -> prefix with `test/`
-   - Config files -> prefix with `chore/`
-
-3. If `AUTO_MODE=true`, choose the first suggested branch name automatically.
-
-   Otherwise use AskUserQuestion:
-
-   ```yaml
-   header: "Branch name"
-   question: "You're on the {base-branch} branch. What should the new branch be named?"
-   options:
-     - label: "feature/{suggested-name-1}"
-       description: "Based on changes in {primary-area}"
-     - label: "fix/{suggested-name-2}"
-       description: "Based on modifications to {component}"
-     - label: "chore/{suggested-name-3}"
-       description: "Based on config/tooling changes"
-   multiSelect: false
-   ```
-
-4. Create and switch to new branch:
-   ```bash
-   git checkout -b {chosen-branch-name}
-   ```
-
-**If already on a feature branch:** Continue with current branch. When `{linear-issue-id}` is still empty, scan the branch name for a Linear-style issue ID using `[A-Z]{2,5}-\d+` case-insensitively; if found, normalize it to uppercase and capture it. Never overwrite `LINEAR_ISSUE_OVERRIDE`. Then validate upstream configuration.
-
-### No-Upstream Handling
-
-Check for an upstream branch:
+Analyze changed paths without mutating Git state:
 
 ```bash
-git rev-parse --abbrev-ref --symbolic-full-name @{u} 2> /dev/null
+git diff --name-only "{base-ref}"...HEAD
+git diff --name-only HEAD
+git diff --name-only --cached
+git status --porcelain
 ```
 
-**If upstream exists:** Do not push. Continue with the current branch to Step 5, which requires the matching `origin` ref to be absent before history rewriting. If that ref exists, Step 5 stops and requires coordination or a fresh branch.
+Generate candidates from the paths:
 
-**If upstream is missing:** Continue without pushing. Step 5 requires the validated `origin` branch to remain absent, and Step 8 is the sole owner of creating that remote ref and setting upstream tracking. Neither `AUTO_MODE` nor branch handling may publish the pre-rewrite history early.
+- New product code → `feature/{sanitized-area}`
+- Test-only changes → `test/{sanitized-area}`
+- Configuration/tooling → `chore/{sanitized-area}`
+- Existing product behavior changes → `fix/{sanitized-area}`
+
+Sanitize every generated segment to lowercase ASCII alphanumerics and hyphens. Generate candidates in the category order above and sort candidates lexicographically within each category. If `AUTO_MODE=true`, select the first non-empty candidate; if none exists, report a hard blocker without prompting. If `AUTO_MODE=false`, ask the user to choose from the generated candidates or provide a branch name. Apply the ref trust boundary to the selected candidate before capturing `{feature-branch}`.
+
+## Reject existing local or remote targets without switching
+
+After `{feature-branch}` is validated, check whether it exists. Run the remote query with the shell tool's bounded timeout:
+
+```bash
+git show-ref --verify --quiet "refs/heads/{feature-branch}"
+NONINTERACTIVE_GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes"
+env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$NONINTERACTIVE_GIT_SSH_COMMAND" \
+  git ls-remote --heads origin "refs/heads/{feature-branch}"
+```
+
+Require the remote query to succeed.
+
+- If the remote ref exists, stop immediately. Do not fetch it, check it out, rewrite it, or create a local tracking branch.
+- If a different local branch with that name exists, stop without switching. Tell the user to switch to it explicitly and rerun the workflow; auto mode must not adopt local work from another branch.
+- If `{feature-branch}` equals the already-current validated branch, continue.
+- If neither local nor remote ref exists, record `{branch-action}=create-from-entry-head`. Do not create it yet.
+
+Step 3.5 now checks GitHub for an existing Pull Request using the validated selected name. Step 4 checks that the entry `HEAD` or worktree has changes. Step 5 repeats the authoritative remote-absence check and only then creates `{feature-branch}` directly from `{entry-commit}`.

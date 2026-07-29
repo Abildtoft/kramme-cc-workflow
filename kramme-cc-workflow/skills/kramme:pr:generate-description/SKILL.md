@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:generate-description
 description: Write a structured PR title and body from git diff, commit log, and Linear context. Outputs markdown for copy-paste or, when explicitly invoked with --auto, updates an existing PR.
-argument-hint: "[--auto] [--no-update] [--visual] [--base <ref>] [--linear-issue <ISSUE-ID>]"
+argument-hint: "[--auto] [--no-update] [--visual] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -16,13 +16,14 @@ Parse `$ARGUMENTS` for flags:
 - `--no-update`: Output-only automation mode for orchestrators that need generated title/body content but must not mutate an existing PR. Valid with `--auto`; it skips prompts but keeps `DIRECT_UPDATE=false` even if `gh pr view` finds a PR.
 - `--visual`: Delegate demo evidence capture to `kramme:visual:demo-reel` and include the resulting Screenshots/Videos section when local or embeddable evidence is available. If capture cannot run, continue with the placeholder Screenshots/Videos section.
 - `--base <ref>`: Use `<ref>` as the base branch for diff computation instead of auto-detecting.
+- `--base-commit <oid>`: Pin diff computation to a caller-validated full commit OID while retaining branch metadata from `--base`.
 - `--linear-issue <ISSUE-ID>`: Use a caller-validated Linear identifier as the authoritative issue context. Validate `[A-Za-z0-9]+-[0-9]+`, normalize it to uppercase, and do not replace it with a branch-name substring.
 
-If `--auto` is present, set `AUTO_MODE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments. If `--no-update` is present, set `OUTPUT_ONLY=true` and remove the flag from remaining arguments. If `--visual` is present, set `VISUAL_MODE=true` and remove the flag from remaining arguments. If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the flag and value from remaining arguments. If `--linear-issue <ISSUE-ID>` is present, set `LINEAR_ISSUE_OVERRIDE` to the validated normalized value and remove the flag and value. Reject a missing or invalid value before Phase 1.
+If `--auto` is present, set `AUTO_MODE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments. If `--no-update` is present, set `OUTPUT_ONLY=true` and remove the flag from remaining arguments. If `--visual` is present, set `VISUAL_MODE=true` and remove the flag from remaining arguments. If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the flag and value from remaining arguments. If `--base-commit <oid>` is present, require a full 40-character lowercase commit OID, set `BASE_COMMIT_OVERRIDE=<oid>`, and remove the flag and value. If `--linear-issue <ISSUE-ID>` is present, set `LINEAR_ISSUE_OVERRIDE` to the validated normalized value and remove the flag and value. Reject a missing or invalid value before Phase 1.
 
 ### Sub-Skill Invocation Contract
 
-When another skill invokes this one as an orchestration step, it must pass `--auto` (and should pass `--base <ref>` when it already resolved the base branch). If the caller already validated a Linear issue, it should pass `--linear-issue <ISSUE-ID>` so this skill does not depend on lossy branch-name extraction. If the caller only needs generated title/body content and owns the eventual publish gate, it must also pass `--no-update`. In `--auto` mode, Phase 2.5 clarification prompts and the Phase 4 save-to-file prompt are skipped. Missing context is surfaced as `MISSING REQUIREMENT:` output instead of prompting mid-orchestration; blocking missing requirements disable direct PR updates and produce copy-paste output.
+When another skill invokes this one as an orchestration step, it must pass `--auto` (and should pass `--base <ref> --base-commit <oid>` when it already resolved and pinned the base branch). If the caller already validated a Linear issue, it should pass `--linear-issue <ISSUE-ID>` so this skill does not depend on lossy branch-name extraction. If the caller only needs generated title/body content and owns the eventual publish gate, it must also pass `--no-update`. In `--auto` mode, Phase 2.5 clarification prompts and the Phase 4 save-to-file prompt are skipped. Missing context is surfaced as `MISSING REQUIREMENT:` output instead of prompting mid-orchestration; blocking missing requirements disable direct PR updates and produce copy-paste output.
 
 ## Instructions
 
@@ -147,6 +148,8 @@ Before drafting, evaluate whether any **MISSING REQUIREMENT** conditions hold (s
 - The diff toggles a feature flag's default but no rollout context is available — blocking for direct update; request the rollout plan.
 - The diff changes a versioned artifact surface or durable public contract such as a public API, package, CLI, integration contract, or data contract, and a breaking change is present, but no SemVer rationale or migration/upgrade note is available — blocking for direct update; request the intended version impact and consumer migration guidance.
 - One or more selectable GitHub PR templates are present, no default template is selected, and no template can be selected from user input, existing PR body, branch name, or change type — blocking for direct update; request which template to follow.
+
+The "no Linear ID" condition is the only non-blocking `MISSING REQUIREMENT:` marker. Treat every other `MISSING REQUIREMENT:` marker emitted by this skill or its references as blocking, including future marker types not yet listed here. This stable classification lets non-interactive callers stop safely without duplicating and drifting behind this list.
 
 Surface the marker even when `NON_INTERACTIVE=true`; in that mode, report the gap in the run output so the caller can collect the missing context before publication.
 
@@ -371,7 +374,7 @@ Use these uppercase markers when reasoning about the description generation. The
 - **UNVERIFIED** — a claim in the draft body you couldn't confirm from the diff. `UNVERIFIED: the migration is reversible — no down-migration present in the diff`.
 - **NOTICED BUT NOT TOUCHING** — diff contents you deliberately left out of the description. `NOTICED BUT NOT TOUCHING: a test-only rename in an adjacent file — not part of this PR's narrative`.
 - **CONFUSION** — diff evidence that contradicts the commit log or Linear issue. `CONFUSION: commits say "add feature flag", but the diff toggles it on by default`.
-- **MISSING REQUIREMENT** — context the user must provide before a faithful description can be generated. `MISSING REQUIREMENT: no Linear ID in branch name and no issue mentioned in commits — confirm the intended ticket or proceed without one`.
+- **MISSING REQUIREMENT** — context the user must provide before a faithful description can be generated. The exact no-Linear-ID advisory is non-blocking; every other marker is blocking. Example: `MISSING REQUIREMENT: no Linear ID in branch name and no issue mentioned in commits — confirm the intended ticket or proceed without one`.
 
 ## Common Rationalizations
 

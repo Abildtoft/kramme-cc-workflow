@@ -570,12 +570,18 @@
       "name": "pr-create-description-generation-contract",
       "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
       "contains": [
-        "Always pass `--auto --no-update --base {base-branch}`",
+        "Always pass `--auto --no-update --base {base-source-ref} --base-commit {base-ref}`",
         "also pass `--linear-issue {linear-issue-id}`",
-        "If the generator emits a blocking `MISSING REQUIREMENT:` marker",
+        "require a usable title and body",
+        "Title is one line, at most 72 characters",
+        "contains none of the literal fallback placeholders",
+        "If the generator emits a `MISSING REQUIREMENT:` marker",
         "do **not** proceed to Step 8 or create the PR",
+        "Every other `MISSING REQUIREMENT:` marker is blocking",
+        "any future requirement the generator marks as missing",
         "The non-blocking \"no Linear ID\" marker",
-        "--require-generated-description forbids placeholder fallback"
+        "placeholder publication is forbidden",
+        "Never create a Pull Request containing placeholder fallback text"
       ]
     },
     {
@@ -584,9 +590,13 @@
       "contains": [
         "[--authorize-history-rewrite]",
         "AUTHORIZE_HISTORY_REWRITE=true",
-        "`--auto` alone never does",
-        "Always pass `--no-push`",
-        "--auto --no-push --authorize-history-rewrite",
+        "`--auto` implies the same capability",
+        "`--auto` is fully non-interactive",
+        "never ask the user a question, wait for free-form user input, or allow Git/GitHub credential prompts",
+        "REQUIRE_GENERATED_DESCRIPTION=true",
+        "Always pass `--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push`",
+        "--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push --authorize-history-rewrite",
+        "must not pause at the nested reset confirmation",
         "sole remote-mutation owner"
       ]
     },
@@ -604,14 +614,41 @@
       ]
     },
     {
+      "name": "pr-create-ref-trust-boundary",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/branch-and-platform-handling.md",
+      "contains": [
+        "Treat every ref-shaped value from Git metadata, Linear, user input, or generated suggestions as untrusted data",
+        "Do not put an unvalidated candidate into a shell command even inside quotes",
+        "A value being Git-valid is not sufficient",
+        "scripts/validate-branch-name.sh",
+        "require `{base-source-ref}` to start with `refs/remotes/`",
+        "capture it as pinned `{base-ref}`",
+        "pass `{base-source-ref}`, `{base-ref}`, and `{base-branch}` unchanged to both downstream skills",
+        "Never independently re-resolve or replace the pinned base commit later",
+        "git diff --name-only \"{base-ref}\"...HEAD"
+      ]
+    },
+    {
+      "name": "pr-create-branch-validator-script",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/scripts/validate-branch-name.sh",
+      "contains": [
+        "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+        "git check-ref-format --branch \"$branch_name\"",
+        "printf '%s\\n' \"$branch_name\""
+      ]
+    },
+    {
       "name": "pr-create-deferred-upstream-contract",
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/branch-and-platform-handling.md",
       "contains": [
-        "If upstream is missing",
-        "Continue without pushing",
-        "Step 5 requires the validated `origin` branch to remain absent",
-        "Step 8 is the sole owner of creating that remote ref",
-        "may publish the pre-rewrite history early"
+        "without creating, deleting, or switching branches",
+        "Do not push or change upstream configuration",
+        "Do not ask for initials",
+        "feature/{issue-id-lowercase}-{sanitized-title}",
+        "If `AUTO_MODE=true`, select the first non-empty candidate",
+        "report a hard blocker without prompting",
+        "record `{branch-action}=create-from-entry-head`",
+        "Do not create it yet"
       ]
     },
     {
@@ -624,8 +661,24 @@
         "Immediately before any push, repeat the fail-closed open-Pull-Request check",
         "does not prove that this invocation owns the Pull Request",
         "--force-with-lease=\"{rollback-origin-ref}:\"",
+        "GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never",
+        "NONINTERACTIVE_GIT_SSH_COMMAND=\"${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes\"",
+        "GIT_SSH_COMMAND=\"$NONINTERACTIVE_GIT_SSH_COMMAND\"",
+        "env GH_PROMPT_DISABLED=1 gh pr create",
         "Do not use plain `--force`, an OID lease for a pre-existing remote ref",
         "workflow's sole remote update before Pull Request creation"
+      ]
+    },
+    {
+      "name": "pr-create-push-failure-rollback",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
+      "contains": [
+        "If the push command exits non-zero, its remote outcome is ambiguous",
+        "Execute Step 10 from `state-and-rollback.md`",
+        "re-queries `{rollback-origin-ref}` without modifying it",
+        "show the full generated description directly in the conversation for copy/paste",
+        "Never claim the description was saved to disk",
+        "never continue to `gh pr create` after a non-zero push status"
       ]
     },
     {
@@ -633,9 +686,9 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/state-and-rollback.md",
       "contains": [
         "continue only when it returns no matching ref",
-        "A Git ref lease can protect the branch OID",
+        "A Git ref lease can protect a branch OID",
         "cannot atomically prevent another actor from opening a Pull Request",
-        "never rewrites an existing remote ref",
+        "Never check out or adopt that remote branch",
         "Neither `--auto` nor `--authorize-history-rewrite` may bypass the remote-absence requirement"
       ]
     },
@@ -647,6 +700,31 @@
         "If `--no-push` was passed, do not run any push command",
         "`--auto` alone is not authorization",
         "without either explicit confirmation or `--authorize-history-rewrite`"
+      ]
+    },
+    {
+      "name": "recreate-commits-retry-safe-backup",
+      "path": "kramme-cc-workflow/scripts/resolve-base.sh",
+      "contains": [
+        "--backup-ref",
+        "--backup-ref must not name the current branch being rewritten",
+        "if [ \"$EXISTING_BACKUP_TIP\" = \"$ORIGINAL_TIP\" ]; then",
+        "elif [ \"$FORCE_BACKUP\" -ne 1 ]; then",
+        "refusing to move it",
+        "git branch -f \"$BACKUP_REF\" \"$ORIGINAL_TIP\""
+      ]
+    },
+    {
+      "name": "resolve-base-pinned-commit-contract",
+      "path": "kramme-cc-workflow/scripts/resolve-base.sh",
+      "contains": [
+        "--base-commit",
+        "--base-commit must be a full 40-character lowercase commit OID",
+        "if [ -z \"$BASE_COMMIT_FLAG\" ]; then",
+        "Pinned base commit '$BASE_COMMIT_FLAG' does not resolve locally",
+        "BASE_REF=\"$BASE_COMMIT_FLAG\"",
+        "RESOLVE_BASE_GIT_SSH_COMMAND=\"${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes\"",
+        "GIT_SSH_COMMAND=\"$RESOLVE_BASE_GIT_SSH_COMMAND\""
       ]
     },
     {
@@ -672,7 +750,7 @@
         "kramme:pr:code-review --parallel --inline",
         "kramme:pr:convention-review --inline",
         "kramme:code:refactor-opportunities pr",
-        "--authorize-history-rewrite",
+        "`--auto` carries the invocation through the backup-protected local reset without prompting",
         "has no invocation-owned creation provenance",
         "do not rerun `kramme:linear:issue-to-pr` or claim a cross-session Step 7 resume",
         "invoke `kramme:verify:run`",
@@ -744,8 +822,8 @@
         "already linked `{linear-issue-id}` with a non-closing keyword",
         "do not add a separate `Closes {linear-issue-id}` line",
         "Do not override an explicit user instruction to use a different keyword",
-        "Apply the same `{linear-issue-id}` normalization from Step 7.2 to the fallback description",
-        "append `Closes {linear-issue-id}` before continuing"
+        "Validate manually supplied content with the same title/body checks above",
+        "apply the `{linear-issue-id}` normalization from Step 7.2"
       ]
     },
     {
@@ -753,21 +831,22 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/branch-and-platform-handling.md",
       "contains": [
         "Track `{linear-issue-id}` as nullable workflow state",
-        "Normalize the newly supplied ID to uppercase and capture it as `{linear-issue-id}`",
-        "skip this question and enter the Linear issue flow",
-        "use the existing authoritative `{linear-issue-id}` without prompting",
-        "scan the branch name for a Linear-style issue ID"
+        "normalize it to uppercase, and capture it as `{linear-issue-id}`",
+        "enter the Linear flow below without prompting",
+        "never replace it through branch-name extraction",
+        "scan the validated branch name"
       ]
     },
     {
       "name": "pr-create-body-file-contract",
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
       "contains": [
-        "PR_TITLE_FILE=$(mktemp \"${TMPDIR:-/tmp}/pr-title.XXXXXX\")",
-        "PR_BODY_FILE=$(mktemp \"${TMPDIR:-/tmp}/pr-body.XXXXXX\")",
-        "--title \"$(cat \"{pr-title-file}\")\"",
-        "--body-file \"{pr-body-file}\"",
-        "PR_CREATE_STATUS=$?",
+        "PR_TITLE_FILE=$(mktemp \"/tmp/kramme-pr-title.XXXXXX\")",
+        "PR_BODY_FILE=$(mktemp \"/tmp/kramme-pr-body.XXXXXX\")",
+        "trap cleanup_pr_files EXIT",
+        "--base \"{base-branch}\"",
+        "--title \"$(cat \"$PR_TITLE_FILE\")\"",
+        "--body-file \"$PR_BODY_FILE\"",
         "Before showing manual creation instructions, execute Step 9.0",
         "Do not run Step 10 here"
       ]
@@ -802,11 +881,20 @@
         "if git add -A && git commit -m \"Include uncommitted changes for PR creation\"; then",
         "mv -f \"$INDEX_BACKUP\" \"$INDEX_PATH\"",
         "restored the original Git index",
-        "if git cherry-pick --no-commit {include-commit}; then",
+        "if git cherry-pick --no-commit \"{include-commit}\"; then",
         "CHERRY_PICK_STATUS=$?",
         "git stash pop \"$STASH_REF\"",
         "No PR changes remain after excluding uncommitted work",
         "before any post-push PR creation failure output",
+        "`{entry-branch}` / `{entry-commit}`",
+        "{feature-branch-created}",
+        "create the branch from the immutable entry commit",
+        "stop without deleting any ref",
+        "{recreate-input-tip}",
+        "{recreate-backup-ref}",
+        "newly created temporary include commit gets a different recovery ref",
+        "Early Branch Cleanup",
+        "Return to the Invocation Entry Checkout",
         "{rollback-origin-ref}",
         "{rollback-origin-oid}",
         "git ls-remote --heads origin \"{rollback-origin-ref}\"",
@@ -835,6 +923,8 @@
         "Repository PR Template Contract",
         "One or more selectable GitHub PR templates are present, no default template is selected",
         "blocking for direct update",
+        "The \"no Linear ID\" condition is the only non-blocking `MISSING REQUIREMENT:` marker",
+        "Treat every other `MISSING REQUIREMENT:` marker",
         "set `DIRECT_UPDATE=false` even when `--auto` found an existing PR",
         "local exclude file",
         "Local environment failure notes such as missing `node_modules`, unavailable Postgres, missing services"
@@ -847,6 +937,10 @@
         "ALWAYS** check whether the repository has a GitHub pull request template before drafting",
         "GitHub applies PR templates from the repository default branch",
         "DEFAULT_TEMPLATE_REF=\"origin/$DEFAULT_BRANCH\"",
+        "env GH_PROMPT_DISABLED=1 gh repo view",
+        "GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never",
+        "NONINTERACTIVE_GIT_SSH_COMMAND=\"${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes\"",
+        "GIT_SSH_COMMAND=\"$NONINTERACTIVE_GIT_SSH_COMMAND\"",
         "git cat-file -e \"$DEFAULT_TEMPLATE_REF:$path\"",
         "git ls-tree -r --name-only \"$DEFAULT_TEMPLATE_REF\" \"$dir\"",
         "**Default templates**",
