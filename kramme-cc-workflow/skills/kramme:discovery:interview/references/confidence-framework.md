@@ -2,6 +2,8 @@
 
 Track understanding across 7 dimensions. The interview continues until overall confidence reaches the target threshold (default: 90% — all critical dimensions at Confident, normal dimensions at High or above, and deprioritized dimensions at Medium or above).
 
+Load this reference when a delegated caller requests the evidence-confidence profile or supplies a numeric confidence target. The direct standalone flow keeps its topic-classified coverage profile unless its caller explicitly requests this one.
+
 Confidence is evidence-based, not vibes-based. Track a lightweight evidence ledger for each active dimension:
 
 - `source evidence`: what artifacts or code already establish
@@ -127,7 +129,7 @@ Score each dimension based on section quality: missing → Low, present but vagu
 
 ## Work Context Adjustments
 
-First normalize the profile name from the `siw:init` Work Context table:
+First normalize the profile name from the caller-provided Work Context table:
 
 | Work Context value in spec | Normalized profile      |
 | -------------------------- | ----------------------- |
@@ -139,7 +141,7 @@ First normalize the profile name from the `siw:init` Work Context table:
 
 If the spec already uses the normalized profile names directly, use them as-is.
 
-Treat legacy `Priority Dimensions` and `Deprioritized` fields from `siw:init` as hints for interview ordering only. Those labels belong to the older 8-dimension audit model, so they should not control the 7-dimension discovery stop thresholds directly.
+Treat legacy `Priority Dimensions` and `Deprioritized` fields as hints for interview ordering only. If those labels came from an older dimension model, do not let them control the 7-dimension discovery stop thresholds directly.
 
 When a normalized Work Context profile exists, adjust which dimensions are critical:
 

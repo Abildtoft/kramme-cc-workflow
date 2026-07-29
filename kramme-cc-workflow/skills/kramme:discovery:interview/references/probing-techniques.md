@@ -2,6 +2,8 @@
 
 Techniques for uncovering what the user actually wants, not what they think they should want. The gap between those two is where most failed projects begin.
 
+Use the Core Principle, Technique Library, Codebase-as-Answer-Source Rule, pacing guidance, and anti-patterns in every interview profile. When the caller selected the evidence-confidence profile, also use this reference's Question Round Contract, ADR-Offer Hook, Coverage Mode Loop, answer-processing rules, and dashboard instructions. For the standalone topic-coverage profile, keep the question interaction, ADR offer, round size, progress dimensions, and stop rules from `interview-operations.md`.
+
 ## Core Principle
 
 People describe solutions, not problems. They say "I need a dashboard" when they actually need "visibility into system health." Every technique below is designed to strip away the solution layer and find the real need underneath.
@@ -72,7 +74,7 @@ For each question:
 - State why you're asking in one sentence, naming the confidence dimension it targets.
 - Include your current assumption so the user can correct instead of explain from scratch.
 - Offer concrete options when forcing tradeoffs: 2-4 options plus Other.
-- Use freeform when probing for narrative or motivation.
+- For narrative or motivation probes, provide 2–4 plausible starting options and let the user use the tool's built-in Other path for a free-text answer. Do not omit the required predefined options.
 - For high-stakes questions where the answer shapes the next question, ask only one question in the round.
 - If a round would only ask confirmation questions, replace one with a stress probe unless the coverage floor is already satisfied.
 
@@ -88,7 +90,9 @@ Before asking any question in either mode, decide whether the answer can be foun
 
 ## ADR-Offer Hook
 
-After each resolved decision in either mode, evaluate the ADR test. Offer `/kramme:docs:adr` only when it is installed in the environment; otherwise skip the hook silently.
+Use this hook only for the evidence-confidence profile. The topic-coverage profile uses the interaction and Skip/Defer behavior in `interview-operations.md`.
+
+After each resolved decision, evaluate the ADR test. Offer `/kramme:docs:adr` only when it is installed in the environment; otherwise skip the hook silently.
 
 Offer once when all three are true:
 
