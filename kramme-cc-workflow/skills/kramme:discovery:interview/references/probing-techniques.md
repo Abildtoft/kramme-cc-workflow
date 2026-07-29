@@ -2,6 +2,8 @@
 
 Techniques for uncovering what the user actually wants, not what they think they should want. The gap between those two is where most failed projects begin.
 
+Use the Core Principle, Technique Library, Codebase-as-Answer-Source Rule, ADR-Offer Hook, pacing guidance, and anti-patterns in every interview profile. When the caller selected the evidence-confidence profile, also use this reference's Question Round Contract, Coverage Mode Loop, answer-processing rules, and dashboard instructions. For the standalone topic-coverage profile, keep the round size, progress dimensions, and stop rules from `interview-operations.md`.
+
 ## Core Principle
 
 People describe solutions, not problems. They say "I need a dashboard" when they actually need "visibility into system health." Every technique below is designed to strip away the solution layer and find the real need underneath.

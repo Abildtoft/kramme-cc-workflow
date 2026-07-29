@@ -9,9 +9,9 @@ kramme-platforms: [claude-code, codex]
 
 # Deep Exploration Interview
 
-Conduct a structured, in-depth interview about the presented topic, files, proposal, or feature. Use the AskUserQuestion tool throughout to gather decisions and uncover requirements. Conclude by writing a comprehensive plan.
+Conduct a structured, in-depth interview about the presented topic, files, proposal, or feature. Use the AskUserQuestion tool throughout to gather decisions and uncover requirements. When invoked directly, conclude by writing a comprehensive plan. When called by another skill, return interview findings under that caller's synthesis contract.
 
-**When not to use:** for standalone discovery that produces a one-off plan file, use this skill. For discovery inside a tracked SIW (Structured Implementation Workflow) initiative — where the output feeds `siw/` planning documents — use `kramme:siw:discovery` instead.
+Use this skill directly for standalone discovery that produces a one-off plan file. For discovery inside a tracked SIW (Structured Implementation Workflow) initiative — where the output feeds `siw/` planning documents — use `kramme:siw:discovery`; it delegates interview mechanics back to this engine.
 
 ## Process Overview
 
@@ -23,9 +23,9 @@ Conduct a structured, in-depth interview about the presented topic, files, propo
 6. **Final Classification Check**: If Phase 0 changed the framing or the topic type is ambiguous, reclassify/confirm before research.
 7. **Phase R (optional) — Research**: When `--research` is set or the topic names external libraries, frameworks, or cross-cutting concerns, launch parallel research agents tailored to the confirmed topic classification, then run a brief check-in before the interview.
 8. **Post-Research Classification Check**: If Phase R changes the framing or classification, repeat topic classification before interviewing.
-9. **Interview**: Use coverage rounds by default or decision-tree mode for coupled decisions.
-10. **Progress Tracking**: Monitor coverage across dimensions or resolved branches.
-11. **Synthesis**: Write an adaptive plan markdown file.
+9. **Interview**: Use the active coverage profile by default or decision-tree mode for coupled decisions.
+10. **Progress Tracking**: Monitor topic coverage, evidence confidence, or resolved branches according to the active profile.
+11. **Synthesis**: Write an adaptive plan markdown file for direct use, or return findings to the delegated caller for its local synthesis.
 
 ## Output Markers
 
@@ -38,6 +38,25 @@ Use these markers in user-facing output to keep downstream tooling parseable:
 - `MISSING PRODUCT CONTEXT` — when strategy grounding would materially help but no `STRATEGY.md` exists.
 - `FRAMING` — the label applied when Phase 0 converges on the concrete problem statement that will feed the interview.
 - `PLAN` — the label applied to the synthesized plan document at hand-off.
+
+## Called by Another Skill
+
+A sibling skill may call this skill as the interview engine without changing this skill's user-facing argument grammar. Accept an `INTERVIEW DELEGATION` brief containing:
+
+- **Resolved context** — topic text, readable artifact paths, caller mode, and any source-backed facts already extracted.
+- **Synthesis override** — the caller-owned templates, output path, markers, vocabulary, and readiness rules.
+- **Confidence target** — either `topic-coverage` (the standalone default) or an evidence-confidence percentage plus any Work Context profile.
+- **Interview mode** — coverage or decision-tree, including a user-requested mode switch.
+
+For delegated calls:
+
+1. Treat the brief as the resolved input to Step 0, but verify every referenced artifact is readable.
+2. Run autonomous framing, classification, and the interview loop from this skill. Do not repeat context-resolution questions the caller already answered.
+3. Read `references/probing-techniques.md` for the shared technique library. For an evidence-confidence target, also read `references/confidence-framework.md` and use its ledger, dashboard, and stop rules; otherwise keep the standalone topic-coverage rules from `references/interview-operations.md`.
+4. Apply the synthesis override as a return contract, not as permission to duplicate the caller's domain policy here.
+5. Return `INTERVIEW RESULT:` with the validated hypothesis, classification, decisions and rationales, non-goals, evidence ledger or coverage status, unresolved `MISSING REQUIREMENT` items, risks, and source references. Do not ask for a plan path or write a standalone template when the caller owns synthesis.
+
+If the runtime cannot invoke one skill from another, the caller may read this `SKILL.md` and the references named above and execute Steps 1–4 inline. The same profile and return contract apply.
 
 ## Step 0: Inputs, Mode, and Glossary
 
@@ -187,9 +206,9 @@ Carry research findings forward as context for Step 3. Apply the existing **Code
 
 ## Step 3: Interview Approach
 
-Read `references/interview-operations.md`, then read `references/question-dimensions.md` before crafting the first interview round.
+Read `references/interview-operations.md`, `references/question-dimensions.md`, and `references/probing-techniques.md` before crafting the first interview round.
 
-Use the reference's question philosophy, Codebase-as-answer-source rule, and topic-specific dimensions to ask questions that challenge assumptions, expose edge cases, reveal dependencies, quantify tradeoffs, force prioritization, separate decision ownership, and plan the learning loop.
+Use the shared technique library plus the question philosophy, Codebase-as-answer-source rule, and topic-specific dimensions to ask questions that challenge assumptions, expose edge cases, reveal dependencies, quantify tradeoffs, force prioritization, separate decision ownership, and plan the learning loop.
 
 Avoid obvious questions. If the artifact, workspace, provided files, or existing docs already answer a question, explore first, present the inferred answer with the source, and ask only for confirmation or correction. If a dimension requires information the artifact does not contain and the user has not provided, emit `MISSING REQUIREMENT:` before asking the user to fill the gap.
 
@@ -199,11 +218,18 @@ Avoid obvious questions. If the artifact, workspace, provided files, or existing
 
 Use the default coverage rounds unless `decision_tree_requested=true`.
 
-In **Decision-Tree mode**, read `references/decision-tree-mode.md`, identify the root decision for the topic type, map first-level dependencies, and resolve branches depth-first. Ask one question at a time by default; batch only routine independent sibling questions. When the active tree is resolved, return to coverage rounds for any remaining question dimensions that are independent of the decisions already settled.
+Select one progress profile:
 
-Use `references/interview-operations.md` for round structure, adaptive follow-up behavior, the ADR-offer hook, progress tracking, and completion criteria. Ask 1-4 questions per round, synthesize answers before the next round, display coverage status by topic type, and stop when no major unknowns remain rather than mechanically chasing 100% coverage.
+- **Topic coverage** — default for direct standalone use. Use the topic dimensions, 1–4-question rounds, progress display, and completion criteria from `references/interview-operations.md`.
+- **Evidence confidence** — use when a delegated caller supplies a confidence percentage. Read `references/confidence-framework.md`; use the Work Context adjustments, evidence ledger, 1–3-question rounds, dashboard, and target threshold defined there.
+
+In **Decision-Tree mode**, read `references/decision-tree-mode.md`, identify the root decision for the topic type, map first-level dependencies, and resolve branches depth-first. Ask one question at a time by default; batch only routine independent sibling questions. When the active tree is resolved, return to the active progress profile for any remaining independent dimensions.
+
+For topic coverage, use `references/interview-operations.md` for round structure, adaptive follow-up behavior, the ADR-offer hook, progress tracking, and completion criteria. For evidence confidence, use the round and answer-processing contracts in `references/probing-techniques.md` and the stop rules in `references/confidence-framework.md`. In either profile, synthesize answers before the next round and stop according to the active profile rather than mixing thresholds.
 
 ## Step 5: Output Plan Document
+
+If a delegated caller owns synthesis, do not execute the standalone file-naming or template-selection steps below. Return the `INTERVIEW RESULT:` payload defined in **Called by Another Skill** so the caller can apply its local templates, vocabulary, readiness contract, and output path.
 
 ### File Naming
 
@@ -241,4 +267,5 @@ When the host runtime supports it (Claude Code) and the user wants to move direc
 3. **Connect answers** - Show how different decisions interact
 4. **Challenge diplomatically** - "Have you considered X?" not "X is wrong"
 5. **Depth over breadth** - Better to deeply explore key areas than superficially cover everything
+
 - [ ] The `PLAN:` marker is present at hand-off.

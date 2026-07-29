@@ -4,23 +4,23 @@ Use this mode when the topic contains tightly coupled decisions where a later qu
 
 ## Process
 
-1. Identify the root decision for the current Topic Type.
-2. Map first-level dependencies using the topic's Question Dimensions. Example: `root architecture choice -> migration path -> rollout risk`.
-3. Resolve one branch depth-first before asking about downstream or sibling branches.
-4. After each answer, update the dependency tree and coverage notes.
-5. Return to the topic-classified coverage flow when remaining gaps are independent dimensions rather than branch dependencies.
+1. Identify the root decision in one sentence.
+2. Map first-level dependencies as a small tree using the active profile's dimensions. Example: `root architecture choice -> migration path -> rollout risk`.
+3. Resolve branches depth-first. Do not ask about a downstream branch until its prerequisite is settled.
+4. After each answer, update the tree: mark resolved branches, remove invalidated branches, and add newly exposed dependencies.
+5. When the active branch is resolved, choose the next unresolved branch or return to the active coverage profile for independent gaps.
 
 ## Pacing
 
-- Ask one question at a time by default.
-- Batch only routine sibling questions that are independent and low-stakes.
+- Default to one question at a time.
+- Batch only when sibling questions are routine, low-stakes, and independent.
 - If the answer could change the next question, do not batch.
 
 ## Codebase-as-Answer-Source Rule
 
-Before asking, check whether the answer is in the codebase, provided files, or existing docs. If yes, explore and report the finding with source references instead of asking. Ask only for confirmation or correction when uncertainty remains.
+Before asking, check whether the answer is in the codebase, target artifacts, provided files, or existing docs. If yes, explore and report the finding with source references instead of asking. Ask only for confirmation or correction when uncertainty remains.
 
-Skip the check when the question is about priorities, appetite, ownership, or business context that no artifact could know.
+Skip the check when the question is about preference, priority, organizational context, ownership, or business appetite that no artifact could know.
 
 ## ADR-Offer Hook
 
@@ -31,3 +31,7 @@ When a resolved decision meets all three criteria, offer to invoke `/kramme:docs
 3. Result of a real tradeoff.
 
 State the three criteria in the offer so the user can audit the trigger. Do not inline-author the ADR from this skill.
+
+## Switch Back to Coverage
+
+Return to the active coverage profile when remaining open questions are independent dimensions rather than dependencies in the decision tree.
