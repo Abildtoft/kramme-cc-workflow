@@ -459,6 +459,7 @@ Auto-triggered by Claude based on context. These don't appear in the `/` menu.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
+| `kramme:pr:complete-work` | Hidden | — | Internal post-implementation orchestrator for kramme:siw:issue-to-pr and kramme:code:plan-to-pr. Rechecks the new-PR boundary and caller scope, runs applicable code-review, convention, and PR-refactor gates to bounded convergence, verifies the prepared branch, and optionally opens the Pull Request and iterates on CI and review feedback until green. Not a standalone implementation workflow. |
 | `kramme:docs:update-agents-md` | Background | — | This skill should be used when the user asks to "update AGENTS.md", "add to AGENTS.md", "maintain agent docs", add the Hard-Cut Greenfield Policy or no-compatibility-code policy, or otherwise add guidelines to agent instructions. Guides discovery of local skills and enforces structured, keyword-based documentation style. |
 | `kramme:git:commit-message` | Background | — | Create commit messages for branch commits. Use when committing code changes or writing commit messages. Covers plain-English commit format, a pre-commit checklist, and AI-attribution rules. Not for PR titles or merge commits, which use Conventional Commits. |
 | `kramme:verify:before-completion` | Background | — | Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always |

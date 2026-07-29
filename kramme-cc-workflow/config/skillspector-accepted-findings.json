@@ -1,6 +1,14 @@
 {
   "accepted_findings": [
     {
+      "path": "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml",
+      "rule_id": "EA2",
+      "reason": "Reviewed intentional EA2 finding for the cleanup registry's --auto note: automatic cleanup runs only after explicit caller or user authorization, selects fixed current-project disposable paths, requires recoverable Trash deletion, aborts on dirty tracked artifacts, and never selects permanent specifications or shared diagrams.",
+      "owner": "kramme",
+      "accepted_at": "2026-07-29",
+      "review_after": "2026-08-29"
+    },
+    {
       "path": "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md",
       "rule_id": "TM1",
       "reason": "Reviewed intentional TM1 finding for this user-triggered history-recreation skill: destructive reset is allowed only after clean-worktree validation, explicit authorization, and creation of a recovery ref; the final tree must match the original tip exactly; and remote synchronization requires confirmation plus force-with-lease.",

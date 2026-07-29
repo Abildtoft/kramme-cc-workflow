@@ -108,6 +108,54 @@
       "producer": "kramme:linear:issue-to-pr"
     },
     {
+      "id": "siw-issue-to-pr-code-review",
+      "path": ".context/siw-issue-to-pr/reviews/REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:complete-work"
+    },
+    {
+      "id": "siw-issue-to-pr-convention-review",
+      "path": ".context/siw-issue-to-pr/reviews/CONVENTION_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:complete-work"
+    },
+    {
+      "id": "siw-issue-to-pr-refactor-review",
+      "path": ".context/siw-issue-to-pr/reviews/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:complete-work"
+    },
+    {
+      "id": "code-plan-to-pr-code-review",
+      "path": ".context/code-plan-to-pr/reviews/REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:complete-work"
+    },
+    {
+      "id": "code-plan-to-pr-convention-review",
+      "path": ".context/code-plan-to-pr/reviews/CONVENTION_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:complete-work"
+    },
+    {
+      "id": "code-plan-to-pr-refactor-review",
+      "path": ".context/code-plan-to-pr/reviews/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:complete-work"
+    },
+    {
       "id": "agent-native-audit",
       "path": "AGENT_NATIVE_AUDIT.md",
       "type": "file",

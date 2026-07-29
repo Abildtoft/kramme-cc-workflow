@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:issue-implement
-description: Start implementing a defined local issue with codebase exploration and planning. Use --team to implement multiple independent SIW issues in parallel.
-argument-hint: "<issue-id> | --team [issue-ids | 'phase N'] [--auto]"
+description: Implement a defined local SIW issue with codebase exploration, planning, atomic tracker updates, verification, and spec sync. Use --auto for one autonomous issue or --team to implement multiple independent SIW issues in parallel.
+argument-hint: "<issue-id> [--auto] | --team [issue-ids | 'phase N'] [--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -22,7 +22,16 @@ The `Mode` field gates the HITL safety logic in Step 3.1 and Step 6.1. If `Mode`
 
 ## Team Mode
 
-If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments. `--auto` is team-mode-only: it skips the plan confirmation and starts the proposed parallel implementation plan immediately (full semantics in `references/team-mode.md`); ignore it in the standard workflow.
+If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments. In team mode, `--auto` skips the proposed parallel-plan confirmation according to that reference.
+
+Otherwise, parse standard-mode arguments before Step 1. If `--auto` is present, set `AUTO_MODE=true` and remove the flag before extracting the issue id. Reject every other `--flag`.
+
+Standard `--auto`:
+
+- skips technical-plan confirmation only when the issue, specs, and codebase support one clear conservative path;
+- chooses Autonomous Implementation;
+- chooses `DONE` at closeout only when every acceptance criterion and applicable automated verification check passed with no required human evidence; otherwise chooses `IN REVIEW`;
+- never bypasses dirty-worktree handling, HITL confirmation, unresolved dependencies, contradictory requirements, manual validation, external access, destructive actions, or product/architecture/security/public-contract decisions.
 
 ## Process Overview
 
@@ -148,6 +157,17 @@ To create a new issue, run /kramme:siw:issue-define
 
 **Action:** Abort.
 
+### 1.3 Gate Existing Status Before Implementation
+
+After reading the issue, normalize its status against the SIW vocabulary `READY | IN PROGRESS | IN REVIEW | DONE` before Step 2.
+
+- If the status is `DONE` and a `## Resolution` section exists, report `Issue {prefix}-{number} is already closed (Status: DONE).` and stop without running implementation, verification, spec sync, or tracker updates.
+- If the status is `DONE` without a `## Resolution` section, stop on the inconsistent tracker state instead of treating it as implementation-ready.
+- If `AUTO_MODE=true`, require `READY` or `IN PROGRESS`. For `IN REVIEW`, report that the existing implementation needs human review or an explicit amendment decision and stop; standard auto mode must not reset it to `IN PROGRESS`.
+- Stop on an unknown status rather than guessing its lifecycle meaning.
+
+This gate runs before git-state handling, planning, or approach selection. The closeout idempotency check remains as a final race-safe guard, not as the first completed-issue check.
+
 ---
 
 ## Step 2: Verify Git State
@@ -161,7 +181,9 @@ git branch --show-current
 
 **If uncommitted changes exist:**
 
-Use AskUserQuestion:
+If `AUTO_MODE=true`, stop and report the dirty paths. Ask the caller to commit or stash them before rerunning; auto mode never assumes ownership of pre-existing work.
+
+If `AUTO_MODE=false`, use AskUserQuestion:
 
 ```yaml
 header: "Uncommitted Changes Detected"
@@ -245,13 +267,15 @@ Use AskUserQuestion for each unresolved ambiguity. Read `references/question-exa
 
 After gathering answers, read `references/plan-template.md` and create a comprehensive plan using that structure (Summary, Requirements → Technical Approach, Files to Modify/Create, Patterns to Follow, Implementation Steps, Testing Approach, Open Questions).
 
-**Present plan and get confirmation before proceeding.**
+**Present plan and get confirmation before proceeding.** If `AUTO_MODE=true`, present the plan, add `AUTO: proceeding with autonomous implementation`, and skip the confirmation only when no blocking ambiguity remains.
 
 ---
 
 ## Step 6: Implementation Approach Selection
 
-Use AskUserQuestion:
+If `AUTO_MODE=true`, skip the approach question and choose **Autonomous Implementation**, then apply the HITL gate below when applicable.
+
+If `AUTO_MODE=false`, use AskUserQuestion:
 
 ```yaml
 header: "Implementation Approach"
@@ -370,7 +394,7 @@ Read and follow `references/issue-closeout.md` for the closeout procedure:
 
 - Check whether the issue is already closed (status `DONE` with an existing `## Resolution`) and short-circuit if so.
 - Add (or replace, or amend) the `## Resolution` section without deleting the issue file.
-- Ask for confidence and set the final status to `DONE` or `IN REVIEW`.
+- Ask for confidence, or apply the reference's evidence-based auto rule, and set the final status to `DONE` or `IN REVIEW`.
 - Run the Status Update Procedure for all three tracking files.
 - For phase-prefixed issues, check whether the phase should be marked complete.
 
