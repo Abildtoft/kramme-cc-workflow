@@ -1,6 +1,6 @@
 ---
 name: kramme:docs:update-agents-md
-description: This skill should be used when the user asks to "update AGENTS.md", "add to AGENTS.md", "maintain agent docs", or needs to add guidelines to agent instructions. Guides discovery of local skills and enforces structured, keyword-based documentation style.
+description: This skill should be used when the user asks to "update AGENTS.md", "add to AGENTS.md", "maintain agent docs", add the Hard-Cut Greenfield Policy or no-compatibility-code policy, or otherwise add guidelines to agent instructions. Guides discovery of local skills and enforces structured, keyword-based documentation style.
 user-invocable: false
 disable-model-invocation: false
 ---
@@ -53,6 +53,12 @@ find . -maxdepth 3 \
 
 Identify existing docs, scripts, modules, examples, and skills that should be pointed to instead of duplicated.
 
+## Adding the Hard-Cut Greenfield Policy
+
+When asked to add the Hard-Cut Greenfield Policy or no-compatibility-code policy, read `assets/greenfield-policy.md` and follow every insertion guard. Apply it only to projects with no released users; if the project has users, stop and report that the policy does not apply.
+
+The policy block is an explicit verbatim-template exception to the **One rule per bullet**, **Start with keyword**, **Headers + bullets**, **Reference, don't duplicate**, and **Context Pointers over pasted detail** writing rules below. Do not rewrite the block or replace it with a pointer. All non-formatting safeguards still apply, including reading the target in full, showing the planned diff for confirmation, checking for an existing policy heading, and re-reading the inserted block.
+
 ## Guideline Keywords
 
 Use these keywords to indicate requirement strength:
@@ -70,9 +76,9 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 
 - **Existing sections first** - Only propose new sections if no appropriate existing section exists
 - **Reconcile, don't append** - Before adding a rule or Context Pointer, check whether an equivalent already exists; update it in place instead of duplicating. Re-running this skill must not create duplicate rules or sections
-- **One rule per bullet** - Keep each guideline minimal and atomic
-- **Start with keyword** - Every rule begins with ALWAYS/NEVER/PREFER/CAN/NOTE
-- **Headers + bullets** - No paragraphs
+- **One rule per bullet** - Keep each authored guideline minimal and atomic; explicitly marked verbatim templates are exempt
+- **Start with keyword** - Every authored rule begins with ALWAYS/NEVER/PREFER/CAN/NOTE; explicitly marked verbatim templates are exempt
+- **Headers + bullets** - Use no paragraphs in authored guidance; explicitly marked verbatim templates are exempt
 - **Code blocks** - For commands and templates
 - **Reference, don't duplicate** - Point to skills: "See `.claude/skills/db-migrate/SKILL.md`"
 - **Context Pointers over pasted detail** - Point to deeper docs, scripts, modules, tests, schemas, or ADRs with a clear when/why cue
@@ -82,7 +88,7 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 ## After Writing
 
 - Re-read the edited region.
-- **ALWAYS** confirm each new bullet starts with a keyword and states exactly one rule.
+- **ALWAYS** confirm each authored bullet starts with a keyword and states exactly one rule; for an explicitly marked verbatim template, confirm the inserted block matches its source exactly instead.
 - **ALWAYS** confirm no rule or section was duplicated.
 
 ## Common Sections
