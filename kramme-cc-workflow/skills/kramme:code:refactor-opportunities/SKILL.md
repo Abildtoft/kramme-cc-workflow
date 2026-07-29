@@ -67,8 +67,10 @@ These rejections are pre-filters — apply them before recording a finding, not 
         - unchanged code directly affected by a changed caller or API contract
 
         "The file was touched" is not enough. References to "the PR relevance gate" elsewhere in this skill mean exactly this list.
+
    - **Path**: validate that every named file/folder exists or every glob matches at least one file. If a value does not resolve, ask the user to clarify — do not fall back to `feature`. For folders, recursively include source files under the folder.
    - **Feature**: search for the feature name and project-glossary synonyms across directory names, module names, routes, package names, tests, docs, config, schemas, and user-facing copy. Include primary implementation files, matching tests, API/routes, data models, feature flags, fixtures, and docs that directly define the feature. If the name maps to multiple unrelated areas, or if no file's name, route, or schema contains the feature term, present the candidate file groups (or the empty result) and ask the user to confirm or rename. If the user confirms an empty result, terminate with a one-line message that the feature could not be located rather than producing a report.
+
 8. Build a human-readable `SCOPE_DESCRIPTION` covering mode, resolved target, file count, and source directories — for example `Full codebase (1,247 files across 8 source directories)`, `Current PR against origin/main (14 files)`, `Path src/api (37 files)`, or `Feature "billing exports" (22 files across API, UI, tests, and docs)`. Report it to the user before proceeding.
 
 ### Phase 2 — Parallel Scan

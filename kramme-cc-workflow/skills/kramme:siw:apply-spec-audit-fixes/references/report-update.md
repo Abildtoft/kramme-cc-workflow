@@ -45,7 +45,7 @@ If an `Auto-fixed` row already exists from a previous auto-fix run, update its c
 Otherwise insert a new `Auto-fixed` row immediately before the `**Total**` row so it slots into the existing two-column schema:
 
 ```markdown
-| Auto-fixed | {count}     |
+| Auto-fixed | {count} |
 ```
 
 Leave the Critical / Major / Minor counts unchanged. The per-finding `**Status:** [Auto-fixed]` annotation carries the resolution state.
