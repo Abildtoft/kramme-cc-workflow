@@ -312,7 +312,7 @@ def _files_match_snapshot(snapshot: dict[Path, bytes | None]) -> bool:
 
 def _write_recovery_backups(snapshot: dict[Path, bytes | None]) -> dict[Path, Path]:
     """Persist original file bytes so printed manual commands are actionable."""
-    backup_root = Path(tempfile.mkdtemp(prefix="release-recovery-"))
+    backup_root = Path(tempfile.mkdtemp(prefix="release-recovery-")).resolve()
     backups = {}
     for index, (path, contents) in enumerate(snapshot.items()):
         if contents is None:
@@ -334,7 +334,9 @@ def print_manual_recovery(git_root: Path, snapshot: ReleaseStateSnapshot) -> Non
     if snapshot.index_contents is not None:
         index_backup = next(iter(backups.values()), None)
         backup_root = (
-            index_backup.parent if index_backup is not None else Path(tempfile.mkdtemp(prefix="release-recovery-"))
+            index_backup.parent
+            if index_backup is not None
+            else Path(tempfile.mkdtemp(prefix="release-recovery-")).resolve()
         )
         index_backup = backup_root / "git-index"
         index_backup.write_bytes(snapshot.index_contents)
