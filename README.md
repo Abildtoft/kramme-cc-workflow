@@ -653,9 +653,11 @@ Regular branch commits should use plain-English commit messages (no Conventional
 The full contributor reference — the complete test-target catalog, coverage baselines and the production-source inventory, pre-PR verification, skill security scans, and the SkillOpt eval pilot — lives in [docs/development.md](kramme-cc-workflow/docs/development.md). The short version:
 
 ```bash
-# One-time setup
-npm ci --no-audit --no-fund
-make -C kramme-cc-workflow install-test-deps
+# Read-only prerequisite check
+bash kramme-cc-workflow/scripts/bootstrap-dev.sh --check
+
+# Explicit macOS or Debian/Ubuntu setup
+bash kramme-cc-workflow/scripts/bootstrap-dev.sh --install
 
 # Fast default suite (Node + Python + Bats)
 make -C kramme-cc-workflow test
@@ -666,6 +668,10 @@ make -C kramme-cc-workflow pr-verify
 # Stronger release-candidate gate
 make -C kramme-cc-workflow verify
 ```
+
+The bootstrap covers Make, Bats, `jq`, ShellCheck, Ruff, mypy, Python, Node.js 20+, and locked Node dependencies. It uses Homebrew on macOS; on Debian/Ubuntu, Node.js 20+ with npm is a prerequisite and the remaining host packages use `apt-get`. It installs pinned Python tools in `.venv` and does not modify Git hooks. Skill changes also require a separate SkillSpector installation for the changed-skill security gate.
+
+The repository also provides an optional managed pre-commit configuration. After installing `pre-commit`, run `npm run hooks:install` to delegate commits to the existing `npm run check:pre-commit` gate; remove it with `npm run hooks:uninstall`. See [CONTRIBUTING.md](CONTRIBUTING.md#optional-pre-commit-check) for platform prerequisites.
 
 ## Adding Components
 

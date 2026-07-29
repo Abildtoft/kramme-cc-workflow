@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: contributor-fast-gate
+        name: Run the fast contributor gate
+        entry: npm run check:pre-commit
+        language: system
+        pass_filenames: false
+        always_run: true

@@ -1,11 +1,12 @@
-.PHONY: lint lint-shell lint-python lint-js typecheck-python format-check pre-commit preflight pr-verify verify test test-smoke test-bats test-bats-file test-node test-node-watch test-node-file test-python test-python-file test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage unit-coverage coverage-node coverage-python coverage-bats-contract check-python-static-inventory check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-coverage-inventory-deps check-shell-deps check-ruff-deps check-mypy-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
+.PHONY: lint lint-shell lint-python lint-js typecheck-python format-check pre-commit preflight pr-verify verify test test-smoke test-bootstrap test-bats test-bats-file test-node test-node-watch test-node-file test-python test-python-file test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage unit-coverage coverage-node coverage-python coverage-bats-contract check-python-static-inventory check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check bootstrap-check bootstrap-install install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-coverage-inventory-deps check-shell-deps check-ruff-deps check-mypy-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
 
-SHELLCHECK ?= shellcheck
-SHELLCHECK_SEVERITY ?= warning
-RUFF ?= ruff
-MYPY ?= mypy
 ROOT_DIR := $(abspath ..)
 PLUGIN_REL := $(shell basename "$(CURDIR)")
+DEV_VENV_BIN ?= $(ROOT_DIR)/.venv/bin
+SHELLCHECK ?= $(if $(wildcard $(DEV_VENV_BIN)/shellcheck),$(DEV_VENV_BIN)/shellcheck,shellcheck)
+SHELLCHECK_SEVERITY ?= warning
+RUFF ?= $(if $(wildcard $(DEV_VENV_BIN)/ruff),$(DEV_VENV_BIN)/ruff,ruff)
+MYPY ?= $(if $(wildcard $(DEV_VENV_BIN)/mypy),$(DEV_VENV_BIN)/mypy,mypy)
 PRETTIER ?= $(ROOT_DIR)/node_modules/.bin/prettier
 TSC ?= $(ROOT_DIR)/node_modules/.bin/tsc
 SKILLSPECTOR_FORMAT ?= markdown
@@ -22,6 +23,7 @@ CONVERTER_BATS_TEST_FILE = tests/convert-plugin.bats
 SMOKE_NODE_TEST_FILES = tests/node/frontmatter.test.js tests/node/scorer.test.js
 SMOKE_PYTHON_TEST_FILE = tests/python/test_git_command_parser.py
 SMOKE_BATS_TEST_FILE = tests/linear-issue-implement-guidance.bats
+BOOTSTRAP_BATS_TEST_FILE = tests/bootstrap-dev.bats
 PYTHON_TEST_DIR = tests/python
 PYTHON_TEST_PATTERN = test_*.py
 PYTHON_MAINTENANCE_TEST_DIR = ../.agents/skills/kramme:skill:audit-sources/scripts
@@ -143,10 +145,14 @@ skill-contracts: check-python-deps
 test: check-test-deps test-node test-python test-bats
 
 # Representative cross-language loop; measured locally at 8.9 seconds.
-test-smoke: check-test-deps
+test-smoke: check-test-deps test-bootstrap
 	@node --test $(SMOKE_NODE_TEST_FILES)
 	@python3 -m unittest $(SMOKE_PYTHON_TEST_FILE)
 	@bats $(SMOKE_BATS_TEST_FILE)
+
+# Focused entry point for the portable bootstrap contracts.
+test-bootstrap: check-bats-deps
+	@bats $(BOOTSTRAP_BATS_TEST_FILE)
 
 # Run all Bats integration tests
 test-bats: check-bats-deps
@@ -436,11 +442,15 @@ coverage-bats-contract: check-coverage-inventory-deps check-python-static-invent
 		echo "Shell source-to-contract inventory proxy: $$shell_count production $$shell_noun mapped to Bats contracts (not measured execution coverage)."; \
 		echo "Bats contract inventory: $$file_count files, $$test_count tests (all top-level tests/*.bats are discovered by tests/run-tests.sh)."
 
-# Install test dependencies
-install-test-deps:
-	@echo "Installing BATS..."
-	brew install bats-core jq
-	@echo "Done! Run 'make test' to execute tests."
+# Portable development setup. Check mode is read-only; install mode is explicit.
+bootstrap-check:
+	@bash scripts/bootstrap-dev.sh --check
+
+bootstrap-install:
+	@bash scripts/bootstrap-dev.sh --install
+
+# Backward-compatible setup alias.
+install-test-deps: bootstrap-install
 
 # Check verification prerequisites
 check-deps: check-static-deps check-test-deps check-format-deps check-security-changed-deps

@@ -31,6 +31,7 @@ Paths passed through file variables are relative to `kramme-cc-workflow/`.
 | Converter contracts and Codex hook output | `kramme-cc-workflow/scripts/convert-plugin/*.js`, `kramme-cc-workflow/hooks/hooks.json`, `kramme-cc-workflow/docs/hooks.md` | `make -C kramme-cc-workflow test-convert`, `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/codex-hook-compat.test.js` |
 | Codex converter | `kramme-cc-workflow/scripts/convert-plugin.js`, `kramme-cc-workflow/scripts/convert-plugin/`, `kramme-cc-workflow/scripts/install-codex.sh` | `make -C kramme-cc-workflow test-convert` |
 | Dev-server detection | `scripts/dev-server/*.sh`, `scripts/dev-server/README.md` | `bats kramme-cc-workflow/tests/dev-server-scripts.bats` |
+| Development bootstrap | `scripts/bootstrap-dev.sh` | `make -C kramme-cc-workflow test-bootstrap` |
 | PR diff and base helpers | `scripts/resolve-base.sh`, `scripts/collect-review-diff.sh` | `bats kramme-cc-workflow/tests/resolve-base.bats kramme-cc-workflow/tests/review-diff-scripts.bats` |
 | Release and changelog | `kramme-cc-workflow/scripts/release.py`, `kramme-cc-workflow/scripts/changelog.py`, `kramme-cc-workflow/RELEASE.md`, `kramme-cc-workflow/CHANGELOG.md` | `bats kramme-cc-workflow/tests/release.bats` |
 | Skill contract linting | `kramme-cc-workflow/scripts/lint-skill-contracts.py`, skill and agent frontmatter | `make -C kramme-cc-workflow test-skill-contracts`, `python3 kramme-cc-workflow/scripts/lint-skill-contracts.py` |

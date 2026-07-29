@@ -9,8 +9,11 @@ The hooks are tested using [BATS](https://github.com/bats-core/bats-core) (Bash 
 ### Setup
 
 ```bash
-npm ci --no-audit --no-fund
-make -C kramme-cc-workflow install-test-deps
+# Read-only prerequisite check
+bash kramme-cc-workflow/scripts/bootstrap-dev.sh --check
+
+# Explicit setup (Node.js 20+ with npm must already be available on Linux)
+bash kramme-cc-workflow/scripts/bootstrap-dev.sh --install
 ```
 
 ### Running Tests
