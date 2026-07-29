@@ -107,6 +107,7 @@
       "kramme-cc-workflow/skills/kramme:qa/references/diff-scope.md",
       "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md",
       "kramme-cc-workflow/skills/kramme:code:cleanup-ai/SKILL.md",
+      "kramme-cc-workflow/skills/kramme:code:breakdown-findings/references/reconcile-workflow.md",
       "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
       "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md"
     ],
@@ -1110,7 +1111,7 @@
       "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md",
       "frontmatter": {
         "name": "kramme:code:breakdown-findings",
-        "argument-hint": "[--auto] [--resume|--reconcile] [--] [source-file-or-content ...]",
+        "argument-hint": "[--auto] [--resume|--reconcile] [--all | plan-file ...] [--worktree <path>] [--source <ref>] [--base <ref>] [--] [source ...]",
         "disable-model-invocation": "true",
         "user-invocable": "true"
       },
@@ -1118,7 +1119,46 @@
         "`PR_PLAN_INDEX.md`, `PR_PLAN_REJECTIONS.md`, and `PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md`",
         "PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md` in the project root",
         "PLAN: Proposed themes",
+        "A zero-scope invocation is valid and means every plan referenced by `PR_PLAN_INDEX.md`",
+        "`--auto` may appear before or after explicit plan paths",
         "NOTICED BUT NOT TOUCHING"
+      ]
+    },
+    {
+      "name": "pr-plan-reconcile-safety",
+      "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/references/reconcile-workflow.md",
+      "contains": [
+        "every plan path referenced by `PR_PLAN_INDEX.md`",
+        "Load every indexed plan that exists read-only",
+        "Before running any per-plan evidence command, validate every update-scoped plan that exists",
+        "Never run a diff or status command with an empty or unvalidated path set",
+        "GIT_EVIDENCE_AVAILABLE=false",
+        "planning-artifact cleanliness and post-write verification commands from `PLAN_ROOT`",
+        "\"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh\"",
+        "git -C \"$EVIDENCE_ROOT\" diff --name-only \"$MERGE_BASE\"...\"$SOURCE_COMMIT\"",
+        "A missing or moved cited file is `STALE`",
+        "Read bounded review evidence when it clearly corresponds to an update-scoped plan",
+        "Canonical untracked planning artifacts already present at the start of the run",
+        "expected generated working-artifact baseline, not pre-existing edits solely because they are untracked",
+        "pre-write content hash still matches",
+        "pre-existing tracked edits, unexpected untracked targets, baseline hash drift, or unknown cleanliness",
+        "update the matching existing plan header's `Status:` field in the same write"
+      ]
+    },
+    {
+      "name": "pr-plan-split-reconcile-scope",
+      "path": "kramme-cc-workflow/skills/kramme:pr:plan-split/SKILL.md",
+      "contains": [
+        "reconcile each slice against its own evidence",
+        "Omit the plan path only when the evidence root or source represents the complete indexed plan set"
+      ]
+    },
+    {
+      "name": "pr-plan-reconcile-migration-guidance",
+      "path": "README.md",
+      "contains": [
+        "Former no-scope calls must add `--all`",
+        "zero-scope reconcile intentionally retains `kramme:code:breakdown-findings`'s existing all-indexed behavior"
       ]
     },
     {

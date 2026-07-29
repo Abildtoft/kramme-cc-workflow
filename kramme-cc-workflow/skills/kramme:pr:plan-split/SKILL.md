@@ -228,6 +228,8 @@ Implement this plan in its **own dedicated git worktree**, separate from every o
   ```
 ````
 
+After slices are implemented, reviewed, or rebased, reconcile each slice against its own evidence with `kramme:code:breakdown-findings --reconcile <PR_PLAN_W##L_*.md>`. Add `--worktree <path>` when that slice's implementation evidence lives in another worktree, or `--source <ref>` when its branch or commit is the evidence source. Omit the plan path only when the evidence root or source represents the complete indexed plan set.
+
 ## Usage
 
 ```
