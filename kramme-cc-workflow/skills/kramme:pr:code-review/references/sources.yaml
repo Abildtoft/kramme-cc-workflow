@@ -29,3 +29,9 @@ sources:
     rationale: "The lean review dimension adapts Ponytail's deletion-first over-engineering taxonomy and preference for existing, stdlib, native, or smaller code before new ownership."
     last_reviewed_at: 2026-07-02
     baseline_hash: "sha256:97be9e45d9f6ae8e251a363e08896bfd7ede9c1fa4027a183b40292030be53cb"
+  - id: openclaw-autoreview
+    url: https://github.com/openclaw/agent-skills/blob/main/skills/autoreview/SKILL.md
+    title: "OpenClaw agent-skills - autoreview"
+    rationale: "The closeout review contract, advisory-finding discipline, and rerun-after-fix convergence loop are adapted into the opt-in closeout loop."
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:ebc732cd3df231ec5a29fafb798ef27a9178ca3fbc1070ab32684df2c2299f41"

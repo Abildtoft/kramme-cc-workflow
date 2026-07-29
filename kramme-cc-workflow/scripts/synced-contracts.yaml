@@ -499,12 +499,13 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md",
       "frontmatter": {
         "name": "kramme:pr:code-review",
-        "argument-hint": "[aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--parallel] [parallel] [--team] [--inline]",
+        "argument-hint": "[aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--parallel] [parallel] [--team] [--inline] [--loop]",
         "disable-model-invocation": "false",
         "user-invocable": "true"
       },
       "contains": [
         "Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline.",
+        "set `LOOP_MODE=true` and remove that flag",
         "If `--base <branch>` flag",
         "If `--parallel` appears anywhere in `$ARGUMENTS`",
         "COLLECT_ARGS=(--strict --format json)",
