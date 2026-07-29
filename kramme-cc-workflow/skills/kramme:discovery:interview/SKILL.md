@@ -2,7 +2,7 @@
 name: kramme:discovery:interview
 description: Conduct an in-depth interview about a topic/proposal to uncover requirements, priorities, and non-goals, then create a comprehensive plan. Pass --ideate for divergent framing, --decision-tree / depth-first language to resolve tightly coupled decisions one question at a time, or --research to launch topic-specific research agents before the interview.
 argument-hint: "[file-path or topic description] [--ideate] [--decision-tree] [--research]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 kramme-platforms: [claude-code, codex]
 ---
@@ -48,6 +48,8 @@ A sibling skill may call this skill as the interview engine without changing thi
 - **Confidence target** — either `topic-coverage` (the standalone default) or an evidence-confidence percentage plus any Work Context profile.
 - **Interview mode** — coverage or decision-tree, including a user-requested mode switch.
 - **Decision-tree context** — optional caller-owned guidance for selecting the root, prioritizing branches, and crediting decisions already answered by source artifacts.
+
+For delegated calls, initialize `decision_tree_requested` from **Interview mode** before Step 0: set `decision_tree_requested=true` for `decision-tree` and `false` for `coverage`. Do not require the caller to repeat the mode as a user-facing argument.
 
 For delegated calls:
 
@@ -233,7 +235,7 @@ Use the default coverage rounds unless `decision_tree_requested=true`.
 Select one progress profile:
 
 - **Topic coverage** — default for direct standalone use. Use the topic dimensions, 1–4-question rounds, progress display, and completion criteria from `references/interview-operations.md`.
-- **Evidence confidence** — use when a delegated caller supplies a confidence percentage. Read `references/confidence-framework.md`; use the Work Context adjustments, evidence ledger, 1–3-question rounds, dashboard, and target threshold defined there.
+- **Evidence confidence** — use when a delegated caller supplies a confidence percentage. Read `references/confidence-framework.md`; use the Work Context adjustments, evidence ledger, dashboard, and target threshold defined there.
 
 In **Decision-Tree mode**, read `references/decision-tree-mode.md`, identify the root decision for the topic type, map first-level dependencies, and resolve branches depth-first. Ask one question at a time by default; batch only routine independent sibling questions. When the active tree is resolved, return to the active progress profile for any remaining independent dimensions.
 
