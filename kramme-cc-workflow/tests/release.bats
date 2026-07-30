@@ -493,3 +493,31 @@ SH
   [ -f "$TMP_ROOT/.git/index" ]
   [ "$(git hash-object "$TMP_ROOT/index.before")" = "$(git hash-object "$TMP_ROOT/.git/index")" ]
 }
+
+@test "release workflow isolates SkillSpector from verification dependencies" {
+  WORKFLOW="$BATS_TEST_DIRNAME/../../.github/workflows/release.yml"
+  workflow_step() {
+    local name="$1"
+    sed -n "/^      - name: $name\$/,/^      - name: /p" "$WORKFLOW" | sed '$d'
+  }
+
+  verification_install="$(workflow_step "Install release verification dependencies")"
+  scanner_install="$(workflow_step "Install isolated SkillSpector")"
+  dependency_check="$(workflow_step "Check release verification dependencies")"
+  dry_run_verification="$(workflow_step "Run dry-run release verification")"
+  scanner_run="$(workflow_step "Run SkillSpector release scan")"
+
+  [ -n "$verification_install" ]
+  [ -n "$scanner_install" ]
+  [ -n "$dependency_check" ]
+  [ -n "$dry_run_verification" ]
+  [ -n "$scanner_run" ]
+  [[ "$verification_install" != *"SkillSpector.git"* ]]
+  [[ "$scanner_install" == *'python3 -m venv "$RUNNER_TEMP/skillspector-venv"'* ]]
+  [[ "$scanner_install" == *'"$RUNNER_TEMP/skillspector-venv/bin/python" -m pip install'* ]]
+  [[ "$scanner_install" == *'ln -s "$RUNNER_TEMP/skillspector-venv/bin/skillspector" "$RUNNER_TEMP/skillspector-bin/skillspector"'* ]]
+  [[ "$scanner_install" != *"GITHUB_PATH"* ]]
+  [[ "$dependency_check" == *'PATH="$RUNNER_TEMP/skillspector-bin:$PATH"'* ]]
+  [[ "$dry_run_verification" == *'PATH="$RUNNER_TEMP/skillspector-bin:$PATH"'* ]]
+  [[ "$scanner_run" == *'PATH="$RUNNER_TEMP/skillspector-bin:$PATH"'* ]]
+}

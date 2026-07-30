@@ -64,20 +64,28 @@ jobs:
           sudo apt-get update && sudo apt-get install -y bats jq
           python3 -m pip install --upgrade pip
           python3 -m pip install -r requirements-dev.txt
-          python3 -m pip install "git+https://github.com/NVIDIA/SkillSpector.git@${SKILLSPECTOR_REF}"
+
+      - name: Install isolated SkillSpector
+        run: |
+          python3 -m venv "$RUNNER_TEMP/skillspector-venv"
+          "$RUNNER_TEMP/skillspector-venv/bin/python" -m pip install --upgrade pip
+          "$RUNNER_TEMP/skillspector-venv/bin/python" -m pip install "git+https://github.com/NVIDIA/SkillSpector.git@${SKILLSPECTOR_REF}"
+          mkdir -p "$RUNNER_TEMP/skillspector-bin"
+          ln -s "$RUNNER_TEMP/skillspector-venv/bin/skillspector" "$RUNNER_TEMP/skillspector-bin/skillspector"
 
       - name: Check release verification dependencies
-        run: make -C kramme-cc-workflow check-deps
+        run: PATH="$RUNNER_TEMP/skillspector-bin:$PATH" make -C kramme-cc-workflow check-deps
 
       - name: Run dry-run release verification
         if: ${{ inputs.dry_run }}
-        run: make -C kramme-cc-workflow verify
+        run: PATH="$RUNNER_TEMP/skillspector-bin:$PATH" make -C kramme-cc-workflow verify
 
       - name: Run SkillSpector release scan
         env:
           SKILLSPECTOR_FAIL_ON: none
           SKILLSPECTOR_FORMAT: markdown
         run: |
+          export PATH="$RUNNER_TEMP/skillspector-bin:$PATH"
           set -o pipefail
           SCAN_LOG="$RUNNER_TEMP/skillspector-release-scan.log"
           SUMMARY_FILE="$RUNNER_TEMP/skillspector-summary.md"
