@@ -3,6 +3,7 @@
 # Upstream repository: https://github.com/EveryInc/compound-engineering-plugin
 # Upstream commit reviewed: 6f9ab03a031c054a8046659926251fb6c149269f
 # License: MIT, Copyright (c) 2025 Every.
+# Full notice: ../references/EveryInc-LICENSE
 #
 """Extract session metadata from Claude Code, Codex, and Cursor JSONL files.
 
@@ -17,6 +18,7 @@ Auto-detects platform from the JSONL structure.
 Outputs one JSON object per file, one per line.
 Includes a final _meta line with processing stats.
 """
+
 from __future__ import annotations
 
 import itertools
@@ -73,11 +75,7 @@ def update_codex(
             session_id = string_field(payload, "id")
             if not session_id:
                 raise TranscriptShapeError("session_meta payload has no session id")
-            timestamp = (
-                string_field(payload, "timestamp")
-                if "timestamp" in payload
-                else string_field(obj, "timestamp")
-            )
+            timestamp = string_field(payload, "timestamp") if "timestamp" in payload else string_field(obj, "timestamp")
             candidate: Metadata = {
                 "platform": "codex",
                 "cwd": string_field(payload, "cwd"),
@@ -238,20 +236,14 @@ def _iter_user_assistant_text(
                         continue
                     if event_type == "response_item":
                         payload = object_field(obj, "payload")
-                        if (
-                            payload.get("type") == "message"
-                            and payload.get("role") == "assistant"
-                        ):
+                        if payload.get("type") == "message" and payload.get("role") == "assistant":
                             for block in object_list_field(payload, "content"):
                                 if block.get("type") == "output_text":
                                     yield string_field(block, "text")
                         continue
 
                     # Cursor: role-tagged with no top-level type
-                    if (
-                        obj.get("role") in ("user", "assistant")
-                        and "type" not in obj
-                    ):
+                    if obj.get("role") in ("user", "assistant") and "type" not in obj:
                         message = object_field(obj, "message")
                         for block in object_list_field(message, "content"):
                             if block.get("type") == "text":
@@ -285,11 +277,7 @@ class KeywordCounter:
         collapsed = combined.replace(self.keyword, marker)
         self.count += collapsed.count(marker)
         unmatched_tail = collapsed[collapsed.rfind(marker) + 1 :]
-        self.remainder = (
-            unmatched_tail[-len(self.keyword) + 1 :]
-            if len(self.keyword) > 1
-            else ""
-        )
+        self.remainder = unmatched_tail[-len(self.keyword) + 1 :] if len(self.keyword) > 1 else ""
 
     def _feed_without_marker(self, combined: str) -> None:
         """Fall back when unusually broad text contains every reserved marker."""

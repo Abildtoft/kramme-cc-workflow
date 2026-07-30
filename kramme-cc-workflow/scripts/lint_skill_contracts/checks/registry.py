@@ -15,6 +15,7 @@ from .hooks_json import check_hooks_json
 from .marker_manifest import check_marker_manifests
 from .mechanical import check_mechanical
 from .readme_sync import check_readme_skill_sync
+from .source_provenance import check_source_provenance
 from .types import CheckFunc, CheckResult, LintContext
 from .ui_relevance import check_ui_relevance_contracts
 
@@ -26,6 +27,7 @@ CHECKS: tuple[tuple[str, CheckFunc], ...] = (
     ("base_diff_scope", check_base_diff_scope),
     ("ui_relevance_contracts", check_ui_relevance_contracts),
     ("marker_manifests", check_marker_manifests),
+    ("source_provenance", check_source_provenance),
     ("epilogue_order", check_epilogue_order),
     ("hooks_json", check_hooks_json),
     ("readme_skill_sync", check_readme_skill_sync),

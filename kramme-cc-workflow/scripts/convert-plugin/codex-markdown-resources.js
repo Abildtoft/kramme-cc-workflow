@@ -6,7 +6,7 @@ const { transformContentForCodex } = require("./codex-transformer");
 const {
   rewriteCodexSharedScriptReferences,
 } = require("./codex-shared-scripts");
-const { readText, writeText } = require("./filesystem");
+const { pathExists, readText, writeText } = require("./filesystem");
 
 /**
  * @typedef {import("./contracts").CodexTransformOptions} CodexTransformOptions
@@ -25,6 +25,9 @@ async function rewriteCodexMarkdownResourcesFromSource(
     const sourcePath = path.join(sourceDir, entry.name);
     const targetPath = path.join(targetDir, entry.name);
     if (entry.isDirectory()) {
+      if (!(await pathExists(targetPath))) {
+        continue;
+      }
       await rewriteCodexMarkdownResourcesFromSource(
         sourcePath,
         targetPath,

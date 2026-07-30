@@ -37,12 +37,10 @@
       "id",
       "title",
       "rationale",
+      "usage",
       "last_reviewed_at",
       "baseline_hash"
     ],
-    "one_of_fields": [
-      "url",
-      "context7_library"
-    ]
+    "one_of_fields": ["url", "context7_library"]
   }
 }

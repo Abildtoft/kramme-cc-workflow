@@ -3,11 +3,13 @@ sources:
     url: https://owasp.org/Top10/2025/
     title: "OWASP Top 10:2025"
     rationale: "The author-time category pattern guide in references/owasp-top-10.md follows the OWASP Top 10:2025 vulnerability taxonomy."
+    usage: inspiration
     last_reviewed_at: 2026-07-03
     baseline_hash: "sha256:545e65007afdd168218f5c3c883db802ccf9d61d53b80e01a002d81b4e8da10f"
   - id: addy-security-and-hardening
     url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/security-and-hardening/SKILL.md
     title: "Addy Osmani agent-skills - security and hardening"
     rationale: "The Three-Tier Boundary System, ASK FIRST gating, and security-hardening marker vocabulary are adapted from this source."
+    usage: inspiration
     last_reviewed_at: 2026-07-06
     baseline_hash: "sha256:8fed058a520281384ed1bbfddbfb3d2b12479459231c67ae0d1f0d765bb52f95"

@@ -1,6 +1,6 @@
 # AI Writing Patterns Reference
 
-Based on Wikipedia's "Signs of AI writing" page, maintained by WikiProject AI Cleanup.
+Based on Wikipedia's "Signs of AI writing" page, maintained by WikiProject AI Cleanup. This adapted reference is licensed under CC BY-SA 4.0; attribution, modification, and license details are in `WIKIPEDIA-CONTENT-LICENSE.md`.
 
 ---
 

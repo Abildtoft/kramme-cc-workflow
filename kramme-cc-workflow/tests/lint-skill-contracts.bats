@@ -2583,6 +2583,88 @@ EOF
   [[ "$output" == *"required_fields must come from contract_schema"* ]]
 }
 
+@test "source provenance rejects committed source snapshots" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/references/sources-snapshot/upstream.md" <<'EOF'
+copied upstream body
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "source_provenance": {
+    "manifest_glob": "kramme-cc-workflow/skills/*/references/sources.yaml",
+    "forbidden_snapshot_globs": [
+      "kramme-cc-workflow/skills/*/references/sources-snapshot"
+    ]
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"committed upstream source bodies are forbidden"* ]]
+  [[ "$output" == *"sources-snapshot"* ]]
+}
+
+@test "source provenance requires copied-source rights and immutable origin" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/references/sources.yaml" <<'EOF'
+sources:
+  - id: copied-source
+    url: https://example.com/copied
+    title: Copied source
+    rationale: "Copied into scripts/copied.sh."
+    usage: copied
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:abc123"
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "source_provenance": {
+    "manifest_glob": "kramme-cc-workflow/skills/*/references/sources.yaml"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"copied entry 'copied-source' is missing non-empty 'license'"* ]]
+  [[ "$output" == *"copied entry 'copied-source' is missing non-empty 'notice'"* ]]
+  [[ "$output" == *"copied entry 'copied-source' is missing non-empty 'upstream_path'"* ]]
+  [[ "$output" == *"copied entry 'copied-source' is missing an immutable upstream revision"* ]]
+}
+
+@test "source provenance accepts copied source with skill-local notice" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/references/sources.yaml" <<'EOF'
+sources:
+  - id: copied-source
+    url: https://example.com/copied
+    title: Copied source
+    rationale: "Copied into scripts/copied.sh."
+    usage: copied
+    license: MIT
+    notice: references/UPSTREAM-LICENSE
+    upstream_path: scripts/copied.sh
+    upstream_commit: 0123456789abcdef0123456789abcdef01234567
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:abc123"
+EOF
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/references/UPSTREAM-LICENSE" <<'EOF'
+Upstream license notice
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "source_provenance": {
+    "manifest_glob": "kramme-cc-workflow/skills/*/references/sources.yaml"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
 @test "base diff scope rejects hand-rolled remote base snippets" {
   write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" $'```bash\nBASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null)\ngit fetch origin refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}\ngit merge-base "origin/${BASE_BRANCH}" HEAD\ngit diff --name-only "origin/$BASE_BRANCH"...HEAD\n```'
   write_file "$TMP_ROOT/registry.yaml" <<'EOF'

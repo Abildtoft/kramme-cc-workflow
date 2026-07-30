@@ -1,6 +1,6 @@
 # Experiment Worker Prompt Template
 
-Adapted from EveryInc compound-engineering-plugin `ce-optimize/references/experiment-prompt-template.md`, reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
+Adapted from EveryInc compound-engineering-plugin `ce-optimize/references/experiment-prompt-template.md`, reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`. Licensed under MIT; see `EveryInc-LICENSE` for the complete notice.
 
 Use this template to dispatch one optimization experiment to a worker. The orchestrator fills the variables before dispatch.
 

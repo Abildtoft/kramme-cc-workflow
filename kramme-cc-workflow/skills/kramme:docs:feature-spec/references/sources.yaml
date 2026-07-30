@@ -3,23 +3,27 @@ sources:
     url: https://github.com/addyosmani/agent-skills/tree/main/skills/spec-driven-development
     title: "Addy Osmani agent-skills - spec-driven development"
     rationale: "The lightweight feature-spec workflow and implementation-gating conventions are adapted from this source."
+    usage: inspiration
     last_reviewed_at: 2026-06-22
     baseline_hash: "sha256:a068b68120f657970d6becb81f2e1577610320064aa6a78c60dcbac2588da8c0"
   - id: pocock-to-spec
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/to-spec/SKILL.md
     title: "Matt Pocock skills - to-spec"
     rationale: "The no-interview synthesize-from-current-context workflow, repo/domain grounding, and testing-seam check before drafting the spec are adapted from this source."
+    usage: inspiration
     last_reviewed_at: 2026-07-09
     baseline_hash: "sha256:267638edd513b5918de626ad5605d261952abb7428cb308869c663ca924e93e7"
   - id: compound-ce-strategy
     url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-strategy
     title: "EveryInc compound-engineering-plugin - ce-strategy"
     rationale: "The optional STRATEGY.md grounding, strategy conflict handling, and stale product-context markers before drafting a feature spec are adapted from this source."
+    usage: inspiration
     last_reviewed_at: 2026-06-22
     baseline_hash: "sha256:27cbff1cc21d22c23f9a2015fe9bd75434d13e9a128aa640e3e04fe47ba7acb8"
   - id: compound-ce-plan
     url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-plan
     title: "EveryInc compound-engineering-plugin - ce-plan"
     rationale: "The strategy-aware transition from product context into scoped planning artifacts is informed by this source."
+    usage: inspiration
     last_reviewed_at: 2026-06-22
     baseline_hash: "sha256:93478c870fa2884376910fb1f7202e85d8524ed63668f513281d1c5b6fd373c3"

@@ -6,5 +6,6 @@ sources:
     upstream_path: skills/engineering/wayfinder/SKILL.md
     license: "MIT; this skill adapts workflow concepts and does not copy upstream files."
     rationale: "The map-as-index model, typed decision tickets, fog-of-war frontier, one-ticket-per-session rule, and planning-not-doing boundary are adapted from this source."
+    usage: inspiration
     last_reviewed_at: 2026-07-10
     baseline_hash: "sha256:bef437de697fb6984a8a90b7fd82f128609148d6e02f635ce419d03555b351e1"

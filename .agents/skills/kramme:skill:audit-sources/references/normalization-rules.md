@@ -1,12 +1,12 @@
 # Normalization Rules
 
-Defines what `scripts/normalize.py` strips and keeps when turning a fetched source into a stable snapshot. Stability matters: a source that hasn't meaningfully changed must produce the same hash on re-fetch, otherwise every audit will trigger expensive LLM comparisons.
+Defines what `scripts/normalize.py` strips and keeps when turning a transient fetch into stable hash input. Stability matters: a source that has not meaningfully changed must produce the same hash on re-fetch, otherwise every audit will trigger expensive model comparisons.
 
 ## Goals
 
 1. **Stable hash for unchanged content.** Cosmetic noise (timestamps, build IDs, ad slots) must not flip the hash.
 2. **Preserve substance.** Headings, body prose, code blocks, lists, and tables must survive intact so the LLM comparison is meaningful.
-3. **Plain text output.** Snapshots are committed as readable markdown, not raw HTML.
+3. **Transient plain-text output.** Normalized content is used only for hashing and the current audit comparison; it is never committed or retained as a source-body snapshot.
 
 ## What to strip
 
@@ -51,7 +51,7 @@ After strip, before hashing:
 
 ## Hash input
 
-The sha256 hash is computed over the **final normalized markdown** as UTF-8 bytes. The same string that gets written to `references/sources-snapshot/<id>.md` is the string that gets hashed. No hidden delta.
+The sha256 hash is computed over the **final normalized markdown** as UTF-8 bytes. Only the resulting `sha256:<hex>` value is persisted in `references/sources.yaml`; the normalized body is discarded after the audit.
 
 ## Stability test
 

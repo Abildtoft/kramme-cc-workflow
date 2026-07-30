@@ -107,4 +107,4 @@ This skill writes safe extraction artifacts to `.context/session-search/<timesta
 
 ## Source Tracking
 
-`references/sources.yaml` records the upstream `ce-sessions` source. Do not load it during normal use unless auditing or updating source attribution.
+`references/sources.yaml` records the upstream `ce-compound` session-history scripts. Do not load it during normal use unless auditing or updating source attribution.

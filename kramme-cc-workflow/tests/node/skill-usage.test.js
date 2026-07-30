@@ -69,6 +69,24 @@ async function writeRepeatedFile(file, line, targetBytes) {
   }
 }
 
+/** @param {string} file */
+async function readIsDenied(file) {
+  try {
+    await fs.readFile(file);
+    return false;
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "EACCES"
+    ) {
+      return true;
+    }
+    throw error;
+  }
+}
+
 /** @param {string[]} args */
 function runUsageWithRss(args) {
   const wrapper = [
@@ -267,23 +285,23 @@ test("strict reports preserve empty first-run defaults", async (t) => {
 });
 
 test("strict reports diagnose inaccessible implicit state", async (t) => {
-  if (typeof process.getuid === "function" && process.getuid() === 0) {
-    t.skip("permission checks require a non-root user");
-    return;
-  }
-
   const root = await tempDir(t);
   const stateHome = path.join(root, "state");
   const usageDir = path.join(stateHome, "kramme-cc-workflow");
+  const usageFile = path.join(usageDir, "skill-usage.jsonl");
   await fs.mkdir(usageDir, { recursive: true });
   await fs.writeFile(
-    path.join(usageDir, "skill-usage.jsonl"),
+    usageFile,
     `${JSON.stringify({ skill: "kramme:hidden", kind: "explicit" })}\n`,
   );
   await fs.chmod(stateHome, 0o000);
 
   let result;
   try {
+    if (!(await readIsDenied(usageFile))) {
+      t.skip("filesystem permissions do not deny reads in this environment");
+      return;
+    }
     result = runUsage(["report", "--json", "--strict"], {
       XDG_STATE_HOME: stateHome,
       KRAMME_SKILL_USAGE_FILE: "",
@@ -302,7 +320,7 @@ test("strict reports diagnose inaccessible implicit state", async (t) => {
   });
   assert.equal(
     result.stderr,
-    `skill-usage: read failure file=${path.join(usageDir, "skill-usage.jsonl")} reason=EACCES\n`,
+    `skill-usage: read failure file=${usageFile} reason=EACCES\n`,
   );
 });
 
@@ -359,8 +377,7 @@ test("scan tolerates corrupt lines and unreadable inputs without losing valid to
   );
   await fs.chmod(unreadable, 0o000);
 
-  const permissionChecksWork =
-    typeof process.getuid !== "function" || process.getuid() !== 0;
+  const permissionChecksWork = await readIsDenied(unreadable);
   const failedInput = permissionChecksWork
     ? unreadable
     : path.join(root, "02-missing.jsonl");

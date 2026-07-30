@@ -3,11 +3,13 @@ sources:
     url: https://github.github.com/gh-stack/
     title: "GitHub Stacked Pull Requests — documentation"
     rationale: "The gh-stack single-working-tree recipe in the Stack strategy (init/add/submit --auto, sync after merges, link for adopting manual chains) is derived from the official documentation."
+    usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: ""
   - id: github-gh-stack-v0.1.0-submit
     url: https://github.com/github/gh-stack/blob/v0.1.0/cmd/submit.go
     title: "gh-stack v0.1.0 submit implementation"
     rationale: "The Stack strategy's description of submit --auto title and body generation follows the tagged defaultPRTitleBody and generatePRBody behavior."
+    usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: ""

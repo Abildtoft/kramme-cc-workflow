@@ -31,9 +31,9 @@ Before Step 1, parse `$ARGUMENTS` for `--auto`. Treat `--auto` as an alias for `
    - Otherwise, discover sessions for the current repo over the last 30 days:
      ```bash
      REPO_NAME=$(basename "$(git rev-parse --show-toplevel)")
-     bash <session-search-scripts>/discover-sessions.sh "$REPO_NAME" 30 \
+     bash "<session-search-scripts>/discover-sessions.sh" "$REPO_NAME" 30 \
        | tr '\n' '\0' \
-       | xargs -0 python3 <session-search-scripts>/extract-metadata.py --cwd-filter "$REPO_NAME"
+       | xargs -0 python3 "<session-search-scripts>/extract-metadata.py" --cwd-filter "$REPO_NAME"
      ```
    - Prefer JSONL session files sorted by recency. Cap the metadata pass at about 30 sessions and the skeleton deep dive at 10 sessions. Skip parse failures and list them under `UNVERIFIED`.
    - If no session source is readable, ask for an export path and stop.
@@ -42,7 +42,7 @@ Before Step 1, parse `$ARGUMENTS` for `--auto`. Treat `--auto` as an alias for `
    - Create `.context/session-search/<timestamp>/automate-repeats/`.
    - For each selected session, run:
      ```bash
-     python3 <session-search-scripts>/extract-skeleton.py --output "$SCRATCH/<session-id>.skeleton.txt" < "$SESSION_FILE"
+     python3 "<session-search-scripts>/extract-skeleton.py" --output "$SCRATCH/<session-id>.skeleton.txt" < "$SESSION_FILE"
      ```
    - Run `extract-errors.py` only for sessions where failed commands appear likely to explain a repeated workflow.
    - Read only the scratch skeleton/error files and metadata for pattern analysis. Never read raw transcript files directly.
@@ -82,16 +82,18 @@ Before Step 1, parse `$ARGUMENTS` for `--auto`. Treat `--auto` as an alias for `
    - Keep each generated `SKILL.md` focused on the workflow. Avoid placeholder docs, READMEs, and large reference files unless the candidate truly needs them.
 
 10. Scaffold subagents simply.
-   - Use `agents/{agent-name}.md` when the current workspace's agent root is `agents/`; use `kramme-cc-workflow/agents/{agent-name}.md` when that plugin layout exists.
-   - If the destination path already exists, do not overwrite it. Skip the candidate and report it under `NOT CREATED` with reason `already exists`.
-   - Include frontmatter fields: `name`, `description`, `model`, and `color`.
-   - Keep the body to mission, scope boundaries, analysis process, and output format.
-   - Make the agent read-only by default unless the role explicitly requires edits and the user's request authorizes side effects.
+
+- Use `agents/{agent-name}.md` when the current workspace's agent root is `agents/`; use `kramme-cc-workflow/agents/{agent-name}.md` when that plugin layout exists.
+- If the destination path already exists, do not overwrite it. Skip the candidate and report it under `NOT CREATED` with reason `already exists`.
+- Include frontmatter fields: `name`, `description`, `model`, and `color`.
+- Keep the body to mission, scope boundaries, analysis process, and output format.
+- Make the agent read-only by default unless the role explicitly requires edits and the user's request authorizes side effects.
 
 11. Update local indexes only when required by the destination repo's own instructions.
-   - If a README or published skill index already lists all skills or agents, add concise rows for new components.
-   - Update any visible skill or agent count in the same file when it is clearly maintained by hand.
-   - Do not add extra documentation files inside the new skill or agent directories.
+
+- If a README or published skill index already lists all skills or agents, add concise rows for new components.
+- Update any visible skill or agent count in the same file when it is clearly maintained by hand.
+- Do not add extra documentation files inside the new skill or agent directories.
 
 12. Close with an audit-style summary.
     - `REVIEWED`: session source count and date range if known.
@@ -101,4 +103,4 @@ Before Step 1, parse `$ARGUMENTS` for `--auto`. Treat `--auto` as an alias for `
 
 ## Source Tracking
 
-`references/sources.yaml` records the upstream `ce-sessions` source for the shared discovery/extraction substrate and routing model. Do not load it during normal use unless auditing or updating source attribution.
+`references/sources.yaml` records the upstream `ce-compound` session-history scripts for the shared discovery/extraction substrate and routing model. Do not load it during normal use unless auditing or updating source attribution.

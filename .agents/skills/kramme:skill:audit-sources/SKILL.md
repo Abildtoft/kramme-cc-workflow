@@ -1,6 +1,6 @@
 ---
 name: kramme:skill:audit-sources
-description: "Audit one or more skills in this repo against their declared sources of inspiration (official docs, blog posts, library READMEs, papers) to detect upstream changes worth incorporating. On first run for a skill, scan its SKILL.md and references/ to propose a sources manifest. On subsequent runs, fetch each source, compare against a stored baseline snapshot, and surface concrete additions worth folding into the skill. Use when maintaining the repo and you want to refresh skills against their inspirations. Not for editing skills, validating frontmatter, or auditing code dependencies."
+description: "Audit one or more skills in this repo against their declared sources of inspiration (official docs, blog posts, library READMEs, papers) to detect upstream changes worth incorporating. On first run for a skill, scan its SKILL.md and references/ to propose a sources manifest. On subsequent runs, fetch each source transiently, compare its normalized hash to the stored baseline hash, and surface concrete additions without retaining the source body. Use when maintaining the repo and you want to refresh skills against their inspirations. Not for editing skills, validating frontmatter, or auditing code dependencies."
 argument-hint: '[skill-name | glob | "all"]'
 disable-model-invocation: true
 user-invocable: true
@@ -15,8 +15,10 @@ This is a local repository-maintenance skill under `.agents/skills/`. It is inte
 This skill operates in three modes, picked automatically based on per-skill state:
 
 - **Bootstrap** — no `references/sources.yaml` exists yet for the target skill. Propose one from URLs and library names found in the skill's content.
-- **Audit** — a manifest exists. Fetch each declared source, normalize, hash, compare to stored baseline. On change, ask the model to surface valuable additions against the current `SKILL.md`.
-- **Refresh** — after an audit, optionally update baselines and `last_reviewed_at`.
+- **Audit** — a manifest exists. Fetch each declared source transiently, normalize it, and compare its hash to the stored baseline hash. On change, ask the model to surface valuable additions against the current `SKILL.md`.
+- **Refresh** — after an audit, optionally update hashes and `last_reviewed_at`.
+
+Fetched source bodies are never repository artifacts. Do not create or commit a `references/sources-snapshot/` directory. Retain only source URLs, original provenance notes, review dates, hashes, and paraphrased audit findings.
 
 ---
 
@@ -48,6 +50,7 @@ Goal: propose a `sources.yaml` for a skill that has none yet, then write it afte
    - Read the target skill's `SKILL.md` and every file under its `references/`.
    - Extract candidate sources: external URLs, named libraries (for resolution via a docs MCP if present), and named-but-unlinked references ("OWASP Top 10", "Hyrum's Law").
    - Distinguish _inspiration sources_ (the skill's content is derived from them) from _illustrative references_ (mentioned but not the basis of the skill). Only inspiration sources go into the manifest.
+   - Classify each source as `usage: inspiration` or `usage: copied`. Copied entries require a verified compatible `license`, a skill-relative `notice` file containing the complete required notice, an exact `upstream_path`, and an immutable upstream commit, revision, release, or version.
 3. Present the proposed `sources.yaml` to the user for review and editing. Ask the user to confirm:
    - "Accept proposed sources, edit before writing, or skip this skill?"
 4. On accept, write the file to `<target-skill-dir>/references/sources.yaml`. Set `last_reviewed_at` to today and leave `baseline_hash` empty (Phase 4 will populate it on first fetch).
@@ -59,26 +62,29 @@ Goal: fetch each declared source, decide whether it has changed, and on change a
 
 1. Read `references/sources.yaml` for the target skill.
 2. For each source entry:
-   1. **Fetch.** If `context7_library` is set, fetch the library docs via the available docs MCP if present (e.g. Context7's `resolve-library-id` + `query-docs`); otherwise fall back to a web fetch of the library's canonical docs URL. Else if `url` is set, fetch the URL via the runtime's web-fetch tool. On fetch error, record the error in the report and continue to the next source.
-   2. **Normalize and hash.** Pipe the fetched content through `scripts/normalize.py` (see `references/normalization-rules.md`). Use `--type markdown` for raw Markdown sources such as GitHub README files, `.md` URLs, and docs-MCP markdown output; use `--type html` for fetched HTML pages. The script writes normalized content to stdout and prints the sha256 hash to stderr.
+   1. **Fetch or extract.**
+      - If the entry has `graphql_definitions`, require an HTTPS `url` and run `python3 scripts/extract_graphql_definitions.py --url "<url>" <name>...`, passing the listed names in manifest order. The helper fetches the schema inside the local process so the full response never enters model context; capture only its bounded stdout. Treat a fetch error, missing definition, or malformed definition as a source error. Never call the runtime web-fetch tool for this entry and never fall back to snapshotting the full schema.
+      - Otherwise, if `context7_library` is set, fetch the library docs via the available docs MCP if present (e.g. Context7's `resolve-library-id` + `query-docs`); fall back to a web fetch of the library's canonical docs URL.
+      - Otherwise, fetch the declared `url` via the runtime's web-fetch tool. On fetch error, record the error in the report and continue to the next source.
+   2. **Normalize and hash.** Pipe the fetched or extracted content through `scripts/normalize.py` (see `references/normalization-rules.md`). Use `--type markdown` for raw Markdown, GraphQL extraction output, GitHub README files, `.md` URLs, and docs-MCP markdown output; use `--type html` for fetched HTML pages. The script writes normalized content to stdout and prints the sha256 hash to stderr.
    3. **Compare hashes.**
-      - `baseline_hash` is empty → mark "baseline initialized" in the report. Stage the new snapshot for Phase 5, but skip the LLM step because there is no previous baseline to compare against.
+      - `baseline_hash` is empty → mark "baseline initialized" in the report. Stage the new hash for Phase 5, but skip the LLM step because this is the first successful review.
       - Hash matches `baseline_hash` → mark "unchanged" in the report. Skip the LLM step.
       - Hash differs from a non-empty `baseline_hash` → continue.
-   4. **LLM compare (only on change).** Read the comparison prompt from `references/comparison-prompt.md`. Provide it with: (a) the previous baseline snapshot at `references/sources-snapshot/<id>.md` if present, (b) the freshly fetched normalized content, (c) the current `SKILL.md` of the target skill. The model returns a structured suggestion (or "nothing actionable").
-   5. **Stage the new snapshot** in memory (do not write yet — Phase 5 handles persistence).
+   4. **LLM compare (only on change).** Read the comparison prompt from `references/comparison-prompt.md`. Provide it with: (a) the freshly fetched normalized content, (b) the current `SKILL.md` of the target skill, and (c) the source rationale. The model returns an original, paraphrased suggestion (or "Nothing actionable.") and must not reproduce source passages.
+   5. **Stage the new hash** in memory. Do not write the normalized source body to the repository or a durable cache.
 3. Append the per-source results to the running audit report.
 
 ## Phase 5: Persist Baselines
 
 After all targets are processed, ask the user once:
 
-> "Update baselines for the N sources that changed? This will write new snapshot files and update `baseline_hash` and `last_reviewed_at` in each `sources.yaml`. It will not commit or stage files."
+> "Update hash baselines for the N sources that changed? This will update `baseline_hash` and `last_reviewed_at` in each `sources.yaml`. It will not retain fetched source bodies, commit, or stage files."
 
 On accept:
 
-1. For each changed source, write the normalized content to `<target-skill-dir>/references/sources-snapshot/<id>.md` (create the directory if missing).
-2. Update the `baseline_hash` and `last_reviewed_at` fields for that source in its `sources.yaml`.
+1. Update the `baseline_hash` and `last_reviewed_at` fields for each changed source in its `sources.yaml`.
+2. Discard fetched and normalized source bodies after the report is complete. Do not write them under a skill, `.context/`, or another durable cache.
 3. Do not commit. Leave staging to the user.
 
 On decline, do not modify any files. The audit report still records what changed.
@@ -88,7 +94,7 @@ On decline, do not modify any files. The audit report still records what changed
 1. Read the report template from `references/report-template.md`.
 2. Fill in:
    - **Summary table** — one row per skill: total sources, changed, unchanged, errors, bootstrapped.
-   - **Per-skill sections** — for each skill: changed sources with the model's suggestion and a short excerpt; unchanged sources as a one-line list; errors with the underlying message.
+   - **Per-skill sections** — for each skill: changed sources with the model's original paraphrased suggestion and relevant source section/link; unchanged sources as a one-line list; errors with the underlying message. Do not include copied source excerpts.
 3. Write the report to `.context/skill-source-audit-<YYYYMMDD-HHMM>.md` in the workspace root. Create `.context/` if missing.
 4. Print the path to the user.
 
@@ -117,9 +123,9 @@ Suggest next steps in plain English: "Open the report and decide which suggestio
 
 For schema, prompts, normalization rules, and report template, read these resources on demand:
 
-- `references/sources-yaml-schema.md` — `sources.yaml` schema, field meanings, examples
+- `references/sources-yaml-schema.md` — `sources.yaml` schema, usage and license fields, examples
 - `references/bootstrap-prompt.md` — prompt for proposing a manifest from existing skill content
 - `references/comparison-prompt.md` — prompt for surfacing valuable additions from changed sources
-- `references/normalization-rules.md` — what `normalize.py` strips and keeps; rationale
+- `references/normalization-rules.md` — what transient source content `normalize.py` strips and keeps before hashing
 - `references/report-template.md` — markdown skeleton for the audit report
 - `scripts/normalize.py` — HTML/markdown → normalized text + sha256 hash

@@ -1,8 +1,8 @@
 # Triage — symptom tables, decision tree, and anti-pattern summaries
 
-Load this file at Step 2 (Identify the bottleneck). Use the symptom tables and the
-decision tree to pick what to profile first, then the anti-pattern summaries at Step 3
-to map the identified bottleneck to its canonical fix.
+Portions are adapted from Addy Osmani's `agent-skills` under the MIT License. See `addyosmani-agent-skills-LICENSE` for the complete notice.
+
+Load this file at Step 2 (Identify the bottleneck). Use the symptom tables and the decision tree to pick what to profile first, then the anti-pattern summaries at Step 3 to map the identified bottleneck to its canonical fix.
 
 ## Common bottlenecks by category
 

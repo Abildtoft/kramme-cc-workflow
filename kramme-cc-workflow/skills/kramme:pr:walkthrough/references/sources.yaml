@@ -3,6 +3,7 @@ sources:
     url: https://github.com/warpdotdev/common-skills/tree/14bb52d543f577b3e1a34336cedcb104ed1446a2/.agents/skills/pr-walkthrough
     title: "Warp common-skills pr-walkthrough"
     rationale: "The four-view PR walkthrough structure, D3 static artifact concept, and validation expectations are adapted from this upstream skill at commit 14bb52d543f577b3e1a34336cedcb104ed1446a2; helper scripts here are original local implementations rather than copied upstream files."
+    usage: inspiration
     upstream_commit: 14bb52d543f577b3e1a34336cedcb104ed1446a2
     license: "MIT"
     last_reviewed_at: 2026-06-21
@@ -11,15 +12,18 @@ sources:
     url: https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js
     title: "D3.js v7.9.0 minified distribution"
     rationale: "Vendored as assets/d3.v7.9.0.min.js so generated PR walkthrough artifacts are single-file and do not execute third-party CDN code while displaying private PR context."
+    usage: copied
     upstream_path: dist/d3.min.js
     local_path: assets/d3.v7.9.0.min.js
     version: 7.9.0
-    license: "ISC; vendored file retains upstream copyright line."
+    license: "ISC"
+    notice: assets/d3-LICENSE
     last_reviewed_at: 2026-06-21
     baseline_hash: "sha256:f2094bbf6141b359722c4fe454eb6c4b0f0e42cc10cc7af921fc158fceb86539"
   - id: nicobailon-visual-explainer
     url: https://github.com/nicobailon/visual-explainer
     title: "nicobailon/visual-explainer"
     rationale: "The report style's visual diff flow, explanatory diagram patterns, and artifact rendering conventions are adapted from this project."
+    usage: inspiration
     last_reviewed_at: 2026-05-28
     baseline_hash: "8f1d0e38ab0f265632a31d2fd032f7b730c98c15"

@@ -1,37 +1,43 @@
 sources:
   - id: compound-ce-strategy
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-strategy
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-strategy/SKILL.md
     title: "EveryInc compound-engineering-plugin - ce-strategy"
     rationale: "The optional STRATEGY.md grounding and propagation of product strategy context into planning artifacts are adapted from this source."
-    last_reviewed_at: 2026-06-06
-    baseline_hash: ""
+    usage: inspiration
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:a8c17c0ba2240fce618d344f595f2a6b3ea1bc2d1db3c87fef2e34d70af05da5"
   - id: compound-ce-plan
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-plan
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-plan/SKILL.md
     title: "EveryInc compound-engineering-plugin - ce-plan"
     rationale: "The strategy-aware planning handoff and non-blocking treatment of strategy conflicts are informed by this source."
-    last_reviewed_at: 2026-06-06
-    baseline_hash: ""
+    usage: inspiration
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:16e4b8333e0db8dce5ce215d913075d7fb828a2820b1d544dc60e76e1c4e0ef9"
   - id: compound-ce-brainstorm
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-brainstorm
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-brainstorm/SKILL.md
     title: "EveryInc compound-engineering-plugin - ce-brainstorm"
     rationale: "The use of product strategy as grounding for requirement capture before planning is informed by this source."
-    last_reviewed_at: 2026-06-06
-    baseline_hash: ""
+    usage: inspiration
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:a382fbff2bc12b819c27373807f6e85d7fd2aa9be17f8d2f2319b5ed1603a690"
   - id: compound-ce-ideate
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-ideate
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-ideate/SKILL.md
     title: "EveryInc compound-engineering-plugin - ce-ideate"
     rationale: "The product-direction handoff from ideation into planning context is informed by this source."
-    last_reviewed_at: 2026-06-06
-    baseline_hash: ""
+    usage: inspiration
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:17b8e2f03b6d1003cc365b67318eb3ef284833a930980a2e3c3eac5cc8625715"
   - id: compound-ce-product-pulse
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-product-pulse
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-product-pulse/SKILL.md
     title: "EveryInc compound-engineering-plugin - ce-product-pulse"
     rationale: "The feedback-loop relationship between pulse reports and future planning context is informed by this source."
-    last_reviewed_at: 2026-06-06
-    baseline_hash: ""
+    usage: inspiration
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:bd61757fdbe1b5441af3d995b3fa50ce89eb8934fcfe38188de7f13b18e9f101"
   - id: addy-spec-driven-development
-    url: https://github.com/addyosmani/agent-skills/tree/main/skills/spec-driven-development
+    url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/spec-driven-development/SKILL.md
     title: "Addy Osmani agent-skills - spec-driven development"
     rationale: "The spec-first initialization shape and implementation-gating conventions are informed by this source."
-    last_reviewed_at: 2026-04-25
-    baseline_hash: ""
+    usage: inspiration
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:af5b873414a8b45b96b0d30d5297400f55eb3a56425161a088e470c14260a1e5"

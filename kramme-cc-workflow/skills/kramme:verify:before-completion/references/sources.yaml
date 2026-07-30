@@ -1,7 +1,12 @@
 sources:
   - id: obra-superpowers-verification-before-completion
-    url: https://github.com/obra/superpowers/tree/main/skills/verification-before-completion
+    url: https://raw.githubusercontent.com/obra/superpowers/main/skills/verification-before-completion/SKILL.md
     title: "obra/superpowers - verification-before-completion"
     rationale: "The Iron Law gate, Gate Function steps, Rationalization Prevention table, and evidence-before-claims framing are adapted from this upstream skill."
-    last_reviewed_at: 2026-05-28
-    baseline_hash: ""
+    usage: copied
+    license: "MIT"
+    notice: references/obra-superpowers-LICENSE
+    upstream_path: skills/verification-before-completion/SKILL.md
+    upstream_commit: 44c9b2d6e889982ac18c27d05a19fefe335194e1
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:2befe7fc55bcadaa3d97dd9e8efeb633d2561c0ebe74c5a8b17c4d9e7e4520b3"

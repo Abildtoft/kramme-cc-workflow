@@ -33,6 +33,7 @@
   },
   "python": {
     "measured": [
+      ".agents/skills/kramme:skill:audit-sources/scripts/extract_graphql_definitions.py",
       ".agents/skills/kramme:skill:audit-sources/scripts/normalize.py",
       "kramme-cc-workflow/hooks/lib/git_command_parser.py",
       "kramme-cc-workflow/scripts/changelog.py",
@@ -46,6 +47,7 @@
       "kramme-cc-workflow/scripts/lint_skill_contracts/checks/mechanical.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/checks/readme_sync.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/checks/registry.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/checks/source_provenance.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/checks/ui_relevance.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/cli.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/frontmatter.py",

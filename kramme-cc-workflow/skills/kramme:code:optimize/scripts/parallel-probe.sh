@@ -4,6 +4,7 @@
 # Adapted from EveryInc/compound-engineering-plugin:
 # https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-optimize/scripts/parallel-probe.sh
 # Reviewed upstream commit: 6f9ab03a031c054a8046659926251fb6c149269f
+# License: MIT; full notice at ../references/EveryInc-LICENSE
 #
 # Usage: parallel-probe.sh <project_directory> [measurement_command] [measurement_workdir] [shared_file ...]
 #

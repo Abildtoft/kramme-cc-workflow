@@ -3,6 +3,7 @@
 # Upstream repository: https://github.com/EveryInc/compound-engineering-plugin
 # Upstream commit reviewed: 6f9ab03a031c054a8046659926251fb6c149269f
 # License: MIT, Copyright (c) 2025 Every.
+# Full notice: ../references/EveryInc-LICENSE
 #
 """Build a local event outline from a Claude Code, Codex, or Cursor JSONL session file.
 
@@ -27,6 +28,7 @@ extraction bytes through orchestrator tool results.
 
 Without --output, extracted content goes to stdout and ends with a _meta line.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -61,6 +63,7 @@ class ToolEntry(TypedDict, total=False):
     status: str
     id: str
 
+
 parser = argparse.ArgumentParser(add_help=True)
 parser.add_argument(
     "--output",
@@ -86,9 +89,7 @@ _STRIP_BLOCK = re.compile(
     r"<(?:task-notification|local-command-caveat|local-command-stdout|local-command-stderr|system-reminder)[^>]*>.*?</(?:task-notification|local-command-caveat|local-command-stdout|local-command-stderr|system-reminder)>",
     re.DOTALL,
 )
-_STRIP_TAG = re.compile(
-    r"</?(?:command-message|command-name|command-args|user_query)[^>]*>"
-)
+_STRIP_TAG = re.compile(r"</?(?:command-message|command-name|command-args|user_query)[^>]*>")
 
 
 def clean_text(text: str) -> str:
@@ -202,11 +203,7 @@ def handle_claude(obj: JsonObject) -> None:
                     is_error = block.get("is_error", False)
                     status = "error" if is_error else "ok"
                     tool_use_id = block.get("tool_use_id")
-                    checked_id = (
-                        string_value(tool_use_id, "tool_use_id")
-                        if tool_use_id
-                        else None
-                    )
+                    checked_id = string_value(tool_use_id, "tool_use_id") if tool_use_id else None
                     result_updates.append((checked_id, status))
                 elif block.get("type") == "text":
                     text = string_field(block, "text")
@@ -291,9 +288,7 @@ def handle_codex(obj: JsonObject) -> None:
             status = "ok"
             if "Process exited with code " in command_output:
                 try:
-                    code = int(
-                        command_output.split("Process exited with code ")[1].split("\n")[0]
-                    )
+                    code = int(command_output.split("Process exited with code ")[1].split("\n")[0])
                     if code != 0:
                         status = f"error(exit {code})"
                 except (IndexError, ValueError):

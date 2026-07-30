@@ -1,7 +1,8 @@
 sources:
   - id: compound-ce-doc-review
-    url: https://github.com/EveryInc/compound-engineering-plugin/tree/main/skills/ce-doc-review
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-doc-review/SKILL.md
     title: "EveryInc compound-engineering-plugin - ce-doc-review"
     rationale: "Document classification, conditional review-lens selection, severity-ordered finding schema, and synthesis flow are adapted from this source."
-    last_reviewed_at: 2026-06-08
-    baseline_hash: ""
+    usage: inspiration
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:2c47b2744759567b2066301898d604f3d0c6b3f368b9c5f45b69b2ffe6f399c1"
