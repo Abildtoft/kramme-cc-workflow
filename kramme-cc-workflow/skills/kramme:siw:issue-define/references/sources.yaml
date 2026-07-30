@@ -3,11 +3,13 @@ sources:
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/to-tickets/SKILL.md
     title: "Matt Pocock skills - to-tickets"
     rationale: "The issue metadata for blockers/dependencies and agent-ready AUTO/HITL pickup discipline is adapted from this source's ticket blocking and ready-for-agent workflow, with local terminology preserving earlier HITL/AFK lineage."
+    usage: inspiration
     last_reviewed_at: 2026-07-09
     baseline_hash: "sha256:918bdefab9313100cb1f7ccb412e2a773fe2f2801dd20d44f6b2acf7a42ca456"
   - id: pocock-triage-issue
     url: https://github.com/mattpocock/skills/tree/383b6a06d59c4ce0ffcb14112bfd91265a86cf91/skills/triage-issue
     title: "Matt Pocock skills - triage-issue"
     rationale: "The durability rule for issue bodies (no file paths, no line numbers — describe modules, behaviors, and contracts so the issue remains useful after a refactor) is adapted from this source."
+    usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:05f43a612b1bbb64b35a61a729856a80a614a14fbf4499ac05ba71764a34472f"

@@ -107,14 +107,14 @@ format-check: check-format-deps check-ruff-deps
 			fi; \
 			git diff --name-only --diff-filter=ACMR HEAD -- $(FORMAT_FILE_PATTERNS); \
 			git ls-files --others --exclude-standard -- $(FORMAT_FILE_PATTERNS); \
-		) && prettier_files=$$(printf '%s\n' "$$prettier_files" | sed '/^$$/d' | sort -u) && \
+		) && prettier_files=$$(printf '%s\n' "$$prettier_files" | sed '/^$$/d' | sort -u | while IFS= read -r path; do test ! -e "$$path" || printf '%s\n' "$$path"; done) && \
 		python_files=$$( \
 			if git rev-parse --verify --quiet "$(FORMAT_BASE)^{commit}" >/dev/null; then \
 				git diff --name-only --diff-filter=ACMR "$(FORMAT_BASE)...HEAD" -- $(PYTHON_FORMAT_FILE_PATTERNS); \
 			fi; \
 			git diff --name-only --diff-filter=ACMR HEAD -- $(PYTHON_FORMAT_FILE_PATTERNS); \
 			git ls-files --others --exclude-standard -- $(PYTHON_FORMAT_FILE_PATTERNS); \
-		) && python_files=$$(printf '%s\n' "$$python_files" | sed '/^$$/d' | sort -u) && \
+		) && python_files=$$(printf '%s\n' "$$python_files" | sed '/^$$/d' | sort -u | while IFS= read -r path; do test ! -e "$$path" || printf '%s\n' "$$path"; done) && \
 		if [ -n "$$prettier_files" ]; then \
 			"$(PRETTIER)" --check --ignore-unknown $$prettier_files; \
 		else \

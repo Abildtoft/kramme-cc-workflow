@@ -3,5 +3,6 @@ sources:
     url: https://github.com/EveryInc/compound-engineering-plugin/tree/b6250490bec4c0488d68ad66d72bd99f6edb95fd/plugins/compound-engineering/skills/ce-release-notes
     title: "EveryInc compound-engineering-plugin - ce-release-notes"
     rationale: "The plugin release-note mode, version-question handling, confidence-scoped release matching, release source citation, and untrusted release-body discipline are adapted into the changelog generator's release-notes mode."
+    usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:f337a3d14f953098c9ef5153cb34c49433de6f170e0426ad28773d10d082d5a3"

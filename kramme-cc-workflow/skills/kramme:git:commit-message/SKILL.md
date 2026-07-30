@@ -48,10 +48,10 @@ Before running `git commit`, confirm all five:
 ## Body Guidelines
 
 - Keep the body short; omit it entirely if it doesn't add value beyond the subject line
-- Explain **what** and **why**, not how
-- Use imperative mood and present tense
-- Include motivation for the change
-- Contrast with previous behavior when relevant
+- Describe the outcome and its motivation; implementation detail belongs in the diff.
+- Phrase the subject as a present-tense command.
+- State the constraint or user need that made the change necessary.
+- Mention the old behavior only when the contrast helps a reviewer understand the change.
 
 ## AI-Generated Changes
 

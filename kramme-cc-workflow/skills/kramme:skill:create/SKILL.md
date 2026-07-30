@@ -34,17 +34,13 @@ Skip if `$ARGUMENTS` already provides a clear description.
 
 > How should this skill be triggered, and does it have side effects?
 >
-> A) **User-only with side effects** — creates/modifies/deletes files, runs git commands, calls APIs (`user-invocable: true`, `disable-model-invocation: true`)
-> B) **User or auto-triggered** — read-only analysis, formatting, text processing (`user-invocable: true`, `disable-model-invocation: false`)
-> C) **Background convention** — auto-applies rules like commit style or verification (`user-invocable: false`, `disable-model-invocation: false`)
+> A) **User-only with side effects** — creates/modifies/deletes files, runs git commands, calls APIs (`user-invocable: true`, `disable-model-invocation: true`) B) **User or auto-triggered** — read-only analysis, formatting, text processing (`user-invocable: true`, `disable-model-invocation: false`) C) **Background convention** — auto-applies rules like commit style or verification (`user-invocable: false`, `disable-model-invocation: false`)
 
 ### Question 3: Complexity
 
 > What complexity tier fits this skill?
 >
-> A) **Simple** — single SKILL.md, no supporting files (~20-80 lines)
-> B) **Medium** — SKILL.md + resource files for reference content (~80-300 lines)
-> C) **Complex** — SKILL.md + resources + scripts for deterministic operations (~200-500 lines)
+> A) **Simple** — single SKILL.md, no supporting files (~20-80 lines) B) **Medium** — SKILL.md + resource files for reference content (~80-300 lines) C) **Complex** — SKILL.md + resources + scripts for deterministic operations (~200-500 lines)
 
 ### Question 4: Arguments
 
@@ -58,9 +54,7 @@ Skip if `$ARGUMENTS` already provides a clear description.
 
 > Should this skill be available on all platforms, or restricted?
 >
-> A) **All platforms** (default — omit `kramme-platforms`)
-> B) **Claude Code only** (uses Agent Teams or other Claude Code features)
-> C) **Specific combination** (specify which)
+> A) **All platforms** (default — omit `kramme-platforms`) B) **Claude Code only** (uses Agent Teams or other Claude Code features) C) **Specific combination** (specify which)
 
 Default to harness-neutral phrasing with a declared fallback. Add `kramme-platforms` only when the skill depends on a true platform feature with no sensible fallback, such as a platform-specific agent runtime, MCP provider surface, hook system, or environment variable.
 
@@ -68,27 +62,29 @@ Default to harness-neutral phrasing with a declared fallback. Add `kramme-platfo
 
 > Is this skill derived from external inspiration — another agent-skills repository, a script, a paper, a book, a blog post, official framework docs?
 >
-> A) **Yes** — capture each source. Used to scaffold `references/sources.yaml` so the `kramme:skill:audit-sources` skill can track upstream changes worth absorbing later.
-> B) **No** — the skill is original to this repo or composed of patterns the repo already established.
+> A) **Yes** — capture each source. Used to scaffold `references/sources.yaml` so the `kramme:skill:audit-sources` skill can track upstream changes worth absorbing later. B) **No** — the skill is original to this repo or composed of patterns the repo already established.
 
 If A, ask the user for each source:
+
 - title + URL (or library identifier resolvable via a docs MCP),
 - one-sentence rationale stating what in this skill is derived from the source,
-- whether the source will be copied as code/assets, adapted as workflow/prose, or used only as conceptual inspiration,
-- for copied code/assets: upstream license, original file path, and exact upstream commit or release when known.
+- whether `usage` is `inspiration` (ideas, facts, methods, or workflow influence rewritten in original language) or `copied` (source expression remains),
+- for `usage: copied`: a verified compatible upstream license, the skill-relative complete notice path, exact upstream path, and immutable upstream commit, revision, release, or version.
 
 Capture as `external_sources` for use in Phase 5. Capture copied files separately as `copied_external_assets`.
+
+A public URL or public repository is not a license. If permission is absent, unclear, incompatible, or forbids online reproduction, do not copy the source body. Use `usage: inspiration`, retain the URL, and write an original local summary instead.
 
 If the user is unsure whether something qualifies, default to including it — extra entries are easy to remove; missing entries silently skip upstream-change detection.
 
 ### Question 7: Artifact Lifecycle
 
-> Will this skill create, update, refresh, or retire a durable artifact — for example a markdown report, issue file, generated code file, copied asset, config, or source snapshot?
+> Will this skill create, update, refresh, or retire a durable artifact — for example a markdown report, issue file, generated code file, copied asset, or config?
 >
-> A) **No durable artifact** — it only returns an inline answer or performs stateless analysis.
-> B) **Yes** — document how the artifact is produced, consumed, refreshed, and retired.
+> A) **No durable artifact** — it only returns an inline answer or performs stateless analysis. B) **Yes** — document how the artifact is produced, consumed, refreshed, and retired.
 
 If B, ask:
+
 - What exact artifact path, naming pattern, or location will the skill produce or update?
 - Which later user action, workflow, skill, script, or reviewer consumes it?
 - What event or command refreshes it?
@@ -197,8 +193,9 @@ If any target file already exists during scaffolding, abort and report the confl
   ```
 - Keep SKILL.md under 500 lines — if approaching the limit, move content to resources
 - For workflow skills that write durable artifacts, document how each artifact is produced, consumed, refreshed, and retired.
-- When adapting external work, rewrite prose and workflow steps in local vocabulary. Do not directly port long monolithic upstream skills; split them into smaller skills or references.
-- When copying substantial external scripts or assets, preserve the upstream license and source header in the copied file, and name the copied local path in `references/sources.yaml`.
+- When adapting external work as `usage: inspiration`, rewrite prose and workflow steps in local vocabulary. Do not directly port long monolithic upstream skills; split them into smaller skills or original references.
+- For `usage: copied`, verify permission first, preserve the upstream source header, ship the complete required notice inside the skill, and record the exact upstream path plus immutable commit, revision, release, or version in `references/sources.yaml`.
+- Never write fetched upstream bodies or `references/sources-snapshot/` directories. Store only URLs, original notes, review dates, and normalized hashes.
 
 ### Scaffold `sources.yaml` (if external inspiration was identified in Phase 2)
 
@@ -213,6 +210,12 @@ sources:
     # OR: context7_library: {<owner>/<name> — for libraries resolvable via a docs MCP}
     title: "{human-readable title shown in audit reports}"
     rationale: "{one sentence: exactly what in this skill is derived from this source}"
+    usage: "{inspiration | copied}"
+    # Required only when usage is copied:
+    # license: "{verified upstream license}"
+    # notice: "{skill-relative path to complete license/notice file}"
+    # upstream_path: "{exact upstream path, page title, or artifact name}"
+    # upstream_commit: "{immutable commit; alternatively use baseline_commit, upstream_revision, upstream_release, or version}"
     last_reviewed_at: { today, ISO YYYY-MM-DD }
     baseline_hash: ""
 ```
@@ -249,7 +252,8 @@ After scaffolding, verify the skill against these checks:
 - [ ] No redundant logic the agent already handles
 - [ ] No time-sensitive info (skill instructions may be cached or shipped to downstream installations; today's URL or this-week's library version goes stale)
 - [ ] References are one level deep (SKILL.md → reference; references do not chain to other references)
-- [ ] If the skill is derived from external inspiration, `references/sources.yaml` exists with one entry per source (`id`, `url` or `context7_library`, `title`, `rationale`, `last_reviewed_at`, `baseline_hash`).
+- [ ] If the skill is derived from external inspiration, `references/sources.yaml` exists with one entry per source (`id`, `url` or `context7_library`, `title`, `rationale`, `usage`, `last_reviewed_at`, `baseline_hash`); copied entries also have `license` and a valid skill-relative `notice`.
+- [ ] No fetched source body or `references/sources-snapshot/` directory is present.
 - [ ] If external scripts or assets were copied, each copied file preserves the upstream source, exact commit or release when known, and license note.
 - [ ] If the skill writes durable artifacts, the artifact path, producer, consumer, refresh trigger, and retirement path are documented.
 - [ ] If the skill adapts a long upstream workflow, it is decomposed into local skills or direct references instead of copied as one monolithic SKILL.md.

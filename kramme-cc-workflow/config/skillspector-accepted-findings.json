@@ -43,7 +43,7 @@
     {
       "path": "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/d3.v7.9.0.min.js",
       "rule_id": "SC3",
-      "reason": "Reviewed intentional SC3 finding for the vendored D3 v7.9.0 minified distribution: the file is pinned to the upstream source and SHA-256 recorded in references/sources.yaml, retains its upstream license notice, and is embedded locally so private Pull Request context never depends on third-party CDN execution.",
+      "reason": "Reviewed intentional SC3 finding for the vendored D3 v7.9.0 minified distribution: the file is pinned to the upstream source and SHA-256 recorded in references/sources.yaml, its complete ISC notice ships as assets/d3-LICENSE, and it is embedded locally so private Pull Request context never depends on third-party CDN execution.",
       "owner": "kramme",
       "accepted_at": "2026-07-26",
       "review_after": "2026-08-26"

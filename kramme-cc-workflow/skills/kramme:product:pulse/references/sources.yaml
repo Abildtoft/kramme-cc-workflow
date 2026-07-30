@@ -3,5 +3,6 @@ sources:
     url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-product-pulse/SKILL.md
     title: "EveryInc compound-engineering-plugin - ce-product-pulse"
     rationale: "The time-windowed product pulse report, partial-source coverage model, strategy feedback loop, and docs/pulse-reports output location are adapted from this source."
+    usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:bd61757fdbe1b5441af3d995b3fa50ce89eb8934fcfe38188de7f13b18e9f101"

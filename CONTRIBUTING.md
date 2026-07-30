@@ -41,7 +41,8 @@ The equivalent npm aliases are `npm run bootstrap:check` and `npm run bootstrap:
 - Add or update README entries when adding skills, agents, hooks, commands, or user-facing workflows.
 - Keep skills self-contained inside their own directory. Skill runtime files must not depend on repository-level docs.
 - Keep `SKILL.md` files focused; move reference material to `references/`, templates to `assets/`, and executable helpers to `scripts/`.
-- Preserve upstream source and license notes when copying scripts or substantial assets.
+- Treat public availability as provenance, not permission. Copy external prose, code, templates, or substantial assets only under a verified compatible license; preserve the complete required notice in the affected skill and mark the source `usage: copied` in `references/sources.yaml` with its exact upstream path and an immutable commit, revision, release, or version. For conceptual inspiration, use `usage: inspiration` and rewrite in original language.
+- Never commit fetched upstream source bodies or `references/sources-snapshot/` directories. Store source URLs, original notes, review dates, and normalized hashes only.
 - Use plain-English commit messages on branches. Pull Request titles must use Conventional Commits format.
 
 ## Verification

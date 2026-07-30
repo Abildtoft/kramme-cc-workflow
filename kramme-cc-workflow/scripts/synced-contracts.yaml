@@ -1251,6 +1251,13 @@
     ],
     "allow_empty_fields": []
   },
+  "source_provenance": {
+    "manifest_glob": "kramme-cc-workflow/skills/*/references/sources.yaml",
+    "forbidden_snapshot_globs": [
+      "kramme-cc-workflow/skills/*/references/sources-snapshot",
+      ".agents/skills/*/references/sources-snapshot"
+    ]
+  },
   "epilogue_order": {
     "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
     "trigger_heading_regex": "^#{2,3}\\s+Common Rationalizations\\b",

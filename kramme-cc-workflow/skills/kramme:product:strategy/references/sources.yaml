@@ -3,5 +3,6 @@ sources:
     url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-strategy/SKILL.md
     title: "EveryInc compound-engineering-plugin - ce-strategy"
     rationale: "The repo-root strategy anchor, required product sections, create/update workflow, and downstream grounding behavior are adapted from this source."
+    usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:a8c17c0ba2240fce618d344f595f2a6b3ea1bc2d1db3c87fef2e34d70af05da5"

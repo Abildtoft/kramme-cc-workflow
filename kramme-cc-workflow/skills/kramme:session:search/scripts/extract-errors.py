@@ -3,6 +3,7 @@
 # Upstream repository: https://github.com/EveryInc/compound-engineering-plugin
 # Upstream commit reviewed: 6f9ab03a031c054a8046659926251fb6c149269f
 # License: MIT, Copyright (c) 2025 Every.
+# Full notice: ../references/EveryInc-LICENSE
 #
 """Extract error signals from a Claude Code, Codex, or Cursor JSONL session file.
 
@@ -21,6 +22,7 @@ extraction bytes through orchestrator tool results.
 
 Without --output, extracted content goes to stdout and ends with a _meta line.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -95,9 +97,7 @@ def handle_codex(obj: JsonObject) -> None:
             exit_match = None
             if "Process exited with code " in command_output:
                 try:
-                    code_str = command_output.split("Process exited with code ")[1].split(
-                        "\n"
-                    )[0]
+                    code_str = command_output.split("Process exited with code ")[1].split("\n")[0]
                     exit_code = int(code_str)
                     if exit_code != 0:
                         exit_match = exit_code
@@ -115,6 +115,7 @@ def handle_codex(obj: JsonObject) -> None:
 # Cursor transcripts don't log tool results — no errors to extract
 def handle_noop(obj: JsonObject) -> None:
     pass
+
 
 handlers: dict[Platform, EventHandler] = {
     "claude": handle_claude,

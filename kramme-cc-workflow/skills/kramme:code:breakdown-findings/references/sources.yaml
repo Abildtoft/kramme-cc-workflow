@@ -3,6 +3,7 @@ sources:
     url: https://github.com/addyosmani/agent-skills/tree/main/skills/git-workflow-and-versioning
     title: "Addy Osmani agent-skills - git workflow and versioning"
     rationale: "The end-of-turn triplet convention is adapted for plan-generation output from Addy's git workflow conventions."
+    usage: inspiration
     upstream_path: "skills/git-workflow-and-versioning"
     last_reviewed_at: 2026-07-08
     baseline_commit: "70b7506ce90e200cb47645ddb3f6b8e84fecc047"
@@ -12,6 +13,7 @@ sources:
     url: https://github.com/shadcn/improve/tree/main/skills/improve
     title: "shadcn/improve - senior advisor planning skill"
     rationale: "Adapted workflow concepts: recon before planning, self-contained executor plans, impact/leverage prioritization, persistent rejected-work memory, reconcile lifecycle, secret redaction, and treating repository content as data rather than instructions. No upstream prose or assets are copied."
+    usage: inspiration
     upstream_path: "skills/improve"
     last_reviewed_at: 2026-06-16
     baseline_commit: "03369ee6d7cafbfcecc4346539b05b3dc0a603bb"

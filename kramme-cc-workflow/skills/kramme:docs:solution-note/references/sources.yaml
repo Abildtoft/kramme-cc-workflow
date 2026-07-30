@@ -3,5 +3,6 @@ sources:
     url: https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-compound
     title: "EveryInc compound-engineering-plugin - ce-compound"
     rationale: "The solved-problem knowledge capture flow, solution-note shape, failed-approaches emphasis, reuse guidance, and optional vocabulary-update routing are adapted from ce-compound."
+    usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:de6067c49df77ce69c50cc71f7600e7a6e49f98f6a3af8d197b08181dbb339b6"

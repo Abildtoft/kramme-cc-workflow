@@ -34,17 +34,11 @@ def load_compat_script(module_name="lint_skill_contracts_cli"):
 
 class MarkdownTableHelpersTest(unittest.TestCase):
     def test_split_markdown_table_row_keeps_escaped_pipes_in_cells(self) -> None:
-        cells = lint_skill_contracts.split_markdown_table_row(
-            r"| Skill | `foo\|bar` | Uses \<value\> |"
-        )
+        cells = lint_skill_contracts.split_markdown_table_row(r"| Skill | `foo\|bar` | Uses \<value\> |")
 
         self.assertEqual(cells, ["Skill", r"`foo\|bar`", r"Uses \<value\>"])
-        self.assertEqual(
-            lint_skill_contracts.normalize_markdown_cell(cells[1]), "foo|bar"
-        )
-        self.assertEqual(
-            lint_skill_contracts.normalize_markdown_cell(cells[2]), "Uses <value>"
-        )
+        self.assertEqual(lint_skill_contracts.normalize_markdown_cell(cells[1]), "foo|bar")
+        self.assertEqual(lint_skill_contracts.normalize_markdown_cell(cells[2]), "Uses <value>")
 
     def test_render_skill_reference_row_escapes_table_cells(self) -> None:
         reference = lint_skill_contracts.SkillReference(
@@ -139,11 +133,7 @@ class MarkdownTableHelpersTest(unittest.TestCase):
 
 
 FRONTMATTER_TYPE_CASES = json.loads(
-    (
-        Path(__file__).resolve().parents[1]
-        / "fixtures"
-        / "frontmatter-type-cases.json"
-    ).read_text(encoding="utf-8")
+    (Path(__file__).resolve().parents[1] / "fixtures" / "frontmatter-type-cases.json").read_text(encoding="utf-8")
 )["cases"]
 
 
@@ -156,9 +146,7 @@ class FrontmatterTypeContractTest(unittest.TestCase):
     def test_type_errors_match_shared_converter_fixtures(self) -> None:
         for case in FRONTMATTER_TYPE_CASES:
             with self.subTest(case=case["name"]):
-                fields = sorted(
-                    field for field, _ in frontmatter_type_errors(case["text"])
-                )
+                fields = sorted(field for field, _ in frontmatter_type_errors(case["text"]))
                 self.assertEqual(fields, sorted(case["invalidFields"]))
 
 
@@ -209,14 +197,14 @@ kramme-platforms:
         self.assertEqual(frontmatter_type_errors(text), [])
 
     def test_type_errors_decode_quoted_yaml_before_checking_emptiness(self) -> None:
-        text = r'''---
+        text = r"""---
 name: test-skill
 description: "\n"
 disable-model-invocation: false
 user-invocable: true
 kramme-platforms: [codex, "\x20"]
 ---
-'''
+"""
 
         self.assertEqual(
             frontmatter_type_errors(text),
@@ -230,14 +218,14 @@ kramme-platforms: [codex, "\x20"]
         )
 
     def test_type_errors_accept_escaped_quotes_in_flow_arrays(self) -> None:
-        text = r'''---
+        text = r"""---
 name: test-skill
 description: Test skill
 disable-model-invocation: false
 user-invocable: true
 kramme-platforms: ["claude\",code", codex]
 ---
-'''
+"""
 
         self.assertEqual(frontmatter_type_errors(text), [])
 
@@ -417,6 +405,121 @@ kramme-platforms: [codex, .5]
         )
 
 
+class SourceProvenanceCheckTest(unittest.TestCase):
+    def _context(self, root: Path) -> lint_skill_contracts.LintContext:
+        return lint_skill_contracts.LintContext(
+            root=root,
+            registry={
+                "source_provenance": {
+                    "manifest_glob": ("kramme-cc-workflow/skills/*/references/sources.yaml"),
+                    "forbidden_snapshot_globs": [("kramme-cc-workflow/skills/*/references/sources-snapshot")],
+                }
+            },
+            schema={},
+        )
+
+    def test_accepts_inspiration_and_licensed_copy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            references = root / "kramme-cc-workflow" / "skills" / "example" / "references"
+            references.mkdir(parents=True)
+            (references / "UPSTREAM-LICENSE").write_text("license notice\n", encoding="utf-8")
+            (references / "sources.yaml").write_text(
+                """
+sources:
+  - id: concepts
+    url: https://example.com/concepts
+    usage: inspiration
+  - id: copied
+    url: https://example.com/copied
+    usage: copied
+    license: MIT
+    notice: references/UPSTREAM-LICENSE
+    upstream_path: scripts/copied.sh
+    upstream_commit: 0123456789abcdef0123456789abcdef01234567
+""".strip(),
+                encoding="utf-8",
+            )
+
+            result = lint_skill_contracts.check_source_provenance(self._context(root))
+
+        self.assertEqual(result.failures, [])
+
+    def test_rejects_snapshots_invalid_usage_and_incomplete_copy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            references = root / "kramme-cc-workflow" / "skills" / "example" / "references"
+            snapshot = references / "sources-snapshot"
+            snapshot.mkdir(parents=True)
+            (references / "UPSTREAM-LICENSE").write_text("license notice\n", encoding="utf-8")
+            (references / "sources.yaml").write_text(
+                """
+sources:
+  - id: missing-usage
+    url: https://example.com/missing
+  - id: invalid-usage
+    url: https://example.com/invalid
+    usage: quoted
+  - id: incomplete-copy
+    url: https://example.com/copied
+    usage: copied
+  - id: moving-copy
+    url: https://example.com/moving
+    usage: copied
+    license: MIT
+    notice: references/UPSTREAM-LICENSE
+    upstream_path: scripts/moving.sh
+    upstream_commit: main
+""".strip(),
+                encoding="utf-8",
+            )
+
+            result = lint_skill_contracts.check_source_provenance(self._context(root))
+
+        failures = "\n".join(result.failures)
+        self.assertIn("committed upstream source bodies are forbidden", failures)
+        self.assertIn("is missing non-empty 'usage'", failures)
+        self.assertIn("has invalid usage 'quoted'", failures)
+        self.assertIn("is missing non-empty 'license'", failures)
+        self.assertIn("is missing non-empty 'notice'", failures)
+        self.assertIn("is missing non-empty 'upstream_path'", failures)
+        self.assertIn("is missing an immutable upstream revision", failures)
+        self.assertIn("'upstream_commit' must be immutable, not 'main'", failures)
+        self.assertIn("'upstream_commit' must be a full 40- or 64-character commit hash", failures)
+
+    def test_rejects_notice_outside_skill_or_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            references = root / "kramme-cc-workflow" / "skills" / "example" / "references"
+            references.mkdir(parents=True)
+            (references / "sources.yaml").write_text(
+                """
+sources:
+  - id: traversal
+    url: https://example.com/traversal
+    usage: copied
+    license: MIT
+    notice: ../../OUTSIDE-LICENSE
+    upstream_path: scripts/traversal.sh
+    upstream_commit: 0123456789abcdef0123456789abcdef01234567
+  - id: missing
+    url: https://example.com/missing
+    usage: copied
+    license: MIT
+    notice: references/MISSING-LICENSE
+    upstream_path: scripts/missing.sh
+    upstream_commit: 0123456789abcdef0123456789abcdef01234567
+""".strip(),
+                encoding="utf-8",
+            )
+
+            result = lint_skill_contracts.check_source_provenance(self._context(root))
+
+        failures = "\n".join(result.failures)
+        self.assertIn("must stay within the skill directory", failures)
+        self.assertIn("notice file does not exist", failures)
+
+
 class CheckRegistryTest(unittest.TestCase):
     def test_registry_preserves_cli_check_order(self) -> None:
         self.assertEqual(
@@ -429,6 +532,7 @@ class CheckRegistryTest(unittest.TestCase):
                 "base_diff_scope",
                 "ui_relevance_contracts",
                 "marker_manifests",
+                "source_provenance",
                 "epilogue_order",
                 "hooks_json",
                 "readme_skill_sync",
@@ -483,9 +587,7 @@ class BaseDiffScopeCheckTest(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            registry = lint_skill_contracts.load_registry(
-                SCRIPTS_DIR / "synced-contracts.yaml"
-            )
+            registry = lint_skill_contracts.load_registry(SCRIPTS_DIR / "synced-contracts.yaml")
             config = dict(registry["base_diff_scope"])
             config["paths"] = ["skills/example/SKILL.md"]
             context = lint_skill_contracts.LintContext(
@@ -513,51 +615,25 @@ class UIRelevanceContractTest(unittest.TestCase):
             "asset_extensions": [".svg", ".webp"],
         }
 
-        self.assertTrue(
-            lint_skill_contracts.is_ui_relevant_path("src/components/Button.tsx", matcher)
-        )
-        self.assertTrue(
-            lint_skill_contracts.is_ui_relevant_path("tailwind.config.ts", matcher)
-        )
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("src/components/Button.tsx", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("tailwind.config.ts", matcher))
         self.assertTrue(
             lint_skill_contracts.is_ui_relevant_path(
                 "packages/ui/design-tokens/colors.json",
                 matcher,
             )
         )
-        self.assertTrue(
-            lint_skill_contracts.is_ui_relevant_path("public/logo.svg", matcher)
-        )
-        self.assertTrue(
-            lint_skill_contracts.is_ui_relevant_path("src/components/Button.TSX", matcher)
-        )
-        self.assertTrue(
-            lint_skill_contracts.is_ui_relevant_path("src/Page.astro", matcher)
-        )
-        self.assertTrue(
-            lint_skill_contracts.is_ui_relevant_path("docs/component.mdx", matcher)
-        )
-        self.assertTrue(
-            lint_skill_contracts.is_ui_relevant_path("public/index.htm", matcher)
-        )
-        self.assertTrue(
-            lint_skill_contracts.is_ui_relevant_path("src/styles/theme.styl", matcher)
-        )
-        self.assertTrue(
-            lint_skill_contracts.is_ui_relevant_path("src/ui/Button.ts", matcher)
-        )
-        self.assertTrue(
-            lint_skill_contracts.is_ui_relevant_path("src/component/Button.ts", matcher)
-        )
-        self.assertTrue(
-            lint_skill_contracts.is_ui_relevant_path("public/Logo.SVG", matcher)
-        )
-        self.assertFalse(
-            lint_skill_contracts.is_ui_relevant_path("src/assets/data.json", matcher)
-        )
-        self.assertFalse(
-            lint_skill_contracts.is_ui_relevant_path("src/server/user.ts", matcher)
-        )
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("public/logo.svg", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("src/components/Button.TSX", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("src/Page.astro", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("docs/component.mdx", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("public/index.htm", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("src/styles/theme.styl", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("src/ui/Button.ts", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("src/component/Button.ts", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("public/Logo.SVG", matcher))
+        self.assertFalse(lint_skill_contracts.is_ui_relevant_path("src/assets/data.json", matcher))
+        self.assertFalse(lint_skill_contracts.is_ui_relevant_path("src/server/user.ts", matcher))
 
     def test_ui_relevance_contract_reports_missing_terms_and_fixture_drift(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -577,8 +653,7 @@ class UIRelevanceContractTest(unittest.TestCase):
                 encoding="utf-8",
             )
             local.write_text(
-                "UI relevance path contract: ui-relevance-path-contract-v1\n"
-                "Required terms: *.tsx\n",
+                "UI relevance path contract: ui-relevance-path-contract-v1\nRequired terms: *.tsx\n",
                 encoding="utf-8",
             )
             context = lint_skill_contracts.LintContext(
@@ -614,8 +689,7 @@ class UIRelevanceContractTest(unittest.TestCase):
             result.failures,
             [
                 "fixture-ui-contract: skill.md is missing UI relevance term 'assets/'",
-                "fixture-ui-contract: canonical.md fixture 'src/components/Button.tsx' "
-                "documents False; expected True",
+                "fixture-ui-contract: canonical.md fixture 'src/components/Button.tsx' documents False; expected True",
             ],
         )
 
@@ -623,15 +697,9 @@ class UIRelevanceContractTest(unittest.TestCase):
 class VerifyRunGuidanceTest(unittest.TestCase):
     def test_nx_affected_guidance_uses_resolved_base_ref(self) -> None:
         plugin_root = SCRIPTS_DIR.parent
-        skill_text = (
-            plugin_root / "skills" / "kramme:verify:run" / "SKILL.md"
-        ).read_text(encoding="utf-8")
+        skill_text = (plugin_root / "skills" / "kramme:verify:run" / "SKILL.md").read_text(encoding="utf-8")
         commands_text = (
-            plugin_root
-            / "skills"
-            / "kramme:verify:run"
-            / "references"
-            / "commands-by-project-type.md"
+            plugin_root / "skills" / "kramme:verify:run" / "references" / "commands-by-project-type.md"
         ).read_text(encoding="utf-8")
 
         self.assertIn("Nx `--base=$BASE_REF`", skill_text)

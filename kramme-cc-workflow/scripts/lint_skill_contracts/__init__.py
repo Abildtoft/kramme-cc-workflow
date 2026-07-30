@@ -19,6 +19,10 @@ from .checks.marker_manifest import (
     parse_sources_manifest,
 )
 from .checks.mechanical import check_mechanical
+from .checks.source_provenance import (
+    ALLOWED_SOURCE_USAGES,
+    check_source_provenance,
+)
 from .checks.ui_relevance import (
     check_ui_relevance_contracts,
     has_basename_prefix,
@@ -94,6 +98,7 @@ from .schema import (
 from .strings import is_empty_value, normalize_value, shorten, strip_quotes
 
 __all__ = [
+    "ALLOWED_SOURCE_USAGES",
     "CHECKS",
     "DEFAULT_CONTRACT_SCHEMA",
     "DEFAULT_CONTRACT_SCHEMA_PATH",
@@ -120,6 +125,7 @@ __all__ = [
     "check_readme_skill_sync",
     "check_readme_skill_rows_sync",
     "check_required_file_contracts",
+    "check_source_provenance",
     "check_text_contracts",
     "check_ui_relevance_contracts",
     "contract_schema_path",

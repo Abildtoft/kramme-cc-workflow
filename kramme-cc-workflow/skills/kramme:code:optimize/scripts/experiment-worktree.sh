@@ -4,6 +4,7 @@
 # Adapted from EveryInc/compound-engineering-plugin:
 # https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-optimize/scripts/experiment-worktree.sh
 # Reviewed upstream commit: 6f9ab03a031c054a8046659926251fb6c149269f
+# License: MIT; full notice at ../references/EveryInc-LICENSE
 #
 # Usage:
 #   experiment-worktree.sh create <spec_name> <exp_index> <base_branch> [shared_file ...]

@@ -30,7 +30,7 @@ Totals: {{X changed, Y unchanged, Z errors, B bootstrapped}}
 - **Last reviewed:** {{2026-01-15}}
 - **Hash:** `{{sha256:abc...}}` → `{{sha256:def...}}`
 
-{{Verbatim model output from comparison-prompt.md, including the "Suggestion summary", "Specific additions", and "Notes" sections.}}
+{{Original paraphrased model output from comparison-prompt.md, including the "Suggestion summary", "Specific additions", source locations, and "Notes" sections. Never include source excerpts.}}
 
 ### Unchanged sources
 
@@ -72,5 +72,5 @@ Proposed sources:
 
 - Render the summary table even when only one skill is in scope.
 - For sources where the bootstrap was skipped, list under a "Skipped" subsection with the user's stated reason if any.
-- Keep verbatim excerpts inside the model's output — do not paraphrase or summarize them in the report.
+- Keep findings paraphrased in original language and point to source headings or links. Never include copied source excerpts in the report.
 - If the entire audit produced no changed sources and no bootstraps, still write the report (a clean run is a useful artifact) — short body is fine.

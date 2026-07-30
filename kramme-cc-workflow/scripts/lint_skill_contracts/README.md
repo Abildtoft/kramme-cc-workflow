@@ -16,7 +16,7 @@ the parsing, validation, synchronization, and reporting behavior.
 | Check orchestration | `checks/types.py`, `checks/registry.py` | Check ordering, shared context, or failure and warning aggregation is wrong. |
 | Text and file contracts | `checks/basic.py` | Synced text, inventory, heading order, file identity, or required-file checks are wrong. |
 | Workflow guidance contracts | `checks/base_diff_scope.py`, `checks/epilogue.py`, `checks/ui_relevance.py` | Base-diff guidance, skill epilogue order, or UI-relevance rules and fixtures are wrong. |
-| Manifest, hook, and mechanical contracts | `checks/marker_manifest.py`, `checks/hooks_json.py`, `checks/mechanical.py` | Source manifests, hook registration, frontmatter, naming, or skill line budgets are wrong. |
+| Manifest, provenance, hook, and mechanical contracts | `checks/marker_manifest.py`, `checks/source_provenance.py`, `checks/hooks_json.py`, `checks/mechanical.py` | Source manifests, copied-source licensing or immutable origin metadata, forbidden source snapshots, hook registration, frontmatter, naming, or skill line budgets are wrong. |
 | README synchronization | `readme.py`, `checks/readme_sync.py` | Skill, agent, or hook reference rows drift, or generated component-reference output is wrong. |
 
 The ordered runtime boundary is `checks/registry.py`. New checks belong in a

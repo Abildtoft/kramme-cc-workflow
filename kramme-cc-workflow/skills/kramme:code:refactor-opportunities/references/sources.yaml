@@ -3,17 +3,20 @@ sources:
     url: https://addyosmani.com/agents/17-agent-skills/
     title: "Addy Osmani - Agent skills reusable knowledge for agents"
     rationale: "The Rule of 500 automation trigger for large refactors is attributed to Addy's guidance on skill-driven coding workflows."
+    usage: inspiration
     last_reviewed_at: 2026-07-06
     baseline_hash: "sha256:2399a67f0b25ad7c0cc8d67c51c6b0c2f210bd007e0842d06820d55f1aecc759"
   - id: pocock-improve-codebase-architecture-deepening
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/codebase-design/DEEPENING.md
     title: "Matt Pocock skills - codebase-design (DEEPENING.md)"
     rationale: "The deletion-test heuristic, adapter-count seam rule (one adapter = hypothetical seam, two = real seam), and replace-don't-layer test-migration rule in references/architecture-language.md are adapted from this source."
+    usage: inspiration
     last_reviewed_at: 2026-07-03
     baseline_hash: "sha256:125e6b77413ad2bc7cf7a772bc74336d580a50f9e797db2178ed133d62333d06"
   - id: pocock-improve-codebase-architecture-language
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/codebase-design/SKILL.md
     title: "Matt Pocock skills - codebase-design (SKILL.md)"
     rationale: "The architectural glossary (Module/Interface/Implementation/Depth/Seam/Adapter/Leverage/Locality) used in references/architecture-language.md is adapted from this source."
+    usage: inspiration
     last_reviewed_at: 2026-07-03
     baseline_hash: "sha256:a8d50abac5a4018f60e1d911d4b6f4e36454ca14d6c390c0695a578c7de65dad"

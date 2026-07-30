@@ -3,11 +3,17 @@ sources:
     url: https://en.wikipedia.org/w/index.php?title=Wikipedia:Signs_of_AI_writing&action=raw
     title: "Wikipedia - Signs of AI writing"
     rationale: "The AI writing pattern catalog and editing checklist are based on this page maintained by WikiProject AI Cleanup."
+    usage: copied
+    license: "CC BY-SA 4.0"
+    notice: references/WIKIPEDIA-CONTENT-LICENSE.md
+    upstream_path: "Wikipedia:Signs of AI writing"
+    upstream_revision: "1366684471"
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:ad24506e2725770b6e8a5f6d2e7dc324fc38ab477b3fb747ddebee80232bf4fd"
   - id: blader-humanizer
     url: https://github.com/blader/humanizer
     title: "blader/humanizer"
     rationale: "The humanization workflow and pattern-removal framing are heavily inspired by this project."
+    usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:5643ec5e931b54175146e140d74b4eb2f0819d1dc03fd96786450c41f525a2e1"

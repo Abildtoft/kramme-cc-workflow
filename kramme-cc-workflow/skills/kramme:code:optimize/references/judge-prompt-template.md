@@ -1,6 +1,6 @@
 # Judge Prompt Template
 
-Adapted from EveryInc compound-engineering-plugin `ce-optimize/references/judge-prompt-template.md`, reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
+Adapted from EveryInc compound-engineering-plugin `ce-optimize/references/judge-prompt-template.md`, reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`. Licensed under MIT; see `EveryInc-LICENSE` for the complete notice.
 
 Use this template after degenerate gates pass and only for specs with `metric.primary.type: judge`.
 

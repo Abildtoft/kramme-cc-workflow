@@ -1,10 +1,9 @@
 # Comparison Prompt
 
-Use this prompt when a source's hash has changed since the last baseline. The goal is to surface _valuable additions_ to the skill — not to summarize the diff.
+Use this prompt when a source's hash has changed since the last baseline. The goal is to surface valuable guidance that the current skill does not yet represent. The previous source body is intentionally not retained.
 
 ## Inputs to gather before prompting
 
-- The previous baseline snapshot at `<skill>/references/sources-snapshot/<id>.md` (may be empty on first audit).
 - The freshly fetched, normalized content of the source.
 - The full text of the target skill's current `SKILL.md`.
 - The source's `rationale` field from `sources.yaml` (what the skill derives from this source).
@@ -17,18 +16,19 @@ Use this prompt when a source's hash has changed since the last baseline. The go
 >
 > > <RATIONALE>
 >
-> Three documents follow:
+> Two documents follow:
 >
-> 1. `PREVIOUS_SNAPSHOT` — the source content as it was when the skill was last reviewed. (May be empty if this is the first audit.)
-> 2. `CURRENT_SOURCE` — the source content as it is now.
-> 3. `CURRENT_SKILL_MD` — the skill's current `SKILL.md`.
+> 1. `CURRENT_SOURCE` — the source content as it is now.
+> 2. `CURRENT_SKILL_MD` — the skill's current `SKILL.md`.
 >
-> Your task: identify content in `CURRENT_SOURCE` that is **both**:
+> The stored hash proves the source changed since the last review, but the previous source body was deliberately not retained. Identify content in `CURRENT_SOURCE` that is:
 >
-> 1. **Genuinely new or changed** relative to `PREVIOUS_SNAPSHOT` (not just rewording or reordering); and
-> 2. **Valuable to add to `CURRENT_SKILL_MD`** given the source's rationale — i.e. it would improve the skill's guidance, accuracy, or coverage.
+> 1. **Not already represented** in `CURRENT_SKILL_MD`; and
+> 2. **Valuable to add** given the source's rationale.
 >
 > Ignore: cosmetic edits, navigation/footer changes, version bumps in unrelated examples, dead links being fixed, prose polish, and content unrelated to the rationale.
+>
+> Copyright boundary: write every suggestion in original words. Do not quote, closely paraphrase, or reproduce source prose, code, examples, tables, or distinctive phrasing. Name the relevant source heading or link so a maintainer can verify the suggestion at the source.
 >
 > Output strictly in this format:
 >
@@ -38,18 +38,18 @@ Use this prompt when a source's hash has changed since the last baseline. The go
 >
 > ## Specific additions
 > 1. <Concrete addition #1 — what to add to SKILL.md, ideally with a target section.>
->    > <Verbatim excerpt from CURRENT_SOURCE supporting this addition (≤6 lines).>
+>    - Source location: <heading or link, without an excerpt>
 > 2. <Concrete addition #2…>
 >
 > ## Notes
 > <Optional. Caveats, conflicts with current SKILL.md content, or open questions.>
 > ```
 >
-> Be concrete. "The source has a new section on X" is not useful — say what specific guidance, rule, example, or constraint should be added to which part of the skill, and quote the source briefly.
+> Be concrete. "The source has a new section on X" is not useful — say what guidance, rule, example, or constraint should be added and where, using original wording.
 >
-> If `PREVIOUS_SNAPSHOT` is empty, treat the entire `CURRENT_SOURCE` as new. In that case, output additions only for content that meaningfully extends the current `SKILL.md`; do not echo content that is already represented.
+> If the source changed only in ways that are already represented or unrelated to the rationale, output "Nothing actionable."
 
 ## After the model responds
 
-- Capture the entire response verbatim into the report under the per-skill section for this source.
+- Capture the model's original response into the report under the per-skill section for this source. Reject and regenerate any response that reproduces source passages.
 - Do not auto-edit `SKILL.md` — that's the user's call after reading the report.

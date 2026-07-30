@@ -1,5 +1,7 @@
 # Performance anti-patterns — before/after
 
+Portions are adapted from Addy Osmani's `agent-skills` under the MIT License. See `addyosmani-agent-skills-LICENSE` for the complete notice.
+
 Six named anti-patterns with canonical fixes. Each one comes up enough that "I saw the smell, I knew the fix" should be the reflex.
 
 ## N+1 queries (backend)

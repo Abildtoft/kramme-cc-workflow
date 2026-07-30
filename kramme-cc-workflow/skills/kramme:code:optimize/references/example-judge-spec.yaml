@@ -1,6 +1,7 @@
 # Minimal first-run template for qualitative metrics.
 # Adapted from EveryInc compound-engineering-plugin ce-optimize example-judge-spec.yaml,
 # reviewed at commit 6f9ab03a031c054a8046659926251fb6c149269f.
+# License: MIT; full notice in EveryInc-LICENSE.
 
 name: improve-search-relevance
 description: Improve semantic relevance of search results without obvious failures

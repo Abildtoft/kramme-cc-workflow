@@ -681,7 +681,7 @@ See [CLAUDE.md](CLAUDE.md) for detailed conventions. Quick reference:
 - **Agents**: Create markdown files in `kramme-cc-workflow/agents/` with `name`, `description`, `model`, and `color` frontmatter.
 - **Skills**: Create a subdirectory in `kramme-cc-workflow/skills/` with a `SKILL.md` file. Key frontmatter: `name`, `description`, `disable-model-invocation`, `user-invocable`, `kramme-platforms`.
 - **Hooks**: Edit `kramme-cc-workflow/hooks/hooks.json` to add event handlers. Available events: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `SessionStart`, `Stop`.
-- **External sources**: When adapting skills, scripts, docs, or workflows from another project, update the skill's `references/sources.yaml`. Copied scripts or assets must keep upstream source, exact commit or release when known, and license notes in the copied file. Prefer rewriting workflows in local vocabulary and splitting long upstream skills into smaller local skills or references; use `/kramme:skill:create` and `/kramme:skill:review` for the detailed checks.
+- **External sources**: When adapting skills, scripts, docs, or workflows from another project, update the skill's `references/sources.yaml` and classify each entry as `usage: inspiration` or `usage: copied`. Conceptual inspiration must be rewritten in original local language. Copied expression requires a verified compatible license, a complete skill-local notice, the exact upstream path, and an immutable commit, revision, release, or version; public availability and attribution alone are not permission. Fetched source bodies and `references/sources-snapshot/` directories must never be committed. Use `/kramme:skill:create` and `/kramme:skill:review` for the detailed checks.
 
 The skill, agent, and hook table rows in this README are generated from component source metadata. Run `python3 kramme-cc-workflow/scripts/generate-component-reference.py --write` to refresh them, or `python3 kramme-cc-workflow/scripts/generate-component-reference.py --check` to validate without writing.
 
@@ -691,13 +691,19 @@ This workspace also includes local maintenance skills under `.agents/skills/`, e
 
 | Skill | Description |
 | --- | --- |
-| `/kramme:skill:audit-sources` | Audits one or more skills against declared inspiration sources, bootstraps missing `references/sources.yaml` manifests, compares fetched source snapshots, and writes `.context/skill-source-audit-<timestamp>.md` reports. |
+| `/kramme:skill:audit-sources` | Audits one or more skills against declared inspiration sources, bootstraps missing `references/sources.yaml` manifests, compares normalized source hashes without retaining fetched source bodies, and writes `.context/skill-source-audit-<timestamp>.md` reports. |
 
 ## Attribution
 
 Addy Osmani's [`agent-skills`](https://github.com/addyosmani/agent-skills) is a major upstream influence on this plugin. Several skills below are direct adaptations, and several others reuse core conventions from Addy's prompts and workflows.
 
-Copied scripts and substantial copied assets must preserve upstream source and license notes in the copied file, not only in this README. Adapted workflows should record their source in the skill's `references/sources.yaml`, rewrite the workflow in this plugin's style, and avoid direct ports of long monolithic skill bodies.
+Copied prose, scripts, templates, and substantial assets must be permitted by a
+verified upstream license and ship with its complete required notice, not only
+an attribution in this README. Adapted workflows should record their source in
+the skill's `references/sources.yaml`, rewrite the workflow in this plugin's
+style, and avoid direct ports of long monolithic skill bodies. See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for retained third-party
+material and its skill-local notices.
 
 ### From [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)
 

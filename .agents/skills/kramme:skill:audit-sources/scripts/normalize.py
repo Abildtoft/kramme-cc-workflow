@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Normalize a fetched source (HTML or markdown) for stable snapshot + hash.
+"""Normalize a fetched source (HTML or markdown) for transient comparison and hashing.
 
 Usage:
-    cat fetched.html | normalize.py --type html > snapshot.md
-    cat fetched.md   | normalize.py --type markdown > snapshot.md
+    curl -fsSL https://example.com/page | normalize.py --type html
+    curl -fsSL https://example.com/file.md | normalize.py --type markdown
 
 The sha256 hash of the normalized output is written to stderr as:
     sha256:<hex>
+
+The normalized body is written to stdout for use during the current audit only.
+Do not redirect or retain it as a repository artifact or durable cache.
 
 Stdlib only — no third-party dependencies. Rules: see references/normalization-rules.md.
 """
@@ -310,7 +313,7 @@ def normalize_markdown(raw: str) -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Normalize fetched source for stable snapshot + hash.")
+    ap = argparse.ArgumentParser(description="Normalize fetched source for transient comparison and hashing.")
     ap.add_argument("--type", choices=("html", "markdown"), default="html")
     args = ap.parse_args()
 

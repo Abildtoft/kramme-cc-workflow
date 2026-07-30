@@ -3,5 +3,6 @@ sources:
     url: https://github.com/nicobailon/visual-explainer
     title: "nicobailon/visual-explainer"
     rationale: "Visual onboarding guide structure, diagram artifact patterns, and explanatory layout conventions are adapted from this project."
+    usage: inspiration
     last_reviewed_at: 2026-04-25
     baseline_hash: "9a97a5818bebbcb61cccf8941d533b82a1ce958b"

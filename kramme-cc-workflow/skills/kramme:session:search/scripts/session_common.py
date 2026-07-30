@@ -2,6 +2,7 @@
 # Upstream repository: https://github.com/EveryInc/compound-engineering-plugin
 # Upstream commit reviewed: 6f9ab03a031c054a8046659926251fb6c149269f
 # License: MIT, Copyright (c) 2025 Every.
+# Full notice: ../references/EveryInc-LICENSE
 #
 """Shared safety boundary for session-search transcript extractors."""
 

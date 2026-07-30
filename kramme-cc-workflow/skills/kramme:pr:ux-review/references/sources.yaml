@@ -3,5 +3,6 @@ sources:
     url: https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-polish
     title: "EveryInc compound-engineering-plugin - ce-polish"
     rationale: "The optional visual-mode app URL auto-detection flow references the shared dev-server detection contract adapted from this source."
+    usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:17a7b2d6f768641a32bd16048a6865dd6e7cb6c9d8a324078aa42f26a97d7416"

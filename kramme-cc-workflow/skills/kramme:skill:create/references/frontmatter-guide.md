@@ -31,7 +31,7 @@ Maximum 1,024 characters. This is the only metadata the agent sees for routing.
 
 **Strong descriptions:**
 
-- "Creates and builds React components using Tailwind CSS. Use when the user wants to update component styles or UI logic. Don't use for Vue, Svelte, or vanilla CSS projects."
+- "Builds React UI with Tailwind utilities. Use for React component styling and behavior changes. Excludes non-React frameworks and projects that do not use Tailwind."
 - "Guide the creation of a new plugin skill with best-practice structure and frontmatter. Use when creating a skill from scratch. Not for editing existing skills."
 
 ### `disable-model-invocation`

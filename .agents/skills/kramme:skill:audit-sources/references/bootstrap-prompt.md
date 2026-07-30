@@ -28,10 +28,14 @@ Use this prompt to propose a `sources.yaml` for a skill that has none yet. Phase
 > - `url` _or_ `context7_library` (exactly one)
 > - `title`: human-readable
 > - `rationale`: one sentence saying _what in this skill is derived from this source_. If you cannot write this confidently, drop the candidate — it is probably illustrative, not inspirational.
+> - `usage`: `inspiration` if the local skill retains only ideas, facts, methods, or rewritten workflow influence; `copied` if source prose, code, templates, or substantial assets remain
+> - for `usage: copied`, `license` containing a verified compatible upstream license, `notice` containing a skill-relative path to the complete required notice, exact `upstream_path`, and one immutable revision field (`upstream_commit`, `baseline_commit`, `upstream_revision`, `upstream_release`, or `version`)
 > - `last_reviewed_at: <today>`
 > - `baseline_hash: ""` (empty — will be populated on first fetch)
 >
 > Prefer `context7_library` when the source is a well-known library that a docs MCP (e.g. Context7) can resolve directly (React, Next.js, Django, Tailwind, etc.) — the audit will use the MCP if available and fall back to a web fetch otherwise. Use `url` for everything else, including blog posts, GitHub repos, and standards bodies.
+>
+> Public availability is not permission to copy. If a retained copy has no verified compatible license, propose `usage: inspiration` and flag the local material for rewriting; never treat attribution alone as permission.
 >
 > Look for sources in these places, in order:
 >

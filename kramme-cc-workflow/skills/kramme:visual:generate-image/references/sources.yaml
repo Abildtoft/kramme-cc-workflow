@@ -3,5 +3,6 @@ sources:
     url: https://github.com/nicobailon/visual-explainer
     title: "nicobailon/visual-explainer"
     rationale: "Image-generation workflow framing and visual artifact handoff conventions are adapted from this project."
+    usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:c1edac6bc9770f82f4416846f476653e11cf35b0ae5e6990147b4e0aa24af08e"

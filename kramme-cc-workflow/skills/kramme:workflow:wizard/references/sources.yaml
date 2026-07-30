@@ -3,8 +3,10 @@ sources:
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/in-progress/wizard/SKILL.md
     title: "Matt Pocock skills - wizard"
     rationale: "The stage-scoping workflow is adapted from the upstream wizard skill, and assets/template.sh is copied from upstream commit d574778f94cf620fcc8ce741584093bc650a61d3 with local attribution."
+    usage: copied
     upstream_path: "skills/in-progress/wizard"
     last_reviewed_at: 2026-07-29
     baseline_commit: "d574778f94cf620fcc8ce741584093bc650a61d3"
     license: "MIT license verified from upstream LICENSE on 2026-07-08; copied template asset preserves source and license notes in the file header, with full permission notice in assets/mattpocock-skills-LICENSE."
+    notice: assets/mattpocock-skills-LICENSE
     baseline_hash: "sha256:e113612095b14178e680022153f2409fb14ea8b992e55d59ad8ce94071ffaf49"
