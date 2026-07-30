@@ -1,6 +1,38 @@
 {
   "accepted_findings": [
     {
+      "path": "kramme-cc-workflow/skills/kramme:pr:stack/SKILL.md",
+      "rule_id": "TM1",
+      "reason": "Reviewed false-positive TM1 finding: the flagged force-with-lease text is a Red Flags entry instructing the agent NOT to force-push individual stack branches. The skill's only push paths are gh stack push/submit/sync, which push all stack branches atomically with --force-with-lease and are the documented safe mechanism for stacked branches.",
+      "owner": "kramme",
+      "accepted_at": "2026-07-29",
+      "review_after": "2026-08-29"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:pr:fix-ci/SKILL.md",
+      "rule_id": "TM1",
+      "reason": "Reviewed false-positive TM1 findings: every flagged --no-verify occurrence explicitly forbids bypassing hooks or gates, requires root-cause fixes, and stops for user approval before any justified disablement.",
+      "owner": "kramme",
+      "accepted_at": "2026-07-29",
+      "review_after": "2026-08-29"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:pr:fix-ci/references/consolidation-flow.md",
+      "rule_id": "TM1",
+      "reason": "Reviewed intentional TM1 finding for post-consolidation publication: history rewriting requires an unshared branch or explicit collaborator coordination, and the push uses force-with-lease for ordinary branches or a restack followed by atomic gh stack push for stacked branches.",
+      "owner": "kramme",
+      "accepted_at": "2026-07-29",
+      "review_after": "2026-08-29"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:pr:fix-ci/references/fixup-flow.md",
+      "rule_id": "TM1",
+      "reason": "Reviewed intentional TM1 finding for autosquash publication: history rewriting requires an unshared branch or explicit collaborator coordination, and the push uses force-with-lease for ordinary branches or a restack followed by atomic gh stack push for stacked branches.",
+      "owner": "kramme",
+      "accepted_at": "2026-07-29",
+      "review_after": "2026-08-29"
+    },
+    {
       "path": "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml",
       "rule_id": "EA2",
       "reason": "Reviewed intentional EA2 finding for the cleanup registry's --auto note: automatic cleanup runs only after explicit caller or user authorization, selects fixed current-project disposable paths, requires recoverable Trash deletion, aborts on dirty tracked artifacts, and never selects permanent specifications or shared diagrams.",

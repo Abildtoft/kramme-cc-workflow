@@ -68,6 +68,21 @@ run_hook() {
 	[[ "$output" == *"Unable to safely parse command metadata"* ]]
 }
 
+@test "pins shared parser when Python safe-path mode ignores cwd" {
+	local hostile_python_path="$BATS_TEST_TMPDIR/hostile-python-path"
+
+	mkdir -p "$hostile_python_path"
+	printf '%s\n' 'print("{\"block\": null}")' >"$hostile_python_path/git_command_parser.py"
+
+	run env \
+		PYTHONSAFEPATH=1 \
+		PYTHONPATH="$hostile_python_path" \
+		bash "$HOOK" <<<"$(make_bash_input "rm -rf directory/")"
+
+	is_blocked
+	[[ "$output" == *"trash"* ]]
+}
+
 @test "allows simple ls command" {
 	run run_hook "ls -la"
 	[ "$status" -eq 0 ]

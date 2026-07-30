@@ -12,6 +12,8 @@
 set -euo pipefail
 
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=../lib/shell-helpers.sh
+source "$SCRIPT_DIR/../lib/shell-helpers.sh"
 # shellcheck source=framework-registry.sh
 source "$SCRIPT_DIR/framework-registry.sh"
 
@@ -19,26 +21,15 @@ PROJECT_ROOT=""
 PROJ_TYPE=""
 EXPLICIT_PORT=""
 
-require_value() {
-  local flag="$1"
-  local value="${2-}"
-  case "$value" in
-    "" | --*)
-      echo "ERROR: $flag requires a value" >&2
-      exit 1
-      ;;
-  esac
-}
-
 while [ $# -gt 0 ]; do
   case "$1" in
     --type)
-      require_value "$1" "${2-}"
+      require_value "$1" "${2-}" 1 "ERROR: "
       PROJ_TYPE="${2:-}"
       shift 2
       ;;
     --port)
-      require_value "$1" "${2-}"
+      require_value "$1" "${2-}" 1 "ERROR: "
       EXPLICIT_PORT="${2:-}"
       shift 2
       ;;

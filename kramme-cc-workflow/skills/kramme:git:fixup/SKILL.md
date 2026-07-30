@@ -52,7 +52,6 @@ Before proceeding with the workflow, check if the user provided additional instr
    ```bash
    RESOLVE_ARGS=(--strict)
    [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
-
    RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}") || {
      echo "Base resolution failed; see the message above and stop. Use --base=<branch> if the target branch is ambiguous."
      exit 1
@@ -85,9 +84,9 @@ Before proceeding with the workflow, check if the user provided additional instr
    Check whether the upstream tracking branch has commits that are not in local `HEAD`:
 
    ```bash
-   UPSTREAM=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)
+   UPSTREAM=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2> /dev/null || true)
    UPSTREAM_REWRITE_WARNING=0
-   if [ -n "$UPSTREAM" ] && git rev-parse --verify --quiet "$UPSTREAM" >/dev/null; then
+   if [ -n "$UPSTREAM" ] && git rev-parse --verify --quiet "$UPSTREAM" > /dev/null; then
      if ! git merge-base --is-ancestor "$UPSTREAM" HEAD; then
        echo "Upstream '$UPSTREAM' is ahead of or diverged from local HEAD; autosquash would rewrite shared history."
        UPSTREAM_REWRITE_WARNING=1
@@ -116,8 +115,8 @@ Before proceeding with the workflow, check if the user provided additional instr
    Detect tracked changes (with rename detection) and untracked files separately — `git diff` alone omits untracked files:
 
    ```bash
-   git diff --name-status -M                  # tracked: modified (M), deleted (D), renamed (R)
-   git ls-files --others --exclude-standard   # untracked (new) files
+   git diff --name-status -M                # tracked: modified (M), deleted (D), renamed (R)
+   git ls-files --others --exclude-standard # untracked (new) files
    ```
 
    Untracked files have no commit that touched them, so they are always orphans (Step 3b) — they cannot be fixed up.
@@ -147,6 +146,23 @@ Before proceeding with the workflow, check if the user provided additional instr
    ```
 
    Pre-existing `fixup!` commits usually mean a prior run created fixups but did not finish the autosquash rebase. Ask the user whether to resume the autosquash now (skip to Step 5) or abort so they can inspect. Under `--no-confirm`, resume the autosquash.
+
+8. **Detect stack membership:**
+
+   ```bash
+   STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
+     echo "Stack membership could not be determined; stop before creating fixup commits." >&2
+     exit 1
+   }
+   eval "$STACK_RESOLVED"
+   ```
+
+   Route the result explicitly:
+   - `STACK_MEMBERSHIP=local`: set `IN_STACK=true`. The autosquash in Step 5 rewrites this branch's history, so Step 7 must restack the branches above it.
+   - `STACK_MEMBERSHIP=none`: set `IN_STACK=false`.
+   - `STACK_MEMBERSHIP=remote`: stop before creating commits. The PR is stacked on GitHub but not tracked locally; install the extension if needed, run `gh stack checkout "$STACK_PR_NUMBER"` from a clean working tree, then retry.
+
+   Authentication, API, parsing, and unexpected `gh stack view` failures stop the workflow. Never interpret them as “not stacked.”
 
 ### Step 2: Run Validations
 
@@ -272,6 +288,14 @@ Confirm success and show any remaining unstaged/untracked files.
 
 **Remind user:** If this branch was already pushed, the remote branch must be updated manually with the repository's history-rewrite policy after the user confirms that collaborators are coordinated.
 
+**If `IN_STACK=true`:** the rewritten history orphans every branch stacked above this one. Restack the local branches before reporting success:
+
+```bash
+gh stack rebase --upstack --no-trunk # rebase the branches above onto the rewritten history
+```
+
+Do not run `gh stack push` automatically. After the user confirms that collaborators are coordinated and the repository's history-rewrite policy permits publication, tell them to run `gh stack push` manually; it updates every stack branch with `--force-with-lease --atomic`.
+
 ## Error Handling
 
 ### Git lock file exists
@@ -354,6 +378,6 @@ If the rebase fails mid-way due to conflicts:
 - Staged changes prompt for handling before proceeding (included automatically under `--no-confirm`)
 - Orphan files (not touched by branch) require user decision or are skipped with `--no-confirm`
 - Autosquash rebase uses merge-base with the base branch, so fixup does not implicitly rebase onto the latest base tip
-- After rebase, force push is required if branch was previously pushed
+- After rebase, a pushed branch needs a manual remote update after collaborator coordination; for a GitHub stack, restack locally with `gh stack rebase --upstack --no-trunk`, then tell the user to run `gh stack push` once publication is authorized
 - Validation commands are project-specific - refer to `AGENTS.md`, `CLAUDE.md`, or equivalent instruction files
 - If `REVIEW_OVERVIEW.md` exists in the project root, this skill updates its `**Commit:**` fields in place (never committing the file); otherwise that step is skipped

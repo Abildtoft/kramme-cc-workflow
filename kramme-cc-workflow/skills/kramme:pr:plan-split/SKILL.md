@@ -206,7 +206,7 @@ If the recommendation is **SPLIT**:
 
    If `/kramme:code:breakdown-findings` is unavailable in this environment, do not silently stop: print the handoff document (themes + Implementation Setup block) inline so the user can generate the plans by hand.
 
-**Implementation Setup block — hand this to `breakdown-findings` verbatim, with `{{REFERENCE_BRANCH}}` and `{{BASE_BRANCH}}` replaced by the resolved branch names (never the placeholder text). It must specify all four points; do not drop any:**
+**Implementation Setup block — hand this to `breakdown-findings` verbatim, with `{{REFERENCE_BRANCH}}` and `{{BASE_BRANCH}}` replaced by the resolved branch names (never the placeholder text). It must specify all five points; do not drop any:**
 
 ````markdown
 ## Implementation Setup
@@ -216,6 +216,7 @@ Implement this plan in its **own dedicated git worktree**, separate from every o
 - **Reference branch (source of the changes):** `{{REFERENCE_BRANCH}}` — the branch this split was planned from. It holds the full set of work being split. Extract **only this slice's files** from it; do not pull changes from any other branch.
 - **One worktree per plan:** each plan is built in its own worktree so slices develop and review independently and in parallel.
 - **Implementation branch:** use whatever branch is checked out in that worktree. Any name works **except `{{REFERENCE_BRANCH}}`** — never implement onto the reference branch itself.
+- **Stack strategy exception:** slices in a Stack build on each other. Root each worktree on the **previous slice's branch** (only the first slice roots on `origin/{{BASE_BRANCH}}`), or skip worktrees entirely and build the chain in one working tree with the `gh stack` CLI (`gh stack init` / `gh stack add` / `gh stack submit --auto`).
 - **Example setup** (branch name and worktree path are **examples, not requirements** — pick your own):
 
   ```bash

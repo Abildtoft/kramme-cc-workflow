@@ -9,24 +9,17 @@
 
 set -euo pipefail
 
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=../lib/shell-helpers.sh
+source "$SCRIPT_DIR/../lib/shell-helpers.sh"
+
 PROJECT_ROOT=""
 REQUESTED_NAME=""
-
-require_value() {
-  local flag="$1"
-  local value="${2-}"
-  case "$value" in
-    "" | --*)
-      echo "ERROR: $flag requires a value" >&2
-      exit 1
-      ;;
-  esac
-}
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --root)
-      require_value "$1" "${2-}"
+      require_value "$1" "${2-}" 1 "ERROR: "
       PROJECT_ROOT="${2:-}"
       shift 2
       ;;
@@ -40,7 +33,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$PROJECT_ROOT" ]; then
-  PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
+  PROJECT_ROOT=$(git rev-parse --show-toplevel 2> /dev/null || true)
   if [ -z "$PROJECT_ROOT" ]; then
     echo "ERROR: not in a git repository and no --root provided" >&2
     exit 1
@@ -52,7 +45,7 @@ if [ ! -d "$PROJECT_ROOT" ]; then
   exit 1
 fi
 
-if ! command -v jq >/dev/null 2>&1; then
+if ! command -v jq > /dev/null 2>&1; then
   echo "ERROR: jq is required but not installed" >&2
   exit 1
 fi
@@ -64,7 +57,7 @@ if [ ! -f "$LAUNCH_PATH" ]; then
   exit 0
 fi
 
-if ! jq empty "$LAUNCH_PATH" >/dev/null 2>&1; then
+if ! jq empty "$LAUNCH_PATH" > /dev/null 2>&1; then
   echo "__INVALID_LAUNCH_JSON__"
   exit 0
 fi

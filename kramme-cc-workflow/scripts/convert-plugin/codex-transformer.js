@@ -179,6 +179,10 @@ function convertCodexHookPlugin(plugin) {
         sourceDir: path.join(plugin.root, "scripts", "dev-server"),
         targetDir: path.join("scripts", "dev-server"),
       },
+      {
+        sourceDir: path.join(plugin.root, "scripts", "lib"),
+        targetDir: path.join("scripts", "lib"),
+      },
     ],
     sharedScriptFiles: [
       {

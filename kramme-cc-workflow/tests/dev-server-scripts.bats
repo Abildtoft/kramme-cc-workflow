@@ -338,15 +338,15 @@ JSON
 @test "value-bearing flags fail when missing values" {
   run "$SCRIPT_DIR/detect-url.sh" "$WORK_DIR" --url
   [ "$status" -eq 1 ]
-  [[ "$output" == *"--url requires a value"* ]]
+  [ "$output" = "ERROR: --url requires a value" ]
 
   run "$SCRIPT_DIR/resolve-port.sh" "$WORK_DIR" --type
   [ "$status" -eq 1 ]
-  [[ "$output" == *"--type requires a value"* ]]
+  [ "$output" = "ERROR: --type requires a value" ]
 
   run "$SCRIPT_DIR/read-launch-json.sh" --root
   [ "$status" -eq 1 ]
-  [[ "$output" == *"--root requires a value"* ]]
+  [ "$output" = "ERROR: --root requires a value" ]
 }
 
 @test "detect-url does not fall through when explicit port is unreachable" {

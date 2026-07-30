@@ -43,7 +43,7 @@ This workflow is only for explicit `--solo` runs or constrained runtimes. Defaul
 3. Read relevant project instructions (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, or equivalents) and apply their conventions during the audit.
 4. Read accepted architecture decisions from common ADR locations (`docs/decisions/`, `docs/adr/`, `doc/adr/`, `architecture/decisions/`). Store accepted decisions as constraints. Do not flag a weakness that merely contradicts an accepted decision unless new evidence shows the trade-off has shifted.
 5. Read project glossary files when present (`UBIQUITOUS_LANGUAGE.md`, `GLOSSARY.md`, `docs/glossary.md`) and use canonical domain terms in finding titles.
-6. Detect prior report artifacts (`CODEBASE_WEAKNESS_REPORT.md`, `REFACTOR_OPPORTUNITIES_OVERVIEW.md`, `AGENT_NATIVE_AUDIT.md`, `REVIEW_OVERVIEW.md`) only as context. Do not copy findings without re-validating evidence in the current tree.
+6. Detect prior report artifacts (`CODEBASE_WEAKNESS_REPORT.md`, `OUTSIDE_VIEW_REPORT.md`, `REFACTOR_OPPORTUNITIES_OVERVIEW.md`, `AGENT_NATIVE_AUDIT.md`, `REVIEW_OVERVIEW.md`) only as context. Treat outside-view complaint clusters as unverified leads worth checking against evidence. Do not copy findings without re-validating evidence in the current tree.
 
 ### 2. Resolve Scope
 
@@ -82,6 +82,13 @@ Each raw candidate must include:
 - validation check that would prove the fix worked
 - rough effort and blast radius
 
+After finishing the lens scans, answer two off-rubric questions before any filtering:
+
+- What is the most important weakness in this scope that none of the three lenses asked about?
+- If you could tell the codebase owner one sentence, what would it be?
+
+Record the answers for the report's Impressions (Unverified) section. Impressions are exempt from the evidence standards and from Filter Hard: label them as unverified instead of dropping them or forcing them into finding format.
+
 ### 4. Filter Hard
 
 1. Drop candidates without concrete evidence. "Feels messy" is not a finding.
@@ -92,6 +99,7 @@ Each raw candidate must include:
 6. Keep a candidate that is localized but correctness-critical even if it appears once.
 7. Promote a maintainability or readability candidate only when it affects repeated work, important code paths, cross-module changes, onboarding/traversal, or review confidence.
 8. Prefer fewer high-confidence findings over a complete inventory. If more than `MAX_FINDINGS` remain, keep only the top-ranked findings and list the rest as filtered or follow-up candidates.
+9. Never apply these filters to off-rubric impressions. They are reported separately as unverified and are the report's escape hatch for rubric blind spots.
 
 ### 5. Rank and Synthesize
 
@@ -136,4 +144,5 @@ Reply with:
 - Correctness findings must name a plausible failure path or missing invariant.
 - Maintainability findings must explain how future changes become riskier or slower.
 - Readability findings must explain what a maintainer would misunderstand or fail to find.
+- Impressions are the escape hatch for rubric blind spots: report them honestly and label them unverified rather than suppressing them or dressing them up as findings. Recurring impressions belong in `/kramme:code:outside-view` runs and eventual rubric amendments.
 - Do not implement fixes. This skill ranks and explains weaknesses; separate implementation work belongs in follow-up tasks.

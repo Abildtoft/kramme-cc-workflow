@@ -98,6 +98,7 @@ exit_if_hook_disabled "hook-name" "json" # For PostToolUse/Stop hooks
   1. **Verb-first** (default for actions): `resolve-review`, `generate-phases`, `fix-ci`
   2. **Object-first** (only when 2+ skills share the prefix): `issue-define`, `issue-implement`
   3. **Noun compound** (names a thing, not an action): `code-review`, `spec-audit`, `commit-message`
+- **Skill catalog shape** - Use exactly `kramme:<domain>:<skill-name>` for every new or renamed skill. Create a singleton domain only when it names a durable capability that no existing domain classifies, adds routing information beyond the skill name, and has recorded use or a time-bounded emerging/showcase case with an owner and review date. Merge adjacent skills when their intent, inputs, output, side effects, and safety gates overlap and only an implementation technique or mode separates them; keep them separate only when a positive single-clause route identifies a different intent, workflow phase, durable output, permission boundary, or failure path. Consult current 30-day and 90-day usage as evidence, never as the sole criterion. Structural naming exceptions require an accepted ADR before merge; legacy outliers are not precedent.
 
 ## Development
 

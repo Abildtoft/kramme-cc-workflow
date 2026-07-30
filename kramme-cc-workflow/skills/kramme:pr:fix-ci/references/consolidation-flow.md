@@ -33,7 +33,6 @@ If `AUTO_MODE=true`, apply the pre-rebase safety gate above, then select **Autom
 
 Otherwise, present the user with a summary and options:
 
-
 ```
 CI checks passed! Found N [FIX PIPELINE] commits:
 
@@ -159,11 +158,18 @@ After successful rebase, confirm one of these is true before pushing:
 
 If neither is true, stop here. Keep the rebased result local and tell the user not to push it yet. In interactive/default mode, recommend either coordinating first or resetting back to the pre-consolidation state and choosing "Keep separate". In `AUTO_MODE`, stop with `MISSING REQUIREMENT` instead of recommending "Keep separate".
 
-If one of those conditions is true:
+If one of those conditions is true, choose exactly one push path:
 
 ```bash
-git push --force-with-lease origin "$(git branch --show-current)"
+if [ "$IN_STACK" = true ]; then
+  gh stack rebase --upstack --no-trunk
+  gh stack push
+else
+  git push --force-with-lease origin "$(git branch --show-current)"
+fi
 ```
+
+`IN_STACK` was resolved in the parent skill before the loop. A stack consolidation rewrites history under the branches above it, so the stack path restacks locally first and pushes only after that succeeds. Never force-push the rewritten parent branch before the stack-wide atomic push.
 
 ## Step 11.8: Confirm Success
 

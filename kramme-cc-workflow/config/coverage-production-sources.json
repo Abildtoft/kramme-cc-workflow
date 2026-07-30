@@ -139,6 +139,9 @@
       "kramme-cc-workflow/hooks/skill-usage-stats.sh": [
         "kramme-cc-workflow/tests/skill-usage-stats.bats"
       ],
+      "kramme-cc-workflow/scripts/benchmark-hook-overhead.sh": [
+        "kramme-cc-workflow/tests/benchmark-hook-overhead.bats"
+      ],
       "kramme-cc-workflow/scripts/bootstrap-dev.sh": [
         "kramme-cc-workflow/tests/bootstrap-dev.bats"
       ],
@@ -163,11 +166,20 @@
       "kramme-cc-workflow/scripts/dev-server/resolve-port.sh": [
         "kramme-cc-workflow/tests/dev-server-scripts.bats"
       ],
+      "kramme-cc-workflow/scripts/lib/shell-helpers.sh": [
+        "kramme-cc-workflow/tests/dev-server-scripts.bats",
+        "kramme-cc-workflow/tests/resolve-base.bats",
+        "kramme-cc-workflow/tests/review-diff-scripts.bats",
+        "kramme-cc-workflow/tests/skillspector-runner.bats"
+      ],
       "kramme-cc-workflow/scripts/install-codex.sh": [
         "kramme-cc-workflow/tests/convert-plugin.bats"
       ],
       "kramme-cc-workflow/scripts/resolve-base.sh": [
         "kramme-cc-workflow/tests/resolve-base.bats"
+      ],
+      "kramme-cc-workflow/scripts/resolve-stack-membership.sh": [
+        "kramme-cc-workflow/tests/resolve-stack-membership.bats"
       ],
       "kramme-cc-workflow/scripts/run-skillspector.sh": [
         "kramme-cc-workflow/tests/skillspector-runner.bats"

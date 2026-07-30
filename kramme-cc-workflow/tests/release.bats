@@ -4,7 +4,7 @@ setup() {
   export RELEASE_REAL_GIT="$(command -v git)"
   export RELEASE_PRETTIER="$BATS_TEST_DIRNAME/../../node_modules/.bin/prettier"
   export RELEASE_TEST_PATH="$PATH"
-  TMP_ROOT="$(mktemp -d)"
+  TMP_ROOT="$(cd "$(mktemp -d)" && pwd -P)"
   SCRIPT="$BATS_TEST_DIRNAME/../scripts/release.py"
   PLUGIN_ROOT="$TMP_ROOT/kramme-cc-workflow"
   mkdir -p "$PLUGIN_ROOT/.claude-plugin" "$PLUGIN_ROOT/scripts"
@@ -457,6 +457,10 @@ SH
 
 @test "release reports incomplete rollback when the index cannot be restored" {
   install_release_make_mock
+  PHYSICAL_TMPDIR="$TMP_ROOT/recovery-temp"
+  SYMLINKED_TMPDIR="$TMP_ROOT/recovery-temp-link"
+  mkdir -p "$PHYSICAL_TMPDIR"
+  ln -s "$PHYSICAL_TMPDIR" "$SYMLINKED_TMPDIR"
   cp "$TMP_ROOT/.git/index" "$TMP_ROOT/index.before"
   cat >"$MOCK_BIN/git" <<'SH'
 #!/bin/sh
@@ -471,11 +475,14 @@ SH
 
   run env PATH="$MOCK_BIN:$RELEASE_TEST_PATH" \
     RELEASE_GIT_DIR="$TMP_ROOT/.git" \
+    TMPDIR="$SYMLINKED_TMPDIR" \
     python3 "$PLUGIN_ROOT/scripts/release.py" patch --ci
 
   [ "$status" -eq 2 ]
   [[ "$output" == *"Automatic rollback was incomplete."* ]]
   [[ "$output" == *"$TMP_ROOT/.git/index"* ]]
+  [[ "$output" == *"cp -- $PHYSICAL_TMPDIR/release-recovery-"* ]]
+  [[ "$output" != *"$SYMLINKED_TMPDIR/release-recovery-"* ]]
   [[ "$output" != *"Restored release files to their pre-release state."* ]]
 
   recovery_commands="$(printf '%s\n' "$output" | sed -n '/^    /s/^    //p')"

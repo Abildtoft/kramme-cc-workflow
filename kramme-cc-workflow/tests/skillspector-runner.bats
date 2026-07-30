@@ -4,14 +4,16 @@ bats_require_minimum_version 1.5.0
 
 setup() {
 	SOURCE_SCRIPT="$BATS_TEST_DIRNAME/../scripts/run-skillspector.sh"
+	SOURCE_LIBRARY="$BATS_TEST_DIRNAME/../scripts/lib/shell-helpers.sh"
 	TMP_DIR="$(mktemp -d)"
 	REPO="$TMP_DIR/repo"
 	BIN_DIR="$TMP_DIR/bin"
 	REPORT_DIR="$TMP_DIR/reports"
 	MOCK_SOURCE="$BATS_TEST_DIRNAME/test_helper/mocks/skillspector"
-	mkdir -p "$REPO/kramme-cc-workflow/scripts" "$BIN_DIR" "$REPORT_DIR"
+	mkdir -p "$REPO/kramme-cc-workflow/scripts/lib" "$BIN_DIR" "$REPORT_DIR"
 	cp "$BATS_TEST_DIRNAME/../Makefile" "$REPO/kramme-cc-workflow/Makefile"
 	cp "$SOURCE_SCRIPT" "$REPO/kramme-cc-workflow/scripts/run-skillspector.sh"
+	cp "$SOURCE_LIBRARY" "$REPO/kramme-cc-workflow/scripts/lib/shell-helpers.sh"
 	chmod +x "$REPO/kramme-cc-workflow/scripts/run-skillspector.sh"
 	ln -s "$MOCK_SOURCE" "$BIN_DIR/skillspector"
 	export PATH="$BIN_DIR:$PATH"
