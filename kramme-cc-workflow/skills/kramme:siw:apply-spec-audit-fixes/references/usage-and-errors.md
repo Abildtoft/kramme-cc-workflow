@@ -6,22 +6,22 @@ Load this reference only when showing examples or handling one of the failure ca
 
 ```bash
 # Default (balanced — fixes mechanical + high-confidence findings)
-/kramme:siw:spec-audit:auto-fix
+/kramme:siw:apply-spec-audit-fixes
 
 # Stricter pass (higher confidence bar)
-/kramme:siw:spec-audit:auto-fix --threshold 90
+/kramme:siw:apply-spec-audit-fixes --threshold 90
 
 # Most permissive allowed threshold
-/kramme:siw:spec-audit:auto-fix --threshold 60
+/kramme:siw:apply-spec-audit-fixes --threshold 60
 
 # Preview what the lowest threshold would fix
-/kramme:siw:spec-audit:auto-fix --dry-run --threshold 60
+/kramme:siw:apply-spec-audit-fixes --dry-run --threshold 60
 
 # Auto-apply all auto-fixable findings without asking
-/kramme:siw:spec-audit:auto-fix --auto
+/kramme:siw:apply-spec-audit-fixes --auto
 
 # Auto-apply with lower threshold
-/kramme:siw:spec-audit:auto-fix --auto --threshold 70
+/kramme:siw:apply-spec-audit-fixes --auto --threshold 70
 ```
 
 ## Error Handling

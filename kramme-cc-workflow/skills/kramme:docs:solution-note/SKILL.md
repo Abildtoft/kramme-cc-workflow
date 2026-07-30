@@ -25,7 +25,7 @@ Route elsewhere if:
 - **Long-lived architecture decision** -> use `/kramme:docs:adr`; ADRs record decisions and alternatives, not repeatable solved-problem playbooks.
 - **Domain vocabulary** -> use `/kramme:docs:ubiquitous-language`; glossaries define terms, not implementation lessons.
 - **Feature planning** -> use `/kramme:docs:feature-spec`.
-- **Rejected enhancement** -> use `/kramme:docs:out-of-scope`.
+- **Rejected enhancement** -> use `/kramme:docs:track-rejected-enhancements`.
 - **Session progress summary** -> keep it in the active project log or repo-local notes; do not create a solution note for ordinary status.
 
 ## Artifact lifecycle

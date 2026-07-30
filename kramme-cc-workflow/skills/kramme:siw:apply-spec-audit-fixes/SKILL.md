@@ -1,5 +1,5 @@
 ---
-name: kramme:siw:spec-audit:auto-fix
+name: kramme:siw:apply-spec-audit-fixes
 description: Canonical auto-fix procedure for mechanical spec-audit findings and kramme:siw:spec-audit --apply. Fixes only issues with a single obvious resolution — cross-reference errors, terminology inconsistencies, numbering mistakes, formatting issues, and weasel words replaceable with specifics already in the spec. Run after spec-audit.
 argument-hint: "[audit-report-path] [--auto] [--dry-run] [--threshold 60-100] [--allow-dirty]"
 disable-model-invocation: true
@@ -36,7 +36,7 @@ Findings that require product decisions, stakeholder input, or still lack a clea
 ## Process Overview
 
 ```
-/kramme:siw:spec-audit:auto-fix [audit-report-path] [--auto] [--dry-run] [--threshold N] [--allow-dirty]
+/kramme:siw:apply-spec-audit-fixes [audit-report-path] [--auto] [--dry-run] [--threshold N] [--allow-dirty]
     |
     v
 [Step 1: Locate Report and Spec Files]
@@ -119,7 +119,7 @@ With `--auto` **and** `--allow-dirty`, continue with the warning. With `--auto` 
 ```
 Spec files have uncommitted changes. --auto refuses to edit dirty spec files without --allow-dirty.
 
-Either commit or stash the changes, or re-run with: /kramme:siw:spec-audit:auto-fix --auto --allow-dirty
+Either commit or stash the changes, or re-run with: /kramme:siw:apply-spec-audit-fixes --auto --allow-dirty
 ```
 
 Otherwise (interactive), ask:

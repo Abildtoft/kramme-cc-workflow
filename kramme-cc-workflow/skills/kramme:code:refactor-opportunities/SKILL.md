@@ -47,7 +47,7 @@ These rejections are pre-filters — apply them before recording a finding, not 
 3. Discover project instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents) if present and read the relevant ones to understand project-specific conventions.
 4. **Read accepted ADRs.** Look for `docs/decisions/` (or other common ADR locations: `doc/adr/`, `docs/adr/`, `architecture/decisions/`). If found, read every ADR whose status reads `ACCEPTED` (case-insensitive) and store their decisions as `KNOWN_ADRS` — title, status, and a one-line summary of what was decided and what was rejected. Skip ADRs marked `PROPOSED`, `SUPERSEDED`, or `DEPRECATED` — only accepted decisions are decision-of-record. These bound the design space the scan operates in. If no ADR directory exists, proceed silently with `KNOWN_ADRS = []`.
 5. **Read project domain language.** If `UBIQUITOUS_LANGUAGE.md` (or similar: `GLOSSARY.md`, `docs/glossary.md`) exists at the project root, read it and store the canonical domain terms. When naming refactor candidates in Phase 4, prefer these terms over internal helper class names — "the Order intake module" is more useful than "the FooBarHandler". If no glossary file exists, proceed silently — do not flag its absence.
-6. **Read prior rejections.** If `.out-of-scope/` exists at the project root, list its filenames and store them as `KNOWN_OUT_OF_SCOPE`. Do not open file bodies yet — that happens in Phase 3 only when a finding plausibly matches a slug. If no directory exists, proceed silently with `KNOWN_OUT_OF_SCOPE = []`. See `/kramme:docs:out-of-scope` for the storage skill.
+6. **Read prior rejections.** If `.out-of-scope/` exists at the project root, list its filenames and store them as `KNOWN_OUT_OF_SCOPE`. Do not open file bodies yet — that happens in Phase 3 only when a finding plausibly matches a slug. If no directory exists, proceed silently with `KNOWN_OUT_OF_SCOPE = []`. See `/kramme:docs:track-rejected-enhancements` for the storage skill.
 7. Resolve the effective scan scope. Across all modes, exclude `node_modules`, `dist`, build artifacts, generated files, lock files, vendored code, and binary assets. Then per mode:
    - **Full**: list source directories from project structure.
    - **PR**:
@@ -67,8 +67,10 @@ These rejections are pre-filters — apply them before recording a finding, not 
         - unchanged code directly affected by a changed caller or API contract
 
         "The file was touched" is not enough. References to "the PR relevance gate" elsewhere in this skill mean exactly this list.
+
    - **Path**: validate that every named file/folder exists or every glob matches at least one file. If a value does not resolve, ask the user to clarify — do not fall back to `feature`. For folders, recursively include source files under the folder.
    - **Feature**: search for the feature name and project-glossary synonyms across directory names, module names, routes, package names, tests, docs, config, schemas, and user-facing copy. Include primary implementation files, matching tests, API/routes, data models, feature flags, fixtures, and docs that directly define the feature. If the name maps to multiple unrelated areas, or if no file's name, route, or schema contains the feature term, present the candidate file groups (or the empty result) and ask the user to confirm or rename. If the user confirms an empty result, terminate with a one-line message that the feature could not be located rather than producing a report.
+
 8. Build a human-readable `SCOPE_DESCRIPTION` covering mode, resolved target, file count, and source directories — for example `Full codebase (1,247 files across 8 source directories)`, `Current PR against origin/main (14 files)`, `Path src/api (37 files)`, or `Feature "billing exports" (22 files across API, UI, tests, and docs)`. Report it to the user before proceeding.
 
 ### Phase 2 — Parallel Scan
