@@ -241,7 +241,7 @@ make_body_lines() {
 
 @test "spec-audit fix-confidence rubric is synced as a skill-local resource" {
   local registry="$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml"
-  local auto_fix_rubric="$BATS_TEST_DIRNAME/../skills/kramme:siw:spec-audit:auto-fix/references/classification-rubric.md"
+  local auto_fix_rubric="$BATS_TEST_DIRNAME/../skills/kramme:siw:apply-spec-audit-fixes/references/classification-rubric.md"
   local audit_rubric="$BATS_TEST_DIRNAME/../skills/kramme:siw:spec-audit/references/fix-confidence-rubric.md"
 
   test -f "$auto_fix_rubric"

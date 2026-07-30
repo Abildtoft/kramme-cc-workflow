@@ -356,9 +356,9 @@
   "file_identity_groups": [
     {
       "name": "siw-spec-audit-fix-confidence-rubric",
-      "canonical": "kramme-cc-workflow/skills/kramme:siw:spec-audit:auto-fix/references/classification-rubric.md",
+      "canonical": "kramme-cc-workflow/skills/kramme:siw:apply-spec-audit-fixes/references/classification-rubric.md",
       "paths": [
-        "kramme-cc-workflow/skills/kramme:siw:spec-audit:auto-fix/references/classification-rubric.md",
+        "kramme-cc-workflow/skills/kramme:siw:apply-spec-audit-fixes/references/classification-rubric.md",
         "kramme-cc-workflow/skills/kramme:siw:spec-audit/references/fix-confidence-rubric.md"
       ]
     },

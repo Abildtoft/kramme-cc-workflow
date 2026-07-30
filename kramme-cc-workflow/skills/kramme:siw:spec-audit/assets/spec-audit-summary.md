@@ -10,15 +10,14 @@ Overall: {Ready for implementation / Needs revision / Significant gaps}
 
 Report: {report_path}
 
-{If direct apply ran:} Applied Now: {N} finding(s) updated spec files directly. Issues Created: 0.
-{If issues created:} Issues Created: {N} (G-{start} through G-{end}) See siw/OPEN_ISSUES_OVERVIEW.md for the full list.
+{If direct apply ran:} Applied Now: {N} finding(s) updated spec files directly. Issues Created: 0. {If issues created:} Issues Created: {N} (G-{start} through G-{end}) See siw/OPEN_ISSUES_OVERVIEW.md for the full list.
 
 Next Steps:
 
 - Fix critical findings in the spec before starting implementation {If preserved critical caps exist:}
 - Resolve preserved-critical findings reported as Minor with `Severity Note` before starting implementation or running auto-fix
 - Address major findings to reduce implementation risk
-- Auto-fix mechanical findings (cross-refs, terminology, formatting): /kramme:siw:spec-audit:auto-fix
+- Auto-fix mechanical findings (cross-refs, terminology, formatting): /kramme:siw:apply-spec-audit-fixes
 - Resolve remaining findings with executive summaries and issue creation: /kramme:siw:resolve-audit {report_path}
 - Or let the model choose each resolution automatically: /kramme:siw:resolve-audit {report_path} --auto
 - Re-run after spec revisions to verify quality: /kramme:siw:spec-audit
