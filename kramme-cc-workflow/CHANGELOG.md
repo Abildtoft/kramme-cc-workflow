@@ -14,6 +14,47 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 - **Breaking:** Replace `/kramme:pr:update-split-plans` with `/kramme:code:breakdown-findings --reconcile`. Existing prompts and automation must migrate to the replacement command; plan paths, `--all`, `--worktree`, `--source`, `--base`, and `--auto` remain available in reconcile mode. Former no-scope calls must add `--all` to preserve the removed command's active-plan-only default; zero-scope reconcile retains `kramme:code:breakdown-findings`'s all-indexed behavior.
 - **Breaking:** Rename `/kramme:siw:spec-audit:auto-fix` to `/kramme:siw:apply-spec-audit-fixes` and `/kramme:docs:out-of-scope` to `/kramme:docs:track-rejected-enhancements`. Existing prompts and automation must migrate to the replacement commands; arguments and behavior are unchanged. Ship these command removals only in the next major release.
 
+## [0.69.0] - 2026-07-30
+
+### Added
+
+- Add content-aware source baselines (#730)
+- Add GitHub stacked PR workflows (#727)
+- Add outside-view codebase ratings (#724)
+- Add issue and plan PR orchestration (#719)
+- Consolidate visual reports into walkthrough (#721)
+- Bound input and surface diagnostics (#710)
+- Add canonical file synchronization (#704)
+
+### Changed
+
+- Reuse shared timeout helper (#732)
+- Reduce parser startup overhead (#728)
+- Share shell helpers (#726)
+- Define catalog shape policy (#725)
+- Consolidate interview workflows (#723)
+- Consolidate split-plan reconciliation (#722)
+- Fold rewrite mode into refactor pass (#720)
+- Fold greenfield policy into AGENTS.md skill (#718)
+- Consolidate review entry points (#716)
+- Fold autoreview into code review (#717)
+- Extract workflow contracts (#713)
+- Document package responsibilities (#711)
+- Restructure README for readability and add development guide (#709)
+- Extract install transaction lifecycle (#706)
+- Document command parser contracts (#705)
+
+### Fixed
+
+- Isolate SkillSpector dependencies (#733)
+- Normalize catalog command names (#731)
+- Canonicalize recovery backup paths (#729)
+- Harden automatic PR creation (#715)
+- Inspect git commit selections (#702)
+- Harden transcript extraction (#700)
+- Resolve browser-facing framework ports (#699)
+- Harden artifact validation (#698)
+
 ## [0.68.0] - 2026-07-26
 
 ### Added
@@ -693,6 +734,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - Preserve skill resources in conversion (#222)
 
+[0.69.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.68.0...v0.69.0
 [0.68.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.67.0...v0.68.0
 [0.67.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.66.0...v0.67.0
 [0.66.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.65.0...v0.66.0
