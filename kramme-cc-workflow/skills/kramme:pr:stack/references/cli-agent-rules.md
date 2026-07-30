@@ -1,5 +1,7 @@
 # gh-stack CLI: agent rules and reference
 
+<!-- Adapted from github/gh-stack skills/gh-stack/SKILL.md at commit a1b4a3d4d0bcde9ec3a78ab99b2d63af121857a9 under the MIT License. Full notice: github-gh-stack-LICENSE. -->
+
 Condensed operating reference for driving `gh stack` non-interactively. Every command must be invoked so it cannot prompt — a prompt or TUI hangs the session.
 
 ## Non-interactive invocation rules

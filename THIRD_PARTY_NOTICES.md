@@ -12,6 +12,10 @@ Portions of `kramme:code:performance` are adapted from [`addyosmani/agent-skills
 
 Copied or adapted scripts and support files in `kramme:code:optimize`, `kramme:git:clean-gone-branches`, `kramme:git:worktree`, `kramme:session:search`, and `kramme:setup` come from [`EveryInc/compound-engineering-plugin`](https://github.com/EveryInc/compound-engineering-plugin), licensed under the MIT License. Each affected skill carries a complete copy of the upstream license in `references/EveryInc-LICENSE`.
 
+## GitHub — `gh-stack`
+
+Portions of `kramme:pr:stack` are adapted from [`github/gh-stack`](https://github.com/github/gh-stack), licensed under the MIT License. The complete notice is retained in `kramme-cc-workflow/skills/kramme:pr:stack/references/github-gh-stack-LICENSE`.
+
 ## Jesse Vincent — `obra/superpowers`
 
 Portions of `kramme:verify:before-completion` are adapted from [`obra/superpowers`](https://github.com/obra/superpowers), licensed under the MIT License. The complete notice is retained in `kramme-cc-workflow/skills/kramme:verify:before-completion/references/obra-superpowers-LICENSE`.

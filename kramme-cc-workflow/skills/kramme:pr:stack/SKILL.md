@@ -6,6 +6,8 @@ disable-model-invocation: true
 user-invocable: true
 ---
 
+<!-- Adapted from github/gh-stack skills/gh-stack/SKILL.md at commit a1b4a3d4d0bcde9ec3a78ab99b2d63af121857a9 under the MIT License. Full notice: references/github-gh-stack-LICENSE. -->
+
 # GitHub Stacked PRs
 
 Manage a **stack**: an ordered chain of branches where each branch builds on the one below it and each maps to one PR whose base is the branch below. Reviewers see only the diff for that layer; GitHub tracks the chain server-side, evaluates CI and branch protection against the stack base, and lands cascading merges bottom-up.
