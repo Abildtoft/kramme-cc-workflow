@@ -9,7 +9,7 @@ disable-model-invocation: false
 
 ## Overview
 
-Claiming work is complete without verification is dishonesty, not efficiency.
+Claiming work is complete without fresh verification evidence leaves the claim unsupported.
 
 **Core principle:** Evidence before claims, always.
 
@@ -38,7 +38,7 @@ BEFORE claiming any status or expressing satisfaction:
    - If YES: State claim WITH evidence
 5. ONLY THEN: Make the claim
 
-Skip any step = lying, not verifying
+Skip any step = the claim remains unverified
 ```
 
 If no command can prove the claim — no test/build/lint exists, or it cannot run in this environment — say so explicitly: name what you changed and what you could not verify. "Cannot verify X here" is an honest status; "X passes" without evidence is not.
@@ -127,4 +127,4 @@ False completion claims have concrete costs:
 - Broken code ships — undefined functions and unhandled cases that crash in use
 - Incomplete features ship — requirements silently missed
 - Rework — time lost to redirect-and-redo after a false "done"
-- Honesty is a core value; a claim without evidence is a lie, not a shortcut
+- Evidence is a core requirement; a claim without it remains unproven

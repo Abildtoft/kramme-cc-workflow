@@ -97,14 +97,6 @@
       "review_after": "2026-08-26"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:pr:rebase/SKILL.md",
-      "rule_id": "TM1",
-      "reason": "Reviewed intentional TM1 finding for this user-triggered rebase skill: explicit dangerous --auto mode may force-push with --force-with-lease after bypassing red-flag and verification gates. Safe --force-push and manual paths keep red-flag/verification gates, and all pushes validate and quote the current branch.",
-      "owner": "kramme",
-      "accepted_at": "2026-06-30",
-      "review_after": "2026-07-30"
-    },
-    {
       "path": "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
       "rule_id": "TM1",
       "reason": "Reviewed intentional TM1 finding for this user-triggered fixup skill: it rewrites only branch-local commits after explicit branch/base/upstream/merge checks, aborts unattended mode for merge commits, stale locks, validation failures, and upstream divergence, and reminds users to use force-with-lease only after a successful autosquash.",
