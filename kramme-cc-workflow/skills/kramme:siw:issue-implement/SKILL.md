@@ -351,38 +351,13 @@ If the companion skills `/kramme:verify:run`, `/kramme:pr:create`, and `/kramme:
 
 Before marking implementation complete, ensure the specification reflects all decisions made during implementation.
 
-### 10.1 Review siw/LOG.md Decision Log
+Read `references/spec-sync.md` and follow it for the classification categories, the spec routing rules, main-spec identification, the update-placement rules, and the presentation and confirmation templates. Run these actions in order:
 
-Check siw/LOG.md for decisions recorded during implementation: new decisions not in the spec, changes to the originally planned approach, discovered constraints, and technical choices that affect future work.
-
-### 10.2 Compare Decisions Against Spec, Supporting Specs, and Contract Specs
-
-For each decision, check whether it aligns with the spec, supporting specs, or contract specs. Identify decisions that contradict (spec needs updating), add new information (spec needs expanding), or clarify ambiguities (spec needs refinement).
-
-**If supporting or contract specs exist (`siw/supporting-specs/`, `siw/contracts/`)**, route decisions by topic:
-
-- Data model decisions → `*-data-model*.md`
-- API decisions → `*-api*.md`
-- Contract/interface decisions → `siw/contracts/*.md`
-- UI/frontend decisions → `*-ui*.md` or `*-frontend*.md`
-- User story updates → `*-user-stories*.md`
-- Default → main spec if no matching supporting or contract spec
-
-### 10.3 Present Spec Update Candidates and Ask
-
-If misalignments are found, read `references/spec-sync.md`, present them using its template, and use AskUserQuestion to choose between updating all, reviewing each, or skipping.
-
-### 10.4 Update Specification File(s)
-
-For selected decisions, update the appropriate spec file.
-
-For supporting and contract specs, update the actual spec content (entity definitions, endpoint contracts, component specs, diagrams) — do not just append to a "Design Decisions" section. Supporting and contract specs should always reflect current reality.
-
-Use the main spec's `## Design Decisions` section only for cross-cutting decisions, high-level architectural choices, or decisions that don't map to a specific spec section. For the worked POST → PUT example, per-area routing reminders, and the Design Decisions migration format, read `references/spec-sync.md`.
-
-### 10.5 Confirm Sync Complete
-
-Read the confirmation template in `references/spec-sync.md` and use it to confirm the update to the user. If no updates were needed, report: "Spec Sync Check: All implementation decisions align with the specifications. No updates needed."
+1. **10.1 Review the decision log** — check siw/LOG.md for decisions recorded during implementation.
+2. **10.2 Classify and route each decision** — compare it against the spec, supporting specs (`siw/supporting-specs/`), and contract specs (`siw/contracts/`), and select its target file using the reference's routing rules.
+3. **10.3 Present spec update candidates and ask** — if misalignments are found, present them using the reference's template and use AskUserQuestion to choose between updating all, reviewing each, or skipping.
+4. **10.4 Update the specification file(s)** — for the selected decisions, apply the updates the reference's placement rules require.
+5. **10.5 Confirm sync complete** — use the reference's confirmation template. If no updates were needed, report: "Spec Sync Check: All implementation decisions align with the specifications. No updates needed."
 
 ---
 

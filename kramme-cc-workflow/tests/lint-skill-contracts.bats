@@ -981,6 +981,21 @@ EOF
   [[ "$registry_text" == *'"kramme-cc-workflow/skills/kramme:siw:issue-implement/references/team-mode.md"'* ]]
 }
 
+@test "siw issue implement spec sync retains its handoff and topic routes" {
+  local skill_text spec_sync_text
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-implement/SKILL.md")"
+  spec_sync_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-implement/references/spec-sync.md")"
+
+  [[ "$skill_text" == *'Read `references/spec-sync.md` and follow it for the classification categories, the spec routing rules'* ]]
+  [[ "$spec_sync_text" == *'- Data model decisions → `*-data-model*.md`'* ]]
+  [[ "$spec_sync_text" == *'- API decisions → `*-api*.md`'* ]]
+  [[ "$spec_sync_text" == *'- Contract/interface decisions → `siw/contracts/*.md`'* ]]
+  [[ "$spec_sync_text" == *'- UI/frontend decisions → `*-ui*.md` or `*-frontend*.md`'* ]]
+  [[ "$spec_sync_text" == *'- Architecture decisions → `*-architecture*.md`'* ]]
+  [[ "$spec_sync_text" == *'- User story updates → `*-user-stories*.md`'* ]]
+  [[ "$spec_sync_text" == *'- Default → main spec if no matching supporting or contract spec'* ]]
+}
+
 @test "siw issue implement team mode makes the lead the sole shared-state writer" {
   local team_text
   team_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-implement/references/team-mode.md")"
