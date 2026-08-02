@@ -491,6 +491,59 @@ MD
 	[ ! -d "$TMP_DIR/.agents/skills/kramme:temp-agent" ]
 }
 
+@test "help documents stats field names" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	run node "$SCRIPT" --help
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Stats fields:"* ]]
+	[[ "$output" == *"codex_skills"* ]]
+	[[ "$output" == *"agent_skills"* ]]
+}
+
+@test "stats reports source, generated, and agent skills as text" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	PLUGIN_DIR="$TMP_DIR/stats-text-plugin"
+	create_cleanup_fixture_plugin "$PLUGIN_DIR" "stats-text-plugin" "kramme:temp-command" "kramme:temp-agent"
+	mkdir -p "$PLUGIN_DIR/skills/kramme:temp-source"
+	cat >"$PLUGIN_DIR/skills/kramme:temp-source/SKILL.md" <<'MD'
+---
+name: kramme:temp-source
+description: Temporary source skill for converter CLI stats tests
+disable-model-invocation: false
+user-invocable: true
+---
+
+Exercise source-skill counting.
+MD
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" stats "$PLUGIN_DIR"
+	[ "$status" -eq 0 ]
+	[ "$output" = $'codex_skills=2\nagent_skills=1' ]
+	[ ! -d "$TMP_DIR/home/.codex" ]
+	[ ! -d "$TMP_DIR/home/.agents" ]
+}
+
+@test "stats reports the exact integer schema as JSON" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	PLUGIN_DIR="$TMP_DIR/stats-json-plugin"
+	create_cleanup_fixture_plugin "$PLUGIN_DIR" "stats-json-plugin" "kramme:temp-command" "kramme:temp-agent"
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" stats "$PLUGIN_DIR" --json
+	[ "$status" -eq 0 ]
+	[ "$output" = '{"codex_skills":1,"agent_skills":1}' ]
+	[ ! -d "$TMP_DIR/home/.codex" ]
+	[ ! -d "$TMP_DIR/home/.agents" ]
+}
+
 @test "opencode-only install options are rejected" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for converter tests"
