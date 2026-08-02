@@ -95,6 +95,15 @@ Helper scripts install missing converter runtime dependencies and forward additi
 
 Codex output defaults to `~/.codex`. Beyond `prompts/` and `skills/`, the converter also generates agent skills (under the agents home, set with `--agents-home`), a converted hook plugin, and a managed tool-map block in the Codex `AGENTS.md`. For plugins that declare MCP servers, it also writes managed MCP config tables. See the [Agent Portability Matrix](kramme-cc-workflow/docs/agent-portability.md) for the exact source-to-output mapping.
 
+Inspect the generated skill counts without installing:
+
+```bash
+node kramme-cc-workflow/scripts/convert-plugin.js stats kramme-cc-workflow
+node kramme-cc-workflow/scripts/convert-plugin.js stats kramme-cc-workflow --json
+```
+
+The default output contains `codex_skills=<integer>` followed by `agent_skills=<integer>`. JSON output contains the same two integer fields in an object. `codex_skills` counts converted skill directories plus generated command skills; `agent_skills` counts generated Codex agent skills.
+
 ### Updating
 
 For marketplace installs:

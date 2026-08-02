@@ -35,6 +35,12 @@ On macOS, installation uses Homebrew for Make, Bats, `jq`, Node.js 20+, and Pyth
 
 The equivalent npm aliases are `npm run bootstrap:check` and `npm run bootstrap:install` once Node.js 20+, npm, and Python 3.10+ are available. The check mode is the default and never invokes a package manager. Neither mode installs or modifies Git hooks. Skill changes also require SkillSpector for `pr-verify`; install it separately before running the changed-skill security gate.
 
+### Converter changes
+
+For a focused converter change, run `make -C kramme-cc-workflow test-convert`.
+
+The repository-root `package.json` versions the npm installer entrypoint. `kramme-cc-workflow/package.json` versions the plugin package and is managed by the plugin release flow. These versions are intentionally independent; do not synchronize them. See the [release guide](kramme-cc-workflow/RELEASE.md) for the complete versioning and release contract.
+
 ## Change Guidelines
 
 - Keep changes scoped to the subsystem being modified.

@@ -6,7 +6,7 @@ This directory contains the implementation behind `scripts/convert-plugin.js`. T
 
 | File | Responsibility |
 | --- | --- |
-| `../convert-plugin.js` | CLI entry point for `install` and `stats`; resolves target and root options. |
+| `../convert-plugin.js` | CLI entry point; owns parsing and help for `install` and the read-only `stats` inspection command. |
 | `loader.js` | Resolves plugin input, reads manifests, loads agents, skills, legacy commands, hooks, and MCP servers. |
 | `codex-transformer.js` | Converts Claude skills, invocable commands, agents, hooks, and instruction text into a Codex bundle. |
 | `ask-user-question-parser.js` | Parses and rewrites structured `AskUserQuestion` prompt blocks into direct-chat instructions. |
@@ -34,7 +34,24 @@ This directory contains the implementation behind `scripts/convert-plugin.js`. T
 - Preserve user-owned files unless they are tracked as managed entries from a previous converter run.
 - Keep platform filtering in the transformer so `kramme-platforms` has one conversion meaning.
 
+## CLI Contract
+
+`stats <plugin-name|path>` loads and converts the plugin in memory without installing it. Its default text output is two `key=value` lines in this order:
+
+```text
+codex_skills=<integer>
+agent_skills=<integer>
+```
+
+`--json` returns the same ordered fields in one JSON object. `codex_skills` counts converted skill directories plus generated command skills; `agent_skills` counts generated Codex agent skills. The command supports only the `codex` target.
+
 ## Verification
+
+Run the CLI smoke tests after changing the entry point or its public contract:
+
+```bash
+make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/convert-plugin.bats
+```
 
 Run the focused converter suite after changing this module:
 
