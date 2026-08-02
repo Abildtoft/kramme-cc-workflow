@@ -26,7 +26,7 @@ Re-query the exact current remote ref with `git ls-remote --heads origin "refs/h
 
 1. Require `git status --porcelain` to be empty. Gitignored source-workflow archives may remain.
 2. Require the current branch to equal the prepared `{work-branch}` and differ from `{base-branch}`.
-3. When `PLAN_SCOPE_ACTIVE=true`, collect every committed path in `{scope-base-commit}..HEAD` and require each to match `VALIDATED_SCOPE_PATHS` by exact normalized path or directory containment. Stop before history rewriting or publication on the first mismatch.
+3. When `PLAN_SCOPE_ACTIVE=true`, run `RECHECK_STANDALONE_SCOPE` for `PLAN_SCOPE_MODE=exact-files`, then collect every committed path in `{scope-base-commit}..HEAD`. Require exact equality with one `VALIDATED_SCOPE_PATHS` entry for `exact-files`, and otherwise allow exact path or directory containment. Stop before history rewriting or publication on the first mismatch or newly ineligible standalone path.
 4. Record:
 
    ```bash
@@ -65,6 +65,14 @@ History may change commit IDs, but the verified tree must not change. On mismatc
 
 Invoke `kramme:pr:fix-ci --no-consolidate`. Do not combine it with `--auto`.
 
+When `PLAN_SCOPE_ACTIVE=true`, pass the already validated `PLAN_SCOPE_MODE`, `VALIDATED_SCOPE_PATHS`, `{scope-base-commit}`, and `RECHECK_STANDALONE_SCOPE` into the delegation as hard mutation constraints. They remain authoritative throughout `fix-ci`; its normal staging and push behavior does not widen the prepared work item's scope. Before every fix commit or push, require all of the following:
+
+1. Every proposed, dirty, and staged fix path satisfies the active exact-or-containment membership rule.
+2. For `PLAN_SCOPE_MODE=exact-files`, run `RECHECK_STANDALONE_SCOPE` immediately before staging.
+3. Collect every committed path in `{scope-base-commit}..HEAD` and enforce the same membership rule before push.
+
+If valid CI or review feedback needs an out-of-scope path, stop before editing, staging, committing, or pushing that fix and return `published_blocked` with the first required path. Do not let the delegated workflow publish a change that the final scope proof would reject.
+
 Continue only when it reports:
 
 - every configured check green;
@@ -72,6 +80,8 @@ Continue only when it reports:
 - no unresolved `UNVERIFIED`, `CONFUSION`, or `MISSING REQUIREMENT` marker.
 
 If it stops, preserve the Pull Request URL and exact blocker. A later session resumes with `kramme:pr:fix-ci --no-consolidate`, never by rerunning the source issue/plan-to-PR workflow.
+
+Before returning a blocked handoff, when `PLAN_SCOPE_ACTIVE=true`, rerun `RECHECK_STANDALONE_SCOPE` for `PLAN_SCOPE_MODE=exact-files`, collect every committed path in `{scope-base-commit}..HEAD`, and enforce the active membership rule. Preserve the first failed eligibility or membership proof as the blocker; never claim the handoff is safe for source-workflow finalization when this recheck fails.
 
 Return a structured caller handoff before stopping:
 
@@ -107,7 +117,7 @@ This is a blocking overall result, not success, but callers must persist their i
 3. Require a clean worktree.
 4. Record local `HEAD` as `{final-head}` and require equality with `headRefOid`.
 5. Record `git rev-parse 'HEAD^{tree}'` as `{final-tree}`.
-6. When `PLAN_SCOPE_ACTIVE=true`, collect every committed path in `{scope-base-commit}..HEAD` again. If any path falls outside `VALIDATED_SCOPE_PATHS`, return `published_blocked` with the first mismatched path and do not claim plan-scoped completion.
+6. When `PLAN_SCOPE_ACTIVE=true`, rerun `RECHECK_STANDALONE_SCOPE` for `PLAN_SCOPE_MODE=exact-files`, then collect every committed path in `{scope-base-commit}..HEAD` again and enforce the mode's exact-or-containment rule. If any path falls outside `VALIDATED_SCOPE_PATHS` or a standalone path is newly ineligible, return `published_blocked` with the first mismatch and do not claim plan-scoped completion.
 7. If `{final-tree}` differs from `{verified-tree}`, run exactly one validation-only final quality round using the applicability and archive rules from `review-convergence.md`, with active gates in regular-review, convention-review, refactor order. Do not edit, re-enter CI fixing, or start another quality round.
 8. If that validation-only round passes, invoke `kramme:verify:run` once on the CI-remediated tree and require every applicable check to pass without further source changes.
 
