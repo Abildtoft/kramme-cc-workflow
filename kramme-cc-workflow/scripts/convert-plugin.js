@@ -171,6 +171,10 @@ Options:
   --yes, -y               Assume "yes" for all cleanup confirmations
   --non-interactive       Never prompt; use default answers for confirmations
   --json                  (stats only) print a JSON object instead of key=value lines
+
+Stats fields:
+  codex_skills            Number of Codex skills (skill directories plus generated command skills)
+  agent_skills            Number of generated Codex agent skills
 `;
   console.log(help);
   if (exitCode) process.exit(exitCode);
