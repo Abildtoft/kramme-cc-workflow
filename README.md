@@ -280,7 +280,7 @@ Post-merge rollout, release communication, canary gates, and rollback discipline
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:launch:rollout` | User | — | Execute a post-merge launch with staged rollout, numeric decision thresholds, and rollback triggers. Sequence — staging → prod (flag OFF) → team enable → 5% canary → 25→50→100% gradual → full rollout + 1-week monitor + flag cleanup. Use after merging a user-facing change that needs safe rollout. Complements pre-merge review, verification, and QA with post-merge verification, canary gates, and rollback paths. Not for PR creation, CI debugging, or pre-merge checks. |
+| `/kramme:launch:rollout` | User | — | Execute a post-merge launch with contextual staged rollout, evidence-based decision gates, and rollback triggers. Apply explicit user or organization policy first, observed system evidence second, and a confirmed fallback profile only when neither defines the rollout. Supports feature flags or equivalent reversible controls. Use after merging a user-facing change that needs safe rollout. Not for PR creation, CI debugging, or pre-merge checks. |
 | `/kramme:launch:announce` | User | `[feature, PR, or release context] [--channels changelog,social,email,demo]` | Drafts user-facing launch announcement copy for a shipped feature from PRs, diffs, changelog notes, or user-provided context. Supports changelog blurbs, short social posts, email snippets, and demo scripts. Use after rollout or when announcement drafts are needed. Drafts only; not for staged rollout, rollback decisions, posting, publishing, or internal changelog summaries. |
 
 #### Browser & QA

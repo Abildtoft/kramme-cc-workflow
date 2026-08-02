@@ -4,6 +4,22 @@ Complete every section before starting the Rollout Sequence. An unchecked box is
 
 This checklist is deliberately inlined (not cross-referenced to sibling skills). The skill is self-contained by design — the checklist duplicates content that also lives in security / performance / accessibility skills. That duplication is the cost of being able to ship this as a standalone artifact.
 
+## Rollout Policy and Controls
+
+- [ ] Applicable user or organization rollout policy is named, linked or quoted into the launch ticket, and approved for this change.
+- [ ] Where policy is silent, each proposed fallback is labeled and confirmed rather than treated as a repository rule.
+- [ ] Change risk, blast radius, affected cohorts, and data-integrity or security consequences are recorded.
+- [ ] Traffic volume and expected sample or event count are known for each exposure gate.
+- [ ] Trustworthy metric baselines, SLOs, normal variability, and evidence queries or dashboards are recorded.
+- [ ] Every advance / hold / rollback threshold names its policy, SLO, or baseline evidence source.
+- [ ] Monitoring windows account for sample sufficiency, traffic cycles, and delayed or slow-burn outcomes.
+- [ ] A named rollback mechanism, authority, runbook step, rehearsal environment and plan, and expected recovery time are recorded.
+- [ ] Feature-flag capability is recorded; if unavailable or unsuitable, an equivalent reversible deploy, configuration, cohort, or traffic control is named.
+- [ ] Production observability covers the changed path and can distinguish the exposed cohort from its comparison population.
+- [ ] The release occurs during a user-confirmed or organization-approved staffed support window with a launch owner and on-call coverage.
+- [ ] No broader external exposure is planned without a trustworthy baseline; if policy permits the initial limited cohort to collect a contemporaneous baseline, its comparison and stop boundary are explicit.
+- [ ] No production exposure is planned without a credible rollback control.
+
 ## Code Quality
 
 - [ ] All tests pass (unit, integration, e2e).
@@ -57,7 +73,7 @@ This checklist is deliberately inlined (not cross-referenced to sibling skills).
 - [ ] Monitoring dashboards exist for the new code path.
 - [ ] Alerts configured against the Rollout Decision Thresholds table.
 - [ ] On-call rotation knows this launch is happening.
-- [ ] Capacity headroom is sufficient (no scaling surprises at 100%).
+- [ ] Capacity headroom is sufficient for the confirmed maximum exposure.
 
 ## Documentation
 
@@ -72,6 +88,7 @@ This checklist is deliberately inlined (not cross-referenced to sibling skills).
 
 - [ ] Every box above is checked or explicitly deferred with an owner.
 - [ ] Every deferral has a ticket and a deadline.
-- [ ] No `MISSING REQUIREMENT` remains unresolved.
+- [ ] Governing policy, observability, rollback control, and staffed support coverage are resolved before production exposure; baseline trustworthiness is resolved before broader external exposure.
+- [ ] No unresolved `MISSING REQUIREMENT` blocks step 1: each open item is owned, explicitly deferrable, and has a later recorded stop boundary.
 
 Only proceed to step 1 of the Rollout Sequence (deploy to staging) after sign-off.
