@@ -110,9 +110,28 @@ GIT
 	chmod +x "$BIN_DIR/git"
 }
 
+write_failing_git_ls_tree() {
+	local real_git
+	real_git="${CONDUCTOR_REAL_GIT_PATH:-$(command -v git)}"
+	cat >"$BIN_DIR/git" <<GIT
+#!/bin/sh
+if [ "\$1" = "ls-tree" ]; then
+  last_argument=""
+  for argument in "\$@"; do
+    last_argument="\$argument"
+  done
+  if [ "\$last_argument" = "\${MOCK_GIT_LS_TREE_PATH:-}" ]; then
+    exit 88
+  fi
+fi
+exec "$real_git" "\$@"
+GIT
+	chmod +x "$BIN_DIR/git"
+}
+
 load_assignments() {
 	local assignments
-	assignments=$(printf '%s\n' "$output" | grep -E '^(BASE_REF|BASE_BRANCH|MERGE_BASE|AFTER_COMMIT|RESET_POINT|ORIGINAL_TIP|BACKUP_REF)=' || true)
+	assignments=$(printf '%s\n' "$output" | grep -E '^(BASE_REF|BASE_BRANCH|MERGE_BASE|AFTER_COMMIT|RESET_POINT|ORIGINAL_BRANCH|ORIGINAL_TIP|BACKUP_REF)=' || true)
 	eval "$assignments"
 }
 
@@ -160,13 +179,14 @@ delete_origin_head() {
 	run "$SCRIPT_DIR/resolve-base.sh"
 
 	[ "$status" -eq 0 ]
-	[ "$(printf '%s\n' "$output" | sed 's/=.*//')" = $'BASE_REF\nBASE_BRANCH\nMERGE_BASE\nAFTER_COMMIT\nRESET_POINT\nORIGINAL_TIP\nBACKUP_REF' ]
+	[ "$(printf '%s\n' "$output" | sed 's/=.*//')" = $'BASE_REF\nBASE_BRANCH\nMERGE_BASE\nAFTER_COMMIT\nRESET_POINT\nORIGINAL_BRANCH\nORIGINAL_TIP\nBACKUP_REF' ]
 	load_assignments
 	[ "$BASE_REF" = "refs/remotes/origin/main" ]
 	[ "$BASE_BRANCH" = "main" ]
 	[ -n "$MERGE_BASE" ]
 	[ "$AFTER_COMMIT" = "" ]
 	[ "$RESET_POINT" = "" ]
+	[ "$ORIGINAL_BRANCH" = "" ]
 	[ "$ORIGINAL_TIP" = "" ]
 	[ "$BACKUP_REF" = "" ]
 }
@@ -181,18 +201,20 @@ delete_origin_head() {
 	local expected_merge_base="$MERGE_BASE"
 	local expected_after_commit="$AFTER_COMMIT"
 	local expected_reset_point="$RESET_POINT"
+	local expected_original_branch="$ORIGINAL_BRANCH"
 	local expected_original_tip="$ORIGINAL_TIP"
 	local expected_backup_ref="$BACKUP_REF"
 
 	run "$SCRIPT_DIR/resolve-base.sh" --format json
 
 	[ "$status" -eq 0 ]
-	[ "$(json_keys)" = $'base_ref\nbase_branch\nmerge_base\nafter_commit\nreset_point\noriginal_tip\nbackup_ref' ]
+	[ "$(json_keys)" = $'base_ref\nbase_branch\nmerge_base\nafter_commit\nreset_point\noriginal_branch\noriginal_tip\nbackup_ref' ]
 	[ "$(json_value base_ref)" = "$expected_base_ref" ]
 	[ "$(json_value base_branch)" = "$expected_base_branch" ]
 	[ "$(json_value merge_base)" = "$expected_merge_base" ]
 	[ "$(json_value after_commit)" = "$expected_after_commit" ]
 	[ "$(json_value reset_point)" = "$expected_reset_point" ]
+	[ "$(json_value original_branch)" = "$expected_original_branch" ]
 	[ "$(json_value original_tip)" = "$expected_original_tip" ]
 	[ "$(json_value backup_ref)" = "$expected_backup_ref" ]
 }
@@ -532,6 +554,7 @@ delete_origin_head() {
 	[ "$status" -eq 0 ]
 	load_assignments
 	[ "$RESET_POINT" = "$MERGE_BASE" ]
+	[ "$ORIGINAL_BRANCH" = "feature" ]
 	[ "$ORIGINAL_TIP" = "$feature_tip" ]
 	[ "$BACKUP_REF" = "feature-recreate-backup" ]
 	[ "$(git rev-parse feature-recreate-backup)" = "$feature_tip" ]
@@ -601,7 +624,140 @@ delete_origin_head() {
 	run "$SCRIPT_DIR/resolve-base.sh" --backup
 
 	[ "$status" -eq 1 ]
-	[[ "$output" == *"Working tree has uncommitted changes; commit or stash them first"* ]]
+	[[ "$output" == *"Working tree has uncommitted or untracked changes; commit them or use 'git stash --include-untracked' first"* ]]
+}
+
+@test "backup mode rejects untracked work that reset hard would overwrite" {
+	git rm tracked.txt >/dev/null
+	git commit -m "delete tracked file" >/dev/null
+	printf 'untracked replacement\n' >tracked.txt
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Working tree has uncommitted or untracked changes; commit them or use 'git stash --include-untracked' first"* ]]
+	! git show-ref --verify --quiet refs/heads/feature-recreate-backup
+}
+
+@test "backup mode rejects ignored work that overlaps the reset point" {
+	git rm tracked.txt >/dev/null
+	printf 'tracked.txt\n' >.gitignore
+	git add .gitignore
+	git commit -m "delete and ignore tracked file" >/dev/null
+	printf 'ignored replacement\n' >tracked.txt
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Ignored path 'tracked.txt' overlaps content restored by the reset"* ]]
+	! git show-ref --verify --quiet refs/heads/feature-recreate-backup
+}
+
+@test "backup mode rejects modified assume-unchanged tracked content" {
+	git update-index --assume-unchanged tracked.txt
+	printf 'hidden modification\n' >tracked.txt
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Assume-unchanged tracked content differs from the index"* ]]
+	[ "$(cat tracked.txt)" = "hidden modification" ]
+	! git show-ref --verify --quiet refs/heads/feature-recreate-backup
+}
+
+@test "backup mode permits clean assume-unchanged tracked content" {
+	git update-index --assume-unchanged tracked.txt
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$ORIGINAL_BRANCH" = "feature" ]
+	[[ "$(git ls-files -v tracked.txt)" == h* ]]
+}
+
+@test "backup mode fails closed when direct reset-tree inspection fails" {
+	git rm tracked.txt >/dev/null
+	printf 'tracked.txt\n' >.gitignore
+	git add .gitignore
+	git commit -m "delete and ignore tracked file" >/dev/null
+	printf 'ignored replacement\n' >tracked.txt
+	export MOCK_GIT_LS_TREE_PATH=tracked.txt
+	write_failing_git_ls_tree
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Could not inspect reset point path 'tracked.txt'"* ]]
+	! git show-ref --verify --quiet refs/heads/feature-recreate-backup
+}
+
+@test "backup mode fails closed when parent reset-tree inspection fails" {
+	git switch main >/dev/null 2>&1
+	commit_file "blocked" "base file" "add blocking base file"
+	git push origin main >/dev/null 2>&1
+	git switch feature >/dev/null 2>&1
+	git rebase main >/dev/null
+	git rm blocked >/dev/null
+	printf 'blocked/ignored.txt\n' >.gitignore
+	git add .gitignore
+	git commit -m "replace file with ignored directory" >/dev/null
+	mkdir -p blocked
+	printf 'ignored replacement\n' >blocked/ignored.txt
+	export MOCK_GIT_LS_TREE_PATH=blocked
+	write_failing_git_ls_tree
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Could not inspect reset point path 'blocked'"* ]]
+	! git show-ref --verify --quiet refs/heads/feature-recreate-backup
+}
+
+@test "backup mode fails closed when git status cannot inspect the worktree" {
+	printf 'broken' >.git/index
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Could not inspect the working tree; stop before creating a recovery backup"* ]]
+	! git show-ref --verify --quiet refs/heads/feature-recreate-backup
+}
+
+@test "rewrite-state verification rejects commits created after backup" {
+	commit_file "feature.txt" "feature" "feature commit"
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+	[ "$status" -eq 0 ]
+	load_assignments
+	local original_tip="$ORIGINAL_TIP"
+	local reset_point="$RESET_POINT"
+	commit_file "late.txt" "late" "late commit"
+
+	run "$SCRIPT_DIR/verify-rewrite-state.sh" \
+		--expected-branch "$ORIGINAL_BRANCH" \
+		--expected-tip "$original_tip" \
+		--reset-point "$reset_point"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"current tip no longer matches the captured original tip"* ]]
+}
+
+@test "rewrite-state verification rejects a branch change after backup" {
+	commit_file "feature.txt" "feature" "feature commit"
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+	[ "$status" -eq 0 ]
+	load_assignments
+	local original_tip="$ORIGINAL_TIP"
+	local reset_point="$RESET_POINT"
+	git switch main >/dev/null 2>&1
+
+	run "$SCRIPT_DIR/verify-rewrite-state.sh" \
+		--expected-branch "$ORIGINAL_BRANCH" \
+		--expected-tip "$original_tip" \
+		--reset-point "$reset_point"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"current branch changed from 'feature' to 'main'"* ]]
 }
 
 @test "backup mode fast-forwards matching local base branch to origin" {
