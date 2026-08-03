@@ -222,7 +222,7 @@
     grep -qF "run \`RECHECK_STANDALONE_SCOPE\` when \`PLAN_SCOPE_ACTIVE=true\` and \`PLAN_SCOPE_MODE=exact-files\`, then stage only" "$review"
     grep -qF "Before every fix commit or push" "$shipping"
     grep -qF -- "--scope-plan \"{scope-plan-input}\"" "$shipping"
-    grep -qF "under its own \`references/scoped-plan.md\` contract" "$shipping"
+    grep -qF "under its scoped-plan mutation contract" "$shipping"
     grep -qF "update only the archived workflow-state checkpoint head/tree" "$shipping"
     grep -qF "A later session resumes with that exact invocation" "$shipping"
     grep -qF "Recovery: \${fix-ci-invocation}" "$shipping"

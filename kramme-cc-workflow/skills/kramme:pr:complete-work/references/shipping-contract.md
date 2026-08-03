@@ -66,7 +66,7 @@ History may change commit IDs, but the verified tree must not change. On mismatc
 
 Set `{fix-ci-invocation}` to `kramme:pr:fix-ci --no-consolidate`. When `PLAN_SCOPE_ACTIVE=true`, set it instead to `kramme:pr:fix-ci --no-consolidate --scope-plan "{scope-plan-input}"`. Invoke that exact value through the platform skill mechanism. Do not combine it with `--auto`.
 
-When `PLAN_SCOPE_ACTIVE=true`, the delegated skill must reconstruct `PLAN_SCOPE_MODE`, `VALIDATED_SCOPE_PATHS`, `{scope-base-commit}`, and `RECHECK_STANDALONE_SCOPE` from `{scope-plan-input}` under its own `references/scoped-plan.md` contract. These remain authoritative throughout `fix-ci`; its normal staging and push behavior does not widen the prepared work item's scope. Before every fix commit or push, require all of the following:
+When `PLAN_SCOPE_ACTIVE=true`, the delegated skill must reconstruct `PLAN_SCOPE_MODE`, `VALIDATED_SCOPE_PATHS`, `{scope-base-commit}`, and `RECHECK_STANDALONE_SCOPE` from `{scope-plan-input}` under its scoped-plan mutation contract. These remain authoritative throughout `fix-ci`; its normal staging and push behavior does not widen the prepared work item's scope. Before every fix commit or push, require all of the following:
 
 1. Every proposed, dirty, and staged fix path satisfies the active exact-or-containment membership rule.
 2. For `PLAN_SCOPE_MODE=exact-files`, run `RECHECK_STANDALONE_SCOPE` immediately before staging.
