@@ -41,15 +41,29 @@ STACK_PR_NUMBER=""
 STACK_NUMBER=""
 GH_STACK_MINIMUM_VERSION="0.1.0"
 
-REMOTE_URL=$(git remote get-url origin 2> /dev/null || true)
-case "$REMOTE_URL" in
-  *github.com:* | *github.com/*) ;;
-  *)
-    STACK_MEMBERSHIP="none"
-    emit_result
-    exit 0
-    ;;
-esac
+REMOTE_NAMES=$(git remote) || {
+  echo "Could not enumerate Git remotes; stack membership is unknown." >&2
+  exit 1
+}
+GITHUB_REMOTE_FOUND=0
+while IFS= read -r remote_name; do
+  [ -n "$remote_name" ] || continue
+  REMOTE_URLS=$(git remote get-url --all -- "$remote_name") || {
+    echo "Could not inspect remote '$remote_name'; stack membership is unknown." >&2
+    exit 1
+  }
+  case "$REMOTE_URLS" in
+    *github.com:* | *github.com/*)
+      GITHUB_REMOTE_FOUND=1
+      break
+      ;;
+  esac
+done <<< "$REMOTE_NAMES"
+if [ "$GITHUB_REMOTE_FOUND" -eq 0 ]; then
+  STACK_MEMBERSHIP="none"
+  emit_result
+  exit 0
+fi
 
 if ! command -v gh > /dev/null 2>&1; then
   echo "Cannot determine GitHub stack membership because gh is unavailable." >&2
