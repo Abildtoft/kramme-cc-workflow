@@ -104,6 +104,8 @@ Distinct skills remain valid practice surfaces even when their use is infrequent
 
 These are policy verdicts, not a migration backlog.
 
+Implementation update (2026-08-03): `kramme:code:cleanup-ai` was folded into the default candidate-discovery pass of `kramme:code:refactor-pass`. AI-slop findings now use the same Fence, one-slice verification, commit, and recovery contract as general simplifications, so the former permission and recovery differences are no longer separate public routes.
+
 ### Overlapping skills
 
 | Case | 30-day use | 90-day use | Verdict under this policy | Reason |

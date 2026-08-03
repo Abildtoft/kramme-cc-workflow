@@ -95,7 +95,6 @@
         "kramme-cc-workflow/skills/kramme:pr:generate-description/references/base-branch-resolution.md",
         "kramme-cc-workflow/skills/kramme:qa/references/diff-scope.md",
         "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:code:cleanup-ai/SKILL.md",
         "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
         "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md"
       ]
@@ -106,7 +105,6 @@
       "kramme-cc-workflow/skills/kramme:pr:generate-description/references/base-branch-resolution.md",
       "kramme-cc-workflow/skills/kramme:qa/references/diff-scope.md",
       "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:code:cleanup-ai/SKILL.md",
       "kramme-cc-workflow/skills/kramme:code:breakdown-findings/references/reconcile-workflow.md",
       "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
       "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md"
@@ -501,6 +499,11 @@
         "Accept no arguments, exactly one `--rewrite` token, or one or more positional scope tokens with no option-prefixed token.",
         "Treat accepted positional tokens as the explicit default-mode scope.",
         "Do not fall through to default mode.",
+        "Default mode includes AI-slop review without a separate flag.",
+        "Launch `kramme:deslop-reviewer` in code review mode against the resolved scope.",
+        "Treat every reported slop finding as a candidate, not an instruction.",
+        "The checkpoint is a recovery boundary, not a simplification slice.",
+        "Never fold the first cleanup into it.",
         "Every applicable configured build, typecheck, lint, and test gate must pass.",
         "If any applicable verification box remains unchecked, finish the gap.",
         "restore the recovery point and surface the failure"

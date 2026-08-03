@@ -1,6 +1,6 @@
 ---
 name: kramme:code:refactor-pass
-description: "Perform a refactor pass focused on simplicity after recent changes, or use --rewrite to scrap a working-but-hacky implementation and reimplement it elegantly. Use for a narrow cleanup, simplification, dead-code removal, or an explicit request to redo mediocre recent work properly. Applies Chesterton's Fence, rejects changes that require modifying tests, and keeps the default mode slice-by-slice."
+description: "Perform a refactor pass focused on simplicity after recent changes, including AI-slop cleanup for unnecessary comments, defensive noise, weak typing, over-engineering, and style drift. Use for a narrow cleanup, simplification, dead-code removal, suspected AI-generated code, or an explicit request to redo mediocre recent work properly with --rewrite. Applies Chesterton's Fence, rejects changes that require modifying tests, and keeps the default mode slice-by-slice."
 argument-hint: "[scope ... | --rewrite]"
 disable-model-invocation: true
 user-invocable: true
@@ -8,7 +8,7 @@ user-invocable: true
 
 # Refactor Pass
 
-Perform a simplification pass on recent changes: remove dead code, straighten logic, drop excessive parameters, and verify with build/tests after each change. By default, work one simplification at a time. In rewrite mode, scrap a working-but-hacky implementation and reimplement it elegantly from what you learned. Preserve behavior exactly in either mode.
+Perform a simplification pass on recent changes: remove dead code, straighten logic, drop excessive parameters, remove AI-generated slop, and verify with build/tests after each change. Default mode always checks the resolved scope for both general simplifications and high-confidence AI-slop patterns. Work one simplification at a time. In rewrite mode, scrap a working-but-hacky implementation and reimplement it elegantly from what you learned. Preserve behavior exactly in either mode.
 
 This skill edits files, so it runs only after explicit user invocation. In default mode, it commits each verified slice.
 
@@ -39,6 +39,7 @@ Only proceed in rewrite mode if all three conditions are met.
 
 - After a feature or fix lands, before merging, to clean up accidental complexity.
 - When the user asks for "a refactor pass", "cleanup", "simplification", or "dead-code removal" on recent work.
+- When recent code may contain AI-generated slop such as obvious comments, defensive overkill, type workarounds, excessive logging, copy-paste artifacts, generic UI defaults, or style drift. Default mode checks these without a separate flag.
 - When the user asks to scrap a working-but-mediocre fix and redo it properly; select rewrite mode.
 - On a narrow scope — typically the diff of the current branch or a few files. Not for codebase-wide scans (use `kramme:code:refactor-opportunities` for that).
 
@@ -73,6 +74,30 @@ Before picking simplifications, decide what "recent changes" means for this invo
 3. If the resulting scope is empty (clean working tree, no diff against base), stop and ask the user what to scope to. Do not invent a scope.
 
 Record the scope before starting the loop. Every simplification must fall inside it; observations outside it become `NOTICED BUT NOT TOUCHING` markers, not new work.
+
+## Establish a commit baseline
+
+Default mode commits each simplification, so uncommitted input needs a clean boundary before discovery. If the resolved scope contains staged, unstaged, or untracked changes:
+
+1. Run `kramme:verify:run` on the unchanged starting tree. If verification cannot run or fails, stop without committing or refactoring.
+2. Create one clearly labeled recovery checkpoint commit containing the exact pre-existing changes inside the resolved scope and no cleanup. Limit the commit to the resolved paths so staged or unstaged work outside the scope is not swept in.
+3. Record the checkpoint hash. Confirm that out-of-scope worktree and index state is unchanged. If the scoped checkpoint cannot be isolated without disturbing out-of-scope changes, stop and surface the conflict.
+
+The checkpoint is a recovery boundary, not a simplification slice. Never fold the first cleanup into it. After the checkpoint, every AI-slop or general simplification must still receive its own verified commit.
+
+## Discover default-mode candidates
+
+Default mode includes AI-slop review without a separate flag. Rewrite mode skips this discovery step because it replaces the current implementation from its recovered behavioral contract instead of applying individual cleanup findings.
+
+Before the first simplification, and again after each verified slice, build one candidate queue:
+
+1. Inspect the resolved scope for the general simplification candidates listed in the loop below.
+2. Launch `kramme:deslop-reviewer` in code review mode against the resolved scope. When the user supplied files or a directory, pass only that scope. Otherwise pass the current branch diff plus staged, unstaged, and untracked changes.
+3. Discard reviewer findings outside the resolved scope or in generated files, vendored code, lockfiles, snapshots, or `*.d.ts` files. These exclusions apply to the AI-slop aspect; an explicitly scoped general refactor still follows the normal Fence and project rules.
+4. Treat every reported slop finding as a candidate, not an instruction. The reviewer already suppresses findings below its reporting threshold; do not invent extra confidence bands or auto-apply a finding because of its score.
+5. Deduplicate overlapping general and AI-slop candidates. Prefer the explanation that identifies the concrete unnecessary complexity and the smallest behavior-preserving change.
+
+If the combined queue is empty, report that the scoped code is already clean and stop. AI-slop findings enter the same one-slice loop, Fence, verification, commit, and recovery contract as every other candidate.
 
 ## Markers
 
@@ -113,13 +138,17 @@ Each simplification is one pass through this loop. **One simplification at a tim
 
 ### 1. Pick one simplification
 
-From the resolved scope, pick exactly one target. Candidates:
+From the refreshed combined candidate queue, pick exactly one target. Candidates include:
 
 - Dead code or dead paths.
 - Twisted logic that can be straightened.
 - Excessive parameters, flags that select behavior, options objects that are always the same shape.
 - Premature optimization that adds indirection for no measured gain.
 - Unnecessary abstraction layers — wrappers that forward with no logic.
+- Obvious comments or docstrings that restate self-explanatory code.
+- Defensive checks that caller, type, test, and history evidence prove redundant.
+- Weak type workarounds, excessive logging, copy-paste residue, or style drift relative to the surrounding file.
+- Generic AI-aesthetic UI defaults that conflict with the project's established design system.
 
 ### 2. Emit a SIMPLICITY CHECK
 
@@ -139,9 +168,9 @@ If `kramme:verify:run` cannot run (no test/lint/build configured, tool errors, e
 
 When verification passes, commit the slice on its own. The committed state becomes the baseline for the next iteration.
 
-### 5. Move to the next simplification
+### 5. Refresh and move to the next simplification
 
-Return to step 1 with the new committed baseline. Do not accumulate simplifications into one large diff.
+Return to default-mode candidate discovery with the new committed baseline, then start step 1 with the refreshed queue. Revalidate every remaining finding against current lines and discard anything the prior slice resolved or invalidated. Do not accumulate simplifications into one large diff.
 
 ## The Rewrite Process
 
@@ -202,7 +231,7 @@ If you notice adjacent work outside the saved rewrite scope, emit the exact `NOT
 
 - **Verification**: Step 4 delegates to `kramme:verify:run`.
 - **Sibling — slice discipline**: `kramme:code:incremental` applies the same one-thing-at-a-time rule to feature work. Refactor passes obey the same six rules; this skill is the refactor-flavored loop.
-- **Sibling — AI slop**: this is the general simplification pass for post-feature branch cleanup; for an AI-slop-specific pass via the `kramme:deslop-reviewer` agent, use `kramme:code:cleanup-ai`.
+- **Default aspect — AI slop**: default mode uses `kramme:deslop-reviewer` to seed the same verified simplification queue; AI provenance changes discovery, not mutation, verification, commit, or recovery behavior.
 - **Alternative — scrap and rewrite**: if the recent code is inelegant enough that simplification would touch more than ~50% of it, stop the default loop and use this skill's `--rewrite` mode. A mediocre implementation is sometimes best scrapped rather than patched.
 - **Broader scan**: if the simplification opportunities extend beyond the recent diff, stop and suggest `kramme:code:refactor-opportunities` for a codebase-wide scan.
 
@@ -216,6 +245,8 @@ In default mode:
 - _"This abstraction is obviously useless, I don't need to read the blame."_ → Chesterton's Fence. Read the blame. One of these deletes will eventually remove load-bearing behavior.
 - _"The diff is smaller if I inline this helper."_ → Line count is not the goal. Keep the helper if its name carries intent.
 - _"I'll combine two simplifications into one commit for cleanliness."_ → No. Each simplification stands alone so the failure surface is obvious if verification breaks.
+- _"The AI reviewer scored it highly, so I can skip the Fence."_ → Confidence makes it a candidate, not a command. Prove callers, edge cases, tests, and history before changing it.
+- _"These five slop findings are tiny, so I'll batch them."_ → Tiny independent changes still have independent failure surfaces. Verify and commit one at a time.
 - _"The test is flaky; I'll just tweak it so it passes."_ → If a simplification requires modifying a test, it is a behavior change, not a simplification. Revert or re-scope.
 - _"While I'm here, let me also rename this for consistency."_ → Emit `NOTICED BUT NOT TOUCHING`. Rename is its own slice — often its own PR.
 
