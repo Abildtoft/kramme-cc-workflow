@@ -25,8 +25,6 @@
     grep -qF "\`interview_mode\`: decision-tree when requested, otherwise coverage" "$siw_skill"
     grep -qF "\`decision_tree_context\`:" "$siw_skill"
     grep -qF "including initial/final confidence, overall percentage, interview-round count" "$siw_skill"
-    grep -qF "payload without the \`INTERVIEW RESULT:\` marker or any required field" "$siw_skill"
-    grep -qF "stop without replaying the interview, writing an SIW artifact, or emitting \`PLAN:\`" "$siw_skill"
     grep -qF "cannot invoke \`kramme:discovery:interview\`" "$siw_skill"
     grep -qF "inline substitute" "$siw_skill"
     grep -qF "Artifact readiness: <requirements-only|planning-ready> — <reason>" "$siw_skill"
@@ -37,13 +35,6 @@
     grep -qF "set \`decision_tree_requested=true\` for \`decision-tree\` and \`false\` for \`coverage\`" "$interview_skill"
     grep -qF "apply any decision-tree context" "$interview_skill"
     grep -qF "Return \`INTERVIEW RESULT:\`" "$interview_skill"
-    grep -qF "validated hypothesis and topic classification" "$interview_skill"
-    grep -qF "decisions with rationales" "$interview_skill"
-    grep -qF "non-goals with rationales and stated-vs-actual divergence" "$interview_skill"
-    grep -qF "initial confidence, final confidence with overall percentage, and interview-round count" "$interview_skill"
-    grep -qF "an impact map from each decision to affected source file/section" "$interview_skill"
-    grep -qF "the evidence ledger for an evidence-confidence profile or topic-coverage status" "$interview_skill"
-    grep -qF "unresolved \`MISSING REQUIREMENT\` items, risks, and source references" "$interview_skill"
     grep -qF "Do not ask for a plan path, write a standalone template, or emit \`PLAN:\`" "$interview_skill"
     grep -qF "stop at the invocation boundary" "$interview_skill"
     grep -qF "present the working hypothesis before the first question as a 2–4 sentence \`UNVERIFIED:\` statement" "$interview_skill"
@@ -71,4 +62,16 @@
   '
 
 	[ "$status" -eq 0 ]
+
+	run python3 \
+		"$BATS_TEST_DIRNAME/test_helper/guidance_contracts.py" \
+		discovery-failure-boundary \
+		"$BATS_TEST_DIRNAME/../skills/kramme:siw:discovery/SKILL.md"
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+
+	run python3 \
+		"$BATS_TEST_DIRNAME/test_helper/guidance_contracts.py" \
+		discovery-result-schema \
+		"$BATS_TEST_DIRNAME/../skills/kramme:discovery:interview/SKILL.md"
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
