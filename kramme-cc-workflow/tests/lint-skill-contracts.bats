@@ -796,6 +796,29 @@ EOF
   [[ "$consolidation_text" == *'If `AUTO_MODE=true`, apply the pre-rebase safety gate above, then select **Automated**'* ]]
 }
 
+@test "scoped fix-ci lifecycle preserves valid state transitions" {
+  local scoped_plan_text
+  local classification_line
+  local initial_removal_line
+  local recovery_removal_line
+  scoped_plan_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/references/scoped-plan.md")"
+
+  classification_line="$(grep -nF 'After this classification, reject unknown, duplicate, or misplaced lifecycle sections.' <<<"$scoped_plan_text" | cut -d: -f1)"
+  initial_removal_line="$(grep -nF 'In initial lifecycle, remove exactly the one workflow-state section' <<<"$scoped_plan_text" | cut -d: -f1)"
+  recovery_removal_line="$(grep -nF 'In recovery lifecycle, remove exactly one workflow-state and one execution-result section.' <<<"$scoped_plan_text" | cut -d: -f1)"
+
+  [ -n "$classification_line" ]
+  [ "$classification_line" -eq "$initial_removal_line" ]
+  [ "$classification_line" -eq "$recovery_removal_line" ]
+  [[ "$scoped_plan_text" == *'In initial lifecycle, require its repository, base ref, head branch, and head OID'* ]]
+  [[ "$scoped_plan_text" == *'In recovery lifecycle, require the execution result to record the exact Pull Request number and URL, repository, base ref, head branch, and head OID'* ]]
+  [[ "$scoped_plan_text" == *'require the execution-result completion commit to equal the recorded workflow checkpoint before any recovery action'* ]]
+  [[ "$scoped_plan_text" == *'Continue directly when `{live-head}` equals the recorded checkpoint. Otherwise, reject initial lifecycle immediately.'* ]]
+  [[ "$scoped_plan_text" == *'atomically refresh both the workflow checkpoint head/tree and execution-result completion commit and Pull Request head OID'* ]]
+  [[ "$scoped_plan_text" == *'In initial lifecycle mode, immediately after every proven push replace only the archived workflow-state checkpoint head/tree'* ]]
+  [[ "$scoped_plan_text" == *'never adding an execution result'* ]]
+}
+
 @test "text contract drift fails with precise contract name" {
   write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" "Contract: alpha"
   write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/b/SKILL.md" "Contract: beta"
