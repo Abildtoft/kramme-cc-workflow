@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:fix-ci
-description: Iterate on a PR until CI passes. Use when you need to fix CI failures, address review feedback, or continuously push fixes until all checks are green. Automates the feedback-fix-push-wait cycle.
-argument-hint: "[--fixup] [--auto] [--no-consolidate]"
+description: Iterate on a PR until CI passes. Use when you need to fix CI failures, address review feedback, or continuously push fixes until all checks are green. Automates the feedback-fix-push-wait cycle and accepts a validated archived plan for scope-bound plan-to-PR shipping or recovery.
+argument-hint: "[--fixup] [--auto] [--no-consolidate] [--scope-plan <archived-plan>]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -27,8 +27,11 @@ The fix-CI loop is the **CI Failure Feedback Loop** pattern: read the failure, m
 - `--fixup` - Use fixup commits to amend existing branch commits instead of creating new commits. Requires force push. Orphan files (not touched by any branch commit, including files last modified on the base branch) are committed as new.
 - `--no-consolidate` - Skip the consolidation prompt after CI passes. Use for scripting or when you want to keep `[FIX PIPELINE]` commits separate.
 - `--auto` - Run the CI fix loop unattended where possible. After CI passes, automatically consolidate `[FIX PIPELINE]` commits using the automated consolidation flow instead of prompting. If consolidation cannot be completed safely, stop with `MISSING REQUIREMENT` rather than leaving fix commits separate.
+- `--scope-plan <archived-plan>` - Reconstruct and enforce a plan-to-PR mutation boundary from a validated archive. This mode requires `--no-consolidate`, rejects `--fixup` and `--auto`, and persists a scoped recovery checkpoint after every pushed fix.
 
-Before Step 1, parse `$ARGUMENTS`. If `--fixup` is present, set `FIXUP_MODE=true`; if `--auto` is present, set `AUTO_MODE=true`; if `--no-consolidate` is present, set `NO_CONSOLIDATE=true`. If both `--auto` and `--no-consolidate` are present, stop with `MISSING REQUIREMENT: choose either --auto to consolidate fix commits or --no-consolidate to keep them separate`.
+Before Step 1, parse `$ARGUMENTS`. If `--fixup` is present, set `FIXUP_MODE=true`; if `--auto` is present, set `AUTO_MODE=true`; if `--no-consolidate` is present, set `NO_CONSOLIDATE=true`. Parse `--scope-plan <path>` at most once and store its raw value without using it in a command. Reject unknown flags, duplicate valued flags, missing values, and positional arguments. If both `--auto` and `--no-consolidate` are present, stop with `MISSING REQUIREMENT: choose either --auto to consolidate fix commits or --no-consolidate to keep them separate`.
+
+When `--scope-plan` is present, reject `--fixup` and `--auto`, require `--no-consolidate`, read `references/scoped-plan.md` completely, and follow it before Step 1 and at every edit, staging, commit, push, wait, blocker, and success boundary below. It validates the archive and sets `PLAN_SCOPE_ACTIVE=true`, `PLAN_SCOPE_MODE`, `VALIDATED_SCOPE_PATHS`, `{scope-base-commit}`, `{validated-scope-plan}`, `{validated-plan-branch}`, and `SCOPED_PLAN_LIFECYCLE=initial|recovery`. Otherwise set `PLAN_SCOPE_ACTIVE=false`.
 
 ---
 
@@ -65,7 +68,7 @@ git fetch origin "$BASE"
 git rev-list --left-right --count "origin/$BASE"...HEAD
 ```
 
-If the left count is non-zero (the base has commits not in the branch), inspect what moved (`git log --name-only HEAD.."origin/$BASE"`). Only stop if the base movement plausibly affects CI for this PR — it touches the same files or directories the branch changes, CI workflow/config files, lockfiles, or shared build tooling. In that case, point the user at `/kramme:pr:rebase` before proceeding. Otherwise note the drift and continue iterating.
+If the left count is non-zero (the base has commits not in the branch), inspect what moved (`git log --name-only HEAD.."origin/$BASE"`). Only stop if the base movement plausibly affects CI for this PR — it touches the same files or directories the branch changes, CI workflow/config files, lockfiles, or shared build tooling. When `PLAN_SCOPE_ACTIVE=false`, point the user at `/kramme:pr:rebase` before proceeding. When `PLAN_SCOPE_ACTIVE=true`, fail closed without invoking `/kramme:pr:rebase` or changing history: the recorded base and checkpoint remain part of the scoped provenance contract, so require a refreshed or explicitly re-authorized scoped plan before continuing. Otherwise note the drift and continue iterating.
 
 Before starting the fix loop, snapshot the pre-existing working-tree state so Step 8 can keep it out of fix commits:
 
@@ -74,6 +77,8 @@ git status --porcelain
 ```
 
 Record this output as the **pre-existing dirty state**. Any file already modified or untracked here was not produced by the fix loop and must never be swept into a `[FIX PIPELINE]` commit.
+
+When `PLAN_SCOPE_ACTIVE=true`, require this snapshot to be empty and require the scoped-plan entry proof to pass before investigating or editing feedback.
 
 ### Step 3: Check CI status first
 
@@ -132,11 +137,15 @@ For each piece of feedback (CI failure or review comment):
 
 Make minimal, targeted code changes. Only fix what is actually broken.
 
+When `PLAN_SCOPE_ACTIVE=true`, identify every file the fix requires and apply the scoped-plan membership rule before editing. If valid feedback needs any path outside `VALIDATED_SCOPE_PATHS`, stop before the first edit and return the scoped blocker; never widen scope from CI or review feedback.
+
 ### Step 8: Commit and push
 
 **If `--fixup` mode is enabled:** See Step 8b below.
 
 **Default (no flag):**
+
+When `PLAN_SCOPE_ACTIVE=true`, run the scoped-plan pre-staging proof first. It requires every dirty and staged path to satisfy the active exact-or-containment rule, reruns standalone eligibility for exact-file mode, and supplies the only path array that may be staged.
 
 Stage only the files the fix loop actually edited in Step 7 — never `git add -A`, which would sweep pre-existing uncommitted work (including untracked `.env`-style files) into pushed commits:
 
@@ -149,18 +158,22 @@ Compare `git status --porcelain` against the pre-existing dirty state snapshot f
 
 The `[FIX PIPELINE]` prefix marks commits as iteration fixes from CI or review feedback, making them easy to identify and consolidate later (see Step 11).
 
-Push only after the branch chain is ready:
+Push only after the branch chain is ready. When `PLAN_SCOPE_ACTIVE=true`, require non-stack membership, revalidate every committed path in `{scope-base-commit}..HEAD`, capture the full current `HEAD` as `{validated-push-head}`, and require the current branch to equal `{validated-plan-branch}` immediately before invoking `git push`. The validated head, not a branch ref that can move after the scope proof, is the only authorized push source:
 
 ```bash
 if [ "$IN_STACK" = true ]; then
   gh stack rebase --upstack --no-trunk
   gh stack push
+elif [ "$PLAN_SCOPE_ACTIVE" = true ]; then
+  git push origin "{validated-push-head}:refs/heads/{validated-plan-branch}"
 else
   git push origin "$(git branch --show-current)"
 fi
 ```
 
 For a stack, restacking must succeed before `gh stack push`; never push the changed parent branch first.
+
+When `PLAN_SCOPE_ACTIVE=true`, immediately require the local branch tip to remain `{validated-push-head}` and require the remote and Pull Request heads to equal that captured OID, then run the scoped-plan post-push checkpoint rule using the captured head and its tree. A moved local branch, failed push, or identity mismatch is a blocker, not permission to checkpoint an unvalidated tip or continue waiting.
 
 ### Step 8b: Fixup commit flow (when `--fixup` is enabled)
 
@@ -184,6 +197,8 @@ Return to Step 3 if:
 - New review feedback appeared
 
 Continue until all checks pass and no unaddressed feedback remains.
+
+When `PLAN_SCOPE_ACTIVE=true`, apply the scoped-plan blocker or success finalization before returning. Initial shipping mode returns the exact head/tree and scoped recovery payload to its caller; recovery mode also refreshes the archived lifecycle record so a later retry validates the new head rather than the stale pre-recovery checkpoint.
 
 ### Step 11: Consolidation phase
 
@@ -218,6 +233,7 @@ If disablement is genuinely warranted — a confirmed false positive, a test tha
 - All CI checks are green
 - No unaddressed human review feedback
 - (Default mode) Consolidation completed or user chose to keep separate commits
+- In scoped mode, the final committed path set, Pull Request head, remote head, and archived recovery lifecycle all pass `references/scoped-plan.md`
 
 **Ask for Help:**
 
@@ -229,7 +245,8 @@ If disablement is genuinely warranted — a confirmed false positive, a test tha
 **Stop Immediately:**
 
 - No PR exists for the current branch
-- Branch is out of sync in a way that plausibly affects CI (point the user at `/kramme:pr:rebase`)
+- An unscoped branch is out of sync in a way that plausibly affects CI (point the user at `/kramme:pr:rebase`)
+- A scoped branch's base moved in a way that plausibly affects CI (fail closed without rebasing and require a refreshed or explicitly re-authorized scoped plan)
 
 ---
 

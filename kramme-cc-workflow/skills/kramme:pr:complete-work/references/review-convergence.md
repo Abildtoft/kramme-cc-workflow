@@ -35,8 +35,8 @@ After accepted review work changes source, tests, configuration, or documentatio
 
 1. Isolate generated reports.
 2. Run the smallest focused verification covering the changed behavior.
-3. Classify `git status --porcelain`. Continue only when every non-ignored path is an in-scope remediation change owned by this invocation. When `PLAN_SCOPE_ACTIVE=true`, require every path to match `VALIDATED_SCOPE_PATHS` by exact normalized path or directory containment; never widen the list from reviewer output.
-4. If a delegated refactor already returned a verified commit and the worktree is clean, validate and record that commit. Otherwise stage only classified paths with `git add -- <path>...`.
+3. Classify `git status --porcelain`. Continue only when every non-ignored path is an in-scope remediation change owned by this invocation. When `PLAN_SCOPE_ACTIVE=true`, require exact equality with one `VALIDATED_SCOPE_PATHS` entry for `PLAN_SCOPE_MODE=exact-files`, and otherwise allow exact path or directory containment; never widen the list from reviewer output.
+4. If a delegated refactor already returned a verified commit and the worktree is clean, validate and record that commit. Otherwise, run `RECHECK_STANDALONE_SCOPE` when `PLAN_SCOPE_ACTIVE=true` and `PLAN_SCOPE_MODE=exact-files`, then stage only classified paths through quoted argv with `git add -- <validated path array>`. Never render plan paths into command text.
 5. Commit the verified batch with a plain-English message containing `{work-id}`.
 6. If hooks change content, rerun focused verification.
 
@@ -163,7 +163,7 @@ Before returning, require:
 - no accepted required or blocked finding remains;
 - no source changed after focused verification;
 - every edit batch crossed the commit boundary;
-- when `PLAN_SCOPE_ACTIVE=true`, every dirty, staged, and committed remediation path remained within `VALIDATED_SCOPE_PATHS`, and the final committed path set from `{scope-base-commit}` was revalidated before success;
+- when `PLAN_SCOPE_ACTIVE=true`, every dirty, staged, and committed remediation path satisfied `PLAN_SCOPE_MODE`, standalone eligibility was rechecked before each staging boundary, and the final committed path set from `{scope-base-commit}` was revalidated before success;
 - every generated report is in `.context/{archive-key}/reviews/`;
 - the archive remains gitignored;
 - applicable gates ran in order and skipped gates have evidence; and

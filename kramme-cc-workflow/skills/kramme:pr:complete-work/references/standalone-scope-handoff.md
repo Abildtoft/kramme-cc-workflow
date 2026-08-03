@@ -1,0 +1,27 @@
+# Standalone Scope Handoff
+
+Apply this contract after the parent has validated the archived plan path and parsed its normalized `VALIDATED_SCOPE_PATHS`. It distinguishes generated plan sets from normalized standalone attachments and preserves standalone provenance and exact-file scope through remediation and publication.
+
+## Classify the Archive
+
+1. Inspect the selected basename, sibling `PR_PLAN_INDEX.md`, sibling `PR_PLAN_REJECTIONS.md`, and sibling `ATTACHMENT_SOURCE.md` without following symlinks.
+2. Treat a non-`W##L` selected basename, the exact `**Input mode:** standalone attachment` marker in the index or rejection record, or an `ATTACHMENT_SOURCE.md` sibling as standalone evidence. When any standalone evidence exists with a `W##L` selected basename, reject the contradictory handoff and require the original attachment with a non-`W` canonical label. Otherwise, when evidence exists, require the complete standalone proof below and set `PLAN_SCOPE_MODE=exact-files`. Missing, duplicate, contradictory, or partial proof is a blocker.
+3. With no standalone evidence, require the selected basename to use the generated `PR_PLAN_W[0-9][0-9][A-Z]_[A-Z0-9_]+.md` contract and set `PLAN_SCOPE_MODE=containment`. Never infer generated mode for a non-`W##L` plan.
+
+## Validate Standalone Provenance
+
+When `PLAN_SCOPE_MODE=exact-files`:
+
+1. Require `{selected-basename}` to match `PR_PLAN_[A-VX-Z][0-9][0-9][A-Z]_[A-Z0-9_]+.md`. Require non-symlink regular `PR_PLAN_INDEX.md`, `PR_PLAN_REJECTIONS.md`, and `ATTACHMENT_SOURCE.md` siblings. Require exactly one standalone input marker in the index and rejection record, one full lowercase source object ID for the repository's object format, store it as `{plan-source-object-id}`, and require exactly one source-snapshot field naming `ATTACHMENT_SOURCE.md`.
+2. Require the source snapshot's `git hash-object --no-filters` object ID to equal `{plan-source-object-id}`. Synced standalone archive identity contract (keep aligned across archive consumers): the binary manifest contains the ASCII bytes `standalone-attachment`, a NUL byte, `{selected-basename}`, a NUL byte, `{plan-source-object-id}`, and a newline. Hash it with `git hash-object --stdin` and require `ps-{recomputed-object-id}` to equal the archive directory's `{plan-set-id}`.
+3. Require exactly one plan row and one canonical implementation plan. Require the plan and index to agree on label, filename, `TODO` or `READY` status, and independent dependency metadata.
+4. Require exactly one `## Workflow State` at `IMPLEMENTED` or `QUALITY_BLOCKED` and no `## Execution Result`. Compare the mutable plan with `ATTACHMENT_SOURCE.md` in memory: normalize the single opening-metadata status in both copies, remove the one workflow-state section from the mutable copy, and require the remaining bytes to match exactly. Reject duplicate, misplaced, or unknown lifecycle sections.
+
+## Preserve Exact-File Scope
+
+When `PLAN_SCOPE_MODE=exact-files`:
+
+1. Reject duplicate `VALIDATED_SCOPE_PATHS`. For each path, reject an existing directory and treat a missing path as one intended file, never as permission to create descendants. Resolve the repository's Git administrative directory and reject `.git`, that directory, and every descendant.
+2. Pass paths only as data through quoted arrays; never render plan values into shell command text. In one NUL-delimited, index-aware batch, run `printf '%s\0' "${VALIDATED_SCOPE_PATHS[@]}" | git check-ignore --index -z --stdin` and capture stdout in a temporary file so NUL bytes are never stored in a shell variable. Status 0 means at least one untracked or missing path is ignored: parse the NUL-delimited output, require every returned path to equal one validated input, preserve the first matching path as the exact blocker, and stop. Status 1 means every path is Git-visible, and every other status is an error. Remove the temporary output on every path.
+3. Define `RECHECK_STANDALONE_SCOPE` as the preceding file-level, Git-admin, and batched visibility checks, including its exact first-path blocker. Run it before every remediation staging boundary, before final success, before history rewriting or first publication, and after CI/review remediation before final shipped proof.
+4. Every dirty, staged, or committed path membership check uses exact equality with one `VALIDATED_SCOPE_PATHS` entry. Directory containment applies only when `PLAN_SCOPE_MODE=containment`.

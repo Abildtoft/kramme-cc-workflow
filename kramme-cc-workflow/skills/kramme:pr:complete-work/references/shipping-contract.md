@@ -9,7 +9,7 @@ Apply this contract only after the caller supplied `--ship`, the quality policy 
 - a backup-protected local narrative rewrite by `kramme:pr:create --auto --authorize-history-rewrite`;
 - first publication of the previously absent remote branch with an exact absence lease;
 - self-assignment and ready-for-review Pull Request creation; and
-- targeted `kramme:pr:fix-ci --no-consolidate` commits and pushes until checks and review feedback are clear.
+- targeted `{fix-ci-invocation}` commits and pushes until checks and review feedback are clear, where plan-scoped callers persist their validated archive path.
 
 It does not authorize rewriting an existing remote branch or Pull Request, merging, deleting source-workflow state, deployment, or post-merge rollout.
 
@@ -26,7 +26,7 @@ Re-query the exact current remote ref with `git ls-remote --heads origin "refs/h
 
 1. Require `git status --porcelain` to be empty. Gitignored source-workflow archives may remain.
 2. Require the current branch to equal the prepared `{work-branch}` and differ from `{base-branch}`.
-3. When `PLAN_SCOPE_ACTIVE=true`, collect every committed path in `{scope-base-commit}..HEAD` and require each to match `VALIDATED_SCOPE_PATHS` by exact normalized path or directory containment. Stop before history rewriting or publication on the first mismatch.
+3. When `PLAN_SCOPE_ACTIVE=true`, run `RECHECK_STANDALONE_SCOPE` for `PLAN_SCOPE_MODE=exact-files`, then collect every committed path in `{scope-base-commit}..HEAD`. Require exact equality with one `VALIDATED_SCOPE_PATHS` entry for `exact-files`, and otherwise allow exact path or directory containment. Stop before history rewriting or publication on the first mismatch or newly ineligible standalone path.
 4. Record:
 
    ```bash
@@ -58,12 +58,21 @@ After creation:
 3. Require a clean worktree.
 4. Record local `HEAD` as `{initial-shipped-head}` and require exact equality with `headRefOid`.
 5. Record `git rev-parse 'HEAD^{tree}'` as `{initial-shipped-tree}` and require equality with `{verified-tree}`.
+6. When `PLAN_SCOPE_ACTIVE=true`, apply this persistence rule before delegated CI fixes begin. Synced atomic scoped archive update contract (keep aligned across plan recovery): write the complete updated selected plan to a non-symlink temporary sibling in its `plans/` directory, re-read and fully validate the staged bytes, then atomically rename that sibling over the selected plan; on any write, validation, or rename failure, leave the previous plan intact and treat the already-published mutation as interrupted. Use that atomic replacement to update only the archived workflow-state checkpoint head/tree to `{initial-shipped-head}` and `{initial-shipped-tree}` while preserving its stage, plan set, plan, branch, base, and scope. Re-read the published archive and rerun its provenance and committed-path proofs. This binds the archive to the narrative rewrite before delegated CI fixes begin; stop before stabilization if the refresh fails.
 
 History may change commit IDs, but the verified tree must not change. On mismatch, report expected and observed base, head OIDs, tree IDs, and Pull Request URL; do not start stabilization or claim verified completion.
 
 ## Step 5: Stabilize CI and Review Feedback
 
-Invoke `kramme:pr:fix-ci --no-consolidate`. Do not combine it with `--auto`.
+Set `{fix-ci-invocation}` to `$kramme:pr:fix-ci --no-consolidate`. Synced scoped recovery payload contract (keep aligned across plan recovery): `$kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}`. When `PLAN_SCOPE_ACTIVE=true`, set `{fix-ci-invocation}` to that exact scoped value. Invoke it through the platform skill mechanism. Do not combine it with `--auto`.
+
+When `PLAN_SCOPE_ACTIVE=true`, the delegated skill must reconstruct `PLAN_SCOPE_MODE`, `VALIDATED_SCOPE_PATHS`, `{scope-base-commit}`, and `RECHECK_STANDALONE_SCOPE` from `{validated-scope-plan}` under its scoped-plan mutation contract. These remain authoritative throughout `fix-ci`; its normal staging and push behavior does not widen the prepared work item's scope. Before every fix commit or push, require all of the following:
+
+1. Every proposed, dirty, and staged fix path satisfies the active exact-or-containment membership rule.
+2. For `PLAN_SCOPE_MODE=exact-files`, run `RECHECK_STANDALONE_SCOPE` immediately before staging.
+3. Collect every committed path in `{scope-base-commit}..HEAD` and enforce the same membership rule before push.
+
+If valid CI or review feedback needs an out-of-scope path, stop before editing, staging, committing, or pushing that fix and return `published_blocked` with the first required path. Do not let the delegated workflow publish a change that the final scope proof would reject.
 
 Continue only when it reports:
 
@@ -71,7 +80,9 @@ Continue only when it reports:
 - no unaddressed human review feedback; and
 - no unresolved `UNVERIFIED`, `CONFUSION`, or `MISSING REQUIREMENT` marker.
 
-If it stops, preserve the Pull Request URL and exact blocker. A later session resumes with `kramme:pr:fix-ci --no-consolidate`, never by rerunning the source issue/plan-to-PR workflow.
+If it stops, preserve the Pull Request URL, exact blocker, and `{fix-ci-invocation}`. A later session resumes with that exact invocation, never with an unscoped substitute and never by rerunning implementation.
+
+Before returning a blocked handoff, when `PLAN_SCOPE_ACTIVE=true`, rerun `RECHECK_STANDALONE_SCOPE` for `PLAN_SCOPE_MODE=exact-files`, collect every committed path in `{scope-base-commit}..HEAD`, and enforce the active membership rule. Preserve the first failed eligibility or membership proof as the blocker; never claim the handoff is safe for source-workflow finalization when this recheck fails.
 
 Return a structured caller handoff before stopping:
 
@@ -84,7 +95,7 @@ Pull Request: {url}
 Local head/tree: {head} {tree}
 Remote head: {headRefOid}
 Blocker: {exact delegated blocker}
-Recovery: $kramme:pr:fix-ci --no-consolidate
+Recovery: {fix-ci-invocation}
 ```
 
 This is a blocking overall result, not success, but callers must persist their implementation-complete source state and Pull Request provenance before returning it to the user.
@@ -107,7 +118,7 @@ This is a blocking overall result, not success, but callers must persist their i
 3. Require a clean worktree.
 4. Record local `HEAD` as `{final-head}` and require equality with `headRefOid`.
 5. Record `git rev-parse 'HEAD^{tree}'` as `{final-tree}`.
-6. When `PLAN_SCOPE_ACTIVE=true`, collect every committed path in `{scope-base-commit}..HEAD` again. If any path falls outside `VALIDATED_SCOPE_PATHS`, return `published_blocked` with the first mismatched path and do not claim plan-scoped completion.
+6. When `PLAN_SCOPE_ACTIVE=true`, rerun `RECHECK_STANDALONE_SCOPE` for `PLAN_SCOPE_MODE=exact-files`, then collect every committed path in `{scope-base-commit}..HEAD` again and enforce the mode's exact-or-containment rule. If any path falls outside `VALIDATED_SCOPE_PATHS` or a standalone path is newly ineligible, return `published_blocked` with the first mismatch and do not claim plan-scoped completion.
 7. If `{final-tree}` differs from `{verified-tree}`, run exactly one validation-only final quality round using the applicability and archive rules from `review-convergence.md`, with active gates in regular-review, convention-review, refactor order. Do not edit, re-enter CI fixing, or start another quality round.
 8. If that validation-only round passes, invoke `kramme:verify:run` once on the CI-remediated tree and require every applicable check to pass without further source changes.
 
@@ -137,5 +148,5 @@ Require the worktree clean, local head unchanged, Pull Request open with expecte
 - Push succeeded but PR creation failed: return `Completion disposition: published_blocked`, `Pre-publication quality and verification: passed`, `Publication state: remote branch only`, `Work branch: {work-branch}`, the validated local head/tree and matching remote head, `Pull Request: absent`, the exact `Blocker`, and the delegated manual Pull Request creation `Recovery`. Callers may persist implementation completion, but must not claim a Pull Request exists. Do not recreate commits unless rollback restored the original state.
 - Description generation failed: preserve rollback; never publish placeholder content.
 - Existing Pull Request: never adopt or force-push it under this workflow.
-- CI/review loop stopped: preserve the URL and resume later with `kramme:pr:fix-ci --no-consolidate`.
+- CI/review loop stopped: preserve the URL and resume later with the exact recorded `{fix-ci-invocation}`.
 - Final proof failed: report expected/observed base, heads, checks, worktree state, and tree identities. Do not claim a green verified Pull Request.

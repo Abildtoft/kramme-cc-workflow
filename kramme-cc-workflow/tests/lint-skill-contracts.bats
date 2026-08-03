@@ -771,18 +771,74 @@ EOF
 @test "fix-ci auto mode consolidates pipeline fix commits" {
   local skill_text
   local consolidation_text
+  local scoped_plan_text
   skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/SKILL.md")"
   consolidation_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/references/consolidation-flow.md")"
+  scoped_plan_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/references/scoped-plan.md")"
 
   [[ "$skill_text" == *'`--auto` - Run the CI fix loop unattended'* ]]
   [[ "$skill_text" == *'If `AUTO_MODE=true`, choose **Automated** without prompting'* ]]
   [[ "$skill_text" == *'**Skip this step if:** `--fixup` mode was used, or `--no-consolidate` flag is set.'* ]]
   [[ "$skill_text" != *'Alias for `--no-consolidate`'* ]]
   [[ "$skill_text" != *'`--no-consolidate` / `--auto` flag'* ]]
+  [[ "$skill_text" == *'`--scope-plan <archived-plan>` - Reconstruct and enforce a plan-to-PR mutation boundary'* ]]
+  [[ "$skill_text" == *'read `references/scoped-plan.md` completely'* ]]
+
+  [[ "$scoped_plan_text" == *'SCOPED_PLAN_LIFECYCLE=initial'* ]]
+  [[ "$scoped_plan_text" == *'SCOPED_PLAN_LIFECYCLE=recovery'* ]]
+  [[ "$scoped_plan_text" == *'derive `{validated-plan-branch}` as `plan/{plan-set-short}-{execution-label-lowercase}-{plan-slug}`'* ]]
+  [[ "$scoped_plan_text" == *'Before any Git or GitHub CLI use'* ]]
+  [[ "$scoped_plan_text" == *'require the current and recorded branches to equal `{validated-plan-branch}`'* ]]
+  [[ "$scoped_plan_text" == *'Before each edit, validate every intended path.'* ]]
+  [[ "$scoped_plan_text" == *'Before every push, revalidate all committed paths'* ]]
+  [[ "$scoped_plan_text" == *'Synced atomic scoped archive update contract (keep aligned across plan recovery)'* ]]
+  [[ "$scoped_plan_text" == *'write the complete updated selected plan to a non-symlink temporary sibling'* ]]
+  [[ "$scoped_plan_text" == *'atomically rename that sibling over the selected plan'* ]]
+  [[ "$scoped_plan_text" == *'leave the previous plan intact and treat the already-published mutation as interrupted'* ]]
+  [[ "$scoped_plan_text" == *'immediately after every proven push use the same atomic archive update contract to replace the archived checkpoint head/tree'* ]]
+  [[ "$scoped_plan_text" == *'$kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}'* ]]
 
   [[ "$consolidation_text" == *'If `AUTO_MODE=true`, do not offer "Keep separate".'* ]]
   [[ "$consolidation_text" == *'Before any automated rebase, confirm one of these is true:'* ]]
   [[ "$consolidation_text" == *'If `AUTO_MODE=true`, apply the pre-rebase safety gate above, then select **Automated**'* ]]
+}
+
+@test "scoped fix-ci lifecycle preserves valid state transitions" {
+  local skill_text
+  local scoped_plan_text
+  local classification_line
+  local initial_removal_line
+  local recovery_removal_line
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/SKILL.md")"
+  scoped_plan_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/references/scoped-plan.md")"
+
+  classification_line="$(grep -nF 'After this classification, reject unknown, duplicate, or misplaced lifecycle sections.' <<<"$scoped_plan_text" | cut -d: -f1)"
+  initial_removal_line="$(grep -nF 'In initial lifecycle, remove exactly the one workflow-state section' <<<"$scoped_plan_text" | cut -d: -f1)"
+  recovery_removal_line="$(grep -nF 'In recovery lifecycle, remove exactly one workflow-state and one execution-result section.' <<<"$scoped_plan_text" | cut -d: -f1)"
+
+  [ -n "$classification_line" ]
+  [ "$classification_line" -eq "$initial_removal_line" ]
+  [ "$classification_line" -eq "$recovery_removal_line" ]
+  [[ "$scoped_plan_text" == *'In initial lifecycle, require its repository, base ref, and head branch to match'* ]]
+  [[ "$scoped_plan_text" == *'retain its head OID only for the live-head agreement and adoption proof in item 7'* ]]
+  [[ "$scoped_plan_text" == *'In recovery lifecycle, require the execution result to record the exact Pull Request number and URL, repository, base ref, head branch, and head OID'* ]]
+  [[ "$scoped_plan_text" == *'require the execution-result completion commit to equal the recorded workflow checkpoint before any recovery action'* ]]
+  [[ "$scoped_plan_text" == *'initial lifecycle may adopt the live head only through one of these proofs:'* ]]
+  [[ "$scoped_plan_text" == *'**Ancestor-only scoped push:**'* ]]
+  [[ "$scoped_plan_text" == *'the first commit'\''s sole parent is `{checkpoint-head}`'* ]]
+  [[ "$scoped_plan_text" == *'Reject merge commits, missing or reordered commits'* ]]
+  [[ "$scoped_plan_text" == *'**Tree-identical narrative rewrite:**'* ]]
+  [[ "$scoped_plan_text" == *'every path touched by each commit against its sole parent'* ]]
+  [[ "$scoped_plan_text" == *'Require the recorded checkpoint not to be an ancestor of `{live-head}`'* ]]
+  [[ "$scoped_plan_text" == *'Reject merge commits, missing or reordered commits'* ]]
+  [[ "$scoped_plan_text" == *'atomically refresh only the workflow-state checkpoint head/tree'* ]]
+  [[ "$scoped_plan_text" == *'repeat every archive identity, base, same-repository Pull Request identity, head agreement, tree, standalone eligibility, and committed-path proof'* ]]
+  [[ "$scoped_plan_text" == *'atomically refresh both the workflow checkpoint head/tree and execution-result completion commit and Pull Request head OID'* ]]
+  [[ "$scoped_plan_text" == *'In initial lifecycle mode, immediately after every proven push use the atomic archive update contract above to replace only the archived workflow-state checkpoint head/tree'* ]]
+  [[ "$scoped_plan_text" == *'never adding an execution result'* ]]
+  [[ "$skill_text" == *'When `PLAN_SCOPE_ACTIVE=false`, point the user at `/kramme:pr:rebase` before proceeding.'* ]]
+  [[ "$skill_text" == *'When `PLAN_SCOPE_ACTIVE=true`, fail closed without invoking `/kramme:pr:rebase` or changing history'* ]]
+  [[ "$skill_text" == *'require a refreshed or explicitly re-authorized scoped plan before continuing'* ]]
 }
 
 @test "text contract drift fails with precise contract name" {

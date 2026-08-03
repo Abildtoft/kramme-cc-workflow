@@ -9,6 +9,45 @@
   ],
   "text_contracts": [
     {
+      "name": "standalone-archive-identity-bytes",
+      "extract_regex": "Synced standalone archive identity contract \\(keep aligned across archive consumers\\):\\s*(the binary manifest contains the ASCII bytes standalone-attachment, a NUL byte, \\{selected-basename\\}, a NUL byte, \\{plan-source-object-id\\}, and a newline\\.)",
+      "inventory": {
+        "glob": "kramme-cc-workflow/skills/**/*.md",
+        "marker": "Synced standalone archive identity contract (keep aligned across archive consumers):"
+      },
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:code:plan-to-pr/references/attachment-input.md",
+        "kramme-cc-workflow/skills/kramme:pr:complete-work/references/standalone-scope-handoff.md",
+        "kramme-cc-workflow/skills/kramme:pr:fix-ci/references/scoped-plan.md"
+      ]
+    },
+    {
+      "name": "scoped-plan-recovery-payload",
+      "extract_regex": "Synced scoped recovery payload contract \\(keep aligned across plan recovery\\):\\s*(\\$kramme:pr:fix-ci --no-consolidate --scope-plan \\{validated-scope-plan\\})\\.",
+      "inventory": {
+        "glob": "kramme-cc-workflow/skills/**/*.md",
+        "marker": "Synced scoped recovery payload contract (keep aligned across plan recovery):"
+      },
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:code:plan-to-pr/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:code:plan-to-pr/references/attachment-input.md",
+        "kramme-cc-workflow/skills/kramme:pr:complete-work/references/shipping-contract.md",
+        "kramme-cc-workflow/skills/kramme:pr:fix-ci/references/scoped-plan.md"
+      ]
+    },
+    {
+      "name": "atomic-scoped-archive-update",
+      "extract_regex": "Synced atomic scoped archive update contract \\(keep aligned across plan recovery\\):\\s*(write the complete updated selected plan to a non-symlink temporary sibling in its plans/ directory, re-read and fully validate the staged bytes, then atomically rename that sibling over the selected plan; on any write, validation, or rename failure, leave the previous plan intact and treat the already-published mutation as interrupted\\.)",
+      "inventory": {
+        "glob": "kramme-cc-workflow/skills/**/*.md",
+        "marker": "Synced atomic scoped archive update contract (keep aligned across plan recovery):"
+      },
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:pr:complete-work/references/shipping-contract.md",
+        "kramme-cc-workflow/skills/kramme:pr:fix-ci/references/scoped-plan.md"
+      ]
+    },
+    {
       "name": "siw-spec-exclusion-list",
       "extract_regex": "Synced SIW spec-exclusion contract \\(keep aligned across SIW spec detectors\\):\\s*(LOG\\.md,\\s*OPEN_ISSUES_OVERVIEW\\.md,\\s*DISCOVERY_BRIEF\\.md,\\s*SPEC_STRENGTHENING_PLAN\\.md,\\s*AUDIT_\\*\\.md,\\s*PRODUCT_AUDIT\\.md,\\s*SIW_\\*\\.md\\.)",
       "inventory": {
