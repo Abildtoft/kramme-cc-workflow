@@ -36,7 +36,7 @@ After accepted review work changes source, tests, configuration, or documentatio
 1. Isolate generated reports.
 2. Run the smallest focused verification covering the changed behavior.
 3. Classify `git status --porcelain`. Continue only when every non-ignored path is an in-scope remediation change owned by this invocation. When `PLAN_SCOPE_ACTIVE=true`, require exact equality with one `VALIDATED_SCOPE_PATHS` entry for `PLAN_SCOPE_MODE=exact-files`, and otherwise allow exact path or directory containment; never widen the list from reviewer output.
-4. If a delegated refactor already returned a verified commit and the worktree is clean, validate and record that commit. Otherwise, when `PLAN_SCOPE_ACTIVE=true` and `PLAN_SCOPE_MODE=exact-files`, run `RECHECK_STANDALONE_SCOPE`, then stage only classified paths through quoted argv with `git add -- <validated path array>`. Never render plan paths into command text.
+4. If a delegated refactor already returned a verified commit and the worktree is clean, validate and record that commit. Otherwise, run `RECHECK_STANDALONE_SCOPE` when `PLAN_SCOPE_ACTIVE=true` and `PLAN_SCOPE_MODE=exact-files`, then stage only classified paths through quoted argv with `git add -- <validated path array>`. Never render plan paths into command text.
 5. Commit the verified batch with a plain-English message containing `{work-id}`.
 6. If hooks change content, rerun focused verification.
 
