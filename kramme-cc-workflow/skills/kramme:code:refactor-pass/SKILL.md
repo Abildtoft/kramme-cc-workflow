@@ -39,7 +39,7 @@ Only proceed in rewrite mode if all three conditions are met.
 
 - After a feature or fix lands, before merging, to clean up accidental complexity.
 - When the user asks for "a refactor pass", "cleanup", "simplification", or "dead-code removal" on recent work.
-- When recent code may contain AI-generated slop such as obvious comments, defensive overkill, type workarounds, excessive logging, copy-paste artifacts, generic UI defaults, or style drift. Default mode checks these without a separate flag.
+- When recent code may contain AI-generated slop such as obvious comments, defensive overkill, type workarounds, excessive logging, copy-paste artifacts, or style drift. Default mode checks these without a separate flag.
 - When the user asks to scrap a working-but-mediocre fix and redo it properly; select rewrite mode.
 - On a narrow scope — typically the diff of the current branch or a few files. Not for codebase-wide scans (use `kramme:code:refactor-opportunities` for that).
 
@@ -135,9 +135,10 @@ If the initial combined queue is empty, report that the scoped code is already c
 Default mode commits each simplification, so uncommitted input needs a clean boundary once discovery has proved there is work to do. If `REFACTOR_SCOPE_PATHS` contains staged, unstaged, or untracked changes:
 
 1. Run `kramme:verify:run` on the unchanged starting tree. If verification cannot run or fails, stop without committing or refactoring.
-2. Before staging, record `CHECKPOINT_HEAD=$(git rev-parse HEAD)` and `CHECKPOINT_INDEX_TREE=$(git write-tree)`. Create one clearly labeled recovery checkpoint commit containing the exact pre-existing changes in `REFACTOR_SCOPE_PATHS` and no cleanup. Limit both staging and commit selection to those paths so protected artifacts and staged or unstaged work outside the scope are not swept in.
-3. Run staging and commit as checked operations. If either fails, restore the original index with `git read-tree "$CHECKPOINT_INDEX_TREE"`, require `HEAD` to still equal `CHECKPOINT_HEAD`, and require `git write-tree` to reproduce `CHECKPOINT_INDEX_TREE`. If restoration or either equality check fails, stop and print the saved head/tree plus the exact manual recovery command. Do not continue after a failed checkpoint commit.
-4. After success, record the checkpoint hash and require its parent to equal `CHECKPOINT_HEAD`. Confirm that the commit contains only `REFACTOR_SCOPE_PATHS`, and that protected artifacts plus out-of-scope worktree and index state are unchanged. If the scoped checkpoint cannot be isolated without disturbing them, stop and surface the conflict.
+2. Before staging, record `CHECKPOINT_HEAD=$(git rev-parse HEAD)`, resolve the real index path with `CHECKPOINT_INDEX_PATH=$(git rev-parse --git-path index)`, record whether that file exists, and make a byte-for-byte backup of the actual index file outside the repository. Do not use a tree object as an index backup: tree objects omit index-only state such as intent-to-add and skip-worktree flags. Also snapshot the existence, contents, modes, and symlink targets of every path in `REFACTOR_SCOPE_PATHS`; this is the verified checkpoint worktree state.
+3. Create one clearly labeled recovery checkpoint commit containing the exact pre-existing changes in `REFACTOR_SCOPE_PATHS` and no cleanup. Limit both staging and commit selection to those paths so protected artifacts and staged or unstaged work outside the scope are not swept in. Run staging and commit as checked operations.
+4. If staging or commit fails, restore the actual index file byte-for-byte (or restore its prior absence), and restore every scoped path that a commit hook changed from the verified checkpoint worktree snapshot. Require `HEAD` to still equal `CHECKPOINT_HEAD`, require the restored index to byte-match its backup, and require the scoped worktree to match the verified snapshot. If any restoration or equality check fails, stop and print the saved head, index backup path, worktree snapshot path, and exact manual recovery commands. Do not continue after a failed checkpoint commit.
+5. After success, record the checkpoint hash and require its parent to equal `CHECKPOINT_HEAD`. Confirm that the committed path set contains only `REFACTOR_SCOPE_PATHS`, the committed contents and modes match the verified checkpoint snapshot, and protected artifacts plus out-of-scope worktree and index state are unchanged. If a commit hook changes the worktree from the verified snapshot, stop and surface the mutation rather than treating the checkpoint as verified. If the scoped checkpoint cannot be isolated without disturbing other state, stop and surface the conflict.
 
 The checkpoint is a recovery boundary, not a simplification slice. Never fold the first cleanup into it. After the checkpoint, every AI-slop or general simplification must still receive its own verified commit.
 
@@ -199,6 +200,8 @@ State the minimum change that accomplishes the simplification (see Markers).
 
 Apply only that one change. Keep the diff small. If the diff grows past a few files or a few dozen lines, you are probably doing more than one thing — split the slice.
 
+Record the exact newline-delimited paths changed by this simplification as `SLICE_PATHS`. Require a non-empty set wholly contained in `REFACTOR_SCOPE_PATHS`, with no protected or out-of-scope path. Use this same path set for verification, staging, commit selection, and post-commit validation.
+
 If you notice something adjacent that also wants fixing, do not fix it — emit a `NOTICED BUT NOT TOUCHING` marker and continue.
 
 ### 4. Verify and commit
@@ -207,7 +210,11 @@ Run the project's verification battery via `kramme:verify:run` — build, typech
 
 If `kramme:verify:run` cannot run (no test/lint/build configured, tool errors, etc.), stop and surface the gap. Do not declare the slice verified.
 
-When verification passes, record `SLICE_BASELINE=$(git rev-parse HEAD)` and `SLICE_INDEX_TREE=$(git write-tree)`, then commit the slice on its own. If staging or commit fails, restore the index with `git read-tree "$SLICE_INDEX_TREE"`, require `HEAD` to still equal `SLICE_BASELINE`, leave the verified edit in the worktree, and stop with the recovery details; do not refresh discovery against an uncreated baseline. After success, require the new commit's parent to equal `SLICE_BASELINE`. The committed state becomes the baseline for the next iteration.
+When verification passes, record `SLICE_BASELINE=$(git rev-parse HEAD)`, make a byte-for-byte backup of the actual index file using the same presence-aware procedure as the checkpoint, and snapshot the verified contents, modes, and symlink targets of `SLICE_PATHS`. Limit both staging and commit selection to `SLICE_PATHS`; never use a blanket staging or commit operation that can consume pre-existing index entries.
+
+If staging or commit fails, restore the actual index file byte-for-byte and restore any `SLICE_PATHS` worktree content changed by a commit hook. Require `HEAD` to still equal `SLICE_BASELINE`, require the index to byte-match its backup, and require the worktree snapshot to match before describing the remaining edit as verified. Stop with the recovery details and do not refresh discovery against an uncreated baseline.
+
+After success, require the new commit's parent to equal `SLICE_BASELINE`, require its committed path set to equal `SLICE_PATHS`, and require the committed contents and modes to match the verified snapshot. Confirm that protected artifacts plus out-of-scope worktree and index state are unchanged. If a commit hook changes the worktree from the verified snapshot, stop and surface the mutation. Only then does the committed state become the baseline for the next iteration.
 
 ### 5. Refresh and move to the next simplification
 

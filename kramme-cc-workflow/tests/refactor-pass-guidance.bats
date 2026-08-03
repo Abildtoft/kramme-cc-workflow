@@ -20,6 +20,11 @@ setup() {
 
   grep -qF "Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills)" "$skill"
   grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --strict --format json' "$skill"
+  grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --decode-json' "$skill"
+  grep -qF "IFS= read -r -d '' BASE_REF" "$skill"
+  grep -qF "IFS= read -r -d '' CHANGED_FILES" "$skill"
+  grep -qF 'newline-delimited `CHANGED_FILES` as the default resolved scope' "$skill"
+  grep -qF "Do not independently guess or re-resolve the base." "$skill"
   grep -qF 'pass `BASE_REF`, `MERGE_BASE`, and filtered `REFACTOR_SCOPE_PATHS`' "$skill"
 }
 
@@ -42,10 +47,13 @@ setup() {
   grep -qF 'references/protected-workflow-artifacts.txt' "$skill"
   grep -qF "must never enter the checkpoint path set" "$skill"
   grep -qF 'Create one clearly labeled recovery checkpoint commit containing the exact pre-existing changes in `REFACTOR_SCOPE_PATHS` and no cleanup.' "$skill"
-  grep -qF 'CHECKPOINT_INDEX_TREE=$(git write-tree)' "$skill"
-  grep -qF 'git read-tree "$CHECKPOINT_INDEX_TREE"' "$skill"
+  grep -qF 'CHECKPOINT_INDEX_PATH=$(git rev-parse --git-path index)' "$skill"
+  grep -qF "make a byte-for-byte backup of the actual index file" "$skill"
+  grep -qF "Do not use a tree object as an index backup" "$skill"
+  grep -qF "restore the actual index file byte-for-byte" "$skill"
+  grep -qF "restore every scoped path that a commit hook changed" "$skill"
+  grep -qF "committed path set contains only" "$skill"
   grep -qF "Do not continue after a failed checkpoint commit." "$skill"
-  grep -qF 'SLICE_INDEX_TREE=$(git write-tree)' "$skill"
   grep -qF "do not refresh discovery against an uncreated baseline" "$skill"
   grep -qF "The checkpoint is a recovery boundary, not a simplification slice." "$skill"
   grep -qF "Never fold the first cleanup into it." "$skill"
@@ -69,6 +77,19 @@ setup() {
   grep -qF "Visual redesign findings are not behavior-preserving simplifications." "$skill"
   grep -qF 'suggest `kramme:pr:ux-review` instead' "$skill"
   ! grep -qF "Generic AI-aesthetic UI defaults" "$skill"
+  ! grep -qF "generic UI defaults" "$skill"
+}
+
+@test "simplification commits preserve complete scoped git state" {
+  local skill="skills/kramme:code:refactor-pass/SKILL.md"
+
+  grep -qF 'Record the exact newline-delimited paths changed by this simplification as `SLICE_PATHS`.' "$skill"
+  grep -qF 'Limit both staging and commit selection to `SLICE_PATHS`' "$skill"
+  grep -qF "never use a blanket staging or commit operation" "$skill"
+  grep -qF 'restore any `SLICE_PATHS` worktree content changed by a commit hook' "$skill"
+  grep -qF 'require its committed path set to equal `SLICE_PATHS`' "$skill"
+  grep -qF "require the index to byte-match its backup" "$skill"
+  grep -qF "require the worktree snapshot to match" "$skill"
 }
 
 @test "README documents the cleanup command migration" {
@@ -79,6 +100,8 @@ setup() {
 }
 
 @test "protected workflow artifacts stay synchronized with the commit guard" {
+  grep -qF "REFACTOR_OPPORTUNITIES_OVERVIEW.md" \
+    "skills/kramme:code:refactor-pass/references/protected-workflow-artifacts.txt"
   cmp -s \
     "skills/kramme:code:refactor-pass/references/protected-workflow-artifacts.txt" \
     "hooks/confirm-review-artifacts.txt"
