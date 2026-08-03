@@ -110,7 +110,9 @@ Before picking simplifications, decide what "recent changes" means for this invo
 
 3. If the resulting scope is empty (clean working tree, no diff against base), stop and ask the user what to scope to. Do not invent a scope.
 
-Record the scope before starting the loop. Every simplification must fall inside it; observations outside it become `NOTICED BUT NOT TOUCHING` markers, not new work.
+Before recording either a default or explicit scope, read the skill-local `references/protected-workflow-artifacts.txt` registry, enumerate the scope's changed paths, and remove every matching path. These protected workflow artifacts are not cleanup candidates and must never enter the checkpoint path set. Leave them untouched, report each exclusion with `NOTICED BUT NOT TOUCHING`, and do not broaden this filter to arbitrary untracked files. Store the remaining newline-delimited paths as `REFACTOR_SCOPE_PATHS`; use that filtered set for discovery, checkpointing, and every simplification slice. If no paths remain, stop and report that the requested scope contains only protected workflow artifacts.
+
+Record `REFACTOR_SCOPE_PATHS` before starting the loop. Every simplification must fall inside it; observations outside it become `NOTICED BUT NOT TOUCHING` markers, not new work.
 
 ## Discover default-mode candidates
 
@@ -119,7 +121,7 @@ Default mode includes AI-slop review without a separate flag. Rewrite mode skips
 Run initial read-only discovery before creating any checkpoint commit. Before the first simplification, and again after each verified slice, build one candidate queue:
 
 1. Inspect the resolved scope for the general simplification candidates listed in the loop below.
-2. Launch `kramme:deslop-reviewer` in code review mode against the resolved scope. When the user supplied files or a directory, pass only that scope. Otherwise pass `BASE_REF`, `MERGE_BASE`, and `CHANGED_FILES`, and require the reviewer to inspect the committed `git diff "$MERGE_BASE"...HEAD`, staged diff, unstaged diff, and untracked paths without re-resolving the base.
+2. Launch `kramme:deslop-reviewer` in code review mode against `REFACTOR_SCOPE_PATHS`. When the user supplied files or a directory, pass only the filtered paths under that scope. Otherwise pass `BASE_REF`, `MERGE_BASE`, and filtered `REFACTOR_SCOPE_PATHS`, and require the reviewer to inspect the committed `git diff "$MERGE_BASE"...HEAD`, staged diff, unstaged diff, and untracked paths without re-resolving the base.
 3. Require the reviewer call to complete successfully with a parseable finding set. If the agent is unavailable, times out, or returns unusable output, stop and surface the discovery failure. Do not treat a failed reviewer call as an empty finding set or report the scope clean.
 4. Discard reviewer findings outside the resolved scope or in generated files, vendored code, lockfiles, snapshots, or `*.d.ts` files. These exclusions apply to the AI-slop aspect; an explicitly scoped general refactor still follows the normal Fence and project rules.
 5. Visual redesign findings are not behavior-preserving simplifications. Exclude AI-aesthetic UI findings that would change rendered palette, spacing, radius, shadows, hierarchy, or state presentation; emit `NOTICED BUT NOT TOUCHING` and suggest `kramme:pr:ux-review` instead.
@@ -130,11 +132,12 @@ If the initial combined queue is empty, report that the scoped code is already c
 
 ## Establish a commit baseline
 
-Default mode commits each simplification, so uncommitted input needs a clean boundary once discovery has proved there is work to do. If the resolved scope contains staged, unstaged, or untracked changes:
+Default mode commits each simplification, so uncommitted input needs a clean boundary once discovery has proved there is work to do. If `REFACTOR_SCOPE_PATHS` contains staged, unstaged, or untracked changes:
 
 1. Run `kramme:verify:run` on the unchanged starting tree. If verification cannot run or fails, stop without committing or refactoring.
-2. Create one clearly labeled recovery checkpoint commit containing the exact pre-existing changes inside the resolved scope and no cleanup. Limit the commit to the resolved paths so staged or unstaged work outside the scope is not swept in.
-3. Record the checkpoint hash. Confirm that out-of-scope worktree and index state is unchanged. If the scoped checkpoint cannot be isolated without disturbing out-of-scope changes, stop and surface the conflict.
+2. Before staging, record `CHECKPOINT_HEAD=$(git rev-parse HEAD)` and `CHECKPOINT_INDEX_TREE=$(git write-tree)`. Create one clearly labeled recovery checkpoint commit containing the exact pre-existing changes in `REFACTOR_SCOPE_PATHS` and no cleanup. Limit both staging and commit selection to those paths so protected artifacts and staged or unstaged work outside the scope are not swept in.
+3. Run staging and commit as checked operations. If either fails, restore the original index with `git read-tree "$CHECKPOINT_INDEX_TREE"`, require `HEAD` to still equal `CHECKPOINT_HEAD`, and require `git write-tree` to reproduce `CHECKPOINT_INDEX_TREE`. If restoration or either equality check fails, stop and print the saved head/tree plus the exact manual recovery command. Do not continue after a failed checkpoint commit.
+4. After success, record the checkpoint hash and require its parent to equal `CHECKPOINT_HEAD`. Confirm that the commit contains only `REFACTOR_SCOPE_PATHS`, and that protected artifacts plus out-of-scope worktree and index state are unchanged. If the scoped checkpoint cannot be isolated without disturbing them, stop and surface the conflict.
 
 The checkpoint is a recovery boundary, not a simplification slice. Never fold the first cleanup into it. After the checkpoint, every AI-slop or general simplification must still receive its own verified commit.
 
@@ -204,7 +207,7 @@ Run the project's verification battery via `kramme:verify:run` — build, typech
 
 If `kramme:verify:run` cannot run (no test/lint/build configured, tool errors, etc.), stop and surface the gap. Do not declare the slice verified.
 
-When verification passes, commit the slice on its own. The committed state becomes the baseline for the next iteration.
+When verification passes, record `SLICE_BASELINE=$(git rev-parse HEAD)` and `SLICE_INDEX_TREE=$(git write-tree)`, then commit the slice on its own. If staging or commit fails, restore the index with `git read-tree "$SLICE_INDEX_TREE"`, require `HEAD` to still equal `SLICE_BASELINE`, leave the verified edit in the worktree, and stop with the recovery details; do not refresh discovery against an uncreated baseline. After success, require the new commit's parent to equal `SLICE_BASELINE`. The committed state becomes the baseline for the next iteration.
 
 ### 5. Refresh and move to the next simplification
 
