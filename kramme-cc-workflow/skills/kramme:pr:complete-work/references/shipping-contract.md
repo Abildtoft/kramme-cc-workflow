@@ -95,7 +95,7 @@ Pull Request: {url}
 Local head/tree: {head} {tree}
 Remote head: {headRefOid}
 Blocker: {exact delegated blocker}
-Recovery: ${fix-ci-invocation}
+Recovery: {fix-ci-invocation}
 ```
 
 This is a blocking overall result, not success, but callers must persist their implementation-complete source state and Pull Request provenance before returning it to the user.

@@ -786,6 +786,9 @@ EOF
 
   [[ "$scoped_plan_text" == *'SCOPED_PLAN_LIFECYCLE=initial'* ]]
   [[ "$scoped_plan_text" == *'SCOPED_PLAN_LIFECYCLE=recovery'* ]]
+  [[ "$scoped_plan_text" == *'derive `{validated-plan-branch}` as `plan/{plan-set-short}-{execution-label-lowercase}-{plan-slug}`'* ]]
+  [[ "$scoped_plan_text" == *'Before any Git or GitHub CLI use'* ]]
+  [[ "$scoped_plan_text" == *'require the current and recorded branches to equal `{validated-plan-branch}`'* ]]
   [[ "$scoped_plan_text" == *'Before each edit, validate every intended path.'* ]]
   [[ "$scoped_plan_text" == *'Before every push, revalidate all committed paths'* ]]
   [[ "$scoped_plan_text" == *'immediately after every proven push replace the archived checkpoint head/tree'* ]]

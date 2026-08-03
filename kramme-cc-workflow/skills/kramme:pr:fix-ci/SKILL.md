@@ -31,7 +31,7 @@ The fix-CI loop is the **CI Failure Feedback Loop** pattern: read the failure, m
 
 Before Step 1, parse `$ARGUMENTS`. If `--fixup` is present, set `FIXUP_MODE=true`; if `--auto` is present, set `AUTO_MODE=true`; if `--no-consolidate` is present, set `NO_CONSOLIDATE=true`. Parse `--scope-plan <path>` at most once and store its raw value without using it in a command. Reject unknown flags, duplicate valued flags, missing values, and positional arguments. If both `--auto` and `--no-consolidate` are present, stop with `MISSING REQUIREMENT: choose either --auto to consolidate fix commits or --no-consolidate to keep them separate`.
 
-When `--scope-plan` is present, reject `--fixup` and `--auto`, require `--no-consolidate`, read `references/scoped-plan.md` completely, and follow it before Step 1 and at every edit, staging, commit, push, wait, blocker, and success boundary below. It validates the archive and sets `PLAN_SCOPE_ACTIVE=true`, `PLAN_SCOPE_MODE`, `VALIDATED_SCOPE_PATHS`, `{scope-base-commit}`, `{validated-scope-plan}`, and `SCOPED_PLAN_LIFECYCLE=initial|recovery`. Otherwise set `PLAN_SCOPE_ACTIVE=false`.
+When `--scope-plan` is present, reject `--fixup` and `--auto`, require `--no-consolidate`, read `references/scoped-plan.md` completely, and follow it before Step 1 and at every edit, staging, commit, push, wait, blocker, and success boundary below. It validates the archive and sets `PLAN_SCOPE_ACTIVE=true`, `PLAN_SCOPE_MODE`, `VALIDATED_SCOPE_PATHS`, `{scope-base-commit}`, `{validated-scope-plan}`, `{validated-plan-branch}`, and `SCOPED_PLAN_LIFECYCLE=initial|recovery`. Otherwise set `PLAN_SCOPE_ACTIVE=false`.
 
 ---
 
@@ -158,12 +158,14 @@ Compare `git status --porcelain` against the pre-existing dirty state snapshot f
 
 The `[FIX PIPELINE]` prefix marks commits as iteration fixes from CI or review feedback, making them easy to identify and consolidate later (see Step 11).
 
-Push only after the branch chain is ready:
+Push only after the branch chain is ready. When `PLAN_SCOPE_ACTIVE=true`, require non-stack membership, revalidate every committed path in `{scope-base-commit}..HEAD`, capture the full current `HEAD` as `{validated-push-head}`, and require the current branch to equal `{validated-plan-branch}` immediately before invoking `git push`. The validated head, not a branch ref that can move after the scope proof, is the only authorized push source:
 
 ```bash
 if [ "$IN_STACK" = true ]; then
   gh stack rebase --upstack --no-trunk
   gh stack push
+elif [ "$PLAN_SCOPE_ACTIVE" = true ]; then
+  git push origin "{validated-push-head}:refs/heads/{validated-plan-branch}"
 else
   git push origin "$(git branch --show-current)"
 fi
@@ -171,7 +173,7 @@ fi
 
 For a stack, restacking must succeed before `gh stack push`; never push the changed parent branch first.
 
-When `PLAN_SCOPE_ACTIVE=true`, require non-stack membership, revalidate every committed path in `{scope-base-commit}..HEAD` before the push, prove the remote and Pull Request head equal local `HEAD` immediately after it, and then run the scoped-plan post-push checkpoint rule. A failed proof is a blocker, not permission to continue waiting.
+When `PLAN_SCOPE_ACTIVE=true`, immediately require the local branch tip to remain `{validated-push-head}` and require the remote and Pull Request heads to equal that captured OID, then run the scoped-plan post-push checkpoint rule using the captured head and its tree. A moved local branch, failed push, or identity mismatch is a blocker, not permission to checkpoint an unvalidated tip or continue waiting.
 
 ### Step 8b: Fixup commit flow (when `--fixup` is enabled)
 
