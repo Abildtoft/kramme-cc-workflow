@@ -143,6 +143,7 @@ export type SharedScriptReplacement =
   | {
       sourcePrefix: string;
       targetPrefix: string;
+      doubleQuotedTargetPrefix?: string;
       sourceText?: never;
       targetText?: never;
     }
@@ -151,6 +152,7 @@ export type SharedScriptReplacement =
       targetText: string;
       sourcePrefix?: never;
       targetPrefix?: never;
+      doubleQuotedTargetPrefix?: never;
     };
 
 export interface CodexBundle {

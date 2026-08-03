@@ -213,6 +213,19 @@ load_assignments() {
 	[ ! -s "$GH_LOG" ]
 }
 
+@test "checks local stack membership when a non-origin remote points to GitHub" {
+	git remote set-url origin https://example.com/acme/demo.git
+	git remote add upstream git@github.com:acme/demo.git
+	export MOCK_STACK_VIEW_STATUS=0
+
+	run "$SCRIPT"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$STACK_MEMBERSHIP" = "local" ]
+	grep -q 'command \[stack\] \[view\]' "$GH_LOG"
+}
+
 @test "stack skills use the shared fail-closed membership resolver" {
 	local consumer
 	for consumer in \

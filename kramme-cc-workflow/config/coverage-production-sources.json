@@ -184,6 +184,9 @@
       "kramme-cc-workflow/scripts/run-skillspector.sh": [
         "kramme-cc-workflow/tests/skillspector-runner.bats"
       ],
+      "kramme-cc-workflow/scripts/verify-rewrite-state.sh": [
+        "kramme-cc-workflow/tests/resolve-base.bats"
+      ],
       "kramme-cc-workflow/skills/kramme:code:optimize/scripts/experiment-worktree.sh": [
         "kramme-cc-workflow/tests/optimize-skill.bats"
       ],
@@ -195,6 +198,9 @@
       ],
       "kramme-cc-workflow/skills/kramme:git:clean-gone-branches/scripts/clean-gone-branches.sh": [
         "kramme-cc-workflow/tests/clean-gone-branches.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh": [
+        "kramme-cc-workflow/tests/recreate-commits-push-target.bats"
       ],
       "kramme-cc-workflow/skills/kramme:git:worktree/scripts/worktree-helper.sh": [
         "kramme-cc-workflow/tests/worktree-helper.bats"

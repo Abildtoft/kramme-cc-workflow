@@ -62,11 +62,11 @@ Steps 6 and 7 each invoke a sub-skill via the Skill tool. After a sub-skill retu
 
 Parse `$ARGUMENTS` for optional flags before starting:
 
-- `--auto` -> set `AUTO_MODE=true`, `AUTHORIZE_HISTORY_REWRITE=true`, and `REQUIRE_GENERATED_DESCRIPTION=true`, then remove the flag from the remaining arguments.
+- `--auto` -> set `AUTO_MODE=true` and `REQUIRE_GENERATED_DESCRIPTION=true`, then remove the flag from the remaining arguments. Auto mode authorizes the nested unstacked rewrite but does not synthesize the separate stack-wide authorization capability.
 - `--draft` -> set `DRAFT_MODE=true` and remove the flag from the remaining arguments.
 - `--linear-issue <ISSUE-ID>` -> validate the value against `[A-Za-z0-9]+-[0-9]+`, normalize it to uppercase, store it as `LINEAR_ISSUE_OVERRIDE`, and remove the flag and value. Reject a missing or invalid value before pre-validation. This caller-supplied identifier is authoritative and takes precedence over branch-name extraction.
 - `--require-generated-description` -> set `REQUIRE_GENERATED_DESCRIPTION=true` and remove the flag. This orchestration-only safety mode forbids placeholder fallback when `kramme:pr:generate-description` returns no usable output.
-- `--authorize-history-rewrite` -> set `AUTHORIZE_HISTORY_REWRITE=true` and remove the flag. This explicit capability lets a non-auto invocation skip the nested, backup-protected local reset confirmation for the validated feature branch. `--auto` implies the same capability because narrative history recreation is an intrinsic part of this workflow. Neither mode relaxes branch, backup, clean-tree, existing-PR, remote-absence, or force-with-lease checks.
+- `--authorize-history-rewrite` -> set `AUTHORIZE_HISTORY_REWRITE=true` and remove the flag. This explicit capability lets a non-auto invocation skip the nested, backup-protected unstacked reset confirmation. Stacked branches are rejected before state preservation and must use `kramme:pr:stack`; this flag never widens `pr:create` into a stacked-PR workflow. Auto mode does not set this variable. Neither mode relaxes branch, backup, clean-tree, existing-PR, remote-absence, or force-with-lease checks.
 
 Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`, `REQUIRE_GENERATED_DESCRIPTION=false`, `AUTHORIZE_HISTORY_REWRITE=false`. Flag order is not significant.
 
@@ -76,7 +76,7 @@ Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`, `REQUIRE_GENERATED_DESCRIPTION=
 - invoke downstream skills in non-interactive mode
 - include all uncommitted changes by selecting **Commit and include**
 - require a usable generated title and description; never publish placeholder fallback content
-- authorize the nested, backup-protected local history rewrite after the existing-PR and remote-absence checks pass
+- authorize the nested, backup-protected unstacked history rewrite after the existing-PR and remote-absence checks pass
 - skip the final PR confirmation
 - choose the recommended branch-handling path from the shared reference instructions
 - stop only on hard blockers
@@ -156,6 +156,26 @@ Nothing to create a PR for. Make some changes first, then run /kramme:pr:create 
 
 ---
 
+## Step 4.5: Reject Stacked Branches
+
+Resolve stack membership before state preservation or history rewriting:
+
+```bash
+STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
+  echo "Stack membership could not be determined; stop before preparing the Pull Request." >&2
+  exit 1
+}
+eval "$STACK_RESOLVED"
+if [ "$STACK_MEMBERSHIP" != "none" ]; then
+  echo "kramme:pr:create does not publish stacked branches; use kramme:pr:stack instead." >&2
+  exit 1
+fi
+```
+
+Both locally tracked and server-side stacks stop here. Do not pass stack authorization through to the nested rewrite: this workflow publishes exactly one absence-leased branch and creates one default-base Pull Request, so it cannot safely own restacking, whole-stack publication, or per-branch Pull Request bases.
+
+---
+
 ## Step 5: State Preservation
 
 Read `references/state-and-rollback.md` and execute Step 5. It repeats the authoritative remote-absence check before mutation, creates the validated feature branch directly from `{entry-commit}` only when `{branch-action}=create-from-entry-head`, captures `{original-branch}` / `{original-commit}` as the pre-rewrite feature state, handles uncommitted-work inclusion or exclusion, and derives retry-safe `{recreate-backup-ref}` from the resulting input tip. Keep all entry, feature, and rollback values as agent-tracked state.
@@ -185,13 +205,14 @@ multiSelect: false
 
 ### 6.2 Invoke the Skill
 
-**IMPORTANT:** Use the Skill tool to invoke `recreate-commits`. Always pass `--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push` so the nested rewrite retains branch metadata, uses the same pinned base commit, and gets a retry-safe recovery ref while this orchestrator remains the sole remote-mutation owner. Also pass `--auto` when `AUTO_MODE=true`, and pass `--authorize-history-rewrite` whenever `AUTHORIZE_HISTORY_REWRITE=true`. Because Step 0 sets that authorization in auto mode, every auto invocation must include all those flags plus `--auto --authorize-history-rewrite` and must not pause at the nested reset confirmation.
+**IMPORTANT:** Use the Skill tool to invoke `recreate-commits`. Always pass `--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push` so the nested rewrite retains branch metadata, uses the same pinned base commit, and gets a retry-safe recovery ref while this orchestrator remains the sole remote-mutation owner. Also pass `--auto` when `AUTO_MODE=true`, and pass `--authorize-history-rewrite` only when the user supplied that flag and `AUTHORIZE_HISTORY_REWRITE=true`. Step 4.5 already proved the branch is unstacked; any later stack detection is state drift and must stop the nested skill before reset. When both variables are explicitly true, pass both flags.
 
 Examples:
 
 ```yaml
 skill: "kramme:git:recreate-commits", args: "--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push"
 skill: "kramme:git:recreate-commits", args: "--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push --authorize-history-rewrite"
+skill: "kramme:git:recreate-commits", args: "--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push"
 skill: "kramme:git:recreate-commits", args: "--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push --authorize-history-rewrite"
 ```
 

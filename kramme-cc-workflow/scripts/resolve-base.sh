@@ -34,10 +34,10 @@ usage() {
 Usage: resolve-base.sh [--base <branch-or-ref>] [--base-commit <40-hex-oid>] [--strict|--tolerate-fetch-failure] [--backup] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--format shell|json]
 
 Default output is shell-quoted assignments:
-  BASE_REF BASE_BRANCH MERGE_BASE AFTER_COMMIT RESET_POINT ORIGINAL_TIP BACKUP_REF
+  BASE_REF BASE_BRANCH MERGE_BASE AFTER_COMMIT RESET_POINT ORIGINAL_BRANCH ORIGINAL_TIP BACKUP_REF
 
 JSON output fields:
-  base_ref base_branch merge_base after_commit reset_point original_tip backup_ref
+  base_ref base_branch merge_base after_commit reset_point original_branch original_tip backup_ref
 USAGE
 }
 
@@ -52,6 +52,7 @@ emit_json() {
     MERGE_BASE="$MERGE_BASE" \
     AFTER_COMMIT="$AFTER_COMMIT" \
     RESET_POINT="$RESET_POINT" \
+    ORIGINAL_BRANCH="$ORIGINAL_BRANCH" \
     ORIGINAL_TIP="$ORIGINAL_TIP" \
     BACKUP_REF="$BACKUP_REF" \
     python3 - << 'PY'
@@ -65,6 +66,7 @@ fields = [
     ("merge_base", "MERGE_BASE"),
     ("after_commit", "AFTER_COMMIT"),
     ("reset_point", "RESET_POINT"),
+    ("original_branch", "ORIGINAL_BRANCH"),
     ("original_tip", "ORIGINAL_TIP"),
     ("backup_ref", "BACKUP_REF"),
 ]
@@ -82,6 +84,7 @@ emit_output() {
       quote_assignment MERGE_BASE "$MERGE_BASE"
       quote_assignment AFTER_COMMIT "$AFTER_COMMIT"
       quote_assignment RESET_POINT "$RESET_POINT"
+      quote_assignment ORIGINAL_BRANCH "$ORIGINAL_BRANCH"
       quote_assignment ORIGINAL_TIP "$ORIGINAL_TIP"
       quote_assignment BACKUP_REF "$BACKUP_REF"
       ;;
@@ -187,8 +190,13 @@ if [ "$BACKUP_MODE" -eq 1 ]; then
     exit 1
   fi
 
-  if ! git diff --quiet || ! git diff --cached --quiet; then
-    echo "Working tree has uncommitted changes; commit or stash them first" >&2
+  WORKTREE_STATUS=""
+  if ! WORKTREE_STATUS=$(git status --porcelain --untracked-files=all); then
+    echo "Could not inspect the working tree; stop before creating a recovery backup" >&2
+    exit 1
+  fi
+  if [ -n "$WORKTREE_STATUS" ]; then
+    echo "Working tree has uncommitted or untracked changes; commit them or use 'git stash --include-untracked' first" >&2
     exit 1
   fi
 fi
@@ -364,6 +372,7 @@ if [ -n "$AFTER_ARG" ]; then
 fi
 
 RESET_POINT=""
+ORIGINAL_BRANCH=""
 ORIGINAL_TIP=""
 BACKUP_REF=""
 
@@ -390,12 +399,17 @@ if [ "$BACKUP_MODE" -eq 1 ]; then
   else
     RESET_POINT="$MERGE_BASE"
   fi
+  ORIGINAL_BRANCH="$CURRENT_BRANCH"
   ORIGINAL_TIP=$(git rev-parse HEAD)
   if [ -n "$BACKUP_REF_FLAG" ]; then
     BACKUP_REF="$BACKUP_REF_FLAG"
   else
-    BACKUP_REF="${CURRENT_BRANCH}-recreate-backup"
+    BACKUP_REF="${ORIGINAL_BRANCH}-recreate-backup"
   fi
+  "$SCRIPT_DIR/verify-rewrite-state.sh" \
+    --expected-branch "$ORIGINAL_BRANCH" \
+    --expected-tip "$ORIGINAL_TIP" \
+    --reset-point "$RESET_POINT"
   if git show-ref --verify --quiet "refs/heads/$BACKUP_REF"; then
     EXISTING_BACKUP_TIP=$(git rev-parse "refs/heads/$BACKUP_REF")
     if [ "$EXISTING_BACKUP_TIP" = "$ORIGINAL_TIP" ]; then

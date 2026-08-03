@@ -20,14 +20,16 @@ function codexSharedScriptReplacements(
   sharedScriptFiles = [],
 ) {
   return [
-    ...sharedScriptDirs.map((sharedScriptDir) => ({
-      sourcePrefix: `\${CLAUDE_PLUGIN_ROOT}/${sharedScriptDir.targetDir
-        .split(path.sep)
-        .join("/")}/`,
-      targetPrefix: `${shellQuotePath(
-        path.join(codexRoot, sharedScriptDir.targetDir),
-      )}/`,
-    })),
+    ...sharedScriptDirs.map((sharedScriptDir) => {
+      const targetDir = path.join(codexRoot, sharedScriptDir.targetDir);
+      return {
+        sourcePrefix: `\${CLAUDE_PLUGIN_ROOT}/${sharedScriptDir.targetDir
+          .split(path.sep)
+          .join("/")}/`,
+        targetPrefix: `${shellQuotePath(targetDir)}/`,
+        doubleQuotedTargetPrefix: `${escapeDoubleQuotedPath(targetDir)}/`,
+      };
+    }),
     ...sharedScriptFiles.flatMap((sharedScriptFile) => {
       const sourceText = `\${CLAUDE_PLUGIN_ROOT}/${sharedScriptFile.targetPath
         .split(path.sep)
@@ -43,11 +45,32 @@ function codexSharedScriptReplacements(
   ];
 }
 
+/**
+ * @param {string} codexRoot
+ * @param {string} skillName
+ * @returns {SharedScriptReplacement[]}
+ */
+function codexSkillLocalReplacements(codexRoot, skillName) {
+  const targetDir = path.join(codexRoot, "skills", skillName);
+  return [
+    {
+      sourcePrefix: `\${CLAUDE_PLUGIN_ROOT}/skills/${skillName}/`,
+      targetPrefix: `${shellQuotePath(targetDir)}/`,
+      doubleQuotedTargetPrefix: `${escapeDoubleQuotedPath(targetDir)}/`,
+    },
+  ];
+}
+
 /** @param {string} text @param {SharedScriptReplacement[]} [replacements] */
 function rewriteCodexSharedScriptReferences(text, replacements = []) {
   let result = text;
   for (const replacement of replacements) {
     if (replacement.sourcePrefix) {
+      if (replacement.doubleQuotedTargetPrefix) {
+        result = result
+          .split(`"${replacement.sourcePrefix}`)
+          .join(`"${replacement.doubleQuotedTargetPrefix}`);
+      }
       result = result
         .split(replacement.sourcePrefix)
         .join(replacement.targetPrefix);
@@ -66,7 +89,13 @@ function shellQuotePath(filePath) {
   return `'${String(filePath).replace(/'/g, "'\\''")}'`;
 }
 
+/** @param {string} filePath */
+function escapeDoubleQuotedPath(filePath) {
+  return String(filePath).replace(/[\\"$`]/g, "\\$&");
+}
+
 module.exports = {
+  codexSkillLocalReplacements,
   codexSharedScriptReplacements,
   rewriteCodexSharedScriptReferences,
 };

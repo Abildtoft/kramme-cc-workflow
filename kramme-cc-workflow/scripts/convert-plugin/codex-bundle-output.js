@@ -11,6 +11,7 @@ const {
   rewriteCodexMarkdownResourcesFromSource,
 } = require("./codex-markdown-resources");
 const {
+  codexSkillLocalReplacements,
   codexSharedScriptReplacements,
   rewriteCodexSharedScriptReferences,
 } = require("./codex-shared-scripts");
@@ -303,13 +304,17 @@ async function stageCodexBundleOutput(
         nameLabel: "skill name",
         stagedRoot: stagedSkillsRoot,
         stageEntry: async (skill, targetDir) => {
+          const skillReplacements = [
+            ...sharedScriptReplacements,
+            ...codexSkillLocalReplacements(codexRoot, skill.name),
+          ];
           await copyDir(skill.sourceDir, targetDir, {
             filter: isRuntimeSkillResource,
           });
           if (skill.content) {
             const content = rewriteCodexSharedScriptReferences(
               skill.content,
-              sharedScriptReplacements,
+              skillReplacements,
             );
             await writeText(path.join(targetDir, "SKILL.md"), content + "\n");
           }
@@ -319,7 +324,7 @@ async function stageCodexBundleOutput(
             {
               knownCommands: bundle.knownCommands,
               knownAgentSkills: bundle.knownAgentSkills,
-              sharedScriptReplacements,
+              sharedScriptReplacements: skillReplacements,
             },
           );
         },

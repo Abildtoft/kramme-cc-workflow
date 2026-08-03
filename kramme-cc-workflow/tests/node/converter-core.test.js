@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { execFileSync } = require("node:child_process");
 const fs = require("fs/promises");
 const path = require("path");
 const test = require("node:test");
@@ -10,6 +11,7 @@ const {
 } = require("../../scripts/convert-plugin/ask-user-question-parser");
 
 const {
+  codexSkillLocalReplacements,
   codexSharedScriptReplacements,
   rewriteCodexSharedScriptReferences,
 } = require("../../scripts/convert-plugin/codex-shared-scripts");
@@ -75,6 +77,50 @@ test("shared script rewrites preserve shell-safe quoting", () => {
       "'/tmp/Codex Home/scripts/collect-review-diff.sh' --decode-json",
     ].join("\n"),
   );
+});
+
+test("skill-local rewrites preserve shell-safe quoting", () => {
+  const replacements = codexSkillLocalReplacements(
+    "/tmp/Codex Home",
+    "kramme:git:recreate-commits",
+  );
+  const source =
+    "${CLAUDE_PLUGIN_ROOT}/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh";
+
+  assert.equal(
+    rewriteCodexSharedScriptReferences(source, replacements),
+    "'/tmp/Codex Home/skills/kramme:git:recreate-commits'/scripts/resolve-push-target.sh",
+  );
+});
+
+test("skill-local rewrites execute quoted paths without shell expansion", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, "Codex Home $(touch pwned)");
+    const skillName = "kramme:git:recreate-commits";
+    const helper = path.join(
+      codexRoot,
+      "skills",
+      skillName,
+      "scripts",
+      "resolve-push-target.sh",
+    );
+    await fs.mkdir(path.dirname(helper), { recursive: true });
+    await fs.writeFile(helper, "#!/bin/sh\nprintf 'resolved\\n'\n");
+    await fs.chmod(helper, 0o755);
+
+    const replacements = codexSkillLocalReplacements(codexRoot, skillName);
+    const source = `"\${CLAUDE_PLUGIN_ROOT}/skills/${skillName}/scripts/resolve-push-target.sh"`;
+    const command = rewriteCodexSharedScriptReferences(source, replacements);
+
+    assert.equal(
+      execFileSync("bash", ["-c", command], {
+        cwd: root,
+        encoding: "utf8",
+      }),
+      "resolved\n",
+    );
+    await assert.rejects(fs.stat(path.join(root, "pwned")), { code: "ENOENT" });
+  });
 });
 
 test("filesystem keeps generic JSON reads and validates object reads", async () => {

@@ -14,7 +14,7 @@ This rewrites history and requires a force-push to sync any existing remote hist
 
 **Flags:**
 
-- `--auto` — Skip the granularity question and automatically choose the best granularity based on diff size and complexity.
+- `--auto` — Skip the granularity question, automatically choose the best granularity based on diff size and complexity, and authorize one backup-protected unstacked history rewrite. Unless `--no-push` is also set, it authorizes that branch's lease-protected force-push too. A stacked rewrite additionally requires `--authorize-history-rewrite`; `--auto` never authorizes stack-wide mutation by itself. Neither flag bypasses backup creation, branch validation, final-tree identity, or force-with-lease.
 - `--granular` — Force atomic-level decomposition. Skips the granularity question. Use for very large PRs where 100+ commits are appropriate.
 - `--base <branch>` — Use `<branch>` as the base instead of auto-detecting. Without this flag, the skill tries to detect the base from an existing GitHub pull request, then from `origin/HEAD`, then from `origin/main` or `origin/master`.
 - `--base-commit <oid>` — Pin diff and reset-point calculation to a caller-validated full commit OID while retaining the branch metadata from `--base`. Use this when a parent workflow must keep one base snapshot across multiple delegated skills.
@@ -22,7 +22,7 @@ This rewrites history and requires a force-push to sync any existing remote hist
 - `--backup-ref <branch>` — Use a caller-selected conservative recovery branch name. This requires backup mode and is primarily for parent workflows that need retry-safe per-input-tip backup names.
 - `--force-backup` — Allow the resolution script to replace an existing `<branch>-recreate-backup` branch after you have inspected that backup and confirmed it is safe to move. An exact-tip backup is reused idempotently without this flag; a backup at any different tip makes the script stop so retries cannot destroy the original recovery point.
 - `--no-push` — Rewrite and verify the local branch but do not mutate its remote. Report that synchronization is delegated to the caller. `kramme:pr:create` always uses this mode so description generation and confirmation finish before the only remote update.
-- `--authorize-history-rewrite` — Explicit authorization for this invocation to skip the reset confirmation and, unless `--no-push` is also set, the lease-protected force-push confirmation. It never bypasses backup creation, branch validation, final-tree identity, or force-with-lease. `--auto` alone is not authorization.
+- `--authorize-history-rewrite` — Explicit authorization to skip the reset confirmation and, unless `--no-push` is also set, the publication confirmation. It is optional for an unstacked auto invocation but required in addition to `--auto` before auto mode may rewrite or publish a stack. It never bypasses backup creation, branch validation, final-tree identity, or force-with-lease.
 
 ## Steps
 
@@ -41,13 +41,17 @@ This rewrites history and requires a force-push to sync any existing remote hist
      exit 1
    }
    eval "$RESOLVED"
+   [ "$(git symbolic-ref --quiet --short HEAD)" = "$ORIGINAL_BRANCH" ] || {
+     echo "The current branch changed after base resolution; stop before rewriting history." >&2
+     exit 1
+   }
    ```
 
-   On success the script prints shell-quoted assignments that `eval` loads into the environment: `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, `AFTER_COMMIT`, `RESET_POINT`, `ORIGINAL_TIP`, and `BACKUP_REF`. On any failure it writes the reason to stderr and exits non-zero — stop and surface that message; do not continue.
+   On success the script prints shell-quoted assignments that `eval` loads into the environment: `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, `AFTER_COMMIT`, `RESET_POINT`, `ORIGINAL_BRANCH`, `ORIGINAL_TIP`, and `BACKUP_REF`. On any failure it writes the reason to stderr and exits non-zero — stop and surface that message; do not continue.
 
-   The script enforces these preconditions, aborting on the first that fails: it is being run from the user's repository instead of the repository that contains the skill script, clean working tree, `HEAD` on a feature branch (not detached, not the base branch), `BASE_REF` resolves to a commit, a merge base exists with `HEAD`, `--after` (if given) resolves and is an ancestor of `HEAD`, a matching local base branch fast-forwards cleanly to its remote (it aborts rather than reconcile a diverged local base), and any existing recovery backup either points exactly at the current original tip or was explicitly approved for replacement with `--force-backup`.
+   The script enforces these preconditions, aborting on the first that fails: it is being run from the user's repository instead of the repository that contains the skill script, clean working tree including untracked files, `HEAD` on a feature branch (not detached, not the base branch), `BASE_REF` resolves to a commit, a merge base exists with `HEAD`, `--after` (if given) resolves and is an ancestor of `HEAD`, a matching local base branch fast-forwards cleanly to its remote (it aborts rather than reconcile a diverged local base), and any existing recovery backup either points exactly at the current original tip or was explicitly approved for replacement with `--force-backup`.
 
-   It records two values you rely on later: `ORIGINAL_TIP` (the pre-reset `HEAD`, the byte-identical target end state) and `BACKUP_REF` (a branch pointing at `ORIGINAL_TIP`). Recover the original branch at any time with `git reset --hard "$BACKUP_REF"`. A backup already at `ORIGINAL_TIP` is reused for retry safety. If it points elsewhere, inspect it before retrying; only pass `--force-backup` after confirming the previous recovery point can be replaced.
+   It records three values you rely on later: `ORIGINAL_BRANCH` (the branch validated before backup creation), `ORIGINAL_TIP` (the pre-reset `HEAD`, the byte-identical target end state), and `BACKUP_REF` (a branch pointing at `ORIGINAL_TIP`). Recover the original branch at any time with `git reset --hard "$BACKUP_REF"`. A backup already at `ORIGINAL_TIP` is reused for retry safety. If it points elsewhere, inspect it before retrying; only pass `--force-backup` after confirming the previous recovery point can be replaced.
 
    Before resetting the branch, resolve local and server-side GitHub stack membership:
 
@@ -60,6 +64,68 @@ This rewrites history and requires a force-push to sync any existing remote hist
    ```
 
    Set `IN_STACK=true` only for `STACK_MEMBERSHIP=local`; set it false for `none`. If membership is `remote`, stop before the reset: the PR is stacked on GitHub but not tracked locally. Install the extension if needed, run `gh stack checkout "$STACK_PR_NUMBER"` from a clean working tree, then retry. Authentication, API, parsing, and unexpected CLI failures also stop rather than falling through to the single-branch flow.
+
+   If `IN_STACK=true` and `--auto` was passed without `--authorize-history-rewrite`, stop before the reset. Auto mode alone authorizes only the current unstacked branch; the additional flag is the explicit approval for restacking and publishing every affected branch. A non-auto stack invocation may instead obtain the explicit stack-wide confirmations below.
+
+   When `IN_STACK=true`, freeze and validate the full local stack boundary for every later confirmation:
+
+   ```bash
+   command -v jq > /dev/null 2>&1 || {
+     echo "jq is required to enumerate the stacked branches before a history rewrite." >&2
+     exit 1
+   }
+   resolve_stack_branch_names() {
+     local stack_view_json
+     stack_view_json=$(gh stack view --json) || return 1
+     printf '%s\n' "$stack_view_json" | jq -er '
+       .branches
+       | if type != "array"
+           or length == 0
+           or any(.[]; ((.name | type) != "string") or ((.name | length) == 0))
+         then error("invalid stack branch inventory")
+         else .[].name
+         end
+     '
+   }
+   STACK_BRANCH_NAMES=$(resolve_stack_branch_names) || {
+     echo "gh stack view returned an invalid branch inventory; stop before rewriting history." >&2
+     exit 1
+   }
+   STACK_BRANCHES=()
+   ORIGINAL_BRANCH_IN_STACK=0
+   while IFS= read -r branch; do
+     git check-ref-format --branch "$branch" > /dev/null 2>&1 || {
+       echo "gh stack view returned an invalid branch name; stop before rewriting history." >&2
+       exit 1
+     }
+     STACK_BRANCHES+=("$branch")
+     [ "$branch" != "$ORIGINAL_BRANCH" ] || ORIGINAL_BRANCH_IN_STACK=1
+   done <<< "$STACK_BRANCH_NAMES"
+   if [ "${#STACK_BRANCHES[@]}" -eq 0 ] || [ "$ORIGINAL_BRANCH_IN_STACK" -ne 1 ]; then
+     echo "The validated current branch is missing from the local stack inventory; stop before rewriting history." >&2
+     exit 1
+   fi
+   ```
+
+   Preserve `STACK_BRANCH_NAMES` and `STACK_BRANCHES` exactly as resolved; never replace or shorten the authorization boundary. Immediately before either stack-wide confirmation, before resetting, before restacking, and before pushing, call `resolve_stack_branch_names` and require its output to equal `STACK_BRANCH_NAMES` byte-for-byte. If the inventory cannot be re-read or differs, stop and require a fresh run so newly added, removed, or renamed branches cannot inherit stale authorization. `gh stack rebase --upstack --no-trunk` may rewrite branches above the current branch, and `gh stack push` targets the locally tracked stack.
+
+   For an unstacked invocation that may sync a remote (no `--no-push`), resolve and freeze the single-branch push boundary before resetting:
+
+   ```bash
+   PUSH_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh" \
+     --original-tip "$ORIGINAL_TIP" \
+     --base-branch "$BASE_BRANCH") || {
+     echo "Push-target resolution failed; stop before rewriting history." >&2
+     exit 1
+   }
+   eval "$PUSH_RESOLVED"
+   if [ -z "$PUSH_LEASE_OID" ] && [ -n "$STACK_PR_NUMBER" ]; then
+     echo "The current Pull Request branch has no remote-tracking upstream; set one explicitly before rewriting history." >&2
+     exit 1
+   fi
+   ```
+
+   An empty `PUSH_LEASE_OID` with no Pull Request means the branch is local-only. Otherwise the helper requires the configured upstream branch name to match the current local branch, rejects the base branch and push refspecs that rename the destination, resolves Git's effective push remote (including `branch.<name>.pushRemote` and `remote.pushDefault`), freezes exactly one push URL and remote ref, captures the effective destination's exact pre-reset OID, and stops if that destination contains commits absent from `ORIGINAL_TIP`. Do not replace this with an argumentless `git push`, a remote name with multiple push URLs, or a later tracking-ref lookup: repository configuration can widen the push to unrelated refs or repositories, and a tracking ref can move after the safety decision.
 
 2. **Analyze the diff**
    - Study the full diff from `$RESET_POINT..HEAD` (this is `$AFTER_COMMIT..HEAD` when `--after` was given, otherwise `$MERGE_BASE..HEAD`).
@@ -90,7 +156,20 @@ This rewrites history and requires a force-push to sync any existing remote hist
    Flatten the tree into a linear commit sequence that tells a coherent narrative — each step should reflect a logical stage of development, as if writing a tutorial.
 
 5. **Reimplement the work**
-   - Unless `--authorize-history-rewrite` was passed, confirm with the user that you may rewrite the current branch's history before resetting. The original tip is preserved at `BACKUP_REF`, so this is recoverable, but the reset is destructive to the working tree. Explicit authorization skips only this prompt, not the backup or validation requirements.
+   - Before resetting, unless `--authorize-history-rewrite` was passed or (`--auto` was passed and `IN_STACK=false`), obtain the applicable confirmation. The original tip is preserved at `BACKUP_REF`, so the reset is recoverable, but destructive to the working tree. Auto or explicit authorization skips only this prompt within the boundary described above, not the backup or validation requirements.
+     - If `IN_STACK=false`, confirm that the user authorizes rewriting `ORIGINAL_BRANCH`.
+     - If `IN_STACK=true`, enumerate every branch in `STACK_BRANCHES`, explain that `ORIGINAL_BRANCH` will be reset and branches above it may be rewritten by the local upstack restack, then require explicit confirmation authorizing both the reset and that restack. A generic confirmation mentioning only the current branch is insufficient.
+   - Immediately before resetting, revalidate the branch, original tip, ordinary untracked work, and ignored paths that overlap the reset point:
+
+     ```bash
+     "${CLAUDE_PLUGIN_ROOT}/scripts/verify-rewrite-state.sh" \
+       --expected-branch "$ORIGINAL_BRANCH" \
+       --expected-tip "$ORIGINAL_TIP" \
+       --reset-point "$RESET_POINT"
+     ```
+
+     Any failure stops the workflow. Do not rely only on the earlier backup-time validation: diff analysis and commit planning create a real window in which the checkout can change.
+
    - Reset the branch to the reset point: `git reset --hard "$RESET_POINT"`. (`RESET_POINT` is `AFTER_COMMIT` when `--after` was given, otherwise the merge base.)
    - Rebuild the changes commit by commit. To guarantee a byte-identical end state, source the final content from `$ORIGINAL_TIP` rather than retyping it (retyping is how extra lines and drift creep in):
      - Whole-file commits: `git checkout "$ORIGINAL_TIP" -- <paths>`, then commit.
@@ -116,10 +195,24 @@ This rewrites history and requires a force-push to sync any existing remote hist
      A restack failure stops the workflow. Do not push a partially restacked stack.
 
    - If `--no-push` was passed, do not run any push command. The local restack above still applies. Report remote synchronization as delegated in `POTENTIAL CONCERNS`, then continue to the final summary.
-   - If the branch has no remote tracking ref and no pull request, skip this step — the recreation is local-only.
+   - If the unstacked branch resolved no `PUSH_LEASE_OID` and has no Pull Request, skip this step — the recreation is local-only.
    - Otherwise the rewritten history has diverged from the remote and a force-push is required. Before pushing:
-     - Unless `--authorize-history-rewrite` was passed, confirm with the user, and warn explicitly if others may have based active work on this branch. Explicit authorization skips the prompt but not the warning or safety checks.
-     - For an unstacked branch, push with `git push --force-with-lease` (never plain `--force`), so a concurrent remote update aborts the push instead of silently overwriting it.
+     - Before pushing, unless `--authorize-history-rewrite` was passed or (`--auto` was passed and `IN_STACK=false`), obtain the applicable publication confirmation and warn explicitly if others may have based active work on any listed branch. For an unstacked branch, confirm the single validated push target. For a stack, enumerate every branch in the frozen `STACK_BRANCHES` list, state that `gh stack push` performs an atomic whole-stack force-with-lease publication, and require explicit confirmation authorizing that whole-stack push. A reset/restack confirmation does not also authorize publication. Auto or explicit authorization skips the prompt only within the same unstacked/stacked boundary as the reset, not the warning or safety checks.
+     - For an unstacked branch, require the checkout to remain on `PUSH_SOURCE_BRANCH`, then push exactly one validated remote ref with the captured lease:
+
+       ```bash
+       [ "$(git symbolic-ref --quiet --short HEAD)" = "$PUSH_SOURCE_BRANCH" ] || {
+         echo "The current branch changed after push-target resolution; stop before pushing." >&2
+         exit 1
+       }
+       git push \
+         --no-follow-tags \
+         --force-with-lease="${PUSH_REMOTE_REF}:${PUSH_LEASE_OID}" \
+         -- "$PUSH_REMOTE_URL" "HEAD:${PUSH_REMOTE_REF}"
+       ```
+
+       Never use an argumentless `git push --force-with-lease`: configured push refspecs or `push.default=matching` can select unrelated branches, a named remote can expand to multiple push URLs, `push.followTags` can publish annotated tags, and a default lease can accept fetched upstream commits that the local recovery backup does not contain.
+
    - If `IN_STACK=true`, push the already-restacked whole stack instead of a single branch:
 
      ```bash
@@ -180,7 +273,7 @@ Pause and reshape the storyline if any of these are true:
 
 - The final tree diff against the original end state is non-empty.
 - More than one commit would need the same summary sentence.
-- Force-pushing without `--force-with-lease`, or without either explicit confirmation or `--authorize-history-rewrite`.
+- Force-pushing without the captured ref-specific `--force-with-lease`, `--no-follow-tags`, the frozen single push URL, an explicit single-branch refspec, or authorization appropriate to the unstacked or stacked boundary.
 - The branch is part of a GitHub stack and a single-branch force-push is about to run without restacking the branches above (`gh stack rebase --upstack --no-trunk` + `gh stack push`).
 - Any commit message contains AI attribution or `Co-Authored-By: Claude`.
 - The recreated branch has more lines than the original (you introduced code during the rewrite).
@@ -190,6 +283,9 @@ Pause and reshape the storyline if any of these are true:
 Before declaring the recreation done, self-check:
 
 - [ ] `git diff "$ORIGINAL_TIP" HEAD` is empty — end state matches exactly.
+- [ ] Untracked files were rejected before backup creation and reset.
+- [ ] The branch, original tip, worktree, and ignored reset-point collisions were rechecked immediately before reset.
+- [ ] Any unstacked remote sync uses the captured effective push-destination OID, frozen push URL, explicit remote ref, `--no-follow-tags`, and single-branch refspec.
 - [ ] Each commit introduces a single coherent idea with a plain-English subject line.
 - [ ] `--no-verify` usage, if any, is called out in `POTENTIAL CONCERNS`.
 - [ ] No AI attribution in any commit subject or body.

@@ -46,9 +46,9 @@ file_mode() {
 
     grep -qF "[--authorize-history-rewrite]" "$create"
     grep -qF "AUTHORIZE_HISTORY_REWRITE=true" "$create"
-    grep -qF "\`--auto\` implies the same capability" "$create"
-    grep -qF -- "--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push --authorize-history-rewrite" "$create"
-    grep -qF "must not pause at the nested reset confirmation" "$create"
+    grep -qF "Auto mode does not set this variable" "$create"
+    grep -qF -- "args: \"--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push\"" "$create"
+    grep -qF "pass \`--authorize-history-rewrite\` only when the user supplied that flag" "$create"
     ! grep -qF "args: \"--auto --no-push\"" "$create"
     grep -qF "Always pass \`--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push\`" "$create"
     grep -qF "Do not push or change upstream configuration" "$branch"
@@ -67,7 +67,16 @@ file_mode() {
     grep -qF "workflow'\''s sole remote update before Pull Request creation" "$confirmation"
     grep -qF "[--no-push] [--authorize-history-rewrite]" "$recreate"
     grep -qF "If \`--no-push\` was passed, do not run any push command" "$recreate"
-    grep -qF "\`--auto\` alone is not authorization" "$recreate"
+    grep -qF "Automatic stack-wide rewriting additionally requires \`--authorize-history-rewrite\`" ../README.md
+    grep -qF "A non-auto stacked invocation may instead use separate interactive confirmations" ../README.md
+    grep -qF "## Step 4.5: Reject Stacked Branches" "$create"
+    grep -qF "STACK_RESOLVED=\$(\"\${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")" "$create"
+    grep -qF "if [ \"\$STACK_MEMBERSHIP\" != \"none\" ]; then" "$create"
+    grep -qF "use kramme:pr:stack instead" "$create"
+    grep -qF "Both locally tracked and server-side stacks stop here" "$create"
+    grep -qF "any later stack detection is state drift" "$create"
+    ! grep -qF "leaves any stacked rewrite to the nested skill" "$create"
+    ! grep -qF "\`--auto\` alone is not authorization" "$recreate"
   '
 
 	assert_required_contracts_registered \
@@ -77,8 +86,38 @@ file_mode() {
 		pr-create-push-failure-rollback \
 		pr-create-remote-absence-contract \
 		recreate-commits-deferred-push-contract \
+		recreate-commits-push-target-helper \
 		recreate-commits-retry-safe-backup \
-		resolve-base-pinned-commit-contract
+		resolve-base-pinned-commit-contract \
+		verify-rewrite-state-helper
+
+	[ "$status" -eq 0 ]
+}
+
+@test "recreate-commits auto mode stays within the protected unstacked boundary" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    recreate="skills/kramme:git:recreate-commits/SKILL.md"
+
+    grep -qF "If \`IN_STACK=true\` and \`--auto\` was passed without \`--authorize-history-rewrite\`, stop before the reset" "$recreate"
+    grep -qF "STACK_BRANCH_NAMES=\$(resolve_stack_branch_names)" "$recreate"
+    grep -qF "require its output to equal \`STACK_BRANCH_NAMES\` byte-for-byte" "$recreate"
+    grep -qF "enumerate every branch in \`STACK_BRANCHES\`" "$recreate"
+    grep -qF "explicit confirmation authorizing both the reset and that restack" "$recreate"
+    grep -qF "explicit confirmation authorizing that whole-stack push" "$recreate"
+    grep -qF "A reset/restack confirmation does not also authorize publication" "$recreate"
+    grep -qF -- "--base-branch \"\$BASE_BRANCH\"" "$recreate"
+    grep -qF "[ \"\$(git symbolic-ref --quiet --short HEAD)\" = \"\$ORIGINAL_BRANCH\" ]" "$recreate"
+    grep -qF "verify-rewrite-state.sh" "$recreate"
+    grep -qF "The current branch changed after push-target resolution; stop before pushing." "$recreate"
+    grep -qF "without the captured ref-specific \`--force-with-lease\`" "$recreate"
+    grep -qF -- "--no-follow-tags" "$recreate"
+    grep -qF -- "--force-with-lease=\"\${PUSH_REMOTE_REF}:\${PUSH_LEASE_OID}\"" "$recreate"
+    grep -qF -- "-- \"\$PUSH_REMOTE_URL\" \"HEAD:\${PUSH_REMOTE_REF}\"" "$recreate"
+    ! grep -qF "push with \`git push --force-with-lease\`" "$recreate"
+    ! grep -qF "\`--auto\` alone is not authorization" "$recreate"
+  '
 
 	[ "$status" -eq 0 ]
 }
@@ -317,7 +356,8 @@ file_mode() {
     state="skills/kramme:pr:create/references/state-and-rollback.md"
 
     grep -qF "include all uncommitted changes by selecting **Commit and include**" "$create"
-    grep -qF "\`--auto\` -> set \`AUTO_MODE=true\`, \`AUTHORIZE_HISTORY_REWRITE=true\`, and \`REQUIRE_GENERATED_DESCRIPTION=true\`" "$create"
+    grep -qF "\`--auto\` -> set \`AUTO_MODE=true\` and \`REQUIRE_GENERATED_DESCRIPTION=true\`" "$create"
+    grep -qF "Auto mode authorizes the nested unstacked rewrite but does not synthesize the separate stack-wide authorization capability" "$create"
     grep -qF "\`--auto\` is fully non-interactive" "$create"
     grep -qF "Step 5 uncommitted-work decision when \`AUTO_MODE=false\`" "$create"
     grep -qF "If uncommitted changes are present and \`AUTO_MODE=true\`, do not prompt." "$state"

@@ -641,13 +641,17 @@
       "contains": [
         "[--authorize-history-rewrite]",
         "AUTHORIZE_HISTORY_REWRITE=true",
-        "`--auto` implies the same capability",
+        "Auto mode does not set this variable",
+        "pass `--authorize-history-rewrite` only when the user supplied that flag",
+        "## Step 4.5: Reject Stacked Branches",
+        "use kramme:pr:stack instead",
+        "Both locally tracked and server-side stacks stop here",
+        "any later stack detection is state drift",
         "`--auto` is fully non-interactive",
         "never ask the user a question, wait for free-form user input, or allow Git/GitHub credential prompts",
         "REQUIRE_GENERATED_DESCRIPTION=true",
         "Always pass `--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push`",
-        "--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push --authorize-history-rewrite",
-        "must not pause at the nested reset confirmation",
+        "args: \"--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push\"",
         "sole remote-mutation owner"
       ]
     },
@@ -749,8 +753,61 @@
       "contains": [
         "[--no-push] [--authorize-history-rewrite]",
         "If `--no-push` was passed, do not run any push command",
-        "`--auto` alone is not authorization",
-        "without either explicit confirmation or `--authorize-history-rewrite`"
+        "If `IN_STACK=true` and `--auto` was passed without `--authorize-history-rewrite`, stop before the reset",
+        "STACK_BRANCH_NAMES=$(resolve_stack_branch_names)",
+        "require its output to equal `STACK_BRANCH_NAMES` byte-for-byte",
+        "enumerate every branch in `STACK_BRANCHES`",
+        "explicit confirmation authorizing both the reset and that restack",
+        "explicit confirmation authorizing that whole-stack push",
+        "A reset/restack confirmation does not also authorize publication",
+        "resolve-push-target.sh",
+        "--base-branch \"$BASE_BRANCH\"",
+        "ORIGINAL_BRANCH",
+        "verify-rewrite-state.sh",
+        "--no-follow-tags",
+        "--force-with-lease=\"${PUSH_REMOTE_REF}:${PUSH_LEASE_OID}\"",
+        "-- \"$PUSH_REMOTE_URL\" \"HEAD:${PUSH_REMOTE_REF}\"",
+        "without the captured ref-specific `--force-with-lease`"
+      ]
+    },
+    {
+      "name": "recreate-commits-push-target-helper",
+      "path": "kramme-cc-workflow/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh",
+      "contains": [
+        "--base-branch",
+        "read_branch_config",
+        "%(push:remotename)",
+        "%(push)",
+        "The current tip changed after backup creation",
+        "present but empty",
+        "effective push destination",
+        "must resolve to exactly one push URL",
+        "targets the base branch",
+        "does not match the current branch",
+        "remaps it to",
+        "git merge-base --is-ancestor \"$PUSH_LEASE_OID\" \"$ORIGINAL_TIP\"",
+        "contains commits absent from the local original tip",
+        "quote_assignment PUSH_REMOTE_URL \"${PUSH_REMOTE_URL-}\"",
+        "quote_assignment PUSH_REMOTE_REF \"${PUSH_REMOTE_REF-}\"",
+        "quote_assignment PUSH_LEASE_OID \"${PUSH_LEASE_OID-}\""
+      ]
+    },
+    {
+      "name": "verify-rewrite-state-helper",
+      "path": "kramme-cc-workflow/scripts/verify-rewrite-state.sh",
+      "contains": [
+        "--expected-branch",
+        "--expected-tip",
+        "--reset-point",
+        "The current branch changed",
+        "The current tip no longer matches the captured original tip",
+        "git status --porcelain --untracked-files=all",
+        "git ls-files -v -z",
+        "git update-index --no-assume-unchanged -z --stdin",
+        "Assume-unchanged tracked content differs from the index",
+        "git ls-files --others --ignored --exclude-standard --directory -z",
+        "git ls-tree --format='%(objecttype)'",
+        "Ignored path"
       ]
     },
     {
@@ -759,6 +816,12 @@
       "contains": [
         "--backup-ref",
         "--backup-ref must not name the current branch being rewritten",
+        "WORKTREE_STATUS=$(git status --porcelain --untracked-files=all)",
+        "Could not inspect the working tree",
+        "git stash --include-untracked",
+        "ORIGINAL_BRANCH=\"$CURRENT_BRANCH\"",
+        "verify-rewrite-state.sh",
+        "Working tree has uncommitted or untracked changes",
         "if [ \"$EXISTING_BACKUP_TIP\" = \"$ORIGINAL_TIP\" ]; then",
         "elif [ \"$FORCE_BACKUP\" -ne 1 ]; then",
         "refusing to move it",

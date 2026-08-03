@@ -190,6 +190,14 @@ function convertCodexHookPlugin(plugin) {
         targetPath: path.join("scripts", "resolve-base.sh"),
       },
       {
+        sourceFile: path.join(
+          plugin.root,
+          "scripts",
+          "verify-rewrite-state.sh",
+        ),
+        targetPath: path.join("scripts", "verify-rewrite-state.sh"),
+      },
+      {
         sourceFile: path.join(plugin.root, "scripts", "collect-review-diff.sh"),
         targetPath: path.join("scripts", "collect-review-diff.sh"),
       },
