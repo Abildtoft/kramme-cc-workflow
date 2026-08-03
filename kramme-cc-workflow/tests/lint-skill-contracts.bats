@@ -771,14 +771,25 @@ EOF
 @test "fix-ci auto mode consolidates pipeline fix commits" {
   local skill_text
   local consolidation_text
+  local scoped_plan_text
   skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/SKILL.md")"
   consolidation_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/references/consolidation-flow.md")"
+  scoped_plan_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/references/scoped-plan.md")"
 
   [[ "$skill_text" == *'`--auto` - Run the CI fix loop unattended'* ]]
   [[ "$skill_text" == *'If `AUTO_MODE=true`, choose **Automated** without prompting'* ]]
   [[ "$skill_text" == *'**Skip this step if:** `--fixup` mode was used, or `--no-consolidate` flag is set.'* ]]
   [[ "$skill_text" != *'Alias for `--no-consolidate`'* ]]
   [[ "$skill_text" != *'`--no-consolidate` / `--auto` flag'* ]]
+  [[ "$skill_text" == *'`--scope-plan <archived-plan>` - Reconstruct and enforce a plan-to-PR mutation boundary'* ]]
+  [[ "$skill_text" == *'read `references/scoped-plan.md` completely'* ]]
+
+  [[ "$scoped_plan_text" == *'SCOPED_PLAN_LIFECYCLE=initial'* ]]
+  [[ "$scoped_plan_text" == *'SCOPED_PLAN_LIFECYCLE=recovery'* ]]
+  [[ "$scoped_plan_text" == *'Before each edit, validate every intended path.'* ]]
+  [[ "$scoped_plan_text" == *'Before every push, revalidate all committed paths'* ]]
+  [[ "$scoped_plan_text" == *'immediately after every proven push replace the archived checkpoint head/tree'* ]]
+  [[ "$scoped_plan_text" == *'$kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}'* ]]
 
   [[ "$consolidation_text" == *'If `AUTO_MODE=true`, do not offer "Keep separate".'* ]]
   [[ "$consolidation_text" == *'Before any automated rebase, confirm one of these is true:'* ]]
