@@ -484,8 +484,9 @@ These user-invocable skill names have changed. Update saved prompts and automati
 
 - `/kramme:siw:spec-audit:auto-fix` → `/kramme:siw:apply-spec-audit-fixes`
 - `/kramme:docs:out-of-scope` → `/kramme:docs:track-rejected-enhancements`
+- `/kramme:code:cleanup-ai` → `/kramme:code:refactor-pass`
 
-The replacement skills preserve the existing arguments and behavior. The old identifiers no longer resolve.
+The first two replacement skills preserve the existing arguments and behavior. The `cleanup-ai` replacement does not preserve the old arguments or side effects: remove `--auto`; omit arguments to use the canonical branch review scope, or pass file and directory scope tokens instead of a base branch. When cleanup candidates exist, `refactor-pass` verifies and checkpoints scoped uncommitted input, then verifies and commits each simplification separately. The old identifiers no longer resolve.
 
 ## Agents
 

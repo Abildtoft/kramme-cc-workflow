@@ -67,37 +67,76 @@ If any of these apply to the whole scope, stop and tell the user why. If they ap
 
 ## Resolve scope
 
+Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
+
 Before picking simplifications, decide what "recent changes" means for this invocation:
 
 1. If the user named files or a directory, use that.
-2. Otherwise, default to the current branch's diff against the base branch (e.g. `git diff origin/main...HEAD`), plus uncommitted working-tree changes.
+2. Otherwise, collect the current branch's unified review scope with the shared plugin script:
+
+   ```bash
+   [ -x "${CLAUDE_PLUGIN_ROOT:-}/scripts/collect-review-diff.sh" ] || {
+     echo "collect-review-diff.sh not found under CLAUDE_PLUGIN_ROOT; stop." >&2
+     exit 1
+   }
+   RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --strict --format json) || {
+     echo "Base/diff collection failed; see the message above and stop." >&2
+     exit 1
+   }
+   REVIEW_DIFF_FIELDS=$(mktemp "${TMPDIR:-/tmp}/refactor-pass-diff.XXXXXX") || {
+     echo "Could not create temporary review-diff file; stop." >&2
+     exit 1
+   }
+   "${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --decode-json \
+     <<< "$RESOLVED" > "$REVIEW_DIFF_FIELDS" || {
+     rm -f "$REVIEW_DIFF_FIELDS"
+     echo "Base/diff decoding failed; see the message above and stop." >&2
+     exit 1
+   }
+   if ! {
+     IFS= read -r -d '' BASE_REF \
+       && IFS= read -r -d '' BASE_BRANCH \
+       && IFS= read -r -d '' MERGE_BASE \
+       && IFS= read -r -d '' CHANGED_FILES
+   } < "$REVIEW_DIFF_FIELDS"; then
+     rm -f "$REVIEW_DIFF_FIELDS"
+     echo "Decoded review-diff fields were incomplete; stop." >&2
+     exit 1
+   fi
+   rm -f "$REVIEW_DIFF_FIELDS"
+   ```
+
+   Use `BASE_REF`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES` as the default resolved scope. Do not independently guess or re-resolve the base.
+
 3. If the resulting scope is empty (clean working tree, no diff against base), stop and ask the user what to scope to. Do not invent a scope.
 
 Record the scope before starting the loop. Every simplification must fall inside it; observations outside it become `NOTICED BUT NOT TOUCHING` markers, not new work.
 
+## Discover default-mode candidates
+
+Default mode includes AI-slop review without a separate flag. Rewrite mode skips this discovery step because it replaces the current implementation from its recovered behavioral contract instead of applying individual cleanup findings.
+
+Run initial read-only discovery before creating any checkpoint commit. Before the first simplification, and again after each verified slice, build one candidate queue:
+
+1. Inspect the resolved scope for the general simplification candidates listed in the loop below.
+2. Launch `kramme:deslop-reviewer` in code review mode against the resolved scope. When the user supplied files or a directory, pass only that scope. Otherwise pass `BASE_REF`, `MERGE_BASE`, and `CHANGED_FILES`, and require the reviewer to inspect the committed `git diff "$MERGE_BASE"...HEAD`, staged diff, unstaged diff, and untracked paths without re-resolving the base.
+3. Require the reviewer call to complete successfully with a parseable finding set. If the agent is unavailable, times out, or returns unusable output, stop and surface the discovery failure. Do not treat a failed reviewer call as an empty finding set or report the scope clean.
+4. Discard reviewer findings outside the resolved scope or in generated files, vendored code, lockfiles, snapshots, or `*.d.ts` files. These exclusions apply to the AI-slop aspect; an explicitly scoped general refactor still follows the normal Fence and project rules.
+5. Visual redesign findings are not behavior-preserving simplifications. Exclude AI-aesthetic UI findings that would change rendered palette, spacing, radius, shadows, hierarchy, or state presentation; emit `NOTICED BUT NOT TOUCHING` and suggest `kramme:pr:ux-review` instead.
+6. Treat every reported slop finding as a candidate, not an instruction. The reviewer already suppresses findings below its reporting threshold; do not invent extra confidence bands or auto-apply a finding because of its score.
+7. Deduplicate overlapping general and AI-slop candidates. Prefer the explanation that identifies the concrete unnecessary complexity and the smallest behavior-preserving change.
+
+If the initial combined queue is empty, report that the scoped code is already clean and stop without verifying, checkpointing, editing, or committing. If a refreshed queue is empty after a verified slice, report that the pass is complete and stop. AI-slop findings enter the same one-slice loop, Fence, verification, commit, and recovery contract as every other candidate.
+
 ## Establish a commit baseline
 
-Default mode commits each simplification, so uncommitted input needs a clean boundary before discovery. If the resolved scope contains staged, unstaged, or untracked changes:
+Default mode commits each simplification, so uncommitted input needs a clean boundary once discovery has proved there is work to do. If the resolved scope contains staged, unstaged, or untracked changes:
 
 1. Run `kramme:verify:run` on the unchanged starting tree. If verification cannot run or fails, stop without committing or refactoring.
 2. Create one clearly labeled recovery checkpoint commit containing the exact pre-existing changes inside the resolved scope and no cleanup. Limit the commit to the resolved paths so staged or unstaged work outside the scope is not swept in.
 3. Record the checkpoint hash. Confirm that out-of-scope worktree and index state is unchanged. If the scoped checkpoint cannot be isolated without disturbing out-of-scope changes, stop and surface the conflict.
 
 The checkpoint is a recovery boundary, not a simplification slice. Never fold the first cleanup into it. After the checkpoint, every AI-slop or general simplification must still receive its own verified commit.
-
-## Discover default-mode candidates
-
-Default mode includes AI-slop review without a separate flag. Rewrite mode skips this discovery step because it replaces the current implementation from its recovered behavioral contract instead of applying individual cleanup findings.
-
-Before the first simplification, and again after each verified slice, build one candidate queue:
-
-1. Inspect the resolved scope for the general simplification candidates listed in the loop below.
-2. Launch `kramme:deslop-reviewer` in code review mode against the resolved scope. When the user supplied files or a directory, pass only that scope. Otherwise pass the current branch diff plus staged, unstaged, and untracked changes.
-3. Discard reviewer findings outside the resolved scope or in generated files, vendored code, lockfiles, snapshots, or `*.d.ts` files. These exclusions apply to the AI-slop aspect; an explicitly scoped general refactor still follows the normal Fence and project rules.
-4. Treat every reported slop finding as a candidate, not an instruction. The reviewer already suppresses findings below its reporting threshold; do not invent extra confidence bands or auto-apply a finding because of its score.
-5. Deduplicate overlapping general and AI-slop candidates. Prefer the explanation that identifies the concrete unnecessary complexity and the smallest behavior-preserving change.
-
-If the combined queue is empty, report that the scoped code is already clean and stop. AI-slop findings enter the same one-slice loop, Fence, verification, commit, and recovery contract as every other candidate.
 
 ## Markers
 
@@ -148,7 +187,6 @@ From the refreshed combined candidate queue, pick exactly one target. Candidates
 - Obvious comments or docstrings that restate self-explanatory code.
 - Defensive checks that caller, type, test, and history evidence prove redundant.
 - Weak type workarounds, excessive logging, copy-paste residue, or style drift relative to the surrounding file.
-- Generic AI-aesthetic UI defaults that conflict with the project's established design system.
 
 ### 2. Emit a SIMPLICITY CHECK
 

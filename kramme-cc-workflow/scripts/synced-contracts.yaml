@@ -95,6 +95,7 @@
         "kramme-cc-workflow/skills/kramme:pr:generate-description/references/base-branch-resolution.md",
         "kramme-cc-workflow/skills/kramme:qa/references/diff-scope.md",
         "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:code:refactor-pass/SKILL.md",
         "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
         "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md"
       ]
@@ -105,6 +106,7 @@
       "kramme-cc-workflow/skills/kramme:pr:generate-description/references/base-branch-resolution.md",
       "kramme-cc-workflow/skills/kramme:qa/references/diff-scope.md",
       "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md",
+      "kramme-cc-workflow/skills/kramme:code:refactor-pass/SKILL.md",
       "kramme-cc-workflow/skills/kramme:code:breakdown-findings/references/reconcile-workflow.md",
       "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
       "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md"
@@ -500,7 +502,10 @@
         "Treat accepted positional tokens as the explicit default-mode scope.",
         "Do not fall through to default mode.",
         "Default mode includes AI-slop review without a separate flag.",
+        "Run initial read-only discovery before creating any checkpoint commit.",
         "Launch `kramme:deslop-reviewer` in code review mode against the resolved scope.",
+        "Do not treat a failed reviewer call as an empty finding set or report the scope clean.",
+        "Visual redesign findings are not behavior-preserving simplifications.",
         "Treat every reported slop finding as a candidate, not an instruction.",
         "The checkpoint is a recovery boundary, not a simplification slice.",
         "Never fold the first cleanup into it.",
