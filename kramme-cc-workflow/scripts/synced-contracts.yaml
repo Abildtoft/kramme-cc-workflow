@@ -37,7 +37,7 @@
     },
     {
       "name": "atomic-scoped-archive-update",
-      "extract_regex": "Synced atomic scoped archive update contract \\(keep aligned across plan recovery\\):\\s*(write the complete updated selected plan to a non-symlink temporary sibling in its `plans/` directory, re-read and fully validate the staged bytes, then atomically rename that sibling over the selected plan; on any write, validation, or rename failure, leave the previous plan intact and treat the already-published mutation as interrupted\\.)",
+      "extract_regex": "Synced atomic scoped archive update contract \\(keep aligned across plan recovery\\):\\s*(write the complete updated selected plan to a non-symlink temporary sibling in its plans/ directory, re-read and fully validate the staged bytes, then atomically rename that sibling over the selected plan; on any write, validation, or rename failure, leave the previous plan intact and treat the already-published mutation as interrupted\\.)",
       "inventory": {
         "glob": "kramme-cc-workflow/skills/**/*.md",
         "marker": "Synced atomic scoped archive update contract (keep aligned across plan recovery):"
