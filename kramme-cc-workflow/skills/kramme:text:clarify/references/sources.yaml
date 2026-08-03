@@ -1,0 +1,22 @@
+sources:
+  - id: fofr-govuk-style-skill
+    url: https://gist.github.com/fofr/505e225f9bf5e839d30c12ba6bfa0be2
+    title: "An agent skill for writing in the GOV.UK style"
+    rationale: "Its reader-focused structure, front-loaded editing approach, and final comprehension check informed this skill's workflow and rubric."
+    usage: inspiration
+    last_reviewed_at: 2026-08-02
+    baseline_hash: ""
+  - id: govuk-writing-guidelines
+    url: https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/
+    title: "GOV.UK content and publishing guidance - Writing guidelines"
+    rationale: "Its content-design guidance informed the skill's focus on reader needs, information order, active constructions, and plain language."
+    usage: inspiration
+    last_reviewed_at: 2026-08-02
+    baseline_hash: ""
+  - id: govuk-a-to-z-style-guide
+    url: https://www.gov.uk/guidance/style-guide/a-to-z
+    title: "GOV.UK content and publishing guidance - A to Z style guide"
+    rationale: "Its guidance on accessible headings, lists, links, terminology, and formatting informed the locale-neutral mechanics in the editing rubric."
+    usage: inspiration
+    last_reviewed_at: 2026-08-02
+    baseline_hash: ""
