@@ -800,10 +800,12 @@ EOF
 }
 
 @test "scoped fix-ci lifecycle preserves valid state transitions" {
+  local skill_text
   local scoped_plan_text
   local classification_line
   local initial_removal_line
   local recovery_removal_line
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/SKILL.md")"
   scoped_plan_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/references/scoped-plan.md")"
 
   classification_line="$(grep -nF 'After this classification, reject unknown, duplicate, or misplaced lifecycle sections.' <<<"$scoped_plan_text" | cut -d: -f1)"
@@ -813,13 +815,24 @@ EOF
   [ -n "$classification_line" ]
   [ "$classification_line" -eq "$initial_removal_line" ]
   [ "$classification_line" -eq "$recovery_removal_line" ]
-  [[ "$scoped_plan_text" == *'In initial lifecycle, require its repository, base ref, head branch, and head OID'* ]]
+  [[ "$scoped_plan_text" == *'In initial lifecycle, require its repository, base ref, and head branch to match'* ]]
+  [[ "$scoped_plan_text" == *'retain its head OID only for the live-head agreement and adoption proof in item 7'* ]]
   [[ "$scoped_plan_text" == *'In recovery lifecycle, require the execution result to record the exact Pull Request number and URL, repository, base ref, head branch, and head OID'* ]]
   [[ "$scoped_plan_text" == *'require the execution-result completion commit to equal the recorded workflow checkpoint before any recovery action'* ]]
-  [[ "$scoped_plan_text" == *'Continue directly when `{live-head}` equals the recorded checkpoint. Otherwise, reject initial lifecycle immediately.'* ]]
+  [[ "$scoped_plan_text" == *'initial lifecycle may adopt the live head only through one of these proofs:'* ]]
+  [[ "$scoped_plan_text" == *'**Ancestor-only scoped push:**'* ]]
+  [[ "$scoped_plan_text" == *'**Tree-identical narrative rewrite:**'* ]]
+  [[ "$scoped_plan_text" == *'every path touched by each commit against its parent'* ]]
+  [[ "$scoped_plan_text" == *'Require the recorded checkpoint not to be an ancestor of `{live-head}`'* ]]
+  [[ "$scoped_plan_text" == *'Reject merge commits, missing or reordered commits'* ]]
+  [[ "$scoped_plan_text" == *'atomically refresh only the workflow-state checkpoint head/tree'* ]]
+  [[ "$scoped_plan_text" == *'repeat every archive identity, base, same-repository Pull Request identity, head agreement, tree, standalone eligibility, and committed-path proof'* ]]
   [[ "$scoped_plan_text" == *'atomically refresh both the workflow checkpoint head/tree and execution-result completion commit and Pull Request head OID'* ]]
   [[ "$scoped_plan_text" == *'In initial lifecycle mode, immediately after every proven push replace only the archived workflow-state checkpoint head/tree'* ]]
   [[ "$scoped_plan_text" == *'never adding an execution result'* ]]
+  [[ "$skill_text" == *'When `PLAN_SCOPE_ACTIVE=false`, point the user at `/kramme:pr:rebase` before proceeding.'* ]]
+  [[ "$skill_text" == *'When `PLAN_SCOPE_ACTIVE=true`, fail closed without invoking `/kramme:pr:rebase` or changing history'* ]]
+  [[ "$skill_text" == *'require a refreshed or explicitly re-authorized scoped plan before continuing'* ]]
 }
 
 @test "text contract drift fails with precise contract name" {

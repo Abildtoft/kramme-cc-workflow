@@ -68,7 +68,7 @@ git fetch origin "$BASE"
 git rev-list --left-right --count "origin/$BASE"...HEAD
 ```
 
-If the left count is non-zero (the base has commits not in the branch), inspect what moved (`git log --name-only HEAD.."origin/$BASE"`). Only stop if the base movement plausibly affects CI for this PR — it touches the same files or directories the branch changes, CI workflow/config files, lockfiles, or shared build tooling. In that case, point the user at `/kramme:pr:rebase` before proceeding. Otherwise note the drift and continue iterating.
+If the left count is non-zero (the base has commits not in the branch), inspect what moved (`git log --name-only HEAD.."origin/$BASE"`). Only stop if the base movement plausibly affects CI for this PR — it touches the same files or directories the branch changes, CI workflow/config files, lockfiles, or shared build tooling. When `PLAN_SCOPE_ACTIVE=false`, point the user at `/kramme:pr:rebase` before proceeding. When `PLAN_SCOPE_ACTIVE=true`, fail closed without invoking `/kramme:pr:rebase` or changing history: the recorded base and checkpoint remain part of the scoped provenance contract, so require a refreshed or explicitly re-authorized scoped plan before continuing. Otherwise note the drift and continue iterating.
 
 Before starting the fix loop, snapshot the pre-existing working-tree state so Step 8 can keep it out of fix commits:
 
@@ -245,7 +245,8 @@ If disablement is genuinely warranted — a confirmed false positive, a test tha
 **Stop Immediately:**
 
 - No PR exists for the current branch
-- Branch is out of sync in a way that plausibly affects CI (point the user at `/kramme:pr:rebase`)
+- An unscoped branch is out of sync in a way that plausibly affects CI (point the user at `/kramme:pr:rebase`)
+- A scoped branch's base moved in a way that plausibly affects CI (fail closed without rebasing and require a refreshed or explicitly re-authorized scoped plan)
 
 ---
 
