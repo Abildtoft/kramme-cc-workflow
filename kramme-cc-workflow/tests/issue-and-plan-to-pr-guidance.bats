@@ -17,7 +17,6 @@
     grep -qF "git check-ref-format --branch \"{issue-branch}\"" "$skill"
     grep -qF "gh pr list --head \"{issue-branch}\" --state all" "$skill"
     grep -qF "git ls-remote --heads origin \"refs/heads/{issue-branch}\"" "$skill"
-	    grep -qF "Capture the current commit and branch as \`{intake-head}\` and \`{intake-branch}\`." "$skill"
 	    grep -qF "git diff --quiet \"{intake-head}\" \"origin/{base-branch}\" -- siw/" "$skill"
 	    grep -qF "requires all committed SIW planning state to be landed on the fetched base" "$skill"
 	    grep -qF "git merge-base \"origin/{base-branch}\" HEAD" "$skill"
@@ -29,17 +28,21 @@
 	    grep -qF "status \`DONE\` or \`IN REVIEW\`" "$skill"
     grep -qF "issue file, \`siw/OPEN_ISSUES_OVERVIEW.md\`, and \`siw/LOG.md\`" "$skill"
     grep -qF "Do not invoke \`kramme:workflow-artifacts:cleanup --auto\`" "$skill"
-
-    resolve_line=$(grep -nF "## Step 2: Resolve the Issue and Branch" "$skill" | cut -d: -f1)
-    implement_line=$(grep -nF "## Step 3: Implement the SIW Issue" "$skill" | cut -d: -f1)
-    boundary_line=$(grep -nF "### Implementation Commit Boundary" "$skill" | cut -d: -f1)
-    complete_line=$(grep -nF "## Step 4: Complete the Pull Request Workflow" "$skill" | cut -d: -f1)
-    [ "$resolve_line" -lt "$implement_line" ]
-    [ "$implement_line" -lt "$boundary_line" ]
-    [ "$boundary_line" -lt "$complete_line" ]
   '
 
 	[ "$status" -eq 0 ]
+
+	run python3 \
+		"$BATS_TEST_DIRNAME/test_helper/guidance_contracts.py" \
+		issue-intake-state \
+		"$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-to-pr/SKILL.md"
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+
+	run python3 \
+		"$BATS_TEST_DIRNAME/test_helper/guidance_contracts.py" \
+		issue-stage-order \
+		"$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-to-pr/SKILL.md"
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
 @test "generated plan-to-PR enforces dependency drift scope and artifact isolation" {
@@ -141,11 +144,6 @@
 	    grep -qF "Publication state: absent | remote branch only | open Pull Request" "$skill"
 	    grep -qF "Work branch: {work-branch}" "$skill"
 
-    gate1=$(grep -nF "### Gate 1: Regular Code Review" "$review" | cut -d: -f1)
-    gate2=$(grep -nF "### Gate 2: Convention Review" "$review" | cut -d: -f1)
-    gate3=$(grep -nF "### Gate 3: PR-Scoped Refactor Discovery" "$review" | cut -d: -f1)
-    [ "$gate1" -lt "$gate2" ]
-    [ "$gate2" -lt "$gate3" ]
     grep -qF "MAX_AUTOMATIC_REMEDIATION_CYCLES=3" "$review"
     grep -qF "run exactly one validation-only round" "$review"
     grep -qF "Do not run a second validation-only round." "$review"
@@ -168,6 +166,12 @@
   '
 
 	[ "$status" -eq 0 ]
+
+	run python3 \
+		"$BATS_TEST_DIRNAME/test_helper/guidance_contracts.py" \
+		review-gate-order \
+		"$BATS_TEST_DIRNAME/../skills/kramme:pr:complete-work/references/review-convergence.md"
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
 @test "single SIW issue auto mode remains evidence gated" {
