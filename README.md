@@ -205,7 +205,7 @@ More review skills cover product, convention, UX, and GitHub-reviewer flows. Whi
 /kramme:setup               # report missing local workflow dependencies
 /kramme:visual:diagram      # generate an HTML diagram from any explanation
 /kramme:docs:to-markdown    # convert PDF, Word, Excel, or images to Markdown
-/kramme:code:refactor-pass  # simplification pass on recent changes
+/kramme:code:refactor-pass  # simplification + AI-slop pass on recent changes
 /kramme:code:work-from-plan # route and execute a standalone implementation plan
 ```
 
@@ -327,9 +327,8 @@ Code cleanup, refactoring, and bug/security review.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:code:cleanup-ai` | User | `[base-branch] [--auto]` | Remove AI-generated code slop from a branch. Use when cleaning up AI-generated code, removing unnecessary comments, defensive checks, or type casts. Checks the branch diff against the resolved base and fixes style inconsistencies. Not for generated, vendored, lockfile, snapshot, or `*.d.ts` files. |
 | `/kramme:code:migrate` | User | `<target e.g. 'Angular 19', 'React 19', 'Node 22'> [--auto]` | (experimental) Plan and execute framework or library version migrations with phased upgrades and verification gates. Use when upgrading major framework versions (Angular, React, Node) or migrating between libraries. |
-| `/kramme:code:refactor-pass` | User | `[scope ... \| --rewrite]` | Perform a refactor pass focused on simplicity after recent changes, or use --rewrite to scrap a working-but-hacky implementation and reimplement it elegantly. Use for a narrow cleanup, simplification, dead-code removal, or an explicit request to redo mediocre recent work properly. Applies Chesterton's Fence, rejects changes that require modifying tests, and keeps the default mode slice-by-slice. |
+| `/kramme:code:refactor-pass` | User | `[scope ... \| --rewrite]` | Perform a refactor pass focused on simplicity after recent changes, including AI-slop cleanup for unnecessary comments, defensive noise, weak typing, over-engineering, and style drift. Use for a narrow cleanup, simplification, dead-code removal, suspected AI-generated code, or an explicit request to redo mediocre recent work properly with --rewrite. Applies Chesterton's Fence, rejects changes that require modifying tests, and keeps the default mode slice-by-slice. |
 | `/kramme:code:incremental` | User | `[--refactor]` | (experimental) Deliver changes in small, verified slices with scope discipline, incremental verification between slices, and feature-flag guardrails for incomplete work. Use when implementing any change that spans more than one file or commit. Enforces one-thing-at-a-time, rollback-friendly commits, and explicit separation of in-scope work from noticed-but-untouched observations. Includes a refactor mode (opt-in via --refactor or after kramme:code:refactor-opportunities) that adds an interview-driven Decision Document and a Fowler-style tiny-commits plan where every intermediate state leaves the codebase working. |
 | `/kramme:code:work-from-plan` | User | `[plan path \| inline plan]` | Routes and executes a standalone markdown implementation plan. Use when the user provides a `PR_PLAN_*.md` file, pasted plan, or one-off implementation checklist that is not already a Linear or SIW issue. Detects when to delegate to kramme:linear:issue-implement or kramme:siw:issue-implement, gathers codebase context, surfaces MISSING REQUIREMENT blockers, and proceeds directly only for bounded current-branch work. Not for planning from scratch, PR creation, CI watching, or large multi-phase initiatives that should become SIW. |
 | `/kramme:code:plan-to-pr` | User | `<attached plan \| PR_PLAN_W##L_*.md> [--strict] [--ship]` | Implements one plan that satisfies the generated `PR_PLAN_*.md` contract, either from an indexed kramme:code:breakdown-findings set or as an independent `.context/attachments/` file with a non-`W` execution label, on a deterministic unpublished branch. Enforces dependency and drift checks, archives disposable inputs outside the PR, runs review gates, verifies, and optionally opens the Pull Request and stabilizes CI/review feedback. Not for inline plans, SIW/Linear issues, split-worktree plans, stacked PRs, existing PRs, or multi-plan batches. |
@@ -487,8 +486,9 @@ These user-invocable skill names have changed. Update saved prompts and automati
 
 - `/kramme:siw:spec-audit:auto-fix` → `/kramme:siw:apply-spec-audit-fixes`
 - `/kramme:docs:out-of-scope` → `/kramme:docs:track-rejected-enhancements`
+- `/kramme:code:cleanup-ai` → `/kramme:code:refactor-pass`
 
-The replacement skills preserve the existing arguments and behavior. The old identifiers no longer resolve.
+The first two replacement skills preserve the existing arguments and behavior. The `cleanup-ai` replacement does not preserve the old arguments or side effects: remove `--auto`; omit arguments to use the canonical branch review scope, or pass file and directory scope tokens instead of a base branch. When cleanup candidates exist, `refactor-pass` verifies and checkpoints scoped uncommitted input, then verifies and commits each simplification separately. The old identifiers no longer resolve.
 
 ## Agents
 
