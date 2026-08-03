@@ -228,23 +228,27 @@ SH
 
 	[ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
 	[ -x "$TMP_DIR/.codex/skills/kramme:pr:create/scripts/validate-branch-name.sh" ]
+	[ -x "$TMP_DIR/.codex/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh" ]
 	[ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
 	[ -f "$TMP_DIR/.codex/AGENTS.md" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/dev-server/detect-url.sh" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/lib/shell-helpers.sh" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/resolve-base.sh" ]
+	[ -x "$marketplace_root/plugins/kramme-cc-workflow/scripts/verify-rewrite-state.sh" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/collect-review-diff.sh" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/skill-usage.js" ]
 	[ ! -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/install-codex.sh" ]
 	[ -f "$cache_root/scripts/dev-server/detect-url.sh" ]
 	[ -f "$cache_root/scripts/lib/shell-helpers.sh" ]
 	[ -f "$cache_root/scripts/resolve-base.sh" ]
+	[ -x "$cache_root/scripts/verify-rewrite-state.sh" ]
 	[ -f "$cache_root/scripts/collect-review-diff.sh" ]
 	[ -f "$cache_root/scripts/skill-usage.js" ]
 	[ ! -f "$cache_root/scripts/install-codex.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/dev-server/detect-url.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/lib/shell-helpers.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/resolve-base.sh" ]
+	[ -x "$TMP_DIR/.codex/scripts/verify-rewrite-state.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/collect-review-diff.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/skill-usage.js" ]
 
@@ -259,6 +263,10 @@ SH
 	run grep -nF "RESOLVED=$('$TMP_DIR/.codex/scripts/collect-review-diff.sh' \"\${COLLECT_ARGS[@]}\")" "$TMP_DIR/.codex/skills/kramme:pr:code-review/SKILL.md"
 	[ "$status" -eq 0 ]
 	run grep -nF "RESOLVED=$('$TMP_DIR/.codex/scripts/resolve-base.sh' \"\${ARGS[@]}\")" "$TMP_DIR/.codex/skills/kramme:git:recreate-commits/SKILL.md"
+	[ "$status" -eq 0 ]
+	run grep -nF "'$TMP_DIR/.codex/scripts/verify-rewrite-state.sh'" "$TMP_DIR/.codex/skills/kramme:git:recreate-commits/SKILL.md"
+	[ "$status" -eq 0 ]
+	run grep -nF "PUSH_RESOLVED=\$(\"$TMP_DIR/.codex/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh\" \\" "$TMP_DIR/.codex/skills/kramme:git:recreate-commits/SKILL.md"
 	[ "$status" -eq 0 ]
 	run grep -nF "DETECTED_PROJECT_TYPE=$('$TMP_DIR/.codex/scripts/dev-server'/detect-project-type.sh 2> /dev/null)" "$TMP_DIR/.codex/skills/kramme:qa/SKILL.md"
 	[ "$status" -eq 0 ]
