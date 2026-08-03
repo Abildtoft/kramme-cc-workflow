@@ -5,7 +5,7 @@ Apply this contract after the parent has validated the archived plan path and pa
 ## Classify the Archive
 
 1. Inspect the selected basename, sibling `PR_PLAN_INDEX.md`, sibling `PR_PLAN_REJECTIONS.md`, and sibling `ATTACHMENT_SOURCE.md` without following symlinks.
-2. Treat a non-`W##L` selected basename, any standalone-attachment marker, or an `ATTACHMENT_SOURCE.md` sibling as standalone evidence. When any standalone evidence exists with a `W##L` selected basename, reject the contradictory handoff and require the original attachment with a non-`W` canonical label. Otherwise, when evidence exists, require the complete standalone proof below and set `PLAN_SCOPE_MODE=exact-files`. Missing, duplicate, contradictory, or partial proof is a blocker.
+2. Treat a non-`W##L` selected basename, the exact `**Input mode:** standalone attachment` marker in the index or rejection record, or an `ATTACHMENT_SOURCE.md` sibling as standalone evidence. When any standalone evidence exists with a `W##L` selected basename, reject the contradictory handoff and require the original attachment with a non-`W` canonical label. Otherwise, when evidence exists, require the complete standalone proof below and set `PLAN_SCOPE_MODE=exact-files`. Missing, duplicate, contradictory, or partial proof is a blocker.
 3. With no standalone evidence, require the selected basename to use the generated `PR_PLAN_W[0-9][0-9][A-Z]_[A-Z0-9_]+.md` contract and set `PLAN_SCOPE_MODE=containment`. Never infer generated mode for a non-`W##L` plan.
 
 ## Validate Standalone Provenance
