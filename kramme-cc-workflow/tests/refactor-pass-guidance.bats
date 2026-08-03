@@ -51,7 +51,6 @@ setup() {
   grep -qF "make a byte-for-byte backup of the actual index file" "$skill"
   grep -qF "Do not use a tree object as an index backup" "$skill"
   grep -qF "restore the actual index file byte-for-byte" "$skill"
-  grep -qF "restore every scoped path that a commit hook changed" "$skill"
   grep -qF "committed path set contains only" "$skill"
   grep -qF "Do not continue after a failed checkpoint commit." "$skill"
   grep -qF "do not refresh discovery against an uncreated baseline" "$skill"
@@ -61,6 +60,16 @@ setup() {
   checkpoint_line="$(grep -n '^## Establish a commit baseline$' "$skill" | cut -d: -f1)"
   test "$discovery_line" -lt "$checkpoint_line"
   grep -qF "stop without verifying, checkpointing, editing, or committing" "$skill"
+}
+
+@test "failed commit hooks restore out-of-scope worktree mutations" {
+  local skill="skills/kramme:code:refactor-pass/SKILL.md"
+
+  grep -qF "every tracked and untracked non-ignored worktree path" "$skill"
+  grep -qF "Restore every hook-caused delta, including out-of-scope content changes, deletions, and newly created non-ignored paths" "$skill"
+  grep -qF "restore every hook-caused delta, including out-of-scope changes and newly created non-ignored paths" "$skill"
+  grep -qF "require the complete worktree inventory and snapshot to match" "$skill"
+  grep -qF "the complete tracked and untracked non-ignored worktree still matches the verified snapshot" "$skill"
 }
 
 @test "AI slop discovery keeps generated-like files out of its candidates" {
@@ -86,10 +95,9 @@ setup() {
   grep -qF 'Record the exact newline-delimited paths changed by this simplification as `SLICE_PATHS`.' "$skill"
   grep -qF 'Limit both staging and commit selection to `SLICE_PATHS`' "$skill"
   grep -qF "never use a blanket staging or commit operation" "$skill"
-  grep -qF 'restore any `SLICE_PATHS` worktree content changed by a commit hook' "$skill"
   grep -qF 'require its committed path set to equal `SLICE_PATHS`' "$skill"
   grep -qF "require the index to byte-match its backup" "$skill"
-  grep -qF "require the worktree snapshot to match" "$skill"
+  grep -qF "require the complete worktree inventory and snapshot to match" "$skill"
 }
 
 @test "README documents the cleanup command migration" {
