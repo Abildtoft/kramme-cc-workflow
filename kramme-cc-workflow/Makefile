@@ -49,10 +49,15 @@ SHELLCHECK_FILES = \
 	scripts/dev-server/*.sh \
 	scripts/lib/*.sh \
 	evals/skillopt/scripts/*.sh \
-	skills/*/scripts/*.sh
+	skills/*/scripts/*.sh \
+	skills/*/assets/*.sh
+
+JAVASCRIPT_BROWSER_ASSETS = $(filter-out \
+	skills/kramme:pr:walkthrough/assets/d3.v7.9.0.min.js, \
+	$(wildcard skills/*/assets/*.js))
 
 # Keep ShellCheck warning-clean by default so new shell risks stay visible.
-lint: lint-shell lint-python lint-js
+lint: lint-shell lint-python lint-js skill-contracts
 
 lint-shell: check-shell-deps
 	@"$(SHELLCHECK)" --severity=$(SHELLCHECK_SEVERITY) $(SHELLCHECK_FILES)
@@ -98,7 +103,17 @@ check-python-static-inventory: check-python-deps
 		echo "Python static inventory: $$file_count production $$file_noun registered."
 
 lint-js: check-js-deps
-	@"$(TSC)" -p jsconfig.json
+	@tmpdir=$$(mktemp -d); trap 'rm -rf "$$tmpdir"' EXIT; \
+		printf '%s\n' \
+			'declare const d3: any;' \
+			'declare const document: any;' \
+			'declare const requestAnimationFrame: any;' \
+			>"$$tmpdir/browser-globals.d.ts"; \
+		"$(TSC)" -p jsconfig.json && \
+		"$(TSC)" --allowJs --checkJs --noEmit --skipLibCheck --strict true \
+			--noImplicitAny false --noImplicitThis false --strictNullChecks false \
+			--ignoreDeprecations 6.0 --target ES2022 --module commonjs --moduleResolution node10 \
+			--lib ES2022 --types node "$$tmpdir/browser-globals.d.ts" $(JAVASCRIPT_BROWSER_ASSETS)
 
 format-check: check-format-deps check-ruff-deps
 	@cd "$(ROOT_DIR)" && \
@@ -390,10 +405,10 @@ coverage-python: check-python-deps check-coverage-inventory-deps test-python
 coverage-bats-contract: check-coverage-inventory-deps check-python-static-inventory
 	@tmpdir=$$(mktemp -d); inventory="$(CURDIR)/$(COVERAGE_PRODUCTION_INVENTORY)"; root="$(ROOT_DIR)"; \
 		trap 'rm -rf "$$tmpdir"' EXIT; \
-		if ! jq -e 'def string_array: type == "array" and length > 0 and all(.[]; type == "string" and length > 0); def mappings: type == "object" and all(to_entries[]; (.key | type == "string" and length > 0) and (.value | string_array)); (.javascript | type == "object") and (.javascript.measured | string_array) and (.javascript.contract_only | mappings) and (.python | type == "object") and (.python.measured | string_array) and (.python.contract_only | mappings) and (.shell | type == "object") and (.shell.contract_only | mappings) and ([.javascript.measured[], (.javascript.contract_only | keys[])] | length == (unique | length)) and ([.python.measured[], (.python.contract_only | keys[])] | length == (unique | length))' "$$inventory" >/dev/null 2>&1; then \
+		if ! jq -e 'def string_array: type == "array" and length > 0 and all(.[]; type == "string" and length > 0); def mappings: type == "object" and all(to_entries[]; (.key | type == "string" and length > 0) and (.value | string_array)); def exclusions: type == "object" and all(to_entries[]; (.key | type == "string" and length > 0) and (.value | type == "string" and length > 0)); (.javascript | type == "object") and (.javascript.measured | string_array) and (.javascript.contract_only | mappings) and ((.javascript.excluded // {}) | exclusions) and (.python | type == "object") and (.python.measured | string_array) and (.python.contract_only | mappings) and (.shell | type == "object") and (.shell.contract_only | mappings) and ([.javascript.measured[], (.javascript.contract_only | keys[]), ((.javascript.excluded // {}) | keys[])] | length == (unique | length)) and ([.python.measured[], (.python.contract_only | keys[])] | length == (unique | length))' "$$inventory" >/dev/null 2>&1; then \
 			echo "Production coverage inventory is malformed"; exit 1; \
 		fi; \
-		jq -r '.javascript.measured[], (.javascript.contract_only | keys[])' "$$inventory" | sort >"$$tmpdir/javascript.registered"; \
+		jq -r '.javascript.measured[], (.javascript.contract_only | keys[]), ((.javascript.excluded // {}) | keys[])' "$$inventory" | sort >"$$tmpdir/javascript.registered"; \
 		jq -r '.shell.contract_only | keys[]' "$$inventory" | sort >"$$tmpdir/shell.registered"; \
 		jq -r '.javascript.contract_only, .python.contract_only, .shell.contract_only | to_entries[] | .key as $$source | .value[] | [$$source, .] | @tsv' "$$inventory" >"$$tmpdir/mappings.tsv"; \
 		cd "$$root"; \
@@ -404,17 +419,15 @@ coverage-bats-contract: check-coverage-inventory-deps check-python-static-invent
 			for directory in "$(PLUGIN_REL)/evals" "$(PLUGIN_REL)/hooks" "$(PLUGIN_REL)/scripts"; do \
 				test ! -d "$$directory" || find "$$directory" -type f -name '*.js'; \
 			done; \
-			for directory in "$(PLUGIN_REL)/skills" ".agents/skills"; do \
-				test ! -d "$$directory" || find "$$directory" -type f -path '*/scripts/*.js'; \
-			done; \
+			test ! -d "$(PLUGIN_REL)/skills" || find "$(PLUGIN_REL)/skills" -type f \( -path '*/scripts/*.js' -o -path '*/assets/*.js' \); \
+			test ! -d ".agents/skills" || find ".agents/skills" -type f -path '*/scripts/*.js'; \
 		} | sort -u >"$$tmpdir/javascript.discovered"; \
 		{ \
 			for directory in "$(PLUGIN_REL)/evals" "$(PLUGIN_REL)/hooks" "$(PLUGIN_REL)/scripts"; do \
 				test ! -d "$$directory" || find "$$directory" -type f -name '*.sh'; \
 			done; \
-			for directory in "$(PLUGIN_REL)/skills" ".agents/skills"; do \
-				test ! -d "$$directory" || find "$$directory" -type f -path '*/scripts/*.sh'; \
-			done; \
+			test ! -d "$(PLUGIN_REL)/skills" || find "$(PLUGIN_REL)/skills" -type f \( -path '*/scripts/*.sh' -o -path '*/assets/*.sh' \); \
+			test ! -d ".agents/skills" || find ".agents/skills" -type f -path '*/scripts/*.sh'; \
 		} | sort -u >"$$tmpdir/shell.discovered"; \
 		report_paths() { \
 			label="$$1"; file="$$2"; count=$$(wc -l <"$$file" | tr -d ' '); \

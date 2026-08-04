@@ -3154,3 +3154,88 @@ EOF
   [[ "$output" == *"::warning::mechanical: long-skill burndown: kramme-cc-workflow/skills/over/SKILL.md has 21 lines"* ]]
   [[ "$output" == *"::error::mechanical: kramme-cc-workflow/skills/over/SKILL.md has 21 lines, exceeds 20"* ]]
 }
+
+@test "mechanical file size budgets warn for baselined and new executable debt" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/scripts/baselined.py" <<'EOF'
+one
+two
+three
+four
+five
+six
+EOF
+  write_file "$TMP_ROOT/kramme-cc-workflow/scripts/new-tool.sh" <<'EOF'
+one
+two
+three
+four
+five
+six
+seven
+EOF
+  write_file "$TMP_ROOT/kramme-cc-workflow/scripts/small.js" <<'EOF'
+one
+two
+three
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "mechanical": {
+    "file_line_budgets": [
+      {
+        "name": "production code",
+        "globs": ["kramme-cc-workflow/scripts/*"],
+        "warn_lines": 5,
+        "baseline": {
+          "kramme-cc-workflow/scripts/baselined.py": 6
+        },
+        "excluded": []
+      }
+    ]
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::warning::mechanical: production code size baseline: kramme-cc-workflow/scripts/baselined.py has 6 lines (at baseline 6; warn at 5)"* ]]
+  [[ "$output" == *"::warning::mechanical: production code size budget: unbaselined kramme-cc-workflow/scripts/new-tool.sh has 7 lines (warn at 5)"* ]]
+  [[ "$output" != *"small.js"* ]]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
+@test "mechanical file size baseline reports growth without failing" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/tests/growing.bats" <<'EOF'
+one
+two
+three
+four
+five
+six
+seven
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "mechanical": {
+    "file_line_budgets": [
+      {
+        "name": "test code",
+        "globs": ["kramme-cc-workflow/tests/*.bats"],
+        "warn_lines": 5,
+        "baseline": {
+          "kramme-cc-workflow/tests/growing.bats": 6
+        },
+        "excluded": []
+      }
+    ]
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::warning::mechanical: test code size baseline: kramme-cc-workflow/tests/growing.bats has 7 lines (1 line above baseline 6; warn at 5)"* ]]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
