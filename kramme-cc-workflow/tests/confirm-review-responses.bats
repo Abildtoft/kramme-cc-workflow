@@ -370,6 +370,7 @@ EOF
 }
 
 @test "fails closed when --attr-source changes worktree pathspec selection" {
+	local attr_source
 	setup_real_commit_repo
 	printf 'REVIEW_OVERVIEW.md review\n' >"$REAL_COMMIT_REPO/.gitattributes"
 	git -C "$REAL_COMMIT_REPO" add .gitattributes
@@ -378,10 +379,13 @@ EOF
 	printf 'guarded change\n' >>"$REAL_COMMIT_REPO/REVIEW_OVERVIEW.md"
 	printf 'ordinary change\n' >>"$REAL_COMMIT_REPO/notes.txt"
 
-	run run_hook "git -C $REAL_COMMIT_REPO --attr-source=HEAD commit --only -m test ':(attr:review)'"
-
-	is_blocked
-	[[ "$output" == *"alter config or attributes"* ]]
+	for attr_source in "--attr-source HEAD" "--attr-source=HEAD"; do
+		run run_hook "git -C $REAL_COMMIT_REPO $attr_source commit --only -m test ':(attr:review)'"
+		if ! is_blocked || [[ "$output" != *"alter config or attributes"* ]]; then
+			printf 'Expected attr-source prefix to fail closed: %s\n' "$attr_source" >&2
+			return 1
+		fi
+	done
 }
 
 @test "preserves shallow and no-literal-pathspec globals for commit inspection" {
