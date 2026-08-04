@@ -1452,6 +1452,73 @@
       "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
       "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md",
       "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md"
+    ],
+    "file_line_budgets": [
+      {
+        "name": "production code",
+        "globs": [
+          ".agents/skills/*/scripts/**/*.js",
+          ".agents/skills/*/scripts/**/*.py",
+          ".agents/skills/*/scripts/**/*.sh",
+          "kramme-cc-workflow/evals/**/*.js",
+          "kramme-cc-workflow/evals/**/*.py",
+          "kramme-cc-workflow/evals/**/*.sh",
+          "kramme-cc-workflow/hooks/**/*.js",
+          "kramme-cc-workflow/hooks/**/*.py",
+          "kramme-cc-workflow/hooks/**/*.sh",
+          "kramme-cc-workflow/scripts/**/*.js",
+          "kramme-cc-workflow/scripts/**/*.py",
+          "kramme-cc-workflow/scripts/**/*.sh",
+          "kramme-cc-workflow/skills/*/assets/**/*.js",
+          "kramme-cc-workflow/skills/*/assets/**/*.sh",
+          "kramme-cc-workflow/skills/*/scripts/**/*.js",
+          "kramme-cc-workflow/skills/*/scripts/**/*.py",
+          "kramme-cc-workflow/skills/*/scripts/**/*.sh"
+        ],
+        "warn_lines": 500,
+        "baseline": {
+          "kramme-cc-workflow/evals/skill-review/run-eval.js": 579,
+          "kramme-cc-workflow/hooks/auto-format.sh": 524,
+          "kramme-cc-workflow/hooks/confirm-review-responses.sh": 673,
+          "kramme-cc-workflow/hooks/lib/git_command_parser.py": 2897,
+          "kramme-cc-workflow/scripts/convert-plugin/codex-bundle-output.js": 721,
+          "kramme-cc-workflow/scripts/convert-plugin/codex-transformer.js": 646,
+          "kramme-cc-workflow/scripts/convert-plugin/codex-writer.js": 509,
+          "kramme-cc-workflow/scripts/convert-plugin/install-staging.js": 694,
+          "kramme-cc-workflow/scripts/convert-plugin/install-transaction.js": 1854,
+          "kramme-cc-workflow/scripts/convert-plugin/loader.js": 657,
+          "kramme-cc-workflow/scripts/lint_skill_contracts/readme.py": 812,
+          "kramme-cc-workflow/scripts/release.py": 595,
+          "kramme-cc-workflow/scripts/run-skillspector.sh": 644,
+          "kramme-cc-workflow/scripts/skill-usage.js": 1165,
+          "kramme-cc-workflow/skills/kramme:siw:generate-phases/scripts/siw-issue-reservation.sh": 1772,
+          "kramme-cc-workflow/skills/kramme:siw:issue-define/scripts/siw-issue-reservation.sh": 1772
+        },
+        "excluded": [
+          "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/d3.v7.9.0.min.js"
+        ]
+      },
+      {
+        "name": "test code",
+        "globs": [
+          "kramme-cc-workflow/tests/**/*.bats",
+          "kramme-cc-workflow/tests/**/*.js",
+          "kramme-cc-workflow/tests/**/*.py",
+          "kramme-cc-workflow/tests/**/*.sh"
+        ],
+        "warn_lines": 1000,
+        "baseline": {
+          "kramme-cc-workflow/tests/block-rm-rf.bats": 1042,
+          "kramme-cc-workflow/tests/confirm-review-responses.bats": 1297,
+          "kramme-cc-workflow/tests/lint-skill-contracts.bats": 3241,
+          "kramme-cc-workflow/tests/node/converter-core.test.js": 1334,
+          "kramme-cc-workflow/tests/node/converter-output.test.js": 3220,
+          "kramme-cc-workflow/tests/noninteractive-git.bats": 1056,
+          "kramme-cc-workflow/tests/python/test_git_command_parser.py": 1187,
+          "kramme-cc-workflow/tests/siw-issue-reservation.bats": 1195
+        },
+        "excluded": []
+      }
     ]
   }
 }

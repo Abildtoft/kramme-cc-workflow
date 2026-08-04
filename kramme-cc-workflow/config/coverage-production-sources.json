@@ -28,7 +28,13 @@
       ],
       "kramme-cc-workflow/scripts/skill-usage.js": [
         "kramme-cc-workflow/tests/skill-usage-stats.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/walkthrough-runtime.js": [
+        "kramme-cc-workflow/tests/pr-walkthrough.bats"
       ]
+    },
+    "excluded": {
+      "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/d3.v7.9.0.min.js": "Vendored minified D3 distribution; runtime wrapper remains checked separately."
     }
   },
   "python": {
@@ -219,6 +225,9 @@
       ],
       "kramme-cc-workflow/skills/kramme:siw:issue-define/scripts/siw-issue-reservation.sh": [
         "kramme-cc-workflow/tests/siw-issue-reservation.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:workflow:wizard/assets/template.sh": [
+        "kramme-cc-workflow/tests/skill-resource-references.bats"
       ]
     }
   }

@@ -16,8 +16,7 @@ def check_mechanical(context: LintContext) -> CheckResult:
     max_description = int(config.get("max_description_chars", 1024))
     if "contract_schema" in context.registry and "required_frontmatter" in config:
         result.failures.append(
-            "mechanical: required_frontmatter must come from contract_schema, "
-            "not synced-contracts.yaml"
+            "mechanical: required_frontmatter must come from contract_schema, not synced-contracts.yaml"
         )
     required_fields = config.get("required_frontmatter")
     if required_fields is None:
@@ -43,23 +42,21 @@ def check_mechanical(context: LintContext) -> CheckResult:
             continue
         for field in required_fields:
             if field not in frontmatter:
-                result.failures.append(
-                    f"mechanical: {relative} is missing frontmatter field {field!r}"
-                )
+                result.failures.append(f"mechanical: {relative} is missing frontmatter field {field!r}")
         for field, expected_type in frontmatter_type_errors(text, context.schema):
-            result.failures.append(
-                f"mechanical: {relative} frontmatter field {field!r} "
-                f"must be {expected_type}"
-            )
+            result.failures.append(f"mechanical: {relative} frontmatter field {field!r} must be {expected_type}")
         description = frontmatter.get("description")
         if description is not None and len(description) > max_description:
             result.failures.append(
-                f"mechanical: {relative} description is {len(description)} chars, "
-                f"exceeds {max_description}"
+                f"mechanical: {relative} description is {len(description)} chars, exceeds {max_description}"
             )
 
     agent_result = check_agent_frontmatter_names(context)
     result.failures.extend(agent_result.failures)
+
+    size_result = check_file_line_budgets(context)
+    result.failures.extend(size_result.failures)
+    result.warnings.extend(size_result.warnings)
 
     if warn_lines <= 0:
         return result
@@ -76,6 +73,93 @@ def check_mechanical(context: LintContext) -> CheckResult:
             f"mechanical: long-skill burndown: {relative} has {line_count} lines "
             f"({status}; warn at {warn_lines}, fail above {max_lines})"
         )
+    return result
+
+
+def check_file_line_budgets(context: LintContext) -> CheckResult:
+    result = CheckResult()
+    config = context.registry.get("mechanical", {})
+    budgets = config.get("file_line_budgets", [])
+    if not isinstance(budgets, list):
+        result.failures.append("mechanical: file_line_budgets must be an array")
+        return result
+
+    for budget in budgets:
+        if not isinstance(budget, dict):
+            result.failures.append("mechanical: each file_line_budgets entry must be an object")
+            continue
+        name = budget.get("name")
+        patterns = budget.get("globs")
+        warn_lines = budget.get("warn_lines")
+        baseline = budget.get("baseline", {})
+        excluded = budget.get("excluded", [])
+        if (
+            not isinstance(name, str)
+            or not name
+            or not isinstance(patterns, list)
+            or not patterns
+            or not all(isinstance(pattern, str) and pattern for pattern in patterns)
+            or not isinstance(warn_lines, int)
+            or isinstance(warn_lines, bool)
+            or warn_lines <= 0
+            or not isinstance(baseline, dict)
+            or not all(
+                isinstance(path, str) and path and isinstance(lines, int) and not isinstance(lines, bool) and lines > 0
+                for path, lines in baseline.items()
+            )
+            or not isinstance(excluded, list)
+            or not all(isinstance(path, str) and path for path in excluded)
+        ):
+            result.failures.append(
+                "mechanical: file line budget entries require a name, non-empty globs, "
+                "a positive warn_lines integer, a path-to-line-count baseline, and path exclusions"
+            )
+            continue
+
+        excluded_paths = set(excluded)
+        discovered = {
+            rel(path, context.root): path
+            for pattern in patterns
+            for path in skill_paths(context.root, pattern)
+            if rel(path, context.root) not in excluded_paths
+        }
+        for relative, path in sorted(discovered.items()):
+            line_count = len(read_text(path).splitlines())
+            baseline_lines = baseline.get(relative)
+            if line_count < warn_lines and baseline_lines is None:
+                continue
+            if baseline_lines is None:
+                result.warnings.append(
+                    f"mechanical: {name} size budget: unbaselined {relative} has "
+                    f"{line_count} lines (warn at {warn_lines}); shrink it or record the reviewed baseline"
+                )
+                continue
+            if line_count < warn_lines:
+                result.warnings.append(
+                    f"mechanical: {name} size baseline can be removed: {relative} has "
+                    f"{line_count} lines (warn at {warn_lines})"
+                )
+                continue
+            delta = line_count - baseline_lines
+            if delta > 0:
+                line_noun = "line" if delta == 1 else "lines"
+                comparison = f"{delta} {line_noun} above baseline {baseline_lines}"
+            elif delta < 0:
+                improvement = -delta
+                line_noun = "line" if improvement == 1 else "lines"
+                comparison = f"{improvement} {line_noun} below baseline {baseline_lines}; lower the baseline"
+            else:
+                comparison = f"at baseline {baseline_lines}"
+            result.warnings.append(
+                f"mechanical: {name} size baseline: {relative} has {line_count} lines "
+                f"({comparison}; warn at {warn_lines})"
+            )
+
+        for relative in sorted(set(baseline) - set(discovered)):
+            result.warnings.append(
+                f"mechanical: {name} size baseline is not discovered: {relative}; remove or fix the entry"
+            )
+
     return result
 
 

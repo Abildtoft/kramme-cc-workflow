@@ -15,8 +15,10 @@
   "include": [
     "scripts/convert-plugin.js",
     "scripts/convert-plugin/**/*.js",
+    "scripts/schemas/*.js",
     "scripts/skill-usage.js",
     "evals/skill-review/*.js",
     "tests/node/*.test.js"
-  ]
+  ],
+  "exclude": ["skills/kramme:pr:walkthrough/assets/d3.v7.9.0.min.js"]
 }
