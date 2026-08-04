@@ -112,16 +112,89 @@ NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE = {
     "--max-procs",
     "--replace",
 }
-NONINTERACTIVE_GIT_OPTIONS_WITH_VALUE = {
-    "-C",
-    "-c",
-    "--config-env",
-    "--exec-path",
-    "--git-dir",
-    "--namespace",
-    "--super-prefix",
-    "--work-tree",
-}
+# Git global options that consume the following token as their value. Both
+# parser modes share this compatibility vocabulary: a mode that
+# misses one of these mistakes the option's value for the subcommand, which
+# hides the real subcommand from the safety gates.
+#
+# `--exec-path` without an attached value makes Git print its exec path and
+# exit, so consuming the next token is a safe over-approximation — no
+# subcommand runs either way, and both modes have always agreed on it.
+# `--super-prefix` was value-bearing through Git 2.39. Keep consuming it for
+# compatibility; newer Git rejects it before executing a subcommand.
+GIT_GLOBAL_OPTIONS_WITH_VALUE = frozenset(
+    {
+        "-C",
+        "-c",
+        "--attr-source",
+        "--config-env",
+        "--exec-path",
+        "--git-dir",
+        "--namespace",
+        "--shallow-file",
+        "--super-prefix",
+        "--work-tree",
+    }
+)
+# Git global long options that never consume a following token. Any other
+# unresolved long option before the subcommand is ambiguous: we cannot know
+# whether the next token is its value or the subcommand, so both modes fail
+# closed instead of guessing.
+GIT_GLOBAL_VALUELESS_LONG_OPTIONS = frozenset(
+    {
+        "--bare",
+        "--glob-pathspecs",
+        "--help",
+        "--html-path",
+        "--icase-pathspecs",
+        "--info-path",
+        "--literal-pathspecs",
+        "--man-path",
+        "--no-advice",
+        "--no-lazy-fetch",
+        "--no-literal-pathspecs",
+        "--no-optional-locks",
+        "--no-pager",
+        "--no-replace-objects",
+        "--noglob-pathspecs",
+        "--paginate",
+        "--version",
+    }
+)
+
+GIT_GLOBAL_END_OF_OPTIONS = "end"
+GIT_GLOBAL_OPTION_WITH_VALUE = "value"
+GIT_GLOBAL_OPTION_FLAG = "flag"
+GIT_GLOBAL_OPTION_AMBIGUOUS = "ambiguous"
+GIT_GLOBAL_SUBCOMMAND = "subcommand"
+
+
+def classify_git_global_option(token: str) -> str:
+    """Classify a token sitting between `git` and its subcommand.
+
+    Both parser modes walk Git's global options through this classifier so a
+    given prefix can never resolve to a different subcommand depending on which
+    gate is asking.
+    """
+    if token == "--":
+        return GIT_GLOBAL_END_OF_OPTIONS
+    if token in GIT_GLOBAL_OPTIONS_WITH_VALUE:
+        return GIT_GLOBAL_OPTION_WITH_VALUE
+    if not token.startswith("-"):
+        return GIT_GLOBAL_SUBCOMMAND
+    if token.startswith("--"):
+        # An attached value is self-contained, so no following token is at risk
+        # even when the option itself is unknown to us.
+        if "=" in token:
+            return GIT_GLOBAL_OPTION_FLAG
+        if token in GIT_GLOBAL_VALUELESS_LONG_OPTIONS:
+            return GIT_GLOBAL_OPTION_FLAG
+        return GIT_GLOBAL_OPTION_AMBIGUOUS
+    # Short globals either stand alone (`-p`) or carry an attached value
+    # (`-Crepo`, `-ccore.pager=cat`); the separated forms are matched above.
+    return GIT_GLOBAL_OPTION_FLAG
+
+
 # Bound recursive env -S reparsing and argv rebuilding so safety hooks stay responsive.
 MAX_ENV_SPLIT_STRING_EXPANSIONS = 64
 MAX_ENV_SPLIT_STRING_EXPANSION_WORK = 100_000
@@ -137,9 +210,7 @@ class NoninteractiveParseResult:
 class ShellWord(str):
     shell_keyword_eligible: bool
 
-    def __new__(
-        cls, value: str, *, shell_keyword_eligible: bool = True
-    ) -> ShellWord:
+    def __new__(cls, value: str, *, shell_keyword_eligible: bool = True) -> ShellWord:
         word = super().__new__(cls, value)
         word.shell_keyword_eligible = shell_keyword_eligible
         return word
@@ -190,10 +261,7 @@ def _decode_ansi_c_string(value: str) -> str:
             max_digits = {"x": 2, "u": 4, "U": 8}[escape]
             start = idx + 2
             end = start
-            while (
-                end < min(start + max_digits, len(value))
-                and value[end] in "0123456789abcdefABCDEF"
-            ):
+            while end < min(start + max_digits, len(value)) and value[end] in "0123456789abcdefABCDEF":
                 end += 1
             if end == start:
                 decoded.extend(("\\", escape))
@@ -571,10 +639,7 @@ def _shell_invocation_reads_stdin(args: list[str]) -> bool:
             idx += 1
             continue
 
-        if any(
-            word.startswith(prefix + "=")
-            for prefix in ("--rcfile", "--init-file", "--startup-file")
-        ):
+        if any(word.startswith(prefix + "=") for prefix in ("--rcfile", "--init-file", "--startup-file")):
             idx += 1
             continue
 
@@ -601,17 +666,13 @@ class NormalizedCommandPrefix:
     shell_builtins_allowed: bool
 
 
-def _set_environment_assignment(
-    environment: dict[str, str], assignment: str
-) -> None:
+def _set_environment_assignment(environment: dict[str, str], assignment: str) -> None:
     key = assignment.split("=", 1)[0]
     environment.pop(key, None)
     environment[key] = assignment
 
 
-def _unset_environment_assignment(
-    environment: dict[str, str], key: str
-) -> None:
+def _unset_environment_assignment(environment: dict[str, str], key: str) -> None:
     environment.pop(key, None)
 
 
@@ -624,19 +685,11 @@ def _index_environment_assignments(
     return environment
 
 
-def _filter_environment_assignments(
-    environment: list[str], allowed_keys: set[str]
-) -> list[str]:
-    return [
-        assignment
-        for assignment in environment
-        if assignment.split("=", 1)[0] in allowed_keys
-    ]
+def _filter_environment_assignments(environment: list[str], allowed_keys: set[str]) -> list[str]:
+    return [assignment for assignment in environment if assignment.split("=", 1)[0] in allowed_keys]
 
 
-def _consume_environment_assignments(
-    tokens: list[str], idx: int, environment: dict[str, str]
-) -> int:
+def _consume_environment_assignments(tokens: list[str], idx: int, environment: dict[str, str]) -> int:
     while idx < len(tokens) and _is_assignment(tokens[idx]):
         _set_environment_assignment(environment, tokens[idx])
         idx += 1
@@ -657,10 +710,7 @@ def _extract_shell_inline_command(args: list[str]) -> Optional[str]:
         if arg in SHELL_OPTIONS_WITH_VALUE:
             idx += 2
             continue
-        if any(
-            arg.startswith(prefix + "=")
-            for prefix in ("--rcfile", "--init-file", "--startup-file")
-        ):
+        if any(arg.startswith(prefix + "=") for prefix in ("--rcfile", "--init-file", "--startup-file")):
             idx += 1
             continue
         if arg == "--":
@@ -684,9 +734,7 @@ def normalize_command_prefix(
     shell_keywords_allowed: bool = True,
 ) -> NormalizedCommandPrefix:
     """Normalize wrappers before the executable without applying hook policy."""
-    environment = _index_environment_assignments(
-        inherited_environment or []
-    )
+    environment = _index_environment_assignments(inherited_environment or [])
     repository_modifiers = list(inherited_repository_modifiers or [])
     working_tokens = list(tokens)
     # External wrappers resolve their payload as an executable, so shell
@@ -696,9 +744,10 @@ def normalize_command_prefix(
     split_string_expansion_work = 0
     idx = 0
 
-    while shell_keywords_allowed and idx < len(working_tokens) and (
-        working_tokens[idx] in SHELL_RESERVED_COMMAND_WORDS
-        or working_tokens[idx] == ")"
+    while (
+        shell_keywords_allowed
+        and idx < len(working_tokens)
+        and (working_tokens[idx] in SHELL_RESERVED_COMMAND_WORDS or working_tokens[idx] == ")")
     ):
         idx += 1
 
@@ -752,9 +801,7 @@ def normalize_command_prefix(
                     idx += 2
                     continue
                 if token.startswith("--unset="):
-                    _unset_environment_assignment(
-                        environment, token.split("=", 1)[1]
-                    )
+                    _unset_environment_assignment(environment, token.split("=", 1)[1])
                     idx += 1
                     continue
                 if token.startswith("-u") and token != "-u":
@@ -765,15 +812,11 @@ def normalize_command_prefix(
                     if idx + 1 >= len(working_tokens):
                         idx = len(working_tokens)
                         break
-                    repository_modifiers.extend(
-                        ["-C", working_tokens[idx + 1]]
-                    )
+                    repository_modifiers.extend(["-C", working_tokens[idx + 1]])
                     idx += 2
                     continue
                 if token.startswith("--chdir="):
-                    repository_modifiers.extend(
-                        ["-C", token.split("=", 1)[1]]
-                    )
+                    repository_modifiers.extend(["-C", token.split("=", 1)[1]])
                     idx += 1
                     continue
                 if token.startswith("-C") and token != "-C":
@@ -795,20 +838,12 @@ def normalize_command_prefix(
                     split_string_expansions += 1
                     split_string_expansion_work += len(split_string_value)
                     if (
-                        split_string_expansions
-                        > MAX_ENV_SPLIT_STRING_EXPANSIONS
-                        or split_string_expansion_work
-                        > MAX_ENV_SPLIT_STRING_EXPANSION_WORK
+                        split_string_expansions > MAX_ENV_SPLIT_STRING_EXPANSIONS
+                        or split_string_expansion_work > MAX_ENV_SPLIT_STRING_EXPANSION_WORK
                     ):
-                        raise ValueError(
-                            "env split-string expansion limit exceeded"
-                        )
+                        raise ValueError("env split-string expansion limit exceeded")
                     split_tokens = shlex.split(split_string_value, posix=True)
-                    working_tokens = (
-                        working_tokens[:idx]
-                        + split_tokens
-                        + working_tokens[idx + split_string_width :]
-                    )
+                    working_tokens = working_tokens[:idx] + split_tokens + working_tokens[idx + split_string_width :]
                     continue
                 if token.startswith("-"):
                     idx += 1
@@ -852,17 +887,12 @@ def normalize_command_prefix(
                 if token == "--":
                     idx += 1
                     break
-                if (
-                    token in sudo_options_with_value
-                    or token in sudo_long_options_with_value
-                ):
+                if token in sudo_options_with_value or token in sudo_long_options_with_value:
                     if idx + 1 >= len(working_tokens):
                         idx = len(working_tokens)
                         break
                     if token == "--chdir":
-                        repository_modifiers.extend(
-                            ["-C", working_tokens[idx + 1]]
-                        )
+                        repository_modifiers.extend(["-C", working_tokens[idx + 1]])
                     idx += 2
                     continue
                 if any(
@@ -884,9 +914,7 @@ def normalize_command_prefix(
                     idx += 1
                     continue
                 if token.startswith("--chdir="):
-                    repository_modifiers.extend(
-                        ["-C", token.split("=", 1)[1]]
-                    )
+                    repository_modifiers.extend(["-C", token.split("=", 1)[1]])
                     idx += 1
                     continue
                 if token.startswith("-") and not token.startswith("--"):
@@ -920,9 +948,7 @@ def normalize_command_prefix(
                     idx += 1
                     continue
                 break
-            idx = _consume_environment_assignments(
-                working_tokens, idx, environment
-            )
+            idx = _consume_environment_assignments(working_tokens, idx, environment)
             continue
 
         if command_name == "nice":
@@ -957,11 +983,7 @@ def normalize_command_prefix(
                 if token in {"-s", "--signal", "-k", "--kill-after"}:
                     idx += 2
                     continue
-                if (
-                    token.startswith("--signal=")
-                    or token.startswith("--kill-after=")
-                    or token.startswith("-")
-                ):
+                if token.startswith("--signal=") or token.startswith("--kill-after=") or token.startswith("-"):
                     idx += 1
                     continue
                 idx += 1
@@ -974,9 +996,7 @@ def normalize_command_prefix(
             time_is_shell_keyword = (
                 shell_keywords_allowed
                 and working_tokens[idx] == "time"
-                and getattr(
-                    working_tokens[idx], "shell_keyword_eligible", True
-                )
+                and getattr(working_tokens[idx], "shell_keyword_eligible", True)
             )
             idx += 1
             while idx < len(working_tokens):
@@ -988,11 +1008,7 @@ def normalize_command_prefix(
                     time_is_shell_keyword = False
                     idx += 2
                     continue
-                if (
-                    token.startswith("--output=")
-                    or token.startswith("--format=")
-                    or token.startswith("-")
-                ):
+                if token.startswith("--output=") or token.startswith("--format=") or token.startswith("-"):
                     if token != "-p":
                         time_is_shell_keyword = False
                     idx += 1
@@ -1003,9 +1019,7 @@ def normalize_command_prefix(
             shell_keywords_allowed = time_is_shell_keyword
             if time_is_shell_keyword:
                 assignment_start = idx
-                idx = _consume_environment_assignments(
-                    working_tokens, idx, environment
-                )
+                idx = _consume_environment_assignments(working_tokens, idx, environment)
                 if idx != assignment_start:
                     shell_keywords_allowed = False
             continue
@@ -1037,9 +1051,7 @@ def normalize_command_prefix(
                         if letter == "l":
                             continue
                         if letter == "a":
-                            consume_argv0_name = (
-                                position == len(option_letters) - 1
-                            )
+                            consume_argv0_name = position == len(option_letters) - 1
                         break
                     idx += 1
                     if consume_argv0_name:
@@ -1066,21 +1078,14 @@ def normalize_command_prefix(
     )
 
 
-def _line_has_supported_shell_stdin_heredoc(
-    line: str, heredoc_start: int
-) -> bool:
+def _line_has_supported_shell_stdin_heredoc(line: str, heredoc_start: int) -> bool:
     try:
-        tokens = _tokens_for_heredoc_command(
-            _tokenize_heredoc_prefix(line[:heredoc_start])
-        )
+        tokens = _tokens_for_heredoc_command(_tokenize_heredoc_prefix(line[:heredoc_start]))
     except ValueError:
         return False
 
     normalized = normalize_command_prefix(tokens)
-    if (
-        normalized.executable is None
-        or _basename(normalized.executable) not in SHELL_EXECUTABLES
-    ):
+    if normalized.executable is None or _basename(normalized.executable) not in SHELL_EXECUTABLES:
         return False
     return _shell_invocation_reads_stdin(normalized.arguments)
 
@@ -1119,12 +1124,8 @@ def strip_heredoc_bodies(command: str) -> tuple[str, list[str]]:
         heredocs = _collect_heredocs(line)
         if heredocs:
             for heredoc in heredocs:
-                keep_body = _line_has_supported_shell_stdin_heredoc(
-                    line, heredoc["start"]
-                )
-                pending_heredocs.append(
-                    cast(PendingHeredoc, {**heredoc, "keep_body": keep_body})
-                )
+                keep_body = _line_has_supported_shell_stdin_heredoc(line, heredoc["start"])
+                pending_heredocs.append(cast(PendingHeredoc, {**heredoc, "keep_body": keep_body}))
 
     return "".join(stripped_lines), extracted
 
@@ -1184,9 +1185,7 @@ def normalize_newlines(command: str) -> str:
 
 
 def _replace_nonkeyword_time_word(raw_word: str) -> str:
-    if raw_word == "time" or not any(
-        marker in raw_word for marker in ("'", '"', "\\")
-    ):
+    if raw_word == "time" or not any(marker in raw_word for marker in ("'", '"', "\\")):
         return raw_word
     try:
         parsed_word = shlex.split(raw_word, comments=False, posix=True)
@@ -1268,9 +1267,7 @@ def tokenize(command: str) -> list[str]:
     lexer.whitespace_split = True
     lexer.commenters = ""
     return [
-        ShellWord("time", shell_keyword_eligible=False)
-        if token == NON_KEYWORD_TIME_SENTINEL
-        else token
+        ShellWord("time", shell_keyword_eligible=False) if token == NON_KEYWORD_TIME_SENTINEL else token
         for token in lexer
     ]
 
@@ -1475,12 +1472,8 @@ def _apply_exported_editor_env(
 def parse_env_wrapped_segment(
     tokens: list[str], inherited_env: Optional[dict[str, str]] = None
 ) -> Optional[NoninteractiveParseResult]:
-    inherited_assignments = [
-        f"{key}={value}" for key, value in (inherited_env or {}).items()
-    ]
-    normalized = normalize_command_prefix(
-        tokens, inherited_environment=inherited_assignments
-    )
+    inherited_assignments = [f"{key}={value}" for key, value in (inherited_env or {}).items()]
+    normalized = normalize_command_prefix(tokens, inherited_environment=inherited_assignments)
 
     while normalized.executable is not None:
         command_name = _noninteractive_basename(normalized.executable)
@@ -1534,10 +1527,7 @@ def parse_env_wrapped_segment(
     if normalized.executable is None:
         return None
 
-    env = {
-        assignment.split("=", 1)[0]: assignment.split("=", 1)[1]
-        for assignment in normalized.environment
-    }
+    env = {assignment.split("=", 1)[0]: assignment.split("=", 1)[1] for assignment in normalized.environment}
     exec_token = normalized.executable
     if _noninteractive_basename(exec_token) == "alias":
         return NoninteractiveParseResult(
@@ -1565,35 +1555,25 @@ def parse_env_wrapped_segment(
 
     git_idx = 0
     while git_idx < len(git_argv):
-        token = git_argv[git_idx]
-        if token == "--":
+        classification = classify_git_global_option(git_argv[git_idx])
+        if classification == GIT_GLOBAL_END_OF_OPTIONS:
             git_idx += 1
             break
-        if token in NONINTERACTIVE_GIT_OPTIONS_WITH_VALUE:
+        if classification == GIT_GLOBAL_OPTION_WITH_VALUE:
             git_idx += 2
             continue
-        if any(
-            token.startswith(prefix + "=")
-            for prefix in (
-                "--config-env",
-                "--exec-path",
-                "--git-dir",
-                "--namespace",
-                "--super-prefix",
-                "--work-tree",
+        if classification == GIT_GLOBAL_OPTION_FLAG:
+            git_idx += 1
+            continue
+        if classification == GIT_GLOBAL_OPTION_AMBIGUOUS:
+            # We cannot tell whether the next token is this option's value or
+            # the subcommand, so refuse rather than let an interactive command
+            # hide behind it.
+            return NoninteractiveParseResult(
+                env=env,
+                subcmd=NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND,
+                args=[],
             )
-        ):
-            git_idx += 1
-            continue
-        if token.startswith("-C") and token != "-C":
-            git_idx += 1
-            continue
-        if token.startswith("-c") and token != "-c":
-            git_idx += 1
-            continue
-        if token.startswith("-"):
-            git_idx += 1
-            continue
         break
 
     if git_idx >= len(git_argv):
@@ -1661,9 +1641,7 @@ def run_noninteractive(command: str) -> int:
 
     See README.md#git-command-parser-mode-contracts.
     """
-    PARSE_ERROR_REASON = (
-        "Unable to safely parse command. Refusing potentially interactive git command."
-    )
+    PARSE_ERROR_REASON = "Unable to safely parse command. Refusing potentially interactive git command."
 
     def has_long_option(args: list[str], *names: str) -> bool:
         names_set = set(names)
@@ -1678,10 +1656,8 @@ def run_noninteractive(command: str) -> int:
                         return True
         return False
 
-
     def fixup_value_is_interactive(value: str) -> bool:
         return value.startswith("amend:") or value.startswith("reword:")
-
 
     def classify_commit_fixup(args: list[str]) -> str:
         skip_next = False
@@ -1706,10 +1682,8 @@ def run_noninteractive(command: str) -> int:
                 skip_next = True
         return "none"
 
-
     def merge_edit_is_safe(args: list[str]) -> bool:
         return has_long_option(args, "--ff-only") and not has_long_option(args, "--no-ff")
-
 
     def has_short_option(args: list[str], *letters: str) -> bool:
         wanted = set(letters)
@@ -1722,7 +1696,6 @@ def run_noninteractive(command: str) -> int:
                 if letter in wanted:
                     return True
         return False
-
 
     COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES = set("mFCctSu")
     COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE = set("mFCct")
@@ -1750,10 +1723,7 @@ def run_noninteractive(command: str) -> int:
         "--into-name",
     }
 
-
-    def has_short_option_value_aware(
-        args: list[str], wanted: str, options_with_values: set[str]
-    ) -> bool:
+    def has_short_option_value_aware(args: list[str], wanted: str, options_with_values: set[str]) -> bool:
         for arg in args:
             if arg == "--":
                 break
@@ -1766,10 +1736,7 @@ def run_noninteractive(command: str) -> int:
                     break
         return False
 
-
-    def short_option_consumes_next_value(
-        arg: str, options_with_values: set[str]
-    ) -> bool:
+    def short_option_consumes_next_value(arg: str, options_with_values: set[str]) -> bool:
         if not arg.startswith("-") or arg == "-" or arg.startswith("--"):
             return False
         letters = arg[1:]
@@ -1777,7 +1744,6 @@ def run_noninteractive(command: str) -> int:
             if letter in options_with_values:
                 return idx == len(letters) - 1
         return False
-
 
     def has_long_option_value_aware(
         args: list[str],
@@ -1801,7 +1767,6 @@ def run_noninteractive(command: str) -> int:
                 skip_next = True
         return False
 
-
     def has_safe_fixup(args: list[str]) -> bool:
         idx = 0
         while idx < len(args):
@@ -1816,7 +1781,6 @@ def run_noninteractive(command: str) -> int:
                 return not arg.split("=", 1)[1].startswith(("amend:", "reword:"))
             idx += 1
         return False
-
 
     def commit_requests_editor(args: list[str]) -> bool:
         idx = 0
@@ -1845,7 +1809,6 @@ def run_noninteractive(command: str) -> int:
                 continue
             idx += 1
         return False
-
 
     def evaluate(
         parsed_commands: list[NoninteractiveParseResult],
@@ -1891,7 +1854,9 @@ def run_noninteractive(command: str) -> int:
                 continue
 
             if subcmd == "commit":
-                if has_short_option_value_aware(args, "e", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES) or has_long_option_value_aware(
+                if has_short_option_value_aware(
+                    args, "e", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES
+                ) or has_long_option_value_aware(
                     args,
                     "--edit",
                     COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE,
@@ -1902,20 +1867,17 @@ def run_noninteractive(command: str) -> int:
                 has_no_edit = has_long_option(args, "--no-edit")
                 if commit_fixup_mode == "interactive" and not has_no_edit:
                     return "git commit --fixup=amend:<commit> and --fixup=reword:<commit> open an editor unless you also pass --no-edit."
-                has_message_source = (
-                    not commit_requests_editor(args)
-                    and (
-                        has_short_option_value_aware(args, "m", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
-                        or has_short_option_value_aware(args, "F", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
-                        or has_short_option_value_aware(args, "C", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
-                        or has_safe_fixup(args)
-                        or has_long_option(args, "--message", "--file", "--reuse-message")
-                        or commit_fixup_mode == "safe"
-                        or has_long_option(args, "--no-edit")
-                    )
+                has_message_source = not commit_requests_editor(args) and (
+                    has_short_option_value_aware(args, "m", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
+                    or has_short_option_value_aware(args, "F", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
+                    or has_short_option_value_aware(args, "C", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
+                    or has_safe_fixup(args)
+                    or has_long_option(args, "--message", "--file", "--reuse-message")
+                    or commit_fixup_mode == "safe"
+                    or has_long_option(args, "--no-edit")
                 )
                 if not has_message_source:
-                    return "git commit without a message source may open an editor. Use: git commit -m \"your message\" (or --no-edit for amend)"
+                    return 'git commit without a message source may open an editor. Use: git commit -m "your message" (or --no-edit for amend)'
 
             elif subcmd == "rebase":
                 if has_short_option(args, "i") or has_long_option(args, "--interactive"):
@@ -1953,31 +1915,28 @@ def run_noninteractive(command: str) -> int:
                     "--file",
                 )
                 if not is_explicitly_safe:
-                    is_explicitly_safe = (
-                        has_short_option_value_aware(args, "m", MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
-                        or has_short_option_value_aware(args, "F", MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
-                    )
+                    is_explicitly_safe = has_short_option_value_aware(
+                        args, "m", MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES
+                    ) or has_short_option_value_aware(args, "F", MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
                 if not is_explicitly_safe:
-                    return "git merge may open an editor for the merge commit message. Use: git merge --no-edit <branch>"
+                    return (
+                        "git merge may open an editor for the merge commit message. Use: git merge --no-edit <branch>"
+                    )
 
             elif subcmd == "cherry-pick":
-                is_explicitly_safe = (
-                    has_long_option(
-                        args,
-                        "--continue",
-                        "--abort",
-                        "--quit",
-                        "--skip",
-                        "--no-edit",
-                        "--no-commit",
-                    )
-                    or has_short_option(args, "n")
-                )
+                is_explicitly_safe = has_long_option(
+                    args,
+                    "--continue",
+                    "--abort",
+                    "--quit",
+                    "--skip",
+                    "--no-edit",
+                    "--no-commit",
+                ) or has_short_option(args, "n")
                 if not is_explicitly_safe:
                     return "git cherry-pick may open an editor. Use: git cherry-pick --no-edit <commit>"
 
         return None
-
 
     try:
         parsed_commands, substitutions = _parse_noninteractive_git_commands(command)
@@ -1990,14 +1949,9 @@ def run_noninteractive(command: str) -> int:
     return 0
 
 
-RM_RF_REASON = (
-    "rm -rf is blocked. Use `trash` instead (install: brew install trash). "
-    "Files go to Trash for recovery."
-)
+RM_RF_REASON = "rm -rf is blocked. Use `trash` instead (install: brew install trash). Files go to Trash for recovery."
 XARGS_RM_RF_REASON = "xargs rm -rf is blocked. Use `trash` instead."
-FIND_DELETE_REASON = (
-    "find -delete is blocked. Use `trash` instead for recoverable deletion."
-)
+FIND_DELETE_REASON = "find -delete is blocked. Use `trash` instead for recoverable deletion."
 FIND_EXEC_RM_RF_REASON = "find -exec rm -rf is blocked. Use `trash` instead."
 SHRED_REASON = "shred is blocked. Use `trash` instead for recoverable deletion."
 UNLINK_REASON = "unlink is blocked. Use `trash` instead for recoverable deletion."
@@ -2034,19 +1988,12 @@ def _has_literal_rm_rf_text(text: str) -> bool:
 
 
 def _placeholder_indexes_in_text(text: str) -> list[int]:
-    return [
-        int(match.group(1))
-        for match in re.finditer(r"__CMD_SUBST_(\d+)__", text)
-    ]
+    return [int(match.group(1)) for match in re.finditer(r"__CMD_SUBST_(\d+)__", text)]
 
 
-def _literal_placeholder_reason(
-    text: str, substitutions: list[str]
-) -> Optional[str]:
+def _literal_placeholder_reason(text: str, substitutions: list[str]) -> Optional[str]:
     for placeholder_index in _placeholder_indexes_in_text(text):
-        if placeholder_index < len(substitutions) and _has_literal_rm_rf_text(
-            substitutions[placeholder_index]
-        ):
+        if placeholder_index < len(substitutions) and _has_literal_rm_rf_text(substitutions[placeholder_index]):
             return RM_RF_REASON
     return None
 
@@ -2055,9 +2002,7 @@ def _join_tokens_as_command(tokens: list[str]) -> str:
     return " ".join(tokens)
 
 
-def _detect_process_substitutions(
-    tokens: list[str], substitutions: list[str], depth: int
-) -> Optional[str]:
+def _detect_process_substitutions(tokens: list[str], substitutions: list[str], depth: int) -> Optional[str]:
     idx = 0
     while idx < len(tokens) - 1:
         if tokens[idx] not in {"<", ">"} or tokens[idx + 1] != "(":
@@ -2087,9 +2032,7 @@ def _detect_process_substitutions(
     return None
 
 
-def _detect_xargs(
-    args: list[str], substitutions: list[str], depth: int
-) -> Optional[str]:
+def _detect_xargs(args: list[str], substitutions: list[str], depth: int) -> Optional[str]:
     idx = 0
     xargs_options_with_value = {
         "-d",
@@ -2176,9 +2119,7 @@ def _find_exec_tokens(args: list[str], start: int) -> list[str]:
     return exec_tokens
 
 
-def _detect_find(
-    args: list[str], substitutions: list[str], depth: int
-) -> Optional[str]:
+def _detect_find(args: list[str], substitutions: list[str], depth: int) -> Optional[str]:
     idx = 0
     while idx < len(args):
         token = args[idx]
@@ -2186,9 +2127,7 @@ def _detect_find(
             return FIND_DELETE_REASON
         if token in {"-exec", "-execdir"}:
             exec_tokens = _find_exec_tokens(args, idx + 1)
-            if exec_tokens and _basename(exec_tokens[0]) == "rm" and _has_rf_flags(
-                exec_tokens[1:]
-            ):
+            if exec_tokens and _basename(exec_tokens[0]) == "rm" and _has_rf_flags(exec_tokens[1:]):
                 return FIND_EXEC_RM_RF_REASON
             reason = _detect_rm_rf_segment(exec_tokens, substitutions, depth + 1)
             if reason is not None:
@@ -2199,9 +2138,7 @@ def _detect_find(
     return None
 
 
-def _detect_command_at(
-    tokens: list[str], idx: int, substitutions: list[str], depth: int
-) -> Optional[str]:
+def _detect_command_at(tokens: list[str], idx: int, substitutions: list[str], depth: int) -> Optional[str]:
     normalized = normalize_command_prefix(tokens[idx:])
     if normalized.executable is None:
         return None
@@ -2246,9 +2183,7 @@ def _detect_command_at(
     return None
 
 
-def _detect_rm_rf_segment(
-    tokens: list[str], substitutions: list[str], depth: int
-) -> Optional[str]:
+def _detect_rm_rf_segment(tokens: list[str], substitutions: list[str], depth: int) -> Optional[str]:
     if depth > 5:
         return None
 
@@ -2303,9 +2238,7 @@ def _detect_rm_rf_command(command: str, depth: int = 0) -> Optional[str]:
         for placeholder_index in extract_placeholder_indexes(segment):
             used_placeholder_indexes.add(placeholder_index)
             if placeholder_index < len(substitutions):
-                reason = _detect_rm_rf_command(
-                    substitutions[placeholder_index], depth + 1
-                )
+                reason = _detect_rm_rf_command(substitutions[placeholder_index], depth + 1)
                 if reason is not None:
                     return reason
 
@@ -2359,7 +2292,6 @@ COMMIT_SHELL_KEYWORDS = {
     "(",
     ")",
 }
-COMMIT_GIT_OPTIONS_WITH_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env"}
 COMMIT_REPLAY_ENV_VARS = {
     "GIT_DIR",
     "GIT_WORK_TREE",
@@ -2428,9 +2360,7 @@ COMMIT_SELECTION_LONG_OPTIONS_WITHOUT_VALUE = {
 }
 COMMIT_SELECTION_SHORT_OPTIONS_WITH_VALUE = {"C", "F", "c", "m", "t"}
 COMMIT_SELECTION_SHORT_OPTIONS_WITH_OPTIONAL_VALUE = {"S", "u"}
-COMMIT_SELECTION_ERROR_PREFIX = (
-    "Unable to safely inspect git commit content selection:"
-)
+COMMIT_SELECTION_ERROR_PREFIX = "Unable to safely inspect git commit content selection:"
 
 
 def commit_selection_error(detail: str) -> CommitContext:
@@ -2459,8 +2389,7 @@ def parse_commit_selection(args: list[str]) -> CommitContext:
 
         if arg in {"--patch", "--interactive"}:
             return commit_selection_error(
-                "--patch and --interactive cannot be modeled without running "
-                "an interactive staging session."
+                "--patch and --interactive cannot be modeled without running an interactive staging session."
             )
 
         if arg in {"--all", "--include", "--only"}:
@@ -2469,15 +2398,11 @@ def parse_commit_selection(args: list[str]) -> CommitContext:
             continue
 
         if arg in {"--no-all", "--no-include", "--no-only"}:
-            return commit_selection_error(
-                f"{arg} content-selection negation is unsupported."
-            )
+            return commit_selection_error(f"{arg} content-selection negation is unsupported.")
 
         if arg == "--pathspec-from-file":
             if idx + 1 >= len(args):
-                return commit_selection_error(
-                    "--pathspec-from-file is missing its file."
-                )
+                return commit_selection_error("--pathspec-from-file is missing its file.")
             pathspec_from_file = args[idx + 1]
             idx += 2
             continue
@@ -2493,9 +2418,7 @@ def parse_commit_selection(args: list[str]) -> CommitContext:
             continue
 
         if arg in {"--no-pathspec-from-file", "--no-pathspec-file-nul"}:
-            return commit_selection_error(
-                f"{arg} content-selection negation is unsupported."
-            )
+            return commit_selection_error(f"{arg} content-selection negation is unsupported.")
 
         if arg in COMMIT_SELECTION_LONG_OPTIONS_WITH_VALUE:
             if idx + 1 >= len(args):
@@ -2518,9 +2441,7 @@ def parse_commit_selection(args: list[str]) -> CommitContext:
             continue
 
         if arg.startswith("--"):
-            return commit_selection_error(
-                f"unrecognized commit option {arg}."
-            )
+            return commit_selection_error(f"unrecognized commit option {arg}.")
 
         if arg.startswith("-") and arg != "-":
             cluster = arg[1:]
@@ -2537,8 +2458,7 @@ def parse_commit_selection(args: list[str]) -> CommitContext:
                     continue
                 if letter == "p":
                     return commit_selection_error(
-                        "-p cannot be modeled without running an interactive "
-                        "staging session."
+                        "-p cannot be modeled without running an interactive staging session."
                     )
                 if letter in COMMIT_SELECTION_SHORT_OPTIONS_WITH_VALUE:
                     consume_next = position == len(cluster) - 1
@@ -2547,9 +2467,7 @@ def parse_commit_selection(args: list[str]) -> CommitContext:
                     break
             if consume_next:
                 if idx + 1 >= len(args):
-                    return commit_selection_error(
-                        f"-{cluster[-1]} is missing its value."
-                    )
+                    return commit_selection_error(f"-{cluster[-1]} is missing its value.")
                 idx += 2
             else:
                 idx += 1
@@ -2560,33 +2478,21 @@ def parse_commit_selection(args: list[str]) -> CommitContext:
 
     distinct_modes = set(explicit_modes)
     if len(distinct_modes) > 1:
-        return commit_selection_error(
-            "conflicting --all, --include, and --only modes are unsupported."
-        )
+        return commit_selection_error("conflicting --all, --include, and --only modes are unsupported.")
     if pathspec_from_file is not None and pathspecs:
-        return commit_selection_error(
-            "--pathspec-from-file cannot be combined with command-line pathspecs."
-        )
+        return commit_selection_error("--pathspec-from-file cannot be combined with command-line pathspecs.")
     if pathspec_file_nul and pathspec_from_file is None:
-        return commit_selection_error(
-            "--pathspec-file-nul requires --pathspec-from-file."
-        )
+        return commit_selection_error("--pathspec-file-nul requires --pathspec-from-file.")
     if pathspec_from_file == "":
-        return commit_selection_error(
-            "--pathspec-from-file is missing its file."
-        )
+        return commit_selection_error("--pathspec-from-file is missing its file.")
     if pathspec_from_file == "-":
-        return commit_selection_error(
-            "--pathspec-from-file=- depends on consumed hook stdin."
-        )
+        return commit_selection_error("--pathspec-from-file=- depends on consumed hook stdin.")
     if (
         any("__CMD_SUBST_" in pathspec for pathspec in pathspecs)
         or pathspec_from_file is not None
         and "__CMD_SUBST_" in pathspec_from_file
     ):
-        return commit_selection_error(
-            "command substitution in a pathspec cannot be replayed safely."
-        )
+        return commit_selection_error("command substitution in a pathspec cannot be replayed safely.")
 
     selection_mode = (
         next(iter(distinct_modes))
@@ -2595,12 +2501,8 @@ def parse_commit_selection(args: list[str]) -> CommitContext:
         if pathspecs or pathspec_from_file is not None
         else "index"
     )
-    if selection_mode == "all" and (
-        pathspecs or pathspec_from_file is not None
-    ):
-        return commit_selection_error(
-            "--all cannot be combined with pathspec selection."
-        )
+    if selection_mode == "all" and (pathspecs or pathspec_from_file is not None):
+        return commit_selection_error("--all cannot be combined with pathspec selection.")
     if selection_mode == "index":
         return {}
 
@@ -2615,11 +2517,7 @@ def parse_commit_selection(args: list[str]) -> CommitContext:
 
 
 def unset_replay_env(git_env: list[str], key: str) -> None:
-    git_env[:] = [
-        assignment
-        for assignment in git_env
-        if assignment.split("=", 1)[0] != key
-    ]
+    git_env[:] = [assignment for assignment in git_env if assignment.split("=", 1)[0] != key]
 
 
 def set_replay_env(git_env: list[str], key: str, value: str) -> None:
@@ -2758,15 +2656,9 @@ def parse_commit_segment(
         inherited_repository_modifiers=git_args,
         shell_keywords_allowed=idx == assignment_start,
     )
-    git_env = _filter_environment_assignments(
-        normalized.environment, COMMIT_REPLAY_ENV_VARS
-    )
+    git_env = _filter_environment_assignments(normalized.environment, COMMIT_REPLAY_ENV_VARS)
     git_args = normalized.repository_modifiers
-    tokens = (
-        [normalized.executable, *normalized.arguments]
-        if normalized.executable is not None
-        else []
-    )
+    tokens = [normalized.executable, *normalized.arguments] if normalized.executable is not None else []
     idx = 0
 
     if idx >= len(tokens):
@@ -2909,23 +2801,24 @@ def parse_commit_segment(
     idx += 1
     while idx < len(tokens):
         token = tokens[idx]
-        if token == "--":
+        classification = classify_git_global_option(token)
+        if classification == GIT_GLOBAL_END_OF_OPTIONS:
             idx += 1
             break
-        if token in COMMIT_GIT_OPTIONS_WITH_VALUE:
+        if classification == GIT_GLOBAL_OPTION_WITH_VALUE:
             git_args.append(token)
             if idx + 1 < len(tokens):
                 git_args.append(tokens[idx + 1])
             idx += 2
             continue
-        if any(token.startswith(prefix + "=") for prefix in ("--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env")):
+        if classification == GIT_GLOBAL_OPTION_FLAG:
             git_args.append(token)
             idx += 1
             continue
-        if token.startswith("-"):
-            git_args.append(token)
-            idx += 1
-            continue
+        if classification == GIT_GLOBAL_OPTION_AMBIGUOUS:
+            # We cannot tell whether the next token is this option's value or
+            # the subcommand, so refuse rather than let a commit hide behind it.
+            raise ParseError(f"ambiguous git global option: {token}")
         # Command substitution between `git` and its subcommand expands to
         # unknown flags at runtime; keep scanning so a commit context is
         # emitted and the dynamic-repo-selection gate can block on the
@@ -2956,8 +2849,6 @@ def parse_commit_segment(
     )
 
 
-
-
 def run_commit_contexts(command: str, parse_error_reason: str) -> int:
     """Emit the `commit-contexts` array.
 
@@ -2980,8 +2871,7 @@ def main(argv: list[str]) -> int:
     """
     if len(argv) < 2:
         print(
-            "usage: git_command_parser.py <noninteractive|commit-contexts|rm-rf> "
-            "<command> [parse-error-reason]",
+            "usage: git_command_parser.py <noninteractive|commit-contexts|rm-rf> <command> [parse-error-reason]",
             file=sys.stderr,
         )
         return 2

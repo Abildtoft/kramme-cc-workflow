@@ -96,7 +96,7 @@ build_safe_git_prefix_args() {
         safe_git_prefix_args+=("$value")
         shift
         ;;
-      --literal-pathspecs | --glob-pathspecs | --noglob-pathspecs | --icase-pathspecs | --no-replace-objects)
+      --literal-pathspecs | --no-literal-pathspecs | --glob-pathspecs | --noglob-pathspecs | --icase-pathspecs | --no-replace-objects)
         safe_git_prefix_args+=("$value")
         shift
         ;;
@@ -147,12 +147,12 @@ context_has_dynamic_repo_selection() {
   return 1
 }
 
-context_has_config_override() {
+context_has_unsupported_worktree_prefix() {
   local arg
 
   for arg in "${git_prefix_args[@]}"; do
     case "$arg" in
-      -c | --config-env | --config-env=*)
+      -c | --config-env | --config-env=* | --attr-source | --attr-source=*)
         return 0
         ;;
     esac
@@ -316,8 +316,8 @@ write_effective_files_for_commit_context() {
       exit $?
     fi
 
-    if context_has_config_override; then
-      echo "$CONTENT_SELECTION_REASON Config-bearing git prefixes are unsupported for worktree selection." >&2
+    if context_has_unsupported_worktree_prefix; then
+      echo "$CONTENT_SELECTION_REASON Git prefixes that alter config or attributes are unsupported for worktree selection." >&2
       exit 1
     fi
 

@@ -345,6 +345,83 @@ EOF
 	done < <(safety_command_prefix_matrix "git commit -m test")
 }
 
+@test "blocks review-artifact commit behind separated --attr-source" {
+	mock_git_staged "REVIEW_OVERVIEW.md"
+
+	run run_hook "git --attr-source HEAD commit -m test"
+	is_blocked
+	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
+@test "blocks review-artifact commit behind --attr-source=<tree-ish>" {
+	mock_git_staged "REVIEW_OVERVIEW.md"
+
+	run run_hook "git --attr-source=HEAD commit -m test"
+	is_blocked
+	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
+@test "preserves unguarded commit behavior behind --attr-source" {
+	mock_git_staged "notes.txt"
+
+	run run_hook "git --attr-source HEAD commit -m test"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "fails closed when --attr-source changes worktree pathspec selection" {
+	local attr_source
+	setup_real_commit_repo
+	printf 'REVIEW_OVERVIEW.md review\n' >"$REAL_COMMIT_REPO/.gitattributes"
+	git -C "$REAL_COMMIT_REPO" add .gitattributes
+	git -C "$REAL_COMMIT_REPO" commit -qm "add attributes"
+	printf 'REVIEW_OVERVIEW.md -review\nnotes.txt review\n' >"$REAL_COMMIT_REPO/.gitattributes"
+	printf 'guarded change\n' >>"$REAL_COMMIT_REPO/REVIEW_OVERVIEW.md"
+	printf 'ordinary change\n' >>"$REAL_COMMIT_REPO/notes.txt"
+
+	for attr_source in "--attr-source HEAD" "--attr-source=HEAD"; do
+		run run_hook "git -C $REAL_COMMIT_REPO $attr_source commit --only -m test ':(attr:review)'"
+		if ! is_blocked || [[ "$output" != *"alter config or attributes"* ]]; then
+			printf 'Expected attr-source prefix to fail closed: %s\n' "$attr_source" >&2
+			return 1
+		fi
+	done
+}
+
+@test "preserves shallow and no-literal-pathspec globals for commit inspection" {
+	local artifact_list="$MOCK_DIR/artifacts.txt"
+	setup_real_commit_repo
+	printf 'literal base\n' >"$REAL_COMMIT_REPO/guard*.txt"
+	printf 'guarded base\n' >"$REAL_COMMIT_REPO/guarded.txt"
+	git -C "$REAL_COMMIT_REPO" add 'guard*.txt' guarded.txt
+	git -C "$REAL_COMMIT_REPO" commit -qm "add pathspec fixtures"
+	printf 'literal change\n' >>"$REAL_COMMIT_REPO/guard*.txt"
+	printf 'guarded change\n' >>"$REAL_COMMIT_REPO/guarded.txt"
+	printf 'guarded.txt\n' >"$artifact_list"
+	export CONFIRM_REVIEW_ARTIFACT_LIST_FILE="$artifact_list"
+
+	run run_hook "GIT_LITERAL_PATHSPECS=1 git -C $REAL_COMMIT_REPO --shallow-file $REAL_COMMIT_REPO/.git/shallow --no-literal-pathspecs commit --only -m test 'guard*.txt'"
+
+	is_blocked
+	[[ "$output" == *"guarded.txt"* ]]
+}
+
+@test "fails closed for commits behind an unknown git global option" {
+	mock_git_staged "notes.txt"
+
+	run run_hook "git --future-global value commit -m test"
+	is_blocked
+	[[ "$output" == *"Unable to safely parse command"* ]]
+}
+
+@test "allows supported non-commit command behind legacy --super-prefix" {
+	mock_git_staged "notes.txt"
+
+	run run_hook "git --super-prefix sub/ submodule--helper status"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
 @test "fails closed for malformed supported command prefixes" {
 	local command
 

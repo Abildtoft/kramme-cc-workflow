@@ -514,6 +514,64 @@ assert_parser_fixture_decision() {
 	is_blocked
 }
 
+# ============================================================================
+# GIT GLOBAL OPTIONS BEFORE THE SUBCOMMAND
+# ============================================================================
+
+@test "blocks interactive rebase behind separated --attr-source" {
+	run run_hook "git --attr-source HEAD rebase -i HEAD~3"
+	is_blocked
+	[[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
+@test "blocks interactive rebase behind --attr-source=<tree-ish>" {
+	run run_hook "git --attr-source=HEAD rebase -i HEAD~3"
+	is_blocked
+	[[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
+@test "blocks interactive rebase behind combined git global options" {
+	run run_hook "git -C repo --attr-source HEAD --no-pager rebase -i HEAD~3"
+	is_blocked
+	[[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
+@test "fails closed for interactive rebase behind an unknown git global option" {
+	run run_hook "git --future-global value rebase -i HEAD~3"
+	is_blocked
+	[[ "$output" == *"Unable to safely parse command"* ]]
+}
+
+@test "resolves interactive command behind legacy --super-prefix" {
+	run run_hook "git --super-prefix sub/ rebase -i HEAD~3"
+	is_blocked
+	[[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
+@test "allows supported internal command behind legacy --super-prefix" {
+	run run_hook "git --super-prefix sub/ submodule--helper status"
+	[ "$status" -eq 0 ]
+	is_allowed
+}
+
+@test "allows safe git command behind known git global options" {
+	run run_hook "git --attr-source HEAD --no-pager status"
+	[ "$status" -eq 0 ]
+	is_allowed
+}
+
+@test "allows safe git command behind shallow and pathspec globals" {
+	run run_hook "git --shallow-file .git/shallow --no-literal-pathspecs status"
+	[ "$status" -eq 0 ]
+	is_allowed
+}
+
+@test "allows interactive rebase behind --attr-source with GIT_SEQUENCE_EDITOR" {
+	run run_hook "GIT_SEQUENCE_EDITOR=true git --attr-source HEAD rebase -i HEAD~3"
+	[ "$status" -eq 0 ]
+	is_allowed
+}
+
 @test "allows git rebase --continue with GIT_EDITOR" {
 	run run_hook "GIT_EDITOR=true git rebase --continue"
 	[ "$status" -eq 0 ]
