@@ -1,6 +1,6 @@
 # Fetching and mapping an ongoing review conversation
 
-How to pull the existing comments on a PR and classify them from the **reviewer's seat** (you are reviewing someone else's PR, not authoring it). All operations are reads — this skill never posts. `gh` and `jq` were confirmed in Preflight.
+How to pull the existing comments on a PR and classify them from the **reviewer's seat** (you are reviewing someone else's PR, not authoring it). All operations in this reference are reads. `gh` and `jq` were confirmed in Preflight.
 
 Set the repository and actor context from values already resolved earlier:
 

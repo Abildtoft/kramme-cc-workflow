@@ -16,9 +16,9 @@ sources:
   - id: github-rest-pull-reviews
     url: https://docs.github.com/en/rest/pulls/reviews
     title: "GitHub REST API endpoints for pull request reviews"
-    rationale: "The skill uses this source for reading prior review verdicts and for the optional manual-posting appendix that submits a PR review with a body, event, and inline comments."
+    rationale: "The skill uses this source for reading prior review verdicts, creating an unsubmitted PENDING review by omitting event, attaching inline comments, and keeping final review submission outside the automated workflow."
     usage: inspiration
-    last_reviewed_at: 2026-07-01
+    last_reviewed_at: 2026-08-03
     baseline_hash: "sha256:f38e7c959a6e53b6547aa933702f38eacd69189e776ad8b062bab9da5b95b635"
   - id: github-rest-pull-review-comments
     url: https://docs.github.com/en/rest/pulls/comments
