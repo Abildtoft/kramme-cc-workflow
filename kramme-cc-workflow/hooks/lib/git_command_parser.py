@@ -112,16 +112,87 @@ NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE = {
     "--max-procs",
     "--replace",
 }
-NONINTERACTIVE_GIT_OPTIONS_WITH_VALUE = {
-    "-C",
-    "-c",
-    "--config-env",
-    "--exec-path",
-    "--git-dir",
-    "--namespace",
-    "--super-prefix",
-    "--work-tree",
-}
+# Git global options that consume the following token as their value, verified
+# against git 2.50.1. Both parser modes share this vocabulary: a mode that
+# misses one of these mistakes the option's value for the subcommand, which
+# hides the real subcommand from the safety gates.
+#
+# `--exec-path` without an attached value makes Git print its exec path and
+# exit, so consuming the next token is a safe over-approximation — no
+# subcommand runs either way, and both modes have always agreed on it.
+GIT_GLOBAL_OPTIONS_WITH_VALUE = frozenset(
+    {
+        "-C",
+        "-c",
+        "--attr-source",
+        "--config-env",
+        "--exec-path",
+        "--git-dir",
+        "--namespace",
+        "--shallow-file",
+        "--work-tree",
+    }
+)
+# Git global long options that never consume a following token. Any other
+# unresolved long option before the subcommand is ambiguous: we cannot know
+# whether the next token is its value or the subcommand, so both modes fail
+# closed instead of guessing. `--super-prefix` was removed in Git 2.45 and is
+# deliberately absent from both sets.
+GIT_GLOBAL_VALUELESS_LONG_OPTIONS = frozenset(
+    {
+        "--bare",
+        "--glob-pathspecs",
+        "--help",
+        "--html-path",
+        "--icase-pathspecs",
+        "--info-path",
+        "--literal-pathspecs",
+        "--man-path",
+        "--no-advice",
+        "--no-lazy-fetch",
+        "--no-literal-pathspecs",
+        "--no-optional-locks",
+        "--no-pager",
+        "--no-replace-objects",
+        "--noglob-pathspecs",
+        "--paginate",
+        "--version",
+    }
+)
+
+GIT_GLOBAL_END_OF_OPTIONS = "end"
+GIT_GLOBAL_OPTION_WITH_VALUE = "value"
+GIT_GLOBAL_OPTION_FLAG = "flag"
+GIT_GLOBAL_OPTION_AMBIGUOUS = "ambiguous"
+GIT_GLOBAL_SUBCOMMAND = "subcommand"
+
+
+def classify_git_global_option(token: str) -> str:
+    """Classify a token sitting between `git` and its subcommand.
+
+    Both parser modes walk Git's global options through this classifier so a
+    given prefix can never resolve to a different subcommand depending on which
+    gate is asking.
+    """
+    if token == "--":
+        return GIT_GLOBAL_END_OF_OPTIONS
+    if token in GIT_GLOBAL_OPTIONS_WITH_VALUE:
+        return GIT_GLOBAL_OPTION_WITH_VALUE
+    if not token.startswith("-"):
+        return GIT_GLOBAL_SUBCOMMAND
+    if token.startswith("--"):
+        # An attached value is self-contained, so no following token is at risk
+        # even when the option itself is unknown to us.
+        if "=" in token:
+            return GIT_GLOBAL_OPTION_FLAG
+        if token in GIT_GLOBAL_VALUELESS_LONG_OPTIONS:
+            return GIT_GLOBAL_OPTION_FLAG
+        return GIT_GLOBAL_OPTION_AMBIGUOUS
+    # Short globals either stand alone (`-p`) or carry an attached value
+    # (`-Crepo`, `-ccore.pager=cat`); the separated forms are matched above.
+    return GIT_GLOBAL_OPTION_FLAG
+
+
 # Bound recursive env -S reparsing and argv rebuilding so safety hooks stay responsive.
 MAX_ENV_SPLIT_STRING_EXPANSIONS = 64
 MAX_ENV_SPLIT_STRING_EXPANSION_WORK = 100_000
@@ -1565,35 +1636,25 @@ def parse_env_wrapped_segment(
 
     git_idx = 0
     while git_idx < len(git_argv):
-        token = git_argv[git_idx]
-        if token == "--":
+        classification = classify_git_global_option(git_argv[git_idx])
+        if classification == GIT_GLOBAL_END_OF_OPTIONS:
             git_idx += 1
             break
-        if token in NONINTERACTIVE_GIT_OPTIONS_WITH_VALUE:
+        if classification == GIT_GLOBAL_OPTION_WITH_VALUE:
             git_idx += 2
             continue
-        if any(
-            token.startswith(prefix + "=")
-            for prefix in (
-                "--config-env",
-                "--exec-path",
-                "--git-dir",
-                "--namespace",
-                "--super-prefix",
-                "--work-tree",
+        if classification == GIT_GLOBAL_OPTION_FLAG:
+            git_idx += 1
+            continue
+        if classification == GIT_GLOBAL_OPTION_AMBIGUOUS:
+            # We cannot tell whether the next token is this option's value or
+            # the subcommand, so refuse rather than let an interactive command
+            # hide behind it.
+            return NoninteractiveParseResult(
+                env=env,
+                subcmd=NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND,
+                args=[],
             )
-        ):
-            git_idx += 1
-            continue
-        if token.startswith("-C") and token != "-C":
-            git_idx += 1
-            continue
-        if token.startswith("-c") and token != "-c":
-            git_idx += 1
-            continue
-        if token.startswith("-"):
-            git_idx += 1
-            continue
         break
 
     if git_idx >= len(git_argv):
@@ -2359,7 +2420,6 @@ COMMIT_SHELL_KEYWORDS = {
     "(",
     ")",
 }
-COMMIT_GIT_OPTIONS_WITH_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env"}
 COMMIT_REPLAY_ENV_VARS = {
     "GIT_DIR",
     "GIT_WORK_TREE",
@@ -2909,23 +2969,24 @@ def parse_commit_segment(
     idx += 1
     while idx < len(tokens):
         token = tokens[idx]
-        if token == "--":
+        classification = classify_git_global_option(token)
+        if classification == GIT_GLOBAL_END_OF_OPTIONS:
             idx += 1
             break
-        if token in COMMIT_GIT_OPTIONS_WITH_VALUE:
+        if classification == GIT_GLOBAL_OPTION_WITH_VALUE:
             git_args.append(token)
             if idx + 1 < len(tokens):
                 git_args.append(tokens[idx + 1])
             idx += 2
             continue
-        if any(token.startswith(prefix + "=") for prefix in ("--git-dir", "--work-tree", "--namespace", "--exec-path", "--config-env")):
+        if classification == GIT_GLOBAL_OPTION_FLAG:
             git_args.append(token)
             idx += 1
             continue
-        if token.startswith("-"):
-            git_args.append(token)
-            idx += 1
-            continue
+        if classification == GIT_GLOBAL_OPTION_AMBIGUOUS:
+            # We cannot tell whether the next token is this option's value or
+            # the subcommand, so refuse rather than let a commit hide behind it.
+            raise ParseError(f"ambiguous git global option: {token}")
         # Command substitution between `git` and its subcommand expands to
         # unknown flags at runtime; keep scanning so a commit context is
         # emitted and the dynamic-repo-selection gate can block on the
