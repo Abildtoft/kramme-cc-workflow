@@ -542,10 +542,16 @@ assert_parser_fixture_decision() {
 	[[ "$output" == *"Unable to safely parse command"* ]]
 }
 
-@test "fails closed for interactive rebase behind removed --super-prefix" {
+@test "resolves interactive command behind legacy --super-prefix" {
 	run run_hook "git --super-prefix sub/ rebase -i HEAD~3"
 	is_blocked
-	[[ "$output" == *"Unable to safely parse command"* ]]
+	[[ "$output" == *"GIT_SEQUENCE_EDITOR"* ]]
+}
+
+@test "allows supported internal command behind legacy --super-prefix" {
+	run run_hook "git --super-prefix sub/ submodule--helper status"
+	[ "$status" -eq 0 ]
+	is_allowed
 }
 
 @test "allows safe git command behind known git global options" {

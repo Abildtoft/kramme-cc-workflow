@@ -8,32 +8,19 @@ import sys
 import unittest
 from pathlib import Path
 
-PARSER_PATH = (
-    Path(__file__).resolve().parents[2] / "hooks" / "lib" / "git_command_parser.py"
-)
+PARSER_PATH = Path(__file__).resolve().parents[2] / "hooks" / "lib" / "git_command_parser.py"
 
 INTERACTIVE_COMMIT_REASON = (
-    'git commit without a message source may open an editor. Use: git commit -m '
-    '"your message" (or --no-edit for amend)'
+    'git commit without a message source may open an editor. Use: git commit -m "your message" (or --no-edit for amend)'
 )
-RM_RF_REASON = (
-    "rm -rf is blocked. Use `trash` instead (install: brew install trash). "
-    "Files go to Trash for recovery."
-)
+RM_RF_REASON = "rm -rf is blocked. Use `trash` instead (install: brew install trash). Files go to Trash for recovery."
 XARGS_RM_RF_REASON = "xargs rm -rf is blocked. Use `trash` instead."
-FIND_DELETE_REASON = (
-    "find -delete is blocked. Use `trash` instead for recoverable deletion."
-)
+FIND_DELETE_REASON = "find -delete is blocked. Use `trash` instead for recoverable deletion."
 FIND_EXEC_RM_RF_REASON = "find -exec rm -rf is blocked. Use `trash` instead."
 SHRED_REASON = "shred is blocked. Use `trash` instead for recoverable deletion."
 UNLINK_REASON = "unlink is blocked. Use `trash` instead for recoverable deletion."
-INTERACTIVE_REBASE_REASON = (
-    "Interactive rebase will open an editor. Use: GIT_SEQUENCE_EDITOR=true git "
-    "rebase -i ..."
-)
-NONINTERACTIVE_PARSE_ERROR_REASON = (
-    "Unable to safely parse command. Refusing potentially interactive git command."
-)
+INTERACTIVE_REBASE_REASON = "Interactive rebase will open an editor. Use: GIT_SEQUENCE_EDITOR=true git rebase -i ..."
+NONINTERACTIVE_PARSE_ERROR_REASON = "Unable to safely parse command. Refusing potentially interactive git command."
 COMMIT_PARSE_ERROR_REASON = "parse failed"
 
 
@@ -72,7 +59,7 @@ class GitCommandLexerTest(unittest.TestCase):
         self.assertEqual(end, len(command))
 
     def test_read_dollar_substitution_preserves_nested_substitutions(self) -> None:
-        command = r'$(outer $(inner one))'
+        command = r"$(outer $(inner one))"
 
         inner, end = PARSER.read_dollar_substitution(command, 0)
 
@@ -117,17 +104,13 @@ class GitCommandLexerTest(unittest.TestCase):
                 self.assertEqual(substitutions, expected_substitutions)
 
     def test_strip_heredoc_bodies_preserves_shell_stdin_heredoc_body(self) -> None:
-        stripped, substitutions = PARSER.strip_heredoc_bodies(
-            "bash <<'EOF'\nrm -rf directory/\nEOF\n"
-        )
+        stripped, substitutions = PARSER.strip_heredoc_bodies("bash <<'EOF'\nrm -rf directory/\nEOF\n")
 
         self.assertEqual(stripped, "bash <<'EOF'\nrm -rf directory/\nEOF\n")
         self.assertEqual(substitutions, [])
 
     def test_replace_command_substitutions_collects_placeholder_contents(self) -> None:
-        sanitized, substitutions = PARSER.replace_command_substitutions(
-            r'git commit -m "$(printf a\ b)"'
-        )
+        sanitized, substitutions = PARSER.replace_command_substitutions(r'git commit -m "$(printf a\ b)"')
 
         self.assertEqual(sanitized, 'git commit -m "__CMD_SUBST_0__"')
         self.assertEqual(substitutions, [r"printf a\ b"])
@@ -149,9 +132,7 @@ class GitCommandLexerTest(unittest.TestCase):
         )
 
     def test_extract_placeholder_indexes_preserves_first_seen_order(self) -> None:
-        indexes = PARSER.extract_placeholder_indexes(
-            ["__CMD_SUBST_2__", "x__CMD_SUBST_1__", "__CMD_SUBST_2__"]
-        )
+        indexes = PARSER.extract_placeholder_indexes(["__CMD_SUBST_2__", "x__CMD_SUBST_1__", "__CMD_SUBST_2__"])
 
         self.assertEqual(indexes, [2, 1])
 
@@ -180,16 +161,14 @@ class GitCommandLexerTest(unittest.TestCase):
             (r"bash -c $'git\x20commit'", "bash -c 'git commit'"),
             (r"bash -c $'git\tcommit'", "bash -c 'git\tcommit'"),
             (r"bash -c $'echo ok\ngit commit'", "bash -c 'echo ok\ngit commit'"),
-            (r"printf $'it\'s safe'", 'printf \'it\'"\'"\'s safe\''),
+            (r"printf $'it\'s safe'", "printf 'it'\"'\"'s safe'"),
             (r'''bash -c "$'git\x20commit'"''', r'''bash -c "$'git\x20commit'"'''),
             (r"bash -c '$git commit'", r"bash -c '$git commit'"),
         ]
 
         for command, expected in cases:
             with self.subTest(command=command):
-                self.assertEqual(
-                    PARSER._expand_ansi_c_quoted_strings(command), expected
-                )
+                self.assertEqual(PARSER._expand_ansi_c_quoted_strings(command), expected)
 
 
 class GitCommandParserBoundaryTest(unittest.TestCase):
@@ -253,9 +232,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
                 )
 
                 self.assertEqual(normalized.executable, "git")
-                self.assertEqual(
-                    normalized.arguments, ["rebase", "-i", "main"]
-                )
+                self.assertEqual(normalized.arguments, ["rebase", "-i", "main"])
                 self.assertEqual(normalized.environment, [])
 
         argv0 = PARSER.normalize_command_prefix(
@@ -265,9 +242,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
 
         self.assertEqual(argv0.executable, "git")
         self.assertEqual(argv0.arguments, ["status"])
-        self.assertEqual(
-            argv0.environment, ["GIT_DIR=/tmp/other/.git"]
-        )
+        self.assertEqual(argv0.environment, ["GIT_DIR=/tmp/other/.git"])
 
         grouped_argv0 = PARSER.normalize_command_prefix(
             ["exec", "-ca", "custom-name", "git", "status"],
@@ -279,30 +254,19 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
         self.assertEqual(grouped_argv0.environment, [])
 
     def test_normalize_command_prefix_limits_nested_env_split_strings(self) -> None:
-        allowed = (
-            "--split-string=" * PARSER.MAX_ENV_SPLIT_STRING_EXPANSIONS
-            + "printf"
-        )
+        allowed = "--split-string=" * PARSER.MAX_ENV_SPLIT_STRING_EXPANSIONS + "printf"
         normalized = PARSER.normalize_command_prefix(["env", allowed, "safe"])
 
         self.assertEqual(normalized.executable, "printf")
         self.assertEqual(normalized.arguments, ["safe"])
 
         excessive = "--split-string=" + allowed
-        with self.assertRaisesRegex(
-            ValueError, "env split-string expansion limit exceeded"
-        ):
+        with self.assertRaisesRegex(ValueError, "env split-string expansion limit exceeded"):
             PARSER.normalize_command_prefix(["env", excessive, "safe"])
 
-        oversized = "x" * (
-            PARSER.MAX_ENV_SPLIT_STRING_EXPANSION_WORK + 1
-        )
-        with self.assertRaisesRegex(
-            ValueError, "env split-string expansion limit exceeded"
-        ):
-            PARSER.normalize_command_prefix(
-                ["env", f"--split-string={oversized}"]
-            )
+        oversized = "x" * (PARSER.MAX_ENV_SPLIT_STRING_EXPANSION_WORK + 1)
+        with self.assertRaisesRegex(ValueError, "env split-string expansion limit exceeded"):
+            PARSER.normalize_command_prefix(["env", f"--split-string={oversized}"])
 
     def test_parse_env_wrapped_segment_marks_aliases_as_parse_errors(self) -> None:
         result = PARSER.parse_env_wrapped_segment(["alias", "git=git -c alias.x=commit"])
@@ -495,10 +459,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
         for prefix in ("timeout 1", "nice", "nohup", "env", "sudo", "command time"):
             with self.subTest(prefix=prefix):
                 contexts = PARSER.parse_commit_contexts(
-                    (
-                        f"{prefix} export GIT_DIR=/tmp/other/.git "
-                        "GIT_WORK_TREE=/tmp/other; git commit -m test"
-                    ),
+                    (f"{prefix} export GIT_DIR=/tmp/other/.git GIT_WORK_TREE=/tmp/other; git commit -m test"),
                     inherited_git_env=[],
                     inherited_shell_git_vars=[],
                 )
@@ -521,10 +482,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
         ):
             with self.subTest(prefix=prefix):
                 contexts = PARSER.parse_commit_contexts(
-                    (
-                        f"{prefix} export GIT_DIR=/tmp/other/.git "
-                        "GIT_WORK_TREE=/tmp/other; git commit -m test"
-                    ),
+                    (f"{prefix} export GIT_DIR=/tmp/other/.git GIT_WORK_TREE=/tmp/other; git commit -m test"),
                     inherited_git_env=[],
                     inherited_shell_git_vars=[],
                 )
@@ -551,10 +509,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
 
     def test_time_keyword_persists_shell_builtin_state(self) -> None:
         contexts = PARSER.parse_commit_contexts(
-            (
-                "time export GIT_DIR=/tmp/other/.git "
-                "GIT_WORK_TREE=/tmp/other; git commit -m test"
-            ),
+            ("time export GIT_DIR=/tmp/other/.git GIT_WORK_TREE=/tmp/other; git commit -m test"),
             inherited_git_env=[],
             inherited_shell_git_vars=[],
         )
@@ -695,9 +650,7 @@ class GitCommandParserCliTest(unittest.TestCase):
             "env command with git index",
             "env GIT_INDEX_FILE=/tmp/index git commit -m x",
             json_line({"block": None}),
-            json_line(
-                [{"git_args": [], "git_env": ["GIT_INDEX_FILE=/tmp/index"]}]
-            ),
+            json_line([{"git_args": [], "git_env": ["GIT_INDEX_FILE=/tmp/index"]}]),
         ),
         (
             "unquoted heredoc body substitution",
@@ -744,11 +697,7 @@ class GitCommandParserCliTest(unittest.TestCase):
                 self.assertEqual(result.stdout, expected_stdout)
 
     def test_malformed_payloads_fail_closed(self) -> None:
-        excessive_split_string = (
-            "--split-string="
-            * (PARSER.MAX_ENV_SPLIT_STRING_EXPANSIONS + 1)
-            + "printf"
-        )
+        excessive_split_string = "--split-string=" * (PARSER.MAX_ENV_SPLIT_STRING_EXPANSIONS + 1) + "printf"
         commands = [
             "bash -c $'git commit",
             "env -S '\"git commit'",
@@ -766,18 +715,14 @@ class GitCommandParserCliTest(unittest.TestCase):
                 self.assertEqual(
                     noninteractive.stdout,
                     json_line(
-                        {
-                            "block": "Unable to safely parse command. Refusing potentially interactive git command."
-                        }
+                        {"block": "Unable to safely parse command. Refusing potentially interactive git command."}
                     ),
                 )
                 self.assertEqual(commit_contexts.returncode, 0)
                 self.assertEqual(commit_contexts.stderr, "")
                 self.assertEqual(
                     commit_contexts.stdout,
-                    json_line(
-                        [{"parse_error": "parse failed"}]
-                    ),
+                    json_line([{"parse_error": "parse failed"}]),
                 )
 
 
@@ -863,8 +808,16 @@ class GitGlobalOptionPrefixTest(unittest.TestCase):
             ["-C", "repo", "--attr-source", "HEAD", "--no-pager"],
             ["-C", "repo", "--attr-source", "HEAD", "--no-pager"],
         ),
-        # Removed from Git in 2.45; its value semantics can no longer be assumed.
-        ("removed --super-prefix", ["--super-prefix", "sub/"], None),
+        (
+            "separated legacy --super-prefix",
+            ["--super-prefix", "sub/"],
+            ["--super-prefix", "sub/"],
+        ),
+        (
+            "equals legacy --super-prefix",
+            ["--super-prefix=sub/"],
+            ["--super-prefix=sub/"],
+        ),
         ("unknown long option", ["--future-global", "value"], None),
         # An attached value is self-contained, so no token is ambiguous.
         ("unknown long option with equals", ["--future-global=value"], ["--future-global=value"]),
@@ -885,11 +838,7 @@ class GitGlobalOptionPrefixTest(unittest.TestCase):
     def test_noninteractive_resolves_subcommand_behind_globals(self) -> None:
         for name, prefix, git_args in self.PREFIX_CASES:
             command = " ".join(["git", *prefix, "rebase", "-i", "HEAD~3"])
-            expected = (
-                INTERACTIVE_REBASE_REASON
-                if git_args is not None
-                else NONINTERACTIVE_PARSE_ERROR_REASON
-            )
+            expected = INTERACTIVE_REBASE_REASON if git_args is not None else NONINTERACTIVE_PARSE_ERROR_REASON
             with self.subTest(name=name):
                 result = self.run_parser("noninteractive", command)
 
@@ -949,9 +898,7 @@ class GitGlobalOptionPrefixTest(unittest.TestCase):
             with self.subTest(command=command):
                 result = self.run_parser("noninteractive", command)
 
-                self.assertEqual(
-                    result.stdout, json_line({"block": INTERACTIVE_REBASE_REASON})
-                )
+                self.assertEqual(result.stdout, json_line({"block": INTERACTIVE_REBASE_REASON}))
 
     def test_attr_source_cannot_hide_a_commit_context(self) -> None:
         for command, git_args in (
@@ -1231,11 +1178,7 @@ class RmRfParserCliTest(unittest.TestCase):
                 self.assertEqual(result.stdout, expected_stdout)
 
     def test_split_string_expansion_limit_fails_closed(self) -> None:
-        excessive_split_string = (
-            "--split-string="
-            * (PARSER.MAX_ENV_SPLIT_STRING_EXPANSIONS + 1)
-            + "printf"
-        )
+        excessive_split_string = "--split-string=" * (PARSER.MAX_ENV_SPLIT_STRING_EXPANSIONS + 1) + "printf"
 
         result = self.run_parser(f"env {excessive_split_string} safe")
 

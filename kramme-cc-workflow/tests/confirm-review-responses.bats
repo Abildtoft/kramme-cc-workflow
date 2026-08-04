@@ -414,12 +414,12 @@ EOF
 	[[ "$output" == *"Unable to safely parse command"* ]]
 }
 
-@test "fails closed for commits behind removed --super-prefix" {
+@test "allows supported non-commit command behind legacy --super-prefix" {
 	mock_git_staged "notes.txt"
 
-	run run_hook "git --super-prefix sub/ commit -m test"
-	is_blocked
-	[[ "$output" == *"Unable to safely parse command"* ]]
+	run run_hook "git --super-prefix sub/ submodule--helper status"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
 }
 
 @test "fails closed for malformed supported command prefixes" {
