@@ -180,6 +180,14 @@
       "producer": "kramme:pr:github-review"
     },
     {
+      "id": "github-review-drafts",
+      "path": ".context/github-review-drafts/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:github-review"
+    },
+    {
       "id": "doc-review",
       "path": "DOC_REVIEW.md",
       "type": "file",
