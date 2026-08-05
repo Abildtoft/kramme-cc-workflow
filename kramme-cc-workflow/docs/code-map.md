@@ -19,7 +19,7 @@ Paths passed through file variables are relative to `kramme-cc-workflow/`.
 | --- | --- | --- |
 | Public docs and conventions | `README.md`, `CONTRIBUTING.md`, `CLAUDE.md`, `kramme-cc-workflow/docs/` | `git diff --check -- README.md CONTRIBUTING.md kramme-cc-workflow/docs` |
 | Plugin manifests | `.claude-plugin/marketplace.json`, `kramme-cc-workflow/.claude-plugin/plugin.json` | `make -C kramme-cc-workflow test-convert` |
-| Skills | `kramme-cc-workflow/skills/*/SKILL.md`, skill `references/`, `assets/`, `scripts/` | `make -C kramme-cc-workflow test-skill-contracts`, `make -C kramme-cc-workflow skill-security-changed`, targeted `tests/*skill*.bats` |
+| Skills | `kramme-cc-workflow/skills/*/SKILL.md`, skill `references/`, `assets/`, `scripts/` | Look up behavioral suites in `config/coverage-production-sources.json` as shown below; also run `make -C kramme-cc-workflow test-skill-contracts` and `make -C kramme-cc-workflow skill-security-changed` |
 | Agents | `kramme-cc-workflow/agents/*.md` | `bats kramme-cc-workflow/tests/agent-description-length.bats`, `make -C kramme-cc-workflow test-convert` |
 | Hook manifest and hooks | `kramme-cc-workflow/hooks/hooks.json`, `kramme-cc-workflow/hooks/*.sh` | `bats kramme-cc-workflow/tests/{auto-format,block-rm-rf,check-enabled,confirm-review-responses,context-links,noninteractive-git,skill-usage-stats}.bats`, plus the hook-specific tests below |
 | Hook enablement | `kramme-cc-workflow/hooks/lib/check-enabled.sh`, hook scripts that source it | `bats kramme-cc-workflow/tests/check-enabled.bats` |
@@ -41,6 +41,25 @@ Paths passed through file variables are relative to `kramme-cc-workflow/`.
 | Skill-review scorer | `kramme-cc-workflow/evals/skill-review/scorer.js` | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/scorer.test.js` |
 | SkillOpt adapter | `kramme-cc-workflow/evals/skillopt/` | `bats kramme-cc-workflow/tests/skillopt-adapter.bats kramme-cc-workflow/tests/skillopt-candidate-review.bats` |
 | Visual shared assets | `kramme-cc-workflow/scripts/generate-visual-shared-assets.py`, visual skill shared assets | `make -C kramme-cc-workflow check-visual-shared-assets` |
+
+## Skill Contract Lookup
+
+From the repository root, look up every registered suite and contract kind for an exact `SKILL.md` path:
+
+```bash
+skill_path="kramme-cc-workflow/skills/kramme:pr:create/SKILL.md"
+jq -r --arg skill "$skill_path" \
+  '.skill_contracts[] | select(.skills | index($skill)) | [.kind, .suite] | @tsv' \
+  kramme-cc-workflow/config/coverage-production-sources.json
+```
+
+Run each returned suite through the focused Bats entry point, removing the leading `kramme-cc-workflow/` from the stored suite path:
+
+```bash
+make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/pr-create-guidance.bats
+```
+
+No lookup result means the skill is still listed under `skill_contract_coverage.mechanical_only` in `scripts/synced-contracts.yaml`. The linter warns for that reviewed debt and fails when a skill is in neither the behavioral registry nor the explicit burndown.
 
 ## Common Investigation Paths
 
