@@ -315,11 +315,15 @@ def check_detached_plan_compatibility(root: pathlib.Path) -> None:
 
     breakdown = read("skills/kramme:code:breakdown-findings/SKILL.md")
     plan_template = read("skills/kramme:code:breakdown-findings/assets/plan-template.md")
+    generated_index = read("skills/kramme:code:breakdown-findings/assets/index-template.md")
     generation_checks = read("skills/kramme:code:breakdown-findings/references/generation-checks.md")
     reconcile = read("skills/kramme:code:breakdown-findings/references/reconcile-workflow.md")
     plan_to_pr = read("skills/kramme:code:plan-to-pr/SKILL.md")
     attachment_input = read("skills/kramme:code:plan-to-pr/references/attachment-input.md")
     standalone_index = read("skills/kramme:code:plan-to-pr/assets/standalone-index-template.md")
+    completion = read("skills/kramme:pr:complete-work/SKILL.md")
+    scope_handoff = read("skills/kramme:pr:complete-work/references/standalone-scope-handoff.md")
+    scoped_ci = read("skills/kramme:pr:fix-ci/references/scoped-plan.md")
     routing = read("skills/kramme:code:work-from-plan/references/routing.md")
 
     _require_terms(
@@ -330,7 +334,18 @@ def check_detached_plan_compatibility(root: pathlib.Path) -> None:
     _require_terms(
         "detachable-plan scope template",
         plan_template,
-        ("repository-relative file", "existing directory", "missing path", "one intended file"),
+        (
+            "**Scope contract:** exact files",
+            "repository-relative file",
+            "existing directory",
+            "missing path",
+            "one intended file",
+        ),
+    )
+    _require_terms(
+        "generated index scope contract",
+        generated_index,
+        ("**Scope contract:** exact files",),
     )
     _require_terms(
         "detachable-plan generation checks",
@@ -340,7 +355,34 @@ def check_detached_plan_compatibility(root: pathlib.Path) -> None:
     _require_terms(
         "standalone attachment index",
         standalone_index,
-        ("**Attachment contract:** {attachment-contract}", "{sequencing-summary}", "## Dependency Map"),
+        (
+            "**Attachment contract:** {attachment-contract}",
+            "**Scope contract:** exact files",
+            "{sequencing-summary}",
+            "## Dependency Map",
+        ),
+    )
+    for label, text in (
+        ("plan-to-PR scope classification", plan_to_pr),
+        ("completion scope classification", scope_handoff),
+        ("scoped CI classification", scoped_ci),
+    ):
+        _require_terms(
+            label,
+            text,
+            (
+                "**Scope contract:** exact files",
+                "PLAN_SCOPE_MODE=exact-files",
+                "PLAN_SCOPE_MODE=containment",
+                "legacy compatibility",
+                "marker present in only part of the set",
+                "never infer exact-file mode from file-shaped paths alone",
+            ),
+        )
+    _require_terms(
+        "completion scope handoff",
+        completion,
+        ("marked generated plan sets", "unmarked legacy generated sets"),
     )
     _require_terms(
         "detached direct routing",

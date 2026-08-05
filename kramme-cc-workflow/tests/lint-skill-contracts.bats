@@ -832,7 +832,7 @@ EOF
   [[ "$scoped_plan_text" == *'Require the recorded checkpoint not to be an ancestor of `{live-head}`'* ]]
   [[ "$scoped_plan_text" == *'Reject merge commits, missing or reordered commits'* ]]
   [[ "$scoped_plan_text" == *'atomically refresh only the workflow-state checkpoint head/tree'* ]]
-  [[ "$scoped_plan_text" == *'repeat every archive identity, base, same-repository Pull Request identity, head agreement, tree, standalone eligibility, and committed-path proof'* ]]
+  [[ "$scoped_plan_text" == *'repeat every archive identity, base, same-repository Pull Request identity, head agreement, tree, exact-file eligibility, and committed-path proof'* ]]
   [[ "$scoped_plan_text" == *'atomically refresh both the workflow checkpoint head/tree and execution-result completion commit and Pull Request head OID'* ]]
   [[ "$scoped_plan_text" == *'In initial lifecycle mode, immediately after every proven push use the atomic archive update contract above to replace only the archived workflow-state checkpoint head/tree'* ]]
   [[ "$scoped_plan_text" == *'never adding an execution result'* ]]

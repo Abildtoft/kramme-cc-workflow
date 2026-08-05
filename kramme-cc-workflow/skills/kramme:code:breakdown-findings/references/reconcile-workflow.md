@@ -73,6 +73,7 @@ Load this only when `RECONCILE_MODE=true`.
 
 7. Validate update-scoped plans before collecting per-plan source evidence:
    - Before running any per-plan evidence command, validate every update-scoped plan that exists. Require its filename and execution label to match its index row, a valid lifecycle `Status:`, explicit `In Scope` and `Out of Scope` sections, a non-empty literal `In Scope` path list, and dependency labels that resolve to rows in `PR_PLAN_INDEX.md`.
+   - Read the index and every implementation plan it references. Require each artifact to contain exactly one opening metadata field `**Scope contract:** exact files`, or require every artifact to omit it as a legacy set. Reject duplicate fields, unknown values, or a marker present in only part of the set. Preserve the established contract on every reconcile write; never backfill an unmarked legacy set without regenerating and revalidating the complete set's file-level scope.
    - When Git evidence is available, require the plan's literal `Planned at` commit to resolve in `EVIDENCE_ROOT`. When Git evidence is unavailable, require the explicit `not-a-git-repo` marker and manual drift note produced by generation mode.
    - If validation fails, stop with `MISSING REQUIREMENT: <plan> has invalid or incomplete <field>; repair the plan before reconcile can collect evidence.` Never run a diff or status command with an empty or unvalidated path set.
 8. Collect per-plan source evidence:

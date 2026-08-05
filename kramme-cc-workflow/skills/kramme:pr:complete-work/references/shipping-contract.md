@@ -26,7 +26,7 @@ Re-query the exact current remote ref with `git ls-remote --heads origin "refs/h
 
 1. Require `git status --porcelain` to be empty. Gitignored source-workflow archives may remain.
 2. Require the current branch to equal the prepared `{work-branch}` and differ from `{base-branch}`.
-3. When `PLAN_SCOPE_ACTIVE=true`, run `RECHECK_STANDALONE_SCOPE` for `PLAN_SCOPE_MODE=exact-files`, then collect every committed path in `{scope-base-commit}..HEAD`. Require exact equality with one `VALIDATED_SCOPE_PATHS` entry for `exact-files`, and otherwise allow exact path or directory containment. Stop before history rewriting or publication on the first mismatch or newly ineligible standalone path.
+3. When `PLAN_SCOPE_ACTIVE=true`, run `RECHECK_STANDALONE_SCOPE` for `PLAN_SCOPE_MODE=exact-files`, then collect every committed path in `{scope-base-commit}..HEAD`. Require exact equality with one `VALIDATED_SCOPE_PATHS` entry for `exact-files`, and otherwise allow exact path or directory containment. Stop before history rewriting or publication on the first mismatch or newly ineligible exact-file path.
 4. Record:
 
    ```bash
@@ -118,7 +118,7 @@ This is a blocking overall result, not success, but callers must persist their i
 3. Require a clean worktree.
 4. Record local `HEAD` as `{final-head}` and require equality with `headRefOid`.
 5. Record `git rev-parse 'HEAD^{tree}'` as `{final-tree}`.
-6. When `PLAN_SCOPE_ACTIVE=true`, rerun `RECHECK_STANDALONE_SCOPE` for `PLAN_SCOPE_MODE=exact-files`, then collect every committed path in `{scope-base-commit}..HEAD` again and enforce the mode's exact-or-containment rule. If any path falls outside `VALIDATED_SCOPE_PATHS` or a standalone path is newly ineligible, return `published_blocked` with the first mismatch and do not claim plan-scoped completion.
+6. When `PLAN_SCOPE_ACTIVE=true`, rerun `RECHECK_STANDALONE_SCOPE` for `PLAN_SCOPE_MODE=exact-files`, then collect every committed path in `{scope-base-commit}..HEAD` again and enforce the mode's exact-or-containment rule. If any path falls outside `VALIDATED_SCOPE_PATHS` or an exact-file path is newly ineligible, return `published_blocked` with the first mismatch and do not claim plan-scoped completion.
 7. If `{final-tree}` differs from `{verified-tree}`, run exactly one validation-only final quality round using the applicability and archive rules from `review-convergence.md`, with active gates in regular-review, convention-review, refactor order. Do not edit, re-enter CI fixing, or start another quality round.
 8. If that validation-only round passes, invoke `kramme:verify:run` once on the CI-remediated tree and require every applicable check to pass without further source changes.
 

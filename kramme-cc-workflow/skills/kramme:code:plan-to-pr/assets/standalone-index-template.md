@@ -1,6 +1,6 @@
 # PR Plan Index
 
-**Input mode:** standalone attachment **Attachment contract:** {attachment-contract} **Source object:** `{plan-source-object-id}` **Source snapshot:** `ATTACHMENT_SOURCE.md` **Planned at:** commit `{planned-at}` **Plans generated:** 1 **Rejection record:** `PR_PLAN_REJECTIONS.md`
+**Input mode:** standalone attachment **Attachment contract:** {attachment-contract} **Scope contract:** exact files **Source object:** `{plan-source-object-id}` **Source snapshot:** `ATTACHMENT_SOURCE.md` **Planned at:** commit `{planned-at}` **Plans generated:** 1 **Rejection record:** `PR_PLAN_REJECTIONS.md`
 
 ## Plans
 
