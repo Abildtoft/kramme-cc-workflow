@@ -236,6 +236,15 @@ SH
 }
 
 @test "pr-verify runs every Pull Request gate class including coverage" {
+  awk '
+    $1 == "pr-verify:" {
+      for (position = 2; position <= NF; position++) {
+        if ($position == "test") found = 1
+      }
+    }
+    END { exit !found }
+  ' "$BATS_TEST_DIRNAME/../Makefile"
+
   run make -C "$BATS_TEST_DIRNAME/.." --no-print-directory --dry-run pr-verify
 
   [ "$status" -eq 0 ]
@@ -255,6 +264,11 @@ SH
   [ "$status" -eq 0 ]
   [[ "$output" == *"--experimental-test-coverage"* ]]
   [[ "$output" == *"evals/skill-review/run-eval.js --split all"* ]]
+}
+
+@test "npm check:deps aliases invoke the read-only dependency target" {
+  [ "$(jq -r '.scripts["check:deps"]' "$BATS_TEST_DIRNAME/../../package.json")" = "make -C kramme-cc-workflow check-deps" ]
+  [ "$(jq -r '.scripts["check:deps"]' "$BATS_TEST_DIRNAME/../package.json")" = "make check-deps" ]
 }
 
 @test "npm aliases resolve to defined Makefile targets" {
@@ -824,6 +838,66 @@ REPORT
 
   [ "$status" -ne 0 ]
   [[ "$output" == *"Python per-file floors are obsolete"*"plugin/hooks/low.py (35.00%)"* ]]
+}
+
+@test "coverage-python rejects a nonnumeric per-file floor directly" {
+  setup_makefile_contract_repo
+  create_fake_python_coverage_tool
+  write_fake_python_coverage_report 35
+  update_fake_inventory '.python.measured_floors = {"plugin/hooks/example.py": "disabled"}'
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" PYTHON_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/python-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-python
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Production coverage inventory is malformed"* ]]
+}
+
+@test "coverage-python rejects a per-file floor for an unmeasured source directly" {
+  setup_makefile_contract_repo
+  create_fake_python_coverage_tool
+  write_fake_python_coverage_report 35
+  update_fake_inventory '.python.measured_floors = {"plugin/scripts/contract.py": 10}'
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" PYTHON_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/python-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-python
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Production coverage inventory is malformed"* ]]
+}
+
+@test "coverage-python rejects a per-file floor at the stale threshold" {
+  setup_makefile_contract_repo
+  create_fake_python_coverage_tool
+  write_fake_python_coverage_report 35
+  update_fake_inventory '.python.measured_floors = {"plugin/hooks/example.py": 35}'
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" PYTHON_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/python-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-python
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Production coverage inventory is malformed"* ]]
+}
+
+@test "coverage-python accepts a per-file floor below the stale threshold" {
+  setup_makefile_contract_repo
+  create_fake_python_coverage_tool
+  add_low_coverage_python_module 34
+  update_fake_inventory '.python.measured_floors = {"plugin/hooks/low.py": 34}'
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" PYTHON_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/python-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-python
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"34.00% (floor 34%) plugin/hooks/low.py"* ]]
+}
+
+@test "coverage-python preserves decimal floors in failure diagnostics" {
+  setup_makefile_contract_repo
+  create_fake_python_coverage_tool
+  add_low_coverage_python_module 19.4
+  update_fake_inventory '.python.measured_floors = {"plugin/hooks/low.py": 19.5}'
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" PYTHON_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/python-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-python
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"plugin/hooks/low.py (19.40% < 19.50%)"* ]]
 }
 
 @test "coverage-bats-contract accepts a complete shell source mapping" {
