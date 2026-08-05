@@ -27,7 +27,7 @@ Run a non-mutating environment check and report what is ready, missing, or only 
    `SKILL_DIR` is the directory containing this `SKILL.md`. Add `--json` when requested. Do not `cd` into the skill directory before running it; the `Context` section intentionally reports the workspace where the skill was invoked. The checker must not install packages, edit config, fetch remotes, delete files, or write repo-local state.
 
 3. Read the report in four groups:
-   - `Required`: core tools this plugin assumes for broad operation.
+   - `Required`: Bash, Git, `jq`, Python 3.10+, and Node.js 18+, which the plugin assumes for the full default experience.
    - `Recommended`: tools used by common PR, verification, and conversion workflows.
    - `Optional`: tools used only by specific skills or local maintenance paths.
    - `Context`: repository, Conductor workspace, and local configuration signals.
@@ -39,7 +39,7 @@ Run a non-mutating environment check and report what is ready, missing, or only 
 6. End with a short readiness summary:
    - `Ready`: required tools are present.
    - `Ready with optional gaps`: required tools are present, but recommended or optional tools are missing.
-   - `Blocked`: at least one required tool is missing.
+   - `Blocked`: at least one required tool is missing, below its documented minimum version, or unable to complete its runtime probe.
 
 ## Safety Rules
 

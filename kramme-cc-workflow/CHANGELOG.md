@@ -10,6 +10,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 ### Changed
 
+- **Breaking:** Expand `/kramme:setup --json` required-runtime reporting: Bash, `jq`, Python, and Node now appear in `required`; Python and Node can report `outdated` or `error`; and `jq` and Node no longer appear in `recommended`. Consumers must locate tools by `name` instead of assuming group membership and treat every non-`ok` required status as blocking. Ship this contract change only in the next major release.
 - Breaking: Replaced `/kramme:visual:diff-review [branch|commit|PR#|range]` with `/kramme:pr:walkthrough --report [branch|commit|PR#|range]`.
 - **Breaking:** Replace `/kramme:pr:update-split-plans` with `/kramme:code:breakdown-findings --reconcile`. Existing prompts and automation must migrate to the replacement command; plan paths, `--all`, `--worktree`, `--source`, `--base`, and `--auto` remain available in reconcile mode. Former no-scope calls must add `--all` to preserve the removed command's active-plan-only default; zero-scope reconcile retains `kramme:code:breakdown-findings`'s all-indexed behavior.
 - **Breaking:** Rename `/kramme:siw:spec-audit:auto-fix` to `/kramme:siw:apply-spec-audit-fixes` and `/kramme:docs:out-of-scope` to `/kramme:docs:track-rejected-enhancements`. Existing prompts and automation must migrate to the replacement commands; arguments and behavior are unchanged. Ship these command removals only in the next major release.
