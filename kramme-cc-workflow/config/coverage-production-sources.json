@@ -103,6 +103,12 @@
       "kramme-cc-workflow/skills/kramme:visual:demo-reel/scripts/demo_reel_helper.py": [
         "kramme-cc-workflow/tests/demo-reel-skill.bats"
       ]
+    },
+    "measured_floors": {
+      "kramme-cc-workflow/scripts/lint_skill_contracts/checks/basic.py": 5,
+      "kramme-cc-workflow/scripts/lint_skill_contracts/checks/epilogue.py": 8,
+      "kramme-cc-workflow/scripts/lint_skill_contracts/checks/hooks_json.py": 5,
+      "kramme-cc-workflow/scripts/lint_skill_contracts/readme.py": 15
     }
   },
   "shell": {

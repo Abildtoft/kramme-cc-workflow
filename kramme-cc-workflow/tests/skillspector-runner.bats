@@ -100,6 +100,16 @@ count_invocations() {
 	[[ "$output" == *"No changed skill directories found against HEAD."* ]]
 }
 
+@test "changed scan explains a base ref it cannot resolve" {
+	run "$SCRIPT" --changed --base origin/does-not-exist --output-dir "$REPORT_DIR"
+
+	[ "$status" -eq 2 ]
+	[[ "$output" == *"Cannot resolve a merge base between 'origin/does-not-exist' and HEAD."* ]]
+	[[ "$output" == *"git fetch origin main"* ]]
+	[[ "$output" != *"fatal:"* ]]
+	[ "$(count_invocations)" = "0" ]
+}
+
 @test "changed scan maps resource changes to the owning skill directory" {
 	commit_file "kramme-cc-workflow/skills/kramme:one/references/example.md" "example" "change skill resource"
 

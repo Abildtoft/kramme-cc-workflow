@@ -200,7 +200,11 @@ discover_changed_skills() {
   local skill_name
 
   SKILL_DIRS=()
-  merge_base=$(git -C "$REPO_ROOT" merge-base "$BASE_REF" HEAD)
+  if ! merge_base=$(git -C "$REPO_ROOT" merge-base "$BASE_REF" HEAD 2> /dev/null); then
+    echo "Cannot resolve a merge base between '$BASE_REF' and HEAD." >&2
+    echo "Fetch the base ref (for example: git fetch origin main), or pass --base <ref> with a ref that shares history with HEAD." >&2
+    exit 2
+  fi
   plugin_rel=$(relative_plugin_path)
   if [ -n "$plugin_rel" ]; then
     skills_prefix="$plugin_rel/skills/"

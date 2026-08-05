@@ -1,4 +1,4 @@
-.PHONY: lint lint-shell lint-python lint-js typecheck-python format-check pre-commit preflight pr-verify verify test test-smoke test-bootstrap test-bats test-bats-file test-node test-node-watch test-node-file test-python test-python-file test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage unit-coverage coverage-node coverage-python coverage-bats-contract check-python-static-inventory check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check bootstrap-check bootstrap-install install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-coverage-inventory-deps check-shell-deps check-ruff-deps check-mypy-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
+.PHONY: lint lint-shell lint-python lint-js typecheck-python format-check pre-commit pr-verify verify test test-smoke test-bootstrap test-bats test-bats-file test-node test-node-watch test-node-file test-python test-python-file test-verbose test-convert test-noninteractive test-block test-context test-format test-skill-usage test-skill-contracts test-skill-review-eval test-git-clean-gone test-git-worktree coverage unit-coverage coverage-node coverage-python coverage-bats-contract check-python-static-inventory check-visual-shared-assets sync-visual-shared-assets skill-contracts skill-security skill-security-changed skill-security-semantic skill-eval-skill-review skillopt-candidate-check bootstrap-check bootstrap-install install-test-deps check-deps check-bats-deps check-node-deps check-python-deps check-coverage-inventory-deps check-shell-deps check-ruff-deps check-mypy-deps check-js-deps check-static-deps check-test-deps check-format-deps check-security-deps check-security-changed-deps
 
 ROOT_DIR := $(abspath ..)
 PLUGIN_REL := $(shell basename "$(CURDIR)")
@@ -34,7 +34,14 @@ NODE_COVERAGE_LINES ?= 80
 NODE_COVERAGE_BRANCHES ?= 70
 NODE_COVERAGE_FUNCTIONS ?= 80
 PYTHON_COVERAGE_MIN ?= 35
-PYTHON_TRACE_IGNORE_DIRS := $(shell python3 -c 'import os, sysconfig; print(os.pathsep.join(path for path in {sysconfig.get_path("stdlib"), sysconfig.get_path("platstdlib")} if path))' 2>/dev/null)
+# Per-file floor for measured Python sources. Kept conservative because `trace`
+# attributes lines differently across supported Python versions; seed
+# python.measured_floors for legacy debt instead of lowering this value.
+PYTHON_FILE_COVERAGE_MIN ?= 20
+PYTHON_FILE_COVERAGE_STALE_MARGIN ?= 15
+# Include the resolved stdlib locations too: package managers such as Homebrew
+# report a symlinked sysconfig path while trace reports the real one.
+PYTHON_TRACE_IGNORE_DIRS := $(shell python3 -c 'import os, sysconfig; paths = {sysconfig.get_path("stdlib"), sysconfig.get_path("platstdlib")}; paths |= {os.path.realpath(path) for path in paths if path}; print(os.pathsep.join(sorted(path for path in paths if path)))' 2>/dev/null)
 PYTHON_TRACE_IGNORE_ARGS = $(if $(PYTHON_TRACE_IGNORE_DIRS),--ignore-dir '$(PYTHON_TRACE_IGNORE_DIRS)',)
 COVERAGE_PRODUCTION_INVENTORY = config/coverage-production-sources.json
 
@@ -145,14 +152,13 @@ format-check: check-format-deps check-ruff-deps
 # Optional contributor gate; this does not install or modify repository Git hooks.
 pre-commit: format-check lint test-smoke
 
-preflight: check-deps
-
-# Pre-PR gate: check-only formatting, static checks, contracts, security, and tests.
+# Pre-PR gate: local test, coverage, lint, format, contract, and changed-skill
+# SkillSpector checks. CI also owns runtime-compatibility and installer jobs.
 pr-verify: SKILLSPECTOR_FORMAT=json
 pr-verify: SKILLSPECTOR_FAIL_ON=high
-pr-verify: preflight lint format-check skill-contracts skill-security-changed test
+pr-verify: check-deps lint format-check skill-contracts skill-security-changed test coverage
 
-# Full local/release gate: PR checks plus slower eval suites.
+# Full local/release gate: PR checks plus the standalone skill-review eval split.
 verify: pr-verify skill-eval-skill-review
 
 skill-contracts: check-python-deps
@@ -286,7 +292,8 @@ skillopt-candidate-check:
 
 coverage: unit-coverage coverage-bats-contract
 
-# Node/Python line coverage gates; Bats integration behavior uses an inventory proxy.
+# Node/Python line coverage gates, including the per-file Python floor; Bats
+# integration behavior uses an inventory proxy.
 unit-coverage: coverage-node coverage-python
 
 # Native coverage thresholds were added after the Node 20 version used in CI,
@@ -354,17 +361,37 @@ coverage-node: check-node-deps check-coverage-inventory-deps
 
 coverage-python: check-python-deps check-coverage-inventory-deps test-python
 	@tmpdir=$$(mktemp -d); counts="$$tmpdir/counts"; coverdir="$$tmpdir/report-files"; report="$$tmpdir/python-coverage.txt"; inventory_rows="$$tmpdir/python-inventory.tsv"; \
-		jq -er '.python as $$language | select(($$language.measured | type) == "array" and ($$language.measured | length) > 0 and ($$language.contract_only | type) == "object") | (($$language.measured[] | ["measured", .]), ($$language.contract_only | keys[] | ["registered", .])) | @tsv' "$(COVERAGE_PRODUCTION_INVENTORY)" >"$$inventory_rows" || { echo "Production coverage inventory is malformed"; rm -rf "$$tmpdir"; exit 1; }; \
+		jq -er --argjson file_minimum "$(PYTHON_FILE_COVERAGE_MIN)" --argjson stale_margin "$(PYTHON_FILE_COVERAGE_STALE_MARGIN)" 'def floors($$measured): type == "object" and all(to_entries[]; (.key | type) == "string" and (.key | length) > 0 and (.value | type) == "number" and .value >= 0 and .value < ($$file_minimum + $$stale_margin)) and ((keys - $$measured) | length == 0); def optional_floors($$language): if ($$language | has("measured_floors")) then $$language.measured_floors else {} end; .python as $$language | (optional_floors($$language)) as $$floor_map | select(($$language.measured | type) == "array" and ($$language.measured | length) > 0 and ($$language.contract_only | type) == "object" and ($$floor_map | floors($$language.measured))) | (($$language.measured[] | ["measured", .]), ($$language.contract_only | keys[] | ["registered", .]), ($$floor_map | to_entries[] | ["floor", .key, (.value | tostring)])) | @tsv' "$(COVERAGE_PRODUCTION_INVENTORY)" >"$$inventory_rows" || { echo "Production coverage inventory is malformed"; rm -rf "$$tmpdir"; exit 1; }; \
 		python3 -c 'import pickle, sys; pickle.dump(({}, {}, {}), open(sys.argv[1], "wb"), 1)' "$$counts"; \
 		python3 -m trace --count --file "$$counts" --coverdir "$$coverdir" $(PYTHON_TRACE_IGNORE_ARGS) --module unittest discover -s $(PYTHON_TEST_DIR) -p '$(PYTHON_TEST_PATTERN)' || { status=$$?; rm -rf "$$tmpdir"; exit $$status; }; \
 		python3 -m trace --count --file "$$counts" --missing --summary --coverdir "$$coverdir" $(PYTHON_TRACE_IGNORE_ARGS) --module unittest discover -s $(PYTHON_MAINTENANCE_TEST_DIR) -p '$(PYTHON_TEST_PATTERN)' >"$$report" 2>&1; status=$$?; \
 		cat "$$report"; \
 		if [ $$status -ne 0 ]; then rm -rf "$$tmpdir"; exit $$status; fi; \
-		awk -v root="$(ROOT_DIR)" -v plugin="$(PLUGIN_REL)" -v minimum="$(PYTHON_COVERAGE_MIN)" ' \
+		awk -v root="$(ROOT_DIR)" -v plugin="$(PLUGIN_REL)" -v minimum="$(PYTHON_COVERAGE_MIN)" -v file_minimum="$(PYTHON_FILE_COVERAGE_MIN)" -v stale_margin="$(PYTHON_FILE_COVERAGE_STALE_MARGIN)" ' \
 			NR == FNR { \
-				split($$0, inventory_entry, "\t"); registered[inventory_entry[2]]=1; \
+				split($$0, inventory_entry, "\t"); \
+				if (inventory_entry[1] == "floor") { floor_value[inventory_entry[2]]=inventory_entry[3] + 0; next } \
+				registered[inventory_entry[2]]=1; \
 				if (inventory_entry[1] == "measured") { expected[inventory_entry[2]]=1; order[++expected_count]=inventory_entry[2] } \
 				next \
+			} \
+			function required_floor(path) { return (path in floor_value) ? floor_value[path] : file_minimum } \
+			function format_floor(value) { return value == int(value) ? sprintf("%d", value) : sprintf("%.2f", value) } \
+			function report_lowest(    remaining, printed, candidate, best, best_path) { \
+				remaining=0; for (candidate in file_percent) remaining++; \
+				if (remaining == 0) return; \
+				printed=remaining < 10 ? remaining : 10; \
+				printf "Python per-file coverage (%d lowest of %d measured files, floor %s%%):\n", printed, remaining, format_floor(file_minimum); \
+				while (printed-- > 0) { \
+					best_path=""; \
+					for (candidate in file_percent) { \
+						if (candidate in file_reported) continue; \
+						if (best_path == "" || file_percent[candidate] < best || (file_percent[candidate] == best && candidate < best_path)) { best=file_percent[candidate]; best_path=candidate } \
+					} \
+					if (best_path == "") break; \
+					file_reported[best_path]=1; \
+					printf "  %6.2f%% (floor %s%%) %s\n", file_percent[best_path], format_floor(required_floor(best_path)), best_path \
+				} \
 			} \
 			function print_paths(label, count, values,    position, limit) { \
 				limit=count < 10 ? count : 10; \
@@ -378,21 +405,32 @@ coverage-python: check-python-deps check-coverage-inventory-deps test-python
 				if (index(path, root "/") == 1) return substr(path, length(root) + 2); \
 				if (index(path, "/.agents/")) { sub("^.*/[.]agents/", ".agents/", path); return path } \
 				if (index(path, "/" plugin "/")) { sub("^.*/" plugin "/", plugin "/", path); return path } \
+				if (index(path, "/") == 1) return ""; \
 				if (index(path, plugin "/") != 1 && index(path, ".agents/") != 1) return plugin "/" path; \
 				return path \
 			} \
-			$$1 ~ /^[0-9]+$$/ && $$2 ~ /^[0-9]+%$$/ && $$0 ~ /\(.*[.]py\)[[:space:]]*$$/ { \
+			$$1 ~ /^[0-9]+$$/ && $$2 ~ /^[0-9]+([.][0-9]+)?%$$/ && $$0 ~ /\(.*[.]py\)[[:space:]]*$$/ { \
 				path=$$0; sub(/^[^(]*\(/, "", path); sub(/\)[[:space:]]*$$/, "", path); path=normalize_path(path); \
-				if (path ~ /(^|\/)tests\// || path ~ /(^|\/)test_[^\/]*[.]py$$/) next; \
+				if (path == "") next; \
+				if (path ~ /(^|\/)tests\// || path ~ /(^|\/)test_[^\/]*[.]py$$/ || path ~ /(^|\/)__init__[.]py$$/) next; \
 				seen[path]=1; \
 				if (!(path in registered) && !(path in unexpected)) unexpected_order[++unexpected_count]=path; \
 				unexpected[path]=1; \
-				if (path in expected) { percent=$$2; sub(/%/, "", percent); lines += $$1; weighted += $$1 * percent } \
+				if (path in expected) { percent=$$2; sub(/%/, "", percent); file_percent[path]=percent + 0; lines += $$1; weighted += $$1 * percent } \
 			} \
 			END { \
 				for (position=1; position <= expected_count; position++) if (!(order[position] in seen)) missing[++missing_count]=order[position]; \
 				if (missing_count) { print_paths("Python coverage missing inventory files", missing_count, missing); failed=1 } \
 				if (unexpected_count) { print_paths("Python coverage report has unregistered production files", unexpected_count, unexpected_order); failed=1 } \
+				for (position=1; position <= expected_count; position++) { \
+					path=order[position]; \
+					if (!(path in file_percent)) continue; \
+					if (file_percent[path] < required_floor(path)) { below[++below_count]=sprintf("%s (%.2f%% < %s%%)", path, file_percent[path], format_floor(required_floor(path))) } \
+					else if ((path in floor_value) && file_percent[path] >= file_minimum + stale_margin) { stale[++stale_count]=sprintf("%s (%.2f%%)", path, file_percent[path]) } \
+				} \
+				if (below_count) { print_paths("Python files below the per-file coverage floor; add tests or seed python.measured_floors", below_count, below); failed=1 } \
+				if (stale_count) { print_paths("Python per-file floors are obsolete; delete them from python.measured_floors", stale_count, stale); failed=1 } \
+				report_lowest(); \
 				if (!lines) { print "Python production coverage summary not found" > "/dev/stderr"; failed=1 } \
 				else { \
 					coverage=weighted / lines; printf "Python production aggregate: %.2f%% (%d executable lines)\n", coverage, lines; \
@@ -405,7 +443,7 @@ coverage-python: check-python-deps check-coverage-inventory-deps test-python
 coverage-bats-contract: check-coverage-inventory-deps check-python-static-inventory
 	@tmpdir=$$(mktemp -d); inventory="$(CURDIR)/$(COVERAGE_PRODUCTION_INVENTORY)"; root="$(ROOT_DIR)"; \
 		trap 'rm -rf "$$tmpdir"' EXIT; \
-		if ! jq -e 'def string_array: type == "array" and length > 0 and all(.[]; type == "string" and length > 0); def mappings: type == "object" and all(to_entries[]; (.key | type == "string" and length > 0) and (.value | string_array)); def exclusions: type == "object" and all(to_entries[]; (.key | type == "string" and length > 0) and (.value | type == "string" and length > 0)); (.javascript | type == "object") and (.javascript.measured | string_array) and (.javascript.contract_only | mappings) and ((.javascript.excluded // {}) | exclusions) and (.python | type == "object") and (.python.measured | string_array) and (.python.contract_only | mappings) and (.shell | type == "object") and (.shell.contract_only | mappings) and ([.javascript.measured[], (.javascript.contract_only | keys[]), ((.javascript.excluded // {}) | keys[])] | length == (unique | length)) and ([.python.measured[], (.python.contract_only | keys[])] | length == (unique | length))' "$$inventory" >/dev/null 2>&1; then \
+		if ! jq -e --argjson file_minimum "$(PYTHON_FILE_COVERAGE_MIN)" --argjson stale_margin "$(PYTHON_FILE_COVERAGE_STALE_MARGIN)" 'def string_array: type == "array" and length > 0 and all(.[]; type == "string" and length > 0); def mappings: type == "object" and all(to_entries[]; (.key | type == "string" and length > 0) and (.value | string_array)); def exclusions: type == "object" and all(to_entries[]; (.key | type == "string" and length > 0) and (.value | type == "string" and length > 0)); def floors: type == "object" and all(to_entries[]; (.key | type == "string" and length > 0) and (.value | type == "number" and . >= 0 and . < ($$file_minimum + $$stale_margin))); def optional_floors: if has("measured_floors") then .measured_floors else {} end; (.python | optional_floors) as $$floor_map | (.javascript | type == "object") and (.javascript.measured | string_array) and (.javascript.contract_only | mappings) and ((.javascript.excluded // {}) | exclusions) and (.python | type == "object") and (.python.measured | string_array) and (.python.contract_only | mappings) and ($$floor_map | floors) and (((($$floor_map | keys) - .python.measured) | length) == 0) and (.shell | type == "object") and (.shell.contract_only | mappings) and ([.javascript.measured[], (.javascript.contract_only | keys[]), ((.javascript.excluded // {}) | keys[])] | length == (unique | length)) and ([.python.measured[], (.python.contract_only | keys[])] | length == (unique | length))' "$$inventory" >/dev/null 2>&1; then \
 			echo "Production coverage inventory is malformed"; exit 1; \
 		fi; \
 		jq -r '.javascript.measured[], (.javascript.contract_only | keys[]), ((.javascript.excluded // {}) | keys[])' "$$inventory" | sort >"$$tmpdir/javascript.registered"; \
@@ -467,7 +505,8 @@ bootstrap-install:
 # Backward-compatible setup alias.
 install-test-deps: bootstrap-install
 
-# Check verification prerequisites
+# Read-only prerequisite check. This verifies that the tools the verification
+# targets need are installed; it never lints, tests, or installs anything.
 check-deps: check-static-deps check-test-deps check-format-deps check-security-changed-deps
 	@echo "All verification dependencies installed."
 
