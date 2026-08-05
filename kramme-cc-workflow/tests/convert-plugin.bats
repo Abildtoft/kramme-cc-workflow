@@ -234,6 +234,7 @@ SH
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/dev-server/detect-url.sh" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/lib/shell-helpers.sh" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/resolve-base.sh" ]
+	[ -x "$marketplace_root/plugins/kramme-cc-workflow/scripts/resolve-stack-membership.sh" ]
 	[ -x "$marketplace_root/plugins/kramme-cc-workflow/scripts/verify-rewrite-state.sh" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/collect-review-diff.sh" ]
 	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/skill-usage.js" ]
@@ -241,6 +242,7 @@ SH
 	[ -f "$cache_root/scripts/dev-server/detect-url.sh" ]
 	[ -f "$cache_root/scripts/lib/shell-helpers.sh" ]
 	[ -f "$cache_root/scripts/resolve-base.sh" ]
+	[ -x "$cache_root/scripts/resolve-stack-membership.sh" ]
 	[ -x "$cache_root/scripts/verify-rewrite-state.sh" ]
 	[ -f "$cache_root/scripts/collect-review-diff.sh" ]
 	[ -f "$cache_root/scripts/skill-usage.js" ]
@@ -248,6 +250,7 @@ SH
 	[ -f "$TMP_DIR/.codex/scripts/dev-server/detect-url.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/lib/shell-helpers.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/resolve-base.sh" ]
+	[ -x "$TMP_DIR/.codex/scripts/resolve-stack-membership.sh" ]
 	[ -x "$TMP_DIR/.codex/scripts/verify-rewrite-state.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/collect-review-diff.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/skill-usage.js" ]
@@ -264,12 +267,16 @@ SH
 	[ "$status" -eq 0 ]
 	run grep -nF "RESOLVED=$('$TMP_DIR/.codex/scripts/resolve-base.sh' \"\${ARGS[@]}\")" "$TMP_DIR/.codex/skills/kramme:git:recreate-commits/SKILL.md"
 	[ "$status" -eq 0 ]
+	run grep -nF "STACK_RESOLVED=$('$TMP_DIR/.codex/scripts/resolve-stack-membership.sh')" "$TMP_DIR/.codex/skills/kramme:pr:rebase/SKILL.md"
+	[ "$status" -eq 0 ]
 	run grep -nF "'$TMP_DIR/.codex/scripts/verify-rewrite-state.sh'" "$TMP_DIR/.codex/skills/kramme:git:recreate-commits/SKILL.md"
 	[ "$status" -eq 0 ]
 	run grep -nF "PUSH_RESOLVED=\$(\"$TMP_DIR/.codex/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh\" \\" "$TMP_DIR/.codex/skills/kramme:git:recreate-commits/SKILL.md"
 	[ "$status" -eq 0 ]
 	run grep -nF "DETECTED_PROJECT_TYPE=$('$TMP_DIR/.codex/scripts/dev-server'/detect-project-type.sh 2> /dev/null)" "$TMP_DIR/.codex/skills/kramme:qa/SKILL.md"
 	[ "$status" -eq 0 ]
+	run grep -REn '(\$CLAUDE_PLUGIN_ROOT|\$\{CLAUDE_PLUGIN_ROOT[^}]*\})/scripts/' "$TMP_DIR/.codex/skills" "$TMP_DIR/.agents/skills"
+	[ "$status" -eq 1 ]
 	run grep -REn '\bAskUserQuestion\b|\bTask (tool|subagent|sub-agent|agent)\b|\bSkill tool\b|\bTodoWrite\b|\bTodoRead\b|\bsubagent_type\b|\bmodel=opus\b|\bmodel=sonnet\b' "$TMP_DIR/.codex/skills"
 	if [ "$status" -ne 1 ]; then
 		printf 'Unexpected Claude-only references (status=%s):\n%s\n' "$status" "$output" >&2
