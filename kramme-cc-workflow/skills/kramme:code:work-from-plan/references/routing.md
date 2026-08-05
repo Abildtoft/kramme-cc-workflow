@@ -46,6 +46,8 @@ Use `recommend-siw` when the plan is not already tracked but has one or more of 
 - Completion criteria require durable tracking across sessions.
 - The plan says prerequisites are blocked or unknown.
 
+A named prerequisite is not automatically blocked or unknown. When the plan embeds a concrete prerequisite-readiness section, inspect its assertions against the current base. If every assertion is already true, treat the prerequisite as satisfied without requesting an index, sibling plan, tracker status, or landing record.
+
 Recommend the smallest next SIW action:
 
 - `kramme:siw:init` when there is a spec or durable project to track.
@@ -65,6 +67,7 @@ Use `direct` only when all of these are true:
 - Verification commands are discoverable.
 - No branch creation, PR creation, deployment, CI watching, or external system write is required.
 - The work can finish in the current branch without creating a durable tracker.
+- Every named prerequisite is either absent or proven present from self-contained repository-state evidence in the plan.
 
 Typical direct plans:
 

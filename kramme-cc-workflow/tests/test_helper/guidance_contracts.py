@@ -306,6 +306,146 @@ def check_review_gate_order(path: pathlib.Path) -> None:
     _ordered_regex_anchors(section, anchors, "ordered gate invocations")
 
 
+def check_detached_plan_compatibility(root: pathlib.Path) -> None:
+    if not root.is_dir():
+        raise ContractFailure("detached-plan compatibility check requires the plugin root directory")
+
+    def read(relative: str) -> str:
+        return (root / relative).read_text(encoding="utf-8")
+
+    breakdown = read("skills/kramme:code:breakdown-findings/SKILL.md")
+    plan_template = read("skills/kramme:code:breakdown-findings/assets/plan-template.md")
+    generation_checks = read("skills/kramme:code:breakdown-findings/references/generation-checks.md")
+    reconcile = read("skills/kramme:code:breakdown-findings/references/reconcile-workflow.md")
+    plan_to_pr = read("skills/kramme:code:plan-to-pr/SKILL.md")
+    attachment_input = read("skills/kramme:code:plan-to-pr/references/attachment-input.md")
+    standalone_index = read("skills/kramme:code:plan-to-pr/assets/standalone-index-template.md")
+    routing = read("skills/kramme:code:work-from-plan/references/routing.md")
+
+    _require_terms(
+        "detachable-plan generation",
+        breakdown,
+        ("file-level", "repository-relative file", "existing directory", "missing path", "one intended file"),
+    )
+    _require_terms(
+        "detachable-plan scope template",
+        plan_template,
+        ("repository-relative file", "existing directory", "missing path", "one intended file"),
+    )
+    _require_terms(
+        "detachable-plan generation checks",
+        generation_checks,
+        ("repository-relative file", "existing directory", "missing path", "one intended file"),
+    )
+    _require_terms(
+        "standalone attachment index",
+        standalone_index,
+        ("**Attachment contract:** {attachment-contract}", "{sequencing-summary}", "## Dependency Map"),
+    )
+    _require_terms(
+        "detached direct routing",
+        routing,
+        (
+            "concrete prerequisite-readiness section",
+            "treat the prerequisite as satisfied",
+            "without requesting an index, sibling plan, tracker status, or landing record",
+            "proven present from self-contained repository-state evidence",
+        ),
+    )
+    _require_terms(
+        "reconciled prerequisite evidence",
+        reconcile,
+        (
+            "dependency changes are confirmed",
+            "same confirmed write",
+            "Prerequisite Readiness Evidence",
+            "repository-only pass/fail decision",
+        ),
+    )
+
+    branch_step = _markdown_section(plan_to_pr, r"Step 4: Establish the Plan Branch")
+    runtime_only_status = (
+        "Keep a detached plan's archived plan/index status unchanged throughout the nonterminal lifecycle"
+    )
+    if runtime_only_status not in branch_step:
+        raise ContractFailure("detached readiness is not kept runtime-only throughout the nonterminal lifecycle")
+    if "atomically change only their status fields to `READY`" in branch_step:
+        raise ContractFailure("detached readiness is still persisted before a workflow checkpoint exists")
+    _require_terms(
+        "interrupted detached checkpoint recovery",
+        branch_step,
+        (
+            "one bounded exception",
+            "exactly one commit",
+            "exact equality with the normalized standalone scope",
+            "repeat every prerequisite-evidence assertion",
+            "validated temporary plan sibling",
+            "atomically rename",
+        ),
+    )
+
+    implementation_step = _markdown_section(plan_to_pr, r"Step 5: Implement the Plan")
+    _require_terms(
+        "first-checkpoint readiness transition",
+        implementation_step,
+        (
+            "validated temporary sibling",
+            "atomically rename",
+            "matching index row at their original `BLOCKED` status",
+            "readiness remains runtime-only",
+            "rather than creating a cross-file transaction",
+        ),
+    )
+
+    archive_validation = _markdown_section(attachment_input, r"Validate a Normalized Archive")
+    _require_terms(
+        "archived detached classification",
+        archive_validation,
+        (
+            "set `DETACHED_GENERATED_PLAN=true`",
+            "set `DETACHED_GENERATED_PLAN=false`",
+            "derive `{attachment-contract}`",
+            "the immutable plan has no attachment-contract field",
+            "persisted status remains `BLOCKED`",
+        ),
+    )
+
+    legacy_consumers = (
+        "skills/kramme:code:plan-to-pr/references/attachment-input.md",
+        "skills/kramme:pr:complete-work/references/standalone-scope-handoff.md",
+        "skills/kramme:pr:fix-ci/references/scoped-plan.md",
+    )
+    for relative in legacy_consumers:
+        text = read(relative)
+        _require_terms(
+            f"legacy standalone migration in {relative}",
+            text,
+            (
+                "legacy normalized independent archive",
+                "one-time deterministic migration",
+                "temporary index sibling",
+                "Attachment contract",
+                "independent plan",
+            ),
+        )
+        if "non-`W##L`" not in text:
+            raise ContractFailure(f"legacy standalone migration in {relative} is not limited to non-W##L archives")
+        if re.search(r"\batomic(?:ally)?\b[^.]*\brename(?:d)?\b", text, re.IGNORECASE) is None:
+            raise ContractFailure(f"legacy standalone migration in {relative} lacks an atomic index rename")
+
+    for relative in legacy_consumers:
+        text = read(relative)
+        _require_terms(
+            f"detached nonterminal classification in {relative}",
+            text,
+            (
+                "DETACHED_GENERATED_PLAN=true",
+                "DETACHED_GENERATED_PLAN=false",
+                "BLOCKED",
+            ),
+        )
+
+
 Check = Callable[[pathlib.Path], None]
 
 CHECKS: dict[str, Check] = {
@@ -314,6 +454,7 @@ CHECKS: dict[str, Check] = {
     "issue-intake-state": check_issue_intake_state,
     "issue-stage-order": check_issue_stage_order,
     "review-gate-order": check_review_gate_order,
+    "detached-plan-compatibility": check_detached_plan_compatibility,
 }
 
 

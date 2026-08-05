@@ -2,7 +2,7 @@
 
 @test "SIW issue-to-PR prepares one safe branch before autonomous implementation" {
 	run bash -c '
-    set -e
+	    set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
     skill="skills/kramme:siw:issue-to-pr/SKILL.md"
 
@@ -30,7 +30,7 @@
     grep -qF "Do not invoke \`kramme:workflow-artifacts:cleanup --auto\`" "$skill"
   '
 
-	[ "$status" -eq 0 ]
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
 
 	run python3 \
 		"$BATS_TEST_DIRNAME/test_helper/guidance_contracts.py" \
@@ -49,8 +49,12 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:code:plan-to-pr/SKILL.md"
-    attachment="skills/kramme:code:plan-to-pr/references/attachment-input.md"
+	    skill="skills/kramme:code:plan-to-pr/SKILL.md"
+	    attachment="skills/kramme:code:plan-to-pr/references/attachment-input.md"
+	    breakdown="skills/kramme:code:breakdown-findings/SKILL.md"
+	    plan_template="skills/kramme:code:breakdown-findings/assets/plan-template.md"
+	    plan_requirements="skills/kramme:code:breakdown-findings/references/plan-content-requirements.md"
+	    generation_checks="skills/kramme:code:breakdown-findings/references/generation-checks.md"
     completion="skills/kramme:pr:complete-work/SKILL.md"
     handoff="skills/kramme:pr:complete-work/references/standalone-scope-handoff.md"
     review="skills/kramme:pr:complete-work/references/review-convergence.md"
@@ -61,23 +65,36 @@
     rejections_asset="skills/kramme:code:plan-to-pr/assets/standalone-rejections-template.md"
 
     test -f "$skill"
-    test -f "$attachment"
+	    test -f "$attachment"
+	    test -f "$breakdown"
+	    test -f "$plan_template"
+	    test -f "$plan_requirements"
+	    test -f "$generation_checks"
     test -f "$completion"
     test -f "$handoff"
     test -f "$index_asset"
     test -f "$rejections_asset"
     test -f "$fix_ci"
     test -f "$fix_ci_scope"
-    grep -qF "argument-hint: \"<attached plan | PR_PLAN_W##L_*.md> [--strict] [--ship]\"" "$skill"
+	    grep -qF "argument-hint: \"<attached plan | PR_PLAN_W##L_*.md> [--strict] [--ship]\"" "$skill"
+	    grep -qF "A copied plan is also a self-standing execution capsule" "$breakdown"
+	    grep -qF "the index organizes the set but is never an implementation prerequisite" "$breakdown"
+	    grep -qF "### Prerequisite Readiness Evidence" "$plan_template"
+	    grep -qF "Make this plan executable without sibling plans or PR_PLAN_INDEX.md" "$plan_template"
+	    grep -qF "never an existing directory or a directory-containment grant" "$plan_template"
+	    grep -qF "exact evidence locations, and a binary readiness decision" "$plan_requirements"
+	    grep -qF "Every In Scope entry must identify one repository-relative file" "$plan_requirements"
+	    grep -qF "Every plan remains executable when copied by itself into a fresh workspace" "$generation_checks"
+	    grep -qF "no entry resolves to an existing directory" "$generation_checks"
     grep -qF "PR_PLAN_INDEX.md" "$skill"
     grep -qF "PR_PLAN_REJECTIONS.md" "$skill"
     grep -qF "**Attachment input:** a file anywhere below the repository'\''s \`.context/attachments/\` directory." "$skill"
     grep -qF "derive \`{selected-basename}\` from the plan'\''s canonical \`**File:**\` declaration" "$skill"
     grep -qF "Store \`{plan-input-mode}\` as \`root\`, \`attachment\`, or \`archived\`." "$skill"
-    grep -qF "For archived input, allow \`PR_PLAN_[A-Z][0-9][0-9][A-Z]_[A-Z0-9_]+.md\` only for initial dispatch" "$skill"
+    grep -qF "For archived input, allow \`PR_PLAN_[A-Z][0-9][0-9][A-Z]_[A-Z0-9_]+.md\`" "$skill"
     grep -qF "never downgrade it to an ordinary generated set" "$skill"
-    grep -qF "\`W##L\` identifies a generated indexed set, while a non-\`W\` label identifies a normalized standalone attachment" "$skill"
-    grep -qF "When any standalone evidence exists with a \`W##L\` selected basename, reject the contradictory archive" "$skill"
+    grep -qF "archive provenance, not the label alone, distinguishes a complete generated set from a normalized singleton attachment" "$skill"
+    grep -qF "that reference also sets \`DETACHED_GENERATED_PLAN\` from the validated attachment contract" "$skill"
     grep -qF "require the selected basename to match the generated \`PR_PLAN_W[0-9][0-9][A-Z]_[A-Z0-9_]+.md\` contract" "$skill"
     grep -qF "set \`STANDALONE_ATTACHMENT=true\`" "$skill"
     grep -qF "require the full normalized-archive contract to pass" "$skill"
@@ -104,17 +121,16 @@
     grep -qF "canonical attachment root and input to remain strictly below the canonical repository root" "$attachment"
     grep -qF "require it to match \`^[A-Za-z0-9._/ -]+$\`" "$attachment"
     grep -qF "never render the raw argument into a shell command" "$attachment"
-    grep -qF "**Blocked by:** None." "$attachment"
-    grep -qF "### Prerequisites (must land before this PR)\` contains only \`None.\`" "$attachment"
-    grep -qF "**Blocks:** None." "$attachment"
-    grep -qF "### Dependents (blocked until this PR lands)\` contains only \`None.\`" "$attachment"
-    grep -qF "**Parallel group:** None - only plan in wave." "$attachment"
-    grep -qF "### Parallel Work\` contains only \`None.\`" "$attachment"
-    grep -qF "\`W##L\` labels are reserved exclusively for generated indexed sets" "$attachment"
-    grep -qF "backticked basename matches \`^PR_PLAN_[A-VX-Z][0-9][0-9][A-Z]_[A-Z0-9_]+\\.md$\`" "$attachment"
-    grep -qF "backticked value matches \`^[A-VX-Z][0-9][0-9][A-Z]$\`" "$attachment"
-    grep -qF "bare value is exactly \`TODO\` or \`READY\`" "$attachment"
-    grep -qF "Tell the user to provide the complete generated plan set" "$attachment"
+    grep -qF "A \`W##L\` label identifies a detached generated plan" "$attachment"
+    grep -qF "backticked basename matches \`^PR_PLAN_[A-Z][0-9][0-9][A-Z]_[A-Z0-9_]+\\.md$\`" "$attachment"
+    grep -qF "backticked value matches \`^[A-Z][0-9][0-9][A-Z]$\`" "$attachment"
+    grep -qF "also accept \`BLOCKED\` only when \`DETACHED_GENERATED_PLAN=true\`" "$attachment"
+	    grep -qF "prefer exactly one matching \`#### W##L\` entry under \`### Prerequisite Readiness Evidence\`" "$attachment"
+	    grep -qF "For a legacy generated plan that predates this heading" "$attachment"
+	    grep -qF "A bare statement that \`W##L\` must land is insufficient." "$attachment"
+	    grep -qF "Reject evidence that depends on \`PR_PLAN_INDEX.md\`, a sibling plan" "$attachment"
+	    grep -qF "accept only a legacy normalized independent archive" "$attachment"
+	    grep -qF "perform a one-time deterministic migration" "$attachment"
     grep -qF "standalone-attachment" "$attachment"
     grep -qF "stable across attachment filename rewrites" "$attachment"
     grep -qF "Require \`.context\` to be a real non-symlink directory whose canonical path is strictly below the canonical repository root." "$attachment"
@@ -122,12 +138,14 @@
     grep -qF "Revalidate the non-symlink \`.context\` and \`.context/code-plan-to-pr/\` parent chain" "$attachment"
     grep -qF "both to \`{selected-basename}\` and to \`ATTACHMENT_SOURCE.md\`" "$attachment"
     grep -qF "**Source snapshot:** \`ATTACHMENT_SOURCE.md\`" "$index_asset"
+    grep -qF "**Attachment contract:** {attachment-contract}" "$index_asset"
+    grep -qF "{sequencing-summary}" "$index_asset"
     grep -qF "## Validate a Normalized Archive" "$attachment"
-    grep -qF "Require \`{selected-basename}\` to match the standalone \`PR_PLAN_[A-VX-Z][0-9][0-9][A-Z]_[A-Z0-9_]+.md\` contract" "$attachment"
-    grep -qF "exactly one \`PR_PLAN_[A-VX-Z][0-9][0-9][A-Z]_*.md\` implementation plan" "$attachment"
+    grep -qF "require \`{selected-basename}\` to match \`PR_PLAN_[A-Z][0-9][0-9][A-Z]_[A-Z0-9_]+.md\`" "$attachment"
+    grep -qF "exactly one \`PR_PLAN_[A-Z][0-9][0-9][A-Z]_*.md\` implementation plan" "$attachment"
     grep -qF "require \`ps-{recomputed-object-id}\` to equal \`{plan-set-id}\`" "$attachment"
     grep -qF "With no \`## Workflow State\` or \`## Execution Result\`" "$attachment"
-    grep -qF "With status \`TODO\` or \`READY\`, reject \`## Execution Result\`" "$attachment"
+    grep -qF "With status \`TODO\` or \`READY\`, or with \`BLOCKED\` only for a detached generated plan" "$attachment"
     grep -qF "With status \`DONE\`, require exactly one \`## Execution Result\`" "$attachment"
     grep -qF "terminal \`## Workflow State\` at \`COMPLETE\` or \`PUBLISHED_BLOCKED\`" "$attachment"
     grep -qF "require the remaining bytes to match exactly" "$attachment"
@@ -146,9 +164,16 @@
     grep -qF "With only a remote branch, require a manual Pull Request creation payload" "$attachment"
     grep -qF "When exactly one same-repository open Pull Request now exists" "$attachment"
     grep -qF "atomically update only the archived publication state and execution-result Pull Request number" "$attachment"
-    grep -qF "No companion rejection data was supplied with this independent attached plan." "$rejections_asset"
+    grep -qF "No companion rejection data was supplied with this attached plan." "$rejections_asset"
     grep -qF "**Input mode:** standalone attachment" "$index_asset"
-    grep -qF "Allow generated indexed input to use \`BLOCKED\` only when \`STANDALONE_ATTACHMENT=false\`" "$skill"
+    grep -qF "for a detached generated attachment, defer readiness to the embedded-evidence proof in Step 4" "$skill"
+    grep -qF "do not request or search for the source index or sibling plans" "$skill"
+    grep -qF "do not ask for \`PR_PLAN_INDEX.md\`" "$skill"
+	    grep -qF "Keep a detached plan'\''s archived plan/index status unchanged throughout the nonterminal lifecycle" "$skill"
+	    grep -qF "one bounded exception only to recover a detached generated attachment interrupted after its implementation commit" "$skill"
+	    grep -qF "keep its selected-plan header and matching index row at their original \`BLOCKED\` status" "$skill"
+	    ! grep -qF "transition its selected-plan header and matching index row to \`READY\`" "$skill"
+	    ! grep -qF "atomically change only their status fields to \`READY\`" "$skill"
 	    grep -qF "**Archived input:** \`.context/code-plan-to-pr/{plan-set-id}/plans/\`" "$skill"
     grep -qF "whose canonical paths remain strictly below the canonical repository root" "$skill"
     grep -qF "Store that canonical repository-relative input immediately as \`{validated-scope-plan}\`" "$skill"
@@ -165,7 +190,7 @@
     grep -qF "git status --short -- \"\${GIT_PATHS[@]}\"" "$skill"
     grep -qF "Keep the established archive in place." "$skill"
     grep -qF "never retain a root or attachment source path as the active plan" "$skill"
-    grep -qF "preserves either the complete generated plan set or the normalized standalone attachment" "$skill"
+    grep -qF "preserves either the complete generated plan set or the normalized singleton attachment" "$skill"
     grep -qF "every dirty path is a root-level \`PR_PLAN_*.md\` file" "$skill"
     grep -qF "git ls-files --error-unmatch -- \":(literal){path}\"" "$skill"
 	    grep -qF "gh pr view \"{url}\" --json state,mergedAt,baseRefName,mergeCommit" "$skill"
@@ -198,7 +223,7 @@
     grep -qF "Later plan input: pass the selected archived \`PR_PLAN_<label>_*.md\` path" "$skill"
     grep -qF "never invoke broad workflow-artifact cleanup" "$skill"
     grep -qF "PR_PLAN_[A-Z][0-9][0-9][A-Z]_[A-Z0-9_]+.md" "$completion"
-    grep -qF "reserves \`W##L\` for generated sets and non-\`W\` labels for standalone attachments" "$completion"
+    grep -qF "Archive provenance distinguishes complete generated sets from singleton attachments, including detached \`W##L\` plans." "$completion"
     grep -qF "references/standalone-scope-handoff.md" "$completion"
     grep -qF "Require \`.context\`, \`.context/code-plan-to-pr\`, and every later parent to be real non-symlink directories" "$completion"
     grep -qF "PLAN_SCOPE_MODE=exact-files" "$completion"
@@ -209,10 +234,19 @@
     grep -qF "the exact delegated \`Recovery\` payload" "$skill"
     grep -qF "Report only that recorded recovery (the exact synced scoped recovery payload when a Pull Request exists" "$skill"
     grep -qF "## Validate Standalone Provenance" "$handoff"
-    grep -qF "When any standalone evidence exists with a \`W##L\` selected basename, reject the contradictory handoff" "$handoff"
+	    grep -qF "A \`W##L\` singleton must declare \`**Attachment contract:** detached generated plan\`" "$handoff"
+	    grep -qF "a \`W##L\` singleton to declare \`detached generated plan\`" "$fix_ci_scope"
+	    grep -qF "set \`DETACHED_GENERATED_PLAN=true\`" "$handoff"
+	    grep -qF "accept \`BLOCKED\` only when \`DETACHED_GENERATED_PLAN=true\`" "$handoff"
+	    grep -qF "set \`DETACHED_GENERATED_PLAN=true\`" "$fix_ci_scope"
+	    grep -qF "status \`BLOCKED\` only when \`DETACHED_GENERATED_PLAN=true\`" "$fix_ci_scope"
+	    grep -qF "legacy normalized independent archive" "$handoff"
+	    grep -qF "one-time deterministic migration" "$handoff"
+	    grep -qF "legacy normalized independent archive" "$fix_ci_scope"
+	    grep -qF "one-time deterministic migration" "$fix_ci_scope"
     grep -qF "the exact \`**Input mode:** standalone attachment\` marker in the index or rejection record" "$skill"
     grep -qF "the exact \`**Input mode:** standalone attachment\` marker in the index or rejection record" "$handoff"
-    grep -qF "Require \`{selected-basename}\` to match \`PR_PLAN_[A-VX-Z][0-9][0-9][A-Z]_[A-Z0-9_]+.md\`" "$handoff"
+    grep -qF "Require \`{selected-basename}\` to match \`PR_PLAN_[A-Z][0-9][0-9][A-Z]_[A-Z0-9_]+.md\`" "$handoff"
     grep -qF "## Preserve Exact-File Scope" "$handoff"
     grep -qF "git check-ignore --index -z --stdin" "$handoff"
     ! grep -qF "git check-ignore --index -q -z --stdin" "$handoff"
@@ -270,7 +304,13 @@
     [ "$implement_line" -lt "$complete_line" ]
   '
 
-	[ "$status" -eq 0 ]
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+
+	run python3 \
+		"$BATS_TEST_DIRNAME/test_helper/guidance_contracts.py" \
+		detached-plan-compatibility \
+		"$BATS_TEST_DIRNAME/.."
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
 @test "shared completion workflow preserves ordered bounded review and shipping proof" {

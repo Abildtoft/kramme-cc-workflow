@@ -175,7 +175,7 @@ Use that value as `PLANNED_AT_SHA` in every generated plan. If the source direct
 For each confirmed theme:
 
 1. Read the plan template from `assets/plan-template.md`.
-2. Draft every section. Every plan must be **fully self-contained** -- an engineer who has never read any prior document must understand the problem, context, and solution from the plan alone.
+2. Draft every section. Every plan must be **fully self-contained** -- an engineer who has never read any prior document must understand the problem, context, and solution from the plan alone. A copied plan is also a self-standing execution capsule: the index organizes the set but is never an implementation prerequisite. Keep its **In Scope** boundary file-level: every entry must name one repository-relative file, never an existing directory or a directory-containment grant; a missing path means exactly one intended file. For each named blocker, repeat the prerequisite's observable required base state, exact evidence locations, and binary readiness rule in that plan's **Prerequisite Readiness Evidence** section so an executor can validate the fetched base without any sibling artifact. Do not use index status, another plan's `DONE` state, a PR URL, or landing metadata as required input to an individual plan.
 3. Run Phase 3.5 on the draft before writing the file.
 4. After Phase 3.5 passes, write the file to `PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md` in the project root. Use UPPER_SNAKE_CASE for the slug in the filename (e.g., `PR_PLAN_W01A_DEFINE_ERROR_TYPES.md`).
 5. Create a plan display name using this pattern: `{execution label} {theme name} ({parallel / blocked-by / blocks summary})`.
@@ -250,7 +250,7 @@ Read `references/reconcile-workflow.md` and follow it exactly. Always print a `R
 
 ## Guidelines
 
-- **Self-contained plans above all.** Every plan must be readable in isolation. Never write "as described in the review" or "see finding #3."
+- **Self-contained plans above all.** Every plan must be readable and executable in isolation. Never write "as described in the review", "see finding #3", or require `PR_PLAN_INDEX.md`/a sibling plan. A dependent plan may require prerequisite code to be present on its base branch, but it must carry all evidence needed to decide that from the repository itself.
 - **Actionable specificity.** "Improve error handling" is not a plan step. "Add try-catch to `fetchUser()` in `src/api/users.ts:45` that catches `NetworkError` and returns a typed error result" is.
 - **Conservative sizing.** No theme should land at XL. When in doubt, size down — a focused M theme (200-line PR) is better than a stretched L that inches toward an 800-line sprawl.
 - **Dependency-readable naming.** Plan titles, filenames, index rows, and the final summary must make sequencing obvious without reading the full plan. Use `W01A`/`W01B` for parallel first-wave plans, higher wave numbers for blocked follow-up plans, and explicit `blocked by`/`blocks` labels wherever a dependency exists.

@@ -201,7 +201,7 @@ Use only the working-tree commands when `SOURCE_REF` is unset. Use only the name
    - Add review-fix notes only where they make the existing implementation, verification, completion, or maintenance guidance accurate.
    - Add newly required files to `In Scope` only after scope expansion is confirmed.
    - Record rebase noise in `Out of Scope` or a plan note without treating it as slice work.
-   - Update dependency labels and order only after dependency changes are confirmed.
+   - Update dependency labels and order only after dependency changes are confirmed. In the same confirmed write, add, remove, or refresh the affected plan's **Prerequisite Readiness Evidence** so every blocker still has concrete required base state, exact evidence locations, and a repository-only pass/fail decision. Never leave a changed dependency that requires the index or a sibling plan to interpret.
    - Keep `DONE` and `SUPERSEDED` plan files untouched unless the user explicitly asks to annotate them.
    - Update `PR_PLAN_REJECTIONS.md` without renumbering existing rejection IDs.
 2. Never edit product source, tests, lockfiles, generated assets, or application config. Do not rename or delete plan files or execution labels. Mark obsolete plans `SUPERSEDED` only after confirmation and explain the replacement.

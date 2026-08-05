@@ -2,4 +2,4 @@
 
 **Input mode:** standalone attachment
 
-No companion rejection data was supplied with this independent attached plan.
+No companion rejection data was supplied with this attached plan.
