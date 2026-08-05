@@ -73,6 +73,7 @@ Load this only when `RECONCILE_MODE=true`.
 
 7. Validate update-scoped plans before collecting per-plan source evidence:
    - Before running any per-plan evidence command, validate every update-scoped plan that exists. Require its filename and execution label to match its index row, a valid lifecycle `Status:`, explicit `In Scope` and `Out of Scope` sections, a non-empty literal `In Scope` path list, and dependency labels that resolve to rows in `PR_PLAN_INDEX.md`.
+   - Read the index and every implementation plan it references. Require each artifact to contain exactly one opening metadata field `**Scope contract:** exact files`, or require every artifact to omit it as a legacy set. Reject duplicate fields, unknown values, or a marker present in only part of the set. Preserve the established contract on every reconcile write; never backfill an unmarked legacy set without regenerating and revalidating the complete set's file-level scope.
    - When Git evidence is available, require the plan's literal `Planned at` commit to resolve in `EVIDENCE_ROOT`. When Git evidence is unavailable, require the explicit `not-a-git-repo` marker and manual drift note produced by generation mode.
    - If validation fails, stop with `MISSING REQUIREMENT: <plan> has invalid or incomplete <field>; repair the plan before reconcile can collect evidence.` Never run a diff or status command with an empty or unvalidated path set.
 8. Collect per-plan source evidence:
@@ -201,7 +202,7 @@ Use only the working-tree commands when `SOURCE_REF` is unset. Use only the name
    - Add review-fix notes only where they make the existing implementation, verification, completion, or maintenance guidance accurate.
    - Add newly required files to `In Scope` only after scope expansion is confirmed.
    - Record rebase noise in `Out of Scope` or a plan note without treating it as slice work.
-   - Update dependency labels and order only after dependency changes are confirmed.
+   - Update dependency labels and order only after dependency changes are confirmed. In the same confirmed write, add, remove, or refresh the affected plan's **Prerequisite Readiness Evidence** so every blocker still has concrete required base state, exact evidence locations, and a repository-only pass/fail decision. Never leave a changed dependency that requires the index or a sibling plan to interpret.
    - Keep `DONE` and `SUPERSEDED` plan files untouched unless the user explicitly asks to annotate them.
    - Update `PR_PLAN_REJECTIONS.md` without renumbering existing rejection IDs.
 2. Never edit product source, tests, lockfiles, generated assets, or application config. Do not rename or delete plan files or execution labels. Mark obsolete plans `SUPERSEDED` only after confirmation and explain the replacement.

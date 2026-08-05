@@ -41,6 +41,22 @@ def _require_terms(label: str, text: str, terms: tuple[str, ...]) -> None:
         raise ContractFailure(f"{label} is missing concepts: {', '.join(missing)}")
 
 
+def _require_single_opening_metadata_field(label: str, text: str, field: str) -> None:
+    metadata = re.search(
+        r"(?ms)^#\s+[^\n]+\n\s*\n(?P<body>\S[^\n]*(?:\n(?!\s*\n)\S[^\n]*)*)",
+        text,
+    )
+    if metadata is None:
+        raise ContractFailure(f"{label} is missing an opening metadata paragraph")
+    total_count = text.count(field)
+    opening_count = metadata.group("body").count(field)
+    if total_count != 1 or opening_count != 1:
+        raise ContractFailure(
+            f"{label} must contain {field!r} exactly once in opening metadata "
+            f"(total={total_count}, opening={opening_count})"
+        )
+
+
 def _result_field_bullets(section: str) -> list[str]:
     result = re.search(
         r"(?ms)^6\.\s+.*?`INTERVIEW RESULT:`.*?\n",
@@ -306,6 +322,238 @@ def check_review_gate_order(path: pathlib.Path) -> None:
     _ordered_regex_anchors(section, anchors, "ordered gate invocations")
 
 
+def check_detached_plan_compatibility(root: pathlib.Path) -> None:
+    if not root.is_dir():
+        raise ContractFailure("detached-plan compatibility check requires the plugin root directory")
+
+    def read(relative: str) -> str:
+        return (root / relative).read_text(encoding="utf-8")
+
+    breakdown = read("skills/kramme:code:breakdown-findings/SKILL.md")
+    plan_template = read("skills/kramme:code:breakdown-findings/assets/plan-template.md")
+    generated_index = read("skills/kramme:code:breakdown-findings/assets/index-template.md")
+    generation_checks = read("skills/kramme:code:breakdown-findings/references/generation-checks.md")
+    reconcile = read("skills/kramme:code:breakdown-findings/references/reconcile-workflow.md")
+    plan_to_pr = read("skills/kramme:code:plan-to-pr/SKILL.md")
+    attachment_input = read("skills/kramme:code:plan-to-pr/references/attachment-input.md")
+    standalone_index = read("skills/kramme:code:plan-to-pr/assets/standalone-index-template.md")
+    completion = read("skills/kramme:pr:complete-work/SKILL.md")
+    scope_handoff = read("skills/kramme:pr:complete-work/references/standalone-scope-handoff.md")
+    scoped_ci = read("skills/kramme:pr:fix-ci/references/scoped-plan.md")
+    routing = read("skills/kramme:code:work-from-plan/references/routing.md")
+
+    _require_terms(
+        "detachable-plan generation",
+        breakdown,
+        ("file-level", "repository-relative file", "existing directory", "missing path", "one intended file"),
+    )
+    _require_terms(
+        "detachable-plan scope template",
+        plan_template,
+        ("repository-relative file", "existing directory", "missing path", "one intended file"),
+    )
+    scope_contract = "**Scope contract:** exact files"
+    _require_single_opening_metadata_field("detachable-plan scope template", plan_template, scope_contract)
+    _require_single_opening_metadata_field("generated index scope contract", generated_index, scope_contract)
+    _require_terms(
+        "detachable-plan generation checks",
+        generation_checks,
+        ("repository-relative file", "existing directory", "missing path", "one intended file"),
+    )
+    _require_terms(
+        "standalone attachment index",
+        standalone_index,
+        (
+            "**Attachment contract:** {attachment-contract}",
+            "**Scope contract:** exact files",
+            "{sequencing-summary}",
+            "## Dependency Map",
+        ),
+    )
+    for label, text in (
+        ("plan-to-PR scope classification", plan_to_pr),
+        ("completion scope classification", scope_handoff),
+        ("scoped CI classification", scoped_ci),
+    ):
+        _require_terms(
+            label,
+            text,
+            (
+                "**Scope contract:** exact files",
+                "PLAN_SCOPE_MODE=exact-files",
+                "PLAN_SCOPE_MODE=containment",
+                "legacy compatibility",
+                "marker present in only part of the set",
+                "never infer exact-file mode from file-shaped paths alone",
+            ),
+        )
+    _require_terms(
+        "completion scope handoff",
+        completion,
+        ("marked generated plan sets", "unmarked legacy generated sets"),
+    )
+    implementation_scope = _markdown_section(plan_to_pr, r"Step 5: Implement the Plan")
+    completion_scope = _markdown_section(scope_handoff, r"Preserve Exact-File Scope")
+    scoped_ci_scope = _markdown_section(scoped_ci, r"Preserve Scope")
+    _require_terms(
+        "plan-to-PR exact-file enforcement",
+        implementation_scope,
+        (
+            "exact equality for `PLAN_SCOPE_MODE=exact-files`",
+            "otherwise exact path or directory containment",
+            "re-run the Git-admin, file-level, and batched index-aware ignored-path eligibility checks",
+        ),
+    )
+    _require_terms(
+        "completion exact-file enforcement",
+        completion_scope,
+        (
+            "Every dirty, staged, or committed path membership check uses exact equality",
+            "Directory containment applies only when `PLAN_SCOPE_MODE=containment`",
+            "apply it to every `PLAN_SCOPE_MODE=exact-files` archive",
+        ),
+    )
+    _require_terms(
+        "scoped CI exact-file enforcement",
+        scoped_ci_scope,
+        (
+            "every dirty, staged, committed, or proposed path that is not exactly one",
+            "run `RECHECK_STANDALONE_SCOPE` for exact-file mode",
+            "For `containment`, require each path to equal one validated path or remain below",
+        ),
+    )
+    _require_terms(
+        "detached direct routing",
+        routing,
+        (
+            "concrete prerequisite-readiness section",
+            "treat the prerequisite as satisfied",
+            "without requesting an index, sibling plan, tracker status, or landing record",
+            "proven present from self-contained repository-state evidence",
+        ),
+    )
+    _require_terms(
+        "reconciled prerequisite evidence",
+        reconcile,
+        (
+            "dependency changes are confirmed",
+            "same confirmed write",
+            "Prerequisite Readiness Evidence",
+            "repository-only pass/fail decision",
+        ),
+    )
+
+    branch_step = _markdown_section(plan_to_pr, r"Step 4: Establish the Plan Branch")
+    runtime_only_status = (
+        "Keep a detached plan's archived plan/index status unchanged throughout the nonterminal lifecycle"
+    )
+    if runtime_only_status not in branch_step:
+        raise ContractFailure("detached readiness is not kept runtime-only throughout the nonterminal lifecycle")
+    if "atomically change only their status fields to `READY`" in branch_step:
+        raise ContractFailure("detached readiness is still persisted before a workflow checkpoint exists")
+    _require_terms(
+        "interrupted detached checkpoint recovery",
+        branch_step,
+        (
+            "detached generated attachment",
+            "one bounded exception",
+            "archive must have no workflow state or execution result",
+            "worktree must be clean",
+            "no remote branch or Pull Request",
+            "exactly one commit",
+            "commit subject to contain `{execution-label}`",
+            "exact equality with the normalized standalone scope",
+            "repeat every prerequisite-evidence assertion",
+            "explicitly authorizes that exact full commit OID",
+            "validated temporary plan sibling",
+            "atomically rename",
+        ),
+    )
+
+    implementation_step = _markdown_section(plan_to_pr, r"Step 5: Implement the Plan")
+    _require_terms(
+        "first-checkpoint readiness transition",
+        implementation_step,
+        (
+            "validated temporary sibling",
+            "atomically rename",
+            "matching index row at their original `BLOCKED` status",
+            "readiness remains runtime-only",
+            "rather than creating a cross-file transaction",
+        ),
+    )
+
+    archive_validation = _markdown_section(attachment_input, r"Validate a Normalized Archive")
+    _require_terms(
+        "archived detached classification",
+        archive_validation,
+        (
+            "set `DETACHED_GENERATED_PLAN=true`",
+            "set `DETACHED_GENERATED_PLAN=false`",
+            "derive `{attachment-contract}`",
+            "the immutable plan has no attachment-contract field",
+            "persisted status remains `BLOCKED`",
+        ),
+    )
+
+    legacy_consumers = (
+        (
+            "skills/kramme:code:plan-to-pr/references/attachment-input.md",
+            archive_validation,
+        ),
+        (
+            "skills/kramme:pr:complete-work/references/standalone-scope-handoff.md",
+            _markdown_section(scope_handoff, r"Validate Standalone Provenance"),
+        ),
+        (
+            "skills/kramme:pr:fix-ci/references/scoped-plan.md",
+            _markdown_section(scoped_ci, r"Validate the Archive"),
+        ),
+    )
+    for relative, migration_section in legacy_consumers:
+        text = read(relative)
+        _require_terms(
+            f"legacy standalone migration in {relative}",
+            migration_section,
+            (
+                "legacy normalized independent archive",
+                "one-time deterministic migration",
+                "temporary index sibling",
+                "Attachment contract",
+                "independent plan",
+                "preserves every other byte",
+                "leave the previous index intact",
+            ),
+        )
+        if "non-`W##L`" not in migration_section:
+            raise ContractFailure(f"legacy standalone migration in {relative} is not limited to non-W##L archives")
+        if re.search(r"\b(?:re-read and validate|writing and validating)\b", migration_section, re.IGNORECASE) is None:
+            raise ContractFailure(f"legacy standalone migration in {relative} lacks staged index validation")
+        _ordered_regex_anchors(
+            migration_section,
+            (
+                (
+                    "complete proof",
+                    r"(?:after|only after)[^.]*\b(?:proofs?|legacy candidate)\b[^.]*\bpass(?:es)?\b",
+                ),
+                ("temporary sibling", r"\btemporary index sibling\b"),
+                ("atomic rename", r"\batomic(?:ally)?\b[^.]*\brename(?:d)?\b"),
+                ("post-rename revalidation", r"\b(?:repeat items|re-read and repeat)\b"),
+                ("failure preservation", r"\b(?:on any [^.]*failure|on failure)[^.]*leave the previous index intact\b"),
+            ),
+            f"legacy standalone migration in {relative}",
+        )
+        _require_terms(
+            f"detached nonterminal classification in {relative}",
+            text,
+            (
+                "DETACHED_GENERATED_PLAN=true",
+                "DETACHED_GENERATED_PLAN=false",
+                "BLOCKED",
+            ),
+        )
+
+
 Check = Callable[[pathlib.Path], None]
 
 CHECKS: dict[str, Check] = {
@@ -314,6 +562,7 @@ CHECKS: dict[str, Check] = {
     "issue-intake-state": check_issue_intake_state,
     "issue-stage-order": check_issue_stage_order,
     "review-gate-order": check_review_gate_order,
+    "detached-plan-compatibility": check_detached_plan_compatibility,
 }
 
 

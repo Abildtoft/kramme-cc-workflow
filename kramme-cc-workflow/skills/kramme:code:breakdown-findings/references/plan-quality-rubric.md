@@ -18,7 +18,7 @@ Every plan must pass this gate before it is written. If a draft fails, revise it
 
 - Each implementation step names exact files, modules, functions, commands, or artifacts.
 - No step relies on vague work such as "clean up", "improve", "harden", "refactor related code", or "make consistent" without concrete scope and verification.
-- The plan's **In Scope** list is the complete allowed edit surface; **Out of Scope** names likely temptations and why they are excluded.
+- The plan's **In Scope** list is the complete allowed edit surface and contains only repository-relative file paths, never existing directories or directory-containment grants; **Out of Scope** names likely temptations and why they are excluded.
 - Risks cover the actual blast radius: compatibility, migration, data integrity, security, performance, rollback, rollout, or reviewer confusion when relevant.
 - The plan does not turn optional polish into required scope unless the source finding or product context justifies it.
 
@@ -28,6 +28,7 @@ Every plan must pass this gate before it is written. If a draft fails, revise it
 - The grouping rationale explains why the findings belong together and why adjacent work was left out.
 - Public APIs, persisted data, auth/session behavior, billing, permissions, user-visible UX, release tooling, and generated artifacts receive stricter scope and validation notes.
 - Dependencies are readable from the plan title, index row, dependency map, and Dependencies section without cross-reading every plan.
+- Each blocked plan embeds enough required-base-state evidence to decide prerequisite readiness from repository code, tests, and configuration without opening the index or a sibling plan.
 
 ### Validation quality
 
@@ -69,3 +70,5 @@ Stop and revise before writing final artifacts if any draft has:
 - Open questions that are implementation blockers but are treated as optional notes.
 - A validation plan that omits tests or manual QA for user-visible behavior.
 - A scope that would let the executor touch unrelated files without triggering a STOP condition.
+- An **In Scope** entry that resolves to an existing directory or otherwise grants directory containment instead of naming one file.
+- A dependency whose readiness cannot be decided from concrete evidence embedded in that plan alone.

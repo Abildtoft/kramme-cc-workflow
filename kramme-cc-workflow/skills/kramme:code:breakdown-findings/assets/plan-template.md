@@ -1,6 +1,6 @@
 # PR Plan {{execution-label}}: {{theme-name}} ({{parallel in W## / blocked by W##L / blocks W##L}})
 
-**File:** `PR_PLAN_{{EXECUTION_LABEL}}_{{SLUG}}.md` **Status:** TODO **Execution label:** `{{W##L}}` **Parallel group:** {{Wave W##; name sibling labels that can run in parallel, or "None - only plan in wave."}} **Blocked by:** {{Execution labels and content of prerequisite plans, or "None."}} **Blocks:** {{Execution labels and content of dependent plans, or "None."}} **Planned at:** commit `{{short-sha}}`, {{date}} **Source scope:** {{findings mode: count findings clustered into this theme plus SRC-## references; handoff mode: 1 delegated theme mapped to this plan}} **Estimated scope:** {{small / medium / large}} PR **Risk:** {{LOW / MED / HIGH}} **Impact:** {{CRITICAL / HIGH / MED / LOW / NEGLIGIBLE, with UNVERIFIED: prefix if inferred}} **Leverage:** {{EXCEPTIONAL / HIGH / MED / LOW, with UNVERIFIED: prefix if inferred}}
+**File:** `PR_PLAN_{{EXECUTION_LABEL}}_{{SLUG}}.md` **Status:** TODO **Execution label:** `{{W##L}}` **Scope contract:** exact files **Parallel group:** {{Wave W##; name sibling labels that can run in parallel, or "None - only plan in wave."}} **Blocked by:** {{Execution labels and content of prerequisite plans, or "None."}} **Blocks:** {{Execution labels and content of dependent plans, or "None."}} **Planned at:** commit `{{short-sha}}`, {{date}} **Source scope:** {{findings mode: count findings clustered into this theme plus SRC-## references; handoff mode: 1 delegated theme mapped to this plan}} **Estimated scope:** {{small / medium / large}} PR **Risk:** {{LOW / MED / HIGH}} **Impact:** {{CRITICAL / HIGH / MED / LOW / NEGLIGIBLE, with UNVERIFIED: prefix if inferred}} **Leverage:** {{EXCEPTIONAL / HIGH / MED / LOW, with UNVERIFIED: prefix if inferred}}
 
 ---
 
@@ -79,17 +79,17 @@ Example shape:
 
 {{Use exact commands discovered from the repo, not guesses. Include only commands relevant to this plan. If no command exists, say which verification gap exists and include the closest available check.}}
 
-| Purpose | Command | Expected on success |
-| --- | --- | --- |
+| Purpose   | Command       | Expected on success         |
+| --------- | ------------- | --------------------------- |
 | Typecheck | `{{command}}` | exits 0 with no type errors |
-| Tests | `{{command}}` | relevant tests pass |
-| Lint | `{{command}}` | exits 0 |
+| Tests     | `{{command}}` | relevant tests pass         |
+| Lint      | `{{command}}` | exits 0                     |
 
 ## Scope
 
 ### In Scope
 
-{{The only files/modules the executor should modify. Include create/delete intent where relevant.}}
+{{The only files the executor should modify. Every entry must name one repository-relative file, never an existing directory or a directory-containment grant. Treat a missing path as exactly one intended file. Include create/delete intent where relevant.}}
 
 - `{{path}}` - {{modify/create/delete and why}}
 
@@ -104,6 +104,10 @@ Example shape:
 ### Prerequisites (must land before this PR)
 
 {{List exact blocker execution labels plus the work that must be completed before this PR can start. State "None." if independent.}}
+
+### Prerequisite Readiness Evidence
+
+{{Make this plan executable without sibling plans or PR_PLAN_INDEX.md. For every named prerequisite, add one `#### W##L` subsection containing: (1) **Required base state** - concrete, observable assertions that must already be true on the target base branch; (2) **Evidence locations** - exact repository-relative paths and the symbols, tests, configuration, or absence/presence expected there; and (3) **Readiness decision** - a clear pass/fail rule the executor can evaluate with read-only repository inspection. Restate the prerequisite's relevant end state here; never tell the executor to open another plan, the index, a review, or workflow status. State "None - this plan has no prerequisites." if independent.}}
 
 ### Dependents (blocked until this PR lands)
 

@@ -163,7 +163,7 @@ Before returning, require:
 - no accepted required or blocked finding remains;
 - no source changed after focused verification;
 - every edit batch crossed the commit boundary;
-- when `PLAN_SCOPE_ACTIVE=true`, every dirty, staged, and committed remediation path satisfied `PLAN_SCOPE_MODE`, standalone eligibility was rechecked before each staging boundary, and the final committed path set from `{scope-base-commit}` was revalidated before success;
+- when `PLAN_SCOPE_ACTIVE=true`, every dirty, staged, and committed remediation path satisfied `PLAN_SCOPE_MODE`, exact-file eligibility was rechecked before each staging boundary when applicable, and the final committed path set from `{scope-base-commit}` was revalidated before success;
 - every generated report is in `.context/{archive-key}/reviews/`;
 - the archive remains gitignored;
 - applicable gates ran in order and skipped gates have evidence; and
