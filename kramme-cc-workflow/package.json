@@ -8,10 +8,10 @@
     "kramme-cc-workflow": "scripts/convert-plugin.js"
   },
   "scripts": {
+    "check:deps": "make check-deps",
     "coverage": "make coverage",
     "format:check": "make format-check",
     "lint-js": "make lint-js",
-    "preflight": "make preflight",
     "test": "make test",
     "test:node": "make test-node",
     "test:node:file": "node --test",

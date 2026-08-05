@@ -74,11 +74,17 @@ make -C kramme-cc-workflow test-format
 make -C kramme-cc-workflow test-skill-usage
 ```
 
-The initial coverage baselines are 80% lines, 70% branches, and 80% functions for Node, plus a 35% production-line aggregate for Python. They sit below the measured local results (84.26%/75.56%/86.38% for Node and 36.46% for Python) and should only ratchet upward. Bats exercises shell integration behavior, so `coverage` reports its complete top-level `tests/*.bats` file/test inventory as a contract proxy rather than claiming line coverage.
+The initial coverage baselines are 80% lines, 70% branches, and 80% functions for Node, plus a 35% production-line aggregate for Python. They sit below the measured results (84.26%/75.56%/86.38% for Node, and 49.59% for Python locally against 51.23% in CI) and should only ratchet upward.
+
+`coverage-python` also enforces a 20% per-file floor (`PYTHON_FILE_COVERAGE_MIN`) on every `measured` source and prints the ten lowest-covered files with the floor each one must clear. Sources that predate the floor are seeded in `python.measured_floors` with the lower value they currently hold; a seeded file that climbs 15 points past the default floor (`PYTHON_FILE_COVERAGE_STALE_MARGIN`) fails the gate until its entry is deleted, so the ratchet only moves upward. Keep floors conservative: `trace` attributes lines slightly differently across supported Python versions, so a floor set at a file's exact measurement will flap.
+
+Bats exercises shell integration behavior, so `coverage` reports its complete top-level `tests/*.bats` file/test inventory as a contract proxy rather than claiming line coverage.
 
 Production sources are registered in `kramme-cc-workflow/config/coverage-production-sources.json`. The `coverage` target reconciles that inventory with executable JavaScript, Python, and shell files under the plugin's `evals/`, `hooks/`, and `scripts/` directories. It also discovers JavaScript and shell files in plugin skill-local `scripts/` and `assets/` directories, plus executable files in repository-maintenance skill-local `scripts/` directories under `.agents/skills/`.
 
 Put JavaScript and Python files in `measured` when the native coverage report includes them consistently across supported runtimes; otherwise put them in `contract_only` and map each source to one or more top-level `kramme-cc-workflow/tests/*.bats` contracts. A contract-only source may still appear incidentally in a native report, but the coverage gate does not require it there or include its Python result in the measured aggregate. Vendored JavaScript assets that are intentionally outside coverage may instead be registered in `javascript.excluded` with a non-empty rationale. Shell sources, including skill assets, use `contract_only`. The Bats runner does not recurse into nested test directories, so mapped contracts must be top-level files. Update the inventory whenever a production source is added, moved, removed, or changes coverage mode.
+
+The optional `python.measured_floors` map records accepted debt against the per-file floor by mapping a measured Python source to the lower percentage it currently holds. The map is validated against the inventory, so an entry for an unregistered source fails the gate.
 
 For Node changes, `test-node-watch` uses the [built-in test runner's dependency watching](https://nodejs.org/docs/latest-v20.x/api/test.html#watch-mode). For a focused change-to-test loop, use `test-node-file` with the closest mapping in [code-map.md](code-map.md); the equivalent npm command is `npm run test:node:file -- kramme-cc-workflow/tests/node/<file>.test.js` from the repository root.
 
@@ -92,7 +98,20 @@ The `NODE_TEST_FILE`, `PYTHON_TEST_FILE`, and `BATS_TEST_FILE` values are paths 
 make -C kramme-cc-workflow pr-verify
 ```
 
-The `pr-verify` target runs dependency preflight checks, shell/Python/JS linting, format checks, skill-contract linting, changed-skill SkillSpector scanning with `--fail-on high`, and the fast test suite. It does not add a separate `skill-eval-skill-review` pass beyond the skill-review eval coverage already exercised by the Bats suite.
+The `pr-verify` target runs every class of check the Pull Request workflows enforce: the read-only dependency check, shell/Python/JS linting, format checks, skill-contract linting, changed-skill SkillSpector scanning with `--fail-on high`, the test suite, and the coverage gates. It does not add a separate `skill-eval-skill-review` pass beyond the skill-review eval coverage already exercised by the Bats suite.
+
+To verify prerequisites without running any gate, use `make -C kramme-cc-workflow check-deps` (or `npm run check:deps`). It is read-only: it reports missing tools and installs nothing.
+
+Runtimes measured locally on an Apple silicon laptop, for choosing the smallest useful gate:
+
+| Target | Runtime | Notes |
+| --- | --- | --- |
+| `check-deps` | 0.4s | Read-only tool check |
+| `test-smoke` | 8.9s | Representative cross-language loop |
+| `coverage` | 51s | Includes its own `test-python` run |
+| `pr-verify` | 28m | Dominated by `test-bats`; coverage adds roughly 36s on top of `test` |
+
+The coverage gates are cheap relative to the suite they join: `coverage-python` reuses the `test-python` run that `pr-verify` already performs, so folding `coverage` into `pr-verify` costs about 36 seconds. Run `make -C kramme-cc-workflow coverage` on its own when only the inventory or floors are in question.
 
 GitHub Actions also runs the standalone skill-review eval as a separate path-filtered, scheduled, and manual workflow. That workflow uploads the aggregate JSON result as the `skill-review-eval` artifact and is meant to catch harness or fixture regressions without treating score movement as a merge gate.
 
