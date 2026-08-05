@@ -62,12 +62,19 @@ const NON_OBJECT_JSON_CASES = [
 test("shared script rewrites preserve shell-safe quoting", () => {
   const replacements = codexSharedScriptReplacements(
     "/tmp/Codex Home",
-    [],
+    [
+      {
+        sourceDir: path.join("/plugin", "scripts", "dev-server"),
+        targetDir: path.join("scripts", "dev-server"),
+      },
+    ],
     [{ targetPath: path.join("scripts", "collect-review-diff.sh") }],
   );
   const source = [
     'RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --strict)',
     "${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh --decode-json",
+    '[ -x "${CLAUDE_PLUGIN_ROOT:-}/scripts/collect-review-diff.sh" ]',
+    '"${CLAUDE_PLUGIN_ROOT:-}/scripts/dev-server/detect-url.sh" auto',
   ].join("\n");
 
   assert.equal(
@@ -75,6 +82,8 @@ test("shared script rewrites preserve shell-safe quoting", () => {
     [
       "RESOLVED=$('/tmp/Codex Home/scripts/collect-review-diff.sh' --strict)",
       "'/tmp/Codex Home/scripts/collect-review-diff.sh' --decode-json",
+      "[ -x '/tmp/Codex Home/scripts/collect-review-diff.sh' ]",
+      '"/tmp/Codex Home/scripts/dev-server/detect-url.sh" auto',
     ].join("\n"),
   );
 });

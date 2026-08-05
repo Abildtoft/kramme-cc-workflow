@@ -20,27 +20,35 @@ function codexSharedScriptReplacements(
   sharedScriptFiles = [],
 ) {
   return [
-    ...sharedScriptDirs.map((sharedScriptDir) => {
+    ...sharedScriptDirs.flatMap((sharedScriptDir) => {
       const targetDir = path.join(codexRoot, sharedScriptDir.targetDir);
-      return {
-        sourcePrefix: `\${CLAUDE_PLUGIN_ROOT}/${sharedScriptDir.targetDir
-          .split(path.sep)
-          .join("/")}/`,
-        targetPrefix: `${shellQuotePath(targetDir)}/`,
-        doubleQuotedTargetPrefix: `${escapeDoubleQuotedPath(targetDir)}/`,
-      };
+      const relativePrefix = `${sharedScriptDir.targetDir
+        .split(path.sep)
+        .join("/")}/`;
+      return ["CLAUDE_PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT:-"].map(
+        (rootExpression) => ({
+          sourcePrefix: `\${${rootExpression}}/${relativePrefix}`,
+          targetPrefix: `${shellQuotePath(targetDir)}/`,
+          doubleQuotedTargetPrefix: `${escapeDoubleQuotedPath(targetDir)}/`,
+        }),
+      );
     }),
     ...sharedScriptFiles.flatMap((sharedScriptFile) => {
-      const sourceText = `\${CLAUDE_PLUGIN_ROOT}/${sharedScriptFile.targetPath
+      const relativePath = sharedScriptFile.targetPath
         .split(path.sep)
-        .join("/")}`;
+        .join("/");
       const targetText = shellQuotePath(
         path.join(codexRoot, sharedScriptFile.targetPath),
       );
-      return [
-        { sourceText: `"${sourceText}"`, targetText },
-        { sourceText, targetText },
-      ];
+      return ["CLAUDE_PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT:-"].flatMap(
+        (rootExpression) => {
+          const sourceText = `\${${rootExpression}}/${relativePath}`;
+          return [
+            { sourceText: `"${sourceText}"`, targetText },
+            { sourceText, targetText },
+          ];
+        },
+      );
     }),
   ];
 }

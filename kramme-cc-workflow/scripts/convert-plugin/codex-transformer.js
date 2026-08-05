@@ -193,6 +193,14 @@ function convertCodexHookPlugin(plugin) {
         sourceFile: path.join(
           plugin.root,
           "scripts",
+          "resolve-stack-membership.sh",
+        ),
+        targetPath: path.join("scripts", "resolve-stack-membership.sh"),
+      },
+      {
+        sourceFile: path.join(
+          plugin.root,
+          "scripts",
           "verify-rewrite-state.sh",
         ),
         targetPath: path.join("scripts", "verify-rewrite-state.sh"),

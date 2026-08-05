@@ -26,7 +26,7 @@ import json
 import os
 import sys
 from datetime import datetime, timezone
-from typing import Dict, Iterator, Optional, Sequence
+from typing import Dict, Iterable, Iterator, Optional, Sequence
 
 from session_common import (
     JsonObject,
@@ -121,7 +121,7 @@ def try_cursor(
 
 
 def extract_from_lines(
-    lines: Sequence[str],
+    lines: Iterable[str],
 ) -> tuple[Optional[Metadata], TranscriptDiagnostics]:
     diagnostics = TranscriptDiagnostics()
     claude_result: Optional[Metadata] = None
@@ -323,12 +323,11 @@ def process_file(
     try:
         size = os.path.getsize(filepath)
         with open(filepath, "r", encoding="utf-8", errors="replace") as session_file:
-            lines = list(itertools.islice(session_file, MAX_LINES))
+            result, header_diagnostics = extract_from_lines(itertools.islice(session_file, MAX_LINES))
     except (OSError, IOError):
         diagnostics.record_read_error()
         return None, diagnostics
 
-    result, header_diagnostics = extract_from_lines(lines)
     diagnostics.add(header_diagnostics)
     if result is None:
         return None, diagnostics
@@ -424,17 +423,19 @@ if files:
 else:
     # No file arguments: either single-file stdin mode or empty xargs invocation.
     if sys.stdin.isatty():
-        lines = []
+        first_line = None
+        lines: Iterator[str] = iter(())
     else:
-        lines = list(itertools.islice(sys.stdin, MAX_LINES))
+        lines = itertools.islice(sys.stdin, MAX_LINES)
+        first_line = next(lines, None)
 
-    if not lines:
+    if first_line is None:
         meta = {"_meta": True, "files_processed": 0, "parse_errors": 0}
         if keywords:
             meta["files_matched"] = 0
         print(json.dumps(meta))
     else:
-        result, diagnostics = extract_from_lines(lines)
+        result, diagnostics = extract_from_lines(itertools.chain((first_line,), lines))
         if result:
             print(json.dumps(result))
         meta = {
