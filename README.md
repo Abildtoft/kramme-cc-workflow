@@ -22,6 +22,7 @@ The plugin also runs on Codex: a converter CLI installs the same skills, hooks, 
 
 Using the plugin:
 
+- [System Requirements & Dependencies](#system-requirements--dependencies)
 - [Installation & Updating](#installation--updating)
 - [Getting Started](#getting-started)
 - [Skills](#skills)
@@ -46,6 +47,29 @@ Contributing & maintenance:
 - [Local Repository Maintenance](#local-repository-maintenance)
 - [Attribution](#attribution)
 - [License](#license)
+
+## System Requirements & Dependencies
+
+The plugin does not declare dependencies on other Claude Code plugins, and no MCP server is required for basic use. For the full default experience:
+
+- Use a current Claude Code release on a [supported platform](https://code.claude.com/docs/en/installation#system-requirements). The plugin does not pin a minimum Claude Code version.
+- Install Bash, Git, `jq`, Python 3.10+, and Node.js 18+. The bundled hooks invoke Bash directly, and the enabled safety hooks fail closed when `jq` or Python is unavailable. Node powers the enabled local skill-usage recording hook; without it, that hook records a diagnostic and otherwise remains silent. Disable hooks explicitly with `/kramme:hooks:toggle` if they cannot run in your environment.
+- Prefer macOS, Linux, or WSL. On native Windows, install Git Bash and make the required tools available in that shell; PowerShell-only use does not support the plugin's Bash hooks.
+
+Additional dependencies are capability-specific:
+
+| Capability | Dependency |
+| --- | --- |
+| GitHub Pull Request, review, CI, and changelog workflows | Authenticated GitHub CLI (`gh auth login`) |
+| Linear workflows | Authenticated Linear MCP server |
+| Browser QA and live product review | Claude in Chrome, Chrome DevTools, or Playwright MCP |
+| Document conversion | `uv`/`uvx`; MarkItDown dependencies are downloaded on demand |
+| Image generation | `uv`, network access, and `GEMINI_API_KEY` |
+| Recoverable cleanup in autonomous workflows | `trash` on macOS or `trash-cli` on Linux |
+| Codex conversion | Node.js 18+ and npm |
+| Project verification and formatting | The target project's own build, test, type-check, and formatter tools |
+
+Node.js is not required to install the Claude Code plugin from its marketplace. Context7, Nx, Magic Patterns, Granola, and other MCP integrations are optional enhancements unless a selected skill says otherwise. After installation, run `/kramme:setup` for a read-only environment check. Contributors need the broader toolchain described in [Development](#development).
 
 ## Installation & Updating
 
@@ -574,13 +598,16 @@ These MCP servers enhance the plugin's capabilities. See [docs/mcp-servers.md](k
 
 CLI tools that enhance the plugin experience. Some are required for specific commands.
 
-### Required
+### Core and GitHub Workflows
 
-| CLI   | Purpose                          | Install                                                |
-| ----- | -------------------------------- | ------------------------------------------------------ |
-| `git` | Version control (all commands)   | Pre-installed on most systems                          |
-| `gh`  | GitHub PR workflows              | `brew install gh`                                      |
-| `jq`  | JSON parsing (hooks, test suite) | `brew install jq` (macOS) / `apt install jq` (Linux)   |
+| CLI | Purpose | Install |
+| --- | --- | --- |
+| `bash` | Hook runtime | Pre-installed on macOS/Linux; use Git Bash on Windows |
+| `git` | Version control | Pre-installed on most systems |
+| `jq` | Safety-hook JSON parsing | `brew install jq` (macOS) / `apt install jq` (Linux) |
+| `python3` | Safety-hook command parsing | Install Python 3.10+ |
+| `node` | Local skill-usage recording and Codex conversion | Install Node.js 18+; Codex conversion also requires npm |
+| `gh` | GitHub Pull Request workflows | `brew install gh` or follow [cli.github.com](https://cli.github.com/) |
 
 ### Verification & Build
 

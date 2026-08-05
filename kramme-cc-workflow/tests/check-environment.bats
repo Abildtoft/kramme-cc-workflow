@@ -10,6 +10,7 @@ setup() {
 }
 
 link_core_tools() {
+	ln -sf "$BASH_PATH" "$FAKE_BIN/bash"
 	ln -sf "$(command -v head)" "$FAKE_BIN/head"
 	ln -sf "$(command -v sed)" "$FAKE_BIN/sed"
 	ln -sf "$(command -v sh)" "$FAKE_BIN/sh"
@@ -55,6 +56,20 @@ EOF
 	chmod +x "$FAKE_BIN/$name"
 }
 
+create_fake_probe_failure() {
+	local name="$1"
+	local version="$2"
+	cat >"$FAKE_BIN/$name" <<EOF
+#!/bin/sh
+if [ "\$1" = "--version" ]; then
+  echo "$version"
+  exit 0
+fi
+exit 1
+EOF
+	chmod +x "$FAKE_BIN/$name"
+}
+
 setup_core_path() {
 	link_core_tools
 	create_fake_git
@@ -64,6 +79,7 @@ setup_all_tools_path() {
 	setup_core_path
 	create_fake_tool "gh" "gh version 9.9.9"
 	create_fake_tool "jq" "jq-1.7"
+	create_fake_tool "python3" "Python 3.12.0"
 	create_fake_tool "node" "v22.0.0"
 	create_fake_tool "npm" "10.0.0"
 	create_fake_tool "bun" "1.1.0"
@@ -100,8 +116,12 @@ assert_json_query() {
 	run env PATH="$FAKE_BIN" CONDUCTOR_WORKSPACE_PATH="$BATS_TEST_TMPDIR/workspace" "$BASH_PATH" "$SCRIPT" --json
 
 	[ "$status" -eq 0 ]
+	assert_json_query '.required[] | select(.name == "bash" and .status == "ok")'
 	assert_json_query '.required[] | select(.name == "git" and .status == "ok" and .version == "git version 2.99.0")'
-	assert_json_query '.recommended[] | select(.name == "jq" and .status == "ok" and .version == "jq-1.7")'
+	assert_json_query '.required[] | select(.name == "jq" and .status == "ok" and .version == "jq-1.7")'
+	assert_json_query '.required[] | select(.name == "python3" and .status == "ok" and .version == "Python 3.12.0")'
+	assert_json_query '.required[] | select(.name == "node" and .status == "ok" and .version == "v22.0.0")'
+	assert_json_query '.recommended[] | select(.name == "npm" and .status == "ok" and .version == "10.0.0")'
 	assert_json_query '.optional[] | select(.name == "bats" and .status == "ok" and .version == "Bats 1.11.0")'
 	assert_json_query '.integrations[] | select(.name == "Linear" and .status == "manual-check")'
 	assert_json_query '.context[] | select(.key == "branch" and .value == "test-branch")'
@@ -109,17 +129,65 @@ assert_json_query() {
 	assert_json_query '.context[] | select(.key == "conductor" and .value == "yes ('"$BATS_TEST_TMPDIR"'/workspace)")'
 }
 
-@test "reports missing recommended tools in text mode" {
+@test "reports missing required and recommended tools in text mode" {
 	setup_core_path
 
 	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT"
 
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"[ok]      git"* ]]
+	[[ "$output" == *"[missing] jq"* ]]
+	[[ "$output" == *"[missing] python3"* ]]
+	[[ "$output" == *"install: Install Python 3.10+"* ]]
+	[[ "$output" == *"[missing] node"* ]]
+	[[ "$output" == *"install: Install Node.js 18+"* ]]
 	[[ "$output" == *"[missing] gh"* ]]
 	[[ "$output" == *"install: brew install gh"* ]]
-	[[ "$output" == *"[missing] jq"* ]]
-	[[ "$output" == *"install: brew install jq"* ]]
 	[[ "$output" == *"Branch:                  test-branch"* ]]
 	[[ "$output" == *"Git state:               clean"* ]]
+}
+
+@test "reports required runtimes below their minimum versions" {
+	setup_core_path
+	create_fake_tool "jq" "jq-1.7"
+	create_fake_tool "python3" "Python 3.9.0"
+	create_fake_tool "node" "v17.0.0"
+
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_json_query '.required[] | select(.name == "python3" and .status == "outdated" and .version == "Python 3.9.0")'
+	assert_json_query '.required[] | select(.name == "node" and .status == "outdated" and .version == "v17.0.0")'
+}
+
+@test "accepts runtimes at their exact minimum versions" {
+	setup_core_path
+	create_fake_tool "jq" "jq-1.7"
+	create_fake_tool "python3" "Python 3.10.0"
+	create_fake_tool "node" "v18.0.0"
+
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_json_query '.required[] | select(.name == "python3" and .status == "ok" and .version == "Python 3.10.0")'
+	assert_json_query '.required[] | select(.name == "node" and .status == "ok" and .version == "v18.0.0")'
+}
+
+@test "reports runtime probe failures separately from outdated versions" {
+	setup_core_path
+	create_fake_tool "jq" "jq-1.7"
+	create_fake_tool "python3" "Python 3.12.0"
+	create_fake_probe_failure "node" "v24.0.0"
+
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_json_query '.required[] | select(.name == "node" and .status == "error" and .version == "v24.0.0")'
+
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"[error]    node"* ]]
+	[[ "$output" == *"runtime probe failed"* ]]
+	[[ "$output" != *"[outdated] node"* ]]
 }

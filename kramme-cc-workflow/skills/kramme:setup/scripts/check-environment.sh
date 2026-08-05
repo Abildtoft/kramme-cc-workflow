@@ -57,13 +57,43 @@ json_escape() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
+version_at_least() {
+  local actual="$1"
+  local minimum="$2"
+  local actual_major
+  local actual_minor
+  local minimum_major
+  local minimum_minor
+
+  if [[ "$actual" =~ ([0-9]+)(\.([0-9]+))? ]]; then
+    actual_major=$((10#${BASH_REMATCH[1]}))
+    actual_minor=$((10#${BASH_REMATCH[3]:-0}))
+  else
+    return 2
+  fi
+
+  if [[ "$minimum" =~ ^([0-9]+)(\.([0-9]+))?$ ]]; then
+    minimum_major=$((10#${BASH_REMATCH[1]}))
+    minimum_minor=$((10#${BASH_REMATCH[3]:-0}))
+  else
+    return 2
+  fi
+
+  [ "$actual_major" -gt "$minimum_major" ] \
+    || { [ "$actual_major" -eq "$minimum_major" ] && [ "$actual_minor" -ge "$minimum_minor" ]; }
+}
+
 tool_status() {
   local name="$1"
   local install="$2"
   local version_cmd="${3:-}"
+  local minimum_version="${4:-}"
+  local version_probe_cmd="${5:-}"
   local status="missing"
   local path=""
   local version=""
+  local probed_version=""
+  local comparison_status=0
 
   if path=$(command -v "$name" 2> /dev/null); then
     status="ok"
@@ -71,6 +101,20 @@ tool_status() {
       version=$(sh -c "$version_cmd" 2> /dev/null | head -1 || true)
     else
       version=$("$name" --version 2> /dev/null | head -1 || true)
+    fi
+    if [ -n "$minimum_version" ]; then
+      if [ -z "$version_probe_cmd" ] || ! probed_version=$(sh -c "$version_probe_cmd" 2> /dev/null); then
+        status="error"
+      elif version_at_least "$probed_version" "$minimum_version"; then
+        status="ok"
+      else
+        comparison_status=$?
+        if [ "$comparison_status" -eq 1 ]; then
+          status="outdated"
+        else
+          status="error"
+        fi
+      fi
     fi
   fi
 
@@ -88,6 +132,10 @@ tool_status() {
       else
         printf '[ok]      %-14s %s\n' "$name" "$path"
       fi
+    elif [ "$status" = "outdated" ]; then
+      printf '[outdated] %-14s %s (%s); upgrade: %s\n' "$name" "$path" "$version" "$install"
+    elif [ "$status" = "error" ]; then
+      printf '[error]    %-14s %s (%s); runtime probe failed; repair: %s\n' "$name" "$path" "$version" "$install"
     else
       printf '[missing] %-14s install: %s\n' "$name" "$install"
     fi
@@ -161,14 +209,18 @@ detect_connector_note() {
 if [ "$OUTPUT_FORMAT" = "json" ]; then
   printf '{'
   printf '"required":['
+  tool_status "bash" "Install Bash (Git Bash on Windows)" "bash --version"
+  printf ','
   tool_status "git" "Install Xcode Command Line Tools or git" "git --version"
-  printf '],'
-  printf '"recommended":['
-  tool_status "gh" "brew install gh (macOS) or apt install gh (Linux)" "gh --version"
   printf ','
   tool_status "jq" "brew install jq (macOS) or apt install jq (Linux)" "jq --version"
   printf ','
-  tool_status "node" "brew install node (macOS) or apt install nodejs (Linux)" "node --version"
+  tool_status "python3" "Install Python 3.10+" "python3 --version" "3.10" "python3 -c 'import sys; print(f\"{sys.version_info.major}.{sys.version_info.minor}\")'"
+  printf ','
+  tool_status "node" "Install Node.js 18+" "node --version" "18" "node -p 'process.versions.node'"
+  printf '],'
+  printf '"recommended":['
+  tool_status "gh" "brew install gh (macOS) or apt install gh (Linux)" "gh --version"
   printf ','
   tool_status "npm" "bundled with Node.js" "npm --version"
   printf '],'
@@ -216,12 +268,14 @@ fi
 echo "kramme setup health check"
 echo
 echo "Required"
+tool_status "bash" "Install Bash (Git Bash on Windows)" "bash --version"
 tool_status "git" "Install Xcode Command Line Tools or git" "git --version"
+tool_status "jq" "brew install jq (macOS) or apt install jq (Linux)" "jq --version"
+tool_status "python3" "Install Python 3.10+" "python3 --version" "3.10" "python3 -c 'import sys; print(f\"{sys.version_info.major}.{sys.version_info.minor}\")'"
+tool_status "node" "Install Node.js 18+" "node --version" "18" "node -p 'process.versions.node'"
 echo
 echo "Recommended"
 tool_status "gh" "brew install gh (macOS) or apt install gh (Linux)" "gh --version"
-tool_status "jq" "brew install jq (macOS) or apt install jq (Linux)" "jq --version"
-tool_status "node" "brew install node (macOS) or apt install nodejs (Linux)" "node --version"
 tool_status "npm" "bundled with Node.js" "npm --version"
 echo
 echo "Optional"
