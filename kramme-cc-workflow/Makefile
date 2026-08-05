@@ -152,9 +152,8 @@ format-check: check-format-deps check-ruff-deps
 # Optional contributor gate; this does not install or modify repository Git hooks.
 pre-commit: format-check lint test-smoke
 
-# Pre-PR gate: every class of check the Pull Request workflows enforce, in the
-# same check-only modes. Mirrors tests.yml (tests, coverage, lint, format-check)
-# and skill-lint.yml (skill contracts, changed-skill SkillSpector scan).
+# Pre-PR gate: local test, coverage, lint, format, contract, and changed-skill
+# SkillSpector checks. CI also owns runtime-compatibility and installer jobs.
 pr-verify: SKILLSPECTOR_FORMAT=json
 pr-verify: SKILLSPECTOR_FAIL_ON=high
 pr-verify: check-deps lint format-check skill-contracts skill-security-changed test coverage
@@ -362,7 +361,7 @@ coverage-node: check-node-deps check-coverage-inventory-deps
 
 coverage-python: check-python-deps check-coverage-inventory-deps test-python
 	@tmpdir=$$(mktemp -d); counts="$$tmpdir/counts"; coverdir="$$tmpdir/report-files"; report="$$tmpdir/python-coverage.txt"; inventory_rows="$$tmpdir/python-inventory.tsv"; \
-		jq -er --argjson file_minimum "$(PYTHON_FILE_COVERAGE_MIN)" --argjson stale_margin "$(PYTHON_FILE_COVERAGE_STALE_MARGIN)" 'def floors($$measured): type == "object" and all(to_entries[]; (.key | type) == "string" and (.key | length) > 0 and (.value | type) == "number" and .value >= 0 and .value < ($$file_minimum + $$stale_margin)) and ((keys - $$measured) | length == 0); .python as $$language | select(($$language.measured | type) == "array" and ($$language.measured | length) > 0 and ($$language.contract_only | type) == "object" and (($$language.measured_floors // {}) | floors($$language.measured))) | (($$language.measured[] | ["measured", .]), ($$language.contract_only | keys[] | ["registered", .]), (($$language.measured_floors // {}) | to_entries[] | ["floor", .key, (.value | tostring)])) | @tsv' "$(COVERAGE_PRODUCTION_INVENTORY)" >"$$inventory_rows" || { echo "Production coverage inventory is malformed"; rm -rf "$$tmpdir"; exit 1; }; \
+		jq -er --argjson file_minimum "$(PYTHON_FILE_COVERAGE_MIN)" --argjson stale_margin "$(PYTHON_FILE_COVERAGE_STALE_MARGIN)" 'def floors($$measured): type == "object" and all(to_entries[]; (.key | type) == "string" and (.key | length) > 0 and (.value | type) == "number" and .value >= 0 and .value < ($$file_minimum + $$stale_margin)) and ((keys - $$measured) | length == 0); def optional_floors($$language): if ($$language | has("measured_floors")) then $$language.measured_floors else {} end; .python as $$language | (optional_floors($$language)) as $$floor_map | select(($$language.measured | type) == "array" and ($$language.measured | length) > 0 and ($$language.contract_only | type) == "object" and ($$floor_map | floors($$language.measured))) | (($$language.measured[] | ["measured", .]), ($$language.contract_only | keys[] | ["registered", .]), ($$floor_map | to_entries[] | ["floor", .key, (.value | tostring)])) | @tsv' "$(COVERAGE_PRODUCTION_INVENTORY)" >"$$inventory_rows" || { echo "Production coverage inventory is malformed"; rm -rf "$$tmpdir"; exit 1; }; \
 		python3 -c 'import pickle, sys; pickle.dump(({}, {}, {}), open(sys.argv[1], "wb"), 1)' "$$counts"; \
 		python3 -m trace --count --file "$$counts" --coverdir "$$coverdir" $(PYTHON_TRACE_IGNORE_ARGS) --module unittest discover -s $(PYTHON_TEST_DIR) -p '$(PYTHON_TEST_PATTERN)' || { status=$$?; rm -rf "$$tmpdir"; exit $$status; }; \
 		python3 -m trace --count --file "$$counts" --missing --summary --coverdir "$$coverdir" $(PYTHON_TRACE_IGNORE_ARGS) --module unittest discover -s $(PYTHON_MAINTENANCE_TEST_DIR) -p '$(PYTHON_TEST_PATTERN)' >"$$report" 2>&1; status=$$?; \
@@ -371,12 +370,12 @@ coverage-python: check-python-deps check-coverage-inventory-deps test-python
 		awk -v root="$(ROOT_DIR)" -v plugin="$(PLUGIN_REL)" -v minimum="$(PYTHON_COVERAGE_MIN)" -v file_minimum="$(PYTHON_FILE_COVERAGE_MIN)" -v stale_margin="$(PYTHON_FILE_COVERAGE_STALE_MARGIN)" ' \
 			NR == FNR { \
 				split($$0, inventory_entry, "\t"); \
-				if (inventory_entry[1] == "floor") { floor_value[inventory_entry[2]]=inventory_entry[3] + 0; floor_listed[inventory_entry[2]]=1; next } \
+				if (inventory_entry[1] == "floor") { floor_value[inventory_entry[2]]=inventory_entry[3] + 0; next } \
 				registered[inventory_entry[2]]=1; \
 				if (inventory_entry[1] == "measured") { expected[inventory_entry[2]]=1; order[++expected_count]=inventory_entry[2] } \
 				next \
 			} \
-			function required_floor(path) { return (path in floor_listed) ? floor_value[path] : file_minimum } \
+			function required_floor(path) { return (path in floor_value) ? floor_value[path] : file_minimum } \
 			function format_floor(value) { return value == int(value) ? sprintf("%d", value) : sprintf("%.2f", value) } \
 			function report_lowest(    remaining, printed, candidate, best, best_path) { \
 				remaining=0; for (candidate in file_percent) remaining++; \
@@ -427,7 +426,7 @@ coverage-python: check-python-deps check-coverage-inventory-deps test-python
 					path=order[position]; \
 					if (!(path in file_percent)) continue; \
 					if (file_percent[path] < required_floor(path)) { below[++below_count]=sprintf("%s (%.2f%% < %s%%)", path, file_percent[path], format_floor(required_floor(path))) } \
-					else if ((path in floor_listed) && file_percent[path] >= file_minimum + stale_margin) { stale[++stale_count]=sprintf("%s (%.2f%%)", path, file_percent[path]) } \
+					else if ((path in floor_value) && file_percent[path] >= file_minimum + stale_margin) { stale[++stale_count]=sprintf("%s (%.2f%%)", path, file_percent[path]) } \
 				} \
 				if (below_count) { print_paths("Python files below the per-file coverage floor; add tests or seed python.measured_floors", below_count, below); failed=1 } \
 				if (stale_count) { print_paths("Python per-file floors are obsolete; delete them from python.measured_floors", stale_count, stale); failed=1 } \
@@ -444,7 +443,7 @@ coverage-python: check-python-deps check-coverage-inventory-deps test-python
 coverage-bats-contract: check-coverage-inventory-deps check-python-static-inventory
 	@tmpdir=$$(mktemp -d); inventory="$(CURDIR)/$(COVERAGE_PRODUCTION_INVENTORY)"; root="$(ROOT_DIR)"; \
 		trap 'rm -rf "$$tmpdir"' EXIT; \
-		if ! jq -e --argjson file_minimum "$(PYTHON_FILE_COVERAGE_MIN)" --argjson stale_margin "$(PYTHON_FILE_COVERAGE_STALE_MARGIN)" 'def string_array: type == "array" and length > 0 and all(.[]; type == "string" and length > 0); def mappings: type == "object" and all(to_entries[]; (.key | type == "string" and length > 0) and (.value | string_array)); def exclusions: type == "object" and all(to_entries[]; (.key | type == "string" and length > 0) and (.value | type == "string" and length > 0)); def floors: type == "object" and all(to_entries[]; (.key | type == "string" and length > 0) and (.value | type == "number" and . >= 0 and . < ($$file_minimum + $$stale_margin))); (.javascript | type == "object") and (.javascript.measured | string_array) and (.javascript.contract_only | mappings) and ((.javascript.excluded // {}) | exclusions) and (.python | type == "object") and (.python.measured | string_array) and (.python.contract_only | mappings) and ((.python.measured_floors // {}) | floors) and ((((.python.measured_floors // {}) | keys) - .python.measured) | length == 0) and (.shell | type == "object") and (.shell.contract_only | mappings) and ([.javascript.measured[], (.javascript.contract_only | keys[]), ((.javascript.excluded // {}) | keys[])] | length == (unique | length)) and ([.python.measured[], (.python.contract_only | keys[])] | length == (unique | length))' "$$inventory" >/dev/null 2>&1; then \
+		if ! jq -e --argjson file_minimum "$(PYTHON_FILE_COVERAGE_MIN)" --argjson stale_margin "$(PYTHON_FILE_COVERAGE_STALE_MARGIN)" 'def string_array: type == "array" and length > 0 and all(.[]; type == "string" and length > 0); def mappings: type == "object" and all(to_entries[]; (.key | type == "string" and length > 0) and (.value | string_array)); def exclusions: type == "object" and all(to_entries[]; (.key | type == "string" and length > 0) and (.value | type == "string" and length > 0)); def floors: type == "object" and all(to_entries[]; (.key | type == "string" and length > 0) and (.value | type == "number" and . >= 0 and . < ($$file_minimum + $$stale_margin))); def optional_floors: if has("measured_floors") then .measured_floors else {} end; (.python | optional_floors) as $$floor_map | (.javascript | type == "object") and (.javascript.measured | string_array) and (.javascript.contract_only | mappings) and ((.javascript.excluded // {}) | exclusions) and (.python | type == "object") and (.python.measured | string_array) and (.python.contract_only | mappings) and ($$floor_map | floors) and (((($$floor_map | keys) - .python.measured) | length) == 0) and (.shell | type == "object") and (.shell.contract_only | mappings) and ([.javascript.measured[], (.javascript.contract_only | keys[]), ((.javascript.excluded // {}) | keys[])] | length == (unique | length)) and ([.python.measured[], (.python.contract_only | keys[])] | length == (unique | length))' "$$inventory" >/dev/null 2>&1; then \
 			echo "Production coverage inventory is malformed"; exit 1; \
 		fi; \
 		jq -r '.javascript.measured[], (.javascript.contract_only | keys[]), ((.javascript.excluded // {}) | keys[])' "$$inventory" | sort >"$$tmpdir/javascript.registered"; \

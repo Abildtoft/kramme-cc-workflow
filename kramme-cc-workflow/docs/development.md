@@ -98,7 +98,7 @@ The `NODE_TEST_FILE`, `PYTHON_TEST_FILE`, and `BATS_TEST_FILE` values are paths 
 make -C kramme-cc-workflow pr-verify
 ```
 
-The `pr-verify` target runs every class of check the Pull Request workflows enforce: the read-only dependency check, shell/Python/JS linting, format checks, skill-contract linting, changed-skill SkillSpector scanning with `--fail-on high`, the test suite, and the coverage gates. It does not add a separate `skill-eval-skill-review` pass beyond the skill-review eval coverage already exercised by the Bats suite.
+The `pr-verify` target runs the repository's local pre-PR gates: the read-only dependency check, shell/Python/JS linting, format checks, skill-contract linting, changed-skill SkillSpector scanning with `--fail-on high`, the test suite, and the coverage gates. CI additionally runs environment-specific compatibility and isolated installer jobs that are not part of this local target. `pr-verify` does not add a separate `skill-eval-skill-review` pass beyond the skill-review eval coverage already exercised by the Bats suite.
 
 To verify prerequisites without running any gate, use `make -C kramme-cc-workflow check-deps` (or `npm run check:deps`). It is read-only: it reports missing tools and installs nothing.
 

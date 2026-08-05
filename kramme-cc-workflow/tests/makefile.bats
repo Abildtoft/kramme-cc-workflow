@@ -235,7 +235,7 @@ SH
   [[ "$output" != *"run-skillspector.sh --changed"* ]]
 }
 
-@test "pr-verify runs every Pull Request gate class including coverage" {
+@test "pr-verify runs the documented local Pull Request gates including coverage" {
   awk '
     $1 == "pr-verify:" {
       for (position = 2; position <= NF; position++) {
@@ -852,6 +852,22 @@ REPORT
   [[ "$output" == *"Production coverage inventory is malformed"* ]]
 }
 
+@test "coverage-python rejects explicit non-object per-file floor maps" {
+  setup_makefile_contract_repo
+  create_fake_python_coverage_tool
+  write_fake_python_coverage_report 35
+
+  local invalid_value
+  for invalid_value in false null; do
+    update_fake_inventory ".python.measured_floors = $invalid_value"
+
+    run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" PYTHON_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/python-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-python
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Production coverage inventory is malformed"* ]]
+  done
+}
+
 @test "coverage-python rejects a per-file floor for an unmeasured source directly" {
   setup_makefile_contract_repo
   create_fake_python_coverage_tool
@@ -918,6 +934,20 @@ REPORT
 
   [ "$status" -ne 0 ]
   [[ "$output" == *"Production coverage inventory is malformed"* ]]
+}
+
+@test "coverage-bats-contract rejects explicit non-object per-file floor maps" {
+  setup_makefile_contract_repo
+
+  local invalid_value
+  for invalid_value in false null; do
+    update_fake_inventory ".python.measured_floors = $invalid_value"
+
+    run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-bats-contract
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Production coverage inventory is malformed"* ]]
+  done
 }
 
 @test "coverage-bats-contract rejects a mapped Bats file outside the discovered suite" {
