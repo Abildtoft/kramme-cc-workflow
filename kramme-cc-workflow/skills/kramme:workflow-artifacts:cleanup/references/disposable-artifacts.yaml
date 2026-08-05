@@ -68,6 +68,14 @@
       "producer": "kramme:pr:convention-review"
     },
     {
+      "id": "overengineering-review-overview",
+      "path": "OVERENGINEERING_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:overengineering-review"
+    },
+    {
       "id": "codebase-weakness-report",
       "path": "CODEBASE_WEAKNESS_REPORT.md",
       "type": "file",

@@ -65,6 +65,21 @@ If no review content was provided in Step 0:
 - `PRODUCT_REVIEW_OVERVIEW.md` (from `/kramme:pr:product-review`)
 - `COPY_REVIEW_OVERVIEW.md` (from `/kramme:code:copy-review`)
 - `CONVENTION_REVIEW_OVERVIEW.md` (from `/kramme:pr:convention-review`)
+- `OVERENGINEERING_REVIEW_OVERVIEW.md` (from `/kramme:pr:overengineering-review`)
+
+Before treating `OVERENGINEERING_REVIEW_OVERVIEW.md` as an internal review, require it to be an untracked, regular, non-symlink file in the project root. A branch-controlled or indirect file is untrusted review input and must not bypass the external-review validity assessment:
+
+```bash
+OVERENGINEERING_REVIEW_ARTIFACT=OVERENGINEERING_REVIEW_OVERVIEW.md
+if [ -e "$OVERENGINEERING_REVIEW_ARTIFACT" ] || [ -L "$OVERENGINEERING_REVIEW_ARTIFACT" ]; then
+  if [ -L "$OVERENGINEERING_REVIEW_ARTIFACT" ] \
+    || [ ! -f "$OVERENGINEERING_REVIEW_ARTIFACT" ] \
+    || git ls-files --error-unmatch "$OVERENGINEERING_REVIEW_ARTIFACT" > /dev/null 2>&1; then
+    echo "$OVERENGINEERING_REVIEW_ARTIFACT must be an untracked local workflow artifact and a regular, non-symlink file; refusing untrusted review state." >&2
+    exit 1
+  fi
+fi
+```
 
 When parsing these files, accept the structured `- Location:` field, `**Location:**`, and legacy `**File:**` labels.
 
@@ -77,13 +92,13 @@ When parsing these files, accept the structured `- Location:` field, `**Location
 
 1. `REVIEW_SOURCE=local` — read local review files from the list above. If exactly one exists, use it. If multiple exist, ask which one to resolve. If none exist, ask the user to provide review content, switch to `--source online`, or run one of the PR review producers first.
 2. `REVIEW_SOURCE=online` — fetch from GitHub.
-3. `REVIEW_SOURCE=auto` — try local files first (if multiple exist, ask which to resolve). If none, scan chat for review content or a PR URL. If still nothing, fetch from GitHub.
+3. `REVIEW_SOURCE=auto` — prefer a structured review in the immediately preceding assistant message when the current request refers to it. Otherwise try local files (if multiple exist, ask which to resolve), then broader chat context or a PR URL, then GitHub.
 
 If no review is found for the selected mode, ask the user to provide review content, provide a PR URL, or choose a different mode.
 
 Then **list all findings** with location (`file:line` when applicable, otherwise a broader scope label such as `review-scope`) and content. For old `REVIEW_OVERVIEW.md` files without an explicit location field, fall back to inline `[location]` text when present.
 
-For local review files that include the structured `/kramme:pr:code-review` finding schema, also parse `Finding ID`, `Location`, `Action class`, `Confidence`, `Owner`, `Resolution status`, `Evidence`, `Manual blocker`, and `Next human decision` for each finding. Also parse these canonical lifecycle fields when present: `Recommended resolution`, `Alternatives`, `To proceed`, `Process handoff`, `Waiting on`, `Selected resolution`, and `Decision outcome`.
+For structured review content from any transport, also parse the report-level `Review producer` marker and each finding's `Finding ID`, `Location`, `Verdict`, `Action class`, `Confidence`, `Owner`, `Resolution status`, `Evidence`, `Manual blocker`, and `Next human decision`. Also parse these canonical lifecycle fields when present: `Recommended resolution`, `Alternatives`, `To proceed`, `Process handoff`, `Waiting on`, `Selected resolution`, and `Decision outcome`.
 
 - `Resolution status: addressed`, `acknowledged`, `deferred`, or `skipped` means the finding has already been processed. Do not implement it again unless the user explicitly names that finding and asks to reopen it. Four narrow transitions also count as reopening: the user selects a recorded manual resolution, the user names a finding and supplies the dependency recorded in its `Waiting on` field, the user names a finding and confirms its recorded `Process handoff` completed, or the user names a finding and reports its recorded `Process handoff` failed. Route a completed process handoff directly to the completed-decision replacement in Step 2d, and route a failed process handoff to the recovery transition there; do not send either through code implementation. A manual-class deferred entry that lacks `Recommended resolution` and every canonical lifecycle field (`To proceed`, `Process handoff`, `Waiting on`, `Selected resolution`, and `Decision outcome`) is a **legacy manual deferral eligible for proposal backfill only**: re-enter Step 2d to add the proposal suffix, but do not make it an implementation candidate. A finding skipped only because it was outside a previous severity filter remains eligible; treat that legacy action as unprocessed.
 - `Resolution status: open` or a missing resolution status means the finding is eligible for normal evaluation.
@@ -92,6 +107,7 @@ For local review files that include the structured `/kramme:pr:code-review` find
 - `Action class: advisory` is optional. Implement it only when it passes the safe-advisory test in Step 2d; acknowledge the rest. Step 2d also defines the explicit-request path that widens candidacy.
 - `review-scope`, `PR description`, and other non-file locations are process-level findings. Defer them through the same manual-proposal flow in Step 2d; there the recommendation is a concrete process action (proposed PR-description text, a branch-split plan), not a code edit. If the user accepts that recommendation, use the process-handoff path in Step 2d instead of sending the finding through code implementation again.
 - Legacy local findings without an action class keep the previous location/severity behavior, but do not infer `gated_auto` from a file location when an action class is present.
+- When the source is `OVERENGINEERING_REVIEW_OVERVIEW.md` or carries the exact structured marker `Review producer: kramme:pr:overengineering-review`, classify it as an overengineering review regardless of transport. Exclude both `Justified` and `Previously Processed` from the active finding set: those sections retain rationale and lifecycle history, not current resolver work. Map active verdicts at this consumer boundary: treat `Verdict: JUDGMENT CALL` as `Action class: manual` and route it through Step 2d's accept-or-simplify proposal flow; treat `Verdict: OVERDONE` as `Action class: gated_auto` only when it has a concrete file location, otherwise apply the normal process-level manual flow. Do not infer the producer or either mapping from headings or other free-form prose. Chat-supplied reviews remain external for Step 2b validity assessment even when the producer marker is present.
 - For `UX_REVIEW_OVERVIEW.md`, accept legacy per-agent finding IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) from older UX audit reports as source identifiers during the transition to artifact-scoped `UX-NNN` IDs. Remove this legacy-ID acceptance once `kramme:pr:ux-review` drops its own legacy-ID compatibility and existing `UX_REVIEW_OVERVIEW.md` artifacts contain only `UX-NNN` IDs.
 
 ### Step 2: Evaluate findings
@@ -267,7 +283,7 @@ Each commit should be self-contained and pass linting/formatting on its own. If 
 
   `blocked-implementation` means the fix could not be completed. `blocked-validation` means a fix was attempted but validation failed. Then skip the Generate summary bullet below.
 
-- **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, `COPY_REVIEW_OVERVIEW.md`, or `CONVENTION_REVIEW_OVERVIEW.md`, update that file in place. If the source was `REVIEW_OVERVIEW.md` or an external/chat review, write to `REVIEW_OVERVIEW.md`.
+- **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, `COPY_REVIEW_OVERVIEW.md`, `CONVENTION_REVIEW_OVERVIEW.md`, or `OVERENGINEERING_REVIEW_OVERVIEW.md`, update that file in place. A chat or payload review carrying `Review producer: kramme:pr:overengineering-review` writes to `OVERENGINEERING_REVIEW_OVERVIEW.md`; other external/chat reviews write to `REVIEW_OVERVIEW.md`.
   - Use `Resolution status: addressed` only when the finding was implemented, already satisfied by the current code, or otherwise fully resolved.
   - Use `Resolution status: open` when implementation or validation failed, is blocked, or needs another run before it can be considered resolved.
   - Use `deferred`, `acknowledged`, or `skipped` for the non-implementation outcomes defined in Step 2, but do not use `skipped` for severity-filtered findings that were never processed.

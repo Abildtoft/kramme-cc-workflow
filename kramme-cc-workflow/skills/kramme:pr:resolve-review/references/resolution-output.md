@@ -8,9 +8,10 @@ Write resolutions to the appropriate file in the project root:
 - If the source review was `PRODUCT_REVIEW_OVERVIEW.md` → update `PRODUCT_REVIEW_OVERVIEW.md` in place
 - If the source review was `COPY_REVIEW_OVERVIEW.md` → update `COPY_REVIEW_OVERVIEW.md` in place
 - If the source review was `CONVENTION_REVIEW_OVERVIEW.md` → update `CONVENTION_REVIEW_OVERVIEW.md` in place
+- If the source review was `OVERENGINEERING_REVIEW_OVERVIEW.md` or carries `Review producer: kramme:pr:overengineering-review` → update or create `OVERENGINEERING_REVIEW_OVERVIEW.md`
 - Otherwise → create or update `REVIEW_OVERVIEW.md`
 
-Updates are **in place**: for each processed finding, replace or add its `Resolution status:` and `Action taken:` fields inside the existing entry. When a reopened manual finding is completed, apply the completed-decision replacement required by Step 2d. Findings present in the source but not addressed in this run (severity-filtered, out-of-scope, already processed, or unrelated) stay verbatim — never delete entries. If the source did not exist (review came from chat or `gh`), create a fresh `REVIEW_OVERVIEW.md` containing every processed finding.
+Updates are **in place**: for each processed finding, replace or add its `Resolution status:` and `Action taken:` fields inside the existing entry. When a reopened manual finding is completed, apply the completed-decision replacement required by Step 2d. Findings present in the source but not addressed in this run (severity-filtered, out-of-scope, already processed, or unrelated) stay verbatim — never delete entries. If the source did not exist, create the producer-specific file named above when a recognized marker is present; otherwise create `REVIEW_OVERVIEW.md`.
 
 ## External review template
 
@@ -100,7 +101,7 @@ End the suffix with exactly one next-step field that matches who can act:
 
 **Waiting on:** [For a decision the user cannot supply: the required owner, approval, or access; do not invite the user to choose an option or rerun.]
 
-A selected code resolution becomes retry-eligible implementation state, not another pending decision. Before implementation, remove the decision-pending fields (`Manual blocker`, `Next human decision`, `Recommended resolution`, `Alternatives`, `To proceed`, and `Waiting on`) and record **Selected resolution**. If implementation or validation fails, retain **Selected resolution**, keep **Resolution status: open**, and record the failed attempt in **Action taken**. On the next run, retry that selected resolution without asking for the same decision again.
+A selected code resolution becomes retry-eligible implementation state, not another pending decision. Before implementation, remove the decision-pending fields (`Manual blocker`, `Next human decision`, `Recommended resolution`, `Alternatives`, `To proceed`, and `Waiting on`) and record **Selected resolution**. If implementation or validation fails, retain **Selected resolution**, keep **Resolution status: open**, and record the failed attempt in **Action taken**. On the next run, reuse that recorded authorization rather than reopening the completed decision gate.
 
 After the finding is completed, remove the decision-pending fields and any `Process handoff` or `Waiting on` field, retain or record:
 
