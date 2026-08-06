@@ -1,0 +1,705 @@
+{
+  "generated_by": "kramme-cc-workflow/scripts/generate-component-reference.py",
+  "canonical_reference": "README.md",
+  "skills": [
+    {
+      "name": "kramme:browse",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:browse/SKILL.md"
+    },
+    {
+      "name": "kramme:changelog:generate",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:changelog:generate/SKILL.md"
+    },
+    {
+      "name": "kramme:ci:design-pipeline",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:ci:design-pipeline/SKILL.md"
+    },
+    {
+      "name": "kramme:code:agent-readiness",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:code:agent-readiness/SKILL.md"
+    },
+    {
+      "name": "kramme:code:api-design",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:code:api-design/SKILL.md"
+    },
+    {
+      "name": "kramme:code:breakdown-findings",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md"
+    },
+    {
+      "name": "kramme:code:copy-review",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:code:copy-review/SKILL.md"
+    },
+    {
+      "name": "kramme:code:deprecate",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:code:deprecate/SKILL.md"
+    },
+    {
+      "name": "kramme:code:harden-security",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:code:harden-security/SKILL.md"
+    },
+    {
+      "name": "kramme:code:incremental",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:code:incremental/SKILL.md"
+    },
+    {
+      "name": "kramme:code:migrate",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:code:migrate/SKILL.md"
+    },
+    {
+      "name": "kramme:code:optimize",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:code:optimize/SKILL.md"
+    },
+    {
+      "name": "kramme:code:outside-view",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:code:outside-view/SKILL.md"
+    },
+    {
+      "name": "kramme:code:performance",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:code:performance/SKILL.md"
+    },
+    {
+      "name": "kramme:code:plan-to-pr",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:code:plan-to-pr/SKILL.md"
+    },
+    {
+      "name": "kramme:code:refactor-opportunities",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:code:refactor-opportunities/SKILL.md"
+    },
+    {
+      "name": "kramme:code:refactor-pass",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:code:refactor-pass/SKILL.md"
+    },
+    {
+      "name": "kramme:code:source-driven",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:code:source-driven/SKILL.md"
+    },
+    {
+      "name": "kramme:code:weakness-audit",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:code:weakness-audit/SKILL.md"
+    },
+    {
+      "name": "kramme:code:work-from-plan",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:code:work-from-plan/SKILL.md"
+    },
+    {
+      "name": "kramme:debug:investigate",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:debug:investigate/SKILL.md"
+    },
+    {
+      "name": "kramme:debug:triage-to-issue",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:debug:triage-to-issue/SKILL.md"
+    },
+    {
+      "name": "kramme:deps:audit",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:deps:audit/SKILL.md"
+    },
+    {
+      "name": "kramme:discovery:interview",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:discovery:interview/SKILL.md"
+    },
+    {
+      "name": "kramme:discovery:strategic-inquiry",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:discovery:strategic-inquiry/SKILL.md"
+    },
+    {
+      "name": "kramme:docs:adr",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:docs:adr/SKILL.md"
+    },
+    {
+      "name": "kramme:docs:feature-spec",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:docs:feature-spec/SKILL.md"
+    },
+    {
+      "name": "kramme:docs:review",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:docs:review/SKILL.md"
+    },
+    {
+      "name": "kramme:docs:solution-note",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:docs:solution-note/SKILL.md"
+    },
+    {
+      "name": "kramme:docs:solution-refresh",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:docs:solution-refresh/SKILL.md"
+    },
+    {
+      "name": "kramme:docs:to-markdown",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:docs:to-markdown/SKILL.md"
+    },
+    {
+      "name": "kramme:docs:track-rejected-enhancements",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:docs:track-rejected-enhancements/SKILL.md"
+    },
+    {
+      "name": "kramme:docs:ubiquitous-language",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:docs:ubiquitous-language/SKILL.md"
+    },
+    {
+      "name": "kramme:docs:update-agents-md",
+      "invocation": "Background",
+      "path": "kramme-cc-workflow/skills/kramme:docs:update-agents-md/SKILL.md"
+    },
+    {
+      "name": "kramme:git:clean-gone-branches",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:git:clean-gone-branches/SKILL.md"
+    },
+    {
+      "name": "kramme:git:commit-message",
+      "invocation": "Background",
+      "path": "kramme-cc-workflow/skills/kramme:git:commit-message/SKILL.md"
+    },
+    {
+      "name": "kramme:git:fixup",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md"
+    },
+    {
+      "name": "kramme:git:recreate-commits",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md"
+    },
+    {
+      "name": "kramme:git:worktree",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:git:worktree/SKILL.md"
+    },
+    {
+      "name": "kramme:hooks:configure-links",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:hooks:configure-links/SKILL.md"
+    },
+    {
+      "name": "kramme:hooks:toggle",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:hooks:toggle/SKILL.md"
+    },
+    {
+      "name": "kramme:launch:announce",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:launch:announce/SKILL.md"
+    },
+    {
+      "name": "kramme:launch:rollout",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:launch:rollout/SKILL.md"
+    },
+    {
+      "name": "kramme:learn:verify-understanding",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:learn:verify-understanding/SKILL.md"
+    },
+    {
+      "name": "kramme:linear:issue-define",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:linear:issue-define/SKILL.md"
+    },
+    {
+      "name": "kramme:linear:issue-implement",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:linear:issue-implement/SKILL.md"
+    },
+    {
+      "name": "kramme:linear:issue-to-pr",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/SKILL.md"
+    },
+    {
+      "name": "kramme:linear:select-next",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:linear:select-next/SKILL.md"
+    },
+    {
+      "name": "kramme:nx:setup-portless",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:nx:setup-portless/SKILL.md"
+    },
+    {
+      "name": "kramme:pr:code-review",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md"
+    },
+    {
+      "name": "kramme:pr:complete-work",
+      "invocation": "Hidden",
+      "path": "kramme-cc-workflow/skills/kramme:pr:complete-work/SKILL.md"
+    },
+    {
+      "name": "kramme:pr:convention-review",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md"
+    },
+    {
+      "name": "kramme:pr:create",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md"
+    },
+    {
+      "name": "kramme:pr:fix-ci",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:pr:fix-ci/SKILL.md"
+    },
+    {
+      "name": "kramme:pr:generate-description",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md"
+    },
+    {
+      "name": "kramme:pr:github-review",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md"
+    },
+    {
+      "name": "kramme:pr:github-review-reply",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:pr:github-review-reply/SKILL.md"
+    },
+    {
+      "name": "kramme:pr:overengineering-review",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:pr:overengineering-review/SKILL.md"
+    },
+    {
+      "name": "kramme:pr:plan-split",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:pr:plan-split/SKILL.md"
+    },
+    {
+      "name": "kramme:pr:product-review",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md"
+    },
+    {
+      "name": "kramme:pr:rebase",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:pr:rebase/SKILL.md"
+    },
+    {
+      "name": "kramme:pr:resolve-review",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:pr:resolve-review/SKILL.md"
+    },
+    {
+      "name": "kramme:pr:stack",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:pr:stack/SKILL.md"
+    },
+    {
+      "name": "kramme:pr:ux-review",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:pr:ux-review/SKILL.md"
+    },
+    {
+      "name": "kramme:pr:verify-description",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:pr:verify-description/SKILL.md"
+    },
+    {
+      "name": "kramme:pr:walkthrough",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:pr:walkthrough/SKILL.md"
+    },
+    {
+      "name": "kramme:product:design-critic",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:product:design-critic/SKILL.md"
+    },
+    {
+      "name": "kramme:product:pulse",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:product:pulse/SKILL.md"
+    },
+    {
+      "name": "kramme:product:review",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:product:review/SKILL.md"
+    },
+    {
+      "name": "kramme:product:strategy",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:product:strategy/SKILL.md"
+    },
+    {
+      "name": "kramme:prototype",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:prototype/SKILL.md"
+    },
+    {
+      "name": "kramme:qa",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:qa/SKILL.md"
+    },
+    {
+      "name": "kramme:qa:intake",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:qa:intake/SKILL.md"
+    },
+    {
+      "name": "kramme:research",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:research/SKILL.md"
+    },
+    {
+      "name": "kramme:session:automate-repeats",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:session:automate-repeats/SKILL.md"
+    },
+    {
+      "name": "kramme:session:context-setup",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:session:context-setup/SKILL.md"
+    },
+    {
+      "name": "kramme:session:search",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:session:search/SKILL.md"
+    },
+    {
+      "name": "kramme:setup",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:setup/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:apply-spec-audit-fixes",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:siw:apply-spec-audit-fixes/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:breakdown-findings",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:siw:breakdown-findings/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:close",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:siw:close/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:continue",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:siw:continue/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:discovery",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:siw:discovery/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:generate-phases",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:implementation-audit",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:siw:implementation-audit/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:init",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:issue-define",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:issue-implement",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:siw:issue-implement/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:issue-reindex",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:siw:issue-reindex/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:issue-to-pr",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:siw:issue-to-pr/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:product-audit",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:siw:product-audit/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:remove",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:siw:remove/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:reset",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:siw:reset/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:resolve-audit",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:siw:resolve-audit/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:spec-audit",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:transfer-to-linear",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/SKILL.md"
+    },
+    {
+      "name": "kramme:siw:wayfinder",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:siw:wayfinder/SKILL.md"
+    },
+    {
+      "name": "kramme:skill:create",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:skill:create/SKILL.md"
+    },
+    {
+      "name": "kramme:skill:review",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:skill:review/SKILL.md"
+    },
+    {
+      "name": "kramme:test:generate",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:test:generate/SKILL.md"
+    },
+    {
+      "name": "kramme:test:tdd",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:test:tdd/SKILL.md"
+    },
+    {
+      "name": "kramme:text:clarify",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:text:clarify/SKILL.md"
+    },
+    {
+      "name": "kramme:text:humanize",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:text:humanize/SKILL.md"
+    },
+    {
+      "name": "kramme:verify:before-completion",
+      "invocation": "Background",
+      "path": "kramme-cc-workflow/skills/kramme:verify:before-completion/SKILL.md"
+    },
+    {
+      "name": "kramme:verify:run",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md"
+    },
+    {
+      "name": "kramme:visual:demo-reel",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:visual:demo-reel/SKILL.md"
+    },
+    {
+      "name": "kramme:visual:diagram",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:visual:diagram/SKILL.md"
+    },
+    {
+      "name": "kramme:visual:generate-image",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:visual:generate-image/SKILL.md"
+    },
+    {
+      "name": "kramme:visual:onboarding",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:visual:onboarding/SKILL.md"
+    },
+    {
+      "name": "kramme:visual:plan-review",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:visual:plan-review/SKILL.md"
+    },
+    {
+      "name": "kramme:visual:project-recap",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:visual:project-recap/SKILL.md"
+    },
+    {
+      "name": "kramme:workflow-artifacts:cleanup",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
+    },
+    {
+      "name": "kramme:workflow:wizard",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:workflow:wizard/SKILL.md"
+    }
+  ],
+  "agents": [
+    {
+      "name": "kramme:a11y-auditor",
+      "path": "kramme-cc-workflow/agents/kramme:a11y-auditor.md"
+    },
+    {
+      "name": "kramme:architecture-strategist",
+      "path": "kramme-cc-workflow/agents/kramme:architecture-strategist.md"
+    },
+    {
+      "name": "kramme:auth-reviewer",
+      "path": "kramme-cc-workflow/agents/kramme:auth-reviewer.md"
+    },
+    {
+      "name": "kramme:code-reviewer",
+      "path": "kramme-cc-workflow/agents/kramme:code-reviewer.md"
+    },
+    {
+      "name": "kramme:code-simplifier",
+      "path": "kramme-cc-workflow/agents/kramme:code-simplifier.md"
+    },
+    {
+      "name": "kramme:codebase-pattern-reviewer",
+      "path": "kramme-cc-workflow/agents/kramme:codebase-pattern-reviewer.md"
+    },
+    {
+      "name": "kramme:comment-analyzer",
+      "path": "kramme-cc-workflow/agents/kramme:comment-analyzer.md"
+    },
+    {
+      "name": "kramme:convention-drift-reviewer",
+      "path": "kramme-cc-workflow/agents/kramme:convention-drift-reviewer.md"
+    },
+    {
+      "name": "kramme:copy-reviewer",
+      "path": "kramme-cc-workflow/agents/kramme:copy-reviewer.md"
+    },
+    {
+      "name": "kramme:data-reviewer",
+      "path": "kramme-cc-workflow/agents/kramme:data-reviewer.md"
+    },
+    {
+      "name": "kramme:design-iterator",
+      "path": "kramme-cc-workflow/agents/kramme:design-iterator.md"
+    },
+    {
+      "name": "kramme:deslop-reviewer",
+      "path": "kramme-cc-workflow/agents/kramme:deslop-reviewer.md"
+    },
+    {
+      "name": "kramme:injection-reviewer",
+      "path": "kramme-cc-workflow/agents/kramme:injection-reviewer.md"
+    },
+    {
+      "name": "kramme:lean-reviewer",
+      "path": "kramme-cc-workflow/agents/kramme:lean-reviewer.md"
+    },
+    {
+      "name": "kramme:logic-reviewer",
+      "path": "kramme-cc-workflow/agents/kramme:logic-reviewer.md"
+    },
+    {
+      "name": "kramme:overengineering-reviewer",
+      "path": "kramme-cc-workflow/agents/kramme:overengineering-reviewer.md"
+    },
+    {
+      "name": "kramme:performance-oracle",
+      "path": "kramme-cc-workflow/agents/kramme:performance-oracle.md"
+    },
+    {
+      "name": "kramme:pr-relevance-validator",
+      "path": "kramme-cc-workflow/agents/kramme:pr-relevance-validator.md"
+    },
+    {
+      "name": "kramme:pr-test-analyzer",
+      "path": "kramme-cc-workflow/agents/kramme:pr-test-analyzer.md"
+    },
+    {
+      "name": "kramme:product-reviewer",
+      "path": "kramme-cc-workflow/agents/kramme:product-reviewer.md"
+    },
+    {
+      "name": "kramme:removal-planner",
+      "path": "kramme-cc-workflow/agents/kramme:removal-planner.md"
+    },
+    {
+      "name": "kramme:silent-failure-hunter",
+      "path": "kramme-cc-workflow/agents/kramme:silent-failure-hunter.md"
+    },
+    {
+      "name": "kramme:type-design-analyzer",
+      "path": "kramme-cc-workflow/agents/kramme:type-design-analyzer.md"
+    },
+    {
+      "name": "kramme:ux-reviewer",
+      "path": "kramme-cc-workflow/agents/kramme:ux-reviewer.md"
+    },
+    {
+      "name": "kramme:visual-reviewer",
+      "path": "kramme-cc-workflow/agents/kramme:visual-reviewer.md"
+    }
+  ],
+  "hooks": [
+    {
+      "name": "auto-format",
+      "event": "PostToolUse (Write|Edit)",
+      "path": "kramme-cc-workflow/hooks/auto-format.sh"
+    },
+    {
+      "name": "block-rm-rf",
+      "event": "PreToolUse (Bash)",
+      "path": "kramme-cc-workflow/hooks/block-rm-rf.sh"
+    },
+    {
+      "name": "confirm-review-responses",
+      "event": "PreToolUse (Bash)",
+      "path": "kramme-cc-workflow/hooks/confirm-review-responses.sh"
+    },
+    {
+      "name": "context-links",
+      "event": "Stop",
+      "path": "kramme-cc-workflow/hooks/context-links.sh"
+    },
+    {
+      "name": "noninteractive-git",
+      "event": "PreToolUse (Bash)",
+      "path": "kramme-cc-workflow/hooks/noninteractive-git.sh"
+    },
+    {
+      "name": "skill-usage-stats",
+      "event": "PreToolUse (Skill), UserPromptSubmit",
+      "path": "kramme-cc-workflow/hooks/skill-usage-stats.sh"
+    }
+  ]
+}

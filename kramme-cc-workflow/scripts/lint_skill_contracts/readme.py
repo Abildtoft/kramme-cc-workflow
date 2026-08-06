@@ -42,6 +42,7 @@ class HookReference:
     name: str
     event: str
     description: str
+    path: str = ""
 
 
 def skill_reference_from_frontmatter(
@@ -54,9 +55,7 @@ def skill_reference_from_frontmatter(
         "user-invocable",
         schema,
     )
-    display_name = (
-        f"/{name}" if parse_frontmatter_bool(frontmatter, user_invocable_field) else name
-    )
+    display_name = f"/{name}" if parse_frontmatter_bool(frontmatter, user_invocable_field) else name
     return SkillReference(
         name=name,
         display_name=display_name,
@@ -67,11 +66,7 @@ def skill_reference_from_frontmatter(
 
 
 def render_skill_reference_row(reference: SkillReference) -> str:
-    arguments = (
-        "—"
-        if reference.arguments == "—"
-        else f"`{escape_markdown_table_cell(reference.arguments)}`"
-    )
+    arguments = "—" if reference.arguments == "—" else f"`{escape_markdown_table_cell(reference.arguments)}`"
     return (
         f"| `{escape_markdown_table_cell(reference.display_name)}` | "
         f"{reference.invocation} | "
@@ -100,9 +95,7 @@ def generated_readme_block_bounds(
             return None
         try:
             end = next(
-                index
-                for index, line in enumerate(lines[start + 1 :], start=start + 1)
-                if line.strip() == end_marker
+                index for index, line in enumerate(lines[start + 1 :], start=start + 1) if line.strip() == end_marker
             )
         except StopIteration:
             failures.append(f"{label}: missing end marker {end_marker!r}")
@@ -125,9 +118,7 @@ def generated_readme_block_bounds(
         if in_section and stripped == end_heading:
             return start, index
 
-    failures.append(
-        f"{label}: could not find section from {start_heading!r} to {end_heading!r}"
-    )
+    failures.append(f"{label}: could not find section from {start_heading!r} to {end_heading!r}")
     return None
 
 
@@ -173,8 +164,7 @@ def readme_component_rows(
         if name in rows:
             previous_line = rows[name][0]
             failures.append(
-                f"{label}: README entry {name!r} is documented more than once "
-                f"(lines {previous_line} and {index})"
+                f"{label}: README entry {name!r} is documented more than once (lines {previous_line} and {index})"
             )
             continue
         rows[name] = (index, cells)
@@ -263,12 +253,18 @@ def load_agent_references(
     return references
 
 
-def hook_name_from_command(command: str, command_path_regex: str) -> str | None:
+def hook_command_relative_path(command: str, command_path_regex: str) -> str | None:
     matches = re.findall(command_path_regex, command)
     if not matches:
         return None
-    command_path = Path(matches[0])
-    return command_path.name.removesuffix(".sh")
+    return str(matches[0])
+
+
+def hook_name_from_command(command: str, command_path_regex: str) -> str | None:
+    plugin_relative = hook_command_relative_path(command, command_path_regex)
+    if plugin_relative is None:
+        return None
+    return Path(plugin_relative).name.removesuffix(".sh")
 
 
 def hook_event_label(event: str, matcher: Any) -> str:
@@ -292,8 +288,7 @@ def load_hook_references(
         data = json.loads(read_text(hooks_path))
     except json.JSONDecodeError as exc:
         failures.append(
-            f"readme hook sync: {hooks_relative} is invalid JSON at line {exc.lineno}, "
-            f"column {exc.colno}: {exc.msg}"
+            f"readme hook sync: {hooks_relative} is invalid JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}"
         )
         return {}
 
@@ -306,6 +301,7 @@ def load_hook_references(
         "command_path_regex",
         r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\"'\s]+)",
     )
+    plugin_root = config.get("plugin_root", "kramme-cc-workflow")
     descriptions = config.get("descriptions", {})
     if not isinstance(descriptions, dict):
         failures.append("readme hook sync: descriptions must be an object keyed by hook name")
@@ -313,6 +309,7 @@ def load_hook_references(
 
     order: list[str] = []
     events_by_name: dict[str, list[str]] = {}
+    paths_by_name: dict[str, str] = {}
 
     for event, entries in hooks.items():
         if not isinstance(entries, list):
@@ -339,6 +336,8 @@ def load_hook_references(
                     continue
                 if name not in events_by_name:
                     events_by_name[name] = []
+                    plugin_relative = hook_command_relative_path(command, command_path_regex)
+                    paths_by_name[name] = f"{plugin_root}/{plugin_relative}"
                     order.append(name)
                 if event_label not in events_by_name[name]:
                     events_by_name[name].append(event_label)
@@ -353,6 +352,7 @@ def load_hook_references(
             name=name,
             event=", ".join(events_by_name[name]),
             description=description,
+            path=paths_by_name[name],
         )
     return references
 
@@ -405,10 +405,7 @@ def check_simple_readme_component_sync(
 ) -> None:
     for name in sorted(references):
         if name not in documented_rows:
-            failures.append(
-                f"{label}: {readme_relative} is missing {component_type} {name!r} "
-                f"from {source_relative}"
-            )
+            failures.append(f"{label}: {readme_relative} is missing {component_type} {name!r} from {source_relative}")
 
     check_readme_extra_component_rows(
         label,
@@ -427,10 +424,7 @@ def check_simple_readme_component_sync(
             continue
         if len(cells) <= max_column:
             columns = ", ".join(field.title() for field in required_columns)
-            failures.append(
-                f"{label}: {readme_relative}:{line_no} row for {name!r} must "
-                f"include {columns} columns"
-            )
+            failures.append(f"{label}: {readme_relative}:{line_no} row for {name!r} must include {columns} columns")
             continue
 
         expected_values = expected_values_for_reference(reference)
@@ -469,10 +463,7 @@ def check_readme_skill_rows_sync(
 
     for name in sorted(references):
         if name not in documented_skills:
-            failures.append(
-                f"readme skill sync: {readme_relative} is missing skill {name!r} "
-                f"from {skills_relative}"
-            )
+            failures.append(f"readme skill sync: {readme_relative} is missing skill {name!r} from {skills_relative}")
 
     allow_readme_only = set(config.get("allow_readme_only_skills", []))
     check_readme_extra_skill_rows(
@@ -625,10 +616,7 @@ def check_readme_skill_sync(
 
 
 def render_agent_reference_row(reference: AgentReference) -> str:
-    return (
-        f"| `{escape_markdown_table_cell(reference.name)}` | "
-        f"{escape_markdown_table_cell(reference.description)} |"
-    )
+    return f"| `{escape_markdown_table_cell(reference.name)}` | {escape_markdown_table_cell(reference.description)} |"
 
 
 def render_hook_reference_row(reference: HookReference) -> str:
@@ -676,10 +664,7 @@ def render_readme_skill_rows_sync(
     allow_readme_only = set(config.get("allow_readme_only_skills", []))
     for name in sorted(references):
         if name not in documented_skills:
-            failures.append(
-                f"readme skill sync: {readme_relative} is missing skill {name!r} "
-                f"from {skills_relative}"
-            )
+            failures.append(f"readme skill sync: {readme_relative} is missing skill {name!r} from {skills_relative}")
     check_readme_extra_skill_rows(
         readme_relative,
         skills_relative,
@@ -763,18 +748,12 @@ def readme_relative_for_component_sync(
         registry.get("readme_agent_sync"),
         registry.get("readme_hook_sync"),
     ]
-    readme_values = {
-        config.get("readme", "README.md")
-        for config in configs
-        if isinstance(config, dict)
-    }
+    readme_values = {config.get("readme", "README.md") for config in configs if isinstance(config, dict)}
     if not readme_values:
         failures.append("component reference sync: registry has no README sync config")
         return None
     if len(readme_values) > 1:
-        failures.append(
-            "component reference sync: README sync configs must target the same README file"
-        )
+        failures.append("component reference sync: README sync configs must target the same README file")
         return None
     return next(iter(readme_values))
 
@@ -791,9 +770,7 @@ def render_readme_component_sync(
 
     readme_path = resolve(root, readme_relative)
     if not readme_path.exists():
-        return None, [
-            f"component reference sync: registered path is missing: {readme_relative}"
-        ]
+        return None, [f"component reference sync: registered path is missing: {readme_relative}"]
 
     rendered: str | None = read_text(readme_path)
     rendered = render_readme_skill_rows_sync(root, registry, schema, rendered, failures)
@@ -806,7 +783,5 @@ def render_readme_component_sync(
     return rendered, []
 
 
-def render_readme_skill_sync(
-    root: Path, registry: dict[str, Any]
-) -> tuple[str | None, list[str]]:
+def render_readme_skill_sync(root: Path, registry: dict[str, Any]) -> tuple[str | None, list[str]]:
     return render_readme_component_sync(root, registry)

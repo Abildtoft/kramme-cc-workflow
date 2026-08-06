@@ -128,6 +128,91 @@ write_readme_skill_sync_registry() {
 EOF
 }
 
+write_component_catalog_registry() {
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "component_catalog": {
+    "path": "kramme-cc-workflow/docs/component-catalog.json",
+    "generated_by": "kramme-cc-workflow/scripts/generate-component-reference.py",
+    "canonical_reference": "README.md"
+  },
+  "readme_skill_sync": {
+    "readme": "README.md",
+    "skills_dir": "kramme-cc-workflow/skills",
+    "start_marker": "<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->",
+    "end_marker": "<!-- END SOURCE-SYNCED SKILL ROWS -->"
+  },
+  "readme_agent_sync": {
+    "readme": "README.md",
+    "agents_dir": "kramme-cc-workflow/agents",
+    "start_marker": "<!-- BEGIN SOURCE-SYNCED AGENT ROWS -->",
+    "end_marker": "<!-- END SOURCE-SYNCED AGENT ROWS -->"
+  },
+  "readme_hook_sync": {
+    "readme": "README.md",
+    "hooks_json": "kramme-cc-workflow/hooks/hooks.json",
+    "start_marker": "<!-- BEGIN SOURCE-SYNCED HOOK ROWS -->",
+    "end_marker": "<!-- END SOURCE-SYNCED HOOK ROWS -->",
+    "descriptions": {
+      "sample-hook": "Runs a sample hook"
+    }
+  }
+}
+EOF
+}
+
+write_component_catalog_tree() {
+  write_reference_skill \
+    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" \
+    "kramme:sample" \
+    "Sample skill description" \
+    "false" \
+    "true" \
+    "[target]"
+  write_reference_agent \
+    "$TMP_ROOT/kramme-cc-workflow/agents/kramme:reviewer.md" \
+    "kramme:reviewer" \
+    "Reviews fixture code"
+  write_hook_manifest "$TMP_ROOT/kramme-cc-workflow/hooks/hooks.json" "sample-hook"
+  write_file "$TMP_ROOT/kramme-cc-workflow/hooks/sample-hook.sh" <<'EOF'
+#!/usr/bin/env bash
+EOF
+  write_file "$TMP_ROOT/README.md" <<'EOF'
+# Fixture
+
+## Skills
+
+<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->
+
+| Skill | Invocation | Arguments | Description |
+| --- | --- | --- | --- |
+| `/kramme:sample` | User, Auto | `[target]` | Sample skill description |
+
+<!-- END SOURCE-SYNCED SKILL ROWS -->
+
+## Agents
+
+<!-- BEGIN SOURCE-SYNCED AGENT ROWS -->
+| Agent | Description |
+| --- | --- |
+| `kramme:reviewer` | Reviews fixture code |
+<!-- END SOURCE-SYNCED AGENT ROWS -->
+
+## Hooks
+
+<!-- BEGIN SOURCE-SYNCED HOOK ROWS -->
+| Hook | Event | Description |
+| --- | --- | --- |
+| `sample-hook` | PreToolUse (Bash) | Runs a sample hook |
+<!-- END SOURCE-SYNCED HOOK ROWS -->
+EOF
+  write_component_catalog_registry
+}
+
+catalog_path() {
+  printf '%s\n' "$TMP_ROOT/kramme-cc-workflow/docs/component-catalog.json"
+}
+
 write_reference_agent() {
   local path="$1"
   local name="$2"
@@ -462,6 +547,7 @@ EOF
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"component reference sync check failed:"* ]]
+  [[ "$output" == *"run python3 kramme-cc-workflow/scripts/generate-component-reference.py --write"* ]]
 
   run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
 
@@ -618,6 +704,146 @@ EOF
   [[ "$output" == *"updated README.md component reference rows."* ]]
   [[ "$(cat "$TMP_ROOT/README.md")" == *"| \`kramme:reviewer\` | Reviews fixture code |"* ]]
   [[ "$(cat "$TMP_ROOT/README.md")" == *"| \`sample-hook\` | PostToolUse (Write\\|Edit) | Runs a sample hook |"* ]]
+}
+
+@test "real component catalog stays synchronized with the current tree" {
+  run python3 "$COMPONENT_GENERATOR" --check
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"component reference docs are in sync."* ]]
+}
+
+@test "component catalog indexes every component type by name and source path" {
+  write_component_catalog_tree
+
+  run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"updated kramme-cc-workflow/docs/component-catalog.json component catalog."* ]]
+
+  run python3 -c '
+import json, sys
+document = json.load(open(sys.argv[1], encoding="utf-8"))
+print(document["canonical_reference"])
+print(document["generated_by"])
+print(json.dumps(document["skills"]))
+print(json.dumps(document["agents"]))
+print(json.dumps(document["hooks"]))
+' "$(catalog_path)"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"README.md"* ]]
+  [[ "$output" == *"kramme-cc-workflow/scripts/generate-component-reference.py"* ]]
+  [[ "$output" == *'{"name": "kramme:sample", "invocation": "User, Auto", "path": "kramme-cc-workflow/skills/kramme:sample/SKILL.md"}'* ]]
+  [[ "$output" == *'{"name": "kramme:reviewer", "path": "kramme-cc-workflow/agents/kramme:reviewer.md"}'* ]]
+  [[ "$output" == *'{"name": "sample-hook", "event": "PreToolUse (Bash)", "path": "kramme-cc-workflow/hooks/sample-hook.sh"}'* ]]
+
+  # No component description is copied into the catalog; the README stays canonical.
+  ! grep -qF "Sample skill description" "$(catalog_path)"
+  ! grep -qF "Reviews fixture code" "$(catalog_path)"
+  ! grep -qF "Runs a sample hook" "$(catalog_path)"
+}
+
+@test "component catalog generation is idempotent" {
+  write_component_catalog_tree
+
+  run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+  [ "$status" -eq 0 ]
+  cp "$(catalog_path)" "$TMP_ROOT/first-pass.json"
+
+  run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"component reference docs are in sync."* ]]
+  cmp "$TMP_ROOT/first-pass.json" "$(catalog_path)"
+
+  run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --check
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"component reference docs are in sync."* ]]
+}
+
+@test "component catalog lint reports a missing catalog artifact" {
+  write_component_catalog_tree
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"component catalog: registered path is missing: kramme-cc-workflow/docs/component-catalog.json"* ]]
+}
+
+@test "component catalog lint reports added and removed component drift" {
+  write_component_catalog_tree
+  run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+  [ "$status" -eq 0 ]
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+  [ "$status" -eq 0 ]
+
+  write_reference_agent \
+    "$TMP_ROOT/kramme-cc-workflow/agents/kramme:auditor.md" \
+    "kramme:auditor" \
+    "Audits fixture code"
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"component catalog: kramme-cc-workflow/docs/component-catalog.json is stale"* ]]
+  [[ "$output" == *"run python3 kramme-cc-workflow/scripts/generate-component-reference.py --write"* ]]
+
+  rm "$TMP_ROOT/kramme-cc-workflow/agents/kramme:auditor.md"
+  rm -r "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample"
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"component catalog: kramme-cc-workflow/docs/component-catalog.json is stale"* ]]
+}
+
+@test "component catalog rejects an emitted component path that does not exist" {
+  write_component_catalog_tree
+  rm "$TMP_ROOT/kramme-cc-workflow/hooks/sample-hook.sh"
+
+  run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"component reference sync failed:"* ]]
+  [[ "$output" == *"would document 'sample-hook' at missing path kramme-cc-workflow/hooks/sample-hook.sh"* ]]
+  [ ! -f "$(catalog_path)" ]
+}
+
+@test "component catalog defers once to the readme sync checks on broken source metadata" {
+  write_component_catalog_tree
+  run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+  [ "$status" -eq 0 ]
+
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/kramme:broken/SKILL.md" <<'EOF'
+# kramme:broken without frontmatter
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"readme skill sync: kramme-cc-workflow/skills/kramme:broken/SKILL.md is missing YAML frontmatter"* ]]
+  [[ "$output" == *"component catalog: cannot generate kramme-cc-workflow/docs/component-catalog.json until component source metadata is valid"* ]]
+
+  # The catalog defers to the owning check instead of repeating its diagnostics.
+  [ "$(grep -c "readme skill sync: .* is missing YAML frontmatter" <<<"$output")" -eq 1 ]
+  [ "$(grep -c "^::error::component catalog:" <<<"$output")" -eq 1 ]
+}
+
+@test "component catalog requires the readme sync configs it is generated from" {
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "component_catalog": {
+    "path": "kramme-cc-workflow/docs/component-catalog.json"
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"is generated from README sync metadata"* ]]
+  [[ "$output" == *"readme_skill_sync"* ]]
+  [[ "$output" == *"readme_agent_sync"* ]]
+  [[ "$output" == *"readme_hook_sync"* ]]
 }
 
 @test "pr code review exposes resolver readiness contract" {

@@ -244,6 +244,8 @@ All plugin functionality is delivered through skills. Skills can be user-invoked
 - **Auto-triggered**: Claude invokes automatically when context matches the skill description.
 - **Background**: Skills with `user-invocable: false` are auto-triggered only and don't appear in the `/` menu.
 
+The tables below are the canonical component reference. For a compact lookup by name, invocation mode, and source path, see the generated [component catalog](kramme-cc-workflow/docs/component-catalog.json).
+
 <!-- BEGIN SOURCE-SYNCED SKILL ROWS -->
 
 ### User-Invocable Skills
@@ -647,6 +649,7 @@ The plugin source lives in `kramme-cc-workflow/`; this root README is the canoni
 │   ├── hooks/               # Event handlers
 │   │   └── hooks.json
 │   ├── docs/                # Detailed reference docs
+│   │   └── component-catalog.json  # Generated compact component index
 │   └── README.md            # Pointer to this root README
 ├── .agents/skills/          # Local repository-maintenance skills
 └── README.md                # Canonical documentation
@@ -660,6 +663,7 @@ The plugin source lives in `kramme-cc-workflow/`; this root README is the canoni
 - [Skills Documentation](https://code.claude.com/docs/en/skills)
 - [Repository Architecture](kramme-cc-workflow/docs/architecture.md)
 - [Repository Code Map](kramme-cc-workflow/docs/code-map.md)
+- [Component Catalog](kramme-cc-workflow/docs/component-catalog.json) (generated compact index of skills, agents, and hooks)
 - [Agent Portability Matrix](kramme-cc-workflow/docs/agent-portability.md)
 - [Decision Index](kramme-cc-workflow/docs/decisions/README.md)
 - [SIW Workflow Reference](kramme-cc-workflow/docs/siw.md)
@@ -736,7 +740,7 @@ See [CLAUDE.md](CLAUDE.md) for detailed conventions. Quick reference:
 - **Hooks**: Edit `kramme-cc-workflow/hooks/hooks.json` to add event handlers. Available events: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `SessionStart`, `Stop`.
 - **External sources**: When adapting skills, scripts, docs, or workflows from another project, update the skill's `references/sources.yaml` and classify each entry as `usage: inspiration` or `usage: copied`. Conceptual inspiration must be rewritten in original local language. Copied expression requires a verified compatible license, a complete skill-local notice, the exact upstream path, and an immutable commit, revision, release, or version; public availability and attribution alone are not permission. Fetched source bodies and `references/sources-snapshot/` directories must never be committed. Use `/kramme:skill:create` and `/kramme:skill:review` for the detailed checks.
 
-The skill, agent, and hook table rows in this README are generated from component source metadata. Run `python3 kramme-cc-workflow/scripts/generate-component-reference.py --write` to refresh them, or `python3 kramme-cc-workflow/scripts/generate-component-reference.py --check` to validate without writing.
+The skill, agent, and hook table rows in this README and the compact [component catalog](kramme-cc-workflow/docs/component-catalog.json) are generated from component source metadata. Run `python3 kramme-cc-workflow/scripts/generate-component-reference.py --write` to refresh both, or `python3 kramme-cc-workflow/scripts/generate-component-reference.py --check` to validate without writing. `make -C kramme-cc-workflow skill-contracts` fails on drift.
 
 ## Local Repository Maintenance
 

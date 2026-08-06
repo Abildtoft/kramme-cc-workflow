@@ -2,6 +2,19 @@
 
 This repo contains Claude Code plugins providing workflow automation for daily development tasks.
 
+## Start Here
+
+This file owns component conventions only. For setup, architecture, test selection, or settled decisions, read the narrowest canonical source instead of inferring from here:
+
+1. [CONTRIBUTING.md](CONTRIBUTING.md) — local setup, change guidelines, and verification commands.
+2. [docs/architecture.md](kramme-cc-workflow/docs/architecture.md) — subsystem boundaries and runtime flow.
+3. [docs/code-map.md](kramme-cc-workflow/docs/code-map.md) — source-to-test map; use it to pick the first files to read and the closest tests to run.
+4. [docs/decisions/README.md](kramme-cc-workflow/docs/decisions/README.md) — settled repository decisions and their sources.
+5. [README.md](README.md) — canonical public documentation, including the full component reference.
+6. [AGENTS.md](AGENTS.md) — the same routing plus the repository ground rules and their sources.
+
+To locate a shipped skill, agent, or hook without loading the full README, read the generated index at [docs/component-catalog.json](kramme-cc-workflow/docs/component-catalog.json). It carries names, invocation modes, and source paths only; README rows stay canonical for descriptions. Repository-maintenance skills are not included in this catalog; find them under `.agents/skills/` or [Local Repository Maintenance](README.md#local-repository-maintenance).
+
 ## Project Structure
 
 ```
@@ -106,4 +119,20 @@ Install locally for testing:
 
 ```bash
 claude /plugin install /path/to/this/repo
+```
+
+### Verification
+
+Run the smallest meaningful check, then broaden:
+
+```bash
+make -C kramme-cc-workflow test   # fast default suite
+make -C kramme-cc-workflow lint   # shell, Python, and JS linting
+make -C kramme-cc-workflow verify # stronger pre-PR / release gate
+```
+
+Map changed files to the closest tests with [docs/code-map.md](kramme-cc-workflow/docs/code-map.md). After changing a skill, agent, or hook, regenerate the component reference output:
+
+```bash
+python3 kramme-cc-workflow/scripts/generate-component-reference.py --write
 ```

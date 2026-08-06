@@ -1,5 +1,15 @@
 from __future__ import annotations
 
+from .catalog import (
+    agent_catalog_entries,
+    catalog_relative_path,
+    check_component_catalog_drift,
+    component_catalog_document,
+    hook_catalog_entries,
+    render_component_catalog,
+    render_component_catalog_text,
+    skill_catalog_entries,
+)
 from .checks import CHECKS, CheckFunc, CheckResult, LintContext, run, run_checks
 from .checks.base_diff_scope import check_base_diff_scope
 from .checks.basic import (
@@ -10,6 +20,7 @@ from .checks.basic import (
     extract_contract_value,
     heading_lines,
 )
+from .checks.component_catalog import check_component_catalog
 from .checks.epilogue import canonical_epilogue_heading, check_epilogue_order
 from .checks.hooks_json import check_hooks_json
 from .checks.marker_manifest import (
@@ -58,6 +69,7 @@ from .readme import (
     check_readme_skill_rows_sync,
     check_readme_skill_sync,
     generated_readme_block_bounds,
+    hook_command_relative_path,
     hook_event_label,
     hook_name_from_command,
     hook_name_from_readme_cell,
@@ -109,10 +121,14 @@ __all__ = [
     "LintContext",
     "SkillReference",
     "add_arguments",
+    "agent_catalog_entries",
     "agent_name_from_readme_cell",
     "allow_empty_field_keys",
     "canonical_epilogue_heading",
+    "catalog_relative_path",
     "check_base_diff_scope",
+    "check_component_catalog",
+    "check_component_catalog_drift",
     "check_epilogue_order",
     "check_file_identity",
     "check_hooks_json",
@@ -128,6 +144,7 @@ __all__ = [
     "check_source_provenance",
     "check_text_contracts",
     "check_ui_relevance_contracts",
+    "component_catalog_document",
     "contract_schema_path",
     "escape_markdown_table_cell",
     "expected_arguments",
@@ -135,6 +152,8 @@ __all__ = [
     "extract_contract_value",
     "generated_readme_block_bounds",
     "heading_lines",
+    "hook_catalog_entries",
+    "hook_command_relative_path",
     "hook_event_label",
     "hook_name_from_command",
     "hook_name_from_readme_cell",
@@ -169,6 +188,8 @@ __all__ = [
     "readme_skill_rows",
     "rel",
     "render_agent_reference_row",
+    "render_component_catalog",
+    "render_component_catalog_text",
     "render_hook_reference_row",
     "render_readme_agent_sync",
     "render_readme_component_sync",
@@ -184,6 +205,7 @@ __all__ = [
     "schema_source_manifest",
     "sha256",
     "shorten",
+    "skill_catalog_entries",
     "skill_frontmatter_field_by_loader_property",
     "skill_frontmatter_fields_by_type",
     "skill_frontmatter_required_fields",

@@ -10,6 +10,7 @@ from .basic import (
     check_required_file_contracts,
     check_text_contracts,
 )
+from .component_catalog import check_component_catalog
 from .epilogue import check_epilogue_order
 from .hooks_json import check_hooks_json
 from .marker_manifest import check_marker_manifests
@@ -31,6 +32,7 @@ CHECKS: tuple[tuple[str, CheckFunc], ...] = (
     ("epilogue_order", check_epilogue_order),
     ("hooks_json", check_hooks_json),
     ("readme_skill_sync", check_readme_skill_sync),
+    ("component_catalog", check_component_catalog),
     ("mechanical", check_mechanical),
 )
 
