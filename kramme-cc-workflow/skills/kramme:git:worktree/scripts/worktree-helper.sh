@@ -8,7 +8,7 @@
 set -euo pipefail
 
 usage() {
-  cat <<'USAGE'
+  cat << 'USAGE'
 Usage:
   worktree-helper.sh list
   worktree-helper.sh create --path <path> --branch <branch> [--base <ref>]
@@ -20,7 +20,7 @@ Safety:
 USAGE
 }
 
-if ! git rev-parse --git-dir >/dev/null 2>&1; then
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
   echo "Error: not inside a git repository" >&2
   exit 1
 fi
@@ -40,12 +40,12 @@ is_conductor_path() {
     return 0
   fi
   case "$path" in
-  */conductor/workspaces/* | */Conductor/workspaces/*)
-    return 0
-    ;;
-  *)
-    return 1
-    ;;
+    */conductor/workspaces/* | */Conductor/workspaces/*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
   esac
 }
 
@@ -70,8 +70,8 @@ normalize_existing_path() {
 # Synced worktree-porcelain branch lookup (keep aligned across git worktree helpers):
 branch_worktree_path() {
   local branch="$1"
-  git worktree list --porcelain |
-    awk -v target="$branch" '
+  git worktree list --porcelain \
+    | awk -v target="$branch" '
 			/^worktree / {
 				path = substr($0, 10)
 			}
@@ -87,16 +87,16 @@ branch_worktree_path() {
 
 default_base_ref() {
   local base=""
-  base=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || true)
-  if [ -n "$base" ] && git rev-parse --verify --quiet "origin/$base^{commit}" >/dev/null; then
+  base=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@' || true)
+  if [ -n "$base" ] && git rev-parse --verify --quiet "origin/$base^{commit}" > /dev/null; then
     echo "origin/$base"
     return
   fi
-  if git rev-parse --verify --quiet "origin/main^{commit}" >/dev/null; then
+  if git rev-parse --verify --quiet "origin/main^{commit}" > /dev/null; then
     echo "origin/main"
     return
   fi
-  if git rev-parse --verify --quiet "origin/master^{commit}" >/dev/null; then
+  if git rev-parse --verify --quiet "origin/master^{commit}" > /dev/null; then
     echo "origin/master"
     return
   fi
@@ -104,8 +104,8 @@ default_base_ref() {
 }
 
 list_worktrees() {
-  git worktree list --porcelain |
-    awk '
+  git worktree list --porcelain \
+    | awk '
 			function flush() {
 				if (path == "") {
 					return
@@ -135,8 +135,8 @@ list_worktrees() {
 			END {
 				flush()
 			}
-		' |
-    while IFS=$'\t' read -r path branch commit; do
+		' \
+    | while IFS=$'\t' read -r path branch commit; do
       flags="-"
       if is_conductor_path "$path"; then
         flags="conductor-workspace"
@@ -146,132 +146,132 @@ list_worktrees() {
 }
 
 case "$action" in
-list)
-  printf '%-60s %-34s %-14s %s\n' "Path" "Branch" "Commit" "Flags"
-  printf '%-60s %-34s %-14s %s\n' "----" "------" "------" "-----"
-  list_worktrees
-  ;;
-create)
-  path=""
-  branch=""
-  base=""
-  while [ $# -gt 0 ]; do
-    case "$1" in
-    --path)
-      path="${2:-}"
-      shift
-      ;;
-    --branch)
-      branch="${2:-}"
-      shift
-      ;;
-    --base)
-      base="${2:-}"
-      shift
-      ;;
-    --help | -h)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "Unknown create argument: $1" >&2
-      usage >&2
+  list)
+    printf '%-60s %-34s %-14s %s\n' "Path" "Branch" "Commit" "Flags"
+    printf '%-60s %-34s %-14s %s\n' "----" "------" "------" "-----"
+    list_worktrees
+    ;;
+  create)
+    path=""
+    branch=""
+    base=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --path)
+          path="${2:-}"
+          shift
+          ;;
+        --branch)
+          branch="${2:-}"
+          shift
+          ;;
+        --base)
+          base="${2:-}"
+          shift
+          ;;
+        --help | -h)
+          usage
+          exit 0
+          ;;
+        *)
+          echo "Unknown create argument: $1" >&2
+          usage >&2
+          exit 2
+          ;;
+      esac
+      if [ $# -gt 0 ]; then
+        shift
+      fi
+    done
+    if [ -z "$path" ] || [ -z "$branch" ]; then
+      echo "create requires --path and --branch" >&2
       exit 2
-      ;;
-    esac
-    if [ $# -gt 0 ]; then
-      shift
     fi
-  done
-  if [ -z "$path" ] || [ -z "$branch" ]; then
-    echo "create requires --path and --branch" >&2
-    exit 2
-  fi
-  if [ -e "$path" ]; then
-    echo "Refusing to create worktree at existing path: $path" >&2
-    exit 1
-  fi
-  if ! git check-ref-format --branch "$branch" >/dev/null 2>&1; then
-    echo "Invalid branch name: $branch" >&2
-    exit 1
-  fi
-  existing_path=$(branch_worktree_path "$branch")
-  if [ -n "$existing_path" ]; then
-    echo "Branch '$branch' is already checked out at $existing_path" >&2
-    exit 1
-  fi
-  if git show-ref --verify --quiet "refs/heads/$branch"; then
-    git worktree add "$path" "$branch"
-  else
-    if [ -z "$base" ]; then
-      base=$(default_base_ref)
-    fi
-    if ! git rev-parse --verify --quiet "$base^{commit}" >/dev/null; then
-      echo "Base ref does not resolve to a commit: $base" >&2
+    if [ -e "$path" ]; then
+      echo "Refusing to create worktree at existing path: $path" >&2
       exit 1
     fi
-    git worktree add -b "$branch" "$path" "$base"
-  fi
-  ;;
-remove)
-  path=""
-  yes=0
-  force=0
-  allow_conductor=0
-  while [ $# -gt 0 ]; do
-    case "$1" in
-    --path)
-      path="${2:-}"
-      shift
-      ;;
-    --yes | -y)
-      yes=1
-      ;;
-    --force | -f)
-      force=1
-      ;;
-    --allow-conductor)
-      allow_conductor=1
-      ;;
-    --help | -h)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "Unknown remove argument: $1" >&2
-      usage >&2
-      exit 2
-      ;;
-    esac
-    if [ $# -gt 0 ]; then
-      shift
+    if ! git check-ref-format --branch "$branch" > /dev/null 2>&1; then
+      echo "Invalid branch name: $branch" >&2
+      exit 1
     fi
-  done
-  if [ -z "$path" ]; then
-    echo "remove requires --path" >&2
+    existing_path=$(branch_worktree_path "$branch")
+    if [ -n "$existing_path" ]; then
+      echo "Branch '$branch' is already checked out at $existing_path" >&2
+      exit 1
+    fi
+    if git show-ref --verify --quiet "refs/heads/$branch"; then
+      git worktree add "$path" "$branch"
+    else
+      if [ -z "$base" ]; then
+        base=$(default_base_ref)
+      fi
+      if ! git rev-parse --verify --quiet "$base^{commit}" > /dev/null; then
+        echo "Base ref does not resolve to a commit: $base" >&2
+        exit 1
+      fi
+      git worktree add -b "$branch" "$path" "$base"
+    fi
+    ;;
+  remove)
+    path=""
+    yes=0
+    force=0
+    allow_conductor=0
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --path)
+          path="${2:-}"
+          shift
+          ;;
+        --yes | -y)
+          yes=1
+          ;;
+        --force | -f)
+          force=1
+          ;;
+        --allow-conductor)
+          allow_conductor=1
+          ;;
+        --help | -h)
+          usage
+          exit 0
+          ;;
+        *)
+          echo "Unknown remove argument: $1" >&2
+          usage >&2
+          exit 2
+          ;;
+      esac
+      if [ $# -gt 0 ]; then
+        shift
+      fi
+    done
+    if [ -z "$path" ]; then
+      echo "remove requires --path" >&2
+      exit 2
+    fi
+    if [ "$yes" -ne 1 ]; then
+      echo "Refusing to remove worktree without --yes." >&2
+      exit 1
+    fi
+    normalized_path=$(normalize_existing_path "$path")
+    if is_conductor_path "$normalized_path" && [ "$allow_conductor" -ne 1 ]; then
+      echo "Refusing to remove likely Conductor workspace without --allow-conductor: $normalized_path" >&2
+      exit 1
+    fi
+    if [ "$force" -eq 1 ]; then
+      git worktree remove --force "$normalized_path"
+    else
+      git worktree remove "$normalized_path"
+    fi
+    ;;
+  --help | -h | help)
+    usage
+    ;;
+  *)
+    echo "Unknown action: $action" >&2
+    usage >&2
     exit 2
-  fi
-  if [ "$yes" -ne 1 ]; then
-    echo "Refusing to remove worktree without --yes." >&2
-    exit 1
-  fi
-  normalized_path=$(normalize_existing_path "$path")
-  if is_conductor_path "$normalized_path" && [ "$allow_conductor" -ne 1 ]; then
-    echo "Refusing to remove likely Conductor workspace without --allow-conductor: $normalized_path" >&2
-    exit 1
-  fi
-  if [ "$force" -eq 1 ]; then
-    git worktree remove --force "$normalized_path"
-  else
-    git worktree remove "$normalized_path"
-  fi
-  ;;
---help | -h | help)
-  usage
-  ;;
-*)
-  echo "Unknown action: $action" >&2
-  usage >&2
-  exit 2
-  ;;
+    ;;
 esac

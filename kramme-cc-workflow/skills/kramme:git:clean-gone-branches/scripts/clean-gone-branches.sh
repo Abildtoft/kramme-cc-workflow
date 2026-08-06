@@ -14,7 +14,7 @@ PRUNE=0
 CONFIRMED_BRANCHES=()
 
 usage() {
-  cat <<'USAGE'
+  cat << 'USAGE'
 Usage: clean-gone-branches.sh [--prune] [--delete --yes <branch>...] [--force] [--help]
 
 Lists local branches whose upstream tracking branch is gone.
@@ -30,43 +30,43 @@ USAGE
 
 while [ $# -gt 0 ]; do
   case "$1" in
-  --delete)
-    DELETE=1
-    ;;
-  --yes | -y)
-    YES=1
-    ;;
-  --force | -f)
-    FORCE=1
-    ;;
-  --prune)
-    PRUNE=1
-    ;;
-  --help | -h)
-    usage
-    exit 0
-    ;;
-  --)
-    shift
-    while [ $# -gt 0 ]; do
-      CONFIRMED_BRANCHES+=("$1")
+    --delete)
+      DELETE=1
+      ;;
+    --yes | -y)
+      YES=1
+      ;;
+    --force | -f)
+      FORCE=1
+      ;;
+    --prune)
+      PRUNE=1
+      ;;
+    --help | -h)
+      usage
+      exit 0
+      ;;
+    --)
       shift
-    done
-    break
-    ;;
-  -*)
-    echo "Unknown argument: $1" >&2
-    usage >&2
-    exit 2
-    ;;
-  *)
-    CONFIRMED_BRANCHES+=("$1")
-    ;;
+      while [ $# -gt 0 ]; do
+        CONFIRMED_BRANCHES+=("$1")
+        shift
+      done
+      break
+      ;;
+    -*)
+      echo "Unknown argument: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+    *)
+      CONFIRMED_BRANCHES+=("$1")
+      ;;
   esac
   shift
 done
 
-if ! git rev-parse --git-dir >/dev/null 2>&1; then
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
   echo "Error: not inside a git repository" >&2
   exit 1
 fi
@@ -104,10 +104,10 @@ trap cleanup EXIT
 
 WORKTREES_FILE="$TMP_DIR/worktrees"
 GONE_FILE="$TMP_DIR/gone"
-: >"$GONE_FILE"
-git worktree list --porcelain >"$WORKTREES_FILE"
+: > "$GONE_FILE"
+git worktree list --porcelain > "$WORKTREES_FILE"
 
-current_branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)
+current_branch=$(git symbolic-ref --quiet --short HEAD 2> /dev/null || true)
 
 # Synced worktree-porcelain branch lookup (keep aligned across git worktree helpers):
 worktree_for_branch() {
@@ -136,12 +136,12 @@ is_conductor_path() {
     return 0
   fi
   case "$path" in
-  */conductor/workspaces/* | */Conductor/workspaces/*)
-    return 0
-    ;;
-  *)
-    return 1
-    ;;
+    */conductor/workspaces/* | */Conductor/workspaces/*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
   esac
 }
 
@@ -161,17 +161,17 @@ append_branch_row() {
   if is_conductor_path "$worktree_path"; then
     flags="${flags} conductor-workspace"
   fi
-  printf '%s\t%s\t%s\t%s\n' "$branch" "${upstream:-"-"}" "${flags# }" "$worktree_path" >>"$GONE_FILE"
+  printf '%s\t%s\t%s\t%s\n' "$branch" "${upstream:-"-"}" "${flags# }" "$worktree_path" >> "$GONE_FILE"
 }
 
 if [ "$DELETE" -eq 1 ]; then
   for branch in "${CONFIRMED_BRANCHES[@]}"; do
-    if ! git check-ref-format --branch "$branch" >/dev/null 2>&1; then
-      printf '%s\t%s\t%s\t%s\n' "$branch" "-" "invalid" "" >>"$GONE_FILE"
+    if ! git check-ref-format --branch "$branch" > /dev/null 2>&1; then
+      printf '%s\t%s\t%s\t%s\n' "$branch" "-" "invalid" "" >> "$GONE_FILE"
       continue
     fi
     if ! git show-ref --verify --quiet "refs/heads/$branch"; then
-      printf '%s\t%s\t%s\t%s\n' "$branch" "-" "missing" "" >>"$GONE_FILE"
+      printf '%s\t%s\t%s\t%s\n' "$branch" "-" "missing" "" >> "$GONE_FILE"
       continue
     fi
     ref_info=$(git for-each-ref --format='%(upstream:short)|%(upstream:track)' "refs/heads/$branch")
@@ -184,8 +184,8 @@ if [ "$DELETE" -eq 1 ]; then
     append_branch_row "$branch" "$upstream"
   done
 else
-  git for-each-ref --format='%(refname:short)|%(upstream:short)|%(upstream:track)' refs/heads |
-    while IFS='|' read -r branch upstream track; do
+  git for-each-ref --format='%(refname:short)|%(upstream:short)|%(upstream:track)' refs/heads \
+    | while IFS='|' read -r branch upstream track; do
       [ "$track" = "[gone]" ] || continue
       append_branch_row "$branch" "$upstream"
     done
@@ -207,7 +207,7 @@ while IFS=$'\t' read -r branch upstream flags worktree_path; do
   [ -n "$flags" ] || flags="-"
   [ -n "$worktree_path" ] || worktree_path="-"
   printf '%-34s %-34s %-34s %s\n' "$branch" "$upstream" "$flags" "$worktree_path"
-done <"$GONE_FILE"
+done < "$GONE_FILE"
 
 if [ "$DELETE" -ne 1 ]; then
   echo
@@ -228,21 +228,21 @@ while IFS=$'\t' read -r branch upstream flags worktree_path; do
     continue
   fi
   case " $flags " in
-  *" invalid "*)
-    echo "SKIP invalid branch name: $branch"
-    skipped=$((skipped + 1))
-    continue
-    ;;
-  *" missing "*)
-    echo "SKIP missing branch: $branch"
-    skipped=$((skipped + 1))
-    continue
-    ;;
-  *" not-gone "*)
-    echo "SKIP branch no longer has a gone upstream: $branch"
-    skipped=$((skipped + 1))
-    continue
-    ;;
+    *" invalid "*)
+      echo "SKIP invalid branch name: $branch"
+      skipped=$((skipped + 1))
+      continue
+      ;;
+    *" missing "*)
+      echo "SKIP missing branch: $branch"
+      skipped=$((skipped + 1))
+      continue
+      ;;
+    *" not-gone "*)
+      echo "SKIP branch no longer has a gone upstream: $branch"
+      skipped=$((skipped + 1))
+      continue
+      ;;
   esac
   if [ -n "$worktree_path" ]; then
     echo "SKIP checked-out branch: $branch ($worktree_path)"
@@ -263,7 +263,7 @@ while IFS=$'\t' read -r branch upstream flags worktree_path; do
       failed=$((failed + 1))
     fi
   fi
-done <"$GONE_FILE"
+done < "$GONE_FILE"
 
 echo
 echo "Summary: deleted=$deleted skipped=$skipped failed=$failed"
