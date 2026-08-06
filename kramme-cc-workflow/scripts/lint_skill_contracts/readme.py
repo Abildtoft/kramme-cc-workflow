@@ -392,31 +392,30 @@ def check_readme_extra_component_rows(
             )
 
 
-def check_simple_readme_component_sync(
+def check_readme_missing_rows(
     label: str,
     readme_relative: str,
     source_relative: str,
     component_type: str,
     documented_rows: dict[str, tuple[int, list[str]]],
     references: dict[str, Any],
-    required_columns: dict[str, int],
-    expected_values_for_reference,
     failures: list[str],
 ) -> None:
     for name in sorted(references):
         if name not in documented_rows:
             failures.append(f"{label}: {readme_relative} is missing {component_type} {name!r} from {source_relative}")
 
-    check_readme_extra_component_rows(
-        label,
-        readme_relative,
-        source_relative,
-        component_type,
-        documented_rows,
-        references,
-        failures,
-    )
 
+def check_readme_row_values(
+    label: str,
+    readme_relative: str,
+    documented_rows: dict[str, tuple[int, list[str]]],
+    references: dict[str, Any],
+    required_columns: dict[str, int],
+    expected_values_for_reference,
+    source_label: str,
+    failures: list[str],
+) -> None:
     max_column = max(required_columns.values())
     for name, (line_no, cells) in documented_rows.items():
         reference = references.get(name)
@@ -434,9 +433,52 @@ def check_simple_readme_component_sync(
             if actual != expected:
                 failures.append(
                     f"{label}: {readme_relative}:{line_no} {name!r} "
-                    f"{field} differs from source metadata; expected "
+                    f"{field} differs from {source_label}; expected "
                     f"{shorten(expected)!r}, got {shorten(actual)!r}"
                 )
+
+
+def check_simple_readme_component_sync(
+    label: str,
+    readme_relative: str,
+    source_relative: str,
+    component_type: str,
+    documented_rows: dict[str, tuple[int, list[str]]],
+    references: dict[str, Any],
+    required_columns: dict[str, int],
+    expected_values_for_reference,
+    failures: list[str],
+) -> None:
+    check_readme_missing_rows(
+        label,
+        readme_relative,
+        source_relative,
+        component_type,
+        documented_rows,
+        references,
+        failures,
+    )
+
+    check_readme_extra_component_rows(
+        label,
+        readme_relative,
+        source_relative,
+        component_type,
+        documented_rows,
+        references,
+        failures,
+    )
+
+    check_readme_row_values(
+        label,
+        readme_relative,
+        documented_rows,
+        references,
+        required_columns,
+        expected_values_for_reference,
+        "source metadata",
+        failures,
+    )
 
 
 def check_readme_skill_rows_sync(
@@ -461,9 +503,15 @@ def check_readme_skill_rows_sync(
     references = load_skill_references(root, skills_relative, failures, schema)
     documented_skills = readme_skill_rows(readme, config, failures)
 
-    for name in sorted(references):
-        if name not in documented_skills:
-            failures.append(f"readme skill sync: {readme_relative} is missing skill {name!r} from {skills_relative}")
+    check_readme_missing_rows(
+        "readme skill sync",
+        readme_relative,
+        skills_relative,
+        "skill",
+        documented_skills,
+        references,
+        failures,
+    )
 
     allow_readme_only = set(config.get("allow_readme_only_skills", []))
     check_readme_extra_skill_rows(
@@ -480,36 +528,22 @@ def check_readme_skill_rows_sync(
         "arguments": int(config.get("arguments_column", 2)),
         "description": int(config.get("description_column", 3)),
     }
-    max_column = max(required_columns.values())
 
-    for name, (line_no, cells) in documented_skills.items():
-        if name in allow_readme_only and name not in references:
-            continue
-        reference = references.get(name)
-        if reference is None:
-            continue
-        if len(cells) <= max_column:
-            failures.append(
-                f"readme skill sync: {readme_relative}:{line_no} row for {name!r} must "
-                "include Skill, Invocation, Arguments, and Description columns"
-            )
-            continue
-
-        expected_values = {
+    check_readme_row_values(
+        "readme skill sync",
+        readme_relative,
+        documented_skills,
+        references,
+        required_columns,
+        lambda reference: {
             "skill": reference.display_name,
             "invocation": reference.invocation,
             "arguments": reference.arguments,
             "description": reference.description,
-        }
-        for field, column in required_columns.items():
-            actual = normalize_markdown_cell(cells[column])
-            expected = normalize_markdown_cell(expected_values[field])
-            if actual != expected:
-                failures.append(
-                    f"readme skill sync: {readme_relative}:{line_no} {name!r} "
-                    f"{field} differs from SKILL.md frontmatter; expected "
-                    f"{shorten(expected)!r}, got {shorten(actual)!r}"
-                )
+        },
+        "SKILL.md frontmatter",
+        failures,
+    )
 
 
 def check_readme_agent_sync(

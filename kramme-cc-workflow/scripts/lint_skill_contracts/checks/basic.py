@@ -1,11 +1,70 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
+from typing import Any
 
 from ..frontmatter import parse_frontmatter
 from ..io import read_text, rel, resolve, sha256, skill_paths
 from ..strings import normalize_value, strip_quotes
 from .types import CheckResult, LintContext
+
+
+def iter_registry_entries(
+    registry: dict[str, Any],
+    key: str,
+    failures: list[str],
+) -> Iterator[tuple[str, dict[str, Any]]]:
+    entries = registry.get(key, [])
+    if not isinstance(entries, list):
+        failures.append(f"{key}: registry entry must be a list")
+        return
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            failures.append(f"{key}[{index}]: entry must be an object")
+            continue
+        label = f"{key}[{index}]"
+        name = entry.get("name")
+        if not isinstance(name, str) or not name:
+            failures.append(f"{label}: entry missing required string key 'name'")
+        else:
+            label = name
+        yield label, entry
+
+
+def require_str_field(
+    entry: dict[str, Any],
+    key: str,
+    label: str,
+    failures: list[str],
+) -> str | None:
+    value = entry.get(key)
+    if not isinstance(value, str) or not value:
+        failures.append(f"{label}: entry missing required string key {key!r}")
+        return None
+    return value
+
+
+def require_str_list_field(
+    entry: dict[str, Any],
+    key: str,
+    label: str,
+    failures: list[str],
+) -> list[str] | None:
+    value = entry.get(key)
+    if not isinstance(value, list) or not value:
+        failures.append(f"{label}: entry missing required list key {key!r}")
+        return None
+    paths: list[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            failures.append(f"{label}: {key!r} entries must be strings")
+            continue
+        if not item:
+            failures.append(f"{label}: {key!r} entries must be non-empty strings")
+            continue
+        paths.append(item)
+    return paths
 
 
 def extract_contract_value(
@@ -25,18 +84,18 @@ def extract_contract_value(
 def check_text_contracts(context: LintContext) -> CheckResult:
     result = CheckResult()
     root = context.root
-    for group in context.registry.get("text_contracts", []):
-        name = group["name"]
-        regex = group["extract_regex"]
+    for name, group in iter_registry_entries(context.registry, "text_contracts", result.failures):
+        regex = require_str_field(group, "extract_regex", name, result.failures)
+        paths = require_str_list_field(group, "paths", name, result.failures)
+        if regex is None or paths is None:
+            continue
         normalizer = group.get("normalizer")
         inventory = group.get("inventory")
         if inventory is not None:
-            inventory_result = check_text_contract_inventory(
-                context, name, group["paths"], inventory
-            )
+            inventory_result = check_text_contract_inventory(context, name, paths, inventory)
             result.failures.extend(inventory_result.failures)
         reference: tuple[str, str, int] | None = None
-        for copy in group["paths"]:
+        for copy in paths:
             path = resolve(root, copy)
             if not path.exists():
                 result.failures.append(f"{name}: registered path is missing: {copy}")
@@ -52,8 +111,7 @@ def check_text_contracts(context: LintContext) -> CheckResult:
             ref_value, ref_path, ref_line = reference
             if value != ref_value:
                 result.failures.append(
-                    f"{name}: {copy}:{line} differs from {ref_path}:{ref_line}; "
-                    f"expected {ref_value!r}, got {value!r}"
+                    f"{name}: {copy}:{line} differs from {ref_path}:{ref_line}; expected {ref_value!r}, got {value!r}"
                 )
     return result
 
@@ -90,9 +148,7 @@ def check_text_contract_inventory(
         relative = rel(path, context.root)
         discovered.add(relative)
         if marker_count != 1:
-            result.failures.append(
-                f"{name}: {relative} contains {marker_count} inventory markers; expected exactly 1"
-            )
+            result.failures.append(f"{name}: {relative} contains {marker_count} inventory markers; expected exactly 1")
 
     for path in sorted(discovered - registered):
         result.failures.append(f"{name}: discovered unregistered contract copy: {path}")
@@ -119,10 +175,12 @@ def heading_lines(text: str) -> list[tuple[int, str]]:
 def check_ordered_heading_contracts(context: LintContext) -> CheckResult:
     result = CheckResult()
     root = context.root
-    for group in context.registry.get("ordered_heading_contracts", []):
-        name = group["name"]
-        expected = group["headings"]
-        for copy in group["paths"]:
+    for name, group in iter_registry_entries(context.registry, "ordered_heading_contracts", result.failures):
+        expected = require_str_list_field(group, "headings", name, result.failures)
+        paths = require_str_list_field(group, "paths", name, result.failures)
+        if expected is None or paths is None:
+            continue
+        for copy in paths:
             path = resolve(root, copy)
             if not path.exists():
                 result.failures.append(f"{name}: registered path is missing: {copy}")
@@ -139,9 +197,7 @@ def check_ordered_heading_contracts(context: LintContext) -> CheckResult:
                     None,
                 )
                 if found is None:
-                    result.failures.append(
-                        f"{name}: missing or out-of-order heading {heading!r} in {copy}"
-                    )
+                    result.failures.append(f"{name}: missing or out-of-order heading {heading!r} in {copy}")
                     break
                 last_index = found[0]
     return result
@@ -150,10 +206,12 @@ def check_ordered_heading_contracts(context: LintContext) -> CheckResult:
 def check_file_identity(context: LintContext) -> CheckResult:
     result = CheckResult()
     root = context.root
-    for group in context.registry.get("file_identity_groups", []):
-        name = group["name"]
+    for name, group in iter_registry_entries(context.registry, "file_identity_groups", result.failures):
+        paths = require_str_list_field(group, "paths", name, result.failures)
+        if paths is None:
+            continue
         reference: tuple[str, str] | None = None
-        for copy in group["paths"]:
+        for copy in paths:
             path = resolve(root, copy)
             if not path.exists():
                 result.failures.append(f"{name}: registered path is missing: {copy}")
@@ -174,9 +232,10 @@ def check_file_identity(context: LintContext) -> CheckResult:
 def check_required_file_contracts(context: LintContext) -> CheckResult:
     result = CheckResult()
     root = context.root
-    for contract in context.registry.get("required_file_contracts", []):
-        name = contract["name"]
-        copy = contract["path"]
+    for name, contract in iter_registry_entries(context.registry, "required_file_contracts", result.failures):
+        copy = require_str_field(contract, "path", name, result.failures)
+        if copy is None:
+            continue
         path = resolve(root, copy)
         if not path.exists():
             result.failures.append(f"{name}: registered path is missing: {copy}")
@@ -185,20 +244,29 @@ def check_required_file_contracts(context: LintContext) -> CheckResult:
         text = read_text(path)
         frontmatter_contract = contract.get("frontmatter", {})
         if frontmatter_contract:
-            frontmatter = parse_frontmatter(text)
-            if frontmatter is None:
-                result.failures.append(f"{name}: {copy} is missing YAML frontmatter")
+            if not isinstance(frontmatter_contract, dict):
+                result.failures.append(f"{name}: 'frontmatter' contract must be an object")
             else:
-                for field, expected in frontmatter_contract.items():
-                    actual = frontmatter.get(field)
-                    expected_text = strip_quotes(str(expected))
-                    if actual != expected_text:
-                        result.failures.append(
-                            f"{name}: {copy} frontmatter field {field!r} expected "
-                            f"{expected_text!r}, got {actual!r}"
-                        )
+                frontmatter = parse_frontmatter(text)
+                if frontmatter is None:
+                    result.failures.append(f"{name}: {copy} is missing YAML frontmatter")
+                else:
+                    for field, expected in frontmatter_contract.items():
+                        actual = frontmatter.get(field)
+                        expected_text = strip_quotes(str(expected))
+                        if actual != expected_text:
+                            result.failures.append(
+                                f"{name}: {copy} frontmatter field {field!r} expected {expected_text!r}, got {actual!r}"
+                            )
 
-        for required_text in contract.get("contains", []):
+        contains = contract.get("contains", [])
+        if not isinstance(contains, list):
+            result.failures.append(f"{name}: 'contains' contract must be a list")
+            contains = []
+        for required_text in contains:
+            if not isinstance(required_text, str):
+                result.failures.append(f"{name}: 'contains' entries must be strings")
+                continue
             if required_text not in text:
                 result.failures.append(f"{name}: {copy} is missing required text {required_text!r}")
     return result
