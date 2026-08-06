@@ -304,6 +304,37 @@ make_body_lines() {
   done
 }
 
+@test "registry consumers report a clean error for an unreadable registry path" {
+  local consumer
+
+  mkdir "$TMP_ROOT/registry.yaml"
+
+  for consumer in "$SCRIPT" "$COMPONENT_GENERATOR" "$VISUAL_GENERATOR"; do
+    run python3 "$consumer" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"$TMP_ROOT/registry.yaml"* ]]
+    [[ "$output" == *"cannot read registry"* ]]
+    [[ "$output" != *"Traceback"* ]]
+  done
+}
+
+@test "malformed contract entries fail cleanly instead of crashing with a traceback" {
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "text_contracts": [
+    { "extract_regex": "x" }
+  ]
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" != *"Traceback"* ]]
+  [[ "$output" == *"entry missing required string key 'name'"* ]]
+}
+
 @test "copy review rubric is owned by the code skill with automatic PR mode" {
   local registry="$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml"
   local code_skill="$BATS_TEST_DIRNAME/../skills/kramme:code:copy-review/SKILL.md"

@@ -6,9 +6,7 @@ from typing import Any
 
 from .io import rel, resolve
 
-DEFAULT_CONTRACT_SCHEMA_PATH = (
-    Path(__file__).resolve().parent.parent / "schemas" / "skill-contracts.json"
-)
+DEFAULT_CONTRACT_SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schemas" / "skill-contracts.json"
 
 
 def load_contract_schema_file(path: Path) -> dict[str, Any]:
@@ -16,13 +14,23 @@ def load_contract_schema_file(path: Path) -> dict[str, Any]:
 
 
 def load_default_contract_schema() -> dict[str, Any]:
+    schema, _error = _load_default_contract_schema_with_error()
+    return schema
+
+
+def _load_default_contract_schema_with_error() -> tuple[dict[str, Any], str | None]:
     try:
-        return load_contract_schema_file(DEFAULT_CONTRACT_SCHEMA_PATH)
-    except (OSError, json.JSONDecodeError):
-        return {}
+        schema = load_contract_schema_file(DEFAULT_CONTRACT_SCHEMA_PATH)
+    except OSError as exc:
+        return {}, f"default contract schema: cannot read {DEFAULT_CONTRACT_SCHEMA_PATH}: {exc}"
+    except json.JSONDecodeError as exc:
+        return {}, f"default contract schema: {DEFAULT_CONTRACT_SCHEMA_PATH} is invalid JSON: {exc}"
+    if not isinstance(schema, dict):
+        return {}, f"default contract schema: {DEFAULT_CONTRACT_SCHEMA_PATH} must be a JSON object"
+    return schema, None
 
 
-DEFAULT_CONTRACT_SCHEMA = load_default_contract_schema()
+DEFAULT_CONTRACT_SCHEMA, DEFAULT_CONTRACT_SCHEMA_ERROR = _load_default_contract_schema_with_error()
 
 
 def contract_schema_path(root: Path, registry: dict[str, Any]) -> Path:
@@ -42,14 +50,20 @@ def load_contract_schema(
         schema = load_contract_schema_file(path)
     except OSError as exc:
         failures.append(f"contract schema: cannot read {rel(path, root)}: {exc}")
-        return DEFAULT_CONTRACT_SCHEMA
+        return _fallback_to_default_schema(path, failures)
     except json.JSONDecodeError as exc:
         failures.append(f"contract schema: {rel(path, root)} is invalid JSON: {exc}")
-        return DEFAULT_CONTRACT_SCHEMA
+        return _fallback_to_default_schema(path, failures)
     if not isinstance(schema, dict):
         failures.append(f"contract schema: {rel(path, root)} must be a JSON object")
-        return DEFAULT_CONTRACT_SCHEMA
+        return _fallback_to_default_schema(path, failures)
     return schema
+
+
+def _fallback_to_default_schema(path: Path, failures: list[str]) -> dict[str, Any]:
+    if DEFAULT_CONTRACT_SCHEMA_ERROR is not None and path != DEFAULT_CONTRACT_SCHEMA_PATH:
+        failures.append(DEFAULT_CONTRACT_SCHEMA_ERROR)
+    return DEFAULT_CONTRACT_SCHEMA
 
 
 def schema_skill_frontmatter_fields(

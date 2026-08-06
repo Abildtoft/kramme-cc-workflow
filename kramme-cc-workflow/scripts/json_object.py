@@ -7,16 +7,17 @@ from typing import Any
 
 def load_json_object(path: Path, label: str) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise SystemExit(f"{path}: cannot read {label}: {exc}") from exc
+
+    try:
+        value = json.loads(text)
     except json.JSONDecodeError as exc:
-        raise SystemExit(
-            f"{path}: {label} must be JSON-compatible YAML for stdlib parsing: {exc}"
-        ) from exc
+        raise SystemExit(f"{path}: {label} must be JSON-compatible YAML for stdlib parsing: {exc}") from exc
 
     if not isinstance(value, dict):
-        raise SystemExit(
-            f"{path}: {label} must be a JSON object; received {json_value_kind(value)}."
-        )
+        raise SystemExit(f"{path}: {label} must be a JSON object; received {json_value_kind(value)}.")
     return value
 
 
