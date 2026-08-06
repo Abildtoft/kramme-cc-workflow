@@ -7,12 +7,13 @@
 # pass. The confirmation, dirty-file, Trash, and block-rm-rf
 # guards remain prose policy in SKILL.md and are out of scope for this fixture test.
 
+load 'test_helper/common'
+
 setup() {
 	PLUGIN_ROOT="$BATS_TEST_DIRNAME/.."
 	REGISTRY="$PLUGIN_ROOT/skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
 	CLEANUP_SKILL="$PLUGIN_ROOT/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
 	AUTODETECT="$PLUGIN_ROOT/skills/kramme:code:breakdown-findings/references/auto-detect-sources.md"
-	CONTRACTS="$PLUGIN_ROOT/scripts/synced-contracts.yaml"
 	HELPER="$BATS_TEST_TMPDIR/cleanup_registry.py"
 	cat >"$HELPER" <<'PY'
 import glob
@@ -115,17 +116,9 @@ PY
 }
 
 @test "both cleanup contracts are registered" {
-	run python3 - "$CONTRACTS" <<'PY'
-import json
-import pathlib
-import sys
-
-registry = json.loads(pathlib.Path(sys.argv[1]).read_text())
-registered = {c["name"] for c in registry.get("required_file_contracts", [])}
-needed = {"workflow-artifact-cleanup-names", "workflow-artifact-cleanup-registry"}
-missing = sorted(needed - registered)
-raise SystemExit("missing required_file_contracts: " + ", ".join(missing) if missing else 0)
-PY
+	run assert_required_contracts_registered \
+		workflow-artifact-cleanup-names \
+		workflow-artifact-cleanup-registry
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
