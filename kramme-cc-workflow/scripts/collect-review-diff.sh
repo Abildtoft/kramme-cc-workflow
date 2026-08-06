@@ -16,7 +16,7 @@ DECODE_JSON=false
 COLLECT_OPTION_SEEN=false
 
 usage() {
-  cat >&2 <<'USAGE'
+  cat >&2 << 'USAGE'
 Usage: collect-review-diff.sh [--base <branch-or-ref>] [--base-commit <40-hex-oid>] [--strict|--tolerate-fetch-failure] [--format shell|json]
        collect-review-diff.sh --decode-json
 
@@ -42,15 +42,15 @@ emit_json() {
 
 emit_output() {
   case "$OUTPUT_FORMAT" in
-  shell)
-    quote_assignment BASE_REF "$BASE_REF"
-    quote_assignment BASE_BRANCH "$BASE_BRANCH"
-    quote_assignment MERGE_BASE "$MERGE_BASE"
-    quote_assignment CHANGED_FILES "$CHANGED_FILES"
-    ;;
-  json)
-    emit_json
-    ;;
+    shell)
+      quote_assignment BASE_REF "$BASE_REF"
+      quote_assignment BASE_BRANCH "$BASE_BRANCH"
+      quote_assignment MERGE_BASE "$MERGE_BASE"
+      quote_assignment CHANGED_FILES "$CHANGED_FILES"
+      ;;
+    json)
+      emit_json
+      ;;
   esac
 }
 
@@ -86,55 +86,55 @@ parse_resolved_json() {
 
 while [ $# -gt 0 ]; do
   case "$1" in
-  --decode-json)
-    DECODE_JSON=true
-    shift
-    ;;
-  --base)
-    COLLECT_OPTION_SEEN=true
-    require_value "$1" "${2-}"
-    RESOLVE_ARGS+=(--base "$2")
-    shift 2
-    ;;
-  --base-commit)
-    COLLECT_OPTION_SEEN=true
-    require_value "$1" "${2-}"
-    RESOLVE_ARGS+=(--base-commit "$2")
-    shift 2
-    ;;
-  --strict)
-    COLLECT_OPTION_SEEN=true
-    RESOLVE_ARGS+=(--strict)
-    shift
-    ;;
-  --tolerate-fetch-failure)
-    COLLECT_OPTION_SEEN=true
-    RESOLVE_ARGS+=(--tolerate-fetch-failure)
-    shift
-    ;;
-  --format)
-    COLLECT_OPTION_SEEN=true
-    require_value "$1" "${2-}"
-    case "$2" in
-    shell | json)
-      OUTPUT_FORMAT="$2"
+    --decode-json)
+      DECODE_JSON=true
+      shift
+      ;;
+    --base)
+      COLLECT_OPTION_SEEN=true
+      require_value "$1" "${2-}"
+      RESOLVE_ARGS+=(--base "$2")
+      shift 2
+      ;;
+    --base-commit)
+      COLLECT_OPTION_SEEN=true
+      require_value "$1" "${2-}"
+      RESOLVE_ARGS+=(--base-commit "$2")
+      shift 2
+      ;;
+    --strict)
+      COLLECT_OPTION_SEEN=true
+      RESOLVE_ARGS+=(--strict)
+      shift
+      ;;
+    --tolerate-fetch-failure)
+      COLLECT_OPTION_SEEN=true
+      RESOLVE_ARGS+=(--tolerate-fetch-failure)
+      shift
+      ;;
+    --format)
+      COLLECT_OPTION_SEEN=true
+      require_value "$1" "${2-}"
+      case "$2" in
+        shell | json)
+          OUTPUT_FORMAT="$2"
+          ;;
+        *)
+          echo "--format must be 'shell' or 'json'" >&2
+          exit 1
+          ;;
+      esac
+      shift 2
+      ;;
+    -h | --help)
+      usage
+      exit 0
       ;;
     *)
-      echo "--format must be 'shell' or 'json'" >&2
+      echo "Unknown argument: $1" >&2
+      usage
       exit 1
       ;;
-    esac
-    shift 2
-    ;;
-  -h | --help)
-    usage
-    exit 0
-    ;;
-  *)
-    echo "Unknown argument: $1" >&2
-    usage
-    exit 1
-    ;;
   esac
 done
 

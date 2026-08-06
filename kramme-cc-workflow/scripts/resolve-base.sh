@@ -30,7 +30,7 @@ RESOLVE_BASE_GH_LOOKUP_TIMEOUT_SECONDS="${RESOLVE_BASE_GH_LOOKUP_TIMEOUT_SECONDS
 RESOLVE_BASE_GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes"
 
 usage() {
-  cat >&2 <<'USAGE'
+  cat >&2 << 'USAGE'
 Usage: resolve-base.sh [--base <branch-or-ref>] [--base-commit <40-hex-oid>] [--strict|--tolerate-fetch-failure] [--backup] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--format shell|json]
 
 Default output is shell-quoted assignments:
@@ -56,82 +56,82 @@ emit_json() {
 
 emit_output() {
   case "$OUTPUT_FORMAT" in
-  shell)
-    quote_assignment BASE_REF "$BASE_REF"
-    quote_assignment BASE_BRANCH "$BASE_BRANCH"
-    quote_assignment MERGE_BASE "$MERGE_BASE"
-    quote_assignment AFTER_COMMIT "$AFTER_COMMIT"
-    quote_assignment RESET_POINT "$RESET_POINT"
-    quote_assignment ORIGINAL_BRANCH "$ORIGINAL_BRANCH"
-    quote_assignment ORIGINAL_TIP "$ORIGINAL_TIP"
-    quote_assignment BACKUP_REF "$BACKUP_REF"
-    ;;
-  json)
-    emit_json
-    ;;
+    shell)
+      quote_assignment BASE_REF "$BASE_REF"
+      quote_assignment BASE_BRANCH "$BASE_BRANCH"
+      quote_assignment MERGE_BASE "$MERGE_BASE"
+      quote_assignment AFTER_COMMIT "$AFTER_COMMIT"
+      quote_assignment RESET_POINT "$RESET_POINT"
+      quote_assignment ORIGINAL_BRANCH "$ORIGINAL_BRANCH"
+      quote_assignment ORIGINAL_TIP "$ORIGINAL_TIP"
+      quote_assignment BACKUP_REF "$BACKUP_REF"
+      ;;
+    json)
+      emit_json
+      ;;
   esac
 }
 
 while [ $# -gt 0 ]; do
   case "$1" in
-  --base)
-    require_value "$1" "${2-}"
-    BASE_FLAG="$2"
-    shift 2
-    ;;
-  --base-commit)
-    require_value "$1" "${2-}"
-    BASE_COMMIT_FLAG="$2"
-    shift 2
-    ;;
-  --after)
-    require_value "$1" "${2-}"
-    AFTER_ARG="$2"
-    shift 2
-    ;;
-  --strict)
-    FETCH_MODE="strict"
-    shift
-    ;;
-  --tolerate-fetch-failure)
-    FETCH_MODE="tolerate"
-    shift
-    ;;
-  --backup)
-    BACKUP_MODE=1
-    shift
-    ;;
-  --backup-ref)
-    require_value "$1" "${2-}"
-    BACKUP_REF_FLAG="$2"
-    shift 2
-    ;;
-  --force-backup)
-    FORCE_BACKUP=1
-    shift
-    ;;
-  --format)
-    require_value "$1" "${2-}"
-    case "$2" in
-    shell | json)
-      OUTPUT_FORMAT="$2"
+    --base)
+      require_value "$1" "${2-}"
+      BASE_FLAG="$2"
+      shift 2
+      ;;
+    --base-commit)
+      require_value "$1" "${2-}"
+      BASE_COMMIT_FLAG="$2"
+      shift 2
+      ;;
+    --after)
+      require_value "$1" "${2-}"
+      AFTER_ARG="$2"
+      shift 2
+      ;;
+    --strict)
+      FETCH_MODE="strict"
+      shift
+      ;;
+    --tolerate-fetch-failure)
+      FETCH_MODE="tolerate"
+      shift
+      ;;
+    --backup)
+      BACKUP_MODE=1
+      shift
+      ;;
+    --backup-ref)
+      require_value "$1" "${2-}"
+      BACKUP_REF_FLAG="$2"
+      shift 2
+      ;;
+    --force-backup)
+      FORCE_BACKUP=1
+      shift
+      ;;
+    --format)
+      require_value "$1" "${2-}"
+      case "$2" in
+        shell | json)
+          OUTPUT_FORMAT="$2"
+          ;;
+        *)
+          echo "--format must be 'shell' or 'json'" >&2
+          exit 1
+          ;;
+      esac
+      shift 2
+      ;;
+    -h | --help)
+      usage
+      exit 0
       ;;
     *)
-      echo "--format must be 'shell' or 'json'" >&2
+      echo "Unknown argument: $1" >&2
+      usage
       exit 1
       ;;
-    esac
-    shift 2
-    ;;
-  -h | --help)
-    usage
-    exit 0
-    ;;
-  *)
-    echo "Unknown argument: $1" >&2
-    usage
-    exit 1
-    ;;
   esac
 done
 
@@ -144,8 +144,8 @@ if [ -n "$BACKUP_REF_FLAG" ] && [ "$BACKUP_MODE" -ne 1 ]; then
   exit 1
 fi
 if [ -n "$BACKUP_REF_FLAG" ]; then
-  if [[ ! "$BACKUP_REF_FLAG" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] ||
-    ! git check-ref-format --branch "$BACKUP_REF_FLAG" >/dev/null 2>&1; then
+  if [[ ! "$BACKUP_REF_FLAG" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] \
+    || ! git check-ref-format --branch "$BACKUP_REF_FLAG" > /dev/null 2>&1; then
     echo "--backup-ref must be a conservative valid branch name" >&2
     exit 1
   fi
@@ -155,7 +155,7 @@ if [ -n "$BASE_COMMIT_FLAG" ] && [[ ! "$BASE_COMMIT_FLAG" =~ ^[0-9a-f]{40}$ ]]; 
   exit 1
 fi
 
-if ! REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null); then
+if ! REPO_ROOT=$(git rev-parse --show-toplevel 2> /dev/null); then
   echo "Not inside a git repository" >&2
   exit 1
 fi
@@ -184,9 +184,9 @@ if [ "$BACKUP_MODE" -eq 1 ] && [ -z "$CURRENT_BRANCH" ]; then
   echo "HEAD is detached; switch to the feature branch first" >&2
   exit 1
 fi
-if [ "$BACKUP_MODE" -eq 1 ] &&
-  [ -n "$BACKUP_REF_FLAG" ] &&
-  [ "$BACKUP_REF_FLAG" = "$CURRENT_BRANCH" ]; then
+if [ "$BACKUP_MODE" -eq 1 ] \
+  && [ -n "$BACKUP_REF_FLAG" ] \
+  && [ "$BACKUP_REF_FLAG" = "$CURRENT_BRANCH" ]; then
   echo "--backup-ref must not name the current branch being rewritten" >&2
   exit 1
 fi
@@ -200,7 +200,7 @@ fetch_remote_branch() {
   local fetch_stderr
 
   fetch_stderr=$(mktemp "${TMPDIR:-/tmp}/resolve-base-fetch-stderr.XXXXXX")
-  if run_with_timeout "$RESOLVE_BASE_FETCH_TIMEOUT_SECONDS" env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$RESOLVE_BASE_GIT_SSH_COMMAND" git fetch "$remote" "refs/heads/${branch}:${remote_ref}" 2>"$fetch_stderr"; then
+  if run_with_timeout "$RESOLVE_BASE_FETCH_TIMEOUT_SECONDS" env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$RESOLVE_BASE_GIT_SSH_COMMAND" git fetch "$remote" "refs/heads/${branch}:${remote_ref}" 2> "$fetch_stderr"; then
     if ! grep -q '^fatal:' "$fetch_stderr"; then
       cat "$fetch_stderr" >&2
       rm -f "$fetch_stderr"
@@ -213,7 +213,7 @@ fetch_remote_branch() {
   cat "$fetch_stderr" >&2
   rm -f "$fetch_stderr"
 
-  if [ "$FETCH_MODE" = "tolerate" ] && git rev-parse --verify --quiet "${remote_ref}^{commit}" >/dev/null; then
+  if [ "$FETCH_MODE" = "tolerate" ] && git rev-parse --verify --quiet "${remote_ref}^{commit}" > /dev/null; then
     if [ "$fetch_status" -eq 124 ] || [ "$fetch_status" -eq 142 ]; then
       echo "Warning: timed out fetching ${remote}/${branch}; using existing ${remote_ref}" >&2
     else
@@ -232,7 +232,7 @@ fetch_remote_branch() {
 }
 
 remote_exists() {
-  git remote get-url "$1" >/dev/null 2>&1
+  git remote get-url "$1" > /dev/null 2>&1
 }
 
 BASE_BRANCH=""
@@ -240,29 +240,29 @@ BASE_REMOTE="origin"
 
 if [ -n "$BASE_FLAG" ]; then
   case "$BASE_FLAG" in
-  refs/remotes/*/*)
-    BASE_REMOTE=${BASE_FLAG#refs/remotes/}
-    BASE_REMOTE=${BASE_REMOTE%%/*}
-    BASE_BRANCH=${BASE_FLAG#refs/remotes/"${BASE_REMOTE}"/}
-    ;;
-  refs/heads/*)
-    BASE_REMOTE="origin"
-    BASE_BRANCH=${BASE_FLAG#refs/heads/}
-    ;;
-  */*)
-    CANDIDATE_REMOTE=${BASE_FLAG%%/*}
-    if remote_exists "$CANDIDATE_REMOTE"; then
-      BASE_REMOTE="$CANDIDATE_REMOTE"
-      BASE_BRANCH=${BASE_FLAG#*/}
-    else
+    refs/remotes/*/*)
+      BASE_REMOTE=${BASE_FLAG#refs/remotes/}
+      BASE_REMOTE=${BASE_REMOTE%%/*}
+      BASE_BRANCH=${BASE_FLAG#refs/remotes/"${BASE_REMOTE}"/}
+      ;;
+    refs/heads/*)
+      BASE_REMOTE="origin"
+      BASE_BRANCH=${BASE_FLAG#refs/heads/}
+      ;;
+    */*)
+      CANDIDATE_REMOTE=${BASE_FLAG%%/*}
+      if remote_exists "$CANDIDATE_REMOTE"; then
+        BASE_REMOTE="$CANDIDATE_REMOTE"
+        BASE_BRANCH=${BASE_FLAG#*/}
+      else
+        BASE_REMOTE="origin"
+        BASE_BRANCH=$BASE_FLAG
+      fi
+      ;;
+    *)
       BASE_REMOTE="origin"
       BASE_BRANCH=$BASE_FLAG
-    fi
-    ;;
-  *)
-    BASE_REMOTE="origin"
-    BASE_BRANCH=$BASE_FLAG
-    ;;
+      ;;
   esac
 
   if [ -z "$BASE_BRANCH" ]; then
@@ -273,7 +273,7 @@ if [ -n "$BASE_FLAG" ]; then
     echo "Explicit base ref '$BASE_FLAG' names unknown remote '$BASE_REMOTE'" >&2
     exit 1
   fi
-  if ! git check-ref-format --branch "$BASE_BRANCH" >/dev/null 2>&1; then
+  if ! git check-ref-format --branch "$BASE_BRANCH" > /dev/null 2>&1; then
     echo "Explicit base branch '$BASE_BRANCH' is not a valid branch name" >&2
     exit 1
   fi
@@ -283,11 +283,11 @@ if [ -n "$BASE_FLAG" ]; then
     fetch_remote_branch "$BASE_REMOTE" "$BASE_BRANCH" "explicit base ref '$BASE_FLAG'"
   fi
 else
-  if command -v gh >/dev/null 2>&1; then
-    BASE_BRANCH=$(run_with_timeout "$RESOLVE_BASE_GH_LOOKUP_TIMEOUT_SECONDS" env GH_PROMPT_DISABLED=1 gh pr view --json baseRefName --jq '.baseRefName' 2>/dev/null || true)
+  if command -v gh > /dev/null 2>&1; then
+    BASE_BRANCH=$(run_with_timeout "$RESOLVE_BASE_GH_LOOKUP_TIMEOUT_SECONDS" env GH_PROMPT_DISABLED=1 gh pr view --json baseRefName --jq '.baseRefName' 2> /dev/null || true)
   fi
   if [ -z "$BASE_BRANCH" ]; then
-    BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || true)
+    BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@' || true)
   fi
   if [ -z "$BASE_BRANCH" ]; then
     BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@' || true)
@@ -304,7 +304,7 @@ else
     echo "Could not determine base branch" >&2
     exit 1
   fi
-  if ! git check-ref-format --branch "$BASE_BRANCH" >/dev/null 2>&1; then
+  if ! git check-ref-format --branch "$BASE_BRANCH" > /dev/null 2>&1; then
     echo "Base branch '$BASE_BRANCH' is not a valid branch name" >&2
     exit 1
   fi
@@ -316,14 +316,14 @@ else
 fi
 
 if [ -n "$BASE_COMMIT_FLAG" ]; then
-  if ! git rev-parse --verify --quiet "${BASE_COMMIT_FLAG}^{commit}" >/dev/null; then
+  if ! git rev-parse --verify --quiet "${BASE_COMMIT_FLAG}^{commit}" > /dev/null; then
     echo "Pinned base commit '$BASE_COMMIT_FLAG' does not resolve locally" >&2
     exit 1
   fi
   BASE_REF="$BASE_COMMIT_FLAG"
 fi
 
-if ! git rev-parse --verify --quiet "${BASE_REF}^{commit}" >/dev/null; then
+if ! git rev-parse --verify --quiet "${BASE_REF}^{commit}" > /dev/null; then
   echo "Base ref '$BASE_REF' does not resolve to a commit" >&2
   exit 1
 fi
@@ -331,7 +331,7 @@ if [ "$BACKUP_MODE" -eq 1 ] && [ -n "$BASE_BRANCH" ] && [ "$CURRENT_BRANCH" = "$
   echo "Current branch is the base branch '$BASE_BRANCH'; switch to a feature branch first" >&2
   exit 1
 fi
-if ! git merge-base "$BASE_REF" HEAD >/dev/null; then
+if ! git merge-base "$BASE_REF" HEAD > /dev/null; then
   echo "No merge base between '$BASE_REF' and HEAD; histories are unrelated" >&2
   exit 1
 fi
@@ -339,7 +339,7 @@ MERGE_BASE=$(git merge-base "$BASE_REF" HEAD)
 
 AFTER_COMMIT=""
 if [ -n "$AFTER_ARG" ]; then
-  if ! AFTER_COMMIT=$(git rev-parse --verify "$AFTER_ARG^{commit}" 2>/dev/null); then
+  if ! AFTER_COMMIT=$(git rev-parse --verify "$AFTER_ARG^{commit}" 2> /dev/null); then
     echo "--after commit '$AFTER_ARG' does not resolve" >&2
     exit 1
   fi
@@ -355,11 +355,11 @@ ORIGINAL_TIP=""
 BACKUP_REF=""
 
 if [ "$BACKUP_MODE" -eq 1 ]; then
-  if [ -z "$BASE_COMMIT_FLAG" ] &&
-    [ -n "$BASE_BRANCH" ] &&
-    [ "$BASE_REMOTE" = "origin" ] &&
-    git show-ref --verify --quiet "refs/heads/${BASE_BRANCH}" &&
-    git show-ref --verify --quiet "refs/remotes/origin/${BASE_BRANCH}"; then
+  if [ -z "$BASE_COMMIT_FLAG" ] \
+    && [ -n "$BASE_BRANCH" ] \
+    && [ "$BASE_REMOTE" = "origin" ] \
+    && git show-ref --verify --quiet "refs/heads/${BASE_BRANCH}" \
+    && git show-ref --verify --quiet "refs/remotes/origin/${BASE_BRANCH}"; then
     LOCAL_BASE=$(git rev-parse "refs/heads/${BASE_BRANCH}")
     REMOTE_BASE=$(git rev-parse "refs/remotes/origin/${BASE_BRANCH}")
     if [ "$LOCAL_BASE" != "$REMOTE_BASE" ]; then
@@ -399,10 +399,10 @@ if [ "$BACKUP_MODE" -eq 1 ]; then
       echo "After confirming it is safe to replace, rerun with --force-backup." >&2
       exit 1
     else
-      git branch -f "$BACKUP_REF" "$ORIGINAL_TIP" >/dev/null
+      git branch -f "$BACKUP_REF" "$ORIGINAL_TIP" > /dev/null
     fi
   else
-    git branch "$BACKUP_REF" "$ORIGINAL_TIP" >/dev/null
+    git branch "$BACKUP_REF" "$ORIGINAL_TIP" > /dev/null
   fi
 fi
 

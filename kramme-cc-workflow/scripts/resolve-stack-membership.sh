@@ -51,19 +51,19 @@ while IFS= read -r remote_name; do
     exit 1
   }
   case "$REMOTE_URLS" in
-  *github.com:* | *github.com/*)
-    GITHUB_REMOTE_FOUND=1
-    break
-    ;;
+    *github.com:* | *github.com/*)
+      GITHUB_REMOTE_FOUND=1
+      break
+      ;;
   esac
-done <<<"$REMOTE_NAMES"
+done <<< "$REMOTE_NAMES"
 if [ "$GITHUB_REMOTE_FOUND" -eq 0 ]; then
   STACK_MEMBERSHIP="none"
   emit_result
   exit 0
 fi
 
-if ! command -v gh >/dev/null 2>&1; then
+if ! command -v gh > /dev/null 2>&1; then
   echo "Cannot determine GitHub stack membership because gh is unavailable." >&2
   exit 1
 fi
@@ -89,17 +89,17 @@ if GH_STACK_VERSION_OUTPUT=$(gh stack --version 2>&1); then
   set -e
 
   case "$STACK_VIEW_STATUS" in
-  0)
-    STACK_MEMBERSHIP="local"
-    emit_result
-    exit 0
-    ;;
-  2) ;;
-  *)
-    [ -z "$STACK_VIEW_OUTPUT" ] || printf '%s\n' "$STACK_VIEW_OUTPUT" >&2
-    echo "gh stack view failed with exit code $STACK_VIEW_STATUS; stack membership is unknown." >&2
-    exit "$STACK_VIEW_STATUS"
-    ;;
+    0)
+      STACK_MEMBERSHIP="local"
+      emit_result
+      exit 0
+      ;;
+    2) ;;
+    *)
+      [ -z "$STACK_VIEW_OUTPUT" ] || printf '%s\n' "$STACK_VIEW_OUTPUT" >&2
+      echo "gh stack view failed with exit code $STACK_VIEW_STATUS; stack membership is unknown." >&2
+      exit "$STACK_VIEW_STATUS"
+      ;;
   esac
 fi
 
@@ -124,14 +124,14 @@ REPO_WITH_OWNER=$(gh repo view --json nameWithOwner --jq '.nameWithOwner') || {
   exit 1
 }
 case "$REPO_WITH_OWNER" in
-*/*)
-  REPO_OWNER=${REPO_WITH_OWNER%%/*}
-  REPO_NAME=${REPO_WITH_OWNER#*/}
-  ;;
-*)
-  echo "GitHub returned an invalid repository name: '$REPO_WITH_OWNER'." >&2
-  exit 1
-  ;;
+  */*)
+    REPO_OWNER=${REPO_WITH_OWNER%%/*}
+    REPO_NAME=${REPO_WITH_OWNER#*/}
+    ;;
+  *)
+    echo "GitHub returned an invalid repository name: '$REPO_WITH_OWNER'." >&2
+    exit 1
+    ;;
 esac
 
 STACK_NUMBER=$(gh api graphql \

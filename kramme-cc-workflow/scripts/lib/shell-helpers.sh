@@ -10,10 +10,10 @@ require_value() {
   local exit_status="${3:-1}"
   local message_prefix="${4-}"
   case "$value" in
-  "" | --*)
-    echo "${message_prefix}${flag} requires a value" >&2
-    exit "$exit_status"
-    ;;
+    "" | --*)
+      echo "${message_prefix}${flag} requires a value" >&2
+      exit "$exit_status"
+      ;;
   esac
 }
 
@@ -35,12 +35,12 @@ emit_json_object() {
   local missing_python_message="$1"
   shift
 
-  if ! command -v python3 >/dev/null 2>&1; then
+  if ! command -v python3 > /dev/null 2>&1; then
     echo "$missing_python_message" >&2
     exit 1
   fi
 
-  python3 - "$@" <<'PY'
+  python3 - "$@" << 'PY'
 import json
 import sys
 
@@ -75,7 +75,7 @@ read_json_string_fields() {
   local output_mode="$4"
   shift 4
 
-  if ! command -v python3 >/dev/null 2>&1; then
+  if ! command -v python3 > /dev/null 2>&1; then
     echo "$missing_python_message" >&2
     exit 1
   fi
@@ -83,7 +83,7 @@ read_json_string_fields() {
   MALFORMED_JSON_MESSAGE="$malformed_json_message" \
     SUBJECT_LABEL="$subject_label" \
     OUTPUT_MODE="$output_mode" \
-    python3 3<&0 - "$@" <<'PY'
+    python3 3<&0 - "$@" << 'PY'
 import json
 import os
 import sys
