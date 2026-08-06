@@ -128,6 +128,7 @@ class MarkdownTableHelpersTest(unittest.TestCase):
                 name="sample-hook",
                 event="PreToolUse (Skill), UserPromptSubmit",
                 description="Runs a sample hook",
+                path="kramme-cc-workflow/hooks/sample-hook.sh",
             ),
         )
 
@@ -520,6 +521,185 @@ sources:
         self.assertIn("notice file does not exist", failures)
 
 
+COMPONENT_CATALOG_REGISTRY = {
+    "component_catalog": {"path": "catalog.json", "canonical_reference": "README.md"},
+    "readme_skill_sync": {"skills_dir": "skills"},
+    "readme_agent_sync": {"agents_dir": "agents"},
+    "readme_hook_sync": {
+        "hooks_json": "hooks/hooks.json",
+        "plugin_root": "plugin",
+        "descriptions": {"sample-hook": "Runs a sample hook"},
+    },
+}
+
+
+class ComponentCatalogTest(unittest.TestCase):
+    def _write_tree(self, root: Path) -> None:
+        skill = root / "skills" / "kramme:sample"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text(
+            """
+---
+name: kramme:sample
+description: Sample skill
+disable-model-invocation: true
+user-invocable: true
+---
+# kramme:sample
+""".strip()
+            + "\n",
+            encoding="utf-8",
+        )
+        agents = root / "agents"
+        agents.mkdir()
+        (agents / "kramme:reviewer.md").write_text(
+            """
+---
+name: kramme:reviewer
+description: Reviews code
+---
+# kramme:reviewer
+""".strip()
+            + "\n",
+            encoding="utf-8",
+        )
+        hooks = root / "plugin" / "hooks"
+        hooks.mkdir(parents=True)
+        (hooks / "sample-hook.sh").write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+        manifest = root / "hooks"
+        manifest.mkdir()
+        (manifest / "hooks.json").write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "PreToolUse": [
+                            {
+                                "matcher": "Bash",
+                                "hooks": [
+                                    {
+                                        "type": "command",
+                                        "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/sample-hook.sh",
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    def _context(self, root: Path) -> lint_skill_contracts.LintContext:
+        return lint_skill_contracts.LintContext(
+            root=root,
+            registry=COMPONENT_CATALOG_REGISTRY,
+            schema=lint_skill_contracts.DEFAULT_CONTRACT_SCHEMA,
+        )
+
+    def test_render_returns_nothing_without_registry_config(self) -> None:
+        relative, rendered, failures = lint_skill_contracts.render_component_catalog(Path("/tmp/repo"), {}, {})
+
+        self.assertEqual((relative, rendered, failures), (None, None, []))
+
+    def test_document_indexes_every_component_type_by_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            self._write_tree(root)
+            failures: list[str] = []
+
+            document = lint_skill_contracts.component_catalog_document(
+                root,
+                COMPONENT_CATALOG_REGISTRY,
+                lint_skill_contracts.DEFAULT_CONTRACT_SCHEMA,
+                failures,
+            )
+
+        self.assertEqual(failures, [])
+        assert document is not None
+        self.assertEqual(document["canonical_reference"], "README.md")
+        self.assertEqual(
+            document["skills"],
+            [
+                {
+                    "name": "kramme:sample",
+                    "invocation": "User",
+                    "path": "skills/kramme:sample/SKILL.md",
+                }
+            ],
+        )
+        self.assertEqual(
+            document["agents"],
+            [{"name": "kramme:reviewer", "path": "agents/kramme:reviewer.md"}],
+        )
+        self.assertEqual(
+            document["hooks"],
+            [
+                {
+                    "name": "sample-hook",
+                    "event": "PreToolUse (Bash)",
+                    "path": "plugin/hooks/sample-hook.sh",
+                }
+            ],
+        )
+
+    def test_render_is_deterministic_json_with_trailing_newline(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            self._write_tree(root)
+
+            first = lint_skill_contracts.render_component_catalog(
+                root, COMPONENT_CATALOG_REGISTRY, lint_skill_contracts.DEFAULT_CONTRACT_SCHEMA
+            )
+            second = lint_skill_contracts.render_component_catalog(
+                root, COMPONENT_CATALOG_REGISTRY, lint_skill_contracts.DEFAULT_CONTRACT_SCHEMA
+            )
+
+        self.assertEqual(first, second)
+        self.assertEqual(first[0], "catalog.json")
+        assert first[1] is not None
+        self.assertTrue(first[1].endswith("\n"))
+        self.assertEqual(json.loads(first[1]), json.loads(second[1] or ""))
+
+    def test_check_reports_missing_and_stale_catalog(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            self._write_tree(root)
+            context = self._context(root)
+
+            missing = lint_skill_contracts.check_component_catalog(context)
+
+            (root / "catalog.json").write_text("{}\n", encoding="utf-8")
+            stale = lint_skill_contracts.check_component_catalog(context)
+
+            _relative, rendered, _failures = lint_skill_contracts.render_component_catalog(
+                root, COMPONENT_CATALOG_REGISTRY, lint_skill_contracts.DEFAULT_CONTRACT_SCHEMA
+            )
+            (root / "catalog.json").write_text(rendered or "", encoding="utf-8")
+            synced = lint_skill_contracts.check_component_catalog(context)
+
+        self.assertIn("registered path is missing: catalog.json", "\n".join(missing.failures))
+        self.assertIn("catalog.json is stale", "\n".join(stale.failures))
+        self.assertIn(
+            "run python3 kramme-cc-workflow/scripts/generate-component-reference.py --write",
+            "\n".join(stale.failures),
+        )
+        self.assertEqual(synced.failures, [])
+
+    def test_check_requires_readme_sync_configs(self) -> None:
+        failures: list[str] = []
+
+        lint_skill_contracts.check_component_catalog_drift(
+            Path("/tmp/repo"),
+            {"component_catalog": {"path": "catalog.json"}},
+            {},
+            failures,
+        )
+
+        self.assertIn("readme_skill_sync", "\n".join(failures))
+        self.assertIn("readme_agent_sync", "\n".join(failures))
+        self.assertIn("readme_hook_sync", "\n".join(failures))
+
+
 class CheckRegistryTest(unittest.TestCase):
     def test_registry_preserves_cli_check_order(self) -> None:
         self.assertEqual(
@@ -536,6 +716,7 @@ class CheckRegistryTest(unittest.TestCase):
                 "epilogue_order",
                 "hooks_json",
                 "readme_skill_sync",
+                "component_catalog",
                 "mechanical",
             ],
         )
