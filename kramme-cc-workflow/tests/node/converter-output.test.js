@@ -23,6 +23,7 @@ const {
 } = require("../../scripts/convert-plugin/codex-writer");
 
 const {
+  emptyCodexBundle,
   emptyPreviousEntries,
   withTempDir,
   writeJson,
@@ -39,6 +40,48 @@ const {
  * @typedef {{ skills: string[], skillFiles: Record<string, string[]>, agentSkills: string[], agentSkillFiles: Record<string, string[]> }} InstallManifestFixture
  * @typedef {{ plugins: Record<string, { codex: InstallManifestFixture }> }} InstallStateFixture
  */
+
+test("empty Codex bundle includes the complete bundle shape", () => {
+  assert.deepEqual(emptyCodexBundle(), {
+    agentSkills: [],
+    codexPlugin: undefined,
+    generatedSkills: [],
+    knownAgentSkills: new Map(),
+    knownCommands: new Set(),
+    mcpServers: {},
+    prompts: [],
+    skillDirs: [],
+  });
+});
+
+test("empty Codex bundle applies overrides to one call only", () => {
+  const prompts = [{ content: "Prompt", name: "daily" }];
+
+  assert.deepEqual(emptyCodexBundle({ prompts }), {
+    agentSkills: [],
+    codexPlugin: undefined,
+    generatedSkills: [],
+    knownAgentSkills: new Map(),
+    knownCommands: new Set(),
+    mcpServers: {},
+    prompts,
+    skillDirs: [],
+  });
+  assert.deepEqual(emptyCodexBundle().prompts, []);
+});
+
+test("empty Codex bundle creates fresh mutable containers", () => {
+  const first = emptyCodexBundle();
+  const second = emptyCodexBundle();
+
+  assert.notEqual(first.agentSkills, second.agentSkills);
+  assert.notEqual(first.generatedSkills, second.generatedSkills);
+  assert.notEqual(first.prompts, second.prompts);
+  assert.notEqual(first.skillDirs, second.skillDirs);
+  assert.notEqual(first.knownAgentSkills, second.knownAgentSkills);
+  assert.notEqual(first.knownCommands, second.knownCommands);
+  assert.notEqual(first.mcpServers, second.mcpServers);
+});
 
 test("codex config staging replaces managed MCP tables without disturbing adjacent config", async () => {
   await withTempDir(async (root) => {
@@ -348,16 +391,11 @@ test("writer preserves exact skill group outputs across pruning and removal", as
 
     /** @param {string} version @returns {CodexBundle} */
     function bundle(version) {
-      return {
+      return emptyCodexBundle({
         agentSkills: [{ content: `Agent ${version}`, name: "fixture-agent" }],
-        codexPlugin: undefined,
         generatedSkills: [
           { content: `Generated ${version}`, name: "fixture-generated" },
         ],
-        knownAgentSkills: new Map(),
-        knownCommands: new Set(),
-        mcpServers: {},
-        prompts: [],
         skillDirs: [
           {
             content: "",
@@ -365,7 +403,7 @@ test("writer preserves exact skill group outputs across pruning and removal", as
             sourceDir,
           },
         ],
-      };
+      });
     }
 
     await writeSourceSkill(sourceDir, {
@@ -497,14 +535,7 @@ test("writer preserves previous skill files when stale pruning preflight fails",
     };
 
     function bundle() {
-      return {
-        agentSkills: [],
-        codexPlugin: undefined,
-        generatedSkills: [],
-        knownAgentSkills: new Map(),
-        knownCommands: new Set(),
-        mcpServers: {},
-        prompts: [],
+      return emptyCodexBundle({
         skillDirs: [
           {
             content: "",
@@ -512,7 +543,7 @@ test("writer preserves previous skill files when stale pruning preflight fails",
             sourceDir,
           },
         ],
-      };
+      });
     }
 
     await writeSourceSkill(sourceDir, {
@@ -587,15 +618,11 @@ test("writer preserves untracked same-name skill directories on first install", 
 
     await writeCodexBundle(
       root,
-      {
+      emptyCodexBundle({
         agentSkills: [{ content: "Agent", name: "collision-agent" }],
-        codexPlugin: undefined,
         generatedSkills: [{ content: "Generated", name: "collision-skill" }],
-        knownAgentSkills: new Map(),
-        knownCommands: new Set(),
-        prompts: [],
         skillDirs: [{ content: "", name: "collision-source", sourceDir }],
-      },
+      }),
       {
         agentsHome,
         confirm: { yes: true },
@@ -740,16 +767,9 @@ test("writer rejects config edits made after config staging", async () => {
         () =>
           writeCodexBundle(
             root,
-            {
-              agentSkills: [],
-              codexPlugin: undefined,
-              generatedSkills: [],
-              knownAgentSkills: new Map(),
-              knownCommands: new Set(),
+            emptyCodexBundle({
               mcpServers: { demo: { command: "demo" } },
-              prompts: [],
-              skillDirs: [],
-            },
+            }),
             {
               agentsHome: path.join(root, "agents-home"),
               confirm: { yes: true },
@@ -840,16 +860,9 @@ test("writer rejects managed output beneath an unlocked symlinked directory", as
       () =>
         writeCodexBundle(
           root,
-          {
-            agentSkills: [],
-            codexPlugin: undefined,
-            generatedSkills: [],
-            knownAgentSkills: new Map(),
-            knownCommands: new Set(),
-            mcpServers: {},
+          emptyCodexBundle({
             prompts: [{ content: "Prompt", name: "daily" }],
-            skillDirs: [],
-          },
+          }),
           {
             agentsHome: path.join(root, "agents-home"),
             confirm: { yes: true },
@@ -1297,24 +1310,11 @@ test("writer rolls back when a symlinked AGENTS.md is retargeted during publicat
     try {
       await assert.rejects(
         () =>
-          writeCodexBundle(
-            root,
-            {
-              agentSkills: [],
-              codexPlugin: undefined,
-              generatedSkills: [],
-              knownAgentSkills: new Map(),
-              knownCommands: new Set(),
-              mcpServers: {},
-              prompts: [],
-              skillDirs: [],
-            },
-            {
-              agentsHome: path.join(root, "agents-home"),
-              confirm: { yes: true },
-              pluginName: "agents-retarget-plugin",
-            },
-          ),
+          writeCodexBundle(root, emptyCodexBundle(), {
+            agentsHome: path.join(root, "agents-home"),
+            confirm: { yes: true },
+            pluginName: "agents-retarget-plugin",
+          }),
         /destination changed during installation/,
       );
     } finally {
@@ -1355,25 +1355,12 @@ test("writer preserves invalid lock directories beside external AGENTS.md refere
 
     await assert.rejects(
       () =>
-        writeCodexBundle(
-          root,
-          {
-            agentSkills: [],
-            codexPlugin: undefined,
-            generatedSkills: [],
-            knownAgentSkills: new Map(),
-            knownCommands: new Set(),
-            mcpServers: {},
-            prompts: [],
-            skillDirs: [],
-          },
-          {
-            agentsHome: path.join(root, "agents-home"),
-            confirm: { yes: true },
-            lockTimeoutMs: 0,
-            pluginName: "agents-external-lock-plugin",
-          },
-        ),
+        writeCodexBundle(root, emptyCodexBundle(), {
+          agentsHome: path.join(root, "agents-home"),
+          confirm: { yes: true },
+          lockTimeoutMs: 0,
+          pluginName: "agents-external-lock-plugin",
+        }),
       /Refusing to reclaim invalid install lock/,
     );
 
@@ -1400,16 +1387,7 @@ test("writer deduplicates physically identical AGENTS.md lock roots", async () =
 
     await writeCodexBundle(
       path.join(linkedParent, ".codex"),
-      {
-        agentSkills: [],
-        codexPlugin: undefined,
-        generatedSkills: [],
-        knownAgentSkills: new Map(),
-        knownCommands: new Set(),
-        mcpServers: {},
-        prompts: [],
-        skillDirs: [],
-      },
+      emptyCodexBundle(),
       {
         agentsHome: path.join(root, "agents-home"),
         confirm: { yes: true },
@@ -1462,24 +1440,11 @@ test("writer recovers legacy stale locks recorded through a symlink alias", asyn
       },
     );
 
-    await writeCodexBundle(
-      linkedParent,
-      {
-        agentSkills: [],
-        codexPlugin: undefined,
-        generatedSkills: [],
-        knownAgentSkills: new Map(),
-        knownCommands: new Set(),
-        mcpServers: {},
-        prompts: [],
-        skillDirs: [],
-      },
-      {
-        agentsHome: path.join(root, "agents-home"),
-        confirm: { yes: true },
-        pluginName: "legacy-alias-plugin",
-      },
-    );
+    await writeCodexBundle(linkedParent, emptyCodexBundle(), {
+      agentsHome: path.join(root, "agents-home"),
+      confirm: { yes: true },
+      pluginName: "legacy-alias-plugin",
+    });
 
     assert.equal(
       await pathExists(path.join(physicalCodexRoot, ".kramme-install-lock")),
@@ -1504,24 +1469,11 @@ test("writer rejects hard-linked AGENTS.md without severing the link", async () 
 
     await assert.rejects(
       () =>
-        writeCodexBundle(
-          root,
-          {
-            agentSkills: [],
-            codexPlugin: undefined,
-            generatedSkills: [],
-            knownAgentSkills: new Map(),
-            knownCommands: new Set(),
-            mcpServers: {},
-            prompts: [],
-            skillDirs: [],
-          },
-          {
-            agentsHome: path.join(root, "agents-home"),
-            confirm: { yes: true },
-            pluginName: "agents-hard-link-plugin",
-          },
-        ),
+        writeCodexBundle(root, emptyCodexBundle(), {
+          agentsHome: path.join(root, "agents-home"),
+          confirm: { yes: true },
+          pluginName: "agents-hard-link-plugin",
+        }),
       /hard-linked to another file/,
     );
 
@@ -1560,27 +1512,14 @@ test("writer rejects hard links created after final AGENTS.md staging", async ()
     try {
       await assert.rejects(
         () =>
-          writeCodexBundle(
-            root,
-            {
-              agentSkills: [],
-              codexPlugin: undefined,
-              generatedSkills: [],
-              knownAgentSkills: new Map(),
-              knownCommands: new Set(),
-              mcpServers: {},
-              prompts: [],
-              skillDirs: [],
+          writeCodexBundle(root, emptyCodexBundle(), {
+            agentsHome: path.join(root, "agents-home"),
+            confirm: { yes: true },
+            onInstallPhase(phase) {
+              if (phase === "config") armed = true;
             },
-            {
-              agentsHome: path.join(root, "agents-home"),
-              confirm: { yes: true },
-              onInstallPhase(phase) {
-                if (phase === "config") armed = true;
-              },
-              pluginName: "agents-late-hard-link-plugin",
-            },
-          ),
+            pluginName: "agents-late-hard-link-plugin",
+          }),
         /changed during installation/,
       );
     } finally {
@@ -1709,27 +1648,14 @@ test("writer rejects AGENTS.md created after final staging", async () => {
     try {
       await assert.rejects(
         () =>
-          writeCodexBundle(
-            root,
-            {
-              agentSkills: [],
-              codexPlugin: undefined,
-              generatedSkills: [],
-              knownAgentSkills: new Map(),
-              knownCommands: new Set(),
-              mcpServers: {},
-              prompts: [],
-              skillDirs: [],
+          writeCodexBundle(root, emptyCodexBundle(), {
+            agentsHome: path.join(root, "agents-home"),
+            confirm: { yes: true },
+            pluginName: "agents-late-create-plugin",
+            onInstallPhase(phase) {
+              if (phase === "config") armed = true;
             },
-            {
-              agentsHome: path.join(root, "agents-home"),
-              confirm: { yes: true },
-              pluginName: "agents-late-create-plugin",
-              onInstallPhase(phase) {
-                if (phase === "config") armed = true;
-              },
-            },
-          ),
+          }),
         /created during installation/,
       );
     } finally {
@@ -1785,29 +1711,16 @@ test("writer preserves AGENTS.md edits made after publication when rollback runs
 
     await assert.rejects(
       () =>
-        writeCodexBundle(
-          root,
-          {
-            agentSkills: [],
-            codexPlugin: undefined,
-            generatedSkills: [],
-            knownAgentSkills: new Map(),
-            knownCommands: new Set(),
-            mcpServers: {},
-            prompts: [],
-            skillDirs: [],
+        writeCodexBundle(root, emptyCodexBundle(), {
+          agentsHome: path.join(root, "agents-home"),
+          confirm: { yes: true },
+          pluginName: "agents-rollback-edit-plugin",
+          async onInstallPhase(phase) {
+            if (phase !== "agents") return;
+            await writeFile(agentsPath, "# User edit after publication\n");
+            throw injectedError;
           },
-          {
-            agentsHome: path.join(root, "agents-home"),
-            confirm: { yes: true },
-            pluginName: "agents-rollback-edit-plugin",
-            async onInstallPhase(phase) {
-              if (phase !== "agents") return;
-              await writeFile(agentsPath, "# User edit after publication\n");
-              throw injectedError;
-            },
-          },
-        ),
+        }),
       (error) => error === injectedError,
     );
 
@@ -1834,49 +1747,32 @@ test("writer preserves AGENTS.md deletion made after publication when rollback r
 
     await assert.rejects(
       () =>
-        writeCodexBundle(
-          root,
-          {
-            agentSkills: [],
-            codexPlugin: undefined,
-            generatedSkills: [],
-            knownAgentSkills: new Map(),
-            knownCommands: new Set(),
-            mcpServers: {},
-            prompts: [],
-            skillDirs: [],
+        writeCodexBundle(root, emptyCodexBundle(), {
+          agentsHome: path.join(root, "agents-home"),
+          confirm: { yes: true },
+          pluginName: "agents-rollback-delete-plugin",
+          async onInstallPhase(phase) {
+            if (phase !== "agents") return;
+            const transactionRoot = path.join(
+              codexRoot,
+              ".kramme-install-transactions",
+            );
+            const transactionTokens = await fs.readdir(transactionRoot);
+            assert.equal(transactionTokens.length, 1);
+            const journal = await readJson(
+              path.join(transactionRoot, transactionTokens[0], "journal.json"),
+            );
+            assert.ok(Array.isArray(journal.rollbackTargetExpectations));
+            assert.equal(
+              /** @type {{target?: unknown}[]} */ (
+                journal.rollbackTargetExpectations
+              )[0]?.target,
+              agentsPath,
+            );
+            await fs.rm(agentsPath, { force: true });
+            throw injectedError;
           },
-          {
-            agentsHome: path.join(root, "agents-home"),
-            confirm: { yes: true },
-            pluginName: "agents-rollback-delete-plugin",
-            async onInstallPhase(phase) {
-              if (phase !== "agents") return;
-              const transactionRoot = path.join(
-                codexRoot,
-                ".kramme-install-transactions",
-              );
-              const transactionTokens = await fs.readdir(transactionRoot);
-              assert.equal(transactionTokens.length, 1);
-              const journal = await readJson(
-                path.join(
-                  transactionRoot,
-                  transactionTokens[0],
-                  "journal.json",
-                ),
-              );
-              assert.ok(Array.isArray(journal.rollbackTargetExpectations));
-              assert.equal(
-                /** @type {{target?: unknown}[]} */ (
-                  journal.rollbackTargetExpectations
-                )[0]?.target,
-                agentsPath,
-              );
-              await fs.rm(agentsPath, { force: true });
-              throw injectedError;
-            },
-          },
-        ),
+        }),
       (error) => error === injectedError,
     );
 
@@ -1894,29 +1790,16 @@ test("writer preserves AGENTS.md metadata edits made before rollback", async () 
 
     await assert.rejects(
       () =>
-        writeCodexBundle(
-          root,
-          {
-            agentSkills: [],
-            codexPlugin: undefined,
-            generatedSkills: [],
-            knownAgentSkills: new Map(),
-            knownCommands: new Set(),
-            mcpServers: {},
-            prompts: [],
-            skillDirs: [],
+        writeCodexBundle(root, emptyCodexBundle(), {
+          agentsHome: path.join(root, "agents-home"),
+          confirm: { yes: true },
+          pluginName: "agents-rollback-mode-plugin",
+          async onInstallPhase(phase) {
+            if (phase !== "agents") return;
+            await fs.chmod(agentsPath, 0o644);
+            throw injectedError;
           },
-          {
-            agentsHome: path.join(root, "agents-home"),
-            confirm: { yes: true },
-            pluginName: "agents-rollback-mode-plugin",
-            async onInstallPhase(phase) {
-              if (phase !== "agents") return;
-              await fs.chmod(agentsPath, 0o644);
-              throw injectedError;
-            },
-          },
-        ),
+        }),
       (error) => error === injectedError,
     );
 
@@ -1997,16 +1880,9 @@ test("writer does not require an agent home for Codex-only installs", async () =
 
     await writeCodexBundle(
       root,
-      {
-        agentSkills: [],
-        codexPlugin: undefined,
-        generatedSkills: [],
-        knownAgentSkills: new Map(),
-        knownCommands: new Set(),
-        mcpServers: {},
+      emptyCodexBundle({
         prompts: [{ content: "Codex only", name: "codex-only" }],
-        skillDirs: [],
-      },
+      }),
       {
         agentsHome,
         confirm: { yes: true },
@@ -2031,16 +1907,10 @@ test("writer preserves previous install when replacement bundle fails", async ()
       pluginName: "transactional-plugin",
     };
     /** @param {CodexSkillFile} skill @returns {CodexBundle} */
-    const bundleWithGeneratedSkill = (skill) => ({
-      agentSkills: [],
-      codexPlugin: undefined,
-      generatedSkills: [skill],
-      knownAgentSkills: new Map(),
-      knownCommands: new Set(),
-      mcpServers: {},
-      prompts: [],
-      skillDirs: [],
-    });
+    const bundleWithGeneratedSkill = (skill) =>
+      emptyCodexBundle({
+        generatedSkills: [skill],
+      });
     const stableSkill = path.join(
       root,
       ".codex",
@@ -2095,17 +1965,11 @@ test("writer removes agent staging when agent skill staging fails", async () => 
       () =>
         writeCodexBundle(
           root,
-          {
+          emptyCodexBundle({
             agentSkills: [
               { content: "Broken", name: "../invalid-agent-skill" },
             ],
-            codexPlugin: undefined,
-            generatedSkills: [],
-            knownAgentSkills: new Map(),
-            knownCommands: new Set(),
-            prompts: [],
-            skillDirs: [],
-          },
+          }),
           {
             agentsHome,
             confirm: { yes: true },
@@ -2131,16 +1995,10 @@ test("writer preserves previous install when finalization is blocked", async () 
       pluginName: "finalization-plugin",
     };
     /** @param {CodexSkillFile[]} skills @returns {CodexBundle} */
-    const bundleWithGeneratedSkills = (skills) => ({
-      agentSkills: [],
-      codexPlugin: undefined,
-      generatedSkills: skills,
-      knownAgentSkills: new Map(),
-      knownCommands: new Set(),
-      mcpServers: {},
-      prompts: [],
-      skillDirs: [],
-    });
+    const bundleWithGeneratedSkills = (skills) =>
+      emptyCodexBundle({
+        generatedSkills: skills,
+      });
     const skillsRoot = path.join(root, ".codex", "skills");
     const stableSkill = path.join(skillsRoot, "stable-skill", "SKILL.md");
     const blockedSkill = path.join(skillsRoot, "blocked-skill");
@@ -2634,27 +2492,14 @@ test("stale recovery preserves AGENTS.md deletion recorded after publication", a
     const interruption = new Error("stop after stale AGENTS.md recovery");
     await assert.rejects(
       () =>
-        writeCodexBundle(
-          root,
-          {
-            agentSkills: [],
-            codexPlugin: undefined,
-            generatedSkills: [],
-            knownAgentSkills: new Map(),
-            knownCommands: new Set(),
-            mcpServers: {},
-            prompts: [],
-            skillDirs: [],
+        writeCodexBundle(root, emptyCodexBundle(), {
+          agentsHome: path.join(root, "agents-home"),
+          confirm: { yes: true },
+          pluginName: owner.pluginName,
+          onInstallPhase(phase) {
+            if (phase === "shared-scripts") throw interruption;
           },
-          {
-            agentsHome: path.join(root, "agents-home"),
-            confirm: { yes: true },
-            pluginName: owner.pluginName,
-            onInstallPhase(phase) {
-              if (phase === "shared-scripts") throw interruption;
-            },
-          },
-        ),
+        }),
       (error) => error === interruption,
     );
 
@@ -2783,16 +2628,7 @@ test("writer releases the recovery claim when stale recovery fails", async () =>
       transactionRoot: codexRoot,
       journalPath,
     };
-    const bundle = {
-      agentSkills: [],
-      codexPlugin: undefined,
-      generatedSkills: [],
-      knownAgentSkills: new Map(),
-      knownCommands: new Set(),
-      mcpServers: {},
-      prompts: [],
-      skillDirs: [],
-    };
+    const bundle = emptyCodexBundle();
     const options = {
       agentsHome,
       confirm: { yes: true },
@@ -3104,7 +2940,7 @@ async function createTransactionalBundle(root, version) {
     `#!/bin/sh\necho ${version}\n`,
   );
   const pluginVersion = version.replace(/\D/g, "") || "0";
-  return {
+  return emptyCodexBundle({
     agentSkills: [{ content: `Agent ${version}`, name: "transaction-agent" }],
     codexPlugin: {
       name: "transaction-hooks",
@@ -3126,14 +2962,11 @@ async function createTransactionalBundle(root, version) {
     generatedSkills: [
       { content: `Skill ${version}`, name: "transaction-skill" },
     ],
-    knownAgentSkills: new Map(),
-    knownCommands: new Set(),
     mcpServers: {
       transaction: { command: "echo", args: [version] },
     },
     prompts: [{ content: `Prompt ${version}`, name: "daily" }],
-    skillDirs: [],
-  };
+  });
 }
 
 /**
