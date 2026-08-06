@@ -150,11 +150,19 @@ class GitCommandLexerTest(unittest.TestCase):
             "extract_placeholder_indexes",
             "_decode_ansi_c_string",
             "_expand_ansi_c_quoted_strings",
+            "_is_assignment",
         ]
 
         for helper in helpers:
             with self.subTest(helper=helper):
                 self.assertEqual(source.count(f"def {helper}"), 1)
+
+        # W02A: these were formerly separate byte-identical regex constants
+        # (ASSIGNMENT_WORD, NONINTERACTIVE_ASSIGNMENT, COMMIT_ASSIGNMENT) now
+        # canonicalized to a single ASSIGNMENT_WORD definition.
+        self.assertEqual(source.count("ASSIGNMENT_WORD = re.compile"), 1)
+        self.assertNotIn("NONINTERACTIVE_ASSIGNMENT", source)
+        self.assertNotIn("COMMIT_ASSIGNMENT", source)
 
     def test_expand_ansi_c_quoted_strings_decodes_shell_escapes(self) -> None:
         cases = [
@@ -169,6 +177,134 @@ class GitCommandLexerTest(unittest.TestCase):
         for command, expected in cases:
             with self.subTest(command=command):
                 self.assertEqual(PARSER._expand_ansi_c_quoted_strings(command), expected)
+
+
+class GitCommandPrimitiveEquivalenceTest(unittest.TestCase):
+    """Pins the cross-mode primitive invariants W02A must preserve.
+
+    These primitives currently exist as separate copies for the
+    `noninteractive`, `commit-contexts`, and `rm-rf` parser modes. Some
+    copies are byte-identical (safe to canonicalize); others carry an
+    intentional behavioral delta (must stay explicit, not be erased). This
+    test class pins both kinds before any consolidation.
+    """
+
+    ASSIGNMENT_CASES = [
+        ("FOO=bar", True),
+        ("FOO=", True),
+        ("_FOO9=bar=baz", True),
+        ("9FOO=bar", False),
+        ("FOO", False),
+        ("FOO.BAR=baz", False),
+        ("=bar", False),
+        ("", False),
+    ]
+
+    def test_assignment_predicate_is_canonical_across_modes(self) -> None:
+        # ASSIGNMENT_WORD/_is_assignment is the single canonical primitive
+        # shared by the noninteractive, commit-contexts, and rm-rf modes
+        # (formerly three byte-identical copies: ASSIGNMENT_WORD,
+        # NONINTERACTIVE_ASSIGNMENT, COMMIT_ASSIGNMENT).
+        for token, expected in self.ASSIGNMENT_CASES:
+            with self.subTest(token=token):
+                self.assertIs(PARSER._is_assignment(token), expected)
+                self.assertIs(bool(PARSER.ASSIGNMENT_WORD.match(token)), expected)
+
+    def test_shell_reserved_words_and_keyword_sets_differ_only_by_closing_paren(self) -> None:
+        # SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE is now the single canonical set
+        # shared by the noninteractive and commit-contexts modes (formerly
+        # two byte-identical copies: NONINTERACTIVE_SHELL_KEYWORDS and
+        # COMMIT_SHELL_KEYWORDS). It differs from SHELL_RESERVED_COMMAND_WORDS
+        # (used by the shared command-prefix normalizer) by exactly a
+        # trailing ")" — an intentional mode delta, not accidental drift.
+        self.assertEqual(PARSER.SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE - PARSER.SHELL_RESERVED_COMMAND_WORDS, {")"})
+        self.assertEqual(PARSER.SHELL_RESERVED_COMMAND_WORDS - PARSER.SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE, set())
+        source = PARSER_PATH.read_text(encoding="utf-8")
+        self.assertNotIn("NONINTERACTIVE_SHELL_KEYWORDS", source)
+        self.assertNotIn("COMMIT_SHELL_KEYWORDS", source)
+
+    def test_shell_executable_set_is_canonical_across_modes(self) -> None:
+        # SHELL_EXECUTABLES is now the single canonical set shared by the
+        # command-prefix normalizer, rm-rf detector, and noninteractive
+        # parser (formerly a byte-identical NONINTERACTIVE_SHELL_EXECUTABLES
+        # copy).
+        self.assertEqual(PARSER.SHELL_EXECUTABLES, {"sh", "bash", "zsh", "dash", "ksh"})
+        source = PARSER_PATH.read_text(encoding="utf-8")
+        self.assertNotIn("NONINTERACTIVE_SHELL_EXECUTABLES", source)
+
+    BASENAME_CASES = [
+        # token, _basename() result, _basename_no_unescape() result
+        ("git", "git", "git"),
+        ("/usr/bin/git", "git", "git"),
+        (r"\git", "git", r"\git"),
+        (r"\ls", "ls", r"\ls"),
+        ("sh", "sh", "sh"),
+    ]
+
+    def test_basename_helpers_differ_only_in_backslash_unescaping(self) -> None:
+        # _basename() strips a leading backslash (so a backslash-escaped
+        # invocation like `\rm -rf` is still recognized as `rm` by the rm-rf
+        # detector); _basename_no_unescape() does not. It is now the single
+        # canonical helper shared by the noninteractive mode and the
+        # commit-contexts mode's git/alias/export/unset checks (formerly a
+        # private _noninteractive_basename plus two bare os.path.basename()
+        # calls duplicated inline in the commit-contexts path).
+        for token, expected_basename, expected_no_unescape in self.BASENAME_CASES:
+            with self.subTest(token=token):
+                self.assertEqual(PARSER._basename(token), expected_basename)
+                self.assertEqual(PARSER._basename_no_unescape(token), expected_no_unescape)
+                self.assertEqual(os.path.basename(token), expected_no_unescape)
+
+        source = PARSER_PATH.read_text(encoding="utf-8")
+        self.assertNotIn("_noninteractive_basename", source)
+        self.assertEqual(source.count("def _basename_no_unescape"), 1)
+
+
+class GitCommandNoninteractiveHelperTest(unittest.TestCase):
+    """Direct tests for the option-consumption helpers W02A promoted out of
+    run_noninteractive's closure to module scope."""
+
+    def test_has_long_option_matches_bare_and_attached_forms(self) -> None:
+        self.assertTrue(PARSER._has_long_option(["--no-edit"], "--no-edit"))
+        self.assertTrue(PARSER._has_long_option(["--message=x"], "--message"))
+        self.assertFalse(PARSER._has_long_option(["--", "--no-edit"], "--no-edit"))
+        self.assertFalse(PARSER._has_long_option(["--no-edits"], "--no-edit"))
+
+    def test_has_short_option_scans_clustered_flags_until_separator(self) -> None:
+        self.assertTrue(PARSER._has_short_option(["-pi"], "p"))
+        self.assertFalse(PARSER._has_short_option(["--", "-p"], "p"))
+        self.assertFalse(PARSER._has_short_option(["-"], "p"))
+
+    def test_short_option_consumes_next_value_only_when_trailing(self) -> None:
+        value_opts = PARSER.COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE
+        self.assertTrue(PARSER._short_option_consumes_next_value("-m", value_opts))
+        self.assertTrue(PARSER._short_option_consumes_next_value("-am", value_opts))
+        self.assertFalse(PARSER._short_option_consumes_next_value("-ma", value_opts))
+        self.assertFalse(PARSER._short_option_consumes_next_value("--message", value_opts))
+
+    def test_classify_commit_fixup_distinguishes_safe_and_interactive_values(self) -> None:
+        self.assertEqual(PARSER._classify_commit_fixup(["--fixup=amend:HEAD"]), "interactive")
+        self.assertEqual(PARSER._classify_commit_fixup(["--fixup=reword:HEAD"]), "interactive")
+        self.assertEqual(PARSER._classify_commit_fixup(["--fixup", "HEAD"]), "safe")
+        self.assertEqual(PARSER._classify_commit_fixup(["-m", "amend:not-a-fixup-value"]), "none")
+        self.assertEqual(PARSER._classify_commit_fixup(["--", "--fixup=amend:HEAD"]), "none")
+
+    def test_commit_requests_editor_detects_clustered_and_separate_flags(self) -> None:
+        self.assertTrue(PARSER._commit_requests_editor(["-e"]))
+        self.assertTrue(PARSER._commit_requests_editor(["--edit"]))
+        self.assertTrue(PARSER._commit_requests_editor(["-ae"]))
+        self.assertFalse(PARSER._commit_requests_editor(["-m", "message"]))
+        self.assertFalse(PARSER._commit_requests_editor(["--message=x"]))
+
+    def test_merge_edit_is_safe_requires_ff_only_without_no_ff(self) -> None:
+        self.assertTrue(PARSER._merge_edit_is_safe(["--ff-only"]))
+        self.assertFalse(PARSER._merge_edit_is_safe(["--ff-only", "--no-ff"]))
+        self.assertFalse(PARSER._merge_edit_is_safe([]))
+
+    def test_evaluate_noninteractive_commands_stops_recursion_at_depth_limit(self) -> None:
+        reason = PARSER._evaluate_noninteractive_commands([], [], depth=5)
+
+        self.assertEqual(reason, PARSER.NONINTERACTIVE_PARSE_ERROR_REASON)
 
 
 class GitCommandParserBoundaryTest(unittest.TestCase):
