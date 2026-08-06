@@ -30,8 +30,12 @@ if [ $# -gt 0 ]; then
   shift
 fi
 
+# Synced worktree conductor-path predicate (keep aligned across git worktree helpers):
 is_conductor_path() {
   local path="$1"
+  if [ -z "$path" ]; then
+    return 1
+  fi
   if [ -n "${CONDUCTOR_WORKSPACE_PATH:-}" ] && [ "$path" = "$CONDUCTOR_WORKSPACE_PATH" ]; then
     return 0
   fi
@@ -63,6 +67,7 @@ normalize_existing_path() {
   )
 }
 
+# Synced worktree-porcelain branch lookup (keep aligned across git worktree helpers):
 branch_worktree_path() {
   local branch="$1"
   git worktree list --porcelain \

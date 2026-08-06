@@ -107,3 +107,36 @@ make_gone_branch() {
 	[[ "$output" == *"stale/conductor"* ]]
 	[[ "$output" == *"conductor-workspace"* ]]
 }
+
+@test "does not label a branch without a worktree as a Conductor workspace" {
+	make_gone_branch "stale/no-worktree"
+
+	run "$SCRIPT"
+
+	[ "$status" -eq 0 ]
+	line=$(printf '%s\n' "$output" | grep -F "stale/no-worktree")
+	[[ "$line" != *"conductor-workspace"* ]]
+}
+
+@test "does not label a non-Conductor worktree path" {
+	make_gone_branch "stale/normal-worktree"
+	git worktree add "$TMP_DIR/elsewhere/normal-worktree" stale/normal-worktree >/dev/null 2>&1
+
+	run "$SCRIPT"
+
+	[ "$status" -eq 0 ]
+	line=$(printf '%s\n' "$output" | grep -F "stale/normal-worktree")
+	[[ "$line" == *"checked-out"* ]]
+	[[ "$line" != *"conductor-workspace"* ]]
+}
+
+@test "labels Conductor workspace paths containing spaces" {
+	make_gone_branch "stale/space-conductor"
+	git worktree add "$TMP_DIR/conductor/workspaces/space example" stale/space-conductor >/dev/null 2>&1
+
+	run "$SCRIPT"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"stale/space-conductor"* ]]
+	[[ "$output" == *"conductor-workspace"* ]]
+}

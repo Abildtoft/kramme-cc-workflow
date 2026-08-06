@@ -109,6 +109,7 @@ git worktree list --porcelain > "$WORKTREES_FILE"
 
 current_branch=$(git symbolic-ref --quiet --short HEAD 2> /dev/null || true)
 
+# Synced worktree-porcelain branch lookup (keep aligned across git worktree helpers):
 worktree_for_branch() {
   local branch="$1"
   awk -v target="$branch" '
@@ -125,6 +126,7 @@ worktree_for_branch() {
 	' "$WORKTREES_FILE"
 }
 
+# Synced worktree conductor-path predicate (keep aligned across git worktree helpers):
 is_conductor_path() {
   local path="$1"
   if [ -z "$path" ]; then
