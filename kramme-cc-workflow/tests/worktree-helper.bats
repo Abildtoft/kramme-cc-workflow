@@ -39,3 +39,52 @@ teardown() {
 	[ "$status" -eq 0 ]
 	[ ! -d "$CHILD" ]
 }
+
+@test "list does not flag a non-Conductor worktree path" {
+	OTHER="$TMP_DIR/elsewhere/normal-child"
+	mkdir -p "$(dirname "$OTHER")"
+	git branch normal-child
+	git worktree add -q "$OTHER" normal-child
+
+	run "$SCRIPT" list
+
+	[ "$status" -eq 0 ]
+	line=$(printf '%s\n' "$output" | grep -F "$OTHER")
+	[[ "$line" != *"conductor-workspace"* ]]
+}
+
+@test "allows removing a non-Conductor worktree without allow-conductor flag" {
+	OTHER="$TMP_DIR/elsewhere/normal-child"
+	mkdir -p "$(dirname "$OTHER")"
+	git branch normal-child
+	git worktree add -q "$OTHER" normal-child
+
+	run "$SCRIPT" remove --path "$OTHER" --yes
+
+	[ "$status" -eq 0 ]
+	[ ! -d "$OTHER" ]
+}
+
+@test "refuses Conductor workspace removal when the path contains spaces" {
+	SPACED="$TMP_DIR/conductor/workspaces/space child"
+	git branch space-branch
+	git worktree add -q "$SPACED" space-branch
+
+	run "$SCRIPT" remove --path "$SPACED" --yes
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Refusing to remove likely Conductor workspace without --allow-conductor"* ]]
+	[ -d "$SPACED" ]
+}
+
+@test "list classifies a Conductor workspace path containing spaces" {
+	SPACED="$TMP_DIR/conductor/workspaces/space child"
+	git branch space-branch
+	git worktree add -q "$SPACED" space-branch
+
+	run "$SCRIPT" list
+
+	[ "$status" -eq 0 ]
+	line=$(printf '%s\n' "$output" | grep -F "$SPACED")
+	[[ "$line" == *"conductor-workspace"* ]]
+}
