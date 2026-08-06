@@ -46,6 +46,7 @@ Stop and correct the generation pass if any of these appear:
 - A plan makes product or value claims without source evidence, repo evidence, `UNVERIFIED:`, or a `MISSING REQUIREMENT:` marker.
 - A generated plan has no explicit **In Scope** and **Out of Scope** boundary.
 - A generated plan or `PR_PLAN_INDEX.md` omits, duplicates, or changes the exact opening metadata field `**Scope contract:** exact files`.
+- A generated plan or matching index row starts in any status other than `TODO`, or the index lifecycle omits executor-owned `IN_PROGRESS`.
 - An implementation step lacks a verification command and expected result.
 - The validation plan does not prove the risk named in **Product / Quality Bar**.
 - A user-owned implementation-blocking question remains unresolved without a discovery attempt, explicit user deferral, or `MISSING REQUIREMENT:` stop.
@@ -66,6 +67,7 @@ Verify:
 - Every blocked plan includes one **Prerequisite Readiness Evidence** entry per blocker with required base state, exact evidence locations, and a pass/fail decision that needs no sibling artifact.
 - Every plan remains executable when copied by itself into a fresh workspace based on a branch where its stated prerequisites have landed: every **In Scope** entry names one repository-relative file, no entry resolves to an existing directory, and a missing path authorizes exactly one intended file.
 - Every generated plan and `PR_PLAN_INDEX.md` contains exactly one opening metadata field `**Scope contract:** exact files`.
+- Every generated plan header and matching index row starts at `TODO`, and the index lifecycle lists `IN_PROGRESS` as executor-owned rather than generation- or reconcile-inferred.
 - Every same-wave group is marked as parallel in the index and summary.
 - Every conflict between findings is surfaced as an open question.
 - Every generated artifact lists the complete source set, and every merged finding preserves all relevant `SRC-##` references.

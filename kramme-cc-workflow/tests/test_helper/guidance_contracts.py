@@ -442,13 +442,41 @@ def check_detached_plan_compatibility(root: pathlib.Path) -> None:
             "repository-only pass/fail decision",
         ),
     )
+    reconcile_lifecycle = _markdown_section(reconcile, r"2. Reconstruct and Classify the Plan Graph")
+    _require_terms(
+        "in-progress drift lifecycle",
+        reconcile_lifecycle,
+        (
+            "Only an executor may move a plan to `IN_PROGRESS`",
+            "ordinary in-scope implementation changes after `Planned at` are expected",
+            "move `IN_PROGRESS` to `BLOCKED`, `DRIFTED`, or `STALE`",
+            "unexpected changes that are inconsistent with active implementation",
+            "Reset `IN_PROGRESS` for any other reason only when the user explicitly requests that transition",
+        ),
+    )
+
+    plan_validation = _markdown_section(plan_to_pr, r"Step 2: Validate the Plan Set")
+    _require_terms(
+        "archived status disagreement repair",
+        plan_validation,
+        (
+            "The index status is authoritative",
+            "archived input with a status-only mismatch",
+            "no `## Workflow State` or `## Execution Result`",
+            "both values to be recognized lifecycle statuses",
+            "changes only the selected plan header to the index status",
+            "restart Step 2",
+            "interruption between the executor's two status-file replacements",
+            "lifecycle-bearing mismatch",
+        ),
+    )
 
     branch_step = _markdown_section(plan_to_pr, r"Step 4: Establish the Plan Branch")
-    runtime_only_status = (
-        "Keep a detached plan's archived plan/index status unchanged throughout the nonterminal lifecycle"
-    )
+    runtime_only_status = "Keep the detached plan's archived plan/index status unchanged while proving prerequisites"
     if runtime_only_status not in branch_step:
-        raise ContractFailure("detached readiness is not kept runtime-only throughout the nonterminal lifecycle")
+        raise ContractFailure("detached readiness is not kept runtime-only until implementation begins")
+    if "do not persist `READY`" not in branch_step:
+        raise ContractFailure("detached readiness still permits a persisted READY transition")
     if "atomically change only their status fields to `READY`" in branch_step:
         raise ContractFailure("detached readiness is still persisted before a workflow checkpoint exists")
     _require_terms(
@@ -475,11 +503,29 @@ def check_detached_plan_compatibility(root: pathlib.Path) -> None:
         "first-checkpoint readiness transition",
         implementation_step,
         (
-            "validated temporary sibling",
-            "atomically rename",
-            "matching index row at their original `BLOCKED` status",
-            "readiness remains runtime-only",
-            "rather than creating a cross-file transaction",
+            "change the selected plan header and matching index row together",
+            "complete temporary siblings",
+            "to `IN_PROGRESS`",
+            "replace `{active-plan}` first",
+            "replace `{active-index}` last as the authoritative commit point",
+            "archived-input repair in Step 2 deterministically restores agreement",
+            "never begin source edits over mismatched plan state",
+            "matching index row at `IN_PROGRESS`",
+        ),
+    )
+    _require_terms(
+        "pre-edit delegate failure status restoration",
+        implementation_step,
+        (
+            "clean pre-delegation snapshot",
+            "compare `HEAD` and the source worktree",
+            "When both are unchanged and this invocation changed the status",
+            "restore the selected plan header first and the authoritative index row last",
+            "to `CLAIM_PRIOR_STATUS`",
+            "When source work or a commit exists",
+            "retain `IN_PROGRESS`",
+            "exact changed paths",
+            "no implementation work began",
         ),
     )
 
@@ -492,7 +538,8 @@ def check_detached_plan_compatibility(root: pathlib.Path) -> None:
             "set `DETACHED_GENERATED_PLAN=false`",
             "derive `{attachment-contract}`",
             "the immutable plan has no attachment-contract field",
-            "persisted status remains `BLOCKED`",
+            "matching plan/index status `IN_PROGRESS`",
+            "interrupted executor-owned retry",
         ),
     )
 
@@ -550,6 +597,7 @@ def check_detached_plan_compatibility(root: pathlib.Path) -> None:
                 "DETACHED_GENERATED_PLAN=true",
                 "DETACHED_GENERATED_PLAN=false",
                 "BLOCKED",
+                "IN_PROGRESS",
             ),
         )
 

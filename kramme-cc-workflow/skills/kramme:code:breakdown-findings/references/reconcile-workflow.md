@@ -122,8 +122,9 @@ Use only the working-tree commands when `SOURCE_REF` is unset. Use only the name
    - Rejection IDs, source references, reasons, statuses, and reconsideration triggers for every rejected/excluded item.
 2. Classify each scoped plan:
    - `READY` - plan exists, dependencies are satisfied or independent, and scoped drift check is clean.
+   - `IN_PROGRESS` - the index and plan explicitly agree that an executor has claimed the plan and begun implementation. Never infer this status from source changes alone.
    - `BLOCKED` - a prerequisite plan is not marked `DONE`, a required answer is missing, or a `MISSING REQUIREMENT:` remains unresolved.
-   - `DRIFTED` - the scoped diff/status drift check shows in-scope changes after the plan's `Planned at` SHA.
+   - `DRIFTED` - the scoped diff/status drift check shows unexpected in-scope changes after the plan's `Planned at` SHA. For an explicit `IN_PROGRESS` plan, ordinary implementation changes are expected and do not satisfy this classification by themselves.
    - `MISSING` - the index references a plan file that is absent.
    - `STALE` - the live code no longer matches the plan's **Current State** excerpts, the verification commands changed, or recon/tradeoff context has materially changed.
    - `DONE` - the index or plan is explicitly marked `DONE`, and no obvious drift contradicts that status. Do not infer `DONE` solely because source files changed.
@@ -131,13 +132,14 @@ Use only the working-tree commands when `SOURCE_REF` is unset. Use only the name
    - In non-Git manual mode, do not promote a plan to `READY` based on unavailable drift evidence. Preserve its existing lifecycle status unless dependency, file-presence, excerpt, rejection, or user evidence proves a transition, and keep the manual drift limitation visible.
 3. Apply split/worktree drift guidance:
    - Treat stale **Current State** excerpts relative to a slice implementation in `EVIDENCE_ROOT` or `SOURCE_COMMIT` as `STALE`, provided the original boundary remains valid.
-   - Treat review-fix work folded into an in-scope slice after `Planned at` as `DRIFTED`. Propose focused notes in the implementation, verification, completion, or maintenance sections; do not infer a boundary change from the review note alone.
+   - Treat review-fix work folded into an in-scope slice after `Planned at` as `DRIFTED`, unless the plan is explicitly `IN_PROGRESS` and the changes are consistent with its active implementation. Propose focused notes in the implementation, verification, completion, or maintenance sections; do not infer a boundary change from the review note alone.
    - Treat files changed only because the base moved, a rebase replayed adjacent commits, generated artifacts refreshed, or a sibling slice landed as rebase noise. Preserve the lifecycle status, keep the files out of scope, and report the excluded noise instead of silently expanding the plan.
    - If evidence belongs to another execution label or would require moving, splitting, or merging slice work, treat it as conflicted evidence and stop for a boundary decision.
 4. Apply the status lifecycle:
    - The index `Status` column is the source of truth. If a plan header has a conflicting status, preserve the index value and add a reconcile note describing the mismatch.
-   - Valid active statuses are `TODO`, `READY`, `BLOCKED`, `DRIFTED`, and `STALE`. `MISSING` is valid only in `PR_PLAN_INDEX.md` rows because an absent plan file has no header to update. Terminal statuses are `DONE` and `SUPERSEDED`.
-   - Reconcile may move `TODO` or `READY` to `BLOCKED`, `DRIFTED`, or `STALE` based on evidence. Reconcile must not mark a plan `DONE` unless the index, plan, or user already explicitly says it is done and validation does not contradict that claim.
+   - Valid active statuses are `TODO`, `READY`, `IN_PROGRESS`, `BLOCKED`, `DRIFTED`, and `STALE`. `MISSING` is valid only in `PR_PLAN_INDEX.md` rows because an absent plan file has no header to update. Terminal statuses are `DONE` and `SUPERSEDED`.
+   - Only an executor may move a plan to `IN_PROGRESS`, and it must update the selected plan header and matching index row together before implementation begins. Reconcile never infers or assigns `IN_PROGRESS` from source changes alone.
+   - Reconcile may move `TODO` or `READY` to `BLOCKED`, `DRIFTED`, or `STALE` based on evidence. Preserve an explicit `IN_PROGRESS` claim when the evidence is consistent with active implementation: ordinary in-scope implementation changes after `Planned at` are expected and do not alone make the plan `DRIFTED`. Reconcile may move `IN_PROGRESS` to `BLOCKED`, `DRIFTED`, or `STALE` when evidence proves that state; use `DRIFTED` specifically for unexpected changes that are inconsistent with active implementation. Reset `IN_PROGRESS` for any other reason only when the user explicitly requests that transition. Reconcile must not mark a plan `DONE` unless the index, plan, or user already explicitly says it is done and validation does not contradict that claim.
    - Executors, not this planning skill, mark implementation completion. They may mark `DONE` only after the plan's completion criteria and verification checks have passed.
    - A terminal `DONE` or `SUPERSEDED` plan stays terminal unless the user explicitly reopens it or reconcile finds drift that contradicts the terminal state.
 
