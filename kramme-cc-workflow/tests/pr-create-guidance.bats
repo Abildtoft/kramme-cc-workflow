@@ -109,6 +109,28 @@ file_mode() {
 	[ "$status" -eq 0 ]
 }
 
+@test "recreate-commits coarse mode selects first-pass granularity without widening authorization" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    recreate="skills/kramme:git:recreate-commits/SKILL.md"
+
+    grep -qF "[--auto] [--coarse|--granular]" "$recreate"
+    grep -qF -- "\`--coarse\` — Force coarse decomposition: one commit per major grouping" "$recreate"
+    grep -qF "Combine it with \`--auto\` to retain all other auto-mode behavior while pinning coarse granularity" "$recreate"
+    grep -qF "does not authorize the history rewrite or publication by itself" "$recreate"
+    grep -qF "If \`--coarse\` was combined with \`--granular\`, stop" "$recreate"
+    grep -qF "\`--coarse\` selects **Coarse** granularity unconditionally and skips the granularity question" "$recreate"
+    grep -qF "When \`--auto\` accompanies either fixed-granularity flag, that flag replaces automatic granularity selection and every other auto-mode behavior remains in effect" "$recreate"
+    grep -qF "For **coarse** granularity, stop here — each grouping becomes one commit" "$recreate"
+    grep -qF "Before resetting, unless \`--authorize-history-rewrite\` was passed or (\`--auto\` was passed and \`IN_STACK=false\`), obtain the applicable confirmation" "$recreate"
+    grep -qF "Before pushing, unless \`--authorize-history-rewrite\` was passed or (\`--auto\` was passed and \`IN_STACK=false\`), obtain the applicable publication confirmation" "$recreate"
+    grep -qF "[--auto] [--coarse\\|--granular]" ../README.md
+  '
+
+	[ "$status" -eq 0 ]
+}
+
 @test "absence lease rejects a concurrently created remote branch" {
 	run bash -c '
     set -e
