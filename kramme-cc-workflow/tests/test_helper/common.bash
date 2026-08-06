@@ -12,6 +12,74 @@ write_file() {
   cat >"$path"
 }
 
+# Helper: Create a deterministic local Git repository for fixtures.
+#
+# Usage: init_test_git_repo <work-dir> [--origin <bare-path>] [--file <name>]
+#
+#   --origin <bare-path>  Initialize a bare repository at <bare-path>, clone it into
+#                         <work-dir>, and push the initial commit so main tracks
+#                         origin/main. Omit to initialize <work-dir> standalone.
+#   --file <name>         File committed by the initial commit (default: tracked.txt).
+#
+# On success, the result has repository-local user.name/user.email, commit and tag
+# signing disabled, and a single "initial" commit on main, so fixtures behave the same
+# under a contributor's global commit.gpgsign, tag.gpgsign, and init.defaultBranch.
+# Global configuration is never modified, and the caller's working directory is
+# unchanged -- cd into <work-dir> before running further Git commands.
+init_test_git_repo() {
+  local work_dir="$1"
+  local origin=""
+  local initial_file="tracked.txt"
+  shift
+
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --origin)
+      if [ "$#" -lt 2 ]; then
+        printf 'init_test_git_repo: option requires a value: %s\n' "$1" >&2
+        return 1
+      fi
+      origin="$2"
+      shift 2
+      ;;
+    --file)
+      if [ "$#" -lt 2 ]; then
+        printf 'init_test_git_repo: option requires a value: %s\n' "$1" >&2
+        return 1
+      fi
+      initial_file="$2"
+      shift 2
+      ;;
+    *)
+      printf 'init_test_git_repo: unknown option: %s\n' "$1" >&2
+      return 1
+      ;;
+    esac
+  done
+
+  if [ -n "$origin" ]; then
+    git init --bare "$origin" >/dev/null || return 1
+    git clone "$origin" "$work_dir" >/dev/null 2>&1 || return 1
+  else
+    mkdir -p "$work_dir" || return 1
+    git init "$work_dir" >/dev/null || return 1
+  fi
+
+  git -C "$work_dir" config user.email "test@example.com" || return 1
+  git -C "$work_dir" config user.name "Test User" || return 1
+  git -C "$work_dir" config commit.gpgsign false || return 1
+  git -C "$work_dir" config tag.gpgsign false || return 1
+
+  printf 'base\n' >"$work_dir/$initial_file" || return 1
+  git -C "$work_dir" add "$initial_file" || return 1
+  git -C "$work_dir" commit -m "initial" >/dev/null || return 1
+  git -C "$work_dir" branch -M main || return 1
+
+  if [ -n "$origin" ]; then
+    git -C "$work_dir" push -u origin main >/dev/null 2>&1 || return 1
+  fi
+}
+
 # Helper: Create JSON input for block-rm-rf hook
 make_bash_input() {
   local cmd="$1"

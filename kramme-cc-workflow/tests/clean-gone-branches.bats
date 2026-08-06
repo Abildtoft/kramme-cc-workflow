@@ -1,22 +1,16 @@
 #!/usr/bin/env bats
 # Tests for kramme:git:clean-gone-branches script
 
+load 'test_helper/common'
+
 setup() {
 	SCRIPT="$BATS_TEST_DIRNAME/../skills/kramme:git:clean-gone-branches/scripts/clean-gone-branches.sh"
 	TMP_DIR="$(mktemp -d)"
 	ORIGIN="$TMP_DIR/origin.git"
 	WORK="$TMP_DIR/work"
 
-	git init --bare "$ORIGIN" >/dev/null
-	git clone "$ORIGIN" "$WORK" >/dev/null 2>&1
+	init_test_git_repo "$WORK" --origin "$ORIGIN" --file README.md
 	cd "$WORK"
-	git config user.email "test@example.com"
-	git config user.name "Test User"
-	printf 'base\n' >README.md
-	git add README.md
-	git commit -m "initial" >/dev/null
-	git branch -M main
-	git push -u origin main >/dev/null 2>&1
 }
 
 teardown() {

@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+load 'test_helper/common'
+
 setup() {
 	REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
 	SCRIPT="$REPO_ROOT/scripts/resolve-stack-membership.sh"
@@ -7,20 +9,13 @@ setup() {
 	WORK="$TMP_DIR/work"
 	BIN_DIR="$TMP_DIR/bin"
 	GH_LOG="$TMP_DIR/gh.log"
-	mkdir -p "$WORK" "$BIN_DIR"
+	mkdir -p "$BIN_DIR"
 	write_mock_gh
 	export PATH="$BIN_DIR:$PATH"
 	export GH_LOG
 
+	init_test_git_repo "$WORK"
 	cd "$WORK"
-	git init >/dev/null
-	git config user.email "test@example.com"
-	git config user.name "Test User"
-	git config commit.gpgsign false
-	printf 'base\n' >tracked.txt
-	git add tracked.txt
-	git commit -m "initial" >/dev/null
-	git branch -M main
 	git switch -c feature >/dev/null 2>&1
 	git remote add origin https://github.com/acme/demo.git
 
