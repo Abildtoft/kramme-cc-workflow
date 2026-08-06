@@ -189,6 +189,7 @@ For each confirmed theme:
 9. **If the source is a pre-clustered handoff**, replace all finding-count language in the template with theme language: `Source themes: 1 delegated theme mapped to this plan`, index statistics as `Total themes` / `Plans generated`, and summary lines as `Themes processed` / `Themes included`. Do not write `Source findings`, `Findings processed`, `Findings excluded`, or inferred severities for handoff-mode output.
 10. **If the source set contains multiple findings-mode reports**, include each plan's source references in the `Source scope` metadata and in the relevant problem/current-state sections where helpful, but keep the plan self-contained. Do not require the executor to open the source reports to understand the work.
 11. Include Phase 1.5 recon/tradeoff context in every plan, but only the parts relevant to that plan's scope.
+12. Initialize every generated plan header and matching index row at `TODO`. Reserve `IN_PROGRESS` for an executor that has claimed a plan and begun its implementation workflow; generation and reconcile never infer or assign it from source changes alone.
 
 #### Plan content requirements
 
@@ -211,6 +212,7 @@ Before writing final plan files or the index, read `references/plan-quality-rubr
 3. Write `PR_PLAN_INDEX.md` in the project root with:
    - **Scope contract**: preserve the index template's exact opening metadata field `**Scope contract:** exact files` exactly once. This marker declares that every indexed plan's **In Scope** entries are individual file grants and that consumers must enforce exact path equality rather than directory containment.
    - **Plan listing**: execution label, filename, full plan display name, blocking status, parallel group, and a 2-4 sentence summary for each plan.
+   - **Status lifecycle**: initialize every row at `TODO`; include `IN_PROGRESS` as the executor-owned nonterminal state between readiness and completion, with the index row and selected plan header required to change together.
    - **Planned-at and drift policy**: record the shared `PLANNED_AT_SHA` and state that every plan must run its scoped drift check before editing.
    - **Prioritization metadata**: show each plan's Impact and Leverage, and explain any `UNVERIFIED:` values.
    - **Recommended implementation order**: ordered by wave and dependency, with rationale (dependencies first, then leverage, impact, risk reduction, and quick wins). Explicitly group same-wave plans as parallel.
