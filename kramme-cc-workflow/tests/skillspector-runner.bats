@@ -2,6 +2,8 @@
 
 bats_require_minimum_version 1.5.0
 
+load 'test_helper/common'
+
 setup() {
 	SOURCE_SCRIPT="$BATS_TEST_DIRNAME/../scripts/run-skillspector.sh"
 	SOURCE_LIBRARY="$BATS_TEST_DIRNAME/../scripts/lib/shell-helpers.sh"
@@ -22,17 +24,12 @@ setup() {
 	unset MOCK_SKILLSPECTOR_JSON
 	unset MOCK_SKILLSPECTOR_WRITE_OUTPUT
 
+	init_test_git_repo "$REPO" --file README.md
 	cd "$REPO"
-	git init >/dev/null
-	git config user.email "test@example.com"
-	git config user.name "Test User"
-	git config commit.gpgsign false
 	write_skill "kramme:one"
 	write_skill "kramme:two"
-	printf 'base\n' >README.md
 	git add .
-	git commit -m "initial" >/dev/null
-	git branch -M main
+	git commit -m "add skills" >/dev/null
 	git switch -c feature >/dev/null 2>&1
 	SCRIPT="$REPO/kramme-cc-workflow/scripts/run-skillspector.sh"
 }
