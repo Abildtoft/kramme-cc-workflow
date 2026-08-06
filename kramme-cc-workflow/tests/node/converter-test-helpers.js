@@ -5,6 +5,24 @@ const fs = require("fs/promises");
 const os = require("os");
 const path = require("path");
 
+/**
+ * @param {Partial<import("../../scripts/convert-plugin/contracts").CodexBundle>} [overrides]
+ * @returns {import("../../scripts/convert-plugin/contracts").CodexBundle}
+ */
+function emptyCodexBundle(overrides = {}) {
+  return {
+    agentSkills: [],
+    codexPlugin: undefined,
+    generatedSkills: [],
+    knownAgentSkills: new Map(),
+    knownCommands: new Set(),
+    mcpServers: {},
+    prompts: [],
+    skillDirs: [],
+    ...overrides,
+  };
+}
+
 /** @returns {{ agentSkillFiles: Record<string, string[]>, agentSkills: string[], hookMarketplaces: string[], pluginCaches: string[], prompts: string[], skillFiles: Record<string, string[]>, skills: string[] }} */
 function emptyPreviousEntries() {
   return {
@@ -87,6 +105,7 @@ function assertFilesystemError(error, { cause, code, message, path: file }) {
 }
 
 module.exports = {
+  emptyCodexBundle,
   emptyPreviousEntries,
   withTempDir,
   writeJson,
