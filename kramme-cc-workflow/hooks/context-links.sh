@@ -15,34 +15,13 @@ source "${CLAUDE_PLUGIN_ROOT}/scripts/lib/shell-helpers.sh"
 #
 # Outputs JSON with systemMessage containing plain URLs (markdown not rendered in CLI).
 
-default_context_links_config_file() {
-  local config_home="${XDG_CONFIG_HOME:-}"
-
-  if [ -z "$config_home" ]; then
-    config_home="${HOME:-}/.config"
-  fi
-
-  printf '%s\n' "${config_home}/kramme-cc-workflow/context-links.config"
-}
-
 resolve_context_links_config_file() {
-  local default_config_file
-  local legacy_config_file
-
-  if [ -n "${CONTEXT_LINKS_CONFIG_FILE:-}" ]; then
-    printf '%s\n' "$CONTEXT_LINKS_CONFIG_FILE"
-    return 0
-  fi
-
-  default_config_file="$(default_context_links_config_file)"
-  legacy_config_file="${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config"
-
-  if [ -f "$default_config_file" ] || [ ! -f "$legacy_config_file" ]; then
-    printf '%s\n' "$default_config_file"
-    return 0
-  fi
-
-  printf '%s\n' "$legacy_config_file"
+  resolve_kramme_path \
+    "CONTEXT_LINKS_CONFIG_FILE" \
+    "XDG_CONFIG_HOME" \
+    ".config" \
+    "context-links.config" \
+    "${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config"
 }
 
 # Optional org-specific configuration. This file is not tracked and can override defaults.
