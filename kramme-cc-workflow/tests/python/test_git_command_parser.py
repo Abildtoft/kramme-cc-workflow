@@ -151,6 +151,7 @@ class GitCommandLexerTest(unittest.TestCase):
             "_decode_ansi_c_string",
             "_expand_ansi_c_quoted_strings",
             "_is_assignment",
+            "_skip_xargs_options",
         ]
 
         for helper in helpers:
@@ -222,6 +223,20 @@ class GitCommandPrimitiveEquivalenceTest(unittest.TestCase):
         source = PARSER_PATH.read_text(encoding="utf-8")
         self.assertNotIn("NONINTERACTIVE_SHELL_KEYWORDS", source)
         self.assertNotIn("COMMIT_SHELL_KEYWORDS", source)
+
+    def test_xargs_option_vocabulary_is_canonical_across_modes(self) -> None:
+        # XARGS_OPTIONS_WITH_VALUE/_skip_xargs_options are now the single
+        # canonical xargs-option-consumption primitive shared by the
+        # noninteractive and rm-rf modes (formerly a byte-identical-looking
+        # but actually incomplete NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE
+        # copy, plus a separate, fuller inline vocabulary in _detect_xargs).
+        # See XargsOptionVocabularyParityTest for the behavioral fix this
+        # consolidation carries: the incomplete copy silently hid `git
+        # commit` behind `xargs -a`/`-J` from the noninteractive gate.
+        source = PARSER_PATH.read_text(encoding="utf-8")
+        self.assertNotIn("NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE", source)
+        self.assertEqual(source.count("XARGS_OPTIONS_WITH_VALUE = "), 1)
+        self.assertEqual(source.count("def _skip_xargs_options"), 1)
 
     def test_shell_executable_set_is_canonical_across_modes(self) -> None:
         # SHELL_EXECUTABLES is now the single canonical set shared by the
@@ -1062,6 +1077,63 @@ class GitGlobalOptionPrefixTest(unittest.TestCase):
 
                 self.assertEqual(noninteractive.stdout, json_line({"block": None}))
                 self.assertEqual(commit_contexts.stdout, json_line([]))
+
+
+class XargsOptionVocabularyParityTest(unittest.TestCase):
+    """W02A: the noninteractive and rm-rf modes now share one xargs
+    option-consumption vocabulary via _skip_xargs_options().
+
+    Before this fix, the noninteractive mode's xargs option list was missing
+    several separate-token value options (-a/--arg-file, -J, -i, --max-lines,
+    --process-slot-var) that the rm-rf mode already knew about. A missing
+    entry makes the walker read the option's *value* as the invoked command,
+    losing track of `git` entirely and silently letting an interactive
+    `git commit` through xargs. This corpus pins that the gap is closed and
+    that safe invocations still pass.
+    """
+
+    maxDiff = None
+
+    SEPARATE_TOKEN_VALUE_OPTIONS = ["-a", "-J", "-i", "--max-lines", "--process-slot-var"]
+
+    def run_parser(self, mode: str, command: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(PARSER_PATH), mode, command],
+            check=False,
+            capture_output=True,
+            env=subprocess_env(),
+            text=True,
+        )
+
+    def test_skip_xargs_options_advances_past_every_separate_token_value_option(self) -> None:
+        for option in self.SEPARATE_TOKEN_VALUE_OPTIONS:
+            with self.subTest(option=option):
+                args = [option, "VALUE", "git", "commit"]
+
+                idx = PARSER._skip_xargs_options(args)
+
+                self.assertEqual(args[idx:], ["git", "commit"])
+
+    def test_xargs_wrapped_commit_without_message_source_is_blocked(self) -> None:
+        for option in self.SEPARATE_TOKEN_VALUE_OPTIONS:
+            command = f"xargs {option} VALUE git commit"
+            with self.subTest(command=command):
+                result = self.run_parser("noninteractive", command)
+
+                self.assertEqual(result.stdout, json_line({"block": INTERACTIVE_COMMIT_REASON}))
+
+    def test_xargs_wrapped_commit_with_message_is_still_allowed(self) -> None:
+        for option in self.SEPARATE_TOKEN_VALUE_OPTIONS:
+            command = f"xargs {option} VALUE git commit -m done"
+            with self.subTest(command=command):
+                result = self.run_parser("noninteractive", command)
+
+                self.assertEqual(result.stdout, json_line({"block": None}))
+
+    def test_xargs_wrapped_rm_rf_via_separate_token_value_option_is_still_blocked(self) -> None:
+        result = self.run_parser("rm-rf", "xargs -a file.txt rm -rf directory/")
+
+        self.assertEqual(result.stdout, json_line({"block": XARGS_RM_RF_REASON}))
 
 
 class RmRfParserCliTest(unittest.TestCase):

@@ -100,21 +100,79 @@ NONINTERACTIVE_ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
 # the two sets.
 SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE = SHELL_RESERVED_COMMAND_WORDS | {")"}
 NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND = "__parse_error__"
-NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE = {
+# Shared by the noninteractive and rm-rf modes. Both walk past xargs's own
+# options to find the command xargs will invoke. This vocabulary must stay
+# complete: a missing separate-token value option (e.g. `-a FILE`) makes the
+# walker read the option's value as the invoked command and lose track of
+# the real one entirely, silently hiding it from either gate.
+XARGS_OPTIONS_WITH_VALUE = {
+    "-a",
     "-d",
     "-E",
     "-I",
+    "-i",
+    "-J",
     "-L",
     "-P",
     "-n",
     "-s",
+    "--arg-file",
     "--delimiter",
     "--eof",
     "--max-args",
     "--max-chars",
+    "--max-lines",
     "--max-procs",
+    "--process-slot-var",
     "--replace",
 }
+XARGS_LONG_OPTIONS_WITH_ATTACHED_VALUE = (
+    "--arg-file=",
+    "--delimiter=",
+    "--eof=",
+    "--max-args=",
+    "--max-chars=",
+    "--max-lines=",
+    "--max-procs=",
+    "--process-slot-var=",
+    "--replace=",
+)
+XARGS_SHORT_OPTIONS_WITH_ATTACHED_VALUE = (
+    "-a",
+    "-d",
+    "-E",
+    "-I",
+    "-i",
+    "-J",
+    "-L",
+    "-P",
+    "-n",
+    "-s",
+)
+
+
+def _skip_xargs_options(args: list[str]) -> int:
+    """Return the index of the command xargs will invoke, past its own options."""
+    idx = 0
+    while idx < len(args):
+        token = args[idx]
+        if token == "--":
+            idx += 1
+            break
+        if token in XARGS_OPTIONS_WITH_VALUE:
+            idx += 2
+            continue
+        if token.startswith(XARGS_LONG_OPTIONS_WITH_ATTACHED_VALUE):
+            idx += 1
+            continue
+        if any(token.startswith(prefix) and token != prefix for prefix in XARGS_SHORT_OPTIONS_WITH_ATTACHED_VALUE):
+            idx += 1
+            continue
+        if token.startswith("-"):
+            idx += 1
+            continue
+        break
+    return idx
 
 
 # Git global options that consume the following token as their value. Both
@@ -1507,31 +1565,7 @@ def parse_env_wrapped_segment(
         idx = 0
 
         if command_name == "xargs":
-            while idx < len(args):
-                token = args[idx]
-                if token == "--":
-                    idx += 1
-                    break
-                if token in NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE:
-                    idx += 2
-                    continue
-                if any(
-                    token.startswith(prefix)
-                    for prefix in (
-                        "--delimiter=",
-                        "--eof=",
-                        "--max-args=",
-                        "--max-chars=",
-                        "--max-procs=",
-                        "--replace=",
-                    )
-                ):
-                    idx += 1
-                    continue
-                if token.startswith("-"):
-                    idx += 1
-                    continue
-                break
+            idx = _skip_xargs_options(args)
         elif command_name == "find":
             while idx < len(args) and args[idx] not in {"-exec", "-execdir"}:
                 idx += 1
@@ -2069,70 +2103,7 @@ def _detect_process_substitutions(tokens: list[str], substitutions: list[str], d
 
 
 def _detect_xargs(args: list[str], substitutions: list[str], depth: int) -> Optional[str]:
-    idx = 0
-    xargs_options_with_value = {
-        "-d",
-        "-E",
-        "-I",
-        "-i",
-        "-J",
-        "-L",
-        "-P",
-        "-a",
-        "-n",
-        "-s",
-        "--arg-file",
-        "--delimiter",
-        "--eof",
-        "--max-args",
-        "--max-chars",
-        "--max-lines",
-        "--max-procs",
-        "--process-slot-var",
-        "--replace",
-    }
-    xargs_long_attached = (
-        "--arg-file=",
-        "--delimiter=",
-        "--eof=",
-        "--max-args=",
-        "--max-chars=",
-        "--max-lines=",
-        "--max-procs=",
-        "--process-slot-var=",
-        "--replace=",
-    )
-    xargs_short_attached = (
-        "-a",
-        "-d",
-        "-E",
-        "-I",
-        "-i",
-        "-J",
-        "-L",
-        "-P",
-        "-n",
-        "-s",
-    )
-
-    while idx < len(args):
-        token = args[idx]
-        if token == "--":
-            idx += 1
-            break
-        if token in xargs_options_with_value:
-            idx += 2
-            continue
-        if token.startswith(xargs_long_attached):
-            idx += 1
-            continue
-        if any(token.startswith(prefix) and token != prefix for prefix in xargs_short_attached):
-            idx += 1
-            continue
-        if token.startswith("-"):
-            idx += 1
-            continue
-        break
+    idx = _skip_xargs_options(args)
 
     if idx >= len(args):
         return None
