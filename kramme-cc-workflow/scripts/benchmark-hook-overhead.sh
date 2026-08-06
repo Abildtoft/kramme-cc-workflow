@@ -173,6 +173,44 @@ def benchmark_command(
     return enabled_samples, disabled_samples, hook_samples
 
 
+def benchmark_auto_format_cache_hit(
+    plugin_root: Path, iterations: int, warmups: int
+) -> list[int] | None:
+    # A .xyz file with no package.json/nx.json in scope keeps format_file()
+    # and run_project_fallbacks() from invoking any real formatter, isolating
+    # cache-read overhead. Returns None if auto-format.sh isn't present (e.g.
+    # a synthetic test plugin root), so callers can skip this section.
+    hook_path = plugin_root / "hooks" / "auto-format.sh"
+    if not hook_path.is_file():
+        return None
+
+    with tempfile.TemporaryDirectory(prefix="auto-format-benchmark-") as project_dir:
+        project_path = Path(project_dir)
+        target_file = project_path / "test.xyz"
+        target_file.touch()
+
+        env = os.environ.copy()
+        env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
+        env["HOME"] = str(project_path)
+        env["XDG_CACHE_HOME"] = str(project_path / "cache")
+        env.pop("KRAMME_HOOK_STATE_FILE", None)
+
+        payload = json.dumps(
+            {"tool_input": {"file_path": str(target_file)}},
+            separators=(",", ":"),
+        ).encode()
+
+        def run_once() -> int:
+            return run_process(["bash", str(hook_path)], payload=payload, env=env)
+
+        run_once()  # cold run: detects formatters and writes the cache
+
+        for _ in range(warmups):
+            run_once()
+
+        return [run_once() for _ in range(iterations)]
+
+
 def main() -> int:
     args = parse_args(sys.argv[2:])
     require_commands()
@@ -242,6 +280,14 @@ def main() -> int:
                 print(
                     f"    {hook_name}: {median_ms(hook_samples[hook_name]):.3f} ms"
                 )
+
+        autoformat_samples = benchmark_auto_format_cache_hit(
+            plugin_root, args.iterations, args.warmups
+        )
+        if autoformat_samples is not None:
+            print()
+            print("Auto-format cache-hit path:")
+            print(f"  Median: {median_ms(autoformat_samples):.3f} ms")
 
     return 0
 

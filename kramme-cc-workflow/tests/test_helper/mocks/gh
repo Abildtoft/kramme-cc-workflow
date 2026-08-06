@@ -6,6 +6,7 @@
 #   MOCK_GH_REQUIRE_PROMPT_DISABLED - require GH_PROMPT_DISABLED=1
 #   MOCK_GH_SLEEP_SECONDS - sleep before responding
 #   MOCK_GH_CHILD_MARKER - marker path for a background child leak check
+#   MOCK_GH_PR_JSON_OVERRIDE - raw JSON to return verbatim (overrides MOCK_GH_PR_NUMBER)
 
 case "$*" in
   "pr view --json url,number")
@@ -18,6 +19,10 @@ case "$*" in
     fi
     if [ -n "${MOCK_GH_SLEEP_SECONDS:-}" ]; then
       sleep "$MOCK_GH_SLEEP_SECONDS"
+    fi
+    if [ -n "${MOCK_GH_PR_JSON_OVERRIDE:-}" ]; then
+      printf '%s\n' "$MOCK_GH_PR_JSON_OVERRIDE"
+      exit 0
     fi
     if [ -n "$MOCK_GH_PR_EXISTS" ]; then
       echo '{"url":"https://github.com/user/repo/pull/'"${MOCK_GH_PR_NUMBER:-1}"'","number":'"${MOCK_GH_PR_NUMBER:-1}"'}'

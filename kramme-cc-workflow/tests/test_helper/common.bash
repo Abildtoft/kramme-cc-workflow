@@ -278,3 +278,15 @@ has_system_message() {
 has_no_formatter() {
   [[ "$output" == *'No formatter'* ]]
 }
+
+# Helper: Check if output indicates every attempted formatter failed
+has_formatter_failure() {
+  [[ "$output" == *'Formatter failed'* ]]
+}
+
+# Helper: Assert $output is valid JSON (a hook must always emit valid JSON,
+# even for adversarial input such as quotes, backslashes, control characters,
+# or values that look like command-line flags).
+assert_valid_json() {
+  printf '%s' "$output" | jq -e . >/dev/null
+}

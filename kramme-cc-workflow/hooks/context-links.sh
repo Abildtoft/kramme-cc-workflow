@@ -150,7 +150,7 @@ REMOTE_URL=$(git remote get-url origin 2> /dev/null)
 if echo "$REMOTE_URL" | grep -q "github.com"; then
   PR_JSON=$(run_with_timeout "$CONTEXT_LINKS_PR_LOOKUP_TIMEOUT_SECONDS" env GH_PROMPT_DISABLED=1 gh pr view --json url,number 2> /dev/null)
   if [ $? -eq 0 ] && [ -n "$PR_JSON" ]; then
-    PR_URL=$(echo "$PR_JSON" | grep -o '"url":"[^"]*"' | cut -d'"' -f4)
+    PR_URL=$(printf '%s' "$PR_JSON" | jq -r '.url // empty' 2> /dev/null)
     if [ -n "$PR_URL" ]; then
       PR_LINK="GitHub: ${PR_URL}"
     fi
@@ -165,7 +165,7 @@ if [ -n "$LINEAR_LINK" ] || [ -n "$PR_LINK" ]; then
     [ -n "$PARTS" ] && PARTS="$PARTS | "
     PARTS="${PARTS}${PR_LINK}"
   fi
-  echo "{\"systemMessage\": \"$PARTS\"}"
+  jq -nc --arg msg "$PARTS" '{systemMessage: $msg}'
 else
   echo '{}'
 fi
