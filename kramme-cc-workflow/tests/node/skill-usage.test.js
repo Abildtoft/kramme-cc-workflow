@@ -87,6 +87,36 @@ async function readIsDenied(file) {
   }
 }
 
+/** @param {string} dir */
+async function writeIsDenied(dir) {
+  const probe = path.join(dir, ".skill-usage-write-probe");
+  try {
+    await fs.mkdir(probe);
+    await fs.rmdir(probe);
+    return false;
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "EACCES"
+    ) {
+      return true;
+    }
+    throw error;
+  }
+}
+
+/** @param {string[]} args @param {string} input @param {NodeJS.ProcessEnv} [env] */
+function runUsageWithInput(args, input, env) {
+  return spawnSync(process.execPath, [SCRIPT, ...args], {
+    encoding: "utf8",
+    input,
+    env: env ? { ...process.env, ...env } : process.env,
+    maxBuffer: 5 * MIB,
+  });
+}
+
 /** @param {string[]} args */
 function runUsageWithRss(args) {
   const wrapper = [
@@ -322,6 +352,59 @@ test("strict reports diagnose inaccessible implicit state", async (t) => {
     result.stderr,
     `skill-usage: read failure file=${usageFile} reason=EACCES\n`,
   );
+});
+
+test("record reports a sanitized cause when the usage directory is unwritable", async (t) => {
+  const root = await tempDir(t);
+  const stateHome = path.join(root, "state");
+  await fs.mkdir(stateHome, { recursive: true });
+  await fs.chmod(stateHome, 0o500);
+
+  const usageDir = path.join(stateHome, "kramme-cc-workflow");
+  const usageFile = path.join(usageDir, "skill-usage.jsonl");
+
+  let result;
+  try {
+    if (!(await writeIsDenied(stateHome))) {
+      t.skip("filesystem permissions do not deny writes in this environment");
+      return;
+    }
+    result = runUsageWithInput(
+      ["record"],
+      JSON.stringify({ prompt: "/kramme:blocked", session_id: "session-1" }),
+      { XDG_STATE_HOME: stateHome, KRAMME_SKILL_USAGE_FILE: "" },
+    );
+  } finally {
+    await fs.chmod(stateHome, 0o700);
+  }
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, "");
+  assert.equal(
+    result.stderr,
+    `skill-usage: write usage file failed code=EACCES file=${usageFile}\n`,
+  );
+  assert.equal(
+    await fs.access(usageFile).then(
+      () => true,
+      () => false,
+    ),
+    false,
+  );
+});
+
+test("record tolerates malformed stdin without treating it as an I/O failure", async (t) => {
+  const root = await tempDir(t);
+  const usageFile = path.join(root, "usage.jsonl");
+
+  const result = runUsageWithInput(
+    ["record", "--file", usageFile],
+    "{not json",
+  );
+
+  assert.equal(result.status, 0);
+  assert.equal(result.stdout, "{}\n");
+  assert.equal(result.stderr, "");
 });
 
 test("reports diagnose overlong JSONL records", async (t) => {

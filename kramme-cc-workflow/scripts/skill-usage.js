@@ -198,9 +198,16 @@ function readStdin() {
 /** @param {string[]} args */
 function record(args) {
   const parsed = parseArgs(args);
-  const inputText = readStdin();
-  let input;
+  let inputText;
+  try {
+    inputText = readStdin();
+  } catch (error) {
+    reportIoFailure("read stdin", error);
+    process.exitCode = 1;
+    return;
+  }
 
+  let input;
   try {
     input = inputText.trim() ? JSON.parse(inputText) : {};
   } catch {
@@ -215,9 +222,33 @@ function record(args) {
   }
 
   const file = usageFile(parsed);
-  ensureUsageFile(file);
-  appendJsonLines(file, records);
+  try {
+    ensureUsageFile(file);
+    appendJsonLines(file, records);
+  } catch (error) {
+    reportIoFailure("write usage file", error, file);
+    process.exitCode = 1;
+    return;
+  }
   process.stdout.write("{}\n");
+}
+
+/**
+ * Reports a filesystem failure with only the operation, errno class, and
+ * path -- never event contents -- so the recorder's stderr is safe to log.
+ * @param {string} operation
+ * @param {unknown} error
+ * @param {string} [file]
+ */
+function reportIoFailure(operation, error, file) {
+  const code =
+    typeof asRecord(error).code === "string"
+      ? String(asRecord(error).code)
+      : "UNKNOWN";
+  const suffix = file ? ` file=${file}` : "";
+  process.stderr.write(
+    `skill-usage: ${operation} failed code=${code}${suffix}\n`,
+  );
 }
 
 /**
@@ -660,6 +691,9 @@ async function* readBoundedLines(file) {
   }
 }
 
+const SCAN_MODE_BUFFERING = "buffering";
+const SCAN_MODE_STREAMING = "streaming";
+
 /**
  * @param {string} file
  * @param {UsageDiagnostics} diagnostics
@@ -673,8 +707,10 @@ async function scanFile(file, diagnostics, onRecord) {
   let nonEmptyLines = 0;
   let rejectOversizedWholeDocument = false;
   let startsWithWholeDocumentArray = false;
-  /** @type {string[] | null} */
-  let compatibilityLines = [];
+  /** @type {string} */
+  let scanMode = SCAN_MODE_BUFFERING;
+  /** @type {string[]} */
+  let bufferedLines = [];
 
   /** @param {string} line */
   const processJsonLine = (line) => {
@@ -690,13 +726,14 @@ async function scanFile(file, diagnostics, onRecord) {
   };
 
   const startStreamingJsonLines = () => {
-    const bufferedLines = compatibilityLines || [];
-    compatibilityLines = null;
+    const linesToFlush = bufferedLines;
+    scanMode = SCAN_MODE_STREAMING;
+    bufferedLines = [];
     if (startsWithWholeDocumentArray) {
       rejectOversizedWholeDocument = true;
       return;
     }
-    for (const line of bufferedLines) processJsonLine(line);
+    for (const line of linesToFlush) processJsonLine(line);
   };
 
   try {
@@ -714,21 +751,24 @@ async function scanFile(file, diagnostics, onRecord) {
         }
       }
 
-      if (compatibilityLines && observedBytes > MAX_NON_JSONL_COMPAT_BYTES) {
+      if (
+        scanMode === SCAN_MODE_BUFFERING &&
+        observedBytes > MAX_NON_JSONL_COMPAT_BYTES
+      ) {
         startStreamingJsonLines();
       }
       if (!isNonEmpty || rejectOversizedWholeDocument) continue;
 
       if (boundedLine.overlong) {
         overlongLines += 1;
-      } else if (compatibilityLines) {
-        compatibilityLines.push(line);
+      } else if (scanMode === SCAN_MODE_BUFFERING) {
+        bufferedLines.push(line);
       } else {
         processJsonLine(line);
       }
     }
   } catch (error) {
-    if (compatibilityLines) startStreamingJsonLines();
+    if (scanMode === SCAN_MODE_BUFFERING) startStreamingJsonLines();
     if (parsedJsonLines > 0) {
       recordSkippedLines(diagnostics, file, overlongLines, "overlong JSONL");
       recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
@@ -737,7 +777,7 @@ async function scanFile(file, diagnostics, onRecord) {
     return;
   }
 
-  if (!compatibilityLines) {
+  if (scanMode === SCAN_MODE_STREAMING) {
     if (parsedJsonLines > 0 && !rejectOversizedWholeDocument) {
       recordSkippedLines(diagnostics, file, overlongLines, "overlong JSONL");
       recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
@@ -752,7 +792,7 @@ async function scanFile(file, diagnostics, onRecord) {
     return;
   }
 
-  const content = compatibilityLines.join("\n");
+  const content = bufferedLines.join("\n");
   try {
     for (const record of recordsFromScannedObject(JSON.parse(content), file)) {
       onRecord(record);
@@ -762,7 +802,7 @@ async function scanFile(file, diagnostics, onRecord) {
     // Fall through to JSONL or plaintext classification.
   }
 
-  for (const line of compatibilityLines) processJsonLine(line);
+  for (const line of bufferedLines) processJsonLine(line);
   if (parsedJsonLines > 0) {
     recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
     return;
