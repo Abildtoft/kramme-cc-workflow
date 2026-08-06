@@ -116,10 +116,9 @@ PY
 }
 
 @test "both cleanup contracts are registered" {
-	run assert_required_contracts_registered \
+	assert_required_contracts_registered \
 		workflow-artifact-cleanup-names \
 		workflow-artifact-cleanup-registry
-	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
 @test "every registry entry declares required fields and known vocabulary" {

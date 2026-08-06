@@ -12,6 +12,28 @@ write_file() {
   cat >"$path"
 }
 
+# Helper: Assert that every named guidance contract is registered.
+#
+# Usage: assert_required_contracts_registered <contract-name>...
+#
+# Reads scripts/synced-contracts.yaml next to the suite's plugin root and fails with
+# "missing required_file_contracts: <names>" naming every unregistered contract.
+# Call it directly instead of through `run`, so a suite can still assert on the
+# $status of a command that ran before the assertion.
+assert_required_contracts_registered() {
+  python3 - "${BATS_TEST_DIRNAME}/../scripts/synced-contracts.yaml" "$@" <<'PY'
+import json
+import pathlib
+import sys
+
+registry = json.loads(pathlib.Path(sys.argv[1]).read_text())
+registered = {contract["name"] for contract in registry.get("required_file_contracts", [])}
+missing = sorted(set(sys.argv[2:]) - registered)
+if missing:
+    raise SystemExit(f"missing required_file_contracts: {', '.join(missing)}")
+PY
+}
+
 # Helper: Create a deterministic local Git repository for fixtures.
 #
 # Usage: init_test_git_repo <work-dir> [--origin <bare-path>] [--file <name>]
@@ -78,22 +100,6 @@ init_test_git_repo() {
   if [ -n "$origin" ]; then
     git -C "$work_dir" push -u origin main >/dev/null 2>&1 || return 1
   fi
-}
-
-# Helper: Assert each named guidance contract is registered in the synced-contract registry.
-assert_required_contracts_registered() {
-  cd "$BATS_TEST_DIRNAME/.."
-  python3 - "$@" <<'PY'
-import json
-import pathlib
-import sys
-
-registry = json.loads(pathlib.Path("scripts/synced-contracts.yaml").read_text())
-registered = {contract["name"] for contract in registry.get("required_file_contracts", [])}
-missing = sorted(set(sys.argv[1:]) - registered)
-if missing:
-    raise SystemExit(f"missing required_file_contracts: {', '.join(missing)}")
-PY
 }
 
 # Helper: Create JSON input for block-rm-rf hook
