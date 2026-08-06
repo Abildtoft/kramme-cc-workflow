@@ -17,11 +17,9 @@
 
 set -euo pipefail
 
-quote_assignment() {
-  local name="$1"
-  local value="${2-}"
-  printf '%s=%q\n' "$name" "$value"
-}
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source=lib/shell-helpers.sh
+source "$SCRIPT_DIR/lib/shell-helpers.sh"
 
 emit_result() {
   quote_assignment STACK_MEMBERSHIP "$STACK_MEMBERSHIP"

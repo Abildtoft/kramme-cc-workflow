@@ -42,38 +42,16 @@ USAGE
 }
 
 emit_json() {
-  if ! command -v python3 > /dev/null 2>&1; then
-    echo "python3 is required for --format json" >&2
-    exit 1
-  fi
-
-  BASE_REF="$BASE_REF" \
-    BASE_BRANCH="$BASE_BRANCH" \
-    MERGE_BASE="$MERGE_BASE" \
-    AFTER_COMMIT="$AFTER_COMMIT" \
-    RESET_POINT="$RESET_POINT" \
-    ORIGINAL_BRANCH="$ORIGINAL_BRANCH" \
-    ORIGINAL_TIP="$ORIGINAL_TIP" \
-    BACKUP_REF="$BACKUP_REF" \
-    python3 - << 'PY'
-import json
-import os
-import sys
-
-fields = [
-    ("base_ref", "BASE_REF"),
-    ("base_branch", "BASE_BRANCH"),
-    ("merge_base", "MERGE_BASE"),
-    ("after_commit", "AFTER_COMMIT"),
-    ("reset_point", "RESET_POINT"),
-    ("original_branch", "ORIGINAL_BRANCH"),
-    ("original_tip", "ORIGINAL_TIP"),
-    ("backup_ref", "BACKUP_REF"),
-]
-
-json.dump({key: os.environ.get(env_name, "") for key, env_name in fields}, sys.stdout, separators=(",", ":"))
-sys.stdout.write("\n")
-PY
+  emit_json_object \
+    "python3 is required for --format json" \
+    "str:base_ref" "$BASE_REF" \
+    "str:base_branch" "$BASE_BRANCH" \
+    "str:merge_base" "$MERGE_BASE" \
+    "str:after_commit" "$AFTER_COMMIT" \
+    "str:reset_point" "$RESET_POINT" \
+    "str:original_branch" "$ORIGINAL_BRANCH" \
+    "str:original_tip" "$ORIGINAL_TIP" \
+    "str:backup_ref" "$BACKUP_REF"
 }
 
 emit_output() {

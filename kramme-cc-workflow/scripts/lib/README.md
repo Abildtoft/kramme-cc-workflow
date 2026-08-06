@@ -8,7 +8,7 @@ script; keep behavior shared by multiple scripts here.
 
 | File | Responsibility |
 | --- | --- |
-| `shell-helpers.sh` | Provides required-argument validation, shell assignment quoting, and timeout-wrapped command execution. |
+| `shell-helpers.sh` | Provides required-argument validation, shell assignment quoting, JSON object emit/decode with a single Python guard, and timeout-wrapped command execution. |
 
 ## Usage
 

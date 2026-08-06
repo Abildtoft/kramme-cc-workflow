@@ -9,6 +9,7 @@ usage() {
   echo "Usage: resolve-push-target.sh --original-tip <40-hex-oid> --base-branch <branch>" >&2
 }
 
+# Synced quote_assignment helper (keep aligned across standalone shell scripts):
 quote_assignment() {
   local name="$1"
   local value="${2-}"
