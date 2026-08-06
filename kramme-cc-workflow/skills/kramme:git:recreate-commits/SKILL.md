@@ -1,7 +1,7 @@
 ---
 name: kramme:git:recreate-commits
 description: Use when asked to recreate commits with narrative-quality history on the current branch. Not for merged branches or shared branches others have based work on — it rewrites history and uses --force-with-lease when remote synchronization is enabled.
-argument-hint: "[--auto|--granular] [--base <branch>] [--base-commit <oid>] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--no-push] [--authorize-history-rewrite]"
+argument-hint: "[--auto] [--coarse|--granular] [--base <branch>] [--base-commit <oid>] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--no-push] [--authorize-history-rewrite]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -14,7 +14,8 @@ This rewrites history and requires a force-push to sync any existing remote hist
 
 **Flags:**
 
-- `--auto` — Skip the granularity question, automatically choose the best granularity based on diff size and complexity, and authorize one backup-protected unstacked history rewrite. Unless `--no-push` is also set, it authorizes that branch's lease-protected force-push too. A stacked rewrite additionally requires `--authorize-history-rewrite`; `--auto` never authorizes stack-wide mutation by itself. Neither flag bypasses backup creation, branch validation, final-tree identity, or force-with-lease.
+- `--auto` — Skip the granularity question, automatically choose the best granularity based on diff size and complexity unless `--coarse` or `--granular` pins it, and authorize one backup-protected unstacked history rewrite. Unless `--no-push` is also set, it authorizes that branch's lease-protected force-push too. A stacked rewrite additionally requires `--authorize-history-rewrite`; `--auto` never authorizes stack-wide mutation by itself. Neither flag bypasses backup creation, branch validation, final-tree identity, or force-with-lease.
+- `--coarse` — Force coarse decomposition: one commit per major grouping (typically 5–15 commits). Skips the granularity question but does not authorize the history rewrite or publication by itself. Combine it with `--auto` to retain all other auto-mode behavior while pinning coarse granularity. Do not combine it with `--granular`.
 - `--granular` — Force atomic-level decomposition. Skips the granularity question. Use for very large PRs where 100+ commits are appropriate.
 - `--base <branch>` — Use `<branch>` as the base instead of auto-detecting. Without this flag, the skill tries to detect the base from an existing GitHub pull request, then from `origin/HEAD`, then from `origin/main` or `origin/master`.
 - `--base-commit <oid>` — Pin diff and reset-point calculation to a caller-validated full commit OID while retaining the branch metadata from `--base`. Use this when a parent workflow must keep one base snapshot across multiple delegated skills.
@@ -139,7 +140,7 @@ This rewrites history and requires a force-push to sync any existing remote hist
 
    **Assess diff size and determine granularity.** After analyzing the diff, assess whether the PR is large (many files changed, significant lines added/removed, multiple distinct features or areas touched).
 
-   If `--granular` was passed, use **Atomic** granularity unconditionally — do not ask the user. If `--auto` was passed (without `--granular`), choose the most appropriate granularity yourself based on diff size and complexity — do not ask the user. Otherwise, if the diff is large, ask the user which granularity level they want before planning:
+   If `--coarse` was combined with `--granular`, stop and ask the caller to choose one fixed granularity. `--coarse` selects **Coarse** granularity unconditionally and skips the granularity question. `--granular` selects **Atomic** granularity unconditionally and skips the granularity question. When `--auto` accompanies either fixed-granularity flag, that flag replaces automatic granularity selection and every other auto-mode behavior remains in effect. `--auto` without a fixed-granularity flag selects the most appropriate granularity based on diff size and complexity and skips the question. Otherwise, if the diff is large, ask the user which granularity level they want before planning:
    - **Coarse** — One commit per major grouping (~5-15 commits)
    - **Medium (recommended)** — Break each major grouping into several commits (~15-30 commits)
    - **Fine** — Recursively break down until each commit is a significant, self-standing change (~30-60+ commits)
