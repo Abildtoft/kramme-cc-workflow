@@ -80,6 +80,22 @@ init_test_git_repo() {
   fi
 }
 
+# Helper: Assert each named guidance contract is registered in the synced-contract registry.
+assert_required_contracts_registered() {
+  cd "$BATS_TEST_DIRNAME/.."
+  python3 - "$@" <<'PY'
+import json
+import pathlib
+import sys
+
+registry = json.loads(pathlib.Path("scripts/synced-contracts.yaml").read_text())
+registered = {contract["name"] for contract in registry.get("required_file_contracts", [])}
+missing = sorted(set(sys.argv[1:]) - registered)
+if missing:
+    raise SystemExit(f"missing required_file_contracts: {', '.join(missing)}")
+PY
+}
+
 # Helper: Create JSON input for block-rm-rf hook
 make_bash_input() {
   local cmd="$1"
