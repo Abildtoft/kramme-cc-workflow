@@ -140,6 +140,14 @@
         "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
         "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md"
       ]
+    },
+    {
+      "name": "standalone-quote-assignment-helper",
+      "extract_regex": "Synced quote_assignment helper \\(keep aligned across standalone shell scripts\\):\\s*(quote_assignment\\(\\)\\s*\\{\\s*local name=\"\\$1\"\\s*local value=\"\\$\\{2-\\}\"\\s*printf '%s=%q\\\\n' \\\"\\$name\\\" \\\"\\$value\\\"\\s*\\})",
+      "paths": [
+        "kramme-cc-workflow/scripts/lib/shell-helpers.sh",
+        "kramme-cc-workflow/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh"
+      ]
     }
   ],
   "base_diff_scope": {
