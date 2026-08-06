@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  cat <<'EOF'
+  cat << 'EOF'
 Usage: prepare-splits.sh [--check-only] [--split-dir <path>]
 
 Validates the skill-review split directory used by the external SkillOpt pilot.
@@ -20,33 +20,33 @@ check_only=false
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-  --check-only)
-    check_only=true
-    shift
-    ;;
-  --split-dir)
-    require_value "$1" "${2-}" 2 "prepare-splits: "
-    split_dir="$2"
-    shift 2
-    ;;
-  --help | -h)
-    usage
-    exit 0
-    ;;
-  *)
-    echo "prepare-splits: unknown argument: $1" >&2
-    usage >&2
-    exit 2
-    ;;
+    --check-only)
+      check_only=true
+      shift
+      ;;
+    --split-dir)
+      require_value "$1" "${2-}" 2 "prepare-splits: "
+      split_dir="$2"
+      shift 2
+      ;;
+    --help | -h)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "prepare-splits: unknown argument: $1" >&2
+      usage >&2
+      exit 2
+      ;;
   esac
 done
 
-if ! command -v python3 >/dev/null 2>&1; then
+if ! command -v python3 > /dev/null 2>&1; then
   echo "prepare-splits: python3 is required to validate JSON split files" >&2
   exit 1
 fi
 
-python3 - "$split_dir" <<'PY'
+python3 - "$split_dir" << 'PY'
 import json
 import sys
 from pathlib import Path

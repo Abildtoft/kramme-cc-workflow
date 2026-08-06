@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  cat <<'EOF'
+  cat << 'EOF'
 Usage: review-candidate.sh <run-dir>
        review-candidate.sh --run-dir <run-dir>
 
@@ -26,29 +26,29 @@ run_dir=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-  --run-dir)
-    require_value "$1" "${2-}" 2 "review-candidate: "
-    run_dir="$2"
-    shift 2
-    ;;
-  --help | -h)
-    usage
-    exit 0
-    ;;
-  -*)
-    echo "review-candidate: unknown argument: $1" >&2
-    usage >&2
-    exit 2
-    ;;
-  *)
-    if [ -n "$run_dir" ]; then
-      echo "review-candidate: only one run directory may be provided" >&2
+    --run-dir)
+      require_value "$1" "${2-}" 2 "review-candidate: "
+      run_dir="$2"
+      shift 2
+      ;;
+    --help | -h)
+      usage
+      exit 0
+      ;;
+    -*)
+      echo "review-candidate: unknown argument: $1" >&2
       usage >&2
       exit 2
-    fi
-    run_dir="$1"
-    shift
-    ;;
+      ;;
+    *)
+      if [ -n "$run_dir" ]; then
+        echo "review-candidate: only one run directory may be provided" >&2
+        usage >&2
+        exit 2
+      fi
+      run_dir="$1"
+      shift
+      ;;
   esac
 done
 
@@ -82,7 +82,7 @@ if [ ! -f "$source_skill" ]; then
   exit 1
 fi
 
-if ! command -v node >/dev/null 2>&1; then
+if ! command -v node > /dev/null 2>&1; then
   echo "review-candidate: node is required to run evals and write the review report" >&2
   exit 1
 fi
@@ -110,32 +110,32 @@ cp "$source_skill" "$baseline_file"
 cp "$best_skill" "$candidate_file"
 
 set +e
-diff -u --label "a/$source_rel" --label "b/$source_rel" "$baseline_file" "$candidate_file" >"$patch_file"
+diff -u --label "a/$source_rel" --label "b/$source_rel" "$baseline_file" "$candidate_file" > "$patch_file"
 diff_exit=$?
 set -e
 
 case "$diff_exit" in
-0)
-  diff_status="unchanged"
-  ;;
-1)
-  diff_status="changed"
-  ;;
-*)
-  echo "review-candidate: diff generation failed" >&2
-  exit "$diff_exit"
-  ;;
+  0)
+    diff_status="unchanged"
+    ;;
+  1)
+    diff_status="changed"
+    ;;
+  *)
+    echo "review-candidate: diff generation failed" >&2
+    exit "$diff_exit"
+    ;;
 esac
 
 patch_check_status="not_needed"
 if [ "$diff_status" = "changed" ]; then
-  if git -C "$repo_root" apply --check "$patch_file" 2>"$patch_check_stderr"; then
+  if git -C "$repo_root" apply --check "$patch_file" 2> "$patch_check_stderr"; then
     patch_check_status="pass"
   else
     patch_check_status="fail"
   fi
 else
-  : >"$patch_check_stderr"
+  : > "$patch_check_stderr"
 fi
 
 run_eval() {
@@ -148,7 +148,7 @@ run_eval() {
     return
   fi
 
-  if node "$eval_runner" --split all --skill "$skill_path" --json >"$output_path" 2>"$stderr_path"; then
+  if node "$eval_runner" --split all --skill "$skill_path" --json > "$output_path" 2> "$stderr_path"; then
     printf "pass"
   else
     printf "fail"
@@ -177,7 +177,7 @@ export SCORE_REPORT="$score_report"
 export SOURCE_REL="$source_rel"
 export SOURCE_SKILL="$source_skill"
 
-node <<'NODE'
+node << 'NODE'
 const fs = require('fs');
 const path = require('path');
 

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  cat <<'EOF'
+  cat << 'EOF'
 Usage: export-candidate.sh --run-dir <path> [--dest-dir <path>]
 
 Copies SkillOpt candidate artifacts into a candidate-review directory under
@@ -22,25 +22,25 @@ dest_dir=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-  --run-dir)
-    require_value "$1" "${2-}" 2 "export-candidate: "
-    run_dir="$2"
-    shift 2
-    ;;
-  --dest-dir)
-    require_value "$1" "${2-}" 2 "export-candidate: "
-    dest_dir="$2"
-    shift 2
-    ;;
-  --help | -h)
-    usage
-    exit 0
-    ;;
-  *)
-    echo "export-candidate: unknown argument: $1" >&2
-    usage >&2
-    exit 2
-    ;;
+    --run-dir)
+      require_value "$1" "${2-}" 2 "export-candidate: "
+      run_dir="$2"
+      shift 2
+      ;;
+    --dest-dir)
+      require_value "$1" "${2-}" 2 "export-candidate: "
+      dest_dir="$2"
+      shift 2
+      ;;
+    --help | -h)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "export-candidate: unknown argument: $1" >&2
+      usage >&2
+      exit 2
+      ;;
   esac
 done
 
@@ -89,7 +89,7 @@ artifacts_dir="$dest_dir_real/artifacts"
 while IFS= read -r -d '' artifact; do
   relative="${artifact#"$run_dir_real"/}"
   case "$relative" in
-  best_skill.md | history.json | config.json | runtime_state.json) continue ;;
+    best_skill.md | history.json | config.json | runtime_state.json) continue ;;
   esac
   copy_if_present "$artifact" "$artifacts_dir/$relative"
 done < <(
