@@ -2,6 +2,8 @@
 
 set -eu
 
+hash_pair_delimiter=$(printf '\t')
+
 usage() {
   cat >&2 << 'EOF'
 Usage:
@@ -127,29 +129,53 @@ hash_files() {
   hashes_output=$1
   shift
   [ "$#" -ge 1 ] || fail "could not hash an empty publication file set"
+  for hash_files_path in "$@"; do
+    case "$hash_files_path" in
+      *"$hash_pair_delimiter"* | *'
+'*) fail "could not hash a publication file path containing an unsupported character: $hash_files_path" ;;
+    esac
+  done
   select_hash_backend
   hash_batch_raw=$(umask 077 && mktemp "${TMPDIR:-/tmp}/siw-hash-output.XXXXXX") \
     || fail "could not prepare batched hash output"
   install_cleanup_traps
   case "$hash_backend" in
-    sha256sum)
-      "$hash_backend_command" "$@" > "$hash_batch_raw" || fail "could not hash SIW publication files"
-      awk '{ hash_value = $1; sub(/^\\/, "", hash_value); print hash_value }' \
-        "$hash_batch_raw" > "$hashes_output" || fail "could not normalize batched hashes"
-      ;;
-    shasum)
-      "$hash_backend_command" -a 256 "$@" > "$hash_batch_raw" || fail "could not hash SIW publication files"
-      awk '{ hash_value = $1; sub(/^\\/, "", hash_value); print hash_value }' \
-        "$hash_batch_raw" > "$hashes_output" || fail "could not normalize batched hashes"
-      ;;
-    openssl)
-      "$hash_backend_command" dgst -sha256 "$@" > "$hash_batch_raw" || fail "could not hash SIW publication files"
-      awk '{ print $NF }' "$hash_batch_raw" > "$hashes_output" \
-        || fail "could not normalize batched hashes"
-      ;;
+    sha256sum) "$hash_backend_command" "$@" > "$hash_batch_raw" || fail "could not hash SIW publication files" ;;
+    shasum) "$hash_backend_command" -a 256 "$@" > "$hash_batch_raw" || fail "could not hash SIW publication files" ;;
+    openssl) "$hash_backend_command" dgst -sha256 "$@" > "$hash_batch_raw" || fail "could not hash SIW publication files" ;;
   esac
+  hash_batch_line_count=$(awk 'END { print NR }' "$hash_batch_raw") || fail "could not normalize batched hashes"
+  [ "$hash_batch_line_count" -eq "$#" ] \
+    || fail "could not normalize batched hashes: expected $# record(s), got $hash_batch_line_count"
+  exec 4< "$hash_batch_raw" || fail "could not read batched hash output"
+  : > "$hashes_output" || fail "could not normalize batched hashes"
+  for hash_files_path in "$@"; do
+    IFS= read -r hash_batch_line <&4 || fail "missing batched hash output for $hash_files_path"
+    case "$hash_backend" in
+      openssl) hash_files_hash=${hash_batch_line##* } ;;
+      *)
+        hash_files_hash=${hash_batch_line%% *}
+        hash_files_hash=${hash_files_hash#\\}
+        ;;
+    esac
+    validate_hash "$hash_files_hash" "calculated hash"
+    printf '%s%s%s\n' "$hash_files_hash" "$hash_pair_delimiter" "$hash_files_path" >> "$hashes_output" \
+      || fail "could not normalize batched hashes"
+  done
+  exec 4<&-
   unlink "$hash_batch_raw" || fail "could not remove temporary batched hash output"
   hash_batch_raw=
+}
+
+read_publication_hash_pair() {
+  hash_pair_expected_path=$1
+  hash_pair_label=$2
+  IFS= read -r hash_pair_line <&3 || fail "missing $hash_pair_label hash from batched publication state"
+  hash_pair_hash=${hash_pair_line%%"$hash_pair_delimiter"*}
+  hash_pair_path=${hash_pair_line#*"$hash_pair_delimiter"}
+  validate_hash "$hash_pair_hash" "calculated $hash_pair_label hash"
+  [ "$hash_pair_path" = "$hash_pair_expected_path" ] \
+    || fail "publication hash batch attributed a hash to the wrong file: expected $hash_pair_expected_path, got $hash_pair_path"
 }
 
 normalize_issue_id() {
@@ -250,66 +276,51 @@ require_publication_owner() {
   esac
 }
 
-cleanup_claim_temp() {
-  if [ -n "${claim_temp:-}" ] && { [ -e "$claim_temp" ] || [ -L "$claim_temp" ]; }; then
-    unlink "$claim_temp" 2> /dev/null || true
+unlink_temp() {
+  unlink_temp_path=${1:-}
+  if [ -n "$unlink_temp_path" ] && { [ -e "$unlink_temp_path" ] || [ -L "$unlink_temp_path" ]; }; then
+    unlink "$unlink_temp_path" 2> /dev/null || true
   fi
+}
+
+cleanup_claim_temp() {
+  unlink_temp "${claim_temp:-}"
   claim_temp=
 }
 
 cleanup_state_temp() {
-  if [ -n "${state_temp:-}" ] && { [ -e "$state_temp" ] || [ -L "$state_temp" ]; }; then
-    unlink "$state_temp" 2> /dev/null || true
-  fi
+  unlink_temp "${state_temp:-}"
   state_temp=
 }
 
 cleanup_remainder_temps() {
-  if [ -n "${overview_remainder_temp:-}" ] \
-    && { [ -e "$overview_remainder_temp" ] || [ -L "$overview_remainder_temp" ]; }; then
-    unlink "$overview_remainder_temp" 2> /dev/null || true
-  fi
-  if [ -n "${log_remainder_temp:-}" ] \
-    && { [ -e "$log_remainder_temp" ] || [ -L "$log_remainder_temp" ]; }; then
-    unlink "$log_remainder_temp" 2> /dev/null || true
-  fi
+  unlink_temp "${overview_remainder_temp:-}"
+  unlink_temp "${log_remainder_temp:-}"
   overview_remainder_temp=
   log_remainder_temp=
 }
 
 cleanup_baseline_temps() {
-  if [ -n "${baseline_temp:-}" ] && { [ -e "$baseline_temp" ] || [ -L "$baseline_temp" ]; }; then
-    unlink "$baseline_temp" 2> /dev/null || true
-  fi
-  if [ -n "${baseline_state_temp:-}" ] && { [ -e "$baseline_state_temp" ] || [ -L "$baseline_state_temp" ]; }; then
-    unlink "$baseline_state_temp" 2> /dev/null || true
-  fi
+  unlink_temp "${baseline_temp:-}"
+  unlink_temp "${baseline_state_temp:-}"
   baseline_temp=
   baseline_state_temp=
 }
 
 cleanup_hash_temps() {
-  if [ -n "${hash_batch_raw:-}" ] && { [ -e "$hash_batch_raw" ] || [ -L "$hash_batch_raw" ]; }; then
-    unlink "$hash_batch_raw" 2> /dev/null || true
-  fi
-  if [ -n "${hashes_temp:-}" ] && { [ -e "$hashes_temp" ] || [ -L "$hashes_temp" ]; }; then
-    unlink "$hashes_temp" 2> /dev/null || true
-  fi
+  unlink_temp "${hash_batch_raw:-}"
+  unlink_temp "${hashes_temp:-}"
   hash_batch_raw=
   hashes_temp=
 }
 
 cleanup_changed_ids_temp() {
-  if [ -n "${changed_ids_temp:-}" ] && { [ -e "$changed_ids_temp" ] || [ -L "$changed_ids_temp" ]; }; then
-    unlink "$changed_ids_temp" 2> /dev/null || true
-  fi
+  unlink_temp "${changed_ids_temp:-}"
   changed_ids_temp=
 }
 
 cleanup_receipt_temp() {
-  if [ -n "${receipt_temp:-}" ] && { [ -e "$receipt_temp" ] || [ -L "$receipt_temp" ]; }; then
-    unlink "$receipt_temp" 2> /dev/null || true
-  fi
+  unlink_temp "${receipt_temp:-}"
   receipt_temp=
 }
 
@@ -336,9 +347,20 @@ finish_operation_lock() {
   trap - 0 1 2 15
 }
 
+cleanup_all() {
+  cleanup_claim_temp
+  cleanup_state_temp
+  cleanup_remainder_temps
+  cleanup_baseline_temps
+  cleanup_hash_temps
+  cleanup_changed_ids_temp
+  cleanup_receipt_temp
+  cleanup_operation_lock
+}
+
 install_cleanup_traps() {
-  trap 'cleanup_claim_temp; cleanup_state_temp; cleanup_remainder_temps; cleanup_baseline_temps; cleanup_hash_temps; cleanup_changed_ids_temp; cleanup_receipt_temp; cleanup_operation_lock' 0
-  trap 'cleanup_claim_temp; cleanup_state_temp; cleanup_remainder_temps; cleanup_baseline_temps; cleanup_hash_temps; cleanup_changed_ids_temp; cleanup_receipt_temp; cleanup_operation_lock; exit 1' 1 2 15
+  trap 'cleanup_all' 0
+  trap 'cleanup_all; exit 1' 1 2 15
 }
 
 finish_claim_temp() {
@@ -596,6 +618,7 @@ calculate_publication_state() {
     set -- "$@" "$log_remainder_temp"
   fi
 
+  publication_issue_path_count=0
   if [ -e "$issues_path" ] || [ -L "$issues_path" ]; then
     [ -d "$issues_path" ] && [ ! -L "$issues_path" ] \
       || fail "SIW issues path must be a non-symlink directory: $issues_path"
@@ -611,6 +634,7 @@ calculate_publication_state() {
 '*) fail "issue filenames must not contain newlines: $issue_path" ;;
       esac
       set -- "$@" "$issue_path"
+      publication_issue_path_count=$((publication_issue_path_count + 1))
     done
   fi
 
@@ -618,71 +642,70 @@ calculate_publication_state() {
   if ! exec 3< "$hashes_temp"; then
     fail "could not read batched publication hashes"
   fi
-  IFS= read -r overview_hash <&3 || fail "missing overview hash from batched publication state"
-  validate_hash "$overview_hash" "calculated overview hash"
+
+  read_publication_hash_pair "$overview_path" overview
+  overview_hash=$hash_pair_hash
   printf 'overview %s\n' "$overview_hash" > "$state_temp" \
     || fail "could not write temporary SIW publication state: $state_temp"
   if [ -n "$publication_log_missing" ]; then
     printf 'log missing\n' >> "$state_temp" \
       || fail "could not write temporary SIW publication state: $state_temp"
   else
-    IFS= read -r log_hash <&3 || fail "missing log hash from batched publication state"
-    validate_hash "$log_hash" "calculated log hash"
+    read_publication_hash_pair "$log_path" log
+    log_hash=$hash_pair_hash
     printf 'log %s\n' "$log_hash" >> "$state_temp" \
       || fail "could not write temporary SIW publication state: $state_temp"
   fi
-  IFS= read -r overview_remainder_hash <&3 \
-    || fail "missing normalized overview hash from batched publication state"
-  validate_hash "$overview_remainder_hash" "calculated normalized overview hash"
+  read_publication_hash_pair "$overview_remainder_temp" "normalized overview"
+  overview_remainder_hash=$hash_pair_hash
   printf 'overview-remainder %s\n' "$overview_remainder_hash" >> "$state_temp" \
     || fail "could not write temporary SIW publication state: $state_temp"
   if [ -n "$publication_log_missing" ]; then
     printf 'log-remainder missing\n' >> "$state_temp" \
       || fail "could not write temporary SIW publication state: $state_temp"
   else
-    IFS= read -r log_remainder_hash <&3 \
-      || fail "missing normalized log hash from batched publication state"
-    validate_hash "$log_remainder_hash" "calculated normalized log hash"
+    read_publication_hash_pair "$log_remainder_temp" "normalized log"
+    log_remainder_hash=$hash_pair_hash
     printf 'log-remainder %s\n' "$log_remainder_hash" >> "$state_temp" \
       || fail "could not write temporary SIW publication state: $state_temp"
   fi
 
   publication_issue_ids=
-  if [ -e "$issues_path" ] || [ -L "$issues_path" ]; then
-    for issue_path in "$issues_path"/ISSUE-*.md; do
-      if [ ! -e "$issue_path" ] && [ ! -L "$issue_path" ]; then
-        continue
-      fi
-      IFS= read -r issue_hash <&3 || fail "missing issue hash from batched publication state"
-      validate_hash "$issue_hash" "calculated issue hash"
-      issue_name=${issue_path##*/}
-      issue_stem=${issue_name#ISSUE-}
-      issue_stem=${issue_stem%.md}
-      candidate_prefix=${issue_stem%%-*}
-      candidate_rest=${issue_stem#*-}
-      candidate_number=${candidate_rest%%-*}
-      candidate_title=${candidate_rest#*-}
-      candidate_id="$candidate_prefix-$candidate_number"
-      if [ "$candidate_rest" = "$issue_stem" ] || [ "$candidate_title" = "$candidate_rest" ] \
-        || [ -z "$candidate_title" ] || ! is_valid_issue_id "$candidate_id"; then
-        printf 'other-issue %s %s\n' "$issue_hash" "$issue_name" >> "$state_temp" \
-          || fail "could not write temporary SIW publication state: $state_temp"
-        continue
-      fi
-      case " $publication_issue_ids " in
-        *" $candidate_id "*) fail "multiple issue files exist for $candidate_id" ;;
-      esac
-      publication_issue_ids="$publication_issue_ids $candidate_id"
-      issue_heading=
-      IFS= read -r issue_heading < "$issue_path" || true
-      case "$issue_heading" in
-        "# ISSUE-$candidate_id: "*) heading_valid=1 ;;
-        *) heading_valid=0 ;;
-      esac
-      printf 'issue %s %s %s %s\n' "$candidate_id" "$heading_valid" "$issue_hash" "$issue_name" >> "$state_temp" \
+  publication_issue_pairs_read=0
+  while [ "$publication_issue_pairs_read" -lt "$publication_issue_path_count" ]; do
+    IFS= read -r hash_pair_line <&3 || fail "missing issue hash from batched publication state"
+    issue_hash=${hash_pair_line%%"$hash_pair_delimiter"*}
+    issue_path=${hash_pair_line#*"$hash_pair_delimiter"}
+    validate_hash "$issue_hash" "calculated issue hash"
+    publication_issue_pairs_read=$((publication_issue_pairs_read + 1))
+
+    issue_name=${issue_path##*/}
+    issue_stem=${issue_name#ISSUE-}
+    issue_stem=${issue_stem%.md}
+    candidate_prefix=${issue_stem%%-*}
+    candidate_rest=${issue_stem#*-}
+    candidate_number=${candidate_rest%%-*}
+    candidate_title=${candidate_rest#*-}
+    candidate_id="$candidate_prefix-$candidate_number"
+    if [ "$candidate_rest" = "$issue_stem" ] || [ "$candidate_title" = "$candidate_rest" ] \
+      || [ -z "$candidate_title" ] || ! is_valid_issue_id "$candidate_id"; then
+      printf 'other-issue %s %s\n' "$issue_hash" "$issue_name" >> "$state_temp" \
         || fail "could not write temporary SIW publication state: $state_temp"
-    done
-  fi
+      continue
+    fi
+    case " $publication_issue_ids " in
+      *" $candidate_id "*) fail "multiple issue files exist for $candidate_id" ;;
+    esac
+    publication_issue_ids="$publication_issue_ids $candidate_id"
+    issue_heading=
+    IFS= read -r issue_heading < "$issue_path" || true
+    case "$issue_heading" in
+      "# ISSUE-$candidate_id: "*) heading_valid=1 ;;
+      *) heading_valid=0 ;;
+    esac
+    printf 'issue %s %s %s %s\n' "$candidate_id" "$heading_valid" "$issue_hash" "$issue_name" >> "$state_temp" \
+      || fail "could not write temporary SIW publication state: $state_temp"
+  done
   extra_hash=
   if IFS= read -r extra_hash <&3 || [ -n "$extra_hash" ]; then
     fail "unexpected extra hash in batched publication state"
