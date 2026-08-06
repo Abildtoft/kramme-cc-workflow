@@ -1204,6 +1204,66 @@ test("writer preserves a symlinked AGENTS.md and updates its referent transactio
   });
 });
 
+test("writer retries with the moved AGENTS.md destination it discovered", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const lockDir = path.join(codexRoot, ".kramme-install-lock");
+    const agentsPath = path.join(codexRoot, "AGENTS.md");
+    const externalRoot = path.join(root, "dotfiles");
+    const referent = path.join(externalRoot, "AGENTS.md");
+    await writeFile(referent, "# Shared local instructions\n");
+    await fs.mkdir(codexRoot, { recursive: true });
+    const bundle = await createTransactionalBundle(root, "v1");
+
+    const originalLstat = fs.lstat;
+    const originalRename = fs.rename;
+    let moved = false;
+    let lockAcquisitions = 0;
+    fs.lstat = /** @type {typeof fs.lstat} */ (
+      /** @param {import("fs").PathLike} target */
+      async (target) => {
+        try {
+          return await originalLstat(target);
+        } finally {
+          // The first resolution runs before any lock is held. Move the
+          // destination there so the locked attempt observes a different one.
+          if (!moved && String(target) === agentsPath) {
+            moved = true;
+            await fs.symlink(referent, agentsPath);
+          }
+        }
+      }
+    );
+    fs.rename = async (source, target) => {
+      if (String(target) === lockDir) lockAcquisitions += 1;
+      return originalRename(source, target);
+    };
+    try {
+      await writeCodexBundle(root, bundle, {
+        agentsHome: path.join(root, "agents-home"),
+        confirm: { yes: true },
+        pluginName: "agents-destination-retry-plugin",
+      });
+    } finally {
+      fs.lstat = originalLstat;
+      fs.rename = originalRename;
+    }
+
+    assert.equal(moved, true);
+    // One rejected attempt plus the retry that adopted the moved destination.
+    assert.equal(lockAcquisitions, 2);
+    assert.equal((await fs.lstat(agentsPath)).isSymbolicLink(), true);
+    assert.equal(await fs.readlink(agentsPath), referent);
+    assert.match(await readText(referent), /# Shared local instructions/);
+    assert.match(await readText(referent), /BEGIN KRAMME CODEX TOOL MAP/);
+    assert.equal(await pathExists(lockDir), false);
+    assert.equal(
+      await pathExists(path.join(externalRoot, ".kramme-install-lock")),
+      false,
+    );
+  });
+});
+
 test("writer rolls back when a symlinked AGENTS.md is retargeted during publication", async () => {
   await withTempDir(async (root) => {
     const codexRoot = path.join(root, ".codex");

@@ -71,7 +71,8 @@ const transactionStorage = new AsyncLocalStorage();
  * @typedef {{ content: Buffer | null, metadata: RollbackTargetMetadata | null }} RollbackTargetExpectation
  * @typedef {{ kind: "directory" } | { kind: "file", content: Buffer } | { kind: "missing" }} ExpectedTargetEntry
  * @typedef {Map<string, ExpectedTargetEntry>} ExpectedTargetEntries
- * @typedef {{ expectedTargetContent?: ExpectedTargetContent, expectedTargetEntries?: ExpectedTargetEntries, expectedTargetIdentity?: ExpectedTargetIdentity, record: InstallMutationRecord, recordIndex: number, target: string, targetExists: boolean }} PreparedTransactionMutation
+ * @typedef {{ expectedTargetContent?: ExpectedTargetContent, expectedTargetEntries?: ExpectedTargetEntries, expectedTargetIdentity?: ExpectedTargetIdentity }} TargetExpectations
+ * @typedef {TargetExpectations & { record: InstallMutationRecord, recordIndex: number, target: string, targetExists: boolean }} PreparedTransactionMutation
  * @typedef {{ error: unknown, lock: InstallLock }} InstallLockReleaseError
  * @typedef {{ error: unknown, record: InstallMutationRecord }} InstallRollbackError
  */
@@ -945,8 +946,17 @@ function parseRollbackTargetMetadata(value) {
 }
 
 /**
+ * Journal one target mutation and hand the caller a prepared mutation.
+ *
+ * The target is verified before anything is journaled, so a concurrent edit is
+ * rejected while the installation can still be abandoned cleanly. An existing
+ * target is renamed into the transaction backup and reverified afterwards; an
+ * absent one is revalidated after journaling and its record discarded when the
+ * path appeared in the meantime.
+ *
  * @param {string} targetPath
- * @param {{ expectedTargetContent?: ExpectedTargetContent, expectedTargetEntries?: ExpectedTargetEntries, expectedTargetIdentity?: ExpectedTargetIdentity, label?: string, preserveExisting?: boolean }} [options]
+ * @param {TargetExpectations & { label?: string, preserveExisting?: boolean }} [options]
+ * @returns {Promise<PreparedTransactionMutation | false>}
  */
 async function prepareTransactionMutation(
   targetPath,
@@ -961,6 +971,12 @@ async function prepareTransactionMutation(
   const transaction = transactionStorage.getStore();
   if (!transaction) return false;
 
+  /** @type {TargetExpectations} */
+  const expectations = {
+    expectedTargetContent,
+    expectedTargetEntries,
+    expectedTargetIdentity,
+  };
   const resolvedTarget = await canonicalizeTransactionTarget(targetPath);
   if (!isTargetCoveredByLock(resolvedTarget, transaction.lockRoots)) {
     throw new Error(
@@ -980,61 +996,30 @@ async function prepareTransactionMutation(
     if (filesystemErrorCode(error) !== "ENOENT") throw error;
   }
   try {
-    assertExpectedTargetType(
+    await assertTargetMatchesExpectations(
       resolvedTarget,
       stats,
-      expectedTargetContent,
+      expectations,
       label,
-    );
-    assertExpectedTargetIdentity(
-      resolvedTarget,
-      stats,
-      expectedTargetIdentity,
-      label,
-    );
-    if (
-      expectedTargetContent !== undefined &&
-      expectedTargetContent !== null &&
-      !(await fileContentEquals(resolvedTarget, expectedTargetContent))
-    ) {
-      throw new Error(
-        `Cannot install ${label} because ${resolvedTarget} changed during installation.`,
-      );
-    }
-    await assertExpectedTargetEntries(
-      resolvedTarget,
-      expectedTargetEntries,
-      label,
+      { assertType: true, checkContent: true },
     );
   } catch (error) {
-    if (coveringRecord && expectedTargetContent !== undefined) {
-      transaction.rollbackTargetContents.set(resolvedTarget, {
-        content:
-          expectedTargetContent === null
-            ? null
-            : expectedContentBuffer(expectedTargetContent),
-        metadata: null,
-      });
-    }
-    if (coveringRecord && expectedTargetEntries) {
-      recordExpectedTreeRollbackTargets(
+    if (coveringRecord) {
+      recordPreparationRollbackTargets(
         transaction,
         resolvedTarget,
-        expectedTargetEntries,
+        expectations,
       );
     }
     throw error;
   }
   if (coveringRecord) {
-    return {
-      expectedTargetContent,
-      expectedTargetEntries,
-      expectedTargetIdentity,
+    return preparedMutation(expectations, {
       record: coveringRecord,
       recordIndex: transaction.records.indexOf(coveringRecord),
       target: resolvedTarget,
       targetExists: stats !== null,
-    };
+    });
   }
   if (
     transaction.records.some((record) =>
@@ -1046,12 +1031,135 @@ async function prepareTransactionMutation(
     );
   }
 
-  const record =
-    /** @type {{operation: string, target: string, backup: string | null}} */ ({
-      operation: stats ? "backup-rename" : "create",
-      target: resolvedTarget,
-      backup: null,
+  const record = appendTargetMutationRecord(transaction, resolvedTarget, stats);
+  await persistInstallJournal(transaction);
+
+  return stats
+    ? backUpExistingTarget(transaction, record, expectations, label, {
+        isDirectory: stats.isDirectory(),
+        preserveExisting,
+      })
+    : revalidateAbsentTarget(
+        transaction,
+        record,
+        expectations,
+        label,
+        targetPath,
+      );
+}
+
+/**
+ * Verify one target against the caller's expectations, always in the order
+ * type, identity, content, then tree entries.
+ *
+ * `contentTarget` names the path reported by a content mismatch, which differs
+ * from the inspected path once the original has been renamed into the backup.
+ *
+ * @param {string} target
+ * @param {import("fs").Stats | null} stats
+ * @param {TargetExpectations} expectations
+ * @param {string} label
+ * @param {{ assertType?: boolean, checkContent?: boolean, contentTarget?: string, ignoreCtime?: boolean }} [options]
+ */
+async function assertTargetMatchesExpectations(
+  target,
+  stats,
+  { expectedTargetContent, expectedTargetEntries, expectedTargetIdentity },
+  label,
+  {
+    assertType = false,
+    checkContent = false,
+    contentTarget = target,
+    ignoreCtime = false,
+  } = {},
+) {
+  if (assertType) {
+    assertExpectedTargetType(target, stats, expectedTargetContent, label);
+  }
+  assertExpectedTargetIdentity(target, stats, expectedTargetIdentity, label, {
+    ignoreCtime,
+  });
+  if (
+    checkContent &&
+    expectedTargetContent !== undefined &&
+    expectedTargetContent !== null &&
+    !(await fileContentEquals(target, expectedTargetContent))
+  ) {
+    throw new Error(
+      `Cannot install ${label} because ${contentTarget} changed during installation.`,
+    );
+  }
+  await assertExpectedTargetEntries(target, expectedTargetEntries, label);
+}
+
+/**
+ * @param {TargetExpectations} expectations
+ * @param {{ record: InstallMutationRecord, recordIndex: number, target: string, targetExists: boolean }} placement
+ * @returns {PreparedTransactionMutation}
+ */
+function preparedMutation(
+  { expectedTargetContent, expectedTargetEntries, expectedTargetIdentity },
+  { record, recordIndex, target, targetExists },
+) {
+  return {
+    expectedTargetContent,
+    expectedTargetEntries,
+    expectedTargetIdentity,
+    record,
+    recordIndex,
+    target,
+    targetExists,
+  };
+}
+
+/**
+ * Remember what an already-backed-up target held so rollback can restore it
+ * after preparation rejected a concurrent change.
+ *
+ * @param {InstallTransaction} transaction
+ * @param {string} resolvedTarget
+ * @param {TargetExpectations} expectations
+ */
+function recordPreparationRollbackTargets(
+  transaction,
+  resolvedTarget,
+  { expectedTargetContent, expectedTargetEntries },
+) {
+  if (expectedTargetContent !== undefined) {
+    transaction.rollbackTargetContents.set(resolvedTarget, {
+      content:
+        expectedTargetContent === null
+          ? null
+          : expectedContentBuffer(expectedTargetContent),
+      metadata: null,
     });
+  }
+  if (expectedTargetEntries) {
+    recordExpectedTreeRollbackTargets(
+      transaction,
+      resolvedTarget,
+      expectedTargetEntries,
+    );
+  }
+}
+
+/**
+ * Append the record describing this mutation. An existing target also reserves
+ * a backup slot keyed by its position, so the caller persists the journal
+ * before touching the target.
+ *
+ * @param {InstallTransaction} transaction
+ * @param {string} resolvedTarget
+ * @param {import("fs").Stats | null} stats
+ * @returns {InstallMutationRecord}
+ */
+function appendTargetMutationRecord(transaction, resolvedTarget, stats) {
+  /** @type {InstallMutationRecord} */
+  const record = {
+    operation: stats ? "backup-rename" : "create",
+    target: resolvedTarget,
+    backup: null,
+  };
   if (stats) {
     const backupRoot = path.join(
       path.dirname(resolvedTarget),
@@ -1061,120 +1169,117 @@ async function prepareTransactionMutation(
     record.backup = path.join(backupRoot, String(transaction.records.length));
   }
   transaction.records.push(record);
-  await persistInstallJournal(transaction);
+  return record;
+}
 
-  if (!stats) {
-    try {
-      const currentResolvedTarget =
-        await canonicalizeTransactionTarget(targetPath);
-      if (
-        currentResolvedTarget !== resolvedTarget ||
-        !isTargetCoveredByLock(currentResolvedTarget, transaction.lockRoots)
-      ) {
-        throw new Error(
-          `Cannot install ${label} because ${resolvedTarget} changed during installation.`,
-        );
-      }
-      const currentStats = await lstatIfExists(resolvedTarget);
-      assertExpectedTargetType(
-        resolvedTarget,
-        currentStats,
-        expectedTargetContent,
-        label,
+/**
+ * Confirm a journaled create target is still absent, discarding the record when
+ * the path appeared between journaling and this check.
+ *
+ * @param {InstallTransaction} transaction
+ * @param {InstallMutationRecord} record
+ * @param {TargetExpectations} expectations
+ * @param {string} label
+ * @param {string} targetPath
+ * @returns {Promise<PreparedTransactionMutation>}
+ */
+async function revalidateAbsentTarget(
+  transaction,
+  record,
+  expectations,
+  label,
+  targetPath,
+) {
+  const resolvedTarget = record.target;
+  try {
+    const currentResolvedTarget =
+      await canonicalizeTransactionTarget(targetPath);
+    if (
+      currentResolvedTarget !== resolvedTarget ||
+      !isTargetCoveredByLock(currentResolvedTarget, transaction.lockRoots)
+    ) {
+      throw new Error(
+        `Cannot install ${label} because ${resolvedTarget} changed during installation.`,
       );
-      assertExpectedTargetIdentity(
-        resolvedTarget,
-        currentStats,
-        expectedTargetIdentity,
-        label,
-      );
-      await assertExpectedTargetEntries(
-        resolvedTarget,
-        expectedTargetEntries,
-        label,
-      );
-    } catch (error) {
-      if (transaction.records.at(-1) !== record) {
-        throw new Error(
-          `Cannot discard unapplied install mutation for ${resolvedTarget}.`,
-          { cause: error },
-        );
-      }
-      transaction.records.pop();
-      await persistInstallJournal(transaction);
-      throw error;
     }
-    return {
-      expectedTargetContent,
-      expectedTargetEntries,
-      expectedTargetIdentity,
-      record,
-      recordIndex: transaction.records.length - 1,
-      target: resolvedTarget,
-      targetExists: false,
-    };
-  }
-  const backupPath = record.backup;
-  if (!backupPath)
-    throw new Error(`Missing transaction backup for ${resolvedTarget}.`);
-  await ensureDir(path.dirname(backupPath));
-  const currentStats = await lstatIfExists(resolvedTarget);
-  assertExpectedTargetIdentity(
-    resolvedTarget,
-    currentStats,
-    expectedTargetIdentity,
-    label,
-  );
-  if (
-    expectedTargetContent !== undefined &&
-    expectedTargetContent !== null &&
-    !(await fileContentEquals(resolvedTarget, expectedTargetContent))
-  ) {
-    throw new Error(
-      `Cannot install ${label} because ${resolvedTarget} changed during installation.`,
+    await assertTargetMatchesExpectations(
+      resolvedTarget,
+      await lstatIfExists(resolvedTarget),
+      expectations,
+      label,
+      { assertType: true },
     );
+  } catch (error) {
+    if (transaction.records.at(-1) !== record) {
+      throw new Error(
+        `Cannot discard unapplied install mutation for ${resolvedTarget}.`,
+        { cause: error },
+      );
+    }
+    transaction.records.pop();
+    await persistInstallJournal(transaction);
+    throw error;
   }
-  await assertExpectedTargetEntries(
-    resolvedTarget,
-    expectedTargetEntries,
-    label,
-  );
-  await fs.rename(resolvedTarget, backupPath);
-  const backupStats = await lstatIfExists(backupPath);
-  assertExpectedTargetIdentity(
-    backupPath,
-    backupStats,
-    expectedTargetIdentity,
-    label,
-    { ignoreCtime: true },
-  );
-  if (
-    expectedTargetContent !== undefined &&
-    expectedTargetContent !== null &&
-    !(await fileContentEquals(backupPath, expectedTargetContent))
-  ) {
-    throw new Error(
-      `Cannot install ${label} because ${resolvedTarget} changed during installation.`,
-    );
-  }
-  await assertExpectedTargetEntries(backupPath, expectedTargetEntries, label);
-  await persistInstallJournal(transaction);
-  if (preserveExisting) {
-    await fs.cp(backupPath, resolvedTarget, {
-      recursive: stats.isDirectory(),
-      preserveTimestamps: true,
-      dereference: false,
-    });
-  }
-  return {
-    expectedTargetContent,
-    expectedTargetEntries,
-    expectedTargetIdentity,
+  return preparedMutation(expectations, {
     record,
     recordIndex: transaction.records.length - 1,
     target: resolvedTarget,
     targetExists: false,
-  };
+  });
+}
+
+/**
+ * Move an existing target into the transaction backup, verifying it both before
+ * and after the rename so a concurrent edit cannot be captured silently.
+ *
+ * @param {InstallTransaction} transaction
+ * @param {InstallMutationRecord} record
+ * @param {TargetExpectations} expectations
+ * @param {string} label
+ * @param {{ isDirectory: boolean, preserveExisting: boolean }} options
+ * @returns {Promise<PreparedTransactionMutation>}
+ */
+async function backUpExistingTarget(
+  transaction,
+  record,
+  expectations,
+  label,
+  { isDirectory, preserveExisting },
+) {
+  const resolvedTarget = record.target;
+  const backupPath = record.backup;
+  if (!backupPath)
+    throw new Error(`Missing transaction backup for ${resolvedTarget}.`);
+  await ensureDir(path.dirname(backupPath));
+  await assertTargetMatchesExpectations(
+    resolvedTarget,
+    await lstatIfExists(resolvedTarget),
+    expectations,
+    label,
+    { checkContent: true },
+  );
+  await fs.rename(resolvedTarget, backupPath);
+  await assertTargetMatchesExpectations(
+    backupPath,
+    await lstatIfExists(backupPath),
+    expectations,
+    label,
+    { checkContent: true, contentTarget: resolvedTarget, ignoreCtime: true },
+  );
+  await persistInstallJournal(transaction);
+  if (preserveExisting) {
+    await fs.cp(backupPath, resolvedTarget, {
+      recursive: isDirectory,
+      preserveTimestamps: true,
+      dereference: false,
+    });
+  }
+  return preparedMutation(expectations, {
+    record,
+    recordIndex: transaction.records.length - 1,
+    target: resolvedTarget,
+    targetExists: false,
+  });
 }
 
 /**

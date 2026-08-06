@@ -452,6 +452,77 @@ async function finalizeCodexBundleOutput(
     previousEntries,
   );
 
+  await installSharedScripts(
+    codexRoot,
+    codexStagingRoot,
+    stagedBundle,
+    preflight,
+  );
+  await notifyInstallPhase(extraOpts, "shared-scripts");
+
+  const cleanedPrompts = await installPrompts(
+    codexRoot,
+    stagedBundle,
+    bundle,
+    previousEntries,
+    preflight,
+    extraOpts,
+  );
+  await notifyInstallPhase(extraOpts, "prompts");
+
+  const cleanedCodexSkills = await installCodexSkillGroups(
+    codexRoot,
+    codexSkillGroups,
+    previousEntries,
+    extraOpts,
+  );
+  await notifyInstallPhase(extraOpts, "codex-skills");
+
+  const cleanedAgentSkills = await installAgentSkillGroup(
+    stagedBundle,
+    agentSkillGroup,
+    previousEntries,
+    extraOpts,
+  );
+  await notifyInstallPhase(extraOpts, "agent-skills");
+
+  const hookPluginResult = await finalizeCodexHookPluginBundle(
+    codexRoot,
+    codexStagingRoot,
+    bundle.codexPlugin,
+    previousEntries,
+    stagedBundle.hookTargets,
+    { confirmOptions: extraOpts.confirm },
+  );
+  await notifyInstallPhase(extraOpts, "hooks");
+
+  await installStagedConfig(codexRoot, stagedBundle, preflight);
+  await notifyInstallPhase(extraOpts, "config");
+
+  return {
+    cleanedAgentSkills,
+    cleanedCodexSkills,
+    cleanedHookMarketplaces: hookPluginResult.cleanedHookMarketplaces,
+    cleanedPluginCaches: hookPluginResult.cleanedPluginCaches,
+    cleanedPrompts,
+  };
+}
+
+/**
+ * Publish staged shared script directories and files beside existing ones,
+ * re-preflighting each directory against the roots earlier installs managed.
+ *
+ * @param {string} codexRoot
+ * @param {string} codexStagingRoot
+ * @param {StagedBundle} stagedBundle
+ * @param {CodexBundlePreflight} preflight
+ */
+async function installSharedScripts(
+  codexRoot,
+  codexStagingRoot,
+  stagedBundle,
+  preflight,
+) {
   for (const sharedScriptDir of stagedBundle.sharedScriptDirs) {
     const stagedDir = path.join(codexStagingRoot, sharedScriptDir.targetDir);
     const targetDir = path.join(codexRoot, sharedScriptDir.targetDir);
@@ -486,8 +557,28 @@ async function finalizeCodexBundleOutput(
       },
     );
   }
-  await notifyInstallPhase(extraOpts, "shared-scripts");
+}
 
+/**
+ * Remove the prompts an earlier install of this plugin owned, then publish the
+ * current ones. A cleaned prompt expects an absent target because the cleanup
+ * just deleted it.
+ *
+ * @param {string} codexRoot
+ * @param {StagedBundle} stagedBundle
+ * @param {CodexBundle} bundle
+ * @param {PreviousInstallEntries} previousEntries
+ * @param {CodexBundlePreflight} preflight
+ * @param {WriteCodexOptions} extraOpts
+ */
+async function installPrompts(
+  codexRoot,
+  stagedBundle,
+  bundle,
+  previousEntries,
+  preflight,
+  extraOpts,
+) {
   const promptsDir = path.join(codexRoot, "prompts");
   const cleanedPrompts = await cleanupInstalledEntries(
     promptsDir,
@@ -513,8 +604,25 @@ async function finalizeCodexBundleOutput(
       },
     );
   }
-  await notifyInstallPhase(extraOpts, "prompts");
+  return cleanedPrompts;
+}
 
+/**
+ * Drop leftover implementation skills and previously installed skills, then
+ * publish each staged group. An uncleaned root is preflighted again because its
+ * managed files must survive.
+ *
+ * @param {string} codexRoot
+ * @param {SkillGroupView[]} codexSkillGroups
+ * @param {PreviousInstallEntries} previousEntries
+ * @param {WriteCodexOptions} extraOpts
+ */
+async function installCodexSkillGroups(
+  codexRoot,
+  codexSkillGroups,
+  previousEntries,
+  extraOpts,
+) {
   const skillsRoot = path.join(codexRoot, "skills");
   await cleanupKrammeComponents(skillsRoot, {
     label: "skill",
@@ -538,8 +646,24 @@ async function finalizeCodexBundleOutput(
   for (const skillGroup of codexSkillGroups) {
     await finalizeSkillGroup(skillGroup);
   }
-  await notifyInstallPhase(extraOpts, "codex-skills");
+  return cleanedCodexSkills;
+}
 
+/**
+ * Publish the agent skill group. A bundle without an agent skills root has
+ * nothing to clean, so it reports the group as already cleaned.
+ *
+ * @param {StagedBundle} stagedBundle
+ * @param {SkillGroupView} agentSkillGroup
+ * @param {PreviousInstallEntries} previousEntries
+ * @param {WriteCodexOptions} extraOpts
+ */
+async function installAgentSkillGroup(
+  stagedBundle,
+  agentSkillGroup,
+  previousEntries,
+  extraOpts,
+) {
   let cleanedAgentSkills = true;
   if (stagedBundle.agentSkillsRoot) {
     cleanedAgentSkills = await cleanupInstalledEntries(
@@ -557,38 +681,25 @@ async function finalizeCodexBundleOutput(
     });
   }
   await finalizeSkillGroup(agentSkillGroup);
-  await notifyInstallPhase(extraOpts, "agent-skills");
+  return cleanedAgentSkills;
+}
 
-  const hookPluginResult = await finalizeCodexHookPluginBundle(
-    codexRoot,
-    codexStagingRoot,
-    bundle.codexPlugin,
-    previousEntries,
-    stagedBundle.hookTargets,
-    { confirmOptions: extraOpts.confirm },
+/**
+ * @param {string} codexRoot
+ * @param {StagedBundle} stagedBundle
+ * @param {CodexBundlePreflight} preflight
+ */
+async function installStagedConfig(codexRoot, stagedBundle, preflight) {
+  if (!stagedBundle.stagedConfigPath) return;
+  await installStagedFile(
+    stagedBundle.stagedConfigPath,
+    path.join(codexRoot, "config.toml"),
+    {
+      expectedTargetContent: preflight.configTargetContent,
+      label: "Codex config",
+      replace: false,
+    },
   );
-  await notifyInstallPhase(extraOpts, "hooks");
-
-  if (stagedBundle.stagedConfigPath) {
-    await installStagedFile(
-      stagedBundle.stagedConfigPath,
-      path.join(codexRoot, "config.toml"),
-      {
-        expectedTargetContent: preflight.configTargetContent,
-        label: "Codex config",
-        replace: false,
-      },
-    );
-  }
-  await notifyInstallPhase(extraOpts, "config");
-
-  return {
-    cleanedAgentSkills,
-    cleanedCodexSkills,
-    cleanedHookMarketplaces: hookPluginResult.cleanedHookMarketplaces,
-    cleanedPluginCaches: hookPluginResult.cleanedPluginCaches,
-    cleanedPrompts,
-  };
 }
 
 /** @param {BundleWriteOptions} options @param {string} phase */

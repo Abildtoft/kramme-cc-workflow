@@ -6,7 +6,8 @@ const path = require("path");
 const test = require("node:test");
 
 const installTransaction = require("../../scripts/convert-plugin/install-transaction");
-const { withInstallTransaction } = installTransaction;
+const { prepareTransactionMutation, withInstallTransaction } =
+  installTransaction;
 
 const {
   cleanupInstalledEntries,
@@ -882,5 +883,168 @@ test("transaction attempts every lock release and preserves the primary error", 
       false,
     );
     assert.equal(await pathExists(sharedLock), true);
+  });
+});
+
+const PREPARED_MUTATION_KEYS = [
+  "expectedTargetContent",
+  "expectedTargetEntries",
+  "expectedTargetIdentity",
+  "record",
+  "recordIndex",
+  "target",
+  "targetExists",
+];
+
+test("prepared transaction mutations share one shape across target states", async () => {
+  await withTempDir(async (root) => {
+    const createdTarget = path.join(root, "created.md");
+    const replacedTarget = path.join(root, "replaced.md");
+    const managedDir = path.join(root, "managed");
+    const coveredTarget = path.join(managedDir, "covered.md");
+    await writeFile(replacedTarget, "# Replaced\n");
+    await writeFile(coveredTarget, "# Covered\n");
+
+    assert.equal(await prepareTransactionMutation(createdTarget), false);
+
+    await withInstallTransaction(
+      root,
+      { pluginName: "prepared-shape-plugin" },
+      async () => {
+        const created = await prepareTransactionMutation(createdTarget, {
+          label: "created target",
+        });
+        assert.ok(created !== false);
+        assert.deepEqual(Object.keys(created).sort(), PREPARED_MUTATION_KEYS);
+        assert.deepEqual(created.record, {
+          operation: "create",
+          target: createdTarget,
+          backup: null,
+        });
+        assert.equal(created.recordIndex, 0);
+        assert.equal(created.target, createdTarget);
+        assert.equal(created.targetExists, false);
+        assert.equal(created.expectedTargetContent, undefined);
+
+        const replaced = await prepareTransactionMutation(replacedTarget, {
+          expectedTargetContent: "# Replaced\n",
+          label: "replaced target",
+        });
+        assert.ok(replaced !== false);
+        assert.deepEqual(Object.keys(replaced).sort(), PREPARED_MUTATION_KEYS);
+        assert.equal(replaced.record.operation, "backup-rename");
+        assert.equal(replaced.record.target, replacedTarget);
+        assert.equal(typeof replaced.record.backup, "string");
+        assert.equal(replaced.recordIndex, 1);
+        assert.equal(replaced.target, replacedTarget);
+        // The backup rename already moved the original aside.
+        assert.equal(replaced.targetExists, false);
+        assert.equal(replaced.expectedTargetContent, "# Replaced\n");
+
+        const ancestor = await prepareTransactionMutation(managedDir, {
+          label: "managed ancestor",
+          preserveExisting: true,
+        });
+        assert.ok(ancestor !== false);
+        assert.equal(ancestor.recordIndex, 2);
+
+        const covered = await prepareTransactionMutation(coveredTarget, {
+          label: "covered child",
+        });
+        assert.ok(covered !== false);
+        assert.deepEqual(Object.keys(covered).sort(), PREPARED_MUTATION_KEYS);
+        // A covering ancestor record is reused instead of journaling a child.
+        assert.equal(covered.record, ancestor.record);
+        assert.equal(covered.recordIndex, 2);
+        assert.equal(covered.target, coveredTarget);
+        assert.equal(covered.targetExists, true);
+      },
+    );
+  });
+});
+
+test("prepared transaction mutations keep their filesystem call order", async () => {
+  await withTempDir(async (root) => {
+    const createdTarget = path.join(root, "created.md");
+    const replacedTarget = path.join(root, "replaced.md");
+    await writeFile(replacedTarget, "# Replaced\n");
+
+    /** @type {string[]} */
+    const calls = [];
+    /** @param {unknown} target */
+    const describe = (target) => {
+      const value = String(target);
+      if (value.endsWith(`${path.sep}journal.json`)) return "journal";
+      if (value.includes(".kramme-install-backups")) return "backup";
+      if (value === createdTarget) return "created.md";
+      if (value === replacedTarget) return "replaced.md";
+      return null;
+    };
+    const originalLstat = fs.lstat;
+    const originalRename = fs.rename;
+    const originalCp = fs.cp;
+    fs.lstat = /** @type {typeof fs.lstat} */ (
+      /** @param {import("fs").PathLike} target */
+      async (target) => {
+        const label = describe(target);
+        if (label) calls.push(`lstat:${label}`);
+        return originalLstat(target);
+      }
+    );
+    fs.rename = async (source, target) => {
+      const to = describe(target);
+      if (to === "journal") {
+        calls.push("journal");
+      } else if (to) {
+        calls.push(`rename:${describe(source)}->${to}`);
+      }
+      return originalRename(source, target);
+    };
+    fs.cp = async (source, target, options) => {
+      calls.push(`cp:${describe(source)}->${describe(target)}`);
+      return originalCp(source, target, options);
+    };
+    try {
+      await withInstallTransaction(
+        root,
+        { pluginName: "prepared-order-plugin" },
+        async () => {
+          await prepareTransactionMutation(createdTarget, {
+            label: "created target",
+          });
+          calls.push("--");
+          await prepareTransactionMutation(replacedTarget, {
+            expectedTargetContent: "# Replaced\n",
+            label: "replaced target",
+            preserveExisting: true,
+          });
+        },
+      );
+    } finally {
+      fs.lstat = originalLstat;
+      fs.rename = originalRename;
+      fs.cp = originalCp;
+    }
+
+    assert.deepEqual(calls, [
+      // Transaction start journals its empty record list.
+      "journal",
+      // Create path: journal the record, then revalidate the absent target.
+      "lstat:created.md",
+      "journal",
+      "lstat:created.md",
+      "--",
+      // Backup-rename path: journal, revalidate, rename aside, verify the
+      // backup, journal again, then restore the preserved copy.
+      "lstat:replaced.md",
+      "journal",
+      "lstat:replaced.md",
+      "rename:replaced.md->backup",
+      "lstat:backup",
+      "journal",
+      "cp:backup->replaced.md",
+      // Commit journals the final status.
+      "journal",
+    ]);
   });
 });

@@ -33,13 +33,12 @@ const {
   writeText,
 } = require("./filesystem");
 
-const AGENT_HOME_LOCK_REQUIRED = Symbol("agent-home-lock-required");
-const AGENTS_DESTINATION_LOCK_REQUIRED = Symbol(
-  "agents-destination-lock-required",
-);
-
 /**
  * @typedef {import("./contracts").CodexBundle} CodexBundle
+ * @typedef {import("./contracts").InstallEntries} InstallEntries
+ * @typedef {import("./contracts").InstallEntries} PreviousInstallEntries
+ * @typedef {import("./contracts").InstallState} InstallState
+ * @typedef {import("./codex-bundle-output").StagedBundle} StagedCodexBundle
  * @typedef {import("./contracts").WriteCodexOptions} WriteCodexOptions
  * @typedef {WriteCodexOptions & {
  *   lockTimeoutMs?: number,
@@ -49,6 +48,15 @@ const AGENTS_DESTINATION_LOCK_REQUIRED = Symbol(
  * @typedef {{ device: number, inode: number, target: string }} SymbolicLinkIdentity
  * @typedef {{ filePath: string, symbolicLink: SymbolicLinkIdentity | null, targetFile: string }} CodexAgentsDestination
  * @typedef {{ expectedTargetContent: string | null, expectedTargetIdentity?: { ctimeMs: number, device: number, gid: number, inode: number, links: number, mode: number, uid: number }, stagedFile: string, targetFile: string }} StagedCodexAgentsFile
+ * @typedef {{ cleanedAgentSkills: boolean, cleanedCodexSkills: boolean, cleanedHookMarketplaces: boolean, cleanedPluginCaches: boolean, cleanedPrompts: boolean }} FinalizedCodexBundle
+ *
+ * One locked installation attempt either completed or discovered that it must
+ * be retried with wider locks or a moved AGENTS.md destination. The retried
+ * destination travels with its own case so the caller cannot lose it.
+ *
+ * @typedef {{ status: "installed" }
+ *   | { status: "agent-home-lock-required" }
+ *   | { status: "agents-destination-lock-required", agentsDestination: CodexAgentsDestination }} CodexInstallAttempt
  */
 
 /** @param {Record<string, unknown>} object @param {string} entry */
@@ -95,188 +103,277 @@ async function writeCodexBundle(outputRoot, bundle, extraOpts = {}) {
   let agentsDestination = await resolveCodexAgentsDestination(codexRoot);
 
   while (true) {
-    /** @type {CodexAgentsDestination | null} */
-    let nextAgentsDestination = null;
-    const lockRoots = lockAgentHome ? [agentsHome] : [];
-    const preserveInvalidLockRoots = [];
-    if (agentsDestination.targetFile !== agentsDestination.filePath) {
-      const targetRoot = path.dirname(agentsDestination.targetFile);
-      lockRoots.push(targetRoot);
-      preserveInvalidLockRoots.push(targetRoot);
-    }
-    const result = await withInstallTransaction(
-      codexRoot,
-      {
-        lockRoots,
-        lockTimeoutMs: extraOpts.lockTimeoutMs,
-        preserveInvalidLockRoots,
-        pluginName,
-      },
-      async () => {
-        const currentAgentsDestination =
-          await resolveCodexAgentsDestination(codexRoot);
-        if (
-          !codexAgentsDestinationsMatch(
-            currentAgentsDestination,
-            agentsDestination,
-          )
-        ) {
-          nextAgentsDestination = currentAgentsDestination;
-          return AGENTS_DESTINATION_LOCK_REQUIRED;
-        }
-        const { state: installState } = await loadInstallState(codexRoot);
-        const previousEntries = await getPreviousInstallEntries(
-          codexRoot,
-          installState,
-          pluginName,
-          "codex",
-        );
-        if (!lockAgentHome && previousEntries.agentSkills.length > 0) {
-          return AGENT_HOME_LOCK_REQUIRED;
-        }
-        const codexStagingRoot = await createInstallStagingRoot(
-          codexRoot,
-          pluginName,
-          "codex",
-        );
-        let agentStagingRoot = null;
-        try {
-          const stagedBundle = await stageCodexBundleOutput(
-            codexRoot,
-            codexStagingRoot,
-            bundle,
-            previousEntries,
-            pluginName,
-            extraOpts,
-          );
-          agentStagingRoot = stagedBundle.agentStagingRoot;
-          await stageCodexAgentsFile(
-            codexRoot,
-            codexStagingRoot,
-            agentsDestination,
-          );
-          const finalizedBundle = await finalizeCodexBundleOutput(
-            codexRoot,
-            codexStagingRoot,
-            stagedBundle,
-            bundle,
-            previousEntries,
-            extraOpts,
-          );
-          const stagedAgentsFile = await stageCodexAgentsFile(
-            codexRoot,
-            codexStagingRoot,
-            agentsDestination,
-          );
-          if (stagedAgentsFile) {
-            await installStagedFile(
-              stagedAgentsFile.stagedFile,
-              stagedAgentsFile.targetFile,
-              {
-                expectedTargetContent: stagedAgentsFile.expectedTargetContent,
-                expectedTargetIdentity: stagedAgentsFile.expectedTargetIdentity,
-                label: "Codex AGENTS.md tool map",
-                preserveTargetChangesOnRollback: true,
-              },
-            );
-          }
-          await assertCodexAgentsDestinationUnchanged(
-            codexRoot,
-            agentsDestination,
-          );
-          await notifyInstallPhase(extraOpts, "agents");
-
-          const currentCodexSkills = [
-            ...bundle.skillDirs.map((skill) => skill.name),
-            ...bundle.generatedSkills.map((skill) => skill.name),
-          ];
-          const currentAgentSkills = (bundle.agentSkills ?? []).map(
-            (skill) => skill.name,
-          );
-          const nextSkills = finalizedBundle.cleanedCodexSkills
-            ? currentCodexSkills
-            : unionEntryLists(previousEntries.skills, currentCodexSkills);
-          const nextAgentSkills = finalizedBundle.cleanedAgentSkills
-            ? currentAgentSkills
-            : unionEntryLists(previousEntries.agentSkills, currentAgentSkills);
-          const nextEntries = {
-            hookMarketplaces: finalizedBundle.cleanedHookMarketplaces
-              ? stagedBundle.hookMarketplaces
-              : unionEntryLists(
-                  previousEntries.hookMarketplaces,
-                  stagedBundle.hookMarketplaces,
-                ),
-            pluginCaches: finalizedBundle.cleanedPluginCaches
-              ? stagedBundle.pluginCaches
-              : unionEntryLists(
-                  previousEntries.pluginCaches,
-                  stagedBundle.pluginCaches,
-                ),
-            prompts: finalizedBundle.cleanedPrompts
-              ? bundle.prompts.map((prompt) => `${prompt.name}.md`)
-              : unionEntryLists(
-                  previousEntries.prompts,
-                  bundle.prompts.map((prompt) => `${prompt.name}.md`),
-                ),
-            skills: nextSkills,
-            skillFiles: buildNextManagedFileMap(
-              previousEntries.skillFiles,
-              stagedBundle.stagedSkillFiles,
-              nextSkills,
-              finalizedBundle.cleanedCodexSkills,
-            ),
-            agentSkills: nextAgentSkills,
-            agentSkillFiles: buildNextManagedFileMap(
-              previousEntries.agentSkillFiles,
-              stagedBundle.stagedAgentSkillFiles,
-              nextAgentSkills,
-              finalizedBundle.cleanedAgentSkills,
-            ),
-            updatedAtMs: Date.now(),
-          };
-          setInstallEntries(installState, pluginName, "codex", nextEntries);
-
-          await writeInstallManifest(
-            codexStagingRoot,
-            pluginName,
-            "codex",
-            nextEntries,
-          );
-          await writeInstallState(codexStagingRoot, installState);
-          // Publish the recovery manifest first and authoritative state last. A
-          // reader therefore resolves either the old state or the complete new
-          // installation while both files remain backward-compatible.
-          await installStagedFile(
-            getInstallManifestPath(codexStagingRoot, pluginName, "codex"),
-            getInstallManifestPath(codexRoot, pluginName, "codex"),
-            { replace: true },
-          );
-          await notifyInstallPhase(extraOpts, "manifest");
-          await installStagedFile(
-            path.join(codexStagingRoot, ".kramme-install-state.json"),
-            path.join(codexRoot, ".kramme-install-state.json"),
-            { replace: true },
-          );
-          await notifyInstallPhase(extraOpts, "state");
-        } finally {
-          await removeInstallStagingRoot(codexStagingRoot);
-          await removeInstallStagingRoot(agentStagingRoot);
-        }
-      },
-    );
-    if (result === AGENT_HOME_LOCK_REQUIRED) {
+    const attempt = await runCodexInstallAttempt(codexRoot, bundle, extraOpts, {
+      agentsDestination,
+      agentsHome,
+      lockAgentHome,
+      pluginName,
+    });
+    if (attempt.status === "installed") return;
+    if (attempt.status === "agent-home-lock-required") {
       lockAgentHome = true;
       continue;
     }
-    if (result === AGENTS_DESTINATION_LOCK_REQUIRED) {
-      if (!nextAgentsDestination) {
-        throw new Error("Missing updated Codex AGENTS.md destination.");
-      }
-      agentsDestination = nextAgentsDestination;
-      continue;
-    }
-    return;
+    agentsDestination = attempt.agentsDestination;
   }
+}
+
+/**
+ * Perform one locked installation attempt against the expected destination.
+ *
+ * @param {string} codexRoot
+ * @param {CodexBundle} bundle
+ * @param {TransactionalWriteCodexOptions} extraOpts
+ * @param {{ agentsDestination: CodexAgentsDestination, agentsHome: string, lockAgentHome: boolean, pluginName: string }} attemptState
+ * @returns {Promise<CodexInstallAttempt>}
+ */
+async function runCodexInstallAttempt(
+  codexRoot,
+  bundle,
+  extraOpts,
+  { agentsDestination, agentsHome, lockAgentHome, pluginName },
+) {
+  const lockRoots = lockAgentHome ? [agentsHome] : [];
+  const preserveInvalidLockRoots = [];
+  if (agentsDestination.targetFile !== agentsDestination.filePath) {
+    const targetRoot = path.dirname(agentsDestination.targetFile);
+    lockRoots.push(targetRoot);
+    preserveInvalidLockRoots.push(targetRoot);
+  }
+  return withInstallTransaction(
+    codexRoot,
+    {
+      lockRoots,
+      lockTimeoutMs: extraOpts.lockTimeoutMs,
+      preserveInvalidLockRoots,
+      pluginName,
+    },
+    async () => {
+      const currentAgentsDestination =
+        await resolveCodexAgentsDestination(codexRoot);
+      if (
+        !codexAgentsDestinationsMatch(
+          currentAgentsDestination,
+          agentsDestination,
+        )
+      ) {
+        return {
+          status: "agents-destination-lock-required",
+          agentsDestination: currentAgentsDestination,
+        };
+      }
+      const { state: installState } = await loadInstallState(codexRoot);
+      const previousEntries = await getPreviousInstallEntries(
+        codexRoot,
+        installState,
+        pluginName,
+        "codex",
+      );
+      if (!lockAgentHome && previousEntries.agentSkills.length > 0) {
+        return { status: "agent-home-lock-required" };
+      }
+      const codexStagingRoot = await createInstallStagingRoot(
+        codexRoot,
+        pluginName,
+        "codex",
+      );
+      let agentStagingRoot = null;
+      try {
+        const stagedBundle = await stageCodexBundleOutput(
+          codexRoot,
+          codexStagingRoot,
+          bundle,
+          previousEntries,
+          pluginName,
+          extraOpts,
+        );
+        agentStagingRoot = stagedBundle.agentStagingRoot;
+        await stageCodexAgentsFile(
+          codexRoot,
+          codexStagingRoot,
+          agentsDestination,
+        );
+        const finalizedBundle = await finalizeCodexBundleOutput(
+          codexRoot,
+          codexStagingRoot,
+          stagedBundle,
+          bundle,
+          previousEntries,
+          extraOpts,
+        );
+        await publishCodexAgentsFile(
+          codexRoot,
+          codexStagingRoot,
+          agentsDestination,
+          extraOpts,
+        );
+        const nextEntries = buildNextInstallEntries(
+          bundle,
+          stagedBundle,
+          finalizedBundle,
+          previousEntries,
+        );
+        await publishInstallState(
+          codexRoot,
+          codexStagingRoot,
+          pluginName,
+          installState,
+          nextEntries,
+          extraOpts,
+        );
+        return { status: "installed" };
+      } finally {
+        await removeInstallStagingRoot(codexStagingRoot);
+        await removeInstallStagingRoot(agentStagingRoot);
+      }
+    },
+  );
+}
+
+/**
+ * Stage the AGENTS.md tool map once more and publish it, then confirm the
+ * destination still resolves where the attempt locked it.
+ *
+ * @param {string} codexRoot
+ * @param {string} codexStagingRoot
+ * @param {CodexAgentsDestination} agentsDestination
+ * @param {TransactionalWriteCodexOptions} extraOpts
+ */
+async function publishCodexAgentsFile(
+  codexRoot,
+  codexStagingRoot,
+  agentsDestination,
+  extraOpts,
+) {
+  const stagedAgentsFile = await stageCodexAgentsFile(
+    codexRoot,
+    codexStagingRoot,
+    agentsDestination,
+  );
+  if (stagedAgentsFile) {
+    await installStagedFile(
+      stagedAgentsFile.stagedFile,
+      stagedAgentsFile.targetFile,
+      {
+        expectedTargetContent: stagedAgentsFile.expectedTargetContent,
+        expectedTargetIdentity: stagedAgentsFile.expectedTargetIdentity,
+        label: "Codex AGENTS.md tool map",
+        preserveTargetChangesOnRollback: true,
+      },
+    );
+  }
+  await assertCodexAgentsDestinationUnchanged(codexRoot, agentsDestination);
+  await notifyInstallPhase(extraOpts, "agents");
+}
+
+/**
+ * Record the new entries and publish them.
+ *
+ * The recovery manifest is published first and the authoritative state last, so
+ * a reader resolves either the old state or the complete new installation while
+ * both files remain backward-compatible.
+ *
+ * @param {string} codexRoot
+ * @param {string} codexStagingRoot
+ * @param {string} pluginName
+ * @param {InstallState} installState
+ * @param {InstallEntries} nextEntries
+ * @param {TransactionalWriteCodexOptions} extraOpts
+ */
+async function publishInstallState(
+  codexRoot,
+  codexStagingRoot,
+  pluginName,
+  installState,
+  nextEntries,
+  extraOpts,
+) {
+  setInstallEntries(installState, pluginName, "codex", nextEntries);
+  await writeInstallManifest(
+    codexStagingRoot,
+    pluginName,
+    "codex",
+    nextEntries,
+  );
+  await writeInstallState(codexStagingRoot, installState);
+  await installStagedFile(
+    getInstallManifestPath(codexStagingRoot, pluginName, "codex"),
+    getInstallManifestPath(codexRoot, pluginName, "codex"),
+    { replace: true },
+  );
+  await notifyInstallPhase(extraOpts, "manifest");
+  await installStagedFile(
+    path.join(codexStagingRoot, ".kramme-install-state.json"),
+    path.join(codexRoot, ".kramme-install-state.json"),
+    { replace: true },
+  );
+  await notifyInstallPhase(extraOpts, "state");
+}
+
+/**
+ * Merge the staged bundle into the entries this installation should record.
+ *
+ * A cleaned group replaces its previous entries; an uncleaned one unions with
+ * them so entries this plugin no longer ships stay managed.
+ *
+ * @param {CodexBundle} bundle
+ * @param {StagedCodexBundle} stagedBundle
+ * @param {FinalizedCodexBundle} finalizedBundle
+ * @param {PreviousInstallEntries} previousEntries
+ * @returns {InstallEntries}
+ */
+function buildNextInstallEntries(
+  bundle,
+  stagedBundle,
+  finalizedBundle,
+  previousEntries,
+) {
+  const currentCodexSkills = [
+    ...bundle.skillDirs.map((skill) => skill.name),
+    ...bundle.generatedSkills.map((skill) => skill.name),
+  ];
+  const currentAgentSkills = (bundle.agentSkills ?? []).map(
+    (skill) => skill.name,
+  );
+  const currentPrompts = bundle.prompts.map((prompt) => `${prompt.name}.md`);
+  const nextSkills = finalizedBundle.cleanedCodexSkills
+    ? currentCodexSkills
+    : unionEntryLists(previousEntries.skills, currentCodexSkills);
+  const nextAgentSkills = finalizedBundle.cleanedAgentSkills
+    ? currentAgentSkills
+    : unionEntryLists(previousEntries.agentSkills, currentAgentSkills);
+  return {
+    hookMarketplaces: finalizedBundle.cleanedHookMarketplaces
+      ? stagedBundle.hookMarketplaces
+      : unionEntryLists(
+          previousEntries.hookMarketplaces,
+          stagedBundle.hookMarketplaces,
+        ),
+    pluginCaches: finalizedBundle.cleanedPluginCaches
+      ? stagedBundle.pluginCaches
+      : unionEntryLists(
+          previousEntries.pluginCaches,
+          stagedBundle.pluginCaches,
+        ),
+    prompts: finalizedBundle.cleanedPrompts
+      ? currentPrompts
+      : unionEntryLists(previousEntries.prompts, currentPrompts),
+    skills: nextSkills,
+    skillFiles: buildNextManagedFileMap(
+      previousEntries.skillFiles,
+      stagedBundle.stagedSkillFiles,
+      nextSkills,
+      finalizedBundle.cleanedCodexSkills,
+    ),
+    agentSkills: nextAgentSkills,
+    agentSkillFiles: buildNextManagedFileMap(
+      previousEntries.agentSkillFiles,
+      stagedBundle.stagedAgentSkillFiles,
+      nextAgentSkills,
+      finalizedBundle.cleanedAgentSkills,
+    ),
+    updatedAtMs: Date.now(),
+  };
 }
 
 /** @param {TransactionalWriteCodexOptions} options @param {string} phase */
