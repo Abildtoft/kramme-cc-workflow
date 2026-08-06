@@ -306,14 +306,16 @@ make_body_lines() {
 
 @test "registry consumers report a clean error for an unreadable registry path" {
   local consumer
+  local registry_path
 
   mkdir "$TMP_ROOT/registry.yaml"
+  registry_path="$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$TMP_ROOT/registry.yaml")"
 
-  for consumer in "$SCRIPT" "$COMPONENT_GENERATOR" "$VISUAL_GENERATOR"; do
-    run python3 "$consumer" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+  for consumer in "$SCRIPT" "$COMPONENT_GENERATOR" "$SYNCED_FILES_GENERATOR"; do
+    run python3 "$consumer" --repo-root "$TMP_ROOT" --registry "$registry_path"
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"$TMP_ROOT/registry.yaml"* ]]
+    [[ "$output" == *"$registry_path"* ]]
     [[ "$output" == *"cannot read registry"* ]]
     [[ "$output" != *"Traceback"* ]]
   done

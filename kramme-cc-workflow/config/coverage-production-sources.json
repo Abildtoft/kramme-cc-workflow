@@ -104,7 +104,6 @@
       ]
     },
     "measured_floors": {
-      "kramme-cc-workflow/scripts/lint_skill_contracts/checks/basic.py": 5,
       "kramme-cc-workflow/scripts/lint_skill_contracts/checks/epilogue.py": 8,
       "kramme-cc-workflow/scripts/lint_skill_contracts/checks/hooks_json.py": 5,
       "kramme-cc-workflow/scripts/lint_skill_contracts/readme.py": 15
