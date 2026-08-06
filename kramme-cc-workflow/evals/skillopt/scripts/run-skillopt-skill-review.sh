@@ -15,6 +15,8 @@ EOF
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 workflow_root="$(cd "$script_dir/../../.." && pwd -P)"
 repo_root="$(cd "$workflow_root/.." && pwd -P)"
+# shellcheck source=../../../scripts/lib/shell-helpers.sh
+source "$workflow_root/scripts/lib/shell-helpers.sh"
 skillopt_env_name="kramme_skill_review"
 
 dry_run=false
@@ -23,52 +25,41 @@ out_root=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --dry-run)
-      dry_run=true
-      shift
-      ;;
-    --run-id)
-      if [ "$#" -lt 2 ]; then
-        echo "run-skillopt: --run-id requires a value" >&2
-        exit 2
-      fi
-      run_id="$2"
-      shift 2
-      ;;
-    --out-root)
-      if [ "$#" -lt 2 ]; then
-        echo "run-skillopt: --out-root requires a path" >&2
-        exit 2
-      fi
-      out_root="$2"
-      shift 2
-      ;;
-    --help|-h)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "run-skillopt: unknown argument: $1" >&2
-      usage >&2
-      exit 2
-      ;;
+  --dry-run)
+    dry_run=true
+    shift
+    ;;
+  --run-id)
+    require_value "$1" "${2-}" 2 "run-skillopt: "
+    run_id="$2"
+    shift 2
+    ;;
+  --out-root)
+    require_value "$1" "${2-}" 2 "run-skillopt: "
+    out_root="$2"
+    shift 2
+    ;;
+  --help | -h)
+    usage
+    exit 0
+    ;;
+  *)
+    echo "run-skillopt: unknown argument: $1" >&2
+    usage >&2
+    exit 2
+    ;;
   esac
 done
-
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "run-skillopt: python3 is required" >&2
-  exit 1
-fi
 
 if [ -z "$run_id" ]; then
   run_id="$(date -u +%Y%m%dT%H%M%SZ)"
 fi
 
 case "$run_id" in
-  *[!A-Za-z0-9._-]*|"")
-    echo "run-skillopt: run id must contain only letters, numbers, dots, underscores, and dashes" >&2
-    exit 2
-    ;;
+*[!A-Za-z0-9._-]* | "")
+  echo "run-skillopt: run id must contain only letters, numbers, dots, underscores, and dashes" >&2
+  exit 2
+  ;;
 esac
 
 config_path="$workflow_root/evals/skillopt/configs/skill-review.yaml"
@@ -79,25 +70,12 @@ if [ -z "$out_root" ]; then
   out_root="$repo_root/.context/skillopt-runs/skill-review/$run_id/skillopt-output"
 fi
 
-out_root_real="$(python3 - "$repo_root" "$out_root" <<'PY'
-import sys
-from pathlib import Path
-
-repo_root = Path(sys.argv[1]).resolve()
-out_root = Path(sys.argv[2]).expanduser()
-if not out_root.is_absolute():
-    out_root = repo_root / out_root
-
-print(out_root.resolve())
-PY
-)"
-case "$out_root_real/" in
-  "$repo_root/.context/skillopt-runs/skill-review/"*) ;;
-  *)
-    echo "run-skillopt: output root must stay under $repo_root/.context/skillopt-runs/skill-review" >&2
-    exit 1
-    ;;
+case "$out_root" in
+/* | ~*) ;;
+*) out_root="$repo_root/$out_root" ;;
 esac
+
+out_root_real="$(require_scratch_boundary "$repo_root" ".context/skillopt-runs/skill-review" "$out_root" "run-skillopt: output root ")"
 
 bash "$script_dir/prepare-splits.sh" --check-only --split-dir "$split_dir" >/dev/null
 

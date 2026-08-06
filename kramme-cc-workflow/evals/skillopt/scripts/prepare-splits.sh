@@ -13,32 +13,31 @@ EOF
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 workflow_root="$(cd "$script_dir/../../.." && pwd -P)"
+# shellcheck source=../../../scripts/lib/shell-helpers.sh
+source "$workflow_root/scripts/lib/shell-helpers.sh"
 split_dir="$workflow_root/evals/skill-review/items"
 check_only=false
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --check-only)
-      check_only=true
-      shift
-      ;;
-    --split-dir)
-      if [ "$#" -lt 2 ]; then
-        echo "prepare-splits: --split-dir requires a path" >&2
-        exit 2
-      fi
-      split_dir="$2"
-      shift 2
-      ;;
-    --help|-h)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "prepare-splits: unknown argument: $1" >&2
-      usage >&2
-      exit 2
-      ;;
+  --check-only)
+    check_only=true
+    shift
+    ;;
+  --split-dir)
+    require_value "$1" "${2-}" 2 "prepare-splits: "
+    split_dir="$2"
+    shift 2
+    ;;
+  --help | -h)
+    usage
+    exit 0
+    ;;
+  *)
+    echo "prepare-splits: unknown argument: $1" >&2
+    usage >&2
+    exit 2
+    ;;
   esac
 done
 

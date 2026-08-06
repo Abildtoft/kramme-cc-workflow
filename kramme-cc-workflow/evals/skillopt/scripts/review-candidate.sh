@@ -7,7 +7,7 @@ Usage: review-candidate.sh <run-dir>
        review-candidate.sh --run-dir <run-dir>
 
 Generates a candidate-review packet for a SkillOpt run that contains
-best_skill.md. The run directory must stay under a
+best_skill.md. The run directory must stay under this repository's
 .context/skillopt-runs/skill-review/ path. The script writes review artifacts
 only; it never modifies skills/kramme:skill:review/SKILL.md.
 EOF
@@ -16,6 +16,8 @@ EOF
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 workflow_root="$(cd "$script_dir/../../.." && pwd -P)"
 repo_root="$(cd "$workflow_root/.." && pwd -P)"
+# shellcheck source=../../../scripts/lib/shell-helpers.sh
+source "$workflow_root/scripts/lib/shell-helpers.sh"
 source_skill="$workflow_root/skills/kramme:skill:review/SKILL.md"
 source_rel="${source_skill#"$repo_root"/}"
 eval_runner="$workflow_root/evals/skill-review/run-eval.js"
@@ -24,32 +26,29 @@ run_dir=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --run-dir)
-      if [ "$#" -lt 2 ]; then
-        echo "review-candidate: --run-dir requires a path" >&2
-        exit 2
-      fi
-      run_dir="$2"
-      shift 2
-      ;;
-    --help|-h)
-      usage
-      exit 0
-      ;;
-    -*)
-      echo "review-candidate: unknown argument: $1" >&2
+  --run-dir)
+    require_value "$1" "${2-}" 2 "review-candidate: "
+    run_dir="$2"
+    shift 2
+    ;;
+  --help | -h)
+    usage
+    exit 0
+    ;;
+  -*)
+    echo "review-candidate: unknown argument: $1" >&2
+    usage >&2
+    exit 2
+    ;;
+  *)
+    if [ -n "$run_dir" ]; then
+      echo "review-candidate: only one run directory may be provided" >&2
       usage >&2
       exit 2
-      ;;
-    *)
-      if [ -n "$run_dir" ]; then
-        echo "review-candidate: only one run directory may be provided" >&2
-        usage >&2
-        exit 2
-      fi
-      run_dir="$1"
-      shift
-      ;;
+    fi
+    run_dir="$1"
+    shift
+    ;;
   esac
 done
 
@@ -70,13 +69,7 @@ if [ ! -f "$run_dir_real/best_skill.md" ] && [ -f "$run_dir_real/skillopt-output
   run_dir_real="$(cd "$run_dir_real/skillopt-output" && pwd -P)"
 fi
 
-case "$run_dir_real/" in
-  */.context/skillopt-runs/skill-review/*) ;;
-  *)
-    echo "review-candidate: run directory must stay under a .context/skillopt-runs/skill-review path: $run_dir_real" >&2
-    exit 1
-    ;;
-esac
+run_dir_real="$(require_scratch_boundary "$repo_root" ".context/skillopt-runs/skill-review" "$run_dir_real" "review-candidate: run directory ")"
 
 best_skill="$run_dir_real/best_skill.md"
 if [ ! -f "$best_skill" ]; then
@@ -117,32 +110,32 @@ cp "$source_skill" "$baseline_file"
 cp "$best_skill" "$candidate_file"
 
 set +e
-diff -u --label "a/$source_rel" --label "b/$source_rel" "$baseline_file" "$candidate_file" > "$patch_file"
+diff -u --label "a/$source_rel" --label "b/$source_rel" "$baseline_file" "$candidate_file" >"$patch_file"
 diff_exit=$?
 set -e
 
 case "$diff_exit" in
-  0)
-    diff_status="unchanged"
-    ;;
-  1)
+0)
+  diff_status="unchanged"
+  ;;
+1)
   diff_status="changed"
-    ;;
-  *)
-    echo "review-candidate: diff generation failed" >&2
-    exit "$diff_exit"
-    ;;
+  ;;
+*)
+  echo "review-candidate: diff generation failed" >&2
+  exit "$diff_exit"
+  ;;
 esac
 
 patch_check_status="not_needed"
 if [ "$diff_status" = "changed" ]; then
-  if git -C "$repo_root" apply --check "$patch_file" 2> "$patch_check_stderr"; then
+  if git -C "$repo_root" apply --check "$patch_file" 2>"$patch_check_stderr"; then
     patch_check_status="pass"
   else
     patch_check_status="fail"
   fi
 else
-  : > "$patch_check_stderr"
+  : >"$patch_check_stderr"
 fi
 
 run_eval() {
@@ -155,7 +148,7 @@ run_eval() {
     return
   fi
 
-  if node "$eval_runner" --split all --skill "$skill_path" --json > "$output_path" 2> "$stderr_path"; then
+  if node "$eval_runner" --split all --skill "$skill_path" --json >"$output_path" 2>"$stderr_path"; then
     printf "pass"
   else
     printf "fail"
