@@ -1501,6 +1501,11 @@
       "kramme-cc-workflow/skills/kramme:workflow:wizard/SKILL.md"
     ]
   },
+  "component_catalog": {
+    "path": "kramme-cc-workflow/docs/component-catalog.json",
+    "generated_by": "kramme-cc-workflow/scripts/generate-component-reference.py",
+    "canonical_reference": "README.md"
+  },
   "mechanical": {
     "require_skill_contract_coverage": true,
     "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
@@ -1547,7 +1552,7 @@
           "kramme-cc-workflow/scripts/convert-plugin/install-staging.js": 694,
           "kramme-cc-workflow/scripts/convert-plugin/install-transaction.js": 1854,
           "kramme-cc-workflow/scripts/convert-plugin/loader.js": 657,
-          "kramme-cc-workflow/scripts/lint_skill_contracts/readme.py": 812,
+          "kramme-cc-workflow/scripts/lint_skill_contracts/readme.py": 787,
           "kramme-cc-workflow/scripts/release.py": 595,
           "kramme-cc-workflow/scripts/run-skillspector.sh": 644,
           "kramme-cc-workflow/scripts/skill-usage.js": 1165,
