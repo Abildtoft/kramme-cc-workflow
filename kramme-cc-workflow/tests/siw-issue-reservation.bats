@@ -1193,3 +1193,82 @@ EOF
   set -- "$siw_dir"/.issue-id-reservations/ISSUE-*
   [ ! -e "$1" ]
 }
+
+@test "siw publication state keeps hashes paired when the issue set changes mid-batch" {
+  local baseline_file expected_hash_1 expected_hash_3 hash_backend hash_backend_path issue_path_1 issue_path_2 issue_path_3 mock_bin siw_dir
+  siw_dir="$TMP_ROOT/siw"
+  baseline_file="$siw_dir/.issue-publication.baseline"
+  issue_path_1="$siw_dir/issues/ISSUE-G-001-alpha.md"
+  issue_path_2="$siw_dir/issues/ISSUE-G-002-injected.md"
+  issue_path_3="$siw_dir/issues/ISSUE-G-003-gamma.md"
+  mock_bin="$TMP_ROOT/hash-inject-bin"
+  mkdir -p "$siw_dir/issues" "$mock_bin"
+  printf '# ISSUE-G-001: alpha\nAlpha body.\n' >"$issue_path_1"
+  printf '# ISSUE-G-003: gamma\nGamma body, a different length than alpha.\n' >"$issue_path_3"
+  printf '# Open Issues\n| G-001 | alpha | READY |\n| G-003 | gamma | READY |\n' >"$siw_dir/OPEN_ISSUES_OVERVIEW.md"
+  printf '# Log\n- Created G-001: alpha\n- Created G-003: gamma\n' >"$siw_dir/LOG.md"
+
+  if command -v sha256sum >/dev/null 2>&1; then
+    hash_backend=sha256sum
+    expected_hash_1="$(sha256sum "$issue_path_1" | awk '{ print $1 }')"
+    expected_hash_3="$(sha256sum "$issue_path_3" | awk '{ print $1 }')"
+  elif command -v shasum >/dev/null 2>&1; then
+    hash_backend=shasum
+    expected_hash_1="$(shasum -a 256 "$issue_path_1" | awk '{ print $1 }')"
+    expected_hash_3="$(shasum -a 256 "$issue_path_3" | awk '{ print $1 }')"
+  else
+    hash_backend=openssl
+    expected_hash_1="$(openssl dgst -sha256 "$issue_path_1" | awk '{ print $NF }')"
+    expected_hash_3="$(openssl dgst -sha256 "$issue_path_3" | awk '{ print $NF }')"
+  fi
+  [ "$expected_hash_1" != "$expected_hash_3" ]
+  hash_backend_path="$(command -v "$hash_backend")"
+  write_file "$mock_bin/$hash_backend" <<EOF
+#!/bin/sh
+"$hash_backend_path" "\$@"
+hash_status=\$?
+printf '# ISSUE-G-002: injected\n' >"$issue_path_2"
+exit "\$hash_status"
+EOF
+  chmod +x "$mock_bin/$hash_backend"
+
+  env PATH="$mock_bin:$PATH" sh "$ISSUE_DEFINE_RESERVATION_HELPER" acquire "$siw_dir" owner-a 1
+
+  [ "$(awk '$1 == "issue" && $2 == "G-001" { print $4 }' "$baseline_file")" = "$expected_hash_1" ]
+  [ "$(awk '$1 == "issue" && $2 == "G-003" { print $4 }' "$baseline_file")" = "$expected_hash_3" ]
+  [ -z "$(awk '$1 == "issue" && $2 == "G-002" { print $0 }' "$baseline_file")" ]
+
+  rm "$issue_path_2"
+  sh "$ISSUE_DEFINE_RESERVATION_HELPER" release-publication "$siw_dir" owner-a
+}
+
+@test "siw acquire cleans up temporary state after a mid-hash interruption" {
+  local hash_backend hash_backend_path siw_dir
+  siw_dir="$TMP_ROOT/siw"
+  mkdir -p "$siw_dir/issues" "$TMP_ROOT/hash-term-bin"
+  printf '# Open Issues\n' >"$siw_dir/OPEN_ISSUES_OVERVIEW.md"
+  printf '# Log\n' >"$siw_dir/LOG.md"
+  printf '# ISSUE-G-001: existing\n' >"$siw_dir/issues/ISSUE-G-001-existing.md"
+
+  if command -v sha256sum >/dev/null 2>&1; then
+    hash_backend=sha256sum
+  elif command -v shasum >/dev/null 2>&1; then
+    hash_backend=shasum
+  else
+    hash_backend=openssl
+  fi
+  hash_backend_path="$(command -v "$hash_backend")"
+  write_file "$TMP_ROOT/hash-term-bin/$hash_backend" <<EOF
+#!/bin/sh
+kill -TERM \$PPID
+exec "$hash_backend_path" "\$@"
+EOF
+  chmod +x "$TMP_ROOT/hash-term-bin/$hash_backend"
+
+  run env PATH="$TMP_ROOT/hash-term-bin:$PATH" sh "$ISSUE_DEFINE_RESERVATION_HELPER" acquire "$siw_dir" owner-a 1
+  [ "$status" -ne 0 ]
+  [ ! -e "$siw_dir/.issue-publication.lock" ]
+  [ ! -e "$siw_dir/.issue-publication.baseline" ]
+  set -- "$siw_dir"/.siw-publication-state.*
+  [ ! -e "$1" ]
+}
