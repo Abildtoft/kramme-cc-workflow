@@ -17,6 +17,9 @@ const {
 } = require("../../scripts/convert-plugin/codex-shared-scripts");
 
 const {
+  applyReplacements,
+  CODEX_PHRASE_REPAIRS,
+  CODEX_TOOL_NAME_SUBSTITUTIONS,
   convertClaudeToCodex,
   transformContentForCodex,
 } = require("../../scripts/convert-plugin/codex-transformer");
@@ -30,6 +33,7 @@ const {
 } = require("../../scripts/convert-plugin/frontmatter");
 
 const {
+  listRelativeFiles,
   readJson: readConverterJson,
   readJsonObject,
   pathExists: converterPathExists,
@@ -635,6 +639,68 @@ test("transformer rewrites Codex-supported team controls without changing code i
   );
   assert.match(output, /function TaskList\(\)/);
   assert.equal(transformContentForCodex(output), output);
+});
+
+test("codex phrase repairs never match raw source vocabulary", async () => {
+  const corpusRoots = [
+    path.join(__dirname, "..", "..", "skills"),
+    path.join(__dirname, "..", "..", "agents"),
+  ];
+  const corpusFiles = (
+    await Promise.all(
+      corpusRoots.map(async (root) => {
+        const relativeFiles = await listRelativeFiles(root);
+        const markdownFiles = relativeFiles
+          .filter((relative) => relative.endsWith(".md"))
+          .map((relative) => path.join(root, relative));
+        assert.ok(
+          markdownFiles.length > 0,
+          `expected markdown files under the raw source root ${root}`,
+        );
+        return markdownFiles;
+      }),
+    )
+  ).flat();
+  const corpus = (
+    await Promise.all(corpusFiles.map((file) => readText(file)))
+  ).join("\n");
+
+  for (const [pattern] of CODEX_PHRASE_REPAIRS) {
+    pattern.lastIndex = 0;
+    assert.equal(
+      pattern.test(corpus),
+      false,
+      `expected ${pattern} to match only substitution output, never raw source content`,
+    );
+  }
+});
+
+test("codex tool-name substitutions run before phrase repairs so repair artifacts get cleaned up", () => {
+  const rawInput =
+    "Use the AskUserQuestion tool to ask users which option they prefer.";
+
+  const substitutionOnlyOutput = applyReplacements(
+    rawInput,
+    CODEX_TOOL_NAME_SUBSTITUTIONS,
+  );
+  assert.equal(
+    substitutionOnlyOutput,
+    "Ask the user directly in chat to ask users which option they prefer.",
+  );
+
+  const doubledAskRepair = CODEX_PHRASE_REPAIRS.find(
+    ([pattern]) =>
+      pattern.source === "\\bAsk the user directly in chat to ask\\b",
+  );
+  assert.ok(doubledAskRepair, "expected the doubled-'to ask' repair rule");
+  doubledAskRepair[0].lastIndex = 0;
+  assert.equal(doubledAskRepair[0].test(substitutionOnlyOutput), true);
+
+  const finalOutput = transformContentForCodex(rawInput);
+  assert.equal(
+    finalOutput,
+    "Ask the user directly in chat users which option they prefer.",
+  );
 });
 
 test("loader derives invocable skill commands and normalizes boolean fields", async () => {

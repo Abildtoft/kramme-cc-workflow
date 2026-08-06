@@ -453,7 +453,7 @@ function rewriteCodexAgentFileReferences(text, knownAgentSkills) {
 }
 
 /** @type {Array<[RegExp, string]>} */
-const CODEX_INSTRUCTION_REPLACEMENTS = [
+const CODEX_TOOL_NAME_SUBSTITUTIONS = [
   [/### Using AskUserQuestion Correctly\b/g, "### Asking Questions in Codex"],
   [
     /The AskUserQuestion tool requires \*\*2-4 predefined options\*\* per question\.\s*Users can always select "Other" to provide free-text input\./g,
@@ -561,22 +561,6 @@ const CODEX_INSTRUCTION_REPLACEMENTS = [
     "direct chat follow-up for free-form input",
   ],
   [/\bAskUserQuestion\b/g, "direct chat question"],
-  [/\bUse direct chat question\b/g, "Ask the user directly in chat"],
-  [/\buse direct chat question\b/g, "ask the user directly in chat"],
-  [/\busing direct chat question\b/g, "by asking the user directly in chat"],
-  [/\bvia direct chat question\b/g, "by asking the user directly in chat"],
-  [
-    /\bAsk the user directly in chat to ask\b/g,
-    "Ask the user directly in chat",
-  ],
-  [
-    /\bask the user directly in chat to ask\b/g,
-    "ask the user directly in chat",
-  ],
-  [
-    /\bAsk the user directly in chat with (\d+) options\b/g,
-    "Ask the user directly in chat with $1 concrete options",
-  ],
   [/\bTask tool calls\b/g, "subagent calls"],
   [
     /\bvia the Task tool with\b/g,
@@ -627,12 +611,46 @@ const CODEX_INSTRUCTION_REPLACEMENTS = [
   [/\bExplore agent\b/g, "explorer subagent"],
 ];
 
+/**
+ * Repair rules that only match text `CODEX_TOOL_NAME_SUBSTITUTIONS` already
+ * produced (e.g. "direct chat question"); they never match raw source
+ * content — see the "phrase repairs never match raw source vocabulary"
+ * invariant test.
+ * @type {Array<[RegExp, string]>}
+ */
+const CODEX_PHRASE_REPAIRS = [
+  [/\bUse direct chat question\b/g, "Ask the user directly in chat"],
+  [/\buse direct chat question\b/g, "ask the user directly in chat"],
+  [/\busing direct chat question\b/g, "by asking the user directly in chat"],
+  [/\bvia direct chat question\b/g, "by asking the user directly in chat"],
+  [
+    /\bAsk the user directly in chat to ask\b/g,
+    "Ask the user directly in chat",
+  ],
+  [
+    /\bask the user directly in chat to ask\b/g,
+    "ask the user directly in chat",
+  ],
+  [
+    /\bAsk the user directly in chat with (\d+) options\b/g,
+    "Ask the user directly in chat with $1 concrete options",
+  ],
+];
+
+/** @param {string} text @param {Array<[RegExp, string]>} replacements */
+function applyReplacements(text, replacements) {
+  let result = text;
+  for (const [pattern, replacement] of replacements) {
+    result = result.replace(pattern, replacement);
+  }
+  return result;
+}
+
 /** @param {string} text */
 function normalizeCodexInstructionText(text) {
   let result = rewriteAskUserQuestionCodeBlocks(text);
-  for (const [pattern, replacement] of CODEX_INSTRUCTION_REPLACEMENTS) {
-    result = result.replace(pattern, replacement);
-  }
+  result = applyReplacements(result, CODEX_TOOL_NAME_SUBSTITUTIONS);
+  result = applyReplacements(result, CODEX_PHRASE_REPAIRS);
   result = result.replace(
     /(^[ \t]*)Ask the user directly in chat:\n\s*\n\1Ask the user directly in chat:\n/gm,
     "$1Ask the user directly in chat:\n",
@@ -651,4 +669,7 @@ function cloneJson(value) {
 module.exports = {
   convertClaudeToCodex,
   transformContentForCodex,
+  applyReplacements,
+  CODEX_TOOL_NAME_SUBSTITUTIONS,
+  CODEX_PHRASE_REPAIRS,
 };
