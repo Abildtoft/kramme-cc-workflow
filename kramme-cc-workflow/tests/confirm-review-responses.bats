@@ -98,6 +98,12 @@ run_hook() {
 	run_safety_hook "$HOOK" "$1"
 }
 
+run_hook_with_system_bash() {
+	local command="$1"
+	local working_dir="${2:-$PWD}"
+	make_bash_input "$command" | (cd "$working_dir" && /bin/bash "$HOOK")
+}
+
 run_hook_missing_python_parser() {
 	run_safety_hook_without_python_parser "$HOOK" "$1"
 }
@@ -496,6 +502,16 @@ EOF
 file2.js
 src/component.tsx"
 	run run_hook "git commit -m 'test commit'"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "allows git commit -a under the system bash with no git prefixes" {
+	setup_real_commit_repo
+	printf 'ordinary change\n' >>"$REAL_COMMIT_REPO/notes.txt"
+
+	run run_hook_with_system_bash "git commit -a -m 'test commit'" "$REAL_COMMIT_REPO"
+
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }

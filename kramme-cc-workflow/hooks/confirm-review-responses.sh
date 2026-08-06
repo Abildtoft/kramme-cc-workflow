@@ -150,13 +150,15 @@ context_has_dynamic_repo_selection() {
 context_has_unsupported_worktree_prefix() {
   local arg
 
-  for arg in "${git_prefix_args[@]}"; do
-    case "$arg" in
-      -c | --config-env | --config-env=* | --attr-source | --attr-source=*)
-        return 0
-        ;;
-    esac
-  done
+  if [ ${#git_prefix_args[@]} -gt 0 ]; then
+    for arg in "${git_prefix_args[@]}"; do
+      case "$arg" in
+        -c | --config-env | --config-env=* | --attr-source | --attr-source=*)
+          return 0
+          ;;
+      esac
+    done
+  fi
   return 1
 }
 
