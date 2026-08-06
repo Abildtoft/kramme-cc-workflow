@@ -435,7 +435,7 @@ EOF
 	[ "$(sed -n '2p' "$FORMATTER_LOG")" = "prettier --write $TEST_DIR/test.ts" ]
 }
 
-@test "falls through when detected formatters are unavailable" {
+@test "reports a truthful failure when detected formatters are unavailable" {
 	export FORMATTER_LOG="$TEST_DIR/formatter.log"
 	create_fake_command biome 127
 	create_fake_command prettier 127
@@ -447,7 +447,10 @@ EOF
 	run run_format_hook "$TEST_DIR/test.ts"
 
 	[ "$status" -eq 0 ]
-	has_no_formatter
+	has_formatter_failure
+	[[ "$output" != *'No formatter'* ]]
+	[[ "$output" == *'Biome'* ]]
+	[[ "$output" == *'Prettier'* ]]
 }
 
 # ============================================================================
@@ -766,4 +769,60 @@ EOF
 	run run_format_hook "$TEST_DIR/scripts/util.js"
 	[ "$status" -eq 0 ]
 	has_system_message
+}
+
+# ============================================================================
+# JSON OUTPUT SAFETY - adversarial file paths and formatter directives
+# ============================================================================
+
+@test "handles file paths with double quotes safely" {
+	run run_format_hook "$TEST_DIR/weird\"file.xyz"
+	[ "$status" -eq 0 ]
+	assert_valid_json
+	has_no_formatter
+}
+
+@test "handles file paths with backslashes safely" {
+	run run_format_hook "$TEST_DIR/weird\\file.xyz"
+	[ "$status" -eq 0 ]
+	assert_valid_json
+}
+
+@test "handles file paths with embedded tabs and newlines safely" {
+	local weird_path
+	weird_path=$(printf '%s/foo\tbar\nbaz.xyz' "$TEST_DIR")
+	run run_format_hook "$weird_path"
+	[ "$status" -eq 0 ]
+	assert_valid_json
+}
+
+@test "handles file paths with embedded carriage returns safely" {
+	local weird_path
+	weird_path=$(printf '%s/foo\rbar.xyz' "$TEST_DIR")
+	run run_format_hook "$weird_path"
+	[ "$status" -eq 0 ]
+	assert_valid_json
+}
+
+@test "handles a file path that looks like an echo -n flag safely" {
+	run run_format_hook '-n'
+	[ "$status" -eq 0 ]
+	assert_valid_json
+}
+
+@test "handles a file path that looks like an echo -e flag safely" {
+	run run_format_hook '-e'
+	[ "$status" -eq 0 ]
+	assert_valid_json
+}
+
+@test "reports CLAUDE.md formatter failure with quotes in the directive as valid JSON" {
+	echo 'format: echo "not real" && false' >CLAUDE.md
+	trust_current_project
+	touch test.js
+	run run_format_hook "$TEST_DIR/test.js"
+	[ "$status" -eq 0 ]
+	assert_valid_json
+	[[ "$output" == *'Format command failed'* ]]
+	[[ "$output" == *'not real'* ]]
 }

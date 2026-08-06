@@ -17,6 +17,7 @@ setup() {
 	export MOCK_GIT_REMOTE=""
 	export MOCK_GH_PR_EXISTS=""
 	export MOCK_GH_PR_NUMBER=""
+	export MOCK_GH_PR_JSON_OVERRIDE=""
 	export MOCK_GH_REQUIRE_PROMPT_DISABLED=""
 	export MOCK_GH_SLEEP_SECONDS=""
 	export MOCK_GH_CHILD_MARKER=""
@@ -394,4 +395,46 @@ EOF
 	export MOCK_GIT_REMOTE="https://github.com/user/repo.git"
 	run bash "$HOOK"
 	[ "$status" -eq 0 ]
+}
+
+# ============================================================================
+# JSON OUTPUT SAFETY - adversarial config values and PR responses
+# ============================================================================
+
+@test "handles workspace slug with double quotes safely" {
+	export MOCK_GIT_BRANCH="feature/WAN-123-test"
+	export MOCK_GIT_REMOTE="https://github.com/user/repo.git"
+	export CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG='acme"corp'
+	run bash "$HOOK"
+	[ "$status" -eq 0 ]
+	echo "$output" | jq -e . >/dev/null
+	[[ "$output" == *'acme'* ]]
+}
+
+@test "handles workspace slug with backslashes safely" {
+	export MOCK_GIT_BRANCH="feature/WAN-123-test"
+	export MOCK_GIT_REMOTE="https://github.com/user/repo.git"
+	export CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG='acme\corp'
+	run bash "$HOOK"
+	[ "$status" -eq 0 ]
+	echo "$output" | jq -e . >/dev/null
+}
+
+@test "handles a PR URL containing an escaped quote safely" {
+	export MOCK_GIT_BRANCH="feature/no-issue-number"
+	export MOCK_GIT_REMOTE="https://github.com/user/repo.git"
+	export MOCK_GH_PR_JSON_OVERRIDE='{"url":"https://github.com/user/repo/pull/1?q=\"weird\"","number":1}'
+	run bash "$HOOK"
+	[ "$status" -eq 0 ]
+	echo "$output" | jq -e . >/dev/null
+	[[ "$output" == *'GitHub:'* ]]
+}
+
+@test "degrades to empty output when the PR lookup returns malformed JSON" {
+	export MOCK_GIT_BRANCH="feature/no-issue-number"
+	export MOCK_GIT_REMOTE="https://github.com/user/repo.git"
+	export MOCK_GH_PR_JSON_OVERRIDE='not valid json'
+	run bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
 }

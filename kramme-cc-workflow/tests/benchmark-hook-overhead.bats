@@ -48,3 +48,28 @@ write_delayed_hook() {
 	[ -n "$enabled_ms" ]
 	awk -v value="$enabled_ms" 'BEGIN { exit !(value < 850) }'
 }
+
+@test "measures the auto-format cache-hit path" {
+	local median_ms
+
+	write_delayed_hook "block-rm-rf" "block-rm-rf.sh"
+	write_delayed_hook "confirm-review-responses" "confirm-review-responses.sh"
+	write_delayed_hook "noninteractive-git" "noninteractive-git.sh"
+	mkdir -p "$BENCHMARK_ROOT/scripts/lib"
+	cp "$HOOKS_DIR/auto-format.sh" "$BENCHMARK_ROOT/hooks/auto-format.sh"
+
+	run "$BENCHMARK_ROOT/scripts/benchmark-hook-overhead.sh" \
+		--iterations 1 \
+		--warmups 0
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Auto-format cache-hit path:"* ]]
+
+	median_ms=$(
+		printf '%s\n' "$output" |
+			sed -n 's/^  Median: \([0-9.]*\) ms$/\1/p' |
+			tail -n 1
+	)
+	[ -n "$median_ms" ]
+	awk -v value="$median_ms" 'BEGIN { exit !(value < 500) }'
+}

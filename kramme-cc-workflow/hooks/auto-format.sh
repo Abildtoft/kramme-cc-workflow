@@ -40,24 +40,32 @@ else
   abs_path="$(pwd)/$file_path"
 fi
 
-# Skip binary and non-formattable files
-skip_extensions="png|jpg|jpeg|gif|ico|svg|webp|woff|woff2|ttf|eot|otf|pdf|zip|tar|gz|tgz|bz2|7z|rar|exe|dll|so|dylib|bin|lock|map|min\.js|min\.css"
-if echo "$file_path" | grep -qiE "\.($skip_extensions)$"; then
+# Skip binary and non-formattable files (case-insensitive extension match)
+shopt -s nocasematch
+case "$file_path" in
+*.png | *.jpg | *.jpeg | *.gif | *.ico | *.svg | *.webp | *.woff | *.woff2 | *.ttf | *.eot | *.otf | *.pdf | *.zip | *.tar | *.gz | *.tgz | *.bz2 | *.7z | *.rar | *.exe | *.dll | *.so | *.dylib | *.bin | *.lock | *.map | *.min.js | *.min.css)
+  shopt -u nocasematch
   echo '{}'
   exit 0
-fi
+  ;;
+esac
+shopt -u nocasematch
 
 # Skip lock files (package-lock.json, pnpm-lock.yaml, etc.)
-if echo "$file_path" | grep -qE "[-.]lock\.(json|yaml|yml)$"; then
+case "$file_path" in
+*-lock.json | *-lock.yaml | *-lock.yml | *.lock.json | *.lock.yaml | *.lock.yml)
   echo '{}'
   exit 0
-fi
+  ;;
+esac
 
 # Skip generated/vendor directories
-if echo "$file_path" | grep -qE "(node_modules|dist|build|\.git|vendor|__pycache__|\.next|coverage|\.cache|\.nuxt|\.output)/"; then
+case "$file_path" in
+*node_modules/* | *dist/* | *build/* | *.git/* | *vendor/* | *__pycache__/* | *.next/* | *coverage/* | *.cache/* | *.nuxt/* | *.output/*)
   echo '{}'
   exit 0
-fi
+  ;;
+esac
 
 # Helper: Output message and exit
 output_msg() {
@@ -67,9 +75,14 @@ output_msg() {
     msg="$msg CLAUDE.md formatter not run (project not in $AUTOFORMAT_TRUST_FILE; add $PROJECT_ROOT to enable it)."
   fi
 
-  # Escape special characters for JSON
-  msg=$(echo "$msg" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr '\n' ' ')
-  echo "{\"systemMessage\": \"$msg\"}"
+  jq -nc --arg msg "$msg" '{systemMessage: $msg}'
+  exit 0
+}
+
+# Helper: Emit an empty hook response and exit (used when we cannot proceed,
+# e.g. a failed cd, so stdout always stays valid JSON).
+emit_empty_and_exit() {
+  echo '{}'
   exit 0
 }
 
@@ -83,7 +96,7 @@ resolve_command() {
     return 0
   fi
 
-  command -v "$cmd" 2> /dev/null || true
+  command -v "$cmd" 2>/dev/null || true
 }
 
 default_autoformat_trust_file() {
@@ -120,7 +133,7 @@ is_project_trusted_for_claude_formatter() {
     if [ "$trusted_root" = "$project_root" ]; then
       return 0
     fi
-  done < "$trust_file"
+  done <"$trust_file"
 
   return 1
 }
@@ -181,12 +194,12 @@ run_safe_command_string() {
 find_project_root() {
   local dir="$1"
   while [ "$dir" != "/" ]; do
-    if [ -f "$dir/package.json" ] \
-      || [ -f "$dir/nx.json" ] \
-      || [ -f "$dir/go.mod" ] \
-      || [ -f "$dir/pyproject.toml" ] \
-      || [ -f "$dir/Cargo.toml" ] \
-      || [ -d "$dir/.git" ]; then
+    if [ -f "$dir/package.json" ] ||
+      [ -f "$dir/nx.json" ] ||
+      [ -f "$dir/go.mod" ] ||
+      [ -f "$dir/pyproject.toml" ] ||
+      [ -f "$dir/Cargo.toml" ] ||
+      [ -d "$dir/.git" ]; then
       echo "$dir"
       return 0
     fi
@@ -210,12 +223,12 @@ EXT=$(get_extension "$file_path")
 # CACHING LAYER
 # ============================================================================
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/claude-format"
-mkdir -p "$CACHE_DIR" 2> /dev/null
+mkdir -p "$CACHE_DIR" 2>/dev/null
 
 # Create cache key from project root (use md5 or fallback to simple hash)
-if command -v md5 &> /dev/null; then
+if command -v md5 &>/dev/null; then
   CACHE_KEY=$(echo "$PROJECT_ROOT" | md5)
-elif command -v md5sum &> /dev/null; then
+elif command -v md5sum &>/dev/null; then
   CACHE_KEY=$(echo "$PROJECT_ROOT" | md5sum | cut -d' ' -f1)
 else
   # Simple fallback: replace / with _ and truncate
@@ -238,7 +251,7 @@ get_mtime() {
   local file="$1"
   if [ -f "$file" ]; then
     # macOS uses -f %m, Linux uses -c %Y
-    stat -f %m "$file" 2> /dev/null || stat -c %Y "$file" 2> /dev/null || echo "0"
+    stat -f %m "$file" 2>/dev/null || stat -c %Y "$file" 2>/dev/null || echo "0"
   else
     echo "0"
   fi
@@ -247,12 +260,15 @@ get_mtime() {
 # Load cached formatter availability and commands when the cache is current.
 load_formatter_cache() {
   local bool_value=""
+  local cache_claude_formatter=""
+  local cache_format_script_name=""
   local cache_has_biome=""
   local cache_has_black=""
   local cache_has_eslint=""
   local cache_has_nx=""
   local cache_has_prettier=""
   local cache_has_ruff=""
+  local cache_line=""
   local cache_mtime=""
   local cf=""
   local cf_mtime=""
@@ -269,13 +285,23 @@ load_formatter_cache() {
     fi
   done
 
-  # Load from cache data (never source shell).
-  cache_has_prettier=$(jq -r '.HAS_PRETTIER // false | tostring' "$CACHE_FILE" 2> /dev/null)
-  cache_has_biome=$(jq -r '.HAS_BIOME // false | tostring' "$CACHE_FILE" 2> /dev/null)
-  cache_has_eslint=$(jq -r '.HAS_ESLINT // false | tostring' "$CACHE_FILE" 2> /dev/null)
-  cache_has_black=$(jq -r '.HAS_BLACK // false | tostring' "$CACHE_FILE" 2> /dev/null)
-  cache_has_ruff=$(jq -r '.HAS_RUFF // false | tostring' "$CACHE_FILE" 2> /dev/null)
-  cache_has_nx=$(jq -r '.HAS_NX // false | tostring' "$CACHE_FILE" 2> /dev/null)
+  # Load all cache fields with a single batched read (never source shell).
+  # @tsv escapes embedded tabs/newlines/backslashes within each field, so a
+  # single tab-delimited line can be split safely below.
+  cache_line=$(jq -r '[
+      (.HAS_PRETTIER // false | tostring),
+      (.HAS_BIOME // false | tostring),
+      (.HAS_ESLINT // false | tostring),
+      (.HAS_BLACK // false | tostring),
+      (.HAS_RUFF // false | tostring),
+      (.HAS_NX // false | tostring),
+      (.FORMAT_SCRIPT_NAME // ""),
+      (.CLAUDE_FORMATTER // "")
+    ] | @tsv' "$CACHE_FILE" 2>/dev/null) || return 1
+
+  IFS=$'\t' read -r cache_has_prettier cache_has_biome cache_has_eslint \
+    cache_has_black cache_has_ruff cache_has_nx \
+    cache_format_script_name cache_claude_formatter <<<"$cache_line"
 
   for bool_value in "$cache_has_prettier" "$cache_has_biome" "$cache_has_eslint" "$cache_has_black" "$cache_has_ruff" "$cache_has_nx"; do
     is_bool_string "$bool_value" || return 1
@@ -287,8 +313,8 @@ load_formatter_cache() {
   HAS_BLACK="$cache_has_black"
   HAS_RUFF="$cache_has_ruff"
   HAS_NX="$cache_has_nx"
-  FORMAT_SCRIPT_NAME=$(jq -r '.FORMAT_SCRIPT_NAME // ""' "$CACHE_FILE" 2> /dev/null)
-  CLAUDE_FORMATTER=$(jq -r '.CLAUDE_FORMATTER // ""' "$CACHE_FILE" 2> /dev/null)
+  FORMAT_SCRIPT_NAME="$cache_format_script_name"
+  CLAUDE_FORMATTER="$cache_claude_formatter"
 }
 
 detect_formatters() {
@@ -298,14 +324,14 @@ detect_formatters() {
 
   # Check CLAUDE.md for format command
   if [ -f "$claude_md" ]; then
-    CLAUDE_FORMATTER=$(grep -iE '^\s*(format|formatter)\s*[:=]' "$claude_md" | head -1 | sed 's/^[^:=]*[:=]\s*//' | sed 's/`//g' | xargs 2> /dev/null)
+    CLAUDE_FORMATTER=$(grep -iE '^\s*(format|formatter)\s*[:=]' "$claude_md" | head -1 | sed 's/^[^:=]*[:=]\s*//' | sed 's/`//g' | xargs 2>/dev/null)
   fi
 
-  cd "$PROJECT_ROOT" || exit 0
+  cd "$PROJECT_ROOT" || emit_empty_and_exit
 
   # Check for JavaScript/TypeScript formatters in package.json
   if [ -f "package.json" ]; then
-    pkg_content=$(cat package.json 2> /dev/null)
+    pkg_content=$(cat package.json 2>/dev/null)
 
     if echo "$pkg_content" | grep -q '"prettier"'; then
       HAS_PRETTIER=true
@@ -332,7 +358,7 @@ detect_formatters() {
 
   # Check for Python formatters in pyproject.toml
   if [ -f "pyproject.toml" ]; then
-    toml_content=$(cat pyproject.toml 2> /dev/null)
+    toml_content=$(cat pyproject.toml 2>/dev/null)
     if echo "$toml_content" | grep -q 'black'; then
       HAS_BLACK=true
     fi
@@ -362,90 +388,117 @@ write_formatter_cache() {
             HAS_NX: $has_nx,
             FORMAT_SCRIPT_NAME: $format_script_name,
             CLAUDE_FORMATTER: $claude_formatter
-        }' > "$CACHE_FILE"
+        }' >"$CACHE_FILE"
+}
+
+# Helper: Record that a formatter was actually invoked (and failed), so the
+# final fallback message can distinguish "nothing to try" from "it failed".
+note_attempt() {
+  local name="$1"
+
+  case ",$ATTEMPTED_FORMATTERS," in
+  *",$name,"*) return 0 ;;
+  esac
+
+  if [ -z "$ATTEMPTED_FORMATTERS" ]; then
+    ATTEMPTED_FORMATTERS="$name"
+  else
+    ATTEMPTED_FORMATTERS="$ATTEMPTED_FORMATTERS, $name"
+  fi
 }
 
 format_file() {
   case "$EXT" in
-    # JavaScript/TypeScript/JSON/CSS/HTML/Markdown
-    js | jsx | ts | tsx | mjs | cjs | json | css | scss | less | html | htm | md | mdx | yaml | yml | graphql | gql | vue | svelte)
-      if [ "$HAS_BIOME" = "true" ] && [ -n "$BIOME_CMD" ]; then
-        if "$BIOME_CMD" format --write "$abs_path" > /dev/null 2>&1; then
-          output_msg "Formatted with Biome: $file_path"
-        fi
+  # JavaScript/TypeScript/JSON/CSS/HTML/Markdown
+  js | jsx | ts | tsx | mjs | cjs | json | css | scss | less | html | htm | md | mdx | yaml | yml | graphql | gql | vue | svelte)
+    if [ "$HAS_BIOME" = "true" ] && [ -n "$BIOME_CMD" ]; then
+      if "$BIOME_CMD" format --write "$abs_path" >/dev/null 2>&1; then
+        output_msg "Formatted with Biome: $file_path"
       fi
-      if [ "$HAS_PRETTIER" = "true" ] && [ -n "$PRETTIER_CMD" ]; then
-        if "$PRETTIER_CMD" --write "$abs_path" > /dev/null 2>&1; then
-          output_msg "Formatted with Prettier: $file_path"
-        fi
-      elif [ -n "$PRETTIER_CMD" ]; then
-        # Fallback: formatter exists globally but package.json does not declare it
-        if "$PRETTIER_CMD" --write "$abs_path" > /dev/null 2>&1; then
-          output_msg "Formatted with global Prettier: $file_path"
-        fi
+      note_attempt "Biome"
+    fi
+    if [ "$HAS_PRETTIER" = "true" ] && [ -n "$PRETTIER_CMD" ]; then
+      if "$PRETTIER_CMD" --write "$abs_path" >/dev/null 2>&1; then
+        output_msg "Formatted with Prettier: $file_path"
       fi
-      ;;
+      note_attempt "Prettier"
+    elif [ -n "$PRETTIER_CMD" ]; then
+      # Fallback: formatter exists globally but package.json does not declare it
+      if "$PRETTIER_CMD" --write "$abs_path" >/dev/null 2>&1; then
+        output_msg "Formatted with global Prettier: $file_path"
+      fi
+      note_attempt "Prettier"
+    fi
+    ;;
 
-    # Python
-    py | pyi)
-      if [ "$HAS_RUFF" = "true" ] && [ -n "$RUFF_CMD" ]; then
-        if "$RUFF_CMD" format "$abs_path" > /dev/null 2>&1; then
-          output_msg "Formatted with Ruff: $file_path"
-        fi
+  # Python
+  py | pyi)
+    if [ "$HAS_RUFF" = "true" ] && [ -n "$RUFF_CMD" ]; then
+      if "$RUFF_CMD" format "$abs_path" >/dev/null 2>&1; then
+        output_msg "Formatted with Ruff: $file_path"
       fi
-      if [ "$HAS_BLACK" = "true" ] && [ -n "$BLACK_CMD" ]; then
-        if "$BLACK_CMD" "$abs_path" > /dev/null 2>&1; then
-          output_msg "Formatted with Black: $file_path"
-        fi
+      note_attempt "Ruff"
+    fi
+    if [ "$HAS_BLACK" = "true" ] && [ -n "$BLACK_CMD" ]; then
+      if "$BLACK_CMD" "$abs_path" >/dev/null 2>&1; then
+        output_msg "Formatted with Black: $file_path"
       fi
-      # Fallback: check for global tools
-      if [ -n "$RUFF_CMD" ]; then
-        if "$RUFF_CMD" format "$abs_path" > /dev/null 2>&1; then
-          output_msg "Formatted with global Ruff: $file_path"
-        fi
+      note_attempt "Black"
+    fi
+    # Fallback: check for global tools
+    if [ -n "$RUFF_CMD" ]; then
+      if "$RUFF_CMD" format "$abs_path" >/dev/null 2>&1; then
+        output_msg "Formatted with global Ruff: $file_path"
       fi
-      if [ -n "$BLACK_CMD" ]; then
-        if "$BLACK_CMD" "$abs_path" > /dev/null 2>&1; then
-          output_msg "Formatted with global Black: $file_path"
-        fi
+      note_attempt "Ruff"
+    fi
+    if [ -n "$BLACK_CMD" ]; then
+      if "$BLACK_CMD" "$abs_path" >/dev/null 2>&1; then
+        output_msg "Formatted with global Black: $file_path"
       fi
-      ;;
+      note_attempt "Black"
+    fi
+    ;;
 
-    # Go
-    go)
-      if [ -n "$GOFMT_CMD" ]; then
-        if "$GOFMT_CMD" -w "$abs_path" > /dev/null 2>&1; then
-          output_msg "Formatted with gofmt: $file_path"
-        fi
+  # Go
+  go)
+    if [ -n "$GOFMT_CMD" ]; then
+      if "$GOFMT_CMD" -w "$abs_path" >/dev/null 2>&1; then
+        output_msg "Formatted with gofmt: $file_path"
       fi
-      ;;
+      note_attempt "gofmt"
+    fi
+    ;;
 
-    # Rust
-    rs)
-      if [ -n "$RUSTFMT_CMD" ]; then
-        if "$RUSTFMT_CMD" "$abs_path" > /dev/null 2>&1; then
-          output_msg "Formatted with rustfmt: $file_path"
-        fi
+  # Rust
+  rs)
+    if [ -n "$RUSTFMT_CMD" ]; then
+      if "$RUSTFMT_CMD" "$abs_path" >/dev/null 2>&1; then
+        output_msg "Formatted with rustfmt: $file_path"
       fi
-      ;;
+      note_attempt "rustfmt"
+    fi
+    ;;
 
-    # C#
-    cs)
-      if [ -n "$DOTNET_CMD" ]; then
-        if "$DOTNET_CMD" format --include "$abs_path" > /dev/null 2>&1; then
-          output_msg "Formatted with dotnet format: $file_path"
-        fi
+  # C#
+  cs)
+    if [ -n "$DOTNET_CMD" ]; then
+      if "$DOTNET_CMD" format --include "$abs_path" >/dev/null 2>&1; then
+        output_msg "Formatted with dotnet format: $file_path"
       fi
-      ;;
+      note_attempt "dotnet format"
+    fi
+    ;;
 
-    # Shell scripts
-    sh | bash)
-      if [ -n "$SHFMT_CMD" ]; then
-        if "$SHFMT_CMD" -w "$abs_path" > /dev/null 2>&1; then
-          output_msg "Formatted with shfmt: $file_path"
-        fi
+  # Shell scripts
+  sh | bash)
+    if [ -n "$SHFMT_CMD" ]; then
+      if "$SHFMT_CMD" -w "$abs_path" >/dev/null 2>&1; then
+        output_msg "Formatted with shfmt: $file_path"
       fi
-      ;;
+      note_attempt "shfmt"
+    fi
+    ;;
   esac
 }
 
@@ -453,18 +506,20 @@ run_project_fallbacks() {
   local rel_path=""
 
   # Try Nx format for affected file
-  if [ "$HAS_NX" = "true" ]; then
+  if [ "$HAS_NX" = "true" ] && [ -n "$NX_CMD" ]; then
     rel_path="${abs_path#$PROJECT_ROOT/}"
-    if [ -n "$NX_CMD" ] && "$NX_CMD" format:write --files="$rel_path" > /dev/null 2>&1; then
+    if "$NX_CMD" format:write --files="$rel_path" >/dev/null 2>&1; then
       output_msg "Formatted with Nx: $file_path"
     fi
+    note_attempt "Nx"
   fi
 
   # Try npm format script
-  if [ -n "$FORMAT_SCRIPT_NAME" ]; then
-    if [ "${SKIPPED_UNTRUSTED_DIRECTIVE:-false}" != "true" ] && [ -n "$NPM_CMD" ] && "$NPM_CMD" run "$FORMAT_SCRIPT_NAME" > /dev/null 2>&1; then
+  if [ -n "$FORMAT_SCRIPT_NAME" ] && [ "${SKIPPED_UNTRUSTED_DIRECTIVE:-false}" != "true" ] && [ -n "$NPM_CMD" ]; then
+    if "$NPM_CMD" run "$FORMAT_SCRIPT_NAME" >/dev/null 2>&1; then
       output_msg "Formatted with npm run $FORMAT_SCRIPT_NAME"
     fi
+    note_attempt "npm run $FORMAT_SCRIPT_NAME"
   fi
 }
 
@@ -477,6 +532,7 @@ HAS_RUFF=false
 HAS_NX=false
 FORMAT_SCRIPT_NAME=""
 CLAUDE_FORMATTER=""
+ATTEMPTED_FORMATTERS=""
 
 if ! load_formatter_cache; then
   detect_formatters
@@ -488,10 +544,10 @@ fi
 # ============================================================================
 if [ -n "$CLAUDE_FORMATTER" ]; then
   if is_project_trusted_for_claude_formatter "$PROJECT_ROOT" "$AUTOFORMAT_TRUST_FILE"; then
-    cd "$PROJECT_ROOT" || exit 0
+    cd "$PROJECT_ROOT" || emit_empty_and_exit
 
     # Try to run the command without eval, suppress stderr
-    if run_safe_command_string "$CLAUDE_FORMATTER" > /dev/null 2>&1; then
+    if run_safe_command_string "$CLAUDE_FORMATTER" >/dev/null 2>&1; then
       output_msg "Formatted (CLAUDE.md: $CLAUDE_FORMATTER)"
     else
       output_msg "Format command failed (CLAUDE.md: $CLAUDE_FORMATTER)"
@@ -501,24 +557,28 @@ if [ -n "$CLAUDE_FORMATTER" ]; then
   fi
 fi
 
-cd "$PROJECT_ROOT" || exit 0
+cd "$PROJECT_ROOT" || emit_empty_and_exit
 
 # Resolve formatter binaries once (prefer local node_modules/.bin)
 BIOME_CMD=$(resolve_command "biome")
 PRETTIER_CMD=$(resolve_command "prettier")
 NX_CMD=$(resolve_command "nx")
-RUFF_CMD=$(command -v ruff 2> /dev/null || true)
-BLACK_CMD=$(command -v black 2> /dev/null || true)
-GOFMT_CMD=$(command -v gofmt 2> /dev/null || true)
-RUSTFMT_CMD=$(command -v rustfmt 2> /dev/null || true)
-DOTNET_CMD=$(command -v dotnet 2> /dev/null || true)
-SHFMT_CMD=$(command -v shfmt 2> /dev/null || true)
-NPM_CMD=$(command -v npm 2> /dev/null || true)
+RUFF_CMD=$(command -v ruff 2>/dev/null || true)
+BLACK_CMD=$(command -v black 2>/dev/null || true)
+GOFMT_CMD=$(command -v gofmt 2>/dev/null || true)
+RUSTFMT_CMD=$(command -v rustfmt 2>/dev/null || true)
+DOTNET_CMD=$(command -v dotnet 2>/dev/null || true)
+SHFMT_CMD=$(command -v shfmt 2>/dev/null || true)
+NPM_CMD=$(command -v npm 2>/dev/null || true)
 
 format_file
 run_project_fallbacks
 
 # ============================================================================
-# STEP 4: No formatter found
+# STEP 4: No formatter found, or every attempted formatter failed
 # ============================================================================
-output_msg "No formatter configured for .$EXT files"
+if [ -n "$ATTEMPTED_FORMATTERS" ]; then
+  output_msg "Formatter failed for .$EXT files (tried: $ATTEMPTED_FORMATTERS)"
+else
+  output_msg "No formatter configured for .$EXT files"
+fi
