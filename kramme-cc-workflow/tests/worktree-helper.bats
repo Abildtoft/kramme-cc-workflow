@@ -1,20 +1,16 @@
 #!/usr/bin/env bats
 # Tests for kramme:git:worktree helper
 
+load 'test_helper/common'
+
 setup() {
 	SCRIPT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)/skills/kramme:git:worktree/scripts/worktree-helper.sh"
 	TMP_DIR="$(mktemp -d)"
 	ROOT="$TMP_DIR/conductor/workspaces/root"
 	CHILD="$TMP_DIR/conductor/workspaces/child"
 
-	mkdir -p "$ROOT"
+	init_test_git_repo "$ROOT" --file README.md
 	cd "$ROOT"
-	git init -q
-	git config user.email "test@example.com"
-	git config user.name "Test User"
-	printf 'base\n' >README.md
-	git add README.md
-	git commit -q -m "initial"
 	git branch child
 	git worktree add -q "$CHILD" child
 }

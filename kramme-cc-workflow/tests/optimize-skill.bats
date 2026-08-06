@@ -72,15 +72,11 @@ load 'test_helper/common'
 	run bash -c '
     set -euo pipefail
     repo="$BATS_TEST_TMPDIR/optimize-env-copy-repo"
-    mkdir -p "$repo"
+    export BATS_TEST_DIRNAME="'"$BATS_TEST_DIRNAME"'"
+    source "$BATS_TEST_DIRNAME/test_helper/common.bash"
+    init_test_git_repo "$repo"
     cd "$repo"
-    git init -q
-    git config user.email "test@example.com"
-    git config user.name "Test User"
-    touch tracked.txt
     printf "SECRET=value\n" > .env
-    git add tracked.txt
-    git commit -qm init
 
     helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
     worktree_path=$("$helper" create safe-spec 1 HEAD)
@@ -95,14 +91,10 @@ load 'test_helper/common'
 	run bash -c '
     set -euo pipefail
     repo="$BATS_TEST_TMPDIR/optimize-shared-file-repo"
-    mkdir -p "$repo"
+    export BATS_TEST_DIRNAME="'"$BATS_TEST_DIRNAME"'"
+    source "$BATS_TEST_DIRNAME/test_helper/common.bash"
+    init_test_git_repo "$repo"
     cd "$repo"
-    git init -q
-    git config user.email "test@example.com"
-    git config user.name "Test User"
-    touch tracked.txt
-    git add tracked.txt
-    git commit -qm init
 
     helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
     if "$helper" create safe-spec 1 HEAD ../outside.txt; then
@@ -118,14 +110,10 @@ load 'test_helper/common'
 	run bash -c '
     set -euo pipefail
     repo="$BATS_TEST_TMPDIR/optimize-cleanup-invalid-repo"
-    mkdir -p "$repo"
+    export BATS_TEST_DIRNAME="'"$BATS_TEST_DIRNAME"'"
+    source "$BATS_TEST_DIRNAME/test_helper/common.bash"
+    init_test_git_repo "$repo"
     cd "$repo"
-    git init -q
-    git config user.email "test@example.com"
-    git config user.name "Test User"
-    touch tracked.txt
-    git add tracked.txt
-    git commit -qm init
 
     helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
     for spec_name in "*" "safe/spec" "../safe"; do
@@ -157,14 +145,10 @@ load 'test_helper/common'
 	run bash -c '
     set -euo pipefail
     repo="$BATS_TEST_TMPDIR/optimize-cleanup-wildcard-repo"
-    mkdir -p "$repo"
+    export BATS_TEST_DIRNAME="'"$BATS_TEST_DIRNAME"'"
+    source "$BATS_TEST_DIRNAME/test_helper/common.bash"
+    init_test_git_repo "$repo"
     cd "$repo"
-    git init -q
-    git config user.email "test@example.com"
-    git config user.name "Test User"
-    touch tracked.txt
-    git add tracked.txt
-    git commit -qm init
 
     helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
     worktree_path=$("$helper" create safe-spec 1 HEAD)
@@ -185,14 +169,10 @@ load 'test_helper/common'
 	run bash -c '
     set -euo pipefail
     repo="$BATS_TEST_TMPDIR/optimize-cleanup-one-repo"
-    mkdir -p "$repo"
+    export BATS_TEST_DIRNAME="'"$BATS_TEST_DIRNAME"'"
+    source "$BATS_TEST_DIRNAME/test_helper/common.bash"
+    init_test_git_repo "$repo"
     cd "$repo"
-    git init -q
-    git config user.email "test@example.com"
-    git config user.name "Test User"
-    touch tracked.txt
-    git add tracked.txt
-    git commit -qm init
 
     helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
     worktree_path=$("$helper" create safe-spec 1 HEAD)
@@ -213,14 +193,10 @@ load 'test_helper/common'
 	run bash -c '
     set -euo pipefail
     repo="$BATS_TEST_TMPDIR/optimize-cleanup-all-repo"
-    mkdir -p "$repo"
+    export BATS_TEST_DIRNAME="'"$BATS_TEST_DIRNAME"'"
+    source "$BATS_TEST_DIRNAME/test_helper/common.bash"
+    init_test_git_repo "$repo"
     cd "$repo"
-    git init -q
-    git config user.email "test@example.com"
-    git config user.name "Test User"
-    touch tracked.txt
-    git add tracked.txt
-    git commit -qm init
 
     helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
     first_path=$("$helper" create safe-spec 1 HEAD)
@@ -247,14 +223,10 @@ load 'test_helper/common'
 	run bash -c '
     set -euo pipefail
     repo="$BATS_TEST_TMPDIR/optimize-cleanup-remove-failure-repo"
-    mkdir -p "$repo"
+    export BATS_TEST_DIRNAME="'"$BATS_TEST_DIRNAME"'"
+    source "$BATS_TEST_DIRNAME/test_helper/common.bash"
+    init_test_git_repo "$repo"
     cd "$repo"
-    git init -q
-    git config user.email "test@example.com"
-    git config user.name "Test User"
-    touch tracked.txt
-    git add tracked.txt
-    git commit -qm init
 
     helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
     worktree_path=$("$helper" create safe-spec 1 HEAD)
