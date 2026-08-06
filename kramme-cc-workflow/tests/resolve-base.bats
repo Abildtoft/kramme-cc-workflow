@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+load 'test_helper/common'
+
 setup() {
 	SCRIPT_DIR="$(cd "$BATS_TEST_DIRNAME/.." && pwd)/scripts"
 	TMP_DIR="$(mktemp -d)"
@@ -10,17 +12,8 @@ setup() {
 	write_failing_gh
 	export PATH="$BIN_DIR:$PATH"
 
-	git init --bare "$ORIGIN" >/dev/null
-	git clone "$ORIGIN" "$WORK" >/dev/null 2>&1
+	init_test_git_repo "$WORK" --origin "$ORIGIN"
 	cd "$WORK"
-	git config user.email "test@example.com"
-	git config user.name "Test User"
-	git config commit.gpgsign false
-	printf 'base\n' >tracked.txt
-	git add tracked.txt
-	git commit -m "initial" >/dev/null
-	git branch -M main
-	git push -u origin main >/dev/null 2>&1
 	git remote set-head origin main >/dev/null 2>&1
 	git switch -c feature >/dev/null 2>&1
 }

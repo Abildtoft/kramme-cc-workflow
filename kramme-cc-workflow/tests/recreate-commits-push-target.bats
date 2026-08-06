@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+load 'test_helper/common'
+
 setup() {
 	REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
 	SCRIPT="$REPO_ROOT/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh"
@@ -7,17 +9,8 @@ setup() {
 	REMOTE="$TMP_DIR/remote.git"
 	WORK="$TMP_DIR/work"
 
-	git init --bare "$REMOTE" >/dev/null
-	git clone "$REMOTE" "$WORK" >/dev/null 2>&1
+	init_test_git_repo "$WORK" --origin "$REMOTE"
 	cd "$WORK"
-	git config user.email "test@example.com"
-	git config user.name "Test User"
-	git config commit.gpgsign false
-	printf 'base\n' >tracked.txt
-	git add tracked.txt
-	git commit -m "initial" >/dev/null
-	git branch -M main
-	git push -u origin main >/dev/null 2>&1
 	git --git-dir="$REMOTE" symbolic-ref HEAD refs/heads/main
 	git switch -c feature >/dev/null 2>&1
 	printf 'feature\n' >feature.txt
@@ -121,6 +114,7 @@ add_fork_remote() {
 	git clone "$REMOTE" "$collaborator" >/dev/null 2>&1
 	git -C "$collaborator" config user.email "collaborator@example.com"
 	git -C "$collaborator" config user.name "Collaborator"
+	git -C "$collaborator" config commit.gpgsign false
 	git -C "$collaborator" switch feature >/dev/null 2>&1
 	printf 'collaborator\n' >>"$collaborator/feature.txt"
 	git -C "$collaborator" commit -am "collaborator" >/dev/null
