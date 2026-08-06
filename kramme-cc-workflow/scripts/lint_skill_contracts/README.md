@@ -18,6 +18,7 @@ the parsing, validation, synchronization, and reporting behavior.
 | Workflow guidance contracts | `checks/base_diff_scope.py`, `checks/epilogue.py`, `checks/ui_relevance.py` | Base-diff guidance, skill epilogue order, or UI-relevance rules and fixtures are wrong. |
 | Manifest, provenance, hook, and mechanical contracts | `checks/marker_manifest.py`, `checks/source_provenance.py`, `checks/hooks_json.py`, `checks/mechanical.py` | Source manifests, copied-source licensing or immutable origin metadata, forbidden source snapshots, hook registration, frontmatter, naming, or skill line budgets are wrong. |
 | README synchronization | `readme.py`, `checks/readme_sync.py` | Skill, agent, or hook reference rows drift, or generated component-reference output is wrong. |
+| Compact component catalog | `catalog.py`, `checks/component_catalog.py` | The generated JSON component index drifts, omits a component, or emits a path that does not exist. |
 
 The ordered runtime boundary is `checks/registry.py`. New checks belong in a
 focused check module and must be registered there. Keep generic parsing in the
@@ -30,6 +31,10 @@ shared helpers, and keep CLI presentation in `cli.py`.
 - A README row mismatch starts in `checks/readme_sync.py`, then follows
   comparison and rendering into `readme.py`. The write-capable consumer is
   [`../generate-component-reference.py`](../generate-component-reference.py).
+- A component catalog mismatch starts in `checks/component_catalog.py`, then
+  follows rendering into `catalog.py`. The catalog reads its source directories
+  from the README sync configs, so a component source problem is reported by the
+  README sync checks and the catalog check only reports that it is blocked.
 - Missing, duplicated, or reordered diagnostics start in `checks/registry.py`
   and `checks/types.py`; only final terminal formatting belongs in `cli.py`.
 
