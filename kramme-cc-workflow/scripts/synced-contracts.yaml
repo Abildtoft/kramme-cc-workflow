@@ -148,6 +148,32 @@
         "kramme-cc-workflow/scripts/lib/shell-helpers.sh",
         "kramme-cc-workflow/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh"
       ]
+    },
+    {
+      "name": "git-worktree-conductor-path-predicate",
+      "extract_regex": "(?s)(is_conductor_path\\(\\) \\{.*?\\n\\})",
+      "normalizer": "linewise",
+      "inventory": {
+        "glob": "kramme-cc-workflow/skills/**/*.sh",
+        "marker": "# Synced worktree conductor-path predicate (keep aligned across git worktree helpers):"
+      },
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:git:clean-gone-branches/scripts/clean-gone-branches.sh",
+        "kramme-cc-workflow/skills/kramme:git:worktree/scripts/worktree-helper.sh"
+      ]
+    },
+    {
+      "name": "git-worktree-porcelain-branch-lookup",
+      "extract_regex": "(?s)(awk -v target=\"\\$branch\" '.*?')",
+      "normalizer": "linewise",
+      "inventory": {
+        "glob": "kramme-cc-workflow/skills/**/*.sh",
+        "marker": "# Synced worktree-porcelain branch lookup (keep aligned across git worktree helpers):"
+      },
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:git:clean-gone-branches/scripts/clean-gone-branches.sh",
+        "kramme-cc-workflow/skills/kramme:git:worktree/scripts/worktree-helper.sh"
+      ]
     }
   ],
   "base_diff_scope": {
